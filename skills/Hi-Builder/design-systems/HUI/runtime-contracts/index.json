@@ -1,0 +1,1462 @@
+{
+  "schema_version": "hui-runtime-index.v1",
+  "maintenance": {
+    "purpose": "HUI Vue运行时原子标签索引，连接实际模板标签与已验证组件合同。",
+    "edit_policy": "不要直接编辑entries；更新mapping和官方文档证据后运行import_hui_contracts.py重建。",
+    "managed_paths": {
+      "basic-form": "基础、表单和图标组件的已验证运行时合同。",
+      "data": "表格、树、分页等数据展示组件合同。",
+      "navigation": "菜单、页签、步骤等导航组件合同。",
+      "notice": "消息、通知、加载等反馈服务与组件合同。",
+      "others": "Dialog、Card、Tooltip等其他HUI组件合同。",
+      "mappings": "官方组件目录到采集批次和合同文件的映射。",
+      "evidence": "官方文档采集证据，仅用于追溯与重新提炼。"
+    }
+  },
+  "entries": {
+    "el-autocomplete": {
+      "component_ids": [
+        "autocomplete"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/autocomplete.json"
+      ],
+      "interface_counts": {
+        "props": 22,
+        "events": 5,
+        "slots": 5,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-button": {
+      "component_ids": [
+        "button"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/button.json"
+      ],
+      "interface_counts": {
+        "props": 14,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-button-group": {
+      "component_ids": [
+        "button"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/button.json"
+      ],
+      "interface_counts": {
+        "props": 0,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-examples-only"
+    },
+    "el-cascader": {
+      "component_ids": [
+        "cascader"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/cascader.json"
+      ],
+      "interface_counts": {
+        "props": 18,
+        "events": 5,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-checkbox": {
+      "component_ids": [
+        "checkbox"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/checkbox.json"
+      ],
+      "interface_counts": {
+        "props": 8,
+        "events": 1,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-checkbox-group": {
+      "component_ids": [
+        "checkbox"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/checkbox.json"
+      ],
+      "interface_counts": {
+        "props": 7,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-date-picker": {
+      "component_ids": [
+        "date-picker",
+        "date-time-picker"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/date-picker.json",
+        "runtime-contracts/basic-form/date-time-picker.json"
+      ],
+      "interface_counts": {
+        "props": 58,
+        "events": 8,
+        "slots": 4,
+        "methods": 2
+      },
+      "verification": "official-api-table"
+    },
+    "el-form": {
+      "component_ids": [
+        "form"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/form.json"
+      ],
+      "interface_counts": {
+        "props": 16,
+        "events": 1,
+        "slots": 0,
+        "methods": 6
+      },
+      "verification": "official-api-table"
+    },
+    "el-form-item": {
+      "component_ids": [
+        "form"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/form.json"
+      ],
+      "interface_counts": {
+        "props": 21,
+        "events": 0,
+        "slots": 3,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "h-icon": {
+      "component_ids": [
+        "icon"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/icon.json"
+      ],
+      "interface_counts": {
+        "props": 0,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-examples-only"
+    },
+    "h-feedback-icon": {
+      "component_ids": [
+        "icon"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/icon.json"
+      ],
+      "interface_counts": {
+        "props": 0,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-examples-only"
+    },
+    "el-input": {
+      "component_ids": [
+        "input"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/input.json"
+      ],
+      "interface_counts": {
+        "props": 31,
+        "events": 6,
+        "slots": 4,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-input-number": {
+      "component_ids": [
+        "input"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/input.json"
+      ],
+      "interface_counts": {
+        "props": 15,
+        "events": 3,
+        "slots": 4,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-input-range": {
+      "component_ids": [
+        "input"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/input.json"
+      ],
+      "interface_counts": {
+        "props": 11,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "h-ip-input": {
+      "component_ids": [
+        "ip-input"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/ip-input.json"
+      ],
+      "interface_counts": {
+        "props": 8,
+        "events": 1,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-row": {
+      "component_ids": [
+        "layout"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/layout.json"
+      ],
+      "interface_counts": {
+        "props": 0,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-examples-only"
+    },
+    "el-col": {
+      "component_ids": [
+        "layout"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/layout.json"
+      ],
+      "interface_counts": {
+        "props": 0,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-examples-only"
+    },
+    "el-radio": {
+      "component_ids": [
+        "radio"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/radio.json"
+      ],
+      "interface_counts": {
+        "props": 7,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-radio-group": {
+      "component_ids": [
+        "radio"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/radio.json"
+      ],
+      "interface_counts": {
+        "props": 4,
+        "events": 1,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-radio-button": {
+      "component_ids": [
+        "radio"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/radio.json"
+      ],
+      "interface_counts": {
+        "props": 0,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-examples-only"
+    },
+    "el-select": {
+      "component_ids": [
+        "select"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/select.json"
+      ],
+      "interface_counts": {
+        "props": 31,
+        "events": 11,
+        "slots": 4,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-option": {
+      "component_ids": [
+        "select"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/select.json"
+      ],
+      "interface_counts": {
+        "props": 3,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-option-group": {
+      "component_ids": [
+        "select"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/select.json"
+      ],
+      "interface_counts": {
+        "props": 3,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-slider": {
+      "component_ids": [
+        "slider"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/slider.json"
+      ],
+      "interface_counts": {
+        "props": 18,
+        "events": 5,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "h-svg-icon": {
+      "component_ids": [
+        "svg-icon"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/svg-icon.json"
+      ],
+      "interface_counts": {
+        "props": 6,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "svg-icon": {
+      "component_ids": [
+        "svg-icon"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/svg-icon.json"
+      ],
+      "interface_counts": {
+        "props": 2,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-switch": {
+      "component_ids": [
+        "switch"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/switch.json"
+      ],
+      "interface_counts": {
+        "props": 15,
+        "events": 3,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-time-picker": {
+      "component_ids": [
+        "time-picker"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/time-picker.json"
+      ],
+      "interface_counts": {
+        "props": 26,
+        "events": 4,
+        "slots": 0,
+        "methods": 1
+      },
+      "verification": "official-api-table"
+    },
+    "el-transfer": {
+      "component_ids": [
+        "transfer"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/transfer.json"
+      ],
+      "interface_counts": {
+        "props": 22,
+        "events": 3,
+        "slots": 4,
+        "methods": 1
+      },
+      "verification": "official-api-table"
+    },
+    "el-upload": {
+      "component_ids": [
+        "upload"
+      ],
+      "contract_files": [
+        "runtime-contracts/basic-form/upload.json"
+      ],
+      "interface_counts": {
+        "props": 29,
+        "events": 0,
+        "slots": 0,
+        "methods": 2
+      },
+      "verification": "official-api-table"
+    },
+    "el-badge": {
+      "component_ids": [
+        "badge"
+      ],
+      "contract_files": [
+        "runtime-contracts/data/badge.json"
+      ],
+      "interface_counts": {
+        "props": 6,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-descriptions": {
+      "component_ids": [
+        "descriptions"
+      ],
+      "contract_files": [
+        "runtime-contracts/data/descriptions.json"
+      ],
+      "interface_counts": {
+        "props": 11,
+        "events": 0,
+        "slots": 2,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-descriptions-row": {
+      "component_ids": [
+        "descriptions"
+      ],
+      "contract_files": [
+        "runtime-contracts/data/descriptions.json"
+      ],
+      "interface_counts": {
+        "props": 6,
+        "events": 0,
+        "slots": 1,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-list": {
+      "component_ids": [
+        "list"
+      ],
+      "contract_files": [
+        "runtime-contracts/data/list.json"
+      ],
+      "interface_counts": {
+        "props": 1,
+        "events": 0,
+        "slots": 3,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-list-item": {
+      "component_ids": [
+        "list"
+      ],
+      "contract_files": [
+        "runtime-contracts/data/list.json"
+      ],
+      "interface_counts": {
+        "props": 7,
+        "events": 0,
+        "slots": 7,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-pagination": {
+      "component_ids": [
+        "pagination"
+      ],
+      "contract_files": [
+        "runtime-contracts/data/pagination.json"
+      ],
+      "interface_counts": {
+        "props": 16,
+        "events": 2,
+        "slots": 1,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-progress": {
+      "component_ids": [
+        "progress"
+      ],
+      "contract_files": [
+        "runtime-contracts/data/progress.json"
+      ],
+      "interface_counts": {
+        "props": 17,
+        "events": 0,
+        "slots": 1,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-skeleton": {
+      "component_ids": [
+        "skeleton"
+      ],
+      "contract_files": [
+        "runtime-contracts/data/skeleton.json"
+      ],
+      "interface_counts": {
+        "props": 5,
+        "events": 0,
+        "slots": 2,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-skeleton-item": {
+      "component_ids": [
+        "skeleton"
+      ],
+      "contract_files": [
+        "runtime-contracts/data/skeleton.json"
+      ],
+      "interface_counts": {
+        "props": 1,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "h-stats": {
+      "component_ids": [
+        "stats"
+      ],
+      "contract_files": [
+        "runtime-contracts/data/stats.json"
+      ],
+      "interface_counts": {
+        "props": 5,
+        "events": 0,
+        "slots": 4,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-table": {
+      "component_ids": [
+        "table"
+      ],
+      "contract_files": [
+        "runtime-contracts/data/table.json"
+      ],
+      "interface_counts": {
+        "props": 38,
+        "events": 21,
+        "slots": 3,
+        "methods": 7
+      },
+      "verification": "official-api-table"
+    },
+    "el-table-column": {
+      "component_ids": [
+        "table"
+      ],
+      "contract_files": [
+        "runtime-contracts/data/table.json"
+      ],
+      "interface_counts": {
+        "props": 29,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-tag": {
+      "component_ids": [
+        "tag"
+      ],
+      "contract_files": [
+        "runtime-contracts/data/tag.json"
+      ],
+      "interface_counts": {
+        "props": 8,
+        "events": 1,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-checkable-tag": {
+      "component_ids": [
+        "tag"
+      ],
+      "contract_files": [
+        "runtime-contracts/data/tag.json"
+      ],
+      "interface_counts": {
+        "props": 8,
+        "events": 1,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-checkable-tag-group": {
+      "component_ids": [
+        "tag"
+      ],
+      "contract_files": [
+        "runtime-contracts/data/tag.json"
+      ],
+      "interface_counts": {
+        "props": 1,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-tree": {
+      "component_ids": [
+        "tree"
+      ],
+      "contract_files": [
+        "runtime-contracts/data/tree.json"
+      ],
+      "interface_counts": {
+        "props": 41,
+        "events": 20,
+        "slots": 2,
+        "methods": 23
+      },
+      "verification": "official-api-table"
+    },
+    "h-anchor": {
+      "component_ids": [
+        "anchor"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/anchor.json"
+      ],
+      "interface_counts": {
+        "props": 0,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-examples-only"
+    },
+    "h-subanchor": {
+      "component_ids": [
+        "anchor"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/anchor.json"
+      ],
+      "interface_counts": {
+        "props": 13,
+        "events": 1,
+        "slots": 1,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "h-anchor-link": {
+      "component_ids": [
+        "anchor"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/anchor.json"
+      ],
+      "interface_counts": {
+        "props": 0,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-examples-only"
+    },
+    "h-affix": {
+      "component_ids": [
+        "anchor",
+        "affix"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/anchor.json",
+        "runtime-contracts/others/affix.json"
+      ],
+      "interface_counts": {
+        "props": 5,
+        "events": 0,
+        "slots": 0,
+        "methods": 1
+      },
+      "verification": "official-api-table"
+    },
+    "el-breadcrumb": {
+      "component_ids": [
+        "breadcrumb"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/breadcrumb.json"
+      ],
+      "interface_counts": {
+        "props": 3,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-breadcrumb-item": {
+      "component_ids": [
+        "breadcrumb"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/breadcrumb.json"
+      ],
+      "interface_counts": {
+        "props": 6,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-breadcrumb-sub-item": {
+      "component_ids": [
+        "breadcrumb"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/breadcrumb.json"
+      ],
+      "interface_counts": {
+        "props": 2,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-dropdown": {
+      "component_ids": [
+        "dropdown"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/dropdown.json"
+      ],
+      "interface_counts": {
+        "props": 12,
+        "events": 3,
+        "slots": 0,
+        "methods": 2
+      },
+      "verification": "official-api-table"
+    },
+    "el-dropdown-menu": {
+      "component_ids": [
+        "dropdown"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/dropdown.json"
+      ],
+      "interface_counts": {
+        "props": 0,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-examples-only"
+    },
+    "el-dropdown-item": {
+      "component_ids": [
+        "dropdown"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/dropdown.json"
+      ],
+      "interface_counts": {
+        "props": 3,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-dropdown-item-group": {
+      "component_ids": [
+        "dropdown"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/dropdown.json"
+      ],
+      "interface_counts": {
+        "props": 0,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-examples-only"
+    },
+    "el-sub-dropdown": {
+      "component_ids": [
+        "dropdown"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/dropdown.json"
+      ],
+      "interface_counts": {
+        "props": 0,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-examples-only"
+    },
+    "el-menu": {
+      "component_ids": [
+        "menu"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/menu.json"
+      ],
+      "interface_counts": {
+        "props": 7,
+        "events": 5,
+        "slots": 4,
+        "methods": 2
+      },
+      "verification": "official-api-table"
+    },
+    "el-submenu": {
+      "component_ids": [
+        "menu"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/menu.json"
+      ],
+      "interface_counts": {
+        "props": 7,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-menu-item": {
+      "component_ids": [
+        "menu"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/menu.json"
+      ],
+      "interface_counts": {
+        "props": 6,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-menu-item-group": {
+      "component_ids": [
+        "menu"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/menu.json"
+      ],
+      "interface_counts": {
+        "props": 1,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-nav": {
+      "component_ids": [
+        "nav"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/nav.json"
+      ],
+      "interface_counts": {
+        "props": 10,
+        "events": 8,
+        "slots": 2,
+        "methods": 2
+      },
+      "verification": "official-api-table"
+    },
+    "el-subnav": {
+      "component_ids": [
+        "nav"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/nav.json"
+      ],
+      "interface_counts": {
+        "props": 4,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-nav-item": {
+      "component_ids": [
+        "nav"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/nav.json"
+      ],
+      "interface_counts": {
+        "props": 3,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-nav-group": {
+      "component_ids": [
+        "nav"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/nav.json"
+      ],
+      "interface_counts": {
+        "props": 1,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-layout-page-header": {
+      "component_ids": [
+        "page-header"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/page-header.json"
+      ],
+      "interface_counts": {
+        "props": 8,
+        "events": 1,
+        "slots": 5,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-steps": {
+      "component_ids": [
+        "steps"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/steps.json"
+      ],
+      "interface_counts": {
+        "props": 13,
+        "events": 1,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-step": {
+      "component_ids": [
+        "steps"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/steps.json"
+      ],
+      "interface_counts": {
+        "props": 4,
+        "events": 0,
+        "slots": 3,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-tabs": {
+      "component_ids": [
+        "tabs"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/tabs.json"
+      ],
+      "interface_counts": {
+        "props": 14,
+        "events": 4,
+        "slots": 0,
+        "methods": 1
+      },
+      "verification": "official-api-table"
+    },
+    "el-tab-pane": {
+      "component_ids": [
+        "tabs"
+      ],
+      "contract_files": [
+        "runtime-contracts/navigation/tabs.json"
+      ],
+      "interface_counts": {
+        "props": 6,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-alert": {
+      "component_ids": [
+        "alert"
+      ],
+      "contract_files": [
+        "runtime-contracts/notice/alert.json"
+      ],
+      "interface_counts": {
+        "props": 10,
+        "events": 1,
+        "slots": 2,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "v-loading": {
+      "component_ids": [
+        "loading"
+      ],
+      "contract_files": [
+        "runtime-contracts/notice/loading.json"
+      ],
+      "interface_counts": {
+        "props": 10,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "$message-box": {
+      "component_ids": [
+        "message-box"
+      ],
+      "contract_files": [
+        "runtime-contracts/notice/message-box.json"
+      ],
+      "interface_counts": {
+        "props": 29,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "$message": {
+      "component_ids": [
+        "message"
+      ],
+      "contract_files": [
+        "runtime-contracts/notice/message.json"
+      ],
+      "interface_counts": {
+        "props": 8,
+        "events": 0,
+        "slots": 0,
+        "methods": 1
+      },
+      "verification": "official-api-table"
+    },
+    "$notify": {
+      "component_ids": [
+        "notification"
+      ],
+      "contract_files": [
+        "runtime-contracts/notice/notification.json"
+      ],
+      "interface_counts": {
+        "props": 14,
+        "events": 0,
+        "slots": 0,
+        "methods": 1
+      },
+      "verification": "official-api-table"
+    },
+    "el-card": {
+      "component_ids": [
+        "card"
+      ],
+      "contract_files": [
+        "runtime-contracts/others/card.json"
+      ],
+      "interface_counts": {
+        "props": 4,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-carousel": {
+      "component_ids": [
+        "carousel"
+      ],
+      "contract_files": [
+        "runtime-contracts/others/carousel.json"
+      ],
+      "interface_counts": {
+        "props": 9,
+        "events": 1,
+        "slots": 0,
+        "methods": 3
+      },
+      "verification": "official-api-table"
+    },
+    "el-carousel-item": {
+      "component_ids": [
+        "carousel"
+      ],
+      "contract_files": [
+        "runtime-contracts/others/carousel.json"
+      ],
+      "interface_counts": {
+        "props": 2,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-collapse": {
+      "component_ids": [
+        "collapse"
+      ],
+      "contract_files": [
+        "runtime-contracts/others/collapse.json"
+      ],
+      "interface_counts": {
+        "props": 2,
+        "events": 1,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-collapse-item": {
+      "component_ids": [
+        "collapse"
+      ],
+      "contract_files": [
+        "runtime-contracts/others/collapse.json"
+      ],
+      "interface_counts": {
+        "props": 3,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "h-color-picker": {
+      "component_ids": [
+        "color-picker"
+      ],
+      "contract_files": [
+        "runtime-contracts/others/color-picker.json"
+      ],
+      "interface_counts": {
+        "props": 14,
+        "events": 2,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-dialog": {
+      "component_ids": [
+        "dialog"
+      ],
+      "contract_files": [
+        "runtime-contracts/others/dialog.json"
+      ],
+      "interface_counts": {
+        "props": 18,
+        "events": 4,
+        "slots": 3,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-divider": {
+      "component_ids": [
+        "divider"
+      ],
+      "contract_files": [
+        "runtime-contracts/others/divider.json"
+      ],
+      "interface_counts": {
+        "props": 3,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-drawer": {
+      "component_ids": [
+        "drawer"
+      ],
+      "contract_files": [
+        "runtime-contracts/others/drawer.json"
+      ],
+      "interface_counts": {
+        "props": 20,
+        "events": 5,
+        "slots": 4,
+        "methods": 1
+      },
+      "verification": "official-api-table"
+    },
+    "el-ellipsis": {
+      "component_ids": [
+        "ellipsis"
+      ],
+      "contract_files": [
+        "runtime-contracts/others/ellipsis.json"
+      ],
+      "interface_counts": {
+        "props": 8,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-empty": {
+      "component_ids": [
+        "empty"
+      ],
+      "contract_files": [
+        "runtime-contracts/others/empty.json"
+      ],
+      "interface_counts": {
+        "props": 5,
+        "events": 0,
+        "slots": 4,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-image-viewer": {
+      "component_ids": [
+        "image-viewer"
+      ],
+      "contract_files": [
+        "runtime-contracts/others/image-viewer.json"
+      ],
+      "interface_counts": {
+        "props": 11,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "v-infinite-scroll": {
+      "component_ids": [
+        "infinite-scroll"
+      ],
+      "contract_files": [
+        "runtime-contracts/others/infinite-scroll.json"
+      ],
+      "interface_counts": {
+        "props": 4,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-popconfirm": {
+      "component_ids": [
+        "popconfirm"
+      ],
+      "contract_files": [
+        "runtime-contracts/others/popconfirm.json"
+      ],
+      "interface_counts": {
+        "props": 9,
+        "events": 2,
+        "slots": 4,
+        "methods": 1
+      },
+      "verification": "official-api-table"
+    },
+    "el-popover": {
+      "component_ids": [
+        "popover"
+      ],
+      "contract_files": [
+        "runtime-contracts/others/popover.json"
+      ],
+      "interface_counts": {
+        "props": 16,
+        "events": 2,
+        "slots": 2,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-rate": {
+      "component_ids": [
+        "rate"
+      ],
+      "contract_files": [
+        "runtime-contracts/others/rate.json"
+      ],
+      "interface_counts": {
+        "props": 15,
+        "events": 1,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-scrollbar": {
+      "component_ids": [
+        "scrollbar"
+      ],
+      "contract_files": [
+        "runtime-contracts/others/scrollbar.json"
+      ],
+      "interface_counts": {
+        "props": 23,
+        "events": 5,
+        "slots": 0,
+        "methods": 1
+      },
+      "verification": "official-api-table"
+    },
+    "el-timeline": {
+      "component_ids": [
+        "timeline"
+      ],
+      "contract_files": [
+        "runtime-contracts/others/timeline.json"
+      ],
+      "interface_counts": {
+        "props": 3,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-timeline-item": {
+      "component_ids": [
+        "timeline"
+      ],
+      "contract_files": [
+        "runtime-contracts/others/timeline.json"
+      ],
+      "interface_counts": {
+        "props": 10,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    },
+    "el-tooltip": {
+      "component_ids": [
+        "tooltip"
+      ],
+      "contract_files": [
+        "runtime-contracts/others/tooltip.json"
+      ],
+      "interface_counts": {
+        "props": 13,
+        "events": 0,
+        "slots": 0,
+        "methods": 0
+      },
+      "verification": "official-api-table"
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "schema_version": "design-system-catalog.v1",
+  "maintenance": {
+    "purpose": "HUI通用知识与行业产品知识的根索引；解析器从这里进入，不通过遍历目录猜测。",
+    "edit_policy": "新增HUI通用知识、行业或产品入口时同步登记真实相对路径；具体知识写入下级索引指向的文件。",
+    "managed_paths": {
+      "HUI": "HUI组件、语义、通用业务字段、页面模式、运行资源与token合同。",
+      "industry-products": "行业及其产品知识入口。"
+    }
+  },
+  "default_design_system": "HUI",
+  "HUI": {
+    "common_domain": {
+      "field_catalog": "HUI/common-domain/fields/catalog.json"
+    },
+    "manifest": "HUI/manifest.json",
+    "page_pattern_catalog": "HUI/page-patterns/catalog.json",
+    "zone_registry": "HUI/zones",
+    "component_pattern_registry": "HUI/component-patterns",
+    "component_pattern_catalog": "HUI/component-patterns/catalog.json",
+    "atom_catalog": "HUI/runtime-contracts/index.json",
+    "token_contract": "HUI/theme/token-contract.json"
+  },
+  "industry-products": {
+    "general": {
+      "name": "通用",
+      "products": {
+        "isc": {
+          "name": "综合安防管理平台",
+          "root": "industry-products/general/products/isc"
+        }
+      }
+    },
+    "public-security": {
+      "name": "公安",
+      "products": {
+        "pvia": {
+          "name": "公安视频图像应用平台",
+          "root": "industry-products/public-security/products/pvia"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,242 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "card",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/others/card",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/others.docs.json",
+    "evidence_sha256": "f150a2630aef3c6508a028b85a5e004a26036cac12218f39bbe7388c02099e11"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-card": {
+      "props": [
+        {
+          "参数": "header",
+          "说明": "设置 header，也可以通过 slot#header 传入 DOM",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "header"
+        },
+        {
+          "参数": "header-style 2.50.0+",
+          "说明": "设置 header 的样式，用法同body-style",
+          "类型": "object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "header-style"
+        },
+        {
+          "参数": "body-style",
+          "说明": "设置 body 的样式",
+          "类型": "object",
+          "可选值": "—",
+          "默认值": "{ padding: ‘20px’ }",
+          "template_name": "body-style"
+        },
+        {
+          "参数": "shadow",
+          "说明": "设置阴影显示时机",
+          "类型": "string",
+          "可选值": "hover/always/never",
+          "默认值": "hover",
+          "template_name": "shadow"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "d2c_usage": {
+    "observed_at": "2026-08-05",
+    "source_page_patterns": [
+      "page-patterns/tpp/pages/card/vehicle.json",
+      "page-patterns/tpp/pages/card/face.json",
+      "page-patterns/tpp/pages/card/similarity.json",
+      "page-patterns/tpp/pages/card/text.json",
+      "page-patterns/tpp/pages/card/data-list.json"
+    ],
+    "responsibility_boundary": {
+      "component": "卡片内部结构、内容层级和稳定视觉行为",
+      "page_pattern": "卡片宽高、集合列数、集合间距和页面分页位置",
+      "product": "品牌Token、业务状态语义和业务字段映射"
+    },
+    "anatomy": {
+      "root": {"rendered_by": "el-card"},
+      "header": {"rendered_by": "header-slot", "responsibility": "媒体或摘要区"},
+      "media": {"optional": true, "responsibility": "图片或视频帧"},
+      "overlay": {"optional": true, "responsibility": "编号、状态或指标浮层"},
+      "primary": {"required": true, "responsibility": "主标识或标题"},
+      "metadata": {"multiple": true, "responsibility": "次级信息"},
+      "status": {"optional": true, "responsibility": "标签或状态"},
+      "actions": {"optional": true, "responsibility": "卡片级文本操作"}
+    },
+    "fixed_behavior": {
+      "shadow": "hover",
+      "header_divider": "profile-defined",
+      "media_content": "clip-to-media-region",
+      "single_line_content_overflow": "ellipsis",
+      "action_button_type": "text",
+      "colors": "inherit-hui-css-and-product-token-overrides"
+    },
+    "status_tag_semantics": {
+      "variant": "primary",
+      "floods": ["red", "green", "orange"],
+      "mappings": [
+        {
+          "flood": "red",
+          "keywords": ["异常", "告警", "离线", "故障", "关注", "低相似"]
+        },
+        {
+          "flood": "green",
+          "keywords": ["正常", "已恢复", "已处理", "比中", "在岗", "运行正常"]
+        }
+      ],
+      "fallback_flood": "orange"
+    },
+    "visual_profiles": {
+      "vehicle-card": {
+        "page_pattern": "hui.tpp.page.card.vehicle",
+        "structure": "media-header-with-title-and-icon-metadata-body",
+        "required_slots": ["media", "primary", "metadata.location", "metadata.time"],
+        "hui_components": ["el-card", "h-icon"],
+        "header": {
+          "padding": "12px",
+          "media_fit": "cover"
+        },
+        "primary": {
+          "placement": "body",
+          "presentation": "body-title",
+          "font_size": "16px",
+          "font_weight": 500,
+          "line_height": "20px",
+          "metadata_gap": "12px"
+        },
+        "body": {
+          "padding": "12px",
+          "metadata_layout": "two-icon-rows",
+          "row_line_height": "20px",
+          "row_gap": "4px",
+          "icon_size": "20px",
+          "icon_text_gap": "6px",
+          "icons": ["h-icon-info_location", "h-icon-info_time"]
+        }
+      },
+      "face-card": {
+        "page_pattern": "hui.tpp.page.card.face",
+        "structure": "full-bleed-media-with-title-tag-and-key-value-body",
+        "required_slots": ["media", "primary", "status", "metadata"],
+        "hui_components": ["el-card", "el-tag"],
+        "header": {
+          "padding": "0px",
+          "media_height": "220px",
+          "media_fit": "cover"
+        },
+        "primary": {"placement": "body", "font_size": "16px", "font_weight": 500, "line_height": "20px", "metadata_gap": "12px"},
+        "status": {"placement": "body-title-row", "presentation": "el-tag", "font_size": "14px"},
+        "body": {
+          "padding": "12px 16px",
+          "metadata_layout": "three-key-value-rows",
+          "row_line_height": "20px",
+          "row_gap": "4px",
+          "label_width": "56px",
+          "label_content_gap": "16px",
+          "content_overflow": "single-line-ellipsis"
+        }
+      },
+      "similarity-card": {
+        "page_pattern": "hui.tpp.page.card.similarity",
+        "structure": "paired-media-with-score-title-tag-and-icon-metadata",
+        "required_slots": ["media.reference", "media.capture", "overlay.metric", "primary", "status", "metadata"],
+        "hui_components": ["el-card", "el-tag", "h-icon"],
+        "header": {
+          "padding": "0px",
+          "divider": true,
+          "media_layout": "two-equal-columns",
+          "media_height": "180px",
+          "media_column_gap": "2px",
+          "media_fit": "cover"
+        },
+        "overlay": {
+          "presentation": "centered-metric",
+          "container_size": "84px 32px",
+          "content_padding": "1px 5px",
+          "font_size": "20px",
+          "line_height": "20px"
+        },
+        "primary": {"placement": "body", "font_size": "16px", "font_weight": 500, "line_height": "20px", "metadata_gap": "12px"},
+        "status": {"placement": "body-title-row", "presentation": "el-tag", "font_size": "14px"},
+        "body": {
+          "padding": "12px 16px 16px",
+          "metadata_layout": "three-icon-rows",
+          "row_line_height": "20px",
+          "row_gap": "4px",
+          "icon_size": "20px",
+          "icon_text_gap": "4px",
+          "icons": ["h-icon-info_data", "h-icon-info_time", "h-icon-info_location"]
+        }
+      },
+      "text-card": {
+        "page_pattern": "hui.tpp.page.card.text",
+        "structure": "banner-summary-with-title-tags-and-icon-metadata",
+        "required_slots": ["media", "primary", "status", "metadata.location", "metadata.time"],
+        "hui_components": ["el-card", "el-tag", "h-icon"],
+        "header": {
+          "padding": "0px",
+          "media_height": "94px",
+          "media_fit": "fill",
+          "content_inline_padding": "16px",
+          "content_block_top": "20px",
+          "title_status_gap": "8px"
+        },
+        "primary": {"font_size": "20px", "line_height": "30px"},
+        "status": {
+          "presentation": "tag-list-with-overflow-count",
+          "font_size": "14px",
+          "tag_gap": "4px"
+        },
+        "body": {
+          "padding": "12px",
+          "metadata_layout": "two-icon-rows",
+          "row_line_height": "20px",
+          "row_gap": "4px",
+          "icon_size": "20px",
+          "icon_text_gap": "4px",
+          "icons": ["h-icon-info_location", "h-icon-info_time"]
+        }
+      },
+      "data-list": {
+        "page_pattern": "hui.tpp.page.card.data-list",
+        "structure": "horizontal-thumbnail-with-multi-column-details-and-tags",
+        "required_slots": ["media", "primary", "metadata", "status"],
+        "hui_components": ["el-card", "el-tag"],
+        "root": {"display": "flex"},
+        "header": {
+          "width": "128px",
+          "divider": false,
+          "media_size": "96px 96px",
+          "media_fit": "fill"
+        },
+        "primary": {"font_size": "20px", "line_height": "30px"},
+        "body": {
+          "content_margin": "16px 0px 8px",
+          "metadata_layout": "four-column-key-value-grid",
+          "row_line_height": "20px",
+          "row_gap": "4px",
+          "label_width": "56px",
+          "label_content_gap": "16px",
+          "content_overflow": "single-line-ellipsis"
+        },
+        "status": {
+          "presentation": "multi-variant-tag-list",
+          "font_size": "14px",
+          "tag_gap": "8px"
+        }
+      }
+    }
+  },
+  "supporting_sections": []
+}

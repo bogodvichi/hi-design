@@ -1,0 +1,55 @@
+{
+  "schema_version": "hui-page-pattern.v1",
+  "id": "hui.page-pattern.form.fixed-width-one-column",
+  "name": "定宽-1列表单页",
+  "source": {
+    "platform": "HUI-VUE典型页面",
+    "url": "http://tpp.dev.hikhub.net/tpp#/pages/form/fixedWidth1Column",
+    "hui_version": "2.50.0+",
+    "observed_at": "2026-07-31",
+    "evidence": "evidence.json",
+    "tpp_variant": "../tpp/pages/form/fixed-width-one-column.json"
+  },
+  "scope": {
+    "include": ["page-content", "form-scroll-area", "content-card", "form", "footer-actions"],
+    "exclude": ["TPP documentation header", "TPP navigation sidebar", "theme and source-code inspector"]
+  },
+  "zones": ["content-card", "form-scroll", "footer-actions"],
+  "component_patterns": ["form.data-form"],
+  "geometry_roles": {
+    "page-content-inline-padding": "16px",
+    "page-content-top-padding": "16px",
+    "form-card-padding-top": "48px",
+    "form-card-padding-inline": "80px",
+    "form-card-padding-bottom": "58px",
+    "form-footer-height": "57px",
+    "form-footer-padding": "12px",
+    "form-footer-action-width": "96px",
+    "form-footer-action-gap": "8px"
+  },
+  "container_width_modes": {
+    "md": {
+      "width": "1280px",
+      "label": "md-1280px",
+      "default": true
+    },
+    "lg": {
+      "width": "1440px",
+      "label": "lg-1440px"
+    },
+    "max": {
+      "width": "available-content-width",
+      "label": "max-撑满"
+    }
+  },
+  "fixed_behavior": {
+    "content_card_alignment": "horizontal-center",
+    "form_body_overflow": "vertical-scroll",
+    "footer_position": "sticky-bottom",
+    "footer_alignment": "horizontal-center",
+    "footer_has_top_divider": true,
+    "primary_action": "submit",
+    "secondary_action": "cancel",
+    "do_not_include_demo_platform_shell": true
+  }
+}

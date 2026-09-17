@@ -1,0 +1,18 @@
+{
+  "path": "/pages/details/retractedAnchorPoint",
+  "name": "详情页_带锚点_可收起锚点",
+  "package": "@hiktpp/details-retractedAnchorPoint",
+  "hui_version": "^2.55.0",
+  "observed_at": "2026-08-14",
+  "viewport": {"width": 1728, "height": 935},
+  "root": {"class": "h-page-content form-area is-flex is-align-center", "rect": {"x": 256, "y": 118.25, "width": 1456, "height": 816.75}, "style": {"display": "flex", "padding": "0px"}},
+  "observed_structure": {"breadcrumb": ["详情页", "带锚点", "可收起锚点"], "anchor_mode": "foldable", "anchor_position": "right", "anchor_count": 3, "default_state": "folded", "person_summary": true, "group_count": 3, "embedded_tables": 2, "pagination": true},
+  "regions": {
+    "content": {"class": "form-area__content", "rect": {"x": 256, "y": 118.25, "width": 1456, "height": 1657}, "padding": "48px 80px 58px"},
+    "folded_anchor": {"class": "h-anchor-wrapper folded", "rect": {"x": 1736, "y": 143, "width": 120, "height": 128}, "position": "relative"},
+    "anchor_placeholder": {"class": "anchorColor", "rect": {"x": 924, "y": 166.25, "width": 120, "height": 128}, "position": "absolute"}
+  },
+  "component_count_scope": "page-content-relevant-only",
+  "runtime_components": {"el-breadcrumb": 1, "el-breadcrumb-item": 3, "el-table": 2, "el-pagination": 1, "el-tag": 3, "h-anchor": 1},
+  "actions": ["跳转"]
+}

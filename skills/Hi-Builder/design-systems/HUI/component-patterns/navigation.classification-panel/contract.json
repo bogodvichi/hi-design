@@ -1,0 +1,13 @@
+{
+  "schema_version": "hui-component-pattern.v2",
+  "id": "navigation.classification-panel",
+  "name": "分类导航面板",
+  "split_mode": "composite",
+  "vue_component": "ClassificationPanel",
+  "description": "组合分类方式、关键字搜索和分类菜单",
+  "category": "navigation",
+  "status": "active",
+  "use_when": ["数据需要先按分类维度导航"],
+  "hui_components": ["el-select", "el-option", "el-input", "el-menu", "el-menu-item"],
+  "owner": "hui-common"
+}

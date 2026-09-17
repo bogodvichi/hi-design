@@ -1,0 +1,10 @@
+{
+  "schema_version": "hui-page-variant.v1",
+  "id": "hui.tpp.page.details.secondary-grouping",
+  "name": "二级分组",
+  "family": "hui.tpp.family.details-grouped",
+  "source": {"url": "http://tpp.dev.hikhub.net/tpp#/pages/details/secondaryGrouping", "package": "@hiktpp/details-secondaryGrouping", "hui_version": "^2.55.0", "observed_at": "2026-08-14", "evidence": "../../evidence/details/secondary-grouping.json"},
+  "parameters": {"grouping_level": 2, "container_count": 2, "inner_group_count": 4, "description_item_count": 18, "embedded_tables": 2, "pagination": true},
+  "geometry": {"viewport": {"width": 1728, "height": 935}, "key_regions": {"secondary_container": {"class": "h-page-content form-area is-flex is-align-center", "rect": {"x": 268, "y": 740.28, "width": 1432, "height": 1316}}, "secondary_title": {"class": "form-area__content-title", "rect": {"x": 344, "y": 740.28, "width": 1280, "height": 64}, "padding": "18px 24px"}}},
+  "composition": {"component_count_scope": "page-content-relevant-only", "hui_components": {"el-tag": 3, "el-table": 2, "el-pagination": 1}, "actions": [{"label": "跳转", "count": 1}]}
+}

@@ -1,0 +1,157 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "anchor",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/navigation/anchor",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/navigation.docs.json",
+    "evidence_sha256": "e10ef37ba907910b3f0d40d9a0892b99ace9f2c5ad09cbd0ebf3bf440a34925a"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "h-anchor": {
+      "props": [],
+      "events": [],
+      "slots": [],
+      "methods": []
+    },
+    "h-subanchor": {
+      "props": [
+        {
+          "参数": "affix",
+          "说明": "是否是固定容器，采用h-affix",
+          "类型": "Boolean",
+          "可选值": "-",
+          "默认值": "true",
+          "template_name": "affix"
+        },
+        {
+          "参数": "container",
+          "说明": "affix 外层滚动容器（参数为选择器）",
+          "类型": "String",
+          "可选值": "-",
+          "默认值": "window",
+          "template_name": "container"
+        },
+        {
+          "参数": "title",
+          "说明": "标题",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "title"
+        },
+        {
+          "参数": "size",
+          "说明": "自定义大小",
+          "类型": "string",
+          "可选值": "large",
+          "默认值": "—",
+          "template_name": "size"
+        },
+        {
+          "参数": "type",
+          "说明": "主题",
+          "类型": "string",
+          "可选值": "success/warning/info/error",
+          "默认值": "info",
+          "template_name": "type"
+        },
+        {
+          "参数": "description",
+          "说明": "辅助性文字。也可通过默认 slot 传入",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "description"
+        },
+        {
+          "参数": "simple",
+          "说明": "是否启用简单模式",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "simple"
+        },
+        {
+          "参数": "closable",
+          "说明": "是否可关闭",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "closable"
+        },
+        {
+          "参数": "center",
+          "说明": "是否居中显示文本",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "center"
+        },
+        {
+          "参数": "close-text",
+          "说明": "关闭按钮自定义文本",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "close-text"
+        },
+        {
+          "参数": "close-icon",
+          "说明": "自定义关闭按钮图标",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "close-icon"
+        },
+        {
+          "参数": "show-icon",
+          "说明": "是否显示图标",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "show-icon"
+        },
+        {
+          "参数": "icon",
+          "说明": "自定义图标",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "icon"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "close",
+          "说明": "关闭anchor时触发的事件",
+          "回调参数": "—",
+          "template_name": "close"
+        }
+      ],
+      "slots": [
+        {
+          "Name": "title",
+          "Description": "标题的内容",
+          "template_name": "title"
+        }
+      ],
+      "methods": []
+    },
+    "h-anchor-link": {
+      "props": [],
+      "events": [],
+      "slots": [],
+      "methods": []
+    },
+    "h-affix": {
+      "props": [],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

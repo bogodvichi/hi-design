@@ -1,0 +1,15 @@
+    <section class="h-layout tpp-h-layout is-vertical hui-tpp-shell product-context">
+      <header class="h-layout-header always-dark hui-tpp-header" data-zone="portal.header" data-component="portal.global-header">
+        <div class="tpp-h-layout__logo"><img :src="config.product_logo" alt="hui-logo" data-d2c-product-brand><strong>HUI - VUE</strong><div class="separator"></div><span>典型页面</span></div>
+        <ul class="tpp-h-layout__nav"><li v-for="item in config.top_menus" :key="item"><a href="#" :class="{'is-active':item===config.portal.active_top_menu}">{{ item }}</a></li></ul>
+        <div class="hui-tpp-header__tools"><el-button type="text" icon="h-icon-setting" title="换肤"></el-button><span class="hui-tpp-header__divider"></span><el-button type="text">admin <i class="h-icon-angle_down_sm"></i></el-button></div>
+      </header>
+      <section class="h-layout hui-tpp-main">
+        <div class="h-page is-inited hui-tpp-page" :class="{'is-menu-collapsed':sidebarCollapsed}">
+          <nav class="h-page-menu" :class="{'is-collapsed':sidebarCollapsed}" data-zone="portal.sidebar" data-component="portal.app-sidebar">
+            <el-scrollbar class="hui-tpp-menu-scrollbar">
+              <el-nav mode="vertical" :collapse="sidebarCollapsed" :collapse-btn="true" :default-active="config.portal.active_side_menu" :default-openeds="huiShellOpenMenus" :wrap-scroll="true" @click-collapse="sidebarCollapsed=!sidebarCollapsed">
+                <template v-for="item in config.portal.side_menus"><el-subnav v-if="item.children" :key="item.id" :index="item.id" :title="item.label" :icon="item.icon"><el-nav-item v-for="child in item.children" :key="child.id" :index="child.id" @click="navigateSideMenu(child)">{{ child.label }}</el-nav-item></el-subnav><el-nav-item v-else :key="item.id" :index="item.id" @click="navigateSideMenu(item)">{{ item.label }}</el-nav-item></template>
+              </el-nav>
+            </el-scrollbar>
+          </nav>

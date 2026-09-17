@@ -1,0 +1,175 @@
+{
+  "schema_version": "hui-page-variant.v1",
+  "id": "hui.tpp.page.table.with-statistics",
+  "name": "统计",
+  "family": "hui.tpp.family.table-statistics",
+  "source": {
+    "url": "http://tpp.dev.hikhub.net/tpp#/pages/table/withStatisticalTable",
+    "package": "@hiktpp/table-with-statistical-table",
+    "hui_version": "^2.55.0",
+    "observed_at": "2026-07-31",
+    "evidence": "../../evidence/table/with-statistics.json"
+  },
+  "parameters": {
+    "statistics": true,
+    "statistics_style": {
+      "root_class": "statisticsStyle",
+      "placement": "after-breadcrumb-before-table-layout",
+      "card_count_observed": 5,
+      "card_component": "h-stats",
+      "card_width": "calc(20% - 13px)",
+      "card_height": 120,
+      "image_size": 96,
+      "clickable_active_state": true,
+      "title_prefix_icon": true,
+      "value_suffix_icon": "h-icon-edit"
+    },
+    "statistical_columns": [
+      {
+        "kind": "progress",
+        "component": "el-progress",
+        "width": 240,
+        "stroke_width": 12,
+        "stroke_linecap": "square",
+        "show_text": true
+      },
+      {
+        "kind": "tag-pair",
+        "component": "el-tag",
+        "width": 120,
+        "variants": ["primary", "secondary"],
+        "shared_flood_by_row": true
+      }
+    ]
+  },
+  "geometry": {
+    "viewport": {
+      "width": 1920,
+      "height": 968
+    },
+    "root": {
+      "class": "h-page-content is-flex",
+      "rect": {
+        "x": 240,
+        "y": 248.06,
+        "width": 1680,
+        "height": 719.94
+      },
+      "style": {
+        "display": "flex",
+        "padding": "16px 16px 0px",
+        "overflow": "visible"
+      }
+    },
+    "key_regions": {
+      "statistics": {
+        "class": "statisticsStyle",
+        "rect": {"x": 240, "y": 95.765625, "width": 1680, "height": 152},
+        "display": "flex",
+        "padding": "16px",
+        "gap": "16px",
+        "effective_background": "var(--h-color-bg-primary)"
+      },
+      "toolbar": {
+        "class": "bar-search-row",
+        "rect": {
+          "x": 268,
+          "y": 264.06,
+          "width": 1624,
+          "height": 56
+        },
+        "display": "flex",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "table": {
+        "class": "el-table el-table--fit el-table--enable-row-hover el-table--enable-row-transition el-table--no-out-border",
+        "rect": {
+          "x": 280,
+          "y": 320.06,
+          "width": 1600,
+          "height": 591.94
+        },
+        "display": "flex",
+        "position": "relative",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "hidden",
+        "overflow_y": "hidden"
+      },
+      "pagination": {
+        "class": "el-pagination el-pagination--table",
+        "rect": {
+          "x": 268,
+          "y": 912,
+          "width": 1624,
+          "height": 56
+        },
+        "display": "flex",
+        "position": "static",
+        "padding": "0px 12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      }
+    }
+  },
+  "composition": {
+    "hui_components": {
+      "el-button": 70,
+      "el-divider": 1,
+      "el-radio-group": 1,
+      "el-radio-button": 2,
+      "h-icon": 1,
+      "el-table": 1,
+      "el-table-column": 11,
+      "el-tooltip": 11,
+      "el-checkbox": 21,
+      "h-svg-icon": 21,
+      "h-stats": 5,
+      "el-scrollbar": 2,
+      "el-progress": 20,
+      "el-tag": 40,
+      "el-pagination": 1,
+      "el-select": 1,
+      "el-input": 2,
+      "el-option": 4
+    },
+    "page_framework_components": {
+      "h-page-content": 3,
+      "h-page-button-group": 1
+    },
+    "unindexed_runtime_components": {
+      "el-select-menu": 1
+    },
+    "actions": [
+      {
+        "label": "添加",
+        "count": 1
+      },
+      {
+        "label": "编辑",
+        "count": 1
+      },
+      {
+        "label": "删除",
+        "count": 1
+      },
+      {
+        "label": "导入",
+        "count": 1
+      },
+      {
+        "label": "导出",
+        "count": 1
+      },
+      {
+        "label": "跳转",
+        "count": 1
+      }
+    ]
+  }
+}

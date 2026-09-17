@@ -1,0 +1,10 @@
+{
+  "_说明": "Claude token 价格表。单价单位：美元 / 每百万(1M) token。usd_to_cny 为汇率，看板/采集按此把美元折算成人民币。价格与汇率可随时改，改后新数据即按新价计。费用口径(2026-08-04)：cost_cny 只计 input+output 真实吞吐，cache_read/cache_write 缓存 token 不计入费用，与 total_tokens 同口径。",
+  "usd_to_cny": 7.2,
+  "prices_usd_per_1m": {
+    "input": 3.00,
+    "output": 15.00,
+    "cache_read": 0.30,
+    "cache_write": 3.75
+  }
+}

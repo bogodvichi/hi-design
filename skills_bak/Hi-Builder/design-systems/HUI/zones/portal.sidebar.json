@@ -1,0 +1,8 @@
+{
+  "schema_version": "d2c-zone.v1",
+  "id": "portal.sidebar",
+  "name": "门户侧边导航区域",
+  "description": "承载产品模块导航及其展开收起行为",
+  "use_when": ["产品使用门户侧边模块导航"],
+  "owner": "hui-common"
+}

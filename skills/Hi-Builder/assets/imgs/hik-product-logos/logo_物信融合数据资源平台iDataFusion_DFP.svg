@@ -1,0 +1,47 @@
+<svg width="40.000000" height="40.000000" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+	<desc>
+			Created with Pixso.
+	</desc>
+	<defs>
+		<clipPath id="clip1140_373">
+			<rect id="属性 1=企业版,属性 2=默认" width="40.000000" height="40.000000" fill="white" fill-opacity="0"/>
+		</clipPath>
+		<linearGradient x1="6.739070" y1="8.843416" x2="33.673145" y2="33.532013" id="paint_linear_1140_234_0" gradientUnits="userSpaceOnUse">
+			<stop stop-color="#2C7FE7"/>
+			<stop offset="1.000000" stop-color="#0754D3"/>
+		</linearGradient>
+		<linearGradient x1="10.561202" y1="27.654215" x2="29.420086" y2="16.594328" id="paint_linear_1140_239_0" gradientUnits="userSpaceOnUse">
+			<stop stop-color="#38BCFF"/>
+			<stop offset="1.000000" stop-color="#3B85FE"/>
+		</linearGradient>
+		<linearGradient x1="25.992393" y1="15.899085" x2="25.992393" y2="8.646118" id="paint_linear_1140_241_0" gradientUnits="userSpaceOnUse">
+			<stop stop-color="#38BCFF"/>
+			<stop offset="1.000000" stop-color="#3B85FE"/>
+		</linearGradient>
+		<linearGradient x1="11.085277" y1="12.966240" x2="11.085277" y2="23.195827" id="paint_linear_1140_243_0" gradientUnits="userSpaceOnUse">
+			<stop stop-color="#38BCFF"/>
+			<stop offset="1.000000" stop-color="#3B85FE"/>
+		</linearGradient>
+		<linearGradient x1="23.199968" y1="22.820667" x2="23.199968" y2="34.511719" id="paint_linear_1140_245_0" gradientUnits="userSpaceOnUse">
+			<stop stop-color="#38BCFF"/>
+			<stop offset="1.000000" stop-color="#3B85FE"/>
+		</linearGradient>
+	</defs>
+	<rect id="属性 1=企业版,属性 2=默认" width="40.000000" height="40.000000" fill="#FFFFFF" fill-opacity="0"/>
+	<g clip-path="url(#clip1140_373)">
+		<path id="path" d="M12.95 25.32L20.13 29.45L26.26 25.81L26.26 32.38L20.13 36L6 27.81L6 11.18L20.13 3L25.72 6.29L20.14 9.55L11.6 14.45L11.6 21.8L6 18.52L6.01 21.26L12.92 25.38L12.95 25.32M27.95 7.61L34 11.18L34 27.81L28.4 31.12L28.4 24L28.4 14.45L22.42 10.9L27.95 7.61Z" fill="url(#paint_linear_1140_234_0)" fill-opacity="1.000000" fill-rule="nonzero"/>
+		<path id="path" d="M20.13 29.45L26.26 25.81L26.26 32.38L20.13 36L6 27.81L6 11.18L20.13 3L25.72 6.29L20.14 9.55L11.6 14.45L11.6 21.8L6 18.52L6.01 21.26L12.92 25.38L12.95 25.32L20.13 29.45M34 11.18L34 27.81L28.4 31.12L28.4 24L28.4 14.45L22.42 10.9L27.95 7.61L34 11.18Z" stroke="#000000" stroke-opacity="0" stroke-width="1.000000"/>
+		<path id="path" d="M27.84 7.61L33.96 11.19L24.15 16.92L18.3 13.34L27.84 7.61M15.84 16.89L15.82 24.28L6.02 18.56L6.04 11.16L15.84 16.89M20.13 24.54L26.26 21L26.26 32.45L20.13 36L20.13 24.54Z" fill="#000000" fill-opacity="1.000000" fill-rule="nonzero"/>
+		<path id="path" d="M33.96 11.19L24.15 16.92L18.3 13.34L27.84 7.61L33.96 11.19M15.82 24.28L6.02 18.56L6.04 11.16L15.84 16.89L15.82 24.28M26.26 21L26.26 32.45L20.13 36L20.13 24.54L26.26 21Z" stroke="#000000" stroke-opacity="0" stroke-width="1.000000"/>
+		<path id="path" d="M27.84 7.61L33.96 11.19L24.15 16.92L18.3 13.34L27.84 7.61M15.84 16.89L15.82 24.28L6.02 18.56L6.04 11.16L15.84 16.89M20.13 24.54L26.26 21L26.26 32.45L20.13 36L20.13 24.54Z" fill="url(#paint_linear_1140_239_0)" fill-opacity="1.000000" fill-rule="evenodd"/>
+		<path id="path" d="M33.96 11.19L24.15 16.92L18.3 13.34L27.84 7.61L33.96 11.19M15.82 24.28L6.02 18.56L6.04 11.16L15.84 16.89L15.82 24.28M26.26 21L26.26 32.45L20.13 36L20.13 24.54L26.26 21Z" stroke="#000000" stroke-opacity="0" stroke-width="1.000000"/>
+		<path id="polygon" d="M27.7 7.51L33.81 11.09L24.01 16.82L18.16 13.24L27.7 7.51Z" fill="url(#paint_linear_1140_241_0)" fill-opacity="1.000000" fill-rule="nonzero"/>
+		<path id="polygon" d="M33.81 11.09L24.01 16.82L18.16 13.24L27.7 7.51L33.81 11.09Z" stroke="#000000" stroke-opacity="0" stroke-width="1.000000"/>
+		<path id="polygon" d="M15.99 17.1L15.97 24.49L6.17 18.77L6.19 11.37L15.99 17.1Z" fill="url(#paint_linear_1140_243_0)" fill-opacity="1.000000" fill-rule="nonzero"/>
+		<path id="polygon" d="M15.97 24.49L6.17 18.77L6.19 11.37L15.99 17.1L15.97 24.49Z" stroke="#000000" stroke-opacity="0" stroke-width="1.000000"/>
+		<path id="polygon" d="M20.13 24.54L26.26 21L26.26 32.45L20.13 36L20.13 24.54Z" fill="url(#paint_linear_1140_245_0)" fill-opacity="1.000000" fill-rule="nonzero"/>
+		<path id="polygon" d="M26.26 21L26.26 32.45L20.13 36L20.13 24.54L26.26 21Z" stroke="#000000" stroke-opacity="0" stroke-width="1.000000"/>
+		<path id="polygon" d="M23.6 19.5L18.26 22.63L18.26 16.36L23.6 19.5Z" fill="#38BCFF" fill-opacity="1.000000" fill-rule="nonzero"/>
+		<path id="polygon" d="M18.26 22.63L18.26 16.36L23.6 19.5L18.26 22.63Z" stroke="#000000" stroke-opacity="0" stroke-width="1.000000"/>
+	</g>
+</svg>

@@ -1,0 +1,27 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "layout",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/basic/layout",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/basic-form.docs.json",
+    "evidence_sha256": "ce35467cfa4317a06d0d65dd9e415328669f0c6711f32417ce27edc1af71cbe7"
+  },
+  "documentation_status": "examples-only",
+  "contract_kind": "layout-system",
+  "runtime": {
+    "el-row": {
+      "props": [],
+      "events": [],
+      "slots": [],
+      "methods": []
+    },
+    "el-col": {
+      "props": [],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

@@ -1,0 +1,28 @@
+{
+  "schema_version": "hui-component-pattern.v2",
+  "id": "detail.details-pane",
+  "name": "关联详情面板",
+  "split_mode": "composite",
+  "vue_component": "DetailsPane",
+  "description": "展示与当前选中数据联动的详情内容和详情操作",
+  "category": "detail",
+  "status": "active",
+  "use_when": ["主表、主列表或主对象需要在同页联动展示详情"],
+  "hui_components": ["el-tabs", "el-tab-pane", "el-form", "el-form-item", "el-button"],
+  "interaction": {
+    "trigger": "表格行详情按钮",
+    "open": "点击一行详情，展示该行详情面板",
+    "switch": "点击另一行详情，更新面板内容并保持展开",
+    "close": "再次点击当前行详情，隐藏面板",
+    "extra_header": false,
+    "extra_close_button": false
+  },
+  "table_composition": {
+    "placement": "inside table collection module, at the right of table list",
+    "shape": "T-shaped master-detail split",
+    "top_separator": false,
+    "left_separator": {"width": "1px", "token": "--h-color-border-tertiary"},
+    "separator_ownership": "filter bottom owns the only horizontal separator; detail pane owns only its left vertical separator"
+  },
+  "owner": "hui-common"
+}

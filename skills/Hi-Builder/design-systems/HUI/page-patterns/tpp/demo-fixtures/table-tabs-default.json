@@ -1,0 +1,50 @@
+{
+  "schema_version": "hui-pattern-demo-fixture.v1",
+  "id": "table-tabs-default",
+  "config": {
+    "filters": [
+      {"key": "keyword", "label": "关键字", "kind": "input", "placeholder": "请输入名称或编号", "default": ""},
+      {"key": "area", "label": "所属区域", "kind": "select", "options": ["全部", "总部园区", "研发中心", "生产园区"], "default": "全部"},
+      {"key": "status", "label": "状态", "kind": "select", "options": ["全部", "在线", "离线", "处理中", "已完成"], "default": "全部"}
+    ],
+    "toolbar_actions": [
+      {"label": "添加", "icon": "h-icon-add"},
+      {"label": "导出", "icon": "h-icon-export"}
+    ],
+    "columns": [
+      {"prop": "name", "label": "名称"},
+      {"prop": "code", "label": "编号"},
+      {"prop": "area", "label": "所属区域"},
+      {"prop": "status", "label": "状态"},
+      {"prop": "updateTime", "label": "更新时间"}
+    ],
+    "table_tabs": [
+      {"id": "all", "label": "全部"},
+      {"id": "active", "label": "处理中"},
+      {"id": "closed", "label": "已完成"}
+    ],
+    "tree_nodes": [
+      {"id": "all", "label": "全部区域", "children": [
+        {"id": "headquarters", "label": "总部园区", "filter_key": "area", "filter_value": "总部园区"},
+        {"id": "research", "label": "研发中心", "filter_key": "area", "filter_value": "研发中心"},
+        {"id": "production", "label": "生产园区", "filter_key": "area", "filter_value": "生产园区"}
+      ]}
+    ],
+    "default_tree_node": "all",
+    "page_size": 10
+  },
+  "preview": {
+    "tableTabRows": {
+      "all": [
+        {"id": 1, "name": "东门人脸抓拍机", "code": "IPC-FACE-001", "keyword": "东门人脸抓拍机 IPC-FACE-001", "area": "总部园区", "status": "在线", "type": "设备", "updateTime": "2026-08-20 10:32:18"},
+        {"id": 2, "name": "周界入侵告警", "code": "ALM-20260820-002", "keyword": "周界入侵告警 ALM-20260820-002", "area": "研发中心", "status": "处理中", "type": "告警", "updateTime": "2026-08-20 10:28:46"}
+      ],
+      "active": [
+        {"id": 2, "name": "周界入侵告警", "code": "ALM-20260820-002", "keyword": "周界入侵告警 ALM-20260820-002", "area": "研发中心", "status": "处理中", "type": "告警", "updateTime": "2026-08-20 10:28:46"}
+      ],
+      "closed": [
+        {"id": 3, "name": "设备离线事件", "code": "EVT-20260820-003", "keyword": "设备离线事件 EVT-20260820-003", "area": "生产园区", "status": "已完成", "type": "事件", "updateTime": "2026-08-20 09:18:12"}
+      ]
+    }
+  }
+}

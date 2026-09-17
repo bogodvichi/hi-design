@@ -1,0 +1,14 @@
+{
+  "schema_version": "hui-component-pattern.v2",
+  "id": "navigation.anchor-nav",
+  "name": "锚点导航",
+  "split_mode": "composite",
+  "vue_component": "AnchorNavigation",
+  "description": "组合章节锚点并与页面滚动位置保持联动",
+  "category": "navigation",
+  "status": "active",
+  "use_when": ["长表单或长详情页需要快速定位内容章节"],
+  "hui_components": ["h-anchor", "h-anchor-link"],
+  "variants": ["persistent", "retractable"],
+  "owner": "hui-common"
+}

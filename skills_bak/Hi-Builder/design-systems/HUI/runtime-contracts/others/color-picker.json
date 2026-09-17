@@ -1,0 +1,147 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "color-picker",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/others/color-picker",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/others.docs.json",
+    "evidence_sha256": "f150a2630aef3c6508a028b85a5e004a26036cac12218f39bbe7388c02099e11"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "h-color-picker": {
+      "props": [
+        {
+          "参数": "show-alpha",
+          "说明": "是否支持透明度选择",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "show-alpha"
+        },
+        {
+          "参数": "is-simple",
+          "说明": "是否为简单模式",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "is-simple"
+        },
+        {
+          "参数": "show-color-text",
+          "说明": "输入框是否展示颜色值",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "show-color-text"
+        },
+        {
+          "参数": "disabled",
+          "说明": "是否禁用",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "defaultColor",
+          "说明": "输入框缺省颜色",
+          "类型": "string（16进制颜色值）",
+          "可选值": "—",
+          "默认值": "",
+          "template_name": "default-color"
+        },
+        {
+          "参数": "placeholder",
+          "说明": "输入框占位文本",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "",
+          "template_name": "placeholder"
+        },
+        {
+          "参数": "placement",
+          "说明": "下拉配置",
+          "类型": "更多参数可见Vue-popper",
+          "可选值": "—",
+          "默认值": "",
+          "template_name": "placement"
+        },
+        {
+          "参数": "color-format  2.60.3+",
+          "说明": "设置返回颜色值格式",
+          "类型": "string",
+          "可选值": "hex/rgb",
+          "默认值": "默认触发器，show-alpha 为 false 时，默认值为 hex； show-alpha 为 true 时，默认值为 rgb mode触发器，默认为 null, 会根据选择面板的格式返回颜色值",
+          "template_name": "color-format"
+        },
+        {
+          "参数": "trigger  2.60.3+",
+          "说明": "触发器类型，默认为旧版触发器，modern为新版触发器",
+          "类型": "string",
+          "可选值": "‘’/modern",
+          "默认值": "‘’",
+          "template_name": "trigger"
+        },
+        {
+          "参数": "show-controller  2.60.3+",
+          "说明": "下拉面板是否显示颜色控制器",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "show-controller"
+        },
+        {
+          "参数": "trigger-readonly  2.60.3+",
+          "说明": "触发器是否可以编辑色值，触发器类型为modern时有效",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "trigger-readonly"
+        },
+        {
+          "参数": "recent-colors  2.60.3+",
+          "说明": "最近使用颜色，值为 false 则不显示最近使用颜色，支持 .sync 语法糖",
+          "类型": "boolean/string[]",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "recent-colors"
+        },
+        {
+          "参数": "custom-colors  2.60.4+",
+          "说明": "自定义颜色，值为 false 则不显示自定义颜色，支持 .sync 语法糖",
+          "类型": "boolean/string[]",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "custom-colors"
+        },
+        {
+          "参数": "preset-colors  2.60.3+",
+          "说明": "系统预设颜色，值为 false 或 [] 则不显示系统预设颜色，值为 true 显示默认系统预设颜色。",
+          "类型": "boolean/string[]",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "preset-colors"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "change",
+          "说明": "当绑定值变化时触发",
+          "回调参数": "当前值",
+          "template_name": "change"
+        },
+        {
+          "事件名称": "popper-visible-change   2.60.4+",
+          "说明": "颜色面板展开和收起时触发",
+          "回调参数": "true/false",
+          "template_name": "popper-visible-change"
+        }
+      ],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

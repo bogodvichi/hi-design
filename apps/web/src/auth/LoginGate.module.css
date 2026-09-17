@@ -1,0 +1,579 @@
+/*
+ * Login gate — covers the whole SPA until the built-in account signs in.
+ * Uses the app's design tokens so it follows the active theme automatically.
+ * Premium animated login: aurora background, glass card, rotating brand
+ * mark, staggered entrance. Motion respects prefers-reduced-motion.
+ */
+
+.appLocked {
+  /* Locked state: the app stays mounted underneath so the desktop splash
+     reveal (`data-od-app-mounted`), theme application and white-screen
+     detection keep working. `inert` + `aria-hidden` (set in LoginGate.tsx)
+     take it out of the interaction/a11y trees; the opaque login backdrop
+     covers it visually. `overflow: hidden` clips the locked app to the
+     wrapper. Deliberately NO positioning here — a positioned ancestor would
+     become the containing block for fixed/absolute descendants and shift
+     in-app floating UI. Applies between login screens and the first
+     successful session check. */
+  overflow: hidden;
+}
+
+.bootSurface {
+  /* Confirming-session state: a neutral full-screen surface matching the app
+     background. Rendered in the server HTML and on the first client render so
+     the login screen can never flash before the session check completes. No
+     positioning on `.appLocked`, so this `fixed` surface anchors to the
+     viewport (same as `.backdrop` below). */
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: var(--bg-app);
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: row;
+  background: var(--bg-app);
+  overflow: hidden;
+}
+
+/* Left panel: full-height image, golden-ratio split (~38%). */
+.splitImage {
+  flex: 0 0 38.2%;
+ position: relative;
+ overflow: hidden;
+}
+
+/* Stacked background layers for the aurora carousel. Only the active
+   layer has opacity 1; the rest fade out for a crossfade transition. */
+.splitImageLayer {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  transition: opacity 1200ms ease-in-out;
+  will-change: opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splitImageLayer {
+    transition: none;
+  }
+}
+
+/* Gradient overlay on the image so it blends into the right panel. */
+.splitImage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  /* background: linear-gradient(
+    to right,
+    color-mix(in srgb, var(--bg-app) 20%, transparent) 0%,
+    transparent 40%,
+    transparent 60%,
+    color-mix(in srgb, var(--bg-app) 90%, transparent) 100%
+  ); */
+}
+
+/* Right panel: ~62% (golden-ratio complement), holds aurora + card. */
+.splitContent {
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  overflow: hidden;
+ background-image: url('/upgrade/hero-home-1440.webp');
+ background-size: cover;
+background-position: right bottom;
+ box-shadow: -24px 0 50px -12px rgba(0, 0, 0, 0.5);
+}
+
+/* Darkening overlay on the hero background so the glass card stays readable. */
+.splitContent::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  /* background: color-mix(in srgb, var(--bg-app) 45%, transparent); */
+}
+
+@media (max-width: 768px) {
+  .splitImage {
+    display: none;
+  }
+  .splitContent {
+    flex: 1;
+  }
+}
+
+/* Animated aurora — three slowly drifting gradient blobs that give the
+   backdrop depth and life. Brand green is used sparingly as an accent. */
+.aurora {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.auroraBlob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.5;
+  will-change: transform;
+}
+
+.auroraBlob1 {
+  width: 600px;
+  height: 600px;
+  top: -200px;
+  left: -100px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 30%, transparent), transparent 70%);
+  animation: aurora-drift-1 18s ease-in-out infinite;
+}
+
+.auroraBlob2 {
+  width: 500px;
+  height: 500px;
+  bottom: -150px;
+  right: -100px;
+  background: radial-gradient(circle, color-mix(in srgb, var(--brand) 20%, transparent), transparent 70%);
+  animation: aurora-drift-2 22s ease-in-out infinite;
+}
+
+.auroraBlob3 {
+  width: 400px;
+  height: 400px;
+  top: 40%;
+  left: 50%;
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%);
+  animation: aurora-drift-3 26s ease-in-out infinite;
+}
+
+@keyframes aurora-drift-1 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(120px, 80px) scale(1.1); }
+  66% { transform: translate(60px, 160px) scale(0.95); }
+}
+
+@keyframes aurora-drift-2 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(-100px, -60px) scale(1.08); }
+  66% { transform: translate(-50px, -120px) scale(0.92); }
+}
+
+@keyframes aurora-drift-3 {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); }
+  50% { transform: translate(-30%, -60%) scale(1.15); }
+}
+
+/* Subtle dot grid overlay for texture. */
+.gridOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle, color-mix(in srgb, var(--text-faint) 50%, transparent) 1px, transparent 1px);
+  background-size: 32px 32px;
+  opacity: 0.3;
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 80%);
+}
+
+/* Vignette to focus attention on the center. */
+.vignette {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse 100% 100% at 50% 50%, transparent 40%, color-mix(in srgb, var(--bg-app) 60%, transparent) 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auroraBlob {
+    animation: none;
+  }
+}
+
+.topLeftLogo {
+  position: fixed;
+  top: 24px;
+  left: 24px;
+  z-index: 10000;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.topRightUpdater {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 10000;
+  display: inline-flex;
+}
+
+.bottomLeftVersion {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 10000;
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  color: var(--text-soft);
+  pointer-events: none;
+}
+
+/* Version badge pill for a more polished look. */
+.versionBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-pill);
+  background: var(--glass-regular);
+  backdrop-filter: blur(var(--glass-regular-blur));
+  -webkit-backdrop-filter: blur(var(--glass-regular-blur));
+}
+
+.versionDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--brand);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--brand) 60%, transparent);
+}
+
+/* The updater button sits in the top-right corner of the login screen, so its
+   popup must open to the LEFT (the default `.updater-popup` opens to the
+   right of the button and would run off-screen here). */
+.topRightUpdater :global(.updater-popup) {
+  top: 0;
+  bottom: auto;
+  left: auto;
+  right: calc(100% + 12px);
+}
+
+.topLeftLogoText {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 400px;
+  padding: 40px 32px 28px;
+  border: 1px solid color-mix(in srgb, var(--glass-edge-highlight) 40%, var(--border-soft));
+  border-radius: var(--radius-lg);
+  background: var(--glass-regular);
+  backdrop-filter: blur(var(--glass-regular-blur));
+  -webkit-backdrop-filter: blur(var(--glass-regular-blur));
+  box-shadow:
+    var(--shadow-lg),
+    inset 0 1px 0 var(--glass-edge-highlight);
+}
+
+/* Top-edge sheen line on the card for glass thickness effect. */
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--glass-edge-highlight), transparent);
+  border-radius: var(--radius-pill);
+}
+
+@keyframes login-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 32px;
+  text-align: center;
+}
+
+.brandMark {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  box-shadow:
+    0 4px 14px color-mix(in srgb, var(--accent) 30%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 20%, transparent);
+}
+
+/* Rotating conic-gradient ring around the brand mark. */
+.brandRing {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0%,
+    color-mix(in srgb, var(--brand) 80%, transparent) 25%,
+    transparent 50%,
+    color-mix(in srgb, var(--accent) 50%, transparent) 75%,
+    transparent 100%
+  );
+  animation: brand-ring-spin 4s linear infinite;
+  z-index: -1;
+}
+
+/* Mask the ring so it's a hollow circle, not a disc. */
+.brandRing::after {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border-radius: 50%;
+  background: var(--bg-app);
+}
+
+@keyframes brand-ring-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brandRing {
+    animation: none;
+    opacity: 0.4;
+  }
+}
+
+.title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-strong);
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fieldLabel {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.inputWrap {
+  position: relative;
+  display: block;
+}
+
+.input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--bg-app) 50%, transparent);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  color: var(--text);
+  font-size: 14px;
+  transition:
+    border-color 150ms var(--ease-out),
+    box-shadow 150ms var(--ease-out),
+    background-color 150ms var(--ease-out);
+}
+
+.inputWrap .input {
+  padding-right: 40px;
+}
+
+.input::placeholder {
+  color: var(--text-faint);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+  background: color-mix(in srgb, var(--bg-app) 80%, transparent);
+}
+
+.passwordToggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    background-color 120ms var(--ease-out),
+    color 120ms var(--ease-out);
+}
+
+.passwordToggle:hover {
+  background: var(--bg-fill-tertiary);
+  color: var(--text-strong);
+}
+
+.passwordToggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.remember {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.remember input {
+  /* Override the app-wide `input { width: 100%; padding: 7px 10px; border: …
+  }` rule (styles/primitives.css) so the native checkbox keeps its small
+  square shape instead of being stretched into a full-width bordered bar. */
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  padding: 0;
+  accent-color: var(--accent);
+}
+
+.error {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--red-border);
+  border-radius: var(--radius);
+  background: var(--red-bg);
+  color: var(--red);
+  font-size: 12.5px;
+}
+
+.submit {
+  width: 100%;
+  position: relative;
+  height: 44px;
+  margin-top: 4px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #fff;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    background-color 150ms var(--ease-out),
+    border-color 150ms var(--ease-out),
+    transform 150ms var(--ease-out),
+    box-shadow 150ms var(--ease-out);
+}
+
+/* Shimmer sweep on hover. */
+.submit::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, #fff 15%, transparent),
+    transparent
+  );
+  transition: left 600ms var(--ease-out);
+}
+
+.submit:hover {
+  background: var(--accent-hover) !important;
+  border-color: var(--accent-hover) !important;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+.submit:hover::before {
+  left: 100%;
+}
+
+.submit:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+.submit:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 2px;
+}
+
+.submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .submit::before {
+    display: none;
+  }
+}
+
+.hint {
+  margin: 18px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-soft);
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-faint);
+}

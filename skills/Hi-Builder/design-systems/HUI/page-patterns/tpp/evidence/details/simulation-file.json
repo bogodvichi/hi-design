@@ -1,0 +1,21 @@
+{
+  "path": "/pages/details/simulationFile",
+  "name": "详情页_仿真文件_仿真文件",
+  "package": "@hiktpp/details-simulationFile",
+  "hui_version": "^2.55.0",
+  "observed_at": "2026-08-14",
+  "viewport": {"width": 1728, "height": 935},
+  "root": {"class": "h-page-content is-flex", "rect": {"x": 344, "y": 118.28, "width": 1280, "height": 816.72}, "style": {"display": "flex", "padding": "0px 12px"}},
+  "observed_structure": {"breadcrumb": ["详情页", "仿真文件", "仿真文件"], "layout": "document-like-key-value-grid", "two_pair_rows": 4, "full_width_rows": 3, "signature_section": true, "attachment_section": true, "embedded_hui_tables": 0},
+  "regions": {
+    "document_title": {"class": "detail", "rect": {"x": 356, "y": 166.28, "width": 1256, "height": 32}, "margin": "48px 0px 40px"},
+    "detail_grid": {"class": "detailTable", "rect": {"x": 424, "y": 238.28, "width": 1120, "height": 465}},
+    "label_sample": {"class": "table-item-title title-bg", "rect": {"x": 424, "y": 238.28, "width": 220, "height": 37}, "padding": "8px 12px"},
+    "paired_value_sample": {"class": "table-item-content", "rect": {"x": 644, "y": 238.28, "width": 340, "height": 37}, "padding": "8px 12px"},
+    "full_value_sample": {"class": "table-item-content", "rect": {"x": 644, "y": 386.28, "width": 900, "height": 77}, "padding": "8px 12px"}
+  },
+  "image_count": 4,
+  "component_count_scope": "page-content-relevant-only",
+  "runtime_components": {"el-breadcrumb": 1, "el-breadcrumb-item": 3},
+  "actions": []
+}

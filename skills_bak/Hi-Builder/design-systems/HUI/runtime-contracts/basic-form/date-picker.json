@@ -1,0 +1,742 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "date-picker",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/form/date-picker",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/basic-form.docs.json",
+    "evidence_sha256": "ce35467cfa4317a06d0d65dd9e415328669f0c6711f32417ce27edc1af71cbe7"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-date-picker": {
+      "props": [
+        {
+          "参数": "value / v-model",
+          "说明": "绑定值",
+          "类型": "date(DatePicker) / array(DateRangePicker)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "value"
+        },
+        {
+          "参数": "readonly",
+          "说明": "完全只读",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "readonly"
+        },
+        {
+          "参数": "disabled",
+          "说明": "禁用",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "editable",
+          "说明": "文本框可输入",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "editable"
+        },
+        {
+          "参数": "clearable",
+          "说明": "是否显示清除按钮",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "clearable"
+        },
+        {
+          "参数": "size",
+          "说明": "输入框尺寸",
+          "类型": "string",
+          "可选值": "large, small, mini",
+          "默认值": "—",
+          "template_name": "size"
+        },
+        {
+          "参数": "placeholder",
+          "说明": "非范围选择时的占位内容",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "placeholder"
+        },
+        {
+          "参数": "start-placeholder",
+          "说明": "范围选择时开始日期的占位内容",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "start-placeholder"
+        },
+        {
+          "参数": "end-placeholder",
+          "说明": "范围选择时结束日期的占位内容",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "end-placeholder"
+        },
+        {
+          "参数": "type",
+          "说明": "显示类型",
+          "类型": "string",
+          "可选值": "year/month/date/dates/ week/datetime/datetimerange/daterange",
+          "默认值": "date",
+          "template_name": "type"
+        },
+        {
+          "参数": "format",
+          "说明": "显示在输入框中的格式",
+          "类型": "string",
+          "可选值": "见日期格式",
+          "默认值": "yyyy/MM/dd",
+          "template_name": "format"
+        },
+        {
+          "参数": "align",
+          "说明": "面板对齐方式",
+          "类型": "string",
+          "可选值": "left, center, right",
+          "默认值": "left",
+          "template_name": "align"
+        },
+        {
+          "参数": "popper-class",
+          "说明": "DatePicker 下拉框的类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "popper-class"
+        },
+        {
+          "参数": "picker-options",
+          "说明": "当前时间日期选择器特有的选项参考下表",
+          "类型": "object",
+          "可选值": "—",
+          "默认值": "{}",
+          "template_name": "picker-options"
+        },
+        {
+          "参数": "range-separator",
+          "说明": "选择范围时的分隔符",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "‘-’",
+          "template_name": "range-separator"
+        },
+        {
+          "参数": "default-value",
+          "说明": "可选，选择器打开时默认显示的时间",
+          "类型": "Date",
+          "可选值": "可被new Date()解析",
+          "默认值": "—",
+          "template_name": "default-value"
+        },
+        {
+          "参数": "default-time",
+          "说明": "范围选择时选中日期所使用的当日内具体时刻",
+          "类型": "string[]",
+          "可选值": "数组，长度为 2，每项值为字符串，形如12:00:00，第一项指定开始日期的时刻，第二项指定结束日期的时刻，不指定会使用时刻 00:00:00",
+          "默认值": "‘00:00:00’",
+          "template_name": "default-time"
+        },
+        {
+          "参数": "value-format",
+          "说明": "可选，绑定值的格式。不指定则绑定值为 Date 对象",
+          "类型": "string",
+          "可选值": "见日期格式",
+          "默认值": "—",
+          "template_name": "value-format"
+        },
+        {
+          "参数": "name",
+          "说明": "原生属性",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "name"
+        },
+        {
+          "参数": "prefix-icon",
+          "说明": "自定义日期图标的类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "prefix-icon"
+        },
+        {
+          "参数": "clear-icon",
+          "说明": "自定义清空图标的类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "clear-icon"
+        },
+        {
+          "参数": "validate-event",
+          "说明": "输入时是否触发表单的校验",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "validate-event"
+        },
+        {
+          "参数": "unlink",
+          "说明": "选择时间是否与输入框联动，非联动条件最终值以确认或快捷按钮为准",
+          "类型": "boolean",
+          "可选值": "-",
+          "默认值": "default: true  type 为 [‘year’, ‘month’, ‘time’]: false",
+          "template_name": "unlink"
+        },
+        {
+          "参数": "unlink-panels",
+          "说明": "在范围选择器里取消两个日期面板之间的联动",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "unlink-panels"
+        },
+        {
+          "参数": "unlink-range",
+          "说明": "range 模式是否取消关联开始时间与结束时间",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "unlink-range"
+        },
+        {
+          "参数": "calendar-type",
+          "说明": "国际日历的特殊格式,目前支持佛历 th(泰历)和尼泊尔日历 np",
+          "类型": "string",
+          "可选值": "th/np",
+          "默认值": "“”",
+          "template_name": "calendar-type"
+        },
+        {
+          "参数": "linkedRangeChosen  2.50.0+",
+          "说明": "只针对range控件有用。是否开始新版范围选择控件",
+          "类型": "Boolean",
+          "可选值": "",
+          "默认值": "false",
+          "template_name": "linked-range-chosen"
+        },
+        {
+          "参数": "formatRangeSelection  2.52.0+",
+          "说明": "开启后，会根据format格式。选中年月日时分秒。",
+          "类型": "Boolean",
+          "可选值": "",
+          "默认值": "true",
+          "template_name": "format-range-selection"
+        },
+        {
+          "参数": "dblclickSelectAll  2.60.1+",
+          "说明": "formatRangeSelection为false时，开启此属性，双击选中文本框内容。",
+          "类型": "Boolean",
+          "可选值": "",
+          "默认值": "false",
+          "template_name": "dblclick-select-all"
+        },
+        {
+          "参数": "unwatchTableType  2.60.1+",
+          "说明": "开启此属性后，选择日期，必须是一个区间才算一个完整的操作",
+          "类型": "Boolean",
+          "可选值": "",
+          "默认值": "false",
+          "template_name": "unwatch-table-type"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "change",
+          "返回值": "组件绑定值（受 value-format 控制），输入框显示值（受 format 控制）",
+          "说明": "面板选定值和显示值不同时触发",
+          "template_name": "change"
+        },
+        {
+          "事件名称": "input",
+          "返回值": "组件绑定值（受 value-format 控制），输入框显示值（受 format 控制）",
+          "说明": "输入框值改变触发",
+          "template_name": "input"
+        },
+        {
+          "事件名称": "blur",
+          "返回值": "组件绑定值（受 value-format 控制），输入框显示值（受 format 控制）",
+          "说明": "当 input 失去焦点时触发",
+          "template_name": "blur"
+        },
+        {
+          "事件名称": "focus",
+          "返回值": "组件绑定值（受 value-format 控制），输入框显示值（受 format 控制）",
+          "说明": "当 input 获得焦点时触发",
+          "template_name": "focus"
+        }
+      ],
+      "slots": [
+        {
+          "插槽名称": "year",
+          "说明": "年面板插槽",
+          "slot-scope": "‘value’, ‘date’, ‘type’, ‘disabled’, ‘selected’",
+          "template_name": "year"
+        },
+        {
+          "插槽名称": "month",
+          "说明": "月面板插槽",
+          "slot-scope": "‘value’, ‘date’, ‘type’, ‘disabled’, ‘selected’",
+          "template_name": "month"
+        },
+        {
+          "插槽名称": "date",
+          "说明": "日面板插槽",
+          "slot-scope": "‘value’, ‘date’, ‘type’, ‘disabled’, ‘selected’",
+          "template_name": "date"
+        }
+      ],
+      "methods": [
+        {
+          "方法名": "focus",
+          "说明": "使 input 获取焦点",
+          "参数": "—",
+          "template_name": "focus"
+        }
+      ]
+    }
+  },
+  "supporting_sections": [
+    {
+      "heading": "日期格式",
+      "headers": [
+        "格式",
+        "含义",
+        "说明",
+        "举例"
+      ],
+      "rows": [
+        {
+          "格式": "yyyy",
+          "含义": "年",
+          "说明": "",
+          "举例": "2017",
+          "template_name": "yyyy"
+        },
+        {
+          "格式": "M",
+          "含义": "月",
+          "说明": "不补 0",
+          "举例": "1",
+          "template_name": "m"
+        },
+        {
+          "格式": "MM",
+          "含义": "月",
+          "说明": "",
+          "举例": "01",
+          "template_name": "mm"
+        },
+        {
+          "格式": "Mo",
+          "含义": "月序数",
+          "说明": "",
+          "举例": "1st 2nd … 11th 12th",
+          "template_name": "mo"
+        },
+        {
+          "格式": "W",
+          "含义": "周",
+          "说明": "仅周选择器可用，不补 0",
+          "举例": "1",
+          "template_name": "w"
+        },
+        {
+          "格式": "WW",
+          "含义": "周",
+          "说明": "仅周选择器的可用",
+          "举例": "01",
+          "template_name": "ww"
+        },
+        {
+          "格式": "Wo",
+          "含义": "周序数",
+          "说明": "仅周选择器的可用",
+          "举例": "1st 2nd … 52nd 53rd",
+          "template_name": "wo"
+        },
+        {
+          "格式": "d",
+          "含义": "日",
+          "说明": "不补 0",
+          "举例": "2",
+          "template_name": "d"
+        },
+        {
+          "格式": "dd",
+          "含义": "日",
+          "说明": "",
+          "举例": "02",
+          "template_name": "dd"
+        },
+        {
+          "格式": "do",
+          "含义": "日序数",
+          "说明": "",
+          "举例": "1st 2nd … 30th 31st",
+          "template_name": "do"
+        },
+        {
+          "格式": "H",
+          "含义": "小时",
+          "说明": "24 小时制；不补 0",
+          "举例": "3",
+          "template_name": "h"
+        },
+        {
+          "格式": "HH",
+          "含义": "小时",
+          "说明": "24 小时制",
+          "举例": "03",
+          "template_name": "hh"
+        },
+        {
+          "格式": "h",
+          "含义": "小时",
+          "说明": "12 小时制，须和 A 或 a 使用，不补 0",
+          "举例": "3",
+          "template_name": "h"
+        },
+        {
+          "格式": "hh",
+          "含义": "小时",
+          "说明": "12 小时制，须和 A 或 a 使用",
+          "举例": "03",
+          "template_name": "hh"
+        },
+        {
+          "格式": "m",
+          "含义": "分钟",
+          "说明": "不补 0",
+          "举例": "4",
+          "template_name": "m"
+        },
+        {
+          "格式": "mm",
+          "含义": "分钟",
+          "说明": "",
+          "举例": "04",
+          "template_name": "mm"
+        },
+        {
+          "格式": "s",
+          "含义": "秒",
+          "说明": "不补 0",
+          "举例": "5",
+          "template_name": "s"
+        },
+        {
+          "格式": "ss",
+          "含义": "秒",
+          "说明": "",
+          "举例": "05",
+          "template_name": "ss"
+        },
+        {
+          "格式": "A",
+          "含义": "AM/PM",
+          "说明": "仅 format 可用，大写",
+          "举例": "AM",
+          "template_name": "a"
+        },
+        {
+          "格式": "a",
+          "含义": "am/pm",
+          "说明": "仅 format 可用，小写",
+          "举例": "am",
+          "template_name": "a"
+        },
+        {
+          "格式": "timestamp",
+          "含义": "JS 时间戳",
+          "说明": "仅 value-format 可用，组件绑定值为number类型",
+          "举例": "1483326245000",
+          "template_name": "timestamp"
+        }
+      ]
+    },
+    {
+      "heading": "Picker Options",
+      "headers": [
+        "参数",
+        "说明",
+        "类型",
+        "可选值",
+        "默认值"
+      ],
+      "rows": [
+        {
+          "参数": "shortcuts",
+          "说明": "设置快捷选项，需要传入 { text, onClick } 对象用法参考 demo 或下表",
+          "类型": "Object[]",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "shortcuts"
+        },
+        {
+          "参数": "disabledDate",
+          "说明": "设置禁用状态，参数为当前日期，要求返回 Boolean",
+          "类型": "Function",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "disabled-date"
+        },
+        {
+          "参数": "selectableRange",
+          "说明": "可选时间段，例如'18:30:00 - 20:30:00'或者传入数组['09:30:00 - 12:00:00', '14:30:00 - 18:30:00'], 暂不支持range模式",
+          "类型": "string / array",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "selectable-range"
+        },
+        {
+          "参数": "firstDayOfWeek",
+          "说明": "周起始日",
+          "类型": "Number",
+          "可选值": "1 到 7",
+          "默认值": "1",
+          "template_name": "first-day-of-week"
+        },
+        {
+          "参数": "onPick",
+          "说明": "选中日期后会执行的回调，只有当 daterange 或 datetimerange 才生效",
+          "类型": "Function({ maxDate, minDate })",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "on-pick"
+        },
+        {
+          "参数": "customValidation",
+          "说明": "日期范围的自定义校验方法，参数为开始日期和结束日期，要求返回 Boolean，返回值为 true 时表示通过验证",
+          "类型": "Function(minDate, maxDate)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "custom-validation"
+        },
+        {
+          "参数": "customPrompt",
+          "说明": "日期范围的自定义校验方法不通过时对应的提示语句",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "custom-prompt"
+        },
+        {
+          "参数": "dateClassRender 2.29.0+",
+          "说明": "根据时间加入自定义样式{ time }",
+          "类型": "Function",
+          "可选值": "—",
+          "默认值": "() => {}",
+          "template_name": "date-class-render"
+        }
+      ]
+    },
+    {
+      "heading": "Shortcuts",
+      "headers": [
+        "参数",
+        "说明",
+        "类型",
+        "可选值",
+        "默认值"
+      ],
+      "rows": [
+        {
+          "参数": "text",
+          "说明": "标题文本",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "text"
+        },
+        {
+          "参数": "onClick",
+          "说明": "选中后的回调函数，参数是 vm，可通过触发 ‘pick’ 事件设置选择器的值。例如 vm.$emit(‘pick’, new Date())",
+          "类型": "function",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "on-click"
+        }
+      ]
+    },
+    {
+      "heading": "Instance.$emit",
+      "headers": [
+        "参数",
+        "说明",
+        "默认值"
+      ],
+      "rows": [
+        {
+          "参数": "date",
+          "说明": "自定义事件，range模式为数组",
+          "默认值": "—",
+          "template_name": "date"
+        },
+        {
+          "参数": "visible",
+          "说明": "是否显示面板",
+          "默认值": "false",
+          "template_name": "visible"
+        },
+        {
+          "参数": "changeInput",
+          "说明": "是否改变输入框值",
+          "默认值": "false",
+          "template_name": "change-input"
+        }
+      ]
+    },
+    {
+      "heading": "SlotScope [slot=‘year|startYear|endYear’]",
+      "headers": [
+        "参数",
+        "说明",
+        "类型",
+        "值"
+      ],
+      "rows": [
+        {
+          "参数": "value",
+          "说明": "面板显示值",
+          "类型": "string",
+          "值": "-",
+          "template_name": "value"
+        },
+        {
+          "参数": "date",
+          "说明": "面板日期",
+          "类型": "date",
+          "值": "-",
+          "template_name": "date"
+        },
+        {
+          "参数": "type",
+          "说明": "面板类型",
+          "类型": "string",
+          "值": "‘normal’ 常规类型，‘today’ 当前年，‘prev-year’ 前一个月补全年，‘next-year’ 下一年补全年",
+          "template_name": "type"
+        },
+        {
+          "参数": "disabled",
+          "说明": "当前项是否禁用",
+          "类型": "boolean",
+          "值": "-",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "selected",
+          "说明": "当前项是否选中",
+          "类型": "boolean",
+          "值": "-",
+          "template_name": "selected"
+        }
+      ]
+    },
+    {
+      "heading": "SlotScope [slot=‘month|startMonth|endMonth’]",
+      "headers": [
+        "参数",
+        "说明",
+        "类型",
+        "值"
+      ],
+      "rows": [
+        {
+          "参数": "value",
+          "说明": "面板显示值",
+          "类型": "string",
+          "值": "-",
+          "template_name": "value"
+        },
+        {
+          "参数": "date",
+          "说明": "面板日期",
+          "类型": "date",
+          "值": "-",
+          "template_name": "date"
+        },
+        {
+          "参数": "type",
+          "说明": "面板类型",
+          "类型": "string",
+          "值": "‘normal’ 常规类型，‘today’ 当前月",
+          "template_name": "type"
+        },
+        {
+          "参数": "disabled",
+          "说明": "当前项是否禁用",
+          "类型": "boolean",
+          "值": "-",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "selected",
+          "说明": "当前项是否选中",
+          "类型": "boolean",
+          "值": "-",
+          "template_name": "selected"
+        }
+      ]
+    },
+    {
+      "heading": "SlotScope [slot=‘date|startDate|endDate’]",
+      "headers": [
+        "参数",
+        "说明",
+        "类型",
+        "值"
+      ],
+      "rows": [
+        {
+          "参数": "value",
+          "说明": "面板显示值",
+          "类型": "string",
+          "值": "-",
+          "template_name": "value"
+        },
+        {
+          "参数": "date",
+          "说明": "面板日期",
+          "类型": "date",
+          "值": "-",
+          "template_name": "date"
+        },
+        {
+          "参数": "type",
+          "说明": "面板类型",
+          "类型": "string",
+          "值": "‘normal’ 常规类型，‘today’ 当前日，‘prev-month’ 前一个月补全日，‘next-month’ 下一年补全日",
+          "template_name": "type"
+        },
+        {
+          "参数": "disabled",
+          "说明": "当前项是否禁用",
+          "类型": "boolean",
+          "值": "-",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "selected",
+          "说明": "当前项是否选中",
+          "类型": "boolean",
+          "值": "-",
+          "template_name": "selected"
+        }
+      ]
+    }
+  ]
+}

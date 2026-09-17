@@ -1,0 +1,8 @@
+{
+  "schema_version": "d2c-zone.v1",
+  "id": "navigation.breadcrumb",
+  "name": "面包屑导航区域",
+  "description": "展示当前页面在产品信息架构中的层级路径",
+  "use_when": ["页面需要展示当前位置及其上级业务区域"],
+  "owner": "hui-common"
+}

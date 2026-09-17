@@ -1,0 +1,93 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "svg-icon",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/basic/svg-icon",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/basic-form.docs.json",
+    "evidence_sha256": "ce35467cfa4317a06d0d65dd9e415328669f0c6711f32417ce27edc1af71cbe7"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "h-svg-icon": {
+      "props": [
+        {
+          "参数": "svgs",
+          "说明": "图标名或者图标引用",
+          "类型": "String/Array",
+          "可选值": "-",
+          "默认值": "-",
+          "template_name": "svgs"
+        },
+        {
+          "参数": "size",
+          "说明": "图标尺寸",
+          "类型": "[Number/string]",
+          "可选值": "-",
+          "默认值": "24",
+          "template_name": "size"
+        },
+        {
+          "参数": "offline",
+          "说明": "是否为离线状态",
+          "类型": "Boolean",
+          "可选值": "-",
+          "默认值": "false",
+          "template_name": "offline"
+        },
+        {
+          "参数": "active",
+          "说明": "是否为激活状态（给树图标使用）",
+          "类型": "Boolean",
+          "可选值": "-",
+          "默认值": "false",
+          "template_name": "active"
+        },
+        {
+          "参数": "colors",
+          "说明": "图标的颜色",
+          "类型": "String/Array",
+          "可选值": "-",
+          "默认值": "-",
+          "template_name": "colors"
+        },
+        {
+          "参数": "classes",
+          "说明": "图标的样式类",
+          "类型": "String/Array",
+          "可选值": "-",
+          "默认值": "-",
+          "template_name": "classes"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    },
+    "svg-icon": {
+      "props": [
+        {
+          "参数": "size",
+          "说明": "图标尺寸",
+          "类型": "String",
+          "可选值": "-",
+          "默认值": "‘24px’",
+          "template_name": "size"
+        },
+        {
+          "参数": "color",
+          "说明": "图标的颜色",
+          "类型": "String",
+          "可选值": "-",
+          "默认值": "-",
+          "template_name": "color"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

@@ -1,0 +1,30 @@
+{
+  "schema_version": "hui-tpp-shell-evidence.v1",
+  "id": "hui.tpp.shell.default",
+  "source": {
+    "url": "http://tpp.dev.hikhub.net/tpp#/pages/form/fixedWidth1Column",
+    "observed_at": "2026-08-17",
+    "viewport": {"width": 1681, "height": 878}
+  },
+  "geometry": {
+    "header": {"height": "64px", "position": "sticky", "background": "rgb(31, 31, 31)"},
+    "logo_area": {"width": "340px", "height": "64px", "padding": "0 0 0 24px"},
+    "logo": {"asset": "assets/imgs/hui-logo.png", "width": "24px", "height": "24px"},
+    "brand_text": {"font_size": "16px", "font_weight": "700", "color": "rgb(249, 249, 249)"},
+    "top_navigation_item": {"width": "112px", "height": "64px", "font_size": "16px", "font_weight": "400", "color": "rgba(255, 255, 255, 0.8)"},
+    "top_navigation_active": {"height": "60px", "margin": "2px 0", "background": "rgba(0, 0, 0, 0.5)", "color": "rgb(249, 249, 249)"},
+    "sidebar": {"width": "240px", "top": "64px", "position": "fixed", "background": "rgb(255, 255, 255)"},
+    "sidebar_item": {"height": "48px", "font_size": "14px", "font_weight": "400", "color": "rgba(0, 0, 0, 0.7)", "text_padding_left": "48px"},
+    "sidebar_item_active": {"background": "rgb(232, 246, 255)"},
+    "page": {"padding_left": "240px"},
+    "breadcrumb": {"height": "38px", "padding": "0 12px"},
+    "workspace": {"padding": "16px 16px 0", "background": "rgb(245, 245, 245)"}
+  },
+  "reference_form": {
+    "container_width": "1280px",
+    "content_padding": "48px 80px 58px",
+    "single_column_width": "400px",
+    "footer_height": "57px",
+    "footer_padding": "12px"
+  }
+}

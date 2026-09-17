@@ -1,0 +1,18 @@
+{
+  "path": "/pages/details/coordination",
+  "name": "详情页_并列结构_并列结构",
+  "package": "@hiktpp/details-coordination",
+  "hui_version": "^2.55.0",
+  "observed_at": "2026-08-14",
+  "viewport": {"width": 1728, "height": 935},
+  "root": {"class": "h-page-content form-area is-flex is-align-center", "rect": {"x": 240, "y": 102.28, "width": 1072, "height": 832.72}, "style": {"display": "flex", "padding": "16px 16px 0px"}},
+  "observed_structure": {"breadcrumb": ["详情页", "并列结构", "并列结构"], "layout_direction": "horizontal", "primary_region_width": 1072, "parallel_region_width": 416, "person_summary": true, "group_count": 3, "description_item_count": 8, "embedded_tables": 2, "pagination": true},
+  "regions": {
+    "primary_content": {"class": "form-area__content", "rect": {"x": 256, "y": 118.28, "width": 1040, "height": 1651}, "padding": "48px 80px 58px"},
+    "primary_groups": {"class": "form-area__group", "rect": {"x": 336, "y": 166.28, "width": 880, "height": 1545}},
+    "person_image": {"tag": "img", "rect": {"x": 336, "y": 166.28, "width": 120, "height": 148}}
+  },
+  "component_count_scope": "page-content-relevant-only",
+  "runtime_components": {"el-breadcrumb": 1, "el-breadcrumb-item": 3, "el-tag": 3, "el-table": 2, "el-pagination": 1},
+  "actions": ["跳转", "确定", "取消"]
+}

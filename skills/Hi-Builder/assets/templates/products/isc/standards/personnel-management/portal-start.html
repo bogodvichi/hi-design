@@ -1,0 +1,104 @@
+    <main class="isc-personnel-shell product-context">
+      <header class="isc-personnel-header" data-zone="portal.header" data-component="portal.global-header">
+        <el-button class="isc-personnel-header__menu" type="text" aria-label="展开导航"><i class="h-icon-menu_leftbar"></i></el-button>
+        <div class="isc-personnel-brand">
+          <span class="isc-personnel-brand__logo">
+            <img class="isc-personnel-brand__mark" :src="config.product_logo" :alt="config.product_name" data-d2c-product-brand>
+            <span class="isc-personnel-brand__name">{{ config.product_name }}</span>
+          </span>
+        </div>
+        <nav class="isc-personnel-primary-nav" aria-label="产品导航">
+          <span v-for="(item,index) in config.top_menus" :key="item" class="isc-personnel-primary-nav__entry">
+            <button type="button" class="isc-personnel-primary-nav__item" :class="{'is-active': item === config.portal.active_top_menu, 'is-home': item === '首页'}">
+              <span>{{ item }}</span><i v-if="item === config.portal.active_top_menu" class="el-alert__closebtn h-icon-close_sm" aria-hidden="true"></i>
+            </button>
+            <span v-if="index === 0" class="isc-personnel-primary-nav__divider" aria-hidden="true"></span>
+          </span>
+        </nav>
+        <div class="isc-personnel-header-tools">
+          <el-button class="isc-personnel-header-tool" type="text" title="搜索"><i class="h-icon-search"></i></el-button>
+          <span class="isc-personnel-header-divider"></span>
+          <div class="isc-personnel-header-actions">
+            <el-button class="isc-personnel-header-tool is-assistant" type="text" title="助手"><i class="h-icon-message"></i></el-button>
+            <el-button class="isc-personnel-header-tool" type="text" title="通知"><i class="h-icon-message"></i></el-button>
+            <el-button class="isc-personnel-header-tool" type="text" title="帮助"><i class="h-icon-help"></i></el-button>
+            <el-button class="isc-personnel-header-tool" type="text" title="下载"><i class="h-icon-download"></i></el-button>
+            <el-button class="isc-personnel-header-tool" type="text" title="设置"><i class="h-icon-setting"></i></el-button>
+            <el-button class="isc-personnel-header-tool" type="text" title="更多"><i class="h-icon-more_verti"></i></el-button>
+          </div>
+          <span class="isc-personnel-header-divider"></span>
+          <button class="isc-personnel-header-user" type="button"><span>admin</span><i class="h-icon-angle_down_sm"></i></button>
+        </div>
+      </header>
+
+      <div class="isc-personnel-body" :class="{'has-context-sidebar':config.portal.show_context_sidebar}">
+        <aside class="isc-personnel-sidebar" :class="{'is-collapsed':sidebarCollapsed}" aria-label="左侧功能导航" data-zone="portal.sidebar" data-component="portal.app-sidebar">
+          <button class="isc-personnel-sidebar__toggle" type="button" :aria-label="sidebarCollapsed ? '展开左侧导航' : '收起左侧导航'" @click="sidebarCollapsed=!sidebarCollapsed"><i class="isc-personnel-sidebar__toggle-icon is-expanded h-icon-menu_leftbar" aria-hidden="true"></i><i class="isc-personnel-sidebar__toggle-icon is-collapsed h-icon-menu_leftbar" aria-hidden="true"></i></button>
+          <el-scrollbar class="isc-personnel-sidebar__scrollbar">
+            <el-nav class="isc-personnel-side-menu" mode="vertical" :collapse="sidebarCollapsed" :default-active="activeIconMenu">
+              <template v-if="!config.framework.variant_menu.length">
+                <el-nav-item v-for="item in config.portal.icon_menus" :key="item.id" :index="item.id" :icon="item.icon" :title="item.label" @click="selectIconMenu(item)">{{ item.label }}</el-nav-item>
+              </template>
+              <el-nav-item v-for="item in config.framework.variant_menu" :key="item.id" :index="item.id" :icon="item.icon" :title="item.label" @click="selectFrameworkVariant(item)">{{ item.label }}</el-nav-item>
+            </el-nav>
+          </el-scrollbar>
+        </aside>
+        <aside v-if="config.portal.show_context_sidebar" class="isc-personnel-context-sidebar" aria-label="组织树" data-zone="portal.sidebar" data-component="portal.app-sidebar">
+          <div class="isc-personnel-context-toolbar" aria-label="组织操作">
+            <el-button v-for="action in config.portal.context_toolbar_actions" :key="action.id" type="text" :title="action.label"><i :class="action.icon"></i></el-button>
+          </div>
+          <div class="isc-personnel-context-search">
+            <el-input v-model="portalKeyword" suffix-icon="h-icon-search" :placeholder="config.portal.context_menu.search_placeholder" @input="filterContextTree"></el-input>
+          </div>
+          <div class="isc-personnel-context-tree">
+            <el-tree ref="portalContextTree" class="isc-personnel-context-tree__tree" :data="config.portal.context_menu.tree_nodes" node-key="id" :current-node-key="contextTreeCurrentNodeKey" :default-expanded-keys="contextTreeDefaultExpandedKeys" :filter-node-method="filterContextTreeNode" highlight-current @node-click="contextTreeNodeChanged" @node-expand="contextTreeNodeExpanded" @node-collapse="contextTreeNodeCollapsed">
+              <span class="isc-personnel-tree-node-content" slot-scope="{node,data}"><span class="tree-icon"><d2c-icon :icon="config.portal.context_menu.tree_icon"></d2c-icon></span><span>{{ node.label }}</span></span>
+            </el-tree>
+          </div>
+        </aside>
+        <div v-if="config.portal.breadcrumb_placement === 'portal-body'" class="page-breadcrumb isc-personnel-portal-breadcrumb"><div class="page-breadcrumb__path" data-zone="navigation.breadcrumb" data-component="navigation.breadcrumb"><el-breadcrumb separator-class="h-icon-angle_right_sm"><el-breadcrumb-item>{{ config.portal.section }}</el-breadcrumb-item><el-breadcrumb-item v-if="!formTabsInBreadcrumb">{{ config.title }}</el-breadcrumb-item></el-breadcrumb></div><!-- @include ../../../../HUI/fragments/navigation/page-tabs.html --></div>
+        <section class="isc-personnel-framework" :class="{'has-left-selector':config.framework.show_left_selector,'has-top-tabs':config.framework.show_top_tabs}" :data-framework-variant="config.framework.variant" :data-layout-region="config.framework.data_layout_region">
+          <aside v-if="config.framework.show_left_selector" class="isc-framework-selector" aria-label="页面内选择导航" data-zone="portal.sidebar" data-component="portal.app-sidebar">
+            <el-input v-model="frameworkSelectorKeyword" class="isc-framework-selector__search" suffix-icon="h-icon-search" :placeholder="config.framework.selector_search_placeholder"></el-input>
+            <el-tree class="isc-framework-selector__tree" :data="config.framework.selector_nodes" node-key="id" :current-node-key="config.framework.selector_active_node" :default-expanded-keys="config.framework.selector_expanded_nodes" highlight-current></el-tree>
+          </aside>
+          <div class="isc-personnel-framework__stage" :class="{'is-first-framework-tab': config.framework.tabs && config.framework.tabs.length && activeFrameworkTab === config.framework.tabs[0].id}">
+            <header v-if="config.framework.business_header !== 'none'" class="isc-framework-business-header" :data-business-header="config.framework.business_header" data-zone="portal.header" data-component="portal.global-header">
+              <div class="isc-framework-business-header__intro">
+                <h1>{{ config.title }}</h1>
+                <p>{{ config.framework.intro }}</p>
+              </div>
+              <div v-if="config.framework.global_actions.length || config.framework.show_extra_info" class="isc-framework-business-header__action-region">
+                <div v-if="config.framework.global_actions.length" class="isc-framework-business-header__actions">
+                  <el-button v-for="action in config.framework.global_actions" :key="action" :icon="frameworkGlobalActionIcon(action)" @click="frameworkGlobalAction(action)">{{ action }}</el-button>
+                  <el-dropdown v-if="config.framework.global_overflow_actions.length" trigger="click" @command="frameworkGlobalAction">
+                    <el-button>更多<i class="h-icon-angle_down_sm"></i></el-button>
+                    <el-dropdown-menu slot="dropdown"><el-dropdown-item v-for="action in config.framework.global_overflow_actions" :key="action" :command="action">{{ action }}</el-dropdown-item></el-dropdown-menu>
+                  </el-dropdown>
+                </div>
+                <span v-if="config.framework.show_extra_info_separator" class="isc-framework-business-header__separator" role="separator" aria-orientation="vertical"></span>
+                <div v-if="config.framework.show_extra_info" class="isc-framework-business-header__extra">{{ config.framework.extra_info }}</div>
+              </div>
+            </header>
+            <nav v-if="config.framework.show_top_tabs" class="isc-framework-card-tabs" aria-label="页面内卡式标签导航" data-zone="navigation.detail-tabs" data-component="navigation.anchor-nav">
+              <div class="card-tabs" role="tablist" aria-label="内容标签页">
+                <span class="card-tabs__indicator" data-active-indicator aria-hidden="true" :style="frameworkCardTabsIndicatorStyle"></span>
+                <el-button
+                  v-for="(tab, index) in config.framework.tabs"
+                  :key="tab.id"
+                  ref="frameworkTabButtons"
+                  class="card-tabs__item"
+                  :class="{'is-active': activeFrameworkTab === tab.id, 'is-before-active': config.framework.tabs[index + 1] && activeFrameworkTab === config.framework.tabs[index + 1].id}"
+                  native-type="button"
+                  role="tab"
+                  :aria-selected="activeFrameworkTab === tab.id ? 'true' : 'false'"
+                  :tabindex="activeFrameworkTab === tab.id ? 0 : -1"
+                  :disabled="tab.disabled"
+                  @click="activateFrameworkTab(tab)"
+                  @keydown.native="onFrameworkTabKeydown($event, index)"
+                >
+                  <span v-if="tab.icon" class="card-tabs__icon"><d2c-icon :icon="tab.icon"></d2c-icon></span>
+                  <span class="card-tabs__label">{{ tab.label }}</span>
+                </el-button>
+              </div>
+            </nav>

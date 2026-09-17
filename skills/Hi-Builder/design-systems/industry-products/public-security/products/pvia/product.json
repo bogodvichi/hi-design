@@ -1,0 +1,22 @@
+{
+  "schema_version": "product-design-system.v1",
+  "maintenance": {
+    "purpose": "PVIA产品知识入口，连接产品身份、视觉tokens、Portal Shell和已支持业务页面。",
+    "edit_policy": "新增页面时建立完整页面知识目录并登记到pages；HUI典型页兜底只复用已验证Renderer。",
+    "managed_paths": {
+      "profile.json": "产品名称、PVIA Logo和产品级门户身份。",
+      "theme": "产品对HUI token合同的合法覆盖。",
+      "portal-shell": "产品头部、侧栏、菜单和响应式壳子合同。",
+      "product.json": "产品继承关系与当前已登记业务页面入口。"
+    }
+  },
+  "id": "public-security.pvia",
+  "industry": "public-security",
+  "product": "pvia",
+  "name": "公安视频图像应用平台",
+  "extends": "hui",
+  "profile": "profile.json",
+  "theme": "theme/tokens.json",
+  "portal_shell": "portal-shell/contract.json",
+  "pages": {}
+}

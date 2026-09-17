@@ -1,0 +1,152 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "product_version": "3.0.0",
+  "id": "isc3-personnel-permission-details-regular-01",
+  "title": "人员权限配置详情",
+  "page_kind": "details",
+  "detail_presentation": "flat",
+  "pattern_contract": "details/first-group.json",
+  "framework": {
+    "variant": "regular-01",
+    "show_variant_menu": true,
+    "intro": "查看人员权限方案的适用人员、授权范围、通行计划及生效状态。",
+    "global_actions": ["复制权限", "编辑权限"],
+    "extra_info": "更新人：admin · 更新时间：2026-08-26 14:30",
+    "tabs": [
+      {"id": "permission-detail", "label": "权限详情", "icon": "h-icon-lock"},
+      {"id": "authorized-personnel", "label": "授权人员", "icon": "h-icon-user"},
+      {"id": "operation-record", "label": "操作记录", "icon": "h-icon-folder"}
+    ],
+    "active_tab": "permission-detail",
+    "selector_title": "权限方案",
+    "selector_search_placeholder": "搜索权限方案",
+    "selector_nodes": [
+      {
+        "id": "permission-root",
+        "label": "人员权限方案",
+        "children": [
+          {"id": "permission-rd", "label": "研发园区员工通行权限"},
+          {"id": "permission-visitor", "label": "访客临时通行权限"},
+          {"id": "permission-night", "label": "运维人员夜间权限"}
+        ]
+      }
+    ],
+    "selector_active_node": "permission-rd",
+    "selector_expanded_nodes": ["permission-root"]
+  },
+  "portal": {
+    "active_top_menu": "门禁管理",
+    "active_icon_menu": "authorization",
+    "section": "人员管理",
+    "tab_title": "人员权限配置详情",
+    "active_side_menu": "personnel-permission",
+    "side_menus": [
+      {"id": "personnel-list", "label": "人员信息", "icon": "h-icon-user"},
+      {"id": "personnel-permission", "label": "权限配置", "icon": "h-icon-lock"},
+      {"id": "authorization-record", "label": "授权记录", "icon": "h-icon-menu"}
+    ]
+  },
+  "summary_fields": [
+    {"key": "permissionName", "label": "权限名称"},
+    {"key": "status", "label": "状态", "tone": "success"},
+    {"key": "personCount", "label": "适用人数"},
+    {"key": "organization", "label": "所属组织"}
+  ],
+  "detail_sections": [
+    {
+      "id": "basic",
+      "title": "基本信息",
+      "fields": [
+        {"key": "permissionCode", "label": "权限编号"},
+        {"key": "permissionType", "label": "权限类型"},
+        {"key": "permissionTemplate", "label": "权限模板"},
+        {"key": "creator", "label": "创建人"},
+        {"key": "createTime", "label": "创建时间"},
+        {"key": "updateTime", "label": "更新时间"}
+      ]
+    },
+    {
+      "id": "access",
+      "title": "门禁权限",
+      "fields": [
+        {"key": "accessMode", "label": "授权方式"},
+        {"key": "accessAreas", "label": "通行区域"},
+        {"key": "accessPoints", "label": "门禁点"},
+        {"key": "schedule", "label": "通行计划"},
+        {"key": "credentialTypes", "label": "凭证类型"},
+        {"key": "antiPassback", "label": "反潜回规则"}
+      ]
+    },
+    {
+      "id": "validity",
+      "title": "有效期设置",
+      "fields": [
+        {"key": "effectiveTime", "label": "生效时间"},
+        {"key": "expiryTime", "label": "失效时间"},
+        {"key": "holidayPolicy", "label": "节假日策略"},
+        {"key": "remark", "label": "备注"}
+      ]
+    }
+  ],
+  "related_tables": [
+    {
+      "id": "authorizedPersonnel",
+      "title": "已授权人员",
+      "columns": [
+        {"prop": "name", "label": "姓名"},
+        {"prop": "employeeNo", "label": "人员编号"},
+        {"prop": "department", "label": "所属部门"},
+        {"prop": "credential", "label": "凭证"},
+        {"prop": "status", "label": "授权状态"}
+      ]
+    },
+    {
+      "id": "authorizedAccessPoints",
+      "title": "已授权门禁点",
+      "columns": [
+        {"prop": "name", "label": "门禁点名称"},
+        {"prop": "area", "label": "所属区域"},
+        {"prop": "schedule", "label": "通行计划"},
+        {"prop": "status", "label": "状态"}
+      ]
+    }
+  ],
+  "preview": {
+    "detailValues": {
+      "permissionName": "研发园区员工通行权限",
+      "status": "已启用",
+      "personCount": "128人",
+      "organization": "新技术平台部 / 用户体验部",
+      "permissionCode": "PERM-20260826-001",
+      "permissionType": "人员门禁权限",
+      "permissionTemplate": "普通员工权限",
+      "creator": "管理员 admin",
+      "createTime": "2026-08-20 09:18:32",
+      "updateTime": "2026-08-26 14:30:00",
+      "accessMode": "按区域授权",
+      "accessAreas": "研发园区、行政办公区",
+      "accessPoints": "研发楼东门、研发楼西门、办公楼大厅",
+      "schedule": "工作日通行（08:00-22:00）",
+      "credentialTypes": "人脸、卡片",
+      "antiPassback": "园区级反潜回",
+      "effectiveTime": "2026-08-20 00:00:00",
+      "expiryTime": "长期有效",
+      "holidayPolicy": "法定节假日不可通行",
+      "remark": "研发园区正式员工统一通行权限"
+    },
+    "relatedTableRows": {
+      "authorizedPersonnel": [
+        {"name": "贺翰", "employeeNo": "P100238", "department": "用户体验部", "credential": "人脸、卡片", "status": "已生效"},
+        {"name": "谢谦", "employeeNo": "P100317", "department": "前端开发部", "credential": "人脸", "status": "已生效"},
+        {"name": "万世", "employeeNo": "P100426", "department": "平台研发部", "credential": "人脸、卡片", "status": "已生效"}
+      ],
+      "authorizedAccessPoints": [
+        {"name": "研发楼东门", "area": "研发园区", "schedule": "工作日通行", "status": "在线"},
+        {"name": "研发楼西门", "area": "研发园区", "schedule": "工作日通行", "status": "在线"},
+        {"name": "办公楼大厅", "area": "行政办公区", "schedule": "工作日通行", "status": "在线"}
+      ]
+    }
+  }
+}

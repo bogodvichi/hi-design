@@ -1,0 +1,398 @@
+              <div class="collection-page" :class="{'card-tabs-page': config.page_kind==='card-tabs','is-table-page':showTable}">
+                <div v-if="config.page_kind==='card-tabs'" data-zone="navigation.view-tabs" data-component="navigation.tabs">
+                <el-tabs v-model="activeCardTab" :type="cardTabType" class="card-tabs-navigation" @tab-click="cardTabChanged">
+                  <el-tab-pane v-for="tab in config.card_tabs" :key="tab.id" :label="tab.label" :name="tab.id"></el-tab-pane>
+                </el-tabs>
+                </div>
+                <div v-if="hasTableTabs && !usesFrameworkTableTabs" data-zone="navigation.view-tabs" data-component="navigation.tabs">
+                <el-tabs v-model="activeTableTab" :type="tableTabType" class="table-tabs-navigation" @tab-click="tableTabChanged">
+                  <el-tab-pane v-for="tab in config.table_tabs" :key="tab.id" :label="tab.label" :name="tab.id"></el-tab-pane>
+                </el-tabs>
+                </div>
+                <div v-if="isHorizontalRealtimeFilter" class="filter-container is-selected-tags realtime-filter" data-zone="query.filter" data-component="filter.instant-filter">
+                  <div v-for="field in config.filters" :key="field.key" class="realtime-filter__row">
+                    <span class="realtime-filter__label">{{ field.label }}</span>
+                    <div v-if="field.kind==='select'" class="realtime-filter__options">
+                      <el-checkable-tag v-for="option in field.options" :key="option" checkable :checked="filters[field.key]===option" :label="option" :value="option" @click="selectRealtimeFilter(field, option)">{{ option }}</el-checkable-tag>
+                    </div>
+                    <el-input v-else v-model="filters[field.key]" class="realtime-filter__input" size="small" :placeholder="field.placeholder" clearable @input="realtimeFilterChanged"></el-input>
+                  </div>
+                  <div v-if="selectedRealtimeFilters.length" class="realtime-filter__selected">
+                    <span class="realtime-filter__label">已选条件</span>
+                    <el-tag v-for="item in selectedRealtimeFilters" :key="item.key" closable size="small" @close="clearRealtimeFilter(item.key)">{{ item.label }}：{{ item.value }}</el-tag>
+                    <el-button class="realtime-filter__clear" type="text" @click="clearRealtimeFilters">清空条件</el-button>
+                  </div>
+                </div>
+                <div v-else-if="isRegularManualFilter && !isAllRetractableManualFilter" class="query-filter query-filter--regular" data-zone="query.filter" data-component="filter.search-form">
+                  <el-form class="query-filter__form" :model="filters" label-position="top" size="small">
+                    <el-form-item v-for="field in visibleFilters" :key="field.key" :label="field.label">
+                      <el-input v-if="field.kind==='input'" v-model="filters[field.key]" :placeholder="field.placeholder" suffix-icon="h-icon-search" clearable></el-input>
+                      <el-date-picker v-else-if="field.kind==='date' || field.kind==='date-range'" v-model="filters[field.key]" :type="field.kind==='date-range' ? 'daterange' : 'date'" :placeholder="field.placeholder" start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
+                      <el-time-picker v-else-if="field.kind==='time'" v-model="filters[field.key]" :placeholder="field.placeholder"></el-time-picker>
+                      <el-select v-else v-model="filters[field.key]"><el-option v-for="option in field.options" :key="option" :label="option" :value="option"></el-option></el-select>
+                    </el-form-item>
+                    <el-form-item class="query-filter__actions"><el-button type="primary" @click="queryRows">查询</el-button><el-button @click="resetFilters">重置</el-button><el-button v-if="hasCollapsibleFilters" type="text" icon="h-icon-angles_down_sm" class="query-filter__toggle" :class="{'is-expanded':filterExpanded}" :title="filterExpanded ? '收起' : '展开'" :aria-label="filterExpanded ? '收起筛选条件' : '展开筛选条件'" @click="filterExpanded=!filterExpanded"></el-button></el-form-item>
+                  </el-form>
+                </div>
+                <div v-else-if="isHorizontalManualFilter && !isAllRetractableManualFilter" class="manual-horizontal-filter" data-zone="query.filter" data-component="filter.search-form">
+                  <div v-for="field in visibleHorizontalFilters" :key="field.key" class="manual-horizontal-filter__row">
+                    <span class="manual-horizontal-filter__label">{{ field.label }}</span>
+                    <div v-if="field.kind==='checkable-tags'" class="manual-horizontal-filter__tabs"><el-checkable-tag v-for="option in field.options" :key="option" checkable :checked="filters[field.key]===option" :label="option" :value="option" @click="filters[field.key]=option">{{ option }}</el-checkable-tag></div>
+                    <el-date-picker v-else-if="field.kind==='date-range'" v-model="filters[field.key]" type="daterange" size="small" start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
+                    <el-select v-else v-model="filters[field.key]" size="small" :placeholder="field.placeholder"><el-option v-for="option in field.options" :key="option" :label="option" :value="option"></el-option></el-select>
+                  </div>
+                  <div class="manual-horizontal-filter__actions"><el-button type="primary" @click="queryRows">查询</el-button><el-button @click="resetFilters">重置</el-button><el-button v-if="hasCollapsibleHorizontalFilters" type="text" icon="h-icon-angles_down_sm" class="query-filter__toggle" :class="{'is-expanded':filterExpanded}" @click="filterExpanded=!filterExpanded"></el-button></div>
+                </div>
+                <div v-if="hasFieldConfiguration" class="field-configuration-workspace">
+                  <aside class="field-configuration-library">
+                    <div class="field-configuration-panel__header" data-zone="page.actions" data-component="toolbar.action-toolbar">
+                      <div><strong>{{ config.field_configuration.library_title }}</strong><span>{{ activeFieldLibrary.length }}</span></div>
+                      <el-button :type="config.field_configuration.library_add_action.appearance" size="small" :icon="config.field_configuration.library_add_action.icon" @click="openFieldEditor()">{{ config.field_configuration.library_add_action.label }}</el-button>
+                    </div>
+                    <div class="field-configuration-library__list">
+                      <div v-for="(field,index) in activeFieldLibrary" :key="field.id" class="field-configuration-library__item">
+                        <div class="field-configuration-library__content"><strong>{{ field.name }}</strong><span>{{ field.key }} · {{ field.type }}</span></div>
+                        <div class="field-configuration-library__actions" data-zone="page.actions" data-component="toolbar.action-toolbar">
+                          <el-button v-for="action in config.row_actions" :key="action.id" type="text" size="mini" :icon="action.icon" :title="action.label" :aria-label="action.label" @click="fieldLibraryAction(action, field, index)"></el-button>
+                        </div>
+                      </div>
+                      <div v-if="!activeFieldLibrary.length" class="field-configuration-empty">暂无自定义字段，请先添加字段</div>
+                    </div>
+                  </aside>
+                  <section class="field-configuration-configured">
+                    <div class="field-configuration-panel__header field-configuration-configured__header" data-zone="page.actions" data-component="toolbar.action-toolbar">
+                      <div><strong>{{ config.field_configuration.configured_title }}</strong><span>{{ activeConfiguredFields.length }}</span></div>
+                      <el-button :type="config.field_configuration.add_action.appearance" size="small" :icon="config.field_configuration.add_action.icon" @click="openConfiguredFieldDialog">{{ config.field_configuration.add_action.label }}</el-button>
+                    </div>
+                    <div class="field-configuration-configured__table" data-zone="data.results" data-component="table.data-table">
+                      <el-table :data="activeConfiguredFields" height="100%" :stripe="config.collection_table.striped" row-key="id">
+                        <el-table-column v-for="column in config.columns" :key="column.prop" :prop="column.prop" :label="column.label" :width="column.fixed_width" :min-width="column.min_width"></el-table-column>
+                      </el-table>
+                    </div>
+                  </section>
+                </div>
+                <div v-else class="collection-main h-layout" :class="{'has-details-pane':hasTableDetailsPane,'is-details-pane-open':isTableDetailsPane}">
+                <aside v-if="hasCardTree" class="card-tree-sidebar" data-zone="navigation.view-tabs" data-component="navigation.tree-panel">
+                  <div class="card-tree-sidebar__title">资源分类</div>
+                  <el-input v-model="treeKeyword" size="small" placeholder="搜索分类" clearable suffix-icon="h-icon-search" @input="treeKeywordChanged"></el-input>
+                  <el-tree ref="cardTree" class="card-tree-sidebar__tree" :data="config.tree_nodes" node-key="id" :current-node-key="config.default_tree_node" :filter-node-method="filterCardTreeNode" default-expand-all highlight-current @node-click="cardTreeNodeChanged"></el-tree>
+                </aside>
+                <aside v-if="hasTableTree" class="h-page-sidebar-wrapper table-tree-sidebar" data-zone="navigation.view-tabs" data-component="navigation.tree-panel">
+                  <div class="h-page-sidebar">
+                    <div class="h-page-sidebar__search"><el-input v-model="treeKeyword" size="small" placeholder="搜索资源" clearable suffix-icon="h-icon-search" @input="treeKeywordChanged"></el-input></div>
+                    <div class="h-page-sidebar__main"><el-tree ref="cardTree" class="table-tree-sidebar__tree" :data="config.tree_nodes" node-key="id" :current-node-key="config.default_tree_node" :filter-node-method="filterCardTreeNode" default-expand-all highlight-current @node-click="cardTreeNodeChanged"></el-tree></div>
+                  </div>
+                </aside>
+                <aside v-if="isSidebarRealtimeFilter" class="realtime-filter-sidebar" data-zone="query.filter" data-component="filter.instant-filter">
+                  <div class="realtime-filter-sidebar__title">筛选条件</div>
+                  <div v-for="field in config.filters" :key="field.key" class="realtime-filter-sidebar__item">
+                    <div class="realtime-filter-sidebar__label">{{ field.label }}</div>
+                    <div v-if="field.kind==='select'" class="realtime-filter-sidebar__options">
+                      <el-checkable-tag v-for="option in field.options" :key="option" checkable :checked="filters[field.key]===option" :label="option" :value="option" @click="selectRealtimeFilter(field, option)">{{ option }}</el-checkable-tag>
+                    </div>
+                    <el-input v-else v-model="filters[field.key]" size="small" :placeholder="field.placeholder" clearable @input="realtimeFilterChanged"></el-input>
+                  </div>
+                  <div v-if="selectedRealtimeFilters.length" class="realtime-filter-sidebar__selected">
+                    <div class="realtime-filter-sidebar__label">已选条件</div>
+                    <el-tag v-for="item in selectedRealtimeFilters" :key="item.key" closable size="small" @close="clearRealtimeFilter(item.key)">{{ item.label }}：{{ item.value }}</el-tag>
+                    <el-button class="realtime-filter__clear" type="text" @click="clearRealtimeFilters">清空条件</el-button>
+                  </div>
+                </aside>
+                <aside v-if="isSidebarManualFilter" class="manual-filter-sidebar" data-zone="query.filter" data-component="filter.search-form">
+                  <div class="manual-filter-sidebar__title">筛选条件</div>
+                  <div v-for="field in config.filters" :key="field.key" class="manual-filter-sidebar__item">
+                    <div class="manual-filter-sidebar__label">{{ field.label }}</div>
+                    <el-input v-if="field.kind==='input'" v-model="filters[field.key]" size="small" :placeholder="field.placeholder" clearable></el-input>
+                    <el-select v-else v-model="filters[field.key]" size="small"><el-option v-for="option in field.options" :key="option" :label="option" :value="option"></el-option></el-select>
+                  </div>
+                  <div class="manual-filter-sidebar__actions"><el-button type="primary" @click="queryRows">查询</el-button><el-button @click="resetFilters">重置</el-button></div>
+                </aside>
+                <div class="collection-list" :style="collectionToolbarCssVariables">
+                <div v-if="isTableTabsSearch" class="query-filter query-filter--regular table-tabs-search" data-zone="query.filter" data-component="filter.search-form">
+                  <el-form class="query-filter__form" :model="filters" label-position="top" size="small">
+                    <el-form-item v-for="field in visibleFilters" :key="field.key" :label="field.label">
+                      <el-input v-if="field.kind==='input'" v-model="filters[field.key]" :placeholder="field.placeholder" suffix-icon="h-icon-search" clearable></el-input>
+                      <el-date-picker v-else-if="field.kind==='date' || field.kind==='date-range'" v-model="filters[field.key]" :type="field.kind==='date-range' ? 'daterange' : 'date'" :placeholder="field.placeholder" start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
+                      <el-select v-else v-model="filters[field.key]"><el-option v-for="option in field.options" :key="option" :label="option" :value="option"></el-option></el-select>
+                    </el-form-item>
+                    <el-form-item class="query-filter__actions"><el-button type="primary" @click="queryRows">查询</el-button><el-button @click="resetFilters">重置</el-button><el-button v-if="hasCollapsibleFilters" type="text" icon="h-icon-angles_down_sm" class="query-filter__toggle" :class="{'is-expanded':filterExpanded}" :title="filterExpanded ? '收起' : '展开'" :aria-label="filterExpanded ? '收起筛选条件' : '展开筛选条件'" @click="filterExpanded=!filterExpanded"></el-button></el-form-item>
+                  </el-form>
+                </div>
+                <div v-if="hasCollectionToolbar" ref="collectionToolbar" class="isc-collection-toolbar" :data-variant="collectionToolbarVariant.id" data-zone="page.actions" data-component="toolbar.action-toolbar">
+                  <div v-if="collectionToolbarUsesActions" ref="collectionToolbarActions" class="isc-collection-toolbar__left">
+                    <el-button v-for="(action,index) in visibleCollectionToolbarActions" :key="action.id || action.label + index" class="isc-collection-toolbar__action-button" size="small" :type="action.appearance==='primary' || action.appearance==='primary-outline' ? 'primary' : 'default'" :plain="action.appearance==='primary-outline'" :icon="action.icon" :disabled="action.disabled || (action.requires_selection && !selectedRows.length)" @click="toolbarAction(action)">{{ action.label }}<i v-if="action.dropdown" class="h-icon-angle_down_sm isc-collection-toolbar__dropdown-icon"></i></el-button>
+                    <el-dropdown v-if="overflowCollectionToolbarActions.length" class="isc-collection-toolbar__more" trigger="click" @command="toolbarAction">
+                      <el-button size="small" icon="h-icon-more_hori">更多<i class="h-icon-angle_down_sm isc-collection-toolbar__dropdown-icon"></i></el-button>
+                      <el-dropdown-menu slot="dropdown" class="isc-collection-toolbar__overflow-menu">
+                        <el-dropdown-item v-for="(action,index) in overflowCollectionToolbarActions" :key="action.id || action.label + index" :command="action" :disabled="action.disabled"><i v-if="action.icon" class="isc-collection-toolbar__overflow-item-icon" :class="action.icon"></i><span>{{ action.label }}</span></el-dropdown-item>
+                      </el-dropdown-menu>
+                    </el-dropdown>
+                    <div ref="collectionToolbarActionMeasure" class="isc-collection-toolbar__action-measure" aria-hidden="true">
+                      <el-button v-for="(action,index) in config.toolbar_actions" v-if="appliesToActiveTableTab(action)" :key="action.id || action.label + index" class="isc-collection-toolbar__measure-action" tabindex="-1" size="small" :type="action.appearance==='primary' || action.appearance==='primary-outline' ? 'primary' : 'default'" :plain="action.appearance==='primary-outline'" :icon="action.icon">{{ action.label }}<i v-if="action.dropdown" class="h-icon-angle_down_sm isc-collection-toolbar__dropdown-icon"></i></el-button>
+                      <el-button class="isc-collection-toolbar__measure-more" tabindex="-1" size="small" icon="h-icon-more_hori">更多<i class="h-icon-angle_down_sm isc-collection-toolbar__dropdown-icon"></i></el-button>
+                    </div>
+                  </div>
+                  <div v-else class="isc-collection-toolbar__summary">{{ collectionToolbarSummary }}</div>
+                  <div class="isc-collection-toolbar__right">
+                    <template v-if="collectionToolbarUsesStructuredQuery">
+                      <el-select v-model="collectionToolbarOrganization" placeholder="所属组织" class="isc-collection-toolbar__organization"></el-select>
+                      <el-date-picker v-model="collectionToolbarEffectiveDate" type="date" placeholder="删除生效日期" class="isc-collection-toolbar__effective-date"></el-date-picker>
+                    </template>
+                    <el-checkbox v-else v-model="collectionToolbarIncludeDescendants" class="isc-collection-toolbar__include-descendants">包含下级</el-checkbox>
+                    <el-input v-model="collectionToolbarKeyword" :placeholder="collectionToolbarKeywordPlaceholder" suffix-icon="h-icon-search" class="isc-collection-toolbar__keyword" @keyup.enter.native="queryCollectionToolbar"></el-input>
+                    <el-button v-if="hasCollectionToolbarAdvancedFilters" class="isc-collection-toolbar__icon-button isc-collection-toolbar__filter-trigger" :class="{'is-selected':collectionToolbarExpanded}" size="small" icon="h-icon-filter" title="筛选条件" aria-label="筛选条件" @click="collectionToolbarExpanded=!collectionToolbarExpanded"></el-button>
+                    <el-button class="isc-collection-toolbar__icon-button" size="small" icon="h-icon-setting" title="列设置" aria-label="列设置"></el-button>
+                    <el-button type="text" size="small" class="isc-collection-toolbar__view-button" :class="{'is-active':collectionToolbarView==='list'}" icon="h-icon-menu_leftbar" title="列表视图" aria-label="列表视图" @click="collectionToolbarView='list'"></el-button>
+                    <el-button type="text" size="small" class="isc-collection-toolbar__view-button" :class="{'is-active':collectionToolbarView==='card'}" icon="h-icon-menu" title="卡片视图" aria-label="卡片视图" @click="collectionToolbarView='card'"></el-button>
+                  </div>
+                </div>
+                <template v-else>
+                <div v-if="showPageToolbar" class="page-toolbar" data-zone="page.actions" data-component="toolbar.action-toolbar">
+                  <div class="page-toolbar__left"><el-button v-for="action in config.toolbar_actions" v-if="appliesToActiveTableTab(action)" :key="action.label" type="ghost" size="small" :icon="action.icon" :disabled="action.disabled || (action.requires_selection && !selectedRows.length)" @click="toolbarAction(action)">{{ action.label }}</el-button></div>
+                  <div class="page-toolbar__right">
+                    <el-button v-if="isAllRetractableManualFilter" type="ghost" class="manual-filter-toggle" :class="{'is-active':filterExpanded}" @click="filterExpanded=!filterExpanded">筛选条件<i class="h-icon-angles_down_sm"></i></el-button>
+                    <span v-if="hasScheduleCalendar">展示方式</span>
+                    <el-radio-group v-if="hasScheduleCalendar" v-model="schedulePresentation" class="view-switch" size="small">
+                      <el-radio-button label="table">表格</el-radio-button><el-radio-button label="calendar">日历</el-radio-button>
+                    </el-radio-group>
+                    <el-radio-group v-if="hasScheduleCalendar && schedulePresentation==='calendar'" v-model="scheduleView" class="view-switch schedule-granularity-switch" size="small">
+                      <el-radio-button label="day">日</el-radio-button><el-radio-button label="week">周</el-radio-button><el-radio-button label="month">月</el-radio-button>
+                    </el-radio-group>
+                    <span v-if="config.page_kind==='switch'">展示方式</span>
+                    <el-radio-group v-if="config.page_kind==='switch'" v-model="viewMode" class="view-switch" size="small">
+                      <el-radio-button label="card">卡片</el-radio-button><el-radio-button label="table">列表</el-radio-button>
+                    </el-radio-group>
+                  </div>
+                </div>
+                </template>
+
+                <div v-if="hasCollectionToolbar && hasCollectionToolbarAdvancedFilters && collectionToolbarExpanded" class="isc-collection-toolbar__advanced-filter" data-zone="query.filter" data-component="filter.search-form">
+                  <div v-for="field in collectionToolbarAdvancedFields" :key="field.key" class="isc-collection-toolbar__advanced-field">
+                    <label :for="field.key">{{ field.label }}</label>
+                    <el-input v-if="field.kind==='input'" :id="field.key" v-model="collectionToolbarAdvancedFilters[field.key]" :placeholder="field.placeholder"></el-input>
+                    <el-select v-else-if="field.kind==='select'" :id="field.key" v-model="collectionToolbarAdvancedFilters[field.key]" :placeholder="field.placeholder"><el-option v-for="option in field.options" :key="option" :label="option" :value="option"></el-option></el-select>
+                    <el-date-picker v-else-if="field.kind==='date' || field.kind==='date-range'" :id="field.key" v-model="collectionToolbarAdvancedFilters[field.key]" :type="field.kind==='date-range' ? 'daterange' : 'date'" :placeholder="field.placeholder" start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
+                    <el-input v-else :id="field.key" v-model="collectionToolbarAdvancedFilters[field.key]" :placeholder="field.placeholder"></el-input>
+                  </div>
+                  <div class="isc-collection-toolbar__advanced-actions">
+                    <el-button type="text" size="small" icon="h-icon-angles_down_sm" title="收起筛选条件" aria-label="收起筛选条件" @click="collectionToolbarExpanded=false"></el-button>
+                    <el-button type="primary" size="small" @click="queryCollectionToolbar">查询</el-button>
+                    <el-button size="small" @click="resetCollectionToolbar">重置</el-button>
+                  </div>
+                </div>
+
+                <div v-if="isRegularManualFilter && isAllRetractableManualFilter && filterExpanded" class="query-filter query-filter--boxed" data-zone="query.filter" data-component="filter.search-form">
+                  <el-form class="query-filter__form" :model="filters" label-position="top" size="small">
+                    <el-form-item v-for="field in config.filters" :key="field.key" :label="field.label">
+                      <el-input v-if="field.kind==='input'" v-model="filters[field.key]" :placeholder="field.placeholder" clearable></el-input>
+                      <el-date-picker v-else-if="field.kind==='date' || field.kind==='date-range'" v-model="filters[field.key]" :type="field.kind==='date-range' ? 'daterange' : 'date'" :placeholder="field.placeholder" start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
+                      <el-time-picker v-else-if="field.kind==='time'" v-model="filters[field.key]" :placeholder="field.placeholder"></el-time-picker>
+                      <el-select v-else v-model="filters[field.key]"><el-option v-for="option in field.options" :key="option" :label="option" :value="option"></el-option></el-select>
+                    </el-form-item>
+                    <el-form-item class="query-filter__actions"><el-button type="primary" @click="queryRows">查询</el-button><el-button @click="resetFilters">重置</el-button></el-form-item>
+                  </el-form>
+                </div>
+                <div v-if="isHorizontalManualFilter && isAllRetractableManualFilter && filterExpanded" class="manual-horizontal-filter manual-horizontal-filter--boxed" data-zone="query.filter" data-component="filter.search-form">
+                  <div v-for="field in config.filters" :key="field.key" class="manual-horizontal-filter__row">
+                    <span class="manual-horizontal-filter__label">{{ field.label }}</span>
+                    <div v-if="field.kind==='checkable-tags'" class="manual-horizontal-filter__tabs"><el-checkable-tag v-for="option in field.options" :key="option" checkable :checked="filters[field.key]===option" :label="option" :value="option" @click="filters[field.key]=option">{{ option }}</el-checkable-tag></div>
+                    <el-date-picker v-else-if="field.kind==='date-range'" v-model="filters[field.key]" type="daterange" size="small" start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
+                    <el-select v-else v-model="filters[field.key]" size="small" :placeholder="field.placeholder"><el-option v-for="option in field.options" :key="option" :label="option" :value="option"></el-option></el-select>
+                  </div>
+                  <div class="manual-horizontal-filter__actions"><el-button type="primary" @click="queryRows">查询</el-button><el-button @click="resetFilters">重置</el-button></div>
+                </div>
+
+                <div class="data-region" data-zone="data.results">
+                  <div v-if="hasScheduleCalendar && schedulePresentation==='calendar'" class="schedule-calendar" :class="'schedule-calendar--'+scheduleView" data-component="collection.calendar-grid">
+                    <div class="schedule-calendar__heading">
+                      <el-button type="text" icon="h-icon-angle_left" @click="moveSchedule(-1)"></el-button>
+                      <strong>{{ scheduleRangeTitle }}</strong>
+                      <el-button type="text" icon="h-icon-angle_right" @click="moveSchedule(1)"></el-button>
+                    </div>
+                    <div v-if="scheduleView!=='day'" class="schedule-calendar__weekdays"><span v-for="name in weekDayNames" :key="name">{{ name }}</span></div>
+                    <div class="schedule-calendar__grid">
+                      <el-card v-for="day in visibleScheduleDays" :key="day.date" class="schedule-day" shadow="never" :class="{'is-today':day.isToday,'is-other-month':day.isOtherMonth}">
+                        <div slot="header" class="schedule-day__date"><span>{{ day.dayLabel }}</span><em v-if="day.isToday">今天</em></div>
+                        <div v-if="day.items.length" class="schedule-day__items">
+                          <div v-for="item in day.items" :key="item.id" class="schedule-item">
+                            <div><el-tag size="mini">{{ item.shift }}</el-tag><strong>{{ item.person }}</strong></div>
+                            <span>{{ item.role }} · {{ item.department }}</span>
+                          </div>
+                        </div>
+                        <div v-else class="schedule-day__empty">暂无排班</div>
+                      </el-card>
+                    </div>
+                  </div>
+                  <div v-else-if="showTable" class="data-table-pattern" data-component="table.data-table">
+                  <el-table :data="pagedRows" height="100%" :stripe="config.collection_table.striped" row-key="id" ref="collectionTable" @selection-change="selectedRows=$event" @row-click="selectDetailRow">
+                    <el-table-column v-if="hasRowSelection" type="selection" :selectable="isRowSelectable"></el-table-column>
+                    <el-table-column v-for="column in config.columns" v-if="appliesToActiveTableTab(column)" :key="column.key || column.prop" :prop="column.prop" :label="column.label" :width="column.fixed_width" :min-width="column.min_width" :show-overflow-tooltip="column.kind==='ellipsis'">
+                      <template slot-scope="scope">
+                        <el-progress v-if="column.kind==='progress'" :percentage="Number(scope.row[column.prop])" :stroke-width="12" stroke-linecap="square"></el-progress>
+                        <span v-else-if="column.kind==='tag-pair'" class="table-stat-tag-pair">
+                          <el-tag data-variant="primary" :data-flood="scope.row[column.tone_prop] || 'blue'">{{ scope.row[column.status_prop] }}</el-tag><el-tag data-variant="secondary" :data-flood="scope.row[column.tone_prop] || 'blue'">{{ scope.row[column.metric_prop] }}</el-tag>
+                        </span>
+                        <el-tag v-else-if="column.kind==='status-tag'" size="small" data-variant="primary" :data-flood="statusTagFlood(column, scope.row[column.prop])">{{ scope.row[column.prop] }}</el-tag>
+                        <span v-else-if="column.prop==='status'" :class="scope.row.status==='在线'?'status-online':'status-offline'">{{ scope.row[column.prop] }}</span><span v-else>{{ scope.row[column.prop] }}</span>
+                      </template>
+                    </el-table-column>
+                    <el-table-column v-if="activeRowActions.length" label="操作" :width="rowActionColumnWidth" fixed="right"><template slot-scope="scope"><span class="table-row-actions"><el-button v-for="action in config.row_actions" v-if="appliesToActiveTableTab(action)" :key="action.id" type="text" size="mini" :icon="action.icon" :title="action.label" :aria-label="action.label" :disabled="action.requires_eligible && !isRowSelectable(scope.row)" @click.stop="rowAction(action, scope.row)"></el-button></span></template></el-table-column>
+                    <el-table-column v-else label="操作" width="120" fixed="right"><template slot-scope="scope"><el-button type="link" size="mini" @click.stop="openDetail(scope.row)">详情</el-button><el-button type="link" size="mini" @click.stop="openPreview(scope.row)">预览</el-button></template></el-table-column>
+                  </el-table>
+                  </div>
+
+                  <div v-else-if="config.page_kind==='card-tabs'" class="capture-scroll">
+                    <div class="knowledge-card-grid" :style="cardGridStyle" data-component="collection.card-grid">
+                      <el-card v-for="row in pagedRows" :key="row.id" class="knowledge-card" shadow="hover" :style="knowledgeCardStyle" :header-style="knowledgeHeaderStyle" :body-style="knowledgeBodyStyle">
+                        <div v-if="activeCardTabSpec.card_profile==='vehicle-card'" slot="header" class="knowledge-card__vehicle-header">
+                          <img class="knowledge-card__vehicle-image" :src="row.image" :alt="row.title">
+                        </div>
+                        <div v-else-if="activeCardTabSpec.card_profile==='similarity-card'" slot="header">
+                          <div class="knowledge-card__comparison-media" :style="comparisonMediaStyle">
+                            <img class="knowledge-card__comparison-image" :src="row.referenceImage" alt="参考图片">
+                            <img class="knowledge-card__comparison-image" :src="row.captureImage" alt="抓拍图片">
+                            <div class="knowledge-card__metric" :style="metricContainerStyle"><div class="knowledge-card__metric-value" :style="metricValueStyle">{{ row.metric }}</div></div>
+                          </div>
+                          <div class="knowledge-card__title-row"><span class="knowledge-card__title" :style="primaryTextStyle">{{ row.title }}</span><el-tag data-variant="secondary" :data-flood="row.tone || 'blue'">{{ row.status }}</el-tag></div>
+                        </div>
+                        <div v-else-if="activeCardTabSpec.card_profile==='face-card'" slot="header" class="knowledge-card__face-header">
+                          <img class="knowledge-card__face-image" :src="row.image" :alt="row.title">
+                        </div>
+                        <div v-else slot="header" class="knowledge-card__text-header">
+                          <img :src="row.image" alt="事件类型背景">
+                          <div class="knowledge-card__text-content" :style="textContentStyle">
+                            <div class="knowledge-card__title" :style="textTitleStyle">{{ row.title }}</div>
+                            <div class="knowledge-card__tag-list"><el-tag v-for="tag in row.tags" :key="tag.label" data-variant="secondary" :data-flood="tag.tone || 'blue'">{{ tag.label }}</el-tag></div>
+                          </div>
+                        </div>
+                        <template v-if="activeCardTabSpec.card_profile==='vehicle-card'">
+                          <div class="knowledge-card__vehicle-title" :style="primaryTextStyle">{{ row.title }}</div>
+                          <div class="knowledge-card__meta-row" :style="metadataRowStyle"><i class="h-icon-info_location" :style="metadataIconStyle"></i><span>{{ row.location }}</span></div>
+                          <div class="knowledge-card__meta-row" :style="metadataRowStyle"><i class="h-icon-info_time" :style="metadataIconStyle"></i><span>{{ row.time }}</span></div>
+                        </template>
+                        <template v-else-if="activeCardTabSpec.card_profile==='similarity-card'">
+                          <div class="knowledge-card__meta-row" :style="metadataRowStyle"><i class="h-icon-info_data" :style="metadataIconStyle"></i><span>{{ row.category }}</span></div>
+                          <div class="knowledge-card__meta-row" :style="metadataRowStyle"><i class="h-icon-info_time" :style="metadataIconStyle"></i><span>{{ row.time }}</span></div>
+                          <div class="knowledge-card__meta-row" :style="metadataRowStyle"><i class="h-icon-info_location" :style="metadataIconStyle"></i><span>{{ row.location }}</span></div>
+                        </template>
+                        <template v-else-if="activeCardTabSpec.card_profile==='face-card'">
+                          <div class="knowledge-card__title-row"><span class="knowledge-card__title" :style="primaryTextStyle">{{ row.title }}</span><el-tag data-variant="secondary" :data-flood="row.tone || 'blue'">{{ row.status }}</el-tag></div>
+                          <div class="knowledge-card__face-kv"><span>所属部门</span><strong>{{ row.department }}</strong></div>
+                          <div class="knowledge-card__face-kv"><span>人员类型</span><strong>{{ row.identity }}</strong></div>
+                          <div class="knowledge-card__face-kv"><span>所在位置</span><strong>{{ row.location }}</strong></div>
+                        </template>
+                        <template v-else>
+                          <div class="knowledge-card__meta-row" :style="metadataRowStyle"><i class="h-icon-info_location" :style="metadataIconStyle"></i><span>{{ row.location }}</span></div>
+                          <div class="knowledge-card__meta-row" :style="metadataRowStyle"><i class="h-icon-info_time" :style="metadataIconStyle"></i><span>{{ row.time }}</span></div>
+                        </template>
+                      </el-card>
+                    </div>
+                  </div>
+                  <div v-else-if="config.page_kind==='card' && config.pattern_parameters.collection_presentation==='vehicle-card'" class="basic-card-scroll">
+                    <div class="basic-card-grid basic-card-grid--vehicle" data-component="collection.card-grid">
+                      <el-card v-for="row in pagedRows" :key="row.id" class="vehicle-basic-card" shadow="hover">
+                        <div slot="header" class="vehicle-basic-card__header"><img :src="row.image" :alt="row.title"></div>
+                        <div class="vehicle-basic-card__title">{{ row.title }}</div>
+                        <div class="basic-card-icon-row"><i class="h-icon-info_location"></i>{{ row.location }}</div><div class="basic-card-icon-row"><i class="h-icon-info_time"></i>{{ row.time }}</div>
+                      </el-card>
+                    </div>
+                  </div>
+                  <div v-else-if="config.page_kind==='card' && config.pattern_parameters.collection_presentation==='face-card'" class="basic-card-scroll">
+                    <div class="basic-card-grid basic-card-grid--face" data-component="collection.card-grid">
+                      <el-card v-for="row in pagedRows" :key="row.id" class="face-basic-card" shadow="hover">
+                        <div slot="header"><img class="basic-card-media" :src="row.image" :alt="row.title"></div>
+                        <div class="basic-card-title-row"><strong>{{ row.title }}</strong><el-tag size="small" data-variant="primary" :data-flood="cardTagFlood(row.status)">{{ row.status }}</el-tag></div><div class="basic-card-kv"><span>所属部门</span><strong>{{ row.department }}</strong></div><div class="basic-card-kv"><span>人员类型</span><strong>{{ row.identity }}</strong></div><div class="basic-card-kv"><span>所在位置</span><strong>{{ row.location }}</strong></div>
+                      </el-card>
+                    </div>
+                  </div>
+                  <div v-else-if="config.page_kind==='card' && config.pattern_parameters.collection_presentation==='similarity-card'" class="basic-card-scroll">
+                    <div class="basic-card-grid basic-card-grid--similarity" data-component="collection.card-grid">
+                      <el-card v-for="row in pagedRows" :key="row.id" class="similarity-basic-card" shadow="hover">
+                        <div slot="header"><div class="similarity-basic-card__media"><img :src="row.referenceImage" alt="底库图片"><img :src="row.captureImage" alt="抓拍图片"><b>{{ row.metric }}</b></div></div>
+                        <div class="basic-card-title-row"><strong>{{ row.title }}</strong><el-tag size="small" data-variant="primary" :data-flood="cardTagFlood(row.status)">{{ row.status }}</el-tag></div><div class="basic-card-icon-row"><i class="h-icon-info_data"></i>{{ row.category }}</div><div class="basic-card-icon-row"><i class="h-icon-info_time"></i>{{ row.time }}</div><div class="basic-card-icon-row"><i class="h-icon-info_location"></i>{{ row.location }}</div>
+                      </el-card>
+                    </div>
+                  </div>
+                  <div v-else-if="config.page_kind==='card' && config.pattern_parameters.collection_presentation==='text-card'" class="basic-card-scroll">
+                    <div class="basic-card-grid basic-card-grid--text" data-component="collection.card-grid">
+                      <el-card v-for="row in pagedRows" :key="row.id" class="text-basic-card" :class="{'has-row-actions':config.row_actions && config.row_actions.length}" shadow="hover">
+                        <div slot="header" class="text-basic-card__header"><img :src="row.image" alt="卡片背景"><div><strong>{{ row.title }}</strong><p><el-tag v-for="tag in row.tags" :key="tag.label" size="small" data-variant="primary" :data-flood="cardTagFlood(tag.label)">{{ tag.label }}</el-tag></p></div></div>
+                        <div class="basic-card-icon-row"><i class="h-icon-info_user"></i>{{ row.location }}</div><div class="basic-card-icon-row"><i class="h-icon-info_time"></i>{{ row.time }}</div>
+                        <div v-if="config.row_actions && config.row_actions.length" class="text-basic-card__actions"><el-button v-for="action in config.row_actions" :key="action.id" type="text" size="mini" :icon="action.icon" @click.stop="rowAction(action, row)">{{ action.label }}</el-button></div>
+                      </el-card>
+                    </div>
+                  </div>
+                  <div v-else-if="config.page_kind==='card' && config.card_fields" class="data-list-card-scroll">
+                    <div class="data-list-card-grid" data-component="collection.card-grid">
+                      <el-card v-for="row in pagedRows" :key="row.id" class="data-list-card" shadow="hover">
+                        <div slot="header" class="data-list-card__media"><i class="h-icon-info_data"></i></div>
+                        <div class="data-list-card__content">
+                          <div v-for="field in cardFieldsByRole('primary')" :key="field.key" class="data-list-card__title">{{ row[field.key] }}</div>
+                          <div class="data-list-card__metadata">
+                            <div v-for="field in cardFieldsByRole('metadata')" :key="field.key" class="data-list-card__field"><span>{{ field.label }}</span><strong>{{ row[field.key] }}</strong></div>
+                          </div>
+                          <div class="data-list-card__status"><el-tag v-for="field in cardFieldsByRole('status')" :key="field.key" data-variant="primary" :data-flood="cardTagFlood(row[field.key])">{{ row[field.key] }}</el-tag></div>
+                        </div>
+                      </el-card>
+                    </div>
+                  </div>
+                  <div v-else class="capture-scroll">
+                    <div class="capture-grid" data-component="collection.card-grid">
+                      <el-card v-for="row in pagedRows" :key="row.id" class="capture-card" shadow="hover">
+                        <div slot="header" class="capture-preview" @click="openPreview(row)"><i class="h-icon-liveview"></i><span class="capture-preview__code">{{ row.captureCode }}</span></div>
+                        <div class="capture-card__title">{{ row.deviceName }}</div>
+                        <div class="capture-card__meta"><span><i class="h-icon-info_location"></i>{{ row.area }}</span><span><i class="h-icon-info_time"></i>{{ row.captureTime }}</span></div>
+                      </el-card>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-if="!hasScheduleCalendar || schedulePresentation==='table'" class="page-pagination" data-zone="page.pagination" data-component="pagination.page-navigation"><el-pagination :current-page.sync="currentPage" :page-size="pageSize" :page-sizes="[10,20,50,100]" layout="total, sizes, ->, prev, pager, next, jumper" :total="rowTotal" @size-change="pageSize=$event"></el-pagination></div>
+                </div>
+                <aside v-if="isTableDetailsPane" class="table-detail-pane" :class="{'has-master-divider':showMasterDetailsDivider}" data-zone="detail.content" data-component="detail.details-pane">
+                  <el-tabs v-model="activeDetailTab">
+                    <el-tab-pane v-for="tab in config.detail_tabs" :key="tab.id" :label="tab.label" :name="tab.id">
+                      <div class="table-detail-pane__content">
+                      <section v-for="section in tab.sections" :key="section.id" class="table-detail-pane__section">
+                        <div class="table-detail-pane__section-title">{{ section.title }}</div>
+                        <div v-for="field in section.fields" :key="field.key" class="table-detail-pane__field"><span class="table-detail-pane__label">{{ field.label }}</span><span class="table-detail-pane__value">{{ detailFieldValue(field.key) }}</span></div>
+                      </section>
+                      </div>
+                    </el-tab-pane>
+                  </el-tabs>
+                </aside>
+                </div>
+                <div v-if="hasFieldConfiguration" data-zone="detail.content" data-component="form.data-form">
+                <el-dialog :visible.sync="fieldEditorVisible" :title="fieldEditorTitle" :area="config.field_configuration.dialog_area" append-to-body>
+                  <el-form :model="fieldDraft" label-width="84px" size="small">
+                    <el-form-item label="字段名称" required><el-input v-model="fieldDraft.name" placeholder="请输入字段名称"></el-input></el-form-item>
+                    <el-form-item label="字段标识" required><el-input v-model="fieldDraft.key" placeholder="请输入英文或数字标识"></el-input></el-form-item>
+                    <el-form-item label="字段类型" required><el-select v-model="fieldDraft.type" placeholder="请选择字段类型"><el-option v-for="option in config.field_configuration.field_type_options" :key="option" :label="option" :value="option"></el-option></el-select></el-form-item>
+                  </el-form>
+                  <div slot="footer"><el-button @click="fieldEditorVisible=false">取消</el-button><el-button type="primary" @click="saveFieldDefinition">确定</el-button></div>
+                </el-dialog>
+                </div>
+                <div v-if="hasFieldConfiguration" data-zone="detail.content" data-component="form.data-form">
+                <el-dialog :visible.sync="fieldPickerVisible" title="添加已配置字段" :area="config.field_configuration.dialog_area" append-to-body>
+                  <el-form label-width="84px" size="small">
+                    <el-form-item label="选择字段" required>
+                      <el-select v-model="fieldToConfigure" placeholder="请选择可自定义字段"><el-option v-for="field in availableFieldsForConfiguration" :key="field.id" :label="field.name + '（' + field.key + '）'" :value="field.id"></el-option></el-select>
+                    </el-form-item>
+                  </el-form>
+                  <div v-if="!availableFieldsForConfiguration.length" class="field-configuration-dialog-empty">当前没有可添加的字段，请先在左侧新增字段。</div>
+                  <div slot="footer"><el-button @click="fieldPickerVisible=false">取消</el-button><el-button type="primary" :disabled="!fieldToConfigure" @click="addConfiguredField">确定</el-button></div>
+                </el-dialog>
+                </div>
+                <div v-if="hasDetailDrawer" class="collection-detail-drawer-host" data-zone="detail.content" data-component="detail.details-pane">
+                <el-drawer :visible.sync="detailDrawerVisible" :title="config.detail_drawer.title" :direction="config.detail_drawer.direction" :size="config.detail_drawer.size" :append-to-body="config.detail_drawer.append_to_body" :modal="config.detail_drawer.modal" :wrapper-closable="config.detail_drawer.wrapper_closable" custom-class="collection-detail-drawer">
+                  <div class="collection-detail-drawer__section-title">{{ config.detail_drawer.section_title }}</div>
+                  <el-form class="collection-detail-drawer__form" :model="selectedDetailRow" label-position="top" size="small">
+                    <el-form-item v-for="field in config.detail_drawer.fields" :key="field.key" :label="field.label">
+                      <el-input v-if="field.control==='textarea'" type="textarea" :rows="3" :value="detailFieldValue(field.key)" readonly></el-input>
+                      <el-input v-else :value="detailFieldValue(field.key)" readonly></el-input>
+                    </el-form-item>
+                  </el-form>
+                  <div slot="footer" class="collection-detail-drawer__footer"><el-button @click="detailDrawerVisible=false">关闭</el-button></div>
+                </el-drawer>
+                </div>
+              </div>

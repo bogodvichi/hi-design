@@ -1,0 +1,140 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "notification",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/notice/notification",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/notice.docs.json",
+    "evidence_sha256": "917ae2b786922adf7a8f4f7b61892dbcb24175deb5c2a74463c784655f45667b"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "service",
+  "runtime": {
+    "$notify": {
+      "props": [
+        {
+          "参数": "title",
+          "说明": "标题",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "title"
+        },
+        {
+          "参数": "size  2.0+",
+          "说明": "尺寸",
+          "类型": "string",
+          "可选值": "small/middle/large",
+          "默认值": "small",
+          "template_name": "size"
+        },
+        {
+          "参数": "message",
+          "说明": "说明文字",
+          "类型": "string/Vue.VNode",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "message"
+        },
+        {
+          "参数": "type(2.0版本中已去除)  非兼容",
+          "说明": "主题样式，如果不在可选值内将被忽略",
+          "类型": "string",
+          "可选值": "success/warning/info/error",
+          "默认值": "—",
+          "template_name": "type"
+        },
+        {
+          "参数": "dangerouslyUseHTMLString  2.0+",
+          "说明": "是否将 message 属性作为 HTML 片段处理",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "dangerously-use-htmlstring"
+        },
+        {
+          "参数": "iconClass(2.0版本中已去除)  非兼容",
+          "说明": "自定义图标的类名。若设置了 type，则 iconClass 会被覆盖",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "icon-class"
+        },
+        {
+          "参数": "customClass",
+          "说明": "自定义类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "custom-class"
+        },
+        {
+          "参数": "duration",
+          "说明": "显示时间, 毫秒。设为 0 则不会自动关闭",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "3000",
+          "template_name": "duration"
+        },
+        {
+          "参数": "position  2.0+",
+          "说明": "自定义弹出位置",
+          "类型": "number",
+          "可选值": "top-right/top-left/bottom-right/bottom-left",
+          "默认值": "top-right",
+          "template_name": "position"
+        },
+        {
+          "参数": "onClose",
+          "说明": "关闭时的回调函数",
+          "类型": "function",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "on-close"
+        },
+        {
+          "参数": "onClick",
+          "说明": "点击 Notification 时的回调函数",
+          "类型": "function",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "on-click"
+        },
+        {
+          "参数": "offset",
+          "说明": "偏移的距离，在同一时刻，所有的 Notification 实例应当具有一个相同的偏移量",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "0",
+          "template_name": "offset"
+        },
+        {
+          "参数": "pagination  2.0+",
+          "说明": "是否开启分页",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "pagination"
+        },
+        {
+          "参数": "showClose  2.0+",
+          "说明": "是否展示关闭按钮",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "show-close"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": [
+        {
+          "方法名": "close",
+          "说明": "关闭当前的 Notification",
+          "template_name": "close"
+        }
+      ]
+    }
+  },
+  "supporting_sections": []
+}

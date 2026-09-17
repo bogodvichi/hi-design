@@ -1,0 +1,207 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "dialog",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/others/dialog-demo",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/others.docs.json",
+    "evidence_sha256": "f150a2630aef3c6508a028b85a5e004a26036cac12218f39bbe7388c02099e11"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-dialog": {
+      "props": [
+        {
+          "参数": "visible",
+          "说明": "是否显示 Dialog，支持 .sync 修饰符",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "visible"
+        },
+        {
+          "参数": "title",
+          "说明": "Dialog 的标题，也可通过具名 slot （见下表）传入",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "title"
+        },
+        {
+          "参数": "size",
+          "说明": "Dialog 的大小",
+          "类型": "string",
+          "可选值": "tiny/small/large/full",
+          "默认值": "small",
+          "template_name": "size"
+        },
+        {
+          "参数": "sizeMode   2.53.0+",
+          "说明": "Dialog 的尺寸类型，影响dialog的宽度。 percent 时 tiny:30%、small:50%、large:90%； pixel 时 tiny:480px、small:640px、large:960px",
+          "类型": "string",
+          "可选值": "percent/pixel",
+          "默认值": "percent",
+          "template_name": "size-mode"
+        },
+        {
+          "参数": "top",
+          "说明": "Dialog CSS 中的 top 值（仅在 size 不为 full 时有效），赋值为 middle 则垂直居中",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "15%",
+          "template_name": "top"
+        },
+        {
+          "参数": "area",
+          "说明": "指定宽度或同时指定宽高，使用了该参数则 size 自动失效；指定了高度时，内容超出区域会自动美化滚动条",
+          "类型": "Number/Array(Number,Number)",
+          "可选值": "—",
+          "默认值": "480",
+          "template_name": "area"
+        },
+        {
+          "参数": "no-scrollbar",
+          "说明": "可以指定不出现 dialog 容器的滚动条（指定了高度才生效，不指定高度默认无滚动条）",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "no-scrollbar"
+        },
+        {
+          "参数": "modal",
+          "说明": "是否需要遮罩层，如果需要可以点击参考 #805",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "modal"
+        },
+        {
+          "参数": "modal-append-to-body",
+          "说明": "遮罩层是否插入至 body 元素上，若为 false，则遮罩层会插入至 Dialog 的父元素上",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "modal-append-to-body"
+        },
+        {
+          "参数": "append-to-body",
+          "说明": "Dialog 自身是否插入至 body 元素上。嵌套的 Dialog 必须指定该属性并赋值为 true",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "append-to-body"
+        },
+        {
+          "参数": "lock-scroll",
+          "说明": "是否在 Dialog 出现时将 body 和 html 滚动锁定",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "lock-scroll"
+        },
+        {
+          "参数": "custom-class",
+          "说明": "Dialog 的自定义类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "custom-class"
+        },
+        {
+          "参数": "close-on-click-modal",
+          "说明": "是否可以通过点击 modal 关闭 Dialog",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "close-on-click-modal"
+        },
+        {
+          "参数": "close-on-press-escape",
+          "说明": "是否可以通过按下 ESC 关闭 Dialog",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "close-on-press-escape"
+        },
+        {
+          "参数": "show-close",
+          "说明": "是否显示关闭按钮",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "show-close"
+        },
+        {
+          "参数": "before-close",
+          "说明": "关闭前的回调，会暂停 Dialog 的关闭",
+          "类型": "function(done)，done 用于关闭 Dialog",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "before-close"
+        },
+        {
+          "参数": "draggable",
+          "说明": "是否支持拖拽",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "draggable"
+        },
+        {
+          "参数": "destroy-on-close",
+          "说明": "当关闭 Dialog 时，销毁其中的元素",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "destroy-on-close"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "close",
+          "说明": "Dialog 关闭的回调",
+          "回调参数": "—",
+          "template_name": "close"
+        },
+        {
+          "事件名称": "open",
+          "说明": "Dialog 打开的回调",
+          "回调参数": "—",
+          "template_name": "open"
+        },
+        {
+          "事件名称": "closed",
+          "说明": "Dialog 完全关闭的回调",
+          "回调参数": "—",
+          "template_name": "closed"
+        },
+        {
+          "事件名称": "opened",
+          "说明": "Dialog 完全打开的回调",
+          "回调参数": "—",
+          "template_name": "opened"
+        }
+      ],
+      "slots": [
+        {
+          "name": "—",
+          "说明": "Dialog 的内容",
+          "template_name": "—"
+        },
+        {
+          "name": "title",
+          "说明": "Dialog 标题区的内容",
+          "template_name": "title"
+        },
+        {
+          "name": "footer",
+          "说明": "Dialog 按钮操作区的内容",
+          "template_name": "footer"
+        }
+      ],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

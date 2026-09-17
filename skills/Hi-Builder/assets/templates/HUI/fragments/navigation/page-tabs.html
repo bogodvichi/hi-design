@@ -1,0 +1,6 @@
+<div v-if="detailsTabsInBreadcrumb" class="page-breadcrumb__tabs" role="tablist" aria-label="详情页面切换" data-zone="navigation.detail-tabs" data-component="navigation.tabs">
+  <el-button v-for="tab in config.detail_tabs" :key="tab.id" type="text" class="page-breadcrumb__tab" :class="{'is-active':activeDetailTab===tab.id}" role="tab" :aria-selected="activeDetailTab===tab.id?'true':'false'" @click="activeDetailTab=tab.id">{{ tab.label }}</el-button>
+</div>
+<div v-else-if="formTabsInBreadcrumb" class="page-breadcrumb__tabs" data-zone="navigation.view-tabs" data-component="navigation.tabs">
+  <el-button v-for="tab in config.form_tabs" :key="tab.id" type="text" class="page-breadcrumb__tab" :class="{'is-active':activeFormTab===tab.id}" @click="activeFormTab=tab.id">{{ tab.label }}</el-button>
+</div>

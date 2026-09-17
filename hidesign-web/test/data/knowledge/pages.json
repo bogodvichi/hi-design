@@ -1,0 +1,12 @@
+{
+  "industry": "通用",
+  "product": "isc",
+  "pages": [
+    {
+      "name": "详情完整内容区",
+      "description": "页面最小宽度1080px，最小高度628px",
+      "ref": "pages/详情完整内容区.json",
+      "cover": "images/详情完整内容区.png"
+    }
+  ]
+}

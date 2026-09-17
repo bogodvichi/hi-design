@@ -1,0 +1,55 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "id": "duty-log-management",
+  "title": "值班日志管理",
+  "page_kind": "table",
+  "pattern_contract": "table/regular-filter-box-high-low.json",
+  "portal": {
+    "active_top_menu": "智能应用",
+    "section": "线路/车站安防集成管理中心 · 值班管理",
+    "tab_title": "值班日志管理",
+    "active_side_menu": "duty-log",
+    "side_menus": [
+      {"id": "duty-roster", "label": "值班排班管理", "icon": "h-icon-calendar", "href": "duty-roster-management.html"},
+      {"id": "duty-log", "label": "值班日志管理", "icon": "h-icon-edit", "href": "duty-log-management.html"},
+      {"id": "shift-handover", "label": "交接班管理", "icon": "h-icon-users", "href": "shift-handover-management.html"}
+    ]
+  },
+  "filters": [
+    {"key": "date", "label": "值班日期", "kind": "date-range", "placeholder": "请选择日期范围"},
+    {"key": "person", "label": "值班人员", "kind": "input", "placeholder": "请输入姓名", "default": ""},
+    {"key": "shift", "label": "班次", "kind": "select", "options": ["全部", "早班", "中班", "晚班"], "default": "全部"},
+    {"key": "abnormalStatus", "label": "异常状态", "kind": "select", "options": ["全部", "无异常", "处理中", "已闭环"], "default": "全部"},
+    {"key": "department", "label": "所属部门", "kind": "select", "options": ["全部", "综合监控中心", "车站运营部", "机电保障部", "安保管理部"], "default": "全部"}
+  ],
+  "toolbar_actions": [
+    {"label": "新增日志", "icon": "h-icon-add"},
+    {"label": "编辑", "icon": "h-icon-edit"},
+    {"label": "查看", "icon": "h-icon-menu"},
+    {"label": "导出", "icon": "h-icon-export"}
+  ],
+  "columns": [
+    {"prop": "date", "label": "值班日期", "fixed_width": 120},
+    {"prop": "shift", "label": "班次", "fixed_width": 80},
+    {"prop": "person", "label": "值班人员", "fixed_width": 100},
+    {"prop": "dutyRecord", "label": "值班记录", "min_width": 320},
+    {"prop": "abnormalCount", "label": "异常数", "fixed_width": 80},
+    {"prop": "abnormalStatus", "label": "异常状态", "fixed_width": 100},
+    {"prop": "updatedAt", "label": "最后更新时间", "fixed_width": 165}
+  ],
+  "page_size": 20,
+  "preview": {
+    "filters": {"date": "", "person": "", "shift": "全部", "abnormalStatus": "全部", "department": "全部"},
+    "total": 18,
+    "rows": [
+      {"id": 101, "date": "2026-08-25", "shift": "早班", "person": "李明", "department": "综合监控中心", "dutyRecord": "完成枢纽公共区视频轮巡、门禁状态复核及重点通道客流巡查。", "abnormalCount": 1, "abnormalStatus": "已闭环", "updatedAt": "2026-08-25 14:12:35"},
+      {"id": 102, "date": "2026-08-25", "shift": "早班", "person": "周雨晴", "department": "综合监控中心", "dutyRecord": "复核1号线站厅摄像机在线率，跟进2号出入口扶梯检修旁站。", "abnormalCount": 0, "abnormalStatus": "无异常", "updatedAt": "2026-08-25 14:05:18"},
+      {"id": 103, "date": "2026-08-25", "shift": "中班", "person": "王海峰", "department": "安保管理部", "dutyRecord": "完成晚高峰前安防点位巡检，协调处置站厅遗失物品事件。", "abnormalCount": 2, "abnormalStatus": "处理中", "updatedAt": "2026-08-25 19:34:51"},
+      {"id": 104, "date": "2026-08-24", "shift": "晚班", "person": "孙悦", "department": "综合监控中心", "dutyRecord": "执行夜间封站巡查，检查消防通道、设备机房及无人区域布防状态。", "abnormalCount": 1, "abnormalStatus": "已闭环", "updatedAt": "2026-08-25 06:18:07"},
+      {"id": 105, "date": "2026-08-24", "shift": "中班", "person": "赵倩", "department": "车站运营部", "dutyRecord": "跟踪恶劣天气客流组织预案，完成重点区域广播与应急照明联动测试。", "abnormalCount": 0, "abnormalStatus": "无异常", "updatedAt": "2026-08-24 22:03:42"},
+      {"id": 106, "date": "2026-08-24", "shift": "早班", "person": "张勇", "department": "综合监控中心", "dutyRecord": "完成运营前设备状态确认，抽查访客登记、门禁授权和保安到岗情况。", "abnormalCount": 1, "abnormalStatus": "已闭环", "updatedAt": "2026-08-24 14:09:26"}
+    ]
+  }
+}

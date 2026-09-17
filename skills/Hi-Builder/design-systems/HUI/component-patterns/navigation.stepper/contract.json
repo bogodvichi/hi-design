@@ -1,0 +1,14 @@
+{
+  "schema_version": "hui-component-pattern.v2",
+  "id": "navigation.stepper",
+  "name": "步骤导航",
+  "split_mode": "composite",
+  "vue_component": "PageStepper",
+  "description": "组合多个步骤节点并反馈当前流程进度",
+  "category": "navigation",
+  "status": "active",
+  "use_when": ["表单或任务需要按固定步骤顺序完成"],
+  "hui_components": ["el-steps", "el-step"],
+  "variants": ["horizontal", "vertical"],
+  "owner": "hui-common"
+}

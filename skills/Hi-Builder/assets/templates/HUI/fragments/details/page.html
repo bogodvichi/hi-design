@@ -1,0 +1,91 @@
+              <div class="details-page" :class="{'has-separate-master-detail':separateMasterDetail,'is-flat':config.detail_presentation === 'flat','has-page-tabs':hasDetailsPageTabs,'is-three-column':config.detail_columns===3}">
+                <div v-if="hasDetailsPageTabs && !detailsTabsInBreadcrumb" class="details-page-tabs" data-zone="detail.content" data-component="detail.details-pane">
+                  <el-tabs v-model="activeDetailTab">
+                    <el-tab-pane v-for="tab in config.detail_tabs" :key="tab.id" :label="tab.label" :name="tab.id"></el-tab-pane>
+                  </el-tabs>
+                </div>
+                <div v-if="isAnchoredDetails && anchorHorizontal" class="details-horizontal-tabs" data-zone="detail.content" data-component="detail.details-pane">
+                  <el-tabs v-model="activeDetailSection">
+                    <el-tab-pane v-for="section in visibleDetailSections" :key="section.id" :label="section.title" :name="section.id">
+                      <div class="details-container__title details-primary-group-title">{{ section.title }}</div>
+                      <div class="credential-grid">
+                        <div v-for="field in section.fields" :key="field.key" class="credential-item" :class="{'is-special':isCredentialVisual(field)}">
+                          <div class="credential-item__label">{{ field.label }}</div>
+                          <img v-if="field.kind==='image'" class="credential-photo" :src="detailValues[field.key]" :alt="field.label">
+                          <div v-else-if="field.kind==='card'" class="credential-card"><div>人员通行卡</div><div class="credential-card__number">{{ detailValues[field.key] }}</div></div>
+                          <div v-else-if="field.kind==='password'" class="credential-password">{{ detailValues[field.key] }}</div>
+                          <div v-else-if="field.kind==='biometric'" class="credential-biometric"><el-tag v-for="item in detailValues[field.key]" :key="item" type="success">{{ item }}</el-tag></div>
+                          <span v-else>{{ detailValues[field.key] }}</span>
+                        </div>
+                      </div>
+                    </el-tab-pane>
+                  </el-tabs>
+                </div>
+                <section v-if="showPageSummary" class="details-container" data-zone="detail.content" data-component="detail.details-pane">
+                  <div class="details-container__title">{{ config.title }}</div>
+                  <el-form class="details-fields" label-position="top">
+                    <el-form-item v-for="field in config.summary_fields" :key="field.key" :label="field.label"><el-tag v-if="field.tone && field.tone!=='default'" :type="field.tone">{{ detailValues[field.key] }}</el-tag><span v-else>{{ detailValues[field.key] }}</span></el-form-item>
+                  </el-form>
+                </section>
+                <div v-if="!(isAnchoredDetails && anchorHorizontal)" class="details-layout" :class="{'is-vertical': detailLayoutVertical, 'has-stretched-master':stretchMaster, 'has-separate-scroll':separateMasterDetail}" :style="detailLayoutStyle">
+                  <section v-if="showMasterMedia && !externalMasterMedia" class="details-master-photo details-side" data-zone="media.preview" data-component="media.image-viewer">
+                    <img :src="detailMedia.src" :alt="config.media.alt">
+                    <div class="details-master-photo__name">{{ detailValues.personName }}</div>
+                    <div class="details-master-photo__code">{{ detailValues.employeeNo }}</div>
+                    <el-button type="text" @click="mediaAction('查看原图')">查看原图</el-button>
+                  </section>
+                  <section v-if="showMasterSummary && !showMasterMedia" class="details-container details-side" data-zone="detail.content" data-component="detail.details-pane">
+                    <div class="details-container__title">{{ config.title }}</div>
+                    <el-form class="details-fields" label-position="top">
+                      <el-form-item v-for="field in config.summary_fields" :key="field.key" :label="field.label"><el-tag v-if="field.tone && field.tone!=='default'" :type="field.tone">{{ detailValues[field.key] }}</el-tag><span v-else>{{ detailValues[field.key] }}</span></el-form-item>
+                    </el-form>
+                  </section>
+                  <div v-if="isTextImageDetails" class="details-main details-media" :class="{'is-person-portrait':config.active_detail_section}" :style="detailMediaStyle" data-zone="media.preview" data-component="media.image-viewer">
+                    <div class="details-media__stage"><img :src="detailMedia.src" :alt="config.media.alt"></div>
+                    <div v-if="config.active_detail_section" class="details-media__caption">正面免冠照</div>
+                    <div class="details-media__tools"><el-button type="text" @click="mediaAction('放大')">放大</el-button><el-button type="text" @click="mediaAction('缩小')">缩小</el-button></div>
+                  </div>
+                  <div class="details-main" :class="{'details-document': isSimulationFile}" :style="detailContentStyle">
+                    <div v-if="(isTextImageDetails || isMasterDetail) && config.active_detail_section" class="details-panel-tabs" :class="{'is-narrow':isTextImageDetails}" data-zone="detail.content" data-component="detail.details-pane">
+                      <el-tabs v-model="activeDetailSection">
+                        <el-tab-pane v-for="section in visibleDetailSections" :key="section.id" :label="section.title" :name="section.id">
+                          <div class="details-container__title details-primary-group-title">{{ section.title }}</div>
+                          <div class="credential-grid">
+                            <div v-for="field in section.fields" :key="field.key" class="credential-item" :class="{'is-special':isCredentialVisual(field)}">
+                              <div class="credential-item__label">{{ field.label }}</div>
+                              <img v-if="field.kind==='image'" class="credential-photo" :src="detailValues[field.key]" :alt="field.label">
+                              <div v-else-if="field.kind==='card'" class="credential-card"><div>人员通行卡</div><div class="credential-card__number">{{ detailValues[field.key] }}</div></div>
+                              <div v-else-if="field.kind==='password'" class="credential-password">{{ detailValues[field.key] }}</div>
+                              <div v-else-if="field.kind==='biometric'" class="credential-biometric"><el-tag v-for="item in detailValues[field.key]" :key="item" type="success">{{ item }}</el-tag></div>
+                              <el-tag v-else-if="field.tone && field.tone!=='default'" :type="field.tone">{{ detailValues[field.key] }}</el-tag>
+                              <span v-else>{{ detailValues[field.key] }}</span>
+                            </div>
+                          </div>
+                        </el-tab-pane>
+                      </el-tabs>
+                    </div>
+                    <section v-if="showInlineSummary" class="details-container" data-zone="detail.content" data-component="detail.details-pane">
+                      <div class="details-container__title">{{ config.title }}</div>
+                      <el-form class="details-fields" label-position="top">
+                        <el-form-item v-for="field in config.summary_fields" :key="field.key" :label="field.label"><el-tag v-if="field.tone && field.tone!=='default'" :type="field.tone">{{ detailValues[field.key] }}</el-tag><span v-else>{{ detailValues[field.key] }}</span></el-form-item>
+                      </el-form>
+                    </section>
+                    <section v-if="!((isTextImageDetails || isMasterDetail) && config.active_detail_section)" v-for="section in visibleDetailSections" :key="section.id" :id="'detail-section-' + section.id" class="details-container" data-zone="detail.content" data-component="detail.details-pane">
+                      <div class="details-container__title">{{ section.title }}</div>
+                      <el-form class="details-fields" label-position="top">
+                        <el-form-item v-for="field in section.fields" :key="field.key" :label="field.label"><el-tag v-if="field.tone && field.tone!=='default'" :type="field.tone">{{ detailValues[field.key] }}</el-tag><span v-else>{{ detailValues[field.key] }}</span></el-form-item>
+                      </el-form>
+                    </section>
+                    <section v-for="table in config.related_tables" :key="table.id" class="details-table" data-zone="data.results" data-component="table.data-table">
+                      <div class="details-table__title">{{ table.title }}</div>
+                      <el-table :data="relatedTableRows[table.id] || []" stripe>
+                        <el-table-column v-for="column in table.columns" :key="column.prop" :prop="column.prop" :label="column.label" :min-width="column.min_width"></el-table-column>
+                      </el-table>
+                    </section>
+                    <div v-if="config.pattern_parameters.pagination" class="page-pagination" data-zone="page.pagination" data-component="pagination.page-navigation"><el-pagination :current-page.sync="currentPage" :page-size="pageSize" layout="total, ->, prev, pager, next" :total="detailRowTotal"></el-pagination></div>
+                  </div>
+                  <div v-if="isAnchoredDetails && !anchorHorizontal" class="details-anchor details-side" data-zone="navigation.detail-tabs" data-component="navigation.anchor-nav">
+                    <h-anchor :style="{ textAlign: config.pattern_parameters.text_align }" :affix="true" container=".details-page"><h-anchor-link v-for="section in visibleDetailSections" :key="section.id" :href="'#detail-section-' + section.id" :title="section.title"></h-anchor-link></h-anchor>
+                  </div>
+                </div>
+              </div>

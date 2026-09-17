@@ -1,0 +1,15 @@
+{
+  "schema_version": "industry-design-system.v1",
+  "maintenance": {
+    "purpose": "公安行业知识入口，连接HUI通用知识、公安行业扩展和本行业产品。",
+    "edit_policy": "只有形成真实行业或产品知识后才登记对应路径；不要用占位内容冒充可生成知识。",
+    "managed_paths": {
+      ".": "公安行业索引与后续domain知识的归属目录。",
+      "products": "公安行业下各产品的知识入口。"
+    }
+  },
+  "id": "public-security",
+  "name": "公安",
+  "design_system": "HUI",
+  "products": ["pvia"]
+}

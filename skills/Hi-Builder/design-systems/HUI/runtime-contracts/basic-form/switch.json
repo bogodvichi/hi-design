@@ -1,0 +1,161 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "switch",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/form/switch-demo",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/basic-form.docs.json",
+    "evidence_sha256": "ce35467cfa4317a06d0d65dd9e415328669f0c6711f32417ce27edc1af71cbe7"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-switch": {
+      "props": [
+        {
+          "参数": "disabled",
+          "说明": "是否禁用",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "size",
+          "说明": "大小",
+          "类型": "string",
+          "可选值": "small,mini",
+          "默认值": "normal",
+          "template_name": "size"
+        },
+        {
+          "参数": "width",
+          "说明": "switch 的宽度（像素）",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "52（有文字）/ 40（无文字）",
+          "template_name": "width"
+        },
+        {
+          "参数": "active-icon-class",
+          "说明": "switch 打开时所显示图标的类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "active-icon-class"
+        },
+        {
+          "参数": "inactive-icon-class",
+          "说明": "switch 关闭时所显示图标的类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "inactive-icon-class"
+        },
+        {
+          "参数": "active-text 2.16+",
+          "说明": "右侧的文字",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "active-text"
+        },
+        {
+          "参数": "inactive-text 2.16+",
+          "说明": "左侧的文字",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "inactive-text"
+        },
+        {
+          "参数": "instruction",
+          "说明": "右边描述性文字",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "instruction"
+        },
+        {
+          "参数": "active-value",
+          "说明": "switch 打开时的值",
+          "类型": "boolean / string / number",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "active-value"
+        },
+        {
+          "参数": "inactive-value",
+          "说明": "switch 关闭时的值",
+          "类型": "boolean / string / number",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "inactive-value"
+        },
+        {
+          "参数": "active-color",
+          "说明": "switch 打开时的背景色",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "#20A0FF",
+          "template_name": "active-color"
+        },
+        {
+          "参数": "inactive-color",
+          "说明": "switch 关闭时的背景色",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "#C0CCDA",
+          "template_name": "inactive-color"
+        },
+        {
+          "参数": "name",
+          "说明": "switch 对应的 name 属性",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "name"
+        },
+        {
+          "参数": "allow-focus",
+          "说明": "是否开启 .focus() & .blur() 方法 input",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "allow-focus"
+        },
+        {
+          "参数": "before-change",
+          "说明": "开关切换前的回调，可以阻止开关切换",
+          "类型": "function(value, done)；value 为当前开关的值；done 用于切换开关；",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "before-change"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "change",
+          "说明": "switch 状态发生变化时的回调函数",
+          "回调参数": "新状态的值",
+          "template_name": "change"
+        },
+        {
+          "事件名称": "blur",
+          "说明": "blur 时触发 (当 allowFocus 的值是 true)",
+          "回调参数": "(event: Event)",
+          "template_name": "blur"
+        },
+        {
+          "事件名称": "focus",
+          "说明": "on focus 时触发 (当 allowFocus 的值是 true)",
+          "回调参数": "(event: Event)",
+          "template_name": "focus"
+        }
+      ],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

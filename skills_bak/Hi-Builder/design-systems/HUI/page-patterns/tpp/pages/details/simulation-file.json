@@ -1,0 +1,10 @@
+{
+  "schema_version": "hui-page-variant.v1",
+  "id": "hui.tpp.page.details.simulation-file",
+  "name": "仿真文件",
+  "family": "hui.tpp.family.details-simulation-file",
+  "source": {"url": "http://tpp.dev.hikhub.net/tpp#/pages/details/simulationFile", "package": "@hiktpp/details-simulationFile", "hui_version": "^2.55.0", "observed_at": "2026-08-14", "evidence": "../../evidence/details/simulation-file.json"},
+  "parameters": {"container_width_px": 1280, "document_width_px": 1120, "key_label_width_px": 220, "two_pair_row_value_width_px": 340, "full_row_value_width_px": 900, "signature_section": true, "attachment_section": true},
+  "geometry": {"viewport": {"width": 1728, "height": 935}, "root": {"class": "h-page-content is-flex", "rect": {"x": 344, "y": 118.28, "width": 1280, "height": 816.72}}, "key_regions": {"detail_grid": {"class": "detailTable", "rect": {"x": 424, "y": 238.28, "width": 1120, "height": 465}}, "label_sample": {"class": "table-item-title title-bg", "rect": {"x": 424, "y": 238.28, "width": 220, "height": 37}, "padding": "8px 12px"}, "full_value_sample": {"class": "table-item-content", "rect": {"x": 644, "y": 386.28, "width": 900, "height": 77}, "padding": "8px 12px"}}},
+  "composition": {"component_count_scope": "page-content-relevant-only", "hui_components": {}, "actions": []}
+}

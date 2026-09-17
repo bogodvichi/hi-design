@@ -1,0 +1,16 @@
+{
+  "schema_version": "hui-component-pattern.v2",
+  "id": "filter.instant-filter",
+  "name": "即时过滤器",
+  "split_mode": "composite",
+  "vue_component": "InstantFilter",
+  "description": "组合即时生效的过滤条件、已选条件状态和清空操作",
+  "category": "filter",
+  "status": "active",
+  "use_when": ["选择过滤条件后结果需要立即更新且无需提交查询"],
+  "hui_components": ["el-input", "el-select", "el-option", "el-date-picker", "el-checkable-tag", "el-tag", "el-button"],
+  "fixed_behavior": {
+    "selected_state_font_size": "14px"
+  },
+  "owner": "hui-common"
+}

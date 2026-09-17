@@ -1,0 +1,146 @@
+{
+  "schema_version": "hui-page-variant.v1",
+  "id": "hui.tpp.page.form.horizontal-step-bar",
+  "name": "水平栏步骤条",
+  "family": "hui.tpp.family.form-stepped",
+  "source": {
+    "url": "http://tpp.dev.hikhub.net/tpp#/pages/form/horizontalBarProgressBar",
+    "package": "@hiktpp/form-horizontalBarProgressBar",
+    "hui_version": "^2.55.0",
+    "observed_at": "2026-07-31",
+    "evidence": "../../evidence/form/horizontal-step-bar.json"
+  },
+  "parameters": {
+    "step_placement": "content-top",
+    "step_count": 3,
+    "default_label_position": null
+  },
+  "geometry": {
+    "viewport": {
+      "width": 1920,
+      "height": 968
+    },
+    "root": {
+      "class": "h-page-content form-area is-flex is-align-center",
+      "rect": {
+        "x": 240,
+        "y": 102.31,
+        "width": 1680,
+        "height": 865.69
+      },
+      "style": {
+        "display": "flex",
+        "padding": "16px 16px 0px",
+        "overflow": "visible"
+      }
+    },
+    "key_regions": {
+      "content": {
+        "class": "form-area__content",
+        "rect": {
+          "x": 256,
+          "y": 118.31,
+          "width": 1648,
+          "height": 707
+        },
+        "display": "flex",
+        "position": "static",
+        "padding": "48px 80px 58px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "form": {
+        "class": "el-form el-form--label-top",
+        "rect": {
+          "x": 448,
+          "y": 166.31,
+          "width": 1264,
+          "height": 601
+        },
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "footer": {
+        "class": "form-area__footer",
+        "rect": {
+          "x": 256,
+          "y": 911,
+          "width": 1648,
+          "height": 57
+        },
+        "display": "flex",
+        "position": "sticky",
+        "padding": "12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "steps": {
+        "class": "el-steps is-horizontal is-center",
+        "rect": {
+          "x": 448,
+          "y": 166.31,
+          "width": 1264,
+          "height": 84
+        },
+        "display": "flex",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      }
+    }
+  },
+  "composition": {
+    "hui_components": {
+      "el-scrollbar": 3,
+      "el-form": 1,
+      "el-steps": 1,
+      "el-step": 3,
+      "el-row": 4,
+      "el-col": 9,
+      "el-form-item": 9,
+      "el-input": 5,
+      "el-select": 2,
+      "el-tag": 5,
+      "el-option": 11,
+      "el-checkbox": 7,
+      "h-svg-icon": 7,
+      "el-radio-group": 1,
+      "el-radio": 3,
+      "el-slider": 1,
+      "el-input-number": 1,
+      "el-button": 5,
+      "el-tooltip": 3,
+      "el-date-picker": 1,
+      "el-switch": 1,
+      "el-upload": 1
+    },
+    "page_framework_components": {
+      "h-page-content": 1
+    },
+    "unindexed_runtime_components": {
+      "el-select-menu": 2
+    },
+    "actions": [
+      {
+        "label": "上一步",
+        "count": 1
+      },
+      {
+        "label": "下一步",
+        "count": 1
+      },
+      {
+        "label": "取消",
+        "count": 1
+      }
+    ]
+  }
+}

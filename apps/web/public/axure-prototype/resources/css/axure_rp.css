@@ -1,0 +1,46 @@
+/* Axure RP 风格播放器外壳：顶栏 + 左侧站点地图 + 右侧画布。 */
+.axure-player { display: flex; flex-direction: column; height: 100vh; background: #f1f5f9; }
+.top-bar {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 44px; padding: 0 16px; background: #0f172a; color: #e2e8f0;
+  border-bottom: 1px solid #020617; flex-shrink: 0; z-index: 10;
+}
+.top-bar-left { display: flex; align-items: center; gap: 10px; }
+.doc-icon {
+  width: 18px; height: 18px; border-radius: 4px;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.25);
+}
+.doc-title { font-size: 13px; font-weight: 600; letter-spacing: .2px; }
+.doc-tag { font-size: 11px; color: #94a3b8; padding: 2px 6px; border: 1px solid #334155; border-radius: 4px; }
+.top-bar-right { display: flex; align-items: center; gap: 8px; }
+.doc-pages { font-size: 12px; color: #94a3b8; }
+.top-bar-btn {
+  font-size: 12px; color: #cbd5e1; padding: 5px 10px; border: 1px solid #334155;
+  border-radius: 4px; transition: background .15s, color .15s;
+}
+.top-bar-btn:hover { background: #1e293b; color: #fff; }
+.top-bar-btn.is-active { background: #6366f1; border-color: #6366f1; color: #fff; }
+.player-body { flex: 1; display: flex; min-height: 0; }
+.sitemap-panel { width: 260px; background: #fff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; flex-shrink: 0; }
+.sitemap-header { padding: 10px; border-bottom: 1px solid #e2e8f0; }
+.sitemap-search {
+  width: 100%; height: 30px; padding: 0 10px; font-size: 12px; color: #334155;
+  border: 1px solid #cbd5e1; border-radius: 4px; outline: none;
+}
+.sitemap-search:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,.12); }
+.sitemap-tree { flex: 1; overflow-y: auto; padding: 6px; }
+.sitemap-item { display: flex; align-items: center; height: 28px; padding: 0 8px; font-size: 12px; color: #334155; border-radius: 4px; cursor: pointer; transition: background .12s; }
+.sitemap-item:hover { background: #f1f5f9; }
+.sitemap-item.is-active { background: #eef2ff; color: #4f46e5; font-weight: 600; }
+.sitemap-item .sitemap-twisty { width: 12px; height: 12px; margin-right: 4px; color: #94a3b8; flex-shrink: 0; }
+.sitemap-item .sitemap-page { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sitemap-children { padding-left: 12px; }
+.resizer { width: 4px; cursor: col-resize; background: transparent; flex-shrink: 0; transition: background .15s; }
+.resizer:hover, .resizer.is-dragging { background: #c7d2fe; }
+.stage { flex: 1; position: relative; min-width: 0; background: #e2e8f0; }
+.main-frame { width: 100%; height: 100%; border: none; background: #fff; }
+.sitemap-hidden .sitemap-panel, .sitemap-hidden .resizer { display: none; }
+@media (max-width: 720px) {
+  .sitemap-panel { position: absolute; z-index: 5; height: 100%; box-shadow: 2px 0 12px rgba(0,0,0,.15); }
+}

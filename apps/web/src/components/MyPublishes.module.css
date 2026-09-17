@@ -1,0 +1,72 @@
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.toolbar .tabs { margin-bottom: 0; }
+
+.filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.filter :global(.recent-projects__filter-wrap:first-of-type) .filterMenu {
+  left: auto;
+  right: 0;
+}
+
+.card { position: relative; }
+
+.unpublishedBadge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill, 999px);
+  background: var(--bg, #fff);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 20px;
+  pointer-events: none;
+}
+
+/* Reuse the common project-card menu; only adapt its hover/overflow scope. */
+.card:hover :global(.recent-projects__card-more),
+.card:focus-within :global(.recent-projects__card-more) {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.card:has([aria-expanded='true']) {
+  overflow: visible;
+  z-index: 5;
+}
+
+.card > :global(.community-template-card__preview) {
+  border-radius: 7px 7px 0 0;
+}
+
+.card > :global(.community-template-card__foot) {
+  border-radius: 0 0 7px 7px;
+}
+
+.card:focus-visible {
+  outline: 2px solid var(--text-strong);
+  outline-offset: 3px;
+}
+
+@media (hover: none) {
+  .card :global(.recent-projects__card-more) { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .card :global(.recent-projects__card-more) { transition: none; }
+}

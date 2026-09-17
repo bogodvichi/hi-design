@@ -1,0 +1,24 @@
+<svg width="512.000000" height="512.000000" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+	<desc>
+			Created with Pixso.
+	</desc>
+	<defs>
+		<filter id="filter_230_9230_dd" x="159.686523" y="468.360352" width="188.118164" height="100.262695" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+			<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+			<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+			<feOffset dx="0" dy="8.91295"/>
+			<feGaussianBlur stdDeviation="9.90328"/>
+			<feComposite in2="hardAlpha" operator="out" k2="-1" k3="1"/>
+			<feColorMatrix type="matrix" values="0 0 0 0 0.18039 0 0 0 0 0.37647 0 0 0 0 0.81961 0 0 0 0.5 0"/>
+			<feBlend mode="normal" in2="BackgroundImageFix" result="effect_dropShadow_1"/>
+			<feBlend mode="normal" in="SourceGraphic" in2="effect_dropShadow_1" result="shape"/>
+		</filter>
+		<linearGradient x1="31.999992" y1="236.621887" x2="479.696320" y2="232.320831" id="paint_linear_230_9234_0" gradientUnits="userSpaceOnUse">
+			<stop stop-color="#3071EA"/>
+			<stop offset="0.007634" stop-color="#2E7FFF"/>
+			<stop offset="1.000000" stop-color="#07CEF1"/>
+		</linearGradient>
+	</defs>
+	<path id="合并" d="M32 268.754C32 275.919 32.3398 283.006 33.0049 289.999L83.1328 246.767C93.9897 161.463 167.178 95.5007 255.848 95.5007C344.519 95.5007 417.707 161.463 428.563 246.767L478.691 289.999C479.356 283.006 479.696 275.919 479.696 268.754C479.696 145.73 379.476 46 255.848 46C132.22 46 32 145.73 32 268.754ZM224.758 138.814C224.758 155.901 238.678 169.752 255.848 169.752C273.019 169.752 286.938 155.901 286.938 138.814C286.938 121.728 273.019 107.876 255.848 107.876C238.678 107.876 224.758 121.728 224.758 138.814ZM131.488 237.816L37.5469 318.254L474.149 318.254L380.208 237.816L349.118 286.13L255.848 188.315L168.796 281.129L131.488 237.816ZM175.014 367.755L175.014 343.005L44.7373 343.005C47.7559 351.504 51.2783 359.766 55.2681 367.755L175.014 367.755ZM466.959 343.005L336.682 343.005L336.682 367.755L456.428 367.755C460.418 359.766 463.94 351.504 466.959 343.005ZM69.6948 392.506C75.5488 401.209 82.0034 409.479 88.9985 417.256L422.698 417.256C429.693 409.479 436.147 401.209 442.001 392.506L69.6948 392.506ZM193.668 466.757L193.668 442.007L115.139 442.007C126.9 451.477 139.645 459.786 153.196 466.757L193.668 466.757ZM396.558 442.007L305.592 442.007L305.592 466.757L358.5 466.757C372.052 459.786 384.796 451.477 396.558 442.007Z" clip-rule="evenodd" fill="url(#paint_linear_230_9234_0)" fill-opacity="1.000000" fill-rule="evenodd"/>
+	<rect id="矩形 61" width="512.000000" height="512.000000" fill="#C4C4C4" fill-opacity="0"/>
+</svg>

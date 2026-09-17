@@ -1,0 +1,76 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "collapse",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/others/collapse",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/others.docs.json",
+    "evidence_sha256": "f150a2630aef3c6508a028b85a5e004a26036cac12218f39bbe7388c02099e11"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-collapse": {
+      "props": [
+        {
+          "参数": "accordion",
+          "说明": "是否手风琴模式",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "accordion"
+        },
+        {
+          "参数": "value",
+          "说明": "当前激活的面板(如果是手风琴模式，绑定值类型需要为string，否则为array)",
+          "类型": "string/array",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "value"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "change",
+          "说明": "当前激活面板改变时触发(如果是手风琴模式，参数 activeNames 类型为string，否则为array)",
+          "回调参数": "(activeNames: array|string)",
+          "template_name": "change"
+        }
+      ],
+      "slots": [],
+      "methods": []
+    },
+    "el-collapse-item": {
+      "props": [
+        {
+          "参数": "name",
+          "说明": "唯一标志符",
+          "类型": "string/number",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "name"
+        },
+        {
+          "参数": "title",
+          "说明": "面板标题",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "title"
+        },
+        {
+          "参数": "arrowPlacement  2.0+",
+          "说明": "折叠板箭头的放置位置",
+          "类型": "String",
+          "可选值": "left/right",
+          "默认值": "left",
+          "template_name": "arrow-placement"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

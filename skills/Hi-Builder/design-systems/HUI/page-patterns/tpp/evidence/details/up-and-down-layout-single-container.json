@@ -1,0 +1,18 @@
+{
+  "path": "/pages/details/upAndDownLayoutSingleContainer",
+  "name": "详情页_总分结构_上下布局-单容器",
+  "package": "@hiktpp/details-upAndDownLayoutSingleContainer",
+  "hui_version": "^2.55.0",
+  "observed_at": "2026-08-14",
+  "viewport": {"width": 1728, "height": 935},
+  "root": {"class": "h-page-content form-area is-flex is-align-center", "rect": {"x": 240, "y": 102.25, "width": 1488, "height": 832.75}, "style": {"display": "flex", "padding": "16px 16px 0px"}},
+  "observed_structure": {"breadcrumb": ["详情页", "总分结构", "上下布局-单容器"], "layout_direction": "vertical", "container_relation": "shared-scroll-container", "master_position": "top", "person_summary": true, "group_count": 3, "description_item_count": 8, "embedded_tables": 2, "pagination": true},
+  "regions": {
+    "shared_scrollbar": {"class": "form-area__scrollbar", "rect": {"x": 344, "y": 118.25, "width": 1280, "height": 816.75}},
+    "shared_content": {"class": "form-area__content", "rect": {"x": 344, "y": 118.25, "width": 1280, "height": 1657}, "padding": "48px 80px 58px"},
+    "person_image": {"tag": "img", "rect": {"x": 424, "y": 166.25, "width": 120, "height": 148}}
+  },
+  "component_count_scope": "page-content-relevant-only",
+  "runtime_components": {"el-breadcrumb": 1, "el-breadcrumb-item": 3, "el-tag": 3, "el-table": 2, "el-pagination": 1},
+  "actions": ["跳转"]
+}

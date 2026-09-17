@@ -1,0 +1,10 @@
+{
+  "schema_version": "hui-page-variant.v1",
+  "id": "hui.tpp.page.details.left-and-right-layout",
+  "name": "左右布局",
+  "family": "hui.tpp.family.details-master-detail",
+  "source": {"url": "http://tpp.dev.hikhub.net/tpp#/pages/details/leftAndRightLayout", "package": "@hiktpp/details-leftAndRightLayout", "hui_version": "^2.55.0", "observed_at": "2026-08-14", "evidence": "../../evidence/details/left-and-right-layout.json"},
+  "parameters": {"layout_direction": "horizontal", "container_relation": "separate", "master_position": "left", "master_cross_axis": "stretch", "master_workspace_relation": "siblings", "master_scroll": "fixed", "detail_scroll": "independent", "detail_root_x": 561, "embedded_tables": 2, "pagination": true},
+  "geometry": {"viewport": {"width": 1728, "height": 935}, "root": {"class": "h-page-content form-area is-flex is-align-center", "rect": {"x": 561, "y": 102.28, "width": 1167, "height": 832.72}}, "key_regions": {"detail_content": {"class": "form-area__content", "rect": {"x": 577, "y": 118.28, "width": 1135, "height": 1454}, "padding": "48px 80px 58px"}}},
+  "composition": {"component_count_scope": "page-content-relevant-only", "hui_components": {"el-tag": 3, "el-table": 2, "el-pagination": 1}, "actions": [{"label": "跳转", "count": 1}]}
+}

@@ -1,0 +1,120 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "timeline",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/others/timeline",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/others.docs.json",
+    "evidence_sha256": "f150a2630aef3c6508a028b85a5e004a26036cac12218f39bbe7388c02099e11"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-timeline": {
+      "props": [
+        {
+          "参数": "mode",
+          "说明": "通过设置 mode 可以改变时间、时间轴和内容的相对位置 left-top | left-bottom | right-top | right-bottom | crossed-time-left | crossed-time-right| crossed-time-alternate| crossed-custom|",
+          "类型": "String",
+          "默认值": "left-top",
+          "template_name": "mode"
+        },
+        {
+          "参数": "pending",
+          "说明": "指定最后一个幽灵节点是否存在或内容",
+          "类型": "Boolean",
+          "默认值": "false",
+          "template_name": "pending"
+        },
+        {
+          "参数": "reverse",
+          "说明": "节点反序",
+          "类型": "Boolean",
+          "默认值": "false",
+          "template_name": "reverse"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    },
+    "el-timeline-item": {
+      "props": [
+        {
+          "参数": "color",
+          "说明": "指定节点颜色值",
+          "类型": "String",
+          "默认值": "",
+          "template_name": "color"
+        },
+        {
+          "参数": "icon",
+          "说明": "自定义时间轴点",
+          "类型": "String",
+          "默认值": "-",
+          "template_name": "icon"
+        },
+        {
+          "参数": "size",
+          "说明": "自定义时间轴点大小",
+          "类型": "String",
+          "默认值": "",
+          "template_name": "size"
+        },
+        {
+          "参数": "type",
+          "说明": "节点类型primary | success | warning | danger | info",
+          "类型": "String",
+          "默认值": "",
+          "template_name": "type"
+        },
+        {
+          "参数": "cursor",
+          "说明": "节点鼠标值是否为 pointer",
+          "类型": "Boolean",
+          "默认值": "false",
+          "template_name": "cursor"
+        },
+        {
+          "参数": "dot-class",
+          "说明": "slot 节点的 class",
+          "类型": "String",
+          "默认值": "",
+          "template_name": "dot-class"
+        },
+        {
+          "参数": "hideTimestamp",
+          "说明": "是否隐藏时间点",
+          "类型": "Boolean",
+          "默认值": "false",
+          "template_name": "hide-timestamp"
+        },
+        {
+          "参数": "timestamp",
+          "说明": "时间点",
+          "类型": "String",
+          "默认值": "",
+          "template_name": "timestamp"
+        },
+        {
+          "参数": "placement",
+          "说明": "时间戳位置，具有最高优先级 top | bottom",
+          "类型": "String",
+          "默认值": "",
+          "template_name": "placement"
+        },
+        {
+          "参数": "position",
+          "说明": "整个TineLineItem的位置，仅在mode为crossed-custom时生效 left | right",
+          "类型": "String",
+          "默认值": "",
+          "template_name": "position"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

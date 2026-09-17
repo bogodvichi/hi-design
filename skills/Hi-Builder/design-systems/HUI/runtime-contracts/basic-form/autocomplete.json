@@ -1,0 +1,276 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "autocomplete",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/form/autocomplete",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/basic-form.docs.json",
+    "evidence_sha256": "ce35467cfa4317a06d0d65dd9e415328669f0c6711f32417ce27edc1af71cbe7"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-autocomplete": {
+      "props": [
+        {
+          "参数": "placeholder",
+          "说明": "输入框占位文本(建议不为空,为空时在 ie 下有异常)",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "placeholder"
+        },
+        {
+          "参数": "kind",
+          "说明": "可选悬浮和面性样式",
+          "类型": "string",
+          "可选值": "surface, suspension",
+          "默认值": "—",
+          "template_name": "kind"
+        },
+        {
+          "参数": "disabled",
+          "说明": "禁用",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "props",
+          "说明": "配置选项，默认{value:‘value’}用于指定对象的key值,可加需要字段用于自定义",
+          "类型": "object",
+          "可选值": "—",
+          "默认值": "{value:‘value’}",
+          "template_name": "props"
+        },
+        {
+          "参数": "value",
+          "说明": "必填值输入绑定值",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "value"
+        },
+        {
+          "参数": "custom-item",
+          "说明": "通过该参数指定自定义的输入建议列表项的组件名,替换整个下拉框的内容,项目实践一中有多次使用",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "custom-item"
+        },
+        {
+          "参数": "fetch-suggestions",
+          "说明": "返回输入建议的方法，仅当你的输入建议数据 resolve 时，通过调用 callback(data:[]) 来返回它",
+          "类型": "Function(queryString, callback)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "fetch-suggestions"
+        },
+        {
+          "参数": "popper-class",
+          "说明": "Autocomplete 下拉列表的类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "popper-class"
+        },
+        {
+          "参数": "trigger-on-focus",
+          "说明": "是否在输入框 focus 时显示建议列表",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "trigger-on-focus"
+        },
+        {
+          "参数": "clear-icon-click",
+          "说明": "点击删除图标的回调函数",
+          "类型": "function",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "clear-icon-click"
+        },
+        {
+          "参数": "debounce",
+          "说明": "输入时的去抖延迟，毫秒",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "100",
+          "template_name": "debounce"
+        },
+        {
+          "参数": "tips  2.0+",
+          "说明": "输入框文字提示信息",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "tips"
+        },
+        {
+          "参数": "tips-max-width  2.0+",
+          "说明": "提示信息最大宽度",
+          "类型": "string, number",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "tips-max-width"
+        },
+        {
+          "参数": "tips-placement  2.0+",
+          "说明": "提示信息出现位置",
+          "类型": "string",
+          "可选值": "top/top-start/top-end/bottom/bottom-start/bottom-end/left/left-start/left-end/right/right-start/right-end",
+          "默认值": "top",
+          "template_name": "tips-placement"
+        },
+        {
+          "参数": "tips-offset  2.0+",
+          "说明": "提示信息偏移量（对应 tips-placement 会有不同的偏移方向，'top’向上偏移、'bottom’向下偏移、'left’项做偏移、'right’向右偏移）",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "tips-offset"
+        },
+        {
+          "参数": "tips-trigger  2.0+",
+          "说明": "提示信息触发方式",
+          "类型": "click/focus/hover/manual",
+          "可选值": "—",
+          "默认值": "focus",
+          "template_name": "tips-trigger"
+        },
+        {
+          "参数": "tips-class  2.0+",
+          "说明": "提示信息 class 类",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "tips-class"
+        },
+        {
+          "参数": "maxlength  2.0+",
+          "说明": "最大输入长度",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "maxlength"
+        },
+        {
+          "参数": "minlength  2.0+",
+          "说明": "最小输入长度",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "minlength"
+        },
+        {
+          "参数": "popper-append-to-body",
+          "说明": "是否将弹出框插入至 body 元素。在弹出框的定位出现问题时，可将该属性设置为 false",
+          "类型": "boolean",
+          "可选值": "-",
+          "默认值": "true",
+          "template_name": "popper-append-to-body"
+        },
+        {
+          "参数": "clearableShowSuffix   2.60.4+",
+          "说明": "是否显示suffix。默认为true，默认suffix和clearable按钮共同存在",
+          "类型": "boolean",
+          "可选值": "true/false/undefined",
+          "默认值": "true",
+          "template_name": "clearable-show-suffix"
+        },
+        {
+          "参数": "valueTrim   2.60.4+",
+          "说明": "是否对搜索的value进行trim操作，默认为true。",
+          "类型": "boolean",
+          "可选值": "true/false",
+          "默认值": "true",
+          "template_name": "value-trim"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "select",
+          "说明": "点击选中建议项时触发",
+          "回调参数": "选中建议项",
+          "template_name": "select"
+        },
+        {
+          "事件名称": "visible",
+          "说明": "建议栏开启和关闭时触发",
+          "回调参数": "建议栏是否显示",
+          "template_name": "visible"
+        },
+        {
+          "事件名称": "focus",
+          "说明": "在 Input 获得焦点时触发",
+          "回调参数": "(event: Event)",
+          "template_name": "focus"
+        },
+        {
+          "事件名称": "blur",
+          "说明": "在 Input 失去焦点时触发",
+          "回调参数": "(event: Event)",
+          "template_name": "blur"
+        },
+        {
+          "事件名称": "input",
+          "说明": "在 Input 值改变时触发",
+          "回调参数": "修改后的值",
+          "template_name": "input"
+        }
+      ],
+      "slots": [
+        {
+          "名称": "prefix",
+          "说明": "输入框头部内容，只对 type=“text” 有效",
+          "template_name": "prefix"
+        },
+        {
+          "名称": "suffix",
+          "说明": "输入框尾部内容，只对 type=“text” 有效",
+          "template_name": "suffix"
+        },
+        {
+          "名称": "prepend",
+          "说明": "输入框前置内容，只对 type=“text” 有效",
+          "template_name": "prepend"
+        },
+        {
+          "名称": "append",
+          "说明": "输入框后置内容，只对 type=“text” 有效",
+          "template_name": "append"
+        },
+        {
+          "名称": "default   2.60.6+",
+          "说明": "自定义搜索结果呈现",
+          "template_name": "default"
+        }
+      ],
+      "methods": []
+    }
+  },
+  "supporting_sections": [
+    {
+      "heading": "props",
+      "headers": [
+        "参数",
+        "说明",
+        "类型",
+        "可选值",
+        "默认值"
+      ],
+      "rows": [
+        {
+          "参数": "value",
+          "说明": "指定选项的值为选项对象的某个属性值",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "value",
+          "template_name": "value"
+        }
+      ]
+    }
+  ]
+}

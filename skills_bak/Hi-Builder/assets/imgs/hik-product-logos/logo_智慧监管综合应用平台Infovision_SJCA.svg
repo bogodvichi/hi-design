@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>政法-智慧监管综合应用平台</title>
+    <g id="政法-智慧监管综合应用平台" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="编组" transform="translate(8.000000, 4.000000)" fill="#1D7FFF">
+            <path d="M8.071,49.362 L32,62.822 L48.962,53.281 L56.955,57.964 L32,72 L0.079,54.045 L8.071,49.362 Z M32,0 L64,17.999 L64,54.001 L63.922,54.045 L55.928,49.362 L56,49.322 L56,22.679 L32,9.179 L8,22.679 L8,41.404 L-1.42108547e-14,46.0915527 L-7.10542736e-15,18 L32,0 Z" id="合并形状"></path>
+            <polygon id="矩形-copy" points="-3.55271368e-15 54.0915527 36 33 36 41 7 58"></polygon>
+            <path d="M44,34.374 L64,46.0915527 L64,54.0915527 L44,42.374 L44,34.374 Z M28,25 L36,29.687 L36,37.687 L28,33 L28,25 Z" id="合并形状"></path>
+            <polygon id="矩形" points="28 6 36 6 36 41 28 45.657959"></polygon>
+        </g>
+    </g>
+</svg>

@@ -1,0 +1,14 @@
+{
+  "schema_version": "hui-component-pattern.v2",
+  "id": "collection.thumbnail-strip",
+  "name": "缩略图切换条",
+  "split_mode": "repeat-item",
+  "vue_component": "ThumbnailStrip",
+  "description": "组合前后翻页操作和可选择的媒体缩略图集合",
+  "category": "collection",
+  "status": "active",
+  "use_when": ["用户需要在多个媒体资源间快速切换"],
+  "hui_components": ["el-button"],
+  "variants": ["horizontal", "vertical"],
+  "owner": "hui-common"
+}

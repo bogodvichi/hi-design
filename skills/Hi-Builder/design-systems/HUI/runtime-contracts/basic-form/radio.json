@@ -1,0 +1,130 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "radio",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/form/radio",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/basic-form.docs.json",
+    "evidence_sha256": "ce35467cfa4317a06d0d65dd9e415328669f0c6711f32417ce27edc1af71cbe7"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-radio": {
+      "props": [
+        {
+          "参数": "label",
+          "说明": "Radio 的 value",
+          "类型": "string,number,boolean",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "label"
+        },
+        {
+          "参数": "disabled",
+          "说明": "是否禁用",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "name",
+          "说明": "原生 name 属性",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "name"
+        },
+        {
+          "参数": "max-width",
+          "说明": "radio最大宽度",
+          "类型": "Number",
+          "可选值": "—",
+          "默认值": "默认256px",
+          "template_name": "max-width"
+        },
+        {
+          "参数": "size",
+          "说明": "Radio 的尺寸",
+          "类型": "string",
+          "可选值": "默认(default) / small / mini",
+          "默认值": "—",
+          "template_name": "size"
+        },
+        {
+          "参数": "border  已废弃",
+          "说明": "是否显示边框",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "border"
+        },
+        {
+          "参数": "icon",
+          "说明": "显示的图标",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "icon"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    },
+    "el-radio-group": {
+      "props": [
+        {
+          "参数": "size",
+          "说明": "Radio 按钮组尺寸",
+          "类型": "string",
+          "可选值": "large, small",
+          "默认值": "—",
+          "template_name": "size"
+        },
+        {
+          "参数": "fill",
+          "说明": "按钮激活时的填充色和边框色",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "#20a0ff",
+          "template_name": "fill"
+        },
+        {
+          "参数": "text-color",
+          "说明": "按钮激活时的文本颜色",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "#ffffff",
+          "template_name": "text-color"
+        },
+        {
+          "参数": "type",
+          "说明": "选中时的样式：default/simple   2.55+  新增borderless和divider。divider需要自己添加el-divider",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "default",
+          "template_name": "type"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "change",
+          "说明": "绑定值变化时触发的事件",
+          "回调参数": "选中的 Radio label 值",
+          "template_name": "change"
+        }
+      ],
+      "slots": [],
+      "methods": []
+    },
+    "el-radio-button": {
+      "props": [],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

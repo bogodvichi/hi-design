@@ -1,0 +1,136 @@
+{
+  "schema_version": "hui-page-pattern.v1",
+  "id": "hui.tpp.family.card-basic",
+  "name": "基础卡片集合页",
+  "source": {
+    "platform": "HUI-VUE典型页面",
+    "observed_at": "2026-07-31T09:21:23.799Z",
+    "catalog": "../../catalog.json"
+  },
+  "match": [
+    "basic-card-page",
+    "基础卡片页",
+    "车辆卡片",
+    "人脸卡片",
+    "相似度卡片",
+    "文本卡片",
+    "数据列表卡片"
+  ],
+  "semantics": [
+    "page-toolbar",
+    "typed-card-collection",
+    "pagination"
+  ],
+  "shared_runtime_components": [
+    "el-breadcrumb",
+    "el-breadcrumb-item",
+    "el-button",
+    "el-card",
+    "el-divider",
+    "el-drawer",
+    "el-dropdown",
+    "el-dropdown-item",
+    "el-input",
+    "el-menu-item",
+    "el-option",
+    "el-pagination",
+    "el-radio-button",
+    "el-radio-group",
+    "el-scrollbar",
+    "el-select",
+    "el-submenu",
+    "h-icon",
+    "h-svg-icon"
+  ],
+  "invariants": {
+    "regions": {
+      "toolbar": {
+        "display": "flex",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 56
+      },
+      "collection": {
+        "padding": "0px",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "card": {
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "hidden",
+        "overflow_y": "hidden"
+      },
+      "card_header": {
+        "display": "block",
+        "position": "static",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "card_body": {
+        "display": "block",
+        "position": "static",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "pagination": {
+        "display": "flex",
+        "position": "static",
+        "padding": "0px 12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 56
+      }
+    },
+    "variant_values_must_come_from_page_contract": true
+  },
+  "variants": [
+    {
+      "id": "hui.tpp.page.card.vehicle",
+      "name": "车辆",
+      "contract": "../../pages/card/vehicle.json",
+      "parameters": {
+        "collection_presentation": "vehicle-card"
+      }
+    },
+    {
+      "id": "hui.tpp.page.card.data-list",
+      "name": "数据列表",
+      "contract": "../../pages/card/data-list.json",
+      "parameters": {
+        "collection_presentation": "data-list"
+      }
+    },
+    {
+      "id": "hui.tpp.page.card.face",
+      "name": "人脸",
+      "contract": "../../pages/card/face.json",
+      "parameters": {
+        "collection_presentation": "face-card"
+      }
+    },
+    {
+      "id": "hui.tpp.page.card.similarity",
+      "name": "相似度",
+      "contract": "../../pages/card/similarity.json",
+      "parameters": {
+        "collection_presentation": "similarity-card"
+      }
+    },
+    {
+      "id": "hui.tpp.page.card.text",
+      "name": "文本",
+      "contract": "../../pages/card/text.json",
+      "parameters": {
+        "collection_presentation": "text-card"
+      }
+    }
+  ]
+}

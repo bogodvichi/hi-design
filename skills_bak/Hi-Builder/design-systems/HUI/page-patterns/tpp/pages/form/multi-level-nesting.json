@@ -1,0 +1,127 @@
+{
+  "schema_version": "hui-page-variant.v1",
+  "id": "hui.tpp.page.form.multi-level-nesting",
+  "name": "多层级嵌套",
+  "family": "hui.tpp.family.form-complex",
+  "source": {
+    "url": "http://tpp.dev.hikhub.net/tpp#/pages/form/multiLevelNesting",
+    "package": "@hiktpp/form-multiLevelNesting",
+    "hui_version": "^2.55.0",
+    "observed_at": "2026-07-31",
+    "evidence": "../../evidence/form/multi-level-nesting.json"
+  },
+  "parameters": {
+    "complexity": "nested-fields",
+    "embedded_regions": [
+      "conditional-field-group"
+    ],
+    "default_label_position": null
+  },
+  "geometry": {
+    "viewport": {
+      "width": 1920,
+      "height": 968
+    },
+    "root": {
+      "class": "h-page-content form-area is-flex is-align-center",
+      "rect": {
+        "x": 240,
+        "y": 102.31,
+        "width": 1680,
+        "height": 865.69
+      },
+      "style": {
+        "display": "flex",
+        "padding": "16px 16px 0px",
+        "overflow": "visible"
+      }
+    },
+    "key_regions": {
+      "content": {
+        "class": "form-area__content",
+        "rect": {
+          "x": 256,
+          "y": 118.31,
+          "width": 1648,
+          "height": 1096
+        },
+        "display": "flex",
+        "position": "static",
+        "padding": "48px 80px 58px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "form": {
+        "class": "el-form el-form--label-top",
+        "rect": {
+          "x": 448,
+          "y": 166.31,
+          "width": 1264,
+          "height": 990
+        },
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "footer": {
+        "class": "form-area__footer",
+        "rect": {
+          "x": 256,
+          "y": 911,
+          "width": 1648,
+          "height": 57
+        },
+        "display": "flex",
+        "position": "sticky",
+        "padding": "12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      }
+    }
+  },
+  "composition": {
+    "hui_components": {
+      "el-scrollbar": 8,
+      "el-form": 1,
+      "el-row": 8,
+      "el-col": 16,
+      "el-form-item": 16,
+      "el-input": 12,
+      "el-select": 7,
+      "el-tag": 5,
+      "el-option": 31,
+      "el-checkbox": 7,
+      "h-svg-icon": 7,
+      "el-radio-group": 2,
+      "el-radio": 3,
+      "el-slider": 2,
+      "el-input-number": 2,
+      "el-button": 6,
+      "el-tooltip": 2,
+      "el-date-picker": 1,
+      "el-radio-button": 2,
+      "el-switch": 4
+    },
+    "page_framework_components": {
+      "h-page-content": 1
+    },
+    "unindexed_runtime_components": {
+      "el-select-menu": 7
+    },
+    "actions": [
+      {
+        "label": "提交",
+        "count": 1
+      },
+      {
+        "label": "取消",
+        "count": 1
+      }
+    ]
+  }
+}

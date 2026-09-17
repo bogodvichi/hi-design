@@ -1,0 +1,17 @@
+{
+  "path": "/pages/details/residentAnchorPoint",
+  "name": "详情页_带锚点_常驻锚点",
+  "package": "@hiktpp/details-residentAnchorPoint",
+  "hui_version": "^2.55.0",
+  "observed_at": "2026-08-14",
+  "viewport": {"width": 1728, "height": 935},
+  "root": {"class": "h-page-content form-area is-flex is-align-center", "rect": {"x": 256, "y": 118.25, "width": 1275.53, "height": 816.75}, "style": {"display": "flex", "padding": "0px"}},
+  "observed_structure": {"breadcrumb": ["详情页", "带锚点", "常驻锚点"], "anchor_mode": "resident", "anchor_position": "right", "anchor_count": 3, "reserved_width_px": 180.47, "person_summary": true, "group_count": 3, "embedded_tables": 2, "pagination": true},
+  "regions": {
+    "content": {"class": "form-area__content", "rect": {"x": 256, "y": 118.25, "width": 1275.53, "height": 1657}, "padding": "48px 80px 58px"},
+    "groups": {"class": "form-area__group", "rect": {"x": 336, "y": 166.25, "width": 1115.53, "height": 1551}}
+  },
+  "component_count_scope": "page-content-relevant-only",
+  "runtime_components": {"el-breadcrumb": 1, "el-breadcrumb-item": 3, "el-table": 2, "el-pagination": 1, "el-tag": 3, "h-anchor": 1},
+  "actions": ["跳转"]
+}

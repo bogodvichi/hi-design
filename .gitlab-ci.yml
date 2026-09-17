@@ -1,0 +1,466 @@
+# ============================================================================
+# GitLab CI for OpenDesign — release-beta + release-stable pipelines
+# Target: iris.hikvision.com.cn (self-managed GitLab v18.2.5)
+#
+# Usage:
+#   CI/CD -> Pipelines -> Run pipeline
+#   Set variables:
+#     RELEASE_CHANNEL  = beta | stable
+#     RELEASE_VERSION  = 0.5.1-beta.1  (beta)  or  0.5.1  (stable)
+#     GIT_REF          = (optional) branch/tag/SHA to build
+#     MAC_ARM64_SMOKE  = skip | core | full  (beta only, default: skip)
+#     WIN_X64_SMOKE    = skip | core | full  (beta only, default: skip)
+#
+# Required CI/CD Variables (Settings -> CI/CD -> Variables, masked + protected):
+#   APPLE_SIGNING_CERTIFICATE_BASE64   — base64-encoded .p12
+#   APPLE_SIGNING_CERTIFICATE_PASSWORD — .p12 password
+#   APPLE_ID                          — Apple Developer ID email
+#   APPLE_APP_SPECIFIC_PASSWORD        — app-specific password for notarization
+#   APPLE_TEAM_ID                      — Apple Team ID
+#
+# Runner tags required:
+#   linux        — Docker executor, node:24-alpine image
+#   macos        — Shell executor on macOS 14+ (arm64)
+#   macos-intel — Shell executor on macOS 15 (x64)
+#   windows      — Shell executor on Windows Server (PowerShell)
+#
+# Pipeline stages:
+#   verify -> build_mac -> build_mac_intel -> build_win -> publish
+# ============================================================================
+
+stages:
+  - verify
+  - build_mac
+  - build_mac_intel
+  - build_win
+  - publish
+
+variables:
+  PNPM_VERSION: "10.33.2"
+  NODE_OPTIONS: "--max-old-space-size=4096"
+  CI: "true"
+  GIT_DEPTH: "0"
+  GIT_STRATEGY: "fetch"
+
+# ----------------------------------------------------------------------------
+# Common job templates
+# ----------------------------------------------------------------------------
+
+# Linux base — Docker executor
+.linux_base:
+  image: node:24-alpine
+  tags: [linux]
+  before_script:
+    - corepack enable
+    - corepack prepare pnpm@${PNPM_VERSION} --activate
+    - pnpm config set store-dir "$CI_PROJECT_DIR/.pnpm-store"
+  cache:
+    key:
+      files: [pnpm-lock.yaml]
+      prefix: pnpm-release
+    paths: [.pnpm-store]
+    policy: pull-push
+
+# macOS base — Shell executor
+.macos_base:
+  tags: [macos]
+  before_script:
+    - corepack enable
+    - corepack prepare pnpm@${PNPM_VERSION} --activate
+    - pnpm config set store-dir "$HOME/.pnpm-store"
+  cache:
+    key:
+      files: [pnpm-lock.yaml]
+      prefix: pnpm-macos
+    paths: [~/.pnpm-store]
+    policy: pull-push
+
+# macOS Intel base — Shell executor
+.macos_intel_base:
+  tags: [macos-intel]
+  before_script:
+    - corepack enable
+    - corepack prepare pnpm@${PNPM_VERSION} --activate
+    - pnpm config set store-dir "$HOME/.pnpm-store"
+  cache:
+    key:
+      files: [pnpm-lock.yaml]
+      prefix: pnpm-macos-intel
+    paths: [~/.pnpm-store]
+    policy: pull-push
+
+# Windows base — Shell executor (PowerShell)
+.windows_base:
+  tags: [windows]
+  before_script:
+    - corepack enable
+    - corepack prepare pnpm@${PNPM_VERSION} --activate
+    - pnpm config set store-dir "$env:CI_PROJECT_DIR\.pnpm-store"
+  cache:
+    key:
+      files: [pnpm-lock.yaml]
+      prefix: pnpm-windows
+    paths: [.pnpm-store]
+    policy: pull-push
+
+# ----------------------------------------------------------------------------
+# Trigger rules — only run on manual pipeline with RELEASE_CHANNEL set
+# ----------------------------------------------------------------------------
+.release_trigger:
+  rules:
+    - if: $RELEASE_CHANNEL == "beta" || $RELEASE_CHANNEL == "stable"
+      when: manual
+      allow_failure: false
+    - when: never
+
+# ----------------------------------------------------------------------------
+# 1. Verify — typecheck + guard (Linux)
+# ----------------------------------------------------------------------------
+verify:
+  extends:
+    - .linux_base
+    - .release_trigger
+  stage: verify
+  script:
+    - apk add --no-cache python3 make g++
+    - pnpm install --frozen-lockfile
+    - pnpm --filter @open-design/daemon build
+    - pnpm --filter @open-design/desktop build
+    - pnpm -r --workspace-concurrency=4 --if-present run typecheck
+    - pnpm guard
+  artifacts:
+    paths:
+      - node_modules/
+      - "packages/*/node_modules/"
+      - "apps/*/node_modules/"
+      - "tools/*/node_modules/"
+      - "apps/daemon/dist/"
+      - "apps/desktop/dist/"
+      - "packages/*/dist/"
+      - "tools/*/dist/"
+    expire_in: 2 hours
+    untracked: false
+
+# ----------------------------------------------------------------------------
+# 2. Build macOS arm64
+# ----------------------------------------------------------------------------
+build_mac:
+  extends:
+    - .macos_base
+    - .release_trigger
+  stage: build_mac
+  needs: [verify]
+  script:
+    - pnpm install --frozen-lockfile
+    # Prepare Apple signing certificate
+    - |
+      set -euo pipefail
+      cert_path="$CI_PROJECT_DIR/.tmp/open-design-signing.p12"
+      mkdir -p "$(dirname "$cert_path")"
+      printf '%s' "$APPLE_SIGNING_CERTIFICATE_BASE64" | base64 --decode > "$cert_path" 2>/dev/null || \
+        printf '%s' "$APPLE_SIGNING_CERTIFICATE_BASE64" | base64 -D > "$cert_path"
+      export CSC_LINK="$cert_path"
+      export CSC_KEY_PASSWORD="$APPLE_SIGNING_CERTIFICATE_PASSWORD"
+    # Build mac artifacts
+    - |
+      set -euo pipefail
+      TOOLS_PACK_DIR="$CI_PROJECT_DIR/.tmp/tools-pack"
+      if [ "$RELEASE_CHANNEL" = "beta" ]; then
+        NAMESPACE="release-beta"
+      else
+        NAMESPACE="release-stable"
+      fi
+      pnpm exec tools-pack mac build \
+        --dir "$TOOLS_PACK_DIR" \
+        --namespace "$NAMESPACE" \
+        --portable \
+        --app-version "$RELEASE_VERSION" \
+        --mac-compression normal \
+        --to dmg \
+        --require-vela-cli \
+        --json \
+        --signed \
+        --notarize
+    # Prepare release assets
+    - |
+      set -euo pipefail
+      VERSION="$RELEASE_VERSION"
+      ASSETS_DIR="$CI_PROJECT_DIR/.tmp/release-assets"
+      mkdir -p "$ASSETS_DIR"
+      if [ "$RELEASE_CHANNEL" = "beta" ]; then
+        NAMESPACE="release-beta"
+      else
+        NAMESPACE="release-stable"
+      fi
+      SDIR="$CI_PROJECT_DIR/.tmp/tools-pack/out/mac/namespaces/$NAMESPACE"
+      cp "$SDIR/dmg/Hi Design-$NAMESPACE.dmg" "$ASSETS_DIR/Hi Design-$VERSION-mac-arm64.dmg"
+      cp "$SDIR/payload/Hi Design-$NAMESPACE-payload.zip" "$ASSETS_DIR/Hi Design-$VERSION-mac-arm64-payload.zip"
+      cd "$ASSETS_DIR"
+      shasum -a 256 "Hi Design-$VERSION-mac-arm64.dmg" > "Hi Design-$VERSION-mac-arm64.dmg.sha256"
+      shasum -a 256 "Hi Design-$VERSION-mac-arm64-payload.zip" > "Hi Design-$VERSION-mac-arm64-payload.zip.sha256"
+  artifacts:
+    paths:
+      - .tmp/release-assets/
+    expire_in: 1 day
+    untracked: false
+  environment: $RELEASE_CHANNEL
+
+# ----------------------------------------------------------------------------
+# 3. Build macOS Intel x64
+# ----------------------------------------------------------------------------
+build_mac_intel:
+  extends:
+    - .macos_intel_base
+    - .release_trigger
+  stage: build_mac_intel
+  needs: [verify]
+  script:
+    - pnpm install --frozen-lockfile
+    # Prepare Apple signing certificate
+    - |
+      set -euo pipefail
+      cert_path="$CI_PROJECT_DIR/.tmp/open-design-signing.p12"
+      mkdir -p "$(dirname "$cert_path")"
+      printf '%s' "$APPLE_SIGNING_CERTIFICATE_BASE64" | base64 --decode > "$cert_path" 2>/dev/null || \
+        printf '%s' "$APPLE_SIGNING_CERTIFICATE_BASE64" | base64 -D > "$cert_path"
+      export CSC_LINK="$cert_path"
+      export CSC_KEY_PASSWORD="$APPLE_SIGNING_CERTIFICATE_PASSWORD"
+    # Build mac intel artifacts
+    - |
+      set -euo pipefail
+      TOOLS_PACK_DIR="$CI_PROJECT_DIR/.tmp/tools-pack"
+      NAMESPACE="release-${RELEASE_CHANNEL}-intel"
+      pnpm exec tools-pack mac build \
+        --dir "$TOOLS_PACK_DIR" \
+        --namespace "$NAMESPACE" \
+        --portable \
+        --app-version "$RELEASE_VERSION" \
+        --mac-compression normal \
+        --to dmg \
+        --require-vela-cli \
+        --json \
+        --signed \
+        --notarize
+    # Prepare release assets
+    - |
+      set -euo pipefail
+      VERSION="$RELEASE_VERSION"
+      ASSETS_DIR="$CI_PROJECT_DIR/.tmp/release-assets"
+      mkdir -p "$ASSETS_DIR"
+      NAMESPACE="release-${RELEASE_CHANNEL}-intel"
+      SDIR="$CI_PROJECT_DIR/.tmp/tools-pack/out/mac/namespaces/$NAMESPACE"
+      cp "$SDIR/dmg/Hi Design-$NAMESPACE.dmg" "$ASSETS_DIR/Hi Design-$VERSION-mac-x64.dmg"
+      cp "$SDIR/payload/Hi Design-$NAMESPACE-payload.zip" "$ASSETS_DIR/Hi Design-$VERSION-mac-x64-payload.zip"
+      cd "$ASSETS_DIR"
+      shasum -a 256 "Hi Design-$VERSION-mac-x64.dmg" > "Hi Design-$VERSION-mac-x64.dmg.sha256"
+      shasum -a 256 "Hi Design-$VERSION-mac-x64-payload.zip" > "Hi Design-$VERSION-mac-x64-payload.zip.sha256"
+  artifacts:
+    paths:
+      - .tmp/release-assets/
+    expire_in: 1 day
+    untracked: false
+  environment: $RELEASE_CHANNEL
+
+# ----------------------------------------------------------------------------
+# 4. Build Windows x64
+# ----------------------------------------------------------------------------
+build_win:
+  extends:
+    - .windows_base
+    - .release_trigger
+  stage: build_win
+  needs: [verify]
+  script:
+    - pnpm install --frozen-lockfile
+    # Ensure NSIS is available
+    - |
+      if (-not (Get-Command makensis.exe -ErrorAction SilentlyContinue) -and
+          -not (Test-Path "C:\Program Files (x86)\NSIS\makensis.exe")) {
+        choco install nsis -y --no-progress
+      }
+    # Build Windows artifacts
+    - |
+      $ErrorActionPreference = "Stop"
+      $toolsPackDir = "$env:CI_PROJECT_DIR\.tmp\tools-pack"
+      $cacheDir = "$env:CI_PROJECT_DIR\.tmp\tools-pack-cache"
+      $namespace = "release-$env:RELEASE_CHANNEL-win"
+      pnpm.cmd exec tools-pack win cleanup --dir $toolsPackDir --namespace $namespace --json
+      $buildArgs = @(
+        "exec", "tools-pack", "win", "build",
+        "--dir", $toolsPackDir,
+        "--cache-dir", $cacheDir,
+        "--namespace", $namespace,
+        "--portable",
+        "--app-version", $env:RELEASE_VERSION,
+        "--to", "nsis",
+        "--require-vela-cli",
+        "--json"
+      )
+      $buildOutput = pnpm @buildArgs
+      if ($LASTEXITCODE -ne 0) { throw "Windows build exited with code $LASTEXITCODE" }
+      $build = $buildOutput | ConvertFrom-Json
+      pnpm.cmd exec tools-pack win validate-payload `
+        --namespace $namespace `
+        --payload-path $build.payloadPath `
+        --expected-version $env:RELEASE_VERSION `
+        --json
+      $buildOutput
+    # Prepare release assets
+    - |
+      $ErrorActionPreference = "Stop"
+      $version = $env:RELEASE_VERSION
+      $assetsDir = "$env:CI_PROJECT_DIR\.tmp\release-assets"
+      New-Item -ItemType Directory -Force -Path $assetsDir | Out-Null
+      $namespace = "release-$env:RELEASE_CHANNEL-win"
+      $sdir = "$env:CI_PROJECT_DIR\.tmp\tools-pack\out\win\namespaces\$namespace\builder"
+      $pdir = "$env:CI_PROJECT_DIR\.tmp\tools-pack\out\win\namespaces\$namespace\payload"
+      Copy-Item "$sdir\Hi Design-$namespace-setup.exe" "$assetsDir\Hi Design-$version-win-x64-setup.exe"
+      Copy-Item "$pdir\Hi Design-$namespace-payload.7z" "$assetsDir\Hi Design-$version-win-x64-payload.7z"
+      Set-Location $assetsDir
+      $setupHash = (Get-FileHash -Path "Hi Design-$version-win-x64-setup.exe" -Algorithm SHA256).Hash.ToLowerInvariant()
+      "$setupHash  Hi Design-$version-win-x64-setup.exe" | Set-Content -Path "Hi Design-$version-win-x64-setup.exe.sha256"
+      $payloadHash = (Get-FileHash -Path "Hi Design-$version-win-x64-payload.7z" -Algorithm SHA256).Hash.ToLowerInvariant()
+      "$payloadHash  Hi Design-$version-win-x64-payload.7z" | Set-Content -Path "Hi Design-$version-win-x64-payload.7z.sha256"
+  artifacts:
+    paths:
+      - .tmp/release-assets/
+    expire_in: 1 day
+    untracked: false
+  environment: $RELEASE_CHANNEL
+
+# ----------------------------------------------------------------------------
+# 5. Publish — generate metadata.json + create GitLab release
+# ----------------------------------------------------------------------------
+publish:
+  extends:
+    - .linux_base
+    - .release_trigger
+  stage: publish
+  needs:
+    - job: build_mac
+      artifacts: true
+    - job: build_mac_intel
+      artifacts: true
+    - job: build_win
+      artifacts: true
+  script:
+    - apk add --no-cache jq
+    - |
+      set -euo pipefail
+      VERSION="$RELEASE_VERSION"
+      CHANNEL="$RELEASE_CHANNEL"
+      ASSETS_DIR="$CI_PROJECT_DIR/.tmp/release-assets"
+
+      # Compute SHA256 for all platform artifacts
+      mac_dmg_sha=$(sha256sum "$ASSETS_DIR/Hi Design-$VERSION-mac-arm64.dmg" | awk '{print $1}')
+      mac_payload_sha=$(sha256sum "$ASSETS_DIR/Hi Design-$VERSION-mac-arm64-payload.zip" | awk '{print $1}')
+      mac_intel_dmg_sha=$(sha256sum "$ASSETS_DIR/Hi Design-$VERSION-mac-x64.dmg" | awk '{print $1}')
+      mac_intel_payload_sha=$(sha256sum "$ASSETS_DIR/Hi Design-$VERSION-mac-x64-payload.zip" | awk '{print $1}')
+      win_setup_sha=$(sha256sum "$ASSETS_DIR/Hi Design-$VERSION-win-x64-setup.exe" | awk '{print $1}')
+      win_payload_sha=$(sha256sum "$ASSETS_DIR/Hi Design-$VERSION-win-x64-payload.7z" | awk '{print $1}')
+
+      # Channel-specific metadata fields
+      if [ "$CHANNEL" = "beta" ]; then
+        VERSION_KEY="betaVersion"
+        RELEASE_NAME="Hi Design $VERSION Beta"
+        RELEASE_TAG="v$VERSION"
+        RELEASE_URL_BASE="https://pixso.hikvision.com.cn/hik-plugin/ai-builder-web/public/webresources/download/hi-design/beta/versions/v$VERSION"
+      else
+        VERSION_KEY="stableVersion"
+        RELEASE_NAME="Hi Design $VERSION"
+        RELEASE_TAG="v$VERSION"
+        RELEASE_URL_BASE="https://pixso.hikvision.com.cn/hik-plugin/ai-builder-web/public/webresources/download/hi-design/stable/versions/v$VERSION"
+      fi
+
+      # Generate metadata.json
+      cat > "$ASSETS_DIR/metadata.json" <<METADATA
+      {
+        "channel": "$CHANNEL",
+        "$VERSION_KEY": "$VERSION",
+        "releaseDate": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+        "platforms": {
+          "mac": {
+            "enabled": true,
+            "arch": "arm64",
+            "artifacts": {
+              "dmg": {
+                "url": "$RELEASE_URL_BASE/Hi.Design-$VERSION-mac-arm64.dmg",
+                "sha256": "$mac_dmg_sha"
+              },
+              "payload": {
+                "url": "$RELEASE_URL_BASE/Hi.Design-$VERSION-mac-arm64-payload.zip",
+                "sha256": "$mac_payload_sha"
+              }
+            }
+          },
+          "macIntel": {
+            "enabled": true,
+            "arch": "x64",
+            "artifacts": {
+              "dmg": {
+                "url": "$RELEASE_URL_BASE/Hi.Design-$VERSION-mac-x64.dmg",
+                "sha256": "$mac_intel_dmg_sha"
+              },
+              "payload": {
+                "url": "$RELEASE_URL_BASE/Hi.Design-$VERSION-mac-x64-payload.zip",
+                "sha256": "$mac_intel_payload_sha"
+              }
+            }
+          },
+          "win": {
+            "enabled": true,
+            "arch": "x64",
+            "artifacts": {
+              "installer": {
+                "url": "$RELEASE_URL_BASE/Hi.Design-$VERSION-win-x64-setup.exe",
+                "sha256": "$win_setup_sha"
+              },
+              "payload": {
+                "url": "$RELEASE_URL_BASE/Hi.Design-$VERSION-win-x64-payload.7z",
+                "sha256": "$win_payload_sha"
+              }
+            }
+          }
+        }
+      }
+      METADATA
+
+      echo "Generated metadata.json:"
+      cat "$ASSETS_DIR/metadata.json"
+
+      # Create GitLab release via API
+      echo "Creating GitLab release $RELEASE_TAG..."
+      curl --fail --silent --show-error \
+        --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+        --data "name=$RELEASE_NAME" \
+        --data "tag_name=$RELEASE_TAG" \
+        --data "ref=$CI_COMMIT_SHA" \
+        --data-urlencode "description=Hi Design $VERSION $CHANNEL release." \
+        "$CI_API_V4_URL/projects/$CI_PROJECT_ID/releases"
+
+      # Upload each asset and attach to the release
+      for asset in "$ASSETS_DIR"/*; do
+        filename=$(basename "$asset")
+        echo "Uploading $filename..."
+        upload_url=$(curl --fail --silent --show-error \
+          --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+          --form "file=@$asset" \
+          "$CI_API_V4_URL/projects/$CI_PROJECT_ID/uploads" \
+          | jq -r '.url')
+        curl --fail --silent --show-error \
+          --request POST \
+          --header "JOB-TOKEN: $CI_JOB_TOKEN" \
+          --data "name=$filename" \
+          --data "url=$CI_PROJECT_URL$upload_url" \
+          "$CI_API_V4_URL/projects/$CI_PROJECT_ID/releases/$RELEASE_TAG/assets/links"
+      done
+
+      echo "Release $RELEASE_TAG published successfully."
+  environment:
+    name: $RELEASE_CHANNEL
+    action: start
+  artifacts:
+    paths:
+      - .tmp/release-assets/metadata.json
+    expire_in: 30 days
+    untracked: false

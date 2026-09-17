@@ -1,0 +1,375 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "time-picker",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/form/time-picker",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/basic-form.docs.json",
+    "evidence_sha256": "ce35467cfa4317a06d0d65dd9e415328669f0c6711f32417ce27edc1af71cbe7"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-time-picker": {
+      "props": [
+        {
+          "参数": "value / v-model",
+          "说明": "绑定值",
+          "类型": "date(TimePicker) / string(TimeSelect)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "value"
+        },
+        {
+          "参数": "readonly",
+          "说明": "完全只读",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "readonly"
+        },
+        {
+          "参数": "disabled",
+          "说明": "禁用",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "editable",
+          "说明": "文本框可输入",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "editable"
+        },
+        {
+          "参数": "clearable",
+          "说明": "是否显示清除按钮",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "clearable"
+        },
+        {
+          "参数": "size",
+          "说明": "输入框尺寸",
+          "类型": "string",
+          "可选值": "medium / small / mini",
+          "默认值": "—",
+          "template_name": "size"
+        },
+        {
+          "参数": "placeholder",
+          "说明": "非范围选择时的占位内容",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "placeholder"
+        },
+        {
+          "参数": "start-placeholder",
+          "说明": "范围选择时开始日期的占位内容",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "start-placeholder"
+        },
+        {
+          "参数": "end-placeholder",
+          "说明": "范围选择时开始日期的占位内容",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "end-placeholder"
+        },
+        {
+          "参数": "is-range",
+          "说明": "是否为时间范围选择，仅对<el-time-picker>有效",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "is-range"
+        },
+        {
+          "参数": "arrow-control",
+          "说明": "是否使用箭头进行时间选择，仅对<el-time-picker>有效",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "arrow-control"
+        },
+        {
+          "参数": "align",
+          "说明": "对齐方式",
+          "类型": "string",
+          "可选值": "left / center / right",
+          "默认值": "left",
+          "template_name": "align"
+        },
+        {
+          "参数": "popper-class",
+          "说明": "TimePicker 下拉框的类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "popper-class"
+        },
+        {
+          "参数": "picker-options",
+          "说明": "当前时间日期选择器特有的选项参考下表",
+          "类型": "object",
+          "可选值": "—",
+          "默认值": "{}",
+          "template_name": "picker-options"
+        },
+        {
+          "参数": "range-separator",
+          "说明": "选择范围时的分隔符",
+          "类型": "string",
+          "可选值": "-",
+          "默认值": "‘-’",
+          "template_name": "range-separator"
+        },
+        {
+          "参数": "value-format",
+          "说明": "可选，仅 TimePicker 时可用，绑定值的格式。不指定则绑定值为 Date 对象",
+          "类型": "string",
+          "可选值": "见日期格式",
+          "默认值": "—",
+          "template_name": "value-format"
+        },
+        {
+          "参数": "default-value",
+          "说明": "可选，选择器打开时默认显示的时间",
+          "类型": "Date(TimePicker) / string(TimeSelect)",
+          "可选值": "可被new Date()解析(TimePicker) / 可选值(TimeSelect)",
+          "默认值": "—",
+          "template_name": "default-value"
+        },
+        {
+          "参数": "name",
+          "说明": "原生属性",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "name"
+        },
+        {
+          "参数": "prefix-icon",
+          "说明": "自定义头部图标的类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "h-icon-clock",
+          "template_name": "prefix-icon"
+        },
+        {
+          "参数": "clear-icon",
+          "说明": "自定义清空图标的类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "h-icon-close",
+          "template_name": "clear-icon"
+        },
+        {
+          "参数": "unlink",
+          "说明": "选择时间是否与输入框联动，非联动条件最终值以确认或快捷按钮为准",
+          "类型": "boolean",
+          "可选值": "-",
+          "默认值": "default: true  type 为 [‘year’, ‘month’, ‘time’]: false",
+          "template_name": "unlink"
+        },
+        {
+          "参数": "unlink-range",
+          "说明": "range 模式是否取消关联开始时间与结束时间",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "unlink-range"
+        },
+        {
+          "参数": "compare-times",
+          "说明": "自定义计算开始时间与结束时间大小判断方法",
+          "类型": "function",
+          "可选值": "说明 如果 return true 可以保存数据, 如果返回 提示错误描述。仅对is-range有效",
+          "默认值": "-",
+          "template_name": "compare-times"
+        },
+        {
+          "参数": "formatRangeSelection  2.52.0+",
+          "说明": "开启后，会根据format格式。选中年月日时分秒。",
+          "类型": "Boolean",
+          "可选值": "",
+          "默认值": "true",
+          "template_name": "format-range-selection"
+        },
+        {
+          "参数": "showNow  2.55.0+",
+          "说明": "unlink为true，开启底部确认条时，是否显示此刻按钮",
+          "类型": "Boolean",
+          "可选值": "",
+          "默认值": "true",
+          "template_name": "show-now"
+        },
+        {
+          "参数": "use12Hours  2.55.0+",
+          "说明": "是否使用12小时制",
+          "类型": "Boolean",
+          "可选值": "",
+          "默认值": "false",
+          "template_name": "use12-hours"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "change",
+          "返回值": "组件绑定值（受 value-format 控制），输入框显示值（受 format 控制）",
+          "说明": "用户选定的值改变触发",
+          "template_name": "change"
+        },
+        {
+          "事件名称": "input",
+          "返回值": "组件绑定值（受 value-format 控制），输入框显示值（受 format 控制）",
+          "说明": "输入框值改变触发",
+          "template_name": "input"
+        },
+        {
+          "事件名称": "blur",
+          "返回值": "组件绑定值（受 value-format 控制），输入框显示值（受 format 控制）",
+          "说明": "当 input 失去焦点时触发",
+          "template_name": "blur"
+        },
+        {
+          "事件名称": "focus",
+          "返回值": "组件绑定值（受 value-format 控制），输入框显示值（受 format 控制）",
+          "说明": "当 input 获得焦点时触发",
+          "template_name": "focus"
+        }
+      ],
+      "slots": [],
+      "methods": [
+        {
+          "方法名": "focus",
+          "说明": "使 input 获取焦点",
+          "参数": "-",
+          "template_name": "focus"
+        }
+      ]
+    }
+  },
+  "supporting_sections": [
+    {
+      "heading": "Time Select Options",
+      "headers": [
+        "参数",
+        "说明",
+        "类型",
+        "可选值",
+        "默认值"
+      ],
+      "rows": [
+        {
+          "参数": "start",
+          "说明": "开始时间",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "09:00",
+          "template_name": "start"
+        },
+        {
+          "参数": "end",
+          "说明": "结束时间",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "18:00",
+          "template_name": "end"
+        },
+        {
+          "参数": "step",
+          "说明": "间隔时间",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "00:30",
+          "template_name": "step"
+        },
+        {
+          "参数": "minTime",
+          "说明": "最小时间，小于该时间的时间段将被禁用",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "00:00",
+          "template_name": "min-time"
+        },
+        {
+          "参数": "maxTime",
+          "说明": "最大时间，大于该时间的时间段将被禁用",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "max-time"
+        },
+        {
+          "参数": "range",
+          "说明": "可选时间段, 如[‘09:30 - 12:00’, ‘14:30 - 18:30’]",
+          "类型": "array",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "range"
+        }
+      ]
+    },
+    {
+      "heading": "Time Picker Options",
+      "headers": [
+        "参数",
+        "说明",
+        "类型",
+        "可选值",
+        "默认值"
+      ],
+      "rows": [
+        {
+          "参数": "selectableRange",
+          "说明": "可选时间段，例如'18:30:00 - 20:30:00'或者传入数组['09:30:00 - 12:00:00', '14:30:00 - 18:30:00'], 暂不支持range模式",
+          "类型": "string / array",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "selectable-range"
+        },
+        {
+          "参数": "format",
+          "说明": "时间格式化(TimePicker)",
+          "类型": "string",
+          "可选值": "小时：HH，分：mm，秒：ss，AM/PM A",
+          "默认值": "‘HH:mm:ss’",
+          "template_name": "format"
+        },
+        {
+          "参数": "hourStep",
+          "说明": "小时选项间隔",
+          "类型": "number",
+          "可选值": "-",
+          "默认值": "1",
+          "template_name": "hour-step"
+        },
+        {
+          "参数": "minuteStep",
+          "说明": "分钟选项间隔",
+          "类型": "number",
+          "可选值": "-",
+          "默认值": "1",
+          "template_name": "minute-step"
+        },
+        {
+          "参数": "secondStep",
+          "说明": "秒选项间隔",
+          "类型": "number",
+          "可选值": "-",
+          "默认值": "1",
+          "template_name": "second-step"
+        }
+      ]
+    }
+  ]
+}

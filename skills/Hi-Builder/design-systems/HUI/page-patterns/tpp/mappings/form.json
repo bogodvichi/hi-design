@@ -1,0 +1,183 @@
+{
+  "schema_version": "tpp-page-family-mapping.v1",
+  "batch": "form",
+  "region_classes": {
+    "content": "form-area__content",
+    "form": "el-form",
+    "footer": "form-area__footer",
+    "steps": "el-steps",
+    "tabs": "el-tabs",
+    "table": "el-table",
+    "section_title": "form-area__content-title"
+  },
+  "families": {
+    "form-basic": {
+      "name": "基础表单页",
+      "match": ["form", "基础表单", "basic-form"],
+      "semantics": [
+        "form-scroll-area",
+        "content-container",
+        "responsive-field-grid",
+        "sticky-footer-actions"
+      ]
+    },
+    "form-grouped": {
+      "name": "分组表单页",
+      "match": ["grouped-form", "分组表单", "一级分组", "二级分组"],
+      "semantics": [
+        "section-groups",
+        "group-title",
+        "responsive-field-grid",
+        "sticky-footer-actions"
+      ]
+    },
+    "form-stepped": {
+      "name": "步骤表单页",
+      "match": ["stepped-form", "步骤表单", "步骤条"],
+      "semantics": [
+        "step-navigation",
+        "step-content",
+        "previous-next-actions",
+        "cancel-action"
+      ]
+    },
+    "form-anchored": {
+      "name": "锚点表单页",
+      "match": ["anchored-form", "锚点表单", "带锚点"],
+      "defaults": {
+        "anchor_behavior": "persistent",
+        "container_count": 1
+      },
+      "semantics": [
+        "section-navigation",
+        "scroll-linked-anchor",
+        "form-sections",
+        "sticky-footer-actions"
+      ]
+    },
+    "form-complex": {
+      "name": "复杂表单页",
+      "match": ["complex-form", "复杂表单", "工单表单", "多层级嵌套"],
+      "semantics": [
+        "nested-fields",
+        "embedded-table-or-tabs",
+        "multi-section-workflow",
+        "sticky-footer-actions"
+      ]
+    }
+  },
+  "pages": {
+    "/pages/form/fixedWidth1Column": {
+      "family": "form-basic",
+      "variant": "fixed-width-one-column",
+      "parameters": {
+        "columns": 1,
+        "width_behavior": "fixed",
+        "default_container_mode": "md"
+      }
+    },
+    "/pages/form/fixedWidth2Column": {
+      "family": "form-basic",
+      "variant": "fixed-width-two-column",
+      "parameters": {
+        "columns": 2,
+        "width_behavior": "fixed",
+        "default_container_mode": "md"
+      }
+    },
+    "/pages/form/fixedWidth3Column": {
+      "family": "form-basic",
+      "variant": "fixed-width-three-column",
+      "parameters": {
+        "columns": 3,
+        "width_behavior": "fixed",
+        "default_container_mode": "max"
+      }
+    },
+    "/pages/form/fillUp4Column": {
+      "family": "form-basic",
+      "variant": "fill-up-four-column",
+      "parameters": {
+        "columns": 4,
+        "width_behavior": "fluid",
+        "default_container_mode": "max"
+      }
+    },
+    "/pages/form/firstGroup": {
+      "family": "form-grouped",
+      "variant": "first-level-grouping",
+      "parameters": {
+        "group_depth": 1,
+        "container_count": 1
+      }
+    },
+    "/pages/form/secondaryGrouping": {
+      "family": "form-grouped",
+      "variant": "second-level-grouping",
+      "parameters": {
+        "group_depth": 2,
+        "container_count": 1
+      }
+    },
+    "/pages/form/horizontalBarProgressBar": {
+      "family": "form-stepped",
+      "variant": "horizontal-step-bar",
+      "parameters": {
+        "step_placement": "content-top",
+        "step_count": 3
+      }
+    },
+    "/pages/form/sideBarProgressBar": {
+      "family": "form-stepped",
+      "variant": "sidebar-step-bar",
+      "parameters": {
+        "step_placement": "left-sidebar",
+        "step_count": 3
+      }
+    },
+    "/pages/form/singleContainer": {
+      "family": "form-anchored",
+      "variant": "persistent-anchor-single-container",
+      "parameters": {
+        "anchor_behavior": "persistent",
+        "container_count": 1,
+        "columns": 3,
+        "anchor_reserved_width_px": 180,
+        "anchor_content_gap_px": 24,
+        "anchor_top_offset_px": 48
+      }
+    },
+    "/pages/form/multipleContainers": {
+      "family": "form-anchored",
+      "variant": "persistent-anchor-multiple-containers",
+      "parameters": {
+        "anchor_behavior": "persistent",
+        "container_count": "multiple"
+      }
+    },
+    "/pages/form/retractableAnchorPoint": {
+      "family": "form-anchored",
+      "variant": "retractable-anchor",
+      "parameters": {
+        "anchor_behavior": "retractable",
+        "container_count": 1
+      }
+    },
+    "/pages/form/multiLevelNesting": {
+      "family": "form-complex",
+      "variant": "multi-level-nesting",
+      "parameters": {
+        "complexity": "nested-fields",
+        "embedded_regions": ["conditional-field-group"]
+      }
+    },
+    "/pages/form/workOrderForm": {
+      "family": "form-complex",
+      "variant": "work-order-form",
+      "parameters": {
+        "complexity": "workflow",
+        "embedded_regions": ["table", "tabs", "step-actions"]
+      }
+    }
+  }
+}

@@ -1,0 +1,385 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "form",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/form/form-demo",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/basic-form.docs.json",
+    "evidence_sha256": "ce35467cfa4317a06d0d65dd9e415328669f0c6711f32417ce27edc1af71cbe7"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-form": {
+      "props": [
+        {
+          "参数": "model",
+          "说明": "表单数据对象",
+          "类型": "object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "model"
+        },
+        {
+          "参数": "rules",
+          "说明": "表单验证规则",
+          "类型": "object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "rules"
+        },
+        {
+          "参数": "inline",
+          "说明": "行内表单模式",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "inline"
+        },
+        {
+          "参数": "text-form",
+          "说明": "纯文本表单，设为 true 会调整表单间距",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "text-form"
+        },
+        {
+          "参数": "label-position",
+          "说明": "表单域标签的位置",
+          "类型": "string",
+          "可选值": "right/left/top",
+          "默认值": "right",
+          "template_name": "label-position"
+        },
+        {
+          "参数": "label-width",
+          "说明": "表单域标签的宽度，作为 Form 直接子元素的 form-item 会继承该值",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "label-width"
+        },
+        {
+          "参数": "label-suffix",
+          "说明": "表单域标签的后缀",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "label-suffix"
+        },
+        {
+          "参数": "content-width",
+          "说明": "表单域内容的宽度，作为 Form 直接子元素的 form-item 会继承该值",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "content-width"
+        },
+        {
+          "参数": "show-message",
+          "说明": "是否显示校验错误信息",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "show-message"
+        },
+        {
+          "参数": "message-position",
+          "说明": "校验错误信息显示位置",
+          "类型": "string",
+          "可选值": "bottom/right",
+          "默认值": "bottom",
+          "template_name": "message-position"
+        },
+        {
+          "参数": "grid-layout",
+          "说明": "支持表单标签和表单项栅格布局，设置为true后 label-width 和 content-width 将失效",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "grid-layout"
+        },
+        {
+          "参数": "label-grid",
+          "说明": "表单域标签断点栅格数（用法参考 Layout 的 col 控件）",
+          "类型": "object",
+          "可选值": "—",
+          "默认值": "{ xl: 24, lg: 24, md: 24, sm: 24, sx: 24 };",
+          "template_name": "label-grid"
+        },
+        {
+          "参数": "content-grid",
+          "说明": "表单域内容断点栅格数（用法参考 Layout 的 col 控件）",
+          "类型": "object",
+          "可选值": "—",
+          "默认值": "{ xl: 24, lg: 24, md: 24, sm: 24, sx: 24 };",
+          "template_name": "content-grid"
+        },
+        {
+          "参数": "label-overflow-title",
+          "说明": "label 文字超长后，是否被隐藏且显示 title",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "label-overflow-title"
+        },
+        {
+          "参数": "gutter",
+          "说明": "表单项的间距，建议不要设置到 20 以下，否则错误信息可能会被遮挡",
+          "类型": "Number",
+          "可选值": "—",
+          "默认值": "无默认值，样式中控制默认间距为 24px",
+          "template_name": "gutter"
+        },
+        {
+          "参数": "validate-on-rule-change  2.0+",
+          "说明": "是否在 rules 属性改变后立即触发一次验证",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "validate-on-rule-change"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "validate  2.0+",
+          "说明": "任一表单项被校验后触发",
+          "回调参数": "被校验的表单项 prop 值，校验是否通过",
+          "template_name": "validate"
+        }
+      ],
+      "slots": [],
+      "methods": [
+        {
+          "方法名": "validate",
+          "说明": "对整个表单进行校验的方法",
+          "参数": "Function(callback: Function(boolean))",
+          "template_name": "validate"
+        },
+        {
+          "方法名": "validateField",
+          "说明": "对部分表单字段进行校验的方法",
+          "参数": "Function(prop: string, callback: Function(errorMessage: string))",
+          "template_name": "validate-field"
+        },
+        {
+          "方法名": "resetValidate  2.0+",
+          "说明": "移除某个字段的校验结果，重置规则",
+          "参数": "Function(prop: string, isResetRule: Boolean)",
+          "template_name": "reset-validate"
+        },
+        {
+          "方法名": "resetValidates",
+          "说明": "对整个表单的校验信息进行重置，移除所有校验结果",
+          "参数": "-",
+          "template_name": "reset-validates"
+        },
+        {
+          "方法名": "resetFields",
+          "说明": "对整个表单进行重置，将所有字段值重置为初始值并移除校验结果",
+          "参数": "(isEmpty) 接受一个参数，1. boolean 类型，若为 true 则清空所有字段，默认值为 false",
+          "template_name": "reset-fields"
+        },
+        {
+          "方法名": "focusFirstField  2.0+",
+          "说明": "将自动聚焦在第一个错误的表单项中（仅对el-input）有效",
+          "参数": "-",
+          "template_name": "focus-first-field"
+        }
+      ]
+    },
+    "el-form-item": {
+      "props": [
+        {
+          "参数": "prop",
+          "说明": "表单域 model 字段，在使用 validate、resetFields 方法的情况下，该属性是必填的",
+          "类型": "string",
+          "可选值": "传入 Form 组件的 model 中的字段",
+          "默认值": "—",
+          "template_name": "prop"
+        },
+        {
+          "参数": "disabled  2.0+",
+          "说明": "表单项内容是否为禁用状态（禁用状态下不会显示必填标识）",
+          "类型": "Boolean",
+          "可选值": "-",
+          "默认值": "false",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "label",
+          "说明": "标签文本",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "label"
+        },
+        {
+          "参数": "label-width",
+          "说明": "表单域标签的的宽度，例如 ‘50px’，可覆盖父控件的 label-width",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "label-width"
+        },
+        {
+          "参数": "content-width",
+          "说明": "表单域内容的的宽度，例如 ‘50px’，可覆盖父控件的 content-width",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "content-width"
+        },
+        {
+          "参数": "required",
+          "说明": "是否必填，如不设置，则会根据校验规则自动生成",
+          "类型": "bolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "required"
+        },
+        {
+          "参数": "required-right  2.61.3 移除",
+          "说明": "是否必填的星号是否显示在文字右侧  2.61.3  根据 label-position 属性自动调整位置",
+          "类型": "bolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "required-right"
+        },
+        {
+          "参数": "rules",
+          "说明": "表单验证规则",
+          "类型": "object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "rules"
+        },
+        {
+          "参数": "error",
+          "说明": "表单域验证错误信息, 设置该值会使表单验证状态变为error，并显示该错误信息",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "error"
+        },
+        {
+          "参数": "show-message",
+          "说明": "是否显示校验错误信息",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "show-message"
+        },
+        {
+          "参数": "introduction",
+          "说明": "表单项的介绍文字   2.61.3  根据 label-position 属性自动调整位置",
+          "类型": "string",
+          "可选值": "-",
+          "默认值": "‘’",
+          "template_name": "introduction"
+        },
+        {
+          "参数": "introduction-icon",
+          "说明": "介绍文字的响应图标",
+          "类型": "string",
+          "可选值": "-",
+          "默认值": "‘h-icon-help’",
+          "template_name": "introduction-icon"
+        },
+        {
+          "参数": "introduction-placement",
+          "说明": "介绍文字的出现位置",
+          "类型": "string",
+          "可选值": "top/top-start/top-end/bottom/bottom-start/bottom-end/left/left-start/left-end/right/right-start/right-end",
+          "默认值": "bottom",
+          "template_name": "introduction-placement"
+        },
+        {
+          "参数": "introduction-class",
+          "说明": "为介绍文字弹出框添加类名",
+          "类型": "string",
+          "可选值": "-",
+          "默认值": "-",
+          "template_name": "introduction-class"
+        },
+        {
+          "参数": "description",
+          "说明": "表单项描述信息",
+          "类型": "string",
+          "可选值": "-",
+          "默认值": "-",
+          "template_name": "description"
+        },
+        {
+          "参数": "description-render",
+          "说明": "表单项描述信息的渲染",
+          "类型": "Function",
+          "可选值": "-",
+          "默认值": "-",
+          "template_name": "description-render"
+        },
+        {
+          "参数": "item-group",
+          "说明": "是否作为群组 Item 的容器",
+          "类型": "Boolean",
+          "可选值": "-",
+          "默认值": "false",
+          "template_name": "item-group"
+        },
+        {
+          "参数": "label-grid",
+          "说明": "表单域标签断点栅格数，可覆盖父控件的 label-grid（用法参考 Layout 的 col 控件）",
+          "类型": "object",
+          "可选值": "—",
+          "默认值": "{ xl: 24, lg: 24, md: 24, sm: 24, sx: 24 };",
+          "template_name": "label-grid"
+        },
+        {
+          "参数": "content-grid",
+          "说明": "表单域内容断点栅格数，可覆盖父控件的 label-grid（用法参考 Layout 的 col 控件）",
+          "类型": "object",
+          "可选值": "—",
+          "默认值": "{ xl: 24, lg: 24, md: 24, sm: 24, sx: 24 };",
+          "template_name": "content-grid"
+        },
+        {
+          "参数": "before-validate",
+          "说明": "表单校验前的回调，返回 false 则不再进行校验，支持 promise。（入参：value，rules）",
+          "类型": "function",
+          "可选值": "—",
+          "默认值": "-",
+          "template_name": "before-validate"
+        },
+        {
+          "参数": "show-ellipsis",
+          "说明": "表单错误信息省略显示",
+          "类型": "boolean",
+          "可选值": "-",
+          "默认值": "false",
+          "template_name": "show-ellipsis"
+        }
+      ],
+      "events": [],
+      "slots": [
+        {
+          "name": "—",
+          "说明": "Form Item 的内容",
+          "template_name": "—"
+        },
+        {
+          "name": "label",
+          "说明": "标签文本的内容",
+          "template_name": "label"
+        },
+        {
+          "name": "introduction  2.0+",
+          "说明": "解释说明文本",
+          "template_name": "introduction"
+        }
+      ],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

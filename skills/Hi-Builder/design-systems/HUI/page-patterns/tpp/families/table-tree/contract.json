@@ -1,0 +1,104 @@
+{
+  "schema_version": "hui-page-pattern.v1",
+  "id": "hui.tpp.family.table-tree",
+  "name": "树表格页",
+  "source": {
+    "platform": "HUI-VUE典型页面",
+    "observed_at": "2026-07-31",
+    "catalog": "../../catalog.json"
+  },
+  "match": [
+    "tree-table",
+    "带树控件",
+    "树控件表格"
+  ],
+  "semantics": [
+    "tree-sidebar",
+    "optional-tabs",
+    "data-table",
+    "pagination"
+  ],
+  "shared_runtime_components": [
+    "el-button",
+    "el-divider",
+    "el-form",
+    "el-form-item",
+    "el-input",
+    "el-option",
+    "el-pagination",
+    "el-radio-button",
+    "el-radio-group",
+    "el-scrollbar",
+    "el-select",
+    "el-table",
+    "el-table-column",
+    "el-tooltip",
+    "h-icon"
+  ],
+  "invariants": {
+    "regions": {
+      "search": {
+        "display": "block",
+        "position": "static",
+        "padding": "16px 0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 109
+      },
+      "toolbar": {
+        "display": "flex",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 56
+      },
+      "table": {
+        "display": "flex",
+        "position": "relative",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "hidden",
+        "overflow_y": "hidden"
+      },
+      "pagination": {
+        "display": "flex",
+        "position": "static",
+        "padding": "0px 12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 56
+      }
+    },
+    "variant_values_must_come_from_page_contract": true
+  },
+  "variants": [
+    {
+      "id": "hui.tpp.page.table.tree-only",
+      "name": "树控件",
+      "contract": "../../pages/table/tree-only.json",
+      "parameters": {
+        "tab_style": "none"
+      }
+    },
+    {
+      "id": "hui.tpp.page.table.tree-with-linear-tabs",
+      "name": "树控件+线性标签页",
+      "contract": "../../pages/table/tree-with-linear-tabs.json",
+      "parameters": {
+        "tab_style": "linear"
+      }
+    },
+    {
+      "id": "hui.tpp.page.table.tree-with-card-tabs",
+      "name": "树控件+卡式标签页",
+      "contract": "../../pages/table/tree-with-card-tabs.json",
+      "parameters": {
+        "tab_style": "card"
+      }
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 63.1 (92452) - https://sketch.com -->
+    <title>logo</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <linearGradient x1="50%" y1="0%" x2="50%" y2="100%" id="linearGradient-1">
+            <stop stop-color="#FFDC09" offset="0%"></stop>
+            <stop stop-color="#FFB502" offset="100%"></stop>
+        </linearGradient>
+    </defs>
+    <g id="logo" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <path d="M52,11 L76,25 L76,52.9824792 L46,70 L46,60.5 L68,48 L68,29.5 L44,15.5 L52,11 Z M28,11 L54,25.75 L54,49.25 L46,54 L46,30.5 L39.99,27.077 L34,30.5 L34,69.875 L26,65.2487113 L26,65.219 L4,52.5 L4,24.75 L28,11 Z M28,20.25 L12,29.625 L12,48 L26,56.105 L26,26 L32.039,22.549 L28,20.25 Z" id="形状结合备份" fill="url(#linearGradient-1)" fill-rule="nonzero"></path>
+    </g>
+</svg>

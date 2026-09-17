@@ -1,0 +1,8 @@
+{
+  "schema_version": "d2c-zone.v1",
+  "id": "event.results",
+  "name": "事件结果区域",
+  "description": "展示事件查询结果及行级操作",
+  "use_when": ["页面呈现事件列表或事件卡片集合"],
+  "owner": "hui-common"
+}

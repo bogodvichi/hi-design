@@ -1,0 +1,130 @@
+{
+  "schema_version": "hui-page-variant.v1",
+  "id": "hui.tpp.page.details.fixed-width",
+  "name": "容器定宽",
+  "family": "hui.tpp.family.details-basic",
+  "source": {
+    "url": "http://tpp.dev.hikhub.net/tpp#/pages/details/fixedWidth",
+    "package": "@hiktpp/details-fixedWidth",
+    "hui_version": "^2.55.0",
+    "observed_at": "2026-08-14",
+    "evidence": "../../evidence/details/fixed-width.json"
+  },
+  "parameters": {
+    "container_width": "fixed",
+    "container_width_px": 1280,
+    "group_count": 4,
+    "description_columns": 4,
+    "description_item_count": 18,
+    "embedded_tables": ["key-value", "data-table"],
+    "data_rows_per_page": 20,
+    "pagination": true
+  },
+  "geometry": {
+    "viewport": {"width": 1728, "height": 935},
+    "root": {
+      "class": "h-page-content form-area is-flex is-align-center",
+      "rect": {"x": 240, "y": 102.25, "width": 1488, "height": 832.75},
+      "style": {
+        "display": "flex",
+        "padding": "16px 16px 0px",
+        "overflow": "visible"
+      }
+    },
+    "key_regions": {
+      "scrollbar": {
+        "class": "form-area__scrollbar",
+        "rect": {"x": 344, "y": 118.25, "width": 1280, "height": 816.75},
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "content": {
+        "class": "form-area__content",
+        "rect": {"x": 344, "y": 118.25, "width": 1280, "height": 1712},
+        "display": "block",
+        "position": "static",
+        "padding": "48px 80px 58px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "groups": {
+        "class": "form-area__group",
+        "rect": {"x": 424, "y": 166.25, "width": 1120, "height": 1606},
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "detail_grid": {
+        "class": "card-details",
+        "rect": {"x": 424, "y": 206.25, "width": 1120, "height": 216},
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "key_value_table": {
+        "class": "el-table el-table--border",
+        "rect": {"x": 425, "y": 667.25, "width": 1118, "height": 120},
+        "display": "flex",
+        "position": "relative",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "hidden",
+        "overflow_y": "hidden"
+      },
+      "data_table": {
+        "class": "el-table",
+        "rect": {"x": 424, "y": 876.25, "width": 1120, "height": 840},
+        "display": "flex",
+        "position": "relative",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "hidden",
+        "overflow_y": "hidden"
+      },
+      "pagination": {
+        "class": "el-pagination el-pagination--table",
+        "rect": {"x": 424, "y": 1716.25, "width": 1120, "height": 56},
+        "display": "flex",
+        "position": "static",
+        "padding": "0px 12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      }
+    }
+  },
+  "composition": {
+    "hui_components": {
+      "el-scrollbar": 5,
+      "el-breadcrumb": 1,
+      "el-breadcrumb-item": 3,
+      "el-menu": 1,
+      "el-submenu": 7,
+      "el-menu-item": 14,
+      "el-tag": 3,
+      "el-table": 2,
+      "el-pagination": 1,
+      "el-select": 1,
+      "el-input": 2,
+      "el-button": 7
+    },
+    "page_framework_components": {
+      "h-page-content": 1
+    },
+    "unindexed_runtime_components": {},
+    "actions": [
+      {"label": "跳转", "count": 1}
+    ]
+  }
+}

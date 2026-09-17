@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hi-design.tpp-page-intent.v1",
+  "title": "TPP Page Intent",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "page_kind", "semantic_family", "features"],
+  "properties": {
+    "schema_version": {"const": "tpp-page-intent.v1"},
+    "page_kind": {"enum": ["table", "form", "card", "details"]},
+    "semantic_family": {"type": "string", "pattern": "^(table|form|card|details)-[a-z0-9-]+$"},
+    "features": {"type": "object"}
+  }
+}

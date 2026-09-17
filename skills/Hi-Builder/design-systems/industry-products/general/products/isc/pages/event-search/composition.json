@@ -1,0 +1,204 @@
+{
+  "schema_version": "page-composition.v1",
+  "id": "general.isc.page.event-search",
+  "extends": "hui.page-pattern.list-search",
+  "page_type": "event-search",
+  "renderer": "hui.list-search",
+  "classification_modes": [
+    {
+      "label": "按事件类型",
+      "value": "type"
+    },
+    {
+      "label": "按事件规则名称",
+      "value": "rule"
+    }
+  ],
+  "geometry_roles": {
+    "event-type-sidebar-width": "256px",
+    "event-type-item-height": "36px"
+  },
+  "zones": {
+    "portal.header": [
+      "portal.global-header"
+    ],
+    "portal.sidebar": [
+      "portal.app-sidebar"
+    ],
+    "event.classification": [
+      "navigation.classification-panel"
+    ],
+    "event.filter": [
+      "filter.search-form"
+    ],
+    "page.actions": [
+      "toolbar.action-toolbar"
+    ],
+    "event.results": [
+      "table.data-table",
+      "collection.card-grid"
+    ],
+    "page.pagination": [
+      "pagination.page-navigation"
+    ]
+  },
+  "filter_fields": {
+    "area": {
+      "label": "所在区域",
+      "kind": "select",
+      "model": "area",
+      "source": "areas",
+      "visibility": "always"
+    },
+    "device-type": {
+      "label": "设备类型",
+      "kind": "select",
+      "model": "deviceType",
+      "source": "deviceTypes",
+      "visibility": "always"
+    },
+    "level": {
+      "label": "事件等级",
+      "kind": "select",
+      "model": "level",
+      "source": "levels",
+      "visibility": "always"
+    },
+    "status": {
+      "label": "处理状态",
+      "kind": "select",
+      "model": "status",
+      "source": "statuses",
+      "visibility": "expanded"
+    },
+    "source": {
+      "label": "事件源（设备）",
+      "kind": "input",
+      "model": "source",
+      "placeholder": "请输入设备名称/编号",
+      "icon": "h-icon-search",
+      "visibility": "expanded"
+    },
+    "time": {
+      "label": "事件时间",
+      "kind": "datetime-range",
+      "model": "time",
+      "visibility": "expanded"
+    }
+  },
+  "toolbar_actions": {
+    "export": {
+      "label": "导出",
+      "type": "text",
+      "size": "small",
+      "icon": "h-icon-export",
+      "event": "exportEvents"
+    },
+    "confirm": {
+      "label": "标记为已确认",
+      "type": "text",
+      "size": "small",
+      "icon": "h-icon-enable",
+      "disabled": "selectedIds.length === 0",
+      "event": "confirmSelected"
+    }
+  },
+  "table_columns": {
+    "selection": {
+      "kind": "selection"
+    },
+    "event-type": {
+      "kind": "plain",
+      "prop": "type",
+      "label": "事件类型",
+      "min_width": "120"
+    },
+    "time": {
+      "kind": "plain",
+      "prop": "time",
+      "label": "时间",
+      "min_width": "160"
+    },
+    "area": {
+      "kind": "plain",
+      "prop": "area",
+      "label": "所在区域",
+      "min_width": "130"
+    },
+    "source": {
+      "kind": "plain",
+      "prop": "source",
+      "label": "事件源（设备）",
+      "min_width": "190"
+    },
+    "level": {
+      "kind": "class",
+      "prop": "level",
+      "label": "事件等级",
+      "width": "90",
+      "class_method": "levelClass"
+    },
+    "status": {
+      "kind": "class",
+      "prop": "status",
+      "label": "确认状态",
+      "width": "90",
+      "class_method": "statusClass"
+    },
+    "confirm-detail": {
+      "kind": "plain",
+      "prop": "confirmDetail",
+      "label": "确认详情",
+      "min_width": "160"
+    },
+    "actions": {
+      "kind": "actions",
+      "label": "操作",
+      "width": "120",
+      "fixed": "right"
+    }
+  },
+  "row_actions": {
+    "detail": {
+      "label": "详情",
+      "type": "link",
+      "size": "mini",
+      "event": "showDetail"
+    },
+    "handle": {
+      "label": "处置",
+      "type": "link",
+      "size": "mini",
+      "event": "handleEvent"
+    }
+  },
+  "card_fields": {
+    "time": {
+      "label": "时间",
+      "prop": "time"
+    },
+    "area": {
+      "label": "所在区域",
+      "prop": "area"
+    },
+    "source": {
+      "label": "事件源",
+      "prop": "source"
+    },
+    "status": {
+      "label": "确认状态",
+      "prop": "status",
+      "class_method": "statusClass"
+    },
+    "confirm-detail": {
+      "label": "确认详情",
+      "prop": "confirmDetail"
+    }
+  },
+  "extensions": {
+    "summary-strip": {
+      "placement": "after-toolbar",
+      "component": "extension.summary_strip"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "schema_version": "d2c-zone.v1",
+  "id": "event.filter",
+  "name": "事件筛选区域",
+  "description": "根据事件业务字段筛选事件集合",
+  "use_when": ["事件列表需要组合查询条件"],
+  "owner": "hui-common"
+}

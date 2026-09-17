@@ -1,0 +1,49 @@
+{
+  "schema_version": "hui-contract-mapping.v1",
+  "batch": "notice",
+  "components": {
+    "alert": {
+      "runtime": {
+        "el-alert": {
+          "props": ["属性"],
+          "slots": ["插槽"],
+          "events": ["事件"]
+        }
+      }
+    },
+    "loading": {
+      "contract_kind": "directive-and-service",
+      "runtime": {
+        "v-loading": {
+          "props": ["属性"]
+        }
+      }
+    },
+    "message": {
+      "contract_kind": "service",
+      "runtime": {
+        "$message": {
+          "props": ["Options"],
+          "methods": ["方法"]
+        }
+      }
+    },
+    "message-box": {
+      "contract_kind": "service",
+      "runtime": {
+        "$message-box": {
+          "props": ["Options"]
+        }
+      }
+    },
+    "notification": {
+      "contract_kind": "service",
+      "runtime": {
+        "$notify": {
+          "props": ["Options"],
+          "methods": ["方法"]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,182 @@
+{
+  "schema_version": "hui-page-variant.v1",
+  "id": "hui.tpp.page.form.work-order-form",
+  "name": "工单表单",
+  "family": "hui.tpp.family.form-complex",
+  "source": {
+    "url": "http://tpp.dev.hikhub.net/tpp#/pages/form/workOrderForm",
+    "package": "@hiktpp/form-workOrderForm",
+    "hui_version": "^2.55.0",
+    "observed_at": "2026-07-31",
+    "evidence": "../../evidence/form/work-order-form.json"
+  },
+  "parameters": {
+    "complexity": "workflow",
+    "steps_direction": "vertical",
+    "steps_form_gap": "48px",
+    "embedded_regions": [
+      "table",
+      "tabs",
+      "step-actions"
+    ],
+    "default_label_position": null
+  },
+  "geometry": {
+    "viewport": {
+      "width": 1920,
+      "height": 968
+    },
+    "root": {
+      "class": "h-page-content form-area is-flex is-align-center",
+      "rect": {
+        "x": 240,
+        "y": 205.78,
+        "width": 1680,
+        "height": 762.22
+      },
+      "style": {
+        "display": "flex",
+        "padding": "16px 16px 0px",
+        "overflow": "visible"
+      }
+    },
+    "key_regions": {
+      "content_head": {
+        "class": "form-area__content-head",
+        "rect": {
+          "x": 360,
+          "y": 221.78,
+          "width": 1440,
+          "height": 64
+        },
+        "display": "flex",
+        "position": "static",
+        "padding": "18px 80px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "content": {
+        "class": "form-area__content",
+        "rect": {
+          "x": 360,
+          "y": 285.78,
+          "width": 1440,
+          "height": 1680
+        },
+        "display": "flex",
+        "position": "static",
+        "padding": "24px 80px 58px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "form": {
+        "class": "el-form el-form--label-top",
+        "rect": {
+          "x": 440,
+          "y": 309.78,
+          "width": 1280,
+          "height": 1598
+        },
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "footer": {
+        "class": "form-area__footer",
+        "rect": {
+          "x": 360,
+          "y": 911,
+          "width": 1440,
+          "height": 57
+        },
+        "display": "flex",
+        "position": "sticky",
+        "padding": "12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "tabs": {
+        "class": "el-tabs el-tabs--top el-tabs--border-card",
+        "rect": {
+          "x": 440,
+          "y": 685.78,
+          "width": 1280,
+          "height": 1222
+        },
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      }
+    }
+  },
+  "composition": {
+    "hui_components": {
+      "el-scrollbar": 11,
+      "el-form": 1,
+      "el-input": 13,
+      "el-radio-group": 4,
+      "el-radio": 12,
+      "el-select": 7,
+      "el-tag": 120,
+      "el-option": 40,
+      "el-checkbox": 28,
+      "h-svg-icon": 28,
+      "el-tabs": 1,
+      "el-tab-pane": 3,
+      "el-button": 204,
+      "el-table": 3,
+      "el-table-column": 27,
+      "el-tooltip": 27,
+      "el-pagination": 3
+    },
+    "page_framework_components": {
+      "h-page-content": 1
+    },
+    "unindexed_runtime_components": {
+      "el-select-menu": 7
+    },
+    "actions": [
+      {
+        "label": "添加",
+        "count": 3
+      },
+      {
+        "label": "删除",
+        "count": 65
+      },
+      {
+        "label": "编辑",
+        "count": 62
+      },
+      {
+        "label": "更多",
+        "count": 62
+      },
+      {
+        "label": "跳转",
+        "count": 3
+      },
+      {
+        "label": "上一步",
+        "count": 1
+      },
+      {
+        "label": "下一步",
+        "count": 1
+      },
+      {
+        "label": "取消",
+        "count": 1
+      }
+    ]
+  }
+}

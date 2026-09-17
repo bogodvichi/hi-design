@@ -1,0 +1,120 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "alert",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/notice/alert",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/notice.docs.json",
+    "evidence_sha256": "917ae2b786922adf7a8f4f7b61892dbcb24175deb5c2a74463c784655f45667b"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-alert": {
+      "props": [
+        {
+          "参数": "title",
+          "说明": "标题",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "title"
+        },
+        {
+          "参数": "type",
+          "说明": "主题",
+          "类型": "string",
+          "可选值": "success/warning/info/error",
+          "默认值": "info",
+          "template_name": "type"
+        },
+        {
+          "参数": "description",
+          "说明": "辅助性文字。也可通过默认 slot 传入",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "description"
+        },
+        {
+          "参数": "simple",
+          "说明": "是否启用简单模式",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "simple"
+        },
+        {
+          "参数": "closable",
+          "说明": "是否可关闭",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "closable"
+        },
+        {
+          "参数": "center",
+          "说明": "是否居中显示文本",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "center"
+        },
+        {
+          "参数": "close-text",
+          "说明": "关闭按钮自定义文本",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "close-text"
+        },
+        {
+          "参数": "close-icon",
+          "说明": "自定义关闭按钮图标",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "close-icon"
+        },
+        {
+          "参数": "show-icon",
+          "说明": "是否显示图标",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "show-icon"
+        },
+        {
+          "参数": "icon",
+          "说明": "自定义图标",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "icon"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "close",
+          "说明": "关闭alert时触发的事件",
+          "回调参数": "—",
+          "template_name": "close"
+        }
+      ],
+      "slots": [
+        {
+          "Name": "title",
+          "Description": "标题的内容",
+          "template_name": "title"
+        },
+        {
+          "Name": "footer",
+          "Description": "底部插槽",
+          "template_name": "footer"
+        }
+      ],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

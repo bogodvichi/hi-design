@@ -1,0 +1,15 @@
+{
+  "schema_version": "hui-page-pattern.v1",
+  "id": "hui.tpp.family.details-anchored",
+  "name": "带锚点详情页",
+  "source": {"platform": "HUI-VUE典型页面", "observed_at": "2026-08-14", "catalog": "../../catalog.json"},
+  "match": ["anchored-details", "带锚点详情", "横向锚点详情", "常驻锚点详情", "可收起锚点详情"],
+  "semantics": ["section-anchor-navigation", "person-summary", "anchored-detail-sections"],
+  "shared_runtime_components": ["el-pagination", "el-table", "el-tag"],
+  "invariants": {"evidence_scope": "three-verified-anchor-modes", "anchor_count": 3, "anchor_mode_and_position_are_variant_values": true, "variant_values_must_come_from_page_contract": true},
+  "variants": [
+    {"id": "hui.tpp.page.details.horizontal-anchor-point", "name": "横向锚点", "contract": "../../pages/details/horizontal-anchor-point.json", "parameters": {"anchor_mode": "horizontal-tabs", "anchor_position": "sticky-top", "anchor_count": 3, "anchor_width_px": 1120, "anchor_height_px": 55}},
+    {"id": "hui.tpp.page.details.resident-anchor-point", "name": "常驻锚点", "contract": "../../pages/details/resident-anchor-point.json", "parameters": {"anchor_mode": "resident", "anchor_position": "right", "anchor_count": 3, "content_width_px": 1275.53, "reserved_width_px": 180.47, "text_align": "left"}},
+    {"id": "hui.tpp.page.details.retracted-anchor-point", "name": "可收起锚点", "contract": "../../pages/details/retracted-anchor-point.json", "parameters": {"anchor_mode": "foldable", "anchor_position": "right", "anchor_count": 3, "default_state": "folded", "content_width_px": 1456}}
+  ]
+}

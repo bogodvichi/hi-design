@@ -1,0 +1,13 @@
+{
+  "schema_version": "hui-page-pattern.v1",
+  "id": "hui.tpp.family.details-simulation-file",
+  "name": "仿真文件详情页",
+  "source": {"platform": "HUI-VUE典型页面", "observed_at": "2026-08-14", "catalog": "../../catalog.json"},
+  "match": ["simulation-file-details", "仿真文件详情"],
+  "semantics": ["document-like-detail", "key-value-grid", "signature-and-attachments"],
+  "shared_runtime_components": [],
+  "invariants": {"evidence_scope": "single-verified-variant", "variant_values_must_come_from_page_contract": true},
+  "variants": [
+    {"id": "hui.tpp.page.details.simulation-file", "name": "仿真文件", "contract": "../../pages/details/simulation-file.json", "parameters": {"container_width_px": 1280, "document_width_px": 1120, "key_label_width_px": 220, "two_pair_row_value_width_px": 340, "full_row_value_width_px": 900, "signature_section": true, "attachment_section": true}}
+  ]
+}

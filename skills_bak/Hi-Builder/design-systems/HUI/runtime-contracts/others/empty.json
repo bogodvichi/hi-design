@@ -1,0 +1,83 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "empty",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/others/empty",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/others.docs.json",
+    "evidence_sha256": "f150a2630aef3c6508a028b85a5e004a26036cac12218f39bbe7388c02099e11"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-empty": {
+      "props": [
+        {
+          "参数": "image",
+          "说明": "图片地址",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "image"
+        },
+        {
+          "参数": "image-size",
+          "说明": "图片大小（宽度）",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "image-size"
+        },
+        {
+          "参数": "description",
+          "说明": "文本描述",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "description"
+        },
+        {
+          "参数": "scene",
+          "说明": "使用场景",
+          "类型": "string",
+          "可选值": "page/container/text",
+          "默认值": "container",
+          "template_name": "scene"
+        },
+        {
+          "参数": "size",
+          "说明": "大小（只在scene是container时生效）",
+          "类型": "string",
+          "可选值": "sm/md/fit",
+          "默认值": "md",
+          "template_name": "size"
+        }
+      ],
+      "events": [],
+      "slots": [
+        {
+          "Name": "default",
+          "说明": "自定义底部内容",
+          "template_name": "default"
+        },
+        {
+          "Name": "image",
+          "说明": "自定义图片",
+          "template_name": "image"
+        },
+        {
+          "Name": "title",
+          "说明": "自定义标题",
+          "template_name": "title"
+        },
+        {
+          "Name": "description",
+          "说明": "自定义描述文字",
+          "template_name": "description"
+        }
+      ],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

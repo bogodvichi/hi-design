@@ -1,0 +1,124 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "breadcrumb",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/navigation/breadcrumb",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/navigation.docs.json",
+    "evidence_sha256": "e10ef37ba907910b3f0d40d9a0892b99ace9f2c5ad09cbd0ebf3bf440a34925a"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-breadcrumb": {
+      "props": [
+        {
+          "参数": "separator",
+          "说明": "分隔符",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "斜杠’/’",
+          "template_name": "separator"
+        },
+        {
+          "参数": "separator-class  2.0+",
+          "说明": "分隔图标。设置值后，separator 失效",
+          "类型": "string",
+          "可选值": "-",
+          "默认值": "",
+          "template_name": "separator-class"
+        },
+        {
+          "参数": "item-max-width  2.0.33+",
+          "说明": "面包屑子项最大宽度，会被子项的 max-width 覆盖",
+          "类型": "string",
+          "可选值": "-",
+          "默认值": "",
+          "template_name": "item-max-width"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    },
+    "el-breadcrumb-item": {
+      "props": [
+        {
+          "参数": "to",
+          "说明": "路由跳转对象，同 vue-router 的 to",
+          "类型": "string/object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "to"
+        },
+        {
+          "参数": "item-click",
+          "说明": "item 点击事件，先执行 item，但不会影响 to 的跳转",
+          "类型": "Function",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "item-click"
+        },
+        {
+          "参数": "replace",
+          "说明": "在使用 to 进行路由跳转时，启用 replace 将不会向 history 添加新记录",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "replace"
+        },
+        {
+          "参数": "type  2.0+",
+          "说明": "新增,用于设置隐藏元素的展示形式",
+          "类型": "string",
+          "可选值": "tooltip/popover",
+          "默认值": "-",
+          "template_name": "type"
+        },
+        {
+          "参数": "max-width  2.0.33+",
+          "说明": "最大宽度",
+          "类型": "string",
+          "可选值": "-",
+          "默认值": "",
+          "template_name": "max-width"
+        },
+        {
+          "参数": "sub-max-width  2.0.33+",
+          "说明": "被收起的面包屑子项最大宽度，会被收起子项的 max-width 覆盖",
+          "类型": "string",
+          "可选值": "-",
+          "默认值": "",
+          "template_name": "sub-max-width"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    },
+    "el-breadcrumb-sub-item": {
+      "props": [
+        {
+          "参数": "to",
+          "说明": "路由跳转对象，同 vue-router 的 to",
+          "类型": "string/object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "to"
+        },
+        {
+          "参数": "max-width  2.0.33+",
+          "说明": "最大宽度",
+          "类型": "string",
+          "可选值": "-",
+          "默认值": "",
+          "template_name": "max-width"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

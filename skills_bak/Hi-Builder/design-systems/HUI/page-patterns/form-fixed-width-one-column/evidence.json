@@ -1,0 +1,73 @@
+{
+  "schema_version": "browser-evidence.v1",
+  "source_url": "http://tpp.dev.hikhub.net/tpp#/pages/form/fixedWidth1Column",
+  "viewport": {
+    "width": 1920,
+    "height": 968
+  },
+  "default_state": {
+    "container_width_mode": "md",
+    "label_variant": "top"
+  },
+  "measurements": {
+    "page_content": {
+      "x": 240,
+      "y": 102,
+      "width": 1680,
+      "height": 866,
+      "padding": "16px 16px 0px"
+    },
+    "md_content_card": {
+      "x": 440,
+      "width": 1280,
+      "padding": "48px 80px 58px"
+    },
+    "lg_content_card": {
+      "x": 360,
+      "width": 1440
+    },
+    "max_content_card": {
+      "x": 256,
+      "width": 1648
+    },
+    "top_label_form": {
+      "x": 880,
+      "width": 400,
+      "label_height": 24,
+      "label_control_gap": 4,
+      "control_width": 400,
+      "control_height": 32,
+      "form_item_margin_bottom": 24
+    },
+    "left_label_form": {
+      "x": 824,
+      "width": 512,
+      "label_width": 112,
+      "label_padding": "4px 16px 4px 0px",
+      "control_width": 400
+    },
+    "footer": {
+      "position": "sticky",
+      "height": 57,
+      "padding": 12,
+      "border_top": "1px",
+      "alignment": "center"
+    },
+    "footer_actions": {
+      "submit_width": 96,
+      "cancel_width": 96,
+      "gap": 8,
+      "height": 32
+    }
+  },
+  "observed_controls": [
+    "text-input",
+    "multiple-select-collapse-tags",
+    "switch",
+    "radio-group",
+    "slider-with-number-input",
+    "input-number",
+    "field-introduction",
+    "persistent-description"
+  ]
+}

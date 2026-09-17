@@ -1,0 +1,54 @@
+{
+  "卡片组": [
+    {
+      "cover": "https://pixso.hikvision.com.cn/api/pix/component/0Q8ww2CiUuY-vb3gV0G2yUlezcE12/thumb?timestamp=1765436910",
+      "componentName": "卡片/人员抓拍信息",
+      "componentId": "d10f30c360a252e63ebdbde05741b6c9495ecdc1"
+    },
+    {
+      "cover": "https://pixso.hikvision.com.cn/api/pix/component/xNc5TYRl6w3kWHe5l82LuJOAJ_w12/thumb?timestamp=1765436910",
+      "componentName": "卡片/车辆抓拍信息",
+      "componentId": "c4d7394d8465eb0de45877b997cd8bb8938027fc"
+    },
+    {
+      "cover": "https://pixso.hikvision.com.cn/api/pix/component/Uwm7a1S0DpQKUMmEmpmKPmM5Rug12/thumb?timestamp=1765436910",
+      "componentName": "卡片/抓拍对比",
+      "componentId": "5309bb6b54b40e940a50c9849a998a3e633946e8"
+    },
+    {
+      "cover": "https://pixso.hikvision.com.cn/api/pix/component/SItJX95KOviXT2Pt_dLeYdu3rQI12/thumb?timestamp=1765436910",
+      "componentName": "卡片/纯文本/短",
+      "componentId": "488b495fde4a3af8974f63edfdd2de61dbb7ad02"
+    },
+    {
+      "cover": "https://pixso.hikvision.com.cn/api/pix/component/WfAdw8IGVIyXUZnsI80FS1znkps12/thumb?timestamp=1765436910",
+      "componentName": "卡片/车辆抓拍",
+      "componentId": "59f01dc3c206548c975199ec23cd054b5ce7929b"
+    },
+    {
+      "cover": "https://pixso.hikvision.com.cn/api/pix/component/9UhyA6_-riGVobs8rLUoJUVTmlI12/thumb?timestamp=1765436910",
+      "componentName": "卡片/人员抓拍",
+      "componentId": "f5487203affeae2195a1bb3cacb5282545539a52"
+    },
+    {
+      "cover": "https://pixso.hikvision.com.cn/api/pix/component/h8uiRj-MnOcix9sL9K2tFEDLEgo12/thumb?timestamp=1765436910",
+      "componentName": "卡片/人员抓拍+操作",
+      "componentId": "87cba2463f8c9ce722c7db0bf4adad1440cb120a"
+    },
+    {
+      "cover": "https://pixso.hikvision.com.cn/api/pix/component/VrSbeXIe6SHdPi9vAXEhpw7F7LU12/thumb?timestamp=1765436910",
+      "componentName": "卡片/人员抓拍横向",
+      "componentId": "56b49b79721ee921dd3e2f6f017121a70ec5ecb5"
+    },
+    {
+      "cover": "https://pixso.hikvision.com.cn/api/pix/component/2QR6IA8xdWZjF30-4agVb44BavQ12/thumb?timestamp=1765436910",
+      "componentName": "卡片/人员抓拍横向+操作",
+      "componentId": "d9047a200f31756663177d3ee1a8156f8e016af4"
+    },
+    {
+      "cover": "https://pixso.hikvision.com.cn/api/pix/component/CBIl5vja5xMi1sAC_gzzwBB6trY12/thumb?timestamp=1765436910",
+      "componentName": "卡片/纯文本/长",
+      "componentId": "081225e6f8dae71322d6c002fe0cf3c0107ab6b6"
+    }
+  ]
+}

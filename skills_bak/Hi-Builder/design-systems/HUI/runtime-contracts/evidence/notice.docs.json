@@ -1,0 +1,650 @@
+{
+  "observedAt": "2026-07-31",
+  "items": [
+    {
+      "id": "alert",
+      "path": "/hui/components/notice/alert",
+      "tables": [
+        {
+          "heading": "属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "title",
+              "标题",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "type",
+              "主题",
+              "string",
+              "success/warning/info/error",
+              "info"
+            ],
+            [
+              "description",
+              "辅助性文字。也可通过默认 slot 传入",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "simple",
+              "是否启用简单模式",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "closable",
+              "是否可关闭",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "center",
+              "是否居中显示文本",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "close-text",
+              "关闭按钮自定义文本",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "close-icon",
+              "自定义关闭按钮图标",
+              "String",
+              "—",
+              "—"
+            ],
+            [
+              "show-icon",
+              "是否显示图标",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "icon",
+              "自定义图标",
+              "String",
+              "—",
+              "—"
+            ]
+          ]
+        },
+        {
+          "heading": "插槽 #",
+          "headers": [
+            "Name",
+            "Description"
+          ],
+          "rows": [
+            [
+              "title",
+              "标题的内容"
+            ],
+            [
+              "footer",
+              "底部插槽"
+            ]
+          ]
+        },
+        {
+          "heading": "事件 #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "close",
+              "关闭alert时触发的事件",
+              "—"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "loading",
+      "path": "/hui/components/notice/loading",
+      "tables": [
+        {
+          "heading": "属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "target",
+              "Loading 需要覆盖的 DOM 节点。可传入一个 DOM 对象或字符串；若传入字符串，则会将其作为参数传入 document.querySelector以获取到对应 DOM 节点",
+              "object/string",
+              "—",
+              "document.body"
+            ],
+            [
+              "body",
+              "同 v-loading 指令中的 body 修饰符",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "fullscreen",
+              "同 v-loading 指令中的 fullscreen 修饰符",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "lock",
+              "同 v-loading 指令中的 lock 修饰符",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "text",
+              "显示在加载图标下方的加载文案",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "customClass",
+              "Loading 的自定义类名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "small/mini/large",
+              "v-loading 指令中的修饰符, 分别对应的 icon 大小为 16/24/80",
+              "boolean",
+              "—",
+              "40"
+            ],
+            [
+              "size",
+              "传入的 size 尺寸",
+              "string",
+              "large,small,mini",
+              "40"
+            ],
+            [
+              "primary/gray",
+              "v-loading 指令中的修饰符, 指示 loading 的颜色",
+              "boolean",
+              "-",
+              "primary"
+            ],
+            [
+              "color",
+              "传入的颜色",
+              "string",
+              "primary,gray",
+              "primary"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "message",
+      "path": "/hui/components/notice/message",
+      "tables": [
+        {
+          "heading": "Options #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "message",
+              "消息文字",
+              "string / VNode",
+              "—",
+              "—"
+            ],
+            [
+              "type",
+              "主题",
+              "string",
+              "success/warning/info/error",
+              "info"
+            ],
+            [
+              "iconClass",
+              "自定义图标的类名，会覆盖 type",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "dangerouslyUseHTMLString  2.0+",
+              "是否将 message 属性作为 HTML 片段处理",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "customClass",
+              "自定义类名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "duration",
+              "显示时间, 毫秒。设为 0 则不会自动关闭",
+              "number",
+              "—",
+              "3000"
+            ],
+            [
+              "showClose",
+              "是否显示关闭按钮",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "onClose",
+              "关闭时的回调函数, 参数为被关闭的 message 实例",
+              "function",
+              "—",
+              "—"
+            ]
+          ]
+        },
+        {
+          "heading": "方法 #",
+          "headers": [
+            "方法名",
+            "说明"
+          ],
+          "rows": [
+            [
+              "close",
+              "关闭当前的 Message"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "message-box",
+      "path": "/hui/components/notice/message-box",
+      "tables": [
+        {
+          "heading": "Options #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "title",
+              "MessageBox 标题",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "message (confirm中的message参数,2.0版本中已去除)  非兼容",
+              "MessageBox 消息正文内容",
+              "string / VNode",
+              "—",
+              "—"
+            ],
+            [
+              "dangerouslyUseHTMLString",
+              "是否将 message 属性作为 HTML 片段处理",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "type",
+              "消息类型，用于显示图标",
+              "string",
+              "success/info/warning/question/error",
+              "—"
+            ],
+            [
+              "size  2.0+",
+              "尺寸",
+              "string",
+              "small/middle/large",
+              "small"
+            ],
+            [
+              "customClass",
+              "MessageBox 的自定义类名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "onConfirm  2.8.0+",
+              "MessageBox 的确认回调",
+              "function(action)",
+              "—",
+              "—"
+            ],
+            [
+              "onCancel  2.8.0+",
+              "MessageBox 的取消回调",
+              "function(action)",
+              "—",
+              "—"
+            ],
+            [
+              "callback",
+              "若不使用 Promise，可以使用此参数指定 MessageBox 关闭后的回调",
+              "function(action, instance)，action 的值为’confirm’或’cancel’, instance 为 MessageBox 实例，可以通过它访问实例上的属性和方法",
+              "—",
+              "—"
+            ],
+            [
+              "beforeClose",
+              "MessageBox 关闭前的回调，会暂停实例的关闭",
+              "function(action, instance, done)，action 的值为’confirm’或’cancel’；instance 为 MessageBox 实例，可以通过它访问实例上的属性和方法；done 用于关闭 MessageBox 实例",
+              "—",
+              "—"
+            ],
+            [
+              "lockScroll",
+              "是否在 MessageBox 出现时将 body 滚动锁定",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "showCancelButton",
+              "是否显示取消按钮",
+              "boolean",
+              "—",
+              "false（以 confirm 和 prompt 方式调用时为 true）"
+            ],
+            [
+              "showConfirmButton",
+              "是否显示确定按钮",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "cancelButtonText",
+              "取消按钮的文本内容",
+              "string",
+              "—",
+              "取消"
+            ],
+            [
+              "confirmButtonText",
+              "确定按钮的文本内容",
+              "string",
+              "—",
+              "确定"
+            ],
+            [
+              "buttons  2.0+",
+              "自定义按钮的内容",
+              "Array",
+              "示例传参: buttons:[{ name:‘test1’,type:‘primary’,action:‘myAction1’},{name:‘test2’,type:‘primary’,action:‘myAction2’},name:‘取消’,action:‘cancel’]回调函数中通过不同的action来做相应操作",
+              "—"
+            ],
+            [
+              "cancelButtonClass",
+              "取消按钮的自定义类名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "confirmButtonClass",
+              "确定按钮的自定义类名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "closeOnClickModal  非兼容  (默认值修改为false)",
+              "是否可通过点击遮罩关闭 MessageBox",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "closeOnPressEscape  非兼容  (默认值修改为false)",
+              "是否可通过按下 ESC 键关闭 MessageBox",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "closeOnHashChange  2.0+",
+              "是否在 hashchange 时关闭 MessageBox",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "showInput",
+              "是否显示输入框",
+              "boolean",
+              "—",
+              "false（以 prompt 方式调用时为 true）"
+            ],
+            [
+              "inputPlaceholder",
+              "输入框的占位符",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "inputType  2.0+",
+              "输入框的类型",
+              "string",
+              "—",
+              "text"
+            ],
+            [
+              "inputValue",
+              "输入框的初始文本",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "inputPattern",
+              "输入框的校验表达式",
+              "regexp",
+              "—",
+              "—"
+            ],
+            [
+              "inputValidator",
+              "输入框的校验函数。可以返回布尔值或字符串，若返回一个字符串, 则返回结果会被赋值给 inputErrorMessage",
+              "function",
+              "—",
+              "—"
+            ],
+            [
+              "inputErrorMessage",
+              "校验未通过时的提示文本",
+              "string",
+              "—",
+              "输入的数据不合法!"
+            ],
+            [
+              "customIcon  2.53.0+",
+              "自定义图标",
+              "VNode",
+              "—",
+              "—"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "notification",
+      "path": "/hui/components/notice/notification",
+      "tables": [
+        {
+          "heading": "Options #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "title",
+              "标题",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "size  2.0+",
+              "尺寸",
+              "string",
+              "small/middle/large",
+              "small"
+            ],
+            [
+              "message",
+              "说明文字",
+              "string/Vue.VNode",
+              "—",
+              "—"
+            ],
+            [
+              "type(2.0版本中已去除)  非兼容",
+              "主题样式，如果不在可选值内将被忽略",
+              "string",
+              "success/warning/info/error",
+              "—"
+            ],
+            [
+              "dangerouslyUseHTMLString  2.0+",
+              "是否将 message 属性作为 HTML 片段处理",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "iconClass(2.0版本中已去除)  非兼容",
+              "自定义图标的类名。若设置了 type，则 iconClass 会被覆盖",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "customClass",
+              "自定义类名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "duration",
+              "显示时间, 毫秒。设为 0 则不会自动关闭",
+              "number",
+              "—",
+              "3000"
+            ],
+            [
+              "position  2.0+",
+              "自定义弹出位置",
+              "number",
+              "top-right/top-left/bottom-right/bottom-left",
+              "top-right"
+            ],
+            [
+              "onClose",
+              "关闭时的回调函数",
+              "function",
+              "—",
+              "—"
+            ],
+            [
+              "onClick",
+              "点击 Notification 时的回调函数",
+              "function",
+              "—",
+              "—"
+            ],
+            [
+              "offset",
+              "偏移的距离，在同一时刻，所有的 Notification 实例应当具有一个相同的偏移量",
+              "number",
+              "—",
+              "0"
+            ],
+            [
+              "pagination  2.0+",
+              "是否开启分页",
+              "Boolean",
+              "—",
+              "false"
+            ],
+            [
+              "showClose  2.0+",
+              "是否展示关闭按钮",
+              "Boolean",
+              "—",
+              "true"
+            ]
+          ]
+        },
+        {
+          "heading": "方法 #",
+          "headers": [
+            "方法名",
+            "说明"
+          ],
+          "rows": [
+            [
+              "close",
+              "关闭当前的 Notification"
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}

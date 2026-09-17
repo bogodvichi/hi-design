@@ -1,0 +1,5 @@
+<nav v-if="isAnchoredForm && !isWorkOrderForm && visibleFormSections.length" class="form-anchor-nav" data-zone="form.content" data-component="navigation.anchor-nav">
+  <h-anchor :affix="true" container=".permission-form-scroll">
+    <h-anchor-link v-for="section in visibleFormSections" :key="section.id" :href="'#form-section-' + section.id" :title="section.title"></h-anchor-link>
+  </h-anchor>
+</nav>

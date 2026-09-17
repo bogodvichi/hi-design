@@ -1,0 +1,91 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "id": "device-permission-form",
+  "title": "设备权限配置",
+  "page_kind": "form",
+  "pattern_contract": "form/multi-level-nesting.json",
+  "portal": {
+    "active_top_menu": "更多",
+    "section": "设备管理",
+    "tab_title": "设备权限配置",
+    "active_side_menu": "device-permission",
+    "side_menus": [
+      {"id": "device-overview", "label": "设备概览", "icon": "h-icon-home"},
+      {"id": "device-list", "label": "设备列表", "icon": "h-icon-menu"},
+      {"id": "device-permission", "label": "设备权限", "icon": "h-icon-lock"},
+      {"id": "capture-record", "label": "抓拍记录", "icon": "h-icon-liveview"}
+    ]
+  },
+  "form_sections": [
+    {
+      "id": "basic",
+      "title": "基础信息",
+      "description": "定义权限配置的名称、适用角色和继承模板。",
+      "fields": [
+        {"key": "configName", "label": "配置名称", "kind": "input", "placeholder": "请输入配置名称", "required": true},
+        {"key": "role", "label": "适用角色", "kind": "select", "placeholder": "请选择角色", "options": ["安保管理员", "值班人员", "设备运维人员"], "required": true},
+        {"key": "organization", "label": "所属组织", "kind": "select", "placeholder": "请选择组织", "options": ["总部园区", "研发中心", "生产园区", "区域分公司"], "required": true},
+        {"key": "template", "label": "权限模板", "kind": "select", "placeholder": "请选择权限模板", "options": ["视频浏览权限", "设备运维权限", "全量管理权限"], "required": true}
+      ]
+    },
+    {
+      "id": "scope",
+      "title": "授权对象",
+      "description": "设备范围变化时展示对应的区域或设备选择控件。",
+      "fields": [
+        {"key": "scope", "label": "设备范围", "kind": "radio", "options": ["全部设备", "按区域", "指定设备"], "wide": true, "required": true},
+        {"key": "areaScope", "label": "授权区域", "kind": "select", "multiple": true, "placeholder": "请选择授权区域", "options": ["总部园区/研发楼", "总部园区/行政楼", "总部园区/地下停车场", "生产园区/一号厂房"], "wide": true, "condition": {"key": "scope", "equals": "按区域"}, "required": true},
+        {"key": "deviceScope", "label": "指定设备", "kind": "select", "multiple": true, "placeholder": "请选择设备", "options": ["研发楼东门-IPC-001", "研发楼大厅-IPC-006", "地下停车场-NVR-002", "一号厂房-报警主机-003"], "wide": true, "condition": {"key": "scope", "equals": "指定设备"}, "required": true},
+        {"key": "deviceTypes", "label": "设备类型", "kind": "checkbox", "options": ["网络摄像机", "NVR", "门禁控制器", "报警主机", "解码器"], "wide": true}
+      ]
+    },
+    {
+      "id": "permission",
+      "title": "权限策略",
+      "description": "配置功能权限及与设备能力相关的限制参数。",
+      "fields": [
+        {"key": "operations", "label": "设备操作权限", "kind": "checkbox", "options": ["查看", "预览", "回放", "云台控制", "参数配置", "设备重启"], "wide": true, "required": true},
+        {"key": "previewQuality", "label": "默认预览码流", "kind": "select", "placeholder": "请选择码流", "options": ["主码流", "子码流", "自动"]},
+        {"key": "playbackDays", "label": "录像回放范围（天）", "kind": "input-number", "min": 1, "max": 90, "step": 1},
+        {"key": "ptzLevel", "label": "云台控制优先级", "kind": "slider", "min": 1, "max": 10, "step": 1, "wide": true},
+        {"key": "alarmPush", "label": "接收设备报警", "kind": "switch"}
+      ]
+    },
+    {
+      "id": "validity",
+      "title": "生效与审批",
+      "description": "设置权限有效期；人工审批时需额外指定审批人。",
+      "fields": [
+        {"key": "validity", "label": "生效时间", "kind": "date-range", "wide": true, "required": true},
+        {"key": "approvalMode", "label": "生效方式", "kind": "radio", "options": ["保存后生效", "人工审批"], "wide": true},
+        {"key": "approver", "label": "审批人", "kind": "select", "placeholder": "请选择审批人", "options": ["园区安保负责人", "设备平台主管", "系统管理员"], "wide": true, "condition": {"key": "approvalMode", "equals": "人工审批"}, "required": true},
+        {"key": "enabled", "label": "启用配置", "kind": "switch"},
+        {"key": "remark", "label": "备注", "kind": "textarea", "placeholder": "请输入配置说明", "wide": true}
+      ]
+    }
+  ],
+  "preview": {
+    "formModel": {
+    "configName": "园区值班人员设备权限",
+    "role": "值班人员",
+    "organization": "总部园区",
+    "template": "视频浏览权限",
+    "validity": [],
+    "scope": "按区域",
+    "areaScope": ["总部园区/研发楼", "总部园区/地下停车场"],
+    "deviceScope": [],
+    "deviceTypes": ["网络摄像机", "NVR"],
+    "operations": ["查看", "预览", "回放"],
+    "previewQuality": "自动",
+    "playbackDays": 30,
+    "ptzLevel": 6,
+    "alarmPush": true,
+    "approvalMode": "人工审批",
+    "approver": "园区安保负责人",
+    "enabled": true,
+      "remark": ""
+    }
+  }
+}

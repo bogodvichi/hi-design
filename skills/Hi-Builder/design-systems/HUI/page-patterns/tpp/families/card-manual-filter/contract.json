@@ -1,0 +1,153 @@
+{
+  "schema_version": "hui-page-pattern.v1",
+  "id": "hui.tpp.family.card-manual-filter",
+  "name": "手动过滤卡片页",
+  "source": {
+    "platform": "HUI-VUE典型页面",
+    "observed_at": "2026-07-31T09:21:23.799Z",
+    "catalog": "../../catalog.json"
+  },
+  "match": [
+    "manual-filter-card",
+    "卡片页手动过滤",
+    "手动过滤卡片"
+  ],
+  "semantics": [
+    "explicit-filter-controls",
+    "query-action",
+    "reset-action",
+    "typed-card-collection",
+    "pagination"
+  ],
+  "shared_runtime_components": [
+    "el-breadcrumb",
+    "el-breadcrumb-item",
+    "el-button",
+    "el-card",
+    "el-divider",
+    "el-drawer",
+    "el-dropdown",
+    "el-dropdown-item",
+    "el-input",
+    "el-menu-item",
+    "el-option",
+    "el-pagination",
+    "el-radio-button",
+    "el-radio-group",
+    "el-scrollbar",
+    "el-select",
+    "el-submenu",
+    "el-tag",
+    "h-icon",
+    "h-svg-icon"
+  ],
+  "invariants": {
+    "regions": {
+      "toolbar": {
+        "display": "flex",
+        "position": "static",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 56
+      },
+      "collection": {
+        "display": "grid",
+        "position": "static",
+        "padding": "0px",
+        "gap": "16px",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "card": {
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "hidden",
+        "overflow_y": "hidden",
+        "height": 174
+      },
+      "card_header": {
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 94
+      },
+      "card_body": {
+        "display": "block",
+        "position": "static",
+        "padding": "12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 78
+      },
+      "pagination": {
+        "display": "flex",
+        "position": "static",
+        "padding": "0px 12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 56
+      }
+    },
+    "variant_values_must_come_from_page_contract": true
+  },
+  "variants": [
+    {
+      "id": "hui.tpp.page.card.horizontal-filter-fully-retractable",
+      "name": "水平栏过滤（全量可收起）",
+      "contract": "../../pages/card/horizontal-filter-fully-retractable.json",
+      "parameters": {
+        "filter_placement": "horizontal-bar",
+        "collapse_mode": "all-retractable",
+        "collection_presentation": "text-card"
+      }
+    },
+    {
+      "id": "hui.tpp.page.card.regular-filter-box-fully-retractable",
+      "name": "常规过滤盒（全量可收起）",
+      "contract": "../../pages/card/regular-filter-box-fully-retractable.json",
+      "parameters": {
+        "filter_placement": "regular-box",
+        "collapse_mode": "all-retractable",
+        "collection_presentation": "text-card"
+      }
+    },
+    {
+      "id": "hui.tpp.page.card.horizontal-filter-high-low",
+      "name": "水平栏过滤（高低频）",
+      "contract": "../../pages/card/horizontal-filter-high-low.json",
+      "parameters": {
+        "filter_placement": "horizontal-bar",
+        "collapse_mode": "high-low-frequency",
+        "collection_presentation": "text-card"
+      }
+    },
+    {
+      "id": "hui.tpp.page.card.regular-filter-box-high-low",
+      "name": "常规过滤盒（高低频）",
+      "contract": "../../pages/card/regular-filter-box-high-low.json",
+      "parameters": {
+        "filter_placement": "regular-box",
+        "collapse_mode": "high-low-frequency",
+        "collection_presentation": "text-card"
+      }
+    },
+    {
+      "id": "hui.tpp.page.card.sidebar-manual-filter",
+      "name": "侧边栏过滤",
+      "contract": "../../pages/card/sidebar-manual-filter.json",
+      "parameters": {
+        "filter_placement": "left-sidebar",
+        "trigger": "manual",
+        "collection_presentation": "text-card"
+      }
+    }
+  ]
+}

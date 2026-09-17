@@ -1,0 +1,18 @@
+{
+  "path": "/pages/details/firstGroup",
+  "name": "详情页_分组详情_一级分组",
+  "package": "@hiktpp/details-firstGroup",
+  "hui_version": "^2.55.0",
+  "observed_at": "2026-08-14",
+  "viewport": {"width": 1728, "height": 935},
+  "root": {"class": "h-page-content form-area is-flex is-align-center", "rect": {"x": 240, "y": 102.25, "width": 1488, "height": 832.75}, "style": {"display": "flex", "padding": "16px 16px 0px"}},
+  "observed_structure": {"breadcrumb": ["详情页", "分组详情", "一级分组"], "grouping_level": 1, "container_count": 1, "group_count": 4, "description_item_count": 18, "embedded_tables": 2, "pagination": true},
+  "regions": {
+    "scrollbar": {"class": "form-area__scrollbar", "rect": {"x": 344, "y": 118.25, "width": 1280, "height": 816.75}},
+    "content": {"class": "form-area__content", "rect": {"x": 344, "y": 118.25, "width": 1280, "height": 1712}, "padding": "48px 80px 58px"},
+    "groups": {"class": "form-area__group", "rect": {"x": 424, "y": 166.25, "width": 1120, "height": 1606}}
+  },
+  "component_count_scope": "page-content-relevant-only",
+  "runtime_components": {"el-breadcrumb": 1, "el-breadcrumb-item": 3, "el-tag": 3, "el-table": 2, "el-pagination": 1},
+  "actions": ["跳转"]
+}

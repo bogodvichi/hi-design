@@ -1,0 +1,13 @@
+{
+  "schema_version": "hui-component-pattern.v2",
+  "id": "navigation.tree-panel",
+  "name": "树形导航面板",
+  "split_mode": "composite",
+  "vue_component": "TreePanel",
+  "description": "组合树节点搜索、树形层级导航和节点操作",
+  "category": "navigation",
+  "status": "active",
+  "use_when": ["数据需要按组织、资源或分类树进行导航"],
+  "hui_components": ["el-input", "el-tree", "el-button"],
+  "owner": "hui-common"
+}

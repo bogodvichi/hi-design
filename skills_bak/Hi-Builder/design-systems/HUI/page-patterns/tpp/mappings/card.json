@@ -1,0 +1,192 @@
+{
+  "schema_version": "tpp-page-family-mapping.v1",
+  "batch": "card",
+  "region_classes": {
+    "search": "h-page-search",
+    "filter": "filter-container",
+    "filter_condition": "condition",
+    "selected_conditions": "selected-conditions",
+    "sidebar": "side-bar",
+    "toolbar": "bar-search-row",
+    "collection": "demo-card",
+    "card": "el-card",
+    "card_header": "el-card__header",
+    "card_body": "el-card__body",
+    "pagination": "el-pagination",
+    "tabs": "el-tabs",
+    "tree": "el-tree"
+  },
+  "families": {
+    "card-basic": {
+      "name": "基础卡片集合页",
+      "match": ["basic-card-page", "基础卡片页", "车辆卡片", "人脸卡片", "相似度卡片", "文本卡片", "数据列表卡片"],
+      "semantics": ["page-toolbar", "typed-card-collection", "pagination"]
+    },
+    "card-manual-filter": {
+      "name": "手动过滤卡片页",
+      "match": ["manual-filter-card", "卡片页手动过滤", "手动过滤卡片"],
+      "semantics": ["explicit-filter-controls", "query-action", "reset-action", "typed-card-collection", "pagination"]
+    },
+    "card-realtime-filter": {
+      "name": "即时过滤卡片页",
+      "match": ["realtime-filter-card", "卡片页即时过滤", "即时过滤卡片"],
+      "semantics": ["instant-filter-controls", "selected-filter-state", "typed-card-collection", "pagination"]
+    },
+    "card-tabs": {
+      "name": "标签页卡片页",
+      "match": ["tabbed-card", "卡片页带标签页", "标签页卡片"],
+      "semantics": ["dataset-tabs", "optional-tree", "typed-card-collection", "pagination"]
+    },
+    "card-tree": {
+      "name": "树导航卡片页",
+      "match": ["tree-card", "卡片页带树控件", "树控件卡片"],
+      "semantics": ["tree-sidebar", "optional-tabs", "typed-card-collection", "pagination"]
+    }
+  },
+  "pages": {
+    "/pages/card/car": {
+      "family": "card-basic",
+      "variant": "vehicle",
+      "parameters": {"collection_presentation": "vehicle-card"}
+    },
+    "/pages/card/dataList": {
+      "family": "card-basic",
+      "variant": "data-list",
+      "parameters": {"collection_presentation": "data-list"}
+    },
+    "/pages/card/face": {
+      "family": "card-basic",
+      "variant": "face",
+      "parameters": {"collection_presentation": "face-card"}
+    },
+    "/pages/card/similarity": {
+      "family": "card-basic",
+      "variant": "similarity",
+      "parameters": {"collection_presentation": "similarity-card"}
+    },
+    "/pages/card/text": {
+      "family": "card-basic",
+      "variant": "text",
+      "parameters": {"collection_presentation": "text-card"}
+    },
+    "/pages/card/fullyRetractableHorizontalBarFiltering": {
+      "family": "card-manual-filter",
+      "variant": "horizontal-filter-fully-retractable",
+      "parameters": {
+        "filter_placement": "horizontal-bar",
+        "collapse_mode": "all-retractable",
+        "collection_presentation": "text-card"
+      }
+    },
+    "/pages/card/fullyRetractableRegularFilterBox": {
+      "family": "card-manual-filter",
+      "variant": "regular-filter-box-fully-retractable",
+      "parameters": {
+        "filter_placement": "regular-box",
+        "collapse_mode": "all-retractable",
+        "collection_presentation": "text-card"
+      }
+    },
+    "/pages/card/horizontalBarFilteringHeightAndLow": {
+      "family": "card-manual-filter",
+      "variant": "horizontal-filter-high-low",
+      "parameters": {
+        "filter_placement": "horizontal-bar",
+        "collapse_mode": "high-low-frequency",
+        "collection_presentation": "text-card"
+      }
+    },
+    "/pages/card/regularFilterBoxHeightAndLow": {
+      "family": "card-manual-filter",
+      "variant": "regular-filter-box-high-low",
+      "parameters": {
+        "filter_placement": "regular-box",
+        "collapse_mode": "high-low-frequency",
+        "collection_presentation": "text-card"
+      }
+    },
+    "/pages/card/manualSideBarFiltering": {
+      "family": "card-manual-filter",
+      "variant": "sidebar-manual-filter",
+      "parameters": {
+        "filter_placement": "left-sidebar",
+        "trigger": "manual",
+        "collection_presentation": "text-card"
+      }
+    },
+    "/pages/card/realTimeHorizontalBarFiltering": {
+      "family": "card-realtime-filter",
+      "variant": "horizontal-realtime-filter",
+      "parameters": {
+        "filter_placement": "horizontal-bar",
+        "trigger": "realtime",
+        "collection_presentation": "data-list"
+      }
+    },
+    "/pages/card/realTimeSideBarFiltering": {
+      "family": "card-realtime-filter",
+      "variant": "sidebar-realtime-filter",
+      "parameters": {
+        "filter_placement": "left-sidebar",
+        "trigger": "realtime",
+        "collection_presentation": "data-list"
+      }
+    },
+    "/pages/card/cardTypeTabPage": {
+      "family": "card-tabs",
+      "variant": "card-tabs",
+      "parameters": {
+        "tab_style": "card",
+        "tree": false
+      }
+    },
+    "/pages/card/cardTypeTabPageAndTreeControl": {
+      "family": "card-tabs",
+      "variant": "card-tabs-with-tree",
+      "parameters": {
+        "tab_style": "card",
+        "tree": true
+      }
+    },
+    "/pages/card/linearTabPage": {
+      "family": "card-tabs",
+      "variant": "linear-tabs",
+      "parameters": {
+        "tab_style": "linear",
+        "tree": false
+      }
+    },
+    "/pages/card/linearTabPageAndTreeControl": {
+      "family": "card-tabs",
+      "variant": "linear-tabs-with-tree",
+      "parameters": {
+        "tab_style": "linear",
+        "tree": true
+      }
+    },
+    "/pages/card/treeControl": {
+      "family": "card-tree",
+      "variant": "tree-only",
+      "parameters": {
+        "tab_style": "none",
+        "collection_presentation": "face-card"
+      }
+    },
+    "/pages/card/treeControlAndCardTypeTabPage": {
+      "family": "card-tree",
+      "variant": "tree-with-card-tabs",
+      "parameters": {
+        "tab_style": "card",
+        "collection_presentation": "face-card"
+      }
+    },
+    "/pages/card/treeControlAndLinearTabPage": {
+      "family": "card-tree",
+      "variant": "tree-with-linear-tabs",
+      "parameters": {
+        "tab_style": "linear",
+        "collection_presentation": "face-card"
+      }
+    }
+  }
+}

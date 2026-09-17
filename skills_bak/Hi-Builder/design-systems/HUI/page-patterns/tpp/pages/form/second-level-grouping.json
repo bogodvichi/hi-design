@@ -1,0 +1,112 @@
+{
+  "schema_version": "hui-page-variant.v1",
+  "id": "hui.tpp.page.form.second-level-grouping",
+  "name": "二级分组",
+  "family": "hui.tpp.family.form-grouped",
+  "source": {
+    "url": "http://tpp.dev.hikhub.net/tpp#/pages/form/secondaryGrouping",
+    "package": "@hiktpp/form-secondaryGrouping",
+    "hui_version": "^2.55.0",
+    "observed_at": "2026-07-31",
+    "evidence": "../../evidence/form/second-level-grouping.json"
+  },
+  "parameters": {
+    "group_depth": 2,
+    "container_count": 1,
+    "default_label_position": null
+  },
+  "geometry": {
+    "viewport": {
+      "width": 1920,
+      "height": 968
+    },
+    "root": {
+      "class": "h-page-content form-area is-flex is-align-center",
+      "rect": {
+        "x": 268,
+        "y": 99.98,
+        "width": 1624,
+        "height": 637
+      },
+      "style": {
+        "display": "flex",
+        "padding": "16px 16px 0px",
+        "overflow": "visible"
+      }
+    },
+    "key_regions": {
+      "content": {
+        "class": "form-area__content",
+        "rect": {
+          "x": 368,
+          "y": 179.98,
+          "width": 1424,
+          "height": 557
+        },
+        "display": "flex",
+        "position": "static",
+        "padding": "24px 80px 58px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "form": {
+        "class": "el-form el-form--label-top",
+        "rect": {
+          "x": 448,
+          "y": 203.98,
+          "width": 1264,
+          "height": 475
+        },
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "section_title": {
+        "class": "form-area__content-title",
+        "rect": {
+          "x": 368,
+          "y": 115.98,
+          "width": 1424,
+          "height": 64
+        },
+        "display": "block",
+        "position": "relative",
+        "padding": "18px 24px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      }
+    }
+  },
+  "composition": {
+    "hui_components": {
+      "el-form": 1,
+      "el-row": 3,
+      "el-col": 7,
+      "el-form-item": 7,
+      "el-input": 5,
+      "el-select": 1,
+      "el-tag": 16,
+      "el-popover": 1,
+      "el-scrollbar": 2,
+      "el-option": 7,
+      "el-checkbox": 7,
+      "h-svg-icon": 7,
+      "el-radio-group": 1,
+      "el-radio": 3,
+      "el-upload": 1,
+      "el-tooltip": 2
+    },
+    "page_framework_components": {
+      "h-page-content": 1
+    },
+    "unindexed_runtime_components": {
+      "el-select-menu": 1
+    },
+    "actions": []
+  }
+}

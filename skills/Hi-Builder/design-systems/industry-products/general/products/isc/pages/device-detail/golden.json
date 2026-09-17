@@ -1,0 +1,44 @@
+{
+  "schema_version": "browser-geometry.v1",
+  "page_type": "device-detail",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "assertions": [
+    {"selector": ".isc-global-nav", "property": "height", "expected": "88px"},
+    {"selector": ".isc-sidebar", "property": "width", "expected": "240px"},
+    {"selector": ".event-tabs-actions", "property": "height", "expected": "56px"},
+    {"selector": ".event-tabs-actions .el-tabs__header", "property": "height", "expected": "55px"},
+    {"selector": ".event-tabs-actions .el-tabs__item", "property": "width", "expected": "112px"},
+    {"selector": ".event-info-panel", "property": "width", "expected": "340px"},
+    {"selector": ".event-source-switch", "property": "height", "expected": "140px"},
+    {"selector": ".event-image-viewer__thumbs", "property": "height", "expected": "88px"}
+  ],
+  "relation_assertions": [
+    {
+      "selector": ".content-area",
+      "property": "height",
+      "equals_remaining_after": [".isc-global-nav", ".event-tabs-actions"]
+    },
+    {
+      "selector": ".event-info-panel__form",
+      "property": "bottom",
+      "lte_selector": ".event-info-panel"
+    }
+  ],
+  "semantic_assertions": [
+    {
+      "selector": ".event-tabs-actions .el-tabs",
+      "count": 1
+    },
+    {
+      "selector": ".event-info-panel__form .el-button--primary",
+      "count": 1
+    }
+  ],
+  "interaction_states": [
+    {"state": "source-selected", "selected_count": 1},
+    {"state": "sidebar-collapsed", "width": "48px"}
+  ]
+}

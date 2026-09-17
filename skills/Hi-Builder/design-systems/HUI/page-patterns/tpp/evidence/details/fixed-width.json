@@ -1,0 +1,186 @@
+{
+  "path": "/pages/details/fixedWidth",
+  "name": "详情页_基础详情_容器定宽",
+  "category": [
+    {"name": "详情页", "order": 4},
+    {"name": "基础详情", "order": 1},
+    {"name": "容器定宽", "order": 2}
+  ],
+  "package": "@hiktpp/details-fixedWidth",
+  "hui_version": "^2.55.0",
+  "observed_at": "2026-08-14",
+  "viewport": {"width": 1728, "height": 935},
+  "root": {
+    "class": "h-page-content form-area is-flex is-align-center",
+    "rect": {"x": 240, "y": 102.25, "width": 1488, "height": 832.75},
+    "style": {
+      "display": "flex",
+      "padding": "16px 16px 0px",
+      "overflow": "visible"
+    }
+  },
+  "runtime_components": {
+    "h-page-content": 1,
+    "el-scrollbar": 5,
+    "el-breadcrumb": 1,
+    "el-breadcrumb-item": 3,
+    "el-menu": 1,
+    "el-submenu": 7,
+    "el-menu-item": 14,
+    "el-tag": 3,
+    "el-table": 2,
+    "el-pagination": 1,
+    "el-select": 1,
+    "el-input": 2,
+    "el-button": 7
+  },
+  "observed_structure": {
+    "breadcrumb": ["详情页", "基础详情", "容器定宽"],
+    "group_count": 4,
+    "description_groups": 2,
+    "description_columns": 4,
+    "description_item_count": 18,
+    "key_value_table": {"rows": 3, "pairs_per_row": 3},
+    "data_table": {"columns": 7, "visible_rows": 20},
+    "pagination": {"total": 30, "page_size": 20, "pages": 2}
+  },
+  "regions": [
+    {
+      "tag": "div",
+      "class": "h-page-content form-area is-flex is-align-center",
+      "rect": {"x": 240, "y": 102.25, "width": 1488, "height": 832.75},
+      "display": "flex",
+      "position": "relative",
+      "padding": "16px 16px 0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "form-area__scrollbar",
+      "rect": {"x": 344, "y": 118.25, "width": 1280, "height": 816.75},
+      "display": "block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "form-area__content",
+      "rect": {"x": 344, "y": 118.25, "width": 1280, "height": 1712},
+      "display": "block",
+      "position": "static",
+      "padding": "48px 80px 58px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "form-area__group",
+      "rect": {"x": 424, "y": 166.25, "width": 1120, "height": 1606},
+      "display": "block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "group_title",
+      "rect": {"x": 424, "y": 166.25, "width": 1120, "height": 32},
+      "display": "flex",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px 0px 8px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "card-details",
+      "rect": {"x": 424, "y": 206.25, "width": 1120, "height": 216},
+      "display": "block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px 0px 10px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "card-details",
+      "rect": {"x": 424, "y": 472.25, "width": 1120, "height": 144},
+      "display": "block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px 0px 10px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-table el-table--fit el-table--border el-table--enable-row-hover el-table--enable-row-transition el-table--no-out-border",
+      "rect": {"x": 425, "y": 667.25, "width": 1118, "height": 120},
+      "display": "flex",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "hidden",
+      "overflowY": "hidden"
+    },
+    {
+      "tag": "div",
+      "class": "el-table el-table--fit el-table--enable-row-hover el-table--enable-row-transition el-table--no-out-border",
+      "rect": {"x": 424, "y": 876.25, "width": 1120, "height": 840},
+      "display": "flex",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "hidden",
+      "overflowY": "hidden"
+    },
+    {
+      "tag": "div",
+      "class": "el-pagination el-pagination--table",
+      "rect": {"x": 424, "y": 1716.25, "width": 1120, "height": 56},
+      "display": "flex",
+      "position": "static",
+      "padding": "0px 12px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    }
+  ],
+  "buttons": [
+    {"text": "跳转"}
+  ],
+  "inputs": [
+    {"type": "text", "value": "20 条/页", "placeholder": "请选择"},
+    {"type": "text", "value": "1", "placeholder": ""}
+  ]
+}

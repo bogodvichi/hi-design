@@ -1,0 +1,8 @@
+{
+  "schema_version": "d2c-zone.v1",
+  "id": "event.classification",
+  "name": "事件分类区域",
+  "description": "按事件类型或规则对事件集合进行分类导航",
+  "use_when": ["事件页面需要分类切换或分类检索"],
+  "owner": "hui-common"
+}

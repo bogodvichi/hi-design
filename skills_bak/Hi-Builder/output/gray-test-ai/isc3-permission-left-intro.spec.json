@@ -1,0 +1,302 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "product_version": "3.0.0",
+  "id": "isc3-permission-left-intro",
+  "title": "人员权限配置详情",
+  "page_kind": "details",
+  "pattern_contract": "details/first-group.json",
+  "framework": {
+    "show_left_selector": true,
+    "show_top_tabs": false,
+    "business_header": "intro",
+    "intro": "查看人员权限方案、门禁范围、有效期及授权审计信息。",
+    "selector_title": "权限方案",
+    "selector_search_placeholder": "搜索权限方案",
+    "selector_nodes": [
+      {
+        "id": "standard-permission-plans",
+        "label": "标准权限方案",
+        "children": [
+          {
+            "id": "office-daily-access",
+            "label": "办公区日常通行"
+          },
+          {
+            "id": "visitor-temporary-access",
+            "label": "访客临时通行"
+          },
+          {
+            "id": "contractor-access",
+            "label": "外协人员通行"
+          }
+        ]
+      },
+      {
+        "id": "special-permission-plans",
+        "label": "专项权限方案",
+        "children": [
+          {
+            "id": "security-all-day-access",
+            "label": "安保全天通行"
+          },
+          {
+            "id": "night-shift-access",
+            "label": "夜班指定区域通行"
+          }
+        ]
+      }
+    ],
+    "selector_active_node": "office-daily-access",
+    "selector_expanded_nodes": [
+      "standard-permission-plans",
+      "special-permission-plans"
+    ]
+  },
+  "portal": {
+    "active_top_menu": "门禁管理",
+    "active_icon_menu": "authorization",
+    "show_context_sidebar": false,
+    "section": "权限配置",
+    "tab_title": "人员权限配置详情",
+    "active_side_menu": "personnel-permission",
+    "side_menus": [
+      {
+        "id": "permission-config",
+        "label": "权限配置",
+        "icon": "h-icon-lock",
+        "children": [
+          {
+            "id": "personnel-permission",
+            "label": "人员权限配置"
+          }
+        ]
+      }
+    ]
+  },
+  "detail_presentation": "flat",
+  "detail_sections": [
+    {
+      "id": "permission-basic-info",
+      "title": "权限基本信息",
+      "fields": [
+        {
+          "key": "personName",
+          "label": "人员姓名"
+        },
+        {
+          "key": "employeeNo",
+          "label": "人员编号"
+        },
+        {
+          "key": "department",
+          "label": "所属组织"
+        },
+        {
+          "key": "permissionPlanName",
+          "label": "权限方案"
+        },
+        {
+          "key": "permissionStatus",
+          "label": "权限状态",
+          "tone": "success"
+        }
+      ]
+    },
+    {
+      "id": "access-scope",
+      "title": "门禁范围",
+      "fields": [
+        {
+          "key": "accessArea",
+          "label": "授权区域"
+        },
+        {
+          "key": "accessPointCount",
+          "label": "门禁点数量"
+        },
+        {
+          "key": "accessPointOverview",
+          "label": "主要门禁点"
+        },
+        {
+          "key": "passageDirection",
+          "label": "通行方向"
+        },
+        {
+          "key": "accessMode",
+          "label": "核验方式"
+        }
+      ]
+    },
+    {
+      "id": "validity-period",
+      "title": "有效期",
+      "fields": [
+        {
+          "key": "validityType",
+          "label": "有效期类型"
+        },
+        {
+          "key": "validFrom",
+          "label": "生效时间"
+        },
+        {
+          "key": "validUntil",
+          "label": "失效时间"
+        },
+        {
+          "key": "dailySchedule",
+          "label": "每日时段"
+        }
+      ]
+    },
+    {
+      "id": "authorization-audit",
+      "title": "授权审计",
+      "fields": [
+        {
+          "key": "authorizationStatus",
+          "label": "审批状态",
+          "tone": "success"
+        },
+        {
+          "key": "authorizedBy",
+          "label": "授权人"
+        },
+        {
+          "key": "authorizedAt",
+          "label": "授权时间"
+        },
+        {
+          "key": "approvalTicket",
+          "label": "审批单号"
+        }
+      ]
+    }
+  ],
+  "related_tables": [
+    {
+      "id": "access-point-details",
+      "title": "门禁点明细",
+      "columns": [
+        {
+          "prop": "accessPointName",
+          "label": "门禁点"
+        },
+        {
+          "prop": "areaPath",
+          "label": "所属区域"
+        },
+        {
+          "prop": "direction",
+          "label": "通行方向"
+        },
+        {
+          "prop": "accessLevel",
+          "label": "权限级别"
+        }
+      ]
+    },
+    {
+      "id": "authorization-audit-records",
+      "title": "授权审计记录",
+      "columns": [
+        {
+          "prop": "action",
+          "label": "操作"
+        },
+        {
+          "prop": "operator",
+          "label": "操作人"
+        },
+        {
+          "prop": "operatedAt",
+          "label": "操作时间"
+        },
+        {
+          "prop": "source",
+          "label": "来源"
+        },
+        {
+          "prop": "result",
+          "label": "结果"
+        }
+      ]
+    }
+  ],
+  "preview": {
+    "detailValues": {
+      "personName": "林晓峰",
+      "employeeNo": "EMP-20260817-036",
+      "department": "研发中心 / 平台研发部",
+      "permissionPlanName": "办公区日常通行",
+      "permissionStatus": "生效中",
+      "accessArea": "研发园区 A 座、B 座公共区域",
+      "accessPointCount": "8 个",
+      "accessPointOverview": "A 座东门、A 座闸机、B 座连廊门",
+      "passageDirection": "双向通行",
+      "accessMode": "员工卡或人脸核验",
+      "validityType": "固定期限",
+      "validFrom": "2026-08-20 00:00:00",
+      "validUntil": "2027-08-19 23:59:59",
+      "dailySchedule": "工作日 07:30—22:00",
+      "authorizationStatus": "已通过",
+      "authorizedBy": "王睿（门禁管理员）",
+      "authorizedAt": "2026-08-19 16:42:18",
+      "approvalTicket": "AC-20260819-00427"
+    },
+    "relatedTableRows": {
+      "access-point-details": [
+        {
+          "accessPointName": "A 座一层东门",
+          "areaPath": "研发园区 / A 座 / 一层",
+          "direction": "双向",
+          "accessLevel": "常规"
+        },
+        {
+          "accessPointName": "A 座一层员工闸机",
+          "areaPath": "研发园区 / A 座 / 一层",
+          "direction": "双向",
+          "accessLevel": "常规"
+        },
+        {
+          "accessPointName": "B 座二层连廊门",
+          "areaPath": "研发园区 / B 座 / 二层",
+          "direction": "双向",
+          "accessLevel": "受控"
+        },
+        {
+          "accessPointName": "A 座地下车库电梯厅",
+          "areaPath": "研发园区 / A 座 / 地下一层",
+          "direction": "进入",
+          "accessLevel": "受控"
+        }
+      ],
+      "authorization-audit-records": [
+        {
+          "action": "发起授权",
+          "operator": "陈静（部门权限员）",
+          "operatedAt": "2026-08-19 15:58:36",
+          "source": "人员权限配置",
+          "result": "已提交"
+        },
+        {
+          "action": "审批授权",
+          "operator": "王睿（门禁管理员）",
+          "operatedAt": "2026-08-19 16:42:18",
+          "source": "权限审批中心",
+          "result": "已通过"
+        },
+        {
+          "action": "权限下发",
+          "operator": "ISC 门禁服务",
+          "operatedAt": "2026-08-19 16:43:05",
+          "source": "自动下发",
+          "result": "成功"
+        }
+      ]
+    }
+  }
+}

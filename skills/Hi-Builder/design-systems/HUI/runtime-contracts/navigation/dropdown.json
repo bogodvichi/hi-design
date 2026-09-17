@@ -1,0 +1,199 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "dropdown",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/navigation/dropdown",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/navigation.docs.json",
+    "evidence_sha256": "e10ef37ba907910b3f0d40d9a0892b99ace9f2c5ad09cbd0ebf3bf440a34925a"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-dropdown": {
+      "props": [
+        {
+          "参数": "type",
+          "说明": "菜单按钮类型，同 Button 组件(只在split-button为 true 的情况下有效)",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "type"
+        },
+        {
+          "参数": "size",
+          "说明": "菜单按钮尺寸，同 Button 组件(只在split-button为 true 的情况下有效)",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "size"
+        },
+        {
+          "参数": "icon",
+          "说明": "菜单按钮图标，同 Button 组件(只在split-button为 true 的情况下有效)",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "icon"
+        },
+        {
+          "参数": "split-button",
+          "说明": "下拉触发元素呈现为按钮组",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "split-button"
+        },
+        {
+          "参数": "menu-align",
+          "说明": "菜单水平对齐方向",
+          "类型": "string",
+          "可选值": "start, end",
+          "默认值": "end",
+          "template_name": "menu-align"
+        },
+        {
+          "参数": "placement  非兼容",
+          "说明": "菜单弹出位置",
+          "类型": "string",
+          "可选值": "top/top-start/top-end/bottom/bottom-start/bottom-end",
+          "默认值": "bottom-end",
+          "template_name": "placement"
+        },
+        {
+          "参数": "trigger",
+          "说明": "触发下拉的行为",
+          "类型": "string",
+          "可选值": "hover, click",
+          "默认值": "hover",
+          "template_name": "trigger"
+        },
+        {
+          "参数": "hide-on-click",
+          "说明": "是否在点击菜单项后隐藏菜单",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "hide-on-click"
+        },
+        {
+          "参数": "hide-on-click-outside",
+          "说明": "是否在点击下拉菜单项以外区域后隐藏菜单，需要配合 trigger=\"click\"使用",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "hide-on-click-outside"
+        },
+        {
+          "参数": "show-timeout",
+          "说明": "展开下拉菜单的延时（仅在 trigger 为 hover 时有效）",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "250",
+          "template_name": "show-timeout"
+        },
+        {
+          "参数": "hide-timeout",
+          "说明": "收起下拉菜单的延时（仅在 trigger 为 hover 时有效）",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "150",
+          "template_name": "hide-timeout"
+        },
+        {
+          "参数": "isItemKeyEnterShow",
+          "说明": "item回车是否隐藏，默认false",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "is-item-key-enter-show"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "click",
+          "说明": "split-button 为 true 时，点击左侧按钮的回调",
+          "回调参数": "—",
+          "template_name": "click"
+        },
+        {
+          "事件名称": "command",
+          "说明": "点击菜单项触发的事件回调",
+          "回调参数": "dropdown-item 的指令",
+          "template_name": "command"
+        },
+        {
+          "事件名称": "visible-change",
+          "说明": "下拉框出现/隐藏时触发",
+          "回调参数": "出现则为 true，隐藏则为 false",
+          "template_name": "visible-change"
+        }
+      ],
+      "slots": [],
+      "methods": [
+        {
+          "方法名": "show",
+          "说明": "显示下拉菜单",
+          "参数": "—",
+          "template_name": "show"
+        },
+        {
+          "方法名": "hide",
+          "说明": "隐藏下拉菜单",
+          "参数": "—",
+          "template_name": "hide"
+        }
+      ]
+    },
+    "el-dropdown-menu": {
+      "props": [],
+      "events": [],
+      "slots": [],
+      "methods": []
+    },
+    "el-dropdown-item": {
+      "props": [
+        {
+          "参数": "command",
+          "说明": "指令",
+          "类型": "string/number/object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "command"
+        },
+        {
+          "参数": "disabled",
+          "说明": "禁用",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "divided",
+          "说明": "显示分割线",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "divided"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    },
+    "el-dropdown-item-group": {
+      "props": [],
+      "events": [],
+      "slots": [],
+      "methods": []
+    },
+    "el-sub-dropdown": {
+      "props": [],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

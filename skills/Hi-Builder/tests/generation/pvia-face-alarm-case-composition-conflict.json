@@ -1,0 +1,152 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "public-security",
+  "product": "pvia",
+  "title": "黑名单人脸抓拍报警",
+  "page_kind": "table",
+  "portal": {
+    "active_top_menu": "布控告警",
+    "section": "布控告警",
+    "tab_title": "人脸抓拍报警",
+    "active_side_menu": "face-alarm",
+    "side_menus": [
+      {
+        "id": "alarm-overview",
+        "label": "告警概览",
+        "icon": "h-icon-home"
+      },
+      {
+        "id": "face-alarm",
+        "label": "人脸抓拍报警",
+        "icon": "h-icon-message"
+      },
+      {
+        "id": "alarm-handle",
+        "label": "告警处置",
+        "icon": "h-icon-edit"
+      }
+    ]
+  },
+  "toolbar_actions": [
+    {
+      "label": "批量处置",
+      "icon": "h-icon-edit"
+    },
+    {
+      "label": "导出",
+      "icon": "h-icon-export"
+    }
+  ],
+  "columns": [
+    {
+      "prop": "personName",
+      "label": "姓名"
+    },
+    {
+      "prop": "similarity",
+      "label": "相似度"
+    },
+    {
+      "prop": "listName",
+      "label": "名单库"
+    },
+    {
+      "prop": "alarmLevel",
+      "label": "报警等级"
+    },
+    {
+      "prop": "capturePoint",
+      "label": "抓拍点位"
+    },
+    {
+      "prop": "captureTime",
+      "label": "抓拍时间"
+    },
+    {
+      "prop": "handleStatus",
+      "label": "处置状态"
+    }
+  ],
+  "page_size": 20,
+  "id": "pvia-face-alarm-case-composition-conflict",
+  "pattern_contract": "table/horizontal-filter-high-low.json",
+  "knowledge_composition": {
+    "secondary_pattern_contract": "table/sidebar-manual-filter.json",
+    "reason": "主页面保留过滤结构，并由辅助Variant补充统计能力",
+    "expected_contribution": "summary.metrics"
+  },
+  "filters": [
+    {
+      "key": "alarmLevel",
+      "label": "报警等级",
+      "kind": "checkable-tags",
+      "options": [
+        "全部",
+        "高",
+        "中",
+        "低"
+      ],
+      "default": "全部"
+    },
+    {
+      "key": "handleStatus",
+      "label": "处置状态",
+      "kind": "checkable-tags",
+      "options": [
+        "全部",
+        "未处置",
+        "处置中",
+        "已处置"
+      ],
+      "default": "全部"
+    },
+    {
+      "key": "listName",
+      "label": "名单库",
+      "kind": "select",
+      "options": [
+        "全部",
+        "重点人员名单库",
+        "在逃人员名单库"
+      ],
+      "default": "全部"
+    },
+    {
+      "key": "captureTime",
+      "label": "抓拍时段",
+      "kind": "date-range",
+      "default": ""
+    }
+  ],
+  "preview": {
+    "filters": {
+      "alarmLevel": "全部",
+      "handleStatus": "全部",
+      "listName": "全部",
+      "captureTime": ""
+    },
+    "total": 2,
+    "rows": [
+      {
+        "id": 1,
+        "personName": "张某",
+        "similarity": "96.8%",
+        "listName": "重点人员名单库",
+        "alarmLevel": "高",
+        "capturePoint": "城南客运站东入口",
+        "captureTime": "2026-08-18 14:32:18",
+        "handleStatus": "未处置"
+      },
+      {
+        "id": 2,
+        "personName": "李某",
+        "similarity": "94.2%",
+        "listName": "在逃人员名单库",
+        "alarmLevel": "高",
+        "capturePoint": "火车东站北广场",
+        "captureTime": "2026-08-18 14:29:43",
+        "handleStatus": "处置中"
+      }
+    ]
+  }
+}

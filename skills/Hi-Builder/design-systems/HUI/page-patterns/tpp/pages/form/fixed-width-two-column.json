@@ -1,0 +1,128 @@
+{
+  "schema_version": "hui-page-variant.v1",
+  "id": "hui.tpp.page.form.fixed-width-two-column",
+  "name": "定宽-2列",
+  "family": "hui.tpp.family.form-basic",
+  "source": {
+    "url": "http://tpp.dev.hikhub.net/tpp#/pages/form/fixedWidth2Column",
+    "package": "@hiktpp/form-fixedWidth2Column",
+    "hui_version": "^2.55.0",
+    "observed_at": "2026-07-31",
+    "evidence": "../../evidence/form/fixed-width-two-column.json"
+  },
+  "parameters": {
+    "columns": 2,
+    "width_behavior": "fixed",
+    "default_container_mode": "md",
+    "default_label_position": "top",
+    "observed_container_mode": "md"
+  },
+  "geometry": {
+    "viewport": {
+      "width": 1920,
+      "height": 968
+    },
+    "root": {
+      "class": "h-page-content form-area is-flex is-align-center",
+      "rect": {
+        "x": 240,
+        "y": 102.31,
+        "width": 1680,
+        "height": 865.69
+      },
+      "style": {
+        "display": "flex",
+        "padding": "16px 16px 0px",
+        "overflow": "visible"
+      }
+    },
+    "key_regions": {
+      "content": {
+        "class": "form-area__content",
+        "rect": {
+          "x": 440,
+          "y": 118.31,
+          "width": 1280,
+          "height": 792.69
+        },
+        "display": "flex",
+        "position": "static",
+        "padding": "48px 80px 58px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "form": {
+        "class": "el-form el-form--label-top",
+        "rect": {
+          "x": 664,
+          "y": 166.31,
+          "width": 832,
+          "height": 686.69
+        },
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "footer": {
+        "class": "form-area__footer",
+        "rect": {
+          "x": 440,
+          "y": 911,
+          "width": 1280,
+          "height": 57
+        },
+        "display": "flex",
+        "position": "sticky",
+        "padding": "12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      }
+    }
+  },
+  "composition": {
+    "hui_components": {
+      "el-scrollbar": 3,
+      "el-form": 1,
+      "el-row": 8,
+      "el-col": 12,
+      "el-form-item": 12,
+      "el-radio-group": 3,
+      "el-radio-button": 6,
+      "el-input": 6,
+      "el-select": 2,
+      "el-tag": 5,
+      "el-option": 11,
+      "el-checkbox": 7,
+      "h-svg-icon": 7,
+      "el-switch": 1,
+      "el-tooltip": 4,
+      "el-slider": 1,
+      "el-input-number": 1,
+      "el-button": 4,
+      "el-radio": 3,
+      "el-date-picker": 1,
+      "el-upload": 1
+    },
+    "page_framework_components": {
+      "h-page-content": 1
+    },
+    "unindexed_runtime_components": {
+      "el-select-menu": 2
+    },
+    "actions": [
+      {
+        "label": "提交",
+        "count": 1
+      },
+      {
+        "label": "取消",
+        "count": 1
+      }
+    ]
+  }
+}

@@ -1,0 +1,267 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "upload",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/form/upload",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/basic-form.docs.json",
+    "evidence_sha256": "ce35467cfa4317a06d0d65dd9e415328669f0c6711f32417ce27edc1af71cbe7"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-upload": {
+      "props": [
+        {
+          "参数": "action",
+          "说明": "上传的地址",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "action"
+        },
+        {
+          "参数": "headers",
+          "说明": "可选参数, 设置上传的请求头部",
+          "类型": "object, function(返回object)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "headers"
+        },
+        {
+          "参数": "multiple",
+          "说明": "可选参数, 是否支持多选文件",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "multiple"
+        },
+        {
+          "参数": "data",
+          "说明": "可选参数, 上传时附带的额外参数",
+          "类型": "object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "data"
+        },
+        {
+          "参数": "name",
+          "说明": "可选参数, 上传的文件字段名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "file",
+          "template_name": "name"
+        },
+        {
+          "参数": "with-credentials",
+          "说明": "支持发送 cookie 凭证信息",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "with-credentials"
+        },
+        {
+          "参数": "show-file-list",
+          "说明": "是否显示已上传文件列表",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "show-file-list"
+        },
+        {
+          "参数": "drag",
+          "说明": "是否启用拖拽上传",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "drag"
+        },
+        {
+          "参数": "accept",
+          "说明": "可选参数, 接受上传的文件类型（thumbnail-mode 模式下此参数无效）",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "accept"
+        },
+        {
+          "参数": "on-preview",
+          "说明": "可选参数, 点击已上传的文件链接时的钩子, 可以通过 file.response 拿到服务端返回数据",
+          "类型": "function(file)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "on-preview"
+        },
+        {
+          "参数": "on-remove",
+          "说明": "可选参数, 文件列表移除文件时的钩子",
+          "类型": "function(file, fileList)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "on-remove"
+        },
+        {
+          "参数": "on-success",
+          "说明": "可选参数, 文件上传成功时的钩子",
+          "类型": "function(response, file, fileList, xhr)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "on-success"
+        },
+        {
+          "参数": "on-error",
+          "说明": "可选参数, 文件上传失败时的钩子",
+          "类型": "function(err, file, fileList, xhr)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "on-error"
+        },
+        {
+          "参数": "on-progress",
+          "说明": "可选参数, 文件上传时的钩子",
+          "类型": "function(event, file, fileList)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "on-progress"
+        },
+        {
+          "参数": "on-change",
+          "说明": "可选参数, 文件状态改变时的钩子，添加文件、上传成功和上传失败时都会被调用",
+          "类型": "function(file, fileList)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "on-change"
+        },
+        {
+          "参数": "on-ready",
+          "说明": "可选参数, 文件上传前的钩子，在before-upload之前被调用，多个文件上传时只会调用一次，参数为上传文件的列表，若返回 false则停止上传。",
+          "类型": "function(fileList)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "on-ready"
+        },
+        {
+          "参数": "on-submit-error 2.38+",
+          "说明": "可选参数，手动调用submit方法时，失败的钩子",
+          "类型": "function(error)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "on-submit-error"
+        },
+        {
+          "参数": "before-upload",
+          "说明": "可选参数, 上传文件之前的钩子，参数为上传的文件，若返回 false 或者返回 Promise 且被 reject，则停止上传。",
+          "类型": "function(file)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "before-upload"
+        },
+        {
+          "参数": "before-remove",
+          "说明": "删除文件之前的钩子，参数为上传的文件和文件列表，若返回 false 或者返回 Promise 且被 reject，则停止上传。",
+          "类型": "function(file, fileList)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "before-remove"
+        },
+        {
+          "参数": "list-type",
+          "说明": "文件列表的类型",
+          "类型": "string",
+          "可选值": "text/picture/picture-card",
+          "默认值": "text",
+          "template_name": "list-type"
+        },
+        {
+          "参数": "auto-upload",
+          "说明": "是否在选取文件后立即进行上传",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "auto-upload"
+        },
+        {
+          "参数": "file-name-render  2.0+",
+          "说明": "文件列表中，文件名称渲染内容的自定义render函数",
+          "类型": "function(h,file)",
+          "可选值": "—",
+          "默认值": "-",
+          "template_name": "file-name-render"
+        },
+        {
+          "参数": "file-list",
+          "说明": "上传的文件列表, 例如: [{name: ‘food.jpeg’, url: ‘https://fuss10.elemecdn.com/3/63/4e7f3a15429bfda99bce42a18cdd1jpeg.jpeg?imageMogr2/thumbnail/360x360/format/webp/quality/100’}]",
+          "类型": "array",
+          "可选值": "—",
+          "默认值": "[]",
+          "template_name": "file-list"
+        },
+        {
+          "参数": "http-request",
+          "说明": "覆盖默认的上传行为，可以自定义上传的实现",
+          "类型": "function",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "http-request"
+        },
+        {
+          "参数": "disabled",
+          "说明": "是否禁用",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "limit  2.0+",
+          "说明": "最大允许上传个数",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "limit"
+        },
+        {
+          "参数": "on-exceed  2.0+",
+          "说明": "文件超出个数限制时的钩子",
+          "类型": "function(files, fileList)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "on-exceed"
+        },
+        {
+          "参数": "single-file  2.0+",
+          "说明": "在上传图片状态下，仅能上传单个图片",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "single-file"
+        },
+        {
+          "参数": "error-tooltip-text  2.0+",
+          "说明": "上传错误时的tooltip文字提示",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "上传失败",
+          "template_name": "error-tooltip-text"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": [
+        {
+          "方法名": "clearFiles",
+          "说明": "清空已上传的文件列表（该方法不支持在 before-upload 中调用）",
+          "参数": "—",
+          "template_name": "clear-files"
+        },
+        {
+          "方法名": "abort",
+          "说明": "取消上传请求",
+          "参数": "（ file: fileList 中的 file 对象 ）",
+          "template_name": "abort"
+        }
+      ]
+    }
+  },
+  "supporting_sections": []
+}

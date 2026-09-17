@@ -1,0 +1,36 @@
+{
+  "schema_version": "hui-component-pattern.v2",
+  "id": "form.data-form",
+  "name": "数据表单",
+  "split_mode": "composite",
+  "vue_component": "DataForm",
+  "description": "使用结构化字段查看或编辑业务对象",
+  "category": "form",
+  "status": "active",
+  "use_when": ["页面主体由多个结构化字段构成"],
+  "hui_components": [
+    "el-form",
+    "el-form-item",
+    "el-input",
+    "el-select",
+    "el-option",
+    "el-date-picker",
+    "el-switch",
+    "el-radio-group",
+    "el-radio",
+    "el-checkbox-group",
+    "el-checkbox",
+    "el-slider",
+    "el-input-number",
+    "el-row",
+    "el-col"
+  ],
+  "geometry_roles": {
+    "form-control-width": "400px",
+    "form-left-label-width": "112px",
+    "form-control-height": "32px",
+    "form-item-gap": "24px"
+  },
+  "variants": ["top", "left-left", "left-right"],
+  "owner": "hui-common"
+}

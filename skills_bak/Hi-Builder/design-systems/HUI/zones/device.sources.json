@@ -1,0 +1,8 @@
+{
+  "schema_version": "d2c-zone.v1",
+  "id": "device.sources",
+  "name": "设备数据源区域",
+  "description": "展示并切换与当前设备相关联的数据源或测点",
+  "use_when": ["设备页面存在多个关联数据源"],
+  "owner": "hui-common"
+}

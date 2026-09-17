@@ -1,0 +1,261 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "id": "capture-card-tabs",
+  "title": "抓拍与交通事件",
+  "page_kind": "card-tabs",
+  "pattern_contract": "card/card-tabs.json",
+  "portal": {
+    "active_top_menu": "智能应用",
+    "section": "智能检索",
+    "tab_title": "抓拍与交通事件",
+    "active_side_menu": "capture-comparison",
+    "side_menus": [
+      {
+        "id": "capture-comparison",
+        "label": "抓拍对比",
+        "icon": "h-icon-search"
+      },
+      {
+        "id": "traffic-event",
+        "label": "交通事件",
+        "icon": "h-icon-info_data"
+      },
+      {
+        "id": "analysis-record",
+        "label": "分析记录",
+        "icon": "h-icon-menu"
+      }
+    ]
+  },
+  "toolbar_actions": [
+    {
+      "label": "批量导出",
+      "icon": "h-icon-export"
+    },
+    {
+      "label": "刷新",
+      "icon": "h-icon-refresh"
+    }
+  ],
+  "page_size": 10,
+  "card_tabs": [
+    {
+      "id": "vehicle-comparison",
+      "label": "车辆抓拍对比",
+      "card_profile": "similarity-card",
+      "pattern_contract": "card/similarity.json"
+    },
+    {
+      "id": "face-similarity",
+      "label": "人脸相似度对比",
+      "card_profile": "similarity-card",
+      "pattern_contract": "card/similarity.json"
+    },
+    {
+      "id": "traffic-events",
+      "label": "交通事件类型集",
+      "card_profile": "text-card",
+      "pattern_contract": "card/text.json"
+    }
+  ],
+  "preview": {
+    "cardTabRows": {
+      "vehicle-comparison": [
+        {
+          "id": "vehicle-1",
+          "referenceImage": "http://tpp.dev.hikhub.net/tpp/img/car.06554ce8.png",
+          "captureImage": "http://tpp.dev.hikhub.net/tpp/img/car.06554ce8.png",
+          "metric": "98.72%",
+          "title": "浙A·6K829",
+          "status": "同车",
+          "tone": "blue",
+          "category": "车辆比中",
+          "time": "2026-08-05 10:32:18",
+          "location": "文一路学院路口东向西"
+        },
+        {
+          "id": "vehicle-2",
+          "referenceImage": "http://tpp.dev.hikhub.net/tpp/img/car.06554ce8.png",
+          "captureImage": "http://tpp.dev.hikhub.net/tpp/img/car.06554ce8.png",
+          "metric": "96.35%",
+          "title": "浙B·2M517",
+          "status": "同车",
+          "tone": "blue",
+          "category": "重点车辆",
+          "time": "2026-08-05 10:28:46",
+          "location": "机场快速路南向北卡口"
+        },
+        {
+          "id": "vehicle-3",
+          "referenceImage": "http://tpp.dev.hikhub.net/tpp/img/car.06554ce8.png",
+          "captureImage": "http://tpp.dev.hikhub.net/tpp/img/car.06554ce8.png",
+          "metric": "94.81%",
+          "title": "浙A·9P320",
+          "status": "待复核",
+          "tone": "orange",
+          "category": "疑似套牌",
+          "time": "2026-08-05 10:21:09",
+          "location": "秋石高架庆春路出口"
+        },
+        {
+          "id": "vehicle-4",
+          "referenceImage": "http://tpp.dev.hikhub.net/tpp/img/car.06554ce8.png",
+          "captureImage": "http://tpp.dev.hikhub.net/tpp/img/car.06554ce8.png",
+          "metric": "91.26%",
+          "title": "浙D·8Q166",
+          "status": "待复核",
+          "tone": "orange",
+          "category": "车辆比中",
+          "time": "2026-08-05 10:16:37",
+          "location": "艮山西路运河东路口"
+        },
+        {
+          "id": "vehicle-5",
+          "referenceImage": "http://tpp.dev.hikhub.net/tpp/img/car.06554ce8.png",
+          "captureImage": "http://tpp.dev.hikhub.net/tpp/img/car.06554ce8.png",
+          "metric": "87.40%",
+          "title": "浙F·3V208",
+          "status": "低相似",
+          "tone": "orange",
+          "category": "疑似套牌",
+          "time": "2026-08-05 10:08:25",
+          "location": "之江路钱江一桥入口"
+        }
+      ],
+      "face-similarity": [
+        {
+          "id": "face-1",
+          "referenceImage": "http://tpp.dev.hikhub.net/tpp/img/similarity.167e6ed2.png",
+          "captureImage": "http://tpp.dev.hikhub.net/tpp/img/similarity1.77fd29b8.png",
+          "metric": "99.18%",
+          "title": "张伟",
+          "status": "重点关注",
+          "tone": "orange",
+          "category": "重点人员",
+          "time": "2026-08-05 10:35:41",
+          "location": "火车东站东广场入口"
+        },
+        {
+          "id": "face-2",
+          "referenceImage": "http://tpp.dev.hikhub.net/tpp/img/similarity.167e6ed2.png",
+          "captureImage": "http://tpp.dev.hikhub.net/tpp/img/similarity1.77fd29b8.png",
+          "metric": "97.64%",
+          "title": "李娜",
+          "status": "一般关注",
+          "tone": "blue",
+          "category": "布控人员",
+          "time": "2026-08-05 10:31:06",
+          "location": "客运中心一层安检口"
+        },
+        {
+          "id": "face-3",
+          "referenceImage": "http://tpp.dev.hikhub.net/tpp/img/similarity.167e6ed2.png",
+          "captureImage": "http://tpp.dev.hikhub.net/tpp/img/similarity1.77fd29b8.png",
+          "metric": "95.23%",
+          "title": "王强",
+          "status": "一般关注",
+          "tone": "blue",
+          "category": "涉稳人员",
+          "time": "2026-08-05 10:24:53",
+          "location": "地铁市民中心站A口"
+        },
+        {
+          "id": "face-4",
+          "referenceImage": "http://tpp.dev.hikhub.net/tpp/img/similarity.167e6ed2.png",
+          "captureImage": "http://tpp.dev.hikhub.net/tpp/img/similarity1.77fd29b8.png",
+          "metric": "92.86%",
+          "title": "赵敏",
+          "status": "待复核",
+          "tone": "orange",
+          "category": "临时布控",
+          "time": "2026-08-05 10:19:27",
+          "location": "武林广场地下通道"
+        },
+        {
+          "id": "face-5",
+          "referenceImage": "http://tpp.dev.hikhub.net/tpp/img/similarity.167e6ed2.png",
+          "captureImage": "http://tpp.dev.hikhub.net/tpp/img/similarity1.77fd29b8.png",
+          "metric": "89.75%",
+          "title": "陈杰",
+          "status": "待复核",
+          "tone": "orange",
+          "category": "陌生人员",
+          "time": "2026-08-05 10:12:14",
+          "location": "湖滨步行街北入口"
+        }
+      ],
+      "traffic-events": [
+        {
+          "id": "event-1",
+          "image": "http://tpp.dev.hikhub.net/tpp/img/text.0a734454.png",
+          "title": "机动车违停",
+          "tags": [
+            {
+              "label": "违法停车",
+              "tone": "orange"
+            },
+            {
+              "label": "实时检测",
+              "tone": "blue"
+            }
+          ],
+          "location": "城市主干道、禁停区域",
+          "time": "全天候检测"
+        },
+        {
+          "id": "event-2",
+          "image": "http://tpp.dev.hikhub.net/tpp/img/text.0a734454.png",
+          "title": "占用应急车道",
+          "tags": [
+            {
+              "label": "高速事件",
+              "tone": "orange"
+            },
+            {
+              "label": "车辆检测",
+              "tone": "blue"
+            }
+          ],
+          "location": "高速公路、城市快速路",
+          "time": "实时检测"
+        },
+        {
+          "id": "event-3",
+          "image": "http://tpp.dev.hikhub.net/tpp/img/text.0a734454.png",
+          "title": "逆向行驶",
+          "tags": [
+            {
+              "label": "行驶异常",
+              "tone": "orange"
+            },
+            {
+              "label": "方向分析",
+              "tone": "blue"
+            }
+          ],
+          "location": "单行道路、匝道出入口",
+          "time": "全天候检测"
+        },
+        {
+          "id": "event-4",
+          "image": "http://tpp.dev.hikhub.net/tpp/img/text.0a734454.png",
+          "title": "交通拥堵",
+          "tags": [
+            {
+              "label": "交通态势",
+              "tone": "blue"
+            },
+            {
+              "label": "持续分析",
+              "tone": "blue"
+            }
+          ],
+          "location": "重点路段、交叉路口",
+          "time": "按分钟更新"
+        }
+      ]
+    }
+  }
+}

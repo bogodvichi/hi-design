@@ -1,0 +1,47 @@
+{
+  "schema_version": "business-field-catalog.v1",
+  "maintenance": {
+    "purpose": "HUI通用字段词典，避免各行业重复定义核心语义一致的字段。",
+    "edit_policy": "只登记已被多个行业稳定复用且核心语义一致的字段；行业专属字段写入对应行业字段索引。",
+    "managed_paths": {
+      "catalog.json": "HUI通用字段ID、名称和数据类型的事实源。"
+    }
+  },
+  "id": "hui.common.fields",
+  "scope": "cross-industry",
+  "admission_policy": "reused-by-at-least-two-industries-with-identical-core-semantics",
+  "fields": {
+    "common.name": {
+      "name": "名称",
+      "value_type": "string"
+    },
+    "common.code": {
+      "name": "编码",
+      "value_type": "string"
+    },
+    "common.status": {
+      "name": "状态",
+      "value_type": "enum"
+    },
+    "common.location": {
+      "name": "位置",
+      "value_type": "string"
+    },
+    "common.created-time": {
+      "name": "创建时间",
+      "value_type": "datetime"
+    },
+    "common.updated-time": {
+      "name": "更新时间",
+      "value_type": "datetime"
+    },
+    "common.description": {
+      "name": "描述",
+      "value_type": "text"
+    },
+    "common.organization": {
+      "name": "所属组织",
+      "value_type": "organization-reference"
+    }
+  }
+}

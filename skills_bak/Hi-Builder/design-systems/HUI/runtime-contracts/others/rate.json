@@ -1,0 +1,149 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "rate",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/others/rate",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/others.docs.json",
+    "evidence_sha256": "f150a2630aef3c6508a028b85a5e004a26036cac12218f39bbe7388c02099e11"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-rate": {
+      "props": [
+        {
+          "参数": "max",
+          "说明": "最大分值",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "5",
+          "template_name": "max"
+        },
+        {
+          "参数": "disabled",
+          "说明": "是否为只读",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "allow-half",
+          "说明": "是否允许半选",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "allow-half"
+        },
+        {
+          "参数": "low-threshold",
+          "说明": "低分和中等分数的界限值，值本身被划分在低分中",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "2",
+          "template_name": "low-threshold"
+        },
+        {
+          "参数": "high-threshold",
+          "说明": "高分和中等分数的界限值，值本身被划分在高分中",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "4",
+          "template_name": "high-threshold"
+        },
+        {
+          "参数": "colors",
+          "说明": "icon 的颜色数组，共有 3 个元素，为 3 个分段所对应的颜色",
+          "类型": "array",
+          "可选值": "—",
+          "默认值": "[‘#F7BA2A’, ‘#F7BA2A’, ‘#F7BA2A’]",
+          "template_name": "colors"
+        },
+        {
+          "参数": "void-color",
+          "说明": "未选中 icon 的颜色",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "#C6D1DE",
+          "template_name": "void-color"
+        },
+        {
+          "参数": "disabled-void-color",
+          "说明": "只读时未选中 icon 的颜色",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "#EFF2F7",
+          "template_name": "disabled-void-color"
+        },
+        {
+          "参数": "icon-classes",
+          "说明": "icon 的类名数组，共有 3 个元素，为 3 个分段所对应的类名",
+          "类型": "array",
+          "可选值": "—",
+          "默认值": "[‘el-icon-star-on’, ‘el-icon-star-on’,‘el-icon-star-on’]",
+          "template_name": "icon-classes"
+        },
+        {
+          "参数": "void-icon-class",
+          "说明": "未选中 icon 的类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "el-icon-star-off",
+          "template_name": "void-icon-class"
+        },
+        {
+          "参数": "disabled-void-icon-class",
+          "说明": "只读时未选中 icon 的类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "el-icon-star-on",
+          "template_name": "disabled-void-icon-class"
+        },
+        {
+          "参数": "show-text",
+          "说明": "是否显示辅助文字",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "show-text"
+        },
+        {
+          "参数": "text-color",
+          "说明": "辅助文字的颜色",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "#1F2D3D",
+          "template_name": "text-color"
+        },
+        {
+          "参数": "texts",
+          "说明": "辅助文字数组",
+          "类型": "array",
+          "可选值": "—",
+          "默认值": "[‘极差’, ‘失望’, ‘一般’, ‘满意’, ‘惊喜’]",
+          "template_name": "texts"
+        },
+        {
+          "参数": "text-template",
+          "说明": "只读时的辅助文字模板",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "{value}",
+          "template_name": "text-template"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "change",
+          "说明": "分值改变时触发",
+          "回调参数": "改变后的分值",
+          "template_name": "change"
+        }
+      ],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

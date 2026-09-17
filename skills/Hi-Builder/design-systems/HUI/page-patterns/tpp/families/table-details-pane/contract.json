@@ -1,0 +1,139 @@
+{
+  "schema_version": "hui-page-pattern.v1",
+  "id": "hui.tpp.family.table-details-pane",
+  "name": "详情栏表格页",
+  "source": {
+    "platform": "HUI-VUE典型页面",
+    "observed_at": "2026-07-31",
+    "catalog": "../../catalog.json"
+  },
+  "match": [
+    "details-pane-table",
+    "带详情栏"
+  ],
+  "semantics": [
+    "master-table",
+    "selection-linked-details",
+    "details-pane"
+  ],
+  "shared_runtime_components": [
+    "el-button",
+    "el-checkbox",
+    "el-divider",
+    "el-form",
+    "el-form-item",
+    "el-input",
+    "el-option",
+    "el-pagination",
+    "el-radio-button",
+    "el-radio-group",
+    "el-scrollbar",
+    "el-select",
+    "el-tab-pane",
+    "el-table",
+    "el-table-column",
+    "el-tabs",
+    "el-tag",
+    "el-tooltip",
+    "h-icon",
+    "h-svg-icon"
+  ],
+  "invariants": {
+    "separators": {
+      "filter_toolbar": {
+        "owner": ".query-filter::after",
+        "mechanism": "pseudo-element",
+        "placement": "filter-bottom",
+        "width": "1px",
+        "token": "--h-color-border-tertiary"
+      },
+      "master_details": {
+        "mechanism": "border",
+        "edge": "left",
+        "token": "--h-color-border-tertiary"
+      }
+    },
+    "layout_relation": {
+      "shape": "T-shaped",
+      "details_scope": "inside table collection module",
+      "junction": "the filter-bottom horizontal separator sits above collection-main; when opened, the detail pane contributes only the left vertical separator"
+    },
+    "details_spacing": {
+      "content_end_padding": "24px",
+      "pane_width": "455px",
+      "pane_padding": "8px 0px 40px 24px",
+      "tabs_content_padding": "8px 0px",
+      "container_margin": "0px -20px",
+      "item_padding": "0px 0px 0px 20px",
+      "item_margin": "0px 0px 24px",
+      "title_height": "22px"
+    },
+    "regions": {
+      "search": {
+        "display": "block",
+        "position": "static",
+        "padding": "16px 0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 109
+      },
+      "toolbar": {
+        "display": "flex",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 56
+      },
+      "table": {
+        "display": "flex",
+        "position": "relative",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "hidden",
+        "overflow_y": "hidden",
+        "height": 628.66
+      },
+      "pagination": {
+        "display": "flex",
+        "position": "static",
+        "padding": "0px 12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 56
+      },
+      "tabs": {
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 692.66
+      },
+      "details_content": {
+        "display": "flex",
+        "position": "relative",
+        "padding": "0px 12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 849.66
+      }
+    },
+    "variant_values_must_come_from_page_contract": true
+  },
+  "variants": [
+    {
+      "id": "hui.tpp.page.table.with-details-pane",
+      "name": "详情栏",
+      "contract": "../../pages/table/with-details-pane.json",
+      "parameters": {
+        "details_placement": "right"
+      }
+    }
+  ]
+}

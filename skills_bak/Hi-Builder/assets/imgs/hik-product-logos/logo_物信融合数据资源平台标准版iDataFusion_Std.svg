@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="140px" height="140px" viewBox="0 0 140 140" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 52.6 (67491) - http://www.bohemiancoding.com/sketch -->
+    <title>物信融合数据资源平台（标准版）</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <linearGradient x1="100%" y1="57.0795927%" x2="-5.70414438%" y2="19.7525813%" id="linearGradient-1">
+            <stop stop-color="#57C3FF" offset="0%"></stop>
+            <stop stop-color="#50B9FF" offset="23.8730538%"></stop>
+            <stop stop-color="#0A52FF" offset="100%"></stop>
+        </linearGradient>
+        <linearGradient x1="50%" y1="85.1275015%" x2="17.3963998%" y2="25.4774475%" id="linearGradient-2">
+            <stop stop-color="#FFFFFF" offset="0%"></stop>
+            <stop stop-color="#38B8FF" offset="100%"></stop>
+        </linearGradient>
+        <linearGradient x1="171.315664%" y1="-32.9495461%" x2="-34.0183517%" y2="116.058237%" id="linearGradient-3">
+            <stop stop-color="#63CAFF" offset="0%"></stop>
+            <stop stop-color="#5ABEFF" offset="37.7636805%"></stop>
+            <stop stop-color="#0A52FF" offset="100%"></stop>
+        </linearGradient>
+        <linearGradient x1="-15.5322488%" y1="26.0104432%" x2="90.7927041%" y2="77.2500797%" id="linearGradient-4">
+            <stop stop-color="#FFFFFF" offset="0%"></stop>
+            <stop stop-color="#38BCFF" offset="100%"></stop>
+        </linearGradient>
+        <linearGradient x1="2.5925825e-09%" y1="-21.3811907%" x2="0%" y2="122.703598%" id="linearGradient-5">
+            <stop stop-color="#63CAFF" offset="0%"></stop>
+            <stop stop-color="#5FC5FF" offset="29.7138735%"></stop>
+            <stop stop-color="#0A52FF" offset="100%"></stop>
+        </linearGradient>
+        <linearGradient x1="70.1420997%" y1="8.31057843%" x2="22.0177288%" y2="100%" id="linearGradient-6">
+            <stop stop-color="#FFFFFF" offset="0%"></stop>
+            <stop stop-color="#38BCFF" offset="100%"></stop>
+        </linearGradient>
+    </defs>
+    <g id="Page-2" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="Group-6-Copy">
+            <rect id="Rectangle-Copy-3" x="0" y="0" width="140" height="140"></rect>
+            <g id="Group-7" transform="translate(23.000000, 17.000000)">
+                <path d="M27.8963983,9.79330205 L44.0937826,0.437406426 L87.6551509,25.1122307 C90.791987,26.8890546 92.729615,30.2167607 92.7265261,33.8218731 L92.7128668,49.7639095 L43.7775587,22.536143 L23.454721,33.9470306 L23.3980155,17.6178818 C23.3868131,14.3919875 25.1029986,11.4068191 27.8963983,9.79330205 Z" id="path-path-copy-2" fill="url(#linearGradient-1)" fill-rule="nonzero"></path>
+                <path d="M21.9272708,65.401677 L22.0991339,17.7652287 C22.1094331,14.9105413 23.6401183,12.2776486 26.1158012,10.8562617 L43.4692792,0.892947219 L43.3285923,39.8811498 C43.298977,48.0883486 38.8982812,55.6578913 31.780728,59.7443842 L21.9272708,65.401677 Z" id="path-path" fill="url(#linearGradient-2)"></path>
+                <path d="M92,59.6875724 L92,78.1041751 L48.8391004,102.62571 C45.7912158,104.357342 42.0591471,104.366615 39.0026957,102.650148 L25,94.7864036 L73.2587337,66.7264684 L73.5439213,44 L87.4305217,51.8536412 C90.2542157,53.4505965 92,56.4435758 92,59.6875724 Z" id="path-path-copy-2" fill="url(#linearGradient-3)" fill-rule="nonzero"></path>
+                <path d="M48.0299073,29 L87.9024109,51.2869884 C90.4385942,52.7046041 92.006798,55.3858447 91.9991053,58.2913225 L91.9469235,78 L60.2927511,60.306673 C52.6842292,56.0538351 47.979627,48.0101483 48.0026812,39.293744 L48.0299073,29 Z" id="path-path" fill="url(#linearGradient-4)"></path>
+                <path d="M17.0638309,90.8593306 L1,81.6608262 L1.10073525,31.4038859 C1.10743214,28.0628 2.89057362,24.9729935 5.79186884,23.275145 L19.9324932,15 L20.2444875,70.7384488 L40,82.3792254 L25.7499456,90.8001423 C23.0790166,92.3784991 19.7563737,92.4011401 17.0638309,90.8593306 Z" id="path-path-copy-2" fill="url(#linearGradient-5)" fill-rule="nonzero"></path>
+                <path d="M67.3707682,68.0217766 L26.2112839,91.5038337 C23.7345421,92.9168492 20.692917,92.904751 18.2274942,91.4720777 L0.921035941,81.4151817 L34.0784543,62.4984427 C41.5086573,58.2594151 50.6334986,58.2957004 58.0297539,62.5936859 L67.3707682,68.0217766 Z" id="path-path" fill="url(#linearGradient-6)"></path>
+            </g>
+        </g>
+    </g>
+</svg>

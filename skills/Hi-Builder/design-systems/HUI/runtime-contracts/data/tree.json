@@ -1,0 +1,730 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "tree",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/data/tree",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/data.docs.json",
+    "evidence_sha256": "1faf13316d3e61002e07073d56ed0739f08ed5e112cba04b1d62b08484a37c71"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-tree": {
+      "props": [
+        {
+          "参数": "data",
+          "说明": "展示数据",
+          "类型": "array",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "data"
+        },
+        {
+          "参数": "empty-text",
+          "说明": "内容为空的时候展示的文本",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "暂无数据",
+          "template_name": "empty-text"
+        },
+        {
+          "参数": "node-key",
+          "说明": "每个树节点用来作为唯一标识的属性，整颗树应该是唯一的",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "node-key"
+        },
+        {
+          "参数": "parent-key",
+          "说明": "配合 simpleData 和 node-key 使用，完成简单数据的展现，定义为父节点的 key",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "parent-key"
+        },
+        {
+          "参数": "props",
+          "说明": "配置选项，具体看下表",
+          "类型": "object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "props"
+        },
+        {
+          "参数": "render-after-expand",
+          "说明": "是否在第一次展开某个树节点后才渲染其子节点",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "render-after-expand"
+        },
+        {
+          "参数": "render-when-expand  2.0+",
+          "说明": "是否在展开某个树节点后才渲染其子节点（收起后就去除）",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "render-when-expand"
+        },
+        {
+          "参数": "load",
+          "说明": "加载子树数据的方法",
+          "类型": "function(node, resolve)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "load"
+        },
+        {
+          "参数": "lazy",
+          "说明": "是否懒加载子节点，需与 load 方法结合使用",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "lazy"
+        },
+        {
+          "参数": "render-content",
+          "说明": "树节点的内容区的渲染 Function",
+          "类型": "Function(h, { node }",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "render-content"
+        },
+        {
+          "参数": "prefix-content  2.29.0+",
+          "说明": "树节点的前缀区的渲染 Function",
+          "类型": "Function(h, { node }",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "prefix-content"
+        },
+        {
+          "参数": "highlight-current",
+          "说明": "是否高亮当前选中节点，默认值是 true。",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "highlight-current"
+        },
+        {
+          "参数": "current-node-key",
+          "说明": "当前选中节点的 key，只写属性",
+          "类型": "string, number",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "current-node-key"
+        },
+        {
+          "参数": "default-expand-all",
+          "说明": "是否默认展开所有节点",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "default-expand-all"
+        },
+        {
+          "参数": "expand-on-click-node",
+          "说明": "是否在点击节点的时候展开或者收缩节点， 默认值为 false，只有点箭头图标的时候才会展开或者收缩节点。",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "expand-on-click-node"
+        },
+        {
+          "参数": "expand-on-dbclick-node",
+          "说明": "是否在双击节点的时候展开或者收缩节点， 默认值为 true。",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "expand-on-dbclick-node"
+        },
+        {
+          "参数": "check-on-click-node  2.0+",
+          "说明": "是否在点击节点的时候选中节点，默认值为 false，即只有在点击复选框时才会选中节点。",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "check-on-click-node"
+        },
+        {
+          "参数": "auto-expand-parent",
+          "说明": "展开子节点的时候是否自动展开父节点",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "auto-expand-parent"
+        },
+        {
+          "参数": "default-expanded-keys",
+          "说明": "默认展开的节点的 key 的数组",
+          "类型": "array",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "default-expanded-keys"
+        },
+        {
+          "参数": "show-checkbox",
+          "说明": "节点是否可被勾选",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "show-checkbox"
+        },
+        {
+          "参数": "default-icon",
+          "说明": "默认图标",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "-",
+          "template_name": "default-icon"
+        },
+        {
+          "参数": "check-strictly",
+          "说明": "在显示复选框的情况下，是否严格的遵循父子不互相关联的做法，默认为 false",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "check-strictly"
+        },
+        {
+          "参数": "check-parent-to-child  2.36+",
+          "说明": "父联动子",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "check-parent-to-child"
+        },
+        {
+          "参数": "check-child-to-parent  2.36+",
+          "说明": "子联动父",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "check-child-to-parent"
+        },
+        {
+          "参数": "default-checked-keys",
+          "说明": "默认勾选的节点的 key 的数组",
+          "类型": "array",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "default-checked-keys"
+        },
+        {
+          "参数": "filter-node-method",
+          "说明": "对树节点进行筛选时执行的方法，返回 true 表示这个节点可以显示，返回 false 则表示这个节点会被隐藏",
+          "类型": "Function(value, data, node)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "filter-node-method"
+        },
+        {
+          "参数": "border",
+          "说明": "是否显示边框（不推荐，建议使用容器边框，这个参数和滚动条不兼容）",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "border"
+        },
+        {
+          "参数": "accordion",
+          "说明": "是否每次只打开一个同级树节点展开",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "accordion"
+        },
+        {
+          "参数": "indent",
+          "说明": "相邻级节点间的水平缩进，单位为像素",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "16",
+          "template_name": "indent"
+        },
+        {
+          "参数": "nodeHeight",
+          "说明": "节点高度（默认 css 样式控制为 32px，如果设置会以内联样式覆盖）",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "node-height"
+        },
+        {
+          "参数": "scroll-size 移除",
+          "说明": "滚动条尺寸",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "6",
+          "template_name": "scroll-size 移除"
+        },
+        {
+          "参数": "simple-data",
+          "说明": "使用同级的数据结构，使用子节点 parent-key 和父节点 node-key 对应来展现层级",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "simple-data"
+        },
+        {
+          "参数": "move",
+          "说明": "节点是否可拖拽",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "move"
+        },
+        {
+          "参数": "move-area",
+          "说明": "节点可拖拽的区域，outter 表示节点只有拖拽到树区域以外才会响应",
+          "类型": "string",
+          "可选值": "all/outter",
+          "默认值": "all",
+          "template_name": "move-area"
+        },
+        {
+          "参数": "move-style",
+          "说明": "拖拽节点的样式，或者可以通过样式覆盖 el-tree__move-block 类来实现，里面就是 Node 节点元素",
+          "类型": "object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "move-style"
+        },
+        {
+          "参数": "custom-srcollbar  2.0+",
+          "说明": "是否由用户自定义滚动条（默认是内置 el-scrollbar 的）",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "custom-srcollbar"
+        },
+        {
+          "参数": "before-drag",
+          "说明": "用于捕获节点被拖拽之前的事件回调函数，若返回 false，则节点无法被拖拽",
+          "类型": "function(data, node)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "before-drag"
+        },
+        {
+          "参数": "before-drop",
+          "说明": "用于捕获节点被加入目标节点之前的事件回调函数，若返回 false，则节点无法被拖拽到目标节点",
+          "类型": "function(data, node, targetNode, movePosition)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "before-drop"
+        },
+        {
+          "参数": "custom-drag",
+          "说明": "用于自定义处理 mouseup 之后的逻辑，true 自定义处理",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "custom-drag"
+        },
+        {
+          "参数": "before-click",
+          "说明": "用于捕获单击节点之前的事件回调函数，返回 Boolean 或 Promise，为 false 表示无法进行单击操作",
+          "类型": "function(data, node)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "before-click"
+        },
+        {
+          "参数": "nodeClassRender 2.38+",
+          "说明": "用于添加节点的自定义样式",
+          "类型": "string",
+          "可选值": "function(data)",
+          "默认值": "“”",
+          "template_name": "node-class-render"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "node-click",
+          "说明": "节点被点击时的回调",
+          "回调参数": "共四个参数，依次为：传递给 data 属性的数组中该节点所对应的对象、节点对应的 Node、节点组件本身和 click 事件对象。",
+          "template_name": "node-click"
+        },
+        {
+          "事件名称": "node-dbclick",
+          "说明": "节点被双击时的回调",
+          "回调参数": "共四个参数，依次为：传递给 data 属性的数组中该节点所对应的对象、节点对应的 Node、节点组件本身和 dbclick 事件对象。",
+          "template_name": "node-dbclick"
+        },
+        {
+          "事件名称": "node-mouseenter",
+          "说明": "鼠标移入节点事件",
+          "回调参数": "共三个参数，依次为：传递给 data 属性的数组中该节点所对应的对象、节点对应的 Node、mouseenter 事件对象。",
+          "template_name": "node-mouseenter"
+        },
+        {
+          "事件名称": "node-mouseleave",
+          "说明": "鼠标移出节点事件",
+          "回调参数": "共三个参数，依次为：传递给 data 属性的数组中该节点所对应的对象、节点对应的 Node、mouseleave 事件对象。",
+          "template_name": "node-mouseleave"
+        },
+        {
+          "事件名称": "node-contextmenu",
+          "说明": "当某一节点被鼠标右键点击时会触发该事件",
+          "回调参数": "共四个参数，依次为：event、传递给 data 属性的数组中该节点所对应的对象、节点对应的 Node、节点组件本身。",
+          "template_name": "node-contextmenu"
+        },
+        {
+          "事件名称": "check-change",
+          "说明": "节点选中状态发生变化时的回调",
+          "回调参数": "共三个参数，依次为：传递给 data 属性的数组中该节点所对应的对象、节点本身是否被选中、节点的子树中是否有被选中的节点",
+          "template_name": "check-change"
+        },
+        {
+          "事件名称": "check",
+          "说明": "当复选框被点击的时候触发",
+          "回调参数": "共三个参数，依次为：传递给 data 属性的数组中该节点所对应的对象、树目前的选中状态对象，包含 checkedNodes、checkedKeys、halfCheckedNodes、halfCheckedKeys 四个属性，还有是否是勾选状态",
+          "template_name": "check"
+        },
+        {
+          "事件名称": "current-change",
+          "说明": "当前选中节点变化时触发的事件",
+          "回调参数": "共两个参数，依次为：当前节点的数据，当前节点的 Node 对象",
+          "template_name": "current-change"
+        },
+        {
+          "事件名称": "node-expand",
+          "说明": "节点被展开时触发的事件",
+          "回调参数": "共三个参数，依次为：传递给 data 属性的数组中该节点所对应的对象、节点对应的 Node、节点组件本身。",
+          "template_name": "node-expand"
+        },
+        {
+          "事件名称": "node-collapse",
+          "说明": "节点被关闭时触发的事件",
+          "回调参数": "共三个参数，依次为：传递给 data 属性的数组中该节点所对应的对象、节点对应的 Node、节点组件本身。",
+          "template_name": "node-collapse"
+        },
+        {
+          "事件名称": "node-drag",
+          "说明": "节点开始拖拽时触发的事件",
+          "回调参数": "共四个参数，依次为：js Event 对象、传递给 data 属性的数组中被拖拽节点所对应的对象、被拖拽节点对应的 Node、节点组件本身。",
+          "template_name": "node-drag"
+        },
+        {
+          "事件名称": "node-drag-move",
+          "说明": "节点被拖拽移动时触发的事件",
+          "回调参数": "共四个参数，依次为：js Event 对象、传递给 data 属性的数组中被拖拽节点所对应的对象、被拖拽节点对应的 Node、节点组件本身。",
+          "template_name": "node-drag-move"
+        },
+        {
+          "事件名称": "node-drag-enter  2.0+",
+          "说明": "拖拽进入其他节点时触发的事件",
+          "回调参数": "共四个参数，依次为：js Event 对象、被拖拽节点对应的 Node、目标节点对应的 Node（拖拽到树区域以外则为 null）、节点组件本身。",
+          "template_name": "node-drag-enter"
+        },
+        {
+          "事件名称": "node-drag-leave  2.0+",
+          "说明": "拖拽离开某个节点时触发的事件",
+          "回调参数": "共四个参数，依次为：js Event 对象、被拖拽节点对应的 Node、目标节点对应的 Node（拖拽到树区域以外则为 null）、节点组件本身。",
+          "template_name": "node-drag-leave"
+        },
+        {
+          "事件名称": "node-drag-end  2.0+",
+          "说明": "拖拽结束时（可能未成功）触发的事件",
+          "回调参数": "共六个参数，依次为：js Event 对象、传递给 data 属性的数组中被拖拽节点所对应的对象、被拖拽节点对应的 Node、目标节点对应的 Node（拖拽到树区域以外则为 null）、节点被拖拽到目标节点的位置：inner（目标节点内） prev（目标节点之前） next（目标节点之后） out（树区域之外）、节点组件本身。",
+          "template_name": "node-drag-end"
+        },
+        {
+          "事件名称": "node-drag-over",
+          "说明": "拖拽结束自定义处理逻辑（暂不处理节点移动）",
+          "回调参数": "共六个参数，依次为：js Event 对象、传递给 data 属性的数组中被拖拽节点所对应的对象、被拖拽节点对应的 Node、目标节点对应的 Node（拖拽到树区域以外则为 null）、节点被拖拽到目标节点的位置：inner（目标节点内） prev（目标节点之前） next（目标节点之后） out（树区域之外）、节点组件本身。",
+          "template_name": "node-drag-over"
+        },
+        {
+          "事件名称": "node-drop",
+          "说明": "节点完成拖拽时触发的事件（被拖拽到树区域以外则自身节点不消失）",
+          "回调参数": "共六个参数，依次为：js Event 对象、传递给 data 属性的数组中被拖拽节点所对应的对象、被拖拽节点对应的 Node、目标节点对应的 Node（拖拽到树区域以外则为 null）、节点被拖拽到目标节点的位置：inner（目标节点内） prev（目标节点之前） next（目标节点之后） out（树区域之外）、节点组件本身。",
+          "template_name": "node-drop"
+        },
+        {
+          "事件名称": "on-scrolling-x",
+          "说明": "横向滚动时触发事件,参数返回滚动距离和已滚动百分比（百分比为 1 则表示滚动到尽头）",
+          "回调参数": "{scrollLeft, percentX }",
+          "template_name": "on-scrolling-x"
+        },
+        {
+          "事件名称": "on-scrolling-y",
+          "说明": "纵向滚动时触发事件,参数返回滚动距离和已滚动百分比（百分比为 1 则表示滚动到尽头）",
+          "回调参数": "{scrollTop, percentY }",
+          "template_name": "on-scrolling-y"
+        },
+        {
+          "事件名称": "on-scrolling",
+          "说明": "滚动时触发事件,参数返回滚动距离和已滚动百分比（百分比为 1 则表示滚动到尽头）",
+          "回调参数": "{scrollLeft, scrollTop, percentX, percentY }",
+          "template_name": "on-scrolling"
+        }
+      ],
+      "slots": [
+        {
+          "name": "—",
+          "说明": "自定义树节点的内容，参数为 { node, data, store }",
+          "template_name": "—"
+        },
+        {
+          "name": "empty  2.0+",
+          "说明": "当无数据时的内容，不传则展示默认的“暂无数据”",
+          "template_name": "empty"
+        }
+      ],
+      "methods": [
+        {
+          "方法名": "filter",
+          "说明": "对树节点进行筛选操作（异步树时该过滤方法无效）",
+          "参数": "接收一个任意类型的参数，该参数会在 filter-node-method 中作为第一个参数",
+          "template_name": "filter"
+        },
+        {
+          "方法名": "getCheckedNodes",
+          "说明": "若节点可被勾选（即 show-checkbox 为 true），则返回目前被选中的节点所组成的数组",
+          "参数": "(leafOnly, checkedOnly) 接收两个参数，1. boolean 类型的参数，若为 true 则仅返回被勾选的叶子节点，默认值为 false 2. boolean 类型的参数，若为 false 则一起返回半选状态的节点，默认值为 true",
+          "template_name": "get-checked-nodes"
+        },
+        {
+          "方法名": "setCheckedNodes",
+          "说明": "设置目前勾选的节点，使用此方法必须设置 node-key 属性",
+          "参数": "(nodes, leafOnly, rootOnly) 接收两个参数，1. 接收勾选节点数据的数组 2. boolean 类型的参数，若为 true 则仅设置叶子节点的勾选状态，默认值为 false 3. boolean 类型的参数，若为 true 则仅设置勾选节点的勾选状态，默认值为 false",
+          "template_name": "set-checked-nodes"
+        },
+        {
+          "方法名": "getCheckedKeys",
+          "说明": "若节点可被勾选（即 show-checkbox 为 true），则返回目前被勾选节点的 key 值所组成的数组，使用此方法必须设置 node-key 属性",
+          "参数": "(leafOnly, checkedOnly) 接收两个参数，1. boolean 类型的参数，若为 true 则仅返回被勾选的叶子节点的 keys，默认值为 false 2. boolean 类型的参数，若为 false 则一起返回半选状态的节点，默认值为 true",
+          "template_name": "get-checked-keys"
+        },
+        {
+          "方法名": "setCheckedKeys",
+          "说明": "通过 keys 设置目前勾选的节点，使用此方法必须设置 node-key 属性",
+          "参数": "(keys, leafOnly, rootOnly) 接收两个参数，1. 勾选节点的 key 的数组 2. boolean 类型的参数，若为 true 则仅设置叶子节点的勾选状态，默认值为 false 3. boolean 类型的参数，若为 true 则仅设置勾选节点的勾选状态，默认值为 false",
+          "template_name": "set-checked-keys"
+        },
+        {
+          "方法名": "setChecked",
+          "说明": "通过 key / data 设置某个节点的勾选状态，使用此方法必须设置 node-key 属性",
+          "参数": "(key/data, checked, deep) 接收三个参数，1. 勾选节点的 key 或者 data 2. boolean 类型，节点是否勾选 3. boolean 类型，是否设置子节点 ，默认为 false",
+          "template_name": "set-checked"
+        },
+        {
+          "方法名": "setCurrentKey",
+          "说明": "通通过 key 设置某个节点的当前选中状态，使用此方法必须设置 node-key 属性",
+          "参数": "(key) 待被选节点的 key ，设置为null则会取消选中状态",
+          "template_name": "set-current-key"
+        },
+        {
+          "方法名": "setCurrentNode",
+          "说明": "通过 data 设置某个节点的当前选中状态，使用此方法必须设置 node-key 属性",
+          "参数": "(data) 待被选节点的 data ，设置为null则会取消选中状态",
+          "template_name": "set-current-node"
+        },
+        {
+          "方法名": "setSelected",
+          "说明": "通过 key / data 设置某个节点的选中状态，使用此方法必须设置 node-key 属性",
+          "参数": "(key/data, selected, deep) 接收三个参数，1. 选中节点的 key 或者 data 2. boolean 类型，节点是否选中(默认选中)",
+          "template_name": "set-selected"
+        },
+        {
+          "方法名": "getSelectedNode",
+          "说明": "返回当前点击的节点",
+          "参数": "-",
+          "template_name": "get-selected-node"
+        },
+        {
+          "方法名": "getSelectedKey",
+          "说明": "返回当前点击节点的 Key 值，使用此方法必须设置 node-key 属性",
+          "参数": "-",
+          "template_name": "get-selected-key"
+        },
+        {
+          "方法名": "resizeScrollbar",
+          "说明": "重新渲染滚动条",
+          "参数": "-",
+          "template_name": "resize-scrollbar"
+        },
+        {
+          "方法名": "getHalfCheckedNodes",
+          "说明": "若节点可被选择（即 show-checkbox 为 true），则返回目前半选中的节点所组成的数组",
+          "参数": "-",
+          "template_name": "get-half-checked-nodes"
+        },
+        {
+          "方法名": "getHalfCheckedKeys",
+          "说明": "若节点可被选择（即 show-checkbox 为 true），则返回目前半选中的节点的 key 所组成的数组",
+          "参数": "-",
+          "template_name": "get-half-checked-keys"
+        },
+        {
+          "方法名": "getNode",
+          "说明": "根据 data 或者 key 拿到 Tree 组件中的 node",
+          "参数": "(data) 要获得 node 的 key 或者 data",
+          "template_name": "get-node"
+        },
+        {
+          "方法名": "expandNode",
+          "说明": "展开节点",
+          "参数": "(data) 要展开节点 的 key 或者 data",
+          "template_name": "expand-node"
+        },
+        {
+          "方法名": "collapseNode",
+          "说明": "收起节点",
+          "参数": "(data) 要收起节点 的 key 或者 data",
+          "template_name": "collapse-node"
+        },
+        {
+          "方法名": "remove",
+          "说明": "删除 Tree 中的节点，可以是数组",
+          "参数": "(data) 要删除的节点的 data、key 或者 node",
+          "template_name": "remove"
+        },
+        {
+          "方法名": "append",
+          "说明": "为 Tree 中的一个节点追加子节点，可以是数组",
+          "参数": "(data, parentNode) 1. 要追加的子节点的 data 2. 子节点的 parent 的 data、key 或者 node",
+          "template_name": "append"
+        },
+        {
+          "方法名": "insertBefore",
+          "说明": "为 Tree 的一个节点的前面增加一个节点",
+          "参数": "(data, refNode) 1. 要增加的节点的 data 2. 要增加的节点的后一个节点的 data、key 或者 node",
+          "template_name": "insert-before"
+        },
+        {
+          "方法名": "insertAfter",
+          "说明": "为 Tree 的一个节点的后面增加一个节点",
+          "参数": "(data, refNode) 1. 要增加的节点的 data 2. 要增加的节点的前一个节点的 data、key 或者 node",
+          "template_name": "insert-after"
+        },
+        {
+          "方法名": "reload",
+          "说明": "重新加载树节点，可以是数组，仅在 lazy 为 true 的情况下可用",
+          "参数": "(data) 要重新加载节点的 data、key 或者 node",
+          "template_name": "reload"
+        },
+        {
+          "方法名": "moveNodes",
+          "说明": "节点拖拽之后移动节点方法，配合 custiomDrag 属性，node-drag-over 事件可以实现自定义处理 mouseup 之后的逻辑",
+          "参数": "-",
+          "template_name": "move-nodes"
+        }
+      ]
+    }
+  },
+  "supporting_sections": [
+    {
+      "heading": "props",
+      "headers": [
+        "参数",
+        "说明",
+        "类型",
+        "可选值",
+        "默认值"
+      ],
+      "rows": [
+        {
+          "参数": "label",
+          "说明": "指定节点标签为节点对象的某个属性值",
+          "类型": "string, function(data, node)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "label"
+        },
+        {
+          "参数": "children",
+          "说明": "指定子树为节点对象的某个属性值",
+          "类型": "string, function(data, node)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "children"
+        },
+        {
+          "参数": "disabled",
+          "说明": "指定节点选择框是否禁用",
+          "类型": "boolean, function(data, node)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "showCheckbox",
+          "说明": "显示多选框",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "show-checkbox"
+        },
+        {
+          "参数": "isLeaf",
+          "说明": "指定节点是否是叶子节点，仅在指定了 lazy 属性的情况下生效",
+          "类型": "boolean, function(data, node)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "is-leaf"
+        },
+        {
+          "参数": "icon",
+          "说明": "节点的图标",
+          "类型": "string, function(data, node)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "icon"
+        },
+        {
+          "参数": "selectable",
+          "说明": "指定节点是否可以选中",
+          "类型": "boolean, function(data, node)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "selectable"
+        },
+        {
+          "参数": "svgIcon",
+          "说明": "节点的 SVG 图标",
+          "类型": "String/Array",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "svg-icon"
+        },
+        {
+          "参数": "svgIconOffline",
+          "说明": "节点的 SVG 图标是否为 Offline 状态",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "svg-icon-offline"
+        },
+        {
+          "参数": "svgIconColor  2.0+",
+          "说明": "节点的 SVG 图标非选中状态下的颜色",
+          "类型": "String/Array",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "svg-icon-color"
+        },
+        {
+          "参数": "svgIconColorActive  2.0+",
+          "说明": "节点的 SVG 图标选中状态下的颜色",
+          "类型": "String/Array",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "svg-icon-color-active"
+        },
+        {
+          "参数": "svgIconRequire  2.5+",
+          "说明": "节点的 SVG 图标是否是外部引入",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "svg-icon-require"
+        }
+      ]
+    }
+  ]
+}

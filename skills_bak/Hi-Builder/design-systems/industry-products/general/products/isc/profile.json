@@ -1,0 +1,11 @@
+{
+  "schema_version": "product-ui-profile.v1",
+  "industry": "general",
+  "product": "isc",
+  "runtime": "hui-vue",
+  "brand": {
+    "name": "综合安防管理平台",
+    "logo": "../assets/imgs/hik-product-logos/logo_综合安防管理平台iSecure_Center.svg"
+  },
+  "portal_shell": "general.isc.portal-shell"
+}

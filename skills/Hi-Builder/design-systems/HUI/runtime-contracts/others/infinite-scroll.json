@@ -1,0 +1,54 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "infinite-scroll",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/others/infinite-scroll",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/others.docs.json",
+    "evidence_sha256": "f150a2630aef3c6508a028b85a5e004a26036cac12218f39bbe7388c02099e11"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "directive",
+  "runtime": {
+    "v-infinite-scroll": {
+      "props": [
+        {
+          "参数": "infinite-scroll-disabled",
+          "说明": "是否禁用",
+          "类型": "boolean",
+          "可选值": "-",
+          "默认值": "false",
+          "template_name": "infinite-scroll-disabled"
+        },
+        {
+          "参数": "infinite-scroll-delay",
+          "说明": "节流时延，单位为ms",
+          "类型": "number",
+          "可选值": "-",
+          "默认值": "200",
+          "template_name": "infinite-scroll-delay"
+        },
+        {
+          "参数": "infinite-scroll-distance",
+          "说明": "触发加载的距离阈值，单位为px",
+          "类型": "number",
+          "可选值": "-",
+          "默认值": "0",
+          "template_name": "infinite-scroll-distance"
+        },
+        {
+          "参数": "infinite-scroll-immediate",
+          "说明": "是否立即执行加载方法，以防初始状态下内容无法撑满容器。",
+          "类型": "boolean",
+          "可选值": "-",
+          "默认值": "true",
+          "template_name": "infinite-scroll-immediate"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

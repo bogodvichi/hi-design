@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>平台</title>
+    <g id="平台" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g transform="translate(4.000000, 6.000000)" fill-rule="nonzero">
+            <path d="M1.93999995e-07,17.0000003 L1.93999995e-07,57.0000003 C1.93999995e-07,58.1045698 0.89543069,59.0000003 2.00000019,59.0000003 L61.0000002,59.0000003 C62.1045697,59.0000003 63.0000002,58.1045698 63.0000002,57.0000003 L63.0000002,17.0000003 L1.93999995e-07,17.0000003 Z" id="path-1" fill="#00C10F"></path>
+            <rect id="Rectangle" fill="#FFFFFF" x="31" y="40" width="26" height="4"></rect>
+            <rect id="Rectangle" fill="#FFFFFF" x="18" y="49" width="39" height="4"></rect>
+            <polygon id="Rectangle" fill="#EBEBEC" points="12.1132898 -2.27311225e-13 50.8867102 -2.27311225e-13 63 17 -2.27318164e-13 17"></polygon>
+        </g>
+    </g>
+</svg>

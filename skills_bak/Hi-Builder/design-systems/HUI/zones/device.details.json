@@ -1,0 +1,8 @@
+{
+  "schema_version": "d2c-zone.v1",
+  "id": "device.details",
+  "name": "设备详情区域",
+  "description": "展示设备属性、状态、指标和相关操作",
+  "use_when": ["页面需要查看或操作单个设备"],
+  "owner": "hui-common"
+}

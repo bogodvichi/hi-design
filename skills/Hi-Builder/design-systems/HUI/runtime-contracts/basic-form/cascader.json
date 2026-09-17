@@ -1,0 +1,258 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "cascader",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/form/cascader",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/basic-form.docs.json",
+    "evidence_sha256": "ce35467cfa4317a06d0d65dd9e415328669f0c6711f32417ce27edc1af71cbe7"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-cascader": {
+      "props": [
+        {
+          "参数": "options",
+          "说明": "可选项数据源，键名可通过 props 属性配置",
+          "类型": "array",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "options"
+        },
+        {
+          "参数": "props",
+          "说明": "配置选项，具体见下表",
+          "类型": "object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "props"
+        },
+        {
+          "参数": "value",
+          "说明": "选中项绑定值",
+          "类型": "array",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "value"
+        },
+        {
+          "参数": "popper-class",
+          "说明": "自定义浮层类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "popper-class"
+        },
+        {
+          "参数": "placeholder",
+          "说明": "输入框占位文本",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "请选择",
+          "template_name": "placeholder"
+        },
+        {
+          "参数": "searchPlaceholder  2.60.1+",
+          "说明": "搜索占位文本",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "搜索",
+          "template_name": "search-placeholder"
+        },
+        {
+          "参数": "no-match",
+          "说明": "无匹配占位文本",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "暂无数据",
+          "template_name": "no-match"
+        },
+        {
+          "参数": "disabled",
+          "说明": "是否禁用",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "clearable",
+          "说明": "是否支持清空选项",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "clearable"
+        },
+        {
+          "参数": "expand-trigger",
+          "说明": "次级菜单的展开方式",
+          "类型": "string",
+          "可选值": "click / hover",
+          "默认值": "click",
+          "template_name": "expand-trigger"
+        },
+        {
+          "参数": "loading  2.0+",
+          "说明": "异步时是否在 loading 状态",
+          "类型": "boolean",
+          "可选值": "",
+          "默认值": "false",
+          "template_name": "loading"
+        },
+        {
+          "参数": "show-all-levels",
+          "说明": "输入框中是否显示选中值的完整路径",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "show-all-levels"
+        },
+        {
+          "参数": "filterable",
+          "说明": "是否可搜索选项(建议同时使用 clearable 以符合规范),?&",
+          "类型": "字符会自动屏蔽",
+          "可选值": "boolean",
+          "默认值": "—",
+          "template_name": "filterable"
+        },
+        {
+          "参数": "filterMethod  2.60.1+",
+          "说明": "自定义搜索逻辑，第一个参数是节点node，第二个参数是搜索关键词keyword，通过返回布尔值表示是否命中",
+          "类型": "function(node, keyword)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "filter-method"
+        },
+        {
+          "参数": "debounce",
+          "说明": "搜索关键词输入的去抖延迟，毫秒",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "300",
+          "template_name": "debounce"
+        },
+        {
+          "参数": "change-on-select",
+          "说明": "是否允许选择任意一级的选项",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "change-on-select"
+        },
+        {
+          "参数": "size",
+          "说明": "尺寸",
+          "类型": "string",
+          "可选值": "large / small / mini",
+          "默认值": "—",
+          "template_name": "size"
+        },
+        {
+          "参数": "collapse-tags-from-line-num   2.60.4+",
+          "说明": "开启props.multiple = true时，多选时从第几行开始以+N的形式展示。为null时不折叠。",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "1",
+          "template_name": "collapse-tags-from-line-num"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "change",
+          "说明": "当绑定值变化时触发的事件",
+          "回调参数": "当前值",
+          "template_name": "change"
+        },
+        {
+          "事件名称": "focus  2.0+",
+          "说明": "在 Cascader 获得焦点时触发的事件(可搜索情况下)",
+          "回调参数": "当前值",
+          "template_name": "focus"
+        },
+        {
+          "事件名称": "blur  2.0+",
+          "说明": "在 Cascader 失去焦点时触发的事件(可搜索情况下)",
+          "回调参数": "当前值",
+          "template_name": "blur"
+        },
+        {
+          "事件名称": "check",
+          "说明": "点击菜单触发的事件,获取返回值判断是否可以选中,和 change-on-select同时起效",
+          "回调参数": "当前值,当前层级",
+          "template_name": "check"
+        },
+        {
+          "事件名称": "active-item-change(value, item)",
+          "说明": "当父级选项变化时触发的事件",
+          "回调参数": "各父级选项组成的数组, 所改变内容的完整值",
+          "template_name": "active-item-change"
+        }
+      ],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": [
+    {
+      "heading": "props",
+      "headers": [
+        "参数",
+        "说明",
+        "类型",
+        "可选值",
+        "默认值"
+      ],
+      "rows": [
+        {
+          "参数": "value",
+          "说明": "指定选项的值为选项对象的某个属性值",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "value"
+        },
+        {
+          "参数": "label",
+          "说明": "指定选项标签为选项对象的某个属性值",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "label"
+        },
+        {
+          "参数": "children",
+          "说明": "指定选项的子选项为选项对象的某个属性值",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "children"
+        },
+        {
+          "参数": "disabled",
+          "说明": "指定选项的禁用为选项对象的某个属性值",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "before-filter",
+          "说明": "可选参数, 筛选之前的钩子，参数为输入的值，若返回 false 或者返回 Promise 且被 reject，则停止筛选。",
+          "类型": "function(value)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "before-filter"
+        },
+        {
+          "参数": "multiple  2.60.1+",
+          "说明": "是否多选",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "multiple"
+        }
+      ]
+    }
+  ]
+}

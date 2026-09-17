@@ -1,0 +1,13 @@
+{
+  "schema_version": "hui-component-pattern.v2",
+  "id": "media.live-viewer",
+  "name": "实时媒体查看器",
+  "split_mode": "composite",
+  "vue_component": "LiveViewer",
+  "description": "组合实时媒体画面、通道切换和画面操作",
+  "category": "media",
+  "status": "active",
+  "use_when": ["页面需要实时查看视频或动态媒体"],
+  "hui_components": ["el-button"],
+  "owner": "hui-common"
+}

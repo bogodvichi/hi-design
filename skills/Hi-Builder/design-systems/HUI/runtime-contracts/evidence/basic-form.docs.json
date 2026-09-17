@@ -1,0 +1,4604 @@
+{
+  "observedAt": "2026-07-31",
+  "items": [
+    {
+      "id": "layout",
+      "path": "/hui/components/basic/layout",
+      "tables": []
+    },
+    {
+      "id": "icon",
+      "path": "/hui/components/basic/icon",
+      "tables": []
+    },
+    {
+      "id": "svg-icon",
+      "path": "/hui/components/basic/svg-icon",
+      "tables": [
+        {
+          "heading": "h-svg-icon属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "svgs",
+              "图标名或者图标引用",
+              "String/Array",
+              "-",
+              "-"
+            ],
+            [
+              "size",
+              "图标尺寸",
+              "[Number/string]",
+              "-",
+              "24"
+            ],
+            [
+              "offline",
+              "是否为离线状态",
+              "Boolean",
+              "-",
+              "false"
+            ],
+            [
+              "active",
+              "是否为激活状态（给树图标使用）",
+              "Boolean",
+              "-",
+              "false"
+            ],
+            [
+              "colors",
+              "图标的颜色",
+              "String/Array",
+              "-",
+              "-"
+            ],
+            [
+              "classes",
+              "图标的样式类",
+              "String/Array",
+              "-",
+              "-"
+            ]
+          ]
+        },
+        {
+          "heading": "svg-icon属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "size",
+              "图标尺寸",
+              "String",
+              "-",
+              "‘24px’"
+            ],
+            [
+              "color",
+              "图标的颜色",
+              "String",
+              "-",
+              "-"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "button",
+      "path": "/hui/components/basic/button-demo",
+      "tables": [
+        {
+          "heading": "属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "size",
+              "尺寸",
+              "string",
+              "large,small,mini",
+              "—"
+            ],
+            [
+              "type",
+              "类型",
+              "string",
+              "primary,success,warning,danger,info,text,link,ghost，dashed",
+              ""
+            ],
+            [
+              "plain",
+              "是否朴素按钮",
+              "Boolean",
+              "—",
+              "false"
+            ],
+            [
+              "radius",
+              "是否圆角按钮",
+              "Boolean",
+              "—",
+              "false"
+            ],
+            [
+              "loading",
+              "是否加载中状态",
+              "Boolean",
+              "—",
+              "false"
+            ],
+            [
+              "disabled",
+              "是否禁用状态",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "icon",
+              "图标，已有的图标库中的图标名或引入新的图标库",
+              "string/object",
+              "—",
+              "—"
+            ],
+            [
+              "icon-suffix  2.50.0+",
+              "后缀图标，使用同icon",
+              "string/object",
+              "—",
+              "—"
+            ],
+            [
+              "icon-border",
+              "提供给有边框写法 icon",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "min-width",
+              "button 最小宽度",
+              "Number",
+              "—",
+              "96px"
+            ],
+            [
+              "max-width",
+              "button 最大宽度",
+              "Number",
+              "—",
+              "普通按钮默认 192px,图标按钮默认 256px"
+            ],
+            [
+              "autofocus",
+              "是否默认聚焦",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "native-type",
+              "原生 type 属性",
+              "string",
+              "button,submit,reset",
+              "button"
+            ],
+            [
+              "flood  2.50.0+",
+              "button自定义主题色（不影响全局的品牌色）",
+              "string",
+              "HEX颜色值",
+              "—"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "radio",
+      "path": "/hui/components/form/radio",
+      "tables": [
+        {
+          "heading": "Radio属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "label",
+              "Radio 的 value",
+              "string,number,boolean",
+              "—",
+              "—"
+            ],
+            [
+              "disabled",
+              "是否禁用",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "name",
+              "原生 name 属性",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "max-width",
+              "radio最大宽度",
+              "Number",
+              "—",
+              "默认256px"
+            ],
+            [
+              "size",
+              "Radio 的尺寸",
+              "string",
+              "默认(default) / small / mini",
+              "—"
+            ],
+            [
+              "border  已废弃",
+              "是否显示边框",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "icon",
+              "显示的图标",
+              "string",
+              "—",
+              "—"
+            ]
+          ]
+        },
+        {
+          "heading": "Radio-group属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "size",
+              "Radio 按钮组尺寸",
+              "string",
+              "large, small",
+              "—"
+            ],
+            [
+              "fill",
+              "按钮激活时的填充色和边框色",
+              "string",
+              "—",
+              "#20a0ff"
+            ],
+            [
+              "text-color",
+              "按钮激活时的文本颜色",
+              "string",
+              "—",
+              "#ffffff"
+            ],
+            [
+              "type",
+              "选中时的样式：default/simple   2.55+  新增borderless和divider。divider需要自己添加el-divider",
+              "string",
+              "—",
+              "default"
+            ]
+          ]
+        },
+        {
+          "heading": "Radio-group事件 #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "change",
+              "绑定值变化时触发的事件",
+              "选中的 Radio label 值"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "checkbox",
+      "path": "/hui/components/form/checkbox",
+      "tables": [
+        {
+          "heading": "Checkbox属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "label",
+              "选中状态的值（只有在checkbox-group或者绑定对象类型为array时有效）",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "true-label",
+              "选中时的值",
+              "string, number",
+              "—",
+              "—"
+            ],
+            [
+              "false-label",
+              "没有选中时的值",
+              "string, number",
+              "—",
+              "—"
+            ],
+            [
+              "show-label",
+              "是否显示 label 值",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "name",
+              "原生 name 属性",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "disabled",
+              "按钮禁用",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "checked",
+              "当前是否勾选",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "indeterminate",
+              "设置 indeterminate 状态，只负责样式控制",
+              "boolean",
+              "—",
+              "false"
+            ]
+          ]
+        },
+        {
+          "heading": "Checkbox-group属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "size",
+              "Checkbox 按钮组尺寸",
+              "string",
+              "large, small",
+              "—"
+            ],
+            [
+              "fill",
+              "按钮激活时的填充色和边框色",
+              "string",
+              "—",
+              "#20a0ff"
+            ],
+            [
+              "text-color",
+              "按钮激活时的文本颜色",
+              "string",
+              "—",
+              "#ffffff"
+            ],
+            [
+              "min",
+              "可被勾选的 checkbox 的最小数量",
+              "number",
+              "—",
+              "0"
+            ],
+            [
+              "max",
+              "可被勾选的 checkbox 的最大数量",
+              "number",
+              "—",
+              "—"
+            ],
+            [
+              "type",
+              "选中时的样式：default/simple",
+              "string",
+              "—",
+              "default"
+            ],
+            [
+              "vertical",
+              "checkbox 是否垂直排列：default/false",
+              "boolean",
+              "—",
+              "false"
+            ]
+          ]
+        },
+        {
+          "heading": "Checkbox事件 #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "change",
+              "当绑定值变化时触发的事件",
+              "更新后的值,event 事件对象(若放于 checkbox-group 则返回 undefined)"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "input",
+      "path": "/hui/components/form/input-demo",
+      "tables": [
+        {
+          "heading": "Input属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "type",
+              "类型",
+              "string",
+              "text/textarea",
+              "text"
+            ],
+            [
+              "value",
+              "绑定值",
+              "string, number",
+              "—",
+              "—"
+            ],
+            [
+              "maxlength",
+              "最大输入长度",
+              "number",
+              "—",
+              "—"
+            ],
+            [
+              "minlength",
+              "最小输入长度",
+              "number",
+              "—",
+              "—"
+            ],
+            [
+              "placeholder",
+              "输入框占位文本",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "disabled",
+              "禁用",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "search",
+              "是否创建搜索图标",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "size",
+              "输入框尺寸，只在 type!=\"textarea\" 时有效",
+              "string",
+              "large, small, mini",
+              "—"
+            ],
+            [
+              "kind",
+              "可选悬浮和面性样式",
+              "string",
+              "surface, suspension",
+              "—"
+            ],
+            [
+              "prefix-icon  2.0+",
+              "输入框头部图标",
+              "string",
+              "—",
+              ""
+            ],
+            [
+              "suffix-icon  2.0+",
+              "输入框尾部图标",
+              "string",
+              "—",
+              ""
+            ],
+            [
+              "rows",
+              "输入框行数，只对 type=\"textarea\" 有效",
+              "number",
+              "—",
+              "2"
+            ],
+            [
+              "autosize",
+              "自适应内容高度，只对 type=\"textarea\" 有效，可传入对象，如，{ minRows: 2, maxRows: 6, maxWidth: 480 } minRows:最小行数，maxRows:最大行数，maxWidth：最大宽度",
+              "boolean/object",
+              "—",
+              "false"
+            ],
+            [
+              "auto-complete",
+              "原生属性，自动补全",
+              "string",
+              "on, off",
+              "off"
+            ],
+            [
+              "name",
+              "原生属性",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "readonly",
+              "原生属性，是否只读",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "clearable",
+              "是否增加删除图标",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "maxlength",
+              "原生属性，设置最大值",
+              "—",
+              "—",
+              "—"
+            ],
+            [
+              "minlength",
+              "原生属性，设置最小值",
+              "—",
+              "—",
+              "—"
+            ],
+            [
+              "step",
+              "原生属性，设置输入字段的合法数字间隔",
+              "—",
+              "—",
+              "—"
+            ],
+            [
+              "resize",
+              "控制是否能被用户缩放",
+              "string",
+              "none, both, horizontal, vertical",
+              "—"
+            ],
+            [
+              "autofocus",
+              "原生属性，自动获取焦点",
+              "boolean",
+              "true, false",
+              "false"
+            ],
+            [
+              "form",
+              "原生属性",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "tips",
+              "输入框文字提示信息",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "tips-max-width",
+              "提示信息最大宽度",
+              "string, number",
+              "—",
+              "—"
+            ],
+            [
+              "tips-placement",
+              "提示信息出现位置",
+              "string",
+              "top/top-start/top-end/bottom/bottom-start/bottom-end/left/left-start/left-end/right/right-start/right-end",
+              "top"
+            ],
+            [
+              "tips-offset",
+              "提示信息偏移量（对应 tips-placement 会有不同的偏移方向，'top’向上偏移、'bottom’向下偏移、'left’项做偏移、'right’向右偏移）",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "tips-trigger（不建议使用，后续会删除）",
+              "提示信息触发方式",
+              "click/focus/hover/manual",
+              "—",
+              "focus"
+            ],
+            [
+              "tips-class",
+              "提示信息 class 类",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "count  2.0+",
+              "计数(倒计) 只在 type===\"textarea\" 时有效",
+              "number",
+              "> 0",
+              "—"
+            ],
+            [
+              "debounce  2.21+",
+              "输入以及值的防抖，默认 0 秒",
+              "number",
+              "0",
+              "—"
+            ],
+            [
+              "clearableShowSuffix   2.54.4+",
+              "开启clearable时，是否显示suffix。默认为undefined。如果绑定了onIconClick属性，则默认显示",
+              "boolean",
+              "true/false/undefined",
+              "undefined"
+            ],
+            [
+              "variant   2.55.0+",
+              "形态变体",
+              "String",
+              "outlined, borderless",
+              "outlined"
+            ]
+          ]
+        },
+        {
+          "heading": "Input Slots  2.0+  #",
+          "headers": [
+            "名称",
+            "说明"
+          ],
+          "rows": [
+            [
+              "prefix",
+              "输入框头部内容，只对 type=“text” 有效"
+            ],
+            [
+              "suffix",
+              "输入框尾部内容，只对 type=“text” 有效"
+            ],
+            [
+              "prepend",
+              "输入框前置内容，只对 type=“text” 有效"
+            ],
+            [
+              "append",
+              "输入框后置内容，只对 type=“text” 有效"
+            ]
+          ]
+        },
+        {
+          "heading": "Input事件 #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "click",
+              "点击 Input 内的图标时触发",
+              "(event: Event)"
+            ],
+            [
+              "delete",
+              "点击 Input 内的 clearable 图标时触发",
+              "(event: Event)"
+            ],
+            [
+              "clear",
+              "点击 Input 内的 clearable 图标时触发",
+              "(event: Event)"
+            ],
+            [
+              "blur",
+              "在 Input 失去焦点时触发",
+              "(event: Event)"
+            ],
+            [
+              "focus",
+              "在 Input 获得焦点时触发",
+              "(event: Event)"
+            ],
+            [
+              "change",
+              "在 Input 值改变时触发",
+              "(value: string | number)"
+            ]
+          ]
+        },
+        {
+          "heading": "input-number属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "value",
+              "绑定值",
+              "number",
+              "—",
+              "0"
+            ],
+            [
+              "min",
+              "设置计数器允许的最小值",
+              "number",
+              "—",
+              "0"
+            ],
+            [
+              "max",
+              "设置计数器允许的最大值",
+              "number",
+              "—",
+              "Infinity"
+            ],
+            [
+              "precision  2.1+",
+              "数值精度",
+              "number",
+              "—",
+              "—"
+            ],
+            [
+              "step",
+              "计数器步长",
+              "number",
+              "—",
+              "1"
+            ],
+            [
+              "size",
+              "计数器尺寸",
+              "string",
+              "large, small",
+              "—"
+            ],
+            [
+              "disabled",
+              "是否禁用计数器",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "name",
+              "原生属性",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "label",
+              "输入框关联的 label 文字",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "resetNum  2.32+",
+              "清空以后展示的默认值（不填或者不为null默认是用 min）",
+              "number,string,null",
+              "—",
+              "—"
+            ],
+            [
+              "controlsPosition   2.52+",
+              "设置控制器位置",
+              "string",
+              "‘’/right/sides",
+              "‘’"
+            ],
+            [
+              "formatter  2.52+",
+              "定义输入框展示值",
+              "function",
+              "—",
+              "—"
+            ],
+            [
+              "parser  2.52+",
+              "从 formatter 转换为数字，和 formatter 搭配使用",
+              "function",
+              "—",
+              "—"
+            ],
+            [
+              "readonly  2.52+",
+              "是否开启只读模式",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "simple  2.52+",
+              "是否开始simple模式，开启后，按钮hover后显示",
+              "boolean",
+              "—",
+              "false"
+            ]
+          ]
+        },
+        {
+          "heading": "input-number Slots #",
+          "headers": [
+            "名称",
+            "说明"
+          ],
+          "rows": [
+            [
+              "suffix  2.0+",
+              "输入框尾部内容"
+            ],
+            [
+              "prefix  2.50+",
+              "输入框头部内容"
+            ],
+            [
+              "prepend  2.52+",
+              "输入框前置内容"
+            ],
+            [
+              "append  2.52+",
+              "输入框后置内容"
+            ]
+          ]
+        },
+        {
+          "heading": "input-number事件 #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "change",
+              "绑定值被改变时触发",
+              "最后变更的值"
+            ],
+            [
+              "blur",
+              "在组件 Input 失去焦点时触发",
+              "(event: Event)"
+            ],
+            [
+              "focus",
+              "在组件 Input 获得焦点时触发",
+              "(event: Event)"
+            ]
+          ]
+        },
+        {
+          "heading": "input-range属性  2.61+  #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "value",
+              "绑定值",
+              "array",
+              "—",
+              "[“”, “”]"
+            ],
+            [
+              "rangeSeparator",
+              "范围分隔符",
+              "string",
+              "—",
+              "“-”"
+            ],
+            [
+              "name",
+              "原生属性",
+              "string",
+              "—",
+              "“”"
+            ],
+            [
+              "readonly",
+              "是否只读",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "disabled",
+              "是否禁用",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "clearable",
+              "是否可清空",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "size",
+              "输入框尺寸",
+              "string",
+              "large, small, mini",
+              "—"
+            ],
+            [
+              "clearIcon",
+              "清空图标",
+              "string",
+              "—",
+              "“h-icon-close_f”"
+            ],
+            [
+              "startPlaceholder",
+              "开始占位符",
+              "string",
+              "—",
+              "“”"
+            ],
+            [
+              "endPlaceholder",
+              "结束占位符",
+              "string",
+              "—",
+              "“”"
+            ],
+            [
+              "inputType",
+              "输入类型",
+              "string",
+              "input, number",
+              "“number”"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "autocomplete",
+      "path": "/hui/components/form/autocomplete",
+      "tables": [
+        {
+          "heading": "Autocomplete属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "placeholder",
+              "输入框占位文本(建议不为空,为空时在 ie 下有异常)",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "kind",
+              "可选悬浮和面性样式",
+              "string",
+              "surface, suspension",
+              "—"
+            ],
+            [
+              "disabled",
+              "禁用",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "props",
+              "配置选项，默认{value:‘value’}用于指定对象的key值,可加需要字段用于自定义",
+              "object",
+              "—",
+              "{value:‘value’}"
+            ],
+            [
+              "value",
+              "必填值输入绑定值",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "custom-item",
+              "通过该参数指定自定义的输入建议列表项的组件名,替换整个下拉框的内容,项目实践一中有多次使用",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "fetch-suggestions",
+              "返回输入建议的方法，仅当你的输入建议数据 resolve 时，通过调用 callback(data:[]) 来返回它",
+              "Function(queryString, callback)",
+              "—",
+              "—"
+            ],
+            [
+              "popper-class",
+              "Autocomplete 下拉列表的类名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "trigger-on-focus",
+              "是否在输入框 focus 时显示建议列表",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "clear-icon-click",
+              "点击删除图标的回调函数",
+              "function",
+              "—",
+              "—"
+            ],
+            [
+              "debounce",
+              "输入时的去抖延迟，毫秒",
+              "number",
+              "—",
+              "100"
+            ],
+            [
+              "tips  2.0+",
+              "输入框文字提示信息",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "tips-max-width  2.0+",
+              "提示信息最大宽度",
+              "string, number",
+              "—",
+              "—"
+            ],
+            [
+              "tips-placement  2.0+",
+              "提示信息出现位置",
+              "string",
+              "top/top-start/top-end/bottom/bottom-start/bottom-end/left/left-start/left-end/right/right-start/right-end",
+              "top"
+            ],
+            [
+              "tips-offset  2.0+",
+              "提示信息偏移量（对应 tips-placement 会有不同的偏移方向，'top’向上偏移、'bottom’向下偏移、'left’项做偏移、'right’向右偏移）",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "tips-trigger  2.0+",
+              "提示信息触发方式",
+              "click/focus/hover/manual",
+              "—",
+              "focus"
+            ],
+            [
+              "tips-class  2.0+",
+              "提示信息 class 类",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "maxlength  2.0+",
+              "最大输入长度",
+              "number",
+              "—",
+              "—"
+            ],
+            [
+              "minlength  2.0+",
+              "最小输入长度",
+              "number",
+              "—",
+              "—"
+            ],
+            [
+              "popper-append-to-body",
+              "是否将弹出框插入至 body 元素。在弹出框的定位出现问题时，可将该属性设置为 false",
+              "boolean",
+              "-",
+              "true"
+            ],
+            [
+              "clearableShowSuffix   2.60.4+",
+              "是否显示suffix。默认为true，默认suffix和clearable按钮共同存在",
+              "boolean",
+              "true/false/undefined",
+              "true"
+            ],
+            [
+              "valueTrim   2.60.4+",
+              "是否对搜索的value进行trim操作，默认为true。",
+              "boolean",
+              "true/false",
+              "true"
+            ]
+          ]
+        },
+        {
+          "heading": "props #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "value",
+              "指定选项的值为选项对象的某个属性值",
+              "string",
+              "—",
+              "value"
+            ]
+          ]
+        },
+        {
+          "heading": "Autocomplete Slots  2.0+  #",
+          "headers": [
+            "名称",
+            "说明"
+          ],
+          "rows": [
+            [
+              "prefix",
+              "输入框头部内容，只对 type=“text” 有效"
+            ],
+            [
+              "suffix",
+              "输入框尾部内容，只对 type=“text” 有效"
+            ],
+            [
+              "prepend",
+              "输入框前置内容，只对 type=“text” 有效"
+            ],
+            [
+              "append",
+              "输入框后置内容，只对 type=“text” 有效"
+            ],
+            [
+              "default   2.60.6+",
+              "自定义搜索结果呈现"
+            ]
+          ]
+        },
+        {
+          "heading": "Autocomplete事件 #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "select",
+              "点击选中建议项时触发",
+              "选中建议项"
+            ],
+            [
+              "visible",
+              "建议栏开启和关闭时触发",
+              "建议栏是否显示"
+            ],
+            [
+              "focus",
+              "在 Input 获得焦点时触发",
+              "(event: Event)"
+            ],
+            [
+              "blur",
+              "在 Input 失去焦点时触发",
+              "(event: Event)"
+            ],
+            [
+              "input",
+              "在 Input 值改变时触发",
+              "修改后的值"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ip-input",
+      "path": "/hui/components/form/ip-input",
+      "tables": [
+        {
+          "heading": "属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "value",
+              "绑定值",
+              "String",
+              "-",
+              "-"
+            ],
+            [
+              "width",
+              "IP输入框宽度",
+              "String",
+              "-",
+              "‘100%’"
+            ],
+            [
+              "item-width",
+              "每项宽度",
+              "String",
+              "-",
+              "null"
+            ],
+            [
+              "disabled",
+              "禁用",
+              "Boolean",
+              "-",
+              "false"
+            ],
+            [
+              "tips",
+              "IP输入框文字提示信息",
+              "String",
+              "-",
+              "-"
+            ],
+            [
+              "tips-max-width",
+              "提示信息最大宽度",
+              "String, Number",
+              "-",
+              "-"
+            ],
+            [
+              "tips-placement",
+              "提示信息出现位置",
+              "String",
+              "top/top-start/top-end/bottom/bottom-start/bottom-end/left/left-start/left-end/right/right-start/right-end",
+              "top"
+            ],
+            [
+              "tips-offset",
+              "提示信息偏移量（对应tips-placement会有不同的偏移方向，'top’向上偏移、'bottom’向下偏移、'left’项做偏移、'right’向右偏移）",
+              "String",
+              "-",
+              "-"
+            ]
+          ]
+        },
+        {
+          "heading": "事件 #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "blur",
+              "单个输入框失焦事件",
+              "(event: Event, i: Number)"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "select",
+      "path": "/hui/components/form/select-demo",
+      "tables": [
+        {
+          "heading": "Select属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "multiple",
+              "是否多选",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "disabled",
+              "是否禁用",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "readonly",
+              "是否只读",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "value-key",
+              "作为 value 唯一标识的键名，绑定值为对象类型时必填",
+              "string",
+              "—",
+              "value"
+            ],
+            [
+              "size",
+              "输入框尺寸",
+              "string",
+              "large/small/mini",
+              "—"
+            ],
+            [
+              "clear",
+              "单选时是否可以清空选项   2.53.0+ 默认值改为true",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "clearable",
+              "多选时是否可以清空选项   2.53.0+ 默认值改为true",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "collapse-tags",
+              "多选时是否将选中值按文字的形式展示",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "collapse-tags-from-line-num   2.53.0",
+              "开启collapse-tags时，多选时从第几行开始以+N的形式展示",
+              "number",
+              "—",
+              "1"
+            ],
+            [
+              "multiple-limit",
+              "多选时用户最多可以选择的项目数，为 0 则不限制",
+              "number",
+              "—",
+              "0"
+            ],
+            [
+              "multiple-nowrap",
+              "多选时选中项过多，超过一行时不进行换行，多出来的内容截断处理",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "max-width",
+              "下拉框的最大宽度,要大于显示框的宽度,否则会失效",
+              "number",
+              "—",
+              "默认为输入框宽度"
+            ],
+            [
+              "kind",
+              "可选悬浮和面性样式",
+              "string",
+              "surface, suspension",
+              "—"
+            ],
+            [
+              "name",
+              "select input 的 name 属性",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "placeholder",
+              "占位符",
+              "string",
+              "—",
+              "请选择"
+            ],
+            [
+              "filterable",
+              "是否可搜索",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "search  已废弃",
+              "是否创建搜索图标",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "allow-create",
+              "是否允许用户创建新条目，需配合 filterable 使用",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "filter-method",
+              "自定义过滤方法",
+              "function",
+              "—",
+              "—"
+            ],
+            [
+              "remote",
+              "是否为远程搜索",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "remote-method",
+              "远程搜索方法",
+              "function",
+              "—",
+              "参数分别是当前值和是否是点击触发"
+            ],
+            [
+              "loading",
+              "是否正在从远程获取数据",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "loading-text",
+              "远程加载时显示的文字",
+              "string",
+              "—",
+              "加载中"
+            ],
+            [
+              "no-match-text",
+              "搜索条件无匹配时显示的文字",
+              "string",
+              "—",
+              "暂无数据"
+            ],
+            [
+              "no-data-text",
+              "选项为空时显示的文字",
+              "string",
+              "—",
+              "暂无结果"
+            ],
+            [
+              "popper-class",
+              "Select 下拉框的类名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "default-first-option",
+              "在输入框按下回车，选择第一个匹配项。需配合 filterable 或 remote 使用",
+              "boolean",
+              "-",
+              "false"
+            ],
+            [
+              "popper-append-to-body",
+              "是否将弹出框插入至 body 元素。在弹出框的定位出现问题时，可将该属性设置为 false",
+              "boolean",
+              "-",
+              "true"
+            ],
+            [
+              "popperOptions  2.38.0",
+              "vue-popper 的参数配置",
+              "Object",
+              "-",
+              ""
+            ],
+            [
+              "placement  2.38.0",
+              "vue-popper 默认起始位置",
+              "String",
+              "bottom-start",
+              ""
+            ],
+            [
+              "variant  2.55.0+",
+              "形态变体",
+              "String",
+              "-",
+              "outlined, borderless"
+            ]
+          ]
+        },
+        {
+          "heading": "Select事件 #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "change",
+              "选中值发生变化时触发",
+              "目前的选中值"
+            ],
+            [
+              "focus",
+              "聚焦时触发",
+              "事件对象"
+            ],
+            [
+              "blur",
+              "失焦时触发",
+              "事件对象"
+            ],
+            [
+              "visible-change",
+              "下拉框出现/隐藏时触发",
+              "出现则为 true，隐藏则为 false"
+            ],
+            [
+              "hiddenMenu 待移除,无效",
+              "隐藏下拉框",
+              "需要通过 ref 来调用"
+            ],
+            [
+              "remove-tag",
+              "多选模式下移除 tag 时触发",
+              "移除的 tag 值"
+            ],
+            [
+              "clear",
+              "可清空的单选模式下用户点击清空按钮时触发",
+              "—"
+            ],
+            [
+              "search",
+              "可用户点击搜索按钮时触发(作为回调)",
+              "返回当前选中值和过滤值"
+            ],
+            [
+              "on-scrolling-x",
+              "下拉框横向滚动时触发事件,参数返回滚动距离和已滚动百分比（百分比为 1 则表示滚动到尽头）",
+              "{scrollLeft, percentX }"
+            ],
+            [
+              "on-scrolling-y",
+              "下拉框内容过多纵向滚动时触发事件,参数返回滚动距离和已滚动百分比（百分比为 1 则表示滚动到尽头）",
+              "{scrollTop, percentY }"
+            ],
+            [
+              "on-scrolling",
+              "下拉框内部滚动条滚动时触发事件,参数返回滚动距离和已滚动百分比（百分比为 1 则表示滚动到尽头）",
+              "{scrollLeft, scrollTop, percentX, percentY }"
+            ]
+          ]
+        },
+        {
+          "heading": "Select Slots #",
+          "headers": [
+            "事件名称",
+            "说明"
+          ],
+          "rows": [
+            [
+              "prefix",
+              "Select 组件头部内容"
+            ],
+            [
+              "dropdownHeader   2.52.0+",
+              "Select 下拉菜单头部内容"
+            ],
+            [
+              "dropdownFooter   2.52.0+",
+              "Select 下拉菜单底部内容"
+            ],
+            [
+              "label   2.54.2+",
+              "Select 显示内容自定义，返回当前选中项的option值"
+            ]
+          ]
+        },
+        {
+          "heading": "Option属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "value",
+              "选项的值",
+              "string/number/array/object",
+              "必填",
+              "—"
+            ],
+            [
+              "label",
+              "选项的标签，若不设置则默认与 value 相同",
+              "string/number",
+              "—",
+              "—"
+            ],
+            [
+              "disabled",
+              "是否禁用该选项",
+              "boolean",
+              "—",
+              "false"
+            ]
+          ]
+        },
+        {
+          "heading": "Option Group属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "label",
+              "分组的组名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "disabled",
+              "是否将该分组下所有选项置为禁用",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "show-html  2.0+",
+              "是否用 v-html 解析 label(此时不支持关键字搜索标红)，默认开启会导致 xss 漏洞",
+              "boolean",
+              "—",
+              "false"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cascader",
+      "path": "/hui/components/form/cascader",
+      "tables": [
+        {
+          "heading": "属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "options",
+              "可选项数据源，键名可通过 props 属性配置",
+              "array",
+              "—",
+              "—"
+            ],
+            [
+              "props",
+              "配置选项，具体见下表",
+              "object",
+              "—",
+              "—"
+            ],
+            [
+              "value",
+              "选中项绑定值",
+              "array",
+              "—",
+              "—"
+            ],
+            [
+              "popper-class",
+              "自定义浮层类名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "placeholder",
+              "输入框占位文本",
+              "string",
+              "—",
+              "请选择"
+            ],
+            [
+              "searchPlaceholder  2.60.1+",
+              "搜索占位文本",
+              "string",
+              "—",
+              "搜索"
+            ],
+            [
+              "no-match",
+              "无匹配占位文本",
+              "string",
+              "—",
+              "暂无数据"
+            ],
+            [
+              "disabled",
+              "是否禁用",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "clearable",
+              "是否支持清空选项",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "expand-trigger",
+              "次级菜单的展开方式",
+              "string",
+              "click / hover",
+              "click"
+            ],
+            [
+              "loading  2.0+",
+              "异步时是否在 loading 状态",
+              "boolean",
+              "",
+              "false"
+            ],
+            [
+              "show-all-levels",
+              "输入框中是否显示选中值的完整路径",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "filterable",
+              "是否可搜索选项(建议同时使用 clearable 以符合规范),?&",
+              "字符会自动屏蔽",
+              "boolean",
+              "—"
+            ],
+            [
+              "filterMethod  2.60.1+",
+              "自定义搜索逻辑，第一个参数是节点node，第二个参数是搜索关键词keyword，通过返回布尔值表示是否命中",
+              "function(node, keyword)",
+              "—",
+              "—"
+            ],
+            [
+              "debounce",
+              "搜索关键词输入的去抖延迟，毫秒",
+              "number",
+              "—",
+              "300"
+            ],
+            [
+              "change-on-select",
+              "是否允许选择任意一级的选项",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "size",
+              "尺寸",
+              "string",
+              "large / small / mini",
+              "—"
+            ],
+            [
+              "collapse-tags-from-line-num   2.60.4+",
+              "开启props.multiple = true时，多选时从第几行开始以+N的形式展示。为null时不折叠。",
+              "number",
+              "—",
+              "1"
+            ]
+          ]
+        },
+        {
+          "heading": "props #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "value",
+              "指定选项的值为选项对象的某个属性值",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "label",
+              "指定选项标签为选项对象的某个属性值",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "children",
+              "指定选项的子选项为选项对象的某个属性值",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "disabled",
+              "指定选项的禁用为选项对象的某个属性值",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "before-filter",
+              "可选参数, 筛选之前的钩子，参数为输入的值，若返回 false 或者返回 Promise 且被 reject，则停止筛选。",
+              "function(value)",
+              "—",
+              "—"
+            ],
+            [
+              "multiple  2.60.1+",
+              "是否多选",
+              "boolean",
+              "—",
+              "—"
+            ]
+          ]
+        },
+        {
+          "heading": "事件 #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "change",
+              "当绑定值变化时触发的事件",
+              "当前值"
+            ],
+            [
+              "focus  2.0+",
+              "在 Cascader 获得焦点时触发的事件(可搜索情况下)",
+              "当前值"
+            ],
+            [
+              "blur  2.0+",
+              "在 Cascader 失去焦点时触发的事件(可搜索情况下)",
+              "当前值"
+            ],
+            [
+              "check",
+              "点击菜单触发的事件,获取返回值判断是否可以选中,和 change-on-select同时起效",
+              "当前值,当前层级"
+            ],
+            [
+              "active-item-change(value, item)",
+              "当父级选项变化时触发的事件",
+              "各父级选项组成的数组, 所改变内容的完整值"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "switch",
+      "path": "/hui/components/form/switch-demo",
+      "tables": [
+        {
+          "heading": "属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "disabled",
+              "是否禁用",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "size",
+              "大小",
+              "string",
+              "small,mini",
+              "normal"
+            ],
+            [
+              "width",
+              "switch 的宽度（像素）",
+              "number",
+              "—",
+              "52（有文字）/ 40（无文字）"
+            ],
+            [
+              "active-icon-class",
+              "switch 打开时所显示图标的类名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "inactive-icon-class",
+              "switch 关闭时所显示图标的类名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "active-text 2.16+",
+              "右侧的文字",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "inactive-text 2.16+",
+              "左侧的文字",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "instruction",
+              "右边描述性文字",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "active-value",
+              "switch 打开时的值",
+              "boolean / string / number",
+              "—",
+              "true"
+            ],
+            [
+              "inactive-value",
+              "switch 关闭时的值",
+              "boolean / string / number",
+              "—",
+              "false"
+            ],
+            [
+              "active-color",
+              "switch 打开时的背景色",
+              "string",
+              "—",
+              "#20A0FF"
+            ],
+            [
+              "inactive-color",
+              "switch 关闭时的背景色",
+              "string",
+              "—",
+              "#C0CCDA"
+            ],
+            [
+              "name",
+              "switch 对应的 name 属性",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "allow-focus",
+              "是否开启 .focus() & .blur() 方法 input",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "before-change",
+              "开关切换前的回调，可以阻止开关切换",
+              "function(value, done)；value 为当前开关的值；done 用于切换开关；",
+              "—",
+              "false"
+            ]
+          ]
+        },
+        {
+          "heading": "事件 #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "change",
+              "switch 状态发生变化时的回调函数",
+              "新状态的值"
+            ],
+            [
+              "blur",
+              "blur 时触发 (当 allowFocus 的值是 true)",
+              "(event: Event)"
+            ],
+            [
+              "focus",
+              "on focus 时触发 (当 allowFocus 的值是 true)",
+              "(event: Event)"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "slider",
+      "path": "/hui/components/form/slider",
+      "tables": [
+        {
+          "heading": "Attributes #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "min",
+              "最小值",
+              "number",
+              "—",
+              "0"
+            ],
+            [
+              "max",
+              "最大值",
+              "number",
+              "—",
+              "100"
+            ],
+            [
+              "disabled",
+              "是否禁用",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "step",
+              "步长",
+              "number",
+              "—",
+              "1"
+            ],
+            [
+              "marks",
+              "标记",
+              "array/object",
+              "标记优先级高于 step",
+              "[]，如果是[1]等价于 {“1”:1}"
+            ],
+            [
+              "show-input",
+              "是否显示输入框",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "show-button",
+              "是否显示控制按钮",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "show-input-controls",
+              "在显示输入框的情况下，是否显示输入框的控制按钮",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "show-stops",
+              "是否显示间断点",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "show-stops-number",
+              "是否显示间断点下标",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "show-tooltip",
+              "是否显示 tooltip",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "format-tooltip",
+              "格式化 tooltip message",
+              "Function(value)",
+              "—",
+              "—"
+            ],
+            [
+              "range",
+              "是否为范围选择",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "vertical",
+              "是否竖向模式",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "height",
+              "Slider 高度，竖向模式时必填",
+              "String",
+              "—",
+              "—"
+            ],
+            [
+              "reverse   2.52.0+",
+              "是否启用逆向滑块",
+              "boolean",
+              "—",
+              "—"
+            ],
+            [
+              "barColor   2.52.0+",
+              "滑轨颜色，启用range后生效",
+              "Array",
+              "—",
+              "—"
+            ],
+            [
+              "show-input-on-slider   2.55.0+",
+              "是否显示输入框在slider上",
+              "boolean",
+              "—",
+              "false"
+            ]
+          ]
+        },
+        {
+          "heading": "Events #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "change",
+              "值改变时触发（使用鼠标拖曳时，只在松开鼠标后触发）",
+              "改变后的值"
+            ],
+            [
+              "drag-start",
+              "拖拽开始前触发",
+              "event, 当前值"
+            ],
+            [
+              "drag-end",
+              "拖拽完成后立即触发",
+              "改变后的值"
+            ],
+            [
+              "before-click",
+              "点击 slider 之前触发",
+              "event, 当前值"
+            ],
+            [
+              "slider-click",
+              "点击 slider 后触发",
+              "改变后的值"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "time-picker",
+      "path": "/hui/components/form/time-picker",
+      "tables": [
+        {
+          "heading": "属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "value / v-model",
+              "绑定值",
+              "date(TimePicker) / string(TimeSelect)",
+              "—",
+              "—"
+            ],
+            [
+              "readonly",
+              "完全只读",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "disabled",
+              "禁用",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "editable",
+              "文本框可输入",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "clearable",
+              "是否显示清除按钮",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "size",
+              "输入框尺寸",
+              "string",
+              "medium / small / mini",
+              "—"
+            ],
+            [
+              "placeholder",
+              "非范围选择时的占位内容",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "start-placeholder",
+              "范围选择时开始日期的占位内容",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "end-placeholder",
+              "范围选择时开始日期的占位内容",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "is-range",
+              "是否为时间范围选择，仅对<el-time-picker>有效",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "arrow-control",
+              "是否使用箭头进行时间选择，仅对<el-time-picker>有效",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "align",
+              "对齐方式",
+              "string",
+              "left / center / right",
+              "left"
+            ],
+            [
+              "popper-class",
+              "TimePicker 下拉框的类名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "picker-options",
+              "当前时间日期选择器特有的选项参考下表",
+              "object",
+              "—",
+              "{}"
+            ],
+            [
+              "range-separator",
+              "选择范围时的分隔符",
+              "string",
+              "-",
+              "‘-’"
+            ],
+            [
+              "value-format",
+              "可选，仅 TimePicker 时可用，绑定值的格式。不指定则绑定值为 Date 对象",
+              "string",
+              "见日期格式",
+              "—"
+            ],
+            [
+              "default-value",
+              "可选，选择器打开时默认显示的时间",
+              "Date(TimePicker) / string(TimeSelect)",
+              "可被new Date()解析(TimePicker) / 可选值(TimeSelect)",
+              "—"
+            ],
+            [
+              "name",
+              "原生属性",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "prefix-icon",
+              "自定义头部图标的类名",
+              "string",
+              "—",
+              "h-icon-clock"
+            ],
+            [
+              "clear-icon",
+              "自定义清空图标的类名",
+              "string",
+              "—",
+              "h-icon-close"
+            ],
+            [
+              "unlink",
+              "选择时间是否与输入框联动，非联动条件最终值以确认或快捷按钮为准",
+              "boolean",
+              "-",
+              "default: true  type 为 [‘year’, ‘month’, ‘time’]: false"
+            ],
+            [
+              "unlink-range",
+              "range 模式是否取消关联开始时间与结束时间",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "compare-times",
+              "自定义计算开始时间与结束时间大小判断方法",
+              "function",
+              "说明 如果 return true 可以保存数据, 如果返回 提示错误描述。仅对is-range有效",
+              "-"
+            ],
+            [
+              "formatRangeSelection  2.52.0+",
+              "开启后，会根据format格式。选中年月日时分秒。",
+              "Boolean",
+              "",
+              "true"
+            ],
+            [
+              "showNow  2.55.0+",
+              "unlink为true，开启底部确认条时，是否显示此刻按钮",
+              "Boolean",
+              "",
+              "true"
+            ],
+            [
+              "use12Hours  2.55.0+",
+              "是否使用12小时制",
+              "Boolean",
+              "",
+              "false"
+            ]
+          ]
+        },
+        {
+          "heading": "Time Select Options #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "start",
+              "开始时间",
+              "string",
+              "—",
+              "09:00"
+            ],
+            [
+              "end",
+              "结束时间",
+              "string",
+              "—",
+              "18:00"
+            ],
+            [
+              "step",
+              "间隔时间",
+              "string",
+              "—",
+              "00:30"
+            ],
+            [
+              "minTime",
+              "最小时间，小于该时间的时间段将被禁用",
+              "string",
+              "—",
+              "00:00"
+            ],
+            [
+              "maxTime",
+              "最大时间，大于该时间的时间段将被禁用",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "range",
+              "可选时间段, 如[‘09:30 - 12:00’, ‘14:30 - 18:30’]",
+              "array",
+              "—",
+              "—"
+            ]
+          ]
+        },
+        {
+          "heading": "Time Picker Options #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "selectableRange",
+              "可选时间段，例如'18:30:00 - 20:30:00'或者传入数组['09:30:00 - 12:00:00', '14:30:00 - 18:30:00'], 暂不支持range模式",
+              "string / array",
+              "—",
+              "—"
+            ],
+            [
+              "format",
+              "时间格式化(TimePicker)",
+              "string",
+              "小时：HH，分：mm，秒：ss，AM/PM A",
+              "‘HH:mm:ss’"
+            ],
+            [
+              "hourStep",
+              "小时选项间隔",
+              "number",
+              "-",
+              "1"
+            ],
+            [
+              "minuteStep",
+              "分钟选项间隔",
+              "number",
+              "-",
+              "1"
+            ],
+            [
+              "secondStep",
+              "秒选项间隔",
+              "number",
+              "-",
+              "1"
+            ]
+          ]
+        },
+        {
+          "heading": "事件 #",
+          "headers": [
+            "事件名称",
+            "返回值",
+            "说明"
+          ],
+          "rows": [
+            [
+              "change",
+              "组件绑定值（受 value-format 控制），输入框显示值（受 format 控制）",
+              "用户选定的值改变触发"
+            ],
+            [
+              "input",
+              "组件绑定值（受 value-format 控制），输入框显示值（受 format 控制）",
+              "输入框值改变触发"
+            ],
+            [
+              "blur",
+              "组件绑定值（受 value-format 控制），输入框显示值（受 format 控制）",
+              "当 input 失去焦点时触发"
+            ],
+            [
+              "focus",
+              "组件绑定值（受 value-format 控制），输入框显示值（受 format 控制）",
+              "当 input 获得焦点时触发"
+            ]
+          ]
+        },
+        {
+          "heading": "方法 #",
+          "headers": [
+            "方法名",
+            "说明",
+            "参数"
+          ],
+          "rows": [
+            [
+              "focus",
+              "使 input 获取焦点",
+              "-"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "date-picker",
+      "path": "/hui/components/form/date-picker",
+      "tables": [
+        {
+          "heading": "日期格式 #",
+          "headers": [
+            "格式",
+            "含义",
+            "说明",
+            "举例"
+          ],
+          "rows": [
+            [
+              "yyyy",
+              "年",
+              "",
+              "2017"
+            ],
+            [
+              "M",
+              "月",
+              "不补 0",
+              "1"
+            ],
+            [
+              "MM",
+              "月",
+              "",
+              "01"
+            ],
+            [
+              "Mo",
+              "月序数",
+              "",
+              "1st 2nd … 11th 12th"
+            ],
+            [
+              "W",
+              "周",
+              "仅周选择器可用，不补 0",
+              "1"
+            ],
+            [
+              "WW",
+              "周",
+              "仅周选择器的可用",
+              "01"
+            ],
+            [
+              "Wo",
+              "周序数",
+              "仅周选择器的可用",
+              "1st 2nd … 52nd 53rd"
+            ],
+            [
+              "d",
+              "日",
+              "不补 0",
+              "2"
+            ],
+            [
+              "dd",
+              "日",
+              "",
+              "02"
+            ],
+            [
+              "do",
+              "日序数",
+              "",
+              "1st 2nd … 30th 31st"
+            ],
+            [
+              "H",
+              "小时",
+              "24 小时制；不补 0",
+              "3"
+            ],
+            [
+              "HH",
+              "小时",
+              "24 小时制",
+              "03"
+            ],
+            [
+              "h",
+              "小时",
+              "12 小时制，须和 A 或 a 使用，不补 0",
+              "3"
+            ],
+            [
+              "hh",
+              "小时",
+              "12 小时制，须和 A 或 a 使用",
+              "03"
+            ],
+            [
+              "m",
+              "分钟",
+              "不补 0",
+              "4"
+            ],
+            [
+              "mm",
+              "分钟",
+              "",
+              "04"
+            ],
+            [
+              "s",
+              "秒",
+              "不补 0",
+              "5"
+            ],
+            [
+              "ss",
+              "秒",
+              "",
+              "05"
+            ],
+            [
+              "A",
+              "AM/PM",
+              "仅 format 可用，大写",
+              "AM"
+            ],
+            [
+              "a",
+              "am/pm",
+              "仅 format 可用，小写",
+              "am"
+            ],
+            [
+              "timestamp",
+              "JS 时间戳",
+              "仅 value-format 可用，组件绑定值为number类型",
+              "1483326245000"
+            ]
+          ]
+        },
+        {
+          "heading": "属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "value / v-model",
+              "绑定值",
+              "date(DatePicker) / array(DateRangePicker)",
+              "—",
+              "—"
+            ],
+            [
+              "readonly",
+              "完全只读",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "disabled",
+              "禁用",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "editable",
+              "文本框可输入",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "clearable",
+              "是否显示清除按钮",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "size",
+              "输入框尺寸",
+              "string",
+              "large, small, mini",
+              "—"
+            ],
+            [
+              "placeholder",
+              "非范围选择时的占位内容",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "start-placeholder",
+              "范围选择时开始日期的占位内容",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "end-placeholder",
+              "范围选择时结束日期的占位内容",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "type",
+              "显示类型",
+              "string",
+              "year/month/date/dates/ week/datetime/datetimerange/daterange",
+              "date"
+            ],
+            [
+              "format",
+              "显示在输入框中的格式",
+              "string",
+              "见日期格式",
+              "yyyy/MM/dd"
+            ],
+            [
+              "align",
+              "面板对齐方式",
+              "string",
+              "left, center, right",
+              "left"
+            ],
+            [
+              "popper-class",
+              "DatePicker 下拉框的类名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "picker-options",
+              "当前时间日期选择器特有的选项参考下表",
+              "object",
+              "—",
+              "{}"
+            ],
+            [
+              "range-separator",
+              "选择范围时的分隔符",
+              "string",
+              "—",
+              "‘-’"
+            ],
+            [
+              "default-value",
+              "可选，选择器打开时默认显示的时间",
+              "Date",
+              "可被new Date()解析",
+              "—"
+            ],
+            [
+              "default-time",
+              "范围选择时选中日期所使用的当日内具体时刻",
+              "string[]",
+              "数组，长度为 2，每项值为字符串，形如12:00:00，第一项指定开始日期的时刻，第二项指定结束日期的时刻，不指定会使用时刻 00:00:00",
+              "‘00:00:00’"
+            ],
+            [
+              "value-format",
+              "可选，绑定值的格式。不指定则绑定值为 Date 对象",
+              "string",
+              "见日期格式",
+              "—"
+            ],
+            [
+              "name",
+              "原生属性",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "prefix-icon",
+              "自定义日期图标的类名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "clear-icon",
+              "自定义清空图标的类名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "validate-event",
+              "输入时是否触发表单的校验",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "unlink",
+              "选择时间是否与输入框联动，非联动条件最终值以确认或快捷按钮为准",
+              "boolean",
+              "-",
+              "default: true  type 为 [‘year’, ‘month’, ‘time’]: false"
+            ],
+            [
+              "unlink-panels",
+              "在范围选择器里取消两个日期面板之间的联动",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "unlink-range",
+              "range 模式是否取消关联开始时间与结束时间",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "calendar-type",
+              "国际日历的特殊格式,目前支持佛历 th(泰历)和尼泊尔日历 np",
+              "string",
+              "th/np",
+              "“”"
+            ],
+            [
+              "linkedRangeChosen  2.50.0+",
+              "只针对range控件有用。是否开始新版范围选择控件",
+              "Boolean",
+              "",
+              "false"
+            ],
+            [
+              "formatRangeSelection  2.52.0+",
+              "开启后，会根据format格式。选中年月日时分秒。",
+              "Boolean",
+              "",
+              "true"
+            ],
+            [
+              "dblclickSelectAll  2.60.1+",
+              "formatRangeSelection为false时，开启此属性，双击选中文本框内容。",
+              "Boolean",
+              "",
+              "false"
+            ],
+            [
+              "unwatchTableType  2.60.1+",
+              "开启此属性后，选择日期，必须是一个区间才算一个完整的操作",
+              "Boolean",
+              "",
+              "false"
+            ]
+          ]
+        },
+        {
+          "heading": "Picker Options #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "shortcuts",
+              "设置快捷选项，需要传入 { text, onClick } 对象用法参考 demo 或下表",
+              "Object[]",
+              "—",
+              "—"
+            ],
+            [
+              "disabledDate",
+              "设置禁用状态，参数为当前日期，要求返回 Boolean",
+              "Function",
+              "—",
+              "—"
+            ],
+            [
+              "selectableRange",
+              "可选时间段，例如'18:30:00 - 20:30:00'或者传入数组['09:30:00 - 12:00:00', '14:30:00 - 18:30:00'], 暂不支持range模式",
+              "string / array",
+              "—",
+              "—"
+            ],
+            [
+              "firstDayOfWeek",
+              "周起始日",
+              "Number",
+              "1 到 7",
+              "1"
+            ],
+            [
+              "onPick",
+              "选中日期后会执行的回调，只有当 daterange 或 datetimerange 才生效",
+              "Function({ maxDate, minDate })",
+              "—",
+              "—"
+            ],
+            [
+              "customValidation",
+              "日期范围的自定义校验方法，参数为开始日期和结束日期，要求返回 Boolean，返回值为 true 时表示通过验证",
+              "Function(minDate, maxDate)",
+              "—",
+              "—"
+            ],
+            [
+              "customPrompt",
+              "日期范围的自定义校验方法不通过时对应的提示语句",
+              "String",
+              "—",
+              "—"
+            ],
+            [
+              "dateClassRender 2.29.0+",
+              "根据时间加入自定义样式{ time }",
+              "Function",
+              "—",
+              "() => {}"
+            ]
+          ]
+        },
+        {
+          "heading": "Shortcuts #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "text",
+              "标题文本",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "onClick",
+              "选中后的回调函数，参数是 vm，可通过触发 ‘pick’ 事件设置选择器的值。例如 vm.$emit(‘pick’, new Date())",
+              "function",
+              "—",
+              "—"
+            ]
+          ]
+        },
+        {
+          "heading": "事件 #",
+          "headers": [
+            "事件名称",
+            "返回值",
+            "说明"
+          ],
+          "rows": [
+            [
+              "change",
+              "组件绑定值（受 value-format 控制），输入框显示值（受 format 控制）",
+              "面板选定值和显示值不同时触发"
+            ],
+            [
+              "input",
+              "组件绑定值（受 value-format 控制），输入框显示值（受 format 控制）",
+              "输入框值改变触发"
+            ],
+            [
+              "blur",
+              "组件绑定值（受 value-format 控制），输入框显示值（受 format 控制）",
+              "当 input 失去焦点时触发"
+            ],
+            [
+              "focus",
+              "组件绑定值（受 value-format 控制），输入框显示值（受 format 控制）",
+              "当 input 获得焦点时触发"
+            ]
+          ]
+        },
+        {
+          "heading": "Instance.$emit #",
+          "headers": [
+            "参数",
+            "说明",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "date",
+              "自定义事件，range模式为数组",
+              "—"
+            ],
+            [
+              "visible",
+              "是否显示面板",
+              "false"
+            ],
+            [
+              "changeInput",
+              "是否改变输入框值",
+              "false"
+            ]
+          ]
+        },
+        {
+          "heading": "方法 #",
+          "headers": [
+            "方法名",
+            "说明",
+            "参数"
+          ],
+          "rows": [
+            [
+              "focus",
+              "使 input 获取焦点",
+              "—"
+            ]
+          ]
+        },
+        {
+          "heading": "Slots  Beta 2.10.0+  #",
+          "headers": [
+            "插槽名称",
+            "说明",
+            "slot-scope"
+          ],
+          "rows": [
+            [
+              "year",
+              "年面板插槽",
+              "‘value’, ‘date’, ‘type’, ‘disabled’, ‘selected’"
+            ],
+            [
+              "month",
+              "月面板插槽",
+              "‘value’, ‘date’, ‘type’, ‘disabled’, ‘selected’"
+            ],
+            [
+              "date",
+              "日面板插槽",
+              "‘value’, ‘date’, ‘type’, ‘disabled’, ‘selected’"
+            ]
+          ]
+        },
+        {
+          "heading": "SlotScope [slot=‘year|startYear|endYear’] #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "值"
+          ],
+          "rows": [
+            [
+              "value",
+              "面板显示值",
+              "string",
+              "-"
+            ],
+            [
+              "date",
+              "面板日期",
+              "date",
+              "-"
+            ],
+            [
+              "type",
+              "面板类型",
+              "string",
+              "‘normal’ 常规类型，‘today’ 当前年，‘prev-year’ 前一个月补全年，‘next-year’ 下一年补全年"
+            ],
+            [
+              "disabled",
+              "当前项是否禁用",
+              "boolean",
+              "-"
+            ],
+            [
+              "selected",
+              "当前项是否选中",
+              "boolean",
+              "-"
+            ]
+          ]
+        },
+        {
+          "heading": "SlotScope [slot=‘month|startMonth|endMonth’] #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "值"
+          ],
+          "rows": [
+            [
+              "value",
+              "面板显示值",
+              "string",
+              "-"
+            ],
+            [
+              "date",
+              "面板日期",
+              "date",
+              "-"
+            ],
+            [
+              "type",
+              "面板类型",
+              "string",
+              "‘normal’ 常规类型，‘today’ 当前月"
+            ],
+            [
+              "disabled",
+              "当前项是否禁用",
+              "boolean",
+              "-"
+            ],
+            [
+              "selected",
+              "当前项是否选中",
+              "boolean",
+              "-"
+            ]
+          ]
+        },
+        {
+          "heading": "SlotScope [slot=‘date|startDate|endDate’] #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "值"
+          ],
+          "rows": [
+            [
+              "value",
+              "面板显示值",
+              "string",
+              "-"
+            ],
+            [
+              "date",
+              "面板日期",
+              "date",
+              "-"
+            ],
+            [
+              "type",
+              "面板类型",
+              "string",
+              "‘normal’ 常规类型，‘today’ 当前日，‘prev-month’ 前一个月补全日，‘next-month’ 下一年补全日"
+            ],
+            [
+              "disabled",
+              "当前项是否禁用",
+              "boolean",
+              "-"
+            ],
+            [
+              "selected",
+              "当前项是否选中",
+              "boolean",
+              "-"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "date-time-picker",
+      "path": "/hui/components/form/date-time-picker",
+      "tables": [
+        {
+          "heading": "属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "value / v-model",
+              "绑定值",
+              "date(DateTimePicker) / array(DateTimeRangePicker)",
+              "—",
+              "—"
+            ],
+            [
+              "readonly",
+              "完全只读",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "disabled",
+              "禁用",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "editable",
+              "文本框可输入",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "clearable",
+              "是否显示清除按钮",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "size",
+              "输入框尺寸",
+              "string",
+              "large, small, mini",
+              "—"
+            ],
+            [
+              "placeholder",
+              "非范围选择时的占位内容",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "start-placeholder",
+              "范围选择时开始时间的占位内容",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "end-placeholder",
+              "范围选择时结束时间的占位内容",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "time-arrow-control",
+              "是否使用箭头进行时间选择",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "type",
+              "显示类型",
+              "string",
+              "year/month/date/week/ datetime/datetimerange/daterange",
+              "date"
+            ],
+            [
+              "format",
+              "显示在输入框中的格式",
+              "string",
+              "见日期格式",
+              "yyyy/MM/dd HH:mm:ss"
+            ],
+            [
+              "align",
+              "面板对齐方式",
+              "string",
+              "left, center, right",
+              "left"
+            ],
+            [
+              "popper-class",
+              "DateTimePicker 下拉框的类名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "picker-options",
+              "当前时间日期选择器特有的选项参考下表",
+              "object",
+              "—",
+              "{}"
+            ],
+            [
+              "range-separator",
+              "选择范围时的分隔符",
+              "string",
+              "-",
+              "‘-’"
+            ],
+            [
+              "default-value",
+              "可选，选择器打开时默认显示的时间",
+              "Date",
+              "可被new Date()解析",
+              "—"
+            ],
+            [
+              "default-time",
+              "选中日期后的默认具体时刻",
+              "非范围选择时：string / 范围选择时：string[]",
+              "非范围选择时：形如12:00:00的字符串；范围选择时：数组，长度为 2，每项值为字符串，形如12:00:00，第一项指定开始时间的时刻，第二项指定结束时间的时刻。不指定会使用时刻 00:00:00",
+              "‘00:00:00’"
+            ],
+            [
+              "value-format",
+              "可选，绑定值的格式。不指定则绑定值为 Date 对象",
+              "string",
+              "见日期格式",
+              "—"
+            ],
+            [
+              "name",
+              "原生属性",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "prefix-icon",
+              "自定义头部图标的类名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "clear-icon",
+              "自定义清空图标的类名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "unlink",
+              "选择时间是否与输入框联动，非联动条件最终值以确认或快捷按钮为准",
+              "boolean",
+              "-",
+              "default: true  type 为 [‘year’, ‘month’, ‘time’]: false"
+            ],
+            [
+              "unlink-panels",
+              "在范围选择器里取消两个日期面板之间的联动",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "unlink-range",
+              "range 模式是否取消关联开始时间与结束时间",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "calendar-type",
+              "国际日历的特殊格式,目前支持佛历th(泰历)和尼泊尔日历np",
+              "string",
+              "th/np",
+              "“”"
+            ],
+            [
+              "linkedRangeChosen  2.50.0+",
+              "只针对range控件有用。是否开始新版范围选择控件",
+              "Boolean",
+              "",
+              "false"
+            ],
+            [
+              "formatRangeSelection  2.52.0+",
+              "开启后，会根据format格式。选中年月日时分秒。",
+              "Boolean",
+              "",
+              "true"
+            ]
+          ]
+        },
+        {
+          "heading": "Picker Options #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "shortcuts",
+              "设置快捷选项，需要传入 { text, onClick } 对象用法参考 demo 或下表",
+              "Object[]",
+              "—",
+              "—"
+            ],
+            [
+              "disabledDate",
+              "设置禁用状态，参数为当前日期，要求返回 Boolean",
+              "Function",
+              "—",
+              "—"
+            ],
+            [
+              "selectableRange",
+              "可选时间段，例如'18:30:00 - 20:30:00'或者传入数组['09:30:00 - 12:00:00', '14:30:00 - 18:30:00'], 暂不支持range模式",
+              "string / array",
+              "—",
+              "—"
+            ],
+            [
+              "firstDayOfWeek",
+              "周起始日",
+              "Number",
+              "1 到 7",
+              "1"
+            ],
+            [
+              "onPick",
+              "选中日期后会执行的回调，只有当 daterange 或 datetimerange 才生效",
+              "Function({ maxDate, minDate })",
+              "—",
+              "—"
+            ],
+            [
+              "customValidation",
+              "日期范围的自定义校验方法，参数为开始日期和结束日期，要求返回 Boolean，返回值为 true 时表示通过验证",
+              "Function({ maxDate, minDate })",
+              "—",
+              "—"
+            ],
+            [
+              "customPrompt",
+              "日期范围的自定义校验方法不通过时对应的提示语句",
+              "String",
+              "—",
+              "—"
+            ]
+          ]
+        },
+        {
+          "heading": "Shortcuts #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "text",
+              "标题文本",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "onClick",
+              "选中后的回调函数，参数是 vm，可通过触发 ‘pick’ 事件设置选择器的值。例如 vm.$emit(‘pick’, new Date())",
+              "function",
+              "—",
+              "—"
+            ]
+          ]
+        },
+        {
+          "heading": "事件 #",
+          "headers": [
+            "事件名称",
+            "返回值",
+            "说明"
+          ],
+          "rows": [
+            [
+              "change",
+              "组件绑定值（受 value-format 控制），输入框显示值（受 format 控制）",
+              "用户选定的值改变触发"
+            ],
+            [
+              "input",
+              "组件绑定值（受 value-format 控制），输入框显示值（受 format 控制）",
+              "输入框值改变触发"
+            ],
+            [
+              "blur",
+              "组件绑定值（受 value-format 控制），输入框显示值（受 format 控制）",
+              "当 input 失去焦点时触发"
+            ],
+            [
+              "focus",
+              "组件绑定值（受 value-format 控制），输入框显示值（受 format 控制）",
+              "当 input 获得焦点时触发"
+            ]
+          ]
+        },
+        {
+          "heading": "方法 #",
+          "headers": [
+            "方法名",
+            "说明",
+            "参数"
+          ],
+          "rows": [
+            [
+              "focus",
+              "使 input 获取焦点",
+              "—"
+            ]
+          ]
+        },
+        {
+          "heading": "Instance.$emit #",
+          "headers": [
+            "参数",
+            "说明",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "date",
+              "自定义事件，range模式为数组",
+              "—"
+            ],
+            [
+              "visible",
+              "是否显示面板",
+              "false"
+            ],
+            [
+              "changeInput",
+              "是否改变输入框值",
+              "false"
+            ]
+          ]
+        },
+        {
+          "heading": "插槽 #",
+          "headers": [
+            "Name",
+            "说明"
+          ],
+          "rows": [
+            [
+              "range-separator",
+              "自定义分隔符"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "upload",
+      "path": "/hui/components/form/upload",
+      "tables": [
+        {
+          "heading": "属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "action",
+              "上传的地址",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "headers",
+              "可选参数, 设置上传的请求头部",
+              "object, function(返回object)",
+              "—",
+              "—"
+            ],
+            [
+              "multiple",
+              "可选参数, 是否支持多选文件",
+              "boolean",
+              "—",
+              "—"
+            ],
+            [
+              "data",
+              "可选参数, 上传时附带的额外参数",
+              "object",
+              "—",
+              "—"
+            ],
+            [
+              "name",
+              "可选参数, 上传的文件字段名",
+              "string",
+              "—",
+              "file"
+            ],
+            [
+              "with-credentials",
+              "支持发送 cookie 凭证信息",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "show-file-list",
+              "是否显示已上传文件列表",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "drag",
+              "是否启用拖拽上传",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "accept",
+              "可选参数, 接受上传的文件类型（thumbnail-mode 模式下此参数无效）",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "on-preview",
+              "可选参数, 点击已上传的文件链接时的钩子, 可以通过 file.response 拿到服务端返回数据",
+              "function(file)",
+              "—",
+              "—"
+            ],
+            [
+              "on-remove",
+              "可选参数, 文件列表移除文件时的钩子",
+              "function(file, fileList)",
+              "—",
+              "—"
+            ],
+            [
+              "on-success",
+              "可选参数, 文件上传成功时的钩子",
+              "function(response, file, fileList, xhr)",
+              "—",
+              "—"
+            ],
+            [
+              "on-error",
+              "可选参数, 文件上传失败时的钩子",
+              "function(err, file, fileList, xhr)",
+              "—",
+              "—"
+            ],
+            [
+              "on-progress",
+              "可选参数, 文件上传时的钩子",
+              "function(event, file, fileList)",
+              "—",
+              "—"
+            ],
+            [
+              "on-change",
+              "可选参数, 文件状态改变时的钩子，添加文件、上传成功和上传失败时都会被调用",
+              "function(file, fileList)",
+              "—",
+              "—"
+            ],
+            [
+              "on-ready",
+              "可选参数, 文件上传前的钩子，在before-upload之前被调用，多个文件上传时只会调用一次，参数为上传文件的列表，若返回 false则停止上传。",
+              "function(fileList)",
+              "—",
+              "—"
+            ],
+            [
+              "on-submit-error 2.38+",
+              "可选参数，手动调用submit方法时，失败的钩子",
+              "function(error)",
+              "—",
+              "—"
+            ],
+            [
+              "before-upload",
+              "可选参数, 上传文件之前的钩子，参数为上传的文件，若返回 false 或者返回 Promise 且被 reject，则停止上传。",
+              "function(file)",
+              "—",
+              "—"
+            ],
+            [
+              "before-remove",
+              "删除文件之前的钩子，参数为上传的文件和文件列表，若返回 false 或者返回 Promise 且被 reject，则停止上传。",
+              "function(file, fileList)",
+              "—",
+              "—"
+            ],
+            [
+              "list-type",
+              "文件列表的类型",
+              "string",
+              "text/picture/picture-card",
+              "text"
+            ],
+            [
+              "auto-upload",
+              "是否在选取文件后立即进行上传",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "file-name-render  2.0+",
+              "文件列表中，文件名称渲染内容的自定义render函数",
+              "function(h,file)",
+              "—",
+              "-"
+            ],
+            [
+              "file-list",
+              "上传的文件列表, 例如: [{name: ‘food.jpeg’, url: ‘https://fuss10.elemecdn.com/3/63/4e7f3a15429bfda99bce42a18cdd1jpeg.jpeg?imageMogr2/thumbnail/360x360/format/webp/quality/100’}]",
+              "array",
+              "—",
+              "[]"
+            ],
+            [
+              "http-request",
+              "覆盖默认的上传行为，可以自定义上传的实现",
+              "function",
+              "—",
+              "—"
+            ],
+            [
+              "disabled",
+              "是否禁用",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "limit  2.0+",
+              "最大允许上传个数",
+              "number",
+              "—",
+              "—"
+            ],
+            [
+              "on-exceed  2.0+",
+              "文件超出个数限制时的钩子",
+              "function(files, fileList)",
+              "—",
+              "—"
+            ],
+            [
+              "single-file  2.0+",
+              "在上传图片状态下，仅能上传单个图片",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "error-tooltip-text  2.0+",
+              "上传错误时的tooltip文字提示",
+              "string",
+              "—",
+              "上传失败"
+            ]
+          ]
+        },
+        {
+          "heading": "方法 #",
+          "headers": [
+            "方法名",
+            "说明",
+            "参数"
+          ],
+          "rows": [
+            [
+              "clearFiles",
+              "清空已上传的文件列表（该方法不支持在 before-upload 中调用）",
+              "—"
+            ],
+            [
+              "abort",
+              "取消上传请求",
+              "（ file: fileList 中的 file 对象 ）"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "transfer",
+      "path": "/hui/components/form/transfer",
+      "tables": [
+        {
+          "heading": "属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "data",
+              "Transfer 的数据源",
+              "array[{ key, label, disabled }]",
+              "—",
+              "[ ]"
+            ],
+            [
+              "filterable",
+              "是否可搜索",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "filter-placeholder",
+              "过滤框占位符",
+              "string",
+              "—",
+              "请输入搜索内容"
+            ],
+            [
+              "filter-method",
+              "自定义过滤方法，对当前已加载数据进行过滤",
+              "function",
+              "—",
+              "—"
+            ],
+            [
+              "search-placeholder",
+              "搜索框占位符，应用于搜索时发起请求加载新数据源的场景，仅对左面板生效",
+              "string",
+              "—",
+              "请输入搜索内容"
+            ],
+            [
+              "search-method",
+              "自定义搜索方法，应用于搜索时发起请求加载新数据源的场景，仅对左面板生效",
+              "function",
+              "—",
+              "—"
+            ],
+            [
+              "titles",
+              "自定义列表标题",
+              "array",
+              "—",
+              "[‘列表 1’, ‘列表 2’]"
+            ],
+            [
+              "button-texts",
+              "自定义按钮文案",
+              "array",
+              "—",
+              "[ ]"
+            ],
+            [
+              "render-content",
+              "自定义数据项渲染函数",
+              "function(h, option)",
+              "—",
+              "—"
+            ],
+            [
+              "footer-format",
+              "列表底部勾选状态文案；直接赋值为false则不显示底部",
+              "object{noChecked, hasChecked}或boolean",
+              "—",
+              "{ noChecked: ‘共 ${total} 项’, hasChecked: ‘已选 ${checked}/${total} 项’ }"
+            ],
+            [
+              "props",
+              "数据源的字段别名",
+              "object{key, label, disabled}",
+              "—",
+              "—"
+            ],
+            [
+              "left-default-checked",
+              "初始状态下左侧列表的已勾选项的 key 数组",
+              "array",
+              "—",
+              "[ ]"
+            ],
+            [
+              "right-default-checked",
+              "初始状态下右侧列表的已勾选项的 key 数组",
+              "array",
+              "—",
+              "[ ]"
+            ],
+            [
+              "before-add-to-right",
+              "右移前的操作，参数为function（需返回promise对象，resolve时数据被添加至右侧面板，reject时不移动）",
+              "function",
+              "—",
+              "new Promise(resolve => resolve())"
+            ],
+            [
+              "before-add-to-left",
+              "左移前的操作，参数为function（需返回promise对象，resolve时数据被添加至左侧面板，reject时不移动）",
+              "function",
+              "—",
+              "new Promise(resolve => resolve())"
+            ],
+            [
+              "leftPanelWidth   2.53.0+",
+              "左侧面板宽度",
+              "number",
+              "—",
+              "—"
+            ],
+            [
+              "rightPanelWidth   2.53.0+",
+              "右侧面板宽度",
+              "number",
+              "—",
+              "—"
+            ],
+            [
+              "panelContentHeight   2.53.0+",
+              "面板内容高度",
+              "number",
+              "—",
+              "—"
+            ],
+            [
+              "leftShowAllCheckedBox   2.53.0+",
+              "是否开启左侧面板全选复选框（false时无全选复选框）",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "rightShowAllCheckedBox   2.53.0+",
+              "是否开启右侧面板全选复选框（false时无全选复选框）",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "simple   2.53.0+",
+              "是否开启简易模式（开启后没有穿梭箭头）",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "retainSelectedItems   2.53.0+",
+              "是否保留选项（只对左侧面板生效，开启后穿梭至右侧面板，左侧面板仍保留选项）",
+              "boolean",
+              "—",
+              "false"
+            ]
+          ]
+        },
+        {
+          "heading": "Slot #",
+          "headers": [
+            "name",
+            "说明"
+          ],
+          "rows": [
+            [
+              "left-footer",
+              "左侧列表底部的内容"
+            ],
+            [
+              "right-footer",
+              "右侧列表底部的内容"
+            ],
+            [
+              "left-panel  2.53.0+",
+              "左侧面板的内容"
+            ],
+            [
+              "right-panel  2.53.0+",
+              "右侧面板的内容"
+            ]
+          ]
+        },
+        {
+          "heading": "方法 #",
+          "headers": [
+            "方法名",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "clearQuery",
+              "清空某个面板的搜索关键词",
+              "‘left’ / ‘right’，指定需要清空的面板"
+            ]
+          ]
+        },
+        {
+          "heading": "事件 #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "change",
+              "右侧列表元素变化时触发",
+              "当前值、数据移动的方向（‘left’ / ‘right’）、发生移动的数据 key 数组"
+            ],
+            [
+              "on-left-scrolling",
+              "左面板纵向滚动时触发事件,参数返回滚动距离和已滚动百分比（百分比为1则表示滚动到尽头）",
+              "{scrollTop, percentY }"
+            ],
+            [
+              "on-right-scrolling",
+              "右面板纵向滚动时触发事件,参数返回滚动距离和已滚动百分比（百分比为1则表示滚动到尽头）",
+              "{scrollTop, percentY }"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "form",
+      "path": "/hui/components/form/form-demo",
+      "tables": [
+        {
+          "heading": "Form属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "model",
+              "表单数据对象",
+              "object",
+              "—",
+              "—"
+            ],
+            [
+              "rules",
+              "表单验证规则",
+              "object",
+              "—",
+              "—"
+            ],
+            [
+              "inline",
+              "行内表单模式",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "text-form",
+              "纯文本表单，设为 true 会调整表单间距",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "label-position",
+              "表单域标签的位置",
+              "string",
+              "right/left/top",
+              "right"
+            ],
+            [
+              "label-width",
+              "表单域标签的宽度，作为 Form 直接子元素的 form-item 会继承该值",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "label-suffix",
+              "表单域标签的后缀",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "content-width",
+              "表单域内容的宽度，作为 Form 直接子元素的 form-item 会继承该值",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "show-message",
+              "是否显示校验错误信息",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "message-position",
+              "校验错误信息显示位置",
+              "string",
+              "bottom/right",
+              "bottom"
+            ],
+            [
+              "grid-layout",
+              "支持表单标签和表单项栅格布局，设置为true后 label-width 和 content-width 将失效",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "label-grid",
+              "表单域标签断点栅格数（用法参考 Layout 的 col 控件）",
+              "object",
+              "—",
+              "{ xl: 24, lg: 24, md: 24, sm: 24, sx: 24 };"
+            ],
+            [
+              "content-grid",
+              "表单域内容断点栅格数（用法参考 Layout 的 col 控件）",
+              "object",
+              "—",
+              "{ xl: 24, lg: 24, md: 24, sm: 24, sx: 24 };"
+            ],
+            [
+              "label-overflow-title",
+              "label 文字超长后，是否被隐藏且显示 title",
+              "Boolean",
+              "—",
+              "true"
+            ],
+            [
+              "gutter",
+              "表单项的间距，建议不要设置到 20 以下，否则错误信息可能会被遮挡",
+              "Number",
+              "—",
+              "无默认值，样式中控制默认间距为 24px"
+            ],
+            [
+              "validate-on-rule-change  2.0+",
+              "是否在 rules 属性改变后立即触发一次验证",
+              "boolean",
+              "—",
+              "true"
+            ]
+          ]
+        },
+        {
+          "heading": "Form方法 #",
+          "headers": [
+            "方法名",
+            "说明",
+            "参数"
+          ],
+          "rows": [
+            [
+              "validate",
+              "对整个表单进行校验的方法",
+              "Function(callback: Function(boolean))"
+            ],
+            [
+              "validateField",
+              "对部分表单字段进行校验的方法",
+              "Function(prop: string, callback: Function(errorMessage: string))"
+            ],
+            [
+              "resetValidate  2.0+",
+              "移除某个字段的校验结果，重置规则",
+              "Function(prop: string, isResetRule: Boolean)"
+            ],
+            [
+              "resetValidates",
+              "对整个表单的校验信息进行重置，移除所有校验结果",
+              "-"
+            ],
+            [
+              "resetFields",
+              "对整个表单进行重置，将所有字段值重置为初始值并移除校验结果",
+              "(isEmpty) 接受一个参数，1. boolean 类型，若为 true 则清空所有字段，默认值为 false"
+            ],
+            [
+              "focusFirstField  2.0+",
+              "将自动聚焦在第一个错误的表单项中（仅对el-input）有效",
+              "-"
+            ]
+          ]
+        },
+        {
+          "heading": "Form事件 #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "validate  2.0+",
+              "任一表单项被校验后触发",
+              "被校验的表单项 prop 值，校验是否通过"
+            ]
+          ]
+        },
+        {
+          "heading": "Form-Item属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "prop",
+              "表单域 model 字段，在使用 validate、resetFields 方法的情况下，该属性是必填的",
+              "string",
+              "传入 Form 组件的 model 中的字段",
+              "—"
+            ],
+            [
+              "disabled  2.0+",
+              "表单项内容是否为禁用状态（禁用状态下不会显示必填标识）",
+              "Boolean",
+              "-",
+              "false"
+            ],
+            [
+              "label",
+              "标签文本",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "label-width",
+              "表单域标签的的宽度，例如 ‘50px’，可覆盖父控件的 label-width",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "content-width",
+              "表单域内容的的宽度，例如 ‘50px’，可覆盖父控件的 content-width",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "required",
+              "是否必填，如不设置，则会根据校验规则自动生成",
+              "bolean",
+              "—",
+              "false"
+            ],
+            [
+              "required-right  2.61.3 移除",
+              "是否必填的星号是否显示在文字右侧  2.61.3  根据 label-position 属性自动调整位置",
+              "bolean",
+              "—",
+              "true"
+            ],
+            [
+              "rules",
+              "表单验证规则",
+              "object",
+              "—",
+              "—"
+            ],
+            [
+              "error",
+              "表单域验证错误信息, 设置该值会使表单验证状态变为error，并显示该错误信息",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "show-message",
+              "是否显示校验错误信息",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "introduction",
+              "表单项的介绍文字   2.61.3  根据 label-position 属性自动调整位置",
+              "string",
+              "-",
+              "‘’"
+            ],
+            [
+              "introduction-icon",
+              "介绍文字的响应图标",
+              "string",
+              "-",
+              "‘h-icon-help’"
+            ],
+            [
+              "introduction-placement",
+              "介绍文字的出现位置",
+              "string",
+              "top/top-start/top-end/bottom/bottom-start/bottom-end/left/left-start/left-end/right/right-start/right-end",
+              "bottom"
+            ],
+            [
+              "introduction-class",
+              "为介绍文字弹出框添加类名",
+              "string",
+              "-",
+              "-"
+            ],
+            [
+              "description",
+              "表单项描述信息",
+              "string",
+              "-",
+              "-"
+            ],
+            [
+              "description-render",
+              "表单项描述信息的渲染",
+              "Function",
+              "-",
+              "-"
+            ],
+            [
+              "item-group",
+              "是否作为群组 Item 的容器",
+              "Boolean",
+              "-",
+              "false"
+            ],
+            [
+              "label-grid",
+              "表单域标签断点栅格数，可覆盖父控件的 label-grid（用法参考 Layout 的 col 控件）",
+              "object",
+              "—",
+              "{ xl: 24, lg: 24, md: 24, sm: 24, sx: 24 };"
+            ],
+            [
+              "content-grid",
+              "表单域内容断点栅格数，可覆盖父控件的 label-grid（用法参考 Layout 的 col 控件）",
+              "object",
+              "—",
+              "{ xl: 24, lg: 24, md: 24, sm: 24, sx: 24 };"
+            ],
+            [
+              "before-validate",
+              "表单校验前的回调，返回 false 则不再进行校验，支持 promise。（入参：value，rules）",
+              "function",
+              "—",
+              "-"
+            ],
+            [
+              "show-ellipsis",
+              "表单错误信息省略显示",
+              "boolean",
+              "-",
+              "false"
+            ]
+          ]
+        },
+        {
+          "heading": "Form-Item Slot #",
+          "headers": [
+            "name",
+            "说明"
+          ],
+          "rows": [
+            [
+              "—",
+              "Form Item 的内容"
+            ],
+            [
+              "label",
+              "标签文本的内容"
+            ],
+            [
+              "introduction  2.0+",
+              "解释说明文本"
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}

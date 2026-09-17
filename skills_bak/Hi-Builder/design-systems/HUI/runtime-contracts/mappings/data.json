@@ -1,0 +1,111 @@
+{
+  "schema_version": "hui-contract-mapping.v1",
+  "batch": "data",
+  "components": {
+    "table": {
+      "runtime": {
+        "el-table": {
+          "props": ["Table Attributes"],
+          "events": ["Table Events"],
+          "methods": ["Table Methods"],
+          "slots": ["Table Slot"]
+        },
+        "el-table-column": {
+          "props": ["Table-column Attributes"]
+        }
+      }
+    },
+    "tag": {
+      "runtime": {
+        "el-tag": {
+          "props": ["Attributes"],
+          "events": ["Events"]
+        },
+        "el-checkable-tag": {
+          "props": ["checkableTag"],
+          "events": ["checkableTag Events"]
+        },
+        "el-checkable-tag-group": {
+          "props": ["checkableTagGroup"]
+        }
+      }
+    },
+    "progress": {
+      "runtime": {
+        "el-progress": {
+          "props": ["Attributes"],
+          "slots": ["Slot"]
+        }
+      }
+    },
+    "tree": {
+      "runtime": {
+        "el-tree": {
+          "props": ["Attributes"],
+          "methods": ["方法"],
+          "events": ["Events"],
+          "slots": ["Scoped Slot"]
+        }
+      }
+    },
+    "pagination": {
+      "runtime": {
+        "el-pagination": {
+          "props": ["Attributes"],
+          "events": ["Events"],
+          "slots": ["Slot"]
+        }
+      }
+    },
+    "badge": {
+      "runtime": {
+        "el-badge": {
+          "props": ["Attributes"]
+        }
+      }
+    },
+    "stats": {
+      "runtime": {
+        "h-stats": {
+          "props": ["Stats Attributes"],
+          "slots": ["Stats Slots"]
+        }
+      }
+    },
+    "list": {
+      "runtime": {
+        "el-list": {
+          "props": ["List 属性"],
+          "slots": ["List Slots"]
+        },
+        "el-list-item": {
+          "props": ["ListItem 属性"],
+          "slots": ["ListItem Slots"]
+        }
+      }
+    },
+    "skeleton": {
+      "runtime": {
+        "el-skeleton": {
+          "props": ["Skeleton 属性"],
+          "slots": ["Skeleton Slots"]
+        },
+        "el-skeleton-item": {
+          "props": ["SkeletonItem 属性"]
+        }
+      }
+    },
+    "descriptions": {
+      "runtime": {
+        "el-descriptions": {
+          "props": ["Descriptions Attributes"],
+          "slots": ["Descriptions Slots"]
+        },
+        "el-descriptions-row": {
+          "props": ["Descriptions Item Attributes"],
+          "slots": ["Descriptions Item Slots"]
+        }
+      }
+    }
+  }
+}

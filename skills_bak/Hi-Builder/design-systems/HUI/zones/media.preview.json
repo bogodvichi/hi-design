@@ -1,0 +1,8 @@
+{
+  "schema_version": "d2c-zone.v1",
+  "id": "media.preview",
+  "name": "媒体预览区域",
+  "description": "承载图片或视频主预览、预览操作和媒体切换",
+  "use_when": ["页面需要查看一个或多个媒体资源"],
+  "owner": "hui-common"
+}

@@ -1,0 +1,260 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "nav",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/navigation/nav-demo",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/navigation.docs.json",
+    "evidence_sha256": "e10ef37ba907910b3f0d40d9a0892b99ace9f2c5ad09cbd0ebf3bf440a34925a"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-nav": {
+      "props": [
+        {
+          "参数": "mode",
+          "说明": "模式",
+          "类型": "string",
+          "可选值": "horizontal,vertical",
+          "默认值": "vertical",
+          "template_name": "mode"
+        },
+        {
+          "参数": "collapse",
+          "说明": "是否水平折叠收起菜单（仅在 mode 为 vertical 时可用）",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "collapse"
+        },
+        {
+          "参数": "collapse-btn",
+          "说明": "是否启用折叠按钮",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "collapse-btn"
+        },
+        {
+          "参数": "theme  移除",
+          "说明": "主题色",
+          "类型": "string",
+          "可选值": "light,dark",
+          "默认值": "light",
+          "template_name": "theme"
+        },
+        {
+          "参数": "default-active",
+          "说明": "当前激活菜单的 index",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "default-active"
+        },
+        {
+          "参数": "default-openeds",
+          "说明": "当前打开的subnav的 key 数组",
+          "类型": "Array",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "default-openeds"
+        },
+        {
+          "参数": "unique-opened",
+          "说明": "是否只保持一个子菜单的展开",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "unique-opened"
+        },
+        {
+          "参数": "nav-trigger",
+          "说明": "子菜单打开的触发方式(只在 mode 为 horizontal 时有效)",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "hover",
+          "template_name": "nav-trigger"
+        },
+        {
+          "参数": "router",
+          "说明": "是否使用 vue-router 的模式，启用该模式会在激活导航时以 index 作为 path 进行路由跳转",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "router"
+        },
+        {
+          "参数": "wrap-scroll",
+          "说明": "外部容器是否滚动，若滚动请开启这个参数",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "wrap-scroll"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "select",
+          "说明": "菜单激活回调",
+          "回调参数": "index: 选中菜单项的 indexPath: 选中菜单项的 index path",
+          "template_name": "select"
+        },
+        {
+          "事件名称": "open",
+          "说明": "SubNav 展开的回调",
+          "回调参数": "index: 打开的 subNav 的 index， indexPath: 打开的 subNav 的 index path",
+          "template_name": "open"
+        },
+        {
+          "事件名称": "close",
+          "说明": "SubNav 收起的回调",
+          "回调参数": "index: 收起的 subNav 的 index， indexPath: 收起的 subNav 的 index path",
+          "template_name": "close"
+        },
+        {
+          "事件名称": "click-collapse",
+          "说明": "折叠按钮点击的回调",
+          "回调参数": "—",
+          "template_name": "click-collapse"
+        },
+        {
+          "事件名称": "fold",
+          "说明": "菜单折叠回调",
+          "回调参数": "—",
+          "template_name": "fold"
+        },
+        {
+          "事件名称": "unfold",
+          "说明": "菜单展开回调",
+          "回调参数": "—",
+          "template_name": "unfold"
+        },
+        {
+          "事件名称": "show-collapse",
+          "说明": "折叠菜单显示事件（仅在设置wrap-scroll为true时生效）",
+          "回调参数": "—",
+          "template_name": "show-collapse"
+        },
+        {
+          "事件名称": "hide-collapse",
+          "说明": "折叠菜单隐藏事件（仅在设置wrap-scroll为true时生效）",
+          "回调参数": "—",
+          "template_name": "hide-collapse"
+        }
+      ],
+      "slots": [
+        {
+          "name": "—",
+          "说明": "nav-item的内容",
+          "template_name": "—"
+        },
+        {
+          "name": "icon  2.0+",
+          "说明": "nav-item的图标",
+          "template_name": "icon"
+        }
+      ],
+      "methods": [
+        {
+          "事件名称": "open  2.0+",
+          "说明": "展开指定的 sub-nav",
+          "参数": "index: 需要打开的 sub-nav 的 index",
+          "template_name": "open"
+        },
+        {
+          "事件名称": "close  2.0+",
+          "说明": "收起指定的 sub-nav",
+          "参数": "index: 需要收起的 sub-nav 的 index",
+          "template_name": "close"
+        }
+      ]
+    },
+    "el-subnav": {
+      "props": [
+        {
+          "参数": "index",
+          "说明": "唯一标志",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "index"
+        },
+        {
+          "参数": "title",
+          "说明": "子菜单标题",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "title"
+        },
+        {
+          "参数": "icon",
+          "说明": "菜单项的图标",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "icon"
+        },
+        {
+          "参数": "disabled",
+          "说明": "是否禁用",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disabled"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    },
+    "el-nav-item": {
+      "props": [
+        {
+          "参数": "index",
+          "说明": "唯一标志",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "index"
+        },
+        {
+          "参数": "route",
+          "说明": "Vue Router 路径对象",
+          "类型": "Object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "route"
+        },
+        {
+          "参数": "disabled",
+          "说明": "是否禁用",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disabled"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    },
+    "el-nav-group": {
+      "props": [
+        {
+          "参数": "title",
+          "说明": "分组标题",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "title"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

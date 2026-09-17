@@ -1,0 +1,182 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "descriptions",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/data/descriptions",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/data.docs.json",
+    "evidence_sha256": "1faf13316d3e61002e07073d56ed0739f08ed5e112cba04b1d62b08484a37c71"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-descriptions": {
+      "props": [
+        {
+          "参数": "border",
+          "说明": "是否带有边框",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "border"
+        },
+        {
+          "参数": "column",
+          "说明": "一行 Descriptions Item 的数量",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "3",
+          "template_name": "column"
+        },
+        {
+          "参数": "direction",
+          "说明": "排列的方向",
+          "类型": "string",
+          "可选值": "vertical / horizontal",
+          "默认值": "horizontal",
+          "template_name": "direction"
+        },
+        {
+          "参数": "size",
+          "说明": "列表的尺寸",
+          "类型": "string",
+          "可选值": "medium / small / mini",
+          "默认值": "—",
+          "template_name": "size"
+        },
+        {
+          "参数": "title",
+          "说明": "标题文本，显示在左上方",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "title"
+        },
+        {
+          "参数": "extra",
+          "说明": "操作区文本，显示在右上方",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "extra"
+        },
+        {
+          "参数": "colon",
+          "说明": "是否显示冒号",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "colon"
+        },
+        {
+          "参数": "labelClassName",
+          "说明": "自定义标签类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "label-class-name"
+        },
+        {
+          "参数": "contentClassName",
+          "说明": "自定义内容类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "content-class-name"
+        },
+        {
+          "参数": "labelStyle",
+          "说明": "自定义标签样式",
+          "类型": "object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "label-style"
+        },
+        {
+          "参数": "contentStyle",
+          "说明": "自定义内容样式",
+          "类型": "object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "content-style"
+        }
+      ],
+      "events": [],
+      "slots": [
+        {
+          "Name": "title",
+          "说明": "自定义标题，显示在左上方",
+          "template_name": "title"
+        },
+        {
+          "Name": "extra",
+          "说明": "自定义操作区，显示在右上方",
+          "template_name": "extra"
+        }
+      ],
+      "methods": []
+    },
+    "el-descriptions-row": {
+      "props": [
+        {
+          "参数": "label",
+          "说明": "标签文本",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "label"
+        },
+        {
+          "参数": "span",
+          "说明": "列的数量",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "1",
+          "template_name": "span"
+        },
+        {
+          "参数": "labelClassName",
+          "说明": "自定义标签类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "label-class-name"
+        },
+        {
+          "参数": "contentClassName",
+          "说明": "自定义内容类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "content-class-name"
+        },
+        {
+          "参数": "labelStyle",
+          "说明": "自定义标签样式",
+          "类型": "object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "label-style"
+        },
+        {
+          "参数": "contentStyle",
+          "说明": "自定义内容样式",
+          "类型": "object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "content-style"
+        }
+      ],
+      "events": [],
+      "slots": [
+        {
+          "Name": "label",
+          "说明": "自定义标签文本",
+          "template_name": "label"
+        }
+      ],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

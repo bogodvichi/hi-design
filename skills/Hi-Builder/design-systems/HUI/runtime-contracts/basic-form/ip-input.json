@@ -1,0 +1,93 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "ip-input",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/form/ip-input",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/basic-form.docs.json",
+    "evidence_sha256": "ce35467cfa4317a06d0d65dd9e415328669f0c6711f32417ce27edc1af71cbe7"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "h-ip-input": {
+      "props": [
+        {
+          "参数": "value",
+          "说明": "绑定值",
+          "类型": "String",
+          "可选值": "-",
+          "默认值": "-",
+          "template_name": "value"
+        },
+        {
+          "参数": "width",
+          "说明": "IP输入框宽度",
+          "类型": "String",
+          "可选值": "-",
+          "默认值": "‘100%’",
+          "template_name": "width"
+        },
+        {
+          "参数": "item-width",
+          "说明": "每项宽度",
+          "类型": "String",
+          "可选值": "-",
+          "默认值": "null",
+          "template_name": "item-width"
+        },
+        {
+          "参数": "disabled",
+          "说明": "禁用",
+          "类型": "Boolean",
+          "可选值": "-",
+          "默认值": "false",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "tips",
+          "说明": "IP输入框文字提示信息",
+          "类型": "String",
+          "可选值": "-",
+          "默认值": "-",
+          "template_name": "tips"
+        },
+        {
+          "参数": "tips-max-width",
+          "说明": "提示信息最大宽度",
+          "类型": "String, Number",
+          "可选值": "-",
+          "默认值": "-",
+          "template_name": "tips-max-width"
+        },
+        {
+          "参数": "tips-placement",
+          "说明": "提示信息出现位置",
+          "类型": "String",
+          "可选值": "top/top-start/top-end/bottom/bottom-start/bottom-end/left/left-start/left-end/right/right-start/right-end",
+          "默认值": "top",
+          "template_name": "tips-placement"
+        },
+        {
+          "参数": "tips-offset",
+          "说明": "提示信息偏移量（对应tips-placement会有不同的偏移方向，'top’向上偏移、'bottom’向下偏移、'left’项做偏移、'right’向右偏移）",
+          "类型": "String",
+          "可选值": "-",
+          "默认值": "-",
+          "template_name": "tips-offset"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "blur",
+          "说明": "单个输入框失焦事件",
+          "回调参数": "(event: Event, i: Number)",
+          "template_name": "blur"
+        }
+      ],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

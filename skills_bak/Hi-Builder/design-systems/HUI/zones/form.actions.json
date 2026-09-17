@@ -1,0 +1,8 @@
+{
+  "schema_version": "d2c-zone.v1",
+  "id": "form.actions",
+  "name": "表单操作区域",
+  "description": "承载提交、保存、取消或重置等表单级操作",
+  "use_when": ["业务表单需要明确的提交或取消操作"],
+  "owner": "hui-common"
+}

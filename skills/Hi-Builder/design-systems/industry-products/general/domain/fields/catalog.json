@@ -1,0 +1,52 @@
+{
+  "schema_version": "industry-field-catalog.v1",
+  "maintenance": {
+    "purpose": "通用行业字段扩展，继承HUI通用字段并登记设备、事件等行业语义。",
+    "edit_policy": "优先引用HUI通用字段；只在这里新增行业特有字段，不复制或改写通用字段。",
+    "managed_paths": {
+      "catalog.json": "通用行业继承关系、行业字段ID、名称和数据类型的事实源。"
+    }
+  },
+  "id": "general.fields",
+  "extends": "hui.common.fields",
+  "inherits": [
+    "common.name",
+    "common.code",
+    "common.status",
+    "common.location",
+    "common.created-time",
+    "common.updated-time",
+    "common.description",
+    "common.organization"
+  ],
+  "fields": {
+    "device.type": {
+      "name": "设备类型",
+      "value_type": "enum"
+    },
+    "event.type": {
+      "name": "事件类型",
+      "value_type": "enum"
+    },
+    "event.level": {
+      "name": "事件等级",
+      "value_type": "enum"
+    },
+    "event.source": {
+      "name": "事件源",
+      "value_type": "entity-reference"
+    },
+    "event.occurred-time": {
+      "name": "事件时间",
+      "value_type": "datetime"
+    },
+    "event.confirm-status": {
+      "name": "确认状态",
+      "value_type": "enum"
+    },
+    "event.confirm-detail": {
+      "name": "确认详情",
+      "value_type": "text"
+    }
+  }
+}

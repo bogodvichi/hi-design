@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta name="d2c-spec-sha256" content="1b046fa52207140d3d3e10f691a4608c66919a8785845c7ec1e0e6899630301d">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>管网设备详情 · 调压计量站</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="https://pixso.hikvision.com.cn/hik-plugin/ai-builder-web/public/webresources/libs/hui.css">
+  <style data-product-tokens="general/isc">
+    :root {
+            --h-color-brand-10: rgba(255, 240, 238, 1) !important;
+      --h-color-brand-20: rgba(255, 217, 211, 1) !important;
+      --h-color-brand-30: rgba(255, 186, 177, 1) !important;
+      --h-color-brand-50: rgba(255, 96, 84, 1) !important;
+      --h-color-brand-60: rgba(231, 37, 40, 1) !important;
+      --h-color-brand-70: rgba(186, 25, 31, 1) !important;
+      --h-color-brand: rgba(231, 37, 40, 1) !important;
+      --h-color-brand-hover: rgba(255, 96, 84, 1) !important;
+      --h-color-brand-active: rgba(186, 25, 31, 1) !important;
+      --h-color-brand-disabled: rgba(255, 186, 177, 1) !important;
+      --h-color-brand-secondary: rgba(255, 217, 211, 1) !important;
+      --h-color-brand-tertiary: rgba(255, 240, 238, 1) !important;
+      --h-bg-color-page: rgba(241, 244, 249, 1) !important;
+      --h-color-bg-primary: rgba(255, 255, 255, 1) !important;
+      --h-color-text-primary: rgba(0, 0, 0, 0.70) !important;
+      --h-color-text-secondary: rgba(0, 0, 0, 0.50) !important;
+      --h-color-text-tertiary: rgba(0, 0, 0, 0.40) !important;
+      --h-color-border-tertiary: rgba(0, 0, 0, 0.12) !important;
+    }
+  </style>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body {
+      font-family: var(--h-font-family);
+      color: var(--h-color-text-primary);
+      background: var(--h-bg-color-page);
+    }
+    [v-cloak] { display: none !important; }
+
+    .product-isc {
+            --d2c-page-min-width: 1180px;
+      --d2c-page-inline-padding: var(--h-space-sm);
+      --d2c-portal-header-height: 88px;
+      --d2c-portal-line-primary-height: 48px;
+      --d2c-portal-line-secondary-height: 40px;
+      --d2c-portal-brand-menu-offset: 80px;
+      --d2c-portal-logo-size: 32px;
+      --d2c-portal-search-width: 240px;
+      --d2c-portal-search-height: 28px;
+      --d2c-portal-icon-button-size: 32px;
+      --d2c-portal-tab-width: 174px;
+      --d2c-portal-tab-height: 36px;
+      --d2c-portal-sidebar-width: 240px;
+      --d2c-portal-sidebar-collapsed-width: 48px;
+      --d2c-portal-side-item-height: 48px;
+      --d2c-portal-side-active-indicator-width: 3px;
+      --d2c-portal-side-icon-box-width: 48px;
+      --d2c-portal-side-icon-size: 24px;
+      --d2c-portal-tools-width: 748px;
+      --d2c-portal-pill-width: 204px;
+      --d2c-portal-home-width: 36px;
+      --d2c-device-tabs-height: 56px;
+      --d2c-device-tab-content-height: 55px;
+      --d2c-device-tab-item-width: 112px;
+      --d2c-device-details-width: 340px;
+      --d2c-device-source-list-height: 140px;
+      --d2c-device-content-padding: 16px;
+      --d2c-device-panel-block-padding: 24px;
+      --d2c-device-panel-inline-padding: 24px;
+      --d2c-device-panel-gap: 24px;
+      --d2c-device-label-width: 88px;
+      --d2c-device-viewer-toolbar-height: 48px;
+      --d2c-device-thumbnail-strip-height: 88px;
+      --d2c-device-thumbnail-size: 88px;
+      --d2c-device-thumbnail-nav-width: 28px;
+      --d2c-device-source-card-min-width: 180px;
+      --d2c-device-monitor-column-gap: 12px;
+      --d2c-device-monitor-column-padding: 12px;
+      --d2c-device-source-mark-width: 4px;
+      --d2c-device-source-mark-height: 14px;
+      --d2c-device-info-line-height: 24px;
+      --d2c-device-textarea-height: 104px;
+      --d2c-device-action-height: 32px;
+      --d2c-device-source-header-height: 24px;
+      --d2c-device-source-card-height: 78px;
+      --d2c-device-form-height: 293px;
+      --d2c-device-title-font-size: 18px;
+      --d2c-device-group-title-font-size: 16px;
+      --space-1: var(--h-space-xxs);
+      --space-2: var(--h-space-xs);
+      --space-3: var(--h-space-sm);
+      --space-4: var(--h-space-md);
+      --space-6: var(--h-space-lg);
+      --space-8: var(--h-space-xl);
+      --color-bg-container: var(--h-color-bg-primary);
+      --color-bg-page: var(--h-bg-color-page);
+      --color-brand: var(--h-color-brand);
+      --color-brand-light: var(--h-color-brand-tertiary);
+      --color-brand-secondary: var(--h-color-brand-secondary);
+      --color-text: var(--h-color-text-primary);
+      --color-text-secondary: var(--h-color-text-secondary);
+      --color-text-ultra: rgba(0, 0, 0, .9);
+      --color-text-invert: #fff;
+      --color-icon: rgba(0, 0, 0, .4);
+      --color-icon-hover: rgba(0, 0, 0, .5);
+      --color-fill: rgba(0, 0, 0, .06);
+      --color-fill-secondary: rgba(0, 0, 0, .04);
+      --color-overlay-ultra: rgba(0, 0, 0, .5);
+      --color-success: var(--h-color-success);
+      --color-media-placeholder: #2b3348;
+      --color-card-subtitle: #777b8e;
+      --border: var(--h-border-width) solid rgba(0, 0, 0, .2);
+      --border-active: var(--h-border-width) solid var(--h-color-brand);
+      --border-divider: var(--h-border-width) solid var(--h-color-border-tertiary);
+      --radius-sm: var(--h-border-radius-xs);
+      --radius-md: var(--h-border-radius-sm);
+      --radius-pill: var(--h-border-radius-round);
+    }
+
+    #app {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+      min-width: var(--d2c-page-min-width);
+      background: var(--color-bg-page);
+    }
+
+    .isc-global-nav {
+      display: flex;
+      flex-direction: column;
+      flex: none;
+      width: 100%;
+      height: var(--d2c-portal-header-height);
+      color: rgba(255, 255, 255, .56);
+      background: #181f2e;
+    }
+    .isc-global-nav__line1,
+    .isc-global-nav__line2 {
+      display: flex;
+      align-items: center;
+      flex: none;
+      padding: 0 var(--space-4);
+    }
+    .isc-global-nav__line1 {
+      height: var(--d2c-portal-line-primary-height);
+      gap: var(--space-6);
+    }
+    .isc-global-nav__line2 {
+      height: var(--d2c-portal-line-secondary-height);
+      padding: 0 var(--space-3);
+      gap: var(--space-2);
+    }
+    .isc-global-nav__brand {
+      display: flex;
+      align-items: center;
+      flex: none;
+      gap: var(--space-3);
+      margin-right: var(--d2c-portal-brand-menu-offset);
+      color: #fff;
+      white-space: nowrap;
+    }
+    .isc-global-nav__logo {
+      display: block;
+      width: var(--d2c-portal-logo-size);
+      height: var(--d2c-portal-logo-size);
+    }
+    .isc-global-nav__brand-text {
+      font-size: var(--h-font-size-body-lg);
+      font-weight: 600;
+    }
+    .isc-global-nav__menu {
+      display: flex;
+      align-items: stretch;
+      flex: 1;
+      min-width: 0;
+      height: 100%;
+      gap: var(--space-6);
+      overflow: hidden;
+    }
+    .isc-global-nav__menu-item {
+      display: inline-flex;
+      align-items: center;
+      color: rgba(255, 255, 255, .56);
+      font-size: var(--h-font-size-body-lg);
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .isc-global-nav__menu-item.is-active,
+    .isc-global-nav__menu-item:hover { color: rgba(255, 255, 255, .9); }
+    .isc-global-nav__tools {
+      display: flex;
+      align-items: center;
+      flex: none;
+      width: var(--d2c-portal-tools-width);
+      gap: var(--space-2);
+    }
+    .isc-global-nav__search { width: var(--d2c-portal-search-width); }
+    .isc-global-nav__search .el-input__inner {
+      height: var(--d2c-portal-search-height);
+      color: rgba(255, 255, 255, .8);
+      border: 0;
+      border-radius: 0;
+      background: rgba(255, 255, 255, .2);
+    }
+    .isc-global-nav__pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: none;
+      width: var(--d2c-portal-pill-width);
+      margin: 0 var(--space-3);
+      gap: var(--space-1);
+      height: var(--d2c-portal-search-height);
+      padding: 0 var(--space-3);
+      border-radius: var(--radius-pill) var(--radius-pill) var(--radius-pill) 0;
+      color: rgba(0, 0, 0, .7);
+      background: linear-gradient(45deg, #cfeafe, #e5e3ff);
+      text-decoration: none;
+      white-space: nowrap;
+    }
+    .isc-global-nav__tools .el-button,
+    .isc-global-nav__line2 .el-button {
+      margin: 0;
+      color: rgba(255, 255, 255, .75);
+    }
+    .isc-global-nav__line2 > .el-button:first-child {
+      width: var(--d2c-portal-home-width);
+      min-width: 0;
+    }
+    .isc-global-nav__user {
+      display: flex;
+      align-items: center;
+      gap: var(--space-1);
+      color: rgba(255, 255, 255, .8);
+      white-space: nowrap;
+    }
+    .isc-global-nav__tabs {
+      display: flex;
+      align-items: center;
+      flex: 1;
+      min-width: 0;
+    }
+    .isc-global-nav__tab {
+      display: flex;
+      align-items: center;
+      width: var(--d2c-portal-tab-width);
+      height: var(--d2c-portal-tab-height);
+      padding: 0 var(--space-3);
+      gap: var(--space-2);
+      color: rgba(255, 255, 255, .72);
+      background: rgba(255, 255, 255, .4);
+      border-radius: var(--radius-sm);
+    }
+    .isc-global-nav__tab > span {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .page-body {
+      display: flex;
+      align-items: stretch;
+      flex: 1;
+      min-height: 0;
+    }
+    .isc-sidebar {
+      display: flex;
+      flex-direction: column;
+      flex: none;
+      width: var(--d2c-portal-sidebar-width);
+      min-height: 0;
+      overflow: auto;
+      border-right: var(--border-divider);
+      background: #fafbfc;
+      transition: width .2s ease;
+    }
+    .isc-sidebar.is-collapsed { width: var(--d2c-portal-sidebar-collapsed-width); }
+    .isc-sidebar.is-collapsed .isc-sidebar__label,
+    .isc-sidebar.is-collapsed .isc-sidebar__caret,
+    .isc-sidebar.is-collapsed .isc-sidebar__submenu { display: none; }
+    .isc-sidebar__collapse,
+    .isc-sidebar__item,
+    .isc-sidebar__subitem {
+      display: flex !important;
+      align-items: center;
+      justify-content: flex-start !important;
+      flex: none;
+      width: 100%;
+      max-width: none !important;
+      height: var(--d2c-portal-side-item-height);
+      margin: 0 !important;
+      padding: 0 !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      color: var(--color-text) !important;
+      background: transparent !important;
+    }
+    .isc-sidebar__collapse > .is-slot-content,
+    .isc-sidebar__item > .is-slot-content,
+    .isc-sidebar__subitem > .is-slot-content {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      height: 100%;
+      text-decoration: none !important;
+    }
+    .isc-sidebar__collapse { background: #f3f4f5 !important; }
+    .isc-sidebar__item:hover,
+    .isc-sidebar__subitem:hover { background: #e8e9eb !important; }
+    .isc-sidebar__subitem.is-active {
+      position: relative;
+      color: var(--color-brand) !important;
+    }
+    .isc-sidebar__subitem.is-active::before {
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: var(--d2c-portal-side-active-indicator-width);
+      background: var(--color-brand);
+      content: "";
+    }
+    .isc-sidebar__icon-box {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: none;
+      width: var(--d2c-portal-side-icon-box-width);
+      font-size: var(--d2c-portal-side-icon-size);
+    }
+    .isc-sidebar__label {
+      flex: 1;
+      min-width: 0;
+      text-align: left;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .isc-sidebar__caret {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex: none;
+      width: var(--space-4);
+      height: var(--space-4);
+      padding: 0;
+      transition: transform .2s ease;
+    }
+    .isc-sidebar__caret.is-open { transform: rotate(90deg); }
+    .isc-sidebar__submenu { display: flex; flex-direction: column; }
+    .isc-sidebar__item { padding-right: var(--space-4) !important; }
+    .isc-sidebar__subitem {
+      padding-right: var(--space-4) !important;
+      padding-left: var(--d2c-portal-side-icon-box-width) !important;
+    }
+
+    .isc-content-shell {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      padding: var(--d2c-device-content-padding);
+      overflow: hidden;
+      background: var(--color-bg-page);
+    }
+    .device-page {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      background: var(--color-bg-container);
+    }
+
+    .event-tabs-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex: none;
+      height: var(--d2c-device-tabs-height);
+      padding: 0 var(--space-4);
+      gap: var(--space-6);
+      border-bottom: var(--border-divider);
+      background: var(--color-bg-container);
+    }
+    .event-tabs-actions__tabs {
+      flex: none;
+      min-width: 0;
+      height: 100%;
+    }
+    .event-tabs-actions__tabs .el-tabs__header {
+      height: var(--d2c-device-tab-content-height) !important;
+      margin: 0;
+    }
+    .event-tabs-actions__tabs .el-tabs__nav-wrap,
+    .event-tabs-actions__tabs .el-tabs__nav-scroll,
+    .event-tabs-actions__tabs .el-tabs__nav {
+      height: 100% !important;
+    }
+    .event-tabs-actions__tabs .el-tabs__nav-wrap::after { display: none !important; }
+    .event-tabs-actions__tabs .el-tabs__item {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: var(--d2c-device-tab-item-width);
+      height: 100% !important;
+      line-height: var(--d2c-device-tab-content-height) !important;
+      padding: 0 var(--space-6);
+    }
+    .event-tabs-actions__tabs .el-tabs__active-bar { bottom: 0; }
+    .event-tabs-actions__tabs .el-tabs__content { display: none; }
+    .event-tabs-actions__actions {
+      display: flex;
+      align-items: center;
+      flex: none;
+      gap: var(--space-2);
+    }
+    .event-tabs-actions__actions .el-button { margin: 0; }
+
+    .content-area {
+      display: flex;
+      align-items: stretch;
+      flex: 1;
+      min-height: 0;
+    }
+    .left-content-area {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      padding: 0 var(--d2c-device-monitor-column-padding) var(--d2c-device-monitor-column-padding);
+      gap: var(--d2c-device-monitor-column-gap);
+      border-right: var(--border-divider);
+      background: var(--color-bg-container);
+    }
+
+    .event-image-viewer {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+      gap: var(--space-4);
+      color: var(--color-text-ultra);
+    }
+    .event-image-viewer__stage {
+      position: relative;
+      display: flex;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+      background: var(--color-media-placeholder);
+    }
+    .event-image-viewer__media {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      color: var(--color-text-invert);
+    }
+    .event-image-viewer__media-image {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .event-image-viewer__toolbar {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: var(--d2c-device-viewer-toolbar-height);
+      gap: var(--space-2);
+      border-bottom: var(--border-divider);
+      background: var(--color-bg-container);
+    }
+    .event-image-viewer__toolbar .el-button {
+      margin: 0;
+      color: var(--color-text);
+    }
+    .event-image-viewer__thumbs {
+      display: flex;
+      align-items: center;
+      flex: none;
+      height: var(--d2c-device-thumbnail-strip-height);
+      gap: var(--space-2);
+    }
+    .event-image-viewer__thumb-nav {
+      flex: none;
+      width: var(--d2c-device-thumbnail-nav-width) !important;
+      min-width: 0 !important;
+      height: var(--d2c-device-thumbnail-size) !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: var(--border-divider) !important;
+      color: var(--color-icon) !important;
+      background: var(--color-bg-container) !important;
+    }
+    .event-image-viewer__thumb-track {
+      display: flex;
+      align-items: center;
+      flex: 1;
+      min-width: 0;
+      gap: var(--space-2);
+      overflow: hidden;
+    }
+    .event-image-viewer__thumb {
+      flex: 0 0 var(--d2c-device-thumbnail-size);
+      width: var(--d2c-device-thumbnail-size) !important;
+      min-width: 0 !important;
+      height: var(--d2c-device-thumbnail-size) !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: var(--border-divider) !important;
+      border-radius: var(--radius-sm) !important;
+      background: var(--color-fill) !important;
+    }
+    .event-image-viewer__thumb.is-active { border: var(--border-active) !important; }
+    .event-image-viewer__thumb-image {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .event-source-switch {
+      display: flex;
+      flex-direction: column;
+      flex: none;
+      height: var(--d2c-device-source-list-height);
+      padding-top: var(--space-3);
+      gap: var(--space-2);
+      color: var(--color-text-ultra);
+    }
+    .event-source-switch__header {
+      display: flex;
+      align-items: center;
+      height: var(--d2c-device-source-header-height);
+      min-width: 0;
+      gap: var(--space-2);
+    }
+    .event-source-switch__mark {
+      flex: none;
+      width: var(--d2c-device-source-mark-width);
+      height: var(--d2c-device-source-mark-height);
+      border-radius: var(--radius-sm);
+      background: var(--color-brand);
+    }
+    .event-source-switch__title { color: var(--color-text-ultra); }
+    .event-source-switch__desc {
+      min-width: 0;
+      color: var(--color-text-secondary);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .event-source-switch__list {
+      display: flex;
+      align-items: stretch;
+      gap: var(--space-4);
+      overflow: hidden;
+    }
+    .event-source-switch__card {
+      flex: 1;
+      min-width: var(--d2c-device-source-card-min-width);
+      height: var(--d2c-device-source-card-height);
+      border: var(--border) !important;
+      border-radius: var(--radius-md) !important;
+      background: var(--color-bg-container) !important;
+      cursor: pointer;
+    }
+    .event-source-switch__card .el-card__body { padding: var(--space-3) var(--space-2); }
+    .event-source-switch__card.is-active {
+      border: var(--border-active) !important;
+      background: var(--color-brand-light) !important;
+    }
+    .event-source-switch__card-title { margin: 0; }
+    .event-source-switch__card-location {
+      margin: var(--space-1) 0 0;
+      color: var(--color-card-subtitle);
+    }
+
+    .event-info-panel {
+      display: flex;
+      flex-direction: column;
+      flex: none;
+      width: var(--d2c-device-details-width);
+      min-height: 0;
+      padding: var(--d2c-device-panel-block-padding) var(--d2c-device-panel-inline-padding);
+      gap: var(--d2c-device-panel-gap);
+      color: var(--color-text-ultra);
+      background: var(--color-bg-container);
+    }
+    .event-info-panel__content {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      gap: var(--space-4);
+      overflow: auto;
+    }
+    .event-info-panel__section {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+    .event-info-panel__title,
+    .event-info-panel__group-title { margin: 0; font-weight: 400; }
+    .event-info-panel__title { font-size: var(--d2c-device-title-font-size); }
+    .event-info-panel__group-title { font-size: var(--d2c-device-group-title-font-size); }
+    .event-info-panel__status { color: var(--color-success); }
+    .event-info-panel__fields { display: flex; flex-direction: column; gap: var(--space-2); }
+    .event-info-panel__field {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr);
+      gap: var(--space-2);
+      color: var(--color-text);
+      line-height: var(--d2c-device-info-line-height);
+    }
+    .event-info-panel__label { color: var(--color-text-secondary); }
+    .event-info-panel__value { min-width: 0; color: var(--color-text); }
+    .event-info-panel__form {
+      display: flex;
+      flex-direction: column;
+      flex: none;
+      min-height: var(--d2c-device-form-height);
+      gap: var(--space-3);
+    }
+    .event-info-panel__form-pattern { display: contents; }
+    .event-info-panel__control {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+    .event-info-panel__control > .event-info-panel__label {
+      color: var(--color-text-ultra);
+      font-weight: 600;
+    }
+    .event-info-panel__select { width: 100%; }
+    .event-info-panel__textarea-wrap { position: relative; }
+    .event-info-panel__textarea-wrap .el-textarea__inner {
+      height: var(--d2c-device-textarea-height) !important;
+      min-height: var(--d2c-device-textarea-height) !important;
+      padding-bottom: var(--space-6);
+    }
+    .event-info-panel__counter {
+      position: absolute;
+      right: var(--space-2);
+      bottom: var(--space-1);
+      color: var(--color-text-secondary);
+      font-size: var(--h-font-size-caption);
+    }
+    .event-info-panel__tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      margin-top: var(--space-2);
+    }
+    .event-info-panel__tags .el-tag {
+      color: var(--color-brand) !important;
+      background: var(--color-brand-secondary) !important;
+      border-color: transparent !important;
+    }
+    .event-info-panel__actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--space-2);
+    }
+    .event-info-panel__actions .el-button {
+      height: var(--d2c-device-action-height);
+      margin: 0;
+    }
+
+    .device-placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      color: var(--color-text-secondary);
+    }
+    @media (max-width: 1380px) {
+      .isc-global-nav__brand { margin-right: 0; }
+      .isc-global-nav__menu { gap: var(--space-3); }
+      .isc-global-nav__pill { display: none; }
+      .event-info-panel { padding: var(--space-4); }
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="product-isc" v-cloak>
+    <header class="isc-global-nav" data-zone="portal.header" data-component="portal.global-header">
+      <div class="isc-global-nav__line1">
+        <div class="isc-global-nav__brand">
+          <img class="isc-global-nav__logo" src="logo_综合安防管理平台iSecure_Center.svg"
+            alt="城市管网综合管理平台">
+          <span class="isc-global-nav__brand-text">{{ config.brandName }}</span>
+        </div>
+        <nav class="isc-global-nav__menu">
+          <span v-for="item in config.topMenus" :key="item" class="isc-global-nav__menu-item"
+            :class="{ 'is-active': item === activeTopMenu }" @click="activeTopMenu = item">{{ item }}</span>
+        </nav>
+        <div class="isc-global-nav__tools">
+          <el-input class="isc-global-nav__search" v-model="globalKeyword" size="small"
+            prefix-icon="h-icon-search" placeholder="搜索设备名称 / 编号 / 位置"></el-input>
+          <a class="isc-global-nav__pill" href="#">
+            <i class="h-icon-qrcode" aria-hidden="true"></i><span>问题反馈</span><span>|</span><span>演示指南</span>
+            <i class="h-icon-share" aria-hidden="true"></i>
+          </a>
+          <el-button type="text" size="small" icon="h-icon-help" title="帮助"></el-button>
+          <el-button type="text" size="small" icon="h-icon-lock" title="安全"></el-button>
+          <el-button type="text" size="small" icon="h-icon-download" title="下载"></el-button>
+          <el-button type="text" size="small" icon="h-icon-star" title="收藏"></el-button>
+          <el-button type="text" size="small" icon="h-icon-menu" title="菜单"></el-button>
+          <div class="isc-global-nav__user"><span>张工</span><i class="h-icon-angle_down_sm"></i></div>
+        </div>
+      </div>
+      <div class="isc-global-nav__line2">
+        <el-button type="text" size="small" icon="h-icon-home" title="首页"></el-button>
+        <div class="isc-global-nav__tabs">
+          <div class="isc-global-nav__tab">
+            <span>{{ config.pageTabTitle }}</span>
+            <el-button type="text" size="mini" icon="h-icon-close" title="关闭"></el-button>
+          </div>
+        </div>
+        <el-button type="text" size="small" icon="h-icon-refresh" title="刷新"></el-button>
+        <el-button type="text" size="small" icon="h-icon-more_verti" title="更多"></el-button>
+      </div>
+    </header>
+
+    <div class="page-body">
+      <aside class="isc-sidebar" :class="{ 'is-collapsed': sidebarCollapsed }"
+        data-zone="portal.sidebar" data-component="portal.app-sidebar">
+        <el-button class="isc-sidebar__collapse" type="text" @click="sidebarCollapsed = !sidebarCollapsed">
+          <span class="isc-sidebar__icon-box"><i class="h-icon-details"></i></span>
+        </el-button>
+        <template v-for="item in config.sideMenus">
+          <el-button v-if="!item.children" :key="item.id" class="isc-sidebar__item" type="text"
+            :class="{ 'is-active': item.id === activeSideMenu }" @click="activeSideMenu = item.id">
+            <span class="isc-sidebar__icon-box"><i :class="item.icon"></i></span>
+            <span class="isc-sidebar__label">{{ item.label }}</span>
+          </el-button>
+          <template v-else>
+            <el-button :key="item.id" class="isc-sidebar__item" type="text" @click="ledgerExpanded = !ledgerExpanded">
+              <span class="isc-sidebar__icon-box"><i :class="item.icon"></i></span>
+              <span class="isc-sidebar__label">{{ item.label }}</span>
+              <span class="isc-sidebar__caret" :class="{ 'is-open': ledgerExpanded }"><i class="h-icon-angle_right_sm"></i></span>
+            </el-button>
+            <div v-show="ledgerExpanded" :key="item.id + '-children'" class="isc-sidebar__submenu">
+              <el-button v-for="child in item.children" :key="child.id" class="isc-sidebar__subitem" type="text"
+                :class="{ 'is-active': child.id === activeSideMenu }" @click="activeSideMenu = child.id">
+                <span class="isc-sidebar__label">{{ child.label }}</span>
+              </el-button>
+            </div>
+          </template>
+        </template>
+      </aside>
+
+      <main class="isc-content-shell">
+        <section class="device-page">
+          <div class="event-tabs-actions" data-zone="navigation.detail-tabs">
+            <div class="event-tabs-actions__tabs" data-component="navigation.tabs">
+              <el-tabs v-model="activeTab">
+                <el-tab-pane v-for="tab in config.tabs" :key="tab.value" :label="tab.label" :name="tab.value"></el-tab-pane>
+              </el-tabs>
+            </div>
+            <div class="event-tabs-actions__actions" data-component="toolbar.action-toolbar">
+              <el-button type="text" size="small" icon="h-icon-setting" @click="notify('参数调节')">参数调节</el-button>
+              <el-button type="text" size="small" icon="h-icon-restart" @click="notify('远程控制')">远程控制</el-button>
+            </div>
+          </div>
+
+          <div v-if="activeTab === 'realtime'" class="content-area">
+            <div class="left-content-area">
+              <section class="event-image-viewer" data-zone="media.preview">
+                <div class="event-image-viewer__stage" data-component="media.live-viewer">
+                  <div class="event-image-viewer__media">
+                    <img class="event-image-viewer__media-image" :src="activeThumbnail.image"
+                      :alt="activeThumbnail.label">
+                  </div>
+                  <div class="event-image-viewer__toolbar">
+                    <el-button type="text" size="small" icon="h-icon-refresh" @click="notify('刷新画面')">刷新</el-button>
+                    <el-button type="text" size="small" icon="h-icon-liveview" @click="notify('查看回放')">回放</el-button>
+                    <el-button type="text" size="small" icon="h-icon-download" @click="notify('下载画面')">下载</el-button>
+                  </div>
+                </div>
+                <div class="event-image-viewer__thumbs"
+                  data-component="collection.thumbnail-strip">
+                  <el-button class="event-image-viewer__thumb-nav" type="text" size="small"
+                    icon="h-icon-angle_left" title="上一张" @click="stepThumbnail(-1)"></el-button>
+                  <div class="event-image-viewer__thumb-track">
+                    <el-button v-for="(thumb, index) in thumbnails" :key="thumb.id" type="text"
+                      class="event-image-viewer__thumb" :class="{ 'is-active': index === activeThumbnailIndex }"
+                      :title="thumb.label" @click="selectThumbnail(index)">
+                      <img class="event-image-viewer__thumb-image" :src="thumb.src" :alt="thumb.label">
+                    </el-button>
+                  </div>
+                  <el-button class="event-image-viewer__thumb-nav" type="text" size="small"
+                    icon="h-icon-angle_right" title="下一张" @click="stepThumbnail(1)"></el-button>
+                </div>
+              </section>
+
+              <section class="event-source-switch" data-zone="device.sources"
+                data-component="collection.source-list">
+                <div class="event-source-switch__header">
+                  <span class="event-source-switch__mark"></span>
+                  <strong class="event-source-switch__title">关联测点</strong>
+                  <span class="event-source-switch__desc">共 {{ monitorPoints.length }} 个测点 · 当前：{{ activeSource.name }}</span>
+                </div>
+                <div class="event-source-switch__list">
+                  <el-card v-for="(point, index) in monitorPoints" :key="point.id" shadow="never"
+                    class="event-source-switch__card" :class="{ 'is-active': index === activeSourceIndex }"
+                    @click.native="selectSource(index)">
+                    <p class="event-source-switch__card-title">{{ point.name }}</p>
+                    <p class="event-source-switch__card-location">{{ point.id }} · {{ point.value }}</p>
+                  </el-card>
+                </div>
+              </section>
+            </div>
+
+            <aside class="event-info-panel" data-zone="device.details">
+              <div class="event-info-panel__content">
+                <section class="event-info-panel__section">
+                  <h2 class="event-info-panel__title">{{ device.name }}</h2>
+                  <span class="event-info-panel__status">● {{ device.status }} · {{ device.communication }}</span>
+                </section>
+                <section class="event-info-panel__section">
+                  <h3 class="event-info-panel__group-title">设备信息</h3>
+                  <div class="event-info-panel__fields">
+                    <div v-for="item in deviceInfo" :key="item.label" class="event-info-panel__field">
+                      <span class="event-info-panel__label">{{ item.label }}</span>
+                      <span class="event-info-panel__value">{{ item.value }}</span>
+                    </div>
+                  </div>
+                </section>
+                <section class="event-info-panel__section">
+                  <h3 class="event-info-panel__group-title">实时监测</h3>
+                  <div class="event-info-panel__fields">
+                    <div v-for="item in metrics" :key="item.label" class="event-info-panel__field">
+                      <span class="event-info-panel__label">{{ item.label }}</span>
+                      <span class="event-info-panel__value">{{ item.value }}</span>
+                    </div>
+                  </div>
+                </section>
+              </div>
+
+              <div class="event-info-panel__form-pattern" data-component="form.action-form">
+              <el-form class="event-info-panel__form" :model="operationForm">
+                <div class="event-info-panel__control">
+                  <span class="event-info-panel__label">操作类型</span>
+                  <div class="event-info-panel__select-wrap">
+                    <el-select class="event-info-panel__select" v-model="operationForm.type" placeholder="请选择操作类型">
+                      <el-option v-for="item in config.operationTypes" :key="item" :label="item" :value="item"></el-option>
+                    </el-select>
+                  </div>
+                </div>
+                <div class="event-info-panel__control">
+                  <span class="event-info-panel__label">处理意见</span>
+                  <div class="event-info-panel__textarea-wrap">
+                    <el-input v-model="operationForm.comment" type="textarea" :rows="3" :maxlength="200"
+                      placeholder="请输入处理意见"></el-input>
+                    <span class="event-info-panel__counter">{{ operationForm.comment.length }}/200</span>
+                  </div>
+                </div>
+                <div class="event-info-panel__tags">
+                  <el-checkable-tag v-for="tag in quickTags" :key="tag.label"
+                    v-model="tag.checked" :label="tag.label">{{ tag.label }}</el-checkable-tag>
+                </div>
+                <div class="event-info-panel__actions">
+                  <el-button size="small" @click="notify('生成工单')">生成工单</el-button>
+                  <el-button size="small" @click="notify('远程控制')">远程控制</el-button>
+                  <el-button type="primary" size="small" @click="submitOperation">确认</el-button>
+                </div>
+              </el-form>
+              </div>
+            </aside>
+          </div>
+          <div v-else class="device-placeholder">{{ activeTabLabel }}内容将在对应业务模块中加载</div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://pixso.hikvision.com.cn/hik-plugin/ai-builder-web/public/webresources/libs/vue.min.js"></script>
+  <script src="https://pixso.hikvision.com.cn/hik-plugin/ai-builder-web/public/webresources/libs/hui.umd.js"></script>
+  <script>
+    const PAGE_CONFIG = Object.freeze(
+      {
+      "brandName": "城市管网综合管理平台",
+      "topMenus": [
+            "综合态势",
+            "管网监测",
+            "设备管理",
+            "运行分析",
+            "报警中心",
+            "工单调度",
+            "更多"
+      ],
+      "operationTypes": [
+            "巡检登记",
+            "参数调节",
+            "远程关阀",
+            "生成工单"
+      ],
+      "sideMenus": [
+            {
+                  "id": "device-search",
+                  "label": "设备检索",
+                  "icon": "h-icon-search"
+            },
+            {
+                  "id": "device-ledger",
+                  "label": "设备台账",
+                  "icon": "h-icon-details",
+                  "children": [
+                        {
+                              "id": "regulator-station",
+                              "label": "调压站"
+                        },
+                        {
+                              "id": "flow-meter",
+                              "label": "流量计"
+                        },
+                        {
+                              "id": "pressure-point",
+                              "label": "压力监测点"
+                        }
+                  ]
+            },
+            {
+                  "id": "online-monitor",
+                  "label": "在线监测",
+                  "icon": "h-icon-setting"
+            }
+      ],
+      "pageTabTitle": "调压计量站详情",
+      "tabs": [
+            {
+                  "label": "实时监控",
+                  "value": "realtime"
+            },
+            {
+                  "label": "运行数据",
+                  "value": "operation-data"
+            },
+            {
+                  "label": "历史曲线",
+                  "value": "history"
+            },
+            {
+                  "label": "管线位置",
+                  "value": "location"
+            }
+      ]
+}
+    );
+    const PREVIEW_FIXTURES = Object.freeze(
+      {
+      "deviceInfo": [
+            {
+                  "label": "设备编号",
+                  "value": "DYZ-2024-013"
+            },
+            {
+                  "label": "设备类型",
+                  "value": "燃气调压计量一体化装置"
+            },
+            {
+                  "label": "生产厂商",
+                  "value": "新奥燃气设备"
+            },
+            {
+                  "label": "管网分区",
+                  "value": "城东次高压 A 区"
+            },
+            {
+                  "label": "安装位置",
+                  "value": "站前路与建设路交叉口"
+            },
+            {
+                  "label": "投运日期",
+                  "value": "2024-06-18"
+            }
+      ],
+      "quickTags": [
+            {
+                  "label": "压力偏高",
+                  "checked": false
+            },
+            {
+                  "label": "需现场巡检",
+                  "checked": false
+            },
+            {
+                  "label": "已通知运维",
+                  "checked": false
+            }
+      ],
+      "thumbnails": [
+            {
+                  "id": "camera-1",
+                  "label": "进口压力监测点",
+                  "src": "device-detail-thumbnail.png",
+                  "image": "device-detail-main.png"
+            },
+            {
+                  "id": "camera-2",
+                  "label": "出口压力监测点",
+                  "src": "device-detail-thumbnail.png",
+                  "image": "device-detail-main.png"
+            },
+            {
+                  "id": "camera-3",
+                  "label": "流量监测点",
+                  "src": "device-detail-thumbnail.png",
+                  "image": "device-detail-main.png"
+            },
+            {
+                  "id": "camera-4",
+                  "label": "温度监测点",
+                  "src": "device-detail-thumbnail.png",
+                  "image": "device-detail-main.png"
+            }
+      ],
+      "monitorPoints": [
+            {
+                  "id": "DYZ-01",
+                  "name": "进口压力监测点",
+                  "value": "0.42 MPa"
+            },
+            {
+                  "id": "DYZ-02",
+                  "name": "出口压力监测点",
+                  "value": "0.21 MPa"
+            },
+            {
+                  "id": "DYZ-03",
+                  "name": "流量监测点",
+                  "value": "1280 m³/h"
+            },
+            {
+                  "id": "DYZ-04",
+                  "name": "温度监测点",
+                  "value": "16.5 ℃"
+            }
+      ],
+      "metrics": [
+            {
+                  "label": "进口压力",
+                  "value": "0.42 MPa"
+            },
+            {
+                  "label": "出口压力",
+                  "value": "0.21 MPa"
+            },
+            {
+                  "label": "瞬时流量",
+                  "value": "1,280 m³/h"
+            },
+            {
+                  "label": "累积流量",
+                  "value": "325,860 m³"
+            },
+            {
+                  "label": "介质温度",
+                  "value": "16.5 ℃"
+            },
+            {
+                  "label": "数据时间",
+                  "value": "2026-07-13 10:28"
+            }
+      ],
+      "device": {
+            "name": "站前路调压计量站",
+            "status": "运行中",
+            "communication": "通信正常",
+            "monitorTitle": "进口压力监测点 · 实时监控画面"
+      }
+}
+    );
+    function cloneRuntimeValue(value) {
+      return JSON.parse(JSON.stringify(value));
+    }
+
+    new Vue({
+      el: '#app',
+      data: function () {
+        return Object.assign(
+          { config: PAGE_CONFIG },
+          {
+          "sidebarCollapsed": false,
+          "ledgerExpanded": true,
+          "activeTopMenu": "设备管理",
+          "activeSideMenu": "regulator-station",
+          "globalKeyword": "",
+          "activeTab": "realtime",
+          "activeThumbnailIndex": 0,
+          "activeSourceIndex": 0,
+          "operationForm": {
+                    "type": "巡检登记",
+                    "comment": ""
+          },
+          "device": {},
+          "thumbnails": [],
+          "monitorPoints": [],
+          "deviceInfo": [],
+          "metrics": [],
+          "quickTags": []
+}
+        );
+      },
+      created: function () {
+        this.loadPreviewFixtures();
+      },
+      computed: {
+        activeThumbnail: function () {
+          return this.thumbnails[this.activeThumbnailIndex] || { label: '', image: '' };
+        },
+        activeSource: function () {
+          return this.monitorPoints[this.activeSourceIndex] || { name: '暂无测点' };
+        },
+        activeTabLabel: function () {
+          var active = this.activeTab;
+          var tab = this.config.tabs.find(function (item) { return item.value === active; });
+          return tab ? tab.label : '';
+        }
+      },
+      methods: {
+        loadPreviewFixtures: function () {
+          var vm = this;
+          var fixtures = cloneRuntimeValue(PREVIEW_FIXTURES);
+          Object.keys(fixtures).forEach(function (key) { vm[key] = fixtures[key]; });
+        },
+        selectThumbnail: function (index) {
+          this.activeThumbnailIndex = index;
+          this.device.monitorTitle = this.thumbnails[index].label + ' · 实时监控画面';
+        },
+        stepThumbnail: function (offset) {
+          if (!this.thumbnails.length) return;
+          var next = (this.activeThumbnailIndex + offset + this.thumbnails.length) % this.thumbnails.length;
+          this.selectThumbnail(next);
+        },
+        selectSource: function (index) {
+          this.activeSourceIndex = index;
+        },
+        notify: function (action) {
+          this.$message.info(action);
+        },
+        submitOperation: function () {
+          this.$message.success('设备操作已提交');
+        }
+      }
+    });
+  </script>
+</body>
+</html>

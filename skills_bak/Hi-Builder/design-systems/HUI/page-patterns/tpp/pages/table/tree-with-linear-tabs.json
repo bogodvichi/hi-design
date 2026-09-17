@@ -1,0 +1,180 @@
+{
+  "schema_version": "hui-page-variant.v1",
+  "id": "hui.tpp.page.table.tree-with-linear-tabs",
+  "name": "树控件+线性标签页",
+  "family": "hui.tpp.family.table-tree",
+  "source": {
+    "url": "http://tpp.dev.hikhub.net/tpp#/pages/table/treeControlAndLinearTabPage",
+    "package": "@hiktpp/table-tree-control-and-linear-tab-page",
+    "hui_version": "^2.55.0",
+    "observed_at": "2026-07-31",
+    "evidence": "../../evidence/table/tree-with-linear-tabs.json"
+  },
+  "parameters": {
+    "tab_style": "linear"
+  },
+  "geometry": {
+    "viewport": {
+      "width": 1920,
+      "height": 968
+    },
+    "root": {
+      "class": "h-page-content is-flex",
+      "rect": {
+        "x": 496,
+        "y": 102.34,
+        "width": 1424,
+        "height": 865.66
+      },
+      "style": {
+        "display": "flex",
+        "padding": "0px",
+        "overflow": "visible"
+      }
+    },
+    "key_regions": {
+      "search": {
+        "class": "h-page-search row-amount-4",
+        "rect": {
+          "x": 536,
+          "y": 157.34,
+          "width": 1344,
+          "height": 109
+        },
+        "display": "block",
+        "position": "static",
+        "padding": "16px 0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "toolbar": {
+        "class": "bar-search-row",
+        "rect": {
+          "x": 524,
+          "y": 266.34,
+          "width": 1368,
+          "height": 56
+        },
+        "display": "flex",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "table": {
+        "class": "el-table el-table--fit el-table--enable-row-hover el-table--enable-row-transition el-table--no-out-border",
+        "rect": {
+          "x": 536,
+          "y": 322.34,
+          "width": 1344,
+          "height": 589.66
+        },
+        "display": "flex",
+        "position": "relative",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "hidden",
+        "overflow_y": "hidden"
+      },
+      "pagination": {
+        "class": "el-pagination el-pagination--table",
+        "rect": {
+          "x": 524,
+          "y": 912,
+          "width": 1368,
+          "height": 56
+        },
+        "display": "flex",
+        "position": "static",
+        "padding": "0px 12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "tabs": {
+        "class": "el-tabs el-tabs--top",
+        "rect": {
+          "x": 496,
+          "y": 102.34,
+          "width": 1424,
+          "height": 39
+        },
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      }
+    }
+  },
+  "composition": {
+    "hui_components": {
+      "el-tabs": 1,
+      "el-tab-pane": 3,
+      "el-form": 1,
+      "el-form-item": 8,
+      "el-input": 10,
+      "el-button": 72,
+      "el-divider": 1,
+      "el-radio-group": 1,
+      "el-radio-button": 2,
+      "h-icon": 1,
+      "el-table": 1,
+      "el-table-column": 8,
+      "el-tooltip": 8,
+      "el-scrollbar": 2,
+      "el-pagination": 1,
+      "el-select": 1,
+      "el-option": 4
+    },
+    "page_framework_components": {
+      "h-page-content": 4,
+      "h-page-search-item": 8,
+      "h-page-button-group": 1
+    },
+    "unindexed_runtime_components": {
+      "el-select-menu": 1
+    },
+    "actions": [
+      {
+        "label": "查询",
+        "count": 1
+      },
+      {
+        "label": "重置",
+        "count": 1
+      },
+      {
+        "label": "添加",
+        "count": 1
+      },
+      {
+        "label": "编辑",
+        "count": 21
+      },
+      {
+        "label": "删除",
+        "count": 21
+      },
+      {
+        "label": "导入",
+        "count": 1
+      },
+      {
+        "label": "导出",
+        "count": 1
+      },
+      {
+        "label": "更多",
+        "count": 20
+      },
+      {
+        "label": "跳转",
+        "count": 1
+      }
+    ]
+  }
+}

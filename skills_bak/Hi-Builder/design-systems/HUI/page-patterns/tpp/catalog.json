@@ -1,0 +1,1214 @@
+{
+  "schema_version": "tpp-page-catalog.v1",
+  "maintenance": {
+    "purpose": "TPP典型页面总目录，连接官方页面路由、共享页面族、精确页面合同与采集证据。",
+    "edit_policy": "导入新页面时保留证据、归入页面族并登记精确合同；页面合同是生成输入，evidence只用于追溯。",
+    "managed_paths": {
+      "families": "多个典型页面共享的结构与可变参数合同。",
+      "pages": "按form、table、card、details等批次分类的精确页面参数合同。",
+      "mappings": "官方路由、名称、文件名与页面族之间的导入映射。",
+      "evidence": "浏览器测量和DOM采集原始证据，不进入默认生成上下文。"
+    }
+  },
+  "source": {
+    "url": "http://tpp.dev.hikhub.net/tpp",
+    "observed_at": "2026-07-31",
+    "page_count": 80,
+    "category_counts": {
+      "表单页": 13,
+      "表格页": 18,
+      "卡片页": 19,
+      "详情页": 14,
+      "结果页": 8,
+      "缺省页": 8
+    }
+  },
+  "pages": [
+    {
+      "route": "/pages/form/fillUp4Column",
+      "name": "表单页_基础表单_撑满-4列（自适应）",
+      "category": [
+        "表单页",
+        "基础表单",
+        "撑满-4列（自适应）"
+      ],
+      "package": "@hiktpp/form-fillUp4Column",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.form-basic",
+      "contract": "pages/form/fill-up-four-column.json"
+    },
+    {
+      "route": "/pages/form/firstGroup",
+      "name": "表单页_分组表单_一级分组",
+      "category": [
+        "表单页",
+        "分组表单",
+        "一级分组"
+      ],
+      "package": "@hiktpp/form-firstGroup",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.form-grouped",
+      "contract": "pages/form/first-level-grouping.json"
+    },
+    {
+      "route": "/pages/form/fixedWidth1Column",
+      "name": "表单页_基础表单_定宽-1列",
+      "category": [
+        "表单页",
+        "基础表单",
+        "定宽-1列"
+      ],
+      "package": "@hiktpp/form-fixedWidth1Column",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.form-basic",
+      "contract": "pages/form/fixed-width-one-column.json"
+    },
+    {
+      "route": "/pages/form/fixedWidth2Column",
+      "name": "表单页_基础表单_定宽-2列",
+      "category": [
+        "表单页",
+        "基础表单",
+        "定宽-2列"
+      ],
+      "package": "@hiktpp/form-fixedWidth2Column",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.form-basic",
+      "contract": "pages/form/fixed-width-two-column.json"
+    },
+    {
+      "route": "/pages/form/fixedWidth3Column",
+      "name": "表单页_基础表单_定宽-3列",
+      "category": [
+        "表单页",
+        "基础表单",
+        "定宽-3列"
+      ],
+      "package": "@hiktpp/form-fixedWidth3Column",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.form-basic",
+      "contract": "pages/form/fixed-width-three-column.json"
+    },
+    {
+      "route": "/pages/form/horizontalBarProgressBar",
+      "name": "表单页_步骤表单_水平栏步骤条",
+      "category": [
+        "表单页",
+        "步骤表单",
+        "水平栏步骤条"
+      ],
+      "package": "@hiktpp/form-horizontalBarProgressBar",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.form-stepped",
+      "contract": "pages/form/horizontal-step-bar.json"
+    },
+    {
+      "route": "/pages/form/multiLevelNesting",
+      "name": "表单页_复杂表单_多层级嵌套",
+      "category": [
+        "表单页",
+        "复杂表单",
+        "多层级嵌套"
+      ],
+      "package": "@hiktpp/form-multiLevelNesting",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.form-complex",
+      "contract": "pages/form/multi-level-nesting.json"
+    },
+    {
+      "route": "/pages/form/multipleContainers",
+      "name": "表单页_带锚点_常驻锚点-多容器",
+      "category": [
+        "表单页",
+        "带锚点",
+        "常驻锚点-多容器"
+      ],
+      "package": "@hiktpp/form-multipleContainers",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.form-anchored",
+      "contract": "pages/form/persistent-anchor-multiple-containers.json"
+    },
+    {
+      "route": "/pages/form/retractableAnchorPoint",
+      "name": "表单页_带锚点_可收起锚点",
+      "category": [
+        "表单页",
+        "带锚点",
+        "可收起锚点"
+      ],
+      "package": "@hiktpp/form-retractableAnchorPoint",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.form-anchored",
+      "contract": "pages/form/retractable-anchor.json"
+    },
+    {
+      "route": "/pages/form/secondaryGrouping",
+      "name": "表单页_分组表单_二级分组",
+      "category": [
+        "表单页",
+        "分组表单",
+        "二级分组"
+      ],
+      "package": "@hiktpp/form-secondaryGrouping",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.form-grouped",
+      "contract": "pages/form/second-level-grouping.json"
+    },
+    {
+      "route": "/pages/form/sideBarProgressBar",
+      "name": "表单页_步骤表单_侧边栏步骤条",
+      "category": [
+        "表单页",
+        "步骤表单",
+        "侧边栏步骤条"
+      ],
+      "package": "@hiktpp/form-sideBarProgressBar",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.form-stepped",
+      "contract": "pages/form/sidebar-step-bar.json"
+    },
+    {
+      "route": "/pages/form/singleContainer",
+      "name": "表单页_带锚点_常驻锚点-单容器",
+      "category": [
+        "表单页",
+        "带锚点",
+        "常驻锚点-单容器"
+      ],
+      "package": "@hiktpp/form-singleContainer",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.form-anchored",
+      "contract": "pages/form/persistent-anchor-single-container.json"
+    },
+    {
+      "route": "/pages/form/workOrderForm",
+      "name": "表单页_复杂表单_工单表单",
+      "category": [
+        "表单页",
+        "复杂表单",
+        "工单表单"
+      ],
+      "package": "@hiktpp/form-workOrderForm",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.form-complex",
+      "contract": "pages/form/work-order-form.json"
+    },
+    {
+      "route": "/pages/table/cardTypeTabPage",
+      "name": "表格页_带标签页_卡式标签页",
+      "category": [
+        "表格页",
+        "带标签页",
+        "卡式标签页"
+      ],
+      "package": "@hiktpp/table-card-type-tab-page",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.table-tabs",
+      "contract": "pages/table/card-tabs.json"
+    },
+    {
+      "route": "/pages/table/cardTypeTabPageAndTreeControl",
+      "name": "表格页_带标签页_卡式标签页+树控件",
+      "category": [
+        "表格页",
+        "带标签页",
+        "卡式标签页+树控件"
+      ],
+      "package": "@hiktpp/table-card-type-tab-page-and-tree-control",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.table-tabs",
+      "contract": "pages/table/card-tabs-with-tree.json"
+    },
+    {
+      "route": "/pages/table/fullyRetractableHorizontalBarFiltering",
+      "name": "表格页_手动过滤_水平栏过滤（全量可收起）",
+      "category": [
+        "表格页",
+        "手动过滤",
+        "水平栏过滤（全量可收起）"
+      ],
+      "package": "@hiktpp/table-fully-retractable-horizontal-bar-filtering",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.table-manual-filter",
+      "contract": "pages/table/horizontal-filter-fully-retractable.json"
+    },
+    {
+      "route": "/pages/table/fullyRetractableRegularFilterBox",
+      "name": "表格页_手动过滤_常规过滤盒（全量可收起）",
+      "category": [
+        "表格页",
+        "手动过滤",
+        "常规过滤盒（全量可收起）"
+      ],
+      "package": "@hiktpp/table-fully-retractable-regular-filter-box",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.table-manual-filter",
+      "contract": "pages/table/regular-filter-box-fully-retractable.json"
+    },
+    {
+      "route": "/pages/table/horizontalBarFilteringHeightAndLow",
+      "name": "表格页_手动过滤_水平栏过滤（高低频）",
+      "category": [
+        "表格页",
+        "手动过滤",
+        "水平栏过滤（高低频）"
+      ],
+      "package": "@hiktpp/table-horizontal-bar-filtering-height-and-low",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.table-manual-filter",
+      "contract": "pages/table/horizontal-filter-high-low.json"
+    },
+    {
+      "route": "/pages/table/linearTabPage",
+      "name": "表格页_带标签页_线性标签页",
+      "category": [
+        "表格页",
+        "带标签页",
+        "线性标签页"
+      ],
+      "package": "@hiktpp/table-linear-tab-page",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.table-tabs",
+      "contract": "pages/table/linear-tabs.json"
+    },
+    {
+      "route": "/pages/table/linearTabPageAndTreeControl",
+      "name": "表格页_带标签页_线性标签页+树控件",
+      "category": [
+        "表格页",
+        "带标签页",
+        "线性标签页+树控件"
+      ],
+      "package": "@hiktpp/table-linear-tab-page-and-tree-control",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.table-tabs",
+      "contract": "pages/table/linear-tabs-with-tree.json"
+    },
+    {
+      "route": "/pages/table/manualSideBarFiltering",
+      "name": "表格页_手动过滤_侧边栏过滤",
+      "category": [
+        "表格页",
+        "手动过滤",
+        "侧边栏过滤"
+      ],
+      "package": "@hiktpp/table-manual-side-bar-filtering",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.table-manual-filter",
+      "contract": "pages/table/sidebar-manual-filter.json"
+    },
+    {
+      "route": "/pages/table/onlyTitle",
+      "name": "表格页_基础表格_仅标题",
+      "category": [
+        "表格页",
+        "基础表格",
+        "仅标题"
+      ],
+      "package": "@hiktpp/table-only-title",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.table-basic",
+      "contract": "pages/table/only-title.json"
+    },
+    {
+      "route": "/pages/table/realTimeHorizontalBarFiltering",
+      "name": "表格页_即时过滤_水平栏过滤",
+      "category": [
+        "表格页",
+        "即时过滤",
+        "水平栏过滤"
+      ],
+      "package": "@hiktpp/table-real-time-horizontal-bar-filtering",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.table-realtime-filter",
+      "contract": "pages/table/horizontal-realtime-filter.json"
+    },
+    {
+      "route": "/pages/table/realTimeSideBarFiltering",
+      "name": "表格页_即时过滤_侧边栏过滤",
+      "category": [
+        "表格页",
+        "即时过滤",
+        "侧边栏过滤"
+      ],
+      "package": "@hiktpp/table-real-time-side-bar-filtering",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.table-realtime-filter",
+      "contract": "pages/table/sidebar-realtime-filter.json"
+    },
+    {
+      "route": "/pages/table/regularFilterBoxHeightAndLow",
+      "name": "表格页_手动过滤_常规过滤盒（高低频）",
+      "category": [
+        "表格页",
+        "手动过滤",
+        "常规过滤盒（高低频）"
+      ],
+      "package": "@hiktpp/table-regular-filter-box-height-and-low",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.table-manual-filter",
+      "contract": "pages/table/regular-filter-box-high-low.json"
+    },
+    {
+      "route": "/pages/table/treeControl",
+      "name": "表格页_带树控件_树控件",
+      "category": [
+        "表格页",
+        "带树控件",
+        "树控件"
+      ],
+      "package": "@hiktpp/table-tree-control",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.table-tree",
+      "contract": "pages/table/tree-only.json"
+    },
+    {
+      "route": "/pages/table/treeControlAndCardTypeTabPage",
+      "name": "表格页_带树控件_树控件+卡式标签页",
+      "category": [
+        "表格页",
+        "带树控件",
+        "树控件+卡式标签页"
+      ],
+      "package": "@hiktpp/table-tree-control-and-card-type-tab-page",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.table-tree",
+      "contract": "pages/table/tree-with-card-tabs.json"
+    },
+    {
+      "route": "/pages/table/treeControlAndLinearTabPage",
+      "name": "表格页_带树控件_树控件+线性标签页",
+      "category": [
+        "表格页",
+        "带树控件",
+        "树控件+线性标签页"
+      ],
+      "package": "@hiktpp/table-tree-control-and-linear-tab-page",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.table-tree",
+      "contract": "pages/table/tree-with-linear-tabs.json"
+    },
+    {
+      "route": "/pages/table/withAnOperationBar",
+      "name": "表格页_基础表格_带操作栏",
+      "category": [
+        "表格页",
+        "基础表格",
+        "带操作栏"
+      ],
+      "package": "@hiktpp/table-with-an-operation-bar",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.table-basic",
+      "contract": "pages/table/with-operation-bar.json"
+    },
+    {
+      "route": "/pages/table/withDetailsSectionTable",
+      "name": "表格页_带详情栏_详情栏",
+      "category": [
+        "表格页",
+        "带详情栏",
+        "详情栏"
+      ],
+      "package": "@hiktpp/table-with-details-section-table",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.table-details-pane",
+      "contract": "pages/table/with-details-pane.json"
+    },
+    {
+      "route": "/pages/table/withStatisticalTable",
+      "name": "表格页_带统计_统计",
+      "category": [
+        "表格页",
+        "带统计",
+        "统计"
+      ],
+      "package": "@hiktpp/table-with-statistical-table",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.table-statistics",
+      "contract": "pages/table/with-statistics.json"
+    },
+    {
+      "route": "/pages/card/car",
+      "name": "卡片页_基础卡片_车辆",
+      "category": [
+        "卡片页",
+        "基础卡片",
+        "车辆"
+      ],
+      "package": "@hiktpp/card-car",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.card-basic",
+      "contract": "pages/card/vehicle.json"
+    },
+    {
+      "route": "/pages/card/cardTypeTabPage",
+      "name": "卡片页_带标签页_卡式标签页",
+      "category": [
+        "卡片页",
+        "带标签页",
+        "卡式标签页"
+      ],
+      "package": "@hiktpp/card-card-type-tab-page",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.card-tabs",
+      "contract": "pages/card/card-tabs.json"
+    },
+    {
+      "route": "/pages/card/cardTypeTabPageAndTreeControl",
+      "name": "卡片页_带标签页_卡式标签页+树控件",
+      "category": [
+        "卡片页",
+        "带标签页",
+        "卡式标签页+树控件"
+      ],
+      "package": "@hiktpp/card-card-type-tab-page-and-tree-control",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.card-tabs",
+      "contract": "pages/card/card-tabs-with-tree.json"
+    },
+    {
+      "route": "/pages/card/dataList",
+      "name": "卡片页_基础卡片_数据列表",
+      "category": [
+        "卡片页",
+        "基础卡片",
+        "数据列表"
+      ],
+      "package": "@hiktpp/card-dataList",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.card-basic",
+      "contract": "pages/card/data-list.json"
+    },
+    {
+      "route": "/pages/card/face",
+      "name": "卡片页_基础卡片_人脸",
+      "category": [
+        "卡片页",
+        "基础卡片",
+        "人脸"
+      ],
+      "package": "@hiktpp/card-face",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.card-basic",
+      "contract": "pages/card/face.json"
+    },
+    {
+      "route": "/pages/card/fullyRetractableHorizontalBarFiltering",
+      "name": "卡片页_手动过滤_水平栏过滤（全量可收起）",
+      "category": [
+        "卡片页",
+        "手动过滤",
+        "水平栏过滤（全量可收起）"
+      ],
+      "package": "@hiktpp/card-fully-retractable-horizontal-bar-filtering",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.card-manual-filter",
+      "contract": "pages/card/horizontal-filter-fully-retractable.json"
+    },
+    {
+      "route": "/pages/card/fullyRetractableRegularFilterBox",
+      "name": "卡片页_手动过滤_常规过滤盒（全量可收起）",
+      "category": [
+        "卡片页",
+        "手动过滤",
+        "常规过滤盒（全量可收起）"
+      ],
+      "package": "@hiktpp/card-fully-retractable-regular-filter-box",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.card-manual-filter",
+      "contract": "pages/card/regular-filter-box-fully-retractable.json"
+    },
+    {
+      "route": "/pages/card/horizontalBarFilteringHeightAndLow",
+      "name": "卡片页_手动过滤_水平栏过滤（高低频）",
+      "category": [
+        "卡片页",
+        "手动过滤",
+        "水平栏过滤（高低频）"
+      ],
+      "package": "@hiktpp/card-horizontal-bar-filtering-height-and-low",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.card-manual-filter",
+      "contract": "pages/card/horizontal-filter-high-low.json"
+    },
+    {
+      "route": "/pages/card/linearTabPage",
+      "name": "卡片页_带标签页_线性标签页",
+      "category": [
+        "卡片页",
+        "带标签页",
+        "线性标签页"
+      ],
+      "package": "@hiktpp/card-linear-tab-page",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.card-tabs",
+      "contract": "pages/card/linear-tabs.json"
+    },
+    {
+      "route": "/pages/card/linearTabPageAndTreeControl",
+      "name": "卡片页_带标签页_线性标签页+树控件",
+      "category": [
+        "卡片页",
+        "带标签页",
+        "线性标签页+树控件"
+      ],
+      "package": "@hiktpp/card-linear-tab-page-and-tree-control",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.card-tabs",
+      "contract": "pages/card/linear-tabs-with-tree.json"
+    },
+    {
+      "route": "/pages/card/manualSideBarFiltering",
+      "name": "卡片页_手动过滤_侧边栏过滤",
+      "category": [
+        "卡片页",
+        "手动过滤",
+        "侧边栏过滤"
+      ],
+      "package": "@hiktpp/card-manual-side-bar-filtering",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.card-manual-filter",
+      "contract": "pages/card/sidebar-manual-filter.json"
+    },
+    {
+      "route": "/pages/card/realTimeHorizontalBarFiltering",
+      "name": "卡片页_即时过滤_水平栏过滤",
+      "category": [
+        "卡片页",
+        "即时过滤",
+        "水平栏过滤"
+      ],
+      "package": "@hiktpp/card-real-time-horizontal-bar-filtering",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.card-realtime-filter",
+      "contract": "pages/card/horizontal-realtime-filter.json"
+    },
+    {
+      "route": "/pages/card/realTimeSideBarFiltering",
+      "name": "卡片页_即时过滤_侧边栏过滤",
+      "category": [
+        "卡片页",
+        "即时过滤",
+        "侧边栏过滤"
+      ],
+      "package": "@hiktpp/card-real-time-side-bar-filtering",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.card-realtime-filter",
+      "contract": "pages/card/sidebar-realtime-filter.json"
+    },
+    {
+      "route": "/pages/card/regularFilterBoxHeightAndLow",
+      "name": "卡片页_手动过滤_常规过滤盒（高低频）",
+      "category": [
+        "卡片页",
+        "手动过滤",
+        "常规过滤盒（高低频）"
+      ],
+      "package": "@hiktpp/card-regular-filter-box-height-and-low",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.card-manual-filter",
+      "contract": "pages/card/regular-filter-box-high-low.json"
+    },
+    {
+      "route": "/pages/card/similarity",
+      "name": "卡片页_基础卡片_相似度",
+      "category": [
+        "卡片页",
+        "基础卡片",
+        "相似度"
+      ],
+      "package": "@hiktpp/card-similarity",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.card-basic",
+      "contract": "pages/card/similarity.json"
+    },
+    {
+      "route": "/pages/card/text",
+      "name": "卡片页_基础卡片_文本",
+      "category": [
+        "卡片页",
+        "基础卡片",
+        "文本"
+      ],
+      "package": "@hiktpp/card-text",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.card-basic",
+      "contract": "pages/card/text.json"
+    },
+    {
+      "route": "/pages/card/treeControl",
+      "name": "卡片页_带树控件_树控件",
+      "category": [
+        "卡片页",
+        "带树控件",
+        "树控件"
+      ],
+      "package": "@hiktpp/card-tree-control",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.card-tree",
+      "contract": "pages/card/tree-only.json"
+    },
+    {
+      "route": "/pages/card/treeControlAndCardTypeTabPage",
+      "name": "卡片页_带树控件_树控件+卡式标签页",
+      "category": [
+        "卡片页",
+        "带树控件",
+        "树控件+卡式标签页"
+      ],
+      "package": "@hiktpp/card-tree-control-and-card-type-tab-page",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.card-tree",
+      "contract": "pages/card/tree-with-card-tabs.json"
+    },
+    {
+      "route": "/pages/card/treeControlAndLinearTabPage",
+      "name": "卡片页_带树控件_树控件+线性标签页",
+      "category": [
+        "卡片页",
+        "带树控件",
+        "树控件+线性标签页"
+      ],
+      "package": "@hiktpp/card-tree-control-and-linear-tab-page",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.card-tree",
+      "contract": "pages/card/tree-with-linear-tabs.json"
+    },
+    {
+      "route": "/pages/details/coordination",
+      "name": "详情页_并列结构_并列结构",
+      "category": [
+        "详情页",
+        "并列结构",
+        "并列结构"
+      ],
+      "package": "@hiktpp/details-coordination",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.details-parallel",
+      "contract": "pages/details/coordination.json"
+    },
+    {
+      "route": "/pages/details/fillUp",
+      "name": "详情页_基础详情_容器撑满",
+      "category": [
+        "详情页",
+        "基础详情",
+        "容器撑满"
+      ],
+      "package": "@hiktpp/details-fillUp",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.details-basic",
+      "contract": "pages/details/fill-up.json"
+    },
+    {
+      "route": "/pages/details/firstGroup",
+      "name": "详情页_分组详情_一级分组",
+      "category": [
+        "详情页",
+        "分组详情",
+        "一级分组"
+      ],
+      "package": "@hiktpp/details-firstGroup",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.details-grouped",
+      "contract": "pages/details/first-group.json"
+    },
+    {
+      "route": "/pages/details/fixedWidth",
+      "name": "详情页_基础详情_容器定宽",
+      "category": [
+        "详情页",
+        "基础详情",
+        "容器定宽"
+      ],
+      "package": "@hiktpp/details-fixedWidth",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.details-basic",
+      "contract": "pages/details/fixed-width.json"
+    },
+    {
+      "route": "/pages/details/horizontalAnchorPoint",
+      "name": "详情页_带锚点_横向锚点",
+      "category": [
+        "详情页",
+        "带锚点",
+        "横向锚点"
+      ],
+      "package": "@hiktpp/details-horizontalAnchorPoint",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.details-anchored",
+      "contract": "pages/details/horizontal-anchor-point.json"
+    },
+    {
+      "route": "/pages/details/leftAndRightLayout",
+      "name": "详情页_总分结构_左右布局",
+      "category": [
+        "详情页",
+        "总分结构",
+        "左右布局"
+      ],
+      "package": "@hiktpp/details-leftAndRightLayout",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.details-master-detail",
+      "contract": "pages/details/left-and-right-layout.json"
+    },
+    {
+      "route": "/pages/details/leftAndRightLayoutTextAndImageDetails",
+      "name": "详情页_图文详情_左右布局",
+      "category": [
+        "详情页",
+        "图文详情",
+        "左右布局"
+      ],
+      "package": "@hiktpp/details-leftAndRightLayoutTextAndImageDetails",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.details-text-image",
+      "contract": "pages/details/left-and-right-layout-text-image.json"
+    },
+    {
+      "route": "/pages/details/residentAnchorPoint",
+      "name": "详情页_带锚点_常驻锚点",
+      "category": [
+        "详情页",
+        "带锚点",
+        "常驻锚点"
+      ],
+      "package": "@hiktpp/details-residentAnchorPoint",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.details-anchored",
+      "contract": "pages/details/resident-anchor-point.json"
+    },
+    {
+      "route": "/pages/details/retractedAnchorPoint",
+      "name": "详情页_带锚点_可收起锚点",
+      "category": [
+        "详情页",
+        "带锚点",
+        "可收起锚点"
+      ],
+      "package": "@hiktpp/details-retractedAnchorPoint",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.details-anchored",
+      "contract": "pages/details/retracted-anchor-point.json"
+    },
+    {
+      "route": "/pages/details/secondaryGrouping",
+      "name": "详情页_分组详情_二级分组",
+      "category": [
+        "详情页",
+        "分组详情",
+        "二级分组"
+      ],
+      "package": "@hiktpp/details-secondaryGrouping",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.details-grouped",
+      "contract": "pages/details/secondary-grouping.json"
+    },
+    {
+      "route": "/pages/details/simulationFile",
+      "name": "详情页_仿真文件_仿真文件",
+      "category": [
+        "详情页",
+        "仿真文件",
+        "仿真文件"
+      ],
+      "package": "@hiktpp/details-simulationFile",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.details-simulation-file",
+      "contract": "pages/details/simulation-file.json"
+    },
+    {
+      "route": "/pages/details/upAndDownLayout",
+      "name": "详情页_总分结构_上下布局",
+      "category": [
+        "详情页",
+        "总分结构",
+        "上下布局"
+      ],
+      "package": "@hiktpp/details-upAndDownLayout",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.details-master-detail",
+      "contract": "pages/details/up-and-down-layout.json"
+    },
+    {
+      "route": "/pages/details/upAndDownLayoutSingleContainer",
+      "name": "详情页_总分结构_上下布局-单容器",
+      "category": [
+        "详情页",
+        "总分结构",
+        "上下布局-单容器"
+      ],
+      "package": "@hiktpp/details-upAndDownLayoutSingleContainer",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.details-master-detail",
+      "contract": "pages/details/up-and-down-layout-single-container.json"
+    },
+    {
+      "route": "/pages/details/upDownLeftRigthLayoutTextAndImageDetails",
+      "name": "详情页_图文详情_上下+左右布局",
+      "category": [
+        "详情页",
+        "图文详情",
+        "上下+左右布局"
+      ],
+      "package": "@hiktpp/details-upDownLeftRigthLayoutTextAndImageDetails",
+      "hui_version": "^2.55.0",
+      "status": "evidence-verified",
+      "family": "hui.tpp.family.details-text-image",
+      "contract": "pages/details/up-down-left-right-layout-text-image.json"
+    },
+    {
+      "route": "/pages/result/fillContainerUp",
+      "name": "结果页_成功_基础-容器撑满",
+      "category": [
+        "结果页",
+        "成功",
+        "基础-容器撑满"
+      ],
+      "package": "@hiktpp/result-fillContainerUp",
+      "hui_version": "^2.55.0",
+      "status": "catalog-only"
+    },
+    {
+      "route": "/pages/result/fillContainerUpFail",
+      "name": "结果页_失败_基础-容器撑满",
+      "category": [
+        "结果页",
+        "失败",
+        "基础-容器撑满"
+      ],
+      "package": "@hiktpp/result-fillContainerUpFail",
+      "hui_version": "^2.55.0",
+      "status": "catalog-only"
+    },
+    {
+      "route": "/pages/result/fillContainerUpWithDetail",
+      "name": "结果页_成功_带详细说明-容器撑满",
+      "category": [
+        "结果页",
+        "成功",
+        "带详细说明-容器撑满"
+      ],
+      "package": "@hiktpp/result-fillContainerUpWithDetail",
+      "hui_version": "^2.55.0",
+      "status": "catalog-only"
+    },
+    {
+      "route": "/pages/result/fillContainerUpWithDetailFail",
+      "name": "结果页_失败_带详细说明-容器撑满",
+      "category": [
+        "结果页",
+        "失败",
+        "带详细说明-容器撑满"
+      ],
+      "package": "@hiktpp/result-fillContainerUpWithDetailFail",
+      "hui_version": "^2.55.0",
+      "status": "catalog-only"
+    },
+    {
+      "route": "/pages/result/fixedContainerWidth",
+      "name": "结果页_成功_基础-容器定宽",
+      "category": [
+        "结果页",
+        "成功",
+        "基础-容器定宽"
+      ],
+      "package": "@hiktpp/result-fixedContainerWidth",
+      "hui_version": "^2.55.0",
+      "status": "catalog-only"
+    },
+    {
+      "route": "/pages/result/fixedContainerWidthFail",
+      "name": "结果页_失败_基础-容器定宽",
+      "category": [
+        "结果页",
+        "失败",
+        "基础-容器定宽"
+      ],
+      "package": "@hiktpp/result-fixedContainerWidthFail",
+      "hui_version": "^2.55.0",
+      "status": "catalog-only"
+    },
+    {
+      "route": "/pages/result/fixedContainerWidthWithDetail",
+      "name": "结果页_成功_带详细说明-容器定宽",
+      "category": [
+        "结果页",
+        "成功",
+        "带详细说明-容器定宽"
+      ],
+      "package": "@hiktpp/result-fixedContainerWidthWithDetail",
+      "hui_version": "^2.55.0",
+      "status": "catalog-only"
+    },
+    {
+      "route": "/pages/result/fixedContainerWidthWithDetailFail",
+      "name": "结果页_失败_带详细说明-容器定宽",
+      "category": [
+        "结果页",
+        "失败",
+        "带详细说明-容器定宽"
+      ],
+      "package": "@hiktpp/result-fixedContainerWidthWithDetailFail",
+      "hui_version": "^2.55.0",
+      "status": "catalog-only"
+    },
+    {
+      "route": "/pages/default/404",
+      "name": "缺省页_全局_404",
+      "category": [
+        "缺省页",
+        "全局",
+        "404"
+      ],
+      "package": "@hiktpp/default-404",
+      "hui_version": "^2.55.0",
+      "status": "catalog-only"
+    },
+    {
+      "route": "/pages/default/browserVersionTooLow",
+      "name": "缺省页_全局_浏览器版本过低",
+      "category": [
+        "缺省页",
+        "全局",
+        "浏览器版本过低"
+      ],
+      "package": "@hiktpp/default-browser-version-too-low",
+      "hui_version": "^2.55.0",
+      "status": "catalog-only"
+    },
+    {
+      "route": "/pages/default/detail",
+      "name": "缺省页_局部_详情",
+      "category": [
+        "缺省页",
+        "局部",
+        "详情"
+      ],
+      "package": "@hiktpp/default-detail",
+      "hui_version": "^2.55.0",
+      "status": "catalog-only"
+    },
+    {
+      "route": "/pages/default/form",
+      "name": "缺省页_局部_表单",
+      "category": [
+        "缺省页",
+        "局部",
+        "表单"
+      ],
+      "package": "@hiktpp/default-form",
+      "hui_version": "^2.55.0",
+      "status": "catalog-only"
+    },
+    {
+      "route": "/pages/default/netError",
+      "name": "缺省页_全局_网络异常",
+      "category": [
+        "缺省页",
+        "全局",
+        "网络异常"
+      ],
+      "package": "@hiktpp/default-net-error",
+      "hui_version": "^2.55.0",
+      "status": "catalog-only"
+    },
+    {
+      "route": "/pages/default/serverError",
+      "name": "缺省页_全局_服务器异常",
+      "category": [
+        "缺省页",
+        "全局",
+        "服务器异常"
+      ],
+      "package": "@hiktpp/default-server-error",
+      "hui_version": "^2.55.0",
+      "status": "catalog-only"
+    },
+    {
+      "route": "/pages/default/systemUpgrading",
+      "name": "缺省页_全局_系统升级",
+      "category": [
+        "缺省页",
+        "全局",
+        "系统升级"
+      ],
+      "package": "@hiktpp/default-system-upgrading",
+      "hui_version": "^2.55.0",
+      "status": "catalog-only"
+    },
+    {
+      "route": "/pages/default/table",
+      "name": "缺省页_局部_表格",
+      "category": [
+        "缺省页",
+        "局部",
+        "表格"
+      ],
+      "package": "@hiktpp/default-table",
+      "hui_version": "^2.55.0",
+      "status": "catalog-only"
+    }
+  ],
+  "families": {
+    "form-basic": {
+      "contract": "families/form-basic/contract.json",
+      "variant_count": 4
+    },
+    "form-grouped": {
+      "contract": "families/form-grouped/contract.json",
+      "variant_count": 2
+    },
+    "form-stepped": {
+      "contract": "families/form-stepped/contract.json",
+      "variant_count": 2
+    },
+    "form-anchored": {
+      "contract": "families/form-anchored/contract.json",
+      "variant_count": 3
+    },
+    "form-complex": {
+      "contract": "families/form-complex/contract.json",
+      "variant_count": 2
+    },
+    "table-basic": {
+      "contract": "families/table-basic/contract.json",
+      "variant_count": 2
+    },
+    "table-manual-filter": {
+      "contract": "families/table-manual-filter/contract.json",
+      "variant_count": 5
+    },
+    "table-realtime-filter": {
+      "contract": "families/table-realtime-filter/contract.json",
+      "variant_count": 2
+    },
+    "table-tabs": {
+      "contract": "families/table-tabs/contract.json",
+      "variant_count": 4
+    },
+    "table-tree": {
+      "contract": "families/table-tree/contract.json",
+      "variant_count": 3
+    },
+    "table-statistics": {
+      "contract": "families/table-statistics/contract.json",
+      "variant_count": 1
+    },
+    "table-details-pane": {
+      "contract": "families/table-details-pane/contract.json",
+      "variant_count": 1
+    },
+    "card-basic": {
+      "contract": "families/card-basic/contract.json",
+      "variant_count": 5
+    },
+    "card-manual-filter": {
+      "contract": "families/card-manual-filter/contract.json",
+      "variant_count": 5
+    },
+    "card-realtime-filter": {
+      "contract": "families/card-realtime-filter/contract.json",
+      "variant_count": 2
+    },
+    "card-tabs": {
+      "contract": "families/card-tabs/contract.json",
+      "variant_count": 4
+    },
+    "card-tree": {
+      "contract": "families/card-tree/contract.json",
+      "variant_count": 3
+    },
+    "details-basic": {
+      "contract": "families/details-basic/contract.json",
+      "variant_count": 2
+    },
+    "details-grouped": {
+      "contract": "families/details-grouped/contract.json",
+      "variant_count": 2
+    },
+    "details-master-detail": {
+      "contract": "families/details-master-detail/contract.json",
+      "variant_count": 3
+    },
+    "details-parallel": {
+      "contract": "families/details-parallel/contract.json",
+      "variant_count": 1
+    },
+    "details-text-image": {
+      "contract": "families/details-text-image/contract.json",
+      "variant_count": 2
+    },
+    "details-anchored": {
+      "contract": "families/details-anchored/contract.json",
+      "variant_count": 3
+    },
+    "details-simulation-file": {
+      "contract": "families/details-simulation-file/contract.json",
+      "variant_count": 1
+    }
+  }
+}

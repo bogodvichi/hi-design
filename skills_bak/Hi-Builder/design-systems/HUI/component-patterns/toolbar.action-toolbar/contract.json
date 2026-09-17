@@ -1,0 +1,20 @@
+{
+  "schema_version": "hui-component-pattern.v2",
+  "id": "toolbar.action-toolbar",
+  "name": "操作工具栏",
+  "split_mode": "composite",
+  "vue_component": "ActionToolbar",
+  "description": "组合页面级或集合级操作，并支持左右分组",
+  "category": "toolbar",
+  "status": "active",
+  "use_when": ["页面需要一组并列操作入口"],
+  "hui_components": ["el-button", "el-button-group", "el-radio-group", "el-radio-button"],
+  "geometry_roles": {"table-toolbar-height": "44px"},
+  "collection_geometry": {
+    "height": "56px",
+    "horizontal_padding": "24px",
+    "top_separator": false,
+    "separator_ownership": "filter.search-form owns the separator at the filter bottom"
+  },
+  "owner": "hui-common"
+}

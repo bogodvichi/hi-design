@@ -1,0 +1,51 @@
+{
+  "schema_version": "browser-geometry.v1",
+  "page_type": "event-search",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "assertions": [
+    {"selector": ".portal-header", "property": "height", "expected": "88px"},
+    {"selector": ".portal-app-sidebar", "property": "width", "expected": "240px"},
+    {"selector": ".event-type-sidebar", "property": "width", "expected": "256px"},
+    {"selector": ".event-search-toolbar", "property": "height", "expected": "44px"},
+    {"selector": ".event-search-filter__action-group", "property": "column-gap", "expected": "8px"},
+    {"selector": ".event-pagination-zone", "property": "min-height", "expected": "56px"}
+  ],
+  "relation_assertions": [
+    {
+      "selector": ".event-search-pagination",
+      "property": "width",
+      "equals_selector": ".event-pagination-zone"
+    }
+  ],
+  "semantic_assertions": [
+    {
+      "selector": ".event-search-table__actions .el-button",
+      "count_min": 2,
+      "required_class": "el-button--link"
+    },
+    {
+      "selector": ".event-card-actions .el-button",
+      "count_min": 2,
+      "required_class": "el-button--text"
+    },
+    {
+      "selector": ".event-search-table__actions .el-button",
+      "pair_gap": "8px"
+    }
+  ],
+  "interaction_states": [
+    {
+      "state": "filter-collapsed",
+      "visible_filter_fields": 3,
+      "action_row": 1
+    },
+    {
+      "state": "filter-expanded",
+      "visible_filter_fields": 6,
+      "action_row": 2
+    }
+  ]
+}

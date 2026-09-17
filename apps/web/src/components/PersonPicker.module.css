@@ -1,0 +1,175 @@
+.acWrap {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+.acInput {
+  width: 100%;
+  height: 34px;
+  padding: 0 32px 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-app);
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.acInput:focus {
+  border-color: var(--border-strong, var(--border));
+}
+.acInputTag {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 34px;
+  padding: 0 6px 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  box-sizing: border-box;
+}
+.acInput::placeholder {
+  color: var(--text-muted);
+}
+.acSpinner {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--text-muted);
+  border-radius: 50%;
+  animation: ppSpin 700ms linear infinite;
+}
+@keyframes ppSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.acDropdown {
+  z-index: 9999;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-sm);
+  scrollbar-width: thin;
+}
+ .acItem {
+   display: flex;
+   flex-direction: column;
+   align-items: flex-start;
+   gap: 4px;
+   padding: 8px 10px;
+   border: none;
+   background: transparent;
+   text-align: left;
+   cursor: pointer;
+   transition: background 120ms ease-out;
+   width: 100%;
+   height: auto;
+ }
+ .acItem:hover,
+ .acItemActive {
+   background: var(--bg-subtle);
+ }
+ .acItemName {
+   font-size: 13px;
+   font-weight: 500;
+   color: var(--text);
+   text-align: left;
+ }
+ .acItemSub {
+   font-size: 12px;
+   color: var(--text-faint);
+   text-overflow: ellipsis;
+   white-space: nowrap;
+   text-align: left;
+ }
+.acEmpty {
+  padding: 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.selectedBox {
+  margin-top: 6px;
+  min-height: 100px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: flex-start;
+  transition: border-color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.selectedBox:focus-within {
+  border-color: var(--border-strong, var(--border));
+}
+.selectedEmpty {
+  font-size: 12px;
+  color: var(--text-faint);
+  padding: 3px 5px;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 3px 6px 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-subtle);
+  font-size: 12px;
+  color: var(--text);
+  animation: ppTagIn 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@keyframes ppTagIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.tagName {
+  font-weight: 500;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tagRemove {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 120ms ease-out,
+    color 120ms ease-out;
+}
+.tagRemove:hover {
+  background: color-mix(in srgb, #d14343 22%, transparent);
+  color: #d14343;
+}

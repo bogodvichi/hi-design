@@ -1,0 +1,88 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "skeleton",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/data/skeleton",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/data.docs.json",
+    "evidence_sha256": "1faf13316d3e61002e07073d56ed0739f08ed5e112cba04b1d62b08484a37c71"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-skeleton": {
+      "props": [
+        {
+          "参数": "animated",
+          "说明": "是否使用动画",
+          "类型": "boolean",
+          "可选值": "——",
+          "默认值": "false",
+          "template_name": "animated"
+        },
+        {
+          "参数": "count",
+          "说明": "渲染多少个 template, 建议使用尽可能小的数字",
+          "类型": "number",
+          "可选值": "——",
+          "默认值": "1",
+          "template_name": "count"
+        },
+        {
+          "参数": "loading",
+          "说明": "是否显示 skeleton 模板的内容",
+          "类型": "number",
+          "可选值": "——",
+          "默认值": "true",
+          "template_name": "loading"
+        },
+        {
+          "参数": "rows",
+          "说明": "骨架屏渲染行数，默认比传入的多1行，首行会被渲染一个长度 33% 的段首",
+          "类型": "number",
+          "可选值": "——",
+          "默认值": "4",
+          "template_name": "rows"
+        },
+        {
+          "参数": "throttle",
+          "说明": "渲染延迟（以毫秒为单位） 数字代表延迟显示, 也可以设置为延迟隐藏, 例如 { leading: 500, trailing: 500 } 当需要控制初始加载值时，您可以设置 { initVal: true }",
+          "类型": "number/object",
+          "可选值": "number / { leading?: number, trailing?: number, initVal?: boolean }",
+          "默认值": "0",
+          "template_name": "throttle"
+        }
+      ],
+      "events": [],
+      "slots": [
+        {
+          "名称": "default",
+          "说明": "真正渲染的DOM",
+          "template_name": "default"
+        },
+        {
+          "名称": "template",
+          "说明": "渲染 skeleton 模板的内容",
+          "template_name": "template"
+        }
+      ],
+      "methods": []
+    },
+    "el-skeleton-item": {
+      "props": [
+        {
+          "参数": "variant",
+          "说明": "当前显示的占位元素的样式",
+          "类型": "Enum(string)",
+          "可选值": "p / h1 / h3 / text / caption / button / image / circle / rect",
+          "默认值": "text",
+          "template_name": "variant"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

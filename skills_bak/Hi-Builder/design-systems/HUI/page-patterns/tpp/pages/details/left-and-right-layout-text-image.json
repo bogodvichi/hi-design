@@ -1,0 +1,10 @@
+{
+  "schema_version": "hui-page-variant.v1",
+  "id": "hui.tpp.page.details.left-and-right-layout-text-image",
+  "name": "左右布局",
+  "family": "hui.tpp.family.details-text-image",
+  "source": {"url": "http://tpp.dev.hikhub.net/tpp#/pages/details/leftAndRightLayoutTextAndImageDetails", "package": "@hiktpp/details-leftAndRightLayoutTextAndImageDetails", "hui_version": "^2.55.0", "observed_at": "2026-08-14", "evidence": "../../evidence/details/left-and-right-layout-text-image.json"},
+  "parameters": {"layout_direction": "horizontal", "top_summary": false, "media_width_px": 1008, "detail_panel_width_px": 352, "region_gap_px": 24},
+  "geometry": {"viewport": {"width": 1728, "height": 935}, "root": {"class": "h-page-content form-area is-flex is-align-center", "rect": {"x": 240, "y": 102.25, "width": 1488, "height": 832.75}}, "key_regions": {"content": {"class": "form-area__content", "rect": {"x": 256, "y": 118.25, "width": 1456, "height": 816.75}, "padding": "24px"}, "primary_media": {"rect": {"x": 280, "y": 142.25, "width": 1008, "height": 768.75}}, "detail_panel": {"rect": {"x": 1312, "y": 142.25, "width": 352, "height": 768.75}}}},
+  "composition": {"component_count_scope": "page-content-relevant-only", "hui_components": {}, "actions": []}
+}

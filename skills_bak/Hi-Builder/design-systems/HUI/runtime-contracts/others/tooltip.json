@@ -1,0 +1,126 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "tooltip",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/others/tooltip",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/others.docs.json",
+    "evidence_sha256": "f150a2630aef3c6508a028b85a5e004a26036cac12218f39bbe7388c02099e11"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-tooltip": {
+      "props": [
+        {
+          "参数": "content",
+          "说明": "显示的内容，也可以通过 slot#content 传入 DOM",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "content"
+        },
+        {
+          "参数": "placement",
+          "说明": "Tooltip 的出现位置",
+          "类型": "String",
+          "可选值": "top/top-start/top-end/bottom/bottom-start/bottom-end/left/left-start/left-end/right/right-start/right-end",
+          "默认值": "bottom",
+          "template_name": "placement"
+        },
+        {
+          "参数": "disabled",
+          "说明": "Tooltip 是否可用",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "debounceClosable",
+          "说明": "Tooltip 是否延时关闭（关闭后，离开内容激活区，将无法选中 tip 中内容，不过可以配合enterable一起使用）",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "debounce-closable"
+        },
+        {
+          "参数": "offset",
+          "说明": "出现位置的偏移量",
+          "类型": "Number",
+          "可选值": "—",
+          "默认值": "0",
+          "template_name": "offset"
+        },
+        {
+          "参数": "transition",
+          "说明": "定义渐变动画",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "el-fade-in-linear",
+          "template_name": "transition"
+        },
+        {
+          "参数": "visible-arrow",
+          "说明": "是否显示 Tooltip 箭头，更多参数可见Vue-popper",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "visible-arrow"
+        },
+        {
+          "参数": "popper-options",
+          "说明": "popper.js 的参数",
+          "类型": "Object",
+          "可选值": "参考 popper.js 文档",
+          "默认值": "{ boundariesElement: ‘viewport’ }",
+          "template_name": "popper-options"
+        },
+        {
+          "参数": "open-delay",
+          "说明": "延迟出现，单位毫秒",
+          "类型": "Number",
+          "可选值": "—",
+          "默认值": "0",
+          "template_name": "open-delay"
+        },
+        {
+          "参数": "manual",
+          "说明": "手动控制模式，设置为 true 后，mouseenter 和 mouseleave 事件将不会生效",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "manual"
+        },
+        {
+          "参数": "value / v-model",
+          "说明": "状态是否可见",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "value"
+        },
+        {
+          "参数": "popper-class",
+          "说明": "为 Tooltip 的 popper 添加类名",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "popper-class"
+        },
+        {
+          "参数": "enterable",
+          "说明": "鼠标是否可进入到 tooltip 中，需要搭配debounceClosable一起使用",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "enterable"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

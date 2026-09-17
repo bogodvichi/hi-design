@@ -1,0 +1,124 @@
+{
+  "schema_version": "hui-page-variant.v1",
+  "id": "hui.tpp.page.table.only-title",
+  "name": "仅标题",
+  "family": "hui.tpp.family.table-basic",
+  "source": {
+    "url": "http://tpp.dev.hikhub.net/tpp#/pages/table/onlyTitle",
+    "package": "@hiktpp/table-only-title",
+    "hui_version": "^2.55.0",
+    "observed_at": "2026-07-31",
+    "evidence": "../../evidence/table/only-title.json"
+  },
+  "parameters": {
+    "toolbar": false
+  },
+  "geometry": {
+    "viewport": {
+      "width": 1920,
+      "height": 968
+    },
+    "root": {
+      "class": "h-page-content is-flex",
+      "rect": {
+        "x": 240,
+        "y": 102.34,
+        "width": 1680,
+        "height": 865.66
+      },
+      "style": {
+        "display": "flex",
+        "padding": "16px 16px 0px",
+        "overflow": "visible"
+      }
+    },
+    "key_regions": {
+      "search": {
+        "class": "h-page-search search row-amount-6",
+        "rect": {
+          "x": 268,
+          "y": 118.34,
+          "width": 1624,
+          "height": 56
+        },
+        "display": "block",
+        "position": "static",
+        "padding": "6px 0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "table": {
+        "class": "el-table el-table--fit el-table--enable-row-hover el-table--enable-row-transition el-table--no-out-border",
+        "rect": {
+          "x": 280,
+          "y": 174.34,
+          "width": 1600,
+          "height": 737.66
+        },
+        "display": "flex",
+        "position": "relative",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "hidden",
+        "overflow_y": "hidden"
+      },
+      "pagination": {
+        "class": "el-pagination el-pagination--table",
+        "rect": {
+          "x": 268,
+          "y": 912,
+          "width": 1624,
+          "height": 56
+        },
+        "display": "flex",
+        "position": "static",
+        "padding": "0px 12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      }
+    }
+  },
+  "composition": {
+    "hui_components": {
+      "el-form": 1,
+      "el-form-item": 1,
+      "el-input": 3,
+      "el-table": 1,
+      "el-table-column": 9,
+      "el-button": 65,
+      "el-tooltip": 9,
+      "el-scrollbar": 2,
+      "el-tag": 20,
+      "el-pagination": 1,
+      "el-select": 1,
+      "el-option": 4
+    },
+    "page_framework_components": {
+      "h-page-content": 3,
+      "h-page-search-item": 1
+    },
+    "unindexed_runtime_components": {
+      "el-select-menu": 1
+    },
+    "actions": [
+      {
+        "label": "编辑",
+        "count": 20
+      },
+      {
+        "label": "删除",
+        "count": 20
+      },
+      {
+        "label": "更多",
+        "count": 20
+      },
+      {
+        "label": "跳转",
+        "count": 1
+      }
+    ]
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": "hui-component-pattern.v2",
+  "id": "portal.global-header",
+  "name": "门户全局头部",
+  "split_mode": "composite",
+  "vue_component": "GlobalHeader",
+  "description": "组合门户品牌导航、全局搜索、快捷操作和页面页签",
+  "category": "portal",
+  "status": "active",
+  "use_when": ["产品门户头部由HUI Vue原子控件实现"],
+  "hui_components": ["el-input", "el-button"],
+  "owner": "hui-common"
+}

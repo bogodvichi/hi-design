@@ -1,0 +1,64 @@
+              <div class="form-area" :class="{'is-complex-form': config.form_sections && config.form_sections.length, 'is-first-level-grouped':isFirstLevelGroupedForm, 'is-anchored-form':isAnchoredForm, 'is-one-column':config.pattern_parameters && config.pattern_parameters.columns === 1}">
+                <div class="form-area__content">
+                  <div v-if="isWorkOrderForm" class="form-area__content-head"><span class="form-area__content-head-item">{{ config.title }}</span><span class="form-area__content-head-item">配置状态：待保存</span></div>
+                  <div class="permission-form-scroll" :class="{'is-work-order':isWorkOrderForm}" data-zone="form.content" data-component="form.data-form">
+                    <div v-if="isWorkOrderForm" class="work-order-steps">
+                      <el-steps :active="activeFormSectionIndex" :direction="formStepDirection" finish-status="success" @step-click="selectFormStep">
+                        <el-step v-for="section in formSections" :key="section.id" :title="section.title"></el-step>
+                      </el-steps>
+                    </div>
+                    <el-tabs v-if="isWorkOrderForm" v-model="activeFormSection" class="work-order-tabs" type="border-card">
+                      <el-tab-pane v-for="section in formSections" :key="section.id" :label="section.title" :name="section.id">
+                        <el-form ref="workOrderForm" class="permission-form" :model="formModel" label-position="top" size="small">
+                          <div class="permission-form__section">{{ section.title }}<div v-if="section.description" class="permission-form__section-description">{{ section.description }}</div></div>
+                          <el-row :gutter="24">
+                            <el-col v-for="field in section.fields" v-if="matchesCondition(field.condition)" :key="field.key" :span="formFieldSpan(field)" class="permission-form__field" :class="{'is-conditional':field.condition}">
+                              <el-form-item :label="field.label" :required="field.required">
+                                <el-input v-if="field.kind==='input' || field.kind==='textarea'" v-model="formModel[field.key]" :type="field.kind==='textarea' ? 'textarea' : 'text'" :placeholder="field.placeholder"><span v-if="field.unit" slot="suffix">{{ field.unit }}</span></el-input>
+                                <el-select v-else-if="field.kind==='select'" v-model="formModel[field.key]" :multiple="field.multiple" :placeholder="field.placeholder"><el-option v-for="option in field.options" :key="option" :label="option" :value="option"></el-option></el-select>
+                                <el-radio-group v-else-if="field.kind==='radio'" v-model="formModel[field.key]"><el-radio v-for="option in field.options" :key="option" :label="option">{{ option }}</el-radio></el-radio-group>
+                                <el-checkbox-group v-else-if="field.kind==='checkbox'" v-model="formModel[field.key]"><el-checkbox v-for="option in field.options" :key="option" :label="option">{{ option }}</el-checkbox></el-checkbox-group>
+                                <el-switch v-else-if="field.kind==='switch'" v-model="formModel[field.key]"></el-switch>
+                                <el-date-picker v-else-if="field.kind==='date'" v-model="formModel[field.key]" type="date" placeholder="请选择日期"></el-date-picker>
+                                <el-date-picker v-else-if="field.kind==='date-range'" v-model="formModel[field.key]" type="daterange" start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
+                                <div v-if="field.description" class="permission-form__field-description">{{ field.description }}</div>
+                              </el-form-item>
+                            </el-col>
+                          </el-row>
+                        </el-form>
+                      </el-tab-pane>
+                    </el-tabs>
+                    <div v-if="!isWorkOrderForm" class="anchored-form-layout">
+                    <el-form ref="permissionForm" class="permission-form" :model="formModel" label-position="top" size="small">
+                      <div v-for="section in visibleFormSections" :id="'form-section-' + section.id" :key="section.id" class="permission-form__group">
+                        <div class="permission-form__section">
+                          {{ section.title }}
+                          <div v-if="section.description" class="permission-form__section-description">{{ section.description }}</div>
+                        </div>
+                        <el-row :gutter="24">
+                          <el-col v-for="field in section.fields" v-show="matchesCondition(field.condition)" :key="field.key" :span="formFieldSpan(field)">
+                            <div class="permission-form__field" :class="{'is-conditional': field.condition}">
+                            <el-form-item :label="field.label" :required="field.required">
+                            <el-input v-if="field.kind==='input'" v-model="formModel[field.key]" :placeholder="field.placeholder" :disabled="field.readonly"><span v-if="field.unit" slot="suffix">{{ field.unit }}</span></el-input>
+                            <el-input v-else-if="field.kind==='textarea'" v-model="formModel[field.key]" type="textarea" :rows="3" :placeholder="field.placeholder" :disabled="field.readonly"></el-input>
+                            <el-select v-else-if="field.kind==='select'" v-model="formModel[field.key]" :multiple="field.multiple || false" :placeholder="field.placeholder" :disabled="field.readonly"><el-option v-for="option in field.options" :key="option" :label="option" :value="option"></el-option></el-select>
+                            <el-date-picker v-else-if="field.kind==='date-range'" v-model="formModel[field.key]" type="datetimerange" start-placeholder="开始时间" end-placeholder="结束时间"></el-date-picker>
+                            <el-date-picker v-else-if="field.kind==='date'" v-model="formModel[field.key]" type="date" placeholder="请选择日期" :disabled="field.readonly"></el-date-picker>
+                            <el-radio-group v-else-if="field.kind==='radio'" v-model="formModel[field.key]"><el-radio v-for="option in field.options" :key="option" :label="option">{{ option }}</el-radio></el-radio-group>
+                            <el-checkbox-group v-else-if="field.kind==='checkbox'" v-model="formModel[field.key]"><el-checkbox v-for="option in field.options" :key="option" :label="option">{{ option }}</el-checkbox></el-checkbox-group>
+                            <el-input-number v-else-if="field.kind==='input-number'" v-model="formModel[field.key]" :min="field.min" :max="field.max" :step="field.step || 1"></el-input-number>
+                            <el-slider v-else-if="field.kind==='slider'" v-model="formModel[field.key]" :min="field.min" :max="field.max" :step="field.step || 1" :range="field.range || false" show-input></el-slider>
+                            <el-switch v-else-if="field.kind==='switch'" v-model="formModel[field.key]"></el-switch>
+                              <div v-if="field.description" class="permission-form__field-description">{{ field.description }}</div>
+                            </el-form-item>
+                          </div>
+                          </el-col>
+                        </el-row>
+                      </div>
+                    </el-form>
+                    </div>
+                  </div>
+                  <div class="form-area__footer" data-zone="form.actions" data-component="toolbar.action-toolbar"><template v-if="isWorkOrderForm"><el-button @click="previousFormSection">上一步</el-button><el-button type="primary" @click="nextFormSection">下一步</el-button><el-button @click="resetForm">取消</el-button></template><template v-else-if="config.form_actions && config.form_actions.length"><el-button v-for="(action,index) in config.form_actions" :key="action" :type="index===0 ? 'primary' : 'default'" @click="formAction(action)">{{ action }}</el-button></template><template v-else><el-button @click="resetForm">取消</el-button><el-button type="primary" @click="saveForm">保存</el-button></template></div>
+                </div>
+<!-- @include ../navigation/anchor-nav.html -->
+              </div>

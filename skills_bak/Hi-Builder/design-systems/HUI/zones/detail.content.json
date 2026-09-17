@@ -1,0 +1,8 @@
+{
+  "schema_version": "d2c-zone.v1",
+  "id": "detail.content",
+  "name": "通用详情内容区域",
+  "description": "承载跨产品通用的对象摘要、属性分组、文档详情和关联内容。",
+  "use_when": ["页面主体用于阅读单一业务对象的详情信息"],
+  "owner": "hui-common"
+}

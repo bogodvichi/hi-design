@@ -1,0 +1,199 @@
+{
+  "beginRendering": {
+    "surfaceId": "详情完整内容区",
+    "root": "详情完整内容区",
+    "width": 1280,
+    "height": 880,
+    "theme": "桌面端/主题/红白🔴⚪Token V3.0（beta版）",
+    "description": "页面最小宽度1080px，最小高度628px",
+    "themeKey": "QRBPuLZTWDZNoO5HC7sSwg"
+  },
+  "surfaceUpdate": {
+    "components": [
+      {
+        "id": "详情完整内容区",
+        "component": {
+          "Column": {
+            "styles": {
+              "justify-content": "start",
+              "align-items": "start",
+              "padding": [
+                0,
+                0,
+                0,
+                0
+              ],
+              "gap": 0
+            },
+            "children": {
+              "explicitList": [
+                "弹窗标题",
+                "左tab右操作",
+                "详情信息内容区"
+              ]
+            }
+          }
+        },
+        "width": 1280,
+        "height": 880
+      },
+      {
+        "id": "弹窗标题",
+        "component": {
+          "Section": {
+            "name": "标题栏",
+            "description": "",
+            "layoutType": "Row",
+            "gap": 0,
+            "justify-content": "start",
+            "align-items": "start",
+            "padding": [
+              0,
+              8,
+              0,
+              24
+            ],
+            "align-self": "stretch"
+          }
+        },
+        "height": 56
+      },
+      {
+        "id": "左tab右操作",
+        "component": {
+          "Section": {
+            "name": "tab栏",
+            "description": "",
+            "layoutType": "Row",
+            "justify-content": "spaceBetween",
+            "align-items": "center",
+            "padding": [
+              0,
+              16,
+              0,
+              16
+            ],
+            "align-self": "stretch"
+          }
+        },
+        "height": 56
+      },
+      {
+        "id": "详情信息内容区",
+        "component": {
+          "Row": {
+            "styles": {
+              "justify-content": "start",
+              "align-items": "start",
+              "padding": [
+                0,
+                16,
+                16,
+                16
+              ],
+              "gap": 0,
+              "flex": 1,
+              "align-self": "stretch"
+            },
+            "children": {
+              "explicitList": [
+                "组合 3245",
+                "矩形 9462",
+                "文字说明+表单操作"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "组合 3245",
+        "component": {
+          "Column": {
+            "styles": {
+              "justify-content": "start",
+              "align-items": "start",
+              "padding": [
+                0,
+                16,
+                16,
+                16
+              ],
+              "gap": 12,
+              "flex": 1,
+              "align-self": "stretch"
+            },
+            "children": {
+              "explicitList": [
+                "大图预览器",
+                "事件切换-带标题-横向"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "id": "大图预览器",
+        "component": {
+          "Section": {
+            "name": "主内容展示区",
+            "description": "用于详情图片的展示",
+            "layoutType": "Column",
+            "gap": 0,
+            "justify-content": "start",
+            "align-items": "start",
+            "padding": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "flex": 1,
+            "align-self": "stretch"
+          }
+        }
+      },
+      {
+        "id": "事件切换-带标题-横向",
+        "component": {
+          "Section": {
+            "name": "数据切换列表",
+            "description": "",
+            "layoutType": "Column",
+            "gap": 0,
+            "justify-content": "start",
+            "align-items": "start",
+            "padding": [
+              0,
+              0,
+              0,
+              0
+            ],
+            "align-self": "stretch"
+          }
+        },
+        "height": 140
+      },
+      {
+        "id": "文字说明+表单操作",
+        "component": {
+          "Section": {
+            "name": "信息面板区",
+            "description": "",
+            "layoutType": "Column",
+            "gap": 24,
+            "justify-content": "start",
+            "align-items": "start",
+            "padding": [
+              24,
+              24,
+              0,
+              24
+            ],
+            "align-self": "stretch"
+          }
+        },
+        "width": 340
+      }
+    ]
+  }
+}

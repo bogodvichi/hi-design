@@ -1,0 +1,95 @@
+{
+  "schema_version": "hui-page-pattern.v1",
+  "id": "hui.tpp.family.form-stepped",
+  "name": "步骤表单页",
+  "source": {
+    "platform": "HUI-VUE典型页面",
+    "observed_at": "2026-07-31",
+    "catalog": "../../catalog.json"
+  },
+  "match": [
+    "stepped-form",
+    "步骤表单",
+    "步骤条"
+  ],
+  "semantics": [
+    "step-navigation",
+    "step-content",
+    "previous-next-actions",
+    "cancel-action"
+  ],
+  "shared_runtime_components": [
+    "el-button",
+    "el-checkbox",
+    "el-col",
+    "el-date-picker",
+    "el-form",
+    "el-form-item",
+    "el-input",
+    "el-input-number",
+    "el-option",
+    "el-radio",
+    "el-radio-group",
+    "el-row",
+    "el-scrollbar",
+    "el-select",
+    "el-slider",
+    "el-switch",
+    "el-tag",
+    "el-tooltip",
+    "el-upload",
+    "h-svg-icon"
+  ],
+  "invariants": {
+    "regions": {
+      "content": {
+        "display": "flex",
+        "position": "static",
+        "padding": "48px 80px 58px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "form": {
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "footer": {
+        "display": "flex",
+        "position": "sticky",
+        "padding": "12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 57
+      }
+    },
+    "variant_values_must_come_from_page_contract": true
+  },
+  "variants": [
+    {
+      "id": "hui.tpp.page.form.horizontal-step-bar",
+      "name": "水平栏步骤条",
+      "contract": "../../pages/form/horizontal-step-bar.json",
+      "parameters": {
+        "step_placement": "content-top",
+        "step_count": 3,
+        "default_label_position": null
+      }
+    },
+    {
+      "id": "hui.tpp.page.form.sidebar-step-bar",
+      "name": "侧边栏步骤条",
+      "contract": "../../pages/form/sidebar-step-bar.json",
+      "parameters": {
+        "step_placement": "left-sidebar",
+        "step_count": 3,
+        "default_label_position": null
+      }
+    }
+  ]
+}

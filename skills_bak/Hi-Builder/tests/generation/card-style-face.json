@@ -1,0 +1,26 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "id": "card-style-face",
+  "title": "基础卡片样式 · 人脸卡片",
+  "page_kind": "card",
+  "pattern_contract": "card/face.json",
+  "portal": {
+    "active_top_menu": "智能应用", "section": "基础卡片样式测试", "tab_title": "人脸卡片", "active_side_menu": "face-card",
+    "side_menus": [
+      {"id": "vehicle-card", "label": "车辆卡片", "icon": "h-icon-menu", "href": "vehicle-card.html"},
+      {"id": "face-card", "label": "人脸卡片", "icon": "h-icon-menu", "href": "face-card.html"},
+      {"id": "similarity-card", "label": "相似度卡片", "icon": "h-icon-menu", "href": "similarity-card.html"},
+      {"id": "text-card", "label": "文本卡片", "icon": "h-icon-menu", "href": "text-card.html"},
+      {"id": "data-list", "label": "数据列表卡片", "icon": "h-icon-menu", "href": "data-list.html"}
+    ]
+  },
+  "toolbar_actions": [{"label": "添加", "icon": "h-icon-add"}, {"label": "编辑", "icon": "h-icon-edit"}, {"label": "删除", "icon": "h-icon-delete"}],
+  "page_size": 20,
+  "preview": {"total": 3, "rows": [
+    {"id": "face-1", "image": "http://tpp.dev.hikhub.net/tpp/img/face.ea90fce8.png", "title": "张伟", "status": "重点关注", "department": "安保部", "identity": "内部人员", "location": "交通枢纽"},
+    {"id": "face-2", "image": "http://tpp.dev.hikhub.net/tpp/img/face.ea90fce8.png", "title": "李娜", "status": "正常", "department": "运营部", "identity": "访客", "location": "城市道路"},
+    {"id": "face-3", "image": "http://tpp.dev.hikhub.net/tpp/img/face.ea90fce8.png", "title": "王强", "status": "待复核", "department": "综合部", "identity": "临时人员", "location": "商业区域"}
+  ]}
+}

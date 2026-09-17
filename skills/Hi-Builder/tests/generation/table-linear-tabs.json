@@ -1,0 +1,38 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "id": "table-linear-tabs",
+  "title": "设备运行状态",
+  "page_kind": "table",
+  "pattern_contract": "table/linear-tabs.json",
+  "portal": {
+    "active_top_menu": "智能应用",
+    "section": "HUI典型页",
+    "tab_title": "线性标签页",
+    "active_side_menu": "table-linear-tabs",
+    "side_menus": [
+      {"id": "table-linear-tabs", "label": "线性标签页", "icon": "h-icon-menu", "href": "table-linear-tabs.html"},
+      {"id": "table-linear-tabs-tree", "label": "线性标签页+树控件", "icon": "h-icon-menu", "href": "table-linear-tabs-with-tree.html"},
+      {"id": "table-card-tabs", "label": "卡式标签页", "icon": "h-icon-menu", "href": "table-card-tabs.html"},
+      {"id": "table-card-tabs-tree", "label": "卡式标签页+树控件", "icon": "h-icon-menu", "href": "table-card-tabs-with-tree.html"}
+    ]
+  },
+  "table_tabs": [{"id": "online", "label": "在线设备"}, {"id": "offline", "label": "离线设备"}, {"id": "maintenance", "label": "维护中"}],
+  "filters": [
+    {"key": "keyword", "label": "关键字", "kind": "input", "placeholder": "请输入设备名称或编号", "default": ""},
+    {"key": "area", "label": "所属区域", "kind": "select", "options": ["全部", "总部园区", "研发中心", "生产园区"], "default": "全部"},
+    {"key": "status", "label": "设备状态", "kind": "select", "options": ["全部", "在线", "离线", "维护中"], "default": "全部"},
+    {"key": "deviceType", "label": "设备类型", "kind": "select", "options": ["全部", "网络摄像机", "报警主机", "门禁设备"], "default": "全部"},
+    {"key": "department", "label": "所属部门", "kind": "select", "options": ["全部", "安保部", "信息中心", "设施管理部"], "default": "全部"},
+    {"key": "owner", "label": "负责人", "kind": "input", "placeholder": "请输入负责人", "default": ""}
+  ],
+  "toolbar_actions": [{"label": "添加", "icon": "h-icon-add"}, {"label": "导出", "icon": "h-icon-export"}],
+  "columns": [{"prop": "deviceName", "label": "设备名称"}, {"prop": "deviceCode", "label": "设备编号"}, {"prop": "area", "label": "所属区域"}, {"prop": "status", "label": "状态"}, {"prop": "updateTime", "label": "更新时间"}],
+  "page_size": 10,
+  "preview": {"tableTabRows": {
+    "online": [{"id": 1, "deviceName": "东门人脸抓拍机", "deviceCode": "IPC-FACE-001", "area": "总部园区", "status": "在线", "updateTime": "2026-08-19 10:32:18"}, {"id": 2, "deviceName": "研发楼大厅球机", "deviceCode": "IPC-PTZ-015", "area": "研发中心", "status": "在线", "updateTime": "2026-08-19 10:30:46"}],
+    "offline": [{"id": 3, "deviceName": "西侧周界报警主机", "deviceCode": "ALM-W-003", "area": "生产园区", "status": "离线", "updateTime": "2026-08-19 09:18:12"}],
+    "maintenance": [{"id": 4, "deviceName": "地下车库出入口相机", "deviceCode": "IPC-CAR-021", "area": "总部园区", "status": "维护中", "updateTime": "2026-08-19 08:42:31"}]
+  }}
+}

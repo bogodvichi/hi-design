@@ -1,0 +1,14 @@
+{
+  "schema_version": "hui-component-pattern.v2",
+  "id": "navigation.breadcrumb",
+  "name": "面包屑导航",
+  "split_mode": "composite",
+  "vue_component": "BreadcrumbNavigation",
+  "description": "使用标准HUI面包屑组件展示页面层级路径",
+  "category": "navigation",
+  "status": "active",
+  "use_when": ["页面需要展示当前业务区域和页面标题的层级关系"],
+  "hui_components": ["el-breadcrumb", "el-breadcrumb-item"],
+  "variants": ["default"],
+  "owner": "hui-common"
+}

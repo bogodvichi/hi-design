@@ -1,0 +1,18 @@
+{
+  "path": "/pages/details/upAndDownLayout",
+  "name": "详情页_总分结构_上下布局",
+  "package": "@hiktpp/details-upAndDownLayout",
+  "hui_version": "^2.55.0",
+  "observed_at": "2026-08-14",
+  "viewport": {"width": 1728, "height": 935},
+  "root": {"class": "h-page-content form-area is-flex is-align-center", "rect": {"x": 240, "y": 336.56, "width": 1488, "height": 598.44}, "style": {"display": "flex", "padding": "16px 16px 0px"}},
+  "observed_structure": {"breadcrumb": ["详情页", "总分结构", "上下布局"], "layout_direction": "vertical", "container_relation": "separate", "master_position": "top", "detail_root_y": 336.56, "group_count": 3, "description_item_count": 8, "embedded_tables": 2, "pagination": true},
+  "regions": {
+    "detail_scrollbar": {"class": "form-area__scrollbar", "rect": {"x": 256, "y": 352.56, "width": 1456, "height": 582.44}},
+    "detail_content": {"class": "form-area__content", "rect": {"x": 256, "y": 352.56, "width": 1456, "height": 1454}, "padding": "48px 80px 58px"},
+    "detail_groups": {"class": "form-area__group", "rect": {"x": 336, "y": 400.56, "width": 1296, "height": 1348}}
+  },
+  "component_count_scope": "page-content-relevant-only",
+  "runtime_components": {"el-breadcrumb": 1, "el-breadcrumb-item": 3, "el-tag": 3, "el-table": 2, "el-pagination": 1},
+  "actions": ["跳转"]
+}

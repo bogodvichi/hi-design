@@ -1,0 +1,400 @@
+ .backdrop {
+   position: fixed;
+   inset: 0;
+   z-index: 9000;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   background: rgba(0, 0, 0, 0.32);
+   backdrop-filter: blur(2px);
+ }
+ 
+.dialog {
+  width: min(520px, 92vw);
+  max-height: 86vh;
+  overflow: hidden;
+  background: var(--bg, #fff);
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+  border-radius: var(--radius, 12px);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.16);
+  display: flex;
+  flex-direction: column;
+}
+ 
+ .dialogHeader {
+   display: flex;
+   align-items: center;
+   justify-content: space-between;
+   gap: 12px;
+   padding: 18px 22px 14px;
+   border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
+ }
+ 
+ .dialogTitle {
+   margin: 0;
+   font-size: 16px;
+   font-weight: 600;
+   color: var(--text-strong);
+ }
+ 
+ .closeBtn {
+   appearance: none;
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   width: 30px;
+   height: 30px;
+   padding: 0;
+   border: 0;
+   border-radius: var(--radius-pill, 999px);
+   background: transparent;
+   color: var(--text-muted);
+   cursor: pointer;
+   transition: background-color 140ms var(--ease-out, ease);
+ }
+ 
+ .closeBtn:hover:not(:disabled) {
+   background: var(--bg-subtle, rgba(0, 0, 0, 0.05));
+ }
+ 
+.dialogBody {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px 22px 22px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+ 
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
+  border-radius: var(--radius, 12px);
+}
+ 
+ .sectionTitle {
+   margin: 0;
+   font-size: 14px;
+   font-weight: 600;
+   color: var(--text-strong);
+ }
+ 
+ .sectionBody {
+   margin: 0;
+   font-size: 13px;
+   line-height: 1.5;
+   color: var(--text-muted);
+ }
+ 
+ .urlRow {
+   display: flex;
+   gap: 8px;
+   margin-top: 2px;
+ }
+ 
+ .urlInput {
+   flex: 1 1 auto;
+   min-width: 0;
+   height: 36px;
+   padding: 0 12px;
+   border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
+   border-radius: var(--radius, 8px);
+   background: var(--bg, #fff);
+   color: var(--text);
+   font: inherit;
+   font-size: 13px;
+ }
+ 
+ .urlInput:focus {
+   outline: none;
+   border-color: var(--accent, #87ea5c);
+   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent, #87ea5c) 24%, transparent);
+ }
+ 
+ .urlInput:disabled {
+   opacity: 0.55;
+ }
+ 
+ .folderRow {
+   display: flex;
+   gap: 8px;
+   margin-top: 2px;
+ }
+ 
+ .folderPickBtn {
+   appearance: none;
+   display: inline-flex;
+   align-items: center;
+   gap: 7px;
+   min-height: 36px;
+   padding: 0 14px;
+   border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
+   border-radius: var(--radius, 8px);
+   background: var(--bg, #fff);
+   color: var(--text);
+   font: inherit;
+   font-size: 13px;
+   cursor: pointer;
+   transition: background-color 140ms var(--ease-out, ease);
+   flex: 1 1 auto;
+ }
+ 
+ .folderPickBtn:hover:not(:disabled) {
+   background: var(--bg-hover, rgba(0, 0, 0, 0.04));
+ }
+ 
+ .folderPickBtn:disabled {
+   opacity: 0.55;
+   cursor: default;
+ }
+ 
+ .primaryBtn {
+   appearance: none;
+   display: inline-flex;
+   align-items: center;
+   justify-content: center;
+   gap: 7px;
+   min-height: 36px;
+   padding: 0 16px;
+   border: 0;
+   border-radius: var(--radius, 8px);
+   background: var(--text-strong, #1a1a1a);
+   color: var(--accent-contrast, #fff);
+   font: inherit;
+   font-size: 13px;
+   font-weight: 600;
+   cursor: pointer;
+   transition: background-color 140ms var(--ease-out, ease);
+   flex: 0 0 auto;
+   white-space: nowrap;
+ }
+ 
+ .primaryBtn:hover:not(:disabled) {
+   background: color-mix(in srgb, var(--text-strong, #1a1a1a) 88%, #fff);
+ }
+ 
+.primaryBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.tabBar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.08));
+  margin-bottom: 4px;
+}
+
+.tabBtn {
+  appearance: none;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 140ms var(--ease-out, ease);
+}
+
+.tabBtn:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.tabBtnActive {
+  color: var(--text-strong);
+}
+
+.tabBtnActive::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 2px;
+  background: var(--text-strong, #1a1a1a);
+  border-radius: 2px 2px 0 0;
+}
+
+.tabBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.dialogSubtitle {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.headerText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.uploadZone {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 140px;
+  padding: 24px;
+  border: 1.5px dashed var(--border, rgba(0, 0, 0, 0.16));
+  border-radius: var(--radius, 12px);
+  background: var(--bg-subtle, rgba(0, 0, 0, 0.02));
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 140ms var(--ease-out, ease), background-color 140ms var(--ease-out, ease);
+  text-align: center;
+}
+
+.uploadZone:hover:not(:disabled) {
+  border-color: var(--text-strong);
+  background: var(--bg-hover, rgba(0, 0, 0, 0.04));
+}
+
+.uploadZone:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.uploadZoneIcon {
+  display: flex;
+
+.uploadZoneDragOver {
+  border-color: var(--accent, #4f7cff) !important;
+  background: var(--bg-hover, rgba(0, 0, 0, 0.04)) !important;
+}
+
+.selectZipBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 0 14px;
+  min-height: 32px;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
+  border-radius: var(--radius, 8px);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 140ms var(--ease-out, ease), color 140ms var(--ease-out, ease);
+}
+
+.selectZipBtn:hover:not(:disabled) {
+  border-color: var(--text-strong);
+  color: var(--text-strong);
+}
+
+.selectZipBtn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.uploadZoneStrong {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.fieldLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.uploadDualZone {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.uploadZoneHalf {
+  appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 140px;
+  padding: 20px 16px;
+  border: 1.5px dashed var(--border, rgba(0, 0, 0, 0.16));
+  border-radius: var(--radius, 12px);
+  background: var(--bg-subtle, rgba(0, 0, 0, 0.02));
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 140ms var(--ease-out, ease), background-color 140ms var(--ease-out, ease);
+  text-align: center;
+}
+
+.uploadZoneHalf:hover:not(:disabled) {
+  border-color: var(--text-strong);
+  background: var(--bg-hover, rgba(0, 0, 0, 0.04));
+}
+
+.uploadZoneHalf:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.dialogFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 22px;
+  border-top: 1px solid var(--border-subtle, rgba(0, 0, 0, 0.06));
+}
+
+.cancelBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 16px;
+  border: 1px solid var(--border, rgba(0, 0, 0, 0.12));
+  border-radius: var(--radius, 8px);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 140ms var(--ease-out, ease);
+}
+
+.cancelBtn:hover:not(:disabled) {
+  background: var(--bg-hover, rgba(0, 0, 0, 0.04));
+}
+
+.cancelBtn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}

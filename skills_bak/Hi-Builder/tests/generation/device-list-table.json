@@ -1,0 +1,60 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "id": "device-list-table",
+  "title": "设备列表查询",
+  "page_kind": "table",
+  "pattern_contract": "table/regular-filter-box-high-low.json",
+  "portal": {
+    "active_top_menu": "更多",
+    "section": "设备管理",
+    "tab_title": "设备列表",
+    "active_side_menu": "device-list",
+    "side_menus": [
+      {"id": "device-overview", "label": "设备概览", "icon": "h-icon-home"},
+      {"id": "device-list", "label": "设备列表", "icon": "h-icon-menu"},
+      {"id": "device-permission", "label": "设备权限", "icon": "h-icon-lock"},
+      {"id": "capture-record", "label": "抓拍记录", "icon": "h-icon-liveview"}
+    ]
+  },
+  "filters": [
+    {"key": "deviceName", "label": "设备名称", "kind": "input", "placeholder": "请输入设备名称或编号", "default": ""},
+    {"key": "deviceType", "label": "设备类型", "kind": "select", "options": ["全部", "网络摄像机", "NVR", "门禁控制器", "报警主机"], "default": "全部"},
+    {"key": "status", "label": "在线状态", "kind": "select", "options": ["全部", "在线", "离线"], "default": "全部"},
+    {"key": "area", "label": "所属区域", "kind": "input", "placeholder": "请输入所属区域", "default": ""},
+    {"key": "ip", "label": "IP地址", "kind": "input", "placeholder": "请输入IP地址", "default": ""}
+  ],
+  "toolbar_actions": [
+    {"label": "添加", "icon": "h-icon-add"},
+    {"label": "编辑", "icon": "h-icon-edit"},
+    {"label": "删除", "icon": "h-icon-delete"},
+    {"label": "导入", "icon": "h-icon-import"},
+    {"label": "导出", "icon": "h-icon-export"}
+  ],
+  "columns": [
+    {"prop": "deviceName", "label": "设备名称"},
+    {"prop": "deviceCode", "label": "设备编号"},
+    {"prop": "deviceType", "label": "设备类型"},
+    {"prop": "area", "label": "所属区域"},
+    {"prop": "ip", "label": "IP地址"},
+    {"prop": "status", "label": "在线状态"},
+    {"prop": "lastOnline", "label": "最近在线时间"}
+  ],
+  "page_size": 20,
+  "preview": {
+    "total": 68,
+    "rows": [
+    {"id": 1, "deviceName": "东门人脸抓拍机-01", "deviceCode": "IPC-FACE-001", "deviceType": "网络摄像机", "area": "总部园区-东门", "ip": "10.10.12.31", "status": "在线", "lastOnline": "2026-07-31 16:35:22"},
+    {"id": 2, "deviceName": "西门车辆卡口-02", "deviceCode": "IPC-VEH-002", "deviceType": "网络摄像机", "area": "总部园区-西门", "ip": "10.10.12.42", "status": "在线", "lastOnline": "2026-07-31 16:34:48"},
+    {"id": 3, "deviceName": "研发楼大厅球机", "deviceCode": "IPC-PTZ-015", "deviceType": "网络摄像机", "area": "研发中心-1层", "ip": "10.10.18.15", "status": "离线", "lastOnline": "2026-07-31 14:08:16"},
+    {"id": 4, "deviceName": "A区录像存储-01", "deviceCode": "NVR-A-001", "deviceType": "NVR", "area": "监控中心机房", "ip": "10.10.20.11", "status": "在线", "lastOnline": "2026-07-31 16:35:31"},
+    {"id": 5, "deviceName": "生产园区门禁控制器", "deviceCode": "ACS-P-008", "deviceType": "门禁控制器", "area": "生产园区-南门", "ip": "10.10.32.18", "status": "在线", "lastOnline": "2026-07-31 16:33:09"},
+    {"id": 6, "deviceName": "周界报警主机-西段", "deviceCode": "ALM-W-003", "deviceType": "报警主机", "area": "总部园区-西侧周界", "ip": "10.10.26.33", "status": "离线", "lastOnline": "2026-07-30 22:17:40"},
+    {"id": 7, "deviceName": "地下车库出入口相机", "deviceCode": "IPC-CAR-021", "deviceType": "网络摄像机", "area": "总部园区-B1车库", "ip": "10.10.14.21", "status": "在线", "lastOnline": "2026-07-31 16:35:04"},
+    {"id": 8, "deviceName": "研发楼二层走廊枪机", "deviceCode": "IPC-BUL-027", "deviceType": "网络摄像机", "area": "研发中心-2层", "ip": "10.10.18.27", "status": "在线", "lastOnline": "2026-07-31 16:34:55"},
+    {"id": 9, "deviceName": "生产线全景相机-03", "deviceCode": "IPC-PANO-003", "deviceType": "网络摄像机", "area": "生产园区-3号车间", "ip": "10.10.35.13", "status": "在线", "lastOnline": "2026-07-31 16:32:37"},
+    {"id": 10, "deviceName": "总部备用录像存储", "deviceCode": "NVR-B-002", "deviceType": "NVR", "area": "监控中心机房", "ip": "10.10.20.12", "status": "在线", "lastOnline": "2026-07-31 16:35:18"}
+    ]
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "list",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/data/list",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/data.docs.json",
+    "evidence_sha256": "1faf13316d3e61002e07073d56ed0739f08ed5e112cba04b1d62b08484a37c71"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-list": {
+      "props": [
+        {
+          "参数": "divider",
+          "说明": "是否开启分割线",
+          "类型": "Boolean",
+          "可选值": "true/false",
+          "默认值": "false",
+          "template_name": "divider"
+        }
+      ],
+      "events": [],
+      "slots": [
+        {
+          "名称": "header",
+          "说明": "头部内容",
+          "template_name": "header"
+        },
+        {
+          "名称": "default",
+          "说明": "内容",
+          "template_name": "default"
+        },
+        {
+          "名称": "footer",
+          "说明": "底部内容",
+          "template_name": "footer"
+        }
+      ],
+      "methods": []
+    },
+    "el-list-item": {
+      "props": [
+        {
+          "参数": "simple",
+          "说明": "简易模式",
+          "类型": "Boolean",
+          "可选值": "true/false",
+          "默认值": "false",
+          "template_name": "simple"
+        },
+        {
+          "参数": "height",
+          "说明": "高度",
+          "类型": "Number",
+          "可选值": "-",
+          "默认值": "48",
+          "template_name": "height"
+        },
+        {
+          "参数": "title",
+          "说明": "标题",
+          "类型": "String",
+          "可选值": "-",
+          "默认值": "-",
+          "template_name": "title"
+        },
+        {
+          "参数": "desc",
+          "说明": "内容",
+          "类型": "String/Array",
+          "可选值": "-",
+          "默认值": "-",
+          "template_name": "desc"
+        },
+        {
+          "参数": "descLabel",
+          "说明": "内容小标题",
+          "类型": "String/Array",
+          "可选值": "-",
+          "默认值": "-",
+          "template_name": "desc-label"
+        },
+        {
+          "参数": "descPrefixIcon",
+          "说明": "前缀图标",
+          "类型": "String/Object/Array",
+          "可选值": "-",
+          "默认值": "-",
+          "template_name": "desc-prefix-icon"
+        },
+        {
+          "参数": "cloumns",
+          "说明": "列数",
+          "类型": "Number",
+          "可选值": "-",
+          "默认值": "1",
+          "template_name": "cloumns"
+        }
+      ],
+      "events": [],
+      "slots": [
+        {
+          "名称": "item-left",
+          "说明": "item 左侧内容",
+          "template_name": "item-left"
+        },
+        {
+          "名称": "item-right",
+          "说明": "item 右侧内容",
+          "template_name": "item-right"
+        },
+        {
+          "名称": "item-header",
+          "说明": "item 头部内容",
+          "template_name": "item-header"
+        },
+        {
+          "名称": "item-title",
+          "说明": "item 标题",
+          "template_name": "item-title"
+        },
+        {
+          "名称": "item-title-extra",
+          "说明": "item 标题右侧内容",
+          "template_name": "item-title-extra"
+        },
+        {
+          "名称": "item-desc",
+          "说明": "item 内容",
+          "template_name": "item-desc"
+        },
+        {
+          "名称": "item-footer",
+          "说明": "item 底部内容",
+          "template_name": "item-footer"
+        }
+      ],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

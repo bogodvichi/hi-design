@@ -1,0 +1,8 @@
+{
+  "schema_version": "d2c-zone.v1",
+  "id": "navigation.view-tabs",
+  "name": "视图页签区域",
+  "description": "切换同一数据集合的不同分类或展示视图",
+  "use_when": ["集合页面需要通过页签切换视图"],
+  "owner": "hui-common"
+}

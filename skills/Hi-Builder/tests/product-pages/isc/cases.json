@@ -1,0 +1,7 @@
+{
+  "schema_version": "product-acceptance-suite.v1",
+  "industry": "general",
+  "product": "isc",
+  "output_root": "output/product-tests/isc",
+  "cases": []
+}

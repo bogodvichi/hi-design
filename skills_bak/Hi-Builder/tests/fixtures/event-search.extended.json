@@ -1,0 +1,30 @@
+{
+  "schema_version": "page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "page_type": "event-search",
+  "title": "重点设备事件检索",
+  "payload": {
+    "options": {
+      "filter": {"fields": ["area", "device-type", "level", "source"], "collapsed": true},
+      "toolbar": {"actions": ["export"], "view_switch": false, "video_mode_switch": false},
+      "collection": {
+        "columns": ["event-type", "time", "area", "source", "level", "actions"],
+        "row_actions": ["detail"],
+        "card_fields": ["time", "area", "source"]
+      },
+      "pagination": {"page_size": 10},
+      "extensions": [
+        {
+          "kind": "summary-strip",
+          "title": "当前结果",
+          "items": [
+            {"label": "紧急事件", "value": 12},
+            {"label": "未确认", "value": 23}
+          ]
+        }
+      ]
+    },
+    "content": {}
+  }
+}

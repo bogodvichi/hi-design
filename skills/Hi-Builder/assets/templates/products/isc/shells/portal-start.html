@@ -1,0 +1,43 @@
+    <main class="portal-shell product-context">
+      <header class="portal-header" data-zone="portal.header" data-component="portal.global-header">
+        <div class="portal-line1">
+          <div class="portal-brand">
+            <img class="portal-logo" :src="config.product_logo" :alt="config.product_name" data-d2c-product-brand>
+            <span class="portal-brand-name">{{ config.product_name }}</span>
+          </div>
+          <nav class="portal-main-menu">
+            <span v-for="item in config.top_menus" :key="item" class="portal-main-menu__item" :class="{'is-active': item === config.portal.active_top_menu}">{{ item }}</span>
+          </nav>
+          <div class="portal-tools">
+            <el-input class="portal-search" v-model="portalKeyword" size="small" prefix-icon="h-icon-search" placeholder="搜索菜单"></el-input>
+            <a class="portal-pill" href="#"><i class="h-icon-qrcode" aria-hidden="true"></i><span>问题反馈</span><span>|</span><span>演示指南</span><i class="h-icon-share" aria-hidden="true"></i></a>
+            <el-button class="portal-icon-button" type="text" size="small" icon="h-icon-help" title="帮助"></el-button>
+            <el-button class="portal-icon-button" type="text" size="small" icon="h-icon-lock" title="安全"></el-button>
+            <el-button class="portal-icon-button" type="text" size="small" icon="h-icon-download" title="下载"></el-button>
+            <el-button class="portal-icon-button" type="text" size="small" icon="h-icon-menu" title="菜单"></el-button>
+            <div class="portal-user"><span>张工</span><i class="h-icon-angle_down_sm"></i></div>
+          </div>
+        </div>
+        <div class="portal-line2">
+          <el-button class="portal-icon-button" type="text" icon="h-icon-home" title="首页"></el-button>
+          <div class="portal-tabs"><div class="portal-tab"><span>{{ config.portal.tab_title }}</span><el-button class="portal-icon-button" type="text" icon="h-icon-close_f" title="关闭"></el-button></div></div>
+          <div class="portal-tab-actions">
+            <el-button class="portal-icon-button" type="text" icon="h-icon-refresh" title="刷新"></el-button>
+            <el-button class="portal-icon-button" type="text" icon="h-icon-more_verti" title="更多"></el-button>
+          </div>
+        </div>
+      </header>
+
+      <div class="portal-body">
+        <aside class="portal-app-sidebar" :class="{'is-collapsed': sidebarCollapsed}" data-zone="portal.sidebar" data-component="portal.app-sidebar">
+          <el-button class="portal-side-collapse" type="text" @click="sidebarCollapsed=!sidebarCollapsed"><span class="portal-side-icon"><i class="h-icon-menu_leftbar"></i></span></el-button>
+          <template v-for="item in config.portal.side_menus">
+            <el-button v-if="!item.children" :key="item.id" class="portal-side-item" type="text" :class="{'is-active':item.id===config.portal.active_side_menu}" @click="navigateSideMenu(item)"><span class="portal-side-icon"><i :class="item.icon"></i></span><span class="portal-side-label">{{ item.label }}</span></el-button>
+            <template v-else>
+              <el-button :key="item.id" class="portal-side-item" type="text" @click="toggleSideMenu(item.id)"><span class="portal-side-icon"><i :class="item.icon"></i></span><span class="portal-side-label">{{ item.label }}</span><span class="portal-side-caret" :class="{'is-open':expandedSideMenus.indexOf(item.id)!==-1}"><i class="h-icon-angle_right_sm"></i></span></el-button>
+              <div v-show="expandedSideMenus.indexOf(item.id)!==-1" :key="item.id+'-children'" class="portal-side-submenu">
+                <el-button v-for="child in item.children" :key="child.id" class="portal-side-subitem" type="text" :class="{'is-active':child.id===config.portal.active_side_menu}" @click="navigateSideMenu(child)"><span class="portal-side-label">{{ child.label }}</span></el-button>
+              </div>
+            </template>
+          </template>
+        </aside>

@@ -1,0 +1,54 @@
+{
+  "schema_version": "page-capabilities.v1",
+  "page_type": "event-search",
+  "name": "事件检索",
+  "spec_schema": "payload.schema.json",
+  "defaults": {
+    "title": "设备监控事件检索",
+    "filter_fields": ["area", "device-type", "level", "status", "source", "time"],
+    "toolbar_actions": ["export", "confirm"],
+    "table_columns": ["selection", "event-type", "time", "area", "source", "level", "status", "confirm-detail", "actions"],
+    "row_actions": ["detail", "handle"],
+    "card_fields": ["time", "area", "source", "status", "confirm-detail"],
+    "page_size": 20
+  },
+  "allowed": {
+    "filter_fields": ["area", "device-type", "level", "status", "source", "time"],
+    "toolbar_actions": ["export", "confirm"],
+    "table_columns": ["selection", "event-type", "time", "area", "source", "level", "status", "confirm-detail", "actions"],
+    "row_actions": ["detail", "handle"],
+    "card_fields": ["time", "area", "source", "status", "confirm-detail"],
+    "extension_kinds": ["summary-strip"]
+  },
+  "semantic_fields": {
+    "area": "common.location",
+    "device-type": "device.type",
+    "event-type": "event.type",
+    "level": "event.level",
+    "source": "event.source",
+    "time": "event.occurred-time",
+    "status": "event.confirm-status",
+    "confirm-detail": "event.confirm-detail"
+  },
+  "fixed_behavior": {
+    "filter_max_fields_per_row": 4,
+    "filter_collapsed_rows": 1,
+    "filter_expanded_rows": 2,
+    "filter_time_field_span": 1,
+    "filter_actions_move_to_second_row_when_expanded": true,
+    "table_row_action_button_type": "link",
+    "card_action_button_type": "text",
+    "pagination_alignment": "split"
+  },
+  "forbidden_in_spec": [
+    "css",
+    "html",
+    "px",
+    "color",
+    "font-size",
+    "gap",
+    "width",
+    "height",
+    "align"
+  ]
+}

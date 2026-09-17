@@ -1,0 +1,8 @@
+{
+  "schema_version": "d2c-zone.v1",
+  "id": "form.content",
+  "name": "表单内容区域",
+  "description": "承载用于查看或编辑业务对象的主要表单字段",
+  "use_when": ["页面主体是结构化业务表单"],
+  "owner": "hui-common"
+}

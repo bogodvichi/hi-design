@@ -1,0 +1,46 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "divider",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/others/divider",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/others.docs.json",
+    "evidence_sha256": "f150a2630aef3c6508a028b85a5e004a26036cac12218f39bbe7388c02099e11"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-divider": {
+      "props": [
+        {
+          "参数": "direction",
+          "说明": "设置分割线方向",
+          "类型": "string",
+          "可选值": "horizontal / vertical",
+          "默认值": "horizontal",
+          "template_name": "direction"
+        },
+        {
+          "参数": "position",
+          "说明": "设置分割线文案的位置",
+          "类型": "string",
+          "可选值": "left / right / center",
+          "默认值": "center",
+          "template_name": "position"
+        },
+        {
+          "参数": "border-style",
+          "说明": "设置分割线的边框的样式",
+          "类型": "string",
+          "可选值": "CSS/border-style",
+          "默认值": "solid",
+          "template_name": "border-style"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

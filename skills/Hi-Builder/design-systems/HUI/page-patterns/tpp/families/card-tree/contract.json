@@ -1,0 +1,161 @@
+{
+  "schema_version": "hui-page-pattern.v1",
+  "id": "hui.tpp.family.card-tree",
+  "name": "树导航卡片页",
+  "source": {
+    "platform": "HUI-VUE典型页面",
+    "observed_at": "2026-07-31T09:21:23.799Z",
+    "catalog": "../../catalog.json"
+  },
+  "match": [
+    "tree-card",
+    "卡片页带树控件",
+    "树控件卡片"
+  ],
+  "semantics": [
+    "tree-sidebar",
+    "optional-tabs",
+    "typed-card-collection",
+    "pagination"
+  ],
+  "shared_runtime_components": [
+    "el-breadcrumb",
+    "el-breadcrumb-item",
+    "el-button",
+    "el-card",
+    "el-divider",
+    "el-drawer",
+    "el-dropdown",
+    "el-dropdown-item",
+    "el-form",
+    "el-form-item",
+    "el-input",
+    "el-menu-item",
+    "el-option",
+    "el-pagination",
+    "el-radio-button",
+    "el-radio-group",
+    "el-scrollbar",
+    "el-select",
+    "el-submenu",
+    "el-tag",
+    "el-tree",
+    "h-icon",
+    "h-svg-icon"
+  ],
+  "invariants": {
+    "regions": {
+      "search": {
+        "display": "block",
+        "position": "static",
+        "padding": "16px 0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 109
+      },
+      "sidebar": {
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 865.66
+      },
+      "toolbar": {
+        "display": "flex",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 56
+      },
+      "collection": {
+        "display": "grid",
+        "position": "static",
+        "padding": "0px",
+        "gap": "16px",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 1464
+      },
+      "card": {
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "hidden",
+        "overflow_y": "hidden",
+        "height": 354
+      },
+      "card_header": {
+        "display": "block",
+        "position": "static",
+        "padding": "16px 16px 12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 272
+      },
+      "card_body": {
+        "display": "block",
+        "position": "static",
+        "padding": "0px 16px 12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 80
+      },
+      "pagination": {
+        "display": "flex",
+        "position": "static",
+        "padding": "0px 12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 56
+      },
+      "tree": {
+        "display": "inline-block",
+        "position": "relative",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 320
+      }
+    },
+    "variant_values_must_come_from_page_contract": true
+  },
+  "variants": [
+    {
+      "id": "hui.tpp.page.card.tree-only",
+      "name": "树控件",
+      "contract": "../../pages/card/tree-only.json",
+      "parameters": {
+        "tab_style": "none",
+        "collection_presentation": "face-card"
+      }
+    },
+    {
+      "id": "hui.tpp.page.card.tree-with-card-tabs",
+      "name": "树控件+卡式标签页",
+      "contract": "../../pages/card/tree-with-card-tabs.json",
+      "parameters": {
+        "tab_style": "card",
+        "collection_presentation": "face-card"
+      }
+    },
+    {
+      "id": "hui.tpp.page.card.tree-with-linear-tabs",
+      "name": "树控件+线性标签页",
+      "contract": "../../pages/card/tree-with-linear-tabs.json",
+      "parameters": {
+        "tab_style": "linear",
+        "collection_presentation": "face-card"
+      }
+    }
+  ]
+}

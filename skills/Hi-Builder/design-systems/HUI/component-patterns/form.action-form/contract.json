@@ -1,0 +1,13 @@
+{
+  "schema_version": "hui-component-pattern.v2",
+  "id": "form.action-form",
+  "name": "业务操作表单",
+  "split_mode": "composite",
+  "vue_component": "ActionForm",
+  "description": "组合操作类型、意见输入、快捷选项和提交操作",
+  "category": "form",
+  "status": "active",
+  "use_when": ["用户需要填写少量参数后执行一次业务操作"],
+  "hui_components": ["el-form", "el-select", "el-option", "el-input", "el-checkable-tag", "el-button"],
+  "owner": "hui-common"
+}

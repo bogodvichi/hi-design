@@ -1,0 +1,8 @@
+{
+  "schema_version": "d2c-zone.v1",
+  "id": "navigation.detail-tabs",
+  "name": "详情页签区域",
+  "description": "切换同一业务对象的不同详情视图",
+  "use_when": ["详情页面包含多个并列业务视图"],
+  "owner": "hui-common"
+}

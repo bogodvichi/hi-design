@@ -1,0 +1,276 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "menu",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/navigation/menu-demo",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/navigation.docs.json",
+    "evidence_sha256": "e10ef37ba907910b3f0d40d9a0892b99ace9f2c5ad09cbd0ebf3bf440a34925a"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-menu": {
+      "props": [
+        {
+          "参数": "theme  移除",
+          "说明": "主题色",
+          "类型": "string",
+          "可选值": "light,dark",
+          "默认值": "light",
+          "template_name": "theme"
+        },
+        {
+          "参数": "default-active",
+          "说明": "当前激活菜单的 index",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "default-active"
+        },
+        {
+          "参数": "default-openeds",
+          "说明": "当前打开的submenu的 key 数组",
+          "类型": "Array",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "default-openeds"
+        },
+        {
+          "参数": "unique-opened",
+          "说明": "是否只保持一个子菜单的展开",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "unique-opened"
+        },
+        {
+          "参数": "router",
+          "说明": "是否使用 vue-router 的模式，启用该模式会在激活导航时以 index 作为 path 进行路由跳转",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "router"
+        },
+        {
+          "参数": "wrap-scroll",
+          "说明": "外部容器是否滚动，若滚动请开启这个参数",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "wrap-scroll"
+        },
+        {
+          "参数": "activedMask  2.52+",
+          "说明": "选中状态是否开启竖条标记",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "actived-mask"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "select",
+          "说明": "菜单激活回调",
+          "回调参数": "index: 选中菜单项的 indexPath: 选中菜单项的 index path",
+          "template_name": "select"
+        },
+        {
+          "事件名称": "open",
+          "说明": "SubMenu 展开的回调",
+          "回调参数": "index: 打开的 subMenu 的 index， indexPath: 打开的 subMenu 的 index path",
+          "template_name": "open"
+        },
+        {
+          "事件名称": "close",
+          "说明": "SubMenu 收起的回调",
+          "回调参数": "index: 收起的 subMenu 的 index， indexPath: 收起的 subMenu 的 index path",
+          "template_name": "close"
+        },
+        {
+          "事件名称": "fold",
+          "说明": "菜单折叠回调",
+          "回调参数": "—",
+          "template_name": "fold"
+        },
+        {
+          "事件名称": "unfold",
+          "说明": "菜单展开回调",
+          "回调参数": "—",
+          "template_name": "unfold"
+        }
+      ],
+      "slots": [
+        {
+          "name": "—",
+          "说明": "menu-item的内容",
+          "template_name": "—"
+        },
+        {
+          "name": "icon  2.0+",
+          "说明": "menu-item的图标",
+          "template_name": "icon"
+        },
+        {
+          "name": "suffix  2.50.0+",
+          "说明": "menu-item的后缀",
+          "template_name": "suffix"
+        },
+        {
+          "name": "description  2.50.0+",
+          "说明": "menu-item/sub-menu的描述",
+          "template_name": "description"
+        }
+      ],
+      "methods": [
+        {
+          "事件名称": "open  2.0+",
+          "说明": "展开指定的 sub-menu",
+          "参数": "index: 需要打开的 sub-menu 的 index",
+          "template_name": "open"
+        },
+        {
+          "事件名称": "close  2.0+",
+          "说明": "收起指定的 sub-menu",
+          "参数": "index: 需要收起的 sub-menu 的 index",
+          "template_name": "close"
+        }
+      ]
+    },
+    "el-submenu": {
+      "props": [
+        {
+          "参数": "index",
+          "说明": "唯一标志",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "index"
+        },
+        {
+          "参数": "title",
+          "说明": "子菜单标题",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "title"
+        },
+        {
+          "参数": "icon",
+          "说明": "菜单项的图标",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "icon"
+        },
+        {
+          "参数": "disabled",
+          "说明": "是否禁用",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "description",
+          "说明": "子菜单描述",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "description"
+        },
+        {
+          "参数": "divided",
+          "说明": "是否存在分割线",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "divided"
+        },
+        {
+          "参数": "isBgFill",
+          "说明": "子菜单底部，是否有灰色背景",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "is-bg-fill"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    },
+    "el-menu-item": {
+      "props": [
+        {
+          "参数": "index",
+          "说明": "唯一标志",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "index"
+        },
+        {
+          "参数": "route",
+          "说明": "Vue Router 路径对象",
+          "类型": "Object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "route"
+        },
+        {
+          "参数": "disabled",
+          "说明": "是否禁用",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "description",
+          "说明": "菜单项描述",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "description"
+        },
+        {
+          "参数": "divided",
+          "说明": "是否存在分割线",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "divided"
+        },
+        {
+          "参数": "suffix",
+          "说明": "菜单项后缀",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "suffix"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    },
+    "el-menu-item-group": {
+      "props": [
+        {
+          "参数": "title",
+          "说明": "分组标题",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "title"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

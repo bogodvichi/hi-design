@@ -1,0 +1,420 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "select",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/form/select-demo",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/basic-form.docs.json",
+    "evidence_sha256": "ce35467cfa4317a06d0d65dd9e415328669f0c6711f32417ce27edc1af71cbe7"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-select": {
+      "props": [
+        {
+          "参数": "multiple",
+          "说明": "是否多选",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "multiple"
+        },
+        {
+          "参数": "disabled",
+          "说明": "是否禁用",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "readonly",
+          "说明": "是否只读",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "readonly"
+        },
+        {
+          "参数": "value-key",
+          "说明": "作为 value 唯一标识的键名，绑定值为对象类型时必填",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "value",
+          "template_name": "value-key"
+        },
+        {
+          "参数": "size",
+          "说明": "输入框尺寸",
+          "类型": "string",
+          "可选值": "large/small/mini",
+          "默认值": "—",
+          "template_name": "size"
+        },
+        {
+          "参数": "clear",
+          "说明": "单选时是否可以清空选项   2.53.0+ 默认值改为true",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "clear"
+        },
+        {
+          "参数": "clearable",
+          "说明": "多选时是否可以清空选项   2.53.0+ 默认值改为true",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "clearable"
+        },
+        {
+          "参数": "collapse-tags",
+          "说明": "多选时是否将选中值按文字的形式展示",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "collapse-tags"
+        },
+        {
+          "参数": "collapse-tags-from-line-num   2.53.0",
+          "说明": "开启collapse-tags时，多选时从第几行开始以+N的形式展示",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "1",
+          "template_name": "collapse-tags-from-line-num"
+        },
+        {
+          "参数": "multiple-limit",
+          "说明": "多选时用户最多可以选择的项目数，为 0 则不限制",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "0",
+          "template_name": "multiple-limit"
+        },
+        {
+          "参数": "multiple-nowrap",
+          "说明": "多选时选中项过多，超过一行时不进行换行，多出来的内容截断处理",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "multiple-nowrap"
+        },
+        {
+          "参数": "max-width",
+          "说明": "下拉框的最大宽度,要大于显示框的宽度,否则会失效",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "默认为输入框宽度",
+          "template_name": "max-width"
+        },
+        {
+          "参数": "kind",
+          "说明": "可选悬浮和面性样式",
+          "类型": "string",
+          "可选值": "surface, suspension",
+          "默认值": "—",
+          "template_name": "kind"
+        },
+        {
+          "参数": "name",
+          "说明": "select input 的 name 属性",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "name"
+        },
+        {
+          "参数": "placeholder",
+          "说明": "占位符",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "请选择",
+          "template_name": "placeholder"
+        },
+        {
+          "参数": "filterable",
+          "说明": "是否可搜索",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "filterable"
+        },
+        {
+          "参数": "search  已废弃",
+          "说明": "是否创建搜索图标",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "search"
+        },
+        {
+          "参数": "allow-create",
+          "说明": "是否允许用户创建新条目，需配合 filterable 使用",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "allow-create"
+        },
+        {
+          "参数": "filter-method",
+          "说明": "自定义过滤方法",
+          "类型": "function",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "filter-method"
+        },
+        {
+          "参数": "remote",
+          "说明": "是否为远程搜索",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "remote"
+        },
+        {
+          "参数": "remote-method",
+          "说明": "远程搜索方法",
+          "类型": "function",
+          "可选值": "—",
+          "默认值": "参数分别是当前值和是否是点击触发",
+          "template_name": "remote-method"
+        },
+        {
+          "参数": "loading",
+          "说明": "是否正在从远程获取数据",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "loading"
+        },
+        {
+          "参数": "loading-text",
+          "说明": "远程加载时显示的文字",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "加载中",
+          "template_name": "loading-text"
+        },
+        {
+          "参数": "no-match-text",
+          "说明": "搜索条件无匹配时显示的文字",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "暂无数据",
+          "template_name": "no-match-text"
+        },
+        {
+          "参数": "no-data-text",
+          "说明": "选项为空时显示的文字",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "暂无结果",
+          "template_name": "no-data-text"
+        },
+        {
+          "参数": "popper-class",
+          "说明": "Select 下拉框的类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "popper-class"
+        },
+        {
+          "参数": "default-first-option",
+          "说明": "在输入框按下回车，选择第一个匹配项。需配合 filterable 或 remote 使用",
+          "类型": "boolean",
+          "可选值": "-",
+          "默认值": "false",
+          "template_name": "default-first-option"
+        },
+        {
+          "参数": "popper-append-to-body",
+          "说明": "是否将弹出框插入至 body 元素。在弹出框的定位出现问题时，可将该属性设置为 false",
+          "类型": "boolean",
+          "可选值": "-",
+          "默认值": "true",
+          "template_name": "popper-append-to-body"
+        },
+        {
+          "参数": "popperOptions  2.38.0",
+          "说明": "vue-popper 的参数配置",
+          "类型": "Object",
+          "可选值": "-",
+          "默认值": "",
+          "template_name": "popper-options"
+        },
+        {
+          "参数": "placement  2.38.0",
+          "说明": "vue-popper 默认起始位置",
+          "类型": "String",
+          "可选值": "bottom-start",
+          "默认值": "",
+          "template_name": "placement"
+        },
+        {
+          "参数": "variant  2.55.0+",
+          "说明": "形态变体",
+          "类型": "String",
+          "可选值": "-",
+          "默认值": "outlined, borderless",
+          "template_name": "variant"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "change",
+          "说明": "选中值发生变化时触发",
+          "回调参数": "目前的选中值",
+          "template_name": "change"
+        },
+        {
+          "事件名称": "focus",
+          "说明": "聚焦时触发",
+          "回调参数": "事件对象",
+          "template_name": "focus"
+        },
+        {
+          "事件名称": "blur",
+          "说明": "失焦时触发",
+          "回调参数": "事件对象",
+          "template_name": "blur"
+        },
+        {
+          "事件名称": "visible-change",
+          "说明": "下拉框出现/隐藏时触发",
+          "回调参数": "出现则为 true，隐藏则为 false",
+          "template_name": "visible-change"
+        },
+        {
+          "事件名称": "hiddenMenu 待移除,无效",
+          "说明": "隐藏下拉框",
+          "回调参数": "需要通过 ref 来调用",
+          "template_name": "hidden-menu 待移除,无效"
+        },
+        {
+          "事件名称": "remove-tag",
+          "说明": "多选模式下移除 tag 时触发",
+          "回调参数": "移除的 tag 值",
+          "template_name": "remove-tag"
+        },
+        {
+          "事件名称": "clear",
+          "说明": "可清空的单选模式下用户点击清空按钮时触发",
+          "回调参数": "—",
+          "template_name": "clear"
+        },
+        {
+          "事件名称": "search",
+          "说明": "可用户点击搜索按钮时触发(作为回调)",
+          "回调参数": "返回当前选中值和过滤值",
+          "template_name": "search"
+        },
+        {
+          "事件名称": "on-scrolling-x",
+          "说明": "下拉框横向滚动时触发事件,参数返回滚动距离和已滚动百分比（百分比为 1 则表示滚动到尽头）",
+          "回调参数": "{scrollLeft, percentX }",
+          "template_name": "on-scrolling-x"
+        },
+        {
+          "事件名称": "on-scrolling-y",
+          "说明": "下拉框内容过多纵向滚动时触发事件,参数返回滚动距离和已滚动百分比（百分比为 1 则表示滚动到尽头）",
+          "回调参数": "{scrollTop, percentY }",
+          "template_name": "on-scrolling-y"
+        },
+        {
+          "事件名称": "on-scrolling",
+          "说明": "下拉框内部滚动条滚动时触发事件,参数返回滚动距离和已滚动百分比（百分比为 1 则表示滚动到尽头）",
+          "回调参数": "{scrollLeft, scrollTop, percentX, percentY }",
+          "template_name": "on-scrolling"
+        }
+      ],
+      "slots": [
+        {
+          "事件名称": "prefix",
+          "说明": "Select 组件头部内容",
+          "template_name": "prefix"
+        },
+        {
+          "事件名称": "dropdownHeader   2.52.0+",
+          "说明": "Select 下拉菜单头部内容",
+          "template_name": "dropdown-header"
+        },
+        {
+          "事件名称": "dropdownFooter   2.52.0+",
+          "说明": "Select 下拉菜单底部内容",
+          "template_name": "dropdown-footer"
+        },
+        {
+          "事件名称": "label   2.54.2+",
+          "说明": "Select 显示内容自定义，返回当前选中项的option值",
+          "template_name": "label"
+        }
+      ],
+      "methods": []
+    },
+    "el-option": {
+      "props": [
+        {
+          "参数": "value",
+          "说明": "选项的值",
+          "类型": "string/number/array/object",
+          "可选值": "必填",
+          "默认值": "—",
+          "template_name": "value"
+        },
+        {
+          "参数": "label",
+          "说明": "选项的标签，若不设置则默认与 value 相同",
+          "类型": "string/number",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "label"
+        },
+        {
+          "参数": "disabled",
+          "说明": "是否禁用该选项",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disabled"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    },
+    "el-option-group": {
+      "props": [
+        {
+          "参数": "label",
+          "说明": "分组的组名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "label"
+        },
+        {
+          "参数": "disabled",
+          "说明": "是否将该分组下所有选项置为禁用",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "show-html  2.0+",
+          "说明": "是否用 v-html 解析 label(此时不支持关键字搜索标红)，默认开启会导致 xss 漏洞",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "show-html"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

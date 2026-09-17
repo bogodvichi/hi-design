@@ -1,0 +1,177 @@
+.formGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px 0;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* --- Type picker --- */
+.typePicker {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.typePickerLegend {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.typePickerButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.typeBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill, 999px);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 140ms ease-out;
+}
+
+.typeBtn:hover {
+  border-color: var(--text-strong);
+  color: var(--text-strong);
+}
+
+.typeBtnActive {
+  border-color: var(--text-strong);
+  background: var(--text-strong);
+  color: var(--accent-contrast, #fff);
+}
+
+.typeBtnActive:hover {
+  border-color: var(--text-strong);
+  color: var(--accent-contrast, #fff);
+}
+
+/* --- Fields --- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fieldLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.fieldInput {
+  appearance: none;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+  transition: border-color 140ms ease-out;
+}
+
+.fieldInput:focus {
+  outline: none;
+  border-color: var(--text-strong);
+}
+
+.fieldInput::placeholder {
+  color: var(--text-faint, var(--text-muted));
+}
+
+.fieldInputInvalid {
+  border-color: var(--danger, #dc2626);
+}
+
+/* --- JSON section --- */
+.jsonSection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.jsonTextarea {
+  appearance: none;
+  width: 100%;
+  min-height: 120px;
+  flex: 1 1 auto;
+  resize: none;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-family: var(--font-mono, 'SF Mono', 'Cascadia Code', 'Consolas', monospace);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-y: auto;
+  transition: border-color 140ms ease-out;
+}
+
+.jsonTextarea:focus {
+  outline: none;
+  border-color: var(--text-strong);
+}
+
+.jsonTextarea::placeholder {
+  color: var(--text-faint, var(--text-muted));
+}
+
+.jsonTextareaInvalid {
+  border-color: var(--danger, #dc2626);
+}
+
+.jsonActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.formatBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill, 999px);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 140ms ease-out;
+}
+
+.formatBtn:hover:not(:disabled) {
+  border-color: var(--text-strong);
+  color: var(--text-strong);
+}
+
+.formatBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

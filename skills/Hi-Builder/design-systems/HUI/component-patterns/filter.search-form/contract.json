@@ -1,0 +1,35 @@
+{
+  "schema_version": "hui-component-pattern.v2",
+  "id": "filter.search-form",
+  "name": "组合筛选表单",
+  "split_mode": "composite",
+  "vue_component": "SearchForm",
+  "description": "使用多个查询字段和查询操作筛选数据集合",
+  "category": "filter",
+  "status": "active",
+  "use_when": ["页面需要组合多个查询条件"],
+  "hui_components": ["el-form", "el-form-item", "el-input", "el-select", "el-option", "el-date-picker", "el-button"],
+  "geometry_roles": {
+    "filter-action-min-width": "240px",
+    "filter-toggle-min-width": "32px"
+  },
+  "fixed_behavior": {
+    "grid_columns": 4,
+    "action_column": 4,
+    "collapsed_visible_fields": 3,
+    "collapse_threshold": 3,
+    "max_fields_per_row": 4,
+    "collapsed_rows": 1,
+    "expanded_rows": 2,
+    "time_field_span": 1,
+    "actions_move_to_second_row_when_expanded": true,
+    "action_gap": "var(--h-space-xs)"
+  },
+  "collection_geometry": {
+    "margin": "0 24px",
+    "padding": "16px 0",
+    "placement": "before collection toolbar",
+    "bottom_separator": {"owner": ".query-filter::after", "width": "1px", "left": "0", "right": "0", "token": "--h-color-border-tertiary"}
+  },
+  "owner": "hui-common"
+}

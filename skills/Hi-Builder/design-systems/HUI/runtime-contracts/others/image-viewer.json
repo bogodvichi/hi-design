@@ -1,0 +1,110 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "image-viewer",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/others/image-viewer",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/others.docs.json",
+    "evidence_sha256": "f150a2630aef3c6508a028b85a5e004a26036cac12218f39bbe7388c02099e11"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-image-viewer": {
+      "props": [
+        {
+          "参数": "urlList",
+          "说明": "图片地址列表",
+          "类型": "array",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "url-list"
+        },
+        {
+          "参数": "zIndex",
+          "说明": "显示zindex等级",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "2000",
+          "template_name": "z-index"
+        },
+        {
+          "参数": "initialIndex",
+          "说明": "初始化展示图片index值",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "0",
+          "template_name": "initial-index"
+        },
+        {
+          "参数": "appendToBody",
+          "说明": "是否添加至body层",
+          "类型": "boolean",
+          "可选值": "true/false",
+          "默认值": "true",
+          "template_name": "append-to-body"
+        },
+        {
+          "参数": "maskClosable",
+          "说明": "点击遮罩层是否关闭",
+          "类型": "boolean",
+          "可选值": "true/false",
+          "默认值": "true",
+          "template_name": "mask-closable"
+        },
+        {
+          "参数": "infinite",
+          "说明": "是否开启循环模式",
+          "类型": "boolean",
+          "可选值": "true/false",
+          "默认值": "true",
+          "template_name": "infinite"
+        },
+        {
+          "参数": "onSwitch",
+          "说明": "切换按钮回调",
+          "类型": "function",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "on-switch"
+        },
+        {
+          "参数": "onClose",
+          "说明": "关闭按钮回调",
+          "类型": "function",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "on-close"
+        },
+        {
+          "参数": "zoom-rate   2.60.1+",
+          "说明": "图像查看器缩放事件的缩放速率",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "1.2",
+          "template_name": "zoom-rate"
+        },
+        {
+          "参数": "min-scale   2.60.1+",
+          "说明": "图像查看器缩放事件的最小缩放比例",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "0.2",
+          "template_name": "min-scale"
+        },
+        {
+          "参数": "max-scale   2.60.1+",
+          "说明": "图像查看器缩放事件的最大缩放比例",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "7",
+          "template_name": "max-scale"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

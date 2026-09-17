@@ -1,0 +1,13 @@
+{
+  "schema_version": "hui-component-pattern.v2",
+  "id": "header.dialog-title",
+  "name": "弹窗标题栏",
+  "split_mode": "composite",
+  "vue_component": "DialogTitle",
+  "description": "组合弹窗标题、辅助信息和关闭操作",
+  "category": "header",
+  "status": "active",
+  "use_when": ["弹窗、抽屉或浮层需要独立标题和关闭入口"],
+  "hui_components": ["el-layout-page-header", "el-button"],
+  "owner": "hui-common"
+}

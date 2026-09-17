@@ -1,0 +1,86 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "ellipsis",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/others/ellipsis",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/others.docs.json",
+    "evidence_sha256": "f150a2630aef3c6508a028b85a5e004a26036cac12218f39bbe7388c02099e11"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-ellipsis": {
+      "props": [
+        {
+          "参数": "content",
+          "说明": "需要省略的文本内容",
+          "类型": "string",
+          "可选值": "-",
+          "默认值": "‘’",
+          "template_name": "content"
+        },
+        {
+          "参数": "chars",
+          "说明": "显示的字符数，当position=\"middle\"时，可传入Array设置前后字符数",
+          "类型": "number / array",
+          "可选值": "-",
+          "默认值": "null",
+          "template_name": "chars"
+        },
+        {
+          "参数": "width",
+          "说明": "容器宽度",
+          "类型": "string / number",
+          "可选值": "-",
+          "默认值": "‘100%’",
+          "template_name": "width"
+        },
+        {
+          "参数": "lines",
+          "说明": "显示的行数",
+          "类型": "number",
+          "可选值": "-",
+          "默认值": "1",
+          "template_name": "lines"
+        },
+        {
+          "参数": "position",
+          "说明": "省略位置",
+          "类型": "string",
+          "可选值": "start / end / middle",
+          "默认值": "end",
+          "template_name": "position"
+        },
+        {
+          "参数": "ellipsis-text",
+          "说明": "自定义省略号字符",
+          "类型": "string",
+          "可选值": "-",
+          "默认值": "‘…’",
+          "template_name": "ellipsis-text"
+        },
+        {
+          "参数": "tooltip",
+          "说明": "是否显示 tooltip",
+          "类型": "boolean",
+          "可选值": "-",
+          "默认值": "true",
+          "template_name": "tooltip"
+        },
+        {
+          "参数": "show-title",
+          "说明": "是否使用原生title属性，值为true时，tooltip属性将被忽略",
+          "类型": "boolean",
+          "可选值": "-",
+          "默认值": "false",
+          "template_name": "show-title"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

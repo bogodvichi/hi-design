@@ -1,0 +1,47 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "id": "realtime-card-sidebar",
+  "title": "设备状态即时筛选（左侧栏）",
+  "page_kind": "card",
+  "pattern_contract": "card/sidebar-realtime-filter.json",
+  "portal": {
+    "active_top_menu": "智能应用",
+    "section": "典型页测试",
+    "tab_title": "左侧即时筛选",
+    "active_side_menu": "sidebar-filter",
+    "side_menus": [
+      {"id": "horizontal-filter", "label": "顶部横栏即时筛选", "icon": "h-icon-menu", "href": "realtime-card-horizontal.html"},
+      {"id": "sidebar-filter", "label": "左侧即时筛选", "icon": "h-icon-search", "href": "realtime-card-sidebar.html"}
+    ]
+  },
+  "filters": [
+    {"key": "deviceName", "label": "设备名称", "kind": "input", "placeholder": "输入名称即时筛选", "default": ""},
+    {"key": "deviceType", "label": "设备类型", "kind": "select", "options": ["全部", "人脸抓拍机", "车辆卡口", "全景摄像机"], "default": "全部"},
+    {"key": "status", "label": "运行状态", "kind": "select", "options": ["全部", "在线", "离线", "待复核"], "default": "全部"},
+    {"key": "area", "label": "所属区域", "kind": "select", "options": ["全部", "总部园区", "生产园区", "研发中心"], "default": "全部"}
+  ],
+  "toolbar_actions": [{"label": "刷新", "icon": "h-icon-refresh"}],
+  "card_fields": [
+    {"key": "deviceName", "label": "设备名称", "role": "primary"},
+    {"key": "deviceCode", "label": "设备编码", "role": "metadata"},
+    {"key": "deviceType", "label": "设备类型", "role": "metadata"},
+    {"key": "area", "label": "所属区域", "role": "metadata"},
+    {"key": "status", "label": "运行状态", "role": "status"}
+  ],
+  "page_size": 10,
+  "preview": {
+    "total": 8,
+    "rows": [
+      {"id": 1, "deviceName": "东门人脸抓拍机-01", "deviceCode": "IPC-FACE-001", "deviceType": "人脸抓拍机", "area": "总部园区", "status": "在线"},
+      {"id": 2, "deviceName": "西门车辆卡口-02", "deviceCode": "IPC-VEH-002", "deviceType": "车辆卡口", "area": "总部园区", "status": "在线"},
+      {"id": 3, "deviceName": "研发楼大厅全景机", "deviceCode": "IPC-PANO-015", "deviceType": "全景摄像机", "area": "研发中心", "status": "待复核"},
+      {"id": 4, "deviceName": "地下车库车辆卡口", "deviceCode": "IPC-VEH-021", "deviceType": "车辆卡口", "area": "总部园区", "status": "离线"},
+      {"id": 5, "deviceName": "生产线全景摄像机-03", "deviceCode": "IPC-PANO-003", "deviceType": "全景摄像机", "area": "生产园区", "status": "在线"},
+      {"id": 6, "deviceName": "研发楼二层人脸机", "deviceCode": "IPC-FACE-027", "deviceType": "人脸抓拍机", "area": "研发中心", "status": "在线"},
+      {"id": 7, "deviceName": "南门访客人脸机", "deviceCode": "IPC-FACE-006", "deviceType": "人脸抓拍机", "area": "总部园区", "status": "待复核"},
+      {"id": 8, "deviceName": "仓储区全景摄像机", "deviceCode": "IPC-PANO-011", "deviceType": "全景摄像机", "area": "生产园区", "status": "离线"}
+    ]
+  }
+}

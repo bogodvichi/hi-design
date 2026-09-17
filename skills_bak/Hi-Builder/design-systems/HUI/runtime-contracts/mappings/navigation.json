@@ -1,0 +1,117 @@
+{
+  "schema_version": "hui-contract-mapping.v1",
+  "batch": "navigation",
+  "components": {
+    "menu": {
+      "runtime": {
+        "el-menu": {
+          "props": ["Menu Attribute"],
+          "methods": ["Menu Methods"],
+          "events": ["Menu Events"],
+          "slots": ["Slot"]
+        },
+        "el-submenu": {
+          "props": ["SubMenu Attribute"]
+        },
+        "el-menu-item": {
+          "props": ["Menu-Item Attribute"]
+        },
+        "el-menu-item-group": {
+          "props": ["Menu-Group Attribute"]
+        }
+      }
+    },
+    "nav": {
+      "runtime": {
+        "el-nav": {
+          "props": ["Nav Attribute"],
+          "methods": ["Nav Methods"],
+          "events": ["Nav Events"],
+          "slots": ["Slot"]
+        },
+        "el-subnav": {
+          "props": ["SubNav Attribute"]
+        },
+        "el-nav-item": {
+          "props": ["Nav-Item Attribute"]
+        },
+        "el-nav-group": {
+          "props": ["Nav-Group Attribute"]
+        }
+      }
+    },
+    "tabs": {
+      "runtime": {
+        "el-tabs": {
+          "props": ["Tabs Attributes"],
+          "events": ["Tabs Events"],
+          "methods": ["Menu Methods"]
+        },
+        "el-tab-pane": {
+          "props": ["Tab-pane Attributes"]
+        }
+      }
+    },
+    "breadcrumb": {
+      "runtime": {
+        "el-breadcrumb": {
+          "props": ["Breadcrumb Attributes"]
+        },
+        "el-breadcrumb-item": {
+          "props": ["Breadcrumb Item Attributes"]
+        },
+        "el-breadcrumb-sub-item": {
+          "props": ["Breadcrumb Sub Item Attributes"]
+        }
+      }
+    },
+    "dropdown": {
+      "runtime": {
+        "el-dropdown": {
+          "props": ["Attributes"],
+          "methods": ["方法"],
+          "events": ["Dropdown Events"]
+        },
+        "el-dropdown-menu": {},
+        "el-dropdown-item": {
+          "props": ["Dropdown Menu Item Attributes"]
+        },
+        "el-dropdown-item-group": {},
+        "el-sub-dropdown": {}
+      }
+    },
+    "steps": {
+      "runtime": {
+        "el-steps": {
+          "props": ["Steps Attributes"],
+          "events": ["Steps Event"]
+        },
+        "el-step": {
+          "props": ["Step Attributes"],
+          "slots": ["Step Slot"]
+        }
+      }
+    },
+    "anchor": {
+      "runtime": {
+        "h-anchor": {},
+        "h-subanchor": {
+          "props": ["属性"],
+          "slots": ["插槽"],
+          "events": ["事件"]
+        },
+        "h-anchor-link": {},
+        "h-affix": {}
+      }
+    },
+    "page-header": {
+      "runtime": {
+        "el-layout-page-header": {
+          "props": ["Props 属性"],
+          "slots": ["Slots 插槽"],
+          "events": ["Events 事件"]
+        }
+      }
+    }
+  }
+}

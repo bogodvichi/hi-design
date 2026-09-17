@@ -1,0 +1,21 @@
+{
+  "schema_version": "page-knowledge.v1",
+  "maintenance": {
+    "purpose": "ISC设备详情页的本地索引，聚合AI能力、输入Schema、编译组合、预览数据和验收基线。",
+    "edit_policy": "按职责修改对应文件并保持五个引用完整；页面只选择Renderer，不直接声明模板路径。",
+    "managed_paths": {
+      "capabilities.json": "AI可读取的页面能力白名单和默认业务选择。",
+      "payload.schema.json": "该页面PageSpec payload的机器校验合同。",
+      "composition.json": "编译器读取的业务组合、Renderer和HUI页面模式引用。",
+      "fixture.json": "CDN预览使用的样例数据和本地媒体路径。",
+      "golden.json": "页面几何、组件类型和交互状态验收基线。"
+    }
+  },
+  "id": "general.isc.page.device-detail",
+  "page_type": "device-detail",
+  "capability": "capabilities.json",
+  "payload_schema": "payload.schema.json",
+  "composition": "composition.json",
+  "fixture": "fixture.json",
+  "golden": "golden.json"
+}

@@ -1,0 +1,32 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "id": "card-style-vehicle",
+  "title": "基础卡片样式 · 车辆卡片",
+  "page_kind": "card",
+  "pattern_contract": "card/vehicle.json",
+  "portal": {
+    "active_top_menu": "智能应用",
+    "section": "基础卡片样式测试",
+    "tab_title": "车辆卡片",
+    "active_side_menu": "vehicle-card",
+    "side_menus": [
+      {"id": "vehicle-card", "label": "车辆卡片", "icon": "h-icon-menu", "href": "vehicle-card.html"},
+      {"id": "face-card", "label": "人脸卡片", "icon": "h-icon-menu", "href": "face-card.html"},
+      {"id": "similarity-card", "label": "相似度卡片", "icon": "h-icon-menu", "href": "similarity-card.html"},
+      {"id": "text-card", "label": "文本卡片", "icon": "h-icon-menu", "href": "text-card.html"},
+      {"id": "data-list", "label": "数据列表卡片", "icon": "h-icon-menu", "href": "data-list.html"}
+    ]
+  },
+  "toolbar_actions": [{"label": "添加", "icon": "h-icon-add"}, {"label": "编辑", "icon": "h-icon-edit"}, {"label": "删除", "icon": "h-icon-delete"}],
+  "page_size": 20,
+  "preview": {
+    "total": 3,
+    "rows": [
+      {"id": "vehicle-1", "image": "http://tpp.dev.hikhub.net/tpp/img/car.06554ce8.png", "title": "浙A·6K829", "location": "文一路学院路口东向西", "time": "2026-08-19 10:32:18"},
+      {"id": "vehicle-2", "image": "http://tpp.dev.hikhub.net/tpp/img/car.06554ce8.png", "title": "浙B·2M517", "location": "机场快速路南向北卡口", "time": "2026-08-19 10:28:46"},
+      {"id": "vehicle-3", "image": "http://tpp.dev.hikhub.net/tpp/img/car.06554ce8.png", "title": "浙D·8Q166", "location": "湖滨步行街北入口", "time": "2026-08-19 10:16:37"}
+    ]
+  }
+}

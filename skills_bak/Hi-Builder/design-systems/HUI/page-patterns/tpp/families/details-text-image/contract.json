@@ -1,0 +1,14 @@
+{
+  "schema_version": "hui-page-pattern.v1",
+  "id": "hui.tpp.family.details-text-image",
+  "name": "图文详情页",
+  "source": {"platform": "HUI-VUE典型页面", "observed_at": "2026-08-14", "catalog": "../../catalog.json"},
+  "match": ["text-image-details", "图文详情", "左右图文详情", "上下左右图文详情"],
+  "semantics": ["primary-media-preview", "text-detail-panel", "media-detail-layout"],
+  "shared_runtime_components": [],
+  "invariants": {"evidence_scope": "two-verified-layout-variants", "horizontal_media_and_detail_relation": {"media_width_px": 1008, "detail_panel_width_px": 352, "region_gap_px": 24}, "top_summary_is_variant_value": true, "media_source_must_come_from_request_or_fixture": true, "variant_values_must_come_from_page_contract": true},
+  "variants": [
+    {"id": "hui.tpp.page.details.left-and-right-layout-text-image", "name": "左右布局", "contract": "../../pages/details/left-and-right-layout-text-image.json", "parameters": {"layout_direction": "horizontal", "top_summary": false, "media_width_px": 1008, "detail_panel_width_px": 352, "region_gap_px": 24}},
+    {"id": "hui.tpp.page.details.up-down-left-right-layout-text-image", "name": "上下+左右布局", "contract": "../../pages/details/up-down-left-right-layout-text-image.json", "parameters": {"layout_direction": "vertical-then-horizontal", "top_summary": true, "detail_root_y": 222.77, "media_width_px": 1008, "detail_panel_width_px": 352, "region_gap_px": 24}}
+  ]
+}

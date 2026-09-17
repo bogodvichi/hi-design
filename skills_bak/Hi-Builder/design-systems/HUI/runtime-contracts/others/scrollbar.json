@@ -1,0 +1,231 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "scrollbar",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/others/scrollbar",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/others.docs.json",
+    "evidence_sha256": "f150a2630aef3c6508a028b85a5e004a26036cac12218f39bbe7388c02099e11"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-scrollbar": {
+      "props": [
+        {
+          "参数": "tag",
+          "说明": "设置 view 层的标签",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "“div”",
+          "template_name": "tag"
+        },
+        {
+          "参数": "viewClass",
+          "说明": "设置滚动条外层 view 的 class",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "“el-scrollbar__view”",
+          "template_name": "view-class"
+        },
+        {
+          "参数": "viewStyle",
+          "说明": "设置滚动条外层 view 的样式",
+          "类型": "Object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "view-style"
+        },
+        {
+          "参数": "wrapStyle",
+          "说明": "设置滚动条外层 wrap 的样式",
+          "类型": "Object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "wrap-style"
+        },
+        {
+          "参数": "wrapClass",
+          "说明": "设置滚动条外层 wrap 的 class",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "“el-scrollbar__wrap”",
+          "template_name": "wrap-class"
+        },
+        {
+          "参数": "size",
+          "说明": "滚动条纵向时的宽度和横向时的高度，单位 px，注：实际占位多出 8px",
+          "类型": "Number",
+          "可选值": "—",
+          "默认值": "4",
+          "template_name": "size"
+        },
+        {
+          "参数": "noresize",
+          "说明": "是否不监听 container 尺寸变化，如果 container 尺寸不会发生变化，最好设置它可以优化性能",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "noresize"
+        },
+        {
+          "参数": "color",
+          "说明": "滚动条颜色，支持 16 进制颜色、rgb 和 rgba",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "rgba(0,0,0,.1)",
+          "template_name": "color"
+        },
+        {
+          "参数": "opacity",
+          "说明": "滚动条透明度",
+          "类型": "Number",
+          "可选值": "—",
+          "默认值": "1",
+          "template_name": "opacity"
+        },
+        {
+          "参数": "pieceColor",
+          "说明": "轨道颜色，支持 16 进制颜色、rgb 和 rgba",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "默认透明即同容器背景色",
+          "template_name": "piece-color"
+        },
+        {
+          "参数": "pieceOpacity",
+          "说明": "轨道透明度",
+          "类型": "Number",
+          "可选值": "—",
+          "默认值": "1",
+          "template_name": "piece-opacity"
+        },
+        {
+          "参数": "minLength  2.0+",
+          "说明": "滚动条滑块最小长度，单位 px",
+          "类型": "Number",
+          "可选值": "—",
+          "默认值": "24",
+          "template_name": "min-length"
+        },
+        {
+          "参数": "overflow  2.0+",
+          "说明": "当内容溢出元素框时发生的事情",
+          "类型": "String",
+          "可选值": "‘auto’,‘scroll’,‘hidden’,‘visible’",
+          "默认值": "‘auto’",
+          "template_name": "overflow"
+        },
+        {
+          "参数": "overflowX  2.0+",
+          "说明": "当水平内容溢出元素框时发生的事情",
+          "类型": "String",
+          "可选值": "‘auto’,‘scroll’,‘hidden’,‘visible’",
+          "默认值": "‘auto’",
+          "template_name": "overflow-x"
+        },
+        {
+          "参数": "overflowY  2.0+",
+          "说明": "当垂直内容溢出元素框时发生的事情",
+          "类型": "String",
+          "可选值": "‘auto’,‘scroll’,‘hidden’,‘visible’",
+          "默认值": "‘auto’",
+          "template_name": "overflow-y"
+        },
+        {
+          "参数": "extrusion  2.0+",
+          "说明": "设置滚动条是否占据内容区区域",
+          "类型": "Boolean",
+          "可选值": "-",
+          "默认值": "false",
+          "template_name": "extrusion"
+        },
+        {
+          "参数": "always-show 移除",
+          "说明": "始终显示滚动条还是鼠标移入才显示",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "always-show 移除"
+        },
+        {
+          "参数": "isSmall 移除",
+          "说明": "设置细滚动条",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "is-small 移除"
+        },
+        {
+          "参数": "type  2.60.3+",
+          "说明": "滚动条类型，默认为embed，表示内嵌，也可以设置为track，表示轨道（默认不隐藏）",
+          "类型": "String",
+          "可选值": "‘embed’, ‘track’",
+          "默认值": "‘embed’",
+          "template_name": "type"
+        },
+        {
+          "参数": "auto",
+          "说明": "如果内容被修剪，显示滚动条",
+          "template_name": "auto"
+        },
+        {
+          "参数": "scroll",
+          "说明": "内容会被修剪，滚动条常驻",
+          "template_name": "scroll"
+        },
+        {
+          "参数": "hidden",
+          "说明": "内容会被修剪，并且其余内容是不可见的，不显示滚动条",
+          "template_name": "hidden"
+        },
+        {
+          "参数": "visible",
+          "说明": "内容不会被修剪，会呈现在元素框之外，不显示滚动条",
+          "template_name": "visible"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "on-scrolling-x",
+          "说明": "横向滚动时触发事件,参数返回滚动距离和已滚动百分比（百分比为 1 则表示滚动到尽头）",
+          "回调参数": "{scrollLeft, percentX }",
+          "template_name": "on-scrolling-x"
+        },
+        {
+          "事件名称": "on-scrolling-y",
+          "说明": "纵向滚动时触发事件,参数返回滚动距离和已滚动百分比（百分比为 1 则表示滚动到尽头）",
+          "回调参数": "{scrollTop, percentY }",
+          "template_name": "on-scrolling-y"
+        },
+        {
+          "事件名称": "on-scrolling",
+          "说明": "滚动时触发事件,参数返回滚动距离和已滚动百分比（百分比为 1 则表示滚动到尽头）",
+          "回调参数": "{scrollLeft, scrollTop, percentX, percentY }",
+          "template_name": "on-scrolling"
+        },
+        {
+          "事件名称": "on-scrollbar-x",
+          "说明": "滚动条容器缩放过程中横向滚动条出现、消失的监听事件；当出现时，返回参数true，当消失时，返回参数false",
+          "回调参数": "isShow",
+          "template_name": "on-scrollbar-x"
+        },
+        {
+          "事件名称": "on-scrollbar-y",
+          "说明": "滚动条容器缩放过程中纵向滚动条出现、消失的监听事件；当出现时，返回参数true，当消失时，返回参数false",
+          "回调参数": "isShow",
+          "template_name": "on-scrollbar-y"
+        }
+      ],
+      "slots": [],
+      "methods": [
+        {
+          "参数": "top, left, duration",
+          "说明": "设置滚动条坐标，传入坐标 x 和坐标 y（单位 px），如果小于 0 或者不传则不起作用，默认都是-1; duration设置滚动条滚动的速率，默认为120",
+          "template_name": "set-scroll"
+        }
+      ]
+    }
+  },
+  "supporting_sections": []
+}

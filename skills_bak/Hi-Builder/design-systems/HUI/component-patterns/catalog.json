@@ -1,0 +1,253 @@
+{
+  "schema_version": "data-component-catalog.v1.0.2",
+  "maintenance": {
+    "purpose": "HUI通用data-component派生索引，供生成与校验按稳定语义ID查找组合模式。",
+    "edit_policy": "不要直接编辑entries；新增或修改词条时编辑同目录对应<id>/contract.json，再运行本脚本重建。",
+    "managed_paths": {
+      "catalog.json": "由所有Component Contract确定性汇总的只读派生词典。",
+      ".": "每个<id>/contract.json是该data-component词条的人工维护事实源。"
+    }
+  },
+  "naming": {
+    "format": "<domain>.<responsibility>",
+    "segment_style": "lowercase-kebab-case",
+    "forbidden_prefixes": [
+      "hui",
+      "isc",
+      "pvia"
+    ]
+  },
+  "split_modes": {
+    "single": "对应一个单一Vue控件",
+    "composite": "由多个不同Vue控件组合成一个业务区域",
+    "repeat-item": "由多个同类单项Vue组件重复组成"
+  },
+  "entry_count": 25,
+  "entries": {
+    "collection.calendar-grid": {
+      "name": "日历排班集合",
+      "split_mode": "repeat-item",
+      "vue_component": "CalendarGrid",
+      "description": "按日、周、月时间范围展示日期与排班事项集合",
+      "use_when": [
+        "用户需要按日历时间范围浏览排班或日程安排"
+      ]
+    },
+    "collection.card-grid": {
+      "name": "卡片集合",
+      "split_mode": "repeat-item",
+      "vue_component": "CardGrid",
+      "description": "使用重复卡片展示可浏览的数据集合",
+      "use_when": [
+        "数据更适合以媒体或摘要卡片浏览"
+      ]
+    },
+    "collection.source-list": {
+      "name": "数据源切换列表",
+      "split_mode": "repeat-item",
+      "vue_component": "SourceList",
+      "description": "组合可选择的数据源卡片并反馈当前数据源",
+      "use_when": [
+        "同一业务对象关联多个可切换数据源"
+      ]
+    },
+    "collection.thumbnail-strip": {
+      "name": "缩略图切换条",
+      "split_mode": "repeat-item",
+      "vue_component": "ThumbnailStrip",
+      "description": "组合前后翻页操作和可选择的媒体缩略图集合",
+      "use_when": [
+        "用户需要在多个媒体资源间快速切换"
+      ]
+    },
+    "detail.details-pane": {
+      "name": "关联详情面板",
+      "split_mode": "composite",
+      "vue_component": "DetailsPane",
+      "description": "展示与当前选中数据联动的详情内容和详情操作",
+      "use_when": [
+        "主表、主列表或主对象需要在同页联动展示详情"
+      ]
+    },
+    "feedback.context-notice": {
+      "name": "上下文说明条",
+      "split_mode": "composite",
+      "vue_component": "ContextNotice",
+      "description": "组合当前业务上下文的提示说明和相关快捷操作",
+      "use_when": [
+        "页面区域需要持续展示规则说明、继承关系或操作提示"
+      ]
+    },
+    "filter.instant-filter": {
+      "name": "即时过滤器",
+      "split_mode": "composite",
+      "vue_component": "InstantFilter",
+      "description": "组合即时生效的过滤条件、已选条件状态和清空操作",
+      "use_when": [
+        "选择过滤条件后结果需要立即更新且无需提交查询"
+      ]
+    },
+    "filter.search-form": {
+      "name": "组合筛选表单",
+      "split_mode": "composite",
+      "vue_component": "SearchForm",
+      "description": "使用多个查询字段和查询操作筛选数据集合",
+      "use_when": [
+        "页面需要组合多个查询条件"
+      ]
+    },
+    "form.action-form": {
+      "name": "业务操作表单",
+      "split_mode": "composite",
+      "vue_component": "ActionForm",
+      "description": "组合操作类型、意见输入、快捷选项和提交操作",
+      "use_when": [
+        "用户需要填写少量参数后执行一次业务操作"
+      ]
+    },
+    "form.data-form": {
+      "name": "数据表单",
+      "split_mode": "composite",
+      "vue_component": "DataForm",
+      "description": "使用结构化字段查看或编辑业务对象",
+      "use_when": [
+        "页面主体由多个结构化字段构成"
+      ]
+    },
+    "header.dialog-title": {
+      "name": "弹窗标题栏",
+      "split_mode": "composite",
+      "vue_component": "DialogTitle",
+      "description": "组合弹窗标题、辅助信息和关闭操作",
+      "use_when": [
+        "弹窗、抽屉或浮层需要独立标题和关闭入口"
+      ]
+    },
+    "media.image-viewer": {
+      "name": "图片预览器",
+      "split_mode": "composite",
+      "vue_component": "ImageViewer",
+      "description": "组合静态图片主预览、缩放和图片操作",
+      "use_when": [
+        "页面需要查看静态图片、抓拍图或证据图片"
+      ]
+    },
+    "media.live-viewer": {
+      "name": "实时媒体查看器",
+      "split_mode": "composite",
+      "vue_component": "LiveViewer",
+      "description": "组合实时媒体画面、通道切换和画面操作",
+      "use_when": [
+        "页面需要实时查看视频或动态媒体"
+      ]
+    },
+    "navigation.anchor-nav": {
+      "name": "锚点导航",
+      "split_mode": "composite",
+      "vue_component": "AnchorNavigation",
+      "description": "组合章节锚点并与页面滚动位置保持联动",
+      "use_when": [
+        "长表单或长详情页需要快速定位内容章节"
+      ]
+    },
+    "navigation.breadcrumb": {
+      "name": "面包屑导航",
+      "split_mode": "composite",
+      "vue_component": "BreadcrumbNavigation",
+      "description": "使用标准HUI面包屑组件展示页面层级路径",
+      "use_when": [
+        "页面需要展示当前业务区域和页面标题的层级关系"
+      ]
+    },
+    "navigation.classification-panel": {
+      "name": "分类导航面板",
+      "split_mode": "composite",
+      "vue_component": "ClassificationPanel",
+      "description": "组合分类方式、关键字搜索和分类菜单",
+      "use_when": [
+        "数据需要先按分类维度导航"
+      ]
+    },
+    "navigation.stepper": {
+      "name": "步骤导航",
+      "split_mode": "composite",
+      "vue_component": "PageStepper",
+      "description": "组合多个步骤节点并反馈当前流程进度",
+      "use_when": [
+        "表单或任务需要按固定步骤顺序完成"
+      ]
+    },
+    "navigation.tabs": {
+      "name": "页签导航",
+      "split_mode": "composite",
+      "vue_component": "PageTabs",
+      "description": "使用页签在多个并列内容视图间切换",
+      "use_when": [
+        "多个内容视图层级相同且需要快速切换"
+      ]
+    },
+    "navigation.tree-panel": {
+      "name": "树形导航面板",
+      "split_mode": "composite",
+      "vue_component": "TreePanel",
+      "description": "组合树节点搜索、树形层级导航和节点操作",
+      "use_when": [
+        "数据需要按组织、资源或分类树进行导航"
+      ]
+    },
+    "pagination.page-navigation": {
+      "name": "分页导航",
+      "split_mode": "single",
+      "vue_component": "PageNavigation",
+      "description": "控制数据集合的当前页、每页数量和页码跳转",
+      "use_when": [
+        "数据集合需要分页浏览"
+      ]
+    },
+    "portal.app-sidebar": {
+      "name": "门户应用侧栏",
+      "split_mode": "composite",
+      "vue_component": "AppSidebar",
+      "description": "组合门户模块导航和侧栏展开收起操作",
+      "use_when": [
+        "产品门户侧栏由HUI Vue原子控件实现"
+      ]
+    },
+    "portal.global-header": {
+      "name": "门户全局头部",
+      "split_mode": "composite",
+      "vue_component": "GlobalHeader",
+      "description": "组合门户品牌导航、全局搜索、快捷操作和页面页签",
+      "use_when": [
+        "产品门户头部由HUI Vue原子控件实现"
+      ]
+    },
+    "summary.metric-strip": {
+      "name": "指标摘要条",
+      "split_mode": "repeat-item",
+      "vue_component": "MetricStrip",
+      "description": "典型页 statisticsStyle：使用可点击统计卡片在主要内容之前展示关键聚合数据",
+      "use_when": [
+        "页面需要在主要内容之前概览多个关键指标"
+      ]
+    },
+    "table.data-table": {
+      "name": "数据表格",
+      "split_mode": "composite",
+      "vue_component": "DataTable",
+      "description": "使用列配置、选择列和行级操作展示结构化数据",
+      "use_when": [
+        "数据具有稳定列结构并需要对比浏览"
+      ]
+    },
+    "toolbar.action-toolbar": {
+      "name": "操作工具栏",
+      "split_mode": "composite",
+      "vue_component": "ActionToolbar",
+      "description": "组合页面级或集合级操作，并支持左右分组",
+      "use_when": [
+        "页面需要一组并列操作入口"
+      ]
+    }
+  }
+}

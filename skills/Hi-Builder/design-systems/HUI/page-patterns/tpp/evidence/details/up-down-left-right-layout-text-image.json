@@ -1,0 +1,20 @@
+{
+  "path": "/pages/details/upDownLeftRigthLayoutTextAndImageDetails",
+  "name": "详情页_图文详情_上下+左右布局",
+  "package": "@hiktpp/details-upDownLeftRigthLayoutTextAndImageDetails",
+  "hui_version": "^2.55.0",
+  "observed_at": "2026-08-14",
+  "viewport": {"width": 1728, "height": 935},
+  "root": {"class": "h-page-content form-area is-flex is-align-center", "rect": {"x": 240, "y": 222.77, "width": 1488, "height": 712.23}, "style": {"display": "flex", "padding": "16px 16px 0px"}},
+  "observed_structure": {"breadcrumb": ["详情页", "图文详情", "上下+左右布局"], "layout_direction": "vertical-then-horizontal", "top_summary": true, "detail_root_y": 222.77, "media_count": 2, "detail_group_count": 3, "embedded_tables": 0, "pagination": false},
+  "regions": {
+    "content": {"class": "form-area__content", "rect": {"x": 256, "y": 238.77, "width": 1456, "height": 696.23}, "padding": "24px"},
+    "primary_media": {"tag": "img", "rect": {"x": 280, "y": 262.77, "width": 1008, "height": 648.23}},
+    "detail_panel": {"rect": {"x": 1312, "y": 262.77, "width": 352, "height": 648.23}},
+    "detail_title_sample": {"class": "group_title", "rect": {"x": 1312, "y": 262.77, "width": 352, "height": 32}}
+  },
+  "media_sources": ["/tpp/img/car.fde24d3c.png", "inline-data-image"],
+  "component_count_scope": "page-content-relevant-only",
+  "runtime_components": {"el-breadcrumb": 1, "el-breadcrumb-item": 3},
+  "actions": []
+}

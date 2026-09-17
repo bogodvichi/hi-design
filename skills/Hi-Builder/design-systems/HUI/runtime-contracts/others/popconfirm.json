@@ -1,0 +1,135 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "popconfirm",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/others/popconfirm",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/others.docs.json",
+    "evidence_sha256": "f150a2630aef3c6508a028b85a5e004a26036cac12218f39bbe7388c02099e11"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-popconfirm": {
+      "props": [
+        {
+          "参数": "title",
+          "说明": "标题",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "title"
+        },
+        {
+          "参数": "content",
+          "说明": "显示的内容，也可以通过 slot 传入",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "content"
+        },
+        {
+          "参数": "confirm-button-text",
+          "说明": "确认按钮文字",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "confirm-button-text"
+        },
+        {
+          "参数": "cancel-button-text",
+          "说明": "取消按钮文字",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "cancel-button-text"
+        },
+        {
+          "参数": "confirm-button-type",
+          "说明": "确认按钮类型",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "primary",
+          "template_name": "confirm-button-type"
+        },
+        {
+          "参数": "cancel-button-type",
+          "说明": "取消按钮类型",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "cancel-button-type"
+        },
+        {
+          "参数": "icon",
+          "说明": "图标，也可以通过 slot 传入",
+          "类型": "String, Object",
+          "可选值": "—",
+          "默认值": "FeedbackWarningSm",
+          "template_name": "icon"
+        },
+        {
+          "参数": "icon-color",
+          "说明": "icon 颜色",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "#f90",
+          "template_name": "icon-color"
+        },
+        {
+          "参数": "hide-icon",
+          "说明": "是否隐藏 icon",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "hide-icon"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "confirm",
+          "说明": "点击确认按钮时触发",
+          "回调参数": "(event: Event)",
+          "template_name": "confirm"
+        },
+        {
+          "事件名称": "cancel",
+          "说明": "点击取消按钮时触发",
+          "回调参数": "(event: Event)",
+          "template_name": "cancel"
+        }
+      ],
+      "slots": [
+        {
+          "参数": "content",
+          "说明": "Popconfirm 描述类文本",
+          "template_name": "content"
+        },
+        {
+          "参数": "icon",
+          "说明": "Popconfirm 图标",
+          "template_name": "icon"
+        },
+        {
+          "参数": "reference",
+          "说明": "触发 Popconfirm 显示的 HTML 元素",
+          "template_name": "reference"
+        },
+        {
+          "参数": "actions",
+          "说明": "页脚的内容，参数为{ confirm, cancel }",
+          "template_name": "actions"
+        }
+      ],
+      "methods": [
+        {
+          "方法名称": "hide  2.61.0+",
+          "说明": "关闭 Popconfirm",
+          "参数": "—",
+          "template_name": "hide"
+        }
+      ]
+    }
+  },
+  "supporting_sections": []
+}

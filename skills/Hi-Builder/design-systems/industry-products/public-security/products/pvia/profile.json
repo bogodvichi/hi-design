@@ -1,0 +1,11 @@
+{
+  "schema_version": "product-ui-profile.v1",
+  "industry": "public-security",
+  "product": "pvia",
+  "runtime": "hui-vue",
+  "brand": {
+    "name": "视频图像综合应用平台",
+    "logo": "../assets/imgs/hik-product-logos/logo_视频图像综合应用平台Infovision_PVIA.svg"
+  },
+  "portal_shell": "public-security.pvia.portal-shell"
+}

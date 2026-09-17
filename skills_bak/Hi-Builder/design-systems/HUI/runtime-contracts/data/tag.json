@@ -1,0 +1,184 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "tag",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/data/tag",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/data.docs.json",
+    "evidence_sha256": "1faf13316d3e61002e07073d56ed0739f08ed5e112cba04b1d62b08484a37c71"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-tag": {
+      "props": [
+        {
+          "参数": "closable",
+          "说明": "是否可关闭",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "closable"
+        },
+        {
+          "参数": "disable-transitions",
+          "说明": "是否禁用渐变动画，即在 1.0 中的 close-transition 属性",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disable-transitions"
+        },
+        {
+          "参数": "size",
+          "说明": "tag 标签的尺寸",
+          "类型": "String",
+          "可选值": "large/medium/small",
+          "默认值": "medium",
+          "template_name": "size"
+        },
+        {
+          "参数": "maxWidth",
+          "说明": "最大宽度。该大小为内容显示，不包含关闭标签的部分",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "‘200px’",
+          "template_name": "max-width"
+        },
+        {
+          "参数": "title",
+          "说明": "提示语",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "title"
+        },
+        {
+          "参数": "round  2.50.0+",
+          "说明": "是否为圆角标签",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "round"
+        },
+        {
+          "参数": "variant  2.50.0+",
+          "说明": "形态",
+          "类型": "string",
+          "可选值": "primary/secondary/tertiary",
+          "默认值": "—",
+          "template_name": "variant"
+        },
+        {
+          "参数": "flood  2.50.0+",
+          "说明": "填充颜色",
+          "类型": "string",
+          "可选值": "red/magenta/purple/blue/cyan/teal/green/yellow/orange/gray",
+          "默认值": "—",
+          "template_name": "flood"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "close",
+          "说明": "关闭tag时触发的事件",
+          "回调参数": "—",
+          "template_name": "close"
+        }
+      ],
+      "slots": [],
+      "methods": []
+    },
+    "el-checkable-tag": {
+      "props": [
+        {
+          "参数": "checkable   2.50.0+",
+          "说明": "是否可被选择",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "checkable"
+        },
+        {
+          "参数": "v-model/checked   2.50.0+",
+          "说明": "是否被选中",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "v-model"
+        },
+        {
+          "参数": "disabled   2.50.0+",
+          "说明": "是否禁用",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "label   2.53.0+",
+          "说明": "展示文本",
+          "类型": "string/number/boolean",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "label"
+        },
+        {
+          "参数": "value   2.53.0+",
+          "说明": "展示文本对应的实际值",
+          "类型": "string/number/boolean",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "value"
+        },
+        {
+          "参数": "uncheckedProps   2.53.0+",
+          "说明": "未选中状态参数",
+          "类型": "object",
+          "可选值": "type可选值：‘facetness’:面性‘outline’:线性‘outline-none’:无边框",
+          "默认值": "{type:‘facetness’}",
+          "template_name": "unchecked-props"
+        },
+        {
+          "参数": "checkedProps   2.53.0+",
+          "说明": "选中状态参数",
+          "类型": "object",
+          "可选值": "type可选值：‘facetness’:面性‘outline’:线性‘outline-none’:无边框",
+          "默认值": "{type:‘facetness’}",
+          "template_name": "checked-props"
+        },
+        {
+          "事件名称": "click",
+          "说明": "checkableTag点击tag时触发的事件",
+          "回调参数": "标签是否被选中",
+          "template_name": "click"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "click",
+          "说明": "checkableTag点击tag时触发的事件",
+          "回调参数": "标签是否被选中",
+          "template_name": "click"
+        }
+      ],
+      "slots": [],
+      "methods": []
+    },
+    "el-checkable-tag-group": {
+      "props": [
+        {
+          "参数": "v-model   2.53.0+",
+          "说明": "选中的值",
+          "类型": "Array",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "v-model"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

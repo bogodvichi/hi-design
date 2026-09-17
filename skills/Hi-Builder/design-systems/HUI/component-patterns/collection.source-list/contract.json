@@ -1,0 +1,13 @@
+{
+  "schema_version": "hui-component-pattern.v2",
+  "id": "collection.source-list",
+  "name": "数据源切换列表",
+  "split_mode": "repeat-item",
+  "vue_component": "SourceList",
+  "description": "组合可选择的数据源卡片并反馈当前数据源",
+  "category": "collection",
+  "status": "active",
+  "use_when": ["同一业务对象关联多个可切换数据源"],
+  "hui_components": ["el-card"],
+  "owner": "hui-common"
+}

@@ -1,0 +1,520 @@
+{
+  "schema_version": "hui-manifest.v2",
+  "maintenance": {
+    "purpose": "HUI通用知识总入口，登记运行版本、资源以及各类HUI知识索引。",
+    "edit_policy": "只登记经官方资料或现实代码验证的HUI事实；业务字段、产品样式和单页需求写入下级对应知识层。",
+    "managed_paths": {
+      "runtime-contracts": "HUI原子组件标签、props、events、slots、methods及采集证据。",
+      "component-patterns": "HUI通用data-component组合模式及派生词典。",
+      "zones": "跨产品统一data-zone业务区域语义。",
+      "page-patterns": "HUI通用页面模式与TPP典型页面知识。",
+      "theme": "HUI token白名单及产品覆盖边界。"
+    }
+  },
+  "library": "hui-vue",
+  "runtime": "vue2",
+  "runtime_profile": {
+    "vue": {
+      "version": "2.7.16",
+      "npm_package": "vue",
+      "module_mode": "full"
+    },
+    "hui": {
+      "version": "2.61.3",
+      "npm_package": "hui",
+      "module_mode": "full"
+    },
+    "preview": "cdn",
+    "dialog_binding": ":visible.sync",
+    "instance_services": [
+      "$message",
+      "$notify",
+      "$msgbox",
+      "$alert",
+      "$confirm",
+      "$prompt"
+    ],
+    "forbidden_globals": [
+      "ElMessage",
+      "ElNotification",
+      "ElMessageBox"
+    ],
+    "icon_modes": [
+      "font-class",
+      "icon-v2-component",
+      "inline-svg-in-h-icon",
+      "predefined-svg-in-h-svg-icon"
+    ]
+  },
+  "catalog_source": {
+    "url": "http://hui.dev.hikhub.net/hui/guide/getting-started",
+    "observed_at": "2026-07-31",
+    "component_count": 60,
+    "category_counts": {
+      "basic": 4,
+      "form": 15,
+      "data": 10,
+      "notice": 5,
+      "navigation": 8,
+      "others": 18
+    }
+  },
+  "contract_policy": {
+    "official_catalog": "complete-from-getting-started",
+    "runtime_contracts": "verified-only",
+    "unverified_props": "do-not-infer"
+  },
+  "zone_registry": "zones/",
+  "component_pattern_registry": "component-patterns/",
+  "component_pattern_catalog": "component-patterns/catalog.json",
+  "atom_catalog": "runtime-contracts/index.json",
+  "icon_catalog": "icons/catalog.json",
+  "theme": {
+    "token_contract": "theme/token-contract.json"
+  },
+  "resources": {
+    "css": "https://pixso.hikvision.com.cn/hik-plugin/ai-builder-web/public/webresources/libs/hui.css",
+    "vue": "https://pixso.hikvision.com.cn/hik-plugin/ai-builder-web/public/webresources/libs/vue.min.js",
+    "hui": "https://pixso.hikvision.com.cn/hik-plugin/ai-builder-web/public/webresources/libs/hui.umd.js"
+  },
+  "optional_resources": {
+    "vuex": "https://pixso.hikvision.com.cn/hik-plugin/ai-builder-web/public/webresources/libs/vuex.min.js",
+    "svg_icons": {
+      "url": "https://pixso.hikvision.com.cn/hik-plugin/ai-builder-web/public/webresources/libs/hui-svg-icon.umd.js",
+      "npm_package": "@hui/icons-vue",
+      "npm_version": "1.0.1",
+      "global": "hui-svg-icon",
+      "load_when": "icon-v2-component-used"
+    }
+  },
+  "official_catalog": {
+    "basic": [
+      {
+        "id": "layout",
+        "name": "Layout 布局",
+        "docs": "/hui/components/basic/layout"
+      },
+      {
+        "id": "icon",
+        "name": "Icon 图标",
+        "docs": "/hui/components/basic/icon",
+        "min_version": "2.50.0"
+      },
+      {
+        "id": "svg-icon",
+        "name": "SVG 图标",
+        "docs": "/hui/components/basic/svg-icon"
+      },
+      {
+        "id": "button",
+        "name": "Button 按钮",
+        "docs": "/hui/components/basic/button-demo"
+      }
+    ],
+    "form": [
+      {
+        "id": "radio",
+        "name": "Radio 单选框",
+        "docs": "/hui/components/form/radio"
+      },
+      {
+        "id": "checkbox",
+        "name": "Checkbox 多选框",
+        "docs": "/hui/components/form/checkbox"
+      },
+      {
+        "id": "input",
+        "name": "Input 输入框",
+        "docs": "/hui/components/form/input-demo"
+      },
+      {
+        "id": "autocomplete",
+        "name": "Autocomplete 搜索框",
+        "docs": "/hui/components/form/autocomplete"
+      },
+      {
+        "id": "ip-input",
+        "name": "IpInput IP输入框",
+        "docs": "/hui/components/form/ip-input"
+      },
+      {
+        "id": "select",
+        "name": "Select 选择器",
+        "docs": "/hui/components/form/select-demo"
+      },
+      {
+        "id": "cascader",
+        "name": "Cascader 级联选择器",
+        "docs": "/hui/components/form/cascader"
+      },
+      {
+        "id": "switch",
+        "name": "Switch 开关",
+        "docs": "/hui/components/form/switch-demo"
+      },
+      {
+        "id": "slider",
+        "name": "Slider 滑块",
+        "docs": "/hui/components/form/slider"
+      },
+      {
+        "id": "time-picker",
+        "name": "TimePicker 时间选择器",
+        "docs": "/hui/components/form/time-picker"
+      },
+      {
+        "id": "date-picker",
+        "name": "DatePicker 日期选择器",
+        "docs": "/hui/components/form/date-picker"
+      },
+      {
+        "id": "date-time-picker",
+        "name": "DateTimePicker 日期时间选择器",
+        "docs": "/hui/components/form/date-time-picker"
+      },
+      {
+        "id": "upload",
+        "name": "Upload 上传",
+        "docs": "/hui/components/form/upload"
+      },
+      {
+        "id": "transfer",
+        "name": "Transfer 穿梭框",
+        "docs": "/hui/components/form/transfer"
+      },
+      {
+        "id": "form",
+        "name": "Form 表单",
+        "docs": "/hui/components/form/form-demo"
+      }
+    ],
+    "data": [
+      {
+        "id": "table",
+        "name": "Table 表格",
+        "docs": "/hui/components/data/table-demo"
+      },
+      {
+        "id": "tag",
+        "name": "Tag 标签",
+        "docs": "/hui/components/data/tag"
+      },
+      {
+        "id": "progress",
+        "name": "Progress 进度条",
+        "docs": "/hui/components/data/progress-demo"
+      },
+      {
+        "id": "tree",
+        "name": "Tree 树形控件",
+        "docs": "/hui/components/data/tree"
+      },
+      {
+        "id": "pagination",
+        "name": "Pagination 分页",
+        "docs": "/hui/components/data/pagination"
+      },
+      {
+        "id": "badge",
+        "name": "Badge 标记",
+        "docs": "/hui/components/data/badge"
+      },
+      {
+        "id": "stats",
+        "name": "Stats 统计",
+        "docs": "/hui/components/data/stats"
+      },
+      {
+        "id": "list",
+        "name": "List 列表",
+        "docs": "/hui/components/data/list",
+        "min_version": "2.55.0"
+      },
+      {
+        "id": "skeleton",
+        "name": "Skeleton 骨架屏",
+        "docs": "/hui/components/data/skeleton",
+        "min_version": "2.60.3"
+      },
+      {
+        "id": "descriptions",
+        "name": "Descriptions 描述列表",
+        "docs": "/hui/components/data/descriptions",
+        "min_version": "2.60.3"
+      }
+    ],
+    "notice": [
+      {
+        "id": "alert",
+        "name": "Alert 警告",
+        "docs": "/hui/components/notice/alert"
+      },
+      {
+        "id": "loading",
+        "name": "Loading 加载",
+        "docs": "/hui/components/notice/loading"
+      },
+      {
+        "id": "message",
+        "name": "Message 消息提示",
+        "docs": "/hui/components/notice/message"
+      },
+      {
+        "id": "message-box",
+        "name": "MessageBox 弹框",
+        "docs": "/hui/components/notice/message-box"
+      },
+      {
+        "id": "notification",
+        "name": "Notification 通知",
+        "docs": "/hui/components/notice/notification"
+      }
+    ],
+    "navigation": [
+      {
+        "id": "menu",
+        "name": "Menu 菜单",
+        "docs": "/hui/components/navigation/menu-demo"
+      },
+      {
+        "id": "nav",
+        "name": "Nav 导航菜单",
+        "docs": "/hui/components/navigation/nav-demo"
+      },
+      {
+        "id": "tabs",
+        "name": "Tabs 标签页",
+        "docs": "/hui/components/navigation/tabs"
+      },
+      {
+        "id": "breadcrumb",
+        "name": "Breadcrumb 面包屑",
+        "docs": "/hui/components/navigation/breadcrumb"
+      },
+      {
+        "id": "dropdown",
+        "name": "Dropdown 下拉菜单",
+        "docs": "/hui/components/navigation/dropdown"
+      },
+      {
+        "id": "steps",
+        "name": "Steps 步骤条",
+        "docs": "/hui/components/navigation/steps"
+      },
+      {
+        "id": "anchor",
+        "name": "Anchor 锚点",
+        "docs": "/hui/components/navigation/anchor"
+      },
+      {
+        "id": "page-header",
+        "name": "PageHeader 页头",
+        "docs": "/hui/components/navigation/layoutPageHeader",
+        "min_version": "2.60.4"
+      }
+    ],
+    "others": [
+      {
+        "id": "dialog",
+        "name": "Dialog 对话框",
+        "docs": "/hui/components/others/dialog-demo"
+      },
+      {
+        "id": "tooltip",
+        "name": "Tooltip 文字提示",
+        "docs": "/hui/components/others/tooltip"
+      },
+      {
+        "id": "popover",
+        "name": "Popover 弹出框",
+        "docs": "/hui/components/others/popover"
+      },
+      {
+        "id": "popconfirm",
+        "name": "Popconfirm 气泡确认框",
+        "docs": "/hui/components/others/popconfirm",
+        "min_version": "2.60.6"
+      },
+      {
+        "id": "card",
+        "name": "Card 卡片",
+        "docs": "/hui/components/others/card"
+      },
+      {
+        "id": "carousel",
+        "name": "Carousel 走马灯",
+        "docs": "/hui/components/others/carousel"
+      },
+      {
+        "id": "collapse",
+        "name": "Collapse 折叠面板",
+        "docs": "/hui/components/others/collapse"
+      },
+      {
+        "id": "scrollbar",
+        "name": "Scrollbar 滚动条",
+        "docs": "/hui/components/others/scrollbar"
+      },
+      {
+        "id": "color-picker",
+        "name": "ColorPicker 颜色选择器",
+        "docs": "/hui/components/others/color-picker"
+      },
+      {
+        "id": "affix",
+        "name": "Affix 图钉",
+        "docs": "/hui/components/others/affix"
+      },
+      {
+        "id": "rate",
+        "name": "Rate 评分",
+        "docs": "/hui/components/others/rate",
+        "min_version": "2.50.0"
+      },
+      {
+        "id": "drawer",
+        "name": "Drawer 抽屉",
+        "docs": "/hui/components/others/drawer",
+        "min_version": "2.50.0"
+      },
+      {
+        "id": "timeline",
+        "name": "Timeline 时间轴",
+        "docs": "/hui/components/others/timeline",
+        "min_version": "2.50.0"
+      },
+      {
+        "id": "divider",
+        "name": "Divider 分割线",
+        "docs": "/hui/components/others/divider",
+        "min_version": "2.50.0"
+      },
+      {
+        "id": "infinite-scroll",
+        "name": "InfiniteScroll 无限滚动",
+        "docs": "/hui/components/others/infinite-scroll",
+        "min_version": "2.55.0"
+      },
+      {
+        "id": "empty",
+        "name": "Empty 空状态",
+        "docs": "/hui/components/others/empty",
+        "min_version": "2.55.0"
+      },
+      {
+        "id": "image-viewer",
+        "name": "ImageViewer 图片预览",
+        "docs": "/hui/components/others/image-viewer",
+        "min_version": "2.55.0"
+      },
+      {
+        "id": "ellipsis",
+        "name": "Ellipsis 文本省略",
+        "docs": "/hui/components/others/ellipsis",
+        "min_version": "2.61.0"
+      }
+    ]
+  },
+  "runtime_contracts": {
+    "index": "runtime-contracts/index.json",
+    "policy": "verified-only",
+    "entry_count": 96
+  },
+  "runtime_contract_batches": {
+    "basic-form": {
+      "status": "verified",
+      "component_ids": [
+        "layout",
+        "icon",
+        "svg-icon",
+        "button",
+        "radio",
+        "checkbox",
+        "input",
+        "autocomplete",
+        "ip-input",
+        "select",
+        "cascader",
+        "switch",
+        "slider",
+        "time-picker",
+        "date-picker",
+        "date-time-picker",
+        "upload",
+        "transfer",
+        "form"
+      ],
+      "observed_at": "2026-07-31",
+      "evidence": "runtime-contracts/evidence/basic-form.docs.json"
+    },
+    "data": {
+      "status": "verified",
+      "component_ids": [
+        "table",
+        "tag",
+        "progress",
+        "tree",
+        "pagination",
+        "badge",
+        "stats",
+        "list",
+        "skeleton",
+        "descriptions"
+      ],
+      "observed_at": "2026-07-31",
+      "evidence": "runtime-contracts/evidence/data.docs.json"
+    },
+    "notice": {
+      "status": "verified",
+      "component_ids": [
+        "alert",
+        "loading",
+        "message",
+        "message-box",
+        "notification"
+      ],
+      "observed_at": "2026-07-31",
+      "evidence": "runtime-contracts/evidence/notice.docs.json"
+    },
+    "navigation": {
+      "status": "verified",
+      "component_ids": [
+        "menu",
+        "nav",
+        "tabs",
+        "breadcrumb",
+        "dropdown",
+        "steps",
+        "anchor",
+        "page-header"
+      ],
+      "observed_at": "2026-07-31",
+      "evidence": "runtime-contracts/evidence/navigation.docs.json"
+    },
+    "others": {
+      "status": "verified",
+      "component_ids": [
+        "dialog",
+        "tooltip",
+        "popover",
+        "popconfirm",
+        "card",
+        "carousel",
+        "collapse",
+        "scrollbar",
+        "color-picker",
+        "affix",
+        "rate",
+        "drawer",
+        "timeline",
+        "divider",
+        "infinite-scroll",
+        "empty",
+        "image-viewer",
+        "ellipsis"
+      ],
+      "observed_at": "2026-07-31",
+      "evidence": "runtime-contracts/evidence/others.docs.json"
+    }
+  }
+}

@@ -1,0 +1,164 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "progress",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/data/progress-demo",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/data.docs.json",
+    "evidence_sha256": "1faf13316d3e61002e07073d56ed0739f08ed5e112cba04b1d62b08484a37c71"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-progress": {
+      "props": [
+        {
+          "参数": "percentage",
+          "说明": "百分比",
+          "类型": "number",
+          "可选值": "0-100",
+          "默认值": "0",
+          "template_name": "percentage"
+        },
+        {
+          "参数": "type",
+          "说明": "进度条类型",
+          "类型": "string",
+          "可选值": "line/circle",
+          "默认值": "line",
+          "template_name": "type"
+        },
+        {
+          "参数": "stroke-width",
+          "说明": "进度条的宽度，单位 px",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "12",
+          "template_name": "stroke-width"
+        },
+        {
+          "参数": "stroke-linecap  2.0+",
+          "说明": "进度条采用圆角或方角",
+          "类型": "string",
+          "可选值": "square/round",
+          "默认值": "square",
+          "template_name": "stroke-linecap"
+        },
+        {
+          "参数": "text-inside",
+          "说明": "将进度条描述置于进度条内部（只在 type=‘line’ 时可用）",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "text-inside"
+        },
+        {
+          "参数": "color  2.0+",
+          "说明": "进度条背景色（会覆盖 status 状态颜色）",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "color"
+        },
+        {
+          "参数": "vertical-align  2.0+",
+          "说明": "进度条文字是否显示在进度条的下方(只在 type=line 时可用)",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "vertical-align"
+        },
+        {
+          "参数": "status",
+          "说明": "进度条当前状态",
+          "类型": "string",
+          "可选值": "exception/success",
+          "默认值": "—",
+          "template_name": "status"
+        },
+        {
+          "参数": "status-text  2.0+",
+          "说明": "配合status使用, 进度条状态图标后的文字部分",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "status-text"
+        },
+        {
+          "参数": "width",
+          "说明": "环形进度条画布宽度（只在 type=‘circle’ 时可用）",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "160",
+          "template_name": "width"
+        },
+        {
+          "参数": "show-text",
+          "说明": "是否显示进度条文字内容",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "show-text"
+        },
+        {
+          "参数": "small  2.0+",
+          "说明": "使用小型进度条, 暂时只支持线形非内显进度条",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "small"
+        },
+        {
+          "参数": "dynamic  2.0+",
+          "说明": "使用动态进度条（只在 type=‘line’ 时可用）",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "dynamic"
+        },
+        {
+          "参数": "duration  2.0+",
+          "说明": "设置动态进度条一次的播放时间 或 条纹进度条流动速度，即 animation-duration ，单位为秒",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "3",
+          "template_name": "duration"
+        },
+        {
+          "参数": "striped  2.60.6+",
+          "说明": "在进度条上增加条纹（只在 type=‘line’ 时可用）",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "striped"
+        },
+        {
+          "参数": "striped-style  2.60.6+",
+          "说明": "设置进度条纹理样式",
+          "类型": "string",
+          "可选值": "tilt/vertical/arrow",
+          "默认值": "tilt",
+          "template_name": "striped-style"
+        },
+        {
+          "参数": "striped-flow  2.60.6+",
+          "说明": "让进度条上的条纹流动起来",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "striped-flow"
+        }
+      ],
+      "events": [],
+      "slots": [
+        {
+          "name": "text  2.0+",
+          "说明": "进度条的文字部分",
+          "template_name": "text"
+        }
+      ],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

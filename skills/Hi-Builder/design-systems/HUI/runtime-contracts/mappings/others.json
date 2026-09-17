@@ -1,0 +1,161 @@
+{
+  "schema_version": "hui-contract-mapping.v1",
+  "batch": "others",
+  "components": {
+    "dialog": {
+      "runtime": {
+        "el-dialog": {
+          "props": ["Attributes"],
+          "slots": ["Slot"],
+          "events": ["Events"]
+        }
+      }
+    },
+    "tooltip": {
+      "runtime": {
+        "el-tooltip": {
+          "props": ["Attributes"]
+        }
+      }
+    },
+    "popover": {
+      "runtime": {
+        "el-popover": {
+          "props": ["Attributes"],
+          "slots": ["Slot"],
+          "events": ["Events"]
+        }
+      }
+    },
+    "popconfirm": {
+      "runtime": {
+        "el-popconfirm": {
+          "props": ["Attributes"],
+          "slots": ["Slot"],
+          "events": ["Events"],
+          "methods": ["Methods"]
+        }
+      }
+    },
+    "card": {
+      "runtime": {
+        "el-card": {
+          "props": ["Attributes"]
+        }
+      }
+    },
+    "carousel": {
+      "runtime": {
+        "el-carousel": {
+          "props": ["Carousel Attributes"],
+          "events": ["Carousel Events"],
+          "methods": ["Carousel Methods"]
+        },
+        "el-carousel-item": {
+          "props": ["Carousel-Item Attributes"]
+        }
+      }
+    },
+    "collapse": {
+      "runtime": {
+        "el-collapse": {
+          "props": ["Collapse Attributes"],
+          "events": ["Collapse Events"]
+        },
+        "el-collapse-item": {
+          "props": ["Collapse Item Attributes"]
+        }
+      }
+    },
+    "scrollbar": {
+      "runtime": {
+        "el-scrollbar": {
+          "props": ["Scrollbar Attributes", "Scrollbar Overflow"],
+          "methods": ["Scrollbar Methods"],
+          "events": ["Scrollbar Events"]
+        }
+      }
+    },
+    "color-picker": {
+      "runtime": {
+        "h-color-picker": {
+          "props": ["ColorPicker Attributes"],
+          "events": ["ColorPicker Events"]
+        }
+      }
+    },
+    "affix": {
+      "runtime": {
+        "h-affix": {
+          "props": ["属性"],
+          "methods": ["方法"]
+        }
+      }
+    },
+    "rate": {
+      "runtime": {
+        "el-rate": {
+          "props": ["Attributes"],
+          "events": ["Events"]
+        }
+      }
+    },
+    "drawer": {
+      "runtime": {
+        "el-drawer": {
+          "props": ["属性"],
+          "slots": ["插槽"],
+          "methods": ["方法"],
+          "events": ["事件"]
+        }
+      }
+    },
+    "timeline": {
+      "runtime": {
+        "el-timeline": {
+          "props": ["api"]
+        },
+        "el-timeline-item": {
+          "props": ["TimelineItem"]
+        }
+      }
+    },
+    "divider": {
+      "runtime": {
+        "el-divider": {
+          "props": ["Attributes"]
+        }
+      }
+    },
+    "infinite-scroll": {
+      "contract_kind": "directive",
+      "runtime": {
+        "v-infinite-scroll": {
+          "props": ["Attributes"]
+        }
+      }
+    },
+    "empty": {
+      "runtime": {
+        "el-empty": {
+          "props": ["Empty Attributes"],
+          "slots": ["Empty Slots"]
+        }
+      }
+    },
+    "image-viewer": {
+      "runtime": {
+        "el-image-viewer": {
+          "props": ["ImageViewer Attributes"]
+        }
+      }
+    },
+    "ellipsis": {
+      "runtime": {
+        "el-ellipsis": {
+          "props": ["Ellipsis Attributes"]
+        }
+      }
+    }
+  }
+}

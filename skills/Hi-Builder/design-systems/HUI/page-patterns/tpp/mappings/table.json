@@ -1,0 +1,220 @@
+{
+  "schema_version": "tpp-page-family-mapping.v1",
+  "batch": "table",
+  "region_classes": {
+    "search": "h-page-search",
+    "filter": "filter-container",
+    "toolbar": "bar-search-row",
+    "table": "el-table",
+    "pagination": "el-pagination",
+    "tabs": "el-tabs",
+    "tree": "el-tree",
+    "sidebar": "h-page-sidebar",
+    "statistics": "h-stats",
+    "details_content": "contentStyle"
+  },
+  "selection_strategy": {
+    "purpose": "所有表格页在生成PageSpec前，从18个已验证精确Variant中选择唯一最符合真实需求的一项；不得先套用默认表格再由Renderer猜测结构。",
+    "required_variant_count": 18,
+    "selection_required_before_render": true,
+    "filter_dimensions": {
+      "evaluation_order": [
+        "trigger_mode",
+        "option_density",
+        "control_shape",
+        "collapse_behavior"
+      ],
+      "trigger_mode": {
+        "realtime": "任一条件变化后立即刷新结果，并通常展示已选条件。",
+        "manual": "用户完成条件设置后，通过查询动作统一刷新结果。"
+      },
+      "option_density": {
+        "dense": "大多数或全部枚举型过滤条件各有5个及以上选项，尤其普遍达到5至10个或更多时，优先使用horizontal-bar，让各条件的选项在内容区横向展开。",
+        "compact": "过滤条件较少且每项只有少量短选项，能够在目标视口的一至两行内稳定展示时，才允许使用horizontal-bar。",
+        "mixed": "输入框、日期、选择器等表单控件混合，且并非以大量枚举选项为主时，手动过滤优先使用regular-box。"
+      },
+      "precedence": "先确定manual或realtime，再以选项密度和控件形态确定horizontal-bar、left-sidebar或regular-box；大量枚举选项优先horizontal-bar。只有用户明确要求侧栏、条件存在明显层级导航，或目标视口无法承载横向展开时才选择left-sidebar；trigger_mode不得替代option_density判断。"
+    },
+    "priority": [
+      {
+        "order": 1,
+        "signal": "选中表格行后需要在同页持续展示联动详情",
+        "family": "table-details-pane",
+        "variant": "with-details-pane"
+      },
+      {
+        "order": 2,
+        "signal": "表格上方需要汇总指标或统计状态，并与列表联动",
+        "family": "table-statistics",
+        "variant": "with-statistics"
+      },
+      {
+        "order": 3,
+        "signal": "同时需要树形范围导航和数据集标签页",
+        "decision": "标签页是主要数据集切换轴时选择table-tabs的with-tree Variant；树是主要资源范围轴时选择table-tree的with-tabs Variant，并按用户要求选择linear或card样式。"
+      },
+      {
+        "order": 4,
+        "signal": "只需要树形层级或组织资源范围导航",
+        "family": "table-tree",
+        "variant": "tree-only"
+      },
+      {
+        "order": 5,
+        "signal": "只需要多个数据集或状态视图切换",
+        "family": "table-tabs",
+        "decision": "按用户明确要求或信息密度选择linear-tabs或card-tabs；未明确且属于紧凑数据切换时使用linear-tabs。"
+      },
+      {
+        "order": 6,
+        "signal": "筛选项变化后立即刷新结果且展示已选条件",
+        "family": "table-realtime-filter",
+        "decision": "大多数或全部枚举条件各有5个及以上选项、普遍达到5至10个或更多时，优先使用horizontal-realtime-filter。只有用户明确要求侧栏、条件存在明显层级导航，或目标视口无法承载横向展开时，才使用sidebar-realtime-filter。"
+      },
+      {
+        "order": 7,
+        "signal": "需要查询或重置动作后才刷新结果",
+        "family": "table-manual-filter",
+        "decision": "大多数或全部枚举条件各有5个及以上选项、普遍达到5至10个或更多时，优先使用horizontal-filter。只有用户明确要求侧栏、条件存在明显层级导航，或目标视口无法承载横向展开时，才使用sidebar-manual-filter；输入框、日期、选择器等混合表单控件使用regular-filter-box。存在明确高频和低频字段分层时选择high-low，否则仅在全部条件允许整体收起时选择fully-retractable。"
+      },
+      {
+        "order": 8,
+        "signal": "不需要详情栏、统计、树、标签页或筛选",
+        "family": "table-basic",
+        "decision": "存在新增、批量操作、导入导出等表格级动作时选择with-operation-bar，否则选择only-title。"
+      }
+    ],
+    "explicit_requirement_precedence": "用户明确指定的详情栏、统计、树、标签样式、过滤触发方式、过滤位置或收起方式优先于推断。",
+    "ambiguity_policy": "若两个精确Variant仍同时成立且主导航轴、过滤触发方式或收起方式无法从需求判断，必须报告歧义并请求用户选择，不得静默使用默认Variant。",
+    "fallback": "只有排除其余结构和过滤需求后才能选择table-basic；不得把table-basic作为表格页的预设起点。"
+  },
+  "families": {
+    "table-basic": {
+      "name": "基础表格页",
+      "match": ["basic-table", "基础表格", "仅标题", "带操作栏"],
+      "semantics": ["page-title", "optional-toolbar", "data-table", "pagination"]
+    },
+    "table-manual-filter": {
+      "name": "手动过滤表格页",
+      "match": ["manual-filter-table", "手动过滤", "过滤盒"],
+      "semantics": ["explicit-filter-controls", "query-action", "reset-action", "data-table"]
+    },
+    "table-realtime-filter": {
+      "name": "即时过滤表格页",
+      "match": ["realtime-filter-table", "即时过滤"],
+      "semantics": ["instant-filter-controls", "selected-filter-state", "data-table"]
+    },
+    "table-tabs": {
+      "name": "标签页表格页",
+      "match": ["tabbed-table", "带标签页", "标签页表格"],
+      "semantics": ["dataset-tabs", "optional-tree", "data-table", "pagination"]
+    },
+    "table-tree": {
+      "name": "树表格页",
+      "match": ["tree-table", "带树控件", "树控件表格"],
+      "semantics": ["tree-sidebar", "optional-tabs", "data-table", "pagination"]
+    },
+    "table-statistics": {
+      "name": "统计表格页",
+      "match": ["statistics-table", "带统计"],
+      "semantics": ["summary-statistics", "data-table", "pagination"]
+    },
+    "table-details-pane": {
+      "name": "详情栏表格页",
+      "match": ["details-pane-table", "带详情栏"],
+      "semantics": ["master-table", "selection-linked-details", "details-pane"]
+    }
+  },
+  "pages": {
+    "/pages/table/onlyTitle": {
+      "family": "table-basic",
+      "variant": "only-title",
+      "parameters": {"toolbar": false}
+    },
+    "/pages/table/withAnOperationBar": {
+      "family": "table-basic",
+      "variant": "with-operation-bar",
+      "parameters": {"toolbar": true}
+    },
+    "/pages/table/regularFilterBoxHeightAndLow": {
+      "family": "table-manual-filter",
+      "variant": "regular-filter-box-high-low",
+      "parameters": {"filter_placement": "regular-box", "collapse_mode": "high-low-frequency"}
+    },
+    "/pages/table/fullyRetractableRegularFilterBox": {
+      "family": "table-manual-filter",
+      "variant": "regular-filter-box-fully-retractable",
+      "parameters": {"filter_placement": "regular-box", "collapse_mode": "all-retractable"}
+    },
+    "/pages/table/horizontalBarFilteringHeightAndLow": {
+      "family": "table-manual-filter",
+      "variant": "horizontal-filter-high-low",
+      "parameters": {"filter_placement": "horizontal-bar", "collapse_mode": "high-low-frequency"}
+    },
+    "/pages/table/fullyRetractableHorizontalBarFiltering": {
+      "family": "table-manual-filter",
+      "variant": "horizontal-filter-fully-retractable",
+      "parameters": {"filter_placement": "horizontal-bar", "collapse_mode": "all-retractable"}
+    },
+    "/pages/table/manualSideBarFiltering": {
+      "family": "table-manual-filter",
+      "variant": "sidebar-manual-filter",
+      "parameters": {"filter_placement": "left-sidebar", "trigger": "manual"}
+    },
+    "/pages/table/realTimeHorizontalBarFiltering": {
+      "family": "table-realtime-filter",
+      "variant": "horizontal-realtime-filter",
+      "parameters": {"filter_placement": "horizontal-bar", "trigger": "realtime"}
+    },
+    "/pages/table/realTimeSideBarFiltering": {
+      "family": "table-realtime-filter",
+      "variant": "sidebar-realtime-filter",
+      "parameters": {"filter_placement": "left-sidebar", "trigger": "realtime"}
+    },
+    "/pages/table/linearTabPage": {
+      "family": "table-tabs",
+      "variant": "linear-tabs",
+      "parameters": {"tab_style": "linear", "tree": false}
+    },
+    "/pages/table/linearTabPageAndTreeControl": {
+      "family": "table-tabs",
+      "variant": "linear-tabs-with-tree",
+      "parameters": {"tab_style": "linear", "tree": true}
+    },
+    "/pages/table/cardTypeTabPage": {
+      "family": "table-tabs",
+      "variant": "card-tabs",
+      "parameters": {"tab_style": "card", "tree": false}
+    },
+    "/pages/table/cardTypeTabPageAndTreeControl": {
+      "family": "table-tabs",
+      "variant": "card-tabs-with-tree",
+      "parameters": {"tab_style": "card", "tree": true}
+    },
+    "/pages/table/treeControl": {
+      "family": "table-tree",
+      "variant": "tree-only",
+      "parameters": {"tab_style": "none"}
+    },
+    "/pages/table/treeControlAndLinearTabPage": {
+      "family": "table-tree",
+      "variant": "tree-with-linear-tabs",
+      "parameters": {"tab_style": "linear"}
+    },
+    "/pages/table/treeControlAndCardTypeTabPage": {
+      "family": "table-tree",
+      "variant": "tree-with-card-tabs",
+      "parameters": {"tab_style": "card"}
+    },
+    "/pages/table/withStatisticalTable": {
+      "family": "table-statistics",
+      "variant": "with-statistics",
+      "parameters": {"statistics": true}
+    },
+    "/pages/table/withDetailsSectionTable": {
+      "family": "table-details-pane",
+      "variant": "with-details-pane",
+      "parameters": {"details_placement": "right"}
+    }
+  }
+}

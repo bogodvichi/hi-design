@@ -1,0 +1,16 @@
+{
+  "schema_version": "industry-design-system.v1",
+  "maintenance": {
+    "purpose": "通用行业知识入口，连接HUI通用知识、通用行业字段和本行业产品。",
+    "edit_policy": "新增通用行业字段或产品时先建立真实知识目录，再在本索引登记；不要复制HUI通用知识。",
+    "managed_paths": {
+      "domain": "通用行业字段及后续实体、枚举、动作、页面意图扩展。",
+      "products": "通用行业下各产品的品牌、Shell、tokens和页面知识。"
+    }
+  },
+  "id": "general",
+  "name": "通用",
+  "design_system": "HUI",
+  "domain_fields": "domain/fields/catalog.json",
+  "products": ["isc"]
+}

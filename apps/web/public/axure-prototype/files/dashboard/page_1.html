@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>仪表盘 — TaskFlow</title>
+<link rel="stylesheet" href="../../resources/css/reset.css">
+<link rel="stylesheet" href="../../resources/css/app.css">
+<link rel="stylesheet" href="../../resources/css/pages.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="app-sidebar">
+    <div class="brand"><span class="brand-logo"></span><span class="brand-name">TaskFlow</span></div>
+    <nav class="nav-list">
+      <div class="nav-item is-active"><span class="nav-icon">▦</span>仪表盘</div>
+      <div class="nav-item"><span class="nav-icon">✓</span>我的任务<span class="nav-badge">5</span></div>
+      <div class="nav-item"><span class="nav-icon">▤</span>项目</div>
+      <div class="nav-item"><span class="nav-icon">◎</span>团队</div>
+      <div class="nav-item" data-action="nav" data-target="settings"><span class="nav-icon">⚙</span>设置</div>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="avatar">A</div>
+      <div><div class="u-name">Ava Chen</div><div class="u-role">产品经理</div></div>
+    </div>
+  </aside>
+  <main class="app-main">
+    <header class="app-topbar">
+      <div><div class="topbar-title">仪表盘</div><div class="topbar-crumb">工作区 / 概览</div></div>
+      <div class="topbar-spacer"></div>
+      <span class="topbar-crumb">2026-08-23 周日</span>
+      <button class="btn btn-ghost btn-sm">本周</button>
+      <button class="btn btn-primary btn-sm" data-action="open-modal" data-target="#newTaskModal">+ 新建任务</button>
+    </header>
+    <div class="app-content">
+      <div class="dash-head">
+        <div><h2>早上好，Ava</h2><div class="dh-sub">今天有 5 个任务待完成，其中 2 个即将到期。</div></div>
+      </div>
+      <div class="stat-grid" style="margin-bottom:14px">
+        <div class="stat">
+          <div class="stat-icon ic-info">▦</div>
+          <div class="stat-label">进行中任务</div>
+          <div class="stat-value">24</div>
+          <div class="stat-trend up">↑ 12% 较上周</div>
+        </div>
+        <div class="stat">
+          <div class="stat-icon ic-success">✓</div>
+          <div class="stat-label">本周已完成</div>
+          <div class="stat-value">38</div>
+          <div class="stat-trend up">↑ 8 较上周</div>
+        </div>
+        <div class="stat">
+          <div class="stat-icon ic-warning">⏰</div>
+          <div class="stat-label">即将到期</div>
+          <div class="stat-value">6</div>
+          <div class="stat-trend down">↓ 2 较昨天</div>
+        </div>
+        <div class="stat">
+          <div class="stat-icon ic-purple">◎</div>
+          <div class="stat-label">团队成员</div>
+          <div class="stat-value">12</div>
+          <div class="stat-trend up">活跃度 87%</div>
+        </div>
+      </div>
+      <div class="dash-grid">
+        <div class="dash-left">
+          <div class="card">
+            <div class="card-head">
+              <div><div class="card-title">本周任务趋势</div><div class="card-sub">每日新建与完成数量</div></div>
+              <div class="filter-row">
+                <span class="chip is-active">本周</span>
+                <span class="chip">本月</span>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="mini-chart">
+                <div class="bar" style="height:45%"><span class="bar-val">9</span></div>
+                <div class="bar" style="height:62%"><span class="bar-val">12</span></div>
+                <div class="bar" style="height:38%"><span class="bar-val">7</span></div>
+                <div class="bar" style="height:78%"><span class="bar-val">15</span></div>
+                <div class="bar" style="height:55%"><span class="bar-val">10</span></div>
+                <div class="bar" style="height:88%"><span class="bar-val">17</span></div>
+                <div class="bar today" style="height:70%"><span class="bar-val">13</span></div>
+              </div>
+              <div class="axis"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <div><div class="card-title">任务列表</div><div class="card-sub">点击任意行进入任务详情</div></div>
+              <div class="filter-row">
+                <span class="chip is-active">全部</span>
+                <span class="chip">我的</span>
+                <span class="chip">到期</span>
+              </div>
+            </div>
+            <div class="card-body flush">
+              <table class="table">
+                <thead><tr><th style="width:32px"></th><th>任务</th><th>状态</th><th>负责人</th><th>截止</th><th>进度</th></tr></thead>
+                <tbody>
+                  <tr data-action="nav" data-target="taskdetail">
+                    <td><span class="check is-checked"></span></td>
+                    <td><div class="cell-title">重构任务详情页交互</div><div class="cell-sub">TF-204 · 前端</div></td>
+                    <td><span class="badge badge-info"><span class="dot"></span>进行中</span></td>
+                    <td><div class="avatar-stack"><span class="avatar sm">A</span><span class="avatar sm" style="background:#8b5cf6">L</span></div></td>
+                    <td>08-25</td>
+                    <td style="min-width:90px"><div class="progress"><span style="width:65%"></span></div></td>
+                  </tr>
+                  <tr data-action="nav" data-target="taskdetail">
+                    <td><span class="check"></span></td>
+                    <td><div class="cell-title">用户调研：移动端看板需求</div><div class="cell-sub">TF-198 · 用研</div></td>
+                    <td><span class="badge badge-warning"><span class="dot"></span>待评审</span></td>
+                    <td><div class="avatar-stack"><span class="avatar sm" style="background:#10b981">M</span></div></td>
+                    <td>08-26</td>
+                    <td><div class="progress"><span style="width:40%"></span></div></td>
+                  </tr>
+                  <tr data-action="nav" data-target="taskdetail">
+                    <td><span class="check"></span></td>
+                    <td><div class="cell-title">修复通知中心实时刷新</div><div class="cell-sub">TF-210 · 后端</div></td>
+                    <td><span class="badge badge-danger"><span class="dot"></span>阻塞</span></td>
+                    <td><div class="avatar-stack"><span class="avatar sm" style="background:#ef4444">K</span></div></td>
+                    <td>08-24</td>
+                    <td><div class="progress"><span style="width:20%"></span></div></td>
+                  </tr>
+                  <tr data-action="nav" data-target="taskdetail">
+                    <td><span class="check is-checked"></span></td>
+                    <td><div class="cell-title">设计系统：表单组件补全</div><div class="cell-sub">TF-187 · 设计</div></td>
+                    <td><span class="badge badge-success"><span class="dot"></span>已完成</span></td>
+                    <td><div class="avatar-stack"><span class="avatar sm" style="background:#0ea5e9">S</span></div></td>
+                    <td>08-22</td>
+                    <td><div class="progress"><span style="width:100%"></span></div></td>
+                  </tr>
+                  <tr data-action="nav" data-target="taskdetail">
+                    <td><span class="check"></span></td>
+                    <td><div class="cell-title">Q3 OKR 复盘文档</div><div class="cell-sub">TF-215 · 运营</div></td>
+                    <td><span class="badge badge-purple"><span class="dot"></span>待开始</span></td>
+                    <td><div class="avatar-stack"><span class="avatar sm">A</span></div></td>
+                    <td>08-30</td>
+                    <td><div class="progress"><span style="width:0%"></span></div></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        <div class="dash-right">
+          <div class="card">
+            <div class="card-head"><div class="card-title">即将到期</div></div>
+            <div class="card-body">
+              <div class="deadline-list">
+                <div class="dl-item"><div class="dl-left"><span class="badge badge-danger">今</span><div><div class="dl-title">修复通知中心实时刷新</div><div class="dl-meta">TF-210 · Kim</div></div></div><span class="cell-sub">今天</span></div>
+                <div class="dl-item"><div class="dl-left"><span class="badge badge-warning">2天</span><div><div class="dl-title">重构任务详情页交互</div><div class="dl-meta">TF-204 · Ava</div></div></div><span class="cell-sub">08-25</span></div>
+                <div class="dl-item"><div class="dl-left"><span class="badge badge-info">3天</span><div><div class="dl-title">用户调研：移动端看板</div><div class="dl-meta">TF-198 · Mia</div></div></div><span class="cell-sub">08-26</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div class="card-title">最近动态</div></div>
+            <div class="card-body">
+              <div class="activity-item"><span class="a-dot" style="background:#10b981"></span><div class="a-body"><b>Sam</b> 完成了「设计系统：表单组件补全」<div class="a-time">2 小时前</div></div></div>
+              <div class="activity-item"><span class="a-dot" style="background:#6366f1"></span><div class="a-body"><b>Leo</b> 在「重构任务详情页交互」中评论<div class="a-time">4 小时前</div></div></div>
+              <div class="activity-item"><span class="a-dot" style="background:#f59e0b"></span><div class="a-body"><b>Mia</b> 创建了「用户调研」子任务<div class="a-time">昨天</div></div></div>
+              <div class="activity-item"><span class="a-dot" style="background:#ef4444"></span><div class="a-body"><b>Kim</b> 将「修复通知中心」标记为阻塞<div class="a-time">昨天</div></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="modal-overlay" id="newTaskModal">
+  <div class="modal lg">
+    <div class="modal-head">
+      <div class="modal-title">新建任务</div>
+      <button class="icon-btn" data-action="close-modal" data-target="#newTaskModal">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="field"><label class="field-label">任务标题</label><input class="input" placeholder="简明描述这个任务…"></div>
+      <div class="form-row">
+        <div class="field"><label class="field-label">负责人</label><select class="select"><option>Ava Chen</option><option>Leo Wang</option><option>Mia Liu</option><option>Kim Zhao</option><option>Sam Sun</option></select></div>
+        <div class="field"><label class="field-label">截止日期</label><input class="input" type="date" value="2026-08-28"></div>
+      </div>
+      <div class="form-row">
+        <div class="field"><label class="field-label">状态</label><select class="select"><option>待开始</option><option>进行中</option><option>待评审</option><option>已完成</option></select></div>
+        <div class="field"><label class="field-label">优先级</label><select class="select"><option>中</option><option>高</option><option>低</option><option>紧急</option></select></div>
+        <div class="field"><label class="field-label">项目</label><select class="select"><option>TaskFlow Web</option><option>移动端</option><option>基础平台</option></select></div>
+      </div>
+      <div class="field"><label class="field-label">描述</label><textarea class="textarea" placeholder="补充背景、验收标准或相关链接…"></textarea></div>
+      <div class="field"><label class="field-label">标签</label><input class="input" placeholder="用逗号分隔，如：前端, 紧急"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-ghost" data-action="close-modal" data-target="#newTaskModal">取消</button>
+      <button class="btn btn-primary" data-action="close-modal" data-target="#newTaskModal">创建任务</button>
+    </div>
+  </div>
+</div>
+
+<script src="../../resources/scripts/interactions.js"></script>
+</body>
+</html>

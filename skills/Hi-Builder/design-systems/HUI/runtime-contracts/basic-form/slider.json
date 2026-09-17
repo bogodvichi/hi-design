@@ -1,0 +1,197 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "slider",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/form/slider",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/basic-form.docs.json",
+    "evidence_sha256": "ce35467cfa4317a06d0d65dd9e415328669f0c6711f32417ce27edc1af71cbe7"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-slider": {
+      "props": [
+        {
+          "参数": "min",
+          "说明": "最小值",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "0",
+          "template_name": "min"
+        },
+        {
+          "参数": "max",
+          "说明": "最大值",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "100",
+          "template_name": "max"
+        },
+        {
+          "参数": "disabled",
+          "说明": "是否禁用",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "step",
+          "说明": "步长",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "1",
+          "template_name": "step"
+        },
+        {
+          "参数": "marks",
+          "说明": "标记",
+          "类型": "array/object",
+          "可选值": "标记优先级高于 step",
+          "默认值": "[]，如果是[1]等价于 {“1”:1}",
+          "template_name": "marks"
+        },
+        {
+          "参数": "show-input",
+          "说明": "是否显示输入框",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "show-input"
+        },
+        {
+          "参数": "show-button",
+          "说明": "是否显示控制按钮",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "show-button"
+        },
+        {
+          "参数": "show-input-controls",
+          "说明": "在显示输入框的情况下，是否显示输入框的控制按钮",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "show-input-controls"
+        },
+        {
+          "参数": "show-stops",
+          "说明": "是否显示间断点",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "show-stops"
+        },
+        {
+          "参数": "show-stops-number",
+          "说明": "是否显示间断点下标",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "show-stops-number"
+        },
+        {
+          "参数": "show-tooltip",
+          "说明": "是否显示 tooltip",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "show-tooltip"
+        },
+        {
+          "参数": "format-tooltip",
+          "说明": "格式化 tooltip message",
+          "类型": "Function(value)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "format-tooltip"
+        },
+        {
+          "参数": "range",
+          "说明": "是否为范围选择",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "range"
+        },
+        {
+          "参数": "vertical",
+          "说明": "是否竖向模式",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "vertical"
+        },
+        {
+          "参数": "height",
+          "说明": "Slider 高度，竖向模式时必填",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "height"
+        },
+        {
+          "参数": "reverse   2.52.0+",
+          "说明": "是否启用逆向滑块",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "reverse"
+        },
+        {
+          "参数": "barColor   2.52.0+",
+          "说明": "滑轨颜色，启用range后生效",
+          "类型": "Array",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "bar-color"
+        },
+        {
+          "参数": "show-input-on-slider   2.55.0+",
+          "说明": "是否显示输入框在slider上",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "show-input-on-slider"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "change",
+          "说明": "值改变时触发（使用鼠标拖曳时，只在松开鼠标后触发）",
+          "回调参数": "改变后的值",
+          "template_name": "change"
+        },
+        {
+          "事件名称": "drag-start",
+          "说明": "拖拽开始前触发",
+          "回调参数": "event, 当前值",
+          "template_name": "drag-start"
+        },
+        {
+          "事件名称": "drag-end",
+          "说明": "拖拽完成后立即触发",
+          "回调参数": "改变后的值",
+          "template_name": "drag-end"
+        },
+        {
+          "事件名称": "before-click",
+          "说明": "点击 slider 之前触发",
+          "回调参数": "event, 当前值",
+          "template_name": "before-click"
+        },
+        {
+          "事件名称": "slider-click",
+          "说明": "点击 slider 后触发",
+          "回调参数": "改变后的值",
+          "template_name": "slider-click"
+        }
+      ],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

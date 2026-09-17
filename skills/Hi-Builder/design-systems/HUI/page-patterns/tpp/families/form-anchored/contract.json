@@ -1,0 +1,112 @@
+{
+  "schema_version": "hui-page-pattern.v1",
+  "id": "hui.tpp.family.form-anchored",
+  "name": "锚点表单页",
+  "source": {
+    "platform": "HUI-VUE典型页面",
+    "observed_at": "2026-07-31",
+    "catalog": "../../catalog.json"
+  },
+  "match": [
+    "anchored-form",
+    "锚点表单",
+    "带锚点"
+  ],
+  "semantics": [
+    "section-navigation",
+    "scroll-linked-anchor",
+    "form-sections",
+    "sticky-footer-actions"
+  ],
+  "shared_runtime_components": [
+    "el-checkbox",
+    "el-col",
+    "el-form",
+    "el-form-item",
+    "el-input",
+    "el-option",
+    "el-radio",
+    "el-radio-group",
+    "el-row",
+    "el-scrollbar",
+    "el-select",
+    "el-tag",
+    "el-tooltip",
+    "el-upload",
+    "h-svg-icon"
+  ],
+  "invariants": {
+    "anchor_panel": {
+      "position": "right",
+      "behavior": "resident-right-rail-outside-content-surface-and-scroll-container",
+      "scrolls_with_content": false,
+      "reserved_width_px": 180,
+      "content_gap_px": 24,
+      "top_offset_px": 48,
+      "surface": "transparent",
+      "surface_context": "page-gray-background",
+      "shadow": "none",
+      "occupies_form_horizontal_space": true,
+      "content_scrollbar_position": "form-content-right-edge-before-anchor-rail",
+      "content_scrollbar_vertical_extent": "content-top-to-fixed-footer-top",
+      "content_scrollbar_layer": "beside-anchor-rail"
+    },
+    "regions": {
+      "content": {
+        "display": "flex",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "form": {
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      }
+    },
+    "variant_values_must_come_from_page_contract": true
+  },
+  "variants": [
+    {
+      "id": "hui.tpp.page.form.persistent-anchor-single-container",
+      "name": "常驻锚点-单容器",
+      "contract": "../../pages/form/persistent-anchor-single-container.json",
+      "parameters": {
+        "anchor_behavior": "persistent",
+        "container_count": 1,
+        "columns": 3,
+        "page_tabs_placement": "breadcrumb",
+        "form_item_gap": "24px",
+        "title_field_gap": "24px",
+        "group_gap": "48px",
+        "anchor_reserved_width_px": 180,
+        "anchor_content_gap_px": 24,
+        "anchor_top_offset_px": 48,
+        "default_label_position": null
+      }
+    },
+    {
+      "id": "hui.tpp.page.form.persistent-anchor-multiple-containers",
+      "name": "常驻锚点-多容器",
+      "contract": "../../pages/form/persistent-anchor-multiple-containers.json",
+      "parameters": {
+        "anchor_behavior": "persistent",
+        "container_count": "multiple",
+        "default_label_position": null
+      }
+    },
+    {
+      "id": "hui.tpp.page.form.retractable-anchor",
+      "name": "可收起锚点",
+      "contract": "../../pages/form/retractable-anchor.json",
+      "parameters": {
+        "anchor_behavior": "retractable",
+        "container_count": 1,
+        "default_label_position": null
+      }
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "schema_version": "hui-page-pattern.v1",
+  "id": "hui.tpp.family.table-realtime-filter",
+  "name": "即时过滤表格页",
+  "source": {
+    "platform": "HUI-VUE典型页面",
+    "observed_at": "2026-07-31",
+    "catalog": "../../catalog.json"
+  },
+  "match": [
+    "realtime-filter-table",
+    "即时过滤"
+  ],
+  "semantics": [
+    "instant-filter-controls",
+    "selected-filter-state",
+    "data-table"
+  ],
+  "shared_runtime_components": [
+    "el-button",
+    "el-checkbox",
+    "el-divider",
+    "el-input",
+    "el-option",
+    "el-pagination",
+    "el-radio-button",
+    "el-radio-group",
+    "el-scrollbar",
+    "el-select",
+    "el-table",
+    "el-table-column",
+    "el-tag",
+    "el-tooltip",
+    "h-icon",
+    "h-svg-icon"
+  ],
+  "invariants": {
+    "filter_container": {
+      "padding_vertical": 16,
+      "option_interactive_tone": "brand"
+    },
+    "selected_filter_state": {
+      "visibility_when_empty": "hidden",
+      "clear_action_placement": "after-selected-items",
+      "clear_action_tone": "brand",
+      "clear_action_interactive_tone": "brand-stable",
+      "spacing_before": 24,
+      "padding_vertical": 16,
+      "bottom_spacing_compensation": -16,
+      "separator": {
+        "position": "top",
+        "style": "dashed"
+      }
+    },
+    "regions": {
+      "toolbar": {
+        "display": "flex",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 56
+      },
+      "table": {
+        "display": "flex",
+        "position": "relative",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "hidden",
+        "overflow_y": "hidden"
+      },
+      "pagination": {
+        "display": "flex",
+        "position": "static",
+        "padding": "0px 12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 56
+      }
+    },
+    "variant_values_must_come_from_page_contract": true
+  },
+  "variants": [
+    {
+      "id": "hui.tpp.page.table.horizontal-realtime-filter",
+      "name": "水平栏过滤",
+      "contract": "../../pages/table/horizontal-realtime-filter.json",
+      "parameters": {
+        "filter_placement": "horizontal-bar",
+        "trigger": "realtime"
+      }
+    },
+    {
+      "id": "hui.tpp.page.table.sidebar-realtime-filter",
+      "name": "侧边栏过滤",
+      "contract": "../../pages/table/sidebar-realtime-filter.json",
+      "parameters": {
+        "filter_placement": "left-sidebar",
+        "trigger": "realtime"
+      }
+    }
+  ]
+}

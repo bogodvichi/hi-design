@@ -1,0 +1,8 @@
+{
+  "schema_version": "d2c-zone.v1",
+  "id": "page.pagination",
+  "name": "分页区域",
+  "description": "控制当前数据集合的分页与每页数量",
+  "use_when": ["数据集合需要分页浏览"],
+  "owner": "hui-common"
+}

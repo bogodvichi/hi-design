@@ -1,0 +1,92 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "product_version": "3.0.0",
+  "id": "add-person-form",
+  "title": "添加人员",
+  "page_kind": "form",
+  "pattern_contract": "form/persistent-anchor-single-container.json",
+  "portal": {
+    "active_top_menu": "门禁管理",
+    "active_icon_menu": "personnel",
+    "section": "人员管理",
+    "tab_title": "添加人员",
+    "active_side_menu": "personnel-list",
+    "side_menus": [
+      {"id": "personnel-list", "label": "人员信息", "icon": "h-icon-user", "href": "isc3-access-personnel-list.html"},
+      {"id": "access-authorization", "label": "门禁授权", "icon": "h-icon-lock"},
+      {"id": "card-management", "label": "卡片管理", "icon": "h-icon-info_card"}
+    ]
+  },
+  "form_tabs": [
+    {"id": "basic", "label": "基础信息", "section_ids": ["personal", "credential", "contact"]},
+    {"id": "credential", "label": "凭证信息", "section_ids": []},
+    {"id": "vehicle", "label": "车辆信息", "section_ids": []},
+    {"id": "access", "label": "人员通行信息", "section_ids": []}
+  ],
+  "form_sections": [
+    {
+      "id": "personal",
+      "title": "个人信息",
+      "fields": [
+        {"key": "name", "label": "姓名", "kind": "input", "placeholder": "请输入姓名", "required": true},
+        {"key": "gender", "label": "性别", "kind": "radio", "options": ["男", "女"], "required": true},
+        {"key": "organization", "label": "所属组织", "kind": "select", "placeholder": "请选择所属组织", "options": ["研发中心", "行政中心", "运营中心", "访客组"], "required": true},
+        {"key": "employeeNo", "label": "工号", "kind": "input", "placeholder": "请输入工号"},
+        {"key": "pinyin", "label": "拼音", "kind": "input", "placeholder": "请输入姓名拼音"},
+        {"key": "workplace", "label": "工作单位", "kind": "input", "placeholder": "请输入工作单位"},
+        {"key": "position", "label": "岗位", "kind": "input", "placeholder": "请输入岗位"},
+        {"key": "birthDate", "label": "出生日期", "kind": "date"},
+        {"key": "maritalStatus", "label": "婚姻状况", "kind": "select", "placeholder": "请选择婚姻状况", "options": ["未婚", "已婚", "离异", "丧偶"]}
+      ]
+    },
+    {
+      "id": "credential",
+      "title": "证件信息",
+      "fields": [
+        {"key": "credentialType", "label": "身份证件类型", "kind": "select", "placeholder": "请选择证件类型", "options": ["身份证", "护照", "港澳通行证"], "required": true},
+        {"key": "credentialNumber", "label": "身份证件号码", "kind": "input", "placeholder": "请输入证件号码", "required": true},
+        {"key": "credentialValidity", "label": "证件有效期", "kind": "date-range"},
+        {"key": "credentialAddress", "label": "证件地址", "kind": "input", "placeholder": "请输入证件地址"},
+        {"key": "issuingAuthority", "label": "证件发证机关", "kind": "input", "placeholder": "请输入证件发证机关"}
+      ]
+    },
+    {
+      "id": "contact",
+      "title": "联系信息",
+      "fields": [
+        {"key": "mobile", "label": "手机号码", "kind": "input", "placeholder": "请输入手机号码", "required": true},
+        {"key": "email", "label": "邮箱", "kind": "input", "placeholder": "请输入邮箱"},
+        {"key": "nativePlace", "label": "籍贯", "kind": "input", "placeholder": "请输入籍贯"},
+        {"key": "householdRegistration", "label": "户籍", "kind": "input", "placeholder": "请输入户籍地址"},
+        {"key": "residence", "label": "居住地", "kind": "input", "placeholder": "请输入居住地址"}
+      ]
+    }
+  ],
+  "form_actions": ["操作并继续配置", "保存并返回列表", "取消"],
+  "form_return_href": "isc3-access-personnel-list.html",
+  "preview": {
+    "formModel": {
+      "name": "",
+      "gender": "男",
+      "organization": "",
+      "employeeNo": "",
+      "pinyin": "",
+      "workplace": "",
+      "position": "",
+      "birthDate": "",
+      "maritalStatus": "",
+      "credentialType": "身份证",
+      "credentialNumber": "",
+      "credentialValidity": [],
+      "credentialAddress": "",
+      "issuingAuthority": "",
+      "mobile": "",
+      "email": "",
+      "nativePlace": "",
+      "householdRegistration": "",
+      "residence": ""
+    }
+  }
+}

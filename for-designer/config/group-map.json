@@ -1,0 +1,5 @@
+{
+  "_说明": "兜底映射：机器名 → 小组。仅当某台机器没有 config/identity.json 时才用它按 hostname 查表。主流程用 identity.json（安装时录入姓名+小组），这份表可选维护。",
+  "DESKTOP-K7X": "EBG软件产品设计组",
+  "MacBook-Lin": "云产品设计组"
+}

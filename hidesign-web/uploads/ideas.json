@@ -1,0 +1,194 @@
+[
+  {
+    "images": [
+      "/public/webresources/ideas/983C0A263ADCB6C40A221FC55A9D5304.jpg",
+      "/public/webresources/ideas/BC8CE63BB9EF88B2A0825F60593BD07E.png",
+      "/public/webresources/ideas/A9DED8C41BB3F2D209AFDAE27D990909.png",
+      "/public/webresources/ideas/5AAA9ACE93C389443E43DE986198C5F5.png"
+    ],
+    "name": "eerer",
+    "author": "t445",
+    "bizTypes": "3dicon",
+    "options": {
+      "prompt": "545454",
+      "imgSize": "1024 x 1024",
+      "imgRadio": "1 : 1",
+      "response_format": "url",
+      "model": "Qwen-Image",
+      "kwargs": {
+        "num_inference_steps": 50,
+        "seed": 1234,
+        "guidance_scale": 7,
+        "negative_prompt": "454545"
+      }
+    }
+  },
+  {
+    "images": [
+      "/public/webresources/ideas/EF3C21DE2CBC57B568A4B302849D93F3.png",
+      "/public/webresources/ideas/3C998924734000C88FD69E74CF6A0E56.png",
+      "/public/webresources/ideas/3F4FA7DCB8876CFBFA1E8DE2CFCAA961.jpg"
+    ],
+    "name": "erere",
+    "author": "erer",
+    "bizTypes": "",
+    "options": {
+      "prompt": "erewr",
+      "imgSize": "1024 x 1024",
+      "imgRadio": "1 : 1",
+      "response_format": "url",
+      "model": "Qwen-Image",
+      "kwargs": {
+        "num_inference_steps": 50,
+        "seed": 1234,
+        "guidance_scale": 7,
+        "negative_prompt": "eewre"
+      }
+    }
+  },
+  {
+    "images": [
+      "/public/webresources/ideas/34C14DC54D569B67EF2BBD1FAB3832CB.jpg"
+    ],
+    "name": "dfdfds",
+    "author": "sdfdsf",
+    "bizTypes": "banner",
+    "options": {
+      "prompt": "dsfdsf",
+      "imgSize": "1024 x 1024",
+      "imgRadio": "1 : 1",
+      "response_format": "url",
+      "model": "Qwen-Image",
+      "kwargs": {
+        "num_inference_steps": 50,
+        "seed": 1234,
+        "guidance_scale": 7,
+        "negative_prompt": "dsfdsfds"
+      }
+    }
+  },
+  {
+    "images": [
+      "/public/webresources/ideas/34C14DC54D569B67EF2BBD1FAB3832CB.jpg"
+    ],
+    "name": "dfdfds",
+    "author": "sdfdsf",
+    "bizTypes": "banner",
+    "options": {
+      "prompt": "dsfdsf",
+      "imgSize": "1024 x 1024",
+      "imgRadio": "1 : 1",
+      "response_format": "url",
+      "model": "Qwen-Image",
+      "kwargs": {
+        "num_inference_steps": 50,
+        "seed": 1234,
+        "guidance_scale": 7,
+        "negative_prompt": "dsfdsfds"
+      }
+    }
+  },
+  {
+    "images": [
+      "/public/webresources/ideas/E417FA9FDFD6B5B5EF030E58770310E5.jpg"
+    ],
+    "name": "dfdfds",
+    "author": "sdfdsf",
+    "bizTypes": "banner",
+    "options": {
+      "prompt": "dsfdsf",
+      "imgSize": "1024 x 1024",
+      "imgRadio": "1 : 1",
+      "response_format": "url",
+      "model": "Qwen-Image",
+      "kwargs": {
+        "num_inference_steps": 50,
+        "seed": 1234,
+        "guidance_scale": 7,
+        "negative_prompt": "dsfdsfds"
+      }
+    }
+  },
+  {
+    "images": [
+      "/public/webresources/ideas/F25E81BB95439D8E253D97B703AA46AB.jpg"
+    ],
+    "name": "dfdfds",
+    "author": "sdfdsf",
+    "bizTypes": "banner",
+    "options": {
+      "prompt": "dsfdsf",
+      "imgSize": "1024 x 1024",
+      "imgRadio": "1 : 1",
+      "response_format": "url",
+      "model": "Qwen-Image",
+      "kwargs": {
+        "num_inference_steps": 50,
+        "seed": 1234,
+        "guidance_scale": 7,
+        "negative_prompt": "dsfdsfds"
+      }
+    }
+  },
+  {
+    "images": [
+      "/public/webresources/ideas/33B193E0EA0F8DB57D95388A66C84326.png",
+      "/public/webresources/ideas/DC075F5EED6A1CD39E06899AFA60136B.jpg"
+    ],
+    "name": "333的反对梵蒂冈",
+    "author": "er",
+    "bizTypes": "banner",
+    "options": {
+      "prompt": "sdfdsfd大师傅但是",
+      "imgSize": "1024 x 1024",
+      "imgRadio": "1 : 1",
+      "response_format": "url",
+      "model": "Qwen-Image",
+      "kwargs": {
+        "num_inference_steps": 50,
+        "seed": 1234,
+        "guidance_scale": 7,
+        "negative_prompt": "说的都是"
+      }
+    }
+  },
+  {
+    "images": [
+      "/public/webresources/ideas/43D6F69E3D19E767F50656F5CCB878D3.png",
+      "/public/webresources/ideas/9D244DAE704CDF918725F675786D5DB0.jpg"
+    ],
+    "name": "的反对梵蒂冈",
+    "author": "er",
+    "bizTypes": "banner,3dicon",
+    "linkUrl": "http://www.12356.com",
+    "options": {
+      "prompt": "sdfdsfd大师傅但是",
+      "imgSize": "1024 x 1024",
+      "imgRadio": "1 : 1",
+      "baseModel": "Qwen-Image_1.0.safetensors",
+      "negativePrompt": "说的都是"
+    }
+  },
+  {
+    "images": [
+      "/public/webresources/ideas/89744BBF6A6EC8C67148A47061066D76.png",
+      "/public/webresources/ideas/2EAEFBB50AEAA1B1713E36FDA41D0640.jpg"
+    ],
+    "name": "333的反对梵蒂冈",
+    "author": "er",
+    "bizTypes": "banner",
+    "options": {
+      "prompt": "sdfdsfd大师傅但是",
+      "imgSize": "1024 x 1024",
+      "imgRadio": "1 : 1",
+      "response_format": "url",
+      "model": "Qwen-Image",
+      "kwargs": {
+        "num_inference_steps": 50,
+        "seed": 1234,
+        "guidance_scale": 7,
+        "negative_prompt": "说的都是"
+      }
+    }
+  }
+]

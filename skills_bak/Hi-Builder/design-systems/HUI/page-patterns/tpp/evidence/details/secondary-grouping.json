@@ -1,0 +1,18 @@
+{
+  "path": "/pages/details/secondaryGrouping",
+  "name": "详情页_分组详情_二级分组",
+  "package": "@hiktpp/details-secondaryGrouping",
+  "hui_version": "^2.55.0",
+  "observed_at": "2026-08-14",
+  "viewport": {"width": 1728, "height": 935},
+  "observed_structure": {"breadcrumb": ["详情页", "分组详情", "二级分组"], "grouping_level": 2, "container_count": 2, "inner_group_count": 4, "description_item_count": 18, "embedded_tables": 2, "pagination": true},
+  "regions": {
+    "secondary_container": {"class": "h-page-content form-area is-flex is-align-center", "rect": {"x": 268, "y": 740.28, "width": 1432, "height": 1316}, "padding": "0px 16px"},
+    "secondary_title": {"class": "form-area__content-title", "rect": {"x": 344, "y": 740.28, "width": 1280, "height": 64}, "padding": "18px 24px"},
+    "secondary_content": {"class": "form-area__content", "rect": {"x": 344, "y": 804.28, "width": 1280, "height": 1252}, "padding": "48px 80px 58px"},
+    "secondary_groups": {"class": "form-area__group", "rect": {"x": 424, "y": 852.28, "width": 1120, "height": 1146}}
+  },
+  "component_count_scope": "page-content-relevant-only",
+  "runtime_components": {"el-breadcrumb": 1, "el-breadcrumb-item": 3, "el-tag": 3, "el-table": 2, "el-pagination": 1},
+  "actions": ["跳转"]
+}

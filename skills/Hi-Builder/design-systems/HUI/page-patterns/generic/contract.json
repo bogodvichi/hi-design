@@ -1,0 +1,14 @@
+{
+  "schema_version": "hui-page-pattern.v1",
+  "id": "hui.page-pattern.generic",
+  "name": "通用内容页",
+  "zones": ["content"],
+  "component_patterns": [],
+  "geometry_roles": {
+    "page-min-width": "1180px",
+    "page-inline-padding": "var(--h-space-sm)"
+  },
+  "fixed_behavior": {
+    "content_fill_remaining_height": true
+  }
+}

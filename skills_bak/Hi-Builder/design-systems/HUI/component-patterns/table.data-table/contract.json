@@ -1,0 +1,23 @@
+{
+  "schema_version": "hui-component-pattern.v2",
+  "id": "table.data-table",
+  "name": "数据表格",
+  "split_mode": "composite",
+  "vue_component": "DataTable",
+  "description": "使用列配置、选择列和行级操作展示结构化数据",
+  "category": "table",
+  "status": "active",
+  "use_when": ["数据具有稳定列结构并需要对比浏览"],
+  "hui_components": ["el-table", "el-table-column", "el-button", "el-progress", "el-tag"],
+  "geometry_roles": {
+    "card-min-width": "280px",
+    "card-label-width": "70px",
+    "card-row-line-height": "22px"
+  },
+  "fixed_behavior": {
+    "selection_header_alignment": "center",
+    "row_action_button_type": "link",
+    "card_action_button_type": "text"
+  },
+  "owner": "hui-common"
+}

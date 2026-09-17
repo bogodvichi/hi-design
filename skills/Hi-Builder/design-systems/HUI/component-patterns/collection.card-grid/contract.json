@@ -1,0 +1,13 @@
+{
+  "schema_version": "hui-component-pattern.v2",
+  "id": "collection.card-grid",
+  "name": "卡片集合",
+  "split_mode": "repeat-item",
+  "vue_component": "CardGrid",
+  "description": "使用重复卡片展示可浏览的数据集合",
+  "category": "collection",
+  "status": "active",
+  "use_when": ["数据更适合以媒体或摘要卡片浏览"],
+  "hui_components": ["el-card", "el-tag", "el-checkbox", "el-button"],
+  "owner": "hui-common"
+}

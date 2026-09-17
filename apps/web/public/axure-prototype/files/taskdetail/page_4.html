@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>任务详情 — TaskFlow</title>
+<link rel="stylesheet" href="../../resources/css/reset.css">
+<link rel="stylesheet" href="../../resources/css/app.css">
+<link rel="stylesheet" href="../../resources/css/pages.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="app-sidebar">
+    <div class="brand"><span class="brand-logo"></span><span class="brand-name">TaskFlow</span></div>
+    <nav class="nav-list">
+      <div class="nav-item" data-action="nav" data-target="dashboard"><span class="nav-icon">▦</span>仪表盘</div>
+      <div class="nav-item is-active"><span class="nav-icon">✓</span>我的任务<span class="nav-badge">5</span></div>
+      <div class="nav-item"><span class="nav-icon">▤</span>项目</div>
+      <div class="nav-item"><span class="nav-icon">◎</span>团队</div>
+      <div class="nav-item" data-action="nav" data-target="settings"><span class="nav-icon">⚙</span>设置</div>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="avatar">A</div>
+      <div><div class="u-name">Ava Chen</div><div class="u-role">产品经理</div></div>
+    </div>
+  </aside>
+  <main class="app-main">
+    <header class="app-topbar">
+      <span class="td-back" data-action="nav" data-target="dashboard">← 返回任务列表</span>
+      <div class="topbar-spacer"></div>
+      <button class="icon-btn">⭐</button>
+      <button class="btn btn-ghost btn-sm">⋯ 更多</button>
+      <button class="btn btn-primary btn-sm">保存</button>
+    </header>
+    <div class="app-content">
+      <div class="td-head">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+            <span class="badge badge-muted">TF-204</span>
+            <span class="badge badge-info"><span class="dot"></span>进行中</span>
+            <span class="badge badge-warning">高优先级</span>
+          </div>
+          <h2>重构任务详情页交互</h2>
+          <div class="td-meta">
+            <span>创建于 08-18</span>
+            <span>·</span>
+            <span>更新于 2 小时前</span>
+            <span>·</span>
+            <span>项目：TaskFlow Web</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="td-grid">
+        <div class="td-main">
+          <div class="card" data-tabs>
+            <div style="padding:0 16px">
+              <div class="tabs">
+                <div class="tab is-active" data-tab-target="overview">概览</div>
+                <div class="tab" data-tab-target="checklist">子任务 <span class="badge badge-muted" style="margin-left:4px">3/5</span></div>
+                <div class="tab" data-tab-target="comments">评论 <span class="badge badge-muted" style="margin-left:4px">4</span></div>
+                <div class="tab" data-tab-target="activity">动态</div>
+              </div>
+            </div>
+
+            <div class="card-body">
+              <div class="tab-panel is-active" data-tab-panel="overview">
+                <div class="desc">
+                  <p>重构任务详情页，统一信息层级与交互模式，使负责人、截止日期、状态等关键字段一眼可见，同时支持子任务、评论与活动流的快速切换。</p>
+                  <p style="margin-top:10px"><b>验收标准：</b></p>
+                  <ul>
+                    <li>关键元数据在首屏可见，无需展开</li>
+                    <li>子任务、评论、动态通过标签页切换，切换无刷新感</li>
+                    <li>移动端宽度下信息可读，元数据区折叠为两列</li>
+                    <li>状态流转支持键盘快捷键（J/K 切换、Enter 编辑）</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div class="tab-panel" data-tab-panel="checklist">
+                <div class="checklist">
+                  <div class="cl-item is-done"><span class="check is-checked"></span><div><div class="cl-text">梳理现有信息架构</div><div class="cl-meta">Sam · 08-19 完成</div></div></div>
+                  <div class="cl-item is-done"><span class="check is-checked"></span><div><div class="cl-text">出三版布局草图并评审</div><div class="cl-meta">Ava · 08-20 完成</div></div></div>
+                  <div class="cl-item is-done"><span class="check is-checked"></span><div><div class="cl-text">确定元数据区与标签页结构</div><div class="cl-meta">Ava · 08-21 完成</div></div></div>
+                  <div class="cl-item"><span class="check"></span><div><div class="cl-text">实现桌面端高保真稿</div><div class="cl-meta">Leo · 进行中</div></div></div>
+                  <div class="cl-item"><span class="check"></span><div><div class="cl-text">移动端适配与走查</div><div class="cl-meta">未开始</div></div></div>
+                </div>
+              </div>
+
+              <div class="tab-panel" data-tab-panel="comments">
+                <div class="comment">
+                  <div class="avatar sm" style="background:#8b5cf6">L</div>
+                  <div class="c-body">
+                    <div class="c-head"><span class="c-name">Leo Wang</span><span class="c-time">2 小时前</span></div>
+                    <div class="c-text">桌面端高保真稿我推上来了，标签页切换用了动画，麻烦看下感觉对不对。移动端我打算明天开始。</div>
+                    <div class="c-actions"><a>回复</a><a>👍 2</a></div>
+                  </div>
+                </div>
+                <div class="comment">
+                  <div class="avatar sm">A</div>
+                  <div class="c-body">
+                    <div class="c-head"><span class="c-name">Ava Chen</span><span class="c-time">1 小时前</span></div>
+                    <div class="c-text">看过了，整体很顺。一个小建议：活动流的时间戳能不能右对齐？现在和正文挤在一起有点散。</div>
+                    <div class="c-actions"><a>回复</a></div>
+                  </div>
+                </div>
+                <div class="comment">
+                  <div class="avatar sm" style="background:#10b981">M</div>
+                  <div class="c-body">
+                    <div class="c-head"><span class="c-name">Mia Liu</span><span class="c-time">昨天</span></div>
+                    <div class="c-text">从用研角度，元数据区折叠为两列这条很关键，用户在小屏最常看的就是截止日期和负责人。</div>
+                    <div class="c-actions"><a>回复</a><a>👍 3</a></div>
+                  </div>
+                </div>
+                <div class="comment">
+                  <div class="avatar sm" style="background:#0ea5e9">S</div>
+                  <div class="c-body">
+                    <div class="c-head"><span class="c-name">Sam Sun</span><span class="c-time">08-20</span></div>
+                    <div class="c-text">设计系统里已经有标准的 tabs 和 meta-row 组件，可以直接复用，不用重画。</div>
+                    <div class="c-actions"><a>回复</a></div>
+                  </div>
+                </div>
+                <div class="composer">
+                  <div class="avatar sm">A</div>
+                  <div style="flex:1"><textarea class="textarea" placeholder="写下你的评论…"></textarea></div>
+                </div>
+                <div style="text-align:right;margin-top:8px"><button class="btn btn-primary btn-sm">发表评论</button></div>
+              </div>
+
+              <div class="tab-panel" data-tab-panel="activity">
+                <div class="timeline-item"><span class="t-dot" style="background:#6366f1"></span><div><div>Ava 更新了描述</div><div class="t-time">2 小时前</div></div></div>
+                <div class="timeline-item"><span class="t-dot" style="background:#10b981"></span><div><div>Leo 完成了子任务「出三版布局草图并评审」</div><div class="t-time">08-20</div></div></div>
+                <div class="timeline-item"><span class="t-dot" style="background:#f59e0b"></span><div><div>Ava 将状态改为「进行中」</div><div class="t-time">08-19</div></div></div>
+                <div class="timeline-item"><span class="t-dot"></span><div><div>Ava 创建了任务</div><div class="t-time">08-18</div></div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><div class="card-title">附件</div><button class="btn btn-ghost btn-sm">+ 上传</button></div>
+            <div class="card-body">
+              <div class="attach">
+                <div class="a-icon">▦</div>
+                <div style="flex:1"><div class="a-name">detail-redesign-v3.fig</div><div class="a-size">2.4 MB · Leo · 2 小时前</div></div>
+                <button class="btn-link">下载</button>
+              </div>
+              <div class="attach">
+                <div class="a-icon" style="background:var(--c-danger-soft);color:var(--c-danger)">PDF</div>
+                <div style="flex:1"><div class="a-name">用户访谈纪要-移动端看板.pdf</div><div class="a-size">680 KB · Mia · 昨天</div></div>
+                <button class="btn-link">下载</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="td-side">
+          <div class="card">
+            <div class="card-head"><div class="card-title">属性</div></div>
+            <div class="card-body">
+              <div class="meta-row"><span class="mr-label">负责人</span><span class="mr-val"><span class="avatar sm">A</span>Ava Chen</span></div>
+              <div class="meta-row"><span class="mr-label">截止日期</span><span class="mr-val">08-25</span></div>
+              <div class="meta-row"><span class="mr-label">优先级</span><span class="mr-val"><span class="badge badge-warning">高</span></span></div>
+              <div class="meta-row"><span class="mr-label">状态</span><span class="mr-val"><span class="badge badge-info"><span class="dot"></span>进行中</span></span></div>
+              <div class="meta-row"><span class="mr-label">项目</span><span class="mr-val">TaskFlow Web</span></div>
+              <div class="meta-row"><span class="mr-label">迭代</span><span class="mr-val">Sprint 24</span></div>
+              <div class="meta-row"><span class="mr-label">标签</span><span class="mr-val"><span class="badge badge-purple">前端</span> <span class="badge badge-muted">交互</span></span></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><div class="card-title">协作者</div></div>
+            <div class="card-body">
+              <div class="avatar-stack" style="display:flex">
+                <span class="avatar" title="Ava Chen">A</span>
+                <span class="avatar" style="background:#8b5cf6;margin-left:-6px;border:2px solid #fff" title="Leo Wang">L</span>
+                <span class="avatar" style="background:#10b981;margin-left:-6px;border:2px solid #fff" title="Mia Liu">M</span>
+                <span class="avatar" style="background:#0ea5e9;margin-left:-6px;border:2px solid #fff" title="Sam Sun">S</span>
+              </div>
+              <div style="margin-top:10px"><button class="btn btn-soft btn-sm" style="width:100%">+ 邀请成员</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="../../resources/scripts/interactions.js"></script>
+</body>
+</html>

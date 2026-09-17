@@ -1,0 +1,41 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "id": "device-capture-card",
+  "title": "设备抓拍记录",
+  "page_kind": "card",
+  "pattern_contract": "card/vehicle.json",
+  "portal": {
+    "active_top_menu": "智能应用",
+    "section": "抓拍检索",
+    "tab_title": "设备抓拍记录",
+    "active_side_menu": "capture-record",
+    "side_menus": [
+      {"id": "realtime-preview", "label": "实时预览", "icon": "h-icon-liveview"},
+      {"id": "capture-record", "label": "抓拍记录", "icon": "h-icon-search"},
+      {"id": "capture-statistics", "label": "抓拍统计", "icon": "h-icon-menu"}
+    ]
+  },
+  "toolbar_actions": [
+    {"label": "批量下载", "icon": "h-icon-download"},
+    {"label": "导出记录", "icon": "h-icon-export"}
+  ],
+  "columns": [],
+  "page_size": 20,
+  "preview": {
+    "total": 126,
+    "rows": [
+    {"id": 1, "captureCode": "CAP-073101", "deviceName": "东门人脸抓拍机-01", "deviceCode": "IPC-FACE-001", "deviceType": "网络摄像机", "area": "总部园区-东门", "captureTime": "16:35:22", "status": "在线"},
+    {"id": 2, "captureCode": "CAP-073102", "deviceName": "西门车辆卡口-02", "deviceCode": "IPC-VEH-002", "deviceType": "网络摄像机", "area": "总部园区-西门", "captureTime": "16:34:48", "status": "在线"},
+    {"id": 3, "captureCode": "CAP-073103", "deviceName": "研发楼大厅球机", "deviceCode": "IPC-PTZ-015", "deviceType": "网络摄像机", "area": "研发中心-1层", "captureTime": "16:33:12", "status": "在线"},
+    {"id": 4, "captureCode": "CAP-073104", "deviceName": "地下车库入口相机", "deviceCode": "IPC-CAR-021", "deviceType": "网络摄像机", "area": "总部园区-B1车库", "captureTime": "16:31:09", "status": "在线"},
+    {"id": 5, "captureCode": "CAP-073105", "deviceName": "生产线全景相机-03", "deviceCode": "IPC-PANO-003", "deviceType": "网络摄像机", "area": "生产园区-3号车间", "captureTime": "16:29:37", "status": "在线"},
+    {"id": 6, "captureCode": "CAP-073106", "deviceName": "研发楼二层走廊枪机", "deviceCode": "IPC-BUL-027", "deviceType": "网络摄像机", "area": "研发中心-2层", "captureTime": "16:27:55", "status": "在线"},
+    {"id": 7, "captureCode": "CAP-073107", "deviceName": "南门访客通道相机", "deviceCode": "IPC-VIS-006", "deviceType": "网络摄像机", "area": "总部园区-南门", "captureTime": "16:25:14", "status": "在线"},
+    {"id": 8, "captureCode": "CAP-073108", "deviceName": "仓储区出入口相机", "deviceCode": "IPC-WHS-011", "deviceType": "网络摄像机", "area": "生产园区-仓储区", "captureTime": "16:22:43", "status": "在线"},
+    {"id": 9, "captureCode": "CAP-073109", "deviceName": "办公楼电梯厅相机", "deviceCode": "IPC-LFT-009", "deviceType": "网络摄像机", "area": "总部园区-办公楼", "captureTime": "16:20:18", "status": "在线"},
+    {"id": 10, "captureCode": "CAP-073110", "deviceName": "北侧周界热成像相机", "deviceCode": "IPC-THM-004", "deviceType": "网络摄像机", "area": "总部园区-北侧周界", "captureTime": "16:18:02", "status": "在线"}
+    ]
+  }
+}
