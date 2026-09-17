@@ -252,7 +252,7 @@ describe('run-scoped tool bundles', () => {
 
     const aiResearch = normalizeRunToolBundleForRun({
       mcpServers: [{
-        id: 'ai-research',
+        id: 'fde-research-reports',
         transport: 'http',
         authMode: 'none',
         url: 'https://drw.hikvision.com/api/research-mcp',

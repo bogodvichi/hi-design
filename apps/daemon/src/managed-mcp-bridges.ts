@@ -19,7 +19,7 @@ export const MANAGED_MCP_BRIDGES: readonly ManagedMcpBridgeDescriptor[] = [
     cliArgs: ['mcp', 'himind'],
   },
   {
-    defaultServerId: 'ai-research',
+    defaultServerId: 'fde-research-reports',
     serverIdEnvVar: 'OD_AI_RESEARCH_MCP_SERVER_ID',
     cliArgs: ['mcp', 'ai-research'],
   },

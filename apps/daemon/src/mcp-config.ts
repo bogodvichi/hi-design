@@ -586,7 +586,7 @@ export const MCP_TEMPLATES: McpTemplate[] = [
     url: 'https://pixso.hikvision.com.cn/hik-plugin/hidesign-web/hdw/api/mcp/himind',
   },
   {
-    id: 'ai-research',
+    id: 'fde-research-reports',
     label: 'AI 用研报告',
     description:
       'Search and read the current HiDesign user\'s AI research (用研) reports. HiDesign routes this through its local stdio bridge, supplies a short-lived OA-backed user assertion signed centrally, and renews it automatically during long conversations. The research service verifies the assertion directly.',

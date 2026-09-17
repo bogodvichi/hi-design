@@ -746,7 +746,7 @@ describe('MCP_TEMPLATES', () => {
   });
 
   it('includes the managed AI research (用研) reports MCP endpoint', () => {
-    const tpl = MCP_TEMPLATES.find((t) => t.id === 'ai-research');
+    const tpl = MCP_TEMPLATES.find((t) => t.id === 'fde-research-reports');
     // Mirrors the HiMind managed bridge: authMode 'none' because the daemon
     // rewrites the remote HTTP entry into the local stdio bridge that mints a
     // short-lived OA-backed JWT — the picker must NOT prompt for a token.

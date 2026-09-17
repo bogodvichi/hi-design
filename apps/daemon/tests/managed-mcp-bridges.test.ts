@@ -120,7 +120,7 @@ describe('managed MCP bridge substitution', () => {
   it('resolves only the enabled managed servers as active bridges', () => {
     const servers = [
       { id: 'himind', transport: 'http' as const, enabled: true, authMode: 'none' as const, url: 'https://himind.example/mcp' },
-      { id: 'ai-research', transport: 'http' as const, enabled: false, authMode: 'none' as const, url: 'https://drw.example/api/research-mcp' },
+      { id: 'fde-research-reports', transport: 'http' as const, enabled: false, authMode: 'none' as const, url: 'https://drw.example/api/research-mcp' },
       { id: 'other', transport: 'http' as const, enabled: true, authMode: 'none' as const, url: 'https://other.example/mcp' },
     ];
 
@@ -131,7 +131,7 @@ describe('managed MCP bridge substitution', () => {
   it('recognizes every managed default server id', () => {
     const ids = resolveManagedMcpBridgeServerIds({});
     expect(ids.has('himind')).toBe(true);
-    expect(ids.has('ai-research')).toBe(true);
+    expect(ids.has('fde-research-reports')).toBe(true);
   });
 
   it('replaces only the active managed remote servers with stdio bridges', () => {
@@ -145,10 +145,12 @@ describe('managed MCP bridge substitution', () => {
         headers: { 'X-Trace': 'kept', Authorization: 'Bearer stale' },
       },
       {
-        id: 'ai-research',
+        id: 'fde-research-reports',
         transport: 'http' as const,
         enabled: true,
-        authMode: 'none' as const,
+        // Existing installations may still carry the old OAuth marker. The
+        // managed bridge must win by id and replace that stale auth mode.
+        authMode: 'oauth' as const,
         url: 'https://drw.example/api/research-mcp',
       },
       {
@@ -176,7 +178,7 @@ describe('managed MCP bridge substitution', () => {
       env: { ELECTRON_RUN_AS_NODE: '1' },
     });
     expect(injected[1]).toEqual({
-      id: 'ai-research',
+      id: 'fde-research-reports',
       transport: 'stdio',
       enabled: true,
       authMode: 'none',
