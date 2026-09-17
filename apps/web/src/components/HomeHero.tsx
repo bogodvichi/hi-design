@@ -1342,136 +1342,42 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
         }}
         onDrop={handleDrop}
       >
-       {/* home-hero__active section hidden — skills/MCPs now render as inline MentionNodes */}
-       {/* {showActivePluginRow ? (
-             <span className="home-hero__active-chip" data-testid="home-hero-active-plugin">
-               <button
-                 type="button"
-                 className="home-hero__active-chip-body"
-                 onPointerDown={(event) => {
-                   event.preventDefault();
-                   openActivePluginDetails();
-                 }}
-                 onMouseDown={(event) => {
-                   event.preventDefault();
-                   openActivePluginDetails();
-                 }}
-                 onClick={openActivePluginDetails}
-                 disabled={!activePluginRecord}
-                 title={activePluginRecord ? t('homeHero.pluginTitle', { title: activePluginRecord.title }) : undefined}
-               >
-                 <span className="home-hero__active-icon" aria-hidden>
-                   <Icon name="sliders" size={12} />
-                 </span>
-                 <span className="home-hero__active-label">{activePluginTitle}</span>
-               </button>
-               {activeCreateChip && !activePluginIsExplicit ? null : (
-                 <button
-                   type="button"
-                   className="home-hero__active-clear od-tooltip"
-                   onClick={() => {
-                     trackHomeChatComposerClick(analytics.track, {
-                       page_name: 'home',
-                       area: 'chat_composer',
-                       element: 'plugin_chip_clear',
-                       chip_id: activePluginRecord?.id,
-                     });
-                     onClearActivePlugin();
-                   }}
-                   aria-label={t('homeHero.clearActivePlugin')}
-                   title={t('homeHero.clearActivePlugin')}
-                   data-tooltip={t('homeHero.clearActivePlugin')}
-                 >
-                   <Icon name="close" size={9} />
-                 </button>
-               )}
-             </span>
-           ) : null}
-           {activeSkillTitle ? (
-             <span
-               className="home-hero__active-chip home-hero__active-chip--skill"
-               data-testid="home-hero-active-skill"
-             >
-               <button
-                 type="button"
-                 className="home-hero__active-chip-body"
-                 onPointerDown={(event) => {
-                   event.preventDefault();
-                   openActiveSkillDetails();
-                 }}
-                 onMouseDown={(event) => {
-                   event.preventDefault();
-                   openActiveSkillDetails();
-                 }}
-                 onClick={openActiveSkillDetails}
-                 disabled={!activeSkillRecord}
-                 title={activeSkillRecord ? activeSkillRecord.description || activeSkillTitle : undefined}
-               >
-                 <span className="home-hero__active-icon" aria-hidden>
-                   <Icon name="sparkles" size={12} />
-                 </span>
-                 <span className="home-hero__active-label">{t('homeHero.skillPrefix', { title: activeSkillTitle })}</span>
-               </button>
-               <button
-                 type="button"
-                 className="home-hero__active-clear od-tooltip"
-                 onClick={onClearActiveSkill}
-                 aria-label={t('homeHero.clearActiveSkill')}
-                 title={t('homeHero.clearActiveSkill')}
-                 data-tooltip={t('homeHero.clearActiveSkill')}
-               >
-                 <Icon name="close" size={9} />
-               </button>
-             </span>
-           ) : null}
-           {contextOnlyPlugins.map((plugin) => (
-             <ContextChipHoverCard
-               key={`ctx-plugin-${plugin.id}`}
-               className="home-hero__active-chip home-hero__active-chip--context"
-               data-testid={`home-hero-context-plugin-${plugin.id}`}
-               typeLabel="Plugin"
-               detail={plugin.id}
-             >
-               <span className="home-hero__active-icon" aria-hidden>
-                 <Icon name="sliders" size={12} />
-               </span>
-               <span className="home-hero__active-label">{plugin.title}</span>
-               <button
-                 type="button"
-                 className="home-hero__active-clear od-tooltip"
-                 onClick={() => {
-                   trackHomeChatComposerClick(analytics.track, {
-                     page_name: 'home',
-                     area: 'chat_composer',
-                     element: 'context_remove',
-                     resource_kind: 'plugin',
-                     resource_id: plugin.id,
-                   });
-                   onRemovePluginContext(plugin.id);
-                 }}
-                 aria-label={t('chat.removeAria', { name: plugin.title })}
-                 title={t('common.close')}
-                 data-tooltip={t('common.close')}
-                 data-testid={`home-hero-context-clear-${plugin.id}`}
-               >
-                 <Icon name="close" size={9} />
-               </button>
-             </ContextChipHoverCard>
-           ))}
-           {contextOnlyMcpServers.map((server) => {
-             const label = server.label || server.id;
+       {/* home-hero__active: file attachments and workspace context (referenced
+           projects / linked local code) are shown here. Plugins, skills, and
+           MCPs render as inline MentionNodes. */}
+       {stagedFiles.length > 0 || contextWorkspaceItems.length > 0 ? (
+         <div className="home-hero__active">
+           {stagedFiles.map((file, index) => {
+             const key = homeFileKey(file, index);
+             const previewUrl = stagedFilePreviewUrls.get(key) ?? null;
+             const isImage = isImageFile(file);
              return (
-               <ContextChipHoverCard
-                 key={`ctx-mcp-${server.id}`}
-                 className="home-hero__active-chip home-hero__active-chip--context"
-                 data-testid={`home-hero-context-mcp-${server.id}`}
-                 typeLabel="MCP server"
-                 detail={server.url || server.id}
+               <span
+                 key={key}
+                 className={
+                   isImage
+                     ? 'home-hero__active-chip home-hero__active-chip--image-file'
+                     : 'home-hero__active-chip home-hero__active-chip--file'
+                 }
+                 data-testid={`home-hero-active-file-${index}`}
                >
-                 <span className="home-hero__active-icon" aria-hidden>
-                   <Icon name="sliders" size={12} />
+                 <span className="home-hero__active-file-body">
+                   {isImage && previewUrl ? (
+                     <img
+                       className="home-hero__active-thumb"
+                       src={previewUrl}
+                       alt={file.name}
+                     />
+                   ) : (
+                     <span className="home-hero__active-icon" aria-hidden>
+                       <Icon name="file" size={12} />
+                     </span>
+                   )}
+                   <span className="home-hero__active-label">{file.name}</span>
+                   {!isImage && file.size > 0 ? (
+                     <span className="home-hero__active-meta">{formatFileSize(file.size)}</span>
+                   ) : null}
                  </span>
-                 <span className="home-hero__active-label">{label}</span>
                  <button
                    type="button"
                    className="home-hero__active-clear od-tooltip"
@@ -1480,55 +1386,21 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                        page_name: 'home',
                        area: 'chat_composer',
                        element: 'context_remove',
-                       resource_kind: 'mcp',
-                       resource_id: server.id,
+                       resource_kind: 'file',
+                       resource_id: file.name,
                      });
-                     onRemoveMcpContext(server.id);
+                     removeFileChip(index, file);
                    }}
-                   aria-label={t('chat.removeAria', { name: label })}
+                   aria-label={t('chat.removeAria', { name: file.name })}
                    title={t('common.close')}
                    data-tooltip={t('common.close')}
-                   data-testid={`home-hero-context-clear-${server.id}`}
+                   data-testid={`home-hero-active-file-clear-${index}`}
                  >
                    <Icon name="close" size={9} />
                  </button>
-               </ContextChipHoverCard>
+               </span>
              );
            })}
-           {contextOnlyConnectors.map((connector) => (
-             <ContextChipHoverCard
-               key={`ctx-connector-${connector.id}`}
-               className="home-hero__active-chip home-hero__active-chip--context"
-               data-testid={`home-hero-context-connector-${connector.id}`}
-               typeLabel="Connector"
-               detail={connector.provider || connector.id}
-             >
-               <span className="home-hero__active-icon" aria-hidden>
-                 <Icon name="link" size={12} />
-               </span>
-               <span className="home-hero__active-label">{connector.name}</span>
-               <button
-                 type="button"
-                 className="home-hero__active-clear od-tooltip"
-                 onClick={() => {
-                   trackHomeChatComposerClick(analytics.track, {
-                     page_name: 'home',
-                     area: 'chat_composer',
-                     element: 'context_remove',
-                     resource_kind: 'connector',
-                     resource_id: connector.id,
-                   });
-                   onRemoveConnectorContext(connector.id);
-                 }}
-                 aria-label={t('chat.removeAria', { name: connector.name })}
-                 title={t('common.close')}
-                 data-tooltip={t('common.close')}
-                 data-testid={`home-hero-context-clear-${connector.id}`}
-               >
-                 <Icon name="close" size={9} />
-               </button>
-             </ContextChipHoverCard>
-           ))}
            {contextWorkspaceItems.map((item) => (
              <ContextChipHoverCard
                key={`ctx-workspace-${item.id}`}
@@ -1564,40 +1436,9 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                  <Icon name="close" size={9} />
                </button>
              </ContextChipHoverCard>
-          ))}
-          {communityReference ? (
-            <span
-              className="home-hero__active-chip home-hero__active-chip--context"
-              data-testid="home-hero-community-reference"
-            >
-              <span className="home-hero__active-chip-body">
-                <span className="home-hero__active-icon" aria-hidden>
-                  <Icon name="globe" size={12} />
-                </span>
-                <span className="home-hero__active-label">{communityReference.title}</span>
-              </span>
-              <button
-                type="button"
-                className="home-hero__active-clear od-tooltip"
-                onClick={() => {
-                  trackHomeChatComposerClick(analytics.track, {
-                    page_name: 'home',
-                    area: 'chat_composer',
-                    element: 'context_remove',
-                    resource_kind: 'community-reference',
-                    resource_id: communityReference.title,
-                  });
-                  onClearCommunityReference();
-                }}
-                aria-label={t('chat.removeAria', { name: communityReference.title })}
-                title={t('common.close')}
-                data-tooltip={t('common.close')}
-                data-testid="home-hero-community-reference-clear"
-              >
-                <Icon name="close" size={9} />
-              </button>
-            </span>
-          ) : null} */}
+           ))}
+         </div>
+       ) : null}
        <div className="home-hero__prompt-surface">
           <div ref={promptEditorRef} className="home-hero__prompt-editor home-hero__lexical">
             <LexicalComposerInput
