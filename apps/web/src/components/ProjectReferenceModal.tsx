@@ -55,7 +55,7 @@ export function ProjectReferenceModal({
     setProjects(null);
     setSelectedIds([]);
     setLoadError(null);
-    void listProjects({ throwOnError: true })
+    void listProjects({ throwOnError: true, workspaceContext })
       .then(async (rows) => {
         if (cancelled) return;
         const candidates = rows.filter((project) => project.id !== currentProjectId);
