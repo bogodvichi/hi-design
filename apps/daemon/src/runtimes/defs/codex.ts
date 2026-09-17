@@ -178,22 +178,25 @@ export function codexOpenDesignShellEnvironmentArgs(): string[] {
   ];
 }
 
-export function codexHiMindMcpArgs(
-  bridge: NonNullable<RuntimeContext['himindMcpBridge']> | undefined,
+export function codexManagedMcpBridgeArgs(
+  bridges: NonNullable<RuntimeContext['mcpBridges']> | undefined,
 ): string[] {
-  if (!bridge) return [];
-  const key = bridge.id;
-  const args = [
-    '-c',
-    `mcp_servers.${key}.command=${JSON.stringify(bridge.command)}`,
-    '-c',
-    `mcp_servers.${key}.args=${JSON.stringify(bridge.args)}`,
-  ];
-  for (const [name, value] of Object.entries(bridge.env ?? {})) {
+  if (!bridges?.length) return [];
+  const args: string[] = [];
+  for (const bridge of bridges) {
+    const key = bridge.id;
     args.push(
       '-c',
-      `mcp_servers.${key}.env.${name}=${JSON.stringify(value)}`,
+      `mcp_servers.${key}.command=${JSON.stringify(bridge.command)}`,
+      '-c',
+      `mcp_servers.${key}.args=${JSON.stringify(bridge.args)}`,
     );
+    for (const [name, value] of Object.entries(bridge.env ?? {})) {
+      args.push(
+        '-c',
+        `mcp_servers.${key}.env.${name}=${JSON.stringify(value)}`,
+      );
+    }
   }
   return args;
 }
@@ -320,7 +323,7 @@ export const codexAgentDef = {
         args.push('--disable', 'plugins');
       }
       args.push(...codexOpenDesignShellEnvironmentArgs());
-      args.push(...codexHiMindMcpArgs(runtimeContext.himindMcpBridge));
+      args.push(...codexManagedMcpBridgeArgs(runtimeContext.mcpBridges));
       // `-C <cwd>` and `--add-dir <dir>` are CREATE-only flags: `codex exec
       // resume` rejects both (`error: unexpected argument '-C' found`), so
       // appending them on a resume turn would make the follow-up turn die
@@ -369,7 +372,7 @@ export const codexAgentDef = {
     // captured from the stream, not a daemon-minted id.
     resumesSessionViaCli: true,
     capturesSessionIdFromStream: true,
-    himindMcpBridge: true,
+    managedMcpBridges: true,
     streamFormat: 'json-event-stream',
     eventParser: 'codex',
 } satisfies RuntimeAgentDef;

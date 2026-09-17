@@ -1,6 +1,7 @@
 import type { McpAuthMode, McpServerConfig, McpTransport } from './mcp-config.js';
 import type { RuntimeAgentDef } from './runtimes/types.js';
 import { sanitizeMcpConfig, sanitizeMcpServer } from './mcp-config.js';
+import { resolveManagedMcpBridgeServerIds } from './managed-mcp-bridges.js';
 
 export interface RunToolBundle {
   mcpServers: McpServerConfig[];
@@ -41,7 +42,7 @@ export interface RunToolBundleValidationOptions {
 
 type RunToolBundleAgent = Pick<
   RuntimeAgentDef,
-  'id' | 'name' | 'externalMcpInjection' | 'himindMcpBridge'
+  'id' | 'name' | 'externalMcpInjection' | 'managedMcpBridges'
 >;
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -136,9 +137,14 @@ export function validateRunToolBundleForAgent(
     return { ok: true };
   }
 
+  // Daemon-managed stdio bridges (HiMind, AI research) present as remote HTTP
+  // servers in the user's config but are rewritten into `od mcp <name>` stdio
+  // subprocesses at spawn time. They are valid for Codex (which reads them as
+  // per-run config) and for stdio-only ACP runtimes.
+  const managedBridgeServerIds = resolveManagedMcpBridgeServerIds();
   if (
-    enabledServers.every((server) => server.id === 'himind')
-    && (agent.externalMcpInjection === 'acp-merge' || agent.himindMcpBridge === true)
+    enabledServers.every((server) => managedBridgeServerIds.has(server.id))
+    && (agent.externalMcpInjection === 'acp-merge' || agent.managedMcpBridges === true)
   ) {
     return { ok: true };
   }

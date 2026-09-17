@@ -152,6 +152,23 @@ module.exports = appInfo => {
     ssoIssuer: process.env.AI_RESEARCH_SSO_ISSUER || 'hidesign-web',
     ssoAudience: process.env.AI_RESEARCH_SSO_AUDIENCE || 'design-research-workbench',
     ticketTtlSeconds: 60,
+    // AI research MCP reuses the same RS256 key pair as HiMind (the research
+    // side has registered `kid=hidesign-himind-01`'s public key), but mints a
+    // token with a distinct typ/audience so a HiMind token cannot be replayed
+    // against the research MCP and vice-versa. Unlike HiMind, the research MCP
+    // verifies the JWT itself at `mcpUpstreamUrl`, so this central service does
+    // not proxy MCP traffic or hold an internal CA for it.
+    mcpJwtPrivateKey:
+      (process.env.HIMIND_MCP_JWT_PRIVATE_KEY || '').replace(/\\n/g, '\n')
+      || himindMcpJwtPrivateKey.content,
+    mcpJwtIssuer: process.env.AI_RESEARCH_MCP_JWT_ISSUER || 'hidesign',
+    mcpJwtAudience: process.env.AI_RESEARCH_MCP_JWT_AUDIENCE || 'fde-research-mcp',
+    mcpJwtType: process.env.AI_RESEARCH_MCP_JWT_TYPE || 'fde-research-mcp+jwt',
+    mcpJwtKeyId: process.env.AI_RESEARCH_MCP_JWT_KEY_ID || 'hidesign-himind-01',
+    mcpJwtTtlSeconds: 300,
+    mcpUpstreamUrl:
+      process.env.AI_RESEARCH_MCP_UPSTREAM_URL
+      || 'https://drw.hikvision.com/api/research-mcp',
   };
 
   // 数据库配置

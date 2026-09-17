@@ -12,19 +12,30 @@ import {
 describe('codex buildArgs session resume', () => {
   const THREAD = '019eef4f-7409-7c82-bebe-30504eed3959';
 
-  it('injects the HiMind stdio bridge through per-run config args', () => {
+  it('injects managed stdio bridges through per-run config args', () => {
     const args = codexAgentDef.buildArgs('prompt', [], [], {}, {
-      himindMcpBridge: {
-        id: 'himind',
-        command: '/node',
-        args: ['/od', 'mcp', 'himind'],
-        env: { ELECTRON_RUN_AS_NODE: '1' },
-      },
+      mcpBridges: [
+        {
+          id: 'himind',
+          command: '/node',
+          args: ['/od', 'mcp', 'himind'],
+          env: { ELECTRON_RUN_AS_NODE: '1' },
+        },
+        {
+          id: 'ai-research',
+          command: '/node',
+          args: ['/od', 'mcp', 'ai-research'],
+          env: { ELECTRON_RUN_AS_NODE: '1' },
+        },
+      ],
     });
 
     expect(args).toContain('mcp_servers.himind.command="/node"');
     expect(args).toContain('mcp_servers.himind.args=["/od","mcp","himind"]');
     expect(args).toContain('mcp_servers.himind.env.ELECTRON_RUN_AS_NODE="1"');
+    expect(args).toContain('mcp_servers.ai-research.command="/node"');
+    expect(args).toContain('mcp_servers.ai-research.args=["/od","mcp","ai-research"]');
+    expect(args).toContain('mcp_servers.ai-research.env.ELECTRON_RUN_AS_NODE="1"');
   });
 
   it('uses plain `exec` (no resume, no id) on a create turn', () => {

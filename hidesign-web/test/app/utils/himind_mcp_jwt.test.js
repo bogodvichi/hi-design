@@ -68,4 +68,39 @@ describe('test/app/utils/himind_mcp_jwt.test.js', () => {
       ttlSeconds: 300,
     }), /username/i);
   });
+
+  it('mints a distinct AI research audience/typ so a himind token cannot be replayed', () => {
+    const { privateKey } = crypto.generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+    });
+    const token = signHiMindMcpJwt({
+      privateKey,
+      issuer: 'hidesign',
+      audience: 'fde-research-mcp',
+      type: 'fde-research-mcp+jwt',
+      keyId: 'hidesign-himind-01',
+      username: 'Alice',
+      ttlSeconds: 300,
+      nowSeconds: 1700000000,
+      jti: 'ticket-2',
+      runId: 'run-42',
+    });
+
+    const [ encodedHeader, encodedPayload ] = token.split('.');
+    // The typ header is the anti-replay boundary: the research service accepts
+    // only `fde-research-mcp+jwt`, HiMind only `himind-mcp+jwt`.
+    assert.deepStrictEqual(decodeJsonPart(encodedHeader), {
+      alg: 'RS256',
+      typ: 'fde-research-mcp+jwt',
+      kid: 'hidesign-himind-01',
+    });
+    const payload = decodeJsonPart(encodedPayload);
+    assert.strictEqual(payload.aud, 'fde-research-mcp');
+    // username is lower-cased into both sub and username.
+    assert.strictEqual(payload.sub, 'alice');
+    assert.strictEqual(payload.username, 'alice');
+    // The optional run_id claim is threaded through for server-side tracing.
+    assert.strictEqual(payload.run_id, 'run-42');
+    assert.deepStrictEqual(payload.amr, [ 'oa' ]);
+  });
 });

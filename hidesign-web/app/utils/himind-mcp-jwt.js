@@ -15,6 +15,13 @@ function signHiMindMcpJwt(options) {
   const issuer = typeof options.issuer === 'string' ? options.issuer.trim() : '';
   const audience = typeof options.audience === 'string' ? options.audience.trim() : '';
   const keyId = typeof options.keyId === 'string' ? options.keyId.trim() : '';
+  // The JWT `typ` header distinguishes the destination MCP service so a token
+  // minted for one audience cannot be replayed against another. HiMind keeps
+  // the historical `himind-mcp+jwt`; the AI research workbench uses its own
+  // `fde-research-mcp+jwt`. Both are signed with the same RSA key pair.
+  const type = typeof options.type === 'string' && options.type.trim()
+    ? options.type.trim()
+    : 'himind-mcp+jwt';
   const username = typeof options.username === 'string' ? options.username.trim().toLowerCase() : '';
   const ttlSeconds = Number(options.ttlSeconds);
   if (!privateKey) throw new Error('HiMind MCP JWT private key is required');
@@ -34,7 +41,7 @@ function signHiMindMcpJwt(options) {
   const jti = typeof options.jti === 'string' && options.jti.trim()
     ? options.jti.trim()
     : crypto.randomBytes(16).toString('hex');
-  const header = { alg: 'RS256', typ: 'himind-mcp+jwt', kid: keyId };
+  const header = { alg: 'RS256', typ: type, kid: keyId };
   const payload = {
     iss: issuer,
     aud: audience,

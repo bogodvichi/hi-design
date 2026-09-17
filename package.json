@@ -68,6 +68,7 @@
       "electron",
       "electron-winstaller",
       "esbuild",
+      "node-pty",
       "onnxruntime-node",
       "protobufjs",
       "sharp"
