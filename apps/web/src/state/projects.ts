@@ -407,6 +407,7 @@ export type ProjectRouteBootstrapResult =
       project: Project;
       scope: ProjectWorkspaceScopeResponse['scope'];
       resolvedDir: string | null;
+      folderId: string | null;
     }
   | { kind: 'not-found' }
   | { kind: 'forbidden' }
@@ -418,6 +419,7 @@ export type FirstOpenTeamProjectBootstrapResult =
       project: Project;
       scope: ProjectWorkspaceScopeResponse['scope'];
       resolvedDir: string | null;
+      folderId: string | null;
       awaitingFirstMaterialization: boolean;
     }
   | { kind: 'not-found' }
@@ -525,6 +527,7 @@ export async function bootstrapProjectRoute(
       const projectBody = (await projectResponse.json()) as {
         project?: Project;
         resolvedDir?: unknown;
+        folderId?: unknown;
       };
       if (!projectBody.project || projectBody.project.id !== projectId) {
         return { kind: 'unavailable' };
@@ -550,6 +553,10 @@ export async function bootstrapProjectRoute(
             : typeof projectBody.project.metadata?.baseDir === 'string'
               ? projectBody.project.metadata.baseDir
               : null,
+        folderId:
+          typeof projectBody.folderId === 'string' && projectBody.folderId.trim()
+            ? projectBody.folderId.trim()
+            : null,
       };
     } catch {
       return { kind: 'unavailable' };

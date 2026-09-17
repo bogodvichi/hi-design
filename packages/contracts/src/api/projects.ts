@@ -571,6 +571,8 @@ export interface ProjectDesignTokenSuggestionsResponse {
 // `resolveProjectDir(...)` so the web client never reconstructs the path.
 export interface ProjectDetailResponse extends ProjectResponse {
   resolvedDir: string;
+  /** Workspace folder that directly contains this project. Null means workspace root. */
+  folderId: string | null;
 }
 
 export type ProjectVisibility = 'personal' | 'team';

@@ -59,6 +59,7 @@ describe('bootstrapProjectRoute', () => {
       kind: 'found',
       project: PROJECT_A,
       resolvedDir: null,
+      folderId: null,
       scope: {
         kind: 'team',
         projectId: PROJECT_ID,

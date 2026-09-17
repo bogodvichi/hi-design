@@ -94,6 +94,19 @@ describe('useProjectDetail', () => {
     expect(result.current.project?.id).toBe('p1');
   });
 
+  it('surfaces the direct workspace folder id used by the project header', async () => {
+    mockFetchOnce({
+      project: { id: 'p-folder', name: 'Folder project', skillId: null, designSystemId: null, createdAt: 1, updatedAt: 1 },
+      resolvedDir: '/tmp/od/projects/p-folder',
+      folderId: 'folder-brand',
+    });
+
+    const { result } = renderHook(() => useProjectDetail('p-folder'));
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.folderId).toBe('folder-brand');
+  });
+
   it('falls back to metadata.baseDir when the daemon omits resolvedDir', async () => {
     mockFetchOnce({
       project: {

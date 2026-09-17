@@ -3979,7 +3979,7 @@ export function FileWorkspace({
               aria-label={t('project.backToProjects')}
               onClick={onBack}
             >
-              <Icon name="arrow-left" size={15} />
+              <Icon name="arrow-left" size={16} />
             </button>
             {personalProject && onFocusModeChange ? (
               <div

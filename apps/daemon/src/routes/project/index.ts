@@ -359,8 +359,14 @@ export interface RegisterProjectRoutesDeps extends RouteDeps<'db' | 'design' | '
  desktopArtifactExporter?: ((input: any) => Promise<{ ok: boolean; path?: string }>) | null;
  /** Ref to the daemon's own URL, for building baseHref in screenshot rendering. */
  daemonUrlRef?: { current: string };
- /** HDW cloud client for team project cover_digest updates. Null when not configured. */
- hdwCloudClient?: { upsertTeamProject?(workspaceId: string, projectId: string, input: Record<string, unknown>): Promise<unknown> } | null;
+ /** HDW cloud client for team project metadata reads and cover_digest updates. Null when not configured. */
+ hdwCloudClient?: {
+   getTeamProject?(workspaceId: string, projectId: string): Promise<{
+     folderId?: string | null;
+     folder_id?: string | null;
+   } | null>;
+   upsertTeamProject?(workspaceId: string, projectId: string, input: Record<string, unknown>): Promise<unknown>;
+ } | null;
 }
 
 // `WorkspaceProjectContext`/`WorkspaceProjectMutationCapability`/
@@ -5521,6 +5527,49 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
     }
     const resolvedDir = projectDetailResolvedDir(PROJECTS_DIR, project, resolveProjectDir);
     const binding = getWorkspaceProjectByProjectId(db, project.id);
+    let folderId =
+      typeof binding?.folderId === 'string' && binding.folderId.trim()
+        ? binding.folderId.trim()
+        : null;
+
+    // The HDW team-project row is authoritative for a team's business-folder
+    // assignment. Older local workspace bindings can predate folder support
+    // (or miss a later cloud move), leaving folder_id null/stale and causing
+    // the web header to fall back to the team name. Reconcile it on detail
+    // reads so direct/deep links also render the real parent folder without
+    // depending on the workspace catalog having been opened first.
+    const bindingWorkspaceId =
+      typeof binding?.workspaceId === 'string' ? binding.workspaceId.trim() : '';
+    if (
+      bindingWorkspaceId
+      && binding?.visibility === 'team'
+      && hdwCloudClient?.getTeamProject
+    ) {
+      try {
+        const remoteProject = await hdwCloudClient.getTeamProject(
+          bindingWorkspaceId,
+          project.id,
+        );
+        const hasRemoteFolder = remoteProject != null && (
+          Object.prototype.hasOwnProperty.call(remoteProject, 'folderId')
+          || Object.prototype.hasOwnProperty.call(remoteProject, 'folder_id')
+        );
+        if (hasRemoteFolder && remoteProject) {
+          const remoteFolderValue = remoteProject.folderId ?? remoteProject.folder_id ?? null;
+          const remoteFolderId =
+            typeof remoteFolderValue === 'string' && remoteFolderValue.trim()
+              ? remoteFolderValue.trim()
+              : null;
+          if (remoteFolderId !== folderId) {
+            setProjectFolder(db, bindingWorkspaceId, project.id, remoteFolderId);
+          }
+          folderId = remoteFolderId;
+        }
+      } catch {
+        // Project detail must remain available during a transient HDW outage;
+        // the last locally known assignment is the safe fallback.
+      }
+    }
     /** @type {import('@open-design/contracts').ProjectResponse} */
     const body = {
       project: {
@@ -5531,6 +5580,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
             : null,
       },
       resolvedDir,
+      folderId,
     };
     res.json(body);
   });

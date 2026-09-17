@@ -72,9 +72,11 @@ describe('GET /api/projects/:id resolvedDir', () => {
     const detail = (await detailResp.json()) as {
       project: { id: string };
       resolvedDir: string;
+      folderId: string | null;
     };
     expect(detail.project.id).toBe(projectId);
     expect(detail.resolvedDir).toBe(baseDir);
+    expect(detail.folderId).toBeNull();
   });
 
   it('keeps imported-folder resolvedDir stable in sandbox mode', async () => {
@@ -133,6 +135,51 @@ describe('GET /api/projects/:id resolvedDir', () => {
     const expected = path.join(dataDir, 'projects', projectId);
     expect(detail.resolvedDir).toBe(expected);
     expect(path.isAbsolute(detail.resolvedDir)).toBe(true);
+  });
+
+  it('returns the persisted business folder id for a workspace project', async () => {
+    const workspaceId = `workspace-folder-${Date.now()}`;
+    const memberId = `member-folder-${Date.now()}`;
+    const folderResp = await fetch(`${baseUrl}/api/folders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-od-workspace-member-id': memberId,
+      },
+      body: JSON.stringify({
+        workspace_id: workspaceId,
+        folder_name: 'Business folder',
+      }),
+    });
+    expect(folderResp.status).toBe(200);
+    const folderBody = (await folderResp.json()) as {
+      data: { folder_id: string };
+    };
+
+    const projectId = `proj-folder-${Date.now()}`;
+    const createResp = await fetch(`${baseUrl}/api/projects`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-od-workspace-id': workspaceId,
+        'x-od-workspace-member-id': memberId,
+        'x-od-workspace-type': 'team',
+        'x-od-workspace-is-default-team': 'true',
+      },
+      body: JSON.stringify({
+        id: projectId,
+        name: 'Folder fixture',
+        skillId: null,
+        designSystemId: null,
+        folderId: folderBody.data.folder_id,
+      }),
+    });
+    expect(createResp.status).toBe(200);
+
+    const detailResp = await fetch(`${baseUrl}/api/projects/${projectId}`);
+    expect(detailResp.status).toBe(200);
+    const detail = (await detailResp.json()) as { folderId: string | null };
+    expect(detail.folderId).toBe(folderBody.data.folder_id);
   });
 
   it('keeps a design-mode project unbound when no plugin is selected', async () => {
