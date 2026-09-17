@@ -25,7 +25,7 @@ describe('codex buildArgs session resume', () => {
           id: 'fde-research-reports',
           command: '/node',
           args: ['/od', 'mcp', 'ai-research'],
-          env: { ELECTRON_RUN_AS_NODE: '1' },
+          env: { ELECTRON_RUN_AS_NODE: '1', NODE_USE_SYSTEM_CA: '1' },
         },
       ],
     });
@@ -36,6 +36,7 @@ describe('codex buildArgs session resume', () => {
     expect(args).toContain('mcp_servers.fde-research-reports.command="/node"');
     expect(args).toContain('mcp_servers.fde-research-reports.args=["/od","mcp","ai-research"]');
     expect(args).toContain('mcp_servers.fde-research-reports.env.ELECTRON_RUN_AS_NODE="1"');
+    expect(args).toContain('mcp_servers.fde-research-reports.env.NODE_USE_SYSTEM_CA="1"');
   });
 
   it('uses plain `exec` (no resume, no id) on a create turn', () => {

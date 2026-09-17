@@ -13667,7 +13667,7 @@ const resolveShareAccess = async (projectId: string, _req: any) => {
                   id: bridge.serverId,
                   command: process.execPath,
                   args: [OD_BIN, ...bridge.cliArgs],
-                  env: { ELECTRON_RUN_AS_NODE: '1' },
+                  env: { ELECTRON_RUN_AS_NODE: '1', ...bridge.env },
                 })),
               }
             : {}),

@@ -184,7 +184,7 @@ describe('managed MCP bridge substitution', () => {
       authMode: 'none',
       command: '/node',
       args: ['/od', 'mcp', 'ai-research'],
-      env: { ELECTRON_RUN_AS_NODE: '1' },
+      env: { ELECTRON_RUN_AS_NODE: '1', NODE_USE_SYSTEM_CA: '1' },
     });
     // Non-managed servers pass through untouched.
     expect(injected[2]).toBe(servers[2]);

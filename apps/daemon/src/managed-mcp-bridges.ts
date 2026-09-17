@@ -10,6 +10,7 @@ export interface ManagedMcpBridgeDescriptor {
   defaultServerId: string;
   serverIdEnvVar: string;
   cliArgs: readonly string[];
+  env?: Readonly<Record<string, string>>;
 }
 
 export const MANAGED_MCP_BRIDGES: readonly ManagedMcpBridgeDescriptor[] = [
@@ -22,12 +23,18 @@ export const MANAGED_MCP_BRIDGES: readonly ManagedMcpBridgeDescriptor[] = [
     defaultServerId: 'fde-research-reports',
     serverIdEnvVar: 'OD_AI_RESEARCH_MCP_SERVER_ID',
     cliArgs: ['mcp', 'ai-research'],
+    // drw.hikvision.com chains to the corporate CA installed in the OS trust
+    // store. Node does not consult that store by default, so the bridge must
+    // opt in instead of disabling TLS verification or relying on a personal
+    // NODE_EXTRA_CA_CERTS path.
+    env: { NODE_USE_SYSTEM_CA: '1' },
   },
 ];
 
 export interface ActiveManagedMcpBridge {
   serverId: string;
   cliArgs: string[];
+  env?: Record<string, string>;
 }
 
 /**
@@ -58,7 +65,11 @@ export function resolveActiveManagedMcpBridges(
   for (const descriptor of MANAGED_MCP_BRIDGES) {
     const serverId = env[descriptor.serverIdEnvVar]?.trim() || descriptor.defaultServerId;
     if (servers.some((server) => server.enabled && server.id === serverId)) {
-      active.push({ serverId, cliArgs: [...descriptor.cliArgs] });
+      active.push({
+        serverId,
+        cliArgs: [...descriptor.cliArgs],
+        ...(descriptor.env ? { env: { ...descriptor.env } } : {}),
+      });
     }
   }
   return active;
@@ -93,7 +104,7 @@ export function replaceManagedMcpServersWithBridges(
       authMode: 'none',
       command: input.command,
       args: [input.odBin, ...bridge.cliArgs],
-      env: { ELECTRON_RUN_AS_NODE: '1' },
+      env: { ELECTRON_RUN_AS_NODE: '1', ...bridge.env },
     };
   });
 }
