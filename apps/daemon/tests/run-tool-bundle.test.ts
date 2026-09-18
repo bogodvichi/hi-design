@@ -229,7 +229,7 @@ describe('run-scoped tool bundles', () => {
     });
   });
 
-  it('allows the managed HiMind bridge for Codex and stdio-only ACP runtimes', () => {
+  it('allows managed bridges (HiMind, AI research) for Codex and stdio-only ACP runtimes', () => {
     const himind = normalizeRunToolBundleForRun({
       mcpServers: [{
         id: 'himind',
@@ -242,12 +242,26 @@ describe('run-scoped tool bundles', () => {
     expect(validateRunToolBundleForAgent(himind, {
       id: 'codex',
       name: 'Codex CLI',
-      himindMcpBridge: true,
+      managedMcpBridges: true,
     })).toEqual({ ok: true });
     expect(validateRunToolBundleForAgent(himind, {
       id: 'hermes',
       name: 'Hermes',
       externalMcpInjection: 'acp-merge',
+    })).toEqual({ ok: true });
+
+    const aiResearch = normalizeRunToolBundleForRun({
+      mcpServers: [{
+        id: 'fde-research-reports',
+        transport: 'http',
+        authMode: 'none',
+        url: 'https://drw.hikvision.com/api/research-mcp',
+      }],
+    });
+    expect(validateRunToolBundleForAgent(aiResearch, {
+      id: 'codex',
+      name: 'Codex CLI',
+      managedMcpBridges: true,
     })).toEqual({ ok: true });
   });
 });

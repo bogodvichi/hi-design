@@ -11,6 +11,7 @@ import {
   buildWorkspacePermissions,
   buildWorkspaceSeatSummary,
   type WorkspaceCollabContext,
+  type WorkspaceDirectoryItem,
   type ProjectWorkspaceScope,
 } from '@open-design/contracts';
 
@@ -25,8 +26,9 @@ import { ENABLE_BLANK_PAGE_WORKSPACE_ENTRYPOINT } from '../../src/components/wor
 import { I18nProvider } from '../../src/i18n';
 import { DesignFilesPanel } from '../../src/components/DesignFilesPanel';
 import {
-  personalProjectParentLabel,
-  personalProjectParentPath,
+  projectFolderNameFromResponse,
+  projectRootLocationLabel,
+  projectWorkspaceNameFromDirectory,
   projectSplitClassName,
   projectSplitStyle,
   projectUsesPersonalWorkspacePresentation,
@@ -3441,26 +3443,61 @@ describe('FileWorkspace tab reordering', () => {
 });
 
 describe('projectSplitClassName', () => {
-  it('builds an eight-character personal-project parent label', () => {
-    expect(personalProjectParentLabel('/Users/me/订单跟踪仪表盘原型')).toBe('订单跟踪仪表盘原…');
-    expect(personalProjectParentLabel('/Users/me/工作台')).toBe('工作台');
-    expect(personalProjectParentLabel(undefined)).toBe('文件路径');
+  it('uses the semantic workspace name for a root-level project', () => {
+    expect(projectRootLocationLabel(null, '个人项目', '团队项目')).toBe('个人项目');
+    expect(projectRootLocationLabel({
+      workspaceType: 'personal',
+      workspaceName: '张三的工作区',
+    } as WorkspaceCollabContext, '个人项目', '团队项目')).toBe('个人项目');
+    expect(projectRootLocationLabel({
+      workspaceType: 'team',
+      workspaceName: '体验设计团队',
+      teamName: '旧团队名',
+    } as WorkspaceCollabContext, '个人项目', '团队项目')).toBe('体验设计团队');
+    expect(projectRootLocationLabel({
+      workspaceType: 'team',
+      teamName: '设计平台组',
+    } as WorkspaceCollabContext, '个人项目', '团队项目')).toBe('设计平台组');
+    expect(projectRootLocationLabel({
+      workspaceId: 'workspace-internal-id',
+      workspaceType: 'team',
+      workspaceName: 'workspace-internal-id',
+      teamId: 'workspace-internal-id',
+      teamName: 'workspace-internal-id',
+    } as WorkspaceCollabContext, '个人项目', '团队项目')).toBe('团队项目');
+    expect(projectRootLocationLabel({
+      workspaceId: 'shared-space-id',
+      workspaceType: 'team',
+      workspaceName: '共享空间',
+    } as WorkspaceCollabContext, '个人项目', '团队项目', {
+      workspaceId: 'shared-space-id',
+      workspaceName: '共享空间',
+      isDefaultTeam: true,
+    } as WorkspaceDirectoryItem)).toBe('个人项目');
   });
 
-  it('resolves the personal-project parent path from the active file path', () => {
-    expect(personalProjectParentPath('/Users/me/工作台', {
-      name: 'index.html',
-      path: 'index.html',
-      localPath: '/Users/me/真实目录/index.html',
-    })).toBe('/Users/me/真实目录');
-    expect(personalProjectParentPath('/Users/me/工作台', {
-      name: 'guide/index.html',
-      path: 'guide/index.html',
-    })).toBe('guide');
-    expect(personalProjectParentPath('/Users/me/工作台', {
-      name: 'index.html',
-      path: 'index.html',
-    })).toBe('/Users/me/工作台');
+  it('maps a project workspace id to the authoritative team directory name', () => {
+    expect(projectWorkspaceNameFromDirectory([{
+      workspaceId: 'workspace-internal-id',
+      workspaceName: '体验设计团队',
+    } as WorkspaceDirectoryItem], 'workspace-internal-id')).toBe('体验设计团队');
+    expect(projectWorkspaceNameFromDirectory([{
+      workspaceId: 'workspace-internal-id',
+      workspaceName: 'workspace-internal-id',
+    } as WorkspaceDirectoryItem], 'workspace-internal-id')).toBeNull();
+    expect(projectWorkspaceNameFromDirectory([{
+      workspaceId: 'shared-space-id',
+      workspaceName: '共享空间',
+      isDefaultTeam: true,
+    } as WorkspaceDirectoryItem], 'shared-space-id')).toBeNull();
+  });
+
+  it('reads the immediate folder name without exposing storage paths', () => {
+    expect(projectFolderNameFromResponse({
+      data: { folder_id: 'folder-1', folder_name: '品牌规范' },
+    })).toBe('品牌规范');
+    expect(projectFolderNameFromResponse({ data: { folder_name: '  ' } })).toBeNull();
+    expect(projectFolderNameFromResponse(null)).toBeNull();
   });
 
   it('treats a private project in a team workspace as a personal-project presentation', () => {

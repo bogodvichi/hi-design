@@ -1,6 +1,7 @@
 'use strict';
 
 const assert = require('assert');
+const AiResearchSsoController = require('../../../../app/controller/api/ai_research_sso');
 const { issueTicket } = require('../../../../app/controller/api/ai_research_sso');
 
 describe('test/app/controller/api/ai_research_sso.test.js', () => {
@@ -58,6 +59,44 @@ describe('test/app/controller/api/ai_research_sso.test.js', () => {
         launch_url: 'http://drw.hikvision.com/api/auth/platform?ticket=opaque-ticket&next=%2F',
         expires_in: 60,
       },
+    });
+  });
+
+  it('rejects an mcpToken request with an invalid username before any network call', async () => {
+    const ctx = {
+      request: { body: { username: '../evil' } },
+      headers: {},
+      logger: { warn() {}, error() {} },
+    };
+    const controller = Object.create(AiResearchSsoController.prototype);
+    controller.ctx = ctx;
+    controller.app = { config: { aiResearch: { mcpJwtPrivateKey: 'unused' } } };
+
+    await controller.mcpToken();
+
+    assert.strictEqual(ctx.status, 400);
+    assert.deepStrictEqual(ctx.body, { code: -1, msg: 'FAIL', error: 'username is invalid' });
+  });
+
+  it('reports 503 when the AI research MCP JWT signing key is not configured', async () => {
+    const ctx = {
+      request: { body: { username: 'alice' } },
+      headers: {},
+      logger: { warn() {}, error() {} },
+    };
+    const controller = Object.create(AiResearchSsoController.prototype);
+    controller.ctx = ctx;
+    // No mcpJwtPrivateKey — the daemon must not fall back to the launch secret
+    // or the himind key. A missing research key is a config error, not a login.
+    controller.app = { config: { aiResearch: {} } };
+
+    await controller.mcpToken();
+
+    assert.strictEqual(ctx.status, 503);
+    assert.deepStrictEqual(ctx.body, {
+      code: -1,
+      msg: 'FAIL',
+      error: 'AI research MCP JWT is not configured',
     });
   });
 });

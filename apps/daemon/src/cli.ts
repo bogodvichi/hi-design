@@ -912,6 +912,18 @@ if (argv[0] === 'mcp' && argv[1] === 'himind') {
   }
 }
 
+if (argv[0] === 'mcp' && argv[1] === 'ai-research') {
+  try {
+    const { runAiResearchMcpBridge } = await import('./runtimes/ai-research-mcp-bridge.js');
+    await runAiResearchMcpBridge();
+    process.exit(0);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`${JSON.stringify({ ok: false, error: { message } })}\n`);
+    process.exit(1);
+  }
+}
+
 const first = argv.find((a) => !a.startsWith('-'));
 if (first && SUBCOMMAND_MAP[first]) {
   const idx = argv.indexOf(first);

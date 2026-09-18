@@ -585,6 +585,18 @@ export const MCP_TEMPLATES: McpTemplate[] = [
     example: '在 HiMind 中检索当前用户知识库里与这个设计任务相关的资料，并标注来源。',
     url: 'https://pixso.hikvision.com.cn/hik-plugin/hidesign-web/hdw/api/mcp/himind',
   },
+  {
+    id: 'fde-research-reports',
+    label: 'AI 用研报告',
+    description:
+      'Search and read the current HiDesign user\'s AI research (用研) reports. HiDesign routes this through its local stdio bridge, supplies a short-lived OA-backed user assertion signed centrally, and renews it automatically during long conversations. The research service verifies the assertion directly.',
+    transport: 'http',
+    authMode: 'none',
+    category: 'utilities',
+    homepage: 'http://drw.hikvision.com/',
+    example: '在 AI 用研报告中检索与当前设计任务相关的用户研究结论，并标注报告来源。',
+    url: 'https://drw.hikvision.com/api/research-mcp',
+  },
   // ── image-generation ────────────────────────────────────────────────
   {
     id: 'higgsfield-openclaw',

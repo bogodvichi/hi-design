@@ -64,7 +64,7 @@ import { resolveProjectRoot } from './project-root.js';
 import { setRuntimeDataDir } from './ids.js';
 import { getDefaultTeamId, getTeamMemberId } from './ids.js';
 import { fetchHdwTeams } from './http/hdw.js';
-import { fetchHiMindMcpToken } from './http/hdw.js';
+import { fetchAiResearchMcpToken, fetchHiMindMcpToken } from './http/hdw.js';
 import { fetchSharedSpaceInfo } from './http/hdw.js';
 import { OPEN_DESIGN_PLUGIN_ID } from './mcp-observability.js';
 import {
@@ -643,10 +643,9 @@ import {
   writeMcpConfig,
 } from './mcp-config.js';
 import {
-  hasEnabledHiMindMcpServer,
-  replaceHiMindMcpWithBridge,
-  resolveHiMindMcpServerId,
-} from './himind-mcp-auth.js';
+  replaceManagedMcpServersWithBridges,
+  resolveActiveManagedMcpBridges,
+} from './managed-mcp-bridges.js';
 import {
   resolveExternalMcpServersForRun,
 } from './run-tool-bundle.js';
@@ -843,7 +842,7 @@ import { registerMcpRoutes } from './mcp-routes.js';
 import { registerXaiRoutes } from './routes/xai.js';
 import { registerLiveArtifactRoutes } from './routes/live-artifact.js';
 import { registerDesignSystemToolRoutes } from './routes/design-system-tool.js';
-import { registerHiMindMcpRoutes } from './routes/himind-mcp.js';
+import { registerAiResearchMcpRoutes, registerHiMindMcpRoutes } from './routes/himind-mcp.js';
 import { registerDeployRoutes, registerDeploymentCheckRoutes } from './routes/deploy.js';
 import { registerMediaRoutes } from './routes/media.js';
 import { registerProjectRoutes, registerProjectArtifactRoutes, registerProjectFileRoutes, registerProjectUploadRoutes, createEnforceWorkspaceProjectMutation } from './routes/project/index.js';
@@ -9413,6 +9412,10 @@ const resolveShareAccess = async (projectId: string, _req: any) => {
     auth: authDeps,
     fetchToken: async runId => await fetchHiMindMcpToken(RUNTIME_DATA_DIR, runId),
   });
+  registerAiResearchMcpRoutes(app, {
+    auth: authDeps,
+    fetchToken: async runId => await fetchAiResearchMcpToken(RUNTIME_DATA_DIR, runId),
+  });
   app.use('/artifacts', express.static(ARTIFACTS_DIR));
   app.use(
     PLUGIN_PREVIEWS_ROUTE,
@@ -11740,25 +11743,27 @@ const resolveShareAccess = async (projectId: string, _req: any) => {
         );
       }
     }
-    const himindMcpServerId = resolveHiMindMcpServerId(process.env);
-    const himindMcpBridgeEnabled = hasEnabledHiMindMcpServer(
+    const activeManagedMcpBridges = resolveActiveManagedMcpBridges(
       enabledExternalMcp,
-      himindMcpServerId,
+      process.env,
     );
-    if (himindMcpBridgeEnabled) {
-      enabledExternalMcp = replaceHiMindMcpWithBridge(
+    if (activeManagedMcpBridges.length > 0) {
+      enabledExternalMcp = replaceManagedMcpServersWithBridges(
         enabledExternalMcp,
+        activeManagedMcpBridges,
         {
-          serverId: himindMcpServerId,
           command: process.execPath,
-          args: [OD_BIN, 'mcp', 'himind'],
+          odBin: OD_BIN,
         },
       );
     }
+    const managedMcpBridgeServerIds = new Set(
+      activeManagedMcpBridges.map((bridge) => bridge.serverId),
+    );
     const connectedExternalMcp = enabledExternalMcp
       .filter((s) =>
         typeof oauthTokensForSpawn[s.id] === 'string'
-        || (himindMcpBridgeEnabled && s.id === himindMcpServerId),
+        || managedMcpBridgeServerIds.has(s.id),
       )
       .map((s) => ({ id: s.id, label: s.label }));
 
@@ -13659,14 +13664,14 @@ const resolveShareAccess = async (projectId: string, _req: any) => {
             def.id === 'codex'
             && run.externalPluginAnalytics?.externalPluginId
               === OPEN_DESIGN_PLUGIN_ID,
-          ...(himindMcpBridgeEnabled && def.himindMcpBridge
+          ...(activeManagedMcpBridges.length > 0 && def.managedMcpBridges
             ? {
-                himindMcpBridge: {
-                  id: himindMcpServerId,
+                mcpBridges: activeManagedMcpBridges.map((bridge) => ({
+                  id: bridge.serverId,
                   command: process.execPath,
-                  args: [OD_BIN, 'mcp', 'himind'],
-                  env: { ELECTRON_RUN_AS_NODE: '1' },
-                },
+                  args: [OD_BIN, ...bridge.cliArgs],
+                  env: { ELECTRON_RUN_AS_NODE: '1', ...bridge.env },
+                })),
               }
             : {}),
           ...(nativeBuildPackageBindings.length > 0

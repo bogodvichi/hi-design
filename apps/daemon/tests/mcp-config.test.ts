@@ -745,6 +745,23 @@ describe('MCP_TEMPLATES', () => {
     });
   });
 
+  it('includes the managed AI research (用研) reports MCP endpoint', () => {
+    const tpl = MCP_TEMPLATES.find((t) => t.id === 'fde-research-reports');
+    // Mirrors the HiMind managed bridge: authMode 'none' because the daemon
+    // rewrites the remote HTTP entry into the local stdio bridge that mints a
+    // short-lived OA-backed JWT — the picker must NOT prompt for a token.
+    expect(tpl).toMatchObject({
+      label: 'AI 用研报告',
+      transport: 'http',
+      authMode: 'none',
+      category: 'utilities',
+      url: 'https://drw.hikvision.com/api/research-mcp',
+    });
+    // No user-entered header/env fields: the bridge owns authentication.
+    expect(tpl?.headerFields ?? []).toEqual([]);
+    expect(tpl?.envFields ?? []).toEqual([]);
+  });
+
   it('includes the Higgsfield openclaw entry pointing at the streamable HTTP /mcp endpoint', () => {
     const tpl = MCP_TEMPLATES.find((t) => t.id === 'higgsfield-openclaw');
     expect(tpl).toBeDefined();

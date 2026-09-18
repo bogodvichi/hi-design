@@ -219,6 +219,7 @@ import type {
   RunContextSelection,
   WorkspaceCollabContext,
   WorkspaceContextItem,
+  WorkspaceDirectoryItem,
 } from '@open-design/contracts';
 import scenarioStyles from './ProjectScenarioControl.module.css';
 import type {
@@ -263,8 +264,12 @@ import {
   currentUserDirectoryEntry,
   useTeamMembers,
 } from '../collab/useTeamMembers';
-import { workspaceIdentityCacheKey } from '../collab/workspace-identity';
 import {
+  workspaceIdentityCacheKey,
+  workspaceProjectHeaders,
+} from '../collab/workspace-identity';
+import {
+  readWorkspaceDirectoryForCurrentGeneration,
   useWorkspaceContext,
   workspaceIdentityCanBillAmr,
 } from '../collab/useWorkspaceContext';
@@ -1483,34 +1488,128 @@ export function projectUsesPersonalWorkspacePresentation(
     || Boolean(scope && 'visibility' in scope && scope.visibility === 'personal');
 }
 
-export function personalProjectParentLabel(baseDir: unknown): string {
-  const pathName = typeof baseDir === 'string'
-    ? baseDir.split(/[/\\]/).filter(Boolean).pop()?.trim()
-    : '';
-  const label = pathName || '文件路径';
-  const characters = Array.from(label);
-  return characters.length > 8
-    ? `${characters.slice(0, 8).join('')}…`
-    : label;
-}
-
-function parentPathOf(pathName: unknown): string {
-  if (typeof pathName !== 'string') return '';
-  const normalized = pathName.trim().replace(/\\/gu, '/').replace(/\/+$/u, '');
-  if (!normalized) return '';
-  const idx = normalized.lastIndexOf('/');
-  return idx > 0 ? normalized.slice(0, idx) : '';
-}
-
-export function personalProjectParentPath(
-  baseDir: unknown,
-  activeFile?: Pick<ProjectFile, 'localPath' | 'path' | 'name'> | null,
+export function projectRootLocationLabel(
+  context: WorkspaceCollabContext | null | undefined,
+  personalLabel: string,
+  teamFallbackLabel: string,
+  directoryItem?: WorkspaceDirectoryItem | null,
 ): string {
-  const localParent = parentPathOf(activeFile?.localPath);
-  if (localParent) return localParent;
-  const relativeParent = parentPathOf(activeFile?.path || activeFile?.name);
-  if (relativeParent) return relativeParent;
-  return typeof baseDir === 'string' ? baseDir.trim() : '';
+  if (
+    context?.workspaceType !== 'team'
+    || context.isDefaultTeam === true
+    || directoryItem?.isDefaultTeam === true
+  ) return personalLabel;
+  const internalIds = new Set([
+    context.workspaceId?.trim(),
+    context.teamId?.trim(),
+  ].filter(Boolean));
+  const displayName = [directoryItem?.workspaceName, context.workspaceName, context.teamName]
+    .map((name) => name?.trim() ?? '')
+    .find((name) => name && !internalIds.has(name));
+  return displayName || teamFallbackLabel;
+}
+
+export function projectWorkspaceNameFromDirectory(
+  items: readonly WorkspaceDirectoryItem[],
+  workspaceId: string,
+): string | null {
+  const item = items.find((candidate) => candidate.workspaceId === workspaceId);
+  if (item?.isDefaultTeam === true) return null;
+  const name = item?.workspaceName;
+  return typeof name === 'string' && name.trim() && name.trim() !== workspaceId
+    ? name.trim()
+    : null;
+}
+
+export function projectFolderNameFromResponse(value: unknown): string | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const data = (value as { data?: unknown }).data;
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return null;
+  const name = (data as { folder_name?: unknown }).folder_name;
+  return typeof name === 'string' && name.trim() ? name.trim() : null;
+}
+
+async function fetchProjectFolderName(
+  folderId: string,
+  context: WorkspaceCollabContext,
+  isDefaultWorkspace: boolean,
+  signal: AbortSignal,
+): Promise<string | null> {
+  const usePersonalFolderApi = context.workspaceType !== 'team' || isDefaultWorkspace;
+  const url = !usePersonalFolderApi
+    ? `/api/hdw/api/folder/detail?folder_id=${encodeURIComponent(folderId)}`
+    : `/api/folders/${encodeURIComponent(folderId)}?workspace_id=${encodeURIComponent(context.workspaceId)}`;
+  const requestContext = isDefaultWorkspace && context.isDefaultTeam !== true
+    ? { ...context, isDefaultTeam: true }
+    : context;
+  const response = await fetch(url, {
+    cache: 'no-store',
+    headers: workspaceProjectHeaders(requestContext),
+    signal,
+  });
+  if (!response.ok) return null;
+  return projectFolderNameFromResponse(await response.json());
+}
+
+function useProjectLocationLabel(
+  folderId: string | null,
+  context: WorkspaceCollabContext | null,
+  personalLabel: string,
+  teamFallbackLabel: string,
+): string {
+  const workspaceLookupKey = context?.workspaceId.trim() || null;
+  const [resolvedWorkspace, setResolvedWorkspace] = useState<{
+    key: string;
+    item: WorkspaceDirectoryItem;
+  } | null>(null);
+  useEffect(() => {
+    if (!workspaceLookupKey) return;
+    let cancelled = false;
+    void readWorkspaceDirectoryForCurrentGeneration()
+      .then((directory) => {
+        const item = directory.items.find(
+          (candidate) => candidate.workspaceId === workspaceLookupKey,
+        );
+        if (!cancelled && item) setResolvedWorkspace({ key: workspaceLookupKey, item });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [workspaceLookupKey]);
+  const directoryItem = resolvedWorkspace?.key === workspaceLookupKey
+    ? resolvedWorkspace.item
+    : null;
+  const rootLabel = projectRootLocationLabel(
+    context,
+    personalLabel,
+    teamFallbackLabel,
+    directoryItem,
+  );
+  const isDefaultWorkspace = context?.isDefaultTeam === true
+    || directoryItem?.isDefaultTeam === true;
+  const lookupKey = folderId && context
+    ? `${workspaceIdentityCacheKey(context)}:${folderId}:${isDefaultWorkspace ? 'personal' : 'team'}`
+    : null;
+  const [resolvedFolder, setResolvedFolder] = useState<{
+    key: string;
+    name: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!folderId || !context || !lookupKey) return;
+    const controller = new AbortController();
+    void fetchProjectFolderName(folderId, context, isDefaultWorkspace, controller.signal)
+      .then((name) => {
+        if (!controller.signal.aborted && name) {
+          setResolvedFolder({ key: lookupKey, name });
+        }
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [context, folderId, isDefaultWorkspace, lookupKey]);
+
+  return resolvedFolder?.key === lookupKey ? resolvedFolder.name : rootLabel;
 }
 
 /**
@@ -2143,6 +2242,12 @@ export function ProjectView({
     project,
     detailedProject,
     authoritativeProjectName,
+  );
+  const projectLocationLabel = useProjectLocationLabel(
+    projectDetail.folderId,
+    projectRunWorkspaceContext,
+    t('workspaceSwitcher.draftsTooltip'),
+    t('entry.navAllProjects'),
   );
   let projectTitleTooltip = currentProject.name;
   if (projectMutationReadOnly) projectTitleTooltip = t('workspace.readonlyNotice');
@@ -11396,9 +11501,6 @@ export function ProjectView({
   // hand-off. Owning the shell here would make each view mount its own
   // element and replay the `.app` entrance animation, which reads as the
   // project frame flashing twice on the way in from Home.
-  const personalProjectResolvedParentPath = personalProject
-    ? personalProjectParentPath(currentProject.metadata?.baseDir, activeProjectFile)
-    : '';
   return (
     <CollabProvider value={collabValue}>
       {shareNotice && (
@@ -11682,15 +11784,14 @@ export function ProjectView({
               backLabel={t('project.backToProjects')}
               composerFooterAccessory={executionControls}
               projectHeader={(
-                <span className={`chat-project-title-line${personalProject ? ' is-personal-project' : ''}`}>
-                  {personalProject ? (
-                    <span
-                      className="chat-project-path"
-                      title={personalProjectResolvedParentPath || undefined}
-                    >
-                      {personalProjectParentLabel(personalProjectResolvedParentPath)}/
-                    </span>
-                  ) : null}
+                <span className="chat-project-title-line has-project-location">
+                  <span
+                    className="chat-project-path"
+                    title={projectLocationLabel}
+                  >
+                    {projectLocationLabel}
+                  </span>
+                  <span className="chat-project-path-separator" aria-hidden>/</span>
                   <span
                     className={`title${projectMutationReadOnly ? ' readonly' : ' editable'}`}
                     data-testid="project-title"

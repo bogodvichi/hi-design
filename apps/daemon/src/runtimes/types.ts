@@ -30,14 +30,16 @@ export type RuntimeBuildOptions = {
 
 export type RuntimeContext = {
   cwd?: string;
-  // Daemon-owned stdio MCP bridge. Runtime adapters can expose HiMind
-  // without receiving the user's OA identity or the upstream bearer token.
-  himindMcpBridge?: {
+  // Daemon-owned stdio MCP bridges. Runtime adapters can expose managed MCP
+  // services (HiMind, AI research) without receiving the user's OA identity or
+  // the upstream bearer token. Multiple bridges can be active in one run when
+  // the user has enabled more than one managed server.
+  mcpBridges?: Array<{
     id: string;
     command: string;
     args: string[];
     env?: Record<string, string>;
-  };
+  }>;
   // True when the current chat run has at least one prior persisted
   // assistant message in the same conversation — i.e. this isn't the
   // first user turn. Plain-streaming adapters that support a "continue
@@ -229,9 +231,9 @@ export type RuntimeAgentDef = {
     | 'acp-merge'
     | 'opencode-env-content'
     | 'mimo-env-content';
-  // The runtime accepts the HiMind bridge even when it has no generic
-  // external-MCP injection strategy.
-  himindMcpBridge?: boolean;
+  // The runtime accepts daemon-managed stdio MCP bridges (HiMind, AI research)
+  // even when it has no generic external-MCP injection strategy.
+  managedMcpBridges?: boolean;
   installUrl?: string;
   docsUrl?: string;
   // When `false`, the Settings model picker hides the "Custom (fill below)"

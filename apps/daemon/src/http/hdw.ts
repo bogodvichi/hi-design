@@ -205,16 +205,24 @@ type HiMindMcpTokenPost = (
   cookies?: Cookie[],
 ) => Promise<HiMindMcpTokenWire | null>;
 
-export async function fetchHiMindMcpToken(
+/**
+ * Mint a short-lived MCP access token from the central HDW service after it
+ * validates the run's OA session. Shared by HiMind and the AI research
+ * workbench; only the central endpoint path and error label differ so a token
+ * minted for one MCP audience cannot be requested against another by mistake.
+ */
+async function fetchMcpToken(
   dataDir: string,
   runId: string,
+  endpointPath: string,
+  serviceLabel: string,
   post: HiMindMcpTokenPost = hdwPost,
 ): Promise<HiMindMcpToken | null> {
   const session = readSsoConfigFile(dataDir);
   const username = session?.username?.trim().toLowerCase() ?? '';
   if (!username || !session?.cookies?.length) return null;
   const data = await post(
-    '/auth/himind/mcp-token',
+    endpointPath,
     {
       username,
       run_id: runId,
@@ -223,7 +231,7 @@ export async function fetchHiMindMcpToken(
   );
   if (!data) {
     throw new Error(
-      'HiMind MCP token issuance was rejected by the central HDW service; verify the OA session and HiMind MCP JWT deployment configuration',
+      `${serviceLabel} MCP token issuance was rejected by the central HDW service; verify the OA session and ${serviceLabel} MCP JWT deployment configuration`,
     );
   }
   if (
@@ -232,12 +240,28 @@ export async function fetchHiMindMcpToken(
     || typeof data.token_type !== 'string'
     || data.token_type.toLowerCase() !== 'bearer'
   ) {
-    throw new Error('HiMind MCP token response from the central HDW service is invalid');
+    throw new Error(`${serviceLabel} MCP token response from the central HDW service is invalid`);
   }
   return {
     accessToken: data.access_token.trim(),
     expiresIn: Number.isFinite(data.expires_in) ? data.expires_in : 300,
   };
+}
+
+export async function fetchHiMindMcpToken(
+  dataDir: string,
+  runId: string,
+  post: HiMindMcpTokenPost = hdwPost,
+): Promise<HiMindMcpToken | null> {
+  return fetchMcpToken(dataDir, runId, '/auth/himind/mcp-token', 'HiMind', post);
+}
+
+export async function fetchAiResearchMcpToken(
+  dataDir: string,
+  runId: string,
+  post: HiMindMcpTokenPost = hdwPost,
+): Promise<HiMindMcpToken | null> {
+  return fetchMcpToken(dataDir, runId, '/auth/ai-research/mcp-token', 'AI research', post);
 }
 
 export async function hdwPutRaw(

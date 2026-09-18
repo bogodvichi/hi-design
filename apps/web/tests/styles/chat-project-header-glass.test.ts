@@ -15,4 +15,13 @@ describe('chat project header glass edge', () => {
     expect(chatCss).toContain('backdrop-filter: var(--glass-backdrop);');
     expect(chatCss).toContain('mask-image: linear-gradient(to bottom, currentColor, transparent);');
   });
+
+  it('left-aligns the collapse action while keeping its icon on the back-arrow axis', () => {
+    expect(chatCss).toMatch(
+      /\.personal-project-back-popover\s*\{[\s\S]*?left:\s*-4px;[\s\S]*?padding:\s*4px;/,
+    );
+    expect(chatCss).toMatch(
+      /\.personal-project-back-popover__action\s*\{[\s\S]*?justify-content:\s*flex-start;[\s\S]*?padding-inline:\s*5px 8px;/,
+    );
+  });
 });

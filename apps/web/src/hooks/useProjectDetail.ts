@@ -15,6 +15,7 @@ import type {
 export interface ProjectDetailState {
   project: Project | null;
   resolvedDir: string | null;
+  folderId: string | null;
   loading: boolean;
   error: Error | null;
   refresh: () => Promise<void>;
@@ -23,6 +24,7 @@ export interface ProjectDetailState {
 export interface ProjectDetailSeed {
   project: Project;
   resolvedDir: string | null;
+  folderId?: string | null;
 }
 
 export function useProjectDetail(
@@ -43,6 +45,9 @@ export function useProjectDetail(
   );
   const [resolvedDir, setResolvedDir] = useState<string | null>(
     initialDetailCanSeed ? initialDetail?.resolvedDir ?? null : null,
+  );
+  const [folderId, setFolderId] = useState<string | null>(
+    initialDetailCanSeed ? initialDetail?.folderId ?? null : null,
   );
   const [loading, setLoading] = useState(!initialDetailCanSeed);
   const [error, setError] = useState<Error | null>(null);
@@ -97,6 +102,9 @@ export function useProjectDetail(
             ? nextProject.metadata.baseDir
             : null;
         setResolvedDir(reported ?? fallback);
+        setFolderId(typeof body.folderId === 'string' && body.folderId.trim()
+          ? body.folderId.trim()
+          : null);
       } catch (err) {
         if (signal?.aborted) return;
         setError(err instanceof Error ? err : new Error(String(err)));
@@ -125,5 +133,5 @@ export function useProjectDetail(
 
   const refresh = useCallback(() => fetchOnce(), [fetchOnce]);
 
-  return { project, resolvedDir, loading, error, refresh };
+  return { project, resolvedDir, folderId, loading, error, refresh };
 }

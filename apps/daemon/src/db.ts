@@ -1219,6 +1219,7 @@ export function getWorkspaceProjectByProjectId(db: SqliteDb, projectId: string) 
               cloud_tombstoned_at AS cloudTombstonedAt,
               sync_state AS syncState,
               version,
+              folder_id AS folderId,
               created_at AS createdAt,
               updated_at AS updatedAt
          FROM workspace_projects

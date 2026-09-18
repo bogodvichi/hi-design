@@ -96,10 +96,13 @@
   appearance: none;
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 8px;
   width: 100%;
   height: 30px;
-  padding: 0 8px;
+  /* 1px popover border + 5px inset = the back button's 6px icon inset. */
+  padding-block: 0;
+  padding-inline: 5px 8px;
   border: 0;
   border-radius: 6px;
   background: transparent;
@@ -114,14 +117,14 @@
   background: var(--bg-subtle);
   outline: none;
 }
-.chat-project-title-line.is-personal-project {
+.chat-project-title-line.has-project-location {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   min-width: 0;
   overflow: hidden;
 }
-.chat-project-title-line.is-personal-project .chat-project-path {
+.chat-project-title-line.has-project-location .chat-project-path {
   flex: 0 1 auto;
   min-width: 0;
   overflow: hidden;
@@ -131,11 +134,18 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-.chat-project-title-line.is-personal-project .title {
+.chat-project-title-line.has-project-location .chat-project-path-separator {
+  flex: 0 0 auto;
+  color: rgba(0, 0, 0, 0.35);
+  font-size: 13px;
+  line-height: 18px;
+}
+.chat-project-title-line.has-project-location .title {
   padding: 0;
   flex: 0 1 auto;
 }
-[data-theme='dark'] .chat-project-title-line.is-personal-project .chat-project-path {
+[data-theme='dark'] .chat-project-title-line.has-project-location .chat-project-path,
+[data-theme='dark'] .chat-project-title-line.has-project-location .chat-project-path-separator {
   color: color-mix(in srgb, var(--text) 50%, transparent);
 }
 .chat-project-design-system {

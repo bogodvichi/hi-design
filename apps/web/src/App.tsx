@@ -4510,6 +4510,7 @@ try {
     capturedAfterListGeneration: number;
     workspaceScope?: ProjectWorkspaceScope;
     resolvedDir?: string | null;
+    folderId?: string | null;
     workspaceContext?: WorkspaceCollabContext;
     awaitingFirstMaterialization?: boolean;
   } | null>(null);
@@ -4540,6 +4541,9 @@ try {
           : {}),
         ...(preservesBootstrapWitness && previous.resolvedDir !== undefined
           ? { resolvedDir: previous.resolvedDir }
+          : {}),
+        ...(preservesBootstrapWitness && previous.folderId !== undefined
+          ? { folderId: previous.folderId }
           : {}),
         ...(preservesBootstrapWitness && previous.workspaceContext
           ? { workspaceContext: previous.workspaceContext }
@@ -4746,6 +4750,7 @@ try {
           capturedAfterListGeneration: latestAppliedProjectListGenerationRef.current,
           workspaceScope: bootstrap.scope,
           resolvedDir: bootstrap.resolvedDir,
+          folderId: bootstrap.folderId,
           awaitingFirstMaterialization:
             bootstrap.project.metadata?.sharedProjectPlaceholderAt != null,
         };
@@ -4791,6 +4796,7 @@ try {
             capturedAfterListGeneration: latestAppliedProjectListGenerationRef.current,
             workspaceScope: progressive.scope,
             resolvedDir: progressive.resolvedDir,
+            folderId: progressive.folderId,
             workspaceContext: firstOpenTeamContext,
             awaitingFirstMaterialization:
               progressive.awaitingFirstMaterialization,
@@ -5444,6 +5450,7 @@ try {
               ? {
                   project: routeProjectSnapshotRef.current.project,
                   resolvedDir: routeProjectSnapshotRef.current.resolvedDir,
+                  folderId: routeProjectSnapshotRef.current.folderId ?? null,
                 }
               : undefined
           }
