@@ -15,19 +15,23 @@ const placeholderCarouselMock = vi.hoisted(() => ({
   reportScenario: false,
   reportedScenarioId: null as string | null,
   active: false,
+  paused: false,
 }));
 
 vi.mock('../../src/components/home-hero/PlaceholderCarousel', () => ({
   PlaceholderCarousel: ({
     scenarios,
     active,
+    paused,
     onScenarioChange,
   }: {
     scenarios: Array<{ id: string; chipId?: string | null; text: string }>;
     active: boolean;
+    paused?: boolean;
     onScenarioChange: (scenario: { id: string; chipId?: string | null; text: string }) => void;
   }) => {
     placeholderCarouselMock.active = active;
+    placeholderCarouselMock.paused = Boolean(paused);
     const scenario = scenarios[0];
     if (
       placeholderCarouselMock.reportScenario &&
@@ -53,6 +57,7 @@ afterEach(() => {
   placeholderCarouselMock.reportScenario = false;
   placeholderCarouselMock.reportedScenarioId = null;
   placeholderCarouselMock.active = false;
+  placeholderCarouselMock.paused = false;
   cleanup();
 });
 
@@ -166,6 +171,17 @@ describe('HomeHero scenario cards', () => {
 
     expect(placeholderCarouselMock.active).toBe(true);
     expect((screen.getByTestId('home-hero-submit') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  it('pauses the Home typewriter while the prompt is focused', () => {
+    renderHero();
+
+    const editor = screen.getByTestId('home-hero-input');
+    expect(placeholderCarouselMock.paused).toBe(false);
+    fireEvent.focusIn(editor);
+    expect(placeholderCarouselMock.paused).toBe(true);
+    fireEvent.focusOut(editor, { relatedTarget: null });
+    expect(placeholderCarouselMock.paused).toBe(false);
   });
 
   it('keeps attachment sending in control while animated suggestions are visible', async () => {

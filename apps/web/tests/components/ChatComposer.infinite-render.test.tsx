@@ -4,10 +4,26 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import type { ComponentProps } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ChatComposer } from '../../src/components/ChatComposer';
+import { ChatComposer, STAGE_ATTACHMENT_EVENT } from '../../src/components/ChatComposer';
 import { composerText, flushMounts, pressEnter, typeAndSettle } from '../helpers/lexical-composer';
 
 let fetchMock: ReturnType<typeof vi.fn>;
+const RESTORED_SKILL = {
+  id: 'skill-restored',
+  name: 'Restored Skill',
+  description: 'Draft context',
+  source: 'user',
+} as never;
+const CURRENT_WORKSPACE = {
+  id: 'workspace-current',
+  kind: 'project',
+  label: 'Current project',
+} as never;
+const REFERENCE_WORKSPACE = {
+  id: 'workspace-reference',
+  kind: 'project',
+  label: 'Reference project',
+} as never;
 
 function renderComposer(overrides: Partial<ComponentProps<typeof ChatComposer>> = {}) {
   return render(
@@ -25,7 +41,13 @@ function renderComposer(overrides: Partial<ComponentProps<typeof ChatComposer>> 
 }
 
 beforeEach(() => {
-  fetchMock = vi.fn(async (url: string) => {
+  fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+    if (url === '/api/projects/project-1' && init?.method === 'PATCH') {
+      return new Response(JSON.stringify({ project: { id: 'project-1', skillId: 'skill-restored' } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
     if (url === '/api/mcp/servers') {
       return new Response(JSON.stringify({ servers: [], templates: [] }), {
         status: 200,
@@ -91,6 +113,94 @@ describe('ChatComposer infinite re-render regression (#2097)', () => {
     await flushMounts();
 
     await waitFor(() => expect(composerText()).toBe('draft before refresh'));
+  });
+
+  it('restores unsent resource and file selections for the active conversation', async () => {
+    const key = 'od:chat-composer:draft:project-1:conv-context';
+    const first = renderComposer({
+      draftStorageKey: key,
+      skills: [RESTORED_SKILL],
+    });
+    await flushMounts();
+
+    await typeAndSettle('keep the whole draft');
+    act(() => {
+      window.dispatchEvent(new CustomEvent(STAGE_ATTACHMENT_EVENT, {
+        detail: {
+          attachments: [{ path: 'references/brief.pdf', name: 'brief.pdf', kind: 'file' }],
+        },
+      }));
+    });
+    fireEvent.click(screen.getByTestId('chat-plus-trigger'));
+    expect(screen.queryByText('Design toolbox')).toBeNull();
+    fireEvent.click(await screen.findByTestId('composer-plus-skills'));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Restored Skill' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('staged-inside-contexts').textContent).toContain('Restored Skill');
+      expect(screen.getByTestId('staged-outside-contexts').textContent).toContain('brief.pdf');
+      expect(window.localStorage.getItem(`${key}:contexts`)).toBe('1');
+    });
+    expect(
+      screen.getByTestId('chat-composer').querySelector('.composer-input-wrap')
+        ?.contains(screen.getByTestId('staged-inside-contexts')),
+    ).toBe(true);
+    first.unmount();
+
+    const second = renderComposer({
+      draftStorageKey: key,
+      skills: [RESTORED_SKILL],
+    });
+    await flushMounts();
+
+    expect(composerText()).toBe('keep the whole draft');
+    expect(screen.getByTestId('staged-inside-contexts').textContent).toContain('Restored Skill');
+    expect(screen.getByTestId('staged-outside-contexts').textContent).toContain('brief.pdf');
+
+    fireEvent.click(screen.getByLabelText('Remove Restored Skill'));
+    fireEvent.click(screen.getByLabelText('Remove brief.pdf'));
+    await waitFor(() => expect(window.localStorage.getItem(`${key}:contexts`)).toBeNull());
+    second.unmount();
+
+    renderComposer({
+      draftStorageKey: key,
+      skills: [RESTORED_SKILL],
+    });
+    await flushMounts();
+    expect(composerText()).toBe('keep the whole draft');
+    expect(screen.queryByTestId('staged-contexts')).toBeNull();
+    expect(screen.queryByTestId('staged-outside-contexts')).toBeNull();
+  });
+
+  it('keeps non-Skill/MCP context cards in the gray tray above the white editor', async () => {
+    renderComposer({
+      activeWorkspaceContext: CURRENT_WORKSPACE,
+      initialWorkspaceContexts: [REFERENCE_WORKSPACE],
+    });
+    await flushMounts();
+    act(() => {
+      window.dispatchEvent(new CustomEvent(STAGE_ATTACHMENT_EVENT, {
+        detail: {
+          attachments: [{ path: 'references/brief.pdf', name: 'brief.pdf', kind: 'file' }],
+        },
+      }));
+    });
+    await waitFor(() => expect(screen.getByText('brief.pdf')).toBeTruthy());
+
+    const shell = screen.getByTestId('chat-composer').querySelector('.composer-shell');
+    const input = shell?.querySelector('.composer-input-wrap');
+    const outside = screen.getByTestId('staged-outside-contexts');
+    const attachment = screen.getByTestId('composer-attachment-references/brief.pdf');
+    const workspace = screen.getByTestId('composer-context-workspace-workspace-reference');
+    expect(shell).toHaveAttribute('data-composer-surface', 'project');
+    expect(input).toHaveAttribute('data-composer-surface-part', 'input');
+    expect(workspace.textContent).toBe('Reference project');
+    expect(workspace.querySelector('.staged-context-kind')).toBeNull();
+    expect(attachment.compareDocumentPosition(workspace) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(outside.querySelector('.staged-chip')).toBeTruthy();
+    expect(shell?.contains(outside)).toBe(true);
+    expect(input?.contains(outside)).toBe(false);
+    expect(outside.compareDocumentPosition(input!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it('clears the saved draft after submitting it', async () => {

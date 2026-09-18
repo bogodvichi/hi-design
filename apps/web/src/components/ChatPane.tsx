@@ -2454,8 +2454,6 @@ export function ChatPane({
 
   const composerNode = (
     <>
-      {/* 插件 / 设计百宝箱 live inside the composer's "+" menu (below 工作目录,
-          hover to expand); they no longer sit as quick pills above the input. */}
     <ChatComposer
       ref={composerRef}
       designSystemPicker={designSystemPicker}

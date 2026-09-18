@@ -2,9 +2,11 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 const homeHeroCss = readFileSync(new URL('../../src/styles/home/home-hero.css', import.meta.url), 'utf8');
+const entranceCss = readFileSync(new URL('../../src/styles/entrance.css', import.meta.url), 'utf8');
+const routinesCss = readFileSync(new URL('../../src/styles/viewer/routines.css', import.meta.url), 'utf8');
 
-function cssDeclarations(selector: string): string {
-  const cssWithoutComments = homeHeroCss.replace(/\/\*[\s\S]*?\*\//g, '');
+function cssDeclarations(selector: string, css = homeHeroCss): string {
+  const cssWithoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
   const rulePattern = /([^{}]+)\{([^}]*)\}/g;
   let match: RegExpExecArray | null;
 
@@ -54,5 +56,22 @@ describe('home hero composer visual contract', () => {
 
     expect(ruleValue(innerCard, 'border')).toBe('var(--stroke-thin) solid transparent');
     expect(ruleValue(focusedCard, 'border-color')).toBe('var(--border-strong)');
+  });
+
+  it('keeps the shared input frame out of entrance transforms', () => {
+    const projectInput = cssDeclarations('.composer-surface--project > .home-hero__input-card');
+
+    expect(entranceCss).not.toMatch(/home-hero__input-card/);
+    expect(ruleValue(projectInput, 'animation')).toBe('none');
+    expect(ruleValue(projectInput, 'transform')).toBe('none');
+  });
+
+  it('removes the hidden current-workspace row from fixed composer layout', () => {
+    const hiddenCurrentWorkspace = cssDeclarations(
+      '.chat-composer-fixed-layer .composer-outside-contexts--current-only',
+      routinesCss,
+    );
+
+    expect(ruleValue(hiddenCurrentWorkspace, 'display')).toBe('none');
   });
 });

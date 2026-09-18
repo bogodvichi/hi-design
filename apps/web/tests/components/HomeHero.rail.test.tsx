@@ -117,6 +117,39 @@ function pickTemplate(chipId: string) {
 }
 
 describe('HomeHero intent rail', () => {
+  it('keeps Skill/MCP cards inside and other context cards outside the white input surface', () => {
+    renderHero({
+      activeSkillId: 'skill-1',
+      activeSkillTitle: 'Prototype Skill',
+      activeSkillRecord: { id: 'skill-1', name: 'Prototype Skill' } as never,
+      contextOnlyMcpServers: [{ id: 'mcp-1', label: 'Linear' } as never],
+      contextWorkspaceItems: [{ id: 'workspace-1', kind: 'project', label: 'Reference project' } as never],
+      stagedFiles: [new File(['brief'], 'brief.pdf', { type: 'application/pdf' })],
+    });
+
+    const inputCard = screen.getByTestId('home-hero-input').closest('.home-hero__input-card');
+    const composerCard = inputCard?.closest('.home-hero__composer-card');
+    const skill = screen.getByTestId('home-hero-context-skill-skill-1');
+    const mcp = screen.getByTestId('home-hero-context-mcp-mcp-1');
+    const file = screen.getByTestId('home-hero-active-file-0');
+    const workspace = screen.getByTestId('home-hero-context-workspace-workspace-1');
+    const outside = screen.getByTestId('home-hero-outside-contexts');
+    expect(composerCard).toHaveAttribute('data-composer-surface', 'home');
+    expect(inputCard).toHaveAttribute('data-composer-surface-part', 'input');
+    expect(inputCard?.contains(skill)).toBe(true);
+    expect(inputCard?.contains(mcp)).toBe(true);
+    expect(inputCard?.contains(outside)).toBe(false);
+    expect(composerCard?.contains(outside)).toBe(true);
+    expect(outside.contains(file)).toBe(true);
+    expect(workspace.textContent).toBe('Reference project');
+    expect(file.compareDocumentPosition(workspace) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(outside.compareDocumentPosition(inputCard!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(skill).toHaveClass('staged-chip');
+    expect(skill).toHaveClass('staged-context--skill');
+    expect(mcp).toHaveClass('staged-chip');
+    expect(mcp).toHaveClass('staged-context--mcp');
+  });
+
   it('offers every scenario template through the composer template picker', () => {
     renderHero();
     openTemplatePicker();

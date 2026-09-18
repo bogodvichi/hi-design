@@ -153,6 +153,8 @@ function makePlugin(id: string, title: string): InstalledPluginRecord {
 afterEach(() => {
   workspaceContextState = { context: workspaceA, loading: false };
   cleanup();
+  window.localStorage.clear();
+  window.sessionStorage.clear();
   vi.unstubAllGlobals();
 });
 
@@ -297,6 +299,97 @@ describe('HomeView context picker', () => {
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
       prompt: '',
       pluginId: null,
+      attachments: [file],
+    }));
+  });
+
+  it('restores unsent prompt, Skill, MCP, and file selections after returning to Home', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async (url) => {
+      if (typeof url === 'string' && url === '/api/plugins') {
+        return new Response(JSON.stringify({ plugins: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (typeof url === 'string' && url === '/api/mcp/servers') {
+        return new Response(JSON.stringify({ servers: [MCP_SERVER], templates: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      if (typeof url === 'string' && url === '/api/workspace/directory') {
+        return new Response(JSON.stringify({ items: [] }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      return new Response('[]', {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
+      cb(0);
+      return 0;
+    });
+    const file = new File(['brief'], 'brief.pdf', { type: 'application/pdf' });
+
+    const first = render(
+      <HomeView
+        projects={[]}
+        skills={[SKILL]}
+        onSubmit={() => undefined}
+        onOpenProject={() => undefined}
+        onViewAllProjects={() => undefined}
+      />,
+    );
+    await screen.findByTestId('home-hero-input');
+    setHomeHeroPrompt('keep this home draft');
+    await settle();
+
+    fireEvent.click(screen.getByTestId('home-hero-plus-trigger'));
+    fireEvent.click(await screen.findByTestId('composer-plus-skills'));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Prototype Lab' }));
+    fireEvent.click(screen.getByTestId('home-hero-plus-trigger'));
+    fireEvent.click(await screen.findByTestId('composer-plus-mcp'));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Linear' }));
+    fireEvent.change(screen.getByTestId('home-hero-file-input'), {
+      target: { files: [file] },
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('home-hero-active-file-0')).toHaveClass('staged-chip');
+      const inputCard = screen.getByTestId('home-hero-input').closest('.home-hero__input-card');
+      expect(inputCard?.contains(screen.getByTestId(`home-hero-context-skill-${SKILL.id}`))).toBe(true);
+      expect(inputCard?.contains(screen.getByTestId(`home-hero-context-mcp-${MCP_SERVER.id}`))).toBe(true);
+      expect(window.localStorage.getItem('open-design:home-composer:transient')).toBe('1');
+    });
+    first.unmount();
+
+    const onSubmit = vi.fn();
+    render(
+      <HomeView
+        projects={[]}
+        skills={[SKILL]}
+        onSubmit={onSubmit}
+        onOpenProject={() => undefined}
+        onViewAllProjects={() => undefined}
+      />,
+    );
+    await screen.findByTestId('home-hero-input');
+
+    expect(homeHeroPromptText()).toBe('keep this home draft');
+    expect(screen.getByTestId('home-hero-active-file-0')).toHaveClass('staged-chip');
+    expect(screen.getByTestId(`home-hero-context-skill-${SKILL.id}`)).toHaveClass('staged-chip');
+    expect(screen.getByTestId(`home-hero-context-mcp-${MCP_SERVER.id}`)).toHaveClass('staged-chip');
+    fireEvent.click(screen.getByTestId('home-hero-submit'));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
+      prompt: 'keep this home draft',
+      skillId: SKILL.id,
+      contextMcpServers: [expect.objectContaining({ id: MCP_SERVER.id })],
       attachments: [file],
     }));
   });
@@ -632,7 +725,7 @@ describe('HomeView context picker', () => {
     }));
   });
 
-  it('stages Skill and MCP from the plus menu without duplicating them in the prompt', async () => {
+  it('stages multiple Skills and MCP from the plus menu without duplicating them in the prompt', async () => {
     const fetchMock = vi.fn<typeof fetch>(async (url) => {
       if (typeof url === 'string' && url === '/api/plugins') {
         return new Response(JSON.stringify({ plugins: [] }), {
@@ -658,7 +751,7 @@ describe('HomeView context picker', () => {
     render(
       <HomeView
         projects={[]}
-        skills={[SKILL]}
+        skills={[SKILL, DECK_SKILL]}
         onSubmit={onSubmit}
         onOpenProject={() => undefined}
         onViewAllProjects={() => undefined}
@@ -670,7 +763,16 @@ describe('HomeView context picker', () => {
     fireEvent.click(await screen.findByTestId('composer-plus-skills'));
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Prototype Lab' }));
 
-    await waitFor(() => expect(screen.getByTestId('home-hero-active-skill')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId(`home-hero-context-skill-${SKILL.id}`)).toBeTruthy());
+    fireEvent.click(screen.getByTestId('home-hero-plus-trigger'));
+    fireEvent.click(await screen.findByTestId('composer-plus-skills'));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Deck Lab' }));
+
+    const firstSkill = await screen.findByTestId(`home-hero-context-skill-${SKILL.id}`);
+    const secondSkill = await screen.findByTestId(`home-hero-context-skill-${DECK_SKILL.id}`);
+    expect(firstSkill).toHaveClass('staged-context--skill');
+    expect(secondSkill).toHaveClass('staged-context--skill');
+    expect(firstSkill.className).toBe(secondSkill.className);
     expect(homeHeroPromptText().trim()).toBe('');
 
     fireEvent.click(screen.getByTestId('home-hero-plus-trigger'));
@@ -682,7 +784,8 @@ describe('HomeView context picker', () => {
 
     setHomeHeroPrompt('Build the first screen');
     await settle();
-    expect(screen.getByTestId('home-hero-active-skill')).toBeTruthy();
+    expect(screen.getByTestId(`home-hero-context-skill-${SKILL.id}`)).toBeTruthy();
+    expect(screen.getByTestId(`home-hero-context-skill-${DECK_SKILL.id}`)).toBeTruthy();
     expect(screen.getByTestId('home-hero-context-mcp-linear')).toBeTruthy();
     fireEvent.click(screen.getByTestId('home-hero-submit'));
 
@@ -690,6 +793,7 @@ describe('HomeView context picker', () => {
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
       prompt: 'Build the first screen',
       skillId: SKILL.id,
+      initialRunContext: { skillIds: [SKILL.id, DECK_SKILL.id] },
       contextMcpServers: [expect.objectContaining({ id: MCP_SERVER.id })],
     }));
   });

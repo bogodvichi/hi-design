@@ -193,20 +193,12 @@ export interface ComposerPlusMenuProps {
   /** Opens the skill management surface (/personal-all/skill). */
   onManageSkills?: () => void;
 
-  /**
-   * Show a "Team" scope tab after "Mine" in the Skills and MCP submenus.
-   * Pass true when localStorage `od:home-folder-context` carries a regular
-   * (non-shared) team workspaceId — the tab switches to team-scoped skills
-   * and team-installed MCP servers.
-   */
-  showTeamTab?: boolean;
-
   /** Current user's member id in the shared (personal) workspace. Used to
    * filter the "Mine" tab: skills/MCPs whose `ownerMemberId` matches. */
   personalMemberId?: string;
-  /** Regular team workspace id from `od:home-folder-context`. Used to
-   * filter the "Team" tab: skills/MCPs whose `workspaceId` matches. */
-  teamWorkspaceId?: string;
+  /** Team workspaces the current directory says this user may access. The
+   * "Team" tab never infers access from the resource itself. */
+  teamWorkspaceIds?: string[];
 
   /** Triggers file attachment (opens the native picker). */
   onAttachFiles: () => void;
@@ -334,9 +326,8 @@ export function ComposerPlusMenu({
   onPickMcp,
   onAddMcp,
   onManageMcp,
- showTeamTab,
   personalMemberId,
-  teamWorkspaceId,
+  teamWorkspaceIds = [],
   onAttachFiles,
   attachLoading,
   onReferenceProject,
@@ -555,26 +546,34 @@ export function ComposerPlusMenu({
     };
   }, [open, submenu, placementPreference, contentHeight]);
 
- const needle = query.trim().toLowerCase();
- // Filter locally-installed skills by scope tab.
-   // "All": every installed skill.
-   // "Mine": ownerMemberId === personalMemberId.
-   // "Team": workspaceId === teamWorkspaceId.
-   const tabSkills =
-     skillTab === 'mine' ? skills.filter((s) => s.ownerMemberId && s.ownerMemberId === personalMemberId)
-     : skillTab === 'team' ? skills.filter((s) => s.workspaceId && s.workspaceId === teamWorkspaceId)
-     : skills;
- const filteredSkills = needle
-   ? tabSkills.filter((s) => skillMatchesQuery(s, needle))
-   : tabSkills;
- // Filter locally-connected MCP servers by scope tab, same pattern as skills.
-   const tabMcpServers =
-     mcpTab === 'mine' ? mcpServers.filter((s) => s.ownerMemberId && s.ownerMemberId === personalMemberId)
-     : mcpTab === 'team' ? mcpServers.filter((s) => s.workspaceId && s.workspaceId === teamWorkspaceId)
-     : mcpServers;
- const filteredMcp = needle
-   ? tabMcpServers.filter((s) => mcpMatches(s, needle))
-   : tabMcpServers;
+  const needle = query.trim().toLowerCase();
+  // "Team" trusts only workspace ids from the current user's verified
+  // directory. An empty directory means no permitted team rows.
+  const permittedTeamWorkspaceIds = new Set(teamWorkspaceIds);
+  const tabSkills =
+    skillTab === 'mine'
+      ? skills.filter((skill) => skill.ownerMemberId && skill.ownerMemberId === personalMemberId)
+      : skillTab === 'team'
+        ? skills.filter((skill) => (
+            skill.workspaceId && permittedTeamWorkspaceIds.has(skill.workspaceId)
+          ))
+        : skills;
+  const filteredSkills = needle
+    ? tabSkills.filter((skill) => skillMatchesQuery(skill, needle))
+    : tabSkills;
+  const tabMcpServers =
+    mcpTab === 'mine'
+      ? mcpServers.filter((server) => (
+          server.ownerMemberId && server.ownerMemberId === personalMemberId
+        ))
+      : mcpTab === 'team'
+        ? mcpServers.filter((server) => (
+            server.workspaceId && permittedTeamWorkspaceIds.has(server.workspaceId)
+          ))
+        : mcpServers;
+  const filteredMcp = needle
+    ? tabMcpServers.filter((server) => mcpMatches(server, needle))
+    : tabMcpServers;
   const popupStyle = menuStyle
     ? ({
         ...menuStyle,
@@ -782,17 +781,15 @@ export function ComposerPlusMenu({
             >
               {t('homeHero.skillTabMine')}
             </button>
-            {showTeamTab ? (
-              <button
-                type="button"
-               role="tab"
-                aria-selected={skillTab === 'team'}
-                className={`plus-menu__skill-tab${skillTab === 'team' ? ' is-active' : ''}`}
-                onClick={() => { setSkillTab('team'); onSkillTabChange?.('team'); }}
-              >
-                {t('homeHero.skillTabTeam')}
-              </button>
-            ) : null}
+            <button
+              type="button"
+              role="tab"
+              aria-selected={skillTab === 'team'}
+              className={`plus-menu__skill-tab${skillTab === 'team' ? ' is-active' : ''}`}
+              onClick={() => { setSkillTab('team'); onSkillTabChange?.('team'); }}
+            >
+              {t('homeHero.skillTabTeam')}
+            </button>
             </div>
             <div className="plus-menu__list">
               {filteredSkills.length === 0 ? (
@@ -888,17 +885,15 @@ export function ComposerPlusMenu({
               >
                 {t('homeHero.skillTabMine')}
               </button>
-              {showTeamTab ? (
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={mcpTab === 'team'}
-                  className={`plus-menu__skill-tab${mcpTab === 'team' ? ' is-active' : ''}`}
-                  onClick={() => { setMcpTab('team'); onMcpTabChange?.('team'); }}
-                >
-                  {t('homeHero.skillTabTeam')}
-                </button>
-              ) : null}
+              <button
+                type="button"
+                role="tab"
+                aria-selected={mcpTab === 'team'}
+                className={`plus-menu__skill-tab${mcpTab === 'team' ? ' is-active' : ''}`}
+                onClick={() => { setMcpTab('team'); onMcpTabChange?.('team'); }}
+              >
+                {t('homeHero.skillTabTeam')}
+              </button>
             </div>
            <div className="plus-menu__list">
               {filteredMcp.length === 0 ? (
