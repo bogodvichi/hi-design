@@ -2475,6 +2475,318 @@
   white-space: nowrap;
 }
 
+/* ---- Studio comment side panel: tools, hint, selection, cards ---- */
+
+.studio-comment-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-panel, #fff);
+  flex: 0 0 auto;
+}
+.studio-comment-tools > label {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg, #fff);
+}
+.studio-comment-tools > label > svg {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+}
+.studio-comment-tools > label > input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  color: var(--text);
+  outline: none;
+}
+.studio-comment-tools > label > input::placeholder {
+  color: var(--text-faint);
+}
+.comment-tool-control {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+.comment-tool-control > button {
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.comment-tool-control > button:hover,
+.comment-tool-control > button[aria-expanded='true'] {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+  color: var(--text);
+}
+.comment-tool-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  min-width: 150px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel, #fff);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.comment-tool-menu button {
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+}
+.comment-tool-menu button:hover {
+  background: var(--bg-subtle);
+}
+.comment-tool-menu button[aria-current='true'] {
+  font-weight: 700;
+  color: var(--comment-accent-strong, var(--text));
+}
+
+.studio-comment-hint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin: 0;
+  padding: 6px 14px 0;
+  font-size: 11px;
+  color: var(--text-faint);
+  flex: 0 0 auto;
+}
+.studio-comment-hint > svg {
+  flex: 0 0 auto;
+}
+
+.comment-selection-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  flex: 0 0 auto;
+}
+.comment-selection-toolbar > label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.comment-selection-toolbar > label > input {
+  margin: 0;
+}
+.comment-selection-toolbar > span {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.studio-comment-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.studio-comment-list .comment-card {
+  position: relative;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  background: var(--bg-panel, #fff);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  cursor: pointer;
+  outline: none;
+}
+.studio-comment-list .comment-card:hover {
+  border-color: var(--border-strong, var(--border));
+}
+.studio-comment-list .comment-card.active {
+  border-color: var(--comment-accent-border, var(--border));
+  background: var(--comment-accent-surface, var(--bg-subtle));
+  box-shadow: inset 3px 0 0 var(--comment-accent, var(--accent));
+}
+.studio-comment-list .comment-card.resolved {
+  opacity: 0.72;
+}
+.studio-comment-list .comment-card.resolved .comment-card-copy {
+  text-decoration: line-through;
+  text-decoration-color: var(--text-faint);
+}
+.studio-comment-list .comment-card.dragging {
+  opacity: 0.45;
+}
+.studio-comment-list .comment-card-drop-before::before,
+.studio-comment-list .comment-card-drop-after::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  height: 2px;
+  border-radius: var(--radius-pill);
+  background: var(--selected);
+  box-shadow: 0 0 0 2px var(--selected-soft);
+}
+.studio-comment-list .comment-card-drop-before::before {
+  top: -2px;
+}
+.studio-comment-list .comment-card-drop-after::after {
+  bottom: -2px;
+}
+.comment-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.comment-card-header > input[type='checkbox'] {
+  flex: 0 0 auto;
+  margin: 0;
+}
+.comment-card-header > .avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.comment-card-header > strong {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.comment-status {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.comment-card-copy {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text);
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+.comment-anchor {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  align-self: flex-start;
+}
+.comment-anchor:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+.comment-resolution {
+  margin: 0;
+  padding: 4px 8px;
+  border-left: 2px solid var(--comment-accent-border, var(--border));
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+.comment-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-top: 2px;
+}
+.comment-card-footer > button:not(.danger) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+.comment-card-footer > button:not(.danger):hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+.comment-card-footer > div {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.comment-card-footer > div > button {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.comment-card-footer > div > button:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+.comment-card-footer > div > button.danger:hover {
+  color: var(--red);
+  background: var(--red-bg);
+}
+
+
+
 /* Anchor for the transient comment-save toast. Centered at the top
    of the artifact preview so the confirmation is visible without
    covering the popover's former position. */

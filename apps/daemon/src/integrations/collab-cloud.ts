@@ -3,16 +3,18 @@
 // injectable fetch/config/timeout, env-scoped config (this file, not
 // app-config.ts, owns OD_COLLAB_CLOUD_*), and a from-env constructor.
 //
-// DEGRADE: unlike the resource-hub client, this factory returns `null` when
-// OD_COLLAB_CLOUD_URL is unset, so every caller is a plain `client?.method()`
-// no-op off-team / unconfigured. Auth is a single bearer token (§D4.4); the real
-// hub verifies B's signed token, this stub presents a shared local token.
+// DEGRADE: when OD_COLLAB_CLOUD_URL is unset the config falls back to the
+// HDW cloud config (same backend), so the client is available whenever HDW
+// is. Auth is a single bearer token (§D4.4); the real hub verifies B's
+// signed token, this stub presents a shared local token.
 
 import type {
   CollabCloudComment,
   CollabCloudMemberDirectoryEntry,
   CollabMemberRole,
 } from '@open-design/contracts';
+
+import { readHdwCloudConfig } from './hdw-cloud.js';
 
 const DEFAULT_FETCH_TIMEOUT_MS = 8_000;
 
@@ -21,22 +23,42 @@ type FetchLike = typeof fetch;
 export interface CollabCloudConfig {
   baseUrl: string;
   token: string | null;
+  /** Path prefix prepended to every request path. Defaults to '' (no prefix). */
+  pathPrefix?: string;
 }
 
 /** Read the collab-cloud config from env, or null when no URL is configured
- *  (the single "is collab cloud on?" gate — everything degrades to no-op). */
+ *  (the single "is collab cloud on?" gate — everything degrades to no-op).
+ *  When OD_COLLAB_CLOUD_URL is unset, falls back to the HDW cloud config
+ *  (same backend, same base URL + path prefix + token). */
 export function readCollabCloudConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): CollabCloudConfig | null {
   const baseUrl = env.OD_COLLAB_CLOUD_URL?.trim();
-  if (!baseUrl) return null;
-  return { baseUrl, token: env.OD_COLLAB_CLOUD_TOKEN?.trim() || null };
+  if (baseUrl) {
+    return {
+      baseUrl,
+      token: env.OD_COLLAB_CLOUD_TOKEN?.trim() || null,
+      pathPrefix: env.OD_COLLAB_CLOUD_PATH_PREFIX?.trim() || '',
+    };
+  }
+  // Fallback: derive from HDW cloud config (same backend).
+  const hdw = readHdwCloudConfig(env);
+  if (!hdw) return null;
+  return {
+    baseUrl: hdw.baseUrl,
+    token: hdw.token,
+    pathPrefix: hdw.pathPrefix ?? '',
+  };
 }
 
 export function hasExplicitCollabCloudConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): boolean {
-  return Boolean(env.OD_COLLAB_CLOUD_URL?.trim());
+  // Collab cloud is considered configured when either the explicit
+  // OD_COLLAB_CLOUD_URL is set, or the HDW cloud config is available
+  // (which it always is, thanks to environment-aware defaults).
+  return Boolean(env.OD_COLLAB_CLOUD_URL?.trim()) || readHdwCloudConfig(env) !== null;
 }
 
 export class CollabCloudError extends Error {
@@ -89,7 +111,7 @@ export function createCollabCloudClient(options: CollabCloudClientOptions = {}) 
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const response = await fetchImpl(new URL(path, config!.baseUrl), {
+      const response = await fetchImpl(new URL((config!.pathPrefix ?? '') + path, config!.baseUrl), {
         method,
         headers: authHeaders(extraHeaders),
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),

@@ -88,4 +88,10 @@ module.exports = app => {
   router.del('/hdw/api/share-link', controller.api.shareLink.revoke);
   router.get('/hdw/share/:token', controller.api.shareLink.view);
 
+  // api:collab // 评论同步 (Collab Cloud comment relay)
+  router.put('/hdw/teams/:teamId/members/:memberId', controller.api.comment.registerMember);
+  router.get('/hdw/teams/:teamId/members', controller.api.comment.listMembers);
+  router.post('/hdw/teams/:teamId/projects/:projectId/comments', controller.api.comment.pushComment);
+  router.get('/hdw/teams/:teamId/projects/:projectId/comments', controller.api.comment.pullComments);
+
 };

@@ -237,6 +237,7 @@ import type {
   ProjectMetadata,
   PreviewComment,
   PreviewCommentAttachment,
+  PreviewCommentStatus,
   PreviewCommentTarget,
   ProjectFile,
   LiveArtifactEventItem,
@@ -5119,6 +5120,36 @@ export function ProjectView({
       commitPreviewComments,
       projectRunWorkspaceContext,
       t,
+      projectCollab.materializationPending,
+    ],
+  );
+
+  const changePreviewCommentStatus = useCallback(
+    async (commentId: string, status: PreviewCommentStatus): Promise<void> => {
+      const commentConversationId = activeConversationId ?? routeConversationId;
+      if (!commentConversationId) return;
+      if (projectCollab.materializationPending) return;
+      commitPreviewComments((current) =>
+        current.map((comment) =>
+          comment.id === commentId ? { ...comment, status } : comment,
+        ),
+      );
+      await patchPreviewCommentStatus(
+        project.id,
+        commentConversationId,
+        commentId,
+        status,
+        projectRunWorkspaceContext,
+      );
+      void refreshPreviewComments();
+    },
+    [
+      project.id,
+      activeConversationId,
+      routeConversationId,
+      commitPreviewComments,
+      refreshPreviewComments,
+      projectRunWorkspaceContext,
       projectCollab.materializationPending,
     ],
   );
@@ -11784,6 +11815,7 @@ export function ProjectView({
           previewComments={previewComments}
           onSavePreviewComment={savePreviewComment}
           onRemovePreviewComment={removePreviewComment}
+          onChangeCommentStatus={changePreviewCommentStatus}
           onReorderPreviewComment={reorderPreviewComment}
           onSendBoardCommentAttachments={handleSendBoardCommentAttachments}
           onBrandExtractionStopRequest={projectIsProgrammaticBrandExtraction ? handleStop : undefined}

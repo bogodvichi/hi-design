@@ -4,6 +4,7 @@
 
 const path = require('path');
 const fs = require('fs');
+const { execSync } = require('child_process');
 
 function readOptionalPem(file) {
   if (!file) return { content: '', error: '' };
@@ -12,6 +13,27 @@ function readOptionalPem(file) {
   } catch (err) {
     return { content: '', error: err.message };
   }
+}
+
+// 默认 7002，被占用时依次尝试 7003-7010，绝不使用 7001。
+// 全部被占则返回 0 让 OS 分配随机端口（仍排除 7001）。
+function resolveListenPort() {
+  const preferred = 7002;
+  const forbidden = 7001;
+  const fallbacks = [7003, 7004, 7005, 7006, 7007, 7008, 7009, 7010];
+  const candidates = [preferred, ...fallbacks].filter(p => p !== forbidden);
+  for (const port of candidates) {
+    try {
+      execSync(
+        `"${process.execPath}" -e "const s=require('net').createServer();s.on('error',()=>process.exit(1));s.listen(${port},'127.0.0.1',()=>{s.close();process.exit(0)})"`,
+        { stdio: 'pipe', timeout: 2000 }
+      );
+    } catch {
+      continue;
+    }
+    return port;
+  }
+  return 0;
 }
 
 /**
@@ -74,7 +96,7 @@ module.exports = appInfo => {
   // 服务监听端口
   config.cluster = {
     listen: {
-      port: 7002,
+      port: resolveListenPort(),
     },
   };
 
@@ -86,10 +108,10 @@ module.exports = appInfo => {
     secret: 'ybvichi', // 自定义加密字符串，secret 是在服务端的，不要泄露
     enable: true, // 默认是关闭的，如果开启，这会对所有请求进行自动校验
     //match: /^\/webapi\/v1\//, // 需要进行 JWT 校验的请求路径
-    ignore: [
-      /^\/hdw\//,
-      /^\/$/,
-    ],
+  ignore: [
+    /^\/hdw\//,
+    /^\/$/,
+  ],
     sign: {
       expiresIn: '24h', // 令牌过期时间
     },

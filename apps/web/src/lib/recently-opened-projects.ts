@@ -33,6 +33,7 @@ export interface RecentlyOpenedProject {
   createdByWorkspaceMemberId?: string | null;
   ownerDisplayName?: string | null;
   metadata?: Project['metadata'];
+  coverDigest?: string | null;
 }
 
 function read(): RecentlyOpenedProject[] {
@@ -82,6 +83,7 @@ export function recordRecentlyOpenedProject(project: Project): void {
       : {}),
     ...(project.ownerDisplayName != null ? { ownerDisplayName: project.ownerDisplayName } : {}),
     ...(project.metadata ? { metadata: project.metadata } : {}),
+    ...(project.coverDigest != null ? { coverDigest: project.coverDigest } : {}),
   };
   write([next, ...filtered]);
 }
@@ -105,11 +107,25 @@ export function readRecentlyOpenedProjects(): Project[] {
       : {}),
     ...(e.ownerDisplayName != null ? { ownerDisplayName: e.ownerDisplayName } : {}),
     ...(e.metadata ? { metadata: e.metadata } : {}),
+    ...(e.coverDigest != null ? { coverDigest: e.coverDigest } : {}),
   }));
 }
 
 /** Remove a project from the recently-opened store (e.g. after deletion). */
 export function removeRecentlyOpenedProject(projectId: string): void {
   const entries = read().filter((e) => e.id !== projectId);
+  write(entries);
+}
+
+/** Patch the coverDigest of an already-stored recently-opened project. */
+export function updateRecentlyOpenedProjectCover(
+  projectId: string,
+  coverDigest: string,
+): void {
+  const entries = read();
+  const idx = entries.findIndex((e) => e.id === projectId);
+  if (idx < 0) return;
+  if (entries[idx]!.coverDigest === coverDigest) return;
+  entries[idx]!.coverDigest = coverDigest;
   write(entries);
 }

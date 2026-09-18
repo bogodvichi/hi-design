@@ -1338,7 +1338,7 @@ function projectCover(
 	// entry file, probing with HEAD, and rendering an iframe document.
 	if (project.coverDigest) {
 		const coverSrc = project.workspaceVisibility === "personal"
-			? `/api/projects/${encodeURIComponent(project.id)}/cover`
+			? `/api/projects/${encodeURIComponent(project.id)}/cover?digest=${encodeURIComponent(project.coverDigest)}`
 			: `/api/hdw/api/community/cover/${project.coverDigest}`;
 		return {
 			kind: "image" as const,

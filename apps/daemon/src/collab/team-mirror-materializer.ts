@@ -280,34 +280,36 @@ export function materializePulledTeamMirror(
           },
         }
       : input;
-    if (!existing) {
-      insertProject(db, {
-        id: persistedInput.id,
-        name: persistedInput.name,
-        skillId: persistedInput.skillId,
-        designSystemId: persistedInput.designSystemId,
-        metadata: persistedInput.metadata,
-        createdAt: persistedInput.createdAt,
-        updatedAt: persistedInput.updatedAt,
-      });
-      localRecordChanged = true;
-    } else if (
-      (!options.placeholder && existingIsPlaceholder)
-      || (
-        !existingIsPlaceholder
-        && expectedCreator === null
-        && input.updatedAt > existing.updatedAt
-      )
-    ) {
-      updateProject(db, input.id, {
-        name: persistedInput.name,
-        skillId: persistedInput.skillId,
-        designSystemId: persistedInput.designSystemId,
-        metadata: persistedInput.metadata,
-        updatedAt: persistedInput.updatedAt,
-      });
-      localRecordChanged = true;
-    } else if (existing.metadata?.teamMirrorRevokedAt) {
+   if (!existing) {
+     insertProject(db, {
+       id: persistedInput.id,
+       name: persistedInput.name,
+       skillId: persistedInput.skillId,
+       designSystemId: persistedInput.designSystemId,
+       metadata: persistedInput.metadata,
+       createdAt: persistedInput.createdAt,
+       updatedAt: persistedInput.updatedAt,
+       ...(persistedInput.coverDigest != null ? { coverDigest: persistedInput.coverDigest } : {}),
+     });
+     localRecordChanged = true;
+   } else if (
+     (!options.placeholder && existingIsPlaceholder)
+     || (
+       !existingIsPlaceholder
+       && expectedCreator === null
+       && input.updatedAt > existing.updatedAt
+     )
+   ) {
+     updateProject(db, input.id, {
+       name: persistedInput.name,
+       skillId: persistedInput.skillId,
+       designSystemId: persistedInput.designSystemId,
+       metadata: persistedInput.metadata,
+       updatedAt: persistedInput.updatedAt,
+       ...(persistedInput.coverDigest != null ? { coverDigest: persistedInput.coverDigest } : {}),
+     });
+     localRecordChanged = true;
+   } else if (existing.metadata?.teamMirrorRevokedAt) {
       const metadata = {
         ...((existing.metadata as Record<string, unknown> | null) ?? {}),
       };

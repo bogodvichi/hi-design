@@ -77,6 +77,7 @@ export interface RegisterPulledProjectInput {
   metadata?: ProjectMetadata;
   createdAt: number;
   updatedAt: number;
+  coverDigest?: string | null;
 }
 
 export interface TeamMirrorPullScope {
@@ -1071,23 +1072,24 @@ const readManifest = deps.readManifest ?? readProjectManifest;
   ): boolean {
     if (!prepared || !projectStore) return false;
     const { existing, fallbackName, manifest, now, projectId } = prepared;
-    const input = {
-      id: projectId,
-      name: cleanPulledProjectName(teamProject?.name) ?? fallbackName,
-      skillId: teamProject?.skillId ?? manifest?.skillId ?? null,
-      designSystemId: teamProject?.designSystemId ?? manifest?.designSystemId ?? null,
-      ...(teamProject?.metadata ? { metadata: teamProject.metadata } : {}),
-      createdAt: typeof teamProject?.createdAt === 'number'
-        ? teamProject.createdAt
-        : typeof manifest?.createdAt === 'number'
-          ? manifest.createdAt
-          : now,
-      updatedAt: typeof teamProject?.updatedAt === 'number'
-        ? teamProject.updatedAt
-        : typeof manifest?.updatedAt === 'number'
-          ? manifest.updatedAt
-          : now,
-    };
+   const input = {
+     id: projectId,
+     name: cleanPulledProjectName(teamProject?.name) ?? fallbackName,
+     skillId: teamProject?.skillId ?? manifest?.skillId ?? null,
+     designSystemId: teamProject?.designSystemId ?? manifest?.designSystemId ?? null,
+     ...(teamProject?.metadata ? { metadata: teamProject.metadata } : {}),
+     createdAt: typeof teamProject?.createdAt === 'number'
+       ? teamProject.createdAt
+       : typeof manifest?.createdAt === 'number'
+         ? manifest.createdAt
+         : now,
+     updatedAt: typeof teamProject?.updatedAt === 'number'
+       ? teamProject.updatedAt
+       : typeof manifest?.updatedAt === 'number'
+         ? manifest.updatedAt
+         : now,
+     ...(teamProject?.coverDigest != null ? { coverDigest: teamProject.coverDigest } : {}),
+   };
     if (scope) {
       if (receipt) {
         if (!projectStore.materializeAuthorizedTeamMirror) {

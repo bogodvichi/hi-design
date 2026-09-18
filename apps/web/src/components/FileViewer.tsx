@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent as ReactClipboardEvent, type CSSProperties, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
+﻿import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent as ReactClipboardEvent, type CSSProperties, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { createPortal, flushSync } from 'react-dom';
 import { Button, Input, Select } from '@open-design/components';
 import {
@@ -175,6 +175,7 @@ import {
 import { fetchAppVersionInfo } from '../providers/registry';
 import { copyToClipboard } from '../lib/copy-to-clipboard';
 import { captureAndUploadCover } from '../lib/capture-cover';
+import { updateRecentlyOpenedProjectCover } from '../lib/recently-opened-projects';
 import { buildReactComponentSrcdoc } from '../runtime/react-component';
 import { shouldConsumeSlideNav } from '../runtime/slide-nav';
 import { findHtmlEntriesReferencing } from '../runtime/jsx-module-refs';
@@ -279,6 +280,7 @@ import type {
   ChatCommentAttachment,
   PreviewComment,
   PreviewCommentAnchorState,
+  PreviewCommentStatus,
   PreviewCommentAttachment,
   PreviewCommentMember,
   PreviewCommentTarget,
@@ -1808,6 +1810,7 @@ interface Props {
   previewComments?: PreviewComment[];
   onSavePreviewComment?: (target: PreviewCommentTarget, note: string, attachAfterSave: boolean, images?: File[], commentId?: string) => Promise<PreviewComment | null>;
   onRemovePreviewComment?: (commentId: string) => Promise<boolean>;
+  onChangeCommentStatus?: (commentId: string, status: PreviewCommentStatus) => void | Promise<void>;
   /**
    * Persist a drag-reorder of the sidebar's display order (recvq5BVsolIxi
    * Phase 2): `sortKey` is the value the caller computed for `commentId`
@@ -1913,6 +1916,7 @@ export const FileViewer = memo(function FileViewer({
   previewComments = [],
   onSavePreviewComment,
   onRemovePreviewComment,
+  onChangeCommentStatus,
   onReorderPreviewComment,
   onSendBoardCommentAttachments,
   onFileSaved,
@@ -2004,6 +2008,7 @@ export const FileViewer = memo(function FileViewer({
         previewComments={previewComments}
         onSavePreviewComment={onSavePreviewComment}
         onRemovePreviewComment={onRemovePreviewComment}
+        onChangeCommentStatus={onChangeCommentStatus}
         onReorderPreviewComment={onReorderPreviewComment}
         onSendBoardCommentAttachments={onSendBoardCommentAttachments}
         onFileSaved={onFileSaved}
@@ -4559,6 +4564,8 @@ export function CommentSidePanel({
   renderCreateForm = true,
   t,
   composer,
+  onDeleteComment,
+  onChangeCommentStatus,
 }: {
   comments: PreviewComment[];
   projectId?: string;
@@ -4566,17 +4573,10 @@ export function CommentSidePanel({
   activeCommentId: string | null;
   collapsed: boolean;
   onCollapsedChange: (collapsed: boolean) => void;
-  /** Closes the panel outright. The floating card uses this so its collapse
-   *  control hides the card instead of parking a full-height rail on the
-   *  right edge; the toolbar's comment button is the way back. */
   onDismiss?: () => void;
   onToggleSelect: (commentId: string) => void;
   onSelectAll: () => void;
   canSendComment?: (comment: PreviewComment) => boolean;
-  /** The viewer's own directory entry, so their comments show their avatar +
-   *  name even when the member roster is empty (personal workspace / cold
-   *  roster window). Supplied from the workspace context the caller already
-   *  holds — this panel must not fetch one. */
   currentUser?: CollabCloudMemberDirectoryEntry | null;
   onClearSelection: () => void;
   onReorder?: (orderedIds: string[], draggedId: string) => void;
@@ -4591,24 +4591,20 @@ export function CommentSidePanel({
   renderCreateForm?: boolean;
   t: TranslateFn;
   composer?: ReactNode;
+  onDeleteComment?: (commentId: string) => void | Promise<void>;
+  onChangeCommentStatus?: (commentId: string, status: PreviewCommentStatus) => void | Promise<void>;
 }) {
   const { workspaceContext } = useProjectCollabContext();
   const [newCommentDraft, setNewCommentDraft] = useState('');
   const [dragState, setDragState] = useState<CommentSideDragState | null>(null);
-  // Collab-cloud member directory: turns a comment's authorMemberId into a
-  // display name + role for the author line + avatar. The viewer's own identity
-  // resolves through `currentUser` even when the directory is empty; an unknown
-  // OTHER member still renders without an author line, exactly as before.
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortMode, setSortMode] = useState<'newest' | 'oldest' | 'unresolved'>('newest');
+  const [filterMode, setFilterMode] = useState<'all' | 'open' | 'resolved'>('all');
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
+  const [notifMenuOpen, setNotifMenuOpen] = useState(false);
+  const sortMenuRef = useRef<HTMLSpanElement | null>(null);
+  const notifMenuRef = useRef<HTMLSpanElement | null>(null);
   const { resolve: resolveCommentAuthor } = useTeamMembers(currentUser);
-  const sorted = comments;
-  // recvq5BVsolIxi: the inline "N." prefix must match the canvas pin number
-  // (comment.pinSeq) so the two surfaces always agree, even when this panel
-  // displays comments in a different order than they were created (the
-  // sidebar sorts by sortKey, newest first by default; pinSeq never moves).
-  // A comment with no pinSeq yet (legacy row / test fixture) falls back to
-  // its rank in CREATION order — independent of `comments`' own order here —
-  // computed locally so this component stays self-sufficient for callers
-  // that pass in an arbitrary (not FileViewer-derived) comment list.
   const creationRankById = useMemo(() => {
     const byCreation = [...comments].sort((a, b) => commentCreatedAt(a) - commentCreatedAt(b));
     return new Map(byCreation.map((comment, index) => [comment.id, index + 1]));
@@ -4617,23 +4613,68 @@ export function CommentSidePanel({
     if (typeof comment.pinSeq === 'number') return comment.pinSeq;
     return creationRankById.get(comment.id) ?? fallbackIndex + 1;
   }
+
+  // Derived: filter by search query + filter mode, then sort.
+  const filteredComments = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    let list = comments;
+    if (q) {
+      list = list.filter((c) => c.note.toLowerCase().includes(q));
+    }
+    if (filterMode === 'open') {
+      list = list.filter((c) => c.status !== 'resolved');
+    } else if (filterMode === 'resolved') {
+      list = list.filter((c) => c.status === 'resolved');
+    }
+    const sortedList = [...list];
+    if (sortMode === 'newest') {
+      sortedList.sort((a, b) => commentActivityAt(b) - commentActivityAt(a));
+    } else if (sortMode === 'oldest') {
+      sortedList.sort((a, b) => commentActivityAt(a) - commentActivityAt(b));
+    } else {
+      // unresolved first: resolved sink to bottom, then newest first
+      sortedList.sort((a, b) => {
+        const aR = a.status === 'resolved' ? 1 : 0;
+        const bR = b.status === 'resolved' ? 1 : 0;
+        if (aR !== bR) return aR - bR;
+        return commentActivityAt(b) - commentActivityAt(a);
+      });
+    }
+    return sortedList;
+  }, [comments, searchQuery, filterMode, sortMode]);
+
+  const unresolvedCount = useMemo(
+    () => comments.filter((c) => c.status !== 'resolved').length,
+    [comments],
+  );
   const visibleSelectedIds = new Set(comments.filter((comment) => selectedIds.has(comment.id)).map((comment) => comment.id));
   const selectedCount = visibleSelectedIds.size;
-  // Team-collab send-to-agent gate: only the author or the project owner may
-  // send a comment. When no predicate is supplied (single-user), every comment
-  // is sendable and the select affordances behave exactly as before. Selecting
-  // is the ONLY thing a checkbox drives here (batch send-to-chat), so a comment
-  // the viewer can't send gets no checkbox and "select all" ignores it.
   const canSend = canSendComment ?? (() => true);
   const sendableCount = comments.reduce((count, comment) => (canSend(comment) ? count + 1 : count), 0);
   const allSelected = sendableCount > 0 && selectedCount === sendableCount;
   const commentsLabel = t('chat.tabComments');
   const canCreateComment = Boolean(onCreateComment) && newCommentDraft.trim().length > 0 && !sending;
-  const canReorder = Boolean(onReorder && sorted.length > 1);
+  const canReorder = Boolean(onReorder && filteredComments.length > 1);
   const collapsedRailRef = useRef<HTMLButtonElement | null>(null);
   const expandedToggleRef = useRef<HTMLButtonElement | null>(null);
   const pendingToggleFocusRef = useRef<'collapsed' | 'expanded' | null>(null);
   const panelId = useId();
+
+  // Close sort/notif menus on outside click.
+  useEffect(() => {
+    if (!sortMenuOpen && !notifMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (sortMenuOpen && sortMenuRef.current && !sortMenuRef.current.contains(e.target as Node)) {
+        setSortMenuOpen(false);
+      }
+      if (notifMenuOpen && notifMenuRef.current && !notifMenuRef.current.contains(e.target as Node)) {
+        setNotifMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [sortMenuOpen, notifMenuOpen]);
+
   const handleDragStart = (event: ReactDragEvent<HTMLButtonElement>, comment: PreviewComment) => {
     if (!canReorder) return;
     event.dataTransfer.effectAllowed = 'move';
@@ -4641,7 +4682,7 @@ export function CommentSidePanel({
     event.dataTransfer.setData('text/plain', comment.id);
     setDragState({ draggingId: comment.id, overId: comment.id, edge: null });
   };
-  const handleDragOver = (event: ReactDragEvent<HTMLDivElement>, targetId: string) => {
+  const handleDragOver = (event: ReactDragEvent<HTMLElement>, targetId: string) => {
     if (!canReorder) return;
     const draggingId = dragState?.draggingId || event.dataTransfer.getData(COMMENT_SIDE_DRAG_MIME);
     if (!draggingId) return;
@@ -4662,7 +4703,7 @@ export function CommentSidePanel({
       setDragState({ draggingId, overId: targetId, edge });
     }
   };
-  const handleDrop = (event: ReactDragEvent<HTMLDivElement>, targetId: string) => {
+  const handleDrop = (event: ReactDragEvent<HTMLElement>, targetId: string) => {
     if (!canReorder) return;
     event.preventDefault();
     const draggingId =
@@ -4676,8 +4717,8 @@ export function CommentSidePanel({
     const edge = dragState?.overId === targetId && dragState.edge
       ? dragState.edge
       : commentSideDropEdgeForEvent(event);
-    const nextIds = reorderPreviewCommentIds(sorted, draggingId, targetId, edge);
-    if (nextIds.join('\0') !== sorted.map((comment) => comment.id).join('\0')) {
+    const nextIds = reorderPreviewCommentIds(filteredComments, draggingId, targetId, edge);
+    if (nextIds.join('\0') !== filteredComments.map((comment) => comment.id).join('\0')) {
       onReorder?.(nextIds, draggingId);
     }
     setDragState(null);
@@ -4746,8 +4787,11 @@ export function CommentSidePanel({
           <span>{commentsLabel}</span>
         </div>
         <div className="comment-side-header-actions">
-          {/* The header's right slot owns collapse; select all moved below
-              the divider. */}
+          {unresolvedCount > 0 ? (
+            <span className="comment-side-unresolved-count">
+              {t('chat.comments.unresolved', { n: unresolvedCount })}
+            </span>
+          ) : null}
           <button
             ref={expandedToggleRef}
             type="button"
@@ -4768,50 +4812,157 @@ export function CommentSidePanel({
           </button>
         </div>
       </div>
-      {sendableCount > 0 ? (
-        <div className="comment-side-toolbar">
+      <div className="studio-comment-tools">
+        <label>
+          <Icon name="search" size={16} />
+          <input
+            type="text"
+            placeholder={t('chat.comments.searchPlaceholder')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </label>
+        <span className="comment-tool-control" ref={sortMenuRef}>
           <button
             type="button"
-            className="comment-side-select-all"
-            disabled={allSelected}
-            onClick={onSelectAll}
+            aria-label={t('chat.comments.sortAndFilter')}
+            aria-haspopup="menu"
+            aria-expanded={sortMenuOpen}
+            onClick={() => setSortMenuOpen((v) => !v)}
           >
-            {t('chat.comments.selectAll')}
+            <Icon name="arrow-down-up" size={17} />
           </button>
-        </div>
-      ) : null}
+          {sortMenuOpen ? (
+            <div className="comment-tool-menu" role="menu">
+              <button
+                type="button"
+                role="menuitemradio"
+                aria-checked={sortMode === 'newest'}
+                aria-current={sortMode === 'newest'}
+                onClick={() => { setSortMode('newest'); setSortMenuOpen(false); }}
+              >
+                {t('chat.comments.sortNewest')}
+              </button>
+              <button
+                type="button"
+                role="menuitemradio"
+                aria-checked={sortMode === 'oldest'}
+                aria-current={sortMode === 'oldest'}
+                onClick={() => { setSortMode('oldest'); setSortMenuOpen(false); }}
+              >
+                {t('chat.comments.sortOldest')}
+              </button>
+              <button
+                type="button"
+                role="menuitemradio"
+                aria-checked={sortMode === 'unresolved'}
+                aria-current={sortMode === 'unresolved'}
+                onClick={() => { setSortMode('unresolved'); setSortMenuOpen(false); }}
+              >
+                {t('chat.comments.sortUnresolved')}
+              </button>
+              <div className="comment-tool-menu-sep" />
+              <button
+                type="button"
+                role="menuitemradio"
+                aria-checked={filterMode === 'all'}
+                aria-current={filterMode === 'all'}
+                onClick={() => { setFilterMode('all'); setSortMenuOpen(false); }}
+              >
+                {t('chat.comments.filterAll')}
+              </button>
+              <button
+                type="button"
+                role="menuitemradio"
+                aria-checked={filterMode === 'open'}
+                aria-current={filterMode === 'open'}
+                onClick={() => { setFilterMode('open'); setSortMenuOpen(false); }}
+              >
+                {t('chat.comments.filterOpen')}
+              </button>
+              <button
+                type="button"
+                role="menuitemradio"
+                aria-checked={filterMode === 'resolved'}
+                aria-current={filterMode === 'resolved'}
+                onClick={() => { setFilterMode('resolved'); setSortMenuOpen(false); }}
+              >
+                {t('chat.comments.filterResolved')}
+              </button>
+            </div>
+          ) : null}
+        </span>
+        <span className="comment-tool-control" ref={notifMenuRef}>
+          <button
+            type="button"
+            aria-label={t('chat.comments.notificationSettings')}
+            aria-haspopup="menu"
+            aria-expanded={notifMenuOpen}
+            onClick={() => setNotifMenuOpen((v) => !v)}
+          >
+            <Icon name="bell" size={17} />
+          </button>
+        </span>
+      </div>
+      <p className="studio-comment-hint">
+        <Icon name="mouse-pointer" size={13} />
+        {t('chat.comments.hint')}
+      </p>
+      <div className="comment-selection-toolbar">
+        <label>
+          <input
+            type="checkbox"
+            aria-label={t('chat.comments.selectAll')}
+            checked={allSelected}
+            onChange={onSelectAll}
+          />
+          {t('chat.comments.selectAll')}
+        </label>
+        <span>{t('chat.comments.nComments', { n: comments.length })}</span>
+      </div>
       <div
-        className="comment-side-list"
+        className="studio-comment-list"
         onDragLeave={(event) => {
           const related = event.relatedTarget;
           if (related instanceof Node && event.currentTarget.contains(related)) return;
           setDragState(null);
         }}
       >
-        {sorted.length === 0 ? (
+        {filteredComments.length === 0 ? (
           <div className="comment-side-empty">
             {t('chat.comments.emptySaved')}
           </div>
-        ) : sorted.map((comment, index) => {
+        ) : filteredComments.map((comment, index) => {
           const selected = visibleSelectedIds.has(comment.id);
           const active = comment.id === activeCommentId;
           const sendable = canSend(comment);
           const author = resolveCommentAuthor(comment.authorMemberId);
           const isDragging = dragState?.draggingId === comment.id;
+          const isResolved = comment.status === 'resolved';
           const dropClass = dragState?.overId === comment.id &&
             dragState.draggingId !== comment.id &&
             dragState.edge
-            ? ` comment-side-item-drop-${dragState.edge}`
+            ? ` comment-card-drop-${dragState.edge}`
             : '';
+          const cardClasses = [
+            'comment-card',
+            active ? 'active' : '',
+            isResolved ? 'resolved' : '',
+            isDragging ? 'dragging' : '',
+            dropClass.trim(),
+          ].filter(Boolean).join(' ');
+          const anchorLabel = commentDisplayLabel(comment, t);
+          const num = displayCommentNumber(comment, index);
           return (
-            <div
+            <article
               key={comment.id}
-              className={`comment-side-item${selected ? ' selected' : ''}${active ? ' active' : ''}${isDragging ? ' dragging' : ''}${dropClass}`}
+              className={cardClasses}
               data-testid="comment-side-item"
               data-comment-id={comment.id}
               aria-current={active ? 'true' : undefined}
-              role="button"
               tabIndex={0}
+              role="button"
+              aria-label={author ? `${author.displayName}: ${comment.note}` : comment.note}
               onDragOver={(event) => handleDragOver(event, comment.id)}
               onDrop={(event) => handleDrop(event, comment.id)}
               onClick={() => onReply(comment)}
@@ -4821,63 +4972,46 @@ export function CommentSidePanel({
                 onReply(comment);
               }}
             >
-              <div className="comment-side-item-head">
-                <button
-                  type="button"
-                  className="comment-side-drag-handle"
-                  title={t('chat.queuedReorder')}
-                  aria-label={t('chat.queuedReorder')}
-                  draggable={canReorder}
-                  disabled={!canReorder}
-                  onClick={(event) => event.stopPropagation()}
-                  onDragStart={(event) => handleDragStart(event, comment)}
-                  onDragEnd={() => setDragState(null)}
-                >
-                  <Icon name="grip-vertical" size={13} />
-                </button>
-                <span className="comment-side-author">
-                  {author ? (
-                    <span
-                      className="comment-side-avatar"
-                      style={{ background: commentAuthorAvatarColor(comment.authorMemberId ?? author.memberId) }}
-                      aria-hidden="true"
-                    >
-                      {commentAuthorInitials(author.displayName)}
-                    </span>
-                  ) : null}
-                  <span className="comment-side-author-copy">
-                    <strong>{`${displayCommentNumber(comment, index)}. ${commentDisplayLabel(comment, t)}`}</strong>
-                    {author ? (
-                     <small>
-                       {author.displayName}
-                       {' · '}
-                       {commentAuthorRoleLabel(author.role)}
-                        {workspaceContext?.isSharedSpace &&
-                         workspaceContext.collaboratorMemberId &&
-                         comment.authorMemberId === workspaceContext.collaboratorMemberId
-                          ? ` · ${t('sharedSpace.collaboratorBadge')}`
-                          : null}
-                      </small>
-                    ) : null}
-                  </span>
-                </span>
-                <span className="comment-side-time">{formatCommentTime(commentActivityAt(comment), t)}</span>
+              <header className="comment-card-header">
                 {sendable ? (
-                  <button
-                    type="button"
-                    className={`comment-side-check${selected ? ' checked' : ''}`}
-                    aria-label={selected ? t('chat.comments.deselect') : t('chat.comments.select')}
-                    aria-pressed={selected}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onToggleSelect(comment.id);
-                    }}
-                  >
-                    {selected ? <Icon name="check" size={11} /> : null}
-                  </button>
+                  <input
+                    type="checkbox"
+                    aria-label={t('chat.comments.select')}
+                    checked={selected}
+                    onClick={(event) => event.stopPropagation()}
+                    onChange={() => onToggleSelect(comment.id)}
+                  />
                 ) : null}
-              </div>
-              <div className="comment-side-body">{comment.note}</div>
+                {author ? (
+                  <span
+                    className="avatar mini"
+                    style={{ background: commentAuthorAvatarColor(comment.authorMemberId ?? author.memberId) }}
+                    aria-hidden="true"
+                  >
+                    {commentAuthorInitials(author.displayName)}
+                  </span>
+                ) : null}
+                <strong>{author ? author.displayName : t('chat.comments.targetArea')}</strong>
+                {isResolved ? (
+                  <span className="comment-status">
+                    <Icon name="check" size={11} />
+                    {t('chat.comments.resolved')}
+                  </span>
+                ) : null}
+              </header>
+              <p className="comment-card-copy">{comment.note}</p>
+              <button
+                type="button"
+                className="comment-anchor"
+                title={anchorLabel}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onReply(comment);
+                }}
+              >
+                <Icon name="mouse-pointer" size={12} />
+                <span>{`#${num} \u00b7 ${anchorLabel}`}</span>
+              </button>
               {projectId && comment.attachments && comment.attachments.length > 0 ? (
                 <div className="comment-side-attachments">
                   {comment.attachments.map((attachment) => {
@@ -4904,7 +5038,64 @@ export function CommentSidePanel({
                   })}
                 </div>
               ) : null}
-            </div>
+              <footer className="comment-card-footer">
+                {allowSendToChat ? (
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onReply(comment);
+                    }}
+                  >
+                    <Icon name="message-square" size={12} />
+                    {t('chat.comments.sendToChat')}
+                  </button>
+                ) : null}
+                <div>
+                  {onChangeCommentStatus ? (
+                    isResolved ? (
+                      <button
+                        type="button"
+                        aria-label={t('chat.comments.reopen')}
+                        title={t('chat.comments.reopen')}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void onChangeCommentStatus(comment.id, 'open');
+                        }}
+                      >
+                        <Icon name="rotate-ccw" size={14} />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        aria-label={t('chat.comments.markResolved')}
+                        title={t('chat.comments.markResolved')}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void onChangeCommentStatus(comment.id, 'resolved');
+                        }}
+                      >
+                        <Icon name="check" size={14} />
+                      </button>
+                    )
+                  ) : null}
+                  {onDeleteComment ? (
+                    <button
+                      type="button"
+                      className="danger"
+                      aria-label={t('chat.comments.deleteComment')}
+                      title={t('chat.comments.deleteComment')}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void onDeleteComment(comment.id);
+                      }}
+                    >
+                      <Icon name="trash" size={14} />
+                    </button>
+                  ) : null}
+                </div>
+              </footer>
+            </article>
           );
         })}
       </div>
@@ -4983,6 +5174,7 @@ export function CommentSidePanel({
     </aside>
   );
 }
+
 
 const COMMENT_SIDE_DRAG_MIME = 'application/x-open-design-preview-comment';
 
@@ -5069,6 +5261,8 @@ function CommentSideDock({
   allowSendToChat = true,
   renderCreateForm = true,
   t,
+  onDeleteComment,
+  onChangeCommentStatus,
   composer,
 }: {
   comments: PreviewComment[];
@@ -5098,6 +5292,8 @@ function CommentSideDock({
   renderCreateForm?: boolean;
   t: TranslateFn;
   composer?: ReactNode;
+  onDeleteComment?: (commentId: string) => void | Promise<void>;
+  onChangeCommentStatus?: (commentId: string, status: PreviewCommentStatus) => void | Promise<void>;
 }) {
   return (
     <div
@@ -5129,6 +5325,8 @@ function CommentSideDock({
         renderCreateForm={renderCreateForm}
         t={t}
         composer={composer}
+        onDeleteComment={onDeleteComment}
+        onChangeCommentStatus={onChangeCommentStatus}
       />
     </div>
   );
@@ -7457,6 +7655,7 @@ function HtmlViewer({
   previewComments = [],
   onSavePreviewComment,
   onRemovePreviewComment,
+  onChangeCommentStatus,
   onReorderPreviewComment,
   onSendBoardCommentAttachments,
   onFileSaved,
@@ -7494,6 +7693,7 @@ function HtmlViewer({
   previewComments?: PreviewComment[];
   onSavePreviewComment?: (target: PreviewCommentTarget, note: string, attachAfterSave: boolean, images?: File[], commentId?: string) => Promise<PreviewComment | null>;
   onRemovePreviewComment?: (commentId: string) => Promise<boolean>;
+  onChangeCommentStatus?: (commentId: string, status: PreviewCommentStatus) => void | Promise<void>;
   onReorderPreviewComment?: (commentId: string, sortKey: number) => Promise<void>;
   onSendBoardCommentAttachments?: (attachments: ChatCommentAttachment[], images?: File[]) => Promise<CommentSendResult> | CommentSendResult;
   onFileSaved?: () => Promise<void> | void;
@@ -13605,14 +13805,16 @@ const [reviewAddModalOpen, setReviewAddModalOpen] = useState(false);
   // and upload it so project list cards can render a static <img>.
   // Browser-side capture is the fallback for when the daemon's
   // desktopArtifactExporter is unavailable (pure web dev mode).
-  function captureCoverAfterSave(html: string) {
-    if (!projectId || !/\.html?$/i.test(file.name)) return;
-    void captureAndUploadCover(
-      projectId,
-      html,
-      workspaceContext ? { headers: workspaceProjectHeaders(workspaceContext) as Record<string, string> } : null,
-    ).catch(() => {});
-  }
+ function captureCoverAfterSave(html: string) {
+   if (!projectId || !/\.html?$/i.test(file.name)) return;
+   void captureAndUploadCover(
+     projectId,
+     html,
+     workspaceContext ? { headers: workspaceProjectHeaders(workspaceContext) as Record<string, string> } : null,
+   ).then((digest) => {
+     if (digest) updateRecentlyOpenedProjectCover(projectId, digest);
+   }).catch(() => {});
+ }
 
   // Persist accumulated inspect overrides into the artifact source: replace
   // (or insert) a single <style data-od-inspect-overrides> block in <head>.
@@ -16043,6 +16245,8 @@ async function openReviewListModal() {
       renderCreateForm={!commentPortalHost}
       t={t}
       composer={null}
+      onDeleteComment={onRemovePreviewComment ? (id) => void onRemovePreviewComment(id) : undefined}
+      onChangeCommentStatus={onChangeCommentStatus}
     />
   ) : null;
   const speakerNotesFeedback = speakerNotesStatus === 'saved'
@@ -19306,9 +19510,11 @@ function MarkdownViewer({
           const saved = await writeProjectTextFile(projectId, file.name, nextValue, undefined, workspaceContext);
           if (!saved) throw new Error('write failed');
           lastSavedTextRef.current = nextValue;
-          if (/\.html?$/i.test(file.name)) {
-            void captureAndUploadCover(projectId, nextValue, workspaceContext ? { headers: workspaceProjectHeaders(workspaceContext) as Record<string, string> } : null).catch(() => {});
-          }
+         if (/\.html?$/i.test(file.name)) {
+           void captureAndUploadCover(projectId, nextValue, workspaceContext ? { headers: workspaceProjectHeaders(workspaceContext) as Record<string, string> } : null).then((digest) => {
+             if (digest) updateRecentlyOpenedProjectCover(projectId, digest);
+           }).catch(() => {});
+         }
           bumpSavedRevision((n) => n + 1);
           setSavedAt(Date.now());
           if (textRef.current === nextValue) setSaveState(showSaving ? 'saved' : 'idle');

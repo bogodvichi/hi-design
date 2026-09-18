@@ -1,4 +1,4 @@
-import type { Dict } from '../types';
+﻿import type { Dict } from '../types';
 
 export const en: Dict = {
   'invite.header.eyebrow': "Team invitation",
@@ -2474,6 +2474,22 @@ export const en: Dict = {
   'chat.comments.targetSection': 'Section',
   'chat.comments.targetPage': 'Page',
   'chat.comments.targetArea': 'Area',
+  'chat.comments.unresolved': '{n} unresolved',
+  'chat.comments.searchPlaceholder': 'Search comments',
+  'chat.comments.sortAndFilter': 'Sort & filter',
+  'chat.comments.notificationSettings': 'Comment notifications: relevant to me',
+  'chat.comments.hint': 'Click the preview to add a comment',
+  'chat.comments.nComments': '{n} comments',
+  'chat.comments.resolved': 'Resolved',
+  'chat.comments.markResolved': 'Mark as resolved',
+  'chat.comments.reopen': 'Reopen comment',
+  'chat.comments.deleteComment': 'Delete comment',
+  'chat.comments.sortNewest': 'Newest first',
+  'chat.comments.sortOldest': 'Oldest first',
+  'chat.comments.sortUnresolved': 'Unresolved first',
+  'chat.comments.filterAll': 'All',
+  'chat.comments.filterOpen': 'Open',
+  'chat.comments.filterResolved': 'Resolved',
   'chat.annotationNotePlaceholder': 'Add a note for this mark',
   'chat.annotationAttachImage': 'Attach image',
   'chat.annotationAttachedImages': 'Attached images',

@@ -1,4 +1,4 @@
-import type { SVGProps } from 'react';
+﻿﻿﻿﻿﻿import type { SVGProps } from 'react';
 
 import { REMIX_ICON_PATHS } from './remix-icon-paths';
 
@@ -6,6 +6,7 @@ export type IconName =
   | 'alert-triangle'
   | 'arrow-left'
   | 'arrow-up'
+  | 'arrow-down-up'
   | 'artboard'
   | 'attach'
   | 'bar-chart-box'
@@ -20,6 +21,7 @@ export type IconName =
   | 'copy'
   | 'crop'
   | 'comment'
+  | 'message-square'
   | 'dashboard'
   | 'discord'
   | 'download'
@@ -101,6 +103,8 @@ export type IconName =
   | 'tweaks'
   | 'undo'
   | 'redo'
+  | 'rotate-ccw'
+  | 'mouse-pointer'
   | 'upload'
   | 'users'
   | 'trash'
@@ -293,6 +297,15 @@ export function Icon({ name, size = 14, strokeWidth = 1.6, ...rest }: Props) {
           <path d="m5 12 7-7 7 7" />
         </svg>
       );
+    case 'arrow-down-up':
+      return (
+        <svg {...common}>
+          <path d="m3 16 4 4 4-4" />
+          <path d="M7 20V4" />
+          <path d="m21 8-4-4-4 4" />
+          <path d="M17 4v16" />
+        </svg>
+      );
     case 'attach':
       return (
         <svg {...common}>
@@ -407,10 +420,29 @@ export function Icon({ name, size = 14, strokeWidth = 1.6, ...rest }: Props) {
           <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13" />
         </svg>
       );
+    case 'rotate-ccw':
+      return (
+        <svg {...common}>
+          <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+          <path d="M3 3v5h5" />
+        </svg>
+      );
     case 'comment':
       return (
         <svg {...common}>
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+      );
+    case 'message-square':
+      return (
+        <svg {...common}>
+          <path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z" />
+        </svg>
+      );
+    case 'mouse-pointer':
+      return (
+        <svg {...common}>
+          <path d="M4.037 4.688a.495.495 0 0 1 .651-.651l16 6.5a.5.5 0 0 1-.063.947l-6.124 1.58a2 2 0 0 0-1.438 1.435l-1.579 6.126a.5.5 0 0 1-.947.063z" />
         </svg>
       );
     case 'mail':

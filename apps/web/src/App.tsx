@@ -220,6 +220,7 @@ import {
 import { useModalWindowDragGuard } from './hooks/useModalWindowDragGuard';
 import { resumeThumbnailLoads, suspendThumbnailLoads } from './lib/thumbnail-load-gate';
 import { recordRecentlyOpenedProject, removeRecentlyOpenedProject } from './lib/recently-opened-projects';
+import { updateRecentlyOpenedProjectCover } from './lib/recently-opened-projects';
 import type {
   PluginShareAction,
   PluginShareProjectOutcome,
@@ -3880,6 +3881,14 @@ function AppInner() {
     }
     recordRecentlyOpenedProject(project);
     navigate({ kind: 'project', projectId: id, fileName: routeFileName });
+    // Best-effort: re-fetch the project so we pick up the latest coverDigest
+    // (team catalog may have a newer one than the in-memory list). Update
+    // localStorage so the Home strip renders the right cover on return.
+    void getProject(id, openingContext ?? undefined).then((fresh) => {
+      if (fresh?.coverDigest) {
+        updateRecentlyOpenedProjectCover(id, fresh.coverDigest);
+      }
+    }).catch(() => {});
     return true;
   };
     const ensureShareBootstrapWitness = async (project: Project) => {

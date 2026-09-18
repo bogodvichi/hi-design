@@ -4180,8 +4180,9 @@ export async function startServer({
   });
 
   // Collab cloud (C-lane §D2.5/§D4): cross-daemon comment sync + member
-  // directory. The client is null (all calls degrade to no-op) unless
-  // OD_COLLAB_CLOUD_URL is set. The service ties it to the one workspace context
+  // directory. The client is null (all calls degrade to no-op) only when
+  // neither OD_COLLAB_CLOUD_URL nor HDW cloud config is available. The service
+  // ties it to the one workspace context
   // so a single identity drives member registration, comment push, and the
   // pull+merge poller. Kept out of collab/runtime.ts to avoid colliding with the
   // team-project-catalog work also editing that file.
@@ -5066,26 +5067,28 @@ export async function startServer({
     projectStore: {
       get: (projectId) => getProject(db, projectId),
       has: (projectId) => getProject(db, projectId) != null,
-      register: (input) => {
-        insertProject(db, {
-          id: input.id,
-          name: input.name,
-          skillId: input.skillId,
-          designSystemId: input.designSystemId,
-          metadata: input.metadata,
-          createdAt: input.createdAt,
-          updatedAt: input.updatedAt,
-        });
-      },
-      update: (input) => {
-        updateProject(db, input.id, {
-          name: input.name,
-          skillId: input.skillId,
-          designSystemId: input.designSystemId,
-          metadata: input.metadata,
-          updatedAt: input.updatedAt,
-        });
-      },
+     register: (input) => {
+       insertProject(db, {
+         id: input.id,
+         name: input.name,
+         skillId: input.skillId,
+         designSystemId: input.designSystemId,
+         metadata: input.metadata,
+         createdAt: input.createdAt,
+         updatedAt: input.updatedAt,
+         ...(input.coverDigest != null ? { coverDigest: input.coverDigest } : {}),
+       });
+     },
+     update: (input) => {
+       updateProject(db, input.id, {
+         name: input.name,
+         skillId: input.skillId,
+         designSystemId: input.designSystemId,
+         metadata: input.metadata,
+         updatedAt: input.updatedAt,
+         ...(input.coverDigest != null ? { coverDigest: input.coverDigest } : {}),
+       });
+     },
       materializeTeamMirror: (input, scope) => materializePulledTeamMirror(db, input, scope),
       materializeTeamPlaceholder: (input, scope) =>
         materializePulledTeamMirror(db, input, scope, undefined, { placeholder: true }),
