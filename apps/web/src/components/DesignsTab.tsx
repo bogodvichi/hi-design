@@ -11,7 +11,7 @@ import {
   trackProjectsMorePopoverClick,
 } from "../analytics/events";
 import { useT } from "../i18n";
-import { useWorkspaceContext } from "../collab/useWorkspaceContext";
+import { useWorkspaceContext, useSharedSpaceTeamId } from "../collab/useWorkspaceContext";
 import { workspaceIdentityCacheKey } from "../collab/workspace-identity";
 import {
 	getProjectCoverSnapshot,
@@ -141,6 +141,7 @@ export function DesignsTab({
 	const t = useT();
 	const analytics = useAnalytics();
 	const { context: workspaceContext, loading: workspaceContextLoading } = useWorkspaceContext();
+	const sharedSpaceTeamId = useSharedSpaceTeamId();
 	// P0 page_view page_name=projects — fire once when the tab mounts so
 	// `/projects` landings register even before the user clicks anything.
 	// ref-keyed to survive re-renders that flip parent state without
@@ -867,6 +868,7 @@ export function DesignsTab({
 							p,
 							coverByProject[p.id] ?? null,
 							workspaceContext,
+							sharedSpaceTeamId,
 						);
 						const isSelected = selected.has(p.id);
 						const designSystemProject = isDesignSystemProject(p);
@@ -1312,6 +1314,7 @@ function projectCover(
 	project: Project,
 	override: ProjectCoverOverride | null,
 	workspaceContext?: WorkspaceCollabContext | null,
+	sharedSpaceTeamId?: string | null,
 ): {
 	kind: "image" | "video" | "html" | "logo" | "brand" | "fallback";
 	src?: string;
@@ -1337,7 +1340,9 @@ function projectCover(
 	// when available — a single <img> load is far cheaper than resolving the
 	// entry file, probing with HEAD, and rendering an iframe document.
 	if (project.coverDigest) {
-		const coverSrc = project.workspaceVisibility === "personal"
+		const isLocalProject = project.workspaceId == null
+		  || project.workspaceId === sharedSpaceTeamId;
+		const coverSrc = isLocalProject
 			? `/api/projects/${encodeURIComponent(project.id)}/cover?digest=${encodeURIComponent(project.coverDigest)}`
 			: `/api/hdw/api/community/cover/${project.coverDigest}`;
 		return {

@@ -268,6 +268,8 @@ import {
   workspaceIdentityCacheKey,
   workspaceProjectHeaders,
 } from '../collab/workspace-identity';
+import { captureAndUploadCover } from '../lib/capture-cover';
+import { updateRecentlyOpenedProjectCover } from '../lib/recently-opened-projects';
 import {
   readWorkspaceDirectoryForCurrentGeneration,
   useWorkspaceContext,
@@ -3993,6 +3995,21 @@ export function ProjectView({
         // sees it without an extra click. The Write-tool path already does
         // this for tool-emitted files; this handles the artifact-tag path.
         requestOpenFile(file.name);
+        // Best-effort: capture a PNG cover from the freshly-written HTML and
+        // upload it so the project card shows a static preview. Also patch
+        // the localStorage recently-opened store so the Home strip stays in
+        // sync without waiting for a server re-fetch.
+        if (ext === '.html') {
+          void captureAndUploadCover(
+            project.id,
+            artifactToPersist.html,
+            projectRunWorkspaceContext
+              ? { headers: workspaceProjectHeaders(projectRunWorkspaceContext) as Record<string, string> }
+              : null,
+          ).then((digest) => {
+            if (digest) updateRecentlyOpenedProjectCover(project.id, digest);
+          }).catch(() => {});
+        }
         return { ok: true as const, fileName: file.name };
       } else {
         // writeProjectTextFile collapses all failure paths (non-OK HTTP
@@ -4010,7 +4027,7 @@ export function ProjectView({
         return { ok: false as const, error: message };
       }
     },
-    [project.id, projectDesignSystemId, project.skillId, requestOpenFile],
+    [project.id, projectDesignSystemId, project.skillId, requestOpenFile, projectRunWorkspaceContext],
   );
 
   const artifactFromStandaloneHtml = useCallback(

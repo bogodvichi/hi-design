@@ -233,7 +233,10 @@ import { smoothScrollToTop } from '../utils/smoothScrollToTop';
 import { summarizeProjectNameFromPrompt } from '../utils/projectName';
 import { deepSeekHarnessNeedsSetup } from '../utils/visibleAgents';
 import { LIBRARY_UI_VISIBLE } from '../features/libraryUi';
-import { readRecentlyOpenedProjects } from '../lib/recently-opened-projects';
+import {
+  enrichRecentlyOpenedProjectCovers,
+  readRecentlyOpenedProjects,
+} from '../lib/recently-opened-projects';
 import {
  providerModelsCacheKey,
  type ProviderModelsCache,
@@ -728,23 +731,37 @@ onCopyProject,
    isShared: isSharedProject,
  });
  const projectSearchProjects = buildProjectSearchCatalog(draftProjectsList, allProjectsList);
- const homeProjectsList = useMemo(
-   () => {
-     const serverProjects = reconcileSharedProjectCatalogFields({
-       projects,
-       teamProjects: teamProjects.projects,
-       workspaceContext,
-     });
-     // Merge recently-opened projects from localStorage so shared projects
-     // opened from /share-me survive the next server re-fetch. Server data
-     // takes precedence; localStorage entries only fill gaps.
-     const serverIds = new Set(serverProjects.map((p) => p.id));
-     const recents = readRecentlyOpenedProjects()
-       .filter((p) => !serverIds.has(p.id));
-     return recents.length > 0 ? [...recents, ...serverProjects] : serverProjects;
-   },
-   [projects, teamProjects.projects, workspaceContext],
- );
+ // Bump this counter after enriching localStorage cover digests so
+ // `homeProjectsList` re-reads localStorage and re-renders the strip.
+ const [recentlyOpenedVersion, bumpRecentlyOpened] = useState(0);
+ useEffect(() => {
+   void enrichRecentlyOpenedProjectCovers().then((changed) => {
+     if (changed.length > 0) bumpRecentlyOpened((v) => v + 1);
+   });
+ }, [projects]);
+const homeProjectsList = useMemo(
+  () => {
+    const recents = readRecentlyOpenedProjects();
+    const recentMap = new Map(recents.map((p) => [p.id, p]));
+    const serverProjects = reconcileSharedProjectCatalogFields({
+      projects,
+      teamProjects: teamProjects.projects,
+      workspaceContext,
+    });
+    // Enrich server projects with coverDigest from localStorage when the
+    // server response lacks it, then merge recently-opened projects that
+    // the server doesn't know about. Server data stays authoritative for
+    // all fields except coverDigest, which localStorage may have captured
+    // at save/remix time before the server was refreshed.
+    const enrichedServerProjects = serverProjects.map((p) =>
+      p.coverDigest ? p : { ...p, coverDigest: recentMap.get(p.id)?.coverDigest ?? null },
+    );
+    const serverIds = new Set(enrichedServerProjects.map((p) => p.id));
+    const gap = recents.filter((p) => !serverIds.has(p.id));
+    return gap.length > 0 ? [...gap, ...enrichedServerProjects] : enrichedServerProjects;
+  },
+  [projects, teamProjects.projects, workspaceContext, recentlyOpenedVersion],
+);
  // projectId → sharing member id, so a card in the 全部项目 / 草稿 grids can
  // resolve "{creator}创建" against the member directory. A project absent here
  // is the member's own local project → "我创建".

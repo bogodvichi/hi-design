@@ -35,6 +35,7 @@ import {
   workspaceIdentityCacheKey,
   type WorkspaceResourceReadIdentity,
 } from './workspace-identity';
+import { getCachedSharedSpaceTeamId, getSharedSpaceTeamId } from '../utils/deterministicId';
 import {
   createWorkspaceBillingInterestOwnerId,
   ensureWorkspaceBillingInterestDeclared,
@@ -2327,4 +2328,25 @@ export function useTeamProjects(): TeamProjectsState {
       || Boolean(identityChangePending && !resourceReadIdentity),
     reload,
   };
+}
+
+
+/**
+ * Synchronously return the cached Shared Space team ID, or null until the
+ * async SHA-256 computation finishes. Triggers the computation on mount.
+ *
+ * Use this to decide whether a project's workspaceId belongs to the
+ * Shared Space (i.e. it is a personal/local project) without depending
+ * on the current workspace context.
+ */
+export function useSharedSpaceTeamId(): string | null {
+  const [teamId, setTeamId] = useState<string | null>(getCachedSharedSpaceTeamId());
+  useEffect(() => {
+    let mounted = true;
+    void getSharedSpaceTeamId().then((id) => {
+      if (mounted && id !== teamId) setTeamId(id);
+    });
+    return () => { mounted = false; };
+  }, [teamId]);
+  return teamId;
 }

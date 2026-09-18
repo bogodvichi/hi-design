@@ -5250,6 +5250,11 @@ try {
                 // discarding it silently.
                 console.error('Community remix: could not seed the template prompt.');
               }
+              // Record the remixed project in localStorage so the Home strip
+              // shows it immediately. Cover digest enrichment is handled by
+              // enrichRecentlyOpenedProjectCovers() in EntryShell, which
+              // batch-queries the daemon's projects table on Home load.
+              recordRecentlyOpenedProject(result.project);
               navigate({
                 kind: 'project',
                 projectId: result.projectId,

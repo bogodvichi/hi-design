@@ -2222,6 +2222,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       // into a plain Project keeps the binding instead of dropping it.
       workspaceId: row.workspaceId ?? null,
       createdByWorkspaceMemberId: row.createdByWorkspaceMemberId ?? null,
+      coverDigest: row.coverDigest ?? null,
     };
     const resourceState = isWorkspaceLocked(ctx) && row.workspaceVisibility === 'team'
       ? 'frozen'
@@ -2242,16 +2243,17 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
      resourceHubResourceId: row.resourceHubResourceId ?? null,
      cloudTombstonedAt: row.cloudTombstonedAt ?? null,
      currentUserAccess: projectAccess(wp, ctx, workspaceTypes),
-      syncState: row.syncState ?? 'local_only',
-      ...(row.syncState === 'pending_upload'
-        ? { pendingSyncIntent: pendingSyncIntent(project.id, row.workspaceId, row.workspaceVisibility) }
-        : {}),
-      createdAt: row.createdAt,
-      updatedAt: lastActivityAt,
-      metadata,
-      project,
-    };
-  }
+     syncState: row.syncState ?? 'local_only',
+     ...(row.syncState === 'pending_upload'
+       ? { pendingSyncIntent: pendingSyncIntent(project.id, row.workspaceId, row.workspaceVisibility) }
+       : {}),
+     createdAt: row.createdAt,
+     updatedAt: lastActivityAt,
+     metadata,
+     project,
+     coverDigest: row.coverDigest ?? null,
+   };
+ }
   function workspaceProjectPrincipal(ctx: WorkspaceProjectContext): ResourceHubPrincipal {
     return {
       memberId: ctx.workspaceMemberId,
@@ -6291,6 +6293,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
     res.json({ ok: true });
   });
 
+  return { coverHelpers };
 }
 
 export interface RegisterProjectArtifactRoutesDeps extends RouteDeps<'http' | 'uploads' | 'paths' | 'node' | 'artifacts'> {}
@@ -7134,6 +7137,31 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
       // stays in sync with the latest entry screenshot.
       void syncCoverToHdw(req.params.id, buf, dir).catch(() => {});
       res.json({ code: 0, data: { coverDigest: digest } });
+    } catch (err: any) {
+      sendApiError(res, 500, 'INTERNAL_ERROR', err?.message || String(err));
+    }
+  });
+
+  // POST /api/projects/cover-digests — batch lookup of cover_digest for a
+  // set of project IDs. The web client calls this when building the Home
+  // "recent projects" strip to enrich localStorage-only entries (shared
+  // projects from other workspaces that the scoped ?view=recent query does
+  // not return) with fresh cover digests from the database.
+  app.post('/api/projects/cover-digests', async (req, res) => {
+    try {
+      const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
+      if (ids.length === 0 || ids.length > 200) {
+        return res.json({ digests: {} });
+      }
+      const placeholders = ids.map(() => '?').join(',');
+      const rows = db
+        .prepare(`SELECT id, cover_digest AS coverDigest FROM projects WHERE id IN (${placeholders})`)
+        .all(...ids.filter((id: unknown): id is string => typeof id === 'string')) as { id: string; coverDigest: string | null }[];
+      const digests: Record<string, string | null> = {};
+      for (const row of rows) {
+        digests[row.id as string] = (row.coverDigest as string | null) ?? null;
+      }
+      res.json({ digests });
     } catch (err: any) {
       sendApiError(res, 500, 'INTERNAL_ERROR', err?.message || String(err));
     }
