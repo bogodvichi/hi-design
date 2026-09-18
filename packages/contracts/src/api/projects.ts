@@ -676,6 +676,9 @@ export interface WorkspaceProjectSummary {
   updatedAt: number;
   metadata?: ProjectMetadata;
   project: Project;
+  /** SHA-256 digest of the project's entry screenshot blob. Mirrors the
+   *  nested project's coverDigest so a client can read it without unwrapping. */
+  coverDigest?: string | null;
 }
 
 export interface WorkspaceProjectsResponse {

@@ -129,3 +129,42 @@ export function updateRecentlyOpenedProjectCover(
   entries[idx]!.coverDigest = coverDigest;
   write(entries);
 }
+
+/**
+ * Query the daemon for fresh cover digests for every recently-opened
+ * project and patch localStorage in place. Returns the IDs whose
+ * coverDigest changed so the caller can trigger a re-render if needed.
+ *
+ * This is the authoritative sync path: the daemon's SQLite `projects`
+ * table is the source of truth for `cover_digest`, so this call supersedes
+ * any stale or missing value the localStorage entry carried from its
+ * initial `recordRecentlyOpenedProject` write.
+ */
+export async function enrichRecentlyOpenedProjectCovers(): Promise<string[]> {
+  const entries = read();
+  if (entries.length === 0) return [];
+  const ids = entries.map((e) => e.id);
+  let digests: Record<string, string | null> = {};
+  try {
+    const resp = await fetch('/api/projects/cover-digests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    });
+    if (!resp.ok) return [];
+    const json = (await resp.json()) as { digests?: Record<string, string | null> };
+    digests = json.digests ?? {};
+  } catch {
+    return [];
+  }
+  const changed: string[] = [];
+  for (const entry of entries) {
+    const fresh = digests[entry.id] ?? null;
+    if (fresh !== (entry.coverDigest ?? null)) {
+      entry.coverDigest = fresh;
+      changed.push(entry.id);
+    }
+  }
+  if (changed.length > 0) write(entries);
+  return changed;
+}

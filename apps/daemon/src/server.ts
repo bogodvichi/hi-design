@@ -8916,7 +8916,7 @@ const resolveShareAccess = async (projectId: string, _req: any) => {
     return null;
   }
 };
- registerProjectRoutes(app, {
+const projectRouteResult = registerProjectRoutes(app, {
     db,
     design,
     http: httpDeps,
@@ -9560,6 +9560,7 @@ const resolveShareAccess = async (projectId: string, _req: any) => {
     isLocalSameOrigin,
     resolvedPortRef,
     pluginShareTaskStore,
+    triggerCoverForProjectEntry: projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry,
     installOrUpgradePlugin: async (req, res, mode, installWorkspaceContext) => {
       const body = req.body && typeof req.body === 'object' ? req.body : {};
       const id = req.params.id;

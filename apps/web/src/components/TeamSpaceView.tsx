@@ -585,7 +585,7 @@ async function moveTeamFolderTreesWithinWorkspace(input: {
 
 /** Convert a TeamProject (from the team-projects catalog) to the local
  *  Project shape that RecentProjectsStrip expects. */
-function teamProjectToProject(tp: TeamProject): Project {
+function teamProjectToProject(tp: TeamProject, teamId: string): Project {
   const sharedAtMs = Date.parse(tp.sharedAt);
   const fallback = Number.isFinite(sharedAtMs) ? sharedAtMs : 0;
   return {
@@ -599,6 +599,7 @@ function teamProjectToProject(tp: TeamProject): Project {
   ownerDisplayName: tp.ownerDisplayName ?? null,
   ...(tp.metadata ? { metadata: tp.metadata } : {}),
   coverDigest: tp.coverDigest ?? null,
+  workspaceId: teamId,
   };
 }
 
@@ -724,7 +725,7 @@ function ProjectsPanel({
       setProjectsLoading(true);
       try {
         const rootProjects = await fetchTeamProjects(teamId, 'root');
-        const projects = rootProjects.map(teamProjectToProject);
+        const projects = rootProjects.map((tp) => teamProjectToProject(tp, teamId));
         if (cancelled) return;
         setProjects(projects);
       } catch {
@@ -1766,7 +1767,7 @@ function FoldersPanel({
       setProjectsLoading(true);
       try {
         const folderProjects = await fetchTeamProjects(teamId, folderId);
-        const projects = folderProjects.map(teamProjectToProject);
+        const projects = folderProjects.map((tp) => teamProjectToProject(tp, teamId));
         if (cancelled) return;
         setProjects(projects);
       } catch {

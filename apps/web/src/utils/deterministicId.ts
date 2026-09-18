@@ -40,3 +40,38 @@ export async function generateDeterministicId(
 export async function getTeamMemberId(teamId: string, username: string): Promise<string> {
   return generateDeterministicId(`${teamId}_${username}`);
 }
+
+/**
+ * Get the global Shared Space team ID, matching the daemon's
+ * getSharedSpaceTeamId in apps/daemon/src/ids.ts.
+ *
+ * This is a single constant team ID shared by ALL users — every logged-in
+ * user is automatically a member of this team. Derived from a fixed seed
+ * so it is identical across devices and accounts.
+ *
+ * Because it uses Web Crypto (SHA-256), the first call is async. A
+ * module-level cache stores the result so subsequent calls are synchronous.
+ */
+let cachedSharedSpaceTeamId: string | null = null;
+let sharedSpaceTeamIdPromise: Promise<string> | null = null;
+
+export async function getSharedSpaceTeamId(): Promise<string> {
+  if (cachedSharedSpaceTeamId) return cachedSharedSpaceTeamId;
+  if (!sharedSpaceTeamIdPromise) {
+    sharedSpaceTeamIdPromise = (async () => {
+      const id = await generateDeterministicId('shared_space_team_global');
+      cachedSharedSpaceTeamId = id;
+      return id;
+    })();
+  }
+  return sharedSpaceTeamIdPromise;
+}
+
+/**
+ * Synchronously read the cached Shared Space team ID, or null if the
+ * async computation has not completed yet. Call `getSharedSpaceTeamId()`
+ * once (e.g. in a `useEffect`) to populate the cache.
+ */
+export function getCachedSharedSpaceTeamId(): string | null {
+  return cachedSharedSpaceTeamId;
+}

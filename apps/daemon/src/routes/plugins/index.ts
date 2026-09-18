@@ -187,6 +187,13 @@ interface PluginRouteHelpers {
   handleCandidateDraft(req: Request, res: Response): Promise<unknown>;
   handleCandidateShareTask(req: Request, res: Response): Promise<unknown>;
   handleProjectShareTask(req: Request, res: Response): Promise<unknown>;
+  /** Best-effort cover generation for projects created via plugin routes
+   *  (e.g. duplicate-project). Reads the entry HTML, renders a PNG, stores
+   *  it as .cover.png, and updates projects.cover_digest. */
+  triggerCoverForProjectEntry?(
+    projectId: string,
+    projectMeta: { name?: string; metadata?: Record<string, unknown> | null } | null,
+  ): void;
 }
 
 export interface RegisterPluginRoutesDeps {
@@ -802,6 +809,14 @@ export function registerPluginRoutes(app: Express, deps: RegisterPluginRoutesDep
         skippedFiles: duplicate.skippedFiles,
         warnings: duplicate.warnings,
       };
+      // After duplicating the plugin example into a new project, generate a
+      // cover screenshot from the entry HTML so the project card shows a
+      // preview image immediately. Mirrors the same call in
+      // registerProjectRoutes' create/duplicate paths.
+      deps.helpers.triggerCoverForProjectEntry?.(projectId, {
+        name: projectName,
+        metadata: metadata as unknown as Record<string, unknown>,
+      });
       res.status(201).json(response);
     } catch (err: unknown) {
       if (cleanupProjectId) {

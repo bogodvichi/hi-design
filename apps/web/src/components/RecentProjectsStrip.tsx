@@ -39,6 +39,7 @@ import {
   notifyTeamProjectsChanged,
   resolveBoundProjectWorkspaceContext,
   useWorkspaceContext,
+  useSharedSpaceTeamId,
 } from '../collab/useWorkspaceContext';
 import {
   canAccessWorkspaceInviteFlow,
@@ -413,6 +414,7 @@ selectionExtension,
     context: workspaceContext,
     loading: workspaceContextLoading,
   } = useWorkspaceContext();
+  const sharedSpaceTeamId = useSharedSpaceTeamId();
   // A cover request captures the complete identity at dispatch. A mutable ref
   // keeps the queue callbacks stable without letting an in-flight read drift
   // to whichever Workspace a different render happens to select later.
@@ -2072,6 +2074,7 @@ function requestDelete(project: Project) {
             project,
             coverByProject[project.id] ?? null,
             workspaceContext,
+            sharedSpaceTeamId,
           );
           const designSystemProject = isDesignSystemProject(project);
           const status: ProjectDisplayStatus = project.status?.value ?? 'not_started';
@@ -3157,6 +3160,7 @@ export function projectCover(
   project: Project,
   override: ProjectCoverOverride | null,
   workspaceContext?: WorkspaceCollabContext | null,
+  sharedSpaceTeamId?: string | null,
 ): {
   kind: 'image' | 'video' | 'html' | 'logo' | 'fallback';
   src?: string;
@@ -3179,7 +3183,9 @@ export function projectCover(
   // when available — a single <img> load is far cheaper than resolving the
   // entry file, probing with HEAD, and rendering an iframe document.
   if (project.coverDigest) {
-    const coverSrc = project.workspaceVisibility === 'personal'
+    const isLocalProject = project.workspaceId == null
+      || project.workspaceId === sharedSpaceTeamId;
+    const coverSrc = isLocalProject
       ? `/api/projects/${encodeURIComponent(project.id)}/cover?digest=${encodeURIComponent(project.coverDigest)}`
       : `/api/hdw/api/community/cover/${project.coverDigest}`;
     return {
