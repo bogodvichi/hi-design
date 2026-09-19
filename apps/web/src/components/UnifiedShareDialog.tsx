@@ -15,6 +15,9 @@ import type { WorkspaceCollabContext } from '@open-design/contracts';
 
 import { useT } from '../i18n';
 import { RemixIcon } from './RemixIcon';
+import { PersonPicker, type Person } from './PersonPicker';
+import { getStoredUserInfo } from '../auth/auth';
+import { shareProjectToSharedSpace } from '../collab/shared-space-catalog';
 import { workspaceProjectHeaders } from '../collab/workspace-identity';
 import { moveWorkspaceProject } from '../state/projects';
 import styles from './UnifiedShareDialog.module.css';
@@ -33,6 +36,7 @@ interface UnifiedShareDialogProps {
   projectId: string;
   workspaceId: string;
   projectName: string;
+  entryFile?: string | null;
   workspaceContext: WorkspaceCollabContext | null;
   onClose: () => void;
 }
@@ -65,6 +69,7 @@ export function UnifiedShareDialog({
   projectId,
   workspaceId,
   projectName,
+  entryFile,
   workspaceContext,
   onClose,
 }: UnifiedShareDialogProps) {
@@ -83,10 +88,16 @@ export function UnifiedShareDialog({
   const [linkLoading, setLinkLoading] = useState(false);
   const [linkGenerating, setLinkGenerating] = useState(false);
   const [sharingToTeam, setSharingToTeam] = useState(false);
-  const [linkError, setLinkError] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
+ const [linkError, setLinkError] = useState<string | null>(null);
+ const [copied, setCopied] = useState(false);
 
-  // Fetch share link when the link tab is activated
+ // Share-to-person state (mirrors ShareToSharedSpaceDialog)
+ const [shareRecipients, setShareRecipients] = useState<Person[]>([]);
+ const [shareSubmitting, setShareSubmitting] = useState(false);
+ const [shareError, setShareError] = useState<string | null>(null);
+ const [shareSuccess, setShareSuccess] = useState(false);
+
+ // Fetch share link when the link tab is activated
   useEffect(() => {
     if (activeTab !== 'link') return;
     let cancelled = false;
@@ -143,6 +154,7 @@ export function UnifiedShareDialog({
           body: JSON.stringify({
             title: communityTitle.trim(),
             description: communityDesc.trim(),
+            ...(entryFile ? { entryFile } : {}),
           }),
         },
       );
@@ -164,10 +176,60 @@ export function UnifiedShareDialog({
       await navigator.clipboard.writeText(shareLink);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // ignore
-    }
-  }
+   } catch {
+     // ignore
+   }
+ }
+
+ // Current user's email — used to exclude self from the recipient picker.
+ const selfEmail = typeof getStoredUserInfo()?.email === 'string'
+   ? getStoredUserInfo().email.trim().toLowerCase()
+   : '';
+ const excludeEmails = selfEmail ? [selfEmail] : [];
+
+ async function handleShareSubmit() {
+   if (shareRecipients.length === 0 || shareSubmitting || shareSuccess) return;
+   // Guard against self-share even if the picker somehow let one through.
+   if (selfEmail && shareRecipients.some((p) => {
+     const email = typeof p.email === 'string' ? p.email.trim().toLowerCase() : '';
+     return email === selfEmail;
+   })) {
+     setShareError(t('sharedSpace.cannotShareToSelf'));
+     return;
+   }
+   setShareSubmitting(true);
+   setShareError(null);
+   try {
+     const result = await shareProjectToSharedSpace({
+       projectId,
+       homeWorkspaceId: workspaceId,
+       recipients: shareRecipients
+         .filter((p) => {
+           const email = typeof p.email === 'string' ? p.email.trim() : '';
+           return Boolean(email && email.includes('@'));
+         })
+         .map((p) => {
+           // SSO username = email local-part
+           const email = typeof p.email === 'string' ? p.email.trim() : '';
+           const username = email.split('@')[0] || '';
+           return {
+             username,
+             displayname: p.name,
+           };
+         }),
+     });
+     if (!result) {
+       setShareError(t('sharedSpace.shareFailed'));
+       return;
+     }
+     setShareSuccess(true);
+     setTimeout(() => onClose(), 800);
+   } catch {
+     setShareError(t('sharedSpace.shareFailed'));
+   } finally {
+     setShareSubmitting(false);
+   }
+ }
 
  async function handleGenerateLink() {
    setLinkError(null);
@@ -242,39 +304,49 @@ export function UnifiedShareDialog({
     { id: 'link', label: t('share.tabLink'), icon: 'link' },
   ];
 
-  const footerActionLabel =
-    activeTab === 'community'
-      ? publishResult
-        ? t('share.confirm')
-        : publishing
-          ? t('share.publishing')
-          : t('share.publish')
-     : activeTab === 'link'
-       ? linkGenerating
-         ? t('share.generating')
-         : sharingToTeam
-           ? t('share.sharingToTeam')
-           : shareLink
-             ? t('share.regenerateLink')
-             : t('share.generateLink')
-       : t('share.close');
-
- const footerActionDisabled =
+ const footerActionLabel =
    activeTab === 'community'
-     ? !canPublish
-     : activeTab === 'link'
-       ? linkGenerating || sharingToTeam
-       : false;
+     ? publishResult
+       ? t('share.confirm')
+       : publishing
+         ? t('share.publishing')
+         : t('share.publish')
+   : activeTab === 'file'
+     ? shareSuccess
+       ? t('sharedSpace.shareSuccess')
+       : shareSubmitting
+         ? t('share.publishing')
+         : t('sharedSpace.shareDialogSubmit')
+    : activeTab === 'link'
+      ? linkGenerating
+        ? t('share.generating')
+        : sharingToTeam
+          ? t('share.sharingToTeam')
+          : shareLink
+            ? t('share.regenerateLink')
+            : t('share.generateLink')
+      : t('share.close');
 
-  function handleFooterAction() {
-    if (activeTab === 'community' && !publishResult) {
-      void handlePublish();
-    } else if (activeTab === 'link') {
-      void handleGenerateLink();
-    } else {
-      onClose();
-    }
-  }
+const footerActionDisabled =
+  activeTab === 'community'
+    ? !canPublish
+    : activeTab === 'file'
+      ? shareRecipients.length === 0 || shareSubmitting || shareSuccess
+      : activeTab === 'link'
+        ? linkGenerating || sharingToTeam
+        : false;
+
+ function handleFooterAction() {
+   if (activeTab === 'community' && !publishResult) {
+     void handlePublish();
+   } else if (activeTab === 'file' && !shareSuccess) {
+     void handleShareSubmit();
+   } else if (activeTab === 'link') {
+     void handleGenerateLink();
+   } else {
+     onClose();
+   }
+ }
 
   return createPortal(
    <Dialog
@@ -364,11 +436,23 @@ export function UnifiedShareDialog({
           </div>
         )}
 
-        {activeTab === 'file' && (
-          <div className={styles.placeholder}>
-            {t('share.fileTabPlaceholder')}
-          </div>
-        )}
+       {activeTab === 'file' && (
+         <div className={styles.sharePanel}>
+           <p className={styles.shareHint}>{t('sharedSpace.shareDialogDesc')}</p>
+           <label className={styles.field}>
+             <span className={styles.fieldLabel}>{t('sharedSpace.shareDialogRecipientLabel')}</span>
+             <PersonPicker
+               selected={shareRecipients}
+               onChange={setShareRecipients}
+               multiple
+               placeholder={t('sharedSpace.shareDialogRecipientPlaceholder')}
+               excludeEmails={excludeEmails}
+             />
+           </label>
+           {shareError && <p className={styles.error}>{shareError}</p>}
+           {shareSuccess && <p className={styles.successHint}>{t('sharedSpace.shareSuccess')}</p>}
+         </div>
+       )}
 
         {activeTab === 'link' && (
           <div className={styles.linkPanel}>

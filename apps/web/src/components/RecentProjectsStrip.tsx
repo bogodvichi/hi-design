@@ -2097,13 +2097,22 @@ function requestDelete(project: Project) {
           const shared = isShared(project.id);
          const selected = selectedProjectIds.has(project.id);
          const opening = openingProjectId === project.id;
+         // Explicit self-ownership by the current workspace member always
+         // reads as a personal project in this view, even if the project is
+         // team-visible or shared with the current user.
+         const isSelfOwnedForDisplay = Boolean(
+           project.createdByWorkspaceMemberId &&
+           project.createdByWorkspaceMemberId === selfMemberId,
+         );
          // Project type badge: determined solely by the project's workspaceId.
          // workspaceId === sharedSpaceTeamId (or absent) -> personal workspace:
          //   ownedBySelf -> "personal", otherwise -> "shared".
          // workspaceId !== sharedSpaceTeamId -> team workspace -> "team".
-         const projectType = (project.workspaceId == null || project.workspaceId === sharedSpaceTeamId)
-           ? (creator.ownedBySelf ? 'personal' as const : 'shared-with-me' as const)
-           : 'team' as const;
+         const projectType = isSelfOwnedForDisplay
+           ? 'personal' as const
+           : (project.workspaceId == null || project.workspaceId === sharedSpaceTeamId)
+             ? (creator.ownedBySelf ? 'personal' as const : 'shared-with-me' as const)
+             : 'team' as const;
          return (
            <div
              key={project.id}
@@ -2292,7 +2301,7 @@ function requestDelete(project: Project) {
                    <div className="recent-projects__card-time">
                   {space !== 'drafts' ? (
                   <>
-                 {creator.ownedBySelf && space !== 'team' ? (
+                 {(isSelfOwnedForDisplay || (creator.ownedBySelf && space !== 'team')) ? (
                    <span
                      className="recent-projects__card-owner"
                      style={{ backgroundColor: '#000' }}

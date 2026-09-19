@@ -238,11 +238,11 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
   publicationFilter: PublicationFilter;
   projectItems?: readonly PublishedProjectItem[];
 }) {
-  const t = useT();
-  const [plugins, setPlugins] = useState<MarketplacePluginEntry[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [remixingName, setRemixingName] = useState<string | null>(null);
+ const t = useT();
+ const [plugins, setPlugins] = useState<MarketplacePluginEntry[]>([]);
+ const [loading, setLoading] = useState(true);
+ const [error, setError] = useState(false);
+ const [remixingName, setRemixingName] = useState<string | null>(null);
   const [remixError, setRemixError] = useState<string | null>(null);
   const [detailsEntry, setDetailsEntry] = useState<MarketplacePluginEntry | null>(null);
   const [shareOnOpen, setShareOnOpen] = useState(false);
@@ -285,7 +285,7 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
     return () => {
       cancelled = true;
     };
-  }, [refreshKey]);
+ }, [refreshKey]);
 
   function handleReference(entry: MarketplacePluginEntry) {
     const prompt = String(entry.prompt ?? entry.description ?? '');

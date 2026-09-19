@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  enrichRecentlyOpenedProjectCovers,
   recordRecentlyOpenedProject,
   readRecentlyOpenedProjects,
   removeRecentlyOpenedProject,
@@ -11,6 +12,7 @@ import type { Project } from '../../src/types';
 
 afterEach(() => {
   localStorage.clear();
+  vi.unstubAllGlobals();
 });
 
 function makeProject(overrides: Partial<Project> = {}): Project {
@@ -107,5 +109,37 @@ describe('readRecentlyOpenedProjects', () => {
     const recents = readRecentlyOpenedProjects();
     expect(recents).toHaveLength(1);
     expect(recents[0]?.id).toBe('valid');
+  });
+});
+
+describe('enrichRecentlyOpenedProjectCovers', () => {
+  it('removes personal recent entries the daemon says are missing locally', async () => {
+    recordRecentlyOpenedProject(
+      makeProject({
+        id: 'gone',
+        workspaceId: 'ws-1',
+        workspaceVisibility: 'personal',
+      }),
+    );
+    recordRecentlyOpenedProject(
+      makeProject({
+        id: 'kept',
+        workspaceId: 'ws-2',
+        workspaceVisibility: 'team',
+      }),
+    );
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ digests: {}, missingPersonalProjectIds: ['gone'] }),
+      }) as Response),
+    );
+
+    const changed = await enrichRecentlyOpenedProjectCovers();
+    expect(changed).toContain('gone');
+    const remaining = readRecentlyOpenedProjects();
+    expect(remaining.map((p) => p.id)).toEqual(['kept']);
   });
 });

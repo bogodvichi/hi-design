@@ -1713,7 +1713,12 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
       if (!isSafeId(req.params.id)) {
         return sendApiError(res, 400, 'BAD_REQUEST', 'invalid project id');
       }
-      const body = (req.body ?? {}) as { title?: string; description?: string };
+      const body = (req.body ?? {}) as {
+        title?: string;
+        description?: string;
+        entryFile?: string;
+        coverImage?: string;
+      };
       const title = typeof body.title === 'string' ? body.title.trim() : '';
       const description = typeof body.description === 'string' ? body.description.trim() : '';
       if (!title) {
@@ -1747,20 +1752,18 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
       const tmpDir = path.join(RUNTIME_DATA_DIR_CANONICAL, 'tmp');
       await fs.promises.mkdir(tmpDir, { recursive: true }).catch(() => {});
       const tmpArchivePath = path.join(tmpDir, `community-${req.params.id}-${Date.now()}.zip`);
-      await fs.promises.writeFile(tmpArchivePath, archiveBuffer);
 
       try {
         const { uploadHdwCommunityBlob, publishHdwCommunityPluginDetailed } =
           await import('./http/hdw.js');
+        const { writeCoverDigest, fetchHdwMarketplaceManifestText,
+          HDW_MARKETPLACE_ID, HDW_MARKETPLACE_URL } = await import('./http/hdw.js');
         const { readSsoConfigFile } = await import('./http/hik_logins/hicoo.js');
         const { getSharedSpaceMemberId } = await import('./ids.js');
         const { createHash } = await import('node:crypto');
+        const JSZip = (await import('jszip')).default;
 
         const dataDir = RUNTIME_DATA_DIR_CANONICAL;
-        const blob = await uploadHdwCommunityBlob(tmpArchivePath, dataDir);
-        if (!blob) {
-          return sendApiError(res, 502, 'UPSTREAM_UNAVAILABLE', 'failed to upload archive to community storage');
-        }
 
         const slug = title
           .toLowerCase()
@@ -1776,21 +1779,146 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
           ? session.userInfo.displayName.trim()
           : publisherUsername;
 
+        const entryFile = typeof body.entryFile === 'string' ? body.entryFile.trim() : '';
+
+        // Inject open-design.json and SKILL.md into the archive so the
+        // remix endpoint can find plugin manifests. Mirrors the CLI
+        // publish-hdw flow which auto-generates these files.
+        const pluginManifest = {
+          $schema: 'https://open-design.ai/schemas/plugin.v1.json',
+          specVersion: '1.0.0',
+          name: derivedName,
+          version: '0.0.0',
+          title,
+          description: description || 'Shared from ' + title,
+          license: 'MIT',
+          publishedAt: new Date().toISOString(),
+          author: { name: publisherDisplayname },
+          tags: ['project', 'community'],
+          compat: { agentSkills: [{ path: './SKILL.md' }] },
+          od: {
+            kind: 'scenario',
+            taskKind: 'new-generation',
+            scenario: 'web-design',
+            mode: 'prototype',
+            platform: 'desktop',
+            surface: 'web',
+            ...(entryFile ? { preview: { type: 'html', entry: entryFile } } : {}),
+            pipeline: { stages: [{ id: 'generate', atoms: ['file-write', 'live-artifact'] }] },
+            capabilities: ['prompt:inject', 'fs:write'],
+          },
+        };
+        const manifestJson = JSON.stringify(pluginManifest, null, 2) + '\n';
+
+        const skillFrontmatter = [
+          '---',
+          'name: ' + derivedName,
+          'description: ' + (description || 'Shared from ' + title).replace(/\n/g, ' '),
+          'od:',
+          '  mode: prototype',
+          '  scenario: web-design',
+          ...(entryFile ? ['  preview:', '    type: html', '    entry: ' + entryFile] : []),
+          '---',
+          '',
+        ].join('\n');
+        const skillContent = skillFrontmatter
+          + '# ' + title + '\n\n'
+          + (description || 'Shared from ' + title) + '\n\n'
+          + '## What this template is\n\n'
+          + 'A self-contained HTML design shared from the HiDesign community. '
+          + 'Open the entry file to view the design, then customize content, colors, and layout for your needs.\n\n'
+          + '## Workflow\n\n'
+          + '1. Open ' + (entryFile ? '`' + entryFile + '`' : 'the HTML file') + ' to view the design.\n'
+          + '2. Customize the content, colors, and layout for your needs.\n'
+          + '3. All assets are bundled \u2014 no external dependencies required.\n'
+        const skillMd = skillContent;
+
+        // Load the ZIP, inject both files, regenerate the buffer.
+        const zip = await JSZip.loadAsync(archiveBuffer);
+        if (!zip.file('open-design.json')) {
+          zip.file('open-design.json', manifestJson);
+        }
+        if (!zip.file('SKILL.md')) {
+          zip.file('SKILL.md', skillMd);
+        }
+        const modifiedBuffer = await zip.generateAsync({
+          type: 'nodebuffer',
+          compression: 'DEFLATE',
+          compressionOptions: { level: 6 },
+        });
+        await fs.promises.writeFile(tmpArchivePath, modifiedBuffer);
+
+        const manifestDigest = createHash('sha256').update(manifestJson).digest('hex');
+
+        const blob = await uploadHdwCommunityBlob(tmpArchivePath, dataDir);
+        if (!blob) {
+          return sendApiError(res, 502, 'UPSTREAM_UNAVAILABLE', 'failed to upload archive to community storage');
+        }
+
+        // Generate a cover screenshot so /square can show a preview image.
+        // Mirrors the publish-hdw flow: try the desktop renderer first (from
+        // entryFile), then fall back to a browser-supplied base64 coverImage.
+        let coverDigest: string | null = null;
+        if (entryFile && typeof desktopArtifactExporter === 'function') {
+          try {
+            const fileResult = await readProjectFile(PROJECTS_DIR, req.params.id, entryFile, project.metadata);
+            const htmlContent = fileResult.buffer.toString('utf8');
+            const exportInput = await buildDesktopArtifactExportInput({
+              daemonUrl: daemonUrlRef.current,
+              fileName: entryFile,
+              format: 'image',
+              imageFormat: 'png',
+              width: 1200,
+              height: 800,
+              sourceHtml: htmlContent,
+              projectId: req.params.id,
+              projectsRoot: PROJECTS_DIR,
+              title: project.name || entryFile,
+            });
+            const coverResult = await desktopArtifactExporter(exportInput);
+            if (coverResult.ok && coverResult.path) {
+              const tmpCoverPath = path.join(tmpDir, `cover-${req.params.id}-${Date.now()}.png`);
+              await fs.promises.writeFile(tmpCoverPath, await fs.promises.readFile(coverResult.path));
+              const coverBlob = await uploadHdwCommunityBlob(tmpCoverPath, dataDir);
+              await fs.promises.unlink(tmpCoverPath).catch(() => {});
+              if (coverBlob) coverDigest = coverBlob.digest;
+            }
+          } catch { /* best-effort: publish without cover */ }
+        }
+        if (!coverDigest && typeof body.coverImage === 'string' && body.coverImage.startsWith('data:image/')) {
+          try {
+            const base64Match = body.coverImage.match(/^data:image\/[\w+]+;base64,(.+)$/);
+            if (base64Match) {
+              const coverBuffer = Buffer.from(base64Match[1]!, 'base64');
+              const tmpCoverPath = path.join(tmpDir, `cover-${req.params.id}-${Date.now()}.png`);
+              await fs.promises.writeFile(tmpCoverPath, coverBuffer);
+              const coverBlob = await uploadHdwCommunityBlob(tmpCoverPath, dataDir);
+              await fs.promises.unlink(tmpCoverPath).catch(() => {});
+              if (coverBlob) coverDigest = coverBlob.digest;
+            }
+          } catch { /* best-effort: publish without cover */ }
+        }
+
         const publishInput = {
           name: derivedName,
           version: '0.0.0',
           archiveDigest: blob.digest,
           archiveSize: blob.size,
+          archiveIntegrity: `sha256-${blob.digest}`,
+          manifestDigest,
+          prompt: skillMd,
           title,
           description: description || `Shared from ${title}`,
-        tags: ['project', 'community'],
-        publisherUsername,
-        publisherDisplayname,
-        ...(getSharedSpaceMemberId(publisherUsername) || undefined
+          tags: ['project', 'community'],
+          license: 'MIT',
+          capabilitiesSummary: pluginManifest.od.capabilities,
+          publisherUsername,
+          publisherDisplayname,
+          ...(coverDigest ? { coverDigest } : {}),
+          ...(getSharedSpaceMemberId(publisherUsername) || undefined
           ? { publisherMemberId: getSharedSpaceMemberId(publisherUsername) }
           : {}),
-      };
-
+        };
         const detail = await publishHdwCommunityPluginDetailed(publishInput, dataDir);
         if (!detail.ok) {
           return sendApiError(
@@ -1803,6 +1931,16 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
 
         const result = detail.result!;
         const communityUrl = `/api/hdw/api/community/plugins/${encodeURIComponent(result.name)}`;
+        // Persist cover digest mapping and refresh marketplace cache so the
+        // newly published plugin shows up in /square with its cover image.
+        if (coverDigest) {
+          try { writeCoverDigest(dataDir, result.name, coverDigest); } catch {}
+          try {
+            const { ensureMarketplaceManifest } = await import('./plugins/marketplaces.js');
+            const manifestText = await fetchHdwMarketplaceManifestText(HDW_MARKETPLACE_URL, dataDir);
+            if (manifestText) ensureMarketplaceManifest(db, { id: HDW_MARKETPLACE_ID, url: HDW_MARKETPLACE_URL, trust: 'trusted', manifestText });
+          } catch {}
+        }
         res.json({
           pluginId: result.pluginId,
           versionId: result.versionId,

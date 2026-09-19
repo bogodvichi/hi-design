@@ -1173,10 +1173,19 @@ const homeProjectsList = useMemo(
  // here — the `/marketplace/<id>` detail route, which `App` renders outside
  // this shell — is claimed on the very first render and reaches HomeView in
  // the same commit as the mount. The read is destructive, so it applies once.
- const [homePromptHandoff, setHomePromptHandoff] = useState<HomePromptHandoff | null>(
-   () => takeHomePromptHandoff(),
- );
- const entryMainScrollRef = useRef<HTMLElement | null>(null);
+const [homePromptHandoff, setHomePromptHandoff] = useState<HomePromptHandoff | null>(
+  () => takeHomePromptHandoff(),
+);
+// The lazy initializer only fires on mount. When navigating from another
+// entry view (e.g. /square's "参考" button) to home, EntryShell does not
+// remount — so we drain the stashed handoff here whenever the view becomes
+// home. The read is destructive; a null result is a no-op.
+useEffect(() => {
+  if (view !== 'home') return;
+  const pending = takeHomePromptHandoff();
+  if (pending) setHomePromptHandoff(pending);
+}, [view]);
+const entryMainScrollRef = useRef<HTMLElement | null>(null);
  // Entry views share this element, so route changes must not inherit the previous view's offset.
  useLayoutEffect(() => {
    const scrollContainer = entryMainScrollRef.current;

@@ -18681,6 +18681,7 @@ async function openReviewListModal() {
         projectId={projectId}
         workspaceId={workspaceContext?.workspaceId || ''}
         projectName={projectName || ''}
+        entryFile={file?.name || null}
         workspaceContext={workspaceContext}
         onClose={() => setUnifiedShareOpen(false)}
       />

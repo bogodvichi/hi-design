@@ -367,8 +367,13 @@ export interface RegisterProjectRoutesDeps extends RouteDeps<'db' | 'design' | '
      ownerDisplayName?: string | null;
      ownerMemberId?: string;
    } | null>;
+   listTeamProjects?(workspaceId: string, folderId?: string | null): Promise<Array<{
+     projectId: string;
+     coverDigest?: string | null;
+     syncState?: string;
+   }>>;
    upsertTeamProject?(workspaceId: string, projectId: string, input: Record<string, unknown>): Promise<unknown>;
- } | null;
+  } | null;
 }
 
 // `WorkspaceProjectContext`/`WorkspaceProjectMutationCapability`/
@@ -393,7 +398,14 @@ interface ProjectCoverDeps {
   runtimeDataDir: string;
   desktopArtifactExporter: ((input: any) => Promise<{ ok: boolean; path?: string }>) | null;
   daemonUrlRef: { current: string } | null;
-  hdwCloudClient: { upsertTeamProject?(workspaceId: string, projectId: string, input: Record<string, unknown>): Promise<unknown> } | null;
+  hdwCloudClient: {
+    listTeamProjects?(workspaceId: string, folderId?: string | null): Promise<Array<{
+      projectId: string;
+      coverDigest?: string | null;
+      syncState?: string;
+    }>>;
+    upsertTeamProject?(workspaceId: string, projectId: string, input: Record<string, unknown>): Promise<unknown>;
+  } | null;
   getWorkspaceProjectByProjectId: (db: unknown, projectId: string) => WorkspaceProjectAccessInput | null | undefined;
   updateProject: (db: any, id: string, patch: Record<string, unknown>) => void;
   ensureProject: (projectsRoot: string, projectId: string, metadata?: unknown) => Promise<string>;
@@ -2372,14 +2384,15 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
     updatedByWorkspaceMemberId: effectiveOwnerId,
     resourceHubResourceId: remote.resourceId,
     cloudTombstonedAt: null,
-    currentUserAccess: accessForRemoteTeamProject(remote, ctx),
-    syncState,
-    createdAt,
-    updatedAt,
-    metadata,
+   currentUserAccess: accessForRemoteTeamProject(remote, ctx),
+   syncState,
+  createdAt,
+  updatedAt,
+  metadata,
     project,
+    ...(remote.coverDigest ? { coverDigest: remote.coverDigest } : {}),
   };
- }
+}
   /**
    * Catalog identities this member has just moved back to "personal".
    *
@@ -2777,30 +2790,35 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
     createdByWorkspaceMemberId: localOwnerMemberId,
     updatedByWorkspaceMemberId: localOwnerMemberId,
     resourceState: frozen ? 'frozen' : 'active',
-     currentUserAccess: {
-       ...localAccess,
-       ...remoteAccess,
-       // The remote catalog canEdit can be stale after a cross-workspace
-       // transfer, so do NOT let remoteAccess override localAccess for
-       // mutation flags. Take the union: if the local DB says the current
-       // member is the owner (canRename: true), that stands even if the
-       // remote catalog has not caught up (canEdit: false).
-       canRename: localAccess.canRename || remoteAccess.canRename,
-       canDelete: localAccess.canDelete || remoteAccess.canDelete,
-       canDuplicate: localAccess.canDuplicate || remoteAccess.canDuplicate,
-       canRestoreVersion: localAccess.canRestoreVersion || remoteAccess.canRestoreVersion,
-       // Preserve local move affordances that depend on the local row's
-       // visibility, which the remote record does not carry.
-       canMoveToTeam: localAccess.canMoveToTeam ?? remoteAccess.canMoveToTeam ?? false,
-       canMoveToPersonal: localAccess.canMoveToPersonal ?? remoteAccess.canMoveToPersonal ?? false,
-     },
-     syncState: velaProjectSyncStateToProject(remote.syncState),
-     project: {
-       ...summary.project,
-       ...(name ? { name } : {}),
-     },
-   };
- }
+    // The HDW catalog's coverDigest is authoritative for team projects —
+    // it reflects the shared cover captured on the hub. Prefer it over
+    // any stale local SQLite value so the frontend renders the HDW cover
+    // URL directly without needing a separate cover-digests lookup.
+    ...(remote.coverDigest ? { coverDigest: remote.coverDigest } : {}),
+    currentUserAccess: {
+      ...localAccess,
+      ...remoteAccess,
+      // The remote catalog canEdit can be stale after a cross-workspace
+      // transfer, so do NOT let remoteAccess override localAccess for
+      // mutation flags. Take the union: if the local DB says the current
+      // member is the owner (canRename: true), that stands even if the
+      // remote catalog has not caught up (canEdit: false).
+      canRename: localAccess.canRename || remoteAccess.canRename,
+      canDelete: localAccess.canDelete || remoteAccess.canDelete,
+      canDuplicate: localAccess.canDuplicate || remoteAccess.canDuplicate,
+      canRestoreVersion: localAccess.canRestoreVersion || remoteAccess.canRestoreVersion,
+      // Preserve local move affordances that depend on the local row's
+      // visibility, which the remote record does not carry.
+      canMoveToTeam: localAccess.canMoveToTeam ?? remoteAccess.canMoveToTeam ?? false,
+      canMoveToPersonal: localAccess.canMoveToPersonal ?? remoteAccess.canMoveToPersonal ?? false,
+    },
+    syncState: velaProjectSyncStateToProject(remote.syncState),
+    project: {
+      ...summary.project,
+      ...(name ? { name } : {}),
+    },
+  };
+}
   async function listRemoteTeamProjectSummaries(localRows: any[], ctx: WorkspaceProjectContext) {
     if (!teamProjectCatalog) {
       return {
@@ -6390,7 +6408,14 @@ export interface RegisterProjectFileRoutesDeps extends RouteDeps<'db' | 'http' |
   /** Ref to the daemon's own URL, for building baseHref in screenshot rendering. */
   daemonUrlRef?: { current: string };
   /** HDW cloud client for team project cover_digest updates. Null when not configured. */
-  hdwCloudClient?: { upsertTeamProject?(workspaceId: string, projectId: string, input: Record<string, unknown>): Promise<unknown> } | null;
+  hdwCloudClient?: {
+    listTeamProjects?(workspaceId: string, folderId?: string | null): Promise<Array<{
+      projectId: string;
+      coverDigest?: string | null;
+      syncState?: string;
+    }>>;
+    upsertTeamProject?(workspaceId: string, projectId: string, input: Record<string, unknown>): Promise<unknown>;
+  } | null;
 }
 
 export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFileRoutesDeps) {
@@ -7160,22 +7185,129 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
   // set of project IDs. The web client calls this when building the Home
   // "recent projects" strip to enrich localStorage-only entries (shared
   // projects from other workspaces that the scoped ?view=recent query does
-  // not return) with fresh cover digests from the database.
+  // not return) with fresh cover digests. Local SQLite is the primary
+  // source for personal projects; for team projects the HDW team-projects
+  // catalog is also queried and its coverDigest takes precedence when
+  // present.
   app.post('/api/projects/cover-digests', async (req, res) => {
     try {
       const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
       if (ids.length === 0 || ids.length > 200) {
-        return res.json({ digests: {} });
+        return res.json({ digests: {}, missingPersonalProjectIds: [] });
       }
-      const placeholders = ids.map(() => '?').join(',');
+      const idSet = new Set<string>();
+      for (const rawId of ids) {
+        if (typeof rawId === 'string' && rawId.trim()) idSet.add(rawId);
+      }
+      if (idSet.size === 0) return res.json({ digests: {}, missingPersonalProjectIds: [] });
+
+      // Local SQLite lookup.
+      const digests: Record<string, string | null> = {};
+      const placeholders = Array.from(idSet).map(() => '?').join(',');
       const rows = db
         .prepare(`SELECT id, cover_digest AS coverDigest FROM projects WHERE id IN (${placeholders})`)
-        .all(...ids.filter((id: unknown): id is string => typeof id === 'string')) as { id: string; coverDigest: string | null }[];
-      const digests: Record<string, string | null> = {};
+        .all(...Array.from(idSet)) as { id: string; coverDigest: string | null }[];
       for (const row of rows) {
-        digests[row.id as string] = (row.coverDigest as string | null) ?? null;
+        digests[row.id] = row.coverDigest ?? null;
       }
-      res.json({ digests });
+
+      // HDW team-projects lookup for projects that carry workspace scope.
+      // The `projects` array is optional and mirrors the localStorage
+      // recently-opened entry shape ({ id, workspaceId, workspaceVisibility }).
+      const projects = Array.isArray(req.body?.projects) ? req.body.projects : [];
+      const workspaceProjectIds = new Map<string, Set<string>>();
+      for (const p of projects) {
+        if (!p || typeof p !== 'object') continue;
+        const pid = (p as { id?: unknown }).id;
+        const workspaceId = (p as { workspaceId?: unknown }).workspaceId;
+        const visibility = (p as { workspaceVisibility?: unknown }).workspaceVisibility;
+        if (typeof pid !== 'string' || typeof workspaceId !== 'string' || !idSet.has(pid)) continue;
+        if (visibility === 'personal') continue;
+        let set = workspaceProjectIds.get(workspaceId);
+        if (!set) {
+          set = new Set<string>();
+          workspaceProjectIds.set(workspaceId, set);
+        }
+        set.add(pid);
+      }
+
+      // Fill any remaining gaps from the local workspace binding: projects
+      // that are team-scoped locally but didn't carry explicit workspace scope
+      // in the request are still worth consulting HDW for.
+      if (hdwCloudClient?.listTeamProjects) {
+        const coveredIds = new Set<string>();
+        for (const set of workspaceProjectIds.values()) {
+          for (const id of set) coveredIds.add(id);
+        }
+        for (const pid of idSet) {
+          if (coveredIds.has(pid)) continue;
+          const wp = getWorkspaceProjectByProjectId(db, pid);
+          if (!wp) continue;
+          const wid = typeof wp.workspaceId === 'string' && wp.workspaceId.trim()
+            ? wp.workspaceId.trim()
+            : '';
+          if (!wid || (wp.visibility !== 'team' && wp.visibility !== 'shared')) continue;
+          let set = workspaceProjectIds.get(wid);
+          if (!set) {
+            set = new Set<string>();
+            workspaceProjectIds.set(wid, set);
+          }
+          set.add(pid);
+        }
+      }
+
+      if (workspaceProjectIds.size > 0 && hdwCloudClient?.listTeamProjects) {
+        const fetches = Array.from(workspaceProjectIds.entries()).map(async ([workspaceId, projectIds]) => {
+          try {
+            const remoteProjects = await hdwCloudClient.listTeamProjects!(workspaceId);
+            for (const remote of remoteProjects) {
+              if (projectIds.has(remote.projectId) && remote.coverDigest) {
+                digests[remote.projectId] = remote.coverDigest;
+              }
+            }
+          } catch {
+            // Best-effort: HDW lookup failure falls back to the local digest.
+          }
+        });
+        await Promise.all(fetches);
+      }
+
+      // Personal projects shown on Home must still be backed by a local
+      // project directory. If the `.od/projects/<id>` root is missing, tell
+      // the client to drop the card instead of leaving a dead entry that
+      // errors when opened. This check only marks a project as missing when
+      // the directory stat is definitive (ENOENT or not a directory).
+      const missingPersonalProjectIds: string[] = [];
+      const personalProjectIds = new Set<string>();
+      const requestVisibilityById = new Map<string, string>();
+      for (const p of projects) {
+        if (!p || typeof p !== 'object') continue;
+        const pid = (p as { id?: unknown }).id;
+        const visibility = (p as { workspaceVisibility?: unknown }).workspaceVisibility;
+        if (typeof pid === 'string' && typeof visibility === 'string') {
+          requestVisibilityById.set(pid, visibility);
+        }
+      }
+      for (const pid of idSet) {
+        const visibility = requestVisibilityById.get(pid)
+          ?? getWorkspaceProjectByProjectId(db, pid)?.visibility;
+        if (visibility === 'personal') personalProjectIds.add(pid);
+      }
+      if (personalProjectIds.size > 0) {
+        const stats = Array.from(personalProjectIds).map(async (pid) => {
+          try {
+            const project = getProject(db, pid);
+            const dir = resolveProjectDir(PROJECTS_DIR, pid, project?.metadata);
+            const st = await fs.promises.stat(dir);
+            if (!st.isDirectory()) missingPersonalProjectIds.push(pid);
+          } catch (err: any) {
+            if (err?.code === 'ENOENT') missingPersonalProjectIds.push(pid);
+          }
+        });
+        await Promise.all(stats);
+      }
+
+      res.json({ digests, missingPersonalProjectIds });
     } catch (err: any) {
       sendApiError(res, 500, 'INTERNAL_ERROR', err?.message || String(err));
     }
@@ -8733,7 +8865,14 @@ export interface RegisterProjectUploadRoutesDeps extends RouteDeps<'db' | 'http'
   /** Ref to the daemon's own URL, for building baseHref in screenshot rendering. */
   daemonUrlRef?: { current: string };
   /** HDW cloud client for team project cover_digest updates. Null when not configured. */
-  hdwCloudClient?: { upsertTeamProject?(workspaceId: string, projectId: string, input: Record<string, unknown>): Promise<unknown> } | null;
+  hdwCloudClient?: {
+    listTeamProjects?(workspaceId: string, folderId?: string | null): Promise<Array<{
+      projectId: string;
+      coverDigest?: string | null;
+      syncState?: string;
+    }>>;
+    upsertTeamProject?(workspaceId: string, projectId: string, input: Record<string, unknown>): Promise<unknown>;
+  } | null;
 }
 
 export function registerProjectUploadRoutes(app: Express, ctx: RegisterProjectUploadRoutesDeps) {

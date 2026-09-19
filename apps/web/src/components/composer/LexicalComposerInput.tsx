@@ -657,7 +657,15 @@ function SeedingPlugin({
   entitiesRef.current = entities;
   useEffect(() => {
     const current = serializeComposer(editor.getEditorState()).text;
-    if (draft === current) return; // user-typed → no reseed → caret preserved
+    if (draft === current) {
+      // The composer already matches the draft. This happens when the user
+      // typed the same text (caret must be preserved) or when an external
+      // seed matches the live state (no-op). In both cases, track that the
+      // composer is in sync with this draft value so a future external seed
+      // of the same text is not incorrectly blocked by the StrictMode guard.
+      lastSeeded.current = draft;
+      return;
+    }
     if (draft === lastSeeded.current) return; // StrictMode double-invoke guard
     lastSeeded.current = draft;
     setComposerFromText(editor, draft, entitiesRef.current);

@@ -516,6 +516,14 @@ export async function publishHdwCommunityPluginDetailed(
 
 export interface HdwCommunityPluginDetail {
   version: string;
+  prompt?: string;
+  title?: string;
+  description?: string;
+  license?: string;
+  capabilitiesSummary?: string[];
+  manifestDigest?: string;
+  coverDigest?: string;
+  tags?: string[];
 }
 
 export async function fetchHdwCommunityPluginDetail(
@@ -801,14 +809,20 @@ export async function fetchHdwMarketplaceManifestText(
   // so we look up the digest we stored at publish time and construct a
   // coverUrl pointing to the HDW blob proxy endpoint.
   const coverDigests = readCoverDigests(dataDir);
-  if (Object.keys(coverDigests).length > 0 && manifest && typeof manifest === 'object') {
-    const m = manifest as { plugins?: Array<Record<string, unknown>> };
-    if (Array.isArray(m.plugins)) {
-      for (const entry of m.plugins) {
-        const name = typeof entry.name === 'string' ? entry.name : undefined;
-        if (name && coverDigests[name] && !entry.coverUrl) {
-          entry.coverUrl = `/api/hdw/api/community/blobs/${coverDigests[name]}`;
-        }
+  // Cloud-sourced: check HDW manifest's own cover_digest field first.
+  const m = manifest as { plugins?: Array<Record<string, unknown>> };
+  if (Array.isArray(m.plugins)) {
+    for (const entry of m.plugins) {
+      const name = typeof entry.name === 'string' ? entry.name : undefined;
+      const cloudDigest = typeof entry.cover_digest === 'string'
+        ? entry.cover_digest.trim()
+        : undefined;
+      if (cloudDigest && !entry.coverUrl) {
+        entry.coverUrl = `/api/hdw/api/community/blobs/${cloudDigest}`;
+      }
+      // Fallback: locally stored digest from publish time.
+      if (name && coverDigests[name] && !entry.coverUrl) {
+        entry.coverUrl = `/api/hdw/api/community/blobs/${coverDigests[name]}`;
       }
     }
   }

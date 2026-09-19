@@ -147,36 +147,61 @@ export function updateRecentlyOpenedProjectCover(
  * project and patch localStorage in place. Returns the IDs whose
  * coverDigest changed so the caller can trigger a re-render if needed.
  *
- * This is the authoritative sync path: the daemon's SQLite `projects`
- * table is the source of truth for `cover_digest`, so this call supersedes
- * any stale or missing value the localStorage entry carried from its
- * initial `recordRecentlyOpenedProject` write.
+ * This is the authoritative sync path: the daemon merges local SQLite
+ * `projects.cover_digest` with the HDW team-projects catalog and returns
+ * the best digest for each recent entry, so this call supersedes any stale
+ * or missing value the localStorage entry carried from its initial
+ * `recordRecentlyOpenedProject` write. Personal projects whose local
+ * `.od/projects/<id>` directory is gone are removed from the localStorage
+ * store so they stop showing on Home.
  */
 export async function enrichRecentlyOpenedProjectCovers(): Promise<string[]> {
   const entries = read();
   if (entries.length === 0) return [];
   const ids = entries.map((e) => e.id);
+  // Pass workspace scope from the localStorage entry so the daemon can
+  // query the HDW team-projects catalog for covers in addition to the
+  // local SQLite `projects.cover_digest` value.
+  const projects = entries.map((e) => ({
+    id: e.id,
+    ...(e.workspaceId != null ? { workspaceId: e.workspaceId } : {}),
+    ...(e.workspaceVisibility != null ? { workspaceVisibility: e.workspaceVisibility } : {}),
+  }));
   let digests: Record<string, string | null> = {};
+  let missingPersonalProjectIds: string[] = [];
   try {
     const resp = await fetch('/api/projects/cover-digests', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ids }),
+      body: JSON.stringify({ ids, projects }),
     });
     if (!resp.ok) return [];
-    const json = (await resp.json()) as { digests?: Record<string, string | null> };
+    const json = (await resp.json()) as {
+      digests?: Record<string, string | null>;
+      missingPersonalProjectIds?: string[];
+    };
     digests = json.digests ?? {};
+    missingPersonalProjectIds = json.missingPersonalProjectIds ?? [];
   } catch {
     return [];
   }
+  const missingIds = new Set(missingPersonalProjectIds);
   const changed: string[] = [];
+  const remaining: RecentlyOpenedProject[] = [];
   for (const entry of entries) {
+    if (missingIds.has(entry.id)) {
+      // Reuse the return value as a "needs re-render" signal so Home drops
+      // the card immediately instead of waiting for a later project refresh.
+      changed.push(entry.id);
+      continue;
+    }
+    remaining.push(entry);
     const fresh = digests[entry.id] ?? null;
     if (fresh !== (entry.coverDigest ?? null)) {
       entry.coverDigest = fresh;
       changed.push(entry.id);
     }
   }
-  if (changed.length > 0) write(entries);
+  if (changed.length > 0) write(remaining);
   return changed;
 }

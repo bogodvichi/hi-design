@@ -243,11 +243,11 @@
   font-weight: 500;
   cursor: pointer;
   white-space: nowrap;
-  transition: opacity 0.15s;
+  transition: background 0.15s;
 }
 
 .copyBtn:hover {
-  opacity: 0.9;
+  background: #4d90f7;
 }
 
 .openPreview {
@@ -271,6 +271,25 @@
   min-height: 120px;
   color: var(--color-text-secondary, #888);
   font-size: 14px;
+}
+
+.sharePanel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.shareHint {
+  font-size: 13px;
+  color: var(--color-text-secondary, #888);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.successHint {
+  font-size: 13px;
+  color: #22c55e;
+  margin: 0;
 }
 
 .footer {
@@ -305,11 +324,11 @@
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: opacity 0.15s, background 0.15s;
+  transition: background 0.15s;
 }
 
 .footerAction:hover:not(:disabled) {
-  opacity: 0.9;
+  background: #4d90f7;
 }
 
 .footerAction:disabled {

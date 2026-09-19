@@ -46,6 +46,33 @@ export function registerPluginMarketplaceRoutes(app: Express, deps: RegisterPlug
  const dataDir = deps.dataDir;
  const projectsDir = path.join(dataDir, 'projects');
 
+  // Augment marketplace plugin entries with prompt from locally installed
+  // plugins SKILL.md files. The HDW backend may not return prompt in the
+  // marketplace manifest, so we fill it in from installed plugins that were
+  // remixed/used locally, mirroring how coverUrl is augmented from local digests.
+  function augmentPluginsWithLocalPrompt(plugins: unknown[]): void {
+    if (!plugins.length) return;
+    const rows = db.prepare(`SELECT source_marketplace_entry_name, fs_path FROM installed_plugins WHERE source_marketplace_entry_name IS NOT NULL`).all() as Array<{ source_marketplace_entry_name: string; fs_path: string }>;
+    const fsPathByName = new Map<string, string>();
+    for (const row of rows) {
+      if (row.source_marketplace_entry_name && row.fs_path) {
+        fsPathByName.set(row.source_marketplace_entry_name, row.fs_path);
+      }
+    }
+    if (!fsPathByName.size) return;
+    for (const entry of plugins as Array<Record<string, unknown>>) {
+      if (typeof entry.prompt === 'string' && entry.prompt.trim()) continue;
+      const name = typeof entry.name === 'string' ? entry.name : undefined;
+      if (!name) continue;
+      const fsPath = fsPathByName.get(name);
+      if (!fsPath) continue;
+      try {
+        const skillMd = fs.readFileSync(path.join(fsPath, 'SKILL.md'), 'utf8');
+        if (skillMd.trim()) entry.prompt = skillMd;
+      } catch { /* SKILL.md missing, skip */ }
+    }
+  }
+
   const readBody = (req: Request): Record<string, unknown> =>
     req.body && typeof req.body === 'object' ? (req.body as Record<string, unknown>) : {};
 
@@ -132,7 +159,9 @@ export function registerPluginMarketplaceRoutes(app: Express, deps: RegisterPlug
             const manifestText = await fetchHdwMarketplaceManifestText(HDW_MARKETPLACE_URL, dataDir, { publisher_username: username });
             if (manifestText) {
               const manifest = JSON.parse(manifestText) as { plugins?: unknown[] };
-              res.json({ plugins: manifest.plugins ?? [] });
+              const plugins = manifest.plugins ?? [];
+              augmentPluginsWithLocalPrompt(plugins);
+              res.json({ plugins });
               return;
             }
           }
@@ -142,10 +171,13 @@ export function registerPluginMarketplaceRoutes(app: Express, deps: RegisterPlug
           const pub = (p as Record<string, unknown>).publisher as Record<string, unknown> | undefined;
           return pub?.id === username;
         });
+        augmentPluginsWithLocalPrompt(fallback);
         res.json({ plugins: fallback });
         return;
       }
-      res.json({ plugins: row.manifest.plugins ?? [] });
+      const cachedPlugins = row.manifest.plugins ?? [];
+      augmentPluginsWithLocalPrompt(cachedPlugins);
+      res.json({ plugins: cachedPlugins });
     } catch (err) { res.status(500).json({ error: String(err) }); }
   });
  app.get('/api/marketplaces/:id/plugins/:name/preview', async (req, res) => {
@@ -263,46 +295,81 @@ app.post('/api/marketplaces/:id/plugins/:name/remix', async (req, res) => {
     // Check if the plugin is already installed locally.
     const existing = getInstalledPlugin(db, pluginName);
     let installedPlugin = existing;
-
-   if (!installedPlugin) {
-     // Download the archive from HDW.
-     const archiveBuffer = await downloadHdwCommunityArchive(pluginName, pluginVersion, dataDir);
+    let contentSource: string | null = null;
+    if (!installedPlugin) {
+      // Download the archive from HDW.
+      const archiveBuffer = await downloadHdwCommunityArchive(pluginName, pluginVersion, dataDir);
       if (!archiveBuffer) {
         return res.status(502).json({ error: 'Failed to download archive from HDW' });
       }
 
       // Extract to a temp directory.
-      const { x: tarExtract } = await import('tar');
       const { promises: fsp } = await import('node:fs');
       const os = await import('node:os');
       const tmpRoot = await fsp.mkdtemp(nodePath.join(os.tmpdir(), 'od-remix-'));
-      const archivePath = nodePath.join(tmpRoot, 'archive.tgz');
-      await fsp.writeFile(archivePath, archiveBuffer);
+      // Detect archive format by magic bytes. ZIP starts with PK (0x50 0x4B);
+      // gzip starts with 0x1F 0x8B (tar.gz); uncompressed tar has "ustar" at
+      // offset 257. The publish-community route creates ZIP archives via
+      // JSZip, while the CLI publish-hdw flow creates tar.gz archives.
+      const isZip = archiveBuffer.length >= 4
+        && archiveBuffer[0] === 0x50 && archiveBuffer[1] === 0x4B;
       try {
-        await new Promise<void>((resolve, reject) => {
-          pipeline(
-            fs.createReadStream(archivePath),
-             tarExtract({ cwd: tmpRoot }) as NodeJS.WritableStream,
-            (err: NodeJS.ErrnoException | null) => err ? reject(err) : resolve(),
-          );
-        });
+        if (isZip) {
+          // Extract ZIP archives (created by createProjectArchiveStream / JSZip).
+          const JSZip = (await import('jszip')).default;
+          const zip = await JSZip.loadAsync(archiveBuffer);
+          const extractOps: Promise<void>[] = [];
+          zip.forEach((relativePath, entry) => {
+            if (entry.dir) return;
+            const dest = nodePath.join(tmpRoot, relativePath);
+            const destDir = nodePath.dirname(dest);
+            extractOps.push(
+              fsp.mkdir(destDir, { recursive: true }).then(() =>
+                entry.async('nodebuffer'),
+              ).then((data) => fsp.writeFile(dest, data)),
+            );
+          });
+          await Promise.all(extractOps);
+        } else {
+          // Extract tar/tgz archives (created by the CLI publish-hdw flow).
+          const { x: tarExtract } = await import('tar');
+          const archivePath = nodePath.join(tmpRoot, 'archive.tgz');
+          await fsp.writeFile(archivePath, archiveBuffer);
+          try {
+            await new Promise<void>((resolve, reject) => {
+              pipeline(
+                fs.createReadStream(archivePath),
+                 tarExtract({ cwd: tmpRoot }) as NodeJS.WritableStream,
+                (err: NodeJS.ErrnoException | null) => err ? reject(err) : resolve(),
+              );
+            });
+          } finally {
+            await fsp.unlink(archivePath).catch(() => {});
+          }
+        }
       } catch (err) {
         return res.status(500).json({ error: `Archive extraction failed: ${(err as Error).message}` });
       }
-      // Clean up the archive after extraction so it does not leak into the installed plugin folder or the remix project.
-      await fsp.unlink(archivePath).catch(() => {});
 
-      // Archives often contain a top-level subdirectory (e.g. `tar czf
-      // archive.tgz my-plugin/`). If the manifest is not at the extraction
-      // root, search one level deep for a folder containing open-design.json
-      // or SKILL.md and install from there instead.
-      const manifestFound = await fsp.stat(nodePath.join(tmpRoot, 'open-design.json'))
+
+      // Detect archive type: plugin archives contain open-design.json
+      // or SKILL.md; project archives contain DESIGN-MANIFEST.json.
+      // Since publish-community now injects open-design.json + SKILL.md
+      // into project archives too, most archives will have both. But
+      // handle the legacy case where only DESIGN-MANIFEST.json exists.
+      const hasPluginManifest = await fsp.stat(nodePath.join(tmpRoot, 'open-design.json'))
         .then(() => true).catch(() => false)
         || await fsp.stat(nodePath.join(tmpRoot, 'SKILL.md'))
           .then(() => true).catch(() => false);
-     let installSource = tmpRoot;
-     if (!manifestFound) {
-       const entries = await fsp.readdir(tmpRoot, { withFileTypes: true });
+      const hasProjectManifest = await fsp.stat(nodePath.join(tmpRoot, 'DESIGN-MANIFEST.json'))
+        .then(() => true).catch(() => false);
+
+      contentSource = tmpRoot;
+      let isPluginArchive = hasPluginManifest;
+
+      // If no plugin manifest at root, search one level deep.
+      if (!isPluginArchive) {
+        const entries = await fsp.readdir(tmpRoot, { withFileTypes: true });
         for (const e of entries) {
           if (!e.isDirectory() || e.name.startsWith('.')) continue;
           const hasManifest = await fsp.stat(nodePath.join(tmpRoot, e.name, 'open-design.json'))
@@ -310,114 +377,134 @@ app.post('/api/marketplaces/:id/plugins/:name/remix', async (req, res) => {
             || await fsp.stat(nodePath.join(tmpRoot, e.name, 'SKILL.md'))
               .then(() => true).catch(() => false);
           if (hasManifest) {
-            installSource = nodePath.join(tmpRoot, e.name);
+            contentSource = nodePath.join(tmpRoot, e.name);
+            isPluginArchive = true;
             break;
           }
         }
       }
 
-      // Install from the resolved plugin folder.
-      const events: unknown[] = [];
-      let installError: string | null = null;
-      for await (const ev of installFromLocalFolder(db, {
-        source: installSource,
-        _stagedFolder: installSource,
-        _stagedSourceKind: 'local',
-      } as any)) {
-        const event = ev as { kind: string; message?: string };
-        if (event.kind === 'error') {
-          installError = event.message ?? 'install failed';
+      // For plugin archives, install via the plugin installer so the
+      // registry tracks it. For project archives (DESIGN-MANIFEST.json
+      // only), skip installation and use the extracted folder directly.
+      if (isPluginArchive) {
+        const events: unknown[] = [];
+        let installError: string | null = null;
+        for await (const ev of installFromLocalFolder(db, {
+          source: contentSource,
+          _stagedFolder: contentSource,
+          _stagedSourceKind: 'local',
+        } as any)) {
+          const event = ev as { kind: string; message?: string };
+          if (event.kind === 'error') {
+            installError = event.message ?? 'install failed';
+          }
+          events.push(ev);
         }
-        events.push(ev);
-      }
-      if (installError) {
-        return res.status(500).json({ error: installError });
-      }
-      installedPlugin = getInstalledPlugin(db, pluginName);
-      if (!installedPlugin) {
-        return res.status(500).json({ error: 'Plugin installed but not found in registry' });
+        if (installError) {
+          return res.status(500).json({ error: installError });
+        }
+        installedPlugin = getInstalledPlugin(db, pluginName);
+        if (!installedPlugin) {
+          return res.status(500).json({ error: 'Plugin installed but not found in registry' });
+        }
+      } else if (hasProjectManifest) {
+        // Project archive: use the extracted directory directly.
+        // No plugin install needed — just copy content files later.
+      } else {
+        return res.status(500).json({ error: 'Archive contains no plugin manifest (open-design.json/SKILL.md) or project manifest (DESIGN-MANIFEST.json)' });
       }
     }
 
-    // Create a project from the installed plugin (duplicate-project flow).
+    // Create a project from the installed plugin or extracted folder.
     const { ensureProject } = await import('../../projects.js');
     const { insertProject, insertConversation, getProject } = await import('../../db.js');
-   const PROJECTS_DIR = projectsDir;
+    const PROJECTS_DIR = projectsDir;
 
     const now = Date.now();
     const projectId = randomUUID();
     const conversationId = randomUUID();
-   const metadata: { kind: 'prototype'; entryFile?: string } = { kind: 'prototype' };
-   const projectRoot = await ensureProject(PROJECTS_DIR, projectId, metadata);
-   // Copy project content files (HTML, assets, etc.) to the project
-   // root so they are immediately visible in the file viewer.
-   const pluginFsPath = (installedPlugin as { fsPath: string }).fsPath;
-  const pluginEntries = await fs.promises.readdir(pluginFsPath, { withFileTypes: true });
-  // Skip plugin metadata and non-content build artifacts.
-  // NOTE: `dist` is NOT skipped — for design projects it contains the
-  // actual user-facing HTML/CSS/JS that the file viewer needs to show.
-  const REMIX_SKIP_NAMES = new Set([
-    'open-design.json', 'SKILL.md', '.claude-plugin',
-    'node_modules', 'build', '.git', 'archive.tgz',
-  ]);
-  for (const ent of pluginEntries) {
-    if (REMIX_SKIP_NAMES.has(ent.name)) continue;
-    const src = nodePath.join(pluginFsPath, ent.name);
-     const dst = nodePath.join(projectRoot, ent.name);
-     try {
-       if (ent.isDirectory()) {
-         await fs.promises.cp(src, dst, { recursive: true, force: true });
-       } else if (ent.isFile()) {
-         await fs.promises.copyFile(src, dst);
-       }
-     } catch {
-     // Non-fatal: a missing content file should not block project creation.
-   }
- }
- // Derive the project entryFile so the file viewer knows which HTML
- // to show on first open. Prefer the plugin manifest's od.preview.entry;
- // fall back to auto-detecting the first HTML file in the project root
- // or dist/ subdirectory.
- {
-   let entryFile: string | undefined;
-   try {
-     const manifestPath = nodePath.join(pluginFsPath, 'open-design.json');
-     const manifestRaw = await fs.promises.readFile(manifestPath, 'utf8');
-     const manifest = JSON.parse(manifestRaw) as { od?: { preview?: { entry?: string } } };
-     const manifestEntry = manifest?.od?.preview?.entry;
-     if (typeof manifestEntry === 'string' && manifestEntry.trim()) {
-       entryFile = manifestEntry.trim().replace(/^\.\//, '');
-     }
-   } catch { /* best-effort: manifest may be absent */ }
-   if (!entryFile) {
-     const candidates = ['index.html', 'dist/index.html'];
-     for (const c of candidates) {
-       try {
-         const st = await fs.promises.stat(nodePath.join(projectRoot, c));
-         if (st.isFile()) { entryFile = c; break; }
-       } catch {}
-     }
-   }
-   if (!entryFile) {
-     // Scan top-level and dist/ for any .html file.
-     for (const dir of ['', 'dist']) {
-       try {
-         const entries = await fs.promises.readdir(dir ? nodePath.join(projectRoot, dir) : projectRoot, { withFileTypes: true });
-         for (const e of entries) {
-           if (e.isFile() && /\.html?$/i.test(e.name)) {
-             entryFile = dir ? `${dir}/${e.name}` : e.name;
-             break;
-           }
-         }
-       } catch {}
-       if (entryFile) break;
-     }
-   }
-   if (entryFile) metadata.entryFile = entryFile;
- }
-   const prompt = entry.prompt
-     ? `Reference project from community: ${pluginTitle}\n\n${String(entry.prompt)}`
-     : `Remix of community project: ${pluginTitle}`;
+    const metadata: { kind: 'prototype'; entryFile?: string } = { kind: 'prototype' };
+    const projectRoot = await ensureProject(PROJECTS_DIR, projectId, metadata);
+
+    // Use installed plugin folder or the extracted archive directory.
+    const contentDir = installedPlugin
+      ? (installedPlugin as { fsPath: string }).fsPath
+      : contentSource!;
+    const pluginEntries = await fs.promises.readdir(contentDir, { withFileTypes: true });
+    // Skip plugin/project metadata and non-content build artifacts.
+    // NOTE: dist is NOT skipped — for design projects it contains the
+    // actual user-facing HTML/CSS/JS that the file viewer needs to show.
+    const REMIX_SKIP_NAMES = new Set(['open-design.json', 'SKILL.md', '.claude-plugin',
+      'node_modules', 'build', '.git', 'archive.tgz',
+      'DESIGN-MANIFEST.json', 'DESIGN-HANDOFF.md']);
+    for (const ent of pluginEntries) {
+      if (REMIX_SKIP_NAMES.has(ent.name)) continue;
+      const src = nodePath.join(contentDir, ent.name);
+      const dst = nodePath.join(projectRoot, ent.name);
+      try {
+        if (ent.isDirectory()) {
+          await fs.promises.cp(src, dst, { recursive: true, force: true });
+        } else if (ent.isFile()) {
+          await fs.promises.copyFile(src, dst);
+        }
+      } catch {
+        // Non-fatal: a missing content file should not block project creation.
+      }
+    }
+
+    // Derive the project entryFile so the file viewer knows which HTML
+    // to show on first open. Prefer open-design.json od.preview.entry,
+    // then DESIGN-MANIFEST.json entryFile, then auto-detect.
+    {
+      let entryFile: string | undefined;
+      try {
+        const manifestPath = nodePath.join(contentDir, 'open-design.json');
+        const manifestRaw = await fs.promises.readFile(manifestPath, 'utf8');
+        const manifest = JSON.parse(manifestRaw) as { od?: { preview?: { entry?: string } } };
+        const manifestEntry = manifest?.od?.preview?.entry;
+        if (typeof manifestEntry === 'string' && manifestEntry.trim()) {
+          entryFile = manifestEntry.trim().replace(/^\.\//, '');
+        }
+      } catch { /* best-effort: manifest may be absent */ }
+      if (!entryFile) {
+        try {
+          const designManifestPath = nodePath.join(contentDir, 'DESIGN-MANIFEST.json');
+          const designRaw = await fs.promises.readFile(designManifestPath, 'utf8');
+          const designManifest = JSON.parse(designRaw) as { entryFile?: string };
+          if (typeof designManifest.entryFile === 'string' && designManifest.entryFile.trim()) {
+            entryFile = designManifest.entryFile.trim().replace(/^\.\//, '');
+          }
+        } catch { /* best-effort */ }
+      }
+      if (!entryFile) {
+        const candidates = ['index.html', 'dist/index.html'];
+        for (const c of candidates) {
+          try {
+            const st = await fs.promises.stat(nodePath.join(projectRoot, c));
+            if (st.isFile()) { entryFile = c; break; }
+          } catch {}
+        }
+      }
+      if (!entryFile) {
+        for (const dir of ['', 'dist']) {
+          try {
+            const entries = await fs.promises.readdir(dir ? nodePath.join(projectRoot, dir) : projectRoot, { withFileTypes: true });
+            for (const e of entries) {
+              if (e.isFile() && /\.html?$/i.test(e.name)) {
+                entryFile = dir ? `${dir}/${e.name}` : e.name;
+                break;
+              }
+            }
+          } catch {}
+          if (entryFile) break;
+        }
+      }
+      if (entryFile) metadata.entryFile = entryFile;
+    }
+    const prompt = entry.prompt
+      ? `Reference project from community: ${pluginTitle}\n\n${String(entry.prompt)}`
+      : `Remix of community project: ${pluginTitle}`;
     insertProject(db, {
       id: projectId,
       name: `${pluginTitle}`,
@@ -428,27 +515,23 @@ app.post('/api/marketplaces/:id/plugins/:name/remix', async (req, res) => {
       createdAt: now,
       updatedAt: now,
     });
-   // Bind the project to the user's personal (default-team) workspace so
-   // it appears in the "个人所有" project list. Without this row, the
-   // project exists in the `projects` table but is invisible to every
-   // workspace-scoped query (PersonalAllView, TeamSpaceView, etc.).
-   const { ensureWorkspaceProject } = await import('../../db.js');
-   const { getSharedSpaceTeamId, getSharedSpaceMemberId } = await import('../../ids.js');
-   const sharedSpaceId = getSharedSpaceTeamId();
-   const sharedSpaceMemberId = getSharedSpaceMemberId();
-   ensureWorkspaceProject(db, {
-     projectId,
-     workspaceId: sharedSpaceId,
-     visibility: 'personal',
-     resourceState: 'active',
-     createdByWorkspaceMemberId: sharedSpaceMemberId,
-     updatedByWorkspaceMemberId: sharedSpaceMemberId,
-     syncState: 'local_only',
-     resourceHubResourceId: null,
-     cloudTombstonedAt: null,
-     createdAt: now,
-     updatedAt: now,
-   });
+    const { ensureWorkspaceProject } = await import('../../db.js');
+    const { getSharedSpaceTeamId, getSharedSpaceMemberId } = await import('../../ids.js');
+    const sharedSpaceId = getSharedSpaceTeamId();
+    const sharedSpaceMemberId = getSharedSpaceMemberId();
+    ensureWorkspaceProject(db, {
+      projectId,
+      workspaceId: sharedSpaceId,
+      visibility: 'personal',
+      resourceState: 'active',
+      createdByWorkspaceMemberId: sharedSpaceMemberId,
+      updatedByWorkspaceMemberId: sharedSpaceMemberId,
+      syncState: 'local_only',
+      resourceHubResourceId: null,
+      cloudTombstonedAt: null,
+      createdAt: now,
+      updatedAt: now,
+    });
     insertConversation(db, {
       id: conversationId,
       projectId,
@@ -461,9 +544,9 @@ app.post('/api/marketplaces/:id/plugins/:name/remix', async (req, res) => {
       ok: true,
       project,
       conversationId,
-      pluginId: installedPlugin.id,
+      pluginId: installedPlugin ? installedPlugin.id : null,
       message: `Created a project from ${pluginTitle}.`,
     });
-   } catch (err) { res.status(500).json({ error: String(err) }); }
- });
+    } catch (err) { res.status(500).json({ error: String(err) }); }
+  });
 }

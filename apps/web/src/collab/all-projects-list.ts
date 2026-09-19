@@ -109,6 +109,7 @@ const catalogOverrides = new Map(
         updatedAt: teamProject.updatedAt,
         createdByWorkspaceMemberId: teamProject.ownerMemberId,
         ...(teamProject.ownerDisplayName?.trim() ? { ownerDisplayName: teamProject.ownerDisplayName.trim() } : {}),
+        ...(teamProject.coverDigest ? { coverDigest: teamProject.coverDigest } : {}),
       },
     ]),
 );
@@ -123,6 +124,7 @@ return input.projects.map((project) => {
     ...(typeof catalog.updatedAt === 'number' ? { updatedAt: catalog.updatedAt } : {}),
       ...(catalog.createdByWorkspaceMemberId ? { createdByWorkspaceMemberId: catalog.createdByWorkspaceMemberId } : {}),
       ...(catalog.ownerDisplayName ? { ownerDisplayName: catalog.ownerDisplayName } : {}),
+      ...(catalog.coverDigest ? { coverDigest: catalog.coverDigest } : {}),
   };
 });
 }
