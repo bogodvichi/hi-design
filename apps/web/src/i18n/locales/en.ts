@@ -1,4 +1,4 @@
-﻿import type { Dict } from '../types';
+import type { Dict } from '../types';
 
 export const en: Dict = {
   'invite.header.eyebrow': "Team invitation",
@@ -5652,6 +5652,7 @@ export const en: Dict = {
   'share.tabLink': "Share Link",
   'share.tabLabel': "Share method",
   'share.generating': "Generating share link…",
+  'share.sharingToTeam': "Adding to shared space…",
   'share.linkGenerated': "Share link generated",
   'share.linkHint': "Anyone with the link can view this project.",
   'share.linkLabel': "Share link",
@@ -5664,6 +5665,7 @@ export const en: Dict = {
   'share.noLink': "No share link yet",
   'share.generateLink': "Generate Link",
   'share.generateLinkHint': "Click \"Generate Link\" in the bottom-right to create a share link.",
+  'share.regenerateLink': "Regenerate Link",
  'share.publish': "Publish",
  'share.confirm': "OK",
   'share.publishing': "Publishing…",

@@ -2292,7 +2292,7 @@ function requestDelete(project: Project) {
                    <div className="recent-projects__card-time">
                   {space !== 'drafts' ? (
                   <>
-                 {creator.ownedBySelf ? (
+                 {creator.ownedBySelf && space !== 'team' ? (
                    <span
                      className="recent-projects__card-owner"
                      style={{ backgroundColor: '#000' }}

@@ -15,9 +15,8 @@ import type { WorkspaceCollabContext } from '@open-design/contracts';
 
 import { useT } from '../i18n';
 import { RemixIcon } from './RemixIcon';
-import { fetchProjectDeployments } from '../providers/registry';
 import { workspaceProjectHeaders } from '../collab/workspace-identity';
-import type { WebDeploymentInfo } from '../providers/registry';
+import { moveWorkspaceProject } from '../state/projects';
 import styles from './UnifiedShareDialog.module.css';
 
 type ShareTab = 'community' | 'file' | 'link';
@@ -38,22 +37,33 @@ interface UnifiedShareDialogProps {
   onClose: () => void;
 }
 
-function shareUrlForDeployment(deployment: WebDeploymentInfo): string {
-  return deployment.url?.trim() || '';
-}
-
-function pickLatestShareUrl(deployments: WebDeploymentInfo[]): string {
-  const valid = deployments.filter(
-    (d) => shareUrlForDeployment(d) && d.status !== 'failed',
-  );
-  if (valid.length === 0) return '';
-  valid.sort((a, b) => b.createdAt - a.createdAt);
-  const latest = valid[0];
-  return latest ? shareUrlForDeployment(latest) : '';
+/**
+ * Extract the public share URL from an HDW share-link API response.
+ * Handles both the envelope shape `{ code, msg, data: { token, url } }`
+ * and a direct `{ token, url }` payload. When only a token is returned,
+ * constructs the viewer URL via the daemon's `/api/hdw/share/:token`
+ * proxy so the link is reachable from the user's browser.
+ */
+function extractShareUrl(data: unknown): string {
+  if (!data || typeof data !== 'object') return '';
+  const obj = data as Record<string, unknown>;
+  // Envelope: { code: 0, data: { token, url } }
+  const inner =
+    obj.data && typeof obj.data === 'object'
+      ? (obj.data as Record<string, unknown>)
+      : obj;
+  if (typeof inner.url === 'string' && inner.url.trim()) {
+    return inner.url.trim();
+  }
+  if (typeof inner.token === 'string' && inner.token.trim()) {
+    return `${window.location.origin}/api/hdw/share/${inner.token.trim()}`;
+  }
+  return '';
 }
 
 export function UnifiedShareDialog({
   projectId,
+  workspaceId,
   projectName,
   workspaceContext,
   onClose,
@@ -71,6 +81,8 @@ export function UnifiedShareDialog({
   // Share link state
   const [shareLink, setShareLink] = useState('');
   const [linkLoading, setLinkLoading] = useState(false);
+  const [linkGenerating, setLinkGenerating] = useState(false);
+  const [sharingToTeam, setSharingToTeam] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -80,18 +92,27 @@ export function UnifiedShareDialog({
     let cancelled = false;
     setLinkLoading(true);
     setLinkError(null);
-    fetchProjectDeployments(projectId, workspaceContext)
-      .then((deployments) => {
+    const params = new URLSearchParams();
+    params.set('project_id', projectId);
+    if (workspaceId) params.set('workspace_id', workspaceId);
+    fetch(`/api/hdw/api/share-link?${params}`, {
+      headers: workspaceContext ? workspaceProjectHeaders(workspaceContext) : {},
+    })
+      .then(async (resp) => {
         if (cancelled) return;
-        const url = pickLatestShareUrl(deployments);
-        if (url) {
-          setShareLink(url);
-        } else {
-          setLinkError(t('share.noLink'));
-        }
+        // 404 = no share link yet; leave shareLink empty so the UI shows
+        // the "generate" affordance.
+        if (resp.status === 404) return null;
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        return resp.json();
+      })
+      .then((data) => {
+        if (cancelled) return;
+        const url = extractShareUrl(data);
+        if (url) setShareLink(url);
       })
       .catch(() => {
-        if (!cancelled) setLinkError(t('share.noLink'));
+        // Network/parse failure — leave empty; user can still generate.
       })
       .finally(() => {
         if (!cancelled) setLinkLoading(false);
@@ -99,7 +120,7 @@ export function UnifiedShareDialog({
     return () => {
       cancelled = true;
     };
-  }, [activeTab, projectId, workspaceContext, t]);
+  }, [activeTab, projectId, workspaceId, workspaceContext]);
 
   const canPublish = useMemo(
     () => communityTitle.trim().length > 0 && !publishing && !publishResult,
@@ -148,6 +169,73 @@ export function UnifiedShareDialog({
     }
   }
 
+ async function handleGenerateLink() {
+   setLinkError(null);
+   setLinkGenerating(true);
+   setSharingToTeam(false);
+   try {
+     // Before generating a public share link, the project must live in the
+     // shared space (team visibility) so HDW can serve it to anonymous
+     // viewers. Query the project's workspace scope; if it is not already
+     // 'team', promote it first — the move route pushes content to HDW.
+     if (workspaceContext) {
+       let needsTeamShare = true;
+       try {
+         const scopeResp = await fetch(
+           `/api/projects/${encodeURIComponent(projectId)}/workspace-scope`,
+           { headers: workspaceProjectHeaders(workspaceContext) },
+         );
+         if (scopeResp.ok) {
+           const scopeData = (await scopeResp.json()) as { scope?: { visibility?: string } };
+           if (scopeData.scope?.visibility === 'team') {
+             needsTeamShare = false;
+           }
+         }
+       } catch {
+         // Scope query failed — assume team share is needed and let the
+         // move route reject if the project is already team-visible.
+       }
+       if (needsTeamShare) {
+         setSharingToTeam(true);
+         await moveWorkspaceProject({
+           projectId,
+           visibility: 'team',
+           workspaceContext,
+         });
+         setSharingToTeam(false);
+       }
+     }
+     const resp = await fetch('/api/hdw/api/share-link/generate', {
+       method: 'POST',
+       headers: {
+         'Content-Type': 'application/json',
+         ...(workspaceContext ? workspaceProjectHeaders(workspaceContext) : {}),
+       },
+       body: JSON.stringify({
+         project_id: projectId,
+         ...(workspaceId ? { workspace_id: workspaceId } : {}),
+       }),
+     });
+     const data = await resp.json();
+     if (!resp.ok) {
+       throw new Error(
+         data?.message || data?.msg || data?.error || `HTTP ${resp.status}`,
+       );
+     }
+     const url = extractShareUrl(data);
+     if (url) {
+       setShareLink(url);
+     } else {
+       setLinkError(t('share.noLink'));
+     }
+   } catch (err) {
+     setLinkError(err instanceof Error ? err.message : String(err));
+   } finally {
+     setLinkGenerating(false);
+     setSharingToTeam(false);
+   }
+ }
+
   const tabs: { id: ShareTab; label: string; icon: string }[] = [
     { id: 'community', label: t('share.tabCommunity'), icon: 'global-line' },
     { id: 'file', label: t('share.tabFile'), icon: 'group-line' },
@@ -161,27 +249,42 @@ export function UnifiedShareDialog({
         : publishing
           ? t('share.publishing')
           : t('share.publish')
-      : t('share.close');
+     : activeTab === 'link'
+       ? linkGenerating
+         ? t('share.generating')
+         : sharingToTeam
+           ? t('share.sharingToTeam')
+           : shareLink
+             ? t('share.regenerateLink')
+             : t('share.generateLink')
+       : t('share.close');
 
-  const footerActionDisabled =
-    activeTab === 'community' ? !canPublish : false;
+ const footerActionDisabled =
+   activeTab === 'community'
+     ? !canPublish
+     : activeTab === 'link'
+       ? linkGenerating || sharingToTeam
+       : false;
 
   function handleFooterAction() {
     if (activeTab === 'community' && !publishResult) {
       void handlePublish();
+    } else if (activeTab === 'link') {
+      void handleGenerateLink();
     } else {
       onClose();
     }
   }
 
   return createPortal(
-    <Dialog
-      onClose={onClose}
-      closeOnEscape
-      closeOnBackdrop
-      ariaLabel={t('share.dialogTitle', { name: projectName })}
-      className={styles.dialog}
-    >
+   <Dialog
+     onClose={onClose}
+     closeOnEscape
+     closeOnBackdrop
+     ariaLabel={t('share.dialogTitle', { name: projectName })}
+     className={styles.dialog}
+     backdropClassName={styles.backdrop}
+   >
       <DialogHeader className={styles.header}>
         <DialogTitle className={styles.title}>
           {t('share.dialogTitle', { name: projectName })}
@@ -274,9 +377,11 @@ export function UnifiedShareDialog({
             </div>
             <p className={styles.linkHeading}>{t('share.linkLabel')}</p>
             <p className={styles.linkHint}>{t('share.linkHint')}</p>
-            {linkLoading && <p className={styles.linkHint}>{t('share.querying')}</p>}
-            {linkError && <p className={styles.error}>{linkError}</p>}
-            {shareLink && !linkLoading && (
+           {linkLoading && <p className={styles.linkHint}>{t('share.querying')}</p>}
+           {sharingToTeam && <p className={styles.linkHint}>{t('share.sharingToTeam')}</p>}
+           {linkGenerating && <p className={styles.linkHint}>{t('share.generating')}</p>}
+           {linkError && <p className={styles.error}>{linkError}</p>}
+           {shareLink && !linkLoading && !linkGenerating && !sharingToTeam && (
               <>
                 <div className={styles.copyRow}>
                   <Input
@@ -299,9 +404,9 @@ export function UnifiedShareDialog({
                 </a>
               </>
             )}
-            {!shareLink && !linkLoading && !linkError && (
-              <p className={styles.linkHint}>{t('share.generateLinkHint')}</p>
-            )}
+           {!shareLink && !linkLoading && !linkGenerating && !sharingToTeam && !linkError && (
+             <p className={styles.linkHint}>{t('share.generateLinkHint')}</p>
+           )}
           </div>
         )}
       </DialogBody>

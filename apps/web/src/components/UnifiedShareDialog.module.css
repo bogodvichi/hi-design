@@ -11,8 +11,13 @@
   gap: 0;
 }
 
+.backdrop {
+  z-index: 1700;
+}
+
 .header {
   display: flex;
+  flex-direction: row;
   align-items: center;
   justify-content: space-between;
   padding: 20px 24px;

@@ -5809,8 +5809,9 @@ export interface Dict {
   'share.tabFile': string;
   'share.tabLink': string;
   'share.tabLabel': string;
-  'share.generating': string;
-  'share.linkGenerated': string;
+ 'share.generating': string;
+ 'share.sharingToTeam': string;
+ 'share.linkGenerated': string;
   'share.linkHint': string;
   'share.linkLabel': string;
   'share.copyLink': string;
@@ -5820,8 +5821,9 @@ export interface Dict {
   'share.communityTabPlaceholder': string;
   'share.querying': string;
   'share.noLink': string;
-  'share.generateLink': string;
-  'share.generateLinkHint': string;
+ 'share.generateLink': string;
+ 'share.generateLinkHint': string;
+  'share.regenerateLink': string;
  'share.publish': string;
  'share.confirm': string;
   'share.publishing': string;
