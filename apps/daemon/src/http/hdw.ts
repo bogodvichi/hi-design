@@ -335,7 +335,7 @@ export async function shareFolderProjectsToSharedSpace(
     createdByUsername: string;
     recipients: Array<{ username: string; displayname?: string }>;
     createdByDisplayname?: string | null;
-    items: Array<{ project_id: string; folder_id: string }>;
+    items: Array<{ project_id: string; folder_id: string; cover_digest?: string | null }>;
   },
 ): Promise<{ shared: number; skipped: number } | null> {
   if (!dataDir) return null;
@@ -351,7 +351,11 @@ export async function shareFolderProjectsToSharedSpace(
         ...r,
         recipient_member_id: getSharedSpaceMemberId(r.username),
       })),
-      items: input.items,
+      items: input.items.map((item) => ({
+        project_id: item.project_id,
+        folder_id: item.folder_id,
+        ...(item.cover_digest ? { coverDigest: item.cover_digest } : {}),
+      })),
     },
     session?.cookies,
   );

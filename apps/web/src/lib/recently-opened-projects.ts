@@ -111,6 +111,15 @@ export function readRecentlyOpenedProjects(): Project[] {
   }));
 }
 
+/**
+ * Read recently-opened project entries including `openedAt`, so callers
+ * that need to sort by open time (not just server `updatedAt`) can do so
+ * without relying on array index as a proxy.
+ */
+export function readRecentlyOpenedProjectEntries(): RecentlyOpenedProject[] {
+  return read();
+}
+
 /** Remove a project from the recently-opened store (e.g. after deletion). */
 export function removeRecentlyOpenedProject(projectId: string): void {
   const entries = read().filter((e) => e.id !== projectId);

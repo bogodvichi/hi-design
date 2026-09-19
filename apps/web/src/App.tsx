@@ -3424,13 +3424,16 @@ function AppInner() {
       // handoff. Do not re-navigate after persistence: if the user deliberately
       // backed out while creation finished, reopening the project would steal
       // focus. Non-optimistic creation paths retain the existing navigation.
-      if (!optimisticProjectId) {
-        openWorkspaceTab(projectRoute);
-        navigate(projectRoute);
-      }
-      return true;
-    },
-    [analytics.track, clearLocalProject, rememberLocalProject],
+     if (!optimisticProjectId) {
+       openWorkspaceTab(projectRoute);
+       navigate(projectRoute);
+     }
+      // Record the newly created project in localStorage so it appears in
+      // the Home recent-projects strip immediately on return.
+      recordRecentlyOpenedProject(project);
+     return true;
+   },
+   [analytics.track, clearLocalProject, rememberLocalProject],
  );
 
  const resolveSourceProjectWorkspaceContext = useCallback(async (
@@ -3857,8 +3860,39 @@ function AppInner() {
          || project.workspaceId === pullWorkspaceId
          || (shareBasedPull && project.workspaceId === homeWorkspaceId);
      }
-     return !requiresBoundCatalogProject;
-   };
+    return !requiresBoundCatalogProject;
+  };
+  // When opening a cross-workspace project (e.g. a regular team project
+  // opened from the shared space), getProject does not return
+  // ownerDisplayName — that field comes from the HDW team catalog JOIN,
+  // not from the SQLite projects table. Fetch the catalog entry from the
+  // project's home workspace and merge ownerDisplayName /
+  // createdByWorkspaceMemberId so recordRecentlyOpenedProject stores
+  // them for the Home recent-projects strip's resolveCreator.
+  const enrichProjectWithCatalogOwner = async (
+    project: Project,
+  ): Promise<Project> => {
+    if (project.ownerDisplayName?.trim()) return project;
+    if (!pullContext || pullContext === openingContext) return project;
+    try {
+      const lookup = await fetchTeamProjectCatalogEntry(project.id, pullContext);
+      if (!openingScopeIsCurrent()) return project;
+      const entry = lookup.ok ? lookup.project : null;
+      if (!entry) return project;
+      const ownerDisplayName = entry.ownerDisplayName?.trim() || null;
+      const createdByWorkspaceMemberId = entry.ownerMemberId?.trim() || null;
+      if (!ownerDisplayName && !createdByWorkspaceMemberId) return project;
+      return {
+        ...project,
+        ...(ownerDisplayName ? { ownerDisplayName } : {}),
+        ...(createdByWorkspaceMemberId
+          ? { createdByWorkspaceMemberId }
+          : {}),
+      };
+    } catch {
+      return project;
+    }
+  };
   const navigateToOpenedProject = (project: Project) => {
     const projectWorkspaceId = project.workspaceId?.trim() ?? '';
     // Don't overwrite a witness already set by ensureShareBootstrapWitness
@@ -3963,30 +3997,30 @@ function AppInner() {
         return next;
       });
      rememberHintAuthority();
+    const localProject = projectsRef.current.find(
+      (project) => project.id === id && canUseLocalProject(project),
+    );
+     if (localProject) {
+       await ensureShareBootstrapWitness(localProject);
+        return navigateToOpenedProject(await enrichProjectWithCatalogOwner(localProject));
+     }
+     return false;
+   }
+   if (
+     !catalogName
+     && projectsRef.current.some(
+       (project) => project.id === id && canUseLocalProject(project),
+     )
+   ) {
      const localProject = projectsRef.current.find(
        (project) => project.id === id && canUseLocalProject(project),
      );
-      if (localProject) {
-        await ensureShareBootstrapWitness(localProject);
-        return navigateToOpenedProject(localProject);
-      }
-      return false;
-    }
-    if (
-      !catalogName
-      && projectsRef.current.some(
-        (project) => project.id === id && canUseLocalProject(project),
-      )
-    ) {
-      const localProject = projectsRef.current.find(
-        (project) => project.id === id && canUseLocalProject(project),
-      );
-      if (localProject) {
-        await ensureShareBootstrapWitness(localProject);
-        return navigateToOpenedProject(localProject);
-      }
-      return false;
-    }
+     if (localProject) {
+       await ensureShareBootstrapWitness(localProject);
+        return navigateToOpenedProject(await enrichProjectWithCatalogOwner(localProject));
+     }
+     return false;
+   }
 try {
   const project = await getProject(id, pullContext);
   if (!openingScopeIsCurrent()) return false;
@@ -4002,31 +4036,31 @@ try {
         ]
       : curr);
    rememberHintAuthority();
-    await ensureShareBootstrapWitness(openedProject);
-    return navigateToOpenedProject(openedProject);
+   await ensureShareBootstrapWitness(openedProject);
+    return navigateToOpenedProject(await enrichProjectWithCatalogOwner(openedProject));
   }
- const { pulled } = await (shareBasedPull
-  ? pullSharedProjectViaShare(id, pullContext)
-  : pullTeamSharedProjectIfAvailable(id, pullContext));
- if (!openingScopeIsCurrent()) return false;
-  if (pulled) {
-    const pulledProject = await getProject(id, pullContext);
-    if (!openingScopeIsCurrent()) return false;
-    if (pulledProject) {
-      const openedProject = catalogName
-        ? { ...pulledProject, name: catalogName }
-        : pulledProject;
-      setProjects((curr) => openingScopeIsCurrent()
-        ? [
-            openedProject,
-            ...curr.filter((candidate) => candidate.id !== openedProject.id),
-          ]
-        : curr);
-     rememberHintAuthority();
-      await ensureShareBootstrapWitness(openedProject);
-      return navigateToOpenedProject(openedProject);
-    }
-  }
+const { pulled } = await (shareBasedPull
+ ? pullSharedProjectViaShare(id, pullContext)
+ : pullTeamSharedProjectIfAvailable(id, pullContext));
+if (!openingScopeIsCurrent()) return false;
+ if (pulled) {
+   const pulledProject = await getProject(id, pullContext);
+   if (!openingScopeIsCurrent()) return false;
+   if (pulledProject) {
+     const openedProject = catalogName
+       ? { ...pulledProject, name: catalogName }
+       : pulledProject;
+     setProjects((curr) => openingScopeIsCurrent()
+       ? [
+           openedProject,
+           ...curr.filter((candidate) => candidate.id !== openedProject.id),
+         ]
+       : curr);
+    rememberHintAuthority();
+     await ensureShareBootstrapWitness(openedProject);
+      return navigateToOpenedProject(await enrichProjectWithCatalogOwner(openedProject));
+   }
+ }
   const request = beginProjectListRequest('all');
   const list = await listCurrentWorkspaceProjects({ workspaceView: 'all' });
   if (!openingScopeIsCurrent()) return false;
@@ -4042,11 +4076,11 @@ try {
     : reconciledList.find(
         (candidate) => candidate.id === id && canUseLocalProject(candidate),
       );
- if (fetchedProject) {
-   rememberHintAuthority();
-    await ensureShareBootstrapWitness(fetchedProject);
-    return navigateToOpenedProject(fetchedProject);
- }
+if (fetchedProject) {
+  rememberHintAuthority();
+   await ensureShareBootstrapWitness(fetchedProject);
+    return navigateToOpenedProject(await enrichProjectWithCatalogOwner(fetchedProject));
+}
 } catch {
     // Fall through to the same visible missing-project state. The daemon can
     // return 404 or transiently fail while reconciling a deleted backing

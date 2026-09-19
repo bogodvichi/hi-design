@@ -4136,11 +4136,34 @@ export function ProjectView({
     // hub-push pattern below, just triggered by the LOCAL watcher instead.
     collabCheckStatusNow();
   }, [collabCheckStatusNow, project.id]);
-  const coalescedFileChangedRefresh = useCoalescedCallback(
-    refreshFilesAndDesignMd,
-    { wait: 80, maxWait: 250 },
-  );
-  // Collab realtime hop-2: poll-as-floor for the comment poll below. True while
+ const coalescedFileChangedRefresh = useCoalescedCallback(
+   refreshFilesAndDesignMd,
+ { wait: 80, maxWait: 250 },
+);
+// Debounced cover regeneration: when the agent writes HTML files via the
+// Write tool, the daemon's chokidar watcher fires `file-changed` SSE
+// events. The artifact-persistence path (above) and the FileViewer manual
+// save paths already trigger cover capture, but the Write-tool path does
+// not. This coalesced callback batches multiple file changes and asks the
+// daemon to regenerate the cover from the most recently changed HTML file.
+const latestChangedHtmlFileRef = useRef<string | null>(null);
+const refreshProjectCover = useCallback(() => {
+  const ctx = projectRunWorkspaceContextRef.current;
+  const fileName = latestChangedHtmlFileRef.current ?? undefined;
+  void captureAndUploadCover(
+    project.id,
+    '',
+    ctx ? { headers: workspaceProjectHeaders(ctx) as Record<string, string> } : null,
+    fileName,
+  ).then((digest) => {
+    if (digest) updateRecentlyOpenedProjectCover(project.id, digest);
+  }).catch(() => {});
+}, [project.id]);
+const coalescedCoverRefresh = useCoalescedCallback(
+  refreshProjectCover,
+  { wait: 2000, maxWait: 5000 },
+);
+// Collab realtime hop-2: poll-as-floor for the comment poll below. True while
   // the project events SSE (which now also carries `comment-changed`) is live;
   // the comment poll slows to a safety-net cadence while true and runs at full
   // ~5s cadence while false (SSE unavailable — packaged old shell / tests).
@@ -4149,13 +4172,17 @@ export function ProjectView({
   // call it without a temporal-dead-zone reference.
   const refreshPreviewCommentsRef = useRef<(() => Promise<void>) | null>(null);
   const handleProjectEvent = useCallback((evt: ProjectEvent) => {
-    if (evt.type === 'file-changed') {
-      iframeKeepAlivePool.evictProject(project.id);
-      invalidateHtmlSourceSnapshotProject(project.id);
-      coalescedFileChangedRefresh();
-      void recoverMaterializedConversations(project.id, projectRunAuthorityKey);
-      return;
-    }
+   if (evt.type === 'file-changed') {
+     iframeKeepAlivePool.evictProject(project.id);
+     invalidateHtmlSourceSnapshotProject(project.id);
+     coalescedFileChangedRefresh();
+     void recoverMaterializedConversations(project.id, projectRunAuthorityKey);
+     if (evt.kind !== 'unlink' && /\.html?$/i.test(evt.path)) {
+       latestChangedHtmlFileRef.current = evt.path;
+       coalescedCoverRefresh();
+     }
+     return;
+   }
     if (evt.type === 'comment-changed') {
       // Collab realtime hop-2 (reference path): the daemon merged a teammate's
       // comment change into local storage and pushed this thin signal. Re-fetch

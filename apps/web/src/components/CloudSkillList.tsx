@@ -462,11 +462,9 @@ useEffect(() => {
       {error ? <div className={styles.cloudSkillError} role="alert">{error}</div> : null}
       <div className={styles.cloudSkillGrid}>
         {skills.map((skill) => {
-          const isInstalled = skill.installed === true || skill.teamShared === true || (
-            skill.provider === 'maas-skillhub'
-              ? skill.installed === true
-              : localSkillIds.has(skill.localId)
-          );
+          const isInstalled = skill.installed === true
+            || skill.teamShared === true
+            || (skill.provider !== 'maas-skillhub' && localSkillIds.has(skill.localId));
           const canManageCloudRecord = skill.provider !== 'maas-skillhub' && skill.provider !== 'local' && !skill.teamShared;
           const isInstalling = installingId === skill.resourceId;
           const isUninstalling = uninstallingId === skill.resourceId;

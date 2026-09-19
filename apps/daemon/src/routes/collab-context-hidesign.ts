@@ -21,8 +21,10 @@ import {
   type TeamProject,
 } from '@open-design/contracts';
 import type { SqliteDb } from '../db.js';
-import { rebindWorkspaceProject, getFolderTree } from '../db.js';
-import { createHdwFolders, shareFolderProjectsToSharedSpace, fetchSharedFolders } from '../http/hdw.js';
+import { getProject, rebindWorkspaceProject, getFolderTree } from '../db.js';
+import { createHdwFolders, shareFolderProjectsToSharedSpace, fetchSharedFolders, uploadHdwCommunityBlob } from '../http/hdw.js';
+import path from 'node:path';
+import { ensureProject } from '../projects.js';
 
 /**
  * Mock mirror of workspace collab-context routes.
@@ -51,6 +53,8 @@ export interface RegisterCollabContextHideSignRoutesDeps {
   /** Publishes a project to the team resource hub before sharing. Best-effort:
    *  wrapped in try/catch so a hub failure does not block the HDW share write. */
   requestTeamShare?: (projectId: string, share?: string | ResourceHubPrincipal, coverDigest?: string | null) => Promise<{ version: number | null; versionId?: string }>;
+  /** Projects root directory — used to locate .cover.png for HDW blob upload. */
+  projectsDir?: string;
 }
 
 interface HdwFolderProjectRow {
@@ -576,7 +580,27 @@ export function registerCollabContextHideSignRoutes(
             r !== null && typeof r === 'object' && typeof (r as { username?: unknown }).username === 'string',
         )
       : [];
-    const coverDigest = typeof body?.coverDigest === 'string' ? body.coverDigest.trim() : null;
+    const bodyCoverDigest = typeof body?.coverDigest === 'string' ? body.coverDigest.trim() : null;
+    // Fall back to the local projects.cover_digest when the caller did not
+    // supply one explicitly. This keeps team_projects.cover_digest on HDW
+    // in sync with the locally captured cover screenshot without requiring
+    // every web/CLI caller to thread the digest through.
+    let coverDigest = bodyCoverDigest;
+    if (!coverDigest && deps.db && deps.projectsDir && deps.dataDir) {
+      try {
+        const project = getProject(deps.db, projectId);
+        coverDigest = project?.coverDigest ?? null;
+        // Ensure the cover blob actually exists on HDW before syncing the
+        // digest. A cover captured while the project was personal has a
+        // local .cover.png but no blob on HDW, so the HDW cover endpoint
+        // would return 404.
+        if (coverDigest) {
+          const coverDir = await ensureProject(deps.projectsDir, projectId, project?.metadata);
+          const coverPath = path.join(coverDir, '.cover.png');
+          await uploadHdwCommunityBlob(coverPath, deps.dataDir!);
+        }
+      } catch { /* best-effort: blob may already exist or cover may be absent */ }
+    }
     if (!projectId || !homeWorkspaceId || recipients.length === 0) {
       res.status(400).json({ error: 'invalid_request', message: 'project_id, home_workspace_id, and recipients are required' });
       return;
@@ -605,6 +629,8 @@ export function registerCollabContextHideSignRoutes(
 
     // Best-effort: publish the project to the team resource hub before
     // writing the HDW share record. A hub failure must not block the share.
+    // The coverDigest is passed so markTeamProject upserts
+    // team_projects.cover_digest on HDW.
     if (deps.requestTeamShare) {
       try {
         const sharePrincipal: ResourceHubPrincipal = {
@@ -759,10 +785,24 @@ export function registerCollabContextHideSignRoutes(
     }
 
     // Step 3: Batch-share all projects with folder_id.
-    const items: Array<{ project_id: string; folder_id: string }> = [];
+    // For each project, look up the local cover_digest and upload the
+    // cover blob to HDW so the HDW cover endpoint can serve it.
+    const items: Array<{ project_id: string; folder_id: string; cover_digest?: string | null }> = [];
     for (const f of tree) {
       for (const pid of f.projectIds) {
-        items.push({ project_id: pid, folder_id: f.folderId });
+        let coverDigest: string | null = null;
+        if (deps.db && deps.projectsDir && deps.dataDir) {
+          try {
+            const project = getProject(deps.db, pid);
+            coverDigest = project?.coverDigest ?? null;
+            if (coverDigest) {
+              const coverDir = await ensureProject(deps.projectsDir, pid, project?.metadata);
+              const coverPath = path.join(coverDir, '.cover.png');
+              await uploadHdwCommunityBlob(coverPath, deps.dataDir!);
+            }
+          } catch { /* best-effort: blob may already exist or cover may be absent */ }
+        }
+        items.push({ project_id: pid, folder_id: f.folderId, ...(coverDigest ? { cover_digest: coverDigest } : {}) });
       }
     }
 
@@ -775,6 +815,31 @@ export function registerCollabContextHideSignRoutes(
         recipients,
         items,
       });
+    }
+
+    // Best-effort: publish each project to the team resource hub so
+    // team_projects.cover_digest is set on HDW. A hub failure must not
+    // block the share — the sync flow will retry on the next poll.
+    if (deps.requestTeamShare) {
+      for (const item of items) {
+        try {
+          const sharePrincipal: ResourceHubPrincipal = {
+            memberId: getSharedSpaceMemberId(createdByUsername),
+            teamId: homeWorkspaceId,
+            role: 'owner',
+            lifecycleState: 'active',
+            workspaceType: 'team',
+          };
+          await Promise.race([
+            deps.requestTeamShare(item.project_id, sharePrincipal, item.cover_digest ?? null),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('requestTeamShare timeout')), 15_000),
+            ),
+          ]);
+        } catch (err) {
+          console.warn('[collab-context-hidesign] requestTeamShare best-effort failed for folder project', item.project_id, err);
+        }
+      }
     }
 
     // After the HDW share records are written, update local SQLite rows

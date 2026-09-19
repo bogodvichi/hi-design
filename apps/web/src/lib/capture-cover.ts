@@ -242,12 +242,33 @@ export async function captureAndUploadCover(
   projectId: string,
   html: string,
   workspaceContext?: { headers?: Record<string, string> } | null,
+  fileName?: string,
 ): Promise<string | null> {
   // In the desktop environment, the daemon's generateProjectCover handles
   // cover capture natively via Electron's webContents.capturePage() — skip
   // the browser-side SVG foreignObject fallback to avoid tainted-canvas
-  // errors and redundant work.
-  if (isOpenDesignHostAvailable()) return null;
+  // errors and redundant work.  Instead, ask the daemon to generate the
+  // cover natively and return the digest.
+  if (isOpenDesignHostAvailable()) {
+    try {
+      const query = fileName ? `?file=${encodeURIComponent(fileName)}` : '';
+      const resp = await fetch(
+        `/api/projects/${encodeURIComponent(projectId)}/cover/generate${query}`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(workspaceContext?.headers ?? {}),
+          },
+        },
+      );
+      if (!resp.ok) return null;
+      const json = (await resp.json()) as { data?: { coverDigest?: string } };
+      return json.data?.coverDigest ?? null;
+    } catch {
+      return null;
+    }
+  }
   const blob = await captureProjectCover(html);
   if (!blob) return null;
   return uploadProjectCover(projectId, blob, workspaceContext);

@@ -2089,21 +2089,19 @@ function requestDelete(project: Project) {
               status === 'incomplete');
           const shared = isShared(project.id);
          const selected = selectedProjectIds.has(project.id);
-         const readonlyShared = shared && !(creator.canMutate || creator.canAdmin);
          const opening = openingProjectId === project.id;
-         // Project type badge: distinguishes personal / team / shared-with-me.
-         // In the drafts space every card is the user's own private draft, so
-         // no type badge is needed there. In the team space every card is
-         // shared, so the badge only distinguishes "mine" vs "shared with me".
-         const projectType = space === 'drafts' ? null
-           : !shared ? 'personal' as const
-           : creator.ownedBySelf ? 'team' as const
-           : 'shared-with-me' as const;
+         // Project type badge: determined solely by the project's workspaceId.
+         // workspaceId === sharedSpaceTeamId (or absent) -> personal workspace:
+         //   ownedBySelf -> "personal", otherwise -> "shared".
+         // workspaceId !== sharedSpaceTeamId -> team workspace -> "team".
+         const projectType = (project.workspaceId == null || project.workspaceId === sharedSpaceTeamId)
+           ? (creator.ownedBySelf ? 'personal' as const : 'shared-with-me' as const)
+           : 'team' as const;
          return (
            <div
              key={project.id}
              role="listitem"
-             className={`recent-projects__card${designSystemProject ? ' is-design-system-project' : ''}${shared ? ' is-shared' : ''}${projectType ? ` is-${projectType}` : ''}${readonlyShared ? ' is-readonly-shared' : ''}${menuOpenId === project.id ? ' is-menu-open' : ''}${selected ? ' is-selected' : ''}${opening ? ' is-opening' : ''}`}
+             className={`recent-projects__card${designSystemProject ? ' is-design-system-project' : ''}${shared ? ' is-shared' : ''}${projectType ? ` is-${projectType}` : ''}${menuOpenId === project.id ? ' is-menu-open' : ''}${selected ? ' is-selected' : ''}${opening ? ' is-opening' : ''}`}
              data-project-id={project.id}
             >
               {selectionMode ? (
@@ -2265,7 +2263,7 @@ function requestDelete(project: Project) {
                        ? t('recentProjects.personalBadge')
                        : projectType === 'team'
                          ? t('recentProjects.teamBadge')
-                         : t('recentProjects.sharedWithMeBadge')}
+                         : t('recentProjects.sharedBadge')}
                    </span>
                  ) : null}
                </div>
@@ -2279,7 +2277,7 @@ function requestDelete(project: Project) {
                          ? t('recentProjects.personalBadge')
                          : projectType === 'team'
                            ? t('recentProjects.teamBadge')
-                           : t('recentProjects.sharedWithMeBadge')}
+                           : t('recentProjects.sharedBadge')}
                      </span>
                    ) : null}
                  </div>
@@ -2305,12 +2303,6 @@ function requestDelete(project: Project) {
                      {creator.name}
                    </span>
                  )}
-                 {readonlyShared ? (
-                   <span className="recent-projects__card-readonly" title={t('recentProjects.ownOnlyMutation')}>
-                     <Icon name="eye" size={10} />
-                     {t('recentProjects.readOnlyBadge')}
-                   </span>
-                 ) : null}
                   <span className="recent-projects__card-sep" aria-hidden>·</span>
                  </>
                  ) : null}
@@ -3179,13 +3171,15 @@ export function projectCover(
   };
   const trimmed = project.name.trim();
   const initial = (trimmed ? Array.from(trimmed)[0]! : '?').toUpperCase();
-  // Use the pre-captured entry screenshot from team_projects.cover_digest
-  // when available — a single <img> load is far cheaper than resolving the
-  // entry file, probing with HEAD, and rendering an iframe document.
+ // Use the pre-captured entry screenshot from team_projects.cover_digest
+ // when available — a single <img> load is far cheaper than resolving the
+ // entry file, probing with HEAD, and rendering an iframe document.
   if (project.coverDigest) {
-    const isLocalProject = project.workspaceId == null
-      || project.workspaceId === sharedSpaceTeamId;
-    const coverSrc = isLocalProject
+    // Personal projects (workspaceVisibility === 'personal') load the
+    // cover from the local daemon route; team and shared-with-me projects
+    // (workspaceVisibility === 'team' or undefined) load from HDW.
+    const isPersonal = project.workspaceVisibility === 'personal';
+    const coverSrc = isPersonal
       ? `/api/projects/${encodeURIComponent(project.id)}/cover?digest=${encodeURIComponent(project.coverDigest)}`
       : `/api/hdw/api/community/cover/${project.coverDigest}`;
     return {
@@ -3195,7 +3189,7 @@ export function projectCover(
       initial,
     };
   }
-  // Catalog-only team projects have not been materialized locally yet - the
+ // Catalog-only team projects have not been materialized locally yet - the
   // files do not exist on disk. Any override (stale snapshot cache) or
   // entryFile metadata would point the iframe at a /raw/ URL for a file that
   // does not exist, producing a 404 load. Short-circuit to the fallback glyph

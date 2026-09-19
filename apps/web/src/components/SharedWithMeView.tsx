@@ -46,6 +46,7 @@ function sharedRowToProject(row: SharedWithMeProject): Project {
     designSystemId: null,
     createdAt: fallback,
     updatedAt: fallback,
+    workspaceId: row.homeWorkspaceId,
     createdByWorkspaceMemberId: row.ownerMemberId ?? null,
     ownerDisplayName: row.sharedByDisplayname ?? null,
     ...(row.metadata ? { metadata: row.metadata as unknown as Project['metadata'] } : {}),

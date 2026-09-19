@@ -1386,7 +1386,6 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                        page_name: 'home',
                        area: 'chat_composer',
                        element: 'context_remove',
-                       resource_kind: 'file',
                        resource_id: file.name,
                      });
                      removeFileChip(index, file);

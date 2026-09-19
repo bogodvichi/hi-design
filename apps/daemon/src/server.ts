@@ -5654,6 +5654,7 @@ export async function startServer({
    hdwTeamProjectCatalog: hdwTeamProjectCatalog,
    db: db,
    requestTeamShare: collab.requestTeamShare.bind(collab),
+   projectsDir: PROJECTS_DIR,
   });
   registerVela2HideSignRoutes(app, { env: process.env, dataDir: RUNTIME_DATA_DIR });
   registerCollabContextRoutes(app, {

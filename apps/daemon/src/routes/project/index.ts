@@ -364,6 +364,8 @@ export interface RegisterProjectRoutesDeps extends RouteDeps<'db' | 'design' | '
    getTeamProject?(workspaceId: string, projectId: string): Promise<{
      folderId?: string | null;
      folder_id?: string | null;
+     ownerDisplayName?: string | null;
+     ownerMemberId?: string;
    } | null>;
    upsertTeamProject?(workspaceId: string, projectId: string, input: Record<string, unknown>): Promise<unknown>;
  } | null;
@@ -5540,12 +5542,14 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
     // the web header to fall back to the team name. Reconcile it on detail
     // reads so direct/deep links also render the real parent folder without
     // depending on the workspace catalog having been opened first.
-    const bindingWorkspaceId =
-      typeof binding?.workspaceId === 'string' ? binding.workspaceId.trim() : '';
-    if (
-      bindingWorkspaceId
-      && binding?.visibility === 'team'
-      && hdwCloudClient?.getTeamProject
+   const bindingWorkspaceId =
+     typeof binding?.workspaceId === 'string' ? binding.workspaceId.trim() : '';
+   let remoteOwnerDisplayName: string | null = null;
+   let remoteOwnerMemberId: string | null = null;
+   if (
+     bindingWorkspaceId
+     && binding?.visibility === 'team'
+     && hdwCloudClient?.getTeamProject
     ) {
       try {
         const remoteProject = await hdwCloudClient.getTeamProject(
@@ -5565,25 +5569,35 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
           if (remoteFolderId !== folderId) {
             setProjectFolder(db, bindingWorkspaceId, project.id, remoteFolderId);
           }
-          folderId = remoteFolderId;
-        }
-      } catch {
-        // Project detail must remain available during a transient HDW outage;
+         folderId = remoteFolderId;
+       }
+       if (remoteProject) {
+         if (typeof remoteProject.ownerDisplayName === 'string' && remoteProject.ownerDisplayName.trim()) {
+           remoteOwnerDisplayName = remoteProject.ownerDisplayName.trim();
+         }
+         if (typeof remoteProject.ownerMemberId === 'string' && remoteProject.ownerMemberId.trim()) {
+           remoteOwnerMemberId = remoteProject.ownerMemberId.trim();
+         }
+       }
+     } catch {
+       // Project detail must remain available during a transient HDW outage;
         // the last locally known assignment is the safe fallback.
       }
     }
     /** @type {import('@open-design/contracts').ProjectResponse} */
-    const body = {
-      project: {
-        ...project,
-        workspaceId:
-          typeof binding?.workspaceId === 'string' && binding.workspaceId.trim()
-            ? binding.workspaceId.trim()
-            : null,
-      },
-      resolvedDir,
-      folderId,
-    };
+   const body = {
+     project: {
+       ...project,
+       workspaceId:
+         typeof binding?.workspaceId === 'string' && binding.workspaceId.trim()
+           ? binding.workspaceId.trim()
+           : null,
+       ...(remoteOwnerDisplayName ? { ownerDisplayName: remoteOwnerDisplayName } : {}),
+       ...(remoteOwnerMemberId ? { createdByWorkspaceMemberId: remoteOwnerMemberId } : {}),
+     },
+     resolvedDir,
+     folderId,
+   };
     res.json(body);
   });
 
@@ -7238,11 +7252,13 @@ async function syncCoverToHdw(
        projectId,
        projectMeta?.metadata,
      );
-     const coverFile = path.join(dir, '.cover.png');
-     await fsp.writeFile(coverFile, coverBuffer);
-    updateProject(db, projectId, { coverDigest: digest });
-    await syncCoverToHdw(projectId, coverBuffer, dir);
-  } catch { /* best-effort: no cover */ }
+    const coverFile = path.join(dir, '.cover.png');
+    await fsp.writeFile(coverFile, coverBuffer);
+   updateProject(db, projectId, { coverDigest: digest });
+   await syncCoverToHdw(projectId, coverBuffer, dir);
+   return digest;
+ } catch { /* best-effort: no cover */ }
+ return null;
 }
 /**
  * Resolve the entry HTML file for a project and trigger cover generation.
@@ -7267,6 +7283,57 @@ function triggerCoverForProjectEntry(
     } catch { /* best-effort: no cover */ }
   })();
 }
+
+ // POST /api/projects/:id/cover/generate — triggers daemon-side native
+ // cover generation (Electron webContents.capturePage) for the project's
+  // entry HTML, or a specific HTML file when `?file=` is provided.  Used
+  // by the web client in the desktop environment where browser-side SVG
+  // foreignObject capture is skipped.  Returns the computed cover digest
+  // so the client can patch localStorage.
+ app.post('/api/projects/:id/cover/generate', async (req, res) => {
+   try {
+     const project = getProject(db, req.params.id);
+     if (!project) {
+       return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
+     }
+     if (!await enforceWorkspaceProjectMutation(
+       req,
+       res,
+       sendApiError,
+       getWorkspaceProject,
+       getWorkspaceProjectByProjectId,
+       db,
+       project.id,
+       'writeFiles',
+     )) return;
+     // Use the file specified in ?file= query param, or fall back to the
+     // project's entry file.  This lets the web client request a cover for
+     // a specific HTML file that was just modified or created.
+     const requestedFile = typeof req.query?.file === 'string' && req.query.file
+       ? req.query.file
+       : null;
+     const targetFile = requestedFile
+       ?? (typeof project.metadata?.entryFile === 'string' && project.metadata.entryFile
+         ? project.metadata.entryFile
+         : 'index.html');
+     const file = await readProjectFile(PROJECTS_DIR, req.params.id, targetFile, project?.metadata ?? null);
+     if (!/\.html?$/i.test(targetFile)) {
+       return sendApiError(res, 400, 'BAD_REQUEST', 'target file is not HTML');
+     }
+     const digest = await generateProjectCover(
+       req.params.id,
+       targetFile,
+       file.buffer.toString('utf8'),
+       { name: project.name, metadata: project.metadata },
+     );
+      if (!digest) {
+        return sendApiError(res, 500, 'COVER_GENERATION_FAILED', 'cover generation returned no digest');
+      }
+      res.json({ code: 0, data: { coverDigest: digest } });
+    } catch (err: any) {
+      sendApiError(res, 500, 'INTERNAL_ERROR', err?.message || String(err));
+    }
+  });
 
   // Project files. Each project owns a flat folder under .od/projects/<id>/
   // containing every file the user has uploaded, pasted, sketched, or that

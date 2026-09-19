@@ -149,6 +149,7 @@ import { examplePresetSeedPrompt } from './plugins-home/presetSeedPrompt';
 import { localizePluginDescription } from './plugins-home/localization';
 import type { SharedProjectPredicate } from '../collab/all-projects-list';
 import { RecentProjectsStrip } from './RecentProjectsStrip';
+import type { ProjectTitleHint } from './EntryShell';
 import type { Recommendation } from '../onboarding/recommendation';
 import type { OnboardingEntry } from '../onboarding/onboarding-entry';
 import { AnimatePresence } from 'motion/react';
@@ -280,7 +281,7 @@ interface Props {
   onSubmit: (
     payload: PluginLoopSubmit,
   ) => Promise<boolean | 'blocked' | void> | boolean | 'blocked' | void;
-  onOpenProject: (id: string, fileName?: string) => void;
+  onOpenProject: (id: string, fileName?: string, projectTitleHint?: ProjectTitleHint) => Promise<boolean | void> | boolean | void;
   onViewAllProjects: () => void;
   onDeleteProject?: (id: string) => Promise<boolean | void> | boolean | void;
   onDuplicateProject?: (id: string) => Promise<void> | void;
@@ -3395,21 +3396,39 @@ teamWorkspaceId={teamWorkspace?.workspaceId}
        projectOwnerDisplayNames={homeProjectOwnerDisplayNames}
        limit={1000}
         {...(projectsLoading !== undefined ? { loading: projectsLoading } : {})}
-        onOpen={(id) => {
-          // P0 ui_click area=recent_projects element=project_card — emit
-          // before navigation so the event isn't lost when the host
-          // re-renders into the project view.
-          const project = projects.find((p) => p.id === id);
-          const projectKind = projectKindFromMetadataToTracking(project?.metadata);
-          trackRecentProjectsClick(analytics.track, {
-            page_name: 'home',
-            area: 'recent_projects',
-            element: 'project_card',
-            project_id: id,
-            ...(projectKind ? { project_kind: projectKind } : {}),
-          });
-          onOpenProject(id);
-        }}
+       onOpen={(id) => {
+         // P0 ui_click area=recent_projects element=project_card — emit
+         // before navigation so the event isn't lost when the host
+         // re-renders into the project view.
+         const project = projects.find((p) => p.id === id);
+         const projectKind = projectKindFromMetadataToTracking(project?.metadata);
+         trackRecentProjectsClick(analytics.track, {
+           page_name: 'home',
+           area: 'recent_projects',
+           element: 'project_card',
+           project_id: id,
+           ...(projectKind ? { project_kind: projectKind } : {}),
+         });
+          // When the project belongs to a different workspace than the current
+          // context (e.g. a regular team project opened from the shared space),
+          // pass homeWorkspaceId so handleOpenProject can resolve that team's
+          // context for the GET/pull authorization. Without this, the backend
+          // rejects the cross-workspace read with 403 and the user sees
+          // "该项目已删除或不存在" even though the project is perfectly alive.
+          const projectWorkspaceId = project?.workspaceId?.trim() ?? '';
+          const contextWorkspaceId = workspaceContext?.workspaceId ?? null;
+          const hint: ProjectTitleHint | undefined =
+            projectWorkspaceId && projectWorkspaceId !== contextWorkspaceId
+              ? {
+                  name: project?.name?.trim() ?? '',
+                  workspaceId: contextWorkspaceId,
+                  workspaceMemberId: workspaceContext?.workspaceMemberId ?? null,
+                  authoritative: false,
+                  homeWorkspaceId: projectWorkspaceId,
+                }
+              : undefined;
+          onOpenProject(id, undefined, hint);
+       }}
         onViewAll={() => {
           trackRecentProjectsClick(analytics.track, {
             page_name: 'home',

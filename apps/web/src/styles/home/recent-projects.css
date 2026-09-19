@@ -185,13 +185,6 @@
   outline: 1px solid var(--border-strong);
   outline-offset: 4px;
 }
-/* Read-only shared projects stay surfaceless like every other card — the
-   "共享" badge already signals the state, so no extra border or desaturation
-   (that edge was a merge artifact against the borderless home design). The
-   class is retained for the viewer-only interaction gating in the JSX. */
-.recent-projects__card.is-readonly-shared {
-  border-color: transparent;
-}
 .recent-projects__row.is-selecting .recent-projects__card-main {
   cursor: default;
 }
@@ -1153,23 +1146,6 @@
   border-radius: 50%;
   object-fit: cover;
   display: block;
-}
-/* Read-only permission badge for shared-with-me projects the user cannot
-   mutate. Sits in the card-time row next to the owner avatar. */
-.recent-projects__card-readonly {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: var(--radius-pill);
-  border: var(--stroke-thin) solid color-mix(in srgb, var(--text-muted) 20%, transparent);
-  background: color-mix(in srgb, var(--text-muted) 8%, transparent);
-  color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 600;
-  flex: 0 0 auto;
-  white-space: nowrap;
 }
 
 /* First open of a team-shared card runs a full content pull before the

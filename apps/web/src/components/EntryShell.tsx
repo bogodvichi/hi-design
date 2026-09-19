@@ -235,6 +235,7 @@ import { deepSeekHarnessNeedsSetup } from '../utils/visibleAgents';
 import { LIBRARY_UI_VISIBLE } from '../features/libraryUi';
 import {
   enrichRecentlyOpenedProjectCovers,
+  readRecentlyOpenedProjectEntries,
   readRecentlyOpenedProjects,
 } from '../lib/recently-opened-projects';
 import {
@@ -743,22 +744,47 @@ const homeProjectsList = useMemo(
   () => {
     const recents = readRecentlyOpenedProjects();
     const recentMap = new Map(recents.map((p) => [p.id, p]));
+    const recentIds = new Set(recents.map((p) => p.id));
     const serverProjects = reconcileSharedProjectCatalogFields({
       projects,
       teamProjects: teamProjects.projects,
       workspaceContext,
     });
-    // Enrich server projects with coverDigest from localStorage when the
-    // server response lacks it, then merge recently-opened projects that
-    // the server doesn't know about. Server data stays authoritative for
-    // all fields except coverDigest, which localStorage may have captured
-    // at save/remix time before the server was refreshed.
-    const enrichedServerProjects = serverProjects.map((p) =>
-      p.coverDigest ? p : { ...p, coverDigest: recentMap.get(p.id)?.coverDigest ?? null },
-    );
-    const serverIds = new Set(enrichedServerProjects.map((p) => p.id));
-    const gap = recents.filter((p) => !serverIds.has(p.id));
-    return gap.length > 0 ? [...gap, ...enrichedServerProjects] : enrichedServerProjects;
+    // Only show projects that have been opened at least once (i.e. exist
+    // in the localStorage recently-opened store). Server data stays
+    // authoritative for all fields; localStorage only gates visibility.
+    // Personal projects not owned by the current user are filtered out.
+    const selfMemberId = workspaceContext?.workspaceMemberId ?? null;
+    const isDefaultTeam = workspaceContext?.isDefaultTeam === true;
+    const isOwnedBySelf = (p: { workspaceVisibility?: string; createdByWorkspaceMemberId?: string | null; ownerDisplayName?: string | null }): boolean => {
+      if (p.workspaceVisibility !== 'personal') return true;
+      const ownerId = p.createdByWorkspaceMemberId ?? null;
+      if (ownerId && selfMemberId && ownerId === selfMemberId) return true;
+      if (!ownerId && isDefaultTeam && !p.ownerDisplayName) return true;
+      return false;
+    };
+    const openedServerProjects = serverProjects
+      .filter((p) => recentIds.has(p.id) && isOwnedBySelf(p))
+      .map((p) =>
+        p.coverDigest ? p : { ...p, coverDigest: recentMap.get(p.id)?.coverDigest ?? null },
+      );
+    // Projects opened from /share-me that the server doesn't know about
+    // (they live in another workspace) are still shown from localStorage.
+    const serverIds = new Set(openedServerProjects.map((p) => p.id));
+    const gap = recents.filter((p) => !serverIds.has(p.id) && isOwnedBySelf(p));
+    const merged = gap.length > 0 ? [...gap, ...openedServerProjects] : openedServerProjects;
+    // Sort by most recently opened, using the real openedAt timestamp
+    // from localStorage rather than array index as a proxy.
+    const recentEntries = readRecentlyOpenedProjectEntries();
+    const openedAtMap = new Map(recentEntries.map((e) => [e.id, e.openedAt]));
+    return merged.sort((a, b) => {
+      const aAt = openedAtMap.get(a.id);
+      const bAt = openedAtMap.get(b.id);
+      if (aAt !== undefined && bAt !== undefined) return bAt - aAt;
+      if (aAt !== undefined) return -1;
+      if (bAt !== undefined) return 1;
+      return b.updatedAt - a.updatedAt;
+    });
   },
   [projects, teamProjects.projects, workspaceContext, recentlyOpenedVersion],
 );
