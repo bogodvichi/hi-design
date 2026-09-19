@@ -190,7 +190,11 @@ interface Props {
  isActive?: boolean;
  /** When true, only the title/description block is hidden — the controls
   *  (multi-select, filters, sort, view toggle) remain visible. */
- hideTitle?: boolean;
+hideTitle?: boolean;
+/** When true, the controls bar shows only the search input and the
+ *  grid/list view toggle — multi-select, owner filter, and sort are
+ *  hidden. Used by /share-me where the viewer has read-only access. */
+minimalControls?: boolean;
 /** External search query. When provided, the strip uses this value instead
  *  of its internal search state (used with hideHeader to move search to the
  *  parent view's header). */
@@ -398,6 +402,7 @@ export function RecentProjectsStrip({
  canManageProjectCollection,
 isActive = true,
 hideTitle = false,
+minimalControls = false,
 externalSearchQuery,
 currentWorkspaceId,
 currentFolderId,
@@ -1772,7 +1777,7 @@ function requestDelete(project: Project) {
           </div>
      ) : null}
          <>
-         {canManageCollection ? (
+         {!minimalControls && canManageCollection ? (
         <button
               type="button"
               className={`recent-projects__select-toggle${selectionMode ? ' is-active' : ''}`}
@@ -1792,7 +1797,7 @@ function requestDelete(project: Project) {
                 {t('recentProjects.multiSelect')}
               </button>
             ) : null}
-            {showOwnerFilter ? (
+            {!minimalControls && showOwnerFilter ? (
               <div className="recent-projects__filter-wrap">
                 <button
                   type="button"
@@ -1826,6 +1831,7 @@ function requestDelete(project: Project) {
                 ) : null}
               </div>
             ) : null}
+            {!minimalControls ? (
             <div className="recent-projects__filter-wrap">
               <button
                 type="button"
@@ -1864,6 +1870,7 @@ function requestDelete(project: Project) {
                 </div>
               ) : null}
             </div>
+            ) : null}
             <div className="recent-projects__view" role="group" aria-label={t('designs.viewToggleAria')}>
               <button
                 type="button"

@@ -152,16 +152,17 @@ import { PersonalFolderView } from './PersonalFolderView';
 import { SharedWithMeView } from './SharedWithMeView';
 import { SharedFolderView } from './SharedWithMeView';
 import {
- notifyTeamProjectsChanged,
- notifyWorkspaceBillingRefresh,
- notifyWorkspaceContextRefresh,
- currentWorkspaceAccountGeneration,
- useTeamProjects,
- useWorkspaceBillingResponse,
- useWorkspaceContext,
- workspaceResourceReadContext,
- workspaceBillingBalanceUsd,
- workspaceBillingSummaryForContext,
+notifyTeamProjectsChanged,
+notifyWorkspaceBillingRefresh,
+notifyWorkspaceContextRefresh,
+currentWorkspaceAccountGeneration,
+useTeamProjects,
+useWorkspaceBillingResponse,
+useWorkspaceContext,
+workspaceResourceReadContext,
+workspaceBillingBalanceUsd,
+workspaceBillingSummaryForContext,
+useSharedSpaceTeamId,
 } from '../collab/useWorkspaceContext';
 import { useWorkspaceInvalidation } from '../collab/workspace-events';
 import { resolvePlanLabelTier } from '../collab/team-plan';
@@ -250,6 +251,8 @@ import {
 } from './entryRailBridge';
 import { resolveByokModelPreference } from './byok/validation';
 import onboardingSourceStyles from './OnboardingModelSource.module.css';
+import { useAuth } from '../auth/LoginGate';
+import { getSharedSpaceMemberId } from '../utils/deterministicId';
 
 // Persist the entry nav-rail open/collapsed state so it survives both a
 // home -> project -> home navigation (EntryShell unmounts on the project
@@ -562,13 +565,27 @@ onCopyProject,
    amrLoggedIn,
    amrSessionState,
  );
- const railWorkspaceContext = accountFooterState === 'sign-in'
-   ? null
-   : workspaceContext;
- const usesOpenDesignCloud = config.mode === 'daemon' && config.agentId === 'amr';
- const amrAuthRequired =
-   workspaceContextState.failure === 'reauth-required'
-   || (
+const railWorkspaceContext = accountFooterState === 'sign-in'
+  ? null
+  : workspaceContext;
+const usesOpenDesignCloud = config.mode === 'daemon' && config.agentId === 'amr';
+// Current user's Shared Space member ID — derived deterministically from
+// the username so it does NOT depend on which workspace is currently
+// selected. Personal projects store this ID as `createdByWorkspaceMemberId`.
+const { username: currentUsername } = useAuth();
+const [selfSharedSpaceMemberId, setSelfSharedSpaceMemberId] = useState<string | null>(null);
+const sharedSpaceTeamId = useSharedSpaceTeamId();
+useEffect(() => {
+  if (!currentUsername) { setSelfSharedSpaceMemberId(null); return; }
+  let cancelled = false;
+  void getSharedSpaceMemberId(currentUsername).then((id) => {
+    if (!cancelled) setSelfSharedSpaceMemberId(id);
+  });
+  return () => { cancelled = true; };
+}, [currentUsername]);
+const amrAuthRequired =
+  workspaceContextState.failure === 'reauth-required'
+  || (
      usesOpenDesignCloud
      && requiresAmrReauthentication(amrSessionState, workspaceContextState.failure)
    );
@@ -750,20 +767,30 @@ const homeProjectsList = useMemo(
       teamProjects: teamProjects.projects,
       workspaceContext,
     });
-    // Only show projects that have been opened at least once (i.e. exist
-    // in the localStorage recently-opened store). Server data stays
-    // authoritative for all fields; localStorage only gates visibility.
-    // Personal projects not owned by the current user are filtered out.
-    const selfMemberId = workspaceContext?.workspaceMemberId ?? null;
-    const isDefaultTeam = workspaceContext?.isDefaultTeam === true;
-    const isOwnedBySelf = (p: { workspaceVisibility?: string; createdByWorkspaceMemberId?: string | null; ownerDisplayName?: string | null }): boolean => {
-      if (p.workspaceVisibility !== 'personal') return true;
+   // Only show projects that have been opened at least once (i.e. exist
+   // in the localStorage recently-opened store). Server data stays
+   // authoritative for all fields; localStorage only gates visibility.
+   // Personal projects not owned by the current user are filtered out.
+    // Use the Shared Space member ID derived from the username — NOT
+    // workspaceContext.workspaceMemberId, which changes with the currently
+    // selected workspace and is only the Shared Space member ID when the
+    // context happens to be the Shared Space.
+    // When workspaceVisibility is absent (old localStorage entries), infer
+    // from workspaceId: null or === sharedSpaceTeamId means personal.
+    const isOwnedBySelf = (p: {
+      workspaceVisibility?: string;
+      workspaceId?: string | null;
+      createdByWorkspaceMemberId?: string | null;
+    }): boolean => {
+      const isPersonal = p.workspaceVisibility != null
+        ? p.workspaceVisibility === 'personal'
+        : (!p.workspaceId || p.workspaceId === sharedSpaceTeamId);
+      if (!isPersonal) return true;
       const ownerId = p.createdByWorkspaceMemberId ?? null;
-      if (ownerId && selfMemberId && ownerId === selfMemberId) return true;
-      if (!ownerId && isDefaultTeam && !p.ownerDisplayName) return true;
+      if (ownerId && selfSharedSpaceMemberId && ownerId === selfSharedSpaceMemberId) return true;
       return false;
     };
-    const openedServerProjects = serverProjects
+   const openedServerProjects = serverProjects
       .filter((p) => recentIds.has(p.id) && isOwnedBySelf(p))
       .map((p) =>
         p.coverDigest ? p : { ...p, coverDigest: recentMap.get(p.id)?.coverDigest ?? null },
@@ -786,7 +813,7 @@ const homeProjectsList = useMemo(
       return b.updatedAt - a.updatedAt;
     });
   },
-  [projects, teamProjects.projects, workspaceContext, recentlyOpenedVersion],
+  [projects, teamProjects.projects, workspaceContext, selfSharedSpaceMemberId, sharedSpaceTeamId, recentlyOpenedVersion],
 );
  // projectId → sharing member id, so a card in the 全部项目 / 草稿 grids can
  // resolve "{creator}创建" against the member directory. A project absent here

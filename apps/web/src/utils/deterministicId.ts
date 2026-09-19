@@ -42,6 +42,20 @@ export async function getTeamMemberId(teamId: string, username: string): Promise
 }
 
 /**
+ * Derive the current user's Shared Space member ID from their username,
+ * matching the daemon's getSharedSpaceMemberId in apps/daemon/src/ids.ts.
+ *
+ * This is the ID stored as `created_by_workspace_member_id` on personal
+ * projects in the Shared Space. It is stable across devices and accounts,
+ * derived from `shared_space_member_${username}`.
+ *
+ * Because it uses Web Crypto (SHA-256), the first call is async.
+ */
+export async function getSharedSpaceMemberId(username: string): Promise<string> {
+  return generateDeterministicId(`shared_space_member_${username}`);
+}
+
+/**
  * Get the global Shared Space team ID, matching the daemon's
  * getSharedSpaceTeamId in apps/daemon/src/ids.ts.
  *

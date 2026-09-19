@@ -356,6 +356,7 @@ export function SharedWithMeView({
                 ) : null}
                 heading=""
                 space="team"
+                minimalControls
                 operator={operator}
                 onOpen={handleOpen}
                 hideTitle
@@ -595,6 +596,7 @@ export function SharedFolderView({
                 projects={projects}
                 heading=""
                 space="team"
+                minimalControls
                 operator={operator}
                 onOpen={handleOpen}
                 hideTitle

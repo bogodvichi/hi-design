@@ -34,6 +34,7 @@ export interface RecentlyOpenedProject {
   ownerDisplayName?: string | null;
   metadata?: Project['metadata'];
   coverDigest?: string | null;
+  workspaceVisibility?: Project['workspaceVisibility'];
 }
 
 function read(): RecentlyOpenedProject[] {
@@ -81,10 +82,11 @@ export function recordRecentlyOpenedProject(project: Project): void {
     ...(project.createdByWorkspaceMemberId != null
       ? { createdByWorkspaceMemberId: project.createdByWorkspaceMemberId }
       : {}),
-    ...(project.ownerDisplayName != null ? { ownerDisplayName: project.ownerDisplayName } : {}),
-    ...(project.metadata ? { metadata: project.metadata } : {}),
-    ...(project.coverDigest != null ? { coverDigest: project.coverDigest } : {}),
-  };
+   ...(project.ownerDisplayName != null ? { ownerDisplayName: project.ownerDisplayName } : {}),
+   ...(project.metadata ? { metadata: project.metadata } : {}),
+   ...(project.coverDigest != null ? { coverDigest: project.coverDigest } : {}),
+   ...(project.workspaceVisibility != null ? { workspaceVisibility: project.workspaceVisibility } : {}),
+ };
   write([next, ...filtered]);
 }
 
@@ -105,10 +107,11 @@ export function readRecentlyOpenedProjects(): Project[] {
     ...(e.createdByWorkspaceMemberId != null
       ? { createdByWorkspaceMemberId: e.createdByWorkspaceMemberId }
       : {}),
-    ...(e.ownerDisplayName != null ? { ownerDisplayName: e.ownerDisplayName } : {}),
-    ...(e.metadata ? { metadata: e.metadata } : {}),
-    ...(e.coverDigest != null ? { coverDigest: e.coverDigest } : {}),
-  }));
+   ...(e.ownerDisplayName != null ? { ownerDisplayName: e.ownerDisplayName } : {}),
+   ...(e.metadata ? { metadata: e.metadata } : {}),
+   ...(e.coverDigest != null ? { coverDigest: e.coverDigest } : {}),
+   ...(e.workspaceVisibility != null ? { workspaceVisibility: e.workspaceVisibility } : {}),
+ }));
 }
 
 /**
