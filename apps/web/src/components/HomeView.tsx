@@ -3388,6 +3388,7 @@ teamWorkspaceId={teamWorkspace?.workspaceId}
         projects={projects}
         designSystems={designSystems}
         heading={t('recentProjects.title')}
+        minimalControls
         {...(isSharedProject ? { isSharedProject } : {})}
         {...(onProjectShared ? { onProjectShared } : {})}
         {...(onProjectShareFailed ? { onProjectShareFailed } : {})}

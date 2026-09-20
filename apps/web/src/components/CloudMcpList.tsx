@@ -434,7 +434,7 @@ export function CloudMcpList({
                 ) : null}
              </div>
               {tpl.description
-                ? <p className={styles.cardDesc}>{tpl.description}</p>
+                ? <p className={`${styles.cardDesc}${mode === 'square' ? ` ${styles.squareCardDesc}` : ''}`}>{tpl.description}</p>
                 : null}
               {mode !== 'shared' ? (
                 <footer className={`community-template-card__foot ${styles.resourceCardFooter}`}>

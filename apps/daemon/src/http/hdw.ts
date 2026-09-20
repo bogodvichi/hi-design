@@ -538,6 +538,42 @@ export async function fetchHdwCommunityPluginDetail(
   );
 }
 
+/**
+ * Resolve the version to use for a community plugin publish.
+ *
+ * HDW treats a plugin name + version as immutable, so re-publishing the same
+ * auto-generated project must move to the next free patch number instead of
+ * retrying an identical "already exists" version. Mirrors the CLI's previous
+ * publish-hdw behavior before this helper was shared between both surfaces.
+ */
+export function resolveHdwCommunityPublishVersion(
+  existingVersion: string | undefined,
+  fallbackVersion: string,
+): string {
+  if (!existingVersion || compareCommunityVersionStrings(existingVersion, fallbackVersion) < 0) {
+    return fallbackVersion;
+  }
+  const parts = existingVersion.split('.');
+  if (parts.length === 3 && parts.every((part) => /^\d+$/.test(part))) {
+    return `${parts[0]}.${parts[1]}.${parseInt(parts[2] ?? '0', 10) + 1}`;
+  }
+  return `${existingVersion}-1`;
+}
+
+// Compare two simple numeric major.minor.patch strings. Non-numeric or
+// missing segments are treated as 0, matching the CLI's previous helper.
+function compareCommunityVersionStrings(a: string, b: string): number {
+  const partsA = a.split('.');
+  const partsB = b.split('.');
+  for (let i = 0; i < 3; i += 1) {
+    const valueA = parseInt(partsA[i] ?? '0', 10) || 0;
+    const valueB = parseInt(partsB[i] ?? '0', 10) || 0;
+    if (valueA < valueB) return -1;
+    if (valueA > valueB) return 1;
+  }
+  return 0;
+}
+
 export interface HdwTeam {
   workspace_id: string;
   workspace_name: string;
@@ -792,6 +828,71 @@ export function writeCoverDigest(dataDir: string, pluginName: string, coverDiges
     digests[pluginName] = coverDigest;
     fs.writeFileSync(coverDigestsPath(dataDir), JSON.stringify(digests, null, 2));
   } catch { /* best-effort: cover will just be missing */ }
+}
+
+/**
+ * Locally stored deletion state for HDW community plugins.
+ *
+ * The HDW community marketplace backend has no durable unpublish/delete API
+ * that this daemon can rely on today, so we keep a small mirror under the
+ * daemon data root. Public `/square` lists filter these entries out; the
+ * owner's "my publishes" list includes soft-deleted entries and marks them
+ * with `deletedAt` so the UI can show the unpublished state.
+ */
+export interface HdwCommunityDeletionState {
+  [pluginName: string]: {
+    deletedAt?: string;
+    hardDeleted?: boolean;
+  };
+}
+
+function hdwCommunityDeletionsPath(dataDir: string): string {
+  return path.join(dataDir, 'hdw-community-deletions.json');
+}
+
+export function readHdwCommunityDeletions(dataDir: string): HdwCommunityDeletionState {
+  try {
+    const text = fs.readFileSync(hdwCommunityDeletionsPath(dataDir), 'utf8');
+    const parsed = JSON.parse(text) as unknown;
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return parsed as HdwCommunityDeletionState;
+    }
+  } catch { /* file missing or invalid — treat as empty */ }
+  return {};
+}
+
+export function writeHdwCommunityDeletion(dataDir: string, pluginName: string, deletedAt: string): boolean {
+  try {
+    const state = readHdwCommunityDeletions(dataDir);
+    state[pluginName] = { ...(state[pluginName] ?? {}), deletedAt };
+    delete state[pluginName]!.hardDeleted;
+    fs.writeFileSync(hdwCommunityDeletionsPath(dataDir), JSON.stringify(state, null, 2));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function removeHdwCommunityDeletion(dataDir: string, pluginName: string): boolean {
+  try {
+    const state = readHdwCommunityDeletions(dataDir);
+    delete state[pluginName];
+    fs.writeFileSync(hdwCommunityDeletionsPath(dataDir), JSON.stringify(state, null, 2));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function markHdwCommunityHardDeleted(dataDir: string, pluginName: string): boolean {
+  try {
+    const state = readHdwCommunityDeletions(dataDir);
+    state[pluginName] = { hardDeleted: true };
+    fs.writeFileSync(hdwCommunityDeletionsPath(dataDir), JSON.stringify(state, null, 2));
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function fetchHdwMarketplaceManifestText(

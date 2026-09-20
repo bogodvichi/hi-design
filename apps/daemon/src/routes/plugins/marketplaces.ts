@@ -153,15 +153,26 @@ export function registerPluginMarketplaceRoutes(app: Express, deps: RegisterPlug
         // Pass publisher_username to HDW so the backend filters at the DB
         // query level — no need to return the full marketplace.
         try {
-          const { HDW_MARKETPLACE_ID, HDW_MARKETPLACE_URL, fetchHdwMarketplaceManifestText } =
+          const { HDW_MARKETPLACE_ID, HDW_MARKETPLACE_URL, fetchHdwMarketplaceManifestText, readHdwCommunityDeletions } =
             await import('../../http/hdw.js');
           if (req.params.id === HDW_MARKETPLACE_ID) {
             const manifestText = await fetchHdwMarketplaceManifestText(HDW_MARKETPLACE_URL, dataDir, { publisher_username: username });
             if (manifestText) {
               const manifest = JSON.parse(manifestText) as { plugins?: unknown[] };
               const plugins = manifest.plugins ?? [];
-              augmentPluginsWithLocalPrompt(plugins);
-              res.json({ plugins });
+              const deletions = readHdwCommunityDeletions(dataDir);
+              const visiblePlugins = (plugins as Array<Record<string, unknown>>).filter((entry) => {
+                const name = typeof entry.name === 'string' ? entry.name : undefined;
+                return !(name && deletions[name]?.hardDeleted);
+              });
+              for (const entry of visiblePlugins) {
+                const name = typeof entry.name === 'string' ? entry.name : undefined;
+                if (name && deletions[name]?.deletedAt) {
+                  entry.deletedAt = deletions[name]!.deletedAt;
+                }
+              }
+              augmentPluginsWithLocalPrompt(visiblePlugins);
+              res.json({ plugins: visiblePlugins });
               return;
             }
           }
@@ -171,15 +182,153 @@ export function registerPluginMarketplaceRoutes(app: Express, deps: RegisterPlug
           const pub = (p as Record<string, unknown>).publisher as Record<string, unknown> | undefined;
           return pub?.id === username;
         });
-        augmentPluginsWithLocalPrompt(fallback);
-        res.json({ plugins: fallback });
+        const { readHdwCommunityDeletions } = await import('../../http/hdw.js');
+        const deletions = readHdwCommunityDeletions(dataDir);
+        const visiblePlugins = (fallback as Array<Record<string, unknown>>).filter((entry) => {
+          const name = typeof entry.name === 'string' ? entry.name : undefined;
+          return !(name && deletions[name]?.hardDeleted);
+        });
+        for (const entry of visiblePlugins as Array<Record<string, unknown>>) {
+          const name = typeof entry.name === 'string' ? entry.name : undefined;
+          if (name && deletions[name]?.deletedAt) {
+            entry.deletedAt = deletions[name]!.deletedAt;
+          }
+        }
+        augmentPluginsWithLocalPrompt(visiblePlugins);
+        res.json({ plugins: visiblePlugins });
         return;
       }
       const cachedPlugins = row.manifest.plugins ?? [];
-      augmentPluginsWithLocalPrompt(cachedPlugins);
-      res.json({ plugins: cachedPlugins });
+      const { readHdwCommunityDeletions } = await import('../../http/hdw.js');
+      const deletions = readHdwCommunityDeletions(dataDir);
+      const visiblePlugins = (cachedPlugins as Array<Record<string, unknown>>).filter((entry) => {
+        const name = typeof entry.name === 'string' ? entry.name : undefined;
+        if (!name) return true;
+        const state = deletions[name];
+        return !state?.deletedAt && !state?.hardDeleted;
+      });
+      augmentPluginsWithLocalPrompt(visiblePlugins);
+      res.json({ plugins: visiblePlugins });
     } catch (err) { res.status(500).json({ error: String(err) }); }
   });
+ app.post('/api/marketplaces/:id/plugins/:name/unpublish', async (req, res) => {
+   try {
+     const { HDW_MARKETPLACE_ID, writeHdwCommunityDeletion, fetchHdwMarketplaceManifestText, HDW_MARKETPLACE_URL } =
+       await import('../../http/hdw.js');
+     const { readSsoUsername } = await import('../../http/hik_logins/hicoo.js');
+     if (req.params.id !== HDW_MARKETPLACE_ID) {
+       return res.status(400).json({ error: 'unpublish is only supported for the HDW community marketplace' });
+     }
+     const { getMarketplace, ensureMarketplaceManifest } = await import('../../plugins/marketplaces.js');
+     const row = getMarketplace(db, req.params.id) as MarketplaceRow | null;
+     if (!row) return res.status(404).json({ error: 'marketplace not found' });
+     const plugins = (row.manifest.plugins ?? []) as Array<Record<string, unknown>>;
+     const entry = plugins.find((p) => p.name === req.params.name);
+     if (!entry) return res.status(404).json({ error: 'plugin not found in marketplace' });
+     const username = readSsoUsername(dataDir);
+     if (!username) return res.status(401).json({ error: 'SSO session is required to unpublish a community plugin' });
+     const pub = entry.publisher as Record<string, unknown> | undefined;
+     if (pub?.id !== username) return res.status(403).json({ error: 'not authorized to unpublish this plugin' });
+     const now = new Date().toISOString();
+     const ok = writeHdwCommunityDeletion(dataDir, String(entry.name), now);
+     if (!ok) return res.status(500).json({ error: 'failed to persist unpublish state' });
+
+     // Best-effort refresh so a later public list request uses the fresh
+     // manifest while still applying the tombstone on top.
+     try {
+       const manifestText = await fetchHdwMarketplaceManifestText(HDW_MARKETPLACE_URL, dataDir);
+       if (manifestText) {
+         ensureMarketplaceManifest(db, {
+           id: req.params.id,
+           url: row.url,
+           manifestText,
+           trust: row.trust ?? 'restricted',
+         });
+       }
+     } catch { /* keep local tombstone even if refresh fails */ }
+     res.json({ ok: true, deletedAt: now });
+   } catch (err) { res.status(500).json({ error: String(err) }); }
+ });
+ app.post('/api/marketplaces/:id/plugins/:name/publish', async (req, res) => {
+   try {
+     const { HDW_MARKETPLACE_ID, removeHdwCommunityDeletion, readHdwCommunityDeletions, fetchHdwMarketplaceManifestText, HDW_MARKETPLACE_URL } =
+       await import('../../http/hdw.js');
+     const { readSsoUsername } = await import('../../http/hik_logins/hicoo.js');
+     if (req.params.id !== HDW_MARKETPLACE_ID) {
+       return res.status(400).json({ error: 'publish is only supported for the HDW community marketplace' });
+     }
+     const { getMarketplace, ensureMarketplaceManifest } = await import('../../plugins/marketplaces.js');
+     const row = getMarketplace(db, req.params.id) as MarketplaceRow | null;
+     if (!row) return res.status(404).json({ error: 'marketplace not found' });
+     const plugins = (row.manifest.plugins ?? []) as Array<Record<string, unknown>>;
+     const entry = plugins.find((p) => p.name === req.params.name);
+     if (!entry) return res.status(404).json({ error: 'plugin not found in marketplace' });
+     const username = readSsoUsername(dataDir);
+     if (!username) return res.status(401).json({ error: 'SSO session is required to publish a community plugin' });
+     const pub = entry.publisher as Record<string, unknown> | undefined;
+     if (pub?.id !== username) return res.status(403).json({ error: 'not authorized to publish this plugin' });
+     if (readHdwCommunityDeletions(dataDir)[String(entry.name)]?.hardDeleted) {
+       return res.status(400).json({ error: 'plugin was hard-deleted and cannot be republished' });
+     }
+     removeHdwCommunityDeletion(dataDir, String(entry.name));
+
+     try {
+       const manifestText = await fetchHdwMarketplaceManifestText(HDW_MARKETPLACE_URL, dataDir);
+       if (manifestText) {
+         ensureMarketplaceManifest(db, {
+           id: req.params.id,
+           url: row.url,
+           manifestText,
+           trust: row.trust ?? 'restricted',
+         });
+       }
+     } catch { /* keep local state clean even if refresh fails */ }
+     res.json({ ok: true });
+   } catch (err) { res.status(500).json({ error: String(err) }); }
+ });
+ app.delete('/api/marketplaces/:id/plugins/:name', async (req, res) => {
+   try {
+     const { HDW_MARKETPLACE_ID, removeHdwCommunityDeletion, markHdwCommunityHardDeleted, fetchHdwMarketplaceManifestText, HDW_MARKETPLACE_URL } =
+       await import('../../http/hdw.js');
+     const { readSsoUsername } = await import('../../http/hik_logins/hicoo.js');
+     if (req.params.id !== HDW_MARKETPLACE_ID) {
+       return res.status(400).json({ error: 'delete is only supported for the HDW community marketplace' });
+     }
+     const { getMarketplace, ensureMarketplaceManifest } = await import('../../plugins/marketplaces.js');
+     const row = getMarketplace(db, req.params.id) as MarketplaceRow | null;
+     if (!row) return res.status(404).json({ error: 'marketplace not found' });
+     const plugins = (row.manifest.plugins ?? []) as Array<Record<string, unknown>>;
+     const entry = plugins.find((p) => p.name === req.params.name);
+     if (!entry) return res.status(404).json({ error: 'plugin not found in marketplace' });
+     const username = readSsoUsername(dataDir);
+     if (!username) return res.status(401).json({ error: 'SSO session is required to delete a community plugin' });
+     const pub = entry.publisher as Record<string, unknown> | undefined;
+     if (pub?.id !== username) return res.status(403).json({ error: 'not authorized to delete this plugin' });
+
+     // Best-effort remote DELETE. If HDW supports it, the next refresh will
+     // naturally drop the entry. We also keep a local hard-delete tombstone so
+     // the entry does not reappear through cached manifests.
+     const { hdwDelete } = await import('../../http/hdw.js');
+     const hicoo = await import('../../http/hik_logins/hicoo.js');
+     const session = hicoo.readSsoConfigFile(dataDir);
+     await hdwDelete(`/community/plugins/${encodeURIComponent(String(entry.name))}`, session?.cookies).catch(() => null);
+     removeHdwCommunityDeletion(dataDir, String(entry.name));
+     markHdwCommunityHardDeleted(dataDir, String(entry.name));
+
+     try {
+       const manifestText = await fetchHdwMarketplaceManifestText(HDW_MARKETPLACE_URL, dataDir);
+       if (manifestText) {
+         ensureMarketplaceManifest(db, {
+           id: req.params.id,
+           url: row.url,
+           manifestText,
+           trust: row.trust ?? 'restricted',
+         });
+       }
+     } catch { /* keep local tombstone even if refresh fails */ }
+     res.json({ ok: true });
+   } catch (err) { res.status(500).json({ error: String(err) }); }
+ });
  app.get('/api/marketplaces/:id/plugins/:name/preview', async (req, res) => {
    try {
      const { HDW_MARKETPLACE_ID } = await import('../../http/hdw.js');

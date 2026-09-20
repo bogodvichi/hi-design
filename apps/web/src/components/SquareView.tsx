@@ -40,6 +40,10 @@ export interface PublishedProjectItem {
 }
 type PublicationFilter = 'all' | ProjectPublicationStatus;
 
+type MarketplacePluginEntryWithDeletion = MarketplacePluginEntry & {
+  deletedAt?: string | null;
+};
+
 type SquareTab = 'projects' | 'skill' | 'mcp' | 'tool';
 
 interface TabDef {
@@ -86,9 +90,13 @@ function PlaceholderPanel({ icon, label, note }: { icon: IconName; label: string
   );
 }
 
-function ProjectCardMenu({ publicationStatus, onShare }: {
+function ProjectCardMenu({ name, publicationStatus, onPublish, onUnpublish, onDelete, busy }: {
+  name: string;
   publicationStatus?: ProjectPublicationStatus;
-  onShare: () => void;
+  onPublish?: (name: string) => void;
+  onUnpublish?: (name: string) => void;
+  onDelete?: (name: string) => void;
+  busy?: string | null;
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -132,22 +140,24 @@ function ProjectCardMenu({ publicationStatus, onShare }: {
         <div className="recent-projects__card-menu" role="menu">
           {publicationStatus === 'unpublished' ? (
             <>
-              <button type="button" role="menuitem" disabled>
+              <button type="button" role="menuitem" disabled={!!busy} onClick={() => { setOpen(false); onPublish?.(name); }}>
                 <Icon name="arrow-up" size={12} aria-hidden /><span>{t('pluginCard.publish')}</span>
               </button>
-              <button type="button" role="menuitem" className="danger" disabled>
+              <button type="button" role="menuitem" className="danger" disabled={!!busy} onClick={() => { setOpen(false); onDelete?.(name); }}>
                 <Icon name="close" size={12} aria-hidden /><span>{t('common.delete')}</span>
               </button>
             </>
           ) : (
             <>
-              <button type="button" role="menuitem" onClick={() => { setOpen(false); onShare(); }}>
-                <Icon name="share" size={12} aria-hidden /><span>{t('preview.shareMenu')}</span>
-              </button>
               {publicationStatus === 'published' ? (
-                <button type="button" role="menuitem" disabled>
-                  <Icon name="eye-off" size={12} aria-hidden /><span>{t('squareScope.unpublish')}</span>
-                </button>
+                <>
+                  <button type="button" role="menuitem" disabled={!!busy} onClick={() => { setOpen(false); onUnpublish?.(name); }}>
+                    <Icon name="eye-off" size={12} aria-hidden /><span>{t('squareScope.unpublish')}</span>
+                  </button>
+                  <button type="button" role="menuitem" className="danger" disabled={!!busy} onClick={() => { setOpen(false); onDelete?.(name); }}>
+                    <Icon name="close" size={12} aria-hidden /><span>{t('common.delete')}</span>
+                  </button>
+                </>
               ) : null}
             </>
           )}
@@ -246,6 +256,7 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
   const [remixError, setRemixError] = useState<string | null>(null);
   const [detailsEntry, setDetailsEntry] = useState<MarketplacePluginEntry | null>(null);
   const [shareOnOpen, setShareOnOpen] = useState(false);
+  const [busyName, setBusyName] = useState<string | null>(null);
   // Synchronous rapid-click guard: state writes are not synchronous, so a
   // burst of clicks before React re-renders all read the stale
   // `remixingName` and fire N duplicate POST /remix calls. The ref is
@@ -266,7 +277,7 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
     let cancelled = false;
     setLoading(true);
     setError(false);
-    const url = username
+    const url = isMyPublishes && username
       ? `/api/marketplaces/hdw-community/plugins?username=${encodeURIComponent(username)}`
       : '/api/marketplaces/hdw-community/plugins';
     fetch(url)
@@ -314,6 +325,55 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
     }
   }
 
+  async function unpublishPlugin(name: string) {
+    setBusyName(name);
+    try {
+      const res = await fetch(`/api/marketplaces/hdw-community/plugins/${encodeURIComponent(name)}/unpublish`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        console.error('unpublish failed', body);
+      }
+      onRefresh();
+    } finally {
+      setBusyName(null);
+    }
+  }
+
+  async function publishPlugin(name: string) {
+    setBusyName(name);
+    try {
+      const res = await fetch(`/api/marketplaces/hdw-community/plugins/${encodeURIComponent(name)}/publish`, {
+        method: 'POST',
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        console.error('publish failed', body);
+      }
+      onRefresh();
+    } finally {
+      setBusyName(null);
+    }
+  }
+
+  async function deletePlugin(name: string) {
+    if (!window.confirm(t('designs.deleteConfirm', { name }))) return;
+    setBusyName(name);
+    try {
+      const res = await fetch(`/api/marketplaces/hdw-community/plugins/${encodeURIComponent(name)}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        console.error('delete failed', body);
+      }
+      onRefresh();
+    } finally {
+      setBusyName(null);
+    }
+  }
+
   if (loading) {
     return (
       <div className={styles.loading}>
@@ -345,7 +405,12 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
   // unpublished records or persist simulated publication state in the browser.
   const items: readonly PublishedProjectItem[] = isMyPublishes && projectItems
     ? projectItems
-    : plugins.map((entry) => ({ entry, publicationStatus: 'published' }));
+    : plugins.map((entry) => ({
+        entry,
+        publicationStatus: (isMyPublishes && typeof (entry as MarketplacePluginEntryWithDeletion).deletedAt === 'string')
+          ? 'unpublished'
+          : 'published',
+      }));
   const visibleItems = isMyPublishes && publicationFilter !== 'all'
     ? items.filter((item) => item.publicationStatus === publicationFilter)
     : items;
@@ -358,10 +423,14 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
     <div className="community-template-grid" data-testid="square-projects-grid">
       {visibleItems.map(({ entry, publicationStatus }) => {
         const title = entry.title ?? entry.name;
+        const description = entry.description?.trim();
         const publisherName = entry.publisher?.displayName ?? entry.publisher?.github ?? entry.publisher?.id ?? '';
         const meta = publisherName ? publisherName + ' · v' + entry.version : 'v' + entry.version;
         const accent = templateAccent(entry.name);
         const isRemixing = remixingName === entry.name;
+        const isOwner = isMyPublishes
+          ? true
+          : typeof entry.publisher?.id === 'string' && entry.publisher.id === username;
         return (
           <article
             key={entry.name}
@@ -395,10 +464,20 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
             {isMyPublishes && publicationStatus === 'unpublished' ? (
               <span className={publishStyles.unpublishedBadge}>{t('squareScope.unpublished')}</span>
             ) : null}
-            <ProjectCardMenu
-              publicationStatus={isMyPublishes ? publicationStatus : undefined}
-              onShare={() => { setShareOnOpen(true); setDetailsEntry(entry); }}
-            />
+            {isMyPublishes || isOwner ? (
+              <ProjectCardMenu
+                name={entry.name}
+                publicationStatus={publicationStatus}
+                onPublish={publishPlugin}
+                onUnpublish={unpublishPlugin}
+                onDelete={deletePlugin}
+                busy={busyName}
+              />
+            ) : null}
+            <div className={publishStyles.cardBody}>
+              <h3 className={publishStyles.cardTitle}>{title}</h3>
+              {description ? <p className={publishStyles.cardDesc}>{description}</p> : null}
+            </div>
             <footer className="community-template-card__foot">
               <span>{meta}</span>
               {isMyPublishes && publicationStatus === 'unpublished' ? null : <div className="community-template-card__actions">
@@ -781,7 +860,7 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
 
       <div className={styles.content} role="tabpanel">
       {activeTab === 'projects' ? (
-        <ProjectsPanel isMyPublishes={isMyPublishes} publicationFilter={publicationFilter} projectItems={projectItems} refreshKey={refreshKey} onRefresh={() => setRefreshKey((k) => k + 1)} username={isMyPublishes ? myUsername : null} />
+        <ProjectsPanel isMyPublishes={isMyPublishes} publicationFilter={publicationFilter} projectItems={projectItems} refreshKey={refreshKey} onRefresh={() => setRefreshKey((k) => k + 1)} username={myUsername} />
       ) : activeTab === 'skill' ? (
           <CloudSkillList
             workspaceId={workspaceId}

@@ -423,6 +423,10 @@
   overflow: hidden;
 }
 
+.squareCardDesc {
+  -webkit-line-clamp: 1;
+}
+
 /* Bottom: action buttons */
 .cardActions {
   display: flex;

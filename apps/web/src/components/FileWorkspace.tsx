@@ -266,10 +266,6 @@ interface Props {
   ) => Promise<{ message?: string; url?: string } | void> | { message?: string; url?: string } | void;
   activePluginActionPaths?: Set<string>;
   hiddenPluginActionPaths?: Set<string>;
-  /** Share the whole project to HDW community from the FileViewer toolbar. */
-  onShareToCommunity?: () => void;
-  /** True while the share-to-community task is in flight. */
-  sharingToCommunity?: boolean;
   focusMode?: boolean;
   onFocusModeChange?: (next: boolean) => void;
   /** Return to the page that opened the project. Used by the focus-mode
@@ -1335,8 +1331,6 @@ export function FileWorkspace({
   onBrandExtractionStopRequest,
   onRequestBrowserUsePrompt,
   onPluginFolderAgentAction,
-  onShareToCommunity,
-  sharingToCommunity = false,
   activePluginActionPaths,
   hiddenPluginActionPaths,
   focusMode = false,
@@ -3412,8 +3406,6 @@ export function FileWorkspace({
       manualEditEntryAllowed={
         protectedHtmlViewerFileNames.size === 0 || protectedHtmlViewerFileNames.has(file.name)
       }
-      onShareToCommunity={onShareToCommunity}
-      sharingToCommunity={sharingToCommunity}
     />
   );
 

@@ -378,7 +378,7 @@ export function CloudToolList({
                 ) : null}
               </div>
               {description
-                ? <p className={styles.cardDesc}>{description}</p>
+                ? <p className={`${styles.cardDesc}${mode === 'square' ? ` ${styles.squareCardDesc}` : ''}`}>{description}</p>
                 : null}
               <footer className={mode === 'shared' ? undefined : `community-template-card__foot ${styles.resourceCardFooter}`}>
               <button

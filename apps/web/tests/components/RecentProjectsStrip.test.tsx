@@ -36,6 +36,7 @@ const recentWorkspaceState = vi.hoisted(() => ({
 
 vi.mock('../../src/collab/useWorkspaceContext', () => ({
   notifyTeamProjectsChanged: vi.fn(),
+  useSharedSpaceTeamId: () => null,
   useWorkspaceBilling: () => null,
   useWorkspaceContext: () => ({
     context: recentWorkspaceState.context,
@@ -340,6 +341,21 @@ describe('RecentProjectsStrip', () => {
     expect(screen.queryByText('Created by Me')).toBeNull();
     const avatar = container.querySelector<HTMLImageElement>('.recent-projects__card-owner img');
     expect(avatar?.src).toBe('https://example.com/elian.png');
+  });
+
+  it('shows Me in the bottom-left owner slot for self-owned drafts cards', async () => {
+    const { container } = render(
+      <RecentProjectsStrip
+        space="drafts"
+        projects={[project({ id: 'project-draft-owned', name: 'Draft project' })]}
+        onOpen={() => {}}
+      />,
+    );
+
+    await waitFor(() => {
+      const owner = container.querySelector<HTMLElement>('.recent-projects__card-owner');
+      expect(owner?.textContent).toBe('Me');
+    });
   });
 
   it('refreshes only the card named by team-project-content-ready', async () => {

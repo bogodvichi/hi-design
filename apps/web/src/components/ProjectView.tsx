@@ -198,7 +198,6 @@ import {
   loadTabs,
   patchConversation,
   patchProject,
-  publishToHdwCommunityWithEntry,
   ProjectConversationsHttpError,
   saveMessage,
   startGeneratedPluginShareTask,
@@ -2406,7 +2405,6 @@ export function ProjectView({
   const [activePluginActionPaths, setActivePluginActionPaths] = useState<Set<string>>(() => new Set());
   const [hiddenAssistantPluginActionPaths, setHiddenAssistantPluginActionPaths] = useState<Set<string>>(() => new Set());
   const [forceStreamingPluginMessageIds, setForceStreamingPluginMessageIds] = useState<Set<string>>(() => new Set());
-  const [shareNotice, setShareNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   // Ephemeral, live-only accumulation of a tool call's streaming JSON input,
   // keyed by tool-use id (globally unique per run). Fed by `onToolInputDelta`
   // while the model is still emitting `input_json_delta`; dropped per-id once
@@ -9275,41 +9273,6 @@ const coalescedCoverRefresh = useCoalescedCallback(
           effectiveSelectedPluginActionChoice?.model,
         )
       : apiProtocolModelLabel(config.apiProtocol, config.model);
-
-    // Direct share-to-community handler — calls the synchronous publish-hdw
-  // endpoint without creating chat messages or share tasks. Suitable for
-  // reuse across multiple UI surfaces that need share-to-community.
- ﻿const handleShareToCommunity = useCallback(async (coverImage?: string | null) => {
-    setShareNotice(null);
-    setActivePluginActionPaths((prev) => new Set(prev).add('.'));
-   try {
-      const outcome = await publishToHdwCommunityWithEntry(
-        project.id,
-        '.',
-        project?.metadata?.entryFile,
-        projectRunWorkspaceContext,
-        coverImage,
-      );
-     setShareNotice({
-        type: outcome.ok ? 'success' : 'error',
-        message: outcome.message,
-      });
-    } catch (err) {
-      setShareNotice({
-        type: 'error',
-        message: err instanceof Error ? err.message : String(err),
-      });
-    } finally {
-      setActivePluginActionPaths((prev) => {
-        const next = new Set(prev);
-        next.delete('.');
-        return next;
-      });
-    }
-    // Auto-dismiss the notice after 6 seconds.
-    setTimeout(() => setShareNotice(null), 6_000);
-  }, [project.id, projectRunWorkspaceContext]);
-
   const handlePluginFolderAgentAction = useCallback(
     async (relativePath: string, action: PluginFolderAgentAction) => {
       if (currentConversationActionDisabled || !activeConversationId) return;
@@ -11547,15 +11510,6 @@ const coalescedCoverRefresh = useCoalescedCallback(
   // project frame flashing twice on the way in from Home.
   return (
     <CollabProvider value={collabValue}>
-      {shareNotice && (
-        <div
-          className={`share-notice share-notice--${shareNotice.type}`}
-          role="status"
-          onClick={() => setShareNotice(null)}
-        >
-          <span>{shareNotice.message}</span>
-        </div>
-      )}
       <CritiqueTheaterMount
         projectId={project.id}
         enabled={critiqueTheaterEnabled}
@@ -11966,8 +11920,6 @@ const coalescedCoverRefresh = useCoalescedCallback(
           onBrandExtractionStopRequest={projectIsProgrammaticBrandExtraction ? handleStop : undefined}
           onRequestBrowserUsePrompt={handleBrowserUsePrompt}
           onPluginFolderAgentAction={handlePluginFolderAgentAction}
-          onShareToCommunity={handleShareToCommunity}
-          sharingToCommunity={activePluginActionPaths.has('.')}
           activePluginActionPaths={activePluginActionPaths}
           focusMode={workspaceFocused}
           onFocusModeChange={setWorkspaceFocused}

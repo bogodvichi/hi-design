@@ -1754,7 +1754,12 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
       const tmpArchivePath = path.join(tmpDir, `community-${req.params.id}-${Date.now()}.zip`);
 
       try {
-        const { uploadHdwCommunityBlob, publishHdwCommunityPluginDetailed } =
+        const {
+          uploadHdwCommunityBlob,
+          publishHdwCommunityPluginDetailed,
+          fetchHdwCommunityPluginDetail,
+          resolveHdwCommunityPublishVersion,
+        } =
           await import('./http/hdw.js');
         const { writeCoverDigest, fetchHdwMarketplaceManifestText,
           HDW_MARKETPLACE_ID, HDW_MARKETPLACE_URL } = await import('./http/hdw.js');
@@ -1765,13 +1770,18 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
 
         const dataDir = RUNTIME_DATA_DIR_CANONICAL;
 
-        const slug = title
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, '-')
-          .replace(/^-+|-+$/g, '') || 'untitled-project';
-        const derivedName = slug.length >= 12
-          ? slug
-          : slug + '-' + createHash('md5').update(title + req.params.id).digest('hex').slice(0, 8);
+        // Use a deterministic MD5 of the request title so the HDW plugin
+        // identity for a title is stable across projects and republishes.
+        const derivedName = createHash('md5').update(title).digest('hex');
+
+        // HDW treats name+version as immutable, so re-publishing the same
+        // project must bump to the next free patch instead of retrying the
+        // default 0.0.0 and hitting "Version 0.0.0 already exists".
+        const existingDetail = await fetchHdwCommunityPluginDetail(derivedName, dataDir);
+        const publishVersion = resolveHdwCommunityPublishVersion(
+          existingDetail?.version,
+          '0.0.0',
+        );
 
         const session = readSsoConfigFile(dataDir);
         const publisherUsername = String(session?.username ?? 'unknown').trim();
@@ -1788,7 +1798,7 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
           $schema: 'https://open-design.ai/schemas/plugin.v1.json',
           specVersion: '1.0.0',
           name: derivedName,
-          version: '0.0.0',
+          version: publishVersion,
           title,
           description: description || 'Shared from ' + title,
           license: 'MIT',
@@ -1901,7 +1911,7 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
 
         const publishInput = {
           name: derivedName,
-          version: '0.0.0',
+          version: publishVersion,
           archiveDigest: blob.digest,
           archiveSize: blob.size,
           archiveIntegrity: `sha256-${blob.digest}`,

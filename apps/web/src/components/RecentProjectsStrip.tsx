@@ -84,8 +84,9 @@ import type { ProjectCollectionClickProps } from '@open-design/contracts/analyti
 
 /** Which project space this strip renders. Drives the per-card 共享 badge
  *  (hidden in the all-shared team space) and the "{creator}创建" line: 'recent'
- *  = home's mixed private/shared, 'drafts' = the member's own private list,
- *  'team' = the全部项目 grid where every card is a team-shared project. */
+ *  = home's mixed private/shared, 'drafts' = the member's own private list
+ *  (still shows the self-owner chip on the bottom-left), 'team' = the全部项目
+ *  grid where every card is a team-shared project. */
 export type SpaceKind = 'recent' | 'drafts' | 'team';
 /** Operator identity for HDW-backed team spaces. When provided, resolveCreator
  *  uses this memberId/role instead of the OpenDesign workspace-collab context,
@@ -192,7 +193,7 @@ interface Props {
   *  (multi-select, filters, sort, view toggle) remain visible. */
 hideTitle?: boolean;
 /** When true, the controls bar shows only the search input and the
- *  grid/list view toggle — multi-select, owner filter, and sort are
+ *  grid/list view toggle plus sort — multi-select and owner filter are
  *  hidden. Used by /share-me where the viewer has read-only access. */
 minimalControls?: boolean;
 /** External search query. When provided, the strip uses this value instead
@@ -1831,7 +1832,6 @@ function requestDelete(project: Project) {
                 ) : null}
               </div>
             ) : null}
-            {!minimalControls ? (
             <div className="recent-projects__filter-wrap">
               <button
                 type="button"
@@ -1870,7 +1870,6 @@ function requestDelete(project: Project) {
                 </div>
               ) : null}
             </div>
-            ) : null}
             <div className="recent-projects__view" role="group" aria-label={t('designs.viewToggleAria')}>
               <button
                 type="button"
@@ -2297,35 +2296,33 @@ function requestDelete(project: Project) {
                      </span>
                    ) : null}
                  </div>
-                  <div className="recent-projects__card-footer">
-                   <div className="recent-projects__card-time">
-                  {space !== 'drafts' ? (
-                  <>
-                 {(isSelfOwnedForDisplay || (creator.ownedBySelf && space !== 'team')) ? (
-                   <span
-                     className="recent-projects__card-owner"
-                     style={{ backgroundColor: '#000' }}
-                     aria-hidden
-                   >
-                     {t('recentProjects.selfCreator')}
-                   </span>
-                 ) : (
-                   <span
-                     className="recent-projects__card-owner"
-                    title={creator.name}
-                   style={{ backgroundColor: ownerAvatarColor(creator.memberId) }}
-                     aria-hidden
-                   >
-                     {creator.name}
-                   </span>
-                 )}
-                  <span className="recent-projects__card-sep" aria-hidden>·</span>
-                 </>
-                 ) : null}
+                <div className="recent-projects__card-footer">
+                  <div className="recent-projects__card-time">
+                    <>
+                      {(isSelfOwnedForDisplay || (creator.ownedBySelf && space !== 'team')) ? (
+                        <span
+                          className="recent-projects__card-owner"
+                          style={{ backgroundColor: '#000' }}
+                          aria-hidden
+                        >
+                          {t('recentProjects.selfCreator')}
+                        </span>
+                      ) : (
+                        <span
+                          className="recent-projects__card-owner"
+                          title={creator.name}
+                          style={{ backgroundColor: ownerAvatarColor(creator.memberId) }}
+                          aria-hidden
+                        >
+                          {creator.name}
+                        </span>
+                      )}
+                      <span className="recent-projects__card-sep" aria-hidden>·</span>
+                    </>
                     {relativeTime(project.updatedAt, t)}
-                   </div>
                   </div>
                 </div>
+               </div>
               </button>
               {canShowCardActions && !selectionMode && (creator.canMutate || creator.canAdmin) ? (
                <div

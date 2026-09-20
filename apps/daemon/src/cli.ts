@@ -178,6 +178,9 @@ const PLUGIN_BOOLEAN_FLAGS = new Set([
   'revoke',
   'follow',
   'strict',
+  'publish',
+  'unpublish',
+  'delete',
 ]);
 
 const UI_STRING_FLAGS = new Set([
@@ -3307,6 +3310,9 @@ async function runMarketplace(args) {
   od marketplace list                                         List registered marketplaces.
   od marketplace info    <id>                                 Inspect one marketplace + cached manifest.
   od marketplace plugins <id> [--json]                        List cached plugin entries for one marketplace.
+  od marketplace plugins <id> <plugin> --publish             Republish an owned HDW community plugin after unpublish.
+  od marketplace plugins <id> <plugin> --unpublish            Soft-unpublish owned HDW community plugin.
+  od marketplace plugins <id> <plugin> --delete               Hard-delete owned HDW community plugin.
   od marketplace search  <query> [--json]                     Search cached marketplace entries.
   od marketplace doctor  [id] [--strict] [--json]             Validate cached marketplace entries.
   od marketplace login   <id|url> [--host github.com]         Authenticate gh for private GitHub catalogs.
@@ -3394,9 +3400,34 @@ Common options:
     }
     case 'plugins': {
       const id = rest.find((a) => !a.startsWith('-'));
+      const pluginName = rest.filter((a) => !a.startsWith('-'))[1];
       if (!id) {
         console.error('Usage: od marketplace plugins <id> [--json]');
         process.exit(2);
+      }
+      if (flags.publish || flags.unpublish || flags.delete) {
+        if (!pluginName) {
+          console.error('Usage: od marketplace plugins <id> <plugin> --publish|--unpublish|--delete');
+          process.exit(2);
+        }
+        const method = flags.publish || flags.unpublish ? 'POST' : 'DELETE';
+        const path = flags.publish
+          ? `/api/marketplaces/${encodeURIComponent(id)}/plugins/${encodeURIComponent(pluginName)}/publish`
+          : flags.unpublish
+            ? `/api/marketplaces/${encodeURIComponent(id)}/plugins/${encodeURIComponent(pluginName)}/unpublish`
+            : `/api/marketplaces/${encodeURIComponent(id)}/plugins/${encodeURIComponent(pluginName)}`;
+        const resp = await fetch(`${base}${path}`, { method });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          console.error(`${flags.publish ? 'publish' : flags.unpublish ? 'unpublish' : 'delete'} failed: ${resp.status} ${JSON.stringify(data)}`);
+          process.exit(1);
+        }
+        if (flags.json) {
+          process.stdout.write(JSON.stringify(data, null, 2) + '\n');
+          return;
+        }
+        console.log(flags.publish ? `Published ${pluginName}.` : flags.unpublish ? `Unpublished ${pluginName}.` : `Deleted ${pluginName}.`);
+        return;
       }
       const resp = await fetch(`${base}/api/marketplaces/${encodeURIComponent(id)}/plugins`);
       const data = await resp.json().catch(() => ({}));
@@ -5746,20 +5777,6 @@ function extractFirstUrl(text) {
 // read from the daemon data dir). The publisher username comes from
 // --publisher-username, SSO session, or 'unknown' in that order.
 
-// Compare two semver-like strings (major.minor.patch). Returns -1, 0, or 1.
-// Non-numeric or missing segments are treated as 0.
-function compareSemver(a: string, b: string): number {
-  const pa = a.split('.');
-  const pb = b.split('.');
-  for (let i = 0; i < 3; i++) {
-    const na = parseInt(pa[i] ?? '0', 10) || 0;
-    const nb = parseInt(pb[i] ?? '0', 10) || 0;
-    if (na < nb) return -1;
-    if (na > nb) return 1;
-  }
-  return 0;
-}
-
 async function runPluginPublishHdw(rest) {
  const flags = parseFlags(rest, {
 // cover-digest is set by the server when it pre-generates a cover screenshot.
@@ -5998,21 +6015,12 @@ Exit codes:
   // Auto-increment version when re-publishing the same plugin.
   // If the plugin already exists on HDW with the same version, bump
   // the patch number so the publish does not fail with 'already exists'.
-  const { fetchHdwCommunityPluginDetail } = await import('./http/hdw.js');
+  const { fetchHdwCommunityPluginDetail, resolveHdwCommunityPublishVersion } =
+    await import('./http/hdw.js');
   const existingDetail = await fetchHdwCommunityPluginDetail(pluginName, dataDir);
-  if (existingDetail && existingDetail.version) {
-    const hdwVersion = existingDetail.version;
-    // Bump when the HDW version is >= the current version, so
-    // re-publishing a project whose auto-generated manifest resets
-    // to 0.0.0 still picks up the next free patch number.
-    if (compareSemver(hdwVersion, pluginVersion) >= 0) {
-      let parts = hdwVersion.split('.');
-      let bumped;
-      if (parts.length === 3 && parts.every((p) => /^\d+$/.test(p))) {
-        bumped = parts[0] + '.' + parts[1] + '.' + (parseInt(parts[2], 10) + 1);
-      } else {
-        bumped = hdwVersion + '-1';
-      }
+  if (existingDetail?.version) {
+    const bumped = resolveHdwCommunityPublishVersion(existingDetail.version, pluginVersion);
+    if (bumped !== pluginVersion) {
       manifest.version = bumped;
       // Only write the bumped version back when the manifest was
       // auto-generated; never mutate a user's existing open-design.json.
@@ -6021,7 +6029,7 @@ Exit codes:
       }
       pluginVersion = bumped;
       if (!flags.json) {
-        console.log('[publish-hdw] version ' + hdwVersion + ' already exists, bumped to ' + bumped);
+        console.log('[publish-hdw] version ' + existingDetail.version + ' already exists, bumped to ' + bumped);
       }
     }
   }

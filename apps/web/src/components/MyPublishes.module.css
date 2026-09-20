@@ -58,6 +58,37 @@
   border-radius: 0 0 7px 7px;
 }
 
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 14px 8px 16px;
+  background: var(--bg);
+}
+
+.cardTitle,
+.cardDesc {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardTitle {
+  color: var(--text-strong, var(--text));
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.cardDesc {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 16px;
+}
+
 .card:focus-visible {
   outline: 2px solid var(--text-strong);
   outline-offset: 3px;

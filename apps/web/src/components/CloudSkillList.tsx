@@ -575,7 +575,7 @@ useEffect(() => {
               ) : null}
             </div>
               {skill.description
-                ? <p className={styles.cardDesc}>{skill.description}</p>
+                ? <p className={`${styles.cardDesc}${mode === 'square' ? ` ${styles.squareCardDesc}` : ''}`}>{skill.description}</p>
                 : null}
               {mode !== 'shared' ? (
                 <footer className={`community-template-card__foot ${styles.resourceCardFooter}`}>

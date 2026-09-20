@@ -1857,10 +1857,6 @@ interface Props {
   ) => void;
   /** Prevent a second retained viewer from entering Manual Edit. */
   manualEditEntryAllowed?: boolean;
- /** Share the whole project to the HDW community marketplace. */
-  onShareToCommunity?: (coverImage?: string | null) => void;
- /** True while the share-to-community task is in flight. */
-  sharingToCommunity?: boolean;
 }
 
 function FileViewerLoadingSkeleton() {
@@ -1939,8 +1935,6 @@ export const FileViewer = memo(function FileViewer({
   onRetainActivityChange,
   onManualEditExitHandlerChange,
   manualEditEntryAllowed = true,
-  onShareToCommunity,
-  sharingToCommunity = false,
 }: Props) {
   const t = useT();
   const projectCollabContext = useProjectCollabContext();
@@ -2031,8 +2025,6 @@ export const FileViewer = memo(function FileViewer({
         onRetainActivityChange={onRetainActivityChange}
         onManualEditExitHandlerChange={onManualEditExitHandlerChange}
         manualEditEntryAllowed={manualEditEntryAllowed}
-        onShareToCommunity={onShareToCommunity}
-        sharingToCommunity={sharingToCommunity}
       />
     );
   }
@@ -2052,8 +2044,6 @@ export const FileViewer = memo(function FileViewer({
         installationId={installationId}
         viewerOnly={viewerOnly}
         workspaceActive={workspaceActive}
-        onShareToCommunity={onShareToCommunity}
-        sharingToCommunity={sharingToCommunity}
       />
     );
   }
@@ -6686,8 +6676,6 @@ function ReactComponentViewer({
   installationId,
   viewerOnly = false,
   workspaceActive = true,
-  onShareToCommunity,
-  sharingToCommunity = false,
 }: {
   projectId: string;
   projectKind: TrackingProjectKind;
@@ -6702,8 +6690,6 @@ function ReactComponentViewer({
   installationId?: string | null;
   viewerOnly?: boolean;
  workspaceActive?: boolean;
-  onShareToCommunity?: (coverImage?: string | null) => void;
- sharingToCommunity?: boolean;
 }) {
   const t = useT();
   const analytics = useAnalytics();
@@ -7474,19 +7460,6 @@ function ReactComponentViewer({
                  installationId={installationId}
                />
              )}
-            {viewerOnly || !onShareToCommunity ? null : (
-              <button
-                type="button"
-                className="viewer-action viewer-share-community"
-                  onClick={() => onShareToCommunity()}
-                disabled={sharingToCommunity}
-                  title={t('fileViewer.shareToCommunity')}
-                  aria-label={t('fileViewer.shareToCommunity')}
-                >
-                  <RemixIcon name={sharingToCommunity ? 'loader-4-line' : 'share-forward-line'} size={14} className={sharingToCommunity ? 'icon-spin' : undefined} />
-                  <span>{sharingToCommunity ? t('fileViewer.sharing') : t('fileViewer.shareToCommunity')}</span>
-                </button>
-              )}
             </>
 
           ) : null}
@@ -7678,8 +7651,6 @@ function HtmlViewer({
   onRetainActivityChange,
   onManualEditExitHandlerChange,
   manualEditEntryAllowed = true,
-  onShareToCommunity,
-  sharingToCommunity = false,
 }: {
   projectId: string;
   projectKind: TrackingProjectKind;
@@ -7720,8 +7691,6 @@ function HtmlViewer({
     handler: (() => Promise<boolean>) | null,
   ) => void;
  manualEditEntryAllowed?: boolean;
-  onShareToCommunity?: (coverImage?: string | null) => void;
- sharingToCommunity?: boolean;
 }) {
   const { locale, t } = useI18n();
   const iframeKeepAlivePool = useIframeKeepAlivePool();
@@ -17384,26 +17353,6 @@ async function openReviewListModal() {
                   metricsConsent={metricsConsent}
                   installationId={installationId}
                 />
-              )}
-              {viewerOnly || !onShareToCommunity ? null : (
-                <button
-                  type="button"
-                  className="viewer-action viewer-share-community"
-                  onClick={async () => {
-                    let coverImage: string | null = null;
-                    try {
-                      const snap = await captureExportImageSnapshot();
-                      if (snap?.dataUrl) coverImage = snap.dataUrl;
-                    } catch { /* best-effort: publish without cover */ }
-                    onShareToCommunity(coverImage);
-                  }}
-                  disabled={sharingToCommunity}
-                  title={t('fileViewer.shareToCommunity')}
-                  aria-label={t('fileViewer.shareToCommunity')}
-                >
-                  <RemixIcon name={sharingToCommunity ? 'loader-4-line' : 'share-forward-line'} size={14} className={sharingToCommunity ? 'icon-spin' : undefined} />
-                  <span>{sharingToCommunity ? t('fileViewer.sharing') : t('fileViewer.shareToCommunity')}</span>
-                </button>
               )}
             </div>
 
