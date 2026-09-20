@@ -4,12 +4,26 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 import type { PreviewCommentSnapshot } from '../comments';
 import type { Dict } from '../i18n/types';
-import type { PreviewComment, PreviewCommentMember } from '../types';
+import type { PreviewComment, PreviewCommentMember, PreviewCommentStatus } from '../types';
+import { avatarColorFor } from '../utils/avatarColor';
 import { isImeComposing } from '../utils/imeComposing';
 
 import { Icon } from './Icon';
 
 type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
+
+function commentTimeLabel(ts: number | undefined): string {
+  const date = new Date(Number.isFinite(ts) ? Number(ts) : Number.NaN);
+  if (!Number.isFinite(date.getTime())) return '';
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return (
+    [date.getFullYear(), pad(date.getMonth() + 1), pad(date.getDate())].join('/') +
+    ' ' +
+    pad(date.getHours()) +
+    ':' +
+    pad(date.getMinutes())
+  );
+}
 
 function summarizeMember(member: PreviewCommentMember): string {
   const text = String(member.text || '').trim();
@@ -43,6 +57,13 @@ function compactFontFamily(value: string | undefined): string | null {
   if (!value) return null;
   const first = value.split(',')[0]?.trim().replace(/^["']|["']$/g, '');
   return first || null;
+}
+
+function commentAuthorInitial(name: string | undefined): string {
+  const trimmed = name?.trim();
+  if (!trimmed) return '?';
+  const [first] = Array.from(trimmed);
+  return (first ?? '?').toUpperCase();
 }
 
 type AnnotationStyleRow = { label: string; value: string; swatch?: string };
@@ -441,6 +462,12 @@ export function BoardComposerPopover({
   canEditComment = true,
   canDeleteComment = true,
   canSendToAgent = true,
+  canChangeCommentStatus = false,
+  onChangeCommentStatus,
+  canReplyComment = false,
+  onReplyComment,
+  authorDisplayName,
+  authorAvatarSeed,
   allowSendToChat = true,
   t,
   scale = 1,
@@ -492,6 +519,16 @@ export function BoardComposerPopover({
   canEditComment?: boolean;
   canDeleteComment?: boolean;
   canSendToAgent?: boolean;
+  /** Existing-comment gate: comment owner or project owner may resolve/reopen. */
+  canChangeCommentStatus?: boolean;
+  onChangeCommentStatus?: (commentId: string, status: PreviewCommentStatus) => void | Promise<void>;
+  /** Existing-comment gate: reply is a project-owner action in the popover header. */
+  canReplyComment?: boolean;
+  /** Reply is a project-owner action in the popover header. The optional
+   *  `replyText` lets the parent persist the appended reply. */
+  onReplyComment?: (comment: PreviewComment, replyText?: string) => void | Promise<void>;
+  authorDisplayName?: string;
+  authorAvatarSeed?: string;
   allowSendToChat?: boolean;
   t: TranslateFn;
   scale?: number;
@@ -505,9 +542,15 @@ export function BoardComposerPopover({
   const composingRef = useRef(false);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
+  const moreMenuRef = useRef<HTMLSpanElement | null>(null);
   const [popoverSize, setPopoverSize] = useState<PopoverSize | undefined>(undefined);
   const [manualPosition, setManualPosition] = useState<PopoverPosition | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [editingExistingComment, setEditingExistingComment] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const [replyingExistingComment, setReplyingExistingComment] = useState(false);
+  const [replyDraft, setReplyDraft] = useState('');
+  const [localReplies, setLocalReplies] = useState<string[]>([]);
   const targetPlacementKey = [
     target.filePath,
     target.elementId,
@@ -529,6 +572,11 @@ export function BoardComposerPopover({
   useEffect(() => {
     setManualPosition(null);
   }, [targetPlacementKey, docked]);
+  useEffect(() => {
+    setReplyingExistingComment(false);
+    setReplyDraft('');
+    setLocalReplies([]);
+  }, [existing?.id]);
   useLayoutEffect(() => {
     const node = popoverRef.current;
     if (!node) return;
@@ -611,6 +659,11 @@ export function BoardComposerPopover({
   const trimmedDraft = draft.trim();
   const existingNote = existing?.note.trim() ?? '';
   const hasFreshImage = images.length > 0;
+  const isExistingComment = Boolean(existing);
+  const existingResolved = existing?.status === 'resolved';
+  const composeVisible = commenting || (isExistingComment && editingExistingComment);
+  const authorLabel = authorDisplayName?.trim() || existing?.authorMemberId || '?';
+  const authorSeed = authorAvatarSeed?.trim() || existing?.authorMemberId || authorLabel || '?';
   // An attached image alone is enough to send (the element context rides along
   // even without a typed note).
   const hasAnyImage = hasFreshImage || existingImages.length > 0;
@@ -622,6 +675,7 @@ export function BoardComposerPopover({
   const hasSaveContent = Boolean(trimmedDraft) || hasAnyImage;
   const existingChanged = existing ? trimmedDraft !== existingNote || hasFreshImage : true;
   const saveDisabled = !hasSaveContent || !existingChanged || sending;
+  const trimmedReply = replyDraft.trim();
   // Queue-on-send swaps the primary label to the annotation-queue wording.
   const primaryLabel = sending
     ? t('chat.comments.sending')
@@ -644,6 +698,45 @@ export function BoardComposerPopover({
     e.preventDefault();
     onAttachImages?.(imgs);
   }
+  function submitReply() {
+    if (!existing) return;
+    const text = trimmedReply;
+    if (!text) return;
+    setLocalReplies((current) => [...current, text]);
+    setReplyDraft('');
+    setReplyingExistingComment(false);
+    void onReplyComment?.(existing, text);
+  }
+  useEffect(() => {
+    if (!moreMenuOpen) return;
+    const handler = (event: PointerEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target as Node)) {
+        setMoreMenuOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', handler);
+    return () => document.removeEventListener('pointerdown', handler);
+  }, [moreMenuOpen]);
+  useEffect(() => {
+    if (!isExistingComment || !editingExistingComment) return;
+    const handler = (event: PointerEvent) => {
+      const active = event.target instanceof Node ? event.target : null;
+      if (!active) return;
+      const textarea = popoverRef.current?.querySelector('textarea');
+      if (textarea?.contains(active)) return;
+      if (
+        popoverRef.current &&
+        [...popoverRef.current.querySelectorAll('[data-editing-action]')].some((node) =>
+          node.contains(active),
+        )
+      ) {
+        return;
+      }
+      setEditingExistingComment(false);
+    };
+    document.addEventListener('pointerdown', handler);
+    return () => document.removeEventListener('pointerdown', handler);
+  }, [isExistingComment, editingExistingComment, canEditComment]);
   return (
     <div
       ref={popoverRef}
@@ -674,16 +767,94 @@ export function BoardComposerPopover({
           <span className="comment-popover-title" title={target.label || target.elementId}>
             {target.label || target.elementId}
           </span>
-          {onViewAllComments ? (
-            <button
-              type="button"
-              className="comment-popover-view-all"
-              data-testid="comment-popover-view-all"
-              onClick={(event) => onViewAllComments(event.currentTarget)}
-            >
-              {t('chat.comments.viewAll')}
-              <Icon name="chevron-right" size={12} />
-            </button>
+          {isExistingComment ? (
+            <span className="comment-popover-existing-actions">
+              {canEditComment ? (
+                <span className="comment-popover-more" ref={moreMenuRef}>
+                  <button
+                    type="button"
+                    className="comment-popover-header-action"
+                    aria-label={t('chat.comments.sortAndFilter')}
+                    title={t('chat.comments.sortAndFilter')}
+                    aria-haspopup="menu"
+                    aria-expanded={moreMenuOpen}
+                    onClick={() => setMoreMenuOpen((value) => !value)}
+                  >
+                    <Icon name="more-horizontal" size={16} />
+                  </button>
+                  {moreMenuOpen ? (
+                    <span className="comment-popover-more-menu" role="menu">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        onClick={() => {
+                          setEditingExistingComment(true);
+                          setMoreMenuOpen(false);
+                        }}
+                      >
+                        <Icon name="edit" size={14} />
+                        {t('chat.comments.edit')}
+                      </button>
+                      {existing && onDeleteComment && canDeleteComment ? (
+                        <button
+                          type="button"
+                          className="danger"
+                          role="menuitem"
+                          onClick={() => {
+                            setMoreMenuOpen(false);
+                            void onDeleteComment(existing.id);
+                          }}
+                        >
+                          <Icon name="trash" size={14} />
+                          {t('chat.comments.deleteComment')}
+                        </button>
+                      ) : null}
+                    </span>
+                  ) : null}
+                </span>
+              ) : null}
+              {existing && canChangeCommentStatus && onChangeCommentStatus ? (
+                <button
+                  type="button"
+                  className="comment-popover-header-action"
+                  title={existingResolved ? t('chat.comments.reopen') : t('chat.comments.markResolved')}
+                  aria-label={existingResolved ? t('chat.comments.reopen') : t('chat.comments.markResolved')}
+                  onClick={() => {
+                    void onChangeCommentStatus(
+                      existing.id,
+                      existingResolved ? 'open' : 'resolved',
+                    );
+                  }}
+                >
+                  <Icon name={existingResolved ? 'rotate-ccw' : 'check'} size={15} />
+                </button>
+              ) : null}
+              {existing && canReplyComment ? (
+                <button
+                  type="button"
+                  className="comment-popover-header-action"
+                  title={t('chat.comments.reply')}
+                  aria-label={t('chat.comments.reply')}
+                  onClick={() => {
+                    setEditingExistingComment(false);
+                    setReplyingExistingComment(true);
+                  }}
+                >
+                  <Icon name="message-square" size={14} />
+                </button>
+              ) : null}
+            </span>
+          ) : onViewAllComments ? (
+            // <button
+            //   type="button"
+            //   className="comment-popover-view-all"
+            //   data-testid="comment-popover-view-all"
+            //   onClick={(event) => onViewAllComments(event.currentTarget)}
+            // >
+            //   {t('chat.comments.viewAll')}
+            //   <Icon name="chevron-right" size={12} />
+            // </button>
+            <></>
           ) : null}
         </div>
       ) : null}
@@ -691,9 +862,22 @@ export function BoardComposerPopover({
           outside this box (see below) so a height-clamped card can never push
           the buttons out of view. */}
       <div className="comment-popover-body">
-        <section className="comment-popover-section comment-popover-section-params">
-          <AnnotationStyleSummary target={target} testId="comment-popover-style-summary" />
-        </section>
+        {existing ? (
+          <section className="comment-popover-section comment-popover-section-params">
+            <div className="comment-popover-meta-line">
+              <span
+                className="comment-popover-meta-avatar"
+                style={{ background: avatarColorFor(authorSeed) }}
+                aria-hidden="true"
+              >
+                {commentAuthorInitial(authorLabel)}
+              </span>
+              <time className="comment-popover-meta-time" dateTime={commentTimeLabel(existing.createdAt)}>
+                {commentTimeLabel(existing.createdAt)}
+              </time>
+            </div>
+          </section>
+        ) : null}
         {podMembers.length > 0 ? (
           <div className="board-pod-summary">
             <strong>{t('chat.comments.capturedItems', { n: target.memberCount || podMembers.length })}</strong>
@@ -728,7 +912,7 @@ export function BoardComposerPopover({
             </div>
           </div>
         ) : null}
-        {commenting ? (
+        {composeVisible ? (
           <section className="comment-popover-section comment-popover-section-compose">
             {notes.length > 0 ? (
               <div className="board-note-list">
@@ -782,49 +966,109 @@ export function BoardComposerPopover({
                 ))}
               </div>
             ) : null}
-            <Textarea
-              data-testid="comment-popover-input"
-              className={!canEditComment ? 'composer-note--readonly' : undefined}
-              value={draft}
-              autoFocus={canEditComment}
-              readOnly={!canEditComment}
-              aria-label={t('chat.comments.placeholder')}
-              placeholder={t('chat.comments.placeholder')}
-              onChange={(event) => onDraft(event.target.value)}
-              onPaste={onComposerPaste}
-              onCompositionStart={() => {
-                composingRef.current = true;
-              }}
-              onCompositionEnd={() => {
-                composingRef.current = false;
-              }}
-              onKeyDown={(event) => {
-                if (isImeComposing(event, composingRef.current)) return;
-                if (
-                  event.key === 'Enter' &&
-                  !event.shiftKey &&
-                  !event.altKey
-                ) {
-                  event.preventDefault();
-                  // Enter triggers the primary CTA: comment (save) for element
-                  // selections, send-to-chat for pod selections. Respect the same
-                  // permission gates as the visible buttons so Enter can't perform
-                  // an action whose button is hidden.
-                  if (isPodSelection) {
-                    if (canSendToAgent && !sendBlocked) void onSendBatch();
-                  } else if (canEditComment && !saveDisabled) {
-                    void onSaveComment();
+            {existing && !editingExistingComment ? (
+              <div
+                className="comment-popover-existing-note"
+                data-testid="comment-popover-existing-note"
+              >
+                {existingNote}
+              </div>
+            ) : (
+              <Textarea
+                data-testid="comment-popover-input"
+                className={!canEditComment ? 'composer-note--readonly' : undefined}
+                value={draft}
+                autoFocus={canEditComment}
+                readOnly={!canEditComment}
+                aria-label={t('chat.comments.placeholder')}
+                placeholder={t('chat.comments.placeholder')}
+                onChange={(event) => onDraft(event.target.value)}
+                onPaste={onComposerPaste}
+                onCompositionStart={() => {
+                  composingRef.current = true;
+                }}
+                onCompositionEnd={() => {
+                  composingRef.current = false;
+                }}
+                onKeyDown={(event) => {
+                  if (isImeComposing(event, composingRef.current)) return;
+                  if (
+                    event.key === 'Enter' &&
+                    !event.shiftKey &&
+                    !event.altKey
+                  ) {
+                    event.preventDefault();
+                    // Enter triggers the primary CTA: comment (save) for element
+                    // selections, send-to-chat for pod selections. Respect the same
+                    // permission gates as the visible buttons so Enter can't perform
+                    // an action whose button is hidden.
+                    if (isPodSelection) {
+                      if (canSendToAgent && !sendBlocked) void onSendBatch();
+                    } else if (canEditComment && !saveDisabled) {
+                      void onSaveComment();
+                    }
                   }
-                }
-              }}
-            />
+                }}
+              />
+            )}
+            {existing && !editingExistingComment && localReplies.length > 0 ? (
+              <div className="comment-popover-replies">
+                {localReplies.map((reply, index) => (
+                  <div key={`${existing.id}-${index}`} className="comment-popover-reply-item">
+                    {reply}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {existing && !editingExistingComment && replyingExistingComment ? (
+              <div className="comment-popover-reply-editor">
+                <Textarea
+                  className="comment-popover-reply-input"
+                  data-testid="comment-popover-reply-input"
+                  value={replyDraft}
+                  autoFocus
+                  aria-label={t('chat.comments.reply')}
+                  placeholder={t('chat.comments.reply')}
+                  onChange={(event) => setReplyDraft(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (
+                      event.key === 'Enter' &&
+                      !event.shiftKey &&
+                      !event.altKey
+                    ) {
+                      event.preventDefault();
+                      submitReply();
+                    }
+                  }}
+                />
+                <div className="comment-popover-reply-actions">
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setReplyDraft('');
+                      setReplyingExistingComment(false);
+                    }}
+                  >
+                    {t('common.cancel')}
+                  </Button>
+                  <Button
+                    variant="primary"
+                    data-testid="comment-popover-reply-save"
+                    disabled={!trimmedReply}
+                    onClick={submitReply}
+                  >
+                    {t('chat.comments.reply')}
+                  </Button>
+                </div>
+              </div>
+            ) : null}
           </section>
         ) : null}
       </div>
-      {commenting ? (
+      {composeVisible&&!replyingExistingComment ? (
         <div className="comment-popover-actions">
           <div className="comment-popover-actions-start">
-            {onAttachImages && canEditComment ? (
+            {/* {onAttachImages && canEditComment ? (
               <>
                 <input
                   ref={imageInputRef}
@@ -844,17 +1088,18 @@ export function BoardComposerPopover({
                   <Icon name="attach" size={14} />
                 </button>
               </>
-            ) : null}
+            ) : null} */}
             {existing && onDeleteComment && canDeleteComment ? (
-              <button
-                type="button"
-                className="comment-popover-close comment-popover-delete"
-                onClick={() => void onDeleteComment(existing.id)}
-                title={t('common.delete')}
-                aria-label={t('common.delete')}
-              >
-                <Icon name="trash" size={14} />
-              </button>
+              // <button
+              //   type="button"
+              //   className="comment-popover-close comment-popover-delete"
+              //   onClick={() => void onDeleteComment(existing.id)}
+              //   title={t('common.delete')}
+              //   aria-label={t('common.delete')}
+              // >
+              //   <Icon name="trash" size={14} />
+              // </button>
+              <></>
             ) : (
               <button
                 type="button"
@@ -875,6 +1120,7 @@ export function BoardComposerPopover({
                     canEditComment; send-to-chat by canSendToAgent. */}
                 {canEditComment ? (
                   <Button
+                    data-editing-action="true"
                     variant="ghost"
                     data-testid="comment-popover-add-note"
                     disabled={!draft.trim()}
@@ -885,6 +1131,7 @@ export function BoardComposerPopover({
                 ) : null}
                 {canSendToAgent && allowSendToChat ? (
                   <Button
+                    data-editing-action="true"
                     variant="primary"
                     data-testid="comment-add-send"
                     disabled={sendBlocked}
@@ -902,6 +1149,7 @@ export function BoardComposerPopover({
                     canEditComment; send-to-chat by canSendToAgent. */}
                 {canSendToAgent && allowSendToChat ? (
                   <Button
+                    data-editing-action="true"
                     variant="ghost"
                     data-testid="comment-add-send"
                     disabled={sendBlocked}
@@ -913,6 +1161,7 @@ export function BoardComposerPopover({
                 ) : null}
                 {canEditComment ? (
                   <Button
+                    data-editing-action="true"
                     variant="primary"
                     data-testid="comment-popover-save"
                     disabled={saveDisabled}
@@ -922,6 +1171,32 @@ export function BoardComposerPopover({
                   </Button>
                 ) : null}
               </>
+            )}
+          </div>
+        </div>
+      ) : existing&&!replyingExistingComment ? (
+        <div className="comment-popover-actions comment-popover-actions-existing">
+          <div className="comment-popover-actions-start">
+            {onDeleteComment && canDeleteComment ? (
+              <button
+                type="button"
+                className="comment-popover-close comment-popover-delete"
+                onClick={() => void onDeleteComment(existing.id)}
+                title={t('common.delete')}
+                aria-label={t('common.delete')}
+              >
+                <Icon name="trash" size={14} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="comment-popover-close"
+                onClick={onClose}
+                title={t('common.close')}
+                aria-label={t('common.close')}
+              >
+                <Icon name="close" size={14} />
+              </button>
             )}
           </div>
         </div>

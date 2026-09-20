@@ -1095,6 +1095,9 @@
 .recent-projects__card:focus-within .recent-projects__card-badge {
   opacity: 1;
 }
+.recent-projects__card-badge--always {
+  opacity: 1;
+}
 /* Title + inline shared badge. In list view the thumbnail is only 96px wide,
    so the overlay badge is dropped from the thumb and rendered inline here
    instead of covering the glyph. */

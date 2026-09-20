@@ -358,6 +358,66 @@ describe('RecentProjectsStrip', () => {
     });
   });
 
+  it('shows Team badge and owner name plus Me in HDW team-series cards for self-owned projects', async () => {
+    Object.assign(recentWorkspaceState.context, {
+      displayName: '林晓',
+    });
+
+    const { container } = render(
+      <RecentProjectsStrip
+        space="team"
+        operator={{ memberId: 'wm-1', role: 'member' }}
+        projects={[project({
+          id: 'project-team-owned',
+          name: 'Team project',
+          ownerDisplayName: '林晓',
+          createdByWorkspaceMemberId: 'wm-1',
+        })]}
+        onOpen={() => {}}
+      />,
+    );
+
+    await waitFor(() => {
+      const owner = container.querySelector<HTMLElement>('.recent-projects__card-owner');
+      expect(owner?.textContent).toBe('林晓Me');
+    });
+
+    const badges = container.querySelectorAll('.recent-projects__card-badge');
+    expect(badges.length).toBeGreaterThan(0);
+    expect(badges[0]?.textContent).toContain('Team');
+    expect(badges[0]?.classList.contains('recent-projects__card-badge--always')).toBe(true);
+  });
+
+  it('shows Team badge and the other member name for non-self HDW team-series cards', async () => {
+    Object.assign(recentWorkspaceState.context, {
+      displayName: '林晓',
+    });
+
+    const { container } = render(
+      <RecentProjectsStrip
+        space="team"
+        operator={{ memberId: 'wm-1', role: 'member' }}
+        projects={[project({
+          id: 'project-team-other',
+          name: 'Team project',
+          ownerDisplayName: 'Ally',
+          createdByWorkspaceMemberId: 'someone-else',
+        })]}
+        onOpen={() => {}}
+      />,
+    );
+
+    await waitFor(() => {
+      const owner = container.querySelector<HTMLElement>('.recent-projects__card-owner');
+      expect(owner?.textContent).toBe('Ally');
+    });
+
+    const badges = container.querySelectorAll('.recent-projects__card-badge');
+    expect(badges.length).toBeGreaterThan(0);
+    expect(badges[0]?.textContent).toContain('Team');
+    expect(badges[0]?.classList.contains('recent-projects__card-badge--always')).toBe(true);
+  });
+
   it('refreshes only the card named by team-project-content-ready', async () => {
     MockWorkspaceEventSource.instances = [];
     vi.stubGlobal('EventSource', MockWorkspaceEventSource as unknown as typeof EventSource);

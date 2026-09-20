@@ -2407,10 +2407,12 @@ a.avatar-item:visited {
 .comment-float-host {
   position: fixed;
   z-index: 60;
-  top: 96px;
+  top: 88px;
   right: 16px;
   bottom: 16px;
   display: flex;
+  box-sizing: border-box;
+  align-items: stretch;
   width: min(360px, calc(100vw - 32px));
   min-width: 0;
   min-height: 0;
@@ -2430,6 +2432,7 @@ a.avatar-item:visited {
    only the width and the card decoration come off here. */
 .comment-float-host:has(.comment-side-rail) {
   width: auto;
+  min-width: auto;
   border: 0;
   border-radius: 0;
   background: transparent;

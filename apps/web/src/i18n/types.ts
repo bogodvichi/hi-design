@@ -3301,6 +3301,8 @@ export interface Dict {
   'chat.comments.targetSection': string;
   'chat.comments.targetPage': string;
   'chat.comments.targetArea': string;
+  'chat.comments.reply': string;
+  'chat.comments.nReplies': string;
   'chat.comments.unresolved': string;
   'chat.comments.searchPlaceholder': string;
   'chat.comments.sortAndFilter': string;
@@ -3313,10 +3315,10 @@ export interface Dict {
   'chat.comments.deleteComment': string;
   'chat.comments.sortNewest': string;
   'chat.comments.sortOldest': string;
-  'chat.comments.sortUnresolved': string;
   'chat.comments.filterAll': string;
   'chat.comments.filterOpen': string;
   'chat.comments.filterResolved': string;
+  'chat.comments.filterMentioned': string;
   'chat.annotationNotePlaceholder': string;
   'chat.annotationAttachImage': string;
   'chat.annotationAttachedImages': string;
