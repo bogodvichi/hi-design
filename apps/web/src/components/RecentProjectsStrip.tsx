@@ -20,7 +20,6 @@ import {
 import { createPortal } from 'react-dom';
 import { Dialog, DialogDescription, DialogFooter, DialogTitle } from '@open-design/components';
 
-const MOVE_CONFIRM_SKIP_KEY = 'od.projects.moveConfirmSkip';
 import { useT } from '../i18n';
 import { MoveToTeamTreeDialog, type TeamTreeSelection } from './MoveToTeamTreeDialog';
 import {
@@ -109,7 +108,7 @@ export interface CollectionSelectionExtension {
     action: 'to-team' | 'to-personal',
     options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
   ) => Promise<number>;
-  moveTreeMode?: 'team' | 'personal-folders' | 'tabbed';
+  moveTreeMode?: 'team' | 'personal-folders' | 'tabbed' | 'unified';
   canMoveToTeam?: boolean;
   canMoveToPersonal?: boolean;
   restrictMoveToWorkspaceId?: string | null;
@@ -526,10 +525,6 @@ selectionExtension,
   const [inviteOpen, setInviteOpen] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(() => new Set());
-  // Confirmation gates for the bulk bar. Batch move reuses the single-card
-  // 不再提示 opt-out; batch delete always confirms (it is irreversible and
-  // spans N projects), mirroring the projects grid's own batch delete.
-  const [bulkMoveAction, setBulkMoveAction] = useState<'to-team' | 'to-personal' | null>(null);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   useEffect(() => {
@@ -751,19 +746,12 @@ selectionExtension,
   const menuRef = useRef<HTMLDivElement | null>(null);
   const renameTitleId = useId();
   const confirmTitleId = useId();
-  const moveTitleId = useId();
-  const bulkMoveTitleId = useId();
   const bulkDeleteTitleId = useId();
-  // #5517 move confirmation: moving a project in/out of the team space asks
-  // once, with a persisted 不再提示 opt-out (the demo keeps it per-session;
-  // the product remembers the choice).
- const [moveTarget, setMoveTarget] = useState<{ project: Project; action: 'to-team' | 'to-personal' } | null>(null);
  // When set, the tree selector is open for a single-project move to team.
 const [moveToTeamTarget, setMoveToTeamTarget] = useState<Project | null>(null);
 // Tree dialog mode for the current move: 'tabbed' in team space, 'personal-folders'
  // for personal-space folder moves, 'team' for the legacy move-to-team flow.
- const [moveToTreeMode, setMoveToTreeMode] = useState<'team' | 'personal-folders' | 'tabbed'>('tabbed');
-const [bulkMoveToTreeMode, setBulkMoveToTreeMode] = useState<'team' | 'personal-folders' | 'tabbed'>('tabbed');
+ const [moveToTreeMode, setMoveToTreeMode] = useState<'team' | 'personal-folders' | 'tabbed' | 'unified'>('unified');
 // When set, the tree selector is open for a bulk move to team.
 const [bulkMoveToTeamOpen, setBulkMoveToTeamOpen] = useState(false);
 // Disabled tree-node keys for the move-to dialog. When moving within the
@@ -776,58 +764,15 @@ const disabledKeys = useMemo(() => {
   }
   return keys.size > 0 ? keys : undefined;
 }, [currentWorkspaceId, currentFolderId, selectionExtension?.disabledMoveKeys]);
-const [moveDontRemind, setMoveDontRemind] = useState<boolean>(() => {
-   try {
-     return window.localStorage.getItem(MOVE_CONFIRM_SKIP_KEY) === '1';
-   } catch {
-     return false;
-   }
- });
  function requestMove(project: Project, action: 'to-team' | 'to-personal') {
    trackCollection(action === 'to-team' ? 'move_to_team' : 'move_to_personal', {
      project_key: project.id,
      project_relation: resolveCreator(project).ownedBySelf ? 'self' : 'other',
    });
-   // "to-team" always opens the tree selector so the user can pick the
-   // destination team/folder; the old "don't remind" skip only applies to
-   // the "to-personal" confirmation dialog below.
-    if (action === 'to-team') {
-      setMenuOpenId(null);
-      setMoveToTreeMode(space === 'team' ? 'tabbed' : 'team');
-      setMoveToTeamTarget(project);
-      return;
-   }
-  if (moveDontRemind) {
-    void handleUnshareFromTeam(project);
-    return;
-  }
-  setMenuOpenId(null);
-  setMoveTarget({ project, action });
+   setMenuOpenId(null);
+   setMoveToTreeMode('unified');
+   setMoveToTeamTarget(project);
 }
-function requestMoveToFolder(project: Project) {
-    trackCollection('move_to_folder', {
-      project_key: project.id,
-      project_relation: resolveCreator(project).ownedBySelf ? 'self' : 'other',
-    });
-    setMenuOpenId(null);
-    setMoveToTreeMode('personal-folders');
-    setMoveToTeamTarget(project);
-  }
-function commitMove() {
-   if (!moveTarget) return;
-   if (moveDontRemind) {
-     try {
-       window.localStorage.setItem(MOVE_CONFIRM_SKIP_KEY, '1');
-     } catch {
-       // best-effort persistence
-     }
-   }
-   const { project, action } = moveTarget;
-   setMoveTarget(null);
-   // "to-team" is handled by the tree selector; commitMove only fires for
-   // the "to-personal" confirmation dialog now.
-   if (action === 'to-personal') void handleUnshareFromTeam(project);
- }
  function handleMoveToTeamConfirm(selection: TeamTreeSelection) {
    const project = moveToTeamTarget;
    setMoveToTeamTarget(null);
@@ -878,10 +823,6 @@ const canShowCardActions = actionsAvailable && !isGuest;
     || selectionHasNonAdminProject
     || selectionExtension?.blocksMove === true
     || (extensionSelectedCount > 0 && !selectionExtension?.onMoveSelected);
-  const bulkMoveToTeamDisabled = bulkMoveDisabled
-    || (extensionSelectedCount > 0 && selectionExtension?.canMoveToTeam === false);
-  const bulkMoveToPersonalDisabled = bulkMoveDisabled
-    || (extensionSelectedCount > 0 && selectionExtension?.canMoveToPersonal === false);
   const bulkDeleteDisabled = selectedCount === 0
     || selectionHasForeignProject
     || (extensionSelectedCount > 0 && !selectionExtension?.onDeleteSelected);
@@ -896,7 +837,6 @@ const canShowCardActions = actionsAvailable && !isGuest;
     ? t('recentProjects.ownOnlyMutation')
     : selectedLabels.join('、') || undefined;
   const canBulkMoveToTeam = collaborationAvailable && space !== 'team';
-  const canBulkMoveToPersonal = collaborationAvailable && space !== 'drafts';
   const canBulkMove = collaborationAvailable && space === 'team';
 
   useEffect(() => {
@@ -1574,48 +1514,13 @@ function requestDelete(project: Project) {
     selectionExtension?.onModeChange?.(false);
   }
 
-  /** Shared by the single-card and the bulk move confirmations so both spell
-   *  out the same consequence of crossing the team-space boundary. */
-  function moveDescription(action: 'to-team' | 'to-personal') {
-    return action === 'to-team' ? (
-      <>
-        {t('recentProjects.moveToTeamDescPre')}
-        <strong>{t('recentProjects.moveToTeamDescStrong')}</strong>
-        {t('recentProjects.moveToTeamDescPost')}
-      </>
-    ) : (
-      <>
-        {t('recentProjects.moveToPersonalDescPre')}
-        <strong>{t('recentProjects.moveToPersonalDescStrong')}</strong>
-        {t('recentProjects.moveToPersonalDescPost')}
-      </>
-    );
-  }
  function requestBulkMove(action: 'to-team' | 'to-personal') {
-    if (action === 'to-team' ? bulkMoveToTeamDisabled : bulkMoveToPersonalDisabled) return;
+    if (bulkMoveDisabled) return;
    trackCollection(action === 'to-team' ? 'bulk_move_to_team' : 'bulk_move_to_personal', {
      selection_count_bucket: countBucket(selectedCount),
    });
-   // "to-team" opens the tree selector so the user can pick the destination.
-   if (action === 'to-team') {
-      setBulkMoveToTreeMode(selectionExtension?.moveTreeMode ?? (space === 'team' ? 'tabbed' : 'team'));
-      setBulkMoveToTeamOpen(true);
-      return;
-   }
-   if (moveDontRemind) {
-     void commitBulkMove(action);
-     return;
-   }
-   setBulkMoveAction(action);
+   setBulkMoveToTeamOpen(true);
  }
-  function requestBulkMoveToFolder() {
-    if (bulkMoveToPersonalDisabled) return;
-    trackCollection('bulk_move_to_folder', {
-      selection_count_bucket: countBucket(selectedCount),
-    });
-    setBulkMoveToTreeMode('personal-folders');
-    setBulkMoveToTeamOpen(true);
-  }
 
  /** Batch form of the per-card 转入/移出团队空间 action: the very same
   *  `moveWorkspaceProject` call, once per selected project. Failures are
@@ -1628,7 +1533,6 @@ function requestDelete(project: Project) {
    const extensionCount = extensionSelectedCount;
    const moveExtensionItems = selectionExtension?.onMoveSelected;
    const startedAt = performance.now();
-   setBulkMoveAction(null);
    exitSelectionMode();
    if (ids.length === 0 && extensionCount === 0) return;
    const visibility = action === 'to-team' ? 'team' : 'personal';
@@ -1956,44 +1860,14 @@ function requestDelete(project: Project) {
             {t('designs.selectedCount', { n: selectedCount })}
           </span>
           <div className="recent-projects__bulkbar-actions">
-            {canBulkMove ? (
+            {canBulkMove || canBulkMoveToTeam || space === 'drafts' ? (
               <button
                 type="button"
-                disabled={bulkMoveToTeamDisabled}
+                disabled={bulkMoveDisabled}
                 title={bulkMoveTitle}
                 onClick={() => requestBulkMove('to-team')}
               >
-                <Icon name="import" size={14} /> {t('recentProjects.moveTo')}
-              </button>
-            ) : null}
-            {space === 'drafts' ? (
-              <button
-                type="button"
-                disabled={bulkMoveToPersonalDisabled}
-                title={bulkMoveTitle}
-                onClick={() => requestBulkMoveToFolder()}
-              >
-                <Icon name="folder" size={14} /> {t('recentProjects.moveTo')}
-              </button>
-            ) : null}
-            {canBulkMoveToTeam ? (
-              <button
-                type="button"
-                disabled={bulkMoveToTeamDisabled}
-                title={bulkMoveTitle}
-                onClick={() => requestBulkMove('to-team')}
-              >
-                <Icon name="import" size={14} /> {t('recentProjects.moveToTeam')}
-              </button>
-            ) : null}
-            {canBulkMoveToPersonal ? (
-              <button
-                type="button"
-                disabled={bulkMoveToPersonalDisabled}
-                title={bulkMoveTitle}
-                onClick={() => requestBulkMove('to-personal')}
-              >
-                <Icon name="log-out" size={14} /> {t('recentProjects.moveOutOfTeam')}
+                <Icon name="move" size={14} /> {t('recentProjects.moveTo')}
               </button>
             ) : null}
             {onDelete || selectionExtension?.onDeleteSelected ? (
@@ -2028,24 +1902,9 @@ function requestDelete(project: Project) {
             {t('designs.selectedCount', { n: selectedCount })}
           </span>
           <div className="recent-projects__bulkbar-actions">
-            {canBulkMove ? (
-              <button type="button" disabled={bulkMoveToTeamDisabled} title={bulkMoveTitle} onClick={() => requestBulkMove('to-team')}>
-                <Icon name="import" size={14} /> {t('recentProjects.moveTo')}
-              </button>
-            ) : null}
-            {space === 'drafts' ? (
-              <button type="button" disabled={bulkMoveToPersonalDisabled} title={bulkMoveTitle} onClick={() => requestBulkMoveToFolder()}>
-                <Icon name="folder" size={14} /> {t('recentProjects.moveTo')}
-              </button>
-            ) : null}
-            {canBulkMoveToTeam ? (
-              <button type="button" disabled={bulkMoveToTeamDisabled} title={bulkMoveTitle} onClick={() => requestBulkMove('to-team')}>
-                <Icon name="import" size={14} /> {t('recentProjects.moveToTeam')}
-              </button>
-            ) : null}
-            {canBulkMoveToPersonal ? (
-              <button type="button" disabled={bulkMoveToPersonalDisabled} title={bulkMoveTitle} onClick={() => requestBulkMove('to-personal')}>
-                <Icon name="log-out" size={14} /> {t('recentProjects.moveOutOfTeam')}
+            {canBulkMove || canBulkMoveToTeam || space === 'drafts' ? (
+              <button type="button" disabled={bulkMoveDisabled} title={bulkMoveTitle} onClick={() => requestBulkMove('to-team')}>
+                <Icon name="move" size={14} /> {t('recentProjects.moveTo')}
               </button>
             ) : null}
             {onDelete || selectionExtension?.onDeleteSelected ? (
@@ -2407,28 +2266,7 @@ function requestDelete(project: Project) {
                          <span>{t('designs.menuDuplicate')}</span>
                        </button>
                      ) : null}
-                     {/* Personal space: move to a folder within the personal workspace. */}
-                     {space === 'drafts' ? (
-                       <button
-                         type="button"
-                         role="menuitem"
-                         disabled={sharingId === project.id || unsharingId === project.id || !(creator.canMutate || creator.canAdmin)}
-                         title={!(creator.canMutate || creator.canAdmin) ? t('recentProjects.ownOnlyMutation') : undefined}
-                         onClick={() => requestMoveToFolder(project)}
-                       >
-                         <Icon name="folder" size={12} />
-                         <span>{t('recentProjects.moveTo')}</span>
-                       </button>
-                     ) : null}
-                     {/* recvq5fpqrXzV1: this menu item moves a project's
-                         visibility WITHIN the current workspace, which is
-                         meaningless (and the daemon 403s it) when the current
-                         workspace has no team plane to share into at all — a
-                         personal-only workspace. `collaborationAvailable` is
-                         the same gate the bulk toolbar's move actions
-                         already use (canBulkMoveToTeam/canBulkMoveToPersonal
-                         above); this per-card item was missing it. */}
-                     {collaborationAvailable && space === 'team' ? (
+                     {collaborationAvailable || space === 'drafts' ? (
                        <button
                          type="button"
                          role="menuitem"
@@ -2436,45 +2274,14 @@ function requestDelete(project: Project) {
                          title={!(creator.canMutate || creator.canAdmin) ? t('recentProjects.ownOnlyMutation') : undefined}
                          onClick={() => requestMove(project, 'to-team')}
                        >
-                         <Icon name="share" size={12} />
+                         <Icon name="move" size={12} />
                          <span>
                            {sharingId === project.id || unsharingId === project.id
                              ? t('recentProjects.shareInProgress')
                              : t('recentProjects.moveTo')}
                          </span>
                        </button>
-                     ) : collaborationAvailable && (shared && creator.ownedBySelf ? (
-                        <button
-                          type="button"
-                          role="menuitem"
-                          disabled={unsharingId === project.id}
-                          onClick={() => requestMove(project, 'to-personal')}
-                        >
-                          <Icon name="close" size={12} />
-                          <span>
-                            {unsharingId === project.id
-                              ? t('recentProjects.unshareInProgress')
-                              : t('recentProjects.moveOutOfTeam')}
-                          </span>
-                        </button>
-                     ) : (
-                       <button
-                         type="button"
-                         role="menuitem"
-                         disabled={sharingId === project.id || shared || !(creator.canMutate || creator.canAdmin)}
-                         title={!(creator.canMutate || creator.canAdmin) ? t('recentProjects.ownOnlyMutation') : undefined}
-                         onClick={() => requestMove(project, 'to-team')}
-                       >
-                         <Icon name="share" size={12} />
-                         <span>
-                           {sharingId === project.id
-                             ? t('recentProjects.shareInProgress')
-                             : shared
-                               ? t('recentProjects.sharedInTeam')
-                               : t('recentProjects.moveToTeam')}
-                         </span>
-                       </button>
-                     ))}
+                     ) : null}
                     {/* Share to Shared Space: available to project owners
                          who can mutate. Opens a member-picker dialog. */}
                      {homeWorkspaceId && (creator.canMutate || creator.canAdmin) ? (
@@ -2618,84 +2425,6 @@ function requestDelete(project: Project) {
           </DialogFooter>
         </Dialog>
       ) : null}
-      {moveTarget ? (
-        <Dialog
-          className="modal-confirm"
-          backdropClassName="modal-backdrop--no-blur"
-          role="alertdialog"
-          onClose={() => setMoveTarget(null)}
-          closeOnEscape
-          ariaLabelledBy={moveTitleId}
-        >
-          <DialogTitle id={moveTitleId}>
-            {moveTarget.action === 'to-team'
-              ? t('recentProjects.moveToTeam')
-              : t('recentProjects.moveOutOfTeam')}
-          </DialogTitle>
-          <DialogDescription>{moveDescription(moveTarget.action)}</DialogDescription>
-          <DialogFooter className="row">
-            <label className="recent-projects__move-remind">
-              <input
-                type="checkbox"
-                checked={moveDontRemind}
-                onChange={(event) => setMoveDontRemind(event.target.checked)}
-              />
-              {t('recentProjects.moveDontRemind')}
-            </label>
-            <button type="button" onClick={() => setMoveTarget(null)}>
-              {t('designs.renameCancel')}
-            </button>
-            <button
-              type="button"
-              className={`primary${moveTarget.action === 'to-team' ? ' recent-projects__move-confirm' : ''}`}
-              onClick={commitMove}
-            >
-              {moveTarget.action === 'to-team'
-                ? t('recentProjects.confirmMoveToTeam')
-                : t('recentProjects.confirmMoveToPersonal')}
-            </button>
-          </DialogFooter>
-        </Dialog>
-      ) : null}
-      {bulkMoveAction ? (
-        <Dialog
-          className="modal-confirm"
-          backdropClassName="modal-backdrop--no-blur"
-          role="alertdialog"
-          onClose={() => setBulkMoveAction(null)}
-          closeOnEscape
-          ariaLabelledBy={bulkMoveTitleId}
-        >
-          <DialogTitle id={bulkMoveTitleId}>
-            {bulkMoveAction === 'to-team'
-              ? t('recentProjects.moveToTeam')
-              : t('recentProjects.moveOutOfTeam')}
-          </DialogTitle>
-          <DialogDescription>{moveDescription(bulkMoveAction)}</DialogDescription>
-          <DialogFooter className="row">
-            <label className="recent-projects__move-remind">
-              <input
-                type="checkbox"
-                checked={moveDontRemind}
-                onChange={(event) => setMoveDontRemind(event.target.checked)}
-              />
-              {t('recentProjects.moveDontRemind')}
-            </label>
-            <button type="button" onClick={() => setBulkMoveAction(null)}>
-              {t('designs.renameCancel')}
-            </button>
-            <button
-              type="button"
-              className={`primary${bulkMoveAction === 'to-team' ? ' recent-projects__move-confirm' : ''}`}
-              onClick={() => void commitBulkMove(bulkMoveAction)}
-            >
-              {bulkMoveAction === 'to-team'
-                ? t('recentProjects.confirmMoveToTeam')
-                : t('recentProjects.confirmMoveToPersonal')}
-            </button>
-          </DialogFooter>
-        </Dialog>
-     ) : null}
    {moveToTeamTarget ? (
      <MoveToTeamTreeDialog
        onConfirm={handleMoveToTeamConfirm}
@@ -2703,6 +2432,7 @@ function requestDelete(project: Project) {
        busy={sharingId === moveToTeamTarget.id}
        mode={moveToTreeMode}
        currentWorkspaceId={currentWorkspaceId ?? workspaceContext?.workspaceId ?? null}
+       currentFolderId={currentFolderId ?? null}
        disabledKeys={disabledKeys}
       canMoveToPersonal={resolveCreator(moveToTeamTarget).ownedBySelf}
      />
@@ -2711,9 +2441,10 @@ function requestDelete(project: Project) {
      <MoveToTeamTreeDialog
        onConfirm={handleBulkMoveToTeamConfirm}
        onCancel={() => setBulkMoveToTeamOpen(false)}
-       mode={bulkMoveToTreeMode}
+       mode="unified"
        currentWorkspaceId={currentWorkspaceId ?? workspaceContext?.workspaceId ?? null}
-       restrictToWorkspaceId={selectionExtension?.restrictMoveToWorkspaceId}
+       currentFolderId={currentFolderId ?? null}
+       restrictToWorkspaceId={extensionSelectedCount > 0 ? selectionExtension?.restrictMoveToWorkspaceId : undefined}
        disabledKeys={disabledKeys}
       canMoveToPersonal={!selectedProjects.some(({ creator }) => !creator.ownedBySelf)}
      />

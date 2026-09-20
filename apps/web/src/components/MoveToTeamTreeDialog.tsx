@@ -1,337 +1,621 @@
-// Tree-structure selector for moving projects into a team space.
-//
-// Replaces the old confirmation-only dialog with a recursive tree that
-// lists every team workspace from the directory and lazily loads each
-// team's folder hierarchy from the HDW folder API. The user can select
-// the team root (workspace node) or any folder/subfolder in the tree;
-// the selected { workspaceId, folderId | null } is returned on confirm.
-//
-// For "to-personal" moves the caller should keep using MoveToTeamConfirmDialog
-// — there is no tree to pick from when leaving a team space.
-
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { WorkspaceDirectoryItem } from '@open-design/contracts';
-import { Dialog, DialogDescription, DialogFooter, DialogTitle } from '@open-design/components';
+import { Dialog, DialogFooter, DialogTitle } from '@open-design/components';
 import { readWorkspaceDirectoryForCurrentGeneration } from '../collab/useWorkspaceContext';
 import { Icon } from './Icon';
 import { Skeleton } from './Loading';
 import { useT } from '../i18n';
+// Keep the dialog chrome component-scoped so unified and legacy trees cannot
+// leak layout rules into each other.
 import styles from './MoveToTeamTreeDialog.module.css';
 
-/** A folder node in the tree (mirrors the HDW folder API shape). */
 interface FolderNode {
   id: string;
   name: string;
-  /** Number of direct subfolders (from `subfolder_count`); 0 means leaf. */
   subfolderCount: number;
+  parentId?: string | null;
 }
 
-/** The user's selection: which workspace (team) and optional folder. */
+interface LocationSearchResult {
+  key: string;
+  kind: 'folder' | 'project';
+  label: string;
+  locationLabel: string;
+  workspace: WorkspaceDirectoryItem;
+  folder: FolderNode | null;
+  branchFolder: FolderNode | null;
+  expandedFolderIds: readonly string[];
+}
+
+interface ActiveBranch {
+  workspace: WorkspaceDirectoryItem;
+  folder: FolderNode | null;
+  expandedFolderIds?: readonly string[];
+}
+
 export interface TeamTreeSelection {
   workspaceId: string;
   workspaceName: string;
-  /** null = the team workspace root; a folder id = that specific folder. */
   folderId: string | null;
   folderName: string | null;
-  /** True when the selected workspace is the personal (one-person) default team. */
   isDefaultTeam?: boolean;
 }
 
+type MoveTreeMode = 'team' | 'personal-folders' | 'tabbed' | 'unified';
+
 interface MoveToTeamTreeDialogProps {
-  /** Called with the selected destination when the user confirms. */
   onConfirm: (selection: TeamTreeSelection) => void;
   onCancel: () => void;
-  /** Pre-fetched directory items; when omitted the dialog fetches them. */
   workspaceItems?: readonly WorkspaceDirectoryItem[];
-  /** When true, disables the confirm button while a move is in-flight. */
   busy?: boolean;
-  /** When true, include personal (default-team) workspaces in the tree. */
   includePersonal?: boolean;
-  /** The current workspace's id — always shown in the tree even when
-   * includePersonal would filter it out, so the user can pick a folder
-   * within the current workspace (folder-only move). */
   currentWorkspaceId?: string | null;
-  /** Limit destinations to one workspace, used when moving folder trees whose
-   * cross-team transfer semantics differ from project moves. */
+  currentFolderId?: string | null;
   restrictToWorkspaceId?: string | null;
-  /** Item keys that should be disabled (greyed out, not selectable).
-   *  Key format: `${workspaceId}:root` for workspace roots,
-   *  `${workspaceId}:${folderId}` for folders. */
   disabledKeys?: Set<string>;
-  /** Dialog mode:
-   *  - 'team' (default): existing behavior controlled by includePersonal.
-   *  - 'personal-folders': show only the personal (default-team) workspace
-   *    with its folder tree auto-expanded.
-  *  - 'tabbed': show a tab bar to switch between team workspaces and the
-  *    personal workspace, each with its own folder tree. */
-  mode?: 'team' | 'personal-folders' | 'tabbed';
-  /** When false (user is not the project owner), hide the personal-space tab
-   *  in 'tabbed' mode. Admins can move to other teams but never to personal. */
- canMoveToPersonal?: boolean;
-  /** When true, the dialog uses copy-to-personal wording (title, description,
-   *  confirm button) instead of move wording. Does not change tree behavior. */
+  mode?: MoveTreeMode;
+  canMoveToPersonal?: boolean;
   copyMode?: boolean;
 }
 
-/** Fetch folders under a workspace (root when folderPid is null). */
-async function fetchFolders(
-  workspaceId: string,
-  folderPid?: string | null,
-  isDefaultTeam?: boolean,
-): Promise<FolderNode[]> {
-  // Personal (default-team) workspaces use the local SQLite folder API;
-  // team workspaces use the HDW folder API. Both return the same shape.
+async function fetchFolders(workspaceId: string, folderPid?: string | null, isDefaultTeam?: boolean): Promise<FolderNode[]> {
   const basePath = isDefaultTeam
     ? `/api/folders?workspace_id=${encodeURIComponent(workspaceId)}`
     : `/api/hdw/api/folder/list?workspace_id=${encodeURIComponent(workspaceId)}`;
-  let url = basePath;
-  if (folderPid) {
-    url += `&folder_pid=${encodeURIComponent(folderPid)}`;
-  }
-  const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) return [];
-  const body = await res.json();
+  const url = folderPid ? `${basePath}&folder_pid=${encodeURIComponent(folderPid)}` : basePath;
+  const response = await fetch(url, { cache: 'no-store' });
+  if (!response.ok) return [];
+  const body = await response.json();
   const list: any[] = body?.data?.folders ?? [];
-  return list.map((f) => ({
-    id: f.folder_id || f.id || '',
-    name: f.folder_name || f.name || '',
-    subfolderCount: Number(f.subfolder_count) || 0,
+  return list.map((folder) => ({
+    id: folder.folder_id || folder.id || '',
+    name: folder.folder_name || folder.name || '',
+    subfolderCount: Number(folder.subfolder_count) || 0,
+    parentId: folderPid ?? null,
   }));
 }
 
-/** A single expandable folder row in the tree. Loads its children lazily. */
-function FolderTreeItem({
-  folder,
-  depth,
-  workspaceId,
-  isDefaultTeam,
-  selectedKey,
-  onSelect,
-  disabledKeys,
-}: {
-  folder: FolderNode;
+async function fetchFolderIndex(workspace: WorkspaceDirectoryItem): Promise<FolderNode[]> {
+  const result: FolderNode[] = [];
+  const pending: Array<string | null> = [null];
+  while (pending.length > 0) {
+    const parentId = pending.shift() ?? null;
+    const children = await fetchFolders(workspace.workspaceId, parentId, workspace.isDefaultTeam);
+    for (const child of children) {
+      result.push(child);
+      if (child.subfolderCount > 0) pending.push(child.id);
+    }
+  }
+  return result;
+}
+
+async function fetchProjectsAtLocation(workspace: WorkspaceDirectoryItem, folderId: string | null): Promise<Array<{ id: string; name: string }>> {
+  const personal = workspace.isDefaultTeam === true;
+  const url = personal
+    ? `/api/folders/${encodeURIComponent(folderId ?? 'root')}/projects?workspace_id=${encodeURIComponent(workspace.workspaceId)}`
+    : `/api/workspace/projects/team?folder_id=${encodeURIComponent(folderId ?? 'root')}`;
+  const response = await fetch(url, {
+    cache: 'no-store',
+    headers: personal
+      ? { 'x-od-workspace-member-id': workspace.workspaceMemberId }
+      : { 'x-od-workspace-id': workspace.workspaceId },
+  });
+  if (!response.ok) return [];
+  const body = await response.json();
+  const projects: any[] = personal ? body?.data?.projects ?? [] : body?.projects ?? [];
+  return projects.map((project) => ({
+    id: String(project.projectId || project.id || ''),
+    name: String(project.name || project.title || project.metadata?.name || ''),
+  })).filter((project) => project.id && project.name);
+}
+
+async function createFolder(workspace: WorkspaceDirectoryItem, parentId: string | null, folderName: string): Promise<FolderNode> {
+  const personal = workspace.isDefaultTeam === true;
+  const response = await fetch(personal ? '/api/folders' : '/api/hdw/api/folder/add', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(personal && workspace.workspaceMemberId ? { 'x-od-workspace-member-id': workspace.workspaceMemberId } : {}),
+    },
+    body: JSON.stringify({
+      workspace_id: workspace.workspaceId,
+      folder_name: folderName,
+      folder_pid: parentId,
+      ...(!personal ? { operator_member_id: workspace.workspaceMemberId } : {}),
+    }),
+  });
+  const body = await response.json().catch(() => null);
+  if (!response.ok || body?.code !== 0) throw new Error(body?.error || body?.msg || 'Could not create folder');
+  const folderId = body?.data?.folder_id || body?.data?.id;
+  if (!folderId) throw new Error('Folder response did not include an id');
+  window.dispatchEvent(new CustomEvent(personal ? 'personal:folders-updated' : 'hdw:folders-updated', {
+    detail: personal ? undefined : { teamId: workspace.workspaceId },
+  }));
+  return { id: String(folderId), name: folderName, subfolderCount: 0, parentId };
+}
+
+function canCreateFolders(workspace: WorkspaceDirectoryItem): boolean {
+  return workspace.isDefaultTeam === true || workspace.role === 'owner' || workspace.role === 'admin';
+}
+
+function InlineFolderCreator({ depth, icon = 'folder', onCreate, onCancel }: {
   depth: number;
-  workspaceId: string;
-  isDefaultTeam?: boolean;
-  selectedKey: string | null;
-  onSelect: (folderId: string, folderName: string) => void;
-  disabledKeys?: Set<string>;
+  icon?: 'folder' | 'folder-project' | null;
+  onCreate: (name: string) => Promise<void>;
+  onCancel: () => void;
 }) {
   const t = useT();
-  const [expanded, setExpanded] = useState(false);
-  const [children, setChildren] = useState<FolderNode[] | null>(null);
-  const [loading, setLoading] = useState(false);
-  const itemKey = `${workspaceId}:${folder.id}`;
-  const isSelected = selectedKey === itemKey;
-  const hasChildren = folder.subfolderCount > 0;
-  const isDisabled = disabledKeys?.has(itemKey) ?? false;
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [value, setValue] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
 
-  // Lazily fetch subfolders when the node is first expanded.
-  useEffect(() => {
-    if (!expanded || !hasChildren) return;
-    if (children !== null) return;
-    let cancelled = false;
-    const load = async () => {
-      setLoading(true);
-      try {
-        const subs = await fetchFolders(workspaceId, folder.id, isDefaultTeam);
-        if (!cancelled) setChildren(subs);
-      } catch {
-        if (!cancelled) setChildren([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    void load();
-    return () => { cancelled = true; };
-  }, [expanded, hasChildren, children, workspaceId, isDefaultTeam, folder.id]);
+  useEffect(() => inputRef.current?.focus(), []);
 
-  const handleToggle = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!hasChildren) return;
-    setExpanded((v) => !v);
+  const commit = async () => {
+    const name = value.trim();
+    if (!name || busy) return;
+    setBusy(true);
+    setFailed(false);
+    try {
+      await onCreate(name);
+    } catch {
+      setFailed(true);
+      setBusy(false);
+    }
   };
 
-  const handleSelect = () => {
-    if (isDisabled) return;
-    onSelect(folder.id, folder.name);
+  return (
+    <div className={styles.createRow} style={{ paddingLeft: `${38 + depth * 18}px` }}>
+      {icon ? <Icon name={icon} size={16} className={styles.folderIcon} /> : null}
+      <input
+        ref={inputRef}
+        value={value}
+        disabled={busy}
+        placeholder={t('teamSpace.newFolderNamePlaceholder')}
+        aria-invalid={failed || undefined}
+        onChange={(event) => { setValue(event.target.value); setFailed(false); }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') { event.preventDefault(); event.stopPropagation(); void commit(); }
+          else if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); onCancel(); }
+        }}
+        onBlur={() => { if (!busy && !value.trim()) onCancel(); }}
+      />
+      <button type="button" aria-label={t('designs.renameSave')} onMouseDown={(event) => event.preventDefault()} onClick={() => void commit()} disabled={!value.trim() || busy}>
+        <Icon name="check" size={13} />
+      </button>
+      <button type="button" aria-label={t('common.cancel')} onMouseDown={(event) => event.preventDefault()} onClick={onCancel} disabled={busy}>
+        <Icon name="close" size={13} />
+      </button>
+    </div>
+  );
+}
+
+function FolderTreeItem({ folder, depth, workspace, selectedKey, onSelect, disabledKeys, initialExpanded = false, expandedFolderIds, showEmpty = false }: {
+  folder: FolderNode;
+  depth: number;
+  workspace: WorkspaceDirectoryItem;
+  selectedKey: string | null;
+  onSelect: (folder: FolderNode) => void;
+  disabledKeys?: Set<string>;
+  initialExpanded?: boolean;
+  expandedFolderIds?: ReadonlySet<string>;
+  showEmpty?: boolean;
+}) {
+  const t = useT();
+  const [expanded, setExpanded] = useState(initialExpanded);
+  const [children, setChildren] = useState<FolderNode[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [knownChildCount, setKnownChildCount] = useState(folder.subfolderCount);
+  const itemKey = `${workspace.workspaceId}:${folder.id}`;
+  const isSelected = selectedKey === itemKey;
+  const showSelected = isSelected && !creating;
+  const isDisabled = disabledKeys?.has(itemKey) ?? false;
+  const hasChildren = knownChildCount > 0;
+  const allowCreate = canCreateFolders(workspace);
+
+  const loadChildren = useCallback(async () => {
+    setLoading(true);
+    try {
+      const next = await fetchFolders(workspace.workspaceId, folder.id, workspace.isDefaultTeam);
+      setChildren(next);
+      setKnownChildCount(next.length);
+    } catch {
+      setChildren([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [folder.id, workspace.isDefaultTeam, workspace.workspaceId]);
+
+  useEffect(() => { if (expanded && children === null) void loadChildren(); }, [children, expanded, loadChildren]);
+  useEffect(() => {
+    if (expandedFolderIds?.has(folder.id)) setExpanded(true);
+  }, [expandedFolderIds, folder.id]);
+
+  const handleCreate = async (name: string) => {
+    const child = await createFolder(workspace, folder.id, name);
+    setChildren((current) => [...(current ?? []), child]);
+    setKnownChildCount((count) => count + 1);
+    setExpanded(true);
+    setCreating(false);
+    onSelect(child);
   };
 
   return (
     <div className={styles.folderItem}>
       <div
-        className={`${styles.row}${isSelected ? ` ${styles.selected}` : ''}${isDisabled ? ` ${styles.disabled}` : ''}`}
-        style={{ paddingLeft: `${12 + depth * 20}px` }}
-        onClick={isDisabled ? undefined : handleSelect}
+        className={`${styles.row}${showSelected ? ` ${styles.selected}` : ''}${isDisabled ? ` ${styles.disabled}` : ''}`}
+        style={{ paddingLeft: `${12 + depth * 18}px` }}
+        onClick={isDisabled ? undefined : () => onSelect(folder)}
         role="button"
         tabIndex={isDisabled ? -1 : 0}
-        aria-disabled={isDisabled || undefined}
-        onKeyDown={(e) => {
-          if (isDisabled) return;
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            handleSelect();
-          }
+        onKeyDown={(event) => {
+          if (!isDisabled && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onSelect(folder); }
         }}
       >
         <button
           type="button"
           className={styles.expandBtn}
-          onClick={handleToggle}
+          onClick={(event) => { event.stopPropagation(); setExpanded((value) => !value); }}
           aria-label={expanded ? t('entry.navCollapse') : t('entry.navExpand')}
           aria-expanded={expanded}
-          tabIndex={-1}
           disabled={!hasChildren}
+          tabIndex={-1}
         >
-          {hasChildren ? (
-            <Icon name={expanded ? 'chevron-down' : 'chevron-right'} size={12} />
-          ) : null}
+          {hasChildren ? <Icon name={expanded ? 'chevron-down' : 'chevron-right'} size={12} /> : null}
         </button>
-        <Icon name="folder-filled" size={14} className={styles.folderIcon} />
+        <Icon name={folder.parentId == null ? 'folder-project' : 'folder'} size={16} className={styles.folderIcon} />
         <span className={styles.rowLabel}>{folder.name}</span>
-        {isSelected ? <Icon name="check" size={14} className={styles.checkIcon} /> : null}
+        {allowCreate ? (
+          <button
+            type="button"
+            className={styles.addFolderBtn}
+            aria-label={t('settings.projectLocationsAddFolder')}
+            onClick={(event) => { event.stopPropagation(); setExpanded(true); setCreating(true); }}
+          >
+            <Icon name="plus" size={13} />
+          </button>
+        ) : null}
       </div>
+      {creating ? <InlineFolderCreator depth={depth + 1} onCreate={handleCreate} onCancel={() => setCreating(false)} /> : null}
       {expanded && loading ? (
-        <div className={styles.childList}>
-          <div className={styles.skeletonRow} style={{ paddingLeft: `${12 + (depth + 1) * 20}px` }}>
-            <Skeleton width={14} height={14} radius={4} />
-            <Skeleton width="50%" height={13} radius={6} />
-          </div>
+        <div className={styles.skeletonRow} style={{ paddingLeft: `${12 + (depth + 1) * 18}px` }}>
+          <Skeleton width={14} height={14} radius={4} /><Skeleton width="50%" height={13} radius={6} />
         </div>
-      ) : expanded && children && children.length > 0 ? (
+      ) : expanded && children?.length ? (
         <div className={styles.childList}>
           {children.map((child) => (
-            <FolderTreeItem
-              key={child.id}
-              folder={child}
-              depth={depth + 1}
-              workspaceId={workspaceId}
-              isDefaultTeam={isDefaultTeam}
-              selectedKey={selectedKey}
-              onSelect={onSelect}
-              disabledKeys={disabledKeys}
-            />
+            <FolderTreeItem key={child.id} folder={child} depth={depth + 1} workspace={workspace} selectedKey={selectedKey} onSelect={onSelect} disabledKeys={disabledKeys} expandedFolderIds={expandedFolderIds} />
           ))}
         </div>
-      ) : null}
+      ) : expanded && showEmpty ? <div className={styles.emptyHint}>{t('recentProjects.treeNoFolders')}</div> : null}
     </div>
   );
 }
 
-/** A team workspace node at the top level of the tree. */
-function TeamTreeItem({
-  team,
-  selectedKey,
-  onSelect,
-  autoExpand,
-  disabledKeys,
-}: {
-  team: WorkspaceDirectoryItem;
+function UnifiedLocationPane({ workspaces, selectedKey, activeBranch, currentWorkspaceId, onSelectRoot, onSelectFolder, onBranchChange, disabledKeys }: {
+  workspaces: readonly WorkspaceDirectoryItem[];
   selectedKey: string | null;
-  onSelect: (workspaceId: string, workspaceName: string, folderId: string | null, folderName: string | null, isDefaultTeam?: boolean) => void;
-  autoExpand?: boolean;
+  activeBranch: ActiveBranch | null;
+  currentWorkspaceId?: string | null;
+  onSelectRoot: (workspace: WorkspaceDirectoryItem) => void;
+  onSelectFolder: (workspace: WorkspaceDirectoryItem, folder: FolderNode) => void;
+  onBranchChange: (workspace: WorkspaceDirectoryItem, folder: FolderNode | null, expandedFolderIds?: readonly string[]) => void;
   disabledKeys?: Set<string>;
 }) {
   const t = useT();
-  const [expanded, setExpanded] = useState(autoExpand ?? false);
-  const [folders, setFolders] = useState<FolderNode[] | null>(null);
-  const [loading, setLoading] = useState(false);
-  const itemKey = `${team.workspaceId}:root`;
-  const isSelected = selectedKey === itemKey;
-  const isDisabled = disabledKeys?.has(itemKey) ?? false;
-  const displayName = team.isDefaultTeam
-    ? t('recentProjects.personalBadge')
-    : team.workspaceName;
+  const [foldersByWorkspace, setFoldersByWorkspace] = useState<Record<string, FolderNode[]>>({});
+  const [loadingKeys, setLoadingKeys] = useState<Set<string>>(() => new Set());
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => new Set(currentWorkspaceId ? [currentWorkspaceId] : []));
+  const [creatingRootId, setCreatingRootId] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<LocationSearchResult[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [expandedSearchKinds, setExpandedSearchKinds] = useState<Set<LocationSearchResult['kind']>>(() => new Set());
+  const searchAreaRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const loadRootFolders = useCallback(async (workspace: WorkspaceDirectoryItem) => {
+    setLoadingKeys((current) => new Set(current).add(workspace.workspaceId));
+    try {
+      const folders = await fetchFolders(workspace.workspaceId, null, workspace.isDefaultTeam);
+      setFoldersByWorkspace((current) => ({ ...current, [workspace.workspaceId]: folders }));
+    } finally {
+      setLoadingKeys((current) => { const next = new Set(current); next.delete(workspace.workspaceId); return next; });
+    }
+  }, []);
+
+  useEffect(() => { for (const workspace of workspaces) void loadRootFolders(workspace); }, [loadRootFolders, workspaces]);
+  useEffect(() => {
+    if (currentWorkspaceId) setExpandedKeys(new Set([currentWorkspaceId]));
+  }, [currentWorkspaceId]);
 
   useEffect(() => {
-    if (!expanded) return;
-    if (folders !== null) return;
-    let cancelled = false;
-    const load = async () => {
-      setLoading(true);
-      try {
-        const rootFolders = await fetchFolders(team.workspaceId, undefined, team.isDefaultTeam);
-        if (!cancelled) setFolders(rootFolders);
-      } catch {
-        if (!cancelled) setFolders([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!searchAreaRef.current?.contains(event.target as Node)) setSearchOpen(false);
     };
-    void load();
-    return () => { cancelled = true; };
-  }, [expanded, folders, team.workspaceId]);
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, []);
 
-  const handleToggle = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setExpanded((v) => !v);
+  const handleCreateRoot = async (workspace: WorkspaceDirectoryItem, name: string) => {
+    const folder = await createFolder(workspace, null, name);
+    setFoldersByWorkspace((current) => ({ ...current, [workspace.workspaceId]: [...(current[workspace.workspaceId] ?? []), folder] }));
+    setCreatingRootId(null);
+    setExpandedKeys((current) => new Set(current).add(workspace.workspaceId));
+    onSelectFolder(workspace, folder);
   };
 
-  const handleSelect = () => {
-    if (isDisabled) return;
-    onSelect(team.workspaceId, displayName, null, null, team.isDefaultTeam);
+  useEffect(() => {
+    const normalizedQuery = query.trim().toLocaleLowerCase();
+    if (!normalizedQuery) {
+      setSearchResults([]);
+      setSearching(false);
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      setSearching(true);
+      void Promise.all(workspaces.map(async (workspace) => {
+        const folders = await fetchFolderIndex(workspace);
+        const foldersById = new Map(folders.map((folder) => [folder.id, folder]));
+        const folderPath = (folder: FolderNode | null): FolderNode[] => {
+          const path: FolderNode[] = [];
+          const visited = new Set<string>();
+          let current = folder;
+          while (current && !visited.has(current.id)) {
+            visited.add(current.id);
+            path.unshift(current);
+            current = current.parentId ? foldersById.get(current.parentId) ?? null : null;
+          }
+          return path;
+        };
+        const folderMatches: LocationSearchResult[] = folders
+          .filter((folder) => folder.name.toLocaleLowerCase().includes(normalizedQuery))
+          .map((folder) => {
+            const path = folderPath(folder);
+            return {
+              key: `folder:${workspace.workspaceId}:${folder.id}`,
+              kind: 'folder' as const,
+              label: folder.name,
+              locationLabel: workspace.isDefaultTeam ? t('personalFunc.all') : workspace.workspaceName,
+              workspace,
+              folder,
+              branchFolder: path[0] ?? folder,
+              expandedFolderIds: path.slice(0, -1).map((item) => item.id),
+            };
+          });
+        const locations = [null, ...folders.map((folder) => folder.id)];
+        const projectLists = await Promise.all(locations.map((folderId) => fetchProjectsAtLocation(workspace, folderId)));
+        const projectMatches: LocationSearchResult[] = [];
+        projectLists.forEach((projects, index) => {
+          const folderId = locations[index];
+          const folder = folderId ? foldersById.get(folderId) ?? null : null;
+          const path = folderPath(folder);
+          for (const project of projects) {
+            if (!project.name.toLocaleLowerCase().includes(normalizedQuery)) continue;
+            projectMatches.push({
+              key: `project:${workspace.workspaceId}:${project.id}`,
+              kind: 'project',
+              label: project.name,
+              locationLabel: folder?.name ?? (workspace.isDefaultTeam ? t('personalFunc.all') : workspace.workspaceName),
+              workspace,
+              folder,
+              branchFolder: path[0] ?? null,
+              expandedFolderIds: path.slice(0, -1).map((item) => item.id),
+            });
+          }
+        });
+        return [...folderMatches, ...projectMatches];
+      })).then((groups) => {
+        if (!cancelled) setSearchResults(groups.flat());
+      }).finally(() => {
+        if (!cancelled) setSearching(false);
+      });
+    }, 180);
+    return () => { cancelled = true; window.clearTimeout(timer); };
+  }, [query, t, workspaces]);
+
+  const revealSearchResult = (result: LocationSearchResult) => {
+    setExpandedKeys((current) => new Set(current).add(result.workspace.workspaceId));
+    if (result.folder) {
+      onBranchChange(result.workspace, result.branchFolder ?? result.folder, result.expandedFolderIds);
+      onSelectFolder(result.workspace, result.folder);
+    } else {
+      onBranchChange(result.workspace, null);
+      onSelectRoot(result.workspace);
+    }
+    setSearchOpen(false);
+  };
+
+  const folderSearchResults = searchResults.filter((result) => result.kind === 'folder');
+  const projectSearchResults = searchResults.filter((result) => result.kind === 'project');
+  const renderSearchGroup = (kind: LocationSearchResult['kind'], results: LocationSearchResult[]) => {
+    const expanded = expandedSearchKinds.has(kind);
+    const visibleResults = expanded ? results : results.slice(0, 5);
+    return (
+      <section className={styles.searchGroup}>
+        <div className={styles.searchGroupTitle}>
+          {kind === 'folder' ? t('recentProjects.moveSearchFolders') : t('recentProjects.moveSearchProjects')}
+        </div>
+        {visibleResults.length ? visibleResults.map((result) => (
+          <button key={result.key} type="button" className={styles.searchResult} onClick={() => revealSearchResult(result)}>
+            <span>{result.label}</span>
+            <small>{kind === 'project' ? `${t('recentProjects.moveSearchProjectIn')} ${result.locationLabel}` : result.locationLabel}</small>
+          </button>
+        )) : (
+          <div className={styles.searchGroupEmpty}>{t('recentProjects.moveSearchGroupEmpty')}</div>
+        )}
+        {results.length > 5 ? (
+          <button
+            type="button"
+            className={styles.searchMore}
+            onClick={() => setExpandedSearchKinds((current) => {
+              const next = new Set(current);
+              if (next.has(kind)) next.delete(kind);
+              else next.add(kind);
+              return next;
+            })}
+          >
+            {expanded ? t('recentProjects.moveSearchCollapse') : t('recentProjects.moveSearchMore')}
+          </button>
+        ) : null}
+      </section>
+    );
   };
 
   return (
+    <div className={styles.locationTree}>
+      <div ref={searchAreaRef} className={styles.searchArea}>
+        <label className={styles.searchBox}>
+          <Icon name="search" size={14} />
+          <input
+            ref={searchInputRef}
+            value={query}
+            onFocus={() => setSearchOpen(true)}
+            onChange={(event) => { setQuery(event.target.value); setSearchOpen(true); setExpandedSearchKinds(new Set()); }}
+            placeholder={t('recentProjects.moveSearchPlaceholder')}
+            aria-label={t('recentProjects.moveSearchPlaceholder')}
+          />
+          {query ? (
+            <button
+              type="button"
+              className={styles.searchClear}
+              aria-label={t('common.clear')}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => { setQuery(''); setSearchResults([]); setExpandedSearchKinds(new Set()); searchInputRef.current?.focus(); }}
+            >
+              <Icon name="close" size={11} />
+            </button>
+          ) : null}
+        </label>
+        {searchOpen && query.trim() ? (
+          <div className={styles.searchPanel}>
+            {searching ? (
+              <div className={styles.searchStatus}>{t('common.loading')}</div>
+            ) : searchResults.length ? (
+              <div className={styles.searchResults}>
+                {renderSearchGroup('folder', folderSearchResults)}
+                {renderSearchGroup('project', projectSearchResults)}
+              </div>
+            ) : (
+              <div className={styles.searchStatus}>{t('recentProjects.moveSearchEmpty')}</div>
+            )}
+          </div>
+        ) : null}
+      </div>
+      {workspaces.map((workspace) => {
+        const rootKey = `${workspace.workspaceId}:root`;
+        const expanded = expandedKeys.has(workspace.workspaceId);
+        const rootFolders = foldersByWorkspace[workspace.workspaceId];
+        const rootDisabled = disabledKeys?.has(rootKey) ?? false;
+        const rootSelected = selectedKey === rootKey;
+        const label = workspace.isDefaultTeam ? t('personalFunc.all') : workspace.workspaceName;
+        return (
+          <div key={workspace.workspaceId} className={styles.teamItem}>
+            <div
+              className={`${styles.row} ${styles.rootRow}${rootSelected && creatingRootId !== workspace.workspaceId ? ` ${styles.selected}` : ''}${rootDisabled ? ` ${styles.disabled}` : ''}`}
+              data-can-create={canCreateFolders(workspace)}
+              onClick={rootDisabled ? undefined : () => onSelectRoot(workspace)}
+              role="button"
+              tabIndex={rootDisabled ? -1 : 0}
+              onKeyDown={(event) => {
+                if (!rootDisabled && (event.key === 'Enter' || event.key === ' ')) { event.preventDefault(); onSelectRoot(workspace); }
+              }}
+            >
+              <button
+                type="button"
+                className={styles.expandBtn}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setExpandedKeys((current) => { const next = new Set(current); if (next.has(workspace.workspaceId)) next.delete(workspace.workspaceId); else next.add(workspace.workspaceId); return next; });
+                }}
+                aria-label={expanded ? t('entry.navCollapse') : t('entry.navExpand')}
+                aria-expanded={expanded}
+                tabIndex={-1}
+              >
+                <Icon name={expanded ? 'chevron-down' : 'chevron-right'} size={12} />
+              </button>
+              <span className={styles.rootLabelGroup}>
+                <span className={styles.rowLabel}>{label}</span>
+                <span className={`${styles.rootTypeBadge} recent-projects__card-badge recent-projects__card-badge--${workspace.isDefaultTeam ? 'personal' : 'team'} recent-projects__card-badge--inline`}>
+                  <Icon name={workspace.isDefaultTeam ? 'lock' : 'users'} size={11} />
+                  {workspace.isDefaultTeam ? t('recentProjects.personalBadge') : t('recentProjects.teamBadge')}
+                </span>
+              </span>
+              {canCreateFolders(workspace) ? (
+                <button
+                  type="button"
+                  className={styles.addFolderBtn}
+                  aria-label={t('settings.projectLocationsAddFolder')}
+                  onClick={(event) => { event.stopPropagation(); setExpandedKeys((current) => new Set(current).add(workspace.workspaceId)); setCreatingRootId(workspace.workspaceId); }}
+                >
+                  <Icon name="plus" size={13} />
+                </button>
+              ) : null}
+            </div>
+            {creatingRootId === workspace.workspaceId ? (
+              <InlineFolderCreator depth={0} icon={null} onCreate={(name) => handleCreateRoot(workspace, name)} onCancel={() => setCreatingRootId(null)} />
+            ) : null}
+            {expanded && loadingKeys.has(workspace.workspaceId) ? (
+              <div className={styles.skeletonRow} style={{ paddingLeft: '42px' }}><Skeleton width={14} height={14} radius={4} /><Skeleton width="48%" height={13} radius={6} /></div>
+            ) : expanded && rootFolders?.length ? rootFolders.map((folder) => {
+              const key = `${workspace.workspaceId}:${folder.id}`;
+              const disabled = disabledKeys?.has(key) ?? false;
+              const selected = selectedKey === key;
+              const active = activeBranch?.workspace.workspaceId === workspace.workspaceId && activeBranch.folder?.id === folder.id;
+              return (
+                <div key={folder.id} className={styles.levelTwoItem}>
+                  <div
+                    className={`${styles.row} ${styles.levelTwoRow}${selected ? ` ${styles.selected}` : ''}${active && !selected ? ` ${styles.activeBranch}` : ''}${disabled ? ` ${styles.disabled}` : ''}`}
+                    onClick={() => { onBranchChange(workspace, folder); if (!disabled) onSelectFolder(workspace, folder); }}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <span className={styles.rowLabel}>{folder.name}</span>
+                  </div>
+                </div>
+              );
+            }) : expanded && rootFolders && creatingRootId !== workspace.workspaceId ? (
+              <div className={styles.rootEmpty}>{t('recentProjects.treeNoFolders')}</div>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function LegacyWorkspaceTree({ workspace, selectedKey, onSelectRoot, onSelectFolder, disabledKeys }: {
+  workspace: WorkspaceDirectoryItem;
+  selectedKey: string | null;
+  onSelectRoot: (workspace: WorkspaceDirectoryItem) => void;
+  onSelectFolder: (workspace: WorkspaceDirectoryItem, folder: FolderNode) => void;
+  disabledKeys?: Set<string>;
+}) {
+  const t = useT();
+  const [expanded, setExpanded] = useState(true);
+  const [folders, setFolders] = useState<FolderNode[] | null>(null);
+  const rootKey = `${workspace.workspaceId}:root`;
+  const rootDisabled = disabledKeys?.has(rootKey) ?? false;
+  useEffect(() => { void fetchFolders(workspace.workspaceId, null, workspace.isDefaultTeam).then(setFolders); }, [workspace.isDefaultTeam, workspace.workspaceId]);
+  return (
     <div className={styles.teamItem}>
-      <div
-        className={`${styles.row}${isSelected ? ` ${styles.selected}` : ''}${isDisabled ? ` ${styles.disabled}` : ''}`}
-        onClick={isDisabled ? undefined : handleSelect}
-        role="button"
-        tabIndex={isDisabled ? -1 : 0}
-        aria-disabled={isDisabled || undefined}
-        onKeyDown={(e) => {
-          if (isDisabled) return;
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            handleSelect();
-          }
-        }}
-      >
-        <button
-          type="button"
-          className={styles.expandBtn}
-          onClick={handleToggle}
-          aria-label={expanded ? t('entry.navCollapse') : t('entry.navExpand')}
-          aria-expanded={expanded}
-          tabIndex={-1}
-        >
+      <div className={`${styles.row}${selectedKey === rootKey ? ` ${styles.selected}` : ''}${rootDisabled ? ` ${styles.disabled}` : ''}`} onClick={rootDisabled ? undefined : () => onSelectRoot(workspace)} role="button" tabIndex={rootDisabled ? -1 : 0}>
+        <button type="button" className={styles.expandBtn} onClick={(event) => { event.stopPropagation(); setExpanded((value) => !value); }} aria-expanded={expanded} aria-label={expanded ? t('entry.navCollapse') : t('entry.navExpand')}>
           <Icon name={expanded ? 'chevron-down' : 'chevron-right'} size={12} />
         </button>
         <Icon name="folder" size={16} className={styles.teamIcon} />
-        <span className={styles.rowLabel}>{displayName}</span>
-        {isSelected ? <Icon name="check" size={14} className={styles.checkIcon} /> : null}
+        <span className={styles.rowLabel}>{workspace.isDefaultTeam ? t('personalFunc.all') : workspace.workspaceName}</span>
       </div>
-      {expanded && loading ? (
-        <div className={styles.childList}>
-          <div className={styles.skeletonRow} style={{ paddingLeft: '32px' }}>
-            <Skeleton width={14} height={14} radius={4} />
-            <Skeleton width="50%" height={13} radius={6} />
-          </div>
-        </div>
-      ) : expanded && folders ? (
-        <div className={styles.childList}>
-          {folders.length > 0 ? (
-            folders.map((folder) => (
-              <FolderTreeItem
-                key={folder.id}
-                folder={folder}
-                depth={1}
-                workspaceId={team.workspaceId}
-                isDefaultTeam={team.isDefaultTeam}
-                selectedKey={selectedKey}
-                onSelect={(folderId, folderName) =>
-                  onSelect(team.workspaceId, displayName, folderId, folderName, team.isDefaultTeam)
-                }
-                disabledKeys={disabledKeys}
-              />
-            ))
-          ) : (
-            <div className={styles.emptyHint}>{t('recentProjects.treeNoFolders')}</div>
-          )}
-        </div>
-      ) : null}
+      {expanded && folders === null ? (
+        <div className={styles.skeletonRow}><Skeleton width={14} height={14} radius={4} /><Skeleton width="50%" height={13} radius={6} /></div>
+      ) : expanded ? folders?.map((folder) => (
+        <FolderTreeItem key={folder.id} folder={folder} depth={1} workspace={workspace} selectedKey={selectedKey} onSelect={(node) => onSelectFolder(workspace, node)} disabledKeys={disabledKeys} />
+      )) : null}
     </div>
   );
 }
@@ -343,10 +627,11 @@ export function MoveToTeamTreeDialog({
   busy,
   includePersonal = false,
   currentWorkspaceId,
+  currentFolderId,
   restrictToWorkspaceId,
   mode = 'team',
   disabledKeys,
- canMoveToPersonal = true,
+  canMoveToPersonal = true,
   copyMode = false,
 }: MoveToTeamTreeDialogProps) {
   const t = useT();
@@ -354,10 +639,9 @@ export function MoveToTeamTreeDialog({
   const [items, setItems] = useState<readonly WorkspaceDirectoryItem[] | null>(propItems ?? null);
   const [loading, setLoading] = useState(!propItems);
   const [selected, setSelected] = useState<TeamTreeSelection | null>(null);
-  const [activeTab, setActiveTab] = useState<'team' | 'personal'>('team');
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const [activeBranch, setActiveBranch] = useState<ActiveBranch | null>(null);
+  const initializedLocationRef = useRef(false);
 
-  // Fetch the workspace directory when items are not supplied via props.
   useEffect(() => {
     if (propItems) return;
     let cancelled = false;
@@ -366,34 +650,13 @@ export function MoveToTeamTreeDialog({
       try {
         const directory = await readWorkspaceDirectoryForCurrentGeneration();
         if (cancelled) return;
-        let teamItems: WorkspaceDirectoryItem[];
-        if (mode === 'personal-folders') {
-          // Show only the personal (default-team) workspace. The personal
-          // workspace has workspaceType 'personal' with isDefaultTeam true,
-          // so filter by isDefaultTeam rather than workspaceType.
-          teamItems = (directory.items ?? []).filter(
-            (item) => item.isDefaultTeam === true,
-          );
-        } else if (mode === 'tabbed') {
-          // Show all workspaces (personal + team) so the tab switch can
-          // filter between them.
-          teamItems = (directory.items ?? []).filter(
-            (item) => item.workspaceType === 'team' || item.isDefaultTeam === true,
-          );
-        } else {
-          // Default team mode: show team workspaces only. Personal
-          // (default-team) is excluded so moving to a team space never
-          // offers the personal workspace as a destination.
-          teamItems = (directory.items ?? []).filter(
-            (item) =>
-              item.workspaceType === 'team' && !item.isDefaultTeam,
-          );
-        }
-        setItems(
-          restrictToWorkspaceId
-            ? teamItems.filter((item) => item.workspaceId === restrictToWorkspaceId)
-            : teamItems,
-        );
+        let next = (directory.items ?? []).filter((item) => !item.isSharedSpace);
+        if (mode === 'personal-folders') next = next.filter((item) => item.isDefaultTeam === true);
+        else if (mode === 'team') next = next.filter((item) => item.workspaceType === 'team' && !item.isDefaultTeam);
+        else next = next.filter((item) => item.workspaceType === 'team' || item.isDefaultTeam === true);
+        if (!canMoveToPersonal) next = next.filter((item) => !item.isDefaultTeam);
+        if (restrictToWorkspaceId) next = next.filter((item) => item.workspaceId === restrictToWorkspaceId);
+        setItems(next);
       } catch {
         if (!cancelled) setItems([]);
       } finally {
@@ -402,131 +665,126 @@ export function MoveToTeamTreeDialog({
     };
     void load();
     return () => { cancelled = true; };
-  }, [propItems, includePersonal, currentWorkspaceId, mode, restrictToWorkspaceId]);
+  }, [canMoveToPersonal, includePersonal, currentWorkspaceId, mode, propItems, restrictToWorkspaceId]);
 
-  const selectedKey = useMemo(() => {
-    if (!selected) return null;
-    return selected.folderId
-      ? `${selected.workspaceId}:${selected.folderId}`
-      : `${selected.workspaceId}:root`;
-  }, [selected]);
-
-
-  // In tabbed mode, filter items by the active tab.
-  const displayItems = useMemo(() => {
-    if (!items) return null;
-    const restrictedItems = restrictToWorkspaceId
-      ? items.filter((item) => item.workspaceId === restrictToWorkspaceId)
-      : items;
-    if (mode === 'tabbed') {
-      // When canMoveToPersonal is false, never show personal-space items
-      // even if the active tab somehow flips to 'personal'.
-      if (!canMoveToPersonal) {
-        return restrictedItems.filter((item) => !item.isDefaultTeam);
-      }
-      return activeTab === 'team'
-        ? restrictedItems.filter((item) => !item.isDefaultTeam)
-        : restrictedItems.filter((item) => item.isDefaultTeam === true);
+  useEffect(() => {
+    if (initializedLocationRef.current || mode !== 'unified' || !currentWorkspaceId || !items?.length) return;
+    const workspace = items.find((item) => item.workspaceId === currentWorkspaceId);
+    if (!workspace) return;
+    initializedLocationRef.current = true;
+    if (!currentFolderId) {
+      setSelected({
+        workspaceId: workspace.workspaceId,
+        workspaceName: workspace.isDefaultTeam ? t('personalFunc.all') : workspace.workspaceName,
+        folderId: null,
+        folderName: null,
+        isDefaultTeam: workspace.isDefaultTeam,
+      });
+      setActiveBranch({ workspace, folder: null });
+      return;
     }
-   return restrictedItems;
-  }, [items, mode, activeTab, canMoveToPersonal, restrictToWorkspaceId]);
+    let cancelled = false;
+    void fetchFolderIndex(workspace).then((folders) => {
+      if (cancelled) return;
+      const folder = folders.find((item) => item.id === currentFolderId);
+      if (!folder) return;
+      setSelected({
+        workspaceId: workspace.workspaceId,
+        workspaceName: workspace.isDefaultTeam ? t('personalFunc.all') : workspace.workspaceName,
+        folderId: folder.id,
+        folderName: folder.name,
+        isDefaultTeam: workspace.isDefaultTeam,
+      });
+      const foldersById = new Map(folders.map((item) => [item.id, item]));
+      const path: FolderNode[] = [];
+      const visited = new Set<string>();
+      let pathItem: FolderNode | null = folder;
+      while (pathItem && !visited.has(pathItem.id)) {
+        visited.add(pathItem.id);
+        path.unshift(pathItem);
+        pathItem = pathItem.parentId ? foldersById.get(pathItem.parentId) ?? null : null;
+      }
+      setActiveBranch({
+        workspace,
+        folder: path[0] ?? folder,
+        expandedFolderIds: path.slice(0, -1).map((item) => item.id),
+      });
+    });
+    return () => { cancelled = true; };
+  }, [currentFolderId, currentWorkspaceId, items, mode, t]);
 
-  const handleTabSwitch = useCallback((tab: 'team' | 'personal') => {
-    setActiveTab(tab);
-    setSelected(null);
-  }, []);
-  const handleSelect = useCallback(
-    (workspaceId: string, workspaceName: string, folderId: string | null, folderName: string | null, isDefaultTeam?: boolean) => {
-      setSelected({ workspaceId, workspaceName, folderId, folderName, isDefaultTeam });
-    },
-    [],
+  const selectedKey = useMemo(() => selected ? `${selected.workspaceId}:${selected.folderId ?? 'root'}` : null, [selected]);
+  const selectRoot = useCallback((workspace: WorkspaceDirectoryItem) => {
+    setSelected({ workspaceId: workspace.workspaceId, workspaceName: workspace.isDefaultTeam ? t('personalFunc.all') : workspace.workspaceName, folderId: null, folderName: null, isDefaultTeam: workspace.isDefaultTeam });
+    setActiveBranch({ workspace, folder: null });
+  }, [t]);
+  const selectFolder = useCallback((workspace: WorkspaceDirectoryItem, folder: FolderNode) => {
+    setSelected({ workspaceId: workspace.workspaceId, workspaceName: workspace.isDefaultTeam ? t('personalFunc.all') : workspace.workspaceName, folderId: folder.id, folderName: folder.name, isDefaultTeam: workspace.isDefaultTeam });
+  }, [t]);
+  const showUnifiedLayout = mode === 'unified';
+  const visibleItems = items ?? [];
+  const activeExpandedFolderIds = useMemo(
+    () => new Set(activeBranch?.expandedFolderIds ?? []),
+    [activeBranch?.expandedFolderIds],
   );
-
- const showPersonal = includePersonal || mode === 'personal-folders' || (mode === 'tabbed' && canMoveToPersonal);
-// In tabbed mode, only show the personal tab when the user is the project
-// owner (canMoveToPersonal). Admins can move to other teams but not to personal.
-const showPersonalTab = mode === 'tabbed' && canMoveToPersonal;
-
- const handleConfirm = () => {
-    if (!selected || busy) return;
+  const handleConfirm = () => {
+    if (!selected || disabledKeys?.has(selectedKey ?? '') || busy) return;
     onConfirm(selected);
   };
 
   const dialog = (
-    <Dialog
-      className={styles.dialog}
-      onClose={onCancel}
-      closeOnEscape
-      ariaLabelledBy={titleId}
-    >
-      <DialogTitle id={titleId}>{copyMode ? t('recentProjects.copyToPersonal') : showPersonal ? t('recentProjects.moveTo') : t('recentProjects.moveToTeam')}</DialogTitle>
-      <DialogDescription>{copyMode ? t('recentProjects.copyToPersonalDesc') : showPersonal ? t('recentProjects.moveTreeDesc') : t('recentProjects.moveToTeamTreeDesc')}</DialogDescription>
-      {mode === 'tabbed' && showPersonalTab ? (
-        <div className={styles.tabs}>
-          <button
-            type="button"
-            className={`${styles.tab}${activeTab === 'team' ? ` ${styles.tabActive}` : ''}`}
-            onClick={() => handleTabSwitch('team')}
-          >
-           {t('recentProjects.teamSpaceTab')}
-         </button>
-          <button
-            type="button"
-            className={`${styles.tab}${activeTab === 'personal' ? ` ${styles.tabActive}` : ''}`}
-            onClick={() => handleTabSwitch('personal')}
-          >
-            {t('recentProjects.personalSpaceTab')}
-          </button>
+    <Dialog className={`${styles.dialog}${showUnifiedLayout ? ` ${styles.dialogWide}` : ''}`} onClose={onCancel} closeOnEscape ariaLabelledBy={titleId}>
+      <DialogTitle id={titleId}>{copyMode ? t('recentProjects.copyToPersonal') : showUnifiedLayout ? t('recentProjects.moveTo') : (includePersonal || mode !== 'team') ? t('recentProjects.moveTo') : t('recentProjects.moveToTeam')}</DialogTitle>
+      {loading ? (
+        <div className={styles.skeletonList}>
+          <div className={styles.skeletonRow}><Skeleton width={16} height={16} radius={4} /><Skeleton width="60%" height={13} radius={6} /></div>
+          <div className={styles.skeletonRow}><Skeleton width={16} height={16} radius={4} /><Skeleton width="45%" height={13} radius={6} /></div>
         </div>
-      ) : null}
-      <div className={styles.treeContainer} ref={scrollRef}>
-        {loading ? (
-          <div className={styles.skeletonList}>
-            <div className={styles.skeletonRow}>
-              <Skeleton width={16} height={16} radius={4} />
-              <Skeleton width="60%" height={13} radius={6} />
-            </div>
-            <div className={styles.skeletonRow}>
-              <Skeleton width={16} height={16} radius={4} />
-              <Skeleton width="45%" height={13} radius={6} />
-            </div>
-            <div className={styles.skeletonRow}>
-              <Skeleton width={16} height={16} radius={4} />
-              <Skeleton width="55%" height={13} radius={6} />
-            </div>
+      ) : visibleItems.length === 0 ? (
+        <div className={styles.emptyState}>{t('recentProjects.treeNoWorkspaces')}</div>
+      ) : showUnifiedLayout ? (
+        <div className={styles.splitTree}>
+          <div className={styles.leftPane}>
+            <UnifiedLocationPane workspaces={visibleItems} selectedKey={selectedKey} activeBranch={activeBranch} currentWorkspaceId={currentWorkspaceId} onSelectRoot={selectRoot} onSelectFolder={selectFolder} onBranchChange={(workspace, folder, expandedFolderIds) => setActiveBranch({ workspace, folder, expandedFolderIds })} disabledKeys={disabledKeys} />
           </div>
-        ) : displayItems && displayItems.length > 0 ? (
+          <div className={styles.rightPane}>
+            {!activeBranch?.folder ? (
+              <div className={styles.paneEmpty}>
+                {selected?.folderId === null && activeBranch?.workspace.workspaceId === selected.workspaceId
+                  ? t('recentProjects.moveTreeRootSelected')
+                  : t('recentProjects.moveTreeDesc')}
+              </div>
+            ) : (
+              <div className={styles.deepTree}>
+                <FolderTreeItem
+                  key={`${activeBranch.workspace.workspaceId}:${activeBranch.folder.id}`}
+                  folder={activeBranch.folder}
+                  depth={0}
+                  workspace={activeBranch.workspace}
+                  selectedKey={selectedKey}
+                  onSelect={(node) => selectFolder(activeBranch.workspace, node)}
+                  disabledKeys={disabledKeys}
+                  initialExpanded
+                  expandedFolderIds={activeExpandedFolderIds}
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className={styles.treeContainer}>
           <div className={styles.tree}>
-            {displayItems.map((team) => (
-              <TeamTreeItem
-                key={team.workspaceId}
-                team={team}
-                selectedKey={selectedKey}
-                onSelect={handleSelect}
-                autoExpand={mode === 'personal-folders' || (mode === 'tabbed' && activeTab === 'personal')}
-                disabledKeys={disabledKeys}
-              />
-            ))}
+            {visibleItems.map((workspace) => <LegacyWorkspaceTree key={workspace.workspaceId} workspace={workspace} selectedKey={selectedKey} onSelectRoot={selectRoot} onSelectFolder={selectFolder} disabledKeys={disabledKeys} />)}
           </div>
-        ) : (
-          <div className={styles.emptyState}>{showPersonal ? t('recentProjects.treeNoWorkspaces') : t('recentProjects.treeNoTeams')}</div>
-        )}
-      </div>
+        </div>
+      )}
       <DialogFooter className={styles.footer}>
-        <button type="button" onClick={onCancel} disabled={busy}>
-          {t('designs.renameCancel')}
-        </button>
-        <button
-          type="button"
-          className={`primary ${styles.confirmBtn}`}
-          onClick={handleConfirm}
-          disabled={!selected || busy}
-        >
-          {copyMode ? t('recentProjects.confirmCopyToPersonal') : showPersonal ? t('recentProjects.confirmMove') : t('recentProjects.confirmMoveToTeam')}
+        <button type="button" onClick={onCancel} disabled={busy}>{t('common.cancel')}</button>
+        <button type="button" className={`primary ${styles.confirmBtn}`} onClick={handleConfirm} disabled={!selected || busy || disabledKeys?.has(selectedKey ?? '')}>
+          {copyMode ? t('recentProjects.confirmCopyToPersonal') : t('recentProjects.confirmMove')}
         </button>
       </DialogFooter>
     </Dialog>
   );
-
   return typeof document !== 'undefined' ? createPortal(dialog, document.body) : dialog;
 }
