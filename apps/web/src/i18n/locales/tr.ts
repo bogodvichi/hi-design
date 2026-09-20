@@ -2488,6 +2488,7 @@ export const tr: Dict = {
   'chat.comments.markResolved': 'Çözüldü olarak işaretle',
   'chat.comments.reopen': 'Yorumu yeniden aç',
   'chat.comments.deleteComment': 'Yorumu sil',
+  'chat.comments.deleteReply': 'Yanıtı sil',
   'chat.comments.sortNewest': 'Sort by time descending',
   'chat.comments.sortOldest': 'Sort by time ascending',
   'chat.comments.filterAll': 'Show all comments on this page',

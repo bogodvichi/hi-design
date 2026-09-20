@@ -20,6 +20,10 @@ export type ProjectCommentWorkspaceContextResolution =
 export interface RegisterProjectCommentRoutesDeps extends RouteDeps<'db' | 'projectStore' | 'conversations'> {
   /** Optional in focused CRUD fixtures; production supplies request-scoped analytics. */
   telemetry?: RouteDeps<'telemetry'>['telemetry'];
+  /** SSO session display name fallback for comments when the workspace
+   *  directory entry has not been enriched yet. Mirrors `shared-space/info`
+   *  so local previews never store memberId as the author display name. */
+  ssoDisplayName?: string;
   /**
    * Gate POST (create/edit)/PATCH status/DELETE on the caller's WORKSPACE
    * identity, before the author-identity logic below ever runs (spec 04 §10
@@ -445,6 +449,10 @@ export function registerProjectCommentRoutes(app: Express, ctx: RegisterProjectC
       // and is author-only.
       const body = { ...(req.body || {}) };
       const authorMemberId = await resolveCaller(req, workspaceContext);
+      const authorDisplayName = workspaceContext?.displayName?.trim()
+        || ctx.ssoDisplayName?.trim()
+        || undefined;
+      body.authorDisplayName = authorDisplayName;
       const requestedId = typeof body.id === 'string' && body.id.trim() ? body.id.trim() : '';
       let existing: PreviewComment | null = null;
       if (requestedId) {

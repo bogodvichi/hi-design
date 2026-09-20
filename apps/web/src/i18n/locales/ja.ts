@@ -2488,6 +2488,7 @@ export const ja: Dict = {
   'chat.comments.markResolved': '解決済みとしてマーク',
   'chat.comments.reopen': 'コメントを再開',
   'chat.comments.deleteComment': 'コメントを削除',
+  'chat.comments.deleteReply': '返信を削除',
   'chat.comments.sortNewest': 'Sort by time descending',
   'chat.comments.sortOldest': 'Sort by time ascending',
   'chat.comments.filterAll': 'Show all comments on this page',

@@ -2488,6 +2488,7 @@ export const de: Dict = {
   'chat.comments.markResolved': 'Als gelöst markieren',
   'chat.comments.reopen': 'Kommentar wieder öffnen',
   'chat.comments.deleteComment': 'Kommentar löschen',
+  'chat.comments.deleteReply': 'Antwort löschen',
   'chat.comments.sortNewest': 'Sort by time descending',
   'chat.comments.sortOldest': 'Sort by time ascending',
   'chat.comments.filterAll': 'Show all comments on this page',

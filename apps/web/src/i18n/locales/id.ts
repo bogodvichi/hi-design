@@ -2488,6 +2488,7 @@ export const id: Dict = {
   'chat.comments.markResolved': 'Tandai sebagai selesai',
   'chat.comments.reopen': 'Buka kembali komentar',
   'chat.comments.deleteComment': 'Hapus komentar',
+  'chat.comments.deleteReply': 'Hapus balasan',
   'chat.comments.sortNewest': 'Sort by time descending',
   'chat.comments.sortOldest': 'Sort by time ascending',
   'chat.comments.filterAll': 'Show all comments on this page',

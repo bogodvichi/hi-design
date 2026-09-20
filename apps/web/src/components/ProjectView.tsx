@@ -5149,6 +5149,7 @@ const coalescedCoverRefresh = useCoalescedCallback(
       attachAfterSave: boolean,
       images: File[] = [],
       commentId?: string,
+      parentId?: string,
     ) => {
       const commentConversationId = activeConversationId ?? routeConversationId;
       if (!commentConversationId) {
@@ -5195,6 +5196,7 @@ const coalescedCoverRefresh = useCoalescedCallback(
           target,
           note,
           ...(attachments.length > 0 ? { attachments } : {}),
+          ...(parentId ? { parentId } : {}),
         },
         projectRunWorkspaceContext,
       );
@@ -5226,6 +5228,28 @@ const coalescedCoverRefresh = useCoalescedCallback(
       t,
       projectCollab.materializationPending,
     ],
+  );
+
+  const replyPreviewComment = useCallback(
+    async (comment: PreviewComment, replyText: string) => {
+      const target: PreviewCommentTarget = {
+        filePath: comment.filePath,
+        elementId: comment.elementId,
+        selector: comment.selector,
+        label: comment.label,
+        text: comment.text,
+        position: comment.position,
+        htmlHint: comment.htmlHint,
+        style: comment.style,
+        selectionKind: comment.selectionKind ?? 'element',
+        memberCount: comment.memberCount,
+        podMembers: comment.podMembers,
+        ...(typeof comment.slideIndex === 'number' ? { slideIndex: comment.slideIndex } : {}),
+        ...(typeof comment.anchoredVersion === 'number' ? { anchoredVersion: comment.anchoredVersion } : {}),
+      };
+      return savePreviewComment(target, replyText, false, [], undefined, comment.id);
+    },
+    [savePreviewComment],
   );
 
   const removePreviewComment = useCallback(
@@ -11913,6 +11937,7 @@ const coalescedCoverRefresh = useCoalescedCallback(
           onTabsStateChange={persistTabsState}
           previewComments={previewComments}
           onSavePreviewComment={savePreviewComment}
+          onReplyPreviewComment={replyPreviewComment}
           onRemovePreviewComment={removePreviewComment}
           onChangeCommentStatus={changePreviewCommentStatus}
           onReorderPreviewComment={reorderPreviewComment}

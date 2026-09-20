@@ -91,6 +91,33 @@ describe('preview comment persistence', () => {
     expect(listed?.authorMemberId).toBe('member-42');
   });
 
+  it('derives rootCommentId and persists reply linkage for a reply comment', () => {
+    const db = seededDb();
+    const root = upsertPreviewComment(db, 'project-1', 'conversation-1', {
+      target: target({ elementId: 'hero-title' }),
+      note: 'Root comment',
+      authorMemberId: 'member-42',
+    });
+    expect(root).not.toBeNull();
+    if (!root) throw new Error('comment upsert failed');
+
+    const reply = upsertPreviewComment(db, 'project-1', 'conversation-1', {
+      target: target({ elementId: 'hero-title' }),
+      note: 'Reply comment',
+      authorMemberId: 'member-7',
+      parentId: root.id,
+    });
+    expect(reply).not.toBeNull();
+    if (!reply) throw new Error('comment upsert failed');
+    expect(reply.parentId).toBe(root.id);
+    expect(reply.rootCommentId).toBe(root.id);
+
+    const listed = listPreviewComments(db, 'project-1', 'conversation-1');
+    const listedReply = listed.find((comment) => comment.id === reply.id);
+    expect(listedReply?.parentId).toBe(root.id);
+    expect(listedReply?.rootCommentId).toBe(root.id);
+  });
+
   it('writes back resolved anchor state and keeps last-good position on a lost resolve', () => {
     const db = seededDb();
     const saved = upsertPreviewComment(db, 'project-1', 'conversation-1', {

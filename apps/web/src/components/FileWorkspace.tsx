@@ -253,10 +253,11 @@ interface Props {
   tabsState: OpenTabsState;
   onTabsStateChange: (next: OpenTabsState) => void;
   previewComments?: PreviewComment[];
-  onSavePreviewComment?: (target: PreviewCommentTarget, note: string, attachAfterSave: boolean, images?: File[], commentId?: string) => Promise<PreviewComment | null>;
- onRemovePreviewComment?: (commentId: string) => Promise<boolean>;
- onChangeCommentStatus?: (commentId: string, status: PreviewCommentStatus) => void | Promise<void>;
- onReorderPreviewComment?: (commentId: string, sortKey: number) => Promise<void>;
+  onSavePreviewComment?: (target: PreviewCommentTarget, note: string, attachAfterSave: boolean, images?: File[], commentId?: string, parentId?: string) => Promise<PreviewComment | null>;
+  onReplyPreviewComment?: (comment: PreviewComment, replyText: string) => Promise<PreviewComment | null> | Promise<void> | void;
+  onRemovePreviewComment?: (commentId: string) => Promise<boolean>;
+  onChangeCommentStatus?: (commentId: string, status: PreviewCommentStatus) => void | Promise<void>;
+  onReorderPreviewComment?: (commentId: string, sortKey: number) => Promise<void>;
   onSendBoardCommentAttachments?: (attachments: ChatCommentAttachment[], images?: File[]) => Promise<CommentSendResult> | CommentSendResult;
   onBrandExtractionStopRequest?: () => void;
   onRequestBrowserUsePrompt?: (prompt: string) => void;
@@ -1323,10 +1324,11 @@ export function FileWorkspace({
   tabsState,
   onTabsStateChange,
   previewComments = NO_PREVIEW_COMMENTS,
- onSavePreviewComment,
- onRemovePreviewComment,
- onChangeCommentStatus,
- onReorderPreviewComment,
+  onSavePreviewComment,
+  onReplyPreviewComment,
+  onRemovePreviewComment,
+  onChangeCommentStatus,
+  onReorderPreviewComment,
   onSendBoardCommentAttachments,
   onBrandExtractionStopRequest,
   onRequestBrowserUsePrompt,
@@ -3365,10 +3367,11 @@ export function FileWorkspace({
       commentQueueOnSend={commentQueueOnSend}
       commentSendDisabled={commentSendDisabled}
       previewComments={previewCommentsByFile.get(file.name) ?? NO_PREVIEW_COMMENTS}
-     onSavePreviewComment={onSavePreviewComment}
-     onRemovePreviewComment={onRemovePreviewComment}
-     onChangeCommentStatus={onChangeCommentStatus}
-     onReorderPreviewComment={onReorderPreviewComment}
+      onSavePreviewComment={onSavePreviewComment}
+      onReplyPreviewComment={onReplyPreviewComment}
+      onRemovePreviewComment={onRemovePreviewComment}
+      onChangeCommentStatus={onChangeCommentStatus}
+      onReorderPreviewComment={onReorderPreviewComment}
       onSendBoardCommentAttachments={onSendBoardCommentAttachments}
       onBrandExtractionStopRequest={
         file.name === 'brand.html' ? onBrandExtractionStopRequest : undefined

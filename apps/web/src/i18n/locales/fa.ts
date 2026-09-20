@@ -2488,6 +2488,7 @@ export const fa: Dict = {
   'chat.comments.markResolved': 'علامت‌گذاری به عنوان حل شده',
   'chat.comments.reopen': 'باز کردن مجدد نظر',
   'chat.comments.deleteComment': 'حذف نظر',
+  'chat.comments.deleteReply': 'حذف پاسخ',
   'chat.comments.sortNewest': 'Sort by time descending',
   'chat.comments.sortOldest': 'Sort by time ascending',
   'chat.comments.filterAll': 'Show all comments on this page',

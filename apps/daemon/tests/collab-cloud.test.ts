@@ -132,6 +132,57 @@ describe('previewCommentToCloud', () => {
     expect(cloud.seq).toBe(0);
   });
 
+  it('carries the author display name onto the cloud comment', () => {
+    const cloud = previewCommentToCloud(
+      {
+        id: 'c1',
+        projectId: 'p1',
+        conversationId: 'conv-local',
+        filePath: 'index.html',
+        elementId: 'hero',
+        selector: '[data-od-id="hero"]',
+        label: 'h1.hero',
+        text: 'Hero',
+        position: { x: 1, y: 2, width: 3, height: 4 },
+        htmlHint: '<h1>',
+        note: 'looks off',
+        status: 'open',
+        createdAt: 10,
+        updatedAt: 20,
+        authorMemberId: 'm-author',
+        authorDisplayName: '  Alice  ',
+      } as any,
+      'm-fallback',
+      '琼羽',
+    );
+    expect(cloud.displayName).toBe('Alice');
+  });
+
+  it('falls back to the sharing member display name when the comment has no author display name', () => {
+    const cloud = previewCommentToCloud(
+      {
+        id: 'c1',
+        projectId: 'p1',
+        conversationId: 'conv-local',
+        filePath: 'index.html',
+        elementId: 'hero',
+        selector: 's',
+        label: 'l',
+        text: 't',
+        position: { x: 0, y: 0, width: 0, height: 0 },
+        htmlHint: '',
+        note: 'n',
+        status: 'open',
+        createdAt: 1,
+        updatedAt: 1,
+        authorMemberId: 'm-author',
+      } as any,
+      'm-fallback',
+      '琼羽',
+    );
+    expect(cloud.displayName).toBe('琼羽');
+  });
+
   it('falls back to the sharing member when the comment has no author', () => {
     const cloud = previewCommentToCloud(
       {
@@ -163,6 +214,7 @@ describe('mergeSyncedPreviewComment', () => {
     const db = seededDb();
     const comment = cloudComment('c1', {
       memberId: 'm-author',
+      displayName: 'Alice',
       anchorState: 'anchored',
       anchoredVersion: 3,
     });
@@ -175,6 +227,7 @@ describe('mergeSyncedPreviewComment', () => {
     expect(stored[0]!.id).toBe('c1');
     // The AUTHOR is preserved for cross-member attribution.
     expect(stored[0]!.authorMemberId).toBe('m-author');
+    expect(stored[0]!.authorDisplayName).toBe('Alice');
     expect(stored[0]!.anchorState).toBe('anchored');
     expect(stored[0]!.anchoredVersion).toBe(3);
   });

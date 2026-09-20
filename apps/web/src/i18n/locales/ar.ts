@@ -2488,6 +2488,7 @@ export const ar: Dict = {
   'chat.comments.markResolved': 'وضع علامة تم الحل',
   'chat.comments.reopen': 'إعادة فتح التعليق',
   'chat.comments.deleteComment': 'حذف التعليق',
+  'chat.comments.deleteReply': 'حذف الرد',
   'chat.comments.sortNewest': 'Sort by time descending',
   'chat.comments.sortOldest': 'Sort by time ascending',
   'chat.comments.filterAll': 'Show all comments on this page',

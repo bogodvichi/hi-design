@@ -2488,6 +2488,7 @@ export const hu: Dict = {
   'chat.comments.markResolved': 'Megoldottnak jelölés',
   'chat.comments.reopen': 'Hozzászólás újranyitása',
   'chat.comments.deleteComment': 'Hozzászólás törlése',
+  'chat.comments.deleteReply': 'Válasz törlése',
   'chat.comments.sortNewest': 'Sort by time descending',
   'chat.comments.sortOldest': 'Sort by time ascending',
   'chat.comments.filterAll': 'Show all comments on this page',

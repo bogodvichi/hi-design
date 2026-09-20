@@ -73,7 +73,7 @@ export class CollabCloudError extends Error {
 }
 
 export interface CollabCloudMemberRegistration {
-  displayName: string;
+  displayName?: string;
   role: CollabMemberRole;
 }
 

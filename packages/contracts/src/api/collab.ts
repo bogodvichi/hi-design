@@ -900,6 +900,22 @@ export interface CollabCloudComment {
    */
   memberId: string;
   /**
+   * Optional denormalized display name for the author, carried from push time
+   * so receivers can render names without a separate member-directory lookup.
+   */
+  displayName?: string;
+  /**
+   * Reply linkage: id of the comment this entry replies to. Absent for a
+   * top-level comment. Carried through the relay so receiving daemons can
+   * reconstruct the same thread relationship locally.
+   */
+  parentId?: string;
+  /**
+   * Denormalized top-level comment id for the thread. Absent for a top-level
+   * comment. Mirrors {@link PreviewComment.rootCommentId}.
+   */
+  rootCommentId?: string;
+  /**
    * Cloud-assigned monotonic sequence within a project's comment stream — the
    * pull cursor. Clients ignore it on push (send 0); the cloud assigns the real
    * value and returns it.

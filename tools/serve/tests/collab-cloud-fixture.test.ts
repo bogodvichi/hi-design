@@ -48,6 +48,7 @@ function comment(id: string, patch: Record<string, unknown> = {}): Record<string
     projectId: "p1",
     conversationId: "conv-a",
     memberId: "m-author",
+    displayName: "Author",
     seq: 0,
     note: `note ${id}`,
     filePath: "index.html",
@@ -94,11 +95,11 @@ describe("collab-cloud fixture", () => {
     expect(list.json.members).toHaveLength(2);
   });
 
-  it("defaults displayName to the id and role to member", async () => {
+  it("keeps displayName null when no display name was provided and role defaults to member", async () => {
     server = await startCollabCloudFixtureServer({ token: TOKEN });
     await call("PUT", "/teams/t1/members/m9", {});
     const list = await call("GET", "/teams/t1/members");
-    expect(list.json.members).toEqual([{ memberId: "m9", displayName: "m9", role: "member" }]);
+    expect(list.json.members).toEqual([{ memberId: "m9", displayName: null, role: "member" }]);
   });
 
   it("assigns a monotonic seq and pulls incrementally by sinceSeq", async () => {
@@ -113,6 +114,7 @@ describe("collab-cloud fixture", () => {
     expect(all.json.comments.map((c: any) => c.id)).toEqual(["c1", "c2"]);
     // Author id survives the round-trip (who wrote it, for cross-member display).
     expect(all.json.comments[0].memberId).toBe("m-author");
+    expect(all.json.comments[0].displayName).toBe("Author");
 
     const incremental = await call("GET", "/teams/t1/projects/p1/comments?sinceSeq=1");
     expect(incremental.json.comments.map((c: any) => c.id)).toEqual(["c2"]);

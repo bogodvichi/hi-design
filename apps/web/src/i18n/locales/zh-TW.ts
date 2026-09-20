@@ -2587,6 +2587,7 @@ export const zhTW: Dict = {
   "chat.comments.markResolved": "標記為已解決",
   "chat.comments.reopen": "重新開啟評論",
   "chat.comments.deleteComment": "刪除評論",
+  "chat.comments.deleteReply": "刪除回覆",
   "chat.comments.sortNewest": "按時間倒序排列",
   "chat.comments.sortOldest": "按時間正序排列",
   "chat.comments.filterAll": "顯示目前頁面全部評論",

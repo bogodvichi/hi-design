@@ -1808,7 +1808,8 @@ interface Props {
   commentQueueOnSend?: boolean;
   commentSendDisabled?: boolean;
   previewComments?: PreviewComment[];
-  onSavePreviewComment?: (target: PreviewCommentTarget, note: string, attachAfterSave: boolean, images?: File[], commentId?: string) => Promise<PreviewComment | null>;
+  onSavePreviewComment?: (target: PreviewCommentTarget, note: string, attachAfterSave: boolean, images?: File[], commentId?: string, parentId?: string) => Promise<PreviewComment | null>;
+  onReplyPreviewComment?: (comment: PreviewComment, replyText: string) => Promise<PreviewComment | null> | Promise<void> | void;
   onRemovePreviewComment?: (commentId: string) => Promise<boolean>;
   onChangeCommentStatus?: (commentId: string, status: PreviewCommentStatus) => void | Promise<void>;
   /**
@@ -1911,6 +1912,7 @@ export const FileViewer = memo(function FileViewer({
   commentSendDisabled = false,
   previewComments = [],
   onSavePreviewComment,
+  onReplyPreviewComment,
   onRemovePreviewComment,
   onChangeCommentStatus,
   onReorderPreviewComment,
@@ -2001,6 +2003,7 @@ export const FileViewer = memo(function FileViewer({
         commentSendDisabled={commentSendDisabled}
         previewComments={previewComments}
         onSavePreviewComment={onSavePreviewComment}
+        onReplyPreviewComment={onReplyPreviewComment}
         onRemovePreviewComment={onRemovePreviewComment}
         onChangeCommentStatus={onChangeCommentStatus}
         onReorderPreviewComment={onReorderPreviewComment}
@@ -4558,8 +4561,12 @@ export function CommentSidePanel({
   canDeleteComment,
   canReplyComment,
   onReplyComment,
+  replyComments,
 }: {
   comments: PreviewComment[];
+  /** Full comment list including replies, used to populate reply threads.
+   *  Defaults to `comments` (top-level-only callers are unaffected). */
+  replyComments?: PreviewComment[];
   projectId?: string;
   selectedIds: Set<string>;
   activeCommentId: string | null;
@@ -4594,7 +4601,7 @@ export function CommentSidePanel({
   /** Team-collab gate: which comments the viewer may reply to. Defaults to true (single-user). */
   canReplyComment?: (comment: PreviewComment) => boolean;
   /** Optional reply persistence callback. `replyText` is the appended reply text. */
-  onReplyComment?: (comment: PreviewComment, replyText: string) => void | Promise<void>;
+  onReplyComment?: (comment: PreviewComment, replyText: string) => void | Promise<void> | Promise<PreviewComment | null>;
 }) {
   const { workspaceContext } = useProjectCollabContext();
   const [newCommentDraft, setNewCommentDraft] = useState('');
@@ -4606,7 +4613,18 @@ export function CommentSidePanel({
   const [notifMenuOpen, setNotifMenuOpen] = useState(false);
   const [replyEditorId, setReplyEditorId] = useState<string | null>(null);
   const [replyDraftById, setReplyDraftById] = useState<Record<string, string>>({});
-  const [localRepliesById, setLocalRepliesById] = useState<Record<string, string[]>>({});
+  const [localRepliesById, setLocalRepliesById] = useState<Record<string, Array<{ note: string; createdAt: number }>>>({});
+  const replySource = replyComments ?? comments;
+  const replyCommentsById = useMemo(() => {
+    const byParent = new Map<string, PreviewComment[]>();
+    for (const comment of replySource) {
+      if (!comment.parentId) continue;
+      const existing = byParent.get(comment.parentId) ?? [];
+      existing.push(comment);
+      byParent.set(comment.parentId, existing);
+    }
+    return byParent;
+  }, [replySource]);
   const sortMenuRef = useRef<HTMLSpanElement | null>(null);
   const notifMenuRef = useRef<HTMLSpanElement | null>(null);
   const { resolve: resolveCommentAuthor } = useTeamMembers(currentUser);
@@ -4973,6 +4991,7 @@ export function CommentSidePanel({
           const canReply = !canReplyComment || canReplyComment(comment);
           const replyDraft = replyDraftById[comment.id] ?? '';
           const localReplies = localRepliesById[comment.id] ?? [];
+          const persistedReplies = replyCommentsById.get(comment.id) ?? [];
           const dropClass = dragState?.overId === comment.id &&
             dragState.draggingId !== comment.id &&
             dragState.edge
@@ -5088,18 +5107,6 @@ export function CommentSidePanel({
                 ) : null}
               </header>
               <p className="comment-card-copy">{comment.note}</p>
-              {localReplies.length > 0 ? (
-                <div className="comment-card-reply-list">
-                  {localReplies.map((reply, index) => (
-                    <div
-                      key={`${comment.id}-${index}`}
-                      className="comment-card-reply-item"
-                    >
-                      {reply}
-                    </div>
-                  ))}
-                </div>
-              ) : null}
               {canReply && replyEditorId === comment.id ? (
                 <div
                   className="comment-card-reply-editor"
@@ -5125,10 +5132,15 @@ export function CommentSidePanel({
                         event.preventDefault();
                         const text = replyDraft.trim();
                         if (!text) return;
-                        setLocalRepliesById((current) => ({
-                          ...current,
-                          [comment.id]: [...(current[comment.id] ?? []), text],
-                        }));
+                        if (!onReplyComment) {
+                          setLocalRepliesById((current) => ({
+                            ...current,
+                            [comment.id]: [
+                              ...(current[comment.id] ?? []),
+                              { note: text, createdAt: Date.now() },
+                            ],
+                          }));
+                        }
                         setReplyDraftById((current) => ({
                           ...current,
                           [comment.id]: '',
@@ -5160,10 +5172,15 @@ export function CommentSidePanel({
                         event.stopPropagation();
                         const text = replyDraft.trim();
                         if (!text) return;
-                        setLocalRepliesById((current) => ({
-                          ...current,
-                          [comment.id]: [...(current[comment.id] ?? []), text],
-                        }));
+                        if (!onReplyComment) {
+                          setLocalRepliesById((current) => ({
+                            ...current,
+                            [comment.id]: [
+                              ...(current[comment.id] ?? []),
+                              { note: text, createdAt: Date.now() },
+                            ],
+                          }));
+                        }
                         setReplyDraftById((current) => ({
                           ...current,
                           [comment.id]: '',
@@ -5239,7 +5256,7 @@ export function CommentSidePanel({
                       </span>
                     ) : null}
                     <Icon name="message-square" size={12} />
-                    <span>{t('chat.comments.nReplies', { n: localReplies.length })}</span>
+                    <span>{t('chat.comments.nReplies', { n: persistedReplies.length + localReplies.length })}</span>
                   </button>
                 ) : (
                   <span className="comment-card-user-inline">
@@ -5253,7 +5270,7 @@ export function CommentSidePanel({
                     </span>
                   ) : null}
                   <Icon name="message-square" size={12} />
-                  <span>{t('chat.comments.nReplies', { n: localReplies.length })}</span>
+                  <span>{t('chat.comments.nReplies', { n: persistedReplies.length + localReplies.length })}</span>
                   </span>
                 )}
               </div>
@@ -5401,9 +5418,11 @@ function CommentSideDock({
   canDeleteComment,
   canReplyComment,
   onReplyComment,
+  replyComments,
   composer,
 }: {
   comments: PreviewComment[];
+  replyComments?: PreviewComment[];
   projectId?: string;
   selectedIds: Set<string>;
   activeCommentId: string | null;
@@ -5437,7 +5456,7 @@ function CommentSideDock({
   canDeleteComment?: (comment: PreviewComment) => boolean;
   /** Team-collab gate: which comments the viewer may reply to. Defaults to true (single-user). */
   canReplyComment?: (comment: PreviewComment) => boolean;
-  onReplyComment?: (comment: PreviewComment, replyText: string) => void | Promise<void>;
+  onReplyComment?: (comment: PreviewComment, replyText: string) => void | Promise<void> | Promise<PreviewComment | null>;
 }) {
   return (
     <div
@@ -5446,6 +5465,7 @@ function CommentSideDock({
     >
       <CommentSidePanel
         comments={comments}
+        replyComments={replyComments}
         projectId={projectId}
         selectedIds={selectedIds}
         activeCommentId={activeCommentId}
@@ -7786,6 +7806,7 @@ function HtmlViewer({
   commentSendDisabled = false,
   previewComments = [],
   onSavePreviewComment,
+  onReplyPreviewComment,
   onRemovePreviewComment,
   onChangeCommentStatus,
   onReorderPreviewComment,
@@ -7821,7 +7842,8 @@ function HtmlViewer({
   commentQueueOnSend?: boolean;
   commentSendDisabled?: boolean;
   previewComments?: PreviewComment[];
-  onSavePreviewComment?: (target: PreviewCommentTarget, note: string, attachAfterSave: boolean, images?: File[], commentId?: string) => Promise<PreviewComment | null>;
+  onSavePreviewComment?: (target: PreviewCommentTarget, note: string, attachAfterSave: boolean, images?: File[], commentId?: string, parentId?: string) => Promise<PreviewComment | null>;
+  onReplyPreviewComment?: (comment: PreviewComment, replyText: string) => Promise<PreviewComment | null> | Promise<void> | void;
   onRemovePreviewComment?: (commentId: string) => Promise<boolean>;
   onChangeCommentStatus?: (commentId: string, status: PreviewCommentStatus) => void | Promise<void>;
   onReorderPreviewComment?: (commentId: string, sortKey: number) => Promise<void>;
@@ -15737,6 +15759,12 @@ async function openReviewListModal() {
         .sort((a, b) => commentEffectiveSortKey(b) - commentEffectiveSortKey(a)),
     [file.name, previewComments],
   );
+  // The right-side comment panel lists top-level threads only; nested replies
+  // appear inline under their parent when that thread is expanded.
+  const topLevelSideComments = useMemo(
+    () => allSideComments.filter((comment) => !comment.parentId),
+    [allSideComments],
+  );
   const activeSideCommentId = activePreviewCommentId;
   const activeCommentTargetVisible = commentTargetIntersectsPreview(
     activeCommentTarget,
@@ -16130,6 +16158,10 @@ async function openReviewListModal() {
     Boolean(comment) && (iAmProjectOwner || collab.writerAuthority === 'allowed');
   const canDeleteSideComment = (comment: PreviewComment | null | undefined): boolean =>
     commentAuthoredByMe(comment);
+  const canEditSideReply = (reply: PreviewComment | null | undefined): boolean =>
+    commentAuthoredByMe(reply);
+  const canDeleteSideReply = (reply: PreviewComment | null | undefined): boolean =>
+    commentAuthoredByMe(reply) || iAmProjectOwner;
   // The viewer's own author identity for the comment cards. Derived from the
   // workspace context this component ALREADY reads (see `workspaceContext`
   // above) — no extra request. Deliberately NOT `collab.member`, which is null
@@ -16173,7 +16205,36 @@ async function openReviewListModal() {
       canSendToAgent={canSendActiveComment}
       canChangeCommentStatus={canEditActiveComment || iAmProjectOwner}
       onChangeCommentStatus={onChangeCommentStatus ? (id, status) => onChangeCommentStatus?.(id, status) : undefined}
-      canReplyComment={iAmProjectOwner}
+      canReplyComment
+      onReplyComment={onReplyPreviewComment}
+      canEditReplyComment={canEditSideReply}
+      canDeleteReplyComment={canDeleteSideReply}
+      onEditReplyComment={
+        onSavePreviewComment
+          ? async (reply, newText) => {
+              const target: PreviewCommentTarget = {
+                filePath: reply.filePath,
+                elementId: reply.elementId,
+                selector: reply.selector,
+                label: reply.label,
+                text: reply.text,
+                position: reply.position,
+                htmlHint: reply.htmlHint,
+                style: reply.style,
+                selectionKind: reply.selectionKind ?? 'element',
+                memberCount: reply.memberCount,
+                podMembers: reply.podMembers,
+                ...(typeof reply.slideIndex === 'number' ? { slideIndex: reply.slideIndex } : {}),
+                ...(typeof reply.anchoredVersion === 'number' ? { anchoredVersion: reply.anchoredVersion } : {}),
+              };
+              return onSavePreviewComment(target, newText, false, [], reply.id, reply.parentId);
+            }
+          : undefined
+      }
+      onDeleteReplyComment={onRemovePreviewComment ? (replyId) => void onRemovePreviewComment(replyId) : undefined}
+      replies={activeComposerComment
+        ? allSideComments.filter((comment) => comment.parentId === activeComposerComment.id)
+        : []}
       authorDisplayName={activeCommentAuthor?.displayName}
       authorAvatarSeed={activeComposerComment?.authorMemberId ?? activeCommentAuthor?.memberId}
       draft={commentDraft}
@@ -16278,7 +16339,8 @@ async function openReviewListModal() {
     : null;
   const commentSidePanel = workspaceActive && commentPanelOpen ? (
     <CommentSideDock
-      comments={allSideComments}
+      comments={topLevelSideComments}
+      replyComments={allSideComments}
       projectId={projectId}
       selectedIds={selectedSideCommentIds}
       activeCommentId={activeSideCommentId}
@@ -16391,7 +16453,8 @@ async function openReviewListModal() {
       onChangeCommentStatus={onChangeCommentStatus}
       canChangeCommentStatus={canChangeCommentStatus}
       canDeleteComment={canDeleteSideComment}
-      canReplyComment={() => iAmProjectOwner}
+      canReplyComment={undefined}
+      onReplyComment={onReplyPreviewComment}
     />
   ) : null;
   const speakerNotesFeedback = speakerNotesStatus === 'saved'

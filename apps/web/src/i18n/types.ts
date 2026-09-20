@@ -3313,6 +3313,7 @@ export interface Dict {
   'chat.comments.markResolved': string;
   'chat.comments.reopen': string;
   'chat.comments.deleteComment': string;
+  'chat.comments.deleteReply': string;
   'chat.comments.sortNewest': string;
   'chat.comments.sortOldest': string;
   'chat.comments.filterAll': string;

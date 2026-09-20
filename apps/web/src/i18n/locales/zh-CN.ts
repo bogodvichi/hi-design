@@ -2576,6 +2576,7 @@ export const zhCN: Dict = {
   "chat.comments.markResolved": "标记为已解决",
   "chat.comments.reopen": "重新打开评论",
   "chat.comments.deleteComment": "删除评论",
+  "chat.comments.deleteReply": "删除回复",
   "chat.comments.sortNewest": "按时间倒序排列",
   "chat.comments.sortOldest": "按时间正序排列",
   "chat.comments.filterAll": "显示当前页面全部评论",

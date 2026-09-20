@@ -2488,6 +2488,7 @@ export const ptBR: Dict = {
   'chat.comments.markResolved': 'Marcar como resolvido',
   'chat.comments.reopen': 'Reabrir comentário',
   'chat.comments.deleteComment': 'Excluir comentário',
+  'chat.comments.deleteReply': 'Excluir resposta',
   'chat.comments.sortNewest': 'Sort by time descending',
   'chat.comments.sortOldest': 'Sort by time ascending',
   'chat.comments.filterAll': 'Show all comments on this page',

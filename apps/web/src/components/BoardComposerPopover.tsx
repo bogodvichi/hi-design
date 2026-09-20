@@ -7,22 +7,15 @@ import type { Dict } from '../i18n/types';
 import type { PreviewComment, PreviewCommentMember, PreviewCommentStatus } from '../types';
 import { avatarColorFor } from '../utils/avatarColor';
 import { isImeComposing } from '../utils/imeComposing';
+import { relativeTimeLong } from '../utils/chatTime';
 
 import { Icon } from './Icon';
 
 type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
 
-function commentTimeLabel(ts: number | undefined): string {
-  const date = new Date(Number.isFinite(ts) ? Number(ts) : Number.NaN);
-  if (!Number.isFinite(date.getTime())) return '';
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return (
-    [date.getFullYear(), pad(date.getMonth() + 1), pad(date.getDate())].join('/') +
-    ' ' +
-    pad(date.getHours()) +
-    ':' +
-    pad(date.getMinutes())
-  );
+function commentTimeLabel(ts: number | undefined, t: TranslateFn): string {
+  if (!Number.isFinite(ts) || typeof ts !== 'number') return '';
+  return relativeTimeLong(ts, t);
 }
 
 function summarizeMember(member: PreviewCommentMember): string {
@@ -72,6 +65,10 @@ type PopoverOffset = { x: number; y: number };
 type PopoverSize = { width: number; height: number };
 type PopoverPosition = { left: number; top: number };
 type PopoverSide = 'top' | 'bottom' | 'left' | 'right';
+type LocalReplyItem = {
+  note: string;
+  createdAt: number;
+};
 
 const POPOVER_PAD = 14;
 const POPOVER_DEFAULT_WIDTH = 320;
@@ -466,6 +463,11 @@ export function BoardComposerPopover({
   onChangeCommentStatus,
   canReplyComment = false,
   onReplyComment,
+  canEditReplyComment,
+  canDeleteReplyComment,
+  onEditReplyComment,
+  onDeleteReplyComment,
+  replies = [],
   authorDisplayName,
   authorAvatarSeed,
   allowSendToChat = true,
@@ -524,9 +526,19 @@ export function BoardComposerPopover({
   onChangeCommentStatus?: (commentId: string, status: PreviewCommentStatus) => void | Promise<void>;
   /** Existing-comment gate: reply is a project-owner action in the popover header. */
   canReplyComment?: boolean;
-  /** Reply is a project-owner action in the popover header. The optional
-   *  `replyText` lets the parent persist the appended reply. */
-  onReplyComment?: (comment: PreviewComment, replyText?: string) => void | Promise<void>;
+  /** Reply is a project-owner action in the popover header. `replyText` lets
+   *  the parent persist the appended reply. */
+  onReplyComment?: (comment: PreviewComment, replyText: string) => void | Promise<void> | Promise<PreviewComment | null>;
+  /** Team-collab gate: which replies the viewer may edit. Defaults to true (single-user). */
+  canEditReplyComment?: (reply: PreviewComment) => boolean;
+  /** Team-collab gate: which replies the viewer may delete. Defaults to true (single-user). */
+  canDeleteReplyComment?: (reply: PreviewComment) => boolean;
+  /** Persist an edit to an existing reply. */
+  onEditReplyComment?: (reply: PreviewComment, newText: string) => void | Promise<PreviewComment | null>;
+  /** Persist deletion of an existing reply. */
+  onDeleteReplyComment?: (replyId: string) => void | Promise<boolean | void>;
+  /** Persisted replies for the currently open comment thread. */
+  replies?: PreviewComment[];
   authorDisplayName?: string;
   authorAvatarSeed?: string;
   allowSendToChat?: boolean;
@@ -550,7 +562,9 @@ export function BoardComposerPopover({
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [replyingExistingComment, setReplyingExistingComment] = useState(false);
   const [replyDraft, setReplyDraft] = useState('');
-  const [localReplies, setLocalReplies] = useState<string[]>([]);
+  const [localReplies, setLocalReplies] = useState<LocalReplyItem[]>([]);
+  const [editingReplyKey, setEditingReplyKey] = useState<string | null>(null);
+  const [replyEditDraft, setReplyEditDraft] = useState('');
   const targetPlacementKey = [
     target.filePath,
     target.elementId,
@@ -702,7 +716,12 @@ export function BoardComposerPopover({
     if (!existing) return;
     const text = trimmedReply;
     if (!text) return;
-    setLocalReplies((current) => [...current, text]);
+    if (!onReplyComment) {
+      setLocalReplies((current) => [
+        ...current,
+        { note: text, createdAt: Date.now() },
+      ]);
+    }
     setReplyDraft('');
     setReplyingExistingComment(false);
     void onReplyComment?.(existing, text);
@@ -872,8 +891,11 @@ export function BoardComposerPopover({
               >
                 {commentAuthorInitial(authorLabel)}
               </span>
-              <time className="comment-popover-meta-time" dateTime={commentTimeLabel(existing.createdAt)}>
-                {commentTimeLabel(existing.createdAt)}
+              <strong className="comment-popover-meta-author">
+                {authorLabel}
+              </strong>
+              <time className="comment-popover-meta-time" dateTime={existing.createdAt ? new Date(existing.createdAt).toISOString() : undefined}>
+                {commentTimeLabel(existing.createdAt, t)}
               </time>
             </div>
           </section>
@@ -1011,13 +1033,142 @@ export function BoardComposerPopover({
                 }}
               />
             )}
-            {existing && !editingExistingComment && localReplies.length > 0 ? (
+            {existing && !editingExistingComment && (replies.length > 0 || localReplies.length > 0) ? (
               <div className="comment-popover-replies">
-                {localReplies.map((reply, index) => (
-                  <div key={`${existing.id}-${index}`} className="comment-popover-reply-item">
-                    {reply}
+                {[
+                  ...replies.map((reply) => ({
+                    localKey: undefined as string | undefined,
+                    reply: reply as PreviewComment | undefined,
+                    note: reply.note,
+                    createdAt: reply.createdAt,
+                    authorName: reply.authorDisplayName?.trim() || reply.authorMemberId?.trim() || '?',
+                    authorSeed: reply.authorDisplayName?.trim() || reply.authorMemberId?.trim() || '?',
+                  })),
+                  ...localReplies.map((reply) => ({
+                    localKey: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+                    reply: undefined as PreviewComment | undefined,
+                    note: reply.note,
+                    createdAt: reply.createdAt,
+                    authorName: authorLabel,
+                    authorSeed,
+                  })),
+                ]
+                  .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0))
+                  .map((reply, index) => {
+                  const replyKey = reply.localKey ?? (reply.reply?.id || `${existing.id}-${index}`);
+                  const editingThisReply = editingReplyKey === replyKey;
+                  const editDraft = replyEditDraft;
+                  const canEditReply = Boolean(reply.reply && onEditReplyComment && (!canEditReplyComment || canEditReplyComment(reply.reply)));
+                  const canDeleteReply = Boolean(reply.reply && onDeleteReplyComment && (!canDeleteReplyComment || canDeleteReplyComment(reply.reply)));
+                  return (
+                  <div
+                    key={replyKey}
+                    className="comment-popover-reply-item"
+                    data-testid="comment-popover-reply-item"
+                  >
+                    <div className="comment-popover-reply-meta">
+                      <span
+                        className="comment-popover-reply-avatar"
+                        style={{ background: avatarColorFor(reply.authorSeed) }}
+                        aria-hidden="true"
+                      >
+                        {commentAuthorInitial(reply.authorName)}
+                      </span>
+                      <strong className="comment-popover-reply-author">
+                        {reply.authorName}
+                      </strong>
+                      <time
+                        className="comment-popover-reply-time"
+                        dateTime={reply.createdAt ? new Date(reply.createdAt).toISOString() : undefined}
+                      >
+                        {commentTimeLabel(reply.createdAt, t)}
+                      </time>
+                      {canEditReply || canDeleteReply ? (
+                        <span className="comment-popover-reply-item-actions">
+                          {canEditReply ? (
+                            <button
+                              type="button"
+                              className="icon-btn"
+                              aria-label={t('chat.comments.edit')}
+                              title={t('chat.comments.edit')}
+                              onClick={() => {
+                                setEditingReplyKey(replyKey);
+                                setReplyEditDraft(reply.note);
+                              }}
+                            >
+                              <Icon name="edit" size={13} />
+                            </button>
+                          ) : null}
+                          {canDeleteReply ? (
+                            <button
+                              type="button"
+                              className="icon-btn danger"
+                              aria-label={t('chat.comments.deleteReply')}
+                              title={t('chat.comments.deleteReply')}
+                              onClick={() => {
+                                void onDeleteReplyComment?.(reply.reply!.id);
+                              }}
+                            >
+                              <Icon name="trash" size={13} />
+                            </button>
+                          ) : null}
+                        </span>
+                      ) : null}
+                    </div>
+                    {editingThisReply && reply.reply ? (
+                      <div className="comment-popover-reply-editor comment-popover-reply-edit-inline">
+                        <Textarea
+                          className="comment-popover-reply-input"
+                          value={editDraft}
+                          autoFocus
+                          aria-label={t('chat.comments.edit')}
+                          onChange={(event) => setReplyEditDraft(event.target.value)}
+                          onKeyDown={(event) => {
+                            if (
+                              event.key === 'Enter' &&
+                              !event.shiftKey &&
+                              !event.altKey
+                            ) {
+                              event.preventDefault();
+                              const text = editDraft.trim();
+                              if (!text) return;
+                              setEditingReplyKey(null);
+                              setReplyEditDraft('');
+                              void onEditReplyComment?.(reply.reply!, text);
+                            }
+                          }}
+                        />
+                        <div className="comment-popover-reply-actions">
+                          <Button
+                            variant="ghost"
+                            onClick={() => {
+                              setEditingReplyKey(null);
+                              setReplyEditDraft('');
+                            }}
+                          >
+                            {t('common.cancel')}
+                          </Button>
+                          <Button
+                            variant="primary"
+                            disabled={!editDraft.trim() || editDraft.trim() === reply.note}
+                            onClick={() => {
+                              const text = editDraft.trim();
+                              if (!text) return;
+                              setEditingReplyKey(null);
+                              setReplyEditDraft('');
+                              void onEditReplyComment?.(reply.reply!, text);
+                            }}
+                          >
+                            {t('common.save')}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="comment-popover-reply-note">{reply.note}</div>
+                    )}
                   </div>
-                ))}
+                  );
+                })}
               </div>
             ) : null}
             {existing && !editingExistingComment && replyingExistingComment ? (

@@ -2488,6 +2488,7 @@ export const th: Dict = {
   'chat.comments.markResolved': 'ทำเครื่องหมายว่าแก้แล้ว',
   'chat.comments.reopen': 'เปิดความคิดเห็นอีกครั้ง',
   'chat.comments.deleteComment': 'ลบความคิดเห็น',
+  'chat.comments.deleteReply': 'ลบคำตอบ',
   'chat.comments.sortNewest': 'Sort by time descending',
   'chat.comments.sortOldest': 'Sort by time ascending',
   'chat.comments.filterAll': 'Show all comments on this page',

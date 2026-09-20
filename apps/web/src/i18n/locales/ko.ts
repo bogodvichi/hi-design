@@ -2488,6 +2488,7 @@ export const ko: Dict = {
   'chat.comments.markResolved': '해결됨으로 표시',
   'chat.comments.reopen': '댓글 다시 열기',
   'chat.comments.deleteComment': '댓글 삭제',
+  'chat.comments.deleteReply': '답글 삭제',
   'chat.comments.sortNewest': 'Sort by time descending',
   'chat.comments.sortOldest': 'Sort by time ascending',
   'chat.comments.filterAll': 'Show all comments on this page',

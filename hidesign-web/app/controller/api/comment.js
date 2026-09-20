@@ -24,36 +24,56 @@ class CommentController extends Controller {
   }
 
   // PUT /teams/:teamId/members/:memberId
-  // Idempotently updates the member's display name and role.
+  // Idempotently updates the member's display name and role. A non-empty
+  // displayName from the daemon only repairs rows whose value is empty/null
+  // or still equals the memberId fallback from an older build; it never
+  // overwrites a real name set during team invite.
   // The member must already exist in workspace_members (created via team
   // invite flow) because username and workspace_name are NOT NULL columns
   // we don't have values for from the daemon's request body.
-  // Only updates displayname when the existing value is empty, so the
-  // daemon's fallback (memberId when displayName is unset) never overwrites
-  // a real name set during team invite.
+  // Only updates displayname when the existing value is empty/null or still
+  // holds a member-id fallback, so a later request with the real SSO name can
+  // repair the row without letting an id overwrite a real name from the team
+  // invite flow.
   async registerMember() {
     const { ctx } = this;
     const { teamId, memberId } = ctx.params;
     const { displayName, role } = ctx.request.body || {};
 
-    if (!displayName || !VALID_ROLES.has(role)) {
+    if (!VALID_ROLES.has(role)) {
       ctx.status = 400;
-      ctx.body = { error: 'invalid_request', message: 'displayName and a valid role are required' };
+      ctx.body = { error: 'invalid_request', message: 'a valid role is required' };
       return;
     }
 
     try {
       const k = this.getKnex();
-      // Only update displayname if the existing value is empty/null,
-      // so we never overwrite a real name from the team invite flow.
-      const updated = await k('workspace_members')
-        .where({ workspace_id: teamId, workspace_member_id: memberId })
-        .where(function () { this.whereNull('displayname').orWhere('displayname', ''); })
-        .update({ displayname: displayName, role, updated_at: new Date() });
+      // Allow repair when the existing value is empty/null or still holds a
+      // member-id fallback from an older daemon build. A real name from the
+      // team invite flow is never overwritten.
+      if (displayName && displayName.trim()) {
+        const updated = await k('workspace_members')
+          .where({ workspace_id: teamId, workspace_member_id: memberId })
+          .where(function () {
+            this.whereNull('displayname')
+              .orWhere('displayname', '')
+              .orWhere('displayname', memberId);
+          })
+          .update({ displayname: displayName.trim(), role, updated_at: new Date() });
 
-      if (updated === 0) {
-        // displayname was already set — do a role-only update so the
-        // member still exists and the role stays in sync.
+        if (updated === 0) {
+          // displayname was already set — do a role-only update so the
+          // member still exists and the role stays in sync.
+          const roleUpdated = await k('workspace_members')
+            .where({ workspace_id: teamId, workspace_member_id: memberId })
+            .update({ role, updated_at: new Date() });
+          if (roleUpdated === 0) {
+            ctx.status = 404;
+            ctx.body = { error: 'member_not_found', message: 'Member not found in this team. Use team invite first.' };
+            return;
+          }
+        }
+      } else {
         const roleUpdated = await k('workspace_members')
           .where({ workspace_id: teamId, workspace_member_id: memberId })
           .update({ role, updated_at: new Date() });
@@ -64,7 +84,7 @@ class CommentController extends Controller {
         }
       }
 
-      ctx.body = { member: { memberId, displayName, role } };
+      ctx.body = { member: { memberId, displayName: displayName ? displayName.trim() : null, role } };
     } catch (err) {
       ctx.logger.error('Comment registerMember error:', err);
       ctx.status = 500;
@@ -87,7 +107,7 @@ class CommentController extends Controller {
       ctx.body = {
         members: members.map(m => ({
           memberId: m.workspace_member_id,
-          displayName: m.displayname || m.workspace_member_id,
+          displayName: m.displayname || null,
           role: m.role,
         })),
       };
@@ -128,31 +148,79 @@ class CommentController extends Controller {
     const podMembers = comment.podMembers ? JSON.stringify(comment.podMembers) : null;
     const attachments = comment.attachments ? JSON.stringify(comment.attachments) : null;
     const lastGoodPosition = comment.lastGoodPosition ? JSON.stringify(comment.lastGoodPosition) : null;
+    const parentId = typeof comment.parentId === 'string' && comment.parentId.trim()
+      ? comment.parentId.trim()
+      : null;
+    const rootCommentId = typeof comment.rootCommentId === 'string' && comment.rootCommentId.trim()
+      ? comment.rootCommentId.trim()
+      : null;
+    const displayName = typeof comment.displayName === 'string' && comment.displayName.trim()
+      ? comment.displayName.trim()
+      : null;
 
     try {
       const k = this.getKnex();
+      // Prefer the pushed display name, but fall back to the member directory
+      // when older daemon builds still omit it.
+      let resolvedDisplayName = displayName;
+      if (!resolvedDisplayName && typeof comment.memberId === 'string' && comment.memberId) {
+        const member = await k('workspace_members')
+          .where({ workspace_id: teamId, workspace_member_id: comment.memberId })
+          .first('displayname');
+        if (member && member.displayname) {
+          resolvedDisplayName = member.displayname;
+        }
+      }
+      const authorDisplayName = resolvedDisplayName || '';
+      let resolvedRootCommentId = rootCommentId;
+      if (parentId && !resolvedRootCommentId) {
+        // Older daemon builds may send parentId without rootCommentId. Look up
+        // the parent so the relay always stores a reusable thread root.
+        const parent = await k('project_comments')
+          .where({ team_id: teamId, project_id: projectId, id: parentId })
+          .first('root_comment_id', 'parent_id', 'id');
+        resolvedRootCommentId = parent
+          ? (parent.root_comment_id || parent.parent_id || parent.id)
+          : parentId;
+      }
       // Use DEFAULT for seq so the column's BIGSERIAL default (nextval) runs
       // with the table owner's privileges, not the connecting user's. This
       // avoids needing USAGE on the sequence. ON CONFLICT DO UPDATE SET
       // seq = DEFAULT so edits also get a fresh seq for pull cursors.
       const result = await k.raw(
         `INSERT INTO project_comments (
-            id, team_id, project_id, conversation_id, member_id,
+          id, team_id, project_id, conversation_id, member_id,
+            displayname,
+            parent_id, root_comment_id,
             note, file_path, element_id, selector, label, text, html_hint,
             position, style, selection_kind, member_count, pod_members,
             slide_index, attachments, status, anchor_state, anchored_version,
             last_good_position, created_at, updated_at, deleted, seq
           ) VALUES (
-            ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?,
+            ?,
             ?, ?, ?, ?, ?, ?, ?,
-            ?::jsonb, ?::jsonb, ?, ?, ?::jsonb,
-            ?, ?::jsonb, ?, ?, ?,
-            ?::jsonb, ?, ?, ?,
+            ?,
+            ?::jsonb,
+            ?::jsonb,
+            ?,
+            ?,
+            ?::jsonb,
+            ?,
+            ?::jsonb,
+            ?,
+            ?,
+            ?,
+            ?::jsonb,
+            ?,
+            ?,
+            ?,
             DEFAULT
           )
           ON CONFLICT (team_id, project_id, id) DO UPDATE SET
             conversation_id = EXCLUDED.conversation_id,
             member_id = EXCLUDED.member_id,
+            displayname = EXCLUDED.displayname,
             note = EXCLUDED.note,
             file_path = EXCLUDED.file_path,
             element_id = EXCLUDED.element_id,
@@ -173,12 +241,16 @@ class CommentController extends Controller {
             last_good_position = EXCLUDED.last_good_position,
             updated_at = EXCLUDED.updated_at,
             deleted = EXCLUDED.deleted,
+            parent_id = COALESCE(EXCLUDED.parent_id, project_comments.parent_id),
+            root_comment_id = COALESCE(EXCLUDED.root_comment_id, project_comments.root_comment_id),
             seq = DEFAULT
           RETURNING seq`,
         [
           comment.id, teamId, projectId,
           typeof comment.conversationId === 'string' ? comment.conversationId : '',
           typeof comment.memberId === 'string' ? comment.memberId : '',
+          authorDisplayName,
+          parentId, resolvedRootCommentId,
           typeof comment.note === 'string' ? comment.note : '',
           typeof comment.filePath === 'string' ? comment.filePath : '',
           typeof comment.elementId === 'string' ? comment.elementId : '',
@@ -239,6 +311,7 @@ class CommentController extends Controller {
         projectId: r.project_id,
         conversationId: r.conversation_id,
         memberId: r.member_id,
+        displayName: r.displayname || null,
         seq: Number(r.seq),
         note: r.note,
         filePath: r.file_path,
@@ -260,6 +333,8 @@ class CommentController extends Controller {
         lastGoodPosition: parseJsonb(r.last_good_position),
         createdAt: Number(r.created_at),
         updatedAt: Number(r.updated_at),
+        parentId: r.parent_id || undefined,
+        rootCommentId: r.root_comment_id || undefined,
         deleted: r.deleted || undefined,
       }));
 
