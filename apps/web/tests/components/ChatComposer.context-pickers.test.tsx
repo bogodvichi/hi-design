@@ -337,12 +337,15 @@ describe('ChatComposer context pickers', () => {
     const view = renderComposer({ activeWorkspaceContext: fileContext, onSend });
     await flushMounts();
 
-    expect(screen.getByTestId('staged-contexts').textContent).toContain('Currentindex.html');
+    expect(screen.getByTestId('staged-contexts').textContent).toContain('index.html');
+    expect(screen.getByTestId('staged-outside-contexts').parentElement).toHaveClass(
+      'composer-outside-contexts--current-only',
+    );
     fireEvent.click(screen.getByLabelText('Remove index.html'));
     await waitFor(() => expect(screen.queryByText('index.html')).toBeNull());
 
     view.rerender(composerElement({ activeWorkspaceContext: browserContext, onSend }));
-    await waitFor(() => expect(screen.getByTestId('staged-contexts').textContent).toContain('CurrentDribbble'));
+    await waitFor(() => expect(screen.getByTestId('staged-contexts').textContent).toContain('Dribbble'));
 
     await typeAndSettle('Use the current tab.');
     fireEvent.click(screen.getByTestId('chat-send'));
@@ -503,7 +506,7 @@ describe('ChatComposer context pickers', () => {
       .getByTestId('chat-composer-input')
       .querySelector('.composer-inline-mention');
     expect(pill?.getAttribute('data-mention-kind')).toBe('workspace');
-    expect(screen.getByTestId('staged-contexts').textContent).toContain('BrowserDribbble');
+    expect(screen.queryByTestId('staged-contexts')).toBeNull();
 
     fireEvent.click(screen.getByTestId('chat-send'));
 
@@ -656,8 +659,9 @@ describe('ChatComposer context pickers', () => {
     ]);
     await waitFor(() => {
       const stagedText = screen.getByTestId('staged-contexts').textContent ?? '';
-      expect(stagedText).toContain('ProjectReference A');
-      expect(stagedText).toContain('ProjectReference B');
+      expect(stagedText).toContain('Reference A');
+      expect(stagedText).toContain('Reference B');
+      expect(stagedText).not.toContain('ProjectReference');
     });
     expect(composerText().trim()).toBe('');
     expect(onProjectMetadataChange).toHaveBeenLastCalledWith(
@@ -1027,12 +1031,12 @@ describe('ChatComposer context pickers', () => {
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Slack MCP' }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('staged-contexts').textContent).toContain('@Slack MCP');
+      expect(screen.getByTestId('staged-inside-contexts').textContent).toContain('Slack MCP');
     });
     expect(composerText().trim()).toBe('');
 
     await typeAndSettle('Use the connected service');
-    expect(screen.getByTestId('staged-contexts').textContent).toContain('@Slack MCP');
+    expect(screen.getByTestId('staged-inside-contexts').textContent).toContain('Slack MCP');
     fireEvent.click(screen.getByTestId('chat-send'));
 
     await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
@@ -1072,7 +1076,12 @@ describe('ChatComposer context pickers', () => {
     expect(screen.queryByTestId('staged-contexts')).toBeNull();
   });
 
-  it('stages a skill from the plus menu without inserting a duplicate mention', async () => {
+  it('stages multiple skills with one chip style and without duplicate mentions', async () => {
+    const secondSkill = {
+      ...makeSkill({ id: 'audit-helper', name: 'Audit Helper' }),
+      source: 'user' as const,
+    };
+    skills = [SKILL, secondSkill];
     const onSend = vi.fn();
     const onProjectSkillChange = vi.fn();
     renderComposer({ onSend, onProjectSkillChange });
@@ -1082,16 +1091,26 @@ describe('ChatComposer context pickers', () => {
     fireEvent.click(await screen.findByTestId('composer-plus-skills'));
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Deck Builder' }));
 
+    fireEvent.click(screen.getByTestId('chat-plus-trigger'));
+    fireEvent.click(await screen.findByTestId('composer-plus-skills'));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Audit Helper' }));
+
     await waitFor(() => expect(onProjectSkillChange).toHaveBeenCalledWith('deck-builder'));
-    expect(screen.getByTestId('staged-contexts').textContent).toContain('@Deck Builder');
+    expect(screen.getByTestId('staged-inside-contexts').textContent).toContain('Deck Builder');
+    expect(screen.getByTestId('staged-inside-contexts').textContent).toContain('Audit Helper');
+    const skillChips = Array.from(
+      screen.getByTestId('staged-inside-contexts').querySelectorAll('.staged-context--skill'),
+    );
+    expect(skillChips).toHaveLength(2);
+    expect(skillChips[0]?.className).toBe(skillChips[1]?.className);
     expect(composerText().trim()).toBe('');
 
     await typeAndSettle('Create the outline');
-    expect(screen.getByTestId('staged-contexts').textContent).toContain('@Deck Builder');
+    expect(screen.getByTestId('staged-inside-contexts').textContent).toContain('Deck Builder');
     fireEvent.click(screen.getByTestId('chat-send'));
 
     await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
-    expect(onSend.mock.calls[0]?.[3]?.context?.skillIds).toEqual(['deck-builder']);
+    expect(onSend.mock.calls[0]?.[3]?.context?.skillIds).toEqual(['deck-builder', 'audit-helper']);
   });
 
   it('does not keep a removed @ skill marked active when the mention picker reopens', async () => {
@@ -1179,11 +1198,13 @@ describe('ChatComposer context pickers', () => {
     fireEvent.click(screen.getByText('My Export'));
 
     await waitFor(() => expect(composerText()).toBe('@My Export '));
-    await waitFor(() => expect(stagedPluginChip()?.textContent).toContain(USER_PLUGIN.id));
+    expect(stagedPluginChip()).toBeNull();
 
     await typeAndSettle('');
 
-    await waitFor(() => expect(stagedPluginChip()).toBeNull());
+    expect(
+      screen.getByTestId('chat-composer-input').querySelector('.composer-inline-mention--plugin'),
+    ).toBeNull();
   });
 
   it('clears restored inline plugin context when the queued draft token is removed', async () => {
@@ -1252,7 +1273,8 @@ describe('ChatComposer context pickers', () => {
   });
 
   it('keeps the inline plugin context when the plugin token has trailing punctuation', async () => {
-    renderComposer();
+    const onSend = vi.fn();
+    renderComposer({ onSend });
     await flushMounts();
 
     await typeAndSettle('@export');
@@ -1261,12 +1283,14 @@ describe('ChatComposer context pickers', () => {
     fireEvent.click(screen.getByText('My Export'));
 
     await waitFor(() => expect(composerText()).toBe('@My Export '));
-    await waitFor(() => expect(stagedPluginChip()?.textContent).toContain(USER_PLUGIN.id));
+    expect(stagedPluginChip()).toBeNull();
 
     await typeAndSettle('@My Export, refine this export');
 
     await waitFor(() => expect(composerText()).toBe('@My Export, refine this export'));
-    expect(stagedPluginChip()?.textContent).toContain(USER_PLUGIN.id);
+    fireEvent.click(screen.getByTestId('chat-send'));
+    await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
+    expect(onSend.mock.calls[0]?.[3]?.context?.pluginIds).toEqual([USER_PLUGIN.id]);
   });
 
   it('sends the applied plugin snapshot as per-turn context', async () => {
@@ -1280,13 +1304,10 @@ describe('ChatComposer context pickers', () => {
     fireEvent.click(screen.getByText('My Export'));
 
     await waitFor(() => expect(composerText()).toBe('@My Export '));
-    // The applied-plugin chip now rides the shared staged-context row as a
-    // `.staged-context--plugin` chip (rendered by the host, not PluginsSection's
-    // own ContextChipStrip). It is keyed off the plugin id when no display title
-    // is present in the applied snapshot.
-    await waitFor(() => {
-      expect(stagedPluginChip()?.textContent).toContain(USER_PLUGIN.id);
-    });
+    expect(stagedPluginChip()).toBeNull();
+    expect(
+      screen.getByTestId('chat-composer-input').querySelector('.composer-inline-mention--plugin'),
+    ).toBeTruthy();
 
     fireEvent.click(screen.getByTestId('chat-send'));
 

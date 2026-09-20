@@ -11,7 +11,7 @@ import {
 } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { Readable, Transform } from 'node:stream';
+import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { x as extractTar } from 'tar';
 import { parseFrontmatter } from '../design-systems/frontmatter.js';
@@ -19,7 +19,6 @@ import { resolveGithubRepositoryUrl } from '../github-install-source.js';
 import { safeExternalFetch } from '../plugins/plugin-asset-cache.js';
 import { findSkillById, listSkills, slugifySkillName } from '../skills.js';
 
-const DEFAULT_MAX_BYTES = 50 * 1024 * 1024;
 const MAX_SKILL_SCAN_DEPTH = 6;
 const MAX_SKILL_SCAN_ENTRIES = 10_000;
 const GITHUB_SKILL_SOURCE_RE =
@@ -48,7 +47,6 @@ export type SkillArchiveFetcher = (url: string) => Promise<{
 
 export interface SkillRemoteInstallOptions {
   fetcher?: SkillArchiveFetcher;
-  maxBytes?: number;
   /** Called after the archive identity is verified but before any bytes are
    * committed under the user's skills root. */
   allowInstallIdentity?: (identity: { id: string; slug: string }) => boolean | Promise<boolean>;
@@ -209,27 +207,14 @@ async function defaultFetcher(
   };
 }
 
-async function writeBoundedArchive(
+async function writeArchive(
   body: Readable,
   archivePath: string,
-  maxBytes: number,
 ): Promise<void> {
-  let bytes = 0;
-  const limiter = new Transform({
-    transform(chunk: Buffer, _encoding, callback) {
-      bytes += chunk.length;
-      if (bytes > maxBytes) {
-        callback(new Error(`downloaded archive exceeds ${maxBytes} bytes`));
-        return;
-      }
-      callback(null, chunk);
-    },
-  });
-  await pipeline(body, limiter, fs.createWriteStream(archivePath));
+  await pipeline(body, fs.createWriteStream(archivePath));
 }
 
-async function measureSafeTree(root: string, maxBytes: number): Promise<number> {
-  let total = 0;
+async function validateSafeTree(root: string): Promise<void> {
   async function walk(dir: string): Promise<void> {
     const entries = await readdir(dir, { withFileTypes: true });
     for (const entry of entries) {
@@ -245,14 +230,9 @@ async function measureSafeTree(root: string, maxBytes: number): Promise<number> 
       if (!stats.isFile()) {
         throw new Error(`archive contains unsupported entry type: ${entry.name}`);
       }
-      total += stats.size;
-      if (total > maxBytes) {
-        throw new Error(`extracted archive exceeds ${maxBytes} bytes`);
-      }
     }
   }
   await walk(root);
-  return total;
 }
 
 async function findSkillRoot(
@@ -382,15 +362,14 @@ async function readSkillIdentity(
  * The accepted source grammar intentionally matches Plugin URL import:
  * `github:owner/repo` or a public HTTPS `.tar.gz`/`.tgz` archive. Downloads
  * reuse the plugin subsystem's SSRF-safe fetcher, while extraction rejects
- * traversal and links and enforces the same 50 MiB default cap. Installation
- * is an atomic, fail-closed rename and never overwrites an existing skill.
+ * traversal and links. Installation is an atomic, fail-closed rename and
+ * never overwrites an existing skill.
  */
 async function installSkillSourceCandidate(
   userSkillsRoot: string,
   resolved: SkillSourceCandidate,
   options: SkillRemoteInstallOptions = {},
 ): Promise<SkillRemoteInstallResult> {
-  const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
   const fetcher = options.fetcher ?? defaultFetcher;
   const tempRoot = await mkdtemp(path.join(os.tmpdir(), 'od-skill-archive-'));
   const archivePath = path.join(tempRoot, 'archive.tgz');
@@ -413,7 +392,7 @@ async function installSkillSourceCandidate(
       );
     }
     try {
-      await writeBoundedArchive(response.body, archivePath, maxBytes);
+      await writeArchive(response.body, archivePath);
     } catch (cause) {
       return error(
         'INVALID_ARCHIVE',
@@ -457,7 +436,7 @@ async function installSkillSourceCandidate(
       return error('INVALID_ARCHIVE', `Skill archive contains an unsafe ${unsafeEntry}`);
     }
     try {
-      await measureSafeTree(extractRoot, maxBytes);
+      await validateSafeTree(extractRoot);
     } catch (cause) {
       return error(
         'INVALID_ARCHIVE',

@@ -106,10 +106,24 @@ import {
   type LexicalComposerInputHandle,
   type CaretRect,
 } from './composer/LexicalComposerInput';
-import { workspaceContextHasTeamIdentity } from '@open-design/contracts';
 import { workspaceProjectHeaders } from '../collab/workspace-identity';
 import type { WorkspaceDirectoryItem } from '@open-design/contracts';
 import { CaretFloatingLayer } from './composer/CaretFloatingLayer';
+import {
+  ComposerSurface,
+  ComposerSurfaceEditor,
+  ComposerSurfaceFooter,
+  ComposerSurfaceInput,
+  ComposerSurfaceInside,
+  ComposerSurfaceOutside,
+} from './composer/ComposerSurface';
+import {
+  ComposerContextChip,
+  ComposerOutsideContextList,
+  composerWorkspaceContextIcon,
+  composerWorkspaceContextLabel,
+  composerWorkspaceContextTitle,
+} from './composer/ComposerContextChips';
 import { ANNOTATION_EVENT, type AnnotationEventDetail } from "./PreviewDrawOverlay";
 
 /**
@@ -436,6 +450,69 @@ export interface ChatSendMeta {
   sessionMode?: ChatSessionMode;
 }
 
+interface ComposerTransientDraft {
+  attachments: ChatAttachment[];
+  commentAttachments: ChatCommentAttachment[];
+  skills: SkillSummary[];
+  contextOnlySkillIds: string[];
+  mcpServers: McpServerConfig[];
+  contextOnlyMcpIds: string[];
+  connectors: ConnectorDetail[];
+  contextOnlyConnectorIds: string[];
+  workspaceContexts: WorkspaceContextItem[];
+  contextOnlyWorkspaceIds: string[];
+  activeAppliedPlugin: AppliedPluginSnapshot | null;
+  inlineAppliedPlugin: { id: string; label: string } | null;
+}
+
+const composerTransientDrafts = new Map<string, ComposerTransientDraft>();
+
+function composerTransientStorageKey(key: string): string {
+  return `${key}:contexts`;
+}
+
+function loadComposerTransientDraft(key?: string): ComposerTransientDraft | null {
+  if (!key || typeof window === 'undefined') return null;
+  const markerKey = composerTransientStorageKey(key);
+  try {
+    if (window.localStorage.getItem(markerKey) !== '1') return null;
+  } catch {
+    return null;
+  }
+  const saved = composerTransientDrafts.get(key) ?? null;
+  if (saved) return saved;
+  try {
+    window.localStorage.removeItem(markerKey);
+  } catch {
+    // Storage can be unavailable; the composer still works in memory.
+  }
+  return null;
+}
+
+function saveComposerTransientDraft(key: string | undefined, draft: ComposerTransientDraft | null) {
+  if (!key || typeof window === 'undefined') return;
+  const hasSelection = Boolean(
+    draft && (
+      draft.attachments.length > 0
+      || draft.commentAttachments.length > 0
+      || draft.skills.length > 0
+      || draft.mcpServers.length > 0
+      || draft.connectors.length > 0
+      || draft.workspaceContexts.length > 0
+      || draft.activeAppliedPlugin
+    )
+  );
+  const markerKey = composerTransientStorageKey(key);
+  if (hasSelection && draft) composerTransientDrafts.set(key, draft);
+  else composerTransientDrafts.delete(key);
+  try {
+    if (hasSelection) window.localStorage.setItem(markerKey, '1');
+    else window.localStorage.removeItem(markerKey);
+  } catch {
+    // Storage can be unavailable in privacy modes; retain the in-memory copy.
+  }
+}
+
 /**
  * The chat composer: textarea + paste/drop/attach buttons + @-mention
  * picker. Attachments are uploaded into the active project's folder so
@@ -508,6 +585,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
         ? activeProjectFileName
         : null;
     const activeFileDisplayName = activeFileContext ? lastPathSegment(activeFileContext) : null;
+    const restoredTransientDraft = useRef(loadComposerTransientDraft(draftStorageKey)).current;
     const [draft, setDraft] = useState(() => initialDraft ?? loadComposerDraft(draftStorageKey) ?? "");
     const [placeholderScenario, setPlaceholderScenario] = useState<PlaceholderScenario | null>(null);
     const composerRootRef = useRef<HTMLDivElement | null>(null);
@@ -537,18 +615,22 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     // conversation switches) so the event measures real chat-panel
     // entries rather than ChatComposer remounts. See PR #2285 review
     // 2026-05-20 04:08 for the rationale.
-    const [staged, setStaged] = useState<ChatAttachment[]>([]);
+    const [staged, setStaged] = useState<ChatAttachment[]>(
+      () => restoredTransientDraft?.attachments ?? [],
+    );
     // Manual editor height set by dragging the shell's gray backdrop up/down.
     // null = the default auto-grow min/max behavior.
     const [manualEditorHeight, setManualEditorHeight] = useState<number | null>(null);
-    const nextAttachmentOrderRef = useRef(0);
+    const nextAttachmentOrderRef = useRef(nextChatAttachmentOrder(restoredTransientDraft?.attachments ?? []));
     const [libraryPickerOpen, setLibraryPickerOpen] = useState(false);
     const [figmaModalOpen, setFigmaModalOpen] = useState(false);
     const [figmaHelpOpen, setFigmaHelpOpen] = useState(false);
     const [projectReferenceOpen, setProjectReferenceOpen] = useState(false);
    const [skillDialogOpen, setSkillDialogOpen] = useState(false);
     const [mcpDialogOpen, setMcpDialogOpen] = useState(false);
-    const [stagedVisualComments, setStagedVisualComments] = useState<ChatCommentAttachment[]>([]);
+    const [stagedVisualComments, setStagedVisualComments] = useState<ChatCommentAttachment[]>(
+      () => restoredTransientDraft?.commentAttachments ?? [],
+    );
     const streamingAnnotationSendPendingRef = useRef(false);
     // Remembers the entry_from that the deferred streaming send must carry once
     // it flushes. The Mark draw-overlay tags 'mark' synchronously; without this
@@ -557,8 +639,12 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     const [streamingAnnotationSendPending, setStreamingAnnotationSendPendingState] = useState(false);
     // Skills selected for this turn. Inline @ picks follow the editor token;
     // plus-menu picks are context-only and remain until their chip is removed.
-    const [stagedSkills, setStagedSkills] = useState<SkillSummary[]>([]);
-    const contextOnlySkillIdsRef = useRef(new Set<string>());
+    const [stagedSkills, setStagedSkills] = useState<SkillSummary[]>(
+      () => restoredTransientDraft?.skills ?? [],
+    );
+    const contextOnlySkillIdsRef = useRef(
+      new Set(restoredTransientDraft?.contextOnlySkillIds ?? []),
+    );
     // Legacy standalone design-toolbox popover. The next-step card now renders
     // its own cascading skill menu, so nothing opens this anymore; kept compiling
     // behind `openDesignToolbox` until the panel subsystem is removed wholesale.
@@ -632,13 +718,32 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     const [plusMenuOpenRequest, setPlusMenuOpenRequest] = useState<
       { nonce: number; submenu?: PlusMenuSubmenu } | null
     >(null);
-    const [stagedMcpServers, setStagedMcpServers] = useState<McpServerConfig[]>([]);
-    const contextOnlyMcpIdsRef = useRef(new Set<string>());
-    const [stagedConnectors, setStagedConnectors] = useState<ConnectorDetail[]>([]);
+    const [stagedMcpServers, setStagedMcpServers] = useState<McpServerConfig[]>(
+      () => restoredTransientDraft?.mcpServers ?? [],
+    );
+    const contextOnlyMcpIdsRef = useRef(
+      new Set(restoredTransientDraft?.contextOnlyMcpIds ?? []),
+    );
+    const [stagedConnectors, setStagedConnectors] = useState<ConnectorDetail[]>(
+      () => restoredTransientDraft?.connectors ?? [],
+    );
+    const contextOnlyConnectorIdsRef = useRef(
+      new Set(restoredTransientDraft?.contextOnlyConnectorIds ?? []),
+    );
     const linkedDirs = projectMetadata?.linkedDirs ?? [];
     const [stagedWorkspaceContexts, setStagedWorkspaceContexts] = useState<WorkspaceContextItem[]>(
-      () => dedupeWorkspaceContextItems(initialWorkspaceContexts),
+      () => dedupeWorkspaceContextItems([
+        ...initialWorkspaceContexts,
+        ...(restoredTransientDraft?.workspaceContexts ?? []),
+      ]),
     );
+    const contextOnlyWorkspaceIdsRef = useRef(new Set(
+      restoredTransientDraft?.contextOnlyWorkspaceIds
+        ?? dedupeWorkspaceContextItems([
+          ...initialWorkspaceContexts,
+          ...(restoredTransientDraft?.workspaceContexts ?? []),
+        ]).filter((item) => !mentionTokenPresent(draft, item.label)).map((item) => item.id),
+    ));
     const [workspaceLinkedDirAdds, setWorkspaceLinkedDirAdds] = useState<Record<string, TrackedWorkspaceLinkedDir>>(
       () => trackedWorkspaceLinkedDirsForContexts(initialWorkspaceContexts, linkedDirs),
     );
@@ -684,9 +789,36 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       summary?: SkillSummary | null;
     } | null>(null);
     const [activeAppliedPlugin, setActiveAppliedPlugin] =
-      useState<AppliedPluginSnapshot | null>(null);
+      useState<AppliedPluginSnapshot | null>(() => restoredTransientDraft?.activeAppliedPlugin ?? null);
     const pluginsSectionRef = useRef<PluginsSectionHandle | null>(null);
-    const inlineBackedPluginRef = useRef<{ id: string; label: string } | null>(null);
+    const inlineBackedPluginRef = useRef<{ id: string; label: string } | null>(
+      restoredTransientDraft?.inlineAppliedPlugin ?? null,
+    );
+    useEffect(() => {
+      saveComposerTransientDraft(draftStorageKey, {
+        attachments: staged,
+        commentAttachments: stagedVisualComments,
+        skills: stagedSkills,
+        contextOnlySkillIds: Array.from(contextOnlySkillIdsRef.current),
+        mcpServers: stagedMcpServers,
+        contextOnlyMcpIds: Array.from(contextOnlyMcpIdsRef.current),
+        connectors: stagedConnectors,
+        contextOnlyConnectorIds: Array.from(contextOnlyConnectorIdsRef.current),
+        workspaceContexts: stagedWorkspaceContexts,
+        contextOnlyWorkspaceIds: Array.from(contextOnlyWorkspaceIdsRef.current),
+        activeAppliedPlugin,
+        inlineAppliedPlugin: inlineBackedPluginRef.current,
+      });
+    }, [
+      activeAppliedPlugin,
+      draftStorageKey,
+      staged,
+      stagedConnectors,
+      stagedMcpServers,
+      stagedSkills,
+      stagedVisualComments,
+      stagedWorkspaceContexts,
+    ]);
     async function duplicateDetailsPlugin(record: InstalledPluginRecord) {
       try {
         const result = await duplicatePluginAsProject(record.id, {
@@ -714,7 +846,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     // surface the user bounces off, or a background chat) never pays for the
     // full plugin-manifest list. Latches once true and never resets.
     const [composerEngaged, setComposerEngaged] = useState(
-      () => (draft ?? '').trim().length > 0,
+      () => (draft ?? '').trim().length > 0 || Boolean(restoredTransientDraft),
     );
     // Match HomeHero's empty-editor behavior: once the user places the real
     // caret in this composer, hide/pause the decorative typewriter overlay so
@@ -900,17 +1032,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     // Skills now come from the parent (App.tsx → ProjectView → ChatPane → ChatComposer)
     // pre-filtered by enabled/disabled state. We no longer fetch a fresh list
     // here to avoid showing skills the user has disabled via Settings.
-  // Show a "Team" tab in the Skills and MCP submenus when the current
-  // project belongs to a regular (non-shared) team workspace. The tab
-  // surfaces team-synced skills and MCP servers installed from team
-  // cloud templates.
-   const showTeamTab = useMemo(() => {
-     // On the project page the project always exists, so workspaceContext
-     // carries the project's team identity. No localStorage fallback.
-     return workspaceContextHasTeamIdentity(workspaceContext)
-       && !workspaceContext?.isSharedSpace;
-   }, [workspaceContext]);
-
   // Resolve the personal workspace identity from the workspace directory
   // -- the same source `/personal-all` uses (isDefaultTeam === true). The
   // project's workspaceContext carries the team identity, not the personal
@@ -920,6 +1041,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     workspaceMemberId: string;
     workspaceType: string;
   } | null>(null);
+  const [teamWorkspaceIds, setTeamWorkspaceIds] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -937,6 +1059,17 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
             workspaceType: personal.workspaceType,
           });
         }
+        setTeamWorkspaceIds(
+          (body.items ?? [])
+            .filter((item) => (
+              item.workspaceType === 'team'
+              && !item.isDefaultTeam
+              && !item.isSharedSpace
+              && item.memberStatus === 'active'
+              && item.lifecycleState === 'active'
+            ))
+            .map((item) => item.workspaceId),
+        );
       } catch {
         // leave null -- Mine tab falls back to legacy filter
       }
@@ -969,10 +1102,10 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
 
 
 
-   // Re-fetch skills from the cloud when the user switches the Skills
-   // scope tab in ComposerPlusMenu.
-const handleSkillTabChange = useCallback((tab: 'all' | 'mine' | 'team') => {
-      void onSkillsRefresh?.(tab === 'mine' || tab === 'team');
+   // Scope tabs filter the complete authorized catalogue locally. Refreshing
+   // a scoped subset here used to remove staged choices on tab changes.
+    const handleSkillTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
+      void onSkillsRefresh?.();
     }, [onSkillsRefresh]);
 
    // Re-fetch MCP servers and team cloud templates when the user switches
@@ -1299,14 +1432,24 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
           );
           setStagedSkills(restoredSkills);
           setStagedMcpServers(restoredMcpServers);
-          setStagedConnectors(
-            ctx?.connectorIds
-              ? ctx.connectorIds
-                  .map((id) => connectors.find((c) => c.id === id))
-                  .filter((c): c is ConnectorDetail => Boolean(c))
-              : [],
+          const restoredConnectors = ctx?.connectorIds
+            ? ctx.connectorIds
+                .map((id) => connectors.find((c) => c.id === id))
+                .filter((c): c is ConnectorDetail => Boolean(c))
+            : [];
+          contextOnlyConnectorIdsRef.current = new Set(
+            restoredConnectors
+              .filter((connector) => !mentionTokenPresent(text, connector.name))
+              .map((connector) => connector.id),
           );
-          setStagedWorkspaceContexts(ctx?.workspaceItems ?? []);
+          setStagedConnectors(restoredConnectors);
+          const restoredWorkspaceContexts = ctx?.workspaceItems ?? [];
+          contextOnlyWorkspaceIdsRef.current = new Set(
+            restoredWorkspaceContexts
+              .filter((item) => !mentionTokenPresent(text, item.label))
+              .map((item) => item.id),
+          );
+          setStagedWorkspaceContexts(restoredWorkspaceContexts);
           const restoredAppliedPlugin = meta?.appliedPluginSnapshot ?? null;
           setActiveAppliedPlugin(restoredAppliedPlugin);
           inlineBackedPluginRef.current = inlineBackedPluginFromRestoredDraft(
@@ -1382,7 +1525,9 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
       setStagedMcpServers([]);
       contextOnlySkillIdsRef.current.clear();
       contextOnlyMcpIdsRef.current.clear();
+      contextOnlyConnectorIdsRef.current.clear();
       setStagedConnectors([]);
+      contextOnlyWorkspaceIdsRef.current = new Set(linkedWorkspaceContexts.map((item) => item.id));
       setStagedWorkspaceContexts(linkedWorkspaceContexts);
       setWorkspaceLinkedDirAdds(nextWorkspaceLinkedDirAdds);
       if (
@@ -1583,16 +1728,22 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
     }
 
     function stageWorkspaceContext(item: WorkspaceContextItem) {
+      contextOnlyWorkspaceIdsRef.current.add(item.id);
       setStagedWorkspaceContexts((current) =>
         current.some((candidate) => candidate.id === item.id)
-          ? current
+          ? [...current]
           : [...current, item],
       );
       setComposerEngaged(true);
     }
 
     function appendWorkspacePrompt(item: WorkspaceContextItem) {
-      stageWorkspaceContext(item);
+      contextOnlyWorkspaceIdsRef.current.delete(item.id);
+      setStagedWorkspaceContexts((current) =>
+        current.some((candidate) => candidate.id === item.id)
+          ? [...current]
+          : [...current, item],
+      );
       insertInlineMentionSeparator();
       editorRef.current?.insertMention({
         token: inlineMentionToken(item.label),
@@ -1757,7 +1908,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
       if (!applied) return;
       contextOnlySkillIdsRef.current.add(skill.id);
       setStagedSkills((prev) =>
-        prev.some((item) => item.id === skill.id) ? prev : [...prev, skill],
+        prev.some((item) => item.id === skill.id) ? [...prev] : [...prev, skill],
       );
       setComposerEngaged(true);
       editorRef.current?.focus();
@@ -1938,6 +2089,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
     function removeStagedConnector(id: string) {
       trackComposerBar({ element: 'context_remove', resource_kind: 'connector', resource_id: id });
       const connector = stagedConnectors.find((item) => item.id === id) ?? null;
+      contextOnlyConnectorIdsRef.current.delete(id);
       setStagedConnectors((prev) => prev.filter((item) => item.id !== id));
       replaceEditorDraft(stripInlineMentionLabels(draft, [
         id,
@@ -1990,6 +2142,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
         return;
       }
       if (visibleWorkspaceContext?.id === id) setDismissedWorkspaceContextId(id);
+      contextOnlyWorkspaceIdsRef.current.delete(id);
       setStagedWorkspaceContexts((prev) => prev.filter((item) => item.id !== id));
       if (!trackedLinkedDir) {
         setWorkspaceLinkedDirAdds((current) => {
@@ -2535,10 +2688,14 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
         (server) => contextOnlyMcpIdsRef.current.has(server.id) || set.has(`mcp:${server.id}`),
       ));
       setStagedConnectors((prev) =>
-        prev.filter((c) => set.has(`connector:${c.id}`)),
+        prev.filter((c) => contextOnlyConnectorIdsRef.current.has(c.id) || set.has(`connector:${c.id}`)),
       );
       setStagedWorkspaceContexts((prev) =>
-        prev.filter((item) => set.has(`workspace:${item.id}`) || Boolean(workspaceLinkedDirAdds[item.id])),
+        prev.filter((item) => (
+          contextOnlyWorkspaceIdsRef.current.has(item.id)
+          || set.has(`workspace:${item.id}`)
+          || Boolean(workspaceLinkedDirAdds[item.id])
+        )),
       );
     }
 
@@ -2712,6 +2869,14 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
       await pluginsSectionRef.current?.applyById(record.id, record);
     }
 
+    async function stagePluginContext(record: InstalledPluginRecord) {
+      setMention(null);
+      inlineBackedPluginRef.current = null;
+      await pluginsSectionRef.current?.applyById(record.id, record);
+      setComposerEngaged(true);
+      editorRef.current?.focus();
+    }
+
     function insertMcpMention(server: McpServerConfig) {
       setStagedMcpServers((current) => (
         current.some((item) => item.id === server.id) ? current : [...current, server]
@@ -2762,15 +2927,16 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
     function stageMcpContext(server: McpServerConfig) {
       contextOnlyMcpIdsRef.current.add(server.id);
       setStagedMcpServers((current) => (
-        current.some((item) => item.id === server.id) ? current : [...current, server]
+        current.some((item) => item.id === server.id) ? [...current] : [...current, server]
       ));
       setComposerEngaged(true);
       editorRef.current?.focus();
     }
 
     function insertConnectorMention(connector: ConnectorDetail) {
+      contextOnlyConnectorIdsRef.current.delete(connector.id);
       setStagedConnectors((current) => (
-        current.some((item) => item.id === connector.id) ? current : [...current, connector]
+        current.some((item) => item.id === connector.id) ? [...current] : [...current, connector]
       ));
       editorRef.current?.insertMention({
         token: inlineMentionToken(connector.name),
@@ -2779,10 +2945,20 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
       setMention(null);
     }
 
+    function stageConnectorContext(connector: ConnectorDetail) {
+      contextOnlyConnectorIdsRef.current.add(connector.id);
+      setStagedConnectors((current) => (
+        current.some((item) => item.id === connector.id) ? [...current] : [...current, connector]
+      ));
+      setComposerEngaged(true);
+      editorRef.current?.focus();
+    }
+
     function insertWorkspaceMention(item: WorkspaceContextItem) {
+      contextOnlyWorkspaceIdsRef.current.delete(item.id);
       setStagedWorkspaceContexts((current) =>
         current.some((candidate) => candidate.id === item.id)
-          ? current
+          ? [...current]
           : [...current, item],
       );
       editorRef.current?.insertMention({
@@ -2996,6 +3172,56 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
       || Boolean(currentRunContextMeta());
     const showStopButton = streaming && !hasComposerPayload;
     const showSendButton = !streaming || hasComposerPayload;
+    const hasInsideStagedContexts = stagedSkills.length > 0
+      || stagedMcpServers.length > 0;
+    const outsideWorkspaceContexts = selectedWorkspaceContexts.filter((item) => (
+      item.id === visibleWorkspaceContext?.id || contextOnlyWorkspaceIdsRef.current.has(item.id)
+    ));
+    const outsideConnectors = stagedConnectors.filter((connector) => (
+      contextOnlyConnectorIdsRef.current.has(connector.id)
+    ));
+    const outsidePluginChip = activeAppliedPlugin
+      && inlineBackedPluginRef.current?.id !== activeAppliedPlugin.pluginId
+      ? {
+          id: activeAppliedPlugin.pluginId,
+          title: activeAppliedPlugin.pluginTitle ?? activeAppliedPlugin.pluginId,
+        }
+      : null;
+    const hasOutsideStagedContexts = outsideWorkspaceContexts.length > 0
+      || outsideConnectors.length > 0
+      || staged.length > 0
+      || Boolean(outsidePluginChip);
+    const hasOnlyCurrentWorkspaceOutside = outsideWorkspaceContexts.length === 1
+      && outsideWorkspaceContexts[0]?.id === visibleWorkspaceContext?.id
+      && outsideConnectors.length === 0
+      && staged.length === 0
+      && !outsidePluginChip;
+    const stagedContextSharedProps = {
+      currentWorkspaceContextId: visibleWorkspaceContext?.id ?? null,
+      projectId,
+      onRemoveWorkspace: removeWorkspaceContext,
+      onRemoveSkill: removeStagedSkill,
+      onRemoveMcp: removeStagedMcpServer,
+      onRemoveConnector: removeStagedConnector,
+      onRemoveAttachment: removeStaged,
+      onRemovePlugin: () => {
+        pluginsSectionRef.current?.clear();
+        setActiveAppliedPlugin(null);
+      },
+      onPluginDetails: (id: string) => {
+        const record = installedPlugins.find((plugin) => plugin.id === id);
+        if (record) setDetailsRecord(record);
+      },
+      onSkillDetails: (id: string) => {
+        setDetailsSkill({
+          id,
+          summary: stagedSkills.find((skill) => skill.id === id)
+            ?? skills.find((skill) => skill.id === id)
+            ?? null,
+        });
+      },
+      t,
+    };
 
     const openDesignSystemPicker = () => {
       const trigger = composerRootRef.current?.querySelector<HTMLButtonElement>(
@@ -3111,7 +3337,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
                     resource_kind: 'plugin',
                     resource_id: record.id,
                   });
-                  void insertPluginMention(record);
+                  void stagePluginContext(record);
                   setPluginsPanelOpen(false);
                 }}
                 onAdd={onBrowsePlugins ? () => {
@@ -3123,8 +3349,10 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
             </div>
           </div>
         ) : null}
-        <div
+        <ComposerSurface
+          variant="project"
           className={`composer-shell${manualEditorHeight != null ? ' composer-shell--manual-height' : ''}`}
+          data-testid={hasInsideStagedContexts || hasOutsideStagedContexts ? 'staged-contexts' : undefined}
           style={
             manualEditorHeight != null
               ? ({ '--composer-manual-h': `${manualEditorHeight}px` } as React.CSSProperties)
@@ -3175,46 +3403,23 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
               }}
             />
           ) : null}
-          {selectedWorkspaceContexts.length > 0 || stagedSkills.length > 0 || stagedMcpServers.length > 0 || stagedConnectors.length > 0 || staged.length > 0 || activeAppliedPlugin ? (
-            <StagedRunContexts
-              workspaceItems={selectedWorkspaceContexts}
-              currentWorkspaceContextId={visibleWorkspaceContext?.id ?? null}
-              skills={stagedSkills}
-              mcpServers={stagedMcpServers}
-              connectors={stagedConnectors}
-              attachments={staged}
-              pluginChip={
-                activeAppliedPlugin
-                  ? {
-                      id: activeAppliedPlugin.pluginId,
-                      title: activeAppliedPlugin.pluginTitle ?? activeAppliedPlugin.pluginId,
-                    }
-                  : null
-              }
-              projectId={projectId}
-              onRemoveWorkspace={removeWorkspaceContext}
-              onRemoveSkill={removeStagedSkill}
-              onRemoveMcp={removeStagedMcpServer}
-              onRemoveConnector={removeStagedConnector}
-              onRemoveAttachment={removeStaged}
-              onRemovePlugin={() => {
-                pluginsSectionRef.current?.clear();
-                setActiveAppliedPlugin(null);
-              }}
-              onPluginDetails={(id) => {
-                const record = installedPlugins.find((plugin) => plugin.id === id);
-                if (record) setDetailsRecord(record);
-              }}
-              onSkillDetails={(id) => {
-                setDetailsSkill({
-                  id,
-                  summary: stagedSkills.find((skill) => skill.id === id)
-                    ?? skills.find((skill) => skill.id === id)
-                    ?? null,
-                });
-              }}
-              t={t}
-            />
+          {/* Project/workspace/plugin context and file attachments belong to
+              the gray tray, above the white editor surface. */}
+          {hasOutsideStagedContexts ? (
+            <ComposerSurfaceOutside className={`composer-outside-contexts${
+              hasOnlyCurrentWorkspaceOutside ? ' composer-outside-contexts--current-only' : ''
+            }`}>
+              <StagedRunContexts
+                {...stagedContextSharedProps}
+                testId="staged-outside-contexts"
+                workspaceItems={outsideWorkspaceContexts}
+                skills={[]}
+                mcpServers={[]}
+                connectors={outsideConnectors}
+                attachments={staged}
+                pluginChip={outsidePluginChip}
+              />
+            </ComposerSurfaceOutside>
           ) : null}
           {activeFileContext ? (
             <div
@@ -3240,7 +3445,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
               this only drops the per-composer override UI. The byok* props and
               handlers are intentionally retained as the plumbing the unified
               picker will reuse. */}
-          <div
+          <ComposerSurfaceInput
             className="composer-input-wrap"
             onFocus={() => {
               setComposerEngaged(true);
@@ -3251,39 +3456,57 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
               setComposerFocused(false);
             }}
           >
-            <LexicalComposerInput
-              ref={editorRef}
-              draft={draft}
-              inputDisabled={inputDisabled}
-              placeholder={
-                activeFileDisplayName
-                  ? t('chat.activeFilePlaceholder', { file: activeFileDisplayName })
-                  : placeholderCarouselActive
-                    ? ''
-                    : composerPlaceholder ?? t('chat.composerPlaceholder')
-              }
-              title={activeFileDisplayName ?? composerPlaceholder ?? t('chat.composerPlaceholder')}
-              knownEntities={composerMentionEntities}
-              onChange={handleEditorChange}
-              onTrigger={handleEditorTrigger}
-              onEnterSend={() => void submit()}
-              onPasteFiles={handlePasteFiles}
-              popoverOpen={Boolean(mention) || Boolean(slash && filteredSlash.length > 0)}
-              onPopoverKey={handlePopoverKey}
-              comboboxAria={{
-                expanded: Boolean(mention),
-                activeId: mention ? `mention-opt-${mentionIndex}` : null,
-              }}
-            />
-            {placeholderScenarios.length > 0 ? (
-              <PlaceholderCarousel
-                scenarios={placeholderScenarios}
-                active={placeholderCarouselActive}
-                paused={composerFocused}
-                onScenarioChange={setPlaceholderScenario}
-              />
+            {/* Skill and MCP are part of the white editor surface. */}
+            {hasInsideStagedContexts ? (
+              <ComposerSurfaceInside>
+                <StagedRunContexts
+                  {...stagedContextSharedProps}
+                  testId="staged-inside-contexts"
+                  workspaceItems={[]}
+                  skills={stagedSkills}
+                  mcpServers={stagedMcpServers}
+                  connectors={[]}
+                  attachments={[]}
+                  pluginChip={null}
+                />
+              </ComposerSurfaceInside>
             ) : null}
-          </div>
+            <ComposerSurfaceEditor>
+              <div className="home-hero__prompt-editor home-hero__lexical">
+                <LexicalComposerInput
+                  ref={editorRef}
+                  draft={draft}
+                  inputDisabled={inputDisabled}
+                  placeholder={
+                    activeFileDisplayName
+                      ? t('chat.activeFilePlaceholder', { file: activeFileDisplayName })
+                      : placeholderCarouselActive
+                        ? ''
+                        : composerPlaceholder ?? t('chat.composerPlaceholder')
+                  }
+                  title={activeFileDisplayName ?? composerPlaceholder ?? t('chat.composerPlaceholder')}
+                  knownEntities={composerMentionEntities}
+                  onChange={handleEditorChange}
+                  onTrigger={handleEditorTrigger}
+                  onEnterSend={() => void submit()}
+                  onPasteFiles={handlePasteFiles}
+                  popoverOpen={Boolean(mention) || Boolean(slash && filteredSlash.length > 0)}
+                  onPopoverKey={handlePopoverKey}
+                  comboboxAria={{
+                    expanded: Boolean(mention),
+                    activeId: mention ? `mention-opt-${mentionIndex}` : null,
+                  }}
+                />
+                {placeholderScenarios.length > 0 ? (
+                  <PlaceholderCarousel
+                    scenarios={placeholderScenarios}
+                    active={placeholderCarouselActive}
+                    paused={composerFocused}
+                    onScenarioChange={setPlaceholderScenario}
+                  />
+                ) : null}
+              </div>
+            </ComposerSurfaceEditor>
           <CaretFloatingLayer
             caret={caretRect}
             open={Boolean(mention)}
@@ -3325,7 +3548,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
               t={t}
             />
           </CaretFloatingLayer>
-          <div className="composer-row">
+          <ComposerSurfaceFooter className="composer-row">
             <input
               ref={fileInputRef}
               data-testid="chat-file-input"
@@ -3369,7 +3592,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
                   resource_kind: 'connector',
                   resource_id: connector.id,
                 });
-                insertConnectorMention(connector);
+                stageConnectorContext(connector);
               }}
               onAddConnector={() => {
                 trackComposerBar({ element: 'plus_add', resource_kind: 'connector' });
@@ -3382,7 +3605,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
                   resource_kind: 'plugin',
                   resource_id: record.id,
                 });
-                void insertPluginMention(record);
+                void stagePluginContext(record);
               }}
               onAddPlugin={() => {
                 trackComposerBar({ element: 'plus_add', resource_kind: 'plugin' });
@@ -3406,9 +3629,8 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
                 navigate({ kind: 'home', view: 'personal-all', tab: 'skill' });
              }}
             mcpServers={enabledMcpServers}
-            showTeamTab={showTeamTab}
              personalMemberId={personalWorkspace?.workspaceMemberId}
-             teamWorkspaceId={workspaceContext?.workspaceId}
+             teamWorkspaceIds={teamWorkspaceIds}
              onSkillTabChange={handleSkillTabChange}
               onMcpTabChange={handleMcpTabChange}
              onPickMcp={(server) => {
@@ -3496,53 +3718,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
                 trackComposerBar({ element: 'design_system_open' });
                 openDesignSystemPicker();
               } : undefined}
-              // 插件 and 设计百宝箱 live inside the "+" menu (right below
-              // 工作目录) as hover-expand submenus. The toolbox flyout reuses
-              // the same DesignToolboxPanel the standalone popover renders.
-              toolboxLabel={t('chat.designToolbox.title')}
-              renderToolbox={(close) => (
-                <DesignToolboxPanel
-                  workspaceContext={workspaceContext}
-                  actions={DESIGN_TOOLBOX_ACTIONS}
-                  skills={skills}
-                  plugins={pluginsForComposer}
-                  mcpServers={enabledMcpServers}
-                  mcpTemplates={mcpTemplates}
-                  connectors={connectors}
-                  projectFiles={projectFiles}
-                  activeSkillIds={stagedSkills.map((skill) => skill.id)}
-                  activePluginId={activeAppliedPlugin?.pluginId ?? pinnedPluginId ?? null}
-                  activeMcpServerIds={stagedMcpServers.map((server) => server.id)}
-                  activeConnectorIds={stagedConnectors.map((connector) => connector.id)}
-                  activeFilePaths={staged.map((item) => item.path)}
-                  onOpened={() => trackDesignToolbox({ element: 'design_toolbox_open' })}
-                  onPickAction={(action) => {
-                    trackDesignToolbox({
-                      element: 'design_toolbox_action',
-                      toolbox_action_id: action.id,
-                    });
-                    applyDesignToolboxAction(action);
-                    close();
-                  }}
-                  onPickSkill={(skill) => {
-                    trackDesignToolbox({
-                      element: 'design_toolbox_resource',
-                      resource_kind: 'skill',
-                      resource_id: skill.id,
-                    });
-                    applyDesignToolboxSkill(skill);
-                    close();
-                  }}
-                  onPickResource={(resource) => {
-                    trackDesignToolbox({
-                      element: 'design_toolbox_resource',
-                      ...designToolboxResourceTracking(resource),
-                    });
-                    applyDesignToolboxResource(resource);
-                    close();
-                  }}
-                />
-              )}
             />
             {/* #5517: the design-system picker sits inline in the composer's
                 icon row (palette icon) instead of the staged-context bar. */}
@@ -3601,8 +3776,9 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
                 <Icon name="arrow-up" size={18} />
               </button>
             ) : null}
-          </div>
-        </div>
+          </ComposerSurfaceFooter>
+          </ComposerSurfaceInput>
+        </ComposerSurface>
         {/* #5517 renders no working-dir row inside a project — its ChatComposer
             imports WorkingDirPicker but never mounts it. Product chose full
             alignment (2026-07-21) over keeping this as the only mid-project
@@ -3904,27 +4080,6 @@ function ComposerRunIcon({ className }: { className?: string }) {
   return <img className={className} src="/composer-matrix-loader.svg" alt="" aria-hidden />;
 }
 
-function workspaceContextIcon(item: WorkspaceContextItem): IconName {
-  if (item.kind === 'browser') return 'globe';
-  if (item.kind === 'folder' || item.kind === 'design-files') return 'folder';
-  if (item.kind === 'project') return 'folder';
-  if (item.kind === 'local-code') return 'terminal';
-  if (item.kind === 'terminal') return 'terminal';
-  if (item.kind === 'side-chat') return 'comment';
-  if (item.kind === 'design-system') return 'blocks';
-  return 'file';
-}
-
-function workspaceContextTitle(item: WorkspaceContextItem): string {
-  return [
-    workspaceContextKindLabel(item.kind),
-    item.path ? `path: ${item.path}` : null,
-    item.absolutePath ? `absolute: ${item.absolutePath}` : null,
-    item.url ? `url: ${item.url}` : null,
-    item.title ? `title: ${item.title}` : null,
-  ].filter(Boolean).join(' | ');
-}
-
 function workspaceContextDescription(item: WorkspaceContextItem): string {
   if (item.kind === 'design-files') return item.path || 'Project files';
   if (item.kind === 'project') return item.absolutePath || item.path || item.title || item.id;
@@ -3988,6 +4143,7 @@ function workspaceContextKindLabel(kind: WorkspaceContextItem['kind']): string {
 }
 
 function StagedRunContexts({
+  testId = 'staged-contexts',
   designSystemPicker,
   workspaceItems,
   currentWorkspaceContextId,
@@ -4007,6 +4163,7 @@ function StagedRunContexts({
   onSkillDetails,
   t,
 }: {
+  testId?: string;
   designSystemPicker?: ReactNode;
   workspaceItems: WorkspaceContextItem[];
   currentWorkspaceContextId: string | null;
@@ -4043,198 +4200,99 @@ function StagedRunContexts({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [preview]);
+  const attachmentItems = attachments.map((attachment) => {
+    const canPreview = attachment.kind === 'image' && Boolean(projectId);
+    const imageUrl = canPreview
+      ? projectRawUrl(projectId!, attachment.path, workspaceContext)
+      : null;
+    return {
+      key: attachment.path,
+      name: attachment.name,
+      kind: attachment.kind,
+      order: attachment.order,
+      title: attachment.path,
+      previewTitle: attachment.name,
+      previewUrl: imageUrl,
+      onPreview: imageUrl ? () => setPreview(attachment) : undefined,
+      onRemove: () => onRemoveAttachment(attachment.path),
+      removeLabel: t('chat.removeAria', { name: attachment.name }),
+      testId: `composer-attachment-${attachment.path}`,
+    };
+  });
+  const workspaceContextItems = workspaceItems.map((workspaceItem) => {
+    const label = composerWorkspaceContextLabel(workspaceItem);
+    return {
+      key: `workspace-${workspaceItem.id}`,
+      kind: 'workspace' as const,
+      icon: composerWorkspaceContextIcon(workspaceItem),
+      label,
+      title: composerWorkspaceContextTitle(workspaceItem),
+      className: [
+        `staged-context--workspace-${workspaceItem.kind}`,
+        workspaceItem.id === currentWorkspaceContextId ? 'staged-context--current-workspace' : '',
+      ].filter(Boolean).join(' '),
+      onRemove: () => onRemoveWorkspace(workspaceItem.id),
+      removeLabel: t('chat.removeAria', { name: label }),
+      testId: `composer-context-workspace-${workspaceItem.id}`,
+    };
+  });
   return (
     <>
     <div
       className="staged-row staged-context-row"
-      data-testid="staged-contexts"
+      data-testid={testId}
     >
       {designSystemPicker ? (
         <div className="staged-context-picker staged-context-picker--design-system">
           {designSystemPicker}
         </div>
       ) : null}
-      {pluginChip ? (
-        <div className="staged-chip staged-context staged-context--plugin">
-          {/* Two sibling controls — a details button (icon + name) and the
-              remove button — rather than a role=button wrapper containing the
-              remove button. Nested interactive controls break focus order and
-              assistive-tech announcements. */}
-          <button
-            type="button"
-            className="staged-context-open"
-            onClick={() => onPluginDetails?.(pluginChip.id)}
-            title={pluginChip.title}
-            aria-label={pluginChip.title}
-          >
-            <span className="staged-icon" aria-hidden>
-              <Icon name="sparkles" size={12} />
-            </span>
-            <span className="staged-name">{pluginChip.title}</span>
-          </button>
-          <button
-            type="button"
-            className="staged-remove od-tooltip"
-            onClick={() => onRemovePlugin?.()}
-            title={t('common.delete')}
-            data-tooltip={t('common.delete')}
-            aria-label={t('chat.removeAria', { name: pluginChip.title })}
-          >
-            <Icon name="close" size={11} />
-          </button>
-        </div>
-      ) : null}
-      {workspaceItems.map((workspaceItem) => {
-        const kindLabel =
-          workspaceItem.id === currentWorkspaceContextId
-            ? 'Current'
-            : workspaceContextKindLabel(workspaceItem.kind);
-        return (
-          <div
-            key={workspaceItem.id}
-            className={`staged-chip staged-context staged-context--workspace staged-context--workspace-${workspaceItem.kind}`}
-          >
-            <span className="staged-icon" aria-hidden>
-              <Icon name={workspaceContextIcon(workspaceItem)} size={12} />
-            </span>
-            <span className="staged-name" title={workspaceContextTitle(workspaceItem)}>
-              <span className="staged-context-kind">{kindLabel}</span>
-              {workspaceItem.label}
-            </span>
-            <button
-              type="button"
-              className="staged-remove od-tooltip"
-              onClick={() => onRemoveWorkspace(workspaceItem.id)}
-              title={t('common.delete')}
-              data-tooltip={t('common.delete')}
-              aria-label={t('chat.removeAria', { name: workspaceItem.label })}
-            >
-              <Icon name="close" size={11} />
-            </button>
-          </div>
-        );
-      })}
+      <ComposerOutsideContextList
+        attachments={attachmentItems}
+        plugins={pluginChip ? [{
+          key: `plugin-${pluginChip.id}`,
+          kind: 'plugin',
+          icon: 'sparkles',
+          label: pluginChip.title,
+          onOpen: onPluginDetails ? () => onPluginDetails(pluginChip.id) : undefined,
+          onRemove: onRemovePlugin,
+          removeLabel: t('chat.removeAria', { name: pluginChip.title }),
+        }] : []}
+        connectors={connectors.map((connector) => ({
+          key: `connector-${connector.id}`,
+          kind: 'connector',
+          icon: 'link',
+          label: connector.name,
+          title: connector.accountLabel ?? connector.provider,
+          onRemove: () => onRemoveConnector(connector.id),
+          removeLabel: t('chat.removeAria', { name: connector.name }),
+        }))}
+        workspaces={workspaceContextItems}
+      />
       {skills.map((s) => (
-        <div
-          key={s.id}
-          className={`staged-chip staged-context staged-context--skill staged-skill-${s.source ?? 'built-in'}`}
-        >
-          <button
-            type="button"
-            className="staged-context-open"
-            onClick={() => onSkillDetails?.(s.id)}
-            title={s.description || s.name}
-            aria-label={s.name}
-          >
-            <span className="staged-name">@{s.name}</span>
-          </button>
-          <button
-            type="button"
-            className="staged-remove od-tooltip"
-            onClick={() => onRemoveSkill(s.id)}
-            title={t('common.delete')}
-            data-tooltip={t('common.delete')}
-            aria-label={t('chat.removeAria', { name: s.name })}
-          >
-            <Icon name="close" size={11} />
-          </button>
-        </div>
+        <ComposerContextChip key={s.id} item={{
+          key: `skill-${s.id}`,
+          kind: 'skill',
+          icon: 'sparkles',
+          label: s.name,
+          title: s.description || s.name,
+          onOpen: onSkillDetails ? () => onSkillDetails(s.id) : undefined,
+          onRemove: () => onRemoveSkill(s.id),
+          removeLabel: t('chat.removeAria', { name: s.name }),
+        }} />
       ))}
       {mcpServers.map((server) => {
         const label = server.label || server.id;
         return (
-          <div
-            key={server.id}
-            className="staged-chip staged-context staged-context--mcp"
-          >
-            <span className="staged-icon" aria-hidden>
-              <Icon name="link" size={12} />
-            </span>
-            <span className="staged-name" title={server.command || server.url || server.id}>
-              @{label}
-            </span>
-            <button
-              type="button"
-              className="staged-remove od-tooltip"
-              onClick={() => onRemoveMcp(server.id)}
-              title={t('common.delete')}
-              data-tooltip={t('common.delete')}
-              aria-label={t('chat.removeAria', { name: label })}
-            >
-              <Icon name="close" size={11} />
-            </button>
-          </div>
-        );
-      })}
-      {connectors.map((connector) => (
-        <div
-          key={connector.id}
-          className="staged-chip staged-context staged-context--connector"
-        >
-          <span className="staged-icon" aria-hidden>
-            <Icon name="link" size={12} />
-          </span>
-          <span className="staged-name" title={connector.accountLabel ?? connector.provider}>
-            @{connector.name}
-          </span>
-          <button
-            type="button"
-            className="staged-remove od-tooltip"
-            onClick={() => onRemoveConnector(connector.id)}
-            title={t('common.delete')}
-            data-tooltip={t('common.delete')}
-            aria-label={t('chat.removeAria', { name: connector.name })}
-          >
-            <Icon name="close" size={11} />
-          </button>
-        </div>
-      ))}
-      {attachments.map((a, index) => {
-        const canPreview = a.kind === 'image' && Boolean(projectId);
-        const imageUrl = canPreview
-          ? projectRawUrl(projectId!, a.path, workspaceContext)
-          : null;
-        return (
-          <div
-            key={a.path}
-            className={`staged-chip staged-${a.kind}${canPreview && imageUrl ? ' staged-chip--image-file' : ''}`}
-          >
-            <span className="staged-order" aria-label={`Attachment ${index + 1}`}>
-              {index + 1}
-            </span>
-            {canPreview && imageUrl ? (
-              // Mirrors the home composer's image chips: thumbnail only, the
-              // filename lives in the tooltip / aria-label.
-              <button
-                type="button"
-                className="staged-preview-trigger"
-                onClick={() => setPreview(a)}
-                title={a.name}
-                aria-label={`Preview ${a.name}`}
-              >
-                <img src={imageUrl} alt="" aria-hidden />
-              </button>
-            ) : (
-              <>
-                <span className="staged-icon" aria-hidden>
-                  <Icon name="file" size={13} />
-                </span>
-                <span className="staged-name" title={a.path}>
-                  {a.name}
-                </span>
-              </>
-            )}
-            <button
-              type="button"
-              className="staged-remove od-tooltip"
-              onClick={() => onRemoveAttachment(a.path)}
-              title={t('common.delete')}
-              data-tooltip={t('common.delete')}
-              aria-label={t('chat.removeAria', { name: a.name })}
-            >
-              <Icon name="close" size={11} />
-            </button>
-          </div>
+          <ComposerContextChip key={server.id} item={{
+            key: `mcp-${server.id}`,
+            kind: 'mcp',
+            icon: 'link',
+            label,
+            title: server.command || server.url || server.id,
+            onRemove: () => onRemoveMcp(server.id),
+            removeLabel: t('chat.removeAria', { name: label }),
+          }} />
         );
       })}
     </div>
@@ -6011,9 +6069,9 @@ function MentionPopover({
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => onPickWorkspaceContext(item)}
-                  title={workspaceContextTitle(item)}
+                  title={composerWorkspaceContextTitle(item)}
                 >
-                  <Icon name={workspaceContextIcon(item)} size={12} />
+                  <Icon name={composerWorkspaceContextIcon(item)} size={12} />
                   <span className="mention-item-body">
                     <strong>{item.label}</strong>
                     <span className="mention-meta mention-meta--desc">

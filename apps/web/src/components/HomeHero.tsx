@@ -93,8 +93,6 @@ import { inferPluginPreview } from './plugins-home/preview';
 import { pluginSubfacetLabel } from './plugins-home/subfacetLabel';
 import { useDeckPreviewScale } from '../lib/use-deck-preview-scale';
 import { ComposerPlusMenu, PLUS_SUBMENU_RESOURCE_KIND } from './ComposerPlusMenu';
-import { ContextChipHoverCard } from './ContextChipHoverCard';
-import { workspaceContextDetailLine, workspaceContextKindLabel } from './workspace-context';
 import { FigmaHelpModal } from './FigmaHelpModal';
 import { AddSkillDialog } from './AddSkillDialog';
 import { AddMcpDialog } from './AddMcpDialog';
@@ -117,6 +115,21 @@ import {
   type CaretRect,
 } from './composer/LexicalComposerInput';
 import { CaretFloatingLayer } from './composer/CaretFloatingLayer';
+import {
+  ComposerSurface,
+  ComposerSurfaceEditor,
+  ComposerSurfaceFooter,
+  ComposerSurfaceInput,
+  ComposerSurfaceInside,
+  ComposerSurfaceOutside,
+} from './composer/ComposerSurface';
+import {
+  ComposerContextChip,
+  ComposerOutsideContextList,
+  composerWorkspaceContextIcon,
+  composerWorkspaceContextLabel,
+  composerWorkspaceContextTitle,
+} from './composer/ComposerContextChips';
 import { PlaceholderCarousel } from './home-hero/PlaceholderCarousel';
 import {
   buildPlaceholderScenarios,
@@ -179,7 +192,9 @@ interface Props {
   activeSkillId?: string | null;
   activeSkillTitle?: string | null;
   activeSkillRecord?: SkillSummary | null;
+  selectedSkills?: SkillSummary[];
   onClearActiveSkill?: () => void;
+  onRemoveSkill?: (skillId: string) => void;
   selectedPluginContexts?: InstalledPluginRecord[];
   selectedMcpContexts?: McpServerConfig[];
   selectedConnectorContexts?: ConnectorDetail[];
@@ -229,9 +244,8 @@ interface Props {
  skillsLoading?: boolean;
   mcpOptions?: McpServerConfig[];
   mcpLoading?: boolean;
- showTeamTab?: boolean;
   personalMemberId?: string;
-  teamWorkspaceId?: string;
+  teamWorkspaceIds?: string[];
   personalWorkspaceContext?: WorkspaceCollabContext | null;
   connectorOptions?: ConnectorDetail[];
   onSkillTabChange?: (tab: 'all' | 'mine' | 'team') => void;
@@ -244,12 +258,14 @@ interface Props {
   // visible Sending… state instead of leaving it silently idle.
   submitting?: boolean;
   onPickPlugin: (record: InstalledPluginRecord, nextPrompt: string | null) => void;
+  onStagePlugin?: (record: InstalledPluginRecord) => void;
   onPickExamplePlugin?: (record: InstalledPluginRecord, chipId: string, promptText: string) => void;
   onPickSkill?: (skill: SkillSummary, nextPrompt: string | null) => void;
   onStageSkill?: (skill: SkillSummary) => void;
   onPickMcp?: (server: McpServerConfig, nextPrompt: string) => void;
   onStageMcp?: (server: McpServerConfig) => void;
   onPickConnector?: (connector: ConnectorDetail, nextPrompt: string) => void;
+  onStageConnector?: (connector: ConnectorDetail) => void;
   onPickChip: (chip: HomeHeroChip) => void;
   onPickPrototypeSubtype?: (sub: HomeHeroSubChip | null) => void;
   contextItemCount: number;
@@ -377,10 +393,12 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
     activeSkillId = null,
     activeSkillTitle = null,
     activeSkillRecord = null,
+    selectedSkills = EMPTY_SKILLS,
     activeChipId,
     onClearActivePlugin,
     onClearActiveChip = onClearActivePlugin,
     onClearActiveSkill = () => undefined,
+    onRemoveSkill,
     selectedPluginContexts = EMPTY_PLUGIN_CONTEXTS,
     contextOnlyPlugins = EMPTY_PLUGIN_CONTEXTS,
     contextOnlyMcpServers = EMPTY_MCP_OPTIONS,
@@ -415,9 +433,8 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
    skillsLoading = false,
     mcpOptions = EMPTY_MCP_OPTIONS,
     mcpLoading = false,
-  showTeamTab = false,
   personalMemberId,
-  teamWorkspaceId,
+  teamWorkspaceIds,
   personalWorkspaceContext = null,
   connectorOptions = EMPTY_CONNECTOR_OPTIONS,
     onSkillTabChange,
@@ -427,12 +444,14 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
     submitDisabled = false,
     submitting = false,
     onPickPlugin,
+    onStagePlugin = () => undefined,
     onPickExamplePlugin = () => undefined,
     onPickSkill = () => undefined,
     onStageSkill = () => undefined,
     onPickMcp = () => undefined,
     onStageMcp = () => undefined,
     onPickConnector = () => undefined,
+    onStageConnector = () => undefined,
     onPickChip,
     activePrototypeSubtypeId,
     onPickPrototypeSubtype,
@@ -506,8 +525,18 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
   const mentionPickerRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const shortcutsMenuRef = useRef<HTMLDivElement>(null);
+  const visibleSkills = selectedSkills.length > 0
+    ? selectedSkills.map((skill) => ({
+        id: skill.id,
+        label: localizeSkillName(locale, skill),
+        record: skill,
+      }))
+    : activeSkillId && activeSkillTitle
+      ? [{ id: activeSkillId, label: activeSkillTitle, record: activeSkillRecord }]
+      : [];
+  const selectedSkillIds = new Set(visibleSkills.map((skill) => skill.id));
   const hasContextOnlyPayload = Boolean(
-    activeSkillTitle
+    visibleSkills.length > 0
     || communityReference
     || contextOnlyPlugins.length > 0
     || contextOnlyMcpServers.length > 0
@@ -518,12 +547,22 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
     (prompt.trim().length > 0 || stagedFiles.length > 0 || hasContextOnlyPayload)
     && !submitDisabled
     && !submitting;
+  const hasInsideContext = visibleSkills.length > 0
+    || contextOnlyMcpServers.length > 0;
+  const hasOutsideContext = Boolean(
+    stagedFiles.length > 0
+    || (showActivePluginChip && activePluginTitle)
+    || contextOnlyPlugins.length > 0
+    || contextOnlyConnectors.length > 0
+    || contextWorkspaceItems.length > 0
+    || communityReference,
+  );
   const previewHomeFile = useMemo(() => {
     if (!previewHomeFileKey) return null;
     return stagedFiles.find((file, index) => homeFileKey(file, index) === previewHomeFileKey) ?? null;
   }, [previewHomeFileKey, stagedFiles]);
   const previewHomeFileUrl = previewHomeFileKey ? stagedFilePreviewUrls.get(previewHomeFileKey) ?? null : null;
-  const placeholder = activePluginTitle || activeSkillTitle
+  const placeholder = activePluginTitle || visibleSkills.length > 0
     ? t('homeHero.placeholderActive')
     : t('homeHero.placeholder');
   const mentionActive = Boolean(mentionTrigger);
@@ -551,10 +590,9 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
   // prompt examples, then to a localized chip-label prompt. That keeps every
   // create template submittable from an empty composer instead of silently
   // disabling Send.
-  // Track editor focus so the carousel can hide its decorative caret while the
-  // real Lexical caret is present. The text keeps animating: Home auto-focuses
-  // this editor, so pausing the whole carousel here would suppress the empty
-  // state on first paint.
+  // Once the editor owns the real caret, stop and hide the decorative
+  // typewriter. A second moving text stream under an active caret is visually
+  // noisy and makes the focused composer look as if it is still auto-typing.
   const [promptFocused, setPromptFocused] = useState(false);
   useEffect(() => {
     const node = promptEditorRef.current;
@@ -588,7 +626,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
   const carouselSubmittable =
     carouselActive &&
     stagedFiles.length === 0 &&
-    !activeSkillTitle &&
+    visibleSkills.length === 0 &&
     !activePluginIsExplicit &&
     !pluginsLoading &&
     carouselScenario !== null &&
@@ -637,10 +675,10 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
           label: t('homeHero.skills'),
           options: skillMatches.map((skill) => ({
             id: `skill-${skill.id}`,
-            icon: skill.id === activeSkillId ? 'check' : 'file',
+            icon: selectedSkillIds.has(skill.id) ? 'check' : 'file',
             title: localizeSkillName(locale, skill),
             description: localizeSkillDescription(locale, skill) || skill.id,
-            meta: skill.id === activeSkillId ? t('common.active') : skill.mode,
+            meta: selectedSkillIds.has(skill.id) ? t('common.active') : skill.mode,
             onPick: () => pickSkill(skill),
           })),
         }
@@ -671,6 +709,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
         activePluginRecord,
         activeSkillId,
         activeSkillTitle,
+        selectedSkills,
         mcpOptions,
         pluginOptions,
         connectorOptions,
@@ -697,6 +736,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
       activePluginRecord,
       activeSkillId,
       activeSkillTitle,
+      selectedSkills,
       mcpOptions,
       pluginOptions,
       connectorOptions,
@@ -1288,10 +1328,6 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
     if (activePluginRecord) onOpenPluginDetails(activePluginRecord);
   }
 
-  function openActiveSkillDetails() {
-    if (activeSkillRecord) onOpenSkillDetails(activeSkillRecord);
-  }
-
   // Inline-backed plugin/MCP/connector contexts already render as @mention pills
  // in the editor. This row should mount only for content that has a visible chip
  // here; the aggregate context count is just an aria label when the row exists.
@@ -1321,10 +1357,105 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
 
       {/* #5517 wraps the input card + workdir row into one visible composer
           card so they read as a single surface. */}
-      <div className="home-hero__composer-card">
-      <div
-        className={`home-hero__input-card${
-          authoringLayoutActive ? ' home-hero__input-card--compact-authoring' : ''
+      <ComposerSurface variant="home">
+      {/* Files and non-Skill/MCP context sit at the top of the gray tray. */}
+      {hasOutsideContext ? (
+        <ComposerSurfaceOutside data-testid="home-hero-outside-contexts">
+          <ComposerOutsideContextList
+            attachments={stagedFiles.map((file, index) => {
+              const key = homeFileKey(file, index);
+              const previewUrl = stagedFilePreviewUrls.get(key) ?? null;
+              return {
+                key,
+                name: file.name,
+                kind: isImageFile(file) ? 'image' : 'file',
+                order: index,
+                previewUrl,
+                onPreview: previewUrl ? () => setPreviewHomeFileKey(key) : undefined,
+                onRemove: () => {
+                  trackHomeChatComposerClick(analytics.track, {
+                    page_name: 'home',
+                    area: 'chat_composer',
+                    element: 'context_remove',
+                    resource_id: file.name,
+                  });
+                  removeFileChip(index, file);
+                },
+                removeLabel: t('chat.removeAria', { name: file.name }),
+                testId: `home-hero-active-file-${index}`,
+              };
+            })}
+            plugins={[
+              ...(showActivePluginChip && activePluginTitle ? [{
+                key: `active-plugin-${activePluginRecord?.id ?? activePluginTitle}`,
+                kind: 'plugin' as const,
+                icon: 'sparkles' as const,
+                label: activePluginTitle,
+                onOpen: activePluginRecord ? openActivePluginDetails : undefined,
+                openTitle: activePluginRecord ? `Plugin: ${activePluginRecord.title}` : undefined,
+                onRemove: activePluginIsExplicit ? onClearActivePlugin : undefined,
+                removeLabel: t('chat.removeAria', { name: activePluginTitle }),
+                testId: 'home-hero-active-plugin',
+              }] : []),
+              ...contextOnlyPlugins.map((plugin) => ({
+                key: `plugin-${plugin.id}`,
+                kind: 'plugin' as const,
+                icon: 'sparkles' as const,
+                label: plugin.title,
+                onOpen: () => onOpenPluginDetails(plugin),
+                onRemove: () => onRemovePluginContext(plugin.id),
+                removeLabel: t('chat.removeAria', { name: plugin.title }),
+                testId: `home-hero-context-plugin-${plugin.id}`,
+              })),
+            ]}
+            connectors={contextOnlyConnectors.map((connector) => ({
+              key: `connector-${connector.id}`,
+              kind: 'connector',
+              icon: 'link',
+              label: connector.name,
+              onRemove: () => onRemoveConnectorContext(connector.id),
+              removeLabel: t('chat.removeAria', { name: connector.name }),
+              testId: `home-hero-context-connector-${connector.id}`,
+            }))}
+            workspaces={contextWorkspaceItems.map((item) => {
+              const label = composerWorkspaceContextLabel(item);
+              return {
+                key: `workspace-${item.id}`,
+                kind: 'workspace' as const,
+                icon: composerWorkspaceContextIcon(item),
+                label,
+                title: composerWorkspaceContextTitle(item),
+                className: `staged-context--workspace-${item.kind}`,
+                onRemove: () => {
+                  trackHomeChatComposerClick(analytics.track, {
+                    page_name: 'home',
+                    area: 'chat_composer',
+                    element: 'context_remove',
+                    resource_kind: 'workspace',
+                    resource_id: item.id,
+                  });
+                  const nextPrompt = stripHomeMentionToken(prompt, label);
+                  if (nextPrompt !== prompt) onPromptChange(nextPrompt);
+                  onRemoveWorkspaceContext(item.id);
+                },
+                removeLabel: t('chat.removeAria', { name: label }),
+                testId: `home-hero-context-workspace-${item.id}`,
+              };
+            })}
+            additional={communityReference ? [{
+              key: 'community-reference',
+              icon: 'folder',
+              label: communityReference.title,
+              onRemove: onClearCommunityReference,
+              removeLabel: t('chat.removeAria', { name: communityReference.title }),
+              testId: 'home-hero-context-community-reference',
+            }] : []}
+          />
+        </ComposerSurfaceOutside>
+      ) : null}
+      <ComposerSurfaceInput
+        className={`${
+          authoringLayoutActive ? 'home-hero__input-card--compact-authoring' : ''
         }${dragActive ? ' is-drag-active' : ''}`}
         style={inputCardStyle}
         onDragEnter={(event) => {
@@ -1342,103 +1473,39 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
         }}
         onDrop={handleDrop}
       >
-       {/* home-hero__active: file attachments and workspace context (referenced
-           projects / linked local code) are shown here. Plugins, skills, and
-           MCPs render as inline MentionNodes. */}
-       {stagedFiles.length > 0 || contextWorkspaceItems.length > 0 ? (
-         <div className="home-hero__active">
-           {stagedFiles.map((file, index) => {
-             const key = homeFileKey(file, index);
-             const previewUrl = stagedFilePreviewUrls.get(key) ?? null;
-             const isImage = isImageFile(file);
+        {/* Skill and MCP selections stay inside the white composer. */}
+       {hasInsideContext ? (
+         <ComposerSurfaceInside>
+           {visibleSkills.map((skill) => (
+             <ComposerContextChip key={skill.id} item={{
+               key: `skill-${skill.id}`,
+               kind: 'skill',
+               icon: 'sparkles',
+               label: skill.label,
+               onOpen: skill.record ? () => onOpenSkillDetails(skill.record!) : undefined,
+               onRemove: onRemoveSkill ? () => onRemoveSkill(skill.id) : onClearActiveSkill,
+               removeLabel: t('chat.removeAria', { name: skill.label }),
+               testId: `home-hero-context-skill-${skill.id}`,
+             }} />
+           ))}
+           {contextOnlyMcpServers.map((server) => {
+             const label = server.label || server.id;
              return (
-               <span
-                 key={key}
-                 className={
-                   isImage
-                     ? 'home-hero__active-chip home-hero__active-chip--image-file'
-                     : 'home-hero__active-chip home-hero__active-chip--file'
-                 }
-                 data-testid={`home-hero-active-file-${index}`}
-               >
-                 <span className="home-hero__active-file-body">
-                   {isImage && previewUrl ? (
-                     <img
-                       className="home-hero__active-thumb"
-                       src={previewUrl}
-                       alt={file.name}
-                     />
-                   ) : (
-                     <span className="home-hero__active-icon" aria-hidden>
-                       <Icon name="file" size={12} />
-                     </span>
-                   )}
-                   <span className="home-hero__active-label">{file.name}</span>
-                   {!isImage && file.size > 0 ? (
-                     <span className="home-hero__active-meta">{formatFileSize(file.size)}</span>
-                   ) : null}
-                 </span>
-                 <button
-                   type="button"
-                   className="home-hero__active-clear od-tooltip"
-                   onClick={() => {
-                     trackHomeChatComposerClick(analytics.track, {
-                       page_name: 'home',
-                       area: 'chat_composer',
-                       element: 'context_remove',
-                       resource_id: file.name,
-                     });
-                     removeFileChip(index, file);
-                   }}
-                   aria-label={t('chat.removeAria', { name: file.name })}
-                   title={t('common.close')}
-                   data-tooltip={t('common.close')}
-                   data-testid={`home-hero-active-file-clear-${index}`}
-                 >
-                   <Icon name="close" size={9} />
-                 </button>
-               </span>
+               <ComposerContextChip key={`mcp-${server.id}`} item={{
+                 key: `mcp-${server.id}`,
+                 kind: 'mcp',
+                 icon: 'link',
+                 label,
+                 title: server.command || server.url || server.id,
+                 onRemove: () => onRemoveMcpContext(server.id),
+                 removeLabel: t('chat.removeAria', { name: label }),
+                 testId: `home-hero-context-mcp-${server.id}`,
+               }} />
              );
            })}
-           {contextWorkspaceItems.map((item) => (
-             <ContextChipHoverCard
-               key={`ctx-workspace-${item.id}`}
-               className="home-hero__active-chip home-hero__active-chip--context"
-               data-testid={`home-hero-context-workspace-${item.id}`}
-               typeLabel={workspaceContextKindLabel(item.kind)}
-               detail={workspaceContextDetailLine(item)}
-             >
-               <span className="home-hero__active-icon" aria-hidden>
-                 <Icon name={item.kind === 'local-code' ? 'terminal' : 'folder'} size={12} />
-               </span>
-               <span className="home-hero__active-label">{item.label}</span>
-               <button
-                 type="button"
-                 className="home-hero__active-clear od-tooltip"
-                 onClick={() => {
-                   trackHomeChatComposerClick(analytics.track, {
-                     page_name: 'home',
-                     area: 'chat_composer',
-                     element: 'context_remove',
-                     resource_kind: 'workspace',
-                     resource_id: item.id,
-                   });
-                   const nextPrompt = stripHomeMentionToken(prompt, item.label);
-                   if (nextPrompt !== prompt) onPromptChange(nextPrompt);
-                   onRemoveWorkspaceContext(item.id);
-                 }}
-                 aria-label={t('chat.removeAria', { name: item.label })}
-                 title={t('common.close')}
-                 data-tooltip={t('common.close')}
-                 data-testid={`home-hero-context-clear-${item.id}`}
-               >
-                 <Icon name="close" size={9} />
-               </button>
-             </ContextChipHoverCard>
-           ))}
-         </div>
+         </ComposerSurfaceInside>
        ) : null}
-       <div className="home-hero__prompt-surface">
+       <ComposerSurfaceEditor>
           <div ref={promptEditorRef} className="home-hero__prompt-editor home-hero__lexical">
             <LexicalComposerInput
               ref={editorRef}
@@ -1478,12 +1545,12 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
             />
             <PlaceholderCarousel
               active={carouselActive}
-              showCaret={!promptFocused}
+              paused={promptFocused}
               scenarios={carouselScenarios}
               onScenarioChange={setCarouselScenario}
             />
           </div>
-        </div>
+        </ComposerSurfaceEditor>
         <CaretFloatingLayer caret={caretRect} open={pickerOpen}>
           <div
             ref={mentionPickerRef}
@@ -1599,7 +1666,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
             </div>
           </div>
         </CaretFloatingLayer>
-        <div className="home-hero__input-foot">
+        <ComposerSurfaceFooter>
           <input
             ref={fileInputRef}
             data-testid="home-hero-file-input"
@@ -1652,7 +1719,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                   resource_kind: 'connector',
                   resource_id: connector.id,
                 });
-                pickConnector(connector);
+                onStageConnector(connector);
               }}
               onAddConnector={() => {
                 trackHomeChatComposerClick(analytics.track, {
@@ -1672,7 +1739,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                   resource_kind: 'plugin',
                   resource_id: record.id,
                 });
-                pickPlugin(record);
+                onStagePlugin(record);
               }}
               onAddPlugin={() => {
                 trackHomeChatComposerClick(analytics.track, {
@@ -1692,7 +1759,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                   resource_kind: 'skill',
                   resource_id: skill.id,
                 });
-                pickSkill(skill);
+                onStageSkill(skill);
               }}
               onAddSkill={() => {
                 trackHomeChatComposerClick(analytics.track, {
@@ -1713,9 +1780,8 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
               navigate({ kind: 'home', view: 'personal-all', tab: 'skill' });
              }}
             mcpServers={mcpOptions}
-            showTeamTab={showTeamTab}
             personalMemberId={personalMemberId}
-            teamWorkspaceId={teamWorkspaceId}
+            teamWorkspaceIds={teamWorkspaceIds}
             onSkillTabChange={onSkillTabChange}
             onMcpTabChange={onMcpTabChange}
              onPickMcp={(server) => {
@@ -1726,7 +1792,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                   resource_kind: 'mcp',
                   resource_id: server.id,
                 });
-                pickMcp(server);
+                onStageMcp(server);
               }}
             onAddMcp={() => {
               trackHomeChatComposerClick(analytics.track, {
@@ -1909,8 +1975,8 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
               <Icon name={submitting ? 'spinner' : 'arrow-up'} size={17} />
             </button>
           </div>
-        </div>
-      </div>
+        </ComposerSurfaceFooter>
+      </ComposerSurfaceInput>
 
       {onDesignSystemChange || onPickWorkingDir ? (
         <div className="home-hero__workdir-row">
@@ -1961,7 +2027,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
           <FolderContextTag active={active} />
       </div>
     ) : null}
-    </div>
+    </ComposerSurface>
 
      {recommendationSlot}
 
@@ -2380,20 +2446,6 @@ function isImageFile(file: File): boolean {
   return file.type.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg|avif|bmp)$/i.test(file.name);
 }
 
-function formatFileSize(bytes: number): string {
-  if (!Number.isFinite(bytes) || bytes <= 0) return '0 B';
-  if (bytes < 1024) return `${bytes} B`;
-  const units = ['KB', 'MB', 'GB'];
-  let value = bytes / 1024;
-  for (const unit of units) {
-    if (value < 1024 || unit === units[units.length - 1]) {
-      return `${value.toFixed(value >= 10 ? 0 : 1)} ${unit}`;
-    }
-    value /= 1024;
-  }
-  return `${bytes} B`;
-}
-
 const HOME_HERO_PROMPT_MAX_HEIGHT = 180;
 const HOME_HERO_AUTHORING_PROMPT_MAX_HEIGHT = 132;
 
@@ -2405,6 +2457,7 @@ function buildHomeMentionEntities({
   activePluginRecord,
   activeSkillId,
   activeSkillTitle,
+  selectedSkills,
   connectorOptions,
   contextWorkspaceItems,
   mcpOptions,
@@ -2416,6 +2469,7 @@ function buildHomeMentionEntities({
   activePluginRecord: InstalledPluginRecord | null;
   activeSkillId: string | null;
   activeSkillTitle: string | null;
+  selectedSkills: SkillSummary[];
   connectorOptions: ConnectorDetail[];
   contextWorkspaceItems: WorkspaceContextItem[];
   mcpOptions: McpServerConfig[];
@@ -2468,7 +2522,7 @@ function buildHomeMentionEntities({
     });
   }
   const skillSeen = new Set<string>();
-  for (const skill of skillOptions) {
+  for (const skill of [...selectedSkills, ...skillOptions]) {
     if (skillSeen.has(skill.id)) continue;
     skillSeen.add(skill.id);
     entities.push({

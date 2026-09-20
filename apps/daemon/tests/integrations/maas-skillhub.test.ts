@@ -184,6 +184,24 @@ describe('MAAS Skillhub client', () => {
       .resolves.toContain('console.log');
   });
 
+  it('extracts a Skill ZIP whose contents exceed the former 50 MiB cap', async () => {
+    const zip = new JSZip();
+    zip.file('large-skill/SKILL.md', '# Large Skill');
+    zip.file('large-skill/assets/large.bin', Buffer.alloc(50 * 1024 * 1024));
+    const archive = await zip.generateAsync({
+      type: 'nodebuffer',
+      compression: 'DEFLATE',
+      compressionOptions: { level: 1 },
+    });
+    const destination = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'maas-large-skill-test-'));
+    tempDirs.push(destination);
+
+    await extractMaasSkillZip(archive, destination);
+
+    await expect(fs.promises.stat(path.join(destination, 'assets/large.bin')))
+      .resolves.toMatchObject({ size: 50 * 1024 * 1024 });
+  });
+
   it('uses a stable fallback folder id when the MAAS slug is not filesystem-safe', () => {
     expect(maasSkillLocalId({ id: '2086', skillName: '设计评审', skillSlug: '设计评审' }))
       .toBe('maas-skill-2086');

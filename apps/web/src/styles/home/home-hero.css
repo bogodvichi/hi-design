@@ -513,6 +513,13 @@
   margin: 0;
 }
 
+/* The shared project composer must remain flush with the tray inset. Keep it
+   out of page-entrance transforms so the white frame never starts 10px low. */
+.composer-surface--project > .home-hero__input-card {
+  animation: none;
+  transform: none;
+}
+
 .home-hero__input-card {
   position: relative;
   --home-hero-prompt-max-height: 180px;
@@ -588,155 +595,10 @@
   padding: 0;
   font-size: 12px;
 }
-.home-hero__active-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-8);
-  min-width: 0;
-  max-width: min(240px, 100%);
-  min-height: var(--spacing-36);
-  padding: 0 var(--spacing-12);
-  border-radius: var(--radius-pill);
-  background: transparent;
-  border: var(--stroke-thin) solid var(--border);
-  color: var(--text);
-  line-height: 1;
-  box-shadow: none;
-}
-.home-hero__active-chip--skill {
-  background: color-mix(in srgb, var(--bg-subtle) 88%, var(--accent-tint));
-  color: var(--text-strong);
-}
-.home-hero__active-chip--command {
-  background: color-mix(in srgb, var(--green, #16a34a) 10%, var(--bg-panel));
-  border-color: color-mix(in srgb, var(--green, #16a34a) 22%, var(--border-soft));
-  color: color-mix(in srgb, var(--green, #16a34a) 78%, var(--text-strong));
-}
-.home-hero__active-chip--context {
-  background: transparent;
-  color: var(--text);
-  border-color: var(--border);
-}
-.home-hero__active-chip--file {
-  background: transparent;
-}
-.home-hero__active-chip--image-file {
-  gap: var(--spacing-6);
-  min-height: 44px;
-  padding: var(--spacing-4) var(--spacing-6) var(--spacing-4) var(--spacing-4);
-  border-radius: var(--radius-large);
-  background: var(--bg-panel);
-  color: var(--text);
-}
-.home-hero__active-file-group {
-  display: contents;
-}
-.home-hero__active-order {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 15px;
-  height: 15px;
-  flex: 0 0 15px;
-  border-radius: var(--radius-xs);
-  background: color-mix(in srgb, var(--text) 7%, var(--bg-subtle));
-  color: var(--text-muted);
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1;
-}
-.home-hero__active-label {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  line-height: 18px;
-}
-.home-hero__active-meta {
-  flex: 0 0 auto;
-  color: var(--text-soft);
-  font-size: 12px;
-  line-height: 18px;
-}
-.home-hero__active-chip-body {
-  appearance: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-.home-hero__active-chip-body:disabled {
-  cursor: default;
-}
-.home-hero__active-chip-body:hover {
-  background: transparent;
-  color: var(--text);
-}
-.home-hero__active-chip--image-file .home-hero__active-chip-body:hover {
-  color: inherit;
-}
-.home-hero__active-chip-body:disabled:hover {
-  color: inherit;
-}
-.home-hero__active-file-body {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacing-8);
-  min-width: 0;
-  color: inherit;
-  font: inherit;
-  line-height: 1;
-}
-.home-hero__active-icon {
-  width: var(--spacing-24);
-  height: var(--spacing-24);
-  flex: 0 0 var(--spacing-24);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-pill);
-  background: color-mix(in srgb, currentColor 8%, var(--bg-subtle));
-  color: inherit;
-}
-.home-hero__active-thumb {
-  display: block;
-  width: var(--spacing-36);
-  height: var(--spacing-36);
-  flex: 0 0 var(--spacing-36);
-  border-radius: var(--radius-medium);
-  object-fit: cover;
-  background: var(--bg-subtle);
-}
-.home-hero__active-clear {
-  appearance: none;
-  width: var(--spacing-20);
-  height: var(--spacing-20);
-  flex: 0 0 var(--spacing-20);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-pill);
-  color: inherit;
-  cursor: pointer;
-  padding: 0;
-  line-height: 1;
-  opacity: 0.62;
-}
-.home-hero__active-clear svg {
-  display: block;
-}
-.home-hero__active-clear:hover {
-  opacity: 1;
-  background: transparent;
-  color: var(--text);
+.home-hero__outside-contexts {
+  width: 100%;
+  max-width: none;
+  padding: 0 var(--spacing-4);
 }
 .home-hero__prompt-surface {
   display: flex;

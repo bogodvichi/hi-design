@@ -21,6 +21,11 @@ afterEach(() => {
 const CONNECTOR = { id: 'c1', name: 'Notion', status: 'connected' } as never;
 const PLUGIN = { id: 'p1', title: 'Deck Maker', manifest: {} } as never;
 const MCP_SERVER = { id: 'm1', label: 'Linear', enabled: true } as never;
+const PERSONAL_SKILL = { id: 's-mine', name: 'My Skill', ownerMemberId: 'member-me' } as never;
+const TEAM_SKILL = { id: 's-team', name: 'Team Skill', workspaceId: 'team-allowed' } as never;
+const OTHER_TEAM_SKILL = { id: 's-other', name: 'Other Team Skill', workspaceId: 'team-other' } as never;
+const TEAM_MCP = { id: 'm-team', label: 'Team MCP', enabled: true, workspaceId: 'team-allowed' } as never;
+const OTHER_TEAM_MCP = { id: 'm-other', label: 'Other Team MCP', enabled: true, workspaceId: 'team-other' } as never;
 
 function renderMenu(
   overrides: Partial<ComponentProps<typeof ComposerPlusMenu>> = {},
@@ -72,6 +77,38 @@ function expectPickRowPreventsMousedown(name: RegExp) {
 }
 
 describe('ComposerPlusMenu pick-row caret protection', () => {
+  it('always shows All, Mine, and Team and filters Team by permitted workspaces', () => {
+    renderMenu({
+      skills: [PERSONAL_SKILL, TEAM_SKILL, OTHER_TEAM_SKILL],
+      mcpServers: [TEAM_MCP, OTHER_TEAM_MCP],
+      personalMemberId: 'member-me',
+      teamWorkspaceIds: ['team-allowed'],
+    });
+    fireEvent.click(screen.getByTestId('plus-trigger'));
+    fireEvent.click(screen.getByTestId('composer-plus-skills'));
+
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+      'All',
+      'Mine',
+      'Team',
+    ]);
+    fireEvent.click(screen.getByRole('tab', { name: 'Team' }));
+    expect(screen.getByText('Team Skill')).toBeTruthy();
+    expect(screen.queryByText('Other Team Skill')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('plus-trigger'));
+    fireEvent.click(screen.getByTestId('plus-trigger'));
+    fireEvent.click(screen.getByTestId('composer-plus-mcp'));
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+      'All',
+      'Mine',
+      'Team',
+    ]);
+    fireEvent.click(screen.getByRole('tab', { name: 'Team' }));
+    expect(screen.getByText('Team MCP')).toBeTruthy();
+    expect(screen.queryByText('Other Team MCP')).toBeNull();
+  });
+
   it('cancels mousedown on the connector / plugin / MCP pick rows', () => {
     renderMenu();
     fireEvent.click(screen.getByTestId('plus-trigger'));

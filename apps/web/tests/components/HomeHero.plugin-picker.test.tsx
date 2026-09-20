@@ -152,10 +152,10 @@ describe('HomeHero plugin picker', () => {
     fireEvent.change(input, { target: { files: [file] } });
 
     await waitFor(() => {
-      expect(screen.getByTestId('home-hero-staged-files').textContent).toContain('package.json');
+      expect(screen.getByTestId('home-hero-outside-contexts').textContent).toContain('package.json');
     });
     fireEvent.click(screen.getByLabelText('Remove package.json'));
-    expect(screen.queryByTestId('home-hero-staged-files')).toBeNull();
+    expect(screen.queryByTestId('home-hero-outside-contexts')).toBeNull();
   });
 
   it('shows linked local code as one removable context chip without changing the prompt', async () => {
@@ -195,7 +195,7 @@ describe('HomeHero plugin picker', () => {
     });
     expect(screen.getByTestId('home-hero-input').textContent).toBe('');
 
-    fireEvent.click(screen.getByTestId('home-hero-context-clear-local-code:/Users/me/reference-dir'));
+    fireEvent.click(screen.getByLabelText('Remove reference-dir'));
     expect(screen.queryByTestId('home-hero-context-workspace-local-code:/Users/me/reference-dir')).toBeNull();
   });
 
@@ -883,7 +883,7 @@ describe('HomeHero plugin picker', () => {
     );
 
     const chip = screen.getByTestId('home-hero-active-plugin');
-    const clear = chip.querySelector('.home-hero__active-clear') as HTMLButtonElement | null;
+    const clear = chip.querySelector('.staged-remove') as HTMLButtonElement | null;
     expect(clear).toBeTruthy();
     fireEvent.click(clear!);
     expect(onClearActivePlugin).toHaveBeenCalled();
@@ -916,6 +916,6 @@ describe('HomeHero plugin picker', () => {
     );
 
     const chip = screen.getByTestId('home-hero-active-plugin');
-    expect(chip.querySelector('.home-hero__active-clear')).toBeNull();
+    expect(chip.querySelector('.staged-remove')).toBeNull();
   });
 });

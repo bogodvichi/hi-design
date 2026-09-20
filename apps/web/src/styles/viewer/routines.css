@@ -2279,11 +2279,11 @@
   box-shadow: var(--shadow-sm);
 }
 .chat-composer-fixed-layer .composer-shell {
-  padding: 5px;
+  padding: var(--spacing-4) var(--spacing-4) var(--spacing-8);
   gap: 8px;
-  border-color: var(--border-soft);
-  border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--bg-subtle) 45%, var(--bg-panel));
+  border: none;
+  border-radius: 20px;
+  background: #f5f5f5;
   box-shadow: none;
 }
 
@@ -2304,6 +2304,12 @@
   margin-left: 0;
   margin-right: 0;
 }
+/* The active project tab is carried in run context but intentionally hidden in
+   the fixed composer. Hide its otherwise-empty row too: a zero-content flex
+   item still consumed the shell's 8px gap and pushed the white frame down. */
+.chat-composer-fixed-layer .composer-outside-contexts--current-only {
+  display: none;
+}
 .app .composer-shell:focus-within {
   border-color: color-mix(in srgb, var(--accent) 34%, var(--border-strong));
   box-shadow:
@@ -2311,7 +2317,6 @@
     0 0 0 1px color-mix(in srgb, var(--accent) 6%, transparent);
 }
 .chat-composer-fixed-layer .composer-shell:focus-within {
-  border-color: var(--border-soft);
   box-shadow: none;
 }
 .app .composer.drag-active .composer-shell {
@@ -2324,19 +2329,33 @@
 }
 .chat-composer-fixed-layer .composer-input-wrap {
   background: #fff;
-  /* No inner frame — the input sits directly on the shell surface. The shell
-     keeps its own outer border (see .composer-shell above). */
+  /* The white editor owns the focus stroke; the gray shell stays a neutral
+     tray for attachments and non-Skill/MCP context. */
   border-color: transparent;
-  border-radius: var(--radius-lg);
-  overflow: hidden;
+  border-radius: 16px;
+  max-width: none;
+  padding: var(--spacing-8);
+  gap: var(--spacing-8);
+  overflow: visible;
 }
 .chat-composer-fixed-layer .composer-input-wrap:focus-within {
-  border-color: transparent;
+  border-color: var(--border-strong);
 }
 .chat-composer-fixed-layer .composer-input-editor,
 .chat-composer-fixed-layer .composer-input-editor [contenteditable='true'],
 .chat-composer-fixed-layer .composer-input-editor .composer-editable {
   border-radius: inherit;
+}
+.chat-composer-fixed-layer .composer-surface--project .home-hero__lexical .composer-input-editor,
+.chat-composer-fixed-layer .composer-surface--project .home-hero__lexical .composer-editable {
+  min-height: 56px;
+}
+.chat-composer-fixed-layer .composer-surface--project .composer-row {
+  border-top: 0;
+}
+.chat-composer-fixed-layer .composer-surface--project .composer-outside-contexts > .staged-row {
+  flex: 1 1 100%;
+  min-width: 0;
 }
 .chat-composer-fixed-layer .composer-input-editor [contenteditable='true'],
 .chat-composer-fixed-layer .composer-input-editor .composer-editable {

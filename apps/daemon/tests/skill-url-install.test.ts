@@ -1,7 +1,8 @@
-import { Readable } from 'node:stream';
+import { randomBytes } from 'node:crypto';
 import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { Readable } from 'node:stream';
 import { c as createTar } from 'tar';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -310,6 +311,29 @@ describe('installSkillFromRemoteSource', () => {
     );
 
     expect(result).toMatchObject({ ok: true, id: 'remote-skill' });
+  });
+
+  it('installs a Skill whose extracted contents exceed the former 50 MiB cap', async () => {
+    const archive = await archiveFrom(async (root) => {
+      const skillRoot = path.join(root, 'large-skill');
+      const largeAsset = path.join(skillRoot, 'assets', 'large.bin');
+      await mkdir(path.dirname(largeAsset), { recursive: true });
+      await writeFile(
+        path.join(skillRoot, 'SKILL.md'),
+        '---\nname: large-skill\ndescription: Large fixture\n---\n\n# Workflow\n',
+      );
+      await writeFile(largeAsset, randomBytes(50 * 1024 * 1024));
+    }, ['large-skill']);
+    const userSkillsRoot = await tempRoot('od-user-skills-');
+
+    const result = await installSkillFromRemoteSource(
+      userSkillsRoot,
+      'https://downloads.example/large-skill.tgz',
+      { fetcher: archiveFetcher(archive) },
+    );
+
+    expect(result.ok, result.ok ? undefined : result.error).toBe(true);
+    expect(result).toMatchObject({ ok: true, id: 'large-skill' });
   });
 
   it.each([

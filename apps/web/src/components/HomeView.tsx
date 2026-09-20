@@ -354,6 +354,7 @@ const EMPTY_PROMPT_TEMPLATES: PromptTemplateSummary[] = [];
 // safely.
 const HOME_COMPOSER_PROMPT_KEY = 'open-design:home-composer:prompt';
 const HOME_COMPOSER_DESIGN_SYSTEM_SCOPE_KEY = 'open-design:home-composer:design-system-scope';
+const HOME_COMPOSER_TRANSIENT_KEY = 'open-design:home-composer:transient';
 // The active type-chip + bound plugin (the "创作类型" + "示例提示词" pick) is a
 // third piece of composer state that used to fall through this same crack:
 // `active` (below) held only a live `InstalledPluginRecord` + resolved apply
@@ -393,6 +394,59 @@ const HOME_COMPOSER_SEED_EVENT = 'open-design:home-composer:seed';
 interface HomeComposerDraftData {
   text: string;
   mentions: InlineMentionEntity[];
+}
+
+interface HomeComposerTransientDraft {
+  sessionMode: ChatSessionMode;
+  selectedSkills?: SkillSummary[];
+  /** Compatibility with an in-memory draft created before multi-Skill selection. */
+  activeSkill?: SkillSummary | null;
+  activeSkillCatalogScope: LocalCatalogScope | null;
+  selectedPluginContexts: SelectedPluginContext[];
+  selectedMcpContexts: SelectedMcpContext[];
+  selectedConnectorContexts: SelectedConnectorContext[];
+  contextWorkspaceItems: WorkspaceContextItem[];
+  stagedFiles: File[];
+  communityReference: { title: string } | null;
+  workingDir: string | null;
+  workingDirToken: string | null;
+}
+
+// File objects and live catalogue records cannot safely round-trip through
+// JSON. Keep the unsent Home selection snapshot for the lifetime of this app
+// tab, and pair it with a localStorage marker so ordinary test/profile storage
+// clearing also invalidates the in-memory copy. Text and the creation-type
+// identity keep their existing durable localStorage paths above.
+let homeComposerTransientDraft: HomeComposerTransientDraft | null = null;
+
+function readHomeComposerTransientDraft(): HomeComposerTransientDraft | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    if (window.localStorage.getItem(HOME_COMPOSER_TRANSIENT_KEY) !== '1') return null;
+  } catch {
+    return null;
+  }
+  if (homeComposerTransientDraft) return homeComposerTransientDraft;
+  writeHomeComposerDraft(HOME_COMPOSER_TRANSIENT_KEY, null);
+  return null;
+}
+
+function writeHomeComposerTransientDraft(draft: HomeComposerTransientDraft | null): void {
+  const hasSelection = Boolean(
+    draft && (
+      draft.sessionMode !== 'design'
+      || (draft.selectedSkills?.length ?? 0) > 0
+      || draft.selectedPluginContexts.length > 0
+      || draft.selectedMcpContexts.length > 0
+      || draft.selectedConnectorContexts.length > 0
+      || draft.contextWorkspaceItems.length > 0
+      || draft.stagedFiles.length > 0
+      || draft.communityReference
+      || draft.workingDir
+    )
+  );
+  homeComposerTransientDraft = hasSelection ? draft : null;
+  writeHomeComposerDraft(HOME_COMPOSER_TRANSIENT_KEY, hasSelection ? '1' : null);
 }
 
 function readHomeComposerDraft(key: string): string | null {
@@ -516,6 +570,7 @@ function clearHomeComposerDraft(): void {
  writeHomeComposerDraftData(HOME_COMPOSER_PROMPT_KEY, null);
  writeHomeComposerDraft(HOME_COMPOSER_DESIGN_SYSTEM_SCOPE_KEY, null);
  writeHomeComposerChipDraft(null);
+ writeHomeComposerTransientDraft(null);
 }
 
 /**
@@ -691,25 +746,48 @@ export function HomeView({
     text: string;
     chipId: string | null;
   } | null>(null);
-  const [sessionMode, setSessionMode] = useState<ChatSessionMode>('design');
-  const [activeSkill, setActiveSkill] = useState<SkillSummary | null>(null);
+  const restoredTransientDraft = useRef(readHomeComposerTransientDraft()).current;
+  const [sessionMode, setSessionMode] = useState<ChatSessionMode>(
+    () => restoredTransientDraft?.sessionMode ?? 'design',
+  );
+  const [selectedSkills, setSelectedSkills] = useState<SkillSummary[]>(
+    () => restoredTransientDraft?.selectedSkills
+      ?? (restoredTransientDraft?.activeSkill ? [restoredTransientDraft.activeSkill] : []),
+  );
+  const activeSkill = selectedSkills[0] ?? null;
   const [activeSkillCatalogScope, setActiveSkillCatalogScope] =
-    useState<LocalCatalogScope | null>(null);
-  const [selectedPluginContexts, setSelectedPluginContexts] = useState<SelectedPluginContext[]>([]);
-  const [selectedMcpContexts, setSelectedMcpContexts] = useState<SelectedMcpContext[]>([]);
-  const [selectedConnectorContexts, setSelectedConnectorContexts] = useState<SelectedConnectorContext[]>([]);
-  const [contextWorkspaceItems, setContextWorkspaceItems] = useState<WorkspaceContextItem[]>([]);
-  const [stagedFiles, setStagedFiles] = useState<File[]>([]);
+    useState<LocalCatalogScope | null>(() => restoredTransientDraft?.activeSkillCatalogScope ?? null);
+  const [selectedPluginContexts, setSelectedPluginContexts] = useState<SelectedPluginContext[]>(
+    () => restoredTransientDraft?.selectedPluginContexts ?? [],
+  );
+  const [selectedMcpContexts, setSelectedMcpContexts] = useState<SelectedMcpContext[]>(
+    () => restoredTransientDraft?.selectedMcpContexts ?? [],
+  );
+  const [selectedConnectorContexts, setSelectedConnectorContexts] = useState<SelectedConnectorContext[]>(
+    () => restoredTransientDraft?.selectedConnectorContexts ?? [],
+  );
+  const [contextWorkspaceItems, setContextWorkspaceItems] = useState<WorkspaceContextItem[]>(
+    () => restoredTransientDraft?.contextWorkspaceItems ?? [],
+  );
+  const [stagedFiles, setStagedFiles] = useState<File[]>(
+    () => restoredTransientDraft?.stagedFiles ?? [],
+  );
 
   // Community reference context: set when the user picks "参考" from Hi广场.
   // Shows a context chip so the reference origin is visible and removable,
   // matching the UX of plugin/MCP/connector context chips.
-  const [communityReference, setCommunityReference] = useState<{ title: string } | null>(null);
-  const [workingDir, setWorkingDir] = useState<string | null>(null);
+  const [communityReference, setCommunityReference] = useState<{ title: string } | null>(
+    () => restoredTransientDraft?.communityReference ?? null,
+  );
+  const [workingDir, setWorkingDir] = useState<string | null>(
+    () => restoredTransientDraft?.workingDir ?? null,
+  );
   // Token paired with `workingDir` when picked through the desktop host's
   // native dialog. Spent on the post-creation working-dir POST so the
   // daemon's desktop-auth gate accepts the path. Null for web picks.
-  const [workingDirToken, setWorkingDirToken] = useState<string | null>(null);
+  const [workingDirToken, setWorkingDirToken] = useState<string | null>(
+    () => restoredTransientDraft?.workingDirToken ?? null,
+  );
   // Read the persisted composer draft exactly once per mount (see the module
   // note above). Restoring here is what makes the prompt survive a tab switch,
   // since the whole view is torn down on every switch.
@@ -771,6 +849,33 @@ export function HomeView({
   useEffect(() => {
     writeHomeComposerDraftData(HOME_COMPOSER_PROMPT_KEY, { text: prompt, mentions: promptMentions });
   }, [prompt, promptMentions]);
+  useEffect(() => {
+    writeHomeComposerTransientDraft({
+      sessionMode,
+      selectedSkills,
+      activeSkillCatalogScope,
+      selectedPluginContexts,
+      selectedMcpContexts,
+      selectedConnectorContexts,
+      contextWorkspaceItems,
+      stagedFiles,
+      communityReference,
+      workingDir,
+      workingDirToken,
+    });
+  }, [
+    selectedSkills,
+    activeSkillCatalogScope,
+    communityReference,
+    contextWorkspaceItems,
+    selectedConnectorContexts,
+    selectedMcpContexts,
+    selectedPluginContexts,
+    sessionMode,
+    stagedFiles,
+    workingDir,
+    workingDirToken,
+  ]);
   // Persist the active chip/plugin identity the same way — only the
   // serializable fields, not `active` itself (see the module note above).
   // Clearing on `active === null` covers the explicit-clear (×) and the
@@ -1078,64 +1183,10 @@ export function HomeView({
       });
     return () => controller.abort();
 }, [active?.mediaSurface, active?.inputs.model, elevenLabsVoicesLoaded]);
- // On the /home view the project does not exist yet, so workspaceContext
-// may not reflect the team the user navigated from. Instead, read the
-// `od:home-folder-context` localStorage entry (set by TeamSpaceView when
-// the user clicks "new project" from /team/xxx). Its `workspaceId` is a
-// regular (non-shared) team id, so its presence means the Team tab should
-// appear. This is the only signal — we do NOT fall back to
-// workspaceContext on the home view.
- const [homeFolderWorkspaceId, setHomeFolderWorkspaceId] = useState<string | null>(() => {
-    try {
-      const ctx = localStorage.getItem('od:home-folder-context');
-      if (!ctx) return null;
-      const parsed = JSON.parse(ctx);
-      return typeof parsed?.workspaceId === 'string' ? parsed.workspaceId : null;
-    } catch {
-      return null;
-    }
-  });
-  // Re-read the localStorage value whenever it changes — both the
-  // cross-document `storage` event and the same-document custom event
-  // dispatched by TeamSpaceView / PersonalAllView / HomeHero close button.
-  useEffect(() => {
-    function readFolderWorkspaceId() {
-      try {
-        const ctx = localStorage.getItem('od:home-folder-context');
-        if (!ctx) return setHomeFolderWorkspaceId(null);
-        const parsed = JSON.parse(ctx);
-        setHomeFolderWorkspaceId(
-          typeof parsed?.workspaceId === 'string' ? parsed.workspaceId : null,
-        );
-      } catch {
-        setHomeFolderWorkspaceId(null);
-      }
-    }
-    function onStorage(e: StorageEvent) {
-      if (e.key === 'od:home-folder-context') readFolderWorkspaceId();
-    }
-    window.addEventListener('storage', onStorage);
-    window.addEventListener('od:folder-context-changed', readFolderWorkspaceId);
-    return () => {
-      window.removeEventListener('storage', onStorage);
-      window.removeEventListener('od:folder-context-changed', readFolderWorkspaceId);
-    };
-  }, []);
-
-  const showTeamTab = homeFolderWorkspaceId !== null;
-
-  // Resolve the personal and team workspace identities from the workspace
-  // directory -- the same source `/personal-all` and `/team/xx` use. The
-  // personal workspace (isDefaultTeam === true) gives us the member ID for
-  // the "Mine" tab's cloud fetch; the team workspace (matched by
-  // homeFolderWorkspaceId) gives us the full headers for the "Team" tab's
-  // mode=square cloud fetch.
+ // The verified workspace directory is the authority for both personal
+ // ownership and which team resource bindings this user may see.
   const [personalWorkspace, setPersonalWorkspace] = useState<WorkspaceDirectoryItem | null>(null);
-  const [teamWorkspace, setTeamWorkspace] = useState<{
-    workspaceId: string;
-    workspaceMemberId: string;
-    workspaceType: string;
-  } | null>(null);
+  const [teamWorkspaceIds, setTeamWorkspaceIds] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1149,22 +1200,23 @@ export function HomeView({
         if (personal) {
           setPersonalWorkspace(personal);
         }
-        if (homeFolderWorkspaceId) {
-          const team = body.items?.find((item) => item.workspaceId === homeFolderWorkspaceId);
-          if (team) {
-            setTeamWorkspace({
-              workspaceId: team.workspaceId,
-              workspaceMemberId: team.workspaceMemberId,
-              workspaceType: team.workspaceType,
-            });
-          }
-        }
+        setTeamWorkspaceIds(
+          (body.items ?? [])
+            .filter((item) => (
+              item.workspaceType === 'team'
+              && !item.isDefaultTeam
+              && !item.isSharedSpace
+              && item.memberStatus === 'active'
+              && item.lifecycleState === 'active'
+            ))
+            .map((item) => item.workspaceId),
+        );
       } catch {
         // leave null -- tabs fall back to legacy client-side filtering
       }
     })();
     return () => { cancelled = true; };
-  }, [homeFolderWorkspaceId]);
+  }, []);
 
   const personalWorkspaceContext = personalWorkspace
     ? workspaceContextFromDirectoryItem(personalWorkspace)
@@ -1189,11 +1241,10 @@ export function HomeView({
 
 
 
- // Re-fetch skills from the cloud when the user switches the Skills scope
- // tab in ComposerPlusMenu. The parent (App.tsx via EntryShell) owns the
- // skills state, so we delegate to onSkillsRefresh.
-const handleSkillTabChange = useCallback((tab: 'all' | 'mine' | 'team') => {
-    void onSkillsRefresh?.(tab === 'mine' || tab === 'team');
+ // Scope tabs only filter the already-authorized catalogue locally. Refresh
+ // the complete catalogue so switching tabs cannot evict a staged choice.
+ const handleSkillTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
+    void onSkillsRefresh?.();
   }, [onSkillsRefresh]);
 
  // Re-fetch MCP servers and team cloud templates when the user switches
@@ -1301,7 +1352,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
       // and surface a context chip so the reference origin is visible and
       // removable, matching the UX of plugin/MCP/connector context chips.
       setActive(null);
-      setActiveSkill(null);
+      setSelectedSkills([]);
       setActiveSkillCatalogScope(null);
       setSelectedPluginContexts([]);
       setSelectedMcpContexts([]);
@@ -1328,7 +1379,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
     }
 
     setActive(null);
-    setActiveSkill(null);
+    setSelectedSkills([]);
     setActiveSkillCatalogScope(null);
     setSelectedPluginContexts([]);
     setSelectedMcpContexts([]);
@@ -1490,13 +1541,22 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
 
   useEffect(() => {
     if (skillsLoading) return;
-    setActiveSkill((current) => {
-      if (!current) return current;
-      const rebound = selectableSkills.find((skill) => skill.id === current.id) ?? null;
+    setSelectedSkills((current) => {
+      if (current.length === 0) return current;
+      let changed = false;
+      const next = current.flatMap((selected) => {
+        const rebound = selectableSkills.find((skill) => skill.id === selected.id) ?? null;
+        if (!rebound) {
+          changed = true;
+          return [];
+        }
+        if (rebound !== selected) changed = true;
+        return [rebound];
+      });
       setActiveSkillCatalogScope(
-        rebound ? localCatalogScopeFromWorkspaceContext(workspaceContext) : null,
+        next.length > 0 ? localCatalogScopeFromWorkspaceContext(workspaceContext) : null,
       );
-      return rebound;
+      return changed ? next : current;
     });
     setDetailsSkill((current) => {
       if (!current) return current;
@@ -2130,6 +2190,16 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
     focusPromptAtEnd();
   }
 
+  function stagePluginContext(record: InstalledPluginRecord) {
+    setSelectedPluginContexts((current) => (
+      current.some((item) => item.record.id === record.id)
+        ? current
+        : [...current, { record, inlineBacked: false }]
+    ));
+    setError(null);
+    focusPromptAtEnd();
+  }
+
   function useExamplePlugin(record: InstalledPluginRecord, chipId: string, promptText: string) {
     setError(null);
     // P0 ui_click area=chat_composer element=example_prompt: the user picked a
@@ -2519,9 +2589,24 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
   // order already ranks a user-selected Skill above its own), so nothing has
   // to be discarded to keep the rule defined.
   function stageSkill(skill: SkillSummary) {
-    setActiveSkill(skill);
+    setSelectedSkills((current) => (
+      current.some((item) => item.id === skill.id) ? current : [...current, skill]
+    ));
     setActiveSkillCatalogScope(localCatalogScopeFromWorkspaceContext(workspaceContext));
     setError(null);
+  }
+
+  function removeSkill(skillId: string) {
+    const skill = selectedSkills.find((item) => item.id === skillId) ?? null;
+    setSelectedSkills((current) => {
+      const next = current.filter((item) => item.id !== skillId);
+      if (next.length === 0) setActiveSkillCatalogScope(null);
+      return next;
+    });
+    if (skill) {
+      setPrompt((current) => removeContextMentionsFromPrompt(current, [skill.name, skill.id]));
+      setPromptEditedByUser(true);
+    }
   }
 
   function useSkill(skill: SkillSummary, nextPrompt: string | null) {
@@ -2579,6 +2664,16 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
     focusPromptAtEnd();
   }
 
+  function stageConnectorContext(connector: ConnectorDetail) {
+    setSelectedConnectorContexts((current) => (
+      current.some((item) => item.connector.id === connector.id)
+        ? current
+        : [...current, { connector, inlineBacked: false }]
+    ));
+    setError(null);
+    focusPromptAtEnd();
+  }
+
   function removeConnectorContext(connectorId: string) {
     const connector = selectedConnectorContexts.find((item) => item.connector.id === connectorId)?.connector ?? null;
     setSelectedConnectorContexts((current) => current.filter((item) => item.connector.id !== connectorId));
@@ -2596,7 +2691,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
     const nextPrompt = buildPluginAuthoringPromptForInputs(nextInputs);
     runWithReplacementConfirmation('Plugin authoring', nextPrompt, async () => {
       setActive(null);
-      setActiveSkill(null);
+      setSelectedSkills([]);
       setActiveSkillCatalogScope(null);
       setFallbackProjectKind('other');
       setFallbackProjectMetadata(null);
@@ -3084,7 +3179,8 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
       // inside it. In Design mode, free-form prompts route through the default
       // design router; in Ask mode they stay plain chat conversations with no
       // hidden router plugin.
-      const resolvedSkillId = activeSkill?.id ?? null;
+      const resolvedSkillIds = selectedSkills.map((skill) => skill.id);
+      const resolvedSkillId = resolvedSkillIds[0] ?? null;
       const submittedChip = submittedRouteChipId
         ? findChip(submittedRouteChipId)
         : null;
@@ -3145,8 +3241,13 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
         contextPlugins,
         contextMcpServers,
         contextConnectors,
-        ...(contextWorkspaceItems.length > 0
-          ? { initialRunContext: { workspaceItems: contextWorkspaceItems } }
+        ...(resolvedSkillIds.length > 0 || contextWorkspaceItems.length > 0
+          ? {
+              initialRunContext: {
+                ...(resolvedSkillIds.length > 0 ? { skillIds: resolvedSkillIds } : {}),
+                ...(contextWorkspaceItems.length > 0 ? { workspaceItems: contextWorkspaceItems } : {}),
+              },
+            }
           : {}),
         attachments: stagedFiles,
         ...(workingDir ? { workingDir } : {}),
@@ -3176,7 +3277,13 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
       setSelectedMcpContexts([]);
       setSelectedConnectorContexts([]);
       setContextWorkspaceItems([]);
+      setSelectedSkills([]);
+      setActiveSkillCatalogScope(null);
+      setStagedFiles([]);
       setCommunityReference(null);
+      setWorkingDir(null);
+      setWorkingDirToken(null);
+      setSessionMode('design');
     } catch (err) {
       // A submit handler that throws (instead of resolving false) lands on
       // the same recovery path as a rejected creation.
@@ -3271,15 +3378,17 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
         activeSkillId={activeSkill?.id ?? null}
         activeSkillTitle={activeSkill ? localizeSkillName(locale, activeSkill) : null}
         activeSkillRecord={activeSkill}
+        selectedSkills={selectedSkills}
         activeChipId={active?.chipId ?? null}
         activePrototypeSubtypeId={active?.prototypeSubtypeId ?? null}
         showActivePluginChip={showActivePluginChip}
         onClearActivePlugin={clearActivePlugin}
         onClearActiveChip={clearActiveChipSelection}
         onClearActiveSkill={() => {
-          setActiveSkill(null);
+          setSelectedSkills([]);
           setActiveSkillCatalogScope(null);
         }}
+        onRemoveSkill={removeSkill}
         selectedPluginContexts={selectedPluginContexts.map((item) => item.record)}
         selectedMcpContexts={selectedMcpContexts.map((item) => item.server)}
         selectedConnectorContexts={selectedConnectorContexts.map((item) => item.connector)}
@@ -3321,13 +3430,12 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
         skillsLoading={skillsLoading}
         mcpOptions={enabledMcpServers}
         mcpLoading={mcpLoading}
-       showTeamTab={showTeamTab}
-personalMemberId={personalWorkspace?.workspaceMemberId}
+        personalMemberId={personalWorkspace?.workspaceMemberId}
         personalWorkspaceContext={personalWorkspaceContext}
-teamWorkspaceId={teamWorkspace?.workspaceId}
-       onSkillTabChange={handleSkillTabChange}
+        teamWorkspaceIds={teamWorkspaceIds}
+        onSkillTabChange={handleSkillTabChange}
         onMcpTabChange={handleMcpTabChange}
-       connectorOptions={connectors.filter((connector) => connector.status === 'connected')}
+        connectorOptions={connectors.filter((connector) => connector.status === 'connected')}
         pendingPluginId={pendingApplyId}
         pendingChipId={pendingChipId}
         submitDisabled={
@@ -3342,12 +3450,14 @@ teamWorkspaceId={teamWorkspace?.workspaceId}
           Boolean(active && !active.inputsValid && requiredInputsAreUserFillable(active))
         }
         onPickPlugin={(record, nextPrompt) => addPluginContext(record, nextPrompt)}
+        onStagePlugin={stagePluginContext}
         onPickExamplePlugin={useExamplePlugin}
         onPickSkill={useSkill}
         onStageSkill={stageSkill}
         onPickMcp={useMcpServer}
         onStageMcp={stageMcpServer}
         onPickConnector={useConnector}
+        onStageConnector={stageConnectorContext}
         onPickChip={pickChip}
         onPickPrototypeSubtype={pickPrototypeSubtype}
         contextItemCount={contextItemCount}

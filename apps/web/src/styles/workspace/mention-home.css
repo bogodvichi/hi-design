@@ -295,18 +295,6 @@
   overflow: hidden;
 }
 
-/* Staged skill chips above the textarea. Reuse the staged-chip baseline
-   so they line up with attachment chips. */
-.staged-skills-row { gap: 6px; flex-wrap: wrap; }
-.staged-chip.staged-skill {
-  background: color-mix(in oklab, var(--accent) 8%, var(--bg-subtle));
-  border-color: color-mix(in oklab, var(--accent) 28%, var(--border));
-}
-.staged-chip.staged-skill .staged-icon { color: var(--accent); }
-.staged-chip.staged-skill-user {
-  background: color-mix(in oklab, var(--accent) 14%, var(--bg-subtle));
-}
-
 /* ===========================================================
    Modal / Settings
    =========================================================== */

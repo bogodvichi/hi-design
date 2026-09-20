@@ -25,7 +25,6 @@ const MAAS_API_BASE = `${MAAS_ORIGIN}/api/maas-web-config/component/skill`;
 const MAAS_USER_URL = `${MAAS_ORIGIN}/api/maas-web-admin/user/currentUser`;
 const MAAS_SPACE_LIST_URL = `${MAAS_ORIGIN}/api/maas-web-config/space/spaceList`;
 const MAAS_AES_KEY = Buffer.from('hikvision1234567', 'utf8');
-const MAX_SKILL_ZIP_BYTES = 50 * 1024 * 1024;
 const LIST_PAGE_SIZE = 200;
 const MAX_LIST_PAGES = 20;
 const SESSION_CACHE_MS = 5 * 60_000;
@@ -204,11 +203,8 @@ function safeZipPath(input: string): string {
 export async function extractMaasSkillZip(
   buffer: Buffer,
   destination: string,
-  maxBytes = MAX_SKILL_ZIP_BYTES,
 ): Promise<void> {
-  if (buffer.length === 0 || buffer.length > maxBytes) {
-    throw new Error('MAAS Skillhub ZIP is empty or too large');
-  }
+  if (buffer.length === 0) throw new Error('MAAS Skillhub ZIP is empty');
   const zip = await JSZip.loadAsync(buffer);
   const fileEntries = Object.values(zip.files).filter((entry) => !entry.dir);
   if (fileEntries.length === 0) throw new Error('MAAS Skillhub ZIP contains no files');
@@ -223,7 +219,6 @@ export async function extractMaasSkillZip(
     throw new Error('MAAS Skillhub ZIP does not contain SKILL.md at its root');
   }
 
-  let extractedBytes = 0;
   for (let index = 0; index < fileEntries.length; index += 1) {
     const entry = fileEntries[index]!;
     const safeName = safeNames[index]!;
@@ -234,8 +229,6 @@ export async function extractMaasSkillZip(
       throw new Error(`MAAS Skillhub ZIP contains a symbolic link: ${entry.name}`);
     }
     const content = await entry.async('nodebuffer');
-    extractedBytes += content.length;
-    if (extractedBytes > maxBytes) throw new Error('MAAS Skillhub ZIP expands beyond 50 MiB');
     const target = path.join(destination, ...relativeName.split('/'));
     await fs.promises.mkdir(path.dirname(target), { recursive: true });
     await fs.promises.writeFile(target, content, {
@@ -329,13 +322,7 @@ async function directBinaryRequest(
       },
       (response) => {
         const chunks: Buffer[] = [];
-        let receivedBytes = 0;
         response.on('data', (chunk: Buffer) => {
-          receivedBytes += chunk.length;
-          if (receivedBytes > MAX_SKILL_ZIP_BYTES) {
-            response.destroy(new Error('MAAS Skillhub download exceeds 50 MiB'));
-            return;
-          }
           chunks.push(chunk);
         });
         response.on('end', () => {
