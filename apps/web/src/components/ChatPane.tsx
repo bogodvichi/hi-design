@@ -39,10 +39,7 @@ import {
   type DesignToolboxActionId,
 } from '../runtime/design-toolbox';
 import { isRetryableAssistantTerminalFailure } from '../runtime/design-delivery';
-import {
-  isInternalStrategySnapshot,
-  shouldShowSessionModeChip,
-} from '../runtime/strategy-turn-chrome';
+import { isInternalStrategySnapshot } from '../runtime/strategy-turn-chrome';
 import type { Dict } from '../i18n/types';
 import { copyToClipboard } from '../lib/copy-to-clipboard';
 import { useLiquidGlass } from '../hooks/useLiquidGlass';
@@ -55,7 +52,6 @@ import { stripArtifact } from '../artifacts/strip';
 import type { TodoItem } from '../runtime/todos';
 import type {
   AppliedPluginSnapshot,
-  ChatSessionMode,
   RunContextSelection,
   WorkspaceContextItem,
 } from '@open-design/contracts';
@@ -531,8 +527,6 @@ interface Props {
   // canonical text; non-run errors leave the source undefined.
   errorSourceAssistantId?: string | null;
   projectId: string | null;
-  sessionMode?: ChatSessionMode;
-  onSessionModeChange?: (mode: ChatSessionMode) => void;
   // Analytics-only — forwarded to AssistantMessage so the feedback
   // events know which project surface the rating applies to. Optional
   // (defaults to null/'prototype') so unit tests can mount ChatPane
@@ -956,8 +950,6 @@ export function ChatPane({
   error,
   errorSourceAssistantId,
   projectId,
-  sessionMode = 'design',
-  onSessionModeChange,
   projectKindForTracking = null,
   projectFiles,
   activeProjectFileName = null,
@@ -1202,16 +1194,11 @@ export function ChatPane({
   }, []);
   const handleNextStepPromptAction = useCallback((
     prompt: string,
-    options?: { sessionMode?: ChatSessionMode },
   ) => {
-    if (options?.sessionMode && options.sessionMode !== sessionMode) {
-      onSessionModeChange?.(options.sessionMode);
-    }
     composerRef.current?.setDraft(prompt, {
       entryFrom: 'next_step',
-      sessionMode: options?.sessionMode,
     });
-  }, [onSessionModeChange, sessionMode]);
+  }, []);
 
   const handleChatRailNavigate = useCallback(
     (message: ChatMessage, messageIndex: number) => {
@@ -1252,9 +1239,7 @@ export function ChatPane({
     }
     return null;
   }, [displayMessages]);
-  const nextStepVariant: NextStepActionsVariant = sessionMode === 'plan'
-    ? 'plan'
-    : isDesignSystemNextStepProject(projectMetadata)
+  const nextStepVariant: NextStepActionsVariant = isDesignSystemNextStepProject(projectMetadata)
       ? isBrandExtractionNextStepProject(projectMetadata)
         ? brandExtractionComplete
           ? 'brand-extraction'
@@ -1289,22 +1274,6 @@ export function ChatPane({
         text: action.prompt,
         chipId: 'design-system',
       }));
-    }
-    if (nextStepVariant === 'plan') {
-      return [
-        {
-          id: 'plan-generate-from-doc',
-          text: t('nextStep.planGeneratePrompt'),
-          chipId: 'plan',
-          sessionMode: 'design',
-        },
-        {
-          id: 'plan-improve-doc',
-          text: t('nextStep.planImprovePrompt'),
-          chipId: 'plan',
-          sessionMode: 'plan',
-        },
-      ];
     }
     const promptPairs: Array<[string, string]> = [
       ['auto-match', t('chat.designToolbox.prompt.autoMatchIntro')],
@@ -2460,8 +2429,6 @@ export function ChatPane({
       projectId={projectId}
       projectFiles={projectFiles}
       activeProjectFileName={activeProjectFileName}
-      sessionMode={sessionMode}
-      onSessionModeChange={onSessionModeChange}
      skills={skills}
      streaming={streaming}
       onSkillsRefresh={onSkillsRefresh}
@@ -3599,10 +3566,7 @@ function ChatRows({
   onBrandBrowserAssistConfirm?: BrandBrowserAssistConfirm;
   onArtifactShare?: (fileName: string) => void;
   onToolboxAction?: (id: DesignToolboxActionId) => void;
-  onNextStepPromptAction?: (
-    prompt: string,
-    options?: { sessionMode?: ChatSessionMode },
-  ) => void;
+  onNextStepPromptAction?: (prompt: string) => void;
   onNextStepAiOptimize?: () => void;
   nextStepAiOptimizeBusy?: boolean;
   onNextStepContinueExtraction?: () => void;
@@ -3731,7 +3695,6 @@ function ChatRows({
           onRequestDesignSystemDetails={onRequestDesignSystemDetails}
           t={t}
           appliedContextItems={appliedContextByMessageId.get(m.id) ?? []}
-          showSessionModeChip={shouldShowSessionModeChip(m.sessionMode)}
           highlighted={highlightedUserMessageId === m.id}
         />
       );
@@ -4778,7 +4741,6 @@ function UserMessageImpl({
   onRequestDesignSystemDetails,
   t,
   appliedContextItems,
-  showSessionModeChip,
   highlighted,
 }: {
   message: ChatMessage;
@@ -4789,7 +4751,6 @@ function UserMessageImpl({
   onRequestDesignSystemDetails?: (system: DesignSystemSummary) => void;
   t: TranslateFn;
   appliedContextItems: AppliedContextItem[];
-  showSessionModeChip: boolean;
   highlighted?: boolean;
 }) {
   const { workspaceContext } = useProjectCollabContext();
@@ -4798,9 +4759,7 @@ function UserMessageImpl({
   const workspaceItems = message.runContext?.workspaceItems ?? [];
   const visibleWorkspaceItems = workspaceItems.filter((item) => item.kind !== 'design-system');
   const hasRunContext = Boolean(
-    showSessionModeChip ||
-      visibleWorkspaceItems.length > 0 ||
-      appliedContextItems.length > 0,
+    visibleWorkspaceItems.length > 0 || appliedContextItems.length > 0,
   );
   const [copied, setCopied] = useState(false);
   const copyTimerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -4833,9 +4792,6 @@ function UserMessageImpl({
       <span className="sr-only">{t('chat.you')}</span>
       {hasRunContext ? (
         <div className="msg-run-context-row" data-testid="msg-run-context-row">
-          {showSessionModeChip && message.sessionMode ? (
-            <MessageSessionModeChip mode={message.sessionMode} t={t} />
-          ) : null}
           {visibleWorkspaceItems.map((item) => (
             <ActiveWorkspaceContextChip
               key={`${item.kind}:${item.id}`}
@@ -5014,30 +4970,6 @@ function AppliedContextDisclosure({
   );
 }
 
-function MessageSessionModeChip({
-  mode,
-  t,
-}: {
-  mode: ChatSessionMode;
-  t: TranslateFn;
-}) {
-  const label = mode === 'chat'
-    ? t('chat.mode.chat.label')
-    : mode === 'plan'
-      ? t('chat.mode.plan.label')
-      : t('chat.mode.design.label');
-  const icon = mode === 'chat' ? 'comment' : mode === 'plan' ? 'file' : 'sparkles';
-  return (
-    <div
-      className={`msg-mode-chip msg-mode-chip--${mode}`}
-      data-testid="msg-session-mode-chip"
-      title={label}
-    >
-      <Icon name={icon} size={12} />
-      <span>{label}</span>
-    </div>
-  );
-}
 
 const WORKSPACE_DESIGN_FILES_TAB = '__design_files__';
 const WORKSPACE_DESIGN_SYSTEM_TAB = '__design_system__';

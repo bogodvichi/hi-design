@@ -86,13 +86,13 @@ export function WorkingDirPicker({
   return (
     <div
       ref={wrapRef}
-      className={`${styles.wrap}${className ? ` ${className}` : ''}`}
+      className={`working-dir-picker ${styles.wrap}${className ? ` ${className}` : ''}`}
       data-testid="working-dir-picker"
     >
       <div className={styles.triggerRow}>
         <button
           type="button"
-          className={`${styles.trigger}${invalid ? ` ${styles.triggerInvalid}` : ''}`}
+          className={`working-dir-picker-trigger ${styles.trigger}${invalid ? ` ${styles.triggerInvalid}` : ''}`}
           data-testid="working-dir-trigger"
           aria-expanded={open}
           title={invalid ? t('homeWorkingDir.missing') : (workingDir ?? t('homeWorkingDir.hint'))}
@@ -104,7 +104,7 @@ export function WorkingDirPicker({
           }
         >
           <Icon name="folder" size={14} className={styles.triggerIcon} />
-          <span className={styles.triggerLabel}>
+          <span className={`working-dir-picker-label ${styles.triggerLabel}`}>
             {workingDir ? basename(workingDir) : (emptyLabel ?? t('homeWorkingDir.trigger'))}
           </span>
           <Icon name="chevron-down" size={14} className={styles.triggerChevron} />
@@ -116,7 +116,11 @@ export function WorkingDirPicker({
           className={`${styles.panel}${placement === 'up' ? ` ${styles.panelUp}` : ''}`}
           role="menu"
           data-testid="working-dir-panel"
+          data-placement={placement}
         >
+          <div className={styles.hint} role="note">
+            {t('homeWorkingDir.hint')}
+          </div>
           <button
             type="button"
             role="menuitem"

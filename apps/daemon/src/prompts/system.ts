@@ -815,10 +815,8 @@ export interface ComposeInput {
   // UI locale selected by the client. User-visible generated form copy
   // must follow this locale even when the user's initial prompt is brief.
   locale?: string | undefined;
-  // Per-conversation mode. Design mode keeps the artifact-first agent
-  // workflow; Plan mode creates an editable source-of-truth document first;
-  // chat mode keeps the same context/tools but answers like a standard
-  // multi-turn assistant unless the user explicitly asks to build.
+  // Retained only for wire compatibility with older clients and persisted
+  // conversations. Prompt composition deliberately ignores this field.
   sessionMode?: ChatSessionMode | undefined;
   // Run-scoped media policy. Defaults to enabled when omitted so existing
   // local OD behavior keeps the same media prompt contract.
@@ -881,7 +879,6 @@ export function composeSystemPrompt({
   activeStageBlocks,
   streamFormat,
   locale,
-  sessionMode,
   userInstructions,
   projectInstructions,
   mediaExecution,
@@ -895,7 +892,6 @@ export function composeSystemPrompt({
   if (odNextStrategyRecipe) {
     return composeOdNextStrategyRequestPromptV2(odNextStrategyRecipe, {
       agentId,
-      sessionMode,
       locale,
       metadata,
       template,
@@ -924,7 +920,6 @@ export function composeSystemPrompt({
   // overrides into one charter document; the classic stack keeps the legacy
   // layered composition until the A/B comparison signs off.
   const isSlimCore = promptCoreVariant === 'slim';
-  const isAskModeEarly = sessionMode === 'chat';
   const runtimeMediaDefaults = mediaDefaultsForRuntime(
     agentId,
     byokMediaDefaults,
@@ -939,20 +934,16 @@ export function composeSystemPrompt({
     metadata?.kind === 'image' ||
     metadata?.kind === 'video' ||
     metadata?.kind === 'audio';
-  const isSlimCharterHead = isSlimCore && !isAskModeEarly && !isMediaSurfaceEarly;
+  const isSlimCharterHead = isSlimCore && !isMediaSurfaceEarly;
 
   // Head ordering differs by variant, following prompt-caching prefix rules
   // (stable content first — see shared prompt-caching guidance):
   // - classic: injection resistance FIRST so no later section can override
-  //   it, then mode overrides, then the layered discovery/charter stack.
-  // - slim (non-ask): the STATIC charter opens the document (it embeds the
+  //   it, then the layered discovery/charter stack.
+  // - slim: the STATIC charter opens the document (it embeds the
   //   security section right after Precedence), so every conversation shares
-  //   the same cacheable prefix; conversation-stable overrides (mode,
-  //   locale) follow, project context after that, turn-variable blocks last.
-  // Slim ask mode opens with the ask override — it IS the charter for the
-  // turn — with the security section reading as its first subsection, so the
-  // ask document keeps the same identity-first H1 > H2 hierarchy as design
-  // mode. Both blocks are static, so the swap is cache-neutral.
+  //   the same cacheable prefix; conversation-stable locale follows, project
+  //   context after that, turn-variable blocks last.
   // Plain-stream (BYOK/API) slim runs put the API-mode override BEFORE the
   // charter: its "every later instruction … is overridden" scope must cover
   // the charter's TodoWrite/render instructions, which classic guaranteed by
@@ -966,24 +957,11 @@ export function composeSystemPrompt({
         ),
         '\n\n---\n\n',
       ]
-    : isSlimCore && isAskModeEarly
-      ? [
-          // Ask mode on a plain stream still leads with the API override so
-          // its "overrides every rule below" scope covers the chat charter,
-          // matching classic's authority order (API before CHAT).
-          ...(streamFormat === 'plain' ? [API_MODE_OVERRIDE, '\n\n---\n\n'] : []),
-          CHAT_MODE_OVERRIDE,
-          '\n\n---\n\n',
-          PROMPT_INJECTION_RESISTANCE,
-          '\n\n---\n\n',
-        ]
-      : isSlimCore
+    : isSlimCore
         ? [
-            // Slim MEDIA runs (non-ask): no design charter and no Ask charter
-            // either — CHAT_MODE_OVERRIDE forbids creating media, which would
-            // contradict the media-generation contract appended below as the
-            // sole workflow authority. Keep classic's skeleton: API override
-            // first on plain streams, then injection resistance.
+            // Slim media runs use the media-generation contract appended below
+            // as the sole workflow authority. Keep classic's skeleton: API
+            // override first on plain streams, then injection resistance.
             ...(streamFormat === 'plain' ? [API_MODE_OVERRIDE, '\n\n---\n\n'] : []),
             PROMPT_INJECTION_RESISTANCE,
             '\n\n---\n\n',
@@ -1024,27 +1002,8 @@ export function composeSystemPrompt({
   const slimTurnVariableParts: string[] = [];
 
   if (streamFormat === 'plain' && !isSlimCore) {
-    // Slim runs (charter head AND ask head) already composed this first.
+    // Slim runs already composed this first.
     parts.push(API_MODE_OVERRIDE);
-    parts.push('\n\n---\n\n');
-  }
-
-  // Ask mode (`chat`) is the deliberately bare conversation mode: the
-  // CHAT_MODE_OVERRIDE below IS the whole charter, and every artifact-oriented
-  // block (the ~3k-token discovery layer, direction library, device frames, the
-  // full designer charter, deck framework, media contracts, critique panel,
-  // DS visual-direction override) is gated off so the
-  // turn stays cheap. Memory, custom instructions, the active design system,
-  // attached skills, plugins, MCP tools, and the clarifying-questions surface
-  // are still composed in — Ask mode is light, not amnesiac.
-  const isAskMode = sessionMode === 'chat';
-
-  if (sessionMode === 'plan') {
-    parts.push(PLAN_MODE_OVERRIDE);
-    parts.push('\n\n---\n\n');
-  } else if (sessionMode === 'chat' && !isSlimCore) {
-    // Slim ask already opened the document with this override (see head).
-    parts.push(CHAT_MODE_OVERRIDE);
     parts.push('\n\n---\n\n');
   }
 
@@ -1071,7 +1030,7 @@ export function composeSystemPrompt({
     parts.push('\n\n---\n\n');
   }
 
-  if (!isMediaSurfaceEarly && !isAskMode) {
+  if (!isMediaSurfaceEarly) {
     if (!isSlimCore) {
       parts.push(renderDiscoveryAndPhilosophy(resolvedExecutionProfile), '\n\n---\n\n');
     }
@@ -1130,10 +1089,8 @@ export function composeSystemPrompt({
     }
   }
 
-  // Ask mode skips the multi-thousand-token designer charter entirely — the
-  // CHAT_MODE_OVERRIDE above is its self-contained identity. Plan/Design keep
-  // it. Slim already opened the document with its charter (see head above).
-  if (!isAskMode && !isSlimCore) {
+  // Slim already opened the document with its charter (see head above).
+  if (!isSlimCore) {
     parts.push(
       '# Identity and workflow charter (background)\n\n',
       renderOfficialDesignerPrompt(resolvedExecutionProfile, {
@@ -1280,9 +1237,7 @@ export function composeSystemPrompt({
     );
   }
 
-  if (!isAskMode) {
-    parts.push(`\n\n${SEMANTIC_OUTPUT_FILE_NAMES}`);
-  }
+  parts.push(`\n\n${SEMANTIC_OUTPUT_FILE_NAMES}`);
 
   if (pluginBlock && pluginBlock.trim().length > 0) {
     parts.push(pluginBlock);
@@ -1332,10 +1287,9 @@ export function composeSystemPrompt({
   const isFreeformProject = activeSkillModes.size === 0 && (!metadata || metadata.kind === 'other');
   const hasSkillSeed =
     !!skillBody && /assets\/template\.html/.test(skillBody);
-  if (!isAskMode && isDeckProject && !hasSkillSeed) {
+  if (isDeckProject && !hasSkillSeed) {
     parts.push(`\n\n---\n\n${DECK_FRAMEWORK_DIRECTIVE}`);
   } else if (
-    !isAskMode &&
     isFreeformProject &&
     !hasSkillSeed &&
     (freeformDeckSignal ?? true)
@@ -1358,11 +1312,7 @@ export function composeSystemPrompt({
     resolvedExclusiveSurface === 'image'
     || resolvedExclusiveSurface === 'video'
     || resolvedExclusiveSurface === 'audio';
-  if (isAskMode) {
-    // Ask mode ships neither the media-generation contract nor the dispatch
-    // hint. The override above tells the agent to nudge the user toward Design
-    // mode for anything that actually generates media.
-  } else if (isMediaSurface) {
+  if (isMediaSurface) {
     parts.push(renderMediaGenerationContract(mediaExecution, byokMediaDefaults));
     const runtimeDefaultsHint = renderRuntimeMediaDefaultsHint(
       runtimeMediaDefaults,
@@ -1392,17 +1342,15 @@ export function composeSystemPrompt({
   // the critique flag is a no-op there until a media-aware panel template
   // lands.
   const cfg = critique ?? defaultCritiqueConfig();
-  if (cfg.enabled && critiqueBrand && critiqueSkill && !isMediaSurface && !isAskMode) {
+  if (cfg.enabled && critiqueBrand && critiqueSkill && !isMediaSurface) {
     parts.push('\n\n' + renderPanelPrompt({ cfg, brand: critiqueBrand, skill: critiqueSkill }));
   }
 
   // The three tail overrides below exist to re-assert rules the classic
   // layered stack states in softer or contradictory forms earlier. The slim
   // core states each rule exactly once with binding precedence, so re-pinning
-  // them would reintroduce the duplication the rewrite removes. Ask mode
-  // composes no core charter, so it keeps the clarifying-questions tail as
-  // its only question-form guidance.
-  if (!isSlimCore && !isAskMode && activeDesignSystemBody && activeDesignSystemBody.length > 0) {
+  // them would reintroduce the duplication the rewrite removes.
+  if (!isSlimCore && activeDesignSystemBody && activeDesignSystemBody.length > 0) {
     parts.push(ACTIVE_DESIGN_SYSTEM_VISUAL_DIRECTION_OVERRIDE);
   }
 
@@ -1421,7 +1369,7 @@ export function composeSystemPrompt({
   // host keeps ONE unified questions surface: the form renders inline in the
   // originating assistant message, and answers return as the next user message.
   // Applies to every agent — question-form is UI-parsed markup, not a tool.
-  if (!isSlimCharterHead || isAskMode) parts.push(
+  if (!isSlimCharterHead) parts.push(
     "\n\n---\n\n## Structured clarification on any turn\n\nWhen clarification is materially necessary and the answer benefits from structured input, emit a `<question-form>` block instead of writing a bulleted list of options in markdown. The host renders it inline in the originating assistant message; a markdown list renders as plain text and forces the user to type a reply. Use the richest appropriate web form controls (`radio`, `checkbox`, `select`, `text`, `textarea`, `number`, `range`, `date`, `time`, `datetime-local`, `color`, `url`, `email`, `tel`, `file`, `switch`, or `direction-cards`). When the clarification needs reference images, source docs, screenshots, or other user files, combine a `type: \"file\"` question with the text/options in the same form; selected files are uploaded into Design Files and submitted as attached/context files on the answer turn. For every finite-choice question, keep user control by leaving `allowCustom` unset or setting it to `true`, and add localized `customLabel` / `customPlaceholder` when useful. Use free-form prose questions only when a form would add no structure. Do NOT also duplicate the form's questions as markdown text alongside it.\n\n`<question-form>` is assistant text for the HiDesign UI, not a native tool call. If you need to clarify direction, emit the complete `<question-form>...</question-form>` block directly in the assistant message before any TodoWrite, file write/edit, Bash, or other native tool call. Do not stop after an introductory sentence such as \"先确认一下方向：\"; the same message must include the full form.",
   );
 
@@ -1478,52 +1426,6 @@ Do not mention tool unavailability to the user. Avoid phrases such as "TodoWrite
 - \`<question-form>\` blocks when material clarification is needed on any turn, exactly as the rules below describe — question-form is markup the UI parses, not a tool call.
 
 If the rules below tell you to plan with TodoWrite, write the plan as prose instead. If they tell you to read skill side files before writing, describe in one sentence which patterns/conventions you're going to apply and proceed. If they tell you to run brand-spec extraction via Bash + Read + WebFetch, ask the user the missing brand questions in the discovery form instead.`;
-
-// Ask mode is the deliberately light conversation mode. Unlike Plan/Design,
-// the daemon does NOT append the discovery layer or the full designer charter
-// after this override (see `isAskMode` gating in composeSystemPrompt) — so this
-// block is the whole behavioral charter for the turn and must read as
-// self-contained, not as a preface that overrides "rules below". Keep it
-// BYTE-IDENTICAL to the @open-design/contracts copy so a daemon chat and a
-// BYOK/API chat behave the same.
-const CHAT_MODE_OVERRIDE = `# Ask mode — bare conversation (this is the whole charter for this turn)
-
-This conversation is in HiDesign Ask mode: a fast, low-overhead chat kept deliberately light to save tokens. HiDesign is the open-source Claude Design alternative and a native Figma counterpart. Official links: GitHub https://github.com/nexu-io/open-design, website https://open-design.ai/, Discord https://discord.gg/mHAjSMV6gz.
-
-Behave like a direct, multi-turn desktop chat assistant. Prefer concise prose: answer the question, explain, compare options, debug prompts, and review existing work. You still have the user's project files, attachments, connectors, MCP servers, project memory, any active design system, and any skills they attached for this turn — use them as context, and follow an attached skill's workflow when one is present.
-
-This mode does not load the heavy design-discovery workflow or the full designer charter, on purpose. Do not emit a default discovery \`<question-form>\`, do not open with a TodoWrite plan for a chat answer, and do not create or edit project files, HTML, slide decks, images, video, or audio on your own.
-
-If the user explicitly asks you to build, generate, design, or export a concrete artifact (a page, prototype, deck, image, video, audio, or a file change), handle it inline only when it is genuinely trivial; for anything substantial, say so in one line and suggest switching to Design mode (or Plan mode for a document-first brief), where the full design workflow, brand discipline, and artifact tooling are loaded. Keep this turn conversational.
-
-For mid-conversation clarification you may still emit a \`<question-form>\` block — it is markup the HiDesign UI parses, not a native tool call.`;
-
-const PLAN_MODE_OVERRIDE = `# Plan mode — editable document first (read first — overrides every rule below)
-
-This conversation is in HiDesign Plan mode. Use the same context, files, attachments, connectors, MCP servers, project memory, tools, and design systems as Design mode, but do NOT create the final design artifact first.
-
-In filesystem runs, substantial plan-document work still starts with a real TodoWrite/task-list tool call and keeps it updated as work progresses. Do not narrate TodoWrite availability to the user; show progress through the Todo card when the runtime supports it. In plain API runs, follow the API-mode override above and write the plan directly as prose without mentioning missing tools.
-
-Override the artifact discovery layer below: do NOT emit \`<question-form id="discovery">\`, \`<question-form id="task-type">\`, "Quick brief — 30 seconds", or the default artifact-oriented discovery questions about landing pages, prototypes, dashboards, target platform, visual tone, brand context, fidelity, or design direction. A clear planning request should create or update the Markdown plan directly. If a clarification is truly required, ask only plan-document-specific questions, preferably in a \`<question-form id="plan-brief">\`, covering scope, stakeholders, timeline, sections, risks, constraints, and expected handoff deliverable.
-
-Your first responsibility is to create or update a Markdown plan document in Design Files, then guide the user to review and edit it before handoff to Design mode. The plan document is the source of truth for the next generation step and must be useful to both a human editor and a later agent run.
-
-Choose the document style from the user's intent and project metadata:
-- Deck / pitch / PPT: create a slide outline with page-by-page goals, narrative arc, slide titles, content bullets, visual direction, data/media needs, and speaker-note intent.
-- Prototype / app / dashboard / wireframe: create a PRD-style design brief with users, jobs, screens, key flows, layout structure, component/state requirements, interaction rules, data/content model, and acceptance checks.
-- Landing page / website / long-scroll: create a content and section plan with audience, offer, page hierarchy, section goals, proof/media needs, CTA logic, responsive considerations, and visual system notes.
-- Brand / design system: create a brand/system plan with token roles, typography, component coverage, usage rules, source assets, extraction gaps, and kit acceptance checks.
-- Image / video / audio: create a creative brief or storyboard with concept, shots/scenes, composition, copy, style references, model/runtime constraints, aspect/duration, and generation prompts.
-- Unknown or mixed requests: create a concise design-planning document with the closest matching sections above plus explicit open questions.
-
-Document requirements:
-- Write a real \`.md\` file under the active project. Prefer clear names such as \`plan.md\`, \`deck-outline.md\`, \`prototype-plan.md\`, \`prd.md\`, or \`storyboard.md\`; avoid overwriting a useful existing plan unless you are intentionally updating it.
-- Include a top-level title, a short intent summary, concrete sections, editable TODO/open-question markers, and a final "Next step" section that tells the user exactly what to do after reviewing the document.
-- If the user already has an active Markdown plan document, edit that file in place instead of creating a duplicate.
-- Do not output the final HTML/deck/image/video/audio artifact in the same turn unless the user explicitly says to skip planning or confirms that an existing plan is approved.
-- End the response by naming the created/updated Markdown file and inviting the user to edit it, then use the next-step handoff to generate from that document.
-
-If this is a plain API run where filesystem tools are unavailable, output the same plan as Markdown prose and clearly tell the user that no project file was written in this run.`;
 
 // Defense-in-depth against Claude Code's synthetic OAuth tools.
 //

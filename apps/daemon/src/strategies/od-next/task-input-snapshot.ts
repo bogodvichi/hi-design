@@ -327,9 +327,9 @@ export function buildOdNextTaskConfigurationV1(input: {
   if (!selectedAgentId || !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(selectedAgentId)) {
     throw new OdNextTaskInputSnapshotError('OD Next selected agent id is invalid.');
   }
-  const sessionMode = input.sessionMode === 'chat' || input.sessionMode === 'plan'
-    ? input.sessionMode
-    : 'design';
+  // Persist one canonical value. Older clients and conversations may still
+  // submit chat/plan, but those retired modes must not alter runtime behavior.
+  const sessionMode = 'design';
   const allowedSurfaces = input.mediaExecution.allowedSurfaces
     ? [...new Set(input.mediaExecution.allowedSurfaces)].sort()
     : undefined;

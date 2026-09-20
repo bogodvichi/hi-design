@@ -106,7 +106,6 @@ import {
 } from '../types';
 import {
   resolveLocalizedText,
-  type ChatSessionMode,
   type InstalledPluginRecord,
   type LocalizedText,
   type WorkspaceCollabContext,
@@ -339,7 +338,6 @@ interface Props {
   onSelectConversation?: (id: string) => void;
   onDeleteConversation?: (id: string) => void;
   onRenameConversation?: (id: string, title: string) => void;
-  onConversationSessionModeChange?: (id: string, mode: ChatSessionMode) => void;
   onNewConversation?: () => void;
   activeConversationChat?: ActiveConversationChatState;
   onActiveContextChange?: (context: WorkspaceContextItem | null) => void;
@@ -1373,7 +1371,6 @@ export function FileWorkspace({
   onSelectConversation,
   onDeleteConversation,
   onRenameConversation,
-  onConversationSessionModeChange,
   onNewConversation,
   activeConversationChat,
   onActiveContextChange,
@@ -4551,7 +4548,6 @@ export function FileWorkspace({
             onSelectConversation={onSelectConversation ?? (() => {})}
             onDeleteConversation={onDeleteConversation ?? (() => {})}
             onRenameConversation={onRenameConversation}
-            onSessionModeChange={onConversationSessionModeChange}
             onNewConversation={onNewConversation}
             activeConversationChat={activeConversationChat}
             onRequestOpenFile={openFile}

@@ -253,7 +253,7 @@ describe('resolveDesignDeliveryOutcome', () => {
     ).toBe('awaiting_input');
   });
 
-  it('does not impose artifact delivery on Chat/Plan or already-failed runs', () => {
+  it('ignores the legacy mode field and skips already-failed runs', () => {
     for (const sessionMode of ['chat', 'plan'] as const) {
       expect(
         resolveDesignDeliveryOutcome({
@@ -264,7 +264,7 @@ describe('resolveDesignDeliveryOutcome', () => {
           producedFileCount: 0,
           traceObjectFileCount: 0,
         }),
-      ).toBe('not_required');
+      ).toBe('report_only');
     }
     expect(
       resolveDesignDeliveryOutcome({
@@ -357,7 +357,7 @@ describe('designDeliveryReconciliationStale', () => {
     ).toBe(true);
   });
 
-  it('ignores already-resolved deliveries and non-design/non-succeeded rows', () => {
+  it('ignores already-resolved deliveries and non-succeeded rows', () => {
     expect(
       designDeliveryReconciliationStale(
         { sessionMode: 'design', runStatus: 'succeeded', resultDeliveryState: 'delivered', endedAt: 1 },
@@ -369,7 +369,7 @@ describe('designDeliveryReconciliationStale', () => {
         { sessionMode: 'chat', runStatus: 'succeeded', endedAt: 1 },
         now,
       ),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       designDeliveryReconciliationStale(
         { sessionMode: 'design', runStatus: 'failed', endedAt: 1 },

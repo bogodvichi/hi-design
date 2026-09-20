@@ -394,9 +394,7 @@ function installComposerIsolationCss() {
     ['body.od-quick-switcher-open .chat-composer-fixed-layer .staged-chip .staged-remove', routinesCss],
     ['body.od-quick-switcher-open .chat-composer-fixed-layer .composer-active-file', routinesCss],
     ['body.od-quick-switcher-open .chat-composer-fixed-layer .composer-row .icon-btn', routinesCss],
-    ['body.od-quick-switcher-open .chat-composer-fixed-layer .composer-row .session-mode-toggle__trigger', routinesCss],
-    ['body.od-quick-switcher-open .chat-composer-fixed-layer .composer-row .avatar-agent-trigger', routinesCss],
-    ['body.od-quick-switcher-open .chat-composer-fixed-layer .composer-row .avatar-btn', routinesCss],
+    ['body.od-quick-switcher-open .chat-composer-fixed-layer .composer-row .inline-switcher__chip', routinesCss],
     ['body.od-quick-switcher-open .chat-composer-fixed-layer .composer-send', routinesCss],
     ['body.od-quick-switcher-open .chat-composer-fixed-layer .composer-send:disabled', routinesCss],
   ] as const;
@@ -540,10 +538,9 @@ describe('FileWorkspace quick switcher visual isolation', () => {
           </div>
           <div class="composer-row">
             <button class="icon-btn" type="button">+</button>
-            <button class="avatar-agent-trigger" type="button">
-              <span class="avatar-btn">A</span>
-            </button>
-            <button class="session-mode-toggle__trigger" type="button">Design</button>
+            <div class="inline-switcher">
+              <button class="inline-switcher__chip" type="button">Default</button>
+            </div>
             <button class="composer-send" type="button" disabled>Send</button>
           </div>
         </div>
@@ -572,9 +569,7 @@ describe('FileWorkspace quick switcher visual isolation', () => {
     const stagedCommentSpan = composerLayer.querySelector<HTMLElement>('.staged-comment .staged-name span');
     const activeFileChip = composerLayer.querySelector<HTMLElement>('.composer-active-file');
     const toolbarIcon = composerLayer.querySelector<HTMLElement>('.icon-btn');
-    const toolbarAvatar = composerLayer.querySelector<HTMLElement>('.avatar-agent-trigger');
-    const toolbarAvatarButton = composerLayer.querySelector<HTMLElement>('.avatar-btn');
-    const toolbarMode = composerLayer.querySelector<HTMLElement>('.session-mode-toggle__trigger');
+    const toolbarModel = composerLayer.querySelector<HTMLElement>('.inline-switcher__chip');
     const toolbarSend = composerLayer.querySelector<HTMLElement>('.composer-send');
     if (!composer) throw new Error('Missing mock composer');
     if (!composerShell) throw new Error('Missing mock composer shell');
@@ -597,9 +592,7 @@ describe('FileWorkspace quick switcher visual isolation', () => {
     if (!stagedCommentSpan) throw new Error('Missing mock staged comment span text');
     if (!activeFileChip) throw new Error('Missing mock active file chip');
     if (!toolbarIcon) throw new Error('Missing mock toolbar icon');
-    if (!toolbarAvatar) throw new Error('Missing mock toolbar avatar');
-    if (!toolbarAvatarButton) throw new Error('Missing mock toolbar avatar button');
-    if (!toolbarMode) throw new Error('Missing mock toolbar mode');
+    if (!toolbarModel) throw new Error('Missing mock toolbar model switcher');
     if (!toolbarSend) throw new Error('Missing mock toolbar send');
 
     expect(getComputedStyle(composerLayer).pointerEvents).toBe('none');
@@ -658,9 +651,7 @@ describe('FileWorkspace quick switcher visual isolation', () => {
       stagedCommentButton,
       activeFileChip,
       toolbarIcon,
-      toolbarAvatar,
-      toolbarAvatarButton,
-      toolbarMode,
+      toolbarModel,
       toolbarSend,
     ]) {
       expect(getComputedStyle(toolbarControl).backgroundColor).toBe('rgba(0, 0, 0, 0)');

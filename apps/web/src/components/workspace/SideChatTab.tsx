@@ -11,7 +11,7 @@ import type {
   Conversation,
   ProjectFile,
 } from '../../types';
-import type { ChatSessionMode, WorkspaceCollabContext } from '@open-design/contracts';
+import type { WorkspaceCollabContext } from '@open-design/contracts';
 import type { ChatSendMeta } from '../ChatComposer';
 import { useConversationChat } from './useConversationChat';
 import styles from './SideChatTab.module.css';
@@ -86,7 +86,6 @@ interface Props {
   onSelectConversation: (id: string) => void;
   onDeleteConversation: (id: string) => void;
   onRenameConversation?: (id: string, title: string) => void;
-  onSessionModeChange?: (id: string, mode: ChatSessionMode) => void;
   onNewConversation?: () => void;
   /** Live ProjectView state for the primary conversation when this tab mirrors it. */
   activeConversationChat?: ActiveConversationChatState;
@@ -112,15 +111,14 @@ export function SideChatTab({
   onSelectConversation,
   onDeleteConversation,
   onRenameConversation,
-  onSessionModeChange,
   onNewConversation,
   activeConversationChat,
   onRequestOpenFile,
 }: Props) {
   const t = useT();
-  const sessionMode =
-    conversations.find((conversation) => conversation.id === conversationId)?.sessionMode
-    ?? 'design';
+  // Legacy conversations may still persist chat/plan. Those values are kept
+  // for storage compatibility only and must not reactivate retired behavior.
+  const sessionMode = 'design';
   const chat = useConversationChat(projectId, conversationId, {
     config,
     agentsById,
@@ -155,8 +153,6 @@ export function SideChatTab({
           error={controlledChat ? controlledChat.error : chat.error}
           errorSourceAssistantId={controlledChat?.errorSourceAssistantId}
           projectId={projectId}
-          sessionMode={sessionMode}
-          onSessionModeChange={(mode) => onSessionModeChange?.(conversationId, mode)}
           projectFiles={projectFiles}
           projectFileNames={projectFileNames}
           projectResolvedDir={projectResolvedDir}

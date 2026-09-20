@@ -53,7 +53,7 @@ export interface DeepSeekCampaignBadgeSurfaceViewProps {
 }
 
 export interface DeepSeekCampaignModelBenefitSurfaceViewProps {
-  page_name: 'home';
+  page_name: 'home' | 'chat_panel';
   area: 'execution_settings_popover';
   element: 'deepseek_v4_flash_benefit' | 'deepseek_v4_pro_benefit';
   campaign_id: TrackingCampaignId;

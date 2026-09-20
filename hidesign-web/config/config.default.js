@@ -111,6 +111,7 @@ module.exports = appInfo => {
   ignore: [
     /^\/hdw\//,
     /^\/$/,
+    /^\/json\//,
   ],
     sign: {
       expiresIn: '24h', // 令牌过期时间

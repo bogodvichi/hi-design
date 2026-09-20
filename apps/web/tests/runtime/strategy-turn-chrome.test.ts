@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  isInternalStrategySnapshot,
-  shouldShowSessionModeChip,
-} from '../../src/runtime/strategy-turn-chrome';
+import { isInternalStrategySnapshot } from '../../src/runtime/strategy-turn-chrome';
 
 const strategyBinding = {
   schema: 'open-design.applied-strategy/v2',
@@ -31,21 +28,5 @@ describe('isInternalStrategySnapshot', () => {
     expect(isInternalStrategySnapshot({ strategy: null })).toBe(false);
     expect(isInternalStrategySnapshot(null)).toBe(false);
     expect(isInternalStrategySnapshot(undefined)).toBe(false);
-  });
-});
-
-describe('shouldShowSessionModeChip', () => {
-  it('drops the default Design label', () => {
-    expect(shouldShowSessionModeChip('design')).toBe(false);
-  });
-
-  it('keeps Ask and Plan labelled', () => {
-    for (const sessionMode of ['chat', 'plan'] as const) {
-      expect(shouldShowSessionModeChip(sessionMode)).toBe(true);
-    }
-  });
-
-  it('renders nothing when the message carries no session mode', () => {
-    expect(shouldShowSessionModeChip(undefined)).toBe(false);
   });
 });

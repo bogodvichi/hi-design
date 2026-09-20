@@ -25,7 +25,6 @@ import {
 import {
   getProject,
   latchConversationIntentSignals,
-  normalizeConversationSessionMode,
 } from '../../db.js';
 import { readMcpConfig, type McpServerConfig } from '../../mcp-config.js';
 import { isTokenExpired, readAllTokens } from '../../mcp-tokens.js';
@@ -274,7 +273,6 @@ export function createOdNextInitialPromptBundleService(
       skillId,
       skillIds,
       designSystemId,
-      sessionMode,
       locale,
       research,
       context,
@@ -291,7 +289,6 @@ export function createOdNextInitialPromptBundleService(
       ? resolveProjectDir(deps.projectsDir, projectId, project?.metadata)
       : null;
     const appliedPluginSnapshotId = stringValue(meta.appliedPluginSnapshotId);
-    const runSessionMode = normalizeConversationSessionMode(sessionMode);
     const userPrompt = resolveOdNextRequestUserPrompt({
       message,
       currentPrompt,
@@ -335,7 +332,6 @@ export function createOdNextInitialPromptBundleService(
       designSystemId,
       streamFormat: def.streamFormat ?? 'plain',
       locale,
-      sessionMode: runSessionMode,
       mediaExecution: meta.mediaExecution,
       byokMediaDefaults,
       appliedPluginSnapshotId: appliedPluginSnapshotId ?? null,

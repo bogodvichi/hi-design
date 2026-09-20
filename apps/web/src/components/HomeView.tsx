@@ -747,9 +747,9 @@ export function HomeView({
     chipId: string | null;
   } | null>(null);
   const restoredTransientDraft = useRef(readHomeComposerTransientDraft()).current;
-  const [sessionMode, setSessionMode] = useState<ChatSessionMode>(
-    () => restoredTransientDraft?.sessionMode ?? 'design',
-  );
+  // Legacy drafts may still carry a mode, but the mode feature has been
+  // removed. New runs always use the single conversation path.
+  const sessionMode: ChatSessionMode = 'design';
   const [selectedSkills, setSelectedSkills] = useState<SkillSummary[]>(
     () => restoredTransientDraft?.selectedSkills
       ?? (restoredTransientDraft?.activeSkill ? [restoredTransientDraft.activeSkill] : []),
@@ -3043,8 +3043,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
     // Prototype task profile already branches on — and carries no chip id of
     // its own, so it has nothing to swap the route its parent chose for.
     const submittedRouteChipId = submittedActive?.chipId ?? null;
-    const automaticStrategyTaskProfile = sessionMode === 'design'
-      && !pinsPluginOverAutomaticRoute(submittedActive, submittedRouteChipId)
+    const automaticStrategyTaskProfile = !pinsPluginOverAutomaticRoute(submittedActive, submittedRouteChipId)
       ? automaticStrategyTaskProfileForRouteId(submittedRouteChipId)
       : null;
     // The example's identity, sent in place of a plugin pin. Non-null only on
@@ -3176,9 +3175,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
           );
       // A mentioned Skill travels with whatever the composer selected, rather
       // than replacing it: the pick decides the route, the Skill is material
-      // inside it. In Design mode, free-form prompts route through the default
-      // design router; in Ask mode they stay plain chat conversations with no
-      // hidden router plugin.
+      // inside it.
       const resolvedSkillIds = selectedSkills.map((skill) => skill.id);
       const resolvedSkillId = resolvedSkillIds[0] ?? null;
       const submittedChip = submittedRouteChipId
@@ -3187,14 +3184,10 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
       const productAutomaticScenario = submittedChip?.action.kind === 'apply-scenario'
         && submittedChip.action.automaticDefault === true
         && !pinsPluginOverAutomaticRoute(submittedActive, submittedRouteChipId);
-      const routedPluginId =
-        automaticStrategyTaskProfile
-          ? null
-          : sessionMode === 'design'
-          ? submittedActive?.record.id ?? null
-          : submittedActive?.record.id ?? null;
-      const pluginSelectionProvenance = sessionMode === 'design'
-        && (!submittedActive || productAutomaticScenario)
+      const routedPluginId = automaticStrategyTaskProfile
+        ? null
+        : submittedActive?.record.id ?? null;
+      const pluginSelectionProvenance = (!submittedActive || productAutomaticScenario)
         ? 'automatic-default' as const
         : null;
       // The example-prompt override is a one-shot marker. Decide whether to
@@ -3283,7 +3276,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
       setCommunityReference(null);
       setWorkingDir(null);
       setWorkingDirToken(null);
-      setSessionMode('design');
     } catch (err) {
       // A submit handler that throws (instead of resolving false) lands on
       // the same recovery path as a rejected creation.
@@ -3369,8 +3361,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
         restoredMentionEntities={restoredMentionEntities}
         onSubmit={submit}
         onSubmitScenario={submitScenario}
-        sessionMode={sessionMode}
-        onSessionModeChange={setSessionMode}
         submitting={sending}
         activePluginTitle={activeBadgeTitle}
         activePluginIsExplicit={activePluginIsExplicit}

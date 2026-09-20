@@ -52,11 +52,11 @@ describe('HomeHero compact composer controls', () => {
     // Round 4 widened the old 36px icon square into a pill that carries a
     // connection dot + the selected model name, capped so a long model id
     // ellipsizes instead of stretching the composer foot.
-    // Base rule: the 220px name-pill cap. The ≤900px media block later
-    // re-collapses the chip to a 36px icon square — both ends are asserted.
+    // Base rule: the 220px name-pill cap. The ≤900px media block keeps the
+    // chip at the same 104px minimum so the model control remains usable.
     expect(ruleValue(switcherChip, 'height')).toBe('36px');
     expect(ruleValues(switcherChip, 'max-width')[0]).toBe('220px');
-    expect(ruleValues(switcherChip, 'max-width').at(-1)).toBe('36px');
+    expect(ruleValues(switcherChip, 'max-width').at(-1)).toBe('104px');
   });
 
   it('keeps the switcher from expanding beyond its content on narrow screens', () => {

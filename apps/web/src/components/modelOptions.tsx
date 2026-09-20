@@ -146,7 +146,7 @@ interface SearchableModelSelectProps
    * renders a Lock icon at its trailing edge instead of the inline hint text.
    * Hovering the lock surfaces the hint; clicking it invokes this callback
    * (e.g. open the AMR console upgrade destination). Available models are
-   * unaffected. Shared by InlineModelSwitcher, SettingsDialog, and AvatarMenu.
+   * unaffected. Shared by InlineModelSwitcher and SettingsDialog.
    */
   onDisabledOptionUpgrade?: (option: AgentModelOption) => void;
   /**

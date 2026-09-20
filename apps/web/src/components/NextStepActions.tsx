@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { ChatSessionMode } from '@open-design/contracts';
 import { useI18n } from '../i18n';
 import { localizeSkillDescription, localizeSkillName } from '../i18n/content';
 import type { Dict } from '../i18n/types';
@@ -31,8 +30,7 @@ export type NextStepActionsVariant =
   | 'brand-extraction'
   | 'brand-extraction-incomplete'
   | 'brand-programmatic-incomplete'
-  | 'brand-ai-incomplete'
-  | 'plan';
+  | 'brand-ai-incomplete';
 
 export const DESIGN_SYSTEM_NEXT_STEP_ACTIONS = [
   {
@@ -89,49 +87,6 @@ export const BRAND_EXTRACTION_NEXT_STEP_ACTIONS = [
   },
 ] as const;
 
-const PLAN_NEXT_STEP_ACTIONS = [
-  {
-    id: 'plan-generate-from-doc',
-    icon: 'sparkles' as IconName,
-    titleKey: 'nextStep.planGenerateTitle' as keyof Dict,
-    descriptionKey: 'nextStep.planGenerateBody' as keyof Dict,
-    promptKey: 'nextStep.planGeneratePrompt' as keyof Dict,
-    sessionMode: 'design' as ChatSessionMode,
-    requires: 'plan' as const,
-  },
-  {
-    id: 'plan-improve-doc',
-    icon: 'file' as IconName,
-    titleKey: 'nextStep.planImproveTitle' as keyof Dict,
-    descriptionKey: 'nextStep.planImproveBody' as keyof Dict,
-    promptKey: 'nextStep.planImprovePrompt' as keyof Dict,
-    sessionMode: 'plan' as ChatSessionMode,
-    requires: 'plan' as const,
-  },
-  {
-    id: 'plan-improve-artifact',
-    icon: 'sparkles' as IconName,
-    titleKey: 'nextStep.planImproveArtifactTitle' as keyof Dict,
-    descriptionKey: 'nextStep.planImproveArtifactBody' as keyof Dict,
-    promptKey: 'nextStep.planImproveArtifactPrompt' as keyof Dict,
-    sessionMode: 'design' as ChatSessionMode,
-    requires: 'artifact' as const,
-  },
-  {
-    id: 'plan-merge-doc-artifact',
-    icon: 'blocks' as IconName,
-    titleKey: 'nextStep.planMergeTitle' as keyof Dict,
-    descriptionKey: 'nextStep.planMergeBody' as keyof Dict,
-    promptKey: 'nextStep.planMergePrompt' as keyof Dict,
-    sessionMode: 'design' as ChatSessionMode,
-    requires: 'both' as const,
-  },
-] as const;
-const PLAN_GENERATE_ACTION = PLAN_NEXT_STEP_ACTIONS[0];
-const PLAN_IMPROVE_DOC_ACTION = PLAN_NEXT_STEP_ACTIONS[1];
-const PLAN_IMPROVE_ARTIFACT_ACTION = PLAN_NEXT_STEP_ACTIONS[2];
-const PLAN_MERGE_DOC_ARTIFACT_ACTION = PLAN_NEXT_STEP_ACTIONS[3];
-
 export const BRAND_CONTINUE_EXTRACTION_PROMPT =
   'Continue the programmatic design-system extraction from the saved draft. Re-open the source website and current brand files, inspect brand.html, brand.json, DESIGN.md, system assets, and any prefetched source files if present, then fill missing logo, palette, typography, imagery, and kit guidance progressively. Update the same design system id and do not create a duplicate.';
 
@@ -180,10 +135,6 @@ interface Props {
   // The previewable artifact this affordance is anchored to. Passed back to
   // share/download so the parent can act on the right file.
   fileName?: string | null;
-  // Plan-mode actions need both sides of the handoff when available: the
-  // editable Markdown plan and the generated artifact it should govern.
-  planFileName?: string | null;
-  artifactFileName?: string | null;
   // Open the file's existing Share/Export menu in the preview workspace.
   onShare?: (fileName: string) => void;
   // Download the previewable artifact.
@@ -194,10 +145,7 @@ interface Props {
   // Seed the composer with a custom prompt. Used for design-system projects,
   // where the primary next steps are system optimization rather than generic
   // artifact polishing.
-  onPromptAction?: (
-    prompt: string,
-    options?: { sessionMode?: ChatSessionMode },
-  ) => void;
+  onPromptAction?: (prompt: string) => void;
   // Run the deeper AI extraction pass for a programmatically-created brand
   // design system.
   onAiOptimize?: () => void;
@@ -268,21 +216,12 @@ type Anchor = { left: number; top: number };
 type SubKind = 'toolbox' | 'share';
 type BrandExtractionAction = (typeof ALL_BRAND_EXTRACTION_NEXT_STEP_ACTIONS)[number];
 type BrandExtractionActionId = BrandExtractionAction['id'];
-type PlanAction = (typeof PLAN_NEXT_STEP_ACTIONS)[number];
 type PromptNextStepAction =
   | (typeof DESIGN_SYSTEM_NEXT_STEP_ACTIONS)[number]
   | (typeof PROJECT_INCOMPLETE_NEXT_STEP_ACTIONS)[number];
 type Detail =
   | ({ kind: 'toolbox'; id: DesignToolboxActionId } & Anchor)
   | ({ kind: 'brand'; id: BrandExtractionActionId } & Anchor);
-
-function isPlanFileName(fileName: string | null | undefined): boolean {
-  return !!fileName && /\.mdx?$/i.test(fileName);
-}
-
-function isArtifactFileName(fileName: string | null | undefined): boolean {
-  return !!fileName && /\.html?$/i.test(fileName);
-}
 
 function brandActionTitle(action: BrandExtractionAction, t: TranslateFn, busy: boolean): string {
   if ('busyKey' in action && busy) return t(action.busyKey);
@@ -315,8 +254,6 @@ function promptActionPrompt(action: PromptNextStepAction, locale: string): strin
 
 export function NextStepActions({
   fileName,
-  planFileName,
-  artifactFileName,
   onShare,
   onDownload,
   onToolboxAction,
@@ -477,36 +414,6 @@ export function NextStepActions({
     },
     [closeAll, locale, onPromptAction, track],
   );
-  const resolvedPlanFileName =
-    planFileName ?? (variant === 'plan' && isPlanFileName(fileName) ? fileName : null);
-  const resolvedArtifactFileName =
-    artifactFileName ?? (variant === 'plan' && isArtifactFileName(fileName) ? fileName : null);
-  const handlePlanPromptAction = useCallback(
-    (action: PlanAction) => {
-      if (action.requires === 'plan' && !resolvedPlanFileName) return;
-      if (action.requires === 'artifact' && !resolvedArtifactFileName) return;
-      if (action.requires === 'both' && (!resolvedPlanFileName || !resolvedArtifactFileName)) return;
-      const primaryFile =
-        action.requires === 'artifact'
-          ? resolvedArtifactFileName
-          : resolvedPlanFileName ?? resolvedArtifactFileName;
-      if (!primaryFile) return;
-      track('toolbox_action', action.id);
-      onPromptAction?.(
-        t(action.promptKey, {
-          file: primaryFile,
-          document: resolvedPlanFileName ?? primaryFile,
-          artifact: resolvedArtifactFileName ?? primaryFile,
-        }),
-        {
-          sessionMode: action.sessionMode,
-        },
-      );
-      closeAll();
-    },
-    [closeAll, onPromptAction, resolvedArtifactFileName, resolvedPlanFileName, t, track],
-  );
-
   const handleAiOptimize = useCallback(() => {
     if (aiOptimizeBusy) return;
     track('toolbox_action', 'brand-ai-optimize');
@@ -601,19 +508,6 @@ export function NextStepActions({
     return source.slice(0, toolboxQuery ? 14 : 8);
   }, [skills, toolboxQuery, locale]);
 
-  const visiblePlanActions = useMemo(() => {
-    if (resolvedPlanFileName && resolvedArtifactFileName) {
-      return [PLAN_MERGE_DOC_ARTIFACT_ACTION, PLAN_IMPROVE_ARTIFACT_ACTION];
-    }
-    if (resolvedPlanFileName) {
-      return [PLAN_GENERATE_ACTION, PLAN_IMPROVE_DOC_ACTION];
-    }
-    if (resolvedArtifactFileName) {
-      return [PLAN_IMPROVE_ARTIFACT_ACTION];
-    }
-    return [];
-  }, [resolvedArtifactFileName, resolvedPlanFileName]);
-
   // Share group is available whenever any of its three actions can fire.
   const canShare = !!(fileName && onShare);
   const canDownload = !!(fileName && onDownload);
@@ -625,7 +519,6 @@ export function NextStepActions({
   ) && !!onCreateDesignSystem;
   const hasMore = showCreateDesignSystem || !!onToolboxAction || hasShareGroup;
   const showToolbox = !!onToolboxAction;
-  const showPlanRows = variant === 'plan' && visiblePlanActions.length > 0 && !!onPromptAction;
   const showProjectIncompleteRows = variant === 'project-incomplete' && !!onPromptAction;
   const showDesignSystemRows = variant === 'design-system' && !!onPromptAction;
   const brandActions =
@@ -659,35 +552,8 @@ export function NextStepActions({
       role="group"
       aria-label={t('nextStep.title')}
     >
-      {showBrandRows || showPlanRows || showProjectIncompleteRows || showDesignSystemRows || showToolbox || hasMore ? (
+      {showBrandRows || showProjectIncompleteRows || showDesignSystemRows || showToolbox || hasMore ? (
         <div className={styles.toolboxList} data-testid="next-step-toolbox">
-          {showPlanRows
-            ? visiblePlanActions.map((action) => {
-                const title = t(action.titleKey);
-                const description = t(action.descriptionKey);
-                return (
-                  <button
-                    key={action.id}
-                    type="button"
-                    className={styles.toolboxRow}
-                    data-testid={`next-step-plan-action-${action.id}`}
-                    aria-label={`${title}. ${description}`}
-                    title={description}
-                    onClick={() => handlePlanPromptAction(action)}
-                  >
-                    <Icon name={action.icon} size={14} className={styles.toolboxRowIcon} />
-                    <span className={styles.toolboxRowText}>
-                      {/* Title only. The description is a hover reveal (the
-                          detail panel for brand rows, the native tooltip for
-                          the rest) so the list reads as a scannable menu
-                          instead of a wall of two-line paragraphs. */}
-                      <span className={styles.toolboxRowTitle}>{title}</span>
-                    </span>
-                    <Icon name="chevron-right" size={13} className={styles.toolboxRowArrow} />
-                  </button>
-                );
-              })
-            : null}
           {showBrandRows
             ? brandActions.map((action) => {
                 const busy =
@@ -770,7 +636,6 @@ export function NextStepActions({
           {showToolbox && !showDesignSystemRows
             && !showProjectIncompleteRows
             && !showBrandRows
-            && !showPlanRows
             ? FEATURED_DESIGN_TOOLBOX_ACTION_IDS.map((id) => {
                 const action = getDesignToolboxAction(id);
                 if (!action) return null;

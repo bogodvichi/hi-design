@@ -360,7 +360,7 @@ export interface RunCreatedProps extends RunTaskLineageProps {
   agent_provider_id: TrackingCliProviderId | TrackingByokProviderId;
   // The runtime this run launched with, stamped on the event so it cannot
   // drift. Normally `runtime_type` rides on the global super-property, but the
-  // active runtime can change mid-stream (e.g. the user flips the avatar-menu
+  // active runtime can change mid-stream (e.g. the user flips the composer
   // mode while a BYOK turn is in flight), which would split one run across
   // buckets. Client-side BYOK emits set this explicitly; daemon run events
   // already pin it. Omit to inherit the global value.

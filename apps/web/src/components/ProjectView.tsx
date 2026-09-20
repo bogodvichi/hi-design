@@ -224,6 +224,7 @@ import scenarioStyles from './ProjectScenarioControl.module.css';
 import type {
   AgentEvent,
   AgentInfo,
+  ApiProtocol,
   AppConfig,
   Artifact,
   ChatAttachment,
@@ -254,7 +255,8 @@ import {
 } from '../comments';
 import { historyWithApiAttachmentContext } from '../api-attachment-context';
 import { filterImplicitProducedFiles } from '../produced-files';
-import { AvatarMenu } from './AvatarMenu';
+import { InlineModelSwitcher } from './InlineModelSwitcher';
+import type { ProviderModelsCache } from './providerModelsCache';
 import { Icon } from './Icon';
 import { localizePluginTitle } from './plugins-home/localization';
 import { PresenceBar } from '../collab/PresenceBar';
@@ -689,8 +691,14 @@ interface Props {
     id: string,
     choice: { model?: string; reasoning?: string; serviceTier?: string },
   ) => void;
+  providerModelsCache?: ProviderModelsCache;
+  onProviderModelsCacheChange?: (
+    value: SetStateAction<ProviderModelsCache>,
+  ) => void;
+  onApiProtocolChange?: (protocol: ApiProtocol) => void;
   onApiModelChange?: (model: string) => void;
-  onRefreshAgents: () => void;
+  /** Retained for embedded/test callers; the shared switcher refreshes itself. */
+  onRefreshAgents?: () => void;
   onOpenSettings: (section?: SettingsSection) => void;
   onOpenAmrSettings?: () => void;
   onOpenMcpSettings?: () => void;
@@ -1965,8 +1973,10 @@ export function ProjectView({
  onModeChange,
  onAgentChange,
  onAgentModelChange,
+ providerModelsCache,
+ onProviderModelsCacheChange,
+ onApiProtocolChange,
  onApiModelChange,
- onRefreshAgents,
  onOpenSettings,
   onOpenAmrSettings,
   onOpenMcpSettings,
@@ -2384,7 +2394,9 @@ export function ProjectView({
       handleLostAnchors,
     ],
   );
-  const activeSessionMode = activeConversation?.sessionMode ?? 'design';
+  // Older conversations may still persist a mode value. The mode feature has
+  // been removed, so all active runs use the single conversation path.
+  const activeSessionMode: ChatSessionMode = 'design';
   const [messagesConversationId, setMessagesConversationId] = useState<string | null>(null);
   const [failedMessagesConversationId, setFailedMessagesConversationId] = useState<string | null>(null);
   const [conversationLoadError, setConversationLoadError] = useState<string | null>(null);
@@ -9882,39 +9894,6 @@ const coalescedCoverRefresh = useCoalescedCallback(
     [project.id, projectRunWorkspaceContext, projectMutationReadOnly],
   );
 
-  const handleConversationSessionModeChange = useCallback(
-    async (id: string, sessionMode: ChatSessionMode) => {
-      if (projectMutationReadOnly) return;
-      setConversations((curr) =>
-        curr.map((conversation) =>
-          conversation.id === id ? { ...conversation, sessionMode } : conversation,
-        ),
-      );
-      const updated = await patchConversation(
-        project.id,
-        id,
-        { sessionMode },
-        projectRunWorkspaceContext,
-      );
-      if (updated) {
-        setConversations((curr) =>
-          curr.map((conversation) =>
-            conversation.id === id ? { ...conversation, ...updated } : conversation,
-          ),
-        );
-      }
-    },
-    [project.id, projectRunWorkspaceContext, projectMutationReadOnly],
-  );
-
-  const handleActiveConversationSessionModeChange = useCallback(
-    (sessionMode: ChatSessionMode) => {
-      if (!activeConversationId) return;
-      void handleConversationSessionModeChange(activeConversationId, sessionMode);
-    },
-    [activeConversationId, handleConversationSessionModeChange],
-  );
-
   const handleForkFromMessage = useCallback(
     async (assistantMessage: ChatMessage) => {
       if (!activeConversationId || forkingMessageId || projectMutationReadOnly) return;
@@ -11473,10 +11452,13 @@ const coalescedCoverRefresh = useCoalescedCallback(
   // CLI / agent selector lives below the chat conversation (composer footer),
   // not in the top-right header.
   const executionControls = (
-    <>
-      <AvatarMenu
+    <div className="home-hero__execution-switcher">
+      <InlineModelSwitcher
+        compact
         config={config}
         agents={agents}
+        providerModelsCache={providerModelsCache}
+        onProviderModelsCacheChange={onProviderModelsCacheChange}
         daemonLive={daemonLive}
         onModeChange={onModeChange}
         onOpen={() => {
@@ -11508,6 +11490,15 @@ const coalescedCoverRefresh = useCoalescedCallback(
           });
           onAgentModelChange(agentId, choice);
         }}
+        onApiProtocolChange={(protocol) => {
+          trackComposerBarClick(analytics.track, {
+            page_name: 'chat_panel',
+            area: 'chat_composer',
+            element: 'agent_model_select',
+            ...(project?.id ? { project_id: project.id } : {}),
+          });
+          onApiProtocolChange?.(protocol);
+        }}
         onApiModelChange={(model) => {
           trackComposerBarClick(analytics.track, {
             page_name: 'chat_panel',
@@ -11519,11 +11510,10 @@ const coalescedCoverRefresh = useCoalescedCallback(
           onApiModelChange?.(model);
         }}
         onOpenSettings={onOpenSettings}
-        onRefreshAgents={onRefreshAgents}
-        placement="up"
+        analyticsPageName="chat_panel"
         projectWorkspaceScope={projectWorkspaceScopeState}
       />
-    </>
+    </div>
   );
 
   // The `.app` shell belongs to the caller, not to this component. App.tsx
@@ -11614,8 +11604,6 @@ const coalescedCoverRefresh = useCoalescedCallback(
                 conversationLoadError ? null : errorSourceAssistantId
               }
               projectId={project.id}
-              sessionMode={activeSessionMode}
-              onSessionModeChange={handleActiveConversationSessionModeChange}
               projectKindForTracking={projectKindFromMetadataToTracking(currentProject.metadata)}
               projectFiles={projectFiles}
               activeProjectFileName={activeProjectFileName}
@@ -11993,7 +11981,6 @@ const coalescedCoverRefresh = useCoalescedCallback(
           onSelectConversation={handleSelectConversation}
           onDeleteConversation={handleDeleteConversation}
           onRenameConversation={handleRenameConversation}
-          onConversationSessionModeChange={handleConversationSessionModeChange}
           onNewConversation={handleNewConversation}
           activeConversationChat={activeConversationChatState}
           onActiveContextChange={handleActiveWorkspaceContextChange}

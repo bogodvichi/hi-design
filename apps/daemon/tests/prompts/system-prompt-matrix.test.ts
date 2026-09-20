@@ -8,13 +8,13 @@ import { composeSystemPrompt, type ComposeInput } from '../../src/prompts/system
  * Golden snapshot of the scenario × section gating matrix.
  *
  * `composeSystemPrompt` splices ~30 conditional sections whose gates form an
- * implicit matrix over session mode × active design system × skill surface ×
+ * implicit matrix over active design system × skill surface ×
  * memory × execution profile. Any prompt refactor (dedup, re-gating,
  * merging charters) must not silently change WHICH sections a given scenario
  * receives. This suite freezes that matrix: each scenario maps to the ordered
  * list of detected sections plus the composed length, so a gating regression
- * (e.g. a freeform project losing the deck framework, or ask mode regaining
- * the discovery layer) shows up as a snapshot diff instead of a production
+ * (e.g. a freeform project losing the deck framework) shows up as a snapshot
+ * diff instead of a production
  * behavior change.
  *
  * Detection is marker-based on section headings the composer or its prompt
@@ -35,8 +35,6 @@ const ROLE_MARKER_GUARD_HEADINGS = [
 const SECTION_MARKERS = [
   ['injection-resistance', '## Security:'],
   ['api-mode-override', '# API mode — no tools available'],
-  ['plan-mode-override', '# Plan mode — editable document first'],
-  ['ask-mode-override', '# Ask mode — bare conversation'],
   ['example-prompt-override', '# Example prompt mode — full-quality direct generation'],
   ['skip-discovery-override', '# Automated project mode — skip discovery form'],
   ['ui-locale-override', '# UI locale override'],
@@ -226,9 +224,9 @@ const SCENARIOS: ReadonlyArray<[name: string, input: ComposeInput]> = [
       promptCoreVariant: 'slim',
     },
   ],
-  // Ask mode keeps memory/DS/skill but drops every artifact-oriented block.
+  // Legacy mode values remain in persisted data but no longer change sections.
   [
-    'ask-mode-full-context',
+    'legacy-chat-mode-full-context',
     {
       ...designSystemInputs,
       ...memoryInputs,
@@ -238,7 +236,7 @@ const SCENARIOS: ReadonlyArray<[name: string, input: ComposeInput]> = [
       executionProfile: 'filesystem',
     },
   ],
-  ['plan-mode', { metadata: { kind: 'prototype' }, sessionMode: 'plan', executionProfile: 'filesystem' }],
+  ['legacy-plan-mode', { metadata: { kind: 'prototype' }, sessionMode: 'plan', executionProfile: 'filesystem' }],
   // BYOK/plain adapters: API override pinned on top, no filesystem handoff.
   ['api-mode-byok', { metadata: { kind: 'prototype' }, streamFormat: 'plain' }],
   // Two-loop memory hooks individually disabled; rule-proposal stays.

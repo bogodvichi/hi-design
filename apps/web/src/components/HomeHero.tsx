@@ -26,7 +26,6 @@ import type {
   RefObject,
 } from 'react';
 import type {
-  ChatSessionMode,
   ConnectorDetail,
   DesignSystemSummary,
   InputFieldSpec,
@@ -40,13 +39,11 @@ import type { SkillSummary } from '../types';
 import { Icon, type IconName } from './Icon';
 import { useAnalytics } from '../analytics/provider';
 import {
-  trackComposerSessionModeClick,
   trackContextLinkResult,
   trackFigmaHelpModalSurfaceView,
   trackHomeChatComposerClick,
   trackProjectReferenceModalSurfaceView,
 } from '../analytics/events';
-import { sessionModeToTracking } from '@open-design/contracts/analytics';
 import {
   chipsForGroup,
   HOME_APPLY_TEMPLATE_EVENT,
@@ -100,7 +97,6 @@ import { navigate } from '../router';
 import { TemplatePicker } from './home-hero/TemplatePicker';
 import { TypePillRow } from './home-hero/TypePillRow';
 import { LibraryPicker } from './LibraryPicker';
-import { ComposerModePicker } from './ComposerModePicker';
 import { assetTitle } from './LibraryAssetMeta';
 import { libraryAssetRawUrl } from '../providers/registry';
 import type { LibraryAsset } from '@open-design/contracts';
@@ -175,8 +171,6 @@ interface Props {
   // showing: the host seeds the prompt with `scenario.text`, binds the
   // scenario's template, and creates the project -- one-click "just start".
   onSubmitScenario?: (scenario: PlaceholderScenario) => void;
-  sessionMode?: ChatSessionMode;
-  onSessionModeChange?: (mode: ChatSessionMode) => void;
   activePluginTitle: string | null;
   // True when the active plugin chip shows a user-picked plugin (Community card
   // or example-prompt preset) rather than a task-type chip's default plugin —
@@ -384,8 +378,6 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
     restoredMentionEntities,
     onSubmit,
     onSubmitScenario = () => undefined,
-    sessionMode = 'design',
-    onSessionModeChange,
     firstRunGuide,
     activePluginTitle,
     activePluginIsExplicit = false,
@@ -1692,9 +1684,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                 })
               }
               onSubmenuOpen={(submenu) => {
-                // Home never passes the working-dir submenu (it keeps its own
-                // footer picker), so only the resource submenus reach here.
-                if (submenu === 'toolbox' || submenu === 'workingDir') return;
+                if (submenu === 'toolbox') return;
                 trackHomeChatComposerClick(analytics.track, {
                   page_name: 'home',
                   area: 'chat_composer',
@@ -1940,21 +1930,6 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
             ) : null}
           </div>
           <div className="home-hero__foot-right">
-            {/* <ComposerModePicker
-              mode={sessionMode}
-              onModeChange={(next) => {
-                if (next !== sessionMode) {
-                  trackComposerSessionModeClick(analytics.track, {
-                    page_name: 'home',
-                    area: 'chat_composer',
-                    element: 'session_mode_toggle',
-                    mode_before: sessionModeToTracking(sessionMode),
-                    mode_after: sessionModeToTracking(next),
-                  });
-                }
-                onSessionModeChange?.(next);
-              }}
-            /> */}
             {executionSwitcher ? (
               <div className="home-hero__execution-switcher">
                 {executionSwitcher}

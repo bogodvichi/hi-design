@@ -48,7 +48,7 @@ export interface HomeToolbarClickProps {
 }
 
 export interface ExecutionSettingsPopoverClickProps {
-  page_name: 'home';
+  page_name: 'home' | 'chat_panel';
   area: 'execution_settings_popover';
   element:
     | 'mode_local_cli'
