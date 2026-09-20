@@ -61,6 +61,18 @@ afterEach(() => {
 });
 
 describe('OD Next task-scoped input snapshots', () => {
+  it('normalizes retired session modes to design', () => {
+    const base = {
+      taskType: 'prototype' as const,
+      selectedAgentId: 'codex',
+      mediaExecution: { mode: 'enabled' as const },
+    };
+    expect(buildOdNextTaskConfigurationV1({ ...base, sessionMode: 'chat' }).configuration.sessionMode)
+      .toBe('design');
+    expect(buildOdNextTaskConfigurationV1({ ...base, sessionMode: 'plan' }).configuration.sessionMode)
+      .toBe('design');
+  });
+
   it('freezes ordered document/image bytes and survives source mutation or deletion', () => {
     const f = fixture();
     writeFileSync(path.join(f.projectRoot, 'brief.pdf'), Buffer.from('%PDF-1.7\nbrief'));

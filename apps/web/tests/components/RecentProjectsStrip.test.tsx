@@ -32,10 +32,13 @@ const recentWorkspaceState = vi.hoisted(() => ({
     permissions: {},
     teamId: 'team-1',
   },
+  resolveBoundProjectWorkspaceContext: vi.fn(),
 }));
 
 vi.mock('../../src/collab/useWorkspaceContext', () => ({
   notifyTeamProjectsChanged: vi.fn(),
+  resolveBoundProjectWorkspaceContext:
+    recentWorkspaceState.resolveBoundProjectWorkspaceContext,
   useSharedSpaceTeamId: () => null,
   useWorkspaceBilling: () => null,
   useWorkspaceContext: () => ({
@@ -107,6 +110,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
   vi.mocked(invalidateProjectFilesCache).mockClear();
+  recentWorkspaceState.resolveBoundProjectWorkspaceContext.mockReset();
   vi.mocked(fetchProjectFiles).mockReset().mockImplementation(async (projectId: string) => {
     if (projectId === 'project-ds') {
       return [
@@ -219,6 +223,29 @@ class MockWorkspaceEventSource {
 }
 
 describe('RecentProjectsStrip', () => {
+  it('keeps a workspace-directory outage in the background owner lookup from escaping', async () => {
+    recentWorkspaceState.resolveBoundProjectWorkspaceContext.mockRejectedValueOnce(
+      Object.assign(new Error('workspace-directory 503'), { status: 503 }),
+    );
+
+    render(
+      <RecentProjectsStrip
+        projects={[project({
+          id: 'foreign-project',
+          name: 'Foreign project',
+          workspaceId: 'ws-foreign',
+        })]}
+        onOpen={() => {}}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(recentWorkspaceState.resolveBoundProjectWorkspaceContext)
+        .toHaveBeenCalledWith('ws-foreign');
+    });
+    expect(screen.getByText('Foreign project')).toBeTruthy();
+  });
+
   it('turns a script-activated deck into a deterministic visible first-page cover', () => {
     const cover = deckPreviewSrcDoc(`<!doctype html>
       <html><head><style>

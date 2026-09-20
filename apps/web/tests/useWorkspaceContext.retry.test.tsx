@@ -136,4 +136,50 @@ describe('useWorkspaceContext failure retry (P1.B)', () => {
     await flush(1);
     expect(contextReads).toBe(readsBeforeReset + 1);
   });
+
+  it('contains a workspace-directory 503 and recovers on the scheduled retry', async () => {
+    let failDirectory = true;
+    let directoryReads = 0;
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        if (url === '/api/workspace/directory') {
+          directoryReads += 1;
+          if (failDirectory) {
+            return new Response(JSON.stringify({
+              error: 'UPSTREAM_UNAVAILABLE',
+              retryable: true,
+            }), {
+              status: 503,
+              headers: { 'content-type': 'application/json' },
+            });
+          }
+          return jsonResponse(workspaceDirectoryFixture([TEAM_CONTEXT]));
+        }
+        if (url === '/api/workspace/context') {
+          return jsonResponse({ context: TEAM_CONTEXT });
+        }
+        throw new Error(`unexpected fetch ${url}`);
+      }),
+    );
+
+    const hook = renderHook(() => useWorkspaceContext());
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(directoryReads).toBe(1);
+    expect(hook.result.current.context).toBeNull();
+    expect(hook.result.current.failure).toBe('unavailable');
+
+    failDirectory = false;
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1000);
+    });
+
+    expect(directoryReads).toBe(2);
+    expect(hook.result.current.context?.workspaceId).toBe(TEAM_CONTEXT.workspaceId);
+    expect(hook.result.current.failure).toBeUndefined();
+  });
 });

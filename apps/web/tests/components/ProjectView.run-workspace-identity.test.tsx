@@ -227,7 +227,7 @@ vi.mock('../../src/state/projects', async () => {
 vi.mock('../../src/components/AppChromeHeader', () => ({
   AppChromeHeader: ({ children }: { children: ReactNode }) => <header>{children}</header>,
 }));
-vi.mock('../../src/components/AvatarMenu', () => ({ AvatarMenu: () => null }));
+vi.mock('../../src/components/InlineModelSwitcher', () => ({ InlineModelSwitcher: () => null }));
 vi.mock('../../src/components/FileWorkspace', async () => {
   const { useProjectCollabContext } = await import('../../src/collab/collab-context');
   return {

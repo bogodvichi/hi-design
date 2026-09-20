@@ -69,9 +69,8 @@ function hasLiveArtifactDelivery(events: AgentEvent[] | undefined): boolean {
 /**
  * A successful agent process is not necessarily a delivered design.
  *
- * Design mode is artifact-first, but clarification and explicitly unfinished
- * turns are valid intermediate outcomes. Chat and Plan remain text-first and
- * must never be failed merely because they did not write a project file.
+ * Clarification and explicitly unfinished turns are valid intermediate
+ * outcomes. The legacy sessionMode field is intentionally ignored.
  *
  * A zero-file success is only a missing deliverable when the turn attempted
  * to mutate project files (or an artifact save failed). A turn that never
@@ -84,7 +83,7 @@ function hasLiveArtifactDelivery(events: AgentEvent[] | undefined): boolean {
 export function resolveDesignDeliveryOutcome(
   input: DesignDeliveryInput,
 ): DesignDeliveryOutcome {
-  if (input.sessionMode !== 'design' || input.runStatus !== 'succeeded') {
+  if (input.runStatus !== 'succeeded') {
     return 'not_required';
   }
   if (isIntermediateDesignTurn(input.content, input.events)) {
@@ -123,14 +122,14 @@ export function designDeliveryVerificationPending(
     | 'traceObjectFiles'
   >,
 ): boolean {
-  if (message.sessionMode !== 'design' || message.runStatus !== 'succeeded') return false;
+  if (message.runStatus !== 'succeeded') return false;
   if (message.resultDeliveryState) return false;
   if (isIntermediateDesignTurn(message.content, message.events)) return false;
   return message.producedFiles === undefined || message.traceObjectFiles === undefined;
 }
 
 /**
- * A succeeded Design message that still lacks delivery metadata long after its
+ * A succeeded message that still lacks delivery metadata long after its
  * run finished is a historical row whose delivery never materialized (e.g. a
  * row persisted by an older build before the final project-file refresh, or an
  * interrupted persistence path). Auto-replaying such a row on every reload is
@@ -154,7 +153,7 @@ export function designDeliveryReconciliationStale(
   >,
   now: number = Date.now(),
 ): boolean {
-  if (message.sessionMode !== 'design' || message.runStatus !== 'succeeded') return false;
+  if (message.runStatus !== 'succeeded') return false;
   if (message.resultDeliveryState) return false;
   // The #6505 legacy shape can lack `endedAt` entirely (rows persisted before
   // `endedAt` existed), so bound the reconciliation age from any persisted
@@ -165,5 +164,5 @@ export function designDeliveryReconciliationStale(
   return now - terminalAt > DESIGN_DELIVERY_RECONCILIATION_WINDOW_MS;
 }
 
-/** How long after a run's terminal time a Design-mode delivery may be reconciled. */
+/** How long after a run's terminal time a delivery may be reconciled. */
 export const DESIGN_DELIVERY_RECONCILIATION_WINDOW_MS = 5 * 60 * 1000;

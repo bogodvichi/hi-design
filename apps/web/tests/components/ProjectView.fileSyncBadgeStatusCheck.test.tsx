@@ -113,8 +113,8 @@ vi.mock('../../src/components/AppChromeHeader', () => ({
   AppChromeHeader: ({ children }: { children: ReactNode }) => <header>{children}</header>,
 }));
 
-vi.mock('../../src/components/AvatarMenu', () => ({
-  AvatarMenu: () => null,
+vi.mock('../../src/components/InlineModelSwitcher', () => ({
+  InlineModelSwitcher: () => null,
 }));
 
 vi.mock('../../src/components/FileWorkspace', () => ({

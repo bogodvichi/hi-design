@@ -6,6 +6,7 @@ import {
   hydrateReadyTeamProject,
   mergeAgentModelChoice,
   persistComposioConfigChange,
+  reconcileProjectMutationResult,
   projectViewAuthorizationLifetimeKey,
   projectRouteSurfaceState,
   resolveDeepLinkedTeamSharedProject,
@@ -234,6 +235,56 @@ describe('projectViewAuthorizationLifetimeKey', () => {
       },
     })).not.toBe(initial);
     expect(projectViewAuthorizationLifetimeKey(projectId, null)).not.toBe(initial);
+  });
+});
+
+describe('reconcileProjectMutationResult', () => {
+  it('keeps Workspace binding fields omitted by a metadata PATCH response', () => {
+    const previous = {
+      id: 'project-1',
+      name: 'Project',
+      skillId: null,
+      designSystemId: null,
+      metadata: { kind: 'prototype' as const },
+      workspaceId: 'workspace-a',
+      ownerDisplayName: 'Owner',
+      createdByWorkspaceMemberId: 'member-a',
+      createdAt: 1,
+      updatedAt: 1,
+    } satisfies Project;
+    const updated = {
+      id: 'project-1',
+      name: 'Project',
+      skillId: null,
+      designSystemId: null,
+      metadata: {
+        kind: 'prototype' as const,
+        linkedDirs: ['/Users/me/reference'],
+      },
+      createdAt: 1,
+      updatedAt: 2,
+    } satisfies Project;
+
+    const reconciled = reconcileProjectMutationResult(previous, updated);
+    expect(reconciled).toEqual({
+      ...updated,
+      workspaceId: 'workspace-a',
+      ownerDisplayName: 'Owner',
+      createdByWorkspaceMemberId: 'member-a',
+    });
+    const context = {
+      workspaceId: 'workspace-a',
+      workspaceType: 'personal',
+      workspaceMemberId: 'member-a',
+      memberStatus: 'active',
+      lifecycleState: 'active',
+    } as WorkspaceCollabContext;
+    expect(projectViewAuthorizationLifetimeKey(previous.id, context)).toBe(
+      projectViewAuthorizationLifetimeKey(
+        reconciled.id,
+        reconciled.workspaceId === context.workspaceId ? context : null,
+      ),
+    );
   });
 });
 

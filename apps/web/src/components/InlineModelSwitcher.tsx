@@ -5,8 +5,8 @@
 // to open the full Settings dialog. The chip is intentionally narrow —
 // it shows the active mode + agent/provider + model in one line and
 // opens a compact popover for switching. All persistence is delegated
-// upward through the same callbacks `AvatarMenu` already uses, so the
-// switcher inherits autosave + daemon sync without re-implementing it.
+// upward through the composer's existing callbacks, so the switcher inherits
+// autosave + daemon sync without re-implementing them.
 
 import {
   useCallback,
@@ -33,7 +33,7 @@ import {
   recordAmrEntry,
   type AmrEntryAttribution,
 } from '../analytics/amr-attribution';
-import { amrPlansUrlForProfile } from '../runtime/amr-guidance';
+import { amrPlansUrlForProfile, amrPlansUrlForWorkspace } from '../runtime/amr-guidance';
 import { codingPlanModelDecision } from '../runtime/amr-unlimited-models';
 import { getResolvedDeviceId } from '../analytics/client';
 import {
@@ -51,7 +51,13 @@ import {
   useWorkspaceBillingResponse,
   useWorkspaceContext,
   workspaceBillingBalanceUsd,
+  workspaceBillingSnapshotForContext,
 } from '../collab/useWorkspaceContext';
+import {
+  projectWorkspaceContext,
+  projectWorkspaceScopeReady,
+  type ProjectWorkspaceScopeState,
+} from '../collab/useProjectWorkspaceScope';
 import { KNOWN_PROVIDERS } from '../state/config';
 import { fetchProviderModels } from '../providers/provider-models';
 import { SUGGESTED_MODELS_BY_PROTOCOL } from '../state/apiProtocols';
@@ -128,6 +134,11 @@ interface Props {
       | 'pet'
       | 'about',
   ) => void;
+  /** Project composers supply their daemon-authoritative Workspace scope. */
+  projectWorkspaceScope?: ProjectWorkspaceScopeState;
+  /** Surface attribution and open analytics stay with the host. */
+  analyticsPageName?: 'home' | 'chat_panel';
+  onOpen?: () => void;
 }
 
 const API_PROTOCOL_TABS: Array<{ id: ApiProtocol; title: string }> = [
@@ -186,6 +197,9 @@ export function InlineModelSwitcher({
   onApiModelChange,
   onProviderModelsCacheChange,
   onOpenSettings,
+  projectWorkspaceScope,
+  analyticsPageName = 'home',
+  onOpen,
 }: Props) {
   const t = useT();
   const analytics = useAnalytics();
@@ -217,10 +231,27 @@ export function InlineModelSwitcher({
   // not just plan tier — a team member without `canManageBilling` (owner-only)
   // can't act on an upgrade even when the tier itself is upgradeable.
   const {
-    context: workspaceContext,
-    loading: workspaceContextLoading,
+    context: ambientWorkspaceContext,
+    loading: ambientWorkspaceContextLoading,
   } = useWorkspaceContext();
-  const workspaceBillingResponse = useWorkspaceBillingResponse();
+  const workspaceContext = projectWorkspaceScope
+    ? projectWorkspaceContext(projectWorkspaceScope.scope)
+    : ambientWorkspaceContext;
+  const workspaceContextLoading = projectWorkspaceScope
+    ? projectWorkspaceScope.loading
+      || !projectWorkspaceScopeReady(projectWorkspaceScope.scope)
+    : ambientWorkspaceContextLoading;
+  const workspaceBillingResponse = useWorkspaceBillingResponse(
+    projectWorkspaceScope
+      ? {
+          context: workspaceContext,
+          loading: workspaceContextLoading,
+          revision: `${projectWorkspaceScope.scope?.projectId ?? 'unknown'}:${
+            projectWorkspaceScope.scope?.workspaceId ?? 'unbound'
+          }`,
+        }
+      : undefined,
+  );
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const popoverRef = useRef<HTMLDivElement | null>(null);
@@ -541,7 +572,7 @@ export function InlineModelSwitcher({
   const handleAgentButtonClick = useCallback(
     async (agentId: string) => {
       trackExecutionSettingsPopoverClick(analytics.track, {
-        page_name: 'home',
+        page_name: analyticsPageName,
         area: 'execution_settings_popover',
         element: 'agent_card',
         cli_provider_id: agentIdToTracking(agentId),
@@ -568,6 +599,7 @@ export function InlineModelSwitcher({
       handleAmrCancelLogin,
       handleAmrSignIn,
       onAgentChange,
+      analyticsPageName,
       refreshAmrStatus,
     ],
   );
@@ -853,6 +885,26 @@ export function InlineModelSwitcher({
     [currentAgent, inlineAgentModelOptions],
   );
 
+  const exactWorkspaceSnapshot = workspaceBillingSnapshotForContext(
+    workspaceBillingResponse,
+    workspaceContext,
+  );
+  const projectScopedPlanId =
+    workspaceContext?.workspaceType === 'team'
+      ? exactWorkspaceSnapshot?.billing.planId?.trim() || null
+      : workspaceContext?.workspaceType === 'personal'
+        ? workspaceBillingResponse?.summary?.membershipTier?.trim() || null
+        : null;
+  const financialWorkspaceId =
+    !workspaceContextLoading && workspaceContext?.workspaceId.trim()
+      ? workspaceContext.workspaceId
+      : null;
+  const amrProfile =
+    amrStatus?.profile ?? config.agentCliEnv?.amr?.OPEN_DESIGN_AMR_PROFILE;
+  const amrPlansTargetUrl = projectWorkspaceScope
+    ? amrPlansUrlForWorkspace(amrProfile, financialWorkspaceId)
+    : amrPlansUrlForProfile(amrProfile);
+
   useEffect(() => {
     if (!open) {
       campaignBenefitTrackedForOpenRef.current = false;
@@ -873,7 +925,7 @@ export function InlineModelSwitcher({
     campaignBenefitTrackedForOpenRef.current = true;
     for (const modelId of visibleCampaignModelIds) {
       trackDeepSeekCampaignModelBenefitSurfaceView(analytics.track, {
-        page_name: 'home',
+        page_name: analyticsPageName,
         area: 'execution_settings_popover',
         element: 'deepseek_v4_pro_benefit',
         campaign_id: 'deepseek_v4_pro',
@@ -883,6 +935,7 @@ export function InlineModelSwitcher({
     }
   }, [
     analytics.track,
+    analyticsPageName,
     campaignNeedsUpgrade,
     compact,
     compactModelRows,
@@ -893,6 +946,7 @@ export function InlineModelSwitcher({
   /** Where a refused model pick sends the user instead — the same plans
    *  destination the settings picker's upgrade lock already opens. */
   const openAmrModelUpgrade = useCallback(() => {
+    if (!amrPlansTargetUrl) return;
     const attribution = recordAmrEntry(
       analytics.track,
       campaignNeedsUpgrade
@@ -916,9 +970,7 @@ export function InlineModelSwitcher({
     });
     window.open(
       attributedAmrUrl(
-        amrPlansUrlForProfile(
-          amrStatus?.profile ?? config.agentCliEnv?.amr?.OPEN_DESIGN_AMR_PROFILE,
-        ),
+        amrPlansTargetUrl,
         attribution,
         deviceId,
       ),
@@ -926,10 +978,9 @@ export function InlineModelSwitcher({
       'noopener,noreferrer',
     );
   }, [
-    amrStatus?.profile,
+    amrPlansTargetUrl,
     analytics.track,
     campaignNeedsUpgrade,
-    config.agentCliEnv?.amr?.OPEN_DESIGN_AMR_PROFILE,
     config.installationId,
     config.telemetry?.metrics,
   ]);
@@ -965,7 +1016,9 @@ export function InlineModelSwitcher({
   // distinguished from signed-out (which keeps the sign-in CTA) by `amrLoggedIn`,
   // never by plan presence.
   const amrPlanLabel = amrLoggedIn
-    ? amrStatus?.account?.plan?.trim() || null
+    ? projectWorkspaceScope
+      ? projectScopedPlanId
+      : amrStatus?.account?.plan?.trim() || null
     : null;
   const scopedWorkspaceBalance = formatVelaBalanceUsd(
     workspaceBillingBalanceUsd(workspaceBillingResponse, workspaceContext),
@@ -998,8 +1051,9 @@ export function InlineModelSwitcher({
   // path.
   const amrCanUpgrade =
     amrLoggedIn &&
-    canUpgradeVelaPlan(amrStatus?.account?.plan) &&
-    Boolean(workspaceContext?.permissions?.canManageBilling);
+    canUpgradeVelaPlan(amrPlanLabel) &&
+    Boolean(workspaceContext?.permissions?.canManageBilling) &&
+    amrPlansTargetUrl !== null;
   const amrActionLabel = amrLoginPending
     ? t('settings.amrSigningIn')
     : amrLoggedIn
@@ -1152,6 +1206,7 @@ export function InlineModelSwitcher({
 
   const handleChipClick = useCallback(() => {
     const nextOpen = !open;
+    if (nextOpen) onOpen?.();
     if (nextOpen && showAmrReminder) {
       setShowAmrReminderInPopover(true);
       setAmrReminderSeen(true);
@@ -1160,7 +1215,7 @@ export function InlineModelSwitcher({
       setShowAmrReminderInPopover(false);
     }
     setOpen(nextOpen);
-  }, [open, showAmrReminder]);
+  }, [onOpen, open, showAmrReminder]);
 
   useEffect(() => {
     if (!open || config.mode !== 'daemon' || config.agentId === 'amr') {
@@ -1302,7 +1357,7 @@ export function InlineModelSwitcher({
                 disabled={!daemonLive && config.mode !== 'daemon'}
                 onClick={() => {
                   trackExecutionSettingsPopoverClick(analytics.track, {
-                    page_name: 'home',
+                    page_name: analyticsPageName,
                     area: 'execution_settings_popover',
                     element: 'mode_local_cli',
                   });
@@ -1335,7 +1390,7 @@ export function InlineModelSwitcher({
                 data-testid="inline-model-switcher-mode-api"
                 onClick={() => {
                   trackExecutionSettingsPopoverClick(analytics.track, {
-                    page_name: 'home',
+                    page_name: analyticsPageName,
                     area: 'execution_settings_popover',
                     element: 'mode_byok',
                   });
@@ -1381,7 +1436,7 @@ export function InlineModelSwitcher({
                           // report the click even when the protocol has no v2
                           // provider_id (e.g. aihubmix) — just omit the field.
                           trackExecutionSettingsPopoverClick(analytics.track, {
-                            page_name: 'home',
+                            page_name: analyticsPageName,
                             area: 'execution_settings_popover',
                             element: 'byok_provider_tab',
                             provider_id:
@@ -1416,7 +1471,7 @@ export function InlineModelSwitcher({
                     value={config.model}
                     onChange={(nextValue) => {
                       trackExecutionSettingsPopoverClick(analytics.track, {
-                        page_name: 'home',
+                        page_name: analyticsPageName,
                         area: 'execution_settings_popover',
                         element: 'model_dropdown',
                         execution_mode: 'byok',
@@ -1492,7 +1547,7 @@ export function InlineModelSwitcher({
                               return;
                             }
                             trackExecutionSettingsPopoverClick(analytics.track, {
-                              page_name: 'home',
+                              page_name: analyticsPageName,
                               area: 'execution_settings_popover',
                               element: 'model_dropdown',
                               execution_mode: 'local_cli',
@@ -1690,6 +1745,7 @@ export function InlineModelSwitcher({
                         data-testid="inline-model-switcher-account-upgrade"
                         onClick={(e) => {
                           e.stopPropagation();
+                          if (!amrPlansTargetUrl) return;
                           const attribution = recordAmrEntry(
                             analytics.track,
                             'inline_amr_upgrade',
@@ -1703,10 +1759,7 @@ export function InlineModelSwitcher({
                           });
                           window.open(
                             attributedAmrUrl(
-                              amrPlansUrlForProfile(
-                                amrStatus?.profile ??
-                                  config.agentCliEnv?.amr?.OPEN_DESIGN_AMR_PROFILE,
-                              ),
+                              amrPlansTargetUrl,
                               attribution,
                               deviceId,
                             ),
@@ -1783,7 +1836,7 @@ export function InlineModelSwitcher({
                         return;
                       }
                       trackExecutionSettingsPopoverClick(analytics.track, {
-                        page_name: 'home',
+                        page_name: analyticsPageName,
                         area: 'execution_settings_popover',
                         element: 'model_dropdown',
                         execution_mode: 'local_cli',
@@ -1827,7 +1880,7 @@ export function InlineModelSwitcher({
             data-testid="inline-model-switcher-open-settings"
             onClick={() => {
               trackExecutionSettingsPopoverClick(analytics.track, {
-                page_name: 'home',
+                page_name: analyticsPageName,
                 area: 'execution_settings_popover',
                 element: 'open_execution_settings',
               });

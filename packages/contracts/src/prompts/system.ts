@@ -253,10 +253,8 @@ export interface ComposeInput {
   // When set to 'plain', suppresses tool_calls so API/BYOK-mode models
   // only emit <artifact> blocks (they cannot execute tools).
   streamFormat?: string | undefined;
-  // Per-conversation mode. Design mode keeps the artifact-first agent
-  // workflow; Plan mode creates an editable source-of-truth document first;
-  // chat mode keeps the same context/tools but answers like a standard
-  // multi-turn assistant unless the user explicitly asks to build.
+  // Retained only for wire compatibility with older clients and persisted
+  // conversations. Prompt composition deliberately ignores this field.
   sessionMode?: ChatSessionMode | undefined;
   // UI locale selected by the client. User-visible generated form copy
   // must follow this locale even when the user's initial prompt is brief.
@@ -294,7 +292,6 @@ export function composeSystemPrompt({
   audioVoiceOptions,
   audioVoiceOptionsError,
   streamFormat,
-  sessionMode,
   locale,
   userInstructions,
   projectInstructions,
@@ -302,7 +299,6 @@ export function composeSystemPrompt({
   if (odNextStrategyRecipe) {
     return composeOdNextStrategyRequestPromptV2(odNextStrategyRecipe, {
       agentId,
-      sessionMode,
       locale,
       metadata,
       template,
@@ -354,24 +350,6 @@ export function composeSystemPrompt({
     parts.push('\n\n---\n\n');
   }
 
-  // Ask mode (`chat`) is the deliberately bare conversation mode: the
-  // CHAT_MODE_OVERRIDE below IS the whole charter, and the artifact-oriented
-  // blocks (the discovery layer, the full identity/workflow charter, deck
-  // framework, media generation contract, DS visual-direction override) are
-  // gated off so the turn stays cheap. Memory, custom instructions, the active
-  // design system, attached skills, and the clarifying-questions surface are
-  // still composed in — Ask mode is light, not amnesiac. Mirror the daemon
-  // composer's `isAskMode` gating.
-  const isAskMode = sessionMode === 'chat';
-
-  if (sessionMode === 'plan') {
-    parts.push(PLAN_MODE_OVERRIDE);
-    parts.push('\n\n---\n\n');
-  } else if (sessionMode === 'chat') {
-    parts.push(CHAT_MODE_OVERRIDE);
-    parts.push('\n\n---\n\n');
-  }
-
   if (metadata?.examplePrompt === true) {
     parts.push(buildExamplePromptOverride(metadata.examplePromptTitle, metadata.examplePromptBrief));
     parts.push('\n\n---\n\n');
@@ -386,21 +364,17 @@ export function composeSystemPrompt({
     parts.push('\n\n---\n\n');
   }
 
-  if (!isMediaSurfaceEarly && !isAskMode) {
+  if (!isMediaSurfaceEarly) {
     parts.push(DISCOVERY_AND_PHILOSOPHY, '\n\n---\n\n');
   }
 
-  // Ask mode skips the multi-thousand-token designer charter entirely — the
-  // CHAT_MODE_OVERRIDE above is its self-contained identity. Plan/Design keep it.
-  if (!isAskMode) {
-    // Website Clone runs swap the "don't recreate copyrighted designs" guardrail
-    // for a faithful-reproduction + pre-deploy-checklist rule, mirroring the
-    // daemon prompt so API/BYOK-backed web-clone runs behave identically.
-    parts.push(
-      '# Identity and workflow charter (background)\n\n',
-      renderOfficialDesignerPrompt({ webCloneFidelity: metadata?.intent === 'web-clone' }),
-    );
-  }
+  // Website Clone runs swap the "don't recreate copyrighted designs" guardrail
+  // for a faithful-reproduction + pre-deploy-checklist rule, mirroring the
+  // daemon prompt so API/BYOK-backed web-clone runs behave identically.
+  parts.push(
+    '# Identity and workflow charter (background)\n\n',
+    renderOfficialDesignerPrompt({ webCloneFidelity: metadata?.intent === 'web-clone' }),
+  );
 
   // Clarification on any turn reuses the same `<question-form>` flow so the
   // host keeps ONE unified questions surface: the form renders inline in the
@@ -475,9 +449,7 @@ export function composeSystemPrompt({
     );
   }
 
-  if (!isAskMode) {
-    parts.push(`\n\n${SEMANTIC_OUTPUT_FILE_NAMES}`);
-  }
+  parts.push(`\n\n${SEMANTIC_OUTPUT_FILE_NAMES}`);
 
   if (pluginBlock && pluginBlock.trim().length > 0) {
     parts.push(pluginBlock);
@@ -514,9 +486,9 @@ export function composeSystemPrompt({
   const isFreeformProject = !skillMode && (!metadata || metadata.kind === 'other');
   const hasSkillSeed =
     !!skillBody && /assets\/template\.html/.test(skillBody);
-  if (!isAskMode && isDeckProject && !hasSkillSeed) {
+  if (isDeckProject && !hasSkillSeed) {
     parts.push(`\n\n---\n\n${DECK_FRAMEWORK_DIRECTIVE}`);
-  } else if (!isAskMode && isFreeformProject && !hasSkillSeed) {
+  } else if (isFreeformProject && !hasSkillSeed) {
     // Freeform / kind=other projects skip the kind picker entirely and
     // land here. If the user's brief is a deck/keynote/slides ("讲解",
     // "presentation", "make a deck"), the agent used to invent its own
@@ -531,11 +503,11 @@ export function composeSystemPrompt({
     );
   }
 
-  if (!isAskMode && isMediaSurfaceEarly) {
+  if (isMediaSurfaceEarly) {
     parts.push(MEDIA_GENERATION_CONTRACT);
   }
 
-  if (!isAskMode && !isWebCloneRun && activeDesignSystemBody && activeDesignSystemBody.length > 0) {
+  if (!isWebCloneRun && activeDesignSystemBody && activeDesignSystemBody.length > 0) {
     parts.push(ACTIVE_DESIGN_SYSTEM_VISUAL_DIRECTION_OVERRIDE);
   }
 
@@ -576,52 +548,6 @@ Do not mention tool unavailability to the user. Avoid phrases such as "TodoWrite
 - \`<question-form>\` blocks when material clarification is needed on any turn, exactly as the rules below describe — question-form is markup the UI parses, not a tool call.
 
 If the rules below tell you to plan with TodoWrite, write the plan as prose instead. If they tell you to read skill side files before writing, describe in one sentence which patterns/conventions you're going to apply and proceed. If they tell you to run brand-spec extraction via Bash + Read + WebFetch, ask the user the missing brand questions in the discovery form instead.`;
-
-// Ask mode is the deliberately light conversation mode. Unlike Plan/Design,
-// the composer does NOT append the discovery layer or the full designer charter
-// after this override (see `isAskMode` gating in composeSystemPrompt) — so this
-// block is the whole behavioral charter for the turn and must read as
-// self-contained, not as a preface that overrides "rules below". Keep it
-// BYTE-IDENTICAL to the apps/daemon copy so a daemon chat and a BYOK/API chat
-// behave the same.
-const CHAT_MODE_OVERRIDE = `# Ask mode — bare conversation (this is the whole charter for this turn)
-
-This conversation is in HiDesign Ask mode: a fast, low-overhead chat kept deliberately light to save tokens. HiDesign is the open-source Claude Design alternative and a native Figma counterpart. Official links: GitHub https://github.com/nexu-io/open-design, website https://open-design.ai/, Discord https://discord.gg/mHAjSMV6gz.
-
-Behave like a direct, multi-turn desktop chat assistant. Prefer concise prose: answer the question, explain, compare options, debug prompts, and review existing work. You still have the user's project files, attachments, connectors, MCP servers, project memory, any active design system, and any skills they attached for this turn — use them as context, and follow an attached skill's workflow when one is present.
-
-This mode does not load the heavy design-discovery workflow or the full designer charter, on purpose. Do not emit a default discovery \`<question-form>\`, do not open with a TodoWrite plan for a chat answer, and do not create or edit project files, HTML, slide decks, images, video, or audio on your own.
-
-If the user explicitly asks you to build, generate, design, or export a concrete artifact (a page, prototype, deck, image, video, audio, or a file change), handle it inline only when it is genuinely trivial; for anything substantial, say so in one line and suggest switching to Design mode (or Plan mode for a document-first brief), where the full design workflow, brand discipline, and artifact tooling are loaded. Keep this turn conversational.
-
-For mid-conversation clarification you may still emit a \`<question-form>\` block — it is markup the HiDesign UI parses, not a native tool call.`;
-
-const PLAN_MODE_OVERRIDE = `# Plan mode — editable document first (read first — overrides every rule below)
-
-This conversation is in HiDesign Plan mode. Use the same context, files, attachments, connectors, MCP servers, project memory, tools, and design systems as Design mode, but do NOT create the final design artifact first.
-
-In filesystem runs, substantial plan-document work still starts with a real TodoWrite/task-list tool call and keeps it updated as work progresses. Do not narrate TodoWrite availability to the user; show progress through the Todo card when the runtime supports it. In plain API runs, follow the API-mode override above and write the plan directly as prose without mentioning missing tools.
-
-Override the artifact discovery layer below: do NOT emit \`<question-form id="discovery">\`, \`<question-form id="task-type">\`, "Quick brief — 30 seconds", or the default artifact-oriented discovery questions about landing pages, prototypes, dashboards, target platform, visual tone, brand context, fidelity, or design direction. A clear planning request should create or update the Markdown plan directly. If a clarification is truly required, ask only plan-document-specific questions, preferably in a \`<question-form id="plan-brief">\`, covering scope, stakeholders, timeline, sections, risks, constraints, and expected handoff deliverable.
-
-Your first responsibility is to create or update a Markdown plan document in Design Files, then guide the user to review and edit it before handoff to Design mode. The plan document is the source of truth for the next generation step and must be useful to both a human editor and a later agent run.
-
-Choose the document style from the user's intent and project metadata:
-- Deck / pitch / PPT: create a slide outline with page-by-page goals, narrative arc, slide titles, content bullets, visual direction, data/media needs, and speaker-note intent.
-- Prototype / app / dashboard / wireframe: create a PRD-style design brief with users, jobs, screens, key flows, layout structure, component/state requirements, interaction rules, data/content model, and acceptance checks.
-- Landing page / website / long-scroll: create a content and section plan with audience, offer, page hierarchy, section goals, proof/media needs, CTA logic, responsive considerations, and visual system notes.
-- Brand / design system: create a brand/system plan with token roles, typography, component coverage, usage rules, source assets, extraction gaps, and kit acceptance checks.
-- Image / video / audio: create a creative brief or storyboard with concept, shots/scenes, composition, copy, style references, model/runtime constraints, aspect/duration, and generation prompts.
-- Unknown or mixed requests: create a concise design-planning document with the closest matching sections above plus explicit open questions.
-
-Document requirements:
-- Write a real \`.md\` file under the active project. Prefer clear names such as \`plan.md\`, \`deck-outline.md\`, \`prototype-plan.md\`, \`prd.md\`, or \`storyboard.md\`; avoid overwriting a useful existing plan unless you are intentionally updating it.
-- Include a top-level title, a short intent summary, concrete sections, editable TODO/open-question markers, and a final "Next step" section that tells the user exactly what to do after reviewing the document.
-- If the user already has an active Markdown plan document, edit that file in place instead of creating a duplicate.
-- Do not output the final HTML/deck/image/video/audio artifact in the same turn unless the user explicitly says to skip planning or confirms that an existing plan is approved.
-- End the response by naming the created/updated Markdown file and inviting the user to edit it, then use the next-step handoff to generate from that document.
-
-If this is a plain API run where filesystem tools are unavailable, output the same plan as Markdown prose and clearly tell the user that no project file was written in this run.`;
 
 function renderMetadataBlock(
   metadata: ProjectMetadata | undefined,

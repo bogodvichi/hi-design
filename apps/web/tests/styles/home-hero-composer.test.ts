@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 const homeHeroCss = readFileSync(new URL('../../src/styles/home/home-hero.css', import.meta.url), 'utf8');
 const entranceCss = readFileSync(new URL('../../src/styles/entrance.css', import.meta.url), 'utf8');
 const routinesCss = readFileSync(new URL('../../src/styles/viewer/routines.css', import.meta.url), 'utf8');
+const projectViewSource = readFileSync(new URL('../../src/components/ProjectView.tsx', import.meta.url), 'utf8');
 
 function cssDeclarations(selector: string, css = homeHeroCss): string {
   const cssWithoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
@@ -73,5 +74,26 @@ describe('home hero composer visual contract', () => {
     );
 
     expect(ruleValue(hiddenCurrentWorkspace, 'display')).toBe('none');
+  });
+
+  it('uses the same compact model switcher in Home and project composers', () => {
+    const execution = cssDeclarations(
+      '.app .composer-row .home-hero__execution-switcher',
+      routinesCss,
+    );
+
+    expect(projectViewSource).toContain('<InlineModelSwitcher');
+    expect(projectViewSource).not.toContain('<AvatarMenu');
+    expect(ruleValue(execution, 'min-width')).toBe('104px');
+    expect(ruleValue(execution, 'flex')).toBe('0 0 104px');
+  });
+
+  it('lets the bottom-anchored directory menu override the shared downward placement', () => {
+    const upwardPanel = cssDeclarations(
+      ".home-hero__working-dir-picker [data-testid='working-dir-panel'][data-placement='up']",
+    );
+
+    expect(ruleValue(upwardPanel, 'top')).toBe('auto');
+    expect(ruleValue(upwardPanel, 'bottom')).toBe('calc(100% + 6px)');
   });
 });

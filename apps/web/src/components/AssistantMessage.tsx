@@ -48,7 +48,6 @@ import {
   hasOdCard,
   splitOnOdCards,
   stripTrailingOpenOdCard,
-  type ChatSessionMode,
   type OdCard,
   type OdCardBrandBrowserAssist,
   type RunContextSelection,
@@ -404,10 +403,7 @@ interface Props {
   // composer with an action / opening the toolbox both route through the
   // composer; see ChatPane's composer ref wiring.
   onToolboxAction?: (id: DesignToolboxActionId) => void;
-  onNextStepPromptAction?: (
-    prompt: string,
-    options?: { sessionMode?: ChatSessionMode },
-  ) => void;
+  onNextStepPromptAction?: (prompt: string) => void;
   onNextStepAiOptimize?: () => void;
   nextStepAiOptimizeBusy?: boolean;
   onNextStepContinueExtraction?: () => void;
@@ -659,14 +655,6 @@ function AssistantMessageImpl({
     () => pickPreviewableArtifact(displayedProduced) ?? pickLatestPreviewableArtifact(projectFiles),
     [displayedProduced, projectFiles],
   );
-  const planNextStepName = useMemo(
-    () => pickPlanDocument(displayedProduced) ?? pickLatestPlanDocument(projectFiles),
-    [displayedProduced, projectFiles],
-  );
-  const isPlanNextStep = nextStepVariant === 'plan' || message.sessionMode === 'plan';
-  const nextStepFileName = isPlanNextStep
-    ? (planNextStepName ?? nextStepArtifactName)
-    : nextStepArtifactName;
   const pluginActionFolders = useMemo(
     () =>
       !streaming && isLast && projectId
@@ -815,8 +803,6 @@ function AssistantMessageImpl({
           ? !!onNextStepContinueAiExtraction
         : effectiveNextStepVariant === 'design-system'
           ? !!onNextStepPromptAction
-          : effectiveNextStepVariant === 'plan'
-            ? !!onNextStepPromptAction
           : effectiveNextStepVariant === 'project-incomplete'
             ? !!onNextStepPromptAction ||
               !!onToolboxAction ||
@@ -1137,10 +1123,8 @@ function AssistantMessageImpl({
         ) : null}
         {showNextStepActions ? (
           <NextStepActions
-            fileName={isLast ? nextStepFileName : null}
-            planFileName={isLast ? planNextStepName : null}
-            artifactFileName={isLast ? nextStepArtifactName : null}
-            onShare={isLast && nextStepArtifactName && !isPlanNextStep ? onArtifactShare : undefined}
+            fileName={isLast ? nextStepArtifactName : null}
+            onShare={isLast && nextStepArtifactName ? onArtifactShare : undefined}
             onToolboxAction={isLast ? onToolboxAction : undefined}
             onPromptAction={isLast ? onNextStepPromptAction : undefined}
             onAiOptimize={isLast ? onNextStepAiOptimize : undefined}
@@ -1154,7 +1138,7 @@ function AssistantMessageImpl({
             onCreateDesignSystem={isLast ? onNextStepCreateDesignSystem : undefined}
             createDesignSystemBusy={Boolean(isLast && nextStepCreateDesignSystemBusy)}
             onPickSkill={isLast ? onPickSkill : undefined}
-            onDownload={isLast && nextStepFileName ? onArtifactDownload : undefined}
+            onDownload={isLast && nextStepArtifactName ? onArtifactDownload : undefined}
             skills={isLast ? nextStepSkills : undefined}
             toolboxSkillNames={isLast ? toolboxSkillNames : undefined}
             onShareToOpenDesign={showOpenDesignSubmission ? onShareToOpenDesign : undefined}
@@ -1188,29 +1172,6 @@ function pickLatestPreviewableArtifact(files: ProjectFile[]): string | null {
   let latest: ProjectFile | null = null;
   for (const f of files) {
     if (!isPreviewableHtml(f)) continue;
-    if (!latest || (f.mtime ?? 0) > (latest.mtime ?? 0)) latest = f;
-  }
-  return latest ? latest.name : null;
-}
-
-const PLAN_DOCUMENT_EXCLUDES = new Set(['design.md', 'brand-system.md']);
-
-function isPlanDocument(f: ProjectFile): boolean {
-  const name = f.name.toLowerCase();
-  if (!/\.mdx?$/.test(name)) return false;
-  const basename = name.split('/').pop() ?? name;
-  return !PLAN_DOCUMENT_EXCLUDES.has(basename);
-}
-
-function pickPlanDocument(files: ProjectFile[]): string | null {
-  const doc = files.find(isPlanDocument);
-  return doc ? doc.name : null;
-}
-
-function pickLatestPlanDocument(files: ProjectFile[]): string | null {
-  let latest: ProjectFile | null = null;
-  for (const f of files) {
-    if (!isPlanDocument(f)) continue;
     if (!latest || (f.mtime ?? 0) > (latest.mtime ?? 0)) latest = f;
   }
   return latest ? latest.name : null;

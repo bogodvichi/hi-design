@@ -1082,7 +1082,7 @@ describe('ChatPane streaming state', () => {
     expect(screen.queryByTestId('msg-session-mode-chip')).toBeNull();
   });
 
-  it('keeps labelling Ask and Plan on a strategy-owned turn', () => {
+  it('does not render legacy mode labels on a strategy-owned turn', () => {
     const messages: ChatMessage[] = [
       {
         id: 'user-1',
@@ -1113,7 +1113,7 @@ describe('ChatPane streaming state', () => {
       />,
     );
 
-    expect(screen.getByTestId('msg-session-mode-chip').textContent).toContain('Ask');
+    expect(screen.queryByTestId('msg-session-mode-chip')).toBeNull();
     expect(screen.queryByTestId('msg-applied-context')).toBeNull();
   });
 

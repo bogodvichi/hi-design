@@ -142,7 +142,7 @@ export function AmrBalanceDialog({
     if (!upgradeUrl) return;
     setWatchingWallet(true);
     // Same attribution handshake as the other HiDesign Cloud handoffs
-    // (ChatPane recharge, AvatarMenu upgrade): record the amr_entry, forward
+    // (ChatPane recharge, composer switcher upgrade): record the amr_entry, forward
     // the consent-gated device id, and open the console for the profile.
     const attribution = recordAmrEntry(analytics.track, entrySource, new Date(), {
       metricsConsent,

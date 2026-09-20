@@ -467,12 +467,17 @@ selectionExtension,
     let cancelled = false;
     void (async () => {
       const resolved = new Map<string, string>();
-      await Promise.all(
-        [...foreignIds].map(async (wid) => {
+      await Promise.all([...foreignIds].map(async (wid) => {
+        try {
           const ctx = await resolveBoundProjectWorkspaceContext(wid);
           if (ctx?.workspaceMemberId) resolved.set(wid, ctx.workspaceMemberId);
-        }),
-      );
+        } catch {
+          // A directory outage proves nothing about ownership. Leave this
+          // Workspace unresolved so project actions stay fail-closed, and do
+          // not let a background display lookup surface as a Next runtime
+          // error. The shared Workspace hook owns retry/recovery UI.
+        }
+      }));
       if (!cancelled) setCrossWorkspaceMemberIds(resolved);
     })();
     return () => { cancelled = true; };

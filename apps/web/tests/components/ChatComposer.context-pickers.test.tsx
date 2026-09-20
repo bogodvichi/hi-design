@@ -516,8 +516,7 @@ describe('ChatComposer context pickers', () => {
 
   // Only directory-shaped contexts (`local-code` / `project`) may contribute a
   // linked dir; a `file` context never does, no matter what its `absolutePath`
-  // looks like. #5517 removed the in-project working-dir row that used to drive
-  // this, so it is now driven through the surviving "+" → Link local code path:
+  // looks like. Drive this through "+" → Link local code:
   // the linked folder deliberately collides with the active FILE context's
   // absolutePath. If a file context were ever counted as a directory owner,
   // `workspaceContextDirStillReferenced` would treat the dir as still in use and
@@ -575,6 +574,45 @@ describe('ChatComposer context pickers', () => {
         metadata: expect.objectContaining({ linkedDirs: ['/Users/me/work-dir'] }),
       }),
     );
+  });
+
+  it('shows the current working-directory binding and visibly resets it when cleared', async () => {
+    function ControlledComposer() {
+      const [metadata, setMetadata] = useState<ProjectMetadata>({
+        kind: 'prototype',
+        linkedDirs: ['/Users/me/work-dir'],
+      });
+      return composerElement({
+        projectMetadata: metadata,
+        onProjectMetadataChange: (next) => {
+          if (next.metadata) setMetadata(next.metadata);
+        },
+      });
+    }
+
+    render(<ControlledComposer />);
+    await flushMounts();
+
+    expect(screen.getByTestId('working-dir-trigger').textContent).toContain('work-dir');
+    expect(screen.getByTestId('working-dir-trigger').closest('.composer-row')).toBeNull();
+    expect(screen.getByTestId('working-dir-trigger').closest('.composer-working-dir-row')).toBeTruthy();
+    expect(screen.getByTestId('working-dir-trigger').closest('[data-composer-surface="project"]')).toBeTruthy();
+    expect(screen.queryByTestId('composer-mode-trigger')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('chat-plus-trigger'));
+    expect(screen.queryByTestId('composer-plus-working-dir')).toBeNull();
+    fireEvent.click(screen.getByTestId('chat-plus-trigger'));
+
+    fireEvent.click(screen.getByTestId('working-dir-trigger'));
+    expect(screen.getByTestId('working-dir-panel')).toHaveAttribute('data-placement', 'up');
+    expect(screen.getByRole('note').textContent).toMatch(/read|读取/i);
+    fireEvent.click(screen.getByTestId('working-dir-clear'));
+
+    await waitFor(() => {
+      expect(projectPatchBodies()).toHaveLength(1);
+      expect(projectPatchBodies()[0]?.metadata?.linkedDirs).toEqual([]);
+      expect(screen.getByTestId('working-dir-trigger').textContent).not.toContain('work-dir');
+    });
   });
 
   it('removes the linked dir added for a local-code context when its chip is cleared', async () => {

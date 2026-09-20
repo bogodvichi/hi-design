@@ -154,9 +154,8 @@ export interface SelectAutoOpenTurnOptions extends SelectAutoOpenOptions {
   // after this instant (minus a filesystem-precision grace) count as touched
   // by the turn even though their NAME already existed before it. A
   // regeneration that rewrites index.html in place produces no new file name,
-  // so a pure pre/post name diff misses it — the Plan-mode
-  // plan → generate → edit plan → regenerate loop hits this on every second
-  // generation. Window bounds match AssistantMessage's
+  // so a pure pre/post name diff misses it during iterative regeneration.
+  // Window bounds match AssistantMessage's
   // inferProducedFilesFromTurn: [startedAt - 1s, endedAt + 60s].
   readonly turnStartedAt?: number | null;
   // Epoch ms when the turn ended. Bounds the attribution window on the right
@@ -168,8 +167,8 @@ export interface SelectAutoOpenTurnOptions extends SelectAutoOpenOptions {
   readonly turnEndedAt?: number | null;
   // Project file NAMES the agent's Write/Edit tool events actually touched
   // this turn. When non-empty, mtime-window candidates are restricted to this
-  // set: in Plan mode the user edits plan.md in the split editor with
-  // autosave on, so its mtime lands inside the turn window from the user's
+  // set: when the user edits a document in the split editor with autosave on,
+  // its mtime lands inside the turn window from the user's
   // own keystrokes — without this restriction a text-only turn would yank
   // focus back to it. Protocols that emit no write events (codex, gemini,
   // opencode, ACP agents) supply an empty set and keep the pure time window;

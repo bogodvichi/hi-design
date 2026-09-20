@@ -481,6 +481,20 @@ export function projectViewAuthorizationLifetimeKey(
   return `${projectListScopeKey(context)}:${projectId}`;
 }
 
+/**
+ * Project mutation endpoints return the persisted SQLite row, while project
+ * list/detail reads also overlay Workspace binding fields. Keep those
+ * read-side fields when a mutation response omits them: dropping workspaceId
+ * changes ProjectView's authorization key and remounts the whole composer.
+ */
+export function reconcileProjectMutationResult(
+  previous: Project,
+  updated: Project,
+): Project {
+  if (previous.id !== updated.id) return updated;
+  return { ...previous, ...updated };
+}
+
 export async function persistComposioConfigChange(
   current: AppConfig,
   composio: AppConfig['composio'],
@@ -4358,12 +4372,16 @@ if (fetchedProject) {
       routeSnapshot?.workspaceContext
       ?? routeSnapshot?.workspaceScope?.context
       ?? null;
+    const reconciledRouteProject = routeSnapshot?.project.id === updated.id
+      ? reconcileProjectMutationResult(routeSnapshot.project, updated)
+      : updated;
     const routeSnapshotMatches =
       routeRef.current.kind === 'project'
       && routeRef.current.projectId === updated.id
       && routeSnapshot?.project.id === updated.id
       && routeSnapshot.accountGeneration === accountGeneration
-      && (routeSnapshot.project.workspaceId ?? null) === (updated.workspaceId ?? null)
+      && (routeSnapshot.project.workspaceId ?? null)
+        === (reconciledRouteProject.workspaceId ?? null)
       && (
         routeSnapshotContext === null && projectContext === null
         || (
@@ -4376,23 +4394,26 @@ if (fetchedProject) {
     if (routeSnapshotMatches) {
       routeProjectSnapshotRef.current = {
         ...routeSnapshot,
-        project: updated,
+        project: reconciledRouteProject,
       };
       setRouteProjectSnapshotRevision((current) => current + 1);
     }
     setProjects((curr) => {
       const previous = curr.find((p) => p.id === updated.id);
+      const reconciled = previous
+        ? reconcileProjectMutationResult(previous, updated)
+        : updated;
       if (
         previous
         && (
-          previous.skillId !== updated.skillId
-          || previous.designSystemId !== updated.designSystemId
-          || previous.customInstructions !== updated.customInstructions
+          previous.skillId !== reconciled.skillId
+          || previous.designSystemId !== reconciled.designSystemId
+          || previous.customInstructions !== reconciled.customInstructions
         )
       ) {
         iframeKeepAlivePool.evictProject(updated.id, { includeActive: true });
       }
-      return curr.map((p) => (p.id === updated.id ? updated : p));
+      return curr.map((p) => (p.id === updated.id ? reconciled : p));
     });
     if (projectContext) {
       patchProjectDisplaySnapshots({
@@ -5520,8 +5541,10 @@ if (fetchedProject) {
           onModeChange={handleModeChange}
           onAgentChange={handleAgentChange}
           onAgentModelChange={handleAgentModelChange}
+          providerModelsCache={providerModelsCache}
+          onProviderModelsCacheChange={setProviderModelsCache}
+          onApiProtocolChange={handleApiProtocolChange}
           onApiModelChange={handleApiModelChange}
-          onRefreshAgents={refreshAgents}
           onOpenSettings={openSettings}
           onOpenAmrSettings={openAmrSettings}
           onOpenMcpSettings={openMcpSettings}

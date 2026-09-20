@@ -191,8 +191,8 @@ vi.mock('../../src/components/AppChromeHeader', () => ({
   ),
 }));
 
-vi.mock('../../src/components/AvatarMenu', () => ({
-  AvatarMenu: () => null,
+vi.mock('../../src/components/InlineModelSwitcher', () => ({
+  InlineModelSwitcher: () => null,
 }));
 
 vi.mock('../../src/components/FileWorkspace', () => ({

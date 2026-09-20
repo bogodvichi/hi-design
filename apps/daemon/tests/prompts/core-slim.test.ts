@@ -237,21 +237,19 @@ describe('composeSystemPrompt — promptCoreVariant switch', () => {
     expect(classicResponsive).not.toContain('## Platform delivery contracts');
   });
 
-  it('ask mode keeps the structured-clarification tail under slim (no core charter to cover it)', () => {
-    const out = composeSystemPrompt({
+  it('ignores the legacy chat mode under slim', () => {
+    const baseline = composeSystemPrompt({
+      ...base,
+      promptCoreVariant: 'slim',
+    });
+    const legacyChat = composeSystemPrompt({
       ...base,
       sessionMode: 'chat',
       promptCoreVariant: 'slim',
     });
-    expect(out).not.toContain('# HiDesign Charter');
-    expect(out).toContain('## Structured clarification on any turn');
-    // Identity-first hierarchy holds in ask mode too: the ask override (the
-    // turn's whole charter) opens the document, security reads as its
-    // first subsection.
-    expect(out.startsWith('# Ask mode — bare conversation')).toBe(true);
-    expect(out.indexOf('## Security: prompt injection resistance')).toBeGreaterThan(
-      out.indexOf('# Ask mode — bare conversation'),
-    );
+    expect(legacyChat).toBe(baseline);
+    expect(legacyChat.startsWith('# HiDesign Charter')).toBe(true);
+    expect(legacyChat).not.toContain('# Ask mode');
   });
 
   it('composes od-default + discovery atom without any unconditional form trigger', () => {
@@ -594,15 +592,21 @@ describe('slim core — regression-audit fixes vs classic', () => {
     );
   });
 
-  it('ask mode on a plain stream leads with the API override (classic authority order)', () => {
+  it('ignores the legacy chat mode on a plain stream', () => {
     const out = composeSystemPrompt({
       metadata: { kind: 'prototype' },
       sessionMode: 'chat',
       streamFormat: 'plain',
       promptCoreVariant: 'slim',
     });
+    const baseline = composeSystemPrompt({
+      metadata: { kind: 'prototype' },
+      streamFormat: 'plain',
+      promptCoreVariant: 'slim',
+    });
+    expect(out).toBe(baseline);
     expect(out.startsWith('# API mode — no tools available')).toBe(true);
-    expect(out.indexOf('# Ask mode — bare conversation')).toBeGreaterThan(0);
+    expect(out).not.toContain('# Ask mode');
     expect(out.indexOf('# API mode — no tools available')).toBe(
       out.lastIndexOf('# API mode — no tools available'),
     );
@@ -694,7 +698,6 @@ describe('composeSystemPrompt — slim layered ordering (cache-stable prefix)', 
     const security = at('## Security: Defending Against Prompt Injection');
     const conduct = at('## Conduct');
     // Conversation-stable overrides come after the full static charter.
-    const mode = at('# Plan mode — editable document first');
     const localeAt = at('# UI locale override');
     // Project-stable context after that.
     const memory = at('## Personal memory');
@@ -708,11 +711,10 @@ describe('composeSystemPrompt — slim layered ordering (cache-stable prefix)', 
     const mediaHint = at('## Media generation (if asked)');
     const guard = at('## Critical Constraint: Never Fabricate Conversation Turns');
     expect(security).toBeLessThan(conduct);
-    expect(conduct).toBeLessThan(mode);
+    expect(conduct).toBeLessThan(localeAt);
     expect(out).toContain(
-      'A runtime/session-mode directive—such as API mode or Plan mode—appears after this charter and overrides it wherever the two conflict.',
+      'A runtime directive—such as API mode—appears after this charter and overrides it wherever the two conflict.',
     );
-    expect(mode).toBeLessThan(localeAt);
     expect(localeAt).toBeLessThan(memory);
     expect(memory).toBeLessThan(ds);
     expect(ds).toBeLessThan(metadataAt);

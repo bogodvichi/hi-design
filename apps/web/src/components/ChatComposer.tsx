@@ -24,7 +24,6 @@ import { useAnalytics } from '../analytics/provider';
 import {
   trackChatPanelClick,
   trackComposerBarClick,
-  trackComposerSessionModeClick,
   trackContextLinkResult,
   trackDesignToolboxClick,
   trackFigmaHelpModalSurfaceView,
@@ -35,7 +34,6 @@ import type {
   ComposerBarClickProps,
   DesignToolboxClickProps,
 } from '@open-design/contracts/analytics';
-import { sessionModeToTracking } from '@open-design/contracts/analytics';
 import { deriveUploadCohort } from '../analytics/upload-tracking';
 import { notifyCompletionFeedbackGesture } from '../utils/notifications';
 import { projectRawUrl, uploadProjectFiles, openFolderDialog, fetchRecentLinkedDirs, pushRecentLinkedDir, dirExists, applyLibraryAsset, fetchLibraryAssetElementHtml } from "../providers/registry";
@@ -72,7 +70,7 @@ import {
   type ProjectReferenceSelection,
 } from './ProjectReferenceModal';
 import { assetTitle, elementMetaOf } from './LibraryAssetMeta';
-import { ComposerModePicker } from './ComposerModePicker';
+import { WorkingDirPicker } from './WorkingDirPicker';
 import type { LibraryAsset, LibraryElementMeta } from '@open-design/contracts';
 import {
   DESIGN_TOOLBOX_ACTIONS,
@@ -251,8 +249,6 @@ interface Props {
   projectFiles: ProjectFile[];
   activeProjectFileName?: string | null;
   streaming: boolean;
-  sessionMode?: ChatSessionMode;
-  onSessionModeChange?: (mode: ChatSessionMode) => void;
   sendDisabled?: boolean;
   // Read-only viewer of a team-shared project: makes the Lexical editor
   // non-editable (in addition to `sendDisabled` blocking the send action) so
@@ -370,7 +366,6 @@ interface Props {
 // push text into the composer without owning its draft state.
 export interface ChatComposerDraftOptions {
   entryFrom?: ChatAnalyticsEntryFrom;
-  sessionMode?: ChatSessionMode;
 }
 
 /** Which of the two standalone quick-pill popovers is open, if either. */
@@ -446,7 +441,7 @@ export interface ChatSendMeta {
    *  this send (e.g. 'mark' when the turn is sent from the Mark draw overlay).
    *  Behavior never depends on it; it only shapes PostHog props. */
   entryFrom?: ChatAnalyticsEntryFrom;
-  /** One-shot run mode override for seeded follow-ups before parent state catches up. */
+  /** Legacy transport field. New composer interactions always use design. */
   sessionMode?: ChatSessionMode;
 }
 
@@ -529,8 +524,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       projectFiles,
       activeProjectFileName = null,
       streaming,
-      sessionMode = 'design',
-      onSessionModeChange,
       sendDisabled = false,
       inputDisabled = false,
       initialDraft,
@@ -589,7 +582,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     const [draft, setDraft] = useState(() => initialDraft ?? loadComposerDraft(draftStorageKey) ?? "");
     const [placeholderScenario, setPlaceholderScenario] = useState<PlaceholderScenario | null>(null);
     const composerRootRef = useRef<HTMLDivElement | null>(null);
-    const pendingSessionModeRef = useRef<ChatSessionMode | null>(null);
     // Synchronous mirror of `draft`. Event handlers that mutate the draft off
     // a captured render closure (notably the annotation listener, where two
     // uploads can resolve concurrently) read/write this ref so their edits
@@ -601,15 +593,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     // is cleared. Keep a synchronous latch so a second Enter/click in that
     // window cannot enqueue the same still-visible payload again.
     const composedSendPendingRef = useRef(false);
-    const previousSessionModeRef = useRef(sessionMode);
-
-    useEffect(() => {
-      if (previousSessionModeRef.current === sessionMode) return;
-      if (pendingSessionModeRef.current && pendingSessionModeRef.current !== sessionMode) {
-        pendingSessionModeRef.current = null;
-      }
-      previousSessionModeRef.current = sessionMode;
-    }, [sessionMode]);
 
     // chat_panel page_view fires from ProjectView (which outlives
     // conversation switches) so the event measures real chat-panel
@@ -1391,7 +1374,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
       () => ({
         setDraft: (text: string, options?: ChatComposerDraftOptions) => {
           pendingEntryFromRef.current = options?.entryFrom ?? null;
-          pendingSessionModeRef.current = options?.sessionMode ?? null;
           setDraft(text);
           editorRef.current?.setText(text);
           editorRef.current?.focus();
@@ -1509,7 +1491,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
 
     function reset() {
       pendingEntryFromRef.current = null;
-      pendingSessionModeRef.current = null;
       const linkedWorkspaceContexts = stagedWorkspaceContexts.filter((item) => (
         Boolean(item.absolutePath?.trim()) && Boolean(workspaceLinkedDirAdds[item.id])
       ));
@@ -1591,27 +1572,21 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
 
     function finishComposedSend(
       outcome: ChatSendOutcome | Promise<ChatSendOutcome>,
-      pendingMetadata?: { entryFrom: ChatSendMeta['entryFrom'] | null; sessionMode: ChatSessionMode | null },
+      pendingEntryFrom?: ChatSendMeta['entryFrom'] | null,
     ) {
       void Promise.resolve(outcome).then(
         (result) => {
           if (result === 'restore-draft') {
-            if (pendingMetadata?.entryFrom && !pendingEntryFromRef.current) {
-              pendingEntryFromRef.current = pendingMetadata.entryFrom;
-            }
-            if (pendingMetadata?.sessionMode && !pendingSessionModeRef.current) {
-              pendingSessionModeRef.current = pendingMetadata.sessionMode;
+            if (pendingEntryFrom && !pendingEntryFromRef.current) {
+              pendingEntryFromRef.current = pendingEntryFrom;
             }
             return;
           }
           reset();
         },
         () => {
-          if (pendingMetadata?.entryFrom && !pendingEntryFromRef.current) {
-            pendingEntryFromRef.current = pendingMetadata.entryFrom;
-          }
-          if (pendingMetadata?.sessionMode && !pendingSessionModeRef.current) {
-            pendingSessionModeRef.current = pendingMetadata.sessionMode;
+          if (pendingEntryFrom && !pendingEntryFromRef.current) {
+            pendingEntryFromRef.current = pendingEntryFrom;
           }
         },
       ).finally(() => {
@@ -1621,12 +1596,12 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
 
     function beginComposedSend(
       send: () => ChatSendOutcome | Promise<ChatSendOutcome>,
-      pendingMetadata?: { entryFrom: ChatSendMeta['entryFrom'] | null; sessionMode: ChatSessionMode | null },
+      pendingEntryFrom?: ChatSendMeta['entryFrom'] | null,
     ): boolean {
       if (composedSendPendingRef.current) return false;
       composedSendPendingRef.current = true;
       try {
-        finishComposedSend(send(), pendingMetadata);
+        finishComposedSend(send(), pendingEntryFrom);
         return true;
       } catch (error) {
         composedSendPendingRef.current = false;
@@ -1656,19 +1631,16 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
       // Apply pending Next-step metadata if the caller didn't set its own
       // fields, then clear it so it only colors the immediate next send.
       const pendingEntryFrom = pendingEntryFromRef.current;
-      const pendingSessionMode = pendingSessionModeRef.current;
       pendingEntryFromRef.current = null;
-      pendingSessionModeRef.current = null;
       const effectiveMetaShape: ChatSendMeta = {
         ...(meta ?? {}),
         ...(pendingEntryFrom && !meta?.entryFrom ? { entryFrom: pendingEntryFrom } : {}),
-        ...(pendingSessionMode && !meta?.sessionMode ? { sessionMode: pendingSessionMode } : {}),
       };
       const effectiveMeta =
         Object.keys(effectiveMetaShape).length > 0 ? effectiveMetaShape : undefined;
       return beginComposedSend(
         () => onSend(prompt, nextAttachments, nextCommentAttachments, effectiveMeta),
-        { entryFrom: pendingEntryFrom, sessionMode: pendingSessionMode },
+        pendingEntryFrom,
       );
     }
 
@@ -3571,9 +3543,8 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
                 setComposerEngaged(true);
               }}
               onSubmenuOpen={(submenu) => {
-                // The toolbox flyout tracks its own open (design_toolbox_open);
-                // the working-dir flyout carries actions, not a resource list.
-                if (submenu === 'toolbox' || submenu === 'workingDir') return;
+                // The toolbox flyout tracks its own open (design_toolbox_open).
+                if (submenu === 'toolbox') return;
                 trackComposerBar({
                   element: 'plus_submenu_open',
                   resource_kind: PLUS_SUBMENU_RESOURCE_KIND[submenu],
@@ -3670,20 +3641,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
                 trackComposerBar({ element: 'plus_pick', resource_kind: 'workspace', resource_id: 'local-code' });
                 void handleLinkLocalCodeContext();
               }}
-              workingDir={workingDir}
-              recentWorkingDirs={recentDirs}
-              onPickWorkingDir={() => {
-                trackComposerBar({ element: 'plus_pick', resource_kind: 'workspace', resource_id: 'working-dir' });
-                void handlePickWorkingDir();
-              }}
-              onSelectRecentWorkingDir={(dir) => {
-                trackComposerBar({ element: 'plus_pick', resource_kind: 'workspace', resource_id: 'working-dir-recent' });
-                void setWorkingDirFolder(dir);
-              }}
-              onClearWorkingDir={() => {
-                trackComposerBar({ element: 'plus_pick', resource_kind: 'workspace', resource_id: 'working-dir-clear' });
-                void clearWorkingDir();
-              }}
               attachLoading={uploading}
               onSelectFromLibrary={() => {
                 trackChatPanelClick(analytics.track, {
@@ -3724,22 +3681,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
             {designSystemPicker}
             {leadingAccessory}
             <span className="composer-spacer" />
-            <ComposerModePicker
-              mode={sessionMode}
-              onModeChange={(next) => {
-                if (next !== sessionMode) {
-                  trackComposerSessionModeClick(analytics.track, {
-                    page_name: 'chat_panel',
-                    area: 'chat_composer',
-                    element: 'session_mode_toggle',
-                    mode_before: sessionModeToTracking(sessionMode),
-                    mode_after: sessionModeToTracking(next),
-                    project_id: projectId ?? undefined,
-                  });
-                }
-                onSessionModeChange?.(next);
-              }}
-            />
             {footerAccessory}
             {showStopButton ? (
               <button
@@ -3778,11 +3719,30 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
             ) : null}
           </ComposerSurfaceFooter>
           </ComposerSurfaceInput>
+          <div className="home-hero__workdir-row composer-working-dir-row">
+            <WorkingDirPicker
+              className="home-hero__working-dir-picker"
+              workingDir={workingDir}
+              recentDirs={recentDirs}
+              emptyLabel={t('homeWorkingDir.triggerShort')}
+              placement="up"
+              invalid={workingDirMissing}
+              onOpen={() => void checkWorkingDir()}
+              onPickDirectory={() => {
+                trackComposerBar({ element: 'plus_pick', resource_kind: 'workspace', resource_id: 'working-dir' });
+                void handlePickWorkingDir();
+              }}
+              onSelectRecent={(dir) => {
+                trackComposerBar({ element: 'plus_pick', resource_kind: 'workspace', resource_id: 'working-dir-recent' });
+                void setWorkingDirFolder(dir);
+              }}
+              onClear={() => {
+                trackComposerBar({ element: 'plus_pick', resource_kind: 'workspace', resource_id: 'working-dir-clear' });
+                void clearWorkingDir();
+              }}
+            />
+          </div>
         </ComposerSurface>
-        {/* #5517 renders no working-dir row inside a project — its ChatComposer
-            imports WorkingDirPicker but never mounts it. Product chose full
-            alignment (2026-07-21) over keeping this as the only mid-project
-            re-bind entry. Home still picks a working directory for NEW projects. */}
         {uploadError ? <span className="composer-hint">{uploadError}</span> : null}
         {detailsRecord ? (
           <PluginDetailsModal

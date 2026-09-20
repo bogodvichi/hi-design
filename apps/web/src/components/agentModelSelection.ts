@@ -62,8 +62,8 @@ export function effectiveAgentModelId(
  * Whether `modelId` may be OFFERED to the user as a selectable model.
  *
  * This is the single definition of "locked" for every model-list surface — the
- * home composer's compact list, the execution-settings picker, and the project
- * composer's `AvatarMenu` list all ask it instead of re-deriving the rule. Only
+ * shared composer switcher and the execution-settings picker both ask it
+ * instead of re-deriving the rule. Only
  * AMR's catalog carries plan entitlement (`enabled: false` is what `vela model
  * list --json` reports for a model above the caller's plan); every other agent's
  * list is its own model ids and stays fully selectable.

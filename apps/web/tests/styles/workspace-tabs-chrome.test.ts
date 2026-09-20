@@ -168,17 +168,9 @@ describe('workspace tabs chrome styles', () => {
       routinesCss,
       'body.od-quick-switcher-open .chat-composer-fixed-layer .composer-active-file',
     );
-    const fixedToolbarMode = cssDeclarations(
+    const fixedToolbarModel = cssDeclarations(
       routinesCss,
-      'body.od-quick-switcher-open .chat-composer-fixed-layer .composer-row .session-mode-toggle__trigger',
-    );
-    const fixedToolbarAvatar = cssDeclarations(
-      routinesCss,
-      'body.od-quick-switcher-open .chat-composer-fixed-layer .composer-row .avatar-agent-trigger',
-    );
-    const fixedToolbarAvatarButton = cssDeclarations(
-      routinesCss,
-      'body.od-quick-switcher-open .chat-composer-fixed-layer .composer-row .avatar-btn',
+      'body.od-quick-switcher-open .chat-composer-fixed-layer .composer-row .inline-switcher__chip',
     );
     const fixedToolbarSend = cssDeclarations(
       routinesCss,
@@ -232,9 +224,7 @@ describe('workspace tabs chrome styles', () => {
       fixedStagedCommentButton,
       fixedActiveFile,
       fixedToolbarIcon,
-      fixedToolbarMode,
-      fixedToolbarAvatar,
-      fixedToolbarAvatarButton,
+      fixedToolbarModel,
       fixedToolbarSend,
       fixedWorkingDirPill,
     ]) {
