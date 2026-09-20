@@ -2101,6 +2101,9 @@ function requestDelete(project: Project) {
           const shared = isShared(project.id);
          const selected = selectedProjectIds.has(project.id);
          const opening = openingProjectId === project.id;
+         // HDW team-series views always present cards as team-owned with the
+         // person who created the project in the bottom-left owner pill.
+         const isTeamSeriesView = space === 'team' && Boolean(operator);
          // Explicit self-ownership by the current workspace member always
          // reads as a personal project in this view, even if the project is
          // team-visible or shared with the current user.
@@ -2112,11 +2115,13 @@ function requestDelete(project: Project) {
          // workspaceId === sharedSpaceTeamId (or absent) -> personal workspace:
          //   ownedBySelf -> "personal", otherwise -> "shared".
          // workspaceId !== sharedSpaceTeamId -> team workspace -> "team".
-         const projectType = isSelfOwnedForDisplay
-           ? 'personal' as const
-           : (project.workspaceId == null || project.workspaceId === sharedSpaceTeamId)
-             ? (creator.ownedBySelf ? 'personal' as const : 'shared-with-me' as const)
-             : 'team' as const;
+         const projectType = isTeamSeriesView
+           ? 'team' as const
+           : isSelfOwnedForDisplay
+             ? 'personal' as const
+             : (project.workspaceId == null || project.workspaceId === sharedSpaceTeamId)
+               ? (creator.ownedBySelf ? 'personal' as const : 'shared-with-me' as const)
+               : 'team' as const;
          return (
            <div
              key={project.id}
@@ -2277,7 +2282,7 @@ function requestDelete(project: Project) {
                   // (hover-revealed, see recent-projects.css); list view's
                   // thumb is far too small (128x52) for it — the inline
                   // variant next to the name below covers that case instead.
-                   <span className={`recent-projects__card-badge recent-projects__card-badge--${projectType}`}>
+                   <span className={`recent-projects__card-badge recent-projects__card-badge--${projectType}${isTeamSeriesView ? ' recent-projects__card-badge--always' : ''}`}>
                      <Icon name={projectType === 'personal' ? 'lock' : projectType === 'team' ? 'users' : 'share'} size={11} />
                      {projectType === 'personal'
                        ? t('recentProjects.personalBadge')
@@ -2304,7 +2309,17 @@ function requestDelete(project: Project) {
                 <div className="recent-projects__card-footer">
                   <div className="recent-projects__card-time">
                     <>
-                      {(isSelfOwnedForDisplay || (creator.ownedBySelf && space !== 'team')) ? (
+                      {isTeamSeriesView ? (
+                        <span
+                          className="recent-projects__card-owner"
+                          title={creator.name}
+                          style={{ backgroundColor: ownerAvatarColor(creator.memberId) }}
+                          aria-hidden
+                        >
+                          {creator.name}
+                          {creator.ownedBySelf ? t('recentProjects.selfCreator') : null}
+                        </span>
+                      ) : (isSelfOwnedForDisplay || (creator.ownedBySelf && space !== 'team')) ? (
                         <span
                           className="recent-projects__card-owner"
                           style={{ backgroundColor: '#000' }}

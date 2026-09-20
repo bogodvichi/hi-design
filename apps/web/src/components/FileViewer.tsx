@@ -4424,18 +4424,15 @@ function FileVersionManagerModal({
   );
 }
 
-function formatCommentTime(ts: number, t: TranslateFn): string {
-  const diff = Date.now() - ts;
-  if (diff < 60_000) return t('common.justNow');
-  const mins = Math.floor(diff / 60_000);
-  if (mins < 60) return t('common.minutesAgo', { n: mins });
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return t('common.hoursAgo', { n: hours });
-  const days = Math.floor(hours / 24);
-  if (days < 7) return t('common.daysAgo', { n: days });
-  const weeks = Math.floor(days / 7);
-  if (weeks < 5) return t('common.weeksAgo', { n: weeks });
-  return new Date(ts).toLocaleDateString();
+function formatCommentTime(ts: number): string {
+  const date = new Date(ts);
+  if (!Number.isFinite(date.getTime())) return '';
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return [
+    date.getFullYear(),
+    pad(date.getMonth() + 1),
+    pad(date.getDate()),
+  ].join('/') + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes());
 }
 
 function commentActivityAt(comment: PreviewComment): number {
@@ -4543,6 +4540,7 @@ export function CommentSidePanel({
   onReorder,
   onReply,
   onSendSelected,
+  onSendComment,
   onCreateComment,
   canSendComment,
   currentUser,
@@ -4556,6 +4554,10 @@ export function CommentSidePanel({
   composer,
   onDeleteComment,
   onChangeCommentStatus,
+  canChangeCommentStatus,
+  canDeleteComment,
+  canReplyComment,
+  onReplyComment,
 }: {
   comments: PreviewComment[];
   projectId?: string;
@@ -4572,6 +4574,8 @@ export function CommentSidePanel({
   onReorder?: (orderedIds: string[], draggedId: string) => void;
   onReply: (comment: PreviewComment) => void;
   onSendSelected: () => void | Promise<void>;
+  /** Send a single comment to chat immediately. */
+  onSendComment?: (comment: PreviewComment) => void | Promise<void>;
   onCreateComment?: (note: string) => boolean | Promise<boolean>;
   sending: boolean;
   queueOnSend?: boolean;
@@ -4583,15 +4587,26 @@ export function CommentSidePanel({
   composer?: ReactNode;
   onDeleteComment?: (commentId: string) => void | Promise<void>;
   onChangeCommentStatus?: (commentId: string, status: PreviewCommentStatus) => void | Promise<void>;
+  /** Team-collab gate: which comments the viewer may resolve/reopen. Defaults to true when `onChangeCommentStatus` is present (single-user). */
+  canChangeCommentStatus?: (comment: PreviewComment) => boolean;
+  /** Team-collab gate: which comments the viewer may delete. Defaults to true when `onDeleteComment` is present (single-user). */
+  canDeleteComment?: (comment: PreviewComment) => boolean;
+  /** Team-collab gate: which comments the viewer may reply to. Defaults to true (single-user). */
+  canReplyComment?: (comment: PreviewComment) => boolean;
+  /** Optional reply persistence callback. `replyText` is the appended reply text. */
+  onReplyComment?: (comment: PreviewComment, replyText: string) => void | Promise<void>;
 }) {
   const { workspaceContext } = useProjectCollabContext();
   const [newCommentDraft, setNewCommentDraft] = useState('');
   const [dragState, setDragState] = useState<CommentSideDragState | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortMode, setSortMode] = useState<'newest' | 'oldest' | 'unresolved'>('newest');
-  const [filterMode, setFilterMode] = useState<'all' | 'open' | 'resolved'>('all');
+  const [sortMode, setSortMode] = useState<'newest' | 'oldest'>('newest');
+  const [activeFilters, setActiveFilters] = useState<ReadonlySet<'open' | 'resolved' | 'mentioned'>>(new Set(['open']));
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [notifMenuOpen, setNotifMenuOpen] = useState(false);
+  const [replyEditorId, setReplyEditorId] = useState<string | null>(null);
+  const [replyDraftById, setReplyDraftById] = useState<Record<string, string>>({});
+  const [localRepliesById, setLocalRepliesById] = useState<Record<string, string[]>>({});
   const sortMenuRef = useRef<HTMLSpanElement | null>(null);
   const notifMenuRef = useRef<HTMLSpanElement | null>(null);
   const { resolve: resolveCommentAuthor } = useTeamMembers(currentUser);
@@ -4607,31 +4622,32 @@ export function CommentSidePanel({
   // Derived: filter by search query + filter mode, then sort.
   const filteredComments = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
+    const currentDisplayName = currentUser?.displayName?.trim().toLowerCase();
+    const currentMemberId = currentUser?.memberId?.trim().toLowerCase();
     let list = comments;
     if (q) {
       list = list.filter((c) => c.note.toLowerCase().includes(q));
     }
-    if (filterMode === 'open') {
-      list = list.filter((c) => c.status !== 'resolved');
-    } else if (filterMode === 'resolved') {
-      list = list.filter((c) => c.status === 'resolved');
+    if (activeFilters.size > 0) {
+      list = list.filter((c) => {
+        if (activeFilters.has('open') && c.status !== 'resolved') return true;
+        if (activeFilters.has('resolved') && c.status === 'resolved') return true;
+        if (activeFilters.has('mentioned')) {
+          const note = c.note.toLowerCase();
+          if (currentDisplayName && note.includes(`@${currentDisplayName}`)) return true;
+          if (currentMemberId && note.includes(`@${currentMemberId}`)) return true;
+        }
+        return false;
+      });
     }
     const sortedList = [...list];
     if (sortMode === 'newest') {
       sortedList.sort((a, b) => commentActivityAt(b) - commentActivityAt(a));
     } else if (sortMode === 'oldest') {
       sortedList.sort((a, b) => commentActivityAt(a) - commentActivityAt(b));
-    } else {
-      // unresolved first: resolved sink to bottom, then newest first
-      sortedList.sort((a, b) => {
-        const aR = a.status === 'resolved' ? 1 : 0;
-        const bR = b.status === 'resolved' ? 1 : 0;
-        if (aR !== bR) return aR - bR;
-        return commentActivityAt(b) - commentActivityAt(a);
-      });
     }
     return sortedList;
-  }, [comments, searchQuery, filterMode, sortMode]);
+  }, [comments, searchQuery, activeFilters, sortMode, currentUser]);
 
   const unresolvedCount = useMemo(
     () => comments.filter((c) => c.status !== 'resolved').length,
@@ -4826,58 +4842,83 @@ export function CommentSidePanel({
             <div className="comment-tool-menu" role="menu">
               <button
                 type="button"
+                className={sortMode === 'newest' ? 'selected' : ''}
                 role="menuitemradio"
                 aria-checked={sortMode === 'newest'}
                 aria-current={sortMode === 'newest'}
                 onClick={() => { setSortMode('newest'); setSortMenuOpen(false); }}
               >
+                <Icon name="check" size={14} />
                 {t('chat.comments.sortNewest')}
               </button>
               <button
                 type="button"
+                className={sortMode === 'oldest' ? 'selected' : ''}
                 role="menuitemradio"
                 aria-checked={sortMode === 'oldest'}
                 aria-current={sortMode === 'oldest'}
                 onClick={() => { setSortMode('oldest'); setSortMenuOpen(false); }}
               >
+                <Icon name="check" size={14} />
                 {t('chat.comments.sortOldest')}
               </button>
+              <i className="comment-tool-menu-sep" />
               <button
                 type="button"
-                role="menuitemradio"
-                aria-checked={sortMode === 'unresolved'}
-                aria-current={sortMode === 'unresolved'}
-                onClick={() => { setSortMode('unresolved'); setSortMenuOpen(false); }}
+                className={activeFilters.has('open') ? 'selected' : ''}
+                role="menuitemcheckbox"
+                aria-checked={activeFilters.has('open')}
+                aria-current={activeFilters.has('open')}
+                onClick={() => {
+                  setActiveFilters((value) => {
+                    const next = new Set(value);
+                    if (next.has('open')) next.delete('open');
+                    else next.add('open');
+                    return next;
+                  });
+                  setSortMenuOpen(false);
+                }}
               >
-                {t('chat.comments.sortUnresolved')}
-              </button>
-              <div className="comment-tool-menu-sep" />
-              <button
-                type="button"
-                role="menuitemradio"
-                aria-checked={filterMode === 'all'}
-                aria-current={filterMode === 'all'}
-                onClick={() => { setFilterMode('all'); setSortMenuOpen(false); }}
-              >
-                {t('chat.comments.filterAll')}
-              </button>
-              <button
-                type="button"
-                role="menuitemradio"
-                aria-checked={filterMode === 'open'}
-                aria-current={filterMode === 'open'}
-                onClick={() => { setFilterMode('open'); setSortMenuOpen(false); }}
-              >
+                <Icon name="check" size={14} />
                 {t('chat.comments.filterOpen')}
               </button>
               <button
                 type="button"
-                role="menuitemradio"
-                aria-checked={filterMode === 'resolved'}
-                aria-current={filterMode === 'resolved'}
-                onClick={() => { setFilterMode('resolved'); setSortMenuOpen(false); }}
+                className={activeFilters.has('resolved') ? 'selected' : ''}
+                role="menuitemcheckbox"
+                aria-checked={activeFilters.has('resolved')}
+                aria-current={activeFilters.has('resolved')}
+                onClick={() => {
+                  setActiveFilters((value) => {
+                    const next = new Set(value);
+                    if (next.has('resolved')) next.delete('resolved');
+                    else next.add('resolved');
+                    return next;
+                  });
+                  setSortMenuOpen(false);
+                }}
               >
+                <Icon name="check" size={14} />
                 {t('chat.comments.filterResolved')}
+              </button>
+              <button
+                type="button"
+                className={activeFilters.has('mentioned') ? 'selected' : ''}
+                role="menuitemcheckbox"
+                aria-checked={activeFilters.has('mentioned')}
+                aria-current={activeFilters.has('mentioned')}
+                onClick={() => {
+                  setActiveFilters((value) => {
+                    const next = new Set(value);
+                    if (next.has('mentioned')) next.delete('mentioned');
+                    else next.add('mentioned');
+                    return next;
+                  });
+                  setSortMenuOpen(false);
+                }}
+              >
+                <Icon name="check" size={14} />
+                {t('chat.comments.filterMentioned')}
               </button>
             </div>
           ) : null}
@@ -4929,6 +4970,9 @@ export function CommentSidePanel({
           const author = resolveCommentAuthor(comment.authorMemberId);
           const isDragging = dragState?.draggingId === comment.id;
           const isResolved = comment.status === 'resolved';
+          const canReply = !canReplyComment || canReplyComment(comment);
+          const replyDraft = replyDraftById[comment.id] ?? '';
+          const localReplies = localRepliesById[comment.id] ?? [];
           const dropClass = dragState?.overId === comment.id &&
             dragState.draggingId !== comment.id &&
             dragState.edge
@@ -4972,16 +5016,70 @@ export function CommentSidePanel({
                     onChange={() => onToggleSelect(comment.id)}
                   />
                 ) : null}
-                {author ? (
-                  <span
-                    className="avatar mini"
-                    style={{ background: commentAuthorAvatarColor(comment.authorMemberId ?? author.memberId) }}
-                    aria-hidden="true"
-                  >
-                    {commentAuthorInitials(author.displayName)}
+                <span className="comment-card-meta-stack">
+                  {author ? (
+                    <span
+                      className="avatar mini comment-card-avatar"
+                      style={{ background: commentAuthorAvatarColor(comment.authorMemberId ?? author.memberId) }}
+                      aria-hidden="true"
+                    >
+                      {commentAuthorInitials(author.displayName)}
+                    </span>
+                  ) : null}
+                  <span className="comment-card-meta-lines">
+                    <strong className="comment-card-author">
+                      {author ? author.displayName : t('chat.comments.targetArea')}
+                    </strong>
+                    <time className="comment-card-time" dateTime={new Date(commentCreatedAt(comment)).toISOString()}>
+                      {formatCommentTime(commentCreatedAt(comment))}
+                    </time>
                   </span>
-                ) : null}
-                <strong>{author ? author.displayName : t('chat.comments.targetArea')}</strong>
+                </span>
+                <span className="comment-card-header-actions">
+                  {onChangeCommentStatus && (!canChangeCommentStatus || canChangeCommentStatus(comment)) ? (
+                    isResolved ? (
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        aria-label={t('chat.comments.reopen')}
+                        title={t('chat.comments.reopen')}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void onChangeCommentStatus(comment.id, 'open');
+                        }}
+                      >
+                        <Icon name="rotate-ccw" size={14} />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        aria-label={t('chat.comments.markResolved')}
+                        title={t('chat.comments.markResolved')}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          void onChangeCommentStatus(comment.id, 'resolved');
+                        }}
+                      >
+                        <Icon name="check" size={14} />
+                      </button>
+                    )
+                  ) : null}
+                  {onDeleteComment && (!canDeleteComment || canDeleteComment(comment)) ? (
+                    <button
+                      type="button"
+                      className="icon-btn danger"
+                      aria-label={t('chat.comments.deleteComment')}
+                      title={t('chat.comments.deleteComment')}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        void onDeleteComment(comment.id);
+                      }}
+                    >
+                      <Icon name="trash" size={14} />
+                    </button>
+                  ) : null}
+                </span>
                 {isResolved ? (
                   <span className="comment-status">
                     <Icon name="check" size={11} />
@@ -4990,18 +5088,95 @@ export function CommentSidePanel({
                 ) : null}
               </header>
               <p className="comment-card-copy">{comment.note}</p>
-              <button
-                type="button"
-                className="comment-anchor"
-                title={anchorLabel}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  onReply(comment);
-                }}
-              >
-                <Icon name="mouse-pointer" size={12} />
-                <span>{`#${num} \u00b7 ${anchorLabel}`}</span>
-              </button>
+              {localReplies.length > 0 ? (
+                <div className="comment-card-reply-list">
+                  {localReplies.map((reply, index) => (
+                    <div
+                      key={`${comment.id}-${index}`}
+                      className="comment-card-reply-item"
+                    >
+                      {reply}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {canReply && replyEditorId === comment.id ? (
+                <div
+                  className="comment-card-reply-editor"
+                  onClick={(event) => event.stopPropagation()}
+                >
+                  <textarea
+                    value={replyDraft}
+                    autoFocus
+                    placeholder={t('chat.comments.reply')}
+                    aria-label={t('chat.comments.reply')}
+                    onChange={(event) =>
+                      setReplyDraftById((current) => ({
+                        ...current,
+                        [comment.id]: event.target.value,
+                      }))
+                    }
+                    onKeyDown={(event) => {
+                      if (
+                        event.key === 'Enter' &&
+                        !event.shiftKey &&
+                        !event.altKey
+                      ) {
+                        event.preventDefault();
+                        const text = replyDraft.trim();
+                        if (!text) return;
+                        setLocalRepliesById((current) => ({
+                          ...current,
+                          [comment.id]: [...(current[comment.id] ?? []), text],
+                        }));
+                        setReplyDraftById((current) => ({
+                          ...current,
+                          [comment.id]: '',
+                        }));
+                        setReplyEditorId(null);
+                        void onReplyComment?.(comment, text);
+                      }
+                    }}
+                  />
+                  <div className="comment-card-reply-actions">
+                    <button
+                      type="button"
+                      className="ghost"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setReplyEditorId(null);
+                        setReplyDraftById((current) => ({
+                          ...current,
+                          [comment.id]: '',
+                        }));
+                      }}
+                    >
+                      {t('common.cancel')}
+                    </button>
+                    <Button
+                      variant="primary"
+                      disabled={!replyDraft.trim()}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        const text = replyDraft.trim();
+                        if (!text) return;
+                        setLocalRepliesById((current) => ({
+                          ...current,
+                          [comment.id]: [...(current[comment.id] ?? []), text],
+                        }));
+                        setReplyDraftById((current) => ({
+                          ...current,
+                          [comment.id]: '',
+                        }));
+                        setReplyEditorId(null);
+                        void onReplyComment?.(comment, text);
+                      }}
+                    >
+                      {t('chat.comments.reply')}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
               {projectId && comment.attachments && comment.attachments.length > 0 ? (
                 <div className="comment-side-attachments">
                   {comment.attachments.map((attachment) => {
@@ -5028,62 +5203,78 @@ export function CommentSidePanel({
                   })}
                 </div>
               ) : null}
+              <div className="comment-card-footer-row">
+                <button
+                  type="button"
+                  className="comment-anchor"
+                  title={anchorLabel}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onReply(comment);
+                  }}
+                >
+                  <Icon name="mouse-pointer" size={12} />
+                  <span>{`#${num} \u00b7 ${anchorLabel}`}</span>
+                </button>
+                {canReply ? (
+                  <button
+                    type="button"
+                    className="comment-card-user-inline"
+                    aria-label={t('chat.comments.reply')}
+                    title={t('chat.comments.reply')}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      setReplyEditorId((current) =>
+                        current === comment.id ? null : comment.id,
+                      );
+                    }}
+                  >
+                    {author ? (
+                      <span
+                        className="avatar mini"
+                        style={{ background: commentAuthorAvatarColor(comment.authorMemberId ?? author.memberId) }}
+                        aria-hidden="true"
+                      >
+                        {commentAuthorInitials(author.displayName)}
+                      </span>
+                    ) : null}
+                    <Icon name="message-square" size={12} />
+                    <span>{t('chat.comments.nReplies', { n: localReplies.length })}</span>
+                  </button>
+                ) : (
+                  <span className="comment-card-user-inline">
+                  {author ? (
+                    <span
+                      className="avatar mini"
+                      style={{ background: commentAuthorAvatarColor(comment.authorMemberId ?? author.memberId) }}
+                      aria-hidden="true"
+                    >
+                      {commentAuthorInitials(author.displayName)}
+                    </span>
+                  ) : null}
+                  <Icon name="message-square" size={12} />
+                  <span>{t('chat.comments.nReplies', { n: localReplies.length })}</span>
+                  </span>
+                )}
+              </div>
               <footer className="comment-card-footer">
                 {allowSendToChat ? (
                   <button
                     type="button"
+                    disabled={sending || sendDisabled || !canSend(comment)}
                     onClick={(event) => {
                       event.stopPropagation();
-                      onReply(comment);
+                      if (onSendComment) {
+                        void onSendComment(comment);
+                      } else {
+                        onReply(comment);
+                      }
                     }}
                   >
                     <Icon name="message-square" size={12} />
                     {t('chat.comments.sendToChat')}
                   </button>
                 ) : null}
-                <div>
-                  {onChangeCommentStatus ? (
-                    isResolved ? (
-                      <button
-                        type="button"
-                        aria-label={t('chat.comments.reopen')}
-                        title={t('chat.comments.reopen')}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          void onChangeCommentStatus(comment.id, 'open');
-                        }}
-                      >
-                        <Icon name="rotate-ccw" size={14} />
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        aria-label={t('chat.comments.markResolved')}
-                        title={t('chat.comments.markResolved')}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          void onChangeCommentStatus(comment.id, 'resolved');
-                        }}
-                      >
-                        <Icon name="check" size={14} />
-                      </button>
-                    )
-                  ) : null}
-                  {onDeleteComment ? (
-                    <button
-                      type="button"
-                      className="danger"
-                      aria-label={t('chat.comments.deleteComment')}
-                      title={t('chat.comments.deleteComment')}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        void onDeleteComment(comment.id);
-                      }}
-                    >
-                      <Icon name="trash" size={14} />
-                    </button>
-                  ) : null}
-                </div>
               </footer>
             </article>
           );
@@ -5113,54 +5304,6 @@ export function CommentSidePanel({
         </div>
       ) : null}
       {composer ? <div className="comment-side-composer">{composer}</div> : null}
-      {renderCreateForm && onCreateComment ? (
-        <form
-          className="comment-side-new-comment composer"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void submitNewComment();
-          }}
-        >
-          <div className="composer-shell comment-side-new-comment-shell">
-            <div className="composer-input-wrap">
-              <div className="composer-textarea-layer">
-                <textarea
-                  value={newCommentDraft}
-                  placeholder={t('chat.comments.placeholder')}
-                  aria-label={t('chat.comments.placeholder')}
-                  onChange={(event) => setNewCommentDraft(event.target.value)}
-                  onKeyDown={(event) => {
-                    if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-                      event.preventDefault();
-                      void submitNewComment();
-                    }
-                  }}
-                />
-              </div>
-            </div>
-            <div className="composer-row comment-side-new-comment-actions">
-              <button
-                type="button"
-                className="icon-btn"
-                title={t('chat.attachTitle')}
-                aria-label={t('chat.attachAria')}
-                disabled
-              >
-                <Icon name="attach" size={15} />
-              </button>
-              <span className="composer-spacer" />
-              <button
-                type="submit"
-                className={`composer-send${sending ? ' is-sending' : ''}`}
-                disabled={!canCreateComment}
-              >
-                <Icon name="send" size={13} />
-                <span>{sending ? t('chat.comments.sending') : t('chat.send')}</span>
-              </button>
-            </div>
-          </div>
-        </form>
-      ) : null}
     </aside>
   );
 }
@@ -5241,6 +5384,7 @@ function CommentSideDock({
   onReorder,
   onReply,
   onSendSelected,
+  onSendComment,
   onCreateComment,
   canSendComment,
   currentUser,
@@ -5253,6 +5397,10 @@ function CommentSideDock({
   t,
   onDeleteComment,
   onChangeCommentStatus,
+  canChangeCommentStatus,
+  canDeleteComment,
+  canReplyComment,
+  onReplyComment,
   composer,
 }: {
   comments: PreviewComment[];
@@ -5268,6 +5416,7 @@ function CommentSideDock({
   onReorder?: (orderedIds: string[], draggedId: string) => void;
   onReply: (comment: PreviewComment) => void;
   onSendSelected: () => void | Promise<void>;
+  onSendComment?: (comment: PreviewComment) => void | Promise<void>;
   onCreateComment?: (note: string) => boolean | Promise<boolean>;
   /** Team-collab gate: which comments the viewer may send to the agent (author
    * OR project owner). Defaults to all-sendable when absent (single-user). */
@@ -5284,6 +5433,11 @@ function CommentSideDock({
   composer?: ReactNode;
   onDeleteComment?: (commentId: string) => void | Promise<void>;
   onChangeCommentStatus?: (commentId: string, status: PreviewCommentStatus) => void | Promise<void>;
+  canChangeCommentStatus?: (comment: PreviewComment) => boolean;
+  canDeleteComment?: (comment: PreviewComment) => boolean;
+  /** Team-collab gate: which comments the viewer may reply to. Defaults to true (single-user). */
+  canReplyComment?: (comment: PreviewComment) => boolean;
+  onReplyComment?: (comment: PreviewComment, replyText: string) => void | Promise<void>;
 }) {
   return (
     <div
@@ -5304,6 +5458,7 @@ function CommentSideDock({
         onReorder={onReorder}
         onReply={onReply}
         onSendSelected={onSendSelected}
+        onSendComment={onSendComment}
         onCreateComment={onCreateComment}
         canSendComment={canSendComment}
         currentUser={currentUser}
@@ -5317,6 +5472,10 @@ function CommentSideDock({
         composer={composer}
         onDeleteComment={onDeleteComment}
         onChangeCommentStatus={onChangeCommentStatus}
+        canChangeCommentStatus={canChangeCommentStatus}
+        canDeleteComment={canDeleteComment}
+        canReplyComment={canReplyComment}
+        onReplyComment={onReplyComment}
       />
     </div>
   );
@@ -9479,7 +9638,7 @@ const [reviewAddModalOpen, setReviewAddModalOpen] = useState(false);
   // before the host DOM node has been resolved. Treating that lookup window as
   // a local dock briefly shrinks the preview and shifts centered desktop or
   // mobile content left before the floating card appears.
-  const localCommentSideDockActive = commentPanelOpen && !commentPortalId;
+  const localCommentSideDockActive = commentPanelOpen;
   const boardPreviewCanvasSize = commentPreviewCanvasSize(previewBodySize, {
     boardMode: localCommentSideDockActive,
     sidePanelCollapsed: commentSidePanelCollapsed,
@@ -15568,6 +15727,16 @@ async function openReviewListModal() {
       ),
     [creationSortedSideComments],
   );
+  // Sidebar shows every comment for the current file (open, resolved,
+  // needs_review, etc.). The open-only `visibleSideComments` above stays
+  // separate because it powers the canvas pin set and the toolbar badge.
+  const allSideComments = useMemo(
+    () =>
+      previewComments
+        .filter((comment) => comment.filePath === file.name)
+        .sort((a, b) => commentEffectiveSortKey(b) - commentEffectiveSortKey(a)),
+    [file.name, previewComments],
+  );
   const activeSideCommentId = activePreviewCommentId;
   const activeCommentTargetVisible = commentTargetIntersectsPreview(
     activeCommentTarget,
@@ -15577,17 +15746,17 @@ async function openReviewListModal() {
   );
   useEffect(() => {
     if (!boardMode || !activePreviewCommentId) return;
-    const stillOpen = visibleSideComments.some((comment) => comment.id === activePreviewCommentId);
+    const stillOpen = allSideComments.some((comment) => comment.id === activePreviewCommentId);
     if (!stillOpen) clearBoardComposer();
-  }, [activePreviewCommentId, boardMode, visibleSideComments]);
+  }, [activePreviewCommentId, boardMode, allSideComments]);
   useEffect(() => {
     if (!effectiveDeck || slideState == null || !boardMode) return;
     if (!activePreviewCommentId) return;
-    const activeComment = visibleSideComments.find((comment) => comment.id === activePreviewCommentId);
+    const activeComment = allSideComments.find((comment) => comment.id === activePreviewCommentId);
     if (activeComment && !commentVisibleOnDeckSlide(activeComment, slideState.active)) {
       clearBoardComposer();
     }
-  }, [activePreviewCommentId, boardMode, effectiveDeck, slideState?.active, visibleSideComments]);
+  }, [activePreviewCommentId, boardMode, effectiveDeck, slideState?.active, allSideComments]);
   const activeDeployment = deployResult || deployment;
   const activeDeployedUrl = activeDeployment?.url?.trim() || '';
   const activeDeploymentDelayed = activeDeployment?.status === 'link-delayed';
@@ -15922,7 +16091,7 @@ async function openReviewListModal() {
       </button>
     ) : null;
   const activeComposerComment = activePreviewCommentId
-    ? visibleSideComments.find((comment) => comment.id === activePreviewCommentId) ?? null
+    ? allSideComments.find((comment) => comment.id === activePreviewCommentId) ?? null
     : null;
   const activeComposerAttachments =
     activeComposerComment?.attachments ?? activeCommentExistingAttachments;
@@ -15955,6 +16124,12 @@ async function openReviewListModal() {
   const canEditActiveComment = commentAuthoredByMe(activeComposerComment);
   const canDeleteActiveComment = canEditActiveComment || iAmProjectOwner;
   const canSendActiveComment = canEditActiveComment || iAmProjectOwner;
+  // Side-panel comment actions use tighter per-comment gates:
+  // mark resolved/reopen is owner-or-editor; delete is comment-author only.
+  const canChangeCommentStatus = (comment: PreviewComment | null | undefined): boolean =>
+    Boolean(comment) && (iAmProjectOwner || collab.writerAuthority === 'allowed');
+  const canDeleteSideComment = (comment: PreviewComment | null | undefined): boolean =>
+    commentAuthoredByMe(comment);
   // The viewer's own author identity for the comment cards. Derived from the
   // workspace context this component ALREADY reads (see `workspaceContext`
   // above) — no extra request. Deliberately NOT `collab.member`, which is null
@@ -15966,6 +16141,10 @@ async function openReviewListModal() {
     ),
     [workspaceContext, projectResourceReadBlocked],
   );
+  const { resolve: resolveActiveCommentAuthor } = useTeamMembers(commentAuthorSelf);
+  const activeCommentAuthor = activeComposerComment
+    ? resolveActiveCommentAuthor(activeComposerComment.authorMemberId)
+    : null;
   const commentComposerPortalMetrics = (() => {
     if (!commentComposerHost || !commentPreviewCanvasNode) return null;
     const hostRect = commentComposerHost.getBoundingClientRect();
@@ -15992,6 +16171,11 @@ async function openReviewListModal() {
       canEditComment={canEditActiveComment}
       canDeleteComment={canDeleteActiveComment}
       canSendToAgent={canSendActiveComment}
+      canChangeCommentStatus={canEditActiveComment || iAmProjectOwner}
+      onChangeCommentStatus={onChangeCommentStatus ? (id, status) => onChangeCommentStatus?.(id, status) : undefined}
+      canReplyComment={iAmProjectOwner}
+      authorDisplayName={activeCommentAuthor?.displayName}
+      authorAvatarSeed={activeComposerComment?.authorMemberId ?? activeCommentAuthor?.memberId}
       draft={commentDraft}
       notes={queuedBoardNotes}
       onDraft={setCommentDraft}
@@ -16094,7 +16278,7 @@ async function openReviewListModal() {
     : null;
   const commentSidePanel = workspaceActive && commentPanelOpen ? (
     <CommentSideDock
-      comments={visibleSideComments}
+      comments={allSideComments}
       projectId={projectId}
       selectedIds={selectedSideCommentIds}
       activeCommentId={activeSideCommentId}
@@ -16104,11 +16288,6 @@ async function openReviewListModal() {
       // collapse — forcing `false` here made every click a no-op.
       collapsed={commentSidePanelCollapsed}
       onCollapsedChange={setCommentSidePanelCollapsed}
-      // On a floating card, collapse closes the card and mirrors the toolbar
-      // toggle's OFF branch so one click reopens it. Closing only the panel
-      // would leave create/board mode on and consume that next click. The local
-      // dock keeps its collapse-to-rail behaviour.
-      onDismiss={commentPortalHost ? dismissFloatingCommentPanel : undefined}
       onToggleSelect={(commentId) => {
         setSelectedSideCommentIds((current) => {
           const next = new Set(current);
@@ -16118,17 +16297,17 @@ async function openReviewListModal() {
         });
       }}
       onSelectAll={() =>
-        setSelectedSideCommentIds(
-          new Set(
-            visibleSideComments
-              .filter((comment) => canSendCommentToAgent(comment))
-              .map((comment) => comment.id),
-          ),
-        )
+        {
+          const sendableIds = allSideComments
+            .filter((comment) => canSendCommentToAgent(comment))
+            .map((comment) => comment.id);
+          const allSelected = sendableIds.every((id) => selectedSideCommentIds.has(id));
+          setSelectedSideCommentIds(allSelected ? new Set() : new Set(sendableIds));
+        }
       }
       onClearSelection={() => setSelectedSideCommentIds(new Set())}
       onReorder={(orderedIds, draggedId) => {
-        const sortKey = computeReorderedSortKey(visibleSideComments, orderedIds, draggedId);
+        const sortKey = computeReorderedSortKey(allSideComments, orderedIds, draggedId);
         void onReorderPreviewComment?.(draggedId, sortKey);
       }}
       onReply={(comment) => {
@@ -16162,9 +16341,24 @@ async function openReviewListModal() {
         setCommentPanelOpen(true);
         setCommentSidePanelCollapsed(false);
       }}
+      onSendComment={async (comment) => {
+        if (!onSendBoardCommentAttachments || !canSendCommentToAgent(comment)) return;
+        fireCommentPopoverClick('send_to_chat');
+        setSendingBoardBatch(true);
+        try {
+          await onSendBoardCommentAttachments(commentsToAttachments([comment]));
+          setSelectedSideCommentIds((current) => {
+            const next = new Set(current);
+            next.delete(comment.id);
+            return next;
+          });
+        } finally {
+          setSendingBoardBatch(false);
+        }
+      }}
       onSendSelected={async () => {
         if (!onSendBoardCommentAttachments) return;
-        const selected = visibleSideComments.filter(
+        const selected = allSideComments.filter(
           (comment) => (
             selectedSideCommentIds.has(comment.id)
             && canSendCommentToAgent(comment)
@@ -16174,31 +16368,10 @@ async function openReviewListModal() {
         fireCommentPopoverClick('send_to_chat');
         setSendingBoardBatch(true);
         try {
-          const result = await onSendBoardCommentAttachments(
+          await onSendBoardCommentAttachments(
             commentsToAttachments(selected),
           );
-          const completedIds = new Set(result.commentIds);
-          if (completedIds.size === 0 || !onRemovePreviewComment) return;
-          const removedIds = new Set<string>();
-          const removals = await Promise.all(
-            selected
-              .filter((comment) => completedIds.has(comment.id))
-              .map(async (comment) => ({
-                id: comment.id,
-                removed: await onRemovePreviewComment(comment.id),
-              })),
-          );
-          for (const removal of removals) {
-            if (removal.removed) removedIds.add(removal.id);
-          }
-          setSelectedSideCommentIds((current) => {
-            const next = new Set(current);
-            for (const id of removedIds) next.delete(id);
-            return next;
-          });
-          setActivePreviewCommentId((current) => (
-            current && removedIds.has(current) ? null : current
-          ));
+          setSelectedSideCommentIds(new Set());
         } finally {
           setSendingBoardBatch(false);
         }
@@ -16211,11 +16384,14 @@ async function openReviewListModal() {
       sendDisabled={commentSendDisabled || viewerOnly}
       sendDisabledReason={viewerOnly ? viewerOnlyDisabledTitle : undefined}
       allowSendToChat={!viewerOnly}
-      renderCreateForm={!commentPortalHost}
+      renderCreateForm
       t={t}
       composer={null}
       onDeleteComment={onRemovePreviewComment ? (id) => void onRemovePreviewComment(id) : undefined}
       onChangeCommentStatus={onChangeCommentStatus}
+      canChangeCommentStatus={canChangeCommentStatus}
+      canDeleteComment={canDeleteSideComment}
+      canReplyComment={() => iAmProjectOwner}
     />
   ) : null;
   const speakerNotesFeedback = speakerNotesStatus === 'saved'
@@ -16464,12 +16640,12 @@ async function openReviewListModal() {
                 data-tooltip={t('chat.tabComments')}
                 data-tooltip-placement="bottom"
                 title={t('chat.tabComments')}
-                aria-label={`${t('chat.tabComments')} (${visibleSideComments.length})`}
+                aria-label={`${t('chat.tabComments')} (${allSideComments.length})`}
                 aria-pressed={boardMode && commentCreateMode}
                 onClick={(event) => activateCommentCreateTool(event.currentTarget)}
               >
                 <RemixIcon name="message-3-line" size={15} />
-                <span className="viewer-comment-count" aria-hidden>{visibleSideComments.length}</span>
+                <span className="viewer-comment-count" aria-hidden>{allSideComments.length}</span>
               </button>
               {source !== null && mode === 'preview' ? (
                 <div className="zoom-menu viewer-toolbar-zoom" ref={zoomMenuRef}>
@@ -16650,7 +16826,7 @@ async function openReviewListModal() {
                       }}
                     >
                       <RemixIcon name="message-3-line" size={15} />
-                      <span>{t('chat.tabComments')} ({visibleSideComments.length})</span>
+                      <span>{t('chat.tabComments')} ({allSideComments.length})</span>
                     </button>
                     {source !== null && mode === 'preview' ? (
                       <>
@@ -16777,13 +16953,13 @@ async function openReviewListModal() {
               data-tooltip={t('chat.tabComments')}
               data-tooltip-placement="bottom"
               title={t('chat.tabComments')}
-              aria-label={`${t('chat.tabComments')} (${visibleSideComments.length})`}
+              aria-label={`${t('chat.tabComments')} (${allSideComments.length})`}
               aria-pressed={boardMode && commentCreateMode}
               onClick={(event) => activateCommentCreateTool(event.currentTarget)}
             >
               <RemixIcon name="message-3-line" size={15} />
               <span>{t('chat.tabComments')}</span>
-              <span className="viewer-comment-count" aria-hidden>{visibleSideComments.length}</span>
+              <span className="viewer-comment-count" aria-hidden>{allSideComments.length}</span>
             </button>
           ) : null}
           {rawCanShare || rawCanDownload ? (
@@ -17857,11 +18033,7 @@ async function openReviewListModal() {
               ) : null}
             </div>
             {boardImagePreviewModal}
-            {commentPortalHost && commentSidePanel
-              ? createPortal(commentSidePanel, commentPortalHost)
-              : commentPortalId
-                ? null
-                : commentSidePanel}
+            {!manualEditMode ? commentSidePanel : null}
             {inspectMode && activeInspectTarget ? (
               <InspectPanel
                 target={activeInspectTarget}
