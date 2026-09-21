@@ -2,8 +2,8 @@
  * Deterministic avatar background color from a display name.
  *
  * Same name always maps to the same hue; white text stays readable at the
- * chosen saturation/lightness. Shared by the account avatar in the nav rail
- * and the member avatars in the team space view.
+ * chosen saturation/lightness. Shared by the account avatar in the nav rail,
+ * member avatars in the team space view, and project owner chips.
  */
 
 const avatarColorCache = new Map<string, string>();

@@ -38,6 +38,7 @@ interface UnifiedShareDialogProps {
   projectName: string;
   entryFile?: string | null;
   workspaceContext: WorkspaceCollabContext | null;
+  canPublishToCommunity?: boolean;
   onShared?: () => void;
   onClose: () => void;
 }
@@ -72,11 +73,14 @@ export function UnifiedShareDialog({
   projectName,
   entryFile,
   workspaceContext,
+  canPublishToCommunity = true,
   onShared,
   onClose,
 }: UnifiedShareDialogProps) {
   const t = useT();
-  const [activeTab, setActiveTab] = useState<ShareTab>('community');
+  const [activeTab, setActiveTab] = useState<ShareTab>(
+    canPublishToCommunity ? 'community' : 'file',
+  );
 
   // Community publish state
   const [communityTitle, setCommunityTitle] = useState(projectName);
@@ -303,7 +307,9 @@ export function UnifiedShareDialog({
  }
 
   const tabs: { id: ShareTab; label: string; icon: string }[] = [
-    { id: 'community', label: t('share.tabCommunity'), icon: 'global-line' },
+    ...(canPublishToCommunity
+      ? [{ id: 'community' as const, label: t('share.tabCommunity'), icon: 'global-line' }]
+      : []),
     { id: 'file', label: t('share.tabFile'), icon: 'group-line' },
     { id: 'link', label: t('share.tabLink'), icon: 'link' },
   ];
@@ -400,7 +406,7 @@ const footerActionDisabled =
                 </div>
                 <p className={styles.successHeading}>{t('share.published')}</p>
                 <p className={styles.successHint}>
-                  {t('share.publishSuccessHint', { name: publishResult.name })}
+                  {t('share.publishSuccessHint', { name: communityTitle.trim() })}
                 </p>
                 <a
                   href="/square"

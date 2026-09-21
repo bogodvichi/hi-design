@@ -356,6 +356,7 @@ export function SharedWithMeView({
                 ) : null}
                 heading=""
                 space="team"
+                badgeOverride="shared"
                 minimalControls
                 operator={operator}
                 onOpen={handleOpen}
@@ -596,6 +597,7 @@ export function SharedFolderView({
                 projects={projects}
                 heading=""
                 space="team"
+                badgeOverride="shared"
                 minimalControls
                 operator={operator}
                 onOpen={handleOpen}

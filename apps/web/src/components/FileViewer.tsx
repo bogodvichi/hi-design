@@ -18884,6 +18884,7 @@ async function openReviewListModal() {
         projectName={projectName || ''}
         entryFile={file?.name || null}
         workspaceContext={workspaceContext}
+        canPublishToCommunity={collab.isOwner}
         onClose={() => setUnifiedShareOpen(false)}
       />
     ) : null}

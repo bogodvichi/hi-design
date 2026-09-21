@@ -8,6 +8,7 @@ import {
   type WorkspaceCollabContext,
 } from '@open-design/contracts';
 import { createTeamProjectsLister } from '../src/collab/team-projects.js';
+import { withTeamProjectOwnerDisplayNames } from '../src/collab/team-project-owner-names.js';
 import type { WorkspaceContextProvider } from '../src/collab/workspace-context.js';
 import {
   registerCollabContextRoutes,
@@ -60,6 +61,9 @@ afterEach(async () => {
 async function startServer(deps: {
   workspaceContext: WorkspaceContextProvider;
   listTeamProjects: (context: WorkspaceCollabContext) => Promise<TeamProject[]>;
+  listMembers?: (context: WorkspaceCollabContext) => Promise<
+    Array<{ memberId: string; displayName: string; role: 'owner' | 'admin' | 'member' | 'guest' }>
+  >;
   fetchWorkspaceDirectory?: () => Promise<{
     ok: boolean;
     items: Array<{
@@ -79,6 +83,7 @@ async function startServer(deps: {
   registerCollabContextRoutes(app, {
     workspaceContext: deps.workspaceContext,
     listTeamProjects: deps.listTeamProjects,
+    ...(deps.listMembers ? { listMembers: deps.listMembers } : {}),
     ...(deps.fetchWorkspaceDirectory
       ? { fetchWorkspaceDirectory: deps.fetchWorkspaceDirectory }
       : {}),
@@ -104,7 +109,43 @@ async function startServer(deps: {
   };
 }
 
-describe('GET /api/workspace/projects/team', () => {
+describe('team project owner display names', () => {
+  it('resolves a missing owner name from the member directory', async () => {
+    const context = await teamContextProvider().current({});
+    const projects = await withTeamProjectOwnerDisplayNames(
+      PROJECTS,
+      context,
+      async () => [
+        {
+          memberId: 'wm-owner',
+          displayName: 'Ally Zhang',
+          role: 'member',
+        },
+      ],
+    );
+
+    expect(projects).toEqual([
+      { ...PROJECTS[0], ownerDisplayName: 'Ally Zhang' },
+    ]);
+  });
+
+  it('keeps an existing owner name and tolerates a directory failure', async () => {
+    const context = await teamContextProvider().current({});
+    const namedProject: TeamProject = {
+      ...PROJECTS[0]!,
+      ownerDisplayName: 'Existing Name',
+    };
+    const projects = await withTeamProjectOwnerDisplayNames(
+      [namedProject],
+      context,
+      async () => {
+        throw new Error('directory unavailable');
+      },
+    );
+
+    expect(projects).toEqual([namedProject]);
+  });
+
   it('uses the settled exact-scope verifier without listing the account directory', async () => {
     const verified = teamContextProvider().current({});
     const fetchWorkspaceDirectory = vi.fn(async () => {

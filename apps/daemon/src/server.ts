@@ -95,6 +95,7 @@ import {
   createCompatApiErrorResponse,
   sendApiError,
 } from './http/api-errors.js';
+import { withTeamProjectOwnerDisplayNames } from './collab/team-project-owner-names.js';
 export {
   createCompatApiError,
   createCompatApiErrorResponse,
@@ -4429,21 +4430,24 @@ export async function startServer({
   ): Promise<TeamProject[]> => {
     const scope = teamProjectsDisplayScopeFromContext(context);
     if (!scope) return [];
-    return withoutLocallyUnsharedProjects(
+    const projects = await withoutLocallyUnsharedProjects(
       await teamProjectsDisplayCache(scope),
       scope,
     );
+    return withTeamProjectOwnerDisplayNames(projects, context, teamMembersForDisplay);
   };
   const teamProjectsForRequest = async (
     context: WorkspaceCollabContext,
-  ): Promise<TeamProject[]> =>
-    withoutLocallyUnsharedProjects(
+  ): Promise<TeamProject[]> => {
+    const projects = await withoutLocallyUnsharedProjects(
       await teamProjectsLister(context.workspaceId),
       {
         workspaceId: context.workspaceId,
         workspaceMemberId: context.workspaceMemberId,
       },
     );
+    return withTeamProjectOwnerDisplayNames(projects, context, teamMembersForDisplay);
+  };
   /**
    * Non-destructive quarantine marker for a pulled Team mirror. The binding
    * state is the central data-plane gate; the project metadata marker also

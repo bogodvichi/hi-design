@@ -21,6 +21,7 @@ import { createPortal } from 'react-dom';
 import { Dialog, DialogDescription, DialogFooter, DialogTitle } from '@open-design/components';
 
 import { useT } from '../i18n';
+import { avatarColorFor } from '../utils/avatarColor';
 import { MoveToTeamTreeDialog, type TeamTreeSelection } from './MoveToTeamTreeDialog';
 import {
   fetchProjectFiles,
@@ -44,12 +45,17 @@ import {
   canAccessWorkspaceInviteFlow,
   resolveWorkspaceInviteTarget,
 } from './EntryNavRail';
-import { moveWorkspaceProject, workspaceProjectMoveErrorCode } from '../state/projects';
+import {
+  copyProjectToPersonal,
+  moveWorkspaceProject,
+  workspaceProjectMoveErrorCode,
+} from '../state/projects';
 import {
   workspaceContextHasTeamIdentity,
   type WorkspaceCollabContext,
   type WorkspaceProjectSummary,
 } from '@open-design/contracts';
+import { currentUserDirectoryEntry, useTeamMembers } from '../collab/useTeamMembers';
 import { useWorkspaceInvalidation } from '../collab/workspace-events';
 import {
   THUMBNAIL_OVERSCAN_MARGIN,
@@ -64,6 +70,7 @@ import {
   setProjectCoverSnapshot,
 } from '../lib/project-cover-cache';
 import { useInView } from './plugins-home/useInView';
+import { Toast } from './Toast';
 import {
   workspaceIdentityCacheKey,
   workspaceProjectHeaders,
@@ -167,6 +174,10 @@ interface Props {
    *  'recent' (home). 'team' hides the per-card 共享 badge since every card
    *  there is already a team-shared project. */
   space?: SpaceKind;
+  /** Forces the top-left project badge without changing the space's ownership
+   *  or mutation behavior. Shared-with-me reuses team-series cards but every
+   *  item is still shared with the viewer. */
+  badgeOverride?: 'shared';
   /** projectId → the sharing member's workspaceMemberId, for team-shared
    *  projects (from the team hub). Used to resolve the creator name against the
    *  member directory; a project absent from this map is a local project owned
@@ -394,6 +405,7 @@ export function RecentProjectsStrip({
   onProjectShareFailed,
   onProjectUnshared,
   space = 'recent',
+  badgeOverride,
  projectOwnerMemberIds,
  projectOwnerDisplayNames,
  openingProjectId = null,
@@ -419,6 +431,9 @@ selectionExtension,
     context: workspaceContext,
     loading: workspaceContextLoading,
   } = useWorkspaceContext();
+  const { resolve: resolveTeamMember } = useTeamMembers(
+    currentUserDirectoryEntry(workspaceContext),
+  );
   const sharedSpaceTeamId = useSharedSpaceTeamId();
   // A cover request captures the complete identity at dispatch. A mutable ref
   // keeps the queue callbacks stable without letting an in-flight read drift
@@ -572,8 +587,11 @@ selectionExtension,
   const [menuPlacement, setMenuPlacement] = useState<'down' | 'up'>('down');
  const [renameTarget, setRenameTarget] = useState<{ id: string; original: string } | null>(null);
  const [renameInput, setRenameInput] = useState('');
- const [confirmTarget, setConfirmTarget] = useState<Project | null>(null);
+  const [confirmTarget, setConfirmTarget] = useState<Project | null>(null);
   const [sharedSpaceTarget, setSharedSpaceTarget] = useState<Project | null>(null);
+  const [copyToPersonalTarget, setCopyToPersonalTarget] = useState<Project | null>(null);
+  const [copyPendingId, setCopyPendingId] = useState<string | null>(null);
+  const [copyToast, setCopyToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null);
   // recvqbh189zBY6: commitDelete used to await onDelete and drop the result on
   // the floor either way — a 403/network failure closed the dialog exactly
   // like a success, leaving the project right where it was with no signal
@@ -595,21 +613,6 @@ selectionExtension,
   // 全部项目 / 草稿 partition reads the very same predicate, so the badge and the
   // card's grid can no longer disagree.
  const isShared = isSharedProject ?? NOTHING_SHARED;
-  // Deterministic background colour for the owner avatar circle, derived
-  // from the member id so the same person always gets the same hue.
-  function ownerAvatarColor(memberId: string | null): string {
-    if (!memberId) return '#1a1917';
-    const palette = [
-      '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316',
-      '#f59e0b', '#eab308', '#84cc16', '#22c55e', '#14b8a6',
-      '#06b6d4', '#0ea5e9', '#3b82f6', '#a855f7', '#d946ef',
-    ];
-    let hash = 0;
-    for (let i = 0; i < memberId.length; i++) {
-      hash = ((hash << 5) - hash + memberId.charCodeAt(i)) | 0;
-    }
-    return palette[Math.abs(hash) % palette.length] ?? '#1a1917';
-  }
 // The card owner avatar: first character of the owner display name with a
 // deterministic background colour. The HDW backend JOIN provides
 // ownerDisplayName directly; the UI shows "我" for self-owned projects.
@@ -641,8 +644,9 @@ selectionExtension,
    // user, the project is still shared by someone else and should show
    // that owner's name rather than "我".
    const ownerDisplayName = project.ownerDisplayName?.trim()
-     || projectOwnerDisplayNames?.get(project.id)?.trim()
-     || null;
+    || projectOwnerDisplayNames?.get(project.id)?.trim()
+    || resolveTeamMember(ownerMemberId)?.displayName?.trim()
+    || null;
    if ((!ownerMemberId || ownerMemberId === resolveProjectMemberId(project)) && !ownerDisplayName && !isShared(project.id)) {
      return {
       name: workspaceContext?.displayName?.trim()
@@ -694,6 +698,7 @@ selectionExtension,
   if (ownerMemberId && ownerMemberId === effectiveMemberId) {
      const name = project.ownerDisplayName?.trim()
       || projectOwnerDisplayNames?.get(project.id)?.trim()
+      || resolveTeamMember(ownerMemberId)?.displayName?.trim()
       || workspaceContext?.displayName?.trim()
       || t('recentProjects.teamMemberCreator');
       const initial = Array.from(name.trim())[0]?.toUpperCase() ?? 'M';
@@ -709,6 +714,7 @@ selectionExtension,
     }
    const name = project.ownerDisplayName?.trim()
     || projectOwnerDisplayNames?.get(project.id)?.trim()
+    || resolveTeamMember(ownerMemberId)?.displayName?.trim()
     || t('recentProjects.teamMemberCreator');
    const initial = (Array.from(name.trim())[0] ?? 'T').toUpperCase();
    return { name, initial, avatarUrl: null, ownedBySelf: false, canMutate: false, canAdmin: isAdmin, memberId: ownerMemberId ?? null };
@@ -731,6 +737,7 @@ selectionExtension,
     ownerFilter,
     projectOwnerMemberIds,
     projectOwnerDisplayNames,
+    resolveTeamMember,
     resolvedLimit,
    selfMemberId,
    showOwnerFilter,
@@ -805,7 +812,13 @@ const disabledKeys = useMemo(() => {
  const isGuest = operator
    ? operator.role === 'guest'
    : workspaceContext?.role === 'guest';
-const canShowCardActions = actionsAvailable && !isGuest;
+  const canShowCardActions = actionsAvailable && !isGuest;
+
+  useEffect(() => {
+    if (!copyToast) return;
+    const timer = window.setTimeout(() => setCopyToast(null), 4000);
+    return () => window.clearTimeout(timer);
+  }, [copyToast]);
 
  // Bulk-action state for the 多选 bar. Every action below is the batch form of
   // an action the per-card ⋯ menu already offers (move in/out of the team
@@ -1435,6 +1448,65 @@ function requestDelete(project: Project) {
     });
   }
 
+  function requestCopyToPersonal(project: Project) {
+    trackCollection('copy_to_personal', {
+      project_key: project.id,
+      project_relation: 'other',
+    });
+    setMenuOpenId(null);
+    setCopyToPersonalTarget(project);
+  }
+
+  async function handleCopyToPersonalConfirm(selection: TeamTreeSelection) {
+    const project = copyToPersonalTarget;
+    if (!project || copyPendingId) return;
+    const startedAt = performance.now();
+    setCopyToPersonalTarget(null);
+    setCopyPendingId(project.id);
+    setCopyToast(null);
+    try {
+      const sourceWorkspaceContext = await resolveBoundProjectWorkspaceContext(
+        project.workspaceId?.trim() ?? '',
+      );
+      if (!sourceWorkspaceContext) throw new Error('source workspace unavailable');
+      await copyProjectToPersonal(project.id, sourceWorkspaceContext, {
+        targetFolderId: selection.folderId,
+      });
+      notifyTeamProjectsChanged();
+      window.dispatchEvent(new CustomEvent('personal:folders-updated'));
+      window.dispatchEvent(new CustomEvent('shared:projects-refresh'));
+      setCopyToast({ message: t('recentProjects.copyToPersonalSuccess'), tone: 'success' });
+      trackWorkspaceProjectActionResult(analytics.track, {
+        page_name: analyticsPage,
+        area: 'project_collection',
+        action: 'copy_to_personal',
+        result: 'success',
+        requested_count: 1,
+        succeeded_count: 1,
+        failed_count: 0,
+        duration_ms: Math.round(performance.now() - startedAt),
+        ...workspaceDimensions,
+      });
+    } catch (err) {
+      console.warn('[RecentProjectsStrip] copy project to personal failed:', err);
+      setCopyToast({ message: t('recentProjects.copyToPersonalFailed'), tone: 'error' });
+      trackWorkspaceProjectActionResult(analytics.track, {
+        page_name: analyticsPage,
+        area: 'project_collection',
+        action: 'copy_to_personal',
+        result: 'failed',
+        requested_count: 1,
+        succeeded_count: 0,
+        failed_count: 1,
+        error_code: 'request_failed',
+        duration_ms: Math.round(performance.now() - startedAt),
+        ...workspaceDimensions,
+      });
+    } finally {
+      setCopyPendingId(null);
+    }
+  }
+
   async function commitDelete() {
     if (!confirmTarget || !onDelete || deletePending) return;
     const target = confirmTarget;
@@ -1963,6 +2035,7 @@ function requestDelete(project: Project) {
          // HDW team-series views always present cards as team-owned with the
          // person who created the project in the bottom-left owner pill.
          const isTeamSeriesView = space === 'team' && Boolean(operator);
+         const isSharedBadgeOverride = badgeOverride === 'shared';
          // Explicit self-ownership by the current workspace member always
          // reads as a personal project in this view, even if the project is
          // team-visible or shared with the current user.
@@ -1974,13 +2047,15 @@ function requestDelete(project: Project) {
          // workspaceId === sharedSpaceTeamId (or absent) -> personal workspace:
          //   ownedBySelf -> "personal", otherwise -> "shared".
          // workspaceId !== sharedSpaceTeamId -> team workspace -> "team".
-         const projectType = isTeamSeriesView
-           ? 'team' as const
-           : isSelfOwnedForDisplay
-             ? 'personal' as const
-             : (project.workspaceId == null || project.workspaceId === sharedSpaceTeamId)
-               ? (creator.ownedBySelf ? 'personal' as const : 'shared-with-me' as const)
-               : 'team' as const;
+         const projectType = isSharedBadgeOverride
+           ? 'shared-with-me' as const
+           : isTeamSeriesView
+             ? 'team' as const
+             : isSelfOwnedForDisplay
+               ? 'personal' as const
+               : (project.workspaceId == null || project.workspaceId === sharedSpaceTeamId)
+                 ? (creator.ownedBySelf ? 'personal' as const : 'shared-with-me' as const)
+                 : 'team' as const;
          return (
            <div
              key={project.id}
@@ -2141,7 +2216,7 @@ function requestDelete(project: Project) {
                   // (hover-revealed, see recent-projects.css); list view's
                   // thumb is far too small (128x52) for it — the inline
                   // variant next to the name below covers that case instead.
-                   <span className={`recent-projects__card-badge recent-projects__card-badge--${projectType}${isTeamSeriesView ? ' recent-projects__card-badge--always' : ''}`}>
+                   <span className={`recent-projects__card-badge recent-projects__card-badge--${projectType}${isTeamSeriesView || isSharedBadgeOverride ? ' recent-projects__card-badge--always' : ''}`}>
                      <Icon name={projectType === 'personal' ? 'lock' : projectType === 'team' ? 'users' : 'share'} size={11} />
                      {projectType === 'personal'
                        ? t('recentProjects.personalBadge')
@@ -2172,7 +2247,7 @@ function requestDelete(project: Project) {
                         <span
                           className={`recent-projects__card-owner${creator.ownedBySelf ? ' recent-projects__card-owner--self' : ''}`}
                           title={creator.name}
-                          style={{ backgroundColor: ownerAvatarColor(creator.memberId) }}
+                          style={{ backgroundColor: avatarColorFor(creator.name) }}
                           aria-hidden
                         >
                           {creator.ownedBySelf ? t('recentProjects.selfCreator') : creator.name}
@@ -2189,7 +2264,7 @@ function requestDelete(project: Project) {
                         <span
                           className="recent-projects__card-owner"
                           title={creator.name}
-                          style={{ backgroundColor: ownerAvatarColor(creator.memberId) }}
+                          style={{ backgroundColor: avatarColorFor(creator.name) }}
                           aria-hidden
                         >
                           {creator.name}
@@ -2265,6 +2340,21 @@ function requestDelete(project: Project) {
                          <span>{t('designs.menuDuplicate')}</span>
                        </button>
                      ) : null}
+                     {homeWorkspaceId ? (
+                       <button
+                         type="button"
+                         role="menuitem"
+                         disabled={copyPendingId === project.id}
+                         onClick={() => requestCopyToPersonal(project)}
+                       >
+                         <Icon name="copy" size={12} />
+                         <span>
+                           {copyPendingId === project.id
+                             ? t('recentProjects.shareInProgress')
+                             : t('recentProjects.copyToPersonal')}
+                         </span>
+                       </button>
+                     ) : null}
                      {collaborationAvailable || space === 'drafts' ? (
                        <button
                          type="button"
@@ -2335,6 +2425,9 @@ function requestDelete(project: Project) {
           projectName={sharedSpaceTarget.name}
           entryFile={sharedSpaceTarget.metadata?.entryFile ?? null}
           workspaceContext={workspaceContext}
+          canPublishToCommunity={space === 'team'
+            ? resolveCreator(sharedSpaceTarget).ownedBySelf
+            : true}
           onClose={() => setSharedSpaceTarget(null)}
           onShared={() => {
             notifyTeamProjectsChanged();
@@ -2345,6 +2438,19 @@ function requestDelete(project: Project) {
               }),
             );
           }}
+        />
+      ) : null}
+      {copyToPersonalTarget ? (
+        <MoveToTeamTreeDialog
+          onConfirm={(selection) => { void handleCopyToPersonalConfirm(selection); }}
+          onCancel={() => setCopyToPersonalTarget(null)}
+          busy={copyPendingId === copyToPersonalTarget.id}
+          mode="unified"
+          copyMode
+          currentWorkspaceId={currentWorkspaceId ?? workspaceContext?.workspaceId ?? null}
+          currentFolderId={currentFolderId ?? null}
+          disabledKeys={disabledKeys}
+          canMoveToPersonal
         />
       ) : null}
       {renameTarget ? (
@@ -2484,6 +2590,13 @@ function requestDelete(project: Project) {
           canAssignInviteRoles ?? workspaceContext?.permissions.canInviteMembers === true
         }
       />
+      {copyToast ? (
+        <Toast
+          message={copyToast.message}
+          tone={copyToast.tone}
+          onDismiss={() => setCopyToast(null)}
+        />
+      ) : null}
     </section>
   );
 }
