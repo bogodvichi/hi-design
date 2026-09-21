@@ -1211,6 +1211,7 @@
   align-self: stretch;
 }
 .workspace-shell .workspace-tabs-strip {
+  --workspace-tab-min-width: 84px;
   gap: 2px;
   align-items: center;
   padding-top: 0;

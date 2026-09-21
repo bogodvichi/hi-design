@@ -10,6 +10,9 @@ import {
   openWorkspaceTab,
   removeWorkspaceProjectTabs,
   WorkspaceTabsBar,
+  workspaceTabOverflowLayout,
+  stableWorkspaceTabStripWidth,
+  workspaceTabMeasuredAvailableWidth,
 } from '../../src/components/WorkspaceTabsBar';
 import { navigate, type Route } from '../../src/router';
 import type { Project } from '../../src/types';
@@ -156,6 +159,76 @@ function dispatchDragEvent(
   Object.defineProperty(event, 'clientX', { configurable: true, value: clientX });
   fireEvent(element, event);
 }
+
+describe('workspaceTabOverflowLayout', () => {
+  const tabs: Parameters<typeof workspaceTabOverflowLayout>[0] = [
+    {
+      id: 'entry:home',
+      kind: 'entry',
+      view: 'home',
+      entryRoute: { kind: 'home', view: 'home' },
+      createdAt: 0,
+      lastActiveAt: 0,
+    },
+    ...Array.from({ length: 5 }, (_, index) => ({
+      id: `project:p${index + 1}`,
+      kind: 'project' as const,
+      projectId: `p${index + 1}`,
+      conversationId: null,
+      fileName: null,
+      createdAt: index + 1,
+      lastActiveAt: index + 1,
+    })),
+  ];
+
+  it('shrinks to the readable minimum before moving excess tabs into overflow', () => {
+    expect(workspaceTabOverflowLayout(tabs, 'project:p2', 760)).toEqual({
+      visibleTabIds: tabs.map((tab) => tab.id),
+      overflowTabIds: [],
+    });
+
+    const narrow = workspaceTabOverflowLayout(tabs, 'project:p2', 400);
+    expect(narrow.visibleTabIds).toEqual([
+      'entry:home',
+      'project:p1',
+      'project:p2',
+      'project:p3',
+    ]);
+    expect(narrow.overflowTabIds).toEqual(['project:p4', 'project:p5']);
+  });
+
+  it('slides the visible tab window so a newly active overflow tab is never hidden', () => {
+    const narrow = workspaceTabOverflowLayout(tabs, 'project:p5', 400);
+    expect(narrow.visibleTabIds).toEqual([
+      'entry:home',
+      'project:p3',
+      'project:p4',
+      'project:p5',
+    ]);
+    expect(narrow.overflowTabIds).toEqual(['project:p1', 'project:p2']);
+    expect(narrow.visibleTabIds).toContain('project:p5');
+  });
+});
+
+describe('workspaceTabMeasuredAvailableWidth', () => {
+  it('clips the tab strip to the real left edge of fixed top-right controls', () => {
+    expect(workspaceTabMeasuredAvailableWidth(120, 900, [860], 12)).toBe(728);
+    expect(workspaceTabMeasuredAvailableWidth(120, 900, [980, 840], 12)).toBe(708);
+  });
+
+  it('falls back to the strip width when no visible fixed control overlaps its row', () => {
+    expect(workspaceTabMeasuredAvailableWidth(120, 900, [], 12)).toBe(900);
+    expect(workspaceTabMeasuredAvailableWidth(120, 900, [80], 12)).toBe(900);
+  });
+});
+
+describe('stableWorkspaceTabStripWidth', () => {
+  it('keeps the last valid width through zero-width portal transition frames', () => {
+    expect(stableWorkspaceTabStripWidth(420, 0)).toBe(420);
+    expect(stableWorkspaceTabStripWidth(420, Number.NaN)).toBe(420);
+    expect(stableWorkspaceTabStripWidth(420, 360)).toBe(360);
+  });
+});
 
 describe('WorkspaceTabsBar navigation semantics', () => {
   beforeEach(() => {

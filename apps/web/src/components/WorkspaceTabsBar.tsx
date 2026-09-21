@@ -140,6 +140,116 @@ const ACTIVATE_WORKSPACE_RESOURCE_EVENT = 'open-design:workspace-tabs:activate-r
 const MAX_PERSISTED_TAB_SCOPES = 12;
 const TAB_DRAG_HAPTIC_MS = 8;
 const TAB_DROP_HAPTIC_MS = 12;
+const CHROME_PINNED_TAB_WIDTH = 78;
+const CHROME_TAB_MIN_WIDTH = 84;
+const CHROME_TAB_GAP = 2;
+const CHROME_TAB_EDGE_INSET = 10;
+const CHROME_OVERFLOW_BUTTON_WIDTH = 34;
+
+export interface WorkspaceTabOverflowLayout {
+  visibleTabIds: string[];
+  overflowTabIds: string[];
+}
+
+export function stableWorkspaceTabStripWidth(current: number, measured: number): number {
+  // Portal/dock transitions can briefly report a detached/display:none strip as
+  // 0px wide. Treat that as "measurement unavailable", not "infinite room":
+  // dropping the last valid width here would momentarily reveal every tab and
+  // remove the ··· trigger, and a replaced node might never notify the old
+  // ResizeObserver again.
+  if (!Number.isFinite(measured) || measured <= 0) return current;
+  return Math.abs(current - measured) > 0.5 ? measured : current;
+}
+
+export function workspaceTabMeasuredAvailableWidth(
+  stripLeft: number,
+  stripClientWidth: number,
+  clusterLefts: readonly number[],
+  safetyGap = 12,
+): number {
+  if (!Number.isFinite(stripClientWidth) || stripClientWidth <= 0) return 0;
+  const validClusterLefts = clusterLefts.filter(
+    (left) => Number.isFinite(left) && left > stripLeft,
+  );
+  if (validClusterLefts.length === 0) return stripClientWidth;
+  const fixedControlsLeft = Math.min(...validClusterLefts);
+  return Math.max(
+    0,
+    Math.min(stripClientWidth, fixedControlsLeft - stripLeft - safetyGap),
+  );
+}
+
+/**
+ * Resolve the browser-like chrome window for a measured strip width.
+ *
+ * Tabs first flex-shrink down to CHROME_TAB_MIN_WIDTH. Once even those compact
+ * tabs cannot all fit, the strip stops scrolling and moves the excess rows into
+ * a trailing overflow menu. The active tab is always kept in the visible
+ * window; selecting an overflow row therefore slides the visible window to it.
+ */
+export function workspaceTabOverflowLayout(
+  tabs: readonly WorkspaceChromeTab[],
+  activeTabId: string,
+  availableWidth: number,
+): WorkspaceTabOverflowLayout {
+  const allIds = tabs.map((tab) => tab.id);
+  if (tabs.length <= 1 || !Number.isFinite(availableWidth) || availableWidth <= 0) {
+    return { visibleTabIds: allIds, overflowTabIds: [] };
+  }
+
+  const pinned = tabs.find((tab) => tab.kind === 'entry') ?? null;
+  const normalTabs = tabs.filter((tab) => tab.kind !== 'entry');
+  const contentWidth = Math.max(0, availableWidth - CHROME_TAB_EDGE_INSET);
+  const pinnedWidth = pinned ? CHROME_PINNED_TAB_WIDTH : 0;
+  const allElementCount = normalTabs.length + (pinned ? 1 : 0);
+  const allMinWidth =
+    pinnedWidth
+    + normalTabs.length * CHROME_TAB_MIN_WIDTH
+    + Math.max(0, allElementCount - 1) * CHROME_TAB_GAP;
+
+  if (contentWidth >= allMinWidth) {
+    return { visibleTabIds: allIds, overflowTabIds: [] };
+  }
+
+  // Reserve the trailing ··· control and one gap before it. For the normal
+  // rows themselves, each additional visible tab consumes min-width + one gap.
+  const widthForNormalTabs = Math.max(
+    0,
+    contentWidth
+      - pinnedWidth
+      - CHROME_OVERFLOW_BUTTON_WIDTH
+      - CHROME_TAB_GAP,
+  );
+  let capacity = Math.floor(
+    (widthForNormalTabs + CHROME_TAB_GAP) / (CHROME_TAB_MIN_WIDTH + CHROME_TAB_GAP),
+  );
+
+  const activeNormalIndex = normalTabs.findIndex((tab) => tab.id === activeTabId);
+  if (activeNormalIndex >= 0) capacity = Math.max(1, capacity);
+  capacity = Math.min(normalTabs.length, Math.max(0, capacity));
+
+  let visibleNormalTabs: WorkspaceChromeTab[];
+  if (capacity === 0) {
+    visibleNormalTabs = [];
+  } else if (activeNormalIndex < 0 || activeNormalIndex < capacity) {
+    visibleNormalTabs = normalTabs.slice(0, capacity);
+  } else {
+    const start = Math.min(
+      activeNormalIndex - capacity + 1,
+      normalTabs.length - capacity,
+    );
+    visibleNormalTabs = normalTabs.slice(start, start + capacity);
+  }
+
+  const visible = new Set<string>([
+    ...(pinned ? [pinned.id] : []),
+    ...visibleNormalTabs.map((tab) => tab.id),
+  ]);
+  return {
+    visibleTabIds: tabs.filter((tab) => visible.has(tab.id)).map((tab) => tab.id),
+    overflowTabIds: tabs.filter((tab) => !visible.has(tab.id)).map((tab) => tab.id),
+  };
+}
 
 function consumeWorkspaceTabShortcut(event: KeyboardEvent) {
   event.preventDefault();
@@ -931,8 +1041,16 @@ export function WorkspaceTabsBar({
       window.removeEventListener('keydown', onKey);
     };
   }, [radialMenu]);
-  const [tabsOverflowing, setTabsOverflowing] = useState(false);
+  const [stripAvailableWidth, setStripAvailableWidth] = useState(0);
+  const [overflowMenuOpen, setOverflowMenuOpen] = useState(false);
+  const [overflowMenuPosition, setOverflowMenuPosition] = useState<{ top: number; left: number } | null>(null);
   const stripRef = useRef<HTMLDivElement | null>(null);
+  const [stripElement, setStripElement] = useState<HTMLDivElement | null>(null);
+  const setStripNode = useCallback((node: HTMLDivElement | null) => {
+    stripRef.current = node;
+    setStripElement((current) => (current === node ? current : node));
+  }, []);
+  const overflowButtonRef = useRef<HTMLButtonElement | null>(null);
   const previousOnboardingCompletedRef = useRef(onboardingCompleted);
   const resetEntryToHomeAfterOnboardingRef = useRef(false);
   const dragSuppressClickRef = useRef(false);
@@ -952,6 +1070,22 @@ export function WorkspaceTabsBar({
   // itself trigger a render — the incoming `projects`/`state.tabs` change
   // that recomputes `displayTabs` already will.
   const knownProjectNamesRef = useRef<Map<string, string>>(new Map());
+
+  const overflowLayout = useMemo(
+    () => workspaceTabOverflowLayout(state.tabs, state.activeTabId, stripAvailableWidth),
+    [state.activeTabId, state.tabs, stripAvailableWidth],
+  );
+  const visibleChromeTabIds = useMemo(
+    () => new Set(overflowLayout.visibleTabIds),
+    [overflowLayout.visibleTabIds],
+  );
+  const overflowChromeTabs = useMemo(
+    () => overflowLayout.overflowTabIds
+      .map((id) => state.tabs.find((tab) => tab.id === id))
+      .filter((tab): tab is WorkspaceChromeTab => Boolean(tab)),
+    [overflowLayout.overflowTabIds, state.tabs],
+  );
+  const tabsOverflowing = overflowChromeTabs.length > 0;
 
   // Liquid-glass glide indicator: one persistent pill that slides to the
   // active tab (see useGlideIndicator + .workspace-tabs-glide in routines.css).
@@ -978,6 +1112,7 @@ export function WorkspaceTabsBar({
     const previousLefts = tabFlipLeftsRef.current;
     const nextLefts = new Map<string, number>();
     for (const element of strip.querySelectorAll<HTMLElement>('[data-workspace-tab-id]')) {
+      if (element.classList.contains('is-overflow-hidden')) continue;
       const id = element.dataset.workspaceTabId;
       if (!id) continue;
       nextLefts.set(id, element.offsetLeft);
@@ -1002,8 +1137,8 @@ export function WorkspaceTabsBar({
   // the overflow state can shift the active tab without changing which tab is
   // active — those reposition instantly (no fake slide).
   const tabsLayoutKey = useMemo(
-    () => `${state.tabs.map((tab) => tab.id).join('|')}:${tabsOverflowing ? 1 : 0}`,
-    [state.tabs, tabsOverflowing],
+    () => `${state.tabs.map((tab) => tab.id).join('|')}:${overflowLayout.visibleTabIds.join(',')}`,
+    [overflowLayout.visibleTabIds, state.tabs],
   );
   const activeChromeTab = state.tabs.find((tab) => tab.id === state.activeTabId);
   // The pinned entry tab renders only a flat rail-toggle whenever it's active —
@@ -1071,7 +1206,15 @@ export function WorkspaceTabsBar({
     [],
   );
   useEffect(() => {
-    if (!tabsDockEl) setDockMenuOpen(false);
+    if (!tabsDockEl) {
+      setDockMenuOpen(false);
+      return;
+    }
+    // The full-width chrome strip is being portaled into the project dock.
+    // Retire any global overflow popup tied to the previous strip node before
+    // that node is detached/replaced.
+    setOverflowMenuOpen(false);
+    setOverflowMenuPosition(null);
   }, [tabsDockEl]);
 
   // Refresh the fallback cache from whatever this fetch actually returned,
@@ -1509,13 +1652,37 @@ export function WorkspaceTabsBar({
     };
   }, []);
 
-  useEffect(() => {
-    const stripElement = stripRef.current;
+  useLayoutEffect(() => {
     if (!stripElement) return;
     let frame = 0;
+    let clusterResizeObserver: ResizeObserver | null = null;
+    let bodyMutationObserver: MutationObserver | null = null;
+
+    const visibleClusterElements = () =>
+      Array.from(document.querySelectorAll<HTMLElement>('.entry-top-right-cluster')).filter(
+        (element) => {
+          const rect = element.getBoundingClientRect();
+          return rect.width > 0 && rect.height > 0;
+        },
+      );
+
     const measure = () => {
       frame = 0;
-      setTabsOverflowing(stripElement.scrollWidth > stripElement.clientWidth + 1);
+      const stripRect = stripElement.getBoundingClientRect();
+      const clusters = visibleClusterElements();
+      const measured = workspaceTabMeasuredAvailableWidth(
+        stripRect.left,
+        stripElement.clientWidth,
+        clusters.map((element) => element.getBoundingClientRect().left),
+      );
+      setStripAvailableWidth((current) =>
+        stableWorkspaceTabStripWidth(current, measured),
+      );
+
+      if (clusterResizeObserver) {
+        clusterResizeObserver.disconnect();
+        clusters.forEach((element) => clusterResizeObserver?.observe(element));
+      }
     };
     const requestMeasure = () => {
       if (frame) window.cancelAnimationFrame(frame);
@@ -1526,29 +1693,47 @@ export function WorkspaceTabsBar({
       typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(requestMeasure);
     if (resizeObserver) {
       resizeObserver.observe(stripElement);
-      // Skip the glide indicator: its width transitions with every tab
-      // switch and would feed a resize event into overflow measurement.
-      Array.from(stripElement.children)
-        .filter((child) => !child.classList.contains('workspace-tabs-glide'))
-        .forEach((child) => resizeObserver.observe(child));
+    }
+    if (typeof ResizeObserver !== 'undefined') {
+      clusterResizeObserver = new ResizeObserver(requestMeasure);
+      visibleClusterElements().forEach((element) => clusterResizeObserver?.observe(element));
+    }
+    if (typeof MutationObserver !== 'undefined') {
+      bodyMutationObserver = new MutationObserver(requestMeasure);
+      bodyMutationObserver.observe(document.body, {
+        childList: true,
+        subtree: true,
+      });
     }
     window.addEventListener('resize', requestMeasure);
     return () => {
       if (frame) window.cancelAnimationFrame(frame);
       resizeObserver?.disconnect();
+      clusterResizeObserver?.disconnect();
+      bodyMutationObserver?.disconnect();
       window.removeEventListener('resize', requestMeasure);
     };
-  }, [state.tabs.length]);
+  }, [stripElement, tabsDockEl, state.tabs.length]);
 
   useEffect(() => {
-    const stripElement = stripRef.current;
-    if (!stripElement) return;
-    const activeEl = stripElement.querySelector<HTMLElement>('.workspace-tab.is-active');
-    if (!activeEl) return;
-    if (typeof activeEl.scrollIntoView === 'function') {
-      activeEl.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-    }
-  }, [state.activeTabId, state.tabs.length]);
+    if (!overflowMenuOpen) return;
+    const close = () => setOverflowMenuOpen(false);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') close();
+    };
+    window.addEventListener('resize', close);
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('resize', close);
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [overflowMenuOpen]);
+
+  useEffect(() => {
+    if (overflowChromeTabs.length > 0) return;
+    setOverflowMenuOpen(false);
+    setOverflowMenuPosition(null);
+  }, [overflowChromeTabs.length]);
 
   useEffect(() => {
     const pending = pendingScopeStateRef.current;
@@ -1874,6 +2059,7 @@ export function WorkspaceTabsBar({
 
     let lastTarget: TabDragTarget | null = null;
     for (const tabElement of strip.querySelectorAll<HTMLElement>('[data-workspace-tab-id]')) {
+      if (tabElement.classList.contains('is-overflow-hidden')) continue;
       const tabId = tabElement.dataset.workspaceTabId;
       if (!tabId || tabId === sourceId) continue;
       const span = tabLayoutSpan(strip, tabElement);
@@ -2035,6 +2221,56 @@ export function WorkspaceTabsBar({
     );
   })();
 
+  const overflowMenuPortal =
+    !tabsDockEl
+    && overflowMenuOpen
+    && overflowMenuPosition
+    && overflowChromeTabs.length > 0
+      ? createPortal(
+          <>
+            <div
+              className="workspace-tabs-overflow__backdrop"
+              onMouseDown={() => setOverflowMenuOpen(false)}
+            />
+            <div
+              className="workspace-tabs-overflow__menu"
+              role="listbox"
+              aria-label="More tabs"
+              style={{
+                top: overflowMenuPosition.top,
+                left: overflowMenuPosition.left,
+              }}
+              data-testid="workspace-tabs-overflow-menu"
+            >
+              {overflowChromeTabs.map((tab) => {
+                const display =
+                  displayTabById.get(tab.id)
+                    ?? displayTabFor(tab, projectById, t, knownProjectNamesRef.current);
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    className="workspace-tabs-overflow__row"
+                    role="option"
+                    aria-selected="false"
+                    onClick={() => {
+                      setOverflowMenuOpen(false);
+                      openTab(tab);
+                    }}
+                  >
+                    <span className="workspace-tabs-overflow__row-icon" aria-hidden>
+                      <Icon name={display.icon} size={14} />
+                    </span>
+                    <span className="workspace-tabs-overflow__row-label">{display.title}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </>,
+          document.body,
+        )
+      : null;
+
   return (
     <header
       className={`app-chrome-header workspace-tabs-chrome${tabsDockEl ? ' is-docked' : ''}`}
@@ -2068,18 +2304,17 @@ export function WorkspaceTabsBar({
         className={`workspace-tabs-strip${tabsOverflowing ? ' is-overflowing' : ''}`}
         role="tablist"
         aria-label="Open workspaces"
-        ref={stripRef}
+        ref={setStripNode}
         onDragOver={handleStripDragOver}
         onDrop={handleStripDrop}
         onDragLeave={handleStripDragLeave}
       >
-        {/* Render every open tab — the strip itself scrolls horizontally
-            when the tabs exceed the available chrome width. Previous
-            behaviour sliced to `visibleChromeTabs(...)` and squeezed
-            the rest behind a "+N more" chip, which squished the entire
-            chrome horizontally. The search-tabs popover still acts as
-            a keyboard surface for finding a tab that's scrolled out of
-            view. */}
+        {/* Browser-style adaptive tabs: rows flex down to the minimum readable
+            width first. If the measured chrome still cannot hold them all,
+            excess rows remain mounted but are visually collected into the
+            trailing ··· menu. The active tab is always part of the visible
+            window, so switching from the menu never leaves the active surface
+            hidden behind the fixed account cluster. */}
         {/* Liquid-glass active-tab pill: positioned by useGlideIndicator in
             the strip's content coordinates, painted by the __pill (frosted
             everywhere, SDF refraction on Chromium via useLiquidGlass). First
@@ -2104,6 +2339,7 @@ export function WorkspaceTabsBar({
           // The single entry tab is permanent and pinned leftmost: it cannot be
           // closed or dragged out of the first slot, whatever section it shows.
           const isPinned = tab.kind === 'entry';
+          const overflowHidden = !visibleChromeTabIds.has(tab.id);
           const dragOverClass =
             dragOverTarget?.tabId === tab.id && draggingTabId !== tab.id
               ? ` is-drag-over-${dragOverTarget.edge}`
@@ -2111,7 +2347,7 @@ export function WorkspaceTabsBar({
           return (
             <div
               key={tab.id}
-              className={`workspace-tab${active ? ' is-active' : ''}${isPinned ? ' is-pinned' : ''}${draggingTabId === tab.id ? ' is-dragging' : ''}${dragOverClass}`}
+              className={`workspace-tab${active ? ' is-active' : ''}${isPinned ? ' is-pinned' : ''}${overflowHidden ? ' is-overflow-hidden' : ''}${draggingTabId === tab.id ? ' is-dragging' : ''}${dragOverClass}`}
               data-workspace-tab-id={tab.id}
               role="tab"
               aria-selected={active}
@@ -2212,6 +2448,36 @@ export function WorkspaceTabsBar({
             </div>
           );
         })}
+        {!tabsDockEl && tabsOverflowing ? (
+          <button
+            ref={overflowButtonRef}
+            type="button"
+            className={`workspace-tabs-overflow__trigger${overflowMenuOpen ? ' is-open' : ''}`}
+            aria-haspopup="listbox"
+            aria-expanded={overflowMenuOpen}
+            aria-label={`More tabs (${overflowChromeTabs.length})`}
+            title={`More tabs (${overflowChromeTabs.length})`}
+            data-testid="workspace-tabs-overflow-trigger"
+            onClick={(event) => {
+              const rect = event.currentTarget.getBoundingClientRect();
+              const menuWidth = 280;
+              const viewportInset = 8;
+              setOverflowMenuPosition({
+                top: rect.bottom + 6,
+                left: Math.max(
+                  viewportInset,
+                  Math.min(
+                    window.innerWidth - menuWidth - viewportInset,
+                    rect.right - menuWidth,
+                  ),
+                ),
+              });
+              setOverflowMenuOpen((open) => !open);
+            }}
+          >
+            <span aria-hidden>···</span>
+          </button>
+        ) : null}
         {/* #5517 drops the top-right "+"; new tab stays reachable through
             ⌘/Ctrl+T. That "+" was the ONLY caller of openRadialMenu, so the
             radial template menu below is now unreachable — its state and
@@ -2223,6 +2489,7 @@ export function WorkspaceTabsBar({
       </div>
       </>,
       )}
+      {overflowMenuPortal}
       {radialMenu ? createPortal(
         <div className="workspace-radial-layer" onMouseDown={() => setRadialMenu(null)}>
           <div

@@ -1688,6 +1688,7 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
          }}
          onOpenSearch={() => setProjectSearchOpen(true)}
          open={railOpen}
+         topRightActive={active}
          topRightSlot={
            topRightCampaignAudience ? (
              <WorkbenchCampaignBadge
