@@ -5221,10 +5221,10 @@ export function CommentSidePanel({
                     aria-label={t('chat.comments.reply')}
                     title={t('chat.comments.reply')}
                     onClick={(event) => {
-                      event.stopPropagation();
-                      setReplyEditorId((current) =>
-                        current === comment.id ? null : comment.id,
-                      );
+                      //event.stopPropagation();
+                      // setReplyEditorId((current) =>
+                      //   current === comment.id ? null : comment.id,
+                      // );
                     }}
                   >
                    {author ? (
@@ -5241,7 +5241,7 @@ export function CommentSidePanel({
                  </button>
                ) : (
                  <span className="comment-card-user-inline">
-                 {author ? (
+                 {/* {author ? (
                    <span
                      className="avatar mini"
                       style={{ background: avatarColorFor(authorSeed) }}
@@ -5249,7 +5249,7 @@ export function CommentSidePanel({
                    >
                      {commentAuthorInitials(author.displayName)}
                    </span>
-                 ) : null}
+                 ) : null} */}
                   <Icon name="message-square" size={12} />
                   <span>{t('chat.comments.nReplies', { n: persistedReplies.length + localReplies.length })}</span>
                   </span>
