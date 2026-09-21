@@ -80,7 +80,6 @@ export function FolderCardMenu({
          <button
            type="button"
            role="menuitem"
-           className={styles.danger}
            onClick={(e) => { e.stopPropagation(); setOpen(false); onDelete(); }}
          >
            <Icon name="trash" size={12} />

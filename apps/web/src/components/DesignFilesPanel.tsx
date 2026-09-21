@@ -1875,7 +1875,6 @@ export function DesignFilesPanel({
           </a>
           <button
             type="button"
-            className="danger"
             data-testid={`design-file-delete-${menuPos.name}`}
             onClick={(e) => {
               e.stopPropagation();

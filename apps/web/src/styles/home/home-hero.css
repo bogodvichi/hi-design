@@ -14,6 +14,9 @@
      width exactly — see .home-hero__plugin-presets-wrap. */
   container-type: inline-size;
 }
+.home-view:not(.home-view--centered) {
+  padding-bottom: var(--module-content-bottom-padding, 72px);
+}
 /* Empty workspace: no recent projects rendered below, so the hero column
    centers vertically in the scroll viewport instead of hugging the top. */
 .home-view--centered {

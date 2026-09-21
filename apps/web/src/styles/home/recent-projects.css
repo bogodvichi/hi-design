@@ -178,12 +178,7 @@
   border-color: transparent;
 }
 .recent-projects__card.is-selected {
-  /* Selection ring floats 4px outside the card on all sides (outline follows
-     the border-radius), instead of hugging the card edge. Hairline light
-     gray, not the near-black accent — the check badge already carries the
-     selected state. */
-  outline: 1px solid var(--border-strong);
-  outline-offset: 4px;
+  outline: none;
 }
 .recent-projects__row.is-selecting .recent-projects__card-main {
   cursor: default;
@@ -224,6 +219,12 @@
   border-radius: inherit;
   pointer-events: none;
 }
+.recent-projects__card.is-selected .recent-projects__card-thumb::after {
+  z-index: 10;
+  border: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px #353535;
+}
 /* No-preview cards fall back to a saturated hue gradient (see `projectCover`),
  * not the neutral --bg-subtle real covers sit on — the shared 8%-opacity ring
  * above reads clearly against a flat light background but melts into the
@@ -246,6 +247,7 @@
   width: 100%;
   height: 100%;
   border: 0;
+  border-radius: inherit;
 }
 .recent-projects__thumb-media {
   object-fit: cover;
@@ -726,9 +728,6 @@
   opacity: 0.42;
   cursor: not-allowed;
 }
-.recent-projects__bulkbar-actions button.danger {
-  color: var(--red);
-}
 .recent-projects__bulkbar-actions button.ghost {
   color: var(--text-muted);
 }
@@ -867,11 +866,6 @@
 }
 .recent-projects__row--list .recent-projects__card:last-child::after {
   display: none;
-}
-/* List rows pad their content 8px, so pulling the ring 4px inside the card
-   edge leaves exactly 4px between the stroke and the content. */
-.recent-projects__row--list .recent-projects__card.is-selected {
-  outline-offset: -4px;
 }
 .recent-projects__row--list .recent-projects__card-main {
   flex-direction: row;
@@ -1066,13 +1060,13 @@
   align-items: center;
   gap: 4px;
   height: 20px;
-  padding: 0 8px;
+  padding: 0 4px;
   border-radius: var(--radius-pill);
   /* Default (neutral) — overridden by variant classes below. */
   border: var(--stroke-thin) solid color-mix(in srgb, var(--text-muted) 24%, transparent);
   background: color-mix(in srgb, var(--text-muted) 10%, var(--bg-panel));
   color: color-mix(in srgb, var(--text-muted) 72%, var(--text-strong));
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 600;
 }
 .recent-projects__card-badge--personal {
@@ -1127,7 +1121,6 @@
 }
 .recent-projects__card-owner {
   position: relative;
-  overflow: hidden;
   min-width: 18px;
   height: 20px;
   padding: 0 6px;
@@ -1141,9 +1134,6 @@
   font-weight: 700;
   flex: 0 0 auto;
   white-space: nowrap;
-  max-width: 80px;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .recent-projects__card-owner img {

@@ -1301,6 +1301,7 @@
 }
 .entry-main__inner {
   width: 100%;
+  --module-content-bottom-padding: 72px;
   /* Wider cap + tighter side padding so the content hugs closer to the rail
      instead of leaving a large centered left margin on wide screens. */
   max-width: 1600px;
