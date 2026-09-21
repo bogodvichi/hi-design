@@ -1156,6 +1156,10 @@
   display: block;
 }
 
+.recent-projects__card-owner--self {
+  background: #000;
+}
+
 /* First open of a team-shared card runs a full content pull before the
    project can open; the overlay makes that wait visible (previously the
    click looked dead for the whole pull). */

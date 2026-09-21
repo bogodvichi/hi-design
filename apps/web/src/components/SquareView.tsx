@@ -7,8 +7,14 @@ import { ModuleBreadcrumb } from './ModuleBreadcrumb';
 // panel) and reuses TeamSpaceView.module.css so the surface stays
 // visually consistent across scope pages. Tabs: 项目 / Skill / MCP / 工具.
 
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
+import {
+  Dialog,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from '@open-design/components';
 import { PreviewModal } from './PreviewModal';
 import { PublishDialog, type PublishProjectSelection } from './PublishDialog';
 import type { PublishToolSelection } from './PublishDialog';
@@ -44,6 +50,8 @@ export interface PublishedProjectItem {
   publicationStatus: ProjectPublicationStatus;
 }
 type PublicationFilter = 'all' | ProjectPublicationStatus;
+
+type ProjectPublicationAction = 'publish' | 'unpublish' | 'delete';
 
 type MarketplacePluginEntryWithDeletion = MarketplacePluginEntry & {
   deletedAt?: string | null;
@@ -95,12 +103,11 @@ function PlaceholderPanel({ icon, label, note }: { icon: IconName; label: string
   );
 }
 
-function ProjectCardMenu({ name, publicationStatus, onPublish, onUnpublish, onDelete, busy }: {
-  name: string;
+function ProjectCardMenu({ publicationStatus, onPublish, onUnpublish, onDelete, busy }: {
   publicationStatus?: ProjectPublicationStatus;
-  onPublish?: (name: string) => void;
-  onUnpublish?: (name: string) => void;
-  onDelete?: (name: string) => void;
+  onPublish?: () => void;
+  onUnpublish?: () => void;
+  onDelete?: () => void;
   busy?: string | null;
 }) {
   const t = useT();
@@ -145,10 +152,10 @@ function ProjectCardMenu({ name, publicationStatus, onPublish, onUnpublish, onDe
         <div className="recent-projects__card-menu" role="menu">
           {publicationStatus === 'unpublished' ? (
             <>
-              <button type="button" role="menuitem" disabled={!!busy} onClick={() => { setOpen(false); onPublish?.(name); }}>
+              <button type="button" role="menuitem" disabled={!!busy} onClick={() => { setOpen(false); onPublish?.(); }}>
                 <Icon name="arrow-up" size={12} aria-hidden /><span>{t('pluginCard.publish')}</span>
               </button>
-              <button type="button" role="menuitem" className="danger" disabled={!!busy} onClick={() => { setOpen(false); onDelete?.(name); }}>
+              <button type="button" role="menuitem" className="danger" disabled={!!busy} onClick={() => { setOpen(false); onDelete?.(); }}>
                 <Icon name="close" size={12} aria-hidden /><span>{t('common.delete')}</span>
               </button>
             </>
@@ -156,10 +163,10 @@ function ProjectCardMenu({ name, publicationStatus, onPublish, onUnpublish, onDe
             <>
               {publicationStatus === 'published' ? (
                 <>
-                  <button type="button" role="menuitem" disabled={!!busy} onClick={() => { setOpen(false); onUnpublish?.(name); }}>
+                  <button type="button" role="menuitem" disabled={!!busy} onClick={() => { setOpen(false); onUnpublish?.(); }}>
                     <Icon name="eye-off" size={12} aria-hidden /><span>{t('squareScope.unpublish')}</span>
                   </button>
-                  <button type="button" role="menuitem" className="danger" disabled={!!busy} onClick={() => { setOpen(false); onDelete?.(name); }}>
+                  <button type="button" role="menuitem" className="danger" disabled={!!busy} onClick={() => { setOpen(false); onDelete?.(); }}>
                     <Icon name="close" size={12} aria-hidden /><span>{t('common.delete')}</span>
                   </button>
                 </>
@@ -263,6 +270,12 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
   const [detailsEntry, setDetailsEntry] = useState<MarketplacePluginEntry | null>(null);
   const [shareOnOpen, setShareOnOpen] = useState(false);
   const [busyName, setBusyName] = useState<string | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{
+    type: ProjectPublicationAction;
+    name: string;
+    title: string;
+  } | null>(null);
+  const confirmTitleId = useId();
   // Synchronous rapid-click guard: state writes are not synchronous, so a
   // burst of clicks before React re-renders all read the stale
   // `remixingName` and fire N duplicate POST /remix calls. The ref is
@@ -381,7 +394,6 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
   }
 
   async function deletePlugin(name: string) {
-    if (!window.confirm(t('designs.deleteConfirm', { name }))) return;
     setBusyName(name);
     try {
       const res = await fetch(`/api/marketplaces/hdw-community/plugins/${encodeURIComponent(name)}`, {
@@ -443,7 +455,8 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
   }
 
   return (
-    <div className="community-template-grid" data-testid="square-projects-grid">
+    <>
+      <div className="community-template-grid" data-testid="square-projects-grid">
       {visibleItems.map(({ entry, publicationStatus }) => {
         const title = entry.title ?? entry.name;
         const description = entry.description?.trim();
@@ -484,16 +497,23 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
                />
              ) : null}
            </div>
-            {isMyPublishes && publicationStatus === 'unpublished' ? (
-              <span className={publishStyles.unpublishedBadge}>{t('squareScope.unpublished')}</span>
+            {isMyPublishes ? (
+              <span
+                className={`${publishStyles.publicationBadge} ${
+                  publicationStatus === 'published' ? publishStyles['publicationBadge--published'] : ''
+                }`}
+              >
+                {publicationStatus === 'published'
+                  ? t('squareScope.published')
+                  : t('squareScope.unpublished')}
+              </span>
             ) : null}
             {isMyPublishes || isOwner ? (
               <ProjectCardMenu
-                name={entry.name}
                 publicationStatus={publicationStatus}
-                onPublish={publishPlugin}
-                onUnpublish={unpublishPlugin}
-                onDelete={deletePlugin}
+                onPublish={() => setConfirmAction({ type: 'publish', name: entry.name, title })}
+                onUnpublish={() => setConfirmAction({ type: 'unpublish', name: entry.name, title })}
+                onDelete={() => setConfirmAction({ type: 'delete', name: entry.name, title })}
                 busy={busyName}
               />
             ) : null}
@@ -550,7 +570,66 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
           }}
         />
       ) : null}
-    </div>
+      </div>
+
+      {confirmAction ? (
+        <Dialog
+          className="modal-confirm"
+          role="alertdialog"
+          onClose={() => setConfirmAction(null)}
+          closeOnEscape
+          ariaLabelledBy={confirmTitleId}
+        >
+          <DialogTitle id={confirmTitleId}>
+            {confirmAction.type === 'publish'
+              ? t('squareScope.publishConfirmTitle')
+              : confirmAction.type === 'unpublish'
+                ? t('squareScope.unpublishConfirmTitle')
+                : t('squareScope.deleteConfirmTitle')}
+          </DialogTitle>
+          <DialogDescription>
+            {confirmAction.type === 'publish'
+              ? t('squareScope.publishConfirmDesc', { title: confirmAction.title })
+              : confirmAction.type === 'unpublish'
+                ? t('squareScope.unpublishConfirmDesc', { title: confirmAction.title })
+                : t('squareScope.deleteConfirmDesc', { title: confirmAction.title })}
+          </DialogDescription>
+          <DialogFooter className="row">
+            <button
+              type="button"
+              onClick={() => setConfirmAction(null)}
+              disabled={busyName === confirmAction.name}
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              className="primary"
+              disabled={busyName === confirmAction.name}
+              onClick={() => {
+                const action = confirmAction;
+                void (async () => {
+                  try {
+                    if (action.type === 'publish') await publishPlugin(action.name);
+                    else if (action.type === 'unpublish') await unpublishPlugin(action.name);
+                    else await deletePlugin(action.name);
+                  } finally {
+                    setConfirmAction(null);
+                  }
+                })();
+              }}
+            >
+              {busyName === confirmAction.name ? <Icon name="spinner" size={14} /> : null}
+              {confirmAction.type === 'publish'
+                ? t('pluginCard.publish')
+                : confirmAction.type === 'unpublish'
+                  ? t('squareScope.unpublish')
+                  : t('common.delete')}
+            </button>
+          </DialogFooter>
+        </Dialog>
+      ) : null}
+    </>
   );
 }
 

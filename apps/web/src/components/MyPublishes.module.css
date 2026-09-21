@@ -24,7 +24,7 @@
 
 .card { position: relative; }
 
-.unpublishedBadge {
+.publicationBadge {
   position: absolute;
   top: 12px;
   left: 12px;
@@ -36,6 +36,12 @@
   font-size: 12px;
   line-height: 20px;
   pointer-events: none;
+}
+
+.publicationBadge--published {
+  border-color: var(--green-border);
+  background: var(--green-bg);
+  color: var(--green);
 }
 
 /* Reuse the common project-card menu; only adapt its hover/overflow scope. */

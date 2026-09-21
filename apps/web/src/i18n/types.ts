@@ -1345,6 +1345,12 @@ export interface Dict {
  'squareScope.myPublishesTitle': string;
  'squareScope.myPublishesSubtitle': string;
  'squareScope.myPublishesEmpty': string;
+  'squareScope.publishConfirmTitle': string;
+  'squareScope.publishConfirmDesc': string;
+  'squareScope.unpublishConfirmTitle': string;
+  'squareScope.unpublishConfirmDesc': string;
+  'squareScope.deleteConfirmTitle': string;
+  'squareScope.deleteConfirmDesc': string;
   'publishDialog.title': string;
   'publishDialog.subtitle': string;
   'publishDialog.categoryLabel': string;

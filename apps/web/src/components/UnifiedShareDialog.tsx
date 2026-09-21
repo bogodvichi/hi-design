@@ -38,6 +38,7 @@ interface UnifiedShareDialogProps {
   projectName: string;
   entryFile?: string | null;
   workspaceContext: WorkspaceCollabContext | null;
+  onShared?: () => void;
   onClose: () => void;
 }
 
@@ -71,6 +72,7 @@ export function UnifiedShareDialog({
   projectName,
   entryFile,
   workspaceContext,
+  onShared,
   onClose,
 }: UnifiedShareDialogProps) {
   const t = useT();
@@ -222,8 +224,9 @@ export function UnifiedShareDialog({
        setShareError(t('sharedSpace.shareFailed'));
        return;
      }
-     setShareSuccess(true);
-     setTimeout(() => onClose(), 800);
+      setShareSuccess(true);
+      onShared?.();
+      setTimeout(() => onClose(), 800);
    } catch {
      setShareError(t('sharedSpace.shareFailed'));
    } finally {
@@ -263,8 +266,9 @@ export function UnifiedShareDialog({
            projectId,
            visibility: 'team',
            workspaceContext,
-         });
-         setSharingToTeam(false);
+          });
+          onShared?.();
+          setSharingToTeam(false);
        }
      }
      const resp = await fetch('/api/hdw/api/share-link/generate', {
@@ -399,9 +403,7 @@ const footerActionDisabled =
                   {t('share.publishSuccessHint', { name: publishResult.name })}
                 </p>
                 <a
-                  href={publishResult.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href="/square"
                   className={styles.openInCommunity}
                 >
                   {t('share.openInCommunity')}

@@ -29,7 +29,7 @@ import {
 } from '../providers/registry';
 import type { DesignSystemSummary, Project, ProjectDisplayStatus, ProjectFile } from '../types';
 import { Icon } from './Icon';
-import { ShareToSharedSpaceDialog } from './ShareToSharedSpaceDialog';
+import { UnifiedShareDialog } from './UnifiedShareDialog';
 import { InviteDialog } from './InviteDialog';
 import { STATUS_LABEL_KEYS } from './DesignsTab';
 import { isDesignSystemProject, isPublishedDesignSystemProject } from './design-system-project';
@@ -2170,13 +2170,12 @@ function requestDelete(project: Project) {
                     <>
                       {isTeamSeriesView ? (
                         <span
-                          className="recent-projects__card-owner"
+                          className={`recent-projects__card-owner${creator.ownedBySelf ? ' recent-projects__card-owner--self' : ''}`}
                           title={creator.name}
                           style={{ backgroundColor: ownerAvatarColor(creator.memberId) }}
                           aria-hidden
                         >
-                          {creator.name}
-                          {creator.ownedBySelf ? t('recentProjects.selfCreator') : null}
+                          {creator.ownedBySelf ? t('recentProjects.selfCreator') : creator.name}
                         </span>
                       ) : (isSelfOwnedForDisplay || (creator.ownedBySelf && space !== 'team')) ? (
                         <span
@@ -2330,10 +2329,12 @@ function requestDelete(project: Project) {
        })}
      </div>
       {sharedSpaceTarget && homeWorkspaceId ? (
-        <ShareToSharedSpaceDialog
+        <UnifiedShareDialog
           projectId={sharedSpaceTarget.id}
-          homeWorkspaceId={homeWorkspaceId}
+          workspaceId={homeWorkspaceId}
           projectName={sharedSpaceTarget.name}
+          entryFile={sharedSpaceTarget.metadata?.entryFile ?? null}
+          workspaceContext={workspaceContext}
           onClose={() => setSharedSpaceTarget(null)}
           onShared={() => {
             notifyTeamProjectsChanged();

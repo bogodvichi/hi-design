@@ -1719,7 +1719,7 @@ export function EntryNavRail({
           <Icon name="globe" size={16} />
         </NavButton>
         <NavButton
-          active={view === 'square'}
+          active={view === 'square' || view === 'my-publishes'}
           ariaLabel={plazaLabel}
           label={plazaLabel}
           onClick={() => selectView('square')}

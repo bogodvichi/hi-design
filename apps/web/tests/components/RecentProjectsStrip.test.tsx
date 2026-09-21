@@ -385,7 +385,7 @@ describe('RecentProjectsStrip', () => {
     });
   });
 
-  it('shows Team badge and owner name plus Me in HDW team-series cards for self-owned projects', async () => {
+  it('shows Me alone for self-owned HDW team-series cards', async () => {
     Object.assign(recentWorkspaceState.context, {
       displayName: '林晓',
     });
@@ -406,7 +406,9 @@ describe('RecentProjectsStrip', () => {
 
     await waitFor(() => {
       const owner = container.querySelector<HTMLElement>('.recent-projects__card-owner');
-      expect(owner?.textContent).toBe('林晓Me');
+      expect(owner?.textContent).toBe('Me');
+      expect(owner?.classList.contains('recent-projects__card-owner--self')).toBe(true);
+      expect(owner?.getAttribute('title')).toBe('林晓');
     });
 
     const badges = container.querySelectorAll('.recent-projects__card-badge');
