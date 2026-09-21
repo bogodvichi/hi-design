@@ -203,6 +203,13 @@ export async function settleManualEditFiles(
   return results.every(Boolean);
 }
 
+export function projectFileDeletePath(files: readonly ProjectFile[], requestedName: string): string {
+  const byName = files.find((file) => file.name === requestedName);
+  if (byName) return byName.path?.trim() || byName.name;
+  const byPath = files.find((file) => file.path === requestedName);
+  return byPath?.path?.trim() || requestedName;
+}
+
 interface Props {
   projectId: string;
   projectKind: TrackingProjectKind;
@@ -2550,7 +2557,8 @@ export function FileWorkspace({
   async function handleDelete(name: string) {
     if (mutationBlocked) return; // fail-closed project mutation gate
     if (!confirm(t('workspace.deleteFileConfirm', { name }))) return;
-    const ok = await deleteProjectFile(projectId, name, workspaceContext);
+    const deletePath = projectFileDeletePath(files, name);
+    const ok = await deleteProjectFile(projectId, deletePath, workspaceContext);
     if (ok) {
       await onRefreshFiles();
       const nextTabs = persistedTabs.filter((n) => n !== name);
@@ -2586,7 +2594,8 @@ export function FileWorkspace({
     const deleted: string[] = [];
     const failed: string[] = [];
     for (const name of names) {
-      const ok = await deleteProjectFile(projectId, name, workspaceContext);
+      const deletePath = projectFileDeletePath(files, name);
+      const ok = await deleteProjectFile(projectId, deletePath, workspaceContext);
       if (ok) deleted.push(name);
       else failed.push(name);
     }

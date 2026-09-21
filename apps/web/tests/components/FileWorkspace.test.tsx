@@ -18,6 +18,7 @@ import {
 import {
   DESIGN_FILES_TAB,
   FileWorkspace,
+  projectFileDeletePath,
   settleManualEditFiles,
   scrollWorkspaceTabsWithWheel,
   settleManualEditExit,
@@ -3536,6 +3537,22 @@ describe('projectSplitClassName', () => {
     // A different project gets a fresh presentation decision.
     state = stickyPersonalProjectPresentation(state, 'project-2', false);
     expect(state).toEqual({ projectId: 'project-2', personal: false });
+  });
+
+  it('deletes a project file by its canonical path instead of its display name', () => {
+    const files: ProjectFile[] = [
+      {
+        name: '用户上传的报告.pdf',
+        path: 'uploads/9f2c-report.pdf',
+        kind: 'pdf',
+        mime: 'application/pdf',
+        size: 12,
+        mtime: 1,
+      },
+    ];
+
+    expect(projectFileDeletePath(files, '用户上传的报告.pdf')).toBe('uploads/9f2c-report.pdf');
+    expect(projectFileDeletePath(files, 'missing.txt')).toBe('missing.txt');
   });
 
   it('does not flash the project chat-collapse control while ownership is pending', () => {

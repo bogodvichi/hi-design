@@ -612,6 +612,13 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       new Set(restoredTransientDraft?.uploadedAttachmentPaths ?? []),
     );
     const deletingAttachmentPathsRef = useRef(new Set<string>());
+    // Tracks the last authoritative project-file inventory seen by this
+    // composer. A staged attachment is only auto-pruned after its path was
+    // positively observed in the project files and later disappears, so an
+    // upload is never removed during the short upload -> file-list refresh gap.
+    const observedProjectFilePathsRef = useRef(
+      new Set(projectFiles.map((file) => file.path?.trim() || file.name)),
+    );
     // Manual editor height set by dragging the shell's gray backdrop up/down.
     // null = the default auto-grow min/max behavior.
     const [manualEditorHeight, setManualEditorHeight] = useState<number | null>(null);
@@ -1706,6 +1713,41 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
       setDraft(text);
       editorRef.current?.setText(text);
     }
+
+    useEffect(() => {
+      const currentPaths = new Set(
+        projectFiles.map((file) => file.path?.trim() || file.name),
+      );
+      const previouslyObserved = observedProjectFilePathsRef.current;
+      observedProjectFilePathsRef.current = currentPaths;
+
+      if (previouslyObserved.size === 0) return;
+      const removedPaths = [...previouslyObserved].filter((path) => !currentPaths.has(path));
+      if (removedPaths.length === 0) return;
+      const removed = new Set(removedPaths);
+
+      // The project file has already been deleted elsewhere (Design Files,
+      // Agent/CLI, etc.). Only retire the local composer references here; do
+      // NOT issue another DELETE request for the same path.
+      for (const path of removed) {
+        uploadedAttachmentPathsRef.current.delete(path);
+        deletingAttachmentPathsRef.current.delete(path);
+      }
+      setStaged((current) => {
+        const next = current.filter((attachment) => !removed.has(attachment.path));
+        return next.length === current.length ? current : next;
+      });
+      setStagedVisualComments((current) => {
+        const next = current.filter((attachment) => (
+          !attachment.screenshotPath || !removed.has(attachment.screenshotPath)
+        ));
+        return next.length === current.length ? current : next;
+      });
+
+      let nextDraft = draftRef.current;
+      for (const path of removed) nextDraft = stripInlineMentionToken(nextDraft, path);
+      if (nextDraft !== draftRef.current) replaceEditorDraft(nextDraft);
+    }, [projectFiles]);
 
     function insertInlineMentionSeparator() {
       const current = editorRef.current?.getText() ?? draftRef.current;

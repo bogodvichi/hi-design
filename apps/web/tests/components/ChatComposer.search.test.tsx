@@ -13,7 +13,7 @@ import {
   typeAndSettle,
   typeInComposer,
 } from '../helpers/lexical-composer';
-import type { ChatAttachment, ChatCommentAttachment } from '../../src/types';
+import type { ChatAttachment, ChatCommentAttachment, ProjectFile } from '../../src/types';
 
 vi.mock('../../src/providers/registry', async () => {
   const actual = await vi.importActual<typeof import('../../src/providers/registry')>(
@@ -66,6 +66,49 @@ describe('ChatComposer /search command', () => {
     expect(mockedDeleteProjectFile.mock.calls[0]?.slice(0, 2)).toEqual(['project-1', 'brief.pdf']);
     await waitFor(() => expect(onProjectFilesChange).toHaveBeenCalledTimes(1));
     expect(screen.queryByText('brief.pdf')).toBeNull();
+  });
+
+  it('prunes a staged upload when the authoritative project file is deleted elsewhere', async () => {
+    const onSend = vi.fn();
+    const uploadedPath = 'uploads/9f2c-brief.pdf';
+    mockedUploadProjectFiles.mockResolvedValue({
+      uploaded: [{ path: uploadedPath, name: 'brief.pdf', kind: 'file', size: 5 }],
+      failed: [],
+    });
+
+    const renderComposer = (projectFiles: ProjectFile[]) => (
+      <ChatComposer
+        projectId="project-1"
+        projectFiles={projectFiles}
+        streaming={false}
+        onEnsureProject={async () => 'project-1'}
+        onSend={onSend}
+        onStop={vi.fn()}
+      />
+    );
+
+    const view = render(renderComposer([]));
+    fireEvent.change(screen.getByTestId('chat-file-input'), {
+      target: { files: [new File(['brief'], 'brief.pdf', { type: 'application/pdf' })] },
+    });
+    await waitFor(() => expect(screen.getByText('brief.pdf')).toBeTruthy());
+
+    // The upload has now been observed in the authoritative project inventory.
+    view.rerender(renderComposer([{
+      name: uploadedPath,
+      path: uploadedPath,
+      kind: 'pdf',
+      mime: 'application/pdf',
+      size: 5,
+      mtime: 1,
+    }]));
+    await waitFor(() => expect(screen.getByText('brief.pdf')).toBeTruthy());
+
+    // Design Files / Agent / CLI removes it. The composer must retire its local
+    // attachment reference without issuing a second DELETE for the same path.
+    view.rerender(renderComposer([]));
+    await waitFor(() => expect(screen.queryByText('brief.pdf')).toBeNull());
+    expect(mockedDeleteProjectFile).not.toHaveBeenCalled();
   });
 
   it('does not delete an existing project file when its staged context is removed', async () => {
