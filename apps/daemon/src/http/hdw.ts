@@ -7,25 +7,14 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 import {
-  PROD_HDW_BASE_URL,
-  DEV_HDW_BASE_URL,
-  PROD_HDW_PATH_PREFIX,
-  DEV_HDW_PATH_PREFIX,
+  resolveHdwAddress,
 } from './hdw-constants.js';
 
 /**
- * Resolve the HDW REST API base URL from env, mirroring the override
- * pattern in `integrations/hdw-cloud.ts`:
- *
- * Keeping this in sync with `hdw-cloud.ts` ensures all HDW clients
- * (collab sync, community plugins, shared space, frontend proxy)
- * can be pointed at the same backend via a single env var pair.
+ * Resolve the HDW REST API base URL from the shared constants.
  */
 function resolveHdwBase(env: NodeJS.ProcessEnv = process.env): string {
-  const baseUrl = env.OD_HDW_API_URL?.trim()
-    || (env.NODE_ENV === 'production' ? PROD_HDW_BASE_URL : DEV_HDW_BASE_URL);
-  const pathPrefix = env.OD_HDW_API_PREFIX?.trim()
-    || (env.NODE_ENV === 'production' ? PROD_HDW_PATH_PREFIX : DEV_HDW_PATH_PREFIX);
+  const { baseUrl, pathPrefix } = resolveHdwAddress(env);
   return `${baseUrl}${pathPrefix}/api`;
 }
 

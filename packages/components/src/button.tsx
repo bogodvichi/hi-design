@@ -4,7 +4,7 @@ import type { ButtonHTMLAttributes } from 'react';
 import { joinClassNames } from './class-names';
 import styles from './button.module.css';
 
-export type ButtonVariant = 'default' | 'primary' | 'primary-ghost' | 'ghost' | 'subtle';
+export type ButtonVariant = 'default' | 'primary' | 'primary-ghost' | 'ghost' | 'subtle' | 'link-text';
 export type ButtonSize = 'default' | 'icon';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -18,6 +18,7 @@ const variantClassNames: Record<ButtonVariant, string | undefined> = {
   'primary-ghost': joinClassNames(styles.primaryGhost, 'primary-ghost'),
   ghost: joinClassNames(styles.ghost, 'ghost'),
   subtle: joinClassNames(styles.subtle, 'subtle'),
+  'link-text': joinClassNames(styles.linkText, 'link-text'),
 };
 
 const sizeClassNames: Record<ButtonSize, string | undefined> = {

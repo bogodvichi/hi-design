@@ -1,9 +1,9 @@
 // hdw cloud HTTP client — the transport layer for the hdw ResourceHub service.
 //
 // This mirrors the CollabCloudClient pattern: a factory with injectable
-// fetch/config/timeout, env-scoped config (this file owns OD_HDW_* env vars),
-// and a from-env constructor that always returns a usable client thanks to
-// environment-aware defaults (mirroring the base-URL pattern in http/hdw.ts).
+// fetch/config/timeout, constants-scoped address config, and a from-env
+// constructor that always returns a usable client. `OD_HDW_API_TOKEN`
+// remains the only HDW environment input.
 //
 // Unlike the vela CLI transport which shells out to a binary, this talks
 // directly to the hdw REST API. Auth is a bearer token (OD_HDW_API_TOKEN);
@@ -11,25 +11,18 @@
 // per-workspace without a shared session.
 
 import {
-  PROD_HDW_BASE_URL as PROD_HDW_API_URL,
-  DEV_HDW_BASE_URL as DEV_HDW_API_URL,
-  PROD_HDW_PATH_PREFIX,
-  DEV_HDW_PATH_PREFIX,
+  resolveHdwAddress,
 } from '../http/hdw-constants.js';
 
 const DEFAULT_FETCH_TIMEOUT_MS = 30_000;
 
 type FetchLike = typeof fetch;
 
-/**
- * Environment-aware default base URLs for the hdw ResourceHub API.
- * Base URLs and path prefixes are shared from `http/hdw-constants.ts`
- * so all HDW clients stay in sync.
- */
+/** Constants-derived address config for the hdw ResourceHub API. */
 export interface HdwCloudConfig {
   baseUrl: string;
   token: string | null;
-  /** Path prefix prepended to every request path. Defaults to '/hdw'. */
+  /** Path prefix prepended to every request path. */
   pathPrefix?: string;
   /** SSO cookies for cookie-based auth, used when no bearer token is set. */
   cookies?: { name: string; value: string }[];
@@ -38,21 +31,16 @@ export interface HdwCloudConfig {
 export function readHdwCloudConfig(
   env: NodeJS.ProcessEnv = process.env,
 ): HdwCloudConfig | null {
-  const HDW_API_URL = env.NODE_ENV === 'production' ? PROD_HDW_API_URL : DEV_HDW_API_URL;
-  const pathPrefix = env.NODE_ENV === 'production' ? PROD_HDW_PATH_PREFIX : DEV_HDW_PATH_PREFIX;
-  const baseUrl = env.OD_HDW_API_URL?.trim()
-    || HDW_API_URL;
   return {
-    baseUrl,
+    ...resolveHdwAddress(env),
     token: env.OD_HDW_API_TOKEN?.trim() || null,
-    pathPrefix: env.OD_HDW_API_PREFIX?.trim() || pathPrefix,
   };
 }
 
 export function hasExplicitHdwCloudConfig(
-  env: NodeJS.ProcessEnv = process.env,
+  _env: NodeJS.ProcessEnv = process.env,
 ): boolean {
-  return Boolean(env.OD_HDW_API_URL?.trim());
+  return true;
 }
 
 export class HdwCloudError extends Error {
@@ -75,11 +63,11 @@ export interface HdwCloudClientOptions {
 export function createHdwCloudClient(options: HdwCloudClientOptions = {}) {
   const config = options.config ?? readHdwCloudConfig();
   if (!config) {
-    throw new Error('hdw cloud is not configured (OD_HDW_API_URL is unset)');
+    throw new Error('hdw cloud is not configured');
   }
   const fetchImpl = options.fetch ?? fetch;
   const timeoutMs = options.timeoutMs ?? DEFAULT_FETCH_TIMEOUT_MS;
-  const pathPrefix = config!.pathPrefix ?? '/hdw';
+  const pathPrefix = config!.pathPrefix ?? resolveHdwAddress().pathPrefix;
 
   /** Prepend the configured path prefix to a request path. */
   function prefixedPath(path: string): string {

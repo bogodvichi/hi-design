@@ -1766,6 +1766,10 @@
   background: var(--bg-subtle);
   color: var(--text);
 }
+.comment-popover-header-action.danger:hover {
+  color: var(--red);
+  background: var(--red-bg);
+}
 .comment-popover-more {
   position: relative;
   display: inline-flex;
@@ -1863,6 +1867,7 @@
   color: var(--text);
   font-size: 12px;
   line-height: 1.45;
+  position: relative;
 }
 .comment-popover-reply-meta {
   min-width: 0;
@@ -1908,8 +1913,9 @@
   padding: 12px 8px 12px 32px;
 }
 .comment-popover-reply-item-actions {
-  margin-left: 2px;
-  flex: 0 0 auto;
+  position: absolute;
+  top: 0;
+  right: 0;
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
@@ -1928,6 +1934,19 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.comment-popover-reply-item-actions .icon-btn:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+.comment-popover-reply-item-actions .icon-btn.danger:hover {
+  color: var(--red);
+  background: var(--red-bg);
 }
 .comment-popover-reply-editor {
   display: grid;
@@ -1957,8 +1976,10 @@
 }
 .comment-popover-reply-bar {
   flex: 0 0 auto;
-  padding: 8px 12px 10px;
-  border-top: 1px solid var(--border-soft);
+  /* padding: 8px 12px 10px; */
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
 }
 .comment-popover-reply-input-wrap {
   position: relative;
@@ -1971,6 +1992,15 @@
   padding-right: 68px;
   resize: none;
   min-height: 36px;
+  border: 0;
+  background: transparent;
+}
+.comment-popover-reply-bar--expanded {
+  padding: 8px 12px 10px;
+}
+.comment-popover-reply-bar--expanded .comment-popover-reply-input {
+  max-height: none;
+  padding-right: 10px;
 }
 .comment-popover-reply-floating-actions {
   position: absolute;
@@ -1979,6 +2009,13 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  padding-top: 8px;
+}
+.comment-popover-reply-bar--expanded .comment-popover-reply-floating-actions {
+  position: static;
+  justify-content: flex-end;
+  border-top: 1px solid var(--border-soft);
+  width: 100%;
 }
 .comment-popover-reply-attach {
   display: inline-flex;
@@ -2251,6 +2288,7 @@
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 8px;
+  padding: 8px 0;
 }
 .comment-popover-actions > * {
   /* Buttons may carry labels longer than their natural fair-share of the

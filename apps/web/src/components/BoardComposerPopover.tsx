@@ -567,6 +567,7 @@ export function BoardComposerPopover({
   const [localReplies, setLocalReplies] = useState<LocalReplyItem[]>([]);
   const [editingReplyKey, setEditingReplyKey] = useState<string | null>(null);
   const [replyEditDraft, setReplyEditDraft] = useState('');
+  const replyExpanded = Boolean(replyDraft.trim()) || replyImages.length > 0;
   const targetPlacementKey = [
     target.filePath,
     target.elementId,
@@ -604,8 +605,8 @@ export function BoardComposerPopover({
     const el = replyTextareaRef.current;
     if (!el) return;
     el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight-8, 120)}px`;
-  }, [replyDraft]);
+    el.style.height = `${el.scrollHeight - 8}px`;
+  }, [replyDraft, replyExpanded]);
   useLayoutEffect(() => {
     const node = popoverRef.current;
     if (!node) return;
@@ -841,48 +842,28 @@ export function BoardComposerPopover({
           {isExistingComment ? (
             <span className="comment-popover-existing-actions">
               {canEditComment ? (
-                <span className="comment-popover-more" ref={moreMenuRef}>
-                  <button
-                    type="button"
-                    className="comment-popover-header-action"
-                    aria-label={t('chat.comments.sortAndFilter')}
-                    title={t('chat.comments.sortAndFilter')}
-                    aria-haspopup="menu"
-                    aria-expanded={moreMenuOpen}
-                    onClick={() => setMoreMenuOpen((value) => !value)}
-                  >
-                    <Icon name="more-horizontal" size={16} />
-                  </button>
-                  {moreMenuOpen ? (
-                    <span className="comment-popover-more-menu" role="menu">
-                      <button
-                        type="button"
-                        role="menuitem"
-                        onClick={() => {
-                          setEditingExistingComment(true);
-                          setMoreMenuOpen(false);
-                        }}
-                      >
-                        <Icon name="edit" size={14} />
-                        {t('chat.comments.edit')}
-                      </button>
-                      {existing && onDeleteComment && canDeleteComment ? (
-                        <button
-                          type="button"
-                          className="danger"
-                          role="menuitem"
-                          onClick={() => {
-                            setMoreMenuOpen(false);
-                            void onDeleteComment(existing.id);
-                          }}
-                        >
-                          <Icon name="trash" size={14} />
-                          {t('chat.comments.deleteComment')}
-                        </button>
-                      ) : null}
-                    </span>
-                  ) : null}
-                </span>
+                <button
+                  type="button"
+                  className="comment-popover-header-action"
+                  data-testid="comment-popover-edit"
+                  aria-label={t('chat.comments.edit')}
+                  title={t('chat.comments.edit')}
+                  onClick={() => setEditingExistingComment(true)}
+                >
+                  <Icon name="edit" size={16} />
+                </button>
+              ) : null}
+              {existing && onDeleteComment && canDeleteComment ? (
+                <button
+                  type="button"
+                  className="comment-popover-header-action danger"
+                  data-testid="comment-popover-delete"
+                  aria-label={t('common.delete')}
+                  title={t('common.delete')}
+                  onClick={() => void onDeleteComment(existing.id)}
+                >
+                  <Icon name="trash" size={16} />
+                </button>
               ) : null}
               {existing && canChangeCommentStatus && onChangeCommentStatus ? (
                 <button
@@ -1327,7 +1308,10 @@ export function BoardComposerPopover({
         ) : null
       ) : null}
       {existing && !editingExistingComment && canReplyComment ? (
-        <div className="comment-popover-reply-bar" data-testid="comment-popover-reply-bar">
+        <div
+          className={`comment-popover-reply-bar${replyExpanded ? ' comment-popover-reply-bar--expanded' : ''}`}
+          data-testid="comment-popover-reply-bar"
+        >
           <input
             ref={replyImageInputRef}
             type="file"
@@ -1385,7 +1369,7 @@ export function BoardComposerPopover({
               </div>
             ) : null}
             <div className="comment-popover-reply-floating-actions">
-              <button
+              {/* <button
                 type="button"
                 className="comment-popover-reply-attach"
                 onClick={() => replyImageInputRef.current?.click()}
@@ -1393,7 +1377,7 @@ export function BoardComposerPopover({
                 aria-label={t('chat.annotationAttachImage')}
               >
                 <Icon name="attach" size={14} />
-              </button>
+              </button> */}
               <button
                 type="button"
                 className="comment-popover-reply-send"
