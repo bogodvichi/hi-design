@@ -12,7 +12,7 @@ const {
 
 function aiResearchConfig(app) {
   return app.config.aiResearch || {
-    baseUrl: process.env.AI_RESEARCH_BASE_URL || 'http://drw.hikvision.com/',
+    baseUrl: process.env.AI_RESEARCH_BASE_URL || 'https://drw.hikvision.com/',
     ssoSecret: process.env.AI_RESEARCH_SSO_SECRET || '',
     ssoIssuer: process.env.AI_RESEARCH_SSO_ISSUER || 'hidesign-web',
     ssoAudience: process.env.AI_RESEARCH_SSO_AUDIENCE || 'design-research-workbench',

@@ -15,7 +15,7 @@ vi.mock('@open-design/host', () => ({
 const homeRoute: Route = { kind: 'home', view: 'home' };
 const stableRoute: Route = {
   kind: 'external',
-  url: 'http://drw.hikvision.com/',
+  url: 'https://drw.hikvision.com/',
   resourceKey: 'ai-research-workbench',
   title: 'AI用研工作台',
 };
@@ -36,7 +36,7 @@ describe('AiResearchWorkspaceFrame', () => {
 
     act(() => dispatchOpenWorkspaceTab({
       ...stableRoute,
-      bootstrapUrl: 'http://drw.hikvision.com/api/auth/platform?ticket=opaque&next=%2F',
+      bootstrapUrl: 'https://drw.hikvision.com/api/auth/platform?ticket=opaque&next=%2F',
     }));
 
     const frame = getByTestId('ai-research-workspace-frame') as HTMLIFrameElement;
@@ -61,7 +61,7 @@ describe('AiResearchWorkspaceFrame', () => {
     vi.mocked(isOpenDesignHostAvailable).mockReturnValue(true);
     const bootstrapRoute: Route = {
       ...stableRoute,
-      bootstrapUrl: 'http://drw.hikvision.com/api/auth/platform?ticket=opaque',
+      bootstrapUrl: 'https://drw.hikvision.com/api/auth/platform?ticket=opaque',
     };
     const { getByTestId, queryByTestId } = render(
       <AiResearchWorkspaceFrame route={bootstrapRoute} />,

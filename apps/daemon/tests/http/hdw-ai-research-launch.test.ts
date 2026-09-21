@@ -25,12 +25,12 @@ describe('fetchAiResearchLaunch', () => {
       ],
     });
     const post = vi.fn().mockResolvedValue({
-      launch_url: 'http://drw.hikvision.com/api/auth/platform?ticket=opaque&next=%2F',
+      launch_url: 'https://drw.hikvision.com/api/auth/platform?ticket=opaque&next=%2F',
       expires_in: 60,
     });
 
     await expect(fetchAiResearchLaunch(dataDir, post)).resolves.toEqual({
-      launchUrl: 'http://drw.hikvision.com/api/auth/platform?ticket=opaque&next=%2F',
+      launchUrl: 'https://drw.hikvision.com/api/auth/platform?ticket=opaque&next=%2F',
       expiresIn: 60,
     });
     expect(post).toHaveBeenCalledWith('/auth/ai-research/launch', {

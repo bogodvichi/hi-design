@@ -169,7 +169,7 @@ module.exports = appInfo => {
   // AI research workbench uses the same short-lived, server-issued login
   // ticket pattern as HiMind, but keeps an independent audience and secret.
   config.aiResearch = {
-    baseUrl: process.env.AI_RESEARCH_BASE_URL || 'http://drw.hikvision.com/',
+    baseUrl: process.env.AI_RESEARCH_BASE_URL || 'https://drw.hikvision.com/',
     ssoSecret: process.env.AI_RESEARCH_SSO_SECRET || '',
     ssoIssuer: process.env.AI_RESEARCH_SSO_ISSUER || 'hidesign-web',
     ssoAudience: process.env.AI_RESEARCH_SSO_AUDIENCE || 'design-research-workbench',
