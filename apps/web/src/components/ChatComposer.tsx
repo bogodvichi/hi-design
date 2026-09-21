@@ -36,7 +36,7 @@ import type {
 } from '@open-design/contracts/analytics';
 import { deriveUploadCohort } from '../analytics/upload-tracking';
 import { notifyCompletionFeedbackGesture } from '../utils/notifications';
-import { projectRawUrl, uploadProjectFiles, openFolderDialog, fetchRecentLinkedDirs, pushRecentLinkedDir, dirExists, applyLibraryAsset, fetchLibraryAssetElementHtml } from "../providers/registry";
+import { deleteProjectFile, projectRawUrl, uploadProjectFiles, openFolderDialog, fetchRecentLinkedDirs, pushRecentLinkedDir, dirExists, applyLibraryAsset, fetchLibraryAssetElementHtml } from "../providers/registry";
 import {
   duplicatePluginAsProject,
   patchProject,
@@ -262,6 +262,8 @@ interface Props {
   // project folder exists on disk before files land in it. Returns the
   // project id when ready.
   onEnsureProject: () => Promise<string | null>;
+  /** Refreshes the project file inventory after a composer-owned upload is removed. */
+  onProjectFilesChange?: () => Promise<void> | void;
   commentAttachments?: ChatCommentAttachment[];
   onRemoveCommentAttachment?: (id: string) => void;
   // Available skills the user can compose into a turn via @<skill>. The
@@ -447,6 +449,7 @@ export interface ChatSendMeta {
 
 interface ComposerTransientDraft {
   attachments: ChatAttachment[];
+  uploadedAttachmentPaths: string[];
   commentAttachments: ChatCommentAttachment[];
   skills: SkillSummary[];
   contextOnlySkillIds: string[];
@@ -531,6 +534,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       placeholderScenarios = [],
       draftStorageKey,
       onEnsureProject,
+      onProjectFilesChange,
       commentAttachments = [],
       onRemoveCommentAttachment,
      skills = [],
@@ -601,6 +605,13 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     const [staged, setStaged] = useState<ChatAttachment[]>(
       () => restoredTransientDraft?.attachments ?? [],
     );
+    // Only files uploaded by this composer are deleted when their chip is
+    // removed. Existing project files staged through @ mentions or external
+    // surfaces remain project assets when they are removed from the turn.
+    const uploadedAttachmentPathsRef = useRef(
+      new Set(restoredTransientDraft?.uploadedAttachmentPaths ?? []),
+    );
+    const deletingAttachmentPathsRef = useRef(new Set<string>());
     // Manual editor height set by dragging the shell's gray backdrop up/down.
     // null = the default auto-grow min/max behavior.
     const [manualEditorHeight, setManualEditorHeight] = useState<number | null>(null);
@@ -780,6 +791,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     useEffect(() => {
       saveComposerTransientDraft(draftStorageKey, {
         attachments: staged,
+        uploadedAttachmentPaths: Array.from(uploadedAttachmentPathsRef.current),
         commentAttachments: stagedVisualComments,
         skills: stagedSkills,
         contextOnlySkillIds: Array.from(contextOnlySkillIdsRef.current),
@@ -1383,6 +1395,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
           setDraft(text);
           const orderedAttachments = normalizeChatAttachmentOrders(attachments);
           setStaged(orderedAttachments);
+          uploadedAttachmentPathsRef.current.clear();
           nextAttachmentOrderRef.current = nextChatAttachmentOrder(orderedAttachments);
           setStagedVisualComments(commentAttachments);
           // Rebuild staged context from the queued turn's meta so the
@@ -1500,6 +1513,8 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
       );
       setDraft("");
       setStaged([]);
+      uploadedAttachmentPathsRef.current.clear();
+      deletingAttachmentPathsRef.current.clear();
       nextAttachmentOrderRef.current = 0;
       setStagedVisualComments([]);
       setStagedSkills([]);
@@ -2155,6 +2170,9 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
         const result = await uploadProjectFiles(id, files, undefined, workspaceContext);
         if (result.uploaded.length > 0) {
           const orderedUploaded = assignChatAttachmentOrders(result.uploaded, orderStart);
+          for (const attachment of orderedUploaded) {
+            uploadedAttachmentPathsRef.current.add(attachment.path);
+          }
           appendOrderedStagedAttachments(orderedUploaded);
         }
         const partial = result.failed.length > 0;
@@ -2948,8 +2966,23 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
       return true;
     }
 
-    function removeStaged(p: string) {
+    async function removeStaged(p: string) {
       trackComposerBar({ element: 'context_remove', resource_kind: 'attachment', resource_id: p });
+      if (uploadedAttachmentPathsRef.current.has(p)) {
+        if (deletingAttachmentPathsRef.current.has(p)) return;
+        deletingAttachmentPathsRef.current.add(p);
+        const id = projectId ?? await ensureProject();
+        const deleted = id
+          ? await deleteProjectFile(id, p, workspaceContext)
+          : false;
+        deletingAttachmentPathsRef.current.delete(p);
+        if (!deleted) {
+          setUploadError(t('workspace.deleteSelectedFilesPartial', { n: 1 }));
+          return;
+        }
+        uploadedAttachmentPathsRef.current.delete(p);
+        await onProjectFilesChange?.();
+      }
       setStaged((s) => s.filter((a) => a.path !== p));
       setStagedVisualComments((current) => current.filter((attachment) => attachment.screenshotPath !== p));
       // Strip the `@<path>` token from the draft and push the result back into

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ChatComposer } from '../../src/components/ChatComposer';
 import { ANNOTATION_EVENT } from '../../src/components/PreviewDrawOverlay';
-import { uploadProjectFiles } from '../../src/providers/registry';
+import { deleteProjectFile, uploadProjectFiles } from '../../src/providers/registry';
 import { readExpandedIndexCss } from '../helpers/read-expanded-css';
 import {
   composerText,
@@ -21,11 +21,13 @@ vi.mock('../../src/providers/registry', async () => {
   );
   return {
     ...actual,
+    deleteProjectFile: vi.fn(),
     uploadProjectFiles: vi.fn(),
   };
 });
 
 const mockedUploadProjectFiles = vi.mocked(uploadProjectFiles);
+const mockedDeleteProjectFile = vi.mocked(deleteProjectFile);
 
 afterEach(() => {
   cleanup();
@@ -33,6 +35,68 @@ afterEach(() => {
 });
 
 describe('ChatComposer /search command', () => {
+  it('deletes a removed composer upload from the project and refreshes the file list', async () => {
+    const onProjectFilesChange = vi.fn();
+    mockedUploadProjectFiles.mockResolvedValue({
+      uploaded: [{ path: 'brief.pdf', name: 'brief.pdf', kind: 'file', size: 5 }],
+      failed: [],
+    });
+    mockedDeleteProjectFile.mockResolvedValue(true);
+
+    render(
+      <ChatComposer
+        projectId="project-1"
+        projectFiles={[]}
+        streaming={false}
+        onEnsureProject={async () => 'project-1'}
+        onProjectFilesChange={onProjectFilesChange}
+        onSend={vi.fn()}
+        onStop={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByTestId('chat-file-input'), {
+      target: { files: [new File(['brief'], 'brief.pdf', { type: 'application/pdf' })] },
+    });
+
+    await waitFor(() => expect(screen.getByText('brief.pdf')).toBeTruthy());
+    fireEvent.click(screen.getByLabelText('Remove brief.pdf'));
+
+    await waitFor(() => expect(mockedDeleteProjectFile).toHaveBeenCalled());
+    expect(mockedDeleteProjectFile.mock.calls[0]?.slice(0, 2)).toEqual(['project-1', 'brief.pdf']);
+    await waitFor(() => expect(onProjectFilesChange).toHaveBeenCalledTimes(1));
+    expect(screen.queryByText('brief.pdf')).toBeNull();
+  });
+
+  it('does not delete an existing project file when its staged context is removed', async () => {
+    render(
+      <ChatComposer
+        projectId="project-1"
+        projectFiles={[
+          {
+            path: 'references/brief.pdf',
+            name: 'brief.pdf',
+            kind: 'pdf',
+            mime: 'application/pdf',
+            mtime: 1,
+            size: 5,
+          },
+        ]}
+        streaming={false}
+        onEnsureProject={async () => 'project-1'}
+        onSend={vi.fn()}
+        onStop={vi.fn()}
+      />,
+    );
+
+    await typeAndSettle('@brief');
+    fireEvent.click(await screen.findByText('references/brief.pdf'));
+    fireEvent.click(await screen.findByLabelText('Remove brief.pdf'));
+
+    await waitFor(() => expect(screen.queryByTestId('staged-contexts')).toBeNull());
+    expect(mockedDeleteProjectFile).not.toHaveBeenCalled();
+  });
+
   it('sends staged file attachments even when the text draft is empty', async () => {
     const onSend = vi.fn();
     mockedUploadProjectFiles.mockResolvedValue({
