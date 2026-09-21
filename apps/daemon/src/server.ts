@@ -4850,15 +4850,30 @@ export async function startServer({
         // workspace, rebind the local row so the project is accessible and
         // subsequent routes work. This is the path that unblocks a project
         // whose binding went stale after a cross-workspace transfer.
-        const defaultMemberId = getTeamMemberId(getDefaultTeamId());
-        const isStalePersonalBinding =
-          binding.visibility === 'personal'
-          && binding.syncState === 'local_only'
-          && (
-            !binding.createdByWorkspaceMemberId
-            || (defaultMemberId != null && binding.createdByWorkspaceMemberId === defaultMemberId)
-          );
-        if (isStalePersonalBinding && resolveSharedProjectOwnerForStatus) {
+       const defaultMemberId = getTeamMemberId(getDefaultTeamId());
+       const isStalePersonalBinding =
+         binding.visibility === 'personal'
+         && binding.syncState === 'local_only'
+         && (
+           !binding.createdByWorkspaceMemberId
+           || (defaultMemberId != null && binding.createdByWorkspaceMemberId === defaultMemberId)
+         );
+       // A synced team mirror bound to a different workspace is the same kind
+       // of stale cross-workspace binding: the project was pulled/materialized
+       // under workspace B but its cloud binding is to workspace A.  Member ids
+       // are workspace-scoped so we do NOT check createdByWorkspaceMemberId
+       // here — the HDW catalog verification below confirms the project is
+       // shared to the caller's workspace before rebinding, and the rebind
+       // writes the correct workspace-A member id.
+       const isCrossWorkspaceTeamBinding =
+         binding.visibility === 'team'
+         && binding.syncState === 'synced'
+         && binding.resourceState === 'active'
+         && binding.cloudTombstonedAt === null;
+       if (
+         (isStalePersonalBinding || isCrossWorkspaceTeamBinding)
+         && resolveSharedProjectOwnerForStatus
+       ) {
           try {
             const hubOwner = await resolveSharedProjectOwnerForStatus(
               projectId,
@@ -10109,6 +10124,7 @@ const projectRouteResult = registerProjectRoutes(app, {
     createMarketplaceFetcher,
     marketplaceRegistryIdFromUrl,
     dataDir: RUNTIME_DATA_DIR,
+    triggerCoverForProjectEntry: projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry,
   });
   registerPluginAssetRoutes(app, {
     db,

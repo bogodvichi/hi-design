@@ -275,7 +275,10 @@ function migrate(db: SqliteDb): void {
       anchor_state TEXT,
       anchored_version INTEGER,
       author_member_id TEXT,
+      author_displayname TEXT,
       last_good_position_json TEXT,
+      parent_id TEXT,
+      root_comment_id TEXT,
       FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
       FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
     );
@@ -522,8 +525,17 @@ function migrate(db: SqliteDb): void {
   if (!previewCommentAnchorCols.some((c: DbRow) => c.name === 'author_member_id')) {
     db.exec(`ALTER TABLE preview_comments ADD COLUMN author_member_id TEXT`);
   }
+  if (!previewCommentAnchorCols.some((c: DbRow) => c.name === 'author_displayname')) {
+    db.exec(`ALTER TABLE preview_comments ADD COLUMN author_displayname TEXT`);
+  }
   if (!previewCommentAnchorCols.some((c: DbRow) => c.name === 'last_good_position_json')) {
     db.exec(`ALTER TABLE preview_comments ADD COLUMN last_good_position_json TEXT`);
+  }
+  if (!previewCommentAnchorCols.some((c: DbRow) => c.name === 'parent_id')) {
+    db.exec(`ALTER TABLE preview_comments ADD COLUMN parent_id TEXT`);
+  }
+  if (!previewCommentAnchorCols.some((c: DbRow) => c.name === 'root_comment_id')) {
+    db.exec(`ALTER TABLE preview_comments ADD COLUMN root_comment_id TEXT`);
   }
   // Multiple comments per element: edit by explicit id; creating another note
   // on the same element inserts a new row.
@@ -719,6 +731,7 @@ function migratePreviewCommentsSlideKey(db: SqliteDb): void {
   const hasLegacyUnique = /UNIQUE\s*\(\s*project_id\s*,\s*conversation_id\s*,\s*file_path\s*,\s*element_id\s*\)/i
     .test(tableSql);
   if (hasSlideKey && !hasLegacyUnique) return;
+  const hasReplyCols = /\bparent_id\b/i.test(tableSql) && /\broot_comment_id\b/i.test(tableSql);
 
   db.exec(`
     CREATE TABLE preview_comments_next (
@@ -743,6 +756,7 @@ function migratePreviewCommentsSlideKey(db: SqliteDb): void {
       status TEXT NOT NULL,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
+      ${hasReplyCols ? 'parent_id TEXT, root_comment_id TEXT,' : ''}
       FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
       FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
     );
@@ -750,10 +764,12 @@ function migratePreviewCommentsSlideKey(db: SqliteDb): void {
     INSERT INTO preview_comments_next
       (id, project_id, conversation_id, file_path, element_id, selector, label,
        text, position_json, html_hint, selection_kind, member_count, pod_members_json,
-       style_json, attachments_json, slide_index, slide_key, note, status, created_at, updated_at)
+       style_json, attachments_json, slide_index, slide_key, note, status, created_at, updated_at
+       ${hasReplyCols ? ', parent_id, root_comment_id' : ''})
     SELECT id, project_id, conversation_id, file_path, element_id, selector, label,
        text, position_json, html_hint, selection_kind, member_count, pod_members_json,
        style_json, attachments_json, slide_index, COALESCE(slide_index, -1), note, status, created_at, updated_at
+       ${hasReplyCols ? ', parent_id, root_comment_id' : ''}
       FROM preview_comments;
 
     DROP TABLE preview_comments;
@@ -777,6 +793,7 @@ function migratePreviewCommentsAllowMultiplePerElement(db: SqliteDb): void {
   const tableSql = String(table?.sql ?? '');
   const hasNaturalUnique = /UNIQUE\s*\([^)]*\bproject_id\b[^)]*\belement_id\b[^)]*\)/i.test(tableSql);
   if (!hasNaturalUnique) return;
+  const hasReplyCols = /\bparent_id\b/i.test(tableSql) && /\broot_comment_id\b/i.test(tableSql);
 
   db.exec(`
     CREATE TABLE preview_comments_multi_next (
@@ -804,7 +821,9 @@ function migratePreviewCommentsAllowMultiplePerElement(db: SqliteDb): void {
       anchor_state TEXT,
       anchored_version INTEGER,
       author_member_id TEXT,
+      author_displayname TEXT,
       last_good_position_json TEXT,
+      ${hasReplyCols ? 'parent_id TEXT, root_comment_id TEXT,' : ''}
       FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
       FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
     );
@@ -813,11 +832,13 @@ function migratePreviewCommentsAllowMultiplePerElement(db: SqliteDb): void {
       (id, project_id, conversation_id, file_path, element_id, selector, label,
        text, position_json, html_hint, selection_kind, member_count, pod_members_json,
        style_json, attachments_json, slide_index, slide_key, note, status, created_at, updated_at,
-       anchor_state, anchored_version, author_member_id, last_good_position_json)
+       anchor_state, anchored_version, author_member_id, author_displayname, last_good_position_json
+       ${hasReplyCols ? ', parent_id, root_comment_id' : ''})
     SELECT id, project_id, conversation_id, file_path, element_id, selector, label,
        text, position_json, html_hint, selection_kind, member_count, pod_members_json,
        style_json, attachments_json, slide_index, slide_key, note, status, created_at, updated_at,
-       anchor_state, anchored_version, author_member_id, last_good_position_json
+       anchor_state, anchored_version, author_member_id, author_displayname, last_good_position_json
+       ${hasReplyCols ? ', parent_id, root_comment_id' : ''}
       FROM preview_comments;
 
     DROP TABLE preview_comments;
@@ -3708,7 +3729,9 @@ export function listPreviewComments(db: SqliteDb, projectId: string, conversatio
               attachments_json AS attachmentsJson,
               slide_index AS slideIndex,
               anchor_state AS anchorState, anchored_version AS anchoredVersion,
-              author_member_id AS authorMemberId, last_good_position_json AS lastGoodPositionJson,
+              author_member_id AS authorMemberId, author_displayname AS authorDisplayName,
+              last_good_position_json AS lastGoodPositionJson,
+              parent_id AS parentId, root_comment_id AS rootCommentId,
               pin_seq AS pinSeq, sort_key AS sortKey,
               note, status, created_at AS createdAt, updated_at AS updatedAt
          FROM preview_comments
@@ -3735,7 +3758,9 @@ export function listProjectPreviewComments(db: SqliteDb, projectId: string) {
               attachments_json AS attachmentsJson,
               slide_index AS slideIndex,
               anchor_state AS anchorState, anchored_version AS anchoredVersion,
-              author_member_id AS authorMemberId, last_good_position_json AS lastGoodPositionJson,
+              author_member_id AS authorMemberId, author_displayname AS authorDisplayName,
+              last_good_position_json AS lastGoodPositionJson,
+              parent_id AS parentId, root_comment_id AS rootCommentId,
               pin_seq AS pinSeq, sort_key AS sortKey,
               note, status, created_at AS createdAt, updated_at AS updatedAt
          FROM preview_comments
@@ -3797,6 +3822,14 @@ export function upsertPreviewComment(
     typeof input?.authorMemberId === 'string' && input.authorMemberId.trim()
       ? input.authorMemberId.trim()
       : null;
+  const authorDisplayName =
+    typeof input?.authorDisplayName === 'string' && input.authorDisplayName.trim()
+      ? input.authorDisplayName.trim()
+      : null;
+  const parentIdProvided =
+    typeof input?.parentId === 'string' && input.parentId.trim();
+  const rootCommentIdProvided =
+    typeof input?.rootCommentId === 'string' && input.rootCommentId.trim();
   const requestedId =
     typeof input?.id === 'string' && input.id.trim()
       ? input.id.trim()
@@ -3805,12 +3838,35 @@ export function upsertPreviewComment(
   const existing = requestedId
     ? db
         .prepare(
-          `SELECT id, created_at AS createdAt, attachments_json AS attachmentsJson
+          `SELECT id, created_at AS createdAt, attachments_json AS attachmentsJson,
+                  parent_id AS parentId, root_comment_id AS rootCommentId
              FROM preview_comments
             WHERE id = ? AND project_id = ? AND conversation_id = ?`,
         )
         .get(requestedId, projectId, conversationId) as DbRow | undefined
     : undefined;
+  const parentId = parentIdProvided
+    ? parentIdProvided
+    : existing?.parentId ?? null;
+  const rootCommentId = rootCommentIdProvided
+    ? rootCommentIdProvided
+    : existing?.rootCommentId ?? null;
+  let resolvedRootCommentId = rootCommentId;
+  if (parentId && !resolvedRootCommentId) {
+    const parent = db
+      .prepare(
+        `SELECT root_comment_id AS rootCommentId,
+                COALESCE(root_comment_id, id) AS fallbackRootId
+           FROM preview_comments
+          WHERE id = ? AND project_id = ?`,
+      )
+      .get(parentId, projectId) as DbRow | undefined;
+    resolvedRootCommentId = typeof parent?.rootCommentId === 'string'
+      ? parent.rootCommentId
+      : typeof parent?.fallbackRootId === 'string'
+        ? parent.fallbackRootId
+        : parentId;
+  }
   const id = existing?.id ?? requestedId ?? randomCommentId();
   const createdAt = existing?.createdAt ?? now;
   const existingAttachments = normalizePreviewCommentAttachments(parseJsonOrUndef(existing?.attachmentsJson));
@@ -3853,8 +3909,9 @@ export function upsertPreviewComment(
        (id, project_id, conversation_id, file_path, element_id, selector, label,
         text, position_json, html_hint, selection_kind, member_count, pod_members_json,
         style_json, attachments_json, slide_index, slide_key, note, status, created_at, updated_at,
-        anchored_version, author_member_id, pin_seq, pin_seq_confirmed, sort_key)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        anchored_version, author_member_id, author_displayname, parent_id, root_comment_id,
+        pin_seq, pin_seq_confirmed, sort_key)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(id) DO UPDATE SET
        selector = excluded.selector,
        label = excluded.label,
@@ -3871,6 +3928,9 @@ export function upsertPreviewComment(
        status = 'open',
        anchored_version = excluded.anchored_version,
        author_member_id = excluded.author_member_id,
+       author_displayname = excluded.author_displayname,
+       parent_id = excluded.parent_id,
+       root_comment_id = excluded.root_comment_id,
        updated_at = excluded.updated_at
      WHERE preview_comments.project_id = excluded.project_id
        AND preview_comments.conversation_id = excluded.conversation_id`,
@@ -3898,6 +3958,9 @@ export function upsertPreviewComment(
     now,
     anchoredVersion,
     authorMemberId,
+    authorDisplayName,
+    parentId,
+    resolvedRootCommentId,
     pinSeq,
     pinSeqConfirmed,
     sortKey,
@@ -4306,6 +4369,12 @@ export function mergeSyncedPreviewComment(
   const anchoredVersion = Number.isFinite(comment.anchoredVersion)
     ? Math.max(0, Math.round(comment.anchoredVersion as number))
     : null;
+  const parentId = typeof comment.parentId === 'string' && comment.parentId.trim()
+    ? comment.parentId.trim()
+    : null;
+  const rootCommentId = typeof comment.rootCommentId === 'string' && comment.rootCommentId.trim()
+    ? comment.rootCommentId.trim()
+    : null;
   const updatedAt = Number.isFinite(comment.updatedAt) ? (comment.updatedAt as number) : now;
   const existing = db
     .prepare(`SELECT updated_at AS updatedAt FROM preview_comments WHERE id = ? AND project_id = ?`)
@@ -4320,7 +4389,8 @@ export function mergeSyncedPreviewComment(
          selector = ?, label = ?, text = ?, position_json = ?, html_hint = ?,
          selection_kind = ?, member_count = ?, pod_members_json = ?, style_json = ?,
          attachments_json = ?, slide_index = ?, slide_key = ?, note = ?, status = ?,
-         anchor_state = ?, anchored_version = ?, last_good_position_json = ?, updated_at = ?
+         anchor_state = ?, anchored_version = ?, last_good_position_json = ?,
+         author_displayname = ?, parent_id = ?, root_comment_id = ?, updated_at = ?
        WHERE id = ? AND project_id = ?`,
     ).run(
       comment.selector,
@@ -4340,6 +4410,9 @@ export function mergeSyncedPreviewComment(
       anchorState,
       anchoredVersion,
       comment.lastGoodPosition ? JSON.stringify(comment.lastGoodPosition) : null,
+      typeof comment.displayName === 'string' ? comment.displayName : null,
+      parentId,
+      rootCommentId,
       updatedAt,
       comment.id,
       projectId,
@@ -4379,9 +4452,9 @@ export function mergeSyncedPreviewComment(
          (id, project_id, conversation_id, file_path, element_id, selector, label,
           text, position_json, html_hint, selection_kind, member_count, pod_members_json,
           style_json, attachments_json, slide_index, slide_key, note, status, created_at, updated_at,
-          anchor_state, anchored_version, author_member_id, last_good_position_json,
-          pin_seq, pin_seq_confirmed, sort_key)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          anchor_state, anchored_version, author_member_id, author_displayname, last_good_position_json,
+          parent_id, root_comment_id, pin_seq, pin_seq_confirmed, sort_key)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       comment.id,
@@ -4408,7 +4481,10 @@ export function mergeSyncedPreviewComment(
       anchorState,
       anchoredVersion,
       typeof comment.memberId === 'string' ? comment.memberId : null,
+      typeof comment.displayName === 'string' ? comment.displayName : null,
       comment.lastGoodPosition ? JSON.stringify(comment.lastGoodPosition) : null,
+      parentId,
+      rootCommentId,
       pinSeq,
       1,
       createdAt,
@@ -4427,7 +4503,9 @@ export function getPreviewComment(db: SqliteDb, projectId: string, conversationI
               attachments_json AS attachmentsJson,
               slide_index AS slideIndex,
               anchor_state AS anchorState, anchored_version AS anchoredVersion,
-              author_member_id AS authorMemberId, last_good_position_json AS lastGoodPositionJson,
+              author_member_id AS authorMemberId, author_displayname AS authorDisplayName,
+              last_good_position_json AS lastGoodPositionJson,
+              parent_id AS parentId, root_comment_id AS rootCommentId,
               pin_seq AS pinSeq, sort_key AS sortKey,
               note, status, created_at AS createdAt, updated_at AS updatedAt
          FROM preview_comments
@@ -4449,7 +4527,9 @@ export function getProjectPreviewComment(db: SqliteDb, projectId: string, id: st
               attachments_json AS attachmentsJson,
               slide_index AS slideIndex,
               anchor_state AS anchorState, anchored_version AS anchoredVersion,
-              author_member_id AS authorMemberId, last_good_position_json AS lastGoodPositionJson,
+              author_member_id AS authorMemberId, author_displayname AS authorDisplayName,
+              last_good_position_json AS lastGoodPositionJson,
+              parent_id AS parentId, root_comment_id AS rootCommentId,
               pin_seq AS pinSeq, sort_key AS sortKey,
               note, status, created_at AS createdAt, updated_at AS updatedAt
          FROM preview_comments
@@ -4491,6 +4571,9 @@ function normalizePreviewComment(row: DbRow) {
     anchorState: typeof row.anchorState === 'string' ? row.anchorState : undefined,
     anchoredVersion: Number.isFinite(row.anchoredVersion) ? row.anchoredVersion : undefined,
     authorMemberId: typeof row.authorMemberId === 'string' ? row.authorMemberId : undefined,
+    authorDisplayName: typeof row.authorDisplayName === 'string' ? row.authorDisplayName : undefined,
+    parentId: typeof row.parentId === 'string' ? row.parentId : undefined,
+    rootCommentId: typeof row.rootCommentId === 'string' ? row.rootCommentId : undefined,
     lastGoodPosition: parseJsonOrUndef(row.lastGoodPositionJson),
     pinSeq: Number.isFinite(row.pinSeq) ? row.pinSeq : undefined,
     sortKey: Number.isFinite(row.sortKey) ? row.sortKey : undefined,

@@ -111,6 +111,7 @@ const COMMENT_OUTBOX_PUSH_CONCURRENCY = 4;
 export function previewCommentToCloud(
   comment: PreviewComment,
   fallbackMemberId: string,
+  displayName?: string,
 ): CollabCloudComment {
   const cloud: CollabCloudComment = {
     id: comment.id,
@@ -131,6 +132,9 @@ export function previewCommentToCloud(
     updatedAt: comment.updatedAt,
   };
   // Copy optional fields only when present (exactOptionalPropertyTypes-safe).
+  const effectiveDisplayName = comment.authorDisplayName?.trim()
+    || displayName;
+  if (effectiveDisplayName) cloud.displayName = effectiveDisplayName;
   if (comment.style !== undefined) cloud.style = comment.style;
   if (comment.selectionKind !== undefined) cloud.selectionKind = comment.selectionKind;
   if (comment.memberCount !== undefined) cloud.memberCount = comment.memberCount;
@@ -140,6 +144,8 @@ export function previewCommentToCloud(
   if (comment.anchorState !== undefined) cloud.anchorState = comment.anchorState;
   if (comment.anchoredVersion !== undefined) cloud.anchoredVersion = comment.anchoredVersion;
   if (comment.lastGoodPosition !== undefined) cloud.lastGoodPosition = comment.lastGoodPosition;
+  if (comment.parentId !== undefined) cloud.parentId = comment.parentId;
+  if (comment.rootCommentId !== undefined) cloud.rootCommentId = comment.rootCommentId;
   return cloud;
 }
 
@@ -245,7 +251,7 @@ export function createCollabCloudService(deps: CollabCloudServiceDeps): CollabCl
     teamId: string;
     memberId: string;
     role: CollabMemberRole;
-    displayName: string;
+    displayName?: string;
   } | null {
     if (
       context.workspaceType !== 'team'
@@ -257,11 +263,12 @@ export function createCollabCloudService(deps: CollabCloudServiceDeps): CollabCl
     const teamId = context.teamId?.trim() || context.workspaceId.trim();
     const memberId = context.workspaceMemberId.trim();
     if (!teamId || !memberId) return null;
+    const displayName = context.displayName?.trim();
     return {
       teamId,
       memberId,
       role: context.role,
-      displayName: context.displayName?.trim() || memberId,
+      ...(displayName ? { displayName } : {}),
     };
   }
 
@@ -271,7 +278,7 @@ export function createCollabCloudService(deps: CollabCloudServiceDeps): CollabCl
     const identity = context ? explicitTeamIdentity(context) : null;
     if (!identity) return;
     await deps.client.registerMember(identity.teamId, identity.memberId, {
-      displayName: identity.displayName,
+      ...(identity.displayName?.trim() ? { displayName: identity.displayName.trim() } : {}),
       role: identity.role,
     });
   }
@@ -282,7 +289,7 @@ export function createCollabCloudService(deps: CollabCloudServiceDeps): CollabCl
   ): Promise<{ seq: number } | null> {
     const identity = explicitTeamIdentity(context);
     if (!identity) return null;
-    const cloud = previewCommentToCloud(comment, identity.memberId);
+    const cloud = previewCommentToCloud(comment, identity.memberId, identity.displayName);
     const result = await deps.client.pushComment(identity.teamId, comment.projectId, cloud);
     return result ?? null;
   }
@@ -293,7 +300,7 @@ export function createCollabCloudService(deps: CollabCloudServiceDeps): CollabCl
   ): Promise<void> {
     const identity = explicitTeamIdentity(context);
     if (!identity) return;
-    const cloud = previewCommentToCloud(comment, identity.memberId);
+    const cloud = previewCommentToCloud(comment, identity.memberId, identity.displayName);
     cloud.deleted = true;
     // The tombstone's own event time — newer than the comment's last content
     // edit so it can't be mistaken for a stale record on the relay/receiver.
@@ -315,7 +322,7 @@ export function createCollabCloudService(deps: CollabCloudServiceDeps): CollabCl
       !localBinding
       || localBinding.workspaceId !== context.workspaceId
     ) return false;
-    const cloud = previewCommentToCloud(comment, identity.memberId);
+    const cloud = previewCommentToCloud(comment, identity.memberId, identity.displayName);
     if (deleted) {
       cloud.deleted = true;
       cloud.updatedAt = now();
@@ -698,7 +705,7 @@ export function createCollabCloudService(deps: CollabCloudServiceDeps): CollabCl
           + `${identity.role}:${identity.displayName}`;
         if (identityKey !== lastRegisteredKey) {
           await deps.client.registerMember(identity.teamId, identity.memberId, {
-            displayName: identity.displayName,
+            ...(identity.displayName?.trim() ? { displayName: identity.displayName.trim() } : {}),
             role: identity.role,
           });
           lastRegisteredKey = identityKey;

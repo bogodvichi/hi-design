@@ -1837,6 +1837,16 @@ export interface Dict {
  'recentProjects.moveTo': string;
  'recentProjects.confirmMove': string;
  'recentProjects.moveTreeDesc': string;
+ 'recentProjects.moveTreeRootSelected': string;
+ 'recentProjects.moveSearchPlaceholder': string;
+ 'recentProjects.moveSearchProjectIn': string;
+ 'recentProjects.moveSearchEmpty': string;
+ 'recentProjects.moveSearchFolders': string;
+ 'recentProjects.moveSearchProjects': string;
+ 'recentProjects.moveSearchGroupEmpty': string;
+ 'recentProjects.moveSearchMore': string;
+ 'recentProjects.moveSearchCollapse': string;
+ 'recentProjects.moveTreeNoProjects': string;
   'recentProjects.copyToPersonal': string;
   'recentProjects.copyToPersonalDesc': string;
   'recentProjects.confirmCopyToPersonal': string;
@@ -3313,6 +3323,7 @@ export interface Dict {
   'chat.comments.markResolved': string;
   'chat.comments.reopen': string;
   'chat.comments.deleteComment': string;
+  'chat.comments.deleteReply': string;
   'chat.comments.sortNewest': string;
   'chat.comments.sortOldest': string;
   'chat.comments.filterAll': string;

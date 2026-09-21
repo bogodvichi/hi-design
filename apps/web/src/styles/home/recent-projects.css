@@ -1120,6 +1120,11 @@
   /* Inline (list view) badge is part of the name row — always visible. */
   opacity: 1;
 }
+.recent-projects__card-badge--always {
+  /* Team-series project cards keep the "团队" badge visible at rest in grid
+     view as well as on hover, so the top-left label is always discoverable. */
+  opacity: 1;
+}
 .recent-projects__card-owner {
   position: relative;
   overflow: hidden;

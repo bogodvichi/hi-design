@@ -34,6 +34,7 @@ export type IconName =
   | 'file-code'
   | 'file-text'
   | 'folder'
+  | 'folder-project'
   | 'folder-filled'
   | 'fork'
   | 'github'
@@ -66,6 +67,7 @@ export type IconName =
   | 'mic'
   | 'minimize'
   | 'minus'
+  | 'move'
   | 'more-horizontal'
   | 'orbit'
   | 'paint-bucket'
@@ -532,6 +534,22 @@ export function Icon({ name, size = 14, strokeWidth = 1.6, ...rest }: Props) {
       return (
         <svg {...common}>
           <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+        </svg>
+      );
+    case 'folder-project':
+      return (
+        <svg {...common}>
+          <path d="M3 5.5A2.5 2.5 0 0 1 5.5 3H9l2 2h7.5A2.5 2.5 0 0 1 21 7.5v11A2.5 2.5 0 0 1 18.5 21h-13A2.5 2.5 0 0 1 3 18.5z" />
+          <circle cx="7.5" cy="10" r=".8" fill="currentColor" stroke="none" />
+          <circle cx="7.5" cy="14" r=".8" fill="currentColor" stroke="none" />
+          <path d="M11 10h6M11 14h6" />
+        </svg>
+      );
+    case 'move':
+      return (
+        <svg {...common}>
+          <path d="M12 2v20M2 12h20" />
+          <path d="m8 6 4-4 4 4M18 8l4 4-4 4M8 18l4 4 4-4M6 8l-4 4 4 4" />
         </svg>
       );
     case 'fork':

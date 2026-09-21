@@ -148,6 +148,21 @@ export interface PreviewComment {
   anchoredVersion?: number;
   /** Comment author's workspaceMemberId (for cross-member attribution/display). */
   authorMemberId?: string;
+  /** Denormalized comment author display name, captured at authoring time. */
+  authorDisplayName?: string;
+  /**
+   * Reply linkage: id of the comment this entry is a reply to. Absent for a
+   * top-level comment. The parent is expected to live in the same project
+   * (and, when synced, the same team relay partition).
+   */
+  parentId?: string;
+  /**
+   * The top-level comment id of the thread this reply belongs to. Absent for
+   * a top-level comment, which is its own thread root. Denormalized so a
+   * thread can be fetched without recursive queries even when nested replies
+   * are added later.
+   */
+  rootCommentId?: string;
   /**
    * Bbox written back on each successful anchor. The `lost` ghost pin renders
    * here (last known-good position), NOT the creation-time `position`, which
@@ -165,6 +180,12 @@ export interface PreviewCommentUpsertRequest {
   target: PreviewCommentTarget;
   note: string;
   attachments?: PreviewCommentAttachment[];
+  /**
+   * Optional reply linkage. When present, this comment is a reply to another
+   * comment in the same project. The server validates it in sync paths; the
+   * client should not set `rootCommentId` because the backend derives it.
+   */
+  parentId?: string;
   /**
    * Team collaboration: comment author's workspaceMemberId. Server-set from the request
    * identity (B token → member context); clients do not supply it.

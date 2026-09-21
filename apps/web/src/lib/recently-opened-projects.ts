@@ -91,6 +91,19 @@ export function recordRecentlyOpenedProject(project: Project): void {
 }
 
 /**
+ * Refresh the open time for a project already in the recent strip. Unlike
+ * `recordRecentlyOpenedProject`, this does not replace the stored card with a
+ * thinner project object that may lack cover or owner metadata.
+ */
+export function touchRecentlyOpenedProject(projectId: string): void {
+  const entries = read();
+  const entry = entries.find((candidate) => candidate.id === projectId);
+  if (!entry) return;
+  entry.openedAt = Date.now();
+  write(entries);
+}
+
+/**
  * Read recently-opened projects as Project-shaped objects, ready to merge
  * into homeProjectsList. Caller is responsible for deduplication against
  * server-fetched projects (server data takes precedence).

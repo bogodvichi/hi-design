@@ -233,21 +233,40 @@ export function materializePulledTeamMirror(
     // Only match when the binding is in a DIFFERENT workspace from the
     // scope — a personal binding in the same team workspace is a genuine
     // local project that must not be silently converted to a team mirror.
-    const isStalePersonalBinding =
-      existingBinding
-      && existingBinding.workspaceId !== scope.workspaceId
-      && existingBinding.visibility === 'personal'
-      && existingBinding.syncState === 'local_only'
-      && (
-        !existingBinding.createdByWorkspaceMemberId
-        || existingBinding.createdByWorkspaceMemberId === scope.viewerMemberId
-      );
-   const compatibleBinding =
-     !existingBinding ||
-      isStalePersonalBinding ||
-     (
-       existingBinding.workspaceId === scope.workspaceId &&
-       existingBinding.visibility === 'team' &&
+  const isStalePersonalBinding =
+     existingBinding
+     && existingBinding.workspaceId !== scope.workspaceId
+     && existingBinding.visibility === 'personal'
+     && existingBinding.syncState === 'local_only'
+     && (
+       !existingBinding.createdByWorkspaceMemberId
+       || existingBinding.createdByWorkspaceMemberId === scope.viewerMemberId
+     );
+  // A synced team mirror bound to a different workspace is also compatible:
+  // the project moved cross-workspace on the cloud (or was first pulled from
+  // the wrong workspace) but the local row was never rebound.  The
+  // rebindWorkspaceProject call below corrects workspace_id and all
+  // member-scoped fields.  Member ids are workspace-scoped, so we deliberately
+  // do NOT check createdByWorkspaceMemberId here — the rebind writes the
+  // correct workspace-A member id from the current scope.
+  const isCrossWorkspaceTeamBinding =
+    existingBinding
+    && existingBinding.workspaceId !== scope.workspaceId
+    && existingBinding.visibility === 'team'
+    && existingBinding.resourceState === 'active'
+    && existingBinding.cloudTombstonedAt === null
+    && existingBinding.syncState === 'synced'
+    && (
+      existingBinding.resourceHubResourceId === null
+      || existingBinding.resourceHubResourceId === resourceHubResourceId
+    );
+  const compatibleBinding =
+    !existingBinding ||
+     isStalePersonalBinding ||
+     isCrossWorkspaceTeamBinding ||
+    (
+      existingBinding.workspaceId === scope.workspaceId &&
+      existingBinding.visibility === 'team' &&
        (
          existingBinding.resourceState === 'active'
          || isRevokedMirror

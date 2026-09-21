@@ -1745,6 +1745,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  margin-right:24px;
 }
 .comment-popover-header-action {
   display: inline-flex;
@@ -1816,8 +1817,8 @@
 }
 .comment-popover-meta-avatar {
   flex: 0 0 auto;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1827,10 +1828,21 @@
   font-weight: 650;
   line-height: 1;
 }
-.comment-popover-meta-time {
+.comment-popover-meta-author {
   min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+.comment-popover-meta-time {
+  flex: 0 0 auto;
+  margin-left: 2px;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.25;
 }
 .comment-popover-existing-note {
@@ -1840,25 +1852,82 @@
   line-height: 1.5;
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+  padding: 12px 8px 12px 32px;
 }
 .comment-popover-replies {
   display: grid;
-  gap: 6px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border-soft);
+  gap: 0px;
 }
 .comment-popover-reply-item {
   min-width: 0;
-  padding: 8px 9px;
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-sm);
-  background: var(--bg-subtle);
   color: var(--text);
   font-size: 12px;
   line-height: 1.45;
+}
+.comment-popover-reply-meta {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.comment-popover-reply-avatar {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.comment-popover-reply-author {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.25;
+}
+.comment-popover-reply-time {
+  flex: 0 0 auto;
+  margin-left: 2px;
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 1.25;
+}
+.comment-popover-reply-note {
+  min-width: 0;
+  color: var(--text);
   overflow-wrap: anywhere;
   white-space: pre-wrap;
+  padding: 12px 8px 12px 32px;
+}
+.comment-popover-reply-item-actions {
+  margin-left: 2px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.comment-popover-reply-item:hover .comment-popover-reply-item-actions,
+.comment-popover-reply-item:focus-within .comment-popover-reply-item-actions {
+  opacity: 1;
+}
+.comment-popover-reply-item-actions .icon-btn {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .comment-popover-reply-editor {
   display: grid;
@@ -1868,8 +1937,16 @@
   border-top: 1px solid var(--border-soft);
 }
 .comment-popover-reply-input {
-  height: 84px !important;
-  max-height: 84px !important;
+  min-height: 24px;
+  max-height: 120px;
+  resize: none;
+  overflow: hidden;
+}
+/* Inline reply edit keeps a taller fixed textarea so it reads as an edit
+   surface, not the compact always-visible reply bar. */
+.comment-popover-reply-edit-inline .comment-popover-reply-input {
+  height: 84px;
+  max-height: 84px;
 }
 .comment-popover-reply-actions {
   display: inline-flex;
@@ -1877,6 +1954,108 @@
   justify-content: flex-end;
   gap: 8px;
   min-width: 0;
+}
+.comment-popover-reply-bar {
+  flex: 0 0 auto;
+  padding: 8px 12px 10px;
+  border-top: 1px solid var(--border-soft);
+}
+.comment-popover-reply-input-wrap {
+  position: relative;
+  min-width: 0;
+}
+/* Reserve right padding so typed text never slides under the floating
+   action buttons (two 28px icon buttons + gap). */
+.comment-popover-reply-bar .comment-popover-reply-input {
+  width: 100%;
+  padding-right: 68px;
+  resize: none;
+  min-height: 36px;
+}
+.comment-popover-reply-floating-actions {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.comment-popover-reply-attach {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.comment-popover-reply-attach:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+.comment-popover-reply-send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: var(--accent);
+  color: var(--accent-contrast, #fff);
+  cursor: pointer;
+}
+.comment-popover-reply-send:hover {
+  opacity: 0.88;
+}
+.comment-popover-reply-send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.comment-popover-reply-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.comment-popover-reply-image {
+  position: relative;
+}
+.comment-popover-reply-image-thumb {
+  display: block;
+  padding: 0;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-xs);
+  background: var(--bg-panel);
+  cursor: pointer;
+  overflow: hidden;
+}
+.comment-popover-reply-image-thumb img {
+  display: block;
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+}
+.comment-popover-reply-image-remove {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--border-soft);
+  border-radius: 50%;
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.comment-popover-reply-image-remove:hover {
+  color: var(--text);
 }
 .comment-popover-drag-handle {
   flex: 0 0 auto;
@@ -1911,17 +2090,9 @@
 .comment-popover-section {
   min-width: 0;
 }
-.comment-popover-section + .comment-popover-section {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border-soft);
-}
 .comment-popover-section-params {
   display: grid;
   gap: 8px;
-}
-.comment-popover-section-compose {
-  padding-left:32px;
 }
 .annotation-style-summary {
   display: grid;
@@ -2069,7 +2240,6 @@
   overflow-wrap: anywhere;
 }
 .comment-popover textarea {
-  height: 112px;
   max-height: 112px;
   overflow-y: auto;
   resize: none;
@@ -2126,6 +2296,31 @@
 .comment-popover-close:hover:not(:disabled) {
   background: var(--bg-subtle);
   border-color: var(--border-strong);
+  color: var(--text);
+}
+/* Always-visible close button pinned to the popover's top-right corner so
+   the user can dismiss the popover from any state (composing, viewing an
+   existing comment, replying). */
+.comment-popover-close-btn {
+  position: absolute;
+  top: 10px;
+  right: 6px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 0;
+}
+.comment-popover-close-btn:hover {
+  background: var(--bg-subtle);
   color: var(--text);
 }
 .comment-popover button > svg {
@@ -3054,18 +3249,6 @@ button.comment-card-user-inline:focus-visible {
   display: grid;
   gap: 6px;
   margin-top: 8px;
-}
-.comment-card-reply-item {
-  min-width: 0;
-  padding: 7px 8px;
-  border-left: 2px solid var(--border);
-  border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
-  background: var(--bg-subtle);
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-  white-space: pre-wrap;
 }
 .comment-card-reply-editor {
   display: grid;

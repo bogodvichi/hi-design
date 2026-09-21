@@ -7,6 +7,8 @@ import {
   recordRecentlyOpenedProject,
   readRecentlyOpenedProjects,
   removeRecentlyOpenedProject,
+  readRecentlyOpenedProjectEntries,
+  touchRecentlyOpenedProject,
 } from '../../src/lib/recently-opened-projects';
 import type { Project } from '../../src/types';
 
@@ -89,6 +91,34 @@ describe('removeRecentlyOpenedProject', () => {
     recordRecentlyOpenedProject(makeProject({ id: 'a' }));
     removeRecentlyOpenedProject('nonexistent');
     expect(readRecentlyOpenedProjects()).toHaveLength(1);
+  });
+});
+
+describe('touchRecentlyOpenedProject', () => {
+  it('refreshes openedAt while preserving stored card metadata', () => {
+    const now = vi.spyOn(Date, 'now');
+    now.mockReturnValueOnce(1000);
+    recordRecentlyOpenedProject(
+      makeProject({
+        id: 'a',
+        coverDigest: 'cover-a',
+        ownerDisplayName: 'Alice',
+      }),
+    );
+    now.mockReturnValueOnce(2000);
+    touchRecentlyOpenedProject('a');
+
+    const entries = readRecentlyOpenedProjectEntries();
+    expect(entries).toHaveLength(1);
+    expect(entries[0]?.openedAt).toBe(2000);
+    expect(entries[0]?.coverDigest).toBe('cover-a');
+    expect(entries[0]?.ownerDisplayName).toBe('Alice');
+    now.mockRestore();
+  });
+
+  it('does not create an entry for an unknown project', () => {
+    touchRecentlyOpenedProject('missing');
+    expect(readRecentlyOpenedProjects()).toHaveLength(0);
   });
 });
 

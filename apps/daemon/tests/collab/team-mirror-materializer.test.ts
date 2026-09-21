@@ -6,10 +6,13 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   closeDatabase,
   getProject,
+  getWorkspaceProjectByProjectId,
+  insertProject,
   listConversations,
   listMessages,
   listWorkspaceProjects,
   openDatabase,
+  ensureWorkspaceProject,
   updateProject,
 } from '../../src/db.js';
 import {
@@ -265,6 +268,86 @@ describe('authorized team mirror SQLite materialization', () => {
       name: 'Pending owner rename',
       updatedAt: 20,
     });
+  });
+
+  it('rebounds a synced team mirror bound to a different workspace', async () => {
+    const db = await database();
+
+    // Simulate a prior materialization under workspace-B: the project was
+    // pulled into workspace B but its cloud binding is to workspace A.
+    const workspaceB = 'workspace-B';
+    const memberB = 'member-B';
+    insertProject(db, input);
+    ensureWorkspaceProject(db, {
+      projectId: input.id,
+      workspaceId: workspaceB,
+      visibility: 'team',
+      resourceState: 'active',
+      createdByWorkspaceMemberId: memberB,
+      updatedByWorkspaceMemberId: memberB,
+      syncState: 'synced',
+      cloudTombstonedAt: null,
+    });
+
+    // Now pull from workspace A (the scope the test's `scope` constant uses).
+    // The existing binding is team/synced/active in workspace B, which is
+    // a cross-workspace team binding — it should be rebound, not rejected.
+    expect(() =>
+      materializePulledTeamMirror(db, input, scope),
+    ).not.toThrow();
+
+    const binding = getWorkspaceProjectByProjectId(db, input.id);
+    expect(binding?.workspaceId).toBe(scope.workspaceId);
+    expect(binding?.visibility).toBe('team');
+    expect(binding?.syncState).toBe('synced');
+    expect(binding?.resourceState).toBe('active');
+    expect(binding?.cloudTombstonedAt).toBeNull();
+    expect(binding?.updatedByWorkspaceMemberId).toBe(scope.viewerMemberId);
+  });
+
+  it('rejects a tombstoned team mirror bound to a different workspace', async () => {
+    const db = await database();
+    const workspaceB = 'workspace-B';
+    const memberB = 'member-B';
+    insertProject(db, input);
+    ensureWorkspaceProject(db, {
+      projectId: input.id,
+      workspaceId: workspaceB,
+      visibility: 'team',
+      resourceState: 'active',
+      createdByWorkspaceMemberId: memberB,
+      updatedByWorkspaceMemberId: memberB,
+      syncState: 'synced',
+      cloudTombstonedAt: Date.now(),
+    });
+
+    // A tombstoned binding is not a safe rebind candidate.
+    expect(() =>
+      materializePulledTeamMirror(db, input, scope),
+    ).toThrow('team mirror binding conflict');
+  });
+
+  it('rejects a local_only team mirror bound to a different workspace', async () => {
+    const db = await database();
+    const workspaceB = 'workspace-B';
+    const memberB = 'member-B';
+    insertProject(db, input);
+    ensureWorkspaceProject(db, {
+      projectId: input.id,
+      workspaceId: workspaceB,
+      visibility: 'team',
+      resourceState: 'active',
+      createdByWorkspaceMemberId: memberB,
+      updatedByWorkspaceMemberId: memberB,
+      syncState: 'local_only',
+      cloudTombstonedAt: null,
+    });
+
+    // A local_only team binding is not synced and must not be silently
+    // converted to a synced mirror in a different workspace.
+    expect(() =>
+      materializePulledTeamMirror(db, input, scope),
+    ).toThrow('team mirror binding conflict');
   });
 
   it('creates one stable local-only comment anchor without copying owner chat', async () => {

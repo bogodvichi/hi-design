@@ -301,7 +301,7 @@ export async function startCollabCloudFixtureServer(
       const displayName =
         typeof body.displayName === "string" && body.displayName.trim()
           ? body.displayName.trim()
-          : memberId;
+          : null;
       const role = normalizeRole(body.role) ?? "member";
       const member: MemberEntry = { memberId, displayName, role };
       teamFor(teamId).members.set(memberId, member);
