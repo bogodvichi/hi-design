@@ -602,7 +602,7 @@ describe('a Home auto-send identifies its caller before the project scope resolv
     comments.resolve([]);
   });
 
-  it('clears the established transcript when request authority changes and reload fails', async () => {
+  it('keeps an established transcript visible while same-caller authority revalidation is pending', async () => {
     window.sessionStorage.removeItem(`od:auto-send-first:${PROJECT_ID}`);
     const persistedMessage: ChatMessage = {
       id: 'persisted-assistant',
@@ -616,7 +616,10 @@ describe('a Home auto-send identifies its caller before the project scope resolv
     });
 
     await waitFor(() => {
-      expect(chatPaneSpy.mock.calls.at(-1)?.[0].messages).toEqual([persistedMessage]);
+      const latest = chatPaneSpy.mock.calls.at(-1)?.[0];
+      expect(latest?.messages).toEqual([persistedMessage]);
+      expect(latest?.loading).toBe(false);
+      expect(latest?.messagesConversationId).toBe(`conv-${PROJECT_ID}`);
     });
 
     const reload = deferred<ChatMessage[]>();
@@ -643,15 +646,20 @@ describe('a Home auto-send identifies its caller before the project scope resolv
     }));
 
     await waitFor(() => expect(mockedListMessages).toHaveBeenCalledTimes(2));
-    expect(chatPaneSpy.mock.calls.at(-1)?.[0].messages).toEqual([]);
+    const pending = chatPaneSpy.mock.calls.at(-1)?.[0];
+    expect(pending?.messages).toEqual([persistedMessage]);
+    expect(pending?.loading).toBe(false);
+    expect(pending?.messagesConversationId).toBe(`conv-${PROJECT_ID}`);
 
     await act(async () => {
       reload.reject(new Error('workspace directory unavailable'));
       await reload.promise.catch(() => undefined);
     });
 
-    expect(chatPaneSpy.mock.calls.at(-1)?.[0].messages).toEqual([]);
-    expect(chatPaneSpy.mock.calls.at(-1)?.[0].messagesConversationId).toBeNull();
+    const afterFailure = chatPaneSpy.mock.calls.at(-1)?.[0];
+    expect(afterFailure?.messages).toEqual([persistedMessage]);
+    expect(afterFailure?.loading).toBe(false);
+    expect(afterFailure?.messagesConversationId).toBe(`conv-${PROJECT_ID}`);
     expect(mockedStreamViaDaemon).not.toHaveBeenCalled();
   });
 

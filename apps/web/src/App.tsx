@@ -486,6 +486,21 @@ export function projectViewAuthorizationLifetimeKey(
 }
 
 /**
+ * React mount identity for ProjectView. Permission/role/billing bits are live
+ * state and must NOT remount the whole project surface when they refresh. The
+ * authorization lifetime above intentionally remains stricter for async
+ * authority fences; this key only changes when the actual project caller
+ * identity changes.
+ */
+export function projectViewMountKey(
+  projectId: string,
+  context: WorkspaceCollabContext | null,
+): string {
+  if (!context) return `local:${projectId}`;
+  return `workspace:${context.workspaceId}:${context.workspaceMemberId}:${projectId}`;
+}
+
+/**
  * Project mutation endpoints return the persisted SQLite row, while project
  * list/detail reads also overlay Workspace binding fields. Keep those
  * read-side fields when a mutation response omits them: dropping workspaceId
@@ -1376,6 +1391,32 @@ function AppInner() {
   const route = useRoute();
   const routeRef = useRef(route);
   routeRef.current = route;
+  const projectReturnRouteRef = useRef<Route>(
+    route.kind === 'project' ? { kind: 'home', view: 'home' } : route,
+  );
+  const previousRouteForProjectReturnRef = useRef<Route>(route);
+  useEffect(() => {
+    const previousRoute = previousRouteForProjectReturnRef.current;
+    if (
+      route.kind === 'project'
+      && previousRoute.kind !== 'project'
+      && !(previousRoute.kind === 'home' && previousRoute.view === 'settings')
+    ) {
+      projectReturnRouteRef.current = previousRoute;
+    }
+    previousRouteForProjectReturnRef.current = route;
+  }, [route]);
+  // Home is a persistent workspace surface: once it has mounted for this
+  // account, keep the same React tree alive behind project/tool tabs so local
+  // composer, scroll, picker, and modal state survives clicking the Home tab.
+  // Reset the keep-alive boundary on account generation changes so UI state is
+  // never carried across sign-in identities.
+  const entryKeepAliveMountedRef = useRef(false);
+  const entryKeepAliveAccountGenerationRef = useRef(workspaceAccountGeneration);
+  if (entryKeepAliveAccountGenerationRef.current !== workspaceAccountGeneration) {
+    entryKeepAliveAccountGenerationRef.current = workspaceAccountGeneration;
+    entryKeepAliveMountedRef.current = false;
+  }
   const settingsReturnTargetRef = useRef<SettingsReturnTarget | null>(null);
   const workspaceProjectView = workspaceProjectListViewForRoute(route);
   // Read-only mirror for the boot effect. The boot pass needs to know which
@@ -4309,12 +4350,15 @@ if (fetchedProject) {
     await queued;
   }, [refreshProjects]);
 
-  // The project header back button is an escape hatch back to Home. Avoid
-  // depending on browser history here: tab restores and template-create flows
-  // can leave an in-app history entry that points back to the same project.
+  // Project Back returns to the exact surface that opened the project (team
+  // folder, personal list, community/tool view, etc.), not to whichever
+  // workspace/tab snapshot happens to be active now. Browser history remains
+  // unsuitable because tab restores and project-internal route changes can put
+  // another project entry behind the current URL.
   const handleBack = useCallback(() => {
     const currentProjectId = route.kind === 'project' ? route.projectId : null;
-    navigate({ kind: 'home', view: 'home' }, {
+    const returnRoute = projectReturnRouteRef.current;
+    navigate(returnRoute, {
       onCommit: () => {
         if (!currentProjectId) return;
         iframeKeepAlivePool.evictProject(currentProjectId, { includeActive: true });
@@ -4701,25 +4745,15 @@ if (fetchedProject) {
     projectRouteWorkspaceContext.failure,
     route,
   ]);
-  // Project tabs belong to the project's persisted Workspace authority, not
-  // the shell's ambient selection. On a cold deep link the ambient context can
-  // settle (or switch A -> B) after the exact project scope has already loaded;
-  // handing that B key to WorkspaceTabsBar makes its legitimate scope-change
-  // cleanup navigate to B's saved Home tab, unmounting the healthy A project
-  // and emitting a misleading presence/leave. Keep tab reconciliation
-  // deferred until the project row + exact membership witness exist, then pin
-  // it to that Workspace. Truly unbound local projects retain the ambient
-  // account/workspace tab behavior.
+  // Workspace tabs are account-global, not workspace-scoped. Personal, shared,
+  // team directories, projects, and first-party tools all participate in one
+  // tab strip for the signed-in account. We still fail closed while the account
+  // identity itself is unresolved, and a real account change gets a distinct
+  // global scope so tabs never leak across users.
   const workspaceTabsIdentityScopeKey =
-    route.kind === 'project'
-      ? activeProject === null
-        ? null
-        : activeProject.workspaceId
-          ? activeProjectWorkspaceContext && identityScopeKey !== null
-            ? `${nextTabScopeAccountId}::${activeProjectWorkspaceContext.workspaceId}`
-            : null
-          : identityScopeKey
-      : identityScopeKey;
+    identityScopeKey === null || nextTabScopeAccountId === UNSET_ACCOUNT_BUCKET
+      ? null
+      : `${nextTabScopeAccountId}::global`;
   const activeAuthoritativeProjectName =
     route.kind === 'project'
       ? authoritativeProjectNames[
@@ -5247,6 +5281,132 @@ if (fetchedProject) {
     route.view === 'home' &&
     config.onboardingCompleted !== true &&
     !daemonConfigLoaded;
+  const entrySurfaceRouteActive =
+    route.kind === 'home' && route.view !== 'settings';
+  const entrySurfaceColdLoading =
+    entrySurfaceRouteActive
+    && route.view !== 'onboarding'
+    && !entryKeepAliveMountedRef.current
+    && (
+      pendingFirstRunOnboardingRoute
+      || projectsLoading
+      || workspaceContextLoading
+    );
+  const entrySurfaceActive = entrySurfaceRouteActive && !entrySurfaceColdLoading;
+  if (
+    entrySurfaceActive
+    && route.kind === 'home'
+    && route.view !== 'onboarding'
+  ) {
+    entryKeepAliveMountedRef.current = true;
+  }
+  const shouldMountEntrySurface =
+    entrySurfaceActive || entryKeepAliveMountedRef.current;
+  const entrySurface = shouldMountEntrySurface ? (
+    <EntryView
+      active={entrySurfaceActive}
+      skills={enabledFunctionalSkills}
+      designTemplates={enabledDesignTemplates}
+      designSystems={enabledDS}
+      projects={projects}
+      templates={templates}
+      onDeleteTemplate={handleDeleteTemplate}
+      promptTemplates={promptTemplates}
+      defaultDesignSystemId={config.designSystemId}
+      agents={agents}
+      agentsLoading={agentsLoading}
+      amrLoggedIn={amrLoginStatus?.loggedIn ?? null}
+      amrSessionState={amrLoginStatus?.sessionState}
+      amrAccountPlan={
+        amrLoginStatus?.account?.plan?.trim()
+        || amrLoginStatus?.user?.plan?.trim()
+        || null
+      }
+      config={config}
+      providerModelsCache={providerModelsCache}
+      onProviderModelsCacheChange={setProviderModelsCache}
+      integrationInitialTab={integrationInitialTab}
+      composioConfigLoading={composioConfigLoading}
+      daemonLive={daemonLive}
+      onModeChange={handleModeChange}
+      onAgentChange={handleAgentChange}
+      onAgentModelChange={handleAgentModelChange}
+      onApiProtocolChange={handleApiProtocolChange}
+      onApiModelChange={handleApiModelChange}
+      onConfigPersist={handleConfigPersist}
+      daemonAppConfigReady={daemonAppConfigReady}
+      onSilentUpdatePreferenceChange={handleSilentUpdatePreferenceChange}
+      onSkillsRefresh={refreshSkills}
+      onSkillsChanged={handleSkillsChanged}
+      onRefreshAgents={refreshAgents}
+      skillsLoading={
+        workspaceSkills.identity !== currentWorkspaceCatalogIdentity || skillsLoading
+      }
+      designSystemsLoading={
+        workspaceDesignSystems.identity !== currentWorkspaceCatalogIdentity || dsLoading
+      }
+      projectsLoading={projectsLoading}
+      promptTemplatesLoading={promptTemplatesLoading}
+      onCreateProject={handleCreateProject}
+      onCreatePluginShareProject={handleCreatePluginShareProject}
+      onImportClaudeDesign={handleImportClaudeDesign}
+      onImportFolder={handleImportFolder}
+      onImportFolderResponse={handleImportFolderResponse}
+      onOpenProject={handleOpenProject}
+      onOpenLiveArtifact={handleOpenLiveArtifact}
+      onDeleteProject={handleDeleteProject}
+      onDuplicateProject={handleDuplicateProject}
+      onRenameProject={handleRenameProject}
+      onProjectsRefresh={refreshProjectsStrict}
+      onCopyProject={handleCopyProject}
+      onTeamProjectContentReady={handleTeamProjectContentReady}
+      onChangeDefaultDesignSystem={handleChangeDefaultDesignSystem}
+      onCreateDesignSystem={() => {
+        setPendingDesignSystemCreateEntry('design_systems_page');
+        navigate({ kind: 'design-system-create' });
+      }}
+      onOpenDesignSystem={(id: string) => navigate({ kind: 'design-system-detail', designSystemId: id })}
+      onDesignSystemsRefresh={refreshDesignSystems}
+      onPersistComposioKey={handleConfigPersistComposioKey}
+      onOpenSettings={openSettings}
+      onCompleteOnboarding={handleCompleteOnboarding}
+      onSignedOut={handleActiveCloudSignOut}
+      onAmrLoginStatusChange={handleAmrLoginStatusChange}
+      artifactUpgradeSlot={
+        amrArtifactUpgradeHomeOffer ? (
+          <AmrArtifactUpgradeHomeCard
+            key={amrArtifactUpgradeHomeOffer.sessionKey}
+            profile={amrLoginStatus?.profile ?? null}
+            metricsConsent={config.telemetry?.metrics === true}
+            installationId={config.installationId}
+            onViewArtifact={() => {
+              if (
+                !amrArtifactUpgradeHomeOffer.projectId
+                || !amrArtifactUpgradeHomeOffer.conversationId
+              ) {
+                navigate({ kind: 'home', view: 'projects' });
+                return;
+              }
+              navigate({
+                kind: 'project',
+                projectId: amrArtifactUpgradeHomeOffer.projectId,
+                conversationId: amrArtifactUpgradeHomeOffer.conversationId,
+                fileName: amrArtifactUpgradeHomeOffer.fileName,
+              });
+            }}
+            onDismiss={() => {
+              if (amrArtifactUpgradeHomeMock) return;
+              setAmrArtifactUpgradeHomeOffer((current) =>
+                current?.sessionKey === amrArtifactUpgradeHomeOffer.sessionKey
+                  ? null
+                  : current,
+              );
+            }}
+          />
+        ) : undefined
+      }
+    />
+  ) : null;
   if (pendingFirstRunOnboardingRoute) {
     appMain = (
       <div className="entry-shell entry-shell--no-header">
@@ -5500,7 +5660,7 @@ if (fetchedProject) {
       appMain = (
         <div className="app">
         <ProjectView
-          key={projectViewAuthorizationLifetimeKey(
+          key={projectViewMountKey(
             activeProject.id,
             activeProjectWorkspaceContext,
           )}
@@ -5584,6 +5744,7 @@ if (fetchedProject) {
   } else if (
     route.kind === 'home'
     && route.view !== 'onboarding'
+    && !entryKeepAliveMountedRef.current
     && (projectsLoading || workspaceContextLoading)
   ) {
     // Hold the loading shell until the recent-projects list and the workspace
@@ -5595,110 +5756,7 @@ if (fetchedProject) {
       </div>
     );
   } else {
-    appMain = (
-      <EntryView
-        skills={enabledFunctionalSkills}
-        designTemplates={enabledDesignTemplates}
-        designSystems={enabledDS}
-        projects={projects}
-        templates={templates}
-        onDeleteTemplate={handleDeleteTemplate}
-        promptTemplates={promptTemplates}
-        defaultDesignSystemId={config.designSystemId}
-        agents={agents}
-        agentsLoading={agentsLoading}
-        amrLoggedIn={amrLoginStatus?.loggedIn ?? null}
-        amrSessionState={amrLoginStatus?.sessionState}
-        amrAccountPlan={
-          amrLoginStatus?.account?.plan?.trim()
-          || amrLoginStatus?.user?.plan?.trim()
-          || null
-        }
-        config={config}
-        providerModelsCache={providerModelsCache}
-        onProviderModelsCacheChange={setProviderModelsCache}
-        integrationInitialTab={integrationInitialTab}
-        composioConfigLoading={composioConfigLoading}
-        daemonLive={daemonLive}
-        onModeChange={handleModeChange}
-        onAgentChange={handleAgentChange}
-        onAgentModelChange={handleAgentModelChange}
-        onApiProtocolChange={handleApiProtocolChange}
-        onApiModelChange={handleApiModelChange}
-        onConfigPersist={handleConfigPersist}
-        daemonAppConfigReady={daemonAppConfigReady}
-        onSilentUpdatePreferenceChange={handleSilentUpdatePreferenceChange}
-        onSkillsRefresh={refreshSkills}
-        onSkillsChanged={handleSkillsChanged}
-        onRefreshAgents={refreshAgents}
-        skillsLoading={
-          workspaceSkills.identity !== currentWorkspaceCatalogIdentity || skillsLoading
-        }
-        designSystemsLoading={
-          workspaceDesignSystems.identity !== currentWorkspaceCatalogIdentity || dsLoading
-        }
-        projectsLoading={projectsLoading}
-        promptTemplatesLoading={promptTemplatesLoading}
-        onCreateProject={handleCreateProject}
-        onCreatePluginShareProject={handleCreatePluginShareProject}
-        onImportClaudeDesign={handleImportClaudeDesign}
-        onImportFolder={handleImportFolder}
-        onImportFolderResponse={handleImportFolderResponse}
-        onOpenProject={handleOpenProject}
-        onOpenLiveArtifact={handleOpenLiveArtifact}
-        onDeleteProject={handleDeleteProject}
-       onDuplicateProject={handleDuplicateProject}
-       onRenameProject={handleRenameProject}
-       onProjectsRefresh={refreshProjectsStrict}
-       onCopyProject={handleCopyProject}
-        onTeamProjectContentReady={handleTeamProjectContentReady}
-        onChangeDefaultDesignSystem={handleChangeDefaultDesignSystem}
-        onCreateDesignSystem={() => {
-          setPendingDesignSystemCreateEntry('design_systems_page');
-          navigate({ kind: 'design-system-create' });
-        }}
-        onOpenDesignSystem={(id: string) => navigate({ kind: 'design-system-detail', designSystemId: id })}
-        onDesignSystemsRefresh={refreshDesignSystems}
-        onPersistComposioKey={handleConfigPersistComposioKey}
-        onOpenSettings={openSettings}
-        onCompleteOnboarding={handleCompleteOnboarding}
-        onSignedOut={handleActiveCloudSignOut}
-        onAmrLoginStatusChange={handleAmrLoginStatusChange}
-        artifactUpgradeSlot={
-          amrArtifactUpgradeHomeOffer ? (
-            <AmrArtifactUpgradeHomeCard
-              key={amrArtifactUpgradeHomeOffer.sessionKey}
-              profile={amrLoginStatus?.profile ?? null}
-              metricsConsent={config.telemetry?.metrics === true}
-              installationId={config.installationId}
-              onViewArtifact={() => {
-                if (
-                  !amrArtifactUpgradeHomeOffer.projectId
-                  || !amrArtifactUpgradeHomeOffer.conversationId
-                ) {
-                  navigate({ kind: 'home', view: 'projects' });
-                  return;
-                }
-                navigate({
-                  kind: 'project',
-                  projectId: amrArtifactUpgradeHomeOffer.projectId,
-                  conversationId: amrArtifactUpgradeHomeOffer.conversationId,
-                  fileName: amrArtifactUpgradeHomeOffer.fileName,
-                });
-              }}
-              onDismiss={() => {
-                if (amrArtifactUpgradeHomeMock) return;
-                setAmrArtifactUpgradeHomeOffer((current) =>
-                  current?.sessionKey === amrArtifactUpgradeHomeOffer.sessionKey
-                    ? null
-                    : current,
-                );
-              }}
-            />
-          ) : undefined
-        }
-      />
-    );
+    appMain = null;
   }
   return (
     <>
@@ -5727,10 +5785,10 @@ if (fetchedProject) {
           identityScopeKey={workspaceTabsIdentityScopeKey}
         />
         {/* Avatar + credits keep their home-view spot (the fixed top-right
-            corner over the tabs chrome) while a project tab is open, even
-            though EntryShell — the cluster's usual owner — is unmounted here.
-            Home and the other entry views mount theirs through EntryNavRail;
-            the routes are mutually exclusive, so exactly one is on screen. */}
+            corner over the tabs chrome) while a project tab is open. EntryShell
+            now remains mounted as a hidden Home keep-alive, but its active prop
+            suppresses the rail-owned updater/account overlays; the visible
+            project route therefore owns the one top-right cluster on screen. */}
         {route.kind === 'project' ? (
           <WorkspaceTopRightAccountCluster
             onOpenSettings={openSettings}
@@ -5768,6 +5826,7 @@ if (fetchedProject) {
           <ProjectWorkspaceRecoveryTip />
         ) : null}
         <div className="workspace-shell__body">
+          {entrySurface}
           {appMain}
           <HiMindWorkspaceFrame
             key={workspaceTabsIdentityScopeKey ?? 'pending'}

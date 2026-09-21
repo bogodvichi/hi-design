@@ -59,6 +59,12 @@ const projectRoute: Route = {
   conversationId: null,
   fileName: null,
 };
+const himindRoute: Route = {
+  kind: 'external',
+  url: 'https://himind.example.test/login',
+  title: 'HiMind',
+  resourceKey: 'himind',
+};
 
 const project: Project = {
   id: 'project-alpha',
@@ -205,6 +211,94 @@ describe('WorkspaceTabsBar navigation semantics', () => {
       expect(screen.getAllByTestId('workspace-home-rail-toggle')).toHaveLength(1);
       expect(labels.filter((label) => label.includes('Project Alpha'))).toHaveLength(1);
     });
+  });
+
+  it('restores the remembered Community entry state after visiting HiMind', async () => {
+    const communityRoute: Route = { kind: 'home', view: 'community' };
+    const { rerender } = render(
+      <WorkspaceTabsBar route={communityRoute} projects={[project]} />,
+    );
+
+    await waitFor(() => expect(storedEntryTabView()).toBe('community'));
+
+    rerender(<WorkspaceTabsBar route={himindRoute} projects={[project]} />);
+    await waitFor(() => {
+      const tabs = screen.getAllByRole('tab');
+      expect(tabs).toHaveLength(2);
+      expect(tabs[0]?.getAttribute('aria-selected')).toBe('false');
+      expect(tabs[1]?.getAttribute('aria-selected')).toBe('true');
+    });
+
+    const pinnedEntryButton = screen.getAllByRole('tab')[0]?.querySelector('button');
+    expect(pinnedEntryButton).toBeInstanceOf(HTMLButtonElement);
+    fireEvent.click(pinnedEntryButton as HTMLButtonElement);
+
+    expect(navigate).toHaveBeenLastCalledWith(communityRoute);
+  });
+
+  it('restores the exact Tool sub-tab after visiting HiMind', async () => {
+    const toolRoute: Route = { kind: 'home', view: 'square', tab: 'tool' };
+    const { rerender } = render(
+      <WorkspaceTabsBar route={toolRoute} projects={[project]} />,
+    );
+
+    await waitFor(() => expect(storedEntryTabView()).toBe('square'));
+
+    rerender(<WorkspaceTabsBar route={himindRoute} projects={[project]} />);
+    await waitFor(() => {
+      const tabs = screen.getAllByRole('tab');
+      expect(tabs).toHaveLength(2);
+      expect(tabs[0]?.getAttribute('aria-selected')).toBe('false');
+      expect(tabs[1]?.getAttribute('aria-selected')).toBe('true');
+    });
+
+    const pinnedEntryButton = screen.getAllByRole('tab')[0]?.querySelector('button');
+    expect(pinnedEntryButton).toBeInstanceOf(HTMLButtonElement);
+    fireEvent.click(pinnedEntryButton as HTMLButtonElement);
+
+    expect(navigate).toHaveBeenLastCalledWith(toolRoute);
+  });
+
+  it('still treats the house glyph as Home when the entry tab is already active', async () => {
+    const communityRoute: Route = { kind: 'home', view: 'community' };
+    render(<WorkspaceTabsBar route={communityRoute} projects={[project]} />);
+
+    const homeButton = await screen.findByTestId('workspace-home-nav');
+    fireEvent.click(homeButton);
+
+    expect(navigate).toHaveBeenLastCalledWith(homeRoute);
+  });
+
+  it('does not bounce global navigation back to a team directory during scope handoff', async () => {
+    const personalScope = 'user-1::ws-personal-1';
+    const teamScope = 'user-1::ws-team-0920';
+    const teamRoute: Route = { kind: 'home', view: 'team-space', teamId: 'ws-team-0920' };
+    const communityRoute: Route = { kind: 'home', view: 'community' };
+    const { rerender } = render(
+      <WorkspaceTabsBar route={homeRoute} projects={[project]} identityScopeKey={personalScope} />,
+    );
+
+    // Route arrives first while the old scope is still visible.
+    rerender(
+      <WorkspaceTabsBar route={teamRoute} projects={[project]} identityScopeKey={personalScope} />,
+    );
+    // Then the authoritative team scope settles.
+    rerender(
+      <WorkspaceTabsBar route={teamRoute} projects={[project]} identityScopeKey={teamScope} />,
+    );
+    vi.mocked(navigate).mockClear();
+
+    // Leaving the team directory has the same ordering in reverse: route first,
+    // then the ambient/personal scope settles.
+    rerender(
+      <WorkspaceTabsBar route={communityRoute} projects={[project]} identityScopeKey={teamScope} />,
+    );
+    rerender(
+      <WorkspaceTabsBar route={communityRoute} projects={[project]} identityScopeKey={personalScope} />,
+    );
+
+    await waitFor(() => expect(storedEntryTabView()).toBe('community'));
+    expect(navigate).not.toHaveBeenCalledWith(teamRoute);
   });
 
   it('closes the dock dropdown when its route-owned dock is removed', async () => {
@@ -1169,6 +1263,46 @@ describe('WorkspaceTabsBar identity-scope tab reset', () => {
       const raw = window.localStorage.getItem('open-design:workspace-tabs:v1');
       const parsed = JSON.parse(raw ?? '{}') as { scopeKey?: string };
       expect(parsed.scopeKey).toBe('user-1::ws-personal-1');
+    });
+  });
+
+  it('migrates this account\'s current workspace tabs into the account-global tab scope', async () => {
+    window.localStorage.setItem(
+      'open-design:workspace-tabs:v1',
+      JSON.stringify({
+        scopeKey: 'user-1::ws-team-a',
+        tabs: [
+          { id: 'entry:home:a', kind: 'entry', view: 'home', createdAt: 1, lastActiveAt: 1 },
+          {
+            id: 'project:project-alpha:a',
+            kind: 'project',
+            projectId: 'project-alpha',
+            conversationId: null,
+            fileName: null,
+            createdAt: 2,
+            lastActiveAt: 2,
+          },
+        ],
+        activeTabId: 'project:project-alpha:a',
+      }),
+    );
+
+    render(
+      <WorkspaceTabsBar
+        route={{ ...projectRoute }}
+        projects={[project]}
+        identityScopeKey="user-1::global"
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('tab')).toHaveLength(2);
+      expect(screen.getByRole('tab', { name: /Project Alpha/ })).toBeTruthy();
+    });
+    await waitFor(() => {
+      const raw = window.localStorage.getItem('open-design:workspace-tabs:v1');
+      const parsed = JSON.parse(raw ?? '{}') as { scopeKey?: string };
+      expect(parsed.scopeKey).toBe('user-1::global');
     });
   });
 

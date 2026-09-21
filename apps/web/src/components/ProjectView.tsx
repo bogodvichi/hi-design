@@ -199,6 +199,7 @@ import {
   patchConversation,
   patchProject,
   ProjectConversationsHttpError,
+  ProjectMessageListError,
   saveMessage,
   startGeneratedPluginShareTask,
   cacheTabsLocally,
@@ -260,7 +261,7 @@ import type { ProviderModelsCache } from './providerModelsCache';
 import { Icon } from './Icon';
 import { localizePluginTitle } from './plugins-home/localization';
 import { PresenceBar } from '../collab/PresenceBar';
-import { useProjectCollab } from '../collab/useProjectCollab';
+import { useProjectCollab, type ProjectCollab } from '../collab/useProjectCollab';
 import {
   currentUserDirectoryEntry,
   useTeamMembers,
@@ -857,6 +858,7 @@ function hasGenericDisconnectFailureEvent(message: ChatMessage): boolean {
 }
 const MIN_NORMAL_SPLIT_WIDTH =
   MIN_CHAT_PANEL_WIDTH + SPLIT_RESIZE_HANDLE_WIDTH + MIN_WORKSPACE_PANEL_WIDTH;
+const SPLIT_LAYOUT_HYSTERESIS = 16;
 type DesignSystemReviewEntry = NonNullable<ProjectMetadata['designSystemReview']>[string];
 type DesignSystemReviewAgentTask = NonNullable<DesignSystemReviewEntry['agentTask']>;
 interface DesignSystemReviewDetails {
@@ -868,6 +870,42 @@ interface DesignSystemReviewDetails {
 function workspacePanelMinWidthForSplit(splitWidth: number): number {
   if (!Number.isFinite(splitWidth) || splitWidth <= 0) return MIN_WORKSPACE_PANEL_WIDTH;
   return splitWidth < MIN_NORMAL_SPLIT_WIDTH ? 0 : MIN_WORKSPACE_PANEL_WIDTH;
+}
+
+export function stableWorkspacePanelMinWidthForSplit(
+  splitWidth: number,
+  currentMinWidth: number,
+): number {
+  if (!Number.isFinite(splitWidth) || splitWidth <= 0) return currentMinWidth;
+  if (currentMinWidth === 0) {
+    return splitWidth >= MIN_NORMAL_SPLIT_WIDTH + SPLIT_LAYOUT_HYSTERESIS
+      ? MIN_WORKSPACE_PANEL_WIDTH
+      : 0;
+  }
+  return splitWidth <= MIN_NORMAL_SPLIT_WIDTH - SPLIT_LAYOUT_HYSTERESIS
+    ? 0
+    : MIN_WORKSPACE_PANEL_WIDTH;
+}
+
+export function projectWorkspaceFocusIsForced(
+  projectId: string,
+  writerAuthority: ProjectCollab['writerAuthority'],
+  latchedProjectId: string | null,
+): boolean {
+  return writerAuthority === 'denied' || latchedProjectId === projectId;
+}
+
+export function stableProjectReadOnlyPresentation(
+  previous: { projectId: string; readOnly: boolean } | null,
+  projectId: string,
+  writerAuthority: ProjectCollab['writerAuthority'],
+): { projectId: string; readOnly: boolean } {
+  if (!previous || previous.projectId !== projectId) {
+    return { projectId, readOnly: writerAuthority === 'denied' };
+  }
+  if (writerAuthority === 'pending') return previous;
+  const readOnly = writerAuthority === 'denied';
+  return previous.readOnly === readOnly ? previous : { projectId, readOnly };
 }
 
 function maxChatPanelWidthForSplit(splitWidth: number): number {
@@ -1495,6 +1533,57 @@ export function projectUsesPersonalWorkspacePresentation(
   return isEffectiveOwner
     || scope?.kind === 'unbound'
     || Boolean(scope && 'visibility' in scope && scope.visibility === 'personal');
+}
+
+export function stickyPersonalProjectPresentation(
+  previous: { projectId: string; personal: boolean } | null,
+  projectId: string,
+  candidate: boolean,
+): { projectId: string; personal: boolean } {
+  if (!previous || previous.projectId !== projectId) {
+    return { projectId, personal: candidate };
+  }
+  if (previous.personal || !candidate) return previous;
+  return { projectId, personal: true };
+}
+
+export function stickySharedProjectNotice(
+  previous: {
+    projectId: string;
+    sharedNonOwner: boolean;
+    ownerDisplayName: string | null;
+  } | null,
+  projectId: string,
+  candidateSharedNonOwner: boolean,
+  ownerDisplayName: string | null | undefined,
+): {
+  projectId: string;
+  sharedNonOwner: boolean;
+  ownerDisplayName: string | null;
+} {
+  const normalizedOwner = ownerDisplayName?.trim() || null;
+  if (!previous || previous.projectId !== projectId) {
+    return {
+      projectId,
+      sharedNonOwner: candidateSharedNonOwner,
+      ownerDisplayName: candidateSharedNonOwner ? normalizedOwner : null,
+    };
+  }
+  if (!previous.sharedNonOwner && candidateSharedNonOwner) {
+    return {
+      projectId,
+      sharedNonOwner: true,
+      ownerDisplayName: normalizedOwner,
+    };
+  }
+  if (
+    previous.sharedNonOwner
+    && previous.ownerDisplayName === null
+    && normalizedOwner !== null
+  ) {
+    return { ...previous, ownerDisplayName: normalizedOwner };
+  }
+  return previous;
 }
 
 export function projectRootLocationLabel(
@@ -2192,6 +2281,16 @@ export function ProjectView({
   // syncing project, not the misleading “shared by someone else” notice.
   const projectMutationReadOnly =
     projectCollab.viewerOnly || projectCollab.materializationPending;
+  const projectReadOnlyPresentationRef = useRef<{
+    projectId: string;
+    readOnly: boolean;
+  } | null>(null);
+  projectReadOnlyPresentationRef.current = stableProjectReadOnlyPresentation(
+    projectReadOnlyPresentationRef.current,
+    project.id,
+    projectCollab.writerAuthority,
+  );
+  const projectViewerOnlyPresentation = projectReadOnlyPresentationRef.current.readOnly;
   const { resolve: resolvePresenceMember } = useTeamMembers(
     currentUserDirectoryEntry(projectRunWorkspaceContext),
     projectRunWorkspaceContext,
@@ -2203,10 +2302,26 @@ export function ProjectView({
   // daemon has settled that scope. The local project row is not an unbound
   // authority witness: it can lag a daemon-side Team binding.
   const resolvedProjectScope = projectWorkspaceScopeState.scope;
-  const personalProject = projectUsesPersonalWorkspacePresentation(
+  const personalProjectCandidate = projectUsesPersonalWorkspacePresentation(
     resolvedProjectScope,
     projectCollab.isEffectiveOwner,
   );
+  // `isEffectiveOwner` may briefly fall back to false while collab authority is
+  // revalidated. That must not add/remove the 40px team dock row over and over,
+  // which visibly makes the entire chat pane shrink/grow vertically. Ownership
+  // does not transfer during one mounted project visit, so once this project is
+  // confirmed to use the personal presentation, keep that presentation sticky
+  // until the project id changes.
+  const personalProjectPresentationRef = useRef<{
+    projectId: string;
+    personal: boolean;
+  } | null>(null);
+  personalProjectPresentationRef.current = stickyPersonalProjectPresentation(
+    personalProjectPresentationRef.current,
+    project.id,
+    personalProjectCandidate,
+  );
+  const personalProject = personalProjectPresentationRef.current.personal;
   const projectTabsCanPersistToDaemon =
     resolvedProjectScope?.kind === 'unbound'
     || resolvedProjectScope?.kind === 'personal'
@@ -2224,12 +2339,30 @@ export function ProjectView({
     refreshPresence: collabRefreshPresence,
     checkStatusNow: collabCheckStatusNow,
   } = projectCollab;
-  // Read-only banner copy: when the collab cloud resolved who shared this project,
-  // name them ("这是 麻薯 创建的共享项目…"); otherwise fall back to the name-less
-  // notice. Only computed when the viewer is actually read-only.
-  const readonlyNoticeText = projectCollab.viewerOnly
-    ? projectCollab.ownerDisplayName
-      ? t('workspace.readonlyNoticeBy', { owner: projectCollab.ownerDisplayName })
+  // Visible shared-project UX must use positive relationship evidence, not the
+  // fail-closed `viewerOnly` gate. `viewerOnly` intentionally becomes true for
+  // transient loading/unknown authority and is correct for mutation safety, but
+  // using it for UI copy made this banner and the composer placeholder flash on
+  // every background revalidation. Once this mounted project is positively
+  // confirmed as someone else's shared project, keep the relationship sticky;
+  // ownership does not transfer during one visit.
+  const sharedProjectNoticeRef = useRef<{
+    projectId: string;
+    sharedNonOwner: boolean;
+    ownerDisplayName: string | null;
+  } | null>(null);
+  sharedProjectNoticeRef.current = stickySharedProjectNotice(
+    sharedProjectNoticeRef.current,
+    project.id,
+    projectCollab.isSharedNonOwner,
+    projectCollab.ownerDisplayName,
+  );
+  const stableSharedProjectNotice = sharedProjectNoticeRef.current;
+  const readonlyNoticeText = stableSharedProjectNotice.sharedNonOwner
+    ? stableSharedProjectNotice.ownerDisplayName
+      ? t('workspace.readonlyNoticeBy', {
+          owner: stableSharedProjectNotice.ownerDisplayName,
+        })
       : t('workspace.readonlyNotice')
     : undefined;
   // Team-share file-sync badge for the design-files tab bar + empty state
@@ -2510,14 +2643,24 @@ export function ProjectView({
   const [liveArtifacts, setLiveArtifacts] = useState<LiveArtifactSummary[]>([]);
   const [liveArtifactEvents, setLiveArtifactEvents] = useState<LiveArtifactEventItem[]>([]);
   const [workspaceFocusRequested, setWorkspaceFocusRequested] = useState(false);
-  // A read-only project never exposes the Chat pane. Keep this constraint at
-  // the shared state boundary so button clicks and other workspace actions
-  // cannot reopen it through a different path.
-  const workspaceFocused = projectMutationReadOnly || workspaceFocusRequested;
+  // Mutation safety and layout state intentionally have different thresholds.
+  // `projectMutationReadOnly` fails closed during transient status/scope
+  // revalidation, but using that transient bit to collapse the chat pane makes
+  // every collab-client restart animate the left column closed and open again.
+  // Only a positive writer denial may force the layout closed. Once denied for
+  // this project, latch that decision for the visit so a later revalidation's
+  // temporary `pending` state cannot expand the pane again.
+  const [readOnlyFocusProjectId, setReadOnlyFocusProjectId] = useState<string | null>(null);
+  const stableReadOnlyFocus = projectWorkspaceFocusIsForced(
+    project.id,
+    projectCollab.writerAuthority,
+    readOnlyFocusProjectId,
+  );
+  const workspaceFocused = stableReadOnlyFocus || workspaceFocusRequested;
   const setWorkspaceFocused = useCallback((next: boolean) => {
-    if (projectMutationReadOnly && !next) return;
+    if (stableReadOnlyFocus && !next) return;
     setWorkspaceFocusRequested(next);
-  }, [projectMutationReadOnly]);
+  }, [stableReadOnlyFocus]);
   // Read by `renderPreferredChatPanelWidth` instead of closing over
   // `workspaceFocused` directly, so that callback's identity (and therefore
   // the ResizeObserver effect keyed on it, below) doesn't need to depend on
@@ -2679,6 +2822,8 @@ export function ProjectView({
   const [chatPanelWidth, setChatPanelWidth] = useState(readSavedChatPanelWidth);
   const [chatPanelMaxWidth, setChatPanelMaxWidth] = useState(MAX_CHAT_PANEL_WIDTH);
   const [workspacePanelMinWidth, setWorkspacePanelMinWidth] = useState(MIN_WORKSPACE_PANEL_WIDTH);
+  const workspacePanelMinWidthRef = useRef(workspacePanelMinWidth);
+  const splitLayoutMeasuredRef = useRef(false);
   const [resizingChatPanel, setResizingChatPanel] = useState(false);
   const splitRef = useRef<HTMLDivElement | null>(null);
   const chatPanelWidthRef = useRef(chatPanelWidth);
@@ -3191,14 +3336,21 @@ export function ProjectView({
     setActiveConversationId(routeConversationId);
   }, [routeConversationId, conversations, activeConversationId]);
 
-  // Reset chat pane to the open default on project switch. Shared non-owner
-  // projects re-collapse once collab status confirms (see below) — but only
-  // once per open, so expanding chat after that is sticky for the visit.
+  // Reset chat pane to the open default on project switch. A positive denied
+  // writer decision (including a confirmed shared non-owner) collapses once and
+  // is then latched for this visit; transient pending/unknown refreshes do not
+  // participate in layout.
   const sharedNonOwnerChatDefaultAppliedRef = useRef<string | null>(null);
   useEffect(() => {
-    setWorkspaceFocused(false);
+    setWorkspaceFocusRequested(false);
+    setReadOnlyFocusProjectId(null);
     sharedNonOwnerChatDefaultAppliedRef.current = null;
   }, [project.id]);
+
+  useEffect(() => {
+    if (projectCollab.writerAuthority !== 'denied') return;
+    setReadOnlyFocusProjectId(project.id);
+  }, [project.id, projectCollab.writerAuthority]);
 
   useEffect(() => {
     if (sharedNonOwnerChatDefaultAppliedRef.current === project.id) return;
@@ -3210,7 +3362,7 @@ export function ProjectView({
     ) {
       return;
     }
-    setWorkspaceFocused(true);
+    setWorkspaceFocusRequested(true);
     sharedNonOwnerChatDefaultAppliedRef.current = project.id;
   }, [project.id, projectCollab.enabled, projectCollab.isSharedNonOwner]);
 
@@ -3234,7 +3386,7 @@ export function ProjectView({
     }
     const reloadingCurrentConversation =
       messagesConversationIdRef.current === activeConversationId
-      && messagesAuthorityKeyRef.current === projectRunAuthorityKey;
+      && projectResourceAuthorityRef.current !== 'denied';
     const liveReloadMessageIds = new Set<string>();
     if (
       messagesConversationIdRef.current === activeConversationId
@@ -3261,16 +3413,17 @@ export function ProjectView({
       }
     }
     const preservingLiveConversation = liveReloadMessageIds.size > 0;
-    // Reset the initialized flag so auto-send waits for this authoritative DB
-    // read to settle before checking messages.length. A same-conversation
-    // authority refresh keeps the prior transcript visible. An authority-key
-    // handoff keeps only the live turn, so its pending read cannot detach the
-    // stream or later replace those rows with an empty snapshot.
-    setMessagesInitialized(false);
+    // Only a genuine conversation load should re-enter the loading state. An
+    // already-loaded conversation can be revalidated under a fresh permission/
+    // lifecycle witness without hiding its transcript or flashing the Loading
+    // skeleton. A real caller-identity change remounts ProjectView at App's
+    // projectViewMountKey boundary, so keeping this mounted conversation visible
+    // does not cross workspace/member identities.
+    if (!reloadingCurrentConversation) setMessagesInitialized(false);
     let cancelled = false;
     const requestWorkspaceContext = projectRunWorkspaceContextRef.current;
     setFailedMessagesConversationId(null);
-    if (!preservingLiveConversation) {
+    if (!reloadingCurrentConversation && !preservingLiveConversation) {
       setMessagesConversationId(null);
       setStreaming(false);
       streamingConversationIdRef.current = null;
@@ -3336,9 +3489,15 @@ export function ProjectView({
       } catch (err) {
         if (cancelled) return;
         const message = err instanceof Error ? err.message : 'Could not load messages for this conversation.';
-        if (!reloadingCurrentConversation) {
+        const authoritativeReadDenied =
+          err instanceof ProjectMessageListError
+          && (err.status === 401 || err.status === 403 || err.status === 404);
+        const mustRetireVisibleTranscript =
+          !reloadingCurrentConversation || authoritativeReadDenied;
+
+        if (mustRetireVisibleTranscript) {
           setMessages((current) =>
-            preservingLiveConversation
+            preservingLiveConversation && !authoritativeReadDenied
               ? current.filter((item) => liveReloadMessageIds.has(item.id))
               : [],
           );
@@ -3348,7 +3507,11 @@ export function ProjectView({
           savedArtifactRef.current = null;
         }
         setError(message);
-        if (!preservingLiveConversation) {
+        if (mustRetireVisibleTranscript && !preservingLiveConversation) {
+          messagesConversationIdRef.current = null;
+          messagesAuthorityKeyRef.current = null;
+          setMessagesConversationId(null);
+        } else if (authoritativeReadDenied) {
           messagesConversationIdRef.current = null;
           messagesAuthorityKeyRef.current = null;
           setMessagesConversationId(null);
@@ -10508,12 +10671,42 @@ const coalescedCoverRefresh = useCoalescedCallback(
 
     const updateAllowedWidth = () => {
       const splitWidth = split.clientWidth;
-      const nextWorkspaceMin = workspacePanelMinWidthForSplit(splitWidth);
-      const nextMax = maxChatPanelWidthForSplit(splitWidth);
-      chatPanelMaxWidthRef.current = nextMax;
-      setWorkspacePanelMinWidth(nextWorkspaceMin);
-      setChatPanelMaxWidth(nextMax);
-      renderPreferredChatPanelWidth(preferredChatPanelWidthRef.current, nextMax);
+      if (!Number.isFinite(splitWidth) || splitWidth <= 0) return;
+
+      const nextWorkspaceMin = splitLayoutMeasuredRef.current
+        ? stableWorkspacePanelMinWidthForSplit(
+            splitWidth,
+            workspacePanelMinWidthRef.current,
+          )
+        : workspacePanelMinWidthForSplit(splitWidth);
+      splitLayoutMeasuredRef.current = true;
+      const viewportAwareMax = Math.max(
+        0,
+        Math.min(
+          MAX_CHAT_PANEL_WIDTH,
+          Math.floor(splitWidth - SPLIT_RESIZE_HANDLE_WIDTH - nextWorkspaceMin),
+        ),
+      );
+
+      if (workspacePanelMinWidthRef.current !== nextWorkspaceMin) {
+        workspacePanelMinWidthRef.current = nextWorkspaceMin;
+        setWorkspacePanelMinWidth(nextWorkspaceMin);
+      }
+      if (chatPanelMaxWidthRef.current !== viewportAwareMax) {
+        chatPanelMaxWidthRef.current = viewportAwareMax;
+        setChatPanelMaxWidth(viewportAwareMax);
+      }
+
+      const nextChatWidth = clampChatPanelWidth(
+        preferredChatPanelWidthRef.current,
+        viewportAwareMax,
+      );
+      if (chatPanelWidthRef.current !== nextChatWidth) {
+        renderPreferredChatPanelWidth(
+          preferredChatPanelWidthRef.current,
+          viewportAwareMax,
+        );
+      }
     };
 
     updateAllowedWidth();
@@ -11588,15 +11781,10 @@ const coalescedCoverRefresh = useCoalescedCallback(
               // A read-only viewer of a team-shared project cannot drive artifact
               // changes through chat (comments go through the separate overlay).
               sendDisabled={currentConversationSendDisabled || projectMutationReadOnly}
-              viewerOnly={projectMutationReadOnly}
+              viewerOnly={projectViewerOnlyPresentation}
               composerPlaceholder={
-                projectCollab.materializationPending
-                  ? t('designFiles.syncing')
-                  : projectMutationReadOnly
-                  ? (projectCollab.ownerDisplayName
-                      ? t('workspace.readonlyNoticeBy', { owner: projectCollab.ownerDisplayName })
-                      : t('workspace.readonlyNotice'))
-                  : undefined
+                readonlyNoticeText
+                  ?? (projectCollab.materializationPending ? t('designFiles.syncing') : undefined)
               }
               queuedItems={currentConversationQueuedItems}
               error={conversationLoadError ?? error}
@@ -11888,13 +12076,10 @@ const coalescedCoverRefresh = useCoalescedCallback(
         <FileWorkspace
           projectId={project.id}
           projectName={currentProject.name}
-          viewerOnly={projectMutationReadOnly}
+          viewerOnly={projectViewerOnlyPresentation}
+          mutationBlocked={projectMutationReadOnly}
           materializationPending={projectCollab.materializationPending}
-          readonlyNotice={
-            projectCollab.materializationPending
-              ? t('designFiles.syncing')
-              : readonlyNoticeText
-          }
+          readonlyNotice={readonlyNoticeText}
           fileSyncBadge={fileSyncBadge}
           projectKind={projectKindFromMetadataToTracking(currentProject.metadata) ?? 'prototype'}
           rootDirName={(() => {

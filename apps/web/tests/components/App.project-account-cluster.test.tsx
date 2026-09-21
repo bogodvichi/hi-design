@@ -10,11 +10,11 @@
 // Workspace authority whenever `route.kind === 'project'`.
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from '../../src/App';
-import type { Route } from '../../src/router';
+import { navigate, type Route } from '../../src/router';
 import type { AppConfig, Project } from '../../src/types';
 import type {
   WorkspaceCollabContext,
@@ -49,14 +49,35 @@ const PROJECT_ROUTE: Route = {
   conversationId: null,
   fileName: null,
 };
+const HOME_ROUTE: Route = { kind: 'home', view: 'home' };
+const TEAM_FOLDER_ROUTE: Route = {
+  kind: 'home',
+  view: 'team-folder',
+  teamId: 'team-test',
+  folderId: '2',
+};
+const TOOL_ROUTE: Route = {
+  kind: 'external',
+  url: 'https://example.test/tool',
+  title: 'Tool',
+};
 const useRouteMock = vi.fn<() => Route>(() => PROJECT_ROUTE);
 const useProjectRouteWorkspaceContextMock = vi.hoisted(() => vi.fn());
 const projectViewMountedMock = vi.hoisted(() => vi.fn());
 const projectViewUnmountedMock = vi.hoisted(() => vi.fn());
+const entryViewMountedMock = vi.hoisted(() => vi.fn());
+const entryViewUnmountedMock = vi.hoisted(() => vi.fn());
 
 vi.mock('../../src/router', () => ({
   navigate: vi.fn(),
   useRoute: () => useRouteMock(),
+}));
+
+// These tests exercise App's workspace-shell lifetime and account-cluster
+// ownership, not the local web credential form. Keep the gate transparent so
+// route transitions can be driven deterministically in jsdom.
+vi.mock('../../src/auth/LoginGate', () => ({
+  LoginGate: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 vi.mock('../../src/collab/useProjectRouteWorkspaceContext', async (importOriginal) => {
@@ -70,16 +91,36 @@ vi.mock('../../src/collab/useProjectRouteWorkspaceContext', async (importOrigina
 });
 
 vi.mock('../../src/components/EntryView', () => ({
-  EntryView: () => <div>Entry view</div>,
+  EntryView: ({ active = true }: { active?: boolean }) => {
+    const [draft, setDraft] = useState('');
+    useEffect(() => {
+      entryViewMountedMock();
+      return () => entryViewUnmountedMock();
+    }, []);
+    return (
+      <div data-testid="entry-view-mock" data-active={active ? 'true' : 'false'}>
+        <input
+          data-testid="entry-home-draft"
+          value={draft}
+          onChange={(event) => setDraft(event.currentTarget.value)}
+        />
+      </div>
+    );
+  },
 }));
 
 vi.mock('../../src/components/ProjectView', () => ({
-  ProjectView: () => {
+  ProjectView: ({ onBack }: { onBack?: () => void }) => {
     useEffect(() => {
       projectViewMountedMock();
       return () => projectViewUnmountedMock();
     }, []);
-    return <div>Project view</div>;
+    return (
+      <div>
+        <div>Project view</div>
+        <button type="button" data-testid="project-back-mock" onClick={onBack}>Back</button>
+      </div>
+    );
   },
 }));
 
@@ -328,27 +369,17 @@ describe('project route — floating account cluster', () => {
     resetWorkspaceDirectoryCache();
   });
 
-  it('keeps the avatar and credits pill mounted on an open project', async () => {
-    const open = vi.spyOn(window, 'open').mockImplementation(() => null);
+  it('keeps the account controls mounted on an open project', async () => {
     render(<App />);
 
-    // Both cluster members ride the portal on document.body; they appear once
-    // the workspace context read resolves.
+    // The current account capsule intentionally hides the old credits segment;
+    // keep the actual project-route contract focused on the still-visible
+    // account/updater/message-center controls.
     const avatar = await screen.findByTestId('entry-nav-account');
     expect(avatar.closest('.entry-top-right-cluster')).not.toBeNull();
-
-    await waitFor(() => {
-      expect(screen.getByTestId('entry-top-right-credits')).toBeTruthy();
-    });
-    expect(avatar.getAttribute('aria-label')).toBe('Project Nova');
-    expect(
-      screen.getByTestId('entry-top-right-credits').textContent,
-    ).toContain('$12.34');
-    expect(screen.getByTestId('entry-top-right-credits').textContent).not.toContain('$98.76');
-
-    fireEvent.click(screen.getByTestId('entry-top-right-credits'));
-    expect(open).toHaveBeenCalledOnce();
-    expect(open.mock.calls[0]?.[0]).toContain('/dashboard?workspaceId=ws-project');
+    expect(screen.getByTestId('entry-nav-account-updater')).toBeTruthy();
+    expect(screen.getByTestId('entry-nav-message-center')).toBeTruthy();
+    expect(screen.queryByTestId('entry-top-right-credits')).toBeNull();
   });
 
   it.each([
@@ -406,5 +437,70 @@ describe('project route — floating account cluster', () => {
     expect(screen.queryByTestId('project-workspace-recovery-tip')).toBeNull();
     expect(projectViewMountedMock).toHaveBeenCalledTimes(1);
     expect(projectViewUnmountedMock).not.toHaveBeenCalled();
+  });
+
+  it('returns from a project to the exact team folder that opened it', async () => {
+    useRouteMock.mockReturnValue(TEAM_FOLDER_ROUTE);
+    window.history.replaceState(null, '', '/team/team-test/folder/2');
+    const view = render(<App />);
+
+    await screen.findByTestId('entry-view-mock');
+
+    useRouteMock.mockReturnValue(PROJECT_ROUTE);
+    window.history.replaceState(null, '', '/projects/project-1');
+    view.rerender(<App />);
+    expect(await screen.findByText('Project view')).toBeTruthy();
+
+    vi.mocked(navigate).mockClear();
+    fireEvent.click(screen.getByTestId('project-back-mock'));
+
+    expect(navigate).toHaveBeenCalledWith(
+      TEAM_FOLDER_ROUTE,
+      expect.objectContaining({ onCommit: expect.any(Function) }),
+    );
+  });
+
+  it('keeps Home mounted and preserves its local state while a project tab is in front', async () => {
+    useRouteMock.mockReturnValue(HOME_ROUTE);
+    window.history.replaceState(null, '', '/');
+    const view = render(<App />);
+
+    const draft = await screen.findByTestId('entry-home-draft');
+    fireEvent.change(draft, { target: { value: 'keep this home state' } });
+    await waitFor(() => {
+      expect(screen.getByTestId('entry-view-mock').getAttribute('data-active')).toBe('true');
+    });
+    expect(entryViewMountedMock).toHaveBeenCalledTimes(1);
+    expect(entryViewUnmountedMock).not.toHaveBeenCalled();
+
+    useRouteMock.mockReturnValue(PROJECT_ROUTE);
+    window.history.replaceState(null, '', '/projects/project-1');
+    view.rerender(<App />);
+
+    expect(await screen.findByText('Project view')).toBeTruthy();
+    expect(screen.getByTestId('entry-view-mock').getAttribute('data-active')).toBe('false');
+    expect(entryViewUnmountedMock).not.toHaveBeenCalled();
+
+    useRouteMock.mockReturnValue(TOOL_ROUTE);
+    window.history.replaceState(null, '', '/external/tool');
+    view.rerender(<App />);
+
+    expect(screen.getByTitle('Tool')).toBeTruthy();
+    expect(screen.getByTestId('entry-view-mock').getAttribute('data-active')).toBe('false');
+    expect(entryViewMountedMock).toHaveBeenCalledTimes(1);
+    expect(entryViewUnmountedMock).not.toHaveBeenCalled();
+
+    useRouteMock.mockReturnValue(HOME_ROUTE);
+    window.history.replaceState(null, '', '/');
+    view.rerender(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('entry-view-mock').getAttribute('data-active')).toBe('true');
+    });
+    expect((screen.getByTestId('entry-home-draft') as HTMLInputElement).value).toBe(
+      'keep this home state',
+    );
+    expect(entryViewMountedMock).toHaveBeenCalledTimes(1);
+    expect(entryViewUnmountedMock).not.toHaveBeenCalled();
   });
 });

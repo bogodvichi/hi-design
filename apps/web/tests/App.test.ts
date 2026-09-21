@@ -8,6 +8,7 @@ import {
   persistComposioConfigChange,
   reconcileProjectMutationResult,
   projectViewAuthorizationLifetimeKey,
+  projectViewMountKey,
   projectRouteSurfaceState,
   resolveDeepLinkedTeamSharedProject,
   resolveSettingsCloseConfig,
@@ -235,6 +236,48 @@ describe('projectViewAuthorizationLifetimeKey', () => {
       },
     })).not.toBe(initial);
     expect(projectViewAuthorizationLifetimeKey(projectId, null)).not.toBe(initial);
+  });
+});
+
+describe('projectViewMountKey', () => {
+  const projectId = 'same-project';
+  const baseContext = {
+    workspaceId: 'workspace-a',
+    workspaceType: 'team',
+    workspaceMemberId: 'member-a',
+    role: 'member',
+    memberStatus: 'active',
+    lifecycleState: 'active',
+    permissions: {
+      canShareProjects: false,
+      canWriteSyncedFiles: true,
+    },
+  } as WorkspaceCollabContext;
+
+  it('does not remount ProjectView for live permission/role refreshes', () => {
+    const initial = projectViewMountKey(projectId, baseContext);
+    expect(projectViewMountKey(projectId, {
+      ...baseContext,
+      role: 'admin',
+      lifecycleState: 'locked',
+      permissions: {
+        ...baseContext.permissions,
+        canShareProjects: true,
+        canWriteSyncedFiles: false,
+      },
+    })).toBe(initial);
+  });
+
+  it('does remount when the workspace/member caller identity changes', () => {
+    const initial = projectViewMountKey(projectId, baseContext);
+    expect(projectViewMountKey(projectId, {
+      ...baseContext,
+      workspaceId: 'workspace-b',
+    })).not.toBe(initial);
+    expect(projectViewMountKey(projectId, {
+      ...baseContext,
+      workspaceMemberId: 'member-b',
+    })).not.toBe(initial);
   });
 });
 

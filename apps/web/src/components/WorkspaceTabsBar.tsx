@@ -36,11 +36,14 @@ import {
   OPEN_WORKSPACE_TAB_EVENT,
 } from './workspaceTabEvents';
 
+type EntryRoute = Extract<Route, { kind: 'home' }>;
+
 type WorkspaceChromeTab =
   | {
       id: string;
       kind: 'entry';
       view: EntryHomeView;
+      entryRoute: EntryRoute;
       createdAt: number;
       lastActiveAt: number;
     }
@@ -173,11 +176,64 @@ function nowId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function createEntryTab(view: EntryHomeView, timestamp = Date.now()): WorkspaceChromeTab {
+const ENTRY_HOME_VIEWS = new Set<EntryHomeView>([
+  'home',
+  'onboarding',
+  'projects',
+  'tasks',
+  'plugins',
+  'design-systems',
+  'library',
+  'brands',
+  'integrations',
+  'community',
+  'drafts',
+  'square',
+  'all-projects',
+  'my-publishes',
+  'members',
+  'board',
+  'workspace-settings',
+  'team-space',
+  'team-folder',
+  'personal-all',
+  'shared-with-me',
+  'shared-folder',
+  'personal-folder',
+  'settings',
+]);
+
+function isEntryHomeView(value: unknown): value is EntryHomeView {
+  return typeof value === 'string' && ENTRY_HOME_VIEWS.has(value as EntryHomeView);
+}
+
+function reviveEntryRoute(value: unknown, view: EntryHomeView): EntryRoute {
+  if (value === null || typeof value !== 'object') return { kind: 'home', view };
+  const record = value as Record<string, unknown>;
+  if (record.kind !== 'home' || record.view !== view) return { kind: 'home', view };
+  return {
+    kind: 'home',
+    view,
+    ...(typeof record.brandId === 'string' ? { brandId: record.brandId } : {}),
+    ...(typeof record.teamId === 'string' ? { teamId: record.teamId } : {}),
+    ...(typeof record.folderId === 'string' ? { folderId: record.folderId } : {}),
+    ...(typeof record.tab === 'string' ? { tab: record.tab } : {}),
+    ...(typeof record.sharedFolderId === 'string'
+      ? { sharedFolderId: record.sharedFolderId }
+      : {}),
+  };
+}
+
+function createEntryTab(
+  view: EntryHomeView,
+  timestamp = Date.now(),
+  entryRoute: EntryRoute = { kind: 'home', view },
+): WorkspaceChromeTab {
   return {
     id: `entry:${view}:${nowId()}`,
     kind: 'entry',
     view,
+    entryRoute,
     createdAt: timestamp,
     lastActiveAt: timestamp,
   };
@@ -216,7 +272,8 @@ function tabFromRoute(route: Route, timestamp = Date.now()): WorkspaceChromeTab 
      lastActiveAt: timestamp,
    };
  }
- return createEntryTab(route.kind === 'home' ? route.view : 'design-systems', timestamp);
+ if (route.kind === 'home') return createEntryTab(route.view, timestamp, route);
+ return createEntryTab('design-systems', timestamp);
 }
 
 function routeForTab(tab: WorkspaceChromeTab): Route {
@@ -241,7 +298,7 @@ function routeForTab(tab: WorkspaceChromeTab): Route {
      ...(tab.resourceKey ? { resourceKey: tab.resourceKey } : {}),
    };
  }
- return { kind: 'home', view: tab.view };
+ return tab.entryRoute ?? { kind: 'home', view: tab.view };
 }
 
 function reviveTab(value: unknown): WorkspaceChromeTab | null {
@@ -253,15 +310,15 @@ function reviveTab(value: unknown): WorkspaceChromeTab | null {
   if (!id) return null;
   if (record.kind === 'entry') {
     const view = record.view;
-    if (
-      view === 'home'
-      || view === 'projects'
-      || view === 'tasks'
-      || view === 'plugins'
-      || view === 'design-systems'
-      || view === 'integrations'
-    ) {
-      return { id, kind: 'entry', view, createdAt, lastActiveAt };
+    if (isEntryHomeView(view)) {
+      return {
+        id,
+        kind: 'entry',
+        view,
+        entryRoute: reviveEntryRoute(record.entryRoute, view),
+        createdAt,
+        lastActiveAt,
+      };
     }
   }
   if (record.kind === 'project' && typeof record.projectId === 'string') {
@@ -603,6 +660,23 @@ function initialTabsState(
     return persisted.current ?? syncStateToRoute(fallbackState, route);
   }
   const scoped = persisted.scopes[identityScopeKey]?.state;
+  // Migration from the old account+workspace tab buckets to the new
+  // account-global tab strip. If this account has no global snapshot yet,
+  // adopt its most recent/current workspace snapshot in place so upgrading
+  // does not make every existing tab disappear on the first launch.
+  if (
+    workspaceBucketForScope(identityScopeKey) === 'global'
+    && !scoped
+    && persisted.scopeKey
+    && accountBucketForScope(persisted.scopeKey) === accountBucketForScope(identityScopeKey)
+    && persisted.current
+  ) {
+    const migrated = syncStateToRoute(persisted.current, route);
+    persisted.current = migrated;
+    persisted.scopeKey = identityScopeKey;
+    persisted.scopes[identityScopeKey] = { state: migrated, updatedAt: Date.now() };
+    return migrated;
+  }
   if (persisted.scopeKey === identityScopeKey) {
     return syncStateToRoute(scoped ?? persisted.current ?? fallbackState, route);
   }
@@ -630,7 +704,12 @@ function syncStateToRoute(state: WorkspaceTabsState, route: Route): WorkspaceTab
         ...current,
         tabs: current.tabs.map((tab) =>
           tab.id === existingEntryTab.id
-            ? { ...tab, view: route.view, lastActiveAt: timestamp }
+            ? {
+                ...tab,
+                view: route.view,
+                entryRoute: route,
+                lastActiveAt: timestamp,
+              }
             : tab,
         ),
         activeTabId: existingEntryTab.id,
@@ -739,6 +818,11 @@ function workspaceBucketForScope(scopeKey: string): string | null {
   return separator < 0 ? null : scopeKey.slice(separator + 2);
 }
 
+function isTeamDirectoryRoute(route: Route): route is Extract<Route, { kind: 'home' }> {
+  return route.kind === 'home'
+    && (route.view === 'team-space' || route.view === 'team-folder');
+}
+
 function shouldRehomeAuthorizedProjectAfterSignIn({
   previousScopeKey,
   nextScopeKey,
@@ -798,6 +882,15 @@ export function WorkspaceTabsBar({
     scopeKey: string;
     path: string;
   } | null>(null);
+  // A route click can leave a team directory one render before the ambient
+  // workspace identity follows. Remember that user intent across the short
+  // scope handoff so the incoming scope cannot restore its stale entry route
+  // over the page the user just selected.
+  const pendingTeamDirectoryExitRef = useRef<{
+    path: string;
+    fromScopeKey: string | undefined;
+  } | null>(null);
+  const previousRouteRef = useRef<Route>(route);
   const stateRef = useRef(state);
   stateRef.current = state;
   // Tracks the raw identityScopeKey (including null) from the previous
@@ -1023,6 +1116,23 @@ export function WorkspaceTabsBar({
   }, [route, identityScopeKey]);
 
   useEffect(() => {
+    const previousRoute = previousRouteRef.current;
+    const previousPath = buildPath(previousRoute);
+    const currentPath = buildPath(route);
+    if (previousPath !== currentPath) {
+      if (isTeamDirectoryRoute(previousRoute) && !isTeamDirectoryRoute(route)) {
+        pendingTeamDirectoryExitRef.current = {
+          path: currentPath,
+          fromScopeKey: lastSeenScopeKeyRef.current,
+        };
+      } else {
+        pendingTeamDirectoryExitRef.current = null;
+      }
+    }
+    previousRouteRef.current = route;
+  }, [route]);
+
+  useEffect(() => {
     if (!previousOnboardingCompletedRef.current && onboardingCompleted) {
       resetEntryToHomeAfterOnboardingRef.current = true;
     }
@@ -1204,14 +1314,10 @@ export function WorkspaceTabsBar({
     // chrome from a previous authenticated session.
     const mayRestore =
       accountBucketForScope(previous) === accountBucketForScope(identityScopeKey);
-    // Distinguish scope views (personal-all, team-space, etc.) from
-    // other routes.  Scope views are navigation destinations in their
-    // own right — the user clicked a team/personal link — so the tab
-    // bar must NOT bounce them to the restored snapshot's active tab.
-    // For every other route (project, settings, community, …) the
-    // scope change is a side-effect of workspace switching or project
-    // context resolving, and the tab bar should navigate to the
-    // restored snapshot's active tab.
+    // Scope views are explicit workspace destinations and retain the historical
+    // no-bounce behavior. Separately, leaving a team directory can make the
+    // route change one render before the ambient scope changes; in that narrow
+    // handoff the user's new route must win over a stale restored snapshot.
     const isScopeViewRoute = route.kind === 'home' && (
       route.view === 'personal-all'
       || route.view === 'team-space'
@@ -1219,21 +1325,25 @@ export function WorkspaceTabsBar({
       || route.view === 'personal-folder'
       || route.view === 'shared-with-me'
     );
-    // When the scope just resolved (null -> non-null, e.g. a project's
-    // workspace context finishing loading), reconcile the restored
-    // snapshot with the current route so the project tab is created or
-    // activated immediately.  For an explicit workspace switch
-    // (non-null -> non-null), keep the restored snapshot as-is — the
-    // user is switching workspaces, not entering a project.  Scope
-    // views never reconcile: the user navigated TO the scope view, so
-    // the restored snapshot should be loaded as-is.
+    const pendingTeamDirectoryExit = pendingTeamDirectoryExitRef.current;
+    const preserveTeamDirectoryExit = Boolean(
+      pendingTeamDirectoryExit
+      && pendingTeamDirectoryExit.path === buildPath(route)
+      && pendingTeamDirectoryExit.fromScopeKey === previous,
+    );
+    if (preserveTeamDirectoryExit) pendingTeamDirectoryExitRef.current = null;
+    // Preserve the existing scoped-tab restoration policy. The only added
+    // reconciliation is the one-shot team-directory exit above, which repairs
+    // an already-polluted incoming snapshot by folding the clicked route into it.
     const scopeJustResolved = previousIdentityScopeKeyRef.current === null;
     const restoredState = mayRestore
       ? persistedTabsStore.scopes[identityScopeKey]?.state ?? freshHomeTabsState()
       : freshHomeTabsState();
-    const nextState = scopeJustResolved && !isScopeViewRoute
+    const nextState = preserveTeamDirectoryExit
       ? syncStateToRoute(restoredState, route)
-      : restoredState;
+      : scopeJustResolved && !isScopeViewRoute
+        ? syncStateToRoute(restoredState, route)
+        : restoredState;
     pendingScopeStateRef.current = { scopeKey: identityScopeKey, state: nextState };
     setState(nextState);
     const activeTab =
@@ -1243,12 +1353,10 @@ export function WorkspaceTabsBar({
     pendingScopeRouteRef.current = buildPath(route) === nextPath
       ? null
       : { scopeKey: identityScopeKey, path: nextPath };
-    // Scope views: never bounce the user away — they navigated TO this
-    // view.  Clear the pending route ref so a later route sync (e.g.
-    // clicking a project from the scope view) can reconcile freely.
-    // All other routes: navigate to the restored snapshot's active tab
-    // so the URL matches the tab bar after a workspace switch.
-    if (isScopeViewRoute) {
+    // Scope destinations and the one-shot team-directory exit are already the
+    // user's chosen route. Everything else keeps the historical behavior of
+    // navigating to the incoming scope's restored active tab.
+    if (isScopeViewRoute || preserveTeamDirectoryExit) {
       pendingScopeRouteRef.current = null;
     } else {
       navigate(nextRoute);
@@ -1561,12 +1669,19 @@ export function WorkspaceTabsBar({
       dragSuppressClickRef.current = false;
       return;
     }
-    // Clicking the pinned Home tab always lands on the home page, whatever
-    // entry section (projects / design-systems / …) the tab last showed.
-    // Keyboard tab-cycling goes through activateTab directly and keeps the
-    // remembered section.
-    if (tab.kind === 'entry' && tab.view !== 'home') {
-      activateTab({ ...tab, view: 'home' });
+    const normalized = normalizeTabsState(state);
+    const tabIsAlreadyActive = normalized.activeTabId === tab.id;
+    // When Home is already the active entry tab, clicking its house glyph is an
+    // explicit request to go to the real Home page. When a project / HiMind /
+    // other tool tab is in front, the same pinned tab acts like a browser tab:
+    // restore the exact entry route it held before leaving (community, square
+    // tool sub-tab, team folder, etc.) instead of overwriting it with Home.
+    if (tab.kind === 'entry' && tabIsAlreadyActive && tab.view !== 'home') {
+      activateTab({
+        ...tab,
+        view: 'home',
+        entryRoute: { kind: 'home', view: 'home' },
+      });
       return;
     }
     activateTab(tab);
@@ -1625,13 +1740,22 @@ export function WorkspaceTabsBar({
   function openEntryView(view: EntryHomeView) {
     const normalized = normalizeTabsState(state);
     const existingEntryTab = normalized.tabs.find((tab) => tab.kind === 'entry');
+    const nextRoute: EntryRoute = { kind: 'home', view };
     if (existingEntryTab) {
-      setState({ ...normalized, activeTabId: existingEntryTab.id });
+      setState({
+        ...normalized,
+        tabs: normalized.tabs.map((tab) =>
+          tab.id === existingEntryTab.id
+            ? { ...tab, view, entryRoute: nextRoute }
+            : tab,
+        ),
+        activeTabId: existingEntryTab.id,
+      });
     } else {
-      const tab = createEntryTab(view);
+      const tab = createEntryTab(view, Date.now(), nextRoute);
       setState({ tabs: [...normalized.tabs, tab], activeTabId: tab.id });
     }
-    navigate({ kind: 'home', view });
+    navigate(nextRoute);
     setRadialMenu(null);
   }
 
@@ -1661,6 +1785,15 @@ export function WorkspaceTabsBar({
     if (existingEntryTab) {
       setState({
         ...normalized,
+        tabs: normalized.tabs.map((tab) =>
+          tab.id === existingEntryTab.id
+            ? {
+                ...tab,
+                view: 'home',
+                entryRoute: { kind: 'home', view: 'home' },
+              }
+            : tab,
+        ),
         activeTabId: existingEntryTab.id,
       });
       navigate({ kind: 'home', view: 'home' });
@@ -2047,11 +2180,12 @@ export function WorkspaceTabsBar({
                     onClick={() => openTab(tab)}
                   >
                     <span className="workspace-tab__icon" aria-hidden>
-                      {/* The pinned entry tab remembers its last section
-                          (settings / community / …), but clicking it always
-                          lands on home (openTab), so it must read as the Home
-                          button — the brand logo — not the remembered
-                          section's icon. */}
+                      {/* The pinned entry tab remembers its last entry route
+                          (community / square tool / …). From another workspace
+                          tab, clicking this glyph restores that route; when the
+                          entry tab is already active, the same glyph is the
+                          explicit Home action. Keep the brand/home glyph in both
+                          cases instead of exposing the remembered section icon. */}
                       {isPinned ? (
                         <ChromeHomeGlyph />
                       ) : (
