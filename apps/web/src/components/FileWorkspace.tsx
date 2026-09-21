@@ -253,7 +253,7 @@ interface Props {
   onTabsStateChange: (next: OpenTabsState) => void;
   previewComments?: PreviewComment[];
   onSavePreviewComment?: (target: PreviewCommentTarget, note: string, attachAfterSave: boolean, images?: File[], commentId?: string, parentId?: string) => Promise<PreviewComment | null>;
-  onReplyPreviewComment?: (comment: PreviewComment, replyText: string) => Promise<PreviewComment | null> | Promise<void> | void;
+  onReplyPreviewComment?: (comment: PreviewComment, replyText: string, images?: File[]) => Promise<PreviewComment | null> | Promise<void> | void;
   onRemovePreviewComment?: (commentId: string) => Promise<boolean>;
   onChangeCommentStatus?: (commentId: string, status: PreviewCommentStatus) => void | Promise<void>;
   onReorderPreviewComment?: (commentId: string, sortKey: number) => Promise<void>;

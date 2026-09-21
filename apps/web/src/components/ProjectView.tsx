@@ -5243,7 +5243,7 @@ const coalescedCoverRefresh = useCoalescedCallback(
   );
 
   const replyPreviewComment = useCallback(
-    async (comment: PreviewComment, replyText: string) => {
+    async (comment: PreviewComment, replyText: string, images?: File[]) => {
       const target: PreviewCommentTarget = {
         filePath: comment.filePath,
         elementId: comment.elementId,
@@ -5259,7 +5259,7 @@ const coalescedCoverRefresh = useCoalescedCallback(
         ...(typeof comment.slideIndex === 'number' ? { slideIndex: comment.slideIndex } : {}),
         ...(typeof comment.anchoredVersion === 'number' ? { anchoredVersion: comment.anchoredVersion } : {}),
       };
-      return savePreviewComment(target, replyText, false, [], undefined, comment.id);
+      return savePreviewComment(target, replyText, false, images ?? [], undefined, comment.id);
     },
     [savePreviewComment],
   );

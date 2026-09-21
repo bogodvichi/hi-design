@@ -219,7 +219,11 @@ import {
 } from './state/projects';
 import { useModalWindowDragGuard } from './hooks/useModalWindowDragGuard';
 import { resumeThumbnailLoads, suspendThumbnailLoads } from './lib/thumbnail-load-gate';
-import { recordRecentlyOpenedProject, removeRecentlyOpenedProject } from './lib/recently-opened-projects';
+import {
+  recordRecentlyOpenedProject,
+  removeRecentlyOpenedProject,
+  touchRecentlyOpenedProject,
+} from './lib/recently-opened-projects';
 import { updateRecentlyOpenedProjectCover } from './lib/recently-opened-projects';
 import type {
   PluginShareAction,
@@ -4656,6 +4660,13 @@ if (fetchedProject) {
     ? projectRouteWorkspaceContext.context
     : null;
   projectRouteWorkspaceContextRef.current = activeProjectWorkspaceContext;
+  // Card clicks already record the full project. This catches deep links and
+  // later re-entries into the same project route, where only the open time
+  // should move so Home's recent strip re-sorts without losing card metadata.
+  useEffect(() => {
+    if (route.kind !== 'project' || !activeProject) return;
+    touchRecentlyOpenedProject(activeProject.id);
+  }, [activeProject, route.kind]);
   useEffect(() => {
     const pending = amrAuthRetryContinuationRef.current;
     if (!pending) return;

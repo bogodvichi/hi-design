@@ -2972,6 +2972,7 @@ export interface RemixHdwPluginResult {
   ok: boolean;
   projectId?: string;
   conversationId?: string;
+  project?: Project;
   message?: string;
 }
 
@@ -2990,7 +2991,7 @@ export async function remixHdwPlugin(name: string): Promise<RemixHdwPluginResult
     );
     const body = (await resp.json().catch(() => null)) as {
       ok?: boolean;
-      project?: { id?: string };
+      project?: Project;
       conversationId?: string;
       message?: string;
       error?: string;
@@ -2998,6 +2999,7 @@ export async function remixHdwPlugin(name: string): Promise<RemixHdwPluginResult
     return {
       ok: Boolean(resp.ok && body?.ok),
       ...(body?.project?.id ? { projectId: body.project.id } : {}),
+      ...(body?.project ? { project: body.project } : {}),
       ...(body?.conversationId ? { conversationId: body.conversationId } : {}),
       ...(body?.message ? { message: body.message } : {}),
       ...(!resp.ok && body?.error ? { message: body.error } : {}),

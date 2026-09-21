@@ -39,6 +39,10 @@ export interface RegisterPluginMarketplaceRoutesDeps {
   createMarketplaceFetcher: (seedId: string | null, bundled: unknown) => MarketplaceFetcher;
   marketplaceRegistryIdFromUrl: (url: string) => string | null;
   dataDir: string;
+  triggerCoverForProjectEntry?: (
+    projectId: string,
+    projectMeta: { name?: string; metadata?: Record<string, unknown> | null } | null,
+  ) => void;
 }
 
 export function registerPluginMarketplaceRoutes(app: Express, deps: RegisterPluginMarketplaceRoutesDeps): void {
@@ -689,6 +693,10 @@ app.post('/api/marketplaces/:id/plugins/:name/remix', async (req, res) => {
       updatedAt: now,
     });
     const project = getProject(db, projectId);
+    deps.triggerCoverForProjectEntry?.(projectId, {
+      name: pluginTitle,
+      metadata: metadata as unknown as Record<string, unknown>,
+    });
     res.json({
       ok: true,
       project,

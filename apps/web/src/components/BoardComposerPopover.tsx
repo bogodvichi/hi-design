@@ -463,14 +463,14 @@ export function BoardComposerPopover({
   onChangeCommentStatus,
   canReplyComment = false,
   onReplyComment,
+  onPreviewReplyImage,
   canEditReplyComment,
   canDeleteReplyComment,
   onEditReplyComment,
   onDeleteReplyComment,
-  replies = [],
-  authorDisplayName,
-  authorAvatarSeed,
-  allowSendToChat = true,
+ replies = [],
+ authorDisplayName,
+ allowSendToChat = true,
   t,
   scale = 1,
   bounds,
@@ -500,6 +500,7 @@ export function BoardComposerPopover({
   onAttachImages?: (files: File[]) => void;
   onRemoveImage?: (index: number) => void;
   onPreviewImage?: (index: number) => void;
+  onPreviewReplyImage?: (url: string, name: string) => void;
   sending: boolean;
   queueOnSend?: boolean;
   sendDisabled?: boolean;
@@ -527,8 +528,8 @@ export function BoardComposerPopover({
   /** Existing-comment gate: reply is a project-owner action in the popover header. */
   canReplyComment?: boolean;
   /** Reply is a project-owner action in the popover header. `replyText` lets
-   *  the parent persist the appended reply. */
-  onReplyComment?: (comment: PreviewComment, replyText: string) => void | Promise<void> | Promise<PreviewComment | null>;
+  *  the parent persist the appended reply. */
+  onReplyComment?: (comment: PreviewComment, replyText: string, images?: File[]) => void | Promise<void> | Promise<PreviewComment | null>;
   /** Team-collab gate: which replies the viewer may edit. Defaults to true (single-user). */
   canEditReplyComment?: (reply: PreviewComment) => boolean;
   /** Team-collab gate: which replies the viewer may delete. Defaults to true (single-user). */
@@ -539,9 +540,8 @@ export function BoardComposerPopover({
   onDeleteReplyComment?: (replyId: string) => void | Promise<boolean | void>;
   /** Persisted replies for the currently open comment thread. */
   replies?: PreviewComment[];
-  authorDisplayName?: string;
-  authorAvatarSeed?: string;
-  allowSendToChat?: boolean;
+ authorDisplayName?: string;
+ allowSendToChat?: boolean;
   t: TranslateFn;
   scale?: number;
   bounds?: PopoverBounds;
@@ -560,8 +560,10 @@ export function BoardComposerPopover({
   const [dragging, setDragging] = useState(false);
   const [editingExistingComment, setEditingExistingComment] = useState(false);
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
-  const [replyingExistingComment, setReplyingExistingComment] = useState(false);
   const [replyDraft, setReplyDraft] = useState('');
+  const [replyImages, setReplyImages] = useState<{ file: File; url: string }[]>([]);
+  const replyImageInputRef = useRef<HTMLInputElement | null>(null);
+  const replyTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const [localReplies, setLocalReplies] = useState<LocalReplyItem[]>([]);
   const [editingReplyKey, setEditingReplyKey] = useState<string | null>(null);
   const [replyEditDraft, setReplyEditDraft] = useState('');
@@ -587,10 +589,23 @@ export function BoardComposerPopover({
     setManualPosition(null);
   }, [targetPlacementKey, docked]);
   useEffect(() => {
-    setReplyingExistingComment(false);
     setReplyDraft('');
     setLocalReplies([]);
   }, [existing?.id]);
+  // Revoke object URLs for reply images when they are removed or the comment
+  // changes, so we don't leak blob URLs.
+  useEffect(() => {
+    return () => {
+      replyImages.forEach((img) => URL.revokeObjectURL(img.url));
+    };
+  }, [replyImages]);
+  // Auto-resize the reply textarea to fit its content.
+  useLayoutEffect(() => {
+    const el = replyTextareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight-8, 120)}px`;
+  }, [replyDraft]);
   useLayoutEffect(() => {
     const node = popoverRef.current;
     if (!node) return;
@@ -677,7 +692,7 @@ export function BoardComposerPopover({
   const existingResolved = existing?.status === 'resolved';
   const composeVisible = commenting || (isExistingComment && editingExistingComment);
   const authorLabel = authorDisplayName?.trim() || existing?.authorMemberId || '?';
-  const authorSeed = authorAvatarSeed?.trim() || existing?.authorMemberId || authorLabel || '?';
+  const authorSeed = authorDisplayName?.trim() || '?';
   // An attached image alone is enough to send (the element context rides along
   // even without a typed note).
   const hasAnyImage = hasFreshImage || existingImages.length > 0;
@@ -723,8 +738,36 @@ export function BoardComposerPopover({
       ]);
     }
     setReplyDraft('');
-    setReplyingExistingComment(false);
-    void onReplyComment?.(existing, text);
+    const imgs = replyImages.map((img) => img.file);
+    setReplyImages([]);
+    void onReplyComment?.(existing, text, imgs.length > 0 ? imgs : undefined);
+  }
+  function pickReplyImages(list: FileList | null) {
+    const imgs = Array.from(list ?? []).filter((f) => f.type.startsWith('image/'));
+    if (imgs.length === 0) return;
+    setReplyImages((current) => [
+      ...current,
+      ...imgs.map((file) => ({ file, url: URL.createObjectURL(file) })),
+    ]);
+  }
+  function onReplyImageInputChange(e: ChangeEvent<HTMLInputElement>) {
+    pickReplyImages(e.target.files);
+    e.target.value = '';
+  }
+  function onReplyComposerPaste(e: ClipboardEvent<HTMLTextAreaElement>) {
+    const files = e.clipboardData?.files;
+    if (!files || files.length === 0) return;
+    const imgs = Array.from(files).filter((f) => f.type.startsWith('image/'));
+    if (imgs.length === 0) return;
+    e.preventDefault();
+    pickReplyImages(files);
+  }
+  function removeReplyImage(index: number) {
+    setReplyImages((current) => {
+      const removed = current[index];
+      if (removed) URL.revokeObjectURL(removed.url);
+      return current.filter((_, i) => i !== index);
+    });
   }
   useEffect(() => {
     if (!moreMenuOpen) return;
@@ -772,6 +815,15 @@ export function BoardComposerPopover({
         }
       }}
     >
+      <button
+        type="button"
+        className="comment-popover-close-btn"
+        onClick={onClose}
+        title={t('common.close')}
+        aria-label={t('common.close')}
+      >
+        <Icon name="close" size={14} />
+      </button>
       {!docked ? (
         <div className="comment-popover-titlebar">
           <button
@@ -846,20 +898,6 @@ export function BoardComposerPopover({
                   }}
                 >
                   <Icon name={existingResolved ? 'rotate-ccw' : 'check'} size={15} />
-                </button>
-              ) : null}
-              {existing && canReplyComment ? (
-                <button
-                  type="button"
-                  className="comment-popover-header-action"
-                  title={t('chat.comments.reply')}
-                  aria-label={t('chat.comments.reply')}
-                  onClick={() => {
-                    setEditingExistingComment(false);
-                    setReplyingExistingComment(true);
-                  }}
-                >
-                  <Icon name="message-square" size={14} />
                 </button>
               ) : null}
             </span>
@@ -1042,7 +1080,7 @@ export function BoardComposerPopover({
                     note: reply.note,
                     createdAt: reply.createdAt,
                     authorName: reply.authorDisplayName?.trim() || reply.authorMemberId?.trim() || '?',
-                    authorSeed: reply.authorDisplayName?.trim() || reply.authorMemberId?.trim() || '?',
+                    authorSeed: reply.authorDisplayName?.trim() || '?',
                   })),
                   ...localReplies.map((reply) => ({
                     localKey: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -1171,52 +1209,10 @@ export function BoardComposerPopover({
                 })}
               </div>
             ) : null}
-            {existing && !editingExistingComment && replyingExistingComment ? (
-              <div className="comment-popover-reply-editor">
-                <Textarea
-                  className="comment-popover-reply-input"
-                  data-testid="comment-popover-reply-input"
-                  value={replyDraft}
-                  autoFocus
-                  aria-label={t('chat.comments.reply')}
-                  placeholder={t('chat.comments.reply')}
-                  onChange={(event) => setReplyDraft(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (
-                      event.key === 'Enter' &&
-                      !event.shiftKey &&
-                      !event.altKey
-                    ) {
-                      event.preventDefault();
-                      submitReply();
-                    }
-                  }}
-                />
-                <div className="comment-popover-reply-actions">
-                  <Button
-                    variant="ghost"
-                    onClick={() => {
-                      setReplyDraft('');
-                      setReplyingExistingComment(false);
-                    }}
-                  >
-                    {t('common.cancel')}
-                  </Button>
-                  <Button
-                    variant="primary"
-                    data-testid="comment-popover-reply-save"
-                    disabled={!trimmedReply}
-                    onClick={submitReply}
-                  >
-                    {t('chat.comments.reply')}
-                  </Button>
-                </div>
-              </div>
-            ) : null}
           </section>
         ) : null}
       </div>
-      {composeVisible&&!replyingExistingComment ? (
+      {composeVisible ? (
         <div className="comment-popover-actions">
           <div className="comment-popover-actions-start">
             {/* {onAttachImages && canEditComment ? (
@@ -1251,17 +1247,7 @@ export function BoardComposerPopover({
               //   <Icon name="trash" size={14} />
               // </button>
               <></>
-            ) : (
-              <button
-                type="button"
-                className="comment-popover-close"
-                onClick={onClose}
-                title={t('common.close')}
-                aria-label={t('common.close')}
-              >
-                <Icon name="close" size={14} />
-              </button>
-            )}
+            ) : null}
           </div>
           <div className="comment-popover-actions-end">
             {isPodSelection ? (
@@ -1325,30 +1311,101 @@ export function BoardComposerPopover({
             )}
           </div>
         </div>
-      ) : existing&&!replyingExistingComment ? (
-        <div className="comment-popover-actions comment-popover-actions-existing">
-          <div className="comment-popover-actions-start">
-            {onDeleteComment && canDeleteComment ? (
+      ) : existing ? (
+        onDeleteComment && canDeleteComment ? (
+          <div className="comment-popover-actions comment-popover-actions-existing">
+            <button
+              type="button"
+              className="comment-popover-close comment-popover-delete"
+              onClick={() => void onDeleteComment(existing.id)}
+              title={t('common.delete')}
+              aria-label={t('common.delete')}
+            >
+              <Icon name="trash" size={14} />
+            </button>
+          </div>
+        ) : null
+      ) : null}
+      {existing && !editingExistingComment && canReplyComment ? (
+        <div className="comment-popover-reply-bar" data-testid="comment-popover-reply-bar">
+          <input
+            ref={replyImageInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ display: 'none' }}
+            onChange={onReplyImageInputChange}
+          />
+          <div className="comment-popover-reply-input-wrap">
+            <Textarea
+              ref={replyTextareaRef}
+              className="comment-popover-reply-input"
+              data-testid="comment-popover-reply-input"
+              value={replyDraft}
+              aria-label={t('chat.comments.reply')}
+              placeholder={t('chat.comments.reply')}
+              onChange={(event) => setReplyDraft(event.target.value)}
+              onPaste={onReplyComposerPaste}
+              onKeyDown={(event) => {
+                if (isImeComposing(event, composingRef.current)) return;
+                if (
+                  event.key === 'Enter' &&
+                  !event.shiftKey &&
+                  !event.altKey
+                ) {
+                  event.preventDefault();
+                  submitReply();
+                }
+              }}
+            />
+            {replyImages.length > 0 ? (
+              <div className="comment-popover-reply-images">
+                {replyImages.map((item, index) => (
+                  <div key={item.url} className="comment-popover-reply-image">
+                    <button
+                      type="button"
+                      className="comment-popover-reply-image-thumb"
+                      onClick={() => onPreviewReplyImage?.(item.url, item.file.name)}
+                      title={item.file.name}
+                      aria-label={item.file.name}
+                    >
+                      <img src={item.url} alt="" aria-hidden />
+                    </button>
+                    <button
+                      type="button"
+                      className="comment-popover-reply-image-remove"
+                      onClick={() => removeReplyImage(index)}
+                      aria-label={t('chat.annotationAttachedRemove')}
+                      title={t('chat.annotationAttachedRemove')}
+                    >
+                      <Icon name="close" size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            <div className="comment-popover-reply-floating-actions">
               <button
                 type="button"
-                className="comment-popover-close comment-popover-delete"
-                onClick={() => void onDeleteComment(existing.id)}
-                title={t('common.delete')}
-                aria-label={t('common.delete')}
+                className="comment-popover-reply-attach"
+                onClick={() => replyImageInputRef.current?.click()}
+                title={t('chat.annotationAttachImage')}
+                aria-label={t('chat.annotationAttachImage')}
               >
-                <Icon name="trash" size={14} />
+                <Icon name="attach" size={14} />
               </button>
-            ) : (
               <button
                 type="button"
-                className="comment-popover-close"
-                onClick={onClose}
-                title={t('common.close')}
-                aria-label={t('common.close')}
+                className="comment-popover-reply-send"
+                data-testid="comment-popover-reply-save"
+                disabled={!trimmedReply}
+                onClick={submitReply}
+                title={t('chat.comments.reply')}
+                aria-label={t('chat.comments.reply')}
               >
-                <Icon name="close" size={14} />
+                <Icon name="send" size={14} />
               </button>
-            )}
+            </div>
           </div>
         </div>
       ) : null}

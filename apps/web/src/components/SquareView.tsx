@@ -23,7 +23,12 @@ import { Icon, type IconName } from './Icon';
 import { useT } from '../i18n';
 import type { Dict } from '../i18n/types';
 import { navigate } from '../router';
-import { remixHdwPlugin } from '../state/projects';
+import { getProject, remixHdwPlugin } from '../state/projects';
+import {
+  recordRecentlyOpenedProject,
+  updateRecentlyOpenedProjectCover,
+} from '../lib/recently-opened-projects';
+import { getSharedSpaceMemberId } from '../utils/deterministicId';
 import { getStoredUsername } from '../auth/auth';
 import {
   createCommunityReferenceHandoff,
@@ -240,13 +245,14 @@ function PublicationStatusFilter({ value, onChange }: {
   );
 }
 
-function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publicationFilter, projectItems }: {
+function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publicationFilter, projectItems, workspaceMemberId }: {
   refreshKey: number;
   onRefresh: () => void;
   username?: string | null;
   isMyPublishes: boolean;
   publicationFilter: PublicationFilter;
   projectItems?: readonly PublishedProjectItem[];
+  workspaceMemberId?: string | null;
 }) {
  const t = useT();
  const [plugins, setPlugins] = useState<MarketplacePluginEntry[]>([]);
@@ -314,6 +320,23 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
     remixingNameRef.current = null;
     setRemixingName(null);
     if (result.ok && result.projectId) {
+      if (result.project) {
+        recordRecentlyOpenedProject({
+          ...result.project,
+          createdByWorkspaceMemberId: workspaceMemberId,
+          workspaceVisibility: 'personal',
+        });
+        void (async () => {
+          for (let attempt = 0; attempt < 5; attempt += 1) {
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+            const fresh = await getProject(result.projectId!);
+            if (fresh?.coverDigest) {
+              updateRecentlyOpenedProjectCover(result.projectId!, fresh.coverDigest);
+              return;
+            }
+          }
+        })();
+      }
       navigate({
         kind: 'project',
         projectId: result.projectId,
@@ -646,6 +669,7 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [workspaceMemberId, setWorkspaceMemberId] = useState<string | null>(null);
   const [workspaceType, setWorkspaceType] = useState<string | null>(null);
+  const [selfSharedSpaceMemberId, setSelfSharedSpaceMemberId] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -669,6 +693,18 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    if (!myUsername) {
+      setSelfSharedSpaceMemberId(null);
+      return;
+    }
+    let cancelled = false;
+    void getSharedSpaceMemberId(myUsername).then((id) => {
+      if (!cancelled) setSelfSharedSpaceMemberId(id);
+    });
+    return () => { cancelled = true; };
+  }, [myUsername]);
 
   const isMyPublishes = mode === 'my-publishes';
   const title = isMyPublishes ? t('squareScope.myPublishesTitle') : t('pluginsHome.title');
@@ -860,7 +896,15 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
 
       <div className={styles.content} role="tabpanel">
       {activeTab === 'projects' ? (
-        <ProjectsPanel isMyPublishes={isMyPublishes} publicationFilter={publicationFilter} projectItems={projectItems} refreshKey={refreshKey} onRefresh={() => setRefreshKey((k) => k + 1)} username={myUsername} />
+        <ProjectsPanel
+          isMyPublishes={isMyPublishes}
+          publicationFilter={publicationFilter}
+          projectItems={projectItems}
+          refreshKey={refreshKey}
+          onRefresh={() => setRefreshKey((k) => k + 1)}
+          username={myUsername}
+          workspaceMemberId={selfSharedSpaceMemberId ?? workspaceMemberId}
+        />
       ) : activeTab === 'skill' ? (
           <CloudSkillList
             workspaceId={workspaceId}

@@ -1745,6 +1745,7 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  margin-right:24px;
 }
 .comment-popover-header-action {
   display: inline-flex;
@@ -1936,8 +1937,16 @@
   border-top: 1px solid var(--border-soft);
 }
 .comment-popover-reply-input {
-  height: 84px !important;
-  max-height: 84px !important;
+  min-height: 24px;
+  max-height: 120px;
+  resize: none;
+  overflow: hidden;
+}
+/* Inline reply edit keeps a taller fixed textarea so it reads as an edit
+   surface, not the compact always-visible reply bar. */
+.comment-popover-reply-edit-inline .comment-popover-reply-input {
+  height: 84px;
+  max-height: 84px;
 }
 .comment-popover-reply-actions {
   display: inline-flex;
@@ -1945,6 +1954,108 @@
   justify-content: flex-end;
   gap: 8px;
   min-width: 0;
+}
+.comment-popover-reply-bar {
+  flex: 0 0 auto;
+  padding: 8px 12px 10px;
+  border-top: 1px solid var(--border-soft);
+}
+.comment-popover-reply-input-wrap {
+  position: relative;
+  min-width: 0;
+}
+/* Reserve right padding so typed text never slides under the floating
+   action buttons (two 28px icon buttons + gap). */
+.comment-popover-reply-bar .comment-popover-reply-input {
+  width: 100%;
+  padding-right: 68px;
+  resize: none;
+  min-height: 36px;
+}
+.comment-popover-reply-floating-actions {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.comment-popover-reply-attach {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.comment-popover-reply-attach:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+.comment-popover-reply-send {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: var(--accent);
+  color: var(--accent-contrast, #fff);
+  cursor: pointer;
+}
+.comment-popover-reply-send:hover {
+  opacity: 0.88;
+}
+.comment-popover-reply-send:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.comment-popover-reply-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.comment-popover-reply-image {
+  position: relative;
+}
+.comment-popover-reply-image-thumb {
+  display: block;
+  padding: 0;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-xs);
+  background: var(--bg-panel);
+  cursor: pointer;
+  overflow: hidden;
+}
+.comment-popover-reply-image-thumb img {
+  display: block;
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+}
+.comment-popover-reply-image-remove {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--border-soft);
+  border-radius: 50%;
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.comment-popover-reply-image-remove:hover {
+  color: var(--text);
 }
 .comment-popover-drag-handle {
   flex: 0 0 auto;
@@ -2129,7 +2240,6 @@
   overflow-wrap: anywhere;
 }
 .comment-popover textarea {
-  height: 112px;
   max-height: 112px;
   overflow-y: auto;
   resize: none;
@@ -2186,6 +2296,31 @@
 .comment-popover-close:hover:not(:disabled) {
   background: var(--bg-subtle);
   border-color: var(--border-strong);
+  color: var(--text);
+}
+/* Always-visible close button pinned to the popover's top-right corner so
+   the user can dismiss the popover from any state (composing, viewing an
+   existing comment, replying). */
+.comment-popover-close-btn {
+  position: absolute;
+  top: 10px;
+  right: 6px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 0;
+}
+.comment-popover-close-btn:hover {
+  background: var(--bg-subtle);
   color: var(--text);
 }
 .comment-popover button > svg {

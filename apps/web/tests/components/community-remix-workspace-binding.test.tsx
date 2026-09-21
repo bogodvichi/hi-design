@@ -262,6 +262,9 @@ function installDaemonStub(options: { refusePatch?: boolean } = {}): DaemonSpy {
     const url = String(input);
     const pathname = new URL(url, 'http://daemon.local').pathname;
 
+    if (pathname === '/api/auth/valid') {
+      return jsonResponse({ ok: true, username: 'admin' });
+    }
     if (pathname === '/api/workspace/directory') {
       spy.directoryReads += 1;
       return jsonResponse(workspaceDirectoryFixture([teamContext()]));
@@ -290,6 +293,15 @@ function installDaemonStub(options: { refusePatch?: boolean } = {}): DaemonSpy {
           projectId: REMIXED_PROJECT_ID,
           conversationId: 'remixed-conversation',
           relPath: 'index.html',
+          project: {
+            id: REMIXED_PROJECT_ID,
+            name: 'Remixed deck',
+            skillId: null,
+            designSystemId: null,
+            createdAt: 1778244000000,
+            updatedAt: 1778244000000,
+            metadata: { kind: 'prototype' },
+          },
         },
         201,
       );
