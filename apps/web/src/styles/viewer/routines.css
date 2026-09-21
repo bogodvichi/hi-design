@@ -2289,10 +2289,13 @@
   gap: 8px;
   border: none;
   border-radius: 20px;
-  background: color-mix(in srgb, #fff 72%, transparent);
-  -webkit-backdrop-filter: var(--material-thin-backdrop);
-  backdrop-filter: var(--material-thin-backdrop);
-  box-shadow: var(--shadow-xs);
+  /* Neutral gray tray when the project composer is not the active editing
+     surface. The white editor inside still owns focus, so the two layers read
+     clearly instead of the whole composer washing out into the page. */
+  background: #f5f5f5;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: none;
 }
 
 [data-theme="dark"] .app .chat-log,
