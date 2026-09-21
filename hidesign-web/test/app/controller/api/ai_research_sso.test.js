@@ -13,7 +13,7 @@ describe('test/app/controller/api/ai_research_sso.test.js', () => {
       app: {
         config: {
           aiResearch: {
-            baseUrl: 'http://drw.hikvision.com/',
+            baseUrl: 'https://drw.hikvision.com/',
             ssoSecret: 'a-secure-shared-secret-with-32-bytes',
             ssoIssuer: 'hidesign-web',
             ssoAudience: 'design-research-workbench',
@@ -56,7 +56,7 @@ describe('test/app/controller/api/ai_research_sso.test.js', () => {
       code: 0,
       msg: 'SUCCESS',
       data: {
-        launch_url: 'http://drw.hikvision.com/api/auth/platform?ticket=opaque-ticket&next=%2F',
+        launch_url: 'https://drw.hikvision.com/api/auth/platform?ticket=opaque-ticket&next=%2F',
         expires_in: 60,
       },
     });

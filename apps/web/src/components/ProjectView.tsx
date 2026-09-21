@@ -11606,6 +11606,7 @@ const coalescedCoverRefresh = useCoalescedCallback(
               projectId={project.id}
               projectKindForTracking={projectKindFromMetadataToTracking(currentProject.metadata)}
               projectFiles={projectFiles}
+              onProjectFilesChange={() => refreshProjectFiles({ fresh: true }).then(() => undefined)}
               activeProjectFileName={activeProjectFileName}
               projectFileNames={projectFileNames}
               projectResolvedDir={projectDetail.resolvedDir}

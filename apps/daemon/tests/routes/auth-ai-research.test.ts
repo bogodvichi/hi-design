@@ -54,7 +54,7 @@ describe('POST /api/auth/ai-research/launch', () => {
       loginAt: Date.now(),
     });
     createAiResearchLaunch.mockResolvedValue({
-      launchUrl: 'http://drw.hikvision.com/api/auth/platform?ticket=opaque&next=%2F',
+      launchUrl: 'https://drw.hikvision.com/api/auth/platform?ticket=opaque&next=%2F',
       expiresIn: 60,
     });
 
@@ -63,7 +63,7 @@ describe('POST /api/auth/ai-research/launch', () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       ok: true,
-      launchUrl: 'http://drw.hikvision.com/api/auth/platform?ticket=opaque&next=%2F',
+      launchUrl: 'https://drw.hikvision.com/api/auth/platform?ticket=opaque&next=%2F',
       expiresIn: 60,
     });
     expect(createAiResearchLaunch).toHaveBeenCalledTimes(1);

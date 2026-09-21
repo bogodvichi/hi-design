@@ -160,7 +160,7 @@ describe('CloudToolList', () => {
   });
 
   it('restores the official community tools when cloud records are missing', async () => {
-    const launchUrl = 'http://drw.hikvision.com/api/auth/platform?ticket=opaque&next=%2F';
+    const launchUrl = 'https://drw.hikvision.com/api/auth/platform?ticket=opaque&next=%2F';
     vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(new Response(JSON.stringify({
         tools: [],
@@ -197,7 +197,7 @@ describe('CloudToolList', () => {
     ));
     await waitFor(() => expect(openWorkspaceTabMock).toHaveBeenCalledWith({
       kind: 'external',
-      url: 'http://drw.hikvision.com/',
+      url: 'https://drw.hikvision.com/',
       bootstrapUrl: launchUrl,
       resourceKey: 'ai-research-workbench',
       title: 'AI用研工作台',

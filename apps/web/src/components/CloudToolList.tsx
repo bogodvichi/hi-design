@@ -28,7 +28,7 @@ interface CloudToolItem {
 const HIMIND_DESCRIPTION = '汇聚产品知识与设计经验，支持智能检索、图文问答与来源追溯。';
 const AI_RESEARCH_TITLE = 'AI用研工作台';
 const AI_RESEARCH_DESCRIPTION = '提供AI可用性测试、真人可用性测试、AI启发式评估、体验度量等功能。';
-const AI_RESEARCH_URL = 'http://drw.hikvision.com/';
+const AI_RESEARCH_URL = 'https://drw.hikvision.com/';
 const HIMIND_COMMUNITY_TOOL: CloudToolItem = {
   resourceId: 'himind-tool',
   ownerMemberId: '',
