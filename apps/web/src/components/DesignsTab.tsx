@@ -990,7 +990,6 @@ export function DesignsTab({
 											<button
 												type="button"
 												role="menuitem"
-												className="danger"
 												onClick={() => {
 													const projectKind = projectKindFromMetadataToTracking(p.metadata);
 													trackProjectsMorePopoverClick(analytics.track, {

@@ -148,7 +148,7 @@ function ProjectCardMenu({ name, publicationStatus, onPublish, onUnpublish, onDe
               <button type="button" role="menuitem" disabled={!!busy} onClick={() => { setOpen(false); onPublish?.(name); }}>
                 <Icon name="arrow-up" size={12} aria-hidden /><span>{t('pluginCard.publish')}</span>
               </button>
-              <button type="button" role="menuitem" className="danger" disabled={!!busy} onClick={() => { setOpen(false); onDelete?.(name); }}>
+              <button type="button" role="menuitem" disabled={!!busy} onClick={() => { setOpen(false); onDelete?.(name); }}>
                 <Icon name="close" size={12} aria-hidden /><span>{t('common.delete')}</span>
               </button>
             </>
@@ -159,7 +159,7 @@ function ProjectCardMenu({ name, publicationStatus, onPublish, onUnpublish, onDe
                   <button type="button" role="menuitem" disabled={!!busy} onClick={() => { setOpen(false); onUnpublish?.(name); }}>
                     <Icon name="eye-off" size={12} aria-hidden /><span>{t('squareScope.unpublish')}</span>
                   </button>
-                  <button type="button" role="menuitem" className="danger" disabled={!!busy} onClick={() => { setOpen(false); onDelete?.(name); }}>
+                  <button type="button" role="menuitem" disabled={!!busy} onClick={() => { setOpen(false); onDelete?.(name); }}>
                     <Icon name="close" size={12} aria-hidden /><span>{t('common.delete')}</span>
                   </button>
                 </>

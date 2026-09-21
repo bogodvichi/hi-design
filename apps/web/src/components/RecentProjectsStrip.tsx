@@ -610,6 +610,13 @@ selectionExtension,
     }
     return palette[Math.abs(hash) % palette.length] ?? '#1a1917';
   }
+  const currentAccountDisplayName = workspaceContext?.displayName?.trim() ?? '';
+  const isCurrentAccountDisplayName = (name: string | null | undefined): boolean =>
+    Boolean(
+      currentAccountDisplayName
+      && name?.trim()
+      && name.trim().toLocaleLowerCase() === currentAccountDisplayName.toLocaleLowerCase(),
+    );
 // The card owner avatar: first character of the owner display name with a
 // deterministic background colour. The HDW backend JOIN provides
 // ownerDisplayName directly; the UI shows "我" for self-owned projects.
@@ -655,6 +662,18 @@ selectionExtension,
       canAdmin: false,
       memberId: selfMemberId,
     };
+   }
+   if (ownerDisplayName && isCurrentAccountDisplayName(ownerDisplayName)) {
+     const initial = Array.from(ownerDisplayName.trim())[0]?.toUpperCase() ?? 'M';
+     return {
+       name: ownerDisplayName,
+       initial,
+       avatarUrl: workspaceContext?.avatarUrl?.trim() || null,
+       ownedBySelf: true,
+       canMutate: !isShared(project.id),
+       canAdmin: false,
+       memberId: ownerMemberId ?? selfMemberId,
+     };
    }
    // If we have an owner display name but the member ID is absent or
    // matches the current user, show the owner's name from the display
@@ -711,7 +730,15 @@ selectionExtension,
     || projectOwnerDisplayNames?.get(project.id)?.trim()
     || t('recentProjects.teamMemberCreator');
    const initial = (Array.from(name.trim())[0] ?? 'T').toUpperCase();
-   return { name, initial, avatarUrl: null, ownedBySelf: false, canMutate: false, canAdmin: isAdmin, memberId: ownerMemberId ?? null };
+   return {
+     name,
+     initial,
+     avatarUrl: null,
+     ownedBySelf: isCurrentAccountDisplayName(name),
+     canMutate: false,
+     canAdmin: isAdmin,
+     memberId: ownerMemberId ?? null,
+   };
   };
   const visibleProjects = useMemo(
     () => sortedProjects
@@ -2169,15 +2196,29 @@ function requestDelete(project: Project) {
                   <div className="recent-projects__card-time">
                     <>
                       {isTeamSeriesView ? (
-                        <span
-                          className="recent-projects__card-owner"
-                          title={creator.name}
-                          style={{ backgroundColor: ownerAvatarColor(creator.memberId) }}
-                          aria-hidden
-                        >
-                          {creator.name}
-                          {creator.ownedBySelf ? t('recentProjects.selfCreator') : null}
-                        </span>
+                        creator.ownedBySelf ? (
+                          <span
+                            className="recent-projects__card-owner"
+                            style={{ backgroundColor: '#000' }}
+                            aria-hidden
+                          >
+                            {t('recentProjects.selfCreator')}
+                          </span>
+                        ) : (
+                          <span
+                            className="recent-projects__card-owner"
+                            title={creator.name}
+                            style={{
+                              backgroundColor:
+                                creator.name === t('recentProjects.teamMemberCreator')
+                                  ? '#0ea5e9'
+                                  : ownerAvatarColor(creator.memberId),
+                            }}
+                            aria-hidden
+                          >
+                            {creator.name}
+                          </span>
+                        )
                       ) : (isSelfOwnedForDisplay || (creator.ownedBySelf && space !== 'team')) ? (
                         <span
                           className="recent-projects__card-owner"
@@ -2312,7 +2353,6 @@ function requestDelete(project: Project) {
                        <button
                          type="button"
                          role="menuitem"
-                         className="danger"
                          disabled={!creator.canMutate}
                          title={creator.canMutate ? undefined : t('recentProjects.ownOnlyMutation')}
                          onClick={() => requestDelete(project)}

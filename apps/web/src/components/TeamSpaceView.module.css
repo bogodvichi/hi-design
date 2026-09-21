@@ -1,7 +1,7 @@
 .view {
   width: 100%;
   margin: 0;
-  padding: 0 0 72px;
+  padding: 0 0 var(--module-content-bottom-padding, 72px);
   color: var(--text);
 }
 
@@ -751,9 +751,11 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
-.folderCardSelected {
-  outline: 1px solid var(--border-strong);
-  outline-offset: 4px;
+.folderCardSelected,
+.folderCardSelected:hover {
+  border: 1px solid #353535;
+  border-radius: var(--radius);
+  outline: none;
 }
 
 .folderSelectCheck {
@@ -1021,14 +1023,6 @@
   color: var(--text-strong);
 }
 
-.folderCardMenu button.danger {
-  color: var(--red, #dc2626);
-}
-
-.folderCardMenu button.danger:hover,
-.folderCardMenu button.danger:focus-visible {
-  background: color-mix(in srgb, var(--red, #dc2626) 12%, transparent);
-}
 
 /* --- Create group dialog form --- */
 
