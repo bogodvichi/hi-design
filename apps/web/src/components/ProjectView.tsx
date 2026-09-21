@@ -908,6 +908,19 @@ export function stableProjectReadOnlyPresentation(
   return previous.readOnly === readOnly ? previous : { projectId, readOnly };
 }
 
+export function projectChatCollapseControlVisible(
+  workspaceFocused: boolean,
+  personalProject: boolean,
+  writerAuthority: ProjectCollab['writerAuthority'],
+): boolean {
+  if (workspaceFocused || personalProject) return false;
+  // On a freshly mounted team project the collaboration relationship is
+  // intentionally fail-closed as `pending`. Rendering the team-project collapse
+  // chrome during that one frame makes the icon flash before owner/personal
+  // presentation settles. Wait for a positive authority verdict instead.
+  return writerAuthority !== 'pending';
+}
+
 function maxChatPanelWidthForSplit(splitWidth: number): number {
   if (!Number.isFinite(splitWidth) || splitWidth <= 0) return MAX_CHAT_PANEL_WIDTH;
   const workspaceMinWidth = workspacePanelMinWidthForSplit(splitWidth);
@@ -2657,6 +2670,11 @@ export function ProjectView({
     readOnlyFocusProjectId,
   );
   const workspaceFocused = stableReadOnlyFocus || workspaceFocusRequested;
+  const showProjectChatCollapseControl = projectChatCollapseControlVisible(
+    workspaceFocused,
+    personalProject,
+    projectCollab.writerAuthority,
+  );
   const setWorkspaceFocused = useCallback((next: boolean) => {
     if (stableReadOnlyFocus && !next) return;
     setWorkspaceFocusRequested(next);
@@ -11747,26 +11765,24 @@ const coalescedCoverRefresh = useCoalescedCallback(
               the window top since the chrome row collapses). Unmounting
               (workspace-focused mode, leaving the route) automatically
               returns the strip to the chrome row. */}
-          {!workspaceFocused && !personalProject ? (
+          {showProjectChatCollapseControl ? (
             <div
               className="split-chat-tabs-dock"
               data-testid="workspace-tabs-dock"
               ref={chatTabsDockRef}
             >
-              {!personalProject ? (
-                <button
-                  type="button"
-                  className="split-chat-collapse od-tooltip"
-                  onClick={() => setWorkspaceFocused(true)}
-                  title={t('chat.collapsePane')}
-                  aria-label={t('chat.collapsePane')}
-                  data-tooltip={t('chat.collapsePane')}
-                  data-tooltip-placement="bottom"
-                  data-testid="chat-collapse-toggle"
-                >
-                  <Icon name="panel-left" size={16} />
-                </button>
-              ) : null}
+              <button
+                type="button"
+                className="split-chat-collapse od-tooltip"
+                onClick={() => setWorkspaceFocused(true)}
+                title={t('chat.collapsePane')}
+                aria-label={t('chat.collapsePane')}
+                data-tooltip={t('chat.collapsePane')}
+                data-tooltip-placement="bottom"
+                data-testid="chat-collapse-toggle"
+              >
+                <Icon name="panel-left" size={16} />
+              </button>
             </div>
           ) : null}
           {activeConversationId || conversationLoadError || emptyConversationReadOnlySettled ? (

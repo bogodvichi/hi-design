@@ -32,6 +32,7 @@ import {
   projectSplitClassName,
   projectSplitStyle,
   projectWorkspaceFocusIsForced,
+  projectChatCollapseControlVisible,
   stableWorkspacePanelMinWidthForSplit,
   stableProjectReadOnlyPresentation,
   stickyPersonalProjectPresentation,
@@ -3535,6 +3536,15 @@ describe('projectSplitClassName', () => {
     // A different project gets a fresh presentation decision.
     state = stickyPersonalProjectPresentation(state, 'project-2', false);
     expect(state).toEqual({ projectId: 'project-2', personal: false });
+  });
+
+  it('does not flash the project chat-collapse control while ownership is pending', () => {
+    expect(projectChatCollapseControlVisible(false, false, 'pending')).toBe(false);
+    expect(projectChatCollapseControlVisible(false, false, 'allowed')).toBe(true);
+    expect(projectChatCollapseControlVisible(false, false, 'denied')).toBe(true);
+    expect(projectChatCollapseControlVisible(false, true, 'pending')).toBe(false);
+    expect(projectChatCollapseControlVisible(false, true, 'allowed')).toBe(false);
+    expect(projectChatCollapseControlVisible(true, false, 'allowed')).toBe(false);
   });
 
   it('keeps project read-only presentation stable while writer authority is pending', () => {
