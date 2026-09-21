@@ -1515,9 +1515,16 @@
 }
 
 .app .split {
-  /* Same material as the tab strip above: nothing painted here, the app
-     wash / window vibrancy shows through (veil tokens in app-wash.css). */
-  background: var(--veil-page, transparent);
+  /* Keep the global App Wash unchanged. Project mode adds only one broad,
+     low-contrast blue ambient glow around the chat/workspace boundary so the
+     nearly-white center gains depth without reading as a divider or color block. */
+  background-color: var(--veil-page, transparent);
+  background-image: radial-gradient(
+    46% 88% at 34% 42%,
+    rgba(168, 196, 236, 0.18) 0%,
+    rgba(168, 196, 236, 0.09) 34%,
+    transparent 72%
+  );
 }
 .app .split-chat-slot {
   /* Inset the pane so it reads as a floating card (same treatment as the home
@@ -1537,11 +1544,9 @@
   border: none;
   border-radius: var(--radius-lg);
   box-shadow: none;
-  /* Pure-white frosted glass: a white tint over the regular blur so the chat
-     panel reads paper-white instead of showing the raw ground. Dark theme
-     falls back to the standard Regular material, and the degraded blocks
-     below flatten it to a solid surface. */
-  background: color-mix(in srgb, #fff 85%, transparent);
+  /* Prior light milk-glass treatment. The project-specific App Wash underneath
+     now carries the visual separation instead of an explicit pane treatment. */
+  background: color-mix(in srgb, var(--bg) 68%, transparent);
   -webkit-backdrop-filter: var(--material-regular-backdrop);
   backdrop-filter: var(--material-regular-backdrop);
   overflow: hidden;
@@ -2283,8 +2288,10 @@
   gap: 8px;
   border: none;
   border-radius: 20px;
-  background: #f5f5f5;
-  box-shadow: none;
+  background: color-mix(in srgb, #fff 72%, transparent);
+  -webkit-backdrop-filter: var(--material-thin-backdrop);
+  backdrop-filter: var(--material-thin-backdrop);
+  box-shadow: var(--shadow-xs);
 }
 
 [data-theme="dark"] .app .chat-log,
@@ -2727,11 +2734,8 @@
   border: none;
   border-radius: var(--radius-lg);
   box-shadow: none;
-  /* Same effect as the top tab strip: no fill, no frost of its own — the
-     ground (app wash in the browser, wallpaper vibrancy on desktop) shows
-     through identically in the strip, the gutter, and these cards, so the
-     whole shell reads as one continuous material. Veil tokens return to
-     solid surfaces under reduced transparency (app-wash.css). */
+  /* Leave the project canvas transparent so the shifted blue field can carry
+     the left/right separation naturally. */
   background: transparent;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
@@ -2746,10 +2750,11 @@
 .app .ws-tabs-shell {
   padding: 6px 14px;
   border-bottom: none;
-  /* Match the solid panel below instead of the shared chat-header glass. */
-  background: var(--bg);
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
+  /* Project-local tabs sit on the same wash as the canvas below. A light frost
+     preserves tab legibility without turning this strip back into a white bar. */
+  background: color-mix(in srgb, var(--bg) 62%, transparent);
+  -webkit-backdrop-filter: var(--material-thin-backdrop);
+  backdrop-filter: var(--material-thin-backdrop);
 }
 .app .workspace-back-control {
   position: relative;
