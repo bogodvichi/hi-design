@@ -2675,10 +2675,10 @@ function AppInner() {
   ]);
 
   const refreshSkills = useCallback(async (scoped?: boolean) => {
-    // Default (unscoped) omits `x-od-workspace-id` so the daemon returns every
-    // skill regardless of workspace binding — the project creation flow needs
-    // the full catalog. Pass `true` from the "Mine"/"Team" scope tabs to apply
-    // workspace filtering.
+    // The workspace-keyed effect and composer scope tabs both need the
+    // workspace identity so the daemon can discover `.team-workspaces`
+    // materializations and attach owner/workspace bindings. Internal mutation
+    // catch-up callers may omit it to preserve the legacy full-catalog read.
     if (workspaceContextStateRef.current.identityChangePending) return;
     const issuedAccountGeneration = currentWorkspaceAccountGeneration();
     const read = beginWorkspaceScopedRead(workspaceContextRef.current);
@@ -2737,7 +2737,7 @@ function AppInner() {
     if (workspaceContextLoading || workspaceContextState.identityChangePending) return;
     if (skillsReadIdentityRef.current === skillsReadIdentity) return;
     skillsReadIdentityRef.current = skillsReadIdentity;
-    void refreshSkills();
+    void refreshSkills(true);
   }, [
     workspaceContextLoading,
     workspaceContextState.identityChangePending,

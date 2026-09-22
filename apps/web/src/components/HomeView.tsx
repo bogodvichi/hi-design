@@ -1244,8 +1244,8 @@ export function HomeView({
  // Scope tabs only filter the already-authorized catalogue locally. Refresh
  // the complete catalogue so switching tabs cannot evict a staged choice.
  const handleSkillTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
-    void onSkillsRefresh?.();
-  }, [onSkillsRefresh]);
+    void onSkillsRefresh?.(true);
+ }, [onSkillsRefresh]);
 
  // Re-fetch MCP servers and team cloud templates when the user switches
  // the MCP scope tab in ComposerPlusMenu.

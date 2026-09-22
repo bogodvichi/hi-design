@@ -1104,10 +1104,10 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
 
 
 
-   // Scope tabs filter the complete authorized catalogue locally. Refreshing
-   // a scoped subset here used to remove staged choices on tab changes.
+  // Scope tabs filter the complete authorized catalogue locally. Refreshing
+  // a scoped subset here used to remove staged choices on tab changes.
     const handleSkillTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
-      void onSkillsRefresh?.();
+      void onSkillsRefresh?.(true);
     }, [onSkillsRefresh]);
 
    // Re-fetch MCP servers and team cloud templates when the user switches
