@@ -70,6 +70,7 @@ import {
   setProjectCoverSnapshot,
 } from '../lib/project-cover-cache';
 import { useInView } from './plugins-home/useInView';
+import { resolveFloatingMenuHorizontalAlign } from '../utils/floating-menu-placement';
 import { Toast } from './Toast';
 import {
   workspaceIdentityCacheKey,
@@ -537,10 +538,48 @@ selectionExtension,
  const [searchQuery, setSearchQuery] = useState('');
  const effectiveSearchQuery = externalSearchQuery ?? searchQuery;
   const [openHeaderMenu, setOpenHeaderMenu] = useState<'owner' | 'sort' | null>(null);
+  const [headerMenuAlign, setHeaderMenuAlign] = useState<'start' | 'end'>('start');
+  const ownerFilterWrapRef = useRef<HTMLDivElement | null>(null);
+  const sortFilterWrapRef = useRef<HTMLDivElement | null>(null);
+  const headerMenuPanelRef = useRef<HTMLDivElement | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedProjectIds, setSelectedProjectIds] = useState<Set<string>>(() => new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+
+  useLayoutEffect(() => {
+    if (!openHeaderMenu) return;
+    const anchor = openHeaderMenu === 'owner'
+      ? ownerFilterWrapRef.current
+      : sortFilterWrapRef.current;
+    const menu = headerMenuPanelRef.current;
+    const trigger = anchor?.querySelector<HTMLElement>(':scope > button');
+    if (!anchor || !menu || !trigger) return;
+
+    const measure = () => {
+      const triggerRect = trigger.getBoundingClientRect();
+      const menuRect = menu.getBoundingClientRect();
+      setHeaderMenuAlign(resolveFloatingMenuHorizontalAlign({
+        triggerLeft: triggerRect.left,
+        triggerRight: triggerRect.right,
+        menuWidth: menuRect.width,
+        viewportWidth: window.innerWidth || document.documentElement.clientWidth,
+        preferred: openHeaderMenu === 'sort' ? 'end' : 'start',
+      }));
+    };
+
+    measure();
+    window.addEventListener('resize', measure);
+    window.addEventListener('scroll', measure, true);
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    observer?.observe(trigger);
+    observer?.observe(menu);
+    return () => {
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('scroll', measure, true);
+      observer?.disconnect();
+    };
+  }, [openHeaderMenu]);
 
   useEffect(() => {
     if (limit !== undefined) return;
@@ -1841,7 +1880,7 @@ function requestDelete(project: Project) {
               </button>
             ) : null}
             {!minimalControls && showOwnerFilter ? (
-              <div className="recent-projects__filter-wrap">
+              <div ref={ownerFilterWrapRef} className="recent-projects__filter-wrap">
                 <button
                   type="button"
                   className="recent-projects__filter"
@@ -1852,7 +1891,11 @@ function requestDelete(project: Project) {
                   <Icon name="chevron-down" size={13} />
                 </button>
                 {openHeaderMenu === 'owner' ? (
-                  <div className="recent-projects__filter-menu" role="menu">
+                  <div
+                    ref={headerMenuPanelRef}
+                    className={`recent-projects__filter-menu is-align-${headerMenuAlign}`}
+                    role="menu"
+                  >
                     {OWNER_FILTER_OPTIONS.map((option) => (
                       <button
                         key={option.id}
@@ -1874,7 +1917,7 @@ function requestDelete(project: Project) {
                 ) : null}
               </div>
             ) : null}
-            <div className="recent-projects__filter-wrap">
+            <div ref={sortFilterWrapRef} className="recent-projects__filter-wrap">
               <button
                 type="button"
                 className="recent-projects__view-btn"
@@ -1887,7 +1930,11 @@ function requestDelete(project: Project) {
                 </svg>
               </button>
               {openHeaderMenu === 'sort' ? (
-                <div className="recent-projects__filter-menu" role="menu">
+                <div
+                  ref={headerMenuPanelRef}
+                  className={`recent-projects__filter-menu is-align-${headerMenuAlign}`}
+                  role="menu"
+                >
                   {SORT_OPTIONS.map((option) => (
                     <button
                       key={option.id}

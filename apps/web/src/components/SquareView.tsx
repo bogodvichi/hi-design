@@ -744,6 +744,7 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
   const [refreshKey, setRefreshKey] = useState(0);
   const [publishOpen, setPublishOpen] = useState(false);
   const [publicationFilter, setPublicationFilter] = useState<PublicationFilter>('all');
+  const [typeTabsEl, setTypeTabsEl] = useState<HTMLDivElement | null>(null);
 
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [workspaceMemberId, setWorkspaceMemberId] = useState<string | null>(null);
@@ -946,7 +947,7 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
       </header>
 
       <div className={isMyPublishes ? publishStyles.toolbar : undefined}>
-      <div className={`${styles.typeTabs} ${isMyPublishes ? publishStyles.tabs : ''}`} role="tablist">
+      <div ref={setTypeTabsEl} className={`${styles.typeTabs} ${isMyPublishes ? publishStyles.tabs : ''}`} role="tablist">
         {TABS.map((tab) => (
           <button
             key={tab.id}
@@ -993,6 +994,7 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
             sourceProvider={isMyPublishes ? null : COMMUNITY_SKILL_PROVIDERS}
             mode="square"
             scope="public"
+            controlsPortalTarget={!isMyPublishes ? typeTabsEl : null}
           />
      ) : activeTab === 'mcp' ? (
          <CloudMcpList workspaceId={workspaceId} workspaceMemberId={workspaceMemberId} workspaceType={workspaceType} ownerMemberId={isMyPublishes ? workspaceMemberId : null} mode="square" scope="public" />

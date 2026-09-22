@@ -321,6 +321,7 @@ import {
   prepareSkillFromFiles,
   cleanupSkillTempDir,
 } from './skills/cloud-upload.js';
+import { communitySkillMatchesQuery } from './skills/community-search.js';
 import { createHdwHttpResourceAdapter } from './collab/hdw-http-resource-adapter.js';
 import {
   activateWorkspaceTeamSkillIfStillShared,
@@ -7384,6 +7385,7 @@ const designSystemBackingProjects = new Map<string, string>();
    const ownerMemberId = typeof req.query.owner_member_id === 'string' ? req.query.owner_member_id : undefined;
    const resourceScope = typeof req.query.scope === 'string' ? req.query.scope : '';
    const sourceProvider = typeof req.query.source === 'string' ? req.query.source : '';
+   const searchQuery = typeof req.query.q === 'string' ? req.query.q.trim() : '';
    const requestedCategory = typeof req.query.category === 'string' ? req.query.category.trim() : '';
    if (requestedCategory && !isSkillCategory(requestedCategory)) {
      return res.status(400).json({ error: 'INVALID_SKILL_CATEGORY' });
@@ -7405,10 +7407,11 @@ const designSystemBackingProjects = new Map<string, string>();
    };
    const includeMaasSkillhub = sourceProvider === MAAS_SKILLHUB_PROVIDER || sourceProvider === 'all';
    let maasSkills: any[] = [];
+   let maasSkillhubResolved = false;
    if (includeMaasSkillhub) {
      try {
-       const search = typeof req.query.q === 'string' ? req.query.q : '';
-       const { workspaceId: maasWorkspaceId, skills: resources } = await maasSkillhubClient.listSkills(search);
+       const { workspaceId: maasWorkspaceId, skills: resources } = await maasSkillhubClient.listSkills('');
+       maasSkillhubResolved = true;
        const installedLocalIds = new Map<string, string>();
        for (const binding of listWorkspaceResources(db, 'skill', workspaceId)) {
          if (binding.resourceState === 'deleted' || binding.visibility !== 'personal') continue;
@@ -7436,7 +7439,7 @@ const designSystemBackingProjects = new Map<string, string>();
             iconUrl: skill.iconUrl ?? null,
             category: normalizeSkillCategory(skill.skillSubType),
             installed: installedLocalIds.has(skill.id),
-          }));
+          })).filter((skill) => communitySkillMatchesQuery(skill, searchQuery));
         if (sourceProvider === MAAS_SKILLHUB_PROVIDER) {
           return res.json(finalizeSkillList(maasSkills));
         }
@@ -7451,8 +7454,7 @@ const designSystemBackingProjects = new Map<string, string>();
    }
    try {
      const resources = await hdwCloudClient.listResources(workspaceId, 'skill', ownerMemberId, resourceScope || undefined);
-      const search = typeof req.query.q === 'string' ? req.query.q.trim().toLowerCase() : '';
-      const skills = resources.map((r) => ({
+       const skills = resources.map((r) => ({
         resourceId: r.id,
         localId: (r.metadata as any)?.localId ?? r.id,
         title: (r.metadata as any)?.title ?? r.id,
@@ -7466,13 +7468,10 @@ const designSystemBackingProjects = new Map<string, string>();
         sourceLabel: 'HiDesign Community',
         publisherName: (r.metadata as any)?.publisherName ?? r.ownerDisplayName ?? r.ownerMemberId ?? null,
         category: normalizeSkillCategory((r.metadata as any)?.category),
-      })).filter((skill) => !search || [skill.title, skill.description, skill.localId]
-        .join(' ')
-        .toLowerCase()
-        .includes(search));
+      })).filter((skill) => communitySkillMatchesQuery(skill, searchQuery));
       res.json(finalizeSkillList([...maasSkills, ...skills]));
     } catch (err: any) {
-      if (maasSkills.length > 0) return res.json(finalizeSkillList(maasSkills));
+      if (maasSkillhubResolved) return res.json(finalizeSkillList(maasSkills));
       res.status(500).json({ error: err instanceof Error ? err.message : 'cloud skill list failed' });
     }
   });
