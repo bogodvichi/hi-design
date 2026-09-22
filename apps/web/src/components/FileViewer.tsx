@@ -1,4 +1,4 @@
-﻿import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent as ReactClipboardEvent, type CSSProperties, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent as ReactClipboardEvent, type CSSProperties, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { createPortal, flushSync } from 'react-dom';
 import { Button, Input, Select } from '@open-design/components';
 import {
@@ -175,6 +175,7 @@ import {
 } from '../runtime/exports';
 import { fetchAppVersionInfo } from '../providers/registry';
 import { copyToClipboard } from '../lib/copy-to-clipboard';
+import { partialHtmlToIframeWeb } from '../utils/formatDsl';
 import { captureAndUploadCover } from '../lib/capture-cover';
 import { updateRecentlyOpenedProjectCover } from '../lib/recently-opened-projects';
 import { buildReactComponentSrcdoc } from '../runtime/react-component';
@@ -4963,10 +4964,10 @@ export function CommentSidePanel({
           const active = comment.id === activeCommentId;
           const sendable = canSend(comment);
          const author = resolveCommentAuthor(comment.authorMemberId);
-          // Mirror BoardComposerPopover's seed derivation so the same person
-          // gets the same avatar color in the popover and the side panel:
-          // memberId (trimmed) → display name → '?'.
-          const authorSeed = author?.displayName?.trim() || '?';
+         // Mirror BoardComposerPopover's seed derivation so the same person
+         // gets the same avatar color in the popover and the side panel:
+         // memberId (trimmed) → display name → member id → '?'.
+         const authorSeed = author?.displayName?.trim() || comment.authorMemberId || '?';
          const isDragging = dragState?.draggingId === comment.id;
           const isResolved = comment.status === 'resolved';
           const canReply = !canReplyComment || canReplyComment(comment);
@@ -4996,7 +4997,7 @@ export function CommentSidePanel({
               aria-current={active ? 'true' : undefined}
               tabIndex={0}
               role="button"
-              aria-label={author ? `${author.displayName}: ${comment.note}` : comment.note}
+             aria-label={`${author?.displayName || comment.authorMemberId || t('chat.comments.targetArea')}: ${comment.note}`}
               onDragOver={(event) => handleDragOver(event, comment.id)}
               onDrop={(event) => handleDrop(event, comment.id)}
               onClick={() => onReply(comment)}
@@ -5016,20 +5017,18 @@ export function CommentSidePanel({
                     onChange={() => onToggleSelect(comment.id)}
                   />
                 ) : null}
-                <span className="comment-card-meta-stack">
-                 {author ? (
-                   <span
-                     className="avatar mini comment-card-avatar"
-                      style={{ background: avatarColorFor(authorSeed) }}
-                     aria-hidden="true"
-                   >
-                     {commentAuthorInitials(author.displayName)}
-                   </span>
-                 ) : null}
+               <span className="comment-card-meta-stack">
+                  <span
+                    className="avatar mini comment-card-avatar"
+                    style={{ background: avatarColorFor(authorSeed) }}
+                    aria-hidden="true"
+                  >
+                    {commentAuthorInitials(author?.displayName || comment.authorMemberId || '?')}
+                  </span>
                  <span className="comment-card-meta-lines">
-                    <strong className="comment-card-author">
-                      {author ? author.displayName : t('chat.comments.targetArea')}
-                    </strong>
+                   <strong className="comment-card-author">
+                     {author ? author.displayName : (comment.authorMemberId || t('chat.comments.targetArea'))}
+                   </strong>
                     <time className="comment-card-time" dateTime={new Date(commentCreatedAt(comment)).toISOString()}>
                       {formatCommentTime(commentCreatedAt(comment))}
                     </time>
@@ -5226,18 +5225,16 @@ export function CommentSidePanel({
                       //   current === comment.id ? null : comment.id,
                       // );
                     }}
+                 >
+                  <span
+                    className="avatar mini"
+                    style={{ background: avatarColorFor(authorSeed) }}
+                    aria-hidden="true"
                   >
-                   {author ? (
-                     <span
-                       className="avatar mini"
-                        style={{ background: avatarColorFor(authorSeed) }}
-                       aria-hidden="true"
-                     >
-                       {commentAuthorInitials(author.displayName)}
-                     </span>
-                   ) : null}
-                   <Icon name="message-square" size={12} />
-                   <span>{t('chat.comments.nReplies', { n: persistedReplies.length + localReplies.length })}</span>
+                    {commentAuthorInitials(author?.displayName || comment.authorMemberId || '?')}
+                  </span>
+                  <Icon name="message-square" size={12} />
+                  <span>{t('chat.comments.nReplies', { n: persistedReplies.length + localReplies.length })}</span>
                  </button>
                ) : (
                  <span className="comment-card-user-inline">
@@ -8148,6 +8145,7 @@ function HtmlViewer({
       | 'edit'
       | 'present_dropdown'
       | 'download_dropdown'
+      | 'download_dropdown_pixso'
       | 'share_dropdown'
       | 'review_dropdown'
       | 'settings',
@@ -8297,6 +8295,7 @@ function HtmlViewer({
   const [unifiedShareOpen, setUnifiedShareOpen] = useState(false);
 // 评审下拉与历史评审 Modal。下拉与「分享」「导出」共用 chrome-actions；
 const [reviewMenuOpen, setReviewMenuOpen] = useState(false);
+const [downloadMenuOpenForPixso, setDownloadMenuOpenForPixso] = useState(false);
 // 发起评审 Modal：弹出 ReviewAddModal。
 const [reviewAddModalOpen, setReviewAddModalOpen] = useState(false);
   const [shareAccess, setShareAccess] = useState<'private' | 'workspace'>('private');
@@ -9841,9 +9840,10 @@ const [reviewAddModalOpen, setReviewAddModalOpen] = useState(false);
   const [speakerNotesStatus, setSpeakerNotesStatus] = useState<'saved' | 'error' | null>(null);
   const speakerNotesTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const boardPreviewScaleOptions = localCommentSideDockActive ? { canvasPadding: 0 } : undefined;
- const shareRef = useRef<HTMLDivElement | null>(null);
+const shareRef = useRef<HTMLDivElement | null>(null);
   const reviewMenuRef = useRef<HTMLDivElement | null>(null);
- const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
+  const pixsoMenuRef = useRef<HTMLDivElement | null>(null);
+const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     () => (typeof document === 'undefined' ? null : resolveChromeActionsHost()),
   );
   useLayoutEffect(() => {
@@ -14176,26 +14176,29 @@ const [reviewAddModalOpen, setReviewAddModalOpen] = useState(false);
   }, [agentToolsOpen, workspaceActive]);
 
   useEffect(() => {
-   if (!workspaceActive || (!deployMenuOpen && !reviewMenuOpen)) return;
-   const onDocClick = (e: MouseEvent) => {
-     if (!shareRef.current) return;
-     if (shareRef.current.contains(e.target as Node)) return;
-      if (reviewMenuRef.current?.contains(e.target as Node)) return;
+  if (!workspaceActive || (!deployMenuOpen && !reviewMenuOpen && !downloadMenuOpenForPixso)) return;
+  const onDocClick = (e: MouseEvent) => {
+    if (!shareRef.current) return;
+    if (shareRef.current.contains(e.target as Node)) return;
+     if (reviewMenuRef.current?.contains(e.target as Node)) return;
+      if (pixsoMenuRef.current?.contains(e.target as Node)) return;
+    setDeployMenuOpen(false);
+    setReviewMenuOpen(false);
+    setDownloadMenuOpenForPixso(false);
+  };
+   const onKey = (e: KeyboardEvent) => {
+     if (e.key !== 'Escape') return;
      setDeployMenuOpen(false);
      setReviewMenuOpen(false);
+      setDownloadMenuOpenForPixso(false);
    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      setDeployMenuOpen(false);
-      setReviewMenuOpen(false);
-    };
-    document.addEventListener('mousedown', onDocClick);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onDocClick);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [deployMenuOpen, reviewMenuOpen, workspaceActive]);
+   document.addEventListener('mousedown', onDocClick);
+   document.addEventListener('keydown', onKey);
+   return () => {
+     document.removeEventListener('mousedown', onDocClick);
+     document.removeEventListener('keydown', onKey);
+   };
+ }, [deployMenuOpen, reviewMenuOpen, downloadMenuOpenForPixso, workspaceActive]);
 
   useEffect(() => {
     if (!workspaceActive || !inTabPresent) return;
@@ -15273,6 +15276,7 @@ const [reviewAddModalOpen, setReviewAddModalOpen] = useState(false);
     consumedShareNonceRef.current = nonce;
     setExportReadyNudge(false);
     markExportReadyNudgeSeen(projectId, file.name);
+    setDownloadMenuOpenForPixso(false);
     setUnifiedActionTab('share');
     setDeployMenuOpen(true);
   }, [shareRequest?.nonce, canShare, projectId, file.name]);
@@ -15289,6 +15293,7 @@ const [reviewAddModalOpen, setReviewAddModalOpen] = useState(false);
     consumedDownloadNonceRef.current = nonce;
     setExportReadyNudge(false);
     markExportReadyNudgeSeen(projectId, file.name);
+    setDownloadMenuOpenForPixso(false);
     setUnifiedActionTab('export');
     setDeployMenuOpen(true);
   }, [downloadRequest?.nonce, canDownload, projectId, file.name]);
@@ -15333,6 +15338,53 @@ const [reviewAddModalOpen, setReviewAddModalOpen] = useState(false);
   };
   const openShareMenu = () => openUnifiedActionMenu('share', 'share_dropdown');
   const openDownloadMenu = () => openUnifiedActionMenu('export', 'download_dropdown');
+  function triggerPixsoExport(isSplit?:boolean) {
+    setDownloadMenuOpenForPixso(false);
+    let html = source || '';
+    if (!html.includes('<head>') && !html.includes('<HEAD>')) {
+      setExportToast({ message: '当前文件不是有效的 HTML，无法导入 Pixso', tone: 'error' });
+      return;
+    }
+    setExportToast({ message: '正在推送到 Pixso...', tone: 'loading' });
+    let ws: WebSocket | null = null;
+    let dismissed = false;
+    try {
+      ws = new WebSocket('ws://localhost:9528');
+      ws.onopen = () => {
+        if (dismissed) return;
+        if(isSplit){
+          html = html
+             .replace('<head>', `<head><script>window.__mcp__use__sub__pages=true</script>`)
+             .replace('<HEAD>', `<HEAD><script>window.__mcp__use__sub__pages=true</script>`)
+        }
+        partialHtmlToIframeWeb(html,(dslData:any)=>{
+          ws?.send(JSON.stringify(dslData));
+          ws?.close();
+        })
+
+        setExportToast({ message: '已推送到 Pixso', tone: 'success' });
+      };
+      ws.onmessage = (event) => {
+      };
+      ws.onerror = () => {
+        ws?.close();
+      };
+      ws.onclose = () => {
+        ws = null;
+      };
+    } catch {
+      setExportToast({ message: 'Pixso 推送服务连接失败', tone: 'error' });
+      ws = null;
+    }
+  }
+
+  const openDownloadMenuForPixso = () => {
+    fireArtifactHeaderClick('download_dropdown_pixso');
+    setExportReadyNudge(false);
+    markExportReadyNudgeSeen(projectId, file.name);
+    setDeployMenuOpen(false);
+    setDownloadMenuOpenForPixso((v) => !v);
+  };
   const openReviewMenu = () => {
     fireArtifactHeaderClick('review_dropdown');
     setExportReadyNudge(false);
@@ -17089,19 +17141,41 @@ async function openReviewListModal() {
                ) : null}
               </div>
              </div>
-              <button
-                type="button"
-                className="chrome-action chrome-action-secondary chrome-action-with-label chrome-action-text-only"
-                disabled={viewerOnly || source === null}
-                title={viewerOnly ? viewerOnlyDisabledTitle : '推送 Pixso'}
-                onClick={() => {
-                  // Placeholder: push current artifact to Pixso
-                  void copyToClipboard(window.location.href);
-                }}
-              >
-                <RemixIcon name="send-plane-2-line" size={15} />
-                <span>推送Pixso</span>
-              </button>
+              <div className="share-menu chrome-share-menu">
+                <div style={{position:"absolute",left:"10000px",top:"10000px"}}>
+                  <iframe id="ai-main-iframe" width={1920} height={1080}></iframe>
+                </div>
+                <button
+                  type="button"
+                  className="chrome-action chrome-action-secondary chrome-action-with-label chrome-action-text-only"
+                  aria-haspopup="menu"
+                  aria-expanded={downloadMenuOpenForPixso}
+                  disabled={viewerOnly || source === null}
+                  title={viewerOnly ? viewerOnlyDisabledTitle : '推送 Pixso'}
+                  onClick={openDownloadMenuForPixso}
+                >
+                  <span>推送</span>
+                </button>
+                {downloadMenuOpenForPixso ? (
+                  <div className="share-menu-popover" role="menu">
+                    <button
+                      type="button"
+                      className="share-menu-item"
+                      role="menuitem"
+                      onClick={() => {
+                        setDeployMenuOpen(false);
+                        triggerPixsoExport();
+                      }}
+                    >
+                      <span className="share-menu-icon"><RemixIcon name="file-code-line" size={15} /></span>
+                      <span>推送到 Pixso</span>
+                    </button>
+                    <span className="share-menu-text" style={{padding:"8px 10px 8px 36px"}}>
+                      <small>请确保Pixso中已打开AI Builder Dev插件</small>
+                    </span>
+                  </div>
+                ) : null}
+              </div>
               <div className="share-menu chrome-share-menu chrome-share-menu--unified" ref={shareRef}>
                 {/* Share and Export are separate header intents again (the
                     0.18.0 unified tabs buried Export one level deep and export
@@ -19058,6 +19132,18 @@ function escapeHtmlAttr(value: string): string {
     .replace(/>/g, '&gt;');
 }
 
+async function fetchImageAsDataUrl(imageUrl: string): Promise<string> {
+  const response = await fetch(imageUrl, { cache: 'no-store' });
+  if (!response.ok) throw new Error(String(response.status));
+  const blob = await response.blob();
+  return await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ''));
+    reader.onerror = () => reject(reader.error ?? new Error('Failed to read image'));
+    reader.readAsDataURL(blob);
+  });
+}
+
 function ImageViewer({
   projectId,
   file,
@@ -19071,6 +19157,89 @@ function ImageViewer({
     projectFileUrl(projectId, file.name, workspaceContext),
     `v=${Math.round(file.mtime)}`,
   );
+  const [shareMenuOpen, setShareMenuOpen] = useState(false);
+  const [pushMenuOpen, setPushMenuOpen] = useState(false);
+  const [exportToast, setExportToast] = useState<ExportToastState | null>(null);
+  const pushMenuRef = useRef<HTMLDivElement | null>(null);
+  const shareMenuRef = useRef<HTMLDivElement | null>(null);
+
+  // Close the share/push popovers on outside click / Escape.
+  useEffect(() => {
+    if (!shareMenuOpen && !pushMenuOpen) return;
+    const onPointer = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (shareMenuRef.current && shareMenuRef.current.contains(target)) return;
+      if (pushMenuRef.current && pushMenuRef.current.contains(target)) return;
+      setShareMenuOpen(false);
+      setPushMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShareMenuOpen(false);
+        setPushMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', onPointer);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointer);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [shareMenuOpen, pushMenuOpen]);
+
+  async function copyLocalShareLink() {
+    setShareMenuOpen(false);
+    const relativeUrl = projectRawUrl(projectId, file.name, workspaceContext);
+    const shareUrl = new URL(relativeUrl, window.location.origin).toString();
+    const ok = await copyToClipboard(shareUrl);
+    setExportToast(
+      ok
+        ? { message: '复制链接成功', tone: 'success' }
+        : { message: t('useEverywhere.copyFailed'), tone: 'error' },
+    );
+  }
+
+  async function triggerPixsoPush() {
+    setPushMenuOpen(false);
+    setExportToast({ message: '正在推送到 Pixso...', tone: 'loading' });
+    let dataUrl: string;
+    try {
+      dataUrl = await fetchImageAsDataUrl(url);
+    } catch {
+      setExportToast({ message: '图片读取失败，无法导入 Pixso', tone: 'error' });
+      return;
+    }
+
+    const img = new Image();
+    img.src = dataUrl;
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error('图片尺寸读取失败'));
+    });
+    const width = img.naturalWidth;
+    const height = img.naturalHeight;
+
+    let ws: WebSocket | null = null;
+    try {
+      ws = new WebSocket('ws://localhost:9528');
+      ws.onopen = () => {
+        ws?.send(dataUrl + '###' + file.name + '###' + width + '###' + height);
+        ws?.close();
+        setExportToast({ message: '已推送到 Pixso', tone: 'success' });
+      };
+      ws.onerror = () => {
+        setExportToast({ message: 'Pixso 推送服务连接失败', tone: 'error' });
+        ws?.close();
+      };
+      ws.onclose = () => {
+        ws = null;
+      };
+    } catch {
+      setExportToast({ message: 'Pixso 推送服务连接失败', tone: 'error' });
+      ws = null;
+    }
+  }
+
   return (
     <div className="viewer image-viewer">
       <div className="viewer-toolbar">
@@ -19082,6 +19251,67 @@ function ImageViewer({
           </span>
         </div>
         <div className="viewer-toolbar-actions">
+          <div className="share-menu" ref={shareMenuRef}>
+            <button
+              type="button"
+              className="ghost-link"
+              aria-haspopup="menu"
+              aria-expanded={shareMenuOpen}
+              onClick={() => {
+                setPushMenuOpen(false);
+                setShareMenuOpen((v) => !v);
+              }}
+            >
+              <span>分享</span>
+            </button>
+            {shareMenuOpen ? (
+              <div className="share-menu-popover" role="menu">
+                <button
+                  type="button"
+                  className="share-menu-item"
+                  role="menuitem"
+                  onClick={() => void copyLocalShareLink()}
+                >
+                  <span className="share-menu-icon"><RemixIcon name="file-copy-line" size={15} /></span>
+                  <span className="share-menu-text">
+                    <span>复制分享链接</span>
+                    <small></small>
+                  </span>
+                </button>
+              </div>
+            ) : null}
+          </div>
+          <div className="share-menu" ref={pushMenuRef}>
+            <button
+              type="button"
+              className="ghost-link"
+              aria-haspopup="menu"
+              aria-expanded={pushMenuOpen}
+              onClick={() => {
+                setShareMenuOpen(false);
+                setPushMenuOpen((v) => !v);
+              }}
+            >
+              <span>推送</span>
+            </button>
+            {pushMenuOpen ? (
+              <div className="share-menu-popover" role="menu">
+                <button
+                  type="button"
+                  className="share-menu-item"
+                  role="menuitem"
+                  onClick={() => void triggerPixsoPush()}
+                >
+                  <span className="share-menu-icon"><RemixIcon name="image-line" size={15} /></span>
+                  <span className="share-menu-text">
+                    <span>推送到 Pixso</span>
+                    <small>请确保Pixso中已打开AI Builder Dev插件</small>
+                  </span>
+                </button>
+              </div>
+            ) : null}
+          </div>
+          <span className="viewer-divider" aria-hidden />
           <a
             className="ghost-link"
             href={projectFileUrl(projectId, file.name, workspaceContext)}
@@ -19102,6 +19332,17 @@ function ImageViewer({
       <div className="viewer-body image-body">
         <img alt={file.name} src={url} />
       </div>
+      {exportToast && typeof document !== 'undefined' ? createPortal(
+        <Toast
+          message={exportToast.message}
+          tone={exportToast.tone}
+          placement="top"
+          role={exportToast.tone === 'error' ? 'alert' : 'status'}
+          ttlMs={exportToast.tone === 'loading' ? 60000 : 2200}
+          onDismiss={exportToast.tone === 'loading' ? undefined : () => setExportToast(null)}
+        />,
+        document.body,
+      ) : null}
     </div>
   );
 }

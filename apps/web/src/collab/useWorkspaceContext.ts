@@ -321,6 +321,8 @@ export function workspaceContextFromDirectoryItem(
     }),
     workspaceName: item.workspaceName,
   };
+  if (item.isDefaultTeam !== undefined) context.isDefaultTeam = item.isDefaultTeam;
+  if (item.isSharedSpace !== undefined) context.isSharedSpace = item.isSharedSpace;
   if (item.workspaceType === 'team') {
     context.teamId = item.workspaceId;
     context.teamName = item.workspaceName;
@@ -551,10 +553,10 @@ function explicitWorkspaceHeaders(selection: WorkspaceSelection): Record<string,
   };
 }
 
-function workspaceDirectoryItemFromContext(
+export function workspaceDirectoryItemFromContext(
   context: WorkspaceCollabContext,
 ): WorkspaceDirectoryItem {
-  return {
+  const item: WorkspaceDirectoryItem = {
     workspaceId: context.workspaceId,
     workspaceName:
       context.workspaceName?.trim()
@@ -566,6 +568,9 @@ function workspaceDirectoryItemFromContext(
     memberStatus: context.memberStatus,
     lifecycleState: context.lifecycleState,
   };
+  if (context.isDefaultTeam !== undefined) item.isDefaultTeam = context.isDefaultTeam;
+  if (context.isSharedSpace !== undefined) item.isSharedSpace = context.isSharedSpace;
+  return item;
 }
 
 /** Test seam: clear the module-level context cache between tests. */

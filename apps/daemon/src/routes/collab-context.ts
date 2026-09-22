@@ -255,6 +255,12 @@ function enrichVerifiedWorkspaceContext(
     lifecycleState: verified.lifecycleState,
     permissions: verified.permissions,
     ...(verified.teamId ? { teamId: verified.teamId } : {}),
+    ...(verified.isDefaultTeam !== undefined
+      ? { isDefaultTeam: verified.isDefaultTeam }
+      : {}),
+    ...(verified.isSharedSpace !== undefined
+      ? { isSharedSpace: verified.isSharedSpace }
+      : {}),
   };
 }
 

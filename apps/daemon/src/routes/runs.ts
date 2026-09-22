@@ -51,6 +51,7 @@ import {
   normalizeConversationSessionMode,
   updateProject,
   upsertMessage,
+  accumulateUsedMcpIds,
   accumulateUsedSkillIds,
 } from '../db.js';
 import { readVelaLoginStatus } from '../integrations/vela.js';
@@ -2205,9 +2206,9 @@ export function registerRunRoutes(app: Express, ctx: RegisterRunRoutesDeps) {
         }
         throw err;
       }
-      // Accumulate skill ids from this run into the project's metadata.usedSkillIds
-      // so every skill referenced across conversations is tracked. This runs
-      // once per run creation, deduplicating against the existing list.
+      // Accumulate skill and MCP ids from this run into project metadata so
+      // every context referenced across conversations is tracked. This runs
+      // once per run creation, deduplicating against the existing lists.
       const runSkillIdsToAccumulate = [
         ...new Set(
           [
@@ -2225,6 +2226,29 @@ export function registerRunRoutes(app: Express, ctx: RegisterRunRoutesDeps) {
         const accumulatedMeta = accumulateUsedSkillIds(
           currentMeta as Record<string, unknown>,
           runSkillIdsToAccumulate,
+        );
+        updateProject(db, meta.projectId, {
+          metadata: accumulatedMeta,
+        });
+      }
+      const requestContext = requestBody.context
+        && typeof requestBody.context === 'object'
+        && !Array.isArray(requestBody.context)
+        ? requestBody.context as Record<string, unknown>
+        : {};
+      const runMcpIdsToAccumulate = [
+        ...new Set(
+          (Array.isArray(requestContext.mcpServerIds)
+            ? requestContext.mcpServerIds
+            : []
+          ).filter((id): id is string => typeof id === 'string' && id.length > 0),
+        ),
+      ];
+      if (runMcpIdsToAccumulate.length > 0) {
+        const currentMeta = runProject?.metadata ?? {};
+        const accumulatedMeta = accumulateUsedMcpIds(
+          currentMeta as Record<string, unknown>,
+          runMcpIdsToAccumulate,
         );
         updateProject(db, meta.projectId, {
           metadata: accumulatedMeta,

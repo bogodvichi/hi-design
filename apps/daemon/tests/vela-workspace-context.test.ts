@@ -160,6 +160,22 @@ describe('mapVelaWorkspaceContext', () => {
     expect(mapVelaWorkspaceContext({ ...B_TEAM_CONTEXT, workspaceMemberId: '' })).toBeNull();
     expect(mapVelaWorkspaceContext(null)).toBeNull();
   });
+
+  it('carries default-team and shared-space flags from a directory item', () => {
+    const context = workspaceContextFromDirectoryItem({
+      workspaceId: 'ws-shared',
+      workspaceName: '共享空间',
+      workspaceType: 'team',
+      workspaceMemberId: 'wm-shared',
+      isDefaultTeam: true,
+      isSharedSpace: true,
+      role: 'admin',
+      memberStatus: 'active',
+      lifecycleState: 'active',
+    });
+    expect(context.isDefaultTeam).toBe(true);
+    expect(context.isSharedSpace).toBe(true);
+  });
 });
 
 describe('createCachedWorkspaceDirectoryFetcher', () => {

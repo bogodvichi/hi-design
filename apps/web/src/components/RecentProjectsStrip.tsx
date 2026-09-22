@@ -669,6 +669,25 @@ selectionExtension,
     || projectOwnerDisplayNames?.get(project.id)?.trim()
     || resolveTeamMember(ownerMemberId)?.displayName?.trim()
     || null;
+   // A matching member ID is stronger evidence than a display-name string.
+   // HDW owner names can differ in spacing or source formatting, so check
+   // ownership before treating an owner label as another member.
+   const projectMemberId = resolveProjectMemberId(project);
+   if (ownerMemberId && projectMemberId && ownerMemberId === projectMemberId) {
+     const name = ownerDisplayName
+       || workspaceContext?.displayName?.trim()
+       || t('recentProjects.selfCreator');
+     const initial = Array.from(name.trim())[0]?.toUpperCase() ?? 'M';
+     return {
+       name,
+       initial,
+       avatarUrl: workspaceContext?.avatarUrl?.trim() || null,
+       ownedBySelf: true,
+       canMutate: !isShared(project.id),
+       canAdmin: false,
+       memberId: ownerMemberId,
+     };
+   }
    if ((!ownerMemberId || ownerMemberId === resolveProjectMemberId(project)) && !ownerDisplayName && !isShared(project.id)) {
      return {
       name: workspaceContext?.displayName?.trim()

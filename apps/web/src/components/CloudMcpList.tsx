@@ -18,6 +18,7 @@ interface CloudMcpItem extends CloudMcpTemplate {
   sharedByDisplayname?: string | null;
   homeWorkspaceId?: string;
   teamLocal?: boolean;
+  localOnly?: boolean;
 }
 
 // Build workspace headers from the string props the parent passes.
@@ -79,11 +80,11 @@ export function CloudMcpList({
       const res = await fetch('/api/mcp/servers', { cache: 'no-store' });
       if (!res.ok) return;
       const body = await res.json();
-      const ids = new Set<string>(
-        ((body.servers ?? []) as Array<{ templateId?: string }>)
-          .filter((s) => s.templateId)
-          .map((s) => s.templateId as string),
-      );
+     const ids = new Set<string>(
+       ((body.servers ?? []) as Array<{ templateId?: string }>)
+         .filter((s) => s.templateId)
+         .map((s) => (s.templateId as string).toLowerCase()),
+     );
       setLocalTemplateIds(ids);
     } catch {
       // leave the previous set intact
@@ -91,6 +92,15 @@ export function CloudMcpList({
   }, []);
 
   const loadTemplates = useCallback(async () => {
+    // ── Design intent (do not change) ──────────────────────────────
+    // Personal MCPs are cloud resources owned by the current user,
+    // stored in the shared HDW space — NOT local on-disk files. The
+    // personal mode queries /api/workspace/mcp/cloud with an
+    // owner_member_id filter so the list reflects what the user
+    // published to the cloud, while loadLocalServers() separately
+    // tracks which of those are materialized locally (installed).
+    // This mirrors CloudSkillList and is the intended architecture.
+    // ──────────────────────────────────────────────────────────────
     if (mode === 'shared') {
       setLoading(true);
       setError(null);
@@ -147,26 +157,26 @@ export function CloudMcpList({
         : null;
       if (!cloudResponse && !localResponse) throw new Error('Failed to load team MCP templates');
 
-      const merged = new Map<string, CloudMcpItem>();
-      for (const template of (cloudResponse?.templates ?? []) as CloudMcpItem[]) {
-        merged.set(template.id, template);
-      }
-      for (const server of (localResponse?.servers ?? []) as Array<{
-        id: string;
-        label?: string;
-        templateId?: string;
-        workspaceId?: string;
-        ownerMemberId?: string;
-        transport: 'stdio' | 'sse' | 'http';
-        command?: string;
-        args?: string[];
-        url?: string;
-        authMode?: 'none' | 'oauth';
-      }>) {
-        if (server.workspaceId !== workspaceId) continue;
-        const templateId = server.templateId ?? server.id;
-        const existing = merged.get(templateId);
-        merged.set(templateId, {
+     const merged = new Map<string, CloudMcpItem>();
+     for (const template of (cloudResponse?.templates ?? []) as CloudMcpItem[]) {
+       merged.set(template.id.toLowerCase(), template);
+     }
+     for (const server of (localResponse?.servers ?? []) as Array<{
+       id: string;
+       label?: string;
+       templateId?: string;
+       workspaceId?: string;
+       ownerMemberId?: string;
+       transport: 'stdio' | 'sse' | 'http';
+       command?: string;
+       args?: string[];
+       url?: string;
+       authMode?: 'none' | 'oauth';
+     }>) {
+       if (server.workspaceId !== workspaceId) continue;
+       const templateId = server.templateId ?? server.id;
+       const existing = merged.get(templateId.toLowerCase());
+       merged.set(templateId.toLowerCase(), {
           id: templateId,
           resourceId: existing?.resourceId ?? `local:${server.id}`,
           label: existing?.label ?? server.label ?? server.id,
@@ -189,22 +199,66 @@ export function CloudMcpList({
       setTemplates([...merged.values()]);
       return;
     }
-    const params = new URLSearchParams();
-    // ownerMemberId controls the owner filter; when null, all public
-    // resources are returned (community browse). workspaceMemberId is
-    // still sent in the workspace headers for auth and delete checks.
-    const ownerFilter = ownerMemberId ?? (mode === 'personal' ? workspaceMemberId : null);
-    if (ownerFilter) params.set('owner_member_id', ownerFilter);
-    if (scope) params.set('scope', scope);
-     const headers = workspaceHeaders(workspaceId, workspaceMemberId, workspaceType);
-     const res = await fetch('/api/workspace/mcp/cloud?' + params, {
-       cache: 'no-store',
-       headers,
-     });
-     if (!res.ok) { throw new Error('Failed to load cloud MCP templates'); }
-     const body = await res.json();
-     setTemplates(body.templates ?? []);
-   } catch (err: any) {
+   const params = new URLSearchParams();
+   // ownerMemberId controls the owner filter; when null, all public
+   // resources are returned (community browse). workspaceMemberId is
+   // still sent in the workspace headers for auth and delete checks.
+   const ownerFilter = ownerMemberId ?? (mode === 'personal' ? workspaceMemberId : null);
+   if (ownerFilter) params.set('owner_member_id', ownerFilter);
+   if (scope) params.set('scope', scope);
+    const headers = workspaceHeaders(workspaceId, workspaceMemberId, workspaceType);
+     const [cloudResult, localResult] = await Promise.allSettled([
+       fetch('/api/workspace/mcp/cloud?' + params, { cache: 'no-store', headers }),
+       fetch('/api/mcp/servers', { cache: 'no-store' }),
+     ]);
+     const cloudResponse = cloudResult.status === 'fulfilled' && cloudResult.value.ok
+       ? await cloudResult.value.json()
+       : null;
+     const localResponse = localResult.status === 'fulfilled' && localResult.value.ok
+       ? await localResult.value.json()
+       : null;
+     if (!cloudResponse && !localResponse) throw new Error('Failed to load cloud MCP templates');
+
+    const merged = new Map<string, CloudMcpItem>();
+    for (const template of (cloudResponse?.templates ?? []) as CloudMcpItem[]) {
+      merged.set(template.id.toLowerCase(), template);
+    }
+    // Merge locally-installed servers that have no matching cloud
+    // template (e.g. servers added through the Settings MCP panel or
+    // installed from a community template not owned by this user).
+    for (const server of (localResponse?.servers ?? []) as Array<{
+      id: string;
+      label?: string;
+      templateId?: string;
+      transport: 'stdio' | 'sse' | 'http';
+      command?: string;
+      args?: string[];
+      url?: string;
+      authMode?: 'none' | 'oauth';
+    }>) {
+      const templateId = server.templateId ?? server.id;
+      if (merged.has(templateId.toLowerCase())) continue;
+      merged.set(templateId.toLowerCase(), {
+         id: templateId,
+         resourceId: `local:${server.id}`,
+         label: server.label ?? server.id,
+         description: '',
+         transport: server.transport,
+         category: 'utilities',
+         command: server.command,
+         args: server.args,
+         url: server.url,
+         authMode: server.authMode,
+         ownerMemberId: '',
+         version: null,
+         versionId: null,
+         createdAt: '',
+         updatedAt: '',
+         localOnly: true,
+       });
+     }
+     setTemplates([...merged.values()]);
+  } catch (err: any) {
      setError(err?.message ?? String(err));
    } finally {
      setLoading(false);
@@ -216,7 +270,11 @@ export function CloudMcpList({
   }, [loadTemplates, loadLocalServers]);
 
   useEffect(() => {
-    const handler = () => { void loadTemplates(); void loadLocalServers(); };
+    const handler = (event: Event) => {
+      if (event instanceof CustomEvent && event.detail?.source === 'cloud-mcp-list') return;
+      void loadTemplates();
+      void loadLocalServers();
+    };
     window.addEventListener('personal:mcp-refresh', handler);
     return () => window.removeEventListener('personal:mcp-refresh', handler);
   }, [loadTemplates, loadLocalServers]);
@@ -235,6 +293,12 @@ export function CloudMcpList({
         throw new Error(body?.error ?? 'Install failed');
       }
       await loadLocalServers();
+      // Notify other surfaces (ChatComposer, HomeView, other CloudMcpList
+      // instances) that the local MCP installation set changed. The source
+      // tag lets our own listener skip the redundant reload.
+      window.dispatchEvent(new CustomEvent('personal:mcp-refresh', {
+        detail: { source: 'cloud-mcp-list' },
+      }));
     } catch (err: any) {
       setError(err?.message ?? String(err));
     } finally {
@@ -242,20 +306,43 @@ export function CloudMcpList({
     }
   }
 
-  async function handleUninstall(tpl: CloudMcpItem) {
-    setUninstallingId(tpl.resourceId);
-    try {
-      const uninstallUrl = '/api/workspace/mcp/cloud/' + encodeURIComponent(tpl.resourceId) + '/uninstall'
-        + (tpl.homeWorkspaceId ? '?home_workspace_id=' + encodeURIComponent(tpl.homeWorkspaceId) : '');
-      const res = await fetch(uninstallUrl, {
-        method: 'DELETE',
-        headers: workspaceHeaders(workspaceId, workspaceMemberId, workspaceType),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.error ?? 'Uninstall failed');
-      }
-      await loadLocalServers();
+ async function handleUninstall(tpl: CloudMcpItem) {
+   setUninstallingId(tpl.resourceId);
+   try {
+     if (tpl.localOnly) {
+       // Local-only server (no cloud template) — remove directly from
+       // mcp-config.json via the /api/mcp/servers PUT endpoint.
+       const currentRes = await fetch('/api/mcp/servers', { cache: 'no-store' });
+       if (!currentRes.ok) throw new Error('Failed to load current MCP servers');
+       const currentBody = await currentRes.json();
+       const filtered = ((currentBody.servers ?? []) as Array<{ id: string }>)
+         .filter((s) => s.id.toLowerCase() !== tpl.id.toLowerCase());
+       const putRes = await fetch('/api/mcp/servers', {
+         method: 'PUT',
+         headers: { 'content-type': 'application/json' },
+         body: JSON.stringify({ servers: filtered }),
+       });
+       if (!putRes.ok) {
+         const body = await putRes.json().catch(() => null);
+         throw new Error(body?.error ?? 'Uninstall failed');
+       }
+     } else {
+       const uninstallUrl = '/api/workspace/mcp/cloud/' + encodeURIComponent(tpl.resourceId) + '/uninstall'
+         + (tpl.homeWorkspaceId ? '?home_workspace_id=' + encodeURIComponent(tpl.homeWorkspaceId) : '');
+       const res = await fetch(uninstallUrl, {
+         method: 'DELETE',
+         headers: workspaceHeaders(workspaceId, workspaceMemberId, workspaceType),
+       });
+       if (!res.ok) {
+         const body = await res.json().catch(() => null);
+         throw new Error(body?.error ?? 'Uninstall failed');
+       }
+     }
+     await loadTemplates();
+     await loadLocalServers();
+     window.dispatchEvent(new CustomEvent('personal:mcp-refresh', {
+        detail: { source: 'cloud-mcp-list' },
+      }));
     } catch (err: any) {
       setError(err?.message ?? String(err));
     } finally {
@@ -280,6 +367,9 @@ export function CloudMcpList({
         throw new Error(body?.error ?? 'Delete failed');
       }
       await loadTemplates();
+      window.dispatchEvent(new CustomEvent('personal:mcp-refresh', {
+        detail: { source: 'cloud-mcp-list' },
+      }));
     } catch (err: any) {
       setError(err?.message ?? String(err));
     } finally {
@@ -356,9 +446,10 @@ export function CloudMcpList({
   return (
     <>
       <div className={styles.cloudSkillGrid}>
-        {templates.map((tpl) => {
-          const isInstalled = tpl.teamLocal || localTemplateIds.has(tpl.id);
-          const isInstalling = installingId === tpl.resourceId;
+       {templates.map((tpl) => {
+          // Case-insensitive match so Memoryxxx and memoryxxx are treated as the same installed server.
+          const isInstalled = tpl.teamLocal || localTemplateIds.has(tpl.id.toLowerCase());
+         const isInstalling = installingId === tpl.resourceId;
           const isUninstalling = uninstallingId === tpl.resourceId;
           const isDeleting = deletingId === tpl.resourceId;
           return (
@@ -369,8 +460,10 @@ export function CloudMcpList({
                 </span>
                 <div className={styles.cardHeaderInfo}>
                   <strong className={styles.cardTitle}>{tpl.label}</strong>
-                 <small className={styles.cardMeta}>
-                   {tpl.teamLocal
+                <small className={styles.cardMeta}>
+                   {tpl.localOnly
+                     ? t('personalScope.cloudMcpInstalled' as any)
+                     : tpl.teamLocal
                      ? t('pluginsView.teamSharedBadge' as any)
                      : mode === 'shared' && tpl.sharedByDisplayname
                      ? t('personalScope.cloudMcpSharedBy' as any, { name: tpl.sharedByDisplayname })
@@ -394,49 +487,49 @@ export function CloudMcpList({
                   {menuOpenId === tpl.resourceId ? (
                     <>
                       <div className={styles.cardMenuBackdrop} onClick={(e) => { e.stopPropagation(); setMenuOpenId(null); }} />
-                      <div className={styles.cardMenu}>
-                          {(mode === 'personal' || mode === 'square') ? (
-                            <button
-                              type="button"
-                              className={styles.cardMenuItem}
-                              onClick={(e) => { e.stopPropagation(); setShareItem(tpl); setMenuOpenId(null); }}
-                            >
-                              <Icon name="share" size={14} />
-                              {t('personalScope.cloudMcpShare' as any)}
-                            </button>
-                          ) : null}
-                          {isInstalled ? (
-                            <button
-                              type="button"
-                              className={styles.cardMenuItem}
-                              disabled={isUninstalling}
-                              onClick={(e) => { e.stopPropagation(); setConfirmAction({ type: 'uninstall', item: tpl }); }}
-                            >
-                              <Icon name="trash" size={14} />
-                              {t('personalScope.cloudMcpUninstall' as any)}
-                            </button>
-                          ) : null}
-                          {(mode === 'personal' || (mode === 'square' && tpl.ownerMemberId === workspaceMemberId)) ? (
-                            <button
-                              type="button"
-                              className={styles.cardMenuItemDanger}
-                              disabled={isDeleting}
-                              onClick={(e) => { e.stopPropagation(); setConfirmAction({ type: 'delete', item: tpl }); }}
-                            >
-                              <Icon name="close" size={14} />
-                              {t('personalScope.cloudMcpDelete' as any)}
-                            </button>
-                          ) : null}
-                        </div>
-                      </>
-                    ) : null}
-                  </>
-                ) : null}
-             </div>
-              {tpl.description
-                ? <p className={`${styles.cardDesc}${mode === 'square' ? ` ${styles.squareCardDesc}` : ''}`}>{tpl.description}</p>
-                : null}
-              {mode !== 'shared' ? (
+                     <div className={styles.cardMenu}>
+                        {(mode === 'personal' || mode === 'square') && !tpl.localOnly ? (
+                          <button
+                            type="button"
+                            className={styles.cardMenuItem}
+                            onClick={(e) => { e.stopPropagation(); setShareItem(tpl); setMenuOpenId(null); }}
+                          >
+                            <Icon name="share" size={14} />
+                            {t('personalScope.cloudMcpShare' as any)}
+                          </button>
+                        ) : null}
+                        {isInstalled ? (
+                          <button
+                            type="button"
+                            className={styles.cardMenuItem}
+                            disabled={isUninstalling}
+                            onClick={(e) => { e.stopPropagation(); setConfirmAction({ type: 'uninstall', item: tpl }); }}
+                          >
+                            <Icon name="trash" size={14} />
+                            {t('personalScope.cloudMcpUninstall' as any)}
+                          </button>
+                        ) : null}
+                        {(mode === 'personal' || (mode === 'square' && tpl.ownerMemberId === workspaceMemberId)) && !tpl.localOnly ? (
+                          <button
+                            type="button"
+                            className={styles.cardMenuItemDanger}
+                            disabled={isDeleting}
+                            onClick={(e) => { e.stopPropagation(); setConfirmAction({ type: 'delete', item: tpl }); }}
+                          >
+                            <Icon name="close" size={14} />
+                            {t('personalScope.cloudMcpDelete' as any)}
+                          </button>
+                        ) : null}
+                      </div>
+                    </>
+                  ) : null}
+                </>
+              ) : null}
+            </div>
+            {tpl.description
+              ? <p className={`${styles.cardDesc}${mode === 'square' ? ` ${styles.squareCardDesc}` : ''}`}>{tpl.description}</p>
+              : null}
+            {mode !== 'shared' ? (
                 <footer className={`community-template-card__foot ${styles.resourceCardFooter}`}>
                   <div className="community-template-card__actions">
                     <button

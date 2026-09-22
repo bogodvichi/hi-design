@@ -692,9 +692,9 @@ export function BoardComposerPopover({
   const isExistingComment = Boolean(existing);
   const existingResolved = existing?.status === 'resolved';
   const composeVisible = commenting || (isExistingComment && editingExistingComment);
-  const authorLabel = authorDisplayName?.trim() || existing?.authorMemberId || '?';
-  const authorSeed = authorDisplayName?.trim() || '?';
-  // An attached image alone is enough to send (the element context rides along
+ const authorLabel = authorDisplayName?.trim() || existing?.authorMemberId || '?';
+ const authorSeed = authorDisplayName?.trim() || existing?.authorMemberId || '?';
+ // An attached image alone is enough to send (the element context rides along
   // even without a typed note).
   const hasAnyImage = hasFreshImage || existingImages.length > 0;
   // `sendDisabled` (prop) is the external gate (e.g. the chat can't accept the
@@ -1060,8 +1060,8 @@ export function BoardComposerPopover({
                     reply: reply as PreviewComment | undefined,
                     note: reply.note,
                     createdAt: reply.createdAt,
-                    authorName: reply.authorDisplayName?.trim() || reply.authorMemberId?.trim() || '?',
-                    authorSeed: reply.authorDisplayName?.trim() || '?',
+                   authorName: reply.authorDisplayName?.trim() || reply.authorMemberId?.trim() || '?',
+                   authorSeed: reply.authorDisplayName?.trim() || reply.authorMemberId?.trim() || '?',
                   })),
                   ...localReplies.map((reply) => ({
                     localKey: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
