@@ -223,6 +223,33 @@ class MockWorkspaceEventSource {
 }
 
 describe('RecentProjectsStrip', () => {
+  it('preserves most-recently-opened order for the recent feed instead of re-sorting by updatedAt', () => {
+    const { container } = render(
+      <RecentProjectsStrip
+        projects={[
+          project({ id: 'opened-most-recently', name: 'Opened most recently', updatedAt: 1 }),
+          project({ id: 'opened-earlier', name: 'Opened earlier', updatedAt: 999 }),
+        ]}
+        onOpen={() => {}}
+      />,
+    );
+
+    expect(
+      [...container.querySelectorAll<HTMLElement>('[data-project-id]')].map(
+        (card) => card.dataset.projectId,
+      ),
+    ).toEqual(['opened-most-recently', 'opened-earlier']);
+
+    const sortTrigger = screen.getByRole('button', { name: 'Sort projects' });
+    fireEvent.click(sortTrigger);
+    expect(screen.getByRole('button', { name: 'Recently viewed' }).className).toContain('is-active');
+    expect(sortTrigger.getAttribute('aria-expanded')).toBe('true');
+
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole('button', { name: 'Recently viewed' })).toBeNull();
+    expect(sortTrigger.getAttribute('aria-expanded')).toBe('false');
+  });
+
   it('keeps a workspace-directory outage in the background owner lookup from escaping', async () => {
     recentWorkspaceState.resolveBoundProjectWorkspaceContext.mockRejectedValueOnce(
       Object.assign(new Error('workspace-directory 503'), { status: 503 }),

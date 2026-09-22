@@ -1413,6 +1413,7 @@ export const fr: Dict = {
   'recentProjects.inviteTeammates': 'Inviter des coéquipiers',
   'recentProjects.multiSelect': 'Sélection multiple',
   'recentProjects.sortAria': 'Trier les projets',
+  'recentProjects.sortRecentlyViewed': 'Récemment consultés',
   'recentProjects.sortNewest': 'Plus récents d’abord',
   'recentProjects.sortOldest': 'Plus anciens d’abord',
   'recentProjects.sortName': 'Nom',

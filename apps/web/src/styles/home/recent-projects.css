@@ -828,7 +828,8 @@
   outline: var(--stroke-thin) solid var(--blue);
   outline-offset: 2px;
 }
-.recent-projects__view-btn.is-active {
+.recent-projects__view-btn.is-active,
+.recent-projects__view-btn[aria-expanded='true'] {
   color: var(--text-strong);
   border-color: var(--border);
   background: var(--bg-subtle);
@@ -946,12 +947,14 @@
     color var(--duration-ultra-fast) var(--curve-easy-ease),
     transform var(--duration-faster) var(--curve-easy-ease);
 }
-.recent-projects__filter:hover {
+.recent-projects__filter:hover,
+.recent-projects__filter[aria-expanded='true'] {
   border-color: var(--border);
   background: var(--bg-subtle);
   color: var(--text-strong);
 }
-.recent-projects__filter:hover svg {
+.recent-projects__filter:hover svg,
+.recent-projects__filter[aria-expanded='true'] svg {
   color: var(--text-strong);
 }
 .recent-projects__filter:active {
@@ -981,7 +984,7 @@
   top: calc(100% + 6px);
   right: 0;
   z-index: 80;
-  min-width: 148px;
+  min-width: 128px;
   max-width: calc(100vw - 16px);
   padding: 6px;
   border: 1px solid var(--border);

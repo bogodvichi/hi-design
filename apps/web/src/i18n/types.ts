@@ -1812,6 +1812,7 @@ export interface Dict {
   'recentProjects.inviteTeammates': string;
   'recentProjects.multiSelect': string;
   'recentProjects.sortAria': string;
+  'recentProjects.sortRecentlyViewed': string;
   'recentProjects.sortNewest': string;
   'recentProjects.sortOldest': string;
   'recentProjects.sortName': string;

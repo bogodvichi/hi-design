@@ -1430,6 +1430,7 @@ export const zhTW: Dict = {
   "recentProjects.inviteTeammates": "邀請同事",
   "recentProjects.multiSelect": "多選",
   "recentProjects.sortAria": "專案排序",
+  "recentProjects.sortRecentlyViewed": "最近查看時間",
   "recentProjects.sortNewest": "最近更新",
   "recentProjects.sortOldest": "最早更新",
   "recentProjects.sortName": "名稱",

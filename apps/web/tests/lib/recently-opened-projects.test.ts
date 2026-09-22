@@ -9,6 +9,7 @@ import {
   removeRecentlyOpenedProject,
   readRecentlyOpenedProjectEntries,
   touchRecentlyOpenedProject,
+  updateRecentlyOpenedProjectOwner,
 } from '../../src/lib/recently-opened-projects';
 import type { Project } from '../../src/types';
 
@@ -95,6 +96,21 @@ describe('removeRecentlyOpenedProject', () => {
 });
 
 describe('touchRecentlyOpenedProject', () => {
+  it('backfills missing owner metadata without changing the recent order', () => {
+    recordRecentlyOpenedProject(makeProject({ id: 'a', workspaceId: 'ws-team' }));
+    recordRecentlyOpenedProject(makeProject({ id: 'b', workspaceId: 'ws-team' }));
+
+    expect(updateRecentlyOpenedProjectOwner('a', {
+      ownerDisplayName: 'Team Owner',
+      createdByWorkspaceMemberId: 'member-owner',
+    })).toBe(true);
+
+    const recents = readRecentlyOpenedProjects();
+    expect(recents.map((project) => project.id)).toEqual(['b', 'a']);
+    expect(recents[1]?.ownerDisplayName).toBe('Team Owner');
+    expect(recents[1]?.createdByWorkspaceMemberId).toBe('member-owner');
+  });
+
   it('refreshes openedAt while preserving stored card metadata', () => {
     const now = vi.spyOn(Date, 'now');
     now.mockReturnValueOnce(1000);
