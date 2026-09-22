@@ -203,6 +203,13 @@ export async function settleManualEditFiles(
   return results.every(Boolean);
 }
 
+export function projectFileDeletePath(files: readonly ProjectFile[], requestedName: string): string {
+  const byName = files.find((file) => file.name === requestedName);
+  if (byName) return byName.path?.trim() || byName.name;
+  const byPath = files.find((file) => file.path === requestedName);
+  return byPath?.path?.trim() || requestedName;
+}
+
 interface Props {
   projectId: string;
   projectKind: TrackingProjectKind;
@@ -365,6 +372,8 @@ interface Props {
    * true, edit affordances are withheld and a notice explains why.
    */
   viewerOnly?: boolean;
+  /** Dynamic fail-closed mutation gate. Defaults to viewerOnly for legacy callers. */
+  mutationBlocked?: boolean;
   /** First-open placeholder: do not mount cached/write-capable workspace tabs. */
   materializationPending?: boolean;
   /** Optional override for the read-only notice text. */
@@ -1380,6 +1389,7 @@ export function FileWorkspace({
   fileActionsBefore,
   headerActions,
   viewerOnly = false,
+  mutationBlocked = viewerOnly,
   materializationPending = false,
   readonlyNotice,
   fileSyncBadge = null,
@@ -2545,9 +2555,10 @@ export function FileWorkspace({
   }, [quickSwitcherOpen]);
 
   async function handleDelete(name: string) {
-    if (viewerOnly) return; // read-only viewer of a team-shared project
+    if (mutationBlocked) return; // fail-closed project mutation gate
     if (!confirm(t('workspace.deleteFileConfirm', { name }))) return;
-    const ok = await deleteProjectFile(projectId, name, workspaceContext);
+    const deletePath = projectFileDeletePath(files, name);
+    const ok = await deleteProjectFile(projectId, deletePath, workspaceContext);
     if (ok) {
       await onRefreshFiles();
       const nextTabs = persistedTabs.filter((n) => n !== name);
@@ -2577,13 +2588,14 @@ export function FileWorkspace({
   }
 
   async function handleDeleteMany(names: string[]) {
-    if (viewerOnly) return; // read-only viewer of a team-shared project
+    if (mutationBlocked) return; // fail-closed project mutation gate
     if (names.length === 0) return;
     if (!confirm(t('workspace.deleteSelectedFilesConfirm', { n: names.length }))) return;
     const deleted: string[] = [];
     const failed: string[] = [];
     for (const name of names) {
-      const ok = await deleteProjectFile(projectId, name, workspaceContext);
+      const deletePath = projectFileDeletePath(files, name);
+      const ok = await deleteProjectFile(projectId, deletePath, workspaceContext);
       if (ok) deleted.push(name);
       else failed.push(name);
     }
@@ -2616,7 +2628,7 @@ export function FileWorkspace({
   }
 
   async function handleRename(oldName: string, nextName: string): Promise<ProjectFile | null> {
-    if (viewerOnly) return null; // read-only viewer of a team-shared project
+    if (mutationBlocked) return null; // fail-closed project mutation gate
     const hasPendingSketchConflict = Object.entries(sketches).some(
       ([name, sketch]) => !sketch.persisted && sameFileName(name, nextName),
     );
@@ -3378,12 +3390,12 @@ export function FileWorkspace({
       commentPortalId={workspaceActive ? commentPortalId : undefined}
       onCommentModeChange={workspaceActive ? onCommentModeChange : undefined}
       shareRequest={
-        viewerOnly || activeFileShareRequest?.name !== file.name
+        mutationBlocked || activeFileShareRequest?.name !== file.name
           ? null
           : activeFileShareRequest.request
       }
       downloadRequest={
-        viewerOnly || activeFileDownloadRequest?.name !== file.name
+        mutationBlocked || activeFileDownloadRequest?.name !== file.name
           ? null
           : activeFileDownloadRequest.request
       }
@@ -4274,10 +4286,10 @@ export function FileWorkspace({
           />
         </div>
       ) : null}
-      {viewerOnly && !initialMaterializationPending ? (
+      {readonlyNotice && !initialMaterializationPending ? (
         <div className="workspace-readonly-notice" role="status">
           <Icon name="lock" size={14} />
-          <span>{readonlyNotice ?? t('workspace.readonlyNotice')}</span>
+          <span>{readonlyNotice}</span>
         </div>
       ) : null}
       <div className="ws-body">
@@ -4342,6 +4354,7 @@ export function FileWorkspace({
           <DesignFilesPanel
             projectId={projectId}
             viewerOnly
+            mutationBlocked
             downloadPending
             files={[]}
             folders={[]}
@@ -4388,6 +4401,7 @@ export function FileWorkspace({
             projectId={projectId}
             filesRefreshKey={filesRefreshKey}
             viewerOnly={viewerOnly}
+            mutationBlocked={mutationBlocked}
             downloadPending={fileSyncBadge === 'downloading'}
             rootDirName={rootDirName}
             reloading={reloading}
@@ -4430,6 +4444,7 @@ export function FileWorkspace({
               return handleDeleteMany(names);
             }}
             onUpload={() => {
+              if (mutationBlocked) return;
               trackFileManagerClick(analytics.track, {
                 page_name: 'file_manager',
                 area: 'file_manager',
@@ -4437,8 +4452,12 @@ export function FileWorkspace({
               });
               fileInputRef.current?.click();
             }}
-            onUploadFiles={(picked) => void uploadFiles(picked)}
+            onUploadFiles={(picked) => {
+              if (mutationBlocked) return;
+              void uploadFiles(picked);
+            }}
             onPaste={() => {
+              if (mutationBlocked) return;
               trackFileManagerClick(analytics.track, {
                 page_name: 'file_manager',
                 area: 'file_manager',
@@ -4447,6 +4466,7 @@ export function FileWorkspace({
               void createMarkdownDocument();
             }}
             onNewSketch={() => {
+              if (mutationBlocked) return;
               trackFileManagerClick(analytics.track, {
                 page_name: 'file_manager',
                 area: 'file_manager',
@@ -4463,6 +4483,7 @@ export function FileWorkspace({
               openBrowserTab();
             }}
             onCreateDesignSystem={() => {
+              if (mutationBlocked) return;
               trackFileManagerClick(analytics.track, {
                 page_name: 'file_manager',
                 area: 'file_manager',
@@ -4476,6 +4497,7 @@ export function FileWorkspace({
             onDuplicateProject={onDuplicateProject}
             duplicateProjectBusy={duplicateProjectBusy}
             onSelectFromLibrary={() => {
+              if (mutationBlocked) return;
               trackFileManagerClick(analytics.track, {
                 page_name: 'file_manager',
                 area: 'file_manager',

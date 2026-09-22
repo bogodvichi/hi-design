@@ -71,7 +71,7 @@ import type {
 } from '@open-design/contracts/analytics';
 import { agentIdToTracking } from '@open-design/contracts/analytics';
 import { useI18n, useT } from '../i18n';
-import { navigate, useRoute } from '../router';
+import { navigate, useRoute, type Route } from '../router';
 import type {
  AgentInfo,
  ApiProtocol,
@@ -343,6 +343,8 @@ export interface ProjectTitleHint {
 }
 
 interface Props {
+ /** False while a project/tool workspace tab is in front; the tree stays mounted as a keep-alive. */
+ active?: boolean;
  skills: SkillSummary[];
  designTemplates: SkillSummary[];
  designSystems: DesignSystemSummary[];
@@ -486,7 +488,17 @@ function inactiveViewProps(active: boolean) {
  };
 }
 
+function keepAliveSurfaceProps(active: boolean) {
+ if (active) return {};
+ return {
+   style: { display: 'none' } as const,
+   inert: true,
+   'aria-hidden': true,
+ };
+}
+
 export function EntryShell({
+ active = true,
  skills,
  designTemplates,
  designSystems,
@@ -546,12 +558,24 @@ onCopyProject,
  artifactUpgradeSlot,
 }: Props) {
  const { t } = useI18n();
- // Each entry sub-view (home / projects / design-systems) is its own
- // URL now, so the browser back/forward buttons work and a deep link
- // to /design-systems lands on that section. We derive the active
- // view from the route rather than keeping it in component state.
  const route = useRoute();
- const view: EntryViewKind = route.kind === 'home' ? route.view : 'home';
+ // Keep the last active entry route while a project / HiMind / external tool
+ // tab is in front. The EntryShell itself is intentionally kept mounted by
+ // App, so feeding it the external route here would still collapse `view` to
+ // Home and unmount the community / square / tool subtree we are trying to
+ // preserve. Only an ACTIVE entry route is allowed to replace this snapshot.
+ const lastEntryRouteRef = useRef<Extract<Route, { kind: 'home' }>>({
+   kind: 'home',
+   view: 'home',
+ });
+ if (active && route.kind === 'home') {
+   lastEntryRouteRef.current = route;
+ }
+ const entryRoute = active && route.kind === 'home'
+   ? route
+   : lastEntryRouteRef.current;
+ const view: EntryViewKind = entryRoute.view;
+ const homeViewIsActive = active && view === 'home';
  // The one shared workspace context. Any non-null context is a real workspace
  // (personal or team); workspace surfaces gate on B's permission bits, not on
  // workspaceType.
@@ -1093,9 +1117,8 @@ const homeProjectsList = useMemo(
  // The entry nav rail is collapsed by default (Manus-style) so the entry
  // view opens clean and full-width; the panel toggle in the topbar opens it
  // as an overlay that dismisses on selection / backdrop click / Escape.
- // Its open/collapsed state is persisted (localStorage) so it survives a
- // home -> project -> home round trip (EntryShell unmounts on the project
- // route) and a reload, instead of snapping back to collapsed.
+ // Its open/collapsed state is persisted (localStorage) so it survives reloads;
+ // App now also keeps this shell mounted behind project/tool tabs.
  const [railOpen, setRailOpen] = useState<boolean>(readStoredRailOpen);
  const [projectSearchOpen, setProjectSearchOpen] = useState(false);
  const [inviteOpen, setInviteOpen] = useState(false);
@@ -1104,6 +1127,7 @@ const homeProjectsList = useMemo(
  // search box. ⌘B / Ctrl+B toggles the nav rail — same as the pinned Home
  // tab's sidebar toggle.
  useEffect(() => {
+   if (!active) return;
    const onKey = (event: KeyboardEvent) => {
      const target = event.target;
      if (
@@ -1137,23 +1161,25 @@ const homeProjectsList = useMemo(
    };
    document.addEventListener('keydown', onKey);
    return () => document.removeEventListener('keydown', onKey);
- }, []);
+ }, [active]);
  useEffect(() => {
+   if (!active) return;
    writeStoredRailOpen(railOpen);
    // Broadcast the state so chrome outside this tree (the pinned Home tab's
    // sidebar toggle) can mirror it via aria-expanded.
    window.dispatchEvent(
      new CustomEvent(ENTRY_RAIL_STATE_EVENT, { detail: { open: railOpen } }),
    );
- }, [railOpen]);
+ }, [active, railOpen]);
 
  // The pinned Home tab (WorkspaceTabsBar) carries a sidebar toggle; it lives
  // in a sibling tree, so the request arrives as a window event.
  useEffect(() => {
+   if (!active) return;
    const onToggle = () => setRailOpen((v) => !v);
    window.addEventListener(ENTRY_RAIL_TOGGLE_EVENT, onToggle);
    return () => window.removeEventListener(ENTRY_RAIL_TOGGLE_EVENT, onToggle);
- }, []);
+ }, [active]);
  const [localProviderModelsCache, setLocalProviderModelsCache] =
    useState<ProviderModelsCache>({});
  const hasSharedProviderModelsCache =
@@ -1181,10 +1207,10 @@ const [homePromptHandoff, setHomePromptHandoff] = useState<HomePromptHandoff | n
 // remount — so we drain the stashed handoff here whenever the view becomes
 // home. The read is destructive; a null result is a no-op.
 useEffect(() => {
-  if (view !== 'home') return;
+  if (!active || view !== 'home') return;
   const pending = takeHomePromptHandoff();
   if (pending) setHomePromptHandoff(pending);
-}, [view]);
+}, [active, view]);
 const entryMainScrollRef = useRef<HTMLElement | null>(null);
  // Entry views share this element, so route changes must not inherit the previous view's offset.
  useLayoutEffect(() => {
@@ -1222,9 +1248,10 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
  // is conditionally mounted and tracks its own visit; always-mounted library
  // surfaces receive an explicit isActive prop below.
  useEffect(() => {
+   if (!active) return;
    if (view === 'drafts') trackPageView(analytics.track, { page_name: 'drafts' });
    else if (view === 'all-projects') trackPageView(analytics.track, { page_name: 'all_projects' });
- }, [analytics.track, view]);
+ }, [active, analytics.track, view]);
 
  function startPluginAuthoring(goal?: string) {
    setHomePromptHandoff(
@@ -1250,14 +1277,14 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
  }
 
  useEffect(() => {
-   if (view !== 'home' || !homePromptHandoff) return;
+   if (!active || view !== 'home' || !homePromptHandoff) return;
    const frame = window.requestAnimationFrame(() => {
      const scrollContainer = entryMainScrollRef.current;
      if (!scrollContainer) return;
      smoothScrollToTop(scrollContainer);
    });
    return () => window.cancelAnimationFrame(frame);
- }, [homePromptHandoff?.id, view]);
+ }, [active, homePromptHandoff?.id, view]);
 
  // The frosted top edge exists to melt content that scrolls UP under the tab
  // strip. At rest nothing is under it, but it blurred anyway — and because
@@ -1599,7 +1626,7 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
 
  if (view === 'onboarding') {
    return (
-     <div className="entry-shell entry-shell--no-header entry-shell--onboarding">
+      <div className="entry-shell entry-shell--no-header entry-shell--onboarding" {...keepAliveSurfaceProps(active)}>
        <main className="entry-onboarding-modal" aria-label={t('settings.welcomeTitle')}>
          <OnboardingView
            config={config}
@@ -1641,7 +1668,7 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
  );
 
  return (
-   <div className="entry-shell entry-shell--no-header">
+    <div className="entry-shell entry-shell--no-header" {...keepAliveSurfaceProps(active)}>
      <div
        className={`entry${railOpen ? ' entry--rail-open' : ''}`}
        // The team/local shell is a labeled Manus-style rail, so widen the rail
@@ -1661,6 +1688,7 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
          }}
          onOpenSearch={() => setProjectSearchOpen(true)}
          open={railOpen}
+         topRightActive={active}
          topRightSlot={
            topRightCampaignAudience ? (
              <WorkbenchCampaignBadge
@@ -1676,20 +1704,20 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
          balanceUsd={workspaceBalanceUsd}
          onOpenSettings={onOpenSettings}
          onInvite={() => changeView('members')}
-         inviteOpen={inviteOpen}
+         inviteOpen={active && inviteOpen}
          onInviteOpenChange={setInviteOpen}
          onSignInCloud={() => navigate({ kind: 'home', view: 'onboarding' })}
          onSignedOut={onSignedOut}
-         updaterSlot={updaterSlot}
+         updaterSlot={active ? updaterSlot : undefined}
          // A loading or unavailable workspace read is not proof of sign-out.
          // Keep the account slot neutral until Cloud answers successfully;
          // only a successful null context (or known local sign-out) may show
          // the sign-in card.
         footerNotice={accountFooterNotice}
-        activeTeamId={route.kind === 'home' ? route.teamId : undefined}
-        activeFolderId={route.kind === 'home' ? route.folderId : undefined}
+        activeTeamId={entryRoute.teamId}
+        activeFolderId={entryRoute.folderId}
       />
-       {projectSearchOpen ? (
+        {active && projectSearchOpen ? (
          <ProjectSearchModal
            // Search spans personal drafts plus the shared workspace catalog.
            // The pull-first handler still opens not-yet-local shared projects.
@@ -1704,10 +1732,10 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
              the workspace tabs bar (entryRailBridge), the updater popup host
              lives in the rail footer, and everything below is fixed-position
              or portalled so it occupies no layout space here. */}
-         <WhatsNewPopup active={view === 'home'} />
+          <WhatsNewPopup active={homeViewIsActive} />
          {/* The campaign badge lives in EntryNavRail's top-right cluster so it
              stays beside the account module across every entry tab. */}
-         {amrBalanceGateBlock ? (
+          {active && amrBalanceGateBlock ? (
            <AmrBalanceDialog
              reason={amrBalanceGateBlock.reason}
              balanceUsd={amrBalanceGateBlock.snapshot.balanceUsd}
@@ -1719,7 +1747,7 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
              onResolved={() => amrBalanceGateBlock.resolve('retry')}
            />
          ) : null}
-         {amrLowBalanceWarn ? (
+          {active && amrLowBalanceWarn ? (
            <AmrLowBalanceDialog
              balanceUsd={amrLowBalanceWarn.snapshot.balanceUsd}
              profile={amrLowBalanceWarn.snapshot.profile}
@@ -1735,9 +1763,9 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
              view === 'home' ? '' : 'entry-main__inner--wide',
            ].filter(Boolean).join(' ')}
          >
-           <div className="entry-main__view-home" data-testid="entry-view-home" data-active={view === 'home' ? 'true' : 'false'} {...inactiveViewProps(view === 'home')}>
+           <div className="entry-main__view-home" data-testid="entry-view-home" data-active={homeViewIsActive ? 'true' : 'false'} {...inactiveViewProps(homeViewIsActive)}>
              <HomeView
-               isActive={view === 'home'}
+               isActive={homeViewIsActive}
                projects={homeProjectsList}
                projectsLoading={projectsLoading}
                designSystems={designSystems}
@@ -1767,7 +1795,7 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
               connectors={connectors}
               promptTemplates={promptTemplates}
               onSkillsRefresh={onSkillsRefresh}
-              executionSwitcher={view === 'home' ? homeExecutionSwitcher : undefined}
+              executionSwitcher={homeViewIsActive ? homeExecutionSwitcher : undefined}
                artifactUpgradeSlot={artifactUpgradeSlot}
                deepSeekV4FlashCampaignAudience={deepSeekV4FlashCampaignAudience}
                onDeepSeekV4FlashCampaignUseNow={applyDeepSeekCampaignModel}
@@ -1875,8 +1903,8 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
                onSkillsChanged={onSkillsChanged}
              />
            ) : null}
-          {view === 'square' ? <SquareView tab={route.kind === 'home' && route.view === 'square' ? route.tab : undefined} /> : null}
-          {view === 'my-publishes' ? <SquareView mode="my-publishes" tab={route.kind === 'home' && route.view === 'my-publishes' ? route.tab : undefined} /> : null}
+          {view === 'square' ? <SquareView tab={entryRoute.view === 'square' ? entryRoute.tab : undefined} /> : null}
+          {view === 'my-publishes' ? <SquareView mode="my-publishes" tab={entryRoute.view === 'my-publishes' ? entryRoute.tab : undefined} /> : null}
            {view === 'community' ? (
              <CommunityView
                onRemixTemplate={({ templateId, prompt }) => {
@@ -2030,14 +2058,14 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
             <TeamSlotPlaceholder icon="settings" title={t('entry.navWorkspaceSettings')} />
           ) : null}
         {view === 'team-space' ? (
-          <TeamSpaceView teamId={route.kind === 'home' ? route.teamId : undefined} tab={route.kind === 'home' && route.view === 'team-space' ? route.tab : undefined} onInvite={() => setInviteOpen(true)} designSystems={designSystems} onOpenProject={onOpenProject} onDeleteProject={onDeleteProject} onRenameProject={onRenameProject} onDuplicateProject={onDuplicateProject} />
+          <TeamSpaceView teamId={entryRoute.teamId} tab={entryRoute.view === 'team-space' ? entryRoute.tab : undefined} onInvite={() => setInviteOpen(true)} designSystems={designSystems} onOpenProject={onOpenProject} onDeleteProject={onDeleteProject} onRenameProject={onRenameProject} onDuplicateProject={onDuplicateProject} />
        ) : null}
         {view === 'team-folder' ? (
-           <FolderView teamId={route.kind === 'home' ? route.teamId : undefined} folderId={route.kind === 'home' ? route.folderId : undefined} designSystems={designSystems} onOpenProject={onOpenProject} onDeleteProject={onDeleteProject} onRenameProject={onRenameProject} onDuplicateProject={onDuplicateProject} />
+           <FolderView teamId={entryRoute.teamId} folderId={entryRoute.folderId} designSystems={designSystems} onOpenProject={onOpenProject} onDeleteProject={onDeleteProject} onRenameProject={onRenameProject} onDuplicateProject={onDuplicateProject} />
         ) : null}
         {view === 'personal-all' ? (
         <PersonalAllView
-          tab={route.kind === 'home' && route.view === 'personal-all' ? route.tab : undefined}
+          tab={entryRoute.view === 'personal-all' ? entryRoute.tab : undefined}
           designSystems={designSystems}
           onOpenProject={onOpenProject}
           onDeleteProject={onDeleteProject}
@@ -2048,7 +2076,7 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
         ) : null}
        {view === 'personal-folder' ? (
          <PersonalFolderView
-           folderId={route.kind === 'home' ? route.folderId : undefined}
+           folderId={entryRoute.folderId}
            designSystems={designSystems}
            onOpenProject={onOpenProject}
            onDeleteProject={onDeleteProject}
@@ -2056,16 +2084,16 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
          />
     ) : null}
      {view === 'shared-with-me' ? (
-          <SharedWithMeView tab={route.kind === 'home' && route.view === 'shared-with-me' ? route.tab : undefined} onOpenProject={onOpenProject} />
+          <SharedWithMeView tab={entryRoute.view === 'shared-with-me' ? entryRoute.tab : undefined} onOpenProject={onOpenProject} />
          ) : null}
      {view === 'shared-folder' ? (
-          <SharedFolderView folderId={route.kind === 'home' && route.view === 'shared-folder' ? route.sharedFolderId : undefined} onOpenProject={onOpenProject} />
+          <SharedFolderView folderId={entryRoute.view === 'shared-folder' ? entryRoute.sharedFolderId : undefined} onOpenProject={onOpenProject} />
          ) : null}
        </div>
        </main>
      </div>
      <NewProjectModal
-       open={newProjectOpen}
+       open={active && newProjectOpen}
        initialTab={newProjectInitialTab}
        skills={[...skills, ...designTemplates]}
        designTemplates={designTemplates}

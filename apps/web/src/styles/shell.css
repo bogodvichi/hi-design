@@ -264,19 +264,15 @@ html.od-radial-open .workspace-shell {
   padding-left: var(--workspace-tabs-edge-inset);
   position: relative;
   z-index: 1;
-  /* Horizontal scroll inside the strip — tabs keep their natural width
-     and the strip itself scrolls when it overflows the chrome. This
-     replaces the previous "slice to N visible + overflow chip" model
-     which let lots of tabs squish-shrink and could push the rest of
-     the chrome out of view. */
-  overflow-x: auto;
+  /* Browser-style adaptive chrome. Tabs shrink to their readable minimum;
+     WorkspaceTabsBar then removes excess rows from layout and exposes them
+     through the trailing ··· menu. Never let the strip slide underneath the
+     fixed account cluster. */
+  overflow-x: hidden;
   overflow-y: hidden;
   scrollbar-width: none;
   contain: layout style;
   -webkit-app-region: drag;
-  /* Allow the user's trackpad / shift-wheel to scroll horizontally
-     without the OS turning it into a back-gesture. */
-  overscroll-behavior-x: contain;
 }
 .workspace-tabs-strip::-webkit-scrollbar {
   height: 0;
@@ -354,6 +350,9 @@ html.od-radial-open .workspace-shell {
   cursor: default;
   z-index: 1;
   will-change: transform;
+}
+.workspace-tab.is-overflow-hidden {
+  display: none !important;
 }
 /* The pinned Home tab has no close button, so it drops the close column and
    sits a little narrower than the project tabs. It is fixed: it never shrinks
@@ -574,6 +573,100 @@ html.od-radial-open .workspace-shell {
   padding-left: 2px;
   z-index: 35;
   -webkit-app-region: no-drag;
+}
+
+.workspace-tabs-overflow__trigger {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  margin-left: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 32px;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 1.5px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  position: relative;
+  z-index: 4;
+}
+.workspace-tabs-overflow__trigger:hover,
+.workspace-tabs-overflow__trigger.is-open {
+  background: color-mix(in srgb, var(--bg-panel) 82%, transparent);
+  color: var(--text-strong);
+}
+.workspace-tabs-overflow__trigger > span {
+  transform: translateY(-2px);
+}
+.workspace-tabs-overflow__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1598;
+}
+.workspace-tabs-overflow__menu {
+  position: fixed;
+  z-index: 1599;
+  width: 280px;
+  max-width: calc(100vw - 16px);
+  max-height: min(420px, calc(100vh - 72px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 6px;
+  border: 1px solid var(--material-separator, var(--border));
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--bg-elevated, var(--bg-panel)) 92%, transparent);
+  -webkit-backdrop-filter: var(--material-regular-backdrop);
+  backdrop-filter: var(--material-regular-backdrop);
+  box-shadow: var(--shadow-lg);
+  -webkit-app-region: no-drag;
+}
+.workspace-tabs-overflow__row {
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  padding: 0 9px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.workspace-tabs-overflow__row:hover,
+.workspace-tabs-overflow__row:focus-visible {
+  background: var(--bg-subtle);
+  outline: none;
+}
+.workspace-tabs-overflow__row-icon {
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  color: var(--text-muted);
+}
+.workspace-tabs-overflow__row-label {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .workspace-tabs-popover {
   /* Anchored to the viewport, not to .workspace-tabs-actions, because the

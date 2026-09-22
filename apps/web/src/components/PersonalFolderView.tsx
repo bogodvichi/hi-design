@@ -561,6 +561,7 @@ const [shareFolderTarget, setShareFolderTarget] = useState<PersonalFolderItem | 
           limit={1000}
           heading={t('entry.navDrafts')}
           space="drafts"
+          homeWorkspaceId={workspaceId}
           onOpen={(id) => onOpenProject?.(id)}
           onDelete={onDeleteProject}
          onRename={(id, name) => {

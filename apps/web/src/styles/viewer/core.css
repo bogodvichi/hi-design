@@ -1811,7 +1811,7 @@
   color: var(--red);
 }
 .comment-popover-more-menu button.danger:hover {
-  background: var(--red-bg);
+  background: var(--bg-subtle);
 }
 .comment-popover-meta-line {
   display: flex;

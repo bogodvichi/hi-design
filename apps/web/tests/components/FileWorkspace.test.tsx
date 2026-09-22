@@ -18,6 +18,7 @@ import {
 import {
   DESIGN_FILES_TAB,
   FileWorkspace,
+  projectFileDeletePath,
   settleManualEditFiles,
   scrollWorkspaceTabsWithWheel,
   settleManualEditExit,
@@ -31,6 +32,12 @@ import {
   projectWorkspaceNameFromDirectory,
   projectSplitClassName,
   projectSplitStyle,
+  projectWorkspaceFocusIsForced,
+  projectChatCollapseControlVisible,
+  stableWorkspacePanelMinWidthForSplit,
+  stableProjectReadOnlyPresentation,
+  stickyPersonalProjectPresentation,
+  stickySharedProjectNotice,
   projectUsesPersonalWorkspacePresentation,
 } from '../../src/components/ProjectView';
 import {
@@ -3515,9 +3522,139 @@ describe('projectSplitClassName', () => {
     })).toBe(true);
   });
 
+  it('keeps personal project presentation stable across transient owner revalidation', () => {
+    let state = stickyPersonalProjectPresentation(null, 'project-1', false);
+    expect(state.personal).toBe(false);
+
+    state = stickyPersonalProjectPresentation(state, 'project-1', true);
+    expect(state.personal).toBe(true);
+
+    // Background owner/status refresh may temporarily lose the positive owner
+    // witness. The mounted project must not reintroduce the 40px team dock row.
+    state = stickyPersonalProjectPresentation(state, 'project-1', false);
+    expect(state.personal).toBe(true);
+
+    // A different project gets a fresh presentation decision.
+    state = stickyPersonalProjectPresentation(state, 'project-2', false);
+    expect(state).toEqual({ projectId: 'project-2', personal: false });
+  });
+
+  it('deletes a project file by its canonical path instead of its display name', () => {
+    const files: ProjectFile[] = [
+      {
+        name: '用户上传的报告.pdf',
+        path: 'uploads/9f2c-report.pdf',
+        kind: 'pdf',
+        mime: 'application/pdf',
+        size: 12,
+        mtime: 1,
+      },
+    ];
+
+    expect(projectFileDeletePath(files, '用户上传的报告.pdf')).toBe('uploads/9f2c-report.pdf');
+    expect(projectFileDeletePath(files, 'missing.txt')).toBe('missing.txt');
+  });
+
+  it('does not flash the project chat-collapse control while ownership is pending', () => {
+    expect(projectChatCollapseControlVisible(false, false, 'pending')).toBe(false);
+    expect(projectChatCollapseControlVisible(false, false, 'allowed')).toBe(true);
+    expect(projectChatCollapseControlVisible(false, false, 'denied')).toBe(true);
+    expect(projectChatCollapseControlVisible(false, true, 'pending')).toBe(false);
+    expect(projectChatCollapseControlVisible(false, true, 'allowed')).toBe(false);
+    expect(projectChatCollapseControlVisible(true, false, 'allowed')).toBe(false);
+  });
+
+  it('keeps project read-only presentation stable while writer authority is pending', () => {
+    let state = stableProjectReadOnlyPresentation(null, 'project-1', 'allowed');
+    expect(state.readOnly).toBe(false);
+
+    state = stableProjectReadOnlyPresentation(state, 'project-1', 'pending');
+    expect(state.readOnly).toBe(false);
+
+    state = stableProjectReadOnlyPresentation(state, 'project-1', 'denied');
+    expect(state.readOnly).toBe(true);
+
+    state = stableProjectReadOnlyPresentation(state, 'project-1', 'pending');
+    expect(state.readOnly).toBe(true);
+
+    state = stableProjectReadOnlyPresentation(state, 'project-1', 'allowed');
+    expect(state.readOnly).toBe(false);
+  });
+
+  it('keeps a confirmed shared-project notice stable across transient collab revalidation', () => {
+    let state = stickySharedProjectNotice(null, 'project-1', false, null);
+    expect(state).toEqual({
+      projectId: 'project-1',
+      sharedNonOwner: false,
+      ownerDisplayName: null,
+    });
+
+    state = stickySharedProjectNotice(state, 'project-1', true, null);
+    expect(state.sharedNonOwner).toBe(true);
+
+    // A later status refresh can temporarily lose its owner/non-owner witness.
+    // The visible shared-project relationship must not disappear.
+    state = stickySharedProjectNotice(state, 'project-1', false, null);
+    expect(state.sharedNonOwner).toBe(true);
+
+    // Owner display name may arrive later; allow one-way enrichment without
+    // letting a later empty refresh erase it.
+    state = stickySharedProjectNotice(state, 'project-1', false, '麻薯');
+    expect(state.ownerDisplayName).toBe('麻薯');
+    state = stickySharedProjectNotice(state, 'project-1', false, null);
+    expect(state.ownerDisplayName).toBe('麻薯');
+
+    // A different project starts from its own relationship evidence.
+    expect(stickySharedProjectNotice(state, 'project-2', false, null)).toEqual({
+      projectId: 'project-2',
+      sharedNonOwner: false,
+      ownerDisplayName: null,
+    });
+  });
+
+  it('does not render the shared-project banner from a fail-closed viewerOnly state alone', () => {
+    const baseProps: React.ComponentProps<typeof FileWorkspace> = {
+      projectId: 'project-1',
+      projectKind: 'prototype',
+      files: [],
+      liveArtifacts: [],
+      onRefreshFiles: vi.fn(),
+      isDeck: false,
+      tabsState: { tabs: [], active: null },
+      onTabsStateChange: vi.fn(),
+      viewerOnly: true,
+    };
+
+    const withoutRelationship = renderToStaticMarkup(<FileWorkspace {...baseProps} />);
+    expect(withoutRelationship).not.toContain('workspace-readonly-notice');
+
+    const confirmedShared = renderToStaticMarkup(
+      <FileWorkspace {...baseProps} readonlyNotice="这是共享项目，当前为只读。" />,
+    );
+    expect(confirmedShared).toContain('workspace-readonly-notice');
+    expect(confirmedShared).toContain('这是共享项目，当前为只读。');
+  });
+
   it('marks the project split as focused so the chat pane can collapse globally', () => {
     expect(projectSplitClassName(false)).toBe('split');
     expect(projectSplitClassName(true)).toBe('split split-focus');
+  });
+
+  it('keeps a confirmed read-only project collapsed across transient pending refreshes', () => {
+    expect(projectWorkspaceFocusIsForced('project-1', 'denied', null)).toBe(true);
+    expect(projectWorkspaceFocusIsForced('project-1', 'pending', 'project-1')).toBe(true);
+    expect(projectWorkspaceFocusIsForced('project-2', 'pending', 'project-1')).toBe(false);
+    expect(projectWorkspaceFocusIsForced('project-1', 'allowed', null)).toBe(false);
+  });
+
+  it('keeps split-layout mode stable around the chat/workspace width threshold', () => {
+    // 753px is the raw switch point (345 chat + 8 handle + 400 workspace).
+    // Measurements near it can bounce by a pixel or two while Chromium settles.
+    // Hysteresis keeps the previous layout mode until we move decisively away.
+    expect(stableWorkspacePanelMinWidthForSplit(752, 400)).toBe(400);
+    expect(stableWorkspacePanelMinWidthForSplit(752, 0)).toBe(0);
+    expect(stableWorkspacePanelMinWidthForSplit(736, 400)).toBe(0);
+    expect(stableWorkspacePanelMinWidthForSplit(770, 0)).toBe(400);
   });
 
   it('uses CSS variables for split widths so pointer resize can update layout without rerendering workspace content', () => {

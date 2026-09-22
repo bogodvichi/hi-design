@@ -646,7 +646,7 @@
 }
 .design-card-menu button:hover { background: var(--bg-subtle); }
 .design-card-menu button.danger { color: var(--red); }
-.design-card-menu button.danger:hover { background: color-mix(in srgb, var(--red) 12%, transparent); }
+.design-card-menu button.danger:hover { background: var(--bg-subtle); }
 
 /* Multi-select checkbox + selected state */
 .design-card-checkbox {

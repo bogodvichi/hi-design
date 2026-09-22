@@ -20,7 +20,7 @@
   margin: 0;
   /* No extra top padding: the entry inner already positions content where
      草稿 / 全部项目 start, so Community's title lines up with theirs. */
-  padding: 0 0 72px;
+  padding: 0 0 var(--module-content-bottom-padding, 72px);
 }
 
 /* 扩展 page: match the design-systems safe area. Design-systems fills the entry

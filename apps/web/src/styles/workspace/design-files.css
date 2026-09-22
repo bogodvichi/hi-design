@@ -1399,4 +1399,4 @@ button.df-card-thumb:focus:not(:disabled) {
 }
 .df-row-popover button:hover { background: var(--bg-subtle); }
 .df-row-popover button.danger { color: var(--red); }
-.df-row-popover button.danger:hover { background: var(--red-bg); }
+.df-row-popover button.danger:hover { background: var(--bg-subtle); }

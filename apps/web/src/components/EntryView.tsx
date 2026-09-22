@@ -62,6 +62,8 @@ type EntryCreateProjectInput = Omit<CreateInput, 'metadata'> & {
 };
 
 interface Props {
+  /** Keep the entry/home tree mounted while another workspace tab is visible. */
+  active?: boolean;
   // Union of functional skills + design templates — used for id-based
   // lookups (DesignsTab project chips, NewProjectPanel skill picker).
   // The Templates gallery itself reads `designTemplates` instead so it
@@ -251,6 +253,7 @@ export function sortConnectorsForSearch(
 }
 
 export function EntryView({
+  active = true,
   skills,
   designTemplates,
   designSystems,
@@ -376,6 +379,7 @@ export function EntryView({
 
   return (
     <EntryShell
+      active={active}
       skills={skills}
       designTemplates={designTemplates}
       designSystems={designSystems}

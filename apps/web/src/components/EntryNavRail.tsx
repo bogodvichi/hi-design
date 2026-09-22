@@ -27,6 +27,7 @@ import { PageRefreshButton } from './PageRefreshButton';
 
 import {
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -215,6 +216,8 @@ interface Props {
   newProjectDisabled?: boolean;
   /** When false the rail is collapsed (hidden off-canvas) on the entry view. */
   open: boolean;
+  /** KeepAlive entry shells stay mounted behind project/tool tabs; only the active entry surface may portal the global top-right cluster. */
+  topRightActive?: boolean;
   /** Extra content for the floating top-right cluster, rendered LEFT of the
    *  account module (e.g. the DeepSeek campaign badge). */
   topRightSlot?: ReactNode;
@@ -533,6 +536,8 @@ function formatBillingTier(tier: string, t: ReturnType<typeof useI18n>['t']): st
     .join(' ');
 }
 
+let workspaceTabsSafeAreaOwner: symbol | null = null;
+
 interface EntryTopRightClusterProps {
   /** Analytics page the cluster reports from: the entry views map through
    *  `entryViewToTracking`, the workspace mount reports 'project'. */
@@ -576,15 +581,20 @@ export function EntryTopRightCluster({
   const analytics = useAnalytics();
   const workspaceDimensions = workspaceAnalyticsDimensions(context);
   const clusterRef = useRef<HTMLDivElement | null>(null);
+  const tabsSafeAreaOwnerRef = useRef<symbol | null>(null);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const cluster = clusterRef.current;
     if (!cluster) return;
 
     const root = document.documentElement;
+    const owner = Symbol('workspace-tabs-safe-area');
+    tabsSafeAreaOwnerRef.current = owner;
+    workspaceTabsSafeAreaOwner = owner;
     const syncTabsSafeArea = () => {
       const { left, width } = cluster.getBoundingClientRect();
       if (width <= 0) return;
+      workspaceTabsSafeAreaOwner = owner;
       const safeArea = Math.max(0, window.innerWidth - left + 16);
       root.style.setProperty('--workspace-tabs-right-safe-area', `${safeArea}px`);
     };
@@ -598,7 +608,11 @@ export function EntryTopRightCluster({
     return () => {
       resizeObserver?.disconnect();
       window.removeEventListener('resize', syncTabsSafeArea);
-      root.style.removeProperty('--workspace-tabs-right-safe-area');
+      if (workspaceTabsSafeAreaOwner === owner) {
+        workspaceTabsSafeAreaOwner = null;
+        root.style.removeProperty('--workspace-tabs-right-safe-area');
+      }
+      tabsSafeAreaOwnerRef.current = null;
     };
   }, []);
 
@@ -1202,6 +1216,7 @@ export function EntryNavRail({
   onOpenSearch,
   newProjectDisabled,
   open,
+  topRightActive = true,
   topRightSlot,
   context,
   billing,
@@ -1966,6 +1981,7 @@ export function EntryNavRail({
           workbench top-right corner in one flex row. Extracted so the project
           route can mount the same cluster without the rail (see
           `EntryTopRightCluster`). */}
+      {topRightActive ? (
       <EntryTopRightCluster
         page={analyticsPage}
         context={context}
@@ -1976,6 +1992,7 @@ export function EntryNavRail({
         onOpenSettings={onOpenSettings}
         onSignedOut={onSignedOut}
       />
+      ) : null}
     </nav>
   );
 }

@@ -49,6 +49,8 @@ interface Props {
   filesRefreshKey?: number;
   /** Read-only viewer of a team-shared project: disables project mutations. */
   viewerOnly?: boolean;
+  /** Dynamic fail-closed mutation gate; does not alter the stable visual structure. */
+  mutationBlocked?: boolean;
   /**
    * True while a non-owner member's local mirror has not yet caught up to the
    * project's published head. Existing files belong to the last complete
@@ -445,6 +447,7 @@ export function DesignFilesPanel({
   projectId,
   filesRefreshKey = 0,
   viewerOnly = false,
+  mutationBlocked = viewerOnly,
   downloadPending = false,
   rootDirName,
   reloading,
@@ -774,6 +777,7 @@ export function DesignFilesPanel({
   }
 
   function openMenuFor(name: string, el: HTMLElement) {
+    if (mutationBlocked) return;
     const rect = el.closest('.df-row-menu')?.getBoundingClientRect();
     if (!rect) return;
 
@@ -811,12 +815,17 @@ export function DesignFilesPanel({
   }
 
   function startRename(name: string) {
+    if (mutationBlocked) return;
     setMenuPos(null);
     const draft = currentDir === '' ? name : name.slice(currentDir.length + 1);
     setRenaming({ name, draft, saving: false });
   }
 
   async function commitRename(name: string, draft: string) {
+    if (mutationBlocked) {
+      setRenaming(null);
+      return;
+    }
     const nextBasename = draft.trim();
     if (!nextBasename) {
       setRenaming(null);
@@ -846,6 +855,7 @@ export function DesignFilesPanel({
   }
 
   async function handleBatchDelete() {
+    if (mutationBlocked) return;
     if (deleting) return;
     const fileList = [...selected];
     if (fileList.length === 0) return;
@@ -877,15 +887,15 @@ export function DesignFilesPanel({
           className="df-row-check"
           onClick={(e) => {
             e.stopPropagation();
-            if (viewerOnly) return; // read-only viewer cannot batch-select files
+            if (mutationBlocked) return; // fail-closed while mutation authority is pending
             toggleSelect(f.name);
           }}
-          role={viewerOnly ? undefined : 'checkbox'}
-          aria-checked={viewerOnly ? undefined : isSelected}
-          aria-disabled={viewerOnly ? 'true' : undefined}
-          tabIndex={viewerOnly ? -1 : 0}
+          role={mutationBlocked ? undefined : 'checkbox'}
+          aria-checked={mutationBlocked ? undefined : isSelected}
+          aria-disabled={mutationBlocked ? 'true' : undefined}
+          tabIndex={mutationBlocked ? -1 : 0}
           onKeyDown={(e) => {
-            if (viewerOnly) return;
+            if (mutationBlocked) return;
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
               e.stopPropagation();
@@ -1019,15 +1029,15 @@ export function DesignFilesPanel({
           className="df-card-check"
           onClick={(e) => {
             e.stopPropagation();
-            if (viewerOnly) return; // read-only viewer cannot batch-select files
+            if (mutationBlocked) return; // fail-closed while mutation authority is pending
             toggleSelect(f.name);
           }}
-          role={viewerOnly ? undefined : 'checkbox'}
-          aria-checked={viewerOnly ? undefined : isSelected}
-          aria-disabled={viewerOnly ? 'true' : undefined}
-          tabIndex={viewerOnly ? -1 : 0}
+          role={mutationBlocked ? undefined : 'checkbox'}
+          aria-checked={mutationBlocked ? undefined : isSelected}
+          aria-disabled={mutationBlocked ? 'true' : undefined}
+          tabIndex={mutationBlocked ? -1 : 0}
           onKeyDown={(e) => {
-            if (viewerOnly) return;
+            if (mutationBlocked) return;
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
               e.stopPropagation();
@@ -1088,7 +1098,7 @@ export function DesignFilesPanel({
                   e.stopPropagation();
                   // Read-only viewers have no rename entry point, so the name
                   // stays a plain open target for them.
-                  if (viewerOnly) {
+                  if (mutationBlocked) {
                     onOpenFile(f.name);
                     return;
                   }
@@ -1154,15 +1164,15 @@ export function DesignFilesPanel({
           className="df-card-check"
           onClick={(e) => {
             e.stopPropagation();
-            if (viewerOnly) return; // read-only viewer cannot batch-select files
+            if (mutationBlocked) return; // fail-closed while mutation authority is pending
             toggleSelect(f.name);
           }}
-          role={viewerOnly ? undefined : 'checkbox'}
-          aria-checked={viewerOnly ? undefined : isSelected}
-          aria-disabled={viewerOnly ? 'true' : undefined}
-          tabIndex={viewerOnly ? -1 : 0}
+          role={mutationBlocked ? undefined : 'checkbox'}
+          aria-checked={mutationBlocked ? undefined : isSelected}
+          aria-disabled={mutationBlocked ? 'true' : undefined}
+          tabIndex={mutationBlocked ? -1 : 0}
           onKeyDown={(e) => {
-            if (viewerOnly) return;
+            if (mutationBlocked) return;
             if (e.key === 'Enter' || e.key === ' ') {
               e.preventDefault();
               e.stopPropagation();
@@ -1280,7 +1290,7 @@ export function DesignFilesPanel({
     setDraggingFiles(false);
     // Read-only viewer of a shared project: dropping files is a mutation, so
     // ignore the drop entirely (the drag affordance is also suppressed below).
-    if (viewerOnly) return;
+    if (mutationBlocked) return;
     setDropReadError(null);
     try {
       const dropped = await filesFromDataTransfer(ev.dataTransfer);
@@ -1295,7 +1305,7 @@ export function DesignFilesPanel({
     relativePath: string,
     action: PluginFolderAgentAction,
   ) {
-    if (!onPluginFolderAgentAction || installingFolder || sharingFolder) return;
+    if (mutationBlocked || !onPluginFolderAgentAction || installingFolder || sharingFolder) return;
     setInstallNotice(null);
     if (action === 'install') {
       setInstallingFolder(relativePath);
@@ -1452,7 +1462,7 @@ export function DesignFilesPanel({
           className="df-body"
           onDragEnter={(ev) => {
             ev.preventDefault();
-            if (viewerOnly) return; // no "drop to upload" hint in read-only
+            if (mutationBlocked) return; // no upload affordance while mutation authority is pending
             dragDepthRef.current += 1;
             setDraggingFiles(true);
           }}
@@ -1557,9 +1567,9 @@ export function DesignFilesPanel({
                       type="button"
                       className="df-empty-cta df-empty-cta-primary"
                       data-testid="design-files-empty-new-sketch"
-                      disabled={viewerOnly}
+                      disabled={mutationBlocked}
                       onClick={onNewSketch}
-                      title={viewerOnly
+                      title={mutationBlocked
                         ? t('fileViewer.readonlySharedNoExport')
                         : t('designFiles.newSketch')}
                     >
@@ -1572,9 +1582,9 @@ export function DesignFilesPanel({
                       type="button"
                       className="df-empty-cta df-empty-cta-doc"
                       data-testid="design-files-empty-new-document"
-                      disabled={viewerOnly}
+                      disabled={mutationBlocked}
                       onClick={onPaste}
-                      title={viewerOnly
+                      title={mutationBlocked
                         ? t('fileViewer.readonlySharedNoExport')
                         : t('designFiles.newDocumentTitle')}
                     >
@@ -1585,9 +1595,9 @@ export function DesignFilesPanel({
                       type="button"
                       className="df-empty-cta df-empty-cta-upload"
                       data-testid="design-files-upload-trigger"
-                      disabled={viewerOnly}
+                      disabled={mutationBlocked}
                       onClick={onUpload}
-                      title={viewerOnly
+                      title={mutationBlocked
                         ? t('fileViewer.readonlySharedNoExport')
                         : t('designFiles.upload.title')}
                     >
@@ -1612,9 +1622,9 @@ export function DesignFilesPanel({
                         type="button"
                         className="df-empty-cta df-empty-cta-tertiary"
                         data-testid="design-files-empty-create-design-system"
-                        disabled={viewerOnly}
+                        disabled={mutationBlocked}
                         onClick={onCreateDesignSystem}
-                        title={viewerOnly
+                        title={mutationBlocked
                           ? t('fileViewer.readonlySharedNoExport')
                           : t('dsManager.createTitle')}
                       >
@@ -1865,7 +1875,6 @@ export function DesignFilesPanel({
           </a>
           <button
             type="button"
-            className="danger"
             data-testid={`design-file-delete-${menuPos.name}`}
             onClick={(e) => {
               e.stopPropagation();

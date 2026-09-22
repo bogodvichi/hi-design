@@ -14,10 +14,8 @@
      width exactly — see .home-hero__plugin-presets-wrap. */
   container-type: inline-size;
 }
-/* Home uses the approved flat neutral ground in both browser and desktop.
-   Keep this on the active Home route so project workspaces remain unchanged. */
-.workspace-shell:has(.entry-main__view-home[data-active='true']) {
-  background: #e6e6e6;
+.home-view:not(.home-view--centered) {
+  padding-bottom: var(--module-content-bottom-padding, 72px);
 }
 /* Empty workspace: no recent projects rendered below, so the hero column
    centers vertically in the scroll viewport instead of hugging the top. */

@@ -856,7 +856,7 @@ export function BoardComposerPopover({
               {existing && onDeleteComment && canDeleteComment ? (
                 <button
                   type="button"
-                  className="comment-popover-header-action danger"
+                  className="comment-popover-header-action"
                   data-testid="comment-popover-delete"
                   aria-label={t('common.delete')}
                   title={t('common.delete')}
