@@ -340,6 +340,10 @@ export interface ProjectMetadata {
   // UI can show all skills ever used without replaying conversation
   // history. Deduplicated, order-preserving, updated on every run.
   usedSkillIds?: string[];
+  // Accumulated MCP server ids referenced across all conversations in this
+  // project. Mirrors `usedSkillIds` so publishing can carry the project's
+  // complete tool context without replaying conversation history.
+  usedMcpIds?: string[];
 }
 
 export interface Project {

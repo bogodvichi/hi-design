@@ -3645,6 +3645,7 @@ export async function startServer({
         role: claimed.role,
         memberStatus: claimed.memberStatus,
         lifecycleState: claimed.lifecycleState,
+        ...(claimed.isDefaultTeam ? { isDefaultTeam: true } : {}),
       }, configuredAmrEnv()),
     };
   };
@@ -9484,6 +9485,7 @@ const projectRouteResult = registerProjectRoutes(app, {
     node: nodeDeps,
     ids: idDeps,
     projectStore: projectStoreDeps,
+    resources: { listAllSkillLikeEntries },
     exports: projectExportDeps,
     projectFiles: projectFileDeps,
     validation: validationDeps,

@@ -447,6 +447,9 @@ export const McpClientSection = forwardRef<McpClientSectionHandle, Props>(
     setTemplates(data.templates);
     setSavedAt(Date.now());
     onServersChanged?.(data.servers);
+    // Notify the personal-all/mcp view and other surfaces that the local
+    // mcp-config.json changed so they re-fetch installation status.
+    window.dispatchEvent(new CustomEvent('personal:mcp-refresh'));
     return true;
   };
 

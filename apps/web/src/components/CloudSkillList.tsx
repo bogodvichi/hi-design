@@ -111,6 +111,15 @@ export function CloudSkillList({
   }, [workspaceId, workspaceMemberId, workspaceType]);
 
   const loadSkills = useCallback(async () => {
+    // ── Design intent (do not change) ──────────────────────────────
+    // Personal skills are cloud resources owned by the current user,
+    // stored in the shared HDW space — NOT local on-disk files. The
+    // personal mode queries /api/workspace/skills/cloud with an
+    // owner_member_id filter so the list reflects what the user
+    // published to the cloud, while loadLocalSkills() separately
+    // tracks which of those are materialized locally (installed).
+    // This mirrors CloudMcpList and is the intended architecture.
+    // ──────────────────────────────────────────────────────────────
     if (mode === 'shared') {
       setLoading(true);
       setError(null);
@@ -189,34 +198,14 @@ export function CloudSkillList({
       setSkills([...merged.values()]);
       return;
     }
-    if (mode === 'personal') {
-      // Personal mode: show locally installed skills from /api/skills.
-      // No cloud round-trip - the skills directory is the source of truth.
-      const headers = workspaceHeaders(workspaceId, workspaceMemberId, workspaceType);
-      const res = await fetch('/api/skills', { cache: 'no-store', headers });
-      if (!res.ok) { throw new Error('Failed to load skills'); }
-      const body = await res.json();
-      const list: CloudSkill[] = ((body.skills ?? []) as Array<{
-        id: string; name: string; description: string;
-        source: string; ownerMemberId?: string; workspaceId?: string;
-      }>).filter((s) => s.source === 'user').map((s) => ({
-        resourceId: `local:${s.id}`,
-        localId: s.id,
-        title: s.name,
-        description: s.description ?? null,
-        ownerMemberId: s.ownerMemberId ?? '',
-        version: null,
-        versionId: null,
-        createdAt: '',
-        updatedAt: '',
-        provider: 'local',
-        sourceLabel: 'Local',
-        installed: true,
-      }));
-      setSkills(list);
-    } else {
+    {
       const params = new URLSearchParams();
-      const ownerFilter = ownerMemberId ?? null;
+      // ownerMemberId controls the owner filter; when null, all public
+      // resources are returned (community browse). workspaceMemberId is
+      // still sent in the workspace headers for auth and delete checks.
+      // Personal mode defaults to the current member so the list shows
+      // cloud resources owned by the current user — mirroring CloudMcpList.
+      const ownerFilter = ownerMemberId ?? (mode === 'personal' ? workspaceMemberId : null);
       if (ownerFilter) params.set('owner_member_id', ownerFilter);
       if (scope) params.set('scope', scope);
       if (sourceProvider) params.set('source', sourceProvider);
@@ -295,29 +284,18 @@ useEffect(() => {
    setUninstallingId(skill.resourceId);
    setError(null);
    try {
-      if (skill.provider === 'local') {
-        const res = await fetch(
-          '/api/skills/' + encodeURIComponent(skill.localId),
-          { method: 'DELETE', headers: workspaceHeaders(workspaceId, workspaceMemberId, workspaceType) },
-        );
-        if (!res.ok) {
-          const body = await res.json().catch(() => null);
-          throw new Error(body?.error ?? 'Uninstall failed');
-        }
-      } else {
-        const params = new URLSearchParams();
-        if (skill.homeWorkspaceId) params.set('home_workspace_id', skill.homeWorkspaceId);
-        if (skill.provider) params.set('source', skill.provider);
-        const uninstallUrl = '/api/workspace/skills/cloud/' + encodeURIComponent(skill.resourceId) + '/uninstall'
-          + (params.size ? '?' + params : '');
-        const res = await fetch(uninstallUrl, {
-          method: 'DELETE',
-          headers: workspaceHeaders(workspaceId, workspaceMemberId, workspaceType),
-        });
-        if (!res.ok) {
-          const body = await res.json().catch(() => null);
-          throw new Error(body?.message ?? body?.error ?? 'Uninstall failed');
-        }
+      const params = new URLSearchParams();
+      if (skill.homeWorkspaceId) params.set('home_workspace_id', skill.homeWorkspaceId);
+      if (skill.provider) params.set('source', skill.provider);
+      const uninstallUrl = '/api/workspace/skills/cloud/' + encodeURIComponent(skill.resourceId) + '/uninstall'
+        + (params.size ? '?' + params : '');
+      const res = await fetch(uninstallUrl, {
+        method: 'DELETE',
+        headers: workspaceHeaders(workspaceId, workspaceMemberId, workspaceType),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.message ?? body?.error ?? 'Uninstall failed');
       }
       setLocalSkillIds((current) => {
         const next = new Set(current);
@@ -464,8 +442,8 @@ useEffect(() => {
         {skills.map((skill) => {
           const isInstalled = skill.installed === true
             || skill.teamShared === true
-            || (skill.provider !== 'maas-skillhub' && localSkillIds.has(skill.localId));
-          const canManageCloudRecord = skill.provider !== 'maas-skillhub' && skill.provider !== 'local' && !skill.teamShared;
+           || (skill.provider !== 'maas-skillhub' && localSkillIds.has(skill.localId));
+          const canManageCloudRecord = skill.provider !== 'maas-skillhub' && !skill.teamShared;
           const isInstalling = installingId === skill.resourceId;
           const isUninstalling = uninstallingId === skill.resourceId;
           const isDeleting = deletingId === skill.resourceId;

@@ -311,6 +311,12 @@ export function parseWorkspaceCollabContext(input: unknown): WorkspaceCollabCont
   if (typeof raw.displayName === 'string' && raw.displayName.trim()) {
     context.displayName = raw.displayName.trim();
   }
+  if (typeof raw.isDefaultTeam === 'boolean') {
+    context.isDefaultTeam = raw.isDefaultTeam;
+  }
+  if (typeof raw.isSharedSpace === 'boolean') {
+    context.isSharedSpace = raw.isSharedSpace;
+  }
   if (typeof raw.lastActiveWorkspaceId === 'string' && raw.lastActiveWorkspaceId.trim()) {
     context.lastActiveWorkspaceId = raw.lastActiveWorkspaceId.trim();
   }

@@ -2472,29 +2472,42 @@ export function normalizeProject(row: DbRow) {
 }
 
 /**
- * Accumulate skill ids into project metadata.usedSkillIds.
+ * Accumulate ids into one project metadata list.
  *
- * Deduplicates while preserving insertion order (first-seen wins). Called
- * from both the project PATCH route (when skillId changes) and the run
- * creation route (when a run carries skillId/skillIds). Returns the updated
- * metadata object so callers can merge it into their patch.
+ * Deduplicates while preserving insertion order (first-seen wins). Returns
+ * the updated metadata object so callers can merge it into their patch.
  */
-export function accumulateUsedSkillIds(
+export function accumulateUsedIds(
   metadata: Record<string, unknown> | undefined | null,
-  newSkillIds: string[],
+  key: 'usedSkillIds' | 'usedMcpIds',
+  newIds: string[],
 ): Record<string, unknown> {
-  const existing = Array.isArray(metadata?.usedSkillIds)
-    ? (metadata!.usedSkillIds as unknown[])
+  const existing = Array.isArray(metadata?.[key])
+    ? (metadata![key] as unknown[])
         .filter((id): id is string => typeof id === 'string' && id.length > 0)
     : [];
   const seen = new Set(existing);
   const accumulated = [...existing];
-  for (const id of newSkillIds) {
+  for (const id of newIds) {
     if (typeof id !== 'string' || !id || seen.has(id)) continue;
     seen.add(id);
     accumulated.push(id);
   }
-  return { ...(metadata ?? {}), usedSkillIds: accumulated };
+  return { ...(metadata ?? {}), [key]: accumulated };
+}
+
+export function accumulateUsedSkillIds(
+  metadata: Record<string, unknown> | undefined | null,
+  newSkillIds: string[],
+): Record<string, unknown> {
+  return accumulateUsedIds(metadata, 'usedSkillIds', newSkillIds);
+}
+
+export function accumulateUsedMcpIds(
+  metadata: Record<string, unknown> | undefined | null,
+  newMcpIds: string[],
+): Record<string, unknown> {
+  return accumulateUsedIds(metadata, 'usedMcpIds', newMcpIds);
 }
 
 function normalizeProjectRunStatus(status: unknown) {

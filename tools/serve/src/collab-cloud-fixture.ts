@@ -66,7 +66,7 @@ const MEMBER_ROLES = new Set(["owner", "admin", "member"]);
 
 type MemberEntry = {
   memberId: string;
-  displayName: string;
+  displayName: string | null;
   role: string;
 };
 

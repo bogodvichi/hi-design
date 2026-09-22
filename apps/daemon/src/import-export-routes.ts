@@ -48,6 +48,13 @@ import {
 } from './collab/created-project-workspace.js';
 import type { WorkspaceDirectoryFetchResult } from './collab/vela-workspace-context.js';
 import type { BoundWorkspaceResourceMutationGate } from './collab/workspace-resource-mutation.js';
+import {
+  listProjectUsedMcpIds,
+  listProjectUsedSkillIds,
+  mergeManifestUsedIds,
+} from './community-used-ids.js';
+import { resolveSkillCatalogScope } from './skill-catalog-scope.js';
+import { findSkillById } from './skills.js';
 
 export interface RegisterImportRoutesDeps extends RouteDeps<'db' | 'http' | 'uploads' | 'node' | 'ids' | 'paths' | 'imports' | 'auth' | 'projectStore' | 'conversations' | 'projectFiles' | 'validation'> {
   fetchProjectCreationWorkspaceDirectory?: () => Promise<WorkspaceDirectoryFetchResult>;
@@ -562,7 +569,7 @@ type ScreenshotExportRequest = {
   readonly body: ScreenshotExportBody | null | undefined;
 };
 
-export interface RegisterProjectExportRoutesDeps extends RouteDeps<'db' | 'http' | 'paths' | 'node' | 'ids' | 'projectStore' | 'exports' | 'projectFiles' | 'validation' | 'auth' | 'projectPreviewScopes'> {
+export interface RegisterProjectExportRoutesDeps extends RouteDeps<'db' | 'http' | 'paths' | 'node' | 'ids' | 'projectStore' | 'exports' | 'projectFiles' | 'validation' | 'auth' | 'projectPreviewScopes' | 'resources'> {
   authorizeProjectRequest: AuthorizeProjectRequest;
   authorizeProjectToolRequest: AuthorizeProjectToolRequest;
   isApiTokenAuthorization: (authorization: string | undefined) => boolean;
@@ -575,6 +582,8 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
   const { fs, path } = ctx.node;
   const { randomId } = ctx.ids;
   const { getProject } = ctx.projectStore;
+  const { getWorkspaceProjectByProjectId } = ctx.projectStore;
+  const { listAllSkillLikeEntries } = ctx.resources;
   const { listFiles, readProjectFile, resolveProjectFilePath } = ctx.projectFiles;
   const { isSafeId } = ctx.validation;
   const {
@@ -1339,6 +1348,7 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
       if (!project) {
         return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
       }
+
       if (!await ctx.authorizeProjectRequest(req, res, project.id, { mode: 'read' })) return;
       const files = await listFiles(PROJECTS_DIR, req.params.id, {
         metadata: project.metadata,
@@ -1373,6 +1383,7 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
       if (!project) {
         return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
       }
+
       if (!await ctx.authorizeProjectRequest(req, res, project.id, { mode: 'read' })) return;
       const metadata = project?.metadata ?? null;
       const versionId = normalizeExportVersionId(req.body?.versionId);
@@ -1731,6 +1742,18 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
         return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
       }
 
+      // Resolve against the same project-scoped catalog that runs use, so
+      // stale or workspace-invisible skill ids are not published as context.
+      const skillCatalog = await listAllSkillLikeEntries(
+        resolveSkillCatalogScope({
+          metadata: project.metadata,
+          workspaceBinding: getWorkspaceProjectByProjectId(db, req.params.id),
+        }) ?? undefined,
+      );
+      const usedSkillIds = listProjectUsedSkillIds(db, req.params.id)
+        .filter((id) => findSkillById(skillCatalog, id) !== undefined);
+      const usedMcpIds = listProjectUsedMcpIds(db, req.params.id);
+
       const { stream } = await createProjectArchiveStream(
         PROJECTS_DIR,
         req.params.id,
@@ -1794,7 +1817,7 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
         // Inject open-design.json and SKILL.md into the archive so the
         // remix endpoint can find plugin manifests. Mirrors the CLI
         // publish-hdw flow which auto-generates these files.
-        const pluginManifest = {
+        const pluginManifestBase = {
           $schema: 'https://open-design.ai/schemas/plugin.v1.json',
           specVersion: '1.0.0',
           name: derivedName,
@@ -1818,6 +1841,10 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
             capabilities: ['prompt:inject', 'fs:write'],
           },
         };
+        const pluginManifest = mergeManifestUsedIds(
+          pluginManifestBase,
+          { skillIds: usedSkillIds, mcpIds: usedMcpIds },
+        );
         const manifestJson = JSON.stringify(pluginManifest, null, 2) + '\n';
 
         const skillFrontmatter = [
@@ -1845,7 +1872,22 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
 
         // Load the ZIP, inject both files, regenerate the buffer.
         const zip = await JSZip.loadAsync(archiveBuffer);
-        if (!zip.file('open-design.json')) {
+        const existingManifestFile = zip.file('open-design.json');
+        if (existingManifestFile) {
+          try {
+            const existingManifest = JSON.parse(
+              await existingManifestFile.async('string'),
+            ) as Record<string, unknown>;
+            const mergedManifest = mergeManifestUsedIds(existingManifest, {
+              skillIds: usedSkillIds,
+              mcpIds: usedMcpIds,
+            });
+            zip.file('open-design.json', JSON.stringify(mergedManifest, null, 2) + '\n');
+          } catch {
+            // A malformed existing manifest must not block publishing. The
+            // generated manifest below remains the fallback.
+          }
+        } else {
           zip.file('open-design.json', manifestJson);
         }
         if (!zip.file('SKILL.md')) {
@@ -1921,7 +1963,7 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
           description: description || `Shared from ${title}`,
           tags: ['project', 'community'],
           license: 'MIT',
-          capabilitiesSummary: pluginManifest.od.capabilities,
+          capabilitiesSummary: pluginManifestBase.od.capabilities,
           publisherUsername,
           publisherDisplayname,
           ...(coverDigest ? { coverDigest } : {}),

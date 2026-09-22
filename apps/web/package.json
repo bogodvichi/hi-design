@@ -39,6 +39,7 @@
     "@open-design/platform": "workspace:*",
     "@open-design/sidecar": "workspace:*",
     "@open-design/sidecar-proto": "workspace:*",
+    "@zumer/snapdom": "2.18.0",
     "@xterm/addon-fit": "0.10.0",
     "@xterm/xterm": "5.5.0",
     "dompurify": "3.4.2",

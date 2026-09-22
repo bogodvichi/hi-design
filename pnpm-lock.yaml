@@ -167,6 +167,9 @@ importers:
       undici:
         specifier: 7.29.0
         version: 7.29.0
+      ws:
+        specifier: 8.21.1
+        version: 8.21.1
     devDependencies:
       '@babel/types':
         specifier: 7.29.0
@@ -183,6 +186,9 @@ importers:
       '@types/node':
         specifier: 20.19.39
         version: 20.19.39
+      '@types/ws':
+        specifier: 8.18.1
+        version: 8.18.1
       jsdom:
         specifier: 29.1.1
         version: 29.1.1
@@ -381,6 +387,9 @@ importers:
       '@xterm/xterm':
         specifier: 5.5.0
         version: 5.5.0
+      '@zumer/snapdom':
+        specifier: 2.18.0
+        version: 2.18.0
       dompurify:
         specifier: 3.4.2
         version: 3.4.2
@@ -3579,6 +3588,9 @@ packages:
   '@types/webxr@0.5.24':
     resolution: {integrity: sha512-h8fgEd/DpoS9CBrjEQXR+dIDraopAEfu4wYVNY2tEPwk60stPWhvZMf4Foo5FakuQ7HFZoa8WceaWFervK2Ovg==}
 
+  '@types/ws@8.18.1':
+    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
+
   '@types/yauzl@2.10.3':
     resolution: {integrity: sha512-oJoftv0LSuaDZE3Le4DbKX+KS9G36NzOeSap90UIK0yMA/NhKJhqlSGtNDORNRaIbQfzjXDrQa0ytJ6mNRGz/Q==}
 
@@ -3660,6 +3672,10 @@ packages:
 
   '@xterm/xterm@5.5.0':
     resolution: {integrity: sha512-hqJHYaQb5OptNunnyAnkHyM8aCjZ1MEIDTQu1iIbbTD/xops91NB5yq1ZK/dC2JDbVWtF23zUtl9JE2NqwT87A==}
+
+  '@zumer/snapdom@2.18.0':
+    resolution: {integrity: sha512-6XirrLb+E9fXqPkn31NLeY2mG97stdVJ/FyN8ngq5dflFi48F4+NcVvQ04rlRITCkv88BWUstMH8Lf35rKyBjA==}
+    deprecated: Old versions have known fidelity bugs (text re-wrap, width freezing, KaTeX clipping). Upgrade to ^2.22 — drop-in for any 2.x. https://github.com/zumerlab/snapdom/releases
 
   abbrev@4.0.0:
     resolution: {integrity: sha512-a1wflyaL0tHtJSmLSOVybYhy22vRih4eduhhrkcjgrWGnRfrZtovJ2FRjxuTtkkj47O/baf0R86QU5OuYpz8fA==}
@@ -7305,6 +7321,18 @@ packages:
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
 
+  ws@8.21.1:
+    resolution: {integrity: sha512-+0NTnW77fFN/DjQi6k/Sq/Yvk4Sgajw7urW8V+asjXnRgDs9gyGkdb7EzgfhA4goXsRIZKE28fzIXBHEzhuiWw==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+
   ws@8.21.3:
     resolution: {integrity: sha512-201TZ/kPWxoPr/OKWjquZR1SWKXcvxdH+e1xrx89b3YbmzLMFCLfnaG1HFIgWzJOEWZ7MvpK++odZufgYR50Rw==}
     engines: {node: '>=10.0.0'}
@@ -8493,7 +8521,7 @@ snapshots:
       google-auth-library: 10.9.1
       p-retry: 4.6.2
       protobufjs: 8.4.0
-      ws: 8.21.3
+      ws: 8.21.1
     optionalDependencies:
       '@modelcontextprotocol/sdk': 1.29.0(zod@4.4.2)
     transitivePeerDependencies:
@@ -10004,6 +10032,10 @@ snapshots:
 
   '@types/webxr@0.5.24': {}
 
+  '@types/ws@8.18.1':
+    dependencies:
+      '@types/node': 24.12.2
+
   '@types/yauzl@2.10.3':
     dependencies:
       '@types/node': 24.12.2
@@ -10125,6 +10157,8 @@ snapshots:
       '@xterm/xterm': 5.5.0
 
   '@xterm/xterm@5.5.0': {}
+
+  '@zumer/snapdom@2.18.0': {}
 
   abbrev@4.0.0: {}
 
@@ -13142,7 +13176,7 @@ snapshots:
       devtools-protocol: 0.0.1666840
       typed-query-selector: 2.12.2
       webdriver-bidi-protocol: 0.4.2
-      ws: 8.21.3
+      ws: 8.21.1
     transitivePeerDependencies:
       - bufferutil
       - proxy-agent
@@ -14392,7 +14426,10 @@ snapshots:
 
   wrappy@1.0.2: {}
 
-  ws@8.21.3: {}
+  ws@8.21.1: {}
+
+  ws@8.21.3:
+    optional: true
 
   wsl-utils@0.1.0:
     dependencies:

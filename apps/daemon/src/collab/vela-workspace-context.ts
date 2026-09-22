@@ -217,6 +217,8 @@ function mapVelaWorkspaceDirectoryItem(input: unknown): WorkspaceDirectoryItem |
   if (workspaceIconKey) item.workspaceIconKey = workspaceIconKey;
   const displayName = str(raw.displayName);
   if (displayName) item.displayName = displayName;
+  if (typeof raw.isDefaultTeam === 'boolean') item.isDefaultTeam = raw.isDefaultTeam;
+  if (typeof raw.isSharedSpace === 'boolean') item.isSharedSpace = raw.isSharedSpace;
   return item;
 }
 
@@ -405,6 +407,8 @@ export function workspaceContextFromDirectoryItem(
     context.teamId = item.workspaceId;
     context.teamName = item.workspaceName;
   }
+  if (item.isDefaultTeam !== undefined) context.isDefaultTeam = item.isDefaultTeam;
+  if (item.isSharedSpace !== undefined) context.isSharedSpace = item.isSharedSpace;
   return context;
 }
 

@@ -25,6 +25,7 @@ import {
 } from "@open-design/sidecar";
 
 import { startDaemonRuntime, type StartedDaemonRuntime } from "../daemon-startup.js";
+import { startWsServer } from "../ws-server-startup.js";
 import {
   getDesktopAuthSecret,
   isDesktopAuthGateActive,
@@ -143,6 +144,9 @@ export async function startDaemonSidecar(
     runtime,
   });
 
+  // Start WebSocket server alongside the daemon.
+  const wsServer = startWsServer();
+
   // PR #974 round 6 (mrcfps): tools-dev's split-start hardening reads
   // `desktopAuthGateActive` from the STATUS IPC. The flag is dynamic
   // (flips to true on REGISTER_DESKTOP_AUTH) so the STATUS handler and
@@ -171,6 +175,7 @@ export async function startDaemonSidecar(
     state.updatedAt = new Date().toISOString();
     await ipcServer?.close().catch(() => undefined);
     await serverHandle.stop().catch(() => undefined);
+    await wsServer.stop().catch(() => undefined);
     resolveStopped();
   }
 
