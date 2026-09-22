@@ -8,9 +8,18 @@ import {
   DialogTitle,
 } from '@open-design/components';
 import { Icon } from './Icon';
-import { useT } from '../i18n';
+import { useI18n, useT } from '../i18n';
 import { ShareResourceDialog } from './ShareResourceDialog';
 import styles from './CloudSkillList.module.css';
+import {
+  SKILL_CATEGORIES,
+  emptySkillCategoryCounts,
+  normalizeSkillCategory,
+  type SkillCategory,
+  type SkillCategoryCounts,
+  type SkillCategoryFilter,
+} from '@open-design/contracts';
+import { skillCategoryLabel, skillCategorySelectLabel } from '../utils/skill-category-labels';
 
 interface CloudSkill {
   resourceId: string;
@@ -28,9 +37,10 @@ homeWorkspaceId?: string;
 provider?: string;
 sourceLabel?: string;
 publisherName?: string | null;
-iconUrl?: string | null;
-installed?: boolean;
-teamShared?: boolean;
+ iconUrl?: string | null;
+ installed?: boolean;
+ teamShared?: boolean;
+ category?: SkillCategory;
 }
 
 // Build workspace headers from the string props the parent passes.
@@ -77,6 +87,7 @@ export function CloudSkillList({
  scope?: string;
 }) {
   const t = useT();
+  const { locale } = useI18n();
   const titleId = useId();
   const [skills, setSkills] = useState<CloudSkill[]>([]);
   const [localSkillIds, setLocalSkillIds] = useState<Set<string>>(new Set());
@@ -87,10 +98,23 @@ export function CloudSkillList({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [activeCategory, setActiveCategory] = useState<SkillCategoryFilter>('all');
+  const [categoryCounts, setCategoryCounts] = useState<SkillCategoryCounts>(() => emptySkillCategoryCounts());
   const [failedIconIds, setFailedIconIds] = useState<Set<string>>(new Set());
  const [confirmAction, setConfirmAction] = useState<{ type: 'uninstall' | 'delete'; item: CloudSkill } | null>(null);
  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
  const [shareItem, setShareItem] = useState<CloudSkill | null>(null);
+ const showCategoryFilter = mode === 'square';
+
+ const countCategories = useCallback((items: readonly CloudSkill[]): SkillCategoryCounts => {
+   const counts = emptySkillCategoryCounts();
+   for (const skill of items) {
+     const category = normalizeSkillCategory(skill.category);
+     counts.all += 1;
+     counts[category] += 1;
+   }
+   return counts;
+ }, []);
 
   const loadLocalSkills = useCallback(async () => {
     if (!workspaceId) { setLocalSkillIds(new Set()); return; }
@@ -130,8 +154,10 @@ export function CloudSkillList({
           updatedAt: r.updatedAt ?? '',
           sharedByDisplayname: r.sharedByDisplayname ?? null,
           homeWorkspaceId: r.homeWorkspaceId ?? '',
+          category: normalizeSkillCategory(r.metadata?.category),
         }));
         setSkills(list);
+        setCategoryCounts(countCategories(list));
       } catch (err: any) {
         setError(err?.message ?? String(err));
       } finally {
@@ -139,7 +165,12 @@ export function CloudSkillList({
       }
       return;
     }
-    if (!workspaceId) { setSkills([]); setLoading(false); return; }
+    if (!workspaceId) {
+      setSkills([]);
+      setCategoryCounts(emptySkillCategoryCounts());
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -159,7 +190,7 @@ export function CloudSkillList({
 
       const merged = new Map<string, CloudSkill>();
       for (const skill of (cloudResponse?.skills ?? []) as CloudSkill[]) {
-        merged.set(skill.localId, skill);
+        merged.set(skill.localId, { ...skill, category: normalizeSkillCategory(skill.category) });
       }
       for (const resource of (teamResponse?.resources ?? []) as Array<{
         id: string;
@@ -184,9 +215,12 @@ export function CloudSkillList({
           ...existing,
           installed: true,
           teamShared: true,
+          category: normalizeSkillCategory(existing?.category),
         });
       }
-      setSkills([...merged.values()]);
+      const list = [...merged.values()];
+      setSkills(list);
+      setCategoryCounts(countCategories(list));
       return;
     }
     if (mode === 'personal') {
@@ -196,10 +230,11 @@ export function CloudSkillList({
       const res = await fetch('/api/skills', { cache: 'no-store', headers });
       if (!res.ok) { throw new Error('Failed to load skills'); }
       const body = await res.json();
-      const list: CloudSkill[] = ((body.skills ?? []) as Array<{
-        id: string; name: string; description: string;
-        source: string; ownerMemberId?: string; workspaceId?: string;
-      }>).filter((s) => s.source === 'user').map((s) => ({
+       const list: CloudSkill[] = ((body.skills ?? []) as Array<{
+         id: string; name: string; description: string;
+         source: string; ownerMemberId?: string; workspaceId?: string;
+         category?: string;
+       }>).filter((s) => s.source === 'user').map((s) => ({
         resourceId: `local:${s.id}`,
         localId: s.id,
         title: s.name,
@@ -210,17 +245,20 @@ export function CloudSkillList({
         createdAt: '',
         updatedAt: '',
         provider: 'local',
-        sourceLabel: 'Local',
-        installed: true,
-      }));
-      setSkills(list);
-    } else {
+         sourceLabel: 'Local',
+         installed: true,
+         category: normalizeSkillCategory(s.category),
+       }));
+       setSkills(list);
+       setCategoryCounts(countCategories(list));
+     } else {
       const params = new URLSearchParams();
       const ownerFilter = ownerMemberId ?? null;
       if (ownerFilter) params.set('owner_member_id', ownerFilter);
       if (scope) params.set('scope', scope);
       if (sourceProvider) params.set('source', sourceProvider);
       if (debouncedSearch) params.set('q', debouncedSearch);
+      if (showCategoryFilter && activeCategory !== 'all') params.set('category', activeCategory);
       const headers = workspaceHeaders(workspaceId, workspaceMemberId, workspaceType);
       const res = await fetch('/api/workspace/skills/cloud?' + params, {
         cache: 'no-store',
@@ -228,19 +266,32 @@ export function CloudSkillList({
       });
       if (!res.ok) { throw new Error('Failed to load cloud skills'); }
       const body = await res.json();
-      setSkills(body.skills ?? []);
+      const list: CloudSkill[] = ((body.skills ?? []) as CloudSkill[]).map((skill) => ({
+        ...skill,
+        category: normalizeSkillCategory(skill.category),
+      }));
+      setSkills(list);
+      const nextCounts = body.categoryCounts as Partial<SkillCategoryCounts> | undefined;
+      setCategoryCounts(nextCounts ? {
+        ...emptySkillCategoryCounts(),
+        ...nextCounts,
+      } : countCategories(list));
     }
     } catch (err: any) {
      setError(err?.message ?? String(err));
    } finally {
      setLoading(false);
    }
-}, [workspaceId, workspaceMemberId, workspaceType, ownerMemberId, mode, scope, sourceProvider, debouncedSearch]);
+ }, [workspaceId, workspaceMemberId, workspaceType, ownerMemberId, mode, scope, sourceProvider, debouncedSearch, showCategoryFilter, activeCategory, countCategories]);
 
 useEffect(() => {
   const timer = window.setTimeout(() => setDebouncedSearch(searchQuery.trim()), 250);
   return () => window.clearTimeout(timer);
 }, [searchQuery]);
+
+useEffect(() => {
+  if (!showCategoryFilter && activeCategory !== 'all') setActiveCategory('all');
+}, [activeCategory, showCategoryFilter]);
 
 useEffect(() => {
   void Promise.all([loadSkills(), loadLocalSkills()]);
@@ -386,14 +437,44 @@ useEffect(() => {
     </label>
   ) : null;
 
+  const categoryControl = showCategoryFilter ? (
+    <div
+      className={styles.categoryFilters}
+      role="tablist"
+      aria-label={skillCategorySelectLabel(locale)}
+    >
+      {(['all', ...SKILL_CATEGORIES] as SkillCategoryFilter[]).map((category) => (
+        <button
+          key={category}
+          type="button"
+          role="tab"
+          aria-selected={activeCategory === category}
+          className={activeCategory === category
+            ? `${styles.categoryFilter} ${styles.categoryFilterActive}`
+            : styles.categoryFilter}
+          onClick={() => setActiveCategory(category)}
+        >
+          {skillCategoryLabel(category, locale)} ({categoryCounts[category]})
+        </button>
+      ))}
+    </div>
+  ) : null;
+
+  const listControls = categoryControl || searchControl ? (
+    <div className={styles.listControls}>
+      {categoryControl}
+      {searchControl}
+    </div>
+  ) : null;
+
   if (loading) {
-    return <>{searchControl}<div className={styles.cloudSkillLoading}>{t('personalScope.cloudSkillLoading' as any)}</div></>;
+    return <>{listControls}<div className={styles.cloudSkillLoading}>{t('personalScope.cloudSkillLoading' as any)}</div></>;
   }
 
   if (error && skills.length === 0) {
     return (
       <>
-        {searchControl}
+        {listControls}
         <div className={styles.cloudSkillEmpty}>
           <span>{error}</span>
         </div>
@@ -404,7 +485,7 @@ useEffect(() => {
   if (skills.length === 0) {
     return (
       <>
-        {searchControl}
+        {listControls}
         <PageEmptyState />
       </>
     );
@@ -458,7 +539,7 @@ useEffect(() => {
 
   return (
     <>
-      {searchControl}
+      {listControls}
       {error ? <div className={styles.cloudSkillError} role="alert">{error}</div> : null}
       <div className={styles.cloudSkillGrid}>
         {skills.map((skill) => {

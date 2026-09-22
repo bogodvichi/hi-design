@@ -171,6 +171,44 @@
   line-height: 1.4;
 }
 
+.skillCategoryOptions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.skillCategoryOption {
+  appearance: none;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill, 999px);
+  background: var(--bg);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: border-color 120ms var(--ease-out), background-color 120ms var(--ease-out), color 120ms var(--ease-out);
+}
+
+.skillCategoryOption:hover:not(:disabled) {
+  border-color: var(--border-strong, var(--border));
+  color: var(--text-strong);
+}
+
+.skillCategoryOptionActive,
+.skillCategoryOptionActive:hover:not(:disabled) {
+  border-color: var(--text-strong);
+  background: var(--text-strong);
+  color: var(--accent-contrast, #fff);
+}
+
+.skillCategoryOption:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 /* --- Source switch (internal / external) --- */
 .sourceSwitch {
   display: inline-flex;

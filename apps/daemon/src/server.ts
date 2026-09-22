@@ -26,6 +26,9 @@ import {
   composeOdNextStrategyStableRequestContextV2,
   executionProfileFromStreamFormat,
   PLUGIN_SHARE_ACTION_PLUGIN_IDS,
+  emptySkillCategoryCounts,
+  isSkillCategory,
+  normalizeSkillCategory,
 } from '@open-design/contracts';
 import { isTodoWriteToolName, stopReasonIsTruncation, todoItemsFromTodoWriteInput } from '@open-design/contracts';
 import type {
@@ -7380,6 +7383,25 @@ const designSystemBackingProjects = new Map<string, string>();
    const ownerMemberId = typeof req.query.owner_member_id === 'string' ? req.query.owner_member_id : undefined;
    const resourceScope = typeof req.query.scope === 'string' ? req.query.scope : '';
    const sourceProvider = typeof req.query.source === 'string' ? req.query.source : '';
+   const requestedCategory = typeof req.query.category === 'string' ? req.query.category.trim() : '';
+   if (requestedCategory && !isSkillCategory(requestedCategory)) {
+     return res.status(400).json({ error: 'INVALID_SKILL_CATEGORY' });
+   }
+   const finalizeSkillList = (items) => {
+     const counts = emptySkillCategoryCounts();
+     const normalized = items.map((item) => {
+       const category = normalizeSkillCategory(item.category);
+       counts.all += 1;
+       counts[category] += 1;
+       return { ...item, category };
+     });
+     return {
+       skills: requestedCategory
+         ? normalized.filter((item) => item.category === requestedCategory)
+         : normalized,
+       categoryCounts: counts,
+     };
+   };
    const includeMaasSkillhub = sourceProvider === MAAS_SKILLHUB_PROVIDER || sourceProvider === 'all';
    let maasSkills: any[] = [];
    if (includeMaasSkillhub) {
@@ -7408,14 +7430,15 @@ const designSystemBackingProjects = new Map<string, string>();
            updatedAt: skill.updateTime ?? '',
            homeWorkspaceId: maasWorkspaceId,
            provider: MAAS_SKILLHUB_PROVIDER,
-           sourceLabel: 'MAAS Skillhub',
-           publisherName: skill.userNotesName || skill.userName || skill.userId || null,
-           iconUrl: skill.iconUrl ?? null,
-           installed: installedLocalIds.has(skill.id),
-         }));
-       if (sourceProvider === MAAS_SKILLHUB_PROVIDER) {
-         return res.json({ skills: maasSkills });
-       }
+            sourceLabel: 'MAAS Skillhub',
+            publisherName: skill.userNotesName || skill.userName || skill.userId || null,
+            iconUrl: skill.iconUrl ?? null,
+            category: normalizeSkillCategory(skill.skillSubType),
+            installed: installedLocalIds.has(skill.id),
+          }));
+        if (sourceProvider === MAAS_SKILLHUB_PROVIDER) {
+          return res.json(finalizeSkillList(maasSkills));
+        }
      } catch (err: any) {
        if (sourceProvider === MAAS_SKILLHUB_PROVIDER) {
          return res.status(502).json({ error: err instanceof Error ? err.message : 'MAAS Skillhub list failed' });
@@ -7423,7 +7446,7 @@ const designSystemBackingProjects = new Map<string, string>();
      }
    }
    if (!hdwCloudClient) {
-     return res.json({ skills: maasSkills });
+      return res.json(finalizeSkillList(maasSkills));
    }
    try {
      const resources = await hdwCloudClient.listResources(workspaceId, 'skill', ownerMemberId, resourceScope || undefined);
@@ -7441,13 +7464,14 @@ const designSystemBackingProjects = new Map<string, string>();
         provider: 'hdw',
         sourceLabel: 'HiDesign Community',
         publisherName: (r.metadata as any)?.publisherName ?? r.ownerDisplayName ?? r.ownerMemberId ?? null,
+        category: normalizeSkillCategory((r.metadata as any)?.category),
       })).filter((skill) => !search || [skill.title, skill.description, skill.localId]
         .join(' ')
         .toLowerCase()
         .includes(search));
-      res.json({ skills: [...maasSkills, ...skills] });
+      res.json(finalizeSkillList([...maasSkills, ...skills]));
     } catch (err: any) {
-      if (maasSkills.length > 0) return res.json({ skills: maasSkills });
+      if (maasSkills.length > 0) return res.json(finalizeSkillList(maasSkills));
       res.status(500).json({ error: err instanceof Error ? err.message : 'cloud skill list failed' });
     }
   });
@@ -7672,13 +7696,22 @@ const designSystemBackingProjects = new Map<string, string>();
      fieldSize: 2 * 1024 * 1024,
    },
  });
- app.post('/api/workspace/skills/cloud/upload', skillCloudUpload.any(), async (req: any, res: any) => {
+  app.post('/api/workspace/skills/cloud/upload', skillCloudUpload.any(), async (req: any, res: any) => {
    const resolution = await resolveTeamResourceScope(req);
    if (!resolution.ok) {
      return res.status(resolution.status).json({ error: resolution.code, message: resolution.message });
-   }
-   const scope = resolution.scope;
-   if (!hdwCloudClient) {
+    }
+    const scope = resolution.scope;
+    const resourceScope = typeof req.query.scope === 'string' ? req.query.scope : undefined;
+    const requestedCategory = typeof req.body?.category === 'string' ? req.body.category.trim() : '';
+    if (resourceScope === 'public' && !isSkillCategory(requestedCategory)) {
+      return res.status(400).json({
+        error: 'INVALID_SKILL_CATEGORY',
+        message: 'category is required for community publishing',
+      });
+    }
+    const category = isSkillCategory(requestedCategory) ? requestedCategory : 'other';
+    if (!hdwCloudClient) {
      return res.status(503).json({ error: 'HDW_CLOUD_NOT_CONFIGURED' });
    }
    const uploadedFiles = Array.isArray(req.files) ? req.files as Express.Multer.File[] : [];
@@ -7727,17 +7760,17 @@ const designSystemBackingProjects = new Map<string, string>();
        `${scopedIdPrefixFor(principal)}-${sanitizeResourceIdSegment(id)}`;
      const adapter = createHdwHttpResourceAdapter({
        resolveProjectDir: async () => prepared!.dir,
-       describeProject: async () => ({
-         localId: prepared!.slug,
-         title: prepared!.title,
-       }),
+        describeProject: async () => ({
+          localId: prepared!.slug,
+          title: prepared!.title,
+          category,
+        }),
        resourceIdFor,
        kind: 'skill',
        hasTeamIdentity: () => true,
        client: hdwCloudClient,
      });
-     const resourceScope = typeof req.query.scope === 'string' ? req.query.scope : undefined;
-     const result = await adapter.publish({
+      const result = await adapter.publish({
        projectId: prepared.slug,
        principal: scope.principal,
        reason: 'share',
@@ -7745,7 +7778,7 @@ const designSystemBackingProjects = new Map<string, string>();
      });
      // Invalidate the cached team listing so the client's refetch sees it.
      skillsTeamList.invalidate(scope);
-     res.json({ shared: true, title: prepared.title, version: result?.version });
+      res.json({ shared: true, title: prepared.title, category, version: result?.version });
    } catch (err: any) {
      res.status(500).json({ error: err instanceof Error ? err.message : 'cloud skill upload failed' });
    } finally {

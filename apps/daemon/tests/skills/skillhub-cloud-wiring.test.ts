@@ -31,7 +31,22 @@ describe('Skillhub cloud skill wiring', () => {
     expect(route).toContain('provider: MAAS_SKILLHUB_PROVIDER');
     expect(route).toContain('publisherName: skill.userNotesName || skill.userName || skill.userId || null');
     expect(route).toContain('iconUrl: skill.iconUrl ?? null');
-    expect(route).toContain('skills: [...maasSkills, ...skills]');
+    expect(route).toContain('category: normalizeSkillCategory(skill.skillSubType)');
+    expect(route).toContain('category: normalizeSkillCategory((r.metadata as any)?.category)');
+    expect(route).toContain('categoryCounts: counts');
+    expect(route).toContain("normalized.filter((item) => item.category === requestedCategory)");
+  });
+
+  it('requires a category for community publishing and persists it in resource metadata', () => {
+    const uploadRoute = sourceBetween(
+      "app.post('/api/workspace/skills/cloud/upload',",
+      'const teamResourceListByKind =',
+    );
+
+    expect(uploadRoute).toContain("resourceScope === 'public' && !isSkillCategory(requestedCategory)");
+    expect(uploadRoute).toContain("const category = isSkillCategory(requestedCategory) ? requestedCategory : 'other'");
+    expect(uploadRoute).toContain('category,');
+    expect(uploadRoute).toContain("res.json({ shared: true, title: prepared.title, category");
   });
 
   it('downloads the selected MAAS Skill ZIP into the local skill directory and binds it', () => {
