@@ -52,6 +52,8 @@ describe('CloudSkillList Skillhub integration', () => {
             provider: 'maas-skillhub',
             sourceLabel: 'MAAS Skillhub',
             publisherName: '张三',
+            previewCount: null,
+            actionCount: 428,
             iconUrl: 'https://maas.example.test/design-review.png',
           }],
         });
@@ -82,7 +84,8 @@ describe('CloudSkillList Skillhub integration', () => {
 
     expect(await screen.findByText('Skillhub Design Review')).toBeTruthy();
     expect(screen.getByText(/MAAS Skillhub/)).toBeTruthy();
-    expect(screen.getByText(/作者: 张三/)).toBeTruthy();
+    expect(screen.getByText(/张三/)).toBeTruthy();
+    expect(screen.getByLabelText('预览 —, 添加 428')).toBeTruthy();
     expect(container.querySelector('img[src="https://maas.example.test/design-review.png"]'))
       .toBeTruthy();
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'design' } });
@@ -200,6 +203,64 @@ describe('CloudSkillList Skillhub integration', () => {
     expect(screen.getByText('Developer Helper')).toBeTruthy();
     expect(screen.queryByRole('menu')).toBeNull();
     toolbarTarget.remove();
+  });
+
+  it('uses the shared external community search query for Skill requests', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url === '/api/skills') return jsonResponse({ skills: [] });
+      if (url.startsWith('/api/workspace/skills/cloud?')) {
+        return jsonResponse({
+          skills: [{
+            resourceId: 'resource-visual',
+            localId: 'visual-helper',
+            title: 'Visual Helper',
+            description: 'Visualization skill',
+            ownerMemberId: 'member-1',
+            version: 1,
+            versionId: 'v1',
+            createdAt: '',
+            updatedAt: '',
+            provider: 'maas-skillhub',
+            category: 'content_creation',
+          }],
+          categoryCounts: {
+            all: 1,
+            development_tools: 0,
+            content_creation: 1,
+            data_analysis: 0,
+            productivity: 0,
+            other: 0,
+          },
+        });
+      }
+      return new Response(null, { status: 404 });
+    });
+    globalThis.fetch = fetchMock as typeof fetch;
+
+    render(
+      <I18nProvider initial="zh-CN">
+        <CloudSkillList
+          workspaceId="current-workspace"
+          workspaceMemberId="current-member"
+          workspaceType="team"
+          sourceProvider="all"
+          mode="square"
+          scope="public"
+          externalSearchQuery="visual"
+        />
+      </I18nProvider>,
+    );
+
+    expect(await screen.findByText('Visual Helper')).toBeTruthy();
+    await waitFor(() => {
+      expect(fetchMock.mock.calls.some(([input]) => {
+        const url = new URL(input.toString(), 'http://localhost');
+        return url.pathname === '/api/workspace/skills/cloud'
+          && url.searchParams.get('q') === 'visual';
+      })).toBe(true);
+    });
+    expect(screen.queryByRole('searchbox')).toBeNull();
   });
 
   it('shows the daemon error when installation fails while cards are visible', async () => {

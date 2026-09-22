@@ -488,11 +488,17 @@ export function registerMcpRoutes(app: Express, ctx: RegisterMcpRoutesDeps) {
          ? meta.id
          : suggestServerId(String(meta.label ?? ''), new Set());
        // Force id = templateId = label for consistency.
-       return {
-         resourceId: r.id as string,
-         ownerMemberId: r.ownerMemberId as string,
-         ...(r.scope ? { scope: r.scope as string } : {}),
-         ...meta,
+        return {
+          resourceId: r.id as string,
+          ownerMemberId: r.ownerMemberId as string,
+          ...(r.scope ? { scope: r.scope as string } : {}),
+          ...meta,
+          publisherName:
+            (typeof meta.publisherName === 'string' && meta.publisherName.trim())
+              ? meta.publisherName.trim()
+              : (typeof r.ownerDisplayName === 'string' && r.ownerDisplayName.trim())
+                ? r.ownerDisplayName.trim()
+                : (r.ownerMemberId as string),
          id,
          templateId: id,
          label: id,
@@ -748,6 +754,13 @@ app.delete('/api/workspace/mcp/cloud/:resourceId/uninstall', async (req, res) =>
         ownerMemberId: r.ownerMemberId as string,
         ...(r.scope ? { scope: r.scope as string } : {}),
         ...((r.metadata as Record<string, unknown>) ?? {}),
+        publisherName:
+          (typeof (r.metadata as Record<string, unknown> | undefined)?.publisherName === 'string'
+            && String((r.metadata as Record<string, unknown>).publisherName).trim())
+            ? String((r.metadata as Record<string, unknown>).publisherName).trim()
+            : (typeof r.ownerDisplayName === 'string' && r.ownerDisplayName.trim())
+              ? r.ownerDisplayName.trim()
+              : (r.ownerMemberId as string),
         createdAt: r.createdAt as string,
         updatedAt: r.updatedAt as string,
       }));

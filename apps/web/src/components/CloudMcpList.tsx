@@ -8,10 +8,13 @@ import {
   DialogTitle,
 } from '@open-design/components';
 import { Icon } from './Icon';
-import { useT } from '../i18n';
+import { useI18n, useT } from '../i18n';
 import { ShareResourceDialog } from './ShareResourceDialog';
+import { CommunityResourceStats } from './CommunityResourceStats';
+import { McpLogo, resolveMcpLogoKey } from './McpLogo';
 import type { CloudMcpTemplate } from '@open-design/contracts';
 import styles from './CloudSkillList.module.css';
+import { communityTextMatchesQuery } from '../utils/community-search';
 
 // Extended type that includes shared-with-me fields (only present in shared mode).
 interface CloudMcpItem extends CloudMcpTemplate {
@@ -19,6 +22,10 @@ interface CloudMcpItem extends CloudMcpTemplate {
   homeWorkspaceId?: string;
   teamLocal?: boolean;
   localOnly?: boolean;
+  publisherName?: string | null;
+  logoKey?: string | null;
+  previewCount?: number | null;
+  actionCount?: number | null;
 }
 
 // Build workspace headers from the string props the parent passes.
@@ -54,6 +61,7 @@ export function CloudMcpList({
  ownerMemberId,
  mode = 'personal',
  scope,
+ searchQuery = '',
 }: {
  workspaceId: string | null;
  workspaceMemberId: string | null;
@@ -61,8 +69,10 @@ export function CloudMcpList({
  ownerMemberId?: string | null;
  mode?: 'personal' | 'shared' | 'square' | 'team';
  scope?: string;
+ searchQuery?: string;
 }) {
   const t = useT();
+  const { locale } = useI18n();
   const titleId = useId();
   const [templates, setTemplates] = useState<CloudMcpItem[]>([]);
   const [localTemplateIds, setLocalTemplateIds] = useState<Set<string>>(new Set());
@@ -122,8 +132,9 @@ export function CloudMcpList({
           headerFields: r.metadata?.headerFields,
           authMode: r.metadata?.authMode,
           homepage: r.metadata?.homepage,
-          example: r.metadata?.example,
-          ownerMemberId: r.ownerMemberId ?? '',
+           example: r.metadata?.example,
+           logoKey: r.metadata?.logoKey,
+           ownerMemberId: r.ownerMemberId ?? '',
           version: null,
           versionId: null,
           createdAt: r.createdAt ?? '',
@@ -379,6 +390,21 @@ export function CloudMcpList({
     }
   }
 
+  const visibleTemplates = searchQuery.trim()
+    ? templates.filter((tpl) => communityTextMatchesQuery([
+        tpl.label,
+        tpl.id,
+        tpl.description,
+        tpl.transport,
+        tpl.category,
+        tpl.command,
+        tpl.args?.join(' '),
+        tpl.url,
+        tpl.homepage,
+        tpl.publisherName,
+      ], searchQuery))
+    : templates;
+
   if (loading) {
     return <div className={styles.cloudSkillLoading}>{t('personalScope.cloudMcpLoading' as any)}</div>;
   }
@@ -391,7 +417,7 @@ export function CloudMcpList({
     );
   }
 
-  if (templates.length === 0) {
+  if (visibleTemplates.length === 0) {
     return (
       <PageEmptyState />
     );
@@ -446,30 +472,38 @@ export function CloudMcpList({
   return (
     <>
       <div className={styles.cloudSkillGrid}>
-       {templates.map((tpl) => {
+        {visibleTemplates.map((tpl) => {
           // Case-insensitive match so Memoryxxx and memoryxxx are treated as the same installed server.
           const isInstalled = tpl.teamLocal || localTemplateIds.has(tpl.id.toLowerCase());
          const isInstalling = installingId === tpl.resourceId;
           const isUninstalling = uninstallingId === tpl.resourceId;
-          const isDeleting = deletingId === tpl.resourceId;
-          return (
+           const isDeleting = deletingId === tpl.resourceId;
+           const logoKey = resolveMcpLogoKey(tpl.logoKey, tpl.id || tpl.label);
+           return (
             <article key={tpl.resourceId} className={styles.teamAssetCard} role="button" tabIndex={0}>
               <div className={styles.cardHeader}>
                 <span className={styles.cardIcon} aria-hidden>
-                  <Icon name="terminal" size={32} />
+                  <McpLogo logoKey={logoKey} size={40} />
                 </span>
                 <div className={styles.cardHeaderInfo}>
                   <strong className={styles.cardTitle}>{tpl.label}</strong>
-                <small className={styles.cardMeta}>
-                   {tpl.localOnly
-                     ? t('personalScope.cloudMcpInstalled' as any)
-                     : tpl.teamLocal
-                     ? t('pluginsView.teamSharedBadge' as any)
-                     : mode === 'shared' && tpl.sharedByDisplayname
-                     ? t('personalScope.cloudMcpSharedBy' as any, { name: tpl.sharedByDisplayname })
-                     : t('personalScope.cloudMcpSource' as any)}
-                   {tpl.updatedAt ? ' \u00b7 ' + formatRelativeDate(tpl.updatedAt, t) : ''}
-                 </small>
+                {mode === 'square' ? (
+                  <small className={`${styles.cardMeta} ${styles.cardAuthorLine}`}>
+                    {tpl.publisherName?.trim() || 'HiDesign'}
+                    {tpl.updatedAt ? ' · ' + formatRelativeDate(tpl.updatedAt, t) : ''}
+                  </small>
+                ) : (
+                  <small className={styles.cardMeta}>
+                    {tpl.localOnly
+                      ? t('personalScope.cloudMcpInstalled' as any)
+                      : tpl.teamLocal
+                      ? t('pluginsView.teamSharedBadge' as any)
+                      : mode === 'shared' && tpl.sharedByDisplayname
+                      ? t('personalScope.cloudMcpSharedBy' as any, { name: tpl.sharedByDisplayname })
+                      : t('personalScope.cloudMcpSource' as any)}
+                    {tpl.updatedAt ? ' · ' + formatRelativeDate(tpl.updatedAt, t) : ''}
+                  </small>
+                )}
                </div>
               {(mode === 'personal' || mode === 'square' || (isInstalled && !tpl.teamLocal)) ? (
                 <>
@@ -531,6 +565,15 @@ export function CloudMcpList({
               : null}
             {mode !== 'shared' ? (
                 <footer className={`community-template-card__foot ${styles.resourceCardFooter}`}>
+                  {mode === 'square' ? (
+                    <CommunityResourceStats
+                      previewCount={tpl.previewCount}
+                      actionCount={tpl.actionCount}
+                      actionIcon="link"
+                      previewLabel={locale.startsWith('zh') ? '预览' : 'Views'}
+                      actionLabel={locale.startsWith('zh') ? '接入' : 'Connections'}
+                    />
+                  ) : null}
                   <div className="community-template-card__actions">
                     <button
                       type="button"

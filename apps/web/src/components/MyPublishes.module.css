@@ -22,8 +22,6 @@
   right: 0;
 }
 
-.card { position: relative; }
-
 .publicationBadge {
   position: absolute;
   top: 12px;
@@ -44,66 +42,107 @@
   color: var(--green);
 }
 
-/* Reuse the common project-card menu; only adapt its hover/overflow scope. */
-.card:hover :global(.recent-projects__card-more),
-.card:focus-within :global(.recent-projects__card-more) {
-  opacity: 1;
-  transform: translateY(0);
+.communityProjectCard {
+  transition:
+    transform 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    filter 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 120ms var(--ease-out);
+  will-change: transform;
 }
 
-.card:has([aria-expanded='true']) {
-  overflow: visible;
-  z-index: 5;
+.communityProjectCard:hover,
+.communityProjectCard:focus-within {
+  transform: translateY(-2px);
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.08));
 }
 
-.card > :global(.community-template-card__preview) {
-  border-radius: 7px 7px 0 0;
+.communityProjectCard :global(.recent-projects__card-thumb) {
+  transition:
+    box-shadow 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-.card > :global(.community-template-card__foot) {
-  border-radius: 0 0 7px 7px;
-}
-
-.cardBody {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
-  padding: 10px 14px 8px 16px;
-  background: var(--bg);
-}
-
-.cardTitle,
-.cardDesc {
-  margin: 0;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.cardTitle {
-  color: var(--text-strong, var(--text));
-  font-size: 14px;
-  font-weight: 600;
-  line-height: 20px;
-}
-
-.cardDesc {
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 16px;
-}
-
-.card:focus-visible {
-  outline: 2px solid var(--text-strong);
-  outline-offset: 3px;
-}
-
-@media (hover: none) {
-  .card :global(.recent-projects__card-more) { opacity: 1; transform: none; }
+.communityProjectCard:hover :global(.recent-projects__card-thumb),
+.communityProjectCard:focus-within :global(.recent-projects__card-thumb) {
+  box-shadow: 0 8px 20px -16px rgba(0, 0, 0, 0.42);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .card :global(.recent-projects__card-more) { transition: none; }
+  .communityProjectCard,
+  .communityProjectCard :global(.recent-projects__card-thumb) {
+    transition: none;
+  }
+
+  .communityProjectCard:hover,
+  .communityProjectCard:focus-within {
+    transform: none;
+    filter: none;
+  }
+}
+
+.projectActionLayer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 4;
+  display: grid;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  place-items: center;
+  pointer-events: none;
+}
+
+.projectQuickActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition: opacity 140ms var(--ease-out), transform 140ms var(--ease-out);
+}
+
+:global(.recent-projects__card):hover .projectQuickActions,
+:global(.recent-projects__card):focus-within .projectQuickActions {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.projectQuickActions button {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: var(--radius-pill, 999px);
+  background: rgba(52, 52, 52, 0.78);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  backdrop-filter: blur(14px) saturate(120%);
+  box-shadow: 0 4px 16px -10px rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.projectQuickActions button:hover:not(:disabled) {
+  background: rgba(38, 38, 38, 0.9);
+}
+
+.projectQuickActions button:disabled {
+  opacity: 0.62;
+  cursor: default;
+}
+
+@media (hover: none) {
+  .projectQuickActions {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
 }

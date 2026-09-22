@@ -23,10 +23,11 @@ import type { PublishSkillSelection } from './PublishDialog';
 import { CloudSkillList } from './CloudSkillList';
 import { CloudMcpList } from './CloudMcpList';
 import { CloudToolList } from './CloudToolList';
+import { CommunityResourceStats } from './CommunityResourceStats';
 import type { MarketplacePluginEntry } from '@open-design/contracts';
 import type { WorkspaceDirectoryItem } from '@open-design/contracts';
 import { Icon, type IconName } from './Icon';
-import { useT } from '../i18n';
+import { useI18n, useT } from '../i18n';
 import type { Dict } from '../i18n/types';
 import { navigate } from '../router';
 import { getProject, remixHdwPlugin } from '../state/projects';
@@ -36,6 +37,8 @@ import {
 } from '../lib/recently-opened-projects';
 import { getSharedSpaceMemberId } from '../utils/deterministicId';
 import { getStoredUsername } from '../auth/auth';
+import { communityTextMatchesQuery } from '../utils/community-search';
+import { ellipsisTitleHoverProps } from '../utils/ellipsis-title';
 import {
   createCommunityReferenceHandoff,
   stashHomePromptHandoff,
@@ -89,6 +92,38 @@ function hashString(value: string): number {
 
 function templateAccent(id: string): string {
   return TEMPLATE_ACCENTS[hashString(id) % TEMPLATE_ACCENTS.length]!;
+}
+
+function marketplaceMetric(entry: MarketplacePluginEntry, ...keys: string[]): number | null {
+  const record = entry as unknown as Record<string, unknown>;
+  for (const key of keys) {
+    const value = record[key];
+    if (typeof value === 'number' && Number.isFinite(value) && value >= 0) return value;
+  }
+  return null;
+}
+
+function marketplaceUpdatedAt(entry: MarketplacePluginEntry): string | null {
+  const record = entry as unknown as Record<string, unknown>;
+  for (const key of ['updatedAt', 'updated_at', 'publishedAt', 'published_at']) {
+    const value = record[key];
+    if (typeof value === 'string' && value.trim()) return value;
+  }
+  return null;
+}
+
+function formatCommunityDate(value: string, locale: string): string {
+  const timestamp = new Date(value).getTime();
+  if (!Number.isFinite(timestamp)) return '';
+  const days = Math.floor((Date.now() - timestamp) / 86400000);
+  if (locale.startsWith('zh')) {
+    if (days <= 0) return '今天更新';
+    if (days === 1) return '昨天更新';
+    if (days < 30) return `${days}天前更新`;
+  }
+  if (days <= 0) return 'Updated today';
+  if (days === 1) return 'Updated yesterday';
+  return `${Math.max(1, days)}d ago`;
 }
 
 function PlaceholderPanel({ icon, label, note }: { icon: IconName; label: string; note: string }) {
@@ -252,7 +287,7 @@ function PublicationStatusFilter({ value, onChange }: {
   );
 }
 
-function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publicationFilter, projectItems, workspaceMemberId }: {
+function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publicationFilter, projectItems, workspaceMemberId, searchQuery = '' }: {
   refreshKey: number;
   onRefresh: () => void;
   username?: string | null;
@@ -260,8 +295,10 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
   publicationFilter: PublicationFilter;
   projectItems?: readonly PublishedProjectItem[];
   workspaceMemberId?: string | null;
+  searchQuery?: string;
 }) {
  const t = useT();
+ const { locale } = useI18n();
  const [plugins, setPlugins] = useState<MarketplacePluginEntry[]>([]);
  const [loading, setLoading] = useState(true);
  const [error, setError] = useState(false);
@@ -449,54 +486,134 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
   const visibleItems = isMyPublishes && publicationFilter !== 'all'
     ? items.filter((item) => item.publicationStatus === publicationFilter)
     : items;
+  const searchedItems = searchQuery.trim()
+    ? visibleItems.filter(({ entry }) => communityTextMatchesQuery([
+        entry.title,
+        entry.name,
+        entry.description,
+        entry.prompt,
+        entry.publisher?.displayName,
+        entry.publisher?.github,
+        entry.publisher?.id,
+      ], searchQuery))
+    : visibleItems;
 
-  if (visibleItems.length === 0) {
+  if (searchedItems.length === 0) {
     return <PageEmptyState />;
   }
 
   return (
     <>
-      <div className="community-template-grid" data-testid="square-projects-grid">
-      {visibleItems.map(({ entry, publicationStatus }) => {
+      <div className="recent-projects__row recent-projects__row--grid" data-testid="square-projects-grid">
+      {searchedItems.map(({ entry, publicationStatus }) => {
         const title = entry.title ?? entry.name;
-        const description = entry.description?.trim();
-        const publisherName = entry.publisher?.displayName ?? entry.publisher?.github ?? entry.publisher?.id ?? '';
-        const meta = publisherName ? publisherName + ' · v' + entry.version : 'v' + entry.version;
+        const publisherName = [entry.publisher?.displayName, entry.publisher?.github, entry.publisher?.id]
+          .find((value): value is string => typeof value === 'string' && value.trim().length > 0)
+          ?.trim() ?? 'HiDesign';
+        const updatedAt = marketplaceUpdatedAt(entry);
+        const previewCount = marketplaceMetric(entry, 'previewCount', 'viewCount');
+        const reuseCount = marketplaceMetric(entry, 'reuseCount', 'remixCount', 'actionCount');
         const accent = templateAccent(entry.name);
         const isRemixing = remixingName === entry.name;
         const isOwner = isMyPublishes
           ? true
           : typeof entry.publisher?.id === 'string' && entry.publisher.id === username;
         return (
-          <article
+          <div
             key={entry.name}
-            className={`community-template-card is-clickable ${publishStyles.card}`}
+            role="listitem"
+            className={`recent-projects__card ${publishStyles.communityProjectCard}`}
             data-plugin-name={entry.name}
-            tabIndex={0}
-            aria-label={title}
-            onClick={() => { setShareOnOpen(false); setDetailsEntry(entry); }}
-            onKeyDown={(event) => {
-              if (event.target === event.currentTarget && (event.key === 'Enter' || event.key === ' ')) {
-                event.preventDefault();
-                setShareOnOpen(false);
-                setDetailsEntry(entry);
-              }
-            }}
           >
-           <div
-             className="community-template-card__preview"
-             style={{ '--template-accent': accent } as CSSProperties}
-             aria-hidden
-           >
-             {entry.coverUrl ? (
-               <img
-                 src={entry.coverUrl}
-                 alt={title}
-                 loading="lazy"
-                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-               />
-             ) : null}
-           </div>
+            <button
+              type="button"
+              className="recent-projects__card-main"
+              onClick={() => { setShareOnOpen(false); setDetailsEntry(entry); }}
+            >
+              <div
+                className={`recent-projects__card-thumb ${entry.coverUrl ? 'recent-projects__card-thumb-image' : 'recent-projects__card-thumb-fallback'}`}
+                style={!entry.coverUrl
+                  ? { background: `linear-gradient(135deg, color-mix(in srgb, ${accent} 20%, var(--bg-subtle)), color-mix(in srgb, ${accent} 46%, var(--bg-panel)))` }
+                  : undefined}
+                aria-hidden
+              >
+                {entry.coverUrl ? (
+                  <img
+                    className="recent-projects__thumb-media"
+                    src={entry.coverUrl}
+                    alt=""
+                    loading="lazy"
+                  />
+                ) : (
+                  <span className="recent-projects__card-glyph">{title.slice(0, 1)}</span>
+                )}
+              </div>
+              <div className="recent-projects__card-meta">
+                <div className="recent-projects__card-name-row">
+                  <span
+                    className="recent-projects__card-name"
+                    {...ellipsisTitleHoverProps(title)}
+                  >
+                    {title}
+                  </span>
+                </div>
+                <div className="recent-projects__card-footer">
+                  <div className="recent-projects__card-time">
+                    <span
+                      className="recent-projects__card-owner"
+                      style={{ backgroundColor: '#000' }}
+                      title={publisherName}
+                      aria-hidden
+                    >
+                      {publisherName}
+                    </span>
+                    {updatedAt ? (
+                      <>
+                        <span className="recent-projects__card-sep" aria-hidden>·</span>
+                        {formatCommunityDate(updatedAt, locale)}
+                      </>
+                    ) : null}
+                  </div>
+                  <CommunityResourceStats
+                    previewCount={previewCount}
+                    actionCount={reuseCount}
+                    actionIcon="copy"
+                    previewLabel={locale.startsWith('zh') ? '预览' : 'Views'}
+                    actionLabel={locale.startsWith('zh') ? '复用' : 'Reuse'}
+                    align="right"
+                  />
+                </div>
+              </div>
+            </button>
+            {isMyPublishes && publicationStatus === 'unpublished' ? null : (
+              <div className={publishStyles.projectActionLayer}>
+                <div className={publishStyles.projectQuickActions}>
+                  <button
+                    type="button"
+                    disabled={isRemixing}
+                    aria-label={t('squareScope.remix')}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      void handleRemix(entry);
+                    }}
+                  >
+                    <Icon name="copy" size={13} aria-hidden />
+                    {isRemixing ? t('squareScope.remixing') : t('squareScope.remix')}
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={t('squareScope.reference')}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      handleReference(entry);
+                    }}
+                  >
+                    <Icon name="link" size={13} aria-hidden />
+                    {t('squareScope.reference')}
+                  </button>
+                </div>
+              </div>
+            )}
             {isMyPublishes ? (
               <span
                 className={`${publishStyles.publicationBadge} ${
@@ -517,36 +634,7 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
                 busy={busyName}
               />
             ) : null}
-            <div className={publishStyles.cardBody}>
-              <h3 className={publishStyles.cardTitle}>{title}</h3>
-              {description ? <p className={publishStyles.cardDesc}>{description}</p> : null}
-            </div>
-            <footer className="community-template-card__foot">
-              <span>{meta}</span>
-              {isMyPublishes && publicationStatus === 'unpublished' ? null : <div className="community-template-card__actions">
-                <button
-                  type="button"
-                  disabled={isRemixing}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    handleRemix(entry);
-                  }}
-                >
-                  {isRemixing ? t('common.loading') : t('squareScope.remix')}
-                </button>
-                <button
-                  type="button"
-                  className="community-template-card__prompt-btn"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    handleReference(entry);
-                  }}
-                >
-                  {t('squareScope.reference')}
-                </button>
-              </div>}
-            </footer>
-          </article>
+          </div>
         );
       })}
       {remixError ? (
@@ -744,7 +832,8 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
   const [refreshKey, setRefreshKey] = useState(0);
   const [publishOpen, setPublishOpen] = useState(false);
   const [publicationFilter, setPublicationFilter] = useState<PublicationFilter>('all');
-  const [typeTabsEl, setTypeTabsEl] = useState<HTMLDivElement | null>(null);
+  const [communitySearchQuery, setCommunitySearchQuery] = useState('');
+  const [skillCategoryControlsEl, setSkillCategoryControlsEl] = useState<HTMLElement | null>(null);
 
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [workspaceMemberId, setWorkspaceMemberId] = useState<string | null>(null);
@@ -908,12 +997,13 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
                        }
                        const rawType = parsedConfig.type as string | undefined;
                        const transport = rawType === 'sse' || rawType === 'http' ? rawType : 'stdio';
-                       const template: Record<string, unknown> = {
-                         label: selection.label,
-                         description: selection.displayName,
-                         transport,
-                         category: 'utilities',
-                       };
+                        const template: Record<string, unknown> = {
+                          label: selection.label,
+                          description: selection.displayName,
+                          ...(selection.logoKey ? { logoKey: selection.logoKey } : {}),
+                          transport,
+                          category: 'utilities',
+                        };
                        if (transport === 'stdio') {
                          template.command = (parsedConfig.command as string) ?? '';
                          const argArr = Array.isArray(parsedConfig.args) ? parsedConfig.args as string[] : [];
@@ -947,7 +1037,7 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
       </header>
 
       <div className={isMyPublishes ? publishStyles.toolbar : undefined}>
-      <div ref={setTypeTabsEl} className={`${styles.typeTabs} ${isMyPublishes ? publishStyles.tabs : ''}`} role="tablist">
+      <div className={`${styles.typeTabs} ${isMyPublishes ? publishStyles.tabs : ''}`} role="tablist">
         {TABS.map((tab) => (
           <button
             key={tab.id}
@@ -967,6 +1057,33 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
             <span>{t(tab.labelKey)}</span>
           </button>
         ))}
+        {!isMyPublishes ? (
+          <div className="recent-projects__controls">
+            <div className="recent-projects__search">
+              <Icon name="search" size={14} aria-hidden />
+              <input
+                type="search"
+                value={communitySearchQuery}
+                onChange={(event) => setCommunitySearchQuery(event.target.value)}
+                placeholder={`${t('common.search')} ${t(activeDef.labelKey)}`}
+                aria-label={`${t('common.search')} ${t(activeDef.labelKey)}`}
+              />
+              {communitySearchQuery ? (
+                <button
+                  type="button"
+                  className="recent-projects__search-clear"
+                  aria-label={t('common.clear')}
+                  onClick={() => setCommunitySearchQuery('')}
+                >
+                  <Icon name="close" size={12} aria-hidden />
+                </button>
+              ) : null}
+            </div>
+            {activeTab === 'skill' ? (
+              <span ref={setSkillCategoryControlsEl} style={{ display: 'contents' }} />
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       {isMyPublishes && activeTab === 'projects' ? (
@@ -984,6 +1101,7 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
           onRefresh={() => setRefreshKey((k) => k + 1)}
           username={myUsername}
           workspaceMemberId={selfSharedSpaceMemberId ?? workspaceMemberId}
+          searchQuery={!isMyPublishes ? communitySearchQuery : ''}
         />
       ) : activeTab === 'skill' ? (
           <CloudSkillList
@@ -994,12 +1112,13 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
             sourceProvider={isMyPublishes ? null : COMMUNITY_SKILL_PROVIDERS}
             mode="square"
             scope="public"
-            controlsPortalTarget={!isMyPublishes ? typeTabsEl : null}
+            controlsPortalTarget={!isMyPublishes ? skillCategoryControlsEl : null}
+            externalSearchQuery={!isMyPublishes ? communitySearchQuery : undefined}
           />
      ) : activeTab === 'mcp' ? (
-         <CloudMcpList workspaceId={workspaceId} workspaceMemberId={workspaceMemberId} workspaceType={workspaceType} ownerMemberId={isMyPublishes ? workspaceMemberId : null} mode="square" scope="public" />
+         <CloudMcpList workspaceId={workspaceId} workspaceMemberId={workspaceMemberId} workspaceType={workspaceType} ownerMemberId={isMyPublishes ? workspaceMemberId : null} mode="square" scope="public" searchQuery={!isMyPublishes ? communitySearchQuery : ''} />
      ) : activeTab === 'tool' ? (
-         <CloudToolList workspaceId={workspaceId} workspaceMemberId={workspaceMemberId} workspaceType={workspaceType} ownerMemberId={isMyPublishes ? workspaceMemberId : null} mode="square" scope="public" />
+         <CloudToolList workspaceId={workspaceId} workspaceMemberId={workspaceMemberId} workspaceType={workspaceType} ownerMemberId={isMyPublishes ? workspaceMemberId : null} mode="square" scope="public" searchQuery={!isMyPublishes ? communitySearchQuery : ''} />
      ) : (
           <PlaceholderPanel
             icon={activeDef.icon}

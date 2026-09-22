@@ -7438,6 +7438,8 @@ const designSystemBackingProjects = new Map<string, string>();
             publisherName: skill.userNotesName || skill.userName || skill.userId || null,
             iconUrl: skill.iconUrl ?? null,
             category: normalizeSkillCategory(skill.skillSubType),
+            previewCount: null,
+            actionCount: typeof skill.downloadCount === 'number' ? skill.downloadCount : null,
             installed: installedLocalIds.has(skill.id),
           })).filter((skill) => communitySkillMatchesQuery(skill, searchQuery));
         if (sourceProvider === MAAS_SKILLHUB_PROVIDER) {
@@ -7468,6 +7470,8 @@ const designSystemBackingProjects = new Map<string, string>();
         sourceLabel: 'HiDesign Community',
         publisherName: (r.metadata as any)?.publisherName ?? r.ownerDisplayName ?? r.ownerMemberId ?? null,
         category: normalizeSkillCategory((r.metadata as any)?.category),
+        previewCount: typeof (r.metadata as any)?.previewCount === 'number' ? (r.metadata as any).previewCount : null,
+        actionCount: typeof (r.metadata as any)?.actionCount === 'number' ? (r.metadata as any).actionCount : null,
       })).filter((skill) => communitySkillMatchesQuery(skill, searchQuery));
       res.json(finalizeSkillList([...maasSkills, ...skills]));
     } catch (err: any) {

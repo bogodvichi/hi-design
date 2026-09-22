@@ -8,10 +8,12 @@ import {
   DialogTitle,
 } from '@open-design/components';
 import { Icon } from './Icon';
-import { useT } from '../i18n';
+import { useI18n, useT } from '../i18n';
 import { activateWorkspaceResource, openWorkspaceTab } from './WorkspaceTabsBar';
 import { AI_RESEARCH_RESOURCE_KEY } from './AiResearchWorkspaceFrame';
 import styles from './CloudSkillList.module.css';
+import { CommunityResourceStats } from './CommunityResourceStats';
+import { communityTextMatchesQuery } from '../utils/community-search';
 
 interface CloudToolItem {
   resourceId: string;
@@ -23,6 +25,9 @@ interface CloudToolItem {
   scope?: string;
   createdAt: string;
   updatedAt: string;
+  publisherName?: string | null;
+  previewCount?: number | null;
+  actionCount?: number | null;
 }
 
 const HIMIND_DESCRIPTION = '汇聚产品知识与设计经验，支持智能检索、图文问答与来源追溯。';
@@ -39,6 +44,7 @@ const HIMIND_COMMUNITY_TOOL: CloudToolItem = {
   scope: 'public',
   createdAt: '',
   updatedAt: '',
+  publisherName: 'HiDesign',
 };
 const AI_RESEARCH_COMMUNITY_TOOL: CloudToolItem = {
   resourceId: 'ai-research-workbench-tool',
@@ -50,6 +56,7 @@ const AI_RESEARCH_COMMUNITY_TOOL: CloudToolItem = {
   scope: 'public',
   createdAt: '',
   updatedAt: '',
+  publisherName: 'HiDesign',
 };
 
 function isHiMindTool(tool: CloudToolItem): boolean {
@@ -102,6 +109,7 @@ export function CloudToolList({
   ownerMemberId,
   mode = 'personal',
   scope,
+  searchQuery = '',
 }: {
   workspaceId: string | null;
   workspaceMemberId: string | null;
@@ -109,8 +117,10 @@ export function CloudToolList({
   ownerMemberId?: string | null;
   mode?: 'personal' | 'shared' | 'square';
   scope?: string;
+  searchQuery?: string;
 }) {
   const t = useT();
+  const { locale } = useI18n();
   const titleId = useId();
   const [tools, setTools] = useState<CloudToolItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -236,6 +246,27 @@ export function CloudToolList({
     }
   }
 
+  const visibleTools = searchQuery.trim()
+    ? tools.filter((tool) => {
+        const isHiMind = isHiMindTool(tool);
+        const isAiResearch = isAiResearchTool(tool);
+        const title = isAiResearch ? AI_RESEARCH_TITLE : tool.name || tool.label || tool.url;
+        const description = isHiMind
+          ? HIMIND_DESCRIPTION
+          : isAiResearch
+            ? AI_RESEARCH_DESCRIPTION
+            : tool.description;
+        return communityTextMatchesQuery([
+          title,
+          tool.name,
+          tool.label,
+          description,
+          tool.url,
+          tool.publisherName,
+        ], searchQuery);
+      })
+    : tools;
+
   if (loading) {
     return <div className={styles.cloudSkillLoading}>{t('personalScope.cloudToolLoading' as any)}</div>;
   }
@@ -248,7 +279,7 @@ export function CloudToolList({
     );
   }
 
-  if (tools.length === 0) {
+  if (visibleTools.length === 0) {
     return <PageEmptyState />;
   }
 
@@ -295,7 +326,7 @@ export function CloudToolList({
         </div>
       ) : null}
       <div className={styles.cloudSkillGrid}>
-        {tools.map((tool) => {
+        {visibleTools.map((tool) => {
           const isDeleting = deletingId === tool.resourceId;
           const canDelete = mode === 'personal';
           const isHiMind = isHiMindTool(tool);
@@ -340,10 +371,19 @@ export function CloudToolList({
                 </span>
                 <div className={styles.cardHeaderInfo}>
                   <strong className={styles.cardTitle}>{title}</strong>
-                  <small className={styles.cardMeta}>
-                    {t('personalScope.cloudSkillSource' as any)}
-                    {tool.updatedAt ? ' \u00b7 ' + formatRelativeDate(tool.updatedAt, t) : ''}
-                  </small>
+                  {mode === 'square' ? (
+                    <small className={`${styles.cardMeta} ${styles.cardAuthorLine}`}>
+                      {isHiMind || isAiResearch
+                        ? (locale.startsWith('zh') ? 'HiDesign 官方' : 'HiDesign Official')
+                        : tool.publisherName?.trim() || 'HiDesign'}
+                      {tool.updatedAt ? ' · ' + formatRelativeDate(tool.updatedAt, t) : ''}
+                    </small>
+                  ) : (
+                    <small className={styles.cardMeta}>
+                      {t('personalScope.cloudSkillSource' as any)}
+                      {tool.updatedAt ? ' · ' + formatRelativeDate(tool.updatedAt, t) : ''}
+                    </small>
+                  )}
                 </div>
                 {canDelete ? (
                   <>
@@ -381,6 +421,15 @@ export function CloudToolList({
                 ? <p className={`${styles.cardDesc}${mode === 'square' ? ` ${styles.squareCardDesc}` : ''}`}>{description}</p>
                 : null}
               <footer className={mode === 'shared' ? undefined : `community-template-card__foot ${styles.resourceCardFooter}`}>
+              {mode === 'square' ? (
+                <CommunityResourceStats
+                  previewCount={tool.previewCount}
+                  actionCount={tool.actionCount}
+                  actionIcon="external-link"
+                  previewLabel={locale.startsWith('zh') ? '预览' : 'Views'}
+                  actionLabel={locale.startsWith('zh') ? '使用' : 'Uses'}
+                />
+              ) : null}
               <button
                 type="button"
                 className={mode === 'shared' ? styles.capabilityAdd : undefined}

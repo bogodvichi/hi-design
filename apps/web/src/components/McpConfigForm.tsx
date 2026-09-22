@@ -1,7 +1,13 @@
 import { useEffect, useState, type MutableRefObject } from 'react';
 import { Icon } from './Icon';
-import { useT } from '../i18n';
+import { useI18n, useT } from '../i18n';
 import type { Dict } from '../i18n/types';
+import {
+  MCP_LOGO_KEYS,
+  MCP_LOGO_LABELS,
+  McpLogo,
+  type McpLogoKey,
+} from './McpLogo';
 import styles from './McpConfigForm.module.css';
 
 export type McpType = 'custom' | 'fetch' | 'time' | 'memory' | 'sequential-thinking' | 'context7';
@@ -10,6 +16,7 @@ export interface McpConfigSelection {
   label: string;
   displayName: string;
   config: string;
+  logoKey?: McpLogoKey;
 }
 
 interface PresetDef {
@@ -73,16 +80,20 @@ export function McpConfigForm({
   confirmRef,
   onSubmit,
   onCanConfirmChange,
+  showLogoPicker = false,
 }: {
   confirmRef: MutableRefObject<{ canConfirm: boolean; onConfirm: () => void }>;
   onSubmit: (selection: McpConfigSelection) => void;
   onCanConfirmChange?: (canConfirm: boolean) => void;
+  showLogoPicker?: boolean;
 }) {
   const t = useT();
+  const { locale } = useI18n();
   const [type, setType] = useState<McpType>('custom');
   const [label, setLabel] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [config, setConfig] = useState('');
+  const [logoKey, setLogoKey] = useState<McpLogoKey>('orbit');
 
   const configValid = isValidJson(config);
   const canConfirm = label.trim().length > 0 && configValid;
@@ -115,6 +126,7 @@ export function McpConfigForm({
         label: label.trim(),
         displayName: displayName.trim(),
         config,
+        ...(showLogoPicker ? { logoKey } : {}),
       });
     },
   };
@@ -139,6 +151,28 @@ export function McpConfigForm({
           ))}
         </div>
       </fieldset>
+
+      {showLogoPicker ? (
+        <fieldset className={styles.logoPicker}>
+          <legend className={styles.typePickerLegend}>
+            {locale.startsWith('zh') ? '默认 Logo' : 'Default logo'}
+          </legend>
+          <div className={styles.logoPickerGrid}>
+            {MCP_LOGO_KEYS.map((key) => (
+              <button
+                key={key}
+                type="button"
+                aria-label={locale.startsWith('zh') ? MCP_LOGO_LABELS[key].zh : MCP_LOGO_LABELS[key].en}
+                aria-pressed={logoKey === key}
+                className={logoKey === key ? `${styles.logoBtn} ${styles.logoBtnActive}` : styles.logoBtn}
+                onClick={() => setLogoKey(key)}
+              >
+                <McpLogo logoKey={key} size={36} />
+              </button>
+            ))}
+          </div>
+        </fieldset>
+      ) : null}
 
       <label className={styles.field}>
         <span className={styles.fieldLabel}>{t('publishDialog.mcpTitle')}</span>

@@ -98,6 +98,48 @@ describe('team resource lists', () => {
     expect(screen.getByText('已连接')).toBeTruthy();
   });
 
+  it('filters community MCP cards with the shared search query', async () => {
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url.startsWith('/api/workspace/mcp/cloud?')) {
+        return jsonResponse({
+          templates: [
+            {
+              id: 'data-mcp', resourceId: 'data-mcp', label: 'Data MCP', description: 'Analytics connector',
+              transport: 'http', category: 'utilities', url: 'https://data.test/mcp', ownerMemberId: '',
+              version: null, versionId: null, createdAt: '', updatedAt: '', publisherName: '李四',
+            },
+            {
+              id: 'design-mcp', resourceId: 'design-mcp', label: 'Design MCP', description: 'Design connector',
+              transport: 'http', category: 'utilities', url: 'https://design.test/mcp', ownerMemberId: '',
+              version: null, versionId: null, createdAt: '', updatedAt: '',
+            },
+          ],
+        });
+      }
+      if (url === '/api/mcp/servers') return jsonResponse({ servers: [] });
+      return new Response(null, { status: 404 });
+    }) as typeof fetch;
+
+    render(
+      <I18nProvider initial="zh-CN">
+        <CloudMcpList
+          workspaceId="team-1"
+          workspaceMemberId="member-1"
+          workspaceType="team"
+          mode="square"
+          scope="public"
+          searchQuery="analytics"
+        />
+      </I18nProvider>,
+    );
+
+    expect(await screen.findByText('Data MCP')).toBeTruthy();
+    expect(screen.getByText('李四')).toBeTruthy();
+    expect(screen.getByLabelText('预览 —, 接入 —')).toBeTruthy();
+    expect(screen.queryByText('Design MCP')).toBeNull();
+  });
+
   it('uses the shared empty state without a description', async () => {
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
       if (input.toString() === '/api/skills') return jsonResponse({ skills: [] });

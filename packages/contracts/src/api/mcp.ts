@@ -87,6 +87,9 @@ export interface McpTemplate {
   id: string;
   label: string;
   description: string;
+  /** Optional community-card logo key. Unknown values are ignored by the UI
+   * and fall back to a deterministic built-in MCP logo. */
+  logoKey?: string;
   transport: McpTransport;
   /** HTTP/SSE only. Defaults are inferred by URL when omitted. */
   authMode?: McpAuthMode;

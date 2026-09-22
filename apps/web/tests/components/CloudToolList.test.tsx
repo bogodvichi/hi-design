@@ -12,6 +12,7 @@ const { activateWorkspaceResourceMock, openWorkspaceTabMock } = vi.hoisted(() =>
 
 vi.mock('../../src/i18n', () => ({
   useT: () => (key: string) => key,
+  useI18n: () => ({ locale: 'zh-CN' }),
 }));
 
 vi.mock('../../src/components/WorkspaceTabsBar', () => ({
@@ -203,6 +204,41 @@ describe('CloudToolList', () => {
       title: 'AI用研工作台',
     }));
     expect(openWorkspaceTabMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('filters community tools with the shared search query', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(JSON.stringify({
+      tools: [
+        {
+          resourceId: 'data-visualizer', ownerMemberId: '', url: 'https://data.test',
+          name: 'Data Visualizer', label: 'Data Visualizer', description: 'Analytics visualization tool',
+          createdAt: '', updatedAt: '', publisherName: '王五',
+        },
+        {
+          resourceId: 'design-helper', ownerMemberId: '', url: 'https://design.test',
+          name: 'Design Helper', label: 'Design Helper', description: 'Design workflow tool',
+          createdAt: '', updatedAt: '',
+        },
+      ],
+    }), { status: 200, headers: { 'content-type': 'application/json' } }));
+
+    render(
+      <CloudToolList
+        workspaceId="workspace-1"
+        workspaceMemberId="member-1"
+        workspaceType="team"
+        mode="square"
+        scope="public"
+        searchQuery="analytics"
+      />,
+    );
+
+    expect(await screen.findByText('Data Visualizer')).toBeTruthy();
+    expect(screen.getByText('王五')).toBeTruthy();
+    expect(screen.getByLabelText('预览 —, 使用 —')).toBeTruthy();
+    expect(screen.queryByText('Design Helper')).toBeNull();
+    expect(screen.queryByText('HiMind')).toBeNull();
+    expect(screen.queryByText('AI用研工作台')).toBeNull();
   });
 
   it('does not open the AI research login page when ticket creation fails', async () => {

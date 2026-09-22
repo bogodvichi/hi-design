@@ -33,6 +33,7 @@ describe('Skillhub cloud skill wiring', () => {
     expect(route).toContain('publisherName: skill.userNotesName || skill.userName || skill.userId || null');
     expect(route).toContain('iconUrl: skill.iconUrl ?? null');
     expect(route).toContain('category: normalizeSkillCategory(skill.skillSubType)');
+    expect(route).toContain("actionCount: typeof skill.downloadCount === 'number' ? skill.downloadCount : null");
     expect(route).toContain('category: normalizeSkillCategory((r.metadata as any)?.category)');
     expect(route).toContain('categoryCounts: counts');
     expect(route).toContain("normalized.filter((item) => item.category === requestedCategory)");

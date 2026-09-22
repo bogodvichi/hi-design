@@ -91,6 +91,7 @@ export interface PublishMcpSelection {
   label: string;
   displayName: string;
   config: string;
+  logoKey?: McpConfigSelection['logoKey'];
 }
 
 /** What the caller receives when the user confirms a skill publish. */
@@ -499,6 +500,7 @@ function McpTab({
     <McpConfigForm
       confirmRef={confirmRef}
       onCanConfirmChange={onCanConfirmChange}
+      showLogoPicker
       onSubmit={(selection) => {
         onPublish(selection);
       }}

@@ -10,6 +10,7 @@ import {
 import { Icon } from './Icon';
 import { useI18n, useT } from '../i18n';
 import { ShareResourceDialog } from './ShareResourceDialog';
+import { CommunityResourceStats } from './CommunityResourceStats';
 import styles from './CloudSkillList.module.css';
 import {
   SKILL_CATEGORIES,
@@ -46,6 +47,8 @@ publisherName?: string | null;
  installed?: boolean;
  teamShared?: boolean;
  category?: SkillCategory;
+ previewCount?: number | null;
+ actionCount?: number | null;
 }
 
 // Build workspace headers from the string props the parent passes.
@@ -83,6 +86,7 @@ export function CloudSkillList({
  mode = 'personal',
  scope,
  controlsPortalTarget,
+ externalSearchQuery,
 }: {
  workspaceId: string | null;
  workspaceMemberId: string | null;
@@ -92,6 +96,7 @@ export function CloudSkillList({
  mode?: 'personal' | 'shared' | 'square' | 'team';
  scope?: string;
  controlsPortalTarget?: HTMLElement | null;
+ externalSearchQuery?: string;
 }) {
   const t = useT();
   const { locale } = useI18n();
@@ -104,6 +109,7 @@ export function CloudSkillList({
   const [uninstallingId, setUninstallingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const effectiveSearchQuery = externalSearchQuery ?? searchQuery;
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<SkillCategoryFilter>('all');
   const [categoryCounts, setCategoryCounts] = useState<SkillCategoryCounts>(() => emptySkillCategoryCounts());
@@ -308,9 +314,9 @@ export function CloudSkillList({
  }, [workspaceId, workspaceMemberId, workspaceType, ownerMemberId, mode, scope, sourceProvider, debouncedSearch, showCommunityControls, activeCategory, countCategories]);
 
 useEffect(() => {
-  const timer = window.setTimeout(() => setDebouncedSearch(searchQuery.trim()), 250);
+  const timer = window.setTimeout(() => setDebouncedSearch(effectiveSearchQuery.trim()), 250);
   return () => window.clearTimeout(timer);
-}, [searchQuery]);
+}, [effectiveSearchQuery]);
 
 useEffect(() => {
   if (!showCommunityControls && activeCategory !== 'all') setActiveCategory('all');
@@ -499,7 +505,46 @@ useEffect(() => {
     </label>
   ) : null;
 
-  const communityControls = showCommunityControls ? (
+  const categoryControl = showCommunityControls ? (
+    <div ref={categoryMenuRef} className="recent-projects__filter-wrap">
+      <button
+        type="button"
+        className={`recent-projects__select-toggle${activeCategory !== 'all' || categoryMenuOpen ? ' is-active' : ''}`}
+        aria-haspopup="menu"
+        aria-expanded={categoryMenuOpen}
+        onClick={() => setCategoryMenuOpen((open) => !open)}
+      >
+        {skillCategoryButtonLabel(locale)}
+        <Icon name="chevron-down" size={13} />
+      </button>
+      {categoryMenuOpen ? (
+        <div
+          ref={categoryMenuPanelRef}
+          className={`recent-projects__filter-menu is-align-${categoryMenuAlign}`}
+          role="menu"
+          aria-label={skillCategorySelectLabel(locale)}
+        >
+          {(['all', ...SKILL_CATEGORIES] as SkillCategoryFilter[]).map((category) => (
+            <button
+              key={category}
+              type="button"
+              role="menuitemradio"
+              aria-checked={activeCategory === category}
+              className={activeCategory === category ? 'is-active' : undefined}
+              onClick={() => {
+                setActiveCategory(category);
+                setCategoryMenuOpen(false);
+              }}
+            >
+              {skillCategoryLabel(category, locale)} ({categoryCounts[category]})
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  ) : null;
+
+  const communityControls = showCommunityControls && externalSearchQuery === undefined ? (
     <div className="recent-projects__controls">
       <div className="recent-projects__search">
         <Icon name="search" size={14} />
@@ -521,44 +566,9 @@ useEffect(() => {
           </button>
         ) : null}
       </div>
-      <div ref={categoryMenuRef} className="recent-projects__filter-wrap">
-        <button
-          type="button"
-          className={`recent-projects__select-toggle${activeCategory !== 'all' || categoryMenuOpen ? ' is-active' : ''}`}
-          aria-haspopup="menu"
-          aria-expanded={categoryMenuOpen}
-          onClick={() => setCategoryMenuOpen((open) => !open)}
-        >
-          {skillCategoryButtonLabel(locale)}
-          <Icon name="chevron-down" size={13} />
-        </button>
-        {categoryMenuOpen ? (
-          <div
-            ref={categoryMenuPanelRef}
-            className={`recent-projects__filter-menu is-align-${categoryMenuAlign}`}
-            role="menu"
-            aria-label={skillCategorySelectLabel(locale)}
-          >
-            {(['all', ...SKILL_CATEGORIES] as SkillCategoryFilter[]).map((category) => (
-              <button
-                key={category}
-                type="button"
-                role="menuitemradio"
-                aria-checked={activeCategory === category}
-                className={activeCategory === category ? 'is-active' : undefined}
-                onClick={() => {
-                  setActiveCategory(category);
-                  setCategoryMenuOpen(false);
-                }}
-              >
-                {skillCategoryLabel(category, locale)} ({categoryCounts[category]})
-              </button>
-            ))}
-          </div>
-        ) : null}
-      </div>
+      {categoryControl}
     </div>
-  ) : null;
+  ) : categoryControl;
 
   const controlsPortal = communityControls && controlsPortalTarget
     ? createPortal(communityControls, controlsPortalTarget)
@@ -691,17 +701,29 @@ useEffect(() => {
                 </span>
                 <div className={styles.cardHeaderInfo}>
                   <strong className={styles.cardTitle}>{skill.title}</strong>
-                 <small className={styles.cardMeta}>
-                   {skill.teamShared
-                     ? t('pluginsView.teamSharedBadge' as any)
-                     : mode === 'shared' && skill.sharedByDisplayname
-                     ? t('personalScope.cloudSkillSharedBy' as any, { name: skill.sharedByDisplayname })
-                     : skill.sourceLabel || t('personalScope.cloudSkillSource' as any)}
-                   {skill.publisherName
-                     ? ' \u00b7 ' + t('squareScope.publisher' as any, { name: skill.publisherName })
-                     : ''}
-                   {skill.updatedAt ? ' \u00b7 ' + formatRelativeDate(skill.updatedAt, t) : ''}
-                 </small>
+                 {mode === 'square' ? (
+                   <>
+                     <small className={`${styles.cardMeta} ${styles.cardAuthorLine}`}>
+                       {skill.publisherName?.trim() || 'HiDesign'}
+                       {skill.updatedAt ? ' · ' + formatRelativeDate(skill.updatedAt, t) : ''}
+                     </small>
+                     <small className={`${styles.cardMeta} ${styles.cardSourceLine}`}>
+                       {skill.sourceLabel || t('personalScope.cloudSkillSource' as any)}
+                     </small>
+                   </>
+                 ) : (
+                   <small className={styles.cardMeta}>
+                     {skill.teamShared
+                       ? t('pluginsView.teamSharedBadge' as any)
+                       : mode === 'shared' && skill.sharedByDisplayname
+                       ? t('personalScope.cloudSkillSharedBy' as any, { name: skill.sharedByDisplayname })
+                       : skill.sourceLabel || t('personalScope.cloudSkillSource' as any)}
+                     {skill.publisherName
+                       ? ' · ' + t('squareScope.publisher' as any, { name: skill.publisherName })
+                       : ''}
+                     {skill.updatedAt ? ' · ' + formatRelativeDate(skill.updatedAt, t) : ''}
+                   </small>
+                 )}
                </div>
             {((canManageCloudRecord && (mode === 'personal' || mode === 'square')) || (isInstalled && !skill.teamShared)) ? (
                <>
@@ -763,6 +785,15 @@ useEffect(() => {
                 : null}
               {mode !== 'shared' ? (
                 <footer className={`community-template-card__foot ${styles.resourceCardFooter}`}>
+                  {mode === 'square' ? (
+                    <CommunityResourceStats
+                      previewCount={skill.previewCount}
+                      actionCount={skill.actionCount}
+                      actionIcon="download"
+                      previewLabel={locale.startsWith('zh') ? '预览' : 'Views'}
+                      actionLabel={locale.startsWith('zh') ? '添加' : 'Adds'}
+                    />
+                  ) : null}
                   <div className="community-template-card__actions">
                     <button
                       type="button"

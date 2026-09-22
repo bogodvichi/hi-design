@@ -79,6 +79,9 @@ function installDaemonStub(): void {
           name: 'square-deck',
           title: 'Square deck',
           version: '1.0.0',
+          publisher: { displayName: 'Project Author' },
+          previewCount: 120,
+          remixCount: 7,
         }],
       });
     }
@@ -101,6 +104,61 @@ describe('SquareView remix recents', () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
+  });
+
+  it('uses the shared community search box to filter project cards', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const pathname = new URL(String(input), 'http://daemon.local').pathname;
+      if (pathname === '/api/workspace/directory') {
+        return jsonResponse({
+          items: [{
+            workspaceId: 'shared-space',
+            workspaceMemberId: 'directory-member-id',
+            workspaceType: 'personal',
+            isDefaultTeam: true,
+          }],
+          activeWorkspaceId: 'shared-space',
+        });
+      }
+      if (pathname === '/api/marketplaces/hdw-community/plugins') {
+        return jsonResponse({
+          plugins: [
+            {
+              name: 'square-deck',
+              title: 'Square deck',
+              description: 'Presentation',
+              version: '1.0.0',
+              publisher: { displayName: 'Project Author' },
+              previewCount: 120,
+              remixCount: 7,
+            },
+            { name: 'data-dashboard', title: 'Data dashboard', description: 'Analytics board', version: '1.0.0' },
+          ],
+        });
+      }
+      return jsonResponse({});
+    }));
+
+    render(
+      <I18nProvider initial="en">
+        <SquareView />
+      </I18nProvider>,
+    );
+
+    expect(await screen.findByText('Square deck')).toBeTruthy();
+    expect(screen.getByText('Project Author')).toBeTruthy();
+    expect(document.querySelector('.recent-projects__card')).toBeTruthy();
+    const projectMain = document.querySelector('.recent-projects__card-main');
+    expect(projectMain).toBeTruthy();
+    expect(projectMain?.hasAttribute('title')).toBe(false);
+    expect(document.querySelector('.recent-projects__card-thumb')).toBeTruthy();
+    expect(document.querySelector('.recent-projects__card-meta')).toBeTruthy();
+    expect(screen.queryByText('Presentation')).toBeNull();
+    expect(screen.getByLabelText('Views 120, Reuse 7')).toBeTruthy();
+    expect(screen.getByText('Data dashboard')).toBeTruthy();
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'dashboard' } });
+    await waitFor(() => expect(screen.queryByText('Square deck')).toBeNull());
+    expect(screen.getByText('Data dashboard')).toBeTruthy();
   });
 
   it('records a remixed project in recently opened projects and polls its cover', async () => {

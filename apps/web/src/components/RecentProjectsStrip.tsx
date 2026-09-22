@@ -71,6 +71,7 @@ import {
 } from '../lib/project-cover-cache';
 import { useInView } from './plugins-home/useInView';
 import { resolveFloatingMenuHorizontalAlign } from '../utils/floating-menu-placement';
+import { ellipsisTitleHoverProps } from '../utils/ellipsis-title';
 import { Toast } from './Toast';
 import {
   workspaceIdentityCacheKey,
@@ -2262,7 +2263,6 @@ function requestDelete(project: Project) {
                   }
                 }}
                 aria-busy={opening ? true : undefined}
-                title={project.name}
               >
                 {opening ? (
                   <span className="recent-projects__card-opening" aria-hidden>
@@ -2336,7 +2336,12 @@ function requestDelete(project: Project) {
                </div>
                <div className="recent-projects__card-meta">
                  <div className="recent-projects__card-name-row">
-                   <span className="recent-projects__card-name">{project.name}</span>
+                   <span
+                     className="recent-projects__card-name"
+                     {...ellipsisTitleHoverProps(project.name)}
+                   >
+                     {project.name}
+                   </span>
                    {projectType && view === 'list' ? (
                      <span className={`recent-projects__card-badge recent-projects__card-badge--${projectType} recent-projects__card-badge--inline`}>
                        <Icon name={projectType === 'personal' ? 'lock' : projectType === 'team' ? 'users' : 'share'} size={11} />

@@ -1,0 +1,31 @@
+.stats {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.statsRight {
+  justify-content: flex-end;
+}
+
+.item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.item :global(.od-icon) {
+  flex: 0 0 auto;
+  color: var(--text-faint, var(--text-muted));
+}
+
+.item span {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
