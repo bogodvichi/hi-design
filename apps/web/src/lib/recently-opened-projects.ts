@@ -155,6 +155,36 @@ export function updateRecentlyOpenedProjectCover(
   write(entries);
 }
 
+/** Fill authoritative creator metadata on an existing recent entry. */
+export function updateRecentlyOpenedProjectOwner(
+  projectId: string,
+  owner: {
+    ownerDisplayName?: string | null;
+    createdByWorkspaceMemberId?: string | null;
+  },
+): boolean {
+  const entries = read();
+  const entry = entries.find((candidate) => candidate.id === projectId);
+  if (!entry) return false;
+
+  const ownerDisplayName = owner.ownerDisplayName?.trim() || null;
+  const createdByWorkspaceMemberId = owner.createdByWorkspaceMemberId?.trim() || null;
+  let changed = false;
+  if (ownerDisplayName && entry.ownerDisplayName !== ownerDisplayName) {
+    entry.ownerDisplayName = ownerDisplayName;
+    changed = true;
+  }
+  if (
+    createdByWorkspaceMemberId
+    && entry.createdByWorkspaceMemberId !== createdByWorkspaceMemberId
+  ) {
+    entry.createdByWorkspaceMemberId = createdByWorkspaceMemberId;
+    changed = true;
+  }
+  if (changed) write(entries);
+  return changed;
+}
+
 /**
  * Query the daemon for fresh cover digests for every recently-opened
  * project and patch localStorage in place. Returns the IDs whose

@@ -156,6 +156,7 @@ notifyTeamProjectsChanged,
 notifyWorkspaceBillingRefresh,
 notifyWorkspaceContextRefresh,
 currentWorkspaceAccountGeneration,
+resolveBoundProjectWorkspaceContext,
 useTeamProjects,
 useWorkspaceBillingResponse,
 useWorkspaceContext,
@@ -164,6 +165,7 @@ workspaceBillingBalanceUsd,
 workspaceBillingSummaryForContext,
 useSharedSpaceTeamId,
 } from '../collab/useWorkspaceContext';
+import { fetchTeamProjectCatalogEntry } from '../collab/team-projects-catalog';
 import { useWorkspaceInvalidation } from '../collab/workspace-events';
 import { resolvePlanLabelTier } from '../collab/team-plan';
 import { resolveDeepSeekV4FlashCampaignAudience } from '../campaigns/deepseek-v4-flash';
@@ -238,6 +240,7 @@ import {
   enrichRecentlyOpenedProjectCovers,
   readRecentlyOpenedProjectEntries,
   readRecentlyOpenedProjects,
+  updateRecentlyOpenedProjectOwner,
 } from '../lib/recently-opened-projects';
 import {
  providerModelsCacheKey,
@@ -773,7 +776,7 @@ const amrAuthRequired =
    isShared: isSharedProject,
  });
  const projectSearchProjects = buildProjectSearchCatalog(draftProjectsList, allProjectsList);
- // Bump this counter after enriching localStorage cover digests so
+ // Bump this counter after enriching localStorage recent metadata so
  // `homeProjectsList` re-reads localStorage and re-renders the strip.
  const [recentlyOpenedVersion, bumpRecentlyOpened] = useState(0);
  useEffect(() => {
@@ -781,6 +784,46 @@ const amrAuthRequired =
      if (changed.length > 0) bumpRecentlyOpened((v) => v + 1);
    });
  }, [projects]);
+ useEffect(() => {
+   let cancelled = false;
+   const accountGeneration = currentWorkspaceAccountGeneration();
+   const missingOwners = readRecentlyOpenedProjectEntries().filter(
+     (entry) => !entry.ownerDisplayName?.trim() && Boolean(entry.workspaceId?.trim()),
+   );
+   if (missingOwners.length === 0) return;
+
+   void Promise.all(missingOwners.map(async (entry) => {
+     const workspaceId = entry.workspaceId?.trim();
+     if (!workspaceId) return false;
+     try {
+       const context = workspaceContext?.workspaceId === workspaceId
+         ? workspaceContext
+         : await resolveBoundProjectWorkspaceContext(workspaceId);
+       if (!context || cancelled) return false;
+       const catalogProject = await fetchTeamProjectCatalogEntry({
+         context,
+         projectId: entry.id,
+       });
+       if (
+         cancelled
+         || currentWorkspaceAccountGeneration() !== accountGeneration
+         || !catalogProject
+       ) {
+         return false;
+       }
+       return updateRecentlyOpenedProjectOwner(entry.id, {
+         ownerDisplayName: catalogProject.ownerDisplayName,
+         createdByWorkspaceMemberId: catalogProject.ownerMemberId,
+       });
+     } catch {
+       return false;
+     }
+   })).then((changed) => {
+     if (!cancelled && changed.some(Boolean)) bumpRecentlyOpened((v) => v + 1);
+   });
+
+   return () => { cancelled = true; };
+ }, [projects, workspaceContext]);
 const homeProjectsList = useMemo(
   () => {
     const recents = readRecentlyOpenedProjects();
@@ -816,9 +859,19 @@ const homeProjectsList = useMemo(
     };
    const openedServerProjects = serverProjects
       .filter((p) => recentIds.has(p.id) && isOwnedBySelf(p))
-      .map((p) =>
-        p.coverDigest ? p : { ...p, coverDigest: recentMap.get(p.id)?.coverDigest ?? null },
-      );
+      .map((p) => {
+        const recent = recentMap.get(p.id);
+        return {
+          ...p,
+          ...(!p.coverDigest && recent?.coverDigest ? { coverDigest: recent.coverDigest } : {}),
+          ...(!p.ownerDisplayName?.trim() && recent?.ownerDisplayName?.trim()
+            ? { ownerDisplayName: recent.ownerDisplayName.trim() }
+            : {}),
+          ...(!p.createdByWorkspaceMemberId && recent?.createdByWorkspaceMemberId
+            ? { createdByWorkspaceMemberId: recent.createdByWorkspaceMemberId }
+            : {}),
+        };
+      });
     // Projects opened from /share-me that the server doesn't know about
     // (they live in another workspace) are still shown from localStorage.
     const serverIds = new Set(openedServerProjects.map((p) => p.id));
@@ -849,6 +902,14 @@ const homeProjectsList = useMemo(
      witnesses: optimisticOwnershipWitnesses,
    }),
    [optimisticOwnershipScopeKey, optimisticOwnershipWitnesses, teamProjects.projects],
+ );
+ const teamProjectOwnerDisplayNames = useMemo(
+   () => new Map(
+     teamProjects.projects
+       .filter((project) => project.ownerDisplayName?.trim())
+       .map((project) => [project.projectId, project.ownerDisplayName!.trim()]),
+   ),
+   [teamProjects.projects],
  );
  const contentReadyProjectIdsRef = useRef(new Set<string>());
  const pendingContentReadyProjectIdsRef = useRef(
@@ -1790,6 +1851,7 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
                onProjectShareFailed={markProjectShareFailed}
                onProjectUnshared={markProjectUnshared}
                projectOwnerMemberIds={teamProjectOwnerMemberIds}
+               projectOwnerDisplayNames={teamProjectOwnerDisplayNames}
               skills={skills}
               skillsLoading={skillsLoading}
               connectors={connectors}
@@ -2009,6 +2071,7 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
                    onProjectShareFailed={markProjectShareFailed}
                    onProjectUnshared={markProjectUnshared}
                    projectOwnerMemberIds={teamProjectOwnerMemberIds}
+                   projectOwnerDisplayNames={teamProjectOwnerDisplayNames}
                    onOpen={(id) => onOpenProject(id)}
                    onViewAll={() => {}}
                    onDelete={onDeleteProject}
@@ -2038,6 +2101,7 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
                    onProjectShareFailed={markProjectShareFailed}
                    onProjectUnshared={markProjectUnshared}
                    projectOwnerMemberIds={teamProjectOwnerMemberIds}
+                   projectOwnerDisplayNames={teamProjectOwnerDisplayNames}
                    openingProjectId={pullingProjectId}
                    onOpen={handleOpenAllProjects}
                    onViewAll={() => {}}

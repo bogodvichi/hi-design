@@ -1414,6 +1414,7 @@ export const de: Dict = {
   'recentProjects.inviteTeammates': 'Invite teammates',
   'recentProjects.multiSelect': 'Multi-select',
   'recentProjects.sortAria': 'Sort projects',
+  'recentProjects.sortRecentlyViewed': 'Recently viewed',
   'recentProjects.sortNewest': 'Newest first',
   'recentProjects.sortOldest': 'Oldest first',
   'recentProjects.sortName': 'Name',

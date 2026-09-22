@@ -1427,6 +1427,7 @@ export const zhCN: Dict = {
   "recentProjects.inviteTeammates": "邀请同事",
   "recentProjects.multiSelect": "多选",
   "recentProjects.sortAria": "项目排序",
+  "recentProjects.sortRecentlyViewed": "最近查看时间",
   "recentProjects.sortNewest": "最近更新",
   "recentProjects.sortOldest": "最早更新",
   "recentProjects.sortName": "名称",

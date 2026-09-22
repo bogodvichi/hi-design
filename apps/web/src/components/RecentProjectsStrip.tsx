@@ -22,6 +22,8 @@ import { Dialog, DialogDescription, DialogFooter, DialogTitle } from '@open-desi
 
 import { useT } from '../i18n';
 import { avatarColorFor } from '../utils/avatarColor';
+import { getStoredUsername } from '../auth/auth';
+import { getSharedSpaceMemberId, getTeamMemberId } from '../utils/deterministicId';
 import { MoveToTeamTreeDialog, type TeamTreeSelection } from './MoveToTeamTreeDialog';
 import {
   fetchProjectFiles,
@@ -244,7 +246,7 @@ const NOTHING_SHARED: SharedProjectPredicate = () => false;
 type DictKey = Parameters<ReturnType<typeof useT>>[0];
 
 type OwnerFilter = 'all' | 'mine' | 'others';
-type ProjectSort = 'updatedDesc' | 'updatedAsc' | 'nameAsc';
+type ProjectSort = 'recentViewed' | 'updatedDesc' | 'updatedAsc' | 'nameAsc';
 
 const OWNER_FILTER_OPTIONS: Array<{ id: OwnerFilter; labelKey: DictKey }> = [
   { id: 'all', labelKey: 'recentProjects.ownerAll' },
@@ -252,10 +254,14 @@ const OWNER_FILTER_OPTIONS: Array<{ id: OwnerFilter; labelKey: DictKey }> = [
   { id: 'others', labelKey: 'recentProjects.ownerOthers' },
 ];
 
-const SORT_OPTIONS: Array<{ id: ProjectSort; labelKey: Parameters<ReturnType<typeof useT>>[0] }> = [
+const SORT_OPTIONS: Array<{ id: ProjectSort; labelKey: DictKey }> = [
   { id: 'updatedDesc', labelKey: 'recentProjects.sortNewest' },
   { id: 'updatedAsc', labelKey: 'recentProjects.sortOldest' },
   { id: 'nameAsc', labelKey: 'recentProjects.sortName' },
+];
+const RECENT_SORT_OPTIONS: Array<{ id: ProjectSort; labelKey: DictKey }> = [
+  { id: 'recentViewed', labelKey: 'recentProjects.sortRecentlyViewed' },
+  ...SORT_OPTIONS,
 ];
 
 
@@ -460,53 +466,68 @@ selectionExtension,
   }
   const selfMemberId = workspaceContext?.workspaceMemberId ?? null;
   const contextWorkspaceId = workspaceContext?.workspaceId ?? null;
-  // Projects may belong to a different workspace than the current context.
-  // Pre-resolve the current user's memberId for each distinct foreign
-  // workspaceId so resolveCreator can compare ownership per-project instead
-  // of assuming the context memberId applies everywhere. When the project's
-  // workspaceId matches the current context, selfMemberId is used directly
-  // — no lookup needed.
-  const [crossWorkspaceMemberIds, setCrossWorkspaceMemberIds] = useState<
+  // Team-project ownership uses HDW deterministic member IDs, while
+  // WorkspaceCollabContext can expose a different member-ID namespace.
+  // Resolve the current user's owner ID in the same namespace as each
+  // project's createdByWorkspaceMemberId before comparing ownership.
+  const [selfOwnerMemberIdsByWorkspace, setSelfOwnerMemberIdsByWorkspace] = useState<
     ReadonlyMap<string, string>
   >(EMPTY_MEMBER_MAP);
   useEffect(() => {
-    const foreignIds = new Set<string>();
+    const username = getStoredUsername()?.trim();
+    if (!username) {
+      setSelfOwnerMemberIdsByWorkspace(EMPTY_MEMBER_MAP);
+      return;
+    }
+    const workspaceIds = new Set<string>();
     for (const project of projects) {
       const wid = project.workspaceId?.trim();
-      if (wid && wid !== contextWorkspaceId) foreignIds.add(wid);
+      if (wid) workspaceIds.add(wid);
     }
-    if (foreignIds.size === 0) {
-      setCrossWorkspaceMemberIds(EMPTY_MEMBER_MAP);
+    if (sharedSpaceTeamId) workspaceIds.add(sharedSpaceTeamId);
+    if (workspaceIds.size === 0) {
+      setSelfOwnerMemberIdsByWorkspace(EMPTY_MEMBER_MAP);
       return;
     }
     let cancelled = false;
     void (async () => {
       const resolved = new Map<string, string>();
-      await Promise.all([...foreignIds].map(async (wid) => {
+      await Promise.all([...workspaceIds].map(async (wid) => {
         try {
-          const ctx = await resolveBoundProjectWorkspaceContext(wid);
-          if (ctx?.workspaceMemberId) resolved.set(wid, ctx.workspaceMemberId);
+          const memberId = wid === sharedSpaceTeamId
+            ? await getSharedSpaceMemberId(username)
+            : await getTeamMemberId(wid, username);
+          if (memberId) resolved.set(wid, memberId);
         } catch {
-          // A directory outage proves nothing about ownership. Leave this
-          // Workspace unresolved so project actions stay fail-closed, and do
-          // not let a background display lookup surface as a Next runtime
-          // error. The shared Workspace hook owns retry/recovery UI.
+          // Leave unresolved; ownership then stays fail-closed.
         }
       }));
-      if (!cancelled) setCrossWorkspaceMemberIds(resolved);
+      if (!cancelled) setSelfOwnerMemberIdsByWorkspace(resolved);
     })();
     return () => { cancelled = true; };
-  }, [projects, contextWorkspaceId]);
-  // Resolve the current user's memberId for a given project's workspace.
-  // When the project belongs to the current context workspace (or has no
-  // workspace binding), selfMemberId is correct and no lookup is needed.
+  }, [projects, sharedSpaceTeamId]);
+  // Resolve the current user's owner ID for the project's own workspace.
+  // operator is already HDW-scoped and remains the authority in team views.
   const resolveProjectMemberId = useCallback(
     (project: Project): string | null => {
+      if (operator?.memberId) return operator.memberId;
       const wid = project.workspaceId?.trim();
-      if (!wid || wid === contextWorkspaceId) return selfMemberId;
-      return crossWorkspaceMemberIds.get(wid) ?? null;
+      if (wid) {
+        return selfOwnerMemberIdsByWorkspace.get(wid)
+          ?? (wid === contextWorkspaceId ? selfMemberId : null);
+      }
+      if (sharedSpaceTeamId) {
+        return selfOwnerMemberIdsByWorkspace.get(sharedSpaceTeamId) ?? selfMemberId;
+      }
+      return selfMemberId;
     },
-    [contextWorkspaceId, crossWorkspaceMemberIds, selfMemberId],
+    [
+      contextWorkspaceId,
+      operator?.memberId,
+      selfMemberId,
+      selfOwnerMemberIdsByWorkspace,
+      sharedSpaceTeamId,
+    ],
   );
   // `canShareProjects` alone is a ROLE permission ("could this member share IF
   // a team existed"), not a "does a team exist" signal — a purely personal
@@ -534,7 +555,12 @@ selectionExtension,
   const showOwnerFilter = space !== 'drafts';
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [ownerFilter, setOwnerFilter] = useState<OwnerFilter>('all');
- const [sort, setSort] = useState<ProjectSort>('updatedDesc');
+  // The home recent feed is already sorted by true openedAt timestamps upstream.
+  // Expose that order as an explicit default sort option without changing other lists.
+  const sortOptions = space === 'recent' ? RECENT_SORT_OPTIONS : SORT_OPTIONS;
+  const [sort, setSort] = useState<ProjectSort>(() =>
+    space === 'recent' ? 'recentViewed' : 'updatedDesc',
+  );
  const [searchQuery, setSearchQuery] = useState('');
  const effectiveSearchQuery = externalSearchQuery ?? searchQuery;
   const [openHeaderMenu, setOpenHeaderMenu] = useState<'owner' | 'sort' | null>(null);
@@ -611,14 +637,14 @@ selectionExtension,
     return () => window.removeEventListener('resize', update);
   }, [hasRecentProjects, limit]);
 
-  const sortedProjects = useMemo(
-    () => [...projects].sort((a, b) => {
+  const sortedProjects = useMemo(() => {
+    if (sort === 'recentViewed') return projects;
+    return [...projects].sort((a, b) => {
       if (sort === 'updatedAsc') return a.updatedAt - b.updatedAt;
       if (sort === 'nameAsc') return a.name.localeCompare(b.name);
       return b.updatedAt - a.updatedAt;
-    }),
-    [projects, sort],
-  );
+    });
+  }, [projects, sort]);
   const [coverByProject, setCoverByProject] = useState<
     Record<string, ProjectCoverOverride | null>
   >({});
@@ -667,13 +693,6 @@ selectionExtension,
     }
     return palette[Math.abs(hash) % palette.length] ?? '#1a1917';
   }
-  const currentAccountDisplayName = workspaceContext?.displayName?.trim() ?? '';
-  const isCurrentAccountDisplayName = (name: string | null | undefined): boolean =>
-    Boolean(
-      currentAccountDisplayName
-      && name?.trim()
-      && name.trim().toLocaleLowerCase() === currentAccountDisplayName.toLocaleLowerCase(),
-    );
 // The card owner avatar: first character of the owner display name with a
 // deterministic background colour. The HDW backend JOIN provides
 // ownerDisplayName directly; the UI shows "我" for self-owned projects.
@@ -686,138 +705,41 @@ selectionExtension,
     canAdmin: boolean;
     memberId: string | null;
   } => {
- // In the personal space (default team) the user is the sole member
- // and owner, so every project is theirs — show "我" and grant full
- // operations without a member-ID match.
- // When an HDW operator is provided (team/shared space), skip this
- // shortcut — those spaces have multiple members, so ownership must
- // be resolved by comparing ownerMemberId against the operator's ID.
- if (!operator && workspaceContext?.isDefaultTeam) {
-   // Even in the default team, a project may carry a creator member ID
-   // that does NOT match the current user (e.g. a project shared into
-   // this workspace by another member). In that case fall through to
-   // the normal ownership path so the real owner's name is shown.
-   const ownerMemberId = project.createdByWorkspaceMemberId
-     ?? projectOwnerMemberIds?.get(project.id)
-     ?? null;
-   // Also check the display-name map: if we have an owner name for this
-   // project but the owner's member ID is absent or matches the current
-   // user, the project is still shared by someone else and should show
-   // that owner's name rather than "我".
-   const ownerDisplayName = project.ownerDisplayName?.trim()
-    || projectOwnerDisplayNames?.get(project.id)?.trim()
-    || resolveTeamMember(ownerMemberId)?.displayName?.trim()
-    || null;
-   // A matching member ID is stronger evidence than a display-name string.
-   // HDW owner names can differ in spacing or source formatting, so check
-   // ownership before treating an owner label as another member.
-   const projectMemberId = resolveProjectMemberId(project);
-   if (ownerMemberId && projectMemberId && ownerMemberId === projectMemberId) {
-     const name = ownerDisplayName
-       || workspaceContext?.displayName?.trim()
-       || t('recentProjects.selfCreator');
-     const initial = Array.from(name.trim())[0]?.toUpperCase() ?? 'M';
-     return {
-       name,
-       initial,
-       avatarUrl: workspaceContext?.avatarUrl?.trim() || null,
-       ownedBySelf: true,
-       canMutate: !isShared(project.id),
-       canAdmin: false,
-       memberId: ownerMemberId,
-     };
-   }
-   if ((!ownerMemberId || ownerMemberId === resolveProjectMemberId(project)) && !ownerDisplayName && !isShared(project.id)) {
-     return {
-      name: workspaceContext?.displayName?.trim()
-        || t('recentProjects.selfCreator'),
-      initial: Array.from((workspaceContext?.displayName?.trim()
-        || t('recentProjects.selfCreator')).trim())[0] ?? 'M',
-      avatarUrl: workspaceContext?.avatarUrl?.trim() || null,
-      ownedBySelf: true,
-      canMutate: true,
-      canAdmin: false,
-      memberId: selfMemberId,
-    };
-   }
-   if (ownerDisplayName && isCurrentAccountDisplayName(ownerDisplayName)) {
-     const initial = Array.from(ownerDisplayName.trim())[0]?.toUpperCase() ?? 'M';
-     return {
-       name: ownerDisplayName,
-       initial,
-       avatarUrl: workspaceContext?.avatarUrl?.trim() || null,
-       ownedBySelf: true,
-       canMutate: !isShared(project.id),
-       canAdmin: false,
-       memberId: ownerMemberId ?? selfMemberId,
-     };
-   }
-   // If we have an owner display name but the member ID is absent or
-   // matches the current user, show the owner's name from the display
-   // map rather than falling through to the generic team-member label.
-   if (ownerDisplayName && (!ownerMemberId || ownerMemberId === resolveProjectMemberId(project))) {
-     const initial = Array.from(ownerDisplayName.trim())[0]?.toUpperCase() ?? 'T';
-     return {
-       name: ownerDisplayName,
-       initial,
-       avatarUrl: null,
-       ownedBySelf: false,
-       canMutate: false,
-       canAdmin: false,
-       memberId: ownerMemberId ?? null,
-     };
-   }
- }
-    // Team projects are single-writer: only the creator can rename, delete,
-    // or duplicate. Admins can open the card menu but only see "move to" —
-    // they cannot rename, delete, or duplicate another member's project.
-    // instead of the OpenDesign workspace-collab context: HDW team projects
-    // carry HDW member IDs that do not match the collab workspace member ID,
-    // and the operator role distinguishes owner from admin.
-    const effectiveMemberId = operator?.memberId ?? resolveProjectMemberId(project);
     const isAdmin = operator
       ? operator.role === 'admin' || operator.role === 'owner'
       : workspaceContext?.role === 'admin';
-    // Team view: strict ownership — only mark as self-owned when the
-    // project's createdByWorkspaceMemberId actually matches the current
-    // user's workspace member ID. The optimistic owner map (team catalog
-    // + recent-move witnesses) is a secondary source for team-visibility
-    // projects. No fallback assumption — an unattributed project is
-    // "unknown creator", not "mine".
     const ownerMemberId = project.createdByWorkspaceMemberId
       ?? projectOwnerMemberIds?.get(project.id)
       ?? null;
-  if (ownerMemberId && ownerMemberId === effectiveMemberId) {
-     const name = project.ownerDisplayName?.trim()
+    const effectiveMemberId = resolveProjectMemberId(project);
+    const ownerDisplayName = project.ownerDisplayName?.trim()
       || projectOwnerDisplayNames?.get(project.id)?.trim()
       || resolveTeamMember(ownerMemberId)?.displayName?.trim()
-      || workspaceContext?.displayName?.trim()
+      || null;
+    const legacyPersonalSelf = Boolean(
+      !operator
+      && workspaceContext?.isDefaultTeam
+      && !isShared(project.id)
+      && !ownerMemberId,
+    );
+    const ownedBySelf = Boolean(
+      ownerMemberId
+      && effectiveMemberId
+      && ownerMemberId === effectiveMemberId,
+    ) || legacyPersonalSelf;
+    const name = ownerDisplayName
+      || (ownedBySelf ? workspaceContext?.displayName?.trim() : null)
       || t('recentProjects.teamMemberCreator');
-      const initial = Array.from(name.trim())[0]?.toUpperCase() ?? 'M';
-      return {
-        name,
-        initial,
-        avatarUrl: workspaceContext?.avatarUrl?.trim() || null,
-        ownedBySelf: true,
-        canMutate: true,
-        canAdmin: false,
-        memberId: ownerMemberId,
-      };
-    }
-   const name = project.ownerDisplayName?.trim()
-    || projectOwnerDisplayNames?.get(project.id)?.trim()
-    || resolveTeamMember(ownerMemberId)?.displayName?.trim()
-    || t('recentProjects.teamMemberCreator');
-   const initial = (Array.from(name.trim())[0] ?? 'T').toUpperCase();
-   return {
-     name,
-     initial,
-     avatarUrl: null,
-     ownedBySelf: isCurrentAccountDisplayName(name),
-     canMutate: false,
-     canAdmin: isAdmin,
-     memberId: ownerMemberId ?? null,
-   };
+    const initial = (Array.from(name.trim())[0] ?? (ownedBySelf ? 'M' : 'T')).toUpperCase();
+    return {
+      name,
+      initial,
+      avatarUrl: ownedBySelf ? workspaceContext?.avatarUrl?.trim() || null : null,
+      ownedBySelf,
+      canMutate: ownedBySelf,
+      canAdmin: !ownedBySelf && isAdmin,
+      memberId: ownerMemberId ?? (ownedBySelf ? effectiveMemberId : null),
+    };
   };
   const visibleProjects = useMemo(
     () => sortedProjects
@@ -971,6 +893,20 @@ const disabledKeys = useMemo(() => {
     document.addEventListener('pointerdown', handlePointerDown);
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, [menuOpenId]);
+
+  useEffect(() => {
+    if (!openHeaderMenu) return;
+    const activeContainer = openHeaderMenu === 'owner'
+      ? ownerFilterWrapRef.current
+      : sortFilterWrapRef.current;
+    function handleHeaderFilterPointerDown(event: PointerEvent) {
+      const target = event.target;
+      if (target instanceof Node && activeContainer?.contains(target)) return;
+      setOpenHeaderMenu(null);
+    }
+    document.addEventListener('pointerdown', handleHeaderFilterPointerDown);
+    return () => document.removeEventListener('pointerdown', handleHeaderFilterPointerDown);
+  }, [openHeaderMenu]);
 
   useLayoutEffect(() => {
     if (!menuOpenId) return;
@@ -1935,7 +1871,7 @@ function requestDelete(project: Project) {
                   className={`recent-projects__filter-menu is-align-${headerMenuAlign}`}
                   role="menu"
                 >
-                  {SORT_OPTIONS.map((option) => (
+                  {sortOptions.map((option) => (
                     <button
                       key={option.id}
                       type="button"
@@ -1943,11 +1879,13 @@ function requestDelete(project: Project) {
                       onClick={() => {
                         trackCollection('sort', {
                           sort_value:
-                            option.id === 'updatedAsc'
-                              ? 'updated_asc'
-                              : option.id === 'nameAsc'
-                                ? 'name_asc'
-                                : 'updated_desc',
+                            option.id === 'recentViewed'
+                              ? 'recent_viewed'
+                              : option.id === 'updatedAsc'
+                                ? 'updated_asc'
+                                : option.id === 'nameAsc'
+                                  ? 'name_asc'
+                                  : 'updated_desc',
                         });
                         setSort(option.id);
                         setOpenHeaderMenu(null);
@@ -2351,31 +2289,7 @@ function requestDelete(project: Project) {
                 <div className="recent-projects__card-footer">
                   <div className="recent-projects__card-time">
                     <>
-                      {isTeamSeriesView ? (
-                        creator.ownedBySelf ? (
-                          <span
-                            className="recent-projects__card-owner"
-                            style={{ backgroundColor: '#000' }}
-                            aria-hidden
-                          >
-                            {t('recentProjects.selfCreator')}
-                          </span>
-                        ) : (
-                          <span
-                            className="recent-projects__card-owner"
-                            title={creator.name}
-                            style={{
-                              backgroundColor:
-                                creator.name === t('recentProjects.teamMemberCreator')
-                                  ? '#0ea5e9'
-                                  : ownerAvatarColor(creator.memberId),
-                            }}
-                            aria-hidden
-                          >
-                            {creator.name}
-                          </span>
-                        )
-                      ) : (isSelfOwnedForDisplay || (creator.ownedBySelf && space !== 'team')) ? (
+                      {creator.ownedBySelf ? (
                         <span
                           className="recent-projects__card-owner"
                           style={{ backgroundColor: '#000' }}
@@ -2387,7 +2301,13 @@ function requestDelete(project: Project) {
                         <span
                           className="recent-projects__card-owner"
                           title={creator.name}
-                          style={{ backgroundColor: avatarColorFor(creator.name) }}
+                          style={{
+                            backgroundColor: isTeamSeriesView
+                              ? creator.name === t('recentProjects.teamMemberCreator')
+                                ? '#0ea5e9'
+                                : ownerAvatarColor(creator.memberId)
+                              : avatarColorFor(creator.name),
+                          }}
                           aria-hidden
                         >
                           {creator.name}
