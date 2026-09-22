@@ -1441,6 +1441,23 @@ describe('recvqaRqM0dv2x — per-card Duplicate menu item', () => {
     fireEvent.click(duplicateItem);
     expect(onDuplicate).toHaveBeenCalledWith('project-1');
   });
+
+  it('shows only Duplicate in personal drafts even when a home workspace exists', () => {
+    render(
+      <RecentProjectsStrip
+        projects={[project({ id: 'project-1', name: 'My project' })]}
+        onOpen={() => {}}
+        onDuplicate={() => {}}
+        homeWorkspaceId="ws-1"
+        space="drafts"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+
+    expect(screen.getByRole('menuitem', { name: 'Duplicate project' })).toBeTruthy();
+    expect(screen.queryByRole('menuitem', { name: 'Copy project to' })).toBeNull();
+  });
 });
 
 describe('team-shared project with unresolved owner identity', () => {

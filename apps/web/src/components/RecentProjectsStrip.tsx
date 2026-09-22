@@ -2388,7 +2388,7 @@ function requestDelete(project: Project) {
                          <span>{t('designs.menuDuplicate')}</span>
                        </button>
                      ) : null}
-                     {homeWorkspaceId ? (
+                     {homeWorkspaceId && space !== 'drafts' ? (
                        <button
                          type="button"
                          role="menuitem"

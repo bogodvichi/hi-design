@@ -56,7 +56,10 @@ function PersonalProjectsPanel({
  onDuplicateProject?: (id: string) => Promise<void> | void;
  onRenameProject: (id: string, name: string) => void;
  controlsPortalTarget?: HTMLElement | null;
- onCopyProject?: (id: string) => Promise<void> | void;
+ onCopyProject?: (
+   id: string,
+   options?: { targetFolderId?: string | null },
+ ) => Promise<void> | void;
 }) {
   const t = useT();
   const [folders, setFolders] = useState<PersonalFolderItem[]>([]);

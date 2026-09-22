@@ -42,6 +42,10 @@ interface Props {
   onOpenProject?: (id: string) => void;
   onDeleteProject?: (id: string) => Promise<boolean | void> | boolean | void;
   onRenameProject?: (id: string, name: string) => void;
+  onCopyProject?: (
+    id: string,
+    options?: { targetFolderId?: string | null },
+  ) => Promise<void> | void;
 }
 
 export function PersonalFolderView({
@@ -50,6 +54,7 @@ export function PersonalFolderView({
   onOpenProject,
   onDeleteProject,
   onRenameProject,
+  onCopyProject,
 }: Props) {
   const t = useT();
   const [breadcrumb, setBreadcrumb] = useState<BreadcrumbItem[]>([]);
@@ -179,6 +184,7 @@ const [showCreateFolder, setShowCreateFolder] = useState(false);
        onOpenProject={onOpenProject}
        onDeleteProject={onDeleteProject}
        onRenameProject={onRenameProject}
+       onCopyProject={onCopyProject}
      />
       </div>
     </section>
@@ -194,7 +200,8 @@ function PersonalFoldersPanel({
   designSystems,
  onOpenProject,
  onDeleteProject,
-onRenameProject,
+ onRenameProject,
+ onCopyProject,
 }: {
  workspaceId: string | null;
   workspaceMemberId: string | null;
@@ -205,6 +212,10 @@ onRenameProject,
  onOpenProject?: (id: string) => void;
  onDeleteProject?: (id: string) => Promise<boolean | void> | boolean | void;
  onRenameProject?: (id: string, name: string) => void;
+ onCopyProject?: (
+   id: string,
+   options?: { targetFolderId?: string | null },
+ ) => Promise<void> | void;
 }) {
  const t = useT();
  const [folders, setFolders] = useState<PersonalFolderItem[]>([]);
@@ -564,6 +575,9 @@ const [shareFolderTarget, setShareFolderTarget] = useState<PersonalFolderItem | 
           homeWorkspaceId={workspaceId}
           onOpen={(id) => onOpenProject?.(id)}
           onDelete={onDeleteProject}
+          onDuplicate={folderId && onCopyProject
+            ? (id) => onCopyProject(id, { targetFolderId: folderId })
+            : undefined}
          onRename={(id, name) => {
            setProjects((prev) => prev.map((p) => p.id === id ? { ...p, name } : p));
            onRenameProject?.(id, name);

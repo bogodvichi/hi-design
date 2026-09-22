@@ -3571,6 +3571,7 @@ function AppInner() {
         result.project,
         ...curr.filter((p) => p.id !== result.project.id),
       ]);
+      recordRecentlyOpenedProject(result.project);
       navigate({
         kind: 'project',
         projectId: result.project.id,
@@ -3584,10 +3585,35 @@ function AppInner() {
   // Copy (duplicate) a project in the personal-all view without navigating
   // to the new project. The personal:folders-updated event refreshes the list.
   const handleCopyProject = useCallback(
-    async (sourceProjectId: string, input: { name?: string } = {}) => {
+    async (
+      sourceProjectId: string,
+      input: { name?: string; targetFolderId?: string | null } = {},
+    ) => {
       const sourceWorkspaceContext =
         await resolveSourceProjectWorkspaceContext(sourceProjectId);
-      const result = await duplicateProject(sourceProjectId, input, sourceWorkspaceContext);
+      const { targetFolderId, name } = input;
+      if (targetFolderId !== undefined && !sourceWorkspaceContext) {
+        throw new Error('Workspace context is required to copy a project into a folder');
+      }
+      const result = await duplicateProject(
+        sourceProjectId,
+        name ? { name } : {},
+        sourceWorkspaceContext,
+      );
+      if (targetFolderId !== undefined && sourceWorkspaceContext) {
+        try {
+          await moveWorkspaceProject({
+            projectId: result.project.id,
+            visibility: 'personal',
+            workspaceContext: sourceWorkspaceContext,
+            targetWorkspaceId: sourceWorkspaceContext.workspaceId,
+            targetFolderId,
+          });
+        } catch (error) {
+          await deleteProjectApi(result.project.id, sourceWorkspaceContext).catch(() => {});
+          throw error;
+        }
+      }
       rememberLocalProject(result.project.id);
       setProjects((curr) => [
         result.project,
