@@ -239,11 +239,12 @@ interface Props {
   mcpOptions?: McpServerConfig[];
   mcpLoading?: boolean;
   personalMemberId?: string;
+  personalWorkspaceId?: string;
   teamWorkspaceIds?: string[];
   personalWorkspaceContext?: WorkspaceCollabContext | null;
   connectorOptions?: ConnectorDetail[];
-  onSkillTabChange?: (tab: 'all' | 'mine' | 'team') => void;
-  onMcpTabChange?: (tab: 'all' | 'mine' | 'team') => void;
+  onSkillTabChange?: (tab: 'all' | 'mine' | 'team' | 'recent') => void;
+  onMcpTabChange?: (tab: 'all' | 'mine' | 'team' | 'recent') => void;
  pendingPluginId: string | null;
   pendingChipId: string | null;
   submitDisabled?: boolean;
@@ -426,6 +427,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
     mcpOptions = EMPTY_MCP_OPTIONS,
     mcpLoading = false,
   personalMemberId,
+  personalWorkspaceId,
   teamWorkspaceIds,
   personalWorkspaceContext = null,
   connectorOptions = EMPTY_CONNECTOR_OPTIONS,
@@ -1771,6 +1773,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
              }}
             mcpServers={mcpOptions}
             personalMemberId={personalMemberId}
+            personalWorkspaceId={personalWorkspaceId}
             teamWorkspaceIds={teamWorkspaceIds}
             onSkillTabChange={onSkillTabChange}
             onMcpTabChange={onMcpTabChange}

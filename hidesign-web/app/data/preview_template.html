@@ -173,7 +173,7 @@
       flex-direction: column;
       position: relative;
       overflow: hidden;
-      background: #000000;
+      background: #ffffff;
     }
 
     /* 悬浮展开按钮（菜单收起时显示） */
@@ -271,7 +271,48 @@
     .empty-state p {
       font-size: 14px;
     }
-  </style>
+
+    /* 加载遮罩 */
+    .loading-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #ffffff;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s ease;
+    }
+
+    .loading-overlay.visible {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .loading-spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid rgba(0, 0, 0, 0.1);
+      border-top-color: rgba(0, 0, 0, 0.5);
+      border-radius: 50%;
+      animation: loading-spin 0.7s linear infinite;
+    }
+
+    .loading-overlay p {
+      margin-top: 14px;
+      font-size: 13px;
+      color: #999;
+    }
+
+    @keyframes loading-spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+ </style>
 </head>
 <body>
   <!-- 侧边栏菜单（默认收起） -->
@@ -298,6 +339,12 @@
 
     <!-- iframe 容器 -->
     <div class="iframe-container" id="iframeContainer">
+      <!-- 加载遮罩 -->
+      <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <p>加载中…</p>
+      </div>
+
       <div class="empty-state" id="emptyState">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
@@ -322,6 +369,8 @@
       var sidebarList = document.getElementById('sidebarList');
       var iframeContainer = document.getElementById('iframeContainer');
       var emptyState = document.getElementById('emptyState');
+      var loadingOverlay = document.getElementById('loadingOverlay');
+      var loadingTimer = null;
 
       var currentIframe = null;
       var activeItem = null;
@@ -340,6 +389,9 @@
 
       // 加载页面到 iframe
       function loadPage(filePath, item) {
+        // 显示加载遮罩
+        showLoading();
+
         // 移除旧的 iframe
         if (currentIframe) {
           currentIframe.remove();
@@ -356,6 +408,8 @@
 
         // load 事件需在设置内容前绑定，确保 srcdoc 渲染后能触发
         iframe.addEventListener('load', function() {
+          hideLoading();
+
           try {
             var doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
             if (doc && doc.title) {
@@ -379,6 +433,27 @@
           item.classList.add('active');
           activeItem = item;
         }
+      }
+
+      // 显示加载遮罩
+      function showLoading() {
+        if (loadingTimer) {
+          clearTimeout(loadingTimer);
+        }
+        loadingOverlay.classList.add('visible');
+        // 兜底：srcdoc 通常很快触发 load，设一个上限防止异常卡死
+        loadingTimer = setTimeout(function() {
+          hideLoading();
+        }, 8000);
+      }
+
+      // 隐藏加载遮罩
+      function hideLoading() {
+        if (loadingTimer) {
+          clearTimeout(loadingTimer);
+          loadingTimer = null;
+        }
+        loadingOverlay.classList.remove('visible');
       }
 
       // 渲染菜单列表

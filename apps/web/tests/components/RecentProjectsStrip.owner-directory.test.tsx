@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render } from '@testing-library/react';
+import { cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
   CollabCloudMemberDirectoryEntry,
@@ -19,6 +19,19 @@ vi.mock('../../src/collab/useTeamMembers', () => ({
   currentUserDirectoryEntry: () => null,
   useTeamMembers: () => ({ resolve: workspaceState.resolve }),
 }));
+
+vi.mock('../../src/auth/auth', () => ({
+  getStoredUsername: () => 'viewer',
+}));
+
+vi.mock('../../src/utils/deterministicId', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/utils/deterministicId')>();
+  return {
+    ...actual,
+    getTeamMemberId: vi.fn(async (teamId: string, username: string) => `team:${teamId}:${username}`),
+    getSharedSpaceMemberId: vi.fn(async (username: string) => `shared:${username}`),
+  };
+});
 
 vi.mock('../../src/collab/useWorkspaceContext', () => ({
   notifyTeamProjectsChanged: vi.fn(),
@@ -54,10 +67,11 @@ function teamContext(): WorkspaceCollabContext {
     seatSummary: { seatLimit: 5, usedSeats: 2, availableSeats: 3 },
     permissions: {},
     teamId: 'team-1',
+    displayName: 'Viewer Name',
   } as WorkspaceCollabContext;
 }
 
-function project(): Project {
+function project(overrides: Partial<Project> = {}): Project {
   return {
     id: 'project-shared',
     name: 'Shared project',
@@ -67,6 +81,7 @@ function project(): Project {
     updatedAt: 2,
     createdByWorkspaceMemberId: 'wm-owner',
     status: { value: 'not_started' },
+    ...overrides,
   };
 }
 
@@ -99,5 +114,75 @@ describe('RecentProjectsStrip owner directory fallback', () => {
       '.recent-projects__card-owner',
     );
     expect(owner?.getAttribute('title')).toBe('Ally Zhang');
+  });
+
+  it('keeps the same real owner name across recent and team spaces', () => {
+    workspaceState.context = teamContext();
+    workspaceState.resolve.mockReturnValue(null);
+    const ownerNames = new Map([['project-shared', 'Mapped Owner']]);
+
+    const { container, rerender } = render(
+      <RecentProjectsStrip
+        projects={[project()]}
+        onOpen={() => {}}
+        projectOwnerDisplayNames={ownerNames}
+      />,
+    );
+    expect(container.querySelector<HTMLElement>('.recent-projects__card-owner')?.title)
+      .toBe('Mapped Owner');
+
+    rerender(
+      <RecentProjectsStrip
+        projects={[project()]}
+        onOpen={() => {}}
+        space="team"
+        projectOwnerDisplayNames={ownerNames}
+      />,
+    );
+    expect(container.querySelector<HTMLElement>('.recent-projects__card-owner')?.title)
+      .toBe('Mapped Owner');
+  });
+
+  it('shows Me when the HDW owner id matches the deterministic current-user team member id', async () => {
+    workspaceState.context = teamContext();
+    workspaceState.resolve.mockReturnValue(null);
+
+    const { container } = render(
+      <RecentProjectsStrip
+        projects={[project({
+          workspaceId: 'ws-team',
+          createdByWorkspaceMemberId: 'team:ws-team:viewer',
+          ownerDisplayName: 'Viewer Name',
+        })]}
+        onOpen={() => {}}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(container.querySelector<HTMLElement>('.recent-projects__card-owner')?.textContent)
+        .toBe('Me');
+    });
+  });
+
+  it('does not infer self ownership from a matching display name when the owner id differs', async () => {
+    workspaceState.context = teamContext();
+    workspaceState.resolve.mockReturnValue(null);
+
+    const { container } = render(
+      <RecentProjectsStrip
+        projects={[project({
+          workspaceId: 'ws-team',
+          createdByWorkspaceMemberId: 'team:ws-team:someone-else',
+          ownerDisplayName: 'Viewer Name',
+        })]}
+        onOpen={() => {}}
+      />,
+    );
+
+    await waitFor(() => {
+      const owner = container.querySelector<HTMLElement>('.recent-projects__card-owner');
+      expect(owner?.textContent).toBe('Viewer Name');
+      expect(owner?.getAttribute('title')).toBe('Viewer Name');
+    });
   });
 });

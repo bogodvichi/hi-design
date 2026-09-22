@@ -508,6 +508,7 @@ export function registerStaticResourceRoutes(app: Express, ctx: RegisterStaticRe
       const skills = await listAllSkills({
         workspaceId,
         workspaceMemberId: authority?.workspaceMemberId ?? null,
+        aggregateAllWorkspaces: req.query.scope === 'all',
       });
       // Strip full body + on-disk dir from the listing — frontend fetches the
       // body via /api/skills/:id when needed (keeps the listing payload small).

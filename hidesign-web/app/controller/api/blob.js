@@ -16,14 +16,34 @@ const Controller = require('egg').Controller;
 // content types.
 
 class BlobController extends Controller {
-  getKnex() {
-    if (!this._knex) {
-      this._knex = createKnex(this.app.config.db);
+ getKnex() {
+   if (!this._knex) {
+     this._knex = createKnex(this.app.config.db);
+   }
+   return this._knex;
+ }
+
+  // Detect content-type from magic bytes so images render correctly
+  // even when loaded via CSS url() or strict content-type contexts.
+  _detectContentType(data) {
+    if (data.length >= 4) {
+      // PNG: 89 50 4E 47
+      if (data[0] === 0x89 && data[1] === 0x50 && data[2] === 0x4e && data[3] === 0x47) return 'image/png';
+      // JPEG: FF D8 FF
+      if (data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff) return 'image/jpeg';
+      // GIF: 47 49 46 38
+      if (data[0] === 0x47 && data[1] === 0x49 && data[2] === 0x46 && data[3] === 0x38) return 'image/gif';
+      // WebP: 52 49 46 46 ?? ?? ?? ?? 57 45 42 50
+      if (data.length >= 12 && data[0] === 0x52 && data[1] === 0x49 && data[2] === 0x46 && data[3] === 0x46 &&
+          data[8] === 0x57 && data[9] === 0x45 && data[10] === 0x42 && data[11] === 0x50) return 'image/webp';
+      // SVG / XML: 3C 3F 78 6D 6C or 3C 73 76 67
+      if (data[0] === 0x3c && data[1] === 0x3f) return 'image/svg+xml';
+      if (data[0] === 0x3c && data[1] === 0x73 && data[2] === 0x76 && data[3] === 0x67) return 'image/svg+xml';
     }
-    return this._knex;
+    return 'application/octet-stream';
   }
 
-  // ---- Upload: PUT /api/workspaces/:ws/blobs/:digest ----
+ // ---- Upload: PUT /api/workspaces/:ws/blobs/:digest ----
   async upload() {
     const { ctx } = this;
     const workspaceId = ctx.params.workspaceId;
@@ -92,9 +112,9 @@ class BlobController extends Controller {
         return;
       }
 
-      const data = await blobStore.readBlob(digest);
-      ctx.set('content-type', 'application/octet-stream');
-      ctx.set('content-length', String(data.length));
+     const data = await blobStore.readBlob(digest);
+     ctx.set('content-type', this._detectContentType(data));
+     ctx.set('content-length', String(data.length));
       ctx.body = data;
     } catch (err) {
       ctx.logger.error('[hdw] blob download error:', err);

@@ -2675,10 +2675,10 @@ function AppInner() {
   ]);
 
   const refreshSkills = useCallback(async (scoped?: boolean) => {
-    // Default (unscoped) omits `x-od-workspace-id` so the daemon returns every
-    // skill regardless of workspace binding — the project creation flow needs
-    // the full catalog. Pass `true` from the "Mine"/"Team" scope tabs to apply
-    // workspace filtering.
+    // The workspace-keyed effect and composer scope tabs both need the
+    // workspace identity so the daemon can discover `.team-workspaces`
+    // materializations and attach owner/workspace bindings. Internal mutation
+    // catch-up callers may omit it to preserve the legacy full-catalog read.
     if (workspaceContextStateRef.current.identityChangePending) return;
     const issuedAccountGeneration = currentWorkspaceAccountGeneration();
     const read = beginWorkspaceScopedRead(workspaceContextRef.current);
@@ -2690,7 +2690,9 @@ function AppInner() {
     const requestGeneration =
       (skillsRequestGenerationRef.current.get(issuedCatalogIdentity) ?? 0) + 1;
     skillsRequestGenerationRef.current.set(issuedCatalogIdentity, requestGeneration);
-    const list = await fetchSkills(scoped ? read.context : null);
+    const list = await fetchSkills(scoped ? read.context : null, {
+      aggregateAllWorkspaces: Boolean(scoped),
+    });
     // A read for the workspace the user has since LEFT must not restore that
     // workspace's catalog over the current one — see `beginWorkspaceScopedRead`.
     // Skipping the gate too is deliberate: this response is not an answer about
@@ -2737,7 +2739,7 @@ function AppInner() {
     if (workspaceContextLoading || workspaceContextState.identityChangePending) return;
     if (skillsReadIdentityRef.current === skillsReadIdentity) return;
     skillsReadIdentityRef.current = skillsReadIdentity;
-    void refreshSkills();
+    void refreshSkills(true);
   }, [
     workspaceContextLoading,
     workspaceContextState.identityChangePending,
@@ -3921,18 +3923,16 @@ function AppInner() {
      }
     return !requiresBoundCatalogProject;
   };
-  // When opening a cross-workspace project (e.g. a regular team project
-  // opened from the shared space), getProject does not return
-  // ownerDisplayName — that field comes from the HDW team catalog JOIN,
-  // not from the SQLite projects table. Fetch the catalog entry from the
-  // project's home workspace and merge ownerDisplayName /
-  // createdByWorkspaceMemberId so recordRecentlyOpenedProject stores
-  // them for the Home recent-projects strip's resolveCreator.
+  // getProject does not reliably return ownerDisplayName for team-owned rows —
+  // that field comes from the HDW team catalog JOIN, not the SQLite projects
+  // table. Fetch the scoped catalog entry whenever owner metadata is missing,
+  // including same-workspace opens, so recordRecentlyOpenedProject stores the
+  // creator identity Home needs for the recent-projects strip.
   const enrichProjectWithCatalogOwner = async (
     project: Project,
   ): Promise<Project> => {
     if (project.ownerDisplayName?.trim()) return project;
-    if (!pullContext || pullContext === openingContext) return project;
+    if (!pullContext) return project;
     try {
       const lookup = await fetchTeamProjectCatalogEntry(project.id, pullContext);
       if (!openingScopeIsCurrent()) return project;

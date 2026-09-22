@@ -304,6 +304,8 @@ interface Props {
   onProjectUnshared?: (projectId: string) => void;
   /** Authoritative catalog owners plus any exact successful-move witness. */
   projectOwnerMemberIds?: ReadonlyMap<string, string>;
+  /** Authoritative owner display names keyed by project id. */
+  projectOwnerDisplayNames?: ReadonlyMap<string, string>;
  skills?: SkillSummary[];
  skillsLoading?: boolean;
  connectors?: ConnectorDetail[];
@@ -610,6 +612,7 @@ export function HomeView({
   onProjectShareFailed,
   onProjectUnshared,
   projectOwnerMemberIds,
+  projectOwnerDisplayNames,
  skills = EMPTY_SKILLS,
  skillsLoading = false,
  connectors = EMPTY_CONNECTORS,
@@ -670,7 +673,7 @@ export function HomeView({
  // projectId → owner display name, from the team hub. Lets the strip show
  // the real creator name on a teammate's shared card.
  const homeProjectOwnerDisplayNames = useMemo(
-   () => new Map(
+   () => projectOwnerDisplayNames ?? new Map(
      homeTeamProjects.projects
        .filter((teamProject) => teamProject.ownerDisplayName?.trim())
        .map((teamProject) => [
@@ -678,7 +681,7 @@ export function HomeView({
          teamProject.ownerDisplayName!.trim(),
        ]),
    ),
-   [homeTeamProjects.projects],
+   [homeTeamProjects.projects, projectOwnerDisplayNames],
  );
  // P0 page_view page_name=home — fire once on mount. ref-keyed to survive
   // re-renders that flip parent state without remounting HomeView.
@@ -1243,13 +1246,13 @@ export function HomeView({
 
  // Scope tabs only filter the already-authorized catalogue locally. Refresh
  // the complete catalogue so switching tabs cannot evict a staged choice.
- const handleSkillTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
-    void onSkillsRefresh?.();
-  }, [onSkillsRefresh]);
+const handleSkillTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent') => {
+    void onSkillsRefresh?.(true);
+ }, [onSkillsRefresh]);
 
  // Re-fetch MCP servers and team cloud templates when the user switches
  // the MCP scope tab in ComposerPlusMenu.
-const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
+const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent') => {
     void fetchMcpServers().then((result) => {
       setMcpServers(result?.servers ?? []);
     });
@@ -3421,6 +3424,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
         mcpOptions={enabledMcpServers}
         mcpLoading={mcpLoading}
         personalMemberId={personalWorkspace?.workspaceMemberId}
+        personalWorkspaceId={personalWorkspace?.workspaceId}
         personalWorkspaceContext={personalWorkspaceContext}
         teamWorkspaceIds={teamWorkspaceIds}
         onSkillTabChange={handleSkillTabChange}

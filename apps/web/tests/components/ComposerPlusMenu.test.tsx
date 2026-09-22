@@ -77,11 +77,12 @@ function expectPickRowPreventsMousedown(name: RegExp) {
 }
 
 describe('ComposerPlusMenu pick-row caret protection', () => {
-  it('always shows All, Mine, and Team and filters Team by permitted workspaces', () => {
+  it('always shows All, Mine, and Team and filters Mine/Team by personal workspace id', () => {
     renderMenu({
       skills: [PERSONAL_SKILL, TEAM_SKILL, OTHER_TEAM_SKILL],
       mcpServers: [TEAM_MCP, OTHER_TEAM_MCP],
       personalMemberId: 'member-me',
+      personalWorkspaceId: 'personal-ws',
       teamWorkspaceIds: ['team-allowed'],
     });
     fireEvent.click(screen.getByTestId('plus-trigger'));
@@ -92,8 +93,11 @@ describe('ComposerPlusMenu pick-row caret protection', () => {
       'Mine',
       'Team',
     ]);
-    fireEvent.click(screen.getByRole('tab', { name: 'Team' }));
-    expect(screen.getByText('Team Skill')).toBeTruthy();
+    // Team = any skill whose workspaceId is not the personal workspace id.
+    // Both team-allowed and team-other are non-personal, so both show.
+    fireEvent.click(screen.getByRole('tab', { name: 'Mine' }));
+    expect(screen.getByText('My Skill')).toBeTruthy();
+    expect(screen.queryByText('Team Skill')).toBeNull();
     expect(screen.queryByText('Other Team Skill')).toBeNull();
 
     fireEvent.click(screen.getByTestId('plus-trigger'));
@@ -104,9 +108,43 @@ describe('ComposerPlusMenu pick-row caret protection', () => {
       'Mine',
       'Team',
     ]);
-    fireEvent.click(screen.getByRole('tab', { name: 'Team' }));
-    expect(screen.getByText('Team MCP')).toBeTruthy();
-    expect(screen.queryByText('Other Team MCP')).toBeNull();
+   fireEvent.click(screen.getByRole('tab', { name: 'Team' }));
+   expect(screen.getByText('Team MCP')).toBeTruthy();
+   expect(screen.queryByText('Other Team MCP')).toBeNull();
+ });
+  it('shows a Recent tab for skills and MCP when usedSkillIds/usedMcpIds are provided', () => {
+    renderMenu({
+      skills: [PERSONAL_SKILL, TEAM_SKILL],
+      mcpServers: [MCP_SERVER, TEAM_MCP],
+      personalWorkspaceId: 'personal-ws',
+      usedSkillIds: ['s-mine'],
+      usedMcpIds: ['m1'],
+    });
+    fireEvent.click(screen.getByTestId('plus-trigger'));
+    fireEvent.click(screen.getByTestId('composer-plus-skills'));
+    // The Recent tab appears only when usedSkillIds is non-empty.
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+      'All',
+      'Mine',
+      'Team',
+      'Recent',
+    ]);
+    fireEvent.click(screen.getByRole('tab', { name: 'Recent' }));
+    expect(screen.getByText('My Skill')).toBeTruthy();
+    expect(screen.queryByText('Team Skill')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('plus-trigger'));
+    fireEvent.click(screen.getByTestId('plus-trigger'));
+    fireEvent.click(screen.getByTestId('composer-plus-mcp'));
+    expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+      'All',
+      'Mine',
+      'Team',
+      'Recent',
+    ]);
+    fireEvent.click(screen.getByRole('tab', { name: 'Recent' }));
+    expect(screen.getByText('Linear')).toBeTruthy();
+    expect(screen.queryByText('Team MCP')).toBeNull();
   });
 
   it('cancels mousedown on the connector / plugin / MCP pick rows', () => {

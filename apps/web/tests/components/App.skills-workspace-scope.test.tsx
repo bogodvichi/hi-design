@@ -223,6 +223,14 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
+function authValidResponse(pathname: string): Response | null {
+  if (pathname !== '/api/auth/valid') return null;
+  return {
+    ok: true,
+    json: async () => ({ ok: true, username: 'admin' }),
+  } as Response;
+}
+
 describe('App skills list — workspace scope', () => {
   beforeEach(() => {
     resetWorkspaceContextCache();
@@ -261,6 +269,8 @@ describe('App skills list — workspace scope', () => {
       'fetch',
       vi.fn(async (input: RequestInfo | URL) => {
         const pathname = new URL(String(input), 'http://d.local').pathname;
+        const auth = authValidResponse(pathname);
+        if (auth) return auth;
         return {
           ok: true,
           json: async () =>
@@ -311,6 +321,8 @@ describe('App skills list — workspace scope', () => {
       'fetch',
       vi.fn(async (input: RequestInfo | URL) => {
         const pathname = new URL(String(input), 'http://d.local').pathname;
+        const auth = authValidResponse(pathname);
+        if (auth) return auth;
         return {
           ok: true,
           json: async () =>
@@ -371,6 +383,8 @@ describe('App skills list — workspace scope', () => {
       'fetch',
       vi.fn(async (input: RequestInfo | URL) => {
         const pathname = new URL(String(input), 'http://d.local').pathname;
+        const auth = authValidResponse(pathname);
+        if (auth) return auth;
         return {
           ok: true,
           json: async () =>
@@ -439,6 +453,8 @@ describe('App skills list — workspace scope', () => {
       'fetch',
       vi.fn(async (input: RequestInfo | URL) => {
         const pathname = new URL(String(input), 'http://d.local').pathname;
+        const auth = authValidResponse(pathname);
+        if (auth) return auth;
         return {
           ok: true,
           json: async () =>
@@ -512,6 +528,8 @@ describe('App skills list — workspace scope', () => {
       'fetch',
       vi.fn((input: RequestInfo | URL) => {
         const pathname = new URL(String(input), 'http://d.local').pathname;
+        const auth = authValidResponse(pathname);
+        if (auth) return Promise.resolve(auth);
         if (accountPhase === 'b' && pathname.endsWith('/workspace/directory')) {
           return directoryB.promise;
         }
@@ -582,6 +600,8 @@ describe('App skills list — workspace scope', () => {
       'fetch',
       vi.fn(async (input: RequestInfo | URL) => {
         const pathname = new URL(String(input), 'http://d.local').pathname;
+        const auth = authValidResponse(pathname);
+        if (auth) return auth;
         return {
           ok: true,
           json: async () =>
