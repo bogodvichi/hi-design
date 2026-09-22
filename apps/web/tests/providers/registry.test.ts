@@ -40,6 +40,7 @@ import {
   patchPreviewCommentStatus,
   updateDeployConfig,
   uploadProjectFiles,
+  uploadSkillToCloud,
   upsertPreviewComment,
   writeProjectTextFileDetailed,
 } from '../../src/providers/registry';
@@ -90,6 +91,37 @@ describe('skill operation diagnostics', () => {
         status: 503,
       },
     });
+  });
+});
+
+describe('cloud Skill upload metadata', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+
+  it('sends the selected community category in multipart form data', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(input.toString()).toBe('/api/workspace/skills/cloud/upload?scope=public');
+      expect(init?.method).toBe('POST');
+      const form = init?.body as FormData;
+      expect(form.get('category')).toBe('development_tools');
+      expect(form.get('paths')).toBe(JSON.stringify(['SKILL.md']));
+      return new Response(JSON.stringify({ shared: true, title: 'my-skill' }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const file = new File(['---\nname: my-skill\n---\n'], 'SKILL.md', { type: 'text/markdown' });
+    await expect(uploadSkillToCloud(
+      [{ file, path: 'SKILL.md' }],
+      teamWorkspaceContext(),
+      'public',
+      'development_tools',
+    )).resolves.toEqual({ ok: true, title: 'my-skill' });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });
 

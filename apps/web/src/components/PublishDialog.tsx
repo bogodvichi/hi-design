@@ -19,7 +19,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon, type IconName } from './Icon';
-import { useT } from '../i18n';
+import { useI18n, useT } from '../i18n';
 import type { Dict } from '../i18n/types';
 import type { Project } from '../types';
 import { listProjects } from '../state/projects';
@@ -35,8 +35,17 @@ import { useWorkspaceContext } from '../collab/useWorkspaceContext';
 import { workspaceProjectHeaders } from '../collab/workspace-identity';
 import { Toast } from './Toast';
 import { getOpenDesignHost } from '@open-design/host';
+import {
+  SKILL_CATEGORIES,
+  type SkillCategory,
+} from '@open-design/contracts';
 import { isMacPlatform } from '../utils/platform';
 import { findSkillMdInZip } from '../runtime/zip-reader';
+import {
+  skillCategoryLabel,
+  skillCategorySelectHint,
+  skillCategorySelectLabel,
+} from '../utils/skill-category-labels';
 
 type PublishCategory = 'projects' | 'skill' | 'mcp' | 'tool';
 
@@ -89,6 +98,7 @@ export interface PublishSkillSelection {
   name: string;
   description: string;
   body: string;
+  category: SkillCategory;
 }
 
 interface Props {
@@ -550,7 +560,9 @@ function SkillTab({
 }) {
   const t = useT();
   const { context: workspaceContext, loading: workspaceContextLoading } = useWorkspaceContext();
+  const { locale } = useI18n();
   const [uploadSource, setUploadSource] = useState<UploadSource | null>(null);
+  const [category, setCategory] = useState<SkillCategory | null>(null);
   const [busy, setBusy] = useState<boolean>(false);
   const [toast, setToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -558,7 +570,7 @@ function SkillTab({
   const zipInputRef = useRef<HTMLInputElement>(null);
 
   const isMac = isMacPlatform();
-  const canConfirm = uploadSource !== null && !busy && !workspaceContextLoading;
+  const canConfirm = uploadSource !== null && category !== null && !busy && !workspaceContextLoading;
 
   useEffect(() => { onCanConfirmChange?.(canConfirm); }, [canConfirm, onCanConfirmChange]);
 
@@ -719,7 +731,8 @@ function SkillTab({
         return;
       }
       const uploadInput = buildCloudUploadInput(uploadSource);
-      const result = await uploadSkillToCloud(uploadInput, workspaceContext, 'public');
+      if (!category) return;
+      const result = await uploadSkillToCloud(uploadInput, workspaceContext, 'public', category);
       if ('error' in result) {
         setToast({ message: result.error.message || t('pluginsView.importFailed'), tone: 'error' });
         return;
@@ -730,7 +743,7 @@ function SkillTab({
       });
       setUploadSource(null);
       window.dispatchEvent(new CustomEvent('personal:skill-refresh'));
-      onPublish({ name: result.title, description: '', body: '' });
+      onPublish({ name: result.title, description: '', body: '', category });
     } finally {
       setBusy(false);
     }
@@ -820,6 +833,35 @@ function SkillTab({
             <Icon name="file" size={14} aria-hidden />
           </button>
         )}
+      </section>
+
+      <section className={styles.panel}>
+        <div className={styles.panelHeader}>
+          <span className={styles.panelIcon} aria-hidden>
+            <Icon name="grid" size={17} />
+          </span>
+          <div>
+            <h3>{skillCategorySelectLabel(locale)}</h3>
+            <p>{skillCategorySelectHint(locale)}</p>
+          </div>
+        </div>
+        <div className={styles.skillCategoryOptions} role="radiogroup" aria-label={skillCategorySelectLabel(locale)}>
+          {SKILL_CATEGORIES.map((item) => (
+            <button
+              key={item}
+              type="button"
+              role="radio"
+              aria-checked={category === item}
+              className={category === item
+                ? `${styles.skillCategoryOption} ${styles.skillCategoryOptionActive}`
+                : styles.skillCategoryOption}
+              onClick={() => setCategory(item)}
+              disabled={busy}
+            >
+              {skillCategoryLabel(item, locale)}
+            </button>
+          ))}
+        </div>
       </section>
 
       {toast ? (
