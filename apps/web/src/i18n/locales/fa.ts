@@ -1225,6 +1225,7 @@ export const fa: Dict = {
   'homeHero.skillTabAll': "All",
   'homeHero.skillTabMine': "Mine",
   'homeHero.skillTabTeam': "Team",
+  'homeHero.skillTabRecent': "Recent",
   'homeHero.addMcp': 'افزودن سرور MCP',
   'homeHero.noPlugins': 'هیچ افزونه‌ای نصب نشده است',
   'homeHero.noMcp': 'هیچ سرور MCP وجود ندارد',

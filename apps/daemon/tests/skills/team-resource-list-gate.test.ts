@@ -165,6 +165,47 @@ describe('listAllSkills Team materialization gate', () => {
     expect(skills.findSkillById(bindingOnly, 'binding-only')).toBeUndefined();
   });
 
+  it('aggregates every live Workspace Team Skill for the all-scope catalog', async () => {
+    const fixture = await createFixture();
+    await materializeTeamSkill(
+      fixture.userSkills,
+      'workspace-personal',
+      'personal-team-skill',
+      'personal-team-body',
+    );
+    await materializeTeamSkill(
+      fixture.userSkills,
+      'workspace-team',
+      'regular-team-skill',
+      'regular-team-body',
+    );
+    bindTeamSkill(fixture.db, 'workspace-personal', 'personal-team-skill');
+    bindTeamSkill(fixture.db, 'workspace-team', 'regular-team-skill');
+
+    const all = await fixture.services.listAllSkills({
+      workspaceId: 'workspace-team',
+      aggregateAllWorkspaces: true,
+    });
+    expect(skills.findSkillById(all, 'personal-team-skill')?.workspaceId)
+      .toBe('workspace-personal');
+    expect(skills.findSkillById(all, 'regular-team-skill')?.workspaceId)
+      .toBe('workspace-team');
+
+    updateWorkspaceResource(
+      fixture.db,
+      'skill',
+      'workspace-team',
+      workspaceTeamSkillBindingResourceId('workspace-team', 'regular-team-skill'),
+      { resourceState: 'deleted' },
+    );
+    const afterRetract = await fixture.services.listAllSkills({
+      workspaceId: 'workspace-team',
+      aggregateAllWorkspaces: true,
+    });
+    expect(skills.findSkillById(afterRetract, 'regular-team-skill')).toBeUndefined();
+    expect(skills.findSkillById(afterRetract, 'personal-team-skill')).toBeDefined();
+  });
+
   it('drops a Team Skill retracted while its directory is resolving', async () => {
     let finishTeamRead!: () => void;
     const teamReadGate = new Promise<void>((resolve) => {

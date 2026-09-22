@@ -1243,13 +1243,13 @@ export function HomeView({
 
  // Scope tabs only filter the already-authorized catalogue locally. Refresh
  // the complete catalogue so switching tabs cannot evict a staged choice.
- const handleSkillTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
+const handleSkillTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent') => {
     void onSkillsRefresh?.(true);
  }, [onSkillsRefresh]);
 
  // Re-fetch MCP servers and team cloud templates when the user switches
  // the MCP scope tab in ComposerPlusMenu.
-const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
+const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent') => {
     void fetchMcpServers().then((result) => {
       setMcpServers(result?.servers ?? []);
     });
@@ -3421,6 +3421,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
         mcpOptions={enabledMcpServers}
         mcpLoading={mcpLoading}
         personalMemberId={personalWorkspace?.workspaceMemberId}
+        personalWorkspaceId={personalWorkspace?.workspaceId}
         personalWorkspaceContext={personalWorkspaceContext}
         teamWorkspaceIds={teamWorkspaceIds}
         onSkillTabChange={handleSkillTabChange}

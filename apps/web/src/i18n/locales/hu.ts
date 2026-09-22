@@ -1225,6 +1225,7 @@ export const hu: Dict = {
   'homeHero.skillTabAll': "All",
   'homeHero.skillTabMine': "Mine",
   'homeHero.skillTabTeam': "Team",
+  'homeHero.skillTabRecent': "Recent",
   'homeHero.addMcp': 'MCP-kiszolgáló hozzáadása',
   'homeHero.noPlugins': 'Nincs telepített bővítmény',
   'homeHero.noMcp': 'Nincs MCP-kiszolgáló',

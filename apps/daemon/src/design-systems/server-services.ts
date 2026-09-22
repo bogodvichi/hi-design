@@ -9,6 +9,7 @@ import {
 import {
   getWorkspaceProjectByProjectId,
   getWorkspaceResourceByResourceId,
+  listTeamWorkspaceResourceWorkspaceIds,
 } from '../db.js';
 import { workspaceTeamSkillBindingAllowsRead } from '../skills/workspace-team-binding.js';
 import { workspaceTeamSkillBindingResourceId } from '../skills/workspace-team-binding.js';
@@ -231,32 +232,15 @@ export function createDesignSystemServerServices({
     designSystem: DesignSystemSummary,
   ) => void;
 }) {
-  /**
-   * The functional-skills catalog. `workspaceId` narrows it to the
-   * user-imported skills that workspace may see (mirrors
-   * `listAllDesignSystems` below). Request and project-bound consumers pass
-   * their exact persisted scope; only true legacy/internal callers omit it.
-   *
-   * Checking `options.workspaceId === undefined` (not just falsy) matters:
-   * `GET /api/skills` always passes the key, with `null` whenever the request
-   * carries no `x-od-workspace-id` header (headerValue never returns
-   * `undefined`) — that request DID ask to be scoped, just with no identity,
-   * and must still reach `listSkills`'s workspace filter so a claimed skill is
-   * hidden from it (spec 04 §10), not silently fall through to the unscoped
-   * branch the way a plain `options.workspaceId ? … : …` truthiness check
-   * would.
-   */
-  async function listAllSkills(options: {
+  async function listSkillsForWorkspace(options: {
+    db: Database.Database;
     workspaceId?: string | null;
     workspaceMemberId?: string | null;
-  } = {}) {
-    const db = getDb?.();
-    if (!db || options.workspaceId === undefined) {
-      return skills.listSkills(roots.SKILL_ROOTS);
-    }
+  }) {
+    const { db } = options;
     const personalAndBuiltIn = await skills.listSkills(roots.SKILL_ROOTS, {
       db,
-      workspaceId: options.workspaceId,
+      workspaceId: options.workspaceId ?? null,
       workspaceMemberId: options.workspaceMemberId ?? null,
     });
     const workspaceId = options.workspaceId?.trim();
@@ -310,8 +294,8 @@ export function createDesignSystemServerServices({
         && workspaceTeamSkillBindingAllowsRead(db, workspaceId, logicalId),
       );
     });
-   const teamIds = new Set(team.map((entry) => entry.id));
-   return [
+    const teamIds = new Set(team.map((entry) => entry.id));
+    return [
       ...team.map((entry) => {
         const logicalId = markerByDirectory.get(entry.dir ?? '');
         const binding = logicalId
@@ -332,8 +316,62 @@ export function createDesignSystemServerServices({
             : {}),
         };
       }),
-     ...personalAndBuiltIn.filter((entry) => !teamIds.has(entry.id)),
-   ];
+      ...personalAndBuiltIn.filter((entry) => !teamIds.has(entry.id)),
+    ];
+  }
+
+  /**
+   * The functional-skills catalog. `workspaceId` narrows it to the
+   * user-imported skills that workspace may see (mirrors
+   * `listAllDesignSystems` below). Request and project-bound consumers pass
+   * their exact persisted scope; only true legacy/internal callers omit it.
+   *
+   * Checking `options.workspaceId === undefined` (not just falsy) matters:
+   * `GET /api/skills` always passes the key, with `null` whenever the request
+   * carries no `x-od-workspace-id` header (headerValue never returns
+   * `undefined`) — that request DID ask to be scoped, just with no identity,
+   * and must still reach `listSkills`'s workspace filter so a claimed skill is
+   * hidden from it (spec 04 §10), not silently fall through to the unscoped
+   * branch the way a plain `options.workspaceId ? … : …` truthiness check
+   * would.
+   */
+  async function listAllSkills(options: {
+    workspaceId?: string | null;
+    workspaceMemberId?: string | null;
+    aggregateAllWorkspaces?: boolean;
+  } = {}) {
+    const db = getDb?.();
+    if (!db || options.workspaceId === undefined) {
+      return skills.listSkills(roots.SKILL_ROOTS);
+    }
+    if (options.aggregateAllWorkspaces) {
+      const workspaceIds = Array.from(new Set([
+        options.workspaceId?.trim(),
+        ...listTeamWorkspaceResourceWorkspaceIds(db),
+      ].filter((workspaceId): workspaceId is string => Boolean(workspaceId?.trim()))));
+      const catalogs = await Promise.all(workspaceIds.map((workspaceId) => (
+        listSkillsForWorkspace({
+          db,
+          workspaceId,
+          workspaceMemberId: options.workspaceMemberId ?? null,
+        })
+      )));
+      const seen = new Set<string>();
+      const merged: Array<SkillEntry> = [];
+      for (const catalog of catalogs) {
+        for (const entry of catalog) {
+          if (seen.has(entry.id)) continue;
+          seen.add(entry.id);
+          merged.push(entry);
+        }
+      }
+      return merged;
+    }
+    return listSkillsForWorkspace({
+      db,
+      workspaceId: options.workspaceId,
+      workspaceMemberId: options.workspaceMemberId ?? null,
+    });
   }
 
   async function listAllDesignTemplates() {
@@ -344,6 +382,7 @@ export function createDesignSystemServerServices({
     options: {
       workspaceId?: string | null;
       workspaceMemberId?: string | null;
+      aggregateAllWorkspaces?: boolean;
     } = {},
   ) {
     if (options.workspaceId === undefined) {

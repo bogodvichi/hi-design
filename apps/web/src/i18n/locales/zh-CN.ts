@@ -1228,6 +1228,7 @@ export const zhCN: Dict = {
   'homeHero.skillTabAll': "全部",
   'homeHero.skillTabMine': "我的",
   'homeHero.skillTabTeam': "团队",
+  'homeHero.skillTabRecent': "曾用",
   "homeHero.addMcp": "添加 MCP 服务",
   "homeHero.noPlugins": "暂无已安装的插件",
   "homeHero.noMcp": "暂无 MCP 服务",

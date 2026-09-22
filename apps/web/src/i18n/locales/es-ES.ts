@@ -1225,6 +1225,7 @@ export const esES: Dict = {
   'homeHero.skillTabAll': "All",
   'homeHero.skillTabMine': "Mine",
   'homeHero.skillTabTeam': "Team",
+  'homeHero.skillTabRecent': "Recent",
   'homeHero.addMcp': 'Añadir servidor MCP',
   'homeHero.noPlugins': 'No hay plugins instalados',
   'homeHero.noMcp': 'No hay servidores MCP',

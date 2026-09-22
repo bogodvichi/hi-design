@@ -190,18 +190,29 @@ export interface ComposerPlusMenuProps {
   /** Current user's member id in the shared (personal) workspace. Used to
    * filter the "Mine" tab: skills/MCPs whose `ownerMemberId` matches. */
   personalMemberId?: string;
-  /** Team workspaces the current directory says this user may access. The
-   * "Team" tab never infers access from the resource itself. */
-  teamWorkspaceIds?: string[];
+  /** The current user's personal/shared workspace id. Skill ownership is
+   * marker-driven: unclaimed and personal-workspace claims are "Mine"; every
+   * other workspace claim is "Team". */
+  personalWorkspaceId?: string;
+ /** Team workspaces the current directory says this user may access. The
+  * "Team" tab never infers access from the resource itself. */
+ teamWorkspaceIds?: string[];
+  /** Skill ids accumulated across all conversations in this project. Drives
+   * the "曾用" (recently used) tab — shows skills the project has used
+   * before, even if they're not currently staged. */
+  usedSkillIds?: string[];
+  /** MCP server ids accumulated across all conversations in this project.
+   * Drives the "曾用" (recently used) tab for MCP servers. */
+  usedMcpIds?: string[];
 
   /** Triggers file attachment (opens the native picker). */
   onAttachFiles: () => void;
   attachLoading?: boolean;
 
-  /** Fired when the user switches the Skills scope tab (All / Mine / Team). */
-  onSkillTabChange?: (tab: 'all' | 'mine' | 'team') => void;
-  /** Fired when the user switches the MCP scope tab (All / Mine / Team). */
-  onMcpTabChange?: (tab: 'all' | 'mine' | 'team') => void;
+ /** Fired when the user switches the Skills scope tab (All / Mine / Team). */
+  onSkillTabChange?: (tab: 'all' | 'mine' | 'team' | 'recent') => void;
+ /** Fired when the user switches the MCP scope tab (All / Mine / Team). */
+  onMcpTabChange?: (tab: 'all' | 'mine' | 'team' | 'recent') => void;
 
  /** Opens the reference-project picker. */
   onReferenceProject?: () => void;
@@ -309,8 +320,11 @@ export function ComposerPlusMenu({
   onAddMcp,
   onManageMcp,
   personalMemberId,
-  teamWorkspaceIds = [],
-  onAttachFiles,
+ personalWorkspaceId,
+ teamWorkspaceIds = [],
+  usedSkillIds = [],
+  usedMcpIds = [],
+ onAttachFiles,
   attachLoading,
   onReferenceProject,
   onSkillTabChange,
@@ -332,8 +346,8 @@ export function ComposerPlusMenu({
   const [open, setOpen] = useState(false);
   const [submenu, setSubmenu] = useState<PlusMenuSubmenu | null>(null);
   const [query, setQuery] = useState('');
-  const [skillTab, setSkillTab] = useState<'all' | 'mine' | 'team'>('all');
-  const [mcpTab, setMcpTab] = useState<'all' | 'mine' | 'team'>('all');
+  const [skillTab, setSkillTab] = useState<'all' | 'mine' | 'team' | 'recent'>('all');
+  const [mcpTab, setMcpTab] = useState<'all' | 'mine' | 'team' | 'recent'>('all');
   const [menuStyle, setMenuStyle] = useState<CSSProperties | null>(null);
   const [flyoutPlacement, setFlyoutPlacement] = useState<PlusMenuFlyoutPlacement>('right');
   const [flyoutVerticalPlacement, setFlyoutVerticalPlacement] = useState<PlusMenuFlyoutVerticalPlacement>('down');
@@ -524,33 +538,45 @@ export function ComposerPlusMenu({
   }, [open, submenu, placementPreference, contentHeight]);
 
   const needle = query.trim().toLowerCase();
-  // "Team" trusts only workspace ids from the current user's verified
-  // directory. An empty directory means no permitted team rows.
-  const permittedTeamWorkspaceIds = new Set(teamWorkspaceIds);
-  const tabSkills =
-    skillTab === 'mine'
-      ? skills.filter((skill) => skill.ownerMemberId && skill.ownerMemberId === personalMemberId)
-      : skillTab === 'team'
-        ? skills.filter((skill) => (
-            skill.workspaceId && permittedTeamWorkspaceIds.has(skill.workspaceId)
-          ))
-        : skills;
-  const filteredSkills = needle
-    ? tabSkills.filter((skill) => skillMatchesQuery(skill, needle))
-    : tabSkills;
-  const tabMcpServers =
-    mcpTab === 'mine'
-      ? mcpServers.filter((server) => (
-          server.ownerMemberId && server.ownerMemberId === personalMemberId
-        ))
-      : mcpTab === 'team'
-        ? mcpServers.filter((server) => (
-            server.workspaceId && permittedTeamWorkspaceIds.has(server.workspaceId)
-          ))
-        : mcpServers;
-  const filteredMcp = needle
-    ? tabMcpServers.filter((server) => mcpMatches(server, needle))
-    : tabMcpServers;
+  // Skills use the materialization marker's workspace claim. The personal
+  // workspace is the boundary between "Mine" and "Team"; do not narrow this
+  // to the currently active workspace.
+ const personalSkillWorkspaceId = personalWorkspaceId?.trim();
+ const permittedTeamWorkspaceIds = new Set(teamWorkspaceIds);
+  const usedSkillIdSet = new Set(usedSkillIds);
+  const usedMcpIdSet = new Set(usedMcpIds);
+ const tabSkills =
+   skillTab === 'mine'
+     ? skills.filter((skill) => (
+         !skill.workspaceId?.trim()
+         || skill.workspaceId === personalSkillWorkspaceId
+       ))
+     : skillTab === 'team'
+       ? skills.filter((skill) => (
+           Boolean(skill.workspaceId?.trim())
+           && skill.workspaceId !== personalSkillWorkspaceId
+         ))
+       : skillTab === 'recent'
+         ? skills.filter((skill) => usedSkillIdSet.has(skill.id))
+       : skills;
+ const filteredSkills = needle
+   ? tabSkills.filter((skill) => skillMatchesQuery(skill, needle))
+   : tabSkills;
+ const tabMcpServers =
+   mcpTab === 'mine'
+     ? mcpServers.filter((server) => (
+         server.ownerMemberId && server.ownerMemberId === personalMemberId
+       ))
+     : mcpTab === 'team'
+       ? mcpServers.filter((server) => (
+           server.workspaceId && permittedTeamWorkspaceIds.has(server.workspaceId)
+         ))
+       : mcpTab === 'recent'
+         ? mcpServers.filter((server) => usedMcpIdSet.has(server.id))
+       : mcpServers;
+ const filteredMcp = needle
+   ? tabMcpServers.filter((server) => mcpMatches(server, needle))
+   : tabMcpServers;
   const popupStyle = menuStyle
     ? ({
         ...menuStyle,
@@ -706,17 +732,28 @@ export function ComposerPlusMenu({
               role="tab"
               aria-selected={skillTab === 'team'}
               className={`plus-menu__skill-tab${skillTab === 'team' ? ' is-active' : ''}`}
-              onClick={() => { setSkillTab('team'); onSkillTabChange?.('team'); }}
-            >
-              {t('homeHero.skillTabTeam')}
-            </button>
-            </div>
-            <div className="plus-menu__list">
-              {filteredSkills.length === 0 ? (
-                <div className="plus-menu__empty">{t('homeHero.noSkills')}</div>
-              ) : (
-                filteredSkills.map((skill) => (
-                  <button
+             onClick={() => { setSkillTab('team'); onSkillTabChange?.('team'); }}
+           >
+             {t('homeHero.skillTabTeam')}
+           </button>
+            {usedSkillIds.length > 0 ? (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={skillTab === 'recent'}
+                className={`plus-menu__skill-tab${skillTab === 'recent' ? ' is-active' : ''}`}
+                onClick={() => { setSkillTab('recent'); onSkillTabChange?.('recent'); }}
+              >
+                {t('homeHero.skillTabRecent')}
+              </button>
+            ) : null}
+           </div>
+           <div className="plus-menu__list">
+             {filteredSkills.length === 0 ? (
+               <div className="plus-menu__empty">{t('homeHero.noSkills')}</div>
+             ) : (
+               filteredSkills.map((skill) => (
+                 <button
                     key={skill.id}
                     type="button"
                     role="menuitem"
@@ -810,18 +847,29 @@ export function ComposerPlusMenu({
                 role="tab"
                 aria-selected={mcpTab === 'team'}
                 className={`plus-menu__skill-tab${mcpTab === 'team' ? ' is-active' : ''}`}
-                onClick={() => { setMcpTab('team'); onMcpTabChange?.('team'); }}
-              >
-                {t('homeHero.skillTabTeam')}
-              </button>
-            </div>
-           <div className="plus-menu__list">
-              {filteredMcp.length === 0 ? (
-                <div className="plus-menu__empty">{t('homeHero.noMcp')}</div>
-              ) : (
-                filteredMcp.map((server) => (
-                  <button
-                    key={server.id}
+               onClick={() => { setMcpTab('team'); onMcpTabChange?.('team'); }}
+             >
+               {t('homeHero.skillTabTeam')}
+             </button>
+              {usedMcpIds.length > 0 ? (
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={mcpTab === 'recent'}
+                  className={`plus-menu__skill-tab${mcpTab === 'recent' ? ' is-active' : ''}`}
+                  onClick={() => { setMcpTab('recent'); onMcpTabChange?.('recent'); }}
+                >
+                  {t('homeHero.skillTabRecent')}
+                </button>
+              ) : null}
+           </div>
+          <div className="plus-menu__list">
+             {filteredMcp.length === 0 ? (
+               <div className="plus-menu__empty">{t('homeHero.noMcp')}</div>
+             ) : (
+               filteredMcp.map((server) => (
+                 <button
+                   key={server.id}
                     type="button"
                     role="menuitem"
                     className="plus-menu__item"

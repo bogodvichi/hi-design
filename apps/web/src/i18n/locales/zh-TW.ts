@@ -1232,6 +1232,7 @@ export const zhTW: Dict = {
   'homeHero.skillTabAll': "全部",
   'homeHero.skillTabMine': "我的",
   'homeHero.skillTabTeam': "團隊",
+  'homeHero.skillTabRecent': "曾用",
   "homeHero.addMcp": "新增 MCP 伺服器",
   "homeHero.noPlugins": "尚無已安裝的外掛",
   "homeHero.noMcp": "尚無 MCP 伺服器",

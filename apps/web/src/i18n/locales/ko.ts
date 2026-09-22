@@ -1225,6 +1225,7 @@ export const ko: Dict = {
   'homeHero.skillTabAll': "All",
   'homeHero.skillTabMine': "Mine",
   'homeHero.skillTabTeam': "Team",
+  'homeHero.skillTabRecent': "Recent",
   'homeHero.addMcp': 'MCP 서버 추가',
   'homeHero.noPlugins': '설치된 플러그인 없음',
   'homeHero.noMcp': 'MCP 서버 없음',

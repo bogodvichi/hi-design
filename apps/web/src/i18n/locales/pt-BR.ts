@@ -1225,6 +1225,7 @@ export const ptBR: Dict = {
   'homeHero.skillTabAll': "All",
   'homeHero.skillTabMine': "Mine",
   'homeHero.skillTabTeam': "Team",
+  'homeHero.skillTabRecent': "Recent",
   'homeHero.addMcp': 'Adicionar servidor MCP',
   'homeHero.noPlugins': 'Nenhum plugin instalado',
   'homeHero.noMcp': 'Nenhum servidor MCP',

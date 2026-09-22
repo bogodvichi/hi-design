@@ -1225,6 +1225,7 @@ export const uk: Dict = {
   'homeHero.skillTabAll': "All",
   'homeHero.skillTabMine': "Mine",
   'homeHero.skillTabTeam': "Team",
+  'homeHero.skillTabRecent': "Recent",
   'homeHero.addMcp': 'Додати сервер MCP',
   'homeHero.noPlugins': 'Немає встановлених плагінів',
   'homeHero.noMcp': 'Немає серверів MCP',

@@ -1225,6 +1225,7 @@ export const de: Dict = {
   'homeHero.skillTabAll': "All",
   'homeHero.skillTabMine': "Mine",
   'homeHero.skillTabTeam': "Team",
+  'homeHero.skillTabRecent': "Recent",
   'homeHero.addMcp': 'MCP-Server hinzufügen',
   'homeHero.noPlugins': 'Keine installierten Plugins',
   'homeHero.noMcp': 'Keine MCP-Server',

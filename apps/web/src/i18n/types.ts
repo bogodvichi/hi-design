@@ -1624,9 +1624,10 @@ export interface Dict {
  'homeHero.addSkill': string;
  'homeHero.manageSkill': string;
  'homeHero.noSkills': string;
-  'homeHero.skillTabAll': string;
-  'homeHero.skillTabMine': string;
-  'homeHero.skillTabTeam': string;
+ 'homeHero.skillTabAll': string;
+ 'homeHero.skillTabMine': string;
+ 'homeHero.skillTabTeam': string;
+  'homeHero.skillTabRecent': string;
  'homeHero.noConnectors': string;
   'homeHero.applying': string;
   'homeHero.pluginTitle': string;

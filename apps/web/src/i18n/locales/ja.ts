@@ -1225,6 +1225,7 @@ export const ja: Dict = {
   'homeHero.skillTabAll': "All",
   'homeHero.skillTabMine': "Mine",
   'homeHero.skillTabTeam': "Team",
+  'homeHero.skillTabRecent': "Recent",
   'homeHero.addMcp': 'MCP サーバーを追加',
   'homeHero.noPlugins': 'インストール済みのプラグインがありません',
   'homeHero.noMcp': 'MCP サーバーがありません',

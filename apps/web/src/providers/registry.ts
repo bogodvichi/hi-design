@@ -253,10 +253,12 @@ export async function fetchAgentsStream(args: {
 // Omit for callers that want the unfiltered, pre-workspace-isolation list.
 export async function fetchSkills(
   workspaceContext?: WorkspaceCollabContext | null,
+  options?: { aggregateAllWorkspaces?: boolean },
 ): Promise<SkillSummary[]> {
   try {
+    const search = options?.aggregateAllWorkspaces ? '?scope=all' : '';
     const resp = await fetch(
-      '/api/skills',
+      `/api/skills${search}`,
       workspaceContext ? { headers: workspaceProjectHeaders(workspaceContext) } : undefined,
     );
     if (!resp.ok) return [];

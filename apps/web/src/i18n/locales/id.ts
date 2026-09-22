@@ -1225,6 +1225,7 @@ export const id: Dict = {
   'homeHero.skillTabAll': "All",
   'homeHero.skillTabMine': "Mine",
   'homeHero.skillTabTeam': "Team",
+  'homeHero.skillTabRecent': "Recent",
   'homeHero.addMcp': 'Tambah server MCP',
   'homeHero.noPlugins': 'Tidak ada plugin terpasang',
   'homeHero.noMcp': 'Tidak ada server MCP',

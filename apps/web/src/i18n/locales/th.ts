@@ -1225,6 +1225,7 @@ export const th: Dict = {
   'homeHero.skillTabAll': "All",
   'homeHero.skillTabMine': "Mine",
   'homeHero.skillTabTeam': "Team",
+  'homeHero.skillTabRecent': "Recent",
   'homeHero.addMcp': 'เพิ่มเซิร์ฟเวอร์ MCP',
   'homeHero.noPlugins': 'ไม่มีปลั๊กอินที่ติดตั้ง',
   'homeHero.noMcp': 'ไม่มีเซิร์ฟเวอร์ MCP',

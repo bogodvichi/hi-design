@@ -42,7 +42,7 @@ import {
   patchProject,
 } from "../state/projects";
 import { navigate } from '../router';
-import { fetchMcpServers } from "../state/mcp";
+import { fetchMcpServers, saveMcpServers } from "../state/mcp";
 import type { McpServerConfig, McpTemplate } from "../state/mcp";
 import { listPlugins } from "../state/projects";
 import type { AppConfig, ChatAttachment, ChatCommentAttachment, Project, ProjectFile, ProjectMetadata, SkillSummary } from "../types";
@@ -1104,15 +1104,78 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
 
 
 
-  // Scope tabs filter the complete authorized catalogue locally. Refreshing
-  // a scoped subset here used to remove staged choices on tab changes.
-    const handleSkillTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
+ // Scope tabs filter the complete authorized catalogue locally. Refreshing
+ // a scoped subset here used to remove staged choices on tab changes.
+  // Auto-restore recently used skills and MCP servers when entering a
+  // project conversation. The project metadata accumulates `usedSkillIds`
+  // and `usedMcpIds` across all conversations; on first mount we stage
+  // the ones that are still installed so the composer is pre-populated.
+  // MCP servers referenced by `contextMcpServers` are also staged. Any
+  // referenced MCP server that exists but is disabled is auto-enabled.
+  const recentRestoreRef = useRef<string | null>(null);
+  useEffect(() => {
+    const meta = projectMetadata;
+    if (!meta) return;
+    const usedSkillIds = meta.usedSkillIds ?? [];
+    const usedMcpIds = meta.usedMcpIds ?? [];
+    const contextMcpIds = (meta.contextMcpServers ?? []).map((ref) => ref.id);
+    const allReferencedMcpIds = Array.from(new Set([...usedMcpIds, ...contextMcpIds]));
+    if (usedSkillIds.length === 0 && allReferencedMcpIds.length === 0) return;
+    // Latch on the project + metadata version so we only restore once
+    // per project entry (or when the metadata identity changes).
+    const restoreKey = `${projectId}:${usedSkillIds.join(',')}:${allReferencedMcpIds.join(',')}`;
+    if (recentRestoreRef.current === restoreKey) return;
+    recentRestoreRef.current = restoreKey;
+
+    // Stage skills that are in the loaded skills list.
+    if (usedSkillIds.length > 0 && skills.length > 0) {
+      const usedSkillIdSet = new Set(usedSkillIds);
+      const restoredSkills = skills.filter((s) => usedSkillIdSet.has(s.id));
+      if (restoredSkills.length > 0) {
+        setStagedSkills((prev) => {
+          const existing = new Set(prev.map((s) => s.id));
+          return [...prev, ...restoredSkills.filter((s) => !existing.has(s.id))];
+        });
+        restoredSkills.forEach((s) => contextOnlySkillIdsRef.current.add(s.id));
+      }
+    }
+
+    // Stage MCP servers and auto-enable disabled ones.
+    if (allReferencedMcpIds.length > 0 && mcpServers.length > 0) {
+      const referencedSet = new Set(allReferencedMcpIds);
+      const referenced = mcpServers.filter((s) => referencedSet.has(s.id));
+      const disabled = referenced.filter((s) => !s.enabled);
+      // Auto-enable disabled referenced servers.
+      if (disabled.length > 0) {
+        const enabledIds = new Set(disabled.map((s) => s.id));
+        const updated = mcpServers.map((s) => (
+          enabledIds.has(s.id) ? { ...s, enabled: true } : s
+        ));
+        void saveMcpServers(updated).then((data) => {
+          if (!data) return;
+          setMcpServers(data.servers);
+          setMcpTemplates(data.templates);
+        });
+      }
+      // Stage the referenced servers (use the enabled version).
+      const stagedSet = new Set(stagedMcpServers.map((s) => s.id));
+      const toStage = referenced
+        .map((s) => (s.enabled ? s : { ...s, enabled: true }))
+        .filter((s) => !stagedSet.has(s.id));
+      if (toStage.length > 0) {
+        setStagedMcpServers((prev) => [...prev, ...toStage]);
+        toStage.forEach((s) => contextOnlyMcpIdsRef.current.add(s.id));
+      }
+    }
+  }, [projectMetadata, projectId, skills, mcpServers, stagedMcpServers]);
+
+    const handleSkillTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent') => {
       void onSkillsRefresh?.(true);
     }, [onSkillsRefresh]);
 
    // Re-fetch MCP servers and team cloud templates when the user switches
    // the MCP scope tab in ComposerPlusMenu.
-const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
+const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent') => {
       void fetchMcpServers().then((data) => {
         if (!data) return;
         setMcpServers(data.servers);
@@ -3676,8 +3739,11 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team') => {
              }}
             mcpServers={enabledMcpServers}
              personalMemberId={personalWorkspace?.workspaceMemberId}
-             teamWorkspaceIds={teamWorkspaceIds}
-             onSkillTabChange={handleSkillTabChange}
+            personalWorkspaceId={personalWorkspace?.workspaceId}
+            teamWorkspaceIds={teamWorkspaceIds}
+            usedSkillIds={projectMetadata?.usedSkillIds ?? []}
+            usedMcpIds={projectMetadata?.usedMcpIds ?? []}
+            onSkillTabChange={handleSkillTabChange}
               onMcpTabChange={handleMcpTabChange}
              onPickMcp={(server) => {
                 trackComposerBar({

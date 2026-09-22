@@ -2690,7 +2690,9 @@ function AppInner() {
     const requestGeneration =
       (skillsRequestGenerationRef.current.get(issuedCatalogIdentity) ?? 0) + 1;
     skillsRequestGenerationRef.current.set(issuedCatalogIdentity, requestGeneration);
-    const list = await fetchSkills(scoped ? read.context : null);
+    const list = await fetchSkills(scoped ? read.context : null, {
+      aggregateAllWorkspaces: Boolean(scoped),
+    });
     // A read for the workspace the user has since LEFT must not restore that
     // workspace's catalog over the current one — see `beginWorkspaceScopedRead`.
     // Skipping the gate too is deliberate: this response is not an answer about
