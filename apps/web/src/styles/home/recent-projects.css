@@ -760,6 +760,11 @@
 .recent-projects__search input::placeholder {
   color: var(--text-faint);
 }
+.recent-projects__search input[type='search']::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
 .recent-projects__search-clear {
   appearance: none;
   display: inline-flex;
@@ -977,20 +982,22 @@
   right: 0;
   z-index: 80;
   min-width: 148px;
+  max-width: calc(100vw - 16px);
   padding: 6px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-panel);
   box-shadow: var(--shadow-md);
+  display: grid;
+  gap: 2px;
 }
-.recent-projects__filter-wrap:first-of-type .recent-projects__filter-menu,
-.recent-projects__filter-wrap:nth-of-type(2) .recent-projects__filter-menu {
+.recent-projects__filter-menu.is-align-start {
   left: 0;
   right: auto;
 }
-.recent-projects__filter-menu {
-  display: grid;
-  gap: 2px;
+.recent-projects__filter-menu.is-align-end {
+  left: auto;
+  right: 0;
 }
 .recent-projects__filter-menu button {
   appearance: none;

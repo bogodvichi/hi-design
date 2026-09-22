@@ -161,6 +161,9 @@ describe('CloudSkillList Skillhub integration', () => {
       return new Response(null, { status: 404 });
     });
     globalThis.fetch = fetchMock as typeof fetch;
+    const toolbarTarget = document.createElement('div');
+    toolbarTarget.setAttribute('data-testid', 'community-skill-toolbar');
+    document.body.appendChild(toolbarTarget);
 
     render(
       <I18nProvider initial="zh-CN">
@@ -171,16 +174,21 @@ describe('CloudSkillList Skillhub integration', () => {
           sourceProvider="all"
           mode="square"
           scope="public"
+          controlsPortalTarget={toolbarTarget}
         />
       </I18nProvider>,
     );
 
-    expect(await screen.findByRole('tab', { name: '全部 (2)' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: '开发工具 (1)' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: '其他 (1)' })).toBeTruthy();
-    expect(screen.getByText('Misc Helper')).toBeTruthy();
+    expect(await screen.findByText('Misc Helper')).toBeTruthy();
+    expect(toolbarTarget.querySelector('.recent-projects__search')).toBeTruthy();
+    expect(toolbarTarget.querySelector('.recent-projects__select-toggle')).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('tab', { name: '开发工具 (1)' }));
+    fireEvent.click(screen.getByRole('button', { name: /分类/ }));
+    expect(screen.getByRole('menuitemradio', { name: '全部 (2)' })).toBeTruthy();
+    expect(screen.getByRole('menuitemradio', { name: '开发工具 (1)' })).toBeTruthy();
+    expect(screen.getByRole('menuitemradio', { name: '其他 (1)' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('menuitemradio', { name: '开发工具 (1)' }));
     await waitFor(() => {
       expect(fetchMock.mock.calls.some(([input]) => {
         const url = new URL(input.toString(), 'http://localhost');
@@ -190,7 +198,8 @@ describe('CloudSkillList Skillhub integration', () => {
     });
     await waitFor(() => expect(screen.queryByText('Misc Helper')).toBeNull());
     expect(screen.getByText('Developer Helper')).toBeTruthy();
-    expect(screen.getByRole('tab', { name: '全部 (2)' })).toBeTruthy();
+    expect(screen.queryByRole('menu')).toBeNull();
+    toolbarTarget.remove();
   });
 
   it('shows the daemon error when installation fails while cards are visible', async () => {

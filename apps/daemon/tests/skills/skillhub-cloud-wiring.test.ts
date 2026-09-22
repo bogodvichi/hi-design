@@ -26,7 +26,8 @@ describe('Skillhub cloud skill wiring', () => {
 
     expect(route).toContain('sourceProvider === MAAS_SKILLHUB_PROVIDER');
     expect(route).toContain("sourceProvider === 'all'");
-    expect(route).toContain('maasSkillhubClient.listSkills(search)');
+    expect(route).toContain("maasSkillhubClient.listSkills('')");
+    expect(route).toContain('communitySkillMatchesQuery(skill, searchQuery)');
     expect(route).toContain('homeWorkspaceId: maasWorkspaceId');
     expect(route).toContain('provider: MAAS_SKILLHUB_PROVIDER');
     expect(route).toContain('publisherName: skill.userNotesName || skill.userName || skill.userId || null');

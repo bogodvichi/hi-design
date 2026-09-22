@@ -27,6 +27,10 @@ export function skillCategorySelectLabel(locale: Locale): string {
   return locale.startsWith('zh') ? 'Skill 分类' : 'Skill category';
 }
 
+export function skillCategoryButtonLabel(locale: Locale): string {
+  return locale.startsWith('zh') ? '分类' : 'Category';
+}
+
 export function skillCategorySelectHint(locale: Locale): string {
   return locale.startsWith('zh')
     ? '选择最符合该 Skill 用途的分类。'

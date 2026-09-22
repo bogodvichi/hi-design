@@ -1,5 +1,5 @@
 import { PageEmptyState } from './PageEmptyState';
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Dialog,
@@ -19,7 +19,12 @@ import {
   type SkillCategoryCounts,
   type SkillCategoryFilter,
 } from '@open-design/contracts';
-import { skillCategoryLabel, skillCategorySelectLabel } from '../utils/skill-category-labels';
+import {
+  skillCategoryButtonLabel,
+  skillCategoryLabel,
+  skillCategorySelectLabel,
+} from '../utils/skill-category-labels';
+import { resolveFloatingMenuHorizontalAlign } from '../utils/floating-menu-placement';
 
 interface CloudSkill {
   resourceId: string;
@@ -77,6 +82,7 @@ export function CloudSkillList({
  sourceProvider,
  mode = 'personal',
  scope,
+ controlsPortalTarget,
 }: {
  workspaceId: string | null;
  workspaceMemberId: string | null;
@@ -85,6 +91,7 @@ export function CloudSkillList({
  sourceProvider?: string | null;
  mode?: 'personal' | 'shared' | 'square' | 'team';
  scope?: string;
+ controlsPortalTarget?: HTMLElement | null;
 }) {
   const t = useT();
   const { locale } = useI18n();
@@ -100,11 +107,15 @@ export function CloudSkillList({
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<SkillCategoryFilter>('all');
   const [categoryCounts, setCategoryCounts] = useState<SkillCategoryCounts>(() => emptySkillCategoryCounts());
+  const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
+  const [categoryMenuAlign, setCategoryMenuAlign] = useState<'start' | 'end'>('start');
   const [failedIconIds, setFailedIconIds] = useState<Set<string>>(new Set());
  const [confirmAction, setConfirmAction] = useState<{ type: 'uninstall' | 'delete'; item: CloudSkill } | null>(null);
  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
  const [shareItem, setShareItem] = useState<CloudSkill | null>(null);
- const showCategoryFilter = mode === 'square';
+ const showCommunityControls = mode === 'square' && sourceProvider === 'all';
+ const categoryMenuRef = useRef<HTMLDivElement | null>(null);
+ const categoryMenuPanelRef = useRef<HTMLDivElement | null>(null);
 
  const countCategories = useCallback((items: readonly CloudSkill[]): SkillCategoryCounts => {
    const counts = emptySkillCategoryCounts();
@@ -265,14 +276,12 @@ export function CloudSkillList({
       // ownerMemberId controls the owner filter; when null, all public
       // resources are returned (community browse). workspaceMemberId is
       // still sent in the workspace headers for auth and delete checks.
-      // Personal mode defaults to the current member so the list shows
-      // cloud resources owned by the current user — mirroring CloudMcpList.
-      const ownerFilter = ownerMemberId ?? (mode === 'personal' ? workspaceMemberId : null);
+      const ownerFilter = ownerMemberId ?? null;
       if (ownerFilter) params.set('owner_member_id', ownerFilter);
       if (scope) params.set('scope', scope);
       if (sourceProvider) params.set('source', sourceProvider);
       if (debouncedSearch) params.set('q', debouncedSearch);
-      if (showCategoryFilter && activeCategory !== 'all') params.set('category', activeCategory);
+      if (showCommunityControls && activeCategory !== 'all') params.set('category', activeCategory);
       const headers = workspaceHeaders(workspaceId, workspaceMemberId, workspaceType);
       const res = await fetch('/api/workspace/skills/cloud?' + params, {
         cache: 'no-store',
@@ -296,7 +305,7 @@ export function CloudSkillList({
    } finally {
      setLoading(false);
    }
- }, [workspaceId, workspaceMemberId, workspaceType, ownerMemberId, mode, scope, sourceProvider, debouncedSearch, showCategoryFilter, activeCategory, countCategories]);
+ }, [workspaceId, workspaceMemberId, workspaceType, ownerMemberId, mode, scope, sourceProvider, debouncedSearch, showCommunityControls, activeCategory, countCategories]);
 
 useEffect(() => {
   const timer = window.setTimeout(() => setDebouncedSearch(searchQuery.trim()), 250);
@@ -304,8 +313,58 @@ useEffect(() => {
 }, [searchQuery]);
 
 useEffect(() => {
-  if (!showCategoryFilter && activeCategory !== 'all') setActiveCategory('all');
-}, [activeCategory, showCategoryFilter]);
+  if (!showCommunityControls && activeCategory !== 'all') setActiveCategory('all');
+}, [activeCategory, showCommunityControls]);
+
+useEffect(() => {
+  if (!categoryMenuOpen) return;
+  const handlePointerDown = (event: PointerEvent) => {
+    const target = event.target;
+    if (target instanceof Node && categoryMenuRef.current?.contains(target)) return;
+    setCategoryMenuOpen(false);
+  };
+  const handleKeyDown = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') setCategoryMenuOpen(false);
+  };
+  document.addEventListener('pointerdown', handlePointerDown);
+  document.addEventListener('keydown', handleKeyDown);
+  return () => {
+    document.removeEventListener('pointerdown', handlePointerDown);
+    document.removeEventListener('keydown', handleKeyDown);
+  };
+}, [categoryMenuOpen]);
+
+useLayoutEffect(() => {
+  if (!categoryMenuOpen) return;
+  const anchor = categoryMenuRef.current;
+  const menu = categoryMenuPanelRef.current;
+  const trigger = anchor?.querySelector<HTMLElement>(':scope > button');
+  if (!anchor || !menu || !trigger) return;
+
+  const measure = () => {
+    const triggerRect = trigger.getBoundingClientRect();
+    const menuRect = menu.getBoundingClientRect();
+    setCategoryMenuAlign(resolveFloatingMenuHorizontalAlign({
+      triggerLeft: triggerRect.left,
+      triggerRight: triggerRect.right,
+      menuWidth: menuRect.width,
+      viewportWidth: window.innerWidth || document.documentElement.clientWidth,
+      preferred: 'start',
+    }));
+  };
+
+  measure();
+  window.addEventListener('resize', measure);
+  window.addEventListener('scroll', measure, true);
+  const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+  observer?.observe(trigger);
+  observer?.observe(menu);
+  return () => {
+    window.removeEventListener('resize', measure);
+    window.removeEventListener('scroll', measure, true);
+    observer?.disconnect();
+  };
+}, [categoryMenuOpen]);
 
 useEffect(() => {
   void Promise.all([loadSkills(), loadLocalSkills()]);
@@ -417,7 +476,7 @@ useEffect(() => {
     }
   }
 
-  const searchControl = sourceProvider === 'maas-skillhub' || sourceProvider === 'all' ? (
+  const fallbackSearchControl = sourceProvider === 'maas-skillhub' && !showCommunityControls ? (
     <label className={styles.searchBox}>
       <Icon name="search" size={15} />
       <input
@@ -440,44 +499,83 @@ useEffect(() => {
     </label>
   ) : null;
 
-  const categoryControl = showCategoryFilter ? (
-    <div
-      className={styles.categoryFilters}
-      role="tablist"
-      aria-label={skillCategorySelectLabel(locale)}
-    >
-      {(['all', ...SKILL_CATEGORIES] as SkillCategoryFilter[]).map((category) => (
+  const communityControls = showCommunityControls ? (
+    <div className="recent-projects__controls">
+      <div className="recent-projects__search">
+        <Icon name="search" size={14} />
+        <input
+          type="search"
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          placeholder={`${t('common.search' as any)} Skill`}
+          aria-label={`${t('common.search' as any)} Skill`}
+        />
+        {searchQuery ? (
+          <button
+            type="button"
+            className="recent-projects__search-clear"
+            aria-label={t('common.clear' as any)}
+            onClick={() => setSearchQuery('')}
+          >
+            <Icon name="close" size={12} />
+          </button>
+        ) : null}
+      </div>
+      <div ref={categoryMenuRef} className="recent-projects__filter-wrap">
         <button
-          key={category}
           type="button"
-          role="tab"
-          aria-selected={activeCategory === category}
-          className={activeCategory === category
-            ? `${styles.categoryFilter} ${styles.categoryFilterActive}`
-            : styles.categoryFilter}
-          onClick={() => setActiveCategory(category)}
+          className={`recent-projects__select-toggle${activeCategory !== 'all' || categoryMenuOpen ? ' is-active' : ''}`}
+          aria-haspopup="menu"
+          aria-expanded={categoryMenuOpen}
+          onClick={() => setCategoryMenuOpen((open) => !open)}
         >
-          {skillCategoryLabel(category, locale)} ({categoryCounts[category]})
+          {skillCategoryButtonLabel(locale)}
+          <Icon name="chevron-down" size={13} />
         </button>
-      ))}
+        {categoryMenuOpen ? (
+          <div
+            ref={categoryMenuPanelRef}
+            className={`recent-projects__filter-menu is-align-${categoryMenuAlign}`}
+            role="menu"
+            aria-label={skillCategorySelectLabel(locale)}
+          >
+            {(['all', ...SKILL_CATEGORIES] as SkillCategoryFilter[]).map((category) => (
+              <button
+                key={category}
+                type="button"
+                role="menuitemradio"
+                aria-checked={activeCategory === category}
+                className={activeCategory === category ? 'is-active' : undefined}
+                onClick={() => {
+                  setActiveCategory(category);
+                  setCategoryMenuOpen(false);
+                }}
+              >
+                {skillCategoryLabel(category, locale)} ({categoryCounts[category]})
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
     </div>
   ) : null;
 
-  const listControls = categoryControl || searchControl ? (
-    <div className={styles.listControls}>
-      {categoryControl}
-      {searchControl}
-    </div>
-  ) : null;
+  const controlsPortal = communityControls && controlsPortalTarget
+    ? createPortal(communityControls, controlsPortalTarget)
+    : null;
+  const inlineControls = communityControls && !controlsPortalTarget
+    ? communityControls
+    : fallbackSearchControl;
 
   if (loading) {
-    return <>{listControls}<div className={styles.cloudSkillLoading}>{t('personalScope.cloudSkillLoading' as any)}</div></>;
+    return <>{controlsPortal}{inlineControls}<div className={styles.cloudSkillLoading}>{t('personalScope.cloudSkillLoading' as any)}</div></>;
   }
 
   if (error && skills.length === 0) {
     return (
       <>
-        {listControls}
+        {controlsPortal}
+        {inlineControls}
         <div className={styles.cloudSkillEmpty}>
           <span>{error}</span>
         </div>
@@ -488,7 +586,8 @@ useEffect(() => {
   if (skills.length === 0) {
     return (
       <>
-        {listControls}
+        {controlsPortal}
+        {inlineControls}
         <PageEmptyState />
       </>
     );
@@ -542,7 +641,8 @@ useEffect(() => {
 
   return (
     <>
-      {listControls}
+      {controlsPortal}
+      {inlineControls}
       {error ? <div className={styles.cloudSkillError} role="alert">{error}</div> : null}
       <div className={styles.cloudSkillGrid}>
         {skills.map((skill) => {

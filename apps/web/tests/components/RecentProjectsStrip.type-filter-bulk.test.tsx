@@ -65,6 +65,7 @@ vi.mock('../../src/providers/registry', () => ({
 vi.mock('../../src/collab/useWorkspaceContext', () => ({
   notifyTeamProjectsChanged: vi.fn(),
   useWorkspaceBilling: () => null,
+  useSharedSpaceTeamId: () => null,
 
   readWorkspaceDirectoryForCurrentGeneration: async () => ({
     items: [
@@ -214,6 +215,15 @@ describe('projectCardCategory', () => {
     expect(projectCardCategory(project({ id: 'p-brand', metadata: { kind: 'brand' } }))).toBe(
       'design-system',
     );
+  });
+});
+
+describe('RecentProjectsStrip floating header menu placement', () => {
+  it('anchors the sort menu to the trigger end so it does not overflow the right edge', () => {
+    const { container } = renderGrid();
+    fireEvent.click(screen.getByRole('button', { name: 'Sort projects' }));
+    const menu = container.querySelector('.recent-projects__filter-menu');
+    expect(menu?.classList.contains('is-align-end')).toBe(true);
   });
 });
 
