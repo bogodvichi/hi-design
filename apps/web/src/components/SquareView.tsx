@@ -24,6 +24,7 @@ import { CloudSkillList } from './CloudSkillList';
 import { CloudMcpList } from './CloudMcpList';
 import { CloudToolList } from './CloudToolList';
 import { CommunityResourceStats } from './CommunityResourceStats';
+import { communityOriginProjectId, communityOriginProjectName, projectFallbackVisual } from './project-cover';
 import type { MarketplacePluginEntry } from '@open-design/contracts';
 import type { WorkspaceDirectoryItem } from '@open-design/contracts';
 import { Icon, type IconName } from './Icon';
@@ -78,27 +79,39 @@ const TABS: TabDef[] = [
 ];
 const COMMUNITY_SKILL_PROVIDERS = 'all';
 async function publishResponseError(response: Response, fallback: string): Promise<Error> {
-  const body = (await response.json().catch(() => ({}))) as { message?: string; error?: string };
-  return new Error(body.message || body.error || `${fallback} (HTTP ${response.status})`);
-}
+  const body = await response.json().catch(() => null) as unknown;
+  const record = body && typeof body === 'object'
+    ? body as Record<string, unknown>
+    : null;
+  const topLevelMessage = typeof record?.message === 'string'
+    ? record.message.trim()
+    : '';
+  const rawError = record?.error;
 
-const TEMPLATE_ACCENTS = [
-  '#4164f4', '#d46342', '#111827', '#0f9f6e', '#353535', '#ea580c', '#0284c7',
-  '#4f46e5', '#db2777', '#16a34a', '#475569', '#f59e0b', '#0f172a', '#1A74FF',
-  '#be123c', '#0d9488', '#0891b2', '#ec4899', '#64748b', '#8b5cf6', '#334155',
-];
-
-function hashString(value: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < value.length; i += 1) {
-    h ^= value.charCodeAt(i);
-    h = Math.imul(h, 16777619);
+  let errorMessage = '';
+  let errorCode = '';
+  if (typeof rawError === 'string') {
+    errorMessage = rawError.trim();
+  } else if (rawError && typeof rawError === 'object') {
+    const errorRecord = rawError as Record<string, unknown>;
+    if (typeof errorRecord.message === 'string') errorMessage = errorRecord.message.trim();
+    if (typeof errorRecord.code === 'string') errorCode = errorRecord.code.trim();
   }
-  return Math.abs(h);
-}
 
-function templateAccent(id: string): string {
-  return TEMPLATE_ACCENTS[hashString(id) % TEMPLATE_ACCENTS.length]!;
+  if (
+    fallback === 'Project publish failed'
+    && response.status === 404
+    && (errorCode === 'FILE_NOT_FOUND' || /file not found|enoent|no such file/i.test(errorMessage))
+  ) {
+    return new Error('项目暂无可发布内容，请先完成项目内容后再发布。');
+  }
+
+  return new Error(
+    topLevelMessage
+    || errorMessage
+    || errorCode
+    || `${fallback} (HTTP ${response.status})`,
+  );
 }
 
 function marketplaceMetric(entry: MarketplacePluginEntry, ...keys: string[]): number | null {
@@ -314,6 +327,7 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
  const [error, setError] = useState(false);
  const [remixingName, setRemixingName] = useState<string | null>(null);
   const [remixError, setRemixError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [detailsEntry, setDetailsEntry] = useState<MarketplacePluginEntry | null>(null);
   const [shareOnOpen, setShareOnOpen] = useState(false);
   const [busyName, setBusyName] = useState<string | null>(null);
@@ -461,15 +475,28 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
 
   async function deletePlugin(name: string) {
     setBusyName(name);
+    setActionError(null);
     try {
       const res = await fetch(`/api/marketplaces/hdw-community/plugins/${encodeURIComponent(name)}`, {
         method: 'DELETE',
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        console.error('delete failed', body);
+        const body = (await res.json().catch(() => null)) as { error?: string; message?: string } | null;
+        const raw = body?.message || body?.error || '';
+        const message =
+          raw === 'plugin not found in marketplace'
+            ? (locale.startsWith('zh') ? '删除失败：刚发布的数据尚未同步完成，请稍后再试。' : 'Delete failed: the newly published item is still syncing. Please try again.')
+            : raw === 'SSO session is required to delete a community plugin'
+              ? (locale.startsWith('zh') ? '删除失败：登录状态已失效，请重新登录后再试。' : 'Delete failed: your sign-in session has expired. Please sign in again.')
+              : raw === 'not authorized to delete this plugin'
+                ? (locale.startsWith('zh') ? '删除失败：只能删除自己发布的项目。' : 'Delete failed: you can only delete projects you published.')
+                : (locale.startsWith('zh') ? '删除失败，请稍后重试。' : 'Delete failed. Please try again.');
+        setActionError(message);
+        return;
       }
       onRefresh();
+    } catch {
+      setActionError(locale.startsWith('zh') ? '删除失败，请检查网络后重试。' : 'Delete failed. Check your network and try again.');
     } finally {
       setBusyName(null);
     }
@@ -542,7 +569,10 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
         const updatedAt = marketplaceUpdatedAt(entry);
         const previewPeople = marketplaceMetric(entry, 'previewUserCount');
         const reuseCount = marketplaceMetric(entry, 'reuseCount', 'remixCount', 'actionCount');
-        const accent = templateAccent(entry.name);
+        const rawEntry = entry as unknown as Record<string, unknown>;
+        const originProjectId = communityOriginProjectId(rawEntry.tags) ?? entry.name;
+        const originProjectName = communityOriginProjectName(rawEntry.tags) ?? title;
+        const fallbackCover = projectFallbackVisual(originProjectId, originProjectName);
         const isRemixing = remixingName === entry.name;
         const isOwner = isMyPublishes
           ? true
@@ -565,9 +595,7 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
             >
               <div
                 className={`recent-projects__card-thumb ${entry.coverUrl ? 'recent-projects__card-thumb-image' : 'recent-projects__card-thumb-fallback'}`}
-                style={!entry.coverUrl
-                  ? { background: `linear-gradient(135deg, color-mix(in srgb, ${accent} 20%, var(--bg-subtle)), color-mix(in srgb, ${accent} 46%, var(--bg-panel)))` }
-                  : undefined}
+                style={!entry.coverUrl ? fallbackCover.style : undefined}
                 aria-hidden
               >
                 {entry.coverUrl ? (
@@ -578,7 +606,7 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
                     loading="lazy"
                   />
                 ) : (
-                  <span className="recent-projects__card-glyph">{title.slice(0, 1)}</span>
+                  <span className="recent-projects__card-glyph">{fallbackCover.initial}</span>
                 )}
               </div>
               <div className="recent-projects__card-meta">
@@ -674,6 +702,11 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
       {remixError ? (
         <div style={{ gridColumn: '1 / -1', color: 'var(--color-text-secondary)', padding: '12px' }}>
           {remixError}
+        </div>
+      ) : null}
+      {actionError ? (
+        <div role="alert" style={{ gridColumn: '1 / -1', color: 'var(--danger, #c13b35)', padding: '12px' }}>
+          {actionError}
         </div>
       ) : null}
       {detailsEntry ? (
@@ -1037,7 +1070,11 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
                     {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json', ...headers },
-                      body: JSON.stringify({ title: selection.name, description: selection.description }),
+                      body: JSON.stringify({
+                        title: selection.name,
+                        description: selection.description,
+                        ...(selection.entryFile ? { entryFile: selection.entryFile } : {}),
+                      }),
                     },
                   );
                   if (!response.ok) throw await publishResponseError(response, 'Project publish failed');

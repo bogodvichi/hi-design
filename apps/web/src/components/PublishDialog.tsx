@@ -363,6 +363,8 @@ export interface PublishProjectSelection {
   name: string;
   /** Description for the community card. */
   description: string;
+  /** Existing preview entry used to preserve the source project's cover. */
+  entryFile?: string;
 }
 
 /** What the caller receives when the user confirms a tool publish. */
@@ -802,6 +804,9 @@ function ProjectsTab({
   const [error, setError] = useState(false);
   const [projectSearch, setProjectSearch] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedProjectValid, setSelectedProjectValid] = useState(false);
+  const [selectedProjectError, setSelectedProjectError] = useState<string | null>(null);
+  const [validatingSelectedProject, setValidatingSelectedProject] = useState(false);
   const [stagedProjectSource, setStagedProjectSource] = useState<StagedProjectSource | null>(null);
   const [projectSourceValid, setProjectSourceValid] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -810,6 +815,7 @@ function ProjectsTab({
   const [description, setDescription] = useState('');
   const folderPickerInFlight = useRef(false);
   const projectValidationSeqRef = useRef(0);
+  const selectedProjectValidationSeqRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -880,6 +886,14 @@ function ProjectsTab({
     return () => { cancelled = true; };
   }, [activeFolderId, activeWorkspaceId, projectFolders, workspaces]);
 
+  useEffect(() => {
+    selectedProjectValidationSeqRef.current += 1;
+    setSelectedProjectId(null);
+    setSelectedProjectValid(false);
+    setSelectedProjectError(null);
+    setValidatingSelectedProject(false);
+  }, [activeFolderId, activeWorkspaceId]);
+
   const handlePickFolder = useCallback(async () => {
     if (folderPickerInFlight.current) return;
     folderPickerInFlight.current = true;
@@ -941,9 +955,15 @@ function ProjectsTab({
   }, [locale]);
 
   const hasSelection = source === 'internal'
-    ? Boolean(selectedProjectId)
+    ? Boolean(selectedProjectId) && selectedProjectValid
     : Boolean(stagedProjectSource) && projectSourceValid;
-  const canConfirm = hasSelection && name.trim().length > 0 && !importing;
+  const selectedProject = selectedProjectId
+    ? projects.find((project) => project.id === selectedProjectId) ?? null
+    : null;
+  const canConfirm = hasSelection
+    && name.trim().length > 0
+    && !importing
+    && !validatingSelectedProject;
 
   // Lift canConfirm to the parent so the footer confirm button updates.
   useEffect(() => { onCanConfirmChange?.(canConfirm); }, [canConfirm, onCanConfirmChange]);
@@ -959,6 +979,9 @@ function ProjectsTab({
           projectId: selectedProjectId!,
           name: name.trim(),
           description: description.trim(),
+          ...(selectedProject?.metadata?.entryFile
+            ? { entryFile: selectedProject.metadata.entryFile }
+            : {}),
         });
         return;
       }
@@ -976,6 +999,7 @@ function ProjectsTab({
             projectId: imported.project.id,
             name: name.trim(),
             description: description.trim(),
+            ...(imported.entryFile ? { entryFile: imported.entryFile } : {}),
           });
         } catch (error) {
           setImportError(toPublishDialogMessage(error, locale, '项目导入失败，请检查文件内容后重试。', 'Project import failed. Check the files and try again.'));
@@ -987,8 +1011,55 @@ function ProjectsTab({
   };
 
   function handleSelectProject(project: Project) {
+    const validationSeq = ++selectedProjectValidationSeqRef.current;
     setSelectedProjectId(project.id);
     setName(project.name);
+    setSelectedProjectValid(false);
+    setSelectedProjectError(null);
+    setValidatingSelectedProject(true);
+
+    const workspace = workspaces.find((item) => item.workspaceId === activeWorkspaceId) ?? null;
+    if (!workspace) {
+      setSelectedProjectError(localeText(
+        locale,
+        '项目位置无效，请重新选择项目。',
+        'The project location is invalid. Please choose the project again.',
+      ));
+      setValidatingSelectedProject(false);
+      return;
+    }
+
+    void fetchProjectFiles(project.id, {
+      workspaceContext: workspaceContextFromDirectoryItem(workspace),
+    })
+      .then((files) => {
+        if (validationSeq !== selectedProjectValidationSeqRef.current) return;
+        if (files.length === 0) {
+          setSelectedProjectError(localeText(
+            locale,
+            '项目暂无可发布内容，请先完成项目内容后再发布。',
+            'This project has no publishable content yet. Add project content before publishing.',
+          ));
+          setSelectedProjectValid(false);
+          return;
+        }
+        setSelectedProjectValid(true);
+        setSelectedProjectError(null);
+      })
+      .catch(() => {
+        if (validationSeq !== selectedProjectValidationSeqRef.current) return;
+        setSelectedProjectError(localeText(
+          locale,
+          '项目内容读取失败，请稍后重试。',
+          'The project content could not be loaded. Please try again.',
+        ));
+        setSelectedProjectValid(false);
+      })
+      .finally(() => {
+        if (validationSeq === selectedProjectValidationSeqRef.current) {
+          setValidatingSelectedProject(false);
+        }
+      });
   }
 
   const filteredProjects = projectSearch.trim()
@@ -1165,6 +1236,9 @@ function ProjectsTab({
             </span>
           </button>
         )}
+        {source === 'internal' && selectedProjectError ? (
+          <p className={styles.inlineError} role="alert">{selectedProjectError}</p>
+        ) : null}
         {source === 'external' && importError ? <p className={styles.inlineError} role="alert">{importError}</p> : null}
       </section>
 

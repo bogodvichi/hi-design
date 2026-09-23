@@ -11,15 +11,17 @@ const {
   importProjectFilesMock,
   importProjectZipMock,
   getOpenDesignHostMock,
+  fetchProjectFilesMock,
 } = vi.hoisted(() => ({
   uploadSkillToCloudMock: vi.fn(),
   importProjectFilesMock: vi.fn(),
   importProjectZipMock: vi.fn(),
   getOpenDesignHostMock: vi.fn(),
+  fetchProjectFilesMock: vi.fn(),
 }));
 
 vi.mock('../../src/providers/registry', () => ({
-  fetchProjectFiles: vi.fn().mockResolvedValue([]),
+  fetchProjectFiles: fetchProjectFilesMock,
   openFolderDialog: vi.fn(),
   projectFileUrl: vi.fn((projectId: string, name: string) => `/api/projects/${projectId}/raw/${name}`),
   uploadSkillToCloud: uploadSkillToCloudMock,
@@ -88,6 +90,14 @@ describe('PublishDialog Skill category', () => {
     importProjectZipMock.mockResolvedValue({ project: { id: 'imported-zip-project' } });
     getOpenDesignHostMock.mockReset();
     getOpenDesignHostMock.mockReturnValue(null);
+    fetchProjectFilesMock.mockReset();
+    fetchProjectFilesMock.mockResolvedValue([{
+      name: 'index.html',
+      path: 'index.html',
+      kind: 'html',
+      mtime: 1,
+      size: 1,
+    }]);
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url === '/api/workspace/directory') {
@@ -241,6 +251,59 @@ describe('PublishDialog Skill category', () => {
       name: 'Landing page',
       description: '',
     }));
+  });
+
+  it('blocks publishing an empty project and shows a readable error immediately', async () => {
+    fetchProjectFilesMock.mockResolvedValue([]);
+
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === '/api/workspace/directory') {
+        return jsonResponse({
+          items: [{
+            workspaceId: 'workspace-1',
+            workspaceName: 'Personal',
+            workspaceType: 'team',
+            workspaceMemberId: 'member-1',
+            isDefaultTeam: true,
+            isSharedSpace: false,
+            memberStatus: 'active',
+            lifecycleState: 'active',
+          }],
+        });
+      }
+      if (url === '/api/folders?workspace_id=workspace-1') {
+        return jsonResponse({ data: { folders: [] } });
+      }
+      if (url === '/api/workspaces/workspace-1/projects?view=all') {
+        return jsonResponse({
+          projects: [{
+            workspaceId: 'workspace-1',
+            visibility: 'personal',
+            createdByWorkspaceMemberId: 'member-1',
+            project: {
+              id: 'empty-project',
+              name: '表格页 Copy',
+              updatedAt: Date.now(),
+            },
+          }],
+        });
+      }
+      return jsonResponse({ exists: false });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <I18nProvider initial="zh-CN">
+        <PublishDialog onClose={() => {}} onPublish={() => {}} />
+      </I18nProvider>,
+    );
+
+    const option = await screen.findByRole('option', { name: /表格页 Copy/ });
+    fireEvent.click(option);
+
+    expect(await screen.findByText('项目暂无可发布内容，请先完成项目内容后再发布。')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '确认发布' })).toBeDisabled();
   });
 
   it('shows nested team groups and loads projects from the selected group', async () => {

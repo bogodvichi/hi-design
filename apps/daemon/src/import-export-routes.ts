@@ -1987,7 +1987,7 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
         return sendApiError(res, 400, 'BAD_REQUEST', 'title is required');
       }
 
-      if (!await authorizeExportRead(req, res)) return;
+      if (!await authorizeExportRead(req, res, { deriveWorkspaceFromProject: true })) return;
       const project = getProject(db, req.params.id);
       if (!project) {
         return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
@@ -2078,7 +2078,7 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
           license: 'MIT',
           publishedAt: new Date().toISOString(),
           author: { name: publisherDisplayname },
-          tags: ['project', 'community'],
+          tags: ['project', 'community', `project-id:${req.params.id}`, `project-name:${encodeURIComponent(project.name || title)}`],
           compat: { agentSkills: [{ path: './SKILL.md' }] },
           od: {
             kind: 'scenario',
@@ -2212,7 +2212,7 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
           prompt: skillMd,
           title,
           description: description || `Shared from ${title}`,
-          tags: ['project', 'community'],
+          tags: ['project', 'community', `project-id:${req.params.id}`, `project-name:${encodeURIComponent(project.name || title)}`],
           license: 'MIT',
           capabilitiesSummary: pluginManifestBase.od.capabilities,
           publisherUsername,
@@ -2234,16 +2234,25 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
 
         const result = detail.result!;
         const communityUrl = `/api/hdw/api/community/plugins/${encodeURIComponent(result.name)}`;
-        // Persist cover digest mapping and refresh marketplace cache so the
-        // newly published plugin shows up in /square with its cover image.
+        // Persist the cover mapping when one exists. Refresh the marketplace
+        // cache after every successful publish, even for projects without a
+        // coverDigest, so immediate publish → delete/unpublish actions can
+        // resolve the freshly created entry from the local manifest.
         if (coverDigest) {
           try { writeCoverDigest(dataDir, result.name, coverDigest); } catch {}
-          try {
-            const { ensureMarketplaceManifest } = await import('./plugins/marketplaces.js');
-            const manifestText = await fetchHdwMarketplaceManifestText(HDW_MARKETPLACE_URL, dataDir);
-            if (manifestText) ensureMarketplaceManifest(db, { id: HDW_MARKETPLACE_ID, url: HDW_MARKETPLACE_URL, trust: 'trusted', manifestText });
-          } catch {}
         }
+        try {
+          const { ensureMarketplaceManifest } = await import('./plugins/marketplaces.js');
+          const manifestText = await fetchHdwMarketplaceManifestText(HDW_MARKETPLACE_URL, dataDir);
+          if (manifestText) {
+            ensureMarketplaceManifest(db, {
+              id: HDW_MARKETPLACE_ID,
+              url: HDW_MARKETPLACE_URL,
+              trust: 'trusted',
+              manifestText,
+            });
+          }
+        } catch {}
         res.json({
           pluginId: result.pluginId,
           versionId: result.versionId,
