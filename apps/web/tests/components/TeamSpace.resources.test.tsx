@@ -136,7 +136,7 @@ describe('team resource lists', () => {
 
     expect(await screen.findByText('Data MCP')).toBeTruthy();
     expect(screen.getByText('李四')).toBeTruthy();
-    expect(screen.getByLabelText('预览 —, 接入 —')).toBeTruthy();
+    expect(screen.getByLabelText('接入人数 0, 接入次数 0')).toBeTruthy();
     expect(screen.queryByText('Design MCP')).toBeNull();
   });
 

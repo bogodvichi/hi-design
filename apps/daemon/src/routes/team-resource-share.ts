@@ -1,4 +1,18 @@
 import type { Express, Request, Response } from 'express';
+import { isSkillCategory } from '@open-design/contracts';
+
+const SKILL_DEFAULT_LOGO_KEYS = new Set([
+  'craft',
+  'code',
+  'flow',
+  'research',
+  'design',
+  'data',
+  'automate',
+  'docs',
+  'think',
+  'agent',
+]);
 import {
   TeamResourceAuthorityUnavailableError,
   TeamResourceShareForbiddenError,
@@ -145,7 +159,22 @@ export function registerTeamResourceShareRoutes(
        return res.status(403).json({ error: 'WORKSPACE_RESOURCE_SHARE_DENIED' });
      }
       const resourceScope = typeof req.query.scope === 'string' ? req.query.scope : undefined;
-      const result = await share.share(id, scope, resourceScope ? { resourceScope } : undefined);
+      const logoCandidate = typeof req.body?.logoKey === 'string' ? req.body.logoKey.trim() : '';
+      const categoryCandidate = typeof req.body?.category === 'string' ? req.body.category.trim() : '';
+      const requestedLogoKey = basePath === 'skills' && SKILL_DEFAULT_LOGO_KEYS.has(logoCandidate)
+        ? logoCandidate
+        : '';
+      const requestedCategory = basePath === 'skills' && isSkillCategory(categoryCandidate)
+        ? categoryCandidate
+        : '';
+      const skillMetadata = {
+        ...(requestedLogoKey ? { logoKey: requestedLogoKey } : {}),
+        ...(requestedCategory ? { category: requestedCategory } : {}),
+      };
+      const result = await share.share(id, scope, {
+        ...(resourceScope ? { resourceScope } : {}),
+        ...(Object.keys(skillMetadata).length > 0 ? { metadata: skillMetadata } : {}),
+      });
      if (!result) return res.json({ shared: false });
       // The cached `/team` listing is now stale by construction — drop it so
       // the client's immediate refetch (it fires one right after this

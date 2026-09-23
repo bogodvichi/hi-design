@@ -80,8 +80,8 @@ function installDaemonStub(): void {
           title: 'Square deck',
           version: '1.0.0',
           publisher: { displayName: 'Project Author' },
-          previewCount: 120,
-          remixCount: 7,
+          previewUserCount: 120,
+          actionCount: 7,
         }],
       });
     }
@@ -129,8 +129,8 @@ describe('SquareView remix recents', () => {
               description: 'Presentation',
               version: '1.0.0',
               publisher: { displayName: 'Project Author' },
-              previewCount: 120,
-              remixCount: 7,
+              previewUserCount: 120,
+              actionCount: 7,
             },
             { name: 'data-dashboard', title: 'Data dashboard', description: 'Analytics board', version: '1.0.0' },
           ],
@@ -154,7 +154,7 @@ describe('SquareView remix recents', () => {
     expect(document.querySelector('.recent-projects__card-thumb')).toBeTruthy();
     expect(document.querySelector('.recent-projects__card-meta')).toBeTruthy();
     expect(screen.queryByText('Presentation')).toBeNull();
-    expect(screen.getByLabelText('Views 120, Reuse 7')).toBeTruthy();
+    expect(screen.getByLabelText('Preview users 120, Reuses 7')).toBeTruthy();
     expect(screen.getByText('Data dashboard')).toBeTruthy();
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'dashboard' } });
     await waitFor(() => expect(screen.queryByText('Square deck')).toBeNull());

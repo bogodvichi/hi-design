@@ -28,6 +28,20 @@ describe('community MCP/tool author wiring', () => {
     expect(route).toContain('r.ownerMemberId as string');
   });
 
+  it('keeps the publisher-facing MCP name separate from its technical id', () => {
+    const listRoute = between(
+      "app.get('/api/workspace/mcp/cloud'",
+      "app.post('/api/workspace/mcp/cloud'",
+    );
+    const publishRoute = between(
+      "app.post('/api/workspace/mcp/cloud'",
+      "app.post('/api/workspace/mcp/cloud/:resourceId/install'",
+    );
+    expect(listRoute).toContain("label: typeof meta.label === 'string'");
+    expect(publishRoute).toContain("if (typeof tplObj.label !== 'string' || !tplObj.label.trim())");
+    expect(publishRoute).not.toContain('tplObj.label = tplObj.id;\ntry');
+  });
+
   it('exposes publisherName for Tool community cards', () => {
     const route = between(
       "app.get('/api/workspace/tool/cloud'",

@@ -20,6 +20,8 @@ export interface ResourcePublishInput {
   /** SHA-256 digest of the project entry screenshot; threaded to the
    *  team_projects.cover_digest column on transfer/share/save. */
   coverDigest?: string | null;
+  /** Optional request-scoped metadata merged over adapter-described metadata. */
+  metadata?: Record<string, unknown>;
   /** Resource scope for HDW: 'private' (default) or 'public'. When set,
    *  the adapter passes it to publishResource so the HDW backend stores
    *  the resource with the requested scope. */

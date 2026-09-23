@@ -194,6 +194,138 @@ export function registerImportRoutes(app: Express, ctx: RegisterImportRoutesDeps
     },
   );
 
+  // Import a generic project ZIP into OD-managed project storage. Unlike
+  // Claude Design import, this accepts an ordinary source tree and preserves
+  // its relative file layout without requiring a vendor-specific manifest.
+  app.post(
+    '/api/import/project-zip',
+    importUpload.single('file'),
+    async (req, res) => {
+      let importedProjectDir: string | null = null;
+      try {
+        if (!req.file) return res.status(400).json({ error: 'zip file required' });
+        const createWorkspace = await authorizeCreatedProjectWorkspace(
+          req,
+          ctx.fetchProjectCreationWorkspaceDirectory,
+        );
+        if (!createWorkspace.ok) {
+          fs.promises.unlink(req.file.path).catch(() => {});
+          return sendCreatedProjectWorkspaceError(res, createWorkspace);
+        }
+
+        const originalName = req.file.originalname || 'project.zip';
+        if (!/\.zip$/i.test(originalName)) {
+          fs.promises.unlink(req.file.path).catch(() => {});
+          return res.status(400).json({ error: 'expected a .zip file' });
+        }
+
+        const JSZip = (await import('jszip')).default;
+        const archive = await fs.promises.readFile(req.file.path);
+        const zip = await JSZip.loadAsync(archive);
+        const fileEntries = Object.values(zip.files).filter((entry) => (
+          !entry.dir && !entry.name.replace(/\\/g, '/').startsWith('__MACOSX/')
+        ));
+        if (fileEntries.length === 0) throw new Error('zip does not contain project files');
+        if (fileEntries.length > 2000) throw new Error('zip contains too many files');
+
+        const normalizedNames = fileEntries.map((entry) => {
+          const name = entry.name.replace(/\\/g, '/').replace(/^\.\//, '');
+          const segments = name.split('/').filter(Boolean);
+          if (
+            !name
+            || name.startsWith('/')
+            || segments.length === 0
+            || segments.some((segment) => segment === '..')
+          ) {
+            throw new Error('zip contains an unsafe file path');
+          }
+          return { entry, segments };
+        });
+        const commonRoot = normalizedNames.every(({ segments }) => (
+          segments.length > 1 && segments[0] === normalizedNames[0]!.segments[0]
+        ))
+          ? normalizedNames[0]!.segments[0]
+          : null;
+
+        const id = randomId();
+        const now = Date.now();
+        const projectName = originalName.replace(/\.zip$/i, '').trim() || 'Imported project';
+        const projectRoot = projectDir(PROJECTS_DIR, id);
+        importedProjectDir = projectRoot;
+        await fs.promises.mkdir(projectRoot, { recursive: true });
+
+        let totalBytes = 0;
+        const writtenFiles: string[] = [];
+        for (const { entry, segments } of normalizedNames) {
+          const relativeSegments = commonRoot ? segments.slice(1) : segments;
+          if (relativeSegments.length === 0) continue;
+          const relativePath = relativeSegments.join('/');
+          const outputPath = path.resolve(projectRoot, ...relativeSegments);
+          const rootPrefix = projectRoot.endsWith(path.sep)
+            ? projectRoot
+            : projectRoot + path.sep;
+          if (!outputPath.startsWith(rootPrefix)) throw new Error('zip path escapes project root');
+          const body = await entry.async('nodebuffer');
+          totalBytes += body.length;
+          if (totalBytes > 100 * 1024 * 1024) throw new Error('zip expands beyond 100 MB');
+          await fs.promises.mkdir(path.dirname(outputPath), { recursive: true });
+          await fs.promises.writeFile(outputPath, body);
+          writtenFiles.push(relativePath);
+        }
+        if (writtenFiles.length === 0) throw new Error('zip does not contain project files');
+
+        fs.promises.unlink(req.file.path).catch(() => {});
+        const entryFile = await detectEntryFile(projectRoot);
+        const cid = randomId();
+        const project = db.transaction(() => {
+          const createdProject = insertProject(db, {
+            id,
+            name: projectName,
+            skillId: null,
+            designSystemId: null,
+            pendingPrompt: null,
+            metadata: {
+              kind: 'prototype',
+              importedFrom: 'zip',
+              entryFile: entryFile ?? undefined,
+              sourceFileName: originalName,
+            },
+            createdAt: now,
+            updatedAt: now,
+          });
+          insertConversation(db, {
+            id: cid,
+            projectId: id,
+            title: `Imported from ${projectName}`,
+            createdAt: now,
+            updatedAt: now,
+          });
+          setTabs(db, id, entryFile ? [entryFile] : [], entryFile ?? null);
+          bindCreatedProjectToWorkspace(
+            (input) => ensureWorkspaceProject(db, input),
+            createWorkspace.context,
+            id,
+            now,
+          );
+          return createdProject;
+        })();
+
+        res.json({
+          project,
+          conversationId: cid,
+          entryFile: entryFile ?? null,
+          files: writtenFiles,
+        });
+      } catch (err: any) {
+        if (req.file?.path) fs.promises.unlink(req.file.path).catch(() => {});
+        if (importedProjectDir) {
+          await fs.promises.rm(importedProjectDir, { recursive: true, force: true }).catch(() => {});
+        }
+        res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+      }
+    },
+  );
+
   // Import an existing local folder as a project. The user picks a folder
   // and OD works inside it directly: every write goes to metadata.baseDir.
   // No copy, no shadow tree — the user owns the workspace and is

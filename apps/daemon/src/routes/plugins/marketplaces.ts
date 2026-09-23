@@ -202,6 +202,27 @@ export function registerPluginMarketplaceRoutes(app: Express, deps: RegisterPlug
         res.json({ plugins: visiblePlugins });
         return;
       }
+      try {
+        const { HDW_MARKETPLACE_ID, HDW_MARKETPLACE_URL, fetchHdwMarketplaceManifestText, readHdwCommunityDeletions } =
+          await import('../../http/hdw.js');
+        if (req.params.id === HDW_MARKETPLACE_ID) {
+          const manifestText = await fetchHdwMarketplaceManifestText(HDW_MARKETPLACE_URL, dataDir);
+          if (manifestText) {
+            const manifest = JSON.parse(manifestText) as { plugins?: unknown[] };
+            const plugins = (manifest.plugins ?? []) as Array<Record<string, unknown>>;
+            const deletions = readHdwCommunityDeletions(dataDir);
+            const visiblePlugins = plugins.filter((entry) => {
+              const name = typeof entry.name === 'string' ? entry.name : undefined;
+              if (!name) return true;
+              const state = deletions[name];
+              return !state?.deletedAt && !state?.hardDeleted;
+            });
+            augmentPluginsWithLocalPrompt(visiblePlugins);
+            res.json({ plugins: visiblePlugins });
+            return;
+          }
+        }
+      } catch { /* fall back to cached marketplace below */ }
       const cachedPlugins = row.manifest.plugins ?? [];
       const { readHdwCommunityDeletions } = await import('../../http/hdw.js');
       const deletions = readHdwCommunityDeletions(dataDir);

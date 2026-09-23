@@ -95,7 +95,7 @@ export function AddMcpDialog({ open, onClose, scope, onAdded, workspaceContext: 
 
       const template: Record<string, unknown> = {
         label: trimmedLabel,
-        description: selection.displayName.trim(),
+        description: selection.description.trim(),
         transport,
         category: 'utilities',
       };

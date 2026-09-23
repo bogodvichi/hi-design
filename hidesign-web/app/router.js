@@ -88,6 +88,8 @@ module.exports = app => {
   router.put('/hdw/api/community/blobs/:digest', controller.api.community.uploadBlob);
   router.get('/hdw/api/community/plugins/:name/versions/:version/archive', controller.api.community.downloadArchive);
   router.get('/hdw/api/community/cover/:digest', controller.api.community.downloadCover);
+  router.post('/hdw/api/community/stats/record', controller.api.communityStats.record);
+  router.post('/hdw/api/community/stats/query', controller.api.communityStats.query);
   // api:share_link // 分享链接
   router.post('/hdw/api/share-link/generate', controller.api.shareLink.generate);
   router.get('/hdw/api/share-link', controller.api.shareLink.get);

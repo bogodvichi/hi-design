@@ -482,12 +482,14 @@ export function registerMcpRoutes(app: Express, ctx: RegisterMcpRoutesDeps) {
      const raw = await hdwGetRaw<{ resources: Array<Record<string, unknown>> }>(`/workspaces/${encodeURIComponent(workspaceId)}/resources`, params, getSsoCookies());
       const templates = (raw?.resources ?? []).map((r) => {
         const meta = (r.metadata as Record<string, unknown>) ?? {};
+        const stats = (r.stats as Record<string, unknown> | undefined) ?? {};
        // Backfill id for templates published before the id-generation
        // fix so the cloud list can match installed servers correctly.
        const id = typeof meta.id === 'string' && meta.id.trim()
          ? meta.id
          : suggestServerId(String(meta.label ?? ''), new Set());
-       // Force id = templateId = label for consistency.
+       // Keep the technical id stable for install matching while preserving
+       // the human-facing label used by community cards.
         return {
           resourceId: r.id as string,
           ownerMemberId: r.ownerMemberId as string,
@@ -501,9 +503,11 @@ export function registerMcpRoutes(app: Express, ctx: RegisterMcpRoutesDeps) {
                 : (r.ownerMemberId as string),
          id,
          templateId: id,
-         label: id,
+         label: typeof meta.label === 'string' && meta.label.trim() ? meta.label.trim() : id,
          createdAt: r.createdAt as string,
          updatedAt: r.updatedAt as string,
+         peopleCount: typeof stats.actionUserCount === 'number' ? stats.actionUserCount : 0,
+         actionCount: typeof stats.actionCount === 'number' ? stats.actionCount : 0,
        };
       });
       res.json({ templates });
@@ -532,9 +536,12 @@ export function registerMcpRoutes(app: Express, ctx: RegisterMcpRoutesDeps) {
  if (typeof tplObj.id !== 'string' || !tplObj.id.trim()) {
    tplObj.id = suggestServerId(String(tplObj.label ?? ''), new Set());
  }
- // Force id = templateId = label for consistency.
+ // The technical id/templateId drives installation matching; label remains
+ // the human-facing MCP name supplied by the publisher.
  tplObj.templateId = tplObj.id;
- tplObj.label = tplObj.id;
+ if (typeof tplObj.label !== 'string' || !tplObj.label.trim()) {
+   tplObj.label = tplObj.id;
+ }
 try {
      const scope = typeof req.body?.scope === 'string' ? req.body.scope : null;
      const data = await hdwPost<{ resource: Record<string, unknown> }>(`/workspaces/${encodeURIComponent(workspaceId)}/resources`, {
@@ -749,7 +756,7 @@ app.delete('/api/workspace/mcp/cloud/:resourceId/uninstall', async (req, res) =>
       const scope = typeof req.query.scope === 'string' ? req.query.scope : '';
      if (scope) params.scope = scope;
     const raw = await hdwGetRaw<{ resources: Array<Record<string, unknown>> }>(`/workspaces/${encodeURIComponent(workspaceId)}/resources`, params, getSsoCookies());
-    const tools = (raw?.resources ?? []).map((r) => ({
+     const tools = (raw?.resources ?? []).map((r) => ({
       resourceId: r.id as string,
         ownerMemberId: r.ownerMemberId as string,
         ...(r.scope ? { scope: r.scope as string } : {}),
@@ -763,6 +770,12 @@ app.delete('/api/workspace/mcp/cloud/:resourceId/uninstall', async (req, res) =>
               : (r.ownerMemberId as string),
         createdAt: r.createdAt as string,
         updatedAt: r.updatedAt as string,
+        peopleCount: typeof (r.stats as Record<string, unknown> | undefined)?.actionUserCount === 'number'
+          ? Number((r.stats as Record<string, unknown>).actionUserCount)
+          : 0,
+        actionCount: typeof (r.stats as Record<string, unknown> | undefined)?.actionCount === 'number'
+          ? Number((r.stats as Record<string, unknown>).actionCount)
+          : 0,
       }));
       res.json({ tools });
     } catch (err) {
