@@ -150,6 +150,17 @@ function normalizePickSkillSourceResult(input: unknown): OpenDesignHostPickSkill
       }));
     return { ok: true, kind: 'folder', folderName, files };
   }
+  if (kind === 'files') {
+    const selectionName = typeof input.selectionName === 'string' ? input.selectionName : '';
+    const rawFiles = Array.isArray(input.files) ? input.files : [];
+    const files = rawFiles
+      .filter((f: unknown): f is Record<string, unknown> => isRecord(f))
+      .map((f) => ({
+        path: typeof f.path === 'string' ? f.path : '',
+        data: f.data instanceof ArrayBuffer ? f.data : new ArrayBuffer(0),
+      }));
+    return { ok: true, kind: 'files', selectionName, files };
+  }
   if (kind === 'zip') {
     const fileName = typeof input.fileName === 'string' ? input.fileName : '';
     const data = input.data instanceof ArrayBuffer ? input.data : new ArrayBuffer(0);

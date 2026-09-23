@@ -130,7 +130,8 @@ export type OpenDesignHostPickSkillSourceFile = {
 };
 export type OpenDesignHostPickSkillSourceSuccess =
   | { kind: 'folder'; folderName: string; files: OpenDesignHostPickSkillSourceFile[] }
-  | { kind: 'zip'; fileName: string; data: ArrayBuffer };
+  | { kind: 'zip'; fileName: string; data: ArrayBuffer }
+  | { kind: 'files'; selectionName: string; files: OpenDesignHostPickSkillSourceFile[] };
 export type OpenDesignHostPickSkillSourceResult =
   | ({ ok: true } & OpenDesignHostPickSkillSourceSuccess)
   | { ok: false; canceled: true }
@@ -416,11 +417,10 @@ export type OpenDesignHostBridge = {
     // Optional so older host builds still satisfy the bridge shape; callers
     // must feature-detect before invoking.
     pickWorkingDir?(): Promise<OpenDesignHostPickWorkingDirResult>;
-    // Optional: the desktop host can show a native file/folder picker that
-    // returns skill source data (folder contents or a .zip blob). On macOS
-    // the picker supports both files and directories simultaneously; on
-    // Windows only directories are supported (the renderer shows a separate
-    // "select zip" button). Web builds lack this method entirely.
+    // Optional: the desktop host can show a native picker that returns
+    // one folder, one ZIP archive, or one/more regular files as ArrayBuffers.
+    // The renderer applies the caller-specific validation rules (project vs
+    // Skill). Web builds lack this method entirely.
     pickSkillSource?(): Promise<OpenDesignHostPickSkillSourceResult>;
   };
   shell: {

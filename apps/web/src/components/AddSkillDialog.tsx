@@ -231,9 +231,24 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
           path: f.path,
         }));
         setUploadSource({ kind: 'folder', files });
-      } else {
-        const file = new File([result.data], result.fileName);
+      } else if (result.kind === 'zip') {
+        const file = new File([result.data], result.fileName, { type: 'application/zip' });
         setUploadSource({ kind: 'zip', file });
+      } else if (result.files.length === 1) {
+        const selected = result.files[0]!;
+        const fileName = selected.path.split('/').pop() || selected.path;
+        if (!/^SKILL.md$/i.test(fileName)) {
+          setUploadSource(null);
+          setToast({ message: '单文件导入仅支持 SKILL.md，请重新选择。', tone: 'error' });
+          return;
+        }
+        setUploadSource({
+          kind: 'file',
+          file: new File([selected.data], 'SKILL.md', { type: 'text/markdown' }),
+        });
+      } else {
+        setUploadSource(null);
+        setToast({ message: 'Skill 单文件导入只支持选择一个 SKILL.md。', tone: 'error' });
       }
     } catch {
       // Fall back silently

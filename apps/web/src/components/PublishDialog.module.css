@@ -112,26 +112,11 @@
   color: var(--color-text, var(--text-strong));
 }
 
-.categoryTabs .categoryTab:focus,
-.categoryTabs .categoryTab:focus-visible,
-.categoryTabs .categoryTab:active:not(:disabled) {
-  outline: none;
-  outline-offset: 0;
-  border-color: transparent;
-  transform: none;
-}
-
 .categoryTabActive,
-.categoryTabActive:hover,
-.categoryTabActive:focus,
-.categoryTabActive:focus-visible,
-.categoryTabActive:active:not(:disabled) {
-  outline: none;
-  border-color: transparent;
+.categoryTabActive:hover {
   background: var(--color-surface, var(--bg-elevated));
   color: var(--color-text, var(--text-strong));
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-  transform: none;
 }
 
 /* --- Form grid --- */
@@ -333,15 +318,14 @@
   background: color-mix(in srgb, var(--bg-elevated) 68%, transparent);
 }
 
-.projectWorkspaceRow {
+.workspaceTreeRow {
   appearance: none;
   width: 100%;
   min-height: 42px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 7px;
+  display: flex;
   align-items: center;
-  padding: 0 8px;
+  gap: 8px;
+  padding-right: 10px;
   border: 0;
   border-radius: 7px;
   background: transparent;
@@ -351,23 +335,44 @@
   cursor: pointer;
 }
 
-.projectWorkspaceRow:hover {
+.workspaceTreeRowCompact {
+  min-height: 34px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.workspaceTreeRow:not(.workspaceTreeRowActive):hover {
   background: color-mix(in srgb, var(--text-strong) 5%, transparent);
 }
 
-.projectWorkspaceRowActive {
+.workspaceTreeRowActive,
+.workspaceTreeRowActive:hover,
+.workspaceTreeRowActive:focus-visible {
+  outline: none;
   background: color-mix(in srgb, var(--text-strong) 7%, var(--bg-elevated));
   font-weight: 600;
 }
 
-.projectWorkspaceRow > span {
+.workspaceTreeDisclosure {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.workspaceTreeLabel {
   min-width: 0;
+  flex: 1 1 auto;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.projectWorkspaceRow small {
+.workspaceTreeTag {
+  flex: 0 0 auto;
   padding: 2px 6px;
   border: 1px solid var(--border);
   border-radius: var(--radius-pill, 999px);
@@ -376,6 +381,7 @@
   font-weight: 500;
   white-space: nowrap;
 }
+
 
 .projectBrowserMain {
   min-width: 0;

@@ -9,13 +9,13 @@ import { Icon, type IconName } from './Icon';
 import { useI18n, useT } from '../i18n';
 import type { Dict, Locale } from '../i18n/types';
 import type { Project } from '../types';
-import type { McpServerConfig, WorkspaceDirectoryItem } from '@open-design/contracts';
+import type { McpServerConfig, TeamProject, WorkspaceCollabContext, WorkspaceDirectoryItem } from '@open-design/contracts';
 import {
-  getProject,
-  importFolderProject,
+  importProjectFiles,
+  importProjectZip,
   resolvedWorkspaceContextForWrite,
 } from '../state/projects';
-import { fetchProjectFiles, openFolderDialog } from '../providers/registry';
+import { fetchProjectFiles } from '../providers/registry';
 import { McpConfigForm, type McpConfigSelection } from './McpConfigForm';
 import {
   MCP_LOGO_KEYS,
@@ -38,21 +38,16 @@ import {
   type ProjectCoverOverride,
 } from './project-cover';
 
-import { uploadSkillToCloud } from '../providers/registry';
 import { useWorkspaceContext, workspaceContextFromDirectoryItem } from '../collab/useWorkspaceContext';
 import { workspaceProjectHeaders } from '../collab/workspace-identity';
 import { Toast } from './Toast';
-import {
-  getOpenDesignHost,
-  isOpenDesignHostAvailable,
-  pickAndImportHostProject,
-} from '@open-design/host';
+import { getOpenDesignHost } from '@open-design/host';
 import {
   SKILL_CATEGORIES,
   normalizeSkillCategory,
   type SkillCategory,
 } from '@open-design/contracts';
-import { findSkillMdInZip } from '../runtime/zip-reader';
+import { findSkillMdInZip, readZipEntries } from '../runtime/zip-reader';
 import {
   skillCategoryLabel,
   skillCategorySelectLabel,
@@ -73,7 +68,293 @@ const CATEGORY_TABS: CategoryTabDef[] = [
   { id: 'tool', icon: 'puzzle', labelKey: 'squareScope.tabTool' },
 ];
 
+interface WorkspaceTreeNode {
+  id: string;
+  label: string;
+  tag?: string;
+  selected?: boolean;
+  expanded?: boolean;
+  compact?: boolean;
+  children?: WorkspaceTreeNode[];
+  onSelect: () => void;
+  onToggle?: () => void;
+}
+
+function WorkspaceTreeRow({
+  node,
+  depth,
+  reserveDisclosureSpace,
+}: {
+  node: WorkspaceTreeNode;
+  depth: number;
+  reserveDisclosureSpace: boolean;
+}) {
+  const hasChildren = Boolean(node.children?.length || node.onToggle);
+  const showDisclosure = reserveDisclosureSpace || hasChildren;
+  const rowClassName = [
+    styles.workspaceTreeRow,
+    node.compact ? styles.workspaceTreeRowCompact : '',
+    node.selected ? styles.workspaceTreeRowActive : '',
+  ].filter(Boolean).join(' ');
+
+  return (
+    <button
+      type="button"
+      className={rowClassName}
+      aria-expanded={hasChildren ? Boolean(node.expanded) : undefined}
+      aria-pressed={node.selected ? true : undefined}
+      style={{ paddingLeft: 10 + depth * 12 }}
+      onClick={() => {
+        if (hasChildren) node.onToggle?.();
+        node.onSelect();
+      }}
+    >
+      {showDisclosure ? (
+        <span className={styles.workspaceTreeDisclosure} aria-hidden>
+          {hasChildren ? (
+            <Icon name={node.expanded ? 'chevron-down' : 'chevron-right'} size={13} />
+          ) : null}
+        </span>
+      ) : null}
+      <span className={styles.workspaceTreeLabel}>{node.label}</span>
+      {node.tag ? <small className={styles.workspaceTreeTag}>{node.tag}</small> : null}
+    </button>
+  );
+}
+
+function WorkspaceTree({
+  nodes,
+  reserveDisclosureSpace,
+}: {
+  nodes: WorkspaceTreeNode[];
+  reserveDisclosureSpace?: boolean;
+}) {
+  const reserve = reserveDisclosureSpace
+    ?? nodes.some((node) => Boolean(node.children?.length || node.onToggle));
+
+  function renderNodes(items: WorkspaceTreeNode[], depth: number) {
+    return items.map((node) => (
+      <div key={node.id}>
+        <WorkspaceTreeRow
+          node={node}
+          depth={depth}
+          reserveDisclosureSpace={reserve}
+        />
+        {node.expanded && node.children?.length
+          ? renderNodes(node.children, depth + 1)
+          : null}
+      </div>
+    ));
+  }
+
+  return <>{renderNodes(nodes, 0)}</>;
+}
+
 type FileSource = 'internal' | 'external';
+
+type StagedProjectSource =
+  | { kind: 'folder'; files: Array<{ file: File; path: string }>; label: string }
+  | { kind: 'zip'; file: File; label: string }
+  | { kind: 'files'; files: Array<{ file: File; path: string }>; label: string };
+
+interface ProjectFolderNode {
+  id: string;
+  name: string;
+  parentId: string | null;
+  subfolderCount: number;
+}
+
+const MAX_IMPORT_FILES = 2000;
+const MAX_IMPORT_BYTES = 100 * 1024 * 1024;
+
+const PROJECT_TEXT_EXTENSIONS = new Set([
+  'txt', 'md', 'markdown', 'html', 'htm', 'css', 'scss', 'sass', 'less',
+  'js', 'mjs', 'cjs', 'jsx', 'ts', 'tsx', 'json', 'jsonc', 'yaml', 'yml',
+  'xml', 'csv', 'tsv', 'vue', 'svelte', 'py', 'java', 'c', 'h', 'cpp',
+  'hpp', 'go', 'rs', 'sh', 'bash', 'zsh', 'sql', 'ini', 'toml', 'env',
+  'log',
+]);
+const PROJECT_IMAGE_EXTENSIONS = new Set([
+  'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'ico', 'avif', 'svg',
+]);
+const PROJECT_VIDEO_EXTENSIONS = new Set([
+  'mp4', 'webm', 'mov', 'm4v', 'avi', 'mkv', 'mpg', 'mpeg', 'wmv',
+]);
+const PROJECT_EXTENSIONLESS_TEXT_FILES = new Set([
+  'readme', 'license', 'dockerfile', 'makefile', 'procfile', 'gemfile', 'rakefile',
+]);
+
+function projectFileExtension(pathname: string): string {
+  const fileName = pathname.replace(/\\/g, '/').split('/').pop() ?? '';
+  const lastDot = fileName.lastIndexOf('.');
+  if (lastDot < 0) return '';
+  return fileName.slice(lastDot + 1).toLowerCase();
+}
+
+function isSupportedDirectProjectFile(pathname: string): boolean {
+  const fileName = pathname.replace(/\\/g, '/').split('/').pop() ?? '';
+  const extension = projectFileExtension(fileName);
+  if (PROJECT_TEXT_EXTENSIONS.has(extension) || PROJECT_IMAGE_EXTENSIONS.has(extension)) return true;
+  return !extension && PROJECT_EXTENSIONLESS_TEXT_FILES.has(fileName.toLowerCase());
+}
+
+function directProjectFilesError(
+  files: Array<{ file: File; path: string }>,
+  locale: string,
+): string | null {
+  const videoFile = files.find((entry) => PROJECT_VIDEO_EXTENSIONS.has(projectFileExtension(entry.path)));
+  if (videoFile) {
+    return localeText(
+      locale,
+      '暂不支持视频文件，请选择文本或图片文件。',
+      'Video files are not supported. Choose text or image files.',
+    );
+  }
+  const unsupported = files.find((entry) => !isSupportedDirectProjectFile(entry.path));
+  if (unsupported) {
+    return localeText(
+      locale,
+      '文件类型不支持，仅支持文本类型和图片类型文件。',
+      'Unsupported file type. Only text and image files are supported.',
+    );
+  }
+  return null;
+}
+
+function localeText(locale: string, zh: string, en: string): string {
+  return locale.startsWith('zh') ? zh : en;
+}
+
+function toPublishDialogMessage(
+  error: unknown,
+  locale: string,
+  fallbackZh = '操作失败，请稍后重试。',
+  fallbackEn = 'Something went wrong. Please try again.',
+): string {
+  const raw = error instanceof Error ? error.message : String(error ?? '');
+  const text = raw.trim();
+  const lower = text.toLowerCase();
+
+  if (/expected a .zip file|select a project folder or .zip file/.test(lower)) {
+    return localeText(locale, '文件格式不支持，请选择项目文件夹或 ZIP 压缩包。', 'Unsupported file type. Choose a project folder or ZIP archive.');
+  }
+  if (/invalid zip|end-of-central-directory|zip.*read|unable to read.*zip/.test(lower)) {
+    return localeText(locale, 'ZIP 包无法读取，请确认文件未损坏后重新选择。', 'The ZIP archive could not be read. Check that it is not corrupted and choose it again.');
+  }
+  if (/zip does not contain project files|project files required/.test(lower)) {
+    return localeText(locale, '未找到可发布的项目文件，请重新选择包含项目内容的文件夹或 ZIP 包。', 'No project files were found. Choose a folder or ZIP that contains project content.');
+  }
+  if (/too many files/.test(lower)) {
+    return localeText(locale, '文件数量过多，最多支持 ' + MAX_IMPORT_FILES + ' 个文件。', 'Too many files. Up to ' + MAX_IMPORT_FILES + ' files are supported.');
+  }
+  if (/100 mb|exceeds 100|expands beyond 100/.test(lower)) {
+    return localeText(locale, '文件总大小超过 100 MB，请精简后重新选择。', 'The total file size exceeds 100 MB. Reduce the content and choose it again.');
+  }
+  if (/unsafe file path|path escapes/.test(lower)) {
+    return localeText(locale, '文件路径不符合安全要求，请重新整理或打包后再试。', 'The file paths are not safe. Reorganize or repackage the files and try again.');
+  }
+  if (/workspace directory load failed|workspace projects load failed/.test(lower)) {
+    return localeText(locale, '项目列表加载失败，请稍后重试。', 'The project list could not be loaded. Please try again.');
+  }
+  if (/http d+/.test(lower) && /mcp/.test(lower)) {
+    return localeText(locale, 'MCP 列表加载失败，请稍后重试。', 'The MCP list could not be loaded. Please try again.');
+  }
+  if (/tool publish failed/.test(lower)) {
+    return localeText(locale, '工具发布失败，请稍后重试。', 'Tool publishing failed. Please try again.');
+  }
+  if (/mcp publish failed/.test(lower)) {
+    return localeText(locale, 'MCP 发布失败，请稍后重试。', 'MCP publishing failed. Please try again.');
+  }
+  if (/skill publish failed/.test(lower)) {
+    return localeText(locale, 'Skill 发布失败，请稍后重试。', 'Skill publishing failed. Please try again.');
+  }
+  if (/project publish failed/.test(lower)) {
+    return localeText(locale, '项目发布失败，请稍后重试。', 'Project publishing failed. Please try again.');
+  }
+  if (/failed to import project zip|failed to import project files/.test(lower)) {
+    return localeText(locale, '项目导入失败，请检查文件内容后重试。', 'Project import failed. Check the files and try again.');
+  }
+  if (/failed to fetch|networkerror|network request failed/.test(lower)) {
+    return localeText(locale, '网络连接失败，请检查网络后重试。', 'Network request failed. Check your connection and try again.');
+  }
+  if (!text) return localeText(locale, fallbackZh, fallbackEn);
+  if (/^[a-z0-9 _./:()-]+$/i.test(text) && !/[一-鿿]/.test(text)) {
+    return localeText(locale, fallbackZh, fallbackEn);
+  }
+  return text;
+}
+
+function hasUnsafeImportPath(pathname: string): boolean {
+  const normalized = pathname.replace(/\\/g, '/').replace(/^\.\//, '');
+  const segments = normalized.split('/').filter(Boolean);
+  return (
+    !normalized
+    || normalized.startsWith('/')
+    || segments.length === 0
+    || segments.some((segment) => segment === '..')
+  );
+}
+
+async function validateProjectSource(
+  source: StagedProjectSource,
+  locale: string,
+): Promise<string | null> {
+  if (source.kind === 'files') {
+    if (source.files.length === 0) {
+      return localeText(locale, '未选择文件，请重新选择。', 'No files were selected. Please choose files again.');
+    }
+    const typeError = directProjectFilesError(source.files, locale);
+    if (typeError) return typeError;
+  }
+  if (source.kind === 'zip') {
+    if (!/\.zip$/i.test(source.file.name)) {
+      return localeText(locale, '文件格式不支持，请选择项目文件夹或 ZIP 压缩包。', 'Unsupported file type. Choose a project folder or ZIP archive.');
+    }
+    try {
+      const entries = await readZipEntries(source.file);
+      const files = Array.from(entries.entries()).filter(([name]) => (
+        name
+        && !name.endsWith('/')
+        && !name.replace(/\\/g, '/').startsWith('__MACOSX/')
+      ));
+      if (files.length === 0) {
+        return localeText(locale, 'ZIP 包中没有可发布的项目文件，请重新选择。', 'The ZIP archive does not contain project files. Choose another archive.');
+      }
+      if (files.length > MAX_IMPORT_FILES) {
+        return localeText(locale, '文件数量过多，最多支持 ' + MAX_IMPORT_FILES + ' 个文件。', 'Too many files. Up to ' + MAX_IMPORT_FILES + ' files are supported.');
+      }
+      if (files.some(([name]) => hasUnsafeImportPath(name))) {
+        return localeText(locale, 'ZIP 包中包含不安全的文件路径，请重新打包后再试。', 'The ZIP archive contains unsafe file paths. Repackage it and try again.');
+      }
+      const totalBytes = files.reduce((sum, [, data]) => sum + data.byteLength, 0);
+      if (totalBytes > MAX_IMPORT_BYTES) {
+        return localeText(locale, 'ZIP 解压后的文件总大小超过 100 MB，请精简后重新选择。', 'The extracted ZIP exceeds 100 MB. Reduce the content and choose it again.');
+      }
+    } catch (error) {
+      return toPublishDialogMessage(error, locale, 'ZIP 包无法读取，请确认文件未损坏后重新选择。', 'The ZIP archive could not be read. Check that it is not corrupted and choose it again.');
+    }
+    return null;
+  }
+
+  if (source.files.length === 0) {
+    return source.kind === 'folder'
+      ? localeText(locale, '所选文件夹为空，请选择包含项目文件的文件夹。', 'The selected folder is empty. Choose a folder that contains project files.')
+      : localeText(locale, '未选择文件，请重新选择。', 'No files were selected. Please choose files again.');
+  }
+  if (source.files.length > MAX_IMPORT_FILES) {
+    return localeText(locale, '文件数量过多，最多支持 ' + MAX_IMPORT_FILES + ' 个文件。', 'Too many files. Up to ' + MAX_IMPORT_FILES + ' files are supported.');
+  }
+  if (source.files.some((entry) => hasUnsafeImportPath(entry.path))) {
+    return source.kind === 'folder'
+      ? localeText(locale, '文件夹中包含不安全的文件路径，请重新整理后再试。', 'The folder contains unsafe file paths. Reorganize it and try again.')
+      : localeText(locale, '所选文件中包含不安全的文件路径，请重新选择。', 'The selected files contain unsafe paths. Please choose them again.');
+  }
+  const totalBytes = source.files.reduce((sum, entry) => sum + entry.file.size, 0);
+  if (totalBytes > MAX_IMPORT_BYTES) {
+    return localeText(locale, '文件总大小超过 100 MB，请精简后重新选择。', 'The total file size exceeds 100 MB. Reduce the content and choose it again.');
+  }
+  return null;
+}
 
 /** What the caller receives when the user confirms a project publish. */
 export interface PublishProjectSelection {
@@ -82,6 +363,8 @@ export interface PublishProjectSelection {
   name: string;
   /** Description for the community card. */
   description: string;
+  /** Existing preview entry used to preserve the source project's cover. */
+  entryFile?: string;
 }
 
 /** What the caller receives when the user confirms a tool publish. */
@@ -109,6 +392,8 @@ export interface PublishSkillSelection {
   body: string;
   category: SkillCategory;
   logoKey?: SkillLogoKey;
+  upload?: { zip: File } | Array<{ file: File; path: string }>;
+  workspaceContext?: WorkspaceCollabContext | null;
 }
 
 interface Props {
@@ -226,36 +511,144 @@ function SkillCategoryPicker({
   );
 }
 
-async function fetchOwnedWorkspaceProjects(workspace: WorkspaceDirectoryItem): Promise<Project[]> {
-  const response = await fetch(
-    `/api/workspaces/${encodeURIComponent(workspace.workspaceId)}/projects?view=all`,
-    {
-      cache: 'no-store',
-      headers: {
-        'x-od-workspace-id': workspace.workspaceId,
-        'x-od-workspace-member-id': workspace.workspaceMemberId,
-        'x-od-workspace-type': workspace.workspaceType,
+async function fetchProjectFolders(
+  workspace: WorkspaceDirectoryItem,
+  parentId: string | null = null,
+): Promise<ProjectFolderNode[]> {
+  const basePath = workspace.isDefaultTeam
+    ? `/api/folders?workspace_id=${encodeURIComponent(workspace.workspaceId)}`
+    : `/api/hdw/api/folder/list?workspace_id=${encodeURIComponent(workspace.workspaceId)}`;
+  const url = parentId
+    ? `${basePath}&folder_pid=${encodeURIComponent(parentId)}`
+    : basePath;
+  const response = await fetch(url, { cache: 'no-store' });
+  if (!response.ok) return [];
+  const body = await response.json();
+  const rows: any[] = body?.data?.folders ?? [];
+  return rows.map((folder) => ({
+    id: String(folder.folder_id || folder.id || ''),
+    name: String(folder.folder_name || folder.name || ''),
+    parentId,
+    subfolderCount: Number(folder.subfolder_count) || 0,
+  })).filter((folder) => folder.id && folder.name);
+}
+
+async function fetchProjectFolderIndex(
+  workspace: WorkspaceDirectoryItem,
+): Promise<ProjectFolderNode[]> {
+  const result: ProjectFolderNode[] = [];
+  const pending: Array<string | null> = [null];
+  while (pending.length > 0) {
+    const parentId = pending.shift() ?? null;
+    const children = await fetchProjectFolders(workspace, parentId);
+    for (const child of children) {
+      result.push(child);
+      if (child.subfolderCount > 0) pending.push(child.id);
+    }
+  }
+  return result;
+}
+
+function teamProjectToPickerProject(project: TeamProject, workspace: WorkspaceDirectoryItem): Project {
+  const sharedAtMs = Date.parse(project.sharedAt);
+  const fallback = Number.isFinite(sharedAtMs) ? sharedAtMs : 0;
+  return {
+    id: project.projectId,
+    name: project.name?.trim() || project.projectId,
+    skillId: project.skillId ?? null,
+    designSystemId: project.designSystemId ?? null,
+    createdAt: typeof project.createdAt === 'number' ? project.createdAt : fallback,
+    updatedAt: typeof project.updatedAt === 'number' ? project.updatedAt : fallback,
+    createdByWorkspaceMemberId: project.ownerMemberId ?? null,
+    ownerDisplayName: project.ownerDisplayName ?? null,
+    ...(project.metadata ? { metadata: project.metadata } : {}),
+    coverDigest: project.coverDigest ?? null,
+    workspaceId: workspace.workspaceId,
+    workspaceVisibility: 'team',
+  };
+}
+
+function collectDescendantFolderIds(
+  folders: ProjectFolderNode[],
+  rootFolderId: string,
+): string[] {
+  const result = [rootFolderId];
+  const queue = [rootFolderId];
+  while (queue.length > 0) {
+    const parentId = queue.shift()!;
+    const children = folders.filter((folder) => folder.parentId === parentId);
+    for (const child of children) {
+      result.push(child.id);
+      queue.push(child.id);
+    }
+  }
+  return result;
+}
+
+async function fetchOwnedProjectsAtLocation(
+  workspace: WorkspaceDirectoryItem,
+  folderId: string | null,
+  folders: ProjectFolderNode[],
+): Promise<Project[]> {
+  if (workspace.isDefaultTeam === true) {
+    const response = await fetch(
+      `/api/workspaces/${encodeURIComponent(workspace.workspaceId)}/projects?view=all`,
+      {
+        cache: 'no-store',
+        headers: {
+          'x-od-workspace-id': workspace.workspaceId,
+          'x-od-workspace-member-id': workspace.workspaceMemberId,
+          'x-od-workspace-type': workspace.workspaceType,
+        },
       },
-    },
-  );
-  if (!response.ok) throw new Error('workspace projects load failed');
-  const body = await response.json() as { projects?: any[] };
-  return (body.projects ?? []).flatMap((summary) => {
-    const project = summary?.project ?? {};
-    const ownerMemberId = summary?.createdByWorkspaceMemberId ?? project.createdByWorkspaceMemberId;
-    const visibility = summary?.visibility ?? project.workspaceVisibility;
-    if (ownerMemberId !== workspace.workspaceMemberId) return [];
-    if (workspace.isDefaultTeam === true && visibility !== 'personal') return [];
-    if (workspace.isDefaultTeam !== true && visibility !== 'team') return [];
-    if (!project.id || !project.name) return [];
-    return [{
-      ...project,
-      coverDigest: summary?.coverDigest ?? project.coverDigest ?? null,
-      workspaceId: summary?.workspaceId ?? workspace.workspaceId,
-      workspaceVisibility: visibility,
-      createdByWorkspaceMemberId: ownerMemberId,
-    } as Project];
-  }).sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+    );
+    if (!response.ok) throw new Error('workspace projects load failed');
+    const body = await response.json() as { projects?: any[] };
+    return (body.projects ?? [])
+      .flatMap((summary) => {
+        const project = summary?.project ?? {};
+        const ownerMemberId = summary?.createdByWorkspaceMemberId ?? project.createdByWorkspaceMemberId;
+        const visibility = summary?.visibility ?? project.workspaceVisibility;
+        if (ownerMemberId !== workspace.workspaceMemberId || visibility !== 'personal') return [];
+        if (!project.id || !project.name) return [];
+        return [{
+          ...project,
+          coverDigest: summary?.coverDigest ?? project.coverDigest ?? null,
+          workspaceId: workspace.workspaceId,
+          workspaceVisibility: 'personal',
+          createdByWorkspaceMemberId: ownerMemberId,
+        } as Project];
+      })
+      .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+  }
+
+  const folderIds = folderId
+    ? collectDescendantFolderIds(folders, folderId)
+    : [null];
+
+  const batches = await Promise.all(folderIds.map(async (targetFolderId) => {
+    const response = await fetch(
+      `/api/workspace/projects/team?folder_id=${encodeURIComponent(targetFolderId ?? 'root')}`,
+      {
+        cache: 'no-store',
+        headers: { 'x-od-workspace-id': workspace.workspaceId },
+      },
+    );
+    if (!response.ok) throw new Error('workspace projects load failed');
+    const body = await response.json() as { projects?: TeamProject[] };
+    return body.projects ?? [];
+  }));
+
+  const deduped = new Map<string, TeamProject>();
+  for (const project of batches.flat()) {
+    if (project.ownerMemberId === workspace.workspaceMemberId) {
+      deduped.set(project.projectId, project);
+    }
+  }
+
+  return Array.from(deduped.values())
+    .map((project) => teamProjectToPickerProject(project, workspace))
+    .sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
 }
 
 function projectPickerCoverUrl(project: Project): string | null {
@@ -349,8 +742,8 @@ function ProjectPickerThumbnail({
         <HtmlProjectCoverFrame
           src={src}
           initial={initial}
-          iframeClassName={styles.projectOptionCoverFrame}
-          glyphClassName={styles.projectOptionCoverFallback}
+          iframeClassName={styles.projectOptionCoverFrame ?? ''}
+          glyphClassName={styles.projectOptionCoverFallback ?? ''}
           diagnostic={`publish-project:${project.id}:${resolvedCover.name}`}
         />
       </span>
@@ -402,19 +795,27 @@ function ProjectsTab({
   const { context: workspaceContext } = workspaceContextState;
   const [source, setSource] = useState<FileSource>('internal');
   const [workspaces, setWorkspaces] = useState<WorkspaceDirectoryItem[]>([]);
+  const [projectFolders, setProjectFolders] = useState<Record<string, ProjectFolderNode[]>>({});
+  const [expandedWorkspaceIds, setExpandedWorkspaceIds] = useState<Set<string>>(() => new Set());
   const [activeWorkspaceId, setActiveWorkspaceId] = useState<string | null>(null);
+  const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [projectSearch, setProjectSearch] = useState('');
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
-  const [importedPath, setImportedPath] = useState<string | null>(null);
+  const [selectedProjectValid, setSelectedProjectValid] = useState(false);
+  const [selectedProjectError, setSelectedProjectError] = useState<string | null>(null);
+  const [validatingSelectedProject, setValidatingSelectedProject] = useState(false);
+  const [stagedProjectSource, setStagedProjectSource] = useState<StagedProjectSource | null>(null);
+  const [projectSourceValid, setProjectSourceValid] = useState(false);
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const folderPickerInFlight = useRef(false);
-  const [importedKind, setImportedKind] = useState<'folder' | 'zip' | null>(null);
+  const projectValidationSeqRef = useRef(0);
+  const selectedProjectValidationSeqRef = useRef(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -431,8 +832,18 @@ function ProjectsTab({
           && (item.isDefaultTeam === true || item.workspaceType === 'team')
         ));
         setWorkspaces(items);
+        const folderEntries = await Promise.all(
+          items.map(async (item) => [item.workspaceId, await fetchProjectFolderIndex(item)] as const),
+        );
+        if (cancelled) return;
+        const nextFolderMap = Object.fromEntries(folderEntries);
+        setProjectFolders(nextFolderMap);
+        setExpandedWorkspaceIds(new Set(
+          folderEntries.filter(([, folders]) => folders.some((folder) => folder.parentId == null)).map(([workspaceId]) => workspaceId),
+        ));
         const initial = items.find((item) => item.isDefaultTeam === true) ?? items[0] ?? null;
         setActiveWorkspaceId(initial?.workspaceId ?? null);
+        setActiveFolderId(null);
         if (!initial) {
           setProjects([]);
           setLoading(false);
@@ -455,7 +866,11 @@ function ProjectsTab({
     let cancelled = false;
     setLoading(true);
     setError(false);
-    void fetchOwnedWorkspaceProjects(workspace)
+    void fetchOwnedProjectsAtLocation(
+      workspace,
+      activeFolderId,
+      projectFolders[workspace.workspaceId] ?? [],
+    )
       .then((items) => {
         if (!cancelled) setProjects(items);
       })
@@ -469,7 +884,15 @@ function ProjectsTab({
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [activeWorkspaceId, workspaces]);
+  }, [activeFolderId, activeWorkspaceId, projectFolders, workspaces]);
+
+  useEffect(() => {
+    selectedProjectValidationSeqRef.current += 1;
+    setSelectedProjectId(null);
+    setSelectedProjectValid(false);
+    setSelectedProjectError(null);
+    setValidatingSelectedProject(false);
+  }, [activeFolderId, activeWorkspaceId]);
 
   const handlePickFolder = useCallback(async () => {
     if (folderPickerInFlight.current) return;
@@ -477,56 +900,70 @@ function ProjectsTab({
     setImportError(null);
     setImporting(true);
     try {
-      const targetContext = resolvedWorkspaceContextForWrite(workspaceContextState);
-      if (isOpenDesignHostAvailable()) {
-        const result = await pickAndImportHostProject({ workspaceContext: targetContext });
-        if ('canceled' in result && result.canceled === true) return;
-        if (result.ok !== true) throw new Error('reason' in result ? result.reason : 'Failed to import folder');
+      const host = getOpenDesignHost();
+      if (host?.project?.pickSkillSource) {
+        const result = await host.project.pickSkillSource();
+        if (!result.ok) return;
+        const staged: StagedProjectSource = result.kind === 'folder'
+          ? {
+              kind: 'folder',
+              files: result.files.map((entry) => ({
+                file: new File([entry.data], entry.path.split('/').pop() || entry.path),
+                path: entry.path,
+              })),
+              label: result.folderName,
+            }
+          : result.kind === 'zip'
+            ? {
+                kind: 'zip',
+                file: new File([result.data], result.fileName, { type: 'application/zip' }),
+                label: result.fileName.replace(/\.zip$/i, ''),
+              }
+            : {
+                kind: 'files',
+                files: result.files.map((entry) => ({
+                  file: new File([entry.data], entry.path.split('/').pop() || entry.path),
+                  path: entry.path,
+                })),
+                label: result.selectionName || (
+                  result.files.length === 1
+                    ? (result.files[0]?.path ?? 'project').replace(/\.[^.]+$/, '')
+                    : localeText(locale, '本地文件项目', 'Local files project')
+                ),
+              };
 
-        let importedProject = await getProject(result.projectId, targetContext);
-        for (let attempt = 0; importedProject == null && attempt < 3; attempt += 1) {
-          await new Promise((resolve) => setTimeout(resolve, 100));
-          importedProject = await getProject(result.projectId, targetContext);
-        }
-        const importedFrom = importedProject?.metadata?.importedFrom;
-        const importKind = importedFrom === 'zip' ? 'zip' : 'folder';
-        const importedLabel = importedProject?.name
-          || (importKind === 'zip'
-            ? (locale.startsWith('zh') ? '已选择 ZIP 包' : 'Selected ZIP')
-            : (locale.startsWith('zh') ? '已选择文件夹' : 'Selected folder'));
-        if (importedProject) {
-          setProjects((current) => [importedProject!, ...current.filter((item) => item.id !== importedProject!.id)]);
-        }
-        setSelectedProjectId(result.projectId);
-        setImportedPath(importedLabel);
-        setImportedKind(importKind);
-        setName(importedProject?.name || importedLabel);
+        const validationSeq = ++projectValidationSeqRef.current;
+        setStagedProjectSource(staged);
+        setProjectSourceValid(false);
+        setName(staged.label);
+        const validationError = await validateProjectSource(staged, locale);
+        if (validationSeq !== projectValidationSeqRef.current) return;
+        setImportError(validationError);
+        setProjectSourceValid(validationError == null);
         return;
       }
 
-      const picked = await openFolderDialog();
-      if (!picked) return;
-      const parts = picked.replace(/\\/g, '/').split('/').filter(Boolean);
-      const folderName = parts[parts.length - 1] || t('publishDialog.namePlaceholder');
-      const result = await importFolderProject(
-        { baseDir: picked, name: folderName },
-        targetContext,
-      );
-      setProjects((current) => [result.project, ...current.filter((item) => item.id !== result.project.id)]);
-      setSelectedProjectId(result.project.id);
-      setImportedPath(result.project.name || folderName);
-      setImportedKind('folder');
-      setName(result.project.name || folderName);
+      throw new Error(locale.startsWith('zh')
+        ? '当前环境暂不支持本地项目暂存，请使用桌面客户端。'
+        : 'Local project staging requires the desktop app.');
     } catch (err) {
-      setImportError(err instanceof Error ? err.message : String(err));
+      setImportError(toPublishDialogMessage(err, locale, '文件读取失败，请重新选择。', 'The file could not be read. Please choose it again.'));
     } finally {
       setImporting(false);
       folderPickerInFlight.current = false;
     }
-  }, [locale, t, workspaceContextState]);
+  }, [locale]);
 
- const hasSelection = Boolean(selectedProjectId);
- const canConfirm = hasSelection && name.trim().length > 0;
+  const hasSelection = source === 'internal'
+    ? Boolean(selectedProjectId) && selectedProjectValid
+    : Boolean(stagedProjectSource) && projectSourceValid;
+  const selectedProject = selectedProjectId
+    ? projects.find((project) => project.id === selectedProjectId) ?? null
+    : null;
+  const canConfirm = hasSelection
+    && name.trim().length > 0
+    && !importing
+    && !validatingSelectedProject;
 
   // Lift canConfirm to the parent so the footer confirm button updates.
   useEffect(() => { onCanConfirmChange?.(canConfirm); }, [canConfirm, onCanConfirmChange]);
@@ -537,23 +974,149 @@ function ProjectsTab({
     canConfirm,
     onConfirm: () => {
       if (!canConfirm) return;
-      onPublish({
-        projectId: selectedProjectId!,
-        name: name.trim(),
-        description: description.trim(),
-      });
+      if (source === 'internal') {
+        onPublish({
+          projectId: selectedProjectId!,
+          name: name.trim(),
+          description: description.trim(),
+          ...(selectedProject?.metadata?.entryFile
+            ? { entryFile: selectedProject.metadata.entryFile }
+            : {}),
+        });
+        return;
+      }
+
+      void (async () => {
+        setImporting(true);
+        setImportError(null);
+        try {
+          const targetContext = resolvedWorkspaceContextForWrite(workspaceContextState);
+          if (!stagedProjectSource) return;
+          const imported = stagedProjectSource.kind === 'zip'
+            ? await importProjectZip(stagedProjectSource.file, targetContext)
+            : await importProjectFiles(stagedProjectSource.files, name.trim(), targetContext);
+          onPublish({
+            projectId: imported.project.id,
+            name: name.trim(),
+            description: description.trim(),
+            ...(imported.entryFile ? { entryFile: imported.entryFile } : {}),
+          });
+        } catch (error) {
+          setImportError(toPublishDialogMessage(error, locale, '项目导入失败，请检查文件内容后重试。', 'Project import failed. Check the files and try again.'));
+        } finally {
+          setImporting(false);
+        }
+      })();
     },
   };
 
   function handleSelectProject(project: Project) {
+    const validationSeq = ++selectedProjectValidationSeqRef.current;
     setSelectedProjectId(project.id);
     setName(project.name);
+    setSelectedProjectValid(false);
+    setSelectedProjectError(null);
+    setValidatingSelectedProject(true);
+
+    const workspace = workspaces.find((item) => item.workspaceId === activeWorkspaceId) ?? null;
+    if (!workspace) {
+      setSelectedProjectError(localeText(
+        locale,
+        '项目位置无效，请重新选择项目。',
+        'The project location is invalid. Please choose the project again.',
+      ));
+      setValidatingSelectedProject(false);
+      return;
+    }
+
+    void fetchProjectFiles(project.id, {
+      workspaceContext: workspaceContextFromDirectoryItem(workspace),
+    })
+      .then((files) => {
+        if (validationSeq !== selectedProjectValidationSeqRef.current) return;
+        if (files.length === 0) {
+          setSelectedProjectError(localeText(
+            locale,
+            '项目暂无可发布内容，请先完成项目内容后再发布。',
+            'This project has no publishable content yet. Add project content before publishing.',
+          ));
+          setSelectedProjectValid(false);
+          return;
+        }
+        setSelectedProjectValid(true);
+        setSelectedProjectError(null);
+      })
+      .catch(() => {
+        if (validationSeq !== selectedProjectValidationSeqRef.current) return;
+        setSelectedProjectError(localeText(
+          locale,
+          '项目内容读取失败，请稍后重试。',
+          'The project content could not be loaded. Please try again.',
+        ));
+        setSelectedProjectValid(false);
+      })
+      .finally(() => {
+        if (validationSeq === selectedProjectValidationSeqRef.current) {
+          setValidatingSelectedProject(false);
+        }
+      });
   }
 
   const filteredProjects = projectSearch.trim()
     ? projects.filter((project) => project.name.toLocaleLowerCase().includes(projectSearch.trim().toLocaleLowerCase()))
     : projects;
   const activeWorkspace = workspaces.find((item) => item.workspaceId === activeWorkspaceId) ?? null;
+
+  function toggleExpandedWorkspace(workspaceId: string) {
+    setExpandedWorkspaceIds((current) => {
+      const next = new Set(current);
+      if (next.has(workspaceId)) next.delete(workspaceId);
+      else next.add(workspaceId);
+      return next;
+    });
+  }
+
+  const projectTreeNodes: WorkspaceTreeNode[] = workspaces.map((workspace) => {
+    const rootFolders = workspace.isDefaultTeam
+      ? []
+      : (projectFolders[workspace.workspaceId] ?? []).filter((folder) => folder.parentId == null);
+    const hasChildren = rootFolders.length > 0;
+    const expanded = expandedWorkspaceIds.has(workspace.workspaceId);
+    const children: WorkspaceTreeNode[] = rootFolders.map((folder) => ({
+      id: `project-folder:${workspace.workspaceId}:${folder.id}`,
+      label: folder.name,
+      compact: true,
+      selected: activeWorkspaceId === workspace.workspaceId && activeFolderId === folder.id,
+      onSelect: () => {
+        setActiveWorkspaceId(workspace.workspaceId);
+        setActiveFolderId(folder.id);
+        setSelectedProjectId(null);
+        setName('');
+        setProjectSearch('');
+      },
+    }));
+
+    return {
+      id: `project-workspace:${workspace.workspaceId}`,
+      label: workspace.isDefaultTeam
+        ? (locale.startsWith('zh') ? '个人所有' : 'Personal')
+        : workspace.workspaceName,
+      tag: workspace.isDefaultTeam
+        ? (locale.startsWith('zh') ? '个人' : 'Personal')
+        : (locale.startsWith('zh') ? '团队' : 'Team'),
+      selected: workspace.workspaceId === activeWorkspaceId && activeFolderId == null,
+      expanded,
+      children: hasChildren ? children : undefined,
+      onToggle: hasChildren ? () => toggleExpandedWorkspace(workspace.workspaceId) : undefined,
+      onSelect: () => {
+        setActiveWorkspaceId(workspace.workspaceId);
+        setActiveFolderId(null);
+        setSelectedProjectId(null);
+        setName('');
+        setProjectSearch('');
+      },
+    };
+  });
 
   return (
     <div className={styles.formGrid}>
@@ -582,25 +1145,7 @@ function ProjectsTab({
         {source === 'internal' ? (
           <div className={styles.projectBrowser}>
             <aside className={styles.projectWorkspaceTree} aria-label={locale.startsWith('zh') ? '项目位置' : 'Project locations'}>
-              {workspaces.map((workspace) => {
-                const selectedWorkspace = workspace.workspaceId === activeWorkspaceId;
-                return (
-                  <button
-                    key={workspace.workspaceId}
-                    type="button"
-                    className={selectedWorkspace ? `${styles.projectWorkspaceRow} ${styles.projectWorkspaceRowActive}` : styles.projectWorkspaceRow}
-                    onClick={() => {
-                      setActiveWorkspaceId(workspace.workspaceId);
-                      setSelectedProjectId(null);
-                      setName('');
-                      setProjectSearch('');
-                    }}
-                  >
-                    <span>{workspace.isDefaultTeam ? (locale.startsWith('zh') ? '个人所有' : 'Personal') : workspace.workspaceName}</span>
-                    <small>{workspace.isDefaultTeam ? (locale.startsWith('zh') ? '个人' : 'Personal') : (locale.startsWith('zh') ? '团队' : 'Team')}</small>
-                  </button>
-                );
-              })}
+              <WorkspaceTree nodes={projectTreeNodes} reserveDisclosureSpace />
             </aside>
             <div className={styles.projectBrowserMain}>
               <div className={styles.projectSearchBox}>
@@ -655,17 +1200,18 @@ function ProjectsTab({
               )}
             </div>
           </div>
-        ) : importedPath && selectedProjectId ? (
+        ) : stagedProjectSource ? (
           <div className={styles.externalPath}>
-            <Icon name={importedKind === 'zip' ? 'file' : 'folder'} size={15} />
-            <span style={{ flex: '1 1 auto', minWidth: 0 }}>{importedPath}</span>
+            <Icon name={stagedProjectSource.kind === 'folder' ? 'folder' : 'file'} size={15} />
+            <span style={{ flex: '1 1 auto', minWidth: 0 }}>{stagedProjectSource.label}</span>
             <button
               type="button"
               className={styles.externalPathClear}
               onClick={() => {
-                setImportedPath(null);
-                setImportedKind(null);
-                setSelectedProjectId(null);
+                projectValidationSeqRef.current += 1;
+                setStagedProjectSource(null);
+                setProjectSourceValid(false);
+                setImportError(null);
                 setName('');
               }}
               aria-label={locale.startsWith('zh') ? '删除已导入项目' : 'Remove imported project'}
@@ -686,11 +1232,14 @@ function ProjectsTab({
             <span className={styles.dropzoneText}>
               {importing
                 ? (locale.startsWith('zh') ? '请选择文件' : 'Choose a file')
-                : (locale.startsWith('zh') ? '选择文件夹 / ZIP 包' : 'Choose folder / ZIP')}
+                : (locale.startsWith('zh') ? '选择文件夹 / ZIP / 文本或图片文件' : 'Choose folder / ZIP / text or image files')}
             </span>
           </button>
         )}
-        {importError ? <p className={styles.inlineError} role="alert">{importError}</p> : null}
+        {source === 'internal' && selectedProjectError ? (
+          <p className={styles.inlineError} role="alert">{selectedProjectError}</p>
+        ) : null}
+        {source === 'external' && importError ? <p className={styles.inlineError} role="alert">{importError}</p> : null}
       </section>
 
       <section className={styles.panel}>
@@ -725,6 +1274,15 @@ function ProjectsTab({
   );
 }
 
+function isValidHttpUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
 function ToolTab({
   onPublish,
   confirmRef,
@@ -735,11 +1293,15 @@ function ToolTab({
   onCanConfirmChange?: (canConfirm: boolean) => void;
 }) {
   const t = useT();
+  const { locale } = useI18n();
   const [url, setUrl] = useState('');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
 
-  const canConfirm = url.trim().length > 0 && name.trim().length > 0;
+  const urlError = url.trim() && !isValidHttpUrl(url.trim())
+    ? localeText(locale, '链接格式不正确，请输入以 http:// 或 https:// 开头的有效地址。', 'Enter a valid URL starting with http:// or https://.')
+    : null;
+  const canConfirm = url.trim().length > 0 && name.trim().length > 0 && !urlError;
 
   useEffect(() => { onCanConfirmChange?.(canConfirm); }, [canConfirm, onCanConfirmChange]);
 
@@ -769,6 +1331,7 @@ function ToolTab({
             value={url}
             onChange={(e) => setUrl(e.target.value)}
           />
+          {urlError ? <p className={styles.inlineError} role="alert">{urlError}</p> : null}
         </div>
       </section>
 
@@ -836,8 +1399,10 @@ function McpTab({
       .then((body) => {
         if (!cancelled) setServers(body.servers ?? []);
       })
-      .catch((error) => {
-        if (!cancelled) setLoadError(error instanceof Error ? error.message : String(error));
+      .catch(() => {
+        if (!cancelled) {
+          setLoadError(localeText(locale, 'MCP 列表加载失败，请稍后重试。', 'The MCP list could not be loaded. Please try again.'));
+        }
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -948,7 +1513,8 @@ type CollectedFile = { file: File; path: string };
 type UploadSource =
   | { kind: 'folder'; files: CollectedFile[]; folderName?: string }
   | { kind: 'zip'; file: File }
-  | { kind: 'file'; file: File };
+  | { kind: 'file'; file: File }
+  | { kind: 'files'; files: CollectedFile[] };
 
 interface PersonalSkill {
   id: string;
@@ -1018,20 +1584,46 @@ function SkillTab({
   const [skillsLoading, setSkillsLoading] = useState(true);
   const [skillsError, setSkillsError] = useState<string | null>(null);
   const [uploadSource, setUploadSource] = useState<UploadSource | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [validatedSkillName, setValidatedSkillName] = useState<string | null>(null);
+  const [validatingUpload, setValidatingUpload] = useState(false);
   const [category, setCategory] = useState<SkillCategory | null>(null);
   const [logoKey, setLogoKey] = useState<SkillLogoKey>('craft');
   const [busy, setBusy] = useState<boolean>(false);
   const [toast, setToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const folderInputRef = useRef<HTMLInputElement>(null);
+  const skillValidationSeqRef = useRef(0);
   const selectedSkill = skills.find((skill) => skill.id === selectedSkillId) ?? null;
   const filteredSkills = skillSearch.trim()
     ? skills.filter((skill) => skill.name.toLocaleLowerCase().includes(skillSearch.trim().toLocaleLowerCase()))
     : skills;
   const selectedSkillWorkspace = skillWorkspaces.find((item) => item.workspaceId === activeSkillWorkspaceId) ?? null;
+  const skillTreeNodes: WorkspaceTreeNode[] = skillWorkspaces.map((workspace) => ({
+    id: `skill-workspace:${workspace.workspaceId}`,
+    label: workspace.isDefaultTeam
+      ? (locale.startsWith('zh') ? '个人所有' : 'Personal')
+      : workspace.workspaceName,
+    tag: workspace.isDefaultTeam
+      ? (locale.startsWith('zh') ? '个人' : 'Personal')
+      : (locale.startsWith('zh') ? '团队' : 'Team'),
+    selected: workspace.workspaceId === activeSkillWorkspaceId,
+    onSelect: () => {
+      setActiveSkillWorkspaceId(workspace.workspaceId);
+      setSelectedSkillId(null);
+      setCategory(null);
+      setSkillSearch('');
+    },
+  }));
   const canConfirm = source === 'internal'
     ? selectedSkill !== null && category !== null && !busy && !workspaceContextLoading
-    : uploadSource !== null && category !== null && !busy && !workspaceContextLoading;
+    : uploadSource !== null
+      && validatedSkillName !== null
+      && uploadError === null
+      && category !== null
+      && !validatingUpload
+      && !busy
+      && !workspaceContextLoading;
 
   useEffect(() => {
     let cancelled = false;
@@ -1058,7 +1650,7 @@ function SkillTab({
         if (cancelled) return;
         setSkillWorkspaces([]);
         setSkills([]);
-        setSkillsError(error instanceof Error ? error.message : String(error));
+        setSkillsError(localeText(locale, 'Skill 列表加载失败，请稍后重试。', 'The Skill list could not be loaded. Please try again.'));
         setSkillsLoading(false);
       }
     })();
@@ -1101,7 +1693,7 @@ function SkillTab({
       .catch((error) => {
         if (!cancelled) {
           setSkills([]);
-          setSkillsError(error instanceof Error ? error.message : String(error));
+          setSkillsError(localeText(locale, 'Skill 列表加载失败，请稍后重试。', 'The Skill list could not be loaded. Please try again.'));
         }
       })
       .finally(() => {
@@ -1136,22 +1728,125 @@ function SkillTab({
     return false;
   }
 
-  async function deriveSkillName(source: UploadSource): Promise<string | null> {
-    try {
-      let text: string | null = null;
-      if (source.kind === 'zip') {
-        text = await findSkillMdInZip(source.file);
-      } else if (source.kind === 'file') {
-        text = await source.file.text();
-      } else {
-        const skillFile = source.files.find((f) => /(^|\/)SKILL\.md$/i.test(f.path));
-        if (skillFile) text = await skillFile.file.text();
+  async function validateSkillUploadSource(
+    source: UploadSource,
+  ): Promise<{ name: string | null; error: string | null }> {
+    let text: string | null = null;
+
+    if (source.kind === 'zip') {
+      if (!/\.zip$/i.test(source.file.name)) {
+        return {
+          name: null,
+          error: localeText(locale, '文件格式不支持，请选择包含 SKILL.md 的文件夹或 ZIP 包。', 'Unsupported file type. Choose a folder or ZIP that contains SKILL.md.'),
+        };
       }
-      if (!text) return null;
-      return parseSkillNameFromMarkdown(text);
-    } catch {
-      return null;
+      try {
+        text = await findSkillMdInZip(source.file);
+      } catch {
+        return {
+          name: null,
+          error: localeText(locale, 'ZIP 包无法读取，请确认文件未损坏后重新选择。', 'The ZIP archive could not be read. Check that it is not corrupted and choose it again.'),
+        };
+      }
+    } else if (source.kind === 'file') {
+      if (!/^SKILL\.md$/i.test(source.file.name)) {
+        return {
+          name: null,
+          error: localeText(locale, '单文件导入仅支持 SKILL.md，请重新选择。', 'Single-file import only supports SKILL.md. Please choose it again.'),
+        };
+      }
+      try {
+        text = await source.file.text();
+      } catch {
+        return {
+          name: null,
+          error: localeText(locale, 'SKILL.md 读取失败，请重新选择。', 'SKILL.md could not be read. Please choose it again.'),
+        };
+      }
+    } else if (source.kind === 'files') {
+      if (source.files.length !== 1) {
+        return {
+          name: null,
+          error: localeText(locale, 'Skill 单文件导入只支持选择一个 SKILL.md。', 'Skill single-file import only supports one SKILL.md file.'),
+        };
+      }
+      const selectedFile = source.files[0]!;
+      const fileName = selectedFile.path.split('/').pop() || selectedFile.file.name;
+      if (!/^SKILL\.md$/i.test(fileName)) {
+        return {
+          name: null,
+          error: localeText(locale, '单文件导入仅支持 SKILL.md，请重新选择。', 'Single-file import only supports SKILL.md. Please choose it again.'),
+        };
+      }
+      try {
+        text = await selectedFile.file.text();
+      } catch {
+        return {
+          name: null,
+          error: localeText(locale, 'SKILL.md 读取失败，请重新选择。', 'SKILL.md could not be read. Please choose it again.'),
+        };
+      }
+    } else {
+      const skillFile = source.files.find((f) => /(^|\/)SKILL\.md$/i.test(f.path));
+      if (!skillFile) {
+        return {
+          name: null,
+          error: localeText(locale, '未找到 SKILL.md，请选择包含 SKILL.md 的文件夹或 ZIP 包。', 'SKILL.md was not found. Choose a folder or ZIP that contains SKILL.md.'),
+        };
+      }
+      try {
+        text = await skillFile.file.text();
+      } catch {
+        return {
+          name: null,
+          error: localeText(locale, 'SKILL.md 读取失败，请重新选择。', 'SKILL.md could not be read. Please choose it again.'),
+        };
+      }
     }
+
+    if (text == null) {
+      return {
+        name: null,
+        error: localeText(locale, '未找到 SKILL.md，请选择包含 SKILL.md 的文件夹或 ZIP 包。', 'SKILL.md was not found. Choose a folder or ZIP that contains SKILL.md.'),
+      };
+    }
+    if (!text.trim()) {
+      return {
+        name: null,
+        error: localeText(locale, 'SKILL.md 内容为空，请补充内容后重新选择。', 'SKILL.md is empty. Add content and choose it again.'),
+      };
+    }
+
+    const name = parseSkillNameFromMarkdown(text);
+    if (!name) {
+      return {
+        name: null,
+        error: localeText(locale, 'SKILL.md 缺少 name 字段，请补充后重新选择。', 'SKILL.md is missing the name field. Add it and choose the file again.'),
+      };
+    }
+
+    if (await checkCloudSkillDuplicate(name)) {
+      return {
+        name: null,
+        error: localeText(locale, '已存在同名 Skill，请更换 SKILL.md 中的 name 后重新选择。', 'A Skill with this name already exists. Change the name in SKILL.md and choose it again.'),
+      };
+    }
+
+    return { name, error: null };
+  }
+
+  async function stageSkillUploadSource(source: UploadSource) {
+    const validationSeq = ++skillValidationSeqRef.current;
+    setUploadSource(source);
+    setUploadError(null);
+    setToast(null);
+    setValidatedSkillName(null);
+    setValidatingUpload(true);
+    const result = await validateSkillUploadSource(source);
+    if (validationSeq !== skillValidationSeqRef.current) return;
+    setUploadError(result.error);
+    setValidatedSkillName(result.name);
+    setValidatingUpload(false);
   }
 
   function buildCloudUploadInput(source: UploadSource) {
@@ -1178,13 +1873,20 @@ function SkillTab({
           file: new File([f.data], f.path.split('/').pop() || f.path),
           path: f.path,
         }));
-        setUploadSource({ kind: 'folder', files, folderName: result.folderName });
+        await stageSkillUploadSource({ kind: 'folder', files, folderName: result.folderName });
+      } else if (result.kind === 'zip') {
+        const file = new File([result.data], result.fileName, { type: 'application/zip' });
+        await stageSkillUploadSource({ kind: 'zip', file });
       } else {
-        const file = new File([result.data], result.fileName);
-        setUploadSource({ kind: 'zip', file });
+        const files = result.files.map((entry) => ({
+          file: new File([entry.data], entry.path.split('/').pop() || entry.path),
+          path: entry.path,
+        }));
+        await stageSkillUploadSource({ kind: 'files', files });
       }
-    } catch {
-      // Fall back silently
+    } catch (error) {
+      setUploadError(toPublishDialogMessage(error, locale, '文件读取失败，请重新选择。', 'The file could not be read. Please choose it again.'));
+      setValidatedSkillName(null);
     }
   }
 
@@ -1212,15 +1914,15 @@ function SkillTab({
       if (entries && entries.length > 0) {
         const skillFile = entries.find((f) => /(^|\/)SKILL\.md$/i.test(f.path));
         if (entries.length === 1 && !skillFile && /\.(zip)$/i.test(entries[0]!.file.name)) {
-          setUploadSource({ kind: 'zip', file: entries[0]!.file });
+          await stageSkillUploadSource({ kind: 'zip', file: entries[0]!.file });
           return;
         }
         if (skillFile && entries.length === 1) {
-          setUploadSource({ kind: 'file', file: skillFile.file });
+          await stageSkillUploadSource({ kind: 'file', file: skillFile.file });
           return;
         }
         const folderName = entries[0]?.path.split('/').filter(Boolean)[0];
-        setUploadSource({
+        await stageSkillUploadSource({
           kind: 'folder',
           files: entries,
           ...(folderName ? { folderName } : {}),
@@ -1231,11 +1933,11 @@ function SkillTab({
 
     const files = Array.from(e.dataTransfer.files ?? []);
     if (files.length === 1 && /\.(zip)$/i.test(files[0]!.name)) {
-      setUploadSource({ kind: 'zip', file: files[0]! });
+      await stageSkillUploadSource({ kind: 'zip', file: files[0]! });
     } else if (files.length === 1 && /(^|\/)SKILL\.md$/i.test(files[0]!.name)) {
-      setUploadSource({ kind: 'file', file: files[0]! });
+      await stageSkillUploadSource({ kind: 'file', file: files[0]! });
     } else if (files.length > 0) {
-      setUploadSource({
+      await stageSkillUploadSource({
         kind: 'folder',
         files: files.map((f) => ({ file: f, path: f.name })),
       });
@@ -1251,6 +1953,12 @@ function SkillTab({
     }
     if (uploadSource.kind === 'file') {
       return uploadSource.file.name;
+    }
+    if (uploadSource.kind === 'files') {
+      if (uploadSource.files.length === 1) {
+        return uploadSource.files[0]?.file.name ?? 'SKILL.md';
+      }
+      return localeText(locale, '已选择 ' + uploadSource.files.length + ' 个文件', uploadSource.files.length + ' files selected');
     }
     if (uploadSource.files.length === 1 && /(^|\/)SKILL\.md$/i.test(uploadSource.files[0]!.path)) {
       return uploadSource.files[0]!.file.name;
@@ -1291,32 +1999,20 @@ function SkillTab({
         });
         return;
       }
-      if (!uploadSource) return;
-      const skillName = await deriveSkillName(uploadSource);
-      if (!skillName) {
-        setToast({ message: t('pluginsView.skillMissingFile'), tone: 'error' });
-        return;
-      }
-      if (await checkCloudSkillDuplicate(skillName)) {
-        setToast({ message: t('personalScope.skillDuplicateName' as any), tone: 'error' });
-        return;
-      }
+      if (!uploadSource || !validatedSkillName || uploadError || validatingUpload) return;
       const uploadInput = buildCloudUploadInput(uploadSource);
       if (!category) return;
-      const result = await uploadSkillToCloud(uploadInput, workspaceContext, 'public', category, logoKey);
-      if ('error' in result) {
-        setToast({ message: result.error.message || t('pluginsView.importFailed'), tone: 'error' });
-        return;
-      }
-      setToast({
-        message: t('personalScope.importAndShareSuccess', { name: result.title }),
-        tone: 'success',
+      onPublish({
+        name: validatedSkillName,
+        description: '',
+        body: '',
+        category,
+        logoKey,
+        upload: uploadInput,
+        workspaceContext,
       });
-      setUploadSource(null);
-      window.dispatchEvent(new CustomEvent('personal:skill-refresh'));
-      onPublish({ name: result.title, description: '', body: '', category, logoKey });
     } catch (error) {
-      setToast({ message: error instanceof Error ? error.message : String(error), tone: 'error' });
+      setToast({ message: toPublishDialogMessage(error, locale, 'Skill 发布失败，请稍后重试。', 'Skill publishing failed. Please try again.'), tone: 'error' });
     } finally {
       setBusy(false);
     }
@@ -1342,25 +2038,7 @@ function SkillTab({
         {source === 'internal' ? (
           <div className={styles.projectBrowser}>
             <aside className={styles.projectWorkspaceTree} aria-label={locale.startsWith('zh') ? 'Skill 位置' : 'Skill locations'}>
-              {skillWorkspaces.map((workspace) => {
-                const selectedWorkspace = workspace.workspaceId === activeSkillWorkspaceId;
-                return (
-                  <button
-                    key={workspace.workspaceId}
-                    type="button"
-                    className={selectedWorkspace ? `${styles.projectWorkspaceRow} ${styles.projectWorkspaceRowActive}` : styles.projectWorkspaceRow}
-                    onClick={() => {
-                      setActiveSkillWorkspaceId(workspace.workspaceId);
-                      setSelectedSkillId(null);
-                      setCategory(null);
-                      setSkillSearch('');
-                    }}
-                  >
-                    <span>{workspace.isDefaultTeam ? (locale.startsWith('zh') ? '个人所有' : 'Personal') : workspace.workspaceName}</span>
-                    <small>{workspace.isDefaultTeam ? (locale.startsWith('zh') ? '个人' : 'Personal') : (locale.startsWith('zh') ? '团队' : 'Team')}</small>
-                  </button>
-                );
-              })}
+              <WorkspaceTree nodes={skillTreeNodes} />
             </aside>
             <div className={styles.projectBrowserMain}>
               <div className={styles.projectSearchBox}>
@@ -1438,10 +2116,10 @@ function SkillTab({
               if (files.length === 0) return;
               const skillFile = files.find((file) => /(^|\/)SKILL\.md$/i.test(file.webkitRelativePath || file.name));
               if (skillFile && files.length === 1) {
-                setUploadSource({ kind: 'file', file: skillFile });
+                void stageSkillUploadSource({ kind: 'file', file: skillFile });
               } else {
                 const folderName = files[0]?.webkitRelativePath?.split('/').filter(Boolean)[0];
-                setUploadSource({
+                void stageSkillUploadSource({
                   kind: 'folder',
                   files: files.map((file) => ({ file, path: file.webkitRelativePath || file.name })),
                   ...(folderName ? { folderName } : {}),
@@ -1451,12 +2129,19 @@ function SkillTab({
           />
           {uploadSource ? (
             <div className={styles.externalPath}>
-              <Icon name={uploadSource.kind === 'zip' ? 'file' : 'folder'} size={15} />
+              <Icon name={uploadSource.kind === 'folder' ? 'folder' : 'file'} size={15} />
               <span style={{ flex: '1 1 auto', minWidth: 0 }}>{renderUploadLabel()}</span>
               <button
                 type="button"
                 className={styles.externalPathClear}
-                onClick={() => setUploadSource(null)}
+                onClick={() => {
+                  skillValidationSeqRef.current += 1;
+                  setUploadSource(null);
+                  setUploadError(null);
+                  setValidatedSkillName(null);
+                  setValidatingUpload(false);
+                  setToast(null);
+                }}
                 aria-label={locale.startsWith('zh') ? '删除已导入 Skill' : 'Remove imported Skill'}
               >
                 <Icon name="trash" size={15} />
@@ -1474,10 +2159,13 @@ function SkillTab({
             >
               <span className={styles.dropzoneIcon} aria-hidden><Icon name="upload" size={28} /></span>
               <span className={styles.dropzoneText}>
-                {locale.startsWith('zh') ? '选择文件夹 / ZIP 包' : 'Choose folder / ZIP'}
+                {locale.startsWith('zh') ? '选择文件夹 / ZIP / SKILL.md' : 'Choose folder / ZIP / SKILL.md'}
               </span>
             </button>
           )}
+          {source === 'external' && uploadError ? (
+            <p className={styles.inlineError} role="alert">{uploadError}</p>
+          ) : null}
           </>
         )}
       </section>
@@ -1608,7 +2296,7 @@ export function PublishDialog({ onClose, onPublish, initialCategory }: Props) {
       await onPublish(selection);
       onClose();
     } catch (error) {
-      setPublishError(error instanceof Error ? error.message : String(error));
+      setPublishError(toPublishDialogMessage(error, locale, '发布失败，请稍后重试。', 'Publishing failed. Please try again.'));
     } finally {
       setPublishing(false);
     }

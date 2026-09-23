@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { createHmac, randomBytes } from "node:crypto";
 import { appendFile, mkdir, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
 import { release } from "node:os";
-import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
@@ -2120,6 +2120,10 @@ async function showProjectImportPickerForSender(
  * separators. Used by the skill-source picker to send folder contents
  * to the renderer as ArrayBuffer payloads.
  */
+function toStandaloneArrayBuffer(data: Uint8Array): ArrayBuffer {
+  return Uint8Array.from(data).buffer;
+}
+
 async function readSkillDirRecursive(
   baseDir: string,
   relPath: string,
@@ -2135,7 +2139,7 @@ async function readSkillDirRecursive(
       results.push(...nested);
     } else if (entry.isFile()) {
       const data = await readFile(join(baseDir, childRel));
-      results.push({ path: childRel, data: data.buffer });
+      results.push({ path: childRel, data: toStandaloneArrayBuffer(data) });
     }
   }
   return results;
@@ -2296,11 +2300,10 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       registerDesktopAuth: options.registerDesktopAuthWithDaemon,
     });
   });
-  // Skill-source picker: on macOS the native dialog supports
-  // `openFile` + `openDirectory` simultaneously, letting the user pick
-  // either a folder or a .zip in a single picker. On Windows that
-  // combination is unsupported, so we only offer `openDirectory` here;
-  // the renderer shows a separate "Select zip file" button for Windows.
+  // Generic local-source picker used by community project / Skill publish.
+  // On macOS the native dialog supports folders and regular files in one
+  // picker. Regular files may be multi-selected; the renderer applies the
+  // caller-specific validation rules (project text/image files vs SKILL.md).
   // The chosen data is returned as ArrayBuffer(s) so the renderer can
   // construct File objects without a second round-trip to the main process.
   ipcMain.handle("dialog:pick-skill-source", async (event) => {
@@ -2309,8 +2312,8 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     const pickerOptions: Electron.OpenDialogOptions = {
       properties:
         process.platform === "darwin"
-          ? ["openFile", "openDirectory", "createDirectory", "dontAddToRecent"]
-          : ["openDirectory", "createDirectory", "dontAddToRecent"],
+          ? ["openFile", "openDirectory", "multiSelections", "createDirectory", "dontAddToRecent"]
+          : ["openFile", "multiSelections", "dontAddToRecent"],
     };
     const result = parent
       ? await dialog.showOpenDialog(parent, pickerOptions)
@@ -2318,17 +2321,54 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     if (result.canceled || result.filePaths.length === 0) {
       return { ok: false, canceled: true };
     }
-    const selected = result.filePaths[0]!;
-    const statResult = await stat(selected);
-    if (statResult.isDirectory()) {
+    const selectedPaths = result.filePaths;
+    const selectedStats = await Promise.all(
+      selectedPaths.map(async (selectedPath) => ({
+        selectedPath,
+        stat: await stat(selectedPath),
+      })),
+    );
+
+    if (selectedStats.length === 1 && selectedStats[0]!.stat.isDirectory()) {
+      const selected = selectedStats[0]!.selectedPath;
       const folderName = basename(selected);
       const files = await readSkillDirRecursive(selected, "");
       return { ok: true, kind: "folder", folderName, files };
     }
-    // Treat as a file (zip).
-    const fileName = basename(selected);
-    const data = await readFile(selected);
-    return { ok: true, kind: "zip", fileName, data: data.buffer };
+
+    if (selectedStats.some(({ stat: selectedStat }) => selectedStat.isDirectory())) {
+      return {
+        ok: false,
+        canceled: false,
+        reason: "select either one folder or one/more regular files",
+      };
+    }
+
+    if (selectedStats.length === 1 && /\.zip$/i.test(selectedStats[0]!.selectedPath)) {
+      const selected = selectedStats[0]!.selectedPath;
+      const fileName = basename(selected);
+      const data = await readFile(selected);
+      return {
+        ok: true,
+        kind: "zip",
+        fileName,
+        data: toStandaloneArrayBuffer(data),
+      };
+    }
+
+    const files = await Promise.all(
+      selectedStats.map(async ({ selectedPath }) => {
+        const data = await readFile(selectedPath);
+        return {
+          path: basename(selectedPath),
+          data: toStandaloneArrayBuffer(data),
+        };
+      }),
+    );
+    const selectionName = selectedPaths.length === 1
+      ? basename(selectedPaths[0]!, extname(selectedPaths[0]!))
+      : basename(dirname(selectedPaths[0]!));
+    return { ok: true, kind: "files", selectionName, files };
   });
   // shell.openPath opens an absolute filesystem path in the OS file
   // manager (Finder / Explorer / Files). It resolves to '' on success

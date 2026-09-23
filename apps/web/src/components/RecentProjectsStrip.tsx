@@ -132,6 +132,7 @@ export interface CollectionSelectionExtension {
 import {
   coverFromProjectFile,
   projectCoverUrl,
+  projectFallbackVisual,
   selectProjectFileCover,
   type ProjectCoverOverride,
 } from './project-cover';
@@ -3085,17 +3086,7 @@ export function projectCover(
   initial: string;
   name?: string;
 } {
-  let h = 0;
-  for (let i = 0; i < project.id.length; i += 1) {
-    h = (h * 31 + project.id.charCodeAt(i)) >>> 0;
-  }
-  const hue = h % 360;
-  const hue2 = (hue + 38) % 360;
-  const style: CSSProperties = {
-    background: `radial-gradient(circle at 30% 28%, hsl(${hue} 70% 78% / 0.55), transparent 42%), linear-gradient(135deg, hsl(${hue} 65% 88%), hsl(${hue2} 70% 90%))`,
-  };
-  const trimmed = project.name.trim();
-  const initial = (trimmed ? Array.from(trimmed)[0]! : '?').toUpperCase();
+  const { style, initial } = projectFallbackVisual(project.id, project.name);
  // Use the pre-captured entry screenshot from team_projects.cover_digest
  // when available — a single <img> load is far cheaper than resolving the
  // entry file, probing with HEAD, and rendering an iframe document.

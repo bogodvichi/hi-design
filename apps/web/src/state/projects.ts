@@ -1049,6 +1049,33 @@ export async function importFolderProject(
   return (await resp.json()) as ImportFolderResponse;
 }
 
+export async function importProjectFiles(
+  files: Array<{ file: File; path: string }>,
+  name: string,
+  workspaceContext?: WorkspaceCollabContext | null,
+): Promise<ImportFolderResponse> {
+  const form = new FormData();
+  for (const entry of files) {
+    form.append('files', entry.file, entry.path);
+  }
+  form.append('paths', JSON.stringify(files.map((entry) => entry.path)));
+  form.append('name', name);
+  const resp = await fetch('/api/import/project-files', {
+    method: 'POST',
+    ...(workspaceContext ? { headers: workspaceProjectHeaders(workspaceContext) } : {}),
+    body: form,
+  });
+  if (!resp.ok) {
+    let message = 'Failed to import project files';
+    try {
+      const body = await resp.json() as { error?: unknown };
+      if (typeof body.error === 'string' && body.error.trim()) message = body.error;
+    } catch { /* use default message */ }
+    throw new Error(message);
+  }
+  return (await resp.json()) as ImportFolderResponse;
+}
+
 export async function importProjectZip(
   file: File,
   workspaceContext?: WorkspaceCollabContext | null,

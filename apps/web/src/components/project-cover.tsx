@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { CSSProperties } from 'react';
 import type { WorkspaceCollabContext } from '@open-design/contracts';
 import { projectFileUrl } from '../providers/registry';
 import type { ProjectFile } from '../types';
@@ -14,6 +15,52 @@ export interface ProjectCoverOverride {
   kind: ProjectCoverKind;
   name: string;
   mtime?: number;
+}
+
+export function projectFallbackVisual(
+  projectId: string,
+  projectName: string,
+): { style: CSSProperties; initial: string } {
+  let h = 0;
+  for (let i = 0; i < projectId.length; i += 1) {
+    h = (h * 31 + projectId.charCodeAt(i)) >>> 0;
+  }
+  const hue = h % 360;
+  const hue2 = (hue + 38) % 360;
+  const style: CSSProperties = {
+    background: `radial-gradient(circle at 30% 28%, hsl(${hue} 70% 78% / 0.55), transparent 42%), linear-gradient(135deg, hsl(${hue} 65% 88%), hsl(${hue2} 70% 90%))`,
+  };
+  const trimmed = projectName.trim();
+  const initial = (trimmed ? Array.from(trimmed)[0]! : '?').toUpperCase();
+  return { style, initial };
+}
+
+export function communityOriginProjectId(tags: unknown): string | null {
+  if (!Array.isArray(tags)) return null;
+  for (const tag of tags) {
+    if (typeof tag !== 'string') continue;
+    if (!tag.startsWith('project-id:')) continue;
+    const projectId = tag.slice('project-id:'.length).trim();
+    if (projectId) return projectId;
+  }
+  return null;
+}
+
+export function communityOriginProjectName(tags: unknown): string | null {
+  if (!Array.isArray(tags)) return null;
+  for (const tag of tags) {
+    if (typeof tag !== 'string') continue;
+    if (!tag.startsWith('project-name:')) continue;
+    const encoded = tag.slice('project-name:'.length);
+    if (!encoded) continue;
+    try {
+      const projectName = decodeURIComponent(encoded).trim();
+      if (projectName) return projectName;
+    } catch {
+      // Ignore malformed legacy tags and fall back to the community title.
+    }
+  }
+  return null;
 }
 
 export function coverFromProjectFile(

@@ -322,8 +322,29 @@ export function registerPluginMarketplaceRoutes(app: Express, deps: RegisterPlug
      const { getMarketplace, ensureMarketplaceManifest } = await import('../../plugins/marketplaces.js');
      const row = getMarketplace(db, req.params.id) as MarketplaceRow | null;
      if (!row) return res.status(404).json({ error: 'marketplace not found' });
-     const plugins = (row.manifest.plugins ?? []) as Array<Record<string, unknown>>;
-     const entry = plugins.find((p) => p.name === req.params.name);
+
+     let plugins = (row.manifest.plugins ?? []) as Array<Record<string, unknown>>;
+     let entry = plugins.find((p) => p.name === req.params.name);
+
+     // A newly published project can be visible from the fresh HDW list before
+     // the daemon's cached marketplace row has caught up. Refresh once before
+     // treating the resource as missing so publish → delete works immediately.
+     if (!entry) {
+       try {
+         const manifestText = await fetchHdwMarketplaceManifestText(HDW_MARKETPLACE_URL, dataDir);
+         if (manifestText) {
+           ensureMarketplaceManifest(db, {
+             id: req.params.id,
+             url: row.url,
+             trust: row.trust ?? 'restricted',
+             manifestText,
+           });
+           const freshManifest = JSON.parse(manifestText) as { plugins?: Array<Record<string, unknown>> };
+           plugins = freshManifest.plugins ?? [];
+           entry = plugins.find((p) => p.name === req.params.name);
+         }
+       } catch { /* keep the original not-found result */ }
+     }
      if (!entry) return res.status(404).json({ error: 'plugin not found in marketplace' });
      const username = readSsoUsername(dataDir);
      if (!username) return res.status(401).json({ error: 'SSO session is required to delete a community plugin' });

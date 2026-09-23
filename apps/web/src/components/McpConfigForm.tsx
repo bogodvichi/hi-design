@@ -60,14 +60,34 @@ const PRESETS: PresetDef[] = [
   },
 ];
 
-function isValidJson(text: string): boolean {
-  if (!text.trim()) return false;
+function validateMcpConfig(
+  text: string,
+  t: ReturnType<typeof useT>,
+): string | null {
+  if (!text.trim()) return null;
+  let parsed: Record<string, unknown>;
   try {
-    JSON.parse(text);
-    return true;
+    const value = JSON.parse(text);
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return t('personalScope.mcpFormJsonInvalid');
+    }
+    parsed = value as Record<string, unknown>;
   } catch {
-    return false;
+    return t('personalScope.mcpFormJsonInvalid');
   }
+
+  const rawType = typeof parsed.type === 'string' ? parsed.type : 'stdio';
+  if (rawType === 'http' || rawType === 'sse') {
+    if (typeof parsed.url !== 'string' || !parsed.url.trim()) {
+      return t('personalScope.mcpFormUrlRequired');
+    }
+    return null;
+  }
+
+  if (typeof parsed.command !== 'string' || !parsed.command.trim()) {
+    return t('personalScope.mcpFormCommandRequired');
+  }
+  return null;
 }
 
 export function McpConfigForm({
@@ -89,7 +109,8 @@ export function McpConfigForm({
   const [config, setConfig] = useState('');
   const [logoKey, setLogoKey] = useState<McpLogoKey>('orbit');
 
-  const configValid = isValidJson(config);
+  const configError = validateMcpConfig(config, t);
+  const configValid = config.trim().length > 0 && configError === null;
   const canConfirm = label.trim().length > 0 && configValid;
 
   useEffect(() => { onCanConfirmChange?.(canConfirm); }, [canConfirm, onCanConfirmChange]);
@@ -201,6 +222,9 @@ export function McpConfigForm({
           value={config}
           onChange={(e) => setConfig(e.target.value)}
         />
+        {config.trim() && configError ? (
+          <p className={styles.validationError} role="alert">{configError}</p>
+        ) : null}
         <div className={styles.jsonActions}>
           <button
             type="button"
