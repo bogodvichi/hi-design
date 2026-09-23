@@ -1,5 +1,6 @@
 import type { Express, Request } from 'express';
 import { extractCommunityArchive } from '../../community-archive.js';
+import { buildDocumentPreview } from '../../document-preview.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type * as BetterSqlite3 from 'better-sqlite3';
@@ -43,6 +44,111 @@ export interface RegisterPluginMarketplaceRoutesDeps {
     projectId: string,
     projectMeta: { name?: string; metadata?: Record<string, unknown> | null } | null,
   ) => void;
+}
+
+
+const COMMUNITY_PREVIEW_SKIP_FILES = new Set([
+  'skill.md',
+  'design-handoff.md',
+  'design-manifest.json',
+  'open-design.json',
+]);
+
+const COMMUNITY_PREVIEW_SKIP_DIRS = new Set([
+  '.git',
+  '.od',
+  'node_modules',
+]);
+
+async function listCommunityPreviewFiles(root: string): Promise<string[]> {
+  const files: string[] = [];
+  const queue: Array<{ dir: string; rel: string; depth: number }> = [
+    { dir: root, rel: '', depth: 0 },
+  ];
+
+  while (queue.length > 0 && files.length < 2000) {
+    const current = queue.shift()!;
+    let entries: fs.Dirent[];
+    try {
+      entries = await fs.promises.readdir(current.dir, { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    entries.sort((a, b) => a.name.localeCompare(b.name));
+
+    for (const entry of entries) {
+      if (entry.name === '.extracted') continue;
+      const rel = current.rel ? `${current.rel}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) {
+        if (current.depth >= 6) continue;
+        if (COMMUNITY_PREVIEW_SKIP_DIRS.has(entry.name.toLowerCase())) continue;
+        queue.push({
+          dir: path.join(current.dir, entry.name),
+          rel,
+          depth: current.depth + 1,
+        });
+        continue;
+      }
+      if (!entry.isFile()) continue;
+      files.push(rel);
+      if (files.length >= 2000) break;
+    }
+  }
+
+  return files;
+}
+
+function previewPathRank(rel: string, kind: 'html' | 'markdown' | 'pdf'): number {
+  const normalized = rel.replace(/\\/g, '/');
+  const lower = normalized.toLowerCase();
+  const base = path.posix.basename(lower);
+  const depth = normalized.split('/').length - 1;
+
+  if (kind === 'html') {
+    const exact = [
+      'preview/index.html',
+      'index.html',
+      'examples/index.html',
+      'assets/index.html',
+      'assets/preview.html',
+      'assets/example.html',
+      'public/index.html',
+      'dist/index.html',
+    ].indexOf(lower);
+    if (exact >= 0) return exact;
+    if (/^index\.html?$/i.test(base)) return 20 + depth;
+    if (/\b(preview|home|landing|main|app|showcase)\b/i.test(base)) return 30 + depth;
+    return 50 + depth;
+  }
+
+  if (kind === 'markdown') {
+    if (COMMUNITY_PREVIEW_SKIP_FILES.has(base)) return Number.POSITIVE_INFINITY;
+    if (/^readme\.md$/i.test(base)) return 0 + depth;
+    if (/^(index|overview|main)\.md$/i.test(base)) return 10 + depth;
+    return 20 + depth;
+  }
+
+  if (/\b(cover|preview|main|final|report)\b/i.test(base)) return 0 + depth;
+  return 10 + depth;
+}
+
+function selectCommunityPreviewFile(
+  files: string[],
+  kind: 'html' | 'markdown' | 'pdf',
+): string | null {
+  const matcher = kind === 'html'
+    ? /\.html?$/i
+    : kind === 'markdown'
+      ? /\.md(?:own)?$/i
+      : /\.pdf$/i;
+
+  const candidates = files
+    .filter((rel) => matcher.test(rel))
+    .map((rel) => ({ rel, rank: previewPathRank(rel, kind) }))
+    .filter((item) => Number.isFinite(item.rank))
+    .sort((a, b) => a.rank - b.rank || a.rel.localeCompare(b.rel));
+
+  return candidates[0]?.rel ?? null;
 }
 
 export function registerPluginMarketplaceRoutes(app: Express, deps: RegisterPluginMarketplaceRoutesDeps): void {
@@ -410,46 +516,45 @@ export function registerPluginMarketplaceRoutes(app: Express, deps: RegisterPlug
        await fs.promises.writeFile(markerPath, String(Date.now()));
      }
 
-     const candidateRels = ['preview/index.html', 'index.html', 'examples/index.html', 'assets/index.html', 'assets/preview.html', 'assets/example.html', 'public/index.html', 'dist/index.html'];
-     const searchDirs = ['', 'assets', 'public', 'dist', 'examples', 'preview'];
-     let htmlPath = null;
-     for (const rel of candidateRels) {
-       const full = path.join(cacheDir, rel);
-       try {
-         const st = await fs.promises.stat(full);
-         if (st.isFile()) { htmlPath = full; break; }
-       } catch {}
-     }
-     if (!htmlPath) {
-       for (const dir of searchDirs) {
-         const abs = path.join(cacheDir, dir);
-         try {
-           const entries = await fs.promises.readdir(abs, { withFileTypes: true });
-           for (const ent of entries) {
-             if (ent.isFile() && /\\.html?$/i.test(ent.name)) {
-               htmlPath = path.join(abs, ent.name);
-               break;
-             }
-           }
-         } catch {}
-         if (htmlPath) break;
-       }
-     }
-
-     if (!htmlPath) {
-       const desc = String(entry.description ?? '');
-       const esc = (s: string) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-       const fallbackHtml = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;height:100%;display:grid;place-items:center;font-family:system-ui,sans-serif;background:#f8fafc;color:#64748b}h1{font-size:20px;font-weight:700;color:#1e293b}</style></head><body><div><h1>' + esc(pluginTitle) + '</h1>' + (desc ? '<p>' + esc(desc) + '</p>' : '') + '</div></body></html>';
+     const previewFiles = await listCommunityPreviewFiles(cacheDir);
+     const htmlRel = selectCommunityPreviewFile(previewFiles, 'html');
+     if (htmlRel) {
+       const buf = await fs.promises.readFile(path.join(cacheDir, ...htmlRel.split('/')));
        res.setHeader('Content-Type', 'text/html; charset=utf-8');
-       res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'");
-       return res.send(fallbackHtml);
+       res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self' data: blob:; media-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'none'; frame-ancestors 'self'");
+       res.setHeader('X-Content-Type-Options', 'nosniff');
+       return res.send(buf);
      }
 
-     const buf = await fs.promises.readFile(htmlPath);
+     const markdownRel = selectCommunityPreviewFile(previewFiles, 'markdown');
+     if (markdownRel) {
+       const markdown = await fs.promises.readFile(
+         path.join(cacheDir, ...markdownRel.split('/')),
+         'utf8',
+       );
+       res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+       res.setHeader('X-Content-Type-Options', 'nosniff');
+       res.setHeader('X-Open-Design-Preview-File', encodeURIComponent(markdownRel));
+       return res.send(markdown);
+     }
+
+     const pdfRel = selectCommunityPreviewFile(previewFiles, 'pdf');
+     if (pdfRel) {
+       const pdfBuffer = await fs.promises.readFile(path.join(cacheDir, ...pdfRel.split('/')));
+       const preview = await buildDocumentPreview({
+         name: path.posix.basename(pdfRel),
+         buffer: pdfBuffer,
+       });
+       res.setHeader('X-Open-Design-Preview-File', encodeURIComponent(pdfRel));
+       return res.json(preview);
+     }
+
+     const desc = String(entry.description ?? '');
+     const esc = (s: string) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+     const fallbackHtml = '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;height:100%;display:grid;place-items:center;font-family:system-ui,sans-serif;background:#f8fafc;color:#64748b}h1{font-size:20px;font-weight:700;color:#1e293b}</style></head><body><div><h1>' + esc(pluginTitle) + '</h1>' + (desc ? '<p>' + esc(desc) + '</p>' : '') + '</div></body></html>';
      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-     res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self' data: blob:; media-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'none'; frame-ancestors 'self'");
-     res.setHeader('X-Content-Type-Options', 'nosniff');
-     res.send(buf);
+     res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'");
+     return res.send(fallbackHtml);
    } catch (err) { res.status(500).json({ error: String(err) }); }
  });
 app.post('/api/marketplaces/:id/plugins/:name/remix', async (req, res) => {

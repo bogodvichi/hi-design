@@ -217,6 +217,115 @@ describe('SquareView remix recents', () => {
     });
   });
 
+  it('renders Markdown project content in the community preview', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const pathname = new URL(String(input), 'http://daemon.local').pathname;
+      if (pathname === '/api/workspace/directory') {
+        return jsonResponse({
+          items: [{
+            workspaceId: 'shared-space',
+            workspaceMemberId: 'directory-member-id',
+            workspaceType: 'personal',
+            isDefaultTeam: true,
+          }],
+          activeWorkspaceId: 'shared-space',
+        });
+      }
+      if (pathname === '/api/marketplaces/hdw-community/plugins') {
+        return jsonResponse({
+          plugins: [{
+            name: 'trip-project',
+            title: '霞浦国庆行程',
+            version: '1.0.0',
+            publisher: { displayName: 'Project Author' },
+          }],
+        });
+      }
+      if (pathname === '/api/marketplaces/hdw-community/plugins/trip-project/preview') {
+        return new Response('# 霞浦国庆行程\n\n第一天：到达霞浦。', {
+          status: 200,
+          headers: {
+            'content-type': 'text/markdown; charset=utf-8',
+            'x-open-design-preview-file': encodeURIComponent('霞浦国庆行程.md'),
+          },
+        });
+      }
+      return jsonResponse({});
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <I18nProvider initial="zh-CN">
+        <SquareView />
+      </I18nProvider>,
+    );
+
+    const cardTitle = await screen.findByText('霞浦国庆行程');
+    fireEvent.click(cardTitle.closest('button')!);
+
+    expect(await screen.findByRole('heading', { name: '霞浦国庆行程' })).toBeTruthy();
+    expect(screen.getByText('第一天：到达霞浦。')).toBeTruthy();
+    expect(screen.getByText('霞浦国庆行程.md')).toBeTruthy();
+  });
+
+  it('renders PDF document-preview content in the community preview', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const pathname = new URL(String(input), 'http://daemon.local').pathname;
+      if (pathname === '/api/workspace/directory') {
+        return jsonResponse({
+          items: [{
+            workspaceId: 'shared-space',
+            workspaceMemberId: 'directory-member-id',
+            workspaceType: 'personal',
+            isDefaultTeam: true,
+          }],
+          activeWorkspaceId: 'shared-space',
+        });
+      }
+      if (pathname === '/api/marketplaces/hdw-community/plugins') {
+        return jsonResponse({
+          plugins: [{
+            name: 'pdf-project',
+            title: 'PDF project',
+            version: '1.0.0',
+            publisher: { displayName: 'Project Author' },
+          }],
+        });
+      }
+      if (pathname === '/api/marketplaces/hdw-community/plugins/pdf-project/preview') {
+        return new Response(JSON.stringify({
+          kind: 'pdf',
+          title: 'report.pdf',
+          sections: [{
+            title: 'PDF',
+            lines: ['行程 PDF 正文第一行', '行程 PDF 正文第二行'],
+          }],
+        }), {
+          status: 200,
+          headers: {
+            'content-type': 'application/json; charset=utf-8',
+            'x-open-design-preview-file': encodeURIComponent('report.pdf'),
+          },
+        });
+      }
+      return jsonResponse({});
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <I18nProvider initial="zh-CN">
+        <SquareView />
+      </I18nProvider>,
+    );
+
+    const cardTitle = await screen.findByText('PDF project');
+    fireEvent.click(cardTitle.closest('button')!);
+
+    expect(await screen.findByText('report.pdf')).toBeTruthy();
+    expect(screen.getByText('行程 PDF 正文第一行')).toBeTruthy();
+    expect(screen.getByText('行程 PDF 正文第二行')).toBeTruthy();
+  });
+
   it('records a remixed project in recently opened projects and polls its cover', async () => {
     const selfSharedSpaceMemberId = await getSharedSpaceMemberId('square-tester');
 

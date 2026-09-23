@@ -155,6 +155,7 @@ import {
   normalizeRunContextSelection,
   projectMetadataContextSelection,
   renderRunContextPrompt,
+  renderSelectedMcpRunContextPrompt,
 } from './runtimes/chat-run-context.js';
 import {
   daemonAgentPayloadToPersistedAgentEvent,
@@ -211,6 +212,7 @@ export {
 } from './runtimes/chat-run-lifecycle.js';
 export {
   renderRunContextPrompt,
+  renderSelectedMcpRunContextPrompt,
 } from './runtimes/chat-run-context.js';
 export {
   daemonAgentPayloadToPersistedAgentEvent,
@@ -11852,7 +11854,7 @@ const projectRouteResult = registerProjectRoutes(app, {
         : projectRecord?.skillId,
     );
     const runContextPrompt = nativePromptCore
-      ? ''
+      ? renderSelectedMcpRunContextPrompt(context, projectRecord?.metadata)
       : renderRunContextPrompt(context, projectRecord?.metadata);
    const linkedDirs = (() => {
       if (!Array.isArray(projectRecord?.metadata?.linkedDirs)) return [];
