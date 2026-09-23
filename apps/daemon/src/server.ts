@@ -8688,6 +8688,7 @@ const teamResourceListByKind = {
   registerHdwRoutes(app, {
     sendApiError,
     dataDir: RUNTIME_DATA_DIR,
+    db,
   });
 
   registerDaemonRoutes(app, {

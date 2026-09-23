@@ -202,6 +202,7 @@ import {
   createProject,
   createPluginShareProject,
   deleteProject as deleteProjectApi,
+  copySharedProjectToPersonal,
   duplicateProject,
   getProject,
   importClaudeDesignZip,
@@ -3591,12 +3592,19 @@ function AppInner() {
   const handleCopyProject = useCallback(
     async (
       sourceProjectId: string,
-      input: { name?: string; targetFolderId?: string | null } = {},
+      input: {
+        name?: string;
+        targetWorkspaceId?: string;
+        targetFolderId?: string | null;
+      } = {},
     ) => {
       const sourceWorkspaceContext =
         await resolveSourceProjectWorkspaceContext(sourceProjectId);
-      const { targetFolderId, name } = input;
-      if (targetFolderId !== undefined && !sourceWorkspaceContext) {
+      const { targetFolderId, targetWorkspaceId, name } = input;
+      if (
+        (targetFolderId !== undefined || targetWorkspaceId !== undefined) &&
+        !sourceWorkspaceContext
+      ) {
         throw new Error('Workspace context is required to copy a project into a folder');
       }
       const result = await duplicateProject(
@@ -3604,7 +3612,20 @@ function AppInner() {
         name ? { name } : {},
         sourceWorkspaceContext,
       );
-      if (targetFolderId !== undefined && sourceWorkspaceContext) {
+      if (targetWorkspaceId !== undefined && sourceWorkspaceContext) {
+        try {
+          await moveWorkspaceProject({
+            projectId: result.project.id,
+            visibility: 'team',
+            workspaceContext: sourceWorkspaceContext,
+            targetWorkspaceId,
+            targetFolderId,
+          });
+        } catch (error) {
+          await deleteProjectApi(result.project.id, sourceWorkspaceContext).catch(() => {});
+          throw error;
+        }
+      } else if (targetFolderId !== undefined && sourceWorkspaceContext) {
         try {
           await moveWorkspaceProject({
             projectId: result.project.id,
@@ -3623,9 +3644,35 @@ function AppInner() {
         result.project,
         ...curr.filter((p) => p.id !== result.project.id),
       ]);
+      if (targetWorkspaceId !== undefined) {
+        notifyTeamProjectsChanged({ kind: 'catalog', projectId: result.project.id });
+        window.dispatchEvent(
+          new CustomEvent('hdw:folders-updated', { detail: { teamId: targetWorkspaceId } }),
+        );
+        if (targetFolderId != null) {
+          window.dispatchEvent(
+            new CustomEvent('hdw:subfolders-updated', {
+              detail: { teamId: targetWorkspaceId, folderId: targetFolderId },
+            }),
+          );
+        }
+      }
       window.dispatchEvent(new CustomEvent('personal:folders-updated'));
     },
     [rememberLocalProject, resolveSourceProjectWorkspaceContext],
+  );
+
+  const handleCopySharedProject = useCallback(
+    async (sourceProjectId: string, homeWorkspaceId: string) => {
+      const result = await copySharedProjectToPersonal(sourceProjectId, homeWorkspaceId);
+      rememberLocalProject(result.project.id);
+      setProjects((curr) => [
+        result.project,
+        ...curr.filter((p) => p.id !== result.project.id),
+      ]);
+      window.dispatchEvent(new CustomEvent('personal:folders-updated'));
+    },
+    [rememberLocalProject],
   );
 
  const handleCreatePluginShareProject = useCallback(
@@ -5389,6 +5436,7 @@ if (fetchedProject) {
       onRenameProject={handleRenameProject}
       onProjectsRefresh={refreshProjectsStrict}
       onCopyProject={handleCopyProject}
+      onCopySharedProject={handleCopySharedProject}
       onTeamProjectContentReady={handleTeamProjectContentReady}
       onChangeDefaultDesignSystem={handleChangeDefaultDesignSystem}
       onCreateDesignSystem={() => {

@@ -8,6 +8,7 @@ import { ModuleBreadcrumb } from './ModuleBreadcrumb';
 // route — subfolder navigation within the shared space, with folder
 // cards and project lists identical to the team folder view.
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { Dialog, DialogDescription, DialogFooter, DialogTitle } from '@open-design/components';
 import { navigate } from '../router';
 import type { SharedWithMeProject, WorkspaceDirectoryItem } from '@open-design/contracts';
 import type { ProjectTitleHint } from './EntryShell';
@@ -19,7 +20,7 @@ import { useWorkspaceContext } from '../collab/useWorkspaceContext';
 import { useT } from '../i18n';
 import type { Dict } from '../i18n/types';
 import type { Project } from '../types';
-import { fetchSharedWithMeCatalog } from '../collab/shared-space-catalog';
+import { fetchSharedWithMeCatalog, unshareFromSharedSpace } from '../collab/shared-space-catalog';
 import styles from './TeamSpaceView.module.css';
 
 type ScopeTab = 'projects' | 'skill' | 'mcp';
@@ -66,6 +67,45 @@ interface SharedFolderItem {
 interface BreadcrumbItem {
   folderId: string;
   folderName: string;
+}
+
+type CopySharedProject = (projectId: string, homeWorkspaceId: string) => Promise<void> | void;
+
+function RemoveSharedProjectDialog({
+  target,
+  busy,
+  error,
+  onClose,
+  onConfirm,
+}: {
+  target: SharedWithMeProject | null;
+  busy: boolean;
+  error: string | null;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const t = useT();
+  if (!target) return null;
+  return (
+    <Dialog
+      onClose={onClose}
+      closeOnEscape={!busy}
+      closeOnBackdrop={!busy}
+      ariaLabel={t('sharedSpace.removeFromSharedWithMeTitle')}
+    >
+      <DialogTitle>{t('sharedSpace.removeFromSharedWithMeTitle')}</DialogTitle>
+      <DialogDescription>{t('sharedSpace.removeFromSharedWithMeBody')}</DialogDescription>
+      {error ? <p role="alert">{error}</p> : null}
+      <DialogFooter className="row">
+        <button type="button" onClick={onClose} disabled={busy}>
+          {t('sharedSpace.shareDialogCancel')}
+        </button>
+        <button type="button" className="primary" onClick={onConfirm} disabled={busy}>
+          {t('sharedSpace.removeFromSharedWithMeConfirm')}
+        </button>
+      </DialogFooter>
+    </Dialog>
+  );
 }
 
 function parseFolderList(list: any[], counts: Record<string, number>): SharedFolderItem[] {
@@ -151,6 +191,7 @@ function FolderCard({ folder, onClick }: { folder: SharedFolderItem; onClick: ()
 export function SharedWithMeView({
   tab,
   onOpenProject,
+  onCopySharedProject,
 }: {
   tab?: string;
   onOpenProject: (
@@ -158,6 +199,7 @@ export function SharedWithMeView({
     fileName?: string,
     projectTitleHint?: ProjectTitleHint,
   ) => Promise<boolean> | boolean | void;
+  onCopySharedProject?: CopySharedProject;
 }) {
   const t = useT();
   const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
@@ -184,6 +226,9 @@ export function SharedWithMeView({
   const [workspaceType, setWorkspaceType] = useState<string | null>(null);
 
   const sharedRowsRef = useRef<SharedWithMeProject[]>([]);
+  const [removeTarget, setRemoveTarget] = useState<SharedWithMeProject | null>(null);
+  const [removeBusy, setRemoveBusy] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
 
   // Resolve the shared space workspace ID + member ID from the directory
   // (the item with isDefaultTeam === true is the shared space).
@@ -295,6 +340,52 @@ export function SharedWithMeView({
     [onOpenProject, workspaceContext],
   );
 
+  const sharedHomeWorkspaceId = useCallback(
+    (projectId: string) =>
+      sharedRowsRef.current.find((row) => row.projectId === projectId)?.homeWorkspaceId ?? null,
+    [],
+  );
+
+  const handleCopySharedProject = useCallback(
+    async (projectId: string) => {
+      const row = sharedRowsRef.current.find((item) => item.projectId === projectId);
+      if (!row || !onCopySharedProject) return;
+      await onCopySharedProject(projectId, row.homeWorkspaceId);
+    },
+    [onCopySharedProject],
+  );
+
+  const requestRemoveSharedProject = useCallback((projectId: string) => {
+    const row = sharedRowsRef.current.find((item) => item.projectId === projectId);
+    if (!row) return;
+    setRemoveError(null);
+    setRemoveTarget(row);
+  }, []);
+
+  const confirmRemoveSharedProject = useCallback(async () => {
+    if (!removeTarget || removeBusy) return;
+    setRemoveBusy(true);
+    setRemoveError(null);
+    try {
+      const ok = await unshareFromSharedSpace(removeTarget.shareId);
+      if (!ok) {
+        setRemoveError(t('sharedSpace.removeFromSharedWithMeFailed'));
+        return;
+      }
+      sharedRowsRef.current = sharedRowsRef.current.filter(
+        (row) => row.shareId !== removeTarget.shareId,
+      );
+      setProjects((current) => current.filter((project) => project.id !== removeTarget.projectId));
+      setRemoveTarget(null);
+      window.dispatchEvent(new CustomEvent('shared:folders-updated'));
+      window.dispatchEvent(new CustomEvent('shared:subfolders-updated'));
+    } catch {
+      setRemoveError(t('sharedSpace.removeFromSharedWithMeFailed'));
+    } finally {
+      setRemoveBusy(false);
+    }
+  }, [removeBusy, removeTarget, t]);
+
   function handleFolderClick(folder: SharedFolderItem) {
     navigate({ kind: 'home', view: 'shared-folder', sharedFolderId: folder.folderId });
   }
@@ -370,6 +461,9 @@ export function SharedWithMeView({
                 minimalControls
                 operator={operator}
                 onOpen={handleOpen}
+                onDuplicate={onCopySharedProject ? handleCopySharedProject : undefined}
+                sharedWithMeHomeWorkspaceId={sharedHomeWorkspaceId}
+                onRemoveSharedWithMe={requestRemoveSharedProject}
                 hideTitle
                 controlsPortalTarget={controlsEl}
               />
@@ -391,12 +485,25 @@ export function SharedWithMeView({
           />
         )}
       </div>
+
+      <RemoveSharedProjectDialog
+        target={removeTarget}
+        busy={removeBusy}
+        error={removeError}
+        onClose={() => {
+          if (removeBusy) return;
+          setRemoveError(null);
+          setRemoveTarget(null);
+        }}
+        onConfirm={() => { void confirmRemoveSharedProject(); }}
+      />
     </section>
   );
 }
 export function SharedFolderView({
   folderId,
   onOpenProject,
+  onCopySharedProject,
 }: {
   folderId?: string;
   onOpenProject: (
@@ -404,6 +511,7 @@ export function SharedFolderView({
     fileName?: string,
     projectTitleHint?: ProjectTitleHint,
   ) => Promise<boolean> | boolean | void;
+  onCopySharedProject?: CopySharedProject;
 }) {
   const t = useT();
   const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
@@ -423,6 +531,9 @@ export function SharedFolderView({
   const [projectsLoading, setProjectsLoading] = useState(false);
 
   const sharedRowsRef = useRef<SharedWithMeProject[]>([]);
+  const [removeTarget, setRemoveTarget] = useState<SharedWithMeProject | null>(null);
+  const [removeBusy, setRemoveBusy] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
 
   // Build breadcrumb path by walking up the folder_pid chain.
   useEffect(() => {
@@ -539,6 +650,52 @@ export function SharedFolderView({
     [onOpenProject, workspaceContext],
   );
 
+  const sharedHomeWorkspaceId = useCallback(
+    (projectId: string) =>
+      sharedRowsRef.current.find((row) => row.projectId === projectId)?.homeWorkspaceId ?? null,
+    [],
+  );
+
+  const handleCopySharedProject = useCallback(
+    async (projectId: string) => {
+      const row = sharedRowsRef.current.find((item) => item.projectId === projectId);
+      if (!row || !onCopySharedProject) return;
+      await onCopySharedProject(projectId, row.homeWorkspaceId);
+    },
+    [onCopySharedProject],
+  );
+
+  const requestRemoveSharedProject = useCallback((projectId: string) => {
+    const row = sharedRowsRef.current.find((item) => item.projectId === projectId);
+    if (!row) return;
+    setRemoveError(null);
+    setRemoveTarget(row);
+  }, []);
+
+  const confirmRemoveSharedProject = useCallback(async () => {
+    if (!removeTarget || removeBusy) return;
+    setRemoveBusy(true);
+    setRemoveError(null);
+    try {
+      const ok = await unshareFromSharedSpace(removeTarget.shareId);
+      if (!ok) {
+        setRemoveError(t('sharedSpace.removeFromSharedWithMeFailed'));
+        return;
+      }
+      sharedRowsRef.current = sharedRowsRef.current.filter(
+        (row) => row.shareId !== removeTarget.shareId,
+      );
+      setProjects((current) => current.filter((project) => project.id !== removeTarget.projectId));
+      setRemoveTarget(null);
+      window.dispatchEvent(new CustomEvent('shared:folders-updated'));
+      window.dispatchEvent(new CustomEvent('shared:subfolders-updated'));
+    } catch {
+      setRemoveError(t('sharedSpace.removeFromSharedWithMeFailed'));
+    } finally {
+      setRemoveBusy(false);
+    }
+  }, [removeBusy, removeTarget, t]);
+
   function handleFolderClick(folder: SharedFolderItem) {
     navigate({ kind: 'home', view: 'shared-folder', sharedFolderId: folder.folderId });
   }
@@ -606,12 +763,26 @@ export function SharedFolderView({
                 minimalControls
                 operator={operator}
                 onOpen={handleOpen}
+                onDuplicate={onCopySharedProject ? handleCopySharedProject : undefined}
+                sharedWithMeHomeWorkspaceId={sharedHomeWorkspaceId}
+                onRemoveSharedWithMe={requestRemoveSharedProject}
                 hideTitle
                 controlsPortalTarget={controlsEl}
               />
           </div>
         </div>
       </div>
+      <RemoveSharedProjectDialog
+        target={removeTarget}
+        busy={removeBusy}
+        error={removeError}
+        onClose={() => {
+          if (removeBusy) return;
+          setRemoveError(null);
+          setRemoveTarget(null);
+        }}
+        onConfirm={() => { void confirmRemoveSharedProject(); }}
+      />
     </section>
   );
 }

@@ -41,14 +41,14 @@ class ShareLinkController extends Controller {
     return (this.app.config.community && this.app.config.community.publicApiBase) || this.ctx.origin;
   }
 
-_blobUrl(workspaceId, digest) {
-  // Use a relative path so blob URLs resolve against whichever origin
-  // serves the share page, rather than being pinned to publicApiBase.
-   // The share page is always at {base}/hdw/share/{token}, so
-   // ../api/workspaces/... resolves to {base}/hdw/api/workspaces/...
-   // which works under any reverse-proxy prefix (e.g. /hik-plugin/hidesign-web).
-   return '../api/workspaces/' + encodeURIComponent(workspaceId) + '/blobs/' + digest;
-}
+  _blobUrl(workspaceId, digest) {
+    // Use a relative path so blob URLs resolve against whichever origin
+    // serves the share page, rather than being pinned to publicApiBase.
+    // The share page is always at {base}/hdw/share/{token}, so
+    // ../api/workspaces/... resolves to {base}/hdw/api/workspaces/...
+    // which works under any reverse-proxy prefix (e.g. /hik-plugin/hidesign-web).
+    return '../api/workspaces/' + encodeURIComponent(workspaceId) + '/blobs/' + digest;
+  }
 
   _shareBaseUrl() {
     return this._publicBase() + '/hdw/share';
@@ -173,9 +173,9 @@ _blobUrl(workspaceId, digest) {
         let html = htmlBuffer.toString('utf-8');
         html = this._rewriteAssetRefs(html, entry.path, entryMap, workspaceId);
         const name = path.basename(entry.path);
-       const home = /^(index|home|main|default)\.html?$/i.test(name);
-         htmlFiles.push({ name, filePath: entry.path, content: html, home });
-       }
+        const home = /^(index|home|main|default)\.html?$/i.test(name);
+        htmlFiles.push({ name, filePath: entry.path, content: html, home });
+      }
 
       // 5. Load preview_template.html and inject HTML_FILES data.
       const templatePath = path.join(this.app.baseDir, 'app', 'data', 'preview_template.html');
@@ -188,18 +188,30 @@ _blobUrl(workspaceId, digest) {
       const replacement = JSON.stringify(htmlFiles)
         .replace(/</g, '\\u003c')
         .replace(/>/g, '\\u003e');
-     template = template.replace(
-       /\/\*HTML_FILES_DATA\*\/\[\]/,
-       '/*HTML_FILES_DATA*/' + replacement
-     );
-     template = template.replace(
-       /\/\*PROJECT_ID\*\/''/,
-       '/*PROJECT_ID*/' + JSON.stringify(projectId)
-     );
-     template = template.replace(
-       /\/\*TEAM_ID\*\/''/,
-       '/*TEAM_ID*/' + JSON.stringify(workspaceId)
-     );
+      template = template.replace(
+        /\/\*HTML_FILES_DATA\*\/\[\]/,
+        '/*HTML_FILES_DATA*/' + replacement
+      );
+      template = template.replace(
+        /\/\*PROJECT_ID\*\/''/,
+        '/*PROJECT_ID*/' + JSON.stringify(projectId)
+      );
+      template = template.replace(
+        /\/\*TEAM_ID\*\/''/,
+        '/*TEAM_ID*/' + JSON.stringify(workspaceId)
+      );
+      // Inject comments data (collected by the daemon from the local SQLite
+      // database) so the share page can display comments and replies without
+      // a live comment API. The daemon sends this as `comments_data` in the
+      // request body.
+      const commentsData = Array.isArray(body.comments_data) ? body.comments_data : [];
+      const commentsReplacement = JSON.stringify(commentsData)
+        .replace(/</g, '\\u003c')
+        .replace(/>/g, '\\u003e');
+      template = template.replace(
+        /\/\*COMMENTS_DATA\*\/\[\]/,
+        '/*COMMENTS_DATA*/' + commentsReplacement
+      );
 
       // 6. Store the generated HTML as a blob.
       const htmlBuffer = Buffer.from(template, 'utf-8');
@@ -359,15 +371,15 @@ _blobUrl(workspaceId, digest) {
       return path.posix.join(dir, ref);
     };
 
-   // Build a blob URL for an entry path.
-   const blobUrlForPath = (ref) => {
-     const entryPath = resolveEntryPath(ref);
-     const entry = entryMap.get(entryPath);
-     if (entry) {
-       return this._blobUrl(workspaceId, entry.digest);
-     }
-     return null;
-   };
+    // Build a blob URL for an entry path.
+    const blobUrlForPath = (ref) => {
+      const entryPath = resolveEntryPath(ref);
+      const entry = entryMap.get(entryPath);
+      if (entry) {
+        return this._blobUrl(workspaceId, entry.digest);
+      }
+      return null;
+    };
 
     // Rewrite absolute blob URLs (e.g. from the editing environment) to
     // relative paths so they resolve against the share page's origin.
@@ -380,75 +392,75 @@ _blobUrl(workspaceId, digest) {
       return null;
     };
 
-   // Rewrite src="..." and href="..." attributes.
-   // Skip absolute URLs, data URIs, protocol-relative URLs, and hash-only refs.
-   const attrPattern = /\b(src|href)\s*=\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[^\s>]+)/gi;
+    // Rewrite src="..." and href="..." attributes.
+    // Skip absolute URLs, data URIs, protocol-relative URLs, and hash-only refs.
+    const attrPattern = /\b(src|href)\s*=\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[^\s>]+)/gi;
 
-   html = html.replace(attrPattern, (match, attr, value) => {
-     let val = value;
-     let quote = '';
-     if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
-       quote = val.charAt(0);
-       val = val.slice(1, -1);
-     }
-     // Try rewriting absolute blob URLs first.
-     const absBlobUrl = rewriteAbsoluteBlobUrl(val);
-     if (absBlobUrl) {
-       return attr + '=' + quote + absBlobUrl + quote;
-     }
-     // Skip other absolute URLs, data URIs, protocol-relative, and hash-only.
-     if (/^(?:https?:)?\/\//i.test(val) || /^data:/i.test(val) || /^#/.test(val) || val === '') {
-       return match;
-     }
-     const newUrl = blobUrlForPath(val);
-     if (newUrl) {
-       return attr + '=' + quote + newUrl + quote;
-     }
-     return match;
-   });
+    html = html.replace(attrPattern, (match, attr, value) => {
+      let val = value;
+      let quote = '';
+      if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+        quote = val.charAt(0);
+        val = val.slice(1, -1);
+      }
+      // Try rewriting absolute blob URLs first.
+      const absBlobUrl = rewriteAbsoluteBlobUrl(val);
+      if (absBlobUrl) {
+        return attr + '=' + quote + absBlobUrl + quote;
+      }
+      // Skip other absolute URLs, data URIs, protocol-relative, and hash-only.
+      if (/^(?:https?:)?\/\//i.test(val) || /^data:/i.test(val) || /^#/.test(val) || val === '') {
+        return match;
+      }
+      const newUrl = blobUrlForPath(val);
+      if (newUrl) {
+        return attr + '=' + quote + newUrl + quote;
+      }
+      return match;
+    });
 
-   // Rewrite url(...) in CSS (inline style blocks and style attributes).
-   const urlPattern = /url\(\s*(?:"([^"]*)"|'([^']*)'|([^)]+))\s*\)/gi;
-   html = html.replace(urlPattern, (match, dq, sq, bare) => {
-     let val = dq || sq || bare || '';
-     val = val.trim();
-     const absBlobUrl = rewriteAbsoluteBlobUrl(val);
-     if (absBlobUrl) {
-       if (dq !== undefined) return 'url("' + absBlobUrl + '")';
-       if (sq !== undefined) return "url('" + absBlobUrl + "')";
-       return 'url(' + absBlobUrl + ')';
-     }
-     if (/^(?:https?:)?\/\//i.test(val) || /^data:/i.test(val) || /^#/.test(val) || val === '') {
-       return match;
-     }
-     const newUrl = blobUrlForPath(val);
-     if (newUrl) {
-       if (dq !== undefined) return 'url("' + newUrl + '")';
-       if (sq !== undefined) return "url('" + newUrl + "')";
-       return 'url(' + newUrl + ')';
-     }
-     return match;
-   });
+    // Rewrite url(...) in CSS (inline style blocks and style attributes).
+    const urlPattern = /url\(\s*(?:"([^"]*)"|'([^']*)'|([^)]+))\s*\)/gi;
+    html = html.replace(urlPattern, (match, dq, sq, bare) => {
+      let val = dq || sq || bare || '';
+      val = val.trim();
+      const absBlobUrl = rewriteAbsoluteBlobUrl(val);
+      if (absBlobUrl) {
+        if (dq !== undefined) return 'url("' + absBlobUrl + '")';
+        if (sq !== undefined) return "url('" + absBlobUrl + "')";
+        return 'url(' + absBlobUrl + ')';
+      }
+      if (/^(?:https?:)?\/\//i.test(val) || /^data:/i.test(val) || /^#/.test(val) || val === '') {
+        return match;
+      }
+      const newUrl = blobUrlForPath(val);
+      if (newUrl) {
+        if (dq !== undefined) return 'url("' + newUrl + '")';
+        if (sq !== undefined) return "url('" + newUrl + "')";
+        return 'url(' + newUrl + ')';
+      }
+      return match;
+    });
 
-   // Rewrite @import "..." or @import url(...) in CSS.
-   const importPattern = /@import\s+(?:"([^"]*)"|'([^']*)')\s*;/gi;
-   html = html.replace(importPattern, (match, dq, sq) => {
-     let val = dq || sq || '';
-     const absBlobUrl = rewriteAbsoluteBlobUrl(val);
-     if (absBlobUrl) {
-       const quote = dq !== undefined ? '"' : "'";
-       return '@import ' + quote + absBlobUrl + quote + ';';
-     }
-     if (/^(?:https?:)?\/\//i.test(val) || /^data:/i.test(val) || val === '') {
-       return match;
-     }
-     const newUrl = blobUrlForPath(val);
-     if (newUrl) {
-       const quote = dq !== undefined ? '"' : "'";
-       return '@import ' + quote + newUrl + quote + ';';
-     }
-     return match;
-   });
+    // Rewrite @import "..." or @import url(...) in CSS.
+    const importPattern = /@import\s+(?:"([^"]*)"|'([^']*)')\s*;/gi;
+    html = html.replace(importPattern, (match, dq, sq) => {
+      let val = dq || sq || '';
+      const absBlobUrl = rewriteAbsoluteBlobUrl(val);
+      if (absBlobUrl) {
+        const quote = dq !== undefined ? '"' : "'";
+        return '@import ' + quote + absBlobUrl + quote + ';';
+      }
+      if (/^(?:https?:)?\/\//i.test(val) || /^data:/i.test(val) || val === '') {
+        return match;
+      }
+      const newUrl = blobUrlForPath(val);
+      if (newUrl) {
+        const quote = dq !== undefined ? '"' : "'";
+        return '@import ' + quote + newUrl + quote + ';';
+      }
+      return match;
+    });
 
     return html;
   }

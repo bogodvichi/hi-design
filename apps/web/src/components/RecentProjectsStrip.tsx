@@ -112,9 +112,11 @@ export interface TeamSpaceOperator {
 export interface CollectionSelectionExtension {
   selectedCount: number;
   selectedLabels?: readonly string[];
-  /** Folder moves are not supported by the current APIs, so callers can keep
-   * project move actions disabled while a folder is part of the selection. */
+  /** Lets a parent-owned selection explicitly block the shared move action
+   * when that collection type cannot participate in the requested move. */
   blocksMove?: boolean;
+  /** Keep failed personal-folder selections available for a recovery attempt. */
+  preserveFailedMoveSelection?: boolean;
   onMoveSelected?: (
     action: 'to-team' | 'to-personal',
     options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
@@ -124,6 +126,9 @@ export interface CollectionSelectionExtension {
   canMoveToPersonal?: boolean;
   restrictMoveToWorkspaceId?: string | null;
   disabledMoveKeys?: ReadonlySet<string>;
+  moveDialogTitle?: string;
+  moveTreeDescription?: string;
+  moveRootSelectedLabel?: string;
   /** Delete the parent-owned selected items and return how many succeeded. */
   onDeleteSelected?: () => Promise<number>;
   onModeChange?: (active: boolean) => void;
@@ -183,6 +188,13 @@ interface Props {
    *  or mutation behavior. Shared-with-me reuses team-series cards but every
    *  item is still shared with the viewer. */
   badgeOverride?: 'shared';
+  /** Shared-with-me rows can originate from different owner workspaces. Resolve
+   *  each project's source workspace for link sharing without pretending the
+   *  viewer is a member of that workspace. */
+  sharedWithMeHomeWorkspaceId?: (projectId: string) => string | null;
+  /** Remove only the viewer's shared-with-me access record. This is deliberately
+   *  separate from onDelete, which deletes a project resource. */
+  onRemoveSharedWithMe?: (projectId: string) => void;
   /** projectId → the sharing member's workspaceMemberId, for team-shared
    *  projects (from the team hub). Used to resolve the creator name against the
    *  member directory; a project absent from this map is a local project owned
@@ -415,6 +427,8 @@ export function RecentProjectsStrip({
   onProjectUnshared,
   space = 'recent',
   badgeOverride,
+  sharedWithMeHomeWorkspaceId,
+  onRemoveSharedWithMe,
  projectOwnerMemberIds,
  projectOwnerDisplayNames,
  openingProjectId = null,
@@ -785,6 +799,8 @@ const [moveToTeamTarget, setMoveToTeamTarget] = useState<Project | null>(null);
  const [moveToTreeMode, setMoveToTreeMode] = useState<'team' | 'personal-folders' | 'tabbed' | 'unified'>('unified');
 // When set, the tree selector is open for a bulk move to team.
 const [bulkMoveToTeamOpen, setBulkMoveToTeamOpen] = useState(false);
+const [bulkMovePending, setBulkMovePending] = useState(false);
+const bulkMovePendingRef = useRef(false);
 // Disabled tree-node keys for the move-to dialog. When moving within the
 // same workspace (personal-folders mode), the current folder/root is
 // disabled so a project cannot be moved into its own current location.
@@ -828,7 +844,16 @@ const disabledKeys = useMemo(() => {
      targetFolderId: selection.folderId,
    });
  }
- const actionsAvailable = Boolean(onDelete || onDuplicate || onRename || collaborationAvailable);
+ const isSharedWithMeCollection = badgeOverride === 'shared';
+ const actionsAvailable = Boolean(
+   homeWorkspaceId
+   || onDelete
+   || onDuplicate
+   || onRename
+   || onRemoveSharedWithMe
+   || sharedWithMeHomeWorkspaceId
+   || collaborationAvailable
+ );
  // Guests have no mutation rights in team spaces — hide the entire card menu
  // (copy-to-personal, move, rename, delete, share) so a guest never sees
  // actions they cannot perform. The effective role comes from the HDW
@@ -836,7 +861,8 @@ const disabledKeys = useMemo(() => {
  const isGuest = operator
    ? operator.role === 'guest'
    : workspaceContext?.role === 'guest';
-  const canShowCardActions = actionsAvailable && !isGuest;
+ const isTeamProjectCollection = space === 'team' && badgeOverride !== 'shared';
+ const canShowCardActions = actionsAvailable && (isSharedWithMeCollection || !isGuest);
 
   useEffect(() => {
     if (!copyToast) return;
@@ -857,10 +883,12 @@ const disabledKeys = useMemo(() => {
   const selectionHasForeignProject = selectedProjects.some(({ creator }) => !creator.canMutate);
   const selectionHasNonAdminProject = selectedProjects.some(({ creator }) => !(creator.canMutate || creator.canAdmin));
   const bulkMoveDisabled = selectedCount === 0
+    || bulkMovePending
     || selectionHasNonAdminProject
     || selectionExtension?.blocksMove === true
     || (extensionSelectedCount > 0 && !selectionExtension?.onMoveSelected);
   const bulkDeleteDisabled = selectedCount === 0
+    || bulkMovePending
     || selectionHasForeignProject
     || (extensionSelectedCount > 0 && !selectionExtension?.onDeleteSelected);
   const selectedLabels = [
@@ -1445,15 +1473,15 @@ function requestDelete(project: Project) {
 
   function requestDuplicate(project: Project) {
     if (!onDuplicate) return;
-    // Same ownership gate the menu item's `disabled` already enforces (see
-    // recvqaRqM0dv2x above) — kept here too so the handler itself can never
-    // fire the doomed-to-403 request, matching startRename/requestDelete's
-    // own defense-in-depth check.
-  const creator = resolveCreator(project);
-  if (!creator.canMutate) return;
-  trackCollection('duplicate', {
+    const creator = resolveCreator(project);
+    // Team projects are readable/copyable by every active non-guest member;
+    // personal and shared-with-me surfaces keep their existing owner-only
+    // duplicate rule.
+    if (!creator.canMutate && !isTeamProjectCollection && !isSharedWithMeCollection) return;
+    if (isGuest && !isSharedWithMeCollection) return;
+    trackCollection('duplicate', {
       project_key: project.id,
-      project_relation: 'self',
+      project_relation: creator.ownedBySelf ? 'self' : 'other',
     });
     setMenuOpenId(null);
     const startedAt = performance.now();
@@ -1606,6 +1634,7 @@ function requestDelete(project: Project) {
   }
 
   function toggleSelection(projectId: string) {
+    if (bulkMovePendingRef.current) return;
     setSelectedProjectIds((current) => {
       const next = new Set(current);
       if (next.has(projectId)) {
@@ -1618,6 +1647,7 @@ function requestDelete(project: Project) {
   }
 
   function exitSelectionMode() {
+    if (bulkMovePendingRef.current) return;
     setSelectionMode(false);
     setSelectedProjectIds(new Set());
     selectionExtension?.onClear?.();
@@ -1639,12 +1669,17 @@ function requestDelete(project: Project) {
    action: 'to-team' | 'to-personal',
    options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
  ) {
+   if (bulkMovePendingRef.current) return;
    const ids = selectedProjects.map(({ project }) => project.id);
    const extensionCount = extensionSelectedCount;
    const moveExtensionItems = selectionExtension?.onMoveSelected;
    const startedAt = performance.now();
-   exitSelectionMode();
+   const preserveFailedSelection = extensionCount > 0 && selectionExtension?.preserveFailedMoveSelection === true;
    if (ids.length === 0 && extensionCount === 0) return;
+   if (!preserveFailedSelection) exitSelectionMode();
+   bulkMovePendingRef.current = true;
+   setBulkMovePending(true);
+   try {
    const visibility = action === 'to-team' ? 'team' : 'personal';
    const moved = await Promise.all(
      ids.map(async (id) => {
@@ -1696,6 +1731,15 @@ function requestDelete(project: Project) {
    const requestedCount = ids.length + extensionCount;
    const succeededCount = succeeded.length + extensionSucceededCount;
    const failedCount = requestedCount - succeededCount;
+   bulkMovePendingRef.current = false;
+   setBulkMovePending(false);
+   if (preserveFailedSelection) {
+     if (failedCount === 0) exitSelectionMode();
+     else {
+       const succeededIds = new Set(succeeded.map((item) => item.id));
+       setSelectedProjectIds((current) => new Set([...current].filter((id) => !succeededIds.has(id))));
+     }
+   }
     trackWorkspaceProjectActionResult(analytics.track, {
       page_name: analyticsPage,
       area: 'project_collection',
@@ -1708,6 +1752,10 @@ function requestDelete(project: Project) {
       ...(failedCount > 0 ? { error_code: 'one_or_more_failed' } : {}),
       ...workspaceDimensions,
     });
+   } finally {
+     bulkMovePendingRef.current = false;
+     setBulkMovePending(false);
+   }
   }
 
   async function commitBulkDelete() {
@@ -1802,7 +1850,9 @@ function requestDelete(project: Project) {
               type="button"
               className={`recent-projects__select-toggle${selectionMode ? ' is-active' : ''}`}
                 aria-pressed={selectionMode}
+                disabled={bulkMovePending}
                 onClick={() => {
+                  if (bulkMovePendingRef.current) return;
                   trackCollection('multi_select_toggle', {
                     selection_count_bucket: countBucket(selectedCount),
                   });
@@ -2080,6 +2130,43 @@ function requestDelete(project: Project) {
           const shared = isShared(project.id);
          const selected = selectedProjectIds.has(project.id);
          const opening = openingProjectId === project.id;
+         const sharedWithMeWorkspaceId = isSharedWithMeCollection
+           ? sharedWithMeHomeWorkspaceId?.(project.id) ?? null
+           : null;
+         // Team cards use the explicit role matrix: every non-guest member can
+         // share/copy; only creators can rename/delete; creators and Team
+         // owner/admin members can move. Other surfaces keep their prior rules.
+         const canShareProject = Boolean(
+           isSharedWithMeCollection
+             ? sharedWithMeWorkspaceId
+             : homeWorkspaceId
+               && (isTeamProjectCollection ? !isGuest : (creator.canMutate || creator.canAdmin)),
+         );
+         const canDuplicateProject = Boolean(
+           onDuplicate
+           && (
+             isSharedWithMeCollection
+             || (isTeamProjectCollection ? !isGuest : creator.canMutate)
+           ),
+         );
+         const canCopyToPersonal = Boolean(
+           homeWorkspaceId
+           && space !== 'drafts'
+           && !isTeamProjectCollection
+           && !isSharedWithMeCollection,
+         );
+         const canRenameProject = Boolean(!isSharedWithMeCollection && onRename && creator.canMutate);
+         const canMoveProject = Boolean(
+           !isSharedWithMeCollection
+           &&
+           (collaborationAvailable || space === 'drafts')
+           && (creator.canMutate || creator.canAdmin),
+         );
+         const canDeleteProject = Boolean(!isSharedWithMeCollection && onDelete && creator.canMutate);
+         const canRemoveSharedWithMe = Boolean(isSharedWithMeCollection && onRemoveSharedWithMe);
+         const hasShareOrCopyActions = canShareProject || canDuplicateProject || canCopyToPersonal;
+         const hasManagementActions =
+           canRenameProject || canMoveProject || canDeleteProject || canRemoveSharedWithMe;
          // HDW team-series views always present cards as team-owned with the
          // person who created the project in the bottom-left owner pill.
          const isTeamSeriesView = space === 'team' && Boolean(operator);
@@ -2326,7 +2413,7 @@ function requestDelete(project: Project) {
                 </div>
                </div>
               </button>
-              {canShowCardActions && !selectionMode && (creator.canMutate || creator.canAdmin) ? (
+              {canShowCardActions && !selectionMode && (hasShareOrCopyActions || hasManagementActions) ? (
                <div
                  className="recent-projects__card-menu-anchor"
                   ref={menuOpenId === project.id ? menuContainerRef : undefined}
@@ -2357,39 +2444,30 @@ function requestDelete(project: Project) {
                       role="menu"
                       onClick={(event) => event.stopPropagation()}
                     >
-                     {onRename && creator.canMutate ? (
+                     {canShareProject ? (
                        <button
                          type="button"
                          role="menuitem"
-                         disabled={!creator.canMutate}
-                         title={creator.canMutate ? undefined : t('recentProjects.ownOnlyMutation')}
-                         onClick={() => startRename(project)}
+                         onClick={() => {
+                           setSharedSpaceTarget(project);
+                           setMenuOpenId(null);
+                         }}
                        >
-                         <Icon name="pencil" size={12} />
-                         <span>{t('designs.menuRename')}</span>
+                         <Icon name="share" size={12} />
+                         <span>{t('sharedSpace.shareToSharedSpace')}</span>
                        </button>
                      ) : null}
-                     {/* recvqaRqM0dv2x: duplicating a team-shared project you
-                         did not create is meaningless (the daemon's
-                         canDuplicate mirrors canMutate — privileged-or-
-                         selfCreated only, see enforceWorkspaceProjectMutation)
-                         and always 403s. This item was missing the same
-                         ownedBySelf gate Rename/Delete already carry, so it
-                         stayed enabled on a foreign card and looked like a
-                         dead click when pressed. */}
-                     {onDuplicate && creator.canMutate ? (
+                     {canDuplicateProject ? (
                        <button
                          type="button"
                          role="menuitem"
-                         disabled={!creator.canMutate}
-                         title={creator.canMutate ? undefined : t('recentProjects.ownOnlyMutation')}
                          onClick={() => requestDuplicate(project)}
                        >
                          <Icon name="copy" size={12} />
                          <span>{t('designs.menuDuplicate')}</span>
                        </button>
                      ) : null}
-                     {homeWorkspaceId && space !== 'drafts' ? (
+                     {canCopyToPersonal ? (
                        <button
                          type="button"
                          role="menuitem"
@@ -2404,12 +2482,26 @@ function requestDelete(project: Project) {
                          </span>
                        </button>
                      ) : null}
-                     {collaborationAvailable || space === 'drafts' ? (
+                     {hasShareOrCopyActions && hasManagementActions ? (
+                       <div className="recent-projects__card-menu-separator" role="separator" />
+                     ) : null}
+                     {canRenameProject ? (
                        <button
                          type="button"
                          role="menuitem"
-                         disabled={sharingId === project.id || unsharingId === project.id || !(creator.canMutate || creator.canAdmin)}
-                         title={!(creator.canMutate || creator.canAdmin) ? t('recentProjects.ownOnlyMutation') : undefined}
+                         disabled={!creator.canMutate}
+                         title={creator.canMutate ? undefined : t('recentProjects.ownOnlyMutation')}
+                         onClick={() => startRename(project)}
+                       >
+                         <Icon name="pencil" size={12} />
+                         <span>{t('designs.menuRename')}</span>
+                       </button>
+                     ) : null}
+                     {canMoveProject ? (
+                       <button
+                         type="button"
+                         role="menuitem"
+                         disabled={sharingId === project.id || unsharingId === project.id}
                          onClick={() => requestMove(project, 'to-team')}
                        >
                          <Icon name="move" size={12} />
@@ -2418,21 +2510,6 @@ function requestDelete(project: Project) {
                              ? t('recentProjects.shareInProgress')
                              : t('recentProjects.moveTo')}
                          </span>
-                       </button>
-                     ) : null}
-                    {/* Share to Shared Space: available to project owners
-                         who can mutate. Opens a member-picker dialog. */}
-                     {homeWorkspaceId && (creator.canMutate || creator.canAdmin) ? (
-                       <button
-                         type="button"
-                         role="menuitem"
-                         onClick={() => {
-                           setSharedSpaceTarget(project);
-                           setMenuOpenId(null);
-                         }}
-                       >
-                         <Icon name="share" size={12} />
-                         <span>{t('sharedSpace.shareToSharedSpace')}</span>
                        </button>
                      ) : null}
                      {shareErrorProjectId === project.id ? (
@@ -2446,7 +2523,7 @@ function requestDelete(project: Project) {
                           )}
                         </div>
                       ) : null}
-                     {onDelete && creator.canMutate ? (
+                     {canDeleteProject ? (
                        <button
                          type="button"
                          role="menuitem"
@@ -2458,6 +2535,19 @@ function requestDelete(project: Project) {
                          <span>{t('designs.menuDelete')}</span>
                        </button>
                      ) : null}
+                     {canRemoveSharedWithMe ? (
+                       <button
+                         type="button"
+                         role="menuitem"
+                         onClick={() => {
+                           setMenuOpenId(null);
+                           onRemoveSharedWithMe?.(project.id);
+                         }}
+                       >
+                         <Icon name="close" size={12} />
+                         <span>{t('sharedSpace.removeFromSharedWithMe')}</span>
+                       </button>
+                     ) : null}
                     </div>
                   ) : null}
                 </div>
@@ -2466,16 +2556,31 @@ function requestDelete(project: Project) {
           );
        })}
      </div>
-      {sharedSpaceTarget && homeWorkspaceId ? (
-        <UnifiedShareDialog
-          projectId={sharedSpaceTarget.id}
-          workspaceId={homeWorkspaceId}
-          projectName={sharedSpaceTarget.name}
-          entryFile={sharedSpaceTarget.metadata?.entryFile ?? null}
-          workspaceContext={workspaceContext}
-          canPublishToCommunity={space === 'team'
-            ? resolveCreator(sharedSpaceTarget).ownedBySelf
-            : true}
+      {sharedSpaceTarget && (
+        isSharedWithMeCollection
+          ? sharedWithMeHomeWorkspaceId?.(sharedSpaceTarget.id)
+          : homeWorkspaceId
+      ) ? (
+         <UnifiedShareDialog
+           projectId={sharedSpaceTarget.id}
+           workspaceId={
+             isSharedWithMeCollection
+               ? sharedWithMeHomeWorkspaceId?.(sharedSpaceTarget.id) ?? ''
+               : homeWorkspaceId ?? ''
+           }
+           projectName={sharedSpaceTarget.name}
+           entryFile={sharedSpaceTarget.metadata?.entryFile ?? null}
+           workspaceContext={isSharedWithMeCollection ? null : workspaceContext}
+           canPublishToCommunity={isSharedWithMeCollection
+             ? false
+             : space === 'team'
+               ? resolveCreator(sharedSpaceTarget).ownedBySelf
+               : true}
+           canShareFile={isSharedWithMeCollection
+             ? false
+             : isTeamProjectCollection
+               ? resolveCreator(sharedSpaceTarget).ownedBySelf
+               : true}
           onClose={() => setSharedSpaceTarget(null)}
           onShared={() => {
             notifyTeamProjectsChanged();
@@ -2600,8 +2705,12 @@ function requestDelete(project: Project) {
        currentWorkspaceId={currentWorkspaceId ?? workspaceContext?.workspaceId ?? null}
        currentFolderId={currentFolderId ?? null}
        restrictToWorkspaceId={extensionSelectedCount > 0 ? selectionExtension?.restrictMoveToWorkspaceId : undefined}
+       disabledSubtreeKeys={extensionSelectedCount > 0 ? selectionExtension?.disabledMoveKeys : undefined}
        disabledKeys={disabledKeys}
       canMoveToPersonal={!selectedProjects.some(({ creator }) => !creator.ownedBySelf)}
+       titleLabel={selectionExtension?.moveDialogTitle}
+       treeDescription={selectionExtension?.moveTreeDescription}
+       rootSelectedLabel={selectionExtension?.moveRootSelectedLabel}
      />
    ) : null}
      {bulkDeleteOpen ? (

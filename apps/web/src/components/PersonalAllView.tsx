@@ -15,8 +15,10 @@ import { Dialog, DialogFooter, DialogTitle } from '@open-design/components';
 import { Icon } from './Icon';
 import { FolderCardMenu } from './FolderCardMenu';
 import { FolderSelectionCheck } from './FolderSelectionCheck';
+import { MoveToTeamTreeDialog, type TeamTreeSelection } from './MoveToTeamTreeDialog';
 import { ShareFolderDialog } from './ShareFolderDialog';
 import { RecentProjectsStrip } from './RecentProjectsStrip';
+import { usePersonalFolderMove } from './usePersonalFolderMove';
 import type { DesignSystemSummary, Project } from '../types';
 import { useT } from '../i18n';
 import styles from './TeamSpaceView.module.css';
@@ -84,6 +86,10 @@ useEffect(() => {
 }, [folders]);
 
 const [shareFolderTarget, setShareFolderTarget] = useState<PersonalFolderItem | null>(null);
+const [moveFolderTarget, setMoveFolderTarget] = useState<PersonalFolderItem | null>(null);
+const { moveFolders, moving: movingFolder, feedback: moveFeedback } = usePersonalFolderMove({
+  workspaceId, workspaceMemberId, setFolders, setSelectedFolderIds,
+});
 
   const [renameFolderTarget, setRenameFolderTarget] = useState<PersonalFolderItem | null>(null);
   const [renameFolderInput, setRenameFolderInput] = useState('');
@@ -108,7 +114,7 @@ const [shareFolderTarget, setShareFolderTarget] = useState<PersonalFolderItem | 
              : undefined,
          },
        );
-        if (!res.ok) { if (!cancelled) setFolders([]); return; }
+        if (!res.ok) return; // Preserve the last-good folder list on refresh failure.
         const body = await res.json();
         if (cancelled) return;
         const list: any[] = body?.data?.folders ?? [];
@@ -126,7 +132,7 @@ const [shareFolderTarget, setShareFolderTarget] = useState<PersonalFolderItem | 
           createdAt: f.created_at || '',
         })))
       } catch {
-        if (!cancelled) setFolders([]);
+        // A refresh outage is not an authoritative empty folder list.
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -268,6 +274,7 @@ const [shareFolderTarget, setShareFolderTarget] = useState<PersonalFolderItem | 
   }
 
   function toggleFolderSelection(folderId: string) {
+    if (movingFolder) return;
     setSelectedFolderIds((current) => {
       const next = new Set(current);
       if (next.has(folderId)) next.delete(folderId);
@@ -280,38 +287,18 @@ const [shareFolderTarget, setShareFolderTarget] = useState<PersonalFolderItem | 
     action: 'to-team' | 'to-personal',
     options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
   ): Promise<number> {
-    if (
-      action !== 'to-personal'
-      || !workspaceId
-      || options?.targetWorkspaceId !== workspaceId
-      || selectedFolderIds.size === 0
-    ) return 0;
-    const ids = [...selectedFolderIds];
-    const results = await Promise.all(ids.map(async (folderId) => {
-      try {
-        const response = await fetch(
-          `/api/folders/${encodeURIComponent(folderId)}?workspace_id=${encodeURIComponent(workspaceId)}`,
-          {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(workspaceMemberId ? { 'x-od-workspace-member-id': workspaceMemberId } : {}),
-            },
-            body: JSON.stringify({ folder_pid: options.targetFolderId ?? null }),
-          },
-        );
-        const body = await response.json().catch(() => null);
-        return response.ok && body?.code === 0 ? folderId : null;
-      } catch {
-        return null;
-      }
-    }));
-    const movedIds = new Set(results.filter((id): id is string => id !== null));
-    if (movedIds.size > 0) {
-      setFolders((current) => current.filter((folder) => !movedIds.has(folder.folderId)));
-      window.dispatchEvent(new CustomEvent('personal:folders-updated'));
-    }
-    return movedIds.size;
+    const selected = folders.filter((folder) => selectedFolderIds.has(folder.folderId));
+    const result = await moveFolders(selected, action, options);
+    return result.succeededFolderIds.length;
+  }
+
+  async function commitFolderMove(selection: TeamTreeSelection) {
+    const target = moveFolderTarget;
+    if (!target || movingFolder) return;
+    const result = await moveFolders([target], selection.isDefaultTeam ? 'to-personal' : 'to-team', {
+      targetWorkspaceId: selection.workspaceId, targetFolderId: selection.folderId,
+    });
+    if (result.succeededFolderIds.includes(target.folderId)) setMoveFolderTarget(null);
   }
 
 function handleFolderClick(folder: PersonalFolderItem) {
@@ -406,6 +393,8 @@ function handleFolderClick(folder: PersonalFolderItem) {
             <FolderCardMenu
               onRename={() => startFolderRename(folder)}
               renameLabel={t('common.rename')}
+              onMove={() => setMoveFolderTarget(folder)}
+              moveLabel={t('designFiles.move')}
               onDelete={() => setRemoveTarget(folder)}
               deleteLabel={t('teamSpace.deleteGroup')}
               onShare={() => setShareFolderTarget(folder)}
@@ -495,8 +484,13 @@ function handleFolderClick(folder: PersonalFolderItem) {
             selectedCount: selectedFolderIds.size,
             selectedLabels: folders.filter((folder) => selectedFolderIds.has(folder.folderId)).map((folder) => folder.folderName),
             onMoveSelected: moveSelectedFolders,
-            moveTreeMode: 'personal-folders',
-            canMoveToTeam: false,
+            preserveFailedMoveSelection: true,
+            blocksMove: movingFolder,
+            moveTreeMode: 'unified',
+            canMoveToTeam: true,
+            moveDialogTitle: t('designFiles.move'),
+            moveTreeDescription: t('designFiles.moveLabel'),
+            moveRootSelectedLabel: t('designFiles.moveLabel'),
             disabledMoveKeys: new Set([...selectedFolderIds].map((id) => `${workspaceId}:${id}`)),
             onDeleteSelected: deleteSelectedFolders,
             onModeChange: setFolderSelectionMode,
@@ -595,6 +589,26 @@ function handleFolderClick(folder: PersonalFolderItem) {
             </button>
           </DialogFooter>
         </Dialog>
+      ) : null}
+      {moveFeedback}
+      {moveFolderTarget ? (
+        <MoveToTeamTreeDialog
+          onConfirm={(selection) => { void commitFolderMove(selection); }}
+          onCancel={() => { if (!movingFolder) setMoveFolderTarget(null); }}
+          busy={movingFolder}
+          mode="unified"
+          currentWorkspaceId={workspaceId}
+          currentFolderId={null}
+          disabledSubtreeKeys={new Set([`${workspaceId}:${moveFolderTarget.folderId}`])}
+          disabledKeys={new Set([
+            `${workspaceId}:root`,
+            `${workspaceId}:${moveFolderTarget.folderId}`,
+          ])}
+          canMoveToPersonal
+          titleLabel={t('designFiles.move')}
+          treeDescription={t('designFiles.moveLabel')}
+          rootSelectedLabel={t('designFiles.moveLabel')}
+        />
       ) : null}
       {shareFolderTarget && workspaceId ? (
         <ShareFolderDialog

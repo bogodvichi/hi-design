@@ -9,6 +9,13 @@ import type { ProjectSyncIntent, ProjectSyncIntentEvent, ProjectSyncState } from
 import type { TeamResourceState } from './team-resources.js';
 import type { WorkspaceCollabContext } from './collab.js';
 
+/** Internal, conditional cleanup after a folder migration; ordinary deletion
+ * must not be used here because concurrent additions would be cascaded away. */
+export interface FolderMoveCleanupRequest {
+  workspaceId: string;
+  expectedEmptyTree: Array<{ folderId: string; folderPid: string | null; folderName: string }>;
+}
+
 export type ProjectKind =
   | 'prototype'
   | 'deck'

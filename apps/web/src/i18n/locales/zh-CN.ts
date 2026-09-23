@@ -1,6 +1,10 @@
 import type { Dict } from "../types";
 
 export const zhCN: Dict = {
+  'personalScope.folderMoveSummary': "{succeeded} 个文件夹移动成功，{failed} 个未完成。",
+  'personalScope.folderMoveFailed': "未完成：{name}。请检查后重试。",
+  'personalScope.folderMoveInterrupted': "“{name}”已确认移动 {count} 个文件，其余尚未完成或结果待确认。进度已保留，请选择原目标继续：{target}。",
+  'personalScope.folderMoveLocked': "“{name}”存在未完成的迁移，请继续原目标：{target}。",
   'invite.header.eyebrow': "团队邀请",
   'invite.loading': "正在加载邀请…",
   'invite.landing.title': "加入团队",
@@ -924,6 +928,11 @@ export const zhCN: Dict = {
   "sharedSpace.shareDialogCancel": "取消",
   "sharedSpace.shareSuccess": "已成功分享",
  "sharedSpace.shareFailed": "分享失败，请重试",
+ 'sharedSpace.removeFromSharedWithMe': '从分享给我的删除',
+ 'sharedSpace.removeFromSharedWithMeTitle': '从分享给我的删除？',
+ 'sharedSpace.removeFromSharedWithMeBody': '删除后，该用户将不再可访问和使用',
+ 'sharedSpace.removeFromSharedWithMeConfirm': '删除',
+ 'sharedSpace.removeFromSharedWithMeFailed': '删除失败，请重试',
 "sharedSpace.cannotShareToSelf": "不能分享给自己，请重新选择分享对象。",
  "sharedSpace.shareFolderDialogTitle": "分享文件夹",
  "sharedSpace.shareFolderDialogDesc": "选择要分享的成员，他们将能在共享空间中查看和评论此文件夹下的所有项目（含子文件夹）。",

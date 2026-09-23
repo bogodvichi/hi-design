@@ -29,6 +29,14 @@ interface CloudMcpItem extends CloudMcpTemplate {
   actionCount?: number | null;
 }
 
+// Catalog and share metadata can carry null or an unvalidated logo field.
+// Normalize it at the read boundary; stored items retain the shared contract.
+type CloudMcpResponseItem = Omit<CloudMcpItem, 'logoKey'> & { logoKey?: unknown };
+
+function normalizeLogoKey(value: unknown): CloudMcpTemplate['logoKey'] {
+  return typeof value === 'string' ? value : undefined;
+}
+
 // Build workspace headers from the string props the parent passes.
 function workspaceHeaders(
   workspaceId: string | null,
@@ -149,7 +157,7 @@ export function CloudMcpList({
           authMode: r.metadata?.authMode,
           homepage: r.metadata?.homepage,
            example: r.metadata?.example,
-           logoKey: r.metadata?.logoKey,
+           logoKey: normalizeLogoKey(r.metadata?.logoKey),
            ownerMemberId: r.ownerMemberId ?? '',
           version: null,
           versionId: null,
@@ -185,8 +193,8 @@ export function CloudMcpList({
       if (!cloudResponse && !localResponse) throw new Error('Failed to load team MCP templates');
 
      const merged = new Map<string, CloudMcpItem>();
-     for (const template of (cloudResponse?.templates ?? []) as CloudMcpItem[]) {
-       merged.set(template.id.toLowerCase(), template);
+     for (const template of (cloudResponse?.templates ?? []) as CloudMcpResponseItem[]) {
+       merged.set(template.id.toLowerCase(), { ...template, logoKey: normalizeLogoKey(template.logoKey) });
      }
      for (const server of (localResponse?.servers ?? []) as Array<{
        id: string;
@@ -247,8 +255,8 @@ export function CloudMcpList({
      if (!cloudResponse && !localResponse) throw new Error('Failed to load cloud MCP templates');
 
     const merged = new Map<string, CloudMcpItem>();
-    for (const template of (cloudResponse?.templates ?? []) as CloudMcpItem[]) {
-      merged.set(template.id.toLowerCase(), template);
+    for (const template of (cloudResponse?.templates ?? []) as CloudMcpResponseItem[]) {
+      merged.set(template.id.toLowerCase(), { ...template, logoKey: normalizeLogoKey(template.logoKey) });
     }
     // Merge locally-installed servers that have no matching cloud
     // template (e.g. servers added through the Settings MCP panel or

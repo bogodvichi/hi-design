@@ -743,12 +743,30 @@
   color: var(--text);
   cursor: pointer;
   position: relative;
-  transition: border-color 140ms var(--ease-out), box-shadow 140ms var(--ease-out);
+  /* Match community project cards without changing folder layout or fill. */
+  transition:
+    transform 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    filter 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 120ms var(--ease-out);
+  will-change: transform;
 }
 
-.folderCard:hover {
-  border-color: var(--border-strong, var(--border));
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+.folderCard:hover,
+.folderCard:focus-within {
+  transform: translateY(-2px);
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.08));
+}
+
+/* aria-pressed is present only during folder multi-selection. */
+.folderCard[aria-pressed]:hover,
+.folderCard[aria-pressed]:focus-within {
+  transform: none;
+  filter: none;
+}
+
+.folderCard:has(.folderCardMore[aria-expanded="true"]) {
+  /* Keep the existing menu above sibling cards' new stacking contexts. */
+  z-index: 5;
 }
 
 .folderCardSelected,
@@ -781,6 +799,7 @@
   color: var(--accent-contrast, #fff);
 }
 
+/* Keep the four-cell preview flat; hover elevation belongs to the whole card. */
 .folderCardGrid {
   aspect-ratio: 16 / 9;
   display: grid;
@@ -788,6 +807,18 @@
   grid-template-rows: 1fr 1fr;
   gap: 6px;
   min-height: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .folderCard {
+    transition: none;
+  }
+
+  .folderCard:hover,
+  .folderCard:focus-within {
+    transform: none;
+    filter: none;
+  }
 }
 
 .gridCell {
@@ -808,7 +839,7 @@
 }
 
 .gridCellCover {
-  background-size: 300%;
+  background-size: 100%;
   background-position: left top;
   background-repeat: no-repeat;
   background-color: var(--bg-subtle, #f3f4f6);
@@ -961,10 +992,7 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   cursor: pointer;
   opacity: 0;
-  transform: translateY(-1px);
   transition:
-    opacity 140ms var(--ease-out),
-    transform 140ms var(--ease-out),
     border-color 140ms var(--ease-out),
     color 140ms var(--ease-out),
     background-color 140ms var(--ease-out);
@@ -973,7 +1001,6 @@
 .folderCard:hover .folderCardMore,
 .folderCardMore[aria-expanded="true"] {
   opacity: 1;
-  transform: translateY(0);
 }
 
 .folderCardMore:hover,
@@ -996,6 +1023,12 @@
   border-radius: var(--radius);
   background: var(--bg-panel, var(--bg-elevated, #fff));
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.folderCardMenuSeparator {
+  height: var(--stroke-thin, 1px);
+  margin: var(--spacing-4, 4px) var(--spacing-6, 6px);
+  background: var(--border);
 }
 
 .folderCardMenu button {
