@@ -22,7 +22,7 @@ import {
 } from '@open-design/contracts';
 import type { SqliteDb } from '../db.js';
 import { getProject, rebindWorkspaceProject, getFolderTree } from '../db.js';
-import { createHdwFolders, shareFolderProjectsToSharedSpace, fetchSharedFolders, uploadHdwCommunityBlob } from '../http/hdw.js';
+import { createHdwFolders, shareFolderProjectsToSharedSpace, fetchSharedFolders, uploadHdwCommunityBlob, fetchHdwFolderTree } from '../http/hdw.js';
 import { createHdwFolderShares } from '../http/hdw.js';
 import { unshareHdwFolder } from '../http/hdw.js';
 import path from 'node:path';
@@ -54,7 +54,7 @@ export interface RegisterCollabContextHideSignRoutesDeps {
   db?: SqliteDb | null;
   /** Publishes a project to the team resource hub before sharing. Best-effort:
    *  wrapped in try/catch so a hub failure does not block the HDW share write. */
-  requestTeamShare?: (projectId: string, share?: string | ResourceHubPrincipal, coverDigest?: string | null) => Promise<{ version: number | null; versionId?: string }>;
+  requestTeamShare?: (projectId: string, share?: string | ResourceHubPrincipal, coverDigest?: string | null, folderId?: string | null) => Promise<{ version: number | null; versionId?: string }>;
   /** Projects root directory — used to locate .cover.png for HDW blob upload. */
   projectsDir?: string;
 }
@@ -785,13 +785,23 @@ export function registerCollabContextHideSignRoutes(
     }
 
     // Step 1: Query local SQLite for the folder tree + project IDs.
-    if (!deps.db) {
-      res.status(503).json({ error: 'UPSTREAM_UNAVAILABLE', message: 'local database is not configured' });
-      return;
+    // For team workspace folders that live on HDW but not in local SQLite,
+    // fall back to the HDW /folder/tree endpoint.
+    let tree: Array<{ folderId: string; folderPid: string | null; folderName: string; projectIds: string[] }> = [];
+    let treeFromHdw = false;
+    if (deps.db) {
+      tree = getFolderTree(deps.db, workspaceId, folderId);
     }
-    const tree = getFolderTree(deps.db, workspaceId, folderId);
     if (tree.length === 0) {
-      res.status(404).json({ error: 'not_found', message: 'Folder not found in local database' });
+      // Folder not in local SQLite — try HDW (team workspace folders)
+      const hdwTree = await fetchHdwFolderTree(deps.dataDir, folderId, workspaceId);
+      if (hdwTree && hdwTree.length > 0) {
+        tree = hdwTree;
+        treeFromHdw = true;
+      }
+    }
+    if (tree.length === 0) {
+      res.status(404).json({ error: 'not_found', message: 'Folder not found in local database or HDW' });
       return;
     }
 
@@ -811,21 +821,24 @@ export function registerCollabContextHideSignRoutes(
       return;
     }
 
-    // Step 2b: Create folder_shares records for the root folder only.
-    // The HDW share() endpoint recursively cleans up redundant descendant
-    // records — when a parent is shared, children no longer need their own
-    // folder_shares entries because they're accessible through the parent.
-    // This prevents hierarchically-related folders from appearing side by
-    // side in the "shared with me" root view.
-    await createHdwFolderShares(deps.dataDir, {
-      workspaceId,
-      shares: recipients.map((r) => ({
-        folder_id: tree[0]!.folderId,
-        recipient_member_id: getSharedSpaceMemberId(r.username),
-        shared_by_username: createdByUsername,
-        shared_by_member_id: getSharedSpaceMemberId(createdByUsername),
-      })),
-    });
+ // Step 2b: Create folder_shares records for the root folder only.
+ // The HDW share() endpoint recursively cleans up redundant descendant
+ // records — when a parent is shared, children no longer need their own
+ // folder_shares entries because they're accessible through the parent.
+ // This prevents hierarchically-related folders from appearing side by
+ // side in the "shared with me" root view.
+ const folderSharesResult = await createHdwFolderShares(deps.dataDir, {
+   workspaceId,
+   shares: recipients.map((r) => ({
+     folder_id: tree[0]!.folderId,
+     recipient_member_id: getSharedSpaceMemberId(r.username),
+     shared_by_username: createdByUsername,
+     shared_by_member_id: getSharedSpaceMemberId(createdByUsername),
+   })),
+ });
+ if (folderSharesResult === null) {
+   console.warn('[collab-context-hidesign] createHdwFolderShares failed — folder_shares records were not written');
+ }
 
     // Step 3: Batch-share all projects with folder_id.
     // For each project, look up the local cover_digest and upload the
@@ -845,6 +858,8 @@ export function registerCollabContextHideSignRoutes(
             }
           } catch { /* best-effort: blob may already exist or cover may be absent */ }
         }
+        // For HDW tree path, cover_digest may already be set on team_projects;
+        // the share-projects endpoint will handle it if we don't have it locally.
         items.push({ project_id: pid, folder_id: f.folderId, ...(coverDigest ? { cover_digest: coverDigest } : {}) });
       }
     }
@@ -863,7 +878,9 @@ export function registerCollabContextHideSignRoutes(
     // Best-effort: publish each project to the team resource hub so
     // team_projects.cover_digest is set on HDW. A hub failure must not
     // block the share — the sync flow will retry on the next poll.
-    if (deps.requestTeamShare) {
+    // Skip for HDW-sourced trees (regular team folders) — those projects
+    // are already in team_projects and do not need to be re-published.
+    if (deps.requestTeamShare && !treeFromHdw) {
       for (const item of items) {
         try {
           const sharePrincipal: ResourceHubPrincipal = {
@@ -874,7 +891,7 @@ export function registerCollabContextHideSignRoutes(
             workspaceType: 'team',
           };
           await Promise.race([
-            deps.requestTeamShare(item.project_id, sharePrincipal, item.cover_digest ?? null),
+            deps.requestTeamShare(item.project_id, sharePrincipal, item.cover_digest ?? null, item.folder_id),
             new Promise<never>((_, reject) =>
               setTimeout(() => reject(new Error('requestTeamShare timeout')), 15_000),
             ),
@@ -887,7 +904,8 @@ export function registerCollabContextHideSignRoutes(
 
     // After the HDW share records are written, update local SQLite rows
     // so the projects are treated as team projects for sync and listing.
-    if (deps.db) {
+    // Skip for HDW-sourced trees — those projects are already team projects.
+    if (deps.db && !treeFromHdw) {
       for (const item of items) {
         try {
           rebindWorkspaceProject(deps.db, item.project_id, {

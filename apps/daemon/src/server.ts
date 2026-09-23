@@ -4955,6 +4955,30 @@ export async function startServer({
         message: 'workspace project read is not allowed',
       };
     }
+    // Cross-team share check: if this project is shared with the current
+    // user via HDW folder/project shares, grant comment access with the
+    // shared-space collaborator identity (not the home workspace member ID).
+    try {
+      const shareAccess = await resolveShareAccess(projectId, req);
+      if (shareAccess) {
+        return {
+         ok: true as const,
+        context: {
+          workspaceId: shareAccess.workspaceId,
+           workspaceType: 'team' as const,
+           workspaceMemberId: shareAccess.viewerMemberId,
+           teamId: shareAccess.workspaceId,
+           role: 'member' as const,
+           memberStatus: 'active' as const,
+           lifecycleState: 'active' as const,
+          isSharedSpace: true,
+          collaboratorMemberId: shareAccess.viewerMemberId,
+        } as any,
+       };
+      }
+    } catch {
+      // share lookup failed — fall through to local authority
+    }
     const local = resolveOptionalLocalWorkspaceRequestAuthority(req);
     if (!local.ok) return local;
    if (local.context) {

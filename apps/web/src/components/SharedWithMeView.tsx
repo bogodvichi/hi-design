@@ -59,7 +59,7 @@ interface SharedFolderItem {
   folderName: string;
   projectCount: number;
   subfolderCount: number;
-  subfolderPreview: Array<{ name: string; kind: 'folder' | 'project' }>;
+  subfolderPreview: Array<{ name: string; kind: 'folder' | 'project'; projectId?: string | null; coverDigest?: string | null }>;
   createdAt: string;
 }
 
@@ -78,7 +78,7 @@ function parseFolderList(list: any[], counts: Record<string, number>): SharedFol
       ? f.subfolder_preview.map((p: any) =>
           typeof p === 'string'
             ? { name: p, kind: 'folder' as const }
-            : { name: p.name || '', kind: (p.kind === 'project' ? 'project' : 'folder') as 'folder' | 'project' })
+            : { name: p.name || '', kind: (p.kind === 'project' ? 'project' : 'folder') as 'folder' | 'project', projectId: p.projectId || null, coverDigest: p.coverDigest || null })
       : [],
     createdAt: f.created_at || '',
   }));
@@ -101,6 +101,16 @@ function FolderCard({ folder, onClick }: { folder: SharedFolderItem; onClick: ()
             return <div key={i} className={styles.gridCellEmpty} />;
           }
           if (item.kind === 'project') {
+            if (item.coverDigest) {
+              return (
+                <div
+                  key={i}
+                  className={`${styles.gridCell} ${styles.gridCellCover}`}
+                  style={{ backgroundImage: `url(/api/hdw/api/community/cover/${encodeURIComponent(item.coverDigest)})` }}
+                  title={item.name}
+                />
+              );
+            }
             return (
               <div key={i} className={`${styles.gridCell} ${styles.gridCellProject}`} title={item.name} />
             );

@@ -413,6 +413,21 @@ export async function unshareHdwFolder(
   }
 }
 
+export async function fetchHdwFolderTree(
+  dataDir: string | undefined,
+  folderId: string,
+  workspaceId?: string,
+): Promise<Array<{ folderId: string; folderPid: string | null; folderName: string; projectIds: string[] }> | null> {
+  if (!dataDir) return null;
+  const session = readSsoConfigFile(dataDir);
+  const data = await hdwGet<{ folders: Array<{ folderId: string; folderPid: string | null; folderName: string; projectIds: string[] }> }>(
+    '/folder/tree',
+    { folder_id: folderId, ...(workspaceId ? { workspace_id: workspaceId } : {}) },
+    session?.cookies,
+  );
+  return data?.folders ?? null;
+}
+
 export async function fetchHdwFolderDetail(
   dataDir: string | undefined,
   folderId: string,
@@ -461,6 +476,44 @@ export async function shareFolderProjectsToSharedSpace(
         folder_id: item.folder_id,
         ...(item.cover_digest ? { coverDigest: item.cover_digest } : {}),
       })),
+    },
+    session?.cookies,
+  );
+}
+
+
+/**
+ * Share one or more projects into a cloud folder. Unlike
+ * `shareFolderProjectsToSharedSpace` which is called during the initial
+ * folder-share flow (and carries an explicit recipient list), this is the
+ * incremental path used when a project is *moved* into an already-shared
+ * folder (or one of its descendants). The HDW side walks the folder_shares
+ * ancestor chain to discover recipients, so the daemon only needs to supply
+ * the folder id and project ids.
+ */
+export async function shareProjectsIntoSharedFolder(
+  dataDir: string | undefined,
+  input: {
+    workspaceId: string;
+    folderId: string;
+    projectIds: string[];
+    createdByUsername: string;
+    createdByDisplayname?: string | null;
+    coverDigests?: Array<{ project_id: string; cover_digest: string }>;
+  },
+): Promise<{ shared: number; skipped: number } | null> {
+  if (!dataDir) return null;
+  const session = readSsoConfigFile(dataDir);
+  return hdwPost<{ shared: number; skipped: number }>(
+    '/folder/share-projects',
+    {
+      workspace_id: input.workspaceId,
+      folder_id: input.folderId,
+      project_ids: input.projectIds,
+      created_by_username: input.createdByUsername,
+      created_by_member_id: getSharedSpaceMemberId(input.createdByUsername),
+      ...(input.createdByDisplayname ? { created_by_displayname: input.createdByDisplayname } : {}),
+      ...(input.coverDigests && input.coverDigests.length > 0 ? { cover_digests: input.coverDigests } : {}),
     },
     session?.cookies,
   );
@@ -802,11 +855,11 @@ export async function fetchSharedFolders(
   const username = session?.username?.trim() ?? '';
   if (!username) return { folders: [] };
   const recipientMemberId = getSharedSpaceMemberId(username);
-  const info = await fetchSharedSpaceInfo(dataDir);
-  const workspaceId = info?.workspace_id || getSharedSpaceTeamId();
- const params: Record<string, string> = { workspace_id: workspaceId };
-   if (folderPid) params.folder_pid = folderPid;
-   params.recipient_member_id = recipientMemberId;
+  // When fetching shared-with-me folders, do not send workspace_id
+  // folders from any team workspace should be visible by recipient.
+  const params: Record<string, string> = {};
+  if (folderPid) params.folder_pid = folderPid;
+  params.recipient_member_id = recipientMemberId;
    const data = await hdwGet<{ folders: Array<Record<string, unknown>> }>(
      '/folder/list',
      params,

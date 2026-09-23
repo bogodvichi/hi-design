@@ -1,6 +1,7 @@
 'use strict';
 
 const { createKnex } = require('../../utils/knex.js');
+const { getSharedSpaceTeamId, getSharedSpaceMemberId } = require('../../utils/ids.js');
 
 const Controller = require('egg').Controller;
 
@@ -330,39 +331,43 @@ class FolderController extends Controller {
   async list() {
     const { ctx } = this;
     const { workspace_id: workspaceId } = ctx.query;
+    const { recipient_member_id: recipientMemberId } = ctx.query;
 
-    if (!workspaceId) {
-      ctx.body = { code: -1, msg: 'FAIL', error: '缺少必要参数 workspace_id' };
+    // When querying by recipient_member_id (shared-with-me), workspace_id is
+    // optional — folders shared from any team workspace should be visible.
+    if (!workspaceId && !recipientMemberId) {
+      ctx.body = { code: -1, msg: 'FAIL', error: '缺少必要参数 workspace_id 或 recipient_member_id' };
       return;
     }
 
     try {
       const k = this.getKnex();
       const { folder_pid: folderPid } = ctx.query;
-      const { recipient_member_id: recipientMemberId } = ctx.query;
 
-      const query = k('folders')
-        .where({ 'folders.workspace_id': workspaceId })
-        .select(
+      const query = k('folders');
+      if (workspaceId) {
+        query.where({ 'folders.workspace_id': workspaceId });
+      }
+      query.select(
           'folders.folder_id', 'folders.folder_pid', 'folders.workspace_id',
           'folders.folder_name', 'folders.created_at', 'folders.recipient_member_id',
           k.raw('(SELECT COUNT(*) FROM folders sub WHERE sub.folder_pid = folders.folder_id) AS subfolder_count'),
           k.raw('(SELECT COUNT(*) FROM team_projects tp WHERE tp.folder_id = folders.folder_id) AS project_count'),
           k.raw(`(
-             SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) FROM (
-               SELECT name, kind FROM (
-                 SELECT COALESCE(display_name, project_id) AS name, 'project' AS kind, 0 AS sort_group, created_at
-                 FROM team_projects
-                 WHERE folder_id = folders.folder_id AND workspace_id = folders.workspace_id AND sync_state = 'synced'
-                 UNION ALL
-                 SELECT folder_name AS name, 'folder' AS kind, 1 AS sort_group, created_at
-                 FROM folders AS inner_f
-                 WHERE inner_f.folder_pid = folders.folder_id
-               ) AS combined
-               ORDER BY sort_group ASC, created_at ASC
-               LIMIT 4
-             ) AS t
-           ) AS subfolder_preview`)
+            SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) FROM (
+              SELECT name, kind, project_id AS "projectId", cover_digest AS "coverDigest" FROM (
+                SELECT COALESCE(display_name, project_id) AS name, 'project' AS kind, 0 AS sort_group, created_at, project_id, cover_digest
+                FROM team_projects
+                WHERE folder_id = folders.folder_id AND workspace_id = folders.workspace_id AND sync_state = 'synced'
+                UNION ALL
+                SELECT folder_name AS name, 'folder' AS kind, 1 AS sort_group, created_at, NULL::text AS project_id, NULL::text AS cover_digest
+                FROM folders AS inner_f
+                WHERE inner_f.folder_pid = folders.folder_id
+              ) AS combined
+              ORDER BY sort_group ASC, created_at ASC
+              LIMIT 4
+            ) AS t
+          ) AS subfolder_preview`)
         )
         .orderBy('folders.created_at', 'asc');
 
@@ -796,6 +801,174 @@ class FolderController extends Controller {
       ctx.body = { code: 0, msg: 'SUCCESS', data: { folder_id: targetFolderId, project_id: projectId } };
     } catch (err) {
       ctx.logger.error('Folder moveProject error:', err);
+      ctx.body = { code: -1, msg: 'FAIL', error: err.message };
+    }
+  }
+
+  // 分享项目到文件夹的接收人 (服务端查 folder_shares 获取接收人)
+  // body: { workspace_id, folder_id, project_ids: [], created_by_username,
+  //         created_by_member_id?, created_by_displayname?, cover_digests?: [{project_id, cover_digest}] }
+  // 获取文件夹及其所有子文件夹的树形结构 (递归 CTE)
+  // 同时返回每个文件夹下的项目 ID 列表
+  // query: folder_id, workspace_id
+  async tree() {
+    const { ctx } = this;
+    const { folder_id: folderId, workspace_id: workspaceId } = ctx.query;
+
+    if (!folderId) {
+      ctx.body = { code: -1, msg: 'FAIL', error: '缺少必要参数 folder_id' };
+      return;
+    }
+
+    try {
+      const k = this.getKnex();
+
+      // Recursive CTE: start at the target folder, walk down via folder_pid
+      const result = await k.raw(
+        `WITH RECURSIVE descendants AS (
+          SELECT folder_id, folder_pid, folder_name, 0 AS depth
+            FROM folders
+          WHERE folder_id = ?
+          UNION ALL
+          SELECT f.folder_id, f.folder_pid, f.folder_name, d.depth + 1
+            FROM folders f
+            JOIN descendants d ON f.folder_pid = d.folder_id
+        )
+        SELECT folder_id, folder_pid, folder_name, depth
+          FROM descendants
+          ORDER BY depth`,
+        [folderId],
+      );
+
+      const folders = (result.rows || []).map(r => ({
+        folderId: r.folder_id,
+        folderPid: r.folder_pid,
+        folderName: r.folder_name,
+      }));
+
+      if (folders.length === 0) {
+        ctx.body = { code: 0, msg: 'SUCCESS', data: { folders: [] } };
+        return;
+      }
+
+      // Batch-query project IDs for every folder in the tree
+      const folderIds = folders.map(f => f.folderId);
+      const projectRows = await k('team_projects')
+        .whereIn('folder_id', folderIds)
+        .where(function() {
+          if (workspaceId) {
+            this.where('workspace_id', workspaceId);
+          }
+        })
+        .where('sync_state', 'synced')
+        .select('folder_id', 'project_id');
+
+      const projectsByFolder = {};
+      for (const row of projectRows) {
+        if (!projectsByFolder[row.folder_id]) projectsByFolder[row.folder_id] = [];
+        projectsByFolder[row.folder_id].push(row.project_id);
+      }
+
+      const tree = folders.map(f => ({
+        ...f,
+        projectIds: projectsByFolder[f.folderId] || [],
+      }));
+
+      ctx.body = { code: 0, msg: 'SUCCESS', data: { folders: tree } };
+    } catch (err) {
+      ctx.logger.error('Folder tree error:', err);
+      ctx.body = { code: -1, msg: 'FAIL', error: err.message };
+    }
+  }
+
+  async shareProjects() {
+    const { ctx } = this;
+    const {
+      workspace_id: workspaceId,
+      folder_id: folderId,
+      project_ids: projectIds = [],
+      created_by_username: createdByUsername,
+      created_by_member_id: createdByMemberIdInput,
+      created_by_displayname: createdByDisplayname,
+      cover_digests: coverDigests = [],
+    } = ctx.request.body;
+
+    if (!workspaceId || !folderId || !Array.isArray(projectIds) || projectIds.length === 0) {
+      ctx.body = { code: -1, msg: 'FAIL', error: '缺少必要参数 workspace_id, folder_id 或 project_ids' };
+      return;
+    }
+
+    try {
+      const k = this.getKnex();
+      const sharedSpaceId = getSharedSpaceTeamId();
+      const createdByMemberId = createdByMemberIdInput || (createdByUsername ? getSharedSpaceMemberId(createdByUsername) : null);
+      const now = new Date();
+
+      // Walk ancestor chain to find recipients from folder_shares.
+      let currentId = folderId;
+      let recipients = [];
+      for (let i = 0; i < 20 && currentId; i++) {
+        const recs = await k('folder_shares').where({ folder_id: currentId }).select('recipient_member_id');
+        if (recs.length > 0) {
+          recipients = recs.map(r => r.recipient_member_id).filter(Boolean);
+          break;
+        }
+        const folder = await k('folders').where({ folder_id: currentId }).first();
+        if (!folder) break;
+        currentId = folder.folder_pid;
+      }
+
+      if (recipients.length === 0) {
+        ctx.body = { code: 0, msg: 'SUCCESS', data: { shared: 0, skipped: 0, message: '文件夹未被分享,无需同步' } };
+        return;
+      }
+
+      const seenProjects = new Set();
+      const validProjects = [];
+      for (const pid of projectIds) {
+        if (pid && !seenProjects.has(pid)) { seenProjects.add(pid); validProjects.push(pid); }
+      }
+
+      const rows = [];
+      for (const projectId of validProjects) {
+        for (const recipientMemberId of recipients) {
+          rows.push({
+            id: sharedSpaceId + '_' + projectId + '_' + recipientMemberId,
+            project_id: projectId,
+            home_workspace_id: workspaceId,
+            shared_space_id: sharedSpaceId,
+            recipient_member_id: recipientMemberId,
+            recipient_username: null,
+            created_by_member_id: createdByMemberId || null,
+            created_by_username: createdByUsername || null,
+            created_by_displayname: createdByDisplayname || null,
+            folder_id: folderId,
+            created_at: now,
+          });
+        }
+      }
+
+      await k('workspace_project_shares').insert(rows).onConflict('id').merge([
+        'created_by_member_id',
+        'created_by_username',
+        'created_by_displayname',
+        'folder_id',
+        'created_at',
+      ]);
+
+      for (const projectId of validProjects) {
+        const updateFields = { folder_id: folderId };
+        const coverEntry = coverDigests.find(c => c.project_id === projectId);
+        if (coverEntry && coverEntry.cover_digest) { updateFields.cover_digest = coverEntry.cover_digest; }
+        await k('team_projects').where({ workspace_id: workspaceId, project_id: projectId }).update(updateFields);
+      }
+
+      ctx.body = {
+        code: 0, msg: 'SUCCESS',
+        data: { shared: rows.length, skipped: validProjects.length * recipients.length - rows.length, recipients_count: recipients.length },
+      };
+    } catch (err) {
+      ctx.logger.error('Folder shareProjects error:', err);
       ctx.body = { code: -1, msg: 'FAIL', error: err.message };
     }
   }

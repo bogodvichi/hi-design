@@ -19,8 +19,8 @@ export function FolderCardMenu({
 }: {
   onRename?: () => void;
   renameLabel?: string;
-  onDelete: () => void;
-  deleteLabel: string;
+  onDelete?: () => void;
+  deleteLabel?: string;
   onShare?: () => void;
   shareLabel?: string;
 }) {
@@ -77,14 +77,16 @@ export function FolderCardMenu({
             <span>{renameLabel}</span>
           </button>
         ) : null}
-         <button
-           type="button"
-           role="menuitem"
-           onClick={(e) => { e.stopPropagation(); setOpen(false); onDelete(); }}
-         >
-           <Icon name="trash" size={12} />
-           <span>{deleteLabel}</span>
-         </button>
+          {onDelete ? (
+            <button
+              type="button"
+              role="menuitem"
+              onClick={(e) => { e.stopPropagation(); setOpen(false); onDelete(); }}
+            >
+              <Icon name="trash" size={12} />
+              <span>{deleteLabel}</span>
+            </button>
+          ) : null}
         </div>
       ) : null}
     </div>

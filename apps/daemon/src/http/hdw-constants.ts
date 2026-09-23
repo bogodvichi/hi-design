@@ -24,10 +24,10 @@ export function resolveHdwAddress(env: NodeJS.ProcessEnv = process.env): {
 export const PROD_HDW_BASE_URL = 'https://pixso.hikvision.com.cn';
 
 /** Local development uses the local HDW backend. */
-export const DEV_HDW_BASE_URL = PROD_HDW_BASE_URL// 'http://127.0.0.1:7002';
+export const DEV_HDW_BASE_URL = 'http://127.0.0.1:7002';
 
 /** Production path prefix appended after the base URL. */
 export const PROD_HDW_PATH_PREFIX = '/hik-plugin/hidesign-web/hdw';
 
 /** Local development uses the local HDW path. */
-export const DEV_HDW_PATH_PREFIX = PROD_HDW_PATH_PREFIX//'/hdw';
+export const DEV_HDW_PATH_PREFIX = '/hdw';
