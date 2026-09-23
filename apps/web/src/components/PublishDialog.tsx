@@ -15,7 +15,7 @@ import {
   importFolderProject,
   resolvedWorkspaceContextForWrite,
 } from '../state/projects';
-import { openFolderDialog } from '../providers/registry';
+import { fetchProjectFiles, openFolderDialog } from '../providers/registry';
 import { McpConfigForm, type McpConfigSelection } from './McpConfigForm';
 import {
   MCP_LOGO_KEYS,
@@ -31,6 +31,12 @@ import {
   type SkillLogoKey,
 } from './SkillLogo';
 import styles from './PublishDialog.module.css';
+import {
+  HtmlProjectCoverFrame,
+  projectCoverUrl,
+  selectProjectFileCover,
+  type ProjectCoverOverride,
+} from './project-cover';
 
 import { uploadSkillToCloud } from '../providers/registry';
 import { useWorkspaceContext, workspaceContextFromDirectoryItem } from '../collab/useWorkspaceContext';
@@ -244,11 +250,141 @@ async function fetchOwnedWorkspaceProjects(workspace: WorkspaceDirectoryItem): P
     if (!project.id || !project.name) return [];
     return [{
       ...project,
+      coverDigest: summary?.coverDigest ?? project.coverDigest ?? null,
       workspaceId: summary?.workspaceId ?? workspace.workspaceId,
       workspaceVisibility: visibility,
       createdByWorkspaceMemberId: ownerMemberId,
     } as Project];
   }).sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+}
+
+function projectPickerCoverUrl(project: Project): string | null {
+  if (!project.coverDigest) return null;
+  if (project.workspaceVisibility === 'personal') {
+    return `/api/projects/${encodeURIComponent(project.id)}/cover?digest=${encodeURIComponent(project.coverDigest)}`;
+  }
+  return `/api/hdw/api/community/cover/${encodeURIComponent(project.coverDigest)}`;
+}
+
+function ProjectPickerThumbnail({
+  project,
+  workspace,
+}: {
+  project: Project;
+  workspace: WorkspaceDirectoryItem | null;
+}) {
+  const [resolvedCover, setResolvedCover] = useState<ProjectCoverOverride | null | undefined>(
+    project.coverDigest ? null : undefined,
+  );
+  const digestUrl = projectPickerCoverUrl(project);
+  const initial = project.name.trim().slice(0, 1).toUpperCase() || '?';
+
+  useEffect(() => {
+    if (digestUrl) {
+      setResolvedCover(null);
+      return;
+    }
+    if (!workspace) {
+      setResolvedCover(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    const workspaceContext = workspaceContextFromDirectoryItem(workspace);
+    setResolvedCover(undefined);
+    void fetchProjectFiles(project.id, {
+      signal: controller.signal,
+      workspaceContext,
+    })
+      .then((files) => {
+        if (!controller.signal.aborted) setResolvedCover(selectProjectFileCover(files));
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setResolvedCover(null);
+      });
+
+    return () => controller.abort();
+  }, [
+    digestUrl,
+    project.id,
+    project.updatedAt,
+    workspace?.workspaceId,
+    workspace?.workspaceMemberId,
+  ]);
+
+  if (digestUrl) {
+    return (
+      <span className={styles.projectOptionCover} aria-hidden>
+        <span className={styles.projectOptionCoverFallback}>{initial}</span>
+        <img
+          src={digestUrl}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          onError={(event) => { event.currentTarget.style.display = 'none'; }}
+        />
+      </span>
+    );
+  }
+
+  if (!resolvedCover) {
+    return (
+      <span className={styles.projectOptionCover} aria-hidden>
+        <span className={styles.projectOptionCoverFallback}>{initial}</span>
+      </span>
+    );
+  }
+
+  const workspaceContext = workspace ? workspaceContextFromDirectoryItem(workspace) : null;
+  const src = projectCoverUrl(
+    project.id,
+    resolvedCover.name,
+    resolvedCover.mtime,
+    workspaceContext,
+  );
+
+  if (resolvedCover.kind === 'html') {
+    return (
+      <span className={styles.projectOptionCover} aria-hidden>
+        <HtmlProjectCoverFrame
+          src={src}
+          initial={initial}
+          iframeClassName={styles.projectOptionCoverFrame}
+          glyphClassName={styles.projectOptionCoverFallback}
+          diagnostic={`publish-project:${project.id}:${resolvedCover.name}`}
+        />
+      </span>
+    );
+  }
+
+  if (resolvedCover.kind === 'video') {
+    return (
+      <span className={styles.projectOptionCover} aria-hidden>
+        <span className={styles.projectOptionCoverFallback}>{initial}</span>
+        <video
+          className={styles.projectOptionCoverMedia}
+          src={src}
+          muted
+          playsInline
+          preload="metadata"
+        />
+      </span>
+    );
+  }
+
+  return (
+    <span className={styles.projectOptionCover} aria-hidden>
+      <span className={styles.projectOptionCoverFallback}>{initial}</span>
+      <img
+        className={styles.projectOptionCoverMedia}
+        src={src}
+        alt=""
+        loading="lazy"
+        decoding="async"
+        onError={(event) => { event.currentTarget.style.display = 'none'; }}
+      />
+    </span>
+  );
 }
 
 function ProjectsTab({
@@ -417,6 +553,7 @@ function ProjectsTab({
   const filteredProjects = projectSearch.trim()
     ? projects.filter((project) => project.name.toLocaleLowerCase().includes(projectSearch.trim().toLocaleLowerCase()))
     : projects;
+  const activeWorkspace = workspaces.find((item) => item.workspaceId === activeWorkspaceId) ?? null;
 
   return (
     <div className={styles.formGrid}>
@@ -429,7 +566,7 @@ function ProjectsTab({
             className={source === 'internal' ? styles.sourceSwitchBtnActive : styles.sourceSwitchBtn}
             onClick={() => setSource('internal')}
           >
-            {locale.startsWith('zh') ? '从个人所有选择' : 'Choose from Personal'}
+            {locale.startsWith('zh') ? '我创建的' : 'Created by me'}
           </button>
           <button
             type="button"
@@ -459,7 +596,6 @@ function ProjectsTab({
                       setProjectSearch('');
                     }}
                   >
-                    <Icon name={workspace.isDefaultTeam ? 'folder' : 'users'} size={16} aria-hidden />
                     <span>{workspace.isDefaultTeam ? (locale.startsWith('zh') ? '个人所有' : 'Personal') : workspace.workspaceName}</span>
                     <small>{workspace.isDefaultTeam ? (locale.startsWith('zh') ? '个人' : 'Personal') : (locale.startsWith('zh') ? '团队' : 'Team')}</small>
                   </button>
@@ -504,12 +640,10 @@ function ProjectsTab({
                         type="button"
                         role="option"
                         aria-selected={selected}
-                        className={selected ? `${styles.projectOption} ${styles.projectOptionSingle} ${styles.projectOptionActive}` : `${styles.projectOption} ${styles.projectOptionSingle}`}
+                        className={selected ? `${styles.projectOption} ${styles.projectOptionWithCover} ${styles.projectOptionActive}` : `${styles.projectOption} ${styles.projectOptionWithCover}`}
                         onClick={() => handleSelectProject(project)}
                       >
-                        <span className={styles.projectOptionIcon} aria-hidden>
-                          <Icon name="folder" size={15} />
-                        </span>
+                        <ProjectPickerThumbnail project={project} workspace={activeWorkspace} />
                         <span className={styles.projectOptionText}>
                           <strong>{project.name}</strong>
                           <small>{relativeTime(project.updatedAt, t)}</small>
@@ -722,7 +856,7 @@ function McpTab({
       <div className={styles.formGrid}>
         <div className={styles.sourceSwitch} role="tablist" aria-label={locale.startsWith('zh') ? 'MCP 来源' : 'MCP source'}>
           <button type="button" role="tab" aria-selected={false} className={styles.sourceSwitchBtn} onClick={() => setSource('internal')}>
-            {locale.startsWith('zh') ? '从个人所有选择' : 'Choose from Personal'}
+            {locale.startsWith('zh') ? '我创建的' : 'Created by me'}
           </button>
           <button type="button" role="tab" aria-selected className={styles.sourceSwitchBtnActive}>
             {locale.startsWith('zh') ? '手动输入' : 'Enter manually'}
@@ -759,7 +893,7 @@ function McpTab({
       <section className={styles.panel}>
         <div className={styles.sourceSwitch} role="tablist" aria-label={locale.startsWith('zh') ? 'MCP 来源' : 'MCP source'}>
           <button type="button" role="tab" aria-selected className={styles.sourceSwitchBtnActive}>
-            {locale.startsWith('zh') ? '从个人所有选择' : 'Choose from Personal'}
+            {locale.startsWith('zh') ? '我创建的' : 'Created by me'}
           </button>
           <button type="button" role="tab" aria-selected={false} className={styles.sourceSwitchBtn} onClick={() => setSource('external')}>
             {locale.startsWith('zh') ? '手动输入' : 'Enter manually'}
@@ -1198,7 +1332,7 @@ function SkillTab({
       <section className={styles.panel}>
         <div className={styles.sourceSwitch} role="tablist" aria-label={locale.startsWith('zh') ? 'Skill 来源' : 'Skill source'}>
         <button type="button" role="tab" aria-selected={source === 'internal'} className={source === 'internal' ? styles.sourceSwitchBtnActive : styles.sourceSwitchBtn} onClick={() => setSource('internal')}>
-          {locale.startsWith('zh') ? '从个人所有选择' : 'Choose from Personal'}
+          {locale.startsWith('zh') ? '我创建的' : 'Created by me'}
         </button>
         <button type="button" role="tab" aria-selected={source === 'external'} className={source === 'external' ? styles.sourceSwitchBtnActive : styles.sourceSwitchBtn} onClick={() => setSource('external')}>
           {locale.startsWith('zh') ? '导入本地 Skill' : 'Import local Skill'}
@@ -1222,7 +1356,6 @@ function SkillTab({
                       setSkillSearch('');
                     }}
                   >
-                    <Icon name={workspace.isDefaultTeam ? 'folder' : 'users'} size={16} aria-hidden />
                     <span>{workspace.isDefaultTeam ? (locale.startsWith('zh') ? '个人所有' : 'Personal') : workspace.workspaceName}</span>
                     <small>{workspace.isDefaultTeam ? (locale.startsWith('zh') ? '个人' : 'Personal') : (locale.startsWith('zh') ? '团队' : 'Team')}</small>
                   </button>

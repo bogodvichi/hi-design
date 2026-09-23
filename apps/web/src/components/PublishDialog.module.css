@@ -338,7 +338,7 @@
   width: 100%;
   min-height: 42px;
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 7px;
   align-items: center;
   padding: 0 8px;
@@ -507,6 +507,10 @@
   grid-template-columns: 30px minmax(0, 1fr);
 }
 
+.projectOptionWithCover {
+  grid-template-columns: 42px minmax(0, 1fr);
+}
+
 .projectOption:not(.projectOptionActive):hover,
 .projectOption:not(.projectOptionActive):focus-visible {
   outline: none;
@@ -526,16 +530,53 @@
   transform: none;
 }
 
-.projectOptionIcon {
-  width: 28px;
-  height: 28px;
+.projectOptionCover {
+  position: relative;
+  width: 40px;
+  height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   flex: 0 0 auto;
-  border-radius: 6px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
   background: var(--bg-subtle);
+}
+
+.projectOptionCover img,
+.projectOptionCoverMedia {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.projectOptionCoverFrame {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 400px;
+  height: 300px;
+  border: 0;
+  pointer-events: none;
+  transform: scale(0.1);
+  transform-origin: top left;
+  background: var(--bg-elevated);
+}
+
+.projectOptionCoverFallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
   color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
 }
 
 .resourceLogo {

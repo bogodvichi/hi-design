@@ -12,7 +12,9 @@ const { uploadSkillToCloudMock, importFolderProjectMock } = vi.hoisted(() => ({
 }));
 
 vi.mock('../../src/providers/registry', () => ({
+  fetchProjectFiles: vi.fn().mockResolvedValue([]),
   openFolderDialog: vi.fn(),
+  projectFileUrl: vi.fn((projectId: string, name: string) => `/api/projects/${projectId}/raw/${name}`),
   uploadSkillToCloud: uploadSkillToCloudMock,
 }));
 
