@@ -462,12 +462,11 @@ export function SharedFolderView({
         const body = await res.json();
         if (cancelled) return;
         const list: any[] = body?.folders ?? [];
-        const counts: Record<string, number> = {};
-        for (const r of sharedRowsRef.current) {
-          const fid = r.folderId ?? null;
-          if (fid) counts[fid] = (counts[fid] ?? 0) + 1;
-        }
-        setFolders(parseFolderList(list, counts));
+        // Project counts now come from the HDW folder list API's
+        // project_count field — sharedRowsRef only has the current
+        // folder's projects after server-side filtering, so it can't
+        // compute subfolder counts.
+        setFolders(parseFolderList(list, {}));
       } catch {
         if (!cancelled) setFolders([]);
       } finally {
@@ -492,14 +491,10 @@ export function SharedFolderView({
     const load = async () => {
       setProjectsLoading(true);
       try {
-        const rows = await fetchSharedWithMeCatalog();
+        const rows = await fetchSharedWithMeCatalog({ folderId });
         if (cancelled) return;
         sharedRowsRef.current = rows;
-        // Filter projects in this folder.
-        const folderProjects = rows
-          .filter((r) => r.folderId === folderId)
-          .map(sharedRowToProject);
-        setProjects(folderProjects);
+        setProjects(rows.map(sharedRowToProject));
       } catch {
         if (!cancelled) setProjects([]);
       } finally {

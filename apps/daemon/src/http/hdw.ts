@@ -312,6 +312,122 @@ export async function createHdwFolders(
 }
 
 /**
+ * Batch-create folder_shares records via HDW `POST /folder/share`.
+ * Each record maps a folder_id to a recipient_member_id so the cloud
+ * knows which users a folder (and its future subfolders) was shared to.
+ * HDW idempotently skips duplicates (folder_id + recipient_member_id).
+ */
+export async function createHdwFolderShares(
+  dataDir: string | undefined,
+  input: {
+    workspaceId: string;
+    shares: Array<{
+      folder_id: string;
+      recipient_member_id: string;
+      shared_by_username?: string;
+      shared_by_member_id?: string;
+    }>;
+  },
+): Promise<{ created: number; skipped: number } | null> {
+  if (!dataDir) return null;
+  const session = readSsoConfigFile(dataDir);
+  return hdwPost<{ created: number; skipped: number }>(
+    '/folder/share',
+    {
+      workspace_id: input.workspaceId,
+      shares: input.shares,
+    },
+    session?.cookies,
+  );
+}
+
+/**
+ * Fetch the recipient_member_ids for a folder via HDW
+ * `GET /folder/shares?folder_id=<id>`. Returns the list of
+ * member IDs the folder was shared to. Used when creating a new
+ * subfolder under an already-shared parent: the new subfolder
+ * inherits the parent's share recipients.
+ */
+export async function fetchHdwFolderShareRecipients(
+  dataDir: string | undefined,
+  folderId: string,
+): Promise<string[]> {
+  if (!dataDir) return [];
+  const session = readSsoConfigFile(dataDir);
+  const data = await hdwGet<{ recipients: Array<{ recipient_member_id: string }> }>(
+    '/folder/shares',
+    { folder_id: folderId },
+    session?.cookies,
+  );
+  if (!data?.recipients) return [];
+  return data.recipients
+    .map((r) => r.recipient_member_id)
+    .filter((id): id is string => typeof id === 'string' && Boolean(id.trim()));
+}
+
+/**
+ * Check whether a folder exists on the HDW cloud by querying
+ * `GET /folder/detail?folder_id=<id>`. Returns the folder record
+ * (with folder_pid, folder_name) or null when the folder is not
+ * found on the cloud.
+ */
+/**
+ * Unshare a folder (and all its descendants) from a recipient via HDW
+ * `DELETE /folder/unshare`. The HDW endpoint recursively finds all
+ * descendant folders, deletes their `folder_shares` records, and removes
+ * the corresponding `workspace_project_shares` rows for that recipient.
+ *
+ * Returns true on success, false on failure.
+ */
+export async function unshareHdwFolder(
+  dataDir: string | undefined,
+  input: { workspaceId: string; folderId: string; recipientMemberId: string },
+): Promise<boolean> {
+  if (!dataDir) return false;
+  const session = readSsoConfigFile(dataDir);
+  try {
+    const url = new URL(`${HDW_BASE}/folder/unshare`);
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      'User-Agent': UA,
+    };
+    if (session?.cookies?.length) {
+      headers.Cookie = session.cookies.map((c) => `${c.name}=${c.value}`).join('; ');
+    }
+    const resp = await fetch(url, {
+      method: 'DELETE',
+      headers,
+      body: JSON.stringify({
+        workspace_id: input.workspaceId,
+        folder_id: input.folderId,
+        recipient_member_id: input.recipientMemberId,
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!resp.ok) return false;
+    const json = (await resp.json()) as HdwResponse<unknown>;
+    return json.code === 0;
+  } catch {
+    return false;
+  }
+}
+
+export async function fetchHdwFolderDetail(
+  dataDir: string | undefined,
+  folderId: string,
+): Promise<{ folder_id: string; folder_pid: string | null; folder_name: string } | null> {
+  if (!dataDir) return null;
+  const session = readSsoConfigFile(dataDir);
+  const data = await hdwGet<{ folder_id: string; folder_pid: string | null; folder_name: string }>(
+    '/folder/detail',
+    { folder_id: folderId },
+    session?.cookies,
+  );
+  return data ?? null;
+}
+
+/**
  * Batch-share multiple projects to the shared space in one HDW call via
  * `POST /shared-space/share-batch`. Each item carries its folder_id so
  * the HDW `workspace_project_shares` row records which cloud folder the
@@ -688,18 +804,15 @@ export async function fetchSharedFolders(
   const recipientMemberId = getSharedSpaceMemberId(username);
   const info = await fetchSharedSpaceInfo(dataDir);
   const workspaceId = info?.workspace_id || getSharedSpaceTeamId();
-  const params: Record<string, string> = { workspace_id: workspaceId };
-  if (folderPid) params.folder_pid = folderPid;
-  const data = await hdwGet<{ folders: Array<Record<string, unknown>> }>(
-    '/folder/list',
-    params,
-    session?.cookies,
-  );
-  const allFolders = data?.folders ?? [];
-  const filtered = allFolders.filter(
-    (f) => f.recipient_member_id === recipientMemberId,
-  );
-  return { folders: filtered };
+ const params: Record<string, string> = { workspace_id: workspaceId };
+   if (folderPid) params.folder_pid = folderPid;
+   params.recipient_member_id = recipientMemberId;
+   const data = await hdwGet<{ folders: Array<Record<string, unknown>> }>(
+     '/folder/list',
+     params,
+     session?.cookies,
+   );
+   return { folders: data?.folders ?? [] };
 }
 
 export async function shareToSharedSpace(

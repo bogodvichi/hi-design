@@ -315,70 +315,302 @@ class FolderController extends Controller {
     }
   }
 
-  // 查询团队下的文件夹列表(树形结构)
-  // query: workspace_id
-  async list() {
+   // 查询团队下的文件夹列表(树形结构)
+   // query: workspace_id, folder_pid?, recipient_member_id?
+   //
+   // 当 recipient_member_id 存在时(共享空间场景),使用 folder_shares 表
+   // 进行过滤,并实现"虚拟根"逻辑:
+   //   - 根级(folder_pid 未传):只显示 folder_shares 中有记录且其父文件夹
+   //     未被分享给同一用户的文件夹。这样,孤岛子文件夹(父文件夹未分享)
+   //     会作为根级显示;一旦父文件夹也被分享,子文件夹就不再作为根级出现
+   //     (通过父文件夹逐层进入即可)。
+   //   - 子级(folder_pid 已传):验证父文件夹已被分享给该用户后,显示该
+   //     父文件夹下的所有子文件夹(无需子文件夹自身有 folder_shares 记录,
+   //     因为父文件夹被分享即意味着所有子文件夹可被访问)。
+   async list() {
+     const { ctx } = this;
+     const { workspace_id: workspaceId } = ctx.query;
+ 
+     if (!workspaceId) {
+       ctx.body = { code: -1, msg: 'FAIL', error: '缺少必要参数 workspace_id' };
+       return;
+     }
+ 
+     try {
+       const k = this.getKnex();
+       const { folder_pid: folderPid } = ctx.query;
+       const { recipient_member_id: recipientMemberId } = ctx.query;
+ 
+       const query = k('folders')
+         .where({ 'folders.workspace_id': workspaceId })
+         .select(
+           'folders.folder_id', 'folders.folder_pid', 'folders.workspace_id',
+           'folders.folder_name', 'folders.created_at', 'folders.recipient_member_id',
+           k.raw('(SELECT COUNT(*) FROM folders sub WHERE sub.folder_pid = folders.folder_id) AS subfolder_count'),
+           k.raw('(SELECT COUNT(*) FROM team_projects tp WHERE tp.folder_id = folders.folder_id) AS project_count'),
+           k.raw(`(
+             SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) FROM (
+               SELECT name, kind FROM (
+                 SELECT COALESCE(display_name, project_id) AS name, 'project' AS kind, 0 AS sort_group, created_at
+                 FROM team_projects
+                 WHERE folder_id = folders.folder_id AND workspace_id = folders.workspace_id AND sync_state = 'synced'
+                 UNION ALL
+                 SELECT folder_name AS name, 'folder' AS kind, 1 AS sort_group, created_at
+                 FROM folders AS inner_f
+                 WHERE inner_f.folder_pid = folders.folder_id
+               ) AS combined
+               ORDER BY sort_group ASC, created_at ASC
+               LIMIT 4
+             ) AS t
+           ) AS subfolder_preview`)
+         )
+         .orderBy('folders.created_at', 'asc');
+ 
+       if (recipientMemberId) {
+         // 共享空间场景:使用 folder_shares 表过滤
+         if (!folderPid) {
+           // 根级:虚拟根逻辑 — 显示被分享给该用户且其父文件夹未被分享
+           // 给同一用户的文件夹(父文件夹未分享时,子文件夹作为"孤岛"
+           // 根级显示;父文件夹被分享后,子文件夹不再作为根级出现)
+           query
+             .join('folder_shares as fs', 'folders.folder_id', 'fs.folder_id')
+             .where('fs.recipient_member_id', recipientMemberId)
+             .whereRaw(
+               `(folders.folder_pid IS NULL OR folders.folder_pid NOT IN (
+                 SELECT folder_id FROM folder_shares WHERE recipient_member_id = ?
+               ))`,
+               [recipientMemberId],
+             );
+         } else {
+           // 子级:验证父文件夹已被分享给该用户,然后显示其下所有子文件夹
+           // (父文件夹被分享即意味着所有子文件夹可被访问,子文件夹自身
+           //  不需要有 folder_shares 记录)
+           query
+             .where('folders.folder_pid', folderPid)
+             .whereRaw(
+               `EXISTS (SELECT 1 FROM folder_shares WHERE folder_id = ? AND recipient_member_id = ?)`,
+               [folderPid, recipientMemberId],
+             );
+         }
+       } else {
+         // 团队空间场景:不使用 folder_shares 过滤
+         if (!folderPid) {
+           query.whereNull('folders.folder_pid');
+         } else {
+           query.where('folders.folder_pid', folderPid);
+         }
+       }
+ 
+       const folders = await query;
+ 
+       ctx.body = { code: 0, msg: 'SUCCESS', data: { folders } };
+     } catch (err) {
+       ctx.logger.error('Folder list error:', err);
+       ctx.body = { code: -1, msg: 'FAIL', error: err.message };
+     }
+   }
+ 
+ 
+   // 批量创建文件夹分享记录 (幂等 — 跳过已存在的 folder_id + recipient_member_id)
+   //
+   // 同时,对于每个被分享的文件夹,递归删除其所有子文件夹中相同 recipient
+   // 的冗余 folder_shares 记录 — 因为父文件夹被分享后,子文件夹通过父文件夹
+   // 逐层进入即可访问,不再需要独立的分享记录。这避免了有层次关系的文件夹
+   // 在"分享给我"视图中平级显示的问题。
+   //
+   // body: { workspace_id, shares: [{ folder_id, recipient_member_id,
+   //          shared_by_username?, shared_by_member_id? }] }
+   async share() {
+     const { ctx } = this;
+     const {
+       workspace_id: workspaceId,
+       shares: sharesInput = [],
+     } = ctx.request.body;
+ 
+     if (!workspaceId || !Array.isArray(sharesInput) || sharesInput.length === 0) {
+       ctx.body = { code: -1, msg: 'FAIL', error: '缺少必要参数 workspace_id 或 shares' };
+       return;
+     }
+ 
+     try {
+       const k = this.getKnex();
+       const ws = await k('workspaces').where({ workspace_id: workspaceId }).first();
+       if (!ws) {
+         ctx.body = { code: -1, msg: 'FAIL', error: '团队不存在' };
+         return;
+       }
+ 
+       // 查询已存在的 (folder_id, recipient_member_id) 对
+       const folderIds = [...new Set(sharesInput.map(s => s.folder_id).filter(Boolean))];
+       const recipientIds = [...new Set(sharesInput.map(s => s.recipient_member_id).filter(Boolean))];
+       const existing = folderIds.length > 0 && recipientIds.length > 0
+         ? await k('folder_shares')
+             .whereIn('folder_id', folderIds)
+             .whereIn('recipient_member_id', recipientIds)
+             .select('folder_id', 'recipient_member_id')
+         : [];
+       const existingSet = new Set(existing.map(e => `${e.folder_id}|${e.recipient_member_id}`));
+ 
+       const newShares = sharesInput.filter(
+         s => s.folder_id && s.recipient_member_id
+           && !existingSet.has(`${s.folder_id}|${s.recipient_member_id}`),
+       );
+       const skipped = sharesInput.length - newShares.length;
+ 
+       if (newShares.length > 0) {
+         const now = new Date();
+         const rows = newShares.map(s => ({
+           folder_id: s.folder_id,
+           recipient_member_id: s.recipient_member_id,
+           shared_by_username: s.shared_by_username || null,
+           shared_by_member_id: s.shared_by_member_id || null,
+           created_at: now,
+         }));
+         await k('folder_shares')
+           .insert(rows)
+           .onConflict(['folder_id', 'recipient_member_id'])
+           .ignore();
+       }
+ 
+       // 清理冗余记录:对于每个被分享的文件夹,递归查找其所有子文件夹,
+       // 删除这些子文件夹中相同 recipient 的 folder_shares 记录。
+       let cleaned = 0;
+       const recipientsByFolder = {};
+       for (const s of sharesInput) {
+         if (!s.folder_id || !s.recipient_member_id) continue;
+         if (!recipientsByFolder[s.folder_id]) recipientsByFolder[s.folder_id] = new Set();
+         recipientsByFolder[s.folder_id].add(s.recipient_member_id);
+       }
+       for (const fid of Object.keys(recipientsByFolder)) {
+         const recs = [...recipientsByFolder[fid]];
+         if (recs.length === 0) continue;
+         const descResult = await k.raw(
+           `WITH RECURSIVE descendants AS (
+             SELECT folder_id FROM folders WHERE folder_pid = ?
+             UNION ALL
+             SELECT f.folder_id FROM folders f
+             JOIN descendants d ON f.folder_pid = d.folder_id
+           )
+           SELECT folder_id FROM descendants`,
+           [fid],
+         );
+         const descIds = (descResult.rows || []).map(r => r.folder_id);
+         if (descIds.length > 0) {
+           const deleted = await k('folder_shares')
+             .whereIn('folder_id', descIds)
+             .whereIn('recipient_member_id', recs)
+             .del();
+           cleaned += deleted || 0;
+         }
+       }
+ 
+       ctx.body = {
+         code: 0,
+         msg: 'SUCCESS',
+         data: { created: newShares.length, skipped, cleaned },
+       };
+     } catch (err) {
+       ctx.logger.error('Folder share error:', err);
+       ctx.body = { code: -1, msg: 'FAIL', error: err.message };
+     }
+   }
+ 
+   // 查询文件夹的分享接收者列表
+   // query: folder_id
+   async shareList() {
+     const { ctx } = this;
+     const { folder_id: folderId } = ctx.query;
+ 
+     if (!folderId) {
+       ctx.body = { code: -1, msg: 'FAIL', error: '缺少必要参数 folder_id' };
+       return;
+     }
+ 
+     try {
+       const k = this.getKnex();
+       const recipients = await k('folder_shares')
+         .where({ folder_id: folderId })
+         .select('recipient_member_id')
+         .orderBy('created_at', 'asc');
+ 
+       ctx.body = {
+         code: 0,
+         msg: 'SUCCESS',
+         data: { recipients },
+       };
+     } catch (err) {
+       ctx.logger.error('Folder shareList error:', err);
+       ctx.body = { code: -1, msg: 'FAIL', error: err.message };
+     }
+   }
+ 
+ 
+   // 取消文件夹分享 — 删除 folder_shares 记录,并级联清理:
+  //   1. 递归查找该文件夹及其所有后代文件夹
+  //   2. 删除这些文件夹的 folder_shares 记录(针对同一接收者)
+  //   3. 删除这些文件夹下所有项目的 workspace_project_shares 记录(针对同一接收者)
+  //
+  // body: { workspace_id, folder_id, recipient_member_id }
+  async unshare() {
     const { ctx } = this;
-    const { workspace_id: workspaceId } = ctx.query;
+    const {
+      workspace_id: workspaceId,
+      folder_id: folderId,
+      recipient_member_id: recipientMemberId,
+    } = ctx.request.body;
 
-    if (!workspaceId) {
-      ctx.body = { code: -1, msg: 'FAIL', error: '缺少必要参数 workspace_id' };
+    if (!workspaceId || !folderId || !recipientMemberId) {
+      ctx.body = { code: -1, msg: 'FAIL', error: '缺少必要参数 workspace_id, folder_id 或 recipient_member_id' };
       return;
     }
 
     try {
       const k = this.getKnex();
-      const query = k('folders')
-        .where({ workspace_id: workspaceId })
-        .select(
-          'folder_id', 'folder_pid', 'workspace_id', 'folder_name', 'created_at', 'recipient_member_id',
-          k.raw('(SELECT COUNT(*) FROM folders sub WHERE sub.folder_pid = folders.folder_id) AS subfolder_count'),
-          k.raw('(SELECT COUNT(*) FROM team_projects tp WHERE tp.folder_id = folders.folder_id) AS project_count'),
-          k.raw(`(
-            SELECT COALESCE(json_agg(row_to_json(t)), '[]'::json) FROM (
-              SELECT name, kind FROM (
-                SELECT COALESCE(display_name, project_id) AS name, 'project' AS kind, 0 AS sort_group, created_at
-                FROM team_projects
-                WHERE folder_id = folders.folder_id AND workspace_id = folders.workspace_id AND sync_state = 'synced'
-                UNION ALL
-                SELECT folder_name AS name, 'folder' AS kind, 1 AS sort_group, created_at
-                FROM folders AS inner_f
-                WHERE inner_f.folder_pid = folders.folder_id
-              ) AS combined
-              ORDER BY sort_group ASC, created_at ASC
-              LIMIT 4
-            ) AS t
-          ) AS subfolder_preview`)
-        )
-        .orderBy('created_at', 'asc');
 
-      // folder_pid 为空值（null/undefined/空字符串）时查根级文件夹，
-      // 否则查指定父文件夹下的子文件夹
-      const { folder_pid: folderPid } = ctx.query;
-      if (!folderPid) {
-        query.whereNull('folder_pid');
-      } else {
-        query.where({ folder_pid: folderPid });
-      }
-      // 可选:按 recipient_member_id 过滤(共享空间场景)
-      const { recipient_member_id: recipientMemberId } = ctx.query;
-      if (recipientMemberId) {
-        query.where({ recipient_member_id: recipientMemberId });
-      }
+      // 递归查找该文件夹及其所有后代文件夹
+      const descResult = await k.raw(
+        WITH RECURSIVE descendants AS (
+          SELECT folder_id FROM folders WHERE folder_id = ?
+          UNION ALL
+          SELECT f.folder_id FROM folders f
+          JOIN descendants d ON f.folder_pid = d.folder_id
+)
+        SELECT folder_id FROM descendants,
+        [folderId],
+);
+      const allFolderIds = (descResult.rows || []).map(r => r.folder_id);
 
-      const folders = await query;
+      // 1. 删除这些文件夹的 folder_shares 记录(针对该接收者)
+      const deletedShares = await k('folder_shares')
+        .whereIn('folder_id', allFolderIds)
+        .where('recipient_member_id', recipientMemberId)
+        .del();
 
-      ctx.body = { code: 0, msg: 'SUCCESS', data: { folders } };
+      // 2. 删除这些文件夹下所有项目的 workspace_project_shares 记录(针对该接收者)
+      const deletedProjectShares = await k('workspace_project_shares')
+        .whereIn('folder_id', allFolderIds)
+        .where('recipient_member_id', recipientMemberId)
+        .del();
+
+      ctx.body = {
+        code: 0,
+        msg: 'SUCCESS',
+        data: {
+          folder_shares_deleted: deletedShares || 0,
+          project_shares_deleted: deletedProjectShares || 0,
+          folders_affected: allFolderIds.length,
+        },
+      };
     } catch (err) {
-      ctx.logger.error('Folder list error:', err);
+      ctx.logger.error('Folder unshare error:', err);
       ctx.body = { code: -1, msg: 'FAIL', error: err.message };
     }
   }
 
 
   // 查询单个文件夹详情(含 folder_pid, 用于面包屑路径)
-  // params: folder_id
-  async detail() {
+ // params: folder_id
+ async detail() {
     const { ctx } = this;
     const { folder_id: folderId } = ctx.query;
 
@@ -492,9 +724,9 @@ class FolderController extends Controller {
     }
   }
 
-  // 查询文件夹内的项目列表
-  // query: folder_id
-  async listProjects() {
+ // 查询文件夹内的项目列表
+ // query: folder_id
+ async listProjects() {
     const { ctx } = this;
     const { folder_id: folderId, workspace_id: workspaceId } = ctx.query;
 

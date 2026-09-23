@@ -50,8 +50,11 @@ module.exports = app => {
   router.post('/hdw/api/folder/rename', controller.api.folder.rename);
   router.post('/hdw/api/folder/move', controller.api.folder.move);
   router.get('/hdw/api/folder/list', controller.api.folder.list);
-  router.get('/hdw/api/folder/detail', controller.api.folder.detail);
-  // api:folder/project // 文件夹-项目关联管理
+ router.get('/hdw/api/folder/detail', controller.api.folder.detail);
+ router.post('/hdw/api/folder/share', controller.api.folder.share);
+ router.get('/hdw/api/folder/shares', controller.api.folder.shareList);
+ router.del('/hdw/api/folder/unshare', controller.api.folder.unshare);
+ // api:folder/project // 文件夹-项目关联管理
   router.post('/hdw/api/folder/project/add', controller.api.folder.addProject);
   router.post('/hdw/api/folder/project/remove', controller.api.folder.removeProject);
   router.get('/hdw/api/folder/project/list', controller.api.folder.listProjects);

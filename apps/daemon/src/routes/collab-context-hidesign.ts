@@ -23,6 +23,8 @@ import {
 import type { SqliteDb } from '../db.js';
 import { getProject, rebindWorkspaceProject, getFolderTree } from '../db.js';
 import { createHdwFolders, shareFolderProjectsToSharedSpace, fetchSharedFolders, uploadHdwCommunityBlob } from '../http/hdw.js';
+import { createHdwFolderShares } from '../http/hdw.js';
+import { unshareHdwFolder } from '../http/hdw.js';
 import path from 'node:path';
 import { ensureProject } from '../projects.js';
 
@@ -700,6 +702,34 @@ export function registerCollabContextHideSignRoutes(
     }
   });
 
+  // --- Folder unshare route -------------------------------------------------
+  //
+  // Unshares a folder (and all its descendants) from a specific recipient.
+  // The HDW endpoint recursively finds all descendant folders, deletes
+  // their folder_shares records, and removes the corresponding
+  // workspace_project_shares rows for that recipient.
+  //
+  // body: { workspace_id, folder_id, recipient_member_id }
+  app.delete('/api/shared-space/unshare-folder', async (req: Request, res: Response) => {
+    logRequest('DELETE', '/api/shared-space/unshare-folder', req);
+    const { workspace_id: workspaceId, folder_id: folderId, recipient_member_id: recipientMemberId } = req.body ?? {};
+    if (!workspaceId || !folderId || !recipientMemberId) {
+      res.status(400).json({ error: 'invalid_request', message: 'workspace_id, folder_id, and recipient_member_id are required' });
+      return;
+    }
+    try {
+      const ok = await unshareHdwFolder(deps.dataDir, {
+        workspaceId: String(workspaceId),
+        folderId: String(folderId),
+        recipientMemberId: String(recipientMemberId),
+      });
+      res.json({ ok });
+    } catch (err) {
+      console.warn('[collab-context-hidesign] DELETE /api/shared-space/unshare-folder error', err);
+      res.status(503).json({ error: 'UPSTREAM_UNAVAILABLE', message: 'shared space server is unreachable', retryable: true });
+    }
+  });
+
   // --- Folder share route --------------------------------------------------
   //
   // Shares an entire folder (including subfolders and all projects) to
@@ -766,23 +796,36 @@ export function registerCollabContextHideSignRoutes(
     }
 
     // Step 2: Batch-create cloud folders (idempotent — skips existing).
-    // Create one folder row per recipient so each carries the correct
-    // recipient_member_id for shared-space filtering.
+    // Each folder is created once; recipient filtering is handled by the
+    // folder_shares table, not the folders.recipient_member_id column.
     const folderCreateResult = await createHdwFolders(deps.dataDir, {
       workspaceId,
-      folders: tree.flatMap((f) =>
-        recipients.map((r) => ({
-          folder_id: f.folderId,
-          folder_pid: f.folderPid,
-          folder_name: f.folderName,
-          recipient_member_id: getSharedSpaceMemberId(r.username),
-        })),
-      ),
+      folders: tree.map((f) => ({
+        folder_id: f.folderId,
+        folder_pid: f.folderPid,
+        folder_name: f.folderName,
+      })),
     });
     if (folderCreateResult === null) {
       res.status(502).json({ error: 'UPSTREAM_UNAVAILABLE', message: 'HDW folder create is unreachable' });
       return;
     }
+
+    // Step 2b: Create folder_shares records for the root folder only.
+    // The HDW share() endpoint recursively cleans up redundant descendant
+    // records — when a parent is shared, children no longer need their own
+    // folder_shares entries because they're accessible through the parent.
+    // This prevents hierarchically-related folders from appearing side by
+    // side in the "shared with me" root view.
+    await createHdwFolderShares(deps.dataDir, {
+      workspaceId,
+      shares: recipients.map((r) => ({
+        folder_id: tree[0]!.folderId,
+        recipient_member_id: getSharedSpaceMemberId(r.username),
+        shared_by_username: createdByUsername,
+        shared_by_member_id: getSharedSpaceMemberId(createdByUsername),
+      })),
+    });
 
     // Step 3: Batch-share all projects with folder_id.
     // For each project, look up the local cover_digest and upload the
