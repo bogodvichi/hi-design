@@ -1397,9 +1397,13 @@ function AppInner() {
   const previousRouteForProjectReturnRef = useRef<Route>(route);
   useEffect(() => {
     const previousRoute = previousRouteForProjectReturnRef.current;
+    // External tools are sibling workspace tabs, not project launch surfaces.
+    // Reactivating an existing project from one must preserve the catalogue or
+    // folder that originally opened the project as its Back destination.
     if (
       route.kind === 'project'
       && previousRoute.kind !== 'project'
+      && previousRoute.kind !== 'external'
       && !(previousRoute.kind === 'home' && previousRoute.view === 'settings')
     ) {
       projectReturnRouteRef.current = previousRoute;

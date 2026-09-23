@@ -153,6 +153,7 @@ import {
 import { assertOdNextSemanticRequestFactProducerCoverage } from './runtimes/od-next-exact-input.js';
 import {
   normalizeRunContextSelection,
+  projectMetadataContextSelection,
   renderRunContextPrompt,
 } from './runtimes/chat-run-context.js';
 import {
@@ -648,9 +649,15 @@ import {
   writeMcpConfig,
 } from './mcp-config.js';
 import {
+  readProjectManagedMcpBridgeServerIds,
   replaceManagedMcpServersWithBridges,
-  resolveActiveManagedMcpBridges,
+  resolveManagedMcpBridgeServerIds,
+  resolveRunManagedMcpBridges,
 } from './managed-mcp-bridges.js';
+import {
+  buildCodexExternalMcpBridgeInjection,
+  resolveMentionedMcpServerIds,
+} from './runtimes/external-mcp-bridge.js';
 import {
   resolveExternalMcpServersForRun,
 } from './run-tool-bundle.js';
@@ -11947,8 +11954,44 @@ const projectRouteResult = registerProjectRoutes(app, {
         );
       }
     }
-    const activeManagedMcpBridges = resolveActiveManagedMcpBridges(
+    const projectMetadataMcpServerIds = new Set(
+      projectMetadataContextSelection(projectRecord?.metadata).mcpServerIds ?? [],
+    );
+    const availableMcpServerIds = new Set([
+      ...enabledExternalMcp.map((server) => server.id),
+      ...projectMetadataMcpServerIds,
+      ...resolveManagedMcpBridgeServerIds(process.env),
+    ]);
+    const selectedRunMcpServerIds = new Set([
+      ...(normalizeRunContextSelection(context).mcpServerIds ?? []),
+      ...projectMetadataMcpServerIds,
+      ...runScopedMcpServers.map((server) => server.id),
+      ...resolveMentionedMcpServerIds(telemetryPrompt, availableMcpServerIds),
+    ]);
+    let projectManagedMcpServerIds = new Set<string>();
+    if (def.managedMcpBridges && cwd && selectedRunMcpServerIds.size > 0) {
+      try {
+        projectManagedMcpServerIds = await readProjectManagedMcpBridgeServerIds(
+          cwd,
+          process.env,
+        );
+      } catch (err) {
+        console.warn(
+          '[mcp-config] failed to inspect project .mcp.json:',
+          err && err.message ? err.message : err,
+        );
+      }
+    }
+    // A Home composer selection is persisted in project metadata before the
+    // first run starts. Treat those refs as project configuration too; a new
+    // managed project does not have a materialized `.mcp.json` yet.
+    for (const id of projectMetadataMcpServerIds) {
+      projectManagedMcpServerIds.add(id);
+    }
+    const activeManagedMcpBridges = resolveRunManagedMcpBridges(
       enabledExternalMcp,
+      projectManagedMcpServerIds,
+      selectedRunMcpServerIds,
       process.env,
     );
     if (activeManagedMcpBridges.length > 0) {
@@ -11964,12 +12007,28 @@ const projectRouteResult = registerProjectRoutes(app, {
     const managedMcpBridgeServerIds = new Set(
       activeManagedMcpBridges.map((bridge) => bridge.serverId),
     );
+    const codexExternalMcpBridgeInjection =
+      def.externalMcpInjection === 'codex-run-bridge'
+        ? buildCodexExternalMcpBridgeInjection({
+            servers: enabledExternalMcp,
+            selectedServerIds: selectedRunMcpServerIds,
+            managedServerIds: managedMcpBridgeServerIds,
+            oauthTokens: oauthTokensForSpawn,
+            command: process.execPath,
+            odBin: OD_BIN,
+          })
+        : { bridges: [], env: {} };
     const connectedExternalMcp = enabledExternalMcp
       .filter((s) =>
         typeof oauthTokensForSpawn[s.id] === 'string'
         || managedMcpBridgeServerIds.has(s.id),
       )
       .map((s) => ({ id: s.id, label: s.label }));
+    for (const bridge of activeManagedMcpBridges) {
+      if (!connectedExternalMcp.some((server) => server.id === bridge.serverId)) {
+        connectedExternalMcp.push({ id: bridge.serverId });
+      }
+    }
 
     // Intent signals gate stable-region prompt blocks, so every flip changes
     // stableInstructionFingerprint and re-sends the whole stable block on
@@ -13817,6 +13876,18 @@ const projectRouteResult = registerProjectRoutes(app, {
       antigravityModelLockRelease = await acquireAntigravityModelLock();
     }
 
+    const runtimeMcpBridges = [
+      ...(def.managedMcpBridges
+        ? activeManagedMcpBridges.map((bridge) => ({
+            id: bridge.serverId,
+            command: process.execPath,
+            args: [OD_BIN, ...bridge.cliArgs],
+            env: { ELECTRON_RUN_AS_NODE: '1', ...bridge.env },
+            envVars: ['OD_DAEMON_URL', 'OD_TOOL_TOKEN'],
+          }))
+        : []),
+      ...codexExternalMcpBridgeInjection.bridges,
+    ];
     let args;
     const observeClaudeNativeChildBehavior =
       def.id === 'claude' && strategyTaskAtStart !== null;
@@ -13868,14 +13939,9 @@ const projectRouteResult = registerProjectRoutes(app, {
             def.id === 'codex'
             && run.externalPluginAnalytics?.externalPluginId
               === OPEN_DESIGN_PLUGIN_ID,
-          ...(activeManagedMcpBridges.length > 0 && def.managedMcpBridges
+          ...(runtimeMcpBridges.length > 0
             ? {
-                mcpBridges: activeManagedMcpBridges.map((bridge) => ({
-                  id: bridge.serverId,
-                  command: process.execPath,
-                  args: [OD_BIN, ...bridge.cliArgs],
-                  env: { ELECTRON_RUN_AS_NODE: '1', ...bridge.env },
-                })),
+                mcpBridges: runtimeMcpBridges,
               }
             : {}),
           ...(nativeBuildPackageBindings.length > 0
@@ -14524,6 +14590,10 @@ const projectRouteResult = registerProjectRoutes(app, {
         ...(opencodeConfigContent
           ? { [isMiMoContent ? 'MIMOCODE_CONFIG_CONTENT' : 'OPENCODE_CONFIG_CONTENT']: opencodeConfigContent }
           : {}),
+        // Run-scoped Codex MCP bridges receive their full server config through
+        // unique environment variables. Those names are not part of Codex's
+        // shell allowlist; only the matching MCP subprocess inherits each one.
+        ...codexExternalMcpBridgeInjection.env,
         // Daemon-owned resolver for task-input: references. Keep this last so
         // configured/BYOK/runtime env cannot redirect the Agent from the
         // verified Run projection back to mutable or canonical bytes.

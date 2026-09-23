@@ -328,10 +328,16 @@ export function CloudToolList({
       ariaLabelledBy={titleId}
     >
       <DialogTitle id={titleId}>
-        {t('personalScope.cloudToolDeleteConfirmTitle' as any)}
+        {mode === 'square'
+          ? t('squareScope.unpublishConfirmTitle' as any)
+          : t('personalScope.cloudToolDeleteConfirmTitle' as any)}
       </DialogTitle>
       <DialogDescription>
-        {t('personalScope.cloudToolDeleteConfirmDesc' as any)}
+        {mode === 'square'
+          ? t('squareScope.unpublishConfirmDesc' as any, {
+              title: confirmDelete.name || confirmDelete.label || confirmDelete.url,
+            })
+          : t('personalScope.cloudToolDeleteConfirmDesc' as any)}
       </DialogDescription>
       <DialogFooter className="row">
         <button
@@ -348,7 +354,9 @@ export function CloudToolList({
           onClick={() => void handleDelete(confirmDelete)}
         >
           {deletingId ? <Icon name="spinner" size={14} /> : null}
-          {t('personalScope.cloudToolDelete' as any)}
+          {mode === 'square'
+            ? t('squareScope.unpublish' as any)
+            : t('personalScope.cloudToolDelete' as any)}
         </button>
       </DialogFooter>
     </Dialog>
@@ -364,7 +372,8 @@ export function CloudToolList({
       <div className={styles.cloudSkillGrid}>
         {visibleTools.map((tool) => {
           const isDeleting = deletingId === tool.resourceId;
-          const canDelete = mode === 'personal';
+          const canDelete = mode === 'personal'
+            || (mode === 'square' && tool.ownerMemberId === workspaceMemberId);
           const isHiMind = isHiMindTool(tool);
           const isAiResearch = isAiResearchTool(tool);
           const title = isAiResearch ? AI_RESEARCH_TITLE : tool.name || tool.label || tool.url;
@@ -446,7 +455,9 @@ export function CloudToolList({
                             onClick={(e) => { e.stopPropagation(); setConfirmDelete(tool); }}
                           >
                             <Icon name="trash" size={14} />
-                            {t('personalScope.cloudToolDelete' as any)}
+                            {mode === 'square'
+                              ? t('squareScope.unpublish' as any)
+                              : t('personalScope.cloudToolDelete' as any)}
                           </button>
                         </div>
                     ) : null}

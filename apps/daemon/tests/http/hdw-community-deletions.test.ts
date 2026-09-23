@@ -49,6 +49,14 @@ describe('HDW community deletion local state', () => {
     expect(readHdwCommunityDeletions(dataDir)).toEqual({});
   });
 
+  it('revives a hard-deleted plugin when a later publish succeeds', async () => {
+    dataDir = await mkdtemp(path.join(tmpdir(), 'od-hdw-deletions-republish-'));
+    markHdwCommunityHardDeleted(dataDir, 'alpha');
+
+    expect(removeHdwCommunityDeletion(dataDir, 'alpha')).toBe(true);
+    expect(readHdwCommunityDeletions(dataDir)).toEqual({});
+  });
+
   it('removing the soft tombstone leaves a later hard deletion in place', async () => {
     dataDir = await mkdtemp(path.join(tmpdir(), 'od-hdw-deletions-publish-'));
     writeHdwCommunityDeletion(dataDir, 'alpha', '2026-09-19T00:00:00.000Z');

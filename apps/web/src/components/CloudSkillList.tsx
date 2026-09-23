@@ -646,12 +646,16 @@ useEffect(() => {
       <DialogTitle id={titleId}>
         {confirmAction.type === 'uninstall'
           ? t('personalScope.cloudSkillUninstallConfirmTitle' as any)
-          : t('personalScope.cloudSkillDeleteConfirmTitle' as any)}
+          : mode === 'square'
+            ? t('squareScope.unpublishConfirmTitle' as any)
+            : t('personalScope.cloudSkillDeleteConfirmTitle' as any)}
       </DialogTitle>
       <DialogDescription>
         {confirmAction.type === 'uninstall'
           ? t('personalScope.cloudSkillUninstallConfirmDesc' as any)
-          : t('personalScope.cloudSkillDeleteConfirmDesc' as any)}
+          : mode === 'square'
+            ? t('squareScope.unpublishConfirmDesc' as any, { title: confirmAction.item.title })
+            : t('personalScope.cloudSkillDeleteConfirmDesc' as any)}
       </DialogDescription>
       <DialogFooter className="row">
         <button
@@ -675,7 +679,9 @@ useEffect(() => {
             : (deletingId ? <Icon name="spinner" size={14} /> : null)}
           {confirmAction.type === 'uninstall'
             ? t('personalScope.cloudSkillUninstall' as any)
-            : t('personalScope.cloudSkillDelete' as any)}
+            : mode === 'square'
+              ? t('squareScope.unpublish' as any)
+              : t('personalScope.cloudSkillDelete' as any)}
         </button>
       </DialogFooter>
     </Dialog>
@@ -801,7 +807,9 @@ useEffect(() => {
                             onClick={(e) => { e.stopPropagation(); setConfirmAction({ type: 'delete', item: skill }); }}
                           >
                             <Icon name="close" size={14} />
-                            {t('personalScope.cloudSkillDelete' as any)}
+                            {mode === 'square'
+                              ? t('squareScope.unpublish' as any)
+                              : t('personalScope.cloudSkillDelete' as any)}
                           </button>
                         ) : null}
                       </div>

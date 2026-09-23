@@ -1980,12 +1980,28 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
         description?: string;
         entryFile?: string;
         coverImage?: string;
+        publishAttemptId?: string;
+        publishedAt?: string;
       };
       const title = typeof body.title === 'string' ? body.title.trim() : '';
       const description = typeof body.description === 'string' ? body.description.trim() : '';
       if (!title) {
         return sendApiError(res, 400, 'BAD_REQUEST', 'title is required');
       }
+      const requestedAttemptId = typeof body.publishAttemptId === 'string'
+        ? body.publishAttemptId.trim()
+        : '';
+      if (requestedAttemptId && !/^[A-Za-z0-9_-]{8,128}$/.test(requestedAttemptId)) {
+        return sendApiError(res, 400, 'BAD_REQUEST', 'publishAttemptId is invalid');
+      }
+      const publishAttemptId = requestedAttemptId || randomId();
+      const requestedPublishedAt = typeof body.publishedAt === 'string'
+        ? body.publishedAt.trim()
+        : '';
+      const publishedAt = requestedPublishedAt && Number.isFinite(Date.parse(requestedPublishedAt))
+        ? new Date(requestedPublishedAt).toISOString()
+        : new Date().toISOString();
+      const publicationDate = new Date(publishedAt);
 
       if (!await authorizeExportRead(req, res, { deriveWorkspaceFromProject: true })) return;
       const project = getProject(db, req.params.id);
@@ -2031,11 +2047,11 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
         const {
           uploadHdwCommunityBlob,
           publishHdwCommunityPluginDetailed,
-          fetchHdwCommunityPluginDetail,
-          resolveHdwCommunityPublishVersion,
+          createHdwCommunityPublicationName,
+          HDW_COMMUNITY_PUBLICATION_VERSION,
         } =
           await import('./http/hdw.js');
-        const { writeCoverDigest, fetchHdwMarketplaceManifestText,
+        const { writeCoverDigest, removeHdwCommunityDeletion, fetchHdwMarketplaceManifestText,
           HDW_MARKETPLACE_ID, HDW_MARKETPLACE_URL } = await import('./http/hdw.js');
         const { readSsoConfigFile } = await import('./http/hik_logins/hicoo.js');
         const { getSharedSpaceMemberId } = await import('./ids.js');
@@ -2044,18 +2060,10 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
 
         const dataDir = RUNTIME_DATA_DIR_CANONICAL;
 
-        // Use a deterministic MD5 of the request title so the HDW plugin
-        // identity for a title is stable across projects and republishes.
-        const derivedName = createHash('md5').update(title).digest('hex');
-
-        // HDW treats name+version as immutable, so re-publishing the same
-        // project must bump to the next free patch instead of retrying the
-        // default 0.0.0 and hitting "Version 0.0.0 already exists".
-        const existingDetail = await fetchHdwCommunityPluginDetail(derivedName, dataDir);
-        const publishVersion = resolveHdwCommunityPublishVersion(
-          existingDetail?.version,
-          '0.0.0',
-        );
+        // Every explicit project publish is a new immutable community card.
+        // Only retries of the same attempt reuse an identity.
+        const derivedName = createHdwCommunityPublicationName(req.params.id, publishAttemptId);
+        const publishVersion = HDW_COMMUNITY_PUBLICATION_VERSION;
 
         const session = readSsoConfigFile(dataDir);
         const publisherUsername = String(session?.username ?? 'unknown').trim();
@@ -2076,7 +2084,7 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
           title,
           description: description || 'Shared from ' + title,
           license: 'MIT',
-          publishedAt: new Date().toISOString(),
+          publishedAt,
           author: { name: publisherDisplayname },
           tags: ['project', 'community', `project-id:${req.params.id}`, `project-name:${encodeURIComponent(project.name || title)}`],
           compat: { agentSkills: [{ path: './SKILL.md' }] },
@@ -2133,16 +2141,16 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
               skillIds: usedSkillIds,
               mcpIds: usedMcpIds,
             });
-            zip.file('open-design.json', JSON.stringify(mergedManifest, null, 2) + '\n');
+            zip.file('open-design.json', JSON.stringify(mergedManifest, null, 2) + '\n', { date: publicationDate });
           } catch {
             // A malformed existing manifest must not block publishing. The
             // generated manifest below remains the fallback.
           }
         } else {
-          zip.file('open-design.json', manifestJson);
+          zip.file('open-design.json', manifestJson, { date: publicationDate });
         }
         if (!zip.file('SKILL.md')) {
-          zip.file('SKILL.md', skillMd);
+          zip.file('SKILL.md', skillMd, { date: publicationDate });
         }
         const modifiedBuffer = await zip.generateAsync({
           type: 'nodebuffer',
@@ -2234,6 +2242,10 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
 
         const result = detail.result!;
         const communityUrl = `/api/hdw/api/community/plugins/${encodeURIComponent(result.name)}`;
+        // A retry of one publish attempt reuses its name, so clear a local
+        // tombstone before making that newly created snapshot visible.
+        removeHdwCommunityDeletion(dataDir, result.name);
+
         // Persist the cover mapping when one exists. Refresh the marketplace
         // cache after every successful publish, even for projects without a
         // coverDigest, so immediate publish → delete/unpublish actions can
@@ -2254,10 +2266,13 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
           }
         } catch {}
         res.json({
+          status: 'created',
+          publicationId: result.name,
           pluginId: result.pluginId,
           versionId: result.versionId,
           name: result.name,
           version: result.version,
+          publishedAt,
           url: communityUrl,
         });
       } finally {

@@ -194,10 +194,8 @@ describe('run-scoped tool bundles', () => {
     expect(validateRunToolBundleForAgent(stdioOnly, {
       id: 'codex',
       name: 'Codex CLI',
-    })).toEqual({
-      ok: false,
-      message: 'Codex CLI (codex) does not support run-scoped MCP tool bundles',
-    });
+      externalMcpInjection: 'codex-run-bridge',
+    })).toEqual({ ok: true });
 
     expect(validateRunToolBundleForAgent(remote, {
       id: 'hermes',

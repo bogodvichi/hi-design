@@ -467,12 +467,16 @@ export function CloudMcpList({
       <DialogTitle id={titleId}>
         {confirmAction.type === 'uninstall'
           ? t('personalScope.cloudMcpUninstallConfirmTitle' as any)
-          : t('personalScope.cloudMcpDeleteConfirmTitle' as any)}
+          : mode === 'square'
+            ? t('squareScope.unpublishConfirmTitle' as any)
+            : t('personalScope.cloudMcpDeleteConfirmTitle' as any)}
       </DialogTitle>
       <DialogDescription>
         {confirmAction.type === 'uninstall'
           ? t('personalScope.cloudMcpUninstallConfirmDesc' as any)
-          : t('personalScope.cloudMcpDeleteConfirmDesc' as any)}
+          : mode === 'square'
+            ? t('squareScope.unpublishConfirmDesc' as any, { title: confirmAction.item.label })
+            : t('personalScope.cloudMcpDeleteConfirmDesc' as any)}
       </DialogDescription>
       <DialogFooter className="row">
         <button
@@ -496,7 +500,9 @@ export function CloudMcpList({
             : (deletingId ? <Icon name="spinner" size={14} /> : null)}
           {confirmAction.type === 'uninstall'
             ? t('personalScope.cloudMcpUninstall' as any)
-            : t('personalScope.cloudMcpDelete' as any)}
+            : mode === 'square'
+              ? t('squareScope.unpublish' as any)
+              : t('personalScope.cloudMcpDelete' as any)}
         </button>
       </DialogFooter>
     </Dialog>
@@ -583,7 +589,9 @@ export function CloudMcpList({
                             onClick={(e) => { e.stopPropagation(); setConfirmAction({ type: 'delete', item: tpl }); }}
                           >
                             <Icon name="close" size={14} />
-                            {t('personalScope.cloudMcpDelete' as any)}
+                            {mode === 'square'
+                              ? t('squareScope.unpublish' as any)
+                              : t('personalScope.cloudMcpDelete' as any)}
                           </button>
                         ) : null}
                      </div>

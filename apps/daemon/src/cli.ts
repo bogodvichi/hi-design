@@ -903,6 +903,28 @@ if (argv[0] === 'mcp' && argv[1] === 'live-artifacts') {
   }
 }
 
+if (argv[0] === 'mcp' && argv[1] === 'external-bridge') {
+  try {
+    const configEnvFlag = argv.indexOf('--config-env');
+    const configEnvName = configEnvFlag >= 0 ? argv[configEnvFlag + 1] : '';
+    if (!configEnvName || !/^OD_MCP_BRIDGE_[A-Z0-9_]+$/.test(configEnvName)) {
+      throw new Error('external MCP bridge requires a valid --config-env name');
+    }
+    const rawConfig = process.env[configEnvName];
+    if (!rawConfig) {
+      throw new Error(`external MCP bridge config ${configEnvName} is unavailable`);
+    }
+    delete process.env[configEnvName];
+    const { runExternalMcpBridge } = await import('./runtimes/external-mcp-bridge.js');
+    await runExternalMcpBridge(rawConfig);
+    process.exit(0);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    process.stderr.write(`${JSON.stringify({ ok: false, error: { message } })}\n`);
+    process.exit(1);
+  }
+}
+
 if (argv[0] === 'mcp' && argv[1] === 'himind') {
   try {
     const { runHiMindMcpBridge } = await import('./runtimes/himind-mcp-bridge.js');
