@@ -31,6 +31,7 @@ import { useI18n, useT } from '../i18n';
 import type { Dict } from '../i18n/types';
 import { navigate } from '../router';
 import { getProject, remixHdwPlugin } from '../state/projects';
+import { uploadSkillToCloud } from '../providers/registry';
 import {
   recordRecentlyOpenedProject,
   updateRecentlyOpenedProjectCover,
@@ -1017,6 +1018,18 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
                     if (!response.ok) throw await publishResponseError(response, 'MCP publish failed');
                     window.dispatchEvent(new CustomEvent('personal:mcp-refresh'));
                 } else if ('body' in selection) {
+                   if (selection.upload) {
+                     const result = await uploadSkillToCloud(
+                       selection.upload,
+                       selection.workspaceContext,
+                       'public',
+                       selection.category,
+                       selection.logoKey,
+                     );
+                     if ('error' in result) {
+                       throw new Error(result.error.message || 'Skill publish failed');
+                     }
+                   }
                   window.dispatchEvent(new CustomEvent('personal:skill-refresh'));
                 } else {
                   const response = await fetch(

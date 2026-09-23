@@ -194,6 +194,125 @@ export function registerImportRoutes(app: Express, ctx: RegisterImportRoutesDeps
     },
   );
 
+  // Import a staged set of project files into OD-managed storage. The
+  // renderer only calls this after the user presses the publish confirmation
+  // button; selecting a folder merely caches the bytes client-side.
+  app.post(
+    '/api/import/project-files',
+    importUpload.array('files', 2000),
+    async (req, res) => {
+      let importedProjectDir: string | null = null;
+      const uploadedFiles = Array.isArray(req.files) ? req.files as Express.Multer.File[] : [];
+      try {
+        if (uploadedFiles.length === 0) return res.status(400).json({ error: 'project files required' });
+        const createWorkspace = await authorizeCreatedProjectWorkspace(
+          req,
+          ctx.fetchProjectCreationWorkspaceDirectory,
+        );
+        if (!createWorkspace.ok) {
+          for (const file of uploadedFiles) fs.promises.unlink(file.path).catch(() => {});
+          return sendCreatedProjectWorkspaceError(res, createWorkspace);
+        }
+
+        let paths: string[] = [];
+        const rawPaths = req.body?.paths;
+        if (typeof rawPaths === 'string') {
+          try { paths = JSON.parse(rawPaths); } catch { paths = []; }
+        } else if (Array.isArray(rawPaths)) {
+          paths = rawPaths.map(String);
+        }
+        if (paths.length !== uploadedFiles.length) {
+          throw new Error('project paths do not match uploaded files');
+        }
+
+        const projectName = typeof req.body?.name === 'string' && req.body.name.trim()
+          ? req.body.name.trim()
+          : 'Imported project';
+        const id = randomId();
+        const now = Date.now();
+        const projectRoot = projectDir(PROJECTS_DIR, id);
+        importedProjectDir = projectRoot;
+        await fs.promises.mkdir(projectRoot, { recursive: true });
+
+        let totalBytes = 0;
+        const writtenFiles: string[] = [];
+        for (let index = 0; index < uploadedFiles.length; index += 1) {
+          const uploaded = uploadedFiles[index]!;
+          const relativePath = String(paths[index] ?? '')
+            .replace(/\\/g, '/')
+            .replace(/^\.\//, '');
+          const segments = relativePath.split('/').filter(Boolean);
+          if (
+            !relativePath
+            || relativePath.startsWith('/')
+            || segments.length === 0
+            || segments.some((segment) => segment === '..')
+          ) {
+            throw new Error('project contains an unsafe file path');
+          }
+          const outputPath = path.resolve(projectRoot, ...segments);
+          const rootPrefix = projectRoot.endsWith(path.sep)
+            ? projectRoot
+            : projectRoot + path.sep;
+          if (!outputPath.startsWith(rootPrefix)) throw new Error('project path escapes project root');
+          totalBytes += uploaded.size;
+          if (totalBytes > 100 * 1024 * 1024) throw new Error('project exceeds 100 MB');
+          await fs.promises.mkdir(path.dirname(outputPath), { recursive: true });
+          await fs.promises.copyFile(uploaded.path, outputPath);
+          writtenFiles.push(relativePath);
+        }
+
+        const entryFile = await detectEntryFile(projectRoot);
+        const cid = randomId();
+        const project = db.transaction(() => {
+          const createdProject = insertProject(db, {
+            id,
+            name: projectName,
+            skillId: null,
+            designSystemId: null,
+            pendingPrompt: null,
+            metadata: {
+              kind: 'prototype',
+              importedFrom: 'files',
+              entryFile: entryFile ?? undefined,
+            },
+            createdAt: now,
+            updatedAt: now,
+          });
+          insertConversation(db, {
+            id: cid,
+            projectId: id,
+            title: `Imported from ${projectName}`,
+            createdAt: now,
+            updatedAt: now,
+          });
+          setTabs(db, id, entryFile ? [entryFile] : [], entryFile ?? null);
+          bindCreatedProjectToWorkspace(
+            (input) => ensureWorkspaceProject(db, input),
+            createWorkspace.context,
+            id,
+            now,
+          );
+          return createdProject;
+        })();
+
+        res.json({
+          project,
+          conversationId: cid,
+          entryFile: entryFile ?? null,
+          files: writtenFiles,
+        });
+      } catch (err: any) {
+        if (importedProjectDir) {
+          await fs.promises.rm(importedProjectDir, { recursive: true, force: true }).catch(() => {});
+        }
+        res.status(400).json({ error: err instanceof Error ? err.message : String(err) });
+      } finally {
+        for (const file of uploadedFiles) fs.promises.unlink(file.path).catch(() => {});
+      }
+    },
+  );
+
   // Import a generic project ZIP into OD-managed project storage. Unlike
   // Claude Design import, this accepts an ordinary source tree and preserves
   // its relative file layout without requiring a vendor-specific manifest.

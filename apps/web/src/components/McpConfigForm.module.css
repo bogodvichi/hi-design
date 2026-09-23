@@ -109,8 +109,9 @@
 }
 
 .logoBtn:focus-visible {
-  outline: 2px solid var(--accent, #4f7cff);
-  outline-offset: 2px;
+  outline: none;
+  border-color: var(--border-strong, var(--border));
+  background: var(--bg-subtle, rgba(0, 0, 0, 0.035));
 }
 
 @media (max-width: 760px) {
@@ -196,6 +197,13 @@
 
 .jsonTextareaInvalid {
   border-color: var(--danger, #dc2626);
+}
+
+.validationError {
+  margin: 0;
+  color: var(--danger, #c13b35);
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .jsonActions {

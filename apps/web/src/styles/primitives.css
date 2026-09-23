@@ -25,7 +25,18 @@ button {
 }
 button:hover:not(:disabled) { background: var(--bg-subtle); border-color: var(--border-strong); }
 button:active:not(:disabled) { transform: translateY(1px); }
-button:focus-visible { outline: var(--stroke-thin, 1px) solid var(--blue); outline-offset: 2px; }
+button:focus-visible {
+  outline: none;
+  background: var(--bg-subtle);
+}
+
+/* Keep keyboard focus visible across the product, but normalize the old
+   blue/accent focus rings to the neutral product border color. Component
+   styles may still choose outline width/style/offset; the color stays
+   consistent platform-wide. */
+:focus-visible {
+  outline-color: var(--border-strong) !important;
+}
 
 button.primary {
   background: var(--text-strong);
