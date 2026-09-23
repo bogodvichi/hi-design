@@ -7,7 +7,7 @@ import styles from './TeamSpaceView.module.css';
  * More-menu anchor for a folder card. Sits at the card's top-right corner
  * (same pattern as `recent-projects__card-menu-anchor`): a "more" button
  * that is invisible until the card is hovered, and a dropdown menu with
- * a delete action. Shared by TeamSpaceView and PersonalAllView.
+ * the actions supplied by the owning view. Shared by team and personal folders.
  */
 export function FolderCardMenu({
   onRename,
@@ -16,6 +16,8 @@ export function FolderCardMenu({
   deleteLabel,
   onShare,
   shareLabel,
+  onMove,
+  moveLabel,
 }: {
   onRename?: () => void;
   renameLabel?: string;
@@ -23,6 +25,8 @@ export function FolderCardMenu({
   deleteLabel: string;
   onShare?: () => void;
   shareLabel?: string;
+  onMove?: () => void;
+  moveLabel?: string;
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
@@ -67,6 +71,9 @@ export function FolderCardMenu({
             <span>{shareLabel}</span>
           </button>
         ) : null}
+        {onShare ? (
+          <div className={styles.folderCardMenuSeparator} role="separator" />
+        ) : null}
         {onRename ? (
           <button
             type="button"
@@ -75,6 +82,16 @@ export function FolderCardMenu({
           >
             <Icon name="edit" size={12} />
             <span>{renameLabel}</span>
+          </button>
+        ) : null}
+        {onMove ? (
+          <button
+            type="button"
+            role="menuitem"
+            onClick={(e) => { e.stopPropagation(); setOpen(false); onMove(); }}
+          >
+            <Icon name="move" size={12} />
+            <span>{moveLabel}</span>
           </button>
         ) : null}
          <button

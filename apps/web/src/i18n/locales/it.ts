@@ -1,6 +1,10 @@
 import type { Dict } from '../types';
 
 export const it: Dict = {
+  'personalScope.folderMoveSummary': "Cartelle spostate: {succeeded}; incomplete: {failed}.",
+  'personalScope.folderMoveFailed': "Incompleto: {name}. Verifica e riprova.",
+  'personalScope.folderMoveInterrupted': "{name}: spostamento confermato di {count} file; altri risultati potrebbero essere in sospeso. Avanzamento salvato. Seleziona la destinazione originale per continuare: {target}.",
+  'personalScope.folderMoveLocked': "La migrazione di {name} è incompleta. Continua nella destinazione originale: {target}.",
   'invite.header.eyebrow': "Team invitation",
   'invite.loading': "Loading invitation…",
   'invite.landing.title': "Join the team",
@@ -920,6 +924,11 @@ export const it: Dict = {
   'sharedSpace.shareDialogCancel': 'Cancel',
   'sharedSpace.shareSuccess': 'Condiviso con successo',
   'sharedSpace.shareFailed': 'Share failed, please try again',
+  'sharedSpace.removeFromSharedWithMe': 'Remove from Shared with me',
+  'sharedSpace.removeFromSharedWithMeTitle': 'Remove from Shared with me?',
+  'sharedSpace.removeFromSharedWithMeBody': 'After removal, this user will no longer be able to access or use it.',
+  'sharedSpace.removeFromSharedWithMeConfirm': 'Remove',
+  'sharedSpace.removeFromSharedWithMeFailed': 'Removal failed. Please try again.',
 'sharedSpace.cannotShareToSelf': 'Non puoi condividere con te stesso. Scegli un altro destinatario.',
   'sharedSpace.shareFolderDialogTitle': 'Share Folder',
   'sharedSpace.shareFolderDialogDesc': 'Select members to share with. They will be able to view and comment on all projects (including subfolders) in this folder in the shared space.',

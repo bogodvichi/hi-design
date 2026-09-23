@@ -39,6 +39,7 @@ interface UnifiedShareDialogProps {
   entryFile?: string | null;
   workspaceContext: WorkspaceCollabContext | null;
   canPublishToCommunity?: boolean;
+  canShareFile?: boolean;
   onShared?: () => void;
   onClose: () => void;
 }
@@ -74,12 +75,13 @@ export function UnifiedShareDialog({
   entryFile,
   workspaceContext,
   canPublishToCommunity = true,
+  canShareFile = true,
   onShared,
   onClose,
 }: UnifiedShareDialogProps) {
   const t = useT();
   const [activeTab, setActiveTab] = useState<ShareTab>(
-    canPublishToCommunity ? 'community' : 'file',
+    canPublishToCommunity ? 'community' : canShareFile ? 'file' : 'link',
   );
 
   // Community publish state
@@ -145,7 +147,7 @@ export function UnifiedShareDialog({
   );
 
   async function handlePublish() {
-    if (!canPublish) return;
+    if (!canPublishToCommunity || !canPublish) return;
     setPublishing(true);
     setPublishError(null);
     try {
@@ -193,8 +195,8 @@ export function UnifiedShareDialog({
    : '';
  const excludeEmails = selfEmail ? [selfEmail] : [];
 
- async function handleShareSubmit() {
-   if (shareRecipients.length === 0 || shareSubmitting || shareSuccess) return;
+  async function handleShareSubmit() {
+    if (!canShareFile || shareRecipients.length === 0 || shareSubmitting || shareSuccess) return;
    // Guard against self-share even if the picker somehow let one through.
    if (selfEmail && shareRecipients.some((p) => {
      const email = typeof p.email === 'string' ? p.email.trim().toLowerCase() : '';
@@ -310,7 +312,9 @@ export function UnifiedShareDialog({
     ...(canPublishToCommunity
       ? [{ id: 'community' as const, label: t('share.tabCommunity'), icon: 'global-line' }]
       : []),
-    { id: 'file', label: t('share.tabFile'), icon: 'group-line' },
+    ...(canShareFile
+      ? [{ id: 'file' as const, label: t('share.tabFile'), icon: 'group-line' }]
+      : []),
     { id: 'link', label: t('share.tabLink'), icon: 'link' },
   ];
 

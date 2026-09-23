@@ -30,6 +30,10 @@ export const LOCALE_LABEL: Record<Locale, string> = {
 // flat (not deeply nested) so missing-key TS errors point straight at the
 // offending string instead of a generic object mismatch.
 export interface Dict {
+  'personalScope.folderMoveSummary': string;
+  'personalScope.folderMoveFailed': string;
+  'personalScope.folderMoveInterrupted': string;
+  'personalScope.folderMoveLocked': string;
   // Workspace invite acceptance (C lane)
   'invite.header.eyebrow': string;
   'invite.loading': string;
@@ -1310,6 +1314,11 @@ export interface Dict {
   'sharedSpace.shareDialogCancel': string;
   'sharedSpace.shareSuccess': string;
  'sharedSpace.shareFailed': string;
+  'sharedSpace.removeFromSharedWithMe': string;
+  'sharedSpace.removeFromSharedWithMeTitle': string;
+  'sharedSpace.removeFromSharedWithMeBody': string;
+  'sharedSpace.removeFromSharedWithMeConfirm': string;
+  'sharedSpace.removeFromSharedWithMeFailed': string;
 'sharedSpace.cannotShareToSelf': string;
  'sharedSpace.shareFolderDialogTitle': string;
  'sharedSpace.shareFolderDialogDesc': string;

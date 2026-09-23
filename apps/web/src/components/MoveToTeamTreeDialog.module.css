@@ -401,6 +401,16 @@
   background: color-mix(in srgb, var(--text) 5%, transparent);
 }
 
+.searchResult:disabled {
+  cursor: not-allowed;
+  background: transparent;
+}
+
+.searchResult:disabled > span,
+.searchResult:disabled > small {
+  opacity: 0.4;
+}
+
 .searchResult small {
   overflow: hidden;
   width: 100%;

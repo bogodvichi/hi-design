@@ -6,6 +6,7 @@ import { readWorkspaceDirectoryForCurrentGeneration } from '../collab/useWorkspa
 import { Icon } from './Icon';
 import { Skeleton } from './Loading';
 import { useT } from '../i18n';
+import { isFolderMoveTargetDisabled } from './folder-move-target';
 // Keep the dialog chrome component-scoped so unified and legacy trees cannot
 // leak layout rules into each other.
 import styles from './MoveToTeamTreeDialog.module.css';
@@ -15,6 +16,7 @@ interface FolderNode {
   name: string;
   subfolderCount: number;
   parentId?: string | null;
+  ancestorIds: readonly string[];
 }
 
 interface LocationSearchResult {
@@ -57,9 +59,14 @@ interface MoveToTeamTreeDialogProps {
   mode?: MoveTreeMode;
   canMoveToPersonal?: boolean;
   copyMode?: boolean;
+  titleLabel?: string;
+  treeDescription?: string;
+  rootSelectedLabel?: string;
+  /** Moving folder roots: these locations and every descendant are forbidden. */
+  disabledSubtreeKeys?: ReadonlySet<string>;
 }
 
-async function fetchFolders(workspaceId: string, folderPid?: string | null, isDefaultTeam?: boolean): Promise<FolderNode[]> {
+async function fetchFolders(workspaceId: string, folderPid?: string | null, isDefaultTeam?: boolean, ancestorIds: readonly string[] = []): Promise<FolderNode[]> {
   const basePath = isDefaultTeam
     ? `/api/folders?workspace_id=${encodeURIComponent(workspaceId)}`
     : `/api/hdw/api/folder/list?workspace_id=${encodeURIComponent(workspaceId)}`;
@@ -73,18 +80,24 @@ async function fetchFolders(workspaceId: string, folderPid?: string | null, isDe
     name: folder.folder_name || folder.name || '',
     subfolderCount: Number(folder.subfolder_count) || 0,
     parentId: folderPid ?? null,
+    ancestorIds: folderPid ? [...ancestorIds, folderPid] : [],
   }));
 }
 
 async function fetchFolderIndex(workspace: WorkspaceDirectoryItem): Promise<FolderNode[]> {
   const result: FolderNode[] = [];
-  const pending: Array<string | null> = [null];
+  const pending: Array<{ parentId: string | null; ancestorIds: readonly string[] }> = [
+    { parentId: null, ancestorIds: [] },
+  ];
+  const visited = new Set<string>();
   while (pending.length > 0) {
-    const parentId = pending.shift() ?? null;
-    const children = await fetchFolders(workspace.workspaceId, parentId, workspace.isDefaultTeam);
+    const current = pending.shift()!;
+    const children = await fetchFolders(workspace.workspaceId, current.parentId, workspace.isDefaultTeam, current.ancestorIds);
     for (const child of children) {
+      if (visited.has(child.id)) continue;
+      visited.add(child.id);
       result.push(child);
-      if (child.subfolderCount > 0) pending.push(child.id);
+      if (child.subfolderCount > 0) pending.push({ parentId: child.id, ancestorIds: child.ancestorIds });
     }
   }
   return result;
@@ -110,7 +123,7 @@ async function fetchProjectsAtLocation(workspace: WorkspaceDirectoryItem, folder
   })).filter((project) => project.id && project.name);
 }
 
-async function createFolder(workspace: WorkspaceDirectoryItem, parentId: string | null, folderName: string): Promise<FolderNode> {
+async function createFolder(workspace: WorkspaceDirectoryItem, parentId: string | null, folderName: string, ancestorIds: readonly string[] = []): Promise<FolderNode> {
   const personal = workspace.isDefaultTeam === true;
   const response = await fetch(personal ? '/api/folders' : '/api/hdw/api/folder/add', {
     method: 'POST',
@@ -132,7 +145,7 @@ async function createFolder(workspace: WorkspaceDirectoryItem, parentId: string 
   window.dispatchEvent(new CustomEvent(personal ? 'personal:folders-updated' : 'hdw:folders-updated', {
     detail: personal ? undefined : { teamId: workspace.workspaceId },
   }));
-  return { id: String(folderId), name: folderName, subfolderCount: 0, parentId };
+  return { id: String(folderId), name: folderName, subfolderCount: 0, parentId, ancestorIds: parentId ? [...ancestorIds, parentId] : [] };
 }
 
 function canCreateFolders(workspace: WorkspaceDirectoryItem): boolean {
@@ -192,13 +205,14 @@ function InlineFolderCreator({ depth, icon = 'folder', onCreate, onCancel }: {
   );
 }
 
-function FolderTreeItem({ folder, depth, workspace, selectedKey, onSelect, disabledKeys, initialExpanded = false, expandedFolderIds, showEmpty = false }: {
+function FolderTreeItem({ folder, depth, workspace, selectedKey, onSelect, disabledKeys, disabledSubtreeKeys, initialExpanded = false, expandedFolderIds, showEmpty = false }: {
   folder: FolderNode;
   depth: number;
   workspace: WorkspaceDirectoryItem;
   selectedKey: string | null;
   onSelect: (folder: FolderNode) => void;
   disabledKeys?: Set<string>;
+  disabledSubtreeKeys?: ReadonlySet<string>;
   initialExpanded?: boolean;
   expandedFolderIds?: ReadonlySet<string>;
   showEmpty?: boolean;
@@ -211,15 +225,16 @@ function FolderTreeItem({ folder, depth, workspace, selectedKey, onSelect, disab
   const [knownChildCount, setKnownChildCount] = useState(folder.subfolderCount);
   const itemKey = `${workspace.workspaceId}:${folder.id}`;
   const isSelected = selectedKey === itemKey;
-  const showSelected = isSelected && !creating;
-  const isDisabled = disabledKeys?.has(itemKey) ?? false;
+  const isDisabled = isFolderMoveTargetDisabled(workspace.workspaceId, folder, disabledKeys, disabledSubtreeKeys);
+  const showSelected = isSelected && !creating && !isDisabled;
   const hasChildren = knownChildCount > 0;
-  const allowCreate = canCreateFolders(workspace);
+  const allowCreate = canCreateFolders(workspace)
+    && !isFolderMoveTargetDisabled(workspace.workspaceId, folder, undefined, disabledSubtreeKeys);
 
   const loadChildren = useCallback(async () => {
     setLoading(true);
     try {
-      const next = await fetchFolders(workspace.workspaceId, folder.id, workspace.isDefaultTeam);
+      const next = await fetchFolders(workspace.workspaceId, folder.id, workspace.isDefaultTeam, folder.ancestorIds);
       setChildren(next);
       setKnownChildCount(next.length);
     } catch {
@@ -227,7 +242,7 @@ function FolderTreeItem({ folder, depth, workspace, selectedKey, onSelect, disab
     } finally {
       setLoading(false);
     }
-  }, [folder.id, workspace.isDefaultTeam, workspace.workspaceId]);
+  }, [folder.id, folder.ancestorIds, workspace.isDefaultTeam, workspace.workspaceId]);
 
   useEffect(() => { if (expanded && children === null) void loadChildren(); }, [children, expanded, loadChildren]);
   useEffect(() => {
@@ -235,7 +250,8 @@ function FolderTreeItem({ folder, depth, workspace, selectedKey, onSelect, disab
   }, [expandedFolderIds, folder.id]);
 
   const handleCreate = async (name: string) => {
-    const child = await createFolder(workspace, folder.id, name);
+    if (!allowCreate) return;
+    const child = await createFolder(workspace, folder.id, name, folder.ancestorIds);
     setChildren((current) => [...(current ?? []), child]);
     setKnownChildCount((count) => count + 1);
     setExpanded(true);
@@ -249,6 +265,7 @@ function FolderTreeItem({ folder, depth, workspace, selectedKey, onSelect, disab
         className={`${styles.row}${showSelected ? ` ${styles.selected}` : ''}${isDisabled ? ` ${styles.disabled}` : ''}`}
         style={{ paddingLeft: `${12 + depth * 18}px` }}
         onClick={isDisabled ? undefined : () => onSelect(folder)}
+        aria-disabled={isDisabled || undefined}
         role="button"
         tabIndex={isDisabled ? -1 : 0}
         onKeyDown={(event) => {
@@ -279,7 +296,7 @@ function FolderTreeItem({ folder, depth, workspace, selectedKey, onSelect, disab
           </button>
         ) : null}
       </div>
-      {creating ? <InlineFolderCreator depth={depth + 1} onCreate={handleCreate} onCancel={() => setCreating(false)} /> : null}
+      {creating && allowCreate ? <InlineFolderCreator depth={depth + 1} onCreate={handleCreate} onCancel={() => setCreating(false)} /> : null}
       {expanded && loading ? (
         <div className={styles.skeletonRow} style={{ paddingLeft: `${12 + (depth + 1) * 18}px` }}>
           <Skeleton width={14} height={14} radius={4} /><Skeleton width="50%" height={13} radius={6} />
@@ -287,7 +304,7 @@ function FolderTreeItem({ folder, depth, workspace, selectedKey, onSelect, disab
       ) : expanded && children?.length ? (
         <div className={styles.childList}>
           {children.map((child) => (
-            <FolderTreeItem key={child.id} folder={child} depth={depth + 1} workspace={workspace} selectedKey={selectedKey} onSelect={onSelect} disabledKeys={disabledKeys} expandedFolderIds={expandedFolderIds} />
+            <FolderTreeItem key={child.id} folder={child} depth={depth + 1} workspace={workspace} selectedKey={selectedKey} onSelect={onSelect} disabledKeys={disabledKeys} disabledSubtreeKeys={disabledSubtreeKeys} expandedFolderIds={expandedFolderIds} />
           ))}
         </div>
       ) : expanded && showEmpty ? <div className={styles.emptyHint}>{t('recentProjects.treeNoFolders')}</div> : null}
@@ -295,7 +312,7 @@ function FolderTreeItem({ folder, depth, workspace, selectedKey, onSelect, disab
   );
 }
 
-function UnifiedLocationPane({ workspaces, selectedKey, activeBranch, currentWorkspaceId, onSelectRoot, onSelectFolder, onBranchChange, disabledKeys }: {
+function UnifiedLocationPane({ workspaces, selectedKey, activeBranch, currentWorkspaceId, onSelectRoot, onSelectFolder, onBranchChange, disabledKeys, disabledSubtreeKeys }: {
   workspaces: readonly WorkspaceDirectoryItem[];
   selectedKey: string | null;
   activeBranch: ActiveBranch | null;
@@ -304,6 +321,7 @@ function UnifiedLocationPane({ workspaces, selectedKey, activeBranch, currentWor
   onSelectFolder: (workspace: WorkspaceDirectoryItem, folder: FolderNode) => void;
   onBranchChange: (workspace: WorkspaceDirectoryItem, folder: FolderNode | null, expandedFolderIds?: readonly string[]) => void;
   disabledKeys?: Set<string>;
+  disabledSubtreeKeys?: ReadonlySet<string>;
 }) {
   const t = useT();
   const [foldersByWorkspace, setFoldersByWorkspace] = useState<Record<string, FolderNode[]>>({});
@@ -420,6 +438,7 @@ function UnifiedLocationPane({ workspaces, selectedKey, activeBranch, currentWor
   }, [query, t, workspaces]);
 
   const revealSearchResult = (result: LocationSearchResult) => {
+    if (isFolderMoveTargetDisabled(result.workspace.workspaceId, result.folder, disabledKeys, disabledSubtreeKeys)) return;
     setExpandedKeys((current) => new Set(current).add(result.workspace.workspaceId));
     if (result.folder) {
       onBranchChange(result.workspace, result.branchFolder ?? result.folder, result.expandedFolderIds);
@@ -441,12 +460,15 @@ function UnifiedLocationPane({ workspaces, selectedKey, activeBranch, currentWor
         <div className={styles.searchGroupTitle}>
           {kind === 'folder' ? t('recentProjects.moveSearchFolders') : t('recentProjects.moveSearchProjects')}
         </div>
-        {visibleResults.length ? visibleResults.map((result) => (
-          <button key={result.key} type="button" className={styles.searchResult} onClick={() => revealSearchResult(result)}>
-            <span>{result.label}</span>
-            <small>{kind === 'project' ? `${t('recentProjects.moveSearchProjectIn')} ${result.locationLabel}` : result.locationLabel}</small>
-          </button>
-        )) : (
+        {visibleResults.length ? visibleResults.map((result) => {
+          const disabled = isFolderMoveTargetDisabled(result.workspace.workspaceId, result.folder, disabledKeys, disabledSubtreeKeys);
+          return (
+            <button key={result.key} type="button" className={`${styles.searchResult}${disabled ? ` ${styles.disabled}` : ''}`} disabled={disabled} onClick={() => revealSearchResult(result)}>
+              <span>{result.label}</span>
+              <small>{kind === 'project' ? `${t('recentProjects.moveSearchProjectIn')} ${result.locationLabel}` : result.locationLabel}</small>
+            </button>
+          );
+        }) : (
           <div className={styles.searchGroupEmpty}>{t('recentProjects.moveSearchGroupEmpty')}</div>
         )}
         {results.length > 5 ? (
@@ -520,6 +542,7 @@ function UnifiedLocationPane({ workspaces, selectedKey, activeBranch, currentWor
               className={`${styles.row} ${styles.rootRow}${rootSelected && creatingRootId !== workspace.workspaceId ? ` ${styles.selected}` : ''}${rootDisabled ? ` ${styles.disabled}` : ''}`}
               data-can-create={canCreateFolders(workspace)}
               onClick={rootDisabled ? undefined : () => onSelectRoot(workspace)}
+              aria-disabled={rootDisabled || undefined}
               role="button"
               tabIndex={rootDisabled ? -1 : 0}
               onKeyDown={(event) => {
@@ -564,16 +587,24 @@ function UnifiedLocationPane({ workspaces, selectedKey, activeBranch, currentWor
               <div className={styles.skeletonRow} style={{ paddingLeft: '42px' }}><Skeleton width={14} height={14} radius={4} /><Skeleton width="48%" height={13} radius={6} /></div>
             ) : expanded && rootFolders?.length ? rootFolders.map((folder) => {
               const key = `${workspace.workspaceId}:${folder.id}`;
-              const disabled = disabledKeys?.has(key) ?? false;
-              const selected = selectedKey === key;
+              const disabled = isFolderMoveTargetDisabled(workspace.workspaceId, folder, disabledKeys, disabledSubtreeKeys);
+              const selected = selectedKey === key && !disabled;
               const active = activeBranch?.workspace.workspaceId === workspace.workspaceId && activeBranch.folder?.id === folder.id;
               return (
                 <div key={folder.id} className={styles.levelTwoItem}>
                   <div
                     className={`${styles.row} ${styles.levelTwoRow}${selected ? ` ${styles.selected}` : ''}${active && !selected ? ` ${styles.activeBranch}` : ''}${disabled ? ` ${styles.disabled}` : ''}`}
                     onClick={() => { onBranchChange(workspace, folder); if (!disabled) onSelectFolder(workspace, folder); }}
+                    aria-disabled={disabled || undefined}
                     role="button"
-                    tabIndex={0}
+                    tabIndex={disabled ? -1 : 0}
+                    onKeyDown={(event) => {
+                      if (!disabled && (event.key === 'Enter' || event.key === ' ')) {
+                        event.preventDefault();
+                        onBranchChange(workspace, folder);
+                        onSelectFolder(workspace, folder);
+                      }
+                    }}
                   >
                     <span className={styles.rowLabel}>{folder.name}</span>
                   </div>
@@ -589,12 +620,13 @@ function UnifiedLocationPane({ workspaces, selectedKey, activeBranch, currentWor
   );
 }
 
-function LegacyWorkspaceTree({ workspace, selectedKey, onSelectRoot, onSelectFolder, disabledKeys }: {
+function LegacyWorkspaceTree({ workspace, selectedKey, onSelectRoot, onSelectFolder, disabledKeys, disabledSubtreeKeys }: {
   workspace: WorkspaceDirectoryItem;
   selectedKey: string | null;
   onSelectRoot: (workspace: WorkspaceDirectoryItem) => void;
   onSelectFolder: (workspace: WorkspaceDirectoryItem, folder: FolderNode) => void;
   disabledKeys?: Set<string>;
+  disabledSubtreeKeys?: ReadonlySet<string>;
 }) {
   const t = useT();
   const [expanded, setExpanded] = useState(true);
@@ -604,7 +636,7 @@ function LegacyWorkspaceTree({ workspace, selectedKey, onSelectRoot, onSelectFol
   useEffect(() => { void fetchFolders(workspace.workspaceId, null, workspace.isDefaultTeam).then(setFolders); }, [workspace.isDefaultTeam, workspace.workspaceId]);
   return (
     <div className={styles.teamItem}>
-      <div className={`${styles.row}${selectedKey === rootKey ? ` ${styles.selected}` : ''}${rootDisabled ? ` ${styles.disabled}` : ''}`} onClick={rootDisabled ? undefined : () => onSelectRoot(workspace)} role="button" tabIndex={rootDisabled ? -1 : 0}>
+      <div className={`${styles.row}${selectedKey === rootKey ? ` ${styles.selected}` : ''}${rootDisabled ? ` ${styles.disabled}` : ''}`} onClick={rootDisabled ? undefined : () => onSelectRoot(workspace)} aria-disabled={rootDisabled || undefined} role="button" tabIndex={rootDisabled ? -1 : 0}>
         <button type="button" className={styles.expandBtn} onClick={(event) => { event.stopPropagation(); setExpanded((value) => !value); }} aria-expanded={expanded} aria-label={expanded ? t('entry.navCollapse') : t('entry.navExpand')}>
           <Icon name={expanded ? 'chevron-down' : 'chevron-right'} size={12} />
         </button>
@@ -614,7 +646,7 @@ function LegacyWorkspaceTree({ workspace, selectedKey, onSelectRoot, onSelectFol
       {expanded && folders === null ? (
         <div className={styles.skeletonRow}><Skeleton width={14} height={14} radius={4} /><Skeleton width="50%" height={13} radius={6} /></div>
       ) : expanded ? folders?.map((folder) => (
-        <FolderTreeItem key={folder.id} folder={folder} depth={1} workspace={workspace} selectedKey={selectedKey} onSelect={(node) => onSelectFolder(workspace, node)} disabledKeys={disabledKeys} />
+        <FolderTreeItem key={folder.id} folder={folder} depth={1} workspace={workspace} selectedKey={selectedKey} onSelect={(node) => onSelectFolder(workspace, node)} disabledKeys={disabledKeys} disabledSubtreeKeys={disabledSubtreeKeys} />
       )) : null}
     </div>
   );
@@ -633,12 +665,16 @@ export function MoveToTeamTreeDialog({
   disabledKeys,
   canMoveToPersonal = true,
   copyMode = false,
+  titleLabel,
+  treeDescription,
+  rootSelectedLabel,
+  disabledSubtreeKeys,
 }: MoveToTeamTreeDialogProps) {
   const t = useT();
   const titleId = useId();
   const [items, setItems] = useState<readonly WorkspaceDirectoryItem[] | null>(propItems ?? null);
   const [loading, setLoading] = useState(!propItems);
-  const [selected, setSelected] = useState<TeamTreeSelection | null>(null);
+  const [selected, setSelected] = useState<(TeamTreeSelection & { ancestorIds: readonly string[] }) | null>(null);
   const [activeBranch, setActiveBranch] = useState<ActiveBranch | null>(null);
   const initializedLocationRef = useRef(false);
 
@@ -679,6 +715,7 @@ export function MoveToTeamTreeDialog({
         folderId: null,
         folderName: null,
         isDefaultTeam: workspace.isDefaultTeam,
+        ancestorIds: [],
       });
       setActiveBranch({ workspace, folder: null });
       return;
@@ -694,6 +731,7 @@ export function MoveToTeamTreeDialog({
         folderId: folder.id,
         folderName: folder.name,
         isDefaultTeam: workspace.isDefaultTeam,
+        ancestorIds: folder.ancestorIds,
       });
       const foldersById = new Map(folders.map((item) => [item.id, item]));
       const path: FolderNode[] = [];
@@ -715,26 +753,35 @@ export function MoveToTeamTreeDialog({
 
   const selectedKey = useMemo(() => selected ? `${selected.workspaceId}:${selected.folderId ?? 'root'}` : null, [selected]);
   const selectRoot = useCallback((workspace: WorkspaceDirectoryItem) => {
-    setSelected({ workspaceId: workspace.workspaceId, workspaceName: workspace.isDefaultTeam ? t('personalFunc.all') : workspace.workspaceName, folderId: null, folderName: null, isDefaultTeam: workspace.isDefaultTeam });
+    if (isFolderMoveTargetDisabled(workspace.workspaceId, null, disabledKeys, disabledSubtreeKeys)) return;
+    setSelected({ workspaceId: workspace.workspaceId, workspaceName: workspace.isDefaultTeam ? t('personalFunc.all') : workspace.workspaceName, folderId: null, folderName: null, isDefaultTeam: workspace.isDefaultTeam, ancestorIds: [] });
     setActiveBranch({ workspace, folder: null });
-  }, [t]);
+  }, [t, disabledKeys, disabledSubtreeKeys]);
   const selectFolder = useCallback((workspace: WorkspaceDirectoryItem, folder: FolderNode) => {
-    setSelected({ workspaceId: workspace.workspaceId, workspaceName: workspace.isDefaultTeam ? t('personalFunc.all') : workspace.workspaceName, folderId: folder.id, folderName: folder.name, isDefaultTeam: workspace.isDefaultTeam });
-  }, [t]);
+    if (isFolderMoveTargetDisabled(workspace.workspaceId, folder, disabledKeys, disabledSubtreeKeys)) return;
+    setSelected({ workspaceId: workspace.workspaceId, workspaceName: workspace.isDefaultTeam ? t('personalFunc.all') : workspace.workspaceName, folderId: folder.id, folderName: folder.name, isDefaultTeam: workspace.isDefaultTeam, ancestorIds: folder.ancestorIds });
+  }, [t, disabledKeys, disabledSubtreeKeys]);
   const showUnifiedLayout = mode === 'unified';
   const visibleItems = items ?? [];
   const activeExpandedFolderIds = useMemo(
     () => new Set(activeBranch?.expandedFolderIds ?? []),
     [activeBranch?.expandedFolderIds],
   );
+  const selectedDisabled = !selected || isFolderMoveTargetDisabled(
+    selected.workspaceId,
+    selected.folderId ? { id: selected.folderId, ancestorIds: selected.ancestorIds } : null,
+    disabledKeys,
+    disabledSubtreeKeys,
+  );
   const handleConfirm = () => {
-    if (!selected || disabledKeys?.has(selectedKey ?? '') || busy) return;
-    onConfirm(selected);
+    if (!selected || selectedDisabled || loading || busy) return;
+    const { ancestorIds: _ancestorIds, ...destination } = selected;
+    onConfirm(destination);
   };
 
   const dialog = (
     <Dialog className={`${styles.dialog}${showUnifiedLayout ? ` ${styles.dialogWide}` : ''}`} onClose={onCancel} closeOnEscape ariaLabelledBy={titleId}>
-      <DialogTitle id={titleId}>{copyMode ? t('recentProjects.copyToPersonal') : showUnifiedLayout ? t('recentProjects.moveTo') : (includePersonal || mode !== 'team') ? t('recentProjects.moveTo') : t('recentProjects.moveToTeam')}</DialogTitle>
+      <DialogTitle id={titleId}>{titleLabel ?? (copyMode ? t('recentProjects.copyToPersonal') : showUnifiedLayout ? t('recentProjects.moveTo') : (includePersonal || mode !== 'team') ? t('recentProjects.moveTo') : t('recentProjects.moveToTeam'))}</DialogTitle>
       {loading ? (
         <div className={styles.skeletonList}>
           <div className={styles.skeletonRow}><Skeleton width={16} height={16} radius={4} /><Skeleton width="60%" height={13} radius={6} /></div>
@@ -745,14 +792,14 @@ export function MoveToTeamTreeDialog({
       ) : showUnifiedLayout ? (
         <div className={styles.splitTree}>
           <div className={styles.leftPane}>
-            <UnifiedLocationPane workspaces={visibleItems} selectedKey={selectedKey} activeBranch={activeBranch} currentWorkspaceId={currentWorkspaceId} onSelectRoot={selectRoot} onSelectFolder={selectFolder} onBranchChange={(workspace, folder, expandedFolderIds) => setActiveBranch({ workspace, folder, expandedFolderIds })} disabledKeys={disabledKeys} />
+            <UnifiedLocationPane workspaces={visibleItems} selectedKey={selectedKey} activeBranch={activeBranch} currentWorkspaceId={currentWorkspaceId} onSelectRoot={selectRoot} onSelectFolder={selectFolder} onBranchChange={(workspace, folder, expandedFolderIds) => setActiveBranch({ workspace, folder, expandedFolderIds })} disabledKeys={disabledKeys} disabledSubtreeKeys={disabledSubtreeKeys} />
           </div>
           <div className={styles.rightPane}>
             {!activeBranch?.folder ? (
               <div className={styles.paneEmpty}>
                 {selected?.folderId === null && activeBranch?.workspace.workspaceId === selected.workspaceId
-                  ? t('recentProjects.moveTreeRootSelected')
-                  : t('recentProjects.moveTreeDesc')}
+                  ? rootSelectedLabel ?? t('recentProjects.moveTreeRootSelected')
+                  : treeDescription ?? t('recentProjects.moveTreeDesc')}
               </div>
             ) : (
               <div className={styles.deepTree}>
@@ -764,6 +811,7 @@ export function MoveToTeamTreeDialog({
                   selectedKey={selectedKey}
                   onSelect={(node) => selectFolder(activeBranch.workspace, node)}
                   disabledKeys={disabledKeys}
+                  disabledSubtreeKeys={disabledSubtreeKeys}
                   initialExpanded
                   expandedFolderIds={activeExpandedFolderIds}
                 />
@@ -774,13 +822,13 @@ export function MoveToTeamTreeDialog({
       ) : (
         <div className={styles.treeContainer}>
           <div className={styles.tree}>
-            {visibleItems.map((workspace) => <LegacyWorkspaceTree key={workspace.workspaceId} workspace={workspace} selectedKey={selectedKey} onSelectRoot={selectRoot} onSelectFolder={selectFolder} disabledKeys={disabledKeys} />)}
+            {visibleItems.map((workspace) => <LegacyWorkspaceTree key={workspace.workspaceId} workspace={workspace} selectedKey={selectedKey} onSelectRoot={selectRoot} onSelectFolder={selectFolder} disabledKeys={disabledKeys} disabledSubtreeKeys={disabledSubtreeKeys} />)}
           </div>
         </div>
       )}
       <DialogFooter className={styles.footer}>
         <button type="button" onClick={onCancel} disabled={busy}>{t('common.cancel')}</button>
-        <button type="button" className={`primary ${styles.confirmBtn}`} onClick={handleConfirm} disabled={!selected || busy || disabledKeys?.has(selectedKey ?? '')}>
+        <button type="button" className={`primary ${styles.confirmBtn}`} onClick={handleConfirm} disabled={selectedDisabled || loading || busy}>
           {copyMode ? t('recentProjects.confirmCopyToPersonal') : t('recentProjects.confirmMove')}
         </button>
       </DialogFooter>

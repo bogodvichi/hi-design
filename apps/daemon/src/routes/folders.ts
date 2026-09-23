@@ -1,4 +1,5 @@
 import type { Express, RequestHandler } from 'express';
+import type { FolderMoveCleanupRequest } from '@open-design/contracts';
 import {
   createWorkspaceFolder,
   listSubFolders,
@@ -198,6 +199,48 @@ try {
       res.json({ code: 0, data: { folder_id: folderId } });
     } catch (err) {
       sendApiError(res, 500, 'INTERNAL_ERROR', err instanceof Error ? err.message : String(err));
+    }
+  });
+
+  // Internal completion step of the existing move workflow (not ordinary
+  // deletion). An older daemon has no such route and therefore fails closed.
+  app.post('/api/folders/:folderId/move-cleanup', requireLocalDaemonRequest, (req, res) => {
+    const folderId = String(req.params.folderId ?? '').trim();
+    const body = req.body as Partial<FolderMoveCleanupRequest> | null;
+    const workspaceId = typeof body?.workspaceId === 'string' ? body.workspaceId.trim() : '';
+    const expected = body?.expectedEmptyTree;
+    const memberId = (req.get('x-od-workspace-member-id') || '').trim();
+    if (!folderId || !workspaceId || !Array.isArray(expected) || expected.length === 0 || expected.length > 10_000
+      || expected.some((node) => !node || typeof node.folderId !== 'string' || !node.folderId
+        || typeof node.folderName !== 'string' || !(node.folderPid === null || typeof node.folderPid === 'string'))
+      || expected[0]?.folderId !== folderId || new Set(expected.map((node) => node.folderId)).size !== expected.length) {
+      return sendApiError(res, 400, 'BAD_REQUEST', 'A valid expected empty folder tree is required');
+    }
+    if (!memberId) return sendApiError(res, 403, 'FORBIDDEN', 'Folder owner identity is required');
+    try {
+      const outcome = db.transaction(() => {
+        const root = getWorkspaceFolder(db, workspaceId, folderId) as FolderRow | undefined;
+        if (!root) return 200; // A lost successful cleanup response is safe to retry.
+        if (root.ownerMemberId && root.ownerMemberId !== memberId) return 403;
+        // Deliberately include every descendant, not an owner-filtered subset.
+        const actual = getFolderTree(db, workspaceId, folderId);
+        const expectedById = new Map(expected.map((node) => [node.folderId, node]));
+        if (actual.length !== expected.length || actual.some((node) => {
+          const match = expectedById.get(node.folderId);
+          return !match || match.folderPid !== node.folderPid || match.folderName !== node.folderName || node.projectIds.length > 0;
+        })) return 409;
+        if (actual.some((node) => {
+          const row = getWorkspaceFolder(db, workspaceId, node.folderId) as FolderRow | undefined;
+          return !row || (row.ownerMemberId && row.ownerMemberId !== memberId);
+        })) return 403;
+        deleteWorkspaceFolder(db, workspaceId, folderId);
+        return 200;
+      }).immediate();
+      if (outcome === 403) return sendApiError(res, 403, 'FORBIDDEN', 'Folder mutation forbidden');
+      if (outcome === 409) return sendApiError(res, 409, 'CONFLICT', 'Folder changed or still contains projects; original tree retained');
+      return res.json({ code: 0, data: { folder_id: folderId } });
+    } catch (error) {
+      return sendApiError(res, 500, 'INTERNAL_ERROR', error instanceof Error ? error.message : String(error));
     }
   });
 

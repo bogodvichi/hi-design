@@ -1,6 +1,10 @@
 import type { Dict } from '../types';
 
 export const hu: Dict = {
+  'personalScope.folderMoveSummary': "Áthelyezett mappák: {succeeded}; befejezetlen: {failed}.",
+  'personalScope.folderMoveFailed': "Befejezetlen: {name}. Ellenőrizze, majd próbálja újra.",
+  'personalScope.folderMoveInterrupted': "{name}: {count} fájl áthelyezése megerősítve; a többi eredmény még függőben lehet. A folyamat mentve. A folytatáshoz válassza az eredeti célt: {target}.",
+  'personalScope.folderMoveLocked': "A(z) {name} áthelyezése befejezetlen. Folytassa az eredeti célhoz: {target}.",
   'invite.header.eyebrow': "Team invitation",
   'invite.loading': "Loading invitation…",
   'invite.landing.title': "Join the team",
@@ -920,6 +924,11 @@ export const hu: Dict = {
   'sharedSpace.shareDialogCancel': 'Cancel',
   'sharedSpace.shareSuccess': 'Sikeresen megosztva',
   'sharedSpace.shareFailed': 'Share failed, please try again',
+  'sharedSpace.removeFromSharedWithMe': 'Remove from Shared with me',
+  'sharedSpace.removeFromSharedWithMeTitle': 'Remove from Shared with me?',
+  'sharedSpace.removeFromSharedWithMeBody': 'After removal, this user will no longer be able to access or use it.',
+  'sharedSpace.removeFromSharedWithMeConfirm': 'Remove',
+  'sharedSpace.removeFromSharedWithMeFailed': 'Removal failed. Please try again.',
 'sharedSpace.cannotShareToSelf': 'Nem oszthatsz meg magaddal. Kérjük, válassz másik címzettet.',
   'sharedSpace.shareFolderDialogTitle': 'Share Folder',
   'sharedSpace.shareFolderDialogDesc': 'Select members to share with. They will be able to view and comment on all projects (including subfolders) in this folder in the shared space.',

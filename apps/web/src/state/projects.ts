@@ -995,6 +995,50 @@ export async function copyProjectToPersonal(
   return created;
 }
 
+
+/**
+ * Copy a project from "Shared with me" into the viewer's personal workspace.
+ * Share recipients are not members of the owner's workspace, so this request
+ * intentionally carries no source-workspace identity headers. The daemon
+ * authorizes the source through the viewer's share record instead.
+ */
+export async function copySharedProjectToPersonal(
+  projectId: string,
+  homeWorkspaceId: string,
+): Promise<DuplicateProjectResponse> {
+  const resp = await fetch(
+    `/api/workspaces/${encodeURIComponent(homeWorkspaceId)}/projects/${encodeURIComponent(projectId)}/copy-to-personal`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    },
+  );
+  if (!resp.ok) {
+    let message = 'Could not copy shared project to personal space';
+    try {
+      const body = await resp.json() as { error?: unknown };
+      if (
+        body.error &&
+        typeof body.error === 'object' &&
+        'message' in body.error &&
+        typeof body.error.message === 'string' &&
+        body.error.message.trim()
+      ) {
+        message = body.error.message;
+      } else if (typeof body.error === 'string' && body.error.trim()) {
+        message = body.error;
+      }
+    } catch {
+      // Keep the generic fallback when the error body is absent or invalid.
+    }
+    throw new Error(message);
+  }
+  const created = (await resp.json()) as DuplicateProjectResponse;
+  markProjectCreatedByViewer(created.project.id, null);
+  return created;
+}
+
 export async function pickLocalFolderPath(): Promise<string | null> {
   const resp = await fetch('/api/dialog/open-folder', {
     method: 'POST',

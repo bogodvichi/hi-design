@@ -559,25 +559,26 @@ function projectAccess(
     canShareLocal,
     disabledReason: baseDisabledReason,
   } = workspaceResourceAccess(wp, ctx);
- // Team-shared projects are single-writer resources: Workspace governance
- // may manage the Team. Admins may rename, delete, duplicate, and move team
- // projects to other teams, but only the member recorded as this project's
- // creator may move it back to personal space. Keep the read model aligned
- // with the authoritative route gate; otherwise owner/admin callers are
- // advertised actions that direct project routes reject, while the workspace
- // move route (which consumes these flags) can still unshare someone else's
- // project. Personal/unshared projects retain the existing privileged-or-creator rule.
+ // Team-shared projects keep creator-only content management (rename/delete/
+ // restore), while every active non-guest member may copy the project because
+ // copying creates a new resource instead of mutating the source. Workspace
+ // owner/admin roles retain move authority through the move route.
  const canMutate =
    privilegedOrCreatorCanMutate
-   && (wp.visibility !== 'team' || selfCreated || ctx.role === 'admin');
+   && (wp.visibility !== 'team' || selfCreated);
+ const canDuplicate =
+   wp.visibility === 'team'
+     ? !frozen && ctx.memberStatus === 'active' && ctx.role !== 'guest'
+     : canMutate;
  const disabledReason =
-   baseDisabledReason
-   ?? (!canMutate ? 'permission_denied' : undefined);
+   baseDisabledReason === 'permission_denied' && canDuplicate
+     ? undefined
+     : baseDisabledReason ?? (!canMutate && !canDuplicate ? 'permission_denied' : undefined);
  return {
    canOpen: !frozen && ctx.memberStatus === 'active',
    canRename: canMutate,
    canDelete: canMutate,
-   canDuplicate: canMutate,
+   canDuplicate,
    // Never offer a share the workspace cannot host: the affordance is the
    // entry point that produced the impossible rows in the first place.
    canMoveToTeam:
@@ -2308,10 +2309,10 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
   const defaultMemberId = getTeamMemberId(getDefaultTeamId());
   const isOwner = ownerMemberId === ctx.workspaceMemberId
     || (defaultMemberId != null && ownerMemberId === defaultMemberId);
-  // Admins can rename, delete, and move team projects to other teams, but
-  // only the project owner can move it back to personal space.
-  const isAdmin = ctx.role === 'admin';
-  const canMutate = canView && (isOwner || isAdmin);
+  // Rename/delete/restore remain creator-only. Copy is deliberately broader:
+  // any active non-guest Team member may create a new project from this one.
+  const canMutate = canView && isOwner;
+  const canDuplicate = canView && ctx.role !== 'guest';
  const disabledReason = frozen
      ? isWorkspaceLocked(ctx)
        ? 'workspace_locked'
@@ -2323,7 +2324,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
      canOpen: canView,
      canRename: canMutate,
      canDelete: canMutate,
-     canDuplicate: canMutate,
+     canDuplicate,
      // Remote catalog records are always team-shared, so an owner can move
      // back to personal but never needs a "move to team" affordance.
      canMoveToTeam: false,
@@ -3894,12 +3895,19 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
    }
   const summary = normalizeWorkspaceProjectRow(row, ctx);
    // Folder-only moves (same workspace, same visibility) skip the
-   // move-allowed gate since canMoveToPersonal/canMoveToTeam are false
-   // when already in that visibility. Still require basic mutation
-   // permission so a non-owner cannot move someone else's project.
+   // move-allowed gate since canMoveToPersonal/canMoveToTeam are false when
+   // already in that visibility. Team owner/admin members may organize other
+   // members' projects, but ordinary non-creators may not.
+   const canMoveWithinCurrentWorkspace =
+     summary.currentUserAccess.canRename
+     || (
+       summary.visibility === 'team'
+       && (ctx.role === 'owner' || ctx.role === 'admin')
+       && ctx.memberStatus === 'active'
+     );
    const isFolderOnlyMoveRequest =
      hadExistingBinding
-     && summary.currentUserAccess.canRename
+     && canMoveWithinCurrentWorkspace
      && (!targetWorkspaceId || targetWorkspaceId === ctx.workspaceId)
      && summary.visibility === visibility;
    if (!isFolderOnlyMoveRequest && !workspaceMoveAllowed(summary, visibility, ctx, targetWorkspaceId)) {
@@ -5076,7 +5084,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
         getWorkspaceProjectByProjectId,
         db,
         sourceProject.id,
-        'duplicate',
+        'duplicateProject',
       )) return;
       if (isDesignSystemLikeProject(sourceProject)) {
         return sendApiError(
@@ -5188,44 +5196,101 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
   app.post('/api/workspaces/:workspaceId/projects/:projectId/copy-to-personal', async (req, res) => {
     let sourceProject = getProject(db, req.params.projectId);
     try {
-      // If the source team project has never been pulled locally (no
-      // local record, or only an unmaterialized shared placeholder), pull
-      // it now so the copy operates on real content rather than a stub.
+      // A Shared-with-me recipient is not a member of the owner's workspace.
+      // Resolve the recipient's share record before materialization so copying
+      // can work directly from the collection, even before the project has ever
+      // been opened/pulled on this device.
+      let sharedRecipientAccess: {
+        workspaceId: string;
+        resourceTeamId: string;
+        viewerMemberId: string;
+        ownerMemberId: string;
+      } | null = null;
+      try {
+        sharedRecipientAccess =
+          await collabSync.resolveShareAccess?.(req.params.projectId, req) ?? null;
+      } catch {
+        // Fall through to ordinary workspace-member authorization.
+      }
+
+      // If the source team project has never been pulled locally (no local
+      // record, or only an unmaterialized shared placeholder), materialize it
+      // using either the verified share record or the ordinary team context.
       if (!sourceProject || isUnmaterializedSharedPlaceholder(sourceProject)) {
-        const sourceCtx = await authoritativeWorkspaceProjectContext(
-          req,
-          res,
-          req.params.workspaceId,
-        );
-        if (!sourceCtx) return;
-        const materialization = await materializeTeamProjectForCopy(
-          req.params.projectId,
-          sourceCtx,
-        );
-        if (materialization === 'denied') {
-          return sendApiError(res, 403, 'WORKSPACE_PROJECT_PERMISSION_DENIED', 'project copy forbidden');
-        }
-        if (materialization === 'unavailable') {
-          return sendApiError(
+        if (sharedRecipientAccess) {
+          if (!collabSync.materializeTeamProject) {
+            return sendApiError(
+              res,
+              503,
+              'UPSTREAM_UNAVAILABLE',
+              'team project content is temporarily unavailable',
+              { retryable: true },
+            );
+          }
+          try {
+            await collabSync.materializeTeamProject(
+              req.params.projectId,
+              {
+                teamId: sharedRecipientAccess.resourceTeamId,
+                memberId: sharedRecipientAccess.ownerMemberId,
+                role: 'member',
+                lifecycleState: 'active',
+              },
+            );
+          } catch {
+            return sendApiError(
+              res,
+              503,
+              'UPSTREAM_UNAVAILABLE',
+              'team project content is temporarily unavailable',
+              { retryable: true },
+            );
+          }
+          sourceProject = getProject(db, req.params.projectId);
+          if (!sourceProject || isUnmaterializedSharedPlaceholder(sourceProject)) {
+            return sendApiError(
+              res,
+              503,
+              'UPSTREAM_UNAVAILABLE',
+              'team project content is temporarily unavailable',
+              { retryable: true },
+            );
+          }
+        } else {
+          const sourceCtx = await authoritativeWorkspaceProjectContext(
+            req,
             res,
-            503,
-            'UPSTREAM_UNAVAILABLE',
-            'team project content is temporarily unavailable',
-            { retryable: true },
+            req.params.workspaceId,
           );
+          if (!sourceCtx) return;
+          const materialization = await materializeTeamProjectForCopy(
+            req.params.projectId,
+            sourceCtx,
+          );
+          if (materialization === 'denied') {
+            return sendApiError(res, 403, 'WORKSPACE_PROJECT_PERMISSION_DENIED', 'project copy forbidden');
+          }
+          if (materialization === 'unavailable') {
+            return sendApiError(
+              res,
+              503,
+              'UPSTREAM_UNAVAILABLE',
+              'team project content is temporarily unavailable',
+              { retryable: true },
+            );
+          }
+          // materialization === 'missing' falls through to the 404 below.
+          sourceProject = getProject(db, req.params.projectId);
         }
-        // materialization === 'missing' falls through to the 404 below.
-        sourceProject = getProject(db, req.params.projectId);
       }
       const locations = await configuredProjectLocations();
       if (!sourceProject || !projectVisibleForLocations(sourceProject, locations)) {
         return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'not found');
       }
-      // Read authority: any active team member can read (and therefore copy)
-      // a team-shared project. This deliberately uses 'read' mode, NOT
-      // 'duplicate' capability, because the caller is creating a NEW project
-      // in their personal workspace — they are not mutating the source.
-      if (!await authorizeProjectReadWithShare(req, res, sourceProject.id)) return;
+      // Copy only needs source READ authority. A verified Shared-with-me record
+      // is already sufficient; ordinary team members use the existing read
+      // authorization path. The source project itself is never mutated here.
+      if (!sharedRecipientAccess && !await authorizeProjectReadWithShare(req, res, sourceProject.id)) return;
       if (isDesignSystemLikeProject(sourceProject)) {
         return sendApiError(
           res,

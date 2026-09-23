@@ -202,6 +202,7 @@ import {
   createProject,
   createPluginShareProject,
   deleteProject as deleteProjectApi,
+  copySharedProjectToPersonal,
   duplicateProject,
   getProject,
   importClaudeDesignZip,
@@ -3624,6 +3625,19 @@ function AppInner() {
     [rememberLocalProject, resolveSourceProjectWorkspaceContext],
   );
 
+  const handleCopySharedProject = useCallback(
+    async (sourceProjectId: string, homeWorkspaceId: string) => {
+      const result = await copySharedProjectToPersonal(sourceProjectId, homeWorkspaceId);
+      rememberLocalProject(result.project.id);
+      setProjects((curr) => [
+        result.project,
+        ...curr.filter((p) => p.id !== result.project.id),
+      ]);
+      window.dispatchEvent(new CustomEvent('personal:folders-updated'));
+    },
+    [rememberLocalProject],
+  );
+
  const handleCreatePluginShareProject = useCallback(
     async (
       pluginId: string,
@@ -5385,6 +5399,7 @@ if (fetchedProject) {
       onRenameProject={handleRenameProject}
       onProjectsRefresh={refreshProjectsStrict}
       onCopyProject={handleCopyProject}
+      onCopySharedProject={handleCopySharedProject}
       onTeamProjectContentReady={handleTeamProjectContentReady}
       onChangeDefaultDesignSystem={handleChangeDefaultDesignSystem}
       onCreateDesignSystem={() => {

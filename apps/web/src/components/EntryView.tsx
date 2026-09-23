@@ -141,6 +141,7 @@ interface Props {
  onDuplicateProject?: (id: string) => Promise<void> | void;
  onRenameProject: (id: string, name: string) => void;
  onCopyProject?: (id: string) => Promise<void> | void;
+ onCopySharedProject?: (id: string, homeWorkspaceId: string) => Promise<void> | void;
   onProjectsRefresh?: () => Promise<void> | void;
   onTeamProjectContentReady?: (
     projectId: string,
@@ -300,6 +301,7 @@ export function EntryView({
  onRenameProject,
  onProjectsRefresh,
  onCopyProject,
+ onCopySharedProject,
   onTeamProjectContentReady,
   onChangeDefaultDesignSystem,
   onCreateDesignSystem,
@@ -426,6 +428,7 @@ export function EntryView({
      onDuplicateProject={onDuplicateProject}
      onRenameProject={onRenameProject}
      onCopyProject={onCopyProject}
+     onCopySharedProject={onCopySharedProject}
       onProjectsRefresh={onProjectsRefresh}
       onTeamProjectContentReady={onTeamProjectContentReady}
       onChangeDefaultDesignSystem={onChangeDefaultDesignSystem}
