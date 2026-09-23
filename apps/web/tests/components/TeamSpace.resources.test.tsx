@@ -170,6 +170,7 @@ describe('team resource lists', () => {
 
     expect(await screen.findByText('Owned Skill')).toBeTruthy();
     fireEvent.click(container.querySelector<HTMLButtonElement>('[class*="cardMenuBtn"]')!);
+    expect(screen.getByRole('button', { name: '删除' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: '取消发布' }));
 
     expect(screen.getByRole('heading', { name: '取消发布' })).toBeTruthy();
@@ -207,6 +208,7 @@ describe('team resource lists', () => {
 
     expect(await screen.findByText('Owned MCP')).toBeTruthy();
     fireEvent.click(container.querySelector<HTMLButtonElement>('[class*="cardMenuBtn"]')!);
+    expect(screen.getByRole('button', { name: '删除' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: '取消发布' }));
 
     expect(screen.getByRole('heading', { name: '取消发布' })).toBeTruthy();

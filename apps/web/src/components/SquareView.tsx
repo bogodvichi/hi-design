@@ -878,7 +878,7 @@ function SquarePluginPreview({
     }
   }, [entry.name, t]);
 
-  useEffect(() => {
+  const handlePreviewView = useCallback(() => {
     void fetchPreview();
   }, [fetchPreview]);
 
@@ -893,7 +893,7 @@ function SquarePluginPreview({
         html: previewHtml,
         error: previewError,
       }]}
-      onView={() => { void fetchPreview(); }}
+      onView={handlePreviewView}
       exportTitleFor={() => title}
       onClose={onClose}
       primaryAction={{

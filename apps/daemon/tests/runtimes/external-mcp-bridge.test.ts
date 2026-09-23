@@ -1,8 +1,13 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import {
   buildCodexExternalMcpBridgeInjection,
   parseExternalMcpBridgePayload,
+  readProjectMcpServerConfigs,
   resolveMentionedMcpServerIds,
 } from '../../src/runtimes/external-mcp-bridge.js';
 
@@ -80,6 +85,55 @@ describe('Codex external MCP run bridge', () => {
       'mail user@local-docs before searching',
       ['local-docs'],
     )).toEqual(new Set());
+  });
+
+  it('reads standard project .mcp.json entries without executing them', async () => {
+    const projectDir = await mkdtemp(path.join(tmpdir(), 'od-external-mcp-'));
+    try {
+      await writeFile(path.join(projectDir, '.mcp.json'), JSON.stringify({
+        mcpServers: {
+          local: {
+            command: 'node',
+            args: ['server.js'],
+            env: { TOKEN: 'secret' },
+          },
+          remote: {
+            type: 'sse',
+            url: 'https://example.test/sse',
+            headers: { 'X-Tenant': 'alpha' },
+          },
+          disabled: {
+            command: 'ignored',
+            disabled: true,
+          },
+        },
+      }));
+
+      await expect(readProjectMcpServerConfigs(projectDir)).resolves.toEqual([
+        expect.objectContaining({
+          id: 'local',
+          transport: 'stdio',
+          enabled: true,
+          command: 'node',
+          args: ['server.js'],
+          env: { TOKEN: 'secret' },
+        }),
+        expect.objectContaining({
+          id: 'remote',
+          transport: 'sse',
+          enabled: true,
+          url: 'https://example.test/sse',
+          headers: { 'X-Tenant': 'alpha' },
+        }),
+        expect.objectContaining({
+          id: 'disabled',
+          transport: 'stdio',
+          enabled: false,
+        }),
+      ]);
+    } finally {
+      await rm(projectDir, { recursive: true, force: true });
+    }
   });
 
   it('rejects malformed or disabled bridge payloads', () => {

@@ -1,5 +1,5 @@
 import type { Express, Request } from 'express';
-import { pipeline } from 'node:stream';
+import { extractCommunityArchive } from '../../community-archive.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type * as BetterSqlite3 from 'better-sqlite3';
@@ -406,18 +406,7 @@ export function registerPluginMarketplaceRoutes(app: Express, deps: RegisterPlug
        if (!archiveBuffer) {
          return res.status(502).json({ error: 'Failed to download archive from HDW' });
        }
-       const { x: tarExtract } = await import('tar');
-       await fs.promises.mkdir(cacheDir, { recursive: true });
-       const archivePath = path.join(cacheDir, 'archive.tgz');
-       await fs.promises.writeFile(archivePath, archiveBuffer);
-       await new Promise<void>((resolve, reject) => {
-         pipeline(
-           fs.createReadStream(archivePath),
-           tarExtract({ cwd: cacheDir }) as NodeJS.WritableStream,
-           (err: NodeJS.ErrnoException | null) => (err ? reject(err) : resolve()),
-         );
-       });
-       await fs.promises.unlink(archivePath).catch(() => {});
+       await extractCommunityArchive(archiveBuffer, cacheDir);
        await fs.promises.writeFile(markerPath, String(Date.now()));
      }
 
@@ -502,46 +491,8 @@ app.post('/api/marketplaces/:id/plugins/:name/remix', async (req, res) => {
       const { promises: fsp } = await import('node:fs');
       const os = await import('node:os');
       const tmpRoot = await fsp.mkdtemp(nodePath.join(os.tmpdir(), 'od-remix-'));
-      // Detect archive format by magic bytes. ZIP starts with PK (0x50 0x4B);
-      // gzip starts with 0x1F 0x8B (tar.gz); uncompressed tar has "ustar" at
-      // offset 257. The publish-community route creates ZIP archives via
-      // JSZip, while the CLI publish-hdw flow creates tar.gz archives.
-      const isZip = archiveBuffer.length >= 4
-        && archiveBuffer[0] === 0x50 && archiveBuffer[1] === 0x4B;
       try {
-        if (isZip) {
-          // Extract ZIP archives (created by createProjectArchiveStream / JSZip).
-          const JSZip = (await import('jszip')).default;
-          const zip = await JSZip.loadAsync(archiveBuffer);
-          const extractOps: Promise<void>[] = [];
-          zip.forEach((relativePath, entry) => {
-            if (entry.dir) return;
-            const dest = nodePath.join(tmpRoot, relativePath);
-            const destDir = nodePath.dirname(dest);
-            extractOps.push(
-              fsp.mkdir(destDir, { recursive: true }).then(() =>
-                entry.async('nodebuffer'),
-              ).then((data) => fsp.writeFile(dest, data)),
-            );
-          });
-          await Promise.all(extractOps);
-        } else {
-          // Extract tar/tgz archives (created by the CLI publish-hdw flow).
-          const { x: tarExtract } = await import('tar');
-          const archivePath = nodePath.join(tmpRoot, 'archive.tgz');
-          await fsp.writeFile(archivePath, archiveBuffer);
-          try {
-            await new Promise<void>((resolve, reject) => {
-              pipeline(
-                fs.createReadStream(archivePath),
-                 tarExtract({ cwd: tmpRoot }) as NodeJS.WritableStream,
-                (err: NodeJS.ErrnoException | null) => err ? reject(err) : resolve(),
-              );
-            });
-          } finally {
-            await fsp.unlink(archivePath).catch(() => {});
-          }
-        }
+        await extractCommunityArchive(archiveBuffer, tmpRoot);
       } catch (err) {
         return res.status(500).json({ error: `Archive extraction failed: ${(err as Error).message}` });
       }

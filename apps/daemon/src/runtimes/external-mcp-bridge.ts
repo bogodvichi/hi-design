@@ -1,4 +1,6 @@
 import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
@@ -92,6 +94,62 @@ export function resolveMentionedMcpServerIds(
     mentioned.add(id);
   }
   return mentioned;
+}
+
+/**
+ * Read standard Claude/Cursor-style project `.mcp.json` entries. Reading is
+ * inert: callers must still require an explicit run selection or @mention
+ * before any configured command is launched.
+ */
+export async function readProjectMcpServerConfigs(
+  projectDir: string,
+): Promise<McpServerConfig[]> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await readFile(path.join(projectDir, '.mcp.json'), 'utf8'));
+  } catch (error) {
+    const code = (error as { code?: string }).code;
+    if (code === 'ENOENT' || error instanceof SyntaxError) return [];
+    throw error;
+  }
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return [];
+  const rawServers = (parsed as Record<string, unknown>).mcpServers;
+  if (!rawServers || typeof rawServers !== 'object' || Array.isArray(rawServers)) return [];
+
+  const servers: McpServerConfig[] = [];
+  for (const [id, raw] of Object.entries(rawServers as Record<string, unknown>)) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) continue;
+    const entry = raw as Record<string, unknown>;
+    const command = typeof entry.command === 'string' ? entry.command : undefined;
+    const url = typeof entry.url === 'string' ? entry.url : undefined;
+    const rawTransport = entry.transport ?? entry.type;
+    const transport = command
+      ? 'stdio'
+      : rawTransport === 'sse'
+        ? 'sse'
+        : url
+          ? 'http'
+          : null;
+    if (!transport) continue;
+    const server = sanitizeMcpServer({
+      id,
+      ...(typeof entry.label === 'string' ? { label: entry.label } : {}),
+      transport,
+      enabled: entry.enabled !== false && entry.disabled !== true,
+      ...(command ? { command } : {}),
+      ...(Array.isArray(entry.args) ? { args: entry.args } : {}),
+      ...(entry.env && typeof entry.env === 'object' ? { env: entry.env } : {}),
+      ...(url ? { url } : {}),
+      ...(entry.headers && typeof entry.headers === 'object'
+        ? { headers: entry.headers }
+        : {}),
+      ...(entry.authMode === 'none' || entry.authMode === 'oauth'
+        ? { authMode: entry.authMode }
+        : {}),
+    });
+    if (server) servers.push(server);
+  }
+  return servers;
 }
 
 export function parseExternalMcpBridgePayload(raw: string): ExternalMcpBridgePayload {

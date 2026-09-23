@@ -301,11 +301,19 @@ describe('CloudToolList', () => {
     expect(menuButtons).toHaveLength(1);
 
     fireEvent.click(menuButtons[0]!);
+    expect(screen.getByText('common.delete')).toBeTruthy();
     fireEvent.click(screen.getByText('squareScope.unpublish'));
 
     expect(screen.getByText('squareScope.unpublishConfirmTitle')).toBeTruthy();
     expect(screen.getByText('squareScope.unpublishConfirmDesc')).toBeTruthy();
     expect(screen.queryByText('personalScope.cloudToolDelete')).toBeNull();
+
+    fireEvent.click(screen.getByText('common.cancel'));
+    fireEvent.click(menuButtons[0]!);
+    fireEvent.click(screen.getByText('common.delete'));
+
+    expect(screen.getByText('squareScope.deleteConfirmTitle')).toBeTruthy();
+    expect(screen.getByText('squareScope.deleteConfirmDesc')).toBeTruthy();
   });
 
   it('keeps official tool authors while showing owner actions in My Publishes', async () => {

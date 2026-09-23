@@ -161,6 +161,62 @@ describe('SquareView remix recents', () => {
     expect(screen.getByText('Data dashboard')).toBeTruthy();
   });
 
+  it('requests a community preview once and shows the error state instead of looping on loading', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const pathname = new URL(String(input), 'http://daemon.local').pathname;
+      if (pathname === '/api/workspace/directory') {
+        return jsonResponse({
+          items: [{
+            workspaceId: 'shared-space',
+            workspaceMemberId: 'directory-member-id',
+            workspaceType: 'personal',
+            isDefaultTeam: true,
+          }],
+          activeWorkspaceId: 'shared-space',
+        });
+      }
+      if (pathname === '/api/marketplaces/hdw-community/plugins') {
+        return jsonResponse({
+          plugins: [{
+            name: 'square-deck',
+            title: 'Square deck',
+            version: '1.0.0',
+            publisher: { displayName: 'Project Author' },
+          }],
+        });
+      }
+      if (pathname === '/api/marketplaces/hdw-community/plugins/square-deck/preview') {
+        return new Response(JSON.stringify({ error: 'archive extraction failed' }), {
+          status: 500,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+      return jsonResponse({});
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(
+      <I18nProvider initial="en">
+        <SquareView />
+      </I18nProvider>,
+    );
+
+    const cardTitle = await screen.findByText('Square deck');
+    const cardButton = cardTitle.closest('button');
+    expect(cardButton).toBeTruthy();
+    fireEvent.click(cardButton!);
+
+    expect(await screen.findByText("Couldn't load this example.")).toBeTruthy();
+
+    await waitFor(() => {
+      const previewCalls = fetchMock.mock.calls.filter(([input]) => (
+        new URL(String(input), 'http://daemon.local').pathname
+          === '/api/marketplaces/hdw-community/plugins/square-deck/preview'
+      ));
+      expect(previewCalls).toHaveLength(1);
+    });
+  });
+
   it('records a remixed project in recently opened projects and polls its cover', async () => {
     const selfSharedSpaceMemberId = await getSharedSpaceMemberId('square-tester');
 
