@@ -1121,11 +1121,8 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     const contextMcpIds = (meta.contextMcpServers ?? []).map((ref) => ref.id);
     const allReferencedMcpIds = Array.from(new Set([...usedMcpIds, ...contextMcpIds]));
     if (usedSkillIds.length === 0 && allReferencedMcpIds.length === 0) return;
-    // Latch on the project + metadata version so we only restore once
-    // per project entry (or when the metadata identity changes).
     const restoreKey = `${projectId}:${usedSkillIds.join(',')}:${allReferencedMcpIds.join(',')}`;
     if (recentRestoreRef.current === restoreKey) return;
-    recentRestoreRef.current = restoreKey;
 
     // Stage skills that are in the loaded skills list.
     if (usedSkillIds.length > 0 && skills.length > 0) {
@@ -1166,6 +1163,27 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
         setStagedMcpServers((prev) => [...prev, ...toStage]);
         toStage.forEach((s) => contextOnlyMcpIdsRef.current.add(s.id));
       }
+    }
+
+    // Only latch once we've actually staged something, or once both source
+    // lists are populated and we've confirmed there's nothing to stage.
+    // If skills or mcpServers are still empty (not yet loaded), skip the
+    // latch so the effect retries when they become available.
+    const skillsReady = usedSkillIds.length === 0 || skills.length > 0;
+    const mcpReady = allReferencedMcpIds.length === 0 || mcpServers.length > 0;
+    if (skillsReady && mcpReady) {
+      recentRestoreRef.current = restoreKey;
+    }
+
+    // If there are referenced MCP IDs but the server list hasn't been loaded
+    // yet (composer not engaged), trigger the fetch directly so the retry
+    // can stage them on the next render.
+    if (allReferencedMcpIds.length > 0 && mcpServers.length === 0) {
+      void fetchMcpServers().then((data) => {
+        if (!data) return;
+        setMcpServers(data.servers);
+        setMcpTemplates(data.templates);
+      });
     }
   }, [projectMetadata, projectId, skills, mcpServers, stagedMcpServers]);
 

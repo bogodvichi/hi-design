@@ -4955,6 +4955,30 @@ export async function startServer({
         message: 'workspace project read is not allowed',
       };
     }
+    // Cross-team share check: if this project is shared with the current
+    // user via HDW folder/project shares, grant comment access with the
+    // shared-space collaborator identity (not the home workspace member ID).
+    try {
+      const shareAccess = await resolveShareAccess(projectId, req);
+      if (shareAccess) {
+        return {
+         ok: true as const,
+        context: {
+          workspaceId: shareAccess.workspaceId,
+           workspaceType: 'team' as const,
+           workspaceMemberId: shareAccess.viewerMemberId,
+           teamId: shareAccess.workspaceId,
+           role: 'member' as const,
+           memberStatus: 'active' as const,
+           lifecycleState: 'active' as const,
+          isSharedSpace: true,
+          collaboratorMemberId: shareAccess.viewerMemberId,
+        } as any,
+       };
+      }
+    } catch {
+      // share lookup failed — fall through to local authority
+    }
     const local = resolveOptionalLocalWorkspaceRequestAuthority(req);
     if (!local.ok) return local;
    if (local.context) {
@@ -7398,13 +7422,21 @@ const designSystemBackingProjects = new Map<string, string>();
     if (!hdwCloudClient) {
       return res.json({ exists: false });
     }
-    try {
-      const exists = await hdwCloudClient.checkResource(workspaceId, 'skill', title);
-      res.json({ exists });
-    } catch (err: any) {
-      res.status(500).json({ error: err instanceof Error ? err.message : 'cloud skill check failed' });
-    }
-  });
+   try {
+      // Case-insensitive duplicate check: list the owner's skill resources
+      // and compare titles in lowercase. The HDW resources/check endpoint
+      // is case-sensitive, so we do the comparison ourselves.
+      const resources = await hdwCloudClient.listResources(workspaceId, 'skill', ownerMemberId);
+      const lowerTitle = title.toLowerCase();
+      const exists = resources.some((r) => {
+        const resourceTitle = (r.metadata as any)?.title;
+        return typeof resourceTitle === 'string' && resourceTitle.toLowerCase() === lowerTitle;
+      });
+     res.json({ exists });
+   } catch (err: any) {
+     res.status(500).json({ error: err instanceof Error ? err.message : 'cloud skill check failed' });
+   }
+ });
 
   app.get('/api/workspace/skills/cloud', async (req: any, res: any) => {
     const resolution = await resolveTeamResourceScope(req);
@@ -7678,17 +7710,76 @@ const designSystemBackingProjects = new Map<string, string>();
        return res.status(502).json({ error: err instanceof Error ? err.message : 'MAAS Skillhub uninstall failed' });
      }
    }
-   if (!hdwCloudClient) {
-     return res.status(503).json({ error: 'HDW_CLOUD_NOT_CONFIGURED' });
-   }
-   try {
-    const homeWsId = typeof req.query.home_workspace_id === 'string' ? req.query.home_workspace_id : '';
-    const lookupWsId = homeWsId || workspaceId;
-    const cloudResource = await hdwCloudClient.getResource(lookupWsId, resourceId);
-    if (!cloudResource) {
-      return res.status(404).json({ error: 'CLOUD_SKILL_NOT_FOUND' });
-    }
-     const localId = (cloudResource.metadata as any)?.localId ?? cloudResource.id;
+    // Uninstall is a local-only operation: remove the materialized skill
+    // directory and its workspace binding. The cloud resource (if any) is
+    // only consulted to resolve the localId when we don't already know it;
+    // a skill installed from a team-workspace share may have no cloud
+    // counterpart at all, so falling back to a local marker scan is the
+    // correct behaviour rather than returning CLOUD_SKILL_NOT_FOUND.
+    try {
+      // The web client prefixes locally-installed skill ids with "local:"
+      // when building the cloud-list resourceId (see CloudSkillList.tsx).
+      // Strip it so the rest of the lookup uses the bare skill id.
+      const bareResourceId = resourceId.startsWith('local:')
+        ? resourceId.slice('local:'.length)
+        : resourceId;
+      const homeWsId = typeof req.query.home_workspace_id === 'string' ? req.query.home_workspace_id : '';
+      const lookupWsId = homeWsId || workspaceId;
+      let localId: string | null = null;
+      if (hdwCloudClient) {
+        try {
+          const cloudResource = await hdwCloudClient.getResource(lookupWsId, bareResourceId);
+          if (cloudResource) {
+            localId = (cloudResource.metadata as any)?.localId ?? cloudResource.id;
+          }
+        } catch {
+          // Cloud lookup failed (network, auth, etc.) — fall through to
+          // the local marker scan below so a transient cloud outage does
+          // not block uninstalling a locally-installed skill.
+        }
+      }
+      // Cloud miss or no cloud client: scan the team-workspace directory
+      // for a materialization marker whose hubResourceId or resourceId
+      // matches the requested resourceId.
+      if (!localId) {
+        const wsRoot = teamResourceWorkspaceRoot(USER_SKILLS_DIR, workspaceId);
+        let entries: import('node:fs').Dirent[] = [];
+        try {
+          entries = await fs.promises.readdir(wsRoot, { withFileTypes: true });
+        } catch {
+          // No team-workspace directory for this workspace — nothing to scan.
+        }
+        for (const entry of entries) {
+          if (!entry.isDirectory()) continue;
+          for (const candidate of [entry.name, `user:${entry.name}`]) {
+            const marker = await readTeamResourceMaterialization(
+              USER_SKILLS_DIR,
+              workspaceId,
+              candidate,
+              entry.name,
+            );
+            if (
+              marker?.kind === 'skill'
+              && (marker.hubResourceId === bareResourceId || marker.resourceId === bareResourceId)
+            ) {
+              localId = marker.resourceId;
+              break;
+            }
+          }
+          if (localId) break;
+        }
+      }
+      if (!localId) {
+        // Last resort: the skill may live directly under USER_SKILLS_DIR
+        // (not inside .team-workspaces). Try uninstallById which scans
+        // the user skills root and removes the directory if found.
+        const result = await uninstallById(bareResourceId, USER_SKILLS_DIR, SKILLS_DIR, 'skill');
+        if (result.ok) {
+          deleteWorkspaceResourceByResourceId(db, 'skill', bareResourceId);
+          return res.json({ ok: true, localId: bareResourceId });
+        }
+        return res.status(404).json({ error: 'CLOUD_SKILL_NOT_FOUND' });
+      }
       const dirId = stripPrefixAndValidateId(localId, localId.startsWith('user:') ? 'user:' : '');
       if (!dirId) {
         return res.status(400).json({ error: 'invalid local id' });
@@ -8607,10 +8698,11 @@ const teamResourceListByKind = {
   env: process.env,
 });
 
- registerFolderRoutes(app, {
-   db,
-   http: { requireLocalDaemonRequest, sendApiError },
- });
+registerFolderRoutes(app, {
+  db,
+  http: { requireLocalDaemonRequest, sendApiError },
+  dataDir: RUNTIME_DATA_DIR,
+});
 
 const openDesignPublicMetadata = createOpenDesignPublicMetadataService();
   registerOpenDesignPublicMetadataRoutes(app, {

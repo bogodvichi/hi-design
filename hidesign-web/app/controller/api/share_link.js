@@ -173,9 +173,9 @@ _blobUrl(workspaceId, digest) {
         let html = htmlBuffer.toString('utf-8');
         html = this._rewriteAssetRefs(html, entry.path, entryMap, workspaceId);
         const name = path.basename(entry.path);
-        const home = /^(index|home|main|default)\.html?$/i.test(name);
-        htmlFiles.push({ name, path: html, home });
-      }
+       const home = /^(index|home|main|default)\.html?$/i.test(name);
+         htmlFiles.push({ name, filePath: entry.path, content: html, home });
+       }
 
       // 5. Load preview_template.html and inject HTML_FILES data.
       const templatePath = path.join(this.app.baseDir, 'app', 'data', 'preview_template.html');
@@ -188,10 +188,18 @@ _blobUrl(workspaceId, digest) {
       const replacement = JSON.stringify(htmlFiles)
         .replace(/</g, '\\u003c')
         .replace(/>/g, '\\u003e');
-      template = template.replace(
-        /\/\*HTML_FILES_DATA\*\/\[\]/,
-        '/*HTML_FILES_DATA*/' + replacement
-      );
+     template = template.replace(
+       /\/\*HTML_FILES_DATA\*\/\[\]/,
+       '/*HTML_FILES_DATA*/' + replacement
+     );
+     template = template.replace(
+       /\/\*PROJECT_ID\*\/''/,
+       '/*PROJECT_ID*/' + JSON.stringify(projectId)
+     );
+     template = template.replace(
+       /\/\*TEAM_ID\*\/''/,
+       '/*TEAM_ID*/' + JSON.stringify(workspaceId)
+     );
 
       // 6. Store the generated HTML as a blob.
       const htmlBuffer = Buffer.from(template, 'utf-8');

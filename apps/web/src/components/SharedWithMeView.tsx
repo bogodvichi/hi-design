@@ -59,7 +59,7 @@ interface SharedFolderItem {
   folderName: string;
   projectCount: number;
   subfolderCount: number;
-  subfolderPreview: Array<{ name: string; kind: 'folder' | 'project' }>;
+  subfolderPreview: Array<{ name: string; kind: 'folder' | 'project'; projectId?: string | null; coverDigest?: string | null }>;
   createdAt: string;
 }
 
@@ -78,7 +78,7 @@ function parseFolderList(list: any[], counts: Record<string, number>): SharedFol
       ? f.subfolder_preview.map((p: any) =>
           typeof p === 'string'
             ? { name: p, kind: 'folder' as const }
-            : { name: p.name || '', kind: (p.kind === 'project' ? 'project' : 'folder') as 'folder' | 'project' })
+            : { name: p.name || '', kind: (p.kind === 'project' ? 'project' : 'folder') as 'folder' | 'project', projectId: p.projectId || null, coverDigest: p.coverDigest || null })
       : [],
     createdAt: f.created_at || '',
   }));
@@ -101,6 +101,16 @@ function FolderCard({ folder, onClick }: { folder: SharedFolderItem; onClick: ()
             return <div key={i} className={styles.gridCellEmpty} />;
           }
           if (item.kind === 'project') {
+            if (item.coverDigest) {
+              return (
+                <div
+                  key={i}
+                  className={`${styles.gridCell} ${styles.gridCellCover}`}
+                  style={{ backgroundImage: `url(/api/hdw/api/community/cover/${encodeURIComponent(item.coverDigest)})` }}
+                  title={item.name}
+                />
+              );
+            }
             return (
               <div key={i} className={`${styles.gridCell} ${styles.gridCellProject}`} title={item.name} />
             );
@@ -462,12 +472,11 @@ export function SharedFolderView({
         const body = await res.json();
         if (cancelled) return;
         const list: any[] = body?.folders ?? [];
-        const counts: Record<string, number> = {};
-        for (const r of sharedRowsRef.current) {
-          const fid = r.folderId ?? null;
-          if (fid) counts[fid] = (counts[fid] ?? 0) + 1;
-        }
-        setFolders(parseFolderList(list, counts));
+        // Project counts now come from the HDW folder list API's
+        // project_count field — sharedRowsRef only has the current
+        // folder's projects after server-side filtering, so it can't
+        // compute subfolder counts.
+        setFolders(parseFolderList(list, {}));
       } catch {
         if (!cancelled) setFolders([]);
       } finally {
@@ -492,14 +501,10 @@ export function SharedFolderView({
     const load = async () => {
       setProjectsLoading(true);
       try {
-        const rows = await fetchSharedWithMeCatalog();
+        const rows = await fetchSharedWithMeCatalog({ folderId });
         if (cancelled) return;
         sharedRowsRef.current = rows;
-        // Filter projects in this folder.
-        const folderProjects = rows
-          .filter((r) => r.folderId === folderId)
-          .map(sharedRowToProject);
-        setProjects(folderProjects);
+        setProjects(rows.map(sharedRowToProject));
       } catch {
         if (!cancelled) setProjects([]);
       } finally {

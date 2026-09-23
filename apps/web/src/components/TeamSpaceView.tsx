@@ -11,6 +11,7 @@ import { useT } from '../i18n';
 import type { Dict } from '../i18n/types';
 import { avatarColorFor } from '../utils/avatarColor';
 import { FolderCardMenu } from './FolderCardMenu';
+import { ShareFolderDialog } from './ShareFolderDialog';
 import { FolderSelectionCheck } from './FolderSelectionCheck';
 import { RecentProjectsStrip } from './RecentProjectsStrip';
 import { AddSkillDialog } from './AddSkillDialog';
@@ -652,11 +653,13 @@ function ProjectsPanel({
   const operatorMemberId = operator?.memberId ?? null;
   const operatorRole = operator?.role ?? null;
  const canManage = operatorRole === 'owner' || operatorRole === 'admin';
+ const canShare = operatorRole !== null && operatorRole !== 'guest';
 
   const [renameFolderTarget, setRenameFolderTarget] = useState<TeamFolderItem | null>(null);
   const [renameFolderInput, setRenameFolderInput] = useState('');
   const [renamingFolder, setRenamingFolder] = useState(false);
   const renameFolderTitleId = useId();
+  const [shareFolderTarget, setShareFolderTarget] = useState<TeamFolderItem | null>(null);
 
 // Fetch the team's project folders from the HDW folder API, and refresh
 // when a create/delete dispatches the `hdw:folders-updated` event.
@@ -692,7 +695,7 @@ function ProjectsPanel({
            ? f.subfolder_preview.map((p: any) =>
                typeof p === 'string'
                  ? { name: p, kind: 'folder' as const }
-                 : { name: p.name || '', kind: (p.kind === 'project' ? 'project' : 'folder') as 'folder' | 'project' })
+                 : { name: p.name || '', kind: (p.kind === 'project' ? 'project' : 'folder') as 'folder' | 'project', coverDigest: p.coverDigest || null })
            : [],
          createdAt: f.created_at || '',
        })));
@@ -969,12 +972,14 @@ function ProjectsPanel({
             >
            {folderSelectionMode ? (
              <FolderSelectionCheck selected={selected} />
-           ) : canManage ? (
+           ) : canShare ? (
              <FolderCardMenu
-                onRename={() => startFolderRename(folder)}
+                onRename={canManage ? () => startFolderRename(folder) : undefined}
                renameLabel={t('common.rename')}
-               onDelete={() => setRemoveTarget(folder)}
+               onDelete={canManage ? () => setRemoveTarget(folder) : undefined}
                deleteLabel={t('teamSpace.deleteGroup')}
+               onShare={() => setShareFolderTarget(folder)}
+               shareLabel={t('sharedSpace.shareFolderMenuLabel')}
              />
            ) : null}
              <div className={styles.folderCardGrid}>
@@ -984,6 +989,16 @@ function ProjectsPanel({
                   return <div key={i} className={styles.gridCellEmpty} />;
                 }
                 if (item.kind === 'project') {
+                  if (item.coverDigest) {
+                    return (
+                      <div
+                        key={i}
+                        className={`${styles.gridCell} ${styles.gridCellCover}`}
+                        style={{ backgroundImage: `url(/api/hdw/api/community/cover/${encodeURIComponent(item.coverDigest)})` }}
+                        title={item.name}
+                      />
+                    );
+                  }
                   return (
                     <div key={i} className={`${styles.gridCell} ${styles.gridCellProject}`} title={item.name} />
                   );
@@ -1153,6 +1168,26 @@ function ProjectsPanel({
             </button>
           </DialogFooter>
         </Dialog>
+      ) : null}
+      {shareFolderTarget && teamId ? (
+        <ShareFolderDialog
+          folderId={shareFolderTarget.folderId}
+          workspaceId={teamId}
+          homeWorkspaceId={teamId}
+          folderName={shareFolderTarget.folderName}
+          onClose={() => setShareFolderTarget(null)}
+          onShared={() => window.dispatchEvent(new CustomEvent('team:folders-updated'))}
+        />
+      ) : null}
+      {shareFolderTarget && teamId ? (
+        <ShareFolderDialog
+          folderId={shareFolderTarget.folderId}
+          workspaceId={teamId}
+          homeWorkspaceId={teamId}
+          folderName={shareFolderTarget.folderName}
+          onClose={() => setShareFolderTarget(null)}
+          onShared={() => window.dispatchEvent(new CustomEvent('team:folders-updated'))}
+        />
       ) : null}
     </div>
   );
@@ -1695,11 +1730,13 @@ function FoldersPanel({
   const operatorMemberId = operator?.memberId ?? null;
   const operatorRole = operator?.role ?? null;
  const canManage = operatorRole === 'owner' || operatorRole === 'admin';
+ const canShare = operatorRole !== null && operatorRole !== 'guest';
 
   const [renameFolderTarget, setRenameFolderTarget] = useState<TeamFolderItem | null>(null);
   const [renameFolderInput, setRenameFolderInput] = useState('');
   const [renamingFolder, setRenamingFolder] = useState(false);
   const renameFolderTitleId = useId();
+  const [shareFolderTarget, setShareFolderTarget] = useState<TeamFolderItem | null>(null);
 
 // Fetch subfolders whose folder_pid equals the current folderId.
  useEffect(() => {
@@ -1734,7 +1771,7 @@ function FoldersPanel({
             ? f.subfolder_preview.map((p: any) =>
                 typeof p === 'string'
                   ? { name: p, kind: 'folder' as const }
-                  : { name: p.name || '', kind: (p.kind === 'project' ? 'project' : 'folder') as 'folder' | 'project' })
+                  : { name: p.name || '', kind: (p.kind === 'project' ? 'project' : 'folder') as 'folder' | 'project', coverDigest: p.coverDigest || null })
             : [],
           createdAt: f.created_at || '',
         })));
@@ -2009,12 +2046,14 @@ function FoldersPanel({
           >
            {folderSelectionMode ? (
              <FolderSelectionCheck selected={selected} />
-           ) : canManage ? (
+           ) : canShare ? (
              <FolderCardMenu
-                onRename={() => startFolderRename(folder)}
+                onRename={canManage ? () => startFolderRename(folder) : undefined}
                renameLabel={t('common.rename')}
-               onDelete={() => setRemoveTarget(folder)}
+               onDelete={canManage ? () => setRemoveTarget(folder) : undefined}
                deleteLabel={t('teamSpace.deleteFolder')}
+               onShare={() => setShareFolderTarget(folder)}
+               shareLabel={t('sharedSpace.shareFolderMenuLabel')}
              />
            ) : null}
            <div className={styles.folderCardGrid}>
@@ -2024,6 +2063,16 @@ function FoldersPanel({
                  return <div key={i} className={styles.gridCellEmpty} />;
                }
                if (item.kind === 'project') {
+                 if (item.coverDigest) {
+                   return (
+                     <div
+                       key={i}
+                       className={`${styles.gridCell} ${styles.gridCellCover}`}
+                       style={{ backgroundImage: `url(/api/hdw/api/community/cover/${encodeURIComponent(item.coverDigest)})` }}
+                       title={item.name}
+                     />
+                   );
+                 }
                  return (
                    <div key={i} className={`${styles.gridCell} ${styles.gridCellProject}`} title={item.name} />
                  );

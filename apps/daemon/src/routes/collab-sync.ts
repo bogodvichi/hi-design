@@ -1947,9 +1947,15 @@ const readManifest = deps.readManifest ?? readProjectManifest;
         let stillShared = true;
         const initialSharedProject = await initialSharedProjectRead;
         if (initialSharedProject.ok) {
-          authoritativeSharedProject = initialSharedProject.project;
-          stillShared = authoritativeSharedProject != null &&
-            (!scope || authoritativeSharedProject.ownerMemberId === scope.ownerMemberId);
+         authoritativeSharedProject = initialSharedProject.project;
+         // Cross-team shares: catalog ownerMemberId (team-specific)
+         // differs from scope.ownerMemberId (shared space).
+         // If the share record still exists, skip owner comparison.
+         const shareAuthorized = !!(scope && isShareAuthorizedScope &&
+           await isShareAuthorizedScope(scope));
+         stillShared = authoritativeSharedProject != null &&
+           (!scope || shareAuthorized ||
+             authoritativeSharedProject.ownerMemberId === scope.ownerMemberId);
         } else {
           if (scope) return complete({ status: 'register_failed' });
           stillShared = true;
@@ -2025,7 +2031,13 @@ const readManifest = deps.readManifest ?? readProjectManifest;
           markTeamProjectRevoked?.(projectId, true);
           return complete({ status: 'revoked' });
         }
-        if (authoritativeSharedProject.ownerMemberId !== scope.ownerMemberId) {
+        // Cross-team shares: catalog ownerMemberId (team-specific)
+        // differs from scope.ownerMemberId (shared space).
+        // If the share record still exists, skip owner comparison.
+        const shareAuthorizedPostTransport = !!(isShareAuthorizedScope &&
+          await isShareAuthorizedScope(scope));
+        if (!shareAuthorizedPostTransport &&
+          authoritativeSharedProject.ownerMemberId !== scope.ownerMemberId) {
           return complete({ status: 'register_failed' });
         }
         reportPullTiming({

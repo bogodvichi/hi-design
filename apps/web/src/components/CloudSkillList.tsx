@@ -151,19 +151,19 @@ export function CloudSkillList({
    return counts;
  }, []);
 
-  const loadLocalSkills = useCallback(async () => {
-    if (!workspaceId) { setLocalSkillIds(new Set()); return; }
-    try {
-      const res = await fetch('/api/skills', {
-        cache: 'no-store',
-        headers: workspaceHeaders(workspaceId, workspaceMemberId, workspaceType),
-      });
-      if (!res.ok) return;
-      const body = await res.json();
-      const ids = new Set<string>(
-        ((body.skills ?? []) as Array<{ id: string }>).map((s) => s.id),
-      );
-      setLocalSkillIds(ids);
+ const loadLocalSkills = useCallback(async () => {
+   if (!workspaceId) { setLocalSkillIds(new Set()); return; }
+   try {
+     const res = await fetch('/api/skills', {
+       cache: 'no-store',
+       headers: workspaceHeaders(workspaceId, workspaceMemberId, workspaceType),
+     });
+     if (!res.ok) return;
+  const body = await res.json();
+  const ids = new Set<string>(
+    ((body.skills ?? []) as Array<{ id: string }>).map((s) => s.id.toLowerCase()),
+  );
+  setLocalSkillIds(ids);
     } catch {
       // leave the previous set intact
     }
@@ -268,34 +268,33 @@ export function CloudSkillList({
       return;
     }
     if (mode === 'personal') {
-      // Personal mode: show locally installed skills from /api/skills.
-      // No cloud round-trip - the skills directory is the source of truth.
+      // Personal mode: query the cloud endpoint with owner_member_id
+      // set to the current user's workspaceMemberId, so the list
+      // reflects what the user published to the cloud. Mirrors
+      // CloudMcpList. loadLocalSkills() separately tracks which of
+      // those are materialized locally (installed).
+      const params = new URLSearchParams();
+      const ownerFilter = ownerMemberId ?? workspaceMemberId ?? null;
+      if (ownerFilter) params.set('owner_member_id', ownerFilter);
+      if (debouncedSearch) params.set('q', debouncedSearch);
       const headers = workspaceHeaders(workspaceId, workspaceMemberId, workspaceType);
-      const res = await fetch('/api/skills', { cache: 'no-store', headers });
-      if (!res.ok) { throw new Error('Failed to load skills'); }
+      const res = await fetch('/api/workspace/skills/cloud?' + params, {
+        cache: 'no-store',
+        headers,
+      });
+      if (!res.ok) { throw new Error('Failed to load cloud skills'); }
       const body = await res.json();
-       const list: CloudSkill[] = ((body.skills ?? []) as Array<{
-         id: string; name: string; description: string;
-         source: string; ownerMemberId?: string; workspaceId?: string;
-         category?: string;
-       }>).filter((s) => s.source === 'user').map((s) => ({
-        resourceId: `local:${s.id}`,
-        localId: s.id,
-        title: s.name,
-        description: s.description ?? null,
-        ownerMemberId: s.ownerMemberId ?? '',
-        version: null,
-        versionId: null,
-        createdAt: '',
-        updatedAt: '',
-        provider: 'local',
-         sourceLabel: 'Local',
-         installed: true,
-         category: normalizeSkillCategory(s.category),
-       }));
-       setSkills(list);
-       setCategoryCounts(countCategories(list));
-     } else {
+      const list: CloudSkill[] = ((body.skills ?? []) as CloudSkill[]).map((skill) => ({
+        ...skill,
+        category: normalizeSkillCategory(skill.category),
+      }));
+      setSkills(list);
+      const nextCounts = body.categoryCounts as Partial<SkillCategoryCounts> | undefined;
+      setCategoryCounts(nextCounts ? {
+        ...emptySkillCategoryCounts(),
+        ...nextCounts,
+      } : countCategories(list));
+    } else {
       const params = new URLSearchParams();
       // ownerMemberId controls the owner filter; when null, all public
       // resources are returned (community browse). workspaceMemberId is
@@ -423,7 +422,7 @@ useEffect(() => {
       }
       const body = await res.json() as { localId?: string };
       const installedLocalId = body.localId || skill.localId;
-      setLocalSkillIds((current) => new Set(current).add(installedLocalId));
+     setLocalSkillIds((current) => new Set([...current].concat(installedLocalId.toLowerCase())));
       setSkills((current) => current.map((item) => (
         item.resourceId === skill.resourceId
           ? { ...item, localId: installedLocalId, installed: true }
@@ -474,16 +473,10 @@ useEffect(() => {
       });
       if (!res.ok) {
         const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? body?.error ?? 'Uninstall failed');
+      throw new Error(body?.message ?? body?.error ?? 'Uninstall failed');
       }
-      setLocalSkillIds((current) => {
-        const next = new Set(current);
-        next.delete(skill.localId);
-        return next;
-      });
-      setSkills((current) => current.map((item) => (
-        item.resourceId === skill.resourceId ? { ...item, installed: false } : item
-      )));
+      // Actively refresh list data from server after uninstall
+      await Promise.all([loadSkills(), loadLocalSkills()]);
       window.dispatchEvent(new CustomEvent('personal:skill-refresh', {
         detail: { source: 'cloud-skill-list' },
       }));
@@ -510,7 +503,8 @@ useEffect(() => {
         const body = await res.json().catch(() => null);
         throw new Error(body?.error ?? 'Delete failed');
       }
-      await loadSkills();
+      // Actively refresh both cloud list and local installed set after delete
+      await Promise.all([loadSkills(), loadLocalSkills()]);
     } catch (err: any) {
       setError(err?.message ?? String(err));
     } finally {
@@ -694,9 +688,9 @@ useEffect(() => {
       {error ? <div className={styles.cloudSkillError} role="alert">{error}</div> : null}
       <div className={styles.cloudSkillGrid}>
         {skills.map((skill) => {
-          const isInstalled = skill.installed === true
-            || skill.teamShared === true
-           || (skill.provider !== 'maas-skillhub' && localSkillIds.has(skill.localId));
+         const isInstalled = skill.installed === true
+           || skill.teamShared === true
+          || (skill.provider !== 'maas-skillhub' && localSkillIds.has(skill.localId.toLowerCase()));
           const canManageCloudRecord = skill.provider !== 'maas-skillhub' && !skill.teamShared;
           const isInstalling = installingId === skill.resourceId;
           const isUninstalling = uninstallingId === skill.resourceId;
@@ -742,19 +736,25 @@ useEffect(() => {
                        {skill.sourceLabel || t('personalScope.cloudSkillSource' as any)}
                      </small>
                    </>
-                 ) : (
-                   <small className={styles.cardMeta}>
-                     {skill.teamShared
-                       ? t('pluginsView.teamSharedBadge' as any)
-                       : mode === 'shared' && skill.sharedByDisplayname
-                       ? t('personalScope.cloudSkillSharedBy' as any, { name: skill.sharedByDisplayname })
-                       : skill.sourceLabel || t('personalScope.cloudSkillSource' as any)}
-                     {skill.publisherName
-                       ? ' · ' + t('squareScope.publisher' as any, { name: skill.publisherName })
-                       : ''}
-                     {skill.updatedAt ? ' · ' + formatRelativeDate(skill.updatedAt, t) : ''}
-                   </small>
-                 )}
+                ) : (
+                  <small className={styles.cardMeta}>
+                    {(() => {
+                      const parts: string[] = [];
+                      if (skill.teamShared) {
+                        parts.push(t('pluginsView.teamSharedBadge' as any));
+                      } else if (mode === 'shared' && skill.sharedByDisplayname) {
+                        parts.push(t('personalScope.cloudSkillSharedBy' as any, { name: skill.sharedByDisplayname }));
+                      }
+                      if (skill.publisherName) {
+                        parts.push(t('squareScope.publisher' as any, { name: skill.publisherName }));
+                      }
+                      if (skill.updatedAt) {
+                        parts.push(formatRelativeDate(skill.updatedAt, t));
+                      }
+                      return parts.join(' · ');
+                    })()}
+                  </small>
+                )}
                </div>
             {((canManageCloudRecord && (mode === 'personal' || mode === 'square')) || (isInstalled && !skill.teamShared)) ? (
                <>

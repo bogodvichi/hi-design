@@ -96,10 +96,11 @@ export interface CollabRuntime {
    * visibility-to-sync sync-intent seam: mark a project as awaiting upload and
    * publish it durably before reporting success.
    */
-  requestTeamShare(
-    projectId: string,
-    share?: string | ResourceHubPrincipal,
+ requestTeamShare(
+   projectId: string,
+   share?: string | ResourceHubPrincipal,
     coverDigest?: string | null,
+    folderId?: string | null,
   ): Promise<{ version: number | null; versionId?: string }>;
   /** Move a project out of the team space. */
   requestTeamUnshare(projectId: string, principal?: ResourceHubPrincipal | null): Promise<void>;
@@ -389,6 +390,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
     principal?: ResourceHubPrincipal | null,
     lastSyncedVersionId?: string,
     coverDigest?: string | null,
+    folderId?: string | null,
   ) {
     const descriptor = await options.describeProject?.(projectId) ?? null;
     const displayName = typeof descriptor?.name === 'string'
@@ -411,6 +413,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
           ...(lastSyncedVersionId ? { lastSyncedVersionId } : {}),
           ...(descriptor ? { metadata: descriptor } : {}),
           ...(coverDigest !== undefined ? { coverDigest } : {}),
+          ...(folderId !== undefined ? { folderId } : {}),
         },
         target,
       );
@@ -536,12 +539,15 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
     syncState: TeamProjectCatalogSyncState,
     principal?: ResourceHubPrincipal | null,
     lastSyncedVersionId?: string,
+    folderId?: string | null,
   ) {
     void markTeamProject(
       projectId,
       syncState,
       principal,
       lastSyncedVersionId,
+      undefined,
+      folderId,
     ).catch((error) => {
       const principals = principal ? [principal] : principalsForProject(projectId);
       if (principals.length === 0) {
@@ -637,6 +643,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
     reason: string,
     principal?: ResourceHubPrincipal | null,
     coverDigest?: string | null,
+    folderId?: string | null,
   ): Promise<{ version: number | null; versionId?: string }> {
     const key = principal ? scopedProjectKey(projectId, principal) : projectId;
     let publishedResult: PublishedResourceVersion | null = null;
@@ -674,6 +681,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
         principal,
         result.versionId,
         coverDigest,
+        folderId,
       );
       options.onPublished?.({
         projectId,
@@ -848,7 +856,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
       if (states.includes('synced')) return 'synced';
       return syncStates.get(projectId) ?? 'local_only';
     },
-    async requestTeamShare(projectId, share, coverDigest) {
+    async requestTeamShare(projectId, share, coverDigest, folderId) {
       const principal = typeof share === 'object' && share
         ? share
         : await getProjectPrincipal(projectId);
@@ -858,7 +866,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
       const key = principal ? scopedProjectKey(projectId, principal) : projectId;
       unshared.delete(projectId);
       unshared.delete(key);
-      return publishNow(projectId, 'share', principal, coverDigest);
+      return publishNow(projectId, 'share', principal, coverDigest, folderId);
     },
     async requestTeamUnshare(projectId, principal) {
       const targets = principal

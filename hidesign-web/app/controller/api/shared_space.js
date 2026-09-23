@@ -213,7 +213,18 @@ class SharedSpaceController extends Controller {
           'created_by_displayname',
           'folder_id',
           'created_at',
+        
         ]);
+
+      // Also update team_projects.folder_id so the folder list query
+      // (project_count, subfolder_preview) can locate projects by folder.
+      for (const item of validItems) {
+        if (item.folder_id) {
+          await k('team_projects')
+            .where({ workspace_id: homeWorkspaceId, project_id: item.project_id })
+            .update({ folder_id: item.folder_id });
+        }
+      }
 
       const totalInput = items.length * recipients.length;
       ctx.body = {
