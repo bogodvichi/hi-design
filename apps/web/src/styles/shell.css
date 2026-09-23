@@ -1206,8 +1206,7 @@ html.od-radial-open .workspace-shell {
 .share-menu-help:active:not(:disabled) {
   transform: none;
 }
-/* Inherits primitives.css's `button:focus-visible` ring; only the radius is set
-   so the outline hugs the round glyph. */
+/* Inherits primitives.css's neutral keyboard-focus background. */
 .share-menu-help:focus-visible {
   border-radius: 4px;
 }

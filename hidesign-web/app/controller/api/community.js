@@ -65,6 +65,13 @@ class CommunityController extends Controller {
         query = query.where('cp.publisher_username', publisherUsername);
       }
       const rows = await query;
+      const statRows = rows.length > 0
+        ? await k('community_resource_stats')
+          .where('resource_type', 'project')
+          .whereIn('resource_id', rows.map(row => row.name))
+        : [];
+      const statsById = new Map(statRows.map(row => [ row.resource_id, row ]));
+      for (const row of rows) row.community_stats = statsById.get(row.name) || null;
       const plugins = rows.map(row => this._toMarketplaceEntry(row));
       const manifest = {
         $schema: 'https://open-design.dev/schemas/open-design.marketplace.v1.json',
@@ -107,6 +114,9 @@ class CommunityController extends Controller {
         ctx.body = fail('Plugin not found');
         return;
       }
+      row.community_stats = await k('community_resource_stats')
+        .where({ resource_type: 'project', resource_id: row.name })
+        .first() || null;
       ctx.body = ok(this._toMarketplaceEntry(row));
     } catch (err) {
       ctx.logger.error('[hdw] community plugin detail error:', err);
@@ -387,6 +397,11 @@ class CommunityController extends Controller {
       capabilitiesSummary: row.capabilities_summary || [],
       prompt: row.prompt || undefined,
       coverUrl: row.cover_digest ? this._coverUrl(row.cover_digest) : undefined,
+      communityId: row.id,
+      previewCount: Number(row.community_stats?.preview_count || 0),
+      previewUserCount: Number(row.community_stats?.preview_user_count || 0),
+      actionCount: Number(row.community_stats?.action_count || 0),
+      actionUserCount: Number(row.community_stats?.action_user_count || 0),
     };
   }
 }

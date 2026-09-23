@@ -210,7 +210,7 @@ module.exports = appInfo => {
   // 因此 coverUrl / archiveUrl 需要带上 /hik-plugin/hidesign-web 前缀，
   // 否则前端直接访问 /hdw/api/... 会 404。
   config.community = {
-    publicApiBase: 'https://pixso.hikvision.com.cn/hik-plugin/hidesign-web',
+    publicApiBase: 'http://127.0.0.1:7002'//'https://pixso.hikvision.com.cn/hik-plugin/hidesign-web',
   };
 
   // add your user config here

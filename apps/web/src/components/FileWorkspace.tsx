@@ -130,7 +130,11 @@ import {
 import type { PluginFolderAgentAction } from './design-files/pluginFolderActions';
 import { designSystemGithubEvidenceState, repoConnectCopy } from './design-system-github-evidence';
 import { APP_CHROME_FILE_ACTIONS_ID } from './AppChromeHeader';
-import { FileViewer, LiveArtifactViewer } from './FileViewer';
+import {
+  FileViewer,
+  LiveArtifactViewer,
+  type PreviewCommentActivationRequest,
+} from './FileViewer';
 import { useIframeKeepAlivePool } from './IframeKeepAlivePool';
 import { Icon, type IconName } from './Icon';
 import { projectIsSharedWithWorkspace } from '../collab/project-shared-status';
@@ -2129,6 +2133,9 @@ export function FileWorkspace({
   // forever: opening that file later matches the name but not the nonce, so the
   // stale request can't resurface and jump the preview.
   const [slideNavDeliverableNonce, setSlideNavDeliverableNonce] = useState<number | null>(null);
+  const [previewCommentActivationRequest, setPreviewCommentActivationRequest] =
+    useState<PreviewCommentActivationRequest | null>(null);
+  const previewCommentActivationNonceRef = useRef(0);
   useEffect(() => {
     if (!isSlideNavDeliverableNow(slideNavRequest, persistedTabs)) return;
     afterActiveManualEditSettles(() => {
@@ -2275,6 +2282,15 @@ export function FileWorkspace({
       commitTabsState(workspaceTabsState(nextTabs, openName));
       setActiveTab(openName);
     });
+  }
+
+  function openFileForPreviewComment(name: string, commentId: string) {
+    previewCommentActivationNonceRef.current += 1;
+    setPreviewCommentActivationRequest({
+      commentId,
+      nonce: previewCommentActivationNonceRef.current,
+    });
+    openFile(name);
   }
 
   function closeTab(name: string) {
@@ -3336,16 +3352,7 @@ export function FileWorkspace({
   // FileWorkspace state change (closing an adjacent tab, drag hover, launcher
   // toggles) would hand FileViewer fresh object/function identities and drag
   // the whole viewer subtree — live iframes included — through a re-render.
-  const previewCommentsByFile = useMemo(() => {
-    const byFile = new Map<string, PreviewComment[]>();
-    for (const comment of previewComments) {
-      const comments = byFile.get(comment.filePath) ?? [];
-      comments.push(comment);
-      byFile.set(comment.filePath, comments);
-    }
-    return byFile;
-  }, [previewComments]);
-  const activeFileShareRequest = useMemo(
+ const activeFileShareRequest = useMemo(
     () => (shareRequest ? { name: shareRequest.name, request: { nonce: shareRequest.nonce } } : null),
     [shareRequest],
   );
@@ -3365,6 +3372,10 @@ export function FileWorkspace({
     [slideNavRequest, activeViewerFile?.name, slideNavDeliverableNonce],
   );
   const stableOpenFileReplacing = useStableHandler(openFileReplacing);
+  const stableOpenFileForPreviewComment = useStableHandler(openFileForPreviewComment);
+  const stableClearPreviewCommentActivation = useStableHandler(() => {
+    setPreviewCommentActivationRequest(null);
+  });
   const renderFileViewer = (file: ProjectFile, workspaceActive: boolean) => (
     <FileViewer
       projectId={projectId}
@@ -3373,10 +3384,10 @@ export function FileWorkspace({
       filesRefreshKey={filesRefreshKey}
       isDeck={isDeck}
       streaming={streaming}
-      commentQueueOnSend={commentQueueOnSend}
-      commentSendDisabled={commentSendDisabled}
-      previewComments={previewCommentsByFile.get(file.name) ?? NO_PREVIEW_COMMENTS}
-      onSavePreviewComment={onSavePreviewComment}
+     commentQueueOnSend={commentQueueOnSend}
+     commentSendDisabled={commentSendDisabled}
+      previewComments={previewComments}
+     onSavePreviewComment={onSavePreviewComment}
       onReplyPreviewComment={onReplyPreviewComment}
       onRemovePreviewComment={onRemovePreviewComment}
       onChangeCommentStatus={onChangeCommentStatus}
@@ -3386,7 +3397,18 @@ export function FileWorkspace({
         file.name === 'brand.html' ? onBrandExtractionStopRequest : undefined
       }
       onFileSaved={refreshFilesWithoutResult}
+      onOpenFile={stableOpenFileForPreviewComment}
       onOpenFileReplacing={stableOpenFileReplacing}
+      commentActivationRequest={
+        previewCommentActivationRequest?.commentId
+        && previewComments.some((comment) => (
+          comment.id === previewCommentActivationRequest.commentId
+          && comment.filePath === file.name
+        ))
+          ? previewCommentActivationRequest
+          : null
+      }
+      onCommentActivationConsumed={stableClearPreviewCommentActivation}
       commentPortalId={workspaceActive ? commentPortalId : undefined}
       onCommentModeChange={workspaceActive ? onCommentModeChange : undefined}
       shareRequest={

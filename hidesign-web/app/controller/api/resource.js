@@ -498,6 +498,12 @@ class ResourceController extends Controller {
 
       const rows = await q;
 
+      const statRows = rows.length > 0
+        ? await k('community_resource_stats')
+          .whereIn([ 'resource_type', 'resource_id' ], rows.map(row => [ row.kind, row.id ]))
+        : [];
+      const statsByKey = new Map(statRows.map(row => [ `${row.resource_type}\u0000${row.resource_id}`, row ]));
+
       const resources = rows.map(row => ({
         id: row.id,
         kind: row.kind,
@@ -509,6 +515,15 @@ class ResourceController extends Controller {
         versionId: row.version_id || null,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
+        stats: (() => {
+          const stat = statsByKey.get(`${row.kind}\u0000${row.id}`);
+          return {
+            previewCount: Number(stat?.preview_count || 0),
+            previewUserCount: Number(stat?.preview_user_count || 0),
+            actionCount: Number(stat?.action_count || 0),
+            actionUserCount: Number(stat?.action_user_count || 0),
+          };
+        })(),
       }));
 
       ctx.body = { resources };

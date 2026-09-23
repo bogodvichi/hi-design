@@ -2105,6 +2105,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
    req: any,
    res: Response,
    projectId: string,
+   options?: { allowNavigationQuery?: boolean },
  ): Promise<boolean> {
    try {
      const shareAuthorized = Boolean(
@@ -2114,7 +2115,10 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
    } catch {
      // share lookup failed — fall through to regular authorization
    }
-   return authorizeProjectRequest(req, res, projectId, { mode: 'read' });
+   return authorizeProjectRequest(req, res, projectId, {
+     mode: 'read',
+     ...(options?.allowNavigationQuery ? { allowNavigationQuery: true } : {}),
+   });
  }
  async function verifiedWorkspaceProjectContext(
     req: any,
@@ -4022,6 +4026,46 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
        // a remote catalog sync failure should not fail the whole move.
      }
     }
+    // Auto-share project to folder recipients when the target folder (or an
+    // ancestor) is shared. The HDW /folder/share-projects endpoint walks
+    // the folder_shares ancestor chain server-side, so we only need to
+    // supply the folder id and project id. Best-effort: sharing failures
+    // must never block the folder move itself.
+    if (targetFolderId) {
+      try {
+        const dataDir = RUNTIME_DATA_DIR;
+        const { readSsoConfigFile } = await import('../../http/hik_logins/hicoo.js');
+        const session = readSsoConfigFile(dataDir);
+        const username = session?.username?.trim() ?? '';
+        if (username) {
+          const { uploadHdwCommunityBlob, shareProjectsIntoSharedFolder } = await import('../../http/hdw.js');
+          const coverDigests = [];
+          const proj = getProject(db, project.id);
+          const cd = proj?.coverDigest ?? null;
+          if (cd) {
+            try {
+              const coverDir = await ensureProject(PROJECTS_DIR, project.id, proj?.metadata);
+              const coverPath = path.join(coverDir, '.cover.png');
+              await uploadHdwCommunityBlob(coverPath, dataDir);
+              coverDigests.push({ project_id: project.id, cover_digest: cd });
+            } catch { /* best-effort cover upload */ }
+          }
+          const shareResult = await shareProjectsIntoSharedFolder(dataDir, {
+            workspaceId: responseWorkspaceId,
+            folderId: targetFolderId,
+            projectIds: [project.id],
+            createdByUsername: username,
+            ...(session?.userInfo?.displayName ? { createdByDisplayname: session.userInfo.displayName } : {}),
+            ...(coverDigests.length > 0 ? { coverDigests } : {}),
+          });
+          if (shareResult && collabSync.requestTeamShare) {
+            const principal = workspaceProjectPrincipal(ctx);
+            try { await collabSync.requestTeamShare(project.id, principal, cd, targetFolderId); } catch { /* best-effort */ }
+          }
+        }
+      } catch { /* best-effort: sharing must not block the move */ }
+    }
+
     const updatedRow = listWorkspaceProjects(db, responseWorkspaceId).find((item: any) => item.id === project.id);
     res.json({ project: normalizeWorkspaceProjectRow(updatedRow, ctx) });
     } catch (err: any) {
@@ -4208,6 +4252,50 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
        }
        collabSync.invalidateTeamProjectCatalog?.();
      }
+      // Auto-share all batch-moved projects to folder recipients when the
+      // target folder (or an ancestor) is shared. Best-effort: sharing
+      // failures must never block the batch folder move.
+      if (batchTargetFolderId) {
+        try {
+          const dataDir = RUNTIME_DATA_DIR;
+          const { readSsoConfigFile } = await import('../../http/hik_logins/hicoo.js');
+          const session = readSsoConfigFile(dataDir);
+          const username = session?.username?.trim() ?? '';
+          if (username) {
+            const { uploadHdwCommunityBlob, shareProjectsIntoSharedFolder } = await import('../../http/hdw.js');
+            const coverDigests = [];
+            for (const id of projectIds) {
+              const proj = getProject(db, id);
+              const cd = proj?.coverDigest ?? null;
+              if (cd) {
+                try {
+                  const coverDir = await ensureProject(PROJECTS_DIR, id, proj?.metadata);
+                  const coverPath = path.join(coverDir, '.cover.png');
+                  await uploadHdwCommunityBlob(coverPath, dataDir);
+                  coverDigests.push({ project_id: id, cover_digest: cd });
+                } catch { /* best-effort cover upload */ }
+              }
+            }
+            const shareResult = await shareProjectsIntoSharedFolder(dataDir, {
+              workspaceId: batchResponseWorkspaceId,
+              folderId: batchTargetFolderId,
+              projectIds: projectIds,
+              createdByUsername: username,
+              ...(session?.userInfo?.displayName ? { createdByDisplayname: session.userInfo.displayName } : {}),
+              ...(coverDigests.length > 0 ? { coverDigests } : {}),
+            });
+            if (shareResult && collabSync.requestTeamShare) {
+              const principal = workspaceProjectPrincipal(ctx);
+              for (const id of projectIds) {
+                const proj = getProject(db, id);
+                const cd = proj?.coverDigest ?? null;
+                try { await collabSync.requestTeamShare(id, principal, cd, batchTargetFolderId); } catch { /* best-effort */ }
+              }
+            }
+          }
+        } catch { /* best-effort: sharing must not block the batch move */ }
+      }
+
       const updatedRows = listWorkspaceProjects(db, batchResponseWorkspaceId);
       const projects = projectIds.map((id: string) => normalizeWorkspaceProjectRow(updatedRows.find((row: any) => row.id === id), ctx));
       res.json({ ok: true, projects });
@@ -4834,6 +4922,48 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
      // After seeding template HTML, generate a cover screenshot so the
      // new project's list card shows a preview image immediately.
      coverHelpers.triggerCoverForProjectEntry(id, { name: name.trim(), metadata: projectMetadata });
+     // Auto-share project to folder recipients when the target folder (or an
+     // ancestor) is shared. The HDW /folder/share-projects endpoint walks
+     // the folder_shares ancestor chain server-side, so we only need to
+     // supply the folder id and project id. Best-effort: sharing failures
+     // must never block project creation.
+     if (folderId) {
+       try {
+         const dataDir = RUNTIME_DATA_DIR;
+         const { readSsoConfigFile } = await import('../../http/hik_logins/hicoo.js');
+         const session = readSsoConfigFile(dataDir);
+         const username = session?.username?.trim() ?? '';
+         if (username) {
+           const { uploadHdwCommunityBlob, shareProjectsIntoSharedFolder } = await import('../../http/hdw.js');
+           const coverDigests = [];
+           const proj = getProject(db, id);
+           const cd = proj?.coverDigest ?? null;
+           if (cd) {
+             try {
+              const coverDir = await ensureProject(PROJECTS_DIR, id, proj?.metadata);
+             const coverPath = path.join(coverDir, '.cover.png');
+             await uploadHdwCommunityBlob(coverPath, dataDir);
+             coverDigests.push({ project_id: id, cover_digest: cd });
+            } catch { /* best-effort cover upload */ }
+          }
+          const wsId = createWorkspace.context?.workspaceId ?? '';
+          if (wsId) {
+           const shareResult = await shareProjectsIntoSharedFolder(dataDir, {
+            workspaceId: wsId,
+            folderId,
+            projectIds: [id],
+            createdByUsername: username,
+            ...(session?.userInfo?.displayName ? { createdByDisplayname: session.userInfo.displayName } : {}),
+            ...(coverDigests.length > 0 ? { coverDigests } : {}),
+         });
+          if (shareResult && collabSync.requestTeamShare) {
+           const principal = createWorkspace.context ? workspaceProjectPrincipal(createWorkspace.context as any) : null;
+           try { await collabSync.requestTeamShare(id, principal ?? undefined, cd, folderId); } catch { /* best-effort */ }
+         }
+         }
+        }
+      } catch { /* best-effort: sharing must not block creation */ }
+     }
      /** @type {import('@open-design/contracts').CreateProjectResponse} */
      const createdProject = pluginResolutionState.snapshot
         ? getProject(db, id) ?? project
@@ -5397,6 +5527,42 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
        // After copying to personal, generate a cover screenshot from the
        // entry HTML so the new project's list card shows a preview image.
        coverHelpers.triggerCoverForProjectEntry(targetProjectId, { name: targetName, metadata });
+       // Auto-share project to folder recipients when the target folder (or
+      // ancestor) is shared. Best-effort: sharing failures must never
+      // block the copy-to-personal operation.
+       if (targetFolderId) {
+        try {
+         const dataDir = RUNTIME_DATA_DIR;
+         const { readSsoConfigFile } = await import('../../http/hik_logins/hicoo.js');
+         const session = readSsoConfigFile(dataDir);
+         const username = session?.username?.trim() ?? '';
+         if (username) {
+           const { uploadHdwCommunityBlob, shareProjectsIntoSharedFolder } = await import('../../http/hdw.js');
+           const coverDigests = [];
+           const proj = getProject(db, targetProjectId);
+           const cd = proj?.coverDigest ?? null;
+           if (cd) {
+             try {
+            const coverDir = await ensureProject(PROJECTS_DIR, targetProjectId, proj?.metadata);
+           const coverPath = path.join(coverDir, '.cover.png');
+           await uploadHdwCommunityBlob(coverPath, dataDir);
+            coverDigests.push({ project_id: targetProjectId, cover_digest: cd });
+           } catch { /* best-effort cover upload */ }
+         }
+         const shareResult = await shareProjectsIntoSharedFolder(dataDir, {
+           workspaceId: personalIdentity.workspaceId,
+           folderId: targetFolderId,
+           projectIds: [targetProjectId],
+           createdByUsername: username,
+           ...(session?.userInfo?.displayName ? { createdByDisplayname: session.userInfo.displayName } : {}),
+           ...(coverDigests.length > 0 ? { coverDigests } : {}),
+         });
+         if (shareResult && collabSync.requestTeamShare) {	
+           try { await collabSync.requestTeamShare(targetProjectId, undefined, cd, targetFolderId); } catch { /* best-effort */ }
+         }
+        }
+       } catch { /* best-effort: sharing must not block the copy */ }
+      }
 
        /** @type {import('@open-design/contracts').DuplicateProjectResponse} */
         const body = {
@@ -6209,12 +6375,12 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
     if (!getProject(db, req.params.id)) {
       return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'not found');
     }
-    if (!await authorizeProjectRequest(
-      req,
-      res,
-      req.params.id,
-      { mode: 'read', allowNavigationQuery: true },
-    )) return;
+    if (!await authorizeProjectReadWithShare(
+        req,
+        res,
+        req.params.id,
+        { allowNavigationQuery: true },
+      )) return;
     let sub: any;
     try {
       const sse = createSseResponse(res);
@@ -6519,6 +6685,7 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
    req: any,
    res: Response,
    projectId: string,
+   options?: { allowNavigationQuery?: boolean },
  ): Promise<boolean> {
    try {
      const shareAuthorized = Boolean(
@@ -6528,7 +6695,10 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
    } catch {
      // share lookup failed — fall through to regular authorization
    }
-   return authorizeProjectRequest(req, res, projectId, { mode: 'read' });
+   return authorizeProjectRequest(req, res, projectId, {
+     mode: 'read',
+     ...(options?.allowNavigationQuery ? { allowNavigationQuery: true } : {}),
+   });
  }
  const requestCanWriteWorkspaceProject = createWorkspaceProjectWriteAuthorityCheck(
     ctx.verifyWorkspaceRequestAuthority,
@@ -7843,11 +8013,11 @@ function triggerCoverForProjectEntry(
             get: req.get.bind(req),
           }
         : req;
-      if (!await authorizeProjectRequest(
+      if (!await authorizeProjectReadWithShare(
         authorityRequest,
         res,
         project.id,
-        { mode: 'read', allowNavigationQuery: true },
+        { allowNavigationQuery: true },
       )) return;
       const expiresAt = projectPreviewScopes.renew(project.id, scope);
       if (expiresAt === undefined) {
@@ -7879,11 +8049,11 @@ function triggerCoverForProjectEntry(
       if (!project) {
         return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
       }
-      if (!await authorizeProjectRequest(
+      if (!await authorizeProjectReadWithShare(
         req,
         res,
         projectId,
-        { mode: 'read', allowNavigationQuery: true },
+        { allowNavigationQuery: true },
       )) return;
       const meta = await resolveProjectFilePath(
         PROJECTS_DIR,
@@ -7954,11 +8124,11 @@ function triggerCoverForProjectEntry(
             get: req.get.bind(req),
           }
         : req;
-      if (!await authorizeProjectRequest(
+      if (!await authorizeProjectReadWithShare(
         authorityRequest,
         res,
         projectId,
-        { mode: 'read', allowNavigationQuery: true },
+        { allowNavigationQuery: true },
       )) return;
       if (req.headers.origin === 'null') {
         res.header('Access-Control-Allow-Origin', '*');
@@ -8013,11 +8183,11 @@ function triggerCoverForProjectEntry(
       if (!project) {
         return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
       }
-      if (!await authorizeProjectRequest(
+      if (!await authorizeProjectReadWithShare(
         req,
         res,
         projectId,
-        { mode: 'read', allowNavigationQuery: true },
+        { allowNavigationQuery: true },
       )) return;
       if (project?.metadata?.teamMirrorRevokedAt) {
         return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'not found');
@@ -8138,11 +8308,11 @@ function triggerCoverForProjectEntry(
       if (!project) {
         return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
       }
-      if (!await authorizeProjectRequest(
+      if (!await authorizeProjectReadWithShare(
         req,
         res,
         projectId,
-        { mode: 'read', allowNavigationQuery: true },
+        { allowNavigationQuery: true },
       )) return;
       const meta = await resolveProjectFilePath(
         PROJECTS_DIR,
@@ -8224,11 +8394,11 @@ function triggerCoverForProjectEntry(
       if (!project) {
         return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
       }
-      if (!await authorizeProjectRequest(
+      if (!await authorizeProjectReadWithShare(
         req,
         res,
         project.id,
-        { mode: 'read', allowNavigationQuery: true },
+        { allowNavigationQuery: true },
       )) return;
       const file = await readProjectFile(
         PROJECTS_DIR,
@@ -8546,11 +8716,11 @@ function triggerCoverForProjectEntry(
       if (!project) {
         return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
       }
-      if (!await authorizeProjectRequest(
+      if (!await authorizeProjectReadWithShare(
         req,
         res,
         project.id,
-        { mode: 'read', allowNavigationQuery: true },
+        { allowNavigationQuery: true },
       )) return;
       if (project?.metadata?.teamMirrorRevokedAt) {
         return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'not found');

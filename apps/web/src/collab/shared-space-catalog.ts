@@ -21,17 +21,26 @@ const SHARED_WITH_ME_CACHE_KEY = 'shared-with-me-projects';
  */
 export async function fetchSharedWithMeCatalog(options?: {
   force?: boolean;
+  folderId?: string | null;
 }): Promise<SharedWithMeProject[]> {
   const run = async (): Promise<SharedWithMeProject[]> => {
-    const response = await fetch('/api/workspace/projects/shared-with-me');
+    const params = new URLSearchParams();
+    if (options?.folderId) params.set('folder_id', options.folderId);
+    const qs = params.toString();
+    const response = await fetch(
+      `/api/workspace/projects/shared-with-me${qs ? `?${qs}` : ''}`,
+    );
     if (!response.ok) throw new Error(`shared-with-me ${response.status}`);
     const body = (await response.json()) as SharedWithMeResponse;
     return body.projects ?? [];
   };
+  const cacheKey = options?.folderId
+    ? `${SHARED_WITH_ME_CACHE_KEY}:${options.folderId}`
+    : SHARED_WITH_ME_CACHE_KEY;
   if (options?.force) {
-    return forceCoalescedGet(SHARED_WITH_ME_CACHE_KEY, run);
+    return forceCoalescedGet(cacheKey, run);
   }
-  return coalescedGet(SHARED_WITH_ME_CACHE_KEY, run);
+  return coalescedGet(cacheKey, run);
 }
 
 /**

@@ -21,8 +21,8 @@ export function FolderCardMenu({
 }: {
   onRename?: () => void;
   renameLabel?: string;
-  onDelete: () => void;
-  deleteLabel: string;
+  onDelete?: () => void;
+  deleteLabel?: string;
   onShare?: () => void;
   shareLabel?: string;
   onMove?: () => void;
@@ -71,7 +71,7 @@ export function FolderCardMenu({
             <span>{shareLabel}</span>
           </button>
         ) : null}
-        {onShare ? (
+        {onShare && (onRename || onMove || onDelete) ? (
           <div className={styles.folderCardMenuSeparator} role="separator" />
         ) : null}
         {onRename ? (
@@ -94,14 +94,16 @@ export function FolderCardMenu({
             <span>{moveLabel}</span>
           </button>
         ) : null}
-         <button
-           type="button"
-           role="menuitem"
-           onClick={(e) => { e.stopPropagation(); setOpen(false); onDelete(); }}
-         >
-           <Icon name="trash" size={12} />
-           <span>{deleteLabel}</span>
-         </button>
+        {onDelete ? (
+          <button
+            type="button"
+            role="menuitem"
+            onClick={(e) => { e.stopPropagation(); setOpen(false); onDelete(); }}
+          >
+            <Icon name="trash" size={12} />
+            <span>{deleteLabel}</span>
+          </button>
+        ) : null}
         </div>
       ) : null}
     </div>

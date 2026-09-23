@@ -29,8 +29,8 @@ module.exports = app => {
   router.post('/hdw/api/team/member/role', controller.api.team.updateRole);
   router.post('/hdw/api/team/quit', controller.api.team.quit);
   router.post('/hdw/api/team/transfer', controller.api.team.transfer);
- // api:folder // 文件夹管理
- router.post('/hdw/api/folder/add', controller.api.folder.add);
+  // api:folder // 文件夹管理
+  router.post('/hdw/api/folder/add', controller.api.folder.add);
   router.post('/hdw/api/folder/create', controller.api.folder.create);
   // api:shared_space // 共享空间
   router.get('/hdw/api/shared-space/info', controller.api.sharedSpace.info);
@@ -51,6 +51,11 @@ module.exports = app => {
   router.post('/hdw/api/folder/move', controller.api.folder.move);
   router.get('/hdw/api/folder/list', controller.api.folder.list);
   router.get('/hdw/api/folder/detail', controller.api.folder.detail);
+  router.get('/hdw/api/folder/tree', controller.api.folder.tree);
+  router.post('/hdw/api/folder/share', controller.api.folder.share);
+  router.get('/hdw/api/folder/shares', controller.api.folder.shareList);
+  router.del('/hdw/api/folder/unshare', controller.api.folder.unshare);
+  router.post('/hdw/api/folder/share-projects', controller.api.folder.shareProjects);
   // api:folder/project // 文件夹-项目关联管理
   router.post('/hdw/api/folder/project/add', controller.api.folder.addProject);
   router.post('/hdw/api/folder/project/remove', controller.api.folder.removeProject);
@@ -83,6 +88,8 @@ module.exports = app => {
   router.put('/hdw/api/community/blobs/:digest', controller.api.community.uploadBlob);
   router.get('/hdw/api/community/plugins/:name/versions/:version/archive', controller.api.community.downloadArchive);
   router.get('/hdw/api/community/cover/:digest', controller.api.community.downloadCover);
+  router.post('/hdw/api/community/stats/record', controller.api.communityStats.record);
+  router.post('/hdw/api/community/stats/query', controller.api.communityStats.query);
   // api:share_link // 分享链接
   router.post('/hdw/api/share-link/generate', controller.api.shareLink.generate);
   router.get('/hdw/api/share-link', controller.api.shareLink.get);

@@ -1366,6 +1366,14 @@
   color: var(--brand, #87ea5c);
   filter: none;
 }
+/* Installed / connected state: green tint badge */
+.community-template-card__foot button:disabled {
+  background: var(--green-bg);
+  border-color: var(--green-border);
+  color: var(--green);
+  cursor: default;
+  opacity: 1;
+}
 /* Remix + Prompt sit side by side on the right. */
 .community-template-card__actions {
   display: inline-flex;

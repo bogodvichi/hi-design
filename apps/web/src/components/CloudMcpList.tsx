@@ -1,5 +1,5 @@
 import { PageEmptyState } from './PageEmptyState';
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Dialog,
@@ -15,6 +15,7 @@ import { McpLogo, resolveMcpLogoKey } from './McpLogo';
 import type { CloudMcpTemplate } from '@open-design/contracts';
 import styles from './CloudSkillList.module.css';
 import { communityTextMatchesQuery } from '../utils/community-search';
+import { recordCommunityStat } from '../utils/community-stats';
 
 // Extended type that includes shared-with-me fields (only present in shared mode).
 interface CloudMcpItem extends CloudMcpTemplate {
@@ -23,7 +24,8 @@ interface CloudMcpItem extends CloudMcpTemplate {
   teamLocal?: boolean;
   localOnly?: boolean;
   publisherName?: string | null;
-  previewCount?: number | null;
+  logoKey?: string;
+  peopleCount?: number | null;
   actionCount?: number | null;
 }
 
@@ -91,6 +93,21 @@ export function CloudMcpList({
  const [confirmAction, setConfirmAction] = useState<{ type: 'uninstall' | 'delete'; item: CloudMcpItem } | null>(null);
  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
  const [shareItem, setShareItem] = useState<CloudMcpItem | null>(null);
+ const menuRef = useRef<HTMLDivElement>(null);
+ const menuTriggerRef = useRef<HTMLButtonElement>(null);
+
+ useEffect(() => {
+   if (!menuOpenId) return;
+   const closeOutside = (event: PointerEvent) => {
+     if (event.target instanceof Node
+       && (menuRef.current?.contains(event.target) || menuTriggerRef.current?.contains(event.target))) {
+       return;
+     }
+     setMenuOpenId(null);
+   };
+   document.addEventListener('pointerdown', closeOutside, { capture: true });
+   return () => document.removeEventListener('pointerdown', closeOutside, { capture: true });
+ }, [menuOpenId]);
 
   const loadLocalServers = useCallback(async () => {
     try {
@@ -311,6 +328,23 @@ export function CloudMcpList({
         throw new Error(body?.error ?? 'Install failed');
       }
       await loadLocalServers();
+      if (mode === 'square' && scope === 'public') {
+        const stats = await recordCommunityStat({
+          resourceType: 'mcp',
+          resourceId: tpl.resourceId,
+          metric: 'action',
+          workspaceId,
+          workspaceMemberId,
+          workspaceType,
+        });
+        if (stats) {
+          setTemplates((current) => current.map((item) => (
+            item.resourceId === tpl.resourceId
+              ? { ...item, peopleCount: stats.actionUserCount, actionCount: stats.actionCount }
+              : item
+          )));
+        }
+      }
       // Notify other surfaces (ChatComposer, HomeView, other CloudMcpList
       // instances) that the local MCP installation set changed. The source
       // tag lets our own listener skip the redundant reload.
@@ -517,6 +551,7 @@ export function CloudMcpList({
                   <button
                     type="button"
                     className={styles.cardMenuBtn}
+                    ref={menuOpenId === tpl.resourceId ? menuTriggerRef : undefined}
                     title=""
                     onClick={(e) => {
                       e.stopPropagation();
@@ -526,9 +561,7 @@ export function CloudMcpList({
                     <Icon name="more-horizontal" size={16} />
                   </button>
                   {menuOpenId === tpl.resourceId ? (
-                    <>
-                      <div className={styles.cardMenuBackdrop} onClick={(e) => { e.stopPropagation(); setMenuOpenId(null); }} />
-                     <div className={styles.cardMenu}>
+                     <div className={styles.cardMenu} ref={menuRef}>
                         {(mode === 'personal' || mode === 'square') && !tpl.localOnly ? (
                           <button
                             type="button"
@@ -561,8 +594,7 @@ export function CloudMcpList({
                             {t('personalScope.cloudMcpDelete' as any)}
                           </button>
                         ) : null}
-                      </div>
-                    </>
+                     </div>
                   ) : null}
                 </>
               ) : null}
@@ -574,11 +606,12 @@ export function CloudMcpList({
                 <footer className={`community-template-card__foot ${styles.resourceCardFooter}`}>
                   {mode === 'square' ? (
                     <CommunityResourceStats
-                      previewCount={tpl.previewCount}
-                      actionCount={tpl.actionCount}
-                      actionIcon="link"
-                      previewLabel={locale.startsWith('zh') ? '预览' : 'Views'}
-                      actionLabel={locale.startsWith('zh') ? '接入' : 'Connections'}
+                      primaryCount={tpl.peopleCount}
+                      secondaryCount={tpl.actionCount}
+                      primaryIcon="users"
+                      secondaryIcon="link"
+                      primaryLabel={locale.startsWith('zh') ? '接入人数' : 'Connected users'}
+                      secondaryLabel={locale.startsWith('zh') ? '接入次数' : 'Connections'}
                     />
                   ) : null}
                   <div className="community-template-card__actions">

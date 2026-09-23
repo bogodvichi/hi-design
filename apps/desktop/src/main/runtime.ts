@@ -2,7 +2,7 @@ import { execFile } from "node:child_process";
 import { createHmac, randomBytes } from "node:crypto";
 import { appendFile, mkdir, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
 import { release } from "node:os";
-import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
@@ -622,6 +622,71 @@ export async function pickAndImportFolder(
     };
   }
   return { ok: true, response: body };
+}
+
+export type PickAndImportProjectZipDeps = {
+  apiBaseUrl: string;
+  zipPath: string;
+  fetchImpl?: typeof globalThis.fetch;
+  init?: OpenDesignHostProjectImportInit;
+};
+
+export async function pickAndImportProjectZip(
+  deps: PickAndImportProjectZipDeps,
+): Promise<PickAndImportFolderResult> {
+  const fetchImpl = deps.fetchImpl ?? globalThis.fetch;
+  const importUrl = `${deps.apiBaseUrl.replace(/\/+$/, "")}/api/import/project-zip`;
+  try {
+    const data = await readFile(deps.zipPath);
+    const fileName = basename(deps.zipPath);
+    const form = new FormData();
+    form.append(
+      "file",
+      new Blob([data], { type: "application/zip" }),
+      fileName,
+    );
+    const resp = await fetchImpl(importUrl, {
+      method: "POST",
+      headers: {
+        ...(deps.init?.workspaceContext
+          ? {
+              "x-od-workspace-id": deps.init.workspaceContext.workspaceId,
+              "x-od-workspace-type": deps.init.workspaceContext.workspaceType,
+              "x-od-workspace-member-id": deps.init.workspaceContext.workspaceMemberId,
+              "x-od-workspace-role": deps.init.workspaceContext.role,
+              "x-od-workspace-lifecycle-state": deps.init.workspaceContext.lifecycleState,
+              "x-od-workspace-member-status": deps.init.workspaceContext.memberStatus,
+              "x-od-workspace-can-share-projects": String(
+                deps.init.workspaceContext.permissions.canShareProjects,
+              ),
+              "x-od-workspace-can-write-synced-files": String(
+                deps.init.workspaceContext.permissions.canWriteSyncedFiles,
+              ),
+            }
+          : {}),
+      },
+      body: form,
+    });
+    let body: unknown;
+    try {
+      body = await resp.json();
+    } catch {
+      body = null;
+    }
+    if (!resp.ok) {
+      return {
+        ok: false,
+        reason: `daemon returned HTTP ${resp.status}`,
+        ...(body == null ? {} : { details: body }),
+      };
+    }
+    return { ok: true, response: body };
+  } catch (err) {
+    return {
+      ok: false,
+      reason: `ZIP import failed: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
 }
 
 /**
@@ -2029,6 +2094,25 @@ async function showDirectoryPickerForSender(
     : dialog.showOpenDialog(pickerOptions);
 }
 
+async function showProjectImportPickerForSender(
+  sender: Electron.WebContents,
+): Promise<Electron.OpenDialogReturnValue> {
+  const parent =
+    BrowserWindow.fromWebContents(sender) ?? BrowserWindow.getFocusedWindow();
+  const pickerOptions: Electron.OpenDialogOptions = {
+    properties:
+      process.platform === "darwin"
+        ? ["openFile", "openDirectory", "createDirectory", "dontAddToRecent"]
+        : ["openDirectory", "createDirectory", "dontAddToRecent"],
+    ...(process.platform === "darwin"
+      ? { filters: [{ name: "Project ZIP", extensions: ["zip"] }] }
+      : {}),
+  };
+  return parent
+    ? dialog.showOpenDialog(parent, pickerOptions)
+    : dialog.showOpenDialog(pickerOptions);
+}
+
 /**
  * Recursively read files under `baseDir`, skipping dot-files and
  * dot-directories (e.g. `.git`, `.DS_Store`). Returns an array of
@@ -2036,6 +2120,10 @@ async function showDirectoryPickerForSender(
  * separators. Used by the skill-source picker to send folder contents
  * to the renderer as ArrayBuffer payloads.
  */
+function toStandaloneArrayBuffer(data: Uint8Array): ArrayBuffer {
+  return Uint8Array.from(data).buffer;
+}
+
 async function readSkillDirRecursive(
   baseDir: string,
   relPath: string,
@@ -2051,7 +2139,7 @@ async function readSkillDirRecursive(
       results.push(...nested);
     } else if (entry.isFile()) {
       const data = await readFile(join(baseDir, childRel));
-      results.push({ path: childRel, data: data.buffer });
+      results.push({ path: childRel, data: toStandaloneArrayBuffer(data) });
     }
   }
   return results;
@@ -2128,28 +2216,32 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       if (!apiBaseUrl) {
         return { ok: false, reason: "daemon API URL not available" };
       }
-      const result = await showDirectoryPickerForSender(event.sender);
+      const result = await showProjectImportPickerForSender(event.sender);
       if (result.canceled || result.filePaths.length === 0) {
         return { ok: false, canceled: true };
       }
-      // PR #974 round-5 (lefarcen P3): trim ONCE on the desktop side so the
-      // HMAC and the request body bind to the exact same string the daemon
-      // realpath()s. The daemon used to verify raw `baseDir` and then trim
-      // before resolution — a `/tmp/foo ` selection could authorize an
-      // import of `/tmp/foo`. Doing the trim here keeps desktop as the
-      // source of truth for the canonical path it picked, signs that, and
-      // sends that — daemon then verifies and imports the same string.
-      const baseDir = result.filePaths[0].trim();
-      if (baseDir.length === 0) {
+      const selectedPath = result.filePaths[0].trim();
+      if (selectedPath.length === 0) {
         return { ok: false, reason: "picker returned an empty path" };
       }
-      return await pickAndImportFolder({
-        apiBaseUrl,
-        baseDir,
-        desktopAuthSecret: options.desktopAuthSecret,
-        init,
-        registerDesktopAuth: options.registerDesktopAuthWithDaemon,
-      });
+      const selectedStat = await stat(selectedPath).catch(() => null);
+      if (selectedStat?.isDirectory()) {
+        return await pickAndImportFolder({
+          apiBaseUrl,
+          baseDir: selectedPath,
+          desktopAuthSecret: options.desktopAuthSecret,
+          init,
+          registerDesktopAuth: options.registerDesktopAuthWithDaemon,
+        });
+      }
+      if (selectedStat?.isFile() && /\.zip$/i.test(selectedPath)) {
+        return await pickAndImportProjectZip({
+          apiBaseUrl,
+          zipPath: selectedPath,
+          init,
+        });
+      }
+      return { ok: false, reason: "select a project folder or .zip file" };
     },
   );
   // Atomic counterpart to dialog:pick-and-import for replacing a
@@ -2208,11 +2300,10 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       registerDesktopAuth: options.registerDesktopAuthWithDaemon,
     });
   });
-  // Skill-source picker: on macOS the native dialog supports
-  // `openFile` + `openDirectory` simultaneously, letting the user pick
-  // either a folder or a .zip in a single picker. On Windows that
-  // combination is unsupported, so we only offer `openDirectory` here;
-  // the renderer shows a separate "Select zip file" button for Windows.
+  // Generic local-source picker used by community project / Skill publish.
+  // On macOS the native dialog supports folders and regular files in one
+  // picker. Regular files may be multi-selected; the renderer applies the
+  // caller-specific validation rules (project text/image files vs SKILL.md).
   // The chosen data is returned as ArrayBuffer(s) so the renderer can
   // construct File objects without a second round-trip to the main process.
   ipcMain.handle("dialog:pick-skill-source", async (event) => {
@@ -2221,8 +2312,8 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     const pickerOptions: Electron.OpenDialogOptions = {
       properties:
         process.platform === "darwin"
-          ? ["openFile", "openDirectory", "createDirectory", "dontAddToRecent"]
-          : ["openDirectory", "createDirectory", "dontAddToRecent"],
+          ? ["openFile", "openDirectory", "multiSelections", "createDirectory", "dontAddToRecent"]
+          : ["openFile", "multiSelections", "dontAddToRecent"],
     };
     const result = parent
       ? await dialog.showOpenDialog(parent, pickerOptions)
@@ -2230,17 +2321,54 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     if (result.canceled || result.filePaths.length === 0) {
       return { ok: false, canceled: true };
     }
-    const selected = result.filePaths[0]!;
-    const statResult = await stat(selected);
-    if (statResult.isDirectory()) {
+    const selectedPaths = result.filePaths;
+    const selectedStats = await Promise.all(
+      selectedPaths.map(async (selectedPath) => ({
+        selectedPath,
+        stat: await stat(selectedPath),
+      })),
+    );
+
+    if (selectedStats.length === 1 && selectedStats[0]!.stat.isDirectory()) {
+      const selected = selectedStats[0]!.selectedPath;
       const folderName = basename(selected);
       const files = await readSkillDirRecursive(selected, "");
       return { ok: true, kind: "folder", folderName, files };
     }
-    // Treat as a file (zip).
-    const fileName = basename(selected);
-    const data = await readFile(selected);
-    return { ok: true, kind: "zip", fileName, data: data.buffer };
+
+    if (selectedStats.some(({ stat: selectedStat }) => selectedStat.isDirectory())) {
+      return {
+        ok: false,
+        canceled: false,
+        reason: "select either one folder or one/more regular files",
+      };
+    }
+
+    if (selectedStats.length === 1 && /\.zip$/i.test(selectedStats[0]!.selectedPath)) {
+      const selected = selectedStats[0]!.selectedPath;
+      const fileName = basename(selected);
+      const data = await readFile(selected);
+      return {
+        ok: true,
+        kind: "zip",
+        fileName,
+        data: toStandaloneArrayBuffer(data),
+      };
+    }
+
+    const files = await Promise.all(
+      selectedStats.map(async ({ selectedPath }) => {
+        const data = await readFile(selectedPath);
+        return {
+          path: basename(selectedPath),
+          data: toStandaloneArrayBuffer(data),
+        };
+      }),
+    );
+    const selectionName = selectedPaths.length === 1
+      ? basename(selectedPaths[0]!, extname(selectedPaths[0]!))
+      : basename(dirname(selectedPaths[0]!));
+    return { ok: true, kind: "files", selectionName, files };
   });
   // shell.openPath opens an absolute filesystem path in the OS file
   // manager (Finder / Explorer / Files). It resolves to '' on success

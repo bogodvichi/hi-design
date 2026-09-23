@@ -4955,6 +4955,30 @@ export async function startServer({
         message: 'workspace project read is not allowed',
       };
     }
+    // Cross-team share check: if this project is shared with the current
+    // user via HDW folder/project shares, grant comment access with the
+    // shared-space collaborator identity (not the home workspace member ID).
+    try {
+      const shareAccess = await resolveShareAccess(projectId, req);
+      if (shareAccess) {
+        return {
+         ok: true as const,
+        context: {
+          workspaceId: shareAccess.workspaceId,
+           workspaceType: 'team' as const,
+           workspaceMemberId: shareAccess.viewerMemberId,
+           teamId: shareAccess.workspaceId,
+           role: 'member' as const,
+           memberStatus: 'active' as const,
+           lifecycleState: 'active' as const,
+          isSharedSpace: true,
+          collaboratorMemberId: shareAccess.viewerMemberId,
+        } as any,
+       };
+      }
+    } catch {
+      // share lookup failed — fall through to local authority
+    }
     const local = resolveOptionalLocalWorkspaceRequestAuthority(req);
     if (!local.ok) return local;
    if (local.context) {
@@ -7347,6 +7371,41 @@ const designSystemBackingProjects = new Map<string, string>();
     share: skillsTeamShare,
     listTeam: skillsTeamList,
   });
+  app.post('/api/community/stats/record', async (req: any, res: any) => {
+    if (!isLocalSameOrigin(req, resolvedPort)) {
+      return res.status(403).json({ error: 'cross-origin request rejected' });
+    }
+    const verified = await verifyExplicitWorkspaceRequestContext({ req, requireTeam: false });
+    if (!verified.ok) {
+      return res.status(verified.status).json({ error: verified.code, message: verified.message });
+    }
+    if (!hdwCloudClient) {
+      return res.status(503).json({ error: 'HDW_CLOUD_NOT_CONFIGURED' });
+    }
+    const resourceType = req.body?.resourceType;
+    const resourceId = typeof req.body?.resourceId === 'string' ? req.body.resourceId.trim() : '';
+    const metric = req.body?.metric;
+    if (!['project', 'skill', 'mcp', 'tool'].includes(resourceType) || !resourceId || !['preview', 'action'].includes(metric)) {
+      return res.status(400).json({ error: 'INVALID_COMMUNITY_STAT' });
+    }
+    try {
+      const { readSsoUsername } = await import('./http/hik_logins/hicoo.js');
+      const username = readSsoUsername(RUNTIME_DATA_DIR)?.trim().toLowerCase() || '';
+      const identity = username || verified.context.workspaceMemberId;
+      const identityScope = username ? 'user' : 'member';
+      const actorKey = `${identityScope}:${createHash('sha256').update(identity).digest('hex')}`;
+      const result = await hdwCloudClient.recordCommunityStat({
+        resourceType,
+        resourceId,
+        metric,
+        actorKey,
+      });
+      res.json(result);
+    } catch (err: any) {
+      res.status(502).json({ error: err instanceof Error ? err.message : 'community stat record failed' });
+    }
+  });
+
   // ---- Cloud skill catalog: browse HDW resources and install on demand ----
   app.get('/api/workspace/skills/cloud/check', async (req: any, res: any) => {
     const resolution = await resolveTeamResourceScope(req);
@@ -7363,13 +7422,21 @@ const designSystemBackingProjects = new Map<string, string>();
     if (!hdwCloudClient) {
       return res.json({ exists: false });
     }
-    try {
-      const exists = await hdwCloudClient.checkResource(workspaceId, 'skill', title);
-      res.json({ exists });
-    } catch (err: any) {
-      res.status(500).json({ error: err instanceof Error ? err.message : 'cloud skill check failed' });
-    }
-  });
+   try {
+      // Case-insensitive duplicate check: list the owner's skill resources
+      // and compare titles in lowercase. The HDW resources/check endpoint
+      // is case-sensitive, so we do the comparison ourselves.
+      const resources = await hdwCloudClient.listResources(workspaceId, 'skill', ownerMemberId);
+      const lowerTitle = title.toLowerCase();
+      const exists = resources.some((r) => {
+        const resourceTitle = (r.metadata as any)?.title;
+        return typeof resourceTitle === 'string' && resourceTitle.toLowerCase() === lowerTitle;
+      });
+     res.json({ exists });
+   } catch (err: any) {
+     res.status(500).json({ error: err instanceof Error ? err.message : 'cloud skill check failed' });
+   }
+ });
 
   app.get('/api/workspace/skills/cloud', async (req: any, res: any) => {
     const resolution = await resolveTeamResourceScope(req);
@@ -7422,8 +7489,17 @@ const designSystemBackingProjects = new Map<string, string>();
          if (!hubResourceId.startsWith(prefix)) continue;
          installedLocalIds.set(hubResourceId.slice(prefix.length), binding.resourceId);
        }
-       maasSkills = resources.map((skill) => ({
-           resourceId: skill.id,
+        const maasStatRows = hdwCloudClient
+          ? await hdwCloudClient.queryCommunityStats(resources.map((skill) => ({
+              resourceType: 'skill' as const,
+              resourceId: `${MAAS_SKILLHUB_PROVIDER}:${skill.id}`,
+            }))).catch(() => [])
+          : [];
+        const maasStats = new Map(maasStatRows.map((stat) => [stat.resourceId, stat]));
+        maasSkills = resources.map((skill) => {
+          const stat = maasStats.get(`${MAAS_SKILLHUB_PROVIDER}:${skill.id}`);
+          return ({
+            resourceId: skill.id,
            localId: installedLocalIds.get(skill.id) ?? maasSkillLocalId(skill),
            title: skill.skillName || skill.skillSlug || skill.id,
            description: skill.skillDesc ?? null,
@@ -7438,10 +7514,11 @@ const designSystemBackingProjects = new Map<string, string>();
             publisherName: skill.userNotesName || skill.userName || skill.userId || null,
             iconUrl: skill.iconUrl ?? null,
             category: normalizeSkillCategory(skill.skillSubType),
-            previewCount: null,
-            actionCount: typeof skill.downloadCount === 'number' ? skill.downloadCount : null,
+            peopleCount: stat?.actionUserCount ?? 0,
+            actionCount: stat?.actionCount ?? 0,
             installed: installedLocalIds.has(skill.id),
-          })).filter((skill) => communitySkillMatchesQuery(skill, searchQuery));
+          });
+        }).filter((skill) => communitySkillMatchesQuery(skill, searchQuery));
         if (sourceProvider === MAAS_SKILLHUB_PROVIDER) {
           return res.json(finalizeSkillList(maasSkills));
         }
@@ -7470,9 +7547,10 @@ const designSystemBackingProjects = new Map<string, string>();
         sourceLabel: 'HiDesign Community',
         publisherName: (r.metadata as any)?.publisherName ?? r.ownerDisplayName ?? r.ownerMemberId ?? null,
         category: normalizeSkillCategory((r.metadata as any)?.category),
-        previewCount: typeof (r.metadata as any)?.previewCount === 'number' ? (r.metadata as any).previewCount : null,
-        actionCount: typeof (r.metadata as any)?.actionCount === 'number' ? (r.metadata as any).actionCount : null,
-      })).filter((skill) => communitySkillMatchesQuery(skill, searchQuery));
+        logoKey: typeof (r.metadata as any)?.logoKey === 'string' ? (r.metadata as any).logoKey : null,
+         peopleCount: r.stats?.actionUserCount ?? 0,
+         actionCount: r.stats?.actionCount ?? 0,
+       })).filter((skill) => communitySkillMatchesQuery(skill, searchQuery));
       res.json(finalizeSkillList([...maasSkills, ...skills]));
     } catch (err: any) {
       if (maasSkillhubResolved) return res.json(finalizeSkillList(maasSkills));
@@ -7632,17 +7710,76 @@ const designSystemBackingProjects = new Map<string, string>();
        return res.status(502).json({ error: err instanceof Error ? err.message : 'MAAS Skillhub uninstall failed' });
      }
    }
-   if (!hdwCloudClient) {
-     return res.status(503).json({ error: 'HDW_CLOUD_NOT_CONFIGURED' });
-   }
-   try {
-    const homeWsId = typeof req.query.home_workspace_id === 'string' ? req.query.home_workspace_id : '';
-    const lookupWsId = homeWsId || workspaceId;
-    const cloudResource = await hdwCloudClient.getResource(lookupWsId, resourceId);
-    if (!cloudResource) {
-      return res.status(404).json({ error: 'CLOUD_SKILL_NOT_FOUND' });
-    }
-     const localId = (cloudResource.metadata as any)?.localId ?? cloudResource.id;
+    // Uninstall is a local-only operation: remove the materialized skill
+    // directory and its workspace binding. The cloud resource (if any) is
+    // only consulted to resolve the localId when we don't already know it;
+    // a skill installed from a team-workspace share may have no cloud
+    // counterpart at all, so falling back to a local marker scan is the
+    // correct behaviour rather than returning CLOUD_SKILL_NOT_FOUND.
+    try {
+      // The web client prefixes locally-installed skill ids with "local:"
+      // when building the cloud-list resourceId (see CloudSkillList.tsx).
+      // Strip it so the rest of the lookup uses the bare skill id.
+      const bareResourceId = resourceId.startsWith('local:')
+        ? resourceId.slice('local:'.length)
+        : resourceId;
+      const homeWsId = typeof req.query.home_workspace_id === 'string' ? req.query.home_workspace_id : '';
+      const lookupWsId = homeWsId || workspaceId;
+      let localId: string | null = null;
+      if (hdwCloudClient) {
+        try {
+          const cloudResource = await hdwCloudClient.getResource(lookupWsId, bareResourceId);
+          if (cloudResource) {
+            localId = (cloudResource.metadata as any)?.localId ?? cloudResource.id;
+          }
+        } catch {
+          // Cloud lookup failed (network, auth, etc.) — fall through to
+          // the local marker scan below so a transient cloud outage does
+          // not block uninstalling a locally-installed skill.
+        }
+      }
+      // Cloud miss or no cloud client: scan the team-workspace directory
+      // for a materialization marker whose hubResourceId or resourceId
+      // matches the requested resourceId.
+      if (!localId) {
+        const wsRoot = teamResourceWorkspaceRoot(USER_SKILLS_DIR, workspaceId);
+        let entries: import('node:fs').Dirent[] = [];
+        try {
+          entries = await fs.promises.readdir(wsRoot, { withFileTypes: true });
+        } catch {
+          // No team-workspace directory for this workspace — nothing to scan.
+        }
+        for (const entry of entries) {
+          if (!entry.isDirectory()) continue;
+          for (const candidate of [entry.name, `user:${entry.name}`]) {
+            const marker = await readTeamResourceMaterialization(
+              USER_SKILLS_DIR,
+              workspaceId,
+              candidate,
+              entry.name,
+            );
+            if (
+              marker?.kind === 'skill'
+              && (marker.hubResourceId === bareResourceId || marker.resourceId === bareResourceId)
+            ) {
+              localId = marker.resourceId;
+              break;
+            }
+          }
+          if (localId) break;
+        }
+      }
+      if (!localId) {
+        // Last resort: the skill may live directly under USER_SKILLS_DIR
+        // (not inside .team-workspaces). Try uninstallById which scans
+        // the user skills root and removes the directory if found.
+        const result = await uninstallById(bareResourceId, USER_SKILLS_DIR, SKILLS_DIR, 'skill');
+        if (result.ok) {
+          deleteWorkspaceResourceByResourceId(db, 'skill', bareResourceId);
+          return res.json({ ok: true, localId: bareResourceId });
+        }
+        return res.status(404).json({ error: 'CLOUD_SKILL_NOT_FOUND' });
+      }
       const dirId = stripPrefixAndValidateId(localId, localId.startsWith('user:') ? 'user:' : '');
       if (!dirId) {
         return res.status(400).json({ error: 'invalid local id' });
@@ -7708,6 +7845,11 @@ const designSystemBackingProjects = new Map<string, string>();
     const scope = resolution.scope;
     const resourceScope = typeof req.query.scope === 'string' ? req.query.scope : undefined;
     const requestedCategory = typeof req.body?.category === 'string' ? req.body.category.trim() : '';
+    const logoCandidate = typeof req.body?.logoKey === 'string' ? req.body.logoKey.trim() : '';
+    const requestedLogoKey = [
+      'craft', 'code', 'flow', 'research', 'design',
+      'data', 'automate', 'docs', 'think', 'agent',
+    ].includes(logoCandidate) ? logoCandidate : '';
     if (resourceScope === 'public' && !isSkillCategory(requestedCategory)) {
       return res.status(400).json({
         error: 'INVALID_SKILL_CATEGORY',
@@ -7768,6 +7910,7 @@ const designSystemBackingProjects = new Map<string, string>();
           localId: prepared!.slug,
           title: prepared!.title,
           category,
+          ...(requestedLogoKey ? { logoKey: requestedLogoKey } : {}),
         }),
        resourceIdFor,
        kind: 'skill',
@@ -8538,6 +8681,7 @@ const teamResourceListByKind = {
   registerHdwRoutes(app, {
     sendApiError,
     dataDir: RUNTIME_DATA_DIR,
+    db,
   });
 
   registerDaemonRoutes(app, {
@@ -8555,10 +8699,11 @@ const teamResourceListByKind = {
   env: process.env,
 });
 
- registerFolderRoutes(app, {
-   db,
-   http: { requireLocalDaemonRequest, sendApiError },
- });
+registerFolderRoutes(app, {
+  db,
+  http: { requireLocalDaemonRequest, sendApiError },
+  dataDir: RUNTIME_DATA_DIR,
+});
 
 const openDesignPublicMetadata = createOpenDesignPublicMetadataService();
   registerOpenDesignPublicMetadataRoutes(app, {

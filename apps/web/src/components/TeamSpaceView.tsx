@@ -11,6 +11,7 @@ import { useT } from '../i18n';
 import type { Dict } from '../i18n/types';
 import { avatarColorFor } from '../utils/avatarColor';
 import { FolderCardMenu } from './FolderCardMenu';
+import { ShareFolderDialog } from './ShareFolderDialog';
 import { FolderSelectionCheck } from './FolderSelectionCheck';
 import { RecentProjectsStrip } from './RecentProjectsStrip';
 import { AddSkillDialog } from './AddSkillDialog';
@@ -82,11 +83,15 @@ interface Props {
  designSystems?: DesignSystemSummary[];
  onOpenProject?: (id: string) => void;
  onDeleteProject?: (id: string) => Promise<boolean | void> | boolean | void;
- onRenameProject?: (id: string, name: string) => void;
+  onRenameProject?: (id: string, name: string) => void;
   onDuplicateProject?: (id: string) => Promise<void> | void;
+  onCopyProject?: (
+    id: string,
+    options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
+  ) => Promise<void> | void;
 }
 
-export function TeamSpaceView({ teamId, tab, onInvite, designSystems = [], onOpenProject, onDeleteProject, onRenameProject, onDuplicateProject }: Props) {
+export function TeamSpaceView({ teamId, tab, onInvite, designSystems = [], onOpenProject, onDeleteProject, onRenameProject, onDuplicateProject, onCopyProject }: Props) {
   const t = useT();
   const routeTab = tab === 'skill' || tab === 'mcp' ? tab : 'projects';
   const [activeTab, setActiveTab] = useState<TeamTab>(routeTab);
@@ -305,7 +310,7 @@ export function TeamSpaceView({ teamId, tab, onInvite, designSystems = [], onOpe
 
       <div className={styles.content} role="tabpanel">
         {activeTab === 'projects' ? (
-          <ProjectsPanel controlsPortalTarget={typeTabsEl} teamId={teamId} workspaceContext={teamWorkspaceContext} operator={operator} showCreateGroup={showCreateGroup} onShowCreateGroupChange={setShowCreateGroup} designSystems={designSystems} onOpenProject={onOpenProject} onDeleteProject={onDeleteProject} onRenameProject={onRenameProject} onDuplicateProject={onDuplicateProject} />
+          <ProjectsPanel controlsPortalTarget={typeTabsEl} teamId={teamId} workspaceContext={teamWorkspaceContext} operator={operator} showCreateGroup={showCreateGroup} onShowCreateGroupChange={setShowCreateGroup} designSystems={designSystems} onOpenProject={onOpenProject} onDeleteProject={onDeleteProject} onRenameProject={onRenameProject} onDuplicateProject={onDuplicateProject} onCopyProject={onCopyProject} />
         ) : null}
         {activeTab === 'members' ? (
           <MembersTable teamId={teamId} operator={operator} />
@@ -614,6 +619,7 @@ function ProjectsPanel({
   onDeleteProject,
  onRenameProject,
  onDuplicateProject,
+ onCopyProject,
   controlsPortalTarget,
 }: {
   teamId?: string;
@@ -626,6 +632,10 @@ function ProjectsPanel({
   onDeleteProject?: (id: string) => Promise<boolean | void> | boolean | void;
   onRenameProject?: (id: string, name: string) => void;
   onDuplicateProject?: (id: string) => Promise<void> | void;
+  onCopyProject?: (
+    id: string,
+    options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
+  ) => Promise<void> | void;
   controlsPortalTarget?: HTMLElement | null;
 }) {
   const t = useT();
@@ -652,11 +662,13 @@ function ProjectsPanel({
   const operatorMemberId = operator?.memberId ?? null;
   const operatorRole = operator?.role ?? null;
  const canManage = operatorRole === 'owner' || operatorRole === 'admin';
+ const canShare = operatorRole !== null && operatorRole !== 'guest';
 
   const [renameFolderTarget, setRenameFolderTarget] = useState<TeamFolderItem | null>(null);
   const [renameFolderInput, setRenameFolderInput] = useState('');
   const [renamingFolder, setRenamingFolder] = useState(false);
   const renameFolderTitleId = useId();
+  const [shareFolderTarget, setShareFolderTarget] = useState<TeamFolderItem | null>(null);
 
 // Fetch the team's project folders from the HDW folder API, and refresh
 // when a create/delete dispatches the `hdw:folders-updated` event.
@@ -692,7 +704,7 @@ function ProjectsPanel({
            ? f.subfolder_preview.map((p: any) =>
                typeof p === 'string'
                  ? { name: p, kind: 'folder' as const }
-                 : { name: p.name || '', kind: (p.kind === 'project' ? 'project' : 'folder') as 'folder' | 'project' })
+                 : { name: p.name || '', kind: (p.kind === 'project' ? 'project' : 'folder') as 'folder' | 'project', coverDigest: p.coverDigest || null })
            : [],
          createdAt: f.created_at || '',
        })));
@@ -969,12 +981,14 @@ function ProjectsPanel({
             >
            {folderSelectionMode ? (
              <FolderSelectionCheck selected={selected} />
-           ) : canManage ? (
+           ) : canShare ? (
              <FolderCardMenu
-                onRename={() => startFolderRename(folder)}
+                onRename={canManage ? () => startFolderRename(folder) : undefined}
                renameLabel={t('common.rename')}
-               onDelete={() => setRemoveTarget(folder)}
+               onDelete={canManage ? () => setRemoveTarget(folder) : undefined}
                deleteLabel={t('teamSpace.deleteGroup')}
+               onShare={() => setShareFolderTarget(folder)}
+               shareLabel={t('sharedSpace.shareFolderMenuLabel')}
              />
            ) : null}
              <div className={styles.folderCardGrid}>
@@ -984,6 +998,16 @@ function ProjectsPanel({
                   return <div key={i} className={styles.gridCellEmpty} />;
                 }
                 if (item.kind === 'project') {
+                  if (item.coverDigest) {
+                    return (
+                      <div
+                        key={i}
+                        className={`${styles.gridCell} ${styles.gridCellCover}`}
+                        style={{ backgroundImage: `url(/api/hdw/api/community/cover/${encodeURIComponent(item.coverDigest)})` }}
+                        title={item.name}
+                      />
+                    );
+                  }
                   return (
                     <div key={i} className={`${styles.gridCell} ${styles.gridCellProject}`} title={item.name} />
                   );
@@ -1041,7 +1065,9 @@ function ProjectsPanel({
             setProjects((prev) => prev.map((p) => p.id === id ? { ...p, name } : p));
             onRenameProject?.(id, name);
           }}
-          onDuplicate={onDuplicateProject}
+          onDuplicate={onCopyProject && teamId
+            ? (id) => onCopyProject(id, { targetWorkspaceId: teamId })
+            : onDuplicateProject}
          hideTitle
          controlsPortalTarget={controlsPortalTarget}
          bulkbarPortalTarget={bulkbarEl}
@@ -1153,6 +1179,26 @@ function ProjectsPanel({
             </button>
           </DialogFooter>
         </Dialog>
+      ) : null}
+      {shareFolderTarget && teamId ? (
+        <ShareFolderDialog
+          folderId={shareFolderTarget.folderId}
+          workspaceId={teamId}
+          homeWorkspaceId={teamId}
+          folderName={shareFolderTarget.folderName}
+          onClose={() => setShareFolderTarget(null)}
+          onShared={() => window.dispatchEvent(new CustomEvent('team:folders-updated'))}
+        />
+      ) : null}
+      {shareFolderTarget && teamId ? (
+        <ShareFolderDialog
+          folderId={shareFolderTarget.folderId}
+          workspaceId={teamId}
+          homeWorkspaceId={teamId}
+          folderName={shareFolderTarget.folderName}
+          onClose={() => setShareFolderTarget(null)}
+          onShared={() => window.dispatchEvent(new CustomEvent('team:folders-updated'))}
+        />
       ) : null}
     </div>
   );
@@ -1427,9 +1473,13 @@ interface FolderViewProps {
   onDeleteProject?: (id: string) => Promise<boolean | void> | boolean | void;
   onRenameProject?: (id: string, name: string) => void;
   onDuplicateProject?: (id: string) => Promise<void> | void;
+  onCopyProject?: (
+    id: string,
+    options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
+  ) => Promise<void> | void;
 }
 
-export function FolderView({ teamId, folderId, designSystems = [], onOpenProject, onDeleteProject, onRenameProject, onDuplicateProject }: FolderViewProps) {
+export function FolderView({ teamId, folderId, designSystems = [], onOpenProject, onDeleteProject, onRenameProject, onDuplicateProject, onCopyProject }: FolderViewProps) {
   const t = useT();
   const [breadcrumb, setBreadcrumb] = useState<BreadcrumbItem[]>([]);
   const [teamName, setTeamName] = useState<string | null>(null);
@@ -1637,6 +1687,7 @@ export function FolderView({ teamId, folderId, designSystems = [], onOpenProject
           onDeleteProject={onDeleteProject}
          onRenameProject={onRenameProject}
          onDuplicateProject={onDuplicateProject}
+         onCopyProject={onCopyProject}
        />
      </div>
    </section>
@@ -1655,6 +1706,7 @@ function FoldersPanel({
   onDeleteProject,
  onRenameProject,
  onDuplicateProject,
+ onCopyProject,
 }: {
   teamId?: string;
   folderId?: string;
@@ -1665,8 +1717,12 @@ function FoldersPanel({
  designSystems?: DesignSystemSummary[];
  onOpenProject?: (id: string) => void;
  onDeleteProject?: (id: string) => Promise<boolean | void> | boolean | void;
- onRenameProject?: (id: string, name: string) => void;
+  onRenameProject?: (id: string, name: string) => void;
   onDuplicateProject?: (id: string) => Promise<void> | void;
+  onCopyProject?: (
+    id: string,
+    options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
+  ) => Promise<void> | void;
 }) {
   const t = useT();
   const [folders, setFolders] = useState<TeamFolderItem[]>([]);
@@ -1695,11 +1751,13 @@ function FoldersPanel({
   const operatorMemberId = operator?.memberId ?? null;
   const operatorRole = operator?.role ?? null;
  const canManage = operatorRole === 'owner' || operatorRole === 'admin';
+ const canShare = operatorRole !== null && operatorRole !== 'guest';
 
   const [renameFolderTarget, setRenameFolderTarget] = useState<TeamFolderItem | null>(null);
   const [renameFolderInput, setRenameFolderInput] = useState('');
   const [renamingFolder, setRenamingFolder] = useState(false);
   const renameFolderTitleId = useId();
+  const [shareFolderTarget, setShareFolderTarget] = useState<TeamFolderItem | null>(null);
 
 // Fetch subfolders whose folder_pid equals the current folderId.
  useEffect(() => {
@@ -1734,7 +1792,7 @@ function FoldersPanel({
             ? f.subfolder_preview.map((p: any) =>
                 typeof p === 'string'
                   ? { name: p, kind: 'folder' as const }
-                  : { name: p.name || '', kind: (p.kind === 'project' ? 'project' : 'folder') as 'folder' | 'project' })
+                  : { name: p.name || '', kind: (p.kind === 'project' ? 'project' : 'folder') as 'folder' | 'project', coverDigest: p.coverDigest || null })
             : [],
           createdAt: f.created_at || '',
         })));
@@ -2009,12 +2067,14 @@ function FoldersPanel({
           >
            {folderSelectionMode ? (
              <FolderSelectionCheck selected={selected} />
-           ) : canManage ? (
+           ) : canShare ? (
              <FolderCardMenu
-                onRename={() => startFolderRename(folder)}
+                onRename={canManage ? () => startFolderRename(folder) : undefined}
                renameLabel={t('common.rename')}
-               onDelete={() => setRemoveTarget(folder)}
+               onDelete={canManage ? () => setRemoveTarget(folder) : undefined}
                deleteLabel={t('teamSpace.deleteFolder')}
+               onShare={() => setShareFolderTarget(folder)}
+               shareLabel={t('sharedSpace.shareFolderMenuLabel')}
              />
            ) : null}
            <div className={styles.folderCardGrid}>
@@ -2024,6 +2084,16 @@ function FoldersPanel({
                  return <div key={i} className={styles.gridCellEmpty} />;
                }
                if (item.kind === 'project') {
+                 if (item.coverDigest) {
+                   return (
+                     <div
+                       key={i}
+                       className={`${styles.gridCell} ${styles.gridCellCover}`}
+                       style={{ backgroundImage: `url(/api/hdw/api/community/cover/${encodeURIComponent(item.coverDigest)})` }}
+                       title={item.name}
+                     />
+                   );
+                 }
                  return (
                    <div key={i} className={`${styles.gridCell} ${styles.gridCellProject}`} title={item.name} />
                  );
@@ -2081,7 +2151,9 @@ function FoldersPanel({
             setProjects((prev) => prev.map((p) => p.id === id ? { ...p, name } : p));
             onRenameProject?.(id, name);
           }}
-          onDuplicate={onDuplicateProject}
+          onDuplicate={onCopyProject && teamId
+            ? (id) => onCopyProject(id, { targetWorkspaceId: teamId, targetFolderId: folderId })
+            : onDuplicateProject}
          hideTitle
          operator={operator}
          controlsPortalTarget={controlsEl}

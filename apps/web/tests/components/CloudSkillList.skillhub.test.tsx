@@ -52,7 +52,7 @@ describe('CloudSkillList Skillhub integration', () => {
             provider: 'maas-skillhub',
             sourceLabel: 'MAAS Skillhub',
             publisherName: '张三',
-            previewCount: null,
+            peopleCount: 12,
             actionCount: 428,
             iconUrl: 'https://maas.example.test/design-review.png',
           }],
@@ -85,7 +85,7 @@ describe('CloudSkillList Skillhub integration', () => {
     expect(await screen.findByText('Skillhub Design Review')).toBeTruthy();
     expect(screen.getByText(/MAAS Skillhub/)).toBeTruthy();
     expect(screen.getByText(/张三/)).toBeTruthy();
-    expect(screen.getByLabelText('预览 —, 添加 428')).toBeTruthy();
+    expect(screen.getByLabelText('接入人数 12, 接入次数 428')).toBeTruthy();
     expect(container.querySelector('img[src="https://maas.example.test/design-review.png"]'))
       .toBeTruthy();
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'design' } });
@@ -168,7 +168,7 @@ describe('CloudSkillList Skillhub integration', () => {
     toolbarTarget.setAttribute('data-testid', 'community-skill-toolbar');
     document.body.appendChild(toolbarTarget);
 
-    render(
+    const { container } = render(
       <I18nProvider initial="zh-CN">
         <CloudSkillList
           workspaceId="current-workspace"
@@ -238,7 +238,7 @@ describe('CloudSkillList Skillhub integration', () => {
     });
     globalThis.fetch = fetchMock as typeof fetch;
 
-    render(
+    const { container } = render(
       <I18nProvider initial="zh-CN">
         <CloudSkillList
           workspaceId="current-workspace"
@@ -253,6 +253,7 @@ describe('CloudSkillList Skillhub integration', () => {
     );
 
     expect(await screen.findByText('Visual Helper')).toBeTruthy();
+    expect(container.querySelector('img[src="/community/default-skill-logo.svg"]')).toBeTruthy();
     await waitFor(() => {
       expect(fetchMock.mock.calls.some(([input]) => {
         const url = new URL(input.toString(), 'http://localhost');

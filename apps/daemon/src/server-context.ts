@@ -218,7 +218,7 @@ export interface ServerContext {
    * used by the demo surface.
    */
   collabSync: {
-   requestTeamShare(projectId: string, share?: string | ResourceHubPrincipal, coverDigest?: string | null): Promise<{ version: number | null }>;
+   requestTeamShare(projectId: string, share?: string | ResourceHubPrincipal, coverDigest?: string | null, folderId?: string | null): Promise<{ version: number | null }>;
    requestTeamUnshare(projectId: string, share?: string | ResourceHubPrincipal): Promise<void>;
    /**
     * Transfer a project from one workspace to another. When the adapter

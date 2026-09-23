@@ -24,6 +24,7 @@ import { CloudSkillList } from './CloudSkillList';
 import { CloudMcpList } from './CloudMcpList';
 import { CloudToolList } from './CloudToolList';
 import { CommunityResourceStats } from './CommunityResourceStats';
+import { communityOriginProjectId, communityOriginProjectName, projectFallbackVisual } from './project-cover';
 import type { MarketplacePluginEntry } from '@open-design/contracts';
 import type { WorkspaceDirectoryItem } from '@open-design/contracts';
 import { Icon, type IconName } from './Icon';
@@ -31,6 +32,7 @@ import { useI18n, useT } from '../i18n';
 import type { Dict } from '../i18n/types';
 import { navigate } from '../router';
 import { getProject, remixHdwPlugin } from '../state/projects';
+import { uploadSkillToCloud } from '../providers/registry';
 import {
   recordRecentlyOpenedProject,
   updateRecentlyOpenedProjectCover,
@@ -39,6 +41,7 @@ import { getSharedSpaceMemberId } from '../utils/deterministicId';
 import { getStoredUsername } from '../auth/auth';
 import { communityTextMatchesQuery } from '../utils/community-search';
 import { ellipsisTitleHoverProps } from '../utils/ellipsis-title';
+import { recordCommunityStat } from '../utils/community-stats';
 import {
   createCommunityReferenceHandoff,
   stashHomePromptHandoff,
@@ -75,23 +78,40 @@ const TABS: TabDef[] = [
   { id: 'tool', icon: 'puzzle', labelKey: 'squareScope.tabTool' },
 ];
 const COMMUNITY_SKILL_PROVIDERS = 'all';
-const TEMPLATE_ACCENTS = [
-  '#4164f4', '#d46342', '#111827', '#0f9f6e', '#353535', '#ea580c', '#0284c7',
-  '#4f46e5', '#db2777', '#16a34a', '#475569', '#f59e0b', '#0f172a', '#1A74FF',
-  '#be123c', '#0d9488', '#0891b2', '#ec4899', '#64748b', '#8b5cf6', '#334155',
-];
+async function publishResponseError(response: Response, fallback: string): Promise<Error> {
+  const body = await response.json().catch(() => null) as unknown;
+  const record = body && typeof body === 'object'
+    ? body as Record<string, unknown>
+    : null;
+  const topLevelMessage = typeof record?.message === 'string'
+    ? record.message.trim()
+    : '';
+  const rawError = record?.error;
 
-function hashString(value: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < value.length; i += 1) {
-    h ^= value.charCodeAt(i);
-    h = Math.imul(h, 16777619);
+  let errorMessage = '';
+  let errorCode = '';
+  if (typeof rawError === 'string') {
+    errorMessage = rawError.trim();
+  } else if (rawError && typeof rawError === 'object') {
+    const errorRecord = rawError as Record<string, unknown>;
+    if (typeof errorRecord.message === 'string') errorMessage = errorRecord.message.trim();
+    if (typeof errorRecord.code === 'string') errorCode = errorRecord.code.trim();
   }
-  return Math.abs(h);
-}
 
-function templateAccent(id: string): string {
-  return TEMPLATE_ACCENTS[hashString(id) % TEMPLATE_ACCENTS.length]!;
+  if (
+    fallback === 'Project publish failed'
+    && response.status === 404
+    && (errorCode === 'FILE_NOT_FOUND' || /file not found|enoent|no such file/i.test(errorMessage))
+  ) {
+    return new Error('项目暂无可发布内容，请先完成项目内容后再发布。');
+  }
+
+  return new Error(
+    topLevelMessage
+    || errorMessage
+    || errorCode
+    || `${fallback} (HTTP ${response.status})`,
+  );
 }
 
 function marketplaceMetric(entry: MarketplacePluginEntry, ...keys: string[]): number | null {
@@ -287,7 +307,7 @@ function PublicationStatusFilter({ value, onChange }: {
   );
 }
 
-function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publicationFilter, projectItems, workspaceMemberId, searchQuery = '' }: {
+function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publicationFilter, projectItems, workspaceMemberId, statsWorkspaceId, statsWorkspaceMemberId, statsWorkspaceType, searchQuery = '' }: {
   refreshKey: number;
   onRefresh: () => void;
   username?: string | null;
@@ -295,6 +315,9 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
   publicationFilter: PublicationFilter;
   projectItems?: readonly PublishedProjectItem[];
   workspaceMemberId?: string | null;
+  statsWorkspaceId?: string | null;
+  statsWorkspaceMemberId?: string | null;
+  statsWorkspaceType?: string | null;
   searchQuery?: string;
 }) {
  const t = useT();
@@ -304,6 +327,7 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
  const [error, setError] = useState(false);
  const [remixingName, setRemixingName] = useState<string | null>(null);
   const [remixError, setRemixError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [detailsEntry, setDetailsEntry] = useState<MarketplacePluginEntry | null>(null);
   const [shareOnOpen, setShareOnOpen] = useState(false);
   const [busyName, setBusyName] = useState<string | null>(null);
@@ -361,6 +385,24 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
     navigate({ kind: 'home', view: 'home' });
   }
 
+  async function recordProjectStat(entry: MarketplacePluginEntry, metric: 'preview' | 'action') {
+    if (isMyPublishes) return;
+    const stats = await recordCommunityStat({
+      resourceType: 'project',
+      resourceId: entry.name,
+      metric,
+      workspaceId: statsWorkspaceId ?? null,
+      workspaceMemberId: statsWorkspaceMemberId ?? null,
+      workspaceType: statsWorkspaceType ?? null,
+    });
+    if (!stats) return;
+    setPlugins((current) => current.map((item) => (
+      item.name === entry.name
+        ? { ...item, previewUserCount: stats.previewUserCount, actionCount: stats.actionCount }
+        : item
+    )));
+  }
+
   async function handleRemix(entry: MarketplacePluginEntry) {
     if (remixingNameRef.current) return;
     remixingNameRef.current = entry.name;
@@ -370,6 +412,7 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
     remixingNameRef.current = null;
     setRemixingName(null);
     if (result.ok && result.projectId) {
+      void recordProjectStat(entry, 'action');
       if (result.project) {
         recordRecentlyOpenedProject({
           ...result.project,
@@ -432,15 +475,28 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
 
   async function deletePlugin(name: string) {
     setBusyName(name);
+    setActionError(null);
     try {
       const res = await fetch(`/api/marketplaces/hdw-community/plugins/${encodeURIComponent(name)}`, {
         method: 'DELETE',
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        console.error('delete failed', body);
+        const body = (await res.json().catch(() => null)) as { error?: string; message?: string } | null;
+        const raw = body?.message || body?.error || '';
+        const message =
+          raw === 'plugin not found in marketplace'
+            ? (locale.startsWith('zh') ? '删除失败：刚发布的数据尚未同步完成，请稍后再试。' : 'Delete failed: the newly published item is still syncing. Please try again.')
+            : raw === 'SSO session is required to delete a community plugin'
+              ? (locale.startsWith('zh') ? '删除失败：登录状态已失效，请重新登录后再试。' : 'Delete failed: your sign-in session has expired. Please sign in again.')
+              : raw === 'not authorized to delete this plugin'
+                ? (locale.startsWith('zh') ? '删除失败：只能删除自己发布的项目。' : 'Delete failed: you can only delete projects you published.')
+                : (locale.startsWith('zh') ? '删除失败，请稍后重试。' : 'Delete failed. Please try again.');
+        setActionError(message);
+        return;
       }
       onRefresh();
+    } catch {
+      setActionError(locale.startsWith('zh') ? '删除失败，请检查网络后重试。' : 'Delete failed. Check your network and try again.');
     } finally {
       setBusyName(null);
     }
@@ -511,9 +567,12 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
           .find((value): value is string => typeof value === 'string' && value.trim().length > 0)
           ?.trim() ?? 'HiDesign';
         const updatedAt = marketplaceUpdatedAt(entry);
-        const previewCount = marketplaceMetric(entry, 'previewCount', 'viewCount');
+        const previewPeople = marketplaceMetric(entry, 'previewUserCount');
         const reuseCount = marketplaceMetric(entry, 'reuseCount', 'remixCount', 'actionCount');
-        const accent = templateAccent(entry.name);
+        const rawEntry = entry as unknown as Record<string, unknown>;
+        const originProjectId = communityOriginProjectId(rawEntry.tags) ?? entry.name;
+        const originProjectName = communityOriginProjectName(rawEntry.tags) ?? title;
+        const fallbackCover = projectFallbackVisual(originProjectId, originProjectName);
         const isRemixing = remixingName === entry.name;
         const isOwner = isMyPublishes
           ? true
@@ -528,13 +587,15 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
             <button
               type="button"
               className="recent-projects__card-main"
-              onClick={() => { setShareOnOpen(false); setDetailsEntry(entry); }}
+              onClick={() => {
+                setShareOnOpen(false);
+                setDetailsEntry(entry);
+                void recordProjectStat(entry, 'preview');
+              }}
             >
               <div
                 className={`recent-projects__card-thumb ${entry.coverUrl ? 'recent-projects__card-thumb-image' : 'recent-projects__card-thumb-fallback'}`}
-                style={!entry.coverUrl
-                  ? { background: `linear-gradient(135deg, color-mix(in srgb, ${accent} 20%, var(--bg-subtle)), color-mix(in srgb, ${accent} 46%, var(--bg-panel)))` }
-                  : undefined}
+                style={!entry.coverUrl ? fallbackCover.style : undefined}
                 aria-hidden
               >
                 {entry.coverUrl ? (
@@ -545,7 +606,7 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
                     loading="lazy"
                   />
                 ) : (
-                  <span className="recent-projects__card-glyph">{title.slice(0, 1)}</span>
+                  <span className="recent-projects__card-glyph">{fallbackCover.initial}</span>
                 )}
               </div>
               <div className="recent-projects__card-meta">
@@ -575,11 +636,12 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
                     ) : null}
                   </div>
                   <CommunityResourceStats
-                    previewCount={previewCount}
-                    actionCount={reuseCount}
-                    actionIcon="copy"
-                    previewLabel={locale.startsWith('zh') ? '预览' : 'Views'}
-                    actionLabel={locale.startsWith('zh') ? '复用' : 'Reuse'}
+                    primaryCount={previewPeople}
+                    secondaryCount={reuseCount}
+                    primaryIcon="eye"
+                    secondaryIcon="copy"
+                    primaryLabel={locale.startsWith('zh') ? '预览人数' : 'Preview users'}
+                    secondaryLabel={locale.startsWith('zh') ? '复用次数' : 'Reuses'}
                     align="right"
                   />
                 </div>
@@ -640,6 +702,11 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
       {remixError ? (
         <div style={{ gridColumn: '1 / -1', color: 'var(--color-text-secondary)', padding: '12px' }}>
           {remixError}
+        </div>
+      ) : null}
+      {actionError ? (
+        <div role="alert" style={{ gridColumn: '1 / -1', color: 'var(--danger, #c13b35)', padding: '12px' }}>
+          {actionError}
         </div>
       ) : null}
       {detailsEntry ? (
@@ -901,6 +968,14 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
           ) : null}
         </div>
         <div className={styles.headerActions}>
+          <button
+            type="button"
+            className={styles.solidBtn}
+            onClick={() => setPublishOpen(true)}
+          >
+            <Icon name="plus" size={16} aria-hidden />
+            <span>{t('squareScope.newPublish')}</span>
+          </button>
           {!isMyPublishes ? (
             <button
               type="button"
@@ -911,124 +986,100 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
               <span>{t('squareScope.myPublishes')}</span>
             </button>
           ) : null}
-        <button
-          type="button"
-          className={styles.solidBtn}
-          onClick={() => setPublishOpen(true)}
-        >
-          <Icon name="plus" size={16} aria-hidden />
-          <span>{t('squareScope.newPublish')}</span>
-        </button>
        {publishOpen ? (
          <PublishDialog
              initialCategory={activeTab}
             onClose={() => setPublishOpen(false)}
-              onPublish={(selection: PublishProjectSelection | PublishToolSelection | PublishMcpSelection | PublishSkillSelection) => {
+              onPublish={async (selection: PublishProjectSelection | PublishToolSelection | PublishMcpSelection | PublishSkillSelection) => {
+                const headers: Record<string, string> = {};
+                if (workspaceId) headers['x-od-workspace-id'] = workspaceId;
+                if (workspaceMemberId) headers['x-od-workspace-member-id'] = workspaceMemberId;
+                if (workspaceType) headers['x-od-workspace-type'] = workspaceType;
                 if ('url' in selection) {
-                  void (async () => {
-                    try {
-                     const headers: Record<string, string> = {};
-                     if (workspaceId) headers['x-od-workspace-id'] = workspaceId;
-                     if (workspaceMemberId) headers['x-od-workspace-member-id'] = workspaceMemberId;
-                     if (workspaceType) headers['x-od-workspace-type'] = workspaceType;
-                      // Check for duplicate label before publishing.
-                      try {
-                        const checkRes = await fetch(
-                          `/api/workspace/tool/cloud/check?label=${encodeURIComponent(selection.name)}`,
-                          { cache: 'no-store', headers },
-                        );
-                        if (checkRes.ok) {
-                          const checkBody = await checkRes.json();
-                          if (checkBody.exists) {
-                            alert(t('personalScope.mcpDuplicateLabel'));
-                            return;
-                          }
-                        }
-                      } catch {
-                        // If the check fails, proceed and let the server reject.
-                      }
-                      await fetch('/api/workspace/tool/cloud', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', ...headers },
-                        body: JSON.stringify({
-                          metadata: {
-                            url: selection.url,
-                            name: selection.name,
-                            label: selection.name,
-                            description: selection.description,
-                          },
-                          scope: 'public',
-                        }),
-                      });
-                      window.dispatchEvent(new CustomEvent('personal:tool-refresh'));
-                    } catch {
-                      // best-effort
-                    }
-                    setRefreshKey((k) => k + 1);
-                  })();
+                  const checkRes = await fetch(
+                    `/api/workspace/tool/cloud/check?label=${encodeURIComponent(selection.name)}`,
+                    { cache: 'no-store', headers },
+                  );
+                  if (checkRes.ok && ((await checkRes.json()) as { exists?: boolean }).exists) {
+                    throw new Error(t('personalScope.mcpDuplicateLabel'));
+                  }
+                  const response = await fetch('/api/workspace/tool/cloud', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', ...headers },
+                    body: JSON.stringify({
+                      metadata: {
+                        url: selection.url,
+                        name: selection.name,
+                        label: selection.name,
+                        description: selection.description,
+                      },
+                      scope: 'public',
+                    }),
+                  });
+                  if (!response.ok) throw await publishResponseError(response, 'Tool publish failed');
+                  window.dispatchEvent(new CustomEvent('personal:tool-refresh'));
                   } else if ('config' in selection) {
-                    void (async () => {
-                      try {
-                        const headers: Record<string, string> = {};
-                        if (workspaceId) headers['x-od-workspace-id'] = workspaceId;
-                        if (workspaceMemberId) headers['x-od-workspace-member-id'] = workspaceMemberId;
-                        if (workspaceType) headers['x-od-workspace-type'] = workspaceType;
-                        // Check for duplicate label before publishing.
-                        try {
-                          const checkRes = await fetch(
-                            `/api/workspace/mcp/cloud/check?label=${encodeURIComponent(selection.label)}`,
-                            { cache: 'no-store', headers },
-                          );
-                          if (checkRes.ok) {
-                            const checkBody = await checkRes.json();
-                            if (checkBody.exists) {
-                              alert(t('personalScope.mcpDuplicateLabel'));
-                              return;
-                            }
-                          }
-                        } catch {
-                          // If the check fails, proceed and let the server reject.
-                        }
-                        let parsedConfig: Record<string, unknown> = {};
-                        try {
-                          parsedConfig = JSON.parse(selection.config) as Record<string, unknown>;
-                       } catch {
-                         return;
-                       }
-                       const rawType = parsedConfig.type as string | undefined;
-                       const transport = rawType === 'sse' || rawType === 'http' ? rawType : 'stdio';
-                        const template: Record<string, unknown> = {
-                          label: selection.label,
-                          description: selection.displayName,
-                          ...(selection.logoKey ? { logoKey: selection.logoKey } : {}),
-                          transport,
-                          category: 'utilities',
-                        };
-                       if (transport === 'stdio') {
-                         template.command = (parsedConfig.command as string) ?? '';
-                         const argArr = Array.isArray(parsedConfig.args) ? parsedConfig.args as string[] : [];
-                         if (argArr.length > 0) template.args = argArr;
-                       } else {
-                         template.url = (parsedConfig.url as string) ?? '';
-                       }
-                       await fetch('/api/workspace/mcp/cloud', {
-                         method: 'POST',
-                         headers: { 'Content-Type': 'application/json', ...headers },
-                         body: JSON.stringify({ template, scope: 'public' }),
-                       });
-                     window.dispatchEvent(new CustomEvent('personal:mcp-refresh'));
-                    } catch {
-                      // best-effort
+                    const checkRes = await fetch(
+                      `/api/workspace/mcp/cloud/check?label=${encodeURIComponent(selection.label)}`,
+                      { cache: 'no-store', headers },
+                    );
+                    if (checkRes.ok && ((await checkRes.json()) as { exists?: boolean }).exists) {
+                      throw new Error(t('personalScope.mcpDuplicateLabel'));
                     }
-                    setRefreshKey((k) => k + 1);
-                  })();
+                    const parsedConfig = JSON.parse(selection.config) as Record<string, unknown>;
+                    const rawType = parsedConfig.type as string | undefined;
+                    const transport = rawType === 'sse' || rawType === 'http' ? rawType : 'stdio';
+                    const template: Record<string, unknown> = {
+                      label: selection.label,
+                      description: selection.description,
+                      ...(selection.logoKey ? { logoKey: selection.logoKey } : {}),
+                      transport,
+                      category: 'utilities',
+                    };
+                    if (transport === 'stdio') {
+                      template.command = (parsedConfig.command as string) ?? '';
+                      const argArr = Array.isArray(parsedConfig.args) ? parsedConfig.args as string[] : [];
+                      if (argArr.length > 0) template.args = argArr;
+                    } else {
+                      template.url = (parsedConfig.url as string) ?? '';
+                    }
+                    const response = await fetch('/api/workspace/mcp/cloud', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', ...headers },
+                      body: JSON.stringify({ template, scope: 'public' }),
+                    });
+                    if (!response.ok) throw await publishResponseError(response, 'MCP publish failed');
+                    window.dispatchEvent(new CustomEvent('personal:mcp-refresh'));
                 } else if ('body' in selection) {
+                   if (selection.upload) {
+                     const result = await uploadSkillToCloud(
+                       selection.upload,
+                       selection.workspaceContext,
+                       'public',
+                       selection.category,
+                       selection.logoKey,
+                     );
+                     if ('error' in result) {
+                       throw new Error(result.error.message || 'Skill publish failed');
+                     }
+                   }
                   window.dispatchEvent(new CustomEvent('personal:skill-refresh'));
-                  setRefreshKey((k) => k + 1);
                 } else {
-                  console.info('[publish] project selection:', selection);
-                  setRefreshKey((k) => k + 1);
+                  const response = await fetch(
+                    `/api/projects/${encodeURIComponent(selection.projectId)}/publish-community`,
+                    {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json', ...headers },
+                      body: JSON.stringify({
+                        title: selection.name,
+                        description: selection.description,
+                        ...(selection.entryFile ? { entryFile: selection.entryFile } : {}),
+                      }),
+                    },
+                  );
+                  if (!response.ok) throw await publishResponseError(response, 'Project publish failed');
                 }
+                setRefreshKey((key) => key + 1);
              }}
            />
           ) : null}
@@ -1101,6 +1152,9 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
           onRefresh={() => setRefreshKey((k) => k + 1)}
           username={myUsername}
           workspaceMemberId={selfSharedSpaceMemberId ?? workspaceMemberId}
+          statsWorkspaceId={workspaceId}
+          statsWorkspaceMemberId={workspaceMemberId}
+          statsWorkspaceType={workspaceType}
           searchQuery={!isMyPublishes ? communitySearchQuery : ''}
         />
       ) : activeTab === 'skill' ? (

@@ -22,7 +22,6 @@ function toTeamProject(record: HdwTeamProjectRecord): TeamProject | null {
     ownerMemberId: record.ownerMemberId,
     sharedAt: record.createdAt,
   };
-  // folder_id is now on team_projects itself (replaces folder_projects).
   // The HDW backend may return it as either camelCase or snake_case.
   const folderId = record.folderId ?? record.folder_id ?? null;
   project.folderId = folderId;

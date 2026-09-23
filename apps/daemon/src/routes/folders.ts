@@ -15,6 +15,11 @@ import {
   normalizeProject,
   type WorkspaceFolderInput,
 } from '../db.js';
+import {
+  createHdwFolders,
+  fetchHdwFolderDetail,
+  fetchHdwFolderShareRecipients,
+} from '../http/hdw.js';
 
 export interface RegisterFolderRoutesDeps {
   db: any;
@@ -22,6 +27,7 @@ export interface RegisterFolderRoutesDeps {
     requireLocalDaemonRequest: RequestHandler;
     sendApiError: (...args: any[]) => any;
   };
+  dataDir?: string;
 }
 
 interface FolderRow {
@@ -196,7 +202,48 @@ try {
        ownerMemberId,
      };
      const folderId = createWorkspaceFolder(db, input);
-      res.json({ code: 0, data: { folder_id: folderId } });
+
+      // If this is a subfolder (folder_pid is set), check whether any
+      // ancestor folder exists on the HDW cloud and has share recipients.
+      // With the folder_shares approach, only the topmost shared folder
+      // has a record — descendants' records are cleaned up when a parent
+      // is shared. So we walk up the ancestor chain to find the nearest
+      // shared ancestor, then push the new subfolder to the cloud so it
+      // appears in the recipients' shared views. No folder_shares record
+      // is created for the new subfolder — it's implicitly shared through
+      // its ancestor, and the list() endpoint shows all subfolders of a
+      // shared parent without requiring individual folder_shares records.
+      if (folderPid && deps.dataDir) {
+        try {
+          // Walk up the ancestor chain to find the nearest shared ancestor.
+          let currentId: string | null = folderPid;
+          let recipients: string[] = [];
+          for (let i = 0; i < 20 && currentId; i++) {
+            const detail = await fetchHdwFolderDetail(deps.dataDir, currentId);
+            if (!detail) break;
+            const recs = await fetchHdwFolderShareRecipients(deps.dataDir, currentId);
+            if (recs.length > 0) {
+              recipients = recs;
+              break;
+            }
+            currentId = detail.folder_pid ?? null;
+          }
+          if (recipients.length > 0) {
+            await createHdwFolders(deps.dataDir, {
+              workspaceId,
+              folders: [{
+                folder_id: folderId,
+                folder_pid: folderPid,
+                folder_name: folderName,
+              }],
+            });
+          }
+        } catch {
+          // Best-effort: cloud sync of new subfolder must not block local creation.
+        }
+      }
+
+     res.json({ code: 0, data: { folder_id: folderId } });
     } catch (err) {
       sendApiError(res, 500, 'INTERNAL_ERROR', err instanceof Error ? err.message : String(err));
     }

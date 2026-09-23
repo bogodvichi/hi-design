@@ -1,368 +1,213 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>预览</title>
   <style>
-    * {
-      margin: 0;
-      padding: 0;
-      box-sizing: border-box;
-    }
-
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      width: 100vw;
-      height: 100vh;
-      overflow: hidden;
+      width: 100vw; height: 100vh; overflow: hidden;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       display: flex;
     }
-
-    /*
-     * 侧边栏：默认收起（width: 0），展开时占据左侧空间（非 fixed），
-     * 右侧主内容区通过 flex 弹性压缩。
-     */
     .sidebar {
-      width: 0;
-      height: 100vh;
-      background: #000000;
-      border-right: 1px solid transparent;
-      overflow: hidden;
-      flex-shrink: 0;
-      display: flex;
-      flex-direction: column;
+      width: 0; height: 100vh; background: #000;
+      border-right: 1px solid transparent; overflow: hidden;
+      flex-shrink: 0; display: flex; flex-direction: column;
       transition: width 0.3s ease, border-color 0.3s ease;
     }
-
-    .sidebar.expanded {
-      width: 260px;
-      border-right-color: rgba(255, 255, 255, 0.08);
-    }
-
-    /* 防止宽度过渡时内部内容被挤压变形 */
-    .sidebar > * {
-      min-width: 260px;
-    }
-
+    .sidebar.expanded { width: 260px; border-right-color: rgba(255,255,255,0.08); }
+    .sidebar > * { min-width: 260px; }
     .sidebar-header {
-      padding: 16px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      padding: 16px; border-bottom: 1px solid rgba(255,255,255,0.08);
+      flex-shrink: 0; display: flex; align-items: center; justify-content: space-between;
     }
-
-    .sidebar-header .header-text h3 {
-      font-size: 16px;
-      font-weight: 600;
-      color: #e8e8e8;
-      margin: 0;
-    }
-
-    .sidebar-header .header-text p {
-      font-size: 12px;
-      color: #888;
-      margin: 4px 0 0;
-    }
-
-    /* 统一按钮样式 */
+    .sidebar-header h3 { font-size: 16px; font-weight: 600; color: #e8e8e8; }
     .icon-btn {
-      width: 32px;
-      height: 32px;
-      background: rgba(255, 255, 255, 0.06);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 6px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #aaa;
-      transition: all 0.2s ease;
-      flex-shrink: 0;
-      padding: 0;
+      width: 32px; height: 32px; background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 6px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      color: #aaa; transition: all 0.2s ease; flex-shrink: 0; padding: 0;
     }
-
-    .icon-btn:hover {
-      background: rgba(255, 255, 255, 0.12);
-      color: #fff;
-      border-color: rgba(255, 255, 255, 0.2);
-      box-shadow: 0 0 8px rgba(100, 180, 255, 0.3);
-    }
-
-    .icon-btn svg {
-      width: 16px;
-      height: 16px;
-    }
-
-    .sidebar-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 8px;
-      list-style: none;
-    }
-
-    .sidebar-list::-webkit-scrollbar {
-      width: 4px;
-    }
-
-    .sidebar-list::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.15);
-      border-radius: 2px;
-    }
-
+    .icon-btn:hover { background: rgba(255,255,255,0.12); color: #fff; border-color: rgba(255,255,255,0.2); }
+    .icon-btn svg { width: 16px; height: 16px; }
+    .sidebar-list { flex: 1; overflow-y: auto; padding: 8px; list-style: none; }
+    .sidebar-list::-webkit-scrollbar { width: 4px; }
+    .sidebar-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
     .sidebar-item {
-      display: flex;
-      align-items: center;
-      padding: 10px 12px;
-      margin-bottom: 4px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      font-size: 14px;
-      color: #c0c0c0;
-      user-select: none;
+      display: flex; align-items: center; padding: 10px 12px; margin-bottom: 4px;
+      border-radius: 6px; cursor: pointer; transition: all 0.2s ease;
+      font-size: 14px; color: #c0c0c0; user-select: none;
     }
-
-    .sidebar-item:hover {
-      background: rgba(255, 255, 255, 0.06);
-      color: #fff;
+    .sidebar-item:hover { background: rgba(255,255,255,0.06); color: #fff; }
+    .sidebar-item.active { background: rgba(255,255,255,0.12); color: #fff; font-weight: 500; }
+    .sidebar-item .file-icon { width: 16px; height: 16px; margin-right: 8px; flex-shrink: 0; opacity: 0.7; }
+    .sidebar-item.active .file-icon { opacity: 1; }
+    .sidebar-item .file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sidebar-item .comment-count-badge {
+      font-size: 11px; padding: 1px 6px; background: #ef4444; color: #fff;
+      border-radius: 10px; flex-shrink: 0; margin-left: 4px; min-width: 18px; text-align: center; line-height: 1.4;
     }
-
-    .sidebar-item.active {
-      background: rgba(255, 255, 255, 0.12);
-      color: #fff;
-      font-weight: 500;
-      box-shadow: inset 0 0 8px rgba(255, 255, 255, 0.06);
-    }
-
-    .sidebar-item .file-icon {
-      width: 16px;
-      height: 16px;
-      margin-right: 8px;
-      flex-shrink: 0;
-      opacity: 0.7;
-    }
-
-    .sidebar-item.active .file-icon {
-      opacity: 1;
-    }
-
-    .sidebar-item .file-name {
-      flex: 1;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .sidebar-item .home-badge {
-      font-size: 11px;
-      padding: 2px 6px;
-      background: #52c41a;
-      color: #fff;
-      border-radius: 10px;
-      flex-shrink: 0;
-      margin-left: 4px;
-    }
-
-    /* 主内容区域 */
-    .main-content {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-      overflow: hidden;
-      background: #ffffff;
-    }
-
-    /* 悬浮展开按钮（菜单收起时显示） */
+    .main-content { flex: 1; display: flex; flex-direction: column; position: relative; overflow: hidden; background: #fff; }
     .fab-btn {
-      position: absolute;
-      bottom: 16px;
-      left: 16px;
-      z-index: 1001;
-      width: 40px;
-      height: 40px;
-      background: #000000;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
-      transition: all 0.3s ease;
-      opacity: 1;
-      visibility: visible;
+      position: absolute; bottom: 16px; left: 16px; z-index: 1001;
+      width: 40px; height: 40px; background: #000;
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.4); transition: all 0.3s ease;
     }
-
-    .fab-btn:hover {
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), 0 0 8px rgba(88, 166, 255, 0.2);
-      transform: scale(1.05);
-      border-color: rgba(255, 255, 255, 0.2);
+    .fab-btn:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.5); transform: scale(1.05); }
+    .fab-btn.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .fab-btn .icon-bar { display: block; width: 20px; height: 2px; background: #c0c0c0; border-radius: 1px; position: relative; }
+    .fab-btn .icon-bar::before, .fab-btn .icon-bar::after {
+      content: ''; position: absolute; left: 0; width: 20px; height: 2px; background: #c0c0c0; border-radius: 1px;
     }
-
-    .fab-btn.hidden {
-      opacity: 0;
-      visibility: hidden;
-      pointer-events: none;
-    }
-
-    .fab-btn .icon-bar {
-      display: block;
-      width: 20px;
-      height: 2px;
-      background: #c0c0c0;
-      border-radius: 1px;
-      position: relative;
-      transition: all 0.3s ease;
-    }
-
-    .fab-btn .icon-bar::before,
-    .fab-btn .icon-bar::after {
-      content: '';
-      position: absolute;
-      left: 0;
-      width: 20px;
-      height: 2px;
-      background: #c0c0c0;
-      border-radius: 1px;
-      transition: all 0.3s ease;
-    }
-
-    .fab-btn .icon-bar::before {
-      top: -6px;
-    }
-
-    .fab-btn .icon-bar::after {
-      top: 6px;
-    }
-
-    /* iframe 容器 */
-    .iframe-container {
-      width: 100%;
-      height: 100%;
-    }
-
-    .iframe-container iframe {
-      width: 100%;
-      height: 100%;
-      border: none;
-    }
-
-    /* 空状态 */
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100%;
-      color: #555;
-    }
-
-    .empty-state svg {
-      width: 64px;
-      height: 64px;
-      margin-bottom: 16px;
-      opacity: 0.3;
-    }
-
-    .empty-state p {
-      font-size: 14px;
-    }
-
-    /* 加载遮罩 */
+    .fab-btn .icon-bar::before { top: -6px; }
+    .fab-btn .icon-bar::after { top: 6px; }
+    .iframe-container { width: 100%; height: 100%; }
+    .iframe-container iframe { width: 100%; height: 100%; border: none; }
+    .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #555; }
+    .empty-state svg { width: 64px; height: 64px; margin-bottom: 16px; opacity: 0.3; }
+    .empty-state p { font-size: 14px; }
     .loading-overlay {
-      position: absolute;
-      inset: 0;
-      z-index: 1000;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: #ffffff;
-      opacity: 0;
-      visibility: hidden;
-      transition: opacity 0.2s ease;
+      position: absolute; inset: 0; z-index: 1000;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: #fff; opacity: 0; visibility: hidden; transition: opacity 0.2s ease;
     }
-
-    .loading-overlay.visible {
-      opacity: 1;
-      visibility: visible;
-    }
-
+    .loading-overlay.visible { opacity: 1; visibility: visible; }
     .loading-spinner {
-      width: 32px;
-      height: 32px;
-      border: 3px solid rgba(0, 0, 0, 0.1);
-      border-top-color: rgba(0, 0, 0, 0.5);
-      border-radius: 50%;
-      animation: loading-spin 0.7s linear infinite;
+      width: 32px; height: 32px; border: 3px solid rgba(0,0,0,0.1);
+      border-top-color: rgba(0,0,0,0.5); border-radius: 50%; animation: loading-spin 0.7s linear infinite;
     }
-
-    .loading-overlay p {
-      margin-top: 14px;
-      font-size: 13px;
-      color: #999;
+    .loading-overlay p { margin-top: 14px; font-size: 13px; color: #999; }
+    @keyframes loading-spin { to { transform: rotate(360deg); } }
+    .comment-fab {
+      position: absolute; top: 16px; right: 16px; z-index: 1001;
+      height: 36px; padding: 0 12px 0 10px; background: #000;
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 18px;
+      cursor: pointer; display: flex; align-items: center; gap: 6px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.4); transition: all 0.2s ease;
+      color: #c0c0c0; font-size: 13px; font-family: inherit;
     }
-
-    @keyframes loading-spin {
-      to {
-        transform: rotate(360deg);
-      }
+    .comment-fab:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.5); color: #fff; border-color: rgba(255,255,255,0.2); }
+    .comment-fab svg { width: 16px; height: 16px; }
+    .comment-fab-badge {
+      min-width: 18px; height: 18px; padding: 0 5px; background: #ef4444; color: #fff;
+      font-size: 11px; font-weight: 600; border-radius: 9px;
+      display: flex; align-items: center; justify-content: center; line-height: 1;
     }
- </style>
+    .comment-fab-badge:empty { display: none; }
+    .comment-popup {
+      position: absolute; top: 62px; right: 16px; width: 360px; max-height: 70%; z-index: 1002;
+      background: #fff; border: 1px solid #e5e5e5; border-radius: 10px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12); display: flex; flex-direction: column;
+      opacity: 0; visibility: hidden; transform: translateY(-8px);
+      transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+    }
+    .comment-popup.visible { opacity: 1; visibility: visible; transform: translateY(0); }
+    .comment-popup-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px; border-bottom: 1px solid #eee; flex-shrink: 0;
+    }
+    .comment-popup-header h3 { font-size: 15px; font-weight: 600; color: #1a1a1a; }
+    .comment-popup-header .icon-btn { background: #f5f5f5; border-color: #e5e5e5; color: #666; width: 28px; height: 28px; border-radius: 6px; }
+    .comment-popup-header .icon-btn:hover { background: #e8e8e8; color: #333; }
+    .comment-popup-list { flex: 1; overflow-y: auto; padding: 8px; }
+    .comment-popup-list::-webkit-scrollbar { width: 4px; }
+    .comment-popup-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.15); border-radius: 2px; }
+    .comment-empty {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 40px 20px; color: #999; font-size: 14px; text-align: center;
+    }
+    .comment-empty svg { width: 40px; height: 40px; margin-bottom: 12px; opacity: 0.3; }
+    .comment-card {
+      padding: 12px; margin-bottom: 8px; background: #fff; border: 1px solid #e5e5e5;
+      border-radius: 8px; transition: all 0.2s ease; cursor: pointer;
+    }
+    .comment-card:hover { border-color: #c0c0c0; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+    .comment-card.highlight { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,0.2); }
+    .comment-card.resolved { opacity: 0.6; }
+    .comment-card-header { display: flex; align-items: center; margin-bottom: 6px; }
+    .comment-pin-num {
+      width: 22px; height: 22px; border-radius: 50%; background: #2563eb; color: #fff;
+      font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; margin-right: 8px;
+    }
+    .comment-card.resolved .comment-pin-num { background: #10b981; }
+    .comment-card-author { flex: 1; font-size: 13px; font-weight: 500; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .comment-card-time { font-size: 12px; color: #999; flex-shrink: 0; }
+    .comment-card-text { font-size: 14px; color: #444; line-height: 1.5; word-break: break-word; }
+    .comment-card-status { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-top: 6px; background: #d1fae5; color: #059669; }
+    .comment-card-replies-toggle {
+      display: flex; align-items: center; gap: 4px; margin-top: 8px;
+      font-size: 12px; color: #2563eb; cursor: pointer; user-select: none;
+      transition: color 0.2s ease;
+    }
+    .comment-card-replies-toggle:hover { color: #1d4ed8; }
+    .comment-card-replies-toggle .toggle-icon {
+      display: inline-flex; transition: transform 0.2s ease;
+    }
+    .comment-card-replies-toggle.expanded .toggle-icon { transform: rotate(90deg); }
+    .comment-reply {
+      padding: 8px 10px; margin-top: 6px; margin-left: 28px;
+      background: #f8f9fa; border-left: 2px solid #d0d0d0; border-radius: 4px;
+      font-size: 13px; color: #555; line-height: 1.5;
+    }
+    .comment-reply .reply-header {
+      display: flex; align-items: center; gap: 6px; margin-bottom: 4px;
+    }
+    .comment-reply .reply-author { font-weight: 500; color: #333; font-size: 12px; }
+    .comment-reply .reply-time { font-size: 11px; color: #999; }
+    .comment-reply .reply-text { word-break: break-word; }
+    .comment-replies-container { display: none; }
+    .comment-replies-container.visible { display: block; }
+  </style>
 </head>
 <body>
-  <!-- 侧边栏菜单（默认收起） -->
   <div class="sidebar" id="sidebar">
     <div class="sidebar-header">
-      <div class="header-text">
-        <h3>页面列表</h3>
-      </div>
+      <h3>页面列表</h3>
       <button class="icon-btn" id="collapseBtn" title="收起菜单">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="15 18 9 12 15 6"/>
-        </svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
       </button>
     </div>
     <ul class="sidebar-list" id="sidebarList"></ul>
   </div>
-
-  <!-- 主内容区域 -->
   <div class="main-content" id="mainContent">
-    <!-- 悬浮展开按钮（菜单收起时显示） -->
-    <div class="fab-btn" id="fabBtn" title="展开菜单">
-      <span class="icon-bar"></span>
-    </div>
-
-    <!-- iframe 容器 -->
+    <div class="fab-btn" id="fabBtn" title="展开菜单"><span class="icon-bar"></span></div>
     <div class="iframe-container" id="iframeContainer">
-      <!-- 加载遮罩 -->
-      <div class="loading-overlay" id="loadingOverlay">
-        <div class="loading-spinner"></div>
-        <p>加载中…</p>
-      </div>
-
+      <div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div><p>加载中…</p></div>
       <div class="empty-state" id="emptyState">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-          <polyline points="14 2 14 8 20 8"/>
-          <line x1="12" y1="18" x2="12" y2="18"/>
-          <line x1="12" y1="14" x2="12" y2="14.01"/>
-        </svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
         <p>暂无页面数据</p>
       </div>
     </div>
-  </div>
-
-  <script>
-    // 全局变量：页面文件列表，由后端替换注入
-    // eslint-disable-next-line no-unused-vars
+    <button class="comment-fab" id="commentFab" title="评论">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span class="comment-fab-badge" id="commentBadge"></span>
+    </button>
+    <div class="comment-popup" id="commentPopup">
+      <div class="comment-popup-header">
+        <h3>页面评论</h3>
+        <button class="icon-btn" id="closeCommentPopup" title="关闭">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="comment-popup-list" id="commentList"></div>
+    </div>
+  </div>  <script>
     var HTML_FILES = /*HTML_FILES_DATA*/[];
-
+    var PROJECT_ID = /*PROJECT_ID*/'';
+    var TEAM_ID = /*TEAM_ID*/'';
+    var COMMENTS_DATA = /*COMMENTS_DATA*/[];
     (function() {
+      var allComments = [];
+      var currentFilePath = '';
+      var currentIframe = null;
+      var activeItem = null;
+      var loadingTimer = null;
+
       var sidebar = document.getElementById('sidebar');
       var fabBtn = document.getElementById('fabBtn');
       var collapseBtn = document.getElementById('collapseBtn');
@@ -370,147 +215,341 @@
       var iframeContainer = document.getElementById('iframeContainer');
       var emptyState = document.getElementById('emptyState');
       var loadingOverlay = document.getElementById('loadingOverlay');
-      var loadingTimer = null;
+      var commentFab = document.getElementById('commentFab');
+      var commentBadge = document.getElementById('commentBadge');
+      var commentPopup = document.getElementById('commentPopup');
+      var closeCommentPopup = document.getElementById('closeCommentPopup');
+      var commentList = document.getElementById('commentList');
 
-      var currentIframe = null;
-      var activeItem = null;
+      function normalizePath(p) {
+        if (!p) return '';
+        return p.replace(/^\.\//, '').replace(/^\//, '').replace(/\/$/, '');
+      }
 
-      // 展开菜单：侧边栏进入文档流占据左侧空间，右侧弹性压缩
+      function formatRelativeTime(ts) {
+        if (!ts || !Number.isFinite(ts)) return '';
+        var diff = Date.now() - ts;
+        if (diff < 0) diff = 0;
+        var minute = 60000, hour = 3600000, day = 86400000;
+        if (diff < minute) return '刚刚';
+        if (diff < hour) return Math.floor(diff / minute) + '分钟前';
+        if (diff < day) return Math.floor(diff / hour) + '小时前';
+        if (diff < 7 * day) return Math.floor(diff / day) + '天前';
+        var d = new Date(ts);
+        return (d.getMonth() + 1) + '月' + d.getDate() + '日';
+      }
+
       function expandMenu() {
         sidebar.classList.add('expanded');
         fabBtn.classList.add('hidden');
       }
 
-      // 收起菜单：侧边栏宽度归零，显示悬浮按钮
       function collapseMenu() {
         sidebar.classList.remove('expanded');
         fabBtn.classList.remove('hidden');
       }
 
-      // 加载页面到 iframe
-      function loadPage(filePath, item) {
-        // 显示加载遮罩
-        showLoading();
-
-        // 移除旧的 iframe
-        if (currentIframe) {
-          currentIframe.remove();
-          currentIframe = null;
-        }
-
-        // 隐藏空状态
-        if (emptyState) {
-          emptyState.style.display = 'none';
-        }
-
-        // 创建新 iframe
-        var iframe = document.createElement('iframe');
-
-        // load 事件需在设置内容前绑定，确保 srcdoc 渲染后能触发
-        iframe.addEventListener('load', function() {
-          hideLoading();
-
-          try {
-            var doc = iframe.contentDocument || (iframe.contentWindow && iframe.contentWindow.document);
-            if (doc && doc.title) {
-              document.title = doc.title;
-            }
-          } catch (e) {
-            // 跨域 iframe 无法读取，忽略
-          }
-        });
-
-        // filePath 实际是完整的 HTML 内容字符串，用 srcdoc 嵌入而非 src
-        iframe.srcdoc = filePath;
-        iframeContainer.appendChild(iframe);
-        currentIframe = iframe;
-
-        // 更新选中状态
-        if (activeItem) {
-          activeItem.classList.remove('active');
-        }
-        if (item) {
-          item.classList.add('active');
-          activeItem = item;
-        }
-      }
-
-      // 显示加载遮罩
-      function showLoading() {
-        if (loadingTimer) {
-          clearTimeout(loadingTimer);
-        }
-        loadingOverlay.classList.add('visible');
-        // 兜底：srcdoc 通常很快触发 load，设一个上限防止异常卡死
-        loadingTimer = setTimeout(function() {
-          hideLoading();
-        }, 8000);
-      }
-
-      // 隐藏加载遮罩
-      function hideLoading() {
-        if (loadingTimer) {
-          clearTimeout(loadingTimer);
-          loadingTimer = null;
-        }
-        loadingOverlay.classList.remove('visible');
-      }
-
-      // 渲染菜单列表
       function renderMenu() {
         if (!HTML_FILES || HTML_FILES.length === 0) {
-          sidebarList.innerHTML = '<li style="padding: 20px; text-align: center; color: #888; font-size: 13px;">暂无页面</li>';
+          sidebarList.innerHTML = '<li style="padding:20px;text-align:center;color:#888;font-size:13px;">暂无页面</li>';
           return;
         }
-
         sidebarList.innerHTML = '';
         var homeFile = null;
         var firstItem = null;
-
         HTML_FILES.forEach(function(file, index) {
           var li = document.createElement('li');
           li.className = 'sidebar-item';
-          li.setAttribute('data-path', file.path);
+          li.setAttribute('data-filepath', file.filePath || '');
           li.setAttribute('title', file.name);
-
-          // HTML 文件图标 (SVG)
-          var iconSvg = '<svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
-
-          var homeBadge = '';//file.home ? '<span class="home-badge">首页</span>' : '';
-          li.innerHTML = iconSvg + '<span class="file-name">' + file.name + '</span>' + homeBadge;
-
-          // 点击事件 - 不关闭菜单，保持当前状态
-          li.addEventListener('click', function() {
-            loadPage(file.path, li);
-          });
-
+          li.innerHTML = '<svg class="file-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span class="file-name">' + file.name + '</span>';
+          li.addEventListener('click', function() { loadPage(file, li); });
           sidebarList.appendChild(li);
-
-          // 记录首页文件
-          if (file.home && !homeFile) {
-            homeFile = { path: file.path, item: li };
-          }
-
-          // 记录第一个菜单项
-          if (index === 0) {
-            firstItem = { path: file.path, item: li };
-          }
+          if (file.home && !homeFile) { homeFile = { file: file, item: li }; }
+          if (index === 0) { firstItem = { file: file, item: li }; }
         });
-
-        // 默认选中：优先 home 为 true 的项，否则第一项
         var defaultSelection = homeFile || firstItem;
-        if (defaultSelection) {
-          loadPage(defaultSelection.path, defaultSelection.item);
+        if (defaultSelection) { loadPage(defaultSelection.file, defaultSelection.item); }
+      }
+
+      function loadPage(file, item) {
+        showLoading();
+        if (currentIframe) { currentIframe.remove(); currentIframe = null; }
+        if (emptyState) { emptyState.style.display = 'none'; }
+        var iframe = document.createElement('iframe');
+        iframe.addEventListener('load', function() {
+          hideLoading();
+          try {
+            var doc = iframe.contentDocument;
+            if (doc && doc.title) { document.title = doc.title; }
+          } catch (e) {}
+          currentFilePath = file.filePath || '';
+          renderPageComments(iframe);
+        });
+        iframe.srcdoc = file.content || file.path || '';
+        iframeContainer.appendChild(iframe);
+        currentIframe = iframe;
+        if (activeItem) { activeItem.classList.remove('active'); }
+        if (item) { item.classList.add('active'); activeItem = item; }
+      }
+
+      function showLoading() {
+        if (loadingTimer) clearTimeout(loadingTimer);
+        loadingOverlay.classList.add('visible');
+        loadingTimer = setTimeout(hideLoading, 8000);
+      }
+
+      function hideLoading() {
+        if (loadingTimer) { clearTimeout(loadingTimer); loadingTimer = null; }
+        loadingOverlay.classList.remove('visible');
+      }
+
+      function loadComments() {
+        // Use embedded comments data injected at share-link generation time.
+        // Falls back to empty if no comments were collected.
+        allComments = (COMMENTS_DATA || []).filter(function(c) { return !c.deleted; });
+        updateSidebarBadges();
+        if (currentIframe) { renderPageComments(currentIframe); }
+      }
+
+      function getCommentsForPage(filePath) {
+        var norm = normalizePath(filePath);
+        if (!norm) return [];
+        return allComments.filter(function(c) { return normalizePath(c.filePath) === norm; });
+      }
+
+      function renderPageComments(iframe) {
+        var comments = currentFilePath ? getCommentsForPage(currentFilePath) : [];
+        var pinIndex = 0;
+        comments.forEach(function(c) {
+          if (c.position && (c.status === 'open' || c.status === 'resolved')) { pinIndex++; c._pinNumber = pinIndex; }
+          else { c._pinNumber = null; }
+        });
+        renderCommentPins(iframe, comments);
+        renderCommentList(comments);
+        updateCommentFabBadge(comments.length);
+      }
+
+      function renderCommentPins(iframe, comments) {
+        if (!iframe) return;
+        try {
+          var doc = iframe.contentDocument;
+          if (!doc || !doc.body) return;
+          var old = doc.getElementById('__comment_pins__');
+          if (old) old.remove();
+          var oldStyle = doc.getElementById('__comment_pin_css__');
+          if (oldStyle) oldStyle.remove();
+          var pinComments = comments.filter(function(c) { return c._pinNumber != null; });
+          if (pinComments.length === 0) return;
+          var style = doc.createElement('style');
+          style.id = '__comment_pin_css__';
+          style.textContent =
+            '#__comment_pins__{position:absolute;top:0;left:0;width:0;height:0;pointer-events:none;z-index:999999;}' +
+            '.__comment_pin__{position:absolute;width:28px;height:28px;border-radius:50%;' +
+            'background:#2563eb;color:#fff;font-size:13px;font-family:sans-serif;font-weight:600;' +
+            'display:flex;align-items:center;justify-content:center;cursor:pointer;pointer-events:auto;' +
+            'box-shadow:0 2px 8px rgba(0,0,0,0.3),0 0 0 2px rgba(255,255,255,0.5);' +
+            'transform:translate(-50%,-50%);transition:transform .2s,box-shadow .2s;}' +
+            '.__comment_pin__:hover{transform:translate(-50%,-50%) scale(1.2);' +
+            'box-shadow:0 4px 12px rgba(0,0,0,0.4),0 0 0 3px rgba(255,255,255,0.7);}' +
+            '.__comment_pin_resolved__{background:#10b981;}' +
+            '.__comment_pin_highlight__{animation:__comment_pulse__ 1s ease 2;}' +
+            '@keyframes __comment_pulse__{0%,100%{transform:translate(-50%,-50%) scale(1);}' +
+            '50%{transform:translate(-50%,-50%) scale(1.4);}}';
+          if (doc.head) doc.head.appendChild(style);
+          var container = doc.createElement('div');
+          container.id = '__comment_pins__';
+          pinComments.forEach(function(comment) {
+            var pin = doc.createElement('div');
+            pin.className = '__comment_pin__' + (comment.status === 'resolved' ? ' __comment_pin_resolved__' : '');
+            pin.setAttribute('data-comment-id', comment.id);
+            pin.textContent = String(comment._pinNumber);
+            pin.style.left = ((comment.position && comment.position.x) || 0) + 'px';
+            pin.style.top = ((comment.position && comment.position.y) || 0) + 'px';
+            pin.title = comment.note || comment.text || '';
+            pin.addEventListener('click', function() { highlightCommentInPanel(comment.id); });
+            container.appendChild(pin);
+          });
+          doc.body.appendChild(container);
+        } catch (e) {}
+      }
+
+      function getRepliesForComment(commentId, allComments) {
+        return allComments.filter(function(c) {
+          return c.parentId === commentId || c.rootCommentId === commentId && c.id !== commentId;
+        });
+      }
+
+      function renderCommentList(comments) {
+        if (!commentList) return;
+        if (comments.length === 0) {
+          commentList.innerHTML = '<div class="comment-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><p>当前页面暂无评论</p></div>';
+          return;
+        }
+        commentList.innerHTML = '';
+        // Only show top-level comments (no parentId) in the list
+        var topLevel = comments.filter(function(c) { return !c.parentId; });
+        topLevel.forEach(function(comment) {
+          var card = document.createElement('div');
+          card.className = 'comment-card' + (comment.status === 'resolved' ? ' resolved' : '');
+          card.setAttribute('data-comment-id', comment.id);
+          var header = document.createElement('div');
+          header.className = 'comment-card-header';
+          if (comment._pinNumber) {
+            var pinNum = document.createElement('span');
+            pinNum.className = 'comment-pin-num';
+            pinNum.textContent = String(comment._pinNumber);
+            header.appendChild(pinNum);
+          }
+          var author = document.createElement('span');
+          author.className = 'comment-card-author';
+          author.textContent = comment.authorDisplayName || comment.displayName || '匿名用户';
+          header.appendChild(author);
+          var time = document.createElement('span');
+          time.className = 'comment-card-time';
+          time.textContent = formatRelativeTime(comment.createdAt);
+          header.appendChild(time);
+          card.appendChild(header);
+          if (comment.note) {
+            var noteEl = document.createElement('div');
+            noteEl.className = 'comment-card-text';
+            noteEl.textContent = comment.note;
+            card.appendChild(noteEl);
+          } else if (comment.text) {
+            var textEl = document.createElement('div');
+            textEl.className = 'comment-card-text';
+            textEl.textContent = comment.text;
+            card.appendChild(textEl);
+          }
+          if (comment.status === 'resolved') {
+            var status = document.createElement('span');
+            status.className = 'comment-card-status';
+            status.textContent = '已解决';
+            card.appendChild(status);
+          }
+          // Add replies toggle if there are replies
+          var replies = getRepliesForComment(comment.id, comments);
+          if (replies.length > 0) {
+            var toggle = document.createElement('div');
+            toggle.className = 'comment-card-replies-toggle';
+            toggle.innerHTML = '<span class="toggle-icon">▶</span> ' + replies.length + ' 条回复';
+            var repliesContainer = document.createElement('div');
+            repliesContainer.className = 'comment-replies-container';
+            replies.forEach(function(reply) {
+              var replyEl = document.createElement('div');
+              replyEl.className = 'comment-reply';
+              var replyHeader = document.createElement('div');
+              replyHeader.className = 'reply-header';
+              var replyAuthor = document.createElement('span');
+              replyAuthor.className = 'reply-author';
+              replyAuthor.textContent = reply.authorDisplayName || reply.displayName || '匿名用户';
+              replyHeader.appendChild(replyAuthor);
+              var replyTime = document.createElement('span');
+              replyTime.className = 'reply-time';
+              replyTime.textContent = formatRelativeTime(reply.createdAt);
+              replyHeader.appendChild(replyTime);
+              replyEl.appendChild(replyHeader);
+              if (reply.note) {
+                var replyNoteEl = document.createElement('div');
+                replyNoteEl.className = 'reply-text';
+                replyNoteEl.textContent = reply.note;
+                replyEl.appendChild(replyNoteEl);
+              } else if (reply.text) {
+                var replyTextEl = document.createElement('div');
+                replyTextEl.className = 'reply-text';
+                replyTextEl.textContent = reply.text;
+                replyEl.appendChild(replyTextEl);
+              }
+              repliesContainer.appendChild(replyEl);
+            });
+            toggle.addEventListener('click', function(e) {
+              e.stopPropagation();
+              var isExpanded = toggle.classList.contains('expanded');
+              if (isExpanded) {
+                toggle.classList.remove('expanded');
+                repliesContainer.classList.remove('visible');
+              } else {
+                toggle.classList.add('expanded');
+                repliesContainer.classList.add('visible');
+              }
+            });
+            card.appendChild(toggle);
+            card.appendChild(repliesContainer);
+          }
+          card.addEventListener('click', function() { highlightPin(comment.id); });
+          commentList.appendChild(card);
+        });
+      }
+
+      function updateCommentFabBadge(count) {
+        if (!commentBadge) return;
+        commentBadge.textContent = count > 0 ? String(count) : '';
+      }
+
+      function updateSidebarBadges() {
+        var items = sidebarList.querySelectorAll('.sidebar-item');
+        items.forEach(function(item) {
+          var fp = item.getAttribute('data-filepath');
+          var count = fp ? getCommentsForPage(fp).filter(function(c) { return c.status === 'open'; }).length : 0;
+          var badge = item.querySelector('.comment-count-badge');
+          if (count > 0) {
+            if (!badge) { badge = document.createElement('span'); badge.className = 'comment-count-badge'; item.appendChild(badge); }
+            badge.textContent = count;
+          } else if (badge) { badge.remove(); }
+        });
+      }
+
+      function highlightCommentInPanel(commentId) {
+        if (!commentPopup.classList.contains('visible')) { commentPopup.classList.add('visible'); }
+        var card = commentList.querySelector('[data-comment-id="' + commentId + '"]');
+        if (card) {
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          card.classList.add('highlight');
+          setTimeout(function() { card.classList.remove('highlight'); }, 2000);
         }
       }
 
-      // 事件绑定
+      function highlightPin(commentId) {
+        if (!currentIframe) return;
+        try {
+          var doc = currentIframe.contentDocument;
+          if (!doc) return;
+          var pin = doc.querySelector('.__comment_pin__[data-comment-id="' + commentId + '"]');
+          if (pin) {
+            pin.classList.add('__comment_pin_highlight__');
+            setTimeout(function() { pin.classList.remove('__comment_pin_highlight__'); }, 2000);
+            pin.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        } catch (e) {}
+      }
+
       fabBtn.addEventListener('click', expandMenu);
       collapseBtn.addEventListener('click', collapseMenu);
+      commentFab.addEventListener('click', function() { commentPopup.classList.toggle('visible'); });
+      closeCommentPopup.addEventListener('click', function() { commentPopup.classList.remove('visible'); });
+      document.addEventListener('click', function(e) {
+        if (!commentPopup.classList.contains('visible')) return;
+        if (commentPopup.contains(e.target) || commentFab.contains(e.target)) return;
+        commentPopup.classList.remove('visible');
+      });
+      document.addEventListener('keydown', function(e) {
+        if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+        var items = sidebarList.querySelectorAll('.sidebar-item');
+        if (items.length === 0) return;
+        var currentIndex = -1;
+        items.forEach(function(item, i) { if (item.classList.contains('active')) currentIndex = i; });
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (currentIndex > 0) items[currentIndex - 1].click();
+        } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (currentIndex >= 0 && currentIndex < items.length - 1) items[currentIndex + 1].click();
+        }
+      });
 
-      // 初始化：默认收起菜单，但仍加载默认页面到 iframe
       renderMenu();
       collapseMenu();
+      loadComments();
     })();
   </script>
 </body>
