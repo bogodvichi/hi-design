@@ -624,6 +624,71 @@ export async function pickAndImportFolder(
   return { ok: true, response: body };
 }
 
+export type PickAndImportProjectZipDeps = {
+  apiBaseUrl: string;
+  zipPath: string;
+  fetchImpl?: typeof globalThis.fetch;
+  init?: OpenDesignHostProjectImportInit;
+};
+
+export async function pickAndImportProjectZip(
+  deps: PickAndImportProjectZipDeps,
+): Promise<PickAndImportFolderResult> {
+  const fetchImpl = deps.fetchImpl ?? globalThis.fetch;
+  const importUrl = `${deps.apiBaseUrl.replace(/\/+$/, "")}/api/import/project-zip`;
+  try {
+    const data = await readFile(deps.zipPath);
+    const fileName = basename(deps.zipPath);
+    const form = new FormData();
+    form.append(
+      "file",
+      new Blob([data], { type: "application/zip" }),
+      fileName,
+    );
+    const resp = await fetchImpl(importUrl, {
+      method: "POST",
+      headers: {
+        ...(deps.init?.workspaceContext
+          ? {
+              "x-od-workspace-id": deps.init.workspaceContext.workspaceId,
+              "x-od-workspace-type": deps.init.workspaceContext.workspaceType,
+              "x-od-workspace-member-id": deps.init.workspaceContext.workspaceMemberId,
+              "x-od-workspace-role": deps.init.workspaceContext.role,
+              "x-od-workspace-lifecycle-state": deps.init.workspaceContext.lifecycleState,
+              "x-od-workspace-member-status": deps.init.workspaceContext.memberStatus,
+              "x-od-workspace-can-share-projects": String(
+                deps.init.workspaceContext.permissions.canShareProjects,
+              ),
+              "x-od-workspace-can-write-synced-files": String(
+                deps.init.workspaceContext.permissions.canWriteSyncedFiles,
+              ),
+            }
+          : {}),
+      },
+      body: form,
+    });
+    let body: unknown;
+    try {
+      body = await resp.json();
+    } catch {
+      body = null;
+    }
+    if (!resp.ok) {
+      return {
+        ok: false,
+        reason: `daemon returned HTTP ${resp.status}`,
+        ...(body == null ? {} : { details: body }),
+      };
+    }
+    return { ok: true, response: body };
+  } catch (err) {
+    return {
+      ok: false,
+      reason: `ZIP import failed: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+}
+
 /**
  * Pure helper for the `dialog:pick-and-replace-working-dir` IPC handler.
  * Mirrors `pickAndImportFolder` but targets the endpoint that re-points
@@ -2029,6 +2094,25 @@ async function showDirectoryPickerForSender(
     : dialog.showOpenDialog(pickerOptions);
 }
 
+async function showProjectImportPickerForSender(
+  sender: Electron.WebContents,
+): Promise<Electron.OpenDialogReturnValue> {
+  const parent =
+    BrowserWindow.fromWebContents(sender) ?? BrowserWindow.getFocusedWindow();
+  const pickerOptions: Electron.OpenDialogOptions = {
+    properties:
+      process.platform === "darwin"
+        ? ["openFile", "openDirectory", "createDirectory", "dontAddToRecent"]
+        : ["openDirectory", "createDirectory", "dontAddToRecent"],
+    ...(process.platform === "darwin"
+      ? { filters: [{ name: "Project ZIP", extensions: ["zip"] }] }
+      : {}),
+  };
+  return parent
+    ? dialog.showOpenDialog(parent, pickerOptions)
+    : dialog.showOpenDialog(pickerOptions);
+}
+
 /**
  * Recursively read files under `baseDir`, skipping dot-files and
  * dot-directories (e.g. `.git`, `.DS_Store`). Returns an array of
@@ -2128,28 +2212,32 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       if (!apiBaseUrl) {
         return { ok: false, reason: "daemon API URL not available" };
       }
-      const result = await showDirectoryPickerForSender(event.sender);
+      const result = await showProjectImportPickerForSender(event.sender);
       if (result.canceled || result.filePaths.length === 0) {
         return { ok: false, canceled: true };
       }
-      // PR #974 round-5 (lefarcen P3): trim ONCE on the desktop side so the
-      // HMAC and the request body bind to the exact same string the daemon
-      // realpath()s. The daemon used to verify raw `baseDir` and then trim
-      // before resolution — a `/tmp/foo ` selection could authorize an
-      // import of `/tmp/foo`. Doing the trim here keeps desktop as the
-      // source of truth for the canonical path it picked, signs that, and
-      // sends that — daemon then verifies and imports the same string.
-      const baseDir = result.filePaths[0].trim();
-      if (baseDir.length === 0) {
+      const selectedPath = result.filePaths[0].trim();
+      if (selectedPath.length === 0) {
         return { ok: false, reason: "picker returned an empty path" };
       }
-      return await pickAndImportFolder({
-        apiBaseUrl,
-        baseDir,
-        desktopAuthSecret: options.desktopAuthSecret,
-        init,
-        registerDesktopAuth: options.registerDesktopAuthWithDaemon,
-      });
+      const selectedStat = await stat(selectedPath).catch(() => null);
+      if (selectedStat?.isDirectory()) {
+        return await pickAndImportFolder({
+          apiBaseUrl,
+          baseDir: selectedPath,
+          desktopAuthSecret: options.desktopAuthSecret,
+          init,
+          registerDesktopAuth: options.registerDesktopAuthWithDaemon,
+        });
+      }
+      if (selectedStat?.isFile() && /\.zip$/i.test(selectedPath)) {
+        return await pickAndImportProjectZip({
+          apiBaseUrl,
+          zipPath: selectedPath,
+          init,
+        });
+      }
+      return { ok: false, reason: "select a project folder or .zip file" };
     },
   );
   // Atomic counterpart to dialog:pick-and-import for replacing a

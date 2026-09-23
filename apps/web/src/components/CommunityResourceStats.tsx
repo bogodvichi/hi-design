@@ -10,32 +10,34 @@ function formatMetric(value: number | null | undefined): string {
 }
 
 export function CommunityResourceStats({
-  previewCount,
-  actionCount,
-  actionIcon,
-  previewLabel,
-  actionLabel,
+  primaryCount,
+  secondaryCount,
+  primaryIcon = 'eye',
+  secondaryIcon,
+  primaryLabel,
+  secondaryLabel,
   align = 'left',
 }: {
-  previewCount?: number | null;
-  actionCount?: number | null;
-  actionIcon: IconName;
-  previewLabel: string;
-  actionLabel: string;
+  primaryCount?: number | null;
+  secondaryCount?: number | null;
+  primaryIcon?: IconName;
+  secondaryIcon: IconName;
+  primaryLabel: string;
+  secondaryLabel: string;
   align?: 'left' | 'right';
 }) {
   return (
     <div
       className={`${styles.stats}${align === 'right' ? ` ${styles.statsRight}` : ''}`}
-      aria-label={`${previewLabel} ${formatMetric(previewCount)}, ${actionLabel} ${formatMetric(actionCount)}`}
+      aria-label={`${primaryLabel} ${formatMetric(primaryCount)}, ${secondaryLabel} ${formatMetric(secondaryCount)}`}
     >
-      <span className={styles.item} title={previewLabel}>
-        <Icon name="eye" size={13} aria-hidden />
-        <span>{formatMetric(previewCount)}</span>
+      <span className={styles.item} title={primaryLabel}>
+        <Icon name={primaryIcon} size={13} aria-hidden />
+        <span>{formatMetric(primaryCount)}</span>
       </span>
-      <span className={styles.item} title={actionLabel}>
-        <Icon name={actionIcon} size={13} aria-hidden />
-        <span>{formatMetric(actionCount)}</span>
+      <span className={styles.item} title={secondaryLabel}>
+        <Icon name={secondaryIcon} size={13} aria-hidden />
+        <span>{formatMetric(secondaryCount)}</span>
       </span>
     </div>
   );

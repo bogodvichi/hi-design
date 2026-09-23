@@ -319,8 +319,8 @@
   padding: 8px 20px;
   border: none;
   border-radius: 6px;
-  background: var(--color-accent, #3b82f6);
-  color: #fff;
+  background: var(--text-strong, var(--color-text, #333));
+  color: var(--accent-contrast, #fff);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -328,7 +328,7 @@
 }
 
 .footerAction:hover:not(:disabled) {
-  background: #4d90f7;
+  background: color-mix(in srgb, var(--text-strong, var(--color-text, #333)) 88%, #fff);
 }
 
 .footerAction:disabled {

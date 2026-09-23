@@ -1049,6 +1049,38 @@ export async function importFolderProject(
   return (await resp.json()) as ImportFolderResponse;
 }
 
+export async function importProjectZip(
+  file: File,
+  workspaceContext?: WorkspaceCollabContext | null,
+): Promise<ImportFolderResponse> {
+  const form = new FormData();
+  form.append('file', file);
+  const resp = await fetch('/api/import/project-zip', {
+    method: 'POST',
+    ...(workspaceContext ? { headers: workspaceProjectHeaders(workspaceContext) } : {}),
+    body: form,
+  });
+  if (!resp.ok) {
+    let message = 'Failed to import project ZIP';
+    try {
+      const body = await resp.json() as { error?: unknown };
+      if (typeof body.error === 'string' && body.error.trim()) {
+        message = body.error;
+      } else if (
+        body.error
+        && typeof body.error === 'object'
+        && 'message' in body.error
+        && typeof body.error.message === 'string'
+        && body.error.message.trim()
+      ) {
+        message = body.error.message;
+      }
+    } catch { /* use default message */ }
+    throw new Error(message);
+  }
+  return (await resp.json()) as ImportFolderResponse;
+}
+
 export async function importClaudeDesignZip(
   file: File,
   workspaceContext?: WorkspaceCollabContext | null,

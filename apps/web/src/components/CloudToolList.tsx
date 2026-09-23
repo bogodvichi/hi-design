@@ -1,5 +1,5 @@
 import { PageEmptyState } from './PageEmptyState';
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Dialog,
@@ -14,6 +14,7 @@ import { AI_RESEARCH_RESOURCE_KEY } from './AiResearchWorkspaceFrame';
 import styles from './CloudSkillList.module.css';
 import { CommunityResourceStats } from './CommunityResourceStats';
 import { communityTextMatchesQuery } from '../utils/community-search';
+import { recordCommunityStat } from '../utils/community-stats';
 
 interface CloudToolItem {
   resourceId: string;
@@ -26,7 +27,7 @@ interface CloudToolItem {
   createdAt: string;
   updatedAt: string;
   publisherName?: string | null;
-  previewCount?: number | null;
+  peopleCount?: number | null;
   actionCount?: number | null;
 }
 
@@ -129,7 +130,22 @@ export function CloudToolList({
   const [confirmDelete, setConfirmDelete] = useState<CloudToolItem | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [openingId, setOpeningId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
   const includesOfficialCommunityTools = mode === 'square' && scope === 'public';
+
+  useEffect(() => {
+    if (!menuOpenId) return;
+    const closeOutside = (event: PointerEvent) => {
+      if (event.target instanceof Node
+        && (menuRef.current?.contains(event.target) || menuTriggerRef.current?.contains(event.target))) {
+        return;
+      }
+      setMenuOpenId(null);
+    };
+    document.addEventListener('pointerdown', closeOutside, { capture: true });
+    return () => document.removeEventListener('pointerdown', closeOutside, { capture: true });
+  }, [menuOpenId]);
 
   const loadTools = useCallback(async () => {
     if (!workspaceId) {
@@ -203,8 +219,27 @@ export function CloudToolList({
     const isHiMind = isHiMindTool(tool);
     const isAiResearch = isAiResearchTool(tool);
     const url = isAiResearch ? AI_RESEARCH_URL : tool.url;
+    const recordUse = async () => {
+      if (!(mode === 'square' && scope === 'public' && !ownerMemberId)) return;
+      const stats = await recordCommunityStat({
+        resourceType: 'tool',
+        resourceId: tool.resourceId,
+        metric: 'action',
+        workspaceId,
+        workspaceMemberId,
+        workspaceType,
+      });
+      if (stats) {
+        setTools((current) => current.map((item) => (
+          item.resourceId === tool.resourceId
+            ? { ...item, peopleCount: stats.actionUserCount, actionCount: stats.actionCount }
+            : item
+        )));
+      }
+    };
     if (!isHiMind && !isAiResearch) {
       openWorkspaceTab({ kind: 'external', url, title });
+      await recordUse();
       return;
     }
     const resourceKey = isHiMind ? 'himind' : AI_RESEARCH_RESOURCE_KEY;
@@ -239,6 +274,7 @@ export function CloudToolList({
         resourceKey,
         title,
       });
+      await recordUse();
     } catch (err: any) {
       setError(err?.message ?? String(err));
     } finally {
@@ -366,16 +402,18 @@ export function CloudToolList({
                       alt=""
                     />
                   ) : (
-                    <Icon name="link" size={32} />
+                    <img
+                      className={styles.cardCover}
+                      src="/community/default-tool-logo.svg"
+                      alt=""
+                    />
                   )}
                 </span>
                 <div className={styles.cardHeaderInfo}>
                   <strong className={styles.cardTitle}>{title}</strong>
                   {mode === 'square' ? (
                     <small className={`${styles.cardMeta} ${styles.cardAuthorLine}`}>
-                      {isHiMind || isAiResearch
-                        ? (locale.startsWith('zh') ? 'HiDesign 官方' : 'HiDesign Official')
-                        : tool.publisherName?.trim() || 'HiDesign'}
+                      {tool.publisherName?.trim() || (locale.startsWith('zh') ? 'HiDesign 官方' : 'HiDesign Official')}
                       {tool.updatedAt ? ' · ' + formatRelativeDate(tool.updatedAt, t) : ''}
                     </small>
                   ) : (
@@ -390,6 +428,7 @@ export function CloudToolList({
                     <button
                       type="button"
                       className={styles.cardMenuBtn}
+                      ref={menuOpenId === tool.resourceId ? menuTriggerRef : undefined}
                       title=""
                       onClick={(e) => {
                         e.stopPropagation();
@@ -399,9 +438,7 @@ export function CloudToolList({
                       <Icon name="more-horizontal" size={16} />
                     </button>
                     {menuOpenId === tool.resourceId ? (
-                      <>
-                        <div className={styles.cardMenuBackdrop} onClick={(e) => { e.stopPropagation(); setMenuOpenId(null); }} />
-                        <div className={styles.cardMenu}>
+                        <div className={styles.cardMenu} ref={menuRef}>
                           <button
                             type="button"
                             className={styles.cardMenuItemDanger}
@@ -412,7 +449,6 @@ export function CloudToolList({
                             {t('personalScope.cloudToolDelete' as any)}
                           </button>
                         </div>
-                      </>
                     ) : null}
                   </>
                 ) : null}
@@ -423,11 +459,12 @@ export function CloudToolList({
               <footer className={mode === 'shared' ? undefined : `community-template-card__foot ${styles.resourceCardFooter}`}>
               {mode === 'square' ? (
                 <CommunityResourceStats
-                  previewCount={tool.previewCount}
-                  actionCount={tool.actionCount}
-                  actionIcon="external-link"
-                  previewLabel={locale.startsWith('zh') ? '预览' : 'Views'}
-                  actionLabel={locale.startsWith('zh') ? '使用' : 'Uses'}
+                  primaryCount={tool.peopleCount}
+                  secondaryCount={tool.actionCount}
+                  primaryIcon="users"
+                  secondaryIcon="external-link"
+                  primaryLabel={locale.startsWith('zh') ? '使用人数' : 'Users'}
+                  secondaryLabel={locale.startsWith('zh') ? '使用次数' : 'Uses'}
                 />
               ) : null}
               <button

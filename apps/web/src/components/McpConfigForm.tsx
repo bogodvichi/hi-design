@@ -14,7 +14,7 @@ export type McpType = 'custom' | 'fetch' | 'time' | 'memory' | 'sequential-think
 
 export interface McpConfigSelection {
   label: string;
-  displayName: string;
+  description: string;
   config: string;
   logoKey?: McpLogoKey;
 }
@@ -22,7 +22,6 @@ export interface McpConfigSelection {
 interface PresetDef {
  id: McpType;
   labelKey: keyof Dict;
- displayName: string;
   config: string;
 }
 
@@ -33,35 +32,30 @@ function json(obj: Record<string, unknown>): string {
 const PLACEHOLDER_CONFIG = json({ type: 'stdio', command: 'uvx', args: ['mcp-server-fetch'] });
 
 const PRESETS: PresetDef[] = [
-  { id: 'custom', labelKey: 'publishDialog.mcpTypeCustom', displayName: '', config: '' },
+  { id: 'custom', labelKey: 'publishDialog.mcpTypeCustom', config: '' },
   {
     id: 'fetch',
     labelKey: 'publishDialog.mcpTypeFetch',
-    displayName: '@modelcontextprotocol/server-fetch',
     config: json({ type: 'stdio', command: 'uvx', args: ['mcp-server-fetch'] }),
   },
   {
     id: 'time',
     labelKey: 'publishDialog.mcpTypeTime',
-    displayName: '@modelcontextprotocol/server-time',
     config: json({ type: 'stdio', command: 'uvx', args: ['mcp-server-time'] }),
   },
   {
     id: 'memory',
     labelKey: 'publishDialog.mcpTypeMemory',
-    displayName: '@modelcontextprotocol/server-memory',
     config: json({ type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-memory'] }),
   },
   {
     id: 'sequential-thinking',
     labelKey: 'publishDialog.mcpTypeSequentialThinking',
-    displayName: '@modelcontextprotocol/server-sequential-thinking',
     config: json({ type: 'stdio', command: 'npx', args: ['-y', '@modelcontextprotocol/server-sequential-thinking'] }),
   },
   {
     id: 'context7',
     labelKey: 'publishDialog.mcpTypeContext7',
-    displayName: '@upstash/context7-mcp',
     config: json({ type: 'stdio', command: 'npx', args: ['-y', '@upstash/context7-mcp'] }),
   },
 ];
@@ -91,7 +85,7 @@ export function McpConfigForm({
   const { locale } = useI18n();
   const [type, setType] = useState<McpType>('custom');
   const [label, setLabel] = useState('');
-  const [displayName, setDisplayName] = useState('');
+  const [description, setDescription] = useState('');
   const [config, setConfig] = useState('');
   const [logoKey, setLogoKey] = useState<McpLogoKey>('orbit');
 
@@ -104,7 +98,6 @@ export function McpConfigForm({
     setType(preset.id);
     if (preset.id === 'custom') return;
     setLabel(preset.id);
-    setDisplayName(preset.displayName);
     setConfig(preset.config);
   }
 
@@ -124,7 +117,7 @@ export function McpConfigForm({
       if (!canConfirm) return;
       onSubmit({
         label: label.trim(),
-        displayName: displayName.trim(),
+        description: description.trim(),
         config,
         ...(showLogoPicker ? { logoKey } : {}),
       });
@@ -175,24 +168,24 @@ export function McpConfigForm({
       ) : null}
 
       <label className={styles.field}>
-        <span className={styles.fieldLabel}>{t('publishDialog.mcpTitle')}</span>
+          <span className={styles.fieldLabel}>{locale.startsWith('zh') ? 'MCP 名称' : 'MCP name'}</span>
         <input
           className={styles.fieldInput}
           required
-          placeholder="my-mcp-server"
+          placeholder={locale.startsWith('zh') ? '例如：网页内容抓取' : 'e.g. Web content fetcher'}
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          aria-label={t('publishDialog.mcpTitle')}
+          aria-label={locale.startsWith('zh') ? 'MCP 名称' : 'MCP name'}
         />
       </label>
 
       <label className={styles.field}>
-        <span className={styles.fieldLabel}>{t('publishDialog.mcpDisplayName')}</span>
+        <span className={styles.fieldLabel}>{locale.startsWith('zh') ? '简介' : 'Description'}</span>
         <input
           className={styles.fieldInput}
-          placeholder={t('publishDialog.mcpDisplayNamePlaceholder')}
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
+          placeholder={locale.startsWith('zh') ? '介绍 MCP 的用途与适用场景（选填）' : 'Describe what this MCP is useful for (optional)'}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
         />
       </label>
 

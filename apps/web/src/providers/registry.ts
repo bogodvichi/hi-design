@@ -555,6 +555,7 @@ export async function uploadSkillToCloud(
   workspaceContext?: WorkspaceCollabContext | null,
   scope?: string,
   category?: SkillCategory,
+  logoKey?: string,
 ): Promise<{ ok: true; title: string } | { error: SkillImportError }> {
   try {
     const form = new FormData();
@@ -571,6 +572,7 @@ export async function uploadSkillToCloud(
     }
     const query = scope ? `?scope=${encodeURIComponent(scope)}` : '';
     if (category) form.append('category', category);
+    if (logoKey) form.append('logoKey', logoKey);
     const resp = await fetch(`/api/workspace/skills/cloud/upload${query}`, {
       method: 'POST',
       headers: workspaceContext

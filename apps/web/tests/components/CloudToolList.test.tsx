@@ -222,7 +222,7 @@ describe('CloudToolList', () => {
       ],
     }), { status: 200, headers: { 'content-type': 'application/json' } }));
 
-    render(
+    const { container } = render(
       <CloudToolList
         workspaceId="workspace-1"
         workspaceMemberId="member-1"
@@ -234,11 +234,46 @@ describe('CloudToolList', () => {
     );
 
     expect(await screen.findByText('Data Visualizer')).toBeTruthy();
+    expect(container.querySelector('img[src="/community/default-tool-logo.svg"]')).toBeTruthy();
     expect(screen.getByText('王五')).toBeTruthy();
-    expect(screen.getByLabelText('预览 —, 使用 —')).toBeTruthy();
+    expect(screen.getByLabelText('使用人数 0, 使用次数 0')).toBeTruthy();
     expect(screen.queryByText('Design Helper')).toBeNull();
     expect(screen.queryByText('HiMind')).toBeNull();
     expect(screen.queryByText('AI用研工作台')).toBeNull();
+  });
+
+  it('dismisses the card menu without swallowing the outside click', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(JSON.stringify({
+      tools: [{
+        resourceId: 'owned-tool', ownerMemberId: 'member-1', url: 'https://tool.test',
+        name: 'Owned tool', label: 'Owned tool', description: 'Owned tool description',
+        createdAt: '', updatedAt: '',
+      }],
+    }), { status: 200, headers: { 'content-type': 'application/json' } }));
+    const onOutsideClick = vi.fn();
+    const { container } = render(
+      <>
+        <CloudToolList
+          workspaceId="workspace-1"
+          workspaceMemberId="member-1"
+          workspaceType="team"
+        />
+        <button type="button" onClick={onOutsideClick}>Other module</button>
+      </>,
+    );
+
+    expect(await screen.findByText('Owned tool')).toBeTruthy();
+    const menuButton = container.querySelector<HTMLButtonElement>('[class*="cardMenuBtn"]');
+    expect(menuButton).toBeTruthy();
+    fireEvent.click(menuButton!);
+    expect(screen.getByText('personalScope.cloudToolDelete')).toBeTruthy();
+
+    const outsideButton = screen.getByRole('button', { name: 'Other module' });
+    fireEvent.pointerDown(outsideButton);
+    fireEvent.click(outsideButton);
+
+    expect(screen.queryByText('personalScope.cloudToolDelete')).toBeNull();
+    expect(onOutsideClick).toHaveBeenCalledTimes(1);
   });
 
   it('does not open the AI research login page when ticket creation fails', async () => {

@@ -128,6 +128,32 @@ export function createHdwCloudClient(options: HdwCloudClientOptions = {}) {
     /** Raw request escape hatch for adapter-level callers. */
     request,
 
+    async recordCommunityStat(input: {
+      resourceType: 'project' | 'skill' | 'mcp' | 'tool';
+      resourceId: string;
+      metric: 'preview' | 'action';
+      actorKey: string;
+    }): Promise<HdwCommunityStatRecordResult> {
+      const { payload } = await request<HdwCommunityStatRecordResult>(
+        'POST',
+        '/api/community/stats/record',
+        input,
+      );
+      return payload;
+    },
+
+    async queryCommunityStats(
+      resources: Array<{ resourceType: 'project' | 'skill' | 'mcp' | 'tool'; resourceId: string }>,
+    ): Promise<HdwCommunityStat[]> {
+      if (resources.length === 0) return [];
+      const { payload } = await request<{ stats?: HdwCommunityStat[] }>(
+        'POST',
+        '/api/community/stats/query',
+        { resources },
+      );
+      return payload.stats ?? [];
+    },
+
     /** Upload a manifest + missing blobs and advance the published ref. */
     async publishResource(
       workspaceId: string,
@@ -519,6 +545,21 @@ export interface HdwResourceRecord {
   versionId: string | null;
   createdAt: string;
   updatedAt: string;
+  stats?: HdwCommunityStat;
+}
+
+export interface HdwCommunityStat {
+  resourceType: 'project' | 'skill' | 'mcp' | 'tool';
+  resourceId: string;
+  previewCount: number;
+  previewUserCount: number;
+  actionCount: number;
+  actionUserCount: number;
+}
+
+export interface HdwCommunityStatRecordResult {
+  counted: boolean;
+  stats: HdwCommunityStat;
 }
 
 export interface HdwTeamProjectRecord {

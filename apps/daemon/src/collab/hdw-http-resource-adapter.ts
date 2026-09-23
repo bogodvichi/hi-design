@@ -143,14 +143,18 @@ export function createHdwHttpResourceAdapter(
   }
 
   return {
-   async publish({ projectId, principal, resourceScope }) {
+   async publish({ projectId, principal, resourceScope, metadata: metadataOverride }) {
       return gated(principal, async () => {
        const dir = await options.resolveProjectDir(projectId);
        const resourceId = resourceIdFor(projectId, principal);
        const workspaceId = principal!.teamId;
        const entries = await collectManifestEntries(dir);
        const manifest: HdwManifest = { entries };
-       const metadata = await options.describeProject?.(projectId);
+       const describedMetadata = await options.describeProject?.(projectId);
+       const metadata = {
+         ...(describedMetadata ?? {}),
+         ...(metadataOverride ?? {}),
+       };
 
        // Phase 1: send manifest, find out what the server still needs.
       let result = await options.client.publishResource(workspaceId, resourceId, {

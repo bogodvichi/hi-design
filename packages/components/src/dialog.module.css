@@ -50,7 +50,7 @@
 }
 
 .footer > button {
-  border-radius: var(--radius-pill, 999px);
+  border-radius: var(--radius-sm, 6px);
 }
 
 .dialogSectioned .header {

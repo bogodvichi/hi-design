@@ -113,7 +113,7 @@ export function teamResourceRequestScopeForWorkspaceId(
 
 export interface TeamResourceShareService {
   /** Share a resource to the team. Returns the published version, or null off-team. */
-  share(resourceId: string, scope: TeamResourceRequestScope, options?: { resourceScope?: string }): Promise<{ version: number } | null>;
+  share(resourceId: string, scope: TeamResourceRequestScope, options?: { resourceScope?: string; metadata?: Record<string, unknown> }): Promise<{ version: number } | null>;
   /** Remove a resource from the team index. Returns false off-team/unconfigured. */
   unshare(resourceId: string, scope: TeamResourceRequestScope): Promise<boolean>;
   /** Ids of resources shared to the team. */
@@ -205,6 +205,7 @@ export function createTeamResourceShareService(
           principal,
           reason: 'share',
           ...(options?.resourceScope ? { resourceScope: options.resourceScope } : {}),
+          ...(options?.metadata ? { metadata: options.metadata } : {}),
         });
          if (result) sharedFor(principal.teamId).add(resourceId);
          return result;

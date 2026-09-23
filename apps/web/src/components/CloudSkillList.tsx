@@ -26,6 +26,8 @@ import {
   skillCategorySelectLabel,
 } from '../utils/skill-category-labels';
 import { resolveFloatingMenuHorizontalAlign } from '../utils/floating-menu-placement';
+import { recordCommunityStat } from '../utils/community-stats';
+import { isSkillLogoKey, SkillLogo } from './SkillLogo';
 
 interface CloudSkill {
   resourceId: string;
@@ -44,10 +46,11 @@ provider?: string;
 sourceLabel?: string;
 publisherName?: string | null;
  iconUrl?: string | null;
+ logoKey?: string | null;
  installed?: boolean;
  teamShared?: boolean;
  category?: SkillCategory;
- previewCount?: number | null;
+ peopleCount?: number | null;
  actionCount?: number | null;
 }
 
@@ -122,6 +125,21 @@ export function CloudSkillList({
  const showCommunityControls = mode === 'square' && sourceProvider === 'all';
  const categoryMenuRef = useRef<HTMLDivElement | null>(null);
  const categoryMenuPanelRef = useRef<HTMLDivElement | null>(null);
+ const menuRef = useRef<HTMLDivElement>(null);
+ const menuTriggerRef = useRef<HTMLButtonElement>(null);
+
+ useEffect(() => {
+   if (!menuOpenId) return;
+   const closeOutside = (event: PointerEvent) => {
+     if (event.target instanceof Node
+       && (menuRef.current?.contains(event.target) || menuTriggerRef.current?.contains(event.target))) {
+       return;
+     }
+     setMenuOpenId(null);
+   };
+   document.addEventListener('pointerdown', closeOutside, { capture: true });
+   return () => document.removeEventListener('pointerdown', closeOutside, { capture: true });
+ }, [menuOpenId]);
 
  const countCategories = useCallback((items: readonly CloudSkill[]): SkillCategoryCounts => {
    const counts = emptySkillCategoryCounts();
@@ -411,6 +429,26 @@ useEffect(() => {
           ? { ...item, localId: installedLocalId, installed: true }
           : item
       )));
+      if (mode === 'square' && scope === 'public') {
+        const statResourceId = skill.provider === 'maas-skillhub'
+          ? `maas-skillhub:${skill.resourceId}`
+          : skill.resourceId;
+        const stats = await recordCommunityStat({
+          resourceType: 'skill',
+          resourceId: statResourceId,
+          metric: 'action',
+          workspaceId,
+          workspaceMemberId,
+          workspaceType,
+        });
+        if (stats) {
+          setSkills((current) => current.map((item) => (
+            item.resourceId === skill.resourceId
+              ? { ...item, peopleCount: stats.actionUserCount, actionCount: stats.actionCount }
+              : item
+          )));
+        }
+      }
       window.dispatchEvent(new CustomEvent('personal:skill-refresh', {
         detail: { source: 'cloud-skill-list' },
       }));
@@ -678,25 +716,18 @@ useEffect(() => {
                         new Set(current).add(skill.resourceId)
                       ))}
                     />
+                  ) : isSkillLogoKey(skill.logoKey) ? (
+                    <SkillLogo
+                      logoKey={skill.logoKey}
+                      size={48}
+                      className={styles.cardCover}
+                    />
                   ) : (
-                  <svg viewBox="0 0 1024 1024" width="48" height="48" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M512 512m-512 0a512 512 0 1 0 1024 0 512 512 0 1 0-1024 0Z" fill="#324A5E" />
-                    <path d="M1019.28 581.532l-118.888-118.888-33.306 34.322-120.47-120.47-57.634-13.904-66.488 42.564 101.456 101.456-79.342 0.7L380.68 243.382l-51.132 6.868-29.864 72.932 185.54 185.54L113.778 512l240.344 240.344-69.676 44.1L512 1024c259.182 0 473.35-192.594 507.28-442.468z" fill="#2B3B4E" />
-                    <path d="M880.77 568.888H227.556v-113.778h653.216c16.264 0 29.452 13.184 29.452 29.452v54.878c-0.002 16.264-13.19 29.448-29.454 29.448z" fill="#EAA22F" />
-                    <path d="M227.556 511.138v57.75h653.216c16.264 0 29.452-13.184 29.452-29.452v-28.3H227.556z" fill="#E09112" />
-                    <path d="M227.556 455.112h605.678v113.778H227.556z" fill="#31BAFD" />
-                    <path d="M227.556 512h605.678v56.888H227.556z" fill="#2B9ED8" />
-                    <path d="M227.556 455.112L113.778 512l113.778 56.888z" fill="#FEE187" />
-                    <path d="M115.502 511.138l-1.724 0.862 113.778 56.888v-57.75z" fill="#FFC61B" />
-                    <path d="M113.778 512l53.154 26.576v-53.152z" fill="#59595B" />
-                    <path d="M115.502 511.138l-1.724 0.862 53.154 26.576v-27.438z" fill="#272525" />
-                    <path d="M341.334 284.444m-56.888 0a56.888 56.888 0 1 0 113.776 0 56.888 56.888 0 1 0-113.776 0Z" fill="#FFFFFF" />
-                    <path d="M341.334 227.556c-0.386 0-0.762 0.052-1.148 0.058v113.66c0.382 0.006 0.758 0.058 1.148 0.058 31.42 0 56.888-25.468 56.888-56.888s-25.472-56.888-56.888-56.888z" fill="#D0D1D3" />
-                    <path d="M284.444 625.778h170.666v170.666h-170.666z" fill="#FFC61B" />
-                    <path d="M368.64 625.778h86.472v170.666H368.64z" fill="#EAA22F" />
-                    <path d="M622.498 405.156l37.244-121.822 86.878 93.164z" fill="#FFFFFF" />
-                    <path d="M659.742 283.334l-0.296 0.97 28.002 105.858 59.172-13.664z" fill="#D0D1D3" />
-                  </svg>
+                    <img
+                      className={styles.cardCover}
+                      src="/community/default-skill-logo.svg"
+                      alt=""
+                    />
                   )}
                 </span>
                 <div className={styles.cardHeaderInfo}>
@@ -730,6 +761,7 @@ useEffect(() => {
                   <button
                     type="button"
                     className={styles.cardMenuBtn}
+                    ref={menuOpenId === skill.resourceId ? menuTriggerRef : undefined}
                     title=""
                     onClick={(e) => {
                       e.stopPropagation();
@@ -739,9 +771,7 @@ useEffect(() => {
                     <Icon name="more-horizontal" size={16} />
                   </button>
                   {menuOpenId === skill.resourceId ? (
-                    <>
-                      <div className={styles.cardMenuBackdrop} onClick={(e) => { e.stopPropagation(); setMenuOpenId(null); }} />
-                      <div className={styles.cardMenu}>
+                      <div className={styles.cardMenu} ref={menuRef}>
                        {canManageCloudRecord && (mode === 'personal' || mode === 'square') ? (
                           <button
                             type="button"
@@ -775,7 +805,6 @@ useEffect(() => {
                           </button>
                         ) : null}
                       </div>
-                    </>
                   ) : null}
                 </>
               ) : null}
@@ -787,11 +816,12 @@ useEffect(() => {
                 <footer className={`community-template-card__foot ${styles.resourceCardFooter}`}>
                   {mode === 'square' ? (
                     <CommunityResourceStats
-                      previewCount={skill.previewCount}
-                      actionCount={skill.actionCount}
-                      actionIcon="download"
-                      previewLabel={locale.startsWith('zh') ? '预览' : 'Views'}
-                      actionLabel={locale.startsWith('zh') ? '添加' : 'Adds'}
+                      primaryCount={skill.peopleCount}
+                      secondaryCount={skill.actionCount}
+                      primaryIcon="users"
+                      secondaryIcon="download"
+                      primaryLabel={locale.startsWith('zh') ? '接入人数' : 'Connected users'}
+                      secondaryLabel={locale.startsWith('zh') ? '接入次数' : 'Connections'}
                     />
                   ) : null}
                   <div className="community-template-card__actions">

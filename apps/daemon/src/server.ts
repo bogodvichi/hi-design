@@ -7347,6 +7347,41 @@ const designSystemBackingProjects = new Map<string, string>();
     share: skillsTeamShare,
     listTeam: skillsTeamList,
   });
+  app.post('/api/community/stats/record', async (req: any, res: any) => {
+    if (!isLocalSameOrigin(req, resolvedPort)) {
+      return res.status(403).json({ error: 'cross-origin request rejected' });
+    }
+    const verified = await verifyExplicitWorkspaceRequestContext({ req, requireTeam: false });
+    if (!verified.ok) {
+      return res.status(verified.status).json({ error: verified.code, message: verified.message });
+    }
+    if (!hdwCloudClient) {
+      return res.status(503).json({ error: 'HDW_CLOUD_NOT_CONFIGURED' });
+    }
+    const resourceType = req.body?.resourceType;
+    const resourceId = typeof req.body?.resourceId === 'string' ? req.body.resourceId.trim() : '';
+    const metric = req.body?.metric;
+    if (!['project', 'skill', 'mcp', 'tool'].includes(resourceType) || !resourceId || !['preview', 'action'].includes(metric)) {
+      return res.status(400).json({ error: 'INVALID_COMMUNITY_STAT' });
+    }
+    try {
+      const { readSsoUsername } = await import('./http/hik_logins/hicoo.js');
+      const username = readSsoUsername(RUNTIME_DATA_DIR)?.trim().toLowerCase() || '';
+      const identity = username || verified.context.workspaceMemberId;
+      const identityScope = username ? 'user' : 'member';
+      const actorKey = `${identityScope}:${createHash('sha256').update(identity).digest('hex')}`;
+      const result = await hdwCloudClient.recordCommunityStat({
+        resourceType,
+        resourceId,
+        metric,
+        actorKey,
+      });
+      res.json(result);
+    } catch (err: any) {
+      res.status(502).json({ error: err instanceof Error ? err.message : 'community stat record failed' });
+    }
+  });
+
   // ---- Cloud skill catalog: browse HDW resources and install on demand ----
   app.get('/api/workspace/skills/cloud/check', async (req: any, res: any) => {
     const resolution = await resolveTeamResourceScope(req);
@@ -7422,8 +7457,17 @@ const designSystemBackingProjects = new Map<string, string>();
          if (!hubResourceId.startsWith(prefix)) continue;
          installedLocalIds.set(hubResourceId.slice(prefix.length), binding.resourceId);
        }
-       maasSkills = resources.map((skill) => ({
-           resourceId: skill.id,
+        const maasStatRows = hdwCloudClient
+          ? await hdwCloudClient.queryCommunityStats(resources.map((skill) => ({
+              resourceType: 'skill' as const,
+              resourceId: `${MAAS_SKILLHUB_PROVIDER}:${skill.id}`,
+            }))).catch(() => [])
+          : [];
+        const maasStats = new Map(maasStatRows.map((stat) => [stat.resourceId, stat]));
+        maasSkills = resources.map((skill) => {
+          const stat = maasStats.get(`${MAAS_SKILLHUB_PROVIDER}:${skill.id}`);
+          return ({
+            resourceId: skill.id,
            localId: installedLocalIds.get(skill.id) ?? maasSkillLocalId(skill),
            title: skill.skillName || skill.skillSlug || skill.id,
            description: skill.skillDesc ?? null,
@@ -7438,10 +7482,11 @@ const designSystemBackingProjects = new Map<string, string>();
             publisherName: skill.userNotesName || skill.userName || skill.userId || null,
             iconUrl: skill.iconUrl ?? null,
             category: normalizeSkillCategory(skill.skillSubType),
-            previewCount: null,
-            actionCount: typeof skill.downloadCount === 'number' ? skill.downloadCount : null,
+            peopleCount: stat?.actionUserCount ?? 0,
+            actionCount: stat?.actionCount ?? 0,
             installed: installedLocalIds.has(skill.id),
-          })).filter((skill) => communitySkillMatchesQuery(skill, searchQuery));
+          });
+        }).filter((skill) => communitySkillMatchesQuery(skill, searchQuery));
         if (sourceProvider === MAAS_SKILLHUB_PROVIDER) {
           return res.json(finalizeSkillList(maasSkills));
         }
@@ -7470,9 +7515,10 @@ const designSystemBackingProjects = new Map<string, string>();
         sourceLabel: 'HiDesign Community',
         publisherName: (r.metadata as any)?.publisherName ?? r.ownerDisplayName ?? r.ownerMemberId ?? null,
         category: normalizeSkillCategory((r.metadata as any)?.category),
-        previewCount: typeof (r.metadata as any)?.previewCount === 'number' ? (r.metadata as any).previewCount : null,
-        actionCount: typeof (r.metadata as any)?.actionCount === 'number' ? (r.metadata as any).actionCount : null,
-      })).filter((skill) => communitySkillMatchesQuery(skill, searchQuery));
+        logoKey: typeof (r.metadata as any)?.logoKey === 'string' ? (r.metadata as any).logoKey : null,
+         peopleCount: r.stats?.actionUserCount ?? 0,
+         actionCount: r.stats?.actionCount ?? 0,
+       })).filter((skill) => communitySkillMatchesQuery(skill, searchQuery));
       res.json(finalizeSkillList([...maasSkills, ...skills]));
     } catch (err: any) {
       if (maasSkillhubResolved) return res.json(finalizeSkillList(maasSkills));
@@ -7708,6 +7754,11 @@ const designSystemBackingProjects = new Map<string, string>();
     const scope = resolution.scope;
     const resourceScope = typeof req.query.scope === 'string' ? req.query.scope : undefined;
     const requestedCategory = typeof req.body?.category === 'string' ? req.body.category.trim() : '';
+    const logoCandidate = typeof req.body?.logoKey === 'string' ? req.body.logoKey.trim() : '';
+    const requestedLogoKey = [
+      'craft', 'code', 'flow', 'research', 'design',
+      'data', 'automate', 'docs', 'think', 'agent',
+    ].includes(logoCandidate) ? logoCandidate : '';
     if (resourceScope === 'public' && !isSkillCategory(requestedCategory)) {
       return res.status(400).json({
         error: 'INVALID_SKILL_CATEGORY',
@@ -7768,6 +7819,7 @@ const designSystemBackingProjects = new Map<string, string>();
           localId: prepared!.slug,
           title: prepared!.title,
           category,
+          ...(requestedLogoKey ? { logoKey: requestedLogoKey } : {}),
         }),
        resourceIdFor,
        kind: 'skill',
