@@ -424,7 +424,10 @@ interface Props {
 onDuplicateProject?: (id: string) => Promise<void> | void;
 onRenameProject: (id: string, name: string) => void;
 onProjectsRefresh?: () => Promise<void> | void;
-onCopyProject?: (id: string) => Promise<void> | void;
+onCopyProject?: (
+  id: string,
+  options?: { targetFolderId?: string | null },
+) => Promise<void> | void;
  onTeamProjectContentReady?: (
    projectId: string,
    workspaceId: string,
@@ -2145,6 +2148,7 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
            onOpenProject={onOpenProject}
            onDeleteProject={onDeleteProject}
            onRenameProject={onRenameProject}
+           onCopyProject={onCopyProject}
          />
     ) : null}
      {view === 'shared-with-me' ? (
