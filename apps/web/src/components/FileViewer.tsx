@@ -1824,10 +1824,13 @@ interface Props {
   onSendBoardCommentAttachments?: (attachments: ChatCommentAttachment[], images?: File[]) => Promise<CommentSendResult> | CommentSendResult;
   onFileSaved?: () => Promise<void> | void;
   onBrandExtractionStopRequest?: () => void;
+  onOpenFile?: (name: string, commentId: string) => void;
   // Open `openName` as a tab (focusing it) and close `closeName` in one
   // atomic tab-state update. The React module pointer uses this to jump to the
   // HTML entry that renders a module and drop the dead-end module tab.
   onOpenFileReplacing?: (openName: string, closeName: string) => void;
+  commentActivationRequest?: PreviewCommentActivationRequest | null;
+  onCommentActivationConsumed?: () => void;
   commentPortalId?: string;
   onCommentModeChange?: (active: boolean) => void;
   // Bumped nonce asking this viewer to open its Share/Export menu (chat-side
@@ -1921,7 +1924,10 @@ export const FileViewer = memo(function FileViewer({
   onSendBoardCommentAttachments,
   onFileSaved,
   onBrandExtractionStopRequest,
+  onOpenFile,
   onOpenFileReplacing,
+  commentActivationRequest,
+  onCommentActivationConsumed,
   commentPortalId,
   onCommentModeChange,
   shareRequest,
@@ -2012,7 +2018,10 @@ export const FileViewer = memo(function FileViewer({
         onSendBoardCommentAttachments={onSendBoardCommentAttachments}
         onFileSaved={onFileSaved}
         onBrandExtractionStopRequest={onBrandExtractionStopRequest}
+        onOpenFile={onOpenFile}
         onOpenFileReplacing={onOpenFileReplacing}
+        commentActivationRequest={commentActivationRequest}
+        onCommentActivationConsumed={onCommentActivationConsumed}
         commentPortalId={commentPortalId}
         onCommentModeChange={onCommentModeChange}
         shareRequest={shareRequest}
@@ -4538,14 +4547,18 @@ export function CommentSidePanel({
   canChangeCommentStatus,
   canDeleteComment,
   canReplyComment,
-  onReplyComment,
-  replyComments,
+ onReplyComment,
+ replyComments,
+  currentFilePath,
 }: {
   comments: PreviewComment[];
   /** Full comment list including replies, used to populate reply threads.
    *  Defaults to `comments` (top-level-only callers are unaffected). */
   replyComments?: PreviewComment[];
   projectId?: string;
+  /** The file currently shown in the viewer. Used by the "current page only"
+   *  filter and the file-name badge on each comment card. */
+  currentFilePath?: string;
   selectedIds: Set<string>;
   activeCommentId: string | null;
   collapsed: boolean;
@@ -4586,7 +4599,9 @@ export function CommentSidePanel({
   const [dragState, setDragState] = useState<CommentSideDragState | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<'newest' | 'oldest'>('newest');
-  const [activeFilters, setActiveFilters] = useState<ReadonlySet<'open' | 'resolved' | 'mentioned'>>(new Set(['open']));
+  const [filterCurrentPage, setFilterCurrentPage] = useState(false);
+  const [filterShowResolved, setFilterShowResolved] = useState(false);
+  const [filterRelatedToMe, setFilterRelatedToMe] = useState(false);
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [notifMenuOpen, setNotifMenuOpen] = useState(false);
   const [replyEditorId, setReplyEditorId] = useState<string | null>(null);
@@ -4617,33 +4632,44 @@ export function CommentSidePanel({
 
   // Derived: filter by search query + filter mode, then sort.
   const filteredComments = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    const currentDisplayName = currentUser?.displayName?.trim().toLowerCase();
-    const currentMemberId = currentUser?.memberId?.trim().toLowerCase();
-    let list = comments;
-    if (q) {
-      list = list.filter((c) => c.note.toLowerCase().includes(q));
+   const q = searchQuery.trim().toLowerCase();
+   const currentDisplayName = currentUser?.displayName?.trim().toLowerCase();
+   const currentMemberId = currentUser?.memberId?.trim().toLowerCase();
+   let list = comments;
+   if (q) {
+     list = list.filter((c) => c.note.toLowerCase().includes(q));
+   }
+    // "Show resolved" is off by default: hide resolved comments unless the
+    // user explicitly opts in.
+    if (!filterShowResolved) {
+      list = list.filter((c) => c.status !== 'resolved');
     }
-    if (activeFilters.size > 0) {
-      list = list.filter((c) => {
-        if (activeFilters.has('open') && c.status !== 'resolved') return true;
-        if (activeFilters.has('resolved') && c.status === 'resolved') return true;
-        if (activeFilters.has('mentioned')) {
-          const note = c.note.toLowerCase();
-          if (currentDisplayName && note.includes(`@${currentDisplayName}`)) return true;
-          if (currentMemberId && note.includes(`@${currentMemberId}`)) return true;
+    // "Current page only": restrict to the file currently shown in the viewer.
+    if (filterCurrentPage && currentFilePath) {
+      list = list.filter((c) => c.filePath === currentFilePath);
+    }
+    // "Related to me": author is the current user, or the current user has
+    // replied to this comment thread.
+    if (filterRelatedToMe && currentMemberId) {
+      const myReplyParentIds = new Set<string>();
+      for (const reply of replySource) {
+        if (reply.parentId && reply.authorMemberId === currentMemberId) {
+          myReplyParentIds.add(reply.parentId);
         }
-        return false;
-      });
+      }
+      list = list.filter((c) =>
+        c.authorMemberId === currentMemberId ||
+        myReplyParentIds.has(c.id),
+      );
     }
-    const sortedList = [...list];
-    if (sortMode === 'newest') {
-      sortedList.sort((a, b) => commentActivityAt(b) - commentActivityAt(a));
-    } else if (sortMode === 'oldest') {
-      sortedList.sort((a, b) => commentActivityAt(a) - commentActivityAt(b));
-    }
-    return sortedList;
-  }, [comments, searchQuery, activeFilters, sortMode, currentUser]);
+   const sortedList = [...list];
+   if (sortMode === 'newest') {
+     sortedList.sort((a, b) => commentActivityAt(b) - commentActivityAt(a));
+   } else if (sortMode === 'oldest') {
+     sortedList.sort((a, b) => commentActivityAt(a) - commentActivityAt(b));
+   }
+   return sortedList;
+  }, [comments, searchQuery, filterShowResolved, filterCurrentPage, filterRelatedToMe, currentFilePath, replySource, sortMode, currentUser]);
 
   const unresolvedCount = useMemo(
     () => comments.filter((c) => c.status !== 'resolved').length,
@@ -4858,64 +4884,49 @@ export function CommentSidePanel({
                 <Icon name="check" size={14} />
                 {t('chat.comments.sortOldest')}
               </button>
-              <i className="comment-tool-menu-sep" />
-              <button
-                type="button"
-                className={activeFilters.has('open') ? 'selected' : ''}
-                role="menuitemcheckbox"
-                aria-checked={activeFilters.has('open')}
-                aria-current={activeFilters.has('open')}
-                onClick={() => {
-                  setActiveFilters((value) => {
-                    const next = new Set(value);
-                    if (next.has('open')) next.delete('open');
-                    else next.add('open');
-                    return next;
-                  });
-                  setSortMenuOpen(false);
-                }}
-              >
-                <Icon name="check" size={14} />
-                {t('chat.comments.filterOpen')}
-              </button>
-              <button
-                type="button"
-                className={activeFilters.has('resolved') ? 'selected' : ''}
-                role="menuitemcheckbox"
-                aria-checked={activeFilters.has('resolved')}
-                aria-current={activeFilters.has('resolved')}
-                onClick={() => {
-                  setActiveFilters((value) => {
-                    const next = new Set(value);
-                    if (next.has('resolved')) next.delete('resolved');
-                    else next.add('resolved');
-                    return next;
-                  });
-                  setSortMenuOpen(false);
-                }}
-              >
-                <Icon name="check" size={14} />
-                {t('chat.comments.filterResolved')}
-              </button>
-              <button
-                type="button"
-                className={activeFilters.has('mentioned') ? 'selected' : ''}
-                role="menuitemcheckbox"
-                aria-checked={activeFilters.has('mentioned')}
-                aria-current={activeFilters.has('mentioned')}
-                onClick={() => {
-                  setActiveFilters((value) => {
-                    const next = new Set(value);
-                    if (next.has('mentioned')) next.delete('mentioned');
-                    else next.add('mentioned');
-                    return next;
-                  });
-                  setSortMenuOpen(false);
-                }}
-              >
-                <Icon name="check" size={14} />
-                {t('chat.comments.filterMentioned')}
-              </button>
+             <i className="comment-tool-menu-sep" />
+             <button
+               type="button"
+                className={filterCurrentPage ? 'selected' : ''}
+               role="menuitemcheckbox"
+                aria-checked={filterCurrentPage}
+                aria-current={filterCurrentPage}
+               onClick={() => {
+                  setFilterCurrentPage((v) => !v);
+                 setSortMenuOpen(false);
+               }}
+             >
+               <Icon name="check" size={14} />
+               {t('chat.comments.filterOpen')}
+             </button>
+             <button
+               type="button"
+                className={filterShowResolved ? 'selected' : ''}
+               role="menuitemcheckbox"
+                aria-checked={filterShowResolved}
+                aria-current={filterShowResolved}
+               onClick={() => {
+                  setFilterShowResolved((v) => !v);
+                 setSortMenuOpen(false);
+               }}
+             >
+               <Icon name="check" size={14} />
+               {t('chat.comments.filterResolved')}
+             </button>
+             <button
+               type="button"
+                className={filterRelatedToMe ? 'selected' : ''}
+               role="menuitemcheckbox"
+                aria-checked={filterRelatedToMe}
+                aria-current={filterRelatedToMe}
+               onClick={() => {
+                  setFilterRelatedToMe((v) => !v);
+                 setSortMenuOpen(false);
+               }}
+             >
+               <Icon name="check" size={14} />
+               {t('chat.comments.filterMentioned')}
+             </button>
             </div>
           ) : null}
         </span>
@@ -4941,11 +4952,12 @@ export function CommentSidePanel({
             type="checkbox"
             aria-label={t('chat.comments.selectAll')}
             checked={allSelected}
+            disabled={filteredComments.length === 0}
             onChange={onSelectAll}
           />
           {t('chat.comments.selectAll')}
         </label>
-        <span>{t('chat.comments.nComments', { n: comments.length })}</span>
+        <span>{t('chat.comments.nComments', { n: filteredComments.length })}</span>
       </div>
       <div
         className="studio-comment-list"
@@ -5201,18 +5213,18 @@ export function CommentSidePanel({
                 </div>
               ) : null}
               <div className="comment-card-footer-row">
-               <button
-                 type="button"
-                 className="comment-anchor"
-                  title={`${anchorLabel} \u00b7 ${comment.label || comment.elementId}`}
-                 onClick={(event) => {
-                   event.stopPropagation();
-                   onReply(comment);
-                 }}
-               >
-                 <Icon name="mouse-pointer" size={12} />
-                  <span>{`#${num} \u00b7 ${anchorLabel} \u00b7 ${comment.label || comment.elementId}`}</span>
-               </button>
+              <button
+                type="button"
+                className="comment-anchor"
+                  title={`${comment.filePath} \u00b7 ${anchorLabel} \u00b7 ${comment.label || comment.elementId}`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onReply(comment);
+                }}
+              >
+                <Icon name="mouse-pointer" size={12} />
+                  <span>{`#${num} \u00b7 ${comment.filePath} \u00b7 ${anchorLabel} \u00b7 ${comment.label || comment.elementId}`}</span>
+              </button>
                 {canReply ? (
                   <button
                     type="button"
@@ -5396,12 +5408,14 @@ function CommentSideDock({
   canDeleteComment,
   canReplyComment,
   onReplyComment,
-  replyComments,
+ replyComments,
+  currentFilePath,
   composer,
 }: {
   comments: PreviewComment[];
   replyComments?: PreviewComment[];
   projectId?: string;
+  currentFilePath?: string;
   selectedIds: Set<string>;
   activeCommentId: string | null;
   collapsed: boolean;
@@ -5442,10 +5456,11 @@ function CommentSideDock({
       data-testid="comment-side-dock"
     >
       <CommentSidePanel
-        comments={comments}
-        replyComments={replyComments}
-        projectId={projectId}
-        selectedIds={selectedIds}
+       comments={comments}
+       replyComments={replyComments}
+       projectId={projectId}
+        currentFilePath={currentFilePath}
+       selectedIds={selectedIds}
         activeCommentId={activeCommentId}
         collapsed={collapsed}
         onCollapsedChange={onCollapsedChange}
@@ -7772,6 +7787,16 @@ function srcDocLoadRequiresFreshParseOnReturnToVisible(state: {
   return state.loadedWhileDocumentHidden && state.srcDocIsActiveTransport && state.isDeck;
 }
 
+export interface PreviewCommentActivationRequest {
+  commentId: string;
+  nonce: number;
+}
+
+interface PendingPreviewCommentActivation {
+  commentId: string;
+  nonce: number;
+}
+
 function HtmlViewer({
   projectId,
   projectKind,
@@ -7791,7 +7816,10 @@ function HtmlViewer({
   onSendBoardCommentAttachments,
   onFileSaved,
   onBrandExtractionStopRequest,
+  onOpenFile,
   onOpenFileReplacing,
+  commentActivationRequest,
+  onCommentActivationConsumed,
   commentPortalId,
   onCommentModeChange,
   shareRequest,
@@ -7828,7 +7856,10 @@ function HtmlViewer({
   onSendBoardCommentAttachments?: (attachments: ChatCommentAttachment[], images?: File[]) => Promise<CommentSendResult> | CommentSendResult;
   onFileSaved?: () => Promise<void> | void;
   onBrandExtractionStopRequest?: () => void;
+  onOpenFile?: (name: string, commentId: string) => void;
   onOpenFileReplacing?: (openName: string, closeName: string) => void;
+  commentActivationRequest?: PreviewCommentActivationRequest | null;
+  onCommentActivationConsumed?: () => void;
   commentPortalId?: string;
   onCommentModeChange?: (active: boolean) => void;
   shareRequest?: { nonce: number } | null;
@@ -9485,6 +9516,8 @@ const [reviewAddModalOpen, setReviewAddModalOpen] = useState(false);
   // Don't let a pending dismiss outlive the component.
   useEffect(() => cancelHoverCardDismiss, [cancelHoverCardDismiss]);
   const [activePreviewCommentId, setActivePreviewCommentId] = useState<string | null>(null);
+  const [pendingPreviewCommentActivation, setPendingPreviewCommentActivation] =
+    useState<PendingPreviewCommentActivation | null>(null);
   const [liveCommentTargets, setLiveCommentTargets] = useState<Map<string, PreviewCommentSnapshot>>(() => new Map());
   const liveCommentTargetsRef = useRef(liveCommentTargets);
   const [commentDraft, setCommentDraft] = useState('');
@@ -14778,7 +14811,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     setAgentToolsOpen(false);
   }
 
-  function clearBoardComposer() {
+ function clearBoardComposer() {
     setActiveCommentTarget(null);
     setHoveredCommentTarget(null);
     setHoveredPodMemberId(null);
@@ -14791,6 +14824,34 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
    setReplyPreviewImage(null);
    setStrokePoints([]);
  }
+
+  function activatePreviewComment(comment: PreviewComment) {
+    const snapshot = liveSnapshotForComment(comment, liveCommentTargets) ?? {
+      filePath: comment.filePath,
+      elementId: comment.elementId,
+      selector: comment.selector,
+      label: comment.label,
+      text: comment.text,
+      position: comment.position,
+      htmlHint: comment.htmlHint,
+      style: comment.style,
+      selectionKind: comment.selectionKind ?? 'element',
+      memberCount: comment.memberCount,
+      podMembers: comment.podMembers,
+      ...(typeof comment.slideIndex === 'number' ? { slideIndex: comment.slideIndex } : {}),
+      ...(typeof comment.anchoredVersion === 'number' ? { anchoredVersion: comment.anchoredVersion } : {}),
+    };
+    setActiveCommentTarget(snapshot);
+    setHoveredCommentTarget(snapshot);
+    setActivePreviewCommentId(comment.id);
+    setCommentDraft(comment.note);
+    setQueuedBoardNotes([]);
+    setActiveCommentExistingAttachments(comment.attachments ?? []);
+    setBoardMode(true);
+    setCommentCreateMode(true);
+    setCommentPanelOpen(true);
+    setCommentSidePanelCollapsed(false);
+  }
 
  function addBoardImages(files: File[]) {
    const imgs = files.filter((file) => file.type.startsWith('image/'));
@@ -15788,21 +15849,53 @@ async function openReviewListModal() {
   );
   // Sidebar shows every comment for the current file (open, resolved,
   // needs_review, etc.). The open-only `visibleSideComments` above stays
-  // separate because it powers the canvas pin set and the toolbar badge.
-  const allSideComments = useMemo(
+ // separate because it powers the canvas pin set and the toolbar badge.
+ const allSideComments = useMemo(
+   () =>
+     previewComments
+       .filter((comment) => comment.filePath === file.name)
+       .sort((a, b) => commentEffectiveSortKey(b) - commentEffectiveSortKey(a)),
+   [file.name, previewComments],
+ );
+  // Project-wide comment lists (all HTML pages). The toolbar badge counts
+  // top-level comments only (replies are nested under their parent thread,
+  // not double-counted as separate items). The side panel defaults to showing
+  // every page's comments so the user can review the whole project at once.
+  const allProjectComments = useMemo(
     () =>
-      previewComments
-        .filter((comment) => comment.filePath === file.name)
-        .sort((a, b) => commentEffectiveSortKey(b) - commentEffectiveSortKey(a)),
-    [file.name, previewComments],
+      [...previewComments].sort(
+        (a, b) => commentEffectiveSortKey(b) - commentEffectiveSortKey(a),
+      ),
+    [previewComments],
   );
-  // The right-side comment panel lists top-level threads only; nested replies
-  // appear inline under their parent when that thread is expanded.
-  const topLevelSideComments = useMemo(
-    () => allSideComments.filter((comment) => !comment.parentId),
-    [allSideComments],
+  const allProjectTopLevelComments = useMemo(
+    () => allProjectComments.filter((comment) => !comment.parentId),
+    [allProjectComments],
   );
+ // The right-side comment panel lists top-level threads only; nested replies
+ // appear inline under their parent when that thread is expanded.
+ const topLevelSideComments = useMemo(
+   () => allSideComments.filter((comment) => !comment.parentId),
+   [allSideComments],
+ );
   const activeSideCommentId = activePreviewCommentId;
+  useEffect(() => {
+    if (!workspaceActive || !commentActivationRequest) return;
+    setPendingPreviewCommentActivation({
+      commentId: commentActivationRequest.commentId,
+      nonce: commentActivationRequest.nonce,
+    });
+    onCommentActivationConsumed?.();
+  }, [commentActivationRequest, onCommentActivationConsumed, workspaceActive]);
+  useEffect(() => {
+    if (!pendingPreviewCommentActivation) return;
+    const comment = allSideComments.find(
+      (candidate) => candidate.id === pendingPreviewCommentActivation.commentId,
+    );
+    if (!comment) return;
+    activatePreviewComment(comment);
+    setPendingPreviewCommentActivation(null);
+  }, [allSideComments, pendingPreviewCommentActivation]);
   const activeCommentTargetVisible = commentTargetIntersectsPreview(
     activeCommentTarget,
     overlayPreviewScale,
@@ -16406,11 +16499,12 @@ async function openReviewListModal() {
      )
    : null;
  const commentSidePanel = workspaceActive && commentPanelOpen ? (
-    <CommentSideDock
-      comments={topLevelSideComments}
-      replyComments={allSideComments}
-      projectId={projectId}
-      selectedIds={selectedSideCommentIds}
+  <CommentSideDock
+     comments={allProjectTopLevelComments}
+     replyComments={allProjectComments}
+    projectId={projectId}
+     currentFilePath={file.name}
+     selectedIds={selectedSideCommentIds}
       activeCommentId={activeSideCommentId}
       // The panel used to be pinned open whenever it was portaled (it docked
       // into a full-height column, where a collapsed rail made no sense). It
@@ -16428,7 +16522,7 @@ async function openReviewListModal() {
       }}
       onSelectAll={() =>
         {
-          const sendableIds = allSideComments
+          const sendableIds = allProjectComments
             .filter((comment) => canSendCommentToAgent(comment))
             .map((comment) => comment.id);
           const allSelected = sendableIds.every((id) => selectedSideCommentIds.has(id));
@@ -16437,39 +16531,15 @@ async function openReviewListModal() {
       }
       onClearSelection={() => setSelectedSideCommentIds(new Set())}
       onReorder={(orderedIds, draggedId) => {
-        const sortKey = computeReorderedSortKey(allSideComments, orderedIds, draggedId);
+        const sortKey = computeReorderedSortKey(allProjectComments, orderedIds, draggedId);
         void onReorderPreviewComment?.(draggedId, sortKey);
       }}
       onReply={(comment) => {
-        // Reply == edit on a flat-thread model: prefill the
-        // popover with the existing note so the user sees and
-        // mutates the current text. Save runs through the
-        // same upsert path; matching project/conv/file/element
-        // updates note in place rather than creating a new row.
-        const snapshot = liveSnapshotForComment(comment, liveCommentTargets) ?? {
-          filePath: comment.filePath,
-          elementId: comment.elementId,
-          selector: comment.selector,
-          label: comment.label,
-          text: comment.text,
-          position: comment.position,
-          htmlHint: comment.htmlHint,
-          style: comment.style,
-          selectionKind: comment.selectionKind ?? 'element',
-          memberCount: comment.memberCount,
-          podMembers: comment.podMembers,
-          ...(typeof comment.slideIndex === 'number' ? { slideIndex: comment.slideIndex } : {}),
-        };
-        setActiveCommentTarget(snapshot);
-        setHoveredCommentTarget(snapshot);
-        setActivePreviewCommentId(comment.id);
-        setCommentDraft(comment.note);
-        setQueuedBoardNotes([]);
-        setActiveCommentExistingAttachments(comment.attachments ?? []);
-        setBoardMode(true);
-        setCommentCreateMode(true);
-        setCommentPanelOpen(true);
-        setCommentSidePanelCollapsed(false);
+        if (comment.filePath !== file.name) {
+          onOpenFile?.(comment.filePath, comment.id);
+          return;
+        }
+        activatePreviewComment(comment);
       }}
       onSendComment={async (comment) => {
         if (!onSendBoardCommentAttachments || !canSendCommentToAgent(comment)) return;
@@ -16488,7 +16558,7 @@ async function openReviewListModal() {
       }}
       onSendSelected={async () => {
         if (!onSendBoardCommentAttachments) return;
-        const selected = allSideComments.filter(
+        const selected = allProjectComments.filter(
           (comment) => (
             selectedSideCommentIds.has(comment.id)
             && canSendCommentToAgent(comment)
@@ -16763,7 +16833,7 @@ async function openReviewListModal() {
                 <RemixIcon name="edit-line" size={15} />
               </button>
               <span className="viewer-toolbar-tool-divider" aria-hidden />
-              <button
+              {/* <button
                 ref={commentPanelToggleRef}
                 type="button"
                 className={`viewer-action viewer-comment-count-trigger viewer-comment-toggle od-tooltip${boardMode && commentCreateMode ? ' active' : ''}`}
@@ -16771,13 +16841,13 @@ async function openReviewListModal() {
                 data-tooltip={t('chat.tabComments')}
                 data-tooltip-placement="bottom"
                 title={t('chat.tabComments')}
-                aria-label={`${t('chat.tabComments')} (${allSideComments.length})`}
+                aria-label={`${t('chat.tabComments')} (${allProjectTopLevelComments.length})`}
                 aria-pressed={boardMode && commentCreateMode}
                 onClick={(event) => activateCommentCreateTool(event.currentTarget)}
               >
                 <RemixIcon name="message-3-line" size={15} />
-                <span className="viewer-comment-count" aria-hidden>{allSideComments.length}</span>
-              </button>
+                <span className="viewer-comment-count" aria-hidden>{allProjectTopLevelComments.length}</span>
+              </button> */}
               {source !== null && mode === 'preview' ? (
                 <div className="zoom-menu viewer-toolbar-zoom" ref={zoomMenuRef}>
                   <button
@@ -16956,9 +17026,9 @@ async function openReviewListModal() {
                         setToolbarMoreOpen(false);
                       }}
                     >
-                      <RemixIcon name="message-3-line" size={15} />
-                      <span>{t('chat.tabComments')} ({allSideComments.length})</span>
-                    </button>
+                     <RemixIcon name="message-3-line" size={15} />
+                      <span>{t('chat.tabComments')} ({allProjectTopLevelComments.length})</span>
+                   </button>
                     {source !== null && mode === 'preview' ? (
                       <>
                         <div className="viewer-toolbar-more-separator" role="separator" />
@@ -17083,15 +17153,15 @@ async function openReviewListModal() {
               data-testid="chrome-comment-panel-toggle"
               data-tooltip={t('chat.tabComments')}
               data-tooltip-placement="bottom"
-              title={t('chat.tabComments')}
-              aria-label={`${t('chat.tabComments')} (${allSideComments.length})`}
-              aria-pressed={boardMode && commentCreateMode}
-              onClick={(event) => activateCommentCreateTool(event.currentTarget)}
-            >
-              <RemixIcon name="message-3-line" size={15} />
-              <span>{t('chat.tabComments')}</span>
-              <span className="viewer-comment-count" aria-hidden>{allSideComments.length}</span>
-            </button>
+             title={t('chat.tabComments')}
+              aria-label={`${t('chat.tabComments')} (${allProjectTopLevelComments.length})`}
+             aria-pressed={boardMode && commentCreateMode}
+             onClick={(event) => activateCommentCreateTool(event.currentTarget)}
+           >
+             <RemixIcon name="message-3-line" size={15} />
+             <span>{t('chat.tabComments')}</span>
+              <span className="viewer-comment-count" aria-hidden>{allProjectTopLevelComments.length}</span>
+           </button>
           ) : null}
           {rawCanShare || rawCanDownload ? (
             <div className="chrome-file-action-menus">

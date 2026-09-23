@@ -6,6 +6,9 @@ import { URL } from 'node:url';
 import { UA, shouldBypassProxy } from '../../../http/http.js';
 import { HDW_BASE } from '../../../http/hdw.js';
 import { readSsoConfigFile } from '../../../http/hik_logins/hicoo.js';
+import type { SqliteDb } from '../../../db.js';
+import { listProjectPreviewComments } from '../../../db.js';
+import type { PreviewComment } from '@open-design/contracts';
 
 /**
  * Hidesign-Web (HDW) API 反向代理路由。
@@ -20,13 +23,15 @@ export interface RegisterHdwRoutesDeps {
   sendApiError: (...args: any[]) => any;
   /** Daemon data root — used to read SSO cookies for upstream auth. */
   dataDir?: string;
+  /** Daemon SQLite database — used to collect project comments for share-link generation. */
+  db?: SqliteDb;
 }
 
 export function registerHdwRoutes(app: Express, deps: RegisterHdwRoutesDeps): void {
- const { sendApiError, dataDir } = deps;
- app.use('/api/hdw/api', createHdwProxyHandler(sendApiError, dataDir));
- // Public share-link viewer: /api/hdw/share/:token -> HDW /hdw/share/:token
- app.use('/api/hdw/share', createHdwProxyHandler(sendApiError, dataDir, '/share'));
+  const { sendApiError, dataDir, db } = deps;
+  app.use('/api/hdw/api', createHdwProxyHandler(sendApiError, dataDir, undefined, db));
+  // Public share-link viewer: /api/hdw/share/:token -> HDW /hdw/share/:token
+  app.use('/api/hdw/share', createHdwProxyHandler(sendApiError, dataDir, '/share'));
 }
 
 /** 需要透传给上游的请求头白名单（小写匹配）。 */
@@ -46,6 +51,7 @@ function createHdwProxyHandler(
   sendApiError: (...args: any[]) => any,
   dataDir?: string,
   pathSuffix?: string,
+  db?: SqliteDb,
 ) {
  return (req: any, res: any) => {
    // Express app.use('/api/hdw/api', ...) 剥掉 mount 前缀后，req.url 形如
@@ -58,8 +64,47 @@ function createHdwProxyHandler(
     const suffix = pathSuffix || '';
     const targetPath = `${basePath}${suffix}${req.url}`;
    const targetUrl = new URL(targetPath, base.origin);
-   proxyToUpstream(req, res, targetUrl, sendApiError, dataDir);
- };
+   // Intercept share-link/generate to inject project comments as extra data.
+    if (db && req.url === '/share-link/generate' && (req.method === 'POST' || req.method === 'PUT')) {
+      injectCommentsAndProxy(req, res, targetUrl, sendApiError, dataDir, db);
+      return;
+    }
+    proxyToUpstream(req, res, targetUrl, sendApiError, dataDir);
+  };
+}
+/**
+ * Intercept POST /share-link/generate: collect all project comments (including
+ * replies) from the daemon local SQLite database and inject them as
+ * comments_data in the request body before forwarding to HDW.
+ */
+function injectCommentsAndProxy(
+  req: any,
+  res: any,
+  targetUrl: URL,
+  sendApiError: (...args: any[]) => any,
+  dataDir?: string,
+  db?: SqliteDb,
+): void {
+  const projectId: string | undefined =
+    req.body && typeof req.body.project_id === "string"
+      ? req.body.project_id
+      : undefined;
+
+  let comments: PreviewComment[] | unknown[] = [];
+  if (db && projectId) {
+    try {
+      comments = listProjectPreviewComments(db, projectId);
+    } catch {
+      // Comment collection failure must not block share-link generation.
+    }
+  }
+
+  // Inject comments_data into the request body so HDW can embed it.
+  if (req.body && typeof req.body === "object") {
+    req.body.comments_data = comments;
+  }
+
+  proxyToUpstream(req, res, targetUrl, sendApiError, dataDir);
 }
 
 function proxyToUpstream(

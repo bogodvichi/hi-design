@@ -139,6 +139,29 @@
     .comment-card-time { font-size: 12px; color: #999; flex-shrink: 0; }
     .comment-card-text { font-size: 14px; color: #444; line-height: 1.5; word-break: break-word; }
     .comment-card-status { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-top: 6px; background: #d1fae5; color: #059669; }
+    .comment-card-replies-toggle {
+      display: flex; align-items: center; gap: 4px; margin-top: 8px;
+      font-size: 12px; color: #2563eb; cursor: pointer; user-select: none;
+      transition: color 0.2s ease;
+    }
+    .comment-card-replies-toggle:hover { color: #1d4ed8; }
+    .comment-card-replies-toggle .toggle-icon {
+      display: inline-flex; transition: transform 0.2s ease;
+    }
+    .comment-card-replies-toggle.expanded .toggle-icon { transform: rotate(90deg); }
+    .comment-reply {
+      padding: 8px 10px; margin-top: 6px; margin-left: 28px;
+      background: #f8f9fa; border-left: 2px solid #d0d0d0; border-radius: 4px;
+      font-size: 13px; color: #555; line-height: 1.5;
+    }
+    .comment-reply .reply-header {
+      display: flex; align-items: center; gap: 6px; margin-bottom: 4px;
+    }
+    .comment-reply .reply-author { font-weight: 500; color: #333; font-size: 12px; }
+    .comment-reply .reply-time { font-size: 11px; color: #999; }
+    .comment-reply .reply-text { word-break: break-word; }
+    .comment-replies-container { display: none; }
+    .comment-replies-container.visible { display: block; }
   </style>
 </head>
 <body>
@@ -177,6 +200,7 @@
     var HTML_FILES = /*HTML_FILES_DATA*/[];
     var PROJECT_ID = /*PROJECT_ID*/'';
     var TEAM_ID = /*TEAM_ID*/'';
+    var COMMENTS_DATA = /*COMMENTS_DATA*/[];
     (function() {
       var allComments = [];
       var currentFilePath = '';
@@ -280,17 +304,12 @@
         loadingOverlay.classList.remove('visible');
       }
 
-      function fetchComments() {
-        if (!PROJECT_ID || !TEAM_ID) { commentFab.style.display = 'none'; return; }
-        var url = '../teams/' + encodeURIComponent(TEAM_ID) + '/projects/' + encodeURIComponent(PROJECT_ID) + '/comments';
-        fetch(url)
-          .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
-          .then(function(data) {
-            allComments = (data.comments || []).filter(function(c) { return !c.deleted; });
-            updateSidebarBadges();
-            if (currentIframe) { renderPageComments(currentIframe); }
-          })
-          .catch(function() {});
+      function loadComments() {
+        // Use embedded comments data injected at share-link generation time.
+        // Falls back to empty if no comments were collected.
+        allComments = (COMMENTS_DATA || []).filter(function(c) { return !c.deleted; });
+        updateSidebarBadges();
+        if (currentIframe) { renderPageComments(currentIframe); }
       }
 
       function getCommentsForPage(filePath) {
@@ -347,12 +366,18 @@
             pin.textContent = String(comment._pinNumber);
             pin.style.left = ((comment.position && comment.position.x) || 0) + 'px';
             pin.style.top = ((comment.position && comment.position.y) || 0) + 'px';
-            pin.title = comment.text || '';
+            pin.title = comment.note || comment.text || '';
             pin.addEventListener('click', function() { highlightCommentInPanel(comment.id); });
             container.appendChild(pin);
           });
           doc.body.appendChild(container);
         } catch (e) {}
+      }
+
+      function getRepliesForComment(commentId, allComments) {
+        return allComments.filter(function(c) {
+          return c.parentId === commentId || c.rootCommentId === commentId && c.id !== commentId;
+        });
       }
 
       function renderCommentList(comments) {
@@ -362,7 +387,9 @@
           return;
         }
         commentList.innerHTML = '';
-        comments.forEach(function(comment) {
+        // Only show top-level comments (no parentId) in the list
+        var topLevel = comments.filter(function(c) { return !c.parentId; });
+        topLevel.forEach(function(comment) {
           var card = document.createElement('div');
           card.className = 'comment-card' + (comment.status === 'resolved' ? ' resolved' : '');
           card.setAttribute('data-comment-id', comment.id);
@@ -376,24 +403,78 @@
           }
           var author = document.createElement('span');
           author.className = 'comment-card-author';
-          author.textContent = comment.displayName || '匿名用户';
+          author.textContent = comment.authorDisplayName || comment.displayName || '匿名用户';
           header.appendChild(author);
           var time = document.createElement('span');
           time.className = 'comment-card-time';
           time.textContent = formatRelativeTime(comment.createdAt);
           header.appendChild(time);
           card.appendChild(header);
-          if (comment.text) {
-            var text = document.createElement('div');
-            text.className = 'comment-card-text';
-            text.textContent = comment.text;
-            card.appendChild(text);
+          if (comment.note) {
+            var noteEl = document.createElement('div');
+            noteEl.className = 'comment-card-text';
+            noteEl.textContent = comment.note;
+            card.appendChild(noteEl);
+          } else if (comment.text) {
+            var textEl = document.createElement('div');
+            textEl.className = 'comment-card-text';
+            textEl.textContent = comment.text;
+            card.appendChild(textEl);
           }
           if (comment.status === 'resolved') {
             var status = document.createElement('span');
             status.className = 'comment-card-status';
             status.textContent = '已解决';
             card.appendChild(status);
+          }
+          // Add replies toggle if there are replies
+          var replies = getRepliesForComment(comment.id, comments);
+          if (replies.length > 0) {
+            var toggle = document.createElement('div');
+            toggle.className = 'comment-card-replies-toggle';
+            toggle.innerHTML = '<span class="toggle-icon">▶</span> ' + replies.length + ' 条回复';
+            var repliesContainer = document.createElement('div');
+            repliesContainer.className = 'comment-replies-container';
+            replies.forEach(function(reply) {
+              var replyEl = document.createElement('div');
+              replyEl.className = 'comment-reply';
+              var replyHeader = document.createElement('div');
+              replyHeader.className = 'reply-header';
+              var replyAuthor = document.createElement('span');
+              replyAuthor.className = 'reply-author';
+              replyAuthor.textContent = reply.authorDisplayName || reply.displayName || '匿名用户';
+              replyHeader.appendChild(replyAuthor);
+              var replyTime = document.createElement('span');
+              replyTime.className = 'reply-time';
+              replyTime.textContent = formatRelativeTime(reply.createdAt);
+              replyHeader.appendChild(replyTime);
+              replyEl.appendChild(replyHeader);
+              if (reply.note) {
+                var replyNoteEl = document.createElement('div');
+                replyNoteEl.className = 'reply-text';
+                replyNoteEl.textContent = reply.note;
+                replyEl.appendChild(replyNoteEl);
+              } else if (reply.text) {
+                var replyTextEl = document.createElement('div');
+                replyTextEl.className = 'reply-text';
+                replyTextEl.textContent = reply.text;
+                replyEl.appendChild(replyTextEl);
+              }
+              repliesContainer.appendChild(replyEl);
+            });
+            toggle.addEventListener('click', function(e) {
+              e.stopPropagation();
+              var isExpanded = toggle.classList.contains('expanded');
+              if (isExpanded) {
+                toggle.classList.remove('expanded');
+                repliesContainer.classList.remove('visible');
+              } else {
+                toggle.classList.add('expanded');
+                repliesContainer.classList.add('visible');
+              }
+            });
+            card.appendChild(toggle);
+            card.appendChild(repliesContainer);
           }
           card.addEventListener('click', function() { highlightPin(comment.id); });
           commentList.appendChild(card);
@@ -468,7 +549,7 @@
 
       renderMenu();
       collapseMenu();
-      fetchComments();
+      loadComments();
     })();
   </script>
 </body>

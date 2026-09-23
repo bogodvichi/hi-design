@@ -83,11 +83,15 @@ interface Props {
  designSystems?: DesignSystemSummary[];
  onOpenProject?: (id: string) => void;
  onDeleteProject?: (id: string) => Promise<boolean | void> | boolean | void;
- onRenameProject?: (id: string, name: string) => void;
+  onRenameProject?: (id: string, name: string) => void;
   onDuplicateProject?: (id: string) => Promise<void> | void;
+  onCopyProject?: (
+    id: string,
+    options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
+  ) => Promise<void> | void;
 }
 
-export function TeamSpaceView({ teamId, tab, onInvite, designSystems = [], onOpenProject, onDeleteProject, onRenameProject, onDuplicateProject }: Props) {
+export function TeamSpaceView({ teamId, tab, onInvite, designSystems = [], onOpenProject, onDeleteProject, onRenameProject, onDuplicateProject, onCopyProject }: Props) {
   const t = useT();
   const routeTab = tab === 'skill' || tab === 'mcp' ? tab : 'projects';
   const [activeTab, setActiveTab] = useState<TeamTab>(routeTab);
@@ -306,7 +310,7 @@ export function TeamSpaceView({ teamId, tab, onInvite, designSystems = [], onOpe
 
       <div className={styles.content} role="tabpanel">
         {activeTab === 'projects' ? (
-          <ProjectsPanel controlsPortalTarget={typeTabsEl} teamId={teamId} workspaceContext={teamWorkspaceContext} operator={operator} showCreateGroup={showCreateGroup} onShowCreateGroupChange={setShowCreateGroup} designSystems={designSystems} onOpenProject={onOpenProject} onDeleteProject={onDeleteProject} onRenameProject={onRenameProject} onDuplicateProject={onDuplicateProject} />
+          <ProjectsPanel controlsPortalTarget={typeTabsEl} teamId={teamId} workspaceContext={teamWorkspaceContext} operator={operator} showCreateGroup={showCreateGroup} onShowCreateGroupChange={setShowCreateGroup} designSystems={designSystems} onOpenProject={onOpenProject} onDeleteProject={onDeleteProject} onRenameProject={onRenameProject} onDuplicateProject={onDuplicateProject} onCopyProject={onCopyProject} />
         ) : null}
         {activeTab === 'members' ? (
           <MembersTable teamId={teamId} operator={operator} />
@@ -615,6 +619,7 @@ function ProjectsPanel({
   onDeleteProject,
  onRenameProject,
  onDuplicateProject,
+ onCopyProject,
   controlsPortalTarget,
 }: {
   teamId?: string;
@@ -627,6 +632,10 @@ function ProjectsPanel({
   onDeleteProject?: (id: string) => Promise<boolean | void> | boolean | void;
   onRenameProject?: (id: string, name: string) => void;
   onDuplicateProject?: (id: string) => Promise<void> | void;
+  onCopyProject?: (
+    id: string,
+    options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
+  ) => Promise<void> | void;
   controlsPortalTarget?: HTMLElement | null;
 }) {
   const t = useT();
@@ -1056,7 +1065,9 @@ function ProjectsPanel({
             setProjects((prev) => prev.map((p) => p.id === id ? { ...p, name } : p));
             onRenameProject?.(id, name);
           }}
-          onDuplicate={onDuplicateProject}
+          onDuplicate={onCopyProject && teamId
+            ? (id) => onCopyProject(id, { targetWorkspaceId: teamId })
+            : onDuplicateProject}
          hideTitle
          controlsPortalTarget={controlsPortalTarget}
          bulkbarPortalTarget={bulkbarEl}
@@ -1462,9 +1473,13 @@ interface FolderViewProps {
   onDeleteProject?: (id: string) => Promise<boolean | void> | boolean | void;
   onRenameProject?: (id: string, name: string) => void;
   onDuplicateProject?: (id: string) => Promise<void> | void;
+  onCopyProject?: (
+    id: string,
+    options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
+  ) => Promise<void> | void;
 }
 
-export function FolderView({ teamId, folderId, designSystems = [], onOpenProject, onDeleteProject, onRenameProject, onDuplicateProject }: FolderViewProps) {
+export function FolderView({ teamId, folderId, designSystems = [], onOpenProject, onDeleteProject, onRenameProject, onDuplicateProject, onCopyProject }: FolderViewProps) {
   const t = useT();
   const [breadcrumb, setBreadcrumb] = useState<BreadcrumbItem[]>([]);
   const [teamName, setTeamName] = useState<string | null>(null);
@@ -1672,6 +1687,7 @@ export function FolderView({ teamId, folderId, designSystems = [], onOpenProject
           onDeleteProject={onDeleteProject}
          onRenameProject={onRenameProject}
          onDuplicateProject={onDuplicateProject}
+         onCopyProject={onCopyProject}
        />
      </div>
    </section>
@@ -1690,6 +1706,7 @@ function FoldersPanel({
   onDeleteProject,
  onRenameProject,
  onDuplicateProject,
+ onCopyProject,
 }: {
   teamId?: string;
   folderId?: string;
@@ -1700,8 +1717,12 @@ function FoldersPanel({
  designSystems?: DesignSystemSummary[];
  onOpenProject?: (id: string) => void;
  onDeleteProject?: (id: string) => Promise<boolean | void> | boolean | void;
- onRenameProject?: (id: string, name: string) => void;
+  onRenameProject?: (id: string, name: string) => void;
   onDuplicateProject?: (id: string) => Promise<void> | void;
+  onCopyProject?: (
+    id: string,
+    options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
+  ) => Promise<void> | void;
 }) {
   const t = useT();
   const [folders, setFolders] = useState<TeamFolderItem[]>([]);
@@ -2130,7 +2151,9 @@ function FoldersPanel({
             setProjects((prev) => prev.map((p) => p.id === id ? { ...p, name } : p));
             onRenameProject?.(id, name);
           }}
-          onDuplicate={onDuplicateProject}
+          onDuplicate={onCopyProject && teamId
+            ? (id) => onCopyProject(id, { targetWorkspaceId: teamId, targetFolderId: folderId })
+            : onDuplicateProject}
          hideTitle
          operator={operator}
          controlsPortalTarget={controlsEl}

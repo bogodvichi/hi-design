@@ -140,7 +140,10 @@ interface Props {
   onDeleteProject: (id: string) => void;
  onDuplicateProject?: (id: string) => Promise<void> | void;
  onRenameProject: (id: string, name: string) => void;
- onCopyProject?: (id: string) => Promise<void> | void;
+ onCopyProject?: (
+   id: string,
+   options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
+ ) => Promise<void> | void;
   onProjectsRefresh?: () => Promise<void> | void;
   onTeamProjectContentReady?: (
     projectId: string,

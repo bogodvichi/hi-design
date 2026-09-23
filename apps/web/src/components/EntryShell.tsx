@@ -426,7 +426,7 @@ onRenameProject: (id: string, name: string) => void;
 onProjectsRefresh?: () => Promise<void> | void;
 onCopyProject?: (
   id: string,
-  options?: { targetFolderId?: string | null },
+  options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
 ) => Promise<void> | void;
  onTeamProjectContentReady?: (
    projectId: string,
@@ -837,32 +837,47 @@ const homeProjectsList = useMemo(
       teamProjects: teamProjects.projects,
       workspaceContext,
     });
-   // Only show projects that have been opened at least once (i.e. exist
-   // in the localStorage recently-opened store). Server data stays
-   // authoritative for all fields; localStorage only gates visibility.
-   // Personal projects not owned by the current user are filtered out.
-    // Use the Shared Space member ID derived from the username — NOT
-    // workspaceContext.workspaceMemberId, which changes with the currently
-    // selected workspace and is only the Shared Space member ID when the
-    // context happens to be the Shared Space.
-    // When workspaceVisibility is absent (old localStorage entries), infer
-    // from workspaceId: null or === sharedSpaceTeamId means personal.
-    const isOwnedBySelf = (p: {
-      workspaceVisibility?: string;
-      workspaceId?: string | null;
-      createdByWorkspaceMemberId?: string | null;
-    }): boolean => {
-      const isPersonal = p.workspaceVisibility != null
-        ? p.workspaceVisibility === 'personal'
-        : (!p.workspaceId || p.workspaceId === sharedSpaceTeamId);
-      if (!isPersonal) return true;
-      const ownerId = p.createdByWorkspaceMemberId ?? null;
-      if (ownerId && selfSharedSpaceMemberId && ownerId === selfSharedSpaceMemberId) return true;
-      return false;
-    };
-   const openedServerProjects = serverProjects
-      .filter((p) => recentIds.has(p.id) && isOwnedBySelf(p))
-      .map((p) => {
+  // Only show projects that have been opened at least once (i.e. exist
+  // in the localStorage recently-opened store). Server data stays
+  // authoritative for all fields; localStorage only gates visibility.
+  // Personal projects not owned by the current user are filtered out of
+  // the localStorage-only gap path. Server-fetched projects are already
+  // filtered by the daemon's workspaceProjectCreatedByCurrentMember, so
+  // they are trusted as-is.
+   // Use the Shared Space member ID derived from the username — NOT
+   // workspaceContext.workspaceMemberId, which changes with the currently
+   // selected workspace and is only the Shared Space member ID when the
+   // context happens to be the Shared Space.
+   // When workspaceVisibility is absent (old localStorage entries), infer
+   // from workspaceId: null or === sharedSpaceTeamId means personal.
+   // When sharedSpaceTeamId has not resolved yet, treat a non-null
+   // workspaceId conservatively as personal (apply ownership check) rather
+   // than team (show unconditionally) so other users' personal projects
+   // cannot leak during the async resolution window.
+   const isOwnedBySelf = (p: {
+     workspaceVisibility?: string;
+     workspaceId?: string | null;
+     createdByWorkspaceMemberId?: string | null;
+   }): boolean => {
+     const isPersonal = p.workspaceVisibility != null
+       ? p.workspaceVisibility === 'personal'
+       : (!p.workspaceId || p.workspaceId === sharedSpaceTeamId || sharedSpaceTeamId == null);
+     if (!isPersonal) return true;
+     const ownerId = p.createdByWorkspaceMemberId ?? null;
+     // No recorded owner — trust the server's null-creator fallback
+     // (personal/default-team workspaces treat null creator as self).
+     if (!ownerId) return true;
+     // Owner is known but self ID hasn't resolved yet — conservatively
+     // hide rather than leak another user's personal project.
+     if (!selfSharedSpaceMemberId) return false;
+     return ownerId === selfSharedSpaceMemberId;
+   };
+  // Server-fetched projects are already ownership-filtered by the daemon
+  // (workspaceProjectCreatedByCurrentMember). Trust that filter and only
+  // gate by the localStorage recently-opened set.
+  const openedServerProjects = serverProjects
+     .filter((p) => recentIds.has(p.id))
+     .map((p) => {
         const recent = recentMap.get(p.id);
         return {
           ...p,
@@ -2125,10 +2140,10 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
             <TeamSlotPlaceholder icon="settings" title={t('entry.navWorkspaceSettings')} />
           ) : null}
         {view === 'team-space' ? (
-          <TeamSpaceView teamId={entryRoute.teamId} tab={entryRoute.view === 'team-space' ? entryRoute.tab : undefined} onInvite={() => setInviteOpen(true)} designSystems={designSystems} onOpenProject={onOpenProject} onDeleteProject={onDeleteProject} onRenameProject={onRenameProject} onDuplicateProject={onDuplicateProject} />
+          <TeamSpaceView teamId={entryRoute.teamId} tab={entryRoute.view === 'team-space' ? entryRoute.tab : undefined} onInvite={() => setInviteOpen(true)} designSystems={designSystems} onOpenProject={onOpenProject} onDeleteProject={onDeleteProject} onRenameProject={onRenameProject} onDuplicateProject={onDuplicateProject} onCopyProject={onCopyProject} />
        ) : null}
         {view === 'team-folder' ? (
-           <FolderView teamId={entryRoute.teamId} folderId={entryRoute.folderId} designSystems={designSystems} onOpenProject={onOpenProject} onDeleteProject={onDeleteProject} onRenameProject={onRenameProject} onDuplicateProject={onDuplicateProject} />
+           <FolderView teamId={entryRoute.teamId} folderId={entryRoute.folderId} designSystems={designSystems} onOpenProject={onOpenProject} onDeleteProject={onDeleteProject} onRenameProject={onRenameProject} onDuplicateProject={onDuplicateProject} onCopyProject={onCopyProject} />
         ) : null}
         {view === 'personal-all' ? (
         <PersonalAllView
