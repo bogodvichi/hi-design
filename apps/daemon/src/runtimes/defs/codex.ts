@@ -178,6 +178,15 @@ export function codexOpenDesignShellEnvironmentArgs(): string[] {
   ];
 }
 
+export function codexHeadlessApprovalArgs(): string[] {
+  // HiDesign runs Codex non-interactively. Leaving the CLI at its user-level
+  // approval default can turn an MCP/tool request into an implicit
+  // "user cancelled" because there is no terminal approval UI attached to the
+  // daemon child. Keep the workspace sandbox, but return execution/tool
+  // failures directly to the model instead of waiting for human confirmation.
+  return ['-c', 'approval_policy="never"'];
+}
+
 export function codexManagedMcpBridgeArgs(
   bridges: NonNullable<RuntimeContext['mcpBridges']> | undefined,
 ): string[] {
@@ -191,6 +200,12 @@ export function codexManagedMcpBridgeArgs(
       '-c',
       `mcp_servers.${key}.args=${JSON.stringify(bridge.args)}`,
     );
+    if (bridge.approvalMode) {
+      args.push(
+        '-c',
+        `mcp_servers.${key}.default_tools_approval_mode=${JSON.stringify(bridge.approvalMode)}`,
+      );
+    }
     if (bridge.envVars?.length) {
       args.push(
         '-c',
@@ -329,6 +344,7 @@ export const codexAgentDef = {
         args.push('--disable', 'plugins');
       }
       args.push(...codexOpenDesignShellEnvironmentArgs());
+      args.push(...codexHeadlessApprovalArgs());
       args.push(...codexManagedMcpBridgeArgs(runtimeContext.mcpBridges));
       // `-C <cwd>` and `--add-dir <dir>` are CREATE-only flags: `codex exec
       // resume` rejects both (`error: unexpected argument '-C' found`), so

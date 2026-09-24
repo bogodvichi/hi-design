@@ -1435,6 +1435,127 @@ test('codex json stream emits only the unseen suffix when a reasoning item repea
   ]);
 });
 
+test('codex parser consumes app-server agent deltas without duplicating final agentMessage text', () => {
+  const { events, handler } = collectEvents('codex');
+
+  handler.feed(
+    JSON.stringify({
+      method: 'thread/started',
+      params: { thread: { id: 'thr-1' } },
+    }) + '\n' +
+    JSON.stringify({
+      method: 'turn/started',
+      params: { threadId: 'thr-1', turn: { id: 'turn-1', status: 'inProgress' } },
+    }) + '\n' +
+    JSON.stringify({
+      method: 'item/reasoning/summaryTextDelta',
+      params: { threadId: 'thr-1', turnId: 'turn-1', itemId: 'reason-1', delta: 'Thinking' },
+    }) + '\n' +
+    JSON.stringify({
+      method: 'item/agentMessage/delta',
+      params: { threadId: 'thr-1', turnId: 'turn-1', itemId: 'msg-1', delta: 'HEL' },
+    }) + '\n' +
+    JSON.stringify({
+      method: 'item/agentMessage/delta',
+      params: { threadId: 'thr-1', turnId: 'turn-1', itemId: 'msg-1', delta: 'LO' },
+    }) + '\n' +
+    JSON.stringify({
+      method: 'item/completed',
+      params: {
+        threadId: 'thr-1',
+        turnId: 'turn-1',
+        item: { id: 'msg-1', type: 'agentMessage', text: 'HELLO' },
+      },
+    }) + '\n' +
+    JSON.stringify({
+      method: 'thread/tokenUsage/updated',
+      params: {
+        threadId: 'thr-1',
+        turnId: 'turn-1',
+        tokenUsage: {
+          last: {
+            inputTokens: 12,
+            cachedInputTokens: 5,
+            outputTokens: 3,
+            reasoningOutputTokens: 2,
+          },
+        },
+      },
+    }) + '\n' +
+    JSON.stringify({
+      method: 'turn/completed',
+      params: { threadId: 'thr-1', turn: { id: 'turn-1', status: 'completed' } },
+    }) + '\n',
+  );
+
+  assert.deepEqual(events, [
+    { type: 'status', label: 'initializing', sessionId: 'thr-1' },
+    { type: 'status', label: 'thinking' },
+    { type: 'thinking_delta', delta: 'Thinking' },
+    { type: 'text_delta', delta: 'HEL' },
+    { type: 'text_delta', delta: 'LO' },
+    {
+      type: 'usage',
+      usage: {
+        input_tokens: 12,
+        output_tokens: 3,
+        thought_tokens: 2,
+        cached_read_tokens: 5,
+      },
+    },
+  ]);
+});
+
+test('codex parser maps app-server commandExecution lifecycle onto existing tool events', () => {
+  const { events, handler } = collectEvents('codex');
+
+  handler.feed(
+    JSON.stringify({
+      method: 'item/started',
+      params: {
+        threadId: 'thr-1',
+        turnId: 'turn-1',
+        item: {
+          id: 'cmd-1',
+          type: 'commandExecution',
+          command: 'pnpm test',
+          status: 'inProgress',
+        },
+      },
+    }) + '\n' +
+    JSON.stringify({
+      method: 'item/completed',
+      params: {
+        threadId: 'thr-1',
+        turnId: 'turn-1',
+        item: {
+          id: 'cmd-1',
+          type: 'commandExecution',
+          command: 'pnpm test',
+          status: 'completed',
+          aggregatedOutput: 'ok\n',
+          exitCode: 0,
+        },
+      },
+    }) + '\n',
+  );
+
+  assert.deepEqual(events, [
+    {
+      type: 'tool_use',
+      id: 'cmd-1',
+      name: 'Bash',
+      input: { command: 'pnpm test' },
+    },
+    {
+      type: 'tool_result',
+      toolUseId: 'cmd-1',
+      content: 'ok\n',
+      isError: false,
+    },
+  ]);
+});
+
 test('codex json stream surfaces non-fatal error items as a warning status, not raw noise (skills budget notice)', () => {
   const { events, handler } = collectEvents('codex');
 

@@ -3,6 +3,13 @@
    CaretFloatingLayer; this rule only owns stacking + the enter animation. */
 .caret-floating-layer {
   z-index: 1600; /* above the composer's own popover-elevation tier (1500) */
+  -webkit-app-region: no-drag;
+}
+/* The caret popover can overlap Electron's draggable workspace-tab chrome.
+   app-region is not inherited, so every descendant must opt out or the
+   titlebar swallows clicks even though this layer paints above it. */
+.caret-floating-layer * {
+  -webkit-app-region: no-drag;
 }
 @keyframes cflEnterAbove {
   from { opacity: 0; transform: translateY(6px) scale(0.98); }
@@ -104,6 +111,11 @@
   color: var(--text-strong);
   border-color: transparent;
   box-shadow: none;
+}
+.mention-tab-count {
+  margin-inline-start: 5px;
+  color: var(--text-faint);
+  font-size: 12px;
 }
 .mention-results {
   flex: 1 1 auto;

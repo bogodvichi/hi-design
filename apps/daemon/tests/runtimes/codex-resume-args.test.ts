@@ -21,6 +21,7 @@ describe('codex buildArgs session resume', () => {
           args: ['/od', 'mcp', 'himind'],
           env: { ELECTRON_RUN_AS_NODE: '1' },
           envVars: ['OD_DAEMON_URL', 'OD_TOOL_TOKEN'],
+          approvalMode: 'approve',
         },
         {
           id: 'fde-research-reports',
@@ -37,10 +38,18 @@ describe('codex buildArgs session resume', () => {
       'mcp_servers.himind.env_vars=["OD_DAEMON_URL","OD_TOOL_TOKEN"]',
     );
     expect(args).toContain('mcp_servers.himind.env.ELECTRON_RUN_AS_NODE="1"');
+    expect(args).toContain(
+      'mcp_servers.himind.default_tools_approval_mode="approve"',
+    );
     expect(args).toContain('mcp_servers.fde-research-reports.command="/node"');
     expect(args).toContain('mcp_servers.fde-research-reports.args=["/od","mcp","ai-research"]');
     expect(args).toContain('mcp_servers.fde-research-reports.env.ELECTRON_RUN_AS_NODE="1"');
     expect(args).toContain('mcp_servers.fde-research-reports.env.NODE_USE_SYSTEM_CA="1"');
+    expect(
+      args.some((arg) =>
+        arg.includes('mcp_servers.fde-research-reports.default_tools_approval_mode='),
+      ),
+    ).toBe(false);
   });
 
   it('uses plain `exec` (no resume, no id) on a create turn', () => {
