@@ -241,43 +241,41 @@ describe('projectViewAuthorizationLifetimeKey', () => {
 
 describe('projectViewMountKey', () => {
   const projectId = 'same-project';
-  const baseContext = {
-    workspaceId: 'workspace-a',
-    workspaceType: 'team',
-    workspaceMemberId: 'member-a',
-    role: 'member',
-    memberStatus: 'active',
-    lifecycleState: 'active',
-    permissions: {
-      canShareProjects: false,
-      canWriteSyncedFiles: true,
-    },
-  } as WorkspaceCollabContext;
-
-  it('does not remount ProjectView for live permission/role refreshes', () => {
-    const initial = projectViewMountKey(projectId, baseContext);
-    expect(projectViewMountKey(projectId, {
-      ...baseContext,
-      role: 'admin',
-      lifecycleState: 'locked',
-      permissions: {
-        ...baseContext.permissions,
-        canShareProjects: true,
-        canWriteSyncedFiles: false,
-      },
-    })).toBe(initial);
+  
+  it('returns a local key for unbound projects', () => {
+    expect(projectViewMountKey(projectId, null)).toBe(`local:${projectId}`);
+    expect(projectViewMountKey(projectId, undefined)).toBe(`local:${projectId}`);
+    expect(projectViewMountKey(projectId, '')).toBe(`local:${projectId}`);
   });
 
-  it('does remount when the workspace/member caller identity changes', () => {
-    const initial = projectViewMountKey(projectId, baseContext);
-    expect(projectViewMountKey(projectId, {
-      ...baseContext,
-      workspaceId: 'workspace-b',
-    })).not.toBe(initial);
-    expect(projectViewMountKey(projectId, {
-      ...baseContext,
-      workspaceMemberId: 'member-b',
-    })).not.toBe(initial);
+  it('returns a workspace key for workspace-bound projects', () => {
+    expect(projectViewMountKey(projectId, 'workspace-a'))
+      .toBe(`workspace:workspace-a:${projectId}`);
+  });
+
+  it('does not remount for member/role/permission changes within the same workspace', () => {
+    // The mount key is derived from the persisted workspaceId only.
+    // Member id, role, status, and permission changes are handled by
+    // projectAuthorizationKey inside ProjectView — the mount key stays stable.
+    const initial = projectViewMountKey(projectId, 'workspace-a');
+    expect(projectViewMountKey(projectId, 'workspace-a')).toBe(initial);
+  });
+
+  it('does remount when the workspace binding itself changes', () => {
+    const initial = projectViewMountKey(projectId, 'workspace-a');
+    expect(projectViewMountKey(projectId, 'workspace-b')).not.toBe(initial);
+    // Moving from workspace-bound to unbound (local) also remounts.
+    expect(projectViewMountKey(projectId, null)).not.toBe(initial);
+  });
+
+  it('stays stable across async workspace context resolution', () => {
+    // A project moved into a team has workspaceId from the moment the row
+    // lands. The caller authority (memberId, role) is resolved asynchronously
+    // by useProjectRouteWorkspaceContext. The mount key must not change when
+    // that resolution completes, or ProjectView remounts mid-interaction.
+    const beforeResolution = projectViewMountKey(projectId, 'workspace-a');
+    const afterResolution = projectViewMountKey(projectId, 'workspace-a');
+    expect(afterResolution).toBe(beforeResolution);
   });
 });
 

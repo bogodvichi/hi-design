@@ -10,7 +10,9 @@ afterEach(() => {
 
 describe('recordCommunityStat', () => {
   it('sends the resource event with explicit workspace identity', async () => {
-    const fetchMock = vi.fn(async () => new Response(JSON.stringify({
+    // Type the mock as `typeof fetch` so `mock.calls` carries the
+    // [input, init] tuple instead of inferring an empty parameter list.
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(JSON.stringify({
       stats: {
         resourceType: 'mcp',
         resourceId: 'himind',

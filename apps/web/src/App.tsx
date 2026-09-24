@@ -488,16 +488,28 @@ export function projectViewAuthorizationLifetimeKey(
 /**
  * React mount identity for ProjectView. Permission/role/billing bits are live
  * state and must NOT remount the whole project surface when they refresh. The
- * authorization lifetime above intentionally remains stricter for async
- * authority fences; this key only changes when the actual project caller
- * identity changes.
- */
+* authorization lifetime above intentionally remains stricter for async
+* authority fences; this key only changes when the actual project caller
+* identity changes.
+ *
+ * The key is derived from the project's *persisted* Workspace binding, not
+ * the async-resolved `WorkspaceCollabContext`. A project moved into a team
+ * has a `workspaceId` from the moment the row lands; the caller authority
+ * (member id, role, status) is resolved asynchronously by
+ * `useProjectRouteWorkspaceContext`. Basing the mount key on the resolved
+ * context would change it from `local:<id>` to `workspace:<ws>:<member>:<id>`
+ * when that async lookup completes — remounting ProjectView and destroying all
+ * in-flight UI state (file selection, comment drafts, chat composer) at a
+ * time the user is already interacting with the project. Member/role changes
+ * within the same Workspace are handled by `projectAuthorizationKey` inside
+ * ProjectView without a remount.
+*/
 export function projectViewMountKey(
   projectId: string,
-  context: WorkspaceCollabContext | null,
+  persistedWorkspaceId: string | null | undefined,
 ): string {
-  if (!context) return `local:${projectId}`;
-  return `workspace:${context.workspaceId}:${context.workspaceMemberId}:${projectId}`;
+  if (!persistedWorkspaceId) return `local:${projectId}`;
+  return `workspace:${persistedWorkspaceId}:${projectId}`;
 }
 
 /**
@@ -5689,10 +5701,10 @@ if (fetchedProject) {
       appMain = (
         <div className="app">
         <ProjectView
-          key={projectViewMountKey(
-            activeProject.id,
-            activeProjectWorkspaceContext,
-          )}
+         key={projectViewMountKey(
+           activeProject.id,
+            activeProject.workspaceId,
+         )}
           project={activeProject}
           workspaceContextOverride={
             activeProject.workspaceId

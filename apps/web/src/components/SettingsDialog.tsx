@@ -466,11 +466,14 @@ interface Props {
    * dialog and should NOT mutate onboarding state — it represents an
    * incremental save, not a final commit.
    */
-  onPersist: (cfg: AppConfig, options?: { forceMediaProviderSync?: boolean }) => Promise<void> | void;
+ onPersist: (cfg: AppConfig, options?: { forceMediaProviderSync?: boolean }) => Promise<void> | void;
   /**
-  onDraftChange?: (cfg: AppConfig) => void;
-  /**
-   * Persist the Composio API key separately from the broader autosave
+   * Notified whenever the in-memory settings draft changes, before autosave
+   * commits. App uses this to keep its live config-dependent UI in sync.
+   */
+ onDraftChange?: (cfg: AppConfig) => void;
+ /**
+  * Persist the Composio API key separately from the broader autosave
    * loop. Composio secrets need an explicit user gesture so half-typed
    * keys never leave the browser, so this is wired to a section-local
    * "Save key" button rather than the autosave channel.
