@@ -215,6 +215,9 @@ interface Props {
   // Accent CTA rendered before the remaining header actions (Share / Close).
   // Plugin detail wrappers use this to expose "Use plugin".
   primaryAction?: PreviewPrimaryAction;
+  // Keeps desktop community details clear of native window controls while
+  // preserving the existing edge-to-edge mobile treatment.
+  compact?: boolean;
   // Optional extra controls rendered after Share and before the Close
   // button — used by plugin detail wrappers to surface the
   // PluginShareMenu (copy install command / share link / etc.) so the
@@ -254,6 +257,7 @@ export function PreviewModal({
   sidebar,
   designWidth = 1280,
   primaryAction,
+  compact = false,
   headerExtras,
   shareTarget,
   initialShareOpen = false,
@@ -552,13 +556,13 @@ export function PreviewModal({
 
   return (
     <div
-      className="ds-modal-backdrop"
+      className={`ds-modal-backdrop${compact ? ' ds-modal-backdrop--compact' : ''}`}
       role="dialog"
       aria-modal="true"
       aria-label={`${title} preview`}
     >
       <div
-        className={`ds-modal ${fullscreen ? 'ds-modal-fullscreen' : ''}`}
+        className={`ds-modal${compact ? ' ds-modal--compact' : ''}${fullscreen ? ' ds-modal-fullscreen' : ''}`}
       >
         <header className="ds-modal-header">
           <div className="ds-modal-header-top">

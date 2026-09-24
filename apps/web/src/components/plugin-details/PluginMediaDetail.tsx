@@ -36,6 +36,7 @@ interface Props {
   onDuplicate?: (record: InstalledPluginRecord) => void;
   isApplying?: boolean;
   hideUseAction?: boolean;
+  compact?: boolean;
   // Analytics — forwarded to PreviewModal's share popover. Does NOT cover
   // the headerExtras PluginShareMenu (copy install command), which is a
   // separate menu.
@@ -92,6 +93,7 @@ export function PluginMediaDetail({
   onDuplicate,
   isApplying,
   hideUseAction,
+  compact = false,
   onSharePopoverItemClick,
 }: Props) {
   const { t, locale } = useI18n();
@@ -230,6 +232,7 @@ export function PluginMediaDetail({
   return (
     <PreviewModal
       title={localizedTitle}
+      compact={compact}
       subtitle={description || undefined}
       views={views}
       exportTitleFor={() => localizedTitle}

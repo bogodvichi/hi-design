@@ -143,6 +143,33 @@ describe('RecentProjectsStrip owner directory fallback', () => {
       .toBe('Mapped Owner');
   });
 
+  it('uses the display name for color even when workspace member ids differ', () => {
+    workspaceState.context = teamContext();
+    workspaceState.resolve.mockReturnValue(null);
+
+    const { container } = render(
+      <RecentProjectsStrip
+        projects={[
+          project({
+            id: 'project-team-a',
+            createdByWorkspaceMemberId: 'member-id-from-team-a',
+            ownerDisplayName: '张佳雯5',
+          }),
+          project({
+            id: 'project-team-b',
+            createdByWorkspaceMemberId: 'member-id-from-team-b',
+            ownerDisplayName: '张佳雯5',
+          }),
+        ]}
+        onOpen={() => {}}
+      />,
+    );
+
+    const owners = container.querySelectorAll<HTMLElement>('.recent-projects__card-owner');
+    expect(owners).toHaveLength(2);
+    expect(owners[0]?.style.backgroundColor).toBe(owners[1]?.style.backgroundColor);
+  });
+
   it('shows Me when the HDW owner id matches the deterministic current-user team member id', async () => {
     workspaceState.context = teamContext();
     workspaceState.resolve.mockReturnValue(null);
@@ -159,8 +186,9 @@ describe('RecentProjectsStrip owner directory fallback', () => {
     );
 
     await waitFor(() => {
-      expect(container.querySelector<HTMLElement>('.recent-projects__card-owner')?.textContent)
-        .toBe('Me');
+      const owner = container.querySelector<HTMLElement>('.recent-projects__card-owner');
+      expect(owner?.textContent).toBe('Me');
+      expect(owner?.style.backgroundColor).toBe('rgb(0, 0, 0)');
     });
   });
 

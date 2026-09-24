@@ -9,7 +9,7 @@ import { getTeamMemberId } from '../utils/deterministicId';
 import { Icon, type IconName } from './Icon';
 import { useT } from '../i18n';
 import type { Dict } from '../i18n/types';
-import { avatarColorFor } from '../utils/avatarColor';
+import { avatarColorForDisplayName } from '../utils/avatarColor';
 import { FolderCardMenu } from './FolderCardMenu';
 import { ShareFolderDialog } from './ShareFolderDialog';
 import { FolderSelectionCheck } from './FolderSelectionCheck';
@@ -50,7 +50,7 @@ type MemberRole = 'owner' | 'admin' | 'member' | 'guest';
 
 interface TeamMember {
   workspaceMemberId: string;
-  name: string;
+  displayName: string;
   email: string;
   role: MemberRole;
   joinedAt: string;
@@ -1203,7 +1203,7 @@ function MembersTable({ teamId, operator }: { teamId?: string; operator: Operato
         const list: any[] = body?.data?.members ?? [];
         setMembers(list.map((m) => ({
           workspaceMemberId: m.workspace_member_id || '',
-          name: m.displayname || m.username || '',
+          displayName: m.displayname || '',
           email: m.email || '',
           role: m.role as MemberRole,
           joinedAt: m.created_at || '',
@@ -1233,7 +1233,7 @@ function MembersTable({ teamId, operator }: { teamId?: string; operator: Operato
          const list: any[] = body?.data?.members ?? [];
           setMembers(list.map((m) => ({
             workspaceMemberId: m.workspace_member_id || '',
-            name: m.displayname || m.username || '',
+            displayName: m.displayname || '',
             email: m.email || '',
             role: m.role as MemberRole,
             joinedAt: m.created_at || '',
@@ -1294,11 +1294,11 @@ function MembersTable({ teamId, operator }: { teamId?: string; operator: Operato
       const body = await res.json().catch(() => null);
       if (!res.ok || body?.code !== 0) {
         // Re-add on failure.
-        setMembers((prev) => [...prev, member].sort((a, b) => a.name.localeCompare(b.name)));
+        setMembers((prev) => [...prev, member].sort((a, b) => a.displayName.localeCompare(b.displayName)));
         setRoleError(body?.error || body?.msg || `HTTP ${res.status}`);
       }
     } catch (err: any) {
-      setMembers((prev) => [...prev, member].sort((a, b) => a.name.localeCompare(b.name)));
+      setMembers((prev) => [...prev, member].sort((a, b) => a.displayName.localeCompare(b.displayName)));
       setRoleError(err?.message || String(err));
     }
   }
@@ -1355,7 +1355,7 @@ function MembersTable({ teamId, operator }: { teamId?: string; operator: Operato
             ) : members.length === 0 ? (
               <tr><td colSpan={4}>{t('teamSpace.noMembers')}</td></tr>
             ) : members.map((m) => {
-              const initial = m.name.charAt(0).toUpperCase();
+              const initial = m.displayName.charAt(0).toUpperCase();
               const roleClass = styles[`role_${m.role}`] ?? '';
               const changeable = canChangeRole(m);
               const removable = canRemoveMember(m);
@@ -1365,11 +1365,11 @@ function MembersTable({ teamId, operator }: { teamId?: string; operator: Operato
                     <div className={styles.memberCell}>
                       <span
                         className={styles.avatar}
-                        style={{ background: avatarColorFor(m.name) }}
+                        style={{ background: avatarColorForDisplayName(m.displayName) }}
                         aria-hidden
                       >{initial}</span>
                       <div className={styles.memberInfo}>
-                        <span className={styles.memberName}>{m.name}</span>
+                        <span className={styles.memberName}>{m.displayName}</span>
                         <span className={styles.memberEmail}>{m.email}</span>
                       </div>
                     </div>

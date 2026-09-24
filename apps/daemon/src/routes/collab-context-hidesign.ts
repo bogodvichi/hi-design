@@ -643,7 +643,7 @@ export function registerCollabContextHideSignRoutes(
     if (deps.requestTeamShare) {
       try {
         const sharePrincipal: ResourceHubPrincipal = {
-          memberId: getSharedSpaceMemberId(createdByUsername),
+          memberId: getTeamMemberId(homeWorkspaceId, createdByUsername),
           teamId: homeWorkspaceId,
           role: 'owner',
           lifecycleState: 'active',
@@ -906,7 +906,7 @@ export function registerCollabContextHideSignRoutes(
       for (const item of items) {
         try {
           const sharePrincipal: ResourceHubPrincipal = {
-            memberId: getSharedSpaceMemberId(createdByUsername),
+            memberId: getTeamMemberId(homeWorkspaceId, createdByUsername),
             teamId: homeWorkspaceId,
             role: 'owner',
             lifecycleState: 'active',

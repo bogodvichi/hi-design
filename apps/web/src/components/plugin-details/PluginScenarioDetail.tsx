@@ -32,6 +32,7 @@ interface Props {
   onDuplicate?: (record: InstalledPluginRecord) => void;
   isApplying?: boolean;
   hideUseAction?: boolean;
+  compact?: boolean;
   workspaceContext?: WorkspaceCollabContext | null;
 }
 
@@ -42,6 +43,7 @@ export function PluginScenarioDetail({
   onDuplicate,
   isApplying,
   hideUseAction,
+  compact = false,
   workspaceContext = null,
 }: Props) {
   const { t, locale } = useI18n();
@@ -87,8 +89,8 @@ export function PluginScenarioDetail({
 
   return (
     <Dialog
-      backdropClassName="plugin-details-modal-backdrop"
-      className="plugin-details-modal"
+      backdropClassName={`plugin-details-modal-backdrop${compact ? ' plugin-details-modal-backdrop--compact' : ''}`}
+      className={`plugin-details-modal${compact ? ' plugin-details-modal--compact' : ''}`}
       includeChromeClassName={false}
       ariaLabel={localizePluginChrome(locale, 'detailsAria', { title: localizedTitle })}
       onClose={onClose}

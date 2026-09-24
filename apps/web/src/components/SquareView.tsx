@@ -42,7 +42,7 @@ import { getSharedSpaceMemberId } from '../utils/deterministicId';
 import { getStoredUsername } from '../auth/auth';
 import { communityTextMatchesQuery } from '../utils/community-search';
 import { ellipsisTitleHoverProps } from '../utils/ellipsis-title';
-import { avatarColorFor } from '../utils/avatarColor';
+import { avatarColorForDisplayName } from '../utils/avatarColor';
 import { recordCommunityStat } from '../utils/community-stats';
 import { renderMarkdownToSafeHtml } from '../artifacts/markdown';
 import {
@@ -613,9 +613,10 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
       <div className="recent-projects__row recent-projects__row--grid" data-testid="square-projects-grid">
       {searchedItems.map(({ entry, publicationStatus }) => {
         const title = entry.title ?? entry.name;
-        const publisherName = [entry.publisher?.displayName, entry.publisher?.github, entry.publisher?.id]
-          .find((value): value is string => typeof value === 'string' && value.trim().length > 0)
-          ?.trim() ?? 'HiDesign';
+        const rawPublisherDisplayName = entry.publisher?.displayName;
+        const publisherName = typeof rawPublisherDisplayName === 'string'
+          ? rawPublisherDisplayName.trim() || 'HiDesign'
+          : 'HiDesign';
         const updatedAt = marketplaceUpdatedAt(entry);
         const previewPeople = marketplaceMetric(entry, 'previewUserCount');
         const reuseCount = marketplaceMetric(entry, 'reuseCount', 'remixCount', 'actionCount');
@@ -672,7 +673,7 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
                   <div className="recent-projects__card-time">
                    <span
                      className="recent-projects__card-owner"
-                      style={{ backgroundColor: avatarColorFor(publisherName) }}
+                      style={{ backgroundColor: avatarColorForDisplayName(publisherName) }}
                      title={publisherName}
                      aria-hidden
                    >
@@ -981,6 +982,7 @@ function SquarePluginPreview({
 
   const modal = (
     <PreviewModal
+      compact
       initialShareOpen={initialShareOpen}
       title={title}
       subtitle={meta}

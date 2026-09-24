@@ -21,7 +21,7 @@ import { createPortal } from 'react-dom';
 import { Dialog, DialogDescription, DialogFooter, DialogTitle } from '@open-design/components';
 
 import { useT } from '../i18n';
-import { avatarColorFor } from '../utils/avatarColor';
+import { avatarColorForDisplayName } from '../utils/avatarColor';
 import { getStoredUsername } from '../auth/auth';
 import { getSharedSpaceMemberId, getTeamMemberId } from '../utils/deterministicId';
 import { MoveToTeamTreeDialog, type TeamTreeSelection } from './MoveToTeamTreeDialog';
@@ -706,7 +706,6 @@ const isShared = isSharedProject ?? NOTHING_SHARED;
     ownedBySelf: boolean;
     canMutate: boolean;
     canAdmin: boolean;
-    memberId: string | null;
   } => {
     const isAdmin = operator
       ? operator.role === 'admin' || operator.role === 'owner'
@@ -741,7 +740,6 @@ const isShared = isSharedProject ?? NOTHING_SHARED;
       ownedBySelf,
       canMutate: ownedBySelf,
       canAdmin: !ownedBySelf && isAdmin,
-      memberId: ownerMemberId ?? (ownedBySelf ? effectiveMemberId : null),
     };
   };
   const visibleProjects = useMemo(
@@ -2382,7 +2380,7 @@ function requestDelete(project: Project) {
                           className="recent-projects__card-owner"
                           title={creator.name}
                           style={{
-                            backgroundColor: avatarColorFor(creator.memberId ?? creator.name),
+                            backgroundColor: avatarColorForDisplayName(creator.name),
                           }}
                           aria-hidden
                         >

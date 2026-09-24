@@ -38,6 +38,7 @@ interface Props {
   onDuplicate?: (record: InstalledPluginRecord) => void;
   isApplying?: boolean;
   hideUseAction?: boolean;
+  compact?: boolean;
   /** Exact authority for the resource bytes shown by this modal. */
   workspaceContext?: WorkspaceCollabContext | null;
   // Analytics — fires when the user picks an item inside the PreviewModal
@@ -53,6 +54,7 @@ export function PluginDetailsModal({
   onDuplicate,
   isApplying,
   hideUseAction,
+  compact = false,
   workspaceContext = null,
   onSharePopoverItemClick,
 }: Props) {
@@ -68,6 +70,7 @@ export function PluginDetailsModal({
         onDuplicate={onDuplicate}
         isApplying={isApplying}
         hideUseAction={hideUseAction}
+        compact={compact}
         onSharePopoverItemClick={onSharePopoverItemClick}
       />
     );
@@ -83,6 +86,7 @@ export function PluginDetailsModal({
         onDuplicate={onDuplicate}
         isApplying={isApplying}
         hideUseAction={hideUseAction}
+        compact={compact}
         workspaceContext={workspaceContext}
         onSharePopoverItemClick={onSharePopoverItemClick}
       />
@@ -96,6 +100,7 @@ export function PluginDetailsModal({
         onDuplicate={onDuplicate}
         isApplying={isApplying}
         hideUseAction={hideUseAction}
+        compact={compact}
         workspaceContext={workspaceContext}
         onSharePopoverItemClick={onSharePopoverItemClick}
       />
@@ -109,6 +114,7 @@ export function PluginDetailsModal({
         onDuplicate={onDuplicate}
         isApplying={isApplying}
         hideUseAction={hideUseAction}
+        compact={compact}
         workspaceContext={workspaceContext}
       />
     );

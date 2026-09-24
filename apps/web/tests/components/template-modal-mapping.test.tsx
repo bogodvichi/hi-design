@@ -149,6 +149,8 @@ describe('Community template card → full details modal', () => {
     expect(screen.getByTestId('plugin-details-use-example-fundraising-deck-menu')).toBeTruthy();
     expect(document.querySelector('.template-share-trigger')).not.toBeNull();
     expect(document.querySelector('.ds-modal-backdrop')).not.toBeNull();
+    expect(document.querySelector('.ds-modal-backdrop--compact')).not.toBeNull();
+    expect(document.querySelector('.ds-modal--compact')).not.toBeNull();
 
     // The lightweight footer-Remix preview must NOT be what this card opens.
     expect(document.querySelector('.community-template-preview')).toBeNull();

@@ -1057,6 +1057,16 @@
   flex-direction: column;
   overflow: hidden;
 }
+@media (min-width: 761px) {
+  .plugin-details-modal-backdrop--compact {
+    align-items: center;
+    padding: 64px 48px 48px;
+  }
+  .plugin-details-modal--compact {
+    max-width: 840px;
+    max-height: calc(100vh - 112px);
+  }
+}
 .plugin-details-modal__head {
   display: flex;
   align-items: flex-start;

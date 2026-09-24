@@ -104,7 +104,7 @@ import {
   workspaceAnalyticsDimensions,
 } from '../analytics/workspace';
 import { WorkbenchCampaignBadge } from './WorkbenchCampaignBadge';
-import { avatarColorFor } from '../utils/avatarColor';
+import { avatarColorForDisplayName } from '../utils/avatarColor';
 
 const REPO_URL = 'https://github.com/nexu-io/open-design';
 const DISCORD_URL = 'https://discord.gg/mHAjSMV6gz';
@@ -627,7 +627,7 @@ export function EntryTopRightCluster({
  const displayName = (typeof ssoDisplayName === 'string' ? ssoDisplayName.trim() : '') || '';
  const accountName = displayName || t('app.brand');
  const accountInitial = accountName.charAt(0).toUpperCase() || '·';
- const accountAvatarColor = avatarColorFor(accountName);
+ const accountAvatarColor = avatarColorForDisplayName(displayName);
 
   // Billing chip: prefer the real summary metadata; fall back to the context
   // plan-tier hint when metadata has not loaded. Money is a separate,

@@ -379,7 +379,7 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  /* Background is set inline from avatarColorFor(); keep text white for
+  /* Background is set inline from avatarColorForDisplayName(); keep text white for
      contrast against the deterministic HSL fill. */
   color: #fff;
   font-size: 13px;

@@ -384,6 +384,7 @@ export function CommunityView({ onRemixTemplate, onUsePrompt, onUsePlugin }: Com
       {detailsRecord ? (
         <PluginDetailsModal
           record={detailsRecord}
+          compact
           workspaceContext={workspaceContext}
           onClose={() => setDetailsRecord(null)}
           onUse={handleDetailsUse}

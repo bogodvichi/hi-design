@@ -5,6 +5,7 @@ import { randomUUID } from 'node:crypto';
 
 const transport = process.env.BENCH_TRANSPORT === 'app-server' ? 'app-server' : 'exec';
 const samples = Number(process.env.BENCH_SAMPLES || '3');
+const startSample = Number(process.env.BENCH_START_SAMPLE || '1');
 const requestedScenarios = new Set(
   (process.env.BENCH_SCENARIOS ?? '')
     .split(',')
@@ -223,7 +224,7 @@ async function writeDirectFixture(
 try {
   server = await startServer({ port: 0, returnServer: true }) as Started;
 
-  const mcpLog = path.join(dataDir, `benchmark-mcp-${transport}.jsonl`);
+  const mcpLog = process.env.BENCH_MCP_LOG_OUT || path.join(dataDir, `benchmark-mcp-${transport}.jsonl`);
   await writeMcpConfig(dataDir, {
     servers: [{
       id: 'benchmark-mcp',
@@ -246,54 +247,76 @@ try {
     privacyDecisionAt: Date.now(),
   }, 'PUT');
 
-  for (let sample = 1; sample <= samples; sample += 1) {
+  for (let sample = startSample; sample <= samples; sample += 1) {
     if (wants('direct_html') || wants('html_edit')) {
       const projectId = `matrix_direct_${transport.replace('-', '_')}_${sample}_${randomUUID()}`;
       const { conversationId } = await createProject(server.url, projectId);
-      await runTurn({
-        url: server.url,
-        projectId,
-        conversationId,
-        sample,
-        scenario: 'direct_html',
-        message: 'Create a self-contained index.html dashboard with a header, three statistic cards, and a compact activity list. Use only HTML and CSS, no external assets or packages. Keep it concise. After writing the file, reply only DONE.',
-        verify: async () => (await rawText(server!.url, projectId, 'index.html')).includes('<html'),
-      });
-      await runTurn({
-        url: server.url,
-        projectId,
-        conversationId,
-        sample,
-        scenario: 'html_edit',
-        message: 'Modify index.html: add a small System Status badge in the header and improve mobile spacing. Keep the page self-contained. Reply only DONE.',
-        verify: async () => /system status/i.test(await rawText(server!.url, projectId, 'index.html')),
-      });
+      if (wants('direct_html')) {
+        await runTurn({
+          url: server.url,
+          projectId,
+          conversationId,
+          sample,
+          scenario: 'direct_html',
+          message: 'Create a self-contained index.html dashboard with a header, three statistic cards, and a compact activity list. Use only HTML and CSS, no external assets or packages. Keep it concise. After writing the file, reply only DONE.',
+          verify: async () => (await rawText(server!.url, projectId, 'index.html')).includes('<html'),
+        });
+      }
+      if (wants('html_edit')) {
+        if (!wants('direct_html')) {
+          await writeDirectFixture(
+            projectId,
+            'index.html',
+            '<!doctype html><html><body><header>Dashboard</header><main>Fixture</main></body></html>',
+          );
+        }
+        await runTurn({
+          url: server.url,
+          projectId,
+          conversationId,
+          sample,
+          scenario: 'html_edit',
+          message: 'Modify index.html: add a small System Status badge in the header and improve mobile spacing. Keep the page self-contained. Reply only DONE.',
+          verify: async () => /system status/i.test(await rawText(server!.url, projectId, 'index.html')),
+        });
+      }
     }
 
     if (wants('requirements_md') || wants('requirements_to_html')) {
       const projectId = `matrix_req_${transport.replace('-', '_')}_${sample}_${randomUUID()}`;
       const { conversationId } = await createProject(server.url, projectId);
-      await runTurn({
-        url: server.url,
-        projectId,
-        conversationId,
-        sample,
-        scenario: 'requirements_md',
-        message: 'Create 需求.md for a compact B2B device operations dashboard. Include goals, target users, information architecture, key modules, interaction rules, visual constraints, and acceptance criteria. Keep it practical and under 900 Chinese characters. Reply only DONE.',
-        verify: async () => {
-          const text = await rawText(server!.url, projectId, '需求.md');
-          return text.length > 150;
-        },
-      });
-      await runTurn({
-        url: server.url,
-        projectId,
-        conversationId,
-        sample,
-        scenario: 'requirements_to_html',
-        message: 'Read 需求.md and implement its main page as a self-contained index.html using only HTML and CSS. The page must visibly include the core modules described in the requirements. Reply only DONE.',
-        verify: async () => (await rawText(server!.url, projectId, 'index.html')).includes('<html'),
-      });
+      if (wants('requirements_md')) {
+        await runTurn({
+          url: server.url,
+          projectId,
+          conversationId,
+          sample,
+          scenario: 'requirements_md',
+          message: 'Create 需求.md for a compact B2B device operations dashboard. Include goals, target users, information architecture, key modules, interaction rules, visual constraints, and acceptance criteria. Keep it practical and under 900 Chinese characters. Reply only DONE.',
+          verify: async () => {
+            const text = await rawText(server!.url, projectId, '需求.md');
+            return text.length > 150;
+          },
+        });
+      }
+      if (wants('requirements_to_html')) {
+        if (!wants('requirements_md')) {
+          await writeDirectFixture(
+            projectId,
+            '需求.md',
+            '# B2B 设备运营看板需求\n\n目标：展示设备总数、在线率、故障设备和今日告警。\n模块：顶部导航、四张指标卡、设备在线趋势、设备状态分布、最新告警列表和重点设备列表。\n交互：支持状态筛选和查看设备详情。\n视觉：桌面端、紧凑、浅色、蓝色主色、告警使用红橙语义色。\n',
+          );
+        }
+        await runTurn({
+          url: server.url,
+          projectId,
+          conversationId,
+          sample,
+          scenario: 'requirements_to_html',
+          message: 'Read 需求.md and implement its main page as a self-contained index.html using only HTML and CSS. The page must visibly include the core modules described in the requirements. Reply only DONE.',
+          verify: async () => (await rawText(server!.url, projectId, 'index.html')).includes('<html'),
+        });
+      }
     }
 
     if (wants('skill_html')) {
