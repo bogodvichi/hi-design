@@ -32,6 +32,7 @@ function createPackagedConfig(
     ...(config.posthogHost == null ? {} : { posthogHost: config.posthogHost }),
     ...(config.velaWebUrl == null ? {} : { velaWebUrl: config.velaWebUrl }),
     ...(config.velaWebUrls == null ? {} : { velaWebUrls: config.velaWebUrls }),
+    ...(config.hdwPathPrefix == null ? {} : { hdwPathPrefix: config.hdwPathPrefix }),
     webOutputMode: config.webOutputMode,
     ...(config.portable ? {} : { namespaceBaseRoot: config.roots.runtime.namespaceBaseRoot }),
   };

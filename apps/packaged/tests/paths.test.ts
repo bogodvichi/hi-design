@@ -28,11 +28,12 @@ function fakeConfig(): PackagedConfig {
     resourceRoot: join("C:", "Program Files", "Hi Design", "resources", "open-design"),
     telemetryRelayUrl: null,
     updateMetadataUrl: null,
-    velaWebUrl: null,
-    webOutputMode: "server",
-    webSidecarEntry: null,
-    webStandaloneRoot: null,
-  };
+   velaWebUrl: null,
+   webOutputMode: "server",
+   webSidecarEntry: null,
+   webStandaloneRoot: null,
+    hdwPathPrefix: null,
+ };
 }
 
 describe("resolvePackagedNamespacePaths", () => {
@@ -70,11 +71,12 @@ describe("resolvePackagedNamespacePaths", () => {
       updateMetadataUrl: null,
       posthogKey: null,
       posthogHost: null,
-      velaWebUrl: null,
-      webSidecarEntry: null,
-      webStandaloneRoot: null,
-      webOutputMode: "server",
-    };
+     velaWebUrl: null,
+     webSidecarEntry: null,
+     webStandaloneRoot: null,
+     webOutputMode: "server",
+      hdwPathPrefix: null,
+   };
 
     expect(() => resolvePackagedNamespacePaths(config, "../release")).toThrow(/namespace/);
   });
