@@ -14,13 +14,18 @@ import type { SharedWithMeProject, WorkspaceDirectoryItem } from '@open-design/c
 import type { ProjectTitleHint } from './EntryShell';
 import { Icon, type IconName } from './Icon';
 import { RecentProjectsStrip } from './RecentProjectsStrip';
+import { FolderCardMenu } from './FolderCardMenu';
 import { CloudSkillList } from './CloudSkillList';
 import { CloudMcpList } from './CloudMcpList';
 import { useWorkspaceContext } from '../collab/useWorkspaceContext';
 import { useT } from '../i18n';
 import type { Dict } from '../i18n/types';
 import type { Project } from '../types';
-import { fetchSharedWithMeCatalog, unshareFromSharedSpace } from '../collab/shared-space-catalog';
+import {
+  fetchSharedWithMeCatalog,
+  unshareFolderFromSharedSpace,
+  unshareFromSharedSpace,
+} from '../collab/shared-space-catalog';
 import styles from './TeamSpaceView.module.css';
 
 type ScopeTab = 'projects' | 'skill' | 'mcp';
@@ -57,6 +62,7 @@ function sharedRowToProject(row: SharedWithMeProject): Project {
 
 interface SharedFolderItem {
   folderId: string;
+  workspaceId: string;
   folderName: string;
   projectCount: number;
   subfolderCount: number;
@@ -78,7 +84,7 @@ function RemoveSharedProjectDialog({
   onClose,
   onConfirm,
 }: {
-  target: SharedWithMeProject | null;
+  target: SharedWithMeProject | SharedFolderItem | null;
   busy: boolean;
   error: string | null;
   onClose: () => void;
@@ -111,6 +117,7 @@ function RemoveSharedProjectDialog({
 function parseFolderList(list: any[], counts: Record<string, number>): SharedFolderItem[] {
   return list.map((f) => ({
     folderId: f.folder_id || f.id || '',
+    workspaceId: f.workspace_id || '',
     folderName: f.folder_name || f.name || '',
     projectCount: counts[f.folder_id || f.id || ''] ?? Number(f.project_count) ?? 0,
     subfolderCount: Number(f.subfolder_count) || 0,
@@ -123,7 +130,15 @@ function parseFolderList(list: any[], counts: Record<string, number>): SharedFol
     createdAt: f.created_at || '',
   }));
 }
-function FolderCard({ folder, onClick }: { folder: SharedFolderItem; onClick: () => void }) {
+function FolderCard({
+  folder,
+  onClick,
+  onRemove,
+}: {
+  folder: SharedFolderItem;
+  onClick: () => void;
+  onRemove?: () => void;
+}) {
   const t = useT();
   return (
     <article
@@ -134,6 +149,12 @@ function FolderCard({ folder, onClick }: { folder: SharedFolderItem; onClick: ()
       onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
       title={folder.folderName}
     >
+      {onRemove ? (
+        <FolderCardMenu
+          onDelete={onRemove}
+          deleteLabel={t('sharedSpace.removeFromSharedWithMe')}
+        />
+      ) : null}
       <div className={styles.folderCardGrid}>
         {Array.from({ length: 4 }, (_, i) => {
           const item = folder.subfolderPreview[i];
@@ -229,6 +250,9 @@ export function SharedWithMeView({
   const [removeTarget, setRemoveTarget] = useState<SharedWithMeProject | null>(null);
   const [removeBusy, setRemoveBusy] = useState(false);
   const [removeError, setRemoveError] = useState<string | null>(null);
+  const [removeFolderTarget, setRemoveFolderTarget] = useState<SharedFolderItem | null>(null);
+  const [removeFolderBusy, setRemoveFolderBusy] = useState(false);
+  const [removeFolderError, setRemoveFolderError] = useState<string | null>(null);
 
   // Resolve the shared space workspace ID + member ID from the directory
   // (the item with isDefaultTeam === true is the shared space).
@@ -386,6 +410,41 @@ export function SharedWithMeView({
     }
   }, [removeBusy, removeTarget, t]);
 
+  const requestRemoveSharedFolder = useCallback((folder: SharedFolderItem) => {
+    setRemoveFolderError(null);
+    setRemoveFolderTarget(folder);
+  }, []);
+
+  const confirmRemoveSharedFolder = useCallback(async () => {
+    if (!removeFolderTarget || removeFolderBusy) return;
+    if (!workspaceMemberId || !removeFolderTarget.workspaceId) {
+      setRemoveFolderError(t('sharedSpace.removeFromSharedWithMeFailed'));
+      return;
+    }
+    setRemoveFolderBusy(true);
+    setRemoveFolderError(null);
+    try {
+      const ok = await unshareFolderFromSharedSpace({
+        folderId: removeFolderTarget.folderId,
+        workspaceId: removeFolderTarget.workspaceId,
+        recipientMemberId: workspaceMemberId,
+      });
+      if (!ok) {
+        setRemoveFolderError(t('sharedSpace.removeFromSharedWithMeFailed'));
+        return;
+      }
+      setFolders((current) => current.filter((folder) => folder.folderId !== removeFolderTarget.folderId));
+      setRemoveFolderTarget(null);
+      window.dispatchEvent(new CustomEvent('shared:projects-refresh'));
+      window.dispatchEvent(new CustomEvent('shared:folders-updated'));
+      window.dispatchEvent(new CustomEvent('shared:subfolders-updated'));
+    } catch {
+      setRemoveFolderError(t('sharedSpace.removeFromSharedWithMeFailed'));
+    } finally {
+      setRemoveFolderBusy(false);
+    }
+  }, [removeFolderBusy, removeFolderTarget, t, workspaceMemberId]);
+
   function handleFolderClick(folder: SharedFolderItem) {
     navigate({ kind: 'home', view: 'shared-folder', sharedFolderId: folder.folderId });
   }
@@ -444,6 +503,9 @@ export function SharedWithMeView({
                   key={folder.folderId}
                   folder={folder}
                   onClick={() => handleFolderClick(folder)}
+                  onRemove={workspaceMemberId && folder.workspaceId
+                    ? () => requestRemoveSharedFolder(folder)
+                    : undefined}
                 />
               ))}
             </div>
@@ -496,6 +558,17 @@ export function SharedWithMeView({
           setRemoveTarget(null);
         }}
         onConfirm={() => { void confirmRemoveSharedProject(); }}
+      />
+      <RemoveSharedProjectDialog
+        target={removeFolderTarget}
+        busy={removeFolderBusy}
+        error={removeFolderError}
+        onClose={() => {
+          if (removeFolderBusy) return;
+          setRemoveFolderError(null);
+          setRemoveFolderTarget(null);
+        }}
+        onConfirm={() => { void confirmRemoveSharedFolder(); }}
       />
     </section>
   );

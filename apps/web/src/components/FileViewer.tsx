@@ -15410,33 +15410,42 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     }
     setExportToast({ message: '正在推送到 Pixso...', tone: 'loading' });
     let ws: WebSocket | null = null;
-    let dismissed = false;
+    let sent = false;
+    const failPixsoPush = () => {
+      if (sent) return;
+      setExportToast({ message: 'Pixso 推送服务连接失败', tone: 'error' });
+    };
     try {
       ws = new WebSocket('ws://localhost:9528');
       ws.onopen = () => {
-        if (dismissed) return;
-        if(isSplit){
+        if (sent) return;
+        if (isSplit) {
           html = html
              .replace('<head>', `<head><script>window.__mcp__use__sub__pages=true</script>`)
              .replace('<HEAD>', `<HEAD><script>window.__mcp__use__sub__pages=true</script>`)
         }
         partialHtmlToIframeWeb(html,(dslData:any)=>{
-          ws?.send(JSON.stringify(dslData));
-          ws?.close();
+          if (!ws || ws.readyState !== WebSocket.OPEN) {
+            failPixsoPush();
+            return;
+          }
+          sent = true;
+          ws.send(JSON.stringify(dslData));
+          ws.close();
+          setExportToast({ message: '已推送到 Pixso', tone: 'success' });
         })
-
-        setExportToast({ message: '已推送到 Pixso', tone: 'success' });
       };
       ws.onmessage = (event) => {
       };
       ws.onerror = () => {
+        failPixsoPush();
         ws?.close();
       };
       ws.onclose = () => {
-        ws = null;
+        failPixsoPush();
       };
     } catch {
-      setExportToast({ message: 'Pixso 推送服务连接失败', tone: 'error' });
+      failPixsoPush();
       ws = null;
     }
   }
@@ -19301,11 +19310,17 @@ function ImageViewer({
     const height = img.naturalHeight;
 
     let ws: WebSocket | null = null;
+    let sent = false;
     try {
       ws = new WebSocket('ws://localhost:9528');
       ws.onopen = () => {
-        ws?.send(dataUrl + '###' + file.name + '###' + width + '###' + height);
-        ws?.close();
+        if (sent || !ws || ws.readyState !== WebSocket.OPEN) {
+          setExportToast({ message: 'Pixso 推送服务连接失败', tone: 'error' });
+          return;
+        }
+        sent = true;
+        ws.send(dataUrl + '###' + file.name + '###' + width + '###' + height);
+        ws.close();
         setExportToast({ message: '已推送到 Pixso', tone: 'success' });
       };
       ws.onerror = () => {
@@ -19313,7 +19328,9 @@ function ImageViewer({
         ws?.close();
       };
       ws.onclose = () => {
-        ws = null;
+        if (!sent) {
+          setExportToast({ message: 'Pixso 推送服务连接失败', tone: 'error' });
+        }
       };
     } catch {
       setExportToast({ message: 'Pixso 推送服务连接失败', tone: 'error' });
