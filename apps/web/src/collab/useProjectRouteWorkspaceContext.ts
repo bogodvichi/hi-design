@@ -217,7 +217,22 @@ export function useProjectRouteWorkspaceContext(
           workspaceId,
           state: context
             ? { context, loading: false }
-            : { context: null, loading: false, failure: 'forbidden' },
+            : exactBootstrapContext
+              ? {
+                  // The directory lookup found no membership for this
+                  // Workspace, but a bootstrap witness is still available.
+                  // For cross-team shared projects, the user is not a member
+                  // of the project's home Workspace but may still have
+                  // access via a share record. The bootstrap witness was
+                  // verified by the daemon's share-aware authorization
+                  // (authorizeProjectReadWithShare), so keep the existing
+                  // context instead of failing. The daemon re-verifies share
+                  // access on every API call, so a revoked share surfaces as
+                  // a 403 on the next request.
+                  context: exactBootstrapContext,
+                  loading: false,
+                }
+              : { context: null, loading: false, failure: 'forbidden' },
         });
       },
       () => {

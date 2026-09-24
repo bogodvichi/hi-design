@@ -1454,10 +1454,10 @@ export function DesignFilesPanel({
         </div>
       ) : null}
       <div className="df-main">
-        <div className="df-topbar">
+        {!draggingFiles?<div className="df-topbar">
           <div className="df-topbar-left">{breadcrumbs}</div>
           <div className="df-topbar-right">{fileActions}</div>
-        </div>
+        </div>:null}
         <div
           className="df-body"
           onDragEnter={(ev) => {

@@ -553,7 +553,7 @@ export function registerProjectCommentRoutes(app: Express, ctx: RegisterProjectC
                   billing_state: workspaceContext.billingState,
                   plan_bucket: !planId || planId === 'free' ? 'free' : 'paid',
                   provider_mode: workspaceContext.providerMode,
-                  seat_state: workspaceContext.seatSummary.isSeatFull ? 'full' : 'available',
+                  seat_state: workspaceContext.seatSummary?.isSeatFull ? 'full' : 'available',
                   $groups: { workspace: workspaceContext.workspaceId },
                 }
               : {}),

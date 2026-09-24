@@ -1804,10 +1804,10 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
              the workspace tabs bar (entryRailBridge), the updater popup host
              lives in the rail footer, and everything below is fixed-position
              or portalled so it occupies no layout space here. */}
-          <WhatsNewPopup active={homeViewIsActive} />
+          {/* <WhatsNewPopup active={homeViewIsActive} /> */}
          {/* The campaign badge lives in EntryNavRail's top-right cluster so it
              stays beside the account module across every entry tab. */}
-          {active && amrBalanceGateBlock ? (
+          {/* {active && amrBalanceGateBlock ? (
            <AmrBalanceDialog
              reason={amrBalanceGateBlock.reason}
              balanceUsd={amrBalanceGateBlock.snapshot.balanceUsd}
@@ -1828,7 +1828,7 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
              installationId={config.installationId}
              onDecision={amrLowBalanceWarn.resolve}
            />
-         ) : null}
+         ) : null} */}
          <div
            className={[
              'entry-main__inner',
