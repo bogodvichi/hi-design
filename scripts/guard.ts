@@ -130,6 +130,14 @@ const residualAllowedExactPaths = new Set([
   // spawns it through a PATH shim, so it must be directly executable by Node
   // without a transform — same precedent as `fake-vela.mjs` above.
   "apps/daemon/tests/fixtures/fake-kimi-acp-cli.mjs",
+  // Benchmark MCP stdio server spawned by the real-matrix test harness
+  // (`BENCH_MCP_SCRIPT`) as a child process. Must be directly executable by
+  // Node without a transform — same precedent as `fake-vela.mjs` above.
+  "apps/daemon/tests/.tmp-benchmark-mcp.mjs",
+  // Codex wrapper shim spawned by the real-matrix test harness
+  // (`REAL_CODEX_TARGET`) as a child process that proxies to the real
+  // Codex binary. Must be directly executable by Node without a transform.
+  "apps/daemon/tests/.tmp-codex-wrapper.mjs",
   "tools/dev/bin/tools-dev.mjs",
   "tools/dev/esbuild.config.mjs",
   "tools/pack/bin/tools-pack.mjs",
