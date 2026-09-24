@@ -136,13 +136,16 @@ interface Props {
   ) => Promise<boolean> | boolean | void;
   onOpenLiveArtifact: (projectId: string, artifactId: string) => void;
   onDeleteProject: (id: string) => void;
- onDuplicateProject?: (id: string) => Promise<void> | void;
+ onDuplicateProject?: (
+   id: string,
+   options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
+ ) => Promise<void> | void;
  onRenameProject: (id: string, name: string) => void;
  onCopyProject?: (
    id: string,
    options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
  ) => Promise<void> | void;
- onCopySharedProject?: (id: string, homeWorkspaceId: string) => Promise<void> | void;
+ onCopySharedProject?: (id: string, homeWorkspaceId: string) => Promise<string | void> | string | void;
   onProjectsRefresh?: () => Promise<void> | void;
   onTeamProjectContentReady?: (
     projectId: string,

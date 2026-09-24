@@ -1865,6 +1865,9 @@ export interface Dict {
  'recentProjects.moveSearchMore': string;
  'recentProjects.moveSearchCollapse': string;
  'recentProjects.moveTreeNoProjects': string;
+  'recentProjects.copyAndOpen': string;
+  'recentProjects.openLocation': string;
+  'recentProjects.removeRecent': string;
   'recentProjects.copyToPersonal': string;
   'recentProjects.copyToPersonalDesc': string;
   'recentProjects.confirmCopyToPersonal': string;

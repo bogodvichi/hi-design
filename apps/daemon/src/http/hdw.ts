@@ -970,6 +970,31 @@ export async function unshareFromSharedSpace(
   }
 }
 
+/** Remove every shared-with-me grant for a source project. */
+export async function unshareProjectFromSharedSpace(
+  dataDir: string | undefined,
+  projectId: string,
+): Promise<boolean> {
+  if (!dataDir) return false;
+  const session = readSsoConfigFile(dataDir);
+  try {
+    const url = new URL(`${HDW_BASE}/shared-space/project/${encodeURIComponent(projectId)}`);
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+      'User-Agent': UA,
+    };
+    if (session?.cookies?.length) {
+      headers.Cookie = session.cookies.map(c => `${c.name}=${c.value}`).join('; ');
+    }
+    const resp = await fetch(url, { method: 'DELETE', headers, signal: AbortSignal.timeout(10_000) });
+    if (!resp.ok) return false;
+    const json = (await resp.json()) as HdwResponse<unknown>;
+    return json.code === 0;
+  } catch {
+    return false;
+  }
+}
+
 export async function downloadHdwCommunityArchive(
   name: string,
   version: string,

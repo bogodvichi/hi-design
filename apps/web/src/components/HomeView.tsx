@@ -44,6 +44,7 @@ import {
 } from '../analytics/events';
 import {
   applyPlugin,
+  bootstrapProjectRoute,
   createProject,
   duplicatePluginAsProject,
   listPlugins,
@@ -148,6 +149,12 @@ import type { PluginUseAction } from './plugins-home/useActions';
 import { examplePresetSeedPrompt } from './plugins-home/presetSeedPrompt';
 import { localizePluginDescription } from './plugins-home/localization';
 import type { SharedProjectPredicate } from '../collab/all-projects-list';
+import { fetchSharedWithMeCatalog } from '../collab/shared-space-catalog';
+import {
+  markProjectLocationTarget,
+  recentlyOpenedSharedWithMeWorkspaceId,
+  removeRecentProjectAccessRecord,
+} from '../lib/recently-opened-projects';
 import { RecentProjectsStrip } from './RecentProjectsStrip';
 import type { ProjectTitleHint } from './EntryShell';
 import type { Recommendation } from '../onboarding/recommendation';
@@ -283,8 +290,11 @@ interface Props {
   ) => Promise<boolean | 'blocked' | void> | boolean | 'blocked' | void;
   onOpenProject: (id: string, fileName?: string, projectTitleHint?: ProjectTitleHint) => Promise<boolean | void> | boolean | void;
   onViewAllProjects: () => void;
-  onDeleteProject?: (id: string) => Promise<boolean | void> | boolean | void;
-  onDuplicateProject?: (id: string) => Promise<void> | void;
+  onDuplicateProject?: (
+    id: string,
+    options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
+  ) => Promise<void> | void;
+  onCopySharedProject?: (id: string, homeWorkspaceId: string) => Promise<string | void> | string | void;
   onRenameProject?: (id: string, name: string) => void;
   onBrowseRegistry?: () => void;
   onOpenIntegrations?: () => void;
@@ -598,8 +608,8 @@ export function HomeView({
  onSubmit,
   onOpenProject,
   onViewAllProjects,
-  onDeleteProject,
   onDuplicateProject,
+  onCopySharedProject,
   onRenameProject,
   onBrowseRegistry,
   onOpenIntegrations,
@@ -3340,6 +3350,81 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
     || communityReference
   );
 
+  const recentSharedHomeWorkspaceId = useCallback((projectId: string) => (
+    recentlyOpenedSharedWithMeWorkspaceId(projectId, {
+      workspaceId: workspaceContext?.workspaceId ?? null,
+      workspaceMemberId: workspaceContext?.workspaceMemberId ?? null,
+      isSharedSpace: workspaceContext?.isSharedSpace === true || workspaceContext?.isDefaultTeam === true,
+    })
+  ), [workspaceContext]);
+
+  const openRecentProjectLocation = useCallback(async (projectId: string): Promise<boolean> => {
+    const sharedHomeWorkspaceId = recentSharedHomeWorkspaceId(projectId);
+    if (sharedHomeWorkspaceId !== null) {
+      try {
+        const rows = await fetchSharedWithMeCatalog({ force: true });
+        const row = rows.find((item) => (
+          item.projectId === projectId
+          && (!sharedHomeWorkspaceId || item.homeWorkspaceId === sharedHomeWorkspaceId)
+        ));
+        if (!row) return false;
+        markProjectLocationTarget(projectId);
+        navigate(row.folderId
+          ? { kind: 'home', view: 'shared-folder', sharedFolderId: row.folderId }
+          : { kind: 'home', view: 'shared-with-me' });
+        return true;
+      } catch {
+        return false;
+      }
+    }
+
+    const bootstrap = await bootstrapProjectRoute(projectId, {
+      accountGeneration: currentWorkspaceAccountGeneration(),
+    });
+    if (bootstrap.kind !== 'found') return false;
+    markProjectLocationTarget(projectId);
+    if (bootstrap.scope.kind === 'team' && bootstrap.scope.visibility === 'team') {
+      navigate(bootstrap.folderId
+        ? { kind: 'home', view: 'team-folder', teamId: bootstrap.scope.workspaceId, folderId: bootstrap.folderId }
+        : { kind: 'home', view: 'team-space', teamId: bootstrap.scope.workspaceId });
+    } else {
+      navigate(bootstrap.folderId
+        ? { kind: 'home', view: 'personal-folder', folderId: bootstrap.folderId }
+        : { kind: 'home', view: 'personal-all' });
+    }
+    return true;
+  }, [recentSharedHomeWorkspaceId]);
+
+  const duplicateAndOpenRecentProject = useCallback(async (projectId: string): Promise<void> => {
+    const sharedHomeWorkspaceId = recentSharedHomeWorkspaceId(projectId);
+    if (sharedHomeWorkspaceId !== null) {
+      if (!onCopySharedProject) throw new Error('Shared project copy is unavailable');
+      const copiedProjectId = await onCopySharedProject(projectId, sharedHomeWorkspaceId);
+      if (!copiedProjectId) throw new Error('Shared project copy did not return a project');
+      const opened = await onOpenProject(copiedProjectId);
+      if (opened === false) throw new Error('Copied project could not be opened');
+      return;
+    }
+
+    if (!onDuplicateProject) throw new Error('Project copy is unavailable');
+    const bootstrap = await bootstrapProjectRoute(projectId, {
+      accountGeneration: currentWorkspaceAccountGeneration(),
+    });
+    if (bootstrap.kind !== 'found') throw new Error('Project location is unavailable');
+    if (bootstrap.scope.kind === 'team' && bootstrap.scope.visibility === 'team') {
+      await onDuplicateProject(projectId, {
+        targetWorkspaceId: bootstrap.scope.workspaceId,
+        targetFolderId: bootstrap.folderId,
+      });
+      return;
+    }
+    if (bootstrap.scope.kind === 'personal') {
+      await onDuplicateProject(projectId, { targetFolderId: bootstrap.folderId });
+      return;
+    }
+    await onDuplicateProject(projectId);
+  }, [onCopySharedProject, onDuplicateProject, onOpenProject, recentSharedHomeWorkspaceId]);
+
   return (
     <div
       className="home-view"
@@ -3545,8 +3630,10 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
           });
           onViewAllProjects();
         }}
-        {...(onDeleteProject ? { onDelete: onDeleteProject } : {})}
-        {...(onDuplicateProject ? { onDuplicate: onDuplicateProject } : {})}
+        onOpenLocation={openRecentProjectLocation}
+        onRemoveRecent={removeRecentProjectAccessRecord}
+        sharedWithMeHomeWorkspaceId={recentSharedHomeWorkspaceId}
+        {...(onDuplicateProject || onCopySharedProject ? { onDuplicate: duplicateAndOpenRecentProject } : {})}
         {...(onRenameProject ? { onRename: onRenameProject } : {})}
       />
 

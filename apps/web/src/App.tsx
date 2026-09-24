@@ -129,6 +129,7 @@ import {
   fetchTeamProjectCatalogEntry as fetchScopedTeamProjectCatalogEntry,
   fetchTeamProjectsCatalog,
 } from './collab/team-projects-catalog';
+import { fetchSharedWithMeCatalog } from './collab/shared-space-catalog';
 import { useWorkspaceInvalidation } from './collab/workspace-events';
 import { useWorkspaceSnapshotActivation } from './collab/workspace-snapshot-activation';
 import { workspaceProjectHeaders } from './collab/workspace-identity';
@@ -221,6 +222,7 @@ import { useModalWindowDragGuard } from './hooks/useModalWindowDragGuard';
 import { resumeThumbnailLoads, suspendThumbnailLoads } from './lib/thumbnail-load-gate';
 import {
   recordRecentlyOpenedProject,
+  recentlyOpenedSharedWithMeWorkspaceId,
   removeRecentlyOpenedProject,
   touchRecentlyOpenedProject,
 } from './lib/recently-opened-projects';
@@ -819,12 +821,20 @@ export function projectRouteSurfaceState(input: {
   projectsLoading: boolean;
   hasActiveProject: boolean;
   daemonLive: boolean;
-  resolutionFailure?: 'missing' | 'materialization-failed';
+  resolutionFailure?: 'missing' | 'materialization-failed' | 'access-revoked';
 }): ProjectRouteSurfaceState {
+  // A revoked share is authoritative over any stale local/materialized copy.
+  // Ordinary deep-link failures remain lower-priority so a successfully loaded
+  // project can still recover from stale failure metadata.
+  if (input.resolutionFailure === 'access-revoked') return 'missing';
   if (input.hasActiveProject) return 'ready';
   if (input.projectsLoading) return 'loading-projects';
   if (!input.daemonLive) return 'daemon-unavailable';
-  if (input.resolutionFailure) return input.resolutionFailure;
+  if (input.resolutionFailure) {
+    return input.resolutionFailure === 'access-revoked'
+      ? 'missing'
+      : input.resolutionFailure;
+  }
   return 'resolving-deep-link';
 }
 
@@ -1093,7 +1103,7 @@ function AppInner() {
   const [projectOpenError, setProjectOpenError] = useState<string | null>(null);
   const [deepLinkResolutionFailure, setDeepLinkResolutionFailure] = useState<{
     projectId: string;
-    failure: 'missing' | 'materialization-failed';
+    failure: 'missing' | 'materialization-failed' | 'access-revoked';
   } | null>(null);
   const [deepLinkRetryRevision, setDeepLinkRetryRevision] = useState(0);
   const [settingsWelcome, setSettingsWelcome] = useState(false);
@@ -3532,16 +3542,75 @@ function AppInner() {
   );
 
   const handleDuplicateProject = useCallback(
-    async (sourceProjectId: string, input: { name?: string } = {}) => {
+    async (
+      sourceProjectId: string,
+      input: {
+        name?: string;
+        targetWorkspaceId?: string;
+        targetFolderId?: string | null;
+      } = {},
+    ) => {
       const sourceWorkspaceContext =
         await resolveSourceProjectWorkspaceContext(sourceProjectId);
-      const result = await duplicateProject(sourceProjectId, input, sourceWorkspaceContext);
+      const { targetFolderId, targetWorkspaceId, name } = input;
+      if (
+        (targetFolderId !== undefined || targetWorkspaceId !== undefined)
+        && !sourceWorkspaceContext
+      ) {
+        throw new Error('Workspace context is required to copy a project into its current folder');
+      }
+      const result = await duplicateProject(
+        sourceProjectId,
+        name ? { name } : {},
+        sourceWorkspaceContext,
+      );
+      if (targetWorkspaceId !== undefined && sourceWorkspaceContext) {
+        try {
+          await moveWorkspaceProject({
+            projectId: result.project.id,
+            visibility: 'team',
+            workspaceContext: sourceWorkspaceContext,
+            targetWorkspaceId,
+            targetFolderId,
+          });
+        } catch (error) {
+          await deleteProjectApi(result.project.id, sourceWorkspaceContext).catch(() => {});
+          throw error;
+        }
+      } else if (targetFolderId !== undefined && sourceWorkspaceContext) {
+        try {
+          await moveWorkspaceProject({
+            projectId: result.project.id,
+            visibility: 'personal',
+            workspaceContext: sourceWorkspaceContext,
+            targetWorkspaceId: sourceWorkspaceContext.workspaceId,
+            targetFolderId,
+          });
+        } catch (error) {
+          await deleteProjectApi(result.project.id, sourceWorkspaceContext).catch(() => {});
+          throw error;
+        }
+      }
       rememberLocalProject(result.project.id);
       setProjects((curr) => [
         result.project,
         ...curr.filter((p) => p.id !== result.project.id),
       ]);
       recordRecentlyOpenedProject(result.project);
+      if (targetWorkspaceId !== undefined) {
+        notifyTeamProjectsChanged({ kind: 'catalog', projectId: result.project.id });
+        window.dispatchEvent(
+          new CustomEvent('hdw:folders-updated', { detail: { teamId: targetWorkspaceId } }),
+        );
+        if (targetFolderId != null) {
+          window.dispatchEvent(
+            new CustomEvent('hdw:subfolders-updated', {
+              detail: { teamId: targetWorkspaceId, folderId: targetFolderId },
+            }),
+          );
+        }
+      }
+      window.dispatchEvent(new CustomEvent('personal:folders-updated'));
       navigate({
         kind: 'project',
         projectId: result.project.id,
@@ -3636,6 +3705,7 @@ function AppInner() {
         ...curr.filter((p) => p.id !== result.project.id),
       ]);
       window.dispatchEvent(new CustomEvent('personal:folders-updated'));
+      return result.project.id;
     },
     [rememberLocalProject],
   );
@@ -3859,6 +3929,13 @@ function AppInner() {
   ): Promise<boolean> => {
     const routeFileName = fileName ?? null;
     const hintedProjectName = projectTitleHint?.name.trim() || null;
+    const hintedSharedWithMe = projectTitleHint?.sharedWithMe === true;
+    const recentContext = workspaceContextRef.current;
+    const recentSharedHomeWorkspaceId = recentlyOpenedSharedWithMeWorkspaceId(id, {
+      workspaceId: recentContext?.workspaceId ?? null,
+      workspaceMemberId: recentContext?.workspaceMemberId ?? null,
+      isSharedSpace: recentContext?.isSharedSpace === true || recentContext?.isDefaultTeam === true,
+    });
     const requiresBoundCatalogProject = projectTitleHint?.authoritative === true;
     const openingAccountGeneration = currentWorkspaceAccountGeneration();
     let openingContext = workspaceContextRef.current;
@@ -3901,7 +3978,9 @@ function AppInner() {
     // workspace's context so the pull path queries the correct team catalog.
     // The project stays in its original workspace — it is NOT moved to the
    // shared space. Navigation still uses openingContext (shared space).
-   let homeWorkspaceId = projectTitleHint?.homeWorkspaceId?.trim() || null;
+   let homeWorkspaceId = projectTitleHint?.homeWorkspaceId?.trim()
+     || recentSharedHomeWorkspaceId
+     || null;
    let pullContext = openingContext;
    let pullWorkspaceId = expectedWorkspaceId;
     if (homeWorkspaceId && homeWorkspaceId !== expectedWorkspaceId) {
@@ -3957,14 +4036,69 @@ function AppInner() {
         ? workspaceIdentityCacheKey(liveContext) === workspaceIdentityCacheKey(openingContext)
         : liveState.loading === true || liveState.identityChangePending === true;
     };
+   // A Shared-with-me project can have a fully materialized local copy. That
+   // copy is only a cache: losing the share grant must immediately revoke
+   // access instead of letting the local fast path bypass authorization.
+   const legacyShareCandidate = Boolean(
+     homeWorkspaceId
+     && homeWorkspaceId !== expectedWorkspaceId
+     && pullContext === openingContext,
+   );
+   const requiresSharedGrant = hintedSharedWithMe
+     || recentSharedHomeWorkspaceId !== null
+     || legacyShareCandidate;
+   let sharedGrantVerified = !requiresSharedGrant;
+   if (requiresSharedGrant) {
+     try {
+       const liveShares = await fetchSharedWithMeCatalog({ force: true });
+       if (!openingScopeIsCurrent()) return false;
+       const liveShare = liveShares.find((row) =>
+         row.projectId === id
+         && (!homeWorkspaceId || row.homeWorkspaceId === homeWorkspaceId));
+       if (!liveShare) {
+         // Keep the recent-project card as historical navigation, but clear all
+         // route-local materialized state. An already-open project tab can retain
+         // a route snapshot even after the ambient projects list drops the row;
+         // without clearing that snapshot, `loadedActiveProject` stays non-null
+         // and ProjectView would reopen the stale local mirror despite the grant
+         // having been revoked.
+         if (routeProjectSnapshotRef.current?.project.id === id) {
+           routeProjectSnapshotRef.current = null;
+           setRouteProjectSnapshotRevision((current) => current + 1);
+         }
+         if (projectOpenWorkspaceWitnessRef.current?.projectId === id) {
+           projectOpenWorkspaceWitnessRef.current = null;
+         }
+         iframeKeepAlivePool.evictProject(id, { includeActive: true });
+         setProjects((current) => current.filter((project) => project.id !== id));
+         setDeepLinkResolutionFailure({ projectId: id, failure: 'access-revoked' });
+         setProjectOpenError(null);
+         navigate({ kind: 'project', projectId: id, fileName: routeFileName });
+         return false;
+       }
+       setDeepLinkResolutionFailure((current) =>
+         current?.projectId === id && current.failure === 'access-revoked'
+           ? null
+           : current
+       );
+       sharedGrantVerified = true;
+       if (!homeWorkspaceId) homeWorkspaceId = liveShare.homeWorkspaceId;
+     } catch {
+       // Authorization could not be revalidated. Never fall back to a stale
+       // local Shared-with-me materialization on an uncertain grant.
+       sharedGrantVerified = false;
+     }
+   }
+
    const canUseLocalProject = (project: Project) => {
+     if (requiresSharedGrant && !sharedGrantVerified) return false;
      if (project.workspaceId) {
        return project.workspaceId === expectedWorkspaceId
          || project.workspaceId === pullWorkspaceId
          || (shareBasedPull && project.workspaceId === homeWorkspaceId);
      }
-    return !requiresBoundCatalogProject;
-  };
+     return !requiresBoundCatalogProject;
+   };
   // getProject does not reliably return ownerDisplayName for team-owned rows —
   // that field comes from the HDW team catalog JOIN, not the SQLite projects
   // table. Fetch the scoped catalog entry whenever owner metadata is missing,
@@ -4014,7 +4148,7 @@ function AppInner() {
             }
           : null;
     }
-    recordRecentlyOpenedProject(project);
+    recordRecentlyOpenedProject(project, { sharedWithMe: requiresSharedGrant });
     navigate({ kind: 'project', projectId: id, fileName: routeFileName });
     // Best-effort: re-fetch the project so we pick up the latest coverDigest
     // (team catalog may have a newer one than the in-memory list). Update
