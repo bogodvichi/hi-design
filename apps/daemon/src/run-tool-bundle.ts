@@ -137,6 +137,10 @@ export function validateRunToolBundleForAgent(
     return { ok: true };
   }
 
+  if (agent.externalMcpInjection === 'codex-run-bridge') {
+    return { ok: true };
+  }
+
   // Daemon-managed stdio bridges (HiMind, AI research) present as remote HTTP
   // servers in the user's config but are rewritten into `od mcp <name>` stdio
   // subprocesses at spawn time. They are valid for Codex (which reads them as

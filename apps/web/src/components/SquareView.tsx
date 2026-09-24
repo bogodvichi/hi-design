@@ -24,15 +24,16 @@ import { CloudSkillList } from './CloudSkillList';
 import { CloudMcpList } from './CloudMcpList';
 import { CloudToolList } from './CloudToolList';
 import { CommunityResourceStats } from './CommunityResourceStats';
+import { Toast } from './Toast';
 import { communityOriginProjectId, communityOriginProjectName, projectFallbackVisual } from './project-cover';
-import type { MarketplacePluginEntry } from '@open-design/contracts';
+import type { MarketplacePluginEntry, ProjectPublishCommunityResponse } from '@open-design/contracts';
 import type { WorkspaceDirectoryItem } from '@open-design/contracts';
 import { Icon, type IconName } from './Icon';
 import { useI18n, useT } from '../i18n';
 import type { Dict } from '../i18n/types';
 import { navigate } from '../router';
 import { getProject, remixHdwPlugin } from '../state/projects';
-import { uploadSkillToCloud } from '../providers/registry';
+import { uploadSkillToCloud, type ProjectFilePreview } from '../providers/registry';
 import {
   recordRecentlyOpenedProject,
   updateRecentlyOpenedProjectCover,
@@ -42,6 +43,7 @@ import { getStoredUsername } from '../auth/auth';
 import { communityTextMatchesQuery } from '../utils/community-search';
 import { ellipsisTitleHoverProps } from '../utils/ellipsis-title';
 import { recordCommunityStat } from '../utils/community-stats';
+import { renderMarkdownToSafeHtml } from '../artifacts/markdown';
 import {
   createCommunityReferenceHandoff,
   stashHomePromptHandoff,
@@ -63,6 +65,12 @@ type MarketplacePluginEntryWithDeletion = MarketplacePluginEntry & {
   deletedAt?: string | null;
 };
 
+interface PendingPublishedProject {
+  name: string;
+  version: string;
+  title: string;
+}
+
 type SquareTab = 'projects' | 'skill' | 'mcp' | 'tool';
 
 interface TabDef {
@@ -78,6 +86,7 @@ const TABS: TabDef[] = [
   { id: 'tool', icon: 'puzzle', labelKey: 'squareScope.tabTool' },
 ];
 const COMMUNITY_SKILL_PROVIDERS = 'all';
+const PUBLISHED_PROJECT_REFRESH_DELAYS_MS = [0, 400, 800, 1600, 3200] as const;
 async function publishResponseError(response: Response, fallback: string): Promise<Error> {
   const body = await response.json().catch(() => null) as unknown;
   const record = body && typeof body === 'object'
@@ -307,7 +316,7 @@ function PublicationStatusFilter({ value, onChange }: {
   );
 }
 
-function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publicationFilter, projectItems, workspaceMemberId, statsWorkspaceId, statsWorkspaceMemberId, statsWorkspaceType, searchQuery = '' }: {
+function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publicationFilter, projectItems, workspaceMemberId, statsWorkspaceId, statsWorkspaceMemberId, statsWorkspaceType, searchQuery = '', pendingPublishedProject, onPendingPublishedProjectVisible }: {
   refreshKey: number;
   onRefresh: () => void;
   username?: string | null;
@@ -319,6 +328,8 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
   statsWorkspaceMemberId?: string | null;
   statsWorkspaceType?: string | null;
   searchQuery?: string;
+  pendingPublishedProject?: PendingPublishedProject | null;
+  onPendingPublishedProjectVisible?: (project: PendingPublishedProject) => void;
 }) {
  const t = useT();
  const { locale } = useI18n();
@@ -344,6 +355,7 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
   // same burst sees the lock immediately. Cleared on success/failure or by
   // the timeout fallback so a card can never get stuck disabled forever.
   const remixingNameRef = useRef<string | null>(null);
+  const skipPendingClearRefreshRef = useRef(false);
   useEffect(() => {
     if (!remixingName) return;
     const timer = window.setTimeout(() => {
@@ -354,29 +366,66 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
   }, [remixingName]);
 
   useEffect(() => {
+    if (skipPendingClearRefreshRef.current && !pendingPublishedProject) {
+      skipPendingClearRefreshRef.current = false;
+      return;
+    }
     let cancelled = false;
+    let retryTimer: number | null = null;
     setLoading(true);
     setError(false);
     const url = isMyPublishes && username
       ? `/api/marketplaces/hdw-community/plugins?username=${encodeURIComponent(username)}`
       : '/api/marketplaces/hdw-community/plugins';
-    fetch(url)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error('fetch failed'))))
-      .then((d: { plugins?: MarketplacePluginEntry[] }) => {
+    const retryDelays = pendingPublishedProject
+      ? PUBLISHED_PROJECT_REFRESH_DELAYS_MS
+      : [0] as const;
+
+    void (async () => {
+      for (let attempt = 0; attempt < retryDelays.length; attempt += 1) {
+        const delay = retryDelays[attempt] ?? 0;
+        if (delay > 0) {
+          await new Promise<void>((resolve) => {
+            retryTimer = window.setTimeout(resolve, delay);
+          });
+        }
         if (cancelled) return;
-        const all = d.plugins ?? [];
-        setPlugins(all);
-        setLoading(false);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setError(true);
-        setLoading(false);
-      });
+        try {
+          const response = await fetch(url, { cache: 'no-store' });
+          if (!response.ok) throw new Error('fetch failed');
+          const body = await response.json() as { plugins?: MarketplacePluginEntry[] };
+          if (cancelled) return;
+          const all = body.plugins ?? [];
+          setPlugins(all);
+          setLoading(false);
+          setError(false);
+
+          if (!pendingPublishedProject) return;
+          const isVisible = all.some((entry) => (
+            entry.name === pendingPublishedProject.name
+            && entry.version === pendingPublishedProject.version
+          ));
+          if (isVisible) {
+            if (onPendingPublishedProjectVisible) {
+              skipPendingClearRefreshRef.current = true;
+              onPendingPublishedProjectVisible(pendingPublishedProject);
+            }
+            return;
+          }
+        } catch {
+          if (cancelled) return;
+          if (attempt === retryDelays.length - 1) {
+            setError(true);
+            setLoading(false);
+          }
+        }
+      }
+    })();
     return () => {
       cancelled = true;
+      if (retryTimer != null) window.clearTimeout(retryTimer);
     };
- }, [refreshKey]);
+ }, [isMyPublishes, onPendingPublishedProjectVisible, pendingPublishedProject, refreshKey, username]);
 
   function handleReference(entry: MarketplacePluginEntry) {
     const prompt = String(entry.prompt ?? entry.description ?? '');
@@ -788,6 +837,64 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
   );
 }
 
+
+type CommunityProjectPreviewContent =
+  | { kind: 'html'; html: string }
+  | { kind: 'markdown'; markdown: string; fileName: string | null }
+  | { kind: 'document'; preview: ProjectFilePreview; fileName: string | null };
+
+function communityPreviewFileName(response: Response): string | null {
+  const encoded = response.headers.get('x-open-design-preview-file');
+  if (!encoded) return null;
+  try {
+    return decodeURIComponent(encoded);
+  } catch {
+    return encoded;
+  }
+}
+
+function CommunityMarkdownPreview({ markdown, fileName }: { markdown: string; fileName: string | null }) {
+  const html = renderMarkdownToSafeHtml(markdown);
+  return (
+    <div className={publishStyles.communityPreviewScroll}>
+      <div className={publishStyles.communityPreviewDocument}>
+        {fileName ? <div className={publishStyles.communityPreviewFileName}>{fileName}</div> : null}
+        <article
+          className="markdown-rendered"
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function CommunityDocumentPreview({
+  preview,
+  fileName,
+}: {
+  preview: ProjectFilePreview;
+  fileName: string | null;
+}) {
+  return (
+    <div className={publishStyles.communityPreviewScroll}>
+      <div className={publishStyles.communityPreviewDocument}>
+        <div className={publishStyles.communityPreviewFileName}>{fileName || preview.title}</div>
+        {preview.sections.map((section, index) => (
+          <section
+            className={publishStyles.communityPreviewSection}
+            key={`${section.title}-${index}`}
+          >
+            <h3>{section.title}</h3>
+            {section.lines.map((line, lineIndex) => (
+              <p key={`${lineIndex}-${line}`}>{line}</p>
+            ))}
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function SquarePluginPreview({
   entry,
   initialShareOpen = false,
@@ -809,30 +916,67 @@ function SquarePluginPreview({
   const meta = publisherName ? publisherName + ' \u00b7 v' + entry.version : 'v' + entry.version;
   const isRemixing = remixingName === entry.name;
 
-  // Fetch the actual preview HTML from the daemon's preview endpoint, which
-  // downloads the archive and serves the real content — not a synthetic
-  // page built from the prompt text.
-  const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  // Fetch the actual project preview from the daemon. Community projects can
+  // ship HTML, Markdown, or document-style files such as PDFs; keep one
+  // preview surface and switch rendering by response Content-Type.
+  const [previewContent, setPreviewContent] = useState<CommunityProjectPreviewContent | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
   const fetchPreview = useCallback(async () => {
-    setPreviewHtml(null);
+    setPreviewContent(null);
     setPreviewError(null);
     try {
       const resp = await fetch(
         `/api/marketplaces/hdw-community/plugins/${encodeURIComponent(entry.name)}/preview`,
       );
       if (!resp.ok) throw new Error('preview fetch failed');
-      const html = await resp.text();
-      setPreviewHtml(html);
+
+      const contentType = (resp.headers.get('content-type') ?? '').toLowerCase();
+      const fileName = communityPreviewFileName(resp);
+
+      if (contentType.includes('text/markdown')) {
+        setPreviewContent({
+          kind: 'markdown',
+          markdown: await resp.text(),
+          fileName,
+        });
+        return;
+      }
+
+      if (contentType.includes('application/json')) {
+        const preview = await resp.json() as ProjectFilePreview;
+        if (preview && Array.isArray(preview.sections)) {
+          setPreviewContent({ kind: 'document', preview, fileName });
+          return;
+        }
+        throw new Error('unsupported document preview response');
+      }
+
+      setPreviewContent({ kind: 'html', html: await resp.text() });
     } catch {
       setPreviewError(t('squareScope.loadFailed'));
     }
   }, [entry.name, t]);
 
-  useEffect(() => {
+  const handlePreviewView = useCallback(() => {
     void fetchPreview();
   }, [fetchPreview]);
+
+  const previewCustom = previewContent?.kind === 'markdown'
+    ? (
+        <CommunityMarkdownPreview
+          markdown={previewContent.markdown}
+          fileName={previewContent.fileName}
+        />
+      )
+    : previewContent?.kind === 'document'
+      ? (
+          <CommunityDocumentPreview
+            preview={previewContent.preview}
+            fileName={previewContent.fileName}
+          />
+        )
+      : undefined;
 
   const modal = (
     <PreviewModal
@@ -842,10 +986,11 @@ function SquarePluginPreview({
       views={[{
         id: 'preview',
         label: t('squareScope.reference'),
-        html: previewHtml,
+        html: previewContent?.kind === 'html' ? previewContent.html : undefined,
+        custom: previewCustom,
         error: previewError,
       }]}
-      onView={() => { void fetchPreview(); }}
+      onView={handlePreviewView}
       exportTitleFor={() => title}
       onClose={onClose}
       primaryAction={{
@@ -887,6 +1032,7 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
   projectItems?: readonly PublishedProjectItem[];
 }) {
   const t = useT();
+  const { locale } = useI18n();
   const myUsername = getStoredUsername();
   const routeTab = tab === 'skill' || tab === 'mcp' || tab === 'tool' ? tab : 'projects';
   const [activeTab, setActiveTab] = useState<SquareTab>(routeTab);
@@ -897,6 +1043,8 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
     setActiveTab(routeTab);
   }, [routeTab]);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [pendingPublishedProject, setPendingPublishedProject] = useState<PendingPublishedProject | null>(null);
+  const [publishSuccessMessage, setPublishSuccessMessage] = useState<string | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
   const [publicationFilter, setPublicationFilter] = useState<PublicationFilter>('all');
   const [communitySearchQuery, setCommunitySearchQuery] = useState('');
@@ -947,6 +1095,14 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
   const subtitle = isMyPublishes ? t('squareScope.myPublishesSubtitle') : t('squareScope.subtitle');
 
   const activeDef = TABS.find((tab) => tab.id === activeTab)!;
+  const handlePendingPublishedProjectVisible = useCallback((project: PendingPublishedProject) => {
+    setPublishSuccessMessage(locale.startsWith('zh')
+      ? `${project.title} 已发布为新的社区项目`
+      : `${project.title} was published as a new community project`);
+    setPendingPublishedProject((current) => (
+      current?.name === project.name && current.version === project.version ? null : current
+    ));
+  }, [locale]);
 
   return (
     <section className={styles.view} aria-labelledby="square-title" data-testid="square-view">
@@ -1065,6 +1221,8 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
                    }
                   window.dispatchEvent(new CustomEvent('personal:skill-refresh'));
                 } else {
+                  const publishAttemptId = crypto.randomUUID();
+                  const publishedAt = new Date().toISOString();
                   const response = await fetch(
                     `/api/projects/${encodeURIComponent(selection.projectId)}/publish-community`,
                     {
@@ -1074,10 +1232,18 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
                         title: selection.name,
                         description: selection.description,
                         ...(selection.entryFile ? { entryFile: selection.entryFile } : {}),
+                        publishAttemptId,
+                        publishedAt,
                       }),
                     },
                   );
                   if (!response.ok) throw await publishResponseError(response, 'Project publish failed');
+                  const published = await response.json() as ProjectPublishCommunityResponse;
+                  setPendingPublishedProject({
+                    name: published.name,
+                    version: published.version,
+                    title: selection.name,
+                  });
                 }
                 setRefreshKey((key) => key + 1);
              }}
@@ -1156,6 +1322,8 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
           statsWorkspaceMemberId={workspaceMemberId}
           statsWorkspaceType={workspaceType}
           searchQuery={!isMyPublishes ? communitySearchQuery : ''}
+          pendingPublishedProject={pendingPublishedProject}
+          onPendingPublishedProjectVisible={handlePendingPublishedProjectVisible}
         />
       ) : activeTab === 'skill' ? (
           <CloudSkillList
@@ -1181,6 +1349,14 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
           />
       )}
       </div>
+
+      {publishSuccessMessage ? (
+        <Toast
+          message={publishSuccessMessage}
+          tone="success"
+          onDismiss={() => setPublishSuccessMessage(null)}
+        />
+      ) : null}
 
     </section>
   );

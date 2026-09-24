@@ -718,6 +718,24 @@ export function resolveHdwCommunityPublishVersion(
   return `${existingVersion}-1`;
 }
 
+export const HDW_COMMUNITY_PUBLICATION_VERSION = '0.0.0';
+
+/**
+ * A project publish is an immutable community snapshot, not a new version of
+ * an earlier card. The attempt id makes each explicit publish unique while
+ * keeping retries of that same user action on the same upstream identity.
+ */
+export function createHdwCommunityPublicationName(
+  projectId: string,
+  publishAttemptId: string,
+): string {
+  return createHash('md5')
+    .update(projectId)
+    .update('\0')
+    .update(publishAttemptId)
+    .digest('hex');
+}
+
 // Compare two simple numeric major.minor.patch strings. Non-numeric or
 // missing segments are treated as 0, matching the CLI's previous helper.
 function compareCommunityVersionStrings(a: string, b: string): number {

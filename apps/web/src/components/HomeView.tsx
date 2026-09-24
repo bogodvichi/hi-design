@@ -3237,10 +3237,13 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
         contextPlugins,
         contextMcpServers,
         contextConnectors,
-        ...(resolvedSkillIds.length > 0 || contextWorkspaceItems.length > 0
+        ...(resolvedSkillIds.length > 0 || contextMcpServers.length > 0 || contextWorkspaceItems.length > 0
           ? {
               initialRunContext: {
                 ...(resolvedSkillIds.length > 0 ? { skillIds: resolvedSkillIds } : {}),
+                ...(contextMcpServers.length > 0
+                  ? { mcpServerIds: contextMcpServers.map((server) => server.id) }
+                  : {}),
                 ...(contextWorkspaceItems.length > 0 ? { workspaceItems: contextWorkspaceItems } : {}),
               },
             }

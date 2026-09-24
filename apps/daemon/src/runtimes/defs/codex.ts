@@ -191,6 +191,12 @@ export function codexManagedMcpBridgeArgs(
       '-c',
       `mcp_servers.${key}.args=${JSON.stringify(bridge.args)}`,
     );
+    if (bridge.envVars?.length) {
+      args.push(
+        '-c',
+        `mcp_servers.${key}.env_vars=${JSON.stringify(bridge.envVars)}`,
+      );
+    }
     for (const [name, value] of Object.entries(bridge.env ?? {})) {
       args.push(
         '-c',
@@ -372,6 +378,7 @@ export const codexAgentDef = {
     // captured from the stream, not a daemon-minted id.
     resumesSessionViaCli: true,
     capturesSessionIdFromStream: true,
+    externalMcpInjection: 'codex-run-bridge',
     managedMcpBridges: true,
     streamFormat: 'json-event-stream',
     eventParser: 'codex',

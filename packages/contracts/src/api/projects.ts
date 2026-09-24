@@ -1066,12 +1066,21 @@ export interface DeployPreflightResponse {
 export interface ProjectPublishCommunityRequest {
   title: string;
   description: string;
+  entryFile?: string;
+  coverImage?: string;
+  /** Stable for one user-initiated publish so transport retries stay idempotent. */
+  publishAttemptId?: string;
+  /** Reused across retries so the generated archive remains byte-stable. */
+  publishedAt?: string;
 }
 
 export interface ProjectPublishCommunityResponse {
+  status: 'created';
+  publicationId: string;
   pluginId: string;
   versionId: string;
   name: string;
   version: string;
+  publishedAt: string;
   url: string;
 }

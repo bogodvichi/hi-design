@@ -52,10 +52,10 @@ class CommunityController extends Controller {
           'cp.homepage', 'cp.license',
           'cp.title', 'cp.title_i18n', 'cp.description', 'cp.description_i18n',
           'cp.icon', 'cp.tags', 'cp.capabilities_summary', 'cp.prompt', 'cp.cover_digest',
-          'cp.current_version_id',
+          'cp.current_version_id', 'cp.created_at', 'cp.updated_at',
           'cpv.version as cv_version', 'cpv.archive_digest as cv_archive_digest',
           'cpv.archive_size as cv_archive_size', 'cpv.archive_integrity as cv_archive_integrity',
-          'cpv.manifest_digest as cv_manifest_digest',
+          'cpv.manifest_digest as cv_manifest_digest', 'cpv.created_at as cv_created_at',
         )
         .orderBy('cp.updated_at', 'desc');
       if (tag) {
@@ -104,10 +104,10 @@ class CommunityController extends Controller {
           'cp.homepage', 'cp.license',
           'cp.title', 'cp.title_i18n', 'cp.description', 'cp.description_i18n',
           'cp.icon', 'cp.tags', 'cp.capabilities_summary', 'cp.prompt', 'cp.cover_digest',
-          'cp.status', 'cp.current_version_id',
+          'cp.status', 'cp.current_version_id', 'cp.created_at', 'cp.updated_at',
           'cpv.version as cv_version', 'cpv.archive_digest as cv_archive_digest',
           'cpv.archive_size as cv_archive_size', 'cpv.archive_integrity as cv_archive_integrity',
-          'cpv.manifest_digest as cv_manifest_digest',
+          'cpv.manifest_digest as cv_manifest_digest', 'cpv.created_at as cv_created_at',
         )
         .first();
       if (!row) {
@@ -175,6 +175,15 @@ class CommunityController extends Controller {
           .where({ plugin_id: existing.id, version: body.version })
           .first();
         if (dupVersion) {
+          if (dupVersion.archive_digest === body.archiveDigest) {
+            ctx.body = ok({
+              pluginId: existing.id,
+              versionId: dupVersion.id,
+              name: body.name,
+              version: body.version,
+            });
+            return;
+          }
           ctx.body = fail('Version ' + body.version + ' already exists');
           return;
         }
@@ -398,6 +407,10 @@ class CommunityController extends Controller {
       prompt: row.prompt || undefined,
       coverUrl: row.cover_digest ? this._coverUrl(row.cover_digest) : undefined,
       communityId: row.id,
+      publicationId: row.id,
+      versionId: row.current_version_id || undefined,
+      publishedAt: row.cv_created_at || row.updated_at || row.created_at || undefined,
+      updatedAt: row.updated_at || undefined,
       previewCount: Number(row.community_stats?.preview_count || 0),
       previewUserCount: Number(row.community_stats?.preview_user_count || 0),
       actionCount: Number(row.community_stats?.action_count || 0),

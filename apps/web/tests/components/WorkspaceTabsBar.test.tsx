@@ -669,6 +669,51 @@ describe('WorkspaceTabsBar navigation semantics', () => {
     });
   });
 
+  it('normalizes and reuses a schemeless external tool tab', async () => {
+    render(<WorkspaceTabsBar route={{ kind: 'home', view: 'home' }} projects={[project]} />);
+
+    openWorkspaceTab({ kind: 'external', url: 'baidu.com', title: '百度' });
+    openWorkspaceTab({ kind: 'external', url: 'baidu.com', title: '百度' });
+
+    await waitFor(() => {
+      expect(screen.getAllByRole('tab')).toHaveLength(2);
+      expect(screen.getAllByRole('tab', { name: /百度/u })).toHaveLength(1);
+    });
+    expect(vi.mocked(navigate)).toHaveBeenLastCalledWith({
+      kind: 'external',
+      url: 'https://baidu.com',
+      title: '百度',
+    });
+  });
+
+  it('repairs a persisted schemeless external tool tab', async () => {
+    window.localStorage.setItem('open-design:workspace-tabs:v1', JSON.stringify({
+      activeTabId: 'external:baidu',
+      tabs: [
+        { id: 'entry:home', kind: 'entry', view: 'home', createdAt: 1, lastActiveAt: 1 },
+        {
+          id: 'external:baidu',
+          kind: 'external',
+          url: 'baidu.com',
+          title: '百度',
+          createdAt: 2,
+          lastActiveAt: 2,
+        },
+      ],
+    }));
+
+    render(<WorkspaceTabsBar
+      route={{ kind: 'external', url: 'https://baidu.com', title: '百度' }}
+      projects={[project]}
+    />);
+
+    await waitFor(() => {
+      const stored = window.localStorage.getItem('open-design:workspace-tabs:v1') ?? '';
+      expect(stored).toContain('https://baidu.com');
+      expect(screen.getAllByRole('tab', { name: /百度/u })).toHaveLength(1);
+    });
+  });
+
   it('keeps HiMind singleton by resource key and never persists its ticket URL', async () => {
     render(<WorkspaceTabsBar route={{ kind: 'home', view: 'home' }} projects={[project]} />);
 

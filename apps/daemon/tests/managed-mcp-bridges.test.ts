@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -7,10 +7,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fetchAiResearchMcpToken, fetchHiMindMcpToken } from '../src/http/hdw.js';
 import { writeSsoConfigFile } from '../src/http/hik_logins/hicoo.js';
 import {
+  readProjectManagedMcpBridgeServerIds,
   replaceManagedMcpServersWithBridges,
   resolveActiveManagedMcpBridges,
   resolveManagedMcpBridgeServerIds,
+  resolveRunManagedMcpBridges,
 } from '../src/managed-mcp-bridges.js';
+import { resolveMentionedMcpServerIds } from '../src/runtimes/external-mcp-bridge.js';
 
 describe('managed MCP token issuance', () => {
   let dataDir: string | null = null;
@@ -117,6 +120,42 @@ describe('managed MCP token issuance', () => {
 });
 
 describe('managed MCP bridge substitution', () => {
+  it('discovers only configured managed ids from project .mcp.json', async () => {
+    const projectDir = await mkdtemp(path.join(tmpdir(), 'od-project-mcp-'));
+    try {
+      await writeFile(path.join(projectDir, '.mcp.json'), JSON.stringify({
+        mcpServers: {
+          himind: {
+            type: 'http',
+            url: 'https://example.test/himind',
+            headers: { Authorization: 'Bearer must-not-escape' },
+          },
+          untrusted: {
+            command: '/tmp/untrusted-command',
+          },
+        },
+      }));
+
+      await expect(readProjectManagedMcpBridgeServerIds(projectDir, {}))
+        .resolves.toEqual(new Set(['himind']));
+    } finally {
+      await rm(projectDir, { recursive: true, force: true });
+    }
+  });
+
+  it('treats a missing or malformed project .mcp.json as no configured bridges', async () => {
+    const projectDir = await mkdtemp(path.join(tmpdir(), 'od-project-mcp-'));
+    try {
+      await expect(readProjectManagedMcpBridgeServerIds(projectDir, {}))
+        .resolves.toEqual(new Set());
+      await writeFile(path.join(projectDir, '.mcp.json'), '{not-json');
+      await expect(readProjectManagedMcpBridgeServerIds(projectDir, {}))
+        .resolves.toEqual(new Set());
+    } finally {
+      await rm(projectDir, { recursive: true, force: true });
+    }
+  });
+
   it('resolves only the enabled managed servers as active bridges', () => {
     const servers = [
       { id: 'himind', transport: 'http' as const, enabled: true, authMode: 'none' as const, url: 'https://himind.example/mcp' },
@@ -132,6 +171,38 @@ describe('managed MCP bridge substitution', () => {
     const ids = resolveManagedMcpBridgeServerIds({});
     expect(ids.has('himind')).toBe(true);
     expect(ids.has('fde-research-reports')).toBe(true);
+  });
+
+  it('recognizes explicit managed MCP mentions without matching email domains', () => {
+    expect(resolveMentionedMcpServerIds(
+      '@himind search this and @fde-research-reports compare it',
+      ['himind', 'fde-research-reports'],
+    )).toEqual(new Set(['himind', 'fde-research-reports']));
+    expect(resolveMentionedMcpServerIds(
+      'send it to user@himind before searching',
+      ['himind'],
+    )).toEqual(new Set());
+  });
+
+  it('activates a selected project-managed server without enabling stale unselected ids', () => {
+    const active = resolveRunManagedMcpBridges(
+      [{
+        id: 'fde-research-reports',
+        transport: 'http',
+        enabled: true,
+        url: 'https://drw.example/api/research-mcp',
+      }],
+      ['himind'],
+      ['himind'],
+      {},
+    );
+    expect(active.map((bridge) => bridge.serverId)).toEqual([
+      'himind',
+      'fde-research-reports',
+    ]);
+
+    const withoutSelection = resolveRunManagedMcpBridges([], ['himind'], [], {});
+    expect(withoutSelection).toEqual([]);
   });
 
   it('replaces only the active managed remote servers with stdio bridges', () => {

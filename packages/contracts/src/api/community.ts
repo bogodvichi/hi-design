@@ -22,6 +22,11 @@ export type SkillCategoryFilter = 'all' | SkillCategory;
 
 export type SkillCategoryCounts = Record<SkillCategoryFilter, number>;
 
+/** Response from the Skill/MCP/tool cloud unpublish endpoints. */
+export interface UnpublishCommunityResourceResponse {
+  ok: boolean;
+}
+
 export function isSkillCategory(value: unknown): value is SkillCategory {
   return typeof value === 'string'
     && (SKILL_CATEGORIES as readonly string[]).includes(value);

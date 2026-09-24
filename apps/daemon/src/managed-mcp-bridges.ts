@@ -1,3 +1,6 @@
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
+
 import type { McpServerConfig } from './mcp-config.js';
 
 // Daemon-managed MCP bridges rewrite a user's remote MCP server entry into a
@@ -37,6 +40,38 @@ export interface ActiveManagedMcpBridge {
   env?: Record<string, string>;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * Read only the managed server names from a project's `.mcp.json`.
+ *
+ * Project files may contain arbitrary commands, headers, and credentials, so
+ * this discovery path intentionally ignores every server value. A matching id
+ * is only an activation hint for the daemon-owned `od mcp <name>` bridge; the
+ * project-provided command or remote credentials never reach the child agent.
+ */
+export async function readProjectManagedMcpBridgeServerIds(
+  projectDir: string,
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<Set<string>> {
+  const managedIds = resolveManagedMcpBridgeServerIds(env);
+  try {
+    const parsed: unknown = JSON.parse(
+      await readFile(path.join(projectDir, '.mcp.json'), 'utf8'),
+    );
+    if (!isRecord(parsed) || !isRecord(parsed.mcpServers)) return new Set();
+    return new Set(
+      Object.keys(parsed.mcpServers).filter((id) => managedIds.has(id)),
+    );
+  } catch (error) {
+    const code = (error as { code?: string }).code;
+    if (code === 'ENOENT' || error instanceof SyntaxError) return new Set();
+    throw error;
+  }
+}
+
 /**
  * The resolved (env-overridable) server id for every managed bridge. Used to
  * recognize which configured MCP server ids are daemon-managed regardless of
@@ -61,10 +96,21 @@ export function resolveActiveManagedMcpBridges(
   servers: McpServerConfig[],
   env: NodeJS.ProcessEnv = process.env,
 ): ActiveManagedMcpBridge[] {
+  return resolveManagedMcpBridgesForServerIds(
+    servers.filter((server) => server.enabled).map((server) => server.id),
+    env,
+  );
+}
+
+export function resolveManagedMcpBridgesForServerIds(
+  serverIds: Iterable<string>,
+  env: NodeJS.ProcessEnv = process.env,
+): ActiveManagedMcpBridge[] {
+  const requestedIds = new Set(serverIds);
   const active: ActiveManagedMcpBridge[] = [];
   for (const descriptor of MANAGED_MCP_BRIDGES) {
     const serverId = env[descriptor.serverIdEnvVar]?.trim() || descriptor.defaultServerId;
-    if (servers.some((server) => server.enabled && server.id === serverId)) {
+    if (requestedIds.has(serverId)) {
       active.push({
         serverId,
         cliArgs: [...descriptor.cliArgs],
@@ -73,6 +119,28 @@ export function resolveActiveManagedMcpBridges(
     }
   }
   return active;
+}
+
+/**
+ * Resolve bridges for one run. Persisted enabled servers remain available as
+ * before; a project-local managed server is added only when that same id was
+ * explicitly selected for the run. The intersection prevents a stale project
+ * file from silently re-enabling a server the user did not ask to use.
+ */
+export function resolveRunManagedMcpBridges(
+  servers: McpServerConfig[],
+  projectConfiguredIds: Iterable<string>,
+  selectedServerIds: Iterable<string>,
+  env: NodeJS.ProcessEnv = process.env,
+): ActiveManagedMcpBridge[] {
+  const activeIds = new Set(
+    servers.filter((server) => server.enabled).map((server) => server.id),
+  );
+  const selectedIds = new Set(selectedServerIds);
+  for (const id of projectConfiguredIds) {
+    if (selectedIds.has(id)) activeIds.add(id);
+  }
+  return resolveManagedMcpBridgesForServerIds(activeIds, env);
 }
 
 /**

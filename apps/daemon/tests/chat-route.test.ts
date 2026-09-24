@@ -1634,6 +1634,55 @@ process.stdin.on('end', () => {
     );
   });
 
+  it('preserves a plus-menu MCP selection in native mode without an inline mention', async () => {
+    await withFakeAgent(
+      'opencode',
+      `
+let prompt = '';
+process.stdin.setEncoding('utf8');
+process.stdin.on('data', (chunk) => {
+  prompt += chunk;
+});
+process.stdin.on('end', () => {
+  const checks = [
+    prompt.includes('native-mcp-request') ? 'has-user-request' : 'missing-user-request',
+    prompt.includes('## Selected run context') ? 'has-run-context' : 'missing-run-context',
+    prompt.includes('make at least one relevant tool call to each selected server') ? 'has-tool-requirement' : 'missing-tool-requirement',
+    prompt.includes('- himind') ? 'has-himind-selection' : 'missing-himind-selection',
+    prompt.includes('@himind') ? 'has-inline-mention' : 'no-inline-mention',
+  ];
+  console.log(JSON.stringify({ type: 'step_start' }));
+  console.log(JSON.stringify({ type: 'text', part: { text: checks.join('\\n') } }));
+  console.log(JSON.stringify({ type: 'step_finish', part: { tokens: { input: 1, output: 1 } } }));
+  process.exit(0);
+});
+`,
+      async () => {
+        const response = await fetch(`${baseUrl}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            agentId: 'opencode',
+            message: 'native-mcp-request',
+            context: { mcpServerIds: ['himind'] },
+          }),
+        });
+        const body = await response.text();
+
+        expect(response.ok).toBe(true);
+        for (const marker of [
+          'has-user-request',
+          'has-run-context',
+          'has-tool-requirement',
+          'has-himind-selection',
+          'no-inline-mention',
+        ]) {
+          expect(body).toContain(marker);
+        }
+      },
+    );
+  });
+
   it('injects @-mention skillIds into the composed system prompt', async () => {
     await withFakeAgent(
       'opencode',

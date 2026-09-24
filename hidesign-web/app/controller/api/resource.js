@@ -345,7 +345,9 @@ class ResourceController extends Controller {
     try {
       const k = this.getKnex();
       const updateFields = { metadata: JSON.stringify(metadata) };
-      if (body.scope) updateFields.scope = body.scope;
+      if (Object.prototype.hasOwnProperty.call(body, 'scope')) {
+        updateFields.scope = body.scope || null;
+      }
       const updated = await k('resources')
         .where({ id: resourceId })
         .whereNull('deleted_at')

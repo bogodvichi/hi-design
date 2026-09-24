@@ -20,6 +20,7 @@ describe('codex buildArgs session resume', () => {
           command: '/node',
           args: ['/od', 'mcp', 'himind'],
           env: { ELECTRON_RUN_AS_NODE: '1' },
+          envVars: ['OD_DAEMON_URL', 'OD_TOOL_TOKEN'],
         },
         {
           id: 'fde-research-reports',
@@ -32,6 +33,9 @@ describe('codex buildArgs session resume', () => {
 
     expect(args).toContain('mcp_servers.himind.command="/node"');
     expect(args).toContain('mcp_servers.himind.args=["/od","mcp","himind"]');
+    expect(args).toContain(
+      'mcp_servers.himind.env_vars=["OD_DAEMON_URL","OD_TOOL_TOKEN"]',
+    );
     expect(args).toContain('mcp_servers.himind.env.ELECTRON_RUN_AS_NODE="1"');
     expect(args).toContain('mcp_servers.fde-research-reports.command="/node"');
     expect(args).toContain('mcp_servers.fde-research-reports.args=["/od","mcp","ai-research"]');

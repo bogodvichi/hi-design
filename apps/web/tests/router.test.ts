@@ -150,6 +150,20 @@ describe('parseRoute / buildPath (issue #1505)', () => {
     });
   });
 
+  it('repairs a schemeless external tool URL before it can resolve inside OpenDesign', () => {
+    const route: Route = {
+      kind: 'external',
+      url: 'baidu.com',
+      title: '百度',
+    };
+
+    expect(roundTrip(route)).toEqual({
+      ...route,
+      url: 'https://baidu.com',
+    });
+    expect(buildPath(route)).toContain(encodeURIComponent('https://baidu.com'));
+  });
+
   it('repairs a legacy persisted HiMind ticket route without replaying it', () => {
     const legacy = `/external/${encodeURIComponent('http://himind.example/api/v1/auth/hidesign/callback?ticket=secret')}/HiMind`;
     expect(parseRoute(legacy)).toEqual({

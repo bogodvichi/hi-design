@@ -4,6 +4,7 @@ import {
   mergeRunContextSelections,
   normalizeWorkspaceContextItems,
   renderRunContextPrompt,
+  renderSelectedMcpRunContextPrompt,
 } from '../../src/runtimes/chat-run-context.js';
 
 describe('chat run context helpers', () => {
@@ -81,5 +82,20 @@ describe('chat run context helpers', () => {
     expect(prompt).toContain('make at least one relevant tool call to each selected server');
     expect(prompt).toContain('do not silently substitute local files or general knowledge');
     expect(prompt).toContain('- HiMind (`himind`)');
+  });
+
+  it('renders only selected MCP intent for native prompt mode', () => {
+    const prompt = renderSelectedMcpRunContextPrompt(
+      {
+        mcpServerIds: ['himind'],
+        workspaceItems: [{ id: 'brief', kind: 'file', label: 'brief.md' }],
+      },
+      { contextMcpServers: [{ id: 'himind', label: 'HiMind' }] },
+    );
+
+    expect(prompt).toContain('## Selected run context');
+    expect(prompt).toContain('make at least one relevant tool call to each selected server');
+    expect(prompt).toContain('- HiMind (`himind`)');
+    expect(prompt).not.toContain('Active workspace context');
   });
 });

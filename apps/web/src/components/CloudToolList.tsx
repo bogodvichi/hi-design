@@ -126,8 +126,12 @@ export function CloudToolList({
   const [tools, setTools] = useState<CloudToolItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [unpublishingId, setUnpublishingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<CloudToolItem | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{
+    type: 'unpublish' | 'delete';
+    item: CloudToolItem;
+  } | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -190,6 +194,30 @@ export function CloudToolList({
     return () => window.removeEventListener('personal:tool-refresh', handler);
   }, [loadTools]);
 
+  async function handleUnpublish(tool: CloudToolItem) {
+    setUnpublishingId(tool.resourceId);
+    try {
+      const res = await fetch(
+        '/api/workspace/tool/cloud/' + encodeURIComponent(tool.resourceId) + '/unpublish',
+        {
+          method: 'POST',
+          headers: workspaceHeaders(workspaceId, workspaceMemberId, workspaceType),
+        },
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ?? 'Unpublish failed');
+      }
+      await loadTools();
+    } catch (err: any) {
+      setError(err?.message ?? String(err));
+    } finally {
+      setUnpublishingId(null);
+      setConfirmAction(null);
+      setMenuOpenId(null);
+    }
+  }
+
   async function handleDelete(tool: CloudToolItem) {
     setDeletingId(tool.resourceId);
     try {
@@ -209,7 +237,7 @@ export function CloudToolList({
       setError(err?.message ?? String(err));
     } finally {
       setDeletingId(null);
-      setConfirmDelete(null);
+      setConfirmAction(null);
       setMenuOpenId(null);
     }
   }
@@ -319,36 +347,55 @@ export function CloudToolList({
     return <PageEmptyState />;
   }
 
-  const dialog = confirmDelete ? (
+  const dialog = confirmAction ? (
     <Dialog
       className="modal-confirm"
       role="alertdialog"
-      onClose={() => setConfirmDelete(null)}
+      onClose={() => setConfirmAction(null)}
       closeOnEscape
       ariaLabelledBy={titleId}
     >
       <DialogTitle id={titleId}>
-        {t('personalScope.cloudToolDeleteConfirmTitle' as any)}
+        {confirmAction.type === 'unpublish'
+          ? t('squareScope.unpublishConfirmTitle' as any)
+          : mode === 'square'
+            ? t('squareScope.deleteConfirmTitle' as any)
+            : t('personalScope.cloudToolDeleteConfirmTitle' as any)}
       </DialogTitle>
       <DialogDescription>
-        {t('personalScope.cloudToolDeleteConfirmDesc' as any)}
+        {confirmAction.type === 'unpublish'
+          ? t('squareScope.unpublishConfirmDesc' as any, {
+              title: confirmAction.item.name || confirmAction.item.label || confirmAction.item.url,
+            })
+          : mode === 'square'
+            ? t('squareScope.deleteConfirmDesc' as any, {
+                title: confirmAction.item.name || confirmAction.item.label || confirmAction.item.url,
+              })
+            : t('personalScope.cloudToolDeleteConfirmDesc' as any)}
       </DialogDescription>
       <DialogFooter className="row">
         <button
           type="button"
-          onClick={() => setConfirmDelete(null)}
-          disabled={!!deletingId}
+          onClick={() => setConfirmAction(null)}
+          disabled={!!unpublishingId || !!deletingId}
         >
           {t('common.cancel' as any)}
         </button>
         <button
           type="button"
           className="primary"
-          disabled={!!deletingId}
-          onClick={() => void handleDelete(confirmDelete)}
+          disabled={!!unpublishingId || !!deletingId}
+          onClick={() => {
+            if (confirmAction.type === 'unpublish') void handleUnpublish(confirmAction.item);
+            else void handleDelete(confirmAction.item);
+          }}
         >
-          {deletingId ? <Icon name="spinner" size={14} /> : null}
-          {t('personalScope.cloudToolDelete' as any)}
+          {unpublishingId || deletingId ? <Icon name="spinner" size={14} /> : null}
+          {confirmAction.type === 'unpublish'
+            ? t('squareScope.unpublish' as any)
+            : mode === 'square'
+              ? t('common.delete' as any)
+              : t('personalScope.cloudToolDelete' as any)}
         </button>
       </DialogFooter>
     </Dialog>
@@ -363,8 +410,10 @@ export function CloudToolList({
       ) : null}
       <div className={styles.cloudSkillGrid}>
         {visibleTools.map((tool) => {
+          const isUnpublishing = unpublishingId === tool.resourceId;
           const isDeleting = deletingId === tool.resourceId;
-          const canDelete = mode === 'personal';
+          const canManage = mode === 'personal'
+            || (mode === 'square' && tool.ownerMemberId === workspaceMemberId);
           const isHiMind = isHiMindTool(tool);
           const isAiResearch = isAiResearchTool(tool);
           const title = isAiResearch ? AI_RESEARCH_TITLE : tool.name || tool.label || tool.url;
@@ -423,7 +472,7 @@ export function CloudToolList({
                     </small>
                   )}
                 </div>
-                {canDelete ? (
+                {canManage ? (
                   <>
                     <button
                       type="button"
@@ -439,14 +488,35 @@ export function CloudToolList({
                     </button>
                     {menuOpenId === tool.resourceId ? (
                         <div className={styles.cardMenu} ref={menuRef}>
+                          {mode === 'square' ? (
+                            <button
+                              type="button"
+                              className={styles.cardMenuItem}
+                              disabled={isUnpublishing}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmAction({ type: 'unpublish', item: tool });
+                                setMenuOpenId(null);
+                              }}
+                            >
+                              <Icon name="eye-off" size={14} />
+                              {t('squareScope.unpublish' as any)}
+                            </button>
+                          ) : null}
                           <button
                             type="button"
                             className={styles.cardMenuItemDanger}
                             disabled={isDeleting}
-                            onClick={(e) => { e.stopPropagation(); setConfirmDelete(tool); }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfirmAction({ type: 'delete', item: tool });
+                              setMenuOpenId(null);
+                            }}
                           >
                             <Icon name="trash" size={14} />
-                            {t('personalScope.cloudToolDelete' as any)}
+                            {mode === 'square'
+                              ? t('common.delete' as any)
+                              : t('personalScope.cloudToolDelete' as any)}
                           </button>
                         </div>
                     ) : null}
