@@ -197,13 +197,16 @@ export interface ComposerPlusMenuProps {
  /** Team workspaces the current directory says this user may access. The
   * "Team" tab never infers access from the resource itself. */
  teamWorkspaceIds?: string[];
-  /** Skill ids accumulated across all conversations in this project. Drives
-   * the "曾用" (recently used) tab — shows skills the project has used
-   * before, even if they're not currently staged. */
+ /** Skill ids accumulated across all conversations in this project. Drives
+  * the "历史" (history) tab — shows skills the project has used
+  * before, even if they're not currently staged. Skills not found locally
+  * are auto-installed from the cloud on conversation entry. */
   usedSkillIds?: string[];
   /** MCP server ids accumulated across all conversations in this project.
-   * Drives the "曾用" (recently used) tab for MCP servers. */
-  usedMcpIds?: string[];
+   * Drives the "历史" (history) tab for MCP servers — they are
+   * auto-enabled (connected to local) on load but NOT auto-staged
+   * as composer chips. */
+ usedMcpIds?: string[];
 
   /** Triggers file attachment (opens the native picker). */
   onAttachFiles: () => void;
@@ -742,15 +745,15 @@ export function ComposerPlusMenu({
                 role="tab"
                 aria-selected={skillTab === 'recent'}
                 className={`plus-menu__skill-tab${skillTab === 'recent' ? ' is-active' : ''}`}
-                onClick={() => { setSkillTab('recent'); onSkillTabChange?.('recent'); }}
-              >
-                {t('homeHero.skillTabRecent')}
+               onClick={() => { setSkillTab('recent'); onSkillTabChange?.('recent'); }}
+             >
+                 {t('homeHero.skillTabHistory')}
               </button>
             ) : null}
-           </div>
-           <div className="plus-menu__list">
-             {filteredSkills.length === 0 ? (
-               <div className="plus-menu__empty">{t('homeHero.noSkills')}</div>
+          </div>
+          <div className="plus-menu__list">
+            {filteredSkills.length === 0 ? (
+              <div className="plus-menu__empty">{t('homeHero.noSkills')}</div>
              ) : (
                filteredSkills.map((skill) => (
                  <button
@@ -857,13 +860,13 @@ export function ComposerPlusMenu({
                   role="tab"
                   aria-selected={mcpTab === 'recent'}
                   className={`plus-menu__skill-tab${mcpTab === 'recent' ? ' is-active' : ''}`}
-                  onClick={() => { setMcpTab('recent'); onMcpTabChange?.('recent'); }}
-                >
-                  {t('homeHero.skillTabRecent')}
-                </button>
-              ) : null}
-           </div>
-          <div className="plus-menu__list">
+                 onClick={() => { setMcpTab('recent'); onMcpTabChange?.('recent'); }}
+               >
+                 {t('homeHero.mcpTabHistory')}
+               </button>
+             ) : null}
+          </div>
+         <div className="plus-menu__list">
              {filteredMcp.length === 0 ? (
                <div className="plus-menu__empty">{t('homeHero.noMcp')}</div>
              ) : (

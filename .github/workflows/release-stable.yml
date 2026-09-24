@@ -27,7 +27,7 @@ env:
   POSTHOG_HOST: ${{ vars.POSTHOG_HOST }}
   POSTHOG_CLI_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
   POSTHOG_CLI_PROJECT_ID: ${{ vars.POSTHOG_CLI_PROJECT_ID }}
-  OD_UPDATE_METADATA_URL: "https://pixso.hikvision.com.cn/hik-plugin/ai-builder-web/public/webresources/download/hi-design/stable/latest/metadata.json"
+  OD_UPDATE_METADATA_URL: "https://pixso.hikvision.com.cn/hik-plugin/hidesign-web/public/webresources/download/stable/latest/metadata.json"
 
 jobs:
   verify:

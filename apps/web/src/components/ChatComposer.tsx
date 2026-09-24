@@ -37,6 +37,7 @@ import type {
 import { deriveUploadCohort } from '../analytics/upload-tracking';
 import { notifyCompletionFeedbackGesture } from '../utils/notifications';
 import { deleteProjectFile, projectRawUrl, uploadProjectFiles, openFolderDialog, fetchRecentLinkedDirs, pushRecentLinkedDir, dirExists, applyLibraryAsset, fetchLibraryAssetElementHtml } from "../providers/registry";
+import { fetchSkill } from "../providers/registry";
 import {
   duplicatePluginAsProject,
   patchProject,
@@ -98,13 +99,13 @@ import {
   type InlineMentionEntity,
 } from '../utils/inlineMentions';
 import { workspaceContextLinkedDir, workspaceContextLinkedDirs } from './workspace-context';
+import { workspaceProjectHeaders } from '../collab/workspace-identity';
 import { useProjectCollabContext } from '../collab/collab-context';
 import {
   LexicalComposerInput,
   type LexicalComposerInputHandle,
   type CaretRect,
 } from './composer/LexicalComposerInput';
-import { workspaceProjectHeaders } from '../collab/workspace-identity';
 import type { WorkspaceDirectoryItem } from '@open-design/contracts';
 import { CaretFloatingLayer } from './composer/CaretFloatingLayer';
 import {
@@ -1106,72 +1107,127 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
 
  // Scope tabs filter the complete authorized catalogue locally. Refreshing
  // a scoped subset here used to remove staged choices on tab changes.
-  // Auto-restore recently used skills and MCP servers when entering a
-  // project conversation. The project metadata accumulates `usedSkillIds`
-  // and `usedMcpIds` across all conversations; on first mount we stage
-  // the ones that are still installed so the composer is pre-populated.
-  // MCP servers referenced by `contextMcpServers` are also staged. Any
-  // referenced MCP server that exists but is disabled is auto-enabled.
+// Auto-restore recently used skills when entering a project conversation,
+// and auto-connect (enable) referenced MCP servers. The project metadata
+// accumulates `usedSkillIds` and `usedMcpIds` across all conversations.
+ // Skills from `usedSkillIds` are NOT staged as chips — they are
+ // auto-installed locally if missing (checked against built-in/local
+ // skills, then fetched from the cloud and installed) and surfaced in
+  // the Skills submenu's "历史" tab. MCP servers from `usedMcpIds`
+  // and `contextMcpServers` are auto-enabled (written to mcp-config.json
+  // so they connect to local) and surfaced as candidates in the MCP
+  // submenu's "历史" tab — no MCP chips are staged in the composer.
   const recentRestoreRef = useRef<string | null>(null);
-  useEffect(() => {
-    const meta = projectMetadata;
-    if (!meta) return;
-    const usedSkillIds = meta.usedSkillIds ?? [];
-    const usedMcpIds = meta.usedMcpIds ?? [];
-    const contextMcpIds = (meta.contextMcpServers ?? []).map((ref) => ref.id);
-    const allReferencedMcpIds = Array.from(new Set([...usedMcpIds, ...contextMcpIds]));
-    if (usedSkillIds.length === 0 && allReferencedMcpIds.length === 0) return;
-    const restoreKey = `${projectId}:${usedSkillIds.join(',')}:${allReferencedMcpIds.join(',')}`;
-    if (recentRestoreRef.current === restoreKey) return;
+ useEffect(() => {
+   const meta = projectMetadata;
+   if (!meta) return;
+  const usedSkillIds = meta.usedSkillIds ?? [];
+  const usedMcpIds = meta.usedMcpIds ?? [];
+  const contextMcpServers = meta.contextMcpServers ?? [];
+  const allReferencedMcpIds = Array.from(new Set([
+    ...usedMcpIds,
+    ...contextMcpServers.map((ref) => ref.id),
+  ]));
+  if (usedSkillIds.length === 0 && allReferencedMcpIds.length === 0) return;
+  const restoreKey = `${projectId}:${usedSkillIds.join(',')}:${allReferencedMcpIds.join(',')}`;
+  if (recentRestoreRef.current === restoreKey) return;
 
-    // Stage skills that are in the loaded skills list.
-    if (usedSkillIds.length > 0 && skills.length > 0) {
-      const usedSkillIdSet = new Set(usedSkillIds);
-      const restoredSkills = skills.filter((s) => usedSkillIdSet.has(s.id));
-      if (restoredSkills.length > 0) {
-        setStagedSkills((prev) => {
-          const existing = new Set(prev.map((s) => s.id));
-          return [...prev, ...restoredSkills.filter((s) => !existing.has(s.id))];
-        });
-        restoredSkills.forEach((s) => contextOnlySkillIdsRef.current.add(s.id));
-      }
-    }
+ // Auto-install missing skills from the cloud. Skills already present
+ // in the local list (built-in or user-installed) are left as-is — they
+ // surface in the Skills submenu's "历史" tab. Missing skills are
+  // fetched from the cloud and installed locally so they appear in that
+  // tab. We use `fetchSkill` (which calls /api/skills/:id directly) to
+  // check each skill individually, so this does NOT depend on the
+  // `skills` prop being loaded yet. The search is two-tier: first the
+  // MAAS skillhub global catalog (cross-workspace, no context needed),
+  // then HDW cloud resources within the current workspace (requires
+  // workspace context — the HDW resources table is workspace-scoped).
+ if (usedSkillIds.length > 0) {
+   const localSkillIds = new Set(skills.map((s) => s.id));
+   const missingSkillIds = usedSkillIds.filter((id) => !localSkillIds.has(id));
+   if (missingSkillIds.length > 0) {
+     void (async () => {
+       let installed = false;
+       for (const skillId of missingSkillIds) {
+         // Double-check via the skill detail endpoint — the skill may
+         // exist locally but not be in the loaded list yet.
+         const detail = await fetchSkill(skillId, workspaceContext);
+         if (detail) continue; // exists locally, will show in "历史" tab
+          // Not found locally — call the unified cloud-restore endpoint.
+          // The daemon searches the MAAS skillhub global catalog first
+          // (cross-workspace, no context needed), then falls back to HDW
+          // cloud resources within the caller's workspace (requires
+          // workspace headers). If found in either source, it installs
+          // locally so the skill appears in the "历史" tab.
+          try {
+            const headers = workspaceContext
+              ? workspaceProjectHeaders(workspaceContext)
+              : undefined;
+            const resp = await fetch(
+              '/api/skills/cloud-restore?skillId=' + encodeURIComponent(skillId),
+              { method: 'POST', ...(headers ? { headers } : {}) },
+            );
+            if (!resp.ok) continue;
+            const body = await resp.json();
+            if (body.installed) installed = true;
+          } catch {
+            // network error — skip this skill
+          }
+       }
+       if (installed) {
+         await onSkillsRefresh?.(true);
+       }
+     })();
+   }
+ }
 
-    // Stage MCP servers and auto-enable disabled ones.
-    if (allReferencedMcpIds.length > 0 && mcpServers.length > 0) {
-      const referencedSet = new Set(allReferencedMcpIds);
-      const referenced = mcpServers.filter((s) => referencedSet.has(s.id));
-      const disabled = referenced.filter((s) => !s.enabled);
-      // Auto-enable disabled referenced servers.
-      if (disabled.length > 0) {
-        const enabledIds = new Set(disabled.map((s) => s.id));
-        const updated = mcpServers.map((s) => (
-          enabledIds.has(s.id) ? { ...s, enabled: true } : s
-        ));
-        void saveMcpServers(updated).then((data) => {
-          if (!data) return;
-          setMcpServers(data.servers);
-          setMcpTemplates(data.templates);
-        });
-      }
-      // Stage the referenced servers (use the enabled version).
-      const stagedSet = new Set(stagedMcpServers.map((s) => s.id));
-      const toStage = referenced
-        .map((s) => (s.enabled ? s : { ...s, enabled: true }))
-        .filter((s) => !stagedSet.has(s.id));
-      if (toStage.length > 0) {
-        setStagedMcpServers((prev) => [...prev, ...toStage]);
-        toStage.forEach((s) => contextOnlyMcpIdsRef.current.add(s.id));
-      }
-    }
+   // Auto-create and/or enable referenced MCP servers (write to
+   // mcp-config.json so they connect to local). Servers from
+   // `contextMcpServers` that don't exist locally are created as new
+   // entries using their stored config. Existing but disabled servers
+   // are enabled. No chips are staged — referenced servers appear as
+   // candidates in the MCP submenu's "历史" tab.
+   if (allReferencedMcpIds.length > 0 && mcpServers.length > 0) {
+     const referencedSet = new Set(allReferencedMcpIds);
+     const existing = mcpServers.filter((s) => referencedSet.has(s.id));
+     const disabled = existing.filter((s) => !s.enabled);
+     const existingIds = new Set(existing.map((s) => s.id));
+     // Build new server entries from contextMcpServers for IDs not
+     // present in the local list at all.
+     const toCreate = contextMcpServers.filter(
+       (ref) => !existingIds.has(ref.id),
+     );
+     if (disabled.length > 0 || toCreate.length > 0) {
+       const enabledIds = new Set(disabled.map((s) => s.id));
+       const newServers: McpServerConfig[] = toCreate.map((ref) => ({
+         id: ref.id,
+         label: ref.label,
+         transport: (ref.transport as McpServerConfig['transport']) ?? 'stdio',
+         command: ref.command,
+         url: ref.url,
+         enabled: true,
+       }));
+       const updated = [
+         ...mcpServers.map((s) => (
+           enabledIds.has(s.id) ? { ...s, enabled: true } : s
+         )),
+         ...newServers,
+       ];
+       void saveMcpServers(updated).then((data) => {
+         if (!data) return;
+         setMcpServers(data.servers);
+         setMcpTemplates(data.templates);
+       });
+     }
+   }
 
     // Only latch once we've actually staged something, or once both source
     // lists are populated and we've confirmed there's nothing to stage.
-    // If skills or mcpServers are still empty (not yet loaded), skip the
-    // latch so the effect retries when they become available.
-    const skillsReady = usedSkillIds.length === 0 || skills.length > 0;
+    // If mcpServers is still empty (not yet loaded), skip the latch so the
+    // effect retries when they become available. Skills don't need this
+    // guard because `fetchSkill` checks the API directly.
     const mcpReady = allReferencedMcpIds.length === 0 || mcpServers.length > 0;
-    if (skillsReady && mcpReady) {
+    if (mcpReady) {
       recentRestoreRef.current = restoreKey;
     }
 
@@ -1185,7 +1241,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
         setMcpTemplates(data.templates);
       });
     }
-  }, [projectMetadata, projectId, skills, mcpServers, stagedMcpServers]);
+  }, [projectMetadata, projectId, skills, mcpServers, stagedMcpServers, workspaceContext, onSkillsRefresh]);
 
     const handleSkillTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent') => {
       void onSkillsRefresh?.(true);
@@ -3759,9 +3815,12 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
              personalMemberId={personalWorkspace?.workspaceMemberId}
             personalWorkspaceId={personalWorkspace?.workspaceId}
             teamWorkspaceIds={teamWorkspaceIds}
-            usedSkillIds={projectMetadata?.usedSkillIds ?? []}
-            usedMcpIds={projectMetadata?.usedMcpIds ?? []}
-            onSkillTabChange={handleSkillTabChange}
+           usedSkillIds={projectMetadata?.usedSkillIds ?? []}
+           usedMcpIds={Array.from(new Set([
+             ...(projectMetadata?.usedMcpIds ?? []),
+             ...(projectMetadata?.contextMcpServers ?? []).map((r) => r.id),
+           ]))}
+           onSkillTabChange={handleSkillTabChange}
               onMcpTabChange={handleMcpTabChange}
              onPickMcp={(server) => {
                 trackComposerBar({

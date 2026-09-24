@@ -640,8 +640,6 @@ export interface Dict {
   'settings.runtimePackaged': string;
   'settings.runtimeDevelopment': string;
   'settings.versionUnavailable': string;
-  'settings.allowSilentUpdates': string;
-  'settings.allowSilentUpdatesDesc': string;
   'settings.installLatest': string;
   'settings.alreadyLatest': string;
   'settings.updateCheck': string;
@@ -1081,7 +1079,6 @@ export interface Dict {
   'updater.installerOpened': string;
   'updater.later': string;
   'updater.manualDownload': string;
-  'updater.allowSilentUpdates': string;
   'updater.openFailedFallback': string;
   'updater.installRestart': string;
   'updater.installingRestart': string;
@@ -1628,6 +1625,8 @@ export interface Dict {
  'homeHero.skillTabMine': string;
  'homeHero.skillTabTeam': string;
   'homeHero.skillTabRecent': string;
+  'homeHero.skillTabHistory': string;
+  'homeHero.mcpTabHistory': string;
  'homeHero.noConnectors': string;
   'homeHero.applying': string;
   'homeHero.pluginTitle': string;

@@ -186,7 +186,6 @@ async function renderCliTab(options: {
         appVersionInfo={null}
         initialSection="execution"
         onPersist={vi.fn()}
-        onSilentUpdatePreferenceChange={async () => undefined}
         onPersistComposioKey={vi.fn()}
         onClose={vi.fn()}
         onRefreshAgents={vi.fn()}

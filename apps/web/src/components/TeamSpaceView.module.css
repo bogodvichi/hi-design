@@ -808,7 +808,7 @@
 }
 
 .gridCellCover {
-  background-size: 300%;
+  background-size: 100%;
   background-position: left top;
   background-repeat: no-repeat;
   background-color: var(--bg-subtle, #f3f4f6);

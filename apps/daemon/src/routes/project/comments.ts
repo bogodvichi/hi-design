@@ -5,6 +5,7 @@ import type {
 } from '@open-design/contracts';
 import type { RouteDeps } from '../../server-context.js';
 import type { BoundWorkspaceResourceMutationGate } from '../../collab/workspace-resource-mutation.js';
+import { readSsoConfigFile } from '../../http/hik_logins/hicoo.js';
 import { isProjectCommentAnchorConversationId } from '../../db.js';
 
 export type ProjectCommentWorkspaceContextResolution =
@@ -20,10 +21,10 @@ export type ProjectCommentWorkspaceContextResolution =
 export interface RegisterProjectCommentRoutesDeps extends RouteDeps<'db' | 'projectStore' | 'conversations'> {
   /** Optional in focused CRUD fixtures; production supplies request-scoped analytics. */
   telemetry?: RouteDeps<'telemetry'>['telemetry'];
-  /** SSO session display name fallback for comments when the workspace
-   *  directory entry has not been enriched yet. Mirrors `shared-space/info`
-   *  so local previews never store memberId as the author display name. */
-  ssoDisplayName?: string;
+  /** Runtime data root used to re-read the current SSO session for each
+   *  comment write. The workspace directory entry remains the preferred
+   *  identity source; this fallback must not capture a stale login name. */
+  runtimeDataDir?: string;
   /**
    * Gate POST (create/edit)/PATCH status/DELETE on the caller's WORKSPACE
    * identity, before the author-identity logic below ever runs (spec 04 §10
@@ -449,8 +450,16 @@ export function registerProjectCommentRoutes(app: Express, ctx: RegisterProjectC
       // and is author-only.
       const body = { ...(req.body || {}) };
       const authorMemberId = await resolveCaller(req, workspaceContext);
+      const ssoSession = ctx.runtimeDataDir
+        ? readSsoConfigFile(ctx.runtimeDataDir)
+        : null;
+      const ssoDisplayName = typeof ssoSession?.userInfo?.displayName === 'string'
+        ? ssoSession.userInfo.displayName.trim()
+        : typeof ssoSession?.userInfo?.name === 'string'
+          ? ssoSession.userInfo.name.trim()
+          : '';
       const authorDisplayName = workspaceContext?.displayName?.trim()
-        || ctx.ssoDisplayName?.trim()
+        || ssoDisplayName
         || undefined;
       body.authorDisplayName = authorDisplayName;
       const requestedId = typeof body.id === 'string' && body.id.trim() ? body.id.trim() : '';

@@ -231,7 +231,7 @@ describe('syncConfigToDaemon', () => {
 
     await syncConfigToDaemon({
       ...DEFAULT_CONFIG,
-      allowSilentUpdates: true,
+      telemetry: { metrics: true },
     });
 
     const [, init] = fetchMock.mock.calls[0] as unknown as [
@@ -239,7 +239,7 @@ describe('syncConfigToDaemon', () => {
       RequestInit,
     ];
     expect(JSON.parse(String(init.body))).toMatchObject({
-      allowSilentUpdates: true,
+      telemetry: { metrics: true },
     });
   });
 });
@@ -415,17 +415,6 @@ describe('mergeDaemonConfig', () => {
     expect(merged.installationId == null).toBe(true);
   });
 
-  it('uses daemon silent update preference and clears stale local values when absent', () => {
-    expect(
-      mergeDaemonConfig(DEFAULT_CONFIG, { allowSilentUpdates: false }).allowSilentUpdates,
-    ).toBe(false);
-    expect(
-      mergeDaemonConfig(DEFAULT_CONFIG, { allowSilentUpdates: true }).allowSilentUpdates,
-    ).toBe(true);
-    expect(
-      mergeDaemonConfig({ ...DEFAULT_CONFIG, allowSilentUpdates: true }, {}).allowSilentUpdates,
-    ).toBeUndefined();
-  });
 });
 
 describe('mergeDaemonMediaProviders', () => {
@@ -1529,14 +1518,12 @@ describe('saveConfig', () => {
       installationId: 'install-1',
       privacyDecisionAt: 1778244000000,
       telemetry: { metrics: true },
-      allowSilentUpdates: true,
     });
 
     const saved = JSON.parse(store.get('open-design:config') ?? '{}');
     expect(saved.installationId).toBeUndefined();
     expect(saved.privacyDecisionAt).toBeUndefined();
     expect(saved.telemetry).toBeUndefined();
-    expect(saved.allowSilentUpdates).toBeUndefined();
   });
 
   it('keeps CLI API key env values out of localStorage while preserving intent and non-secret env', () => {

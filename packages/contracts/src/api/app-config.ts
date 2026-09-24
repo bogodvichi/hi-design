@@ -59,7 +59,6 @@ export interface AppConfigPrefs {
    * re-popping the consent banner.
    */
   privacyDecisionAt?: number | null;
-  allowSilentUpdates?: boolean;
   orbit?: OrbitConfigPrefs;
   customInstructions?: string | null;
   /** External project library roots. The daemon adds its built-in .od/projects location at read time. */

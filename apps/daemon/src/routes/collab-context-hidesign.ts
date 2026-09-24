@@ -13,6 +13,7 @@ import {
   unshareResourceFromSharedSpace,
 } from '../http/hdw.js';
 import { readSsoConfigFile } from '../http/hik_logins/hicoo.js';
+import { getSsoUser } from '../sso-user.js';
 import type { VelaTeamProjectCatalog } from '../collab/vela-cli-team-projects.js';
 import type { ResourceHubPrincipal } from '../collab/resource-principal.js';
 import {
@@ -226,6 +227,8 @@ async function buildMockData(dataDir?: string) {
   const SHARED_SPACE_MEMBER_ID = sharedSpaceInfo?.workspace_member_id || getSharedSpaceMemberId();
   const SHARED_SPACE_NAME = sharedSpaceInfo?.workspace_name || '共享空间';
   const SHARED_SPACE_ROLE = normalizeWorkspaceRole(sharedSpaceInfo?.role);
+  const ssoUser = getSsoUser(dataDir);
+  const displayName = ssoUser?.displayName || '';
 
   const hdwTeams = await fetchHdwTeams(dataDir);
 
@@ -237,6 +240,7 @@ async function buildMockData(dataDir?: string) {
         workspaceIconKey: 'spark',
         workspaceType: 'team' as const,
         workspaceMemberId: SHARED_SPACE_MEMBER_ID,
+        displayName,
         isDefaultTeam: true,
         role: SHARED_SPACE_ROLE,
         memberStatus: 'active' as const,
@@ -247,6 +251,7 @@ async function buildMockData(dataDir?: string) {
         workspaceName: t.workspace_name,
         workspaceType: 'team' as const,
         workspaceMemberId: t.workspace_member_id,
+        displayName,
         role: normalizeWorkspaceRole(t.role),
         memberStatus: 'active' as const,
         lifecycleState: 'active' as const,
@@ -261,6 +266,7 @@ async function buildMockData(dataDir?: string) {
         workspaceId: SHARED_SPACE_ID,
         workspaceType: 'team',
         workspaceMemberId: SHARED_SPACE_MEMBER_ID,
+        displayName,
         isDefaultTeam: true,
         role: SHARED_SPACE_ROLE,
         memberStatus: 'active',
@@ -289,6 +295,7 @@ async function buildMockData(dataDir?: string) {
         workspaceId: wsId,
         workspaceType: 'team',
         workspaceMemberId: wsMemberId,
+        displayName,
         role,
         memberStatus: 'active',
         lifecycleState: 'active',

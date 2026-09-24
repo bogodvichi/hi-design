@@ -398,8 +398,6 @@ interface Props {
  onConfigPersist: (cfg: AppConfig) => Promise<void> | void;
  /** True only when GET /api/app-config returned a real config object. */
  daemonAppConfigReady?: boolean;
- /** Non-optimistic daemon write for the silent-update preference. */
- onSilentUpdatePreferenceChange?: (allowSilentUpdates: boolean) => Promise<void>;
  onSkillsRefresh?: (scoped?: boolean) => Promise<void> | void;
  onSkillsChanged?: (affectedSkillId?: string) => void;
  onRefreshAgents: () => Promise<AgentInfo[]> | AgentInfo[];
@@ -536,7 +534,6 @@ export function EntryShell({
  onApiModelChange,
  onConfigPersist,
  daemonAppConfigReady = false,
- onSilentUpdatePreferenceChange,
  onSkillsRefresh,
  onSkillsChanged,
  onRefreshAgents,
@@ -1689,12 +1686,6 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
  // updater reports a downloaded, unopened installer.
  const updaterSlot = (
    <UpdaterPopup
-     allowSilentUpdates={config.allowSilentUpdates}
-     silentUpdatePreferenceReady={daemonAppConfigReady}
-     onAllowSilentUpdatesChange={
-       onSilentUpdatePreferenceChange
-         ?? ((allowSilentUpdates) => onConfigPersist({ ...config, allowSilentUpdates }))
-     }
    />
  );
 

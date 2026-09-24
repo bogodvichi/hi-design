@@ -142,33 +142,7 @@
 }
 
 .updateButtonIcon {
-  flex: none;
-}
-
-.checkbox {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  min-width: 0;
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.35;
-  cursor: pointer;
-}
-
-.checkbox input {
-  flex: 0 0 auto;
-  inline-size: auto;
-  width: auto;
-  margin: 2px 0 0;
-}
-
-.checkbox span {
-  min-width: 0;
-  flex: 1 1 auto;
-  white-space: normal;
-  overflow-wrap: break-word;
-  word-break: normal;
+ flex: none;
 }
 
 .laterButton {
