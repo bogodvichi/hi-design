@@ -78,6 +78,30 @@ export async function unshareFromSharedSpace(shareId: string): Promise<boolean> 
 }
 
 /**
+ * Remove a shared folder from one recipient's "Shared with me" view.
+ * The daemon forwards to HDW's folder-unshare endpoint, which removes only
+ * that recipient's folder/project share records and never deletes the source folder.
+ */
+export async function unshareFolderFromSharedSpace(input: {
+  folderId: string;
+  workspaceId: string;
+  recipientMemberId: string;
+}): Promise<boolean> {
+  const response = await fetch('/api/shared-space/unshare-folder', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      folder_id: input.folderId,
+      workspace_id: input.workspaceId,
+      recipient_member_id: input.recipientMemberId,
+    }),
+  });
+  if (!response.ok) return false;
+  const body = await response.json().catch(() => null);
+  return body?.ok === true;
+}
+
+/**
  * Share an entire folder (including subfolders and all projects) to
  * specific recipients in the shared space. Calls the daemon route which
  * batch-creates cloud folders via HDW /folder/create, then batch-shares
