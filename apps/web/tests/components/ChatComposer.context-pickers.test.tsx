@@ -180,12 +180,6 @@ async function flushMounts() {
   });
 }
 
-function stagedPluginChip(): Element | null {
-  return screen
-    .queryByTestId('staged-contexts')
-    ?.querySelector('.staged-chip.staged-context--plugin') ?? null;
-}
-
 function projectPatchBodies(): Array<{ metadata?: { linkedDirs?: string[] } }> {
   return fetchMock.mock.calls
     .filter(([url, init]) => url === '/api/projects/project-1' && init?.method === 'PATCH')
@@ -368,19 +362,17 @@ describe('ChatComposer context pickers', () => {
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
       'All',
       'Design files',
-      'Tabs',
-      'Plugins',
       'Skills',
       'MCP',
       'Connectors',
     ]);
-    expect(screen.getByRole('tab', { name: 'Plugins' })).toBeTruthy();
+    expect(screen.queryByRole('tab', { name: 'Plugins' })).toBeNull();
     expect(screen.getByRole('tab', { name: 'Skills' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'MCP' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Connectors' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Design files' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Tabs' })).toBeTruthy();
-    expect(screen.getByText('Search Design Files, tabs, plugins, skills, MCP servers, and connectors.')).toBeTruthy();
+    expect(screen.queryByRole('tab', { name: 'Tabs' })).toBeNull();
+    expect(screen.getByText('Search: Design files · Skills · MCP · Connectors')).toBeTruthy();
   });
 
   it('localizes @ panel tabs and empty states in Chinese mode', async () => {
@@ -396,19 +388,17 @@ describe('ChatComposer context pickers', () => {
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
       '全部',
       '设计文件',
-      '标签页',
-      '插件',
       '技能',
       'MCP',
       '连接器',
     ]);
-    expect(screen.getByRole('tab', { name: '插件' })).toBeTruthy();
+    expect(screen.queryByRole('tab', { name: '插件' })).toBeNull();
     expect(screen.getByRole('tab', { name: '技能' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'MCP' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: '连接器' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: '设计文件' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: '标签页' })).toBeTruthy();
-    expect(screen.getByText('搜索设计文件、标签页、插件、技能、MCP 服务器和连接器。')).toBeTruthy();
+    expect(screen.queryByRole('tab', { name: '标签页' })).toBeNull();
+    expect(screen.getByText('搜索: 设计文件 · 技能 · MCP · 连接器')).toBeTruthy();
 
     await typeAndSettle('@missing');
 
@@ -461,12 +451,21 @@ describe('ChatComposer context pickers', () => {
     await typeAndSettle('@');
 
     await waitFor(() => expect(screen.getByText('designs/landing.html')).toBeTruthy());
+    const picker = screen.getByTestId('mention-popover');
+    expect(within(picker).getByRole('tab', { name: 'All3' })).toBeTruthy();
+    expect(within(picker).getByRole('tab', { name: 'Design files1' })).toBeTruthy();
+    expect(within(picker).getByRole('tab', { name: 'Skills1' })).toBeTruthy();
+    expect(within(picker).getByRole('tab', { name: 'MCP1' })).toBeTruthy();
+    expect(within(picker).getByRole('tab', { name: 'Connectors' })).toBeTruthy();
+    expect(
+      within(picker).getByRole('tab', { name: 'All3' }).querySelector('.mention-tab-count')?.textContent,
+    ).toBe('3');
     const labels = Array.from(
-      screen.getByTestId('mention-popover').querySelectorAll('.mention-section-label'),
+      picker.querySelectorAll('.mention-section-label'),
       (node) => node.textContent,
     );
     expect(labels[0]).toBe('Design files');
-    expect(labels[1]).toBe('Tabs');
+    expect(labels[1]).toBe('Skills');
 
     pressEnter();
 
@@ -475,8 +474,7 @@ describe('ChatComposer context pickers', () => {
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/apply'))).toBe(false);
   });
 
-  it('searches workspace tabs from @ and sends the selected tab context', async () => {
-    const onSend = vi.fn();
+  it('does not surface workspace tabs or plugins in the project @ picker', async () => {
     const browserContext = {
       id: 'browser:__browser__:1',
       kind: 'browser' as const,
@@ -486,32 +484,17 @@ describe('ChatComposer context pickers', () => {
       tabId: '__browser__:1',
     };
     renderComposer({
-      onSend,
       workspaceContexts: [browserContext],
     });
     await flushMounts();
 
-    await typeAndSettle('@drib');
+    await typeAndSettle('@');
 
-    await waitFor(() => expect(screen.getByText('Dribbble')).toBeTruthy());
-    const labels = Array.from(
-      screen.getByTestId('mention-popover').querySelectorAll('.mention-section-label'),
-      (node) => node.textContent,
-    );
-    expect(labels[0]).toBe('Tabs');
-    fireEvent.click(screen.getByText('Dribbble'));
-
-    await waitFor(() => expect(composerText()).toBe('@Dribbble '));
-    const pill = screen
-      .getByTestId('chat-composer-input')
-      .querySelector('.composer-inline-mention');
-    expect(pill?.getAttribute('data-mention-kind')).toBe('workspace');
-    expect(screen.queryByTestId('staged-contexts')).toBeNull();
-
-    fireEvent.click(screen.getByTestId('chat-send'));
-
-    await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
-    expect(onSend.mock.calls[0]?.[3]?.context?.workspaceItems).toEqual([browserContext]);
+    const picker = await screen.findByTestId('mention-popover');
+    expect(within(picker).queryByRole('tab', { name: 'Tabs' })).toBeNull();
+    expect(within(picker).queryByRole('tab', { name: 'Plugins' })).toBeNull();
+    expect(within(picker).queryByText('Dribbble')).toBeNull();
+    expect(within(picker).queryByText('My Export')).toBeNull();
   });
 
   // Only directory-shaped contexts (`local-code` / `project`) may contribute a
@@ -1209,42 +1192,6 @@ describe('ChatComposer context pickers', () => {
     expect(skillNames.indexOf('Audit Helper 9')).toBeLessThan(skillNames.indexOf('Accessibility Review'));
   });
 
-  it('applies a plugin from @ search and keeps the plugin token inline', async () => {
-    renderComposer();
-    await flushMounts();
-
-    await typeAndSettle('@export');
-
-    await waitFor(() => expect(screen.getByText('My Export')).toBeTruthy());
-    fireEvent.click(screen.getByText('My Export'));
-
-    await waitFor(() => expect(composerText()).toBe('@My Export '));
-    const pill = screen
-      .getByTestId('chat-composer-input')
-      .querySelector('.composer-inline-mention');
-    expect(pill?.textContent).toBe('@My Export');
-    expect(pill?.getAttribute('data-mention-kind')).toBe('plugin');
-  });
-
-  it('clears the inline plugin context when the plugin token is removed', async () => {
-    renderComposer();
-    await flushMounts();
-
-    await typeAndSettle('@export');
-
-    await waitFor(() => expect(screen.getByText('My Export')).toBeTruthy());
-    fireEvent.click(screen.getByText('My Export'));
-
-    await waitFor(() => expect(composerText()).toBe('@My Export '));
-    expect(stagedPluginChip()).toBeNull();
-
-    await typeAndSettle('');
-
-    expect(
-      screen.getByTestId('chat-composer-input').querySelector('.composer-inline-mention--plugin'),
-    ).toBeNull();
-  });
-
   it('clears restored inline plugin context when the queued draft token is removed', async () => {
     const onSend = vi.fn();
     const composerRef = createRef<ChatComposerHandle>();
@@ -1307,61 +1254,6 @@ describe('ChatComposer context pickers', () => {
         pluginId: USER_PLUGIN.id,
       }),
       context: { pluginIds: [USER_PLUGIN.id] },
-    });
-  });
-
-  it('keeps the inline plugin context when the plugin token has trailing punctuation', async () => {
-    const onSend = vi.fn();
-    renderComposer({ onSend });
-    await flushMounts();
-
-    await typeAndSettle('@export');
-
-    await waitFor(() => expect(screen.getByText('My Export')).toBeTruthy());
-    fireEvent.click(screen.getByText('My Export'));
-
-    await waitFor(() => expect(composerText()).toBe('@My Export '));
-    expect(stagedPluginChip()).toBeNull();
-
-    await typeAndSettle('@My Export, refine this export');
-
-    await waitFor(() => expect(composerText()).toBe('@My Export, refine this export'));
-    fireEvent.click(screen.getByTestId('chat-send'));
-    await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
-    expect(onSend.mock.calls[0]?.[3]?.context?.pluginIds).toEqual([USER_PLUGIN.id]);
-  });
-
-  it('sends the applied plugin snapshot as per-turn context', async () => {
-    const onSend = vi.fn();
-    renderComposer({ onSend });
-    await flushMounts();
-
-    await typeAndSettle('@export');
-
-    await waitFor(() => expect(screen.getByText('My Export')).toBeTruthy());
-    fireEvent.click(screen.getByText('My Export'));
-
-    await waitFor(() => expect(composerText()).toBe('@My Export '));
-    expect(stagedPluginChip()).toBeNull();
-    expect(
-      screen.getByTestId('chat-composer-input').querySelector('.composer-inline-mention--plugin'),
-    ).toBeTruthy();
-
-    fireEvent.click(screen.getByTestId('chat-send'));
-
-    await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
-    const meta = onSend.mock.calls[0]?.[3];
-    expect(meta).toMatchObject({
-      appliedPluginSnapshotId: 'snap-1',
-      appliedPluginSnapshot: expect.objectContaining({
-        snapshotId: 'snap-1',
-        pluginId: USER_PLUGIN.id,
-      }),
-      context: { pluginIds: [USER_PLUGIN.id] },
-    });
-    // After sending, the applied plugin clears, so its staged chip is gone.
-    await waitFor(() => {
-      expect(stagedPluginChip()).toBeNull();
     });
   });
 

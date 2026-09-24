@@ -453,12 +453,17 @@ describe('HomeHero plugin picker', () => {
     const picker = screen.getByTestId('home-hero-plugin-picker');
     const skillsTab = within(picker).getByRole('tab', { name: /skills/i });
     fireEvent.pointerDown(skillsTab);
-    fireEvent.click(skillsTab);
 
     await settle();
 
     expect(screen.getByTestId('home-hero-plugin-picker')).toBeTruthy();
-    expect(within(screen.getByTestId('home-hero-plugin-picker')).getByRole('tab', { name: /skills/i }).getAttribute('aria-selected')).toBe('true');
+    const selectedTab = within(screen.getByTestId('home-hero-plugin-picker')).getByRole(
+      'tab',
+      { name: /skills/i },
+    );
+    expect(selectedTab.getAttribute('aria-selected')).toBe('true');
+    expect(selectedTab.classList.contains('mention-tab')).toBe(true);
+    expect(selectedTab.classList.contains('active')).toBe(true);
   });
 
   it('renders selected @ plugins inside the prompt as mention pills', async () => {

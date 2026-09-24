@@ -40,6 +40,8 @@ export type RuntimeContext = {
     args: string[];
     env?: Record<string, string>;
     envVars?: string[];
+    /** Per-run Codex MCP approval override for explicitly selected/required servers. */
+    approvalMode?: 'auto' | 'prompt' | 'writes' | 'approve';
   }>;
   // True when the current chat run has at least one prior persisted
   // assistant message in the same conversation — i.e. this isn't the

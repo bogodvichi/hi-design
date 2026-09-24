@@ -1554,22 +1554,26 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
             aria-label={t('homeHero.contextSearchResults')}
             data-testid="home-hero-plugin-picker"
           >
-            <div className="home-hero__mention-tabs" role="tablist" aria-label={t('homeHero.contextSurfaces')}>
+            <div className="mention-tabs" role="tablist" aria-label={t('homeHero.contextSurfaces')}>
               {tabs.map((item) => (
                 <button
                   key={item.id}
                   type="button"
                   role="tab"
                   aria-selected={mentionTab === item.id}
-                  className={`home-hero__mention-tab${mentionTab === item.id ? ' is-active' : ''}`}
-                  onMouseDown={(event) => event.preventDefault()}
+                  className={`mention-tab${mentionTab === item.id ? ' active' : ''}`}
+                  onPointerDown={(event) => {
+                    event.preventDefault();
+                    setMentionTab(item.id);
+                    setSelectedIndex(0);
+                  }}
                   onClick={() => {
                     setMentionTab(item.id);
                     setSelectedIndex(0);
                   }}
                 >
                   <span>{item.label}</span>
-                  {item.count > 0 ? <span>{item.count}</span> : null}
+                  {item.count > 0 ? <span className="mention-tab-count">{item.count}</span> : null}
                 </button>
               ))}
             </div>

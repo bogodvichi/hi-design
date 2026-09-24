@@ -179,7 +179,7 @@ function trackedWorkspaceLinkedDirsForContexts(
 
 type ToolsTab = 'plugins' | 'skills' | 'mcp' | 'import';
 
-type MentionTab = 'all' | 'tabs' | 'files' | 'plugins' | 'skills' | 'mcp' | 'connectors';
+type MentionTab = 'all' | 'files' | 'skills' | 'mcp' | 'connectors';
 
 const USER_PLUGIN_SOURCE_KINDS = new Set<PluginSourceKind>([
   'user',
@@ -2938,15 +2938,11 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
         // renders the same files-first section order and highlights the
         // matching row from activeIndex.
         const showFiles = mentionTab === 'all' || mentionTab === 'files';
-        const showTabs = mentionTab === 'all' || mentionTab === 'tabs';
-        const showPlugins = mentionTab === 'all' || mentionTab === 'plugins';
         const showSkills = mentionTab === 'all' || mentionTab === 'skills';
         const showMcp = mentionTab === 'all' || mentionTab === 'mcp';
         const showConnectors = mentionTab === 'all' || mentionTab === 'connectors';
         const total =
           (showFiles ? filteredFiles.length : 0) +
-          (showTabs ? filteredWorkspaceContexts.length : 0) +
-          (showPlugins ? filteredPlugins.length : 0) +
           (showSkills ? filteredSkills.length : 0) +
           (showMcp ? filteredMcpServers.length : 0) +
           (showConnectors ? filteredConnectors.length : 0);
@@ -2969,8 +2965,8 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
     }
 
     // Resolve a flat visible-section index to the right insert call. Section
-    // order MUST match MentionPopover's render order (files→tabs→plugins
-    // →skills→mcp→connectors); the activeIndex highlight and Enter target stay in
+    // order MUST match MentionPopover's render order
+    // (files→skills→mcp→connectors); the activeIndex highlight and Enter target stay in
     // lockstep across "All" and individual tabs.
     function pickMentionByFlatIndex(flat: number) {
       let i = flat;
@@ -2980,20 +2976,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
           return;
         }
         i -= filteredFiles.length;
-      }
-      if (mentionTab === 'all' || mentionTab === 'tabs') {
-        if (i < filteredWorkspaceContexts.length) {
-          insertWorkspaceMention(filteredWorkspaceContexts[i]!);
-          return;
-        }
-        i -= filteredWorkspaceContexts.length;
-      }
-      if (mentionTab === 'all' || mentionTab === 'plugins') {
-        if (i < filteredPlugins.length) {
-          void insertPluginMention(filteredPlugins[i]!);
-          return;
-        }
-        i -= filteredPlugins.length;
       }
       if (mentionTab === 'all' || mentionTab === 'skills') {
         if (i < filteredSkills.length) {
@@ -3026,16 +3008,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
         appendContextAttachment(filePath);
       }
       setMention(null);
-    }
-
-    async function insertPluginMention(record: InstalledPluginRecord) {
-      editorRef.current?.insertMention({
-        token: inlineMentionToken(record.title),
-        entity: { id: record.id, kind: 'plugin', label: record.title },
-      });
-      setMention(null);
-      inlineBackedPluginRef.current = { id: record.id, label: record.title };
-      await pluginsSectionRef.current?.applyById(record.id, record);
     }
 
     async function stagePluginContext(record: InstalledPluginRecord) {
@@ -3121,20 +3093,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
       ));
       setComposerEngaged(true);
       editorRef.current?.focus();
-    }
-
-    function insertWorkspaceMention(item: WorkspaceContextItem) {
-      contextOnlyWorkspaceIdsRef.current.delete(item.id);
-      setStagedWorkspaceContexts((current) =>
-        current.some((candidate) => candidate.id === item.id)
-          ? [...current]
-          : [...current, item],
-      );
-      editorRef.current?.insertMention({
-        token: inlineMentionToken(item.label),
-        entity: { id: item.id, kind: 'workspace', label: item.label },
-      });
-      setMention(null);
     }
 
     async function applyProjectSkill(skill: SkillSummary): Promise<boolean> {
@@ -3224,9 +3182,8 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
       sendComposedTurn(prompt, staged, nextCommentAttachments, contextMeta);
     }
 
-    // The @-picker offers a unified search across context surfaces:
-    // workspace tabs first, then project files, plugins, skills, active MCP
-    // servers, and connectors. Picked
+    // The project @-picker searches project files, skills, active MCP servers,
+    // and connectors. Picked
     // entities keep an inline @ token for orientation while richer
     // context is still applied behind the scenes when available.
     const mentionQuery = mention ? mention.q.toLowerCase() : '';
@@ -3238,18 +3195,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
     // `mention` is in the deps (not just `mentionQuery`) so the open/close gate
     // re-evaluates: a null→{q:''} transition keeps the query '' but must flip
     // the list from `[]` to live results.
-    const filteredWorkspaceContexts = useMemo(
-      () =>
-        mention
-          ? workspaceContexts
-              .filter((item) => {
-                if (!mentionQuery) return true;
-                return workspaceContextSearchText(item).toLowerCase().includes(mentionQuery);
-              })
-              .slice(0, 12)
-          : [],
-      [mention, mentionQuery, workspaceContexts],
-    );
     const filteredFiles = useMemo(
       () =>
         mention
@@ -3262,23 +3207,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
               .slice(0, 12)
           : [],
       [mention, mentionQuery, projectFiles],
-    );
-    const filteredPlugins = useMemo(
-      () =>
-        mention
-          ? pluginsForComposer
-              .filter((p) => {
-                if (!mentionQuery) return true;
-                return (
-                  p.title.toLowerCase().includes(mentionQuery) ||
-                  p.id.toLowerCase().includes(mentionQuery) ||
-                  (p.manifest?.description ?? '').toLowerCase().includes(mentionQuery) ||
-                  (p.manifest?.tags ?? []).join(' ').toLowerCase().includes(mentionQuery)
-                );
-              })
-              .slice(0, 8)
-          : [],
-      [mention, mentionQuery, pluginsForComposer],
     );
     const filteredMcpServers = useMemo(
       () =>
@@ -3698,8 +3626,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
           >
             <MentionPopover
               files={filteredFiles}
-              workspaceContexts={filteredWorkspaceContexts}
-              plugins={filteredPlugins}
               skills={filteredSkills}
               mcpServers={filteredMcpServers}
               connectors={filteredConnectors}
@@ -3712,8 +3638,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
               activeIndex={mentionIndex}
               stagedSkillIds={new Set(stagedSkills.map((skill) => skill.id))}
               onPickFile={insertMention}
-              onPickWorkspaceContext={insertWorkspaceMention}
-              onPickPlugin={(record) => void insertPluginMention(record)}
               onPickSkill={(skill) => void insertSkillMention(skill)}
               onPickMcp={insertMcpMention}
               onPickConnector={insertConnectorMention}
@@ -4258,14 +4182,6 @@ function ComposerRunIcon({ className }: { className?: string }) {
   return <img className={className} src="/composer-matrix-loader.svg" alt="" aria-hidden />;
 }
 
-function workspaceContextDescription(item: WorkspaceContextItem): string {
-  if (item.kind === 'design-files') return item.path || 'Project files';
-  if (item.kind === 'project') return item.absolutePath || item.path || item.title || item.id;
-  if (item.kind === 'local-code') return item.absolutePath || item.path || item.title || item.id;
-  if (item.kind === 'terminal') return item.title || 'Terminal session';
-  return item.url || item.path || item.absolutePath || item.title || item.tabId || item.id;
-}
-
 function lastPathSegment(path: string): string {
   const normalized = path.replace(/\\/g, '/').replace(/\/+$/, '');
   return normalized.split('/').filter(Boolean).pop() || path;
@@ -4279,45 +4195,6 @@ function projectFileMentionDescription(file: ProjectFile, fallback: string): str
   const label = projectFileMentionTitle(file, fallback);
   if (fallback && fallback !== label) return fallback;
   return [file.kind, file.mime].filter(Boolean).join(' · ');
-}
-
-function workspaceContextSearchText(item: WorkspaceContextItem): string {
-  return [
-    item.id,
-    item.kind,
-    item.label,
-    item.tabId ?? '',
-    item.path ?? '',
-    item.absolutePath ?? '',
-    item.url ?? '',
-    item.title ?? '',
-  ].join(' ');
-}
-
-function workspaceContextKindLabel(kind: WorkspaceContextItem['kind']): string {
-  switch (kind) {
-    case 'browser':
-      return 'Browser';
-    case 'design-files':
-      return 'Design files';
-    case 'design-system':
-      return 'Design system';
-    case 'folder':
-      return 'Folder';
-    case 'project':
-      return 'Project';
-    case 'local-code':
-      return 'Local code';
-    case 'terminal':
-      return 'Terminal';
-    case 'side-chat':
-      return 'Side chat';
-    case 'live-artifact':
-      return 'Live artifact';
-    case 'file':
-    default:
-      return 'File';
-  }
 }
 
 function StagedRunContexts({
@@ -5947,10 +5824,6 @@ function mcpTemplateMatchesQuery(tpl: McpTemplate, query: string): boolean {
     .includes(q);
 }
 
-function pluginSourceLabel(plugin: InstalledPluginRecord, t: TranslateFn): string {
-  return plugin.sourceKind === 'bundled' ? t('chat.mentionPluginOfficial') : t('chat.mentionPluginMine');
-}
-
 function ToolsImportPanel({
   t,
   onLinkFolder,
@@ -6106,9 +5979,7 @@ function SlashPopover({
 
 function MentionPopover({
   files,
-  workspaceContexts,
   connectors,
-  plugins,
   skills,
   mcpServers,
   query,
@@ -6117,16 +5988,12 @@ function MentionPopover({
   activeIndex,
   stagedSkillIds,
   onPickFile,
-  onPickWorkspaceContext,
-  onPickPlugin,
   onPickSkill,
   onPickMcp,
   onPickConnector,
 }: {
   files: ProjectFile[];
-  workspaceContexts: WorkspaceContextItem[];
   connectors: ConnectorDetail[];
-  plugins: InstalledPluginRecord[];
   skills: SkillSummary[];
   mcpServers: McpServerConfig[];
   query: string;
@@ -6135,39 +6002,36 @@ function MentionPopover({
   activeIndex: number;
   stagedSkillIds: Set<string>;
   onPickFile: (path: string) => void;
-  onPickWorkspaceContext: (item: WorkspaceContextItem) => void;
-  onPickPlugin: (record: InstalledPluginRecord) => void;
   onPickSkill: (skill: SkillSummary) => void;
   onPickMcp: (server: McpServerConfig) => void;
   onPickConnector: (connector: ConnectorDetail) => void;
 }) {
   const { locale, t } = useI18n();
   const ref = useRef<HTMLDivElement | null>(null);
-  const tabs: Array<{ id: MentionTab; label: string }> = [
-    { id: 'all', label: t('chat.mentionTabAll') },
-    { id: 'files', label: t('chat.mentionTabFiles') },
-    { id: 'tabs', label: t('chat.mentionTabTabs') },
-    { id: 'plugins', label: t('chat.mentionTabPlugins') },
-    { id: 'skills', label: t('chat.mentionTabSkills') },
-    { id: 'mcp', label: t('chat.mentionTabMcp') },
-    { id: 'connectors', label: t('chat.mentionTabConnectors') },
+  const tabs: Array<{ id: MentionTab; label: string; count: number }> = [
+    {
+      id: 'all',
+      label: t('chat.mentionTabAll'),
+      count: files.length + skills.length + mcpServers.length + connectors.length,
+    },
+    { id: 'files', label: t('chat.mentionTabFiles'), count: files.length },
+    { id: 'skills', label: t('chat.mentionTabSkills'), count: skills.length },
+    { id: 'mcp', label: t('chat.mentionTabMcp'), count: mcpServers.length },
+    { id: 'connectors', label: t('chat.mentionTabConnectors'), count: connectors.length },
   ];
-  const showTabs = tab === 'all' || tab === 'tabs';
   const showFiles = tab === 'all' || tab === 'files';
-  const showPlugins = tab === 'all' || tab === 'plugins';
   const showSkills = tab === 'all' || tab === 'skills';
   const showMcp = tab === 'all' || tab === 'mcp';
   const showConnectors = tab === 'all' || tab === 'connectors';
   const hasVisibleResults =
     (showFiles && files.length > 0) ||
-    (showTabs && workspaceContexts.length > 0) ||
-    (showPlugins && plugins.length > 0) ||
     (showSkills && skills.length > 0) ||
     (showMcp && mcpServers.length > 0) ||
     (showConnectors && connectors.length > 0);
   useEffect(() => {
     if (ref.current) ref.current.scrollTop = 0;
-  }, [connectors, files, plugins, skills, mcpServers, tab, workspaceContexts]);
+  }, [connectors, files, skills, mcpServers, tab]);
+  const searchPrompt = `${t('common.search')}: ${tabs.slice(1).map((item) => item.label).join(' · ')}`;
   let optionIndex = 0;
   return (
     <div className="mention-popover" data-testid="mention-popover">
@@ -6182,7 +6046,8 @@ function MentionPopover({
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => onTabChange(item.id)}
           >
-            {item.label}
+            <span>{item.label}</span>
+            {item.count > 0 ? <span className="mention-tab-count">{item.count}</span> : null}
           </button>
         ))}
       </div>
@@ -6192,7 +6057,7 @@ function MentionPopover({
             {query ? (
               <>{t('chat.mentionNoResults', { query })}</>
             ) : (
-              <>{t('chat.mentionSearchPrompt')}</>
+              <>{searchPrompt}</>
             )}
           </div>
         ) : null}
@@ -6225,72 +6090,6 @@ function MentionPopover({
                   {f.size != null ? (
                     <span className="mention-meta mention-item-kind">{prettySize(f.size)}</span>
                   ) : null}
-                </button>
-              );
-            })}
-          </>
-        ) : null}
-        {showTabs && workspaceContexts.length > 0 ? (
-          <>
-            <div className="mention-section-label">{t('chat.mentionSectionTabs')}</div>
-            {workspaceContexts.map((item) => {
-              const flat = optionIndex;
-              optionIndex += 1;
-              const active = flat === activeIndex;
-              return (
-                <button
-                  key={`workspace-${item.kind}-${item.id}`}
-                  id={`mention-opt-${flat}`}
-                  role="option"
-                  aria-selected={active}
-                  className={`mention-item mention-item--workspace${active ? ' is-active' : ''}`}
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => onPickWorkspaceContext(item)}
-                  title={composerWorkspaceContextTitle(item)}
-                >
-                  <Icon name={composerWorkspaceContextIcon(item)} size={12} />
-                  <span className="mention-item-body">
-                    <strong>{item.label}</strong>
-                    <span className="mention-meta mention-meta--desc">
-                      {workspaceContextDescription(item)}
-                    </span>
-                  </span>
-                  <span className="mention-meta mention-item-kind">{workspaceContextKindLabel(item.kind)}</span>
-                </button>
-              );
-            })}
-          </>
-        ) : null}
-        {showPlugins && plugins.length > 0 ? (
-          <>
-            <div className="mention-section-label">{t('chat.mentionSectionPlugins')}</div>
-            {plugins.map((p) => {
-              const flat = optionIndex;
-              optionIndex += 1;
-              const active = flat === activeIndex;
-              const pluginTitle = localizePluginTitle(locale, p);
-              const pluginDescription = localizePluginDescription(locale, p);
-              return (
-                <button
-                  key={`plugin-${p.id}`}
-                  id={`mention-opt-${flat}`}
-                  role="option"
-                  aria-selected={active}
-                  className={`mention-item mention-item--plugin${active ? ' is-active' : ''}`}
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => onPickPlugin(p)}
-                  title={pluginDescription || pluginTitle}
-                >
-                  <Icon name="sparkles" size={12} />
-                  <span className="mention-item-body">
-                    <strong>{pluginTitle}</strong>
-                    <span className="mention-meta mention-meta--desc">
-                      {pluginDescription || p.id}
-                    </span>
-                  </span>
-                  <span className="mention-meta mention-item-kind">{pluginSourceLabel(p, t)}</span>
                 </button>
               );
             })}

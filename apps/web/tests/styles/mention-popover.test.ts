@@ -26,6 +26,14 @@ function ruleValue(block: string, property: string): string {
 }
 
 describe('mention popover styles', () => {
+  it('keeps the whole floating picker clickable over Electron titlebar chrome', () => {
+    const layer = cssBlock('.caret-floating-layer');
+    const descendants = cssBlock('.caret-floating-layer *');
+
+    expect(ruleValue(layer, '-webkit-app-region')).toBe('no-drag');
+    expect(ruleValue(descendants, '-webkit-app-region')).toBe('no-drag');
+  });
+
   it('keeps the panel height stable while tabs swap between long and short results', () => {
     const popover = cssBlock('.mention-popover');
     const results = cssBlock('.mention-results');
