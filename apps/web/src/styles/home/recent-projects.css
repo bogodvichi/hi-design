@@ -251,7 +251,8 @@
   border-radius: inherit;
   pointer-events: none;
 }
-.recent-projects__card.is-selected .recent-projects__card-thumb::after {
+.recent-projects__card.is-selected .recent-projects__card-thumb::after,
+.recent-projects__card.is-location-target .recent-projects__card-thumb::after {
   z-index: 10;
   border: 0;
   border-radius: inherit;

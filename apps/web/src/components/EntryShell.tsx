@@ -240,6 +240,7 @@ import {
   enrichRecentlyOpenedProjectCovers,
   readRecentlyOpenedProjectEntries,
   readRecentlyOpenedProjects,
+  RECENTLY_OPENED_PROJECTS_CHANGED_EVENT,
   updateRecentlyOpenedProjectOwner,
 } from '../lib/recently-opened-projects';
 import {
@@ -343,6 +344,8 @@ export interface ProjectTitleHint {
    * this workspace so the pull path queries the correct team catalog.
    */
   homeWorkspaceId?: string | null;
+  /** True when navigation originates from the Shared-with-me grant surface. */
+  sharedWithMe?: boolean;
 }
 
 interface Props {
@@ -419,14 +422,17 @@ interface Props {
  ) => Promise<boolean> | boolean | void;
  onOpenLiveArtifact: (projectId: string, artifactId: string) => void;
  onDeleteProject: (id: string) => Promise<boolean | void> | boolean | void;
-onDuplicateProject?: (id: string) => Promise<void> | void;
+onDuplicateProject?: (
+  id: string,
+  options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
+) => Promise<void> | void;
 onRenameProject: (id: string, name: string) => void;
 onProjectsRefresh?: () => Promise<void> | void;
 onCopyProject?: (
   id: string,
   options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
 ) => Promise<void> | void;
-onCopySharedProject?: (id: string, homeWorkspaceId: string) => Promise<void> | void;
+onCopySharedProject?: (id: string, homeWorkspaceId: string) => Promise<string | void> | string | void;
  onTeamProjectContentReady?: (
    projectId: string,
    workspaceId: string,
@@ -781,6 +787,11 @@ const amrAuthRequired =
  // Bump this counter after enriching localStorage recent metadata so
  // `homeProjectsList` re-reads localStorage and re-renders the strip.
  const [recentlyOpenedVersion, bumpRecentlyOpened] = useState(0);
+ useEffect(() => {
+   const onRecentlyOpenedChanged = () => bumpRecentlyOpened((version) => version + 1);
+   window.addEventListener(RECENTLY_OPENED_PROJECTS_CHANGED_EVENT, onRecentlyOpenedChanged);
+   return () => window.removeEventListener(RECENTLY_OPENED_PROJECTS_CHANGED_EVENT, onRecentlyOpenedChanged);
+ }, []);
  useEffect(() => {
    void enrichRecentlyOpenedProjectCovers().then((changed) => {
      if (changed.length > 0) bumpRecentlyOpened((v) => v + 1);
@@ -1846,8 +1857,8 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
                onSubmit={handlePluginLoopSubmit}
                onOpenProject={onOpenProject}
                onViewAllProjects={() => changeView('projects')}
-               onDeleteProject={onDeleteProject}
                onDuplicateProject={onDuplicateProject}
+               onCopySharedProject={onCopySharedProject}
                onRenameProject={onRenameProject}
                onBrowseRegistry={() => changeView('plugins')}
                onOpenIntegrations={() => openIntegrationTab('connectors')}

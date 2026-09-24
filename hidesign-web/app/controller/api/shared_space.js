@@ -298,6 +298,15 @@ class SharedSpaceController extends Controller {
             )
             .first();
 
+          // A share row can outlive its source project if an older client
+          // deleted the project without cascading workspace_project_shares.
+          // Never surface that orphan as an accessible project. Heal it here
+          // so subsequent reads and recent-project validation see it gone.
+          if (!tp) {
+            await k('workspace_project_shares').where({ id: s.share_id }).del();
+            continue;
+          }
+
           let metadata = tp?.metadata;
           if (typeof metadata === 'string') {
             try { metadata = JSON.parse(metadata); } catch { /* keep string */ }

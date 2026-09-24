@@ -91,6 +91,10 @@ import {
   workspaceAnalyticsDimensions,
 } from '../analytics/workspace';
 import type { ProjectCollectionClickProps } from '@open-design/contracts/analytics';
+import {
+  clearProjectLocationTarget,
+  readProjectLocationTarget,
+} from '../lib/recently-opened-projects';
 
 /** Which project space this strip renders. Drives the per-card 共享 badge
  *  (hidden in the all-shared team space) and the "{creator}创建" line: 'recent'
@@ -165,6 +169,10 @@ interface Props {
    * background cover work can resume after the foreground attempt finishes. */
   onOpen: (id: string) => boolean | void | Promise<boolean | void>;
   onViewAll?: () => void;
+  /** Recent-projects-only: navigate to the project's current owning folder. */
+  onOpenLocation?: (id: string) => boolean | void | Promise<boolean | void>;
+  /** Recent-projects-only: remove only the recent-history record. */
+  onRemoveRecent?: (id: string) => void;
   onDelete?: (id: string) => Promise<boolean | void> | boolean | void;
   onDuplicate?: (id: string) => Promise<void> | void;
   onRename?: (id: string, name: string) => void;
@@ -419,6 +427,8 @@ export function RecentProjectsStrip({
   homeWorkspaceId,
   onOpen,
   onViewAll,
+  onOpenLocation,
+  onRemoveRecent,
   onDelete,
   onDuplicate,
   onRename,
@@ -675,6 +685,7 @@ selectionExtension,
   const [copyToPersonalTarget, setCopyToPersonalTarget] = useState<Project | null>(null);
   const [copyPendingId, setCopyPendingId] = useState<string | null>(null);
   const [copyToast, setCopyToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null);
+  const [locationTargetId, setLocationTargetId] = useState<string | null>(null);
   // recvqbh189zBY6: commitDelete used to await onDelete and drop the result on
   // the floor either way — a 403/network failure closed the dialog exactly
   // like a success, leaving the project right where it was with no signal
@@ -771,8 +782,29 @@ const isShared = isSharedProject ?? NOTHING_SHARED;
      workspaceContext?.avatarUrl,
      workspaceContext?.displayName,
    ],
- );
+  );
+  const visibleProjectIdsKey = visibleProjects.map(({ project }) => project.id).join('|');
   const menuContainerRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!isActive) return;
+    const projectId = readProjectLocationTarget();
+    if (!projectId || !visibleProjects.some(({ project }) => project.id === projectId)) return;
+
+    setLocationTargetId(projectId);
+    clearProjectLocationTarget(projectId);
+    const frame = window.requestAnimationFrame(() => {
+      const cards = rowRef.current?.querySelectorAll<HTMLElement>('[data-project-id]');
+      const card = cards ? Array.from(cards).find((item) => item.dataset.projectId === projectId) : null;
+      card?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
+    });
+    const timer = window.setTimeout(() => {
+      setLocationTargetId((current) => current === projectId ? null : current);
+    }, 2500);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
+  }, [isActive, visibleProjectIdsKey]);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const renameTitleId = useId();
   const confirmTitleId = useId();
@@ -830,11 +862,14 @@ const disabledKeys = useMemo(() => {
    });
  }
  const isSharedWithMeCollection = badgeOverride === 'shared';
+ const isRecentCollection = space === 'recent';
  const actionsAvailable = Boolean(
    homeWorkspaceId
    || onDelete
    || onDuplicate
    || onRename
+   || onOpenLocation
+   || onRemoveRecent
    || onRemoveSharedWithMe
    || sharedWithMeHomeWorkspaceId
    || collaborationAvailable
@@ -847,7 +882,7 @@ const disabledKeys = useMemo(() => {
    ? operator.role === 'guest'
    : workspaceContext?.role === 'guest';
  const isTeamProjectCollection = space === 'team' && badgeOverride !== 'shared';
- const canShowCardActions = actionsAvailable && (isSharedWithMeCollection || !isGuest);
+ const canShowCardActions = actionsAvailable && (isRecentCollection || isSharedWithMeCollection || !isGuest);
 
   useEffect(() => {
     if (!copyToast) return;
@@ -2114,24 +2149,37 @@ function requestDelete(project: Project) {
               status === 'incomplete');
           const shared = isShared(project.id);
          const selected = selectedProjectIds.has(project.id);
+         const locationTarget = locationTargetId === project.id;
          const opening = openingProjectId === project.id;
-         const sharedWithMeWorkspaceId = isSharedWithMeCollection
-           ? sharedWithMeHomeWorkspaceId?.(project.id) ?? null
-           : null;
+         const sharedWithMeWorkspaceId = sharedWithMeHomeWorkspaceId?.(project.id) ?? null;
+         const recentSharedWithMe = isRecentCollection && sharedWithMeWorkspaceId !== null;
+         const recentTeamProject = isRecentCollection
+           && !recentSharedWithMe
+           && project.workspaceVisibility === 'team';
+         const projectHomeWorkspaceId = isSharedWithMeCollection || recentSharedWithMe
+           ? sharedWithMeWorkspaceId
+           : isRecentCollection
+             ? project.workspaceId?.trim() || null
+             : homeWorkspaceId;
          // Team cards use the explicit role matrix: every non-guest member can
          // share/copy; only creators can rename/delete; creators and Team
          // owner/admin members can move. Other surfaces keep their prior rules.
+         const canOpenLocation = Boolean(isRecentCollection && onOpenLocation);
+         const canRemoveRecent = Boolean(isRecentCollection && onRemoveRecent);
          const canShareProject = Boolean(
-           isSharedWithMeCollection
-             ? sharedWithMeWorkspaceId
-             : homeWorkspaceId
-               && (isTeamProjectCollection ? !isGuest : (creator.canMutate || creator.canAdmin)),
+           projectHomeWorkspaceId
+           && (
+             isSharedWithMeCollection
+             || recentSharedWithMe
+             || (isTeamProjectCollection || recentTeamProject ? !isGuest : (creator.canMutate || creator.canAdmin))
+           ),
          );
          const canDuplicateProject = Boolean(
            onDuplicate
            && (
              isSharedWithMeCollection
-             || (isTeamProjectCollection ? !isGuest : creator.canMutate)
+             || recentSharedWithMe
+             || (isTeamProjectCollection || recentTeamProject ? !isGuest : creator.canMutate)
            ),
          );
          const canCopyToPersonal = Boolean(
@@ -2140,18 +2188,27 @@ function requestDelete(project: Project) {
            && !isTeamProjectCollection
            && !isSharedWithMeCollection,
          );
-         const canRenameProject = Boolean(!isSharedWithMeCollection && onRename && creator.canMutate);
-         const canMoveProject = Boolean(
+         const canRenameProject = Boolean(
            !isSharedWithMeCollection
-           &&
-           (collaborationAvailable || space === 'drafts')
+           && !recentSharedWithMe
+           && onRename
+           && creator.canMutate
+           && (!recentTeamProject || !isGuest),
+         );
+         const canMoveProject = Boolean(
+           !isRecentCollection
+           && !isSharedWithMeCollection
+           && (collaborationAvailable || space === 'drafts')
            && (creator.canMutate || creator.canAdmin),
          );
-         const canDeleteProject = Boolean(!isSharedWithMeCollection && onDelete && creator.canMutate);
+         const canDeleteProject = Boolean(
+           !isRecentCollection && !isSharedWithMeCollection && onDelete && creator.canMutate,
+         );
          const canRemoveSharedWithMe = Boolean(isSharedWithMeCollection && onRemoveSharedWithMe);
          const hasShareOrCopyActions = canShareProject || canDuplicateProject || canCopyToPersonal;
          const hasManagementActions =
            canRenameProject || canMoveProject || canDeleteProject || canRemoveSharedWithMe;
+         const hasRecentActions = canOpenLocation || canRemoveRecent;
          // HDW team-series views always present cards as team-owned with the
          // person who created the project in the bottom-left owner pill.
          const isTeamSeriesView = space === 'team' && Boolean(operator);
@@ -2180,7 +2237,7 @@ function requestDelete(project: Project) {
            <div
              key={project.id}
              role="listitem"
-             className={`recent-projects__card${designSystemProject ? ' is-design-system-project' : ''}${shared ? ' is-shared' : ''}${projectType ? ` is-${projectType}` : ''}${menuOpenId === project.id ? ' is-menu-open' : ''}${selected ? ' is-selected' : ''}${opening ? ' is-opening' : ''}`}
+             className={`recent-projects__card${designSystemProject ? ' is-design-system-project' : ''}${shared ? ' is-shared' : ''}${projectType ? ` is-${projectType}` : ''}${menuOpenId === project.id ? ' is-menu-open' : ''}${selected ? ' is-selected' : ''}${locationTarget ? ' is-location-target' : ''}${opening ? ' is-opening' : ''}`}
              data-project-id={project.id}
             >
               {selectionMode ? (
@@ -2394,7 +2451,7 @@ function requestDelete(project: Project) {
                 </div>
                </div>
               </button>
-              {canShowCardActions && !selectionMode && (hasShareOrCopyActions || hasManagementActions) ? (
+              {canShowCardActions && !selectionMode && (hasShareOrCopyActions || hasManagementActions || hasRecentActions) ? (
                <div
                  className="recent-projects__card-menu-anchor"
                   ref={menuOpenId === project.id ? menuContainerRef : undefined}
@@ -2425,6 +2482,38 @@ function requestDelete(project: Project) {
                       role="menu"
                       onClick={(event) => event.stopPropagation()}
                     >
+                     {canOpenLocation ? (
+                       <button
+                         type="button"
+                         role="menuitem"
+                         onClick={() => {
+                           setMenuOpenId(null);
+                           try {
+                             const result = onOpenLocation?.(project.id);
+                             if (result && typeof result === 'object' && 'then' in result) {
+                               void Promise.resolve(result).then(
+                                 (opened) => {
+                                   if (opened === false) {
+                                     setCopyToast({ message: t('project.missing'), tone: 'error' });
+                                   }
+                                 },
+                                 () => setCopyToast({ message: t('project.missing'), tone: 'error' }),
+                               );
+                             } else if (result === false) {
+                               setCopyToast({ message: t('project.missing'), tone: 'error' });
+                             }
+                           } catch {
+                             setCopyToast({ message: t('project.missing'), tone: 'error' });
+                           }
+                         }}
+                       >
+                         <Icon name="folder" size={12} />
+                         <span>{t('recentProjects.openLocation')}</span>
+                       </button>
+                     ) : null}
+                     {canOpenLocation && (hasShareOrCopyActions || hasManagementActions) ? (
+                       <div className="recent-projects__card-menu-separator" role="separator" />
+                     ) : null}
                      {canShareProject ? (
                        <button
                          type="button"
@@ -2445,7 +2534,7 @@ function requestDelete(project: Project) {
                          onClick={() => requestDuplicate(project)}
                        >
                          <Icon name="copy" size={12} />
-                         <span>{t('designs.menuDuplicate')}</span>
+                         <span>{space === 'recent' ? t('recentProjects.copyAndOpen') : t('designs.menuDuplicate')}</span>
                        </button>
                      ) : null}
                      {canCopyToPersonal ? (
@@ -2529,6 +2618,21 @@ function requestDelete(project: Project) {
                          <span>{t('sharedSpace.removeFromSharedWithMe')}</span>
                        </button>
                      ) : null}
+                     {canRemoveRecent ? (
+                       <>
+                         <button
+                           type="button"
+                           role="menuitem"
+                           onClick={() => {
+                             setMenuOpenId(null);
+                             onRemoveRecent?.(project.id);
+                           }}
+                         >
+                           <Icon name="close" size={12} />
+                           <span>{t('recentProjects.removeRecent')}</span>
+                         </button>
+                       </>
+                     ) : null}
                     </div>
                   ) : null}
                 </div>
@@ -2538,26 +2642,24 @@ function requestDelete(project: Project) {
        })}
      </div>
       {sharedSpaceTarget && (
-        isSharedWithMeCollection
-          ? sharedWithMeHomeWorkspaceId?.(sharedSpaceTarget.id)
-          : homeWorkspaceId
+        sharedWithMeHomeWorkspaceId?.(sharedSpaceTarget.id)
+        ?? (space === 'recent' ? sharedSpaceTarget.workspaceId?.trim() || null : homeWorkspaceId)
       ) ? (
          <UnifiedShareDialog
            projectId={sharedSpaceTarget.id}
            workspaceId={
-             isSharedWithMeCollection
-               ? sharedWithMeHomeWorkspaceId?.(sharedSpaceTarget.id) ?? ''
-               : homeWorkspaceId ?? ''
+             sharedWithMeHomeWorkspaceId?.(sharedSpaceTarget.id)
+             ?? (space === 'recent' ? sharedSpaceTarget.workspaceId?.trim() || '' : homeWorkspaceId ?? '')
            }
            projectName={sharedSpaceTarget.name}
            entryFile={sharedSpaceTarget.metadata?.entryFile ?? null}
-           workspaceContext={isSharedWithMeCollection ? null : workspaceContext}
-           canPublishToCommunity={isSharedWithMeCollection
+           workspaceContext={sharedWithMeHomeWorkspaceId?.(sharedSpaceTarget.id) ? null : workspaceContext}
+           canPublishToCommunity={sharedWithMeHomeWorkspaceId?.(sharedSpaceTarget.id)
              ? false
              : space === 'team'
                ? resolveCreator(sharedSpaceTarget).ownedBySelf
                : true}
-           canShareFile={isSharedWithMeCollection
+           canShareFile={sharedWithMeHomeWorkspaceId?.(sharedSpaceTarget.id)
              ? false
              : isTeamProjectCollection
                ? resolveCreator(sharedSpaceTarget).ownedBySelf

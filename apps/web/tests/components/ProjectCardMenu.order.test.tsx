@@ -76,9 +76,22 @@ describe('project card action order', () => {
     if (view === 'list') fireEvent.click(screen.getByRole('button', { name: '列表视图' }));
     expect(order(openMenu())).toEqual(['分享', '复制', 'separator', '重命名', '移动项目', '删除']);
   });
-  it('keeps copy-to-personal for the recent-projects surface', async () => {
-    await recent({ space: 'recent' });
-    expect(order(openMenu())).toEqual(['分享', '复制', zhCN['recentProjects.copyToPersonal'], 'separator', '重命名', '移动项目', '删除']);
+  it('uses the recent-projects-only actions and hides move/delete', async () => {
+    await recent({
+      space: 'recent',
+      homeWorkspaceId: null,
+      onOpenLocation: vi.fn(),
+      onRemoveRecent: vi.fn(),
+    });
+    expect(order(openMenu())).toEqual([
+      zhCN['recentProjects.openLocation'],
+      'separator',
+      '分享',
+      zhCN['recentProjects.copyAndOpen'],
+      'separator',
+      '重命名',
+      zhCN['recentProjects.removeRecent'],
+    ]);
   });
   it('uses the shared-with-me menu and limits sharing to links', async () => {
     await recent({
@@ -118,9 +131,23 @@ describe('project card action order', () => {
     await recent({ homeWorkspaceId: null, onDuplicate: undefined });
     expect(order(openMenu())).toEqual(['重命名', '移动项目', '删除']);
   });
-  it('omits the separator when there are no management actions', async () => {
-    await recent({ space: 'recent', homeWorkspaceId: null, collaborationEnabled: false, onRename: undefined, onDelete: undefined });
-    expect(order(openMenu())).toEqual(['复制']);
+  it('keeps recent-specific actions around copy when there are no management actions', async () => {
+    await recent({
+      space: 'recent',
+      homeWorkspaceId: null,
+      collaborationEnabled: false,
+      onRename: undefined,
+      onDelete: undefined,
+      onOpenLocation: vi.fn(),
+      onRemoveRecent: vi.fn(),
+    });
+    expect(order(openMenu())).toEqual([
+      zhCN['recentProjects.openLocation'],
+      'separator',
+      '分享',
+      zhCN['recentProjects.copyAndOpen'],
+      zhCN['recentProjects.removeRecent'],
+    ]);
   });
   it.each(['owner', 'admin'] as const)('gives a non-creator team %s share, copy, then move', async (role) => {
     await recent({ space: 'team', operator: { memberId: 'another-member', role } });
@@ -130,12 +157,40 @@ describe('project card action order', () => {
     await recent({ space: 'team', operator: { memberId: 'wm-1', role: 'guest' } });
     expect(screen.queryByRole('button', { name: '更多操作' })).toBeNull();
   });
+  it('gives a team guest only the two recent-projects-specific actions', async () => {
+    await recent({
+      projects: [{ ...project(), workspaceVisibility: 'team' }],
+      space: 'recent',
+      homeWorkspaceId: null,
+      operator: { memberId: 'wm-1', role: 'guest' },
+      onOpenLocation: vi.fn(),
+      onRemoveRecent: vi.fn(),
+    });
+    expect(order(openMenu())).toEqual([
+      zhCN['recentProjects.openLocation'],
+      zhCN['recentProjects.removeRecent'],
+    ]);
+  });
   it('preserves the copy callback and does not open the project', async () => {
     const props = await recent();
     const menu = openMenu();
     await act(async () => { fireEvent.click(within(menu).getByRole('menuitem', { name: '复制' })); });
     expect(props.onDuplicate).toHaveBeenCalledExactlyOnceWith('menu-project');
     expect(props.onOpen).not.toHaveBeenCalled();
+  });
+  it('routes recent removal only through the recent-history callback', async () => {
+    const onRemoveRecent = vi.fn();
+    const onDelete = vi.fn();
+    await recent({
+      space: 'recent',
+      homeWorkspaceId: null,
+      onOpenLocation: vi.fn(),
+      onRemoveRecent,
+      onDelete,
+    });
+    fireEvent.click(within(openMenu()).getByRole('menuitem', { name: zhCN['recentProjects.removeRecent'] }));
+    expect(onRemoveRecent).toHaveBeenCalledExactlyOnceWith('menu-project');
+    expect(onDelete).not.toHaveBeenCalled();
   });
   it('still opens sharing for the selected project', async () => {
     await recent();

@@ -21,6 +21,7 @@ import { useWorkspaceContext } from '../collab/useWorkspaceContext';
 import { useT } from '../i18n';
 import type { Dict } from '../i18n/types';
 import type { Project } from '../types';
+import { markRecentlyOpenedProjectSharedWithMe } from '../lib/recently-opened-projects';
 import {
   fetchSharedWithMeCatalog,
   unshareFolderFromSharedSpace,
@@ -75,7 +76,10 @@ interface BreadcrumbItem {
   folderName: string;
 }
 
-type CopySharedProject = (projectId: string, homeWorkspaceId: string) => Promise<void> | void;
+type CopySharedProject = (
+  projectId: string,
+  homeWorkspaceId: string,
+) => Promise<string | void> | string | void;
 
 function RemoveSharedProjectDialog({
   target,
@@ -357,6 +361,7 @@ export function SharedWithMeView({
             workspaceMemberId: workspaceContext?.workspaceMemberId ?? null,
             authoritative: true,
             homeWorkspaceId: row.homeWorkspaceId,
+            sharedWithMe: true,
           }
         : undefined;
       return onOpenProject(id, undefined, hint);
@@ -400,6 +405,13 @@ export function SharedWithMeView({
         (row) => row.shareId !== removeTarget.shareId,
       );
       setProjects((current) => current.filter((project) => project.id !== removeTarget.projectId));
+      // Removing from Shared-with-me revokes access only. Keep the recent card,
+      // but stamp it so a later click revalidates the share and shows the
+      // project-missing page instead of reopening a stale local mirror.
+      markRecentlyOpenedProjectSharedWithMe(
+        removeTarget.projectId,
+        removeTarget.homeWorkspaceId,
+      );
       setRemoveTarget(null);
       window.dispatchEvent(new CustomEvent('shared:folders-updated'));
       window.dispatchEvent(new CustomEvent('shared:subfolders-updated'));
@@ -434,6 +446,16 @@ export function SharedWithMeView({
         return;
       }
       setFolders((current) => current.filter((folder) => folder.folderId !== removeFolderTarget.folderId));
+      const previousRows = sharedRowsRef.current;
+      const remainingRows = await fetchSharedWithMeCatalog({ force: true });
+      sharedRowsRef.current = remainingRows;
+      setProjects(remainingRows.map(sharedRowToProject));
+      const remainingProjectIds = new Set(remainingRows.map((row) => row.projectId));
+      for (const row of previousRows) {
+        if (!remainingProjectIds.has(row.projectId)) {
+          markRecentlyOpenedProjectSharedWithMe(row.projectId, row.homeWorkspaceId);
+        }
+      }
       setRemoveFolderTarget(null);
       window.dispatchEvent(new CustomEvent('shared:projects-refresh'));
       window.dispatchEvent(new CustomEvent('shared:folders-updated'));
@@ -716,6 +738,7 @@ export function SharedFolderView({
             workspaceMemberId: workspaceContext?.workspaceMemberId ?? null,
             authoritative: true,
             homeWorkspaceId: row.homeWorkspaceId,
+            sharedWithMe: true,
           }
         : undefined;
       return onOpenProject(id, undefined, hint);
@@ -759,6 +782,10 @@ export function SharedFolderView({
         (row) => row.shareId !== removeTarget.shareId,
       );
       setProjects((current) => current.filter((project) => project.id !== removeTarget.projectId));
+      markRecentlyOpenedProjectSharedWithMe(
+        removeTarget.projectId,
+        removeTarget.homeWorkspaceId,
+      );
       setRemoveTarget(null);
       window.dispatchEvent(new CustomEvent('shared:folders-updated'));
       window.dispatchEvent(new CustomEvent('shared:subfolders-updated'));

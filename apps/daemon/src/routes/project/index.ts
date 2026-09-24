@@ -81,7 +81,12 @@ import { connectorService } from '../../connectors/service.js';
 import type { RouteDeps } from '../../server-context.js';
 import { listSkills } from '../../skills.js';
 import { isSafeId } from '../../projects.js';
-import { getDefaultTeamId, getTeamMemberId } from '../../ids.js';
+import {
+  getDefaultTeamId,
+  getSharedSpaceMemberId,
+  getSharedSpaceTeamId,
+  getTeamMemberId,
+} from '../../ids.js';
 import { isUnmaterializedSharedPlaceholder } from '../../collab/shared-project-placeholder.js';
 import {
  ensureTeamProjectCommentConversations,
@@ -2129,7 +2134,21 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
      );
      if (shareAuthorized) return true;
    } catch {
-     // share lookup failed — fall through to regular authorization
+     // Share lookup failed. A Shared-space mirror still fails closed below;
+     // ordinary workspace projects may continue through regular authorization.
+   }
+   const binding = getWorkspaceProjectByProjectId(db, projectId);
+   const sharedSpaceMirrorRequiresGrant = binding?.workspaceId === getSharedSpaceTeamId()
+     && binding.visibility === 'team'
+     && binding.createdByWorkspaceMemberId !== getSharedSpaceMemberId();
+   if (sharedSpaceMirrorRequiresGrant) {
+     sendApiError(
+       res,
+       403,
+       'WORKSPACE_PROJECT_SHARE_REQUIRED',
+       'shared project access is no longer granted',
+     );
+     return false;
    }
    return authorizeProjectRequest(req, res, projectId, {
      mode: 'read',
@@ -6368,6 +6387,23 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
             'workspace context is required to unshare this project before deleting it',
           );
         }
+        // A deleted source project must not leave recipient-scoped Shared-with-me
+        // grants behind. Revoke those first; if HDW is unavailable, refuse the
+        // destructive delete rather than leaving recipients able to reopen a
+        // stale materialized copy through an orphan share row.
+        const { unshareProjectFromSharedSpace } = await import('../../http/hdw.js');
+        const sharedGrantsCleared = await unshareProjectFromSharedSpace(
+          RUNTIME_DATA_DIR,
+          project.id,
+        );
+        if (!sharedGrantsCleared) {
+          return sendApiError(
+            res,
+            502,
+            'SHARED_SPACE_UNSHARE_FAILED',
+            'failed to revoke shared-with-me access before deleting project',
+          );
+        }
         await requestTeamVisibility([project.id], teamCtx, 'personal');
       }
       // Stop any live agent run in this project before its row and directory
@@ -6714,7 +6750,21 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
      );
      if (shareAuthorized) return true;
    } catch {
-     // share lookup failed — fall through to regular authorization
+     // Share lookup failed. A Shared-space mirror still fails closed below;
+     // ordinary workspace projects may continue through regular authorization.
+   }
+   const binding = getWorkspaceProjectByProjectId(db, projectId);
+   const sharedSpaceMirrorRequiresGrant = binding?.workspaceId === getSharedSpaceTeamId()
+     && binding.visibility === 'team'
+     && binding.createdByWorkspaceMemberId !== getSharedSpaceMemberId();
+   if (sharedSpaceMirrorRequiresGrant) {
+     sendApiError(
+       res,
+       403,
+       'WORKSPACE_PROJECT_SHARE_REQUIRED',
+       'shared project access is no longer granted',
+     );
+     return false;
    }
    return authorizeProjectRequest(req, res, projectId, {
      mode: 'read',
@@ -7449,13 +7499,15 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
     try {
       const ids = Array.isArray(req.body?.ids) ? req.body.ids : [];
       if (ids.length === 0 || ids.length > 200) {
-        return res.json({ digests: {}, missingPersonalProjectIds: [] });
+        return res.json({ digests: {}, missingPersonalProjectIds: [], missingProjectIds: [] });
       }
       const idSet = new Set<string>();
       for (const rawId of ids) {
         if (typeof rawId === 'string' && rawId.trim()) idSet.add(rawId);
       }
-      if (idSet.size === 0) return res.json({ digests: {}, missingPersonalProjectIds: [] });
+      if (idSet.size === 0) {
+        return res.json({ digests: {}, missingPersonalProjectIds: [], missingProjectIds: [] });
+      }
 
       // Local SQLite lookup.
       const digests: Record<string, string | null> = {};
@@ -7512,10 +7564,15 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
         }
       }
 
+      const confirmedRemoteProjectIdsByWorkspace = new Map<string, Set<string>>();
       if (workspaceProjectIds.size > 0 && hdwCloudClient?.listTeamProjects) {
         const fetches = Array.from(workspaceProjectIds.entries()).map(async ([workspaceId, projectIds]) => {
           try {
             const remoteProjects = await hdwCloudClient.listTeamProjects!(workspaceId);
+            confirmedRemoteProjectIdsByWorkspace.set(
+              workspaceId,
+              new Set(remoteProjects.map((remote) => remote.projectId)),
+            );
             for (const remote of remoteProjects) {
               if (projectIds.has(remote.projectId) && remote.coverDigest) {
                 digests[remote.projectId] = remote.coverDigest;
@@ -7523,6 +7580,8 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
             }
           } catch {
             // Best-effort: HDW lookup failure falls back to the local digest.
+            // Do not record an authoritative project set: an unavailable team
+            // catalog must never make a valid recent project look deleted.
           }
         });
         await Promise.all(fetches);
@@ -7563,7 +7622,44 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
         await Promise.all(stats);
       }
 
-      res.json({ digests, missingPersonalProjectIds });
+      // The recent-project store may outlive a Team/share row that was deleted
+      // on another device or by another member. Personal projects are handled
+      // above by their local directory. For non-personal entries, only remove a
+      // recent card when we have definitive evidence:
+      //   1) the local Team mirror has already been quarantined as deleted; or
+      //   2) an explicitly Team-scoped, fully-synced entry is absent from a
+      //      successfully fetched HDW workspace catalog.
+      // Transient upstream failures and pending uploads remain untouched.
+      const missingProjectIds = new Set<string>(missingPersonalProjectIds);
+      for (const pid of idSet) {
+        const binding = getWorkspaceProjectByProjectId(db, pid);
+        if (binding?.resourceState === 'deleted') missingProjectIds.add(pid);
+      }
+      for (const p of projects) {
+        if (!p || typeof p !== 'object') continue;
+        const pid = (p as { id?: unknown }).id;
+        const workspaceId = (p as { workspaceId?: unknown }).workspaceId;
+        const visibility = (p as { workspaceVisibility?: unknown }).workspaceVisibility;
+        if (
+          typeof pid !== 'string'
+          || typeof workspaceId !== 'string'
+          || visibility !== 'team'
+          || !idSet.has(pid)
+          || missingProjectIds.has(pid)
+        ) continue;
+        const binding = getWorkspaceProjectByProjectId(db, pid);
+        if (binding && binding.syncState !== 'synced') continue;
+        const confirmedRemoteIds = confirmedRemoteProjectIdsByWorkspace.get(workspaceId);
+        if (confirmedRemoteIds && !confirmedRemoteIds.has(pid)) {
+          missingProjectIds.add(pid);
+        }
+      }
+
+      res.json({
+        digests,
+        missingPersonalProjectIds,
+        missingProjectIds: Array.from(missingProjectIds),
+      });
     } catch (err: any) {
       sendApiError(res, 500, 'INTERNAL_ERROR', err?.message || String(err));
     }

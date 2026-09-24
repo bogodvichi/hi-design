@@ -693,23 +693,12 @@ export function registerCollabContextHideSignRoutes(
     }
   });
 
-  app.delete('/api/shared-space/:shareId', async (req: Request, res: Response) => {
-    logRequest('DELETE', '/api/shared-space/:shareId', req);
-    const shareId = req.params.shareId ?? '';
-    if (!shareId) {
-      res.status(400).json({ error: 'invalid_request', message: 'shareId is required' });
-      return;
-    }
-    try {
-      const ok = await unshareFromSharedSpace(deps.dataDir, String(shareId));
-      res.json({ ok });
-    } catch (err) {
-      console.warn('[collab-context-hidesign] DELETE /api/shared-space/:shareId error', err);
-      res.status(503).json({ error: 'UPSTREAM_UNAVAILABLE', message: 'shared space server is unreachable', retryable: true });
-    }
-  });
-
   // --- Folder unshare route -------------------------------------------------
+  //
+  // Keep this static route BEFORE `/api/shared-space/:shareId`. Express matches
+  // routes in registration order, so registering the dynamic project-unshare
+  // route first would treat `unshare-folder` as a project shareId and never run
+  // the folder-unshare handler.
   //
   // Unshares a folder (and all its descendants) from a specific recipient.
   // The HDW endpoint recursively finds all descendant folders, deletes
@@ -733,6 +722,22 @@ export function registerCollabContextHideSignRoutes(
       res.json({ ok });
     } catch (err) {
       console.warn('[collab-context-hidesign] DELETE /api/shared-space/unshare-folder error', err);
+      res.status(503).json({ error: 'UPSTREAM_UNAVAILABLE', message: 'shared space server is unreachable', retryable: true });
+    }
+  });
+
+  app.delete('/api/shared-space/:shareId', async (req: Request, res: Response) => {
+    logRequest('DELETE', '/api/shared-space/:shareId', req);
+    const shareId = req.params.shareId ?? '';
+    if (!shareId) {
+      res.status(400).json({ error: 'invalid_request', message: 'shareId is required' });
+      return;
+    }
+    try {
+      const ok = await unshareFromSharedSpace(deps.dataDir, String(shareId));
+      res.json({ ok });
+    } catch (err) {
+      console.warn('[collab-context-hidesign] DELETE /api/shared-space/:shareId error', err);
       res.status(503).json({ error: 'UPSTREAM_UNAVAILABLE', message: 'shared space server is unreachable', retryable: true });
     }
   });

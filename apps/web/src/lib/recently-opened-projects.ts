@@ -15,6 +15,9 @@ import type { Project } from '../types';
 
 const STORAGE_KEY = 'od:recently-opened-projects';
 const LIMIT = 10;
+export const RECENTLY_OPENED_PROJECTS_CHANGED_EVENT = 'od:recently-opened-projects-changed';
+const PROJECT_LOCATION_TARGET_KEY = 'od:project-location-target';
+const PROJECT_LOCATION_TARGET_TTL_MS = 15_000;
 
 /**
  * Minimal project shape persisted to localStorage. We store only the
@@ -35,6 +38,8 @@ export interface RecentlyOpenedProject {
   metadata?: Project['metadata'];
   coverDigest?: string | null;
   workspaceVisibility?: Project['workspaceVisibility'];
+  /** This recent entry was opened through a Shared-with-me grant. */
+  sharedWithMe?: boolean;
 }
 
 function read(): RecentlyOpenedProject[] {
@@ -67,7 +72,10 @@ function write(entries: RecentlyOpenedProject[]): void {
 }
 
 /** Record a project the user just opened so it appears in Home's recent strip. */
-export function recordRecentlyOpenedProject(project: Project): void {
+export function recordRecentlyOpenedProject(
+  project: Project,
+  options?: { sharedWithMe?: boolean },
+): void {
   const entries = read();
   const filtered = entries.filter((e) => e.id !== project.id);
   const next: RecentlyOpenedProject = {
@@ -86,6 +94,7 @@ export function recordRecentlyOpenedProject(project: Project): void {
    ...(project.metadata ? { metadata: project.metadata } : {}),
    ...(project.coverDigest != null ? { coverDigest: project.coverDigest } : {}),
    ...(project.workspaceVisibility != null ? { workspaceVisibility: project.workspaceVisibility } : {}),
+   ...(options?.sharedWithMe === true ? { sharedWithMe: true } : {}),
  };
   write([next, ...filtered]);
 }
@@ -136,10 +145,128 @@ export function readRecentlyOpenedProjectEntries(): RecentlyOpenedProject[] {
   return read();
 }
 
-/** Remove a project from the recently-opened store (e.g. after deletion). */
+/**
+ * Return the home workspace when a recent entry depends on a Shared-with-me
+ * grant. `sharedWithMe` is authoritative for new entries. For legacy entries
+ * written before that flag existed, an item in the global Shared Space whose
+ * recorded creator is another member is also treated as share-backed.
+ */
+export function recentlyOpenedSharedWithMeWorkspaceId(
+  projectId: string,
+  current?: {
+    workspaceId?: string | null;
+    workspaceMemberId?: string | null;
+    isSharedSpace?: boolean;
+  },
+): string | null {
+  const entry = read().find((candidate) => candidate.id === projectId);
+  if (!entry) return null;
+  const entryWorkspaceId = entry.workspaceId?.trim() || '';
+  const ownerMemberId = entry.createdByWorkspaceMemberId?.trim() || '';
+  const currentWorkspaceId = current?.workspaceId?.trim() || '';
+  const currentMemberId = current?.workspaceMemberId?.trim() || '';
+  const legacySharedWithMe = current?.isSharedSpace === true
+    && Boolean(entryWorkspaceId)
+    && entryWorkspaceId === currentWorkspaceId
+    && Boolean(ownerMemberId)
+    && Boolean(currentMemberId)
+    && ownerMemberId !== currentMemberId;
+  if (entry.sharedWithMe !== true && !legacySharedWithMe) return null;
+  return entryWorkspaceId;
+}
+
+/** Preserve a recent card while stamping that future opens require a live share grant. */
+export function markRecentlyOpenedProjectSharedWithMe(
+  projectId: string,
+  homeWorkspaceId?: string | null,
+): boolean {
+  const entries = read();
+  const entry = entries.find((candidate) => candidate.id === projectId);
+  if (!entry) return false;
+  const normalizedHomeWorkspaceId = homeWorkspaceId?.trim() || '';
+  let changed = entry.sharedWithMe !== true;
+  entry.sharedWithMe = true;
+  if (normalizedHomeWorkspaceId && entry.workspaceId !== normalizedHomeWorkspaceId) {
+    entry.workspaceId = normalizedHomeWorkspaceId;
+    changed = true;
+  }
+  if (changed) write(entries);
+  return changed;
+}
+
+function notifyRecentlyOpenedProjectsChanged(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(RECENTLY_OPENED_PROJECTS_CHANGED_EVENT));
+}
+
+export function removeRecentlyOpenedProjects(projectIds: Iterable<string>): void {
+  const ids = new Set(projectIds);
+  if (ids.size === 0) return;
+  const entries = read();
+  const remaining = entries.filter((entry) => !ids.has(entry.id));
+  if (remaining.length === entries.length) return;
+  write(remaining);
+  notifyRecentlyOpenedProjectsChanged();
+}
+
+/**
+ * Remove only the Home "recent projects" access/history record.
+ * This is a UI-history mutation only: it never calls a project delete API,
+ * never clears project files, and never mutates workspace/folder membership.
+ */
+export function removeRecentProjectAccessRecord(projectId: string): void {
+  removeRecentlyOpenedProjects([projectId]);
+}
+
+/** Cleanup the recent-history record after a real project deletion succeeds. */
 export function removeRecentlyOpenedProject(projectId: string): void {
-  const entries = read().filter((e) => e.id !== projectId);
-  write(entries);
+  removeRecentlyOpenedProjects([projectId]);
+}
+
+/** Persist a one-shot project-location highlight across route navigation. */
+export function markProjectLocationTarget(projectId: string): void {
+  if (typeof window === 'undefined' || !projectId) return;
+  try {
+    window.sessionStorage.setItem(
+      PROJECT_LOCATION_TARGET_KEY,
+      JSON.stringify({ projectId, expiresAt: Date.now() + PROJECT_LOCATION_TARGET_TTL_MS }),
+    );
+  } catch {
+    // Session storage is a progressive enhancement; navigation still succeeds.
+  }
+}
+
+/** Read the pending location target without consuming it until its card mounts. */
+export function readProjectLocationTarget(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.sessionStorage.getItem(PROJECT_LOCATION_TARGET_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { projectId?: unknown; expiresAt?: unknown };
+    if (
+      typeof parsed.projectId !== 'string'
+      || !parsed.projectId
+      || typeof parsed.expiresAt !== 'number'
+      || parsed.expiresAt < Date.now()
+    ) {
+      window.sessionStorage.removeItem(PROJECT_LOCATION_TARGET_KEY);
+      return null;
+    }
+    return parsed.projectId;
+  } catch {
+    return null;
+  }
+}
+
+export function clearProjectLocationTarget(projectId: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (readProjectLocationTarget() === projectId) {
+      window.sessionStorage.removeItem(PROJECT_LOCATION_TARGET_KEY);
+    }
+  } catch {
+    // Best-effort UI state only.
+  }
 }
 
 /** Patch the coverDigest of an already-stored recently-opened project. */
@@ -195,8 +322,10 @@ export function updateRecentlyOpenedProjectOwner(
  * the best digest for each recent entry, so this call supersedes any stale
  * or missing value the localStorage entry carried from its initial
  * `recordRecentlyOpenedProject` write. Personal projects whose local
- * `.od/projects/<id>` directory is gone are removed from the localStorage
- * store so they stop showing on Home.
+ * `.od/projects/<id>` directory is gone, plus ordinary Team entries the daemon
+ * can definitively prove are deleted, are removed from localStorage. Shared-with-me
+ * entries are deliberately retained after access is revoked until the user removes
+ * the recent record explicitly.
  */
 export async function enrichRecentlyOpenedProjectCovers(): Promise<string[]> {
   const entries = read();
@@ -212,6 +341,7 @@ export async function enrichRecentlyOpenedProjectCovers(): Promise<string[]> {
   }));
   let digests: Record<string, string | null> = {};
   let missingPersonalProjectIds: string[] = [];
+  let missingProjectIds: string[] = [];
   try {
     const resp = await fetch('/api/projects/cover-digests', {
       method: 'POST',
@@ -222,19 +352,22 @@ export async function enrichRecentlyOpenedProjectCovers(): Promise<string[]> {
     const json = (await resp.json()) as {
       digests?: Record<string, string | null>;
       missingPersonalProjectIds?: string[];
+      missingProjectIds?: string[];
     };
     digests = json.digests ?? {};
     missingPersonalProjectIds = json.missingPersonalProjectIds ?? [];
+    missingProjectIds = json.missingProjectIds ?? [];
   } catch {
     return [];
   }
-  const missingIds = new Set(missingPersonalProjectIds);
+  const missingIds = new Set([...missingPersonalProjectIds, ...missingProjectIds]);
   const changed: string[] = [];
   const remaining: RecentlyOpenedProject[] = [];
   for (const entry of entries) {
-    if (missingIds.has(entry.id)) {
+    if (missingIds.has(entry.id) && entry.sharedWithMe !== true) {
       // Reuse the return value as a "needs re-render" signal so Home drops
-      // the card immediately instead of waiting for a later project refresh.
+      // genuinely deleted non-share cards immediately. Revoked Shared-with-me
+      // entries stay visible until the user explicitly removes the recent record.
       changed.push(entry.id);
       continue;
     }

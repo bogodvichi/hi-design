@@ -46,6 +46,9 @@ module.exports = app => {
   router.get('/hdw/api/resource-share/shared-by-me', controller.api.resourceShare.sharedByMe);
   router.del('/hdw/api/resource-share/:share_id', controller.api.resourceShare.unshare);
   router.del('/hdw/api/resource-share/resource/:resource_id', controller.api.resourceShare.unshareResource);
+  // Static DELETE routes must be registered before `/folder/:folder_id`,
+  // otherwise Egg/router treats "unshare" as a folder_id and calls del().
+  router.del('/hdw/api/folder/unshare', controller.api.folder.unshare);
   router.del('/hdw/api/folder/:folder_id', controller.api.folder.del);
   router.post('/hdw/api/folder/rename', controller.api.folder.rename);
   router.post('/hdw/api/folder/move', controller.api.folder.move);
@@ -54,7 +57,6 @@ module.exports = app => {
   router.get('/hdw/api/folder/tree', controller.api.folder.tree);
   router.post('/hdw/api/folder/share', controller.api.folder.share);
   router.get('/hdw/api/folder/shares', controller.api.folder.shareList);
-  router.del('/hdw/api/folder/unshare', controller.api.folder.unshare);
   router.post('/hdw/api/folder/share-projects', controller.api.folder.shareProjects);
   // api:folder/project // 文件夹-项目关联管理
   router.post('/hdw/api/folder/project/add', controller.api.folder.addProject);

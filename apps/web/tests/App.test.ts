@@ -61,6 +61,15 @@ describe('projectRouteSurfaceState', () => {
       resolutionFailure: 'missing',
     })).toBe('ready');
   });
+
+  it('prioritizes an explicitly revoked share over a stale loaded project copy', () => {
+    expect(projectRouteSurfaceState({
+      projectsLoading: false,
+      hasActiveProject: true,
+      daemonLive: true,
+      resolutionFailure: 'access-revoked',
+    })).toBe('missing');
+  });
 });
 
 const baseConfig: AppConfig = {

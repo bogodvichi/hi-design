@@ -4,6 +4,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { SharedWithMeView } from '../../src/components/SharedWithMeView';
 import { I18nProvider } from '../../src/i18n';
+import {
+  readRecentlyOpenedProjectEntries,
+  recordRecentlyOpenedProject,
+} from '../../src/lib/recently-opened-projects';
+
+function createStorageStub(): Storage {
+  const store = new Map<string, string>();
+  return {
+    getItem: (key) => store.get(key) ?? null,
+    setItem: (key, value) => { store.set(key, value); },
+    removeItem: (key) => { store.delete(key); },
+    clear: () => { store.clear(); },
+    key: (index) => Array.from(store.keys())[index] ?? null,
+    get length() { return store.size; },
+  } satisfies Storage;
+}
 
 const state = vi.hoisted(() => ({
   rows: [] as Array<Record<string, unknown>>,
@@ -48,6 +64,7 @@ vi.mock('../../src/components/RecentProjectsStrip', () => ({
 }));
 
 beforeEach(() => {
+  vi.stubGlobal('localStorage', createStorageStub());
   state.rows = [{
     shareId: 'share-1',
     projectId: 'project-1',
@@ -99,6 +116,15 @@ describe('SharedWithMeView project actions', () => {
   });
 
   it('confirms removal and deletes only the share record by shareId', async () => {
+    recordRecentlyOpenedProject({
+      id: 'project-1',
+      name: 'Shared project',
+      skillId: null,
+      designSystemId: null,
+      createdAt: 1,
+      updatedAt: 2,
+      workspaceId: 'shared-space',
+    });
     await act(async () => {
       render(
         <I18nProvider initial="zh-CN">
@@ -116,6 +142,13 @@ describe('SharedWithMeView project actions', () => {
 
     await waitFor(() => {
       expect(state.unshare).toHaveBeenCalledExactlyOnceWith('share-1');
+    });
+    const recent = readRecentlyOpenedProjectEntries();
+    expect(recent).toHaveLength(1);
+    expect(recent[0]).toMatchObject({
+      id: 'project-1',
+      workspaceId: 'owner-workspace',
+      sharedWithMe: true,
     });
   });
 

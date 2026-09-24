@@ -1,11 +1,17 @@
 // @vitest-environment jsdom
 
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  clearProjectLocationTarget,
   enrichRecentlyOpenedProjectCovers,
+  markProjectLocationTarget,
+  markRecentlyOpenedProjectSharedWithMe,
+  readProjectLocationTarget,
   recordRecentlyOpenedProject,
   readRecentlyOpenedProjects,
+  recentlyOpenedSharedWithMeWorkspaceId,
+  removeRecentProjectAccessRecord,
   removeRecentlyOpenedProject,
   readRecentlyOpenedProjectEntries,
   touchRecentlyOpenedProject,
@@ -13,8 +19,26 @@ import {
 } from '../../src/lib/recently-opened-projects';
 import type { Project } from '../../src/types';
 
+function createStorageStub(): Storage {
+  const store = new Map<string, string>();
+  return {
+    getItem: (key) => store.get(key) ?? null,
+    setItem: (key, value) => { store.set(key, value); },
+    removeItem: (key) => { store.delete(key); },
+    clear: () => { store.clear(); },
+    key: (index) => Array.from(store.keys())[index] ?? null,
+    get length() { return store.size; },
+  } satisfies Storage;
+}
+
+beforeEach(() => {
+  vi.stubGlobal('localStorage', createStorageStub());
+  vi.stubGlobal('sessionStorage', createStorageStub());
+});
+
 afterEach(() => {
   localStorage.clear();
+  sessionStorage.clear();
   vi.unstubAllGlobals();
 });
 
@@ -75,6 +99,84 @@ describe('recordRecentlyOpenedProject', () => {
     const recents = readRecentlyOpenedProjects();
     expect(recents).toHaveLength(10);
     expect(recents[0]?.id).toBe('p14');
+  });
+});
+
+describe('recentlyOpenedSharedWithMeWorkspaceId', () => {
+  it('stamps an existing recent as share-backed without removing it', () => {
+    recordRecentlyOpenedProject(makeProject({
+      id: 'shared-recent',
+      workspaceId: 'shared-space',
+    }));
+
+    expect(markRecentlyOpenedProjectSharedWithMe('shared-recent', 'owner-workspace')).toBe(true);
+    expect(readRecentlyOpenedProjects().map((project) => project.id)).toEqual(['shared-recent']);
+    expect(readRecentlyOpenedProjectEntries()[0]).toMatchObject({
+      id: 'shared-recent',
+      workspaceId: 'owner-workspace',
+      sharedWithMe: true,
+    });
+  });
+
+  it('recognizes newly stamped shared-with-me recents', () => {
+    recordRecentlyOpenedProject(
+      makeProject({ id: 'shared', workspaceId: 'owner-workspace' }),
+      { sharedWithMe: true },
+    );
+
+    expect(recentlyOpenedSharedWithMeWorkspaceId('shared')).toBe('owner-workspace');
+  });
+
+  it('recognizes legacy shared-space recents created by another member', () => {
+    recordRecentlyOpenedProject(makeProject({
+      id: 'legacy-shared',
+      workspaceId: 'shared-space',
+      createdByWorkspaceMemberId: 'other-member',
+    }));
+
+    expect(recentlyOpenedSharedWithMeWorkspaceId('legacy-shared', {
+      workspaceId: 'shared-space',
+      workspaceMemberId: 'self-member',
+      isSharedSpace: true,
+    })).toBe('shared-space');
+  });
+
+  it('does not treat the current member\'s own shared-space recent as shared-with-me', () => {
+    recordRecentlyOpenedProject(makeProject({
+      id: 'own-shared-space',
+      workspaceId: 'shared-space',
+      createdByWorkspaceMemberId: 'self-member',
+    }));
+
+    expect(recentlyOpenedSharedWithMeWorkspaceId('own-shared-space', {
+      workspaceId: 'shared-space',
+      workspaceMemberId: 'self-member',
+      isSharedSpace: true,
+    })).toBeNull();
+  });
+});
+
+describe('project location target', () => {
+  it('persists and clears a one-shot project highlight target', () => {
+    markProjectLocationTarget('target-project');
+    expect(readProjectLocationTarget()).toBe('target-project');
+    clearProjectLocationTarget('other-project');
+    expect(readProjectLocationTarget()).toBe('target-project');
+    clearProjectLocationTarget('target-project');
+    expect(readProjectLocationTarget()).toBeNull();
+  });
+});
+
+describe('removeRecentProjectAccessRecord', () => {
+  it('removes only the recent access record without any network mutation', () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    recordRecentlyOpenedProject(makeProject({ id: 'recent-only' }));
+
+    removeRecentProjectAccessRecord('recent-only');
+
+    expect(readRecentlyOpenedProjects()).toEqual([]);
+    expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
 
@@ -187,5 +289,57 @@ describe('enrichRecentlyOpenedProjectCovers', () => {
     expect(changed).toContain('gone');
     const remaining = readRecentlyOpenedProjects();
     expect(remaining.map((p) => p.id)).toEqual(['kept']);
+  });
+
+  it('keeps a revoked shared-with-me recent until the user removes it explicitly', async () => {
+    recordRecentlyOpenedProject(
+      makeProject({
+        id: 'revoked-share',
+        workspaceId: 'owner-workspace',
+        workspaceVisibility: 'team',
+      }),
+      { sharedWithMe: true },
+    );
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ digests: {}, missingProjectIds: ['revoked-share'] }),
+      }) as Response),
+    );
+
+    const changed = await enrichRecentlyOpenedProjectCovers();
+    expect(changed).not.toContain('revoked-share');
+    expect(readRecentlyOpenedProjects().map((p) => p.id)).toEqual(['revoked-share']);
+  });
+
+  it('removes team recent entries the daemon definitively reports as missing', async () => {
+    recordRecentlyOpenedProject(
+      makeProject({
+        id: 'gone-team',
+        workspaceId: 'team-1',
+        workspaceVisibility: 'team',
+      }),
+    );
+    recordRecentlyOpenedProject(
+      makeProject({
+        id: 'kept-team',
+        workspaceId: 'team-1',
+        workspaceVisibility: 'team',
+      }),
+    );
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => ({
+        ok: true,
+        json: async () => ({ digests: {}, missingProjectIds: ['gone-team'] }),
+      }) as Response),
+    );
+
+    const changed = await enrichRecentlyOpenedProjectCovers();
+    expect(changed).toContain('gone-team');
+    expect(readRecentlyOpenedProjects().map((p) => p.id)).toEqual(['kept-team']);
   });
 });
