@@ -287,7 +287,10 @@ class ShareLinkController extends Controller {
       const data = await blobStore.readBlob(row.html_digest);
       ctx.set('content-type', 'text/html; charset=utf-8');
       ctx.set('content-length', String(data.length));
-      ctx.set('cache-control', 'public, max-age=300');
+      // Regeneration keeps the same public token while replacing html_digest.
+      // Revalidate that stable URL so updated comments and avatar colors are
+      // visible immediately instead of serving the previous generated page.
+      ctx.set('cache-control', 'no-cache, must-revalidate');
       ctx.body = data;
     } catch (err) {
       ctx.logger.error('[hdw] share-link view error:', err);

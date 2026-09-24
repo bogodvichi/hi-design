@@ -229,21 +229,32 @@
       var closeCommentPopup = document.getElementById('closeCommentPopup');
      var commentList = document.getElementById('commentList');
 
-     // Deterministic avatar background color from a display name.
-     // Mirrors apps/web/src/utils/avatarColor.ts so the share page matches
-     // the web app's avatar palette exactly.
-     var AVATAR_PALETTE = [
-       '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316',
-       '#f59e0b', '#eab308', '#84cc16', '#22c55e', '#14b8a6',
-       '#06b6d4', '#0ea5e9', '#3b82f6', '#a855f7', '#d946ef',
-     ];
-     function avatarColorFor(seed) {
-       if (!seed) return '#1a1917';
+     // Keep this display-name algorithm identical to
+     // apps/web/src/utils/avatarColor.ts.
+     var AVATAR_FALLBACK = 'hsl(210, 65%, 65%)';
+     var AVATAR_SAT_BASE = 65;
+     var AVATAR_SAT_RANGE = 25;
+     var AVATAR_LIGHT_BASE = 45;
+     var AVATAR_LIGHT_RANGE = 15;
+     function normalizeDisplayName(displayName) {
+       return String(displayName || '')
+         .normalize('NFKC')
+         .trim()
+         .replace(/\s+/g, ' ')
+         .toLowerCase();
+     }
+     function avatarColorForDisplayName(displayName) {
+       var normalizedName = normalizeDisplayName(displayName);
+       if (!normalizedName) return AVATAR_FALLBACK;
        var hash = 0;
-       for (var i = 0; i < seed.length; i++) {
-         hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
+       for (var i = 0; i < normalizedName.length; i++) {
+         hash = ((hash << 5) - hash + normalizedName.charCodeAt(i)) | 0;
        }
-       return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length] || '#1a1917';
+       var absoluteHash = Math.abs(hash);
+       var hue = absoluteHash % 360;
+       var saturation = AVATAR_SAT_BASE + ((absoluteHash >> 8) % AVATAR_SAT_RANGE);
+       var lightness = AVATAR_LIGHT_BASE + ((absoluteHash >> 16) % AVATAR_LIGHT_RANGE);
+       return 'hsl(' + hue + ', ' + saturation + '%, ' + lightness + '%)';
      }
 
      // First character of the name, uppercased. Mirrors commentAuthorInitials
@@ -442,7 +453,7 @@
          author.textContent = authorName;
          var avatar = document.createElement('span');
          avatar.className = 'comment-avatar';
-         avatar.style.background = avatarColorFor(authorName);
+         avatar.style.background = avatarColorForDisplayName(authorName);
          avatar.textContent = commentAuthorInitial(authorName);
          header.appendChild(avatar);
          header.appendChild(author);
@@ -487,7 +498,7 @@
              replyAuthor.textContent = replyAuthorName;
              var replyAvatar = document.createElement('span');
              replyAvatar.className = 'comment-avatar';
-             replyAvatar.style.background = avatarColorFor(replyAuthorName);
+             replyAvatar.style.background = avatarColorForDisplayName(replyAuthorName);
              replyAvatar.textContent = commentAuthorInitial(replyAuthorName);
              replyHeader.appendChild(replyAvatar);
              replyHeader.appendChild(replyAuthor);

@@ -44,6 +44,7 @@ interface Props {
   onDuplicate?: (record: InstalledPluginRecord) => void;
   isApplying?: boolean;
   hideUseAction?: boolean;
+  compact?: boolean;
   workspaceContext?: WorkspaceCollabContext | null;
   // Analytics — forwarded to PreviewModal's share popover.
   onSharePopoverItemClick?: (item: PreviewSharePopoverItem) => void;
@@ -81,6 +82,7 @@ export function PluginDesignSystemDetail({
   onDuplicate,
   isApplying,
   hideUseAction,
+  compact = false,
   workspaceContext = null,
   onSharePopoverItemClick,
 }: Props) {
@@ -149,6 +151,7 @@ export function PluginDesignSystemDetail({
   return (
     <PreviewModal
       title={localizedTitle}
+      compact={compact}
       subtitle={localizedDescription || dsRef || undefined}
       views={views}
       initialViewId={dsRef ? 'showcase' : 'spec'}

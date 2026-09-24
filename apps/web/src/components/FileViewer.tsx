@@ -32,7 +32,7 @@ import {
   workspaceIdentityCacheKey,
   workspaceProjectHeaders,
 } from '../collab/workspace-identity';
-import { avatarColorFor } from '../utils/avatarColor';
+import { avatarColorForDisplayName } from '../utils/avatarColor';
 import {
   anonymizeArtifactId,
   artifactKindToTracking,
@@ -4981,9 +4981,7 @@ export function CommentSidePanel({
          // only as a fallback for older comments that were saved without one.
          const authorDisplayName = comment.authorDisplayName?.trim()
            || author?.displayName?.trim()
-           || comment.authorMemberId
            || '?';
-         const authorSeed = authorDisplayName;
          const isDragging = dragState?.draggingId === comment.id;
           const isResolved = comment.status === 'resolved';
           const canReply = !canReplyComment || canReplyComment(comment);
@@ -5036,7 +5034,7 @@ export function CommentSidePanel({
                <span className="comment-card-meta-stack">
                  <span
                    className="avatar mini comment-card-avatar"
-                   style={{ background: avatarColorFor(authorSeed) }}
+                   style={{ background: avatarColorForDisplayName(authorDisplayName) }}
                    aria-hidden="true"
                  >
                    {commentAuthorInitials(authorDisplayName)}
@@ -5244,7 +5242,7 @@ export function CommentSidePanel({
                  >
                   <span
                     className="avatar mini"
-                    style={{ background: avatarColorFor(authorSeed) }}
+                    style={{ background: avatarColorForDisplayName(authorDisplayName) }}
                     aria-hidden="true"
                   >
                     {commentAuthorInitials(authorDisplayName)}
@@ -5257,7 +5255,7 @@ export function CommentSidePanel({
                  {/* {author ? (
                    <span
                      className="avatar mini"
-                      style={{ background: avatarColorFor(authorSeed) }}
+                      style={{ background: avatarColorForDisplayName(authorDisplayName) }}
                      aria-hidden="true"
                    >
                      {commentAuthorInitials(author.displayName)}

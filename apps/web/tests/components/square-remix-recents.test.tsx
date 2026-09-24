@@ -206,6 +206,8 @@ describe('SquareView remix recents', () => {
     expect(cardButton).toBeTruthy();
     fireEvent.click(cardButton!);
 
+    expect(document.querySelector('.ds-modal-backdrop--compact')).not.toBeNull();
+    expect(document.querySelector('.ds-modal--compact')).not.toBeNull();
     expect(await screen.findByText("Couldn't load this example.")).toBeTruthy();
 
     await waitFor(() => {

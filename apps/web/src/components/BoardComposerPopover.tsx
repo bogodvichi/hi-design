@@ -5,7 +5,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { PreviewCommentSnapshot } from '../comments';
 import type { Dict } from '../i18n/types';
 import type { PreviewComment, PreviewCommentMember, PreviewCommentStatus } from '../types';
-import { avatarColorFor } from '../utils/avatarColor';
+import { avatarColorForDisplayName } from '../utils/avatarColor';
 import { isImeComposing } from '../utils/imeComposing';
 import { relativeTimeLong } from '../utils/chatTime';
 
@@ -695,10 +695,8 @@ export function BoardComposerPopover({
   const isExistingComment = Boolean(existing);
   const existingResolved = existing?.status === 'resolved';
   const composeVisible = commenting || (isExistingComment && editingExistingComment);
- const authorLabel = authorDisplayName?.trim() || existing?.authorDisplayName?.trim() || existing?.authorMemberId || '?';
- const authorSeed = authorDisplayName?.trim() || existing?.authorDisplayName?.trim() || existing?.authorMemberId || '?';
+ const authorLabel = authorDisplayName?.trim() || existing?.authorDisplayName?.trim() || '?';
  const currentAuthorLabel = currentAuthorDisplayName?.trim() || authorLabel;
- const currentAuthorSeed = currentAuthorDisplayName?.trim() || authorSeed;
  // An attached image alone is enough to send (the element context rides along
   // even without a typed note).
   const hasAnyImage = hasFreshImage || existingImages.length > 0;
@@ -910,7 +908,7 @@ export function BoardComposerPopover({
             <div className="comment-popover-meta-line">
               <span
                 className="comment-popover-meta-avatar"
-                style={{ background: avatarColorFor(authorSeed) }}
+                style={{ background: avatarColorForDisplayName(authorLabel) }}
                 aria-hidden="true"
               >
                 {commentAuthorInitial(authorLabel)}
@@ -1065,8 +1063,7 @@ export function BoardComposerPopover({
                     reply: reply as PreviewComment | undefined,
                     note: reply.note,
                     createdAt: reply.createdAt,
-                   authorName: reply.authorDisplayName?.trim() || reply.authorMemberId?.trim() || '?',
-                   authorSeed: reply.authorDisplayName?.trim() || reply.authorMemberId?.trim() || '?',
+                   authorName: reply.authorDisplayName?.trim() || '?',
                   })),
                   ...localReplies.map((reply) => ({
                     localKey: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -1074,7 +1071,6 @@ export function BoardComposerPopover({
                     note: reply.note,
                     createdAt: reply.createdAt,
                     authorName: currentAuthorLabel,
-                    authorSeed: currentAuthorSeed,
                   })),
                 ]
                   .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0))
@@ -1093,7 +1089,7 @@ export function BoardComposerPopover({
                     <div className="comment-popover-reply-meta">
                       <span
                         className="comment-popover-reply-avatar"
-                        style={{ background: avatarColorFor(reply.authorSeed) }}
+                        style={{ background: avatarColorForDisplayName(reply.authorName) }}
                         aria-hidden="true"
                       >
                         {commentAuthorInitial(reply.authorName)}
