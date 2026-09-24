@@ -3992,9 +3992,9 @@ export function FileWorkspace({
     ) : null}
       <SketchEnginePrewarm />
       <div className="ws-tabs-shell">
-        {focusMode && (viewerOnly || personalProject) && onBack ? (
+        {focusMode && onBack ? (
           <div className="workspace-back-control">
-            {/* <button
+            <button
               type="button"
               className="icon-only ws-focus-expand od-tooltip"
               data-testid="workspace-focus-toggle"
@@ -4010,8 +4010,8 @@ export function FileWorkspace({
               onClick={onBack}
             >
               <Icon name="arrow-left" size={16} />
-            </button> */}
-            {personalProject && onFocusModeChange ? (
+            </button>
+           {!viewerOnly && onFocusModeChange ? (
               <div
                 className="workspace-back-popover"
                 role="menu"
@@ -4037,23 +4037,22 @@ export function FileWorkspace({
               </div>
             ) : null}
           </div>
-        ) : focusMode && onFocusModeChange ? (
-          // <button
-          //   type="button"
-          //   className="icon-only ws-focus-expand od-tooltip"
-          //   data-testid="workspace-focus-toggle"
-          //   aria-pressed={focusMode}
-          //   title={t('workspace.showChat')}
-          //   data-tooltip={t('workspace.showChat')}
-          //   data-tooltip-placement="bottom"
-          //   aria-label={t('workspace.showChat')}
-          //   onClick={() => onFocusModeChange(false)}
-          // >
-          //   <Icon name="chevron-right" size={15} />
-          // </button>
-          <></>
+        ) : focusMode && !viewerOnly && onFocusModeChange ? (
+          <button
+            type="button"
+            className="icon-only ws-focus-expand od-tooltip"
+            data-testid="workspace-focus-toggle"
+            aria-pressed={focusMode}
+            title={t('workspace.showChat')}
+            data-tooltip={t('workspace.showChat')}
+            data-tooltip-placement="bottom"
+            aria-label={t('workspace.showChat')}
+            onClick={() => onFocusModeChange(false)}
+          >
+            <Icon name="chevron-right" size={15} />
+          </button>
         ) : null}
-        {focusMode && (viewerOnly || personalProject) && onBack ? (
+        {focusMode && onBack ? (
           <span
             aria-hidden="true"
             data-testid="workspace-back-divider"

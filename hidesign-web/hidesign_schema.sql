@@ -1,6 +1,6 @@
 -- Schema dump for database: hidesign
 -- Host: 10.17.68.13:5432
--- Generated: 2026-09-24T06:05:45.837Z
+-- Generated: 2026-09-24T07:31:45.848Z
 -- Migration-safe: DROP then CREATE, sequences before tables, constraints after all tables
 
 SET client_encoding = 'UTF8';
@@ -392,7 +392,6 @@ ALTER TABLE public.workspace_resource_shares ADD CONSTRAINT uq_resource_shares_r
 -- ============================================================
 -- Indexes
 -- ============================================================
-CREATE UNIQUE INDEX community_plugin_versions_plugin_id_version_key ON public.community_plugin_versions USING btree (plugin_id, version);
 CREATE INDEX idx_community_plugin_versions_plugin ON public.community_plugin_versions USING btree (plugin_id, created_at DESC);
 CREATE UNIQUE INDEX idx_community_plugins_name ON public.community_plugins USING btree (name) WHERE (deleted_at IS NULL);
 CREATE INDEX idx_community_plugins_publisher ON public.community_plugins USING btree (publisher_username, created_at DESC) WHERE (deleted_at IS NULL);
@@ -410,18 +409,15 @@ CREATE INDEX idx_project_transfers_project ON public.project_transfers USING btr
 CREATE INDEX idx_project_transfers_source ON public.project_transfers USING btree (source_workspace_id, transferred_at DESC);
 CREATE INDEX idx_project_transfers_target ON public.project_transfers USING btree (target_workspace_id, transferred_at DESC);
 CREATE INDEX idx_resource_versions_resource ON public.resource_versions USING btree (resource_id, version DESC);
-CREATE UNIQUE INDEX resource_versions_resource_id_version_key ON public.resource_versions USING btree (resource_id, version);
 CREATE INDEX idx_resources_owner ON public.resources USING btree (workspace_id, owner_member_id, updated_at DESC) WHERE (deleted_at IS NULL);
 CREATE INDEX idx_resources_scope ON public.resources USING btree (workspace_id, kind, scope, updated_at DESC) WHERE (deleted_at IS NULL);
 CREATE INDEX idx_resources_skill_category ON public.resources USING btree (workspace_id, ((metadata ->> 'category'::text)), updated_at DESC) WHERE ((deleted_at IS NULL) AND (kind = 'skill'::text));
 CREATE INDEX idx_resources_workspace ON public.resources USING btree (workspace_id, kind, updated_at DESC) WHERE (deleted_at IS NULL);
 CREATE INDEX idx_share_links_project ON public.share_links USING btree (workspace_id, project_id);
 CREATE INDEX idx_share_links_token ON public.share_links USING btree (token);
-CREATE UNIQUE INDEX share_links_token_key ON public.share_links USING btree (token);
 CREATE INDEX idx_team_projects_folder_stable ON public.team_projects USING btree (workspace_id, folder_id);
 CREATE INDEX idx_team_projects_owner ON public.team_projects USING btree (workspace_id, owner_member_id, updated_at DESC);
 CREATE INDEX idx_team_projects_workspace ON public.team_projects USING btree (workspace_id, updated_at DESC);
-CREATE UNIQUE INDEX team_projects_workspace_id_project_id_key ON public.team_projects USING btree (workspace_id, project_id);
 CREATE INDEX idx_workspace_blob_refs_digest ON public.workspace_blob_refs USING btree (digest);
 CREATE INDEX idx_workspace_members_member_id ON public.workspace_members USING btree (workspace_member_id);
 CREATE INDEX idx_shares_creator ON public.workspace_project_shares USING btree (shared_space_id, created_by_member_id);
@@ -431,9 +427,77 @@ CREATE INDEX idx_resource_shares_creator ON public.workspace_resource_shares USI
 CREATE INDEX idx_resource_shares_kind ON public.workspace_resource_shares USING btree (kind, shared_space_id, recipient_member_id);
 CREATE INDEX idx_resource_shares_recipient ON public.workspace_resource_shares USING btree (shared_space_id, recipient_member_id);
 CREATE INDEX idx_resource_shares_resource ON public.workspace_resource_shares USING btree (resource_id);
-CREATE UNIQUE INDEX uq_resource_shares_resource_space_recipient ON public.workspace_resource_shares USING btree (resource_id, shared_space_id, recipient_member_id);
+
+-- ============================================================
+-- workspaces 表初始化数据 — 共享空间
+-- workspace_id 与 resources.csv 中的 workspace_id 对应
+-- ============================================================
+
+INSERT INTO public.workspaces (workspace_id, workspace_name, owner_username, owner_displayname, created_at, updated_at) VALUES
+(
+  'kt7pwus8k23k0sy2x52avt7xv',
+  '共享空间',
+  'system',
+  '系统大人',
+  '2026-09-14 14:00:00+08',
+  '2026-09-23 20:22:08+08'
+);
+
+-- ============================================================
+-- workspace_members 表初始化数据 — 系统大人
+-- workspace_id 与 resources.csv 中的 workspace_id 对应
+-- workspace_member_id 与 resources.csv 中的 owner_member_id 对应
+-- ============================================================
+
+INSERT INTO public.workspace_members (workspace_id, workspace_member_id, username, displayname, email, role, created_at, updated_at) VALUES
+(
+  'kt7pwus8k23k0sy2x52avt7xv',
+  'ktj9k42x21l6hak8vuadirejn',
+  'system',
+  '系统大人',
+  'system@hikvision.com',
+  'owner',
+  '2026-09-14 14:00:00+08',
+  '2026-09-23 20:22:08+08'
+);
+
 
 -- ============================================================
 -- Comments
 -- ============================================================
 
+
+
+-- ============================================================
+-- resources 表初始化数据
+-- 来源: resources.csv (编码修复后)
+-- 注意: 部分 Chinese 字符在原始 CSV 导出时丢失，以 ? 标记
+-- ============================================================
+
+INSERT INTO public.resources (id, workspace_id, kind, owner_member_id, metadata, deleted_at, created_at, updated_at, scope) VALUES
+
+-- HiMind 工具
+(
+  'res-0e3bd4a6-ed34-4ede-ab61-240d127d22cb',
+  'kt7pwus8k23k0sy2x52avt7xv',
+  'tool',
+  'ktj9k42x21l6hak8vuadirejn',
+  '{"url": "http://himind.hikvision.com/login", "name": "HiMind", "label": "HiMind", "description": "", "publisherName": "张亚?"}'::jsonb,
+  NULL,
+  '2026-09-14 14:17:19.311706+08',
+  '2026-09-23 20:22:08.76493+08',
+  'public'
+),
+
+-- 海康威视 工具
+(
+  'res-c2f0db53-da22-4a24-b859-cf334f8531b5',
+  'kt7pwus8k23k0sy2x52avt7xv',
+  'tool',
+  'ktj9k42x21l6hak8vuadirejn',
+  '{"url": "https://www.hikvision.com", "name": "海康威视", "label": "海康威视", "description": "秉承\u201c专业、厚实、诚信\u201d的经营理念，践行\u201c成就客户、价值为本、诚信务实、追求卓越\u201d的核心价值观，二十余年来，海康威视以视频技术为起点，逐步构建和完善以物联感知、人工智能、大数据为核心的智能物联（AIoT）技术体系，为千行百业提供安防和场景数字化产品与服务。公司的产品和技术，已在杭州亚运会、G20杭州峰会、北京奥运会、上海世博会、APEC会议、北京大兴机场、港珠澳大桥等重大项目中发挥了重要作用。", "publisherName": "石敬?"}'::jsonb,
+  NULL,
+  '2026-09-14 14:17:04.499781+08',
+  '2026-09-23 20:22:08.76493+08',
+  'public'
+);

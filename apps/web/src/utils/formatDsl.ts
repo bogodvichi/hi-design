@@ -1649,11 +1649,27 @@ function hIconClassToId(iconKey) {
     return parts.map(seg => H_ICON_SEG_MAP[seg] || (seg.charAt(0).toUpperCase() + seg.slice(1))).join('');
 }
 
-export function partialHtmlToIframeWeb(html: string, callback: ((data: unknown) => void) | undefined, width = 1920, height = 1080) {
+export function partialHtmlToIframeWeb(
+    html: string,
+    callback: ((data: unknown) => void) | undefined,
+    width = 1920,
+    height = 1080,
+    handlers?: {
+        onError?: (error: unknown) => void;
+        onComplete?: () => void;
+    },
+) {
+    const { onError, onComplete } = handlers || {};
+    const hostIframe = document.getElementById('ai-main-iframe');
+    if (!html || !hostIframe?.parentElement) {
+        onError?.(new Error(!html ? 'HTML 内容为空' : '预览 iframe 容器不存在'));
+        return;
+    }
+
     let conversation_id = 'c_' + Math.random();
     let iframe = document.createElement('iframe')
     iframe.id = 'ai-main-iframe-new-' + conversation_id;
-    let pdom = document.getElementById('ai-main-iframe').parentElement;
+    let pdom = hostIframe.parentElement;
     pdom.appendChild(iframe);
     iframe.setAttribute('frameborder', '0');
     iframe.style.display = 'block';
@@ -1792,10 +1808,11 @@ export function partialHtmlToIframeWeb(html: string, callback: ((data: unknown) 
             }
         }
         iframe.contentWindow.onload = () => {
-            // 预缓存字体，冻结所有动画与过渡效果
-            preCache(documentObj, { embedFonts: true });
-            setTimeout(async () => {
+            void (async () => {
                 try {
+                    // 预缓存字体，冻结所有动画与过渡效果
+                    await preCache(documentObj, { embedFonts: true });
+                    await new Promise<void>((resolve) => setTimeout(resolve, 0));
                     // 遍历所有 DOM，收集 SVG 图标并计算最大宽高
                     let doms = documentObj.body.querySelectorAll("*");
                     documentObj.body.scrollTop = 0;
@@ -1966,7 +1983,6 @@ export function partialHtmlToIframeWeb(html: string, callback: ((data: unknown) 
                         let theme = global__theme__info?.themeValue;
                         let icons = [...fontIcons];
                         let { textsMap, json, sizeMap,font2svgParams } = await htmlToDsl(documentObj, lastWidth, lastHeight, theme)
-                        iframe?.remove();
                         callback?.({ type: "dslToPixso", icons,textsMap, json, sizeMap, font2svgParams,theme, id: newId, width: lastWidth, height: lastHeight })
                     }
                     /*
@@ -2001,13 +2017,17 @@ export function partialHtmlToIframeWeb(html: string, callback: ((data: unknown) 
                             }
                         }
                         iframe?.remove();
+                        onComplete?.();
                     } else {
                         await doneHtmlToDsl();
+                        iframe?.remove();
+                        onComplete?.();
                     }
                 } catch (e) {
                    iframe?.remove();
+                   onError?.(e);
                 }
-            })
+            })();
         };
     }
 }

@@ -15413,8 +15413,9 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     setExportToast({ message: '正在推送到 Pixso...', tone: 'loading' });
     let ws: WebSocket | null = null;
     let sent = false;
+    let finished = false;
     const failPixsoPush = () => {
-      if (sent) return;
+      if (finished) return;
       setExportToast({ message: 'Pixso 推送服务连接失败', tone: 'error' });
     };
     try {
@@ -15433,8 +15434,17 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
           }
           sent = true;
           ws.send(JSON.stringify(dslData));
-          ws.close();
-          setExportToast({ message: '已推送到 Pixso', tone: 'success' });
+        }, undefined, undefined, {
+          onError: () => {
+            finished = true;
+            failPixsoPush();
+            ws?.close();
+          },
+          onComplete: () => {
+            finished = true;
+            ws?.close();
+            setExportToast({ message: '已推送到 Pixso', tone: 'success' });
+          },
         })
       };
       ws.onmessage = (event) => {
@@ -17233,7 +17243,7 @@ async function openReviewListModal() {
                ) : null}
               </div>
              </div>
-              <div className="share-menu chrome-share-menu">
+              <div className="share-menu chrome-share-menu" ref={pixsoMenuRef}>
                 <div style={{position:"absolute",left:"10000px",top:"10000px"}}>
                   <iframe id="ai-main-iframe" width={1920} height={1080}></iframe>
                 </div>
