@@ -42,6 +42,7 @@ import { getSharedSpaceMemberId } from '../utils/deterministicId';
 import { getStoredUsername } from '../auth/auth';
 import { communityTextMatchesQuery } from '../utils/community-search';
 import { ellipsisTitleHoverProps } from '../utils/ellipsis-title';
+import { avatarColorFor } from '../utils/avatarColor';
 import { recordCommunityStat } from '../utils/community-stats';
 import { renderMarkdownToSafeHtml } from '../artifacts/markdown';
 import {
@@ -669,12 +670,12 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
                 </div>
                 <div className="recent-projects__card-footer">
                   <div className="recent-projects__card-time">
-                    <span
-                      className="recent-projects__card-owner"
-                      style={{ backgroundColor: '#000' }}
-                      title={publisherName}
-                      aria-hidden
-                    >
+                   <span
+                     className="recent-projects__card-owner"
+                      style={{ backgroundColor: avatarColorFor(publisherName) }}
+                     title={publisherName}
+                     aria-hidden
+                   >
                       {publisherName}
                     </span>
                     {updatedAt ? (

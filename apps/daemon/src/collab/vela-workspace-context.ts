@@ -403,6 +403,7 @@ export function workspaceContextFromDirectoryItem(
   );
   if (settingsUrl) context.workspaceSettingsUrl = settingsUrl;
   if (item.workspaceName) context.workspaceName = item.workspaceName;
+  if (item.displayName) context.displayName = item.displayName;
   if (item.workspaceType === 'team') {
     context.teamId = item.workspaceId;
     context.teamName = item.workspaceName;

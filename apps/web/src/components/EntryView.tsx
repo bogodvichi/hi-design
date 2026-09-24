@@ -105,10 +105,8 @@ interface Props {
   onApiModelChange: (model: string) => void;
   onConfigPersist: (cfg: AppConfig) => Promise<void> | void;
   /** True only when GET /api/app-config returned a real config object. */
-  daemonAppConfigReady?: boolean;
-  /** Non-optimistic daemon write for the silent-update preference. */
-  onSilentUpdatePreferenceChange?: (allowSilentUpdates: boolean) => Promise<void>;
-  onSkillsRefresh?: (scoped?: boolean) => Promise<void> | void;
+ daemonAppConfigReady?: boolean;
+ onSkillsRefresh?: (scoped?: boolean) => Promise<void> | void;
   onSkillsChanged?: (affectedSkillId?: string) => void;
   onRefreshAgents: () => Promise<AgentInfo[]> | AgentInfo[];
   // Per-resource loading flags. Each tab gates its own content on whichever
@@ -283,9 +281,8 @@ export function EntryView({
   onApiProtocolChange,
   onApiModelChange,
   onConfigPersist,
-  daemonAppConfigReady = false,
-  onSilentUpdatePreferenceChange,
-  onSkillsRefresh,
+ daemonAppConfigReady = false,
+ onSkillsRefresh,
   onSkillsChanged,
   onRefreshAgents,
   skillsLoading = false,
@@ -415,9 +412,8 @@ export function EntryView({
       onApiProtocolChange={onApiProtocolChange}
       onApiModelChange={onApiModelChange}
       onConfigPersist={onConfigPersist}
-      daemonAppConfigReady={daemonAppConfigReady}
-      onSilentUpdatePreferenceChange={onSilentUpdatePreferenceChange}
-      onSkillsRefresh={onSkillsRefresh}
+     daemonAppConfigReady={daemonAppConfigReady}
+     onSkillsRefresh={onSkillsRefresh}
       onSkillsChanged={onSkillsChanged}
           onRefreshAgents={onRefreshAgents}
       onCreateProject={onCreateProject}

@@ -479,6 +479,25 @@ function buildExecutionDiagnostics(run) {
       agentId: run.agentId
         ? availableDiagnostic(run.agentId, 'requested agent runtime', true, 'agent-runtime')
         : missingDiagnostic('agent_id_not_recorded', 'agent-runtime'),
+      transport: run.agentTransport
+        ? availableDiagnostic(run.agentTransport, 'agent transport used for this run', true, 'agent-runtime')
+        : missingDiagnostic('agent_transport_not_recorded', 'agent-runtime'),
+      requestedTransport: run.agentTransportRequested
+        ? availableDiagnostic(
+            run.agentTransportRequested,
+            'agent transport requested for this run',
+            true,
+            'agent-runtime',
+          )
+        : missingDiagnostic('agent_transport_request_not_recorded', 'agent-runtime'),
+      transportFallbackReason: run.agentTransportFallbackReason
+        ? availableDiagnostic(
+            run.agentTransportFallbackReason,
+            'reason the requested transport fell back to a compatible transport',
+            true,
+            'agent-runtime',
+          )
+        : availableDiagnostic(null, 'no transport fallback was required', true, 'agent-runtime'),
       provider: assistantMessages.provider
         ? availableDiagnostic(assistantMessages.provider, 'provider id reported by the agent runtime', true, 'agent-runtime')
         : missingDiagnostic('provider_not_reported_by_runtime', 'agent-runtime'),
@@ -522,6 +541,13 @@ function durableRunState(run) {
       ? { strategyRolloutDecision: run.strategyRolloutDecision }
       : {}),
     agentId: run.agentId,
+    ...(typeof run.agentTransport === 'string' ? { agentTransport: run.agentTransport } : {}),
+    ...(typeof run.agentTransportRequested === 'string'
+      ? { agentTransportRequested: run.agentTransportRequested }
+      : {}),
+    ...(typeof run.agentTransportFallbackReason === 'string'
+      ? { agentTransportFallbackReason: run.agentTransportFallbackReason }
+      : {}),
     status: run.status,
     createdAt: run.createdAt,
     updatedAt: run.updatedAt,
@@ -754,6 +780,13 @@ export function createChatRunService({
       requestFingerprint:
         typeof state.requestFingerprint === 'string' ? state.requestFingerprint : null,
       agentId: typeof state.agentId === 'string' ? state.agentId : null,
+      agentTransport: typeof state.agentTransport === 'string' ? state.agentTransport : null,
+      agentTransportRequested:
+        typeof state.agentTransportRequested === 'string' ? state.agentTransportRequested : null,
+      agentTransportFallbackReason:
+        typeof state.agentTransportFallbackReason === 'string'
+          ? state.agentTransportFallbackReason
+          : null,
       projectMetadata: null,
       events,
       nextEventId: events.reduce((max, record) => Math.max(max, record.id), 0) + 1,
@@ -797,6 +830,15 @@ export function createChatRunService({
           ? meta.strategyRolloutDecision
           : null,
       agentId: typeof meta.agentId === 'string' && meta.agentId ? meta.agentId : null,
+      agentTransport: typeof meta.agentTransport === 'string' && meta.agentTransport ? meta.agentTransport : null,
+      agentTransportRequested:
+        typeof meta.agentTransportRequested === 'string' && meta.agentTransportRequested
+          ? meta.agentTransportRequested
+          : null,
+      agentTransportFallbackReason:
+        typeof meta.agentTransportFallbackReason === 'string' && meta.agentTransportFallbackReason
+          ? meta.agentTransportFallbackReason
+          : null,
       projectMetadata:
         meta.projectMetadata && typeof meta.projectMetadata === 'object' && !Array.isArray(meta.projectMetadata)
           ? meta.projectMetadata
@@ -1198,6 +1240,9 @@ export function createChatRunService({
     assistantMessageId: run.assistantMessageId,
     clientRequestId: run.clientRequestId ?? null,
     agentId: run.agentId,
+    agentTransport: run.agentTransport ?? null,
+    agentTransportRequested: run.agentTransportRequested ?? null,
+    agentTransportFallbackReason: run.agentTransportFallbackReason ?? null,
     designSystemId: run.designSystemId ?? null,
     designSystemRequestedId: run.designSystemRequestedId ?? null,
     designSystemSelectionSource: run.designSystemSelectionSource ?? null,

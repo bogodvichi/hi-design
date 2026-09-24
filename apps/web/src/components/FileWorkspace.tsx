@@ -3994,7 +3994,7 @@ export function FileWorkspace({
       <div className="ws-tabs-shell">
         {focusMode && (viewerOnly || personalProject) && onBack ? (
           <div className="workspace-back-control">
-            <button
+            {/* <button
               type="button"
               className="icon-only ws-focus-expand od-tooltip"
               data-testid="workspace-focus-toggle"
@@ -4010,7 +4010,7 @@ export function FileWorkspace({
               onClick={onBack}
             >
               <Icon name="arrow-left" size={16} />
-            </button>
+            </button> */}
             {personalProject && onFocusModeChange ? (
               <div
                 className="workspace-back-popover"
@@ -4038,19 +4038,20 @@ export function FileWorkspace({
             ) : null}
           </div>
         ) : focusMode && onFocusModeChange ? (
-          <button
-            type="button"
-            className="icon-only ws-focus-expand od-tooltip"
-            data-testid="workspace-focus-toggle"
-            aria-pressed={focusMode}
-            title={t('workspace.showChat')}
-            data-tooltip={t('workspace.showChat')}
-            data-tooltip-placement="bottom"
-            aria-label={t('workspace.showChat')}
-            onClick={() => onFocusModeChange(false)}
-          >
-            <Icon name="chevron-right" size={15} />
-          </button>
+          // <button
+          //   type="button"
+          //   className="icon-only ws-focus-expand od-tooltip"
+          //   data-testid="workspace-focus-toggle"
+          //   aria-pressed={focusMode}
+          //   title={t('workspace.showChat')}
+          //   data-tooltip={t('workspace.showChat')}
+          //   data-tooltip-placement="bottom"
+          //   aria-label={t('workspace.showChat')}
+          //   onClick={() => onFocusModeChange(false)}
+          // >
+          //   <Icon name="chevron-right" size={15} />
+          // </button>
+          <></>
         ) : null}
         {focusMode && (viewerOnly || personalProject) && onBack ? (
           <span

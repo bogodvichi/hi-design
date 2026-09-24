@@ -25,7 +25,10 @@ export interface WorkspaceContextItem {
 export interface RunContextSelection {
   skillIds?: string[];
   pluginIds?: string[];
+  /** MCP servers the user explicitly selected for this turn. */
   mcpServerIds?: string[];
+  /** MCP servers a workflow/contract requires this turn to call. */
+  requiredMcpServerIds?: string[];
   connectorIds?: string[];
   workspaceItems?: WorkspaceContextItem[];
 }
@@ -105,6 +108,7 @@ export function normalizeRunContextSelection(value: unknown): RunContextSelectio
     skillIds: stringList(value.skillIds),
     pluginIds: stringList(value.pluginIds),
     mcpServerIds: stringList(value.mcpServerIds),
+    requiredMcpServerIds: stringList(value.requiredMcpServerIds),
     connectorIds: stringList(value.connectorIds),
     workspaceItems: normalizeWorkspaceContextItems(value.workspaceItems),
   };
@@ -115,10 +119,17 @@ export function mergeRunContextSelections(...contexts: unknown[]): RunContextSel
     skillIds: [],
     pluginIds: [],
     mcpServerIds: [],
+    requiredMcpServerIds: [],
     connectorIds: [],
     workspaceItems: [],
   };
-  const listKeys = ['skillIds', 'pluginIds', 'mcpServerIds', 'connectorIds'] as const;
+  const listKeys = [
+    'skillIds',
+    'pluginIds',
+    'mcpServerIds',
+    'requiredMcpServerIds',
+    'connectorIds',
+  ] as const;
   const workspaceSeen = new Set<string>();
   for (const context of contexts) {
     const normalized = normalizeRunContextSelection(context);
@@ -243,7 +254,9 @@ function renderWorkspaceContextToolHints(items: WorkspaceContextItem[]) {
 }
 
 export function renderRunContextPrompt(selection: unknown, metadata: unknown) {
-  const context = mergeRunContextSelections(projectMetadataContextSelection(metadata), selection);
+  const projectContext = projectMetadataContextSelection(metadata);
+  const turnContext = normalizeRunContextSelection(selection);
+  const context = mergeRunContextSelections(projectContext, turnContext);
   const metadataRecord = isRecord(metadata) ? metadata : {};
   const lines: string[] = [];
   if (Array.isArray(context.workspaceItems) && context.workspaceItems.length > 0) {
@@ -262,8 +275,23 @@ export function renderRunContextPrompt(selection: unknown, metadata: unknown) {
     );
     lines.push(formatContextRefList(context.pluginIds, metadataRecord.contextPlugins, 'title'));
   }
-  if (Array.isArray(context.mcpServerIds) && context.mcpServerIds.length > 0) {
-    lines.push(...selectedMcpContextLines(context.mcpServerIds, metadataRecord));
+  const projectMcpIds = projectContext.mcpServerIds ?? [];
+  if (projectMcpIds.length > 0) {
+    lines.push(
+      '### Project MCP bindings',
+      'These MCP servers are available to this project. They are capabilities, not a requirement to call them on every turn. Use them only when relevant, explicitly selected for this turn, or required by the task.',
+      formatContextRefList(projectMcpIds, metadataRecord.contextMcpServers, 'label'),
+    );
+  }
+
+  const requiredMcpIds = turnContext.requiredMcpServerIds ?? [];
+  const requiredMcpSet = new Set(requiredMcpIds);
+  const selectedMcpIds = (turnContext.mcpServerIds ?? []).filter((id) => !requiredMcpSet.has(id));
+  if (selectedMcpIds.length > 0) {
+    lines.push(...selectedMcpContextLines(selectedMcpIds, metadataRecord));
+  }
+  if (requiredMcpIds.length > 0) {
+    lines.push(...requiredMcpContextLines(requiredMcpIds, metadataRecord));
   }
   if (Array.isArray(context.connectorIds) && context.connectorIds.length > 0) {
     lines.push('### Selected connectors');
@@ -282,7 +310,18 @@ function selectedMcpContextLines(
 ): string[] {
   return [
     '### Selected MCP servers',
-    'The user explicitly selected these MCP servers for this run. Treat that selection as a request to use them: before answering, make at least one relevant tool call to each selected server. If a selected server is unavailable or its tool call fails, report that failure clearly; do not silently substitute local files or general knowledge unless the user asks for a fallback.',
+    'The user explicitly selected these MCP servers for this turn. Use a selected server when it is relevant to the request, and prefer it over general knowledge or local fallback for information/actions that server is intended to provide. Do not make a no-op tool call merely to satisfy the selection. If a needed selected-server tool call fails, report the failure clearly rather than silently substituting another source.',
+    formatContextRefList(serverIds, metadata.contextMcpServers, 'label'),
+  ];
+}
+
+function requiredMcpContextLines(
+  serverIds: string[],
+  metadata: Record<string, unknown>,
+): string[] {
+  return [
+    '### Required MCP servers',
+    'The current task explicitly requires these MCP servers. Before answering, make at least one relevant tool call to each required server. If a required server is unavailable or its tool call fails, report that failure clearly; do not silently substitute local files or general knowledge unless the user asks for a fallback.',
     formatContextRefList(serverIds, metadata.contextMcpServers, 'label'),
   ];
 }
@@ -294,11 +333,22 @@ function selectedMcpContextLines(
  * from the composer "+" menu behaves the same as mentioning it inline.
  */
 export function renderSelectedMcpRunContextPrompt(selection: unknown, metadata: unknown) {
-  const context = mergeRunContextSelections(projectMetadataContextSelection(metadata), selection);
-  if (!Array.isArray(context.mcpServerIds) || context.mcpServerIds.length === 0) return '';
+  const turnContext = normalizeRunContextSelection(selection);
+  const selectedMcpIds = turnContext.mcpServerIds ?? [];
+  const requiredMcpIds = turnContext.requiredMcpServerIds ?? [];
+  if (selectedMcpIds.length === 0 && requiredMcpIds.length === 0) return '';
+
   const metadataRecord = isRecord(metadata) ? metadata : {};
+  const requiredMcpSet = new Set(requiredMcpIds);
+  const preferredOnlyIds = selectedMcpIds.filter((id) => !requiredMcpSet.has(id));
+
   return [
     '## Selected run context',
-    ...selectedMcpContextLines(context.mcpServerIds, metadataRecord),
+    ...(preferredOnlyIds.length > 0
+      ? selectedMcpContextLines(preferredOnlyIds, metadataRecord)
+      : []),
+    ...(requiredMcpIds.length > 0
+      ? requiredMcpContextLines(requiredMcpIds, metadataRecord)
+      : []),
   ].join('\n');
 }

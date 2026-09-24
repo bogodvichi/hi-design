@@ -17,6 +17,7 @@ type ParserState = {
   codexErrorEmitted: boolean;
   codexPreviousEventWasAgentMessage: boolean;
   codexLastAgentMessageEndedWithNewline: boolean;
+  codexAgentMessageDeltaItems: Set<string>;
   // Per reasoning-item chars already emitted as thinking deltas, keyed by
   // item id. Codex replays the accumulated summary text on every lifecycle
   // event of the same item (started → updated → completed), so only the
@@ -747,8 +748,157 @@ function emitCodexReasoningItem(
   return true;
 }
 
+
+function normalizeCodexAppServerItem(item: JsonObject): JsonObject {
+  const type = typeof item.type === 'string' ? item.type : '';
+  if (type === 'agentMessage') {
+    return { ...item, type: 'agent_message' };
+  }
+  if (type === 'commandExecution') {
+    return {
+      ...item,
+      type: 'command_execution',
+      aggregated_output: item.aggregatedOutput,
+      exit_code: item.exitCode,
+    };
+  }
+  if (type === 'reasoning') {
+    const summary = Array.isArray(item.summary)
+      ? item.summary.filter((part): part is string => typeof part === 'string').join('\n\n')
+      : typeof item.summary === 'string'
+        ? item.summary
+        : '';
+    return { ...item, type: 'reasoning', text: summary };
+  }
+  if (type === 'error' || type === 'systemError') {
+    return {
+      ...item,
+      type: 'error',
+      message: typeof item.message === 'string'
+        ? item.message
+        : typeof item.error === 'string'
+          ? item.error
+          : '',
+    };
+  }
+  return item;
+}
+
+function handleCodexAppServerNotification(
+  obj: JsonObject,
+  onEvent: StreamEventHandler,
+  state: ParserState,
+): boolean {
+  if (typeof obj.method !== 'string' || !isRecord(obj.params)) return false;
+  const method = obj.method;
+  const params = obj.params;
+
+  if (method === 'thread/started') {
+    const threadId = isRecord(params.thread) && typeof params.thread.id === 'string'
+      ? params.thread.id
+      : typeof params.threadId === 'string'
+        ? params.threadId
+        : null;
+    onEvent({ type: 'status', label: 'initializing', sessionId: threadId });
+    return true;
+  }
+
+  if (method === 'turn/started') {
+    state.codexPreviousEventWasAgentMessage = false;
+    state.codexLastAgentMessageEndedWithNewline = false;
+    onEvent({ type: 'status', label: 'thinking' });
+    return true;
+  }
+
+  if (method === 'item/agentMessage/delta' && typeof params.delta === 'string') {
+    const itemId = typeof params.itemId === 'string' ? params.itemId : '';
+    if (itemId) state.codexAgentMessageDeltaItems.add(itemId);
+    onEvent({ type: 'text_delta', delta: params.delta });
+    state.codexPreviousEventWasAgentMessage = true;
+    state.codexLastAgentMessageEndedWithNewline = params.delta.endsWith('\n');
+    return true;
+  }
+
+  if (
+    (method === 'item/reasoning/summaryTextDelta' || method === 'item/reasoning/textDelta')
+    && typeof params.delta === 'string'
+  ) {
+    if (params.delta) {
+      onEvent({ type: 'thinking_delta', delta: params.delta });
+      state.codexReasoningEmittedAny = true;
+    }
+    return true;
+  }
+
+  if ((method === 'item/started' || method === 'item/completed') && isRecord(params.item)) {
+    const normalized = normalizeCodexAppServerItem(params.item);
+    if (
+      method === 'item/completed'
+      && normalized.type === 'agent_message'
+      && typeof normalized.id === 'string'
+      && state.codexAgentMessageDeltaItems.has(normalized.id)
+    ) {
+      return true;
+    }
+    return handleCodexEvent(
+      {
+        type: method === 'item/started' ? 'item.started' : 'item.completed',
+        item: normalized,
+      },
+      onEvent,
+      state,
+    );
+  }
+
+  if (method === 'thread/tokenUsage/updated' && isRecord(params.tokenUsage)) {
+    const tokenUsage = params.tokenUsage;
+    const last = isRecord(tokenUsage.last) ? tokenUsage.last : null;
+    if (!last) return true;
+    const usage: Usage = {};
+    if (typeof last.inputTokens === 'number') usage.input_tokens = last.inputTokens;
+    if (typeof last.outputTokens === 'number') usage.output_tokens = last.outputTokens;
+    if (typeof last.reasoningOutputTokens === 'number') usage.thought_tokens = last.reasoningOutputTokens;
+    if (typeof last.cachedInputTokens === 'number') usage.cached_read_tokens = last.cachedInputTokens;
+    if (typeof last.cacheWriteInputTokens === 'number') usage.cached_write_tokens = last.cacheWriteInputTokens;
+    onEvent({ type: 'usage', usage });
+    return true;
+  }
+
+  if (method === 'error') {
+    const error = isRecord(params.error) ? params.error : null;
+    const message = error && typeof error.message === 'string'
+      ? error.message
+      : typeof params.message === 'string'
+        ? params.message
+        : 'Codex app-server error';
+    if (params.willRetry === true) {
+      onEvent({ type: 'status', label: 'warning', detail: message });
+    } else {
+      state.codexErrorEmitted = true;
+      onEvent({ type: 'error', message });
+    }
+    return true;
+  }
+
+  if (method === 'turn/completed') {
+    const turn = isRecord(params.turn) ? params.turn : null;
+    if (turn?.status === 'failed') {
+      const error = isRecord(turn.error) ? turn.error : null;
+      const message = error && typeof error.message === 'string'
+        ? error.message
+        : 'Codex app-server turn failed';
+      state.codexErrorEmitted = true;
+      onEvent({ type: 'error', message });
+    }
+    return true;
+  }
+
+  return false;
+}
+
 function handleCodexEvent(obj: unknown, onEvent: StreamEventHandler, state: ParserState): boolean {
   if (!isRecord(obj)) return false;
+  if (handleCodexAppServerNotification(obj, onEvent, state)) return true;
 
   if (obj.type === 'error') {
     const message = extractErrorMessage(obj.message ?? obj.error, 'Codex error');
@@ -944,6 +1094,7 @@ export function createJsonEventStreamHandler(
     codexErrorEmitted: false,
     codexPreviousEventWasAgentMessage: false,
     codexLastAgentMessageEndedWithNewline: false,
+    codexAgentMessageDeltaItems: new Set<string>(),
     codexReasoningEmittedByItem: new Map<string, number>(),
     codexReasoningEmittedAny: false,
     suppressNextArtifactText: false,

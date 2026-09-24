@@ -156,6 +156,15 @@ export type ToolPackConfig = {
    * `POSTHOG_CLI_PROJECT_ID` (or the alias `POSTHOG_PROJECT_ID`) in CI.
    * Required for upload to be attempted; missing → strip-only path.
    */
+  /**
+   * HDW backend path prefix override, sourced from `OD_HDW_PATH_PREFIX` at
+   * packaging time. Baked into `open-design-config.json` so the packaged
+   * runtime can forward it to the daemon as `OD_HDW_PATH_PREFIX`, where
+   * `resolveHdwAddress` uses it instead of the hardcoded
+   * `PROD_HDW_PATH_PREFIX` constant. Absent for builds that want the
+   * default `/hik-plugin/hidesign-web/hdw` prefix.
+   */
+  hdwPathPrefix?: string;
   posthogCliProjectId?: string;
   updateMetadataUrl?: string;
   /**
@@ -285,6 +294,23 @@ function resolveToolPackVelaWebUrls(env: NodeJS.ProcessEnv): ToolPackVelaWebUrls
     if (origin) result[profile] = origin;
   }
   return Object.keys(result).length > 0 ? result : undefined;
+}
+
+/**
+ * HDW path prefix override. Must start with `/` and contain no whitespace.
+ * An empty or absent value means "use the default constant".
+ */
+function resolveToolPackHdwPathPrefix(value: string | undefined): string | undefined {
+  if (value == null) return undefined;
+  const normalized = value.trim();
+  if (normalized.length === 0) return undefined;
+  if (!normalized.startsWith('/')) {
+    throw new Error(`OD_HDW_PATH_PREFIX must start with '/': ${value}`);
+  }
+  if (/[\s\x00-\x1f]/.test(normalized)) {
+    throw new Error(`OD_HDW_PATH_PREFIX contains whitespace or control chars: ${value}`);
+  }
+  return normalized.replace(/\/+$/, '');
 }
 
 function resolveToolPackPosthogCliApiKey(value: string | undefined): string | undefined {
@@ -440,6 +466,7 @@ export function resolveToolPackConfig(
     posthogHost: resolveToolPackPosthogHost(process.env.POSTHOG_HOST),
     velaWebUrl: resolveToolPackVelaWebUrl(process.env.OD_VELA_WEB_URL),
     velaWebUrls: resolveToolPackVelaWebUrls(process.env),
+    hdwPathPrefix: resolveToolPackHdwPathPrefix(process.env.OD_HDW_PATH_PREFIX),
     posthogCliApiKey: resolveToolPackPosthogCliApiKey(
       process.env.POSTHOG_CLI_API_KEY ?? process.env.POSTHOG_PERSONAL_API_KEY,
     ),

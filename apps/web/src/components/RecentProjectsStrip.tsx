@@ -695,22 +695,7 @@ selectionExtension,
   // Whether a card is team-shared is decided upstream, not here — the grids'
   // 全部项目 / 草稿 partition reads the very same predicate, so the badge and the
   // card's grid can no longer disagree.
- const isShared = isSharedProject ?? NOTHING_SHARED;
-  // Deterministic background colour for the owner avatar circle, derived
-  // from the member id so the same person always gets the same hue.
-  function ownerAvatarColor(memberId: string | null): string {
-    if (!memberId) return '#1a1917';
-    const palette = [
-      '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316',
-      '#f59e0b', '#eab308', '#84cc16', '#22c55e', '#14b8a6',
-      '#06b6d4', '#0ea5e9', '#3b82f6', '#a855f7', '#d946ef',
-    ];
-    let hash = 0;
-    for (let i = 0; i < memberId.length; i++) {
-      hash = ((hash << 5) - hash + memberId.charCodeAt(i)) | 0;
-    }
-    return palette[Math.abs(hash) % palette.length] ?? '#1a1917';
-  }
+const isShared = isSharedProject ?? NOTHING_SHARED;
 // The card owner avatar: first character of the owner display name with a
 // deterministic background colour. The HDW backend JOIN provides
 // ownerDisplayName directly; the UI shows "我" for self-owned projects.
@@ -2397,11 +2382,7 @@ function requestDelete(project: Project) {
                           className="recent-projects__card-owner"
                           title={creator.name}
                           style={{
-                            backgroundColor: isTeamSeriesView
-                              ? creator.name === t('recentProjects.teamMemberCreator')
-                                ? '#0ea5e9'
-                                : ownerAvatarColor(creator.memberId)
-                              : avatarColorFor(creator.name),
+                            backgroundColor: avatarColorFor(creator.memberId ?? creator.name),
                           }}
                           aria-hidden
                         >

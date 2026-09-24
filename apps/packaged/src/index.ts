@@ -256,9 +256,10 @@ async function main(): Promise<void> {
     telemetryRelayUrl: activeConfig.telemetryRelayUrl,
     posthogKey: activeConfig.posthogKey,
     posthogHost: activeConfig.posthogHost,
-    velaWebUrl: activeConfig.velaWebUrl,
-    velaWebUrls: activeConfig.velaWebUrls,
-    // PR #974 round-5 (lefarcen P2): the Electron entry runs desktop
+   velaWebUrl: activeConfig.velaWebUrl,
+   velaWebUrls: activeConfig.velaWebUrls,
+    hdwPathPrefix: activeConfig.hdwPathPrefix,
+   // PR #974 round-5 (lefarcen P2): the Electron entry runs desktop
     // main alongside the daemon, so the import-folder gate must be
     // pinned ON from request 0. See `apps/packaged/src/headless-runtime.ts`
     // for the windowless counterpart that passes `false`.

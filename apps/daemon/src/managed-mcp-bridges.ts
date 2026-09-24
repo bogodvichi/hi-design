@@ -123,9 +123,10 @@ export function resolveManagedMcpBridgesForServerIds(
 
 /**
  * Resolve bridges for one run. Persisted enabled servers remain available as
- * before; a project-local managed server is added only when that same id was
- * explicitly selected for the run. The intersection prevents a stale project
- * file from silently re-enabling a server the user did not ask to use.
+ * before; project-local managed servers are added only when their id is in the
+ * runtime MCP plan (project binding, explicit/required turn intent, mention, or
+ * run-scoped bundle). The intersection prevents unrelated stale project files
+ * from silently re-enabling capabilities outside the current runtime plan.
  */
 export function resolveRunManagedMcpBridges(
   servers: McpServerConfig[],

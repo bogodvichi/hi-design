@@ -73,18 +73,28 @@ describe('chat run context helpers', () => {
     expect(prompt).toContain('- Figma (`figma`)');
   });
 
-  it('requires an explicit tool attempt for every selected MCP server', () => {
+  it('treats a selected MCP as preferred when relevant, not as a mandatory no-op call', () => {
     const prompt = renderRunContextPrompt(
       { mcpServerIds: ['himind'] },
       { contextMcpServers: [{ id: 'himind', label: 'HiMind' }] },
     );
 
-    expect(prompt).toContain('make at least one relevant tool call to each selected server');
-    expect(prompt).toContain('do not silently substitute local files or general knowledge');
+    expect(prompt).toContain('Use a selected server when it is relevant to the request');
+    expect(prompt).toContain('Do not make a no-op tool call merely to satisfy the selection');
+    expect(prompt).not.toContain('make at least one relevant tool call to each selected server');
     expect(prompt).toContain('- HiMind (`himind`)');
   });
 
-  it('renders only selected MCP intent for native prompt mode', () => {
+  it('keeps project MCP bindings available without treating them as native turn selections', () => {
+    const prompt = renderSelectedMcpRunContextPrompt(
+      { workspaceItems: [{ id: 'brief', kind: 'file', label: 'brief.md' }] },
+      { contextMcpServers: [{ id: 'himind', label: 'HiMind' }] },
+    );
+
+    expect(prompt).toBe('');
+  });
+
+  it('renders only explicit turn MCP intent for native prompt mode', () => {
     const prompt = renderSelectedMcpRunContextPrompt(
       {
         mcpServerIds: ['himind'],
@@ -94,8 +104,29 @@ describe('chat run context helpers', () => {
     );
 
     expect(prompt).toContain('## Selected run context');
-    expect(prompt).toContain('make at least one relevant tool call to each selected server');
+    expect(prompt).toContain('Use a selected server when it is relevant to the request');
+    expect(prompt).toContain('Do not make a no-op tool call merely to satisfy the selection');
     expect(prompt).toContain('- HiMind (`himind`)');
     expect(prompt).not.toContain('Active workspace context');
+  });
+
+  it('reserves mandatory tool calls for required MCP servers', () => {
+    const prompt = renderSelectedMcpRunContextPrompt(
+      {
+        mcpServerIds: ['optional'],
+        requiredMcpServerIds: ['himind'],
+      },
+      {
+        contextMcpServers: [
+          { id: 'optional', label: 'Optional MCP' },
+          { id: 'himind', label: 'HiMind' },
+        ],
+      },
+    );
+
+    expect(prompt).toContain('### Selected MCP servers');
+    expect(prompt).toContain('### Required MCP servers');
+    expect(prompt).toContain('make at least one relevant tool call to each required server');
+    expect(prompt).toContain('- HiMind (`himind`)');
   });
 });

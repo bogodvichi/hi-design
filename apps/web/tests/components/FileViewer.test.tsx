@@ -12688,9 +12688,63 @@ describe('FileViewer tweaks toolbar', () => {
 
     const item = await screen.findByTestId('comment-side-item');
     await waitFor(() => {
-      expect(item.querySelector('.comment-side-avatar')?.textContent).toBe('琼');
+      expect(item.querySelector('.comment-card-avatar')?.textContent).toBe('琼');
     });
     expect(within(item).getByText(/琼羽/)).toBeTruthy();
+  });
+
+  it('renders the authoritative display name returned with a saved comment', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = typeof input === 'string' ? input : input.toString();
+        if (url.includes('/api/workspace/members')) {
+          return new Response(JSON.stringify({ members: [] }), { status: 200 });
+        }
+        return new Response(JSON.stringify({}), { status: 200 });
+      }),
+    );
+
+    const comment: PreviewComment = {
+      id: 'comment-authoritative-name',
+      projectId: 'project-1',
+      conversationId: 'conversation-1',
+      filePath: 'preview.html',
+      elementId: 'hero-copy',
+      selector: '[data-od-id="hero-copy"]',
+      label: 'Hero copy',
+      text: 'Hero copy',
+      htmlHint: '<p data-od-id="hero-copy">',
+      position: { x: 16, y: 24, width: 320, height: 48 },
+      note: 'Tighten this headline.',
+      status: 'open',
+      authorMemberId: 'whlfdmlo8z6tdono56inonlzl',
+      authorDisplayName: '叶波',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    render(
+      <CommentSidePanel
+        comments={[comment]}
+        selectedIds={new Set()}
+        activeCommentId={null}
+        collapsed={false}
+        onCollapsedChange={() => {}}
+        onToggleSelect={() => {}}
+        onSelectAll={() => {}}
+        onClearSelection={() => {}}
+        onReply={() => {}}
+        onSendSelected={() => {}}
+        sending={false}
+        t={t}
+      />,
+    );
+
+    const item = await screen.findByTestId('comment-side-item');
+    expect(within(item).getByText('叶波')).toBeTruthy();
+    expect(within(item).queryByText('whlfdmlo8z6tdono56inonlzl')).toBeNull();
+    expect(item.querySelector('.comment-card-avatar')?.textContent).toBe('叶');
   });
 
   it('leaves a comment by an unresolved other member on its id-only rendering', async () => {

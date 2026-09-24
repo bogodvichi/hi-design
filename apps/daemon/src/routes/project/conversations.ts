@@ -5,7 +5,6 @@ import { backfillBrandExtractionTranscriptForProject } from '../../brands/index.
 import type { RouteDeps } from '../../server-context.js';
 import type { BoundWorkspaceResourceMutationGate } from '../../collab/workspace-resource-mutation.js';
 import type { AuthorizeProjectRequest } from '../../collab/project-request-authority.js';
-import { readSsoConfigFile } from '../../http/hik_logins/hicoo.js';
 import { TERMINAL_RUN_STATUSES } from '../../runtimes/runs.js';
 import { strategyTaskTurnsForRunIds } from '../../strategies/task-store.js';
 
@@ -37,6 +36,8 @@ export interface RegisterProjectConversationRoutesDeps extends RouteDeps<'db' | 
    * isolation, are not forced to stub unrelated HTTP helpers.
    */
   sendApiError?: (res: any, status: number, code: string, message: string) => unknown;
+  /** Runtime data root threaded to comment writes for the current SSO fallback. */
+  runtimeDataDir?: string;
 }
 
 function normalizeChatSessionMode(value: unknown): ChatSessionMode {
@@ -64,15 +65,6 @@ export function registerProjectConversationRoutes(app: Express, ctx: RegisterPro
   const { BRANDS_DIR, PROJECTS_DIR } = ctx.paths;
   const { readAppConfig } = ctx.appConfig;
   const { getAgentDef } = ctx.agents;
-  const ssoSession = ctx.paths.RUNTIME_DATA_DIR
-    ? readSsoConfigFile(ctx.paths.RUNTIME_DATA_DIR)
-    : null;
-  const ssoDisplayName =
-    typeof ssoSession?.userInfo?.displayName === 'string'
-      ? ssoSession.userInfo.displayName.trim()
-      : typeof ssoSession?.userInfo?.name === 'string'
-        ? ssoSession.userInfo.name.trim()
-        : '';
   // Production registration always injects the shared project authority gate.
   // The fallback preserves narrow unit fixtures whose in-memory projects have
   // no Workspace binding and do not construct the full server authority graph.
@@ -604,5 +596,5 @@ export function registerProjectConversationRoutes(app: Express, ctx: RegisterPro
     res.json({ message: saved });
   });
 
-  registerProjectCommentRoutes(app, { ...ctx, ssoDisplayName });
+  registerProjectCommentRoutes(app, { ...ctx, runtimeDataDir: ctx.paths.RUNTIME_DATA_DIR });
 }

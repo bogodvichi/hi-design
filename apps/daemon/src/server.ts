@@ -69,6 +69,7 @@ import { getDefaultTeamId, getTeamMemberId } from './ids.js';
 import { fetchHdwTeams, hdwPut } from './http/hdw.js';
 import { fetchAiResearchMcpToken, fetchHiMindMcpToken } from './http/hdw.js';
 import { fetchSharedSpaceInfo } from './http/hdw.js';
+import { getSsoUser } from './sso-user.js';
 import { OPEN_DESIGN_PLUGIN_ID } from './mcp-observability.js';
 import {
   resolveDaemonCliPath,
@@ -157,6 +158,8 @@ import {
   renderRunContextPrompt,
   renderSelectedMcpRunContextPrompt,
 } from './runtimes/chat-run-context.js';
+import { buildRunMcpPlan } from './runtimes/run-mcp-plan.js';
+import { decideCodexTransport, resolveCodexTransport } from './runtimes/codex-transport.js';
 import {
   daemonAgentPayloadToPersistedAgentEvent,
   persistRunEventToAssistantMessage,
@@ -481,6 +484,14 @@ import {
 import { narrowProjectCritiqueOverride } from './critique/spawn-inputs.js';
 import { createCopilotStreamHandler } from './copilot-stream.js';
 import { createJsonEventStreamHandler } from './runtimes/json-event-stream.js';
+import {
+  createCodexAppServerVirtualChild,
+  shutdownCodexAppServers,
+} from './runtimes/codex-app-server.js';
+import {
+  codexNeedsDangerFullAccessSandbox,
+  codexOpenDesignShellEnvironmentArgs,
+} from './runtimes/defs/codex.js';
 import {
   ensureDetectedRuntimeVersions,
   getDetectedRuntimeVersions,
@@ -3538,6 +3549,7 @@ export async function startServer({
          // The HDW /team/my endpoint may also return the shared space as a
          // regular team. Filter it out so it doesn't appear twice.
          const sharedSpaceId = sharedSpaceInfo?.workspace_id ?? '';
+         const ssoDisplayName = getSsoUser(RUNTIME_DATA_DIR)?.displayName || '';
          const filteredTeams = sharedSpaceId
            ? hdwTeams.filter(t => t.workspace_id !== sharedSpaceId)
            : hdwTeams;
@@ -3547,6 +3559,7 @@ export async function startServer({
              workspaceName: t.workspace_name,
              workspaceType: 'team' as const,
              workspaceMemberId: t.workspace_member_id,
+             displayName: ssoDisplayName,
              role: t.role,
              memberStatus: 'active' as const,
              lifecycleState: 'active' as const,
@@ -3556,6 +3569,7 @@ export async function startServer({
              workspaceName: sharedSpaceInfo.workspace_name,
              workspaceType: 'team' as const,
              workspaceMemberId: sharedSpaceInfo.workspace_member_id,
+             displayName: ssoDisplayName,
              role: 'member',//sharedSpaceInfo.role,
              memberStatus: 'active' as const,
              lifecycleState: 'active' as const,
@@ -3651,16 +3665,19 @@ export async function startServer({
     }
     return {
       ok: true as const,
-      context: workspaceContextFromDirectoryItem({
-        workspaceId: claimed.workspaceId,
-        workspaceName: claimed.workspaceId,
-        workspaceType: claimed.workspaceType,
-        workspaceMemberId: claimed.workspaceMemberId,
-        role: claimed.role,
-        memberStatus: claimed.memberStatus,
-        lifecycleState: claimed.lifecycleState,
-        ...(claimed.isDefaultTeam ? { isDefaultTeam: true } : {}),
-      }, configuredAmrEnv()),
+      context: {
+        ...workspaceContextFromDirectoryItem({
+          workspaceId: claimed.workspaceId,
+          workspaceName: claimed.workspaceId,
+          workspaceType: claimed.workspaceType,
+          workspaceMemberId: claimed.workspaceMemberId,
+          role: claimed.role,
+          memberStatus: claimed.memberStatus,
+          lifecycleState: claimed.lifecycleState,
+          ...(claimed.isDefaultTeam ? { isDefaultTeam: true } : {}),
+        }, configuredAmrEnv()),
+        displayName: getSsoUser(RUNTIME_DATA_DIR)?.displayName,
+      },
     };
   };
   const verifyWorkspaceReadAuthority = (req: unknown) =>
@@ -4971,6 +4988,7 @@ export async function startServer({
     try {
       const shareAccess = await resolveShareAccess(projectId, req);
       if (shareAccess) {
+        const shareDisplayName = getSsoUser(RUNTIME_DATA_DIR)?.displayName;
         return {
          ok: true as const,
         context: {
@@ -4981,6 +4999,7 @@ export async function startServer({
            role: 'member' as const,
            memberStatus: 'active' as const,
            lifecycleState: 'active' as const,
+          ...(shareDisplayName ? { displayName: shareDisplayName } : {}),
           isSharedSpace: true,
           collaboratorMemberId: shareAccess.viewerMemberId,
         } as any,
@@ -4992,6 +5011,7 @@ export async function startServer({
     const local = resolveOptionalLocalWorkspaceRequestAuthority(req);
     if (!local.ok) return local;
    if (local.context) {
+     const localDisplayName = getSsoUser(RUNTIME_DATA_DIR)?.displayName;
      if (
         binding.visibility !== 'team'
         && (
@@ -5014,6 +5034,7 @@ export async function startServer({
         ok: true as const,
         context: {
           ...local.context,
+          ...(localDisplayName ? { displayName: localDisplayName } : {}),
           workspaceType: binding.visibility === 'team' ? 'team' : 'personal',
           ...(binding.visibility === 'team'
             ? { teamId: binding.workspaceId }
@@ -5023,6 +5044,7 @@ export async function startServer({
     }
     const persistedMemberId = binding.createdByWorkspaceMemberId?.trim()
       || 'local-user';
+    const fallbackDisplayName = getSsoUser(RUNTIME_DATA_DIR)?.displayName;
     return {
       ok: true as const,
       context: workspaceContextFromDirectoryItem({
@@ -5033,6 +5055,7 @@ export async function startServer({
         role: 'member',
         memberStatus: 'active',
         lifecycleState: 'active',
+        ...(fallbackDisplayName ? { displayName: fallbackDisplayName } : {}),
       }, configuredAmrEnv()),
     };
   };
@@ -7416,7 +7439,86 @@ const designSystemBackingProjects = new Map<string, string>();
     }
   });
 
-  // ---- Cloud skill catalog: browse HDW resources and install on demand ----
+ // ---- Cloud skill catalog: browse HDW resources and install on demand ----
+  // Cross-workspace skill restore: search the MAAS skillhub global catalog
+  // first (no workspace context required), then fall back to HDW cloud
+  // resources within the caller's workspace (workspace-scoped, requires
+  // workspace headers). If found in either source, install locally so the
+  // skill appears in the Skills submenu's "历史" tab.
+  app.post('/api/skills/cloud-restore', async (req: any, res: any) => {
+    const skillId = typeof req.query.skillId === 'string' ? req.query.skillId.trim() : '';
+    if (!skillId) return res.status(400).json({ error: 'skillId is required' });
+
+    // Already installed locally?
+    const existing = findSkillById(await listAllSkills(), skillId);
+    if (existing) {
+      return res.json({ installed: true, localId: skillId, alreadyInstalled: true });
+    }
+
+    // 1. Search the MAAS skillhub global catalog by local ID.
+    try {
+      const { workspaceId: maasWorkspaceId, skills: resources } = await maasSkillhubClient.listSkills('');
+      const maasMatch = resources.find((skill) => {
+        try {
+          return maasSkillLocalId(skill).toLowerCase() === skillId.toLowerCase();
+        } catch {
+          return false;
+        }
+      });
+      if (maasMatch?.id) {
+        const materialized = await installMaasSkillLocally(
+          USER_SKILLS_DIR,
+          `maas-skill-${maasMatch.id}`,
+          maasMatch.skillName || maasSkillLocalId(maasMatch),
+          (stagedFolder) => maasSkillhubClient.downloadSkillInto(
+            maasWorkspaceId,
+            maasMatch.id,
+            stagedFolder,
+          ),
+          async (candidateId) => {
+            return !findSkillById(await listSkills(USER_SKILLS_DIR), candidateId);
+          },
+        );
+        return res.json({ installed: true, localId: materialized.localId });
+      }
+    } catch (err: any) {
+      // MAAS search failed — continue to HDW fallback below.
+    }
+
+    // 2. Search HDW cloud resources within the caller's workspace.
+    // The HDW resources table is workspace-scoped, so this requires
+    // workspace context from the request headers. If no workspace context
+    // is provided, we can't search HDW and return not-found.
+    try {
+      const resolution = await resolveTeamResourceScope(req);
+      if (resolution.ok && hdwCloudClient) {
+        const scope = resolution.scope;
+        const workspaceId = scope.principal.teamId;
+        const resources = await hdwCloudClient.listResources(workspaceId, 'skill');
+        const hdwMatch = resources.find((r) => {
+          const localId = (r.metadata as any)?.localId ?? r.id;
+          return typeof localId === 'string' && localId.toLowerCase() === skillId.toLowerCase();
+        });
+        if (hdwMatch) {
+          const localId = (hdwMatch.metadata as any)?.localId ?? hdwMatch.id;
+          const record: TeamResourceShareRecord = {
+            id: localId,
+            hubResourceId: hdwMatch.id,
+            ownerMemberId: hdwMatch.ownerMemberId,
+            versionId: hdwMatch.versionId ?? undefined,
+            version: hdwMatch.version ?? undefined,
+          };
+          await syncSharedTeamSkill(record, scope, true);
+          return res.json({ installed: true, localId });
+        }
+      }
+    } catch (err: any) {
+      // HDW search failed — fall through to not-found.
+    }
+
+    return res.json({ installed: false });
+  });
+
   app.get('/api/workspace/skills/cloud/check', async (req: any, res: any) => {
     const resolution = await resolveTeamResourceScope(req);
     if (!resolution.ok) {
@@ -9178,6 +9280,11 @@ const projectRouteResult = registerProjectRoutes(app, {
    desktopArtifactExporter,
    daemonUrlRef,
    hdwCloudClient,
+   notifyTeamProjectCoverChanged: (workspaceId, projectId) =>
+     emitTeamProjectsChanged(workspaceId, {
+       projectId,
+       kind: 'metadata',
+     }),
    // Same provider `collab` was built with (collab.workspaceContext ===
     // workspaceContext) — see the mutation-gate cross-check note above.
     verifyWorkspaceReadAuthority,
@@ -11641,6 +11748,11 @@ const projectRouteResult = registerProjectRoutes(app, {
       );
     if (!def.bin)
       return failRun('AGENT_UNAVAILABLE', 'agent has no binary');
+    run.agentTransportRequested = def.id === 'codex'
+      ? resolveCodexTransport(process.env)
+      : 'process';
+    run.agentTransport = def.id === 'codex' ? 'exec' : 'process';
+    run.agentTransportFallbackReason = null;
     const byokOpenCodeProvider = def.id === 'byok-opencode'
       ? buildOpenCodeByokProviderConfig(
           byokProvider,
@@ -12015,21 +12127,26 @@ const projectRouteResult = registerProjectRoutes(app, {
       ...projectMetadataMcpServerIds,
       ...resolveManagedMcpBridgeServerIds(process.env),
     ]);
-    const selectedRunMcpServerIds = new Set([
-      ...(normalizeRunContextSelection(context).mcpServerIds ?? []),
-      ...projectMetadataMcpServerIds,
-      ...runScopedMcpServers.map((server) => server.id),
-      ...resolveMentionedMcpServerIds(telemetryPrompt, availableMcpServerIds),
-    ]);
-    // Project-local entries are a fallback only. They are activated solely by
-    // explicit selection/@mention, and a daemon-persisted or run-scoped server
-    // with the same id wins so stale project credentials cannot override it.
+    const runMcpPlan = buildRunMcpPlan({
+      projectBindingIds: projectMetadataMcpServerIds,
+      context,
+      runScopedServerIds: runScopedMcpServers.map((server) => server.id),
+      mentionedServerIds: resolveMentionedMcpServerIds(
+        telemetryPrompt,
+        availableMcpServerIds,
+      ),
+    });
+    const runtimeMcpServerIds = new Set(runMcpPlan.runtimeServerIds);
+    // Project-local entries are the materialized form of project bindings.
+    // A bound/selected/required/mentioned/run-scoped id may activate one, while
+    // a daemon-persisted server with the same id still wins so stale project
+    // credentials cannot override the authoritative configuration.
     const configuredMcpServerIds = new Set(
       enabledExternalMcp.map((server) => server.id),
     );
     for (const server of projectMcpServers) {
       if (
-        selectedRunMcpServerIds.has(server.id)
+        runtimeMcpServerIds.has(server.id)
         && !configuredMcpServerIds.has(server.id)
       ) {
         enabledExternalMcp.push(server);
@@ -12037,7 +12154,7 @@ const projectRouteResult = registerProjectRoutes(app, {
       }
     }
     let projectManagedMcpServerIds = new Set<string>();
-    if (def.managedMcpBridges && cwd && selectedRunMcpServerIds.size > 0) {
+    if (def.managedMcpBridges && cwd && runtimeMcpServerIds.size > 0) {
       try {
         projectManagedMcpServerIds = await readProjectManagedMcpBridgeServerIds(
           cwd,
@@ -12059,7 +12176,7 @@ const projectRouteResult = registerProjectRoutes(app, {
     const activeManagedMcpBridges = resolveRunManagedMcpBridges(
       enabledExternalMcp,
       projectManagedMcpServerIds,
-      selectedRunMcpServerIds,
+      runtimeMcpServerIds,
       process.env,
     );
     if (activeManagedMcpBridges.length > 0) {
@@ -12079,7 +12196,7 @@ const projectRouteResult = registerProjectRoutes(app, {
       def.externalMcpInjection === 'codex-run-bridge'
         ? buildCodexExternalMcpBridgeInjection({
             servers: enabledExternalMcp,
-            selectedServerIds: selectedRunMcpServerIds,
+            selectedServerIds: runtimeMcpServerIds,
             managedServerIds: managedMcpBridgeServerIds,
             oauthTokens: oauthTokensForSpawn,
             command: process.execPath,
@@ -12271,24 +12388,29 @@ const projectRouteResult = registerProjectRoutes(app, {
     // no-project runs (packaged daemons / service launches do not start
     // their working directory from the workspace root).
     const effectiveCwd = cwd ?? PROJECT_ROOT;
-    // Baseline the project's artifact files before the agent runs, so the
-    // run-finished handler can diff against them and report `artifact_count`
-    // for ANY agent (not just claude_code). Only for real project runs: a
-    // null `cwd` means a no-project run rooted at PROJECT_ROOT, whose churn is
-    // not the user's artifacts — those fall back to the tool-stream count.
-    if (run?.id && cwd) {
-      try {
-        const before = await snapshotProjectArtifactsAsync(cwd);
-        // Async I/O lets cancellation/finalization interleave with the scan.
-        // In that case onFinalize already recorded the fallback outcome, so
-        // do not leave a stale baseline behind for a completed run.
-        if (!run.artifactOutcome && !design.runs.isTerminal(run.status)) {
-          runArtifactBaselines.remember(run.id, cwd, before);
-        }
-      } catch {
-        // Snapshotting is best-effort; finish falls back to the tool-stream count.
+    // Start the project-artifact baseline immediately, but do not block the
+    // prompt/session/MCP/runtime preparation that follows. We join this promise
+    // immediately before the agent can execute, preserving the exact "before"
+    // semantics while moving the directory walk off the critical path.
+    const artifactBaselinePromise =
+      run?.id && cwd
+        ? snapshotProjectArtifactsAsync(cwd)
+            .then((before) => ({ cwd, before }))
+            .catch(() => null)
+        : Promise.resolve(null);
+    let artifactBaselineRegistered = false;
+    const registerArtifactBaselineBeforeAgentStart = async () => {
+      if (artifactBaselineRegistered) return;
+      artifactBaselineRegistered = true;
+      const baseline = await artifactBaselinePromise;
+      if (
+        baseline
+        && !run.artifactOutcome
+        && !design.runs.isTerminal(run.status)
+      ) {
+        runArtifactBaselines.remember(run.id, baseline.cwd, baseline.before);
       }
-    }
+    };
     const latestRunPromptForHtmlVersionSnapshot = () => {
       if (run.conversationId) {
         try {
@@ -13944,6 +14066,10 @@ const projectRouteResult = registerProjectRoutes(app, {
       antigravityModelLockRelease = await acquireAntigravityModelLock();
     }
 
+    const autoApprovedTurnMcpIds = new Set([
+      ...runMcpPlan.explicitTurnSelectionIds,
+      ...runMcpPlan.requiredServerIds,
+    ]);
     const runtimeMcpBridges = [
       ...(def.managedMcpBridges
         ? activeManagedMcpBridges.map((bridge) => ({
@@ -13952,10 +14078,50 @@ const projectRouteResult = registerProjectRoutes(app, {
             args: [OD_BIN, ...bridge.cliArgs],
             env: { ELECTRON_RUN_AS_NODE: '1', ...bridge.env },
             envVars: ['OD_DAEMON_URL', 'OD_TOOL_TOKEN'],
+            ...(autoApprovedTurnMcpIds.has(bridge.serverId)
+              ? { approvalMode: 'approve' as const }
+              : {}),
           }))
         : []),
-      ...codexExternalMcpBridgeInjection.bridges,
+      ...codexExternalMcpBridgeInjection.bridges.map((bridge) => ({
+        ...bridge,
+        ...(autoApprovedTurnMcpIds.has(bridge.id)
+          ? { approvalMode: 'approve' as const }
+          : {}),
+      })),
     ];
+    const codexPluginIsolation =
+      def.id === 'codex'
+      && run.externalPluginAnalytics?.externalPluginId === OPEN_DESIGN_PLUGIN_ID;
+    const codexTransportDecision = def.id === 'codex'
+      ? decideCodexTransport({
+          requested:
+            run.agentTransportRequested === 'app-server' ? 'app-server' : 'exec',
+          nativePromptCore,
+          hasMcpBridges: runtimeMcpBridges.length > 0,
+          hasStrategyTask: strategyTaskAtStart !== null,
+          hasImageInput: promptImagePaths.length > 0,
+          pluginIsolation: codexPluginIsolation,
+          hasExplicitSkill:
+            Boolean(effectiveRunSkillId)
+            || (Array.isArray(skillIds)
+              && skillIds.some((id) => typeof id === 'string' && id.trim().length > 0)),
+          platformSupportsAppServer: process.platform !== 'win32',
+        })
+      : null;
+    const useCodexAppServer = codexTransportDecision?.actual === 'app-server';
+    if (codexTransportDecision) {
+      run.agentTransport = codexTransportDecision.actual;
+      run.agentTransportFallbackReason = codexTransportDecision.fallbackReason;
+      if (codexTransportDecision.fallbackReason) {
+        design.runs.emit(run, 'diagnostic', {
+          type: 'codex_transport_fallback',
+          requested: codexTransportDecision.requested,
+          actual: codexTransportDecision.actual,
+          reason: codexTransportDecision.fallbackReason,
+        });
+      }
+    }
     let args;
     const observeClaudeNativeChildBehavior =
       def.id === 'claude' && strategyTaskAtStart !== null;
@@ -13990,36 +14156,39 @@ const projectRouteResult = registerProjectRoutes(app, {
       // Optional argv flags are gated on the `--help` capability map, which used
       // to be filled only by `GET /api/agents`. Probe it here so a daemon that
       // has never served that route still builds the same argv as one that has.
-      await ensureDetectedRuntimeCapabilities(def.id, configuredAgentEnv);
-      args = def.buildArgs(
-        composed,
-        promptImagePaths,
-        extraAllowedDirs,
-        agentOptions,
-        {
-          cwd: effectiveCwd,
-          hasPriorAssistantTurn,
-          agentLogFilePath,
-          promptFilePath: promptFile?.path,
-          resumeSessionId: agentResumePromptPolicy.resumeSessionId,
-          newSessionId: agentResumeCtx.newSessionId,
-          disablePlugins:
-            def.id === 'codex'
-            && run.externalPluginAnalytics?.externalPluginId
-              === OPEN_DESIGN_PLUGIN_ID,
-          ...(runtimeMcpBridges.length > 0
-            ? {
-                mcpBridges: runtimeMcpBridges,
-              }
-            : {}),
-          ...(nativeBuildPackageBindings.length > 0
-            ? { nativeBuildPackageBindings }
-            : {}),
-          ...(observeClaudeNativeChildBehavior
-            ? { observeNativeChildBehavior: true }
-            : {}),
-        },
-      );
+      if (useCodexAppServer) {
+        // app-server receives model/cwd/sandbox/turn input through JSON-RPC,
+        // not through the legacy `codex exec` argv surface.
+        args = [];
+      } else {
+        await ensureDetectedRuntimeCapabilities(def.id, configuredAgentEnv);
+        args = def.buildArgs(
+          composed,
+          promptImagePaths,
+          extraAllowedDirs,
+          agentOptions,
+          {
+            cwd: effectiveCwd,
+            hasPriorAssistantTurn,
+            agentLogFilePath,
+            promptFilePath: promptFile?.path,
+            resumeSessionId: agentResumePromptPolicy.resumeSessionId,
+            newSessionId: agentResumeCtx.newSessionId,
+            disablePlugins: codexPluginIsolation,
+            ...(runtimeMcpBridges.length > 0
+              ? {
+                  mcpBridges: runtimeMcpBridges,
+                }
+              : {}),
+            ...(nativeBuildPackageBindings.length > 0
+              ? { nativeBuildPackageBindings }
+              : {}),
+            ...(observeClaudeNativeChildBehavior
+              ? { observeNativeChildBehavior: true }
+              : {}),
+          },
+        );
+      }
     } catch (err) {
       cleanupPromptFile();
       throw err;
@@ -14530,6 +14699,7 @@ const projectRouteResult = registerProjectRoutes(app, {
       projectDir: cwd,
       projectId: typeof projectId === 'string' ? projectId : null,
     });
+    await registerArtifactBaselineBeforeAgentStart();
     if (run.cancelRequested || design.runs.isTerminal(run.status)) {
       cleanupPromptFile();
       revokeToolToken('child_exit');
@@ -14670,29 +14840,49 @@ const projectRouteResult = registerProjectRoutes(app, {
           : {}),
       }, agentLaunch);
       spawnedAgentEnv = env;
-      const invocation = createCommandInvocation({
-        command: agentLaunch.launchPath,
-        args,
-        env,
-      });
       lifecycle.mark('launch_preflight_end');
       lifecycle.mark('process_spawn_start');
-      child = spawn(invocation.command, invocation.args, {
-        env,
-        stdio: [stdinMode, 'pipe', 'pipe'],
-        cwd: effectiveCwd,
-        shell: false,
-        detached: process.platform !== 'win32',
-        // Required when invocation wraps a Windows .cmd/.bat shim through
-        // cmd.exe; without this, Node re-escapes the inner command line and
-        // breaks paths containing spaces (issue #315).
-        windowsVerbatimArguments: invocation.windowsVerbatimArguments,
-      });
+      if (useCodexAppServer) {
+        const appServerCommand = agentLaunch.launchPath ?? resolvedBin;
+        child = createCodexAppServerVirtualChild({
+          command: appServerCommand,
+          env,
+          cwd: effectiveCwd,
+          resumeSessionId: agentResumePromptPolicy.resumeSessionId,
+          model: safeModel,
+          reasoning: safeReasoning,
+          serviceTier: safeServiceTier,
+          sandbox: codexNeedsDangerFullAccessSandbox()
+            ? 'danger-full-access'
+            : 'workspace-write',
+          writableRoots: extraAllowedDirs,
+          startupConfigArgs: codexOpenDesignShellEnvironmentArgs(),
+        });
+      } else {
+        const invocation = createCommandInvocation({
+          command: agentLaunch.launchPath,
+          args,
+          env,
+        });
+        child = spawn(invocation.command, invocation.args, {
+          env,
+          stdio: [stdinMode, 'pipe', 'pipe'],
+          cwd: effectiveCwd,
+          shell: false,
+          detached: process.platform !== 'win32',
+          // Required when invocation wraps a Windows .cmd/.bat shim through
+          // cmd.exe; without this, Node re-escapes the inner command line and
+          // breaks paths containing spaces (issue #315).
+          windowsVerbatimArguments: invocation.windowsVerbatimArguments,
+        });
+      }
       lifecycle.mark('process_spawned');
       run.child = child;
       run.childPid = typeof child.pid === 'number' ? child.pid : null;
       run.processGroupId =
-        process.platform !== 'win32' && typeof child.pid === 'number'
+        !useCodexAppServer
+        && process.platform !== 'win32'
+        && typeof child.pid === 'number'
           ? child.pid
           : null;
       // Schedule release of the antigravity model lock once agy's
@@ -17814,6 +18004,7 @@ const projectRouteResult = registerProjectRoutes(app, {
       daemonShuttingDown = true;
       clearTerminalTelemetryFallbackTimers();
       await design.runs.shutdownActive({ graceMs: resolveChatRunShutdownGraceMs() });
+      shutdownCodexAppServers();
       await terminalService.shutdownActive();
       await browserSessionService.shutdownActive();
       await design.analytics.shutdown();

@@ -9,7 +9,7 @@
 }
 
 .modal {
-  width: min(560px, calc(100vw - 32px));
+  width: min(700px, calc(100vw - 32px));
   max-height: min(680px, calc(100vh - 48px));
   display: flex;
   flex-direction: column;
@@ -68,6 +68,107 @@
   padding: 14px 18px;
 }
 
+.browser {
+  display: grid;
+  grid-template-columns: 184px minmax(0, 1fr);
+  height: min(403px, calc(100vh - 205px));
+  min-height: 280px;
+  max-height: 403px;
+  border: 1px dashed var(--color-border, var(--border));
+  border-radius: 8px;
+  background: var(--color-bg-subtle, var(--bg-subtle));
+  overflow: hidden;
+}
+
+.workspaceTree {
+  min-width: 0;
+  padding: 8px;
+  overflow-y: auto;
+  border-right: 1px solid var(--color-border, var(--border));
+  background: color-mix(in srgb, var(--bg-elevated) 68%, transparent);
+}
+
+.treeRow {
+  appearance: none;
+  width: 100%;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px 0 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.treeRowChild {
+  min-height: 34px;
+  padding-left: 22px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.treeRow:not(.treeRowActive):hover {
+  background: color-mix(in srgb, var(--text-strong) 5%, transparent);
+}
+
+.treeRowActive,
+.treeRowActive:hover,
+.treeRowActive:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--text-strong) 7%, var(--bg-elevated));
+  font-weight: 600;
+}
+
+.treeDisclosure {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.treeLabel {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.treeTag {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill, 999px);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.treeState {
+  padding: 12px 10px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.browserMain {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  overflow: hidden;
+}
+
 .search {
   display: flex;
   align-items: center;
@@ -75,8 +176,8 @@
   height: 36px;
   padding: 0 10px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg);
+  border-radius: 7px;
+  background: var(--bg-elevated);
   color: var(--text-muted);
 }
 
@@ -100,12 +201,15 @@
 }
 
 .list {
-  min-height: 220px;
-  max-height: 380px;
+  box-sizing: border-box;
+  height: 339px;
+  min-height: 0;
+  max-height: 339px;
+  flex: 1 1 auto;
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 2px;
+  padding: 0;
   overflow: auto;
   scrollbar-width: thin;
 }
@@ -116,39 +220,70 @@
   width: 100%;
   min-height: 54px;
   display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) 20px;
+  grid-template-columns: 42px minmax(0, 1fr) 20px;
   gap: 10px;
   align-items: center;
   padding: 7px 10px;
   border: 1px solid transparent;
-  border-radius: var(--radius);
+  border-radius: 6px;
   background: transparent;
   color: var(--text);
   font: inherit;
   text-align: left;
   cursor: pointer;
+  transition: background-color 120ms ease-out, border-color 120ms ease-out;
 }
 
-.item:hover,
-.item:focus-visible {
+.item:not(.itemSelected):hover,
+.item:not(.itemSelected):focus-visible {
   outline: none;
   background: var(--bg-subtle);
 }
 
 .itemSelected {
-  border-color: color-mix(in srgb, var(--text-strong) 30%, var(--border));
-  background: color-mix(in srgb, var(--text-strong) 5%, var(--bg-panel));
+  border-color: transparent;
+  background: var(--color-surface, var(--bg-elevated));
 }
 
-.itemIcon {
-  width: 28px;
-  height: 28px;
+.item.itemSelected:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--color-surface, var(--bg-elevated));
+  box-shadow: none;
+}
+
+.itemCover {
+  position: relative;
+  width: 40px;
+  height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 5px;
   background: var(--bg-subtle);
   color: var(--text-muted);
+}
+
+.itemCoverFallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.itemCoverImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
 }
 
 .itemText {

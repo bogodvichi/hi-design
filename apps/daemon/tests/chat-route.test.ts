@@ -1647,7 +1647,8 @@ process.stdin.on('end', () => {
   const checks = [
     prompt.includes('native-mcp-request') ? 'has-user-request' : 'missing-user-request',
     prompt.includes('## Selected run context') ? 'has-run-context' : 'missing-run-context',
-    prompt.includes('make at least one relevant tool call to each selected server') ? 'has-tool-requirement' : 'missing-tool-requirement',
+    prompt.includes('Use a selected server when it is relevant to the request') ? 'has-tool-preference' : 'missing-tool-preference',
+    prompt.includes('Do not make a no-op tool call merely to satisfy the selection') ? 'has-noop-guard' : 'missing-noop-guard',
     prompt.includes('- himind') ? 'has-himind-selection' : 'missing-himind-selection',
     prompt.includes('@himind') ? 'has-inline-mention' : 'no-inline-mention',
   ];
@@ -1673,7 +1674,8 @@ process.stdin.on('end', () => {
         for (const marker of [
           'has-user-request',
           'has-run-context',
-          'has-tool-requirement',
+          'has-tool-preference',
+          'has-noop-guard',
           'has-himind-selection',
           'no-inline-mention',
         ]) {

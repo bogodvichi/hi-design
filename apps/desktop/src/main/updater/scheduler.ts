@@ -9,8 +9,8 @@ import type { DesktopUpdater, DesktopUpdaterLogger } from "../updater.js";
  * @module updater-scheduler
  *
  * Recurring auto-check scheduling for the desktop updater: initial delay,
- * per-channel polling interval, failure backoff, and the one-shot startup
- * silent payload update. Owns no updater state beyond timer bookkeeping.
+ * per-channel polling interval, and failure backoff. Owns no updater state
+ * beyond timer bookkeeping.
  */
 
 const MIN_SCHEDULED_POLL_DELAY_MS = 1000;
@@ -21,11 +21,6 @@ export type DesktopUpdaterScheduler = {
   stop(reason?: string): void;
 };
 
-type StartupSilentPayloadUpdateOptions = {
-  isEnabled(): Promise<boolean>;
-  requestQuit(): void;
-};
-
 export function createDesktopUpdaterScheduler(
   updater: DesktopUpdater,
   options: {
@@ -34,7 +29,6 @@ export function createDesktopUpdaterScheduler(
     initialDelayMs: number;
     intervalMs: number;
     logger?: DesktopUpdaterLogger;
-    startupSilentPayloadUpdate?: StartupSilentPayloadUpdateOptions;
   },
 ): DesktopUpdaterScheduler {
   const logger = options.logger ?? console;
@@ -44,7 +38,6 @@ export function createDesktopUpdaterScheduler(
   let tickRunning = false;
   let unsubscribe: (() => void) | null = null;
   let warnedZeroDelay = false;
-  let startupTickPending = true;
 
   const clearTimer = () => {
     if (timer == null) return;
@@ -96,41 +89,8 @@ export function createDesktopUpdaterScheduler(
     if (!running || tickRunning) return;
     tickRunning = true;
     let status: DesktopUpdateStatusSnapshot | null = null;
-    const startupTick = startupTickPending;
-    startupTickPending = false;
     try {
-      const startupReady = startupTick && options.startupSilentPayloadUpdate != null
-        ? await updater.status()
-        : null;
       status = await updater.checkForUpdates();
-      if (
-        startupTick
-        && options.startupSilentPayloadUpdate != null
-        && startupReady?.installResult == null
-        && startupReady?.state === DESKTOP_UPDATE_STATES.DOWNLOADED
-        && startupReady.artifact?.type === "payload"
-        && startupReady.capabilities.canApplyInPlace
-        && startupReady.downloadPath != null
-        && startupReady.downloadPath === status.downloadPath
-        && status.installResult == null
-        && status.state === DESKTOP_UPDATE_STATES.DOWNLOADED
-        && status.artifact?.type === "payload"
-        && status.capabilities.canApplyInPlace
-      ) {
-        try {
-          const enabled = await options.startupSilentPayloadUpdate.isEnabled();
-          if (enabled) {
-            status = await updater.installUpdate();
-            if (status.installResult != null) {
-              stop("silent-payload-installed");
-              options.startupSilentPayloadUpdate.requestQuit();
-              return;
-            }
-          }
-        } catch (silentError) {
-          logger.warn("[open-design updater] startup silent payload update failed", silentError);
-        }
-      }
       if (status.installResult != null) {
         stop("installer-opened");
         return;

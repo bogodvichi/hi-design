@@ -1739,7 +1739,7 @@ function renderMetadataBlock(
     lines.push('');
     lines.push('### @ MCP context');
     lines.push(
-      'The user explicitly selected these MCP servers as context. Treat that selection as a request to use them: before answering, make at least one relevant tool call to each selected server. If a selected server is unavailable or its tool call fails, report that failure clearly; do not silently substitute local files or general knowledge unless the user asks for a fallback.',
+      'These MCP servers are bound to the project as available context. Use them when they are relevant to the request, but do not make a no-op tool call merely because a server is listed here. A per-turn explicit selection or workflow requirement may strengthen that intent separately.',
     );
     for (const server of metadata.contextMcpServers) {
       const id = typeof server.id === 'string' ? server.id : '';

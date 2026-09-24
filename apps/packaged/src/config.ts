@@ -55,6 +55,11 @@ export type RawPackagedConfig = {
   webSidecarEntryRelative?: string;
   webStandaloneRoot?: string;
   webOutputMode?: string;
+  // HDW backend path prefix override, baked by tools/pack from
+  // OD_HDW_PATH_PREFIX at packaging time. Forwarded to the daemon
+  // spawn env as OD_HDW_PATH_PREFIX, where resolveHdwAddress uses it
+  // instead of the hardcoded PROD_HDW_PATH_PREFIX constant.
+  hdwPathPrefix?: string;
 };
 
 export type PackagedConfig = {
@@ -75,6 +80,7 @@ export type PackagedConfig = {
   webSidecarEntry: string | null;
   webStandaloneRoot: string | null;
   webOutputMode: PackagedWebOutputMode;
+  hdwPathPrefix: string | null;
 };
 
 async function pathExists(filePath: string): Promise<boolean> {
@@ -234,5 +240,6 @@ export async function readPackagedConfig(): Promise<PackagedConfig> {
     webSidecarEntry,
     webStandaloneRoot,
     webOutputMode,
+    hdwPathPrefix: cleanOptionalString(raw.hdwPathPrefix),
   };
 }

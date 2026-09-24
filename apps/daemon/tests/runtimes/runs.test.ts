@@ -155,6 +155,27 @@ describe('chat run service shutdown', () => {
     vi.useRealTimers();
   });
 
+  it('reports the agent transport in status and execution diagnostics', () => {
+    const runs = createRuns();
+    const run = runs.create({
+      projectId: 'project-1',
+      conversationId: 'conv-1',
+      agentId: 'codex',
+    }) as any;
+    run.agentTransport = 'exec';
+    runs.finish(run, 'succeeded', 0, null);
+
+    expect(runs.statusBody(run)).toMatchObject({
+      agentId: 'codex',
+      agentTransport: 'exec',
+      executionDiagnostics: {
+        environment: {
+          transport: { state: 'available', value: 'exec' },
+        },
+      },
+    });
+  });
+
   it('uses runtime usage attribution when the adapter has no message lifecycle', () => {
     const runs = createRuns();
     const run = runs.create({

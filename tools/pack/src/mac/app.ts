@@ -175,6 +175,7 @@ export function renderMacPackagedConfig(options: {
       ...(options.config.posthogHost == null ? {} : { posthogHost: options.config.posthogHost }),
       ...(options.config.velaWebUrl == null ? {} : { velaWebUrl: options.config.velaWebUrl }),
       ...(options.config.velaWebUrls == null ? {} : { velaWebUrls: options.config.velaWebUrls }),
+      ...(options.config.hdwPathPrefix == null ? {} : { hdwPathPrefix: options.config.hdwPathPrefix }),
       ...(options.usePrebundledStandaloneWeb ? { webSidecarEntryRelative: MAC_PREBUNDLED_WEB_SIDECAR_RELATIVE_PATH } : {}),
       webOutputMode: options.config.webOutputMode,
       ...(options.config.portable ? {} : { namespaceBaseRoot: options.config.roots.runtime.namespaceBaseRoot }),

@@ -470,6 +470,7 @@ export function BoardComposerPopover({
   onDeleteReplyComment,
  replies = [],
  authorDisplayName,
+ currentAuthorDisplayName,
  allowSendToChat = true,
   t,
   scale = 1,
@@ -539,8 +540,10 @@ export function BoardComposerPopover({
   /** Persist deletion of an existing reply. */
   onDeleteReplyComment?: (replyId: string) => void | Promise<boolean | void>;
   /** Persisted replies for the currently open comment thread. */
-  replies?: PreviewComment[];
+ replies?: PreviewComment[];
  authorDisplayName?: string;
+ /** Current viewer's display name for optimistic replies before persistence. */
+ currentAuthorDisplayName?: string;
  allowSendToChat?: boolean;
   t: TranslateFn;
   scale?: number;
@@ -692,8 +695,10 @@ export function BoardComposerPopover({
   const isExistingComment = Boolean(existing);
   const existingResolved = existing?.status === 'resolved';
   const composeVisible = commenting || (isExistingComment && editingExistingComment);
- const authorLabel = authorDisplayName?.trim() || existing?.authorMemberId || '?';
- const authorSeed = authorDisplayName?.trim() || existing?.authorMemberId || '?';
+ const authorLabel = authorDisplayName?.trim() || existing?.authorDisplayName?.trim() || existing?.authorMemberId || '?';
+ const authorSeed = authorDisplayName?.trim() || existing?.authorDisplayName?.trim() || existing?.authorMemberId || '?';
+ const currentAuthorLabel = currentAuthorDisplayName?.trim() || authorLabel;
+ const currentAuthorSeed = currentAuthorDisplayName?.trim() || authorSeed;
  // An attached image alone is enough to send (the element context rides along
   // even without a typed note).
   const hasAnyImage = hasFreshImage || existingImages.length > 0;
@@ -1068,8 +1073,8 @@ export function BoardComposerPopover({
                     reply: undefined as PreviewComment | undefined,
                     note: reply.note,
                     createdAt: reply.createdAt,
-                    authorName: authorLabel,
-                    authorSeed,
+                    authorName: currentAuthorLabel,
+                    authorSeed: currentAuthorSeed,
                   })),
                 ]
                   .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0))
