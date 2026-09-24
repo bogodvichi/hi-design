@@ -831,9 +831,9 @@ export function projectRouteSurfaceState(input: {
   if (input.projectsLoading) return 'loading-projects';
   if (!input.daemonLive) return 'daemon-unavailable';
   if (input.resolutionFailure) {
-    return input.resolutionFailure === 'access-revoked'
-      ? 'missing'
-      : input.resolutionFailure;
+    // By this point `access-revoked` is already handled by the early return
+    // above, so `resolutionFailure` is `missing` or `materialization-failed`.
+    return input.resolutionFailure;
   }
   return 'resolving-deep-link';
 }
