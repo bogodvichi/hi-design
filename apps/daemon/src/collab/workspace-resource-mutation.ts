@@ -44,6 +44,7 @@ export type WorkspaceResourceMutationCapability =
   | 'rename'
   | 'delete'
   | 'duplicate'
+  | 'duplicateProject'
   | 'writeFiles'
   | 'comment';
 
@@ -540,6 +541,18 @@ function workspaceResourceMutationAllowed(
         ctx.memberStatus === 'active' &&
         row.visibility === 'team')
     );
+  }
+  // Copying a shared Team project creates a new project and does not mutate
+  // the source. Every active non-guest Team member therefore has standing to
+  // copy it, while rename/delete/file writes remain creator-only below.
+  // Keep this distinct from the legacy duplicate capability, which is also
+  // used by design-system-copy and must retain creator-only authority.
+  if (
+    resourceType === 'project'
+    && row.visibility === 'team'
+    && capability === 'duplicateProject'
+  ) {
+    return !access.frozen && ctx.memberStatus === 'active' && ctx.role !== 'guest';
   }
   // Plugin, Skill, and Design System bytes live in shared daemon registries.
   // A same-Workspace owner/admin therefore must not mutate another member's

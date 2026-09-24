@@ -791,6 +791,21 @@ export function registerCollabContextHideSignRoutes(
       return;
     }
 
+    // Team folders may be shared by owner/admin/member, but never by guests.
+    // Personal/default-workspace folders keep their existing sharing behavior.
+    const workspaceData = await readWorkspaceData(res);
+    if (!workspaceData) return;
+    const sourceWorkspace = workspaceData.directory.items.find((item) => item.workspaceId === workspaceId);
+    if (!sourceWorkspace) {
+      res.status(403).json({ error: 'forbidden', message: 'Current user is not a member of this workspace' });
+      return;
+    }
+    const isDefaultWorkspace = 'isDefaultTeam' in sourceWorkspace && sourceWorkspace.isDefaultTeam === true;
+    if (!isDefaultWorkspace && sourceWorkspace.role === 'guest') {
+      res.status(403).json({ error: 'forbidden', message: 'Guests cannot share team folders' });
+      return;
+    }
+
     // Step 1: Query local SQLite for the folder tree + project IDs.
     // For team workspace folders that live on HDW but not in local SQLite,
     // fall back to the HDW /folder/tree endpoint.

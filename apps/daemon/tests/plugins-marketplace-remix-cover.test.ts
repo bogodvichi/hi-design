@@ -139,6 +139,103 @@ describe('HDW marketplace project remix', () => {
   });
 });
 
+
+describe('HDW marketplace project preview', () => {
+  async function createPreviewHarness(
+    root: string,
+    plugin: { name: string; title: string; version: string },
+  ) {
+    const dataDir = path.join(root, 'data');
+    const db = openDatabase(root, { dataDir });
+    const seeded = ensureMarketplaceManifest(db, {
+      id: 'hdw-community',
+      url: 'https://hdw.example/community.json',
+      trust: 'trusted',
+      manifestText: JSON.stringify({
+        specVersion: '1.0.0',
+        name: 'hdw-community',
+        version: '1.0.0',
+        plugins: [{
+          name: plugin.name,
+          title: plugin.title,
+          version: plugin.version,
+          source: 'github:test/community-preview',
+        }],
+      }),
+    });
+    if (!seeded.ok) throw new Error('marketplace preview fixture failed to seed');
+
+    const cacheDir = path.join(dataDir, 'hdw-preview', plugin.name, plugin.version);
+    await mkdir(cacheDir, { recursive: true });
+    await writeFile(path.join(cacheDir, '.extracted'), '1');
+
+    const app = express();
+    app.use(express.json());
+    registerPluginMarketplaceRoutes(app, {
+      db,
+      bundledMarketplaceEntries: [],
+      createMarketplaceFetcher: () => async () => ({
+        ok: false,
+        status: 500,
+        text: async () => '',
+      }),
+      marketplaceRegistryIdFromUrl: () => null,
+      dataDir,
+    });
+
+    return { cacheDir, server: await listen(app) };
+  }
+
+  it('serves project Markdown when the archive has no HTML entry', async () => {
+    const root = await makeTempRoot('od-marketplace-preview-md-');
+    const plugin = { name: 'trip-project', title: '霞浦国庆行程', version: '1.0.0' };
+    const { cacheDir, server } = await createPreviewHarness(root, plugin);
+    await writeFile(path.join(cacheDir, '霞浦国庆行程.md'), '# 霞浦国庆行程\n\n第一天：到达霞浦。', 'utf8');
+    await writeFile(path.join(cacheDir, 'SKILL.md'), '# injected metadata', 'utf8');
+    await writeFile(path.join(cacheDir, 'trip.pdf'), Buffer.from('%PDF-1.4 fake'));
+
+    try {
+      const response = await fetch(
+        `${server.url}/api/marketplaces/hdw-community/plugins/${plugin.name}/preview`,
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toContain('text/markdown');
+      expect(decodeURIComponent(response.headers.get('x-open-design-preview-file') ?? ''))
+        .toBe('霞浦国庆行程.md');
+      expect(await response.text()).toContain('第一天：到达霞浦');
+    } finally {
+      await close(server.server);
+    }
+  });
+
+  it('serves the PDF document preview when no HTML or Markdown exists', async () => {
+    const root = await makeTempRoot('od-marketplace-preview-pdf-');
+    const plugin = { name: 'pdf-project', title: 'PDF project', version: '1.0.0' };
+    const { cacheDir, server } = await createPreviewHarness(root, plugin);
+    await writeFile(path.join(cacheDir, 'report.pdf'), Buffer.from('%PDF-1.4 fake'));
+
+    try {
+      const response = await fetch(
+        `${server.url}/api/marketplaces/hdw-community/plugins/${plugin.name}/preview`,
+      );
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toContain('application/json');
+      expect(decodeURIComponent(response.headers.get('x-open-design-preview-file') ?? ''))
+        .toBe('report.pdf');
+      const body = await response.json() as {
+        kind?: string;
+        title?: string;
+        sections?: Array<{ title?: string; lines?: string[] }>;
+      };
+      expect(body.kind).toBe('pdf');
+      expect(body.title).toBe('report.pdf');
+      expect(body.sections?.length).toBeGreaterThan(0);
+    } finally {
+      await close(server.server);
+    }
+  });
+});
+
 async function listen(app: express.Express): Promise<{ server: http.Server; url: string }> {
   const server = app.listen(0);
   await new Promise<void>((resolve) => server.once('listening', resolve));

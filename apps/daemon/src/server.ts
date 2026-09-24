@@ -66,7 +66,7 @@ import { emittedRenderableQuestionForm } from './question-form-detect.js';
 import { resolveProjectRoot } from './project-root.js';
 import { setRuntimeDataDir } from './ids.js';
 import { getDefaultTeamId, getTeamMemberId } from './ids.js';
-import { fetchHdwTeams } from './http/hdw.js';
+import { fetchHdwTeams, hdwPut } from './http/hdw.js';
 import { fetchAiResearchMcpToken, fetchHiMindMcpToken } from './http/hdw.js';
 import { fetchSharedSpaceInfo } from './http/hdw.js';
 import { getSsoUser } from './sso-user.js';
@@ -154,7 +154,9 @@ import {
 import { assertOdNextSemanticRequestFactProducerCoverage } from './runtimes/od-next-exact-input.js';
 import {
   normalizeRunContextSelection,
+  projectMetadataContextSelection,
   renderRunContextPrompt,
+  renderSelectedMcpRunContextPrompt,
 } from './runtimes/chat-run-context.js';
 import {
   daemonAgentPayloadToPersistedAgentEvent,
@@ -211,6 +213,7 @@ export {
 } from './runtimes/chat-run-lifecycle.js';
 export {
   renderRunContextPrompt,
+  renderSelectedMcpRunContextPrompt,
 } from './runtimes/chat-run-context.js';
 export {
   daemonAgentPayloadToPersistedAgentEvent,
@@ -649,9 +652,16 @@ import {
   writeMcpConfig,
 } from './mcp-config.js';
 import {
+  readProjectManagedMcpBridgeServerIds,
   replaceManagedMcpServersWithBridges,
-  resolveActiveManagedMcpBridges,
+  resolveManagedMcpBridgeServerIds,
+  resolveRunManagedMcpBridges,
 } from './managed-mcp-bridges.js';
+import {
+  buildCodexExternalMcpBridgeInjection,
+  readProjectMcpServerConfigs,
+  resolveMentionedMcpServerIds,
+} from './runtimes/external-mcp-bridge.js';
 import {
   resolveExternalMcpServersForRun,
 } from './run-tool-bundle.js';
@@ -7886,7 +7896,44 @@ const designSystemBackingProjects = new Map<string, string>();
       res.status(500).json({ error: err instanceof Error ? err.message : 'cloud skill uninstall failed' });
     }
   });
- // Delete a cloud skill resource (soft-delete on HDW).
+ // Stop exposing a cloud skill in the public community while keeping its
+ // cloud record available in the owner's personal scope.
+ app.post('/api/workspace/skills/cloud/:resourceId/unpublish', async (req: any, res: any) => {
+   const resourceId = typeof req.params.resourceId === 'string' ? decodeURIComponent(req.params.resourceId) : '';
+   if (!resourceId) return res.status(400).json({ error: 'invalid resource id' });
+   const resolution = await resolveTeamResourceScope(req);
+   if (!resolution.ok) {
+     return res.status(resolution.status).json({ error: resolution.code, message: resolution.message });
+   }
+   const scope = resolution.scope;
+   const workspaceId = scope.principal.teamId;
+   if (!hdwCloudClient) {
+     return res.status(503).json({ error: 'HDW_CLOUD_NOT_CONFIGURED' });
+   }
+   try {
+     const cloudResource = await hdwCloudClient.getResource(workspaceId, resourceId);
+     if (!cloudResource) {
+       return res.status(404).json({ error: 'CLOUD_SKILL_NOT_FOUND' });
+     }
+     if (cloudResource.ownerMemberId !== scope.principal.memberId) {
+       return res.status(403).json({ error: 'NOT_RESOURCE_OWNER', message: 'you can only unpublish resources you own' });
+     }
+     const { readSsoConfigFile } = await import('./http/hik_logins/hicoo.js');
+     const data = await hdwPut<{ resource: Record<string, unknown> }>(
+       `/workspaces/${encodeURIComponent(workspaceId)}/resources/${encodeURIComponent(resourceId)}`,
+       { metadata: cloudResource.metadata ?? {}, scope: null },
+       readSsoConfigFile(RUNTIME_DATA_DIR)?.cookies ?? [],
+     );
+     if (!data) {
+       return res.status(502).json({ error: 'HDW cloud unpublish failed' });
+     }
+     res.json({ ok: true });
+   } catch (err: any) {
+     res.status(500).json({ error: err instanceof Error ? err.message : 'cloud skill unpublish failed' });
+   }
+ });
+
+ // Permanently delete a cloud skill resource from HDW.
  app.delete('/api/workspace/skills/cloud/:resourceId', async (req: any, res: any) => {
    const resourceId = typeof req.params.resourceId === 'string' ? decodeURIComponent(req.params.resourceId) : '';
    if (!resourceId) return res.status(400).json({ error: 'invalid resource id' });
@@ -11904,7 +11951,7 @@ const projectRouteResult = registerProjectRoutes(app, {
         : projectRecord?.skillId,
     );
     const runContextPrompt = nativePromptCore
-      ? ''
+      ? renderSelectedMcpRunContextPrompt(context, projectRecord?.metadata)
       : renderRunContextPrompt(context, projectRecord?.metadata);
    const linkedDirs = (() => {
       if (!Array.isArray(projectRecord?.metadata?.linkedDirs)) return [];
@@ -12045,8 +12092,71 @@ const projectRouteResult = registerProjectRoutes(app, {
         );
       }
     }
-    const activeManagedMcpBridges = resolveActiveManagedMcpBridges(
+    const projectMetadataMcpServerIds = new Set(
+      projectMetadataContextSelection(projectRecord?.metadata).mcpServerIds ?? [],
+    );
+    let projectMcpServers = [];
+    if (cwd && def.externalMcpInjection === 'codex-run-bridge') {
+      try {
+        projectMcpServers = await readProjectMcpServerConfigs(cwd);
+      } catch (err) {
+        console.warn(
+          '[mcp-config] failed to read project .mcp.json:',
+          err && err.message ? err.message : err,
+        );
+      }
+    }
+    const availableMcpServerIds = new Set([
+      ...enabledExternalMcp.map((server) => server.id),
+      ...projectMcpServers.map((server) => server.id),
+      ...projectMetadataMcpServerIds,
+      ...resolveManagedMcpBridgeServerIds(process.env),
+    ]);
+    const selectedRunMcpServerIds = new Set([
+      ...(normalizeRunContextSelection(context).mcpServerIds ?? []),
+      ...projectMetadataMcpServerIds,
+      ...runScopedMcpServers.map((server) => server.id),
+      ...resolveMentionedMcpServerIds(telemetryPrompt, availableMcpServerIds),
+    ]);
+    // Project-local entries are a fallback only. They are activated solely by
+    // explicit selection/@mention, and a daemon-persisted or run-scoped server
+    // with the same id wins so stale project credentials cannot override it.
+    const configuredMcpServerIds = new Set(
+      enabledExternalMcp.map((server) => server.id),
+    );
+    for (const server of projectMcpServers) {
+      if (
+        selectedRunMcpServerIds.has(server.id)
+        && !configuredMcpServerIds.has(server.id)
+      ) {
+        enabledExternalMcp.push(server);
+        configuredMcpServerIds.add(server.id);
+      }
+    }
+    let projectManagedMcpServerIds = new Set<string>();
+    if (def.managedMcpBridges && cwd && selectedRunMcpServerIds.size > 0) {
+      try {
+        projectManagedMcpServerIds = await readProjectManagedMcpBridgeServerIds(
+          cwd,
+          process.env,
+        );
+      } catch (err) {
+        console.warn(
+          '[mcp-config] failed to inspect project .mcp.json:',
+          err && err.message ? err.message : err,
+        );
+      }
+    }
+    // A Home composer selection is persisted in project metadata before the
+    // first run starts. Treat those refs as project configuration too; a new
+    // managed project does not have a materialized `.mcp.json` yet.
+    for (const id of projectMetadataMcpServerIds) {
+      projectManagedMcpServerIds.add(id);
+    }
+    const activeManagedMcpBridges = resolveRunManagedMcpBridges(
       enabledExternalMcp,
+      projectManagedMcpServerIds,
+      selectedRunMcpServerIds,
       process.env,
     );
     if (activeManagedMcpBridges.length > 0) {
@@ -12062,12 +12172,28 @@ const projectRouteResult = registerProjectRoutes(app, {
     const managedMcpBridgeServerIds = new Set(
       activeManagedMcpBridges.map((bridge) => bridge.serverId),
     );
+    const codexExternalMcpBridgeInjection =
+      def.externalMcpInjection === 'codex-run-bridge'
+        ? buildCodexExternalMcpBridgeInjection({
+            servers: enabledExternalMcp,
+            selectedServerIds: selectedRunMcpServerIds,
+            managedServerIds: managedMcpBridgeServerIds,
+            oauthTokens: oauthTokensForSpawn,
+            command: process.execPath,
+            odBin: OD_BIN,
+          })
+        : { bridges: [], env: {} };
     const connectedExternalMcp = enabledExternalMcp
       .filter((s) =>
         typeof oauthTokensForSpawn[s.id] === 'string'
         || managedMcpBridgeServerIds.has(s.id),
       )
       .map((s) => ({ id: s.id, label: s.label }));
+    for (const bridge of activeManagedMcpBridges) {
+      if (!connectedExternalMcp.some((server) => server.id === bridge.serverId)) {
+        connectedExternalMcp.push({ id: bridge.serverId });
+      }
+    }
 
     // Intent signals gate stable-region prompt blocks, so every flip changes
     // stableInstructionFingerprint and re-sends the whole stable block on
@@ -13915,6 +14041,18 @@ const projectRouteResult = registerProjectRoutes(app, {
       antigravityModelLockRelease = await acquireAntigravityModelLock();
     }
 
+    const runtimeMcpBridges = [
+      ...(def.managedMcpBridges
+        ? activeManagedMcpBridges.map((bridge) => ({
+            id: bridge.serverId,
+            command: process.execPath,
+            args: [OD_BIN, ...bridge.cliArgs],
+            env: { ELECTRON_RUN_AS_NODE: '1', ...bridge.env },
+            envVars: ['OD_DAEMON_URL', 'OD_TOOL_TOKEN'],
+          }))
+        : []),
+      ...codexExternalMcpBridgeInjection.bridges,
+    ];
     let args;
     const observeClaudeNativeChildBehavior =
       def.id === 'claude' && strategyTaskAtStart !== null;
@@ -13966,14 +14104,9 @@ const projectRouteResult = registerProjectRoutes(app, {
             def.id === 'codex'
             && run.externalPluginAnalytics?.externalPluginId
               === OPEN_DESIGN_PLUGIN_ID,
-          ...(activeManagedMcpBridges.length > 0 && def.managedMcpBridges
+          ...(runtimeMcpBridges.length > 0
             ? {
-                mcpBridges: activeManagedMcpBridges.map((bridge) => ({
-                  id: bridge.serverId,
-                  command: process.execPath,
-                  args: [OD_BIN, ...bridge.cliArgs],
-                  env: { ELECTRON_RUN_AS_NODE: '1', ...bridge.env },
-                })),
+                mcpBridges: runtimeMcpBridges,
               }
             : {}),
           ...(nativeBuildPackageBindings.length > 0
@@ -14622,6 +14755,10 @@ const projectRouteResult = registerProjectRoutes(app, {
         ...(opencodeConfigContent
           ? { [isMiMoContent ? 'MIMOCODE_CONFIG_CONTENT' : 'OPENCODE_CONFIG_CONTENT']: opencodeConfigContent }
           : {}),
+        // Run-scoped Codex MCP bridges receive their full server config through
+        // unique environment variables. Those names are not part of Codex's
+        // shell allowlist; only the matching MCP subprocess inherits each one.
+        ...codexExternalMcpBridgeInjection.env,
         // Daemon-owned resolver for task-input: references. Keep this last so
         // configured/BYOK/runtime env cannot redirect the Agent from the
         // verified Run projection back to mutable or canonical bytes.

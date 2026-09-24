@@ -460,6 +460,36 @@ describe('project route — floating account cluster', () => {
     );
   });
 
+  it('does not replace the project return target when reactivating it from a tool tab', async () => {
+    useRouteMock.mockReturnValue(HOME_ROUTE);
+    window.history.replaceState(null, '', '/');
+    const view = render(<App />);
+    await screen.findByTestId('entry-view-mock');
+
+    useRouteMock.mockReturnValue(PROJECT_ROUTE);
+    window.history.replaceState(null, '', '/projects/project-1');
+    view.rerender(<App />);
+    expect(await screen.findByText('Project view')).toBeTruthy();
+
+    useRouteMock.mockReturnValue(TOOL_ROUTE);
+    window.history.replaceState(null, '', '/external/tool');
+    view.rerender(<App />);
+    expect(screen.getByTitle('Tool')).toBeTruthy();
+
+    useRouteMock.mockReturnValue(PROJECT_ROUTE);
+    window.history.replaceState(null, '', '/projects/project-1');
+    view.rerender(<App />);
+    expect(await screen.findByText('Project view')).toBeTruthy();
+
+    vi.mocked(navigate).mockClear();
+    fireEvent.click(screen.getByTestId('project-back-mock'));
+
+    expect(navigate).toHaveBeenCalledWith(
+      HOME_ROUTE,
+      expect.objectContaining({ onCommit: expect.any(Function) }),
+    );
+  });
+
   it('keeps Home mounted and preserves its local state while a project tab is in front', async () => {
     useRouteMock.mockReturnValue(HOME_ROUTE);
     window.history.replaceState(null, '', '/');

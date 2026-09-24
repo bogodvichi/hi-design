@@ -130,16 +130,21 @@
      selection / design-system rings that do draw a border. */
   border: 1px solid transparent;
   border-radius: var(--radius);
-  /* Surfaceless: no fill, blur, or shadow — the thumbnail and meta sit
-     directly on the page wash. Selection / design-system states still draw
-     their rings via border/box-shadow. */
+  /* Surfaceless at rest. Collection cards share the community lift and
+     shadow below; selection rings remain independent of that feedback. */
   background: transparent;
   text-align: left;
   overflow: hidden;
-  transition: border-color 120ms var(--ease-out);
+  transition:
+    transform 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    filter 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 120ms var(--ease-out);
+  will-change: transform;
 }
 .recent-projects__card.is-menu-open {
   overflow: visible;
+  /* Lift creates a stacking context: the open menu must stay above siblings. */
+  z-index: 5;
 }
 .recent-projects__card-main {
   appearance: none;
@@ -174,8 +179,11 @@
   border-color: transparent;
   transform: none;
 }
-.recent-projects__card:hover {
+.recent-projects__card:hover,
+.recent-projects__card:focus-within {
   border-color: transparent;
+  transform: translateY(-2px);
+  filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.08));
 }
 .recent-projects__card.is-selected {
   outline: none;
@@ -183,8 +191,10 @@
 .recent-projects__row.is-selecting .recent-projects__card-main {
   cursor: default;
 }
-.recent-projects__row.is-selecting .recent-projects__card:hover {
+.recent-projects__row.is-selecting .recent-projects__card:hover,
+.recent-projects__row.is-selecting .recent-projects__card:focus-within {
   transform: none;
+  filter: none;
 }
 /* Design-system projects no longer draw a red outer border / ring — the card
    reads like any other; the "Design System" tag alone marks the kind. */
@@ -206,6 +216,28 @@
    * card's own width so the page reads as a faithful thumbnail instead of
    * collapsing at the narrow card width. */
   container-type: inline-size;
+  transition:
+    box-shadow 180ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.recent-projects__card:hover .recent-projects__card-thumb,
+.recent-projects__card:focus-within .recent-projects__card-thumb {
+  box-shadow: 0 8px 20px -16px rgba(0, 0, 0, 0.42);
+}
+.recent-projects__row.is-selecting .recent-projects__card:hover .recent-projects__card-thumb,
+.recent-projects__row.is-selecting .recent-projects__card:focus-within .recent-projects__card-thumb {
+  box-shadow: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .recent-projects__card,
+  .recent-projects__card-thumb {
+    transition: none;
+  }
+  .recent-projects__card:hover,
+  .recent-projects__card:focus-within {
+    transform: none;
+    filter: none;
+  }
 }
 /* Hairline ring over the cover media so light covers don't melt into the
    page. Drawn as an overlay (not a border) so layout and the media crop
@@ -479,6 +511,11 @@
 .recent-projects__card-menu[data-placement='up'] {
   top: auto;
   bottom: calc(100% + 6px);
+}
+.recent-projects__card-menu-separator {
+  height: var(--stroke-thin, 1px);
+  margin: var(--spacing-4, 4px) var(--spacing-6, 6px);
+  background: var(--border);
 }
 .recent-projects__card-menu button {
   appearance: none;

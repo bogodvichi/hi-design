@@ -389,6 +389,10 @@ describe('HomeView context picker', () => {
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
       prompt: 'keep this home draft',
       skillId: SKILL.id,
+      initialRunContext: {
+        skillIds: [SKILL.id],
+        mcpServerIds: [MCP_SERVER.id],
+      },
       contextMcpServers: [expect.objectContaining({ id: MCP_SERVER.id })],
       attachments: [file],
     }));
@@ -793,7 +797,10 @@ describe('HomeView context picker', () => {
     expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
       prompt: 'Build the first screen',
       skillId: SKILL.id,
-      initialRunContext: { skillIds: [SKILL.id, DECK_SKILL.id] },
+      initialRunContext: {
+        skillIds: [SKILL.id, DECK_SKILL.id],
+        mcpServerIds: [MCP_SERVER.id],
+      },
       contextMcpServers: [expect.objectContaining({ id: MCP_SERVER.id })],
     }));
   });

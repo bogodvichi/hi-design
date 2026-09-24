@@ -1,6 +1,10 @@
 import type { Dict } from '../types';
 
 export const pl: Dict = {
+  'personalScope.folderMoveSummary': "Przeniesione foldery: {succeeded}; nieukończone: {failed}.",
+  'personalScope.folderMoveFailed': "Nieukończone: {name}. Sprawdź i spróbuj ponownie.",
+  'personalScope.folderMoveInterrupted': "{name}: potwierdzono przeniesienie {count} plików; pozostałe wyniki mogą oczekiwać na potwierdzenie. Postęp zapisano. Aby kontynuować, wybierz pierwotne miejsce docelowe: {target}.",
+  'personalScope.folderMoveLocked': "Przenoszenie {name} jest nieukończone. Kontynuuj do pierwotnego miejsca docelowego: {target}.",
   'invite.header.eyebrow': "Team invitation",
   'invite.loading': "Loading invitation…",
   'invite.landing.title': "Join the team",
@@ -918,6 +922,11 @@ export const pl: Dict = {
   'sharedSpace.shareDialogCancel': 'Cancel',
   'sharedSpace.shareSuccess': 'Pomyślnie udostępniono',
   'sharedSpace.shareFailed': 'Share failed, please try again',
+  'sharedSpace.removeFromSharedWithMe': 'Remove from Shared with me',
+  'sharedSpace.removeFromSharedWithMeTitle': 'Remove from Shared with me?',
+  'sharedSpace.removeFromSharedWithMeBody': 'After removal, this user will no longer be able to access or use it.',
+  'sharedSpace.removeFromSharedWithMeConfirm': 'Remove',
+  'sharedSpace.removeFromSharedWithMeFailed': 'Removal failed. Please try again.',
 'sharedSpace.cannotShareToSelf': 'Nie możesz udostępnić samemu sobie. Wybierz innego odbiorcę.',
   'sharedSpace.shareFolderDialogTitle': 'Share Folder',
   'sharedSpace.shareFolderDialogDesc': 'Select members to share with. They will be able to view and comment on all projects (including subfolders) in this folder in the shared space.',
@@ -1063,8 +1072,12 @@ export const pl: Dict = {
   'teamSpace.newFolderNamePlaceholder': 'Enter folder name',
   'teamSpace.createFolderBtn': 'Create',
   'teamSpace.deleteFolder': 'Delete',
-  'teamSpace.deleteFolderConfirmTitle': 'Delete folder',
-  'teamSpace.deleteFolderConfirmMsg': 'Deleting this folder will remove all its subfolders. Projects inside will be moved to the parent folder. This cannot be undone. Are you sure?',
+  'teamSpace.deleteFolderConfirmTitle': 'Delete folder?',
+  'teamSpace.deleteFolderConfirmMsg': 'Delete “{name}”? This cannot be undone.',
+
+  'personalFolders.deleteRootConfirmMsg': 'Delete “{name}”? Projects and subfolders inside will move to Personal.',
+
+  'personalFolders.deleteNestedConfirmMsg': 'Delete “{name}”? Projects and subfolders inside will move up one level.',
   'teamSpace.folderNameRequired': 'Please enter a folder name',
   'teamSpace.createFolderError': 'Failed to create folder',
   "entry.billingTierFree": "Free",

@@ -14,7 +14,13 @@ import {
   subscribeWorkspaceTabsDock,
 } from './workspaceTabsDock';
 import { useT } from '../i18n';
-import { buildPath, navigate, type EntryHomeView, type Route } from '../router';
+import {
+  buildPath,
+  navigate,
+  normalizeExternalToolUrl,
+  type EntryHomeView,
+  type Route,
+} from '../router';
 import type { Project } from '../types';
 import { Icon, type IconName } from './Icon';
 import {
@@ -262,7 +268,9 @@ function shouldDeferShortcutToProjectWorkspace(): boolean {
 }
 
 export function openWorkspaceTab(route: Route): void {
-  dispatchOpenWorkspaceTab(route);
+  dispatchOpenWorkspaceTab(route.kind === 'external'
+    ? { ...route, url: normalizeExternalToolUrl(route.url) }
+    : route);
 }
 
 /** Activates an existing singleton tool tab without issuing a new SSO ticket. */
@@ -375,7 +383,7 @@ function tabFromRoute(route: Route, timestamp = Date.now()): WorkspaceChromeTab 
    return {
      id: `external:${nowId()}`,
      kind: 'external',
-     url: route.url,
+     url: normalizeExternalToolUrl(route.url),
      title: route.title,
      ...(route.resourceKey ? { resourceKey: route.resourceKey } : {}),
      createdAt: timestamp,
@@ -452,7 +460,7 @@ function reviveTab(value: unknown): WorkspaceChromeTab | null {
    };
  }
  if (record.kind === 'external' && typeof record.url === 'string') {
-   let url = record.url;
+   let url = normalizeExternalToolUrl(record.url);
    let resourceKey = typeof record.resourceKey === 'string' ? record.resourceKey : undefined;
    try {
      const parsed = new URL(url);

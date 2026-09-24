@@ -1,6 +1,10 @@
 import type { Dict } from '../types';
 
 export const ko: Dict = {
+  'personalScope.folderMoveSummary': "이동 완료 폴더: {succeeded}, 미완료: {failed}.",
+  'personalScope.folderMoveFailed': "미완료: {name}. 확인 후 다시 시도하세요.",
+  'personalScope.folderMoveInterrupted': "{name}: 파일 {count}개의 이동이 확인되었습니다. 나머지는 미완료 또는 결과 확인 중입니다. 진행 상황이 저장되었습니다. 계속하려면 원래 대상을 선택하세요: {target}.",
+  'personalScope.folderMoveLocked': "{name}의 이동이 완료되지 않았습니다. 원래 대상으로 계속하세요: {target}.",
   'invite.header.eyebrow': "Team invitation",
   'invite.loading': "Loading invitation…",
   'invite.landing.title': "Join the team",
@@ -918,6 +922,11 @@ export const ko: Dict = {
   'sharedSpace.shareDialogCancel': 'Cancel',
   'sharedSpace.shareSuccess': '성공적으로 공유됨',
   'sharedSpace.shareFailed': 'Share failed, please try again',
+  'sharedSpace.removeFromSharedWithMe': 'Remove from Shared with me',
+  'sharedSpace.removeFromSharedWithMeTitle': 'Remove from Shared with me?',
+  'sharedSpace.removeFromSharedWithMeBody': 'After removal, this user will no longer be able to access or use it.',
+  'sharedSpace.removeFromSharedWithMeConfirm': 'Remove',
+  'sharedSpace.removeFromSharedWithMeFailed': 'Removal failed. Please try again.',
 'sharedSpace.cannotShareToSelf': '자신과 공유할 수 없습니다. 다른 수신자를 선택해 주세요.',
   'sharedSpace.shareFolderDialogTitle': 'Share Folder',
   'sharedSpace.shareFolderDialogDesc': 'Select members to share with. They will be able to view and comment on all projects (including subfolders) in this folder in the shared space.',
@@ -1063,8 +1072,12 @@ export const ko: Dict = {
   'teamSpace.newFolderNamePlaceholder': 'Enter folder name',
   'teamSpace.createFolderBtn': 'Create',
   'teamSpace.deleteFolder': 'Delete',
-  'teamSpace.deleteFolderConfirmTitle': 'Delete folder',
-  'teamSpace.deleteFolderConfirmMsg': 'Deleting this folder will remove all its subfolders. Projects inside will be moved to the parent folder. This cannot be undone. Are you sure?',
+  'teamSpace.deleteFolderConfirmTitle': 'Delete folder?',
+  'teamSpace.deleteFolderConfirmMsg': 'Delete “{name}”? This cannot be undone.',
+
+  'personalFolders.deleteRootConfirmMsg': 'Delete “{name}”? Projects and subfolders inside will move to Personal.',
+
+  'personalFolders.deleteNestedConfirmMsg': 'Delete “{name}”? Projects and subfolders inside will move up one level.',
   'teamSpace.folderNameRequired': 'Please enter a folder name',
   'teamSpace.createFolderError': 'Failed to create folder',
   "entry.billingTierFree": "Free",

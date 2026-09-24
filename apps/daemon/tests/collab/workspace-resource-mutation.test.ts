@@ -277,6 +277,45 @@ describe('enforceWorkspaceResourceMutation', () => {
     expect(calls).toHaveLength(0);
   });
 
+  it('lets non-guest Team members copy projects without granting source mutation rights', () => {
+    const row = {
+      'project-team': {
+        workspaceId: 'ws-1',
+        visibility: 'team' as const,
+        resourceState: 'active' as const,
+        createdByWorkspaceMemberId: 'member-creator',
+      },
+    };
+    const { getWorkspaceResource, getWorkspaceResourceByResourceId } = makeLookups(row);
+
+    const allowed = (memberId: string, role: string, capability: 'duplicateProject' | 'duplicate' | 'rename' | 'delete') => {
+      const { calls, sendApiError } = spySendApiError();
+      const result = enforceWorkspaceResourceMutation(
+        'project',
+        fakeReq(workspaceHeaders({ workspaceId: 'ws-1', memberId, role })),
+        fakeRes(),
+        sendApiError,
+        getWorkspaceResource,
+        getWorkspaceResourceByResourceId,
+        {},
+        'project-team',
+        capability,
+      );
+      return { result, calls };
+    };
+
+    expect(allowed('member-other', 'member', 'duplicateProject')).toMatchObject({ result: true, calls: [] });
+    expect(allowed('member-admin', 'admin', 'duplicateProject')).toMatchObject({ result: true, calls: [] });
+    expect(allowed('member-owner', 'owner', 'duplicateProject')).toMatchObject({ result: true, calls: [] });
+
+    expect(allowed('member-other', 'member', 'rename').result).toBe(false);
+    expect(allowed('member-admin', 'admin', 'rename').result).toBe(false);
+    expect(allowed('member-admin', 'admin', 'delete').result).toBe(false);
+    expect(allowed('member-other', 'member', 'duplicate').result).toBe(false);
+
+    expect(allowed('member-guest', 'guest', 'duplicateProject').result).toBe(false);
+  });
+
   it('rejects mutation of a resource bound to a different workspace than the caller\'s', () => {
     const { getWorkspaceResource, getWorkspaceResourceByResourceId } = makeLookups({
       'plugin-a': { workspaceId: 'ws-other', visibility: 'personal', resourceState: 'active', createdByWorkspaceMemberId: 'member-a' },

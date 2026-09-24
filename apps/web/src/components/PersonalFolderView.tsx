@@ -2,15 +2,18 @@ import { ModuleBreadcrumb } from './ModuleBreadcrumb';
 // Folder view for the "/personal/folder/:folderId" route. Mirrors
 // TeamSpaceView's FolderView + FoldersPanel but operates on the local
 // SQLite folders table via `/api/folders` instead of the HDW proxy.
-import { useEffect, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { WorkspaceDirectoryItem } from '@open-design/contracts';
+import { Dialog, DialogFooter, DialogTitle } from '@open-design/components';
 import { navigate } from '../router';
 import { Icon } from './Icon';
 import { FolderCardMenu } from './FolderCardMenu';
 import { FolderSelectionCheck } from './FolderSelectionCheck';
+import { MoveToTeamTreeDialog, type TeamTreeSelection } from './MoveToTeamTreeDialog';
 import { ShareFolderDialog } from './ShareFolderDialog';
 import { RecentProjectsStrip } from './RecentProjectsStrip';
+import { usePersonalFolderMove } from './usePersonalFolderMove';
 import type { DesignSystemSummary, Project } from '../types';
 import { useT } from '../i18n';
 import styles from './TeamSpaceView.module.css';
@@ -240,6 +243,14 @@ useEffect(() => {
 }, [folders]);
 
 const [shareFolderTarget, setShareFolderTarget] = useState<PersonalFolderItem | null>(null);
+const [moveFolderTarget, setMoveFolderTarget] = useState<PersonalFolderItem | null>(null);
+const { moveFolders, moving: movingFolder, feedback: moveFeedback } = usePersonalFolderMove({
+  workspaceId, workspaceMemberId, setFolders, setSelectedFolderIds,
+});
+const [renameFolderTarget, setRenameFolderTarget] = useState<PersonalFolderItem | null>(null);
+const [renameFolderInput, setRenameFolderInput] = useState('');
+const [renamingFolder, setRenamingFolder] = useState(false);
+const renameFolderTitleId = useId();
 
  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
 
@@ -259,7 +270,7 @@ const [shareFolderTarget, setShareFolderTarget] = useState<PersonalFolderItem | 
              : undefined,
          },
        );
-        if (!res.ok) { if (!cancelled) setFolders([]); return; }
+        if (!res.ok) return; // Preserve the last-good folder list on refresh failure.
         const body = await res.json();
         if (cancelled) return;
         const list: any[] = body?.data?.folders ?? [];
@@ -277,7 +288,7 @@ const [shareFolderTarget, setShareFolderTarget] = useState<PersonalFolderItem | 
           createdAt: f.created_at || '',
         })))
       } catch {
-        if (!cancelled) setFolders([]);
+        // A refresh outage is not an authoritative empty folder list.
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -375,7 +386,10 @@ const [shareFolderTarget, setShareFolderTarget] = useState<PersonalFolderItem | 
     try {
       const res = await fetch(
         `/api/folders/${encodeURIComponent(folder.folderId)}?workspace_id=${encodeURIComponent(workspaceId)}`,
-        { method: 'DELETE' },
+        {
+          method: 'DELETE',
+          headers: workspaceMemberId ? { 'x-od-workspace-member-id': workspaceMemberId } : undefined,
+        },
       );
       const body = await res.json().catch(() => null);
       if (!res.ok || body?.code !== 0) {
@@ -417,6 +431,7 @@ const [shareFolderTarget, setShareFolderTarget] = useState<PersonalFolderItem | 
   }
 
   function toggleFolderSelection(folderId: string) {
+    if (movingFolder) return;
     setSelectedFolderIds((current) => {
       const next = new Set(current);
       if (next.has(folderId)) next.delete(folderId);
@@ -429,38 +444,18 @@ const [shareFolderTarget, setShareFolderTarget] = useState<PersonalFolderItem | 
     action: 'to-team' | 'to-personal',
     options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
   ): Promise<number> {
-    if (
-      action !== 'to-personal'
-      || !workspaceId
-      || options?.targetWorkspaceId !== workspaceId
-      || selectedFolderIds.size === 0
-    ) return 0;
-    const ids = [...selectedFolderIds];
-    const results = await Promise.all(ids.map(async (selectedId) => {
-      try {
-        const response = await fetch(
-          `/api/folders/${encodeURIComponent(selectedId)}?workspace_id=${encodeURIComponent(workspaceId)}`,
-          {
-            method: 'PATCH',
-            headers: {
-              'Content-Type': 'application/json',
-              ...(workspaceMemberId ? { 'x-od-workspace-member-id': workspaceMemberId } : {}),
-            },
-            body: JSON.stringify({ folder_pid: options.targetFolderId ?? null }),
-          },
-        );
-        const body = await response.json().catch(() => null);
-        return response.ok && body?.code === 0 ? selectedId : null;
-      } catch {
-        return null;
-      }
-    }));
-    const movedIds = new Set(results.filter((id): id is string => id !== null));
-    if (movedIds.size > 0) {
-      setFolders((current) => current.filter((folder) => !movedIds.has(folder.folderId)));
-      window.dispatchEvent(new CustomEvent('personal:folders-updated'));
-    }
-    return movedIds.size;
+    const selected = folders.filter((folder) => selectedFolderIds.has(folder.folderId));
+    const result = await moveFolders(selected, action, options);
+    return result.succeededFolderIds.length;
+  }
+
+  async function commitFolderMove(selection: TeamTreeSelection) {
+    const target = moveFolderTarget;
+    if (!target || movingFolder) return;
+    const result = await moveFolders([target], selection.isDefaultTeam ? 'to-personal' : 'to-team', {
+      targetWorkspaceId: selection.workspaceId, targetFolderId: selection.folderId,
+    });
+    if (result.succeededFolderIds.includes(target.folderId)) setMoveFolderTarget(null);
   }
 
   function handleFolderClick(folder: PersonalFolderItem) {
@@ -470,6 +465,53 @@ const [shareFolderTarget, setShareFolderTarget] = useState<PersonalFolderItem | 
       view: 'personal-folder',
       folderId: folder.folderId,
     });
+  }
+
+  function startFolderRename(folder: PersonalFolderItem) {
+    setRenameFolderInput(folder.folderName);
+    setRenameFolderTarget(folder);
+  }
+
+  function cancelFolderRename() {
+    setRenameFolderTarget(null);
+    setRenameFolderInput('');
+  }
+
+  async function commitFolderRename() {
+    if (!renameFolderTarget || !workspaceId) return;
+    const trimmed = renameFolderInput.trim();
+    if (!trimmed || trimmed === renameFolderTarget.folderName) {
+      cancelFolderRename();
+      return;
+    }
+    setRenamingFolder(true);
+    try {
+      const res = await fetch(
+        `/api/folders/${encodeURIComponent(renameFolderTarget.folderId)}?workspace_id=${encodeURIComponent(workspaceId)}`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(workspaceMemberId ? { 'x-od-workspace-member-id': workspaceMemberId } : {}),
+          },
+          body: JSON.stringify({ folder_name: trimmed }),
+        },
+      );
+      const body = await res.json().catch(() => null);
+      if (res.ok && body?.code === 0) {
+        setFolders((prev) => prev.map((folder) => (
+          folder.folderId === renameFolderTarget.folderId
+            ? { ...folder, folderName: trimmed }
+            : folder
+        )));
+        window.dispatchEvent(new CustomEvent('personal:folders-updated'));
+      }
+    } catch {
+      // ignore
+    } finally {
+      setRenamingFolder(false);
+      cancelFolderRename();
+    }
   }
 
   return (
@@ -499,6 +541,10 @@ const [shareFolderTarget, setShareFolderTarget] = useState<PersonalFolderItem | 
              <FolderSelectionCheck selected={selected} />
            ) : (
              <FolderCardMenu
+               onRename={() => startFolderRename(folder)}
+               renameLabel={t('common.rename')}
+               onMove={() => setMoveFolderTarget(folder)}
+               moveLabel={t('designFiles.move')}
                onDelete={() => setRemoveTarget(folder)}
                deleteLabel={t('teamSpace.deleteFolder')}
                onShare={() => setShareFolderTarget(folder)}
@@ -591,8 +637,13 @@ const [shareFolderTarget, setShareFolderTarget] = useState<PersonalFolderItem | 
            selectedCount: selectedFolderIds.size,
            selectedLabels: folders.filter((folder) => selectedFolderIds.has(folder.folderId)).map((folder) => folder.folderName),
            onMoveSelected: moveSelectedFolders,
-           moveTreeMode: 'personal-folders',
-           canMoveToTeam: false,
+           preserveFailedMoveSelection: true,
+           blocksMove: movingFolder,
+           moveTreeMode: 'unified',
+           canMoveToTeam: true,
+           moveDialogTitle: t('designFiles.move'),
+           moveTreeDescription: t('designFiles.moveLabel'),
+           moveRootSelectedLabel: t('designFiles.moveLabel'),
            disabledMoveKeys: new Set([...selectedFolderIds].map((id) => `${workspaceId}:${id}`)),
            onDeleteSelected: deleteSelectedFolders,
            onModeChange: setFolderSelectionMode,
@@ -642,7 +693,7 @@ const [shareFolderTarget, setShareFolderTarget] = useState<PersonalFolderItem | 
                 <Icon name="close" size={14} />
               </button>
               <h3 className={styles.confirmTitle}>{t('teamSpace.deleteFolderConfirmTitle')}</h3>
-              <p className={styles.confirmMsg}>{t('teamSpace.deleteFolderConfirmMsg')}</p>
+              <p className={styles.confirmMsg}>{t('personalFolders.deleteNestedConfirmMsg', { name: removeTarget.folderName })}</p>
               <div className={styles.confirmActions}>
                 <button type="button" className={styles.confirmCancel} onClick={() => setRemoveTarget(null)} disabled={removing}>
                   {t('teamSpace.removeCancelBtn')}
@@ -656,6 +707,62 @@ const [shareFolderTarget, setShareFolderTarget] = useState<PersonalFolderItem | 
          document.body,
        )
      ) : null}
+      {renameFolderTarget ? (
+        <Dialog
+          as="form"
+          className="modal-rename"
+          onClose={cancelFolderRename}
+          closeOnEscape
+          ariaLabelledBy={renameFolderTitleId}
+          onSubmit={(e) => {
+            e.preventDefault();
+            void commitFolderRename();
+          }}
+        >
+          <DialogTitle id={renameFolderTitleId}>{t('designs.renameTitle')}</DialogTitle>
+          <label>
+            {t('designs.renamePrompt', { name: renameFolderTarget.folderName })}
+            <input
+              type="text"
+              value={renameFolderInput}
+              autoFocus
+              onChange={(e) => setRenameFolderInput(e.target.value)}
+            />
+          </label>
+          <DialogFooter className="row">
+            <button type="button" onClick={cancelFolderRename}>
+              {t('designs.renameCancel')}
+            </button>
+            <button
+              type="submit"
+              className="primary"
+              disabled={!renameFolderInput.trim() || renameFolderInput.trim() === renameFolderTarget.folderName || renamingFolder}
+            >
+              {t('designs.renameSave')}
+            </button>
+          </DialogFooter>
+        </Dialog>
+      ) : null}
+      {moveFeedback}
+      {moveFolderTarget && folderId ? (
+        <MoveToTeamTreeDialog
+          onConfirm={(selection) => { void commitFolderMove(selection); }}
+          onCancel={() => { if (!movingFolder) setMoveFolderTarget(null); }}
+          busy={movingFolder}
+          mode="unified"
+          currentWorkspaceId={workspaceId}
+          currentFolderId={folderId}
+          disabledSubtreeKeys={new Set([`${workspaceId}:${moveFolderTarget.folderId}`])}
+          disabledKeys={new Set([
+            `${workspaceId}:${folderId}`,
+            `${workspaceId}:${moveFolderTarget.folderId}`,
+          ])}
+          canMoveToPersonal
+          titleLabel={t('designFiles.move')}
+          treeDescription={t('designFiles.moveLabel')}
+          rootSelectedLabel={t('designFiles.moveLabel')}
+        />
+      ) : null}
       {shareFolderTarget && workspaceId ? (
         <ShareFolderDialog
           folderId={shareFolderTarget.folderId}

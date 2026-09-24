@@ -29,6 +29,14 @@ interface CloudMcpItem extends CloudMcpTemplate {
   actionCount?: number | null;
 }
 
+// Catalog and share metadata can carry null or an unvalidated logo field.
+// Normalize it at the read boundary; stored items retain the shared contract.
+type CloudMcpResponseItem = Omit<CloudMcpItem, 'logoKey'> & { logoKey?: unknown };
+
+function normalizeLogoKey(value: unknown): CloudMcpTemplate['logoKey'] {
+  return typeof value === 'string' ? value : undefined;
+}
+
 // Build workspace headers from the string props the parent passes.
 function workspaceHeaders(
   workspaceId: string | null,
@@ -81,8 +89,9 @@ export function CloudMcpList({
   const [error, setError] = useState<string | null>(null);
   const [installingId, setInstallingId] = useState<string | null>(null);
   const [uninstallingId, setUninstallingId] = useState<string | null>(null);
+  const [unpublishingId, setUnpublishingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
- const [confirmAction, setConfirmAction] = useState<{ type: 'uninstall' | 'delete'; item: CloudMcpItem } | null>(null);
+ const [confirmAction, setConfirmAction] = useState<{ type: 'uninstall' | 'unpublish' | 'delete'; item: CloudMcpItem } | null>(null);
  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
  const [shareItem, setShareItem] = useState<CloudMcpItem | null>(null);
  const menuRef = useRef<HTMLDivElement>(null);
@@ -149,7 +158,7 @@ export function CloudMcpList({
           authMode: r.metadata?.authMode,
           homepage: r.metadata?.homepage,
            example: r.metadata?.example,
-           logoKey: r.metadata?.logoKey,
+           logoKey: normalizeLogoKey(r.metadata?.logoKey),
            ownerMemberId: r.ownerMemberId ?? '',
           version: null,
           versionId: null,
@@ -185,8 +194,8 @@ export function CloudMcpList({
       if (!cloudResponse && !localResponse) throw new Error('Failed to load team MCP templates');
 
      const merged = new Map<string, CloudMcpItem>();
-     for (const template of (cloudResponse?.templates ?? []) as CloudMcpItem[]) {
-       merged.set(template.id.toLowerCase(), template);
+     for (const template of (cloudResponse?.templates ?? []) as CloudMcpResponseItem[]) {
+       merged.set(template.id.toLowerCase(), { ...template, logoKey: normalizeLogoKey(template.logoKey) });
      }
      for (const server of (localResponse?.servers ?? []) as Array<{
        id: string;
@@ -247,8 +256,8 @@ export function CloudMcpList({
      if (!cloudResponse && !localResponse) throw new Error('Failed to load cloud MCP templates');
 
     const merged = new Map<string, CloudMcpItem>();
-    for (const template of (cloudResponse?.templates ?? []) as CloudMcpItem[]) {
-      merged.set(template.id.toLowerCase(), template);
+    for (const template of (cloudResponse?.templates ?? []) as CloudMcpResponseItem[]) {
+      merged.set(template.id.toLowerCase(), { ...template, logoKey: normalizeLogoKey(template.logoKey) });
     }
     // Merge locally-installed servers that have no matching cloud
     // template (e.g. servers added through the Settings MCP panel or
@@ -423,6 +432,33 @@ export function CloudMcpList({
     }
   }
 
+  async function handleUnpublish(tpl: CloudMcpItem) {
+    setUnpublishingId(tpl.resourceId);
+    try {
+      const res = await fetch(
+        '/api/workspace/mcp/cloud/' + encodeURIComponent(tpl.resourceId) + '/unpublish',
+        {
+          method: 'POST',
+          headers: workspaceHeaders(workspaceId, workspaceMemberId, workspaceType),
+        },
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ?? 'Unpublish failed');
+      }
+      await loadTemplates();
+      window.dispatchEvent(new CustomEvent('personal:mcp-refresh', {
+        detail: { source: 'cloud-mcp-list' },
+      }));
+    } catch (err: any) {
+      setError(err?.message ?? String(err));
+    } finally {
+      setUnpublishingId(null);
+      setConfirmAction(null);
+      setMenuOpenId(null);
+    }
+  }
+
   const visibleTemplates = searchQuery.trim()
     ? templates.filter((tpl) => communityTextMatchesQuery([
         tpl.label,
@@ -467,36 +503,49 @@ export function CloudMcpList({
       <DialogTitle id={titleId}>
         {confirmAction.type === 'uninstall'
           ? t('personalScope.cloudMcpUninstallConfirmTitle' as any)
-          : t('personalScope.cloudMcpDeleteConfirmTitle' as any)}
+          : confirmAction.type === 'unpublish'
+            ? t('squareScope.unpublishConfirmTitle' as any)
+            : mode === 'square'
+              ? t('squareScope.deleteConfirmTitle' as any)
+              : t('personalScope.cloudMcpDeleteConfirmTitle' as any)}
       </DialogTitle>
       <DialogDescription>
         {confirmAction.type === 'uninstall'
           ? t('personalScope.cloudMcpUninstallConfirmDesc' as any)
-          : t('personalScope.cloudMcpDeleteConfirmDesc' as any)}
+          : confirmAction.type === 'unpublish'
+            ? t('squareScope.unpublishConfirmDesc' as any, { title: confirmAction.item.label })
+            : mode === 'square'
+              ? t('squareScope.deleteConfirmDesc' as any, { title: confirmAction.item.label })
+              : t('personalScope.cloudMcpDeleteConfirmDesc' as any)}
       </DialogDescription>
       <DialogFooter className="row">
         <button
           type="button"
           onClick={() => setConfirmAction(null)}
-          disabled={confirmAction.type === 'uninstall' ? !!uninstallingId : !!deletingId}
+          disabled={!!uninstallingId || !!unpublishingId || !!deletingId}
         >
           {t('common.cancel' as any)}
         </button>
         <button
           type="button"
           className="primary"
-          disabled={confirmAction.type === 'uninstall' ? !!uninstallingId : !!deletingId}
+          disabled={!!uninstallingId || !!unpublishingId || !!deletingId}
           onClick={() => {
             if (confirmAction.type === 'uninstall') void handleUninstall(confirmAction.item);
+            else if (confirmAction.type === 'unpublish') void handleUnpublish(confirmAction.item);
             else void handleDelete(confirmAction.item);
           }}
         >
           {confirmAction.type === 'uninstall'
             ? (uninstallingId ? <Icon name="spinner" size={14} /> : null)
-            : (deletingId ? <Icon name="spinner" size={14} /> : null)}
+            : (unpublishingId || deletingId ? <Icon name="spinner" size={14} /> : null)}
           {confirmAction.type === 'uninstall'
             ? t('personalScope.cloudMcpUninstall' as any)
-            : t('personalScope.cloudMcpDelete' as any)}
+            : confirmAction.type === 'unpublish'
+              ? t('squareScope.unpublish' as any)
+              : mode === 'square'
+                ? t('common.delete' as any)
+                : t('personalScope.cloudMcpDelete' as any)}
         </button>
       </DialogFooter>
     </Dialog>
@@ -508,8 +557,9 @@ export function CloudMcpList({
         {visibleTemplates.map((tpl) => {
           // Case-insensitive match so Memoryxxx and memoryxxx are treated as the same installed server.
           const isInstalled = tpl.teamLocal || localTemplateIds.has(tpl.id.toLowerCase());
-         const isInstalling = installingId === tpl.resourceId;
+          const isInstalling = installingId === tpl.resourceId;
           const isUninstalling = uninstallingId === tpl.resourceId;
+          const isUnpublishing = unpublishingId === tpl.resourceId;
            const isDeleting = deletingId === tpl.resourceId;
            const logoKey = resolveMcpLogoKey(tpl.logoKey, tpl.id || tpl.label);
            return (
@@ -575,15 +625,28 @@ export function CloudMcpList({
                             {t('personalScope.cloudMcpUninstall' as any)}
                           </button>
                         ) : null}
+                        {mode === 'square' && tpl.ownerMemberId === workspaceMemberId && !tpl.localOnly ? (
+                          <button
+                            type="button"
+                            className={styles.cardMenuItem}
+                            disabled={isUnpublishing}
+                            onClick={(e) => { e.stopPropagation(); setConfirmAction({ type: 'unpublish', item: tpl }); setMenuOpenId(null); }}
+                          >
+                            <Icon name="eye-off" size={14} />
+                            {t('squareScope.unpublish' as any)}
+                          </button>
+                        ) : null}
                         {(mode === 'personal' || (mode === 'square' && tpl.ownerMemberId === workspaceMemberId)) && !tpl.localOnly ? (
                           <button
                             type="button"
                             className={styles.cardMenuItemDanger}
                             disabled={isDeleting}
-                            onClick={(e) => { e.stopPropagation(); setConfirmAction({ type: 'delete', item: tpl }); }}
+                            onClick={(e) => { e.stopPropagation(); setConfirmAction({ type: 'delete', item: tpl }); setMenuOpenId(null); }}
                           >
                             <Icon name="close" size={14} />
-                            {t('personalScope.cloudMcpDelete' as any)}
+                            {mode === 'square'
+                              ? t('common.delete' as any)
+                              : t('personalScope.cloudMcpDelete' as any)}
                           </button>
                         ) : null}
                      </div>

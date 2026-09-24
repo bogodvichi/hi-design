@@ -781,7 +781,7 @@ describe('workspace project routes', () => {
         currentUserAccess: {
           canRename: false,
           canDelete: false,
-          canDuplicate: false,
+          canDuplicate: true,
           canMoveToPersonal: false,
           canRestoreVersion: false,
         },
@@ -922,9 +922,9 @@ describe('workspace project routes', () => {
     const duplicateResp = await fetch(`${baseUrl}/api/projects/${projectId}/duplicate`, {
       method: 'POST',
       headers: readOnlyHeaders,
-      body: JSON.stringify({ name: 'Illicit duplicate' }),
+      body: JSON.stringify({ name: 'Member duplicate' }),
     });
-    expect(duplicateResp.status).toBe(403);
+    expect(duplicateResp.status).toBe(200);
 
     const designSystemCopyResp = await fetch(`${baseUrl}/api/projects/${projectId}/design-system-copy`, {
       method: 'POST',

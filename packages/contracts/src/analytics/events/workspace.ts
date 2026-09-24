@@ -120,7 +120,7 @@ export interface ProjectCollectionClickProps extends TrackingWorkspaceDimensions
   selection_count_bucket?: TrackingCountBucket;
   filter_type?: 'owner' | 'project_type';
   filter_value?: string;
-  sort_value?: 'updated_desc' | 'updated_asc' | 'name_asc';
+  sort_value?: 'recent_viewed' | 'updated_desc' | 'updated_asc' | 'name_asc';
   view_value?: 'grid' | 'list';
 }
 

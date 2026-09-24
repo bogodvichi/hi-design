@@ -426,6 +426,7 @@ onCopyProject?: (
   id: string,
   options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
 ) => Promise<void> | void;
+onCopySharedProject?: (id: string, homeWorkspaceId: string) => Promise<void> | void;
  onTeamProjectContentReady?: (
    projectId: string,
    workspaceId: string,
@@ -549,6 +550,7 @@ onRenameProject,
 onProjectsRefresh,
 onTeamProjectContentReady,
 onCopyProject,
+onCopySharedProject,
  onChangeDefaultDesignSystem,
  onCreateDesignSystem,
  onOpenDesignSystem,
@@ -2158,10 +2160,18 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
          />
     ) : null}
      {view === 'shared-with-me' ? (
-          <SharedWithMeView tab={entryRoute.view === 'shared-with-me' ? entryRoute.tab : undefined} onOpenProject={onOpenProject} />
+          <SharedWithMeView
+            tab={entryRoute.view === 'shared-with-me' ? entryRoute.tab : undefined}
+            onOpenProject={onOpenProject}
+            onCopySharedProject={onCopySharedProject}
+          />
          ) : null}
      {view === 'shared-folder' ? (
-          <SharedFolderView folderId={entryRoute.view === 'shared-folder' ? entryRoute.sharedFolderId : undefined} onOpenProject={onOpenProject} />
+          <SharedFolderView
+            folderId={entryRoute.view === 'shared-folder' ? entryRoute.sharedFolderId : undefined}
+            onOpenProject={onOpenProject}
+            onCopySharedProject={onCopySharedProject}
+          />
          ) : null}
        </div>
        </main>

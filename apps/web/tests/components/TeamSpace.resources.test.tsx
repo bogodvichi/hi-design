@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { CloudMcpList } from '../../src/components/CloudMcpList';
@@ -138,6 +138,81 @@ describe('team resource lists', () => {
     expect(screen.getByText('李四')).toBeTruthy();
     expect(screen.getByLabelText('接入人数 0, 接入次数 0')).toBeTruthy();
     expect(screen.queryByText('Design MCP')).toBeNull();
+  });
+
+  it('shows cancel publish for an owned community Skill', async () => {
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url === '/api/skills') return jsonResponse({ skills: [] });
+      if (url.startsWith('/api/workspace/skills/cloud?')) {
+        return jsonResponse({
+          skills: [{
+            resourceId: 'owned-skill', localId: 'owned-skill', title: 'Owned Skill',
+            description: 'Published by me', provider: 'hidesign', ownerMemberId: 'member-1',
+            createdAt: '', updatedAt: '',
+          }],
+        });
+      }
+      return new Response(null, { status: 404 });
+    }) as typeof fetch;
+
+    const { container } = render(
+      <I18nProvider initial="zh-CN">
+        <CloudSkillList
+          workspaceId="team-1"
+          workspaceMemberId="member-1"
+          workspaceType="team"
+          mode="square"
+          scope="public"
+        />
+      </I18nProvider>,
+    );
+
+    expect(await screen.findByText('Owned Skill')).toBeTruthy();
+    fireEvent.click(container.querySelector<HTMLButtonElement>('[class*="cardMenuBtn"]')!);
+    expect(screen.getByRole('button', { name: '删除' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '取消发布' }));
+
+    expect(screen.getByRole('heading', { name: '取消发布' })).toBeTruthy();
+    expect(screen.getByText('确定要取消发布「Owned Skill」吗？')).toBeTruthy();
+  });
+
+  it('shows cancel publish for an owned community MCP', async () => {
+    globalThis.fetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = input.toString();
+      if (url.startsWith('/api/workspace/mcp/cloud?')) {
+        return jsonResponse({
+          templates: [{
+            id: 'owned-mcp', resourceId: 'owned-mcp', label: 'Owned MCP',
+            description: 'Published by me', transport: 'http', category: 'utilities',
+            url: 'https://mcp.test', ownerMemberId: 'member-1',
+            version: null, versionId: null, createdAt: '', updatedAt: '',
+          }],
+        });
+      }
+      if (url === '/api/mcp/servers') return jsonResponse({ servers: [] });
+      return new Response(null, { status: 404 });
+    }) as typeof fetch;
+
+    const { container } = render(
+      <I18nProvider initial="zh-CN">
+        <CloudMcpList
+          workspaceId="team-1"
+          workspaceMemberId="member-1"
+          workspaceType="team"
+          mode="square"
+          scope="public"
+        />
+      </I18nProvider>,
+    );
+
+    expect(await screen.findByText('Owned MCP')).toBeTruthy();
+    fireEvent.click(container.querySelector<HTMLButtonElement>('[class*="cardMenuBtn"]')!);
+    expect(screen.getByRole('button', { name: '删除' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: '取消发布' }));
+
+    expect(screen.getByRole('heading', { name: '取消发布' })).toBeTruthy();
+    expect(screen.getByText('确定要取消发布「Owned MCP」吗？')).toBeTruthy();
   });
 
   it('uses the shared empty state without a description', async () => {

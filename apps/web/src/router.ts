@@ -103,6 +103,19 @@ export type Route =
       bootstrapUrl?: string;
     };
 
+/**
+ * Community tools are network resources even when their saved URL omits a
+ * scheme. Passing a bare host to an iframe resolves it relative to the current
+ * OpenDesign route and recursively embeds the app inside itself.
+ */
+export function normalizeExternalToolUrl(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+  if (/^https?:\/\//iu.test(trimmed)) return trimmed;
+  if (trimmed.startsWith('//')) return `https:${trimmed}`;
+  return `https://${trimmed}`;
+}
+
 export function parseRoute(pathname: string): Route {
   const parts = pathname.replace(/\/+$/, '').split('/').filter(Boolean);
   if (parts.length === 0) return { kind: 'home', view: 'home' };
@@ -251,12 +264,12 @@ if (parts[0] === 'drafts' && !parts[1]) {
  }
  if (parts[0] === 'external-tool' && parts[1] && parts[2]) {
    const resourceKey = decodeURIComponent(parts[1]);
-   const url = decodeURIComponent(parts[2]);
+   const url = normalizeExternalToolUrl(decodeURIComponent(parts[2]));
    const title = parts[3] ? decodeURIComponent(parts.slice(3).join('/')) : url;
    return { kind: 'external', url, title, resourceKey };
  }
  if (parts[0] === 'external' && parts[1]) {
-   let url = decodeURIComponent(parts[1]);
+   let url = normalizeExternalToolUrl(decodeURIComponent(parts[1]));
    const title = parts[2] ? decodeURIComponent(parts.slice(2).join('/')) : url;
    // Builds before HiMind singleton tabs persisted the one-use callback URL.
    // Repair those routes without replaying the ticket.
@@ -336,9 +349,10 @@ if (route.view === 'home') return '/home';
   }
  if (route.kind === 'community') return '/community';
  if (route.kind === 'external') {
+   const url = normalizeExternalToolUrl(route.url);
    return route.resourceKey
-     ? `/external-tool/${encodeURIComponent(route.resourceKey)}/${encodeURIComponent(route.url)}/${encodeURIComponent(route.title)}`
-     : `/external/${encodeURIComponent(route.url)}/${encodeURIComponent(route.title)}`;
+     ? `/external-tool/${encodeURIComponent(route.resourceKey)}/${encodeURIComponent(url)}/${encodeURIComponent(route.title)}`
+     : `/external/${encodeURIComponent(url)}/${encodeURIComponent(route.title)}`;
  }
  if (route.kind === 'design-system-create') return '/design-systems/create';
   if (route.kind === 'design-system-detail') {

@@ -110,6 +110,7 @@ export function CloudSkillList({
   const [error, setError] = useState<string | null>(null);
   const [installingId, setInstallingId] = useState<string | null>(null);
   const [uninstallingId, setUninstallingId] = useState<string | null>(null);
+  const [unpublishingId, setUnpublishingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const effectiveSearchQuery = externalSearchQuery ?? searchQuery;
@@ -119,7 +120,7 @@ export function CloudSkillList({
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
   const [categoryMenuAlign, setCategoryMenuAlign] = useState<'start' | 'end'>('start');
   const [failedIconIds, setFailedIconIds] = useState<Set<string>>(new Set());
- const [confirmAction, setConfirmAction] = useState<{ type: 'uninstall' | 'delete'; item: CloudSkill } | null>(null);
+ const [confirmAction, setConfirmAction] = useState<{ type: 'uninstall' | 'unpublish' | 'delete'; item: CloudSkill } | null>(null);
  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
  const [shareItem, setShareItem] = useState<CloudSkill | null>(null);
  const showCommunityControls = mode === 'square' && sourceProvider === 'all';
@@ -514,6 +515,30 @@ useEffect(() => {
     }
   }
 
+  async function handleUnpublish(skill: CloudSkill) {
+    setUnpublishingId(skill.resourceId);
+    try {
+      const res = await fetch(
+        '/api/workspace/skills/cloud/' + encodeURIComponent(skill.resourceId) + '/unpublish',
+        {
+          method: 'POST',
+          headers: workspaceHeaders(workspaceId, workspaceMemberId, workspaceType),
+        },
+      );
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ?? 'Unpublish failed');
+      }
+      await Promise.all([loadSkills(), loadLocalSkills()]);
+    } catch (err: any) {
+      setError(err?.message ?? String(err));
+    } finally {
+      setUnpublishingId(null);
+      setConfirmAction(null);
+      setMenuOpenId(null);
+    }
+  }
+
   const fallbackSearchControl = sourceProvider === 'maas-skillhub' && !showCommunityControls ? (
     <label className={styles.searchBox}>
       <Icon name="search" size={15} />
@@ -646,36 +671,49 @@ useEffect(() => {
       <DialogTitle id={titleId}>
         {confirmAction.type === 'uninstall'
           ? t('personalScope.cloudSkillUninstallConfirmTitle' as any)
-          : t('personalScope.cloudSkillDeleteConfirmTitle' as any)}
+          : confirmAction.type === 'unpublish'
+            ? t('squareScope.unpublishConfirmTitle' as any)
+            : mode === 'square'
+              ? t('squareScope.deleteConfirmTitle' as any)
+              : t('personalScope.cloudSkillDeleteConfirmTitle' as any)}
       </DialogTitle>
       <DialogDescription>
         {confirmAction.type === 'uninstall'
           ? t('personalScope.cloudSkillUninstallConfirmDesc' as any)
-          : t('personalScope.cloudSkillDeleteConfirmDesc' as any)}
+          : confirmAction.type === 'unpublish'
+            ? t('squareScope.unpublishConfirmDesc' as any, { title: confirmAction.item.title })
+            : mode === 'square'
+              ? t('squareScope.deleteConfirmDesc' as any, { title: confirmAction.item.title })
+              : t('personalScope.cloudSkillDeleteConfirmDesc' as any)}
       </DialogDescription>
       <DialogFooter className="row">
         <button
           type="button"
           onClick={() => setConfirmAction(null)}
-          disabled={confirmAction.type === 'uninstall' ? !!uninstallingId : !!deletingId}
+          disabled={!!uninstallingId || !!unpublishingId || !!deletingId}
         >
           {t('common.cancel' as any)}
         </button>
         <button
           type="button"
           className="primary"
-          disabled={confirmAction.type === 'uninstall' ? !!uninstallingId : !!deletingId}
+          disabled={!!uninstallingId || !!unpublishingId || !!deletingId}
           onClick={() => {
             if (confirmAction.type === 'uninstall') void handleUninstall(confirmAction.item);
+            else if (confirmAction.type === 'unpublish') void handleUnpublish(confirmAction.item);
             else void handleDelete(confirmAction.item);
           }}
         >
           {confirmAction.type === 'uninstall'
             ? (uninstallingId ? <Icon name="spinner" size={14} /> : null)
-            : (deletingId ? <Icon name="spinner" size={14} /> : null)}
+            : (unpublishingId || deletingId ? <Icon name="spinner" size={14} /> : null)}
           {confirmAction.type === 'uninstall'
             ? t('personalScope.cloudSkillUninstall' as any)
-            : t('personalScope.cloudSkillDelete' as any)}
+            : confirmAction.type === 'unpublish'
+              ? t('squareScope.unpublish' as any)
+              : mode === 'square'
+                ? t('common.delete' as any)
+                : t('personalScope.cloudSkillDelete' as any)}
         </button>
       </DialogFooter>
     </Dialog>
@@ -694,6 +732,7 @@ useEffect(() => {
           const canManageCloudRecord = skill.provider !== 'maas-skillhub' && !skill.teamShared;
           const isInstalling = installingId === skill.resourceId;
           const isUninstalling = uninstallingId === skill.resourceId;
+          const isUnpublishing = unpublishingId === skill.resourceId;
           const isDeleting = deletingId === skill.resourceId;
           const showOriginalIcon = Boolean(skill.iconUrl) && !failedIconIds.has(skill.resourceId);
           return (
@@ -793,15 +832,28 @@ useEffect(() => {
                             {t('personalScope.cloudSkillUninstall' as any)}
                           </button>
                         ) : null}
+                       {canManageCloudRecord && mode === 'square' && skill.ownerMemberId === workspaceMemberId ? (
+                          <button
+                            type="button"
+                            className={styles.cardMenuItem}
+                            disabled={isUnpublishing}
+                            onClick={(e) => { e.stopPropagation(); setConfirmAction({ type: 'unpublish', item: skill }); setMenuOpenId(null); }}
+                          >
+                            <Icon name="eye-off" size={14} />
+                            {t('squareScope.unpublish' as any)}
+                          </button>
+                        ) : null}
                        {canManageCloudRecord && (mode === 'personal' || (mode === 'square' && skill.ownerMemberId === workspaceMemberId)) ? (
                           <button
                             type="button"
                             className={styles.cardMenuItemDanger}
                             disabled={isDeleting}
-                            onClick={(e) => { e.stopPropagation(); setConfirmAction({ type: 'delete', item: skill }); }}
+                            onClick={(e) => { e.stopPropagation(); setConfirmAction({ type: 'delete', item: skill }); setMenuOpenId(null); }}
                           >
                             <Icon name="close" size={14} />
-                            {t('personalScope.cloudSkillDelete' as any)}
+                            {mode === 'square'
+                              ? t('common.delete' as any)
+                              : t('personalScope.cloudSkillDelete' as any)}
                           </button>
                         ) : null}
                       </div>

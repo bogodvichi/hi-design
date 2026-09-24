@@ -601,6 +601,33 @@ try {
     }
   });
 
+ app.post('/api/workspace/mcp/cloud/:resourceId/unpublish', async (req, res) => {
+   if (!isLocalSameOrigin(req, getResolvedPort())) {
+     return res.status(403).json({ error: 'cross-origin request rejected' });
+   }
+   const resourceId = typeof req.params.resourceId === 'string' ? decodeURIComponent(req.params.resourceId) : '';
+   if (!resourceId) return res.status(400).json({ error: 'invalid resource id' });
+   try {
+     const workspaceId = getWorkspaceId(req);
+     if (!workspaceId) return res.status(400).json({ error: 'workspace_id is required' });
+     if (!hdwClient) return res.status(503).json({ error: 'HDW_CLOUD_NOT_CONFIGURED' });
+     const record = await hdwClient.getResource(workspaceId, resourceId);
+     if (!record) return res.status(404).json({ error: 'CLOUD_MCP_NOT_FOUND' });
+     if (record.ownerMemberId !== getOwnerMemberId(req)) {
+       return res.status(403).json({ error: 'NOT_RESOURCE_OWNER', message: 'you can only unpublish resources you own' });
+     }
+     const data = await hdwPut<{ resource: Record<string, unknown> }>(
+       `/workspaces/${encodeURIComponent(workspaceId)}/resources/${encodeURIComponent(resourceId)}`,
+       { metadata: record.metadata ?? {}, scope: null },
+       getSsoCookies(),
+     );
+     if (!data) return res.status(502).json({ error: 'HDW cloud unpublish failed' });
+     res.json({ ok: true });
+   } catch (err) {
+     res.status(500).json({ error: err instanceof Error ? err.message : 'cloud mcp unpublish failed' });
+   }
+ });
+
  app.delete('/api/workspace/mcp/cloud/:resourceId', async (req, res) => {
    if (!isLocalSameOrigin(req, getResolvedPort())) {
      return res.status(403).json({ error: 'cross-origin request rejected' });
@@ -724,7 +751,7 @@ app.delete('/api/workspace/mcp/cloud/:resourceId/uninstall', async (req, res) =>
   // ── Tool cloud routes (kind: 'tool') ──────────────────────────────────
   // Tools are lightweight URL bookmarks published to the community. They
   // share the same HDW resource system as MCP/Skill (kind: 'tool') but have
- // no install/uninstall lifecycle — only list, create, and delete.
+ // no install/uninstall lifecycle.
 
   app.get('/api/workspace/tool/cloud/check', async (req, res) => {
     if (!isLocalSameOrigin(req, getResolvedPort())) {
@@ -818,6 +845,33 @@ app.delete('/api/workspace/mcp/cloud/:resourceId/uninstall', async (req, res) =>
       res.json({ tool });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : 'cloud tool create failed' });
+    }
+  });
+
+  app.post('/api/workspace/tool/cloud/:resourceId/unpublish', async (req, res) => {
+    if (!isLocalSameOrigin(req, getResolvedPort())) {
+      return res.status(403).json({ error: 'cross-origin request rejected' });
+    }
+    const resourceId = typeof req.params.resourceId === 'string' ? decodeURIComponent(req.params.resourceId) : '';
+    if (!resourceId) return res.status(400).json({ error: 'invalid resource id' });
+    try {
+      const workspaceId = getWorkspaceId(req);
+      if (!workspaceId) return res.status(400).json({ error: 'workspace_id is required' });
+      if (!hdwClient) return res.status(503).json({ error: 'HDW_CLOUD_NOT_CONFIGURED' });
+      const record = await hdwClient.getResource(workspaceId, resourceId);
+      if (!record) return res.status(404).json({ error: 'CLOUD_TOOL_NOT_FOUND' });
+      if (record.ownerMemberId !== getOwnerMemberId(req)) {
+        return res.status(403).json({ error: 'NOT_RESOURCE_OWNER', message: 'you can only unpublish resources you own' });
+      }
+      const data = await hdwPut<{ resource: Record<string, unknown> }>(
+        `/workspaces/${encodeURIComponent(workspaceId)}/resources/${encodeURIComponent(resourceId)}`,
+        { metadata: record.metadata ?? {}, scope: null },
+        getSsoCookies(),
+      );
+      if (!data) return res.status(502).json({ error: 'HDW cloud unpublish failed' });
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ error: err instanceof Error ? err.message : 'cloud tool unpublish failed' });
     }
   });
 

@@ -39,6 +39,7 @@ export type RuntimeContext = {
     command: string;
     args: string[];
     env?: Record<string, string>;
+    envVars?: string[];
   }>;
   // True when the current chat run has at least one prior persisted
   // assistant message in the same conversation — i.e. this isn't the
@@ -212,6 +213,8 @@ export type RuntimeAgentDef = {
   //                            `mcpServers` array of an ACP launch
   //                            descriptor (Hermes / Kimi / Kilo / Kiro
   //                            / Vibe / Devin).
+  //   'codex-run-bridge'     — expose selected stdio/HTTP/SSE servers through
+  //                            isolated per-run stdio bridge subprocesses.
   //   'opencode-env-content' — serialise to OpenCode's `mcp` config
   //                            schema and hand it through
   //                            `OPENCODE_CONFIG_CONTENT` in the spawn
@@ -229,6 +232,7 @@ export type RuntimeAgentDef = {
   externalMcpInjection?:
     | 'claude-mcp-json'
     | 'acp-merge'
+    | 'codex-run-bridge'
     | 'opencode-env-content'
     | 'mimo-env-content';
   // The runtime accepts daemon-managed stdio MCP bridges (HiMind, AI research)

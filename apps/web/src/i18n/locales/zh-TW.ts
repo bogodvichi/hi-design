@@ -1,6 +1,10 @@
 import type { Dict } from "../types";
 
 export const zhTW: Dict = {
+  'personalScope.folderMoveSummary': "{succeeded} 個資料夾移動成功，{failed} 個未完成。",
+  'personalScope.folderMoveFailed': "未完成：{name}。請檢查後重試。",
+  'personalScope.folderMoveInterrupted': "「{name}」已確認移動 {count} 個檔案，其餘尚未完成或結果待確認。進度已保留，請選擇原目標繼續：{target}。",
+  'personalScope.folderMoveLocked': "「{name}」有未完成的移轉，請繼續原目標：{target}。",
   'invite.header.eyebrow': "團隊邀請",
   'invite.loading': "正在載入邀請…",
   'invite.landing.title': "加入團隊",
@@ -925,6 +929,11 @@ export const zhTW: Dict = {
   'sharedSpace.shareDialogCancel': 'Cancel',
   'sharedSpace.shareSuccess': '已成功分享',
   'sharedSpace.shareFailed': 'Share failed, please try again',
+  'sharedSpace.removeFromSharedWithMe': '從分享給我的刪除',
+  'sharedSpace.removeFromSharedWithMeTitle': '從分享給我的刪除？',
+  'sharedSpace.removeFromSharedWithMeBody': '刪除後，該使用者將不再可存取和使用',
+  'sharedSpace.removeFromSharedWithMeConfirm': '刪除',
+  'sharedSpace.removeFromSharedWithMeFailed': '刪除失敗，請重試',
 'sharedSpace.cannotShareToSelf': '無法分享給自己，請重新選擇分享對象。',
   'sharedSpace.shareFolderDialogTitle': 'Share Folder',
   'sharedSpace.shareFolderDialogDesc': 'Select members to share with. They will be able to view and comment on all projects (including subfolders) in this folder in the shared space.',
@@ -1070,8 +1079,12 @@ export const zhTW: Dict = {
   'teamSpace.newFolderNamePlaceholder': '輸入資料夾名稱',
   'teamSpace.createFolderBtn': '建立',
   'teamSpace.deleteFolder': '刪除',
-  'teamSpace.deleteFolderConfirmTitle': '刪除資料夾',
-  'teamSpace.deleteFolderConfirmMsg': '刪除此資料夾會移除其所有子資料夾。其中的專案將移至上層資料夾。此操作無法復原，確定要繼續嗎？',
+  'teamSpace.deleteFolderConfirmTitle': '刪除資料夾？',
+  'teamSpace.deleteFolderConfirmMsg': '確定刪除「{name}」嗎？刪除後無法復原。',
+
+  'personalFolders.deleteRootConfirmMsg': '刪除「{name}」後，其中的專案和子資料夾將移至「個人所有」。確定刪除嗎？',
+
+  'personalFolders.deleteNestedConfirmMsg': '刪除「{name}」後，其中的專案和子資料夾將移至上一層。確定刪除嗎？',
   'teamSpace.folderNameRequired': '請輸入資料夾名稱',
   'teamSpace.createFolderError': '建立資料夾失敗',
   "entry.billingTierFree": "Free",

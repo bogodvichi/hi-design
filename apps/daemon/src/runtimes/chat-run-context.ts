@@ -263,11 +263,7 @@ export function renderRunContextPrompt(selection: unknown, metadata: unknown) {
     lines.push(formatContextRefList(context.pluginIds, metadataRecord.contextPlugins, 'title'));
   }
   if (Array.isArray(context.mcpServerIds) && context.mcpServerIds.length > 0) {
-    lines.push('### Selected MCP servers');
-    lines.push(
-      'The user explicitly selected these MCP servers for this run. Treat that selection as a request to use them: before answering, make at least one relevant tool call to each selected server. If a selected server is unavailable or its tool call fails, report that failure clearly; do not silently substitute local files or general knowledge unless the user asks for a fallback.',
-    );
-    lines.push(formatContextRefList(context.mcpServerIds, metadataRecord.contextMcpServers, 'label'));
+    lines.push(...selectedMcpContextLines(context.mcpServerIds, metadataRecord));
   }
   if (Array.isArray(context.connectorIds) && context.connectorIds.length > 0) {
     lines.push('### Selected connectors');
@@ -278,4 +274,31 @@ export function renderRunContextPrompt(selection: unknown, metadata: unknown) {
   }
   if (lines.length === 0) return '';
   return ['## Selected run context', ...lines].join('\n');
+}
+
+function selectedMcpContextLines(
+  serverIds: string[],
+  metadata: Record<string, unknown>,
+): string[] {
+  return [
+    '### Selected MCP servers',
+    'The user explicitly selected these MCP servers for this run. Treat that selection as a request to use them: before answering, make at least one relevant tool call to each selected server. If a selected server is unavailable or its tool call fails, report that failure clearly; do not silently substitute local files or general knowledge unless the user asks for a fallback.',
+    formatContextRefList(serverIds, metadata.contextMcpServers, 'label'),
+  ];
+}
+
+/**
+ * Native prompt mode deliberately omits Open Design's general run-context
+ * prompt, but a context-only MCP pick has no inline `@server` token for the
+ * agent to see. Preserve just that explicit tool-use intent so choosing an MCP
+ * from the composer "+" menu behaves the same as mentioning it inline.
+ */
+export function renderSelectedMcpRunContextPrompt(selection: unknown, metadata: unknown) {
+  const context = mergeRunContextSelections(projectMetadataContextSelection(metadata), selection);
+  if (!Array.isArray(context.mcpServerIds) || context.mcpServerIds.length === 0) return '';
+  const metadataRecord = isRecord(metadata) ? metadata : {};
+  return [
+    '## Selected run context',
+    ...selectedMcpContextLines(context.mcpServerIds, metadataRecord),
+  ].join('\n');
 }

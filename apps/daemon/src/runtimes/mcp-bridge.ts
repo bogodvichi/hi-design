@@ -148,6 +148,59 @@ export interface RunMcpBridgeOptions {
   fetchImpl?: FetchLike;
 }
 
+type McpBridgeUpstream = Pick<Client, 'listTools' | 'callTool' | 'close'>;
+
+export interface CreateLazyMcpBridgeServerOptions {
+  serverName: string;
+  instructions: string;
+  connectUpstream: () => Promise<McpBridgeUpstream>;
+}
+
+export interface LazyMcpBridgeServer {
+  server: Server;
+  closeUpstream: () => Promise<void>;
+}
+
+/**
+ * Create the agent-facing MCP server without blocking its initialize handshake
+ * on the remote service. Codex starts MCP subprocesses eagerly and reports an
+ * opaque `connection closed: initialize response` when a process exits before
+ * replying. Deferring the remote connection until the first tools request
+ * keeps the local protocol healthy and lets the actual upstream error travel
+ * back as the tools/list or tools/call failure.
+ */
+export function createLazyMcpBridgeServer(
+  options: CreateLazyMcpBridgeServerOptions,
+): LazyMcpBridgeServer {
+  let upstreamPromise: Promise<McpBridgeUpstream> | null = null;
+  const upstream = (): Promise<McpBridgeUpstream> => {
+    upstreamPromise ??= options.connectUpstream();
+    return upstreamPromise;
+  };
+
+  const bridge = new Server(
+    { name: options.serverName, version: '1.0.0' },
+    {
+      capabilities: { tools: {} },
+      instructions: options.instructions,
+    },
+  );
+  bridge.setRequestHandler(ListToolsRequestSchema, async request => {
+    return await (await upstream()).listTools(request.params);
+  });
+  bridge.setRequestHandler(CallToolRequestSchema, async request => {
+    return await (await upstream()).callTool(request.params);
+  });
+  return {
+    server: bridge,
+    closeUpstream: async () => {
+      if (!upstreamPromise) return;
+      const client = await upstreamPromise.catch(() => null);
+      if (client) await client.close();
+    },
+  };
+}
+
 export async function runMcpBridge(options: RunMcpBridgeOptions): Promise<void> {
   const upstreamUrl = new URL(String(options.upstreamUrl));
   const label = options.serviceLabel;
@@ -159,43 +212,39 @@ export async function runMcpBridge(options: RunMcpBridgeOptions): Promise<void> 
     ...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
   });
 
-  const upstream = new Client(
-    { name: options.clientName, version: '1.0.0' },
-    { capabilities: {} },
-  );
-  const upstreamTransport = new StreamableHTTPClientTransport(upstreamUrl, {
-    fetch: authenticatedFetch,
-  });
-  // SDK 1.29's exact-optional declarations disagree on `sessionId` between
-  // its concrete transport and shared Transport interface; runtime shapes
-  // are compatible.
-  await upstream.connect(upstreamTransport as unknown as Transport);
-
-  if (upstreamTransport.protocolVersion !== MCP_BRIDGE_PROTOCOL_VERSION) {
-    await upstream.close();
-    throw new Error(
-      `${label} MCP negotiated ${upstreamTransport.protocolVersion ?? 'no protocol version'}; `
-      + `${MCP_BRIDGE_PROTOCOL_VERSION} is required`,
-    );
-  }
-  if (!upstream.getServerCapabilities()?.tools) {
-    await upstream.close();
-    throw new Error(`${label} MCP did not advertise tool support`);
-  }
-
-  const bridge = new Server(
-    { name: options.serverName, version: '1.0.0' },
-    {
-      capabilities: { tools: {} },
-      instructions: options.instructions,
+  const lazyBridge = createLazyMcpBridgeServer({
+    serverName: options.serverName,
+    instructions: options.instructions,
+    connectUpstream: async () => {
+      const upstream = new Client(
+        { name: options.clientName, version: '1.0.0' },
+        { capabilities: {} },
+      );
+      const upstreamTransport = new StreamableHTTPClientTransport(upstreamUrl, {
+        fetch: authenticatedFetch,
+      });
+      try {
+        // SDK 1.29's exact-optional declarations disagree on `sessionId`
+        // between its concrete transport and shared Transport interface;
+        // runtime shapes are compatible.
+        await upstream.connect(upstreamTransport as unknown as Transport);
+        if (upstreamTransport.protocolVersion !== MCP_BRIDGE_PROTOCOL_VERSION) {
+          throw new Error(
+            `${label} MCP negotiated ${upstreamTransport.protocolVersion ?? 'no protocol version'}; `
+            + `${MCP_BRIDGE_PROTOCOL_VERSION} is required`,
+          );
+        }
+        if (!upstream.getServerCapabilities()?.tools) {
+          throw new Error(`${label} MCP did not advertise tool support`);
+        }
+        return upstream;
+      } catch (error) {
+        await upstream.close().catch(() => {});
+        throw error;
+      }
     },
-  );
-  bridge.setRequestHandler(ListToolsRequestSchema, async request => {
-    return await upstream.listTools(request.params);
   });
-  bridge.setRequestHandler(CallToolRequestSchema, async request => {
-    return await upstream.callTool(request.params);
-  });
+  const bridge = lazyBridge.server;
 
   const stdio = new StdioServerTransport();
   try {
@@ -219,6 +268,6 @@ export async function runMcpBridge(options: RunMcpBridgeOptions): Promise<void> 
       process.stdin.once('close', closeForStdin);
     });
   } finally {
-    await Promise.allSettled([bridge.close(), upstream.close()]);
+    await Promise.allSettled([bridge.close(), lazyBridge.closeUpstream()]);
   }
 }

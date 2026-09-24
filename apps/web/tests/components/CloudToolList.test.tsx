@@ -276,6 +276,79 @@ describe('CloudToolList', () => {
     expect(onOutsideClick).toHaveBeenCalledTimes(1);
   });
 
+  it('shows card actions for the current member tool in My Publishes', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(JSON.stringify({
+      tools: [{
+        resourceId: 'owned-published-tool', ownerMemberId: 'member-1', url: 'https://tool.test',
+        name: 'Owned published tool', label: 'Owned published tool', description: 'Owned tool description',
+        createdAt: '', updatedAt: '',
+      }],
+    }), { status: 200, headers: { 'content-type': 'application/json' } }));
+
+    const { container } = render(
+      <CloudToolList
+        workspaceId="workspace-1"
+        workspaceMemberId="member-1"
+        workspaceType="team"
+        ownerMemberId="member-1"
+        mode="square"
+        scope="public"
+      />,
+    );
+
+    expect(await screen.findByText('Owned published tool')).toBeTruthy();
+    const menuButtons = container.querySelectorAll<HTMLButtonElement>('[class*="cardMenuBtn"]');
+    expect(menuButtons).toHaveLength(1);
+
+    fireEvent.click(menuButtons[0]!);
+    expect(screen.getByText('common.delete')).toBeTruthy();
+    fireEvent.click(screen.getByText('squareScope.unpublish'));
+
+    expect(screen.getByText('squareScope.unpublishConfirmTitle')).toBeTruthy();
+    expect(screen.getByText('squareScope.unpublishConfirmDesc')).toBeTruthy();
+    expect(screen.queryByText('personalScope.cloudToolDelete')).toBeNull();
+
+    fireEvent.click(screen.getByText('common.cancel'));
+    fireEvent.click(menuButtons[0]!);
+    fireEvent.click(screen.getByText('common.delete'));
+
+    expect(screen.getByText('squareScope.deleteConfirmTitle')).toBeTruthy();
+    expect(screen.getByText('squareScope.deleteConfirmDesc')).toBeTruthy();
+  });
+
+  it('keeps official tool authors while showing owner actions in My Publishes', async () => {
+    vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(new Response(JSON.stringify({
+      tools: [
+        {
+          resourceId: 'himind-tool-record', ownerMemberId: 'member-1',
+          url: 'http://himind.hikvision.com/login', name: 'HiMind', label: 'HiMind',
+          description: '', publisherName: '张亚婷5', createdAt: '', updatedAt: '',
+        },
+        {
+          resourceId: 'ai-research-tool-record', ownerMemberId: 'member-1',
+          url: 'https://www.hikvision.com', name: '海康威视', label: '海康威视',
+          description: '', publisherName: '石敬超', createdAt: '', updatedAt: '',
+        },
+      ],
+    }), { status: 200, headers: { 'content-type': 'application/json' } }));
+
+    const { container } = render(
+      <CloudToolList
+        workspaceId="workspace-1"
+        workspaceMemberId="member-1"
+        workspaceType="team"
+        ownerMemberId="member-1"
+        mode="square"
+        scope="public"
+      />,
+    );
+
+    expect(await screen.findByText('张亚婷5')).toBeTruthy();
+    expect(screen.getByText('石敬超')).toBeTruthy();
+    expect(screen.getByText('AI用研工作台')).toBeTruthy();
+    expect(container.querySelectorAll('[class*="cardMenuBtn"]')).toHaveLength(2);
+  });
+
   it('does not open the AI research login page when ticket creation fails', async () => {
     vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(new Response(JSON.stringify({

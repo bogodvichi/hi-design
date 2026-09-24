@@ -9,6 +9,13 @@ import type { ProjectSyncIntent, ProjectSyncIntentEvent, ProjectSyncState } from
 import type { TeamResourceState } from './team-resources.js';
 import type { WorkspaceCollabContext } from './collab.js';
 
+/** Internal, conditional cleanup after a folder migration; ordinary deletion
+ * must not be used here because concurrent additions would be cascaded away. */
+export interface FolderMoveCleanupRequest {
+  workspaceId: string;
+  expectedEmptyTree: Array<{ folderId: string; folderPid: string | null; folderName: string }>;
+}
+
 export type ProjectKind =
   | 'prototype'
   | 'deck'
@@ -1059,12 +1066,21 @@ export interface DeployPreflightResponse {
 export interface ProjectPublishCommunityRequest {
   title: string;
   description: string;
+  entryFile?: string;
+  coverImage?: string;
+  /** Stable for one user-initiated publish so transport retries stay idempotent. */
+  publishAttemptId?: string;
+  /** Reused across retries so the generated archive remains byte-stable. */
+  publishedAt?: string;
 }
 
 export interface ProjectPublishCommunityResponse {
+  status: 'created';
+  publicationId: string;
   pluginId: string;
   versionId: string;
   name: string;
   version: string;
+  publishedAt: string;
   url: string;
 }

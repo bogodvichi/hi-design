@@ -631,6 +631,11 @@
   flex-direction: column;
   z-index: 50;
 }
+.design-card-menu-separator {
+  height: var(--stroke-thin, 1px);
+  margin: var(--spacing-4, 4px) var(--spacing-6, 6px);
+  background: var(--border);
+}
 .design-card-menu button {
   display: flex;
   align-items: center;

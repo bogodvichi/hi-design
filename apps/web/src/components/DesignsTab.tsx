@@ -947,6 +947,30 @@ export function DesignsTab({
 											role="menu"
 											onClick={(e) => e.stopPropagation()}
 										>
+											{onDuplicate ? (
+												<>
+													<button
+														type="button"
+														role="menuitem"
+														onClick={() => {
+															const projectKind = projectKindFromMetadataToTracking(p.metadata);
+															trackProjectsMorePopoverClick(analytics.track, {
+																page_name: "projects",
+																area: "projects_more_popover",
+																element: "duplicate",
+																project_id: p.id,
+																...(projectKind ? { project_kind: projectKind } : {}),
+															});
+															setMenuOpenId(null);
+															handleDuplicateProject(p);
+														}}
+													>
+														<Icon name="copy" size={12} />
+														<span>{t("designs.menuDuplicate")}</span>
+													</button>
+													<div className="design-card-menu-separator" role="separator" />
+												</>
+											) : null}
 											<button
 												type="button"
 												role="menuitem"
@@ -966,27 +990,6 @@ export function DesignsTab({
 												<Icon name="pencil" size={14} />
 												<span>{t("designs.menuRename")}</span>
 											</button>
-											{onDuplicate ? (
-												<button
-													type="button"
-													role="menuitem"
-													onClick={() => {
-														const projectKind = projectKindFromMetadataToTracking(p.metadata);
-														trackProjectsMorePopoverClick(analytics.track, {
-															page_name: "projects",
-															area: "projects_more_popover",
-															element: "duplicate",
-															project_id: p.id,
-															...(projectKind ? { project_kind: projectKind } : {}),
-														});
-														setMenuOpenId(null);
-														handleDuplicateProject(p);
-													}}
-												>
-													<Icon name="copy" size={12} />
-													<span>{t("designs.menuDuplicate")}</span>
-												</button>
-											) : null}
 											<button
 												type="button"
 												role="menuitem"

@@ -201,6 +201,7 @@ import {
   createProject,
   createPluginShareProject,
   deleteProject as deleteProjectApi,
+  copySharedProjectToPersonal,
   duplicateProject,
   getProject,
   importClaudeDesignZip,
@@ -1396,9 +1397,13 @@ function AppInner() {
   const previousRouteForProjectReturnRef = useRef<Route>(route);
   useEffect(() => {
     const previousRoute = previousRouteForProjectReturnRef.current;
+    // External tools are sibling workspace tabs, not project launch surfaces.
+    // Reactivating an existing project from one must preserve the catalogue or
+    // folder that originally opened the project as its Back destination.
     if (
       route.kind === 'project'
       && previousRoute.kind !== 'project'
+      && previousRoute.kind !== 'external'
       && !(previousRoute.kind === 'home' && previousRoute.view === 'settings')
     ) {
       projectReturnRouteRef.current = previousRoute;
@@ -3610,6 +3615,19 @@ function AppInner() {
     [rememberLocalProject, resolveSourceProjectWorkspaceContext],
   );
 
+  const handleCopySharedProject = useCallback(
+    async (sourceProjectId: string, homeWorkspaceId: string) => {
+      const result = await copySharedProjectToPersonal(sourceProjectId, homeWorkspaceId);
+      rememberLocalProject(result.project.id);
+      setProjects((curr) => [
+        result.project,
+        ...curr.filter((p) => p.id !== result.project.id),
+      ]);
+      window.dispatchEvent(new CustomEvent('personal:folders-updated'));
+    },
+    [rememberLocalProject],
+  );
+
  const handleCreatePluginShareProject = useCallback(
     async (
       pluginId: string,
@@ -5369,6 +5387,7 @@ if (fetchedProject) {
       onRenameProject={handleRenameProject}
       onProjectsRefresh={refreshProjectsStrict}
       onCopyProject={handleCopyProject}
+      onCopySharedProject={handleCopySharedProject}
       onTeamProjectContentReady={handleTeamProjectContentReady}
       onChangeDefaultDesignSystem={handleChangeDefaultDesignSystem}
       onCreateDesignSystem={() => {
