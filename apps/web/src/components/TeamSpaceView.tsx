@@ -13,15 +13,13 @@ import { avatarColorFor } from '../utils/avatarColor';
 import { FolderCardMenu } from './FolderCardMenu';
 import { ShareFolderDialog } from './ShareFolderDialog';
 import { FolderSelectionCheck } from './FolderSelectionCheck';
+import { MoveToTeamTreeDialog, type TeamTreeSelection } from './MoveToTeamTreeDialog';
 import { RecentProjectsStrip } from './RecentProjectsStrip';
 import { AddSkillDialog } from './AddSkillDialog';
 import { AddMcpDialog } from './AddMcpDialog';
 import { CloudSkillList } from './CloudSkillList';
 import { CloudMcpList } from './CloudMcpList';
-import {
-  readWorkspaceDirectoryForCurrentGeneration,
-  workspaceContextFromDirectoryItem,
-} from '../collab/useWorkspaceContext';
+import { workspaceContextFromDirectoryItem } from '../collab/useWorkspaceContext';
 import { moveWorkspaceProject } from '../state/projects';
 import type { DesignSystemSummary, Project } from '../types';
 import styles from './TeamSpaceView.module.css';
@@ -196,7 +194,9 @@ export function TeamSpaceView({ teamId, tab, onInvite, designSystems = [], onOpe
 
  const title = teamName?.trim() || t('teamSpace.defaultTitle');
   const operatorRole = operator?.role ?? null;
-  const canManageFolders = operatorRole === 'owner' || operatorRole === 'admin';
+  const canCreateWorkspaceContent =
+    operatorRole === 'owner' || operatorRole === 'admin' || operatorRole === 'member';
+  const canManageWorkspace = operatorRole === 'owner' || operatorRole === 'admin';
 
  if (loading) {
     return (
@@ -221,7 +221,7 @@ export function TeamSpaceView({ teamId, tab, onInvite, designSystems = [], onOpe
          </span>
        </div>
      <div className={styles.headerActions}>
-        {canManageFolders && (activeTab === 'projects' || activeTab === 'members') ? (
+        {canCreateWorkspaceContent && (activeTab === 'projects' || activeTab === 'members') ? (
           <button
             type="button"
             className={styles.solidBtn}
@@ -242,7 +242,7 @@ export function TeamSpaceView({ teamId, tab, onInvite, designSystems = [], onOpe
             <span>{t('entry.navNewProject')}</span>
           </button>
         ) : null}
-        {canManageFolders && activeTab === 'projects' ? (
+        {canCreateWorkspaceContent && activeTab === 'projects' ? (
           <button
             type="button"
             className={styles.outlineBtn}
@@ -252,7 +252,7 @@ export function TeamSpaceView({ teamId, tab, onInvite, designSystems = [], onOpe
             <span>{t('teamSpace.newProjectGroup')}</span>
           </button>
         ) : null}
-        {canManageFolders && (activeTab === 'projects' || activeTab === 'members') ? (
+        {canManageWorkspace && (activeTab === 'projects' || activeTab === 'members') ? (
           <button
             type="button"
             className={styles.outlineBtn}
@@ -262,7 +262,7 @@ export function TeamSpaceView({ teamId, tab, onInvite, designSystems = [], onOpe
             <span>{t('teamSpace.inviteMember')}</span>
           </button>
         ) : null}
-        {canManageFolders && activeTab === 'skill' ? (
+        {canManageWorkspace && activeTab === 'skill' ? (
           <button
             type="button"
             className={styles.outlineBtn}
@@ -272,7 +272,7 @@ export function TeamSpaceView({ teamId, tab, onInvite, designSystems = [], onOpe
             <span>{t('personalScope.addSkill')}</span>
           </button>
         ) : null}
-        {canManageFolders && activeTab === 'mcp' ? (
+        {canManageWorkspace && activeTab === 'mcp' ? (
           <button
             type="button"
             className={styles.outlineBtn}
@@ -376,6 +376,10 @@ interface TeamFolderItem {
   createdAt: string;
 }
 
+function isTeamFolderEmpty(folder: TeamFolderItem): boolean {
+  return folder.projectCount === 0 && folder.subfolderCount === 0;
+}
+
 /** Fetch all team projects for a workspace from the daemon's team-projects
  *  endpoint. When `folderId` is provided, the daemon filters server-side
  *  via the HDW api folder/project/list endpoint so the frontend never
@@ -435,75 +439,6 @@ async function fetchTeamFolderTree(
     }
   }
   return result;
-}
-
-async function moveTeamFolderTreesToPersonal(input: {
-  sourceWorkspaceId: string;
-  sourceWorkspaceContext: WorkspaceCollabContext;
-  operatorMemberId: string;
-  roots: TeamFolderItem[];
-  targetFolderId?: string | null;
-}): Promise<number> {
-  const directory = await readWorkspaceDirectoryForCurrentGeneration();
-  const personal = directory.items?.find((item) => item.isDefaultTeam === true);
-  if (!personal?.workspaceId || !personal.workspaceMemberId) return 0;
-
-  let succeeded = 0;
-  for (const root of input.roots) {
-    try {
-      const tree = await fetchTeamFolderTree(input.sourceWorkspaceId, root);
-      const targetIds = new Map<string, string>();
-      for (const node of tree) {
-        const targetParentId = node.folderId === root.folderId
-          ? input.targetFolderId ?? null
-          : targetIds.get(node.folderPid ?? '') ?? null;
-        const createResponse = await fetch('/api/folders', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-od-workspace-member-id': personal.workspaceMemberId,
-          },
-          body: JSON.stringify({
-            workspace_id: personal.workspaceId,
-            folder_pid: targetParentId,
-            folder_name: node.folderName,
-          }),
-        });
-        const createBody = await createResponse.json().catch(() => null);
-        const createdId = createBody?.data?.folder_id;
-        if (!createResponse.ok || createBody?.code !== 0 || !createdId) {
-          throw new Error('Could not create the personal folder tree');
-        }
-        targetIds.set(node.folderId, createdId);
-      }
-
-      for (const node of tree) {
-        const targetId = targetIds.get(node.folderId) ?? null;
-        for (const projectId of node.projectIds) {
-          await moveWorkspaceProject({
-            projectId,
-            visibility: 'personal',
-            workspaceContext: input.sourceWorkspaceContext,
-            targetWorkspaceId: personal.workspaceId,
-            targetFolderId: targetId,
-          });
-        }
-      }
-
-      const deleteResponse = await fetch(
-        `/api/hdw/api/folder/${encodeURIComponent(root.folderId)}?operator_member_id=${encodeURIComponent(input.operatorMemberId)}`,
-        { method: 'DELETE' },
-      );
-      const deleteBody = await deleteResponse.json().catch(() => null);
-      if (!deleteResponse.ok || deleteBody?.code !== 0) {
-        throw new Error('Could not remove the migrated team folder');
-      }
-      succeeded += 1;
-    } catch (error) {
-      console.warn('[TeamSpaceView] move folder tree to personal failed:', error);
-    }
-  }
-  return succeeded;
 }
 
 async function moveTeamFolderTreesWithinWorkspace(input: {
@@ -572,13 +507,15 @@ async function moveTeamFolderTreesWithinWorkspace(input: {
         }
       }
 
-      const deleteResponse = await fetch(
-        `/api/hdw/api/folder/${encodeURIComponent(root.folderId)}?operator_member_id=${encodeURIComponent(input.operatorMemberId)}`,
-        { method: 'DELETE' },
-      );
-      const deleteBody = await deleteResponse.json().catch(() => null);
-      if (!deleteResponse.ok || deleteBody?.code !== 0) {
-        throw new Error('Could not remove the original team folder');
+      for (const node of [...tree].reverse()) {
+        const deleteResponse = await fetch(
+          `/api/hdw/api/folder/${encodeURIComponent(node.folderId)}?operator_member_id=${encodeURIComponent(input.operatorMemberId)}`,
+          { method: 'DELETE' },
+        );
+        const deleteBody = await deleteResponse.json().catch(() => null);
+        if (!deleteResponse.ok || deleteBody?.code !== 0) {
+          throw new Error('Could not remove the original team folder tree');
+        }
       }
       succeeded += 1;
     } catch (error) {
@@ -669,6 +606,8 @@ function ProjectsPanel({
   const [renamingFolder, setRenamingFolder] = useState(false);
   const renameFolderTitleId = useId();
   const [shareFolderTarget, setShareFolderTarget] = useState<TeamFolderItem | null>(null);
+  const [moveFolderTarget, setMoveFolderTarget] = useState<TeamFolderItem | null>(null);
+  const [movingFolder, setMovingFolder] = useState(false);
 
 // Fetch the team's project folders from the HDW folder API, and refresh
 // when a create/delete dispatches the `hdw:folders-updated` event.
@@ -698,7 +637,7 @@ function ProjectsPanel({
       setFolders(list.map((f) => ({
         folderId: f.folder_id || f.id || '',
         folderName: f.folder_name || f.name || '',
-        projectCount: counts[f.folder_id || f.id || ''] ?? Number(f.project_count) ?? 0,
+        projectCount: counts[f.folder_id || f.id || ''] ?? (Number(f.project_count) || 0),
          subfolderCount: Number(f.subfolder_count) || 0,
          subfolderPreview: Array.isArray(f.subfolder_preview)
            ? f.subfolder_preview.map((p: any) =>
@@ -819,7 +758,9 @@ function ProjectsPanel({
 
   async function deleteSelectedFolders(): Promise<number> {
     if (!operatorMemberId || selectedFolderIds.size === 0) return 0;
-    const ids = [...selectedFolderIds];
+    const ids = folders
+      .filter((folder) => selectedFolderIds.has(folder.folderId) && isTeamFolderEmpty(folder))
+      .map((folder) => folder.folderId);
     const results = await Promise.all(ids.map(async (folderId) => {
       try {
         const res = await fetch(
@@ -864,22 +805,7 @@ function ProjectsPanel({
   ): Promise<number> {
     const selected = folders.filter((folder) => selectedFolderIds.has(folder.folderId));
     if (!teamId || !operatorMemberId || selected.length === 0) return 0;
-    if (action === 'to-personal') {
-      if (!workspaceContext) return 0;
-      const moved = await moveTeamFolderTreesToPersonal({
-        sourceWorkspaceId: teamId,
-        sourceWorkspaceContext: workspaceContext,
-        operatorMemberId,
-        roots: selected,
-        targetFolderId: options?.targetFolderId ?? null,
-      });
-      if (moved > 0) {
-        setFolders((current) => current.filter((folder) => !selectedFolderIds.has(folder.folderId)));
-        window.dispatchEvent(new CustomEvent('personal:folders-updated'));
-        window.dispatchEvent(new CustomEvent('hdw:folders-updated', { detail: { teamId } }));
-      }
-      return moved;
-    }
+    if (action !== 'to-team') return 0;
     if (options?.targetWorkspaceId !== teamId) return 0;
     const response = await fetch('/api/hdw/api/folder/move', {
       method: 'POST',
@@ -908,6 +834,44 @@ function ProjectsPanel({
       window.dispatchEvent(new CustomEvent('hdw:folders-updated', { detail: { teamId } }));
     }
     return moved;
+  }
+
+  async function commitFolderMove(selection: TeamTreeSelection) {
+    const target = moveFolderTarget;
+    if (!target || !teamId || !operatorMemberId || movingFolder) return;
+    if (selection.workspaceId !== teamId) return;
+    setMovingFolder(true);
+    try {
+      const response = await fetch('/api/hdw/api/folder/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspace_id: teamId,
+          folder_ids: [target.folderId],
+          target_folder_id: selection.folderId,
+          operator_member_id: operatorMemberId,
+        }),
+      });
+      const body = await response.json().catch(() => null);
+      const moved = response.ok && body?.code === 0
+        ? 1
+        : response.status === 404 && workspaceContext
+          ? await moveTeamFolderTreesWithinWorkspace({
+              workspaceId: teamId,
+              workspaceContext,
+              operatorMemberId,
+              roots: [target],
+              targetFolderId: selection.folderId,
+            })
+          : 0;
+      if (moved > 0) {
+        setFolders((current) => current.filter((folder) => folder.folderId !== target.folderId));
+        setMoveFolderTarget(null);
+        window.dispatchEvent(new CustomEvent('hdw:folders-updated', { detail: { teamId } }));
+      }
+    } finally {
+      setMovingFolder(false);
+    }
   }
 
   function startFolderRename(folder: TeamFolderItem) {
@@ -985,7 +949,9 @@ function ProjectsPanel({
              <FolderCardMenu
                 onRename={canManage ? () => startFolderRename(folder) : undefined}
                renameLabel={t('common.rename')}
-               onDelete={canManage ? () => setRemoveTarget(folder) : undefined}
+               onMove={canManage ? () => setMoveFolderTarget(folder) : undefined}
+               moveLabel={t('designFiles.move')}
+               onDelete={canManage && isTeamFolderEmpty(folder) ? () => setRemoveTarget(folder) : undefined}
                deleteLabel={t('teamSpace.deleteGroup')}
                onShare={() => setShareFolderTarget(folder)}
                shareLabel={t('sharedSpace.shareFolderMenuLabel')}
@@ -1078,6 +1044,7 @@ function ProjectsPanel({
         selectionExtension={{
           selectedCount: selectedFolderIds.size,
           selectedLabels: folders.filter((folder) => selectedFolderIds.has(folder.folderId)).map((folder) => folder.folderName),
+          hideDelete: folders.some((folder) => selectedFolderIds.has(folder.folderId) && !isTeamFolderEmpty(folder)),
           onMoveSelected: moveSelectedFolders,
           moveTreeMode: 'team',
           restrictMoveToWorkspaceId: teamId,
@@ -1129,14 +1096,14 @@ function ProjectsPanel({
               <button type="button" className={styles.confirmClose} onClick={() => setRemoveTarget(null)} aria-label={t('common.close')}>
                 <Icon name="close" size={14} />
               </button>
-              <h3 className={styles.confirmTitle}>{t('teamSpace.deleteGroupConfirmTitle')}</h3>
-              <p className={styles.confirmMsg}>{t('teamSpace.deleteGroupConfirmMsg')}</p>
+              <h3 className={styles.confirmTitle}>{t('teamSpace.deleteFolderConfirmTitle')}</h3>
+              <p className={styles.confirmMsg}>{t('teamSpace.deleteFolderConfirmMsg', { name: removeTarget.folderName })}</p>
               <div className={styles.confirmActions}>
                 <button type="button" className={styles.confirmCancel} onClick={() => setRemoveTarget(null)}>
                   {t('teamSpace.removeCancelBtn')}
                 </button>
                 <button type="button" className={`${styles.confirmOk} ${styles.confirmDanger}`} onClick={confirmRemoveGroup} disabled={removing}>
-                  {t('teamSpace.removeConfirmBtn')}
+                  {t('teamSpace.deleteFolder')}
                 </button>
               </div>
             </div>
@@ -1180,14 +1147,23 @@ function ProjectsPanel({
           </DialogFooter>
         </Dialog>
       ) : null}
-      {shareFolderTarget && teamId ? (
-        <ShareFolderDialog
-          folderId={shareFolderTarget.folderId}
-          workspaceId={teamId}
-          homeWorkspaceId={teamId}
-          folderName={shareFolderTarget.folderName}
-          onClose={() => setShareFolderTarget(null)}
-          onShared={() => window.dispatchEvent(new CustomEvent('team:folders-updated'))}
+      {moveFolderTarget && teamId ? (
+        <MoveToTeamTreeDialog
+          onConfirm={(selection) => { void commitFolderMove(selection); }}
+          onCancel={() => { if (!movingFolder) setMoveFolderTarget(null); }}
+          busy={movingFolder}
+          mode="team"
+          currentWorkspaceId={teamId}
+          currentFolderId={null}
+          restrictToWorkspaceId={teamId}
+          disabledSubtreeKeys={new Set([`${teamId}:${moveFolderTarget.folderId}`])}
+          disabledKeys={new Set([
+            `${teamId}:root`,
+            `${teamId}:${moveFolderTarget.folderId}`,
+          ])}
+          titleLabel={t('designFiles.move')}
+          treeDescription={t('designFiles.moveLabel')}
+          rootSelectedLabel={t('designFiles.moveLabel')}
         />
       ) : null}
       {shareFolderTarget && teamId ? (
@@ -1197,7 +1173,7 @@ function ProjectsPanel({
           homeWorkspaceId={teamId}
           folderName={shareFolderTarget.folderName}
           onClose={() => setShareFolderTarget(null)}
-          onShared={() => window.dispatchEvent(new CustomEvent('team:folders-updated'))}
+          onShared={() => window.dispatchEvent(new CustomEvent('hdw:folders-updated', { detail: { teamId } }))}
         />
       ) : null}
     </div>
@@ -1605,6 +1581,8 @@ export function FolderView({ teamId, folderId, designSystems = [], onOpenProject
  const currentFolderName = breadcrumb.length > 0 ? (breadcrumb[breadcrumb.length - 1]?.folderName ?? '').trim() : '';
  const title = currentFolderName || t('teamSpace.folderSubtitle');
   const operatorRole = operator?.role ?? null;
+  const canCreateProjects =
+    operatorRole === 'owner' || operatorRole === 'admin' || operatorRole === 'member';
   const canManageFolders = operatorRole === 'owner' || operatorRole === 'admin';
 
  if (loading) {
@@ -1634,41 +1612,41 @@ export function FolderView({ teamId, folderId, designSystems = [], onOpenProject
           <h1 id="folder-view-title" className={styles.title}>{title}</h1>
       </div>
     <div className={styles.headerActions}>
-       {canManageFolders ? (
-         <>
-           <button
-             type="button"
-             className={styles.solidBtn}
-             onClick={() => {
-               if (teamId && folderId) {
-                 const names = breadcrumb.map((b) => b.folderName).filter(Boolean);
-                 const displayPath = teamName?.trim()
-                   ? buildDisplayPath([teamName.trim(), ...names])
-                   : buildDisplayPath(names);
-                 localStorage.setItem(FOLDER_CONTEXT_KEY, JSON.stringify({
-                   workspaceId: teamId,
-                   workspaceName: teamName?.trim() || '',
-                   folderId,
-                   folderPath: displayPath,
-                 }));
-                 window.dispatchEvent(new Event('od:folder-context-changed'));
-               }
-               navigate({ kind: 'home', view: 'home' });
-             }}
-           >
-             <Icon name="plus" size={16} aria-hidden />
-             <span>{t('entry.navNewProject')}</span>
-           </button>
-           <button
-             type="button"
-             className={styles.outlineBtn}
-             onClick={() => setShowCreateFolder(true)}
-           >
-             <Icon name="folder" size={16} aria-hidden />
-             <span>{t('teamSpace.newSubFolder')}</span>
-           </button>
-         </>
-       ) : null}
+       {canCreateProjects ? (
+          <button
+            type="button"
+            className={styles.solidBtn}
+            onClick={() => {
+              if (teamId && folderId) {
+                const names = breadcrumb.map((b) => b.folderName).filter(Boolean);
+                const displayPath = teamName?.trim()
+                  ? buildDisplayPath([teamName.trim(), ...names])
+                  : buildDisplayPath(names);
+                localStorage.setItem(FOLDER_CONTEXT_KEY, JSON.stringify({
+                  workspaceId: teamId,
+                  workspaceName: teamName?.trim() || '',
+                  folderId,
+                  folderPath: displayPath,
+                }));
+                window.dispatchEvent(new Event('od:folder-context-changed'));
+              }
+              navigate({ kind: 'home', view: 'home' });
+            }}
+          >
+            <Icon name="plus" size={16} aria-hidden />
+            <span>{t('entry.navNewProject')}</span>
+          </button>
+        ) : null}
+        {canManageFolders ? (
+          <button
+            type="button"
+            className={styles.outlineBtn}
+            onClick={() => setShowCreateFolder(true)}
+          >
+            <Icon name="folder" size={16} aria-hidden />
+            <span>{t('teamSpace.newSubFolder')}</span>
+          </button>
+        ) : null}
 
       </div>
      </header>
@@ -1758,6 +1736,8 @@ function FoldersPanel({
   const [renamingFolder, setRenamingFolder] = useState(false);
   const renameFolderTitleId = useId();
   const [shareFolderTarget, setShareFolderTarget] = useState<TeamFolderItem | null>(null);
+  const [moveFolderTarget, setMoveFolderTarget] = useState<TeamFolderItem | null>(null);
+  const [movingFolder, setMovingFolder] = useState(false);
 
 // Fetch subfolders whose folder_pid equals the current folderId.
  useEffect(() => {
@@ -1786,7 +1766,7 @@ function FoldersPanel({
        setFolders(list.map((f) => ({
          folderId: f.folder_id || f.id || '',
          folderName: f.folder_name || f.name || '',
-         projectCount: counts[f.folder_id || f.id || ''] ?? Number(f.project_count) ?? 0,
+         projectCount: counts[f.folder_id || f.id || ''] ?? (Number(f.project_count) || 0),
           subfolderCount: Number(f.subfolder_count) || 0,
           subfolderPreview: Array.isArray(f.subfolder_preview)
             ? f.subfolder_preview.map((p: any) =>
@@ -1905,7 +1885,9 @@ function FoldersPanel({
 
   async function deleteSelectedFolders(): Promise<number> {
     if (!teamId || !folderId || !operatorMemberId || selectedFolderIds.size === 0) return 0;
-    const ids = [...selectedFolderIds];
+    const ids = folders
+      .filter((folder) => selectedFolderIds.has(folder.folderId) && isTeamFolderEmpty(folder))
+      .map((folder) => folder.folderId);
     const results = await Promise.all(ids.map(async (selectedId) => {
       try {
         const res = await fetch(
@@ -1950,22 +1932,7 @@ function FoldersPanel({
   ): Promise<number> {
     const selected = folders.filter((folder) => selectedFolderIds.has(folder.folderId));
     if (!teamId || !folderId || !operatorMemberId || selected.length === 0) return 0;
-    if (action === 'to-personal') {
-      if (!workspaceContext) return 0;
-      const moved = await moveTeamFolderTreesToPersonal({
-        sourceWorkspaceId: teamId,
-        sourceWorkspaceContext: workspaceContext,
-        operatorMemberId,
-        roots: selected,
-        targetFolderId: options?.targetFolderId ?? null,
-      });
-      if (moved > 0) {
-        setFolders((current) => current.filter((folder) => !selectedFolderIds.has(folder.folderId)));
-        window.dispatchEvent(new CustomEvent('personal:folders-updated'));
-        window.dispatchEvent(new CustomEvent('hdw:subfolders-updated', { detail: { teamId, folderId } }));
-      }
-      return moved;
-    }
+    if (action !== 'to-team') return 0;
     if (options?.targetWorkspaceId !== teamId) return 0;
     const response = await fetch('/api/hdw/api/folder/move', {
       method: 'POST',
@@ -1994,6 +1961,45 @@ function FoldersPanel({
       window.dispatchEvent(new CustomEvent('hdw:subfolders-updated', { detail: { teamId, folderId } }));
     }
     return moved;
+  }
+
+  async function commitFolderMove(selection: TeamTreeSelection) {
+    const target = moveFolderTarget;
+    if (!target || !teamId || !folderId || !operatorMemberId || movingFolder) return;
+    if (selection.workspaceId !== teamId) return;
+    setMovingFolder(true);
+    try {
+      const response = await fetch('/api/hdw/api/folder/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workspace_id: teamId,
+          folder_ids: [target.folderId],
+          target_folder_id: selection.folderId,
+          operator_member_id: operatorMemberId,
+        }),
+      });
+      const body = await response.json().catch(() => null);
+      const moved = response.ok && body?.code === 0
+        ? 1
+        : response.status === 404 && workspaceContext
+          ? await moveTeamFolderTreesWithinWorkspace({
+              workspaceId: teamId,
+              workspaceContext,
+              operatorMemberId,
+              roots: [target],
+              targetFolderId: selection.folderId,
+            })
+          : 0;
+      if (moved > 0) {
+        setFolders((current) => current.filter((folder) => folder.folderId !== target.folderId));
+        setMoveFolderTarget(null);
+        window.dispatchEvent(new CustomEvent('hdw:subfolders-updated', { detail: { teamId, folderId } }));
+        window.dispatchEvent(new CustomEvent('hdw:folders-updated', { detail: { teamId } }));
+      }
+    } finally {
+      setMovingFolder(false);
+    }
   }
 
   function startFolderRename(folder: TeamFolderItem) {
@@ -2071,7 +2077,9 @@ function FoldersPanel({
              <FolderCardMenu
                 onRename={canManage ? () => startFolderRename(folder) : undefined}
                renameLabel={t('common.rename')}
-               onDelete={canManage ? () => setRemoveTarget(folder) : undefined}
+               onMove={canManage ? () => setMoveFolderTarget(folder) : undefined}
+               moveLabel={t('designFiles.move')}
+               onDelete={canManage && isTeamFolderEmpty(folder) ? () => setRemoveTarget(folder) : undefined}
                deleteLabel={t('teamSpace.deleteFolder')}
                onShare={() => setShareFolderTarget(folder)}
                shareLabel={t('sharedSpace.shareFolderMenuLabel')}
@@ -2163,8 +2171,9 @@ function FoldersPanel({
          currentFolderId={folderId}
          selectionExtension={{
            selectedCount: selectedFolderIds.size,
-           selectedLabels: folders.filter((folder) => selectedFolderIds.has(folder.folderId)).map((folder) => folder.folderName),
-           onMoveSelected: moveSelectedFolders,
+            selectedLabels: folders.filter((folder) => selectedFolderIds.has(folder.folderId)).map((folder) => folder.folderName),
+            hideDelete: folders.some((folder) => selectedFolderIds.has(folder.folderId) && !isTeamFolderEmpty(folder)),
+            onMoveSelected: moveSelectedFolders,
            moveTreeMode: 'team',
            restrictMoveToWorkspaceId: teamId,
            disabledMoveKeys: new Set([...selectedFolderIds].map((id) => `${teamId}:${id}`)),
@@ -2216,7 +2225,7 @@ function FoldersPanel({
                 <Icon name="close" size={14} />
               </button>
               <h3 className={styles.confirmTitle}>{t('teamSpace.deleteFolderConfirmTitle')}</h3>
-              <p className={styles.confirmMsg}>{t('teamSpace.deleteFolderConfirmMsg')}</p>
+              <p className={styles.confirmMsg}>{t('teamSpace.deleteFolderConfirmMsg', { name: removeTarget.folderName })}</p>
               <div className={styles.confirmActions}>
                 <button type="button" className={styles.confirmCancel} onClick={() => setRemoveTarget(null)} disabled={removing}>
                   {t('teamSpace.removeCancelBtn')}
@@ -2265,6 +2274,35 @@ function FoldersPanel({
             </button>
           </DialogFooter>
         </Dialog>
+      ) : null}
+      {moveFolderTarget && teamId && folderId ? (
+        <MoveToTeamTreeDialog
+          onConfirm={(selection) => { void commitFolderMove(selection); }}
+          onCancel={() => { if (!movingFolder) setMoveFolderTarget(null); }}
+          busy={movingFolder}
+          mode="team"
+          currentWorkspaceId={teamId}
+          currentFolderId={folderId}
+          restrictToWorkspaceId={teamId}
+          disabledSubtreeKeys={new Set([`${teamId}:${moveFolderTarget.folderId}`])}
+          disabledKeys={new Set([
+            `${teamId}:${folderId}`,
+            `${teamId}:${moveFolderTarget.folderId}`,
+          ])}
+          titleLabel={t('designFiles.move')}
+          treeDescription={t('designFiles.moveLabel')}
+          rootSelectedLabel={t('designFiles.moveLabel')}
+        />
+      ) : null}
+      {shareFolderTarget && teamId ? (
+        <ShareFolderDialog
+          folderId={shareFolderTarget.folderId}
+          workspaceId={teamId}
+          homeWorkspaceId={teamId}
+          folderName={shareFolderTarget.folderName}
+          onClose={() => setShareFolderTarget(null)}
+          onShared={() => window.dispatchEvent(new CustomEvent('hdw:folders-updated', { detail: { teamId } }))}
+        />
       ) : null}
     </div>
   );

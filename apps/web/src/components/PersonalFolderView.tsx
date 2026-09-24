@@ -386,7 +386,10 @@ const renameFolderTitleId = useId();
     try {
       const res = await fetch(
         `/api/folders/${encodeURIComponent(folder.folderId)}?workspace_id=${encodeURIComponent(workspaceId)}`,
-        { method: 'DELETE' },
+        {
+          method: 'DELETE',
+          headers: workspaceMemberId ? { 'x-od-workspace-member-id': workspaceMemberId } : undefined,
+        },
       );
       const body = await res.json().catch(() => null);
       if (!res.ok || body?.code !== 0) {
@@ -690,7 +693,7 @@ const renameFolderTitleId = useId();
                 <Icon name="close" size={14} />
               </button>
               <h3 className={styles.confirmTitle}>{t('teamSpace.deleteFolderConfirmTitle')}</h3>
-              <p className={styles.confirmMsg}>{t('teamSpace.deleteFolderConfirmMsg')}</p>
+              <p className={styles.confirmMsg}>{t('personalFolders.deleteNestedConfirmMsg', { name: removeTarget.folderName })}</p>
               <div className={styles.confirmActions}>
                 <button type="button" className={styles.confirmCancel} onClick={() => setRemoveTarget(null)} disabled={removing}>
                   {t('teamSpace.removeCancelBtn')}

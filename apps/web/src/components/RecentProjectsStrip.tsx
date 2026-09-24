@@ -129,6 +129,8 @@ export interface CollectionSelectionExtension {
   moveDialogTitle?: string;
   moveTreeDescription?: string;
   moveRootSelectedLabel?: string;
+  /** Hide bulk delete when the parent-owned selection contains non-deletable items. */
+  hideDelete?: boolean;
   /** Delete the parent-owned selected items and return how many succeeded. */
   onDeleteSelected?: () => Promise<number>;
   onModeChange?: (active: boolean) => void;
@@ -2040,7 +2042,7 @@ function requestDelete(project: Project) {
                 <Icon name="move" size={14} /> {t('recentProjects.moveTo')}
               </button>
             ) : null}
-            {onDelete || selectionExtension?.onDeleteSelected ? (
+            {!selectionExtension?.hideDelete && (onDelete || selectionExtension?.onDeleteSelected) ? (
               <button
                 type="button"
                 className="danger"
@@ -2077,7 +2079,7 @@ function requestDelete(project: Project) {
                 <Icon name="move" size={14} /> {t('recentProjects.moveTo')}
               </button>
             ) : null}
-            {onDelete || selectionExtension?.onDeleteSelected ? (
+            {!selectionExtension?.hideDelete && (onDelete || selectionExtension?.onDeleteSelected) ? (
               <button
                 type="button"
                 className="danger"

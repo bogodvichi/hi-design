@@ -1465,6 +1465,8 @@ export interface Dict {
  'teamSpace.deleteFolder': string;
  'teamSpace.deleteFolderConfirmTitle': string;
  'teamSpace.deleteFolderConfirmMsg': string;
+ 'personalFolders.deleteRootConfirmMsg': string;
+ 'personalFolders.deleteNestedConfirmMsg': string;
  'teamSpace.folderNameRequired': string;
  'teamSpace.createFolderError': string;
 'entry.billingTierTeam': string;

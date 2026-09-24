@@ -1077,8 +1077,12 @@ export const zhCN: Dict = {
  "teamSpace.newFolderNamePlaceholder": "请输入文件夹名称",
  "teamSpace.createFolderBtn": "创建",
  "teamSpace.deleteFolder": "删除",
- "teamSpace.deleteFolderConfirmTitle": "删除文件夹",
- "teamSpace.deleteFolderConfirmMsg": "删除后将移除该文件夹下的所有子文件夹，文件夹内的项目将移至上级文件夹，且无法恢复。确定删除吗？",
+ "teamSpace.deleteFolderConfirmTitle": "删除文件夹？",
+ "teamSpace.deleteFolderConfirmMsg": "确定删除「{name}」吗？删除后无法恢复。",
+
+ "personalFolders.deleteRootConfirmMsg": "删除「{name}」后，其中的项目和子文件夹将移至「个人所有」。确定删除吗？",
+
+ "personalFolders.deleteNestedConfirmMsg": "删除「{name}」后，其中的项目和子文件夹将移至上一级。确定删除吗？",
  "teamSpace.folderNameRequired": "请输入文件夹名称",
  "teamSpace.createFolderError": "创建文件夹失败",
 "entry.billingTierFree": "免费",

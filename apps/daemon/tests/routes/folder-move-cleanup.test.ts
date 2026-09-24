@@ -12,6 +12,7 @@ vi.mock('../../src/db.js', () => ({
   getFolderPath: vi.fn(), listProjectsInFolder: vi.fn(), normalizeProject: vi.fn(),
   getWorkspaceFolder: () => state.absent ? undefined : { folderId: 'a', ownerMemberId: state.owner },
   getFolderTree: () => state.tree,
+  deleteWorkspaceFolderPreservingContents: vi.fn(),
   deleteWorkspaceFolder: (...args: unknown[]) => {
     expect(state.transactionActive).toBe(true);
     state.delete(...args);

@@ -1074,8 +1074,12 @@ export const ptBR: Dict = {
   'teamSpace.newFolderNamePlaceholder': 'Enter folder name',
   'teamSpace.createFolderBtn': 'Create',
   'teamSpace.deleteFolder': 'Delete',
-  'teamSpace.deleteFolderConfirmTitle': 'Delete folder',
-  'teamSpace.deleteFolderConfirmMsg': 'Deleting this folder will remove all its subfolders. Projects inside will be moved to the parent folder. This cannot be undone. Are you sure?',
+  'teamSpace.deleteFolderConfirmTitle': 'Delete folder?',
+  'teamSpace.deleteFolderConfirmMsg': 'Delete “{name}”? This cannot be undone.',
+
+  'personalFolders.deleteRootConfirmMsg': 'Delete “{name}”? Projects and subfolders inside will move to Personal.',
+
+  'personalFolders.deleteNestedConfirmMsg': 'Delete “{name}”? Projects and subfolders inside will move up one level.',
   'teamSpace.folderNameRequired': 'Please enter a folder name',
   'teamSpace.createFolderError': 'Failed to create folder',
   "entry.billingTierFree": "Free",

@@ -1081,8 +1081,12 @@ export const zhTW: Dict = {
   'teamSpace.newFolderNamePlaceholder': '輸入資料夾名稱',
   'teamSpace.createFolderBtn': '建立',
   'teamSpace.deleteFolder': '刪除',
-  'teamSpace.deleteFolderConfirmTitle': '刪除資料夾',
-  'teamSpace.deleteFolderConfirmMsg': '刪除此資料夾會移除其所有子資料夾。其中的專案將移至上層資料夾。此操作無法復原，確定要繼續嗎？',
+  'teamSpace.deleteFolderConfirmTitle': '刪除資料夾？',
+  'teamSpace.deleteFolderConfirmMsg': '確定刪除「{name}」嗎？刪除後無法復原。',
+
+  'personalFolders.deleteRootConfirmMsg': '刪除「{name}」後，其中的專案和子資料夾將移至「個人所有」。確定刪除嗎？',
+
+  'personalFolders.deleteNestedConfirmMsg': '刪除「{name}」後，其中的專案和子資料夾將移至上一層。確定刪除嗎？',
   'teamSpace.folderNameRequired': '請輸入資料夾名稱',
   'teamSpace.createFolderError': '建立資料夾失敗',
   "entry.billingTierFree": "Free",
