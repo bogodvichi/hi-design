@@ -153,7 +153,7 @@ class FolderController extends Controller {
     }
   }
 
-  // 删除文件夹(连同子文件夹及文件夹内项目关联一并清理,由 ON DELETE CASCADE 完成)
+  // 仅允许删除空文件夹；存在项目或子文件夹时拒绝删除。
   // params: folder_id; query: operator_member_id?
   async del() {
     const { ctx } = this;
@@ -172,27 +172,28 @@ class FolderController extends Controller {
         ctx.body = { code: -1, msg: 'FAIL', error: '文件夹不存在' };
         return;
       }
-      // 权限校验(可选)
-      if (operatorId) {
-        const check = await this._checkOperator(operatorId, folder.workspace_id, ['owner', 'admin']);
-        if (check.error) {
-          ctx.body = { code: -1, msg: 'FAIL', error: check.error };
-          return;
-        }
+      if (!operatorId) {
+        ctx.body = { code: -1, msg: 'FAIL', error: '缺少必要参数 operator_member_id' };
+        return;
+      }
+      const check = await this._checkOperator(operatorId, folder.workspace_id, ['owner', 'admin']);
+      if (check.error) {
+        ctx.body = { code: -1, msg: 'FAIL', error: check.error };
+        return;
       }
 
-      // 递归收集所有子文件夹 ID(含自身),连同关联的 team_projects 一起删除。
-      const folderIds = [folderId];
-      let pending = [folderId];
-      while (pending.length > 0) {
-        const children = await k('folders')
-          .whereIn('folder_pid', pending)
-          .pluck('folder_id');
-        if (children.length === 0) break;
-        folderIds.push(...children);
-        pending = children;
+      const [childFolder, childProject] = await Promise.all([
+        k('folders').where({ folder_pid: folderId }).select('folder_id').first(),
+        k('team_projects')
+          .where({ folder_id: folderId, workspace_id: folder.workspace_id })
+          .select('project_id')
+          .first(),
+      ]);
+      if (childFolder || childProject) {
+        ctx.body = { code: -1, msg: 'FAIL', error: '文件夹非空，无法删除' };
+        return;
       }
-      await k('team_projects').whereIn('folder_id', folderIds).del();
+
       await k('folders').where({ folder_id: folderId }).del();
       ctx.body = { code: 0, msg: 'SUCCESS', data: { deleted: true } };
     } catch (err) {
@@ -219,12 +220,14 @@ class FolderController extends Controller {
         ctx.body = { code: -1, msg: 'FAIL', error: '文件夹不存在' };
         return;
       }
-      if (operatorId) {
-        const check = await this._checkOperator(operatorId, folder.workspace_id, ['owner', 'admin']);
-        if (check.error) {
-          ctx.body = { code: -1, msg: 'FAIL', error: check.error };
-          return;
-        }
+      if (!operatorId) {
+        ctx.body = { code: -1, msg: 'FAIL', error: '缺少必要参数 operator_member_id' };
+        return;
+      }
+      const check = await this._checkOperator(operatorId, folder.workspace_id, ['owner', 'admin']);
+      if (check.error) {
+        ctx.body = { code: -1, msg: 'FAIL', error: check.error };
+        return;
       }
 
       await k('folders').where({ folder_id: folderId }).update({ folder_name: folderName });

@@ -160,7 +160,7 @@ const { moveFolders, moving: movingFolder, feedback: moveFeedback } = usePersona
       setProjectsLoading(true);
       try {
        const res = await fetch(
-         `/api/folders/root/projects?workspace_id=${encodeURIComponent(workspaceId)}`,
+         `/api/folders/root/projects?workspace_id=${encodeURIComponent(workspaceId)}&personal_scope=1`,
          {
            cache: 'no-store',
            headers: workspaceMemberId
@@ -232,7 +232,10 @@ const { moveFolders, moving: movingFolder, feedback: moveFeedback } = usePersona
     try {
       const res = await fetch(
         `/api/folders/${encodeURIComponent(folder.folderId)}?workspace_id=${encodeURIComponent(workspaceId)}`,
-        { method: 'DELETE' },
+        {
+          method: 'DELETE',
+          headers: workspaceMemberId ? { 'x-od-workspace-member-id': workspaceMemberId } : undefined,
+        },
       );
       const body = await res.json().catch(() => null);
       if (!res.ok || body?.code !== 0) {
@@ -539,14 +542,14 @@ function handleFolderClick(folder: PersonalFolderItem) {
               <button type="button" className={styles.confirmClose} onClick={() => setRemoveTarget(null)} aria-label={t('common.close')}>
                 <Icon name="close" size={14} />
               </button>
-              <h3 className={styles.confirmTitle}>{t('teamSpace.deleteGroupConfirmTitle')}</h3>
-              <p className={styles.confirmMsg}>{t('teamSpace.deleteGroupConfirmMsg')}</p>
+              <h3 className={styles.confirmTitle}>{t('teamSpace.deleteFolderConfirmTitle')}</h3>
+              <p className={styles.confirmMsg}>{t('personalFolders.deleteRootConfirmMsg', { name: removeTarget.folderName })}</p>
               <div className={styles.confirmActions}>
                 <button type="button" className={styles.confirmCancel} onClick={() => setRemoveTarget(null)}>
                   {t('teamSpace.removeCancelBtn')}
                 </button>
                 <button type="button" className={`${styles.confirmOk} ${styles.confirmDanger}`} onClick={confirmRemoveGroup} disabled={removing}>
-                  {t('teamSpace.removeConfirmBtn')}
+                  {t('teamSpace.deleteFolder')}
                 </button>
               </div>
             </div>

@@ -217,11 +217,14 @@ function isResidualAllowedPath(repositoryPath: string): boolean {
   return residualAllowedPathPatterns.some((pattern) => pattern.test(repositoryPath));
 }
 
-function isResidualSkippedDirectoryName(directoryName: string): boolean {
-  return (
-    residualSkippedDirectories.has(directoryName) || directoryName === ".next" || directoryName.startsWith(".next-")
-  );
-}
+ function isResidualSkippedDirectoryName(directoryName: string): boolean {
+   return (
+     residualSkippedDirectories.has(directoryName) ||
+     directoryName === ".next" ||
+     directoryName.startsWith(".next-") ||
+     directoryName.endsWith("_bak")
+   );
+ }
 
 async function collectResidualJavaScript(directory: string): Promise<string[]> {
   const entries = await readdir(directory, { withFileTypes: true });

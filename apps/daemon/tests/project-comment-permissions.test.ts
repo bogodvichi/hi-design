@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { WorkspaceCollabContext } from '@open-design/contracts';
 import express from 'express';
 import http from 'node:http';
 import fs from 'node:fs';
@@ -20,6 +21,7 @@ import {
   upsertPreviewComment,
 } from '../src/db.js';
 import { registerProjectCommentRoutes } from '../src/routes/project/comments.js';
+import { writeSsoConfigFile } from '../src/http/hik_logins/hicoo.js';
 
 // Server-authoritative permission gating for the preview-comment mutation routes
 // (product model 2026-07-09): editing a comment is author-only (structurally, via
@@ -50,7 +52,15 @@ function asMember(memberId: string): { authorization: string } {
   return { authorization: `member:${memberId}` };
 }
 
-async function startServer({ shared = true }: { shared?: boolean } = {}) {
+  async function startServer({
+    shared = true,
+    runtimeDataDir,
+    workspaceContext,
+  }: {
+    shared?: boolean;
+    runtimeDataDir?: string;
+    workspaceContext?: WorkspaceCollabContext | null;
+  } = {}) {
   tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'od-comment-perms-'));
   const db = openDatabase(tempDir);
   insertProject(db, { id: PROJECT, name: 'Project', createdAt: 1, updatedAt: 1 });
@@ -68,7 +78,11 @@ async function startServer({ shared = true }: { shared?: boolean } = {}) {
   app.use(express.json());
   registerProjectCommentRoutes(app, {
     db,
-    projectStore: { updateProject } as any,
+    projectStore: {
+      updateProject,
+      getWorkspaceProject: () => undefined,
+      getWorkspaceProjectByProjectId: () => undefined,
+    } as any,
     conversations: {
       getConversation,
       listPreviewComments,
@@ -85,6 +99,15 @@ async function startServer({ shared = true }: { shared?: boolean } = {}) {
     // p1 is owned by OWNER.
     resolveProjectOwnerMemberId: async () => OWNER,
     isSharedProject: async () => shared,
+    ...(runtimeDataDir ? { runtimeDataDir } : {}),
+    ...(workspaceContext !== undefined
+      ? {
+          resolveWorkspaceContext: async () => ({
+            ok: true as const,
+            context: workspaceContext,
+          }),
+        }
+      : {}),
     onCommentCreated: (c) => { created.push(c.id); },
     onCommentUpdated: (c) => { updated.push(c.id); },
     onCommentDeleted: (c) => { deleted.push(c.id); },
@@ -136,6 +159,7 @@ async function startServer({ shared = true }: { shared?: boolean } = {}) {
     return res.body.comment as {
       id: string;
       authorMemberId?: string;
+      authorDisplayName?: string;
       note: string;
       pinSeq?: number;
       sortKey?: number;
@@ -146,6 +170,7 @@ async function startServer({ shared = true }: { shared?: boolean } = {}) {
     listPreviewComments(db, PROJECT, CONVERSATION) as Array<{
       id: string;
       authorMemberId?: string;
+      authorDisplayName?: string;
       note: string;
     }>;
 
@@ -374,6 +399,66 @@ describe('preview comment permission gating', () => {
     expect(edit.status).toBe(403);
     expect(api.listComments()).toHaveLength(1);
     expect(api.listComments()[0]?.note).toBe('author note');
+  });
+
+  it('stamps new comments with the current SSO display name', async () => {
+    const ssoDir = fs.mkdtempSync(path.join(os.tmpdir(), 'od-comment-sso-'));
+    try {
+      writeSsoConfigFile(ssoDir, {
+        username: 'yebo',
+        cookies: [],
+        userInfo: { displayName: '叶波' },
+      });
+      const api = await startServer({ runtimeDataDir: ssoDir });
+      const comment = await api.createComment('m-author');
+
+      expect(comment.authorDisplayName).toBe('叶波');
+      expect(api.listComments()[0]?.authorDisplayName).toBe('叶波');
+    } finally {
+      fs.rmSync(ssoDir, { recursive: true, force: true });
+    }
+  });
+
+  it('prefers the workspace context display name over the SSO fallback', async () => {
+    const ssoDir = fs.mkdtempSync(path.join(os.tmpdir(), 'od-comment-sso-'));
+    try {
+      writeSsoConfigFile(ssoDir, {
+        username: 'yebo',
+        cookies: [],
+        userInfo: { displayName: '叶波' },
+      });
+      const api = await startServer({
+        runtimeDataDir: ssoDir,
+        workspaceContext: {
+          workspaceId: 'ws-1',
+          workspaceType: 'team',
+          workspaceMemberId: 'm-author',
+          role: 'member',
+          memberStatus: 'active',
+          lifecycleState: 'active',
+          billingState: 'active',
+          planId: null,
+          providerMode: 'platform_credits',
+          seatSummary: { seatLimit: 0, usedSeats: 0, availableSeats: 0, isSeatFull: false },
+          permissions: {
+            canManageMembers: false,
+            canManageBilling: false,
+            canInviteMembers: false,
+            canManageAutoRecharge: false,
+            canShareProjects: false,
+            canWriteSyncedFiles: false,
+            canViewWorkspaceSettings: false,
+            canManageSharedResources: false,
+          },
+          displayName: '上下文名',
+        },
+      });
+      const comment = await api.createComment('m-author');
+
+      expect(comment.authorDisplayName).toBe('上下文名');
+    } finally {
+      fs.rmSync(ssoDir, { recursive: true, force: true });
+    }
   });
 
   it('POST cannot edit an authored shared comment when caller identity is missing', async () => {

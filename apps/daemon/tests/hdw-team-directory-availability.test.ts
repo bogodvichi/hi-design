@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import express from 'express';
 import type { Server } from 'node:http';
-import { fetchHdwTeams } from '../src/http/hdw.js';
+import { fetchHdwTeams, hdwRetryConfig } from '../src/http/hdw.js';
 import { registerCollabContextHideSignRoutes } from '../src/routes/collab-context-hidesign.js';
 
 vi.mock('../src/http/hik_logins/hicoo.js', () => ({
@@ -18,6 +18,7 @@ beforeEach(async () => {
   upstream = () => new Response('Bad Gateway', { status: 502 });
   vi.stubGlobal('fetch', vi.fn(async () => upstream()));
   vi.spyOn(console, 'warn').mockImplementation(() => {});
+  hdwRetryConfig.baseDelayMs = 0;
   const app = express();
   app.use(express.json());
   registerCollabContextHideSignRoutes(app, { dataDir: process.env.OD_DATA_DIR! });
@@ -32,6 +33,7 @@ beforeEach(async () => {
 afterEach(async () => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  hdwRetryConfig.baseDelayMs = 500;
   const closing = server;
   server = undefined;
   if (closing) {
@@ -77,5 +79,20 @@ describe('HDW team directory availability', () => {
     expect(response.status).toBe(200);
     const body = await response.json() as { items: unknown[] };
     expect(body.items).toContainEqual(expect.objectContaining({ workspaceId: 'team-1', workspaceName: 'Recovered team' }));
+  });
+
+  it('retries transient failures before surfacing unavailable', async () => {
+    let calls = 0;
+    upstream = () => {
+      calls++;
+      if (calls < 3) return new Response('Bad Gateway', { status: 502 });
+      return Response.json({ code: 0, data: { teams: [{
+        workspace_id: 'team-1', workspace_name: 'Retry team',
+        workspace_member_id: 'member-1', role: 'owner',
+      }] } });
+    };
+    const teams = await fetchHdwTeams(process.env.OD_DATA_DIR);
+    expect(teams).toContainEqual(expect.objectContaining({ workspace_id: 'team-1' }));
+    expect(calls).toBe(3);
   });
 });

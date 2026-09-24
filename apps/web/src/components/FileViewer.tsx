@@ -4972,14 +4972,18 @@ export function CommentSidePanel({
             {t('chat.comments.emptySaved')}
           </div>
         ) : filteredComments.map((comment, index) => {
-          const selected = visibleSelectedIds.has(comment.id);
-          const active = comment.id === activeCommentId;
-          const sendable = canSend(comment);
+         const selected = visibleSelectedIds.has(comment.id);
+         const active = comment.id === activeCommentId;
+         const sendable = canSend(comment);
          const author = resolveCommentAuthor(comment.authorMemberId);
-         // Mirror BoardComposerPopover's seed derivation so the same person
-         // gets the same avatar color in the popover and the side panel:
-         // memberId (trimmed) → display name → member id → '?'.
-         const authorSeed = author?.displayName?.trim() || comment.authorMemberId || '?';
+         // The saved comment carries the daemon's authoritative display name.
+         // Prefer it over a possibly stale roster entry, then use the roster
+         // only as a fallback for older comments that were saved without one.
+         const authorDisplayName = comment.authorDisplayName?.trim()
+           || author?.displayName?.trim()
+           || comment.authorMemberId
+           || '?';
+         const authorSeed = authorDisplayName;
          const isDragging = dragState?.draggingId === comment.id;
           const isResolved = comment.status === 'resolved';
           const canReply = !canReplyComment || canReplyComment(comment);
@@ -5005,13 +5009,13 @@ export function CommentSidePanel({
               key={comment.id}
               className={cardClasses}
               data-testid="comment-side-item"
-              data-comment-id={comment.id}
-              aria-current={active ? 'true' : undefined}
-              tabIndex={0}
-              role="button"
-             aria-label={`${author?.displayName || comment.authorMemberId || t('chat.comments.targetArea')}: ${comment.note}`}
-              onDragOver={(event) => handleDragOver(event, comment.id)}
-              onDrop={(event) => handleDrop(event, comment.id)}
+             data-comment-id={comment.id}
+             aria-current={active ? 'true' : undefined}
+             tabIndex={0}
+             role="button"
+            aria-label={`${authorDisplayName || t('chat.comments.targetArea')}: ${comment.note}`}
+             onDragOver={(event) => handleDragOver(event, comment.id)}
+             onDrop={(event) => handleDrop(event, comment.id)}
               onClick={() => onReply(comment)}
               onKeyDown={(event) => {
                 if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -5030,18 +5034,18 @@ export function CommentSidePanel({
                   />
                 ) : null}
                <span className="comment-card-meta-stack">
-                  <span
-                    className="avatar mini comment-card-avatar"
-                    style={{ background: avatarColorFor(authorSeed) }}
-                    aria-hidden="true"
-                  >
-                    {commentAuthorInitials(author?.displayName || comment.authorMemberId || '?')}
-                  </span>
-                 <span className="comment-card-meta-lines">
-                   <strong className="comment-card-author">
-                     {author ? author.displayName : (comment.authorMemberId || t('chat.comments.targetArea'))}
-                   </strong>
-                    <time className="comment-card-time" dateTime={new Date(commentCreatedAt(comment)).toISOString()}>
+                 <span
+                   className="avatar mini comment-card-avatar"
+                   style={{ background: avatarColorFor(authorSeed) }}
+                   aria-hidden="true"
+                 >
+                   {commentAuthorInitials(authorDisplayName)}
+                 </span>
+                <span className="comment-card-meta-lines">
+                  <strong className="comment-card-author">
+                   {authorDisplayName}
+                 </strong>
+                   <time className="comment-card-time" dateTime={new Date(commentCreatedAt(comment)).toISOString()}>
                       {formatCommentTime(commentCreatedAt(comment))}
                     </time>
                   </span>
@@ -5235,15 +5239,15 @@ export function CommentSidePanel({
                       //event.stopPropagation();
                       // setReplyEditorId((current) =>
                       //   current === comment.id ? null : comment.id,
-                      // );
-                    }}
+                     // );
+                   }}
                  >
                   <span
                     className="avatar mini"
                     style={{ background: avatarColorFor(authorSeed) }}
                     aria-hidden="true"
                   >
-                    {commentAuthorInitials(author?.displayName || comment.authorMemberId || '?')}
+                    {commentAuthorInitials(authorDisplayName)}
                   </span>
                   <Icon name="message-square" size={12} />
                   <span>{t('chat.comments.nReplies', { n: persistedReplies.length + localReplies.length })}</span>
@@ -16300,13 +16304,21 @@ async function openReviewListModal() {
   const commentAuthorSelf = useMemo(
     () => currentUserDirectoryEntry(
       projectResourceReadBlocked ? null : workspaceContext,
-    ),
-    [workspaceContext, projectResourceReadBlocked],
-  );
-  const { resolve: resolveActiveCommentAuthor } = useTeamMembers(commentAuthorSelf);
-  const activeCommentAuthor = activeComposerComment
-    ? resolveActiveCommentAuthor(activeComposerComment.authorMemberId)
-    : null;
+   ),
+   [workspaceContext, projectResourceReadBlocked],
+ );
+ const { resolve: resolveActiveCommentAuthor } = useTeamMembers(commentAuthorSelf);
+ const activeCommentAuthor = activeComposerComment
+   ? resolveActiveCommentAuthor(activeComposerComment.authorMemberId)
+   : null;
+ // When the roster has not loaded or the author is off-team, fall back to the
+ // denormalized display name captured at authoring time so the popover never
+ // shows a raw memberId instead of a human name.
+ const activeCommentAuthorDisplayName =
+   activeCommentAuthor?.displayName?.trim()
+   || activeComposerComment?.authorDisplayName?.trim()
+   || undefined;
+ const currentCommentAuthorDisplayName = commentAuthorSelf?.displayName?.trim() || undefined;
   const commentComposerPortalMetrics = (() => {
     if (!commentComposerHost || !commentPreviewCanvasNode) return null;
     const hostRect = commentComposerHost.getBoundingClientRect();
@@ -16360,16 +16372,17 @@ async function openReviewListModal() {
               return onSavePreviewComment(target, newText, false, [], reply.id, reply.parentId);
             }
           : undefined
-      }
-      onDeleteReplyComment={onRemovePreviewComment ? (replyId) => void onRemovePreviewComment(replyId) : undefined}
-      replies={activeComposerComment
-        ? allSideComments.filter((comment) => comment.parentId === activeComposerComment.id)
-        : []}
-     authorDisplayName={activeCommentAuthor?.displayName}
+     }
+     onDeleteReplyComment={onRemovePreviewComment ? (replyId) => void onRemovePreviewComment(replyId) : undefined}
+     replies={activeComposerComment
+       ? allSideComments.filter((comment) => comment.parentId === activeComposerComment.id)
+       : []}
+     authorDisplayName={activeCommentAuthorDisplayName}
+     currentAuthorDisplayName={currentCommentAuthorDisplayName}
      draft={commentDraft}
-      notes={queuedBoardNotes}
-      onDraft={setCommentDraft}
-      onAddDraft={queueCurrentDraft}
+     notes={queuedBoardNotes}
+     onDraft={setCommentDraft}
+     onAddDraft={queueCurrentDraft}
       onRemoveQueuedNote={(index) =>
         setQueuedBoardNotes((current) => current.filter((_, currentIndex) => currentIndex !== index))
       }

@@ -768,12 +768,39 @@ export class HdwTeamDirectoryUnavailableError extends Error {
   }
 }
 
+// Retry configuration for upstream HDW reads that are safe to retry.
+// Exported so tests can zero out delays without waiting real time.
+export const hdwRetryConfig = {
+  maxAttempts: 3,
+  baseDelayMs: 500,
+};
+
+// Retry an async operation with exponential backoff (2x per attempt, equal
+// jitter). Returns the first non-null result, or null after all attempts are
+// exhausted. Mirrors the backoff conventions in run-retry-policy.ts.
+async function withRetry<T>(fn: () => Promise<T | null>): Promise<T | null> {
+  const { maxAttempts, baseDelayMs } = hdwRetryConfig;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const result = await fn();
+    if (result !== null) return result;
+    if (attempt < maxAttempts - 1) {
+      const raw = baseDelayMs * 2 ** attempt;
+      const half = raw / 2;
+      const jitter = Math.min(1, Math.max(0, Math.random())) * half;
+      await new Promise(resolve => setTimeout(resolve, Math.round(half + jitter)));
+    }
+  }
+  return null;
+}
+
 export async function fetchHdwTeams(dataDir: string | undefined): Promise<HdwTeam[]> {
   if (!dataDir) return [];
   const session = readSsoConfigFile(dataDir);
     const username = session?.username?.trim() ?? '';
   if (!username) return [];
-  const data = await hdwGet<{ teams: HdwTeam[] }>('/team/my', { username }, session?.cookies);
+  const data = await withRetry(
+    () => hdwGet<{ teams: HdwTeam[] }>('/team/my', { username }, session?.cookies),
+  );
   // A failed membership read is not an authoritative empty directory.
   // Let callers keep their last successful view and retry after recovery.
   if (!Array.isArray(data?.teams)) throw new HdwTeamDirectoryUnavailableError();

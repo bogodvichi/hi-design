@@ -47,15 +47,6 @@ function RocketBadgeIcon({ className }: { className?: string }) {
 type InstallState = 'idle' | 'opening' | 'handoff' | 'quitting' | 'recoverable';
 type Translator = (key: keyof Dict, vars?: Record<string, string | number>) => string;
 type UpdaterPopupProps = {
-  allowSilentUpdates?: boolean;
-  /**
-   * True after daemon app-config has been fetched and merged. The silent-update
-   * preference is daemon-owned and stripped from localStorage, so `undefined`
-   * only means "no preference" once this flag is true — before that it may
-   * still be hydrating a saved false.
-   */
-  silentUpdatePreferenceReady?: boolean;
-  onAllowSilentUpdatesChange?: (allowSilentUpdates: boolean) => Promise<void> | void;
 };
 
 function versionText(t: Translator, model: UpdaterModel): string {
@@ -114,9 +105,6 @@ function restartSafetyText(t: Translator, safety: UpdaterRestartSafety): string 
 }
 
 export function UpdaterPopup({
-  allowSilentUpdates,
-  silentUpdatePreferenceReady = false,
-  onAllowSilentUpdatesChange,
 }: UpdaterPopupProps) {
   const t = useT();
   const wrapRef = useRef<HTMLDivElement | null>(null);
@@ -126,21 +114,6 @@ export function UpdaterPopup({
   const [panelOpen, setPanelOpen] = useState(false);
   const [installState, setInstallState] = useState<InstallState>('idle');
   const [installError, setInstallError] = useState<string | null>(null);
-  const [allowSilentUpdatesChecked, setAllowSilentUpdatesChecked] = useState(() => allowSilentUpdates ?? true);
-  const [silentUpdatesPersistError, setSilentUpdatesPersistError] = useState<string | null>(null);
-  const [silentUpdatesPersisting, setSilentUpdatesPersisting] = useState(false);
-  // Seed bookkeeping must outlive effect dependency churn: a successful
-  // parent setConfig(true) re-runs the seed effect mid-flight; we must not
-  // cancel the in-flight finally (that stranded the checkbox disabled).
-  const seedInFlightRef = useRef(false);
-  const mountedRef = useRef(true);
-
-  useEffect(() => {
-    mountedRef.current = true;
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
 
   const clearHandoffWatchdog = useCallback(() => {
     if (handoffWatchdogRef.current == null) return;
@@ -163,70 +136,6 @@ export function UpdaterPopup({
   }, [clearHandoffWatchdog, recoverFromInstallerHandoff]);
 
   useEffect(() => clearHandoffWatchdog, [clearHandoffWatchdog]);
-
-  useEffect(() => {
-    if (installState !== 'idle') return;
-    // Until a successful daemon GET has landed, undefined may still mean
-    // "loading a saved false" — keep the optimistic default only for display.
-    if (!silentUpdatePreferenceReady && allowSilentUpdates === undefined) return;
-    setAllowSilentUpdatesChecked(allowSilentUpdates ?? true);
-    setSilentUpdatesPersistError(null);
-  }, [allowSilentUpdates, installState, silentUpdatePreferenceReady]);
-
-  // Prompt show-up seed: only after a *successful* daemon config fetch.
-  // If the preference is still undefined then, write the default (true) once.
-  // Bookkeeping uses a ref so a successful parent re-render mid-flight does
-  // not cancel clearing `silentUpdatesPersisting`.
-  useEffect(() => {
-    if (!panelOpen) return;
-    if (!silentUpdatePreferenceReady) return;
-    if (allowSilentUpdates !== undefined) return;
-    if (onAllowSilentUpdatesChange == null) return;
-    if (seedInFlightRef.current) return;
-
-    seedInFlightRef.current = true;
-    setAllowSilentUpdatesChecked(true);
-    setSilentUpdatesPersistError(null);
-    setSilentUpdatesPersisting(true);
-    void Promise.resolve(onAllowSilentUpdatesChange(true))
-      .catch(() => {
-        if (!mountedRef.current) return;
-        setSilentUpdatesPersistError(t('settings.autosaveError'));
-      })
-      .finally(() => {
-        seedInFlightRef.current = false;
-        if (!mountedRef.current) return;
-        setSilentUpdatesPersisting(false);
-      });
-  }, [
-    allowSilentUpdates,
-    onAllowSilentUpdatesChange,
-    panelOpen,
-    silentUpdatePreferenceReady,
-    t,
-  ]);
-
-  const handleSilentUpdatesChange = useCallback(
-    async (next: boolean) => {
-      const previous = allowSilentUpdatesChecked;
-      setAllowSilentUpdatesChecked(next);
-      setSilentUpdatesPersistError(null);
-      if (onAllowSilentUpdatesChange == null) return;
-      setSilentUpdatesPersisting(true);
-      try {
-        // Parent must be non-optimistic for this daemon-owned key: only
-        // commit app-wide config after the daemon write succeeds.
-        await onAllowSilentUpdatesChange(next);
-      } catch {
-        if (!mountedRef.current) return;
-        setAllowSilentUpdatesChecked(previous);
-        setSilentUpdatesPersistError(t('settings.autosaveError'));
-      } finally {
-        if (mountedRef.current) setSilentUpdatesPersisting(false);
-      }
-    },
-    [allowSilentUpdatesChecked, onAllowSilentUpdatesChange, t],
-  );
 
   useEffect(() => {
     let mounted = true;
@@ -344,16 +253,9 @@ export function UpdaterPopup({
       area: 'update_prompt',
       element: 'install_update',
       action: 'install',
-      ...versionProps,
+    ...versionProps,
     });
     try {
-      if (onAllowSilentUpdatesChange != null) {
-        try {
-          await onAllowSilentUpdatesChange(allowSilentUpdatesChecked);
-        } catch {
-          // Installing the update is more important than persisting this preference.
-        }
-      }
       const result = await openUpdaterInstaller({ payload: { source: 'updater-prompt' } });
       if (!result.ok) {
         actionInFlightRef.current = false;
@@ -472,14 +374,11 @@ export function UpdaterPopup({
       <AnimatePresence>
         {panelOpen ? (
           <UpdaterPopupPanel
-            allowSilentUpdatesChecked={allowSilentUpdatesChecked}
             channelLabel={channelLabel}
             installError={installError}
             installBusy={installBusy}
             model={model}
             quitRecoverable={quitRecoverable}
-            silentUpdatesPersistError={silentUpdatesPersistError}
-            silentUpdatesPersisting={silentUpdatesPersisting}
             t={t}
             onClose={close}
             onInstall={() => {
@@ -488,9 +387,6 @@ export function UpdaterPopup({
               } else {
                 void installAndQuit();
               }
-            }}
-            onSilentUpdatesChange={(next) => {
-              void handleSilentUpdatesChange(next);
             }}
           />
         ) : null}
@@ -513,31 +409,23 @@ function ReinstallLearnMoreLink({ t, url }: { t: Translator; url: string }) {
 }
 
 function UpdaterPopupPanel({
-  allowSilentUpdatesChecked,
   channelLabel,
   installError,
   installBusy,
   model,
   quitRecoverable,
-  silentUpdatesPersistError,
-  silentUpdatesPersisting,
   t,
   onClose,
   onInstall,
-  onSilentUpdatesChange,
 }: {
-  allowSilentUpdatesChecked: boolean;
   channelLabel: string | null;
   installError: string | null;
   installBusy: boolean;
   model: UpdaterModel;
   quitRecoverable: boolean;
-  silentUpdatesPersistError: string | null;
-  silentUpdatesPersisting: boolean;
   t: Translator;
   onClose: () => void;
   onInstall: () => void;
-  onSilentUpdatesChange: (allowSilentUpdates: boolean) => void;
 }) {
   return (
     <motion.section
@@ -584,23 +472,6 @@ function UpdaterPopupPanel({
         <Icon name="download" size={16} className={styles.updateButtonIcon} />
         <span>{quitRecoverable ? t('updater.quitButton') : installActionText(t, model, installBusy)}</span>
       </button>
-      {!quitRecoverable ? (
-        <label className={styles.checkbox}>
-          <input
-            checked={allowSilentUpdatesChecked}
-            data-testid="updater-silent-update-checkbox"
-            disabled={installBusy || silentUpdatesPersisting}
-            type="checkbox"
-            onChange={(event) => onSilentUpdatesChange(event.currentTarget.checked)}
-          />
-          <span>{t('updater.allowSilentUpdates')}</span>
-        </label>
-      ) : null}
-      {silentUpdatesPersistError != null ? (
-        <p className={styles.error} data-testid="updater-silent-update-error" role="alert">
-          {silentUpdatesPersistError}
-        </p>
-      ) : null}
       <button className={styles.laterButton} disabled={installBusy} type="button" onClick={onClose}>
         {t('updater.later')}
       </button>

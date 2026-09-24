@@ -69,6 +69,7 @@ import { getDefaultTeamId, getTeamMemberId } from './ids.js';
 import { fetchHdwTeams, hdwPut } from './http/hdw.js';
 import { fetchAiResearchMcpToken, fetchHiMindMcpToken } from './http/hdw.js';
 import { fetchSharedSpaceInfo } from './http/hdw.js';
+import { getSsoUser } from './sso-user.js';
 import { OPEN_DESIGN_PLUGIN_ID } from './mcp-observability.js';
 import {
   resolveDaemonCliPath,
@@ -3548,6 +3549,7 @@ export async function startServer({
          // The HDW /team/my endpoint may also return the shared space as a
          // regular team. Filter it out so it doesn't appear twice.
          const sharedSpaceId = sharedSpaceInfo?.workspace_id ?? '';
+         const ssoDisplayName = getSsoUser(RUNTIME_DATA_DIR)?.displayName || '';
          const filteredTeams = sharedSpaceId
            ? hdwTeams.filter(t => t.workspace_id !== sharedSpaceId)
            : hdwTeams;
@@ -3557,6 +3559,7 @@ export async function startServer({
              workspaceName: t.workspace_name,
              workspaceType: 'team' as const,
              workspaceMemberId: t.workspace_member_id,
+             displayName: ssoDisplayName,
              role: t.role,
              memberStatus: 'active' as const,
              lifecycleState: 'active' as const,
@@ -3566,6 +3569,7 @@ export async function startServer({
              workspaceName: sharedSpaceInfo.workspace_name,
              workspaceType: 'team' as const,
              workspaceMemberId: sharedSpaceInfo.workspace_member_id,
+             displayName: ssoDisplayName,
              role: 'member',//sharedSpaceInfo.role,
              memberStatus: 'active' as const,
              lifecycleState: 'active' as const,
@@ -3661,16 +3665,19 @@ export async function startServer({
     }
     return {
       ok: true as const,
-      context: workspaceContextFromDirectoryItem({
-        workspaceId: claimed.workspaceId,
-        workspaceName: claimed.workspaceId,
-        workspaceType: claimed.workspaceType,
-        workspaceMemberId: claimed.workspaceMemberId,
-        role: claimed.role,
-        memberStatus: claimed.memberStatus,
-        lifecycleState: claimed.lifecycleState,
-        ...(claimed.isDefaultTeam ? { isDefaultTeam: true } : {}),
-      }, configuredAmrEnv()),
+      context: {
+        ...workspaceContextFromDirectoryItem({
+          workspaceId: claimed.workspaceId,
+          workspaceName: claimed.workspaceId,
+          workspaceType: claimed.workspaceType,
+          workspaceMemberId: claimed.workspaceMemberId,
+          role: claimed.role,
+          memberStatus: claimed.memberStatus,
+          lifecycleState: claimed.lifecycleState,
+          ...(claimed.isDefaultTeam ? { isDefaultTeam: true } : {}),
+        }, configuredAmrEnv()),
+        displayName: getSsoUser(RUNTIME_DATA_DIR)?.displayName,
+      },
     };
   };
   const verifyWorkspaceReadAuthority = (req: unknown) =>
@@ -4981,6 +4988,7 @@ export async function startServer({
     try {
       const shareAccess = await resolveShareAccess(projectId, req);
       if (shareAccess) {
+        const shareDisplayName = getSsoUser(RUNTIME_DATA_DIR)?.displayName;
         return {
          ok: true as const,
         context: {
@@ -4991,6 +4999,7 @@ export async function startServer({
            role: 'member' as const,
            memberStatus: 'active' as const,
            lifecycleState: 'active' as const,
+          ...(shareDisplayName ? { displayName: shareDisplayName } : {}),
           isSharedSpace: true,
           collaboratorMemberId: shareAccess.viewerMemberId,
         } as any,
@@ -5002,6 +5011,7 @@ export async function startServer({
     const local = resolveOptionalLocalWorkspaceRequestAuthority(req);
     if (!local.ok) return local;
    if (local.context) {
+     const localDisplayName = getSsoUser(RUNTIME_DATA_DIR)?.displayName;
      if (
         binding.visibility !== 'team'
         && (
@@ -5024,6 +5034,7 @@ export async function startServer({
         ok: true as const,
         context: {
           ...local.context,
+          ...(localDisplayName ? { displayName: localDisplayName } : {}),
           workspaceType: binding.visibility === 'team' ? 'team' : 'personal',
           ...(binding.visibility === 'team'
             ? { teamId: binding.workspaceId }
@@ -5033,6 +5044,7 @@ export async function startServer({
     }
     const persistedMemberId = binding.createdByWorkspaceMemberId?.trim()
       || 'local-user';
+    const fallbackDisplayName = getSsoUser(RUNTIME_DATA_DIR)?.displayName;
     return {
       ok: true as const,
       context: workspaceContextFromDirectoryItem({
@@ -5043,6 +5055,7 @@ export async function startServer({
         role: 'member',
         memberStatus: 'active',
         lifecycleState: 'active',
+        ...(fallbackDisplayName ? { displayName: fallbackDisplayName } : {}),
       }, configuredAmrEnv()),
     };
   };
@@ -7426,7 +7439,86 @@ const designSystemBackingProjects = new Map<string, string>();
     }
   });
 
-  // ---- Cloud skill catalog: browse HDW resources and install on demand ----
+ // ---- Cloud skill catalog: browse HDW resources and install on demand ----
+  // Cross-workspace skill restore: search the MAAS skillhub global catalog
+  // first (no workspace context required), then fall back to HDW cloud
+  // resources within the caller's workspace (workspace-scoped, requires
+  // workspace headers). If found in either source, install locally so the
+  // skill appears in the Skills submenu's "历史" tab.
+  app.post('/api/skills/cloud-restore', async (req: any, res: any) => {
+    const skillId = typeof req.query.skillId === 'string' ? req.query.skillId.trim() : '';
+    if (!skillId) return res.status(400).json({ error: 'skillId is required' });
+
+    // Already installed locally?
+    const existing = findSkillById(await listAllSkills(), skillId);
+    if (existing) {
+      return res.json({ installed: true, localId: skillId, alreadyInstalled: true });
+    }
+
+    // 1. Search the MAAS skillhub global catalog by local ID.
+    try {
+      const { workspaceId: maasWorkspaceId, skills: resources } = await maasSkillhubClient.listSkills('');
+      const maasMatch = resources.find((skill) => {
+        try {
+          return maasSkillLocalId(skill).toLowerCase() === skillId.toLowerCase();
+        } catch {
+          return false;
+        }
+      });
+      if (maasMatch?.id) {
+        const materialized = await installMaasSkillLocally(
+          USER_SKILLS_DIR,
+          `maas-skill-${maasMatch.id}`,
+          maasMatch.skillName || maasSkillLocalId(maasMatch),
+          (stagedFolder) => maasSkillhubClient.downloadSkillInto(
+            maasWorkspaceId,
+            maasMatch.id,
+            stagedFolder,
+          ),
+          async (candidateId) => {
+            return !findSkillById(await listSkills(USER_SKILLS_DIR), candidateId);
+          },
+        );
+        return res.json({ installed: true, localId: materialized.localId });
+      }
+    } catch (err: any) {
+      // MAAS search failed — continue to HDW fallback below.
+    }
+
+    // 2. Search HDW cloud resources within the caller's workspace.
+    // The HDW resources table is workspace-scoped, so this requires
+    // workspace context from the request headers. If no workspace context
+    // is provided, we can't search HDW and return not-found.
+    try {
+      const resolution = await resolveTeamResourceScope(req);
+      if (resolution.ok && hdwCloudClient) {
+        const scope = resolution.scope;
+        const workspaceId = scope.principal.teamId;
+        const resources = await hdwCloudClient.listResources(workspaceId, 'skill');
+        const hdwMatch = resources.find((r) => {
+          const localId = (r.metadata as any)?.localId ?? r.id;
+          return typeof localId === 'string' && localId.toLowerCase() === skillId.toLowerCase();
+        });
+        if (hdwMatch) {
+          const localId = (hdwMatch.metadata as any)?.localId ?? hdwMatch.id;
+          const record: TeamResourceShareRecord = {
+            id: localId,
+            hubResourceId: hdwMatch.id,
+            ownerMemberId: hdwMatch.ownerMemberId,
+            versionId: hdwMatch.versionId ?? undefined,
+            version: hdwMatch.version ?? undefined,
+          };
+          await syncSharedTeamSkill(record, scope, true);
+          return res.json({ installed: true, localId });
+        }
+      }
+    } catch (err: any) {
+      // HDW search failed — fall through to not-found.
+    }
+
+    return res.json({ installed: false });
+  });
+
   app.get('/api/workspace/skills/cloud/check', async (req: any, res: any) => {
     const resolution = await resolveTeamResourceScope(req);
     if (!resolution.ok) {
@@ -9188,6 +9280,11 @@ const projectRouteResult = registerProjectRoutes(app, {
    desktopArtifactExporter,
    daemonUrlRef,
    hdwCloudClient,
+   notifyTeamProjectCoverChanged: (workspaceId, projectId) =>
+     emitTeamProjectsChanged(workspaceId, {
+       projectId,
+       kind: 'metadata',
+     }),
    // Same provider `collab` was built with (collab.workspaceContext ===
     // workspaceContext) — see the mutation-gate cross-check note above.
     verifyWorkspaceReadAuthority,

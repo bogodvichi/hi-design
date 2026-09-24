@@ -803,8 +803,9 @@ export type PackagedDaemonSpawnEnvOptions = {
    * Vela web console origin baked into the bundle at packaging time. Half of
    * the workspace-team gate — see {@link workspaceTeamTransportEnv}.
    */
-  velaWebUrl?: string | null;
-  velaWebUrls?: Record<string, string>;
+ velaWebUrl?: string | null;
+ velaWebUrls?: Record<string, string>;
+  hdwPathPrefix?: string | null;
 };
 
 /**
@@ -874,8 +875,11 @@ export function buildPackagedDaemonSpawnEnv(
       : { POSTHOG_KEY: options.posthogKey }),
     ...(options.posthogHost == null || options.posthogHost.length === 0
       ? {}
-      : { POSTHOG_HOST: options.posthogHost }),
-  };
+     : { POSTHOG_HOST: options.posthogHost }),
+    ...(options.hdwPathPrefix == null || options.hdwPathPrefix.length === 0
+      ? {}
+      : { OD_HDW_PATH_PREFIX: options.hdwPathPrefix }),
+ };
 }
 
 function pickPackagedDesktopHandoffEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
@@ -1054,6 +1058,7 @@ export async function startPackagedSidecars(
     posthogHost: string | null;
     velaWebUrl: string | null;
     velaWebUrls?: Record<string, string>;
+    hdwPathPrefix: string | null;
     /**
      * PR #974 round-5 (lefarcen P2): caller asserts whether a desktop
      * runtime is being started in this packaged process group. The
@@ -1154,9 +1159,10 @@ export async function startPackagedSidecars(
         telemetryRelayUrl: options.telemetryRelayUrl,
         posthogKey: options.posthogKey,
         posthogHost: options.posthogHost,
-        velaWebUrl: options.velaWebUrl,
-        velaWebUrls: options.velaWebUrls,
-      }),
+    velaWebUrl: options.velaWebUrl,
+    velaWebUrls: options.velaWebUrls,
+    hdwPathPrefix: options.hdwPathPrefix,
+  }),
       electronNodeCommand: options.electronNodeCommand,
       startupProxyEnv: options.requireDesktopAuth ? startupProxyEnv : {},
       nodeCommand: options.nodeCommand,

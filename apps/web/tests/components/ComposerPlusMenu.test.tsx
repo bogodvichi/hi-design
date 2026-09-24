@@ -112,7 +112,7 @@ describe('ComposerPlusMenu pick-row caret protection', () => {
    expect(screen.getByText('Team MCP')).toBeTruthy();
    expect(screen.queryByText('Other Team MCP')).toBeNull();
  });
-  it('shows a Recent tab for skills and MCP when usedSkillIds/usedMcpIds are provided', () => {
+  it('shows a History tab for skills and a History tab for MCP when usedSkillIds/usedMcpIds are provided', () => {
     renderMenu({
       skills: [PERSONAL_SKILL, TEAM_SKILL],
       mcpServers: [MCP_SERVER, TEAM_MCP],
@@ -122,27 +122,28 @@ describe('ComposerPlusMenu pick-row caret protection', () => {
     });
     fireEvent.click(screen.getByTestId('plus-trigger'));
     fireEvent.click(screen.getByTestId('composer-plus-skills'));
-    // The Recent tab appears only when usedSkillIds is non-empty.
+    // The History tab appears only when usedSkillIds is non-empty.
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
       'All',
       'Mine',
       'Team',
-      'Recent',
+      'History',
     ]);
-    fireEvent.click(screen.getByRole('tab', { name: 'Recent' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'History' }));
     expect(screen.getByText('My Skill')).toBeTruthy();
     expect(screen.queryByText('Team Skill')).toBeNull();
 
     fireEvent.click(screen.getByTestId('plus-trigger'));
     fireEvent.click(screen.getByTestId('plus-trigger'));
     fireEvent.click(screen.getByTestId('composer-plus-mcp'));
+    // The MCP submenu shows a "History" tab (not "Recent") for usedMcpIds.
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
       'All',
       'Mine',
       'Team',
-      'Recent',
+      'History',
     ]);
-    fireEvent.click(screen.getByRole('tab', { name: 'Recent' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'History' }));
     expect(screen.getByText('Linear')).toBeTruthy();
     expect(screen.queryByText('Team MCP')).toBeNull();
   });

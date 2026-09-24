@@ -5281,12 +5281,13 @@ const coalescedCoverRefresh = useCoalescedCallback(
     ],
   );
 
-  const refreshPreviewComments = useCallback(async () => {
-    if (!activeConversationId) return;
+  const refreshPreviewComments = useCallback(async (conversationId?: string) => {
+    const requestedConversationId = conversationId ?? activeConversationId;
+    if (!requestedConversationId) return;
     const commentsGeneration = ++previewCommentsGenerationRef.current;
     const next = await fetchPreviewComments(
       project.id,
-      activeConversationId,
+      requestedConversationId,
       projectRunWorkspaceContext,
     );
     if (previewCommentsGenerationRef.current !== commentsGeneration) return;
@@ -5409,6 +5410,10 @@ const coalescedCoverRefresh = useCoalescedCallback(
       setAttachedComments((current) =>
         attachAfterSave ? mergeAttachedComments(current, saved) : current.map((comment) => comment.id === saved.id ? saved : comment),
       );
+      // The POST echo gives the UI an immediate response; the list refresh
+      // makes GET the final authority for denormalized fields such as
+      // authorDisplayName and for comments persisted by another writer.
+      await refreshPreviewComments(commentConversationId);
       return saved;
     },
     [
@@ -5418,6 +5423,7 @@ const coalescedCoverRefresh = useCoalescedCallback(
       commitPreviewComments,
       previewComments,
       projectRunWorkspaceContext,
+      refreshPreviewComments,
       t,
       projectCollab.materializationPending,
     ],

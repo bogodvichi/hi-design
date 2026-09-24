@@ -144,6 +144,7 @@ import {
 } from '../../collab/created-project-workspace.js';
 import { localPluginRegistryScope } from '../../plugins/local-source.js';
 import type { WorkspaceDirectoryFetchResult } from '../../collab/vela-workspace-context.js';
+import { getSsoUser } from '../../sso-user.js';
 import { cancelRunsOwnedBy } from './cancel-owned-runs.js';
 
 export function rewriteOutsideExecutableHtmlRanges(
@@ -324,6 +325,10 @@ export interface RegisterProjectRoutesDeps extends RouteDeps<'db' | 'design' | '
     req: Request,
     projectId: string,
   ) => Promise<ProjectCommentWorkspaceContextResolution>;
+  resolveFreshWorkspaceContext?: (
+    req: Request,
+    projectId: string,
+  ) => Promise<ProjectCommentWorkspaceContextResolution>;
   resolveProjectOwnerMemberId?: (
     projectId: string,
     context?: WorkspaceCollabContext | null,
@@ -332,6 +337,8 @@ export interface RegisterProjectRoutesDeps extends RouteDeps<'db' | 'design' | '
     projectId: string,
     context?: WorkspaceCollabContext | null,
   ) => Promise<boolean>;
+  /** Broadcast a thin team-list refresh after a team project cover lands. */
+  notifyTeamProjectCoverChanged?: (workspaceId: string, projectId: string) => void;
   onCommentCreated?: (
     comment: PreviewComment,
     context: WorkspaceCollabContext | null,
@@ -410,6 +417,7 @@ interface ProjectCoverDeps {
   updateProject: (db: any, id: string, patch: Record<string, unknown>) => void;
   ensureProject: (projectsRoot: string, projectId: string, metadata?: unknown) => Promise<string>;
   readProjectFile: (projectsRoot: string, projectId: string, fileName: string, metadata?: unknown) => Promise<{ buffer: Buffer }>;
+  notifyTeamProjectCoverChanged?: (workspaceId: string, projectId: string) => void;
 }
 
 /**
@@ -429,6 +437,7 @@ function createProjectCoverHelpers(deps: ProjectCoverDeps) {
     updateProject,
     ensureProject,
     readProjectFile,
+    notifyTeamProjectCoverChanged,
   } = deps;
 
   async function syncCoverToHdw(
@@ -495,6 +504,10 @@ function createProjectCoverHelpers(deps: ProjectCoverDeps) {
       await fsp.writeFile(coverFile, coverBuffer);
       updateProject(db, projectId, { coverDigest: digest });
       await syncCoverToHdw(projectId, coverBuffer, dir);
+      const wp = getWorkspaceProjectByProjectId(db, projectId);
+      if (wp?.visibility === 'team' && wp.workspaceId) {
+        notifyTeamProjectCoverChanged?.(wp.workspaceId, projectId);
+      }
     } catch { /* best-effort: no cover */ }
   }
 
@@ -2068,6 +2081,9 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
    updateProject,
    ensureProject,
    readProjectFile,
+   ...(ctx.notifyTeamProjectCoverChanged
+     ? { notifyTeamProjectCoverChanged: ctx.notifyTeamProjectCoverChanged }
+     : {}),
  });
  const learnAssertedWorkspaceType = (context: WorkspaceResourceContext | null) => {
     if (!context?.workspaceTypeAsserted) return;
@@ -5899,6 +5915,10 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
       knownWorkspaceType: workspaceTypes?.typeOf(binding?.workspaceId) ?? null,
       ...(ctx.configuredEnv ? { configuredEnv: ctx.configuredEnv() } : {}),
     });
+    const ssoDisplayName = getSsoUser(ctx.paths.RUNTIME_DATA_DIR)?.displayName;
+    if (ssoDisplayName && scope.context) {
+      scope.context.displayName = ssoDisplayName;
+    }
     /** @type {import('@open-design/contracts').ProjectWorkspaceScopeResponse} */
     const body = { scope };
     res.json(body);
@@ -6425,6 +6445,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
     enforceWorkspaceProjectMutation,
     authorizeProjectRequest,
     sendApiError,
+    runtimeDataDir: RUNTIME_DATA_DIR,
   });
 
   // ---- Tabs -----------------------------------------------------------------

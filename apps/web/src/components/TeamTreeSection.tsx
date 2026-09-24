@@ -90,6 +90,8 @@ function TeamIcon({ workspaceId, className }: { workspaceId: string; className?:
 export interface TeamFolder {
   id: string;
   name: string;
+  projectCount: number;
+  subfolderCount: number;
 }
 
 interface Props {
@@ -181,6 +183,8 @@ function TeamNode({ team, activeTeamId, activeFolderId, onRenameTeam, onDeleteTe
         setFolders(list.map((f) => ({
           id: f.folder_id || f.id || '',
           name: f.folder_name || f.name || '',
+          projectCount: Number(f.project_count) || 0,
+          subfolderCount: Number(f.subfolder_count) || 0,
         })));
       } catch {
         if (!cancelled) setFolders([]);
@@ -580,7 +584,7 @@ function TeamNode({ team, activeTeamId, activeFolderId, onRenameTeam, onDeleteTe
              >
                <Icon name="folder-filled" size={13} className={styles.folderIcon} />
                <span className={styles.folderName}>{folder.name}</span>
-                {canManageFolders ? (
+                 {canManageFolders && folder.projectCount === 0 && folder.subfolderCount === 0 ? (
                  <span className={styles.actions}>
                     <button
                       type="button"
@@ -628,7 +632,7 @@ function TeamNode({ team, activeTeamId, activeFolderId, onRenameTeam, onDeleteTe
                 <Icon name="close" size={14} />
               </button>
               <h3 className={styles.confirmTitle}>{t('teamSpace.deleteFolderConfirmTitle')}</h3>
-              <p className={styles.confirmMsg}>{t('teamSpace.deleteFolderConfirmMsg')}</p>
+               <p className={styles.confirmMsg}>{t('teamSpace.deleteFolderConfirmMsg', { name: confirmDeleteFolder.name })}</p>
               <div className={styles.confirmActions}>
                 <button type="button" className={styles.confirmCancel} onClick={() => setConfirmDeleteFolder(null)}>
                   {t('teamSpace.removeCancelBtn')}

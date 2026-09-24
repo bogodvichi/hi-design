@@ -398,8 +398,6 @@ interface Props {
  onConfigPersist: (cfg: AppConfig) => Promise<void> | void;
  /** True only when GET /api/app-config returned a real config object. */
  daemonAppConfigReady?: boolean;
- /** Non-optimistic daemon write for the silent-update preference. */
- onSilentUpdatePreferenceChange?: (allowSilentUpdates: boolean) => Promise<void>;
  onSkillsRefresh?: (scoped?: boolean) => Promise<void> | void;
  onSkillsChanged?: (affectedSkillId?: string) => void;
  onRefreshAgents: () => Promise<AgentInfo[]> | AgentInfo[];
@@ -537,7 +535,6 @@ export function EntryShell({
  onApiModelChange,
  onConfigPersist,
  daemonAppConfigReady = false,
- onSilentUpdatePreferenceChange,
  onSkillsRefresh,
  onSkillsChanged,
  onRefreshAgents,
@@ -1691,12 +1688,6 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
  // updater reports a downloaded, unopened installer.
  const updaterSlot = (
    <UpdaterPopup
-     allowSilentUpdates={config.allowSilentUpdates}
-     silentUpdatePreferenceReady={daemonAppConfigReady}
-     onAllowSilentUpdatesChange={
-       onSilentUpdatePreferenceChange
-         ?? ((allowSilentUpdates) => onConfigPersist({ ...config, allowSilentUpdates }))
-     }
    />
  );
 
@@ -1813,10 +1804,10 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
              the workspace tabs bar (entryRailBridge), the updater popup host
              lives in the rail footer, and everything below is fixed-position
              or portalled so it occupies no layout space here. */}
-          <WhatsNewPopup active={homeViewIsActive} />
+          {/* <WhatsNewPopup active={homeViewIsActive} /> */}
          {/* The campaign badge lives in EntryNavRail's top-right cluster so it
              stays beside the account module across every entry tab. */}
-          {active && amrBalanceGateBlock ? (
+          {/* {active && amrBalanceGateBlock ? (
            <AmrBalanceDialog
              reason={amrBalanceGateBlock.reason}
              balanceUsd={amrBalanceGateBlock.snapshot.balanceUsd}
@@ -1837,7 +1828,7 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
              installationId={config.installationId}
              onDecision={amrLowBalanceWarn.resolve}
            />
-         ) : null}
+         ) : null} */}
          <div
            className={[
              'entry-main__inner',

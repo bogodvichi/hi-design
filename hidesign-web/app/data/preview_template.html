@@ -135,9 +135,17 @@
       flex-shrink: 0; margin-right: 8px;
     }
     .comment-card.resolved .comment-pin-num { background: #10b981; }
-    .comment-card-author { flex: 1; font-size: 13px; font-weight: 500; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .comment-card-time { font-size: 12px; color: #999; flex-shrink: 0; }
-    .comment-card-text { font-size: 14px; color: #444; line-height: 1.5; word-break: break-word; }
+   .comment-card-author { flex: 1; font-size: 13px; font-weight: 500; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+   .comment-card-time { font-size: 12px; color: #999; flex-shrink: 0; }
+   .comment-avatar {
+     width: 22px; height: 22px; border-radius: 50%; color: #fff;
+     font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center;
+     flex-shrink: 0; margin-right: 8px; text-transform: uppercase;
+   }
+   .comment-reply .comment-avatar {
+     width: 18px; height: 18px; font-size: 10px; margin-right: 0;
+   }
+   .comment-card-text { font-size: 14px; color: #444; line-height: 1.5; word-break: break-word; }
     .comment-card-status { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-top: 6px; background: #d1fae5; color: #059669; }
     .comment-card-replies-toggle {
       display: flex; align-items: center; gap: 4px; margin-top: 8px;
@@ -219,9 +227,36 @@
       var commentBadge = document.getElementById('commentBadge');
       var commentPopup = document.getElementById('commentPopup');
       var closeCommentPopup = document.getElementById('closeCommentPopup');
-      var commentList = document.getElementById('commentList');
+     var commentList = document.getElementById('commentList');
 
-      function normalizePath(p) {
+     // Deterministic avatar background color from a display name.
+     // Mirrors apps/web/src/utils/avatarColor.ts so the share page matches
+     // the web app's avatar palette exactly.
+     var AVATAR_PALETTE = [
+       '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f97316',
+       '#f59e0b', '#eab308', '#84cc16', '#22c55e', '#14b8a6',
+       '#06b6d4', '#0ea5e9', '#3b82f6', '#a855f7', '#d946ef',
+     ];
+     function avatarColorFor(seed) {
+       if (!seed) return '#1a1917';
+       var hash = 0;
+       for (var i = 0; i < seed.length; i++) {
+         hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
+       }
+       return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length] || '#1a1917';
+     }
+
+     // First character of the name, uppercased. Mirrors commentAuthorInitials
+     // in apps/web/src/components/FileViewer.tsx.
+     function commentAuthorInitial(name) {
+       if (!name) return '?';
+       var trimmed = name.trim();
+       if (!trimmed) return '?';
+       var chars = Array.from(trimmed);
+       return (chars[0] || '?').toUpperCase();
+     }
+
+     function normalizePath(p) {
         if (!p) return '';
         return p.replace(/^\.\//, '').replace(/^\//, '').replace(/\/$/, '');
       }
@@ -401,10 +436,16 @@
             pinNum.textContent = String(comment._pinNumber);
             header.appendChild(pinNum);
           }
-          var author = document.createElement('span');
-          author.className = 'comment-card-author';
-          author.textContent = comment.authorDisplayName || comment.displayName || '匿名用户';
-          header.appendChild(author);
+         var author = document.createElement('span');
+         author.className = 'comment-card-author';
+         var authorName = comment.authorDisplayName || comment.displayName || '匿名用户';
+         author.textContent = authorName;
+         var avatar = document.createElement('span');
+         avatar.className = 'comment-avatar';
+         avatar.style.background = avatarColorFor(authorName);
+         avatar.textContent = commentAuthorInitial(authorName);
+         header.appendChild(avatar);
+         header.appendChild(author);
           var time = document.createElement('span');
           time.className = 'comment-card-time';
           time.textContent = formatRelativeTime(comment.createdAt);
@@ -440,10 +481,16 @@
               replyEl.className = 'comment-reply';
               var replyHeader = document.createElement('div');
               replyHeader.className = 'reply-header';
-              var replyAuthor = document.createElement('span');
-              replyAuthor.className = 'reply-author';
-              replyAuthor.textContent = reply.authorDisplayName || reply.displayName || '匿名用户';
-              replyHeader.appendChild(replyAuthor);
+             var replyAuthor = document.createElement('span');
+             replyAuthor.className = 'reply-author';
+             var replyAuthorName = reply.authorDisplayName || reply.displayName || '匿名用户';
+             replyAuthor.textContent = replyAuthorName;
+             var replyAvatar = document.createElement('span');
+             replyAvatar.className = 'comment-avatar';
+             replyAvatar.style.background = avatarColorFor(replyAuthorName);
+             replyAvatar.textContent = commentAuthorInitial(replyAuthorName);
+             replyHeader.appendChild(replyAvatar);
+             replyHeader.appendChild(replyAuthor);
               var replyTime = document.createElement('span');
               replyTime.className = 'reply-time';
               replyTime.textContent = formatRelativeTime(reply.createdAt);

@@ -448,6 +448,56 @@ describe('fresh project route Workspace gate', () => {
     });
   });
 
+  it('keeps a share-based bootstrap witness when the directory has no membership for the home Workspace', async () => {
+    // Cross-team shared project: the user is NOT a member of the project's
+    // home Workspace, but a bootstrap witness (from ensureShareBootstrapWitness
+    // or bootstrapProjectRoute) verified access through the daemon's
+    // share-aware authorization. The directory returns an empty list, but the
+    // hook must keep the bootstrap context instead of failing with 'forbidden'.
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(
+      JSON.stringify(workspaceDirectoryFixture([])),
+      {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      },
+    )));
+
+    const shareBootstrap = workspaceContextFixture({
+      workspaceId: WORKSPACE_A.workspaceId,
+      workspaceMemberId: 'local-user',
+      role: 'member',
+      workspaceName: WORKSPACE_A.workspaceName,
+    });
+
+    const hook = renderHook(() => useProjectRouteWorkspaceContext(
+      WORKSPACE_A.workspaceId,
+      { context: WORKSPACE_B, loading: false },
+      shareBootstrap,
+    ));
+
+    // The bootstrap witness is consumed immediately.
+    await waitFor(() => {
+      expect(hook.result.current).toMatchObject({
+        context: shareBootstrap,
+        loading: false,
+      });
+    });
+    expect(hook.result.current.failure).toBeUndefined();
+
+    // A focus/pageshow event triggers a re-resolution. The directory still
+    // has no membership, but the bootstrap witness is still provided, so the
+    // hook must keep the share-based context instead of failing.
+    act(() => window.dispatchEvent(new Event('focus')));
+
+    await waitFor(() => {
+      expect(hook.result.current).toMatchObject({
+        context: shareBootstrap,
+        loading: false,
+      });
+    });
+    expect(hook.result.current.failure).toBeUndefined();
+  });
+
   it('retries transient failures with jittered exponential backoff and resets after recovery', async () => {
     vi.useFakeTimers();
     vi.spyOn(Math, 'random').mockReturnValue(0);

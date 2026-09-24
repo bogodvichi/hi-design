@@ -362,15 +362,11 @@ function renderSettingsDialog(
     appVersionInfo?: AppVersionInfo | null;
     providerModelsCache?: Record<string, ProviderModelOption[]>;
     welcome?: boolean;
-    onSilentUpdatePreferenceChange?: (allowSilentUpdates: boolean) => Promise<void>;
     onResetOnboarding?: (next: AppConfig) => void;
   } = {},
 ) {
   const onPersist = vi.fn();
   const onPersistComposioKey = vi.fn();
-  const onSilentUpdatePreferenceChange: (allowSilentUpdates: boolean) => Promise<void> =
-    options.onSilentUpdatePreferenceChange
-    ?? (async () => undefined);
   const onClose = vi.fn();
   const onRefreshAgents = options.onRefreshAgents ?? vi.fn<OnRefreshAgents>();
 
@@ -384,7 +380,6 @@ function renderSettingsDialog(
       providerModelsCache={options.providerModelsCache}
       welcome={options.welcome}
       onPersist={onPersist}
-      onSilentUpdatePreferenceChange={onSilentUpdatePreferenceChange}
       onPersistComposioKey={onPersistComposioKey}
       onClose={onClose}
       onResetOnboarding={options.onResetOnboarding}
@@ -399,7 +394,6 @@ function renderSettingsDialog(
 
   return {
     onPersist,
-    onSilentUpdatePreferenceChange,
     onPersistComposioKey,
     onClose,
     onRefreshAgents,
@@ -5994,194 +5988,6 @@ describe('SettingsDialog about interactions', () => {
     await waitFor(() => {
       expect(quit).toHaveBeenCalledTimes(2);
     });
-    expect(install).toHaveBeenCalledTimes(1);
-  });
-
-  it('toggles allowSilentUpdates via the non-optimistic Settings path without crashing', async () => {
-    const onSilentUpdatePreferenceChange = vi.fn(async () => undefined);
-    const { onPersist } = renderSettingsDialog(
-      { mode: 'daemon', agentId: 'codex', allowSilentUpdates: false },
-      {
-        initialSection: 'about',
-        appVersionInfo: {
-          version: '0.14.1',
-          channel: 'beta',
-          packaged: true,
-          platform: 'darwin',
-          arch: 'arm64',
-        },
-        onSilentUpdatePreferenceChange,
-      },
-    );
-
-    const checkbox = screen.getByTestId('settings-allow-silent-updates') as HTMLInputElement;
-    expect(checkbox.checked).toBe(false);
-
-    fireEvent.click(checkbox);
-    expect(checkbox.checked).toBe(true);
-    await waitFor(() => expect(onSilentUpdatePreferenceChange).toHaveBeenCalledWith(true));
-    // Must not go through optimistic handleConfigPersist autosave.
-    expect(onPersist).not.toHaveBeenCalled();
-
-    fireEvent.click(checkbox);
-    expect(checkbox.checked).toBe(false);
-    await waitFor(() => expect(onSilentUpdatePreferenceChange).toHaveBeenCalledWith(false));
-  });
-
-  it('reverts the Settings silent-update toggle when the non-optimistic save fails', async () => {
-    let appConfigSilent: boolean | undefined = false;
-    const onSilentUpdatePreferenceChange = vi.fn(async (value: boolean) => {
-      throw new Error('daemon offline');
-      appConfigSilent = value;
-    });
-    renderSettingsDialog(
-      { mode: 'daemon', agentId: 'codex', allowSilentUpdates: false },
-      {
-        initialSection: 'about',
-        appVersionInfo: {
-          version: '0.14.1',
-          channel: 'beta',
-          packaged: true,
-          platform: 'darwin',
-          arch: 'arm64',
-        },
-        onSilentUpdatePreferenceChange,
-      },
-    );
-
-    const checkbox = screen.getByTestId('settings-allow-silent-updates') as HTMLInputElement;
-    fireEvent.click(checkbox);
-    await waitFor(() => expect(onSilentUpdatePreferenceChange).toHaveBeenCalledWith(true));
-    await waitFor(() => {
-      expect((screen.getByTestId('settings-allow-silent-updates') as HTMLInputElement).checked).toBe(false);
-    });
-    // App-wide preference must not keep the rejected value.
-    expect(appConfigSilent).toBe(false);
-  });
-
-  it('disables the Settings silent-update checkbox while a save is in flight', async () => {
-    let resolveSave: (() => void) | null = null;
-    const onSilentUpdatePreferenceChange = vi.fn(
-      () => new Promise<void>((resolve) => {
-        resolveSave = resolve;
-      }),
-    );
-    renderSettingsDialog(
-      { mode: 'daemon', agentId: 'codex', allowSilentUpdates: false },
-      {
-        initialSection: 'about',
-        appVersionInfo: {
-          version: '0.14.1',
-          channel: 'beta',
-          packaged: true,
-          platform: 'darwin',
-          arch: 'arm64',
-        },
-        onSilentUpdatePreferenceChange,
-      },
-    );
-
-    const checkbox = screen.getByTestId('settings-allow-silent-updates') as HTMLInputElement;
-    fireEvent.click(checkbox);
-    await waitFor(() => expect(onSilentUpdatePreferenceChange).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(checkbox.disabled).toBe(true));
-
-    await act(async () => {
-      resolveSave?.();
-      await Promise.resolve();
-    });
-    await waitFor(() => expect(checkbox.disabled).toBe(false));
-    expect(onSilentUpdatePreferenceChange).toHaveBeenCalledTimes(1);
-  });
-
-  it('still autosaves an unrelated edit that lands during a silent-update save', async () => {
-    // Regression: success must only advance autosaveLastSavedRef for
-    // allowSilentUpdates. Spreading the whole latest draft would mark a
-    // concurrent unrelated change as already saved and skip onPersist.
-    let resolveSave: (() => void) | null = null;
-    const onSilentUpdatePreferenceChange = vi.fn(
-      () => new Promise<void>((resolve) => {
-        resolveSave = resolve;
-      }),
-    );
-    const { onPersist } = renderSettingsDialog(
-      {
-        mode: 'daemon',
-        agentId: 'codex',
-        allowSilentUpdates: false,
-        // Seeded on so the concurrent click below is a real state change.
-        notifications: {
-          soundEnabled: true,
-          successSoundId: 'chime',
-          failureSoundId: 'two-tone-down',
-          desktopEnabled: false,
-        },
-      },
-      {
-        initialSection: 'about',
-        appVersionInfo: {
-          version: '0.14.1',
-          channel: 'beta',
-          packaged: true,
-          platform: 'darwin',
-          arch: 'arm64',
-        },
-        onSilentUpdatePreferenceChange,
-      },
-    );
-
-    fireEvent.click(screen.getByTestId('settings-allow-silent-updates'));
-    await waitFor(() => expect(onSilentUpdatePreferenceChange).toHaveBeenCalledTimes(1));
-    await waitFor(() => {
-      expect(
-        (screen.getByTestId('settings-allow-silent-updates') as HTMLInputElement).disabled,
-      ).toBe(true);
-    });
-    expect(onPersist).not.toHaveBeenCalled();
-
-    // Concurrent persisted edit while the silent-update request is in flight.
-    // The invariant under test is the autosave bookkeeping, not the field that
-    // carries it — theme selection was the old vehicle and is gone, so this
-    // reaches for the notifications completion-sound toggle instead.
-    fireEvent.click(screen.getByRole('button', { name: /General/i }));
-    fireEvent.click(
-      within(screen.getByRole('group', { name: 'Completion sound' })).getByRole('button', {
-        name: 'inactive',
-      }),
-    );
-
-    // Resolve silent-update AFTER the concurrent edit is in draft. The success
-    // path must not stamp this edit into autosaveLastSavedRef.
-    await act(async () => {
-      resolveSave?.();
-      await Promise.resolve();
-    });
-
-    await waitForPersist(
-      onPersist,
-      expect.objectContaining({
-        notifications: expect.objectContaining({ soundEnabled: false }),
-      }),
-      {},
-    );
-  });
-
-  it('does not read event.currentTarget inside the silent-updates setCfg updater', async () => {
-    // Source invariant: functional updaters must not close over event.currentTarget
-    // (null after the native/React event handler returns under pending lanes).
-    const { readFile } = await import('node:fs/promises');
-    const { join } = await import('node:path');
-    const source = await readFile(
-      join(process.cwd(), 'src/components/SettingsDialog.tsx'),
-      'utf8',
-    );
-    const silentToggleBlock = source.match(
-      /data-testid="settings-allow-silent-updates"[\s\S]*?<\/label>/,
-    )?.[0];
-    expect(silentToggleBlock).toBeTruthy();
-    expect(silentToggleBlock).not.toMatch(
-      /setCfg\(\s*\(\s*current\s*\)\s*=>\s*\(\{[\s\S]*?event\.currentTarget\.checked/,
-    );
-    expect(silentToggleBlock).toMatch(/const allowSilentUpdates = event\.currentTarget\.checked/);
-  });
+   expect(install).toHaveBeenCalledTimes(1);
+ });
 });
