@@ -65,6 +65,10 @@ function matchesSelector(element: FixtureElement, selector: string): boolean {
       if (attribute?.[1] != null && attribute[2] != null) {
         return element.attributes[attribute[1]] === attribute[2];
       }
+      // Plain tag selectors (e.g. "script") are used by the probe for
+      // diagnostics; fixture elements don't model tag names, so no
+      // fixture element ever matches a tag selector.
+      if (/^[a-zA-Z][\w-]*$/.test(simple)) return false;
       throw new Error(`fixture selector engine does not support ${JSON.stringify(simple)}`);
     });
 }
@@ -77,9 +81,10 @@ function renderFixture(
     (node) => new FixtureElement(node.classes ?? [], node.attributes ?? {}, node.rects ?? 1),
   );
   return {
-    body: { textContent: options.bodyText ?? '' },
+    body: { childElementCount: elements.length, textContent: options.bodyText ?? '' },
     querySelector: (selectors) => elements.find((element) => matchesSelector(element, selectors)) ?? null,
     querySelectorAll: (selectors) => elements.filter((element) => matchesSelector(element, selectors)),
+    readyState: 'complete',
     title: options.title ?? 'HiDesign',
   };
 }

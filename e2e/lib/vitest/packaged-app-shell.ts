@@ -20,12 +20,18 @@ const PACKAGED_APP_SHELL_PROBE = `
     const home = doc.querySelector('[data-testid="entry-nav-home"]');
     const onboardingShell = doc.querySelector('.entry-shell--onboarding, .entry-onboarding-modal');
     const cloudSignIn = doc.querySelector('.onboarding-cloud__primary');
+    const loadingShell = doc.querySelector('.od-loading-shell');
+    const scripts = doc.querySelectorAll('script');
     return {
       cloudSignInVisible: cloudSignIn instanceof ElementCtor,
       homeVisible: home instanceof ElementCtor && home.getClientRects().length > 0,
       onboardingVisible: onboardingShell instanceof ElementCtor,
       text: doc.body?.textContent?.trim().slice(0, 300) ?? '',
       title: doc.title,
+      readyState: doc.readyState,
+      scriptCount: scripts.length,
+      loadingShellVisible: loadingShell instanceof ElementCtor,
+      bodyChildCount: doc.body?.childElementCount ?? 0,
     };
   }
 `;
@@ -38,6 +44,10 @@ export type PackagedAppShellSnapshot = {
   onboardingVisible: boolean;
   text: string;
   title: string;
+  readyState: string;
+  scriptCount: number;
+  loadingShellVisible: boolean;
+  bodyChildCount: number;
 };
 
 export type PackagedAppShellProbeElement = {
@@ -45,9 +55,10 @@ export type PackagedAppShellProbeElement = {
 };
 
 export type PackagedAppShellProbeDocument = {
-  body: { textContent: string | null } | null;
+  body: { textContent: string | null; childElementCount: number } | null;
   querySelector(selectors: string): PackagedAppShellProbeElement | null;
   querySelectorAll(selectors: string): Iterable<PackagedAppShellProbeElement>;
+  readyState: string;
   title: string;
 };
 
@@ -80,7 +91,11 @@ export function asPackagedAppShellSnapshot(value: unknown): PackagedAppShellSnap
     typeof candidate.homeVisible !== 'boolean' ||
     typeof candidate.onboardingVisible !== 'boolean' ||
     typeof candidate.text !== 'string' ||
-    typeof candidate.title !== 'string'
+    typeof candidate.title !== 'string' ||
+    typeof candidate.readyState !== 'string' ||
+    typeof candidate.scriptCount !== 'number' ||
+    typeof candidate.loadingShellVisible !== 'boolean' ||
+    typeof candidate.bodyChildCount !== 'number'
   ) {
     return null;
   }

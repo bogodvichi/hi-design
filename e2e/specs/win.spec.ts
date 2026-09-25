@@ -345,6 +345,7 @@ type WinListResult = {
 };
 
 type WinInspectResult = {
+  console?: { entries: Array<{ level: string; text: string; timestamp: string }> };
   daemonStatus: DesktopStatus | null;
   daemonStatusError?: string;
   desktopIpcUnavailable?: boolean;
@@ -2022,7 +2023,9 @@ async function observePackagedAppShell(): Promise<unknown> {
   if (inspect.eval?.ok !== true) {
     throw new Error(`packaged windows renderer could not evaluate the app-shell probe: ${formatUnknown(inspect)}`);
   }
-  return inspect.eval.value;
+  const probeValue = inspect.eval.value as Record<string, unknown> | null;
+  if (probeValue == null || typeof probeValue !== 'object') return probeValue;
+  return { ...probeValue, console: inspect.console ?? null };
 }
 
 async function waitForHealthyDesktopVersion(

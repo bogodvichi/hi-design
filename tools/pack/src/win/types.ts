@@ -1,5 +1,6 @@
 import type {
   DaemonStatusSnapshot,
+  DesktopConsoleResult,
   DesktopEvalResult,
   DesktopScreenshotResult,
   DesktopStatusSnapshot,
@@ -354,6 +355,7 @@ export type WinResetResult = {
 };
 
 export type WinInspectResult = {
+  console?: DesktopConsoleResult;
   daemonStatus: DaemonStatusSnapshot | null;
   daemonStatusError?: string;
   eval?: DesktopEvalResult;

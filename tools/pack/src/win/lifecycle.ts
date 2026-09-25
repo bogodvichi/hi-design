@@ -9,6 +9,7 @@ import {
   SIDECAR_SOURCES,
   isDesktopUpdateAction,
   type DaemonStatusSnapshot,
+  type DesktopConsoleResult,
   type DesktopEvalResult,
   type DesktopScreenshotResult,
   type DesktopStatusSnapshot,
@@ -534,6 +535,18 @@ async function requestDesktopEval(
   }
 }
 
+async function requestDesktopConsole(ipc: string): Promise<DesktopConsoleResult | null> {
+  try {
+    return await requestJsonIpc<DesktopConsoleResult>(
+      ipc,
+      { type: SIDECAR_MESSAGES.CONSOLE },
+      { timeoutMs: 2000 },
+    );
+  } catch {
+    return null;
+  }
+}
+
 async function requestStatusSnapshot<T>(ipc: string): Promise<{ error?: string; status: T | null }> {
   try {
     return { status: await requestJsonIpc<T>(ipc, { type: SIDECAR_MESSAGES.STATUS }, { timeoutMs: 2000 }) };
@@ -600,7 +613,9 @@ export async function inspectPackedWinApp(
   const statusPollIntervalMs = resolveOptionalPositiveInteger(options.statusPollIntervalMs, "--status-poll-interval-ms") ?? 500;
   const launcher = await readToolPackLauncherRuntimeSnapshot(config);
   const updateCache = await readToolPackUpdateCacheLifecycleSnapshot(config);
+  const consoleResult = await requestDesktopConsole(stamp.ipc);
   return {
+    ...(consoleResult == null ? {} : { console: consoleResult }),
     daemonStatus: daemonSnapshot.status,
     ...(daemonSnapshot.error == null ? {} : { daemonStatusError: daemonSnapshot.error }),
     ...(options.expr == null ? {} : {
