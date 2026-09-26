@@ -247,8 +247,8 @@ jobs:
           ASSETS_DIR="$RUNNER_TEMP/release-assets"
           mkdir -p "$ASSETS_DIR"
           SDIR="$RUNNER_TEMP/tools-pack/out/mac/namespaces/release-stable"
-          cp "$SDIR/dmg/Hi Design-release-stable.dmg" "$ASSETS_DIR/Hi Design-$VERSION-mac-arm64.dmg"
-          cp "$SDIR/payload/Hi Design-release-stable-payload.zip" "$ASSETS_DIR/Hi Design-$VERSION-mac-arm64-payload.zip"
+          cp "$SDIR/dmg/Hi Design Team-release-stable.dmg" "$ASSETS_DIR/Hi Design-$VERSION-mac-arm64.dmg"
+          cp "$SDIR/payload/Hi Design Team-release-stable-payload.zip" "$ASSETS_DIR/Hi Design-$VERSION-mac-arm64-payload.zip"
           cd "$ASSETS_DIR"
           shasum -a 256 "Hi Design-$VERSION-mac-arm64.dmg" > "Hi Design-$VERSION-mac-arm64.dmg.sha256"
           shasum -a 256 "Hi Design-$VERSION-mac-arm64-payload.zip" > "Hi Design-$VERSION-mac-arm64-payload.zip.sha256"
@@ -329,8 +329,8 @@ jobs:
           ASSETS_DIR="$RUNNER_TEMP/release-assets"
           mkdir -p "$ASSETS_DIR"
           SDIR="$RUNNER_TEMP/tools-pack/out/mac/namespaces/release-stable-intel"
-          cp "$SDIR/dmg/Hi Design-release-stable-intel.dmg" "$ASSETS_DIR/Hi Design-$VERSION-mac-x64.dmg"
-          cp "$SDIR/payload/Hi Design-release-stable-intel-payload.zip" "$ASSETS_DIR/Hi Design-$VERSION-mac-x64-payload.zip"
+          cp "$SDIR/dmg/Hi Design Team-release-stable-intel.dmg" "$ASSETS_DIR/Hi Design-$VERSION-mac-x64.dmg"
+          cp "$SDIR/payload/Hi Design Team-release-stable-intel-payload.zip" "$ASSETS_DIR/Hi Design-$VERSION-mac-x64-payload.zip"
           cd "$ASSETS_DIR"
           shasum -a 256 "Hi Design-$VERSION-mac-x64.dmg" > "Hi Design-$VERSION-mac-x64.dmg.sha256"
           shasum -a 256 "Hi Design-$VERSION-mac-x64-payload.zip" > "Hi Design-$VERSION-mac-x64-payload.zip.sha256"
@@ -505,8 +505,8 @@ jobs:
           New-Item -ItemType Directory -Force -Path $ASSETS_DIR | Out-Null
           $SDIR = "${{ runner.temp }}/tools-pack/out/win/namespaces/release-stable-win/builder"
           $PDIR = "${{ runner.temp }}/tools-pack/out/win/namespaces/release-stable-win/payload"
-          Copy-Item "$SDIR/Hi Design-release-stable-win-setup.exe" "$ASSETS_DIR/Hi Design-$VERSION-win-x64-setup.exe"
-          Copy-Item "$PDIR/Hi Design-release-stable-win-payload.7z" "$ASSETS_DIR/Hi Design-$VERSION-win-x64-payload.7z"
+          Copy-Item "$SDIR/Hi Design Team-release-stable-win-setup.exe" "$ASSETS_DIR/Hi Design-$VERSION-win-x64-setup.exe"
+          Copy-Item "$PDIR/Hi Design Team-release-stable-win-payload.7z" "$ASSETS_DIR/Hi Design-$VERSION-win-x64-payload.7z"
           Set-Location $ASSETS_DIR
           $setupHash = (Get-FileHash -Path "Hi Design-$VERSION-win-x64-setup.exe" -Algorithm SHA256).Hash.ToLowerInvariant()
           "$setupHash  Hi Design-$VERSION-win-x64-setup.exe" | Set-Content -Path "Hi Design-$VERSION-win-x64-setup.exe.sha256"
