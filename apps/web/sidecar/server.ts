@@ -935,10 +935,7 @@ async function createWebSidecarHandle(
   closeRuntime: () => Promise<void> | void,
   isRuntimeRunning?: () => boolean,
 ): Promise<WebSidecarHandle> {
-  // Honor the configured port, defaulting to 9529 when none is provided.
-  const DEFAULT_WEB_PORT = 9529;
-  const envPort = parsePort(process.env[WEB_PORT_ENV]);
-  const preferredPort = envPort > 0 ? envPort : DEFAULT_WEB_PORT;
+  const preferredPort = parsePort(process.env[WEB_PORT_ENV]);
   let port: number;
   try {
     port = await listen(httpServer, preferredPort);

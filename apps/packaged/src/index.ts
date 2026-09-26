@@ -63,10 +63,6 @@ import { reportStartupFailure, resolveStartupDistinctId } from "./startup-teleme
 import { resolvePackagedWindowTitle } from "./window-title.js";
 import { syncWindowsUninstallDisplayVersion } from "./windows-lifecycle.js";
 
-function toNpmName(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-}
-
 let packagedLogger: PackagedDesktopLogger | null = null;
 const secondInstanceHandoff = createPackagedSecondInstanceHandoff();
 
@@ -121,16 +117,6 @@ function applyPackagedUpdaterEnv(updateMetadataUrl: string | null): void {
 
 async function main(): Promise<void> {
   const config = await readPackagedConfig();
-
-  // Derive runtime IPC and lock identity from the baked product name so the
-  // personal "Hi Design" and team "Hi Design Team" builds get distinct
-  // single-instance locks, userData directories, and Windows named pipes.
-  // These env vars are read at call time by resolveAppIpcPath() and
-  // resolveWindowsUninstallRegistryKey(), not at module load.
-  process.env.OD_PRODUCT_NAME ??= config.productName;
-  const npmProductName = toNpmName(config.productName);
-  process.env.OD_SIDECAR_IPC_BASE ??= `/tmp/${npmProductName}/ipc`;
-  process.env.OD_SIDECAR_WINDOWS_PIPE_PREFIX ??= npmProductName;
 
   const headlessRequest = parsePackagedHeadlessRequest(process.argv.slice(1));
   if (headlessRequest.headless) {
