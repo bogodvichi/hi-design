@@ -1,0 +1,196 @@
+{
+  "schema_version": "hui-contract-mapping.v1",
+  "batch": "basic-form",
+  "components": {
+    "layout": {
+      "documentation_status": "examples-only",
+      "contract_kind": "layout-system",
+      "runtime": {
+        "el-row": {},
+        "el-col": {}
+      }
+    },
+    "icon": {
+      "documentation_status": "examples-only",
+      "contract_kind": "css-class-and-vue-component",
+      "runtime": {
+        "h-icon": {},
+        "h-feedback-icon": {}
+      }
+    },
+    "svg-icon": {
+      "runtime": {
+        "h-svg-icon": {
+          "props": ["h-svg-icon属性"]
+        },
+        "svg-icon": {
+          "props": ["svg-icon属性"]
+        }
+      }
+    },
+    "button": {
+      "runtime": {
+        "el-button": {
+          "props": ["属性"]
+        },
+        "el-button-group": {}
+      }
+    },
+    "radio": {
+      "runtime": {
+        "el-radio": {
+          "props": ["Radio属性"]
+        },
+        "el-radio-group": {
+          "props": ["Radio-group属性"],
+          "events": ["Radio-group事件"]
+        },
+        "el-radio-button": {}
+      }
+    },
+    "checkbox": {
+      "runtime": {
+        "el-checkbox": {
+          "props": ["Checkbox属性"],
+          "events": ["Checkbox事件"]
+        },
+        "el-checkbox-group": {
+          "props": ["Checkbox-group属性"]
+        }
+      }
+    },
+    "input": {
+      "runtime": {
+        "el-input": {
+          "props": ["Input属性"],
+          "slots": ["Input Slots"],
+          "events": ["Input事件"]
+        },
+        "el-input-number": {
+          "props": ["input-number属性"],
+          "slots": ["input-number Slots"],
+          "events": ["input-number事件"]
+        },
+        "el-input-range": {
+          "props": ["input-range属性"]
+        }
+      }
+    },
+    "autocomplete": {
+      "runtime": {
+        "el-autocomplete": {
+          "props": ["Autocomplete属性"],
+          "slots": ["Autocomplete Slots"],
+          "events": ["Autocomplete事件"]
+        }
+      }
+    },
+    "ip-input": {
+      "runtime": {
+        "h-ip-input": {
+          "props": ["属性"],
+          "events": ["事件"]
+        }
+      }
+    },
+    "select": {
+      "runtime": {
+        "el-select": {
+          "props": ["Select属性"],
+          "events": ["Select事件"],
+          "slots": ["Select Slots"]
+        },
+        "el-option": {
+          "props": ["Option属性"]
+        },
+        "el-option-group": {
+          "props": ["Option Group属性"]
+        }
+      }
+    },
+    "cascader": {
+      "runtime": {
+        "el-cascader": {
+          "props": ["属性"],
+          "events": ["事件"]
+        }
+      }
+    },
+    "switch": {
+      "runtime": {
+        "el-switch": {
+          "props": ["属性"],
+          "events": ["事件"]
+        }
+      }
+    },
+    "slider": {
+      "runtime": {
+        "el-slider": {
+          "props": ["Attributes"],
+          "events": ["Events"]
+        }
+      }
+    },
+    "time-picker": {
+      "runtime": {
+        "el-time-picker": {
+          "props": ["属性"],
+          "events": ["事件"],
+          "methods": ["方法"]
+        }
+      }
+    },
+    "date-picker": {
+      "runtime": {
+        "el-date-picker": {
+          "props": ["属性"],
+          "events": ["事件"],
+          "methods": ["方法"],
+          "slots": ["Slots"]
+        }
+      }
+    },
+    "date-time-picker": {
+      "runtime": {
+        "el-date-picker": {
+          "props": ["属性"],
+          "events": ["事件"],
+          "methods": ["方法"],
+          "slots": ["插槽"]
+        }
+      }
+    },
+    "upload": {
+      "runtime": {
+        "el-upload": {
+          "props": ["属性"],
+          "methods": ["方法"]
+        }
+      }
+    },
+    "transfer": {
+      "runtime": {
+        "el-transfer": {
+          "props": ["属性"],
+          "slots": ["Slot"],
+          "methods": ["方法"],
+          "events": ["事件"]
+        }
+      }
+    },
+    "form": {
+      "runtime": {
+        "el-form": {
+          "props": ["Form属性"],
+          "methods": ["Form方法"],
+          "events": ["Form事件"]
+        },
+        "el-form-item": {
+          "props": ["Form-Item属性"],
+          "slots": ["Form-Item Slot"]
+        }
+      }
+    }
+  }
+}

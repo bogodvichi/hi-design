@@ -1,0 +1,78 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "product_version": "3.0.0",
+  "id": "isc3-access-personnel-list",
+  "title": "人员信息",
+  "page_kind": "table",
+  "pattern_contract": "table/with-operation-bar.json",
+  "collection_toolbar_variant": "actions-scoped-keyword",
+  "collection_toolbar_filter_expanded": true,
+  "portal": {
+    "active_top_menu": "门禁管理",
+    "active_icon_menu": "personnel",
+    "show_context_sidebar": true,
+    "section": "人员管理",
+    "tab_title": "人员信息",
+    "active_side_menu": "personnel-list",
+    "side_menus": [
+      {"id": "personnel-list", "label": "人员信息", "icon": "h-icon-user"},
+      {"id": "access-authorization", "label": "门禁授权", "icon": "h-icon-lock"},
+      {"id": "card-management", "label": "卡片管理", "icon": "h-icon-info_card"}
+    ]
+  },
+  "filters": [
+    {"key": "name", "label": "姓名", "kind": "input", "placeholder": "请输入姓名"},
+    {"key": "gender", "label": "性别", "kind": "select", "placeholder": "请选择性别", "options": ["男", "女"]},
+    {"key": "organization", "label": "所属组织", "kind": "input", "placeholder": "请输入所属组织"},
+    {"key": "credentialType", "label": "证件类型", "kind": "select", "placeholder": "请选择证件类型", "options": ["身份证", "护照", "港澳通行证"]},
+    {"key": "credentialNumber", "label": "证件号码", "kind": "input", "placeholder": "请输入证件号码"},
+    {"key": "employeeNo", "label": "工号", "kind": "input", "placeholder": "请输入工号"},
+    {"key": "mobile", "label": "手机号", "kind": "input", "placeholder": "请输入手机号"},
+    {"key": "credentialInfo", "label": "凭证信息", "kind": "input", "placeholder": "请输入凭证信息"},
+    {"key": "validity", "label": "人员有效期", "kind": "date-range", "placeholder": "请选择人员有效期"}
+  ],
+  "toolbar_actions": [
+    {"id": "add", "label": "添加", "icon": "h-icon-add", "appearance": "primary", "href": "add-person-form.html"},
+    {"id": "delete-selected", "label": "删除", "icon": "h-icon-delete"},
+    {"id": "move-organization", "label": "变更组织", "icon": "h-icon-info_organization"},
+    {"id": "sync-biometric", "label": "同步生物特征", "icon": "h-icon-refresh"},
+    {"id": "card-operation", "label": "开/退卡", "icon": "h-icon-associate"},
+    {"id": "import", "label": "导入", "icon": "h-icon-import"},
+    {"id": "export", "label": "导出", "icon": "h-icon-export"}
+  ],
+  "row_actions": [
+    {"id": "edit", "label": "编辑", "icon": "h-icon-edit"},
+    {"id": "details", "label": "详情", "icon": "h-icon-details"},
+    {"id": "delete", "label": "删除", "icon": "h-icon-delete"}
+  ],
+  "row_detail_href": "isc3-access-personnel-detail.html",
+  "columns": [
+    {"prop": "name", "label": "姓名", "fixed_width": 100},
+    {"prop": "gender", "label": "性别", "fixed_width": 70},
+    {"prop": "organization", "label": "所属组织", "min_width": 180},
+    {"prop": "credentialType", "label": "证件类型", "fixed_width": 100},
+    {"prop": "credentialNumber", "label": "证件号码", "fixed_width": 180},
+    {"prop": "employeeNo", "label": "工号", "fixed_width": 120},
+    {"prop": "mobile", "label": "手机号", "fixed_width": 130},
+    {"prop": "credentialInfo", "label": "凭证信息", "min_width": 180},
+    {"prop": "validity", "label": "人员有效期", "fixed_width": 220}
+  ],
+  "page_size": 20,
+  "preview": {
+    "total": 126,
+    "rows": [
+      {"id": 1001, "name": "张伟", "gender": "男", "organization": "总部园区/研发中心", "credentialType": "身份证", "credentialNumber": "310***********2418", "employeeNo": "HIK20260018", "mobile": "138****2106", "credentialInfo": "人脸、员工卡", "validity": "2026-01-01 至 2028-12-31"},
+      {"id": 1002, "name": "李娜", "gender": "女", "organization": "总部园区/行政管理部", "credentialType": "身份证", "credentialNumber": "330***********1526", "employeeNo": "HIK20250127", "mobile": "137****5302", "credentialInfo": "人脸、指纹", "validity": "2025-03-12 至 2028-03-11"},
+      {"id": 1003, "name": "王海峰", "gender": "男", "organization": "产业园/安保管理部", "credentialType": "身份证", "credentialNumber": "320***********4831", "employeeNo": "SEC20240056", "mobile": "139****4821", "credentialInfo": "员工卡、指纹", "validity": "2024-07-01 至 2027-06-30"},
+      {"id": 1004, "name": "陈晓东", "gender": "男", "organization": "总部园区/机电保障部", "credentialType": "身份证", "credentialNumber": "340***********0937", "employeeNo": "OPS20230082", "mobile": "136****9985", "credentialInfo": "人脸、员工卡", "validity": "2023-10-16 至 2026-10-15"},
+      {"id": 1005, "name": "赵倩", "gender": "女", "organization": "总部园区/运营管理部", "credentialType": "身份证", "credentialNumber": "110***********3624", "employeeNo": "ADM20260031", "mobile": "158****1760", "credentialInfo": "人脸、员工卡、指纹", "validity": "2026-04-01 至 2029-03-31"},
+      {"id": 1006, "name": "Michael Chen", "gender": "男", "organization": "访客中心/合作单位", "credentialType": "护照", "credentialNumber": "E8******62", "employeeNo": "VIS20260826", "mobile": "186****4582", "credentialInfo": "访客卡", "validity": "2026-08-26 至 2026-08-30"},
+      {"id": 1007, "name": "周雨晴", "gender": "女", "organization": "总部园区/用户体验部", "credentialType": "身份证", "credentialNumber": "350***********2047", "employeeNo": "UXD20250039", "mobile": "188****3217", "credentialInfo": "人脸、员工卡", "validity": "2025-06-15 至 2028-06-14"},
+      {"id": 1008, "name": "刘思远", "gender": "男", "organization": "产业园/生产管理部", "credentialType": "身份证", "credentialNumber": "420***********7214", "employeeNo": "PRD20240116", "mobile": "135****8043", "credentialInfo": "员工卡", "validity": "2024-02-20 至 2027-02-19"},
+      {"id": 1009, "name": "孙悦", "gender": "女", "organization": "总部园区/综合管理部", "credentialType": "港澳通行证", "credentialNumber": "C8******19", "employeeNo": "ADM20220148", "mobile": "186****6149", "credentialInfo": "人脸、员工卡", "validity": "2022-09-01 至 2027-08-31"},
+      {"id": 1010, "name": "郭晨", "gender": "男", "organization": "总部园区/信息技术部", "credentialType": "身份证", "credentialNumber": "370***********8150", "employeeNo": "ITD20260063", "mobile": "189****7005", "credentialInfo": "人脸、指纹", "validity": "2026-07-18 至 2029-07-17"}
+    ]
+  }
+}

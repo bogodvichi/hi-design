@@ -1,0 +1,9 @@
+{
+  "schema_version": "tpp-page-intent.v1",
+  "page_kind": "form",
+  "semantic_family": "form-anchored",
+  "features": {
+    "anchor_behavior": "persistent",
+    "container_count": 1
+  }
+}

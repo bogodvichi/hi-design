@@ -1,0 +1,8 @@
+{
+  "schema_version": "d2c-zone.v1",
+  "id": "summary.metrics",
+  "name": "指标摘要区域",
+  "description": "展示与当前页面上下文相关的聚合指标",
+  "use_when": ["页面需要在结果上方展示关键指标"],
+  "owner": "hui-common"
+}

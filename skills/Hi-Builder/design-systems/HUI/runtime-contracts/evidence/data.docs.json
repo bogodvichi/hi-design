@@ -1,0 +1,2270 @@
+{
+  "observedAt": "2026-07-31",
+  "items": [
+    {
+      "id": "table",
+      "path": "/hui/components/data/table-demo",
+      "tables": [
+        {
+          "heading": "Table Attributes #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "data",
+              "静态数据，适用于非异步请求，此时不可分页。若指定了 url 则此参数自动忽略。",
+              "array",
+              "—",
+              "—"
+            ],
+            [
+              "height",
+              "Table 的高度",
+              "Number",
+              "—",
+              "—"
+            ],
+            [
+              "max-height",
+              "Table 的最大高度。当 height 和 max-height 都不指定时表格默认不会美化滚动条，除非你指定了 force-scroll 属性",
+              "string/number",
+              "—",
+              "—"
+            ],
+            [
+              "force-scroll",
+              "表格高度自适应时默认不会美化滚动条，但如果在此情况下强制美化滚动条，请指定该属性，此时要求表格的外部容器具有指定高度或自适应高度。你也可以指定为 horizontal 使高度撑满容器的情况下能够美化横向滚动条；指定为 vertical 来使横向滚动条不可见。",
+              "Boolean,String",
+              "—",
+              "false"
+            ],
+            [
+              "stripe",
+              "是否为斑马纹 table",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "border",
+              "是否带有纵向边框",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "fit",
+              "列的宽度是否自撑开",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "show-header",
+              "是否显示表头",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "highlight-current-row",
+              "是否要高亮当前行",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "current-row-key",
+              "当前行的 key，只写属性",
+              "String,Number",
+              "—",
+              "—"
+            ],
+            [
+              "row-class-name",
+              "行的 className 的回调方法，也可以使用字符串为所有行设置一个固定的 className。",
+              "Function({row, rowIndex})  非兼容  /String",
+              "—",
+              "—"
+            ],
+            [
+              "row-style",
+              "行的 style 的回调方法，也可以使用一个固定的 Object 为所有行设置一样的 Style。",
+              "Function({row, rowIndex})  非兼容  /Object",
+              "—",
+              "—"
+            ],
+            [
+              "cell-class-name  2.0+",
+              "单元格的 className 的回调方法，也可以使用字符串为所有单元格设置一个固定的 className。",
+              "Function({row, column, rowIndex, columnIndex})/String",
+              "—",
+              "—"
+            ],
+            [
+              "cell-style  2.0+",
+              "单元格的 style 的回调方法，也可以使用一个固定的 Object 为所有单元格设置一样的 Style。",
+              "Function({row, rowIndex, rowIndex, columnIndex})/Object",
+              "—",
+              "—"
+            ],
+            [
+              "header-row-class-name  2.0+",
+              "表头行的 className 的回调方法，也可以使用字符串为所有表头行设置一个固定的 className。",
+              "Function({row, rowIndex})/String",
+              "—",
+              "—"
+            ],
+            [
+              "header-row-style  2.0+",
+              "表头行的 style 的回调方法，也可以使用一个固定的 Object 为所有表头行设置一样的 Style。",
+              "Function({row, rowIndex})/Object",
+              "—",
+              "—"
+            ],
+            [
+              "header-cell-class-name  2.0+",
+              "表头单元格的 className 的回调方法，也可以使用字符串为所有表头单元格设置一个固定的 className。",
+              "Function({row, column, rowIndex, columnIndex})/String",
+              "—",
+              "—"
+            ],
+            [
+              "header-cell-style  2.0+",
+              "表头单元格的 style 的回调方法，也可以使用一个固定的 Object 为所有表头单元格设置一样的 Style。",
+              "Function({row, rowIndex, rowIndex, columnIndex})/Object",
+              "—",
+              "—"
+            ],
+            [
+              "row-key",
+              "行数据的 Key，用来优化 Table 的渲染；在使用 reserve-selection 功能的情况下，该属性是必填的。类型为 String 时，支持多层访问：user.info.id，但不支持 user.info[0].id，此种情况请使用 Function。",
+              "Function(row)/String",
+              "—",
+              "—"
+            ],
+            [
+              "empty-text",
+              "空数据时显示的文本内容，也可以通过 slot=\"empty\" 设置",
+              "String",
+              "—",
+              "暂无数据"
+            ],
+            [
+              "default-expand-all",
+              "是否默认展开所有行，当 Table 中存在 type=“expand” 的 Column 的时候有效",
+              "Boolean",
+              "—",
+              "false"
+            ],
+            [
+              "expand-row-keys",
+              "可以通过该属性设置 Table 目前的展开行，需要设置 row-key 属性才能使用，该属性为展开行的 keys 数组。",
+              "Array",
+              "—",
+              ""
+            ],
+            [
+              "default-sort",
+              "默认的排序列的 prop 和顺序。它的prop属性指定默认的排序的列，order指定默认排序的顺序",
+              "Object",
+              "order: ascending, descending",
+              "如果只指定了prop, 没有指定order, 则默认顺序是 ascending"
+            ],
+            [
+              "default-sort-method  2.0+",
+              "设置数据进行排序时使用的默认排序方法，仅对 sortable 设置为 true 的列有效（设置在列项的 sort-method 属性优先级高于默认排序方法），a、b 为当前排序列相邻行的值，方法需返回一个布尔值",
+              "Function(a, b)",
+              "—",
+              "—"
+            ],
+            [
+              "show-summary",
+              "是否在表尾显示合计行",
+              "Boolean",
+              "—",
+              "false"
+            ],
+            [
+              "sum-text",
+              "合计行第一列的文本",
+              "String",
+              "—",
+              "合计"
+            ],
+            [
+              "summary-method",
+              "自定义的合计计算方法",
+              "Function({ columns, data })",
+              "—",
+              "—"
+            ],
+            [
+              "show-loading",
+              "分页请求时是否显示等待中的提示信息",
+              "Boolean",
+              "-",
+              "true"
+            ],
+            [
+              "always-show-bar",
+              "始终显示滚动条还是鼠标移入才显示",
+              "Boolean",
+              "-",
+              "false"
+            ],
+            [
+              "span-method",
+              "合并行或列的计算方法。方法的参数是一个对象，里面包含当前行row、当前列column、当前行号rowIndex、当前列号columnIndex四个属性。该函数可以返回一个包含两个元素的数组，第一个元素代表rowspan，第二个元素代表colspan。 也可以返回一个键名为rowspan和colspan的对象。",
+              "Function({ row, column, rowIndex, columnIndex })",
+              "—",
+              "—"
+            ],
+            [
+              "show-header-overflow",
+              "当 header 中内容过长被隐藏时显示 title",
+              "Boolean",
+              "—",
+              "true"
+            ],
+            [
+              "show-overflow-tooltip",
+              "设置所以列内容过长被隐藏时显示 tooltip",
+              "Boolean",
+              "—",
+              "false"
+            ],
+            [
+              "show-overflow-title",
+              "设置除自定义列外的所有列内容过长被隐藏时显示 title，若自定义列需要该功能可在各列设置",
+              "Boolean",
+              "—",
+              "true"
+            ],
+            [
+              "out-border 2.50.0+",
+              "设置表格外边框;如果是合并表格，建议设置为true",
+              "Boolean",
+              "—",
+              "false"
+            ],
+            [
+              "show-selected-row-bgcolor 2.50.0+",
+              "设置表格多选选中背景，需要为true，默认为false",
+              "Boolean",
+              "—",
+              "false"
+            ],
+            [
+              "defaultCheckedRowKeys 2.50.0+",
+              "开始表格多选时，默认表格勾选项",
+              "Array",
+              "—",
+              "null"
+            ],
+            [
+              "show-header-sort-tip 2.53.4+",
+              "设置表格头部开启sortable时，是否默认呈现自带tooltip，默认为true",
+              "Boolean",
+              "—",
+              "true"
+            ],
+            [
+              "drag-sort 2.61.0+",
+              "是否开启拖拽排序，row进开启默认排序，row-handler开启带手柄的拖拽排序",
+              "string",
+              "row/row-handler",
+              "—"
+            ]
+          ]
+        },
+        {
+          "heading": "Table Methods #",
+          "headers": [
+            "方法名",
+            "说明",
+            "参数"
+          ],
+          "rows": [
+            [
+              "clearSelection",
+              "用于多选表格，清空用户的选择，当使用 reserve-selection 功能的时候，可能会需要使用此方法",
+              "selection"
+            ],
+            [
+              "toggleRowSelection",
+              "用于多选表格，切换某一行的选中状态，如果使用了第二个参数，则是设置这一行选中与否（selected 为 true 则选中）",
+              "row, selected"
+            ],
+            [
+              "toggleRowExpanded  2.0+",
+              "用于可展开表格，切换某一行的展开状态，如果使用了第二个参数，则是设置这一行展开与否（expanded 为 true 则展开）",
+              "row, expanded"
+            ],
+            [
+              "setCurrentRow",
+              "用于单选表格，设定某一行为选中行，如果调用时不加参数，则会取消目前高亮行的选中状态。",
+              "row"
+            ],
+            [
+              "getData",
+              "获取表格当前数据，index 为行号且从 0 开始，不传行号则获取当前全部数据。index 超出当前表格行数则逆序按超出长度查找。",
+              "index"
+            ],
+            [
+              "setData",
+              "修改表格某行数据或多行数据，data 是对象则只修改一行，是数组则表示修改多行，index 表示要修改的表格行起始行号，index 从 0 开始且默认值为 0。index 超出当前表格行数则逆序按超出长度查找。",
+              "data, index"
+            ],
+            [
+              "doLayout",
+              "触发表格布局重排，一般情况下你不需要去调用，控件内部会适时主动调用。",
+              "-"
+            ]
+          ]
+        },
+        {
+          "heading": "Table Slot #",
+          "headers": [
+            "name",
+            "说明"
+          ],
+          "rows": [
+            [
+              "append",
+              "插入至表格最后一行之后的内容，仍然位于 <tbody> 标签内。如果需要对表格的内容进行无限滚动操作，可能需要用到这个 slot。若表格有合计行，该 slot 会位于合计行之上。"
+            ],
+            [
+              "loading",
+              "自定义表格“加载中”时的提示"
+            ],
+            [
+              "empty",
+              "自定义表格无数据时的提示"
+            ]
+          ]
+        },
+        {
+          "heading": "Table-column Attributes #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "type",
+              "对应列的类型。如果设置了 selection 则显示多选框；如果设置了 radio 则显示单选框 2.0+ ；如果设置了 index 则显示该行的索引（从 1 开始计算）；如果设置了 expand 则显示为一个可展开的按钮；如果设置了 drag 则显示为一个拖拽手柄  2.61.0+",
+              "string",
+              "selection/radio/index/expand/drag",
+              "—"
+            ],
+            [
+              "column-key",
+              "column 的 key，如果需要使用 filter-change 事件，则需要此属性标识是哪个 column 的筛选条件",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "label",
+              "显示的标题",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "ishtml",
+              "是否将 label 解析为 html",
+              "boolean",
+              "true/false",
+              "false"
+            ],
+            [
+              "prop",
+              "对应列内容的字段名，也可以使用 property 属性",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "width",
+              "对应列的宽度,支持固定宽度和百分比",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "min-width",
+              "对应列的最小宽度，与 width 的区别是 width 是固定的，min-width 会把剩余宽度按比例分配给设置了 min-width 的列",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "fixed",
+              "列是否固定在左侧或者右侧，true 表示固定在左侧",
+              "string, boolean",
+              "true, left, right",
+              "—"
+            ],
+            [
+              "render-header",
+              "列标题 Label 区域渲染使用的 Function",
+              "Function(h, { column, $index })",
+              "—",
+              "—"
+            ],
+            [
+              "sortable",
+              "对应列是否可以排序，如果设置为 ‘custom’，则代表用户希望远程排序，需要监听 Table 的 sort-change 事件",
+              "boolean, string",
+              "true, false, ‘custom’",
+              "false"
+            ],
+            [
+              "sort-method",
+              "对数据进行排序的时候使用的方法，仅当 sortable 设置为 true 的时候有效，需返回一个布尔值",
+              "Function(row1, row2)",
+              "—",
+              "—"
+            ],
+            [
+              "resizable",
+              "对应列是否可以通过拖动改变宽度",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "formatter",
+              "用来格式化内容",
+              "Function(row, column, cellValue)",
+              "—",
+              "—"
+            ],
+            [
+              "show-overflow-tooltip",
+              "当内容过长被隐藏时显示 tooltip",
+              "Boolean",
+              "—",
+              "false"
+            ],
+            [
+              "show-overflow-title",
+              "当内容过长被隐藏时显示 title",
+              "Boolean",
+              "—",
+              "false"
+            ],
+            [
+              "align",
+              "对齐方式",
+              "String",
+              "left/center/right",
+              "left"
+            ],
+            [
+              "header-align",
+              "表头对齐方式，若不设置该项，则使用表格的对齐方式",
+              "String",
+              "left/center/right",
+              "—"
+            ],
+            [
+              "class-name",
+              "列的 className",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "label-class-name",
+              "当前列标题的自定义类名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "selectable",
+              "对 type=selection/radio 的列有效，类型为 Function，Function 的返回值用来决定这一行的 CheckBox/Radio 是否可以勾选",
+              "Function(row, index)",
+              "—",
+              "—"
+            ],
+            [
+              "reserve-selection",
+              "仅对 type=selection 的列有效，类型为 Boolean，为 true 则代表会保留之前数据的选项，需要配合 Table 的 clearSelection 方法使用。",
+              "Boolean",
+              "—",
+              "false"
+            ],
+            [
+              "selections  2.0+",
+              "仅对 type=selection 的列有效，自定义选择配置项，数组格式，数组中的元素需要有 text 、 value 和 onclick 属性，其中 onClick 为点击后的回调函数。",
+              "Array[{ text, value, onClick }]",
+              "—",
+              "—"
+            ],
+            [
+              "filters",
+              "数据过滤的选项，数组格式，数组中的元素需要有 text 和 value 属性。",
+              "Array[{ text, value }]",
+              "—",
+              "—"
+            ],
+            [
+              "filter-placement",
+              "过滤弹出框的定位",
+              "String",
+              "与 Tooltip 的 placement 属性相同",
+              "—"
+            ],
+            [
+              "filter-multiple",
+              "数据过滤的选项是否多选",
+              "Boolean",
+              "—",
+              "true"
+            ],
+            [
+              "filter-method",
+              "数据过滤使用的方法，如果是多选的筛选项，对每一条数据会执行多次，任意一次返回 true 就会显示。",
+              "Function(value, row, column)",
+              "—",
+              "—"
+            ],
+            [
+              "filtered-value",
+              "选中的数据过滤项，如果需要自定义筛选的当前选中项，可设置该值，且该值改变会自动触发重新筛选。",
+              "Array",
+              "—",
+              "—"
+            ],
+            [
+              "allow-expand",
+              "指定展开行是否可被展开，该回调函数的参数有两个，依次是该行数据和行号。",
+              "Function(row, index)",
+              "—",
+              "() => true"
+            ],
+            [
+              "drag-icon  2.61.0+",
+              "仅对 type=drag 的列有效，拖拽排序的图标",
+              "string,object",
+              "—",
+              "—"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tag",
+      "path": "/hui/components/data/tag",
+      "tables": [
+        {
+          "heading": "Attributes #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "closable",
+              "是否可关闭",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "disable-transitions",
+              "是否禁用渐变动画，即在 1.0 中的 close-transition 属性",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "size",
+              "tag 标签的尺寸",
+              "String",
+              "large/medium/small",
+              "medium"
+            ],
+            [
+              "maxWidth",
+              "最大宽度。该大小为内容显示，不包含关闭标签的部分",
+              "string",
+              "—",
+              "‘200px’"
+            ],
+            [
+              "title",
+              "提示语",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "round  2.50.0+",
+              "是否为圆角标签",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "variant  2.50.0+",
+              "形态",
+              "string",
+              "primary/secondary/tertiary",
+              "—"
+            ],
+            [
+              "flood  2.50.0+",
+              "填充颜色",
+              "string",
+              "red/magenta/purple/blue/cyan/teal/green/yellow/orange/gray",
+              "—"
+            ]
+          ]
+        },
+        {
+          "heading": "checkableTag #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "checkable   2.50.0+",
+              "是否可被选择",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "v-model/checked   2.50.0+",
+              "是否被选中",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "disabled   2.50.0+",
+              "是否禁用",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "label   2.53.0+",
+              "展示文本",
+              "string/number/boolean",
+              "—",
+              "—"
+            ],
+            [
+              "value   2.53.0+",
+              "展示文本对应的实际值",
+              "string/number/boolean",
+              "—",
+              "—"
+            ],
+            [
+              "uncheckedProps   2.53.0+",
+              "未选中状态参数",
+              "object",
+              "type可选值：‘facetness’:面性‘outline’:线性‘outline-none’:无边框",
+              "{type:‘facetness’}"
+            ],
+            [
+              "checkedProps   2.53.0+",
+              "选中状态参数",
+              "object",
+              "type可选值：‘facetness’:面性‘outline’:线性‘outline-none’:无边框",
+              "{type:‘facetness’}"
+            ]
+          ]
+        },
+        {
+          "heading": "checkableTagGroup #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "v-model   2.53.0+",
+              "选中的值",
+              "Array",
+              "—",
+              "false"
+            ]
+          ]
+        },
+        {
+          "heading": "Events #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "close",
+              "关闭tag时触发的事件",
+              "—"
+            ]
+          ]
+        },
+        {
+          "heading": "checkableTag Events #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "click",
+              "checkableTag点击tag时触发的事件",
+              "标签是否被选中"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "progress",
+      "path": "/hui/components/data/progress-demo",
+      "tables": [
+        {
+          "heading": "Attributes #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "percentage",
+              "百分比",
+              "number",
+              "0-100",
+              "0"
+            ],
+            [
+              "type",
+              "进度条类型",
+              "string",
+              "line/circle",
+              "line"
+            ],
+            [
+              "stroke-width",
+              "进度条的宽度，单位 px",
+              "number",
+              "—",
+              "12"
+            ],
+            [
+              "stroke-linecap  2.0+",
+              "进度条采用圆角或方角",
+              "string",
+              "square/round",
+              "square"
+            ],
+            [
+              "text-inside",
+              "将进度条描述置于进度条内部（只在 type=‘line’ 时可用）",
+              "Boolean",
+              "—",
+              "false"
+            ],
+            [
+              "color  2.0+",
+              "进度条背景色（会覆盖 status 状态颜色）",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "vertical-align  2.0+",
+              "进度条文字是否显示在进度条的下方(只在 type=line 时可用)",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "status",
+              "进度条当前状态",
+              "string",
+              "exception/success",
+              "—"
+            ],
+            [
+              "status-text  2.0+",
+              "配合status使用, 进度条状态图标后的文字部分",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "width",
+              "环形进度条画布宽度（只在 type=‘circle’ 时可用）",
+              "number",
+              "—",
+              "160"
+            ],
+            [
+              "show-text",
+              "是否显示进度条文字内容",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "small  2.0+",
+              "使用小型进度条, 暂时只支持线形非内显进度条",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "dynamic  2.0+",
+              "使用动态进度条（只在 type=‘line’ 时可用）",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "duration  2.0+",
+              "设置动态进度条一次的播放时间 或 条纹进度条流动速度，即 animation-duration ，单位为秒",
+              "number",
+              "—",
+              "3"
+            ],
+            [
+              "striped  2.60.6+",
+              "在进度条上增加条纹（只在 type=‘line’ 时可用）",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "striped-style  2.60.6+",
+              "设置进度条纹理样式",
+              "string",
+              "tilt/vertical/arrow",
+              "tilt"
+            ],
+            [
+              "striped-flow  2.60.6+",
+              "让进度条上的条纹流动起来",
+              "boolean",
+              "—",
+              "false"
+            ]
+          ]
+        },
+        {
+          "heading": "Slot #",
+          "headers": [
+            "name",
+            "说明"
+          ],
+          "rows": [
+            [
+              "text  2.0+",
+              "进度条的文字部分"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tree",
+      "path": "/hui/components/data/tree",
+      "tables": [
+        {
+          "heading": "Attributes #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "data",
+              "展示数据",
+              "array",
+              "—",
+              "—"
+            ],
+            [
+              "empty-text",
+              "内容为空的时候展示的文本",
+              "String",
+              "—",
+              "暂无数据"
+            ],
+            [
+              "node-key",
+              "每个树节点用来作为唯一标识的属性，整颗树应该是唯一的",
+              "String",
+              "—",
+              "—"
+            ],
+            [
+              "parent-key",
+              "配合 simpleData 和 node-key 使用，完成简单数据的展现，定义为父节点的 key",
+              "String",
+              "—",
+              "—"
+            ],
+            [
+              "props",
+              "配置选项，具体看下表",
+              "object",
+              "—",
+              "—"
+            ],
+            [
+              "render-after-expand",
+              "是否在第一次展开某个树节点后才渲染其子节点",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "render-when-expand  2.0+",
+              "是否在展开某个树节点后才渲染其子节点（收起后就去除）",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "load",
+              "加载子树数据的方法",
+              "function(node, resolve)",
+              "—",
+              "—"
+            ],
+            [
+              "lazy",
+              "是否懒加载子节点，需与 load 方法结合使用",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "render-content",
+              "树节点的内容区的渲染 Function",
+              "Function(h, { node }",
+              "—",
+              "—"
+            ],
+            [
+              "prefix-content  2.29.0+",
+              "树节点的前缀区的渲染 Function",
+              "Function(h, { node }",
+              "—",
+              "—"
+            ],
+            [
+              "highlight-current",
+              "是否高亮当前选中节点，默认值是 true。",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "current-node-key",
+              "当前选中节点的 key，只写属性",
+              "string, number",
+              "—",
+              "—"
+            ],
+            [
+              "default-expand-all",
+              "是否默认展开所有节点",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "expand-on-click-node",
+              "是否在点击节点的时候展开或者收缩节点， 默认值为 false，只有点箭头图标的时候才会展开或者收缩节点。",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "expand-on-dbclick-node",
+              "是否在双击节点的时候展开或者收缩节点， 默认值为 true。",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "check-on-click-node  2.0+",
+              "是否在点击节点的时候选中节点，默认值为 false，即只有在点击复选框时才会选中节点。",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "auto-expand-parent",
+              "展开子节点的时候是否自动展开父节点",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "default-expanded-keys",
+              "默认展开的节点的 key 的数组",
+              "array",
+              "—",
+              "—"
+            ],
+            [
+              "show-checkbox",
+              "节点是否可被勾选",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "default-icon",
+              "默认图标",
+              "String",
+              "—",
+              "-"
+            ],
+            [
+              "check-strictly",
+              "在显示复选框的情况下，是否严格的遵循父子不互相关联的做法，默认为 false",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "check-parent-to-child  2.36+",
+              "父联动子",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "check-child-to-parent  2.36+",
+              "子联动父",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "default-checked-keys",
+              "默认勾选的节点的 key 的数组",
+              "array",
+              "—",
+              "—"
+            ],
+            [
+              "filter-node-method",
+              "对树节点进行筛选时执行的方法，返回 true 表示这个节点可以显示，返回 false 则表示这个节点会被隐藏",
+              "Function(value, data, node)",
+              "—",
+              "—"
+            ],
+            [
+              "border",
+              "是否显示边框（不推荐，建议使用容器边框，这个参数和滚动条不兼容）",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "accordion",
+              "是否每次只打开一个同级树节点展开",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "indent",
+              "相邻级节点间的水平缩进，单位为像素",
+              "number",
+              "—",
+              "16"
+            ],
+            [
+              "nodeHeight",
+              "节点高度（默认 css 样式控制为 32px，如果设置会以内联样式覆盖）",
+              "number",
+              "—",
+              "—"
+            ],
+            [
+              "scroll-size 移除",
+              "滚动条尺寸",
+              "number",
+              "—",
+              "6"
+            ],
+            [
+              "simple-data",
+              "使用同级的数据结构，使用子节点 parent-key 和父节点 node-key 对应来展现层级",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "move",
+              "节点是否可拖拽",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "move-area",
+              "节点可拖拽的区域，outter 表示节点只有拖拽到树区域以外才会响应",
+              "string",
+              "all/outter",
+              "all"
+            ],
+            [
+              "move-style",
+              "拖拽节点的样式，或者可以通过样式覆盖 el-tree__move-block 类来实现，里面就是 Node 节点元素",
+              "object",
+              "—",
+              "—"
+            ],
+            [
+              "custom-srcollbar  2.0+",
+              "是否由用户自定义滚动条（默认是内置 el-scrollbar 的）",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "before-drag",
+              "用于捕获节点被拖拽之前的事件回调函数，若返回 false，则节点无法被拖拽",
+              "function(data, node)",
+              "—",
+              "—"
+            ],
+            [
+              "before-drop",
+              "用于捕获节点被加入目标节点之前的事件回调函数，若返回 false，则节点无法被拖拽到目标节点",
+              "function(data, node, targetNode, movePosition)",
+              "—",
+              "—"
+            ],
+            [
+              "custom-drag",
+              "用于自定义处理 mouseup 之后的逻辑，true 自定义处理",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "before-click",
+              "用于捕获单击节点之前的事件回调函数，返回 Boolean 或 Promise，为 false 表示无法进行单击操作",
+              "function(data, node)",
+              "—",
+              "—"
+            ],
+            [
+              "nodeClassRender 2.38+",
+              "用于添加节点的自定义样式",
+              "string",
+              "function(data)",
+              "“”"
+            ]
+          ]
+        },
+        {
+          "heading": "props #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "label",
+              "指定节点标签为节点对象的某个属性值",
+              "string, function(data, node)",
+              "—",
+              "—"
+            ],
+            [
+              "children",
+              "指定子树为节点对象的某个属性值",
+              "string, function(data, node)",
+              "—",
+              "—"
+            ],
+            [
+              "disabled",
+              "指定节点选择框是否禁用",
+              "boolean, function(data, node)",
+              "—",
+              "—"
+            ],
+            [
+              "showCheckbox",
+              "显示多选框",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "isLeaf",
+              "指定节点是否是叶子节点，仅在指定了 lazy 属性的情况下生效",
+              "boolean, function(data, node)",
+              "—",
+              "—"
+            ],
+            [
+              "icon",
+              "节点的图标",
+              "string, function(data, node)",
+              "—",
+              "—"
+            ],
+            [
+              "selectable",
+              "指定节点是否可以选中",
+              "boolean, function(data, node)",
+              "—",
+              "—"
+            ],
+            [
+              "svgIcon",
+              "节点的 SVG 图标",
+              "String/Array",
+              "—",
+              "—"
+            ],
+            [
+              "svgIconOffline",
+              "节点的 SVG 图标是否为 Offline 状态",
+              "boolean",
+              "—",
+              "—"
+            ],
+            [
+              "svgIconColor  2.0+",
+              "节点的 SVG 图标非选中状态下的颜色",
+              "String/Array",
+              "—",
+              "—"
+            ],
+            [
+              "svgIconColorActive  2.0+",
+              "节点的 SVG 图标选中状态下的颜色",
+              "String/Array",
+              "—",
+              "—"
+            ],
+            [
+              "svgIconRequire  2.5+",
+              "节点的 SVG 图标是否是外部引入",
+              "boolean",
+              "—",
+              "—"
+            ]
+          ]
+        },
+        {
+          "heading": "方法 #",
+          "headers": [
+            "方法名",
+            "说明",
+            "参数"
+          ],
+          "rows": [
+            [
+              "filter",
+              "对树节点进行筛选操作（异步树时该过滤方法无效）",
+              "接收一个任意类型的参数，该参数会在 filter-node-method 中作为第一个参数"
+            ],
+            [
+              "getCheckedNodes",
+              "若节点可被勾选（即 show-checkbox 为 true），则返回目前被选中的节点所组成的数组",
+              "(leafOnly, checkedOnly) 接收两个参数，1. boolean 类型的参数，若为 true 则仅返回被勾选的叶子节点，默认值为 false 2. boolean 类型的参数，若为 false 则一起返回半选状态的节点，默认值为 true"
+            ],
+            [
+              "setCheckedNodes",
+              "设置目前勾选的节点，使用此方法必须设置 node-key 属性",
+              "(nodes, leafOnly, rootOnly) 接收两个参数，1. 接收勾选节点数据的数组 2. boolean 类型的参数，若为 true 则仅设置叶子节点的勾选状态，默认值为 false 3. boolean 类型的参数，若为 true 则仅设置勾选节点的勾选状态，默认值为 false"
+            ],
+            [
+              "getCheckedKeys",
+              "若节点可被勾选（即 show-checkbox 为 true），则返回目前被勾选节点的 key 值所组成的数组，使用此方法必须设置 node-key 属性",
+              "(leafOnly, checkedOnly) 接收两个参数，1. boolean 类型的参数，若为 true 则仅返回被勾选的叶子节点的 keys，默认值为 false 2. boolean 类型的参数，若为 false 则一起返回半选状态的节点，默认值为 true"
+            ],
+            [
+              "setCheckedKeys",
+              "通过 keys 设置目前勾选的节点，使用此方法必须设置 node-key 属性",
+              "(keys, leafOnly, rootOnly) 接收两个参数，1. 勾选节点的 key 的数组 2. boolean 类型的参数，若为 true 则仅设置叶子节点的勾选状态，默认值为 false 3. boolean 类型的参数，若为 true 则仅设置勾选节点的勾选状态，默认值为 false"
+            ],
+            [
+              "setChecked",
+              "通过 key / data 设置某个节点的勾选状态，使用此方法必须设置 node-key 属性",
+              "(key/data, checked, deep) 接收三个参数，1. 勾选节点的 key 或者 data 2. boolean 类型，节点是否勾选 3. boolean 类型，是否设置子节点 ，默认为 false"
+            ],
+            [
+              "setCurrentKey",
+              "通通过 key 设置某个节点的当前选中状态，使用此方法必须设置 node-key 属性",
+              "(key) 待被选节点的 key ，设置为null则会取消选中状态"
+            ],
+            [
+              "setCurrentNode",
+              "通过 data 设置某个节点的当前选中状态，使用此方法必须设置 node-key 属性",
+              "(data) 待被选节点的 data ，设置为null则会取消选中状态"
+            ],
+            [
+              "setSelected",
+              "通过 key / data 设置某个节点的选中状态，使用此方法必须设置 node-key 属性",
+              "(key/data, selected, deep) 接收三个参数，1. 选中节点的 key 或者 data 2. boolean 类型，节点是否选中(默认选中)"
+            ],
+            [
+              "getSelectedNode",
+              "返回当前点击的节点",
+              "-"
+            ],
+            [
+              "getSelectedKey",
+              "返回当前点击节点的 Key 值，使用此方法必须设置 node-key 属性",
+              "-"
+            ],
+            [
+              "resizeScrollbar",
+              "重新渲染滚动条",
+              "-"
+            ],
+            [
+              "getHalfCheckedNodes",
+              "若节点可被选择（即 show-checkbox 为 true），则返回目前半选中的节点所组成的数组",
+              "-"
+            ],
+            [
+              "getHalfCheckedKeys",
+              "若节点可被选择（即 show-checkbox 为 true），则返回目前半选中的节点的 key 所组成的数组",
+              "-"
+            ],
+            [
+              "getNode",
+              "根据 data 或者 key 拿到 Tree 组件中的 node",
+              "(data) 要获得 node 的 key 或者 data"
+            ],
+            [
+              "expandNode",
+              "展开节点",
+              "(data) 要展开节点 的 key 或者 data"
+            ],
+            [
+              "collapseNode",
+              "收起节点",
+              "(data) 要收起节点 的 key 或者 data"
+            ],
+            [
+              "remove",
+              "删除 Tree 中的节点，可以是数组",
+              "(data) 要删除的节点的 data、key 或者 node"
+            ],
+            [
+              "append",
+              "为 Tree 中的一个节点追加子节点，可以是数组",
+              "(data, parentNode) 1. 要追加的子节点的 data 2. 子节点的 parent 的 data、key 或者 node"
+            ],
+            [
+              "insertBefore",
+              "为 Tree 的一个节点的前面增加一个节点",
+              "(data, refNode) 1. 要增加的节点的 data 2. 要增加的节点的后一个节点的 data、key 或者 node"
+            ],
+            [
+              "insertAfter",
+              "为 Tree 的一个节点的后面增加一个节点",
+              "(data, refNode) 1. 要增加的节点的 data 2. 要增加的节点的前一个节点的 data、key 或者 node"
+            ],
+            [
+              "reload",
+              "重新加载树节点，可以是数组，仅在 lazy 为 true 的情况下可用",
+              "(data) 要重新加载节点的 data、key 或者 node"
+            ],
+            [
+              "moveNodes",
+              "节点拖拽之后移动节点方法，配合 custiomDrag 属性，node-drag-over 事件可以实现自定义处理 mouseup 之后的逻辑",
+              "-"
+            ]
+          ]
+        },
+        {
+          "heading": "Events #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "node-click",
+              "节点被点击时的回调",
+              "共四个参数，依次为：传递给 data 属性的数组中该节点所对应的对象、节点对应的 Node、节点组件本身和 click 事件对象。"
+            ],
+            [
+              "node-dbclick",
+              "节点被双击时的回调",
+              "共四个参数，依次为：传递给 data 属性的数组中该节点所对应的对象、节点对应的 Node、节点组件本身和 dbclick 事件对象。"
+            ],
+            [
+              "node-mouseenter",
+              "鼠标移入节点事件",
+              "共三个参数，依次为：传递给 data 属性的数组中该节点所对应的对象、节点对应的 Node、mouseenter 事件对象。"
+            ],
+            [
+              "node-mouseleave",
+              "鼠标移出节点事件",
+              "共三个参数，依次为：传递给 data 属性的数组中该节点所对应的对象、节点对应的 Node、mouseleave 事件对象。"
+            ],
+            [
+              "node-contextmenu",
+              "当某一节点被鼠标右键点击时会触发该事件",
+              "共四个参数，依次为：event、传递给 data 属性的数组中该节点所对应的对象、节点对应的 Node、节点组件本身。"
+            ],
+            [
+              "check-change",
+              "节点选中状态发生变化时的回调",
+              "共三个参数，依次为：传递给 data 属性的数组中该节点所对应的对象、节点本身是否被选中、节点的子树中是否有被选中的节点"
+            ],
+            [
+              "check",
+              "当复选框被点击的时候触发",
+              "共三个参数，依次为：传递给 data 属性的数组中该节点所对应的对象、树目前的选中状态对象，包含 checkedNodes、checkedKeys、halfCheckedNodes、halfCheckedKeys 四个属性，还有是否是勾选状态"
+            ],
+            [
+              "current-change",
+              "当前选中节点变化时触发的事件",
+              "共两个参数，依次为：当前节点的数据，当前节点的 Node 对象"
+            ],
+            [
+              "node-expand",
+              "节点被展开时触发的事件",
+              "共三个参数，依次为：传递给 data 属性的数组中该节点所对应的对象、节点对应的 Node、节点组件本身。"
+            ],
+            [
+              "node-collapse",
+              "节点被关闭时触发的事件",
+              "共三个参数，依次为：传递给 data 属性的数组中该节点所对应的对象、节点对应的 Node、节点组件本身。"
+            ],
+            [
+              "node-drag",
+              "节点开始拖拽时触发的事件",
+              "共四个参数，依次为：js Event 对象、传递给 data 属性的数组中被拖拽节点所对应的对象、被拖拽节点对应的 Node、节点组件本身。"
+            ],
+            [
+              "node-drag-move",
+              "节点被拖拽移动时触发的事件",
+              "共四个参数，依次为：js Event 对象、传递给 data 属性的数组中被拖拽节点所对应的对象、被拖拽节点对应的 Node、节点组件本身。"
+            ],
+            [
+              "node-drag-enter  2.0+",
+              "拖拽进入其他节点时触发的事件",
+              "共四个参数，依次为：js Event 对象、被拖拽节点对应的 Node、目标节点对应的 Node（拖拽到树区域以外则为 null）、节点组件本身。"
+            ],
+            [
+              "node-drag-leave  2.0+",
+              "拖拽离开某个节点时触发的事件",
+              "共四个参数，依次为：js Event 对象、被拖拽节点对应的 Node、目标节点对应的 Node（拖拽到树区域以外则为 null）、节点组件本身。"
+            ],
+            [
+              "node-drag-end  2.0+",
+              "拖拽结束时（可能未成功）触发的事件",
+              "共六个参数，依次为：js Event 对象、传递给 data 属性的数组中被拖拽节点所对应的对象、被拖拽节点对应的 Node、目标节点对应的 Node（拖拽到树区域以外则为 null）、节点被拖拽到目标节点的位置：inner（目标节点内） prev（目标节点之前） next（目标节点之后） out（树区域之外）、节点组件本身。"
+            ],
+            [
+              "node-drag-over",
+              "拖拽结束自定义处理逻辑（暂不处理节点移动）",
+              "共六个参数，依次为：js Event 对象、传递给 data 属性的数组中被拖拽节点所对应的对象、被拖拽节点对应的 Node、目标节点对应的 Node（拖拽到树区域以外则为 null）、节点被拖拽到目标节点的位置：inner（目标节点内） prev（目标节点之前） next（目标节点之后） out（树区域之外）、节点组件本身。"
+            ],
+            [
+              "node-drop",
+              "节点完成拖拽时触发的事件（被拖拽到树区域以外则自身节点不消失）",
+              "共六个参数，依次为：js Event 对象、传递给 data 属性的数组中被拖拽节点所对应的对象、被拖拽节点对应的 Node、目标节点对应的 Node（拖拽到树区域以外则为 null）、节点被拖拽到目标节点的位置：inner（目标节点内） prev（目标节点之前） next（目标节点之后） out（树区域之外）、节点组件本身。"
+            ],
+            [
+              "on-scrolling-x",
+              "横向滚动时触发事件,参数返回滚动距离和已滚动百分比（百分比为 1 则表示滚动到尽头）",
+              "{scrollLeft, percentX }"
+            ],
+            [
+              "on-scrolling-y",
+              "纵向滚动时触发事件,参数返回滚动距离和已滚动百分比（百分比为 1 则表示滚动到尽头）",
+              "{scrollTop, percentY }"
+            ],
+            [
+              "on-scrolling",
+              "滚动时触发事件,参数返回滚动距离和已滚动百分比（百分比为 1 则表示滚动到尽头）",
+              "{scrollLeft, scrollTop, percentX, percentY }"
+            ]
+          ]
+        },
+        {
+          "heading": "Scoped Slot #",
+          "headers": [
+            "name",
+            "说明"
+          ],
+          "rows": [
+            [
+              "—",
+              "自定义树节点的内容，参数为 { node, data, store }"
+            ],
+            [
+              "empty  2.0+",
+              "当无数据时的内容，不传则展示默认的“暂无数据”"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pagination",
+      "path": "/hui/components/data/pagination",
+      "tables": [
+        {
+          "heading": "Attributes #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "small",
+              "是否使用小型分页样式",
+              "Boolean",
+              "—",
+              "false"
+            ],
+            [
+              "page-size",
+              "每页显示条目个数",
+              "Number",
+              "—",
+              "10"
+            ],
+            [
+              "total",
+              "总条目数",
+              "Number",
+              "—",
+              "—"
+            ],
+            [
+              "page-count",
+              "总页数，total 和 page-count 设置任意一个就可以达到显示页码的功能；如果要支持 page-sizes 的更改，则需要使用 total 属性",
+              "Number",
+              "—",
+              "—"
+            ],
+            [
+              "pager-count  2.0+",
+              "页码按钮的数量，当总页数超过该值时会折叠",
+              "Number",
+              "大于等于 5 且小于等于 21 的数(推荐使用奇数)",
+              "7"
+            ],
+            [
+              "current-page",
+              "当前页数，支持 .sync 修饰符",
+              "Number",
+              "—",
+              "1"
+            ],
+            [
+              "layout",
+              "组件布局，子组件名用逗号分隔",
+              "String",
+              "sizes, prev, pager, miniPager 2.0+ , huiPager, next, jumper, ->, total, slot, first 2.0+ , last 2.0+ (first, last建议只在迷你分页中选用)miniPagerJumper 2.55+",
+              "‘prev, pager, next, jumper, ->, total’"
+            ],
+            [
+              "page-sizes",
+              "每页显示个数选择器的选项设置",
+              "Number[]",
+              "—",
+              "[10, 20, 30, 40, 50, 100]"
+            ],
+            [
+              "page-class",
+              "自定义class,位于组件最外层容器",
+              "String",
+              "—",
+              "—"
+            ],
+            [
+              "beforeCurrentChange",
+              "分页跳转发请求前的钩子，返回 Boolean 或 Promise<Boolean>，为 true 表示继续跳转",
+              "Function(val, oldVal)",
+              "—",
+              "() => true"
+            ],
+            [
+              "beforeSizeChange",
+              "每页显示条目个数变化发请求前的钩子，返回 Boolean 或 Promise<Boolean>，为 true 表示继续跳转",
+              "Function(val, oldVal)",
+              "—",
+              "() => true"
+            ],
+            [
+              "disabled",
+              "是否禁用",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "prevText  2.0+",
+              "定义上一页的文字, 代替图标",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "nextText  2.0+",
+              "定义下一页的文字, 代替图标",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "sizes-popper-class  2.09+",
+              "设置每页显示条数下拉框的类名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "background  2.55+",
+              "设置分页选中状态是否有背景",
+              "Boolean",
+              "—",
+              "false"
+            ]
+          ]
+        },
+        {
+          "heading": "Events #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "size-change",
+              "pageSize 改变时会触发",
+              "每页条数size，改变前每页条数oldSize"
+            ],
+            [
+              "current-change",
+              "currentPage 改变时会触发",
+              "当前页currentPage，改变前的页数olaPage"
+            ]
+          ]
+        },
+        {
+          "heading": "Slot #",
+          "headers": [
+            "name",
+            "说明"
+          ],
+          "rows": [
+            [
+              "—",
+              "自定义内容，需要在 layout 中列出 slot"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "badge",
+      "path": "/hui/components/data/badge",
+      "tables": [
+        {
+          "heading": "Attributes #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "value",
+              "显示值",
+              "string, number",
+              "—",
+              "—"
+            ],
+            [
+              "max",
+              "最大值，超过最大值会显示 ‘{max}+’，要求 value 是 Number 类型",
+              "number",
+              "—",
+              "—"
+            ],
+            [
+              "showTip  2.0+",
+              "鼠标悬停显示具体数值。仅在 max 存在时有效",
+              "boolean",
+              "-",
+              "false"
+            ],
+            [
+              "is-dot",
+              "小圆点",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "hidden",
+              "隐藏 badge",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "type",
+              "badge type",
+              "string",
+              "‘primary’ / ‘success’ / ‘warning’ / ‘danger’ / ‘info’",
+              "danger"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "stats",
+      "path": "/hui/components/data/stats",
+      "tables": [
+        {
+          "heading": "Stats Attributes #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "direction",
+              "方向",
+              "string",
+              "horizon,vertical",
+              "vertical"
+            ],
+            [
+              "width",
+              "宽度",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "title",
+              "数值的标题",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "value",
+              "数值的内容",
+              "string, number",
+              "—",
+              "—"
+            ],
+            [
+              "size",
+              "stats尺寸",
+              "string",
+              "large, default",
+              "—"
+            ]
+          ]
+        },
+        {
+          "heading": "Stats Slots #",
+          "headers": [
+            "name",
+            "说明"
+          ],
+          "rows": [
+            [
+              "titlePrefix",
+              "数值标题的前缀"
+            ],
+            [
+              "titleSuffix",
+              "数值标题的后缀"
+            ],
+            [
+              "valuePrefix",
+              "数值内容的前缀"
+            ],
+            [
+              "valueSuffix",
+              "数值内容的后缀"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "list",
+      "path": "/hui/components/data/list",
+      "tables": [
+        {
+          "heading": "List 属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "divider",
+              "是否开启分割线",
+              "Boolean",
+              "true/false",
+              "false"
+            ]
+          ]
+        },
+        {
+          "heading": "ListItem 属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "simple",
+              "简易模式",
+              "Boolean",
+              "true/false",
+              "false"
+            ],
+            [
+              "height",
+              "高度",
+              "Number",
+              "-",
+              "48"
+            ],
+            [
+              "title",
+              "标题",
+              "String",
+              "-",
+              "-"
+            ],
+            [
+              "desc",
+              "内容",
+              "String/Array",
+              "-",
+              "-"
+            ],
+            [
+              "descLabel",
+              "内容小标题",
+              "String/Array",
+              "-",
+              "-"
+            ],
+            [
+              "descPrefixIcon",
+              "前缀图标",
+              "String/Object/Array",
+              "-",
+              "-"
+            ],
+            [
+              "cloumns",
+              "列数",
+              "Number",
+              "-",
+              "1"
+            ]
+          ]
+        },
+        {
+          "heading": "List Slots #",
+          "headers": [
+            "名称",
+            "说明"
+          ],
+          "rows": [
+            [
+              "header",
+              "头部内容"
+            ],
+            [
+              "default",
+              "内容"
+            ],
+            [
+              "footer",
+              "底部内容"
+            ]
+          ]
+        },
+        {
+          "heading": "ListItem Slots #",
+          "headers": [
+            "名称",
+            "说明"
+          ],
+          "rows": [
+            [
+              "item-left",
+              "item 左侧内容"
+            ],
+            [
+              "item-right",
+              "item 右侧内容"
+            ],
+            [
+              "item-header",
+              "item 头部内容"
+            ],
+            [
+              "item-title",
+              "item 标题"
+            ],
+            [
+              "item-title-extra",
+              "item 标题右侧内容"
+            ],
+            [
+              "item-desc",
+              "item 内容"
+            ],
+            [
+              "item-footer",
+              "item 底部内容"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "skeleton",
+      "path": "/hui/components/data/skeleton",
+      "tables": [
+        {
+          "heading": "Skeleton 属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "animated",
+              "是否使用动画",
+              "boolean",
+              "——",
+              "false"
+            ],
+            [
+              "count",
+              "渲染多少个 template, 建议使用尽可能小的数字",
+              "number",
+              "——",
+              "1"
+            ],
+            [
+              "loading",
+              "是否显示 skeleton 模板的内容",
+              "number",
+              "——",
+              "true"
+            ],
+            [
+              "rows",
+              "骨架屏渲染行数，默认比传入的多1行，首行会被渲染一个长度 33% 的段首",
+              "number",
+              "——",
+              "4"
+            ],
+            [
+              "throttle",
+              "渲染延迟（以毫秒为单位） 数字代表延迟显示, 也可以设置为延迟隐藏, 例如 { leading: 500, trailing: 500 } 当需要控制初始加载值时，您可以设置 { initVal: true }",
+              "number/object",
+              "number / { leading?: number, trailing?: number, initVal?: boolean }",
+              "0"
+            ]
+          ]
+        },
+        {
+          "heading": "Skeleton Slots #",
+          "headers": [
+            "名称",
+            "说明"
+          ],
+          "rows": [
+            [
+              "default",
+              "真正渲染的DOM"
+            ],
+            [
+              "template",
+              "渲染 skeleton 模板的内容"
+            ]
+          ]
+        },
+        {
+          "heading": "SkeletonItem 属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "variant",
+              "当前显示的占位元素的样式",
+              "Enum(string)",
+              "p / h1 / h3 / text / caption / button / image / circle / rect",
+              "text"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "descriptions",
+      "path": "/hui/components/data/descriptions",
+      "tables": [
+        {
+          "heading": "Descriptions Attributes #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "border",
+              "是否带有边框",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "column",
+              "一行 Descriptions Item 的数量",
+              "number",
+              "—",
+              "3"
+            ],
+            [
+              "direction",
+              "排列的方向",
+              "string",
+              "vertical / horizontal",
+              "horizontal"
+            ],
+            [
+              "size",
+              "列表的尺寸",
+              "string",
+              "medium / small / mini",
+              "—"
+            ],
+            [
+              "title",
+              "标题文本，显示在左上方",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "extra",
+              "操作区文本，显示在右上方",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "colon",
+              "是否显示冒号",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "labelClassName",
+              "自定义标签类名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "contentClassName",
+              "自定义内容类名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "labelStyle",
+              "自定义标签样式",
+              "object",
+              "—",
+              "—"
+            ],
+            [
+              "contentStyle",
+              "自定义内容样式",
+              "object",
+              "—",
+              "—"
+            ]
+          ]
+        },
+        {
+          "heading": "Descriptions Slots #",
+          "headers": [
+            "Name",
+            "说明"
+          ],
+          "rows": [
+            [
+              "title",
+              "自定义标题，显示在左上方"
+            ],
+            [
+              "extra",
+              "自定义操作区，显示在右上方"
+            ]
+          ]
+        },
+        {
+          "heading": "Descriptions Item Attributes #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "label",
+              "标签文本",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "span",
+              "列的数量",
+              "number",
+              "—",
+              "1"
+            ],
+            [
+              "labelClassName",
+              "自定义标签类名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "contentClassName",
+              "自定义内容类名",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "labelStyle",
+              "自定义标签样式",
+              "object",
+              "—",
+              "—"
+            ],
+            [
+              "contentStyle",
+              "自定义内容样式",
+              "object",
+              "—",
+              "—"
+            ]
+          ]
+        },
+        {
+          "heading": "Descriptions Item Slots #",
+          "headers": [
+            "Name",
+            "说明"
+          ],
+          "rows": [
+            [
+              "label",
+              "自定义标签文本"
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}

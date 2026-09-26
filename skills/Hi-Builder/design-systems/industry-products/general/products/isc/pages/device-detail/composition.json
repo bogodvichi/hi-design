@@ -1,0 +1,113 @@
+{
+  "schema_version": "page-composition.v1",
+  "id": "general.isc.page.device-detail",
+  "extends": "hui.page-pattern.generic",
+  "page_type": "device-detail",
+  "renderer": "hui.detail-workspace",
+  "geometry_roles": {
+    "portal-brand-menu-offset": "80px",
+    "portal-search-width": "240px",
+    "portal-tools-width": "748px",
+    "portal-pill-width": "204px",
+    "portal-tab-width": "174px",
+    "portal-home-width": "36px",
+    "device-tabs-height": "56px",
+    "device-tab-content-height": "55px",
+    "device-tab-item-width": "112px",
+    "device-details-width": "340px",
+    "device-source-list-height": "140px",
+    "device-content-padding": "16px",
+    "device-panel-block-padding": "24px",
+    "device-panel-inline-padding": "24px",
+    "device-panel-gap": "24px",
+    "device-label-width": "88px",
+    "device-viewer-toolbar-height": "48px",
+    "device-thumbnail-strip-height": "88px",
+    "device-thumbnail-size": "88px",
+    "device-thumbnail-nav-width": "28px",
+    "device-source-card-min-width": "180px",
+    "device-monitor-column-gap": "12px",
+    "device-monitor-column-padding": "12px",
+    "device-source-mark-width": "4px",
+    "device-source-mark-height": "14px",
+    "device-info-line-height": "24px",
+    "device-textarea-height": "104px",
+    "device-action-height": "32px",
+    "device-source-header-height": "24px",
+    "device-source-card-height": "78px",
+    "device-form-height": "293px",
+    "device-title-font-size": "18px",
+    "device-group-title-font-size": "16px"
+  },
+  "zones": {
+    "portal.header": [
+      "portal.global-header"
+    ],
+    "portal.sidebar": [
+      "portal.app-sidebar"
+    ],
+    "navigation.detail-tabs": [
+      "navigation.tabs",
+      "toolbar.action-toolbar"
+    ],
+    "media.preview": [
+      "media.live-viewer",
+      "collection.thumbnail-strip"
+    ],
+    "device.sources": [
+      "collection.source-list"
+    ],
+    "device.details": [
+      "form.action-form"
+    ]
+  },
+  "portal": {
+    "brand_name": "城市管网综合管理平台",
+    "top_menus": [
+      "综合态势",
+      "管网监测",
+      "设备管理",
+      "运行分析",
+      "报警中心",
+      "工单调度",
+      "更多"
+    ],
+    "side_menus": [
+      {
+        "id": "device-search",
+        "label": "设备检索",
+        "icon": "h-icon-search"
+      },
+      {
+        "id": "device-ledger",
+        "label": "设备台账",
+        "icon": "h-icon-details",
+        "children": [
+          {
+            "id": "regulator-station",
+            "label": "调压站"
+          },
+          {
+            "id": "flow-meter",
+            "label": "流量计"
+          },
+          {
+            "id": "pressure-point",
+            "label": "压力监测点"
+          }
+        ]
+      },
+      {
+        "id": "online-monitor",
+        "label": "在线监测",
+        "icon": "h-icon-setting"
+      }
+    ]
+  },
+  "operation_types": [
+    "巡检登记",
+    "参数调节",
+    "远程关阀",
+    "生成工单"
+  ]
+}

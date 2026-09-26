@@ -1,0 +1,442 @@
+/* ReviewDetailModal — 评审详情右侧抽屉。
+ *
+ * 作为 ReviewListModal 的右侧抽屉从 shell 右边缘滑入，不再独立居中弹窗。
+ * 抽屉定位锚定到 ReviewListModal 的 .shell（需 position: relative），
+ * 所以本组件不使用 createPortal，由父组件把它渲染在 .shell 内部。
+ *
+ * 结构：
+ *   .overlay  覆盖整个 shell 的半透明遮罩，点击关闭抽屉（关闭态不拦截事件）
+ *   .panel    右侧抽屉面板，宽 60%，translateX(100%) ↔ translateX(0) 滑入滑出
+ *     .head    抽屉头部：类型头像 + 评审名称 + 剩余天数 + meta + 关闭
+ *     .body    纵向滚动正文：评委进度 / 稿件切换 / 缺陷统计 / 缺陷列表
+ *
+ * 动画遵循全局约定：进入 ~220ms cubic-bezier(0.21,1.02,0.73,1)，退出 140ms。 */
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  background: rgba(28, 27, 26, 0.34);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.overlayOpen {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.panel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 30%;
+  min-width: 430px;
+  z-index: 51;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elevated);
+  border-left: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  transform: translateX(100%);
+  transition: transform 220ms cubic-bezier(0.21, 1.02, 0.73, 1);
+  overflow: hidden;
+}
+.panelOpen {
+  transform: translateX(0);
+}
+
+/* ── 头部 ── */
+.head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+.headMain {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.headTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.typeAvatar {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1;
+  user-select: none;
+}
+.title {
+  margin: 0;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 16px;
+  letter-spacing: -0.01em;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.remainBadge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  white-space: nowrap;
+}
+.remainBadge.urgent {
+  color: #d14343;
+  border-color: color-mix(in srgb, #d14343 45%, transparent);
+  background: color-mix(in srgb, #d14343 10%, var(--bg-subtle));
+}
+.headMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.metaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.metaLabel {
+  color: var(--text-muted);
+}
+.metaValue {
+  color: var(--text);
+  font-weight: 500;
+}
+.closeBtn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    border-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    background 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.closeBtn:hover {
+  border-color: var(--border-strong, var(--border));
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+/* ── 正文 ── */
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 16px 20px;
+  scrollbar-width: thin;
+  background-color: #f5f5f4;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.stateWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 100%;
+  padding: 24px;
+  color: var(--text-muted);
+  text-align: center;
+}
+.spinner {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--border);
+  border-top-color: var(--text-muted);
+  border-radius: 50%;
+  animation: rdmSpin 700ms linear infinite;
+}
+@keyframes rdmSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.errorText {
+  color: #d14343;
+  max-width: 460px;
+  line-height: 1.5;
+}
+
+/* ── 区块通用 ── */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ── 设计稿版本切换（独占一行） ── */
+.versionRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+}
+.versionLabel {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--text);
+  flex-shrink: 0;
+}
+.versionSelect {
+  flex: 1 1 auto;
+  min-width: 80px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+.versionSelect:hover {
+  border-color: var(--border-strong, var(--border));
+}
+.sectionHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.sectionTitle {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--text);
+  letter-spacing: 0.01em;
+}
+.sectionCount {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ── 评委进度：卡片列表（抽屉宽度有限，卡片比表格更舒展） ── */
+.reviewerList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.reviewerCard {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  transition: border-color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.reviewerCard:hover {
+  border-color: var(--border-strong, var(--border));
+}
+.reviewerTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.reviewerName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.statusBadge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.statusBadge.doing {
+  color: #b07a1e;
+  border-color: color-mix(in srgb, #b07a1e 45%, transparent);
+  background: color-mix(in srgb, #b07a1e 10%, var(--bg-subtle));
+}
+.statusBadge.done {
+  color: #2f8f4e;
+  border-color: color-mix(in srgb, #2f8f4e 45%, transparent);
+  background: color-mix(in srgb, #2f8f4e 10%, var(--bg-subtle));
+}
+.reviewerMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.reviewerMeta b {
+  color: var(--text);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.emptyHint {
+  padding: 18px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+
+/* ── 缺陷统计卡片 ── */
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+}
+.statCard {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+}
+.statValue {
+  font-size: 20px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  line-height: 1.1;
+}
+.statValue.muted {
+  color: var(--text-muted);
+}
+.statLabel {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── 缺陷/意见列表（按评委分组） ── */
+.commentGroups {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.commentGroup {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  overflow: hidden;
+}
+.commentGroupHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--bg-subtle);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+.commentGroupCount {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.commentList {
+  display: flex;
+  flex-direction: column;
+}
+.commentItem {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 9px 12px;
+  border-top: 1px solid var(--border);
+}
+.commentItem:first-child {
+  border-top: none;
+}
+.commentContent {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.5;
+  word-break: break-word;
+}
+.commentMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.commentTag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-subtle);
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.commentTag.defect {
+  color: #d14343;
+  border-color: color-mix(in srgb, #d14343 45%, transparent);
+  background: color-mix(in srgb, #d14343 8%, var(--bg-subtle));
+}
+.commentTag.solved {
+  color: #2f8f4e;
+  border-color: color-mix(in srgb, #2f8f4e 45%, transparent);
+  background: color-mix(in srgb, #2f8f4e 8%, var(--bg-subtle));
+}

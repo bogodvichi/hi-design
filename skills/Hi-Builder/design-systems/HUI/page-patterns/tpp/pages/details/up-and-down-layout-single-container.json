@@ -1,0 +1,10 @@
+{
+  "schema_version": "hui-page-variant.v1",
+  "id": "hui.tpp.page.details.up-and-down-layout-single-container",
+  "name": "上下布局-单容器",
+  "family": "hui.tpp.family.details-master-detail",
+  "source": {"url": "http://tpp.dev.hikhub.net/tpp#/pages/details/upAndDownLayoutSingleContainer", "package": "@hiktpp/details-upAndDownLayoutSingleContainer", "hui_version": "^2.55.0", "observed_at": "2026-08-14", "evidence": "../../evidence/details/up-and-down-layout-single-container.json"},
+  "parameters": {"layout_direction": "vertical", "container_relation": "shared-scroll-container", "master_position": "top", "container_width_px": 1280, "embedded_tables": 2, "pagination": true},
+  "geometry": {"viewport": {"width": 1728, "height": 935}, "root": {"class": "h-page-content form-area is-flex is-align-center", "rect": {"x": 240, "y": 102.25, "width": 1488, "height": 832.75}}, "key_regions": {"shared_content": {"class": "form-area__content", "rect": {"x": 344, "y": 118.25, "width": 1280, "height": 1657}, "padding": "48px 80px 58px"}}},
+  "composition": {"component_count_scope": "page-content-relevant-only", "hui_components": {"el-tag": 3, "el-table": 2, "el-pagination": 1}, "actions": [{"label": "跳转", "count": 1}]}
+}

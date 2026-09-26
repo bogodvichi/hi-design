@@ -1,0 +1,10 @@
+{
+  "schema_version": "hui-page-variant.v1",
+  "id": "hui.tpp.page.details.first-group",
+  "name": "一级分组",
+  "family": "hui.tpp.family.details-grouped",
+  "source": {"url": "http://tpp.dev.hikhub.net/tpp#/pages/details/firstGroup", "package": "@hiktpp/details-firstGroup", "hui_version": "^2.55.0", "observed_at": "2026-08-14", "evidence": "../../evidence/details/first-group.json"},
+  "parameters": {"grouping_level": 1, "container_count": 1, "group_count": 4, "description_item_count": 18, "embedded_tables": 2, "pagination": true, "content_inline_padding": "80px"},
+  "geometry": {"viewport": {"width": 1728, "height": 935}, "key_regions": {"content": {"class": "form-area__content", "rect": {"x": 344, "y": 118.25, "width": 1280, "height": 1712}, "padding": "48px 80px 58px"}, "groups": {"class": "form-area__group", "rect": {"x": 424, "y": 166.25, "width": 1120, "height": 1606}}}},
+  "composition": {"component_count_scope": "page-content-relevant-only", "hui_components": {"el-tag": 3, "el-table": 2, "el-pagination": 1}, "actions": [{"label": "跳转", "count": 1}]}
+}

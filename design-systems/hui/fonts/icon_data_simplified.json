@@ -1,0 +1,3496 @@
+{
+  "common": [
+    {
+      "component": "腾讯",
+      "key": "2015cae86b6f01419b730a487d1aa69101b89a41",
+      "description": "logo 企鹅 qq 社交",
+      "id": "Qq"
+    },
+    {
+      "component": "快手",
+      "key": "182fc77015443920414f8db3ef0e9c677779911d",
+      "description": "logo 摄像机 社交",
+      "id": "Kuaishou"
+    },
+    {
+      "component": "新浪",
+      "key": "8359d7f7f2a677de3f3924cc14dc804fa722560b",
+      "description": "logo 微博 眼睛 社交",
+      "id": "Weibo"
+    },
+    {
+      "component": "豆瓣",
+      "key": "015128883dc5781b94d10e6e008e35abd992c6d1",
+      "description": "logo 豆 社交",
+      "id": "Douban"
+    },
+    {
+      "component": "京东",
+      "key": "c23fab53e1250d5180dfe4d7992644a929a83fe5",
+      "description": "logo 消费",
+      "id": "Jd"
+    },
+    {
+      "component": "陌陌",
+      "key": "00c545f1ce92903387d1d40a58351750a5586fae",
+      "description": "logo 社交",
+      "id": "Momo"
+    },
+    {
+      "component": "微信",
+      "key": "1266bea21cd9f3a4971ceeb189d8ef4c19737eb1",
+      "description": "logo 聊天 社交",
+      "id": "Wechat"
+    },
+    {
+      "component": "钉钉",
+      "key": "2c45e68265348f0f097afec48f1e94ea3813fb43",
+      "description": "logo 社交",
+      "id": "Dingding"
+    },
+    {
+      "component": "支付宝",
+      "key": "1a59e9b4938a0f2a29a35a86b12e4eed584216b9",
+      "description": "logo 金融 消费",
+      "id": "Alipay"
+    },
+    {
+      "component": "切换",
+      "key": "b2928ddf26ae613b6984bbf2f031312c0293637a",
+      "description": "更换 变换 交换",
+      "id": "SwitchBase"
+    },
+    {
+      "component": "转发",
+      "key": "97f7191c120938e8502b38d4e1a2c1de6506ae3a",
+      "description": "外发",
+      "id": "Forward"
+    },
+    {
+      "component": "百度",
+      "key": "f1d14d6606f6bbafc719441073715ec9ccddf62a",
+      "description": "logo 搜索",
+      "id": "Baidu"
+    },
+    {
+      "component": "同步",
+      "key": "d575bc7526dbc0c88c200d03e4e0361e641b16da",
+      "description": "排序",
+      "id": "Update"
+    },
+    {
+      "component": "携程",
+      "key": "96e5d259d7c6cb05042b7a14561f1d746c691ef7",
+      "description": "logo 旅游",
+      "id": "Ctrip"
+    },
+    {
+      "component": "淘宝",
+      "key": "0cda8c2d44c2c56a237ed99c9afb0286b6480ea3",
+      "description": "logo 消费",
+      "id": "Taobao"
+    },
+    {
+      "component": "对勾",
+      "key": "ed83a484f1c9b578f80aa00e1f9229df1c703112",
+      "description": "完成 正确 确认 勾选",
+      "id": "Done"
+    },
+    {
+      "component": "禁用",
+      "key": "a9f4f35f08a46652dcc37225452f02b84e1c9e94",
+      "description": "禁止 严禁 屏蔽 无权限 受限制",
+      "id": "Blocked"
+    },
+    {
+      "component": "窗口最大化",
+      "key": "3496e05c974dc2396d986ab71ab02e2bb6a8a3d5",
+      "description": "矩形 窗口 最大化",
+      "id": "WindowMax"
+    },
+    {
+      "component": "全屏",
+      "key": "73d77b42e1535e84c74cbf5b50ba367fb2c2367e",
+      "description": "窗口 放大",
+      "id": "WindowsMaximum"
+    },
+    {
+      "component": "铃铛",
+      "key": "0f6eee40ff0c09911d82699b5ff2f48834522a69",
+      "description": "消息 提醒",
+      "id": "Message"
+    },
+    {
+      "component": "脸",
+      "key": "c14f862413919248be0ecc34897c56db4650a0a8",
+      "description": "人脸认证 人脸识别",
+      "id": "Face"
+    },
+    {
+      "component": "状态",
+      "key": "047c89f7bca538b556996cea2d9e04c8f807b2d8",
+      "description": "窗口 监控 监视 诊断",
+      "id": "Status"
+    },
+    {
+      "component": "取消全屏",
+      "key": "1ed990770f4d3392198bcbfd18690bec75f739b5",
+      "description": "缩小屏幕",
+      "id": "WindowsMinimize"
+    },
+    {
+      "component": "取消铃铛",
+      "key": "a414fe7236b4263a7384fabdb8ecb84d27cc2fd2",
+      "description": "关闭消息 取消提醒",
+      "id": "MessageOff"
+    },
+    {
+      "component": "身体",
+      "key": "df00c0351a8180ee924623873638abab52513ab6",
+      "description": "人体",
+      "id": "Body"
+    },
+    {
+      "component": "保存",
+      "key": "201bac4e9e5bb6eb15cb49d8349a1dc6a4ce822b",
+      "description": "软盘",
+      "id": "Save"
+    },
+    {
+      "component": "摄像机",
+      "key": "e4781675e856ddd88548bc37978d888da7ce7182",
+      "description": "录像 摄像头 视频 cctv",
+      "id": "Liveview"
+    },
+    {
+      "component": "打开文件夹",
+      "key": "dae48ac9b023891356bd4eecfd2c3156ff9259b6",
+      "description": "开启目录",
+      "id": "FolderOpen"
+    },
+    {
+      "component": "图片",
+      "key": "5cbc66067ac1e99c2adea04fe56a0fc7bec3c719",
+      "description": "图形 抓拍图",
+      "id": "Picture"
+    },
+    {
+      "component": "打印机",
+      "key": "c1752964e4834f2db7011634b1374ee0aefb0db8",
+      "description": "打印",
+      "id": "Print"
+    },
+    {
+      "component": "信封",
+      "key": "5d2c1d783ad0c3f95375b6d936d7ed5e651e2268",
+      "description": "邮件 邮箱 未读信息",
+      "id": "Envelope"
+    },
+    {
+      "component": "显示器",
+      "key": "b12298bab39d6c2da841ba3bb1eec602ab77b423",
+      "description": "屏幕 电脑 在线 远程 网页 BS端",
+      "id": "Monitor"
+    },
+    {
+      "component": "信封打开",
+      "key": "d681446eb93671256403d4db3fa8039b43fd5bb7",
+      "description": "已读消息",
+      "id": "EnvelopeOpen"
+    },
+    {
+      "component": "取消睁眼",
+      "key": "a99508dfcbc14e702161fee0d2807df5431c7650",
+      "description": "密码 取消明码 闭眼 密码不可见",
+      "id": "PasswordUnvisible"
+    },
+    {
+      "component": "解锁",
+      "key": "16e2f25d6428d156e813d17b1d626f10dc3d8744",
+      "description": "开锁 打开 安全",
+      "id": "Unlock"
+    },
+    {
+      "component": "纸箱",
+      "key": "eef08a984ee4d57f32150fe0313a3a73f669226a",
+      "description": "暂存架",
+      "id": "Carton"
+    },
+    {
+      "component": "发布",
+      "key": "c0a5f3611f41345ef540f952c338900ea53cfa99",
+      "description": "发送 送达 纸飞机",
+      "id": "Publish"
+    },
+    {
+      "component": "灯泡",
+      "key": "4be057399d1e99c8fa405df34daa9a54e4b956a2",
+      "description": "灵感 点子",
+      "id": "Lightbulb"
+    },
+    {
+      "component": "卡",
+      "key": "d46c409bd2428f25cdb3c9aecc5b01efe858d016",
+      "description": "凭证 卡片 证明 银行卡",
+      "id": "Card"
+    },
+    {
+      "component": "电梯",
+      "key": "62b0f9465b1184066739fa0a4c8e5b3e983fc7c4",
+      "description": "升降 直梯 楼层",
+      "id": "Elevator"
+    },
+    {
+      "component": "门",
+      "key": "e78944bb789348efc2ae57cc66986dd8cc52edb4",
+      "description": "关门 门禁",
+      "id": "Door"
+    },
+    {
+      "component": "车底",
+      "key": "c739edde556cdb1caa2d94991c9c6184c7bc9c08",
+      "description": "底盘 车辆 检测",
+      "id": "VehicleBottom"
+    },
+    {
+      "component": "开门",
+      "key": "8ff80c6086de53c359b2f7634a88e5c73095fa36",
+      "description": "门 通行 出入",
+      "id": "DoorOpen"
+    },
+    {
+      "component": "指纹",
+      "key": "f8e4d5419dabf8257ab77bfec51c750107142557",
+      "description": "生物识别 认证 身份 按压",
+      "id": "Fingerprint"
+    },
+    {
+      "component": "读卡器",
+      "key": "2198490db8df97e36301a8fe78062faa9918c946",
+      "description": "刷卡 识别 设备",
+      "id": "CardReader"
+    },
+    {
+      "component": "车",
+      "key": "108915290d8e095adb7a14419fd278a7afe5c9d5",
+      "description": "汽车 小型车 车辆 交通",
+      "id": "Car"
+    },
+    {
+      "component": "车辆搜索",
+      "key": "97fa0ddf9eca1a99d43dfddbf65f783a06a87690",
+      "description": "以车搜车",
+      "id": "VehicleSearch"
+    },
+    {
+      "component": "车辆统计",
+      "key": "bcdd8991e1f30bd4555fc3e4317fe6bf554608e3",
+      "description": "车流量分析",
+      "id": "VehicleStatistics"
+    },
+    {
+      "component": "喇叭",
+      "key": "2446b098ade1179bb21eba5db3f8deafecb3ce0f",
+      "description": "广播",
+      "id": "Speaker"
+    },
+    {
+      "component": "流失车辆",
+      "key": "1ea935dde8dbe400f4cf023fc51a437215c3ebff",
+      "description": "车辆流失分析",
+      "id": "LostVehicle"
+    },
+    {
+      "component": "左雨刷",
+      "key": "b8d933d4d5bc2db0f253a796cf5877155882f2c2",
+      "description": "雨刮 车辆 清洁",
+      "id": "WiperLeft"
+    },
+    {
+      "component": "右雨刷",
+      "key": "cefc1cb6fb38a47e6de64ec3af23fd621cf3f5df",
+      "description": "雨刮 车辆 清洁",
+      "id": "WiperRight"
+    },
+    {
+      "component": "雷达",
+      "key": "3f59aecf9d0e4bbf3d1ef3b2368b4483638152e5",
+      "description": "探测 扫描 感应",
+      "id": "Radar"
+    },
+    {
+      "component": "设备",
+      "key": "8651475cebf644e302a894fa227516074a90fe47",
+      "description": "装置 硬件 终端",
+      "id": "Device"
+    },
+    {
+      "component": "存储服务器",
+      "key": "31e708f67eeb6208611c8ec3bef54f0292fe1c4f",
+      "description": "主机 数据 硬件",
+      "id": "StorageServer"
+    },
+    {
+      "component": "服务器",
+      "key": "8209caa678157b90c314be96b8071b8920ac3559",
+      "description": "主机 计算 硬件",
+      "id": "Server"
+    },
+    {
+      "component": "图钉",
+      "key": "742420b4d02bab3b95e27bd793ba1f1bf71052e1",
+      "description": "钉子 固定",
+      "id": "Pin"
+    },
+    {
+      "component": "图钉（已固定）",
+      "key": "a1bb1d58b6e045dd06353ed1a6e807934691c393",
+      "description": "取消固定",
+      "id": "PinFill"
+    },
+    {
+      "component": "伞收起",
+      "key": "4215a326f4faf0e79db22f15d7a621f76a3b6da5",
+      "description": "取消旁路 雨伞",
+      "id": "UmbrellaClose"
+    },
+    {
+      "component": "备份",
+      "key": "8bf77ba3affe6f5632f06f5b009a323aa1dc156b",
+      "description": "立刻备份",
+      "id": "Backup"
+    },
+    {
+      "component": "日历详情",
+      "key": "2f5b523309fce24869b36b59fe0e9bd4c36d17d4",
+      "description": "课表详情",
+      "id": "CalendarDetails"
+    },
+    {
+      "component": "地球",
+      "key": "0bec2bf639700271e03d1fdf05185fd5ee9d8fd1",
+      "description": "网络 互联网 联网",
+      "id": "Internet"
+    },
+    {
+      "component": "伞撑开",
+      "key": "2be3391b4ba136053de085224da11fb110ffb3a5",
+      "description": "旁路 bypass 雨伞",
+      "id": "UmbrellaOpen"
+    },
+    {
+      "component": "面性旗子",
+      "key": "56efbf42a6c70a868f448cf5047c38e187698fe0",
+      "description": "标记",
+      "id": "MarkFill"
+    },
+    {
+      "component": "警灯",
+      "key": "e99b7655612c7b00badf43d1b25f3dc3067daf04",
+      "description": "报警 告警 警报",
+      "id": "Alarm"
+    },
+    {
+      "component": "订阅",
+      "key": "64e09aef5f3ed70afe3d6e46a9b0a125b08b10d4",
+      "description": "标签",
+      "id": "Subscribe"
+    },
+    {
+      "component": "计划",
+      "key": "a97eee7a6c7528fb9b88380c7e40fd668a5995de",
+      "description": "任务 排期 日程",
+      "id": "Plan"
+    },
+    {
+      "component": "标签",
+      "key": "5503513a5ed71cda395f8a7cb117fc9208228a79",
+      "description": "标记 分类 tag",
+      "id": "Tag"
+    },
+    {
+      "component": "旗子",
+      "key": "d91c86a40dc86cf95b0fee86f101df8027430abb",
+      "description": "标记",
+      "id": "Mark"
+    },
+    {
+      "component": "星星",
+      "key": "3053b1cf9ba970017eaff21361ce61f9862ca6a2",
+      "description": "等级 收藏",
+      "id": "Star"
+    },
+    {
+      "component": "日志",
+      "key": "89201f30b8d3d6c80f4f56d2c5edd616d41e52ee",
+      "description": "记录 log 历史",
+      "id": "Log"
+    },
+    {
+      "component": "记事板",
+      "key": "e7ac7809f449eafff473fe07b98dfc3f0d97596b",
+      "description": "事件 event",
+      "id": "Notepad"
+    },
+    {
+      "component": "记事板触发",
+      "key": "8a2e5278bc9acc69a82d671caf4c73500ec92ebd",
+      "description": "备忘 便签 记录",
+      "id": "NotepadTrigger"
+    },
+    {
+      "component": "学士帽",
+      "key": "1aaeb635c287cb92faa3254665838ba972e44c57",
+      "description": "教育 毕业 学位 学习",
+      "id": "GraduationCap"
+    },
+    {
+      "component": "抽屉",
+      "key": "744c0e60f7226f035f32423c64c98427fa81d3e5",
+      "description": "档案 资料 归档",
+      "id": "Drawer"
+    },
+    {
+      "component": "记事板搜索",
+      "key": "21838971abfcf8d507dbd660d634220c7dcf9b66",
+      "description": "历史事件检索",
+      "id": "NotepadSearch"
+    },
+    {
+      "component": "沙漏",
+      "key": "49aad92ac8733cf02626d85ee5433e50ae70d805",
+      "description": "倒计时 有效期 进度",
+      "id": "Hourglass"
+    },
+    {
+      "component": "档案袋",
+      "key": "be0e86d7157bb79d18fe6404d12c2c16926acccb",
+      "description": "文件袋 案件",
+      "id": "Portfolio"
+    },
+    {
+      "component": "记事本",
+      "key": "6b305f643985a5700e2b70ec67cf76839a769db3",
+      "description": "课程",
+      "id": "Notebook"
+    },
+    {
+      "component": "等高线",
+      "key": "0dbab3d2a50d70d5bb2cddbf338f25864013d955",
+      "description": "热力图",
+      "id": "Contour"
+    },
+    {
+      "component": "热度分析",
+      "key": "73efcfe8c69889e93e95cc4bdd87ad95de3a8e31",
+      "description": "资源热度统计",
+      "id": "HeatAnalysis"
+    },
+    {
+      "component": "裁切",
+      "key": "14654f98fbdd2acf21a61ea294118e64c96cde3d",
+      "description": "剪裁",
+      "id": "Screenshot"
+    },
+    {
+      "component": "锁定目标",
+      "key": "a5610f35e1602e1311e4b93a8d2fb97ebf7ebcb9",
+      "description": "取消追踪",
+      "id": "TargetLock"
+    },
+    {
+      "component": "定位",
+      "key": "18510078cdcf8db2b6225ac621c894d9a88929d0",
+      "description": "地址 位置 地图",
+      "id": "Location"
+    },
+    {
+      "component": "二维码",
+      "key": "8e5ac7e60dd9393cf72d0d7911349970256beadb",
+      "description": "扫码 qrcode 编码",
+      "id": "Qrcode"
+    },
+    {
+      "component": "重启",
+      "key": "dac262629684fb66a52af62cc924d25364c11b2d",
+      "description": "重新启动 刷新 循环",
+      "id": "Restart"
+    },
+    {
+      "component": "关机",
+      "key": "821f454c00ac33918215af70c28a71ce7d55b85f",
+      "description": "终止 退出",
+      "id": "Shutdown"
+    },
+    {
+      "component": "现金",
+      "key": "a3c7b15dd3061962755ad27b88275433fb8e258e",
+      "description": "金钱 钞票 支付",
+      "id": "Cash"
+    },
+    {
+      "component": "热点",
+      "key": "6777180e471cb095cac92d4f27bd8cd31b8edf4d",
+      "description": "手机热点 Wi-Fi wifi",
+      "id": "Hotspot"
+    },
+    {
+      "component": "话筒",
+      "key": "a886262eab1aa1e9c62ae5541df26709a5228b62",
+      "description": "开启语音 开始语音 开始音频",
+      "id": "TalkOn"
+    },
+    {
+      "component": "分享",
+      "key": "b237c18aa3b4ad4ec183917d090fb75d0b638eb6",
+      "description": "共享 发送 转发",
+      "id": "Share"
+    },
+    {
+      "component": "电话",
+      "key": "5d9fb34839c854d7646c4e80e027fede4b3508f6",
+      "description": "通话 通讯 音频",
+      "id": "Telephone"
+    },
+    {
+      "component": "面性电话",
+      "key": "4ae1acf4ae31892ac92224f5288a2ab1687bfbd4",
+      "description": "通话 通讯 音频",
+      "id": "TelephoneFill"
+    },
+    {
+      "component": "左对齐",
+      "key": "86093c1d8820127de9ced5bc6b5ff07281809566",
+      "description": "排列 对齐 布局",
+      "id": "AlignLeft"
+    },
+    {
+      "component": "话筒关闭",
+      "key": "a9729461c94e4354966dec7a760b6b34fe16fb44",
+      "description": "取消语音 关闭语音 关闭音频",
+      "id": "TalkOff"
+    },
+    {
+      "component": "下对齐",
+      "key": "3225f3710d5495e636e587051ee875a72b51f58e",
+      "description": "排列 对齐 布局",
+      "id": "AlignBottom"
+    },
+    {
+      "component": "水平居中",
+      "key": "f2a0765e8f73fe3143fe8eb7bcfae81d8d816d47",
+      "description": "对齐 排列 居中",
+      "id": "AlignCenter"
+    },
+    {
+      "component": "上对齐",
+      "key": "0f2e07f5fe4adfedfac2766f5cf75d7c6db5da54",
+      "description": "排列 对齐 布局",
+      "id": "AlignTop"
+    },
+    {
+      "component": "垂直对齐",
+      "key": "5f4f04ad67043ea893ca98a810f8711c7df6215a",
+      "description": "排列 对齐 居中",
+      "id": "AlignVertical"
+    },
+    {
+      "component": "对齐",
+      "key": "591dc97a28e0cc37b0dd7b9b4712280de7f9202c",
+      "description": "排列 布局 整理",
+      "id": "Align"
+    },
+    {
+      "component": "右对齐",
+      "key": "e6d27f57613233f55d181f950734e105d34bdef3",
+      "description": "排列 对齐 布局",
+      "id": "AlignRight"
+    },
+    {
+      "component": "节点展开",
+      "key": "750d55642822b0a04a7f5df91aab4ffd3246f553",
+      "description": "添加 增加 新增 增添",
+      "id": "GroupExpand"
+    },
+    {
+      "component": "圆形叉号",
+      "key": "3fd660a13cdc58fc613e3434e26b6e56f0d741da",
+      "description": "拒绝 回绝 驳回 不可以 乘号 关闭",
+      "id": "Error"
+    },
+    {
+      "component": "节点收起",
+      "key": "830c41f75184f4ddc4cae18ecdd2a7eb61df26f5",
+      "description": "减少",
+      "id": "GroupCollapse"
+    },
+    {
+      "component": "加号-小",
+      "key": "a578e330985e2fcbc37ee2d1dfc4b9aab3c1b9a2",
+      "description": "添加 增加 新增 增添",
+      "id": "AddSm"
+    },
+    {
+      "component": "减号-小",
+      "key": "e3e0fe5e1d1fc24b0c7734ac54739a09dea4f89f",
+      "description": "窗口 最小化 减少",
+      "id": "MinusSm"
+    },
+    {
+      "component": "叉号",
+      "key": "7c91f2241d44bd6a9474a39f91f437f308eb9254",
+      "description": "乘号 关闭",
+      "id": "Close"
+    },
+    {
+      "component": "圆形对勾",
+      "key": "d247de09120a8482c485bfffc42113039fcf42e4",
+      "description": "允许 完成 启用",
+      "id": "Enable"
+    },
+    {
+      "component": "主动发现",
+      "key": "8e389206a2e81ac61a224318d2cf4f761d8d0a6f",
+      "description": "搜索 检索 查询 查找 诊断 历史",
+      "id": "ActiveDiscovery"
+    },
+    {
+      "component": "窗口恢复",
+      "key": "24ec9ecd29cc056d56001962074ddb729ddc0e6d",
+      "description": "窗口 恢复  多矩形",
+      "id": "WindowRestor"
+    },
+    {
+      "component": "备注",
+      "key": "28e25bd475b4cacc87b1075f3bc315b17306599c",
+      "description": "详情 细节 编辑 修改 调整",
+      "id": "Remark"
+    },
+    {
+      "component": "配置上传",
+      "key": "db86fd08b671fd7d48ce53d8d56eac9e2a8c8ebf",
+      "description": "设置数据库备份 设置 配置 管理 上传",
+      "id": "ConfigUpload"
+    },
+    {
+      "component": "一键配置",
+      "key": "3a35acd386cffe589648c71279b64f4ac7aa31bb",
+      "description": "设置 配置 管理 快速 极速 猛烈 临时",
+      "id": "OneClickConfig"
+    },
+    {
+      "component": "清空完成",
+      "key": "3d6285decfdc9092e50c1eebde66425f37480b5b",
+      "description": "垃圾箱 删除 完成",
+      "id": "ClearDone"
+    },
+    {
+      "component": "人们",
+      "key": "2158e08050f0475a02129197f1db34b9452af79d",
+      "description": "群众 用户组 人群 人员 用户 关系人 同行人",
+      "id": "Users"
+    },
+    {
+      "component": "3D放大",
+      "key": "fe4945c39c558e66d81796eb701bdbaaa3ebb476",
+      "description": "窗口 搜索 检索 查询 查找 诊断 历史",
+      "id": "Zoom3D"
+    },
+    {
+      "component": "添加文件夹",
+      "key": "786e9e38e8c7d8a1a95b22d25aef4b93cd6209f6",
+      "description": "组 组合",
+      "id": "FolderAdding"
+    },
+    {
+      "component": "信封设置",
+      "key": "87183f28f3d56048561559d1273efcd86c5701e8",
+      "description": "邮件设置 邮件 邮箱 设置 配置 管理",
+      "id": "EnvelopeSetting"
+    },
+    {
+      "component": "相机添加",
+      "key": "6770b895cff45f8b0b70b92bf0e12b08710bc8ec",
+      "description": "添加照片 抓拍 抓图 拍照 快照 添加 增加 新增 增添",
+      "id": "CameraAdd"
+    },
+    {
+      "component": "图片搜索",
+      "key": "d7a2b56ab1a472444ad2fcb3c5e0f6f3378d1124",
+      "description": "图形 搜索 检索 查询 查找 诊断 历史 以图搜图",
+      "id": "ImageSearch"
+    },
+    {
+      "component": "火",
+      "key": "b5e6657e8d0dc1616d3b0a82ed7cd75e1c5da77e",
+      "description": "火焰 火灾 热",
+      "id": "Fire"
+    },
+    {
+      "component": "印章",
+      "key": "ce541273e867b18512eaa15078e457f2b2ae5b3b",
+      "description": "审批 审核 盖章",
+      "id": "Access"
+    },
+    {
+      "component": "电视墙",
+      "key": "9ec332ff2833f389d23402590114f35026d613ff",
+      "description": "大屏 显示 监控",
+      "id": "VideoWall"
+    },
+    {
+      "component": "钥匙",
+      "key": "49e7b6c64915e74f96c6e3551e490a96e7278dcc",
+      "description": "激活 链接",
+      "id": "Activate"
+    },
+    {
+      "component": "定位针",
+      "key": "0e1f48873e4c0b77a130eab07976101a114937e6",
+      "description": "云台",
+      "id": "LocationPin"
+    },
+    {
+      "component": "道闸添加",
+      "key": "31a5dc182f2275c8439c513997b6765fc7146298",
+      "description": "出入口添加",
+      "id": "BarrierGateAdd"
+    },
+    {
+      "component": "太阳",
+      "key": "e5a35fd16e50788f2fc3257e77f2fac4c2be8f32",
+      "description": "空调 制热 热",
+      "id": "Sun"
+    },
+    {
+      "component": "去除水滴",
+      "key": "adcad2e2dd12062665532819f3754778c4376ff7",
+      "description": "空调 除湿",
+      "id": "RemoveWaterdrop"
+    },
+    {
+      "component": "雪花",
+      "key": "14ed845f86917b03d0f5496c7918244ea94b8700",
+      "description": "空调 制冷 冬天 寒冷",
+      "id": "Snowflake"
+    },
+    {
+      "component": "楼梯添加",
+      "key": "28d3c3cb188156668ee310bfb2138d08107ce004",
+      "description": "台阶 新增 增加",
+      "id": "StairsAdd"
+    },
+    {
+      "component": "风扇",
+      "key": "872ed7960369a4bfd2f657650bc7b26557f04eb4",
+      "description": "空调 吹风",
+      "id": "Fan"
+    },
+    {
+      "component": "子停车场添加",
+      "key": "b22bc3f6e8a311e67b10eb922e63cd2c958041dd",
+      "description": "车库 新增 增加",
+      "id": "SubParkingAdd"
+    },
+    {
+      "component": "建筑物添加",
+      "key": "9cb40ff8427ab2208f9f222637d06dda296fb434",
+      "description": "楼层分组添加",
+      "id": "BuildingAdd"
+    },
+    {
+      "component": "停车场添加",
+      "key": "8554b60cd7c6c833a1c367554411a4d58f760e35",
+      "description": "车库 新增 增加",
+      "id": "ParkingAdd"
+    },
+    {
+      "component": "扫描",
+      "key": "ce354d8313ac56228043f54f288d24381289f6f7",
+      "description": "扫码 识别 检测",
+      "id": "Scan"
+    },
+    {
+      "component": "许可下载",
+      "key": "4a861105e4c494075db74643e76b53e7e8e28e79",
+      "description": "授权 license 下载",
+      "id": "LicenseDownload"
+    },
+    {
+      "component": "取消联系",
+      "key": "0eb243240a57b10bb1ffcc3662fe05de0402946c",
+      "description": "取消关联 关闭联系",
+      "id": "Disassociate"
+    },
+    {
+      "component": "公路添加",
+      "key": "63000cc23d011db69396fc6f9cbb3cb0a8f47acf",
+      "description": "车道添加 马路添加",
+      "id": "RoadAdd"
+    },
+    {
+      "component": "许可重生",
+      "key": "85e1c228fe8370f985062387f21c742d04bac41b",
+      "description": "授权 license 刷新",
+      "id": "LicenseRenewal"
+    },
+    {
+      "component": "许可",
+      "key": "424129b1adfb6ea8c14f1505967632c0b2a2b47a",
+      "description": "授权 license 许可证",
+      "id": "License"
+    },
+    {
+      "component": "布防取消",
+      "key": "e0081f4883b9faa0da405f460eb09b990c8904ae",
+      "description": "取消布防计划",
+      "id": "ArmCancel"
+    },
+    {
+      "component": "盾牌",
+      "key": "72a9d53d750ede032a6abe70644a52d961d01776",
+      "description": "防护 安全 保护",
+      "id": "Shield"
+    },
+    {
+      "component": "感叹号",
+      "key": "96b88e7097b477c024f0b35930c45b112d3dff33",
+      "description": "警告 危险 注意",
+      "id": "Exclamation"
+    },
+    {
+      "component": "饼状图",
+      "key": "38eef2f10d6f316828dcfc25e073d87a63d189a4",
+      "description": "分布",
+      "id": "PieChart"
+    },
+    {
+      "component": "联系",
+      "key": "d063e47dfc18c26dd3003724982893304e93e8a0",
+      "description": "关联",
+      "id": "Associate"
+    },
+    {
+      "component": "主码流",
+      "key": "fbec43ac7c969db95ed271324a14db572874c101",
+      "description": "视频流 高清 stream",
+      "id": "MainStream"
+    },
+    {
+      "component": "应用-小",
+      "key": "f66d052b219f9b0d04010193492388641ae56734",
+      "description": "菜单 方块 卡片模式 项",
+      "id": "MenuSm"
+    },
+    {
+      "component": "折线图",
+      "key": "6ea77ad9a16c9144e5e8e545cc05e42c4c606407",
+      "description": "分析 趋势 数据",
+      "id": "LineChart"
+    },
+    {
+      "component": "大写锁定",
+      "key": "afedcf5bb12f47cf8e6f4d85574bf42cab079f1e",
+      "description": "键盘 capslock 锁定",
+      "id": "Capital"
+    },
+    {
+      "component": "目标",
+      "key": "1fe3eb63e28fcc0e8d344de67ad7b1257d7914ba",
+      "description": "追踪",
+      "id": "Target"
+    },
+    {
+      "component": "子码流",
+      "key": "61300e608c678ebb02cd6086375f45c0705eb6e2",
+      "description": "视频流 辅码流 stream",
+      "id": "SubStream"
+    },
+    {
+      "component": "自动",
+      "key": "00f77bb80ab9c7e247e7557b7d7ab8312938132a",
+      "description": "智能 自动化 auto",
+      "id": "Auto"
+    },
+    {
+      "component": "添加列表",
+      "key": "42e81b78280dff2425adcd463772ac299956db8d",
+      "description": "添加到名单",
+      "id": "ListAdd"
+    },
+    {
+      "component": "手动",
+      "key": "577ddd5828f5eba0ceec3f65415ab6a244068d7b",
+      "description": "人工 manual 操作",
+      "id": "Manual"
+    },
+    {
+      "component": "评论",
+      "key": "ad9e6051017548104ce15ae8af2263718ec876c8",
+      "description": "留言 反馈 讨论",
+      "id": "Comment"
+    },
+    {
+      "component": "在线下载",
+      "key": "3782c70a08e2512cfbe765d14a628abec300c5d6",
+      "description": "在线下载 屏幕 电脑 在线 远程 网页 BS端 下载",
+      "id": "OnlineDownload"
+    },
+    {
+      "component": "在线检测",
+      "key": "85c2da92562398f4892ca3071bde69fbfad1fa09",
+      "description": "在线检测 屏幕 电脑 在线 远程 网页 BS端 窗口",
+      "id": "OnlineDetection"
+    },
+    {
+      "component": "网页端",
+      "key": "558ae100134c400eb583f0fa24149d04c39aaaa3",
+      "description": "去网页端 屏幕 电脑 在线 远程 网页 BS端",
+      "id": "WebClient"
+    },
+    {
+      "component": "显示器预览",
+      "key": "4031ec8dcd1f3e4a1c14c8daeee98293125b8a90",
+      "description": "Mstsc预览 屏幕 电脑 在线 远程 网页 BS端",
+      "id": "MonitorPreview"
+    },
+    {
+      "component": "显示器不可用",
+      "key": "e0f13636ab60bd3a15818df50a182a514065bbae",
+      "description": "设备不在线 屏幕 电脑 在线 远程 网页 BS端 乘号 关闭",
+      "id": "MonitorDisabled"
+    },
+    {
+      "component": "显示器设置",
+      "key": "76af47597ce44acab038e8e365a0e359e7d4ea70",
+      "description": "远程设置 屏幕 电脑 在线 远程 网页 BS端 设置 配置 管理",
+      "id": "MonitorSetting"
+    },
+    {
+      "component": "信封添加",
+      "key": "398f3ce59ddde02e261f7b22c9da2b12c13fecb9",
+      "description": "添加邮箱 邮件 邮箱 添加 增加 新增 增添",
+      "id": "EnvelopeAdd"
+    },
+    {
+      "component": "面性眼睛",
+      "key": "7c3d360d176be304ba96b194b5ecff01a53693e9",
+      "description": "明码 查看",
+      "id": "PasswordVisibleFill"
+    },
+    {
+      "component": "重设密码",
+      "key": "1ac9d9462cd5ee2064d7d02b1a3ac9916fded890",
+      "description": "解锁 密码重置",
+      "id": "PasswordResetting"
+    },
+    {
+      "component": "纸箱添加",
+      "key": "19987f48dfdf6793d33f10262beeddab9f69ca2e",
+      "description": "添加到暂存架 暂存架",
+      "id": "CartonAdd"
+    },
+    {
+      "component": "不可发布",
+      "key": "dbc31621669f435f106dff39cc5c766b09ff82e8",
+      "description": "自由 到达 送达 乘号 关闭",
+      "id": "PublishDisabled"
+    },
+    {
+      "component": "编辑密码",
+      "key": "82276cf4cb1d656ae339831f731733a420e6572d",
+      "description": "修改密码",
+      "id": "PasswordEditing"
+    },
+    {
+      "component": "卡断联",
+      "key": "5abc9e4298a7614b81a1f7a84fdde087b4e33d03",
+      "description": "挂失卡 凭证 卡片 证明",
+      "id": "CardDisconnected"
+    },
+    {
+      "component": "卡添加",
+      "key": "7e649e60f613c7af4bddeb4634ae5e012a4ee91c",
+      "description": "开卡 凭证 卡片 证明 添加 增加 新增 增添",
+      "id": "CardAdd"
+    },
+    {
+      "component": "卡归还",
+      "key": "49b60e919ebea7bb1070203d85b83861b4637706",
+      "description": "退卡 凭证 卡片 证明",
+      "id": "CardReturn"
+    },
+    {
+      "component": "卡编辑",
+      "key": "eabb45114493962ac8e88911027615cdb8cc630f",
+      "description": "写卡 凭证 卡片 证明 编辑 修改 调整",
+      "id": "CardEdit"
+    },
+    {
+      "component": "VCA回放",
+      "key": "471f8cf4a68ea598bbff01931a6ef0f51adb5827",
+      "description": "智能分析 视频 回看",
+      "id": "VcaPlayback"
+    },
+    {
+      "component": "发布成功",
+      "key": "52e4ed48f9a190945676aec89acdfbdf68b60290",
+      "description": "自由 到达 送达 完成",
+      "id": "PublishSuccess"
+    },
+    {
+      "component": "多卡",
+      "key": "bd6907c0a37a21d39ea2da8c9a035011bd762d50",
+      "description": "凭证 卡片 证明",
+      "id": "Cards"
+    },
+    {
+      "component": "卡搜索",
+      "key": "1a01ae324c517dfefa341d43ffe24ad6e8af4dee",
+      "description": "刷卡记录检索 凭证 卡片 证明 搜索 检索 查询 查找 诊断 历史",
+      "id": "CardSearch"
+    },
+    {
+      "component": "卡联接",
+      "key": "0c4ff3eaa4e522408300b908df4ce6a17ce4dd2c",
+      "description": "解挂卡 凭证 卡片 证明",
+      "id": "CardConnect"
+    },
+    {
+      "component": "多卡添加",
+      "key": "9b4c84c739b8b360d8c1ccb869bbc5d3b8cbc348",
+      "description": "批量开卡 凭证 卡片 证明 添加 增加 新增 增添",
+      "id": "CardsAdd"
+    },
+    {
+      "component": "多卡更换",
+      "key": "6fe8de6feb54d09b592b19d8e03a110f007dadd2",
+      "description": "批量换卡 凭证 卡片 证明 更换 变换 交换",
+      "id": "CardsReplace"
+    },
+    {
+      "component": "多卡归还",
+      "key": "0aa07986dbf74914abba0eb93e7055ac503f3d28",
+      "description": "批量退卡 凭证 卡片 证明",
+      "id": "CardsReturn"
+    },
+    {
+      "component": "关门时间",
+      "key": "c41c4a2d531de56687cd770f7b3588a0f7df08ec",
+      "description": "门常关 门常闭 关门 门禁",
+      "id": "DoorCloseTime"
+    },
+    {
+      "component": "门设置",
+      "key": "82f5fe8ca70386cdf4b9dce37f14580b314bf685",
+      "description": "访问设置 关门 门禁 设置 配置 管理",
+      "id": "DoorSetting"
+    },
+    {
+      "component": "开门时间",
+      "key": "143da977c076e68cd94027f08f1a4639d66da8e4",
+      "description": "门常开 开门",
+      "id": "DoorOpenTime"
+    },
+    {
+      "component": "门注意",
+      "key": "5d8adc32512bde28fc5be19ed164402f76fc6d20",
+      "description": "未知门状态 关门 门禁",
+      "id": "DoorWarning"
+    },
+    {
+      "component": "多门添加",
+      "key": "a5bd016268fbce12a1b6b63464057b88f57ccdd6",
+      "description": "新建门禁分组 关门 门禁 添加 增加 新增 增添",
+      "id": "DoorsAdd"
+    },
+    {
+      "component": "电梯凭证",
+      "key": "81655d74855ae5d64fdb41404f6d6a09b2383591",
+      "description": "刷卡到达 凭证 卡片 证明",
+      "id": "ElevatorCredential"
+    },
+    {
+      "component": "电梯自由",
+      "key": "eecc657b050c3c5e55cad23d1c4174ef845289f2",
+      "description": "自由到达 自由 到达 送达",
+      "id": "ElevatorFree"
+    },
+    {
+      "component": "多门",
+      "key": "52efa8f73a2e874f0b60afe265a0f59bb5c5059e",
+      "description": "关门 门禁",
+      "id": "Doors"
+    },
+    {
+      "component": "电梯临时",
+      "key": "c8e9b69cbfd86931201b053e0c0e5cb319f4312c",
+      "description": "临时到达",
+      "id": "ElevatorTemporary"
+    },
+    {
+      "component": "电梯禁止",
+      "key": "f7c205fe650585c02fdae579cfb73bc714f18c5e",
+      "description": "禁止到达 禁止 严禁 屏蔽",
+      "id": "ElevatorForbidden"
+    },
+    {
+      "component": "读卡器设置",
+      "key": "a05dc794540c6a3352af81e8d3cbe454028b5717",
+      "description": "访问点控制 设置 配置 管理",
+      "id": "CardReaderSetting"
+    },
+    {
+      "component": "指纹下载",
+      "key": "e03fad2ce4bd1abeade060d798f9b10bff07db1d",
+      "description": "下载",
+      "id": "FingerprintDownload"
+    },
+    {
+      "component": "电梯设置",
+      "key": "b9ce8c7a562b269fb258777b6d26b78b1bf75cb7",
+      "description": "电梯控制 设置 配置 管理",
+      "id": "ElevatorSetting"
+    },
+    {
+      "component": "指纹设置",
+      "key": "5e36bfcd5f88c6f7beb29fb863588293d32f4b1d",
+      "description": "设置 配置 管理",
+      "id": "FingerprintSetting"
+    },
+    {
+      "component": "读卡器禁止",
+      "key": "b1074f783ed752317f1bd8d7fe527e28bf682792",
+      "description": "禁止访问 禁止 严禁 屏蔽",
+      "id": "CardReaderForbidden"
+    },
+    {
+      "component": "读卡器自由",
+      "key": "86ce1d28e64f980625e53ff957cd2b11d9967404",
+      "description": "自由访问 自由 到达 送达",
+      "id": "CardReaderFree"
+    },
+    {
+      "component": "多车",
+      "key": "84e00cfad013d7ea25d3f78ecf13f5e1cc910020",
+      "description": "车辆同行 以车搜车",
+      "id": "Cars"
+    },
+    {
+      "component": "报警输出",
+      "key": "2f878c93d70452db33e5ff1de06a4110c806fb69",
+      "description": "报警 告警 警报",
+      "id": "AlarmOutput"
+    },
+    {
+      "component": "报警搜索",
+      "key": "70e8fdb864cd377c0dd4426764c675069a394b24",
+      "description": "历史报警 报警 告警 警报 搜索 检索 查询 查找 诊断 历史",
+      "id": "AlarmSearch"
+    },
+    {
+      "component": "报警确认",
+      "key": "c8874fc9d681ca7edee8676f6a2ed804abc64399",
+      "description": "报警 告警 警报 完成",
+      "id": "AlarmConfirm"
+    },
+    {
+      "component": "日历设置",
+      "key": "3cb67c4723c1a0eef8cf959ddf6363592247ed52",
+      "description": "日期配置 时间 日期 课表 考勤 节假日 预约 设置 配置 管理",
+      "id": "CalendarSetting"
+    },
+    {
+      "component": "重新预约",
+      "key": "4b80ed7aeb9bd1d5feebad3f0d924c1399b345d5",
+      "description": "时间 时刻 时钟 临时 重做 重来",
+      "id": "Reschedule"
+    },
+    {
+      "component": "预约",
+      "key": "40967ac85bf406d04882266e3a561c13d53e396c",
+      "description": "时间 日期 课表 考勤 节假日 预约",
+      "id": "Appointment"
+    },
+    {
+      "component": "触发报警",
+      "key": "9f830fce424bee2092f9254e8475d49b252bc862",
+      "description": "报警 告警 警报",
+      "id": "AlarmTrigger"
+    },
+    {
+      "component": "报警关闭",
+      "key": "d2c16d2f1e45f87d6de41833a3513ca0079dc752",
+      "description": "取消报警 报警 告警 警报",
+      "id": "AlarmClose"
+    },
+    {
+      "component": "日历完成",
+      "key": "96052f5e8d4352f40d2eaeef04c92d9ebaa05772",
+      "description": "考勤补签 时间 日期 课表 考勤 节假日 预约 完成",
+      "id": "CalendarDone"
+    },
+    {
+      "component": "时间设置",
+      "key": "8963dcadf0be3fd31fe5a6f3a05073a6ec81a1ac",
+      "description": "时间 时刻 时钟 临时 设置 配置 管理",
+      "id": "TimeSetting"
+    },
+    {
+      "component": "布防",
+      "key": "38001f617e111ac3de8164db6586977734258ea4",
+      "description": "布控",
+      "id": "Arm"
+    },
+    {
+      "component": "调整房屋",
+      "key": "3bce9a3117b64e3654ab83ccb564811adaf0c877",
+      "description": "家 主页 参数 调整 配置",
+      "id": "AdjustHouse"
+    },
+    {
+      "component": "日志分析",
+      "key": "ecd7659fa5dd265ca047ef8042fe00f21fafac7d",
+      "description": "记录 统计 分析",
+      "id": "LogAnalysis"
+    },
+    {
+      "component": "计划锁定",
+      "key": "b00442435c2f53f12de4bedfeb987c427b8b0ae0",
+      "description": "锁定 密码",
+      "id": "PlanLock"
+    },
+    {
+      "component": "布防控制",
+      "key": "fe7b8cb7530ee201dc9fbbbbc47c74f3654fba69",
+      "description": "布撤防控制",
+      "id": "ArmControl"
+    },
+    {
+      "component": "诊断",
+      "key": "da53896a6c529a41e07dd1a1206097c4189207ba",
+      "description": "搜索 检索 查询 查找 诊断",
+      "id": "Diagnose"
+    },
+    {
+      "component": "自定义码流",
+      "key": "7d01b48208392d12863c29a93d04ed28fb8dad36",
+      "description": "人员 用户",
+      "id": "CustomStream"
+    },
+    {
+      "component": "记事本详情",
+      "key": "65bf7e55469ad1162a3e556d9424b5badefa4205",
+      "description": "课程详情 课程 详情 细节",
+      "id": "NotebookDetails"
+    },
+    {
+      "component": "撤防",
+      "key": "f5e5e56153aff3aaaee40dcbf7927ec376ea3018",
+      "description": "解除 安防 报警",
+      "id": "Disarm"
+    },
+    {
+      "component": "网码流",
+      "key": "ca391bc0e0bfa2a035a4e512aed48aec7aae17c3",
+      "description": "视频流 网络 stream",
+      "id": "NetworkStream"
+    },
+    {
+      "component": "下载任务列表",
+      "key": "1269ea951317dda6ca2ecc364c34f803a89c4752",
+      "description": "名单 下载",
+      "id": "DownloadTaskList"
+    },
+    {
+      "component": "码流切换",
+      "key": "00843c78722b74db9043d0561f5af375dbe40ce9",
+      "description": "更换 变换 交换",
+      "id": "StreamSwitch"
+    },
+    {
+      "component": "报警设置",
+      "key": "1a746b59e6c4110097823e7a0a33b6b84bc7cfd1",
+      "description": "报警设置 报警 告警 警报 设置 配置 管理",
+      "id": "AlarmSetting"
+    },
+    {
+      "component": "删除项",
+      "key": "95e96abbca9840dcc40e2fbe66a7a00580920ec9",
+      "description": "菜单 方块 卡片模式",
+      "id": "DeleteItem"
+    },
+    {
+      "component": "扫把",
+      "key": "d5e344c4e9386122bb3e7cda8b7e05ef1a1a3e75",
+      "description": "扫帚 扫地 清除数据 刷子",
+      "id": "Broom"
+    },
+    {
+      "component": "账单修改",
+      "key": "9377caa09560e5781772ed1570814066ab1f95aa",
+      "description": "修改账单金额 编辑 修改 调整",
+      "id": "BillEdit"
+    },
+    {
+      "component": "应用设置",
+      "key": "beb5c03e68cdb60e6e5670c43662894ecdb65f13",
+      "description": "菜单 方块 卡片模式 项 设置 配置 管理",
+      "id": "AppSetting"
+    },
+    {
+      "component": "组织",
+      "key": "804b95cbc880b2b440be8d762f47a7adb654a04e",
+      "description": "资源树",
+      "id": "Organization"
+    },
+    {
+      "component": "报警屏蔽",
+      "key": "4841b5b87307c227ab85c24570cb31b4c1d98639",
+      "description": "屏蔽报警",
+      "id": "AlarmShield"
+    },
+    {
+      "component": "报警输入",
+      "key": "44dc597dd4325249154405114236d6db70476361",
+      "description": "告警 输入 安防",
+      "id": "AlarmInput"
+    },
+    {
+      "component": "水壶",
+      "key": "7f928d2379cfaf5827d96f08317222c902e28fa7",
+      "description": "数据库连接",
+      "id": "Kettle"
+    },
+    {
+      "component": "法院",
+      "key": "27e6699e9c1462a727c43932a07efde8a2787dae",
+      "description": "法律",
+      "id": "Court"
+    },
+    {
+      "component": "立方体获取",
+      "key": "e7a9ee1decd81d0d280b45a1734cab3e40dbd7fe",
+      "description": "能力集获取 模型导入",
+      "id": "CubeGet"
+    },
+    {
+      "component": "钱包",
+      "key": "47ab7b5883bf7164354560318c11db01758cd262",
+      "description": "资产管理",
+      "id": "Wallet"
+    },
+    {
+      "component": "日志上传",
+      "key": "e6795adee91349fd4d05dfb412e91f3e4f64c060",
+      "description": "记录 上传 log",
+      "id": "LogUpload"
+    },
+    {
+      "component": "重要人员",
+      "key": "f66596cd6a36e9d51f708209b18898b466f3a4c7",
+      "description": "vip 关键 人物",
+      "id": "KeyPerson"
+    },
+    {
+      "component": "日志配置",
+      "key": "947e5cfa998d5210c08caa5e4019a07d66beb5b9",
+      "description": "日志设置",
+      "id": "LogConfig"
+    },
+    {
+      "component": "摄像头",
+      "key": "ec7b12a665fbaf1b952608edbb684b069005fded",
+      "description": "通用摄像头",
+      "id": "CameraDevice"
+    },
+    {
+      "component": "圆形省略号",
+      "key": "14c587a03e2beff44af7dcc70296f80d0abec6a3",
+      "description": "圈  忽略 更多",
+      "id": "MoreCircle"
+    },
+    {
+      "component": "向左旋转",
+      "key": "b7770c7d7acab67b87c21f1bd1e91391be89bd0a",
+      "description": "图像",
+      "id": "RorateToLeft"
+    },
+    {
+      "component": "计算",
+      "key": "24049e333995c363e7f7429a95f9c182459df791",
+      "description": "加法 等于 除法 乘法 减法 逻辑 逻辑计算",
+      "id": "Calculate"
+    },
+    {
+      "component": "加油站",
+      "key": "4f8a183592768ebfc8b7cbeed2ef5695ac531d30",
+      "description": "油站 燃油 加油",
+      "id": "GasStation"
+    },
+    {
+      "component": "数据库",
+      "key": "b63ec536f79c3e4214a96b5ad8f54a3eb76f2d07",
+      "description": "database 数据 存储",
+      "id": "Database"
+    },
+    {
+      "component": "向右旋转",
+      "key": "5a6f1aac2a41832467297910c3a586169c53fb2d",
+      "description": "旋转 翻转 顺时针",
+      "id": "RorateToRight"
+    },
+    {
+      "component": "取消归档",
+      "key": "c08c8def8bb9d23a4369d3798a4c4ffaf3ada5e0",
+      "description": "解除 归档 恢复",
+      "id": "Unarchive"
+    },
+    {
+      "component": "路段",
+      "key": "ea5418bbd76791eb05798b39beb09396180b2831",
+      "description": "道路 路径 路线",
+      "id": "RoadSection"
+    },
+    {
+      "component": "库存管理",
+      "key": "52a09339d07115232a882c71c79fc59c80f95039",
+      "description": "仓储 存货 管理",
+      "id": "InventoryManagement"
+    },
+    {
+      "component": "侧边栏收起",
+      "key": "b51f4edf10a103f0c2a517cc7c4b065f96ec8492",
+      "description": "折叠 收缩 面板",
+      "id": "SidebarCollapse"
+    },
+    {
+      "component": "施工人员",
+      "key": "3504aad85fa825cc24e61fca256dd5a17d7644f3",
+      "description": "工人 建设 工程",
+      "id": "ConstructionWorker"
+    },
+    {
+      "component": "侧边栏展开",
+      "key": "7a97d0f7cfe578f29bfadf86cdaa5a2342e3226c",
+      "description": "展开 面板 打开",
+      "id": "SidebarExpand"
+    },
+    {
+      "component": "情景配置",
+      "key": "6779e9479cd4e93b47513c66f4fe078d77e907eb",
+      "description": "场景 设置 配置",
+      "id": "SceneConfig"
+    },
+    {
+      "component": "施工",
+      "key": "fe9914c8217262fb5a7b77f4a024a06dc123cc11",
+      "description": "建设 工程 建造",
+      "id": "Construction"
+    },
+    {
+      "component": "模板仓库",
+      "key": "63ec9604412a2e144fda9ee4fd3019b1abaf27eb",
+      "description": "模板 库 存储",
+      "id": "TemplateRepository"
+    },
+    {
+      "component": "播放",
+      "key": "e0a576af4afabce8564e6f5486067c851edaf18a",
+      "description": "运行 开始 play",
+      "id": "Play"
+    },
+    {
+      "component": "单位管理",
+      "key": "783223e5337e3298bcb73d72af2a6245477b49bb",
+      "description": "组织 机构 管理",
+      "id": "UnitManagement"
+    },
+    {
+      "component": "参数变更管理",
+      "key": "f5cb4a11dcd73941f5d2904d0b283232c5bca57b",
+      "description": "配置 修改 管理",
+      "id": "ParameterChangeManagement"
+    },
+    {
+      "component": "排序图标",
+      "key": "4d9dae3307853af1757c0453ea259dd03d51d4ff",
+      "description": "排列 顺序 sort",
+      "id": "SortIcon"
+    },
+    {
+      "component": "月亮",
+      "key": "95825f50e6a4790cfd6457480a151c6061f9fdc5",
+      "description": "暗黑模式 月牙",
+      "id": "Moon"
+    },
+    {
+      "component": "以脸搜脸",
+      "key": "249fa9cf5d70e28ac363e9a6c9559b38d5fda19e",
+      "description": "人脸查询",
+      "id": "FaceSearch"
+    },
+    {
+      "component": "图层",
+      "key": "a044d9d1a91689e677224ff2c2f8b298cc2250b5",
+      "description": "多图 聚合",
+      "id": "Layer"
+    },
+    {
+      "component": "视频",
+      "key": "f7b1e97465b07f8c690df3ca0a2c837bbdcee4e7",
+      "description": "录像 影像 media",
+      "id": "Video"
+    },
+    {
+      "component": "轨迹",
+      "key": "292e02b24bbfbd5963dee9588f346e8830d8be34",
+      "description": "路线",
+      "id": "Track"
+    },
+    {
+      "component": "暂停",
+      "key": "4ef165c239809892c2b47a80ffd6c2f8325d5565",
+      "description": "停止 pause 中断",
+      "id": "Pause"
+    },
+    {
+      "component": "剪刀",
+      "key": "468ba9e2ad7d8d15c5fb68c973827bfa70e2b081",
+      "description": "截屏",
+      "id": "Scissors"
+    },
+    {
+      "component": "全局导航",
+      "key": "7806cc7832a893c2c6eb6ce3752eab7309c66d09",
+      "description": "全局应用 导航菜单 子系统切换",
+      "id": "GlobalNavigation"
+    },
+    {
+      "component": "竖可拖拽-小",
+      "key": "43cfaeeec6301d3739e5053ccbedea9ce9e8c759",
+      "description": "拖动 移动 调整",
+      "id": "DragVerticalSm"
+    },
+    {
+      "component": "横可拖拽",
+      "key": "c9d2485a13653d2996e8e1dabcdb9bebeb3c10e4",
+      "description": "拖动 移动 调整",
+      "id": "DragHorizontal"
+    },
+    {
+      "component": "全部展开",
+      "key": "79daa2d1b05ce9efea85e974bc73157119ac2b69",
+      "description": "展开 打开 全选",
+      "id": "ExpandAll"
+    },
+    {
+      "component": "横可拖拽-小",
+      "key": "44911b867e783063c50208cd80638add2c67c1df",
+      "description": "拖动 移动 调整",
+      "id": "DragHorizontalSm"
+    },
+    {
+      "component": "全部收起",
+      "key": "999052db795a8d2cf839ca4d787fdb4a7538284a",
+      "description": "折叠 收缩 收起",
+      "id": "CollapseAll"
+    },
+    {
+      "component": "关联人脸",
+      "key": "b67b3cc9be285d2d22e6870e1119b12dda9c0a86",
+      "description": "人脸 关联 绑定",
+      "id": "FaceAssociate"
+    },
+    {
+      "component": "上调（数字输入框专用）",
+      "key": "44168e5ccf9c00b1d09d730e66ad08c2aeaccc2d",
+      "description": "增加 加大 调整",
+      "id": "StepperUp"
+    },
+    {
+      "component": "压缩包",
+      "key": "f083e921b965b2d46c62fda02931b0b4be72808e",
+      "description": "7z,zip",
+      "id": "ZipPackage"
+    },
+    {
+      "component": "下调（数字输入框专用）",
+      "key": "c87bac1f6fe0266fcf60faa5f8fb4fadd7b493ed",
+      "description": "减少 调小 调整",
+      "id": "StepperDown"
+    },
+    {
+      "component": "取消发布",
+      "key": "4d3438cb245bcfd24f5f5d4bd546d012c5d726df",
+      "description": "纸飞机",
+      "id": "Unpublish"
+    },
+    {
+      "component": "复制链接",
+      "key": "7df3db6e3cf3cf90845dc80bfda56cb5f57ad473",
+      "description": "拷贝 url 分享",
+      "id": "CopyLink"
+    },
+    {
+      "component": "复制代码",
+      "key": "53aa05afba5fe95ce6142b0061326589de041205",
+      "description": "拷贝 code 克隆",
+      "id": "CopyCode"
+    },
+    {
+      "component": "缩放到实际大小",
+      "key": "68a8af4fb439ee08f1f8a8164a03b5bfbe9fd7c2",
+      "description": "原始 尺寸 zoom",
+      "id": "AdaptToActualSize"
+    },
+    {
+      "component": "不冻结",
+      "key": "7b578aa8ee848da8692a082ebc4365ec43b3f5ed",
+      "description": "解冻 解锁 取消",
+      "id": "Unfreeze"
+    },
+    {
+      "component": "查看大图",
+      "key": "c3546c8109dc2bcf71c24a151a02f8e58ca0f67d",
+      "description": "预览 放大 图片",
+      "id": "ViewLargeImage"
+    },
+    {
+      "component": "重新设定",
+      "key": "b086bd37a53e8b8025fb182b6b4d3b3049f1336f",
+      "description": "重做 重来 还原",
+      "id": "Reset"
+    },
+    {
+      "component": "静音",
+      "key": "4b9675c72c76a0c13a34c920ec8f25f92a5a51ea",
+      "description": "关闭声音 mute 无声",
+      "id": "Mute"
+    },
+    {
+      "component": "合适尺寸",
+      "key": "602baa38e742dfb5957f11a976b7778abeb73814",
+      "description": "适应 自适应 fit",
+      "id": "AdaptToScreen"
+    },
+    {
+      "component": "面性话筒",
+      "key": "c1e3cbbbad17239d09b83e6cae3b975cf6898224",
+      "description": "麦克风 语音 录音",
+      "id": "TalkOnFill"
+    },
+    {
+      "component": "柱状图",
+      "key": "bdf1aa98208b571d97f3ada42f4f7eeeca3aa0d4",
+      "description": "统计 分析 计算",
+      "id": "Histogram"
+    },
+    {
+      "component": "链接",
+      "key": "b6772dec6411dd977d5acc397e26844d564bb9aa",
+      "description": "link 网址 关联",
+      "id": "Link"
+    },
+    {
+      "component": "面性标签",
+      "key": "6832d9685970143d69f41c54bee85513ac85107b",
+      "description": "标记 分类 tag",
+      "id": "TagFill"
+    },
+    {
+      "component": "上角线",
+      "key": "9b92e290939a12c5b3db7d52c172c960b044e319",
+      "description": "边框 角标 线条",
+      "id": "AngleLineUp"
+    },
+    {
+      "component": "下角线",
+      "key": "59a0e9f2934310a85596997ccc8088410acda9fe",
+      "description": "边框 角标 线条",
+      "id": "AngleLineDown"
+    },
+    {
+      "component": "上单角",
+      "key": "84e9dae4c99f4041ba7a036e3bbfe40a922f201b",
+      "description": "收起 角度",
+      "id": "AngleUp"
+    },
+    {
+      "component": "面性叉号",
+      "key": "0982c211d588b9ec0a0894e1a4745dc7286ed699",
+      "description": "清空 乘号 关闭",
+      "id": "CloseFill"
+    },
+    {
+      "component": "刷新",
+      "key": "6c82155de6d5f87bb290075e4aa699be08810550",
+      "description": "重载 更新 重新加载 循环",
+      "id": "Refresh"
+    },
+    {
+      "component": "漏斗",
+      "key": "42c991ae5a73f56f285ba800c39076587ab9b1dd",
+      "description": "过滤 筛选",
+      "id": "FilterBase"
+    },
+    {
+      "component": "应用",
+      "key": "cb974c582818edd7575c740fd26f51b2d502e358",
+      "description": "菜单 方块 卡片模式 项",
+      "id": "Menu"
+    },
+    {
+      "component": "回形针",
+      "key": "ed2abcab69c1b4c9cf5b477eab90e8017f747304",
+      "description": "附件",
+      "id": "Attach"
+    },
+    {
+      "component": "右单角",
+      "key": "50c35e11e398369f529bf475aae9f9e0e913ffea",
+      "description": "向后 收起 下一页",
+      "id": "AngleRight"
+    },
+    {
+      "component": "左单角",
+      "key": "a0d063cec6110487df88a91f545782bc8d06466e",
+      "description": "向前 上一页",
+      "id": "AngleLeft"
+    },
+    {
+      "component": "下单角",
+      "key": "8511cdf2179991c23e706aba0819790e1eee3bf0",
+      "description": "arrow-down-large\n箭头\n下 \n展开",
+      "id": "AngleDown"
+    },
+    {
+      "component": "重试",
+      "key": "84d290936b4c1124561905ce11d39ece041fe401",
+      "description": "再次 重复 尝试",
+      "id": "RefreshSm"
+    },
+    {
+      "component": "眼睛",
+      "key": "e5e8d26bac9264326d53d34bb192663b6bb6dbeb",
+      "description": "明码 查看 睁眼 密码",
+      "id": "PasswordVisible"
+    },
+    {
+      "component": "用户",
+      "key": "68609bea8fdf2132a7e41ff0daf55fef790b9ac1",
+      "description": "人、人员",
+      "id": "User"
+    },
+    {
+      "component": "相机",
+      "key": "32d4dfba4caed254a80ce80093336fe2d744edf0",
+      "description": "抓拍 抓图 拍照 快照",
+      "id": "Capture"
+    },
+    {
+      "component": "上传",
+      "key": "b75fc933fa42ae2d2b1de6bc3c1714b362c75107",
+      "description": "上箭头",
+      "id": "Upload"
+    },
+    {
+      "component": "设置",
+      "key": "98f225e82bdcec9bb48b4315599fc8c38bd0609c",
+      "description": "齿轮\n配置 管理\nsetting\nset",
+      "id": "Setting"
+    },
+    {
+      "component": "水平省略号",
+      "key": "fc7e2ab1b7c2aca8c541e1ef44c1359d587a9729",
+      "description": "更多",
+      "id": "MoreHori"
+    },
+    {
+      "component": "时钟",
+      "key": "461b12cd944dee56f49a4554deffccf100c8f3bb",
+      "description": "时间 时刻 时钟 临时",
+      "id": "Clock"
+    },
+    {
+      "component": "加号",
+      "key": "390f543e39d6ada4d7706106eeb698c259687775",
+      "description": "添加\n创建",
+      "id": "Add"
+    },
+    {
+      "component": "锁",
+      "key": "c691513caa7657593cf1a5d84249c932e172b7e0",
+      "description": "锁定 \n密码",
+      "id": "Lock"
+    },
+    {
+      "component": "面性应用",
+      "key": "2a7c594207d80ca6247c6462ecc3c5293458067d",
+      "description": "菜单 方块 卡片模式 项",
+      "id": "MenuFill"
+    },
+    {
+      "component": "菜单",
+      "key": "a18bf9cd909ef55c4917fee95e60438b699bef4e",
+      "description": "目录 导航 列表",
+      "id": "MenuLeftbar"
+    },
+    {
+      "component": "下载",
+      "key": "84a2a7e8e00b026ff67f9754bac56f2f650362d8",
+      "description": "下箭头",
+      "id": "Download"
+    },
+    {
+      "component": "笔",
+      "key": "db8d595d564c3edf83b1742a87bb774edf741563",
+      "description": "编辑 修改 调整",
+      "id": "Edit"
+    },
+    {
+      "component": "文档",
+      "key": "900ca15dfcd974ec0d48e5b357a05aa86121bdb6",
+      "description": "详情 细节",
+      "id": "Details"
+    },
+    {
+      "component": "删除",
+      "key": "34f3f8a39f52ffc2fe0b3336346e5e74935c76c4",
+      "description": "垃圾箱 删除 Delete",
+      "id": "Delete"
+    },
+    {
+      "component": "右双角",
+      "key": "c2c39b4a90680b8bb2d9814fe4c10035e4e5c16b",
+      "description": "向后 下一段",
+      "id": "AnglesRightSm"
+    },
+    {
+      "component": "叉号-小",
+      "key": "4f17994583dd650c91dc6649f2f8472386702ec4",
+      "description": "乘号 关闭",
+      "id": "CloseSm"
+    },
+    {
+      "component": "日历",
+      "key": "e5757c2074b50ce9662818bfd1b731f706a4f390",
+      "description": "日期 日程 calendar",
+      "id": "Calendar"
+    },
+    {
+      "component": "上单角-小",
+      "key": "429dcc917d04d2269d7302dc1c16817d2b9baef7",
+      "description": "箭头\n上\n单角-上（小） \n收起",
+      "id": "AngleUpSm"
+    },
+    {
+      "component": "排序",
+      "key": "4ac9d616737c89e192b63a03672b1b9846f42f43",
+      "description": "上下排序  升降序切换 排序切换",
+      "id": "Sort"
+    },
+    {
+      "component": "右单角-小",
+      "key": "5cefe95a12105e785ad93a50ff8418eb6cb4c495",
+      "description": "向后",
+      "id": "AngleRightSm"
+    },
+    {
+      "component": "左双角",
+      "key": "6a4a106f1e7dabe97e805ef749c92d669c05db15",
+      "description": "向前 上一段",
+      "id": "AnglesLeftSm"
+    },
+    {
+      "component": "左单角-小",
+      "key": "64e180b9f415af64944dfbc200940c20ea510632",
+      "description": "向前",
+      "id": "AngleLeftSm"
+    },
+    {
+      "component": "放大",
+      "key": "87c7c6ffc3a61018957dd86b53be31126a192e76",
+      "description": "放大镜 窗口 视图放大 搜索 检索 查询 查找 诊断 历史",
+      "id": "ZoomIn"
+    },
+    {
+      "component": "右上箭头",
+      "key": "aa324473d442245e4c3c59b08b5259ecc285ffc4",
+      "description": "方向 指向 arrow",
+      "id": "ArrowUpRight"
+    },
+    {
+      "component": "缩小",
+      "key": "a60f17a0d5f4ef0d93b20960aa2d9d035e3f30f5",
+      "description": "放大镜",
+      "id": "ZoomOut"
+    },
+    {
+      "component": "星星（已收藏）",
+      "key": "f8a584006d7c6aff48f46bd64a83cb3c66043762",
+      "description": "等级 收藏",
+      "id": "StarFill"
+    },
+    {
+      "component": "下单角-小",
+      "key": "e038584e2cb34259c48587de442a352aaf20f173",
+      "description": "箭头\n下\n单角-下（小）\n下拉\n展开",
+      "id": "AngleDownSm"
+    },
+    {
+      "component": "上箭头",
+      "key": "f8875662c073f0703e865274d6def5a64c22f942",
+      "description": "方向 向上 arrow",
+      "id": "ArrowUp"
+    },
+    {
+      "component": "左上箭头",
+      "key": "b440f5fc06ea844197422359d8ec97fd607b6155",
+      "description": "方向 指向 arrow",
+      "id": "ArrowUpLeft"
+    },
+    {
+      "component": "放大镜",
+      "key": "4b7bbafdc4b4c73d6004cd684dad37df0f1e360f",
+      "description": "搜索 检索 查询 查找 诊断 历史",
+      "id": "Search"
+    },
+    {
+      "component": "控制杆",
+      "key": "df50aec0bd35bf7a4f51001061fa5671e310366a",
+      "description": "参数 调整 配置 高级配置",
+      "id": "ControlPole"
+    },
+    {
+      "component": "房子",
+      "key": "378628f3bd62831f66511f40ff4cec64e5c18c09",
+      "description": "家 主页",
+      "id": "Home"
+    },
+    {
+      "component": "右箭头",
+      "key": "5b87c24e9d3ceb5a5d96b2a77e312a75834996d3",
+      "description": "方向 向右 arrow",
+      "id": "ArrowRight"
+    },
+    {
+      "component": "圆形减号",
+      "key": "d70f03f5c020c1d645f1b594404e0266a55a2831",
+      "description": "不允许 减少 删除一项 移除",
+      "id": "Disable"
+    },
+    {
+      "component": "女性",
+      "key": "552b697ded8df3f0ea9823cfe75dea05abad9371",
+      "description": "性别 女 用户",
+      "id": "Female"
+    },
+    {
+      "component": "男性",
+      "key": "def5ebf729d9c0cc2dd5981f21e20b6f3cb713ca",
+      "description": "性别 男 用户",
+      "id": "Male"
+    },
+    {
+      "component": "减号",
+      "key": "e85a9a96c2cdb5faad3973ef446c419a27845035",
+      "description": "减少",
+      "id": "Minus"
+    },
+    {
+      "component": "加载",
+      "key": "47bbc15cc166b9f3a7004212aede3f9ba1b5be63",
+      "description": "载入 loading 等待",
+      "id": "Loading"
+    },
+    {
+      "component": "文件夹",
+      "key": "defe6e5a19bf3e3f09b8676639cd48a1444e1916",
+      "description": "组 组合",
+      "id": "Folder"
+    },
+    {
+      "component": "问号",
+      "key": "4ef0739bd25888ef4e80ed0ce0bcfc298d514e8c",
+      "description": "帮助 疑问",
+      "id": "Help"
+    },
+    {
+      "component": "下箭头",
+      "key": "f6f93560107be2787ef02d0f3fba7b95dd7e3271",
+      "description": "方向 向下 arrow",
+      "id": "ArrowDown"
+    },
+    {
+      "component": "左箭头",
+      "key": "82cae60098d5fd615ec97c557c10dd7f0965ea92",
+      "description": "方向 向左 arrow",
+      "id": "ArrowLeft"
+    },
+    {
+      "component": "跳转",
+      "key": "a574113ee3572876447cf1b2b5d6c3d72fd64c0b",
+      "description": "链接 前往 转向",
+      "id": "Jump"
+    },
+    {
+      "component": "竖可拖拽（表格专用）",
+      "key": "67285b7d6bbc656bc16f7b848716e9ceb5931ba7",
+      "description": "拖拽 移动 调整",
+      "id": "DragPoint"
+    },
+    {
+      "component": "右下箭头",
+      "key": "2cbf5069230830dc8028497e28a687e3cff6c9fe",
+      "description": "方向 指向 arrow",
+      "id": "ArrowDownRight"
+    },
+    {
+      "component": "垂直省略号",
+      "key": "3d60bc896f6aa6aa4db14ea06e3fa8e7bc35c098",
+      "description": "更多",
+      "id": "MoreVerti"
+    },
+    {
+      "component": "左下箭头",
+      "key": "8c18be1726f5f2d14874ef57073f335695c55356",
+      "description": "方向 指向 arrow",
+      "id": "ArrowDownLeft"
+    },
+    {
+      "component": "立方体",
+      "key": "b553ede197ecf0c0aee405064e9ba28c2a4692cb",
+      "description": "3d 方块 模型",
+      "id": "Cube"
+    },
+    {
+      "component": "漏斗（有筛选项）",
+      "key": "a1960b2392d70aa9c7f2fe5ecf41c41ce4eb6cbf",
+      "description": "漏斗（面性） 过滤 筛选",
+      "id": "FilterFill"
+    },
+    {
+      "component": "左角线",
+      "key": "e0d0864739c87bc15dc8b75f2211af58068fddbf",
+      "description": "最前 到第一页",
+      "id": "AngleLineLeft"
+    },
+    {
+      "component": "右角线",
+      "key": "271bea8efa3b6985d429d88eaecb8c4f6ba8f348",
+      "description": "最后 到最末页",
+      "id": "AngleLineRight"
+    },
+    {
+      "component": "信息",
+      "key": "67a2bd2461bf088610c3cc880a184a45bfcad603",
+      "description": "提示",
+      "id": "Info"
+    },
+    {
+      "component": "下双角",
+      "key": "8e4d9b3f00f05e520662011c82422d7dbf3c80f3",
+      "description": "面板展开",
+      "id": "AnglesDownSm"
+    },
+    {
+      "component": "列表",
+      "key": "c1e9d736ddd0d26832315fc22f02643930fc6754",
+      "description": "名单",
+      "id": "List"
+    },
+    {
+      "component": "导出",
+      "key": "1c40e1e2a533e46ae2abc5f3a61ad8df111199c2",
+      "description": "右箭头",
+      "id": "Export"
+    },
+    {
+      "component": "复制",
+      "key": "07adfee2cc9c7a24a73536f4945de2fa500cf8cd",
+      "description": "拷贝 文档组 详情 细节\ncopy",
+      "id": "Copy"
+    },
+    {
+      "component": "上双角",
+      "key": "56616ce5c3fd58204e651278b036309c08e81aea",
+      "description": "面板收起",
+      "id": "AnglesUpSm"
+    },
+    {
+      "component": "冻结在列首",
+      "key": "846630e745033ff1a18f5bbf0d3de00e39beaf0c",
+      "description": "锁定 固定 表格",
+      "id": "FreezeColumnStart"
+    },
+    {
+      "component": "冻结在列尾",
+      "key": "6d474791066a44f4b41ee7452016668e2a7a80c1",
+      "description": "锁定 固定 表格",
+      "id": "FreezeColumnEnd"
+    },
+    {
+      "component": "水平省略号-小",
+      "key": "ff3fbbcb0909e7875588c8df22aaa76dedf8808a",
+      "description": "文字更多样式（富文本编辑器） 更多",
+      "id": "MoreHoriSm"
+    },
+    {
+      "component": "导入",
+      "key": "7053bbf2ed5e4e3593b66c5a98dc11dcb0d8e256",
+      "description": "左箭头",
+      "id": "Import"
+    }
+  ],
+  "info": [
+    {
+      "component": "白名单",
+      "key": "b35c5d35c853c5e31fbbdf07e07fb82687192eef",
+      "description": "名单 允许 信任",
+      "id": "InfoWhitelist"
+    },
+    {
+      "component": "人数",
+      "key": "0adb845617849239724a4c49a69951c5574c2fac",
+      "description": "数量 统计 人员",
+      "id": "InfoUserCount"
+    },
+    {
+      "component": "时钟",
+      "key": "bcf105e3c9e36b59d31ce2777424ca5a8fa2758a",
+      "description": "时间 时刻 时分秒",
+      "id": "InfoTime"
+    },
+    {
+      "component": "摄像机",
+      "key": "c138ea4b53ff38f95a72864bd7e301ef4812014c",
+      "description": "相机 视频",
+      "id": "InfoLiveview"
+    },
+    {
+      "component": "卡",
+      "key": "e39adf589829e6298578df1fe987efbcb5591d69",
+      "description": "证件号 工号 卡号",
+      "id": "InfoCard"
+    },
+    {
+      "component": "女",
+      "key": "477ba38e4a809e6916b3e213564e802dd852f79f",
+      "description": "女性",
+      "id": "InfoFemale"
+    },
+    {
+      "component": "电话",
+      "key": "4496626a8677acbffebbb5d1dd1597bb2012ecf9",
+      "description": "电话号码 联系方式",
+      "id": "InfoPhone"
+    },
+    {
+      "component": "男",
+      "key": "5c5657a1b7801f94661e1e2b72e1061edc97e57b",
+      "description": "男性",
+      "id": "InfoMale"
+    },
+    {
+      "component": "信封",
+      "key": "b672d999e7d34b1212b0b504c6e74988d7a3e356",
+      "description": "邮箱 邮件 邮件地址",
+      "id": "InfoEmail"
+    },
+    {
+      "component": "日历",
+      "key": "b26605c56a84f76c033d6f713c3a562a42d44120",
+      "description": "日期",
+      "id": "InfoDate"
+    },
+    {
+      "component": "摄像头",
+      "key": "71e5818bcee20f65b760904908e20b29aea3fa94",
+      "description": "通用监控点 镜头",
+      "id": "InfoCamera"
+    },
+    {
+      "component": "天数",
+      "key": "91918e7629b0f7329beb7a149c866a695c273a99",
+      "description": "日期 统计 时间",
+      "id": "InfoDays"
+    },
+    {
+      "component": "回形针",
+      "key": "3747f261ba642f556c0139801b513315f434a460",
+      "description": "附件",
+      "id": "InfoAttach"
+    },
+    {
+      "component": "锁链",
+      "key": "4be4d392ca8ea29763357bab678622d88eaa5489",
+      "description": "链接",
+      "id": "InfoLink"
+    },
+    {
+      "component": "停车",
+      "key": "f8ab26d3411c6588f0b1ab426faff942d2a6973c",
+      "description": "停车场",
+      "id": "InfoParking"
+    },
+    {
+      "component": "目标",
+      "key": "9e2e10f7fe1a5b6e2f4358479e48a147740ad5d1",
+      "description": "布控任务",
+      "id": "InfoTask"
+    },
+    {
+      "component": "组织",
+      "key": "c470adefbdfeb4bb1a0100a9cf8996721283789a",
+      "description": "资源树",
+      "id": "InfoOrganization"
+    },
+    {
+      "component": "抽屉",
+      "key": "883214dcb468cfc2dcca5fe25d87a2b27b3f6a1c",
+      "description": "资料 资料库",
+      "id": "InfoData"
+    },
+    {
+      "component": "车辆落脚时间",
+      "key": "59b005c0d22a39c0f6e09d3145740d460e406ab7",
+      "description": "停留 车辆 时长",
+      "id": "InfoVehicleStayTime"
+    },
+    {
+      "component": "车辆同行次数",
+      "key": "ca67d8f273184cf4b1d534e274fc48ca09923fd5",
+      "description": "伴随 车辆 统计",
+      "id": "InfoVehicleCooccurrenceCount"
+    },
+    {
+      "component": "相似度",
+      "key": "1873d6c17455e3369c27d3ac8add26c1ea9562b0",
+      "description": "vs",
+      "id": "InfoVs"
+    },
+    {
+      "component": "资源",
+      "key": "521fbec314cd897713c3ca0e36ad8646f826d874",
+      "description": "素材 文件 resource",
+      "id": "InfoResource"
+    },
+    {
+      "component": "公交车数",
+      "key": "8ee66777d68b321222ffc963ab988a328e927002",
+      "description": "车辆 统计 公交",
+      "id": "InfoBusCount"
+    },
+    {
+      "component": "过车次数",
+      "key": "66ffd8b3f8666e63b8c431dc5abd70220c0062bd",
+      "description": "通行 车辆 统计",
+      "id": "InfoVehiclePassCount"
+    },
+    {
+      "component": "通用处理器",
+      "key": "f0ff09faafa74937a4479d62ef1da7a00cc374f5",
+      "description": "cpu 芯片 计算",
+      "id": "InfoGeneralProcessor"
+    },
+    {
+      "component": "车辆遮挡次数",
+      "key": "4a2a741821bd14a445cffb0f6fb4b1b266b5902b",
+      "description": "遮挡 车辆 统计",
+      "id": "InfoVehicleOcclusionCount"
+    },
+    {
+      "component": "定位",
+      "key": "b0ffed7fadec121b2a78fb97fb853301202bb210",
+      "description": "地点 位置",
+      "id": "InfoLocation"
+    },
+    {
+      "component": "速度",
+      "key": "3deb5991d37806b1ea12e97c2abe9fe3f5e36b76",
+      "description": "时速 快慢 velocity",
+      "id": "InfoSpeed"
+    },
+    {
+      "component": "星星",
+      "key": "29c2404390b0d77dafa770cf6bc87220ebb2cdbd",
+      "description": "收藏 收藏量",
+      "id": "InfoStar"
+    },
+    {
+      "component": "折线图显示器",
+      "key": "6826f573406a63e6cc252e702c2a545301ef337d",
+      "description": "智能业务监测",
+      "id": "InfoLineChartMonitor"
+    },
+    {
+      "component": "眼睛",
+      "key": "3395e5c4365d52ce7ef84a7daefd840ebe88f655",
+      "description": "浏览量",
+      "id": "InfoEye"
+    },
+    {
+      "component": "方向",
+      "key": "df7494319a5d0f56f2bc1eaa98becc700b40a906",
+      "description": "箭头",
+      "id": "InfoDirection"
+    },
+    {
+      "component": "分数",
+      "key": "0fc38ef07c556e7d4c5e8bba7397d5bf2e0e3696",
+      "description": "综合评分",
+      "id": "InfoScoreSummary"
+    },
+    {
+      "component": "文件夹",
+      "key": "cfc368c7360c6554c31b47a024b2e54feaf4091e",
+      "description": "分组",
+      "id": "InfoFolder"
+    },
+    {
+      "component": "沙漏",
+      "key": "9113c8aca7a30cf4ca00201d6ed0dc3d8c8b6d06",
+      "description": "时长",
+      "id": "InfoHourglass"
+    },
+    {
+      "component": "旗帜",
+      "key": "b02e6c5910991cc55c9e707ffb3950e76f2e82ab",
+      "description": "追踪网格点",
+      "id": "InfoFlag"
+    },
+    {
+      "component": "告警",
+      "key": "c1f8f21b86a041c371903e2306f4df7f87ec80a1",
+      "description": "警示 violation 违规",
+      "id": "InfoAlarm"
+    },
+    {
+      "component": "信息",
+      "key": "50148849c1647e6fa405dce82111d400c55db838",
+      "description": "备注",
+      "id": "InfoMessage"
+    },
+    {
+      "component": "多重认证",
+      "key": "85c5d95bf30b2a3064a40c377928a0758b2bc092",
+      "description": "验证 安全 mfa",
+      "id": "InfoMultiFactorAuth"
+    },
+    {
+      "component": "模块",
+      "key": "bfa9b4d3968c72ae60a0c3f66c100940a7f816d0",
+      "description": "组件 单元 module",
+      "id": "InfoModule"
+    },
+    {
+      "component": "节点",
+      "key": "2c7a7aa54417aac45c9c7b3485d70e2bf07cddc8",
+      "description": "结点 网络 node",
+      "id": "InfoNode"
+    },
+    {
+      "component": "许可证",
+      "key": "c32e8a9cae4d40013c078642450e8a7f24f10a4e",
+      "description": "授权 license 许可",
+      "id": "InfoLicense"
+    },
+    {
+      "component": "名单",
+      "key": "7515cf2b14b6cd356832e9534153a869483a06cb",
+      "description": "黑白名单",
+      "id": "InfoList"
+    },
+    {
+      "component": "存储卷",
+      "key": "ed0fc6956e387c4c6a0895a31d273c21c169cdb5",
+      "description": "磁盘 volume 存储",
+      "id": "InfoStorageVolume"
+    },
+    {
+      "component": "身份证",
+      "key": "bb9feb456c995b4feb70c7d9458bbbb33961238b",
+      "description": "ID 卡 证件号 工号 卡号 人名",
+      "id": "InfoIdcard"
+    },
+    {
+      "component": "存储磁盘",
+      "key": "ad7330a9f6e53c754610a42877f4aea1704cf62e",
+      "description": "硬盘 disk 存储",
+      "id": "InfoStorageDisk"
+    },
+    {
+      "component": "人们",
+      "key": "79474e37924895e376aa22977cef592fc46c3a3e",
+      "description": "用户 对比组 人名",
+      "id": "InfoUsers"
+    },
+    {
+      "component": "性别",
+      "key": "8972f979594378cd001080a6e3c787e16c0f1f36",
+      "description": "性别 男 女 女性 男性",
+      "id": "InfoSex"
+    },
+    {
+      "component": "图片",
+      "key": "6fad7560c223b7f0f04e973e527be2a17c347f8a",
+      "description": "snap 截图",
+      "id": "InfoPicture"
+    },
+    {
+      "component": "枪机",
+      "key": "4d92f580f551b07fc7077d5fa31cbb78c367c16d",
+      "description": "抓拍机 枪机",
+      "id": "InfoBulletCamera"
+    },
+    {
+      "component": "卡口",
+      "key": "293654b2136c277adfd64cee3e07832a17ec397c",
+      "description": "路口 抓拍 监控",
+      "id": "InfoCheckpoint"
+    },
+    {
+      "component": "应用",
+      "key": "80ad7cc753e441c6d0821c9a1320756f5233b941",
+      "description": "所属区域 区域 网格",
+      "id": "InfoApp"
+    },
+    {
+      "component": "建筑群",
+      "key": "a4ecd52987439610d2818580b5748e23578b5645",
+      "description": "社区",
+      "id": "InfoBuildingGroup"
+    },
+    {
+      "component": "徽章",
+      "key": "9dcde6a80b15d7a7c5a032531ba70b02f6f0903f",
+      "description": "荣誉分 荣誉 荣耀",
+      "id": "InfoBadge"
+    },
+    {
+      "component": "轮船",
+      "key": "86022c74070bfaa0a96e856ff58fcb72eadde222",
+      "description": "船名",
+      "id": "InfoShip"
+    },
+    {
+      "component": "上传",
+      "key": "f3e43afd35b9f4063afc75ae4366c4bf8580fefa",
+      "description": "上报",
+      "id": "InfoUpload"
+    },
+    {
+      "component": "身体",
+      "key": "92220ec12f3c37404430f0689ff949c0cef7829a",
+      "description": "人体 躯干 人形",
+      "id": "InfoBody"
+    },
+    {
+      "component": "建筑",
+      "key": "03d0db008506e28aa72057bc7b7d75ec604e8921",
+      "description": "公司",
+      "id": "InfoBuilding"
+    },
+    {
+      "component": "下载量",
+      "key": "f2a9432963a06a1c1eb6abf207a972c94a3d22bb",
+      "description": "下载 统计 数量",
+      "id": "InfoDownloadCount"
+    },
+    {
+      "component": "播放",
+      "key": "9f7945ba8269ee28599e906c1bd4227b6a63e02c",
+      "description": "运行 开始 play",
+      "id": "InfoPlay"
+    },
+    {
+      "component": "人",
+      "key": "881c50e99d5cadf71d0a8f67952654e93d24c2d3",
+      "description": "人名",
+      "id": "InfoUser"
+    }
+  ],
+  "tree": [
+    {
+      "component": "指挥中心",
+      "key": "43d3db150651da584a5fcfb02a4d66ec2e2b303a",
+      "description": "旗子",
+      "id": "TreeCommandCenter"
+    },
+    {
+      "component": "分公司",
+      "key": "782f6edfa3567959cb0b6bf6d6ebd819f1de9631",
+      "description": "建筑",
+      "id": "TreeBranch"
+    },
+    {
+      "component": "市",
+      "key": "c8e04076139380d9d0dea5a35527a1122ab010f4",
+      "description": "建筑",
+      "id": "TreeCity"
+    },
+    {
+      "component": "区",
+      "key": "d10464755fd5dc83a5d199333fb64479b0d3f6a0",
+      "description": "建筑",
+      "id": "TreeDistrict"
+    },
+    {
+      "component": "省",
+      "key": "11db02b7fa5c4bc41ad525bade201a31ed871aba",
+      "description": "建筑",
+      "id": "TreeProvince"
+    },
+    {
+      "component": "部门",
+      "key": "26b886a15928e36706ac7e0127eb88dd91e8f1d2",
+      "description": "建筑",
+      "id": "TreeDepartment"
+    },
+    {
+      "component": "总公司",
+      "key": "fa13381c2b4e3bf804fc71c0bee0c67efd35ba49",
+      "description": "建筑",
+      "id": "TreeHeadquarter"
+    },
+    {
+      "component": "工厂",
+      "key": "c8cfff3ff48fd9a32782140e3c510ff8c5ef191a",
+      "description": "建筑",
+      "id": "TreeFactory"
+    },
+    {
+      "component": "岗亭",
+      "key": "b4cbc0c8acadcc2ac141c01e69e0fe8a5914061b",
+      "description": "建筑",
+      "id": "TreeBooth"
+    },
+    {
+      "component": "流媒体服务器",
+      "key": "06214e0cb14029ca2f06f15845d7ee26b3d6d403",
+      "description": "主机 视频 stream",
+      "id": "TreeStreamingServer"
+    },
+    {
+      "component": "监所",
+      "key": "633374fd83cd2df222984c4d41b5a90487742591",
+      "description": "监狱",
+      "id": "TreePrison"
+    },
+    {
+      "component": "远端站点",
+      "key": "ce84f565c09b84aafcd55c14d3fe3075b7f1f176",
+      "description": "地球 显示器",
+      "id": "TreeRemoteSite"
+    },
+    {
+      "component": "服务器",
+      "key": "a77a8c473b850e8f7327711ca8431e5bc6181b85",
+      "description": "主机 计算 硬件",
+      "id": "TreeServer"
+    },
+    {
+      "component": "站点",
+      "key": "0fdafd16d4fe4ee2d59a750fa2840a1887474a38",
+      "description": "地球",
+      "id": "TreeSite"
+    },
+    {
+      "component": "中心（树）",
+      "key": "906391065dbf80a1e9e174bb3ea8277d76cc9359",
+      "description": "房子 屋子 家 区域 园区",
+      "id": "TreeCenter"
+    },
+    {
+      "component": "场所",
+      "key": "0fc95dad6fbc248bac72cb4af46ddb4722650fe3",
+      "description": "建筑",
+      "id": "TreePlace"
+    },
+    {
+      "component": "存储服务器",
+      "key": "ae3a4fd5144e41478c8f00928b0aaa89feb32623",
+      "description": "主机 数据 硬件",
+      "id": "TreeStorageServer"
+    },
+    {
+      "component": "区域",
+      "key": "d4fcfa861f515abb42d56db7d4fcbe7e8c6da55a",
+      "description": "建筑",
+      "id": "TreeArea"
+    },
+    {
+      "component": "自定义区域",
+      "key": "0df6f8284d2ad4050bfddcc14964550b1c6015e2",
+      "description": "区域 自定义 范围",
+      "id": "TreeUserDefinedArea"
+    },
+    {
+      "component": "组织（树）",
+      "key": "7d040e920da3e2d6b322e3f61e956a7a222d26b5",
+      "description": "机构 单位 部门",
+      "id": "TreeOrganization"
+    },
+    {
+      "component": "防区",
+      "key": "2c3e80e4efcb054cf0207d60a23c409f7996bd64",
+      "description": "墙 防火墙",
+      "id": "TreeZone"
+    },
+    {
+      "component": "可视域",
+      "key": "6536abad713876a5f645e9f87c364cd2060b5574",
+      "description": "眼睛 视野",
+      "id": "TreeFieldOfView"
+    },
+    {
+      "component": "地图",
+      "key": "46201d78045b465d1b6ae119ed5baf5dd14e9c17",
+      "description": "map 位置 地理",
+      "id": "TreeMap"
+    },
+    {
+      "component": "GIS地图",
+      "key": "21d32ff8ecf62a44da693a9b0e898f4e20628f9c",
+      "description": "地理信息 map 位置",
+      "id": "TreeGISMap"
+    },
+    {
+      "component": "中大型车",
+      "key": "c8aea87ebc8c3b22bbea9f713cac6a3a54aae27a",
+      "description": "车辆 大车 货车",
+      "id": "TreeMiddleLargeSizeVehicle"
+    },
+    {
+      "component": "车队",
+      "key": "40291e13f49e19c43534af285a76e0665bdf34f9",
+      "description": "车辆 编组 fleet",
+      "id": "TreeMotorcade"
+    },
+    {
+      "component": "视图",
+      "key": "9f133bb8b6aad57ee32244949174a581d697080d",
+      "description": "视角 view 画面",
+      "id": "TreeView"
+    },
+    {
+      "component": "源头治超点",
+      "key": "38f7991f79526829b4267ea709bc0c7604f04e5a",
+      "description": "超载 检测 点位",
+      "id": "TreeOverloadControlFromSource"
+    },
+    {
+      "component": "科技治超点",
+      "key": "9ab05cb6a12b24cfeb75129f5bfb540b13ed1fe0",
+      "description": "超载 检测 点位",
+      "id": "TreeOverloadControlByTechnology"
+    },
+    {
+      "component": "车载机具",
+      "key": "fffd9a8c6bfab8062a99e47e796f6414a7f5e527",
+      "description": "设备 车辆 终端",
+      "id": "TreeVehicleDevice"
+    },
+    {
+      "component": "固定治超点",
+      "key": "2d2644ee8810bbe8fc0c34dae0993827b911906d",
+      "description": "超载 检测 点位",
+      "id": "TreeOverloadControlAtFixedLocation"
+    },
+    {
+      "component": "用户",
+      "key": "addac2df50f046cddfd25559527bb1fef701dff1",
+      "description": "人 人员",
+      "id": "TreeUser"
+    },
+    {
+      "component": "用户组",
+      "key": "4a753e1f47fa26f5073b22d20b59113ce462a5c4",
+      "description": "人 人员 用户",
+      "id": "TreeUserGroup"
+    },
+    {
+      "component": "用户自定义",
+      "key": "7fa91facf6f4a3cc59e2ed14d37cf1713222323b",
+      "description": "自定义 用户 设置",
+      "id": "TreeUserDefined"
+    },
+    {
+      "component": "宽高监测点",
+      "key": "7c490c96b76db9415f18144984b126aa354f7088",
+      "description": "检测 尺寸 点位",
+      "id": "TreeMonitoringPointOfWidthAndHeight"
+    },
+    {
+      "component": "司机",
+      "key": "12e29205c3f46721e782c6cbb5cd399dff0349c4",
+      "description": "人 人员 用户",
+      "id": "TreeDriver"
+    },
+    {
+      "component": "标签",
+      "key": "f60d7d0c29cd85dfdb9edbc0434ca998b574276a",
+      "description": "标记 分类 tag",
+      "id": "TreeLabel"
+    },
+    {
+      "component": "事件",
+      "key": "cf563bd6f0db466155db83848b80d03b2fbc7462",
+      "description": "写字板",
+      "id": "TreeEvent"
+    },
+    {
+      "component": "用户自定义事件",
+      "key": "fc343be97911a3f9891b1922123f28e6bf8fa2eb",
+      "description": "写字板 人 人员",
+      "id": "TreeUserDefinedEvent"
+    },
+    {
+      "component": "预置点",
+      "key": "ba4b8a574d2b6e3064f1e784c2d49b68f1e6f82d",
+      "description": "旗子",
+      "id": "TreePreset"
+    },
+    {
+      "component": "停车场",
+      "key": "a834ef746c3ba7af905c8ebcb30aaad7557425d3",
+      "description": "车库 泊车 parking",
+      "id": "TreeParkingLot"
+    },
+    {
+      "component": "地图标记",
+      "key": "825140c7beedf34eedb69899e57893b827752941",
+      "description": "旗子",
+      "id": "TreeMapMarking"
+    },
+    {
+      "component": "许可",
+      "key": "c7d47e00507125b949007725fe8987dbdb7f9edf",
+      "description": "钥匙 盾牌",
+      "id": "TreeLicense"
+    },
+    {
+      "component": "地图链接",
+      "key": "e580d68c0345b5d21b4a2a5f8338f40d923ba190",
+      "description": "map 关联 位置",
+      "id": "TreeMapLink"
+    },
+    {
+      "component": "空调",
+      "key": "7e1813262b484f1d33fc592823d6e2be739f172d",
+      "description": "制冷 温控 设备",
+      "id": "TreeAirConditioner"
+    },
+    {
+      "component": "停车场子库",
+      "key": "9ce2d897fba7db62c4008e724f137ccc5f2f6740",
+      "description": "车库 分区 parking",
+      "id": "TreeChildParkingLot"
+    },
+    {
+      "component": "车道",
+      "key": "3f394fa1164b04bdb25c02bba0c74e98b3221294",
+      "description": "马路 公路",
+      "id": "TreeLane"
+    },
+    {
+      "component": "楼层",
+      "key": "4af3b1337e4e920cd7dbb2bfa7832184a1125c90",
+      "description": "楼梯",
+      "id": "TreeFloor"
+    },
+    {
+      "component": "通用传感器",
+      "key": "1875e9ee3166386d78cde1e4d51967702c8fb1f7",
+      "description": "感应 检测 sensor",
+      "id": "TreeSensor"
+    },
+    {
+      "component": "出入口",
+      "key": "c56dadab4ee3305849dbea23944385eb374b83a9",
+      "description": "道闸",
+      "id": "TreeEntranceAndExit"
+    },
+    {
+      "component": "环境量",
+      "key": "de172988d9055594d68d7768a83b2d8ec5ef3a02",
+      "description": "水滴 humidity 湿度",
+      "id": "TreeEnvironmentalVariable"
+    },
+    {
+      "component": "电量",
+      "key": "942324a80dff77f776cab2875f89452b096e95a1",
+      "description": "闪电",
+      "id": "TreePower"
+    },
+    {
+      "component": "温度",
+      "key": "5f9c01a96cf95cd1f0b5c526ba2ae1a0836f8589",
+      "description": "温度计",
+      "id": "TreeTemperature"
+    },
+    {
+      "component": "水位",
+      "key": "1fe375cf954606ea72f0338573e22776c64535e6",
+      "description": "水滴",
+      "id": "TreeWaterLevel"
+    },
+    {
+      "component": "风速",
+      "key": "26f63369385582a9089e9be89e08f036d67dcaa7",
+      "description": "气象 风力 环境",
+      "id": "TreeWindSpeed"
+    },
+    {
+      "component": "危险",
+      "key": "dc7006f45fb40fb51976cdcde9a2d3e523d1fd6e",
+      "description": "poisonous 有毒气体 毒品 死亡 骷髅",
+      "id": "TreePoisonousGas"
+    },
+    {
+      "component": "变压器",
+      "key": "d70fa60779eeaf898891a786940ed6d1ee8d1468",
+      "description": "电力 设备 电压",
+      "id": "TreeTransformer"
+    },
+    {
+      "component": "监控点",
+      "key": "a935b334e746bf93608792faf7b9e954cf813e8c",
+      "description": "镜头",
+      "id": "TreeCamera"
+    },
+    {
+      "component": "球机",
+      "key": "16754c6e721097564a10cb819e2979d97bf81540",
+      "description": "监控",
+      "id": "TreeSpeedDome"
+    },
+    {
+      "component": "不间断电源",
+      "key": "a30d97068ee0355b07dec1adbb986b45fafde44b",
+      "description": "闪电",
+      "id": "TreeUninterruptiblePowerSupply"
+    },
+    {
+      "component": "枪机",
+      "key": "741b5b42d9f9b512a5be64beb4b4d9f49475f93e",
+      "description": "监控",
+      "id": "TreeBoxCamera"
+    },
+    {
+      "component": "枪球一体机",
+      "key": "d7e36c870bb86b43686aa89aeb57c265e0951777",
+      "description": "监控",
+      "id": "TreeSmartLinkageSystem"
+    },
+    {
+      "component": "带云台枪机",
+      "key": "94a23af18cf2e5b04edd8acf1c527c7d455e904e",
+      "description": "监控",
+      "id": "TreeBoxCameraWithPtz"
+    },
+    {
+      "component": "半球",
+      "key": "b790c8317f6c0eb106f72dce252b35401419633b",
+      "description": "监控",
+      "id": "TreeDomeCamera"
+    },
+    {
+      "component": "人员密度",
+      "key": "e251ec235d7a69139ab4e9bcda8c0cae98aa8a03",
+      "description": "人流 拥挤 统计",
+      "id": "TreePeopleDensityDetectionCamera"
+    },
+    {
+      "component": "枪球一体化探针",
+      "key": "9b6bd5700804628333a093d009acdde8234d278a",
+      "description": "摄像机 检测 设备",
+      "id": "TreeSmartLinkageSystemProbe"
+    },
+    {
+      "component": "鹰眼",
+      "key": "bb73ec2c22b52e89c076ff7c037e52d0909f384e",
+      "description": "监控",
+      "id": "TreePanovuCamera"
+    },
+    {
+      "component": "卡口",
+      "key": "eddfe9f6d8eff3e716e8c49654c6135149fc7f54",
+      "description": "路口 抓拍 监控",
+      "id": "TreeMonitoringPoint"
+    },
+    {
+      "component": "设备",
+      "key": "c2c4f9e3f5e169bfdc597b1d1a16f6b087280fad",
+      "description": "装置 硬件 终端",
+      "id": "TreeDevice"
+    },
+    {
+      "component": "设备为耳机",
+      "key": "26848b548c3ed73326394a95c4672e1db82f80f9",
+      "description": "耳机 音频 设备",
+      "id": "TreeHeadset"
+    },
+    {
+      "component": "独立型监控点探针",
+      "key": "237c44d19bdc04130d097184c43eed60212c714b",
+      "description": "检测 监控 设备",
+      "id": "TreeCameraProbe"
+    },
+    {
+      "component": "设备话筒",
+      "key": "a669c6ef4fe4f7a8a391874541dc31f003e4476c",
+      "description": "麦克风 语音 设备",
+      "id": "TreeMicrophone"
+    },
+    {
+      "component": "梯控设备",
+      "key": "ac30043db77953f7e8b509416e8ecf1686bff2f0",
+      "description": "电梯 设备",
+      "id": "TreeElevatorControlDevice"
+    },
+    {
+      "component": "梯控",
+      "key": "b34e3190f9df05c7fe555083644f29e383126cfd",
+      "description": "电梯",
+      "id": "TreeElevatorControl"
+    },
+    {
+      "component": "报警输出",
+      "key": "ef87ae3b39e4578a38c9f8ceda9aeb220e9345a3",
+      "description": "告警 输出 安防",
+      "id": "TreeAlarmOutput"
+    },
+    {
+      "component": "访问权限",
+      "key": "250125cd9bc9099ba7c56ac4918e76b6deb2b493",
+      "description": "授权 permission 门禁",
+      "id": "TreeAccessLevel"
+    },
+    {
+      "component": "门禁设备",
+      "key": "8b5a74fc2ad33893dccbfcafd900a3688b5f89c8",
+      "description": "出入口 通行 安防",
+      "id": "TreeAccessControlDevice"
+    },
+    {
+      "component": "报警输入",
+      "key": "46608f40cbb13c6d2cbcc490d1aa8b004a1d0d13",
+      "description": "告警 输入 安防",
+      "id": "TreeAlarmInput"
+    },
+    {
+      "component": "报警主机",
+      "key": "c60cd4912c07f4cf01d72e0c815ccb5a539bc08e",
+      "description": "告警 主机 安防",
+      "id": "TreeSecurityControlPanel"
+    },
+    {
+      "component": "报警柱",
+      "key": "6307be17bfbcfc9ec3b4906cae31708edecbff41",
+      "description": "求助 一键 安防",
+      "id": "TreePolePanicAlarmStation"
+    },
+    {
+      "component": "门禁",
+      "key": "853f7acd2e043ed36ca58fc7d254c94110e041c3",
+      "description": "出入口 通行 权限 安防",
+      "id": "TreeAccessControl"
+    },
+    {
+      "component": "警灯",
+      "key": "63b4a6121b91a49bb8474701798688285d8a307b",
+      "description": "预警 报警 告警",
+      "id": "TreeAlarm"
+    },
+    {
+      "component": "单兵",
+      "key": "4339d1583dac5b124456db5b9b2693938a9467c9",
+      "description": "执法 便携 设备",
+      "id": "TreeSingleSoldier"
+    },
+    {
+      "component": "POS机",
+      "key": "0b3b2b3619ee28e296aa4fec0993478fb83b6c1c",
+      "description": "收银 支付 终端",
+      "id": "TreePOSTerminal"
+    },
+    {
+      "component": "门口机",
+      "key": "465987a81ce0061a632dc935fd8140b826287895",
+      "description": "对讲 门禁 设备",
+      "id": "TreeDoorStation"
+    },
+    {
+      "component": "围墙机",
+      "key": "4dd0809e3b08b2b6dc2e6c764595376bc1ff5a05",
+      "description": "对讲 周界 设备",
+      "id": "TreeDoorStationWall"
+    },
+    {
+      "component": "车底",
+      "key": "597c49719f005b89a2af120e750cfbac9fdd5537",
+      "description": "底盘 车辆 检测",
+      "id": "TreeUvss"
+    },
+    {
+      "component": "报警盒",
+      "key": "e7185cf0ca0247ec0ee1cb28e120f464ce328eab",
+      "description": "告警 主机 安防",
+      "id": "TreeAlarmSmallBox"
+    },
+    {
+      "component": "报警箱",
+      "key": "ee39380d9285e0d190292875b17f746ec045478c",
+      "description": "告警 主机 安防",
+      "id": "TreeAlarmBox"
+    },
+    {
+      "component": "读卡器",
+      "key": "a592d6d04f66fad898dc7aa283b7963ab90418b3",
+      "description": "刷卡 识别 设备",
+      "id": "TreeCardReader"
+    },
+    {
+      "component": "网关",
+      "key": "86f50bcce84c80470bb3b5044577f917b4a53881",
+      "description": "gateway 网络 设备",
+      "id": "TreeGateway"
+    },
+    {
+      "component": "人证对比",
+      "key": "815868a479e750dfc57fe1dbd8c8e0eefb5266a7",
+      "description": "核验 身份 比对",
+      "id": "TreeFaceAndIdComparison"
+    },
+    {
+      "component": "雷达设备",
+      "key": "7dc87e8951f61ffb7d834b3fe853ea2571d80572",
+      "description": "探测 感应 设备",
+      "id": "TreeRadarDevice"
+    },
+    {
+      "component": "智能锁",
+      "key": "7bcf5666e8f6082070f603c11de5bfe0cfc450e4",
+      "description": "门锁",
+      "id": "TreeIntelligentLock"
+    },
+    {
+      "component": "本地服务器",
+      "key": "748ebcea537aaa17733db7aa52baa9e47b2c9e12",
+      "description": "主机 本地 硬件",
+      "id": "TreeLocalServer"
+    },
+    {
+      "component": "采集站",
+      "key": "28c3a796a1d51c6b52eb8f528c90dfdcf83dd641",
+      "description": "采集 数据 站点",
+      "id": "TreeCollectionStation"
+    },
+    {
+      "component": "智能分析服务器",
+      "key": "14b6a8f7ec0736086f856dd0ecc8b21953cbb7a0",
+      "description": "ai 主机 分析",
+      "id": "TreeIntelligentAnalysisServer"
+    },
+    {
+      "component": "车辆",
+      "key": "75f8e4a11d0933c804a1aabfeca2a6f96795714a",
+      "description": "汽车 机动车 car",
+      "id": "TreeVehicle"
+    },
+    {
+      "component": "场景轮巡切换计划",
+      "key": "e6a8802be7a907854578df0fcba34ac24f8881c6",
+      "description": "轮巡 场景 计划",
+      "id": "TreeScenePatrolSwitchPlan"
+    },
+    {
+      "component": "场景计划",
+      "key": "15e759171580419b2f6297f83bb7ef9d7854a217",
+      "description": "场景 任务 计划",
+      "id": "TreeScenePlan"
+    },
+    {
+      "component": "执法记录仪",
+      "key": "fb00142c46a2388c98eb7ac883bc635a657c463d",
+      "description": "执法 记录 设备",
+      "id": "TreeLawRecorder"
+    },
+    {
+      "component": "安全审计服务器",
+      "key": "53f5d516b197747f305bb63bbf54a9aaf40e8f80",
+      "description": "审计 安全 主机",
+      "id": "TreeSecurityAuditServer"
+    },
+    {
+      "component": "不同角度画面",
+      "key": "3b5a128013eedb5b89fd303c087a93a8a4ac1ea4",
+      "description": "多视角 画面 视图",
+      "id": "TreeMultiAngleView"
+    },
+    {
+      "component": "轮巡",
+      "key": "ab4cd290f73edac5f596e0b669a39fd070463734",
+      "description": "巡检 循环 切换",
+      "id": "TreePatrol"
+    },
+    {
+      "component": "LCD屏幕",
+      "key": "f6b9838dee9ca5e69dd3f929e65d61d12ca1d968",
+      "description": "显示器 液晶 屏",
+      "id": "TreeLCDScreen"
+    },
+    {
+      "component": "LED屏幕",
+      "key": "4cbdc101c44ebd1606a47889f97ba49bc5d7768e",
+      "description": "显示器 发光 屏",
+      "id": "TreeLEDScreen"
+    },
+    {
+      "component": "电视墙",
+      "key": "5e8363f7060358c97664e5af19b129194260b94f",
+      "description": "大屏 显示 监控",
+      "id": "TreeVideoWall"
+    },
+    {
+      "component": "车间",
+      "key": "f28f54a8d42db3b70be07b6c793b1f3e477a9ea9",
+      "description": "厂房 生产 工厂",
+      "id": "TreeWorkshop"
+    },
+    {
+      "component": "火车站",
+      "key": "529345726911e1ee401c739cfd48fda708c479e6",
+      "description": "车站 铁路 交通",
+      "id": "TreeRailwayStation"
+    },
+    {
+      "component": "教室",
+      "key": "0794117e6e93341ee0b9ddec866e8afb95085a1f",
+      "description": "课室 教学 学校",
+      "id": "TreeClassroom"
+    },
+    {
+      "component": "机场",
+      "key": "73d1bc4ce18bdad1ea436d762e56e4d5df4f41bf",
+      "description": "飞机",
+      "id": "TreeAirport"
+    },
+    {
+      "component": "雷达防区",
+      "key": "6bcaba1e6d06e62c97c2bf17a0f5a174fd9e48e5",
+      "description": "探测 区域 安防",
+      "id": "TreeRadarZone"
+    },
+    {
+      "component": "反潜回组",
+      "key": "d7c44ff04b7f5e6ec875cc8ab17734d03f79cf88",
+      "description": "门禁 分组 通行",
+      "id": "TreeAntiSubmarineLoopGroup"
+    },
+    {
+      "component": "路径分析组",
+      "key": "9c5a45f7304b7c8441a3a43fe3117fbd9ca58bfc",
+      "description": "轨迹 分析 分组",
+      "id": "TreePathAnalysisGroup"
+    },
+    {
+      "component": "报警组",
+      "key": "41741959555b0bbc77cd3638d1650422b0773f87",
+      "description": "告警 分组 安防",
+      "id": "TreeAlarmGroup"
+    },
+    {
+      "component": "子系统组",
+      "key": "417c6dfee00983153bbd3f3dc54d47257dc2b3fe",
+      "description": "系统 分组 模块",
+      "id": "TreeSubsystemGroup"
+    },
+    {
+      "component": "门禁组",
+      "key": "ec2f6f641106b9dacbef59b9062e80f941d7baa7",
+      "description": "出入口 分组 通行",
+      "id": "TreeAccessControlGroup"
+    },
+    {
+      "component": "热度分析组",
+      "key": "3425e52ce289afe7231d24f19231d6095d37fc16",
+      "description": "热力 分析 分组",
+      "id": "TreeHeatAnalysisGroup"
+    },
+    {
+      "component": "多门互锁组",
+      "key": "8c9e7ab4153b6dcc2d79839f4dad2f570c4a0ee2",
+      "description": "门禁 联动 分组",
+      "id": "TreeMultiDoorInterlockGroup"
+    },
+    {
+      "component": "人员分析组",
+      "key": "ab2db6f7d7fc3439d92cca077fa8b46c6fdb4359",
+      "description": "人员 分析 分组",
+      "id": "TreePeopleAnalysisGroup"
+    },
+    {
+      "component": "噪音",
+      "key": "b0d2a66f0922272a0d0a97d987e1fac21f510994",
+      "description": "喇叭",
+      "id": "TreeNoise"
+    },
+    {
+      "component": "人员属性分析组",
+      "key": "3a3de44eb38c38db194c2c57ce759fdfb4711599",
+      "description": "人员 属性 分组",
+      "id": "TreePeopleAttributeAnalysisGroup"
+    },
+    {
+      "component": "排队",
+      "key": "05c5d32f1ce264c61dd525fd3604e1574d8e6e62",
+      "description": "队列 等候 人流",
+      "id": "TreeQueue"
+    },
+    {
+      "component": "人数统计",
+      "key": "83e68e53d1a5097f6b6c13714f02171f04bac17e",
+      "description": "客流 计数 统计",
+      "id": "TreePeopleCountStatistics"
+    },
+    {
+      "component": "教师",
+      "key": "dd627e7305b291fccf6b9f1d0e8a9c590907723d",
+      "description": "人",
+      "id": "TreeTeacher"
+    },
+    {
+      "component": "班级",
+      "key": "1cee563b576c122ec073f45cf933dccfa0ef9027",
+      "description": "课堂 黑板",
+      "id": "TreeClass"
+    },
+    {
+      "component": "大厅",
+      "key": "7e5119af83a41945add10cf48a76b4fae34b6e3b",
+      "description": "门 大门",
+      "id": "TreeHall"
+    },
+    {
+      "component": "信号灯",
+      "key": "3c276235f75b91788a529d0297fd1ad895512c49",
+      "description": "红绿灯",
+      "id": "TreeTrafficLight"
+    },
+    {
+      "component": "井盖",
+      "key": "17acd43367b68bcdb277fee4e2b8d563be9a5afd",
+      "description": "窨井 市政 设施",
+      "id": "TreeManholeCover"
+    },
+    {
+      "component": "配置规则",
+      "key": "40b268b0b77647d0eaa13bbcfaa6aa3539c98b78",
+      "description": "策略 设置 规则",
+      "id": "TreeConfigRule"
+    },
+    {
+      "component": "探测器",
+      "key": "94f58e727c356a300be9a38aa52d76b0ec0e92a6",
+      "description": "红外检测装置",
+      "id": "TreeDetector"
+    },
+    {
+      "component": "可变车道",
+      "key": "8cb27f2a9728476434a3e4fa9352e67f0e114071",
+      "description": "可变马路 可变公路",
+      "id": "TreeVariableLane"
+    },
+    {
+      "component": "诱导屏",
+      "key": "f78e966865ff02d9e240bc42414d3b11e69908ed",
+      "description": "引导 显示 屏幕",
+      "id": "TreeGuidanceScreen"
+    },
+    {
+      "component": "医院",
+      "key": "e675305ae3299e648f356d2f6c84bf1fb353d471",
+      "description": "医疗",
+      "id": "TreeHospital"
+    },
+    {
+      "component": "车牌",
+      "key": "d7578d3cd144cbff2bb2eff6af009b659584932b",
+      "description": "车牌",
+      "id": "TreeLicensePlate"
+    },
+    {
+      "component": "资源组",
+      "key": "b25cd3d2559246e73f52910fb692b053fb6ef57b",
+      "description": "素材 分组 resource",
+      "id": "TreeResourceGroup"
+    },
+    {
+      "component": "手铐",
+      "key": "c22b1400590f910f411cdc2fd2e10c93b421a1ef",
+      "description": "拘束 警用 抓捕",
+      "id": "TreeHandcuffs"
+    },
+    {
+      "component": "定位",
+      "key": "5fe17bec69298879bdb29dd3c5cf6e6c979e3512",
+      "description": "点位",
+      "id": "TreeLocation"
+    },
+    {
+      "component": "交换机",
+      "key": "ca8d0f8805d0848981adf5e8dd99218b419bc42b",
+      "description": "switch 网络 设备",
+      "id": "TreeSwitch"
+    },
+    {
+      "component": "路由器",
+      "key": "3a8e59e9bc96f1b90917ced31b2a08dd3a7209c7",
+      "description": "router 网络 设备",
+      "id": "TreeRouter"
+    },
+    {
+      "component": "可视对讲",
+      "key": "12216b26d038a837932038725a91854ea94b4597",
+      "description": "对讲 视频 门禁",
+      "id": "TreeVideoIntercom"
+    },
+    {
+      "component": "编码设备",
+      "key": "ffbde10d215e6a0041e9ebe4d09228a2033dc8fa",
+      "description": "编码器 视频 设备",
+      "id": "TreeEncodingDevice"
+    },
+    {
+      "component": "闪光灯",
+      "key": "7c19d1514e0295b932ab1a5196d45418ed391a6a",
+      "description": "补光 拍照 灯光",
+      "id": "TreeFlashlight"
+    },
+    {
+      "component": "解码设备",
+      "key": "982b7018ba99d438cd82b0b416963c12db5adb82",
+      "description": "解码器 视频 设备",
+      "id": "TreeDecodingDevice"
+    },
+    {
+      "component": "补光灯",
+      "key": "fa21e37bfbcfb3105d976668c11319740627bdec",
+      "description": "照明 灯光 补光",
+      "id": "TreeFillLight"
+    },
+    {
+      "component": "杆塔",
+      "key": "987d393d2af9533a64c4341683e94f7ea20c23ee",
+      "description": "电力 铁塔 杆",
+      "id": "TreeTower"
+    },
+    {
+      "component": "线路",
+      "key": "435727d620bbc3b2a8c25eb1474386bdcdd4bd7a",
+      "description": "电路 线缆 路线",
+      "id": "TreeLine"
+    },
+    {
+      "component": "电气温度",
+      "key": "ca12232b6235a48588d06b2a2a63b3a4670e0030",
+      "description": "测温 电力 温度",
+      "id": "TreeElectricalTemperature"
+    },
+    {
+      "component": "水",
+      "key": "9886cdf011948dc70afb0b2aa070f6dffdd01ac5",
+      "description": "水源",
+      "id": "TreeWater"
+    },
+    {
+      "component": "消防栓",
+      "key": "ee7041bc478d264c80ad5ecf3e8d0da2904302f6",
+      "description": "灭火 消防 设施",
+      "id": "TreeFireHydrant"
+    },
+    {
+      "component": "虚拟防区",
+      "key": "3c2e3ccb88ebf74d09f4c8c4cf5bc624cc82b72d",
+      "description": "区域 安防 虚拟",
+      "id": "TreeVirtualZone"
+    },
+    {
+      "component": "地区",
+      "key": "8bd111168cd6340e91b7ff9d31f55535a57fe6ba",
+      "description": "区域 地域 region",
+      "id": "TreeRegion"
+    },
+    {
+      "component": "防护",
+      "key": "acb8cc9aa203af595b7de07e90c155db2db928bd",
+      "description": "保护 安全 防御",
+      "id": "TreePartition"
+    },
+    {
+      "component": "福利彩票",
+      "key": "aff2905be34deb9528e690ae51f9f70f00e2d13d",
+      "description": "投注站 福利彩票站",
+      "id": "TreeWelfareLottery"
+    },
+    {
+      "component": "群组（树）",
+      "key": "bed7a87ef821f1d8bc5d6887d2d6b4c0863c296c",
+      "description": "文件夹 分组性质",
+      "id": "TreeGroup"
+    }
+  ],
+  "feedback": [
+    {
+      "component": "警告提示-小",
+      "key": "9b0e74f605a89448a58ba2928660ab765b92f38e",
+      "description": "告警 warning 提醒",
+      "id": "FeedbackWarningSm"
+    },
+    {
+      "component": "成功提示-小",
+      "key": "54f47b3a7cc76703ef408dede68705ff2cc4227e",
+      "description": "完成 success 正确",
+      "id": "FeedbackSuccessSm"
+    },
+    {
+      "component": "信息提示-小",
+      "key": "91e93de6110e12758915f13f8f65633f19a081dc",
+      "description": "消息 info 通知",
+      "id": "FeedbackInfoSm"
+    },
+    {
+      "component": "错误提示-小",
+      "key": "7d51f0d639c7ea283b092daf42ef8b4586f96a9e",
+      "description": "失败 error 异常",
+      "id": "FeedbackErrorSm"
+    },
+    {
+      "component": "警告提示",
+      "key": "c3894fc71315f0ed6a41ac049f47eb290a574caa",
+      "description": "告警 warning 提醒",
+      "id": "FeedbackTipWarning"
+    },
+    {
+      "component": "成功提示",
+      "key": "7b0c0201ecd1c7038462b8f78f5d3f8350876c4d",
+      "description": "完成 success 正确",
+      "id": "FeedbackTipRight"
+    },
+    {
+      "component": "说明提示",
+      "key": "36dd6d6a4b8b782d4cdd72c5e1edc272c895a963",
+      "description": "消息 info 通知",
+      "id": "FeedbackTipInfo"
+    },
+    {
+      "component": "错误提示",
+      "key": "b08a84eac6df1146f42b606134b362b5f6100f5f",
+      "description": "失败 error 异常",
+      "id": "FeedbackTipError"
+    }
+  ]
+}

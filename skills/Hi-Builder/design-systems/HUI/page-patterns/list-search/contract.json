@@ -1,0 +1,22 @@
+{
+  "schema_version": "hui-page-pattern.v1",
+  "id": "hui.page-pattern.list-search",
+  "name": "列表检索页",
+  "zones": ["filter", "toolbar", "content", "pagination"],
+  "component_patterns": [
+    "filter.search-form",
+    "toolbar.action-toolbar",
+    "table.data-table",
+    "pagination.page-navigation"
+  ],
+  "geometry_roles": {
+    "page-min-width": "1180px",
+    "control-inline-gap": "var(--h-space-xs)",
+    "section-gap": "var(--h-space-sm)",
+    "page-inline-padding": "var(--h-space-sm)"
+  },
+  "fixed_behavior": {
+    "content_fill_remaining_height": true,
+    "pagination_position": "bottom"
+  }
+}

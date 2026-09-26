@@ -1,0 +1,156 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "checkbox",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/form/checkbox",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/basic-form.docs.json",
+    "evidence_sha256": "ce35467cfa4317a06d0d65dd9e415328669f0c6711f32417ce27edc1af71cbe7"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-checkbox": {
+      "props": [
+        {
+          "参数": "label",
+          "说明": "选中状态的值（只有在checkbox-group或者绑定对象类型为array时有效）",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "label"
+        },
+        {
+          "参数": "true-label",
+          "说明": "选中时的值",
+          "类型": "string, number",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "true-label"
+        },
+        {
+          "参数": "false-label",
+          "说明": "没有选中时的值",
+          "类型": "string, number",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "false-label"
+        },
+        {
+          "参数": "show-label",
+          "说明": "是否显示 label 值",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "show-label"
+        },
+        {
+          "参数": "name",
+          "说明": "原生 name 属性",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "name"
+        },
+        {
+          "参数": "disabled",
+          "说明": "按钮禁用",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "checked",
+          "说明": "当前是否勾选",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "checked"
+        },
+        {
+          "参数": "indeterminate",
+          "说明": "设置 indeterminate 状态，只负责样式控制",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "indeterminate"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "change",
+          "说明": "当绑定值变化时触发的事件",
+          "回调参数": "更新后的值,event 事件对象(若放于 checkbox-group 则返回 undefined)",
+          "template_name": "change"
+        }
+      ],
+      "slots": [],
+      "methods": []
+    },
+    "el-checkbox-group": {
+      "props": [
+        {
+          "参数": "size",
+          "说明": "Checkbox 按钮组尺寸",
+          "类型": "string",
+          "可选值": "large, small",
+          "默认值": "—",
+          "template_name": "size"
+        },
+        {
+          "参数": "fill",
+          "说明": "按钮激活时的填充色和边框色",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "#20a0ff",
+          "template_name": "fill"
+        },
+        {
+          "参数": "text-color",
+          "说明": "按钮激活时的文本颜色",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "#ffffff",
+          "template_name": "text-color"
+        },
+        {
+          "参数": "min",
+          "说明": "可被勾选的 checkbox 的最小数量",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "0",
+          "template_name": "min"
+        },
+        {
+          "参数": "max",
+          "说明": "可被勾选的 checkbox 的最大数量",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "max"
+        },
+        {
+          "参数": "type",
+          "说明": "选中时的样式：default/simple",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "default",
+          "template_name": "type"
+        },
+        {
+          "参数": "vertical",
+          "说明": "checkbox 是否垂直排列：default/false",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "vertical"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

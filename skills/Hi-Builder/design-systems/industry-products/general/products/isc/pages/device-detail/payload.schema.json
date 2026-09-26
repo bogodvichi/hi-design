@@ -1,0 +1,91 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "general.isc.device-detail.payload.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["options", "content"],
+  "properties": {
+    "options": {"type": "object", "additionalProperties": false},
+    "content": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "device": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "status", "communication", "monitorTitle"],
+          "properties": {
+            "name": {"type": "string"},
+            "status": {"type": "string"},
+            "communication": {"type": "string"},
+            "monitorTitle": {"type": "string"}
+          }
+        },
+        "tabs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "value"],
+            "properties": {
+              "label": {"type": "string"},
+              "value": {"type": "string"}
+            }
+          }
+        },
+        "thumbnails": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "label", "src", "image"],
+            "properties": {
+              "id": {"type": "string"},
+              "label": {"type": "string"},
+              "src": {"type": "string"},
+              "image": {"type": "string"}
+            }
+          }
+        },
+        "monitorPoints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "name", "value"],
+            "properties": {
+              "id": {"type": "string"},
+              "name": {"type": "string"},
+              "value": {"type": "string"}
+            }
+          }
+        },
+        "deviceInfo": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "value"],
+            "properties": {
+              "label": {"type": "string"},
+              "value": {"type": "string"}
+            }
+          }
+        },
+        "metrics": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["label", "value"],
+            "properties": {
+              "label": {"type": "string"},
+              "value": {"type": "string"}
+            }
+          }
+        },
+        "quickTags": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

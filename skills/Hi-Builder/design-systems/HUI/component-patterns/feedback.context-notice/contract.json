@@ -1,0 +1,13 @@
+{
+  "schema_version": "hui-component-pattern.v2",
+  "id": "feedback.context-notice",
+  "name": "上下文说明条",
+  "split_mode": "composite",
+  "vue_component": "ContextNotice",
+  "description": "组合当前业务上下文的提示说明和相关快捷操作",
+  "category": "feedback",
+  "status": "active",
+  "use_when": ["页面区域需要持续展示规则说明、继承关系或操作提示"],
+  "hui_components": ["el-alert", "el-button", "el-radio-group", "el-radio-button"],
+  "owner": "hui-common"
+}

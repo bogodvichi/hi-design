@@ -1,0 +1,854 @@
+﻿/* ReviewAddModal — 发起评审 Modal 自包含样式。
+ *
+ * 复用 ReviewListModal 的画框结构与全局 token / 关键帧。表单分两组上下排列：
+ * 第一组（评审类型 / 项目 / 评审名称 / 预计结束日期 / 评审备注），
+ * 第二组（评审子类型 / 评审稿 / 评审组长 / 作者 / 核心评委 / 团队评委 / 抄送）。
+ * 每组内项从左到右自动换行，每项占容器一半宽。z-index 高于 ReviewListModal（1700）以叠加。 */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1750;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(28, 27, 26, 0.42);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  -webkit-app-region: no-drag;
+  animation: fade-in 160ms ease-out;
+}
+
+.shell {
+  width: 92vw;
+  height: 90vh;
+  max-width: 1180px;
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  animation: pop-in 220ms cubic-bezier(0.21, 1.02, 0.73, 1);
+}
+
+.head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 24px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.headMain {
+  min-width: 0;
+}
+.kicker {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.title {
+  margin: 4px 0 0;
+  font-size: 20px;
+  letter-spacing: -0.01em;
+  font-weight: 650;
+}
+.closeBtn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  transition:
+    background 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.closeBtn:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+/* ── 表单区：两组上下排列，纵向滚动 ── */
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 18px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  scrollbar-width: thin;
+}
+
+.group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  min-width: 0;
+}
+
+/* 组间分隔线 */
+.groupDivider {
+  flex-shrink: 0;
+  width: 100%;
+  height: 0;
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0;
+  padding: 0;
+}
+
+/* ── form-item：label 在上、控件在下 ── */
+.item {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+  width: calc(50% - 7px); /* gap 折半：每组横向 gap 14px，两列等宽 */
+}
+.itemLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 96px;
+  padding-top: 8px;
+}
+.req {
+  color: #d14343;
+}
+.itemHint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.itemControl {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.itemError {
+  font-size: 12px;
+  color: #d14343;
+  min-height: 16px; /* 预留一行错误高度，避免显示/隐藏时表单跳动 */
+  line-height: 16px;
+}
+
+/* 控件在 itemControl 内铺满宽度 */
+.itemControl > .input,
+.itemControl > .textarea,
+.itemControl > .select,
+.itemControl > .radioRow,
+.itemControl > .acWrap,
+.itemControl > .uploadArea {
+  width: 100%;
+}
+
+/* 评审子类型内联（紧跟评审名称控件，无 label，固定宽，不换行） */
+.subtypeInline {
+  flex: 0 0 140px !important;
+  width: 140px;
+  white-space: nowrap;
+}
+
+/* 内联行：评审名称 + 子类型并排 */
+.inlineRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.inlineRow > .input,
+.inlineRow > .select {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* radio 组 */
+.radioRow {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  height: 34px;
+  align-items: center;
+}
+.radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.radio input {
+  margin: 0;
+  cursor: pointer;
+}
+
+/* 通用 input / textarea / select */
+.input,
+.textarea,
+.select {
+  width: auto;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+  box-sizing: border-box;
+}
+.input:focus,
+.textarea:focus,
+.select:focus {
+  border-color: var(--border-strong, var(--border));
+}
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--text-muted);
+}
+.textarea {
+  height: auto;
+  min-height: 100px;
+  padding: 8px 10px;
+  resize: vertical;
+  line-height: 1.5;
+  font-family: inherit;
+}
+.select {
+  cursor: pointer;
+  appearance: none;
+}
+
+/* ── autocomplete 下拉：项目 / 人员 ── */
+.acWrap {
+  position: relative;
+  min-width: 0;
+}
+.acInput {
+  width: 100%;
+  height: 34px;
+  padding: 0 32px 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.acInput:focus {
+  border-color: var(--border-strong, var(--border));
+}
+.acInput::placeholder {
+  color: var(--text-muted);
+}
+.acSpinner {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--text-muted);
+  border-radius: 50%;
+  animation: rlmSpin 700ms linear infinite;
+}
+@keyframes rlmSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.acDropdown {
+  position: absolute;
+  top: 38px; /* 紧跟输入框下方（input 高 34px + 4px 间距） */
+  left: 0;
+  right: 0;
+  z-index: 30;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-sm);
+  scrollbar-width: thin;
+}
+.acItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+ transition: background 120ms ease-out;
+ width: 100%;
+}
+.acItem:hover,
+.acItemActive {
+  background: var(--bg-subtle);
+}
+.acItemName {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+}
+.acItemSub {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.acEmpty {
+  padding: 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ── 人员已选框（输入框下方的独立容器）──
+ * 始终渲染一个带边框的框，空态显占位提示，有选中项时平铺标签。
+ * 单选（评审组长）与多选共用同一容器，仅 add 行为不同。 */
+.selectedBox {
+  margin-top: 6px;
+  min-height: 100px;
+  padding: 5px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: flex-start;
+  transition: border-color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.selectedBox:focus-within {
+  border-color: var(--border-strong, var(--border));
+}
+.selectedEmpty {
+  font-size: 12px;
+  color: var(--text-faint);
+  padding: 3px 5px;
+}
+
+/* ── 人员标签：头像首字 + 姓名 + 部门 + X ── */
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  padding: 3px 6px 3px 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-subtle);
+  font-size: 12px;
+  color: var(--text);
+  animation: rlmTagIn 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@keyframes rlmTagIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.tagName {
+  font-weight: 500;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tagSub {
+  font-size: 11px;
+  color: var(--text-muted);
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tagRemove {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background 120ms ease-out,
+    color 120ms ease-out;
+}
+.tagRemove:hover {
+  background: color-mix(in srgb, #d14343 22%, transparent);
+  color: #d14343;
+}
+
+/* ── 评审稿上传区 ── */
+.uploadArea {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 评审稿来源切换 */
+.sourceToggle {
+  display: inline-flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  width: fit-content;
+}
+.sourceBtn {
+  padding: 5px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    background 120ms ease-out,
+    color 120ms ease-out;
+}
+.sourceBtnActive {
+  background: var(--text);
+  color: var(--bg-elevated);
+}
+.uploadDrop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    border-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    background 140ms cubic-bezier(0.23, 1, 0.32, 1);
+  text-align: center;
+  height: 102px;
+}
+.uploadDrop:hover {
+  border-color: var(--border-strong, var(--border));
+  background: var(--bg-subtle);
+}
+.uploadIcon {
+  font-size: 20px;
+}
+.uploadFileRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  font-size: 12px;
+}
+.uploadFileName {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+.uploadReplace {
+  flex-shrink: 0;
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+.uploadReplace:hover {
+  background: var(--bg-subtle);
+}
+
+/* ── 底栏：错误提示 + 确定 / 取消 ── */
+.foot {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 24px;
+  border-top: 1px solid var(--border);
+}
+.footMsg {
+  font-size: 12px;
+  color: var(--text-muted);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.footMsgErr {
+  color: #d14343;
+}
+.footMsgOk {
+  color: #2f9e6f;
+}
+.footActions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  height: 34px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 140ms ease-out;
+}
+.btn:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  border-color: var(--border-strong, var(--border));
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btnPrimary {
+  background: var(--text);
+  color: var(--bg-elevated);
+  border-color: var(--text);
+}
+.btnPrimary:hover:not(:disabled) {
+  background: var(--text);
+  opacity: 0.9;
+}
+
+/* ── 提交中遮罩：覆在 .shell 之上，居中 spinner + 文案 ── */
+.loadingOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  background: color-mix(in srgb, var(--bg-elevated) 72%, transparent);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  animation: fade-in 160ms ease-out;
+}
+.loadingSpinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid var(--border);
+  border-top-color: var(--text-muted);
+  border-radius: 50%;
+  animation: rlmSpin 700ms linear infinite;
+}
+.loadingText {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ── 自定义日期时间选择器（替代原生 datetime-local）── */
+.dtpWrap {
+  position: relative;
+  min-width: 0;
+}
+.dtpTrigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: border-color 140ms var(--ease-out);
+}
+.dtpTrigger:hover {
+  border-color: var(--border-strong, var(--border));
+}
+.dtpTrigger:focus {
+  outline: none;
+  border-color: var(--border-strong, var(--border));
+}
+.dtpTriggerIcon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  color: var(--text-muted);
+}
+.dtpTriggerText {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+.dtpTriggerPlaceholder {
+  color: var(--text-muted);
+}
+.dtpTriggerClear {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 120ms ease-out, color 120ms ease-out;
+}
+.dtpTriggerClear:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+/* 日历面板 */
+.dtpPanel {
+  position: absolute;
+  top: 38px;
+  left: 0;
+  z-index: 40;
+  width: 296px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  animation: dtpFadeIn 160ms var(--ease-out);
+}
+@keyframes dtpFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 面板头：月份导航 */
+.dtpHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 8px;
+}
+.dtpNavBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: var(--radius-xs);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 120ms ease-out, color 120ms ease-out;
+}
+.dtpNavBtn:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+.dtpNavBtn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+.dtpHeadLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  user-select: none;
+}
+
+/* 星期表头 */
+.dtpWeekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  padding: 0 8px 4px;
+}
+.dtpWeekday {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-faint);
+  padding: 4px 0;
+}
+
+/* 日期网格 */
+.dtpDays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  padding: 0 8px 8px;
+}
+.dtpDay {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 120ms ease-out, color 120ms ease-out;
+}
+.dtpDay:hover:not(:disabled) {
+  background: var(--bg-subtle);
+}
+.dtpDay:disabled {
+  color: var(--text-faint);
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+.dtpDayOther {
+  color: var(--text-faint);
+}
+.dtpToday {
+  font-weight: 700;
+}
+.dtpSelected {
+  background: var(--accent);
+  color: var(--bg-elevated);
+}
+.dtpSelected:hover {
+  background: var(--accent-strong);
+}
+
+/* 时间选择区 */
+.dtpTime {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px 10px;
+  border-top: 1px solid var(--border-soft, var(--border));
+}
+.dtpTimeLabel {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+.dtpTimeSelect {
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 140ms var(--ease-out);
+}
+.dtpTimeSelect:focus {
+  border-color: var(--border-strong, var(--border));
+}
+.dtpColon {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* 面板底栏 */
+.dtpFoot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-soft, var(--border));
+}
+.dtpFootBtn {
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 120ms ease-out;
+}
+.dtpFootBtn:hover {
+  background: var(--bg-subtle);
+}
+.dtpFootBtnPrimary {
+  background: var(--accent);
+  color: var(--bg-elevated);
+  border-color: var(--accent);
+}
+.dtpFootBtnPrimary:hover {
+  background: var(--accent-strong);
+}

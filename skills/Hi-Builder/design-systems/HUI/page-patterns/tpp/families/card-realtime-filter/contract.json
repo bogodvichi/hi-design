@@ -1,0 +1,145 @@
+{
+  "schema_version": "hui-page-pattern.v1",
+  "id": "hui.tpp.family.card-realtime-filter",
+  "name": "即时过滤卡片页",
+  "source": {
+    "platform": "HUI-VUE典型页面",
+    "observed_at": "2026-07-31T09:21:23.799Z",
+    "catalog": "../../catalog.json"
+  },
+  "match": [
+    "realtime-filter-card",
+    "卡片页即时过滤",
+    "即时过滤卡片"
+  ],
+  "semantics": [
+    "instant-filter-controls",
+    "selected-filter-state",
+    "typed-card-collection",
+    "pagination"
+  ],
+  "shared_runtime_components": [
+    "el-breadcrumb",
+    "el-breadcrumb-item",
+    "el-button",
+    "el-card",
+    "el-checkable-tag",
+    "el-divider",
+    "el-drawer",
+    "el-dropdown",
+    "el-dropdown-item",
+    "el-input",
+    "el-menu-item",
+    "el-option",
+    "el-pagination",
+    "el-radio-button",
+    "el-radio-group",
+    "el-scrollbar",
+    "el-select",
+    "el-submenu",
+    "el-tag",
+    "h-icon",
+    "h-svg-icon"
+  ],
+  "invariants": {
+    "regions": {
+      "filter_condition": {
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "selected_conditions": {
+        "display": "flex",
+        "position": "relative",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 56
+      },
+      "toolbar": {
+        "display": "flex",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 56
+      },
+      "collection": {
+        "display": "block",
+        "position": "relative",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 2924
+      },
+      "card": {
+        "display": "flex",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "hidden",
+        "overflow_y": "hidden",
+        "height": 131
+      },
+      "card_header": {
+        "display": "block",
+        "position": "static",
+        "padding": "16px 16px 4px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 130
+      },
+      "card_body": {
+        "display": "block",
+        "position": "static",
+        "padding": "0px 16px 4px 8px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 130
+      },
+      "pagination": {
+        "display": "flex",
+        "position": "static",
+        "padding": "0px 12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 56
+      }
+    },
+    "selected_filter_clear_action": {
+      "placement": "after-selected-items",
+      "tone": "brand",
+      "interactive_tone": "brand-stable"
+    },
+    "variant_values_must_come_from_page_contract": true
+  },
+  "variants": [
+    {
+      "id": "hui.tpp.page.card.horizontal-realtime-filter",
+      "name": "水平栏过滤",
+      "contract": "../../pages/card/horizontal-realtime-filter.json",
+      "parameters": {
+        "filter_placement": "horizontal-bar",
+        "trigger": "realtime",
+        "collection_presentation": "data-list"
+      }
+    },
+    {
+      "id": "hui.tpp.page.card.sidebar-realtime-filter",
+      "name": "侧边栏过滤",
+      "contract": "../../pages/card/sidebar-realtime-filter.json",
+      "parameters": {
+        "filter_placement": "left-sidebar",
+        "trigger": "realtime",
+        "collection_presentation": "data-list"
+      }
+    }
+  ]
+}

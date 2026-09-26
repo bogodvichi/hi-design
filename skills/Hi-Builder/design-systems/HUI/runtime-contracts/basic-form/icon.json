@@ -1,0 +1,85 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "icon",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/basic/icon",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/basic-form.docs.json",
+    "evidence_sha256": "ce35467cfa4317a06d0d65dd9e415328669f0c6711f32417ce27edc1af71cbe7"
+  },
+  "documentation_status": "examples-only",
+  "contract_kind": "css-class-and-vue-component",
+  "runtime": {
+    "h-icon": {
+      "props": [],
+      "events": [],
+      "slots": [],
+      "methods": []
+    },
+    "h-feedback-icon": {
+      "props": [],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": [],
+  "d2c_usage": {
+    "official_rules": [
+      "font-class",
+      "icon-v2-component",
+      "inline-svg-in-h-icon",
+      "predefined-svg-in-h-svg-icon"
+    ],
+    "font_class_source_sha256": "96cd8c64d63225932e67a48c4a271f5a942d4d6d43031c4e7b068b998e8e9a90",
+    "verified_font_classes": [
+      "h-icon-add",
+      "h-icon-angle_down_sm",
+      "h-icon-angle_left",
+      "h-icon-angle_right",
+      "h-icon-angle_right_sm",
+      "h-icon-angles_down_sm",
+      "h-icon-angles_up_sm",
+      "h-icon-clock",
+      "h-icon-close",
+      "h-icon-close_f",
+      "h-icon-delete",
+      "h-icon-details",
+      "h-icon-download",
+      "h-icon-edit",
+      "h-icon-enable",
+      "h-icon-export",
+      "h-icon-help",
+      "h-icon-home",
+      "h-icon-import",
+      "h-icon-info_data",
+      "h-icon-info_location",
+      "h-icon-info_time",
+      "h-icon-liveview",
+      "h-icon-lock",
+      "h-icon-menu",
+      "h-icon-menu_leftbar",
+      "h-icon-message",
+      "h-icon-more_verti",
+      "h-icon-picture",
+      "h-icon-qrcode",
+      "h-icon-refresh",
+      "h-icon-restart",
+      "h-icon-search",
+      "h-icon-setting",
+      "h-icon-share",
+      "h-icon-star",
+      "h-icon-switch"
+    ],
+    "font_class_example": "<i class=\"h-icon-edit\"></i>",
+    "icon_v2_example": "<h-icon><add></add></h-icon>",
+    "inline_svg_example": "<h-icon><svg viewBox=\"0 0 32 32\"><path d=\"...\"></path></svg></h-icon>",
+    "predefined_svg_example": "<h-svg-icon><svg-box-camera></svg-box-camera><svg-state-cascade></svg-state-cascade></h-svg-icon>",
+    "svg_icon_resource": "https://pixso.hikvision.com.cn/hik-plugin/ai-builder-web/public/webresources/libs/hui-svg-icon.umd.js",
+    "forbidden": [
+      "el-icon-*",
+      "external-font-icon-css",
+      "duplicate-hui-internal-icon"
+    ]
+  }
+}

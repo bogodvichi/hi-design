@@ -1,0 +1,751 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "table",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/data/table-demo",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/data.docs.json",
+    "evidence_sha256": "1faf13316d3e61002e07073d56ed0739f08ed5e112cba04b1d62b08484a37c71"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-table": {
+      "props": [
+        {
+          "参数": "data",
+          "说明": "静态数据，适用于非异步请求，此时不可分页。若指定了 url 则此参数自动忽略。",
+          "类型": "array",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "data"
+        },
+        {
+          "参数": "height",
+          "说明": "Table 的高度",
+          "类型": "Number",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "height"
+        },
+        {
+          "参数": "max-height",
+          "说明": "Table 的最大高度。当 height 和 max-height 都不指定时表格默认不会美化滚动条，除非你指定了 force-scroll 属性",
+          "类型": "string/number",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "max-height"
+        },
+        {
+          "参数": "force-scroll",
+          "说明": "表格高度自适应时默认不会美化滚动条，但如果在此情况下强制美化滚动条，请指定该属性，此时要求表格的外部容器具有指定高度或自适应高度。你也可以指定为 horizontal 使高度撑满容器的情况下能够美化横向滚动条；指定为 vertical 来使横向滚动条不可见。",
+          "类型": "Boolean,String",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "force-scroll"
+        },
+        {
+          "参数": "stripe",
+          "说明": "是否为斑马纹 table",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "stripe"
+        },
+        {
+          "参数": "border",
+          "说明": "是否带有纵向边框",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "border"
+        },
+        {
+          "参数": "fit",
+          "说明": "列的宽度是否自撑开",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "fit"
+        },
+        {
+          "参数": "show-header",
+          "说明": "是否显示表头",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "show-header"
+        },
+        {
+          "参数": "highlight-current-row",
+          "说明": "是否要高亮当前行",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "highlight-current-row"
+        },
+        {
+          "参数": "current-row-key",
+          "说明": "当前行的 key，只写属性",
+          "类型": "String,Number",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "current-row-key"
+        },
+        {
+          "参数": "row-class-name",
+          "说明": "行的 className 的回调方法，也可以使用字符串为所有行设置一个固定的 className。",
+          "类型": "Function({row, rowIndex})  非兼容  /String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "row-class-name"
+        },
+        {
+          "参数": "row-style",
+          "说明": "行的 style 的回调方法，也可以使用一个固定的 Object 为所有行设置一样的 Style。",
+          "类型": "Function({row, rowIndex})  非兼容  /Object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "row-style"
+        },
+        {
+          "参数": "cell-class-name  2.0+",
+          "说明": "单元格的 className 的回调方法，也可以使用字符串为所有单元格设置一个固定的 className。",
+          "类型": "Function({row, column, rowIndex, columnIndex})/String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "cell-class-name"
+        },
+        {
+          "参数": "cell-style  2.0+",
+          "说明": "单元格的 style 的回调方法，也可以使用一个固定的 Object 为所有单元格设置一样的 Style。",
+          "类型": "Function({row, rowIndex, rowIndex, columnIndex})/Object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "cell-style"
+        },
+        {
+          "参数": "header-row-class-name  2.0+",
+          "说明": "表头行的 className 的回调方法，也可以使用字符串为所有表头行设置一个固定的 className。",
+          "类型": "Function({row, rowIndex})/String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "header-row-class-name"
+        },
+        {
+          "参数": "header-row-style  2.0+",
+          "说明": "表头行的 style 的回调方法，也可以使用一个固定的 Object 为所有表头行设置一样的 Style。",
+          "类型": "Function({row, rowIndex})/Object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "header-row-style"
+        },
+        {
+          "参数": "header-cell-class-name  2.0+",
+          "说明": "表头单元格的 className 的回调方法，也可以使用字符串为所有表头单元格设置一个固定的 className。",
+          "类型": "Function({row, column, rowIndex, columnIndex})/String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "header-cell-class-name"
+        },
+        {
+          "参数": "header-cell-style  2.0+",
+          "说明": "表头单元格的 style 的回调方法，也可以使用一个固定的 Object 为所有表头单元格设置一样的 Style。",
+          "类型": "Function({row, rowIndex, rowIndex, columnIndex})/Object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "header-cell-style"
+        },
+        {
+          "参数": "row-key",
+          "说明": "行数据的 Key，用来优化 Table 的渲染；在使用 reserve-selection 功能的情况下，该属性是必填的。类型为 String 时，支持多层访问：user.info.id，但不支持 user.info[0].id，此种情况请使用 Function。",
+          "类型": "Function(row)/String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "row-key"
+        },
+        {
+          "参数": "empty-text",
+          "说明": "空数据时显示的文本内容，也可以通过 slot=\"empty\" 设置",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "暂无数据",
+          "template_name": "empty-text"
+        },
+        {
+          "参数": "default-expand-all",
+          "说明": "是否默认展开所有行，当 Table 中存在 type=“expand” 的 Column 的时候有效",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "default-expand-all"
+        },
+        {
+          "参数": "expand-row-keys",
+          "说明": "可以通过该属性设置 Table 目前的展开行，需要设置 row-key 属性才能使用，该属性为展开行的 keys 数组。",
+          "类型": "Array",
+          "可选值": "—",
+          "默认值": "",
+          "template_name": "expand-row-keys"
+        },
+        {
+          "参数": "default-sort",
+          "说明": "默认的排序列的 prop 和顺序。它的prop属性指定默认的排序的列，order指定默认排序的顺序",
+          "类型": "Object",
+          "可选值": "order: ascending, descending",
+          "默认值": "如果只指定了prop, 没有指定order, 则默认顺序是 ascending",
+          "template_name": "default-sort"
+        },
+        {
+          "参数": "default-sort-method  2.0+",
+          "说明": "设置数据进行排序时使用的默认排序方法，仅对 sortable 设置为 true 的列有效（设置在列项的 sort-method 属性优先级高于默认排序方法），a、b 为当前排序列相邻行的值，方法需返回一个布尔值",
+          "类型": "Function(a, b)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "default-sort-method"
+        },
+        {
+          "参数": "show-summary",
+          "说明": "是否在表尾显示合计行",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "show-summary"
+        },
+        {
+          "参数": "sum-text",
+          "说明": "合计行第一列的文本",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "合计",
+          "template_name": "sum-text"
+        },
+        {
+          "参数": "summary-method",
+          "说明": "自定义的合计计算方法",
+          "类型": "Function({ columns, data })",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "summary-method"
+        },
+        {
+          "参数": "show-loading",
+          "说明": "分页请求时是否显示等待中的提示信息",
+          "类型": "Boolean",
+          "可选值": "-",
+          "默认值": "true",
+          "template_name": "show-loading"
+        },
+        {
+          "参数": "always-show-bar",
+          "说明": "始终显示滚动条还是鼠标移入才显示",
+          "类型": "Boolean",
+          "可选值": "-",
+          "默认值": "false",
+          "template_name": "always-show-bar"
+        },
+        {
+          "参数": "span-method",
+          "说明": "合并行或列的计算方法。方法的参数是一个对象，里面包含当前行row、当前列column、当前行号rowIndex、当前列号columnIndex四个属性。该函数可以返回一个包含两个元素的数组，第一个元素代表rowspan，第二个元素代表colspan。 也可以返回一个键名为rowspan和colspan的对象。",
+          "类型": "Function({ row, column, rowIndex, columnIndex })",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "span-method"
+        },
+        {
+          "参数": "show-header-overflow",
+          "说明": "当 header 中内容过长被隐藏时显示 title",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "show-header-overflow"
+        },
+        {
+          "参数": "show-overflow-tooltip",
+          "说明": "设置所以列内容过长被隐藏时显示 tooltip",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "show-overflow-tooltip"
+        },
+        {
+          "参数": "show-overflow-title",
+          "说明": "设置除自定义列外的所有列内容过长被隐藏时显示 title，若自定义列需要该功能可在各列设置",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "show-overflow-title"
+        },
+        {
+          "参数": "out-border 2.50.0+",
+          "说明": "设置表格外边框;如果是合并表格，建议设置为true",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "out-border"
+        },
+        {
+          "参数": "show-selected-row-bgcolor 2.50.0+",
+          "说明": "设置表格多选选中背景，需要为true，默认为false",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "show-selected-row-bgcolor"
+        },
+        {
+          "参数": "defaultCheckedRowKeys 2.50.0+",
+          "说明": "开始表格多选时，默认表格勾选项",
+          "类型": "Array",
+          "可选值": "—",
+          "默认值": "null",
+          "template_name": "default-checked-row-keys"
+        },
+        {
+          "参数": "show-header-sort-tip 2.53.4+",
+          "说明": "设置表格头部开启sortable时，是否默认呈现自带tooltip，默认为true",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "show-header-sort-tip"
+        },
+        {
+          "参数": "drag-sort 2.61.0+",
+          "说明": "是否开启拖拽排序，row进开启默认排序，row-handler开启带手柄的拖拽排序",
+          "类型": "string",
+          "可选值": "row/row-handler",
+          "默认值": "—",
+          "template_name": "drag-sort"
+        }
+      ],
+      "events": [
+        {
+          "事件名": "select",
+          "说明": "当用户手动勾选数据行的 Checkbox 时触发的事件",
+          "参数": "selection, row",
+          "template_name": "select"
+        },
+        {
+          "事件名": "select-all",
+          "说明": "当用户手动勾选全选 Checkbox 时触发的事件",
+          "参数": "selection",
+          "template_name": "select-all"
+        },
+        {
+          "事件名": "selection-change",
+          "说明": "当选择项发生变化时会触发该事件",
+          "参数": "selection",
+          "template_name": "selection-change"
+        },
+        {
+          "事件名": "cell-mouse-enter",
+          "说明": "当单元格 hover 进入时会触发该事件",
+          "参数": "row, column, cell, event",
+          "template_name": "cell-mouse-enter"
+        },
+        {
+          "事件名": "cell-mouse-leave",
+          "说明": "当单元格 hover 退出时会触发该事件",
+          "参数": "row, column, cell, event",
+          "template_name": "cell-mouse-leave"
+        },
+        {
+          "事件名": "cell-click",
+          "说明": "当某个单元格被点击时会触发该事件",
+          "参数": "row, column, cell, event",
+          "template_name": "cell-click"
+        },
+        {
+          "事件名": "cell-dblclick",
+          "说明": "当某个单元格被双击击时会触发该事件",
+          "参数": "row, column, cell, event",
+          "template_name": "cell-dblclick"
+        },
+        {
+          "事件名": "row-click",
+          "说明": "当某一行被点击时会触发该事件",
+          "参数": "row, event, column",
+          "template_name": "row-click"
+        },
+        {
+          "事件名": "row-contextmenu",
+          "说明": "当某一行被鼠标右键点击时会触发该事件",
+          "参数": "row, event",
+          "template_name": "row-contextmenu"
+        },
+        {
+          "事件名": "row-dblclick",
+          "说明": "当某一行被双击时会触发该事件",
+          "参数": "row, event",
+          "template_name": "row-dblclick"
+        },
+        {
+          "事件名": "header-click",
+          "说明": "当某一列的表头被点击时会触发该事件",
+          "参数": "column, event",
+          "template_name": "header-click"
+        },
+        {
+          "事件名": "sort-change",
+          "说明": "当表格的排序条件发生变化的时候会触发该事件",
+          "参数": "{ column, prop, order }",
+          "template_name": "sort-change"
+        },
+        {
+          "事件名": "filter-change",
+          "说明": "当表格的筛选条件发生变化的时候会触发该事件，参数的值是一个对象，对象的 key 是 column 的 columnKey，对应的 value 为用户选择的筛选条件的数组。",
+          "参数": "filters",
+          "template_name": "filter-change"
+        },
+        {
+          "事件名": "current-change",
+          "说明": "当表格的当前行发生变化的时候会触发该事件，如果要高亮当前行，请打开表格的 highlight-current-row 属性",
+          "参数": "currentRow, oldCurrentRow",
+          "template_name": "current-change"
+        },
+        {
+          "事件名": "header-dragend",
+          "说明": "当拖动表头改变了列的宽度的时候会触发该事件",
+          "参数": "newWidth, oldWidth, column, event",
+          "template_name": "header-dragend"
+        },
+        {
+          "事件名": "expand-change  非兼容",
+          "说明": "当用户对某一行展开或者关闭的时候会触发该事件",
+          "参数": "row, expandedRows",
+          "template_name": "expand-change"
+        },
+        {
+          "事件名": "on-scrolling-x",
+          "说明": "表格横向滚动时触发事件,参数返回滚动距离和已滚动百分比（百分比为 1 则表示滚动到尽头）",
+          "参数": "两个回参：scrollLeft, percentX",
+          "template_name": "on-scrolling-x"
+        },
+        {
+          "事件名": "on-scrolling-y",
+          "说明": "表格纵向滚动时触发事件,参数返回滚动距离和已滚动百分比（百分比为 1 则表示滚动到尽头）",
+          "参数": "两个回参：scrollTop, percentY",
+          "template_name": "on-scrolling-y"
+        },
+        {
+          "事件名": "on-scrolling",
+          "说明": "表格滚动时触发事件,参数返回滚动距离和已滚动百分比（百分比为 1 则表示滚动到尽头）",
+          "参数": "{scrollLeft, scrollTop, percentX, percentY }",
+          "template_name": "on-scrolling"
+        },
+        {
+          "事件名": "drag-start  2.61.0+",
+          "说明": "当拖拽排序开始时触发的事件, 参数为index为当前拖拽的行索引，event为事件对象",
+          "参数": "{ index, event }",
+          "template_name": "drag-start"
+        },
+        {
+          "事件名": "drag-end  2.61.0+",
+          "说明": "当拖拽排序结束时触发的事件，参数为currentIndex为当前拖拽的行索引，current为当前拖拽的行数据，targetIndex为目标行索引，target为目标行数据，newData为新的数据，event为事件对象",
+          "参数": "{ currentIndex, current, targetIndex, target, newData, event }",
+          "template_name": "drag-end"
+        }
+      ],
+      "slots": [
+        {
+          "name": "append",
+          "说明": "插入至表格最后一行之后的内容，仍然位于 <tbody> 标签内。如果需要对表格的内容进行无限滚动操作，可能需要用到这个 slot。若表格有合计行，该 slot 会位于合计行之上。",
+          "template_name": "append"
+        },
+        {
+          "name": "loading",
+          "说明": "自定义表格“加载中”时的提示",
+          "template_name": "loading"
+        },
+        {
+          "name": "empty",
+          "说明": "自定义表格无数据时的提示",
+          "template_name": "empty"
+        }
+      ],
+      "methods": [
+        {
+          "方法名": "clearSelection",
+          "说明": "用于多选表格，清空用户的选择，当使用 reserve-selection 功能的时候，可能会需要使用此方法",
+          "参数": "selection",
+          "template_name": "clear-selection"
+        },
+        {
+          "方法名": "toggleRowSelection",
+          "说明": "用于多选表格，切换某一行的选中状态，如果使用了第二个参数，则是设置这一行选中与否（selected 为 true 则选中）",
+          "参数": "row, selected",
+          "template_name": "toggle-row-selection"
+        },
+        {
+          "方法名": "toggleRowExpanded  2.0+",
+          "说明": "用于可展开表格，切换某一行的展开状态，如果使用了第二个参数，则是设置这一行展开与否（expanded 为 true 则展开）",
+          "参数": "row, expanded",
+          "template_name": "toggle-row-expanded"
+        },
+        {
+          "方法名": "setCurrentRow",
+          "说明": "用于单选表格，设定某一行为选中行，如果调用时不加参数，则会取消目前高亮行的选中状态。",
+          "参数": "row",
+          "template_name": "set-current-row"
+        },
+        {
+          "方法名": "getData",
+          "说明": "获取表格当前数据，index 为行号且从 0 开始，不传行号则获取当前全部数据。index 超出当前表格行数则逆序按超出长度查找。",
+          "参数": "index",
+          "template_name": "get-data"
+        },
+        {
+          "方法名": "setData",
+          "说明": "修改表格某行数据或多行数据，data 是对象则只修改一行，是数组则表示修改多行，index 表示要修改的表格行起始行号，index 从 0 开始且默认值为 0。index 超出当前表格行数则逆序按超出长度查找。",
+          "参数": "data, index",
+          "template_name": "set-data"
+        },
+        {
+          "方法名": "doLayout",
+          "说明": "触发表格布局重排，一般情况下你不需要去调用，控件内部会适时主动调用。",
+          "参数": "-",
+          "template_name": "do-layout"
+        }
+      ]
+    },
+    "el-table-column": {
+      "props": [
+        {
+          "参数": "type",
+          "说明": "对应列的类型。如果设置了 selection 则显示多选框；如果设置了 radio 则显示单选框 2.0+ ；如果设置了 index 则显示该行的索引（从 1 开始计算）；如果设置了 expand 则显示为一个可展开的按钮；如果设置了 drag 则显示为一个拖拽手柄  2.61.0+",
+          "类型": "string",
+          "可选值": "selection/radio/index/expand/drag",
+          "默认值": "—",
+          "template_name": "type"
+        },
+        {
+          "参数": "column-key",
+          "说明": "column 的 key，如果需要使用 filter-change 事件，则需要此属性标识是哪个 column 的筛选条件",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "column-key"
+        },
+        {
+          "参数": "label",
+          "说明": "显示的标题",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "label"
+        },
+        {
+          "参数": "ishtml",
+          "说明": "是否将 label 解析为 html",
+          "类型": "boolean",
+          "可选值": "true/false",
+          "默认值": "false",
+          "template_name": "ishtml"
+        },
+        {
+          "参数": "prop",
+          "说明": "对应列内容的字段名，也可以使用 property 属性",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "prop"
+        },
+        {
+          "参数": "width",
+          "说明": "对应列的宽度,支持固定宽度和百分比",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "width"
+        },
+        {
+          "参数": "min-width",
+          "说明": "对应列的最小宽度，与 width 的区别是 width 是固定的，min-width 会把剩余宽度按比例分配给设置了 min-width 的列",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "min-width"
+        },
+        {
+          "参数": "fixed",
+          "说明": "列是否固定在左侧或者右侧，true 表示固定在左侧",
+          "类型": "string, boolean",
+          "可选值": "true, left, right",
+          "默认值": "—",
+          "template_name": "fixed"
+        },
+        {
+          "参数": "render-header",
+          "说明": "列标题 Label 区域渲染使用的 Function",
+          "类型": "Function(h, { column, $index })",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "render-header"
+        },
+        {
+          "参数": "sortable",
+          "说明": "对应列是否可以排序，如果设置为 ‘custom’，则代表用户希望远程排序，需要监听 Table 的 sort-change 事件",
+          "类型": "boolean, string",
+          "可选值": "true, false, ‘custom’",
+          "默认值": "false",
+          "template_name": "sortable"
+        },
+        {
+          "参数": "sort-method",
+          "说明": "对数据进行排序的时候使用的方法，仅当 sortable 设置为 true 的时候有效，需返回一个布尔值",
+          "类型": "Function(row1, row2)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "sort-method"
+        },
+        {
+          "参数": "resizable",
+          "说明": "对应列是否可以通过拖动改变宽度",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "resizable"
+        },
+        {
+          "参数": "formatter",
+          "说明": "用来格式化内容",
+          "类型": "Function(row, column, cellValue)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "formatter"
+        },
+        {
+          "参数": "show-overflow-tooltip",
+          "说明": "当内容过长被隐藏时显示 tooltip",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "show-overflow-tooltip"
+        },
+        {
+          "参数": "show-overflow-title",
+          "说明": "当内容过长被隐藏时显示 title",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "show-overflow-title"
+        },
+        {
+          "参数": "align",
+          "说明": "对齐方式",
+          "类型": "String",
+          "可选值": "left/center/right",
+          "默认值": "left",
+          "template_name": "align"
+        },
+        {
+          "参数": "header-align",
+          "说明": "表头对齐方式，若不设置该项，则使用表格的对齐方式",
+          "类型": "String",
+          "可选值": "left/center/right",
+          "默认值": "—",
+          "template_name": "header-align"
+        },
+        {
+          "参数": "class-name",
+          "说明": "列的 className",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "class-name"
+        },
+        {
+          "参数": "label-class-name",
+          "说明": "当前列标题的自定义类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "label-class-name"
+        },
+        {
+          "参数": "selectable",
+          "说明": "对 type=selection/radio 的列有效，类型为 Function，Function 的返回值用来决定这一行的 CheckBox/Radio 是否可以勾选",
+          "类型": "Function(row, index)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "selectable"
+        },
+        {
+          "参数": "reserve-selection",
+          "说明": "仅对 type=selection 的列有效，类型为 Boolean，为 true 则代表会保留之前数据的选项，需要配合 Table 的 clearSelection 方法使用。",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "reserve-selection"
+        },
+        {
+          "参数": "selections  2.0+",
+          "说明": "仅对 type=selection 的列有效，自定义选择配置项，数组格式，数组中的元素需要有 text 、 value 和 onclick 属性，其中 onClick 为点击后的回调函数。",
+          "类型": "Array[{ text, value, onClick }]",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "selections"
+        },
+        {
+          "参数": "filters",
+          "说明": "数据过滤的选项，数组格式，数组中的元素需要有 text 和 value 属性。",
+          "类型": "Array[{ text, value }]",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "filters"
+        },
+        {
+          "参数": "filter-placement",
+          "说明": "过滤弹出框的定位",
+          "类型": "String",
+          "可选值": "与 Tooltip 的 placement 属性相同",
+          "默认值": "—",
+          "template_name": "filter-placement"
+        },
+        {
+          "参数": "filter-multiple",
+          "说明": "数据过滤的选项是否多选",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "filter-multiple"
+        },
+        {
+          "参数": "filter-method",
+          "说明": "数据过滤使用的方法，如果是多选的筛选项，对每一条数据会执行多次，任意一次返回 true 就会显示。",
+          "类型": "Function(value, row, column)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "filter-method"
+        },
+        {
+          "参数": "filtered-value",
+          "说明": "选中的数据过滤项，如果需要自定义筛选的当前选中项，可设置该值，且该值改变会自动触发重新筛选。",
+          "类型": "Array",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "filtered-value"
+        },
+        {
+          "参数": "allow-expand",
+          "说明": "指定展开行是否可被展开，该回调函数的参数有两个，依次是该行数据和行号。",
+          "类型": "Function(row, index)",
+          "可选值": "—",
+          "默认值": "() => true",
+          "template_name": "allow-expand"
+        },
+        {
+          "参数": "drag-icon  2.61.0+",
+          "说明": "仅对 type=drag 的列有效，拖拽排序的图标",
+          "类型": "string,object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "drag-icon"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

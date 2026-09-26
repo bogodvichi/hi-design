@@ -1,0 +1,165 @@
+{
+  "schema_version": "hi-design-rule-ownership.v1",
+  "governed_documents": [
+    "SKILL.md",
+    "references/architecture.md",
+    "references/knowledge-resolution.md",
+    "references/generation-contract.md",
+    "references/hui-vue-runtime-contract.md"
+  ],
+  "navigation_documents": [
+    "README.md"
+  ],
+  "machine_only_literals": [
+    {
+      "literal": "2.7.16",
+      "source": "design-systems/HUI/manifest.json"
+    },
+    {
+      "literal": "2.61.3",
+      "source": "design-systems/HUI/manifest.json"
+    },
+    {
+      "literal": "hui-svg-icon.umd.js",
+      "source": "design-systems/HUI/manifest.json"
+    },
+    {
+      "literal": "single、composite、repeat-item",
+      "source": "design-systems/HUI/component-patterns/catalog.json"
+    },
+    {
+      "literal": "https://pixso.hikvision.com.cn/hik-plugin/ai-builder-web/public/webresources/libs/",
+      "source": "design-systems/HUI/manifest.json"
+    }
+  ],
+  "rules": [
+    {
+      "id": "skill-workflow",
+      "owner": "SKILL.md",
+      "machine_sources": ["scripts/resolve_capabilities.py", "scripts/compile_page.py", "scripts/compile_pattern_page.py", "scripts/validate_page.py", "scripts/validate_pattern_page.py"]
+    },
+    {
+      "id": "skill-maintenance",
+      "owner": "SKILL.md",
+      "machine_sources": ["scripts/validate_skill.py"]
+    },
+    {
+      "id": "mission-and-output-boundary",
+      "owner": "references/architecture.md",
+      "exclusive_literals": [".components.json"]
+    },
+    {
+      "id": "knowledge-ownership",
+      "owner": "references/architecture.md"
+    },
+    {
+      "id": "consumer-boundaries",
+      "owner": "references/architecture.md"
+    },
+    {
+      "id": "source-of-truth-map",
+      "owner": "references/architecture.md",
+      "machine_sources": ["design-systems/catalog.json", "design-systems/HUI/manifest.json"]
+    },
+    {
+      "id": "pipeline-architecture",
+      "owner": "references/architecture.md",
+      "machine_sources": ["scripts/renderer_registry.py", "scripts/core.py"]
+    },
+    {
+      "id": "physical-structure",
+      "owner": "references/architecture.md",
+      "machine_sources": ["design-systems/catalog.json"]
+    },
+    {
+      "id": "resolution-input",
+      "owner": "references/knowledge-resolution.md"
+    },
+    {
+      "id": "knowledge-resolution-order",
+      "owner": "references/knowledge-resolution.md",
+      "machine_sources": ["scripts/resolve_capabilities.py", "scripts/core.py"]
+    },
+    {
+      "id": "capability-bundle",
+      "owner": "references/knowledge-resolution.md",
+      "machine_sources": ["scripts/resolve_capabilities.py"]
+    },
+    {
+      "id": "spec-selection",
+      "owner": "references/knowledge-resolution.md",
+      "machine_sources": ["schemas/page-spec.schema.json", "schemas/pattern-page-spec.schema.json", "scripts/renderer_registry.py"],
+      "exclusive_literals": ["page-spec.v2", "pattern-page-spec.v2"]
+    },
+    {
+      "id": "compiler-resolution",
+      "owner": "references/knowledge-resolution.md",
+      "machine_sources": ["scripts/core.py", "scripts/renderer_registry.py"]
+    },
+    {
+      "id": "knowledge-gap-policy",
+      "owner": "references/knowledge-resolution.md"
+    },
+    {
+      "id": "generation-output",
+      "owner": "references/generation-contract.md",
+      "machine_sources": ["scripts/compile_page.py", "scripts/compile_pattern_page.py"],
+      "exclusive_literals": ["output/generation-tests/", "output/product-tests/<product>/"]
+    },
+    {
+      "id": "page-spec-boundary",
+      "owner": "references/generation-contract.md",
+      "machine_sources": ["schemas/page-spec.schema.json", "schemas/pattern-page-spec.schema.json"]
+    },
+    {
+      "id": "html-semantic-structure",
+      "owner": "references/generation-contract.md",
+      "machine_sources": ["design-systems/HUI/zones", "design-systems/HUI/component-patterns/catalog.json", "design-systems/HUI/runtime-contracts/index.json", "scripts/semantic_registry.py"],
+      "exclusive_literals": ["data-component-instance", "data-component-template", "data-origin"]
+    },
+    {
+      "id": "token-application",
+      "owner": "references/generation-contract.md",
+      "machine_sources": ["design-systems/HUI/theme/token-contract.json", "scripts/core.py"]
+    },
+    {
+      "id": "data-layering",
+      "owner": "references/generation-contract.md",
+      "machine_sources": ["schemas/pattern-page-spec.schema.json", "scripts/compile_pattern_page.py", "scripts/validate_page.py", "scripts/validate_pattern_page.py"],
+      "exclusive_literals": ["PAGE_CONFIG", "PREVIEW_FIXTURES", "loadPreviewFixtures()"]
+    },
+    {
+      "id": "generation-runtime-routing",
+      "owner": "references/generation-contract.md",
+      "required_references": ["references/hui-vue-runtime-contract.md"]
+    },
+    {
+      "id": "generation-acceptance",
+      "owner": "references/generation-contract.md",
+      "machine_sources": ["scripts/validate_page.py", "scripts/validate_pattern_page.py", "scripts/build_product_acceptance.py"]
+    },
+    {
+      "id": "hui-runtime-resources",
+      "owner": "references/hui-vue-runtime-contract.md",
+      "machine_sources": ["design-systems/HUI/manifest.json"],
+      "exclusive_literals": ["Vuex", "$store"]
+    },
+    {
+      "id": "hui-icon-usage",
+      "owner": "references/hui-vue-runtime-contract.md",
+      "machine_sources": ["design-systems/HUI/manifest.json", "design-systems/HUI/icons/catalog.json", "design-systems/HUI/runtime-contracts/basic-form/icon.json", "design-systems/HUI/runtime-contracts/basic-form/svg-icon.json"],
+      "exclusive_literals": ["el-icon-*", "@hui/icons-vue"]
+    },
+    {
+      "id": "hui-services-and-dialog",
+      "owner": "references/hui-vue-runtime-contract.md",
+      "machine_sources": ["design-systems/HUI/manifest.json", "design-systems/HUI/runtime-contracts/notice", "design-systems/HUI/runtime-contracts/others/dialog.json"],
+      "exclusive_literals": ["ElMessage", "ElNotification", "ElMessageBox", "this.$message", "this.$notify"]
+    },
+    {
+      "id": "runtime-data-routing",
+      "owner": "references/hui-vue-runtime-contract.md",
+      "required_references": ["references/generation-contract.md"]
+    }
+  ]
+}

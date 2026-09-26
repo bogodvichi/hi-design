@@ -1,0 +1,123 @@
+{
+  "schema_version": "hui-page-pattern.v1",
+  "id": "hui.tpp.family.details-basic",
+  "name": "基础详情页",
+  "source": {
+    "platform": "HUI-VUE典型页面",
+    "observed_at": "2026-08-14",
+    "catalog": "../../catalog.json"
+  },
+  "match": ["basic-details", "基础详情", "容器撑满详情", "容器定宽详情"],
+  "semantics": [
+    "scrollable-detail-content",
+    "grouped-description-fields",
+    "embedded-key-value-table",
+    "embedded-data-table",
+    "table-pagination"
+  ],
+  "shared_runtime_components": [
+    "el-breadcrumb",
+    "el-breadcrumb-item",
+    "el-button",
+    "el-input",
+    "el-menu",
+    "el-menu-item",
+    "el-pagination",
+    "el-scrollbar",
+    "el-select",
+    "el-submenu",
+    "el-table",
+    "el-tag"
+  ],
+  "invariants": {
+    "evidence_scope": "two-verified-width-variants",
+    "regions": {
+      "content": {
+        "display": "block",
+        "position": "static",
+        "padding": "48px 80px 58px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 1712
+      },
+      "groups": {
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 1606
+      },
+      "detail_grid": {
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 216
+      },
+      "key_value_table": {
+        "display": "flex",
+        "position": "relative",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "hidden",
+        "overflow_y": "hidden",
+        "height": 120
+      },
+      "data_table": {
+        "display": "flex",
+        "position": "relative",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "hidden",
+        "overflow_y": "hidden",
+        "height": 840
+      },
+      "pagination": {
+        "display": "flex",
+        "position": "static",
+        "padding": "0px 12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 56
+      }
+    },
+    "variant_values_must_come_from_page_contract": true
+  },
+  "variants": [
+    {
+      "id": "hui.tpp.page.details.fill-up",
+      "name": "容器撑满",
+      "contract": "../../pages/details/fill-up.json",
+      "parameters": {
+        "container_width": "fluid",
+        "group_count": 4,
+        "description_columns": 4,
+        "description_item_count": 18,
+        "embedded_tables": ["key-value", "data-table"],
+        "data_rows_per_page": 20,
+        "pagination": true
+      }
+    },
+    {
+      "id": "hui.tpp.page.details.fixed-width",
+      "name": "容器定宽",
+      "contract": "../../pages/details/fixed-width.json",
+      "parameters": {
+        "container_width": "fixed",
+        "container_width_px": 1280,
+        "group_count": 4,
+        "description_columns": 4,
+        "description_item_count": 18,
+        "embedded_tables": ["key-value", "data-table"],
+        "data_rows_per_page": 20,
+        "pagination": true
+      }
+    }
+  ]
+}

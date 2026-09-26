@@ -1,0 +1,254 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "message-box",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/notice/message-box",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/notice.docs.json",
+    "evidence_sha256": "917ae2b786922adf7a8f4f7b61892dbcb24175deb5c2a74463c784655f45667b"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "service",
+  "runtime": {
+    "$message-box": {
+      "props": [
+        {
+          "参数": "title",
+          "说明": "MessageBox 标题",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "title"
+        },
+        {
+          "参数": "message (confirm中的message参数,2.0版本中已去除)  非兼容",
+          "说明": "MessageBox 消息正文内容",
+          "类型": "string / VNode",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "message"
+        },
+        {
+          "参数": "dangerouslyUseHTMLString",
+          "说明": "是否将 message 属性作为 HTML 片段处理",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "dangerously-use-htmlstring"
+        },
+        {
+          "参数": "type",
+          "说明": "消息类型，用于显示图标",
+          "类型": "string",
+          "可选值": "success/info/warning/question/error",
+          "默认值": "—",
+          "template_name": "type"
+        },
+        {
+          "参数": "size  2.0+",
+          "说明": "尺寸",
+          "类型": "string",
+          "可选值": "small/middle/large",
+          "默认值": "small",
+          "template_name": "size"
+        },
+        {
+          "参数": "customClass",
+          "说明": "MessageBox 的自定义类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "custom-class"
+        },
+        {
+          "参数": "onConfirm  2.8.0+",
+          "说明": "MessageBox 的确认回调",
+          "类型": "function(action)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "on-confirm"
+        },
+        {
+          "参数": "onCancel  2.8.0+",
+          "说明": "MessageBox 的取消回调",
+          "类型": "function(action)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "on-cancel"
+        },
+        {
+          "参数": "callback",
+          "说明": "若不使用 Promise，可以使用此参数指定 MessageBox 关闭后的回调",
+          "类型": "function(action, instance)，action 的值为’confirm’或’cancel’, instance 为 MessageBox 实例，可以通过它访问实例上的属性和方法",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "callback"
+        },
+        {
+          "参数": "beforeClose",
+          "说明": "MessageBox 关闭前的回调，会暂停实例的关闭",
+          "类型": "function(action, instance, done)，action 的值为’confirm’或’cancel’；instance 为 MessageBox 实例，可以通过它访问实例上的属性和方法；done 用于关闭 MessageBox 实例",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "before-close"
+        },
+        {
+          "参数": "lockScroll",
+          "说明": "是否在 MessageBox 出现时将 body 滚动锁定",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "lock-scroll"
+        },
+        {
+          "参数": "showCancelButton",
+          "说明": "是否显示取消按钮",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false（以 confirm 和 prompt 方式调用时为 true）",
+          "template_name": "show-cancel-button"
+        },
+        {
+          "参数": "showConfirmButton",
+          "说明": "是否显示确定按钮",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "show-confirm-button"
+        },
+        {
+          "参数": "cancelButtonText",
+          "说明": "取消按钮的文本内容",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "取消",
+          "template_name": "cancel-button-text"
+        },
+        {
+          "参数": "confirmButtonText",
+          "说明": "确定按钮的文本内容",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "确定",
+          "template_name": "confirm-button-text"
+        },
+        {
+          "参数": "buttons  2.0+",
+          "说明": "自定义按钮的内容",
+          "类型": "Array",
+          "可选值": "示例传参: buttons:[{ name:‘test1’,type:‘primary’,action:‘myAction1’},{name:‘test2’,type:‘primary’,action:‘myAction2’},name:‘取消’,action:‘cancel’]回调函数中通过不同的action来做相应操作",
+          "默认值": "—",
+          "template_name": "buttons"
+        },
+        {
+          "参数": "cancelButtonClass",
+          "说明": "取消按钮的自定义类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "cancel-button-class"
+        },
+        {
+          "参数": "confirmButtonClass",
+          "说明": "确定按钮的自定义类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "confirm-button-class"
+        },
+        {
+          "参数": "closeOnClickModal  非兼容  (默认值修改为false)",
+          "说明": "是否可通过点击遮罩关闭 MessageBox",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "close-on-click-modal"
+        },
+        {
+          "参数": "closeOnPressEscape  非兼容  (默认值修改为false)",
+          "说明": "是否可通过按下 ESC 键关闭 MessageBox",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "close-on-press-escape"
+        },
+        {
+          "参数": "closeOnHashChange  2.0+",
+          "说明": "是否在 hashchange 时关闭 MessageBox",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "close-on-hash-change"
+        },
+        {
+          "参数": "showInput",
+          "说明": "是否显示输入框",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false（以 prompt 方式调用时为 true）",
+          "template_name": "show-input"
+        },
+        {
+          "参数": "inputPlaceholder",
+          "说明": "输入框的占位符",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "input-placeholder"
+        },
+        {
+          "参数": "inputType  2.0+",
+          "说明": "输入框的类型",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "text",
+          "template_name": "input-type"
+        },
+        {
+          "参数": "inputValue",
+          "说明": "输入框的初始文本",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "input-value"
+        },
+        {
+          "参数": "inputPattern",
+          "说明": "输入框的校验表达式",
+          "类型": "regexp",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "input-pattern"
+        },
+        {
+          "参数": "inputValidator",
+          "说明": "输入框的校验函数。可以返回布尔值或字符串，若返回一个字符串, 则返回结果会被赋值给 inputErrorMessage",
+          "类型": "function",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "input-validator"
+        },
+        {
+          "参数": "inputErrorMessage",
+          "说明": "校验未通过时的提示文本",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "输入的数据不合法!",
+          "template_name": "input-error-message"
+        },
+        {
+          "参数": "customIcon  2.53.0+",
+          "说明": "自定义图标",
+          "类型": "VNode",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "custom-icon"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

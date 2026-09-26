@@ -1,0 +1,172 @@
+{
+  "schema_version": "hui-page-variant.v1",
+  "id": "hui.tpp.page.table.horizontal-realtime-filter",
+  "name": "水平栏过滤",
+  "family": "hui.tpp.family.table-realtime-filter",
+  "source": {
+    "url": "http://tpp.dev.hikhub.net/tpp#/pages/table/realTimeHorizontalBarFiltering",
+    "package": "@hiktpp/table-real-time-horizontal-bar-filtering",
+    "hui_version": "^2.55.0",
+    "observed_at": "2026-07-31",
+    "evidence": "../../evidence/table/horizontal-realtime-filter.json"
+  },
+  "parameters": {
+    "filter_placement": "horizontal-bar",
+    "trigger": "realtime",
+    "filter_container_padding_vertical": "16px",
+    "filter_option_interactive_tone": "brand",
+    "selected_filter_state_separator": "dashed-top",
+    "selected_filter_state_spacing_before": "24px",
+    "selected_filter_state_padding_vertical": "16px",
+    "selected_filter_state_bottom_spacing_compensation": "-16px",
+    "selected_filter_state_visibility_when_empty": "hidden",
+    "selected_filter_clear_action_placement": "after-selected-items",
+    "selected_filter_clear_action_tone": "brand",
+    "selected_filter_clear_action_interactive_tone": "brand-stable"
+  },
+  "geometry": {
+    "viewport": {
+      "width": 1920,
+      "height": 968
+    },
+    "root": {
+      "class": "h-page-content is-flex",
+      "rect": {
+        "x": 240,
+        "y": 102.34,
+        "width": 1680,
+        "height": 865.66
+      },
+      "style": {
+        "display": "flex",
+        "padding": "16px 16px 0px",
+        "overflow": "visible"
+      }
+    },
+    "key_regions": {
+      "filter": {
+        "class": "filter-container is-selected-tags",
+        "rect": {
+          "x": 280,
+          "y": 118.34,
+          "width": 1600,
+          "height": 226
+        },
+        "display": "block",
+        "position": "static",
+        "padding": "24px 0px 0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "toolbar": {
+        "class": "bar-search-row",
+        "rect": {
+          "x": 268,
+          "y": 344.34,
+          "width": 1624,
+          "height": 56
+        },
+        "display": "flex",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "table": {
+        "class": "el-table el-table--fit el-table--enable-row-hover el-table--enable-row-transition el-table--no-out-border",
+        "rect": {
+          "x": 280,
+          "y": 400.34,
+          "width": 1600,
+          "height": 511.66
+        },
+        "display": "flex",
+        "position": "relative",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "hidden",
+        "overflow_y": "hidden"
+      },
+      "pagination": {
+        "class": "el-pagination el-pagination--table",
+        "rect": {
+          "x": 268,
+          "y": 912,
+          "width": 1624,
+          "height": 56
+        },
+        "display": "flex",
+        "position": "static",
+        "padding": "0px 12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      }
+    }
+  },
+  "composition": {
+    "hui_components": {
+      "el-checkable-tag": 11,
+      "el-date-picker": 1,
+      "el-select": 5,
+      "el-input": 6,
+      "el-scrollbar": 6,
+      "el-option": 20,
+      "el-tag": 21,
+      "el-button": 71,
+      "el-divider": 1,
+      "el-radio-group": 1,
+      "el-radio-button": 2,
+      "h-icon": 1,
+      "el-table": 1,
+      "el-table-column": 10,
+      "el-tooltip": 10,
+      "el-checkbox": 21,
+      "h-svg-icon": 21,
+      "el-pagination": 1
+    },
+    "page_framework_components": {
+      "h-page-content": 3,
+      "h-page-button-group": 1
+    },
+    "unindexed_runtime_components": {
+      "el-select-menu": 5
+    },
+    "actions": [
+      {
+        "label": "清空条件",
+        "count": 1
+      },
+      {
+        "label": "添加",
+        "count": 1
+      },
+      {
+        "label": "编辑",
+        "count": 21
+      },
+      {
+        "label": "删除",
+        "count": 21
+      },
+      {
+        "label": "导入",
+        "count": 1
+      },
+      {
+        "label": "导出",
+        "count": 1
+      },
+      {
+        "label": "更多",
+        "count": 20
+      },
+      {
+        "label": "跳转",
+        "count": 1
+      }
+    ]
+  }
+}

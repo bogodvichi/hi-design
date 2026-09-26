@@ -1,0 +1,141 @@
+{
+  "schema_version": "hui-page-variant.v1",
+  "id": "hui.tpp.page.form.first-level-grouping",
+  "name": "一级分组",
+  "family": "hui.tpp.family.form-grouped",
+  "source": {
+    "url": "http://tpp.dev.hikhub.net/tpp#/pages/form/firstGroup",
+    "package": "@hiktpp/form-firstGroup",
+    "hui_version": "^2.55.0",
+    "observed_at": "2026-07-31",
+    "evidence": "../../evidence/form/first-level-grouping.json"
+  },
+  "parameters": {
+    "group_depth": 1,
+    "container_count": 1,
+    "columns": 3,
+    "form_item_gap": "24px",
+    "title_field_gap": "24px",
+    "group_gap": "48px",
+    "default_label_position": null
+  },
+  "geometry": {
+    "viewport": {
+      "width": 1920,
+      "height": 968
+    },
+    "root": {
+      "class": "h-page-content form-area is-flex is-align-center",
+      "rect": {
+        "x": 240,
+        "y": 102.31,
+        "width": 1680,
+        "height": 865.69
+      },
+      "style": {
+        "display": "flex",
+        "padding": "16px 16px 0px",
+        "overflow": "visible"
+      }
+    },
+    "key_regions": {
+      "group_title": {
+        "class": "group_title",
+        "rect": {"height": 32},
+        "display": "flex",
+        "position": "static",
+        "padding": "0px",
+        "margin": "0px 0px 24px",
+        "border": "0px none",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "content": {
+        "class": "form-area__content",
+        "rect": {
+          "x": 360,
+          "y": 118.31,
+          "width": 1440,
+          "height": 1025
+        },
+        "display": "flex",
+        "position": "static",
+        "padding": "48px 80px 58px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "form": {
+        "class": "el-form el-form--label-top",
+        "rect": {
+          "x": 448,
+          "y": 166.31,
+          "width": 1264,
+          "height": 919
+        },
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "footer": {
+        "class": "form-area__footer",
+        "rect": {
+          "x": 360,
+          "y": 911,
+          "width": 1440,
+          "height": 57
+        },
+        "display": "flex",
+        "position": "sticky",
+        "padding": "12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      }
+    }
+  },
+  "composition": {
+    "hui_components": {
+      "el-scrollbar": 4,
+      "el-form": 1,
+      "el-row": 7,
+      "el-col": 16,
+      "el-form-item": 16,
+      "el-input": 12,
+      "el-select": 3,
+      "el-tag": 10,
+      "el-option": 18,
+      "el-checkbox": 14,
+      "h-svg-icon": 14,
+      "el-radio-group": 1,
+      "el-radio": 3,
+      "el-slider": 1,
+      "el-input-number": 1,
+      "el-button": 4,
+      "el-tooltip": 3,
+      "el-date-picker": 1,
+      "el-switch": 1,
+      "el-upload": 1
+    },
+    "page_framework_components": {
+      "h-page-content": 1
+    },
+    "unindexed_runtime_components": {
+      "el-select-menu": 3
+    },
+    "actions": [
+      {
+        "label": "提交",
+        "count": 1
+      },
+      {
+        "label": "取消",
+        "count": 1
+      }
+    ]
+  }
+}

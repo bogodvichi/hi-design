@@ -1,0 +1,143 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "carousel",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/others/carousel",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/others.docs.json",
+    "evidence_sha256": "f150a2630aef3c6508a028b85a5e004a26036cac12218f39bbe7388c02099e11"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-carousel": {
+      "props": [
+        {
+          "参数": "height",
+          "说明": "走马灯的高度",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "height"
+        },
+        {
+          "参数": "initial-index",
+          "说明": "初始状态激活的幻灯片的索引，从 0 开始",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "0",
+          "template_name": "initial-index"
+        },
+        {
+          "参数": "trigger",
+          "说明": "指示器的触发方式",
+          "类型": "string",
+          "可选值": "click",
+          "默认值": "—",
+          "template_name": "trigger"
+        },
+        {
+          "参数": "autoplay",
+          "说明": "是否自动切换",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "autoplay"
+        },
+        {
+          "参数": "interval",
+          "说明": "自动切换的时间间隔，单位为毫秒",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "3000",
+          "template_name": "interval"
+        },
+        {
+          "参数": "indicator-position",
+          "说明": "指示器的位置",
+          "类型": "string",
+          "可选值": "outside/none/left/right/top/bottom",
+          "默认值": "bottom",
+          "template_name": "indicator-position"
+        },
+        {
+          "参数": "arrow",
+          "说明": "切换箭头的显示时机",
+          "类型": "string",
+          "可选值": "always/hover/never",
+          "默认值": "hover",
+          "template_name": "arrow"
+        },
+        {
+          "参数": "type",
+          "说明": "走马灯的类型",
+          "类型": "string",
+          "可选值": "card",
+          "默认值": "—",
+          "template_name": "type"
+        },
+        {
+          "参数": "direction  2.52.0+",
+          "说明": "展示的方向",
+          "类型": "string",
+          "可选值": "horizontal/vertical",
+          "默认值": "horizontal",
+          "template_name": "direction"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "change",
+          "说明": "幻灯片切换时触发",
+          "回调参数": "目前激活的幻灯片的索引，原幻灯片的索引",
+          "template_name": "change"
+        }
+      ],
+      "slots": [],
+      "methods": [
+        {
+          "方法名": "setActiveItem",
+          "说明": "手动切换幻灯片",
+          "参数": "需要切换的幻灯片的索引，从 0 开始；或相应 el-carousel-item 的 name 属性值",
+          "template_name": "set-active-item"
+        },
+        {
+          "方法名": "prev",
+          "说明": "切换至上一张幻灯片",
+          "参数": "—",
+          "template_name": "prev"
+        },
+        {
+          "方法名": "next",
+          "说明": "切换至下一张幻灯片",
+          "参数": "—",
+          "template_name": "next"
+        }
+      ]
+    },
+    "el-carousel-item": {
+      "props": [
+        {
+          "参数": "name",
+          "说明": "幻灯片的名字，可用作 setActiveItem 的参数",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "name"
+        },
+        {
+          "参数": "label",
+          "说明": "该幻灯片所对应指示器的文本",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "label"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

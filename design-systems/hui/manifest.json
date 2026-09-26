@@ -1,0 +1,54 @@
+{
+  "schemaVersion": "od-design-system-project/v1",
+  "id": "hui",
+  "name": "HUI",
+  "category": "Professional & Corporate",
+  "description": "Hikvision HUI — enterprise design system for security & surveillance software: blue brand accent, data-dense layouts, compact controls, and a bundled icon font.",
+  "source": {
+    "type": "bundled",
+    "origin": "Curated from Hikvision HUI (海康 HUI) design tokens"
+  },
+  "files": {
+    "design": "DESIGN.md",
+    "tokens": "tokens.css",
+    "tailwind": "tailwind-v4.css",
+    "components": "components.html"
+  },
+  "usage": "USAGE.md",
+  "componentsManifest": "components.manifest.json",
+  "importMode": "normalized",
+  "craft": {
+    "applies": [],
+    "suggested": [
+      "color",
+      "accessibility-baseline"
+    ],
+    "exemptions": []
+  },
+  "fonts": [
+    {
+      "family": "h-icon",
+      "file": "fonts/h-icon.woff2"
+    }
+  ],
+  "preview": {
+    "dir": "preview",
+    "pages": [
+      {
+        "path": "preview/colors.html",
+        "role": "colors",
+        "title": "Colors"
+      },
+      {
+        "path": "preview/typography.html",
+        "role": "typography",
+        "title": "Typography"
+      },
+      {
+        "path": "preview/spacing.html",
+        "role": "spacing",
+        "title": "Spacing"
+      }
+    ]
+  }
+}

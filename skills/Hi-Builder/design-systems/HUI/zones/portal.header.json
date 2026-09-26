@@ -1,0 +1,8 @@
+{
+  "schema_version": "d2c-zone.v1",
+  "id": "portal.header",
+  "name": "门户头部区域",
+  "description": "承载企业品牌、主导航、全局搜索和用户入口",
+  "use_when": ["页面运行在统一产品门户内"],
+  "owner": "hui-common"
+}

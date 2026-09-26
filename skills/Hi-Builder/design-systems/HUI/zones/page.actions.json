@@ -1,0 +1,8 @@
+{
+  "schema_version": "d2c-zone.v1",
+  "id": "page.actions",
+  "name": "页面操作区域",
+  "description": "承载作用于当前页面或当前数据集合的批量操作",
+  "use_when": ["页面需要一组并列操作入口"],
+  "owner": "hui-common"
+}

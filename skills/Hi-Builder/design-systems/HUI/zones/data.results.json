@@ -1,0 +1,8 @@
+{
+  "schema_version": "d2c-zone.v1",
+  "id": "data.results",
+  "name": "通用数据结果区域",
+  "description": "以表格或卡片集合展示通用查询结果",
+  "use_when": ["页面展示非特定业务域的数据集合"],
+  "owner": "hui-common"
+}

@@ -1,0 +1,15 @@
+{
+  "schema_version": "hui-page-pattern.v1",
+  "id": "hui.tpp.family.details-master-detail",
+  "name": "总分结构详情页",
+  "source": {"platform": "HUI-VUE典型页面", "observed_at": "2026-08-14", "catalog": "../../catalog.json"},
+  "match": ["master-detail", "总分结构详情", "左右总分详情", "上下总分详情"],
+  "semantics": ["master-summary", "detail-sections", "master-detail-layout"],
+  "shared_runtime_components": ["el-pagination", "el-table", "el-tag"],
+  "invariants": {"evidence_scope": "three-verified-layout-variants", "master_precedes_detail": true, "horizontal_master_cross_axis": "stretch", "horizontal_master_workspace_relation": "siblings", "separate_horizontal_scroll_behavior": {"master": "fixed", "detail": "independent"}, "layout_direction_and_container_relation_are_variant_values": true, "variant_values_must_come_from_page_contract": true},
+  "variants": [
+    {"id": "hui.tpp.page.details.left-and-right-layout", "name": "左右布局", "contract": "../../pages/details/left-and-right-layout.json", "parameters": {"layout_direction": "horizontal", "container_relation": "separate", "master_position": "left", "master_cross_axis": "stretch", "master_workspace_relation": "siblings", "master_scroll": "fixed", "detail_scroll": "independent", "detail_root_x": 561, "embedded_tables": 2, "pagination": true}},
+    {"id": "hui.tpp.page.details.up-and-down-layout", "name": "上下布局", "contract": "../../pages/details/up-and-down-layout.json", "parameters": {"layout_direction": "vertical", "container_relation": "separate", "master_position": "top", "detail_root_y": 336.56, "embedded_tables": 2, "pagination": true}},
+    {"id": "hui.tpp.page.details.up-and-down-layout-single-container", "name": "上下布局-单容器", "contract": "../../pages/details/up-and-down-layout-single-container.json", "parameters": {"layout_direction": "vertical", "container_relation": "shared-scroll-container", "master_position": "top", "container_width_px": 1280, "embedded_tables": 2, "pagination": true}}
+  ]
+}

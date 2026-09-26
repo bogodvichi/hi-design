@@ -1,0 +1,42 @@
+{
+  "schema_version": "page-capabilities.v1",
+  "page_type": "device-detail",
+  "name": "管网设备详情",
+  "spec_schema": "payload.schema.json",
+  "defaults": {
+    "title": "管网设备详情",
+    "filter_fields": [],
+    "toolbar_actions": [],
+    "table_columns": [],
+    "row_actions": [],
+    "card_fields": [],
+    "page_size": 20
+  },
+  "allowed": {
+    "filter_fields": [],
+    "toolbar_actions": [],
+    "table_columns": [],
+    "row_actions": [],
+    "card_fields": [],
+    "extension_kinds": []
+  },
+  "semantic_fields": {},
+  "fixed_behavior": {
+    "detail_layout": "live-viewer-with-right-details-pane",
+    "tabs": ["realtime", "operation-data", "history", "location"],
+    "operation_form": true,
+    "source_switch": true,
+    "thumbnail_switch": true
+  },
+  "forbidden_in_spec": [
+    "css",
+    "html",
+    "px",
+    "color",
+    "font-size",
+    "gap",
+    "width",
+    "height",
+    "align"
+  ]
+}

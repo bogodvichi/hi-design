@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="80px" height="80px" viewBox="0 0 80 80" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>互联网-安全生产监测预警平台</title>
+    <g id="互联网-安全生产监测预警平台" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <path d="M34,29 C34,22.0964406 39.5964406,16.5 46.5,16.5 C53.4035594,16.5 59,22.0964406 59,29 L59,42.419 L76,50 L76,70 L4,70 L4,50 L12,45 L16,10 L31,10 L31,64 L34,64 L34,29 Z M40,34.526 L53,40 L53,29 C53,25.5482203 49.9517797,22.5 46.5,22.5 C43.0482203,22.5 40,25.5482203 40,29 L40,34.526 Z M25,44 L10,54 L10,64 L25,64 L25,44 Z M40,42 L40,64 L53,64 L53,53 L59,55 L59,64 L70,64 L70,55 L40,42 Z M25,16 L21,16 L19,40 L25,36 L25,16 Z" id="形状结合" fill="#1D7FFF" fill-rule="nonzero"></path>
+    </g>
+</svg>

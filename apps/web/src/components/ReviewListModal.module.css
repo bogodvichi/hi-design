@@ -1,0 +1,696 @@
+/* ReviewListModal — 历史评审 Modal 自包含样式。
+ *
+ * 复用全局设计 token 与全局 pop-in / fade-in 关键帧；不依赖 .modal /
+ * .modal-backdrop / .deploy-modal 全局类，避免与 .deploy-modal 的 760px 宽
+ * 产生级联顺序竞争。宽高弹性固定为视口 80%（加载/错误/空态共用同一画框），
+ * 卡片网格布局，底部分页。 */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(28, 27, 26, 0.42);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  -webkit-app-region: no-drag;
+  animation: fade-in 160ms ease-out;
+}
+
+.shell {
+  width: 90vw;
+  height: 90vh;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  animation: pop-in 220ms cubic-bezier(0.21, 1.02, 0.73, 1);
+}
+
+/* 详情抽屉锚点：抽屉用 absolute 定位到 .shell 右侧，故 shell 需相对定位 + 溢出裁切，
+ * 让抽屉滑入时覆盖在列表之上且不溢出圆角画框。 */
+.shell {
+  position: relative;
+  overflow: hidden;
+}
+
+.head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 24px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.headMain {
+  min-width: 0;
+}
+.kicker {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.title {
+  margin: 4px 0 0;
+  font-size: 20px;
+  letter-spacing: -0.01em;
+  font-weight: 650;
+}
+.subtitle {
+  margin: 6px 0 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.closeBtn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  transition:
+    background 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.closeBtn:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+
+/* ── 筛选栏：列表区顶部，左侧 processType 单选切换，右侧 reviewType + 搜索 ─ */
+.toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.tab {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.tab:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+.tabActive {
+  background: var(--bg-subtle);
+  color: var(--text);
+  font-weight: 650;
+}
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.select {
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+}
+.select:hover {
+  border-color: var(--border-strong, var(--border));
+}
+.search {
+  width: 360px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.search:focus {
+  border-color: var(--border-strong, var(--border));
+}
+.search::placeholder {
+  color: var(--text-muted);
+}
+
+/* 列表区：独占剩余高度，内部纵向滚动；加载/错误/空态同样落在这块画框里。 */
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 18px 24px;
+  scrollbar-width: thin;
+  background-color: #f2f2f2;
+}
+
+.grid {
+  display: grid;
+  width: 1310px;
+  /*grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));*/
+  grid-template-columns: repeat(3, minmax(300px, 1fr));
+  gap: 14px;
+  margin: 0 auto;
+}
+
+/* 加载/错误/空态：撑满 body 高度并居中，保持 80%×80% 画框不塌缩。 */
+.stateWrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 100%;
+  padding: 24px;
+  color: var(--text-muted);
+  text-align: center;
+}
+.spinner {
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--border);
+  border-top-color: var(--text-muted);
+  border-radius: 50%;
+  animation: rlmSpin 700ms linear infinite;
+}
+@keyframes rlmSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.errorText {
+  color: #d14343;
+  max-width: 440px;
+  line-height: 1.5;
+}
+
+/* ── 评审卡片 ─────────────────────────────────────────── */
+.card {
+  height: 250px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  transition:
+    border-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    box-shadow 140ms cubic-bezier(0.23, 1, 0.32, 1);
+  overflow: hidden;
+  cursor: pointer;
+}
+.card:hover {
+  border-color: var(--border-strong, var(--border));
+  box-shadow: var(--shadow-sm);
+  transform: translateY(-2px);
+}
+
+.cardHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.creator {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+}
+.creatorText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.typeAvatar {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1;
+  user-select: none;
+}
+.remainBadge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  background: var(--bg-subtle);
+  white-space: nowrap;
+  display: flex;
+  justify-content: center;
+}
+.remainBadge.urgent {
+  color: #d14343;
+  border-color: color-mix(in srgb, #d14343 45%, transparent);
+  background: color-mix(in srgb, #d14343 10%, var(--bg-subtle));
+}
+/* 卡片状态徽标：待解决=红色，待验证=绿色。统一展示评审遗留态。 */
+.statusBadge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, #d14343 45%, transparent);
+  color: #d14343;
+  background: color-mix(in srgb, #d14343 10%, var(--bg-subtle));
+  white-space: nowrap;
+}
+.statusBadgeOk {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, #2f9e6f 45%, transparent);
+  color: #2f9e6f;
+  background: color-mix(in srgb, #2f9e6f 10%, var(--bg-subtle));
+  white-space: nowrap;
+}
+
+.cardTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 650;
+  line-height: 1.45;
+  color: var(--text);
+  min-height: 20px;
+}
+.cardTitleText {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.versionBadge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, #2f6f8f 45%, transparent);
+  color: #2f6f8f;
+  background: color-mix(in srgb, #2f6f8f 8%, var(--bg-subtle));
+  white-space: nowrap;
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.field {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap:8px;
+}
+.fieldLabel {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.fieldValue {
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 已完成 / 评审中 / 缺陷数量 三字段同一行。 */
+.statsRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+/* ── 卡片底栏：仅保留「更多」菜单（评审详情已并入「更多」首项） ── */
+.cardFoot {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ── 卡片右下角「更新」按钮：与「更多」同款视觉语言 ── */
+.updateBtn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    background 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.updateBtn:hover {
+  background: var(--bg-subtle);
+  border-color: var(--border-strong, var(--border));
+}
+
+/* ── 卡片右下角「关闭」按钮 + 二次确认气泡 ── */
+.closeWrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+.confirmPop {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  right: 0;
+  z-index: 30;
+  min-width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-sm);
+  transform-origin: bottom right;
+  animation: rlmMenuIn 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.confirmText {
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.5;
+}
+.confirmActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.confirmCancel,
+.confirmOk {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    background 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 140ms ease-out;
+}
+.confirmCancel:hover:not(:disabled) {
+  background: var(--bg-subtle);
+}
+.confirmOk {
+  background: #d14343;
+  color: #fff;
+  border-color: #d14343;
+}
+.confirmOk:hover:not(:disabled) {
+  background: #c83e3e;
+  border-color: #c83e3e;
+}
+.confirmCancel:disabled,
+.confirmOk:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ── 卡片左下角「更多」下拉 ─────────────────────────────── */
+.moreWrap {
+  position: absolute;
+  top: 0;
+  left:0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.moreBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    background 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.moreBtn:hover {
+  background: var(--bg-subtle);
+  border-color: var(--border-strong, var(--border));
+}
+.moreBtnActive {
+  background: var(--bg-subtle);
+  border-color: var(--border-strong, var(--border));
+}
+.moreCaret {
+  font-size: 10px;
+  color: var(--text-muted);
+  transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.moreBtnActive .moreCaret {
+  transform: rotate(180deg);
+}
+
+/* 下拉菜单：卡片内绝对定位，左下贴齐「更多」按钮。 */
+.moreMenu {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  z-index: 20;
+  min-width: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  box-shadow: var(--shadow-sm);
+  transform-origin: bottom left;
+  animation: rlmMenuIn 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+@keyframes rlmMenuIn {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.moreItem {
+  display: flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border: none;
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.moreItem:hover:not(:disabled) {
+  background: var(--bg-subtle);
+}
+.moreItem:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+/* 「开启通知」当前已开启时，菜单项高亮提示订阅态。 */
+.moreItemOn {
+  color: #2f9e6f;
+  font-weight: 600;
+}
+
+/* 操作反馈 toast：内联在「更多」按钮右侧，2.5s 自动消失。 */
+.actionToast {
+  font-size: 11px;
+  color: #2f9e6f;
+  white-space: nowrap;
+  animation: rlmToastIn 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.actionToastErr {
+  color: #d14343;
+}
+@keyframes rlmToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── 列表底部：滚动加载更多 / 末页提示 ──────────────────── */
+.listFoot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px 0 6px;
+}
+.listFootHint {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.spinnerSmall {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--text-muted);
+  border-radius: 50%;
+  animation: rlmSpin 700ms linear infinite;
+}
+
+/* 加载更多失败时的行内重试按钮：不冲掉已渲染卡片，仅占列表底部一行。 */
+.retryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border: 1px solid color-mix(in srgb, #d14343 45%, transparent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, #d14343 8%, var(--bg-panel));
+  color: #d14343;
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    border-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    background 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.retryBtn:hover {
+  background: color-mix(in srgb, #d14343 16%, var(--bg-panel));
+}
+
+/* ── 底栏：加载计数 + 关闭 ─────────────────────────────────── */
+.foot {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 24px;
+  border-top: 1px solid var(--border);
+}
+.footHint {
+  font-size: 12px;
+  color: var(--text-muted);
+  min-width: 92px;
+}
+.pagerBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    border-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    background 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.pagerBtn:hover:not(:disabled) {
+  border-color: var(--border-strong, var(--border));
+  background: var(--bg-subtle);
+}
+.pagerBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

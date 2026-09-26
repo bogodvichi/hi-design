@@ -1,0 +1,1793 @@
+{
+  "path": "/pages/table/treeControlAndLinearTabPage",
+  "name": "表格页_带树控件_树控件+线性标签页",
+  "category": [
+    {
+      "name": "表格页",
+      "order": 2
+    },
+    {
+      "name": "带树控件",
+      "order": 5
+    },
+    {
+      "name": "树控件+线性标签页",
+      "order": 2
+    }
+  ],
+  "package": "@hiktpp/table-tree-control-and-linear-tab-page",
+  "hui_version": "^2.55.0",
+  "viewport": {
+    "width": 1920,
+    "height": 968
+  },
+  "root": {
+    "class": "h-page-content is-flex",
+    "rect": {
+      "x": 496,
+      "y": 102.34,
+      "width": 1424,
+      "height": 865.66
+    },
+    "style": {
+      "display": "flex",
+      "padding": "0px",
+      "overflow": "visible"
+    }
+  },
+  "runtime_components": {
+    "h-page-content": 4,
+    "el-tabs": 1,
+    "el-tab-pane": 3,
+    "el-form": 1,
+    "h-page-search-item": 8,
+    "el-form-item": 8,
+    "el-input": 10,
+    "el-button": 72,
+    "h-page-button-group": 1,
+    "el-divider": 1,
+    "el-radio-group": 1,
+    "el-radio-button": 2,
+    "h-icon": 1,
+    "el-table": 1,
+    "el-table-column": 8,
+    "el-tooltip": 8,
+    "el-scrollbar": 2,
+    "el-pagination": 1,
+    "el-select": 1,
+    "el-select-menu": 1,
+    "el-option": 4
+  },
+  "regions": [
+    {
+      "tag": "div",
+      "class": "h-page-content is-flex",
+      "rect": {
+        "x": 496,
+        "y": 102.34,
+        "width": 1424,
+        "height": 865.66
+      },
+      "display": "flex",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "tabStyle",
+      "rect": {
+        "x": 496,
+        "y": 102.34,
+        "width": 1424,
+        "height": 39
+      },
+      "display": "block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-tabs el-tabs--top",
+      "rect": {
+        "x": 496,
+        "y": 102.34,
+        "width": 1424,
+        "height": 39
+      },
+      "display": "block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-tabs__header el-tabs--medium is-top",
+      "rect": {
+        "x": 496,
+        "y": 102.34,
+        "width": 1424,
+        "height": 40
+      },
+      "display": "block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-tabs__nav-wrap is-top",
+      "rect": {
+        "x": 496,
+        "y": 102.34,
+        "width": 1424,
+        "height": 40
+      },
+      "display": "block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px 0px -1px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "hidden",
+      "overflowY": "hidden"
+    },
+    {
+      "tag": "div",
+      "class": "el-tabs__nav-scroll",
+      "rect": {
+        "x": 496,
+        "y": 102.34,
+        "width": 1424,
+        "height": 40
+      },
+      "display": "block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "hidden",
+      "overflowY": "hidden"
+    },
+    {
+      "tag": "div",
+      "class": "el-tabs__nav is-top",
+      "rect": {
+        "x": 496,
+        "y": 102.34,
+        "width": 293.39,
+        "height": 40
+      },
+      "display": "block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-tabs__item is-top is-active",
+      "rect": {
+        "x": 496,
+        "y": 102.34,
+        "width": 97.8,
+        "height": 40
+      },
+      "display": "inline-block",
+      "position": "relative",
+      "padding": "0px 24px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(32, 128, 247)",
+      "overflowX": "hidden",
+      "overflowY": "hidden"
+    },
+    {
+      "tag": "div",
+      "class": "el-tabs__item is-top",
+      "rect": {
+        "x": 593.8,
+        "y": 102.34,
+        "width": 97.8,
+        "height": 40
+      },
+      "display": "inline-block",
+      "position": "relative",
+      "padding": "0px 24px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "hidden",
+      "overflowY": "hidden"
+    },
+    {
+      "tag": "div",
+      "class": "h-search",
+      "rect": {
+        "x": 524,
+        "y": 157.34,
+        "width": 1368,
+        "height": 109
+      },
+      "display": "block",
+      "position": "static",
+      "padding": "0px 12px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "h-page-search row-amount-4",
+      "rect": {
+        "x": 536,
+        "y": 157.34,
+        "width": 1344,
+        "height": 109
+      },
+      "display": "block",
+      "position": "static",
+      "padding": "16px 0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "form",
+      "class": "el-form h-page-search__form el-form--label-top",
+      "rect": {
+        "x": 528,
+        "y": 173.34,
+        "width": 1360,
+        "height": 76
+      },
+      "display": "flex",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px -8px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "h-page-search-item",
+      "rect": {
+        "x": 528,
+        "y": 173.34,
+        "width": 340,
+        "height": 76
+      },
+      "display": "block",
+      "position": "static",
+      "padding": "8px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-form-item__content",
+      "rect": {
+        "x": 536,
+        "y": 209.34,
+        "width": 324,
+        "height": 32
+      },
+      "display": "block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "h-page-search__action",
+      "rect": {
+        "x": 1548,
+        "y": 173.34,
+        "width": 340,
+        "height": 76
+      },
+      "display": "flex",
+      "position": "static",
+      "padding": "6px 12px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "bar-search-row",
+      "rect": {
+        "x": 524,
+        "y": 266.34,
+        "width": 1368,
+        "height": 56
+      },
+      "display": "flex",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "h-page-content",
+      "rect": {
+        "x": 524,
+        "y": 322.34,
+        "width": 1368,
+        "height": 589.66
+      },
+      "display": "block",
+      "position": "relative",
+      "padding": "0px 12px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-table el-table--fit el-table--enable-row-hover el-table--enable-row-transition el-table--no-out-border",
+      "rect": {
+        "x": 536,
+        "y": 322.34,
+        "width": 1344,
+        "height": 589.66
+      },
+      "display": "flex",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "hidden",
+      "overflowY": "hidden"
+    },
+    {
+      "tag": "div",
+      "class": "el-table__header-wrapper",
+      "rect": {
+        "x": 536,
+        "y": 322.34,
+        "width": 1344,
+        "height": 40
+      },
+      "display": "flex",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "hidden",
+      "overflowY": "hidden"
+    },
+    {
+      "tag": "table",
+      "class": "el-table__header",
+      "rect": {
+        "x": 536,
+        "y": 322.34,
+        "width": 1344,
+        "height": 40
+      },
+      "display": "table",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "th",
+      "class": "el-table_1_column_515     is-leaf",
+      "rect": {
+        "x": 592,
+        "y": 322.34,
+        "width": 150,
+        "height": 40
+      },
+      "display": "table-cell",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.9)",
+      "overflowX": "hidden",
+      "overflowY": "hidden"
+    },
+    {
+      "tag": "div",
+      "class": "cell show-header-overflow",
+      "rect": {
+        "x": 592,
+        "y": 322.34,
+        "width": 150,
+        "height": 40
+      },
+      "display": "flex",
+      "position": "relative",
+      "padding": "0px 12px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.9)",
+      "overflowX": "hidden",
+      "overflowY": "hidden"
+    },
+    {
+      "tag": "th",
+      "class": "el-table_1_column_516     is-leaf is-filterable",
+      "rect": {
+        "x": 742,
+        "y": 322.34,
+        "width": 120,
+        "height": 40
+      },
+      "display": "table-cell",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.9)",
+      "overflowX": "hidden",
+      "overflowY": "hidden"
+    },
+    {
+      "tag": "th",
+      "class": "el-table_1_column_517     is-leaf",
+      "rect": {
+        "x": 862,
+        "y": 322.34,
+        "width": 120,
+        "height": 40
+      },
+      "display": "table-cell",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.9)",
+      "overflowX": "hidden",
+      "overflowY": "hidden"
+    },
+    {
+      "tag": "th",
+      "class": "el-table_1_column_518     is-leaf",
+      "rect": {
+        "x": 982,
+        "y": 322.34,
+        "width": 120,
+        "height": 40
+      },
+      "display": "table-cell",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.9)",
+      "overflowX": "hidden",
+      "overflowY": "hidden"
+    },
+    {
+      "tag": "th",
+      "class": "el-table_1_column_519     is-leaf",
+      "rect": {
+        "x": 1102,
+        "y": 322.34,
+        "width": 458,
+        "height": 40
+      },
+      "display": "table-cell",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.9)",
+      "overflowX": "hidden",
+      "overflowY": "hidden"
+    },
+    {
+      "tag": "th",
+      "class": "el-table_1_column_520     is-leaf",
+      "rect": {
+        "x": 1560,
+        "y": 322.34,
+        "width": 120,
+        "height": 40
+      },
+      "display": "table-cell",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.9)",
+      "overflowX": "hidden",
+      "overflowY": "hidden"
+    },
+    {
+      "tag": "th",
+      "class": "el-table_1_column_521     is-leaf is-last-column",
+      "rect": {
+        "x": 1680,
+        "y": 322.34,
+        "width": 200,
+        "height": 40
+      },
+      "display": "table-cell",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.9)",
+      "overflowX": "hidden",
+      "overflowY": "hidden"
+    },
+    {
+      "tag": "div",
+      "class": "el-table__body-wrapper",
+      "rect": {
+        "x": 536,
+        "y": 362.34,
+        "width": 1344,
+        "height": 549.66
+      },
+      "display": "flex",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-table-scrollbar__wrap el-scrollbar__wrap el-scrollbar__wrap--hidden-default",
+      "rect": {
+        "x": 536,
+        "y": 362.34,
+        "width": 1344,
+        "height": 549.66
+      },
+      "display": "block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "auto",
+      "overflowY": "auto"
+    },
+    {
+      "tag": "div",
+      "class": "el-scrollbar__view el-table-scrollbar__view",
+      "rect": {
+        "x": 536,
+        "y": 362.34,
+        "width": 1344,
+        "height": 1760
+      },
+      "display": "block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "table",
+      "class": "el-table__body",
+      "rect": {
+        "x": 536,
+        "y": 362.34,
+        "width": 1344,
+        "height": 1760
+      },
+      "display": "table",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "tr",
+      "class": "el-table__row",
+      "rect": {
+        "x": 536,
+        "y": 362.34,
+        "width": 1344,
+        "height": 88
+      },
+      "display": "table-row",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "td",
+      "class": "el-table_1_column_515  ",
+      "rect": {
+        "x": 592,
+        "y": 362.34,
+        "width": 150,
+        "height": 88
+      },
+      "display": "table-cell",
+      "position": "static",
+      "padding": "8px 0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "td",
+      "class": "el-table_1_column_516  ",
+      "rect": {
+        "x": 742,
+        "y": 362.34,
+        "width": 120,
+        "height": 88
+      },
+      "display": "table-cell",
+      "position": "static",
+      "padding": "8px 0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "td",
+      "class": "el-table_1_column_517  ",
+      "rect": {
+        "x": 862,
+        "y": 362.34,
+        "width": 120,
+        "height": 88
+      },
+      "display": "table-cell",
+      "position": "static",
+      "padding": "8px 0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "td",
+      "class": "el-table_1_column_518  ",
+      "rect": {
+        "x": 982,
+        "y": 362.34,
+        "width": 120,
+        "height": 88
+      },
+      "display": "table-cell",
+      "position": "static",
+      "padding": "8px 0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "td",
+      "class": "el-table_1_column_519  ",
+      "rect": {
+        "x": 1102,
+        "y": 362.34,
+        "width": 458,
+        "height": 88
+      },
+      "display": "table-cell",
+      "position": "static",
+      "padding": "8px 0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "td",
+      "class": "el-table_1_column_520  ",
+      "rect": {
+        "x": 1560,
+        "y": 362.34,
+        "width": 120,
+        "height": 88
+      },
+      "display": "table-cell",
+      "position": "static",
+      "padding": "8px 0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "td",
+      "class": "el-table_1_column_521  ",
+      "rect": {
+        "x": 1680,
+        "y": 362.34,
+        "width": 200,
+        "height": 88
+      },
+      "display": "table-cell",
+      "position": "static",
+      "padding": "8px 0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-pagination el-pagination--table",
+      "rect": {
+        "x": 524,
+        "y": 912,
+        "width": 1368,
+        "height": 56
+      },
+      "display": "flex",
+      "position": "static",
+      "padding": "0px 12px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-pagination-wrapper",
+      "rect": {
+        "x": 536,
+        "y": 912,
+        "width": 1344,
+        "height": 56
+      },
+      "display": "flex",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "span",
+      "class": "el-pagination__sizes",
+      "rect": {
+        "x": 595.58,
+        "y": 924.5,
+        "width": 112,
+        "height": 32
+      },
+      "display": "flex",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px 16px 0px 0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-pagination__tableRightPageWrapper",
+      "rect": {
+        "x": 1537.25,
+        "y": 924.5,
+        "width": 342.75,
+        "height": 32
+      },
+      "display": "flex",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px 0px 0px 813.672px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "span",
+      "class": "el-pagination__jump",
+      "rect": {
+        "x": 1701.25,
+        "y": 924.5,
+        "width": 178.75,
+        "height": 32
+      },
+      "display": "flex",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    }
+  ],
+  "buttons": [
+    {
+      "text": "查询",
+      "class": "el-button el-button--primary",
+      "rect": {
+        "x": 1712,
+        "y": 211.34,
+        "width": 78,
+        "height": 32
+      },
+      "disabled": false
+    },
+    {
+      "text": "重置",
+      "class": "el-button el-button--default",
+      "rect": {
+        "x": 1798,
+        "y": 211.34,
+        "width": 78,
+        "height": 32
+      },
+      "disabled": false
+    },
+    {
+      "text": "添加",
+      "class": "el-button el-button--ghost is-icon-text",
+      "rect": {
+        "x": 536,
+        "y": 278.34,
+        "width": 80,
+        "height": 32
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--ghost is-icon-text",
+      "rect": {
+        "x": 624,
+        "y": 278.34,
+        "width": 80,
+        "height": 32
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--ghost is-icon-text",
+      "rect": {
+        "x": 712,
+        "y": 278.34,
+        "width": 80,
+        "height": 32
+      },
+      "disabled": false
+    },
+    {
+      "text": "导入",
+      "class": "el-button el-button--ghost is-icon-text",
+      "rect": {
+        "x": 809,
+        "y": 278.34,
+        "width": 80,
+        "height": 32
+      },
+      "disabled": false
+    },
+    {
+      "text": "导出",
+      "class": "el-button el-button--ghost is-icon-text",
+      "rect": {
+        "x": 897,
+        "y": 278.34,
+        "width": 80,
+        "height": 32
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1692,
+        "y": 391.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1728,
+        "y": 391.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1764,
+        "y": 391.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1692,
+        "y": 479.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1728,
+        "y": 479.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1764,
+        "y": 479.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1692,
+        "y": 567.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1728,
+        "y": 567.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1764,
+        "y": 567.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1692,
+        "y": 655.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1728,
+        "y": 655.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1764,
+        "y": 655.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1692,
+        "y": 743.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1728,
+        "y": 743.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1764,
+        "y": 743.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1692,
+        "y": 831.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1728,
+        "y": 831.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1764,
+        "y": 831.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1692,
+        "y": 919.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1728,
+        "y": 919.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1764,
+        "y": 919.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1692,
+        "y": 1007.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1728,
+        "y": 1007.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1764,
+        "y": 1007.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1692,
+        "y": 1095.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1728,
+        "y": 1095.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1764,
+        "y": 1095.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1692,
+        "y": 1183.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1728,
+        "y": 1183.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1764,
+        "y": 1183.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1692,
+        "y": 1271.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1728,
+        "y": 1271.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1764,
+        "y": 1271.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1692,
+        "y": 1359.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1728,
+        "y": 1359.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1764,
+        "y": 1359.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1692,
+        "y": 1447.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1728,
+        "y": 1447.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1764,
+        "y": 1447.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1692,
+        "y": 1535.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1728,
+        "y": 1535.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1764,
+        "y": 1535.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1692,
+        "y": 1623.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1728,
+        "y": 1623.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1764,
+        "y": 1623.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1692,
+        "y": 1711.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1728,
+        "y": 1711.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1764,
+        "y": 1711.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1692,
+        "y": 1799.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1728,
+        "y": 1799.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1764,
+        "y": 1799.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1692,
+        "y": 1887.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1728,
+        "y": 1887.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1764,
+        "y": 1887.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1692,
+        "y": 1975.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1728,
+        "y": 1975.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1764,
+        "y": 1975.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1692,
+        "y": 2063.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1728,
+        "y": 2063.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1764,
+        "y": 2063.84,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "跳转",
+      "class": "el-button el-button--default",
+      "rect": {
+        "x": 1824,
+        "y": 924.5,
+        "width": 56,
+        "height": 32
+      },
+      "disabled": false
+    }
+  ],
+  "inputs": [
+    {
+      "type": "text",
+      "placeholder": "请输入",
+      "value": "",
+      "checked": false,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 536,
+        "y": 209.34,
+        "width": 324,
+        "height": 32
+      }
+    },
+    {
+      "type": "text",
+      "placeholder": "请输入",
+      "value": "",
+      "checked": false,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 876,
+        "y": 209.34,
+        "width": 324,
+        "height": 32
+      }
+    },
+    {
+      "type": "text",
+      "placeholder": "请选择日期",
+      "value": "",
+      "checked": false,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 1216,
+        "y": 209.34,
+        "width": 324,
+        "height": 32
+      }
+    },
+    {
+      "type": "text",
+      "placeholder": "请选择任意时间点",
+      "value": "",
+      "checked": false,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    },
+    {
+      "type": "text",
+      "placeholder": "请输入",
+      "value": "",
+      "checked": false,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    },
+    {
+      "type": "text",
+      "placeholder": "请输入",
+      "value": "",
+      "checked": false,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    },
+    {
+      "type": "text",
+      "placeholder": "请输入",
+      "value": "",
+      "checked": false,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    },
+    {
+      "type": "text",
+      "placeholder": "请输入",
+      "value": "",
+      "checked": false,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    },
+    {
+      "type": "radio",
+      "placeholder": "",
+      "value": "1",
+      "checked": true,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 815,
+        "y": 278.34,
+        "width": 13,
+        "height": 13
+      }
+    },
+    {
+      "type": "radio",
+      "placeholder": "",
+      "value": "2",
+      "checked": false,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 848,
+        "y": 278.34,
+        "width": 13,
+        "height": 13
+      }
+    },
+    {
+      "type": "text",
+      "placeholder": "请选择",
+      "value": "20 条/页",
+      "checked": false,
+      "readonly": true,
+      "disabled": false,
+      "rect": {
+        "x": 595.58,
+        "y": 924,
+        "width": 112,
+        "height": 32
+      }
+    },
+    {
+      "type": "text",
+      "placeholder": "",
+      "value": "1",
+      "checked": false,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 1701.25,
+        "y": 924.5,
+        "width": 72,
+        "height": 32
+      }
+    }
+  ]
+}

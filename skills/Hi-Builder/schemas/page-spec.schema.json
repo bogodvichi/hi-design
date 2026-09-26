@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hi-design.page-spec.v2",
+  "title": "Hi-Builder PageSpec Envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "industry", "product", "page_type", "payload"],
+  "properties": {
+    "schema_version": {"const": "page-spec.v2"},
+    "industry": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+    "product": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+    "product_version": {"type": "string", "minLength": 1},
+    "page_type": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+    "title": {"type": "string", "minLength": 1},
+    "shell": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "active_top_menu": {"type": "string"},
+        "active_side_menu": {"type": "string"},
+        "tab_title": {"type": "string"}
+      }
+    },
+    "payload": {"type": "object"}
+  }
+}

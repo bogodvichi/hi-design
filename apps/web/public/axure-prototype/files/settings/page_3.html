@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>设置 — TaskFlow</title>
+<link rel="stylesheet" href="../../resources/css/reset.css">
+<link rel="stylesheet" href="../../resources/css/app.css">
+<link rel="stylesheet" href="../../resources/css/pages.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="app-sidebar">
+    <div class="brand"><span class="brand-logo"></span><span class="brand-name">TaskFlow</span></div>
+    <nav class="nav-list">
+      <div class="nav-item" data-action="nav" data-target="dashboard"><span class="nav-icon">▦</span>仪表盘</div>
+      <div class="nav-item"><span class="nav-icon">✓</span>我的任务<span class="nav-badge">5</span></div>
+      <div class="nav-item"><span class="nav-icon">▤</span>项目</div>
+      <div class="nav-item"><span class="nav-icon">◎</span>团队</div>
+      <div class="nav-item is-active"><span class="nav-icon">⚙</span>设置</div>
+    </nav>
+    <div class="sidebar-foot">
+      <div class="avatar">A</div>
+      <div><div class="u-name">Ava Chen</div><div class="u-role">产品经理</div></div>
+    </div>
+  </aside>
+  <main class="app-main">
+    <header class="app-topbar">
+      <div><div class="topbar-title">设置</div><div class="topbar-crumb">工作区 / 偏好</div></div>
+      <div class="topbar-spacer"></div>
+      <button class="btn btn-ghost btn-sm">还原默认</button>
+      <button class="btn btn-primary btn-sm">保存更改</button>
+    </header>
+    <div class="app-content">
+      <div class="settings-grid" data-tabs>
+        <nav class="settings-nav">
+          <div class="sn-item is-active" data-tab-target="account">账户</div>
+          <div class="sn-item" data-tab-target="notify">通知</div>
+          <div class="sn-item" data-tab-target="team">团队</div>
+          <div class="sn-item" data-tab-target="appearance">外观</div>
+          <div class="sn-item" data-tab-target="danger">危险区</div>
+        </nav>
+
+        <div>
+          <div class="tab-panel is-active" data-tab-panel="account">
+            <div class="card">
+              <div class="card-head"><div class="card-title">个人资料</div></div>
+              <div class="card-body">
+                <div style="display:flex;align-items:center;gap:16px;margin-bottom:18px">
+                  <div class="avatar lg">A</div>
+                  <div><button class="btn btn-ghost btn-sm">更换头像</button><div class="field-hint" style="margin-top:4px">JPG/PNG，最大 2MB</div></div>
+                </div>
+                <div class="form-row">
+                  <div class="field"><label class="field-label">姓名</label><input class="input" value="Ava Chen"></div>
+                  <div class="field"><label class="field-label">职位</label><input class="input" value="产品经理"></div>
+                </div>
+                <div class="form-row">
+                  <div class="field"><label class="field-label">邮箱</label><input class="input" type="email" value="ava@taskflow.io"></div>
+                  <div class="field"><label class="field-label">时区</label><select class="select"><option>Asia/Shanghai (UTC+8)</option><option>Asia/Tokyo (UTC+9)</option><option>Europe/London (UTC+0)</option></select></div>
+                </div>
+                <div class="field"><label class="field-label">简介</label><textarea class="textarea">负责 TaskFlow 产品方向，关注协作效率与信息架构。</textarea></div>
+              </div>
+            </div>
+            <div class="card" style="margin-top:14px">
+              <div class="card-head"><div class="card-title">密码</div></div>
+              <div class="card-body">
+                <div class="form-row">
+                  <div class="field"><label class="field-label">当前密码</label><input class="input" type="password" value="password"></div>
+                  <div class="field"><label class="field-label">新密码</label><input class="input" type="password" placeholder="至少 8 位"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-panel" data-tab-panel="notify">
+            <div class="card">
+              <div class="card-head"><div class="card-title">通知偏好</div><div class="card-sub">通过哪些渠道接收提醒</div></div>
+              <div class="card-body">
+                <div class="setting-row">
+                  <div><div class="sr-label">邮件通知</div><div class="sr-desc">任务被指派、截止前 24 小时、评论 @ 我时发送邮件。</div></div>
+                  <div class="toggle is-on" onclick="this.classList.toggle('is-on')"></div>
+                </div>
+                <div class="setting-row">
+                  <div><div class="sr-label">桌面推送</div><div class="sr-desc">在浏览器或桌面客户端弹出实时通知。</div></div>
+                  <div class="toggle is-on" onclick="this.classList.toggle('is-on')"></div>
+                </div>
+                <div class="setting-row">
+                  <div><div class="sr-label">每日摘要</div><div class="sr-desc">每天早上 9:00 汇总今日待办与到期任务。</div></div>
+                  <div class="toggle" onclick="this.classList.toggle('is-on')"></div>
+                </div>
+                <div class="setting-row">
+                  <div><div class="sr-label">@ 提及实时通知</div><div class="sr-desc">被 @ 提及时立即推送，不受勿扰影响。</div></div>
+                  <div class="toggle is-on" onclick="this.classList.toggle('is-on')"></div>
+                </div>
+              </div>
+            </div>
+            <div class="card" style="margin-top:14px">
+              <div class="card-head"><div class="card-title">勿扰时段</div></div>
+              <div class="card-body">
+                <div class="form-row">
+                  <div class="field"><label class="field-label">开始</label><input class="input" type="time" value="22:00"></div>
+                  <div class="field"><label class="field-label">结束</label><input class="input" type="time" value="08:00"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-panel" data-tab-panel="team">
+            <div class="card">
+              <div class="card-head">
+                <div><div class="card-title">团队成员</div><div class="card-sub">共 5 人，管理员 2 人</div></div>
+                <button class="btn btn-primary btn-sm">+ 邀请</button>
+              </div>
+              <div class="card-body">
+                <div class="team-row">
+                  <div class="avatar">A</div>
+                  <div class="tr-info"><div class="tr-name">Ava Chen <span class="badge badge-muted" style="margin-left:4px">你</span></div><div class="tr-email">ava@taskflow.io</div></div>
+                  <select class="select role-select"><option>管理员</option><option>成员</option><option>只读</option></select>
+                </div>
+                <div class="team-row">
+                  <div class="avatar" style="background:#8b5cf6">L</div>
+                  <div class="tr-info"><div class="tr-name">Leo Wang</div><div class="tr-email">leo@taskflow.io</div></div>
+                  <select class="select role-select"><option>管理员</option><option selected>成员</option><option>只读</option></select>
+                </div>
+                <div class="team-row">
+                  <div class="avatar" style="background:#10b981">M</div>
+                  <div class="tr-info"><div class="tr-name">Mia Liu</div><div class="tr-email">mia@taskflow.io</div></div>
+                  <select class="select role-select"><option>管理员</option><option selected>成员</option><option>只读</option></select>
+                </div>
+                <div class="team-row">
+                  <div class="avatar" style="background:#ef4444">K</div>
+                  <div class="tr-info"><div class="tr-name">Kim Zhao</div><div class="tr-email">kim@taskflow.io</div></div>
+                  <select class="select role-select"><option>管理员</option><option selected>成员</option><option>只读</option></select>
+                </div>
+                <div class="team-row">
+                  <div class="avatar" style="background:#0ea5e9">S</div>
+                  <div class="tr-info"><div class="tr-name">Sam Sun</div><div class="tr-email">sam@taskflow.io</div></div>
+                  <select class="select role-select"><option>管理员</option><option selected>成员</option><option>只读</option></select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-panel" data-tab-panel="appearance">
+            <div class="card">
+              <div class="card-head"><div class="card-title">外观</div></div>
+              <div class="card-body">
+                <div class="setting-row">
+                  <div><div class="sr-label">深色模式</div><div class="sr-desc">跟随系统或手动切换深色界面。</div></div>
+                  <div class="toggle" onclick="this.classList.toggle('is-on')"></div>
+                </div>
+                <div class="setting-row">
+                  <div><div class="sr-label">紧凑布局</div><div class="sr-desc">减少列表与卡片间距，单屏显示更多信息。</div></div>
+                  <div class="toggle" onclick="this.classList.toggle('is-on')"></div>
+                </div>
+                <div class="setting-row">
+                  <div><div class="sr-label">侧边栏自动收起</div><div class="sr-desc">鼠标移出时收起侧边栏以扩大工作区。</div></div>
+                  <div class="toggle is-on" onclick="this.classList.toggle('is-on')"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tab-panel" data-tab-panel="danger">
+            <div class="danger-zone">
+              <div class="card-title" style="color:var(--c-danger);margin-bottom:6px">危险操作</div>
+              <div class="sr-desc" style="margin-bottom:14px">以下操作不可撤销，请谨慎执行。</div>
+              <div class="setting-row" style="border-bottom:none">
+                <div><div class="sr-label">导出全部数据</div><div class="sr-desc">下载工作区所有任务、评论与附件的归档。</div></div>
+                <button class="btn btn-ghost btn-sm">导出</button>
+              </div>
+              <div class="setting-row" style="border-bottom:none">
+                <div><div class="sr-label">转让所有权</div><div class="sr-desc">将工作区所有权转给其他管理员。</div></div>
+                <button class="btn btn-ghost btn-sm">转让</button>
+              </div>
+              <div class="setting-row" style="border-bottom:none">
+                <div><div class="sr-label">删除工作区</div><div class="sr-desc">永久删除工作区及其所有数据。</div></div>
+                <button class="btn btn-danger btn-sm">删除</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="../../resources/scripts/interactions.js"></script>
+</body>
+</html>

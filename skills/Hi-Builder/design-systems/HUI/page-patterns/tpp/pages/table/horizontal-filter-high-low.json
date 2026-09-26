@@ -1,0 +1,166 @@
+{
+  "schema_version": "hui-page-variant.v1",
+  "id": "hui.tpp.page.table.horizontal-filter-high-low",
+  "name": "水平栏过滤（高低频）",
+  "family": "hui.tpp.family.table-manual-filter",
+  "source": {
+    "url": "http://tpp.dev.hikhub.net/tpp#/pages/table/horizontalBarFilteringHeightAndLow",
+    "package": "@hiktpp/table-horizontal-bar-filtering-height-and-low",
+    "hui_version": "^2.55.0",
+    "observed_at": "2026-07-31",
+    "evidence": "../../evidence/table/horizontal-filter-high-low.json"
+  },
+  "parameters": {
+    "filter_placement": "horizontal-bar",
+    "collapse_mode": "high-low-frequency"
+  },
+  "geometry": {
+    "viewport": {
+      "width": 1920,
+      "height": 968
+    },
+    "root": {
+      "class": "h-page-content is-flex",
+      "rect": {
+        "x": 240,
+        "y": 102.34,
+        "width": 1680,
+        "height": 865.66
+      },
+      "style": {
+        "display": "flex",
+        "padding": "16px 16px 0px",
+        "overflow": "visible"
+      }
+    },
+    "key_regions": {
+      "filter": {
+        "class": "filter-container",
+        "rect": {
+          "x": 280,
+          "y": 118.34,
+          "width": 1600,
+          "height": 213
+        },
+        "display": "block",
+        "position": "static",
+        "padding": "24px 0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "toolbar": {
+        "class": "bar-search-row",
+        "rect": {
+          "x": 268,
+          "y": 331.34,
+          "width": 1624,
+          "height": 56
+        },
+        "display": "flex",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "table": {
+        "class": "el-table el-table--fit el-table--enable-row-hover el-table--enable-row-transition el-table--no-out-border",
+        "rect": {
+          "x": 280,
+          "y": 387.34,
+          "width": 1600,
+          "height": 524.66
+        },
+        "display": "flex",
+        "position": "relative",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "hidden",
+        "overflow_y": "hidden"
+      },
+      "pagination": {
+        "class": "el-pagination el-pagination--table",
+        "rect": {
+          "x": 268,
+          "y": 912,
+          "width": 1624,
+          "height": 56
+        },
+        "display": "flex",
+        "position": "static",
+        "padding": "0px 12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      }
+    }
+  },
+  "composition": {
+    "hui_components": {
+      "el-checkable-tag": 11,
+      "el-date-picker": 1,
+      "el-select": 5,
+      "el-input": 6,
+      "el-scrollbar": 6,
+      "el-option": 20,
+      "el-button": 72,
+      "el-divider": 1,
+      "el-radio-group": 1,
+      "el-radio-button": 2,
+      "h-icon": 1,
+      "el-table": 1,
+      "el-table-column": 10,
+      "el-tooltip": 10,
+      "el-checkbox": 21,
+      "h-svg-icon": 21,
+      "el-tag": 20,
+      "el-pagination": 1
+    },
+    "page_framework_components": {
+      "h-page-content": 3,
+      "h-page-button-group": 1
+    },
+    "unindexed_runtime_components": {
+      "el-select-menu": 5
+    },
+    "actions": [
+      {
+        "label": "查询",
+        "count": 1
+      },
+      {
+        "label": "重置",
+        "count": 1
+      },
+      {
+        "label": "添加",
+        "count": 1
+      },
+      {
+        "label": "编辑",
+        "count": 21
+      },
+      {
+        "label": "删除",
+        "count": 21
+      },
+      {
+        "label": "导入",
+        "count": 1
+      },
+      {
+        "label": "导出",
+        "count": 1
+      },
+      {
+        "label": "更多",
+        "count": 20
+      },
+      {
+        "label": "跳转",
+        "count": 1
+      }
+    ]
+  }
+}

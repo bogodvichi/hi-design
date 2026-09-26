@@ -1,0 +1,14 @@
+{
+  "schema_version": "hui-component-pattern.v2",
+  "id": "pagination.page-navigation",
+  "name": "分页导航",
+  "split_mode": "single",
+  "vue_component": "PageNavigation",
+  "description": "控制数据集合的当前页、每页数量和页码跳转",
+  "category": "pagination",
+  "status": "active",
+  "use_when": ["数据集合需要分页浏览"],
+  "hui_components": ["el-pagination"],
+  "geometry_roles": {"pagination-min-height": "56px"},
+  "owner": "hui-common"
+}

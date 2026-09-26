@@ -1,0 +1,102 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "loading",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/notice/loading",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/notice.docs.json",
+    "evidence_sha256": "917ae2b786922adf7a8f4f7b61892dbcb24175deb5c2a74463c784655f45667b"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "directive-and-service",
+  "runtime": {
+    "v-loading": {
+      "props": [
+        {
+          "参数": "target",
+          "说明": "Loading 需要覆盖的 DOM 节点。可传入一个 DOM 对象或字符串；若传入字符串，则会将其作为参数传入 document.querySelector以获取到对应 DOM 节点",
+          "类型": "object/string",
+          "可选值": "—",
+          "默认值": "document.body",
+          "template_name": "target"
+        },
+        {
+          "参数": "body",
+          "说明": "同 v-loading 指令中的 body 修饰符",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "body"
+        },
+        {
+          "参数": "fullscreen",
+          "说明": "同 v-loading 指令中的 fullscreen 修饰符",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "fullscreen"
+        },
+        {
+          "参数": "lock",
+          "说明": "同 v-loading 指令中的 lock 修饰符",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "lock"
+        },
+        {
+          "参数": "text",
+          "说明": "显示在加载图标下方的加载文案",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "text"
+        },
+        {
+          "参数": "customClass",
+          "说明": "Loading 的自定义类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "custom-class"
+        },
+        {
+          "参数": "small/mini/large",
+          "说明": "v-loading 指令中的修饰符, 分别对应的 icon 大小为 16/24/80",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "40",
+          "template_name": "small"
+        },
+        {
+          "参数": "size",
+          "说明": "传入的 size 尺寸",
+          "类型": "string",
+          "可选值": "large,small,mini",
+          "默认值": "40",
+          "template_name": "size"
+        },
+        {
+          "参数": "primary/gray",
+          "说明": "v-loading 指令中的修饰符, 指示 loading 的颜色",
+          "类型": "boolean",
+          "可选值": "-",
+          "默认值": "primary",
+          "template_name": "primary"
+        },
+        {
+          "参数": "color",
+          "说明": "传入的颜色",
+          "类型": "string",
+          "可选值": "primary,gray",
+          "默认值": "primary",
+          "template_name": "color"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

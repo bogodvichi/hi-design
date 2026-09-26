@@ -1,0 +1,4 @@
+{
+  "_说明": "日志上报接口。采集脚本会把每条对齐 usage_raw 字段的 JSON POST 到 url（无需鉴权）。入库到 usage_raw 表由该接口后端负责。留空则只写本地 data/usage.jsonl 不上报。",
+  "url": "https://pixso.hikvision.com.cn/hik-plugin/ai-builder-web/webapi/v1/tracking/report"
+}

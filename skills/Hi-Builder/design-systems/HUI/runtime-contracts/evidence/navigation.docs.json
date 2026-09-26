@@ -1,0 +1,1492 @@
+{
+  "observedAt": "2026-07-31",
+  "items": [
+    {
+      "id": "menu",
+      "path": "/hui/components/navigation/menu-demo",
+      "tables": [
+        {
+          "heading": "Menu Attribute #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "theme  移除",
+              "主题色",
+              "string",
+              "light,dark",
+              "light"
+            ],
+            [
+              "default-active",
+              "当前激活菜单的 index",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "default-openeds",
+              "当前打开的submenu的 key 数组",
+              "Array",
+              "—",
+              "—"
+            ],
+            [
+              "unique-opened",
+              "是否只保持一个子菜单的展开",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "router",
+              "是否使用 vue-router 的模式，启用该模式会在激活导航时以 index 作为 path 进行路由跳转",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "wrap-scroll",
+              "外部容器是否滚动，若滚动请开启这个参数",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "activedMask  2.52+",
+              "选中状态是否开启竖条标记",
+              "boolean",
+              "—",
+              "false"
+            ]
+          ]
+        },
+        {
+          "heading": "Menu Methods #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "参数"
+          ],
+          "rows": [
+            [
+              "open  2.0+",
+              "展开指定的 sub-menu",
+              "index: 需要打开的 sub-menu 的 index"
+            ],
+            [
+              "close  2.0+",
+              "收起指定的 sub-menu",
+              "index: 需要收起的 sub-menu 的 index"
+            ]
+          ]
+        },
+        {
+          "heading": "Menu Events #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "select",
+              "菜单激活回调",
+              "index: 选中菜单项的 indexPath: 选中菜单项的 index path"
+            ],
+            [
+              "open",
+              "SubMenu 展开的回调",
+              "index: 打开的 subMenu 的 index， indexPath: 打开的 subMenu 的 index path"
+            ],
+            [
+              "close",
+              "SubMenu 收起的回调",
+              "index: 收起的 subMenu 的 index， indexPath: 收起的 subMenu 的 index path"
+            ],
+            [
+              "fold",
+              "菜单折叠回调",
+              "—"
+            ],
+            [
+              "unfold",
+              "菜单展开回调",
+              "—"
+            ]
+          ]
+        },
+        {
+          "heading": "SubMenu Attribute #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "index",
+              "唯一标志",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "title",
+              "子菜单标题",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "icon",
+              "菜单项的图标",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "disabled",
+              "是否禁用",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "description",
+              "子菜单描述",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "divided",
+              "是否存在分割线",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "isBgFill",
+              "子菜单底部，是否有灰色背景",
+              "boolean",
+              "—",
+              "false"
+            ]
+          ]
+        },
+        {
+          "heading": "Menu-Item Attribute #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "index",
+              "唯一标志",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "route",
+              "Vue Router 路径对象",
+              "Object",
+              "—",
+              "—"
+            ],
+            [
+              "disabled",
+              "是否禁用",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "description",
+              "菜单项描述",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "divided",
+              "是否存在分割线",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "suffix",
+              "菜单项后缀",
+              "string",
+              "—",
+              "—"
+            ]
+          ]
+        },
+        {
+          "heading": "Menu-Group Attribute #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "title",
+              "分组标题",
+              "string",
+              "—",
+              "—"
+            ]
+          ]
+        },
+        {
+          "heading": "Slot #",
+          "headers": [
+            "name",
+            "说明"
+          ],
+          "rows": [
+            [
+              "—",
+              "menu-item的内容"
+            ],
+            [
+              "icon  2.0+",
+              "menu-item的图标"
+            ],
+            [
+              "suffix  2.50.0+",
+              "menu-item的后缀"
+            ],
+            [
+              "description  2.50.0+",
+              "menu-item/sub-menu的描述"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "nav",
+      "path": "/hui/components/navigation/nav-demo",
+      "tables": [
+        {
+          "heading": "Nav Attribute #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "mode",
+              "模式",
+              "string",
+              "horizontal,vertical",
+              "vertical"
+            ],
+            [
+              "collapse",
+              "是否水平折叠收起菜单（仅在 mode 为 vertical 时可用）",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "collapse-btn",
+              "是否启用折叠按钮",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "theme  移除",
+              "主题色",
+              "string",
+              "light,dark",
+              "light"
+            ],
+            [
+              "default-active",
+              "当前激活菜单的 index",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "default-openeds",
+              "当前打开的subnav的 key 数组",
+              "Array",
+              "—",
+              "—"
+            ],
+            [
+              "unique-opened",
+              "是否只保持一个子菜单的展开",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "nav-trigger",
+              "子菜单打开的触发方式(只在 mode 为 horizontal 时有效)",
+              "string",
+              "—",
+              "hover"
+            ],
+            [
+              "router",
+              "是否使用 vue-router 的模式，启用该模式会在激活导航时以 index 作为 path 进行路由跳转",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "wrap-scroll",
+              "外部容器是否滚动，若滚动请开启这个参数",
+              "boolean",
+              "—",
+              "false"
+            ]
+          ]
+        },
+        {
+          "heading": "Nav Methods #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "参数"
+          ],
+          "rows": [
+            [
+              "open  2.0+",
+              "展开指定的 sub-nav",
+              "index: 需要打开的 sub-nav 的 index"
+            ],
+            [
+              "close  2.0+",
+              "收起指定的 sub-nav",
+              "index: 需要收起的 sub-nav 的 index"
+            ]
+          ]
+        },
+        {
+          "heading": "Nav Events #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "select",
+              "菜单激活回调",
+              "index: 选中菜单项的 indexPath: 选中菜单项的 index path"
+            ],
+            [
+              "open",
+              "SubNav 展开的回调",
+              "index: 打开的 subNav 的 index， indexPath: 打开的 subNav 的 index path"
+            ],
+            [
+              "close",
+              "SubNav 收起的回调",
+              "index: 收起的 subNav 的 index， indexPath: 收起的 subNav 的 index path"
+            ],
+            [
+              "click-collapse",
+              "折叠按钮点击的回调",
+              "—"
+            ],
+            [
+              "fold",
+              "菜单折叠回调",
+              "—"
+            ],
+            [
+              "unfold",
+              "菜单展开回调",
+              "—"
+            ],
+            [
+              "show-collapse",
+              "折叠菜单显示事件（仅在设置wrap-scroll为true时生效）",
+              "—"
+            ],
+            [
+              "hide-collapse",
+              "折叠菜单隐藏事件（仅在设置wrap-scroll为true时生效）",
+              "—"
+            ]
+          ]
+        },
+        {
+          "heading": "SubNav Attribute #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "index",
+              "唯一标志",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "title",
+              "子菜单标题",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "icon",
+              "菜单项的图标",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "disabled",
+              "是否禁用",
+              "boolean",
+              "—",
+              "false"
+            ]
+          ]
+        },
+        {
+          "heading": "Nav-Item Attribute #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "index",
+              "唯一标志",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "route",
+              "Vue Router 路径对象",
+              "Object",
+              "—",
+              "—"
+            ],
+            [
+              "disabled",
+              "是否禁用",
+              "boolean",
+              "—",
+              "false"
+            ]
+          ]
+        },
+        {
+          "heading": "Nav-Group Attribute #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "title",
+              "分组标题",
+              "string",
+              "—",
+              "—"
+            ]
+          ]
+        },
+        {
+          "heading": "Slot #",
+          "headers": [
+            "name",
+            "说明"
+          ],
+          "rows": [
+            [
+              "—",
+              "nav-item的内容"
+            ],
+            [
+              "icon  2.0+",
+              "nav-item的图标"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tabs",
+      "path": "/hui/components/navigation/tabs",
+      "tables": [
+        {
+          "heading": "Tabs Attributes #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "type",
+              "风格类型",
+              "string",
+              "card/border-card/trapezoid 2.61.0+",
+              "—"
+            ],
+            [
+              "size",
+              "尺寸",
+              "string",
+              "small/medium/large",
+              "medium"
+            ],
+            [
+              "closable",
+              "标签是否可关闭",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "addable",
+              "标签是否可增加",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "editable",
+              "标签是否同时可增加和关闭",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "tab-position",
+              "选项卡所在位置",
+              "string",
+              "top/right/bottom/right",
+              "top"
+            ],
+            [
+              "active-name(deprecated)",
+              "选中选项卡的 name",
+              "string",
+              "—",
+              "第一个选项卡的 name"
+            ],
+            [
+              "value",
+              "绑定值，选中选项卡的 name",
+              "string",
+              "—",
+              "第一个选项卡的 name"
+            ],
+            [
+              "orientation",
+              "选项卡横向还是纵向排列",
+              "string",
+              "vertical-left/vertival-right",
+              "默认值空，空则水平方向排列"
+            ],
+            [
+              "before-tab-change",
+              "切换 tab 页前的钩子，返回 Boolean 或 Promise<Boolean>，为 true 表示切换",
+              "Function(tab, tabName, event)",
+              "—",
+              "() => true"
+            ],
+            [
+              "before-leave  非兼容",
+              "切换标签之前的钩子，若返回 false 或者返回 Promise 且被 reject，则阻止切换。",
+              "Function(activeName, oldActiveName)",
+              "—",
+              "() => true"
+            ],
+            [
+              "before-remove  2.1",
+              "删除标签之前的钩子，若返回 false 或者返回 Promise 且被 reject，则阻止删除。",
+              "Function(tabName)",
+              "—",
+              "() => true"
+            ],
+            [
+              "label-max-width",
+              "头部标签最大宽度",
+              "Number",
+              "—",
+              "无默认值，但头部标签样式控制默认最大宽度为 192px"
+            ],
+            [
+              "fix-width  2.0",
+              "tab 的固定宽度。设置后将与内容无关，tab 展现固定的宽度，同时 label-max-width 失效",
+              "Number",
+              "-",
+              "无默认值"
+            ]
+          ]
+        },
+        {
+          "heading": "Tabs Events #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "tab-click",
+              "tab 被选中时触发",
+              "被选中的标签 tab 实例"
+            ],
+            [
+              "tab-remove",
+              "点击 tab 移除按钮后触发",
+              "被删除的标签的 name"
+            ],
+            [
+              "tab-add",
+              "点击 tabs 的新增按钮后触发",
+              "—"
+            ],
+            [
+              "edit",
+              "点击 tabs 的新增按钮或 tab 被关闭后触发",
+              "(targetName, action)"
+            ]
+          ]
+        },
+        {
+          "heading": "Tab-pane Attributes #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "label",
+              "选项卡标题",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "label-icon",
+              "选项卡以图标而不是文字标记",
+              "string",
+              "hui 字体图标",
+              "—"
+            ],
+            [
+              "disabled",
+              "是否禁用",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "name",
+              "与选项卡 activeName 对应的标识符，表示选项卡别名",
+              "string",
+              "—",
+              "该选项卡在选项卡列表中的顺序值，如第一个选项卡则为’1’"
+            ],
+            [
+              "closable",
+              "标签是否可关闭",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "label-max-width",
+              "头部标签最大宽度，可以覆盖 Tabs 控件的值",
+              "Number",
+              "—",
+              "无默认值，但头部标签样式控制默认最大宽度为 192px"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "breadcrumb",
+      "path": "/hui/components/navigation/breadcrumb",
+      "tables": [
+        {
+          "heading": "Breadcrumb Attributes #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "separator",
+              "分隔符",
+              "string",
+              "—",
+              "斜杠’/’"
+            ],
+            [
+              "separator-class  2.0+",
+              "分隔图标。设置值后，separator 失效",
+              "string",
+              "-",
+              ""
+            ],
+            [
+              "item-max-width  2.0.33+",
+              "面包屑子项最大宽度，会被子项的 max-width 覆盖",
+              "string",
+              "-",
+              ""
+            ]
+          ]
+        },
+        {
+          "heading": "Breadcrumb Item Attributes #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "to",
+              "路由跳转对象，同 vue-router 的 to",
+              "string/object",
+              "—",
+              "—"
+            ],
+            [
+              "item-click",
+              "item 点击事件，先执行 item，但不会影响 to 的跳转",
+              "Function",
+              "—",
+              "—"
+            ],
+            [
+              "replace",
+              "在使用 to 进行路由跳转时，启用 replace 将不会向 history 添加新记录",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "type  2.0+",
+              "新增,用于设置隐藏元素的展示形式",
+              "string",
+              "tooltip/popover",
+              "-"
+            ],
+            [
+              "max-width  2.0.33+",
+              "最大宽度",
+              "string",
+              "-",
+              ""
+            ],
+            [
+              "sub-max-width  2.0.33+",
+              "被收起的面包屑子项最大宽度，会被收起子项的 max-width 覆盖",
+              "string",
+              "-",
+              ""
+            ]
+          ]
+        },
+        {
+          "heading": "Breadcrumb Sub Item Attributes #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "to",
+              "路由跳转对象，同 vue-router 的 to",
+              "string/object",
+              "—",
+              "—"
+            ],
+            [
+              "max-width  2.0.33+",
+              "最大宽度",
+              "string",
+              "-",
+              ""
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "dropdown",
+      "path": "/hui/components/navigation/dropdown",
+      "tables": [
+        {
+          "heading": "Attributes #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "type",
+              "菜单按钮类型，同 Button 组件(只在split-button为 true 的情况下有效)",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "size",
+              "菜单按钮尺寸，同 Button 组件(只在split-button为 true 的情况下有效)",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "icon",
+              "菜单按钮图标，同 Button 组件(只在split-button为 true 的情况下有效)",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "split-button",
+              "下拉触发元素呈现为按钮组",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "menu-align",
+              "菜单水平对齐方向",
+              "string",
+              "start, end",
+              "end"
+            ],
+            [
+              "placement  非兼容",
+              "菜单弹出位置",
+              "string",
+              "top/top-start/top-end/bottom/bottom-start/bottom-end",
+              "bottom-end"
+            ],
+            [
+              "trigger",
+              "触发下拉的行为",
+              "string",
+              "hover, click",
+              "hover"
+            ],
+            [
+              "hide-on-click",
+              "是否在点击菜单项后隐藏菜单",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "hide-on-click-outside",
+              "是否在点击下拉菜单项以外区域后隐藏菜单，需要配合 trigger=\"click\"使用",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "show-timeout",
+              "展开下拉菜单的延时（仅在 trigger 为 hover 时有效）",
+              "number",
+              "—",
+              "250"
+            ],
+            [
+              "hide-timeout",
+              "收起下拉菜单的延时（仅在 trigger 为 hover 时有效）",
+              "number",
+              "—",
+              "150"
+            ],
+            [
+              "isItemKeyEnterShow",
+              "item回车是否隐藏，默认false",
+              "boolean",
+              "—",
+              "false"
+            ]
+          ]
+        },
+        {
+          "heading": "方法 #",
+          "headers": [
+            "方法名",
+            "说明",
+            "参数"
+          ],
+          "rows": [
+            [
+              "show",
+              "显示下拉菜单",
+              "—"
+            ],
+            [
+              "hide",
+              "隐藏下拉菜单",
+              "—"
+            ]
+          ]
+        },
+        {
+          "heading": "Dropdown Events #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "click",
+              "split-button 为 true 时，点击左侧按钮的回调",
+              "—"
+            ],
+            [
+              "command",
+              "点击菜单项触发的事件回调",
+              "dropdown-item 的指令"
+            ],
+            [
+              "visible-change",
+              "下拉框出现/隐藏时触发",
+              "出现则为 true，隐藏则为 false"
+            ]
+          ]
+        },
+        {
+          "heading": "Dropdown Menu Item Attributes #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "command",
+              "指令",
+              "string/number/object",
+              "—",
+              "—"
+            ],
+            [
+              "disabled",
+              "禁用",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "divided",
+              "显示分割线",
+              "boolean",
+              "—",
+              "false"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "steps",
+      "path": "/hui/components/navigation/steps",
+      "tables": [
+        {
+          "heading": "Steps Attributes #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "space",
+              "每个 step 的间距，不填写将自适应间距。支持百分比。",
+              "Number,String",
+              "—",
+              "—"
+            ],
+            [
+              "direction",
+              "显示方向",
+              "string",
+              "vertical/horizontal",
+              "horizontal"
+            ],
+            [
+              "active",
+              "设置当前激活步骤",
+              "number",
+              "—",
+              "0"
+            ],
+            [
+              "process-status",
+              "设置当前步骤的状态",
+              "string",
+              "wait/process/finish/error/success",
+              "process"
+            ],
+            [
+              "finish-status",
+              "设置结束步骤的状态",
+              "string",
+              "wait/process/finish/error/success",
+              "finish"
+            ],
+            [
+              "align-center",
+              "标题描述居中对齐",
+              "boolean",
+              "-",
+              "true"
+            ],
+            [
+              "right-title",
+              "title 在右边显示",
+              "boolean",
+              "-",
+              "false"
+            ],
+            [
+              "size  2.60.4+",
+              "尺寸",
+              "string",
+              "small",
+              ""
+            ],
+            [
+              "line",
+              "是否有进度线",
+              "boolean",
+              "-",
+              "true"
+            ],
+            [
+              "disorder  2.0+",
+              "无序状态",
+              "boolean",
+              "-",
+              "false"
+            ],
+            [
+              "finished-mark  2.54.1+",
+              "设置完成步骤状态样式。为true时，已完成的步骤，样式背景色为brand-secondary",
+              "boolean",
+              "-",
+              "false"
+            ],
+            [
+              "label-placement  2.60.4+",
+              "direction 属性为 horizontal 时，可指定标签放置位置。默认放在图标下方，可选 horizontal 放图标右侧",
+              "string",
+              "vertical/horizontal",
+              "vertical"
+            ],
+            [
+              "type  2.60.4+",
+              "步骤条类型",
+              "string",
+              "default/navigation",
+              "default"
+            ]
+          ]
+        },
+        {
+          "heading": "Steps Event #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "step-click",
+              "步骤的点击事件响应",
+              "返回当前步骤索引值"
+            ]
+          ]
+        },
+        {
+          "heading": "Step Attributes #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "title",
+              "标题",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "description",
+              "描述性文字",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "icon",
+              "图标",
+              "Element Icon 提供的图标，如果要使用自定义图标可以通过 slot 方式写入",
+              "string",
+              "—"
+            ],
+            [
+              "status",
+              "设置当前步骤的状态，不设置则根据 steps 确定状态",
+              "wait/process/finish/error/success",
+              "-",
+              ""
+            ]
+          ]
+        },
+        {
+          "heading": "Step Slot #",
+          "headers": [
+            "name",
+            "说明"
+          ],
+          "rows": [
+            [
+              "icon",
+              "图标"
+            ],
+            [
+              "title",
+              "标题"
+            ],
+            [
+              "description",
+              "描述性文字"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "anchor",
+      "path": "/hui/components/navigation/anchor",
+      "tables": [
+        {
+          "heading": "属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "可选值",
+            "默认值"
+          ],
+          "rows": [
+            [
+              "affix",
+              "是否是固定容器，采用h-affix",
+              "Boolean",
+              "-",
+              "true"
+            ],
+            [
+              "container",
+              "affix 外层滚动容器（参数为选择器）",
+              "String",
+              "-",
+              "window"
+            ],
+            [
+              "title",
+              "标题",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "size",
+              "自定义大小",
+              "string",
+              "large",
+              "—"
+            ],
+            [
+              "type",
+              "主题",
+              "string",
+              "success/warning/info/error",
+              "info"
+            ],
+            [
+              "description",
+              "辅助性文字。也可通过默认 slot 传入",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "simple",
+              "是否启用简单模式",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "closable",
+              "是否可关闭",
+              "boolean",
+              "—",
+              "true"
+            ],
+            [
+              "center",
+              "是否居中显示文本",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "close-text",
+              "关闭按钮自定义文本",
+              "string",
+              "—",
+              "—"
+            ],
+            [
+              "close-icon",
+              "自定义关闭按钮图标",
+              "String",
+              "—",
+              "—"
+            ],
+            [
+              "show-icon",
+              "是否显示图标",
+              "boolean",
+              "—",
+              "false"
+            ],
+            [
+              "icon",
+              "自定义图标",
+              "String",
+              "—",
+              "—"
+            ]
+          ]
+        },
+        {
+          "heading": "插槽 #",
+          "headers": [
+            "Name",
+            "Description"
+          ],
+          "rows": [
+            [
+              "title",
+              "标题的内容"
+            ]
+          ]
+        },
+        {
+          "heading": "事件 #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "close",
+              "关闭anchor时触发的事件",
+              "—"
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "id": "page-header",
+      "path": "/hui/components/navigation/layoutPageHeader",
+      "tables": [
+        {
+          "heading": "Props 属性 #",
+          "headers": [
+            "参数",
+            "说明",
+            "类型",
+            "默认值",
+            "可选值"
+          ],
+          "rows": [
+            [
+              "title",
+              "标题",
+              "String",
+              "‘’",
+              ""
+            ],
+            [
+              "subtitle",
+              "副标题",
+              "String",
+              "‘’",
+              ""
+            ],
+            [
+              "returnButton",
+              "是否显示返回按钮",
+              "Boolean",
+              "false",
+              ""
+            ],
+            [
+              "beforeReturn",
+              "返回前判断函数，返回 false 则阻止返回",
+              "Function",
+              "null",
+              ""
+            ],
+            [
+              "returnEvent",
+              "自定义返回事件",
+              "Function",
+              "null",
+              ""
+            ],
+            [
+              "returnRoute",
+              "返回路由，可以是字符串或路由对象",
+              "String/Object",
+              "null",
+              ""
+            ],
+            [
+              "fit",
+              "是否自适应（无 padding）",
+              "Boolean",
+              "false",
+              ""
+            ],
+            [
+              "defaultExpandedState",
+              "默认为 undefined，如果是非 undefined，则显示展开收起箭头，切默认展开。如果传值为 expand 则表示默认展开，如果是 collapse 表示默认收起。",
+              "Boolean",
+              "false",
+              "expand/collapse"
+            ]
+          ]
+        },
+        {
+          "heading": "Slots 插槽 #",
+          "headers": [
+            "插槽名称",
+            "说明"
+          ],
+          "rows": [
+            [
+              "title",
+              "标题内容"
+            ],
+            [
+              "subtitle",
+              "副标题内容"
+            ],
+            [
+              "prefix",
+              "标题前导图标"
+            ],
+            [
+              "extra",
+              "右侧额外内容"
+            ],
+            [
+              "arrow",
+              "展开收起箭头插槽。默认title前面插槽展开转90度，title后面插槽，展开转180度"
+            ]
+          ]
+        },
+        {
+          "heading": "Events 事件 #",
+          "headers": [
+            "事件名称",
+            "说明",
+            "回调参数"
+          ],
+          "rows": [
+            [
+              "expandedStateChange",
+              "展开收起状态变更回调。返回当前状态值。展开返回true，收起返回false",
+              "( expandedState: string )"
+            ]
+          ]
+        }
+      ]
+    }
+  ]
+}

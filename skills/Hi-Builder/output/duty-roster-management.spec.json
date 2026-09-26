@@ -1,0 +1,75 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "id": "duty-roster-management",
+  "title": "值班排班管理",
+  "page_kind": "table",
+  "pattern_contract": "table/regular-filter-box-high-low.json",
+  "portal": {
+    "active_top_menu": "智能应用",
+    "section": "线路/车站安防集成管理中心 · 值班管理",
+    "tab_title": "值班排班管理",
+    "active_side_menu": "duty-roster",
+    "side_menus": [
+      {"id": "duty-roster", "label": "值班排班管理", "icon": "h-icon-calendar", "href": "duty-roster-management.html"},
+      {"id": "duty-log", "label": "值班日志管理", "icon": "h-icon-edit", "href": "duty-log-management.html"},
+      {"id": "shift-handover", "label": "交接班管理", "icon": "h-icon-users", "href": "shift-handover-management.html"}
+    ]
+  },
+  "filters": [
+    {"key": "date", "label": "值班日期", "kind": "date-range", "placeholder": "请选择日期范围"},
+    {"key": "person", "label": "值班人员", "kind": "input", "placeholder": "请输入姓名", "default": ""},
+    {"key": "department", "label": "所属部门", "kind": "select", "options": ["全部", "综合监控中心", "车站运营部", "机电保障部", "安保管理部"], "default": "全部"},
+    {"key": "shift", "label": "班次", "kind": "select", "options": ["全部", "早班", "中班", "晚班"], "default": "全部"},
+    {"key": "role", "label": "值班角色", "kind": "select", "options": ["全部", "值班长", "监控员", "安保专员", "运维工程师"], "default": "全部"}
+  ],
+  "toolbar_actions": [
+    {"label": "新增排班", "icon": "h-icon-add"},
+    {"label": "编辑", "icon": "h-icon-edit"},
+    {"label": "删除", "icon": "h-icon-delete"},
+    {"label": "导入排班", "icon": "h-icon-import"},
+    {"label": "下载模板", "icon": "h-icon-download"}
+  ],
+  "columns": [
+    {"prop": "date", "label": "值班日期", "fixed_width": 120},
+    {"prop": "shift", "label": "班次", "fixed_width": 90},
+    {"prop": "person", "label": "值班人员", "fixed_width": 100},
+    {"prop": "role", "label": "值班角色", "fixed_width": 110},
+    {"prop": "department", "label": "所属部门", "min_width": 150},
+    {"prop": "phone", "label": "联系电话", "fixed_width": 130},
+    {"prop": "dutyRoom", "label": "值班地点", "min_width": 160},
+    {"prop": "source", "label": "排班来源", "fixed_width": 100}
+  ],
+  "page_size": 20,
+  "schedule_view_modes": ["day", "week", "month"],
+  "default_schedule_presentation": "calendar",
+  "default_schedule_view": "week",
+  "preview": {
+    "filters": {"date": "", "person": "", "department": "全部", "shift": "全部", "role": "全部"},
+    "total": 28,
+    "rows": [
+      {"id": 1, "date": "2026-08-25", "shift": "早班", "person": "李明", "role": "值班长", "department": "综合监控中心", "phone": "138****2106", "dutyRoom": "枢纽控制中心A席", "source": "手工新增"},
+      {"id": 2, "date": "2026-08-25", "shift": "早班", "person": "周雨晴", "role": "监控员", "department": "综合监控中心", "phone": "137****5302", "dutyRoom": "枢纽控制中心B席", "source": "批量导入"},
+      {"id": 3, "date": "2026-08-25", "shift": "中班", "person": "王海峰", "role": "安保专员", "department": "安保管理部", "phone": "139****4821", "dutyRoom": "1号线站厅警务室", "source": "批量导入"},
+      {"id": 4, "date": "2026-08-25", "shift": "晚班", "person": "陈晓东", "role": "运维工程师", "department": "机电保障部", "phone": "136****9985", "dutyRoom": "机电值班室", "source": "手工新增"},
+      {"id": 5, "date": "2026-08-26", "shift": "早班", "person": "赵倩", "role": "值班长", "department": "车站运营部", "phone": "158****1760", "dutyRoom": "2号线车控室", "source": "批量导入"},
+      {"id": 6, "date": "2026-08-26", "shift": "中班", "person": "张勇", "role": "监控员", "department": "综合监控中心", "phone": "135****8043", "dutyRoom": "枢纽控制中心A席", "source": "批量导入"},
+      {"id": 7, "date": "2026-08-27", "shift": "早班", "person": "刘思远", "role": "安保专员", "department": "安保管理部", "phone": "188****3217", "dutyRoom": "综合交通大厅值守点", "source": "手工新增"},
+      {"id": 8, "date": "2026-08-27", "shift": "晚班", "person": "孙悦", "role": "值班长", "department": "综合监控中心", "phone": "186****6149", "dutyRoom": "枢纽控制中心A席", "source": "批量导入"}
+    ],
+    "scheduleItems": [
+      {"id": 1, "date": "2026-08-25", "shift": "早班", "person": "李明", "role": "值班长", "department": "综合监控中心"},
+      {"id": 2, "date": "2026-08-25", "shift": "早班", "person": "周雨晴", "role": "监控员", "department": "综合监控中心"},
+      {"id": 3, "date": "2026-08-25", "shift": "中班", "person": "王海峰", "role": "安保专员", "department": "安保管理部"},
+      {"id": 4, "date": "2026-08-25", "shift": "晚班", "person": "陈晓东", "role": "运维工程师", "department": "机电保障部"},
+      {"id": 5, "date": "2026-08-26", "shift": "早班", "person": "赵倩", "role": "值班长", "department": "车站运营部"},
+      {"id": 6, "date": "2026-08-26", "shift": "中班", "person": "张勇", "role": "监控员", "department": "综合监控中心"},
+      {"id": 7, "date": "2026-08-27", "shift": "早班", "person": "刘思远", "role": "安保专员", "department": "安保管理部"},
+      {"id": 8, "date": "2026-08-27", "shift": "晚班", "person": "孙悦", "role": "值班长", "department": "综合监控中心"},
+      {"id": 9, "date": "2026-08-28", "shift": "早班", "person": "郭晨", "role": "监控员", "department": "综合监控中心"},
+      {"id": 10, "date": "2026-08-29", "shift": "中班", "person": "何涛", "role": "值班长", "department": "车站运营部"},
+      {"id": 11, "date": "2026-08-30", "shift": "晚班", "person": "许静", "role": "安保专员", "department": "安保管理部"}
+    ]
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "schema_version": "d2c-zone.v1",
+  "id": "query.filter",
+  "name": "通用查询区域",
+  "description": "根据通用业务字段筛选数据集合",
+  "use_when": ["非特定业务域的集合页面需要组合查询"],
+  "owner": "hui-common"
+}

@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录 — TaskFlow</title>
+<link rel="stylesheet" href="../../resources/css/reset.css">
+<link rel="stylesheet" href="../../resources/css/app.css">
+<link rel="stylesheet" href="../../resources/css/pages.css">
+</head>
+<body>
+<div class="login-page">
+  <div class="login-hero">
+    <div class="hero-brand">
+      <span class="brand-logo"></span>
+      <span>TaskFlow</span>
+    </div>
+    <div>
+      <h1>让团队协作<br>回归专注。</h1>
+      <p>TaskFlow 把任务、截止日期与团队进度收进同一个看板，减少会议与同步成本，让每个人都能看清下一步。</p>
+    </div>
+    <div class="hero-feats">
+      <span class="feat">✓ 看板视图</span>
+      <span class="feat">✓ 自动提醒</span>
+      <span class="feat">✓ 团队协作</span>
+    </div>
+  </div>
+  <div class="login-form-wrap">
+    <form class="login-form" onsubmit="return false">
+      <h2>欢迎回来</h2>
+      <p class="lf-sub">登录你的 TaskFlow 工作区</p>
+      <div class="field">
+        <label class="field-label">邮箱</label>
+        <input class="input" type="email" value="ava@taskflow.io" placeholder="name@company.com">
+      </div>
+      <div class="field">
+        <label class="field-label">密码</label>
+        <input class="input" type="password" value="password" placeholder="至少 8 位">
+      </div>
+      <div class="lf-row">
+        <label style="display:flex;align-items:center;gap:6px;color:var(--c-text-muted)"><span class="check is-checked"></span>记住我</label>
+        <a>忘记密码？</a>
+      </div>
+      <button class="btn btn-primary" data-action="nav" data-target="dashboard">登录</button>
+      <div class="lf-sso">或继续使用</div>
+      <div class="sso-row">
+        <button type="button" class="sso-btn" data-action="nav" data-target="dashboard">Google</button>
+        <button type="button" class="sso-btn" data-action="nav" data-target="dashboard">GitHub</button>
+        <button type="button" class="sso-btn" data-action="nav" data-target="dashboard">SSO</button>
+      </div>
+      <p class="lf-foot">还没有账号？<a>免费注册</a></p>
+    </form>
+  </div>
+</div>
+<script src="../../resources/scripts/interactions.js"></script>
+</body>
+</html>

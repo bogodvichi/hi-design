@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "general.isc.event-search.payload.v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["options", "content"],
+  "properties": {
+    "options": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "classification": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "default_mode": {"enum": ["type", "rule"]},
+            "event_types": {"type": "array", "items": {"type": "string"}, "minItems": 1, "uniqueItems": true},
+            "rule_names": {"type": "array", "items": {"type": "string"}, "minItems": 1, "uniqueItems": true}
+          }
+        },
+        "filter": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "fields": {"type": "array", "items": {"type": "string"}, "minItems": 1, "uniqueItems": true},
+            "collapsed": {"type": "boolean"}
+          }
+        },
+        "toolbar": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "actions": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+            "view_switch": {"type": "boolean"},
+            "video_mode_switch": {"type": "boolean"}
+          }
+        },
+        "collection": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "columns": {"type": "array", "items": {"type": "string"}, "minItems": 1, "uniqueItems": true},
+            "row_actions": {"type": "array", "items": {"type": "string"}, "uniqueItems": true},
+            "card_fields": {"type": "array", "items": {"type": "string"}, "uniqueItems": true}
+          }
+        },
+        "pagination": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {"page_size": {"enum": [10, 20, 50, 100]}}
+        },
+        "extensions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["kind"],
+            "properties": {
+              "kind": {"type": "string"},
+              "title": {"type": "string"},
+              "items": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["label", "value"],
+                  "properties": {
+                    "label": {"type": "string"},
+                    "value": {"type": ["string", "number"]}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "content": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rows": {"type": "array", "items": {"type": "object"}},
+        "total": {"type": "integer", "minimum": 0}
+      }
+    }
+  }
+}

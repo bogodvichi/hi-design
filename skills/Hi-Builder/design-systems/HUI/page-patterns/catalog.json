@@ -1,0 +1,127 @@
+{
+  "schema_version": "hui-page-pattern-catalog.v2",
+  "maintenance": {
+    "purpose": "HUI页面模式路由索引，根据页面意图选择通用模式或已登记TPP页面族。",
+    "edit_policy": "新增页面模式时先建立合同和证据，再登记唯一ID、合同路径与检索别名；不要在这里写产品业务内容。",
+    "managed_paths": {
+      "generic": "无法命中精确模式时使用的最低通用页面合同。",
+      "list-search": "查询与列表类页面的通用结构合同。",
+      "form-fixed-width-one-column": "早期定宽单列表单模式及观测证据。",
+      "tpp": "TPP典型页面目录、页面族、精确页面合同与证据。"
+    }
+  },
+  "sources": {
+    "tpp": "HUI/page-patterns/tpp/catalog.json"
+  },
+  "default": "generic",
+  "patterns": {
+    "details-basic": {
+      "contract": "HUI/page-patterns/tpp/families/details-basic/contract.json",
+      "match": ["basic-details", "基础详情", "容器撑满详情", "容器定宽详情"]
+    },
+    "details-grouped": {
+      "contract": "HUI/page-patterns/tpp/families/details-grouped/contract.json",
+      "match": ["grouped-details", "分组详情", "一级分组详情", "二级分组详情"]
+    },
+    "details-master-detail": {
+      "contract": "HUI/page-patterns/tpp/families/details-master-detail/contract.json",
+      "match": ["master-detail", "总分结构详情", "左右总分详情", "上下总分详情"]
+    },
+    "details-parallel": {
+      "contract": "HUI/page-patterns/tpp/families/details-parallel/contract.json",
+      "match": ["parallel-details", "并列结构详情"]
+    },
+    "details-text-image": {
+      "contract": "HUI/page-patterns/tpp/families/details-text-image/contract.json",
+      "match": ["text-image-details", "图文详情", "左右图文详情", "上下左右图文详情"]
+    },
+    "details-anchored": {
+      "contract": "HUI/page-patterns/tpp/families/details-anchored/contract.json",
+      "match": ["anchored-details", "带锚点详情", "横向锚点详情", "常驻锚点详情", "可收起锚点详情"]
+    },
+    "details-simulation-file": {
+      "contract": "HUI/page-patterns/tpp/families/details-simulation-file/contract.json",
+      "match": ["simulation-file-details", "仿真文件详情"]
+    },
+    "card-manual-filter": {
+      "contract": "HUI/page-patterns/tpp/families/card-manual-filter/contract.json",
+      "match": ["manual-filter-card", "卡片页手动过滤", "手动过滤卡片"]
+    },
+    "card-realtime-filter": {
+      "contract": "HUI/page-patterns/tpp/families/card-realtime-filter/contract.json",
+      "match": ["realtime-filter-card", "卡片页即时过滤", "即时过滤卡片"]
+    },
+    "card-tabs": {
+      "contract": "HUI/page-patterns/tpp/families/card-tabs/contract.json",
+      "match": ["tabbed-card", "卡片页带标签页", "标签页卡片"]
+    },
+    "card-tree": {
+      "contract": "HUI/page-patterns/tpp/families/card-tree/contract.json",
+      "match": ["tree-card", "卡片页带树控件", "树控件卡片"]
+    },
+    "card-basic": {
+      "contract": "HUI/page-patterns/tpp/families/card-basic/contract.json",
+      "match": ["basic-card-page", "基础卡片页", "车辆卡片", "人脸卡片", "相似度卡片", "文本卡片", "数据列表卡片"]
+    },
+    "table-manual-filter": {
+      "contract": "HUI/page-patterns/tpp/families/table-manual-filter/contract.json",
+      "match": ["manual-filter-table", "表格页手动过滤", "手动过滤表格", "表格过滤盒"]
+    },
+    "table-realtime-filter": {
+      "contract": "HUI/page-patterns/tpp/families/table-realtime-filter/contract.json",
+      "match": ["realtime-filter-table", "表格页即时过滤", "即时过滤表格"]
+    },
+    "table-tabs": {
+      "contract": "HUI/page-patterns/tpp/families/table-tabs/contract.json",
+      "match": ["tabbed-table", "表格页带标签页", "标签页表格"]
+    },
+    "table-tree": {
+      "contract": "HUI/page-patterns/tpp/families/table-tree/contract.json",
+      "match": ["tree-table", "表格页带树控件", "树控件表格"]
+    },
+    "table-statistics": {
+      "contract": "HUI/page-patterns/tpp/families/table-statistics/contract.json",
+      "match": ["statistics-table", "带统计"]
+    },
+    "table-details-pane": {
+      "contract": "HUI/page-patterns/tpp/families/table-details-pane/contract.json",
+      "match": ["details-pane-table", "带详情栏"]
+    },
+    "table-basic": {
+      "contract": "HUI/page-patterns/tpp/families/table-basic/contract.json",
+      "match": ["basic-table", "基础表格", "仅标题", "带操作栏"]
+    },
+    "list-search": {
+      "contract": "HUI/page-patterns/list-search/contract.json",
+      "match": ["list", "search", "query", "检索", "查询", "列表"]
+    },
+    "form-fixed-width-one-column": {
+      "contract": "HUI/page-patterns/form-fixed-width-one-column/contract.json",
+      "match": ["fixedwidth1column", "fixed-width-1-column", "单列表单", "定宽-1列"]
+    },
+    "form-grouped": {
+      "contract": "HUI/page-patterns/tpp/families/form-grouped/contract.json",
+      "match": ["grouped-form", "分组表单", "一级分组", "二级分组"]
+    },
+    "form-stepped": {
+      "contract": "HUI/page-patterns/tpp/families/form-stepped/contract.json",
+      "match": ["stepped-form", "步骤表单", "步骤条"]
+    },
+    "form-anchored": {
+      "contract": "HUI/page-patterns/tpp/families/form-anchored/contract.json",
+      "match": ["anchored-form", "锚点表单", "带锚点"]
+    },
+    "form-complex": {
+      "contract": "HUI/page-patterns/tpp/families/form-complex/contract.json",
+      "match": ["complex-form", "复杂表单", "工单表单", "多层级嵌套"]
+    },
+    "form-basic": {
+      "contract": "HUI/page-patterns/tpp/families/form-basic/contract.json",
+      "match": ["fixedwidth2column", "fixedwidth3column", "fillup4column", "basic-form", "基础表单", "表单"]
+    },
+    "generic": {
+      "contract": "HUI/page-patterns/generic/contract.json",
+      "match": []
+    }
+  }
+}

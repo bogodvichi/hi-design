@@ -1,0 +1,156 @@
+{
+  "schema_version": "hui-page-variant.v1",
+  "id": "hui.tpp.page.form.persistent-anchor-single-container",
+  "name": "常驻锚点-单容器",
+  "family": "hui.tpp.family.form-anchored",
+  "source": {
+    "url": "http://tpp.dev.hikhub.net/tpp#/pages/form/singleContainer",
+    "package": "@hiktpp/form-singleContainer",
+    "hui_version": "^2.55.0",
+    "observed_at": "2026-07-31",
+    "evidence": "../../evidence/form/persistent-anchor-single-container.json"
+  },
+  "parameters": {
+    "anchor_behavior": "persistent",
+    "container_count": 1,
+    "columns": 3,
+    "page_tabs_placement": "breadcrumb",
+    "form_item_gap": "24px",
+    "title_field_gap": "24px",
+    "group_gap": "48px",
+    "anchor_reserved_width_px": 180,
+    "anchor_content_gap_px": 24,
+    "anchor_top_offset_px": 48,
+    "default_label_position": null
+  },
+  "geometry": {
+    "viewport": {
+      "width": 1920,
+      "height": 968
+    },
+    "root": {
+      "class": "h-page-content form-area is-flex is-align-center",
+      "rect": {
+        "x": 248,
+        "y": 118.31,
+        "width": 1463.3,
+        "height": 849.69
+      },
+      "style": {
+        "display": "flex",
+        "padding": "0px",
+        "overflow": "visible"
+      }
+    },
+    "key_regions": {
+      "content": {
+        "class": "form-area__content",
+        "rect": {
+          "x": 254,
+          "y": 118.31,
+          "width": 1463.3,
+          "height": 1919
+        },
+        "display": "flex",
+        "position": "static",
+        "padding": "48px 80px 58px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "form": {
+        "class": "el-form el-form--label-top",
+        "rect": {
+          "x": 353.64,
+          "y": 166.31,
+          "width": 1264,
+          "height": 1813
+        },
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "footer": {
+        "class": "form-area__footer",
+        "rect": {
+          "x": 254,
+          "y": 911,
+          "width": 1463.3,
+          "height": 57
+        },
+        "display": "flex",
+        "position": "sticky",
+        "padding": "12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      }
+    }
+  },
+  "composition": {
+    "hui_components": {
+      "el-form": 1,
+      "el-row": 6,
+      "el-col": 11,
+      "el-form-item": 11,
+      "el-input": 8,
+      "el-select": 3,
+      "el-tag": 25,
+      "el-scrollbar": 4,
+      "el-option": 15,
+      "el-checkbox": 7,
+      "h-svg-icon": 7,
+      "el-radio-group": 1,
+      "el-radio": 3,
+      "el-slider": 1,
+      "el-input-number": 1,
+      "el-button": 71,
+      "el-tooltip": 12,
+      "el-date-picker": 1,
+      "el-switch": 1,
+      "el-upload": 1,
+      "el-table": 1,
+      "el-table-column": 9,
+      "el-pagination": 1
+    },
+    "page_framework_components": {
+      "h-page-content": 1
+    },
+    "unindexed_runtime_components": {
+      "el-select-menu": 3
+    },
+    "actions": [
+      {
+        "label": "添加",
+        "count": 1
+      },
+      {
+        "label": "删除",
+        "count": 21
+      },
+      {
+        "label": "编辑",
+        "count": 20
+      },
+      {
+        "label": "更多",
+        "count": 20
+      },
+      {
+        "label": "跳转",
+        "count": 1
+      },
+      {
+        "label": "提交",
+        "count": 1
+      },
+      {
+        "label": "取消",
+        "count": 1
+      }
+    ]
+  }
+}

@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HUI · 间距</title>
+    <style>
+      body { margin: 0; padding: 32px; background: #f5f5f5; color: rgba(0, 0, 0, 0.7); font-family: "Microsoft YaHei", "微软雅黑", "PingFang SC", system-ui, sans-serif; }
+      h1 { font-size: 28px; font-weight: 500; margin: 0 0 24px; }
+      h2 { font-size: 20px; font-weight: 500; margin: 32px 0 12px; }
+      .row { display: flex; align-items: center; gap: 16px; padding: 6px 0; }
+      .tag { flex: 0 0 180px; color: rgba(0, 0, 0, 0.4); font-size: 12px; }
+      .bar { background: #2080f7; border-radius: 2px; height: 20px; }
+      .radius-demo { display: flex; gap: 12px; flex-wrap: wrap; }
+      .rd { width: 64px; height: 64px; background: #fff; border: 1px solid rgba(0, 0, 0, 0.12); display: grid; place-items: center; font-size: 11px; color: rgba(0, 0, 0, 0.5); }
+    </style>
+  </head>
+  <body>
+    <h1>HUI 间距与圆角</h1>
+
+    <h2>间距（4px 栅格）</h2>
+    <div class="row"><span class="tag">--space-1 · 4px</span><div class="bar" style="width:4px"></div></div>
+    <div class="row"><span class="tag">--space-2 · 8px</span><div class="bar" style="width:8px"></div></div>
+    <div class="row"><span class="tag">--space-3 · 12px</span><div class="bar" style="width:12px"></div></div>
+    <div class="row"><span class="tag">--space-4 · 16px</span><div class="bar" style="width:16px"></div></div>
+    <div class="row"><span class="tag">--space-5 · 20px</span><div class="bar" style="width:20px"></div></div>
+    <div class="row"><span class="tag">--space-6 · 24px</span><div class="bar" style="width:24px"></div></div>
+    <div class="row"><span class="tag">--space-8 · 32px</span><div class="bar" style="width:32px"></div></div>
+    <div class="row"><span class="tag">--space-12 · 48px</span><div class="bar" style="width:48px"></div></div>
+
+    <h2>圆角（锐利）</h2>
+    <div class="radius-demo">
+      <div class="rd" style="border-radius:0">0 none</div>
+      <div class="rd" style="border-radius:2px">2 xs</div>
+      <div class="rd" style="border-radius:4px">4 sm</div>
+      <div class="rd" style="border-radius:6px">6 md</div>
+      <div class="rd" style="border-radius:10px">10 lg</div>
+      <div class="rd" style="border-radius:20px">20 xl</div>
+      <div class="rd" style="border-radius:9999px">round</div>
+    </div>
+
+    <h2>容器</h2>
+    <div class="row"><span class="tag">--container-max</span><span>1920px（安防大屏）</span></div>
+    <div class="row"><span class="tag">gutter 桌 / 平 / 手</span><span>32 / 24 / 16 px</span></div>
+    <div class="row"><span class="tag">section-y 桌 / 平 / 手</span><span>80 / 56 / 40 px</span></div>
+  </body>
+</html>

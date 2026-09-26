@@ -1,0 +1,88 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "id": "device-details-master-detail",
+  "title": "设备详情",
+  "page_kind": "details",
+  "pattern_contract": "details/left-and-right-layout.json",
+  "portal": {
+    "active_top_menu": "更多",
+    "section": "设备管理",
+    "tab_title": "设备详情",
+    "active_side_menu": "device-list",
+    "side_menus": [
+      {"id": "device-overview", "label": "设备概览", "icon": "h-icon-home"},
+      {"id": "device-list", "label": "设备列表", "icon": "h-icon-menu"},
+      {"id": "event-search", "label": "事件检索", "icon": "h-icon-search"}
+    ]
+  },
+  "summary_fields": [
+    {"key": "deviceName", "label": "设备名称"},
+    {"key": "status", "label": "运行状态", "tone": "success"},
+    {"key": "deviceType", "label": "设备类型"},
+    {"key": "area", "label": "所属区域"}
+  ],
+  "detail_sections": [
+    {
+      "id": "basic",
+      "title": "基础信息",
+      "fields": [
+        {"key": "deviceCode", "label": "设备编码"},
+        {"key": "ipAddress", "label": "IP地址"},
+        {"key": "manufacturer", "label": "厂商"},
+        {"key": "model", "label": "型号"}
+      ]
+    },
+    {
+      "id": "operation",
+      "title": "运维信息",
+      "fields": [
+        {"key": "installTime", "label": "安装时间"},
+        {"key": "lastOnlineTime", "label": "最近在线时间"},
+        {"key": "owner", "label": "运维负责人"},
+        {"key": "phone", "label": "联系电话"}
+      ]
+    }
+  ],
+  "media": {
+    "alt": "设备现场图片"
+  },
+  "related_tables": [
+    {
+      "id": "channels",
+      "title": "关联通道",
+      "columns": [
+        {"prop": "name", "label": "通道名称"},
+        {"prop": "code", "label": "通道编码"},
+        {"prop": "status", "label": "状态"}
+      ]
+    }
+  ],
+  "preview": {
+    "detailValues": {
+      "deviceName": "研发楼东门摄像机",
+      "status": "在线",
+      "deviceType": "网络摄像机",
+      "area": "总部园区 / 研发楼",
+      "deviceCode": "IPC-20260814-001",
+      "ipAddress": "10.17.26.31",
+      "manufacturer": "HIKVISION",
+      "model": "DS-2CD7A47EWD",
+      "installTime": "2026-06-18 09:30:00",
+      "lastOnlineTime": "2026-08-14 15:32:18",
+      "owner": "张工",
+      "phone": "138****6218"
+    },
+    "detailMedia": {
+      "src": "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='960' height='540'%3E%3Crect width='960' height='540' fill='%232b3b2b'/%3E%3Ctext x='480' y='270' text-anchor='middle' fill='white' font-size='30'%3E设备现场图片%3C/text%3E%3C/svg%3E",
+      "thumbnails": []
+    },
+    "relatedTableRows": {
+      "channels": [
+        {"name": "主码流", "code": "CH-01", "status": "在线"},
+        {"name": "子码流", "code": "CH-02", "status": "在线"}
+      ]
+    }
+  }
+}

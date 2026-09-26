@@ -1,0 +1,47 @@
+{
+  "schema_version": "tpp-pattern-composition-registry.v1",
+  "maintenance": {
+    "purpose": "登记AI选择一个主Variant和一个辅助Variant时，编译器允许消费的辅助能力与冲突维度。",
+    "edit_policy": "只登记现有Renderer已能稳定表达并有自动化案例的组合；不得在此声明CSS、DOM片段或自由覆盖。"
+  },
+  "max_secondary_patterns": 1,
+  "supported_page_kinds": ["table"],
+  "exclusive_parameter_keys": [
+    "filter_placement",
+    "trigger",
+    "collapse_mode",
+    "tab_style",
+    "details_placement"
+  ],
+  "secondary_exports": {
+    "table/with-statistics.json": {
+      "page_kind": "table",
+      "renderer": "hui.tpp.table",
+      "contribution": "summary.metrics",
+      "required_spec_fields": ["summary_metrics"],
+      "required_preview_fields": ["summaryMetrics"],
+      "merge_parameter_keys": ["statistics", "statistics_style", "statistical_columns"]
+    },
+    "table/horizontal-realtime-filter.json": {
+      "page_kind": "table",
+      "renderer": "hui.tpp.table",
+      "contribution": "filter.instant-filter",
+      "required_spec_fields": ["filters"],
+      "required_preview_fields": [],
+      "merge_parameter_keys": [
+        "filter_placement",
+        "trigger",
+        "filter_container_padding_vertical",
+        "filter_option_interactive_tone",
+        "selected_filter_state_separator",
+        "selected_filter_state_spacing_before",
+        "selected_filter_state_padding_vertical",
+        "selected_filter_state_bottom_spacing_compensation",
+        "selected_filter_state_visibility_when_empty",
+        "selected_filter_clear_action_placement",
+        "selected_filter_clear_action_tone",
+        "selected_filter_clear_action_interactive_tone"
+      ]
+    }
+  }
+}

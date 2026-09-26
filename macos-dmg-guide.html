@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitHub Actions 打包 macOS DMG 完整指南</title>
+  <style>
+    :root {
+      --bg-primary: #0f0f1a;
+      --bg-secondary: #1a1a2e;
+      --bg-card: #16213e;
+      --bg-code: #0d1117;
+      --accent: #00d4ff;
+      --accent-dim: #0099cc;
+      --text-primary: #e0e0e0;
+      --text-secondary: #a0a0b0;
+      --text-muted: #6c6c8c;
+      --border: #2a2a4a;
+      --success: #00ff88;
+      --warning: #ffaa00;
+      --danger: #ff4466;
+      --info: #4488ff;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
+      padding: 60px 20px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(0, 212, 255, 0.05) 0%, transparent 60%);
+      animation: pulse 8s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 0.5; }
+      50% { transform: scale(1.1); opacity: 1; }
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      margin-bottom: 15px;
+      background: linear-gradient(90deg, var(--accent), #ff00ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      position: relative;
+      z-index: 1;
+    }
+
+    .header p {
+      color: var(--text-secondary);
+      font-size: 1.1rem;
+      max-width: 600px;
+      margin: 0 auto;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Container */
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 20px;
+    }
+
+    /* Progress Bar */
+    .progress-bar {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 50px;
+      position: relative;
+      padding: 0 20px;
+    }
+
+    .progress-bar::before {
+      content: '';
+      position: absolute;
+      top: 20px;
+      left: 40px;
+      right: 40px;
+      height: 2px;
+      background: var(--border);
+      z-index: 0;
+    }
+
+    .progress-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      z-index: 1;
+    }
+
+    .progress-step:hover .step-circle {
+      transform: scale(1.1);
+      box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+    }
+
+    .step-circle {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: var(--text-muted);
+      transition: all 0.3s ease;
+      font-size: 0.9rem;
+    }
+
+    .progress-step.active .step-circle {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: var(--bg-primary);
+      box-shadow: 0 0 15px rgba(0, 212, 255, 0.3);
+    }
+
+    .progress-step.completed .step-circle {
+      background: var(--success);
+      border-color: var(--success);
+      color: var(--bg-primary);
+    }
+
+    .step-label {
+      margin-top: 8px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-align: center;
+      max-width: 80px;
+    }
+
+    .progress-step.active .step-label {
+      color: var(--accent);
+    }
+
+    .progress-step.completed .step-label {
+      color: var(--success);
+    }
+
+    /* Section */
+    .section {
+      background: var(--bg-card);
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 30px;
+      border: 1px solid var(--border);
+      transition: all 0.3s ease;
+      opacity: 0;
+      transform: translateY(20px);
+      animation: fadeInUp 0.6s ease forwards;
+    }
+
+    @keyframes fadeInUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .section:hover {
+      border-color: rgba(0, 212, 255, 0.2);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 25px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .section-icon {
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      flex-shrink: 0;
+    }
+
+    .section-icon.prep { background: rgba(0, 212, 255, 0.1); }
+    .section-icon.cert { background: rgba(0, 255, 136, 0.1); }
+    .section-icon.secrets { background: rgba(255, 170, 0, 0.1); }
+    .section-icon.workflow { background: rgba(68, 136, 255, 0.1); }
+    .section-icon.verify { background: rgba(255, 68, 102, 0.1); }
+
+    .section-title {
+      font-size: 1.4rem;
+      font-weight: 600;
+    }
+
+    .section-subtitle {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-top: 4px;
+    }
+
+    /* Alert Boxes */
+    .alert {
+      padding: 16px 20px;
+      border-radius: 10px;
+      margin: 20px 0;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .alert-icon {
+      font-size: 1.2rem;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .alert-info {
+      background: rgba(68, 136, 255, 0.1);
+      border: 1px solid rgba(68, 136, 255, 0.2);
+    }
+
+    .alert-warning {
+      background: rgba(255, 170, 0, 0.1);
+      border: 1px solid rgba(255, 170, 0, 0.2);
+    }
+
+    .alert-success {
+      background: rgba(0, 255, 136, 0.1);
+      border: 1px solid rgba(0, 255, 136, 0.2);
+    }
+
+    /* Code Block */
+    .code-block {
+      background: var(--bg-code);
+      border-radius: 10px;
+      margin: 15px 0;
+      overflow: hidden;
+      border: 1px solid var(--border);
+    }
+
+    .code-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 16px;
+      background: rgba(255, 255, 255, 0.03);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .code-lang {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .copy-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .copy-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .copy-btn.copied {
+      border-color: var(--success);
+      color: var(--success);
+    }
+
+    pre {
+      padding: 16px 20px;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      line-height: 1.6;
+    }
+
+    code {
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+      color: var(--text-primary);
+    }
+
+    .code-keyword { color: #ff79c6; }
+    .code-string { color: #f1fa8c; }
+    .code-comment { color: #6272a4; }
+    .code-variable { color: #8be9fd; }
+    .code-function { color: #50fa7b; }
+
+    /* Steps */
+    .steps {
+      counter-reset: step;
+    }
+
+    .step-item {
+      position: relative;
+      padding-left: 50px;
+      margin-bottom: 25px;
+    }
+
+    .step-item::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 36px;
+      height: 36px;
+      background: var(--bg-secondary);
+      border: 2px solid var(--border);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 0.9rem;
+      color: var(--accent);
+    }
+
+    .step-item.completed::before {
+      background: var(--success);
+      border-color: var(--success);
+      color: var(--bg-primary);
+      content: '✓';
+      font-size: 1rem;
+    }
+
+    .step-title {
+      font-weight: 600;
+      font-size: 1rem;
+      margin-bottom: 8px;
+      padding-top: 6px;
+    }
+
+    .step-desc {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+    }
+
+    /* Table */
+    .secrets-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 0.9rem;
+    }
+
+    .secrets-table th,
+    .secrets-table td {
+      padding: 14px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .secrets-table th {
+      color: var(--accent);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.75rem;
+      letter-spacing: 1px;
+    }
+
+    .secrets-table tr:hover td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .secret-tag {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .tag-required {
+      background: rgba(255, 68, 102, 0.15);
+      color: var(--danger);
+    }
+
+    .tag-optional {
+      background: rgba(255, 170, 0, 0.15);
+      color: var(--warning);
+    }
+
+    /* Checklist */
+    .checklist {
+      list-style: none;
+      padding: 0;
+    }
+
+    .checklist li {
+      padding: 12px 0;
+      padding-left: 36px;
+      position: relative;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .checklist li::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      color: var(--text-muted);
+      font-size: 1.1rem;
+    }
+
+    .checklist li.checked::before {
+      content: '✅';
+    }
+
+    /* Interactive Elements */
+    .interactive-card {
+      background: linear-gradient(135deg, rgba(0, 212, 255, 0.05), rgba(255, 0, 255, 0.05));
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 20px 0;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .interactive-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(0, 212, 255, 0.1), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .interactive-card:hover::before {
+      left: 100%;
+    }
+
+    .interactive-card:hover {
+      border-color: var(--accent);
+      transform: translateX(5px);
+    }
+
+    .card-title {
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .card-desc {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+
+    /* Footer */
+    .footer {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      border-top: 1px solid var(--border);
+      margin-top: 40px;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--bg-primary);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--text-muted);
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .header h1 {
+        font-size: 1.8rem;
+      }
+
+      .progress-bar {
+        overflow-x: auto;
+        padding-bottom: 10px;
+      }
+
+      .section {
+        padding: 20px;
+      }
+
+      .secrets-table {
+        font-size: 0.8rem;
+      }
+
+      .secrets-table th,
+      .secrets-table td {
+        padding: 10px 8px;
+      }
+    }
+
+    /* Tooltip */
+    .tooltip {
+      position: relative;
+      display: inline-block;
+      cursor: help;
+    }
+
+    .tooltip::after {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      white-space: nowrap;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s ease;
+      border: 1px solid var(--border);
+      z-index: 100;
+    }
+
+    .tooltip:hover::after {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    /* Collapsible */
+    .collapsible {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 15px 0;
+    }
+
+    .collapsible-header {
+      padding: 16px 20px;
+      background: var(--bg-secondary);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.2s ease;
+    }
+
+    .collapsible-header:hover {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .collapsible-content {
+      padding: 20px;
+      display: none;
+    }
+
+    .collapsible.open .collapsible-content {
+      display: block;
+    }
+
+    .collapsible.open .collapsible-arrow {
+      transform: rotate(180deg);
+    }
+
+    .collapsible-arrow {
+      transition: transform 0.3s ease;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>🍎 GitHub Actions 打包 macOS DMG</h1>
+    <p>从零开始配置 Electron 应用的自动化签名、公证与发布流程</p>
+  </header>
+
+  <div class="container">
+    <!-- Progress Bar -->
+    <div class="progress-bar">
+      <div class="progress-step active" data-step="1">
+        <div class="step-circle">1</div>
+        <div class="step-label">准备工作</div>
+      </div>
+      <div class="progress-step" data-step="2">
+        <div class="step-circle">2</div>
+        <div class="step-label">获取证书</div>
+      </div>
+      <div class="progress-step" data-step="3">
+        <div class="step-circle">3</div>
+        <div class="step-label">配置 Secrets</div>
+      </div>
+      <div class="progress-step" data-step="4">
+        <div class="step-circle">4</div>
+        <div class="step-label">工作流配置</div>
+      </div>
+      <div class="progress-step" data-step="5">
+        <div class="step-circle">5</div>
+        <div class="step-label">验证发布</div>
+      </div>
+    </div>
+
+    <!-- Section 1: Preparation -->
+    <div class="section" id="step-1">
+      <div class="section-header">
+        <div class="section-icon prep">📋</div>
+        <div>
+          <div class="section-title">准备工作</div>
+          <div class="section-subtitle">开始之前需要了解的基础知识</div>
+        </div>
+      </div>
+
+      <div class="alert alert-info">
+        <span class="alert-icon">💡</span>
+        <div>
+          <strong>什么是 DMG 打包？</strong><br>
+          DMG（Disk Image）是 macOS 上的磁盘映像格式，用户双击即可挂载并拖拽安装应用。对于 Electron 应用，我们需要先构建应用，然后打包成 DMG 格式供用户下载。
+        </div>
+      </div>
+
+      <div class="steps">
+        <div class="step-item">
+          <div class="step-title">注册 Apple Developer 账号</div>
+          <div class="step-desc">
+            访问 <a href="https://developer.apple.com" target="_blank" style="color: var(--accent);">Apple Developer Portal</a> 注册开发者账号。
+            <span class="secret-tag tag-required">必需</span> 年费 $99，用于代码签名和公证。
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-title">了解签名与公证的区别</div>
+          <div class="step-desc">
+            <strong>代码签名（Code Signing）</strong>：验证应用来源，防止篡改。<br>
+            <strong>公证（Notarization）</strong>：Apple 云端扫描，确认应用无恶意软件。<br>
+            <strong>Staple</strong>：将公证结果附加到应用中，离线也能验证。
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-title">确认项目使用 electron-builder</div>
+          <div class="step-desc">
+            本项目使用 <code>tools-pack</code> 工具调用 <code>electron-builder</code> 进行打包。确保 <code>package.json</code> 中已配置好 <code>build</code> 字段。
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 2: Certificate -->
+    <div class="section" id="step-2">
+      <div class="section-header">
+        <div class="section-icon cert">🔐</div>
+        <div>
+          <div class="section-title">获取 Apple 证书</div>
+          <div class="section-subtitle">创建并导出 Developer ID 证书</div>
+        </div>
+      </div>
+
+      <div class="alert alert-warning">
+        <span class="alert-icon">⚠️</span>
+        <div>
+          <strong>注意：</strong> 不要使用普通的 Development 证书，必须使用 <strong>Developer ID Application</strong> 证书才能对外分发应用。
+        </div>
+      </div>
+
+      <div class="steps">
+        <div class="step-item">
+          <div class="step-title">在 Apple Developer Portal 创建证书</div>
+          <div class="step-desc">
+            1. 登录 <a href="https://developer.apple.com" target="_blank" style="color: var(--accent);">developer.apple.com</a><br>
+            2. 进入 <strong>Certificates, Identifiers & Profiles</strong> → <strong>Certificates</strong><br>
+            3. 点击 <strong>+</strong> 创建新证书<br>
+            4. 选择 <strong>Developer ID Application</strong>（用于分发）<br>
+            5. 上传 CSR（Certificate Signing Request）文件
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-title">生成 CSR 文件（如需要）</div>
+          <div class="step-desc">
+            在 Mac 上打开 Keychain Access，选择菜单 <strong>Certificate Assistant</strong> → <strong>Request a Certificate From a Certificate Authority</strong>，填写信息保存为 <code>.certSigningRequest</code> 文件。
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-title">下载并导出 .p12 证书</div>
+          <div class="step-desc">
+            1. 下载生成的 <code>.cer</code> 文件并双击安装到 Keychain<br>
+            2. 在 Keychain Access 中找到该证书（通常在 "My Certificates"）<br>
+            3. 右键证书 → <strong>Export</strong> → 选择 <code>.p12</code> 格式<br>
+            4. 设置一个强密码（后续需要用到）
+          </div>
+        </div>
+        <div class="step-item">
+          <div class="step-title">生成 Base64 编码</div>
+          <div class="step-desc">
+            在终端执行以下命令，将 .p12 转为 Base64 字符串：
+          </div>
+        </div>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <button class="copy-btn" onclick="copyCode(this)">复制</button>
+        </div>
+        <pre><code><span class="code-comment"># 将 .p12 证书转为 base64（macOS/Linux）</span>
+<span class="code-variable">base64</span> -i <span class="code-string">your-certificate.p12</span> -o <span class="code-string">cert-base64.txt</span>
+
+<span class="code-comment"># 或使用 openssl</span>
+<span class="code-variable">openssl</span> base64 -in <span class="code-string">your-certificate.p12</span> -out <span class="code-string">cert-base64.txt</span>
+
+<span class="code-comment"># 查看生成的内容（很长的字符串）</span>
+<span="code-variable">cat</span> <span class="code-string">cert-base64.txt</span></code></pre>
+      </div>
+
+      <div class="alert alert-success">
+        <span class="alert-icon">✅</span>
+        <div>
+          <strong>保存好以下信息：</strong><br>
+          • <code>cert-base64.txt</code> 中的内容 → 用于 <code>APPLE_SIGNING_CERTIFICATE_BASE64</code><br>
+          • 导出 .p12 时设置的密码 → 用于 <code>APPLE_SIGNING_CERTIFICATE_PASSWORD</code>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 3: GitHub Secrets -->
+    <div class="section" id="step-3">
+      <div class="section-header">
+        <div class="section-icon secrets">🔑</div>
+        <div>
+          <div class="section-title">配置 GitHub Secrets</div>
+          <div class="section-subtitle">在仓库设置中添加敏感信息</div>
+        </div>
+      </div>
+
+      <div class="alert alert-info">
+        <span class="alert-icon">📍</span>
+        <div>
+          路径：<strong>仓库 Settings → Secrets and variables → Actions → New repository secret</strong>
+        </div>
+      </div>
+
+      <table class="secrets-table">
+        <thead>
+          <tr>
+            <th>Secret 名称</th>
+            <th>类型</th>
+            <th>获取位置</th>
+            <th>用途</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>APPLE_SIGNING_CERTIFICATE_BASE64</code></td>
+            <td><span class="secret-tag tag-required">必需</span></td>
+            <td>上一步生成的 Base64 字符串</td>
+            <td>代码签名证书</td>
+          </tr>
+          <tr>
+            <td><code>APPLE_SIGNING_CERTIFICATE_PASSWORD</code></td>
+            <td><span class="secret-tag tag-required">必需</span></td>
+            <td>导出 .p12 时设置的密码</td>
+            <td>证书密码</td>
+          </tr>
+          <tr>
+            <td><code>APPLE_ID</code></td>
+            <td><span class="secret-tag tag-required">必需</span></td>
+            <td>Apple ID 邮箱</td>
+            <td>Notarization 账号</td>
+          </tr>
+          <tr>
+            <td><code>APPLE_APP_SPECIFIC_PASSWORD</code></td>
+            <td><span class="secret-tag tag-required">必需</span></td>
+            <td>Apple ID → App-Specific Passwords</td>
+            <td>应用专用密码</td>
+          </tr>
+          <tr>
+            <td><code>APPLE_TEAM_ID</code></td>
+            <td><span class="secret-tag tag-required">必需</span></td>
+            <td>Apple Developer → Membership → Team ID</td>
+            <td>开发者团队 ID</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="collapsible">
+        <div class="collapsible-header" onclick="toggleCollapsible(this)">
+          <span>🔍 如何获取 Apple 应用专用密码</span>
+          <span class="collapsible-arrow">▼</span>
+        </div>
+        <div class="collapsible-content">
+          <ol style="padding-left: 20px; color: var(--text-secondary);">
+            <li>访问 <a href="https://appleid.apple.com" target="_blank" style="color: var(--accent);">appleid.apple.com</a></li>
+            <li>登录你的 Apple ID</li>
+            <li>进入 <strong>Sign-In and Security</strong></li>
+            <li>点击 <strong>App-Specific Passwords</strong></li>
+            <li>点击 <strong>Generate an app-specific password</strong></li>
+            <li>输入名称（如 "GitHub Actions"），点击 <strong>Create</strong></li>
+            <li>复制生成的密码（格式如：abcd-efgh-ijkl-mnop）</li>
+          </ol>
+          <div class="alert alert-warning" style="margin-top: 15px;">
+            <span class="alert-icon">⚠️</span>
+            <div>应用专用密码只会显示一次，请务必保存好！</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="collapsible">
+        <div class="collapsible-header" onclick="toggleCollapsible(this)">
+          <span>🔍 如何获取 Team ID</span>
+          <span class="collapsible-arrow">▼</span>
+        </div>
+        <div class="collapsible-content">
+          <ol style="padding-left: 20px; color: var(--text-secondary);">
+            <li>登录 <a href="https://developer.apple.com" target="_blank" style="color: var(--accent);">Apple Developer Portal</a></li>
+            <li>点击右上角 Account</li>
+            <li>进入 <strong>Membership Details</strong></li>
+            <li>找到 <strong>Team ID</strong>（格式如：ABC123DEF4）</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 4: Workflow -->
+    <div class="section" id="step-4">
+      <div class="section-header">
+        <div class="section-icon workflow">⚙️</div>
+        <div>
+          <div class="section-title">GitHub Actions 工作流配置</div>
+          <div class="section-subtitle">配置 YAML 文件实现自动化打包</div>
+        </div>
+      </div>
+
+      <div class="alert alert-info">
+        <span class="alert-icon">📁</span>
+        <div>
+          工作流文件位置：<code>.github/workflows/release-stable.yml</code>
+        </div>
+      </div>
+
+      <h3 style="margin: 25px 0 15px; color: var(--accent); font-size: 1.1rem;">🎯 核心配置解析</h3>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">yaml</span>
+          <button class="copy-btn" onclick="copyCode(this)">复制</button>
+        </div>
+        <pre><code><span class="code-comment"># 1. 准备 Apple 签名证书</span>
+<span class="code-keyword">-</span> <span class="code-variable">name</span>: <span class="code-string">Prepare Apple signing certificate</span>
+  <span class="code-variable">env</span>:
+    <span class="code-variable">APPLE_SIGNING_CERTIFICATE_BASE64</span>: <span class="code-string">${{ secrets.APPLE_SIGNING_CERTIFICATE_BASE64 }}</span>
+    <span class="code-variable">APPLE_SIGNING_CERTIFICATE_PASSWORD</span>: <span class="code-string">${{ secrets.APPLE_SIGNING_CERTIFICATE_PASSWORD }}</span>
+  <span class="code-variable">run</span>: |
+    <span class="code-variable">cert_path</span>=<span class="code-string">"$RUNNER_TEMP/open-design-signing.p12"</span>
+    <span class="code-comment"># 解码 base64 证书到临时文件</span>
+    <span class="code-function">printf</span> <span class="code-string">'%s'</span> <span class="code-string">"$APPLE_SIGNING_CERTIFICATE_BASE64"</span> | <span class="code-function">base64</span> --decode > <span class="code-string">"$cert_path"</span>
+    <span class="code-comment"># 设置 electron-builder 环境变量</span>
+    {
+      <span class="code-function">echo</span> <span class="code-string">"CSC_LINK=$cert_path"</span>
+      <span class="code-function">echo</span> <span class="code-string">"CSC_KEY_PASSWORD=$APPLE_SIGNING_CERTIFICATE_PASSWORD"</span>
+    } >> <span class="code-string">"$GITHUB_ENV"</span></code></pre>
+      </div>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">yaml</span>
+          <button class="copy-btn" onclick="copyCode(this)">复制</button>
+        </div>
+        <pre><code><span class="code-comment"># 2. 构建 macOS 应用（带签名和公证）</span>
+<span class="code-keyword">-</span> <span class="code-variable">name</span>: <span class="code-string">Build release mac artifacts</span>
+  <span class="code-variable">env</span>:
+    <span class="code-comment"># Notarization 凭据</span>
+    <span class="code-variable">APPLE_ID</span>: <span class="code-string">${{ secrets.APPLE_ID }}</span>
+    <span class="code-variable">APPLE_APP_SPECIFIC_PASSWORD</span>: <span class="code-string">${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}</span>
+    <span class="code-variable">APPLE_TEAM_ID</span>: <span class="code-string">${{ secrets.APPLE_TEAM_ID }}</span>
+  <span class="code-variable">run</span>: |
+    <span class="code-comment"># 调用 tools-pack 构建 macOS 应用</span>
+    <span class="code-function">pnpm</span> <span class="code-function">exec</span> <span class="code-function">tools-pack</span> <span class="code-function">mac</span> <span class="code-function">build</span> \\
+      --dir <span class="code-string">"$RUNNER_TEMP/tools-pack"</span> \\
+      --namespace <span class="code-function">release-stable</span> \\
+      --portable \\
+      --app-version <span class="code-string">"${{ inputs.release_version }}"</span> \\
+      --mac-compression <span class="code-function">normal</span> \\
+      --to <span class="code-function">all</span> \\
+      --json \\
+      --signed <span class="code-string">      # 启用代码签名</span>
+      --notarize <span class="code-string">    # 启用公证</span></code></pre>
+      </div>
+
+      <h3 style="margin: 25px 0 15px; color: var(--accent); font-size: 1.1rem;">📋 关键参数说明</h3>
+
+      <table class="secrets-table">
+        <thead>
+          <tr>
+            <th>参数</th>
+            <th>说明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>--signed</code></td>
+            <td>启用代码签名，使用 <code>CSC_LINK</code> 和 <code>CSC_KEY_PASSWORD</code> 环境变量</td>
+          </tr>
+          <tr>
+            <td><code>--notarize</code></td>
+            <td>启用 Apple Notarization，需要 <code>APPLE_ID</code>、<code>APPLE_APP_SPECIFIC_PASSWORD</code>、<code>APPLE_TEAM_ID</code></td>
+          </tr>
+          <tr>
+            <td><code>--to all</code></td>
+            <td>构建所有目标格式（DMG + ZIP）</td>
+          </tr>
+          <tr>
+            <td><code>--mac-compression normal</code></td>
+            <td>使用标准压缩率</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="alert alert-success">
+        <span class="alert-icon">💡</span>
+        <div>
+          <strong>electron-builder 自动读取的环境变量：</strong><br>
+          • <code>CSC_LINK</code>：指向 .p12 证书文件的路径<br>
+          • <code>CSC_KEY_PASSWORD</code>：证书密码<br>
+          • <code>APPLE_ID</code> / <code>APPLE_APP_SPECIFIC_PASSWORD</code> / <code>APPLE_TEAM_ID</code>：Notarization 凭据
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 5: Verification -->
+    <div class="section" id="step-5">
+      <div class="section-header">
+        <div class="section-icon verify">✅</div>
+        <div>
+          <div class="section-title">验证与发布</div>
+          <div class="section-subtitle">确认签名和公证成功</div>
+        </div>
+      </div>
+
+      <h3 style="margin: 0 0 15px; color: var(--accent); font-size: 1.1rem;">🔍 验证签名和公证</h3>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">bash</span>
+          <button class="copy-btn" onclick="copyCode(this)">复制</button>
+        </div>
+        <pre><code><span class="code-comment"># 1. 挂载 DMG 文件</span>
+<span class="code-function">hdiutil</span> <span class="code-function">attach</span> <span class="code-string">"Open Design.dmg"</span> -nobrowse -readonly -mountpoint <span class="code-string">/tmp/mnt</span>
+
+<span class="code-comment"># 2. 验证代码签名</span>
+<span class="code-function">codesign</span> --verify --deep --strict <span class="code-string">"/tmp/mnt/Open Design.app"</span>
+
+<span class="code-comment"># 3. 验证公证（Staple）</span>
+<span class="code-function">xcrun</span> <span class="code-function">stapler</span> <span class="code-function">validate</span> <span class="code-string">"/tmp/mnt/Open Design.app"</span>
+
+<span class="code-comment"># 4. 评估 Gatekeeper 信任</span>
+<span class="code-function">spctl</span> --assess --type <span class="code-function">execute</span> --verbose=4 <span class="code-string">"/tmp/mnt/Open Design.app"</span>
+
+<span class="code-comment"># 5. 卸载 DMG</span>
+<span class="code-function">hdiutil</span> <span class="code-function">detach</span> <span class="code-string">/tmp/mnt</span></code></pre>
+      </div>
+
+      <h3 style="margin: 25px 0 15px; color: var(--accent); font-size: 1.1rem;">📤 发布到 GitHub Release</h3>
+
+      <div class="code-block">
+        <div class="code-header">
+          <span class="code-lang">yaml</span>
+          <button class="copy-btn" onclick="copyCode(this)">复制</button>
+        </div>
+        <pre><code><span class="code-comment"># 准备发布资源</span>
+<span class="code-keyword">-</span> <span class="code-variable">name</span>: <span class="code-string">Prepare release assets</span>
+  <span class="code-variable">run</span>: |
+    <span class="code-variable">VERSION</span>=<span class="code-string">"${{ inputs.release_version }}"</span>
+    <span class="code-variable">ASSETS_DIR</span>=<span class="code-string">"$RUNNER_TEMP/release-assets"</span>
+    <span class="code-function">mkdir</span> -p <span class="code-string">"$ASSETS_DIR"</span>
+
+    <span class="code-comment"># 复制 DMG 和 ZIP 文件</span>
+    <span class="code-function">cp</span> <span class="code-string">"$SDIR/dmg/Open Design-release-stable.dmg"</span> \\
+      <span class="code-string">"$ASSETS_DIR/Open Design-$VERSION-mac-arm64.dmg"</span>
+    <span class="code-function">cp</span> <span class="code-string">"$SDIR/zip/Open Design-release-stable.zip"</span> \\
+      <span class="code-string">"$ASSETS_DIR/Open Design-$VERSION-mac-arm64.zip"</span>
+
+    <span class="code-comment"># 生成 SHA256 校验和</span>
+    <span class="code-function">cd</span> <span class="code-string">"$ASSETS_DIR"</span>
+    <span class="code-function">shasum</span> -a 256 <span class="code-string">"Open Design-$VERSION-mac-arm64.dmg"</span> > <span class="code-string">"Open Design-$VERSION-mac-arm64.dmg.sha256"</span></code></pre>
+      </div>
+
+      <h3 style="margin: 25px 0 15px; color: var(--accent); font-size: 1.1rem;">✅ 最终检查清单</h3>
+
+      <ul class="checklist">
+        <li>Apple Developer 账号已注册并激活</li>
+        <li>已创建 Developer ID Application 证书</li>
+        <li>证书已导出为 .p12 格式并生成 Base64</li>
+        <li>GitHub Secrets 已全部配置</li>
+        <li>工作流 YAML 文件已正确配置</li>
+        <li>构建成功并生成 DMG 文件</li>
+        <li>签名验证通过（codesign --verify）</li>
+        <li>公证验证通过（stapler validate）</li>
+        <li>Gatekeeper 评估通过（spctl --assess）</li>
+        <li>资源已上传到 GitHub Release</li>
+      </ul>
+    </div>
+
+    <!-- Troubleshooting -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-icon" style="background: rgba(255, 68, 102, 0.1);">🛠️</div>
+        <div>
+          <div class="section-title">常见问题排查</div>
+          <div class="section-subtitle">遇到问题时的解决方案</div>
+        </div>
+      </div>
+
+      <div class="interactive-card" onclick="toggleCard(this)">
+        <div class="card-title">❌ "The provided certificate is not valid for code signing"</div>
+        <div class="card-desc">
+          确保证书类型是 <strong>Developer ID Application</strong>，而不是 Development 或 Distribution 证书。
+        </div>
+      </div>
+
+      <div class="interactive-card" onclick="toggleCard(this)">
+        <div class="card-title">❌ "Notarization failed: Invalid or missing credentials"</div>
+        <div class="card-desc">
+          检查 <code>APPLE_ID</code>、<code>APPLE_APP_SPECIFIC_PASSWORD</code>、<code>APPLE_TEAM_ID</code> 是否正确。注意应用专用密码不是 Apple ID 的登录密码。
+        </div>
+      </div>
+
+      <div class="interactive-card" onclick="toggleCard(this)">
+        <div class="card-title">❌ "The binary you uploaded was not valid"</div>
+        <div class="card-desc">
+          可能是证书过期或权限问题。检查证书有效期，并确保 Apple Developer 账号处于活跃状态（年费已缴纳）。
+        </div>
+      </div>
+
+      <div class="interactive-card" onclick="toggleCard(this)">
+        <div class="card-title">❌ "Stapler validate" 失败</div>
+        <div class="card-desc">
+          公证过程可能需要几分钟到几小时。如果刚完成公证就验证，可能还来不及同步。等待一段时间后重试。
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary -->
+    <div class="section" style="background: linear-gradient(135deg, rgba(0, 212, 255, 0.05), rgba(0, 255, 136, 0.05));">
+      <div class="section-header">
+        <div class="section-icon" style="background: rgba(0, 212, 255, 0.15);">🎉</div>
+        <div>
+          <div class="section-title">完成！</div>
+          <div class="section-subtitle">你的 macOS DMG 打包流程已经配置完成</div>
+        </div>
+      </div>
+
+      <p style="color: var(--text-secondary); margin-bottom: 20px;">
+        现在每次触发 GitHub Actions 工作流时，系统会自动完成以下步骤：
+      </p>
+
+      <ol style="color: var(--text-secondary); padding-left: 25px; line-height: 2;">
+        <li>检出代码并安装依赖</li>
+        <li>解码并配置 Apple 签名证书</li>
+        <li>构建 Electron 应用</li>
+        <li>对应用进行代码签名</li>
+        <li>提交到 Apple 进行公证</li>
+        <li>将公证结果 Staple 到应用中</li>
+        <li>打包为 DMG 和 ZIP 格式</li>
+        <li>上传到 GitHub Release</li>
+      </ol>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <p>GitHub Actions 打包 macOS DMG 完整指南 | Generated for Open Design Project</p>
+    <p style="margin-top: 10px; font-size: 0.8rem;">参考工作流文件：<code>release-stable.yml</code>、<code>release-beta.yml</code>、<code>release-prerelease.yml</code></p>
+  </footer>
+
+  <script>
+    // Copy code functionality
+    function copyCode(btn) {
+      const codeBlock = btn.closest('.code-block').querySelector('pre');
+      const text = codeBlock.innerText;
+      navigator.clipboard.writeText(text).then(() => {
+        btn.textContent = '已复制!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = '复制';
+          btn.classList.remove('copied');
+        }, 2000);
+      });
+    }
+
+    // Collapsible functionality
+    function toggleCollapsible(header) {
+      const collapsible = header.parentElement;
+      collapsible.classList.toggle('open');
+    }
+
+    // Toggle card
+    function toggleCard(card) {
+      card.style.borderColor = 'var(--accent)';
+      setTimeout(() => {
+        card.style.borderColor = '';
+      }, 300);
+    }
+
+    // Progress step click
+    document.querySelectorAll('.progress-step').forEach(step => {
+      step.addEventListener('click', () => {
+        const stepNum = step.dataset.step;
+        const target = document.getElementByStep(stepNum);
+        if (target) {
+          target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      });
+    });
+
+    // Update active step on scroll
+    function updateActiveStep() {
+      const sections = document.querySelectorAll('.section[id^="step-"]');
+      const scrollY = window.scrollY + 200;
+
+      sections.forEach((section, index) => {
+        const top = section.offsetTop;
+        const bottom = top + section.offsetHeight;
+        const stepNum = index + 1;
+
+        if (scrollY >= top && scrollY < bottom) {
+          document.querySelectorAll('.progress-step').forEach(s => s.classList.remove('active'));
+          const activeStep = document.querySelector(`.progress-step[data-step="${stepNum}"]`);
+          if (activeStep) activeStep.classList.add('active');
+        }
+      });
+    }
+
+    // Smooth scroll for anchor links
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+      anchor.addEventListener('click', function (e) {
+        e.preventDefault();
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) target.scrollIntoView({ behavior: 'smooth' });
+      });
+    });
+
+    // Intersection Observer for fade-in animations
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.style.opacity = '1';
+          entry.target.style.transform = 'translateY(0)';
+        }
+      });
+    }, { threshold: 0.1 });
+
+    document.querySelectorAll('.section').forEach(section => {
+      observer.observe(section);
+    });
+
+    window.addEventListener('scroll', updateActiveStep);
+    updateActiveStep();
+  </script>
+</body>
+</html>

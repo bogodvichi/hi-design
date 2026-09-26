@@ -1,0 +1,26 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "id": "card-style-similarity",
+  "title": "基础卡片样式 · 相似度卡片",
+  "page_kind": "card",
+  "pattern_contract": "card/similarity.json",
+  "portal": {
+    "active_top_menu": "智能应用", "section": "基础卡片样式测试", "tab_title": "相似度卡片", "active_side_menu": "similarity-card",
+    "side_menus": [
+      {"id": "vehicle-card", "label": "车辆卡片", "icon": "h-icon-menu", "href": "vehicle-card.html"},
+      {"id": "face-card", "label": "人脸卡片", "icon": "h-icon-menu", "href": "face-card.html"},
+      {"id": "similarity-card", "label": "相似度卡片", "icon": "h-icon-menu", "href": "similarity-card.html"},
+      {"id": "text-card", "label": "文本卡片", "icon": "h-icon-menu", "href": "text-card.html"},
+      {"id": "data-list", "label": "数据列表卡片", "icon": "h-icon-menu", "href": "data-list.html"}
+    ]
+  },
+  "toolbar_actions": [{"label": "添加", "icon": "h-icon-add"}, {"label": "编辑", "icon": "h-icon-edit"}, {"label": "删除", "icon": "h-icon-delete"}],
+  "page_size": 20,
+  "preview": {"total": 3, "rows": [
+    {"id": "similarity-1", "referenceImage": "http://tpp.dev.hikhub.net/tpp/img/similarity.167e6ed2.png", "captureImage": "http://tpp.dev.hikhub.net/tpp/img/similarity1.77fd29b8.png", "metric": "99.18%", "title": "张伟", "status": "重点关注", "category": "重点人员", "time": "2026-08-19 10:35:41", "location": "火车东站东广场入口"},
+    {"id": "similarity-2", "referenceImage": "http://tpp.dev.hikhub.net/tpp/img/similarity.167e6ed2.png", "captureImage": "http://tpp.dev.hikhub.net/tpp/img/similarity1.77fd29b8.png", "metric": "97.64%", "title": "李娜", "status": "正常", "category": "布控人员", "time": "2026-08-19 10:31:06", "location": "客运中心一层安检口"},
+    {"id": "similarity-3", "referenceImage": "http://tpp.dev.hikhub.net/tpp/img/similarity.167e6ed2.png", "captureImage": "http://tpp.dev.hikhub.net/tpp/img/similarity1.77fd29b8.png", "metric": "92.86%", "title": "王强", "status": "待复核", "category": "临时布控", "time": "2026-08-19 10:19:27", "location": "武林广场地下通道"}
+  ]}
+}

@@ -1,0 +1,119 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "page-header",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/navigation/layoutPageHeader",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/navigation.docs.json",
+    "evidence_sha256": "e10ef37ba907910b3f0d40d9a0892b99ace9f2c5ad09cbd0ebf3bf440a34925a"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-layout-page-header": {
+      "props": [
+        {
+          "参数": "title",
+          "说明": "标题",
+          "类型": "String",
+          "默认值": "‘’",
+          "可选值": "",
+          "template_name": "title"
+        },
+        {
+          "参数": "subtitle",
+          "说明": "副标题",
+          "类型": "String",
+          "默认值": "‘’",
+          "可选值": "",
+          "template_name": "subtitle"
+        },
+        {
+          "参数": "returnButton",
+          "说明": "是否显示返回按钮",
+          "类型": "Boolean",
+          "默认值": "false",
+          "可选值": "",
+          "template_name": "return-button"
+        },
+        {
+          "参数": "beforeReturn",
+          "说明": "返回前判断函数，返回 false 则阻止返回",
+          "类型": "Function",
+          "默认值": "null",
+          "可选值": "",
+          "template_name": "before-return"
+        },
+        {
+          "参数": "returnEvent",
+          "说明": "自定义返回事件",
+          "类型": "Function",
+          "默认值": "null",
+          "可选值": "",
+          "template_name": "return-event"
+        },
+        {
+          "参数": "returnRoute",
+          "说明": "返回路由，可以是字符串或路由对象",
+          "类型": "String/Object",
+          "默认值": "null",
+          "可选值": "",
+          "template_name": "return-route"
+        },
+        {
+          "参数": "fit",
+          "说明": "是否自适应（无 padding）",
+          "类型": "Boolean",
+          "默认值": "false",
+          "可选值": "",
+          "template_name": "fit"
+        },
+        {
+          "参数": "defaultExpandedState",
+          "说明": "默认为 undefined，如果是非 undefined，则显示展开收起箭头，切默认展开。如果传值为 expand 则表示默认展开，如果是 collapse 表示默认收起。",
+          "类型": "Boolean",
+          "默认值": "false",
+          "可选值": "expand/collapse",
+          "template_name": "default-expanded-state"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "expandedStateChange",
+          "说明": "展开收起状态变更回调。返回当前状态值。展开返回true，收起返回false",
+          "回调参数": "( expandedState: string )",
+          "template_name": "expanded-state-change"
+        }
+      ],
+      "slots": [
+        {
+          "插槽名称": "title",
+          "说明": "标题内容",
+          "template_name": "title"
+        },
+        {
+          "插槽名称": "subtitle",
+          "说明": "副标题内容",
+          "template_name": "subtitle"
+        },
+        {
+          "插槽名称": "prefix",
+          "说明": "标题前导图标",
+          "template_name": "prefix"
+        },
+        {
+          "插槽名称": "extra",
+          "说明": "右侧额外内容",
+          "template_name": "extra"
+        },
+        {
+          "插槽名称": "arrow",
+          "说明": "展开收起箭头插槽。默认title前面插槽展开转90度，title后面插槽，展开转180度",
+          "template_name": "arrow"
+        }
+      ],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

@@ -1,0 +1,31 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "id": "table-linear-tabs-with-tree",
+  "title": "分区设备运行状态",
+  "page_kind": "table",
+  "pattern_contract": "table/linear-tabs-with-tree.json",
+  "portal": {
+    "active_top_menu": "智能应用",
+    "section": "HUI典型页",
+    "tab_title": "线性标签页+树控件",
+    "active_side_menu": "table-linear-tabs-tree",
+    "side_menus": [
+      {"id": "table-linear-tabs", "label": "线性标签页", "icon": "h-icon-menu", "href": "table-linear-tabs.html"},
+      {"id": "table-linear-tabs-tree", "label": "线性标签页+树控件", "icon": "h-icon-menu", "href": "table-linear-tabs-with-tree.html"},
+      {"id": "table-card-tabs", "label": "卡式标签页", "icon": "h-icon-menu", "href": "table-card-tabs.html"},
+      {"id": "table-card-tabs-tree", "label": "卡式标签页+树控件", "icon": "h-icon-menu", "href": "table-card-tabs-with-tree.html"}
+    ]
+  },
+  "table_tabs": [{"id": "online", "label": "在线设备"}, {"id": "offline", "label": "离线设备"}],
+  "tree_nodes": [{"id": "all", "label": "全部区域", "children": [{"id": "hq", "label": "总部园区", "filter_key": "area", "filter_value": "总部园区"}, {"id": "rd", "label": "研发中心", "filter_key": "area", "filter_value": "研发中心"}, {"id": "factory", "label": "生产园区", "filter_key": "area", "filter_value": "生产园区"}]}],
+  "default_tree_node": "all",
+  "toolbar_actions": [{"label": "添加", "icon": "h-icon-add"}, {"label": "导出", "icon": "h-icon-export"}],
+  "columns": [{"prop": "deviceName", "label": "设备名称"}, {"prop": "deviceCode", "label": "设备编号"}, {"prop": "area", "label": "所属区域"}, {"prop": "status", "label": "状态"}, {"prop": "updateTime", "label": "更新时间"}],
+  "page_size": 10,
+  "preview": {"tableTabRows": {
+    "online": [{"id": 1, "deviceName": "东门人脸抓拍机", "deviceCode": "IPC-FACE-001", "area": "总部园区", "status": "在线", "updateTime": "2026-08-19 10:32:18"}, {"id": 2, "deviceName": "研发楼大厅球机", "deviceCode": "IPC-PTZ-015", "area": "研发中心", "status": "在线", "updateTime": "2026-08-19 10:30:46"}],
+    "offline": [{"id": 3, "deviceName": "西侧周界报警主机", "deviceCode": "ALM-W-003", "area": "生产园区", "status": "离线", "updateTime": "2026-08-19 09:18:12"}]
+  }}
+}

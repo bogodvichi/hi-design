@@ -1,0 +1,53 @@
+{
+  "schema_version": "page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "page_type": "device-detail",
+  "title": "管网设备详情 · 调压计量站",
+  "shell": {
+    "active_top_menu": "设备管理",
+    "active_side_menu": "regulator-station",
+    "tab_title": "调压计量站详情"
+  },
+  "payload": {
+    "options": {},
+    "content": {
+      "device": {"name": "站前路调压计量站", "status": "运行中", "communication": "通信正常", "monitorTitle": "进口压力监测点 · 实时监控画面"},
+      "tabs": [
+        {"label": "实时监控", "value": "realtime"},
+        {"label": "运行数据", "value": "operation-data"},
+        {"label": "历史曲线", "value": "history"},
+        {"label": "管线位置", "value": "location"}
+      ],
+      "thumbnails": [
+        {"id": "camera-1", "label": "进口压力监测点", "src": "../assets/imgs/device-detail-thumbnail.png", "image": "../assets/imgs/device-detail-main.png"},
+        {"id": "camera-2", "label": "出口压力监测点", "src": "../assets/imgs/device-detail-thumbnail.png", "image": "../assets/imgs/device-detail-main.png"},
+        {"id": "camera-3", "label": "流量监测点", "src": "../assets/imgs/device-detail-thumbnail.png", "image": "../assets/imgs/device-detail-main.png"},
+        {"id": "camera-4", "label": "温度监测点", "src": "../assets/imgs/device-detail-thumbnail.png", "image": "../assets/imgs/device-detail-main.png"}
+      ],
+      "monitorPoints": [
+        {"id": "DYZ-01", "name": "进口压力监测点", "value": "0.42 MPa"},
+        {"id": "DYZ-02", "name": "出口压力监测点", "value": "0.21 MPa"},
+        {"id": "DYZ-03", "name": "流量监测点", "value": "1280 m³/h"},
+        {"id": "DYZ-04", "name": "温度监测点", "value": "16.5 ℃"}
+      ],
+      "deviceInfo": [
+        {"label": "设备编号", "value": "DYZ-2024-013"},
+        {"label": "设备类型", "value": "燃气调压计量一体化装置"},
+        {"label": "生产厂商", "value": "新奥燃气设备"},
+        {"label": "管网分区", "value": "城东次高压 A 区"},
+        {"label": "安装位置", "value": "站前路与建设路交叉口"},
+        {"label": "投运日期", "value": "2024-06-18"}
+      ],
+      "metrics": [
+        {"label": "进口压力", "value": "0.42 MPa"},
+        {"label": "出口压力", "value": "0.21 MPa"},
+        {"label": "瞬时流量", "value": "1,280 m³/h"},
+        {"label": "累积流量", "value": "325,860 m³"},
+        {"label": "介质温度", "value": "16.5 ℃"},
+        {"label": "数据时间", "value": "2026-07-13 10:28"}
+      ],
+      "quickTags": ["压力偏高", "需现场巡检", "已通知运维"]
+    }
+  }
+}

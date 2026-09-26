@@ -1,0 +1,119 @@
+{
+  "schema_version": "hui-page-pattern.v1",
+  "id": "hui.tpp.family.form-basic",
+  "name": "基础表单页",
+  "source": {
+    "platform": "HUI-VUE典型页面",
+    "observed_at": "2026-07-31",
+    "catalog": "../../catalog.json"
+  },
+  "match": [
+    "form",
+    "基础表单",
+    "basic-form"
+  ],
+  "semantics": [
+    "form-scroll-area",
+    "content-container",
+    "responsive-field-grid",
+    "sticky-footer-actions"
+  ],
+  "shared_runtime_components": [
+    "el-button",
+    "el-checkbox",
+    "el-col",
+    "el-form",
+    "el-form-item",
+    "el-input",
+    "el-input-number",
+    "el-option",
+    "el-radio",
+    "el-radio-button",
+    "el-radio-group",
+    "el-row",
+    "el-scrollbar",
+    "el-select",
+    "el-slider",
+    "el-tag",
+    "el-tooltip",
+    "h-svg-icon"
+  ],
+  "invariants": {
+    "regions": {
+      "content": {
+        "position": "static",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "form": {
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "footer": {
+        "display": "flex",
+        "position": "sticky",
+        "padding": "12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 57
+      }
+    },
+    "variant_values_must_come_from_page_contract": true
+  },
+  "variants": [
+    {
+      "id": "hui.tpp.page.form.fixed-width-one-column",
+      "name": "定宽-1列",
+      "contract": "../../pages/form/fixed-width-one-column.json",
+      "parameters": {
+        "columns": 1,
+        "width_behavior": "fixed",
+        "default_container_mode": "md",
+        "default_label_position": "top",
+        "observed_container_mode": "md"
+      }
+    },
+    {
+      "id": "hui.tpp.page.form.fixed-width-two-column",
+      "name": "定宽-2列",
+      "contract": "../../pages/form/fixed-width-two-column.json",
+      "parameters": {
+        "columns": 2,
+        "width_behavior": "fixed",
+        "default_container_mode": "md",
+        "default_label_position": "top",
+        "observed_container_mode": "md"
+      }
+    },
+    {
+      "id": "hui.tpp.page.form.fixed-width-three-column",
+      "name": "定宽-3列",
+      "contract": "../../pages/form/fixed-width-three-column.json",
+      "parameters": {
+        "columns": 3,
+        "width_behavior": "fixed",
+        "default_container_mode": "max",
+        "default_label_position": "top",
+        "observed_container_mode": "max"
+      }
+    },
+    {
+      "id": "hui.tpp.page.form.fill-up-four-column",
+      "name": "撑满-4列（自适应）",
+      "contract": "../../pages/form/fill-up-four-column.json",
+      "parameters": {
+        "columns": 4,
+        "width_behavior": "fluid",
+        "default_container_mode": "max",
+        "default_label_position": "top",
+        "observed_container_mode": "max"
+      }
+    }
+  ]
+}

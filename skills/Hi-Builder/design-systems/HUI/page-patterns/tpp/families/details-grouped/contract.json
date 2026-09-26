@@ -1,0 +1,14 @@
+{
+  "schema_version": "hui-page-pattern.v1",
+  "id": "hui.tpp.family.details-grouped",
+  "name": "分组详情页",
+  "source": {"platform": "HUI-VUE典型页面", "observed_at": "2026-08-14", "catalog": "../../catalog.json"},
+  "match": ["grouped-details", "分组详情", "一级分组详情", "二级分组详情"],
+  "semantics": ["grouped-detail-content", "hierarchical-detail-containers", "embedded-detail-tables"],
+  "shared_runtime_components": ["el-pagination", "el-table", "el-tag"],
+  "invariants": {"evidence_scope": "two-verified-grouping-levels", "grouping_level_and_container_count_are_variant_values": true, "variant_values_must_come_from_page_contract": true},
+  "variants": [
+    {"id": "hui.tpp.page.details.first-group", "name": "一级分组", "contract": "../../pages/details/first-group.json", "parameters": {"grouping_level": 1, "container_count": 1, "group_count": 4, "description_item_count": 18, "embedded_tables": 2, "pagination": true}},
+    {"id": "hui.tpp.page.details.secondary-grouping", "name": "二级分组", "contract": "../../pages/details/secondary-grouping.json", "parameters": {"grouping_level": 2, "container_count": 2, "inner_group_count": 4, "description_item_count": 18, "embedded_tables": 2, "pagination": true}}
+  ]
+}

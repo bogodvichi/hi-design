@@ -1,0 +1,2179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hi-Builder TPP 页面族</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="https://pixso.hikvision.com.cn/hik-plugin/ai-builder-web/public/webresources/libs/hui.css">
+  <style>
+    [v-cloak] { display: none; }
+    * { box-sizing: border-box; }
+    html, body, #app { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body { min-width: 1280px; font-family: "Microsoft YaHei", "PingFang SC", sans-serif; }
+
+    :root,
+    .product-context {
+      --h-color-brand-10: rgba(255, 234, 232, 1) !important;
+      --h-color-brand-20: rgba(252, 205, 202, 1) !important;
+      --h-color-brand-30: rgba(249, 171, 169, 1) !important;
+      --h-color-brand-40: rgba(245, 123, 125, 1) !important;
+      --h-color-brand-50: rgba(241, 78, 86, 1) !important;
+      --h-color-brand-60: rgba(236, 31, 48, 1) !important;
+      --h-color-brand-70: rgba(196, 19, 40, 1) !important;
+      --h-color-neutral-10: rgba(22, 72, 155, 0.06) !important;
+      --h-color-neutral-20: rgba(22, 55, 133, 0.09) !important;
+      --h-color-neutral-30: rgba(5, 38, 113, 0.12) !important;
+      --h-color-neutral-40: rgba(5, 36, 105, 0.16) !important;
+      --h-color-neutral-50: rgba(0, 30, 95, 0.20) !important;
+      --h-color-neutral-60: rgba(7, 27, 87, 0.25) !important;
+      --h-color-neutral-70: rgba(5, 18, 68, 0.32) !important;
+      --h-color-neutral-80: rgba(3, 11, 46, 0.54) !important;
+      --h-color-neutral-90: rgba(0, 4, 32, 0.73) !important;
+      --h-color-neutral-100: rgba(0, 4, 20, 0.85) !important;
+      --h-color-gray-10: rgba(241, 244, 249, 1) !important;
+      --h-color-gray-20: rgba(234, 237, 244, 1) !important;
+      --h-color-gray-30: rgba(225, 229, 238, 1) !important;
+      --h-color-gray-40: rgba(215, 220, 231, 1) !important;
+      --h-color-gray-50: rgba(204, 210, 223, 1) !important;
+      --h-color-gray-60: rgba(193, 198, 213, 1) !important;
+      --h-color-gray-70: rgba(175, 179, 195, 1) !important;
+      --h-color-brand: rgba(236, 31, 48, 1) !important;
+      --h-color-brand-hover: rgba(241, 78, 86, 1) !important;
+      --h-color-brand-active: rgba(196, 19, 40, 1) !important;
+      --h-color-brand-disabled: rgba(249, 171, 169, 1) !important;
+      --h-color-brand-secondary: rgba(252, 205, 202, 1) !important;
+      --h-color-brand-tertiary: rgba(255, 234, 232, 1) !important;
+      --h-color-item-bg-selected: var(--h-color-brand-10) !important;
+      --h-color-item-text-selected: var(--h-color-text-primary) !important;
+      --h-bg-color-page: rgba(241, 244, 249, 1) !important;
+      --h-color-bg-primary: rgba(255, 255, 255, 1) !important;
+      --h-color-focus: rgba(0, 4, 20, 0.85) !important;
+      --h-color-overlay-loading: rgba(0, 0, 0, 0.60) !important;
+      --h-color-text-primary: rgba(0, 4, 32, 0.73) !important;
+      --h-color-text-secondary: rgba(3, 11, 46, 0.54) !important;
+      --h-color-text-tertiary: rgba(5, 18, 68, 0.32) !important;
+      --h-color-text-disabled: rgba(0, 30, 95, 0.20) !important;
+      --h-color-border-tertiary: rgba(5, 36, 105, 0.16) !important;
+      --d2c-portal-header-height: 48px !important;
+      --d2c-portal-app-switch-size: 48px !important;
+      --d2c-portal-logo-width: 240px !important;
+      --d2c-portal-logo-height: 32px !important;
+      --d2c-portal-brand-mark-size: 32px !important;
+      --d2c-portal-logo-text-gap: 8px !important;
+      --d2c-portal-brand-left-padding: 16px !important;
+      --d2c-portal-brand-right-padding: 32px !important;
+      --d2c-portal-top-nav-gap: 4px !important;
+      --d2c-portal-top-nav-item-height: 32px !important;
+      --d2c-portal-top-nav-item-padding: 0 12px !important;
+      --d2c-portal-top-nav-item-radius: 6px !important;
+      --d2c-portal-header-tool-size: 28px !important;
+      --d2c-portal-header-tool-icon-size: 18px !important;
+      --d2c-portal-header-search-icon-size: 20px !important;
+      --d2c-portal-header-tools-gap: 8px !important;
+      --d2c-portal-header-divider-height: 24px !important;
+      --d2c-portal-header-user-right-padding: 16px !important;
+      --d2c-portal-header-user-gap: 4px !important;
+      --d2c-portal-sidebar-width: 240px !important;
+      --d2c-portal-sidebar-collapsed-width: 48px !important;
+      --d2c-portal-sidebar-toggle-width: 48px !important;
+      --d2c-portal-sidebar-toggle-height: 56px !important;
+      --d2c-portal-sidebar-toggle-expanded-margin-left: 8px !important;
+      --d2c-portal-side-menu-padding: 0 8px 24px !important;
+      --d2c-portal-side-menu-collapsed-padding: 0 4px 24px !important;
+      --d2c-portal-side-item-width: 224px !important;
+      --d2c-portal-side-item-height: 48px !important;
+      --d2c-portal-side-item-padding: 0 12px !important;
+      --d2c-portal-side-item-gap: 12px !important;
+      --d2c-portal-side-item-radius: 8px !important;
+      --d2c-portal-side-icon-size: 24px !important;
+      --d2c-portal-side-label-font-size: 16px !important;
+      --d2c-portal-side-label-line-height: 24px !important;
+      --d2c-portal-side-collapsed-item-size: 40px !important;
+      --d2c-portal-side-collapsed-icon-wrapper-padding: 0 !important;
+      --d2c-portal-context-sidebar-width: 256px !important;
+      --d2c-portal-context-sidebar-padding: 16px !important;
+      --d2c-portal-context-section-gap: 16px !important;
+      --d2c-portal-context-toolbar-height: 24px !important;
+      --d2c-portal-context-toolbar-gap: 8px !important;
+      --d2c-portal-context-toolbar-button-size: 24px !important;
+      --d2c-portal-context-search-height: 32px !important;
+      --d2c-portal-context-content-width: 224px !important;
+      --d2c-portal-context-tree-item-height: 40px !important;
+      --d2c-portal-context-tree-icon-size: 24px !important;
+      --d2c-portal-context-active-indicator-width: 2px !important;
+      --d2c-portal-collection-toolbar-height: 64px !important;
+      --d2c-portal-collection-toolbar-padding: 16px !important;
+      --d2c-portal-collection-table-content-margin: 0 16px !important;
+      --d2c-portal-collection-table-content-padding: 0 !important;
+      --d2c-portal-collection-card-content-margin: 0 16px !important;
+      --d2c-portal-collection-card-content-padding: 0 !important;
+      --d2c-portal-collection-expanded-filter-margin: 0 16px 16px !important;
+      --d2c-portal-framework-page-padding: 16px 16px 0 !important;
+      --d2c-portal-framework-left-selector-page-padding: 0 !important;
+      --d2c-portal-framework-left-selector-main-padding: 16px 16px 0 !important;
+      --d2c-portal-framework-business-header-gap: 16px !important;
+      --d2c-portal-framework-business-header-min-height: 28px !important;
+      --d2c-portal-framework-business-header-padding: 0 !important;
+      --d2c-portal-framework-business-header-title-font-size: 20px !important;
+      --d2c-portal-framework-business-header-title-line-height: 28px !important;
+      --d2c-portal-framework-business-header-description-font-size: 14px !important;
+      --d2c-portal-framework-business-header-description-line-height: 20px !important;
+      --d2c-portal-framework-selector-width: 256px !important;
+      --d2c-portal-framework-selector-padding: 16px !important;
+      --d2c-portal-framework-selector-tree-margin-top: 12px !important;
+      --d2c-portal-framework-content-padding: 0 !important;
+      --d2c-portal-framework-card-tabs-height: 48px !important;
+      --d2c-portal-framework-card-tabs-gap: 4px !important;
+      --d2c-portal-framework-card-tab-padding-inline: 16px !important;
+      --d2c-portal-framework-card-tab-icon-size: 24px !important;
+      --d2c-portal-framework-card-tab-icon-gap: 8px !important;
+      --d2c-portal-framework-card-tab-divider-width: 1px !important;
+      --d2c-portal-framework-card-tab-divider-height: 20px !important;
+      --d2c-portal-framework-card-tab-divider-top: 14px !important;
+      --d2c-portal-framework-card-tab-hover-inset-block: 4px !important;
+      --d2c-portal-framework-card-tab-font-size: 14px !important;
+      --d2c-portal-framework-card-tab-line-height: 24px !important;
+      --d2c-portal-framework-card-tab-focus-width: 2px !important;
+      --d2c-portal-framework-content-min-height: 420px !important;
+      --d2c-portal-framework-content-radius: 8px !important;
+      --d2c-portal-framework-first-tab-content-top-left-radius: 0 !important;
+      --d2c-portal-sidebar-motion-duration: 220ms !important;
+      --d2c-portal-sidebar-motion-timing-function: ease !important;
+      --d2c-portal-sidebar-motion-delay: 0ms !important;
+      --d2c-portal-sidebar-toggle-icon-motion-duration: 180ms !important;
+      --d2c-portal-sidebar-toggle-icon-motion-timing-function: ease !important;
+      --d2c-portal-sidebar-menu-item-motion-duration: 160ms !important;
+      --d2c-portal-sidebar-menu-item-motion-timing-function: ease !important;
+      --d2c-portal-header-background: rgba(255, 255, 255, 0.96) !important;
+      --d2c-portal-header-border: rgba(20, 32, 51, 0.10) !important;
+      --d2c-portal-header-shadow: 0 1px 0 rgba(20, 32, 51, 0.04) !important;
+      --d2c-portal-navigation-text: rgba(20, 32, 51, 0.76) !important;
+      --d2c-portal-navigation-text-active: rgba(20, 32, 51, 0.92) !important;
+      --d2c-portal-navigation-text-secondary: rgba(20, 32, 51, 0.62) !important;
+      --d2c-portal-navigation-hover-background: #f2f5fa !important;
+      --d2c-portal-navigation-active-background: #f2f5fa !important;
+      --d2c-portal-app-switch-hover-background: #ec1f30 !important;
+      --d2c-portal-sidebar-background: rgba(247, 249, 252, 0.96) !important;
+      --d2c-portal-side-item-hover-background: rgba(255, 255, 255, 0.64) !important;
+      --d2c-portal-side-selected-border: rgba(171, 185, 205, 0.70) !important;
+      --d2c-portal-side-selected-background: #ffffff !important;
+      --d2c-portal-side-selected-shadow: 0 2px 8px rgba(27, 43, 78, 0.14) !important;
+      --d2c-portal-context-sidebar-background: #ffffff !important;
+      --d2c-portal-framework-selector-background: #ffffff !important;
+      --d2c-portal-context-tree-selected-background: var(--h-color-item-bg-selected) !important;
+      --d2c-portal-context-tree-selected-text: var(--h-color-item-text-selected) !important;
+      --d2c-portal-context-tree-active-indicator: #e72528 !important;
+      --d2c-page-form-content-padding: 48px 80px 58px !important;
+      --d2c-page-form-width: 1264px !important;
+      --d2c-page-form-footer-height: 57px !important;
+      --d2c-page-form-form-item-gap: 24px !important;
+      --d2c-page-form-title-field-gap: 24px !important;
+      --d2c-page-form-group-gap: 48px !important;
+
+    }
+
+    .isc-personnel-shell {
+      display: flex; flex-direction: column; width: 100%; height: 100%; min-width: 1280px; min-height: 720px;
+      color: var(--h-color-text-primary); background: var(--h-bg-color-page); overflow: hidden;
+    }
+    .isc-personnel-header {
+      position: relative; z-index: 5; display: flex; align-items: center; width: 100%; height: var(--d2c-portal-header-height); flex: none;
+      border-bottom: 1px solid var(--d2c-portal-header-border); background: var(--d2c-portal-header-background); box-shadow: var(--d2c-portal-header-shadow);
+    }
+    .isc-personnel-header__menu {
+      display: inline-flex !important; align-items: center; justify-content: center;
+      width: var(--d2c-portal-app-switch-size); height: var(--d2c-portal-app-switch-size); min-width: 0 !important; flex: none;
+      padding: 0 !important; border: 0 !important; border-radius: 0 !important;
+      background: transparent !important; color: var(--d2c-portal-navigation-text) !important; font-size: 24px; cursor: pointer;
+      transition: color .16s ease, background .16s ease;
+    }
+    .isc-personnel-header__menu:hover,
+    .isc-personnel-header__menu:active { color: #fff !important; background: var(--d2c-portal-app-switch-hover-background) !important; }
+    .isc-personnel-brand {
+      display: flex; align-items: center; width: auto; height: 100%; flex: none;
+      padding-left: var(--d2c-portal-brand-left-padding); padding-right: var(--d2c-portal-brand-right-padding); white-space: nowrap;
+    }
+    .isc-personnel-brand__logo {
+      display: flex; align-items: center; width: var(--d2c-portal-logo-width); height: var(--d2c-portal-logo-height); white-space: nowrap;
+    }
+    .isc-personnel-brand__mark { display: block; width: var(--d2c-portal-brand-mark-size); height: var(--d2c-portal-brand-mark-size); flex: none; object-fit: contain; }
+    .isc-personnel-brand__name { margin-left: var(--d2c-portal-logo-text-gap); overflow: hidden; color: rgba(9,5,5,1); font-size: 20px; font-weight: 600; text-overflow: ellipsis; }
+    .isc-personnel-primary-nav { display: flex; align-items: center; height: 100%; min-width: 0; flex: 1; gap: var(--d2c-portal-top-nav-gap); color: var(--d2c-portal-navigation-text); }
+    .isc-personnel-primary-nav__entry { display: contents; }
+    .isc-personnel-primary-nav__item {
+      display: inline-flex; align-items: center; height: var(--d2c-portal-top-nav-item-height); flex: none;
+      padding: var(--d2c-portal-top-nav-item-padding); gap: 8px; border: 0; border-radius: var(--d2c-portal-top-nav-item-radius);
+      color: var(--d2c-portal-navigation-text); background: transparent; font: 14px/22px "Microsoft YaHei UI", sans-serif; cursor: pointer;
+      transition: color .16s ease, background .16s ease;
+    }
+    .isc-personnel-primary-nav__item:hover { background: var(--d2c-portal-navigation-hover-background); }
+    .isc-personnel-primary-nav__item.is-active { color: var(--d2c-portal-navigation-text-active); background: var(--d2c-portal-navigation-active-background); }
+    .isc-personnel-primary-nav__item .el-alert__closebtn {
+      position: static; width: 18px; height: 18px; flex: none; margin-left: 0;
+      color: var(--d2c-portal-navigation-text-secondary); font-size: 18px; line-height: 18px; transform: none;
+    }
+    .isc-personnel-primary-nav__divider { width: 1px; height: 16px; margin: 0 4px; flex: none; background: var(--d2c-portal-header-border); }
+    .isc-personnel-header-tools {
+      display: flex; align-items: center; height: 100%; flex: none; padding-right: 0; gap: var(--d2c-portal-header-tools-gap);
+    }
+    .isc-personnel-header-actions { display: flex; align-items: center; gap: var(--d2c-portal-header-tools-gap); }
+    .isc-personnel-header-actions .el-button + .el-button { margin-left: 0; }
+    .isc-personnel-header-tool {
+      display: inline-flex !important; align-items: center; justify-content: center;
+      width: var(--d2c-portal-header-tool-size); height: var(--d2c-portal-header-tool-size); min-width: 0 !important;
+      padding: 0 !important; border-radius: 4px !important; color: var(--d2c-portal-navigation-text) !important;
+    }
+    .isc-personnel-header-tool:hover { background: var(--d2c-portal-navigation-hover-background) !important; }
+    .isc-personnel-header-tool i { width: var(--d2c-portal-header-tool-icon-size); height: var(--d2c-portal-header-tool-icon-size); font-size: var(--d2c-portal-header-tool-icon-size); line-height: var(--d2c-portal-header-tool-icon-size); }
+    .isc-personnel-header-tools > .isc-personnel-header-tool:first-child i { width: var(--d2c-portal-header-search-icon-size); height: var(--d2c-portal-header-search-icon-size); font-size: var(--d2c-portal-header-search-icon-size); line-height: var(--d2c-portal-header-search-icon-size); }
+    .isc-personnel-header-tool.is-assistant { border-radius: 10px !important; color: #fff !important; background: linear-gradient(180deg,#a49cec,#2e2266) !important; }
+    .isc-personnel-header-divider {
+      width: 1px; height: var(--d2c-portal-header-divider-height); flex: none; margin: 0 4px; background: var(--d2c-portal-header-border);
+    }
+    .isc-personnel-header-user {
+      display: flex; align-items: center; width: auto; height: 100%; padding: 0 var(--d2c-portal-header-user-right-padding) 0 0;
+      gap: var(--d2c-portal-header-user-gap); border: 0; color: var(--d2c-portal-navigation-text); background: transparent;
+      font: 14px/22px "Microsoft YaHei UI", sans-serif; white-space: nowrap;
+    }
+    .isc-personnel-header-user i { width: 14px; height: 14px; font-size: 14px; line-height: 14px; }
+    .isc-personnel-body {
+      display: grid; min-height: 0; flex: 1;
+      grid-template: 40px minmax(0, 1fr) / max-content minmax(0, 1fr);
+      grid-template-areas: "sidebar breadcrumb" "sidebar framework";
+    }
+    .isc-personnel-body.has-context-sidebar {
+      grid-template-columns: max-content max-content minmax(0, 1fr);
+      grid-template-areas: "sidebar context breadcrumb" "sidebar context framework";
+    }
+    .isc-personnel-sidebar {
+      position: relative; z-index: 2; grid-area: sidebar; width: var(--d2c-portal-sidebar-width); min-height: 0; flex: none; overflow: hidden;
+      border-right: 1px solid var(--h-color-border-tertiary); background: var(--d2c-portal-sidebar-background);
+      transition: width var(--d2c-portal-sidebar-motion-duration) var(--d2c-portal-sidebar-motion-timing-function) var(--d2c-portal-sidebar-motion-delay);
+    }
+    .isc-personnel-sidebar.is-collapsed { width: var(--d2c-portal-sidebar-collapsed-width); }
+    .isc-personnel-sidebar__toggle {
+      position: relative; display: grid; width: var(--d2c-portal-sidebar-toggle-width); height: var(--d2c-portal-sidebar-toggle-height);
+      margin-left: var(--d2c-portal-sidebar-toggle-expanded-margin-left); padding: 0; border: 0;
+      place-items: center; color: var(--d2c-portal-navigation-text); background: transparent; cursor: pointer;
+    }
+    .isc-personnel-sidebar.is-collapsed .isc-personnel-sidebar__toggle { margin-left: 0; }
+    .isc-personnel-sidebar__toggle::before {
+      position: absolute; width: 24px; height: 24px; border-radius: 4px; background: transparent; content: ""; transition: background .16s ease;
+    }
+    .isc-personnel-sidebar__toggle:hover::before { background: rgba(255,255,255,.72); }
+    .isc-personnel-sidebar__toggle-icon {
+      position: relative; z-index: 1; width: 24px; height: 24px; font-size: 24px; line-height: 24px;
+      transition: transform var(--d2c-portal-sidebar-toggle-icon-motion-duration) var(--d2c-portal-sidebar-toggle-icon-motion-timing-function), opacity var(--d2c-portal-sidebar-toggle-icon-motion-duration) var(--d2c-portal-sidebar-toggle-icon-motion-timing-function);
+    }
+    .isc-personnel-sidebar__toggle-icon.is-collapsed { display: none; transform: rotate(180deg); }
+    .isc-personnel-sidebar.is-collapsed .isc-personnel-sidebar__toggle-icon.is-expanded { display: none; }
+    .isc-personnel-sidebar.is-collapsed .isc-personnel-sidebar__toggle-icon.is-collapsed { display: block; }
+    .isc-personnel-sidebar__toggle:hover .isc-personnel-sidebar__toggle-icon.is-expanded { transform: translateX(-1px); opacity: .92; }
+    .isc-personnel-sidebar__toggle:hover .isc-personnel-sidebar__toggle-icon.is-collapsed { transform: rotate(180deg) translateX(-1px); opacity: .92; }
+    .isc-personnel-sidebar__scrollbar { height: calc(100% - var(--d2c-portal-sidebar-toggle-height)); }
+    .isc-personnel-sidebar__scrollbar .el-scrollbar__wrap { overflow-x: hidden; }
+    .isc-personnel-sidebar__scrollbar .el-scrollbar__view { min-height: 100%; }
+    .isc-personnel-side-menu {
+      width: var(--d2c-portal-sidebar-width); min-height: 100%; padding: var(--d2c-portal-side-menu-padding);
+      border-right: 0 !important; background: transparent; transition: none;
+    }
+    .isc-personnel-side-menu.el-nav--collapse {
+      width: var(--d2c-portal-sidebar-collapsed-width); padding: var(--d2c-portal-side-menu-collapsed-padding);
+    }
+    .isc-personnel-side-menu .el-nav-item {
+      display: flex; align-items: center; width: var(--d2c-portal-side-item-width); height: var(--d2c-portal-side-item-height);
+      min-height: var(--d2c-portal-side-item-height); margin: 2px 0; padding: var(--d2c-portal-side-item-padding); gap: var(--d2c-portal-side-item-gap);
+      border: 1px solid transparent; border-radius: var(--d2c-portal-side-item-radius); color: var(--d2c-portal-navigation-text);
+      background: transparent; font-size: var(--d2c-portal-side-label-font-size); line-height: var(--d2c-portal-side-label-line-height);
+      transition: color var(--d2c-portal-sidebar-menu-item-motion-duration) var(--d2c-portal-sidebar-menu-item-motion-timing-function), background var(--d2c-portal-sidebar-menu-item-motion-duration) var(--d2c-portal-sidebar-menu-item-motion-timing-function), border-color var(--d2c-portal-sidebar-menu-item-motion-duration) var(--d2c-portal-sidebar-menu-item-motion-timing-function), box-shadow var(--d2c-portal-sidebar-menu-item-motion-duration) var(--d2c-portal-sidebar-menu-item-motion-timing-function);
+    }
+    .isc-personnel-side-menu .el-nav-item::before { display: none; }
+    .isc-personnel-side-menu .el-nav-item .el-nav-icon {
+      top: 0; width: var(--d2c-portal-side-icon-size); height: var(--d2c-portal-side-icon-size); flex: none;
+      margin: 0 !important; font-size: var(--d2c-portal-side-icon-size); line-height: var(--d2c-portal-side-icon-size);
+    }
+    .isc-personnel-side-menu .el-nav-item > span {
+      top: 0; min-width: 0; overflow: hidden; font-size: var(--d2c-portal-side-label-font-size);
+      line-height: var(--d2c-portal-side-label-line-height); text-overflow: ellipsis; white-space: nowrap;
+    }
+    .isc-personnel-side-menu .el-nav-item:not(.is-disabled):hover { color: var(--d2c-portal-navigation-text-active); background: var(--d2c-portal-side-item-hover-background); }
+    .isc-personnel-side-menu .el-nav-item.is-active {
+      border-color: var(--d2c-portal-side-selected-border, rgba(171,185,205,.70)); color: var(--d2c-portal-navigation-text-active) !important;
+      background: var(--d2c-portal-side-selected-background) !important; box-shadow: var(--d2c-portal-side-selected-shadow, 0 2px 8px rgba(27,43,78,.14));
+    }
+    .isc-personnel-side-menu.el-nav--collapse .el-nav-item {
+      width: var(--d2c-portal-side-collapsed-item-size); height: var(--d2c-portal-side-collapsed-item-size);
+      min-height: var(--d2c-portal-side-collapsed-item-size); padding: 0; justify-content: center; gap: 0;
+    }
+    .isc-personnel-side-menu.el-nav--collapse .el-nav-item .el-nav-item--text { display: none; }
+    .isc-personnel-side-menu.el-nav--collapse .el-nav-item .el-nav-icon {
+      position: static; display: inline-flex; align-items: center; justify-content: center; margin: 0 !important;
+    }
+    .isc-personnel-side-menu.el-nav--collapse .el-nav-item__collapse {
+      display: flex; align-items: center; justify-content: center; padding: var(--d2c-portal-side-collapsed-icon-wrapper-padding);
+    }
+    .isc-personnel-context-sidebar {
+      display: flex; grid-area: context; flex-direction: column; width: var(--d2c-portal-context-sidebar-width); min-height: 0; flex: none;
+      padding: var(--d2c-portal-context-sidebar-padding); gap: var(--d2c-portal-context-section-gap);
+      border-right: 1px solid var(--h-color-border-tertiary); background: var(--d2c-portal-context-sidebar-background);
+    }
+    .isc-personnel-context-toolbar {
+      display: flex; align-items: center; width: var(--d2c-portal-context-content-width); height: var(--d2c-portal-context-toolbar-height); flex: none;
+      gap: var(--d2c-portal-context-toolbar-gap);
+    }
+    .isc-personnel-context-toolbar .el-button {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: var(--d2c-portal-context-toolbar-button-size); height: var(--d2c-portal-context-toolbar-button-size); min-width: 0;
+      padding: 0; color: var(--h-color-text-regular); font-size: 16px;
+    }
+    .isc-personnel-context-toolbar .el-button + .el-button { margin-left: 0; }
+    .isc-personnel-context-search { width: var(--d2c-portal-context-content-width); height: var(--d2c-portal-context-search-height); flex: none; }
+    .isc-personnel-context-search .el-input,
+    .isc-personnel-context-search .el-input__inner { height: var(--d2c-portal-context-search-height); }
+    .isc-personnel-context-search .el-input__suffix { top: 4px; }
+    .isc-personnel-context-tree { width: var(--d2c-portal-context-content-width); min-height: 0; flex: 1; overflow: auto; }
+    .isc-personnel-context-tree__tree { width: 100%; background: transparent; }
+    .isc-personnel-context-tree__tree .el-tree-node__content {
+      position: relative; height: var(--d2c-portal-context-tree-item-height); border: 0 !important; border-radius: 2px;
+    }
+    .isc-personnel-context-tree__tree .el-tree-node__content:hover { background: var(--h-color-bg-secondary); }
+    .isc-personnel-context-tree__tree .el-tree-node.is-current > .el-tree-node__content::before {
+      position: absolute; top: 0; bottom: 0; left: 0; width: var(--d2c-portal-context-active-indicator-width);
+      background: var(--d2c-portal-context-tree-active-indicator); content: "";
+    }
+    .isc-personnel-tree-node-content { display: flex; align-items: center; min-width: 0; gap: 8px; }
+    .isc-personnel-tree-node-content .tree-icon {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: var(--d2c-portal-context-tree-icon-size); height: var(--d2c-portal-context-tree-icon-size); flex: none;
+      font-size: var(--d2c-portal-context-tree-icon-size); line-height: var(--d2c-portal-context-tree-icon-size);
+    }
+    .isc-personnel-tree-node-content .tree-icon .h-svg-icon-wrapper,
+    .isc-personnel-tree-node-content .tree-icon .h-svg-icon-wrapper > svg {
+      width: var(--d2c-portal-context-tree-icon-size); height: var(--d2c-portal-context-tree-icon-size);
+      font-size: var(--d2c-portal-context-tree-icon-size);
+    }
+    .isc-personnel-tree-node-content > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .isc-personnel-portal-breadcrumb { grid-area: breadcrumb; min-width: 0; }
+    .isc-personnel-framework {
+      display: flex; grid-area: framework; min-width: 0; min-height: 0; flex: 1;
+      padding: var(--d2c-portal-framework-page-padding); overflow: hidden;
+    }
+    .isc-personnel-framework.has-left-selector { padding: var(--d2c-portal-framework-left-selector-page-padding); }
+    .isc-personnel-framework__stage {
+      display: flex; min-width: 0; min-height: 0; flex: 1; flex-direction: column;
+      gap: 0; overflow: hidden;
+    }
+    .isc-personnel-framework.has-left-selector .isc-personnel-framework__stage {
+      padding: var(--d2c-portal-framework-left-selector-main-padding);
+    }
+    .isc-personnel-framework__stage > .isc-framework-business-header + * {
+      margin-top: var(--d2c-portal-framework-business-header-gap);
+    }
+    .isc-personnel-framework__stage > .content-shell {
+      min-height: var(--d2c-portal-framework-content-min-height); height: auto; flex: 1;
+      border-radius: var(--d2c-portal-framework-content-radius) var(--d2c-portal-framework-content-radius) 0 0;
+      background: var(--h-color-bg-primary); overflow: hidden;
+    }
+    .isc-personnel-framework .page-workspace { padding: var(--d2c-portal-framework-content-padding); }
+    .isc-personnel-shell .isc-collection-toolbar {
+      height: var(--d2c-portal-collection-toolbar-height);
+      padding: var(--d2c-portal-collection-toolbar-padding);
+    }
+    .isc-personnel-shell .collection-page.is-table-page .data-region {
+      margin: var(--d2c-portal-collection-table-content-margin);
+      padding: var(--d2c-portal-collection-table-content-padding);
+    }
+    .isc-personnel-shell .collection-page:not(.is-table-page) .data-region {
+      margin: var(--d2c-portal-collection-card-content-margin);
+      padding: var(--d2c-portal-collection-card-content-padding);
+    }
+    .isc-personnel-shell .isc-collection-toolbar__advanced-filter {
+      margin: var(--d2c-portal-collection-expanded-filter-margin);
+    }
+    .isc-framework-selector {
+      display: flex; width: var(--d2c-portal-framework-selector-width); min-height: 0; flex: none; flex-direction: column;
+      padding: var(--d2c-portal-framework-selector-padding);
+      background: var(--d2c-portal-framework-selector-background);
+    }
+    .isc-framework-selector__search,
+    .isc-framework-selector__search .el-input__inner { height: var(--d2c-portal-context-search-height); }
+    .isc-framework-selector__tree {
+      min-height: 0; flex: 1; margin-top: var(--d2c-portal-framework-selector-tree-margin-top);
+      overflow: auto; background: transparent;
+    }
+    .isc-framework-selector__tree .el-tree-node__content { height: var(--d2c-portal-context-tree-item-height); border: 0 !important; border-radius: 2px; }
+    .isc-framework-selector__tree .el-tree-node.is-current > .el-tree-node__content {
+      position: relative; color: var(--d2c-portal-context-tree-selected-text); background: transparent;
+    }
+    .isc-framework-selector__tree .el-tree-node.is-current > .el-tree-node__content::before {
+      position: absolute; z-index: 0; inset: 0;
+      background: var(--d2c-portal-context-tree-selected-background);
+      box-shadow: inset var(--d2c-portal-context-active-indicator-width) 0 0 var(--d2c-portal-context-tree-active-indicator);
+      content: ""; pointer-events: none;
+    }
+    .isc-framework-selector__tree .el-tree-node.is-current > .el-tree-node__content > * { position: relative; z-index: 1; }
+    .isc-framework-business-header {
+      display: flex; width: 100%; min-height: var(--d2c-portal-framework-business-header-min-height); flex: none;
+      align-items: center; justify-content: space-between; padding: var(--d2c-portal-framework-business-header-padding);
+      gap: var(--d2c-portal-framework-business-header-gap); background: transparent;
+    }
+    .isc-framework-business-header__intro { display: flex; min-width: 0; flex: 1; align-items: center; gap: var(--d2c-portal-framework-business-header-gap); }
+    .isc-framework-business-header__intro h1 {
+      flex: none; margin: 0; color: var(--h-color-text-primary);
+      font-size: var(--d2c-portal-framework-business-header-title-font-size); font-weight: 500;
+      line-height: var(--d2c-portal-framework-business-header-title-line-height);
+    }
+    .isc-framework-business-header__intro p {
+      min-width: 0; margin: 0; overflow: hidden; color: var(--h-color-text-secondary);
+      font-size: var(--d2c-portal-framework-business-header-description-font-size);
+      line-height: var(--d2c-portal-framework-business-header-description-line-height);
+      text-overflow: ellipsis; white-space: nowrap;
+    }
+    .isc-framework-business-header__action-region,
+    .isc-framework-business-header__actions { display: flex; flex: none; gap: 8px; }
+    .isc-framework-business-header__action-region { align-items: center; }
+    .isc-framework-business-header__actions .el-button + .el-button { margin-left: 0; }
+    .isc-framework-business-header__separator { width: 1px; height: 16px; flex: none; background: var(--h-color-border-tertiary); }
+    .isc-framework-business-header__extra { flex: none; color: var(--h-color-text-secondary); font-size: 14px; line-height: 20px; }
+    .isc-framework-card-tabs { height: var(--d2c-portal-framework-card-tabs-height); flex: none; overflow: hidden; }
+    .card-tabs {
+      position: relative; display: flex; height: var(--d2c-portal-framework-card-tabs-height); align-items: center;
+      overflow-x: auto; overflow-y: hidden; white-space: nowrap;
+    }
+    .card-tabs__indicator {
+      position: absolute; z-index: 1; top: 0; left: 0; height: var(--d2c-portal-framework-card-tabs-height);
+      border-radius: var(--d2c-portal-framework-content-radius) var(--d2c-portal-framework-content-radius) 0 0;
+      background: var(--h-color-bg-primary); pointer-events: none;
+      transition: transform .18s cubic-bezier(.2, 0, 0, 1), width .18s cubic-bezier(.2, 0, 0, 1);
+      will-change: transform, width;
+    }
+    .card-tabs__item {
+      position: relative; display: inline-flex; height: var(--d2c-portal-framework-card-tabs-height); flex: 0 0 auto;
+      align-items: center; gap: var(--d2c-portal-framework-card-tab-icon-gap);
+      margin: 0 var(--d2c-portal-framework-card-tabs-gap) 0 0;
+      padding: 0 var(--d2c-portal-framework-card-tab-padding-inline);
+      border: 0; border-radius: var(--d2c-portal-framework-content-radius); appearance: none;
+      color: var(--h-color-text-secondary); background: transparent; cursor: pointer;
+      font: inherit; font-size: var(--d2c-portal-framework-card-tab-font-size); font-weight: 400;
+      line-height: var(--d2c-portal-framework-card-tab-line-height);
+      transition: color .12s cubic-bezier(.2, 0, 0, 1);
+    }
+    .card-tabs > .card-tabs__item.el-button {
+      overflow: visible !important; background: transparent !important;
+      box-shadow: none !important; transform: none !important;
+    }
+    .card-tabs > .card-tabs__item.el-button + .card-tabs__item.el-button { margin-left: 0; }
+    .card-tabs > .card-tabs__item.el-button > span {
+      position: relative; z-index: 2; display: inline-flex; min-width: 0;
+      align-items: center; gap: var(--d2c-portal-framework-card-tab-icon-gap);
+      line-height: var(--d2c-portal-framework-card-tab-line-height);
+    }
+    .card-tabs__item::before {
+      position: absolute; z-index: 0; inset: var(--d2c-portal-framework-card-tab-hover-inset-block) 0;
+      border-radius: var(--d2c-portal-framework-content-radius); background: var(--h-color-bg-primary);
+      content: ""; opacity: 0;
+      transition: background-color .12s cubic-bezier(.2, 0, 0, 1), opacity .12s cubic-bezier(.2, 0, 0, 1);
+    }
+    .card-tabs__item:not(:last-child)::after {
+      position: absolute; top: var(--d2c-portal-framework-card-tab-divider-top);
+      right: calc(var(--d2c-portal-framework-card-tabs-gap) / -2 - var(--d2c-portal-framework-card-tab-divider-width));
+      width: var(--d2c-portal-framework-card-tab-divider-width);
+      height: var(--d2c-portal-framework-card-tab-divider-height);
+      background: var(--h-color-border-secondary); content: ""; opacity: 1;
+      transition: opacity .12s cubic-bezier(.2, 0, 0, 1);
+    }
+    .card-tabs__item:last-child { margin-right: 0; }
+    .card-tabs__item:hover:not(:disabled) { color: var(--h-color-text-primary); }
+    .card-tabs__item:hover:not(:disabled)::before { opacity: 1; }
+    .card-tabs__item.is-active { color: var(--h-color-text-primary); }
+    .card-tabs__item.is-active::before { opacity: 0; }
+    .card-tabs__item.is-active::after,
+    .card-tabs__item.is-before-active::after,
+    .card-tabs__item:hover:not(:disabled)::after,
+    .card-tabs__item:has(+ .card-tabs__item:hover:not(:disabled))::after { opacity: 0; }
+    .card-tabs__item:focus-visible {
+      z-index: 2; outline: var(--d2c-portal-framework-card-tab-focus-width) solid var(--h-color-brand); outline-offset: -2px;
+    }
+    .card-tabs__item:disabled { cursor: not-allowed; opacity: .48; }
+    .card-tabs__icon {
+      position: relative; z-index: 2; display: inline-flex;
+      width: var(--d2c-portal-framework-card-tab-icon-size);
+      height: var(--d2c-portal-framework-card-tab-icon-size);
+      flex: 0 0 var(--d2c-portal-framework-card-tab-icon-size); align-items: center; justify-content: center;
+      color: inherit; font-size: var(--d2c-portal-framework-card-tab-icon-size);
+      line-height: var(--d2c-portal-framework-card-tab-icon-size); opacity: .48;
+      transition: opacity .12s cubic-bezier(.2, 0, 0, 1);
+    }
+    .card-tabs__item:hover:not(:disabled) .card-tabs__icon,
+    .card-tabs__item.is-active .card-tabs__icon { opacity: 1; }
+    .card-tabs__label {
+      position: relative; z-index: 2; min-width: 0; line-height: var(--d2c-portal-framework-card-tab-line-height);
+    }
+    .isc-personnel-framework.has-top-tabs .isc-personnel-framework__stage.is-first-framework-tab > .content-shell { border-top-left-radius: var(--d2c-portal-framework-first-tab-content-top-left-radius); }
+    @media (prefers-reduced-motion: reduce) {
+      .card-tabs__indicator, .card-tabs__item, .card-tabs__item::before, .card-tabs__item::after { transition: none; }
+    }
+    .isc-personnel-shell .form-area__footer { justify-content: flex-start; padding-left: var(--d2c-page-form-content-inline-padding); }
+    .isc-personnel-shell .form-area.is-one-column .form-area__footer { justify-content: center; padding-left: 12px; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+
+    .content-shell { min-width: 0; flex: 1; height: 100%; overflow: hidden; }
+    .page-frame { display: flex; flex-direction: column; width: 100%; height: 100%; }
+    .page-frame.has-external-master-media { display: grid; grid-template: 40px minmax(0, 1fr) / 352px minmax(0, 1fr); }
+    .page-frame.has-external-master-media > .page-breadcrumb { grid-column: 1 / -1; }
+    .page-frame.has-external-master-media > .details-master-photo { grid-column: 1; grid-row: 2; }
+    .page-frame.has-external-master-media > .page-workspace { grid-column: 2; grid-row: 2; }
+    .page-frame.has-external-master-media.has-portal-breadcrumb { grid-template-rows: minmax(0, 1fr); }
+    .page-frame.has-external-master-media.has-portal-breadcrumb > .details-master-photo { grid-row: 1; }
+    .page-frame.has-external-master-media.has-portal-breadcrumb > .page-workspace { grid-row: 1; }
+    .page-breadcrumb {
+      position: relative; display: flex; align-items: center; height: 40px; flex: none;
+      padding: 0 16px; border-bottom: 1px solid var(--h-color-border-tertiary);
+      color: var(--h-color-text-secondary); background: var(--h-color-bg-primary);
+    }
+    .page-breadcrumb .el-breadcrumb { display: flex; align-items: center; min-width: 0; }
+    .page-breadcrumb .el-breadcrumb__item:last-child .el-breadcrumb__inner { color: var(--h-color-text-primary); font-weight: 500; }
+    .page-workspace { min-height: 0; flex: 1; padding: 16px 16px 0; overflow: hidden; background: var(--h-color-bg-secondary); }
+
+    .page-breadcrumb__tabs { position: absolute; left: 50%; top: 0; display: flex; align-items: center; height: 100%; min-width: 0; transform: translateX(-50%); }
+    .page-breadcrumb__tab { position: relative; height: 40px; margin: 0 !important; padding: 0 12px; border: 0; color: var(--h-color-text-secondary); background: transparent; cursor: pointer; text-decoration: none !important; }
+    .page-breadcrumb__tab:hover,
+    .page-breadcrumb__tab:focus,
+    .page-breadcrumb__tab:active,
+    .page-breadcrumb__tab > span { text-decoration: none !important; }
+    .page-breadcrumb__tab.is-active { color: var(--h-color-brand); font-weight: 500; }
+    .page-breadcrumb__tab.is-active::after { position: absolute; right: 0; bottom: 0; left: 0; height: 2px; background: var(--h-color-brand); content: ''; }
+
+    .form-area { display: flex; justify-content: center; width: 100%; height: 100%; }
+    .form-area__content {
+      position: relative; display: flex; flex-direction: column; width: min(1280px, 100%);
+      --d2c-page-form-content-inline-padding: 80px;
+      --d2c-page-form-content-padding-top: 48px;
+      height: 100%; padding: var(--d2c-page-form-content-padding, 48px 80px 58px); background: var(--h-color-bg-primary);
+    }
+    .permission-form-scroll {
+      position: relative; z-index: 1; min-height: 0; flex: 1;
+      margin-right: calc(-1 * var(--d2c-page-form-content-inline-padding));
+      padding-right: var(--d2c-page-form-content-inline-padding);
+      overflow-x: hidden; overflow-y: auto;
+    }
+    .permission-form-scroll:not(.is-work-order) {
+      margin-top: calc(-1 * var(--d2c-page-form-content-padding-top));
+      padding-top: var(--d2c-page-form-content-padding-top);
+    }
+    .permission-form-scroll.is-work-order { display: flex; overflow: hidden; }
+    .permission-form { width: min(var(--d2c-page-form-width, 832px), 100%); margin: 0 auto; }
+    .anchored-form-layout { display: block; padding-top: 24px; }
+    .form-area.is-anchored-form { gap: 24px; }
+    .form-area.is-anchored-form .form-area__content { flex: 1 1 auto; width: min(1280px, calc(100% - 204px)); }
+    .form-anchor-nav {
+      position: static; z-index: 2; width: 180px; flex: none; align-self: start;
+      padding: 48px 0 0; background: transparent; box-shadow: none;
+    }
+    .form-anchor-nav .h-anchor-wrapper { width: 100%; }
+    .anchored-form-layout .permission-form { min-width: 0; }
+    .form-area__content-head {
+      display: flex; flex: none; align-items: center; justify-content: space-between;
+      height: var(--d2c-page-form-content-head-height); padding: var(--d2c-page-form-content-head-padding);
+      background: var(--h-color-bg-primary);
+    }
+    .form-area__content-head-item { display: flex; align-items: center; height: 27px; }
+    .form-area__content-head-item:first-child { color: var(--h-color-text-primary); font-size: var(--h-font-size-body-lg); font-weight: 500; }
+    .form-area__content-head-item:last-child { justify-content: flex-end; color: var(--h-color-text-secondary); }
+    .work-order-steps {
+      width: 240px; height: 100%; flex: none; margin-right: var(--d2c-page-form-steps-form-gap, 0);
+      padding: 24px 0 24px 80px; background: var(--h-color-bg-primary);
+    }
+    .work-order-steps .el-steps { height: 100%; }
+    .work-order-tabs { min-width: 0; height: 100%; flex: 1; margin: 0 80px 0 0; }
+    .work-order-tabs > .el-tabs__header { margin: 0; padding: 0; }
+    .work-order-tabs > .el-tabs__content { height: calc(100% - 41px); overflow: auto; }
+    .work-order-tabs .el-tab-pane { padding: 24px 0 58px; }
+    .work-order-tabs .permission-form { width: min(var(--d2c-page-form-width, 1280px), 100%); }
+    .work-order-tabs .permission-form__section { border-bottom: 0; }
+    .permission-form .el-form-item { margin-bottom: 24px; }
+    .permission-form .el-row { display: flex; flex-wrap: wrap; align-items: flex-start; }
+    .permission-form .el-row > .el-col { float: none; }
+    .permission-form .el-select,
+    .permission-form .el-date-editor { width: 100%; }
+    .permission-form .el-slider { width: 100%; }
+    .permission-form .el-checkbox-group { min-height: 32px; }
+    .permission-form__section {
+      margin: 8px 0 20px; padding-bottom: 8px; border-bottom: 1px solid var(--h-color-border-tertiary);
+      color: var(--h-color-text-primary); font-size: 16px; font-weight: 500;
+    }
+    .permission-form__section:not(:first-child) { margin-top: 24px; }
+    .form-area.is-first-level-grouped .permission-form__section,
+    .form-area.is-anchored-form .permission-form__section {
+      margin: 0 0 var(--d2c-page-form-title-field-gap, 24px);
+      padding: var(--d2c-page-form-group-title-padding, 0); border: var(--d2c-page-form-group-title-border, 0);
+    }
+    .form-area.is-first-level-grouped .permission-form__group,
+    .form-area.is-anchored-form .permission-form__group {
+      margin-bottom: calc(var(--d2c-page-form-group-gap, 48px) - var(--d2c-page-form-form-item-gap, 24px));
+    }
+    .form-area.is-first-level-grouped .permission-form__group:last-child,
+    .form-area.is-anchored-form .permission-form__group:last-child { margin-bottom: 0; }
+    .form-area.is-first-level-grouped .permission-form__group .el-form-item,
+    .form-area.is-anchored-form .permission-form__group .el-form-item { margin-bottom: var(--d2c-page-form-form-item-gap, 24px); }
+    .permission-form__section-description { margin-top: 6px; color: var(--h-color-text-secondary); font-size: 12px; font-weight: 400; }
+    .permission-form__field-description { margin-top: 4px; color: var(--h-color-text-secondary); font-size: 12px; line-height: 20px; }
+    .permission-form__field.is-conditional {
+      margin-bottom: 24px; padding: 16px 16px 0; border: 1px solid var(--h-color-border-tertiary); background: var(--h-color-bg-secondary);
+    }
+    .form-area__footer {
+      position: absolute; right: 0; bottom: 0; left: 0; display: flex;
+      justify-content: center; align-items: center; height: var(--d2c-page-form-footer-height, 57px); padding: 12px;
+      border-top: 1px solid var(--h-color-border-tertiary); background: var(--h-color-bg-primary);
+    }
+
+    @media (max-width: 1380px) {
+      .capture-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <div id="app" v-cloak>
+    <main class="isc-personnel-shell product-context">
+      <header class="isc-personnel-header" data-zone="portal.header" data-component="portal.global-header">
+        <el-button class="isc-personnel-header__menu" type="text" aria-label="展开导航"><i class="h-icon-menu_leftbar"></i></el-button>
+        <div class="isc-personnel-brand">
+          <span class="isc-personnel-brand__logo">
+            <img class="isc-personnel-brand__mark" :src="config.product_logo" :alt="config.product_name" data-d2c-product-brand>
+            <span class="isc-personnel-brand__name">{{ config.product_name }}</span>
+          </span>
+        </div>
+        <nav class="isc-personnel-primary-nav" aria-label="产品导航">
+          <span v-for="(item,index) in config.top_menus" :key="item" class="isc-personnel-primary-nav__entry">
+            <button type="button" class="isc-personnel-primary-nav__item" :class="{'is-active': item === config.portal.active_top_menu, 'is-home': item === '首页'}">
+              <span>{{ item }}</span><i v-if="item === config.portal.active_top_menu" class="el-alert__closebtn h-icon-close_sm" aria-hidden="true"></i>
+            </button>
+            <span v-if="index === 0" class="isc-personnel-primary-nav__divider" aria-hidden="true"></span>
+          </span>
+        </nav>
+        <div class="isc-personnel-header-tools">
+          <el-button class="isc-personnel-header-tool" type="text" title="搜索"><i class="h-icon-search"></i></el-button>
+          <span class="isc-personnel-header-divider"></span>
+          <div class="isc-personnel-header-actions">
+            <el-button class="isc-personnel-header-tool is-assistant" type="text" title="助手"><i class="h-icon-message"></i></el-button>
+            <el-button class="isc-personnel-header-tool" type="text" title="通知"><i class="h-icon-message"></i></el-button>
+            <el-button class="isc-personnel-header-tool" type="text" title="帮助"><i class="h-icon-help"></i></el-button>
+            <el-button class="isc-personnel-header-tool" type="text" title="下载"><i class="h-icon-download"></i></el-button>
+            <el-button class="isc-personnel-header-tool" type="text" title="设置"><i class="h-icon-setting"></i></el-button>
+            <el-button class="isc-personnel-header-tool" type="text" title="更多"><i class="h-icon-more_verti"></i></el-button>
+          </div>
+          <span class="isc-personnel-header-divider"></span>
+          <button class="isc-personnel-header-user" type="button"><span>admin</span><i class="h-icon-angle_down_sm"></i></button>
+        </div>
+      </header>
+
+      <div class="isc-personnel-body" :class="{'has-context-sidebar':config.portal.show_context_sidebar}">
+        <aside class="isc-personnel-sidebar" :class="{'is-collapsed':sidebarCollapsed}" aria-label="左侧功能导航" data-zone="portal.sidebar" data-component="portal.app-sidebar">
+          <button class="isc-personnel-sidebar__toggle" type="button" :aria-label="sidebarCollapsed ? '展开左侧导航' : '收起左侧导航'" @click="sidebarCollapsed=!sidebarCollapsed"><i class="isc-personnel-sidebar__toggle-icon is-expanded h-icon-menu_leftbar" aria-hidden="true"></i><i class="isc-personnel-sidebar__toggle-icon is-collapsed h-icon-menu_leftbar" aria-hidden="true"></i></button>
+          <el-scrollbar class="isc-personnel-sidebar__scrollbar">
+            <el-nav class="isc-personnel-side-menu" mode="vertical" :collapse="sidebarCollapsed" :default-active="activeIconMenu">
+              <template v-if="!config.framework.variant_menu.length">
+                <el-nav-item v-for="item in config.portal.icon_menus" :key="item.id" :index="item.id" :icon="item.icon" :title="item.label" @click="selectIconMenu(item)">{{ item.label }}</el-nav-item>
+              </template>
+              <el-nav-item v-for="item in config.framework.variant_menu" :key="item.id" :index="item.id" :icon="item.icon" :title="item.label" @click="selectFrameworkVariant(item)">{{ item.label }}</el-nav-item>
+            </el-nav>
+          </el-scrollbar>
+        </aside>
+        <aside v-if="config.portal.show_context_sidebar" class="isc-personnel-context-sidebar" aria-label="组织树" data-zone="portal.sidebar" data-component="portal.app-sidebar">
+          <div class="isc-personnel-context-toolbar" aria-label="组织操作">
+            <el-button v-for="action in config.portal.context_toolbar_actions" :key="action.id" type="text" :title="action.label"><i :class="action.icon"></i></el-button>
+          </div>
+          <div class="isc-personnel-context-search">
+            <el-input v-model="portalKeyword" suffix-icon="h-icon-search" :placeholder="config.portal.context_menu.search_placeholder" @input="filterContextTree"></el-input>
+          </div>
+          <div class="isc-personnel-context-tree">
+            <el-tree ref="portalContextTree" class="isc-personnel-context-tree__tree" :data="config.portal.context_menu.tree_nodes" node-key="id" :current-node-key="contextTreeCurrentNodeKey" :default-expanded-keys="contextTreeDefaultExpandedKeys" :filter-node-method="filterContextTreeNode" highlight-current @node-click="contextTreeNodeChanged" @node-expand="contextTreeNodeExpanded" @node-collapse="contextTreeNodeCollapsed">
+              <span class="isc-personnel-tree-node-content" slot-scope="{node,data}"><span class="tree-icon"><d2c-icon :icon="config.portal.context_menu.tree_icon"></d2c-icon></span><span>{{ node.label }}</span></span>
+            </el-tree>
+          </div>
+        </aside>
+        <div v-if="config.portal.breadcrumb_placement === 'portal-body'" class="page-breadcrumb isc-personnel-portal-breadcrumb"><div class="page-breadcrumb__path" data-zone="navigation.breadcrumb" data-component="navigation.breadcrumb"><el-breadcrumb separator-class="h-icon-angle_right_sm"><el-breadcrumb-item>{{ config.portal.section }}</el-breadcrumb-item><el-breadcrumb-item v-if="!formTabsInBreadcrumb">{{ config.title }}</el-breadcrumb-item></el-breadcrumb></div><div v-if="detailsTabsInBreadcrumb" class="page-breadcrumb__tabs" role="tablist" aria-label="详情页面切换" data-zone="navigation.detail-tabs" data-component="navigation.tabs">
+  <el-button v-for="tab in config.detail_tabs" :key="tab.id" type="text" class="page-breadcrumb__tab" :class="{'is-active':activeDetailTab===tab.id}" role="tab" :aria-selected="activeDetailTab===tab.id?'true':'false'" @click="activeDetailTab=tab.id">{{ tab.label }}</el-button>
+</div>
+<div v-else-if="formTabsInBreadcrumb" class="page-breadcrumb__tabs" data-zone="navigation.view-tabs" data-component="navigation.tabs">
+  <el-button v-for="tab in config.form_tabs" :key="tab.id" type="text" class="page-breadcrumb__tab" :class="{'is-active':activeFormTab===tab.id}" @click="activeFormTab=tab.id">{{ tab.label }}</el-button>
+</div>
+</div>
+        <section class="isc-personnel-framework" :class="{'has-left-selector':config.framework.show_left_selector,'has-top-tabs':config.framework.show_top_tabs}" :data-framework-variant="config.framework.variant" :data-layout-region="config.framework.data_layout_region">
+          <aside v-if="config.framework.show_left_selector" class="isc-framework-selector" aria-label="页面内选择导航" data-zone="portal.sidebar" data-component="portal.app-sidebar">
+            <el-input v-model="frameworkSelectorKeyword" class="isc-framework-selector__search" suffix-icon="h-icon-search" :placeholder="config.framework.selector_search_placeholder"></el-input>
+            <el-tree class="isc-framework-selector__tree" :data="config.framework.selector_nodes" node-key="id" :current-node-key="config.framework.selector_active_node" :default-expanded-keys="config.framework.selector_expanded_nodes" highlight-current></el-tree>
+          </aside>
+          <div class="isc-personnel-framework__stage" :class="{'is-first-framework-tab': config.framework.tabs && config.framework.tabs.length && activeFrameworkTab === config.framework.tabs[0].id}">
+            <header v-if="config.framework.business_header !== 'none'" class="isc-framework-business-header" :data-business-header="config.framework.business_header" data-zone="portal.header" data-component="portal.global-header">
+              <div class="isc-framework-business-header__intro">
+                <h1>{{ config.title }}</h1>
+                <p>{{ config.framework.intro }}</p>
+              </div>
+              <div v-if="config.framework.global_actions.length || config.framework.show_extra_info" class="isc-framework-business-header__action-region">
+                <div v-if="config.framework.global_actions.length" class="isc-framework-business-header__actions">
+                  <el-button v-for="action in config.framework.global_actions" :key="action">{{ action }}</el-button>
+                </div>
+                <span v-if="config.framework.show_extra_info_separator" class="isc-framework-business-header__separator" role="separator" aria-orientation="vertical"></span>
+                <div v-if="config.framework.show_extra_info" class="isc-framework-business-header__extra">{{ config.framework.extra_info }}</div>
+              </div>
+            </header>
+            <nav v-if="config.framework.show_top_tabs" class="isc-framework-card-tabs" aria-label="页面内卡式标签导航" data-zone="navigation.detail-tabs" data-component="navigation.anchor-nav">
+              <div class="card-tabs" role="tablist" aria-label="内容标签页">
+                <span class="card-tabs__indicator" data-active-indicator aria-hidden="true" :style="frameworkCardTabsIndicatorStyle"></span>
+                <el-button
+                  v-for="(tab, index) in config.framework.tabs"
+                  :key="tab.id"
+                  ref="frameworkTabButtons"
+                  class="card-tabs__item"
+                  :class="{'is-active': activeFrameworkTab === tab.id, 'is-before-active': config.framework.tabs[index + 1] && activeFrameworkTab === config.framework.tabs[index + 1].id}"
+                  native-type="button"
+                  role="tab"
+                  :aria-selected="activeFrameworkTab === tab.id ? 'true' : 'false'"
+                  :tabindex="activeFrameworkTab === tab.id ? 0 : -1"
+                  :disabled="tab.disabled"
+                  @click="activateFrameworkTab(tab)"
+                  @keydown.native="onFrameworkTabKeydown($event, index)"
+                >
+                  <span v-if="tab.icon" class="card-tabs__icon"><d2c-icon :icon="tab.icon"></d2c-icon></span>
+                  <span class="card-tabs__label">{{ tab.label }}</span>
+                </el-button>
+              </div>
+            </nav>
+
+        <section class="content-shell">
+          <div class="page-frame" :class="{'has-external-master-media':externalMasterMedia,'has-portal-breadcrumb':config.portal.breadcrumb_placement === 'portal-body'}" :data-page-kind="config.page_kind" :data-pattern-id="config.pattern_ids.join(',')">
+            <div v-if="config.portal.breadcrumb_placement !== 'portal-body'" class="page-breadcrumb"><div class="page-breadcrumb__path" data-zone="navigation.breadcrumb" data-component="navigation.breadcrumb"><el-breadcrumb separator-class="h-icon-angle_right_sm"><el-breadcrumb-item>{{ config.portal.section }}</el-breadcrumb-item><el-breadcrumb-item v-if="!formTabsInBreadcrumb">{{ config.title }}</el-breadcrumb-item></el-breadcrumb></div><div v-if="detailsTabsInBreadcrumb" class="page-breadcrumb__tabs" role="tablist" aria-label="详情页面切换" data-zone="navigation.detail-tabs" data-component="navigation.tabs">
+  <el-button v-for="tab in config.detail_tabs" :key="tab.id" type="text" class="page-breadcrumb__tab" :class="{'is-active':activeDetailTab===tab.id}" role="tab" :aria-selected="activeDetailTab===tab.id?'true':'false'" @click="activeDetailTab=tab.id">{{ tab.label }}</el-button>
+</div>
+<div v-else-if="formTabsInBreadcrumb" class="page-breadcrumb__tabs" data-zone="navigation.view-tabs" data-component="navigation.tabs">
+  <el-button v-for="tab in config.form_tabs" :key="tab.id" type="text" class="page-breadcrumb__tab" :class="{'is-active':activeFormTab===tab.id}" @click="activeFormTab=tab.id">{{ tab.label }}</el-button>
+</div>
+</div>
+            <section v-if="config.summary_metrics && config.summary_metrics.length" class="statisticsStyle collection-summary-metrics" data-zone="summary.metrics" data-component="summary.metric-strip">
+              <div v-for="item in config.summary_metrics" :key="item.key" class="card" :class="{'is-active':activeSummaryMetric===item.key}" role="button" :aria-pressed="activeSummaryMetric===item.key?'true':'false'" tabindex="0" @click="selectSummaryMetric(item)" @keyup.enter="selectSummaryMetric(item)">
+                <div class="image"><i :class="item.image_icon || item.icon || 'h-icon-menu'"></i></div>
+                <div class="content">
+                  <h-stats :title="item.label" :value="summaryMetrics[item.key]">
+                    <i slot="titlePrefix" :class="item.icon || 'h-icon-menu'"></i>
+                    <i slot="valueSuffix" class="h-icon-edit"></i>
+                  </h-stats>
+                </div>
+              </div>
+            </section>
+            <section v-if="externalMasterMedia" class="details-master-photo is-external" data-zone="media.preview" data-component="media.image-viewer">
+              <img :src="detailMedia.src" :alt="config.media.alt">
+              <div class="details-master-photo__name">{{ detailValues.personName }}</div>
+              <div class="details-master-photo__code">{{ detailValues.employeeNo }}</div>
+              <el-button type="text" @click="mediaAction('查看原图')">查看原图</el-button>
+            </section>
+            <div class="page-workspace">
+
+              <div class="form-area" :class="{'is-complex-form': config.form_sections && config.form_sections.length, 'is-first-level-grouped':isFirstLevelGroupedForm, 'is-anchored-form':isAnchoredForm, 'is-one-column':config.pattern_parameters && config.pattern_parameters.columns === 1}">
+                <div class="form-area__content">
+                  <div v-if="isWorkOrderForm" class="form-area__content-head"><span class="form-area__content-head-item">{{ config.title }}</span><span class="form-area__content-head-item">配置状态：待保存</span></div>
+                  <div class="permission-form-scroll" :class="{'is-work-order':isWorkOrderForm}" data-zone="form.content" data-component="form.data-form">
+                    <div v-if="isWorkOrderForm" class="work-order-steps">
+                      <el-steps :active="activeFormSectionIndex" :direction="formStepDirection" finish-status="success" @step-click="selectFormStep">
+                        <el-step v-for="section in formSections" :key="section.id" :title="section.title"></el-step>
+                      </el-steps>
+                    </div>
+                    <el-tabs v-if="isWorkOrderForm" v-model="activeFormSection" class="work-order-tabs" type="border-card">
+                      <el-tab-pane v-for="section in formSections" :key="section.id" :label="section.title" :name="section.id">
+                        <el-form ref="workOrderForm" class="permission-form" :model="formModel" label-position="top" size="small">
+                          <div class="permission-form__section">{{ section.title }}<div v-if="section.description" class="permission-form__section-description">{{ section.description }}</div></div>
+                          <el-row :gutter="24">
+                            <el-col v-for="field in section.fields" v-if="matchesCondition(field.condition)" :key="field.key" :span="formFieldSpan(field)" class="permission-form__field" :class="{'is-conditional':field.condition}">
+                              <el-form-item :label="field.label" :required="field.required">
+                                <el-input v-if="field.kind==='input' || field.kind==='textarea'" v-model="formModel[field.key]" :type="field.kind==='textarea' ? 'textarea' : 'text'" :placeholder="field.placeholder"><span v-if="field.unit" slot="suffix">{{ field.unit }}</span></el-input>
+                                <el-select v-else-if="field.kind==='select'" v-model="formModel[field.key]" :multiple="field.multiple" :placeholder="field.placeholder"><el-option v-for="option in field.options" :key="option" :label="option" :value="option"></el-option></el-select>
+                                <el-radio-group v-else-if="field.kind==='radio'" v-model="formModel[field.key]"><el-radio v-for="option in field.options" :key="option" :label="option">{{ option }}</el-radio></el-radio-group>
+                                <el-checkbox-group v-else-if="field.kind==='checkbox'" v-model="formModel[field.key]"><el-checkbox v-for="option in field.options" :key="option" :label="option">{{ option }}</el-checkbox></el-checkbox-group>
+                                <el-switch v-else-if="field.kind==='switch'" v-model="formModel[field.key]"></el-switch>
+                                <el-date-picker v-else-if="field.kind==='date'" v-model="formModel[field.key]" type="date" placeholder="请选择日期"></el-date-picker>
+                                <el-date-picker v-else-if="field.kind==='date-range'" v-model="formModel[field.key]" type="daterange" start-placeholder="开始日期" end-placeholder="结束日期"></el-date-picker>
+                                <div v-if="field.description" class="permission-form__field-description">{{ field.description }}</div>
+                              </el-form-item>
+                            </el-col>
+                          </el-row>
+                        </el-form>
+                      </el-tab-pane>
+                    </el-tabs>
+                    <div v-if="!isWorkOrderForm" class="anchored-form-layout">
+                    <el-form ref="permissionForm" class="permission-form" :model="formModel" label-position="top" size="small">
+                      <div v-for="section in visibleFormSections" :id="'form-section-' + section.id" :key="section.id" class="permission-form__group">
+                        <div class="permission-form__section">
+                          {{ section.title }}
+                          <div v-if="section.description" class="permission-form__section-description">{{ section.description }}</div>
+                        </div>
+                        <el-row :gutter="24">
+                          <el-col v-for="field in section.fields" v-show="matchesCondition(field.condition)" :key="field.key" :span="formFieldSpan(field)">
+                            <div class="permission-form__field" :class="{'is-conditional': field.condition}">
+                            <el-form-item :label="field.label" :required="field.required">
+                            <el-input v-if="field.kind==='input'" v-model="formModel[field.key]" :placeholder="field.placeholder" :disabled="field.readonly"><span v-if="field.unit" slot="suffix">{{ field.unit }}</span></el-input>
+                            <el-input v-else-if="field.kind==='textarea'" v-model="formModel[field.key]" type="textarea" :rows="3" :placeholder="field.placeholder" :disabled="field.readonly"></el-input>
+                            <el-select v-else-if="field.kind==='select'" v-model="formModel[field.key]" :multiple="field.multiple || false" :placeholder="field.placeholder" :disabled="field.readonly"><el-option v-for="option in field.options" :key="option" :label="option" :value="option"></el-option></el-select>
+                            <el-date-picker v-else-if="field.kind==='date-range'" v-model="formModel[field.key]" type="datetimerange" start-placeholder="开始时间" end-placeholder="结束时间"></el-date-picker>
+                            <el-date-picker v-else-if="field.kind==='date'" v-model="formModel[field.key]" type="date" placeholder="请选择日期" :disabled="field.readonly"></el-date-picker>
+                            <el-radio-group v-else-if="field.kind==='radio'" v-model="formModel[field.key]"><el-radio v-for="option in field.options" :key="option" :label="option">{{ option }}</el-radio></el-radio-group>
+                            <el-checkbox-group v-else-if="field.kind==='checkbox'" v-model="formModel[field.key]"><el-checkbox v-for="option in field.options" :key="option" :label="option">{{ option }}</el-checkbox></el-checkbox-group>
+                            <el-input-number v-else-if="field.kind==='input-number'" v-model="formModel[field.key]" :min="field.min" :max="field.max" :step="field.step || 1"></el-input-number>
+                            <el-slider v-else-if="field.kind==='slider'" v-model="formModel[field.key]" :min="field.min" :max="field.max" :step="field.step || 1" :range="field.range || false" show-input></el-slider>
+                            <el-switch v-else-if="field.kind==='switch'" v-model="formModel[field.key]"></el-switch>
+                              <div v-if="field.description" class="permission-form__field-description">{{ field.description }}</div>
+                            </el-form-item>
+                          </div>
+                          </el-col>
+                        </el-row>
+                      </div>
+                    </el-form>
+                    </div>
+                  </div>
+                  <div class="form-area__footer" data-zone="form.actions" data-component="toolbar.action-toolbar"><template v-if="isWorkOrderForm"><el-button @click="previousFormSection">上一步</el-button><el-button type="primary" @click="nextFormSection">下一步</el-button><el-button @click="resetForm">取消</el-button></template><template v-else-if="config.form_actions && config.form_actions.length"><el-button v-for="(action,index) in config.form_actions" :key="action" :type="index===0 ? 'primary' : 'default'" @click="formAction(action)">{{ action }}</el-button></template><template v-else><el-button @click="resetForm">取消</el-button><el-button type="primary" @click="saveForm">保存</el-button></template></div>
+                </div>
+<nav v-if="isAnchoredForm && !isWorkOrderForm && visibleFormSections.length" class="form-anchor-nav" data-zone="form.content" data-component="navigation.anchor-nav">
+  <h-anchor :affix="true" container=".permission-form-scroll">
+    <h-anchor-link v-for="section in visibleFormSections" :key="section.id" :href="'#form-section-' + section.id" :title="section.title"></h-anchor-link>
+  </h-anchor>
+</nav>
+
+              </div>
+
+            </div>
+          </div>
+        </section>
+          </div>
+        </section>
+      </div>
+    </main>
+
+  </div>
+
+  <script src="https://pixso.hikvision.com.cn/hik-plugin/ai-builder-web/public/webresources/libs/vue.min.js"></script>
+  <script src="https://pixso.hikvision.com.cn/hik-plugin/ai-builder-web/public/webresources/libs/hui.umd.js"></script>
+
+  <script>
+    const PAGE_CONFIG = Object.freeze({
+          "schema_version": "pattern-page-spec.v2",
+          "industry": "general",
+          "product": "isc",
+          "product_version": "3.0.0",
+          "id": "add-person-form",
+          "title": "添加人员",
+          "page_kind": "form",
+          "pattern_contract": "form/persistent-anchor-single-container.json",
+          "portal": {
+                    "breadcrumb_placement": "portal-body",
+                    "breadcrumb_sibling_of": [
+                              "portal.sidebar",
+                              "framework"
+                    ],
+                    "sidebar_collapsed": false,
+                    "top_menus": [
+                              "首页",
+                              "视频预览",
+                              "门禁管理"
+                    ],
+                    "default_active_top_menu": "门禁管理",
+                    "icon_menus": [
+                              {
+                                        "id": "personnel",
+                                        "label": "人员管理",
+                                        "icon": "h-icon-user",
+                                        "active": true
+                              },
+                              {
+                                        "id": "authorization",
+                                        "label": "权限配置",
+                                        "icon": "h-icon-lock"
+                              },
+                              {
+                                        "id": "organization",
+                                        "label": "组织管理",
+                                        "icon": "h-icon-menu"
+                              },
+                              {
+                                        "id": "resource",
+                                        "label": "资源管理",
+                                        "icon": "h-icon-folder"
+                              },
+                              {
+                                        "id": "device",
+                                        "label": "设备管理",
+                                        "icon": "h-icon-liveview"
+                              },
+                              {
+                                        "id": "settings",
+                                        "label": "系统配置",
+                                        "icon": "h-icon-setting"
+                              }
+                    ],
+                    "context_menu": {},
+                    "active_top_menu": "门禁管理",
+                    "active_icon_menu": "personnel",
+                    "section": "人员管理",
+                    "tab_title": "添加人员",
+                    "active_side_menu": "personnel-list",
+                    "side_menus": [
+                              {
+                                        "id": "personnel-list",
+                                        "label": "人员信息",
+                                        "icon": "h-icon-user",
+                                        "href": "isc3-access-personnel-list.html"
+                              },
+                              {
+                                        "id": "access-authorization",
+                                        "label": "门禁授权",
+                                        "icon": "h-icon-lock"
+                              },
+                              {
+                                        "id": "card-management",
+                                        "label": "卡片管理",
+                                        "icon": "h-icon-info_card"
+                              }
+                    ],
+                    "show_context_sidebar": false,
+                    "context_toolbar_actions": []
+          },
+          "form_tabs": [
+                    {
+                              "id": "basic",
+                              "label": "基础信息",
+                              "section_ids": [
+                                        "personal",
+                                        "credential",
+                                        "contact"
+                              ]
+                    },
+                    {
+                              "id": "credential",
+                              "label": "凭证信息",
+                              "section_ids": []
+                    },
+                    {
+                              "id": "vehicle",
+                              "label": "车辆信息",
+                              "section_ids": []
+                    },
+                    {
+                              "id": "access",
+                              "label": "人员通行信息",
+                              "section_ids": []
+                    }
+          ],
+          "form_sections": [
+                    {
+                              "id": "personal",
+                              "title": "个人信息",
+                              "fields": [
+                                        {
+                                                  "key": "name",
+                                                  "label": "姓名",
+                                                  "kind": "input",
+                                                  "placeholder": "请输入姓名",
+                                                  "required": true
+                                        },
+                                        {
+                                                  "key": "gender",
+                                                  "label": "性别",
+                                                  "kind": "radio",
+                                                  "options": [
+                                                            "男",
+                                                            "女"
+                                                  ],
+                                                  "required": true
+                                        },
+                                        {
+                                                  "key": "organization",
+                                                  "label": "所属组织",
+                                                  "kind": "select",
+                                                  "placeholder": "请选择所属组织",
+                                                  "options": [
+                                                            "研发中心",
+                                                            "行政中心",
+                                                            "运营中心",
+                                                            "访客组"
+                                                  ],
+                                                  "required": true
+                                        },
+                                        {
+                                                  "key": "employeeNo",
+                                                  "label": "工号",
+                                                  "kind": "input",
+                                                  "placeholder": "请输入工号"
+                                        },
+                                        {
+                                                  "key": "pinyin",
+                                                  "label": "拼音",
+                                                  "kind": "input",
+                                                  "placeholder": "请输入姓名拼音"
+                                        },
+                                        {
+                                                  "key": "workplace",
+                                                  "label": "工作单位",
+                                                  "kind": "input",
+                                                  "placeholder": "请输入工作单位"
+                                        },
+                                        {
+                                                  "key": "position",
+                                                  "label": "岗位",
+                                                  "kind": "input",
+                                                  "placeholder": "请输入岗位"
+                                        },
+                                        {
+                                                  "key": "birthDate",
+                                                  "label": "出生日期",
+                                                  "kind": "date"
+                                        },
+                                        {
+                                                  "key": "maritalStatus",
+                                                  "label": "婚姻状况",
+                                                  "kind": "select",
+                                                  "placeholder": "请选择婚姻状况",
+                                                  "options": [
+                                                            "未婚",
+                                                            "已婚",
+                                                            "离异",
+                                                            "丧偶"
+                                                  ]
+                                        }
+                              ]
+                    },
+                    {
+                              "id": "credential",
+                              "title": "证件信息",
+                              "fields": [
+                                        {
+                                                  "key": "credentialType",
+                                                  "label": "身份证件类型",
+                                                  "kind": "select",
+                                                  "placeholder": "请选择证件类型",
+                                                  "options": [
+                                                            "身份证",
+                                                            "护照",
+                                                            "港澳通行证"
+                                                  ],
+                                                  "required": true
+                                        },
+                                        {
+                                                  "key": "credentialNumber",
+                                                  "label": "身份证件号码",
+                                                  "kind": "input",
+                                                  "placeholder": "请输入证件号码",
+                                                  "required": true
+                                        },
+                                        {
+                                                  "key": "credentialValidity",
+                                                  "label": "证件有效期",
+                                                  "kind": "date-range"
+                                        },
+                                        {
+                                                  "key": "credentialAddress",
+                                                  "label": "证件地址",
+                                                  "kind": "input",
+                                                  "placeholder": "请输入证件地址"
+                                        },
+                                        {
+                                                  "key": "issuingAuthority",
+                                                  "label": "证件发证机关",
+                                                  "kind": "input",
+                                                  "placeholder": "请输入证件发证机关"
+                                        }
+                              ]
+                    },
+                    {
+                              "id": "contact",
+                              "title": "联系信息",
+                              "fields": [
+                                        {
+                                                  "key": "mobile",
+                                                  "label": "手机号码",
+                                                  "kind": "input",
+                                                  "placeholder": "请输入手机号码",
+                                                  "required": true
+                                        },
+                                        {
+                                                  "key": "email",
+                                                  "label": "邮箱",
+                                                  "kind": "input",
+                                                  "placeholder": "请输入邮箱"
+                                        },
+                                        {
+                                                  "key": "nativePlace",
+                                                  "label": "籍贯",
+                                                  "kind": "input",
+                                                  "placeholder": "请输入籍贯"
+                                        },
+                                        {
+                                                  "key": "householdRegistration",
+                                                  "label": "户籍",
+                                                  "kind": "input",
+                                                  "placeholder": "请输入户籍地址"
+                                        },
+                                        {
+                                                  "key": "residence",
+                                                  "label": "居住地",
+                                                  "kind": "input",
+                                                  "placeholder": "请输入居住地址"
+                                        }
+                              ]
+                    }
+          ],
+          "form_actions": [
+                    "操作并继续配置",
+                    "保存并返回列表",
+                    "取消"
+          ],
+          "form_return_href": "isc3-access-personnel-list.html",
+          "framework": {
+                    "variant": "regular-01",
+                    "name": "单容器 · 基础",
+                    "navigation_layout": "single",
+                    "show_left_selector": false,
+                    "show_top_tabs": false,
+                    "business_header": "none",
+                    "show_intro": false,
+                    "global_actions": [],
+                    "show_extra_info": false,
+                    "show_extra_info_separator": false,
+                    "data_layout_region": "single",
+                    "variant_menu": []
+          },
+          "collection_table": {
+                    "striped": false,
+                    "applies_to_page_kinds": [
+                              "table",
+                              "switch"
+                    ],
+                    "row_fill_policy": "single-color",
+                    "default_row_background_role": "bg-primary",
+                    "default_row_background": "#ffffff",
+                    "interactive_state_policy": "retain-hui-hover-active-selected",
+                    "content_spacing": {
+                              "policy": "outer-margin-only",
+                              "margin_role": "portal-collection-table-content-margin",
+                              "padding_role": "portal-collection-table-content-padding"
+                    }
+          },
+          "collection_card": {
+                    "applies_to_page_kinds": [
+                              "card",
+                              "card-tabs",
+                              "switch"
+                    ],
+                    "content_spacing": {
+                              "policy": "outer-margin-only",
+                              "alignment": "same-as-collection-table",
+                              "margin_role": "portal-collection-card-content-margin",
+                              "padding_role": "portal-collection-card-content-padding"
+                    }
+          },
+          "collection_toolbar": {},
+          "detail_page_policy": {
+                    "tab_bar": {},
+                    "content_surface": {},
+                    "anchor": {
+                              "content_gap_px": null
+                    }
+          },
+          "personnel_page_policy": {
+                    "knowledge_id": "isc-3.0.0.personnel-management",
+                    "page": "add_form",
+                    "shared": {
+                              "breadcrumb_tabs": {
+                                        "placement": "breadcrumb",
+                                        "alignment": "center",
+                                        "same_container_as": "navigation.breadcrumb",
+                                        "item_inline_padding_px": 12,
+                                        "active_indicator_total_extension_px": 24,
+                                        "hover_text_underline": false,
+                                        "focus_text_underline": false,
+                                        "active_indicator_visible": true
+                              },
+                              "operation_icons": {
+                                        "style": "linear",
+                                        "source": "HUI font icon catalog"
+                              }
+                    },
+                    "contract": {
+                              "spec_ids": [
+                                        "add-person-form"
+                              ],
+                              "page_kind": "form",
+                              "pattern_contract": "form/persistent-anchor-single-container.json",
+                              "entry_action": "add",
+                              "portal": {
+                                        "active_icon_menu": "personnel",
+                                        "active_side_menu": "personnel-list",
+                                        "show_context_sidebar": false
+                              },
+                              "tab_order": [
+                                        "basic",
+                                        "credential",
+                                        "vehicle",
+                                        "access"
+                              ],
+                              "tab_labels": [
+                                        "基础信息",
+                                        "凭证信息",
+                                        "车辆信息",
+                                        "人员通行信息"
+                              ],
+                              "initial_tab": "basic",
+                              "tab_section_ids": {
+                                        "basic": [
+                                                  "personal",
+                                                  "credential",
+                                                  "contact"
+                                        ],
+                                        "credential": [],
+                                        "vehicle": [],
+                                        "access": []
+                              },
+                              "section_order": [
+                                        "personal",
+                                        "credential",
+                                        "contact"
+                              ],
+                              "field_order_by_section": {
+                                        "personal": [
+                                                  "name",
+                                                  "gender",
+                                                  "organization",
+                                                  "employeeNo",
+                                                  "pinyin",
+                                                  "workplace",
+                                                  "position",
+                                                  "birthDate",
+                                                  "maritalStatus"
+                                        ],
+                                        "credential": [
+                                                  "credentialType",
+                                                  "credentialNumber",
+                                                  "credentialValidity",
+                                                  "credentialAddress",
+                                                  "issuingAuthority"
+                                        ],
+                                        "contact": [
+                                                  "mobile",
+                                                  "email",
+                                                  "nativePlace",
+                                                  "householdRegistration",
+                                                  "residence"
+                                        ]
+                              },
+                              "field_grid": {
+                                        "default_columns_when_many_fields": 3,
+                                        "row_layout": "ordered-flex-wrap",
+                                        "floating_columns": false,
+                                        "implicit_empty_slots": false,
+                                        "full_row_policy": "explicit-only",
+                                        "full_row_field_ids": []
+                              },
+                              "spacing": {
+                                        "form_item_gap_px": 24,
+                                        "title_field_gap_px": 24,
+                                        "group_gap_px": 48
+                              },
+                              "anchor": {
+                                        "component": "HAnchor",
+                                        "behavior": "persistent",
+                                        "position": "right",
+                                        "item_source": "active_form_tab.sections",
+                                        "outside_scroll_container": true,
+                                        "outside_content_surface": true,
+                                        "reserved_width_px": 180,
+                                        "content_gap_px": 24,
+                                        "top_offset_px": 48,
+                                        "surface_context": "page-gray-background",
+                                        "surface": "transparent",
+                                        "shadow": "none"
+                              },
+                              "content_surface": {
+                                        "background": "white",
+                                        "contains": [
+                                                  "form",
+                                                  "footer"
+                                        ],
+                                        "excludes": [
+                                                  "anchor"
+                                        ]
+                              },
+                              "action_order": [
+                                        "操作并继续配置",
+                                        "保存并返回列表",
+                                        "取消"
+                              ],
+                              "return_href": "isc3-access-personnel-list.html"
+                    }
+          },
+          "renderer": "hui.tpp.form",
+          "renderer_source": "HUI",
+          "product_shell_source": "product:isc/personnel-management",
+          "product_shell_standard": "isc-3.0.0",
+          "design_system_resolution": {
+                    "matched": true,
+                    "level": "product"
+          },
+          "product_name": "综合安防管理平台",
+          "product_logo": "../assets/imgs/hik-product-logos/logo_综合安防管理平台iSecure_Center.svg",
+          "top_menus": [
+                    "首页",
+                    "视频预览",
+                    "门禁管理"
+          ],
+          "pattern_ids": [
+                    "hui.tpp.page.form.persistent-anchor-single-container"
+          ],
+          "pattern_geometry": [
+                    {
+                              "viewport": {
+                                        "width": 1920,
+                                        "height": 968
+                              },
+                              "root": {
+                                        "class": "h-page-content form-area is-flex is-align-center",
+                                        "rect": {
+                                                  "x": 248,
+                                                  "y": 118.31,
+                                                  "width": 1463.3,
+                                                  "height": 849.69
+                                        },
+                                        "style": {
+                                                  "display": "flex",
+                                                  "padding": "0px",
+                                                  "overflow": "visible"
+                                        }
+                              },
+                              "key_regions": {
+                                        "content": {
+                                                  "class": "form-area__content",
+                                                  "rect": {
+                                                            "x": 254,
+                                                            "y": 118.31,
+                                                            "width": 1463.3,
+                                                            "height": 1919
+                                                  },
+                                                  "display": "flex",
+                                                  "position": "static",
+                                                  "padding": "48px 80px 58px",
+                                                  "gap": "normal",
+                                                  "overflow_x": "visible",
+                                                  "overflow_y": "visible"
+                                        },
+                                        "form": {
+                                                  "class": "el-form el-form--label-top",
+                                                  "rect": {
+                                                            "x": 353.64,
+                                                            "y": 166.31,
+                                                            "width": 1264,
+                                                            "height": 1813
+                                                  },
+                                                  "display": "block",
+                                                  "position": "static",
+                                                  "padding": "0px",
+                                                  "gap": "normal",
+                                                  "overflow_x": "visible",
+                                                  "overflow_y": "visible"
+                                        },
+                                        "footer": {
+                                                  "class": "form-area__footer",
+                                                  "rect": {
+                                                            "x": 254,
+                                                            "y": 911,
+                                                            "width": 1463.3,
+                                                            "height": 57
+                                                  },
+                                                  "display": "flex",
+                                                  "position": "sticky",
+                                                  "padding": "12px",
+                                                  "gap": "normal",
+                                                  "overflow_x": "visible",
+                                                  "overflow_y": "visible"
+                                        }
+                              }
+                    }
+          ],
+          "pattern_family": "hui.tpp.family.form-anchored",
+          "pattern_parameters": {
+                    "anchor_behavior": "persistent",
+                    "container_count": 1,
+                    "columns": 3,
+                    "page_tabs_placement": "breadcrumb",
+                    "form_item_gap": "24px",
+                    "title_field_gap": "24px",
+                    "group_gap": "48px",
+                    "anchor_reserved_width_px": 180,
+                    "anchor_content_gap_px": 24,
+                    "anchor_top_offset_px": 48,
+                    "default_label_position": null
+          },
+          "product_page_kind_policy": {}
+});
+    const PREVIEW_FIXTURES = Object.freeze({
+          "formModel": {
+                    "name": "",
+                    "gender": "男",
+                    "organization": "",
+                    "employeeNo": "",
+                    "pinyin": "",
+                    "workplace": "",
+                    "position": "",
+                    "birthDate": "",
+                    "maritalStatus": "",
+                    "credentialType": "身份证",
+                    "credentialNumber": "",
+                    "credentialValidity": [],
+                    "credentialAddress": "",
+                    "issuingAuthority": "",
+                    "mobile": "",
+                    "email": "",
+                    "nativePlace": "",
+                    "householdRegistration": "",
+                    "residence": ""
+          }
+});
+    function cloneRuntimeValue(value) {
+      return JSON.parse(JSON.stringify(value));
+    }
+
+    Vue.component('d2c-icon', {
+      functional: true,
+      props: { icon: { type: [String, Object], required: true } },
+      render: function (createElement, context) {
+        var icon = context.props.icon;
+        var mode = typeof icon === 'string' ? 'font' : icon.mode;
+        var name = typeof icon === 'string' ? icon : icon.name;
+        if (mode === 'font') return createElement('i', { class: name, attrs: { 'aria-hidden': 'true' } });
+        var component = createElement(name);
+        if (mode === 'icon-v2') return createElement('h-icon', [component]);
+        if (mode === 'business-svg') return createElement('h-svg-icon', [component]);
+        return null;
+      }
+    });
+
+    new Vue({
+      el: '#app',
+      data: function () {
+        return {
+          config: PAGE_CONFIG,
+          sidebarCollapsed: !!(PAGE_CONFIG.portal && PAGE_CONFIG.portal.sidebar_collapsed),
+          expandedSideMenus: [],
+          activeIconMenu: '',
+          expandedContextTreeNodeKeys: [],
+          portalKeyword: '',
+          frameworkSelectorKeyword: '',
+          activeFrameworkTab: '',
+          frameworkCardTabsIndicatorStyle: { width: '0px', transform: 'translate3d(0px, 0, 0)' },
+          activeCardTab: '',
+          activeTableTab: '',
+          treeKeyword: '',
+          activeTreeNode: {},
+          activeDetailTab: '',
+          activeDetailSection: '',
+          activeFormSection: '',
+          activeFormTab: '',
+          viewMode: 'table',
+          schedulePresentation: 'table',
+          scheduleView: 'month',
+          scheduleCursor: '2026-08-17',
+          formModel: {},
+          filters: {},
+          filterExpanded: true,
+          collectionToolbarExpanded: false,
+          collectionToolbarIncludeDescendants: true,
+          collectionToolbarKeyword: '',
+          collectionToolbarOrganization: '',
+          collectionToolbarEffectiveDate: '',
+          collectionToolbarView: 'list',
+          collectionToolbarAdvancedFilters: {},
+          collectionToolbarVisibleActionCount: 0,
+          collectionToolbarResizeObserver: null,
+          appliedFilters: {},
+          selectedRows: [],
+          selectedDetailRow: {},
+          detailPaneVisible: false,
+          detailDrawerVisible: false,
+          currentPage: 1,
+          pageSize: 20,
+          rows: [],
+          scheduleItems: [],
+          total: 0,
+          summaryMetrics: {}, activeSummaryMetric: '',
+          cardTabRows: {},
+          tableTabRows: {},
+          detailValues: {},
+          relatedTableRows: {},
+          detailMedia: { src: '', thumbnails: [] }
+        };
+      },
+      created: function () {
+        this.loadPreviewFixtures();
+        this.filterExpanded = (this.config.pattern_parameters || {}).collapse_mode === 'all-retractable';
+        this.collectionToolbarExpanded = !!((this.config.collection_toolbar || {}).initial_filter_expanded && this.hasCollectionToolbarAdvancedFilters);
+        this.collectionToolbarVisibleActionCount = (this.config.toolbar_actions || []).length;
+      },
+      mounted: function () {
+        var vm = this;
+        if (this.hasCollectionToolbar) {
+          this.$nextTick(function () {
+            vm.updateCollectionToolbarActions();
+            if (window.ResizeObserver && vm.$refs.collectionToolbar) {
+              vm.collectionToolbarResizeObserver = new window.ResizeObserver(vm.updateCollectionToolbarActions);
+              vm.collectionToolbarResizeObserver.observe(vm.$refs.collectionToolbar);
+            }
+          });
+          window.addEventListener('resize', this.updateCollectionToolbarActions);
+        }
+        if (this.config.framework && this.config.framework.show_top_tabs) {
+          this.$nextTick(this.updateFrameworkCardTabsIndicator);
+          window.addEventListener('resize', this.updateFrameworkCardTabsIndicator);
+        }
+      },
+      beforeDestroy: function () {
+        window.removeEventListener('resize', this.updateCollectionToolbarActions);
+        window.removeEventListener('resize', this.updateFrameworkCardTabsIndicator);
+        if (this.collectionToolbarResizeObserver) this.collectionToolbarResizeObserver.disconnect();
+      },
+      watch: {
+        activeFrameworkTab: function () {
+          this.$nextTick(this.updateFrameworkCardTabsIndicator);
+        }
+      },
+      computed: {
+        huiShellOpenMenus: function () { return (this.config.portal.side_menus || []).filter(function (item) { return item.children && item.children.length; }).map(function (item) { return item.id; }); },
+        contextTreeDefaultExpandedKeys: function () { var menu=this.config.portal.context_menu || {}; return (menu.tree_nodes || []).filter(function (node) { return node.expanded !== false; }).map(function (node) { return node.id; }); },
+        contextTreeCurrentNodeKey: function () {
+          var menu=this.config.portal.context_menu || {}; var stack = (menu.tree_nodes || []).slice();
+          while (stack.length) { var node = stack.shift(); if (node.active) return node.id; stack = stack.concat(node.children || []); }
+          return '';
+        },
+        formSections: function () {
+          return this.config.form_sections || [{ id: 'basic', title: '基础信息', fields: this.config.form_fields || [] }];
+        },
+        visibleFormSections: function () {
+          var tabs = this.config.form_tabs || [];
+          if (!tabs.length) return this.formSections;
+          var active = tabs.filter(function (tab) { return tab.id === this.activeFormTab; }, this)[0] || tabs[0];
+          var ids = active.section_ids || [];
+          return this.formSections.filter(function (section) { return ids.indexOf(section.id) !== -1; });
+        },
+        formTabsInBreadcrumb: function () { return !!((this.config.form_tabs || []).length && (this.config.pattern_parameters || {}).page_tabs_placement === 'breadcrumb'); },
+        isAnchoredForm: function () { return this.config.pattern_family === 'hui.tpp.family.form-anchored'; },
+        isWorkOrderForm: function () {
+          var parameters = this.config.pattern_parameters || {};
+          return parameters.complexity === 'workflow' || (this.config.pattern_family === 'hui.tpp.family.form-stepped' && parameters.step_placement === 'left-sidebar');
+        },
+        formStepDirection: function () {
+          var parameters = this.config.pattern_parameters || {};
+          return parameters.step_placement === 'left-sidebar' ? 'vertical' : (parameters.steps_direction || 'horizontal');
+        },
+        isFirstLevelGroupedForm: function () { return this.config.pattern_family === 'hui.tpp.family.form-grouped' && (this.config.pattern_parameters || {}).group_depth === 1; },
+        activeFormSectionIndex: function () {
+          var ids = this.formSections.map(function (section) { return section.id; });
+          var index = ids.indexOf(this.activeFormSection);
+          return index < 0 ? 0 : index;
+        },
+        isAnchoredDetails: function () { return (this.config.pattern_family || '').indexOf('details-anchored') !== -1; },
+        isTextImageDetails: function () { return (this.config.pattern_family || '').indexOf('details-text-image') !== -1; },
+        isSimulationFile: function () { return (this.config.pattern_family || '').indexOf('details-simulation-file') !== -1; },
+        isMasterDetail: function () { return (this.config.pattern_family || '').indexOf('details-master-detail') !== -1; },
+        isParallelDetails: function () { return (this.config.pattern_family || '').indexOf('details-parallel') !== -1; },
+        hasDetailsPageTabs: function () { return this.config.page_kind === 'details' && !!(this.config.detail_tabs || []).length; },
+        detailsTabsInBreadcrumb: function () {
+          var tabBar = (this.config.detail_page_policy || {}).tab_bar || {};
+          return this.hasDetailsPageTabs && tabBar.placement === 'breadcrumb';
+        },
+        activeDetailsPageTab: function () {
+          var vm = this;
+          var tabs = this.config.detail_tabs || [];
+          return tabs.filter(function (tab) { return tab.id === vm.activeDetailTab; })[0] || tabs[0] || {};
+        },
+        visibleDetailSections: function () {
+          return this.hasDetailsPageTabs ? (this.activeDetailsPageTab.sections || []) : (this.config.detail_sections || []);
+        },
+        hasTableDetailsPane: function () { return this.config.page_kind === 'table' && !!(this.config.detail_tabs || []).length; },
+        hasDetailDrawer: function () { return !!(this.config.detail_drawer && (this.config.detail_drawer.fields || []).length); },
+        hasCardTree: function () { return this.config.page_kind === 'card-tabs' && !!(this.config.pattern_parameters || {}).tree; },
+        hasTableTabs: function () { return this.config.page_kind === 'table' && this.config.pattern_family === 'hui.tpp.family.table-tabs'; },
+        usesFrameworkTableTabs: function () {
+          if (!this.hasTableTabs || !((this.config.framework || {}).show_top_tabs)) return false;
+          var frameworkIds=((this.config.framework || {}).tabs || []).map(function (tab) { return tab.id; });
+          var tableIds=(this.config.table_tabs || []).map(function (tab) { return tab.id; });
+          return frameworkIds.length === tableIds.length && tableIds.every(function (id) { return frameworkIds.indexOf(id) !== -1; });
+        },
+        hasTableTree: function () { return this.hasTableTabs && !!(this.config.pattern_parameters || {}).tree; },
+        isTableTabsSearch: function () { return this.hasTableTabs && !this.isRealtimeFilter && !this.hasCollectionToolbar && !!this.activeFilters.length; },
+        isTableDetailsPane: function () { return this.hasTableDetailsPane && this.detailPaneVisible; },
+        showMasterDetailsDivider: function () {
+          var separators = (this.config.pattern_parameters || {}).separators || {};
+          return !!separators.master_details || this.hasTableDetailsPane;
+        },
+        anchorHorizontal: function () { return (this.config.pattern_parameters || {}).anchor_position === 'sticky-top'; },
+        showMasterSummary: function () { return (this.isMasterDetail || this.isParallelDetails) && (this.config.summary_fields || []).length; },
+        showMasterMedia: function () { return this.isMasterDetail && !!this.config.media; },
+        externalMasterMedia: function () { return this.showMasterMedia && (this.config.pattern_parameters || {}).master_workspace_relation === 'siblings'; },
+        stretchMaster: function () { return (this.config.pattern_parameters || {}).master_cross_axis === 'stretch'; },
+        separateMasterDetail: function () {
+          var parameters = this.config.pattern_parameters || {};
+          return parameters.layout_direction === 'horizontal' && parameters.container_relation === 'separate' && parameters.master_scroll === 'fixed' && parameters.detail_scroll === 'independent';
+        },
+        showPageSummary: function () { return this.isTextImageDetails && (this.config.pattern_parameters || {}).top_summary && (this.config.summary_fields || []).length; },
+        showInlineSummary: function () { return !this.showMasterSummary && !this.showPageSummary && (this.config.summary_fields || []).length; },
+        detailLayoutVertical: function () {
+          var direction = (this.config.pattern_parameters || {}).layout_direction;
+          return direction === 'vertical';
+        },
+        detailLayoutStyle: function () {
+          var parameters = this.config.pattern_parameters || {};
+          var anchorPolicy = (this.config.detail_page_policy || {}).anchor || {};
+          return { gap: (anchorPolicy.content_gap_px || parameters.region_gap_px || 24) + 'px' };
+        },
+        detailMediaStyle: function () { return { flexBasis: ((this.config.pattern_parameters || {}).media_width_px || 1008) + 'px' }; },
+        detailContentStyle: function () {
+          var width = (this.config.pattern_parameters || {}).detail_panel_width_px;
+          return width && this.isTextImageDetails ? { flex: '0 0 ' + width + 'px' } : {};
+        },
+        detailRowTotal: function () {
+          var rows = this.relatedTableRows;
+          return Object.keys(rows).reduce(function (total, key) { return total + rows[key].length; }, 0);
+        },
+        activeCardTabSpec: function () {
+          var vm = this;
+          var tab = (this.config.card_tabs || []).filter(function (item) { return item.id === vm.activeCardTab; })[0] || {};
+          return Object.assign({}, tab, { rows: this.cardTabRows[tab.id] || [] });
+        },
+        activeCardProfile: function () {
+          return (this.config.card_visual_profiles || {})[this.activeCardTabSpec.card_profile] || {};
+        },
+        cardTabType: function () {
+          return this.config.card_tab_style === 'linear' ? undefined : this.config.card_tab_style;
+        },
+        tableTabType: function () { return (this.config.pattern_parameters || {}).tab_style === 'linear' ? undefined : 'card'; },
+        activeToolbarActions: function () { return (this.config.toolbar_actions || []).filter(this.appliesToActiveTableTab); },
+        activeRowActions: function () { return (this.config.row_actions || []).filter(this.appliesToActiveTableTab); },
+        activeSelectionAction: function () { return this.activeToolbarActions.filter(function (action) { return action.requires_selection; })[0] || null; },
+        hasRowSelection: function () { return !!this.activeSelectionAction; },
+        rowActionColumnWidth: function () { return Math.max(96, this.activeRowActions.length * 48 + 48); },
+        hasScheduleCalendar: function () { return !!(this.config.schedule_view_modes || []).length; },
+        collectionToolbarConfig: function () { return this.config.collection_toolbar || {}; },
+        collectionToolbarVariant: function () { return this.collectionToolbarConfig.variant || {}; },
+        hasCollectionToolbar: function () { return !!this.collectionToolbarVariant.id; },
+        collectionToolbarCssVariables: function () {
+          var style=this.collectionToolbarConfig.shared_visual_style || {};
+          var box=this.collectionToolbarConfig.expanded_filter_box || {};
+          var primaryColorToken=style.primary_color_token || '--h-color-brand';
+          return {
+            '--isc-collection-toolbar-control-height':style.control_height || '32px',
+            '--isc-collection-toolbar-control-gap':style.control_gap || '8px',
+            '--isc-collection-toolbar-primary':'var(' + primaryColorToken + ')',
+            '--isc-collection-toolbar-border':style.toolbar_control_border || '#bbbfcf',
+            '--isc-collection-toolbar-text':style.text_color || '#3d3f51',
+            '--isc-collection-toolbar-filter-background':box.background || '#f0f2f8',
+            '--isc-collection-toolbar-filter-selected-background':box.trigger_background || '#d3d7e3',
+            '--isc-collection-toolbar-filter-selected-border':box.trigger_border || '#a5adc4'
+          };
+        },
+        collectionToolbarUsesActions: function () { return this.collectionToolbarVariant.left_region === 'batch-actions'; },
+        visibleCollectionToolbarActions: function () {
+          var actions=this.activeToolbarActions;
+          var count=Math.max(0,Math.min(Number(this.collectionToolbarVisibleActionCount),actions.length));
+          return actions.slice(0,count);
+        },
+        overflowCollectionToolbarActions: function () {
+          var actions=this.activeToolbarActions;
+          return actions.slice(this.visibleCollectionToolbarActions.length);
+        },
+        collectionToolbarUsesStructuredQuery: function () { return this.collectionToolbarVariant.query_region === 'structured-query'; },
+        collectionToolbarSummary: function () {
+          return ((this.collectionToolbarConfig.regions || {})['summary-text'] || {}).example || '';
+        },
+        collectionToolbarKeywordPlaceholder: function () {
+          var keywordField=this.activeFilters.filter(function (field) { return field.key === 'keyword'; })[0];
+          if (keywordField && keywordField.placeholder) return keywordField.placeholder;
+          var region=(this.collectionToolbarConfig.regions || {})[this.collectionToolbarVariant.query_region] || {};
+          var control=(region.controls || []).filter(function (item) { return item.role === 'keyword-search'; })[0] || {};
+          return control.placeholder || '请输入关键词';
+        },
+        collectionToolbarAdvancedFields: function () {
+          var keys=((this.collectionToolbarConfig.expanded_filter_box || {}).field_keys || []);
+          if (!this.hasTableTabs) return (this.config.filters || []).filter(function (field) { return keys.indexOf(field.key) !== -1; });
+          return this.activeFilters.filter(function (field) { return keys.indexOf(field.key) !== -1; });
+        },
+        hasCollectionToolbarAdvancedFilters: function () { return this.collectionToolbarAdvancedFields.length > 0; },
+        showPageToolbar: function () {
+          return !!this.activeToolbarActions.length || this.isAllRetractableManualFilter || this.hasScheduleCalendar || this.config.page_kind === 'switch';
+        },
+        activeFilters: function () { return (this.config.filters || []).filter(this.appliesToActiveTableTab); },
+        hasCollapsibleFilters: function () { return this.activeFilters.length > Number((this.config.filter_search_form_behavior || {}).collapse_threshold); },
+        hasCollapsibleHorizontalFilters: function () { return this.activeFilters.length > 3; },
+        isRealtimeFilter: function () { return (this.config.pattern_parameters || {}).trigger === 'realtime'; },
+        isHorizontalRealtimeFilter: function () { var p=this.config.pattern_parameters || {}; return p.trigger==='realtime' && p.filter_placement==='horizontal-bar'; },
+        isSidebarRealtimeFilter: function () { var p=this.config.pattern_parameters || {}; return p.trigger==='realtime' && p.filter_placement==='left-sidebar'; },
+        isRegularManualFilter: function () { var p=this.config.pattern_parameters || {}; return (p.filter_placement==='regular-box' && p.trigger!=='realtime') || (this.config.pattern_family==='hui.tpp.family.table-details-pane' && (this.config.filters || []).length>0); },
+        isHorizontalManualFilter: function () { var p=this.config.pattern_parameters || {}; return p.filter_placement==='horizontal-bar' && p.trigger!=='realtime'; },
+        isSidebarManualFilter: function () { var p=this.config.pattern_parameters || {}; return p.filter_placement==='left-sidebar' && p.trigger==='manual'; },
+        isAllRetractableManualFilter: function () { return (this.config.pattern_parameters || {}).collapse_mode==='all-retractable'; },
+        selectedRealtimeFilters: function () {
+          var vm = this;
+          return this.activeFilters.map(function (field) {
+            return { key: field.key, label: field.label, value: vm.filters[field.key] };
+          }).filter(function (item) { return item.value && item.value !== '全部'; });
+        },
+        visibleFilters: function () { var count=Number((this.config.filter_search_form_behavior || {}).collapsed_visible_fields); var fields=this.hasTableTabs ? this.activeFilters : (this.config.filters || []); return this.hasCollapsibleFilters && !this.filterExpanded ? fields.slice(0, count) : fields; },
+        visibleHorizontalFilters: function () { if (!this.hasTableTabs) return this.hasCollapsibleHorizontalFilters && !this.filterExpanded ? this.config.filters.slice(0, 3) : (this.config.filters || []); return this.hasCollapsibleHorizontalFilters && !this.filterExpanded ? this.activeFilters.slice(0, 3) : this.activeFilters; },
+        weekDayNames: function () { return ['周一','周二','周三','周四','周五','周六','周日']; },
+        scheduleRangeTitle: function () {
+          var d = new Date(this.scheduleCursor + 'T00:00:00');
+          if (this.scheduleView === 'day') return d.getFullYear() + '年' + (d.getMonth()+1) + '月' + d.getDate() + '日';
+          if (this.scheduleView === 'week') {
+            var start = new Date(d); start.setDate(d.getDate() - ((d.getDay()+6)%7));
+            var end = new Date(start); end.setDate(start.getDate()+6);
+            return (start.getMonth()+1) + '月' + start.getDate() + '日 - ' + (end.getMonth()+1) + '月' + end.getDate() + '日';
+          }
+          return d.getFullYear() + '年' + (d.getMonth()+1) + '月';
+        },
+        visibleScheduleDays: function () {
+          var cursor = new Date(this.scheduleCursor + 'T00:00:00');
+          var dates = [];
+          if (this.scheduleView === 'day') dates = [new Date(cursor)];
+          else if (this.scheduleView === 'week') {
+            var weekStart = new Date(cursor); weekStart.setDate(cursor.getDate()-((cursor.getDay()+6)%7));
+            for (var w=0; w<7; w++) { var wd=new Date(weekStart); wd.setDate(weekStart.getDate()+w); dates.push(wd); }
+          } else {
+            var monthStart = new Date(cursor.getFullYear(), cursor.getMonth(), 1);
+            var gridStart = new Date(monthStart); gridStart.setDate(1-((monthStart.getDay()+6)%7));
+            for (var m=0; m<42; m++) { var md=new Date(gridStart); md.setDate(gridStart.getDate()+m); dates.push(md); }
+          }
+          var vm=this, today='2026-08-17';
+          return dates.map(function(d){
+            var key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+            return {date:key,dayLabel:d.getDate(),isToday:key===today,isOtherMonth:d.getMonth()!==cursor.getMonth(),items:vm.scheduleItems.filter(function(item){return item.date===key;})};
+          });
+        },
+        activeRows: function () {
+          var rows = this.config.page_kind === 'card-tabs' ? (this.activeCardTabSpec.rows || []) : (this.hasTableTabs ? (this.tableTabRows[this.activeTableTab] || []) : this.rows);
+          var node = this.activeTreeNode || {};
+          if (!(this.hasCardTree || this.hasTableTree) || !node.filter_key || !node.filter_value) return rows;
+          return rows.filter(function (row) { return String(row[node.filter_key] || '') === String(node.filter_value); });
+        },
+        filteredRows: function () {
+          var vm = this;
+          var activeMetric = (this.config.summary_metrics || []).filter(function (item) {
+            return item.key === vm.activeSummaryMetric;
+          })[0] || {};
+          return this.activeRows.filter(function (row) {
+            var activeFilters = vm.isRealtimeFilter ? vm.filters : vm.appliedFilters;
+            var matchesForm = Object.keys(activeFilters).every(function (key) { return vm.matchesRowFilter(row, key, activeFilters[key]); });
+            var matchesMetric = !activeMetric.filter_key || !activeMetric.filter_value || String(row[activeMetric.filter_key] || '') === activeMetric.filter_value;
+            return matchesForm && matchesMetric;
+          });
+        },
+        pagedRows: function () { return this.filteredRows.slice((this.currentPage - 1) * this.pageSize, this.currentPage * this.pageSize); },
+        rowTotal: function () {
+          var metricFiltered = (this.config.summary_metrics || []).some(function (item) {
+            return item.key === this.activeSummaryMetric && item.filter_key && item.filter_value;
+          }, this);
+          var hasAppliedFilters = Object.keys(this.appliedFilters || {}).some(function (key) { return this.appliedFilters[key]; }, this);
+          return metricFiltered || hasAppliedFilters || (this.isRealtimeFilter && this.selectedRealtimeFilters.length) ? this.filteredRows.length : (this.config.page_kind === 'card-tabs' || this.hasTableTabs ? this.activeRows.length : (this.total || this.activeRows.length));
+        },
+        showTable: function () {
+          return this.config.page_kind === 'table'
+            || (this.config.page_kind === 'switch' && this.viewMode === 'table')
+            || (this.config.page_kind === 'card' && this.hasCollectionToolbar && (this.config.columns || []).length > 0 && this.collectionToolbarView === 'list');
+        },
+        cardGridStyle: function () {
+          var layout = this.activeCardTabSpec.layout || {};
+          return { gridTemplateColumns: 'repeat(' + (layout.columns || 1) + ', minmax(0, 1fr))', gap: layout.collection_gap || '16px' };
+        },
+        knowledgeCardStyle: function () { return { height: (this.activeCardTabSpec.layout || {}).card_height }; },
+        knowledgeHeaderStyle: function () {
+          return { height: (this.activeCardTabSpec.layout || {}).header_height, padding: (this.activeCardProfile.header || {}).padding, borderBottom: '0' };
+        },
+        knowledgeBodyStyle: function () {
+          return { height: (this.activeCardTabSpec.layout || {}).body_height, padding: (this.activeCardProfile.body || {}).padding };
+        },
+        comparisonMediaStyle: function () {
+          var header = this.activeCardProfile.header || {};
+          return { height: header.media_height, columnGap: header.media_column_gap, marginBottom: header.media_gap_after };
+        },
+        primaryTextStyle: function () { return { fontSize: (this.activeCardProfile.primary || {}).font_size, lineHeight: (this.activeCardProfile.primary || {}).line_height }; },
+        textContentStyle: function () {
+          var header = this.activeCardProfile.header || {};
+          return { paddingLeft: header.content_inline_padding, paddingTop: header.content_block_top, justifyContent: 'flex-start' };
+        },
+        textTitleStyle: function () {
+          var primary = this.activeCardProfile.primary || {};
+          var header = this.activeCardProfile.header || {};
+          return { fontSize: primary.font_size, lineHeight: primary.line_height, marginBottom: header.title_status_gap };
+        },
+        metadataRowStyle: function () {
+          var body = this.activeCardProfile.body || {};
+          return { lineHeight: body.row_line_height, '--card-meta-row-gap': body.row_gap };
+        },
+        metadataIconStyle: function () {
+          var body = this.activeCardProfile.body || {};
+          return { width: body.icon_size, height: body.icon_size, marginRight: body.icon_text_gap, fontSize: body.icon_size, lineHeight: body.icon_size };
+        },
+        metricContainerStyle: function () {
+          var size = ((this.activeCardProfile.overlay || {}).container_size || '84px 32px').split(' ');
+          return { width: size[0], height: size[1] };
+        },
+        metricValueStyle: function () {
+          var metric = this.activeCardProfile.overlay || {};
+          return { padding: metric.content_padding, fontSize: metric.font_size, lineHeight: metric.line_height };
+        }
+      },
+      methods: {
+        updateFrameworkCardTabsIndicator: function () {
+          var tabs = (this.config.framework && this.config.framework.tabs) || [];
+          var activeIndex = tabs.findIndex(function (tab) { return tab.id === this.activeFrameworkTab; }, this);
+          var buttons = this.$refs.frameworkTabButtons || [];
+          if (!Array.isArray(buttons)) buttons = [buttons];
+          var activeButton = buttons[activeIndex];
+          if (!activeButton) return;
+          var activeButtonElement = activeButton.$el || activeButton;
+          this.frameworkCardTabsIndicatorStyle = {
+            width: activeButtonElement.offsetWidth + 'px',
+            transform: 'translate3d(' + activeButtonElement.offsetLeft + 'px, 0, 0)'
+          };
+        },
+        activateFrameworkTab: function (tab) {
+          if (!tab || tab.disabled) return;
+          this.activeFrameworkTab = tab.id;
+          if (this.usesFrameworkTableTabs) {
+            this.activeTableTab = tab.id;
+            this.tableTabChanged();
+          }
+        },
+        onFrameworkTabKeydown: function (event, index) {
+          if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+          var tabs = (this.config.framework && this.config.framework.tabs) || [];
+          var enabledTabs = tabs.filter(function (tab) { return !tab.disabled; });
+          if (!enabledTabs.length) return;
+          var currentTab = tabs[index];
+          var currentIndex = enabledTabs.indexOf(currentTab);
+          var direction = event.key === 'ArrowRight' ? 1 : -1;
+          var nextTab = enabledTabs[(currentIndex + direction + enabledTabs.length) % enabledTabs.length];
+          var nextIndex = tabs.indexOf(nextTab);
+          var vm = this;
+          event.preventDefault();
+          this.activateFrameworkTab(nextTab);
+          this.$nextTick(function () {
+            var buttons = vm.$refs.frameworkTabButtons || [];
+            if (!Array.isArray(buttons)) buttons = [buttons];
+            var nextButton = buttons[nextIndex];
+            var nextButtonElement = nextButton && (nextButton.$el || nextButton);
+            if (nextButtonElement) nextButtonElement.focus();
+          });
+        },
+        cardTagFlood: function (value) {
+          var text = String(value || '');
+          var semantics = this.config.card_status_tag_semantics || {};
+          var mappings = semantics.mappings || [];
+          for (var index = 0; index < mappings.length; index += 1) {
+            if ((mappings[index].keywords || []).some(function (keyword) { return text.indexOf(keyword) !== -1; })) return mappings[index].flood;
+          }
+          return semantics.fallback_flood || 'orange';
+        },
+        loadPreviewFixtures: function () {
+          var fixtures = cloneRuntimeValue(PREVIEW_FIXTURES);
+          this.activeCardTab = this.config.card_tabs && this.config.card_tabs.length ? this.config.card_tabs[0].id : '';
+          var configuredFrameworkTab=this.config.framework && this.config.framework.active_tab ? this.config.framework.active_tab : '';
+          var configuredTableTabs=this.config.table_tabs || [];
+          var frameworkTabIsTableTab=configuredTableTabs.some(function (tab) { return tab.id === configuredFrameworkTab; });
+          this.activeTableTab = frameworkTabIsTableTab ? configuredFrameworkTab : (configuredTableTabs.length ? configuredTableTabs[0].id : '');
+          this.activeTreeNode = this.findTreeNode(this.config.tree_nodes || [], this.config.default_tree_node) || {};
+          this.activeDetailTab = this.config.detail_tabs && this.config.detail_tabs.length ? this.config.detail_tabs[0].id : '';
+          this.activeFrameworkTab = configuredFrameworkTab;
+          this.activeDetailSection = this.config.active_detail_section || ((this.config.detail_sections || [])[0] || {}).id || '';
+          this.viewMode = this.config.default_view || (this.config.page_kind === 'card' ? 'card' : 'table');
+          this.collectionToolbarView = this.config.page_kind === 'card' ? 'card' : 'list';
+          this.schedulePresentation = this.config.default_schedule_presentation || 'table';
+          this.scheduleView = this.config.default_schedule_view || 'month';
+          this.scheduleCursor = (fixtures.scheduleItems && fixtures.scheduleItems[0] && fixtures.scheduleItems[0].date) || '2026-08-17';
+          this.activeFormSection = ((this.config.form_sections || [])[0] || {}).id || '';
+          this.activeFormTab = ((this.config.form_tabs || [])[0] || {}).id || '';
+          this.activeIconMenu = this.config.framework && this.config.framework.variant_menu && this.config.framework.variant_menu.length ? this.config.framework.variant : (this.config.portal.active_icon_menu || '');
+          this.expandedContextTreeNodeKeys = this.contextTreeDefaultExpandedKeys.slice();
+          this.filters = {};
+          var vm = this;
+          (this.config.filters || []).forEach(function (field) { vm.$set(vm.filters, field.key, field.kind === 'input' ? (field.default || '') : (field.default || '全部')); });
+          this.collectionToolbarAdvancedFilters = {};
+          (this.config.filters || []).filter(function (field) { return field.key !== 'keyword'; }).forEach(function (field) { vm.$set(vm.collectionToolbarAdvancedFilters, field.key, field.default || ''); });
+          this.pageSize = this.config.page_size || 20;
+          this.expandedSideMenus = (this.config.portal.side_menus || []).filter(function (item) { return item.children && item.children.length; }).map(function (item) { return item.id; });
+          Object.keys(fixtures).forEach(function (key) {
+            if (key !== 'config' && Object.prototype.hasOwnProperty.call(vm.$data, key)) vm[key] = fixtures[key];
+          });
+          this.selectedDetailRow = this.rows.length ? this.rows[0] : {};
+        },
+        matchesCondition: function (condition) {
+          return !condition || this.formModel[condition.key] === condition.equals;
+        },
+        isCredentialVisual: function (field) {
+          return ['image', 'card', 'password', 'biometric'].indexOf(field.kind) !== -1;
+        },
+        formFieldSpan: function (field) {
+          var columns = Number((this.config.pattern_parameters || {}).columns) || 3;
+          return field.wide ? 24 : 24 / columns;
+        },
+        toggleSideMenu: function (id) {
+          var index = this.expandedSideMenus.indexOf(id);
+          if (index === -1) this.expandedSideMenus.push(id);
+          else this.expandedSideMenus.splice(index, 1);
+        },
+        selectIconMenu: function (item) {
+          this.activeIconMenu = item.id;
+        },
+        selectFrameworkVariant: function (item) {
+          this.activeIconMenu = item.id;
+          if (item.href && item.id !== this.config.framework.variant) window.location.href = item.href;
+        },
+        filterContextTree: function (value) { if (this.$refs.portalContextTree) this.$refs.portalContextTree.filter(value); },
+        filterContextTreeNode: function (value, data) { return !value || String(data.label || '').indexOf(value) !== -1; },
+        contextTreeNodeChanged: function (data) { if (data && data.id && this.$refs.portalContextTree) this.$refs.portalContextTree.setCurrentKey(data.id); },
+        contextTreeNodeExpanded: function (data) { if (data && this.expandedContextTreeNodeKeys.indexOf(data.id) === -1) this.expandedContextTreeNodeKeys.push(data.id); },
+        contextTreeNodeCollapsed: function (data) { var index=data ? this.expandedContextTreeNodeKeys.indexOf(data.id) : -1; if (index !== -1) this.expandedContextTreeNodeKeys.splice(index, 1); },
+        navigateSideMenu: function (item) {
+          if (item && item.href && item.id !== this.config.portal.active_side_menu) window.location.href = item.href;
+        },
+        appliesToActiveTableTab: function (item) {
+          return !this.hasTableTabs || !(item.tabs || []).length || item.tabs.indexOf(this.activeTableTab) !== -1;
+        },
+        isRowSelectable: function (row) {
+          var action=this.activeSelectionAction;
+          if (!action) return false;
+          return !action.selectable_key || row[action.selectable_key] !== false;
+        },
+        isRowStale: function (row, action) {
+          return !!(action && action.stale_key && row[action.stale_key]);
+        },
+        statusTagFlood: function (column, value) {
+          return (column.tone_map || {})[value] || column.default_tone || 'blue';
+        },
+        matchesRowFilter: function (row, key, value) {
+          if (!value || value === '全部') return true;
+          if (key === 'keyword') return Object.keys(row).some(function (rowKey) { return String(row[rowKey] || '').indexOf(value) !== -1; });
+          if (Array.isArray(value)) {
+            if (value.length < 2 || !value[0] || !value[1]) return true;
+            var dates=String(row[key] || '').match(/\d{4}-\d{2}-\d{2}/g) || [];
+            if (!dates.length) return false;
+            var rowStart=new Date(dates[0]).getTime();
+            var rowEnd=new Date(dates[dates.length-1]).getTime();
+            var filterStart=new Date(value[0]).getTime();
+            var filterEnd=new Date(value[1]).getTime();
+            return rowEnd >= filterStart && rowStart <= filterEnd;
+          }
+          return String(row[key] || '').indexOf(value) !== -1;
+        },
+        queryRows: function () { this.appliedFilters = Object.assign({}, this.filters); this.currentPage = 1; },
+        updateCollectionToolbarActions: function () {
+          var vm=this;
+          var actions=this.activeToolbarActions;
+          if (!this.hasCollectionToolbar || !this.collectionToolbarUsesActions) {
+            this.collectionToolbarVisibleActionCount=actions.length;
+            return;
+          }
+          this.$nextTick(function () {
+            var left=vm.$refs.collectionToolbarActions;
+            var measure=vm.$refs.collectionToolbarActionMeasure;
+            if (!left || !measure || !left.clientWidth) return;
+            var actionNodes=Array.prototype.slice.call(measure.querySelectorAll('.isc-collection-toolbar__measure-action'));
+            var moreNode=measure.querySelector('.isc-collection-toolbar__measure-more');
+            var widths=actionNodes.map(function (node) { return node.offsetWidth; });
+            var styles=window.getComputedStyle(measure);
+            var gap=parseFloat(styles.columnGap || styles.gap) || 8;
+            var fullWidth=widths.reduce(function (total,width) { return total+width; },0)+Math.max(0,widths.length-1)*gap;
+            var visibleCount=widths.length;
+            if (fullWidth>left.clientWidth) {
+              var moreWidth=moreNode ? moreNode.offsetWidth : 72;
+              var visibleWidth=0;
+              visibleCount=0;
+              for (var index=0;index<widths.length;index+=1) {
+                var nextWidth=visibleWidth+(visibleCount ? gap : 0)+widths[index];
+                if (nextWidth+gap+moreWidth>left.clientWidth) break;
+                visibleWidth=nextWidth;
+                visibleCount+=1;
+              }
+            }
+            vm.collectionToolbarVisibleActionCount=visibleCount;
+          });
+        },
+        queryCollectionToolbar: function () {
+          var applied={};
+          this.collectionToolbarAdvancedFields.map(function (field) { return field.key; }).forEach(function (key) {
+            var value=this.collectionToolbarAdvancedFilters[key];
+            if (value && value !== '全部') applied[key]=value;
+          },this);
+          if (this.collectionToolbarKeyword) applied.keyword=this.collectionToolbarKeyword;
+          this.appliedFilters = applied;
+          this.currentPage = 1;
+        },
+        resetCollectionToolbar: function () {
+          this.collectionToolbarKeyword = '';
+          this.collectionToolbarOrganization = '';
+          this.collectionToolbarEffectiveDate = '';
+          var vm=this;
+          Object.keys(this.collectionToolbarAdvancedFilters).forEach(function (key) { vm.$set(vm.collectionToolbarAdvancedFilters,key,''); });
+          this.appliedFilters = {};
+          this.currentPage = 1;
+        },
+        selectSummaryMetric: function (item) {
+          this.activeSummaryMetric = this.activeSummaryMetric === item.key ? '' : item.key;
+          this.currentPage = 1;
+        },
+        selectDetailRow: function (row) { this.selectedDetailRow = row; },
+        detailFieldValue: function (key) { var value = this.selectedDetailRow[key]; return value === undefined || value === null || value === '' ? '—' : value; },
+        cardTabChanged: function () { this.currentPage = 1; },
+        tableTabChanged: function () {
+          this.currentPage = 1;
+          this.selectedRows = [];
+          this.appliedFilters = {};
+          this.collectionToolbarKeyword = '';
+          var vm=this;
+          this.$nextTick(function () {
+            if (vm.$refs.collectionTable) vm.$refs.collectionTable.clearSelection();
+            vm.collectionToolbarVisibleActionCount = vm.activeToolbarActions.length;
+            vm.updateCollectionToolbarActions();
+          });
+        },
+        findTreeNode: function (nodes, id) {
+          for (var index=0; index<nodes.length; index+=1) {
+            if (nodes[index].id === id) return nodes[index];
+            var child = this.findTreeNode(nodes[index].children || [], id);
+            if (child) return child;
+          }
+          return null;
+        },
+        filterCardTreeNode: function (value, data) { return !value || String(data.label || '').toLowerCase().indexOf(String(value).toLowerCase()) !== -1; },
+        treeKeywordChanged: function (value) { if (this.$refs.cardTree) this.$refs.cardTree.filter(value); },
+        cardTreeNodeChanged: function (data) { this.activeTreeNode = data || {}; this.currentPage = 1; },
+        cardFieldsByRole: function (role) { return (this.config.card_fields || []).filter(function (field) { return field.role === role; }); },
+        selectRealtimeFilter: function (field, option) { this.$set(this.filters, field.key, option); this.currentPage = 1; },
+        realtimeFilterChanged: function () { this.currentPage = 1; },
+        clearRealtimeFilter: function (key) {
+          var field = (this.config.filters || []).filter(function (item) { return item.key === key; })[0] || {};
+          this.$set(this.filters, key, field.kind === 'input' ? '' : '全部');
+          this.currentPage = 1;
+        },
+        clearRealtimeFilters: function () { this.resetFilters(); },
+        resetFilters: function () {
+          this.filters = cloneRuntimeValue(PREVIEW_FIXTURES.filters || {});
+          if (!Object.keys(this.filters).length) {
+            var vm=this;
+            (this.config.filters||[]).forEach(function(field){ vm.$set(vm.filters,field.key,field.kind==='input'?(field.default||''):(field.default||'全部')); });
+          }
+          this.appliedFilters={}; this.currentPage=1;
+        },
+        resetForm: function () { this.formModel = cloneRuntimeValue(PREVIEW_FIXTURES.formModel || {}); },
+        previousFormSection: function () {
+          var sections = this.formSections;
+          var index = sections.map(function (section) { return section.id; }).indexOf(this.activeFormSection);
+          if (index > 0) this.activeFormSection = sections[index - 1].id;
+        },
+        selectFormStep: function (index) {
+          if (this.formSections[index]) this.activeFormSection = this.formSections[index].id;
+        },
+        nextFormSection: function () {
+          var sections = this.formSections;
+          var index = sections.map(function (section) { return section.id; }).indexOf(this.activeFormSection);
+          if (index < sections.length - 1) this.activeFormSection = sections[index + 1].id;
+          else this.saveForm();
+        },
+        saveForm: function () { this.$message.success('设备权限配置已保存'); },
+        formAction: function (action) {
+          if (action === '取消') {
+            if (this.config.form_return_href) window.location.href = this.config.form_return_href;
+            else this.resetForm();
+            return;
+          }
+          if (action === '操作并继续配置') {
+            var tabs = this.config.form_tabs || [];
+            var currentIndex = tabs.map(function (item) { return item.id; }).indexOf(this.activeFormTab);
+            if (tabs[currentIndex + 1]) this.activeFormTab = tabs[currentIndex + 1].id;
+            this.$message.success('基础信息已保存，可继续配置');
+            return;
+          }
+          this.$message.success('已执行：' + action);
+          if (this.config.form_return_href) window.location.href = this.config.form_return_href;
+        },
+        toolbarAction: function (action) {
+          if (action && action.href) window.location.href = action.href;
+          if (action && action.href) return;
+          if (action && action.requires_selection) {
+            if (!this.selectedRows.length) {
+              this.$message.warning('请先选择可审批的申请记录');
+              return;
+            }
+            var invalidRows=this.selectedRows.filter(function (row) {
+              return !this.isRowSelectable(row) || this.isRowStale(row, action);
+            },this);
+            if (invalidRows.length) {
+              this.$message.warning(action.stale_message || '列表状态已发生变化，请刷新后重试');
+              return;
+            }
+          }
+          if (action && action.confirm) {
+            var vm=this;
+            var message=String(action.confirm.message || '').replace('{count}', this.selectedRows.length);
+            this.$confirm(message, action.confirm.title || '确认操作', {
+              type: action.confirm.type || 'warning',
+              confirmButtonText: action.confirm.confirm_button_text || '确定',
+              cancelButtonText: action.confirm.cancel_button_text || '取消'
+            }).then(function () { vm.completeToolbarAction(action); }).catch(function () {});
+            return;
+          }
+          this.completeToolbarAction(action);
+        },
+        completeToolbarAction: function (action) {
+          var successMessage=action.success_message || ('已执行：' + (action.label || action));
+          this.$message.success(String(successMessage).replace('{count}', this.selectedRows.length));
+          this.selectedRows = [];
+          if (this.$refs.collectionTable) this.$refs.collectionTable.clearSelection();
+        },
+        moveSchedule: function (direction) {
+          var d=new Date(this.scheduleCursor+'T00:00:00');
+          if(this.scheduleView==='day') d.setDate(d.getDate()+direction);
+          else if(this.scheduleView==='week') d.setDate(d.getDate()+direction*7);
+          else d.setMonth(d.getMonth()+direction);
+          this.scheduleCursor=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+        },
+        rowAction: function (action, row) {
+          if (action && action.id === 'details') {
+            this.openDetail(row);
+            if (!this.config.row_detail_href && !this.hasTableDetailsPane && !this.hasDetailDrawer) this.$message.info((action.label || '查看') + '：' + (row.applicationNo || row.name || row.title || row.id));
+            return;
+          }
+          if (action && action.requires_eligible && (!this.isRowSelectable(row) || this.isRowStale(row, this.activeSelectionAction))) {
+            this.$message.warning((this.activeSelectionAction || {}).stale_message || '该申请状态已变化，请刷新后重试');
+            return;
+          }
+          this.$message.success('已执行：' + (action.label || action.id) + '（' + (row.applicationNo || row.name || row.title || row.id) + '）');
+        },
+        mediaAction: function (label) { this.$message.info('图片操作：' + label); },
+        openDetail: function (row) {
+          if (this.config.row_detail_href) {
+            window.location.href = this.config.row_detail_href + '?id=' + encodeURIComponent(row.id);
+            return;
+          }
+          if (this.hasDetailDrawer) {
+            this.selectDetailRow(row);
+            this.detailDrawerVisible = true;
+            return;
+          }
+          if (this.detailPaneVisible && this.selectedDetailRow && this.selectedDetailRow.id === row.id) {
+            this.detailPaneVisible = false;
+            return;
+          }
+          this.selectDetailRow(row);
+          this.detailPaneVisible = true;
+        },
+        openPreview: function (row) { this.$message.info('预览抓拍记录：' + (row.captureCode || row.deviceCode)); }
+      }
+    });
+  </script>
+</body>
+</html>
+

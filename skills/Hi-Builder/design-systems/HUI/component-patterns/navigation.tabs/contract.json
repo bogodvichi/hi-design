@@ -1,0 +1,14 @@
+{
+  "schema_version": "hui-component-pattern.v2",
+  "id": "navigation.tabs",
+  "name": "页签导航",
+  "split_mode": "composite",
+  "vue_component": "PageTabs",
+  "description": "使用页签在多个并列内容视图间切换",
+  "category": "navigation",
+  "status": "active",
+  "use_when": ["多个内容视图层级相同且需要快速切换"],
+  "hui_components": ["el-tabs", "el-tab-pane", "el-button"],
+  "variants": ["linear", "card"],
+  "owner": "hui-common"
+}

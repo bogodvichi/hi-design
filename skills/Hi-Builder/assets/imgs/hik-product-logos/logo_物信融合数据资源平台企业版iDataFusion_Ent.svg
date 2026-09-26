@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="86px" height="86px" viewBox="0 0 86 86" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 61.1 (89650) - https://sketch.com -->
+    <title>idatafusion_ent</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+        <linearGradient x1="13.8706707%" y1="17.7069508%" x2="87.2524234%" y2="92.5209012%" id="linearGradient-1">
+            <stop stop-color="#2C7FE7" offset="0%"></stop>
+            <stop stop-color="#0754D3" offset="100%"></stop>
+        </linearGradient>
+        <linearGradient x1="2.63954118%" y1="17.7069508%" x2="98.8326769%" y2="92.5209012%" id="linearGradient-2">
+            <stop stop-color="#2C7FE7" offset="0%"></stop>
+            <stop stop-color="#0754D3" offset="100%"></stop>
+        </linearGradient>
+        <linearGradient x1="16.2508424%" y1="70.0004655%" x2="83.7491576%" y2="32.1516798%" id="linearGradient-3">
+            <stop stop-color="#38BCFF" offset="0%"></stop>
+            <stop stop-color="#3B85FE" offset="100%"></stop>
+        </linearGradient>
+        <linearGradient x1="16.2508424%" y1="70.5930398%" x2="83.7491576%" y2="31.6228693%" id="linearGradient-4">
+            <stop stop-color="#38BCFF" offset="0%"></stop>
+            <stop stop-color="#3B85FE" offset="100%"></stop>
+        </linearGradient>
+        <linearGradient x1="50%" y1="90.078125%" x2="50%" y2="12.1377841%" id="linearGradient-5">
+            <stop stop-color="#38BCFF" offset="0%"></stop>
+            <stop stop-color="#3B85FE" offset="100%"></stop>
+        </linearGradient>
+        <linearGradient x1="50%" y1="90.078125%" x2="50%" y2="12.1377841%" id="linearGradient-6">
+            <stop stop-color="#38BCFF" offset="0%"></stop>
+            <stop stop-color="#3B85FE" offset="100%"></stop>
+        </linearGradient>
+        <linearGradient x1="50%" y1="12.1377841%" x2="50%" y2="90.078125%" id="linearGradient-7">
+            <stop stop-color="#38BCFF" offset="0%"></stop>
+            <stop stop-color="#3B85FE" offset="100%"></stop>
+        </linearGradient>
+        <linearGradient x1="50%" y1="12.1377841%" x2="50%" y2="90.078125%" id="linearGradient-8">
+            <stop stop-color="#38BCFF" offset="0%"></stop>
+            <stop stop-color="#3B85FE" offset="100%"></stop>
+        </linearGradient>
+        <linearGradient x1="50%" y1="12.1377841%" x2="50%" y2="90.078125%" id="linearGradient-9">
+            <stop stop-color="#38BCFF" offset="0%"></stop>
+            <stop stop-color="#3B85FE" offset="100%"></stop>
+        </linearGradient>
+        <linearGradient x1="50%" y1="12.1377841%" x2="50%" y2="90.078125%" id="linearGradient-10">
+            <stop stop-color="#38BCFF" offset="0%"></stop>
+            <stop stop-color="#3B85FE" offset="100%"></stop>
+        </linearGradient>
+    </defs>
+    <g id="页面-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="iDataFusion-Ent">
+            <g id="物信融合数据资源平台" transform="translate(-3.000000, 0.000000)">
+                <g id="Mask" transform="translate(8.538849, 0.289076)">
+                    <g id="path-3-link" fill="url(#linearGradient-2)" fill-rule="nonzero">
+                        <path d="M18.5667893,57.8914117 L37.7132515,68.5945413 L54.0793793,59.1505304 L54.0793793,76.1829143 L37.7132515,85.5663866 L0,64.3515799 L0,21.2148066 L37.7132515,7.10542736e-15 L52.6248212,8.54950543 L37.7364762,16.9852469 L37.7132515,16.9718453 L14.9429864,29.7007292 L14.9429864,48.7496937 L0.0238361298,40.2419558 L0.0429344264,47.3466369 L18.4864162,58.053315 L18.5667893,57.8914117 Z M58.587418,11.9681429 L74.7149322,21.2148066 L74.7149322,64.3515799 L59.7719458,72.9190979 L59.7719458,54.4513369 L59.7719458,29.7007292 L43.839141,20.506766 L58.587418,11.9681429 Z" id="path-3"></path>
+                    </g>
+                    <g id="shadow" transform="translate(0.000000, 11.924370)">
+                        <g id="path-6-link" fill="#000000" fill-rule="nonzero">
+                            <path d="M58.2948355,0.0538894429 L74.609709,9.33390138 L48.4440898,24.1830687 L32.837479,14.9049666 L58.2948355,0.0538894429 Z M26.2726519,24.0955458 L26.2210865,43.2781858 L0.0554670684,28.4290186 L0.10703247,9.24637857 L26.2726519,24.0955458 Z M37.7132515,43.9412877 L54.0793793,34.7482046 L54.0793793,64.4489341 L37.7132515,73.6420168 L37.7132515,43.9412877 Z" id="path-6"></path>
+                        </g>
+                        <g id="path-6-link" fill="url(#linearGradient-4)">
+                            <path d="M58.2948355,0.0538894429 L74.609709,9.33390138 L48.4440898,24.1830687 L32.837479,14.9049666 L58.2948355,0.0538894429 Z M26.2726519,24.0955458 L26.2210865,43.2781858 L0.0554670684,28.4290186 L0.10703247,9.24637857 L26.2726519,24.0955458 Z M37.7132515,43.9412877 L54.0793793,34.7482046 L54.0793793,64.4489341 L37.7132515,73.6420168 L37.7132515,43.9412877 Z" id="path-6"></path>
+                        </g>
+                    </g>
+                </g>
+                <g id="Mask" transform="translate(62.152950, 24.229396) rotate(60.000000) translate(-62.152950, -24.229396) translate(53.842025, 4.536119)" fill="url(#linearGradient-6)" fill-rule="nonzero">
+                    <polygon id="path-10" points="0.291842807 9.65861122 16.486006 0.169522188 16.2629523 30.254197 0.424574773 39.1308672"></polygon>
+                </g>
+                <g id="Mask" transform="translate(21.770148, 38.488872) rotate(120.000000) translate(-21.770148, -38.488872) translate(13.097879, 18.434250)" fill="url(#linearGradient-8)" fill-rule="nonzero">
+                    <polygon id="path-13" points="0.263760627 9.85041908 16.9021967 0.303756119 17.1252504 30.388431 0.486814238 39.9350937"></polygon>
+                </g>
+                <g id="Mask" transform="translate(46.252101, 46.902521)" fill="url(#linearGradient-10)" fill-rule="nonzero">
+                    <polygon id="path-15" points="0 9.25221208 16.3661281 0.0591289748 16.3661281 29.7598584 0 38.9529412"></polygon>
+                </g>
+                <polygon id="Triangle" fill="#38BCFF" fill-rule="nonzero" points="55.502521 43.0722689 41.2711055 51.2046114 41.2711055 34.9399264"></polygon>
+            </g>
+        </g>
+    </g>
+</svg>

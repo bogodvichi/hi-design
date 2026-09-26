@@ -1,0 +1,993 @@
+{
+  "schema_version": "product-portal-shell.v1",
+  "id": "general.isc.portal-shell.personnel-management",
+  "name": "ISC 3.0.0框架",
+  "product_version": "3.0.0",
+  "status": "verified-from-live-standard-example",
+  "source": {
+    "kind": "live-standard-example",
+    "title": "ISC 典型页面 · 纯框架",
+    "url": "http://isc-design-page.dev.hikhub.net/home",
+    "resolved_url": "http://isc-design-page.dev.hikhub.net/home?demoPage=framework&demoFilter=persistent",
+    "framework_source": "p001-frozen",
+    "observed_at": "2026-08-26"
+  },
+  "context_evidence": {
+    "kind": "pixso-presentation",
+    "title": "【AI知识库】人员管理",
+    "page_id": "2:2",
+    "frame_id": "24:180089",
+    "dsl_node_link": "6521f747-b1df-42c1-af0d-55dd542e6d29",
+    "observed_at": "2026-08-20"
+  },
+  "layout": "single-light-header-with-collapsible-sidebar",
+  "framework_variants": {
+    "source": {
+      "kind": "live-framework-catalog",
+      "url": "http://isc-design-page.dev.hikhub.net/framework/regular-09",
+      "route_pattern": "http://isc-design-page.dev.hikhub.net/framework/{variant_id}",
+      "framework_source": "p001-frozen",
+      "observed_at": "2026-08-26"
+    },
+    "selection_strategy": {
+      "composition": "navigation_features × business_header",
+      "navigation_feature_order": ["show_left_selector", "show_top_tabs"],
+      "verified_navigation_preset_order": ["single", "left-selector", "top-card-tabs"],
+      "business_header_order": ["none", "intro", "intro-actions", "intro-actions-extra"],
+      "variant_count": 12
+    },
+    "content_padding_policy": "outer-framework-only",
+    "unified_tree": {
+      "root": "framework",
+      "nodes": [
+        {"id": "left-selector", "parent": "framework", "display_when": "show_left_selector"},
+        {"id": "main-column", "parent": "framework", "required": true},
+        {"id": "business-header", "parent": "main-column", "display_when": "business_header != none"},
+        {"id": "top-card-tabs", "parent": "main-column", "display_when": "show_top_tabs"},
+        {"id": "content", "parent": "main-column", "required": true}
+      ],
+      "feature_switches": {
+        "show_left_selector": {"type": "boolean", "default": false},
+        "show_top_tabs": {"type": "boolean", "default": false}
+      },
+      "combination_status": [
+        {"show_left_selector": false, "show_top_tabs": false, "status": "verified", "preset": "single"},
+        {"show_left_selector": true, "show_top_tabs": false, "status": "verified", "preset": "left-selector"},
+        {"show_left_selector": false, "show_top_tabs": true, "status": "verified", "preset": "top-card-tabs"},
+        {"show_left_selector": true, "show_top_tabs": true, "status": "not-covered-by-regular-catalog"}
+      ]
+    },
+    "navigation_presets": {
+      "single": {
+        "name": "单容器",
+        "menu_name": "单容器页面",
+        "description": "不增加页面内导航",
+        "show_left_selector": false,
+        "show_top_tabs": false,
+        "data_layout_region": "single",
+        "outer_padding_role": "portal-framework-page-padding"
+      },
+      "left-selector": {
+        "name": "左右结构",
+        "description": "左侧增加树或列表选择导航",
+        "show_left_selector": true,
+        "show_top_tabs": false,
+        "data_layout_region": "left-selector",
+        "outer_padding_role": "portal-framework-left-selector-page-padding",
+        "selector_variant": "tree",
+        "selector_width_role": "portal-framework-selector-width",
+        "selector_background_role": "framework-selector-background",
+        "selector_padding_role": "portal-framework-selector-padding",
+        "tree_item_height_role": "portal-context-tree-item-height",
+        "tree_icon_size_role": "portal-context-tree-icon-size",
+        "main_padding_role": "portal-framework-left-selector-main-padding"
+      },
+      "top-card-tabs": {
+        "name": "上下结构",
+        "description": "顶部增加卡式标签导航",
+        "show_left_selector": false,
+        "show_top_tabs": true,
+        "data_layout_region": "top-card-tabs",
+        "outer_padding_role": "portal-framework-page-padding",
+        "tabs_height_role": "portal-framework-card-tabs-height",
+        "tabs_gap_role": "portal-framework-card-tabs-gap",
+        "first_tab_content_top_left_radius_role": "portal-framework-first-tab-content-top-left-radius",
+        "component_contract": {
+          "root_selector": ".card-tabs",
+          "indicator_selector": ".card-tabs__indicator",
+          "item_selector": ".card-tabs__item",
+          "icon_selector": ".card-tabs__icon",
+          "label_selector": ".card-tabs__label",
+          "root_role": "tablist",
+          "item_role": "tab",
+          "active_class": "is-active",
+          "before_active_class": "is-before-active",
+          "optional_icon_field": "icon",
+          "indicator_positioning": "active-item-offsetWidth-and-offsetLeft"
+        }
+      }
+    },
+    "business_headers": {
+      "none": {
+        "name": "基础",
+        "menu_name": "无页面自白",
+        "description": "无页面自白和全局按钮",
+        "show_intro": false,
+        "global_secondary_action_count": 0,
+        "show_extra_info": false
+      },
+      "intro": {
+        "name": "页面自白",
+        "menu_name": "页面自白",
+        "description": "增加业务定位与页面说明",
+        "show_intro": true,
+        "global_secondary_action_count": 0,
+        "show_extra_info": false
+      },
+      "intro-actions": {
+        "name": "页面自白 + 全局按钮",
+        "menu_name": "自白 + 全局按钮",
+        "description": "页面自白与全局按钮左右排列",
+        "show_intro": true,
+        "global_secondary_action_count": 2,
+        "global_secondary_action_overflow": "dropdown",
+        "show_extra_info": false
+      },
+      "intro-actions-extra": {
+        "name": "页面自白 + 全局按钮 + 其他",
+        "menu_name": "自白 + 复杂信息",
+        "description": "增加配置说明等扩展信息",
+        "show_intro": true,
+        "global_secondary_action_count": 2,
+        "global_secondary_action_overflow": "dropdown",
+        "show_extra_info": true,
+        "show_extra_info_separator": true
+      }
+    },
+    "variants": [
+      {"id": "regular-01", "name": "单容器 · 基础", "menu_name": "无页面自白", "navigation_layout": "single", "show_left_selector": false, "show_top_tabs": false, "business_header": "none"},
+      {"id": "regular-02", "name": "单容器 · 页面自白", "menu_name": "页面自白", "navigation_layout": "single", "show_left_selector": false, "show_top_tabs": false, "business_header": "intro"},
+      {"id": "regular-03", "name": "单容器 · 页面自白 + 全局按钮", "menu_name": "自白 + 全局按钮", "navigation_layout": "single", "show_left_selector": false, "show_top_tabs": false, "business_header": "intro-actions"},
+      {"id": "regular-04", "name": "单容器 · 页面自白 + 全局按钮 + 其他", "menu_name": "自白 + 复杂信息", "navigation_layout": "single", "show_left_selector": false, "show_top_tabs": false, "business_header": "intro-actions-extra"},
+      {"id": "regular-05", "name": "左右结构 · 基础", "menu_name": "无页面自白", "navigation_layout": "left-selector", "show_left_selector": true, "show_top_tabs": false, "business_header": "none", "selector_variant": "tree"},
+      {"id": "regular-06", "name": "左右结构 · 页面自白", "menu_name": "页面自白", "navigation_layout": "left-selector", "show_left_selector": true, "show_top_tabs": false, "business_header": "intro", "selector_variant": "tree"},
+      {"id": "regular-07", "name": "左右结构 · 页面自白 + 全局按钮", "menu_name": "自白 + 全局按钮", "navigation_layout": "left-selector", "show_left_selector": true, "show_top_tabs": false, "business_header": "intro-actions", "selector_variant": "tree"},
+      {"id": "regular-08", "name": "左右结构 · 页面自白 + 全局按钮 + 其他", "menu_name": "自白 + 复杂信息", "navigation_layout": "left-selector", "show_left_selector": true, "show_top_tabs": false, "business_header": "intro-actions-extra", "selector_variant": "tree"},
+      {"id": "regular-09", "name": "上下结构 · 基础", "menu_name": "无页面自白", "navigation_layout": "top-card-tabs", "show_left_selector": false, "show_top_tabs": true, "business_header": "none"},
+      {"id": "regular-10", "name": "上下结构 · 页面自白", "menu_name": "页面自白", "navigation_layout": "top-card-tabs", "show_left_selector": false, "show_top_tabs": true, "business_header": "intro"},
+      {"id": "regular-11", "name": "上下结构 · 页面自白 + 全局按钮", "menu_name": "自白 + 全局按钮", "navigation_layout": "top-card-tabs", "show_left_selector": false, "show_top_tabs": true, "business_header": "intro-actions"},
+      {"id": "regular-12", "name": "上下结构 · 页面自白 + 全局按钮 + 其他", "menu_name": "自白 + 复杂信息", "navigation_layout": "top-card-tabs", "show_left_selector": false, "show_top_tabs": true, "business_header": "intro-actions-extra"}
+    ]
+  },
+  "collection_table": {
+    "applies_to_page_kinds": ["table", "switch"],
+    "striped": false,
+    "row_fill_policy": "single-color",
+    "default_row_background_role": "bg-primary",
+    "default_row_background": "#ffffff",
+    "interactive_state_policy": "retain-hui-hover-active-selected",
+    "content_spacing": {
+      "policy": "outer-margin-only",
+      "margin_role": "portal-collection-table-content-margin",
+      "padding_role": "portal-collection-table-content-padding"
+    }
+  },
+  "collection_card": {
+    "applies_to_page_kinds": ["card", "card-tabs", "switch"],
+    "content_spacing": {
+      "policy": "outer-margin-only",
+      "alignment": "same-as-collection-table",
+      "margin_role": "portal-collection-card-content-margin",
+      "padding_role": "portal-collection-card-content-padding"
+    }
+  },
+  "collection_detail_drawer": {
+    "entry_action": "details",
+    "component": "el-drawer",
+    "direction": "rtl",
+    "default_size": "480px",
+    "append_to_body": true,
+    "modal": true,
+    "wrapper_closable": true,
+    "field_source": "page_spec.detail_drawer.fields",
+    "selected_row_source": "selectedDetailRow",
+    "content_component": "el-form",
+    "form_mode": "read-only",
+    "label_position": "top",
+    "preserve_collection_state": true
+  },
+  "personnel_management": {
+    "schema_version": "isc-personnel-management.v1",
+    "scope": "access-personnel",
+    "source": {
+      "kind": "iterative-user-review",
+      "observed_at": "2026-09-02",
+      "evidence_scope": [
+        "人员列表操作栏",
+        "添加人员表单",
+        "人员详情",
+        "人员与车辆字段配置"
+      ]
+    },
+    "shared": {
+      "breadcrumb_tabs": {
+        "placement": "breadcrumb",
+        "alignment": "center",
+        "same_container_as": "navigation.breadcrumb",
+        "item_inline_padding_px": 12,
+        "active_indicator_total_extension_px": 24,
+        "hover_text_underline": false,
+        "focus_text_underline": false,
+        "active_indicator_visible": true
+      },
+      "operation_icons": {
+        "style": "linear",
+        "source": "HUI font icon catalog",
+        "classification_ref": "hui-icon-catalog.v1#/font_style_classification",
+        "applies_to": ["toolbar_actions", "row_actions"]
+      }
+    },
+    "pages": {
+      "list": {
+        "spec_ids": ["isc3-access-personnel-list"],
+        "page_kind": "table",
+        "pattern_contract": "table/with-operation-bar.json",
+        "collection_toolbar_variant": "actions-scoped-keyword",
+        "initial_filter_expanded": true,
+        "portal": {
+          "active_icon_menu": "personnel",
+          "active_side_menu": "personnel-list",
+          "show_context_sidebar": true
+        },
+        "filter_order": [
+          "name", "gender", "organization", "credentialType",
+          "credentialNumber", "employeeNo", "mobile", "credentialInfo", "validity"
+        ],
+        "column_order": [
+          "name", "gender", "organization", "credentialType",
+          "credentialNumber", "employeeNo", "mobile", "credentialInfo", "validity"
+        ],
+        "toolbar_action_order": [
+          "add", "delete-selected", "move-organization", "sync-biometric",
+          "card-operation", "import", "export"
+        ],
+        "toolbar_action_icons": {
+          "card-operation": "h-icon-associate"
+        },
+        "toolbar_action_labels": {
+          "add": "添加",
+          "delete-selected": "删除",
+          "move-organization": "变更组织",
+          "sync-biometric": "同步生物特征",
+          "card-operation": "开/退卡",
+          "import": "导入",
+          "export": "导出"
+        },
+        "row_action_order": ["edit", "details", "delete"],
+        "add_href": "add-person-form.html",
+        "row_detail_href": "isc3-access-personnel-detail.html"
+      },
+      "add_form": {
+        "spec_ids": ["add-person-form"],
+        "page_kind": "form",
+        "pattern_contract": "form/persistent-anchor-single-container.json",
+        "entry_action": "add",
+        "portal": {
+          "active_icon_menu": "personnel",
+          "active_side_menu": "personnel-list",
+          "show_context_sidebar": false
+        },
+        "tab_order": ["basic", "credential", "vehicle", "access"],
+        "tab_labels": ["基础信息", "凭证信息", "车辆信息", "人员通行信息"],
+        "initial_tab": "basic",
+        "tab_section_ids": {
+          "basic": ["personal", "credential", "contact"],
+          "credential": [],
+          "vehicle": [],
+          "access": []
+        },
+        "section_order": ["personal", "credential", "contact"],
+        "field_order_by_section": {
+          "personal": [
+            "name", "gender", "organization", "employeeNo", "pinyin",
+            "workplace", "position", "birthDate", "maritalStatus"
+          ],
+          "credential": [
+            "credentialType", "credentialNumber", "credentialValidity",
+            "credentialAddress", "issuingAuthority"
+          ],
+          "contact": [
+            "mobile", "email", "nativePlace", "householdRegistration", "residence"
+          ]
+        },
+        "field_grid": {
+          "default_columns_when_many_fields": 3,
+          "row_layout": "ordered-flex-wrap",
+          "floating_columns": false,
+          "implicit_empty_slots": false,
+          "full_row_policy": "explicit-only",
+          "full_row_field_ids": []
+        },
+        "spacing": {
+          "form_item_gap_px": 24,
+          "title_field_gap_px": 24,
+          "group_gap_px": 48
+        },
+        "anchor": {
+          "component": "HAnchor",
+          "behavior": "persistent",
+          "position": "right",
+          "item_source": "active_form_tab.sections",
+          "outside_scroll_container": true,
+          "outside_content_surface": true,
+          "reserved_width_px": 180,
+          "content_gap_px": 24,
+          "top_offset_px": 48,
+          "surface_context": "page-gray-background",
+          "surface": "transparent",
+          "shadow": "none"
+        },
+        "content_surface": {
+          "background": "white",
+          "contains": ["form", "footer"],
+          "excludes": ["anchor"]
+        },
+        "action_order": ["操作并继续配置", "保存并返回列表", "取消"],
+        "return_href": "isc3-access-personnel-list.html"
+      },
+      "detail": {
+        "spec_ids": ["isc3-access-personnel-detail"],
+        "page_kind": "details",
+        "pattern_contract": "details/resident-anchor-point.json",
+        "row_entry_action": "details",
+        "row_entry_href_source": "page_spec.row_detail_href",
+        "portal": {
+          "active_icon_menu": "personnel",
+          "active_side_menu": "personnel-list",
+          "show_context_sidebar": false
+        },
+        "tab_order": ["基础信息", "凭证信息", "车辆信息", "人员通行权限"],
+        "section_order_by_tab": {
+          "基础信息": ["个人信息", "证件信息", "联系信息", "关系人信息", "自定义信息"],
+          "凭证信息": ["生物特征凭证", "卡片凭证"],
+          "车辆信息": ["车辆信息"],
+          "人员通行权限": ["通行有效期", "门禁权限"]
+        },
+        "description_columns": 3,
+        "tab_bar": {
+          "placement": "breadcrumb",
+          "alignment": "center",
+          "same_container_as": "navigation.breadcrumb"
+        },
+        "content_surface": {
+          "background_scope": "main-content-only",
+          "cross_axis_stretch": true
+        },
+        "anchor": {
+          "component_count": 1,
+          "mode": "resident",
+          "position": "right",
+          "item_source": "active_detail_tab.sections",
+          "content_gap_px": 24,
+          "reserved_width_px": 180,
+          "top_offset_px": 48,
+          "surface": "transparent",
+          "orientation": "vertical",
+          "style_evidence": {
+            "kind": "user-supplied-screenshot",
+            "attachment_name": "codex-clipboard-160067f9-c18a-43d1-b4f9-c5019dafa4be.png",
+            "observed_at": "2026-09-01",
+            "image_size": [1956, 1072],
+            "sha256": "17166424601b62dea5a56794e7e3106fdb2b55d5a082d9fa8700a9499646384b",
+            "evidence_scope": "ISC 3.0.0人员详情页常驻锚点的右侧保留区、透明背景、顶部对齐和竖向导航形态"
+          }
+        }
+      },
+      "field_configuration": {
+        "spec_ids": ["isc3-personnel-field-config"],
+        "page_kind": "table",
+        "pattern_contract": "table/card-tabs.json",
+        "portal": {
+          "active_icon_menu": "personnel",
+          "active_side_menu": "personnel-list",
+          "show_context_sidebar": false
+        },
+        "tab_order": ["personnel", "vehicle"],
+        "tab_labels": ["人员信息", "车辆信息"],
+        "description": "字段配置：通过添加字段进行参数配置",
+        "framework": {
+          "variant": "regular-11",
+          "navigation_layout": "top-card-tabs",
+          "business_header": "intro-actions",
+          "tab_source": "table_tabs",
+          "intro_source": "field_configuration.description",
+          "global_action_source": "toolbar_actions.label",
+          "global_action_icon_source": "toolbar_actions.icon"
+        },
+        "layout": {
+          "surface": "framework-content",
+          "left_sidebar_width_role": "portal-context-sidebar-width",
+          "panel_header_role": "portal-collection-toolbar-height",
+          "panel_padding_role": "portal-collection-toolbar-padding",
+          "table_content_margin_role": "portal-collection-table-content-margin",
+          "dialog_width_px": 400
+        },
+        "toolbar_action_order": [
+          "import-fields", "export-fields", "capture-device-parameters"
+        ],
+        "toolbar_action_labels": {
+          "import-fields": "导入字段",
+          "export-fields": "导出字段",
+          "capture-device-parameters": "采集设备参数配置"
+        },
+        "toolbar_action_icons": {
+          "import-fields": "h-icon-import",
+          "export-fields": "h-icon-export",
+          "capture-device-parameters": "h-icon-setting"
+        },
+        "library": {
+          "title": "可自定义字段",
+          "add_action": {
+            "id": "add-library-field",
+            "label": "添加字段",
+            "icon": "h-icon-add",
+            "appearance": "default"
+          },
+          "action_order": ["edit", "delete"]
+        },
+        "configured": {
+          "title": "已配置字段",
+          "add_action": {
+            "id": "add-configured-field",
+            "label": "添加字段",
+            "icon": "h-icon-add",
+            "appearance": "primary"
+          },
+          "column_order": [
+            "name", "key", "type", "source", "required", "order"
+          ]
+        }
+      }
+    }
+  },
+  "collection_toolbar": {
+    "status": "verified-from-user-supplied-screenshot",
+    "applies_to_page_kinds": ["table", "card"],
+    "source": {
+      "kind": "user-supplied-screenshot",
+      "design_url": "https://pixso.hikvision.com.cn/app/design/7MJcw0jVDhV4F8OGVT7qvw?icon_type=1&page-id=2%3A2&item-id=150%3A5",
+      "page_id": "2:2",
+      "frame_id": "150:5",
+      "attachment_name": "codex-clipboard-c6bffa35-8d10-4c23-8d0b-85f428677e9e.png",
+      "observed_at": "2026-08-31",
+      "image_size": [1919, 713],
+      "sha256": "624e4659434c8fcf02c72db1cb7aa19dab617242e8b7cda004a1c62c97eac2e0",
+      "evidence_scope": "ISC3.0人员管理列表页工具栏的四种视觉变体与筛选盒展开状态",
+      "excluded_canvas_artifacts": [
+        {"property": "background", "observed_value": "#e0e0e0", "reason": "Pixso画布背景，不是工具栏设计规则"},
+        {"property": "left-origin", "observed_value": "31px", "reason": "截图画布坐标，不是工具栏内边距规则"}
+      ]
+    },
+    "evidence_boundary": {
+      "proves": [
+        "visible-region-composition",
+        "control-order",
+        "enabled-disabled-selected-state",
+        "pixel-geometry",
+        "rendered-colors"
+      ],
+      "does_not_prove": [
+        "runtime-dom-selector",
+        "runtime-component-name",
+        "computed-css-source",
+        "interaction-implementation"
+      ]
+    },
+    "variant_count": 4,
+    "selection_strategy": {
+      "composition": "left_region × query_region",
+      "left_region_order": ["batch-actions", "summary-text"],
+      "query_region_order": ["structured-query", "scoped-keyword"],
+      "expanded_filter_box_is_state_not_variant": true,
+      "product_toolbar_precedes_hui_collection_filter": true,
+      "explicit_variant_required_when": ["toolbar-actions-present", "filters-present"],
+      "left_region_selection": {
+        "toolbar_actions_present": "batch-actions",
+        "toolbar_actions_absent": "summary-text"
+      },
+      "keyword_only_query_region": "scoped-keyword",
+      "hui_filter_variant_conflict": "reject"
+    },
+    "shared_visual_style": {
+      "background_policy": "transparent-on-page-surface",
+      "operation_icon_style": "linear",
+      "height_role": "portal-collection-toolbar-height",
+      "padding_role": "portal-collection-toolbar-padding",
+      "control_height": "32px",
+      "control_gap": "8px",
+      "primary_color_state": "default",
+      "primary_color_token": "--h-color-brand",
+      "toolbar_control_border": "#bbbfcf",
+      "text_color": "#3d3f51",
+      "right_region_alignment": "right",
+      "form_controls": {
+        "component_source": "HUI",
+        "component_size": "medium",
+        "height_role": "--h-component-height-md",
+        "height": "32px",
+        "border_role": "--h-input-border",
+        "border_color_role": "--h-color-border-primary",
+        "border_radius_role": "--h-border-radius-xs",
+        "custom_border_override": false
+      },
+      "view_mode_controls": {
+        "implementation": "hui-iconfont",
+        "component": "el-button",
+        "component_type": "text",
+        "component_size": "small",
+        "runtime_binding": "collectionToolbarView",
+        "list_value": "list",
+        "card_value": "card",
+        "card_page_default": "card",
+        "card_page_list_source": "page_spec.columns",
+        "shared_row_source": "preview.rows",
+        "button_size": "32px",
+        "icon_size_role": "--h-button-icon-size",
+        "icon_size": "24px",
+        "list_icon": "h-icon-menu_leftbar",
+        "card_icon": "h-icon-menu",
+        "active_color_role": "primary_color",
+        "inactive_color": "#a7aabb"
+      }
+    },
+    "regions": {
+      "batch-actions": {
+        "action_source": "page_spec.toolbar_actions",
+        "generation_policy": {
+          "derive_from_page_requirements": true,
+          "reference_screenshot_actions_are_not_defaults": true,
+          "must_not_inject_unrequested_actions": true,
+          "preserve_requirement_order": true
+        },
+        "overflow_policy": {
+          "trigger": "insufficient-inline-space",
+          "behavior": "move-trailing-actions-to-more-dropdown",
+          "more_label": "更多",
+          "more_icon": "h-icon-more_hori",
+          "horizontal_scroll": false
+        }
+      },
+      "summary-text": {
+        "example": "今日删除：70",
+        "alignment": "left"
+      },
+      "structured-query": {
+        "controls": [
+          {"role": "organization-select", "placeholder": "所属组织", "width": "140px"},
+          {"role": "effective-date", "placeholder": "删除生效日期", "width": "140px"},
+          {"role": "keyword-search", "field_key": "keyword", "placeholder": "姓名/证件号码/手机号码/工号", "width": "240px"},
+          {"role": "filter-trigger", "width": "32px", "visibility": "remaining-filter-count>0"},
+          {"role": "column-settings", "width": "32px"},
+          {"role": "list-view", "state": "active"},
+          {"role": "card-view", "state": "inactive"}
+        ]
+      },
+      "scoped-keyword": {
+        "controls": [
+          {"role": "include-descendants", "label": "包含下级", "state": "checked"},
+          {"role": "keyword-search", "field_key": "keyword", "placeholder": "姓名/证件号码/手机号码/工号", "width": "240px"},
+          {"role": "filter-trigger", "width": "32px", "visibility": "remaining-filter-count>0"},
+          {"role": "column-settings", "width": "32px"},
+          {"role": "list-view", "state": "active"},
+          {"role": "card-view", "state": "inactive"}
+        ]
+      }
+    },
+    "variants": [
+      {
+        "id": "actions-structured-query",
+        "name": "完整操作栏 + 组织/日期/关键词",
+        "left_region": "batch-actions",
+        "query_region": "structured-query",
+        "evidence_row_y": "55px"
+      },
+      {
+        "id": "actions-scoped-keyword",
+        "name": "完整操作栏 + 包含下级/关键词",
+        "left_region": "batch-actions",
+        "query_region": "scoped-keyword",
+        "evidence_row_y": "154px"
+      },
+      {
+        "id": "summary-structured-query",
+        "name": "摘要文本 + 组织/日期/关键词",
+        "left_region": "summary-text",
+        "query_region": "structured-query",
+        "evidence_row_y": "281px"
+      },
+      {
+        "id": "summary-scoped-keyword",
+        "name": "摘要文本 + 包含下级/关键词",
+        "left_region": "summary-text",
+        "query_region": "scoped-keyword",
+        "evidence_row_y": "380px"
+      }
+    ],
+    "expanded_filter_box": {
+      "demonstrated_from_variant": "actions-scoped-keyword",
+      "margin_role": "portal-collection-expanded-filter-margin",
+      "evidence_toolbar_y": "479px",
+      "trigger_state": "selected",
+      "trigger_background": "#d3d7e3",
+      "trigger_border": "#a5adc4",
+      "offset_from_toolbar_bottom": "16px",
+      "rect": {"x": 31, "y": 527, "width": 1848, "height": 168},
+      "background": "#f0f2f8",
+      "horizontal_padding": "24px",
+      "field_count_by_row": [6, 5],
+      "field_rect": {"width": 290, "height": 32},
+      "field_input_x_by_row": [
+        [55, 360, 665, 971, 1276, 1581],
+        [55, 360, 665, 971, 1276]
+      ],
+      "field_input_y_by_row": [571, 647],
+      "content_policy": {
+        "field_source": "page_spec.filters",
+        "derive_from_page_requirements": true,
+        "must_not_synthesize_generic_placeholders": true,
+        "screenshot_field_count_by_row_is_evidence_only": true
+      },
+      "visibility_policy": {
+        "basis": "remaining-fields-after-inline-controls",
+        "inline_field_source": "selected-query-region.controls[*].field_key",
+        "show_trigger_when": "remaining-field-count>0",
+        "show_box_when": "trigger-visible-and-expanded",
+        "hide_when_remaining_field_count": 0
+      },
+      "collapse_control": "down-chevron-before-query",
+      "query_action": {"label": "查询", "state": "primary", "rect": {"x": 1674, "y": 647, "width": 96, "height": 32}},
+      "reset_action": {"label": "重置", "state": "default", "rect": {"x": 1775, "y": 647, "width": 96, "height": 32}}
+    }
+  },
+  "geometry_roles": {
+    "portal-header-height": "48px",
+    "portal-app-switch-size": "48px",
+    "portal-logo-width": "240px",
+    "portal-logo-height": "32px",
+    "portal-brand-mark-size": "32px",
+    "portal-logo-text-gap": "8px",
+    "portal-brand-left-padding": "16px",
+    "portal-brand-right-padding": "32px",
+    "portal-top-nav-gap": "4px",
+    "portal-top-nav-item-height": "32px",
+    "portal-top-nav-item-padding": "0 12px",
+    "portal-top-nav-item-radius": "6px",
+    "portal-header-tool-size": "28px",
+    "portal-header-tool-icon-size": "18px",
+    "portal-header-search-icon-size": "20px",
+    "portal-header-tools-gap": "8px",
+    "portal-header-divider-height": "24px",
+    "portal-header-user-right-padding": "16px",
+    "portal-header-user-gap": "4px",
+    "portal-sidebar-width": "240px",
+    "portal-sidebar-collapsed-width": "48px",
+    "portal-sidebar-toggle-width": "48px",
+    "portal-sidebar-toggle-height": "56px",
+    "portal-sidebar-toggle-expanded-margin-left": "8px",
+    "portal-side-menu-padding": "0 8px 24px",
+    "portal-side-menu-collapsed-padding": "0 4px 24px",
+    "portal-side-item-width": "224px",
+    "portal-side-item-height": "48px",
+    "portal-side-item-padding": "0 12px",
+    "portal-side-item-gap": "12px",
+    "portal-side-item-radius": "8px",
+    "portal-side-icon-size": "24px",
+    "portal-side-label-font-size": "16px",
+    "portal-side-label-line-height": "24px",
+    "portal-side-collapsed-item-size": "40px",
+    "portal-side-collapsed-icon-wrapper-padding": "0",
+    "portal-context-sidebar-width": "256px",
+    "portal-context-sidebar-padding": "16px",
+    "portal-context-section-gap": "16px",
+    "portal-context-toolbar-height": "24px",
+    "portal-context-toolbar-gap": "8px",
+    "portal-context-toolbar-button-size": "24px",
+    "portal-context-search-height": "32px",
+    "portal-context-content-width": "224px",
+    "portal-context-tree-item-height": "40px",
+    "portal-context-tree-icon-size": "24px",
+    "portal-context-active-indicator-width": "2px",
+    "portal-collection-toolbar-height": "64px",
+    "portal-collection-toolbar-padding": "16px",
+    "portal-collection-table-content-margin": "0 16px",
+    "portal-collection-table-content-padding": "0",
+    "portal-collection-card-content-margin": "0 16px",
+    "portal-collection-card-content-padding": "0",
+    "portal-collection-expanded-filter-margin": "0 16px 16px",
+    "portal-framework-page-padding": "16px 16px 0",
+    "portal-framework-left-selector-page-padding": "0",
+    "portal-framework-left-selector-main-padding": "16px 16px 0",
+    "portal-framework-business-header-gap": "16px",
+    "portal-framework-business-header-min-height": "28px",
+    "portal-framework-business-header-padding": "0",
+    "portal-framework-business-header-title-font-size": "20px",
+    "portal-framework-business-header-title-line-height": "28px",
+    "portal-framework-business-header-description-font-size": "14px",
+    "portal-framework-business-header-description-line-height": "20px",
+    "portal-framework-selector-width": "256px",
+    "portal-framework-selector-padding": "16px",
+    "portal-framework-selector-tree-margin-top": "12px",
+    "portal-framework-content-padding": "0",
+    "portal-framework-card-tabs-height": "48px",
+    "portal-framework-card-tabs-gap": "4px",
+    "portal-framework-card-tab-padding-inline": "16px",
+    "portal-framework-card-tab-icon-size": "24px",
+    "portal-framework-card-tab-icon-gap": "8px",
+    "portal-framework-card-tab-divider-width": "1px",
+    "portal-framework-card-tab-divider-height": "20px",
+    "portal-framework-card-tab-divider-top": "14px",
+    "portal-framework-card-tab-hover-inset-block": "4px",
+    "portal-framework-card-tab-font-size": "14px",
+    "portal-framework-card-tab-line-height": "24px",
+    "portal-framework-card-tab-focus-width": "2px",
+    "portal-framework-content-min-height": "420px",
+    "portal-framework-content-radius": "8px",
+    "portal-framework-first-tab-content-top-left-radius": "0"
+  },
+  "colors": {
+    "header-background": "rgba(255, 255, 255, 0.96)",
+    "header-border": "rgba(20, 32, 51, 0.10)",
+    "header-shadow": "0 1px 0 rgba(20, 32, 51, 0.04)",
+    "navigation-text": "rgba(20, 32, 51, 0.76)",
+    "navigation-text-active": "rgba(20, 32, 51, 0.92)",
+    "navigation-text-secondary": "rgba(20, 32, 51, 0.62)",
+    "navigation-hover-background": "#f2f5fa",
+    "navigation-active-background": "#f2f5fa",
+    "app-switch-hover-background": "#ec1f30",
+    "sidebar-background": "rgba(247, 249, 252, 0.96)",
+    "side-item-hover-background": "rgba(255, 255, 255, 0.64)",
+    "side-selected-border": "rgba(171, 185, 205, 0.70)",
+    "side-selected-background": "#ffffff",
+    "side-selected-shadow": "0 2px 8px rgba(27, 43, 78, 0.14)",
+    "context-sidebar-background": "#ffffff",
+    "framework-selector-background": "#ffffff",
+    "context-tree-selected-background": "var(--h-color-item-bg-selected)",
+    "context-tree-selected-text": "var(--h-color-item-text-selected)",
+    "context-tree-active-indicator": "#e72528"
+  },
+  "portal": {
+    "breadcrumb_placement": "portal-body",
+    "breadcrumb_sibling_of": ["portal.sidebar", "framework"],
+    "sidebar_collapsed": false,
+    "top_menus": ["首页", "视频预览", "门禁管理"],
+    "default_active_top_menu": "门禁管理",
+    "icon_menus": [
+      {"id": "personnel", "label": "人员管理", "icon": "h-icon-user", "active": true},
+      {"id": "authorization", "label": "权限配置", "icon": "h-icon-lock"},
+      {"id": "organization", "label": "组织管理", "icon": "h-icon-menu"},
+      {"id": "resource", "label": "资源管理", "icon": "h-icon-folder"},
+      {"id": "device", "label": "设备管理", "icon": "h-icon-liveview"},
+      {"id": "settings", "label": "系统配置", "icon": "h-icon-setting"}
+    ],
+    "context_menu": {
+      "toolbar_actions": [
+        {"id": "add", "label": "新增", "icon": "h-icon-add"},
+        {"id": "edit", "label": "编辑", "icon": "h-icon-edit"},
+        {"id": "delete", "label": "删除", "icon": "h-icon-delete"},
+        {"id": "copy", "label": "复制", "icon": "h-icon-copy"},
+        {"id": "import", "label": "导入", "icon": "h-icon-import"},
+        {"id": "export", "label": "导出", "icon": "h-icon-export"}
+      ],
+      "search_placeholder": "搜索",
+      "tree_root_label": "区域260388",
+      "default_active_node": "区域557449",
+      "tree_icon": {"mode": "business-svg", "name": "SvgGroup"},
+      "tree_nodes": [
+        {
+          "id": "region-root",
+          "label": "区域260388",
+          "expanded": true,
+          "children": [
+            {"id": "region-593540", "label": "区域593540"},
+            {"id": "region-557449", "label": "区域557449", "active": true},
+            {"id": "region-839049", "label": "区域_839049"},
+            {"id": "region-767070", "label": "区域_767070"},
+            {"id": "attendance-pcwx", "label": "考勤区域-PcwX"}
+          ]
+        }
+      ]
+    }
+  },
+  "interaction": {
+    "top_navigation": "tab-like",
+    "top_navigation_closeable": true,
+    "sidebar": "expandable-single-select",
+    "sidebar_default_state": "expanded",
+    "parent_menu_behavior": "expand-with-selected-child",
+    "sidebar_collapsed_icon_alignment": "centered-in-item-via-zero-padding-collapse-wrapper",
+    "motion": {
+      "source_url": "http://isc-design-page.dev.hikhub.net/framework/regular-01",
+      "observed_at": "2026-08-26",
+      "sidebar_collapse_expand": {
+        "selector": ".sidebar",
+        "property": "width",
+        "from": "240px",
+        "to": "48px",
+        "duration": "220ms",
+        "timing_function": "ease",
+        "delay": "0ms",
+        "applies_to": ["collapse", "expand"]
+      },
+      "toggle_icons": {
+        "selectors": [".icon-expanded", ".icon-collapsed"],
+        "properties": ["transform", "opacity"],
+        "duration": "180ms",
+        "timing_function": "ease",
+        "delay": "0ms",
+        "state_swap": "expanded-icon/collapsed-icon-via-display"
+      },
+      "menu_item_state": {
+        "selector": ".menu-item",
+        "properties": ["background", "border-color", "box-shadow"],
+        "duration": "160ms",
+        "timing_function": "ease",
+        "delay": "0ms"
+      },
+      "submenu_item_state": {
+        "selector": ".submenu-item",
+        "properties": ["color", "background", "border-color", "box-shadow"],
+        "duration": "160ms",
+        "timing_function": "ease",
+        "delay": "0ms"
+      },
+      "collapsed_content_visibility": {
+        "menu_label": "display:none",
+        "submenu": "display:none",
+        "transition": "none"
+      }
+    },
+    "context_tree_current_state": "brand-10-fill-with-primary-text"
+  },
+  "live_evidence": {
+    "surface": {
+      "min_width": "1280px",
+      "min_height": "720px",
+      "overflow": "hidden"
+    },
+    "header": {
+      "height": "48px",
+      "app_switch": {"width": "48px", "height": "48px"},
+      "brand": {"padding_left": "16px", "padding_right": "32px"},
+      "logo": {"width": "240px", "height": "32px"},
+      "tabs": {"gap": "4px", "item_height": "32px", "item_padding": "0 12px", "radius": "6px"},
+      "tools": {"gap": "8px", "button_size": "28px", "icon_size": "18px", "search_icon_size": "20px"}
+    },
+    "sidebar": {
+      "width": "240px",
+      "collapsed_width": "48px",
+      "toggle": {"width": "48px", "height": "56px", "expanded_margin_left": "8px", "collapsed_margin_left": "0"},
+      "menu_padding": "0 8px 24px",
+      "collapsed_menu_padding": "0 4px 24px",
+      "item": {"width": "224px", "min_height": "48px", "padding": "0 12px", "gap": "12px", "radius": "8px"},
+      "collapsed_item": {"width": "40px", "height": "40px"},
+      "selected_state": {"border": "rgba(171, 185, 205, 0.70)", "background": "#ffffff", "shadow": "0 2px 8px rgba(27, 43, 78, 0.14)"}
+    },
+    "card_tabs": {
+      "source_url": "http://isc-design-page.dev.hikhub.net/framework/regular-09",
+      "resolved_url": "http://isc-design-page.dev.hikhub.net/framework/regular-09?demoPage=framework&demoFilter=persistent",
+      "observed_at": "2026-08-31",
+      "source_assets": {
+        "entry_script": "index-DpYfAy7C.js",
+        "entry_css": "index-CxEhh0FC.css",
+        "component_script": "FrameworkRenderer-BsVb6Jve.js",
+        "component_css": "FrameworkRenderer-CEsy2Rkf.css"
+      },
+      "dom": {
+        "root_selector": ".card-tabs",
+        "indicator_selector": ".card-tabs__indicator",
+        "item_selector": ".card-tabs__item",
+        "icon_selector": ".card-tabs__icon",
+        "label_selector": ".card-tabs__label",
+        "root_role": "tablist",
+        "item_role": "tab",
+        "library_item_component": "h-button"
+      },
+      "runtime_adapter": {
+        "local_hui_atom": "el-button",
+        "rendered_root": "button.el-button.card-tabs__item",
+        "content_wrapper_selector": ".card-tabs > .card-tabs__item.el-button > span",
+        "root_resets": ["overflow:visible", "background:transparent", "box-shadow:none", "transform:none"],
+        "wrapper_layout": "inline-flex; align-items:center; gap:8px; line-height:24px"
+      },
+      "geometry": {
+        "height": "48px",
+        "item_gap": "4px",
+        "item_padding": "0 16px",
+        "item_radius": "8px",
+        "hover_inset": "4px 0",
+        "icon_size": "24px",
+        "icon_label_gap": "8px",
+        "font_size": "14px",
+        "line_height": "24px",
+        "divider": {"width": "1px", "height": "20px", "top": "14px"}
+      },
+      "color_roles": {
+        "inactive_text": "text-secondary",
+        "active_text": "text-primary",
+        "active_background": "bg-primary",
+        "hover_background": "bg-primary",
+        "divider": "border-secondary",
+        "focus": "brand"
+      },
+      "indicator": {
+        "positioning": "active-item-offsetWidth-and-offsetLeft",
+        "height": "48px",
+        "radius": "8px 8px 0 0",
+        "duration": "180ms",
+        "timing_function": "cubic-bezier(.2, 0, 0, 1)"
+      },
+      "states": {
+        "hover_duration": "120ms",
+        "active_divider_visibility": "hide-active-and-before-active",
+        "disabled_opacity": 0.48,
+        "focus_outline": "2px solid brand, offset -2px",
+        "reduced_motion": "disable-transitions"
+      },
+      "overflow": {"x": "auto", "y": "hidden", "white_space": "nowrap"},
+      "content_seam": "top-left-radius-is-zero-only-while-first-tab-is-active"
+    },
+    "sidebar_collapsed_icon_alignment": {
+      "evidence_kind": "user-supplied-screenshot",
+      "observed_at": "2026-08-26",
+      "sidebar_center_x": "24.5px",
+      "toggle_icon_center_x": "24.5px",
+      "observed_icon_center_x": "29-29.5px",
+      "observed_offset": "4.5-5px right",
+      "root_cause": "el-nav-item__collapse retained 0 12px padding",
+      "required_wrapper_padding": "0",
+      "required_alignment": "flex-center"
+    },
+    "framework_selector_selected_state": {
+      "source_url": "http://isc-design-page.dev.hikhub.net/framework/regular-07",
+      "observed_at": "2026-08-31",
+      "source_asset": "FrameworkRenderer-CEsy2Rkf.css",
+      "dom": {
+        "tree_selector": ".left-selector__tree .h-tree",
+        "current_content_selector": ".left-selector__tree .h-tree-node.is-current > .h-tree-node__content",
+        "background_selector": ".left-selector__tree .h-tree-node.is-current > .h-tree-node__content::before"
+      },
+      "base_content_background": "transparent",
+      "selected_background_role": "brand-soft",
+      "brand_indicator": {
+        "implementation": "inset-box-shadow",
+        "edge": "left",
+        "width": "2px",
+        "color_role": "brand-default"
+      },
+      "content_layering": {
+        "pseudo_z_index": 0,
+        "direct_children_z_index": 1
+      },
+      "hui_runtime_adapter": {
+        "component_content_selector": ".el-tree-node__content",
+        "inherited_border": "2px solid transparent",
+        "inherited_border_source": "design-systems/HUI/theme/hui.css",
+        "inherited_border_purpose": "reserve-drag-inner-border-without-layout-shift",
+        "drag_state_selector": ".el-tree-node.is-drag.is-drag-inner > .el-tree-node__content",
+        "override_scope": ".isc-framework-selector__tree",
+        "required_override": "border: 0 !important"
+      }
+    },
+    "context_tree_selected_state": {
+      "source_url": "http://isc-design-page.dev.hikhub.net/framework/regular-06",
+      "selected_node": "区域557449",
+      "tree_class": "h-tree h-tree--highlight-current",
+      "node_class": "h-tree-node is-current is-focusable isc-tree-node--level-2",
+      "content_class": "h-tree-node__content",
+      "background_surface": "content-pseudo-before",
+      "background_variable": "--h-tree-highlight-normal-bg-color",
+      "background": "#FFEAE8",
+      "text": "rgba(0, 4, 32, 0.73)"
+    }
+  }
+}

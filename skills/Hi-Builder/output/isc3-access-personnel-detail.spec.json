@@ -1,0 +1,200 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "product_version": "3.0.0",
+  "id": "isc3-access-personnel-detail",
+  "title": "人员详情",
+  "page_kind": "details",
+  "detail_presentation": "flat",
+  "detail_columns": 3,
+  "pattern_contract": "details/resident-anchor-point.json",
+  "portal": {
+    "active_top_menu": "门禁管理",
+    "active_icon_menu": "personnel",
+    "section": "人员管理",
+    "tab_title": "人员详情",
+    "active_side_menu": "personnel-list",
+    "side_menus": [
+      {"id": "personnel-list", "label": "人员信息", "icon": "h-icon-user", "href": "isc3-access-personnel-list.html"},
+      {"id": "access-authorization", "label": "门禁授权", "icon": "h-icon-lock"},
+      {"id": "card-management", "label": "卡片管理", "icon": "h-icon-info_card"}
+    ]
+  },
+  "detail_tabs": [
+    {
+      "id": "basic",
+      "label": "基础信息",
+      "sections": [
+        {
+          "id": "personal",
+          "title": "个人信息",
+          "fields": [
+            {"key": "name", "label": "姓名"},
+            {"key": "gender", "label": "性别"},
+            {"key": "organization", "label": "所属组织"},
+            {"key": "employeeNo", "label": "工号"},
+            {"key": "pinyin", "label": "拼音"},
+            {"key": "workplace", "label": "工作单位"},
+            {"key": "position", "label": "岗位"},
+            {"key": "birthDate", "label": "出生日期"},
+            {"key": "maritalStatus", "label": "婚姻状况"}
+          ]
+        },
+        {
+          "id": "identity-document",
+          "title": "证件信息",
+          "fields": [
+            {"key": "credentialType", "label": "身份证件类型"},
+            {"key": "credentialNumber", "label": "身份证件号码"},
+            {"key": "credentialValidity", "label": "证件有效期"},
+            {"key": "credentialAddress", "label": "证件地址"},
+            {"key": "issuingAuthority", "label": "证件发证机关"}
+          ]
+        },
+        {
+          "id": "contact",
+          "title": "联系信息",
+          "fields": [
+            {"key": "mobile", "label": "手机号码"},
+            {"key": "email", "label": "邮箱"},
+            {"key": "nativePlace", "label": "籍贯"},
+            {"key": "householdRegistration", "label": "户籍"},
+            {"key": "residence", "label": "居住地"}
+          ]
+        },
+        {
+          "id": "related-person",
+          "title": "关系人信息",
+          "fields": [
+            {"key": "relatedPersonName", "label": "关系人姓名"},
+            {"key": "relatedPersonRelation", "label": "与本人关系"},
+            {"key": "relatedPersonMobile", "label": "手机号码"}
+          ]
+        },
+        {
+          "id": "custom",
+          "title": "自定义信息",
+          "fields": [
+            {"key": "personType", "label": "人员类型"},
+            {"key": "entryDate", "label": "入职日期"},
+            {"key": "remark", "label": "备注"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "credential",
+      "label": "凭证信息",
+      "sections": [
+        {
+          "id": "biometric-credential",
+          "title": "生物特征凭证",
+          "fields": [
+            {"key": "faceStatus", "label": "人脸采集状态", "tone": "success"},
+            {"key": "fingerprintCount", "label": "指纹登记数量"},
+            {"key": "biometricUpdateTime", "label": "最近更新时间"}
+          ]
+        },
+        {
+          "id": "card-credential",
+          "title": "卡片凭证",
+          "fields": [
+            {"key": "cardNumber", "label": "卡号"},
+            {"key": "cardType", "label": "卡片类型"},
+            {"key": "cardStatus", "label": "卡片状态", "tone": "success"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "vehicle",
+      "label": "车辆信息",
+      "sections": [
+        {
+          "id": "vehicle-basic",
+          "title": "车辆信息",
+          "fields": [
+            {"key": "plateNumber", "label": "车牌号码"},
+            {"key": "vehicleType", "label": "车辆类型"},
+            {"key": "vehicleBrand", "label": "车辆品牌"},
+            {"key": "vehicleColor", "label": "车辆颜色"},
+            {"key": "vehicleRelation", "label": "关联关系"},
+            {"key": "vehicleStatus", "label": "车辆状态", "tone": "success"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "access",
+      "label": "人员通行权限",
+      "sections": [
+        {
+          "id": "access-validity",
+          "title": "通行有效期",
+          "fields": [
+            {"key": "accessValidity", "label": "人员有效期"},
+            {"key": "accessStatus", "label": "通行状态", "tone": "success"},
+            {"key": "accessSchedule", "label": "通行计划"}
+          ]
+        },
+        {
+          "id": "access-permission",
+          "title": "门禁权限",
+          "fields": [
+            {"key": "accessAreas", "label": "授权区域"},
+            {"key": "accessPoints", "label": "授权门禁点"},
+            {"key": "authenticationMode", "label": "认证方式"}
+          ]
+        }
+      ]
+    }
+  ],
+  "preview": {
+    "detailValues": {
+      "name": "张伟",
+      "gender": "男",
+      "organization": "总部园区 / 研发中心",
+      "employeeNo": "HIK20260018",
+      "pinyin": "ZHANG WEI",
+      "workplace": "海康总部园区",
+      "position": "高级研发工程师",
+      "birthDate": "1990-06-18",
+      "maritalStatus": "已婚",
+      "credentialType": "身份证",
+      "credentialNumber": "310***********2418",
+      "credentialValidity": "2020-06-18 至 2040-06-18",
+      "credentialAddress": "浙江省杭州市滨江区",
+      "issuingAuthority": "杭州市公安局滨江分局",
+      "mobile": "138****2106",
+      "email": "zhangwei@example.com",
+      "nativePlace": "浙江杭州",
+      "householdRegistration": "浙江省杭州市滨江区",
+      "residence": "杭州市滨江区科技园",
+      "relatedPersonName": "张华",
+      "relatedPersonRelation": "配偶",
+      "relatedPersonMobile": "136****4827",
+      "personType": "正式员工",
+      "entryDate": "2026-01-01",
+      "remark": "研发中心在职人员",
+      "faceStatus": "已采集",
+      "fingerprintCount": "2枚",
+      "biometricUpdateTime": "2026-08-26 14:30:00",
+      "cardNumber": "3100 0186 2745",
+      "cardType": "员工卡",
+      "cardStatus": "正常",
+      "plateNumber": "浙A·8K261",
+      "vehicleType": "小型汽车",
+      "vehicleBrand": "比亚迪",
+      "vehicleColor": "黑色",
+      "vehicleRelation": "本人车辆",
+      "vehicleStatus": "正常",
+      "accessValidity": "2026-01-01 至 2028-12-31",
+      "accessStatus": "已生效",
+      "accessSchedule": "工作日 08:00–22:00",
+      "accessAreas": "总部园区、研发中心",
+      "accessPoints": "园区东门、研发楼大厅",
+      "authenticationMode": "人脸或员工卡"
+    }
+  }
+}

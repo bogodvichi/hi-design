@@ -1,0 +1,197 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "product_version": "3.0.0",
+  "id": "isc3-personnel-group-list",
+  "title": "人员分组",
+  "page_kind": "card",
+  "pattern_contract": "card/text.json",
+  "collection_toolbar_variant": "actions-scoped-keyword",
+  "framework": {
+    "variant": "regular-02",
+    "intro": "人员分组：将拥有相同权限的人员归为1组，便于批量配置权限，可“按人员分组配置权限”。"
+  },
+  "portal": {
+    "active_top_menu": "门禁管理",
+    "active_icon_menu": "personnel",
+    "show_context_sidebar": false,
+    "section": "人员管理",
+    "tab_title": "人员分组",
+    "active_side_menu": "personnel-group",
+    "side_menus": [
+      {"id": "personnel-list", "label": "人员信息", "icon": "h-icon-user"},
+      {"id": "personnel-group", "label": "人员分组", "icon": "h-icon-users"},
+      {"id": "personnel-permission", "label": "权限配置", "icon": "h-icon-lock"},
+      {"id": "authorization-record", "label": "授权记录", "icon": "h-icon-menu"}
+    ]
+  },
+  "filters": [
+    {"key": "keyword", "label": "分组名称", "kind": "input", "placeholder": "请输入分组名称", "default": ""}
+  ],
+  "toolbar_actions": [
+    {"id": "add", "label": "添加", "icon": "h-icon-add", "appearance": "primary", "href": "isc3-personnel-group-add.html"},
+    {"id": "add-by-rule", "label": "按规则添加", "icon": "h-icon-filter"},
+    {"id": "import", "label": "导入分组", "icon": "h-icon-import"},
+    {"id": "share", "label": "分享", "icon": "h-icon-share"},
+    {"id": "delete", "label": "删除", "icon": "h-icon-delete"}
+  ],
+  "row_actions": [
+    {"id": "details", "label": "查看", "icon": "h-icon-details"}
+  ],
+  "detail_drawer": {
+    "title": "分组详情",
+    "section_title": "基本信息",
+    "fields": [
+      {"key": "title", "label": "分组名称", "control": "input"},
+      {"key": "groupCode", "label": "分组编号", "control": "input"},
+      {"key": "groupType", "label": "分组类型", "control": "input"},
+      {"key": "personCount", "label": "人数", "control": "input"},
+      {"key": "permissionMode", "label": "权限配置方式", "control": "input"},
+      {"key": "status", "label": "启用状态", "control": "input"},
+      {"key": "creator", "label": "创建人员", "control": "input"},
+      {"key": "createdAt", "label": "创建时间", "control": "input"},
+      {"key": "description", "label": "备注", "control": "textarea"}
+    ]
+  },
+  "columns": [
+    {"prop": "title", "label": "分组名称", "min_width": 240},
+    {"prop": "personCount", "label": "人数", "fixed_width": 120},
+    {"prop": "creator", "label": "创建人员", "min_width": 160},
+    {"prop": "createdAt", "label": "创建时间", "fixed_width": 200}
+  ],
+  "page_size": 12,
+  "preview": {
+    "total": 8,
+    "rows": [
+      {
+        "id": "group-001",
+        "image": "http://tpp.dev.hikhub.net/tpp/img/text.0a734454.png",
+        "title": "研发中心员工组",
+        "groupCode": "PG-2026-001",
+        "groupType": "手动分组",
+        "personCount": "128人",
+        "permissionMode": "按人员分组配置权限",
+        "status": "已启用",
+        "creator": "admin",
+        "createdAt": "2026-08-28 10:18",
+        "description": "研发中心在职员工，统一配置办公区与研发区通行权限。",
+        "tags": [{"label": "128人"}],
+        "location": "创建人员：admin",
+        "time": "创建时间：2026-08-28 10:18"
+      },
+      {
+        "id": "group-002",
+        "image": "http://tpp.dev.hikhub.net/tpp/img/text.0a734454.png",
+        "title": "行政办公人员组",
+        "groupCode": "PG-2026-002",
+        "groupType": "手动分组",
+        "personCount": "56人",
+        "permissionMode": "按人员分组配置权限",
+        "status": "已启用",
+        "creator": "王敏",
+        "createdAt": "2026-08-27 16:42",
+        "description": "行政办公人员使用，统一配置办公楼与会议区域权限。",
+        "tags": [{"label": "56人"}],
+        "location": "创建人员：王敏",
+        "time": "创建时间：2026-08-27 16:42"
+      },
+      {
+        "id": "group-003",
+        "image": "http://tpp.dev.hikhub.net/tpp/img/text.0a734454.png",
+        "title": "园区安保人员组",
+        "groupCode": "PG-2026-003",
+        "groupType": "规则分组",
+        "personCount": "32人",
+        "permissionMode": "按人员分组配置权限",
+        "status": "已启用",
+        "creator": "李强",
+        "createdAt": "2026-08-26 14:05",
+        "description": "根据安保岗位规则自动纳入，覆盖园区公共区域。",
+        "tags": [{"label": "32人"}],
+        "location": "创建人员：李强",
+        "time": "创建时间：2026-08-26 14:05"
+      },
+      {
+        "id": "group-004",
+        "image": "http://tpp.dev.hikhub.net/tpp/img/text.0a734454.png",
+        "title": "机电运维人员组",
+        "groupCode": "PG-2026-004",
+        "groupType": "规则分组",
+        "personCount": "24人",
+        "permissionMode": "按人员分组配置权限",
+        "status": "已启用",
+        "creator": "陈晓东",
+        "createdAt": "2026-08-25 09:36",
+        "description": "机电与设施运维人员，配置设备间及运维通道权限。",
+        "tags": [{"label": "24人"}],
+        "location": "创建人员：陈晓东",
+        "time": "创建时间：2026-08-25 09:36"
+      },
+      {
+        "id": "group-005",
+        "image": "http://tpp.dev.hikhub.net/tpp/img/text.0a734454.png",
+        "title": "夜间值班人员组",
+        "groupCode": "PG-2026-005",
+        "groupType": "规则分组",
+        "personCount": "18人",
+        "permissionMode": "按人员分组配置权限",
+        "status": "已启用",
+        "creator": "周雨晴",
+        "createdAt": "2026-08-24 20:10",
+        "description": "根据夜间排班动态更新，用于夜间时段通行授权。",
+        "tags": [{"label": "18人"}],
+        "location": "创建人员：周雨晴",
+        "time": "创建时间：2026-08-24 20:10"
+      },
+      {
+        "id": "group-006",
+        "image": "http://tpp.dev.hikhub.net/tpp/img/text.0a734454.png",
+        "title": "保洁服务人员组",
+        "groupCode": "PG-2026-006",
+        "groupType": "手动分组",
+        "personCount": "43人",
+        "permissionMode": "按人员分组配置权限",
+        "status": "已启用",
+        "creator": "赵倩",
+        "createdAt": "2026-08-22 11:27",
+        "description": "保洁服务人员使用，限制在作业区域和规定时段内通行。",
+        "tags": [{"label": "43人"}],
+        "location": "创建人员：赵倩",
+        "time": "创建时间：2026-08-22 11:27"
+      },
+      {
+        "id": "group-007",
+        "image": "http://tpp.dev.hikhub.net/tpp/img/text.0a734454.png",
+        "title": "食堂后勤人员组",
+        "groupCode": "PG-2026-007",
+        "groupType": "手动分组",
+        "personCount": "27人",
+        "permissionMode": "按人员分组配置权限",
+        "status": "已启用",
+        "creator": "孙悦",
+        "createdAt": "2026-08-21 15:54",
+        "description": "食堂及后勤保障人员，配置后勤区域与配送通道权限。",
+        "tags": [{"label": "27人"}],
+        "location": "创建人员：孙悦",
+        "time": "创建时间：2026-08-21 15:54"
+      },
+      {
+        "id": "group-008",
+        "image": "http://tpp.dev.hikhub.net/tpp/img/text.0a734454.png",
+        "title": "外协施工人员组",
+        "groupCode": "PG-2026-008",
+        "groupType": "规则分组",
+        "personCount": "65人",
+        "permissionMode": "按人员分组配置权限",
+        "status": "已停用",
+        "creator": "郭晨",
+        "createdAt": "2026-08-20 08:43",
+        "description": "外协施工人员临时分组，项目结束后统一停用权限。",
+        "tags": [{"label": "65人"}],
+        "location": "创建人员：郭晨",
+        "time": "创建时间：2026-08-20 08:43"
+      }
+    ]
+  }
+}

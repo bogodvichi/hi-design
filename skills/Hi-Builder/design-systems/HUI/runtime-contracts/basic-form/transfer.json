@@ -1,0 +1,245 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "transfer",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/form/transfer",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/basic-form.docs.json",
+    "evidence_sha256": "ce35467cfa4317a06d0d65dd9e415328669f0c6711f32417ce27edc1af71cbe7"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-transfer": {
+      "props": [
+        {
+          "参数": "data",
+          "说明": "Transfer 的数据源",
+          "类型": "array[{ key, label, disabled }]",
+          "可选值": "—",
+          "默认值": "[ ]",
+          "template_name": "data"
+        },
+        {
+          "参数": "filterable",
+          "说明": "是否可搜索",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "filterable"
+        },
+        {
+          "参数": "filter-placeholder",
+          "说明": "过滤框占位符",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "请输入搜索内容",
+          "template_name": "filter-placeholder"
+        },
+        {
+          "参数": "filter-method",
+          "说明": "自定义过滤方法，对当前已加载数据进行过滤",
+          "类型": "function",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "filter-method"
+        },
+        {
+          "参数": "search-placeholder",
+          "说明": "搜索框占位符，应用于搜索时发起请求加载新数据源的场景，仅对左面板生效",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "请输入搜索内容",
+          "template_name": "search-placeholder"
+        },
+        {
+          "参数": "search-method",
+          "说明": "自定义搜索方法，应用于搜索时发起请求加载新数据源的场景，仅对左面板生效",
+          "类型": "function",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "search-method"
+        },
+        {
+          "参数": "titles",
+          "说明": "自定义列表标题",
+          "类型": "array",
+          "可选值": "—",
+          "默认值": "[‘列表 1’, ‘列表 2’]",
+          "template_name": "titles"
+        },
+        {
+          "参数": "button-texts",
+          "说明": "自定义按钮文案",
+          "类型": "array",
+          "可选值": "—",
+          "默认值": "[ ]",
+          "template_name": "button-texts"
+        },
+        {
+          "参数": "render-content",
+          "说明": "自定义数据项渲染函数",
+          "类型": "function(h, option)",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "render-content"
+        },
+        {
+          "参数": "footer-format",
+          "说明": "列表底部勾选状态文案；直接赋值为false则不显示底部",
+          "类型": "object{noChecked, hasChecked}或boolean",
+          "可选值": "—",
+          "默认值": "{ noChecked: ‘共 ${total} 项’, hasChecked: ‘已选 ${checked}/${total} 项’ }",
+          "template_name": "footer-format"
+        },
+        {
+          "参数": "props",
+          "说明": "数据源的字段别名",
+          "类型": "object{key, label, disabled}",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "props"
+        },
+        {
+          "参数": "left-default-checked",
+          "说明": "初始状态下左侧列表的已勾选项的 key 数组",
+          "类型": "array",
+          "可选值": "—",
+          "默认值": "[ ]",
+          "template_name": "left-default-checked"
+        },
+        {
+          "参数": "right-default-checked",
+          "说明": "初始状态下右侧列表的已勾选项的 key 数组",
+          "类型": "array",
+          "可选值": "—",
+          "默认值": "[ ]",
+          "template_name": "right-default-checked"
+        },
+        {
+          "参数": "before-add-to-right",
+          "说明": "右移前的操作，参数为function（需返回promise对象，resolve时数据被添加至右侧面板，reject时不移动）",
+          "类型": "function",
+          "可选值": "—",
+          "默认值": "new Promise(resolve => resolve())",
+          "template_name": "before-add-to-right"
+        },
+        {
+          "参数": "before-add-to-left",
+          "说明": "左移前的操作，参数为function（需返回promise对象，resolve时数据被添加至左侧面板，reject时不移动）",
+          "类型": "function",
+          "可选值": "—",
+          "默认值": "new Promise(resolve => resolve())",
+          "template_name": "before-add-to-left"
+        },
+        {
+          "参数": "leftPanelWidth   2.53.0+",
+          "说明": "左侧面板宽度",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "left-panel-width"
+        },
+        {
+          "参数": "rightPanelWidth   2.53.0+",
+          "说明": "右侧面板宽度",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "right-panel-width"
+        },
+        {
+          "参数": "panelContentHeight   2.53.0+",
+          "说明": "面板内容高度",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "panel-content-height"
+        },
+        {
+          "参数": "leftShowAllCheckedBox   2.53.0+",
+          "说明": "是否开启左侧面板全选复选框（false时无全选复选框）",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "left-show-all-checked-box"
+        },
+        {
+          "参数": "rightShowAllCheckedBox   2.53.0+",
+          "说明": "是否开启右侧面板全选复选框（false时无全选复选框）",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "right-show-all-checked-box"
+        },
+        {
+          "参数": "simple   2.53.0+",
+          "说明": "是否开启简易模式（开启后没有穿梭箭头）",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "simple"
+        },
+        {
+          "参数": "retainSelectedItems   2.53.0+",
+          "说明": "是否保留选项（只对左侧面板生效，开启后穿梭至右侧面板，左侧面板仍保留选项）",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "retain-selected-items"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "change",
+          "说明": "右侧列表元素变化时触发",
+          "回调参数": "当前值、数据移动的方向（‘left’ / ‘right’）、发生移动的数据 key 数组",
+          "template_name": "change"
+        },
+        {
+          "事件名称": "on-left-scrolling",
+          "说明": "左面板纵向滚动时触发事件,参数返回滚动距离和已滚动百分比（百分比为1则表示滚动到尽头）",
+          "回调参数": "{scrollTop, percentY }",
+          "template_name": "on-left-scrolling"
+        },
+        {
+          "事件名称": "on-right-scrolling",
+          "说明": "右面板纵向滚动时触发事件,参数返回滚动距离和已滚动百分比（百分比为1则表示滚动到尽头）",
+          "回调参数": "{scrollTop, percentY }",
+          "template_name": "on-right-scrolling"
+        }
+      ],
+      "slots": [
+        {
+          "name": "left-footer",
+          "说明": "左侧列表底部的内容",
+          "template_name": "left-footer"
+        },
+        {
+          "name": "right-footer",
+          "说明": "右侧列表底部的内容",
+          "template_name": "right-footer"
+        },
+        {
+          "name": "left-panel  2.53.0+",
+          "说明": "左侧面板的内容",
+          "template_name": "left-panel"
+        },
+        {
+          "name": "right-panel  2.53.0+",
+          "说明": "右侧面板的内容",
+          "template_name": "right-panel"
+        }
+      ],
+      "methods": [
+        {
+          "方法名": "clearQuery",
+          "说明": "清空某个面板的搜索关键词",
+          "回调参数": "‘left’ / ‘right’，指定需要清空的面板",
+          "template_name": "clear-query"
+        }
+      ]
+    }
+  },
+  "supporting_sections": []
+}

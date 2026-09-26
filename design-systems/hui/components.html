@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HUI · 参考组件</title>
+    <meta name="description" content="design-systems/hui 参考组件：海康 HUI 企业级安防设计系统，品牌蓝主色、数据密集布局、紧凑控件与 h-icon 图标字体。" />
+    <style>
+:root {
+  /* Surface */
+  --bg: #f5f5f5;
+  --surface: #ffffff;
+  --surface-warm: var(--surface);
+  /* Foreground */
+  --fg: rgba(0, 0, 0, 0.7);
+  --fg-2: rgba(0, 0, 0, 0.5);
+  --muted: rgba(0, 0, 0, 0.5);
+  --meta: rgba(0, 0, 0, 0.4);
+  /* Border */
+  --border: rgba(0, 0, 0, 0.2);
+  --border-soft: rgba(0, 0, 0, 0.12);
+  /* Accent (HUI brand blue) */
+  --accent: #2080f7;
+  --accent-on: #ffffff;
+  --accent-hover: #50a2f9;
+  --accent-active: #1461cc;
+  /* Semantic */
+  --success: #1db84c;
+  --warn: #ff832b;
+  --danger: #e6202a;
+  /* Fonts */
+  --font-display: "Microsoft YaHei", "微软雅黑", "PingFang SC", "Hiragino Sans GB", system-ui, -apple-system, sans-serif;
+  --font-body: "Microsoft YaHei", "微软雅黑", "PingFang SC", "Hiragino Sans GB", system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Monaco, Consolas, monospace;
+  /* Type scale (token.json heading/body series) */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 28px;
+  --text-4xl: 32px;
+  /* Leading & tracking */
+  --leading-body: 1.5;
+  --leading-tight: 1.25;
+  --tracking-display: 0;
+  /* Spacing (4px grid) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  /* Section rhythm */
+  --section-y-desktop: 80px;
+  --section-y-tablet: 56px;
+  --section-y-phone: 40px;
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-pill: 9999px;
+  /* Elevation */
+  --elev-flat: none;
+  --elev-ring: 0 0 0 1px var(--border);
+  --elev-raised: 0px 2px 8px rgba(0, 0, 0, 0.16), 0px 0px 2px rgba(0, 0, 0, 0.2);
+  /* Focus (HUI orange contrast) */
+  --focus-ring: 0 0 0 3px color-mix(in oklab, #ff832b, transparent 60%);
+  /* Motion */
+  --motion-fast: 150ms;
+  --motion-base: 200ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  /* Layout */
+  --container-max: 1920px;
+  --container-gutter-desktop: 32px;
+  --container-gutter-tablet: 24px;
+  --container-gutter-phone: 16px;
+
+  /* ============================================================
+   * HUI native tokens (--h-*, C-extension). Verbatim from the
+   * HUI-蓝 light theme export; consumed by HUI components.
+   * ============================================================ */
+  /* ---- sizes / spacing / radius / component metrics ---- */
+  --h-base-alpha-100: 0.9;
+  --h-base-alpha-10: 0.04;
+  --h-base-alpha-20: 0.06;
+  --h-base-alpha-30: 0.08;
+  --h-base-alpha-40: 0.12;
+  --h-base-alpha-50: 0.2;
+  --h-base-alpha-60: 0.3;
+  --h-base-alpha-70: 0.4;
+  --h-base-alpha-80: 0.5;
+  --h-base-alpha-90: 0.7;
+  --h-base-radius-lg: 10px;
+  --h-base-radius-md: 6px;
+  --h-base-radius-none: 0px;
+  --h-base-radius-round: 9999px;
+  --h-base-radius-sm: 4px;
+  --h-base-radius-xl: 20px;
+  --h-base-radius-xs: 2px;
+  --h-base-size-10: 40px;
+  --h-base-size-11: 44px;
+  --h-base-size-12: 48px;
+  --h-base-size-13: 52px;
+  --h-base-size-14: 56px;
+  --h-base-size-15: 60px;
+  --h-base-size-16: 64px;
+  --h-base-size-17: 68px;
+  --h-base-size-18: 72px;
+  --h-base-size-19: 76px;
+  --h-base-size-1: 4px;
+  --h-base-size-20: 80px;
+  --h-base-size-2: 8px;
+  --h-base-size-3: 12px;
+  --h-base-size-4: 16px;
+  --h-base-size-5: 20px;
+  --h-base-size-6: 24px;
+  --h-base-size-7: 28px;
+  --h-base-size-8: 32px;
+  --h-base-size-9: 36px;
+  --h-component-radio-button-_large-padding-left: 12px;
+  --h-component-radio-button-_medium-padding-left: 12px;
+  --h-component-radio-button-_mini-padding-left: 4px;
+  --h-component-radio-button-_small-padding-left: 4px;
+  --h-component-radio-button-large-padding-horizontal: 16px;
+  --h-component-radio-button-large-padding-vertical: 0px;
+  --h-component-radio-button-medium-padding-horizontal: 16px;
+  --h-component-radio-button-medium-padding-vertical: 0px;
+  --h-component-radio-button-mini-padding-horizontal: 8px;
+  --h-component-radio-button-mini-padding-vertical: 0px;
+  --h-component-radio-button-small-padding-horizontal: 8px;
+  --h-component-radio-button-small-padding-vertical: 0px;
+  --h-core-component-height-lg: 40px;
+  --h-core-component-height-md: 32px;
+  --h-core-component-height-sm: 28px;
+  --h-core-component-height-xl: 48px;
+  --h-core-component-height-xs: 24px;
+  --h-core-component-height-xxs: 20px;
+  --h-core-component-height-xxxs: 16px;
+  --h-core-space-lg: 24px;
+  --h-core-space-md: 16px;
+  --h-core-space-sm: 12px;
+  --h-core-space-xl: 32px;
+  --h-core-space-xs: 8px;
+  --h-core-space-xxl: 40px;
+  --h-core-space-xxs: 4px;
+
+  /* ---- colors ---- */
+  --h-color-component-upload-dragger-bg-color-disabled: rgba(245, 245, 245, 1);
+  --h-color-component-upload-dragger-border-color-disablede: rgba(0, 0, 0, 0.08);
+  --h-color-component-upload-picture-btn-bg-color-disabledd: rgba(245, 245, 245, 1);
+  --h-color-component-upload-picture-btn-border-color-disabled: rgba(0, 0, 0, 0.08);
+  --h-color-component-upload-picture-btn-text-color-disabled: rgba(0, 0, 0, 0.3);
+  --h-color-core-bg-custom: rgba(245, 245, 245, 1);
+  --h-color-core-bg-float-secondary: rgba(255, 255, 255, 1);
+  --h-color-core-bg-float: rgba(255, 255, 255, 1);
+  --h-color-core-bg-layout: rgba(245, 245, 245, 1);
+  --h-color-core-bg-primary-active: rgba(235, 235, 235, 1);
+  --h-color-core-bg-primary-disabled: rgba(245, 245, 245, 1);
+  --h-color-core-bg-primary-hover: rgba(245, 245, 245, 1);
+  --h-color-core-bg-primary: rgba(255, 255, 255, 1);
+  --h-color-core-bg-secondary-active: rgba(224, 224, 224, 1);
+  --h-color-core-bg-secondary-disabled: rgba(245, 245, 245, 1);
+  --h-color-core-bg-secondary-hover: rgba(240, 240, 240, 1);
+  --h-color-core-bg-secondary: rgba(245, 245, 245, 1);
+  --h-color-core-bg-tertiary-active: rgba(204, 204, 204, 1);
+  --h-color-core-bg-tertiary-disabled: rgba(245, 245, 245, 1);
+  --h-color-core-bg-tertiary-hover: rgba(224, 224, 224, 1);
+  --h-color-core-bg-tertiary: rgba(235, 235, 235, 1);
+  --h-color-core-bg-translucent-strong-active: rgba(0, 0, 0, 0.12);
+  --h-color-core-bg-translucent-strong-hover: rgba(0, 0, 0, 0.06);
+  --h-color-core-bg-translucent-subtle-active: rgba(0, 0, 0, 0.08);
+  --h-color-core-bg-translucent-subtle-hover: rgba(0, 0, 0, 0.04);
+  --h-color-core-bg-widget: rgba(255, 255, 255, 1);
+  --h-color-core-border-disabled: rgba(0, 0, 0, 0.08);
+  --h-color-core-border-primary: rgba(0, 0, 0, 0.3);
+  --h-color-core-border-secondary: rgba(0, 0, 0, 0.2);
+  --h-color-core-border-tertiary: rgba(0, 0, 0, 0.12);
+  --h-color-core-brand-_default: rgba(32, 128, 247, 1);
+  --h-color-core-brand-active: rgba(20, 97, 204, 1);
+  --h-color-core-brand-disabled: rgba(172, 216, 253, 1);
+  --h-color-core-brand-hover: rgba(80, 162, 249, 1);
+  --h-color-core-brand-secondary-active: rgba(125, 190, 251, 1);
+  --h-color-core-brand-secondary-disabled: rgba(232, 246, 255, 1);
+  --h-color-core-brand-secondary-hover: rgba(172, 216, 253, 1);
+  --h-color-core-brand-secondary: rgba(204, 233, 253, 1);
+  --h-color-core-brand-tertiary: rgba(232, 246, 255, 1);
+  --h-color-core-chart-01: rgba(20, 97, 204, 1);
+  --h-color-core-chart-02: rgba(0, 179, 175, 1);
+  --h-color-core-chart-03: rgba(19, 157, 65, 1);
+  --h-color-core-chart-04: rgba(255, 131, 43, 1);
+  --h-color-core-chart-05: rgba(31, 165, 255, 1);
+  --h-color-core-chart-06: rgba(138, 63, 252, 1);
+  --h-color-core-chart-07: rgba(234, 60, 142, 1);
+  --h-color-core-chart-08: rgba(230, 32, 42, 1);
+  --h-color-core-chart-09: rgba(255, 204, 0, 1);
+  --h-color-core-chart-10: rgba(0, 24, 77, 1);
+  --h-color-core-danger-_default: rgba(230, 32, 42, 1);
+  --h-color-core-danger-active: rgba(192, 20, 34, 1);
+  --h-color-core-danger-disabled: rgba(247, 173, 169, 1);
+  --h-color-core-danger-hover: rgba(236, 78, 81, 1);
+  --h-color-core-danger-secondary: rgba(251, 206, 202, 1);
+  --h-color-core-danger-tertiary: rgba(255, 235, 232, 1);
+  --h-color-core-focus-contrast: rgba(255, 131, 43, 1);
+  --h-color-core-icon-caption: rgba(0, 0, 0, 0.9);
+  --h-color-core-icon-custom: rgba(0, 0, 0, 0.2);
+  --h-color-core-icon-disabled: rgba(0, 0, 0, 0.3);
+  --h-color-core-icon-primary: rgba(0, 0, 0, 0.7);
+  --h-color-core-icon-secondary: rgba(0, 0, 0, 0.5);
+  --h-color-core-icon-tertiary: rgba(0, 0, 0, 0.4);
+  --h-color-core-info-_default: rgba(23, 108, 255, 1);
+  --h-color-core-info-active: rgba(14, 80, 210, 1);
+  --h-color-core-info-disabled: rgba(169, 209, 255, 1);
+  --h-color-core-info-hover: rgba(75, 147, 255, 1);
+  --h-color-core-info-secondary: rgba(203, 229, 255, 1);
+  --h-color-core-info-tertiary: rgba(232, 244, 255, 1);
+  --h-color-core-item-bg-active: rgba(0, 0, 0, 0.08);
+  --h-color-core-item-bg-hover: rgba(0, 0, 0, 0.04);
+  --h-color-core-item-bg-selected-disabled: rgba(232, 246, 255, 1);
+  --h-color-core-item-bg-selected: rgba(204, 233, 253, 1);
+  --h-color-core-link-_default: rgba(23, 108, 255, 1);
+  --h-color-core-link-active: rgba(14, 80, 210, 1);
+  --h-color-core-link-disabled: rgba(169, 209, 255, 1);
+  --h-color-core-link-hover: rgba(75, 147, 255, 1);
+  --h-color-core-link-visited: rgba(7, 55, 166, 1);
+  --h-color-core-on-color-_default: rgba(255, 255, 255, 1);
+  --h-color-core-on-color-disabled: rgba(255, 255, 255, 1);
+  --h-color-core-overlay-loading: rgba(255, 255, 255, 0.6);
+  --h-color-core-overlay-modal: rgba(0, 0, 0, 0.3);
+  --h-color-core-overlay-toast: rgba(0, 0, 0, 0.5);
+  --h-color-core-remind-_default: rgba(255, 204, 0, 1);
+  --h-color-core-remind-active: rgba(210, 161, 0, 1);
+  --h-color-core-remind-disabled: rgba(255, 245, 162, 1);
+  --h-color-core-remind-hover: rgba(255, 222, 56, 1);
+  --h-color-core-remind-secondary: rgba(255, 251, 200, 1);
+  --h-color-core-remind-tertiary: rgba(255, 254, 232, 1);
+  --h-color-core-success-_default: rgba(29, 184, 76, 1);
+  --h-color-core-success-active: rgba(19, 157, 65, 1);
+  --h-color-core-success-disabled: rgba(161, 233, 176, 1);
+  --h-color-core-success-hover: rgba(71, 201, 106, 1);
+  --h-color-core-success-secondary: rgba(197, 244, 205, 1);
+  --h-color-core-success-tertiary: rgba(232, 255, 235, 1);
+  --h-color-core-text-caption: rgba(0, 0, 0, 0.9);
+  --h-color-core-text-disabled: rgba(0, 0, 0, 0.3);
+  --h-color-core-text-primary: rgba(0, 0, 0, 0.7);
+  --h-color-core-text-secondary: rgba(0, 0, 0, 0.5);
+  --h-color-core-text-tertiary: rgba(0, 0, 0, 0.4);
+  --h-color-core-warning-_default: rgba(255, 131, 43, 1);
+  --h-color-core-warning-active: rgba(210, 97, 27, 1);
+  --h-color-core-warning-disabled: rgba(255, 217, 176, 1);
+  --h-color-core-warning-hover: rgba(255, 164, 90, 1);
+  --h-color-core-warning-secondary: rgba(255, 233, 206, 1);
+  --h-color-core-warning-tertiary: rgba(255, 245, 232, 1);
+  --h-color-portal-navLev3-bd-color: rgba(229, 229, 229, 1);
+  --h-color-portal-navLev3-bg-color: rgba(255, 255, 255, 1);
+  --h-color-portal-navLev3-li-bg-color-h: rgba(0, 0, 0, 0.04);
+  --h-color-portal-navLev3-li-bg-color-sel: rgba(204, 233, 253, 1);
+  --h-color-portal-navLev3-li-bg-color: rgba(255, 255, 255, 0);
+  --h-color-portal-navLev3-li-ft-color-h: rgba(102, 102, 102, 1);
+  --h-color-portal-navLev3-li-ft-color-sel: rgba(102, 102, 102, 1);
+  --h-color-portal-navLev3-li-ft-color: rgba(102, 102, 102, 1);
+  --h-color-portal-navlev3-tip-bg-color: rgba(255, 255, 255, 1);
+  --h-color-portal-navlev3-tip-ft-color: rgba(102, 102, 102, 1);
+
+  /* ---- type (font-size + line-height, px) ---- */
+  --h-font-size-body-lg: 16px;
+  --h-font-size-body-md: 14px;
+  --h-font-size-body-sm: 12px;
+  --h-font-size-heading-01: 28px;
+  --h-font-size-heading-02: 24px;
+  --h-font-size-heading-03: 20px;
+  --h-font-size-heading-04: 16px;
+  --h-font-size-heading-05: 14px;
+  --h-font-size-heading-page: 32px;
+  --h-font-size-heading-widget: 18px;
+  --h-font-size-number-01: 42px;
+  --h-font-size-number-02: 32px;
+  --h-font-size-number-03: 28px;
+  --h-font-size-number-04: 24px;
+  --h-font-size-number-05: 20px;
+  --h-font-size-number-06: 16px;
+  --h-font-size-number-07: 14px;
+  --h-font-size-number-08: 12px;
+  --h-line-hight-body-lg: 24px;
+  --h-line-hight-body-md: 22px;
+  --h-line-hight-body-sm: 20px;
+  --h-line-hight-heading-01: 36px;
+  --h-line-hight-heading-02: 32px;
+  --h-line-hight-heading-03: 28px;
+  --h-line-hight-heading-04: 24px;
+  --h-line-hight-heading-05: 22px;
+  --h-line-hight-heading-page: 40px;
+  --h-line-hight-heading-widget: 26px;
+  --h-line-hight-number-01: 50px;
+  --h-line-hight-number-02: 40px;
+  --h-line-hight-number-03: 36px;
+  --h-line-hight-number-04: 32px;
+  --h-line-hight-number-05: 28px;
+  --h-line-hight-number-06: 24px;
+  --h-line-hight-number-07: 22px;
+  --h-line-hight-number-08: 20px;
+
+  /* ---- elevation + icon font ---- */
+  --h-shadow-z1: 0px 2px 8px rgba(0, 0, 0, 0.16), 0px 0px 2px rgba(0, 0, 0, 0.2);
+  --h-shadow-z2: 0px 4px 16px rgba(0, 0, 0, 0.16), 0px 0px 2px rgba(0, 0, 0, 0.2);
+  --h-shadow-z3: 0px 16px 32px rgba(0, 0, 0, 0.16), 0px 0px 16px rgba(0, 0, 0, 0.2);
+  --h-font-icon: "h-icon";
+}
+
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        min-height: 100vh; background: var(--bg); color: var(--fg);
+        font-family: var(--font-body); font-size: var(--text-base);
+        line-height: var(--leading-body); -webkit-font-smoothing: antialiased;
+      }
+      @font-face { font-family: "h-icon"; src: url("fonts/h-icon.woff2") format("woff2"), url("fonts/h-icon.ttf") format("truetype"); }
+      .icon { font-family: var(--h-font-icon); font-style: normal; line-height: 1; }
+      .h-icon-add::before { content: "\ea06"; }
+      .h-icon-angle-down::before { content: "\ea1a"; }
+      .h-icon-arrow-right::before { content: "\ea33"; }
+      .h-icon-alarm::before { content: "\ea09"; }
+      .appbar { display: flex; align-items: center; gap: var(--space-4); height: 56px; padding: 0 var(--space-6); background: var(--surface); border-bottom: 1px solid var(--border); }
+      .brand { font-weight: 500; color: var(--accent); font-size: var(--text-lg); }
+      nav.crumb { display: flex; gap: var(--space-2); color: var(--muted); font-size: var(--text-sm); }
+      nav.crumb a { color: var(--muted); text-decoration: none; }
+      nav.crumb a:hover { color: var(--accent); }
+      .container { max-width: var(--container-max); margin-inline: auto; padding-inline: var(--container-gutter-desktop); }
+      section { padding-block: var(--section-y-desktop); }
+      @media (max-width: 1023px) { .container { padding-inline: var(--container-gutter-tablet); } section { padding-block: var(--section-y-tablet); } }
+      @media (max-width: 639px) { .container { padding-inline: var(--container-gutter-phone); } section { padding-block: var(--section-y-phone); } }
+      h1, h2, h3, p { margin: 0; }
+      h1 { font-size: var(--text-4xl); font-weight: 500; line-height: var(--leading-tight); letter-spacing: var(--tracking-display); }
+      h2 { font-size: var(--text-2xl); font-weight: 500; line-height: var(--leading-tight); }
+      h3 { font-size: var(--text-lg); font-weight: 500; }
+      .eyebrow { color: var(--accent); font-size: var(--text-xs); font-weight: 500; }
+      .lead { color: var(--muted); font-size: var(--text-lg); max-width: 640px; }
+      .stack > * + * { margin-block-start: var(--space-4); }
+      .stack-3 > * + * { margin-block-start: var(--space-3); }
+      .stack-4 > * + * { margin-block-start: var(--space-4); }
+      .body-muted { color: var(--muted); font-size: var(--text-sm); }
+      .actions { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-block-start: var(--space-6); }
+      .btn { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 32px; padding: 0 var(--space-4); border: 1px solid transparent; border-radius: var(--radius-sm); font: 400 var(--text-sm) / 1 var(--font-body); cursor: pointer; transition: background-color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+      .btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+      .btn-primary { background: var(--accent); color: var(--accent-on); }
+      .btn-primary:hover { background: var(--accent-hover); }
+      .btn-primary:active { background: var(--accent-active); }
+      .btn-secondary { background: var(--surface); color: var(--fg); border-color: var(--border); }
+      .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+      .btn-text { background: transparent; color: var(--accent); }
+      .btn-danger { background: var(--danger); color: #fff; }
+      .icon-btn { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--fg); cursor: pointer; }
+      .icon-btn:hover { color: var(--accent); border-color: var(--accent); }
+      .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-4); }
+      @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+      .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--elev-raised); overflow: hidden; }
+      .card-head { display: flex; justify-content: space-between; align-items: center; padding: var(--space-4) var(--space-5); border-bottom: 1px solid var(--border-soft); }
+      .card-body { padding: var(--space-5); }
+      .field { display: grid; gap: var(--space-2); margin-block-start: var(--space-4); }
+      .field:first-child { margin-block-start: 0; }
+      label { color: var(--fg); font-size: var(--text-sm); }
+      .req::before { content: "*"; color: var(--danger); margin-inline-end: var(--space-1); }
+      input, select { width: 100%; min-height: 32px; padding: 0 var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--fg); font: inherit; }
+      input:focus, select:focus { outline: none; border-color: var(--accent); box-shadow: var(--focus-ring); }
+      .hint { color: var(--muted); font-size: var(--text-xs); }
+      .switch { display: inline-flex; align-items: center; gap: var(--space-2); }
+      .switch i { width: 36px; height: 20px; border-radius: var(--radius-pill); background: var(--accent); position: relative; }
+      .switch i::after { content: ""; position: absolute; top: 2px; right: 2px; width: 16px; height: 16px; border-radius: var(--radius-pill); background: #fff; }
+      table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
+      th, td { text-align: left; padding: var(--space-3); border-bottom: 1px solid var(--border-soft); }
+      th { color: var(--muted); font-weight: 400; background: var(--bg); }
+      .badge { display: inline-flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-2); height: 20px; border-radius: var(--radius-sm); font-size: var(--text-xs); }
+      .badge-success { background: color-mix(in oklab, var(--success), transparent 88%); color: var(--success); }
+      .badge-danger { background: color-mix(in oklab, var(--danger), transparent 88%); color: var(--danger); }
+      .badge-warn { background: color-mix(in oklab, var(--warn), transparent 85%); color: var(--warn); }
+      .toast { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--elev-raised); font-size: var(--text-sm); margin-block-start: var(--space-3); }
+      .toast.ok { border-left: 3px solid var(--success); }
+      .empty { display: grid; place-items: center; gap: var(--space-3); padding: var(--space-12); color: var(--muted); border: 1px dashed var(--border); border-radius: var(--radius-md); }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header class="appbar">
+        <span class="brand">HUI</span>
+        <nav class="crumb" aria-label="面包屑">
+          <a href="#">系统管理</a><span>/</span><a href="#">设备管理</a><span>/</span><span>视频监控</span>
+        </nav>
+      </header>
+      <section>
+        <div class="container stack">
+          <p class="eyebrow">HUI 设计系统</p>
+          <h1>安防管理平台控制台</h1>
+          <p class="lead">企业级、数据密集的安防软件界面：品牌蓝主色、紧凑控件、清晰层级。</p>
+          <p class="body-muted">基于海康 HUI「蓝」浅色主题 token 构建。</p>
+          <div class="actions" aria-label="操作">
+            <button class="btn btn-primary"><span class="icon h-icon-add" aria-hidden="true"></span>新增设备</button>
+            <button class="btn btn-secondary">导出</button>
+            <button class="btn btn-text">取消</button>
+            <button class="btn btn-danger">删除</button>
+            <button class="icon-btn" aria-label="告警"><span class="icon h-icon-alarm" aria-hidden="true"></span></button>
+          </div>
+        </div>
+      </section>
+      <section>
+        <div class="container grid">
+          <article class="card">
+            <div class="card-head"><h3>设备信息</h3></div>
+            <div class="card-body">
+              <div class="field"><label class="req" for="hui-name">设备名称</label><input id="hui-name" value="IPC-摄像机01" /><span class="hint">1~32个字符；不能包含特殊字符（/ : * ?）。</span></div>
+              <div class="field"><label for="hui-type">设备类型</label><select id="hui-type"><option>网络摄像机</option><option>网络球机</option></select></div>
+              <div class="field"><span class="switch"><i aria-hidden="true"></i><label>开启录像</label></span></div>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-head"><h3>设备列表</h3><button class="icon-btn" aria-label="展开"><span class="icon h-icon-angle-down" aria-hidden="true"></span></button></div>
+            <div class="card-body">
+              <table>
+                <thead><tr><th>名称</th><th>状态</th></tr></thead>
+                <tbody>
+                  <tr><td>IPC-01</td><td><span class="badge badge-success">在线</span></td></tr>
+                  <tr><td>IPC-02</td><td><span class="badge badge-danger">离线</span></td></tr>
+                  <tr><td>NVR-01</td><td><span class="badge badge-warn">升级中</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
+          <article class="card">
+            <div class="card-head"><h3>提示与反馈</h3></div>
+            <div class="card-body">
+              <div class="toast ok"><span class="icon h-icon-add" aria-hidden="true"></span>下发参数成功。</div>
+              <div class="toast"><span>加载图片失败，请刷新。</span></div>
+              <a class="btn btn-text" href="#">查看详情 <span class="icon h-icon-arrow-right" aria-hidden="true"></span></a>
+            </div>
+          </article>
+        </div>
+      </section>
+      <section>
+        <div class="container">
+          <div class="empty"><span class="icon h-icon-alarm" aria-hidden="true"></span><span>暂无数据</span></div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

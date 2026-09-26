@@ -1,0 +1,281 @@
+{
+  "schema_version": "hui-page-variant.v1",
+  "id": "hui.tpp.page.card.card-tabs",
+  "name": "卡式标签页",
+  "family": "hui.tpp.family.card-tabs",
+  "source": {
+    "url": "http://tpp.dev.hikhub.net/tpp#/pages/card/cardTypeTabPage",
+    "package": "@hiktpp/card-card-type-tab-page",
+    "hui_version": "^2.55.0",
+    "observed_at": "2026-07-31T09:21:23.799Z",
+    "evidence": "../../evidence/card/card-tabs.json"
+  },
+  "parameters": {
+    "tab_style": "card",
+    "tree": false
+  },
+  "geometry": {
+    "viewport": {
+      "width": 1920,
+      "height": 968
+    },
+    "root": {
+      "class": "h-layout",
+      "rect": {
+        "x": 240,
+        "y": 102.34,
+        "width": 1680,
+        "height": 865.66
+      },
+      "style": {
+        "display": "flex",
+        "padding": "0px",
+        "overflow": "visible"
+      }
+    },
+    "key_regions": {
+      "search": {
+        "class": "h-page-search row-amount-6",
+        "rect": {
+          "x": 280,
+          "y": 157.34,
+          "width": 1600,
+          "height": 109
+        },
+        "display": "block",
+        "position": "static",
+        "padding": "16px 0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "toolbar": {
+        "class": "bar-search-row",
+        "rect": {
+          "x": 268,
+          "y": 266.34,
+          "width": 1624,
+          "height": 56
+        },
+        "display": "flex",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "collection": {
+        "class": "demo-card",
+        "rect": {
+          "x": 280,
+          "y": 322.34,
+          "width": 1600,
+          "height": 1188
+        },
+        "display": "grid",
+        "position": "static",
+        "padding": "0px",
+        "gap": "16px",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "card": {
+        "class": "box-card el-card is-hover-shadow",
+        "rect": {
+          "x": 280,
+          "y": 322.34,
+          "width": 307.19,
+          "height": 285
+        },
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "hidden",
+        "overflow_y": "hidden"
+      },
+      "card_header": {
+        "class": "el-card__header",
+        "rect": {
+          "x": 281,
+          "y": 323.34,
+          "width": 305.19,
+          "height": 217
+        },
+        "display": "block",
+        "position": "static",
+        "padding": "12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "card_body": {
+        "class": "el-card__body",
+        "rect": {
+          "x": 281,
+          "y": 540.34,
+          "width": 305.19,
+          "height": 66
+        },
+        "display": "block",
+        "position": "static",
+        "padding": "0px 12px 12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "pagination": {
+        "class": "el-pagination el-pagination--table",
+        "rect": {
+          "x": 268,
+          "y": 912,
+          "width": 1624,
+          "height": 56
+        },
+        "display": "flex",
+        "position": "static",
+        "padding": "0px 12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "tabs": {
+        "class": "el-tabs el-tabs--top",
+        "rect": {
+          "x": 256,
+          "y": 118.34,
+          "width": 1648,
+          "height": 39
+        },
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      }
+    },
+    "repeat_layout": {
+      "count": 20,
+      "sample_rects": [
+        {
+          "x": 280,
+          "y": 322.34,
+          "width": 307.19,
+          "height": 285
+        },
+        {
+          "x": 603.19,
+          "y": 322.34,
+          "width": 307.2,
+          "height": 285
+        },
+        {
+          "x": 926.39,
+          "y": 322.34,
+          "width": 307.2,
+          "height": 285
+        },
+        {
+          "x": 1249.59,
+          "y": 322.34,
+          "width": 307.2,
+          "height": 285
+        },
+        {
+          "x": 1572.8,
+          "y": 322.34,
+          "width": 307.2,
+          "height": 285
+        },
+        {
+          "x": 280,
+          "y": 623.34,
+          "width": 307.19,
+          "height": 285
+        }
+      ],
+      "columns_in_first_row": 5,
+      "horizontal_gap": 16,
+      "vertical_gap": 16
+    }
+  },
+  "composition": {
+    "hui_components": {
+      "el-breadcrumb": 1,
+      "el-breadcrumb-item": 3,
+      "el-button": 14,
+      "el-card": 20,
+      "el-divider": 1,
+      "el-drawer": 3,
+      "el-dropdown": 1,
+      "el-dropdown-item": 2,
+      "el-form": 1,
+      "el-form-item": 8,
+      "el-input": 10,
+      "el-menu-item": 19,
+      "el-option": 4,
+      "el-pagination": 1,
+      "el-radio-button": 2,
+      "el-radio-group": 1,
+      "el-scrollbar": 3,
+      "el-select": 1,
+      "el-submenu": 5,
+      "el-tab-pane": 3,
+      "el-tabs": 1,
+      "h-icon": 1,
+      "h-svg-icon": 1
+    },
+    "page_framework_components": {
+      "h-layout": 5,
+      "h-layout-footer": 2,
+      "h-layout-header": 2,
+      "h-page": 1,
+      "h-page-button-group": 1,
+      "h-page-content": 4,
+      "h-page-menu": 1,
+      "h-page-search-item": 8
+    },
+    "unindexed_runtime_components": {
+      "el-select-menu": 1
+    },
+    "actions": [
+      {
+        "label": "查询",
+        "count": 1
+      },
+      {
+        "label": "重置",
+        "count": 1
+      },
+      {
+        "label": "添加",
+        "count": 1
+      },
+      {
+        "label": "编辑",
+        "count": 1
+      },
+      {
+        "label": "删除",
+        "count": 1
+      },
+      {
+        "label": "导入",
+        "count": 1
+      },
+      {
+        "label": "导出",
+        "count": 1
+      },
+      {
+        "label": "跳转",
+        "count": 1
+      },
+      {
+        "label": "蓝白主题",
+        "count": 1
+      }
+    ]
+  }
+}

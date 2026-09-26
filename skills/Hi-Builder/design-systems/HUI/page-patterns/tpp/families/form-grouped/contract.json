@@ -1,0 +1,85 @@
+{
+  "schema_version": "hui-page-pattern.v1",
+  "id": "hui.tpp.family.form-grouped",
+  "name": "分组表单页",
+  "source": {
+    "platform": "HUI-VUE典型页面",
+    "observed_at": "2026-07-31",
+    "catalog": "../../catalog.json"
+  },
+  "match": [
+    "grouped-form",
+    "分组表单",
+    "一级分组",
+    "二级分组"
+  ],
+  "semantics": [
+    "section-groups",
+    "group-title",
+    "responsive-field-grid",
+    "sticky-footer-actions"
+  ],
+  "shared_runtime_components": [
+    "el-checkbox",
+    "el-col",
+    "el-form",
+    "el-form-item",
+    "el-input",
+    "el-option",
+    "el-radio",
+    "el-radio-group",
+    "el-row",
+    "el-scrollbar",
+    "el-select",
+    "el-tag",
+    "el-tooltip",
+    "el-upload",
+    "h-svg-icon"
+  ],
+  "invariants": {
+    "regions": {
+      "content": {
+        "display": "flex",
+        "position": "static",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "form": {
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      }
+    },
+    "variant_values_must_come_from_page_contract": true
+  },
+  "variants": [
+    {
+      "id": "hui.tpp.page.form.first-level-grouping",
+      "name": "一级分组",
+      "contract": "../../pages/form/first-level-grouping.json",
+      "parameters": {
+        "group_depth": 1,
+        "container_count": 1,
+        "columns": 3,
+        "form_item_gap": "24px",
+        "title_field_gap": "24px",
+        "group_gap": "48px",
+        "default_label_position": null
+      }
+    },
+    {
+      "id": "hui.tpp.page.form.second-level-grouping",
+      "name": "二级分组",
+      "contract": "../../pages/form/second-level-grouping.json",
+      "parameters": {
+        "group_depth": 2,
+        "container_count": 1,
+        "default_label_position": null
+      }
+    }
+  ]
+}

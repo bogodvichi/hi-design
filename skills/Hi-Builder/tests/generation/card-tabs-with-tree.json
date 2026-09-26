@@ -1,0 +1,53 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "id": "card-tabs-with-tree",
+  "title": "卡式标签页与树控件",
+  "page_kind": "card-tabs",
+  "pattern_contract": "card/card-tabs-with-tree.json",
+  "portal": {
+    "active_top_menu": "智能应用",
+    "section": "典型页测试",
+    "tab_title": "卡式标签页与树控件",
+    "active_side_menu": "card-tabs-tree",
+    "side_menus": [
+      {"id": "card-tabs-tree", "label": "卡式标签页与树控件", "icon": "h-icon-menu"}
+    ]
+  },
+  "tree_nodes": [
+    {
+      "id": "all",
+      "label": "全部区域",
+      "children": [
+        {"id": "headquarters", "label": "总部园区", "filter_key": "area", "filter_value": "总部园区"},
+        {"id": "research", "label": "研发中心", "filter_key": "area", "filter_value": "研发中心"},
+        {"id": "production", "label": "生产园区", "filter_key": "area", "filter_value": "生产园区"}
+      ]
+    }
+  ],
+  "default_tree_node": "all",
+  "toolbar_actions": [
+    {"label": "批量导出", "icon": "h-icon-export"},
+    {"label": "刷新", "icon": "h-icon-refresh"}
+  ],
+  "page_size": 10,
+  "card_tabs": [
+    {"id": "vehicle-events", "label": "车辆事件", "card_profile": "similarity-card", "pattern_contract": "card/similarity.json"},
+    {"id": "face-events", "label": "人员事件", "card_profile": "similarity-card", "pattern_contract": "card/similarity.json"}
+  ],
+  "preview": {
+    "cardTabRows": {
+      "vehicle-events": [
+        {"id": "v1", "referenceImage": "http://tpp.dev.hikhub.net/tpp/img/car.06554ce8.png", "captureImage": "http://tpp.dev.hikhub.net/tpp/img/car.06554ce8.png", "metric": "98.7%", "title": "浙A·6K829", "status": "同车", "tone": "blue", "category": "车辆比中", "time": "2026-08-19 10:32:18", "location": "东门卡口", "area": "总部园区"},
+        {"id": "v2", "referenceImage": "http://tpp.dev.hikhub.net/tpp/img/car.06554ce8.png", "captureImage": "http://tpp.dev.hikhub.net/tpp/img/car.06554ce8.png", "metric": "96.4%", "title": "浙B·2M517", "status": "待复核", "tone": "orange", "category": "重点车辆", "time": "2026-08-19 10:28:46", "location": "研发楼入口", "area": "研发中心"},
+        {"id": "v3", "referenceImage": "http://tpp.dev.hikhub.net/tpp/img/car.06554ce8.png", "captureImage": "http://tpp.dev.hikhub.net/tpp/img/car.06554ce8.png", "metric": "92.8%", "title": "浙C·8Q166", "status": "待复核", "tone": "orange", "category": "疑似套牌", "time": "2026-08-19 10:18:12", "location": "生产区北门", "area": "生产园区"}
+      ],
+      "face-events": [
+        {"id": "f1", "referenceImage": "http://tpp.dev.hikhub.net/tpp/img/similarity.167e6ed2.png", "captureImage": "http://tpp.dev.hikhub.net/tpp/img/similarity1.77fd29b8.png", "metric": "99.1%", "title": "人员事件-001", "status": "重点关注", "tone": "orange", "category": "重点人员", "time": "2026-08-19 10:35:41", "location": "总部南门", "area": "总部园区"},
+        {"id": "f2", "referenceImage": "http://tpp.dev.hikhub.net/tpp/img/similarity.167e6ed2.png", "captureImage": "http://tpp.dev.hikhub.net/tpp/img/similarity1.77fd29b8.png", "metric": "95.2%", "title": "人员事件-002", "status": "一般关注", "tone": "blue", "category": "布控人员", "time": "2026-08-19 10:24:53", "location": "研发楼大厅", "area": "研发中心"},
+        {"id": "f3", "referenceImage": "http://tpp.dev.hikhub.net/tpp/img/similarity.167e6ed2.png", "captureImage": "http://tpp.dev.hikhub.net/tpp/img/similarity1.77fd29b8.png", "metric": "91.6%", "title": "人员事件-003", "status": "待复核", "tone": "orange", "category": "陌生人员", "time": "2026-08-19 10:12:14", "location": "生产车间", "area": "生产园区"}
+      ]
+    }
+  }
+}

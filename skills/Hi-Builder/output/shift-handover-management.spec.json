@@ -1,0 +1,56 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "id": "shift-handover-management",
+  "title": "交接班管理",
+  "page_kind": "table",
+  "pattern_contract": "table/regular-filter-box-high-low.json",
+  "portal": {
+    "active_top_menu": "智能应用",
+    "section": "线路/车站安防集成管理中心 · 值班管理",
+    "tab_title": "交接班管理",
+    "active_side_menu": "shift-handover",
+    "side_menus": [
+      {"id": "duty-roster", "label": "值班排班管理", "icon": "h-icon-calendar", "href": "duty-roster-management.html"},
+      {"id": "duty-log", "label": "值班日志管理", "icon": "h-icon-edit", "href": "duty-log-management.html"},
+      {"id": "shift-handover", "label": "交接班管理", "icon": "h-icon-users", "href": "shift-handover-management.html"}
+    ]
+  },
+  "filters": [
+    {"key": "date", "label": "交接日期", "kind": "date-range", "placeholder": "请选择日期范围"},
+    {"key": "outgoingPerson", "label": "交班人员", "kind": "input", "placeholder": "请输入交班人", "default": ""},
+    {"key": "incomingPerson", "label": "接班人员", "kind": "input", "placeholder": "请输入接班人", "default": ""},
+    {"key": "confirmStatus", "label": "确认状态", "kind": "select", "options": ["全部", "待交班人确认", "待接班人确认", "已完成"], "default": "全部"},
+    {"key": "shift", "label": "班次", "kind": "select", "options": ["全部", "早班", "中班", "晚班"], "default": "全部"}
+  ],
+  "toolbar_actions": [
+    {"label": "新增交接班", "icon": "h-icon-add"},
+    {"label": "自动汇总日志", "icon": "h-icon-refresh"},
+    {"label": "编辑", "icon": "h-icon-edit"},
+    {"label": "查看", "icon": "h-icon-menu"}
+  ],
+  "columns": [
+    {"prop": "date", "label": "交接日期", "fixed_width": 120},
+    {"prop": "shift", "label": "班次", "fixed_width": 80},
+    {"prop": "outgoingPerson", "label": "交班人员", "fixed_width": 100},
+    {"prop": "incomingPerson", "label": "接班人员", "fixed_width": 100},
+    {"prop": "handoverContent", "label": "交接内容", "min_width": 260},
+    {"prop": "todoSummary", "label": "待办事项移交", "min_width": 180},
+    {"prop": "abnormalSummary", "label": "异常情况说明", "min_width": 180},
+    {"prop": "confirmStatus", "label": "确认状态", "fixed_width": 120},
+    {"prop": "handoverTime", "label": "交接时间", "fixed_width": 165}
+  ],
+  "page_size": 20,
+  "preview": {
+    "filters": {"date": "", "outgoingPerson": "", "incomingPerson": "", "confirmStatus": "全部", "shift": "全部"},
+    "total": 12,
+    "rows": [
+      {"id": 201, "date": "2026-08-25", "shift": "早班", "outgoingPerson": "李明", "incomingPerson": "王海峰", "handoverContent": "已完成早班安防巡检及设备状态复核，晚高峰客流预警已开启。", "todoSummary": "跟进2号出入口摄像机抖动问题", "abnormalSummary": "摄像机画面间歇性抖动，工单已派发", "confirmStatus": "待接班人确认", "handoverTime": "2026-08-25 14:02:18"},
+      {"id": 202, "date": "2026-08-24", "shift": "晚班", "outgoingPerson": "孙悦", "incomingPerson": "李明", "handoverContent": "封站后巡查完成，各重点区域布防正常，值班日志已汇总。", "todoSummary": "无", "abnormalSummary": "无", "confirmStatus": "已完成", "handoverTime": "2026-08-25 06:01:43"},
+      {"id": 203, "date": "2026-08-24", "shift": "中班", "outgoingPerson": "赵倩", "incomingPerson": "孙悦", "handoverContent": "恶劣天气预案解除，客流恢复正常，设备联动测试记录已归档。", "todoSummary": "复核应急物资补充清单", "abnormalSummary": "B区广播终端短时离线，已恢复", "confirmStatus": "已完成", "handoverTime": "2026-08-24 22:04:26"},
+      {"id": 204, "date": "2026-08-24", "shift": "早班", "outgoingPerson": "张勇", "incomingPerson": "赵倩", "handoverContent": "运营前检查完成，访客门禁和重点机房授权状态正常。", "todoSummary": "持续观察北广场客流", "abnormalSummary": "无", "confirmStatus": "已完成", "handoverTime": "2026-08-24 14:00:55"},
+      {"id": 205, "date": "2026-08-23", "shift": "晚班", "outgoingPerson": "陈晓东", "incomingPerson": "张勇", "handoverContent": "夜间设备巡检完成，机电告警均已复位，未发现人员滞留。", "todoSummary": "确认扶梯维保人员进场时间", "abnormalSummary": "3号扶梯检修状态持续", "confirmStatus": "待交班人确认", "handoverTime": "—"}
+    ]
+  }
+}

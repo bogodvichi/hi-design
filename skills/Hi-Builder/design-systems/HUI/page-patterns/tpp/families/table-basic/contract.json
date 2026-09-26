@@ -1,0 +1,84 @@
+{
+  "schema_version": "hui-page-pattern.v1",
+  "id": "hui.tpp.family.table-basic",
+  "name": "基础表格页",
+  "source": {
+    "platform": "HUI-VUE典型页面",
+    "observed_at": "2026-07-31",
+    "catalog": "../../catalog.json"
+  },
+  "match": [
+    "basic-table",
+    "基础表格",
+    "仅标题",
+    "带操作栏"
+  ],
+  "semantics": [
+    "page-title",
+    "optional-toolbar",
+    "data-table",
+    "pagination"
+  ],
+  "shared_runtime_components": [
+    "el-button",
+    "el-form",
+    "el-form-item",
+    "el-input",
+    "el-option",
+    "el-pagination",
+    "el-scrollbar",
+    "el-select",
+    "el-table",
+    "el-table-column",
+    "el-tag",
+    "el-tooltip"
+  ],
+  "invariants": {
+    "regions": {
+      "search": {
+        "display": "block",
+        "position": "static",
+        "padding": "6px 0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 56
+      },
+      "table": {
+        "display": "flex",
+        "position": "relative",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "hidden",
+        "overflow_y": "hidden"
+      },
+      "pagination": {
+        "display": "flex",
+        "position": "static",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 56
+      }
+    },
+    "variant_values_must_come_from_page_contract": true
+  },
+  "variants": [
+    {
+      "id": "hui.tpp.page.table.only-title",
+      "name": "仅标题",
+      "contract": "../../pages/table/only-title.json",
+      "parameters": {
+        "toolbar": false
+      }
+    },
+    {
+      "id": "hui.tpp.page.table.with-operation-bar",
+      "name": "带操作栏",
+      "contract": "../../pages/table/with-operation-bar.json",
+      "parameters": {
+        "toolbar": true
+      }
+    }
+  ]
+}

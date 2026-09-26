@@ -1,0 +1,51 @@
+{
+  "schema_version": "product-design-system.v1",
+  "maintenance": {
+    "purpose": "ISC产品知识总入口，连接产品身份、视觉tokens、Portal Shell和已支持业务页面。",
+    "edit_policy": "新增页面时建立完整页面知识目录并登记到pages；新增Portal Shell标准时登记到portal_shell_standards且保留既有默认Shell；模板由Renderer Registry维护，不写入产品Composition。",
+    "managed_paths": {
+      "profile.json": "产品名称、Logo和产品级几何角色。",
+      "theme": "产品对HUI token合同的合法覆盖。",
+      "portal-shell": "产品默认头部、侧栏、菜单、图标和响应式壳子合同，以及并存的标准Shell变体和其产品域知识入口。",
+      "pages": "按page-type组织的产品业务页面知识。"
+    }
+  },
+  "id": "general.isc",
+  "industry": "general",
+  "product": "isc",
+  "name": "综合安防管理平台",
+  "extends": "hui",
+  "profile": "profile.json",
+  "theme": "theme/tokens.json",
+  "portal_shell": "portal-shell/contract.json",
+  "portal_shell_standards": {
+    "isc-3.0.0": {
+      "name": "ISC 3.0.0框架",
+      "product_version": "3.0.0",
+      "version_aliases": ["3.0", "3.0.0", "new", "latest"],
+      "natural_language_aliases": ["ISC新版本", "ISC 3.0", "ISC 3.0.0"],
+      "contract": "portal-shell/personnel-management.json",
+      "template_bundle": "../../../../../assets/templates/products/isc/standards/personnel-management"
+    },
+    "personnel-management": {
+      "name": "人员管理标准框架",
+      "alias_of": "isc-3.0.0",
+      "contract": "portal-shell/personnel-management.json",
+      "template_bundle": "../../../../../assets/templates/products/isc/standards/personnel-management"
+    }
+  },
+  "knowledge": {
+    "isc-3.0.0.personnel-management": {
+      "kind": "product-domain-page-composition",
+      "contract": "portal-shell/personnel-management.json",
+      "json_pointer": "/personnel_management",
+        "page_ids": ["list", "add_form", "detail", "field_configuration"]
+    }
+  },
+  "page_kind_policies": {
+    "details": {
+      "pagination": false
+    }
+  },
+  "pages": {}
+}

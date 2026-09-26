@@ -1,0 +1,13 @@
+{
+  "schema_version": "hui-component-pattern.v2",
+  "id": "portal.app-sidebar",
+  "name": "门户应用侧栏",
+  "split_mode": "composite",
+  "vue_component": "AppSidebar",
+  "description": "组合门户模块导航和侧栏展开收起操作",
+  "category": "portal",
+  "status": "active",
+  "use_when": ["产品门户侧栏由HUI Vue原子控件实现"],
+  "hui_components": ["el-button"],
+  "owner": "hui-common"
+}

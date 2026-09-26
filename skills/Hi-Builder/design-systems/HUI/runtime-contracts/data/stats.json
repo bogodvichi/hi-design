@@ -1,0 +1,83 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "stats",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/data/stats",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/data.docs.json",
+    "evidence_sha256": "1faf13316d3e61002e07073d56ed0739f08ed5e112cba04b1d62b08484a37c71"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "h-stats": {
+      "props": [
+        {
+          "参数": "direction",
+          "说明": "方向",
+          "类型": "string",
+          "可选值": "horizon,vertical",
+          "默认值": "vertical",
+          "template_name": "direction"
+        },
+        {
+          "参数": "width",
+          "说明": "宽度",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "width"
+        },
+        {
+          "参数": "title",
+          "说明": "数值的标题",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "title"
+        },
+        {
+          "参数": "value",
+          "说明": "数值的内容",
+          "类型": "string, number",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "value"
+        },
+        {
+          "参数": "size",
+          "说明": "stats尺寸",
+          "类型": "string",
+          "可选值": "large, default",
+          "默认值": "—",
+          "template_name": "size"
+        }
+      ],
+      "events": [],
+      "slots": [
+        {
+          "name": "titlePrefix",
+          "说明": "数值标题的前缀",
+          "template_name": "title-prefix"
+        },
+        {
+          "name": "titleSuffix",
+          "说明": "数值标题的后缀",
+          "template_name": "title-suffix"
+        },
+        {
+          "name": "valuePrefix",
+          "说明": "数值内容的前缀",
+          "template_name": "value-prefix"
+        },
+        {
+          "name": "valueSuffix",
+          "说明": "数值内容的后缀",
+          "template_name": "value-suffix"
+        }
+      ],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

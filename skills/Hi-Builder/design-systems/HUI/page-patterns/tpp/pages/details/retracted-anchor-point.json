@@ -1,0 +1,10 @@
+{
+  "schema_version": "hui-page-variant.v1",
+  "id": "hui.tpp.page.details.retracted-anchor-point",
+  "name": "可收起锚点",
+  "family": "hui.tpp.family.details-anchored",
+  "source": {"url": "http://tpp.dev.hikhub.net/tpp#/pages/details/retractedAnchorPoint", "package": "@hiktpp/details-retractedAnchorPoint", "hui_version": "^2.55.0", "observed_at": "2026-08-14", "evidence": "../../evidence/details/retracted-anchor-point.json"},
+  "parameters": {"anchor_mode": "foldable", "anchor_position": "right", "anchor_count": 3, "default_state": "folded", "content_width_px": 1456},
+  "geometry": {"viewport": {"width": 1728, "height": 935}, "root": {"class": "h-page-content form-area is-flex is-align-center", "rect": {"x": 256, "y": 118.25, "width": 1456, "height": 816.75}}, "key_regions": {"folded_anchor": {"class": "h-anchor-wrapper folded", "rect": {"x": 1736, "y": 143, "width": 120, "height": 128}}, "anchor_placeholder": {"class": "anchorColor", "rect": {"x": 924, "y": 166.25, "width": 120, "height": 128}}}},
+  "composition": {"component_count_scope": "page-content-relevant-only", "hui_components": {"h-anchor": 1, "el-tag": 3, "el-table": 2, "el-pagination": 1}, "actions": [{"label": "跳转", "count": 1}]}
+}

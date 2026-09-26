@@ -1,0 +1,109 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "id": "vehicle-alarm-statistics-table",
+  "title": "车辆报警",
+  "page_kind": "table",
+  "pattern_contract": "table/horizontal-realtime-filter.json",
+  "portal": {
+    "active_top_menu": "车辆通行",
+    "section": "车辆通行",
+    "tab_title": "车辆报警",
+    "active_side_menu": "vehicle-alarm",
+    "side_menus": [
+      {"id": "vehicle-overview", "label": "车辆概览", "icon": "h-icon-home"},
+      {
+        "id": "vehicle-control",
+        "label": "车辆管控",
+        "icon": "h-icon-menu",
+        "children": [
+          {"id": "vehicle-record", "label": "过车记录"},
+          {"id": "vehicle-alarm", "label": "车辆报警"}
+        ]
+      },
+      {"id": "vehicle-list", "label": "车辆名单", "icon": "h-icon-menu"}
+    ]
+  },
+  "filters": [
+    {"key": "plateNo", "label": "车牌号码", "kind": "input", "placeholder": "请输入车牌号码", "default": ""},
+    {"key": "alarmType", "label": "报警类型", "kind": "select", "options": ["全部", "黑名单车辆", "陌生车辆", "频繁出入", "超速行驶"], "default": "全部"},
+    {"key": "handleStatus", "label": "处置状态", "kind": "select", "options": ["全部", "未处置", "处置中", "已处置"], "default": "全部"},
+    {"key": "alarmLevel", "label": "报警级别", "kind": "select", "options": ["全部", "高", "中", "低"], "default": "全部"},
+    {"key": "checkpoint", "label": "报警点位", "kind": "input", "placeholder": "请输入报警点位", "default": ""}
+  ],
+  "toolbar_actions": [
+    {"label": "批量处置", "icon": "h-icon-edit"},
+    {"label": "导出", "icon": "h-icon-export"}
+  ],
+  "summary_metrics": [
+    {"key": "alarmTotal", "label": "报警总数", "icon": "h-icon-menu", "image_icon": "h-icon-menu"},
+    {"key": "highRisk", "label": "高风险", "icon": "h-icon-edit", "image_icon": "h-icon-edit", "filter_key": "riskStatus", "filter_value": "高风险"},
+    {"key": "abnormal", "label": "异常", "icon": "h-icon-home", "image_icon": "h-icon-home", "filter_key": "riskStatus", "filter_value": "异常"},
+    {"key": "attention", "label": "关注", "icon": "h-icon-export", "image_icon": "h-icon-export", "filter_key": "riskStatus", "filter_value": "关注"}
+  ],
+  "columns": [
+    {"prop": "alarmLevel", "label": "报警级别"},
+    {"prop": "plateNo", "label": "车牌号码"},
+    {"prop": "vehicleType", "label": "车辆类型"},
+    {"prop": "alarmType", "label": "报警类型"},
+    {"prop": "checkpoint", "label": "报警点位"},
+    {"prop": "handlingProgress", "label": "处置进度", "kind": "progress", "fixed_width": 240},
+    {"prop": "riskSummary", "label": "风险统计", "kind": "tag-pair", "status_prop": "riskStatus", "metric_prop": "riskPercentage", "tone_prop": "riskTone", "fixed_width": 140},
+    {"prop": "alarmTime", "label": "报警时间"},
+    {"prop": "handleStatus", "label": "处置状态"}
+  ],
+  "detail_tabs": [
+    {
+      "id": "alarm-info",
+      "label": "报警信息",
+      "sections": [
+        {
+          "id": "basic-info",
+          "title": "基本信息",
+          "fields": [
+            {"key": "plateNo", "label": "车牌号码"},
+            {"key": "vehicleType", "label": "车辆类型"},
+            {"key": "alarmLevel", "label": "报警级别"},
+            {"key": "alarmType", "label": "报警类型"},
+            {"key": "checkpoint", "label": "报警点位"},
+            {"key": "alarmTime", "label": "报警时间"},
+            {"key": "handleStatus", "label": "处置状态"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "handling-info",
+      "label": "处置信息",
+      "sections": [
+        {
+          "id": "handling-progress",
+          "title": "处置进度",
+          "fields": [
+            {"key": "handlingProgress", "label": "完成比例"},
+            {"key": "riskStatus", "label": "风险状态"},
+            {"key": "riskPercentage", "label": "风险占比"}
+          ]
+        }
+      ]
+    }
+  ],
+  "page_size": 20,
+  "preview": {
+    "summaryMetrics": {"alarmTotal": 128, "highRisk": 8, "abnormal": 27, "attention": 93},
+    "total": 128,
+    "rows": [
+      {"id": 1, "alarmLevel": "高", "plateNo": "浙A·7F28Q", "vehicleType": "黑色轿车", "alarmType": "黑名单车辆", "checkpoint": "园区东门入口", "handlingProgress": 10, "riskStatus": "高风险", "riskPercentage": "82%", "riskTone": "red", "alarmTime": "2026-08-17 10:42:36", "handleStatus": "未处置"},
+      {"id": 2, "alarmLevel": "中", "plateNo": "沪B·3K91M", "vehicleType": "白色SUV", "alarmType": "频繁出入", "checkpoint": "地下车库B1入口", "handlingProgress": 51, "riskStatus": "异常", "riskPercentage": "65%", "riskTone": "orange", "alarmTime": "2026-08-17 10:38:12", "handleStatus": "处置中"},
+      {"id": 3, "alarmLevel": "低", "plateNo": "苏E·8V66P", "vehicleType": "银色面包车", "alarmType": "陌生车辆", "checkpoint": "物流通道北门", "handlingProgress": 100, "riskStatus": "关注", "riskPercentage": "35%", "riskTone": "blue", "alarmTime": "2026-08-17 10:31:05", "handleStatus": "已处置"},
+      {"id": 4, "alarmLevel": "高", "plateNo": "浙A·0X79W", "vehicleType": "蓝色轿车", "alarmType": "超速行驶", "checkpoint": "园区西门出口", "handlingProgress": 5, "riskStatus": "高风险", "riskPercentage": "91%", "riskTone": "red", "alarmTime": "2026-08-17 10:26:48", "handleStatus": "未处置"},
+      {"id": 5, "alarmLevel": "中", "plateNo": "皖A·5D20L", "vehicleType": "灰色货车", "alarmType": "频繁出入", "checkpoint": "物流通道南门", "handlingProgress": 64, "riskStatus": "异常", "riskPercentage": "58%", "riskTone": "orange", "alarmTime": "2026-08-17 10:18:27", "handleStatus": "处置中"},
+      {"id": 6, "alarmLevel": "低", "plateNo": "浙B·2N83R", "vehicleType": "白色轿车", "alarmType": "陌生车辆", "checkpoint": "访客停车场入口", "handlingProgress": 100, "riskStatus": "关注", "riskPercentage": "28%", "riskTone": "blue", "alarmTime": "2026-08-17 10:12:09", "handleStatus": "已处置"},
+      {"id": 7, "alarmLevel": "高", "plateNo": "沪C·9P47T", "vehicleType": "黑色SUV", "alarmType": "黑名单车辆", "checkpoint": "园区东门出口", "handlingProgress": 15, "riskStatus": "高风险", "riskPercentage": "88%", "riskTone": "red", "alarmTime": "2026-08-17 10:05:41", "handleStatus": "未处置"},
+      {"id": 8, "alarmLevel": "中", "plateNo": "苏A·6Q15H", "vehicleType": "红色轿车", "alarmType": "超速行驶", "checkpoint": "园区主干道卡口", "handlingProgress": 100, "riskStatus": "异常", "riskPercentage": "62%", "riskTone": "orange", "alarmTime": "2026-08-17 09:58:33", "handleStatus": "已处置"},
+      {"id": 9, "alarmLevel": "低", "plateNo": "浙A·1C63S", "vehicleType": "银色SUV", "alarmType": "陌生车辆", "checkpoint": "地下车库B2入口", "handlingProgress": 100, "riskStatus": "关注", "riskPercentage": "31%", "riskTone": "blue", "alarmTime": "2026-08-17 09:51:16", "handleStatus": "已处置"},
+      {"id": 10, "alarmLevel": "中", "plateNo": "赣A·4M88J", "vehicleType": "白色货车", "alarmType": "频繁出入", "checkpoint": "物流通道北门", "handlingProgress": 72, "riskStatus": "异常", "riskPercentage": "55%", "riskTone": "orange", "alarmTime": "2026-08-17 09:43:52", "handleStatus": "处置中"}
+    ]
+  }
+}

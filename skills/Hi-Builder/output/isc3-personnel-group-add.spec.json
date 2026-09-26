@@ -1,0 +1,54 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "product_version": "3.0.0",
+  "id": "isc3-personnel-group-add",
+  "title": "添加人员分组",
+  "page_kind": "form",
+  "pattern_contract": "form/fixed-width-one-column.json",
+  "framework": {
+    "variant": "regular-01"
+  },
+  "portal": {
+    "active_top_menu": "门禁管理",
+    "active_icon_menu": "personnel",
+    "show_context_sidebar": false,
+    "section": "人员管理",
+    "tab_title": "添加人员分组",
+    "active_side_menu": "personnel-group",
+    "side_menus": [
+      {"id": "personnel-list", "label": "人员信息", "icon": "h-icon-user"},
+      {"id": "personnel-group", "label": "人员分组", "icon": "h-icon-users"},
+      {"id": "personnel-permission", "label": "权限配置", "icon": "h-icon-lock"},
+      {"id": "authorization-record", "label": "授权记录", "icon": "h-icon-menu"}
+    ]
+  },
+  "form_sections": [
+    {
+      "id": "basic",
+      "title": "基本信息",
+      "description": "填写分组基础信息。普通添加创建手动分组；如需根据条件动态维护人员，请返回使用“按规则添加”。",
+      "fields": [
+        {"key": "groupName", "label": "分组名称", "kind": "input", "placeholder": "请输入分组名称", "required": true},
+        {"key": "groupCode", "label": "分组编号", "kind": "input", "placeholder": "请输入分组编号", "required": true},
+        {"key": "groupType", "label": "分组类型", "kind": "input", "readonly": true},
+        {"key": "permissionMode", "label": "权限配置方式", "kind": "input", "readonly": true},
+        {"key": "enabled", "label": "启用状态", "kind": "switch"},
+        {"key": "description", "label": "备注", "kind": "textarea", "placeholder": "请输入分组说明"}
+      ]
+    }
+  ],
+  "form_actions": ["保存", "取消"],
+  "form_return_href": "isc3-personnel-group-list.html",
+  "preview": {
+    "formModel": {
+      "groupName": "",
+      "groupCode": "PG-2026-009",
+      "groupType": "手动分组",
+      "permissionMode": "按人员分组配置权限",
+      "enabled": true,
+      "description": ""
+    }
+  }
+}

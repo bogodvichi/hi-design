@@ -1,0 +1,10 @@
+{
+  "schema_version": "tpp-page-intent.v1",
+  "page_kind": "card",
+  "semantic_family": "card-realtime-filter",
+  "features": {
+    "filter_placement": "left-sidebar",
+    "trigger": "realtime",
+    "collection_presentation": "data-list"
+  }
+}

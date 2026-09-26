@@ -1,0 +1,35 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "id": "table-card-tabs",
+  "title": "设备告警处置",
+  "page_kind": "table",
+  "pattern_contract": "table/card-tabs.json",
+  "knowledge_composition": {
+    "secondary_pattern_contract": "table/horizontal-realtime-filter.json",
+    "reason": "卡式标签页的数据集需要在选择条件后立即刷新，无需查询提交",
+    "expected_contribution": "filter.instant-filter"
+  },
+  "portal": {
+    "active_top_menu": "智能应用",
+    "section": "HUI典型页",
+    "tab_title": "卡式标签页",
+    "active_side_menu": "table-card-tabs",
+    "side_menus": [
+      {"id": "table-linear-tabs", "label": "线性标签页", "icon": "h-icon-menu", "href": "table-linear-tabs.html"},
+      {"id": "table-linear-tabs-tree", "label": "线性标签页+树控件", "icon": "h-icon-menu", "href": "table-linear-tabs-with-tree.html"},
+      {"id": "table-card-tabs", "label": "卡式标签页", "icon": "h-icon-menu", "href": "table-card-tabs.html"},
+      {"id": "table-card-tabs-tree", "label": "卡式标签页+树控件", "icon": "h-icon-menu", "href": "table-card-tabs-with-tree.html"}
+    ]
+  },
+  "table_tabs": [{"id": "pending", "label": "待处置"}, {"id": "processing", "label": "处置中"}, {"id": "closed", "label": "已完成"}],
+  "toolbar_actions": [{"label": "批量处理", "icon": "h-icon-edit"}, {"label": "导出", "icon": "h-icon-export"}],
+  "columns": [{"prop": "alarmName", "label": "告警名称"}, {"prop": "alarmCode", "label": "告警编号"}, {"prop": "area", "label": "告警区域"}, {"prop": "status", "label": "处置状态"}, {"prop": "alarmTime", "label": "告警时间"}],
+  "page_size": 10,
+  "preview": {"tableTabRows": {
+    "pending": [{"id": 1, "alarmName": "人员聚集告警", "alarmCode": "ALM-20260819-001", "area": "总部园区", "status": "待处置", "alarmTime": "2026-08-19 10:32:18"}],
+    "processing": [{"id": 2, "alarmName": "周界入侵告警", "alarmCode": "ALM-20260819-002", "area": "研发中心", "status": "处置中", "alarmTime": "2026-08-19 10:28:46"}],
+    "closed": [{"id": 3, "alarmName": "设备离线告警", "alarmCode": "ALM-20260819-003", "area": "生产园区", "status": "已完成", "alarmTime": "2026-08-19 09:18:12"}]
+  }}
+}

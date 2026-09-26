@@ -1,0 +1,39 @@
+{
+  "schema_version": "product-portal-shell.v1",
+  "id": "public-security.pvia.portal-shell",
+  "geometry_roles": {
+    "portal-header-height": "88px",
+    "portal-line-primary-height": "48px",
+    "portal-line-secondary-height": "40px",
+    "portal-brand-menu-offset": "80px",
+    "portal-logo-size": "32px",
+    "portal-search-width": "240px",
+    "portal-search-height": "28px",
+    "portal-icon-button-size": "32px",
+    "portal-tab-width": "174px",
+    "portal-tab-height": "36px",
+    "portal-sidebar-width": "240px",
+    "portal-sidebar-collapsed-width": "48px",
+    "portal-side-item-height": "48px",
+    "portal-side-active-indicator-width": "3px",
+    "portal-side-icon-box-width": "48px",
+    "portal-side-icon-size": "24px",
+    "portal-tools-width": "748px",
+    "portal-pill-width": "204px",
+    "portal-pill-radius": "14px",
+    "portal-home-width": "36px",
+    "portal-side-caret-size": "16px"
+  },
+  "breakpoints": {
+    "compact": "1380px"
+  },
+  "portal": {
+    "top_menus": ["首页", "视频联网", "图像应用", "人像应用", "车辆应用", "布控告警", "更多"],
+    "default_active_top_menu": "布控告警",
+    "side_menus": [
+      {"id": "alarm-overview", "label": "告警概览", "icon": "h-icon-home"},
+      {"id": "face-alarm", "label": "人脸抓拍报警", "icon": "h-icon-message"},
+      {"id": "alarm-handle", "label": "告警处置", "icon": "h-icon-edit"}
+    ]
+  }
+}

@@ -1,0 +1,169 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "pagination",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/data/pagination",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/data.docs.json",
+    "evidence_sha256": "1faf13316d3e61002e07073d56ed0739f08ed5e112cba04b1d62b08484a37c71"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-pagination": {
+      "props": [
+        {
+          "参数": "small",
+          "说明": "是否使用小型分页样式",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "small"
+        },
+        {
+          "参数": "page-size",
+          "说明": "每页显示条目个数",
+          "类型": "Number",
+          "可选值": "—",
+          "默认值": "10",
+          "template_name": "page-size"
+        },
+        {
+          "参数": "total",
+          "说明": "总条目数",
+          "类型": "Number",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "total"
+        },
+        {
+          "参数": "page-count",
+          "说明": "总页数，total 和 page-count 设置任意一个就可以达到显示页码的功能；如果要支持 page-sizes 的更改，则需要使用 total 属性",
+          "类型": "Number",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "page-count"
+        },
+        {
+          "参数": "pager-count  2.0+",
+          "说明": "页码按钮的数量，当总页数超过该值时会折叠",
+          "类型": "Number",
+          "可选值": "大于等于 5 且小于等于 21 的数(推荐使用奇数)",
+          "默认值": "7",
+          "template_name": "pager-count"
+        },
+        {
+          "参数": "current-page",
+          "说明": "当前页数，支持 .sync 修饰符",
+          "类型": "Number",
+          "可选值": "—",
+          "默认值": "1",
+          "template_name": "current-page"
+        },
+        {
+          "参数": "layout",
+          "说明": "组件布局，子组件名用逗号分隔",
+          "类型": "String",
+          "可选值": "sizes, prev, pager, miniPager 2.0+ , huiPager, next, jumper, ->, total, slot, first 2.0+ , last 2.0+ (first, last建议只在迷你分页中选用)miniPagerJumper 2.55+",
+          "默认值": "‘prev, pager, next, jumper, ->, total’",
+          "template_name": "layout"
+        },
+        {
+          "参数": "page-sizes",
+          "说明": "每页显示个数选择器的选项设置",
+          "类型": "Number[]",
+          "可选值": "—",
+          "默认值": "[10, 20, 30, 40, 50, 100]",
+          "template_name": "page-sizes"
+        },
+        {
+          "参数": "page-class",
+          "说明": "自定义class,位于组件最外层容器",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "page-class"
+        },
+        {
+          "参数": "beforeCurrentChange",
+          "说明": "分页跳转发请求前的钩子，返回 Boolean 或 Promise<Boolean>，为 true 表示继续跳转",
+          "类型": "Function(val, oldVal)",
+          "可选值": "—",
+          "默认值": "() => true",
+          "template_name": "before-current-change"
+        },
+        {
+          "参数": "beforeSizeChange",
+          "说明": "每页显示条目个数变化发请求前的钩子，返回 Boolean 或 Promise<Boolean>，为 true 表示继续跳转",
+          "类型": "Function(val, oldVal)",
+          "可选值": "—",
+          "默认值": "() => true",
+          "template_name": "before-size-change"
+        },
+        {
+          "参数": "disabled",
+          "说明": "是否禁用",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "prevText  2.0+",
+          "说明": "定义上一页的文字, 代替图标",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "prev-text"
+        },
+        {
+          "参数": "nextText  2.0+",
+          "说明": "定义下一页的文字, 代替图标",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "next-text"
+        },
+        {
+          "参数": "sizes-popper-class  2.09+",
+          "说明": "设置每页显示条数下拉框的类名",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "sizes-popper-class"
+        },
+        {
+          "参数": "background  2.55+",
+          "说明": "设置分页选中状态是否有背景",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "background"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "size-change",
+          "说明": "pageSize 改变时会触发",
+          "回调参数": "每页条数size，改变前每页条数oldSize",
+          "template_name": "size-change"
+        },
+        {
+          "事件名称": "current-change",
+          "说明": "currentPage 改变时会触发",
+          "回调参数": "当前页currentPage，改变前的页数olaPage",
+          "template_name": "current-change"
+        }
+      ],
+      "slots": [
+        {
+          "name": "—",
+          "说明": "自定义内容，需要在 layout 中列出 slot",
+          "template_name": "—"
+        }
+      ],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

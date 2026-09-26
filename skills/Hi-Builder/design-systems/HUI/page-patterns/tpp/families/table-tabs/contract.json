@@ -1,0 +1,133 @@
+{
+  "schema_version": "hui-page-pattern.v1",
+  "id": "hui.tpp.family.table-tabs",
+  "name": "标签页表格页",
+  "source": {
+    "platform": "HUI-VUE典型页面",
+    "observed_at": "2026-07-31",
+    "catalog": "../../catalog.json"
+  },
+  "match": [
+    "tabbed-table",
+    "带标签页",
+    "标签页表格"
+  ],
+  "semantics": [
+    "dataset-tabs",
+    "optional-tree",
+    "data-table",
+    "pagination"
+  ],
+  "shared_runtime_components": [
+    "el-button",
+    "el-divider",
+    "el-form",
+    "el-form-item",
+    "el-input",
+    "el-option",
+    "el-pagination",
+    "el-radio-button",
+    "el-radio-group",
+    "el-scrollbar",
+    "el-select",
+    "el-table",
+    "el-table-column",
+    "el-tooltip",
+    "h-icon"
+  ],
+  "invariants": {
+    "required_regions": [
+      "tabs",
+      "search",
+      "toolbar",
+      "table",
+      "pagination"
+    ],
+    "layout_structure": {
+      "tabs": "page-root-child",
+      "main": "tabs-following-sibling",
+      "tree": "h-layout-sidebar",
+      "search": "main-content-child"
+    },
+    "generation_defaults": "../../demo-fixtures/table-tabs-default.json",
+    "non_binding_geometry": {
+      ".table-tabs-search": ["height", "min-height"]
+    },
+    "regions": {
+      "search": {
+        "display": "block",
+        "position": "static",
+        "padding": "16px 0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 109
+      },
+      "toolbar": {
+        "display": "flex",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 56
+      },
+      "table": {
+        "display": "flex",
+        "position": "relative",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "hidden",
+        "overflow_y": "hidden"
+      },
+      "pagination": {
+        "display": "flex",
+        "position": "static",
+        "padding": "0px 12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 56
+      }
+    },
+    "variant_values_must_come_from_page_contract": true
+  },
+  "variants": [
+    {
+      "id": "hui.tpp.page.table.linear-tabs",
+      "name": "线性标签页",
+      "contract": "../../pages/table/linear-tabs.json",
+      "parameters": {
+        "tab_style": "linear",
+        "tree": false
+      }
+    },
+    {
+      "id": "hui.tpp.page.table.linear-tabs-with-tree",
+      "name": "线性标签页+树控件",
+      "contract": "../../pages/table/linear-tabs-with-tree.json",
+      "parameters": {
+        "tab_style": "linear",
+        "tree": true
+      }
+    },
+    {
+      "id": "hui.tpp.page.table.card-tabs",
+      "name": "卡式标签页",
+      "contract": "../../pages/table/card-tabs.json",
+      "parameters": {
+        "tab_style": "card",
+        "tree": false
+      }
+    },
+    {
+      "id": "hui.tpp.page.table.card-tabs-with-tree",
+      "name": "卡式标签页+树控件",
+      "contract": "../../pages/table/card-tabs-with-tree.json",
+      "parameters": {
+        "tab_style": "card",
+        "tree": true
+      }
+    }
+  ]
+}

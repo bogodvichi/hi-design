@@ -1,0 +1,174 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "popover",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/others/popover",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/others.docs.json",
+    "evidence_sha256": "f150a2630aef3c6508a028b85a5e004a26036cac12218f39bbe7388c02099e11"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-popover": {
+      "props": [
+        {
+          "参数": "trigger",
+          "说明": "触发方式",
+          "类型": "String",
+          "可选值": "click/focus/hover/manual",
+          "默认值": "click",
+          "template_name": "trigger"
+        },
+        {
+          "参数": "value / v-model",
+          "说明": "状态是否可见",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "value"
+        },
+        {
+          "参数": "title",
+          "说明": "标题",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "title"
+        },
+        {
+          "参数": "content",
+          "说明": "显示的内容，也可以通过 slot 传入 DOM",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "content"
+        },
+        {
+          "参数": "content-delay  2.0.13+",
+          "说明": "内容延迟加载，单位为毫秒",
+          "类型": "Number",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "content-delay"
+        },
+        {
+          "参数": "width",
+          "说明": "宽度",
+          "类型": "String, Number",
+          "可选值": "—",
+          "默认值": "最小宽度 150px",
+          "template_name": "width"
+        },
+        {
+          "参数": "maxWidth",
+          "说明": "最大宽度",
+          "类型": "String, Number",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "max-width"
+        },
+        {
+          "参数": "placement",
+          "说明": "出现位置",
+          "类型": "String",
+          "可选值": "top/top-start/top-end/bottom/bottom-start/bottom-end/left/left-start/left-end/right/right-start/right-end",
+          "默认值": "bottom",
+          "template_name": "placement"
+        },
+        {
+          "参数": "disabled",
+          "说明": "Popover 是否可用",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "offsetPlacement",
+          "说明": "出现位置的偏移量，默认间距是10，距离是间距 + offsetPlacement",
+          "类型": "Number",
+          "可选值": "—",
+          "默认值": "0",
+          "template_name": "offset-placement"
+        },
+        {
+          "参数": "transition",
+          "说明": "定义渐变动画",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "fade-in-linear",
+          "template_name": "transition"
+        },
+        {
+          "参数": "visible-arrow",
+          "说明": "是否显示 Tooltip 箭头，更多参数可见Vue-popper",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "true",
+          "template_name": "visible-arrow"
+        },
+        {
+          "参数": "popper-options",
+          "说明": "popper.js 的参数",
+          "类型": "Object",
+          "可选值": "参考 popper.js 文档",
+          "默认值": "{ boundariesElement: 'body', gpuAcceleration: false }",
+          "template_name": "popper-options"
+        },
+        {
+          "参数": "popper-class",
+          "说明": "为 popper 添加类名",
+          "类型": "String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "popper-class"
+        },
+        {
+          "参数": "popper-style 2.60.6+",
+          "说明": "为 popper 自定义样式",
+          "类型": "Object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "popper-style"
+        },
+        {
+          "参数": "open-delay",
+          "说明": "触发方式为 hover 时的显示延迟，单位为毫秒",
+          "类型": "Number",
+          "可选值": "—",
+          "默认值": "0",
+          "template_name": "open-delay"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "show",
+          "说明": "显示时触发",
+          "回调参数": "—",
+          "template_name": "show"
+        },
+        {
+          "事件名称": "hide",
+          "说明": "隐藏时触发",
+          "回调参数": "—",
+          "template_name": "hide"
+        }
+      ],
+      "slots": [
+        {
+          "参数": "—",
+          "说明": "Popover 内嵌 HTML 文本",
+          "template_name": "—"
+        },
+        {
+          "参数": "reference",
+          "说明": "触发 Popover 显示的 HTML 元素",
+          "template_name": "reference"
+        }
+      ],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

@@ -1,0 +1,27 @@
+{
+  "schema_version": "page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "page_type": "event-search",
+  "title": "设备监控事件检索",
+  "shell": {
+    "active_top_menu": "报警监测",
+    "active_side_menu": "event-search",
+    "tab_title": "设备监控事件"
+  },
+  "payload": {
+    "options": {
+      "classification": {"default_mode": "type"},
+      "filter": {"fields": ["area", "device-type", "level", "status", "source", "time"], "collapsed": true},
+      "toolbar": {"actions": ["export", "confirm"], "view_switch": true, "video_mode_switch": true},
+      "collection": {
+        "columns": ["selection", "event-type", "time", "area", "source", "level", "status", "confirm-detail", "actions"],
+        "row_actions": ["detail", "handle"],
+        "card_fields": ["time", "area", "source", "status", "confirm-detail"]
+      },
+      "pagination": {"page_size": 20},
+      "extensions": []
+    },
+    "content": {}
+  }
+}

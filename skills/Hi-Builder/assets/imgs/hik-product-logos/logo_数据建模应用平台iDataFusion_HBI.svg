@@ -1,0 +1,76 @@
+<svg width="40.000000" height="40.000000" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+	<desc>
+			Created with Pixso.
+	</desc>
+	<defs>
+		<clipPath id="clip5990_2574">
+			<rect id="HBI可视化分析平台,属性 1=默认 (1)" width="40.000000" height="40.000000" fill="white" fill-opacity="0"/>
+		</clipPath>
+		<linearGradient x1="10.973142" y1="20.867680" x2="18.164213" y2="27.072515" id="paint_linear_5990_2578_0" gradientUnits="userSpaceOnUse">
+			<stop stop-color="#1080FF"/>
+			<stop offset="1.000000" stop-color="#48FFE5"/>
+		</linearGradient>
+		<linearGradient x1="14.462535" y1="20.226162" x2="2.798038" y2="30.699192" id="paint_linear_5990_2579_0" gradientUnits="userSpaceOnUse">
+			<stop stop-color="#87FFF3"/>
+			<stop offset="1.000000" stop-color="#31A6FF"/>
+		</linearGradient>
+		<linearGradient x1="6.965246" y1="18.518562" x2="6.965246" y2="26.704147" id="paint_linear_5990_2580_0" gradientUnits="userSpaceOnUse">
+			<stop stop-color="#E3FFFD"/>
+			<stop offset="1.000000" stop-color="#FFFFFF"/>
+		</linearGradient>
+		<linearGradient x1="16.164692" y1="18.051817" x2="23.955193" y2="29.287746" id="paint_linear_5990_2581_0" gradientUnits="userSpaceOnUse">
+			<stop stop-color="#1080FF"/>
+			<stop offset="1.000000" stop-color="#48FFE5"/>
+		</linearGradient>
+		<linearGradient x1="19.400776" y1="16.634523" x2="7.736276" y2="35.987038" id="paint_linear_5990_2582_0" gradientUnits="userSpaceOnUse">
+			<stop stop-color="#87FFF3"/>
+			<stop offset="1.000000" stop-color="#31A6FF"/>
+		</linearGradient>
+		<linearGradient x1="11.992786" y1="14.708930" x2="11.992786" y2="23.464577" id="paint_linear_5990_2583_0" gradientUnits="userSpaceOnUse">
+			<stop stop-color="#E3FFFD"/>
+			<stop offset="1.000000" stop-color="#FFFFFF"/>
+		</linearGradient>
+		<linearGradient x1="24.395092" y1="13.768835" x2="36.080826" y2="32.991489" id="paint_linear_5990_2584_0" gradientUnits="userSpaceOnUse">
+			<stop stop-color="#1080FF"/>
+			<stop offset="1.000000" stop-color="#48FFE5"/>
+		</linearGradient>
+		<linearGradient x1="29.249306" y1="11.111061" x2="11.752561" y2="44.547688" id="paint_linear_5990_2585_0" gradientUnits="userSpaceOnUse">
+			<stop stop-color="#87FFF3"/>
+			<stop offset="1.000000" stop-color="#31A6FF"/>
+		</linearGradient>
+		<linearGradient x1="18.164799" y1="8.208802" x2="18.164799" y2="21.818663" id="paint_linear_5990_2586_0" gradientUnits="userSpaceOnUse">
+			<stop stop-color="#E3FFFD"/>
+			<stop offset="1.000000" stop-color="#FFFFFF"/>
+		</linearGradient>
+		<linearGradient x1="31.802544" y1="9.317619" x2="43.488289" y2="36.695103" id="paint_linear_5990_2587_0" gradientUnits="userSpaceOnUse">
+			<stop stop-color="#1080FF"/>
+			<stop offset="1.000000" stop-color="#48FFE5"/>
+		</linearGradient>
+		<linearGradient x1="36.656677" y1="5.186321" x2="19.159952" y2="53.352814" id="paint_linear_5990_2588_0" gradientUnits="userSpaceOnUse">
+			<stop stop-color="#87FFF3"/>
+			<stop offset="1.000000" stop-color="#31A6FF"/>
+		</linearGradient>
+		<linearGradient x1="25.550154" y1="2.222122" x2="25.550154" y2="16.001003" id="paint_linear_5990_2589_0" gradientUnits="userSpaceOnUse">
+			<stop stop-color="#E3FFFD"/>
+			<stop offset="1.000000" stop-color="#FFFFFF"/>
+		</linearGradient>
+	</defs>
+	<g clip-path="url(#clip5990_2574)">
+		<rect id="属性 1=默认" width="39.999962" height="39.999962" fill="#FFFFFF" fill-opacity="0"/>
+		<rect id="Rectangle Copy 35" x="-4.000000" width="44.444405" height="39.999962" fill="#D8D8D8" fill-opacity="0"/>
+		<rect id="Rectangle Copy 35" x="-3.500000" y="0.500000" width="43.444405" height="38.999962" fill="#000000" fill-opacity="0"/>
+		<rect id="Rectangle Copy 35" x="-3.500000" y="0.500000" width="43.444405" height="38.999962" stroke="#979797" stroke-opacity="0" stroke-width="0.999999"/>
+		<path id="Fill 1 Copy" d="M7.92 21.63L7.92 27.06L10.97 25.49L10.97 19.74L7.92 21.63Z" fill="url(#paint_linear_5990_2578_0)" fill-opacity="1.000000" fill-rule="nonzero"/>
+		<path id="Fill 2 Copy" d="M4.64 25.58L7.92 27.06L7.92 21.59L4.64 20.21L4.64 25.58Z" fill="url(#paint_linear_5990_2579_0)" fill-opacity="1.000000" fill-rule="nonzero"/>
+		<path id="Fill 3 Copy" d="M4.64 20.2L7.92 21.63L10.97 19.95L7.79 18.51L4.64 20.2Z" fill="url(#paint_linear_5990_2580_0)" fill-opacity="1.000000" fill-rule="nonzero"/>
+		<path id="Fill 4 Copy" d="M12.87 18.04L12.87 29.28L16.16 27.78L16.16 16.01L12.87 18.04Z" fill="url(#paint_linear_5990_2581_0)" fill-opacity="1.000000" fill-rule="nonzero"/>
+		<path id="Fill 5 Copy" d="M12.86 29.28L9.57 27.86L9.57 16.62L12.86 18.04L12.86 29.28Z" fill="url(#paint_linear_5990_2582_0)" fill-opacity="1.000000" fill-rule="nonzero"/>
+		<path id="Fill 6 Copy" d="M9.57 16.62L12.86 14.7L16.16 16.26L12.86 18.03L9.57 16.62Z" fill="url(#paint_linear_5990_2583_0)" fill-opacity="1.000000" fill-rule="nonzero"/>
+		<path id="Fill 7 Copy" d="M19.45 12.98L19.45 32.99L24.39 30.41L24.39 10.28L19.45 12.98Z" fill="url(#paint_linear_5990_2584_0)" fill-opacity="1.000000" fill-rule="nonzero"/>
+		<path id="Fill 8 Copy" d="M19.45 32.96L14.51 30.63L14.51 11.11L19.45 13.31L19.45 32.96Z" fill="url(#paint_linear_5990_2585_0)" fill-opacity="1.000000" fill-rule="nonzero"/>
+		<path id="Fill 9 Copy" d="M14.55 11.11L19.48 8.19L24.38 10.27L19.5 13.38L14.55 11.11Z" fill="url(#paint_linear_5990_2586_0)" fill-opacity="1.000000" fill-rule="nonzero"/>
+		<path id="Fill 7 Copy" d="M26.86 7.42L26.86 36.68L31.8 34.12L31.8 4.35L26.86 7.42Z" fill="url(#paint_linear_5990_2587_0)" fill-opacity="1.000000" fill-rule="nonzero"/>
+		<path id="Fill 8 Copy" d="M26.86 36.66L21.92 34.33L21.92 5.18L26.86 7.44L26.86 36.66Z" fill="url(#paint_linear_5990_2588_0)" fill-opacity="1.000000" fill-rule="nonzero"/>
+		<path id="Fill 9 Copy" d="M21.92 5.17L26.88 2.21L31.8 4.35L26.89 7.46L21.92 5.17Z" fill="url(#paint_linear_5990_2589_0)" fill-opacity="1.000000" fill-rule="nonzero"/>
+	</g>
+</svg>

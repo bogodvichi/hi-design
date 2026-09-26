@@ -1,0 +1,13 @@
+{
+  "schema_version": "hui-page-pattern.v1",
+  "id": "hui.tpp.family.details-parallel",
+  "name": "并列结构详情页",
+  "source": {"platform": "HUI-VUE典型页面", "observed_at": "2026-08-14", "catalog": "../../catalog.json"},
+  "match": ["parallel-details", "并列结构详情"],
+  "semantics": ["parallel-detail-regions", "person-summary", "detail-sections"],
+  "shared_runtime_components": ["el-pagination", "el-table", "el-tag"],
+  "invariants": {"evidence_scope": "single-verified-variant", "variant_values_must_come_from_page_contract": true},
+  "variants": [
+    {"id": "hui.tpp.page.details.coordination", "name": "并列结构", "contract": "../../pages/details/coordination.json", "parameters": {"layout_direction": "horizontal", "primary_region_width": 1072, "parallel_region_width": 416, "person_summary": true, "embedded_tables": 2, "pagination": true}}
+  ]
+}

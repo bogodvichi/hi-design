@@ -1,0 +1,7 @@
+interface:
+  display_name: "Hi-Builder"
+  short_description: "将产品页面需求确定性编译为一致的HUI Vue HTML"
+  default_prompt: "使用 $hi-builder 将我的产品页面需求编译成可验收的HUI Vue单页HTML。"
+
+policy:
+  allow_implicit_invocation: true

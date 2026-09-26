@@ -1,0 +1,13 @@
+{
+  "schema_version": "hui-component-pattern.v2",
+  "id": "collection.calendar-grid",
+  "name": "日历排班集合",
+  "split_mode": "repeat-item",
+  "vue_component": "CalendarGrid",
+  "description": "按日、周、月时间范围展示日期与排班事项集合",
+  "category": "collection",
+  "status": "active",
+  "use_when": ["用户需要按日历时间范围浏览排班或日程安排"],
+  "hui_components": ["el-card", "el-tag"],
+  "owner": "hui-common"
+}

@@ -1,0 +1,140 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "button",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/basic/button-demo",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/basic-form.docs.json",
+    "evidence_sha256": "ce35467cfa4317a06d0d65dd9e415328669f0c6711f32417ce27edc1af71cbe7"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-button": {
+      "props": [
+        {
+          "参数": "size",
+          "说明": "尺寸",
+          "类型": "string",
+          "可选值": "large,small,mini",
+          "默认值": "—",
+          "template_name": "size"
+        },
+        {
+          "参数": "type",
+          "说明": "类型",
+          "类型": "string",
+          "可选值": "primary,success,warning,danger,info,text,link,ghost，dashed",
+          "默认值": "",
+          "template_name": "type"
+        },
+        {
+          "参数": "plain",
+          "说明": "是否朴素按钮",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "plain"
+        },
+        {
+          "参数": "radius",
+          "说明": "是否圆角按钮",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "radius"
+        },
+        {
+          "参数": "loading",
+          "说明": "是否加载中状态",
+          "类型": "Boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "loading"
+        },
+        {
+          "参数": "disabled",
+          "说明": "是否禁用状态",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "disabled"
+        },
+        {
+          "参数": "icon",
+          "说明": "图标，已有的图标库中的图标名或引入新的图标库",
+          "类型": "string/object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "icon"
+        },
+        {
+          "参数": "icon-suffix  2.50.0+",
+          "说明": "后缀图标，使用同icon",
+          "类型": "string/object",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "icon-suffix"
+        },
+        {
+          "参数": "icon-border",
+          "说明": "提供给有边框写法 icon",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "icon-border"
+        },
+        {
+          "参数": "min-width",
+          "说明": "button 最小宽度",
+          "类型": "Number",
+          "可选值": "—",
+          "默认值": "96px",
+          "template_name": "min-width"
+        },
+        {
+          "参数": "max-width",
+          "说明": "button 最大宽度",
+          "类型": "Number",
+          "可选值": "—",
+          "默认值": "普通按钮默认 192px,图标按钮默认 256px",
+          "template_name": "max-width"
+        },
+        {
+          "参数": "autofocus",
+          "说明": "是否默认聚焦",
+          "类型": "boolean",
+          "可选值": "—",
+          "默认值": "false",
+          "template_name": "autofocus"
+        },
+        {
+          "参数": "native-type",
+          "说明": "原生 type 属性",
+          "类型": "string",
+          "可选值": "button,submit,reset",
+          "默认值": "button",
+          "template_name": "native-type"
+        },
+        {
+          "参数": "flood  2.50.0+",
+          "说明": "button自定义主题色（不影响全局的品牌色）",
+          "类型": "string",
+          "可选值": "HEX颜色值",
+          "默认值": "—",
+          "template_name": "flood"
+        }
+      ],
+      "events": [],
+      "slots": [],
+      "methods": []
+    },
+    "el-button-group": {
+      "props": [],
+      "events": [],
+      "slots": [],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}

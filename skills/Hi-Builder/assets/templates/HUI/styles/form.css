@@ -1,0 +1,82 @@
+    .form-area { display: flex; justify-content: center; width: 100%; height: 100%; }
+    .form-area__content {
+      position: relative; display: flex; flex-direction: column; width: min(1280px, 100%);
+      --d2c-page-form-content-inline-padding: 80px;
+      --d2c-page-form-content-padding-top: 48px;
+      height: 100%; padding: var(--d2c-page-form-content-padding, 48px 80px 58px); background: var(--h-color-bg-primary);
+    }
+    .permission-form-scroll {
+      position: relative; z-index: 1; min-height: 0; flex: 1;
+      margin-right: calc(-1 * var(--d2c-page-form-content-inline-padding));
+      padding-right: var(--d2c-page-form-content-inline-padding);
+      overflow-x: hidden; overflow-y: auto;
+    }
+    .permission-form-scroll:not(.is-work-order) {
+      margin-top: calc(-1 * var(--d2c-page-form-content-padding-top));
+      padding-top: var(--d2c-page-form-content-padding-top);
+    }
+    .permission-form-scroll.is-work-order { display: flex; overflow: hidden; }
+    .permission-form { width: min(var(--d2c-page-form-width, 832px), 100%); margin: 0 auto; }
+    .anchored-form-layout { display: block; padding-top: 24px; }
+    .form-area.is-anchored-form { gap: 24px; }
+    .form-area.is-anchored-form .form-area__content { flex: 1 1 auto; width: min(1280px, calc(100% - 204px)); }
+    .form-anchor-nav {
+      position: static; z-index: 2; width: 180px; flex: none; align-self: start;
+      padding: 48px 0 0; background: transparent; box-shadow: none;
+    }
+    .form-anchor-nav .h-anchor-wrapper { width: 100%; }
+    .anchored-form-layout .permission-form { min-width: 0; }
+    .form-area__content-head {
+      display: flex; flex: none; align-items: center; justify-content: space-between;
+      height: var(--d2c-page-form-content-head-height); padding: var(--d2c-page-form-content-head-padding);
+      background: var(--h-color-bg-primary);
+    }
+    .form-area__content-head-item { display: flex; align-items: center; height: 27px; }
+    .form-area__content-head-item:first-child { color: var(--h-color-text-primary); font-size: var(--h-font-size-body-lg); font-weight: 500; }
+    .form-area__content-head-item:last-child { justify-content: flex-end; color: var(--h-color-text-secondary); }
+    .work-order-steps {
+      width: 240px; height: 100%; flex: none; margin-right: var(--d2c-page-form-steps-form-gap, 0);
+      padding: 24px 0 24px 80px; background: var(--h-color-bg-primary);
+    }
+    .work-order-steps .el-steps { height: 100%; }
+    .work-order-tabs { min-width: 0; height: 100%; flex: 1; margin: 0 80px 0 0; }
+    .work-order-tabs > .el-tabs__header { margin: 0; padding: 0; }
+    .work-order-tabs > .el-tabs__content { height: calc(100% - 41px); overflow: auto; }
+    .work-order-tabs .el-tab-pane { padding: 24px 0 58px; }
+    .work-order-tabs .permission-form { width: min(var(--d2c-page-form-width, 1280px), 100%); }
+    .work-order-tabs .permission-form__section { border-bottom: 0; }
+    .permission-form .el-form-item { margin-bottom: 24px; }
+    .permission-form .el-row { display: flex; flex-wrap: wrap; align-items: flex-start; }
+    .permission-form .el-row > .el-col { float: none; }
+    .permission-form .el-select,
+    .permission-form .el-date-editor { width: 100%; }
+    .permission-form .el-slider { width: 100%; }
+    .permission-form .el-checkbox-group { min-height: 32px; }
+    .permission-form__section {
+      margin: 8px 0 20px; padding-bottom: 8px; border-bottom: 1px solid var(--h-color-border-tertiary);
+      color: var(--h-color-text-primary); font-size: 16px; font-weight: 500;
+    }
+    .permission-form__section:not(:first-child) { margin-top: 24px; }
+    .form-area.is-first-level-grouped .permission-form__section,
+    .form-area.is-anchored-form .permission-form__section {
+      margin: 0 0 var(--d2c-page-form-title-field-gap, 24px);
+      padding: var(--d2c-page-form-group-title-padding, 0); border: var(--d2c-page-form-group-title-border, 0);
+    }
+    .form-area.is-first-level-grouped .permission-form__group,
+    .form-area.is-anchored-form .permission-form__group {
+      margin-bottom: calc(var(--d2c-page-form-group-gap, 48px) - var(--d2c-page-form-form-item-gap, 24px));
+    }
+    .form-area.is-first-level-grouped .permission-form__group:last-child,
+    .form-area.is-anchored-form .permission-form__group:last-child { margin-bottom: 0; }
+    .form-area.is-first-level-grouped .permission-form__group .el-form-item,
+    .form-area.is-anchored-form .permission-form__group .el-form-item { margin-bottom: var(--d2c-page-form-form-item-gap, 24px); }
+    .permission-form__section-description { margin-top: 6px; color: var(--h-color-text-secondary); font-size: 12px; font-weight: 400; }
+    .permission-form__field-description { margin-top: 4px; color: var(--h-color-text-secondary); font-size: 12px; line-height: 20px; }
+    .permission-form__field.is-conditional {
+      margin-bottom: 24px; padding: 16px 16px 0; border: 1px solid var(--h-color-border-tertiary); background: var(--h-color-bg-secondary);
+    }
+    .form-area__footer {
+      position: absolute; right: 0; bottom: 0; left: 0; display: flex;
+      justify-content: center; align-items: center; height: var(--d2c-page-form-footer-height, 57px); padding: 12px;
+      border-top: 1px solid var(--h-color-border-tertiary); background: var(--h-color-bg-primary);
+    }

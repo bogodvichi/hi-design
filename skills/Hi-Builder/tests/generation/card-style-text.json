@@ -1,0 +1,26 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "id": "card-style-text",
+  "title": "基础卡片样式 · 文本卡片",
+  "page_kind": "card",
+  "pattern_contract": "card/text.json",
+  "portal": {
+    "active_top_menu": "智能应用", "section": "基础卡片样式测试", "tab_title": "文本卡片", "active_side_menu": "text-card",
+    "side_menus": [
+      {"id": "vehicle-card", "label": "车辆卡片", "icon": "h-icon-menu", "href": "vehicle-card.html"},
+      {"id": "face-card", "label": "人脸卡片", "icon": "h-icon-menu", "href": "face-card.html"},
+      {"id": "similarity-card", "label": "相似度卡片", "icon": "h-icon-menu", "href": "similarity-card.html"},
+      {"id": "text-card", "label": "文本卡片", "icon": "h-icon-menu", "href": "text-card.html"},
+      {"id": "data-list", "label": "数据列表卡片", "icon": "h-icon-menu", "href": "data-list.html"}
+    ]
+  },
+  "toolbar_actions": [{"label": "添加", "icon": "h-icon-add"}, {"label": "编辑", "icon": "h-icon-edit"}, {"label": "删除", "icon": "h-icon-delete"}],
+  "page_size": 20,
+  "preview": {"total": 3, "rows": [
+    {"id": "event-1", "image": "http://tpp.dev.hikhub.net/tpp/img/text.0a734454.png", "title": "机动车违停", "tags": [{"label": "违法停车"}, {"label": "实时检测"}], "location": "城市主干道、禁停区域", "time": "全天候检测"},
+    {"id": "event-2", "image": "http://tpp.dev.hikhub.net/tpp/img/text.0a734454.png", "title": "占用应急车道", "tags": [{"label": "高速事件"}, {"label": "车辆检测"}], "location": "高速公路、城市快速路", "time": "实时检测"},
+    {"id": "event-3", "image": "http://tpp.dev.hikhub.net/tpp/img/text.0a734454.png", "title": "逆向行驶", "tags": [{"label": "行驶异常"}, {"label": "方向分析"}], "location": "单行道路、匝道出入口", "time": "全天候检测"}
+  ]}
+}

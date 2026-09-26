@@ -1,0 +1,144 @@
+{
+  "schema_version": "tpp-page-family-mapping.v1",
+  "batch": "details",
+  "region_classes": {
+    "scrollbar": "form-area__scrollbar",
+    "content": "form-area__content",
+    "groups": "form-area__group",
+    "detail_grid": "card-details",
+    "table": "el-table",
+    "pagination": "el-pagination"
+  },
+  "families": {
+    "details-basic": {
+      "name": "基础详情页",
+      "match": ["basic-details", "基础详情", "容器撑满详情", "容器定宽详情"],
+      "semantics": [
+        "scrollable-detail-content",
+        "grouped-description-fields",
+        "embedded-key-value-table",
+        "embedded-data-table",
+        "table-pagination"
+      ]
+    },
+    "details-grouped": {
+      "name": "分组详情页",
+      "match": ["grouped-details", "分组详情", "一级分组详情", "二级分组详情"],
+      "semantics": ["grouped-detail-content", "hierarchical-detail-containers", "embedded-detail-tables"]
+    },
+    "details-master-detail": {
+      "name": "总分结构详情页",
+      "match": ["master-detail", "总分结构详情", "左右总分详情", "上下总分详情"],
+      "semantics": ["master-summary", "detail-sections", "master-detail-layout"]
+    },
+    "details-parallel": {
+      "name": "并列结构详情页",
+      "match": ["parallel-details", "并列结构详情"],
+      "semantics": ["parallel-detail-regions", "person-summary", "detail-sections"]
+    },
+    "details-text-image": {
+      "name": "图文详情页",
+      "match": ["text-image-details", "图文详情", "左右图文详情", "上下左右图文详情"],
+      "semantics": ["primary-media-preview", "text-detail-panel", "media-detail-layout"]
+    },
+    "details-anchored": {
+      "name": "带锚点详情页",
+      "match": ["anchored-details", "带锚点详情", "横向锚点详情", "常驻锚点详情", "可收起锚点详情"],
+      "semantics": ["section-anchor-navigation", "person-summary", "anchored-detail-sections"]
+    },
+    "details-simulation-file": {
+      "name": "仿真文件详情页",
+      "match": ["simulation-file-details", "仿真文件详情"],
+      "semantics": ["document-like-detail", "key-value-grid", "signature-and-attachments"]
+    }
+  },
+  "pages": {
+    "/pages/details/fillUp": {
+      "family": "details-basic",
+      "variant": "fill-up",
+      "parameters": {
+        "container_width": "fluid",
+        "group_count": 4,
+        "description_columns": 4,
+        "description_item_count": 18,
+        "embedded_tables": ["key-value", "data-table"],
+        "data_rows_per_page": 20,
+        "pagination": true
+      }
+    },
+    "/pages/details/fixedWidth": {
+      "family": "details-basic",
+      "variant": "fixed-width",
+      "parameters": {
+        "container_width": "fixed",
+        "container_width_px": 1280,
+        "group_count": 4,
+        "description_columns": 4,
+        "description_item_count": 18,
+        "embedded_tables": ["key-value", "data-table"],
+        "data_rows_per_page": 20,
+        "pagination": true
+      }
+    },
+    "/pages/details/firstGroup": {
+      "family": "details-grouped",
+      "variant": "first-group",
+      "parameters": {"grouping_level": 1, "container_count": 1, "group_count": 4, "description_item_count": 18, "embedded_tables": 2, "pagination": true}
+    },
+    "/pages/details/secondaryGrouping": {
+      "family": "details-grouped",
+      "variant": "secondary-grouping",
+      "parameters": {"grouping_level": 2, "container_count": 2, "inner_group_count": 4, "description_item_count": 18, "embedded_tables": 2, "pagination": true}
+    },
+    "/pages/details/leftAndRightLayout": {
+      "family": "details-master-detail",
+      "variant": "left-and-right-layout",
+      "parameters": {"layout_direction": "horizontal", "container_relation": "separate", "master_position": "left", "detail_root_x": 561, "embedded_tables": 2, "pagination": true}
+    },
+    "/pages/details/upAndDownLayout": {
+      "family": "details-master-detail",
+      "variant": "up-and-down-layout",
+      "parameters": {"layout_direction": "vertical", "container_relation": "separate", "master_position": "top", "detail_root_y": 336.56, "embedded_tables": 2, "pagination": true}
+    },
+    "/pages/details/upAndDownLayoutSingleContainer": {
+      "family": "details-master-detail",
+      "variant": "up-and-down-layout-single-container",
+      "parameters": {"layout_direction": "vertical", "container_relation": "shared-scroll-container", "master_position": "top", "container_width_px": 1280, "embedded_tables": 2, "pagination": true}
+    },
+    "/pages/details/coordination": {
+      "family": "details-parallel",
+      "variant": "coordination",
+      "parameters": {"layout_direction": "horizontal", "primary_region_width": 1072, "parallel_region_width": 416, "person_summary": true, "embedded_tables": 2, "pagination": true}
+    },
+    "/pages/details/leftAndRightLayoutTextAndImageDetails": {
+      "family": "details-text-image",
+      "variant": "left-and-right-layout",
+      "parameters": {"layout_direction": "horizontal", "top_summary": false, "media_width_px": 1008, "detail_panel_width_px": 352, "region_gap_px": 24}
+    },
+    "/pages/details/upDownLeftRigthLayoutTextAndImageDetails": {
+      "family": "details-text-image",
+      "variant": "up-down-left-right-layout",
+      "parameters": {"layout_direction": "vertical-then-horizontal", "top_summary": true, "detail_root_y": 222.77, "media_width_px": 1008, "detail_panel_width_px": 352, "region_gap_px": 24}
+    },
+    "/pages/details/horizontalAnchorPoint": {
+      "family": "details-anchored",
+      "variant": "horizontal-anchor-point",
+      "parameters": {"anchor_mode": "horizontal-tabs", "anchor_position": "sticky-top", "anchor_count": 3, "anchor_width_px": 1120, "anchor_height_px": 55}
+    },
+    "/pages/details/residentAnchorPoint": {
+      "family": "details-anchored",
+      "variant": "resident-anchor-point",
+      "parameters": {"anchor_mode": "resident", "anchor_position": "right", "anchor_count": 3, "content_width_px": 1275.53, "reserved_width_px": 180.47, "text_align": "left"}
+    },
+    "/pages/details/retractedAnchorPoint": {
+      "family": "details-anchored",
+      "variant": "retracted-anchor-point",
+      "parameters": {"anchor_mode": "foldable", "anchor_position": "right", "anchor_count": 3, "default_state": "folded", "content_width_px": 1456}
+    },
+    "/pages/details/simulationFile": {
+      "family": "details-simulation-file",
+      "variant": "simulation-file",
+      "parameters": {"container_width_px": 1280, "document_width_px": 1120, "key_label_width_px": 220, "two_pair_row_value_width_px": 340, "full_row_value_width_px": 900, "signature_section": true, "attachment_section": true}
+    }
+  }
+}

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HUI 表单示例</title>
+  <link rel="stylesheet" href="https://pixso.hikvision.com.cn/hik-plugin/ai-builder-web/public/webresources/libs/hui.css">
+  <style>
+    body {
+      background: #f5f7fa;
+      padding: 40px 0;
+    }
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+    .form-card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+    .form-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #303133;
+    }
+    .form-subtitle {
+      font-size: 14px;
+      color: #909399;
+      margin-bottom: 24px;
+    }
+    .form-actions {
+      margin-top: 30px;
+      padding-top: 20px;
+      border-top: 1px solid #ebeef5;
+      text-align: center;
+    }
+    .form-actions .el-button {
+      margin: 0 10px;
+      min-width: 100px;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div class="container">
+      <div class="form-card">
+        <div class="form-title">用户信息登记</div>
+        <div class="form-subtitle">请填写以下信息，带 * 号为必填项</div>
+
+        <el-form ref="form" :model="form" :rules="rules" label-width="100px">
+          <!-- 用户名 -->
+          <el-form-item label="用户名" prop="username">
+            <el-input v-model="form.username" placeholder="请输入用户名" clearable></el-input>
+          </el-form-item>
+
+          <!-- 邮箱 -->
+          <el-form-item label="邮箱" prop="email">
+            <el-input v-model="form.email" placeholder="请输入邮箱地址" clearable></el-input>
+          </el-form-item>
+
+          <!-- 手机号 -->
+          <el-form-item label="手机号" prop="phone">
+            <el-input v-model="form.phone" placeholder="请输入手机号" clearable>
+              <template slot="prepend">+86</template>
+            </el-input>
+          </el-form-item>
+
+          <!-- 性别 -->
+          <el-form-item label="性别" prop="gender">
+            <el-radio-group v-model="form.gender">
+              <el-radio label="male">男</el-radio>
+              <el-radio label="female">女</el-radio>
+            </el-radio-group>
+          </el-form-item>
+
+          <!-- 兴趣爱好 -->
+          <el-form-item label="兴趣爱好" prop="hobbies">
+            <el-checkbox-group v-model="form.hobbies">
+              <el-checkbox label="reading">阅读</el-checkbox>
+              <el-checkbox label="sports">运动</el-checkbox>
+              <el-checkbox label="music">音乐</el-checkbox>
+              <el-checkbox label="travel">旅行</el-checkbox>
+              <el-checkbox label="gaming">游戏</el-checkbox>
+            </el-checkbox-group>
+          </el-form-item>
+
+          <!-- 所在城市 -->
+          <el-form-item label="所在城市" prop="city">
+            <el-select v-model="form.city" placeholder="请选择城市" clearable style="width: 100%">
+              <el-option label="北京" value="beijing"></el-option>
+              <el-option label="上海" value="shanghai"></el-option>
+              <el-option label="广州" value="guangzhou"></el-option>
+              <el-option label="深圳" value="shenzhen"></el-option>
+              <el-option label="杭州" value="hangzhou"></el-option>
+              <el-option label="成都" value="chengdu"></el-option>
+            </el-select>
+          </el-form-item>
+
+          <!-- 出生日期 -->
+          <el-form-item label="出生日期" prop="birthday">
+            <el-date-picker
+              v-model="form.birthday"
+              type="date"
+              placeholder="选择出生日期"
+              style="width: 100%"
+            ></el-date-picker>
+          </el-form-item>
+
+          <!-- 个人简介 -->
+          <el-form-item label="个人简介" prop="bio">
+            <el-input
+              v-model="form.bio"
+              type="textarea"
+              :rows="4"
+              placeholder="请简单介绍一下自己..."
+              maxlength="200"
+              show-word-limit
+            ></el-input>
+          </el-form-item>
+
+          <!-- 是否接收通知 -->
+          <el-form-item label="" prop="notify">
+            <el-checkbox v-model="form.notify">接收邮件和短信通知</el-checkbox>
+          </el-form-item>
+
+          <!-- 操作按钮 -->
+          <div class="form-actions">
+            <el-button type="primary" @click="handleSubmit">提交</el-button>
+            <el-button @click="handleReset">重置</el-button>
+          </div>
+        </el-form>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://pixso.hikvision.com.cn/hik-plugin/ai-builder-web/public/webresources/libs/vue.min.js"></script>
+  <script src="https://pixso.hikvision.com.cn/hik-plugin/ai-builder-web/public/webresources/libs/vuex.min.js"></script>
+  <script src="https://pixso.hikvision.com.cn/hik-plugin/ai-builder-web/public/webresources/libs/hui.umd.js"></script>
+  <script src="https://pixso.hikvision.com.cn/hik-plugin/ai-builder-web/public/webresources/libs/hui-svg-icon.umd.js"></script>
+
+  <script>
+    let instance = new Vue({
+      el: '#app',
+      data: {
+        form: {
+          username: '',
+          email: '',
+          phone: '',
+          gender: 'male',
+          hobbies: [],
+          city: '',
+          birthday: '',
+          bio: '',
+          notify: true
+        },
+        rules: {
+          username: [
+            { required: true, message: '请输入用户名', trigger: 'blur' },
+            { min: 2, max: 20, message: '用户名长度应在 2-20 个字符之间', trigger: 'blur' }
+          ],
+          email: [
+            { required: true, message: '请输入邮箱地址', trigger: 'blur' },
+            { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+          ],
+          phone: [
+            { required: true, message: '请输入手机号', trigger: 'blur' },
+            { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号格式', trigger: 'blur' }
+          ],
+          gender: [
+            { required: true, message: '请选择性别', trigger: 'change' }
+          ],
+          city: [
+            { required: true, message: '请选择所在城市', trigger: 'change' }
+          ],
+          birthday: [
+            { required: true, message: '请选择出生日期', trigger: 'change' }
+          ]
+        }
+      },
+      methods: {
+        handleSubmit: function() {
+          this.$refs.form.validate((valid) => {
+            if (valid) {
+              console.log('表单数据：', this.form);
+              this.$message.success('提交成功！');
+            } else {
+              this.$message.error('请检查表单填写是否正确');
+              return false;
+            }
+          });
+        },
+        handleReset: function() {
+          this.$refs.form.resetFields();
+          this.$message.info('表单已重置');
+        }
+      }
+    });
+    console.log(instance);
+  </script>
+</body>
+</html>

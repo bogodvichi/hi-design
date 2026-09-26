@@ -1,0 +1,104 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "product_version": "3.0.0",
+  "id": "isc3-personnel-field-config",
+  "title": "人员/车辆字段配置",
+  "page_kind": "table",
+  "pattern_contract": "table/card-tabs.json",
+  "framework": {
+    "variant": "regular-11",
+    "tabs": [
+      {"id": "personnel", "label": "人员信息"},
+      {"id": "vehicle", "label": "车辆信息"}
+    ],
+    "active_tab": "personnel",
+    "intro": "字段配置：通过添加字段进行参数配置",
+    "global_actions": ["导入字段", "导出字段", "采集设备参数配置"]
+  },
+  "portal": {
+    "active_top_menu": "门禁管理",
+    "active_icon_menu": "personnel",
+    "show_context_sidebar": false,
+    "section": "人员管理",
+    "tab_title": "字段配置",
+    "active_side_menu": "personnel-list",
+    "side_menus": [
+      {"id": "personnel-list", "label": "人员信息", "icon": "h-icon-user"},
+      {"id": "access-authorization", "label": "门禁授权", "icon": "h-icon-lock"},
+      {"id": "card-management", "label": "卡片管理", "icon": "h-icon-info_card"}
+    ]
+  },
+  "table_tabs": [
+    {"id": "personnel", "label": "人员信息"},
+    {"id": "vehicle", "label": "车辆信息"}
+  ],
+  "toolbar_actions": [
+    {"id": "import-fields", "label": "导入字段", "icon": "h-icon-import"},
+    {"id": "export-fields", "label": "导出字段", "icon": "h-icon-export"},
+    {"id": "capture-device-parameters", "label": "采集设备参数配置", "icon": "h-icon-setting"}
+  ],
+  "row_actions": [
+    {"id": "edit", "label": "编辑", "icon": "h-icon-edit"},
+    {"id": "delete", "label": "删除", "icon": "h-icon-delete"}
+  ],
+  "field_configuration": {
+    "description": "字段配置：通过添加字段进行参数配置",
+    "library_title": "可自定义字段",
+    "configured_title": "已配置字段",
+    "field_type_options": ["文本", "数字", "日期", "单选", "多选", "布尔"],
+    "library_add_action": {
+      "id": "add-library-field",
+      "label": "添加字段",
+      "icon": "h-icon-add",
+      "appearance": "default"
+    },
+    "add_action": {
+      "id": "add-configured-field",
+      "label": "添加字段",
+      "icon": "h-icon-add",
+      "appearance": "primary"
+    }
+  },
+  "columns": [
+    {"prop": "name", "label": "字段名称", "min_width": 160},
+    {"prop": "key", "label": "字段标识", "min_width": 180},
+    {"prop": "type", "label": "字段类型", "fixed_width": 110},
+    {"prop": "source", "label": "字段来源", "fixed_width": 120},
+    {"prop": "required", "label": "是否必填", "fixed_width": 100},
+    {"prop": "order", "label": "排序", "fixed_width": 80}
+  ],
+  "preview": {
+    "tableTabRows": {
+      "personnel": [],
+      "vehicle": []
+    },
+    "fieldLibraryByTab": {
+      "personnel": [
+        {"id": "personnel-alias", "name": "人员别名", "key": "personAlias", "type": "文本"},
+        {"id": "personnel-nationality", "name": "国籍", "key": "nationality", "type": "单选"},
+        {"id": "personnel-office", "name": "办公地点", "key": "officeLocation", "type": "文本"},
+        {"id": "personnel-tags", "name": "人员标签", "key": "personTags", "type": "多选"},
+        {"id": "personnel-reminder", "name": "到期提醒天数", "key": "expiryReminderDays", "type": "数字"}
+      ],
+      "vehicle": [
+        {"id": "vehicle-purpose", "name": "车辆用途", "key": "vehiclePurpose", "type": "单选"},
+        {"id": "vehicle-brand", "name": "车辆品牌", "key": "vehicleBrand", "type": "文本"},
+        {"id": "vehicle-color", "name": "车辆颜色", "key": "vehicleColor", "type": "单选"},
+        {"id": "vehicle-space", "name": "常驻车位", "key": "parkingSpace", "type": "文本"}
+      ]
+    },
+    "configuredFieldsByTab": {
+      "personnel": [
+        {"id": "personnel-alias", "name": "人员别名", "key": "personAlias", "type": "文本", "source": "自定义字段", "required": "否", "order": 1},
+        {"id": "personnel-office", "name": "办公地点", "key": "officeLocation", "type": "文本", "source": "自定义字段", "required": "否", "order": 2},
+        {"id": "personnel-tags", "name": "人员标签", "key": "personTags", "type": "多选", "source": "自定义字段", "required": "否", "order": 3}
+      ],
+      "vehicle": [
+        {"id": "vehicle-purpose", "name": "车辆用途", "key": "vehiclePurpose", "type": "单选", "source": "自定义字段", "required": "否", "order": 1},
+        {"id": "vehicle-color", "name": "车辆颜色", "key": "vehicleColor", "type": "单选", "source": "自定义字段", "required": "否", "order": 2}
+      ]
+    }
+  }
+}

@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>macOS 代码签名与公证完整教程</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --bg-card: #1e293b;
+      --bg-code: #0b1221;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --accent: #38bdf8;
+      --accent-dim: #0ea5e9;
+      --success: #4ade80;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --border: #334155;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.8;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 40px 24px;
+    }
+
+    header {
+      text-align: center;
+      padding: 60px 0 40px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 40px;
+    }
+
+    header h1 {
+      font-size: 2.5rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 12px;
+    }
+
+    header p {
+      color: var(--text-muted);
+      font-size: 1.1rem;
+    }
+
+    .section {
+      background: var(--bg-card);
+      border-radius: 16px;
+      padding: 32px;
+      margin-bottom: 24px;
+      border: 1px solid var(--border);
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .step-number {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.1rem;
+      flex-shrink: 0;
+    }
+
+    .section h2 {
+      font-size: 1.4rem;
+      font-weight: 600;
+    }
+
+    .section h3 {
+      font-size: 1.1rem;
+      color: var(--accent);
+      margin: 24px 0 12px;
+      font-weight: 600;
+    }
+
+    .section p {
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    .section ol, .section ul {
+      margin-left: 20px;
+      margin-bottom: 16px;
+      color: var(--text-muted);
+    }
+
+    .section li {
+      margin-bottom: 8px;
+    }
+
+    .code-block {
+      background: var(--bg-code);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin: 16px 0;
+      position: relative;
+      overflow-x: auto;
+    }
+
+    .code-block pre {
+      color: var(--accent);
+      font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .code-block .lang-label {
+      position: absolute;
+      top: 8px;
+      right: 12px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      background: var(--bg-card);
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .tip {
+      background: rgba(56, 189, 248, 0.1);
+      border-left: 4px solid var(--accent);
+      padding: 16px 20px;
+      border-radius: 0 8px 8px 0;
+      margin: 20px 0;
+    }
+
+    .tip .tip-title {
+      color: var(--accent);
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tip p {
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    .warning {
+      background: rgba(251, 191, 36, 0.1);
+      border-left: 4px solid var(--warning);
+      padding: 16px 20px;
+      border-radius: 0 8px 8px 0;
+      margin: 20px 0;
+    }
+
+    .warning .warning-title {
+      color: var(--warning);
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .warning p {
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    .progress-bar {
+      display: flex;
+      justify-content: space-between;
+      margin: 40px 0;
+      position: relative;
+    }
+
+    .progress-bar::before {
+      content: '';
+      position: absolute;
+      top: 20px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--border);
+      z-index: 0;
+    }
+
+    .progress-step {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      z-index: 1;
+    }
+
+    .progress-step .dot {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+
+    .progress-step.active .dot {
+      background: linear-gradient(135deg, var(--accent), var(--accent-dim));
+      border-color: var(--accent);
+      color: var(--bg);
+    }
+
+    .progress-step .label {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      text-align: center;
+      max-width: 80px;
+    }
+
+    .progress-step.active .label {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      padding: 12px 16px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    th {
+      color: var(--accent);
+      font-weight: 600;
+      background: var(--bg-code);
+    }
+
+    td {
+      color: var(--text-muted);
+    }
+
+    .env-var {
+      font-family: 'SF Mono', Monaco, monospace;
+      color: var(--accent);
+      background: var(--bg-code);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+
+    .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 12px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .copy-btn:hover {
+      background: var(--border);
+      color: var(--text);
+    }
+
+    footer {
+      text-align: center;
+      padding: 40px 0;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      border-top: 1px solid var(--border);
+      margin-top: 40px;
+    }
+
+    @media (max-width: 640px) {
+      header h1 { font-size: 1.8rem; }
+      .section { padding: 24px 20px; }
+      .progress-bar { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>macOS 代码签名与公证完整教程</h1>
+      <p>为 Open Design 桌面应用配置 Apple Developer ID 签名与 Notarization</p>
+    </header>
+
+    <div class="progress-bar">
+      <div class="progress-step active">
+        <div class="dot">1</div>
+        <div class="label">创建证书</div>
+      </div>
+      <div class="progress-step">
+        <div class="dot">2</div>
+        <div class="label">获取信息</div>
+      </div>
+      <div class="progress-step">
+        <div class="dot">3</div>
+        <div class="label">配置环境</div>
+      </div>
+      <div class="progress-step">
+        <div class="dot">4</div>
+        <div class="label">执行打包</div>
+      </div>
+      <div class="progress-step">
+        <div class="dot">5</div>
+        <div class="label">验证结果</div>
+      </div>
+    </div>
+
+    <!-- Step 1 -->
+    <div class="section">
+      <div class="section-header">
+        <div class="step-number">1</div>
+        <h2>创建 Developer ID 证书</h2>
+      </div>
+      <p>代码签名需要 <strong>Developer ID Application</strong> 证书。这是 Apple 为分发到 Mac App Store 外的应用提供的证书类型。</p>
+
+      <h3>1.1 生成 CSR（证书签名请求）</h3>
+      <ol>
+        <li>打开 Mac 上的「钥匙串访问」应用（Keychain Access）</li>
+        <li>菜单栏选择 <strong>钥匙串访问 → 证书助理 → 从证书颁发机构请求证书</strong></li>
+        <li>填写信息：
+          <ul>
+            <li>用户电子邮件地址：你的 Apple ID 邮箱</li>
+            <li>常用名称：你的名字或公司名</li>
+            <li>CA 电子邮件地址：留空</li>
+            <li>请求是：选择<strong>存储到磁盘</strong></li>
+          </ul>
+        </li>
+        <li>保存 <code>CertificateSigningRequest.certSigningRequest</code> 文件</li>
+      </ol>
+
+      <h3>1.2 在 Apple Developer 网站申请证书</h3>
+      <ol>
+        <li>访问 <a href="https://developer.apple.com/account" target="_blank" style="color: var(--accent);">Apple Developer Portal</a> 并登录</li>
+        <li>进入 <strong>Certificates, Identifiers & Profiles</strong></li>
+        <li>点击 <strong>+</strong> 按钮添加新证书</li>
+        <li>选择 <strong>Developer ID Application</strong>（注意不是 iOS Distribution 或 Mac App Distribution）</li>
+        <li>上传刚才生成的 <code>.certSigningRequest</code> 文件</li>
+        <li>下载生成的 <code>.cer</code> 证书文件</li>
+      </ol>
+
+      <h3>1.3 安装证书</h3>
+      <ol>
+        <li>双击下载的 <code>.cer</code> 文件</li>
+        <li>证书会自动安装到「钥匙串访问」的<strong>登录</strong>钥匙串</li>
+        <li>在「钥匙串访问」中搜索证书名称，展开后确认有<strong>私钥</strong>（🔑 图标）</li>
+      </ol>
+
+      <div class="tip">
+        <div class="tip-title">💡 重要提示</div>
+        <p>如果证书下没有私钥，签名会失败。请确保 CSR 是在当前 Mac 上生成的，私钥会自动存储在该 Mac 的钥匙串中。</p>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="section">
+      <div class="section-header">
+        <div class="step-number">2</div>
+        <h2>获取必要信息</h2>
+      </div>
+
+      <h3>2.1 获取 Team ID</h3>
+      <ol>
+        <li>登录 <a href="https://developer.apple.com/account" target="_blank" style="color: var(--accent);">Apple Developer Portal</a></li>
+        <li>点击右上角你的账号名 → <strong>Membership Details</strong></li>
+        <li>找到 <strong>Team ID</strong>（10 位字符串，如 <code>ABCDE12345</code>）</li>
+      </ol>
+
+      <h3>2.2 创建应用专用密码</h3>
+      <p>Apple 不允许用真实密码做公证，必须创建应用专用密码：</p>
+      <ol>
+        <li>访问 <a href="https://appleid.apple.com" target="_blank" style="color: var(--accent);">appleid.apple.com</a> 并登录</li>
+        <li>进入 <strong>登录与安全 → App 专用密码</strong></li>
+        <li>点击 <strong>生成 App 专用密码</strong></li>
+        <li>输入标签名称（如 <code>Open Design Notarize</code>）</li>
+        <li>复制生成的密码（格式如 <code>abcd-efgh-ijkl-mnop</code>）</li>
+      </ol>
+
+      <div class="warning">
+        <div class="warning-title">⚠️ 注意</div>
+        <p>应用专用密码只显示一次，请务必保存好。如果丢失，需要重新生成。</p>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="section">
+      <div class="section-header">
+        <div class="step-number">3</div>
+        <h2>配置环境变量</h2>
+      </div>
+      <p>将签名和公证所需的环境变量配置到 shell 配置文件中，避免每次手动输入。</p>
+
+      <h3>3.1 编辑配置文件</h3>
+      <p>打开终端，编辑 <code>~/.zshrc</code> 文件（如果使用 bash，则编辑 <code>~/.bash_profile</code>）：</p>
+
+      <div class="code-block">
+        <span class="lang-label">bash</span>
+        <pre># 使用默认编辑器打开
+open ~/.zshrc
+
+# 或者使用 nano
+nano ~/.zshrc
+
+# 或者使用 VS Code
+code ~/.zshrc</pre>
+      </div>
+
+      <h3>3.2 添加环境变量</h3>
+      <p>在文件末尾添加以下内容（替换为你的真实信息）：</p>
+
+      <div class="code-block">
+        <span class="lang-label">bash</span>
+        <pre># Open Design 打包签名/公证配置
+export APPLE_ID="your-email@example.com"
+export APPLE_APP_SPECIFIC_PASSWORD="xxxx-xxxx-xxxx-xxxx"
+export APPLE_TEAM_ID="YOURTEAMID"</pre>
+      </div>
+
+      <h3>3.3 使配置生效</h3>
+      <div class="code-block">
+        <span class="lang-label">bash</span>
+        <pre>source ~/.zshrc</pre>
+      </div>
+
+      <div class="tip">
+        <div class="tip-title">💡 验证环境变量</div>
+        <p>在终端中运行 <code>echo $APPLE_ID</code>，确认输出正确的邮箱地址。</p>
+      </div>
+    </div>
+
+    <!-- Step 4 -->
+    <div class="section">
+      <div class="section-header">
+        <div class="step-number">4</div>
+        <h2>执行打包</h2>
+      </div>
+
+      <h3>4.1 仅签名（不公证）</h3>
+      <p>如果只需要代码签名，不需要公证：</p>
+      <div class="code-block">
+        <span class="lang-label">bash</span>
+        <pre>pnpm tools-pack mac build --to dmg --signed</pre>
+      </div>
+
+      <h3>4.2 签名 + 公证（推荐）</h3>
+      <p>完整的签名+公证流程，生成 DMG 和 ZIP：</p>
+      <div class="code-block">
+        <span class="lang-label">bash</span>
+        <pre>pnpm tools-pack mac build --to all --signed --notarize</pre>
+      </div>
+
+      <h3>4.3 可选参数说明</h3>
+      <table>
+        <thead>
+          <tr><th>参数</th><th>说明</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>--to app</code></td><td>仅构建 .app 目录</td></tr>
+          <tr><td><code>--to dmg</code></td><td>构建 DMG 安装包</td></tr>
+          <tr><td><code>--to zip</code></td><td>构建 ZIP 压缩包</td></tr>
+          <tr><td><code>--to all</code></td><td>构建 DMG + ZIP</td></tr>
+          <tr><td><code>--signed</code></td><td>启用代码签名</td></tr>
+          <tr><td><code>--notarize</code></td><td>启用公证（需配合 --signed）</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Step 5 -->
+    <div class="section">
+      <div class="section-header">
+        <div class="step-number">5</div>
+        <h2>验证结果</h2>
+      </div>
+
+      <h3>5.1 验证签名</h3>
+      <div class="code-block">
+        <span class="lang-label">bash</span>
+        <pre># 验证 .app 签名
+codesign -vv --deep --strict /path/to/Open\ Design.app
+
+# 查看签名详情
+codesign -dvv /path/to/Open\ Design.app</pre>
+      </div>
+
+      <h3>5.2 验证公证</h3>
+      <div class="code-block">
+        <span class="lang-label">bash</span>
+        <pre># 检查公证状态
+spctl -a -vv /path/to/Open\ Design.app
+
+# 查看公证详情
+xcrun stapler validate /path/to/Open\ Design.app</pre>
+      </div>
+    </div>
+
+    <!-- 常见问题 -->
+    <div class="section">
+      <div class="section-header">
+        <div class="step-number">?</div>
+        <h2>常见问题</h2>
+      </div>
+
+      <h3>打包时提示找不到证书？</h3>
+      <ul>
+        <li>确认证书安装在「登录」钥匙串，而不是「系统」</li>
+        <li>确认证书类型是 <strong>Developer ID Application</strong></li>
+        <li>确认证书没有过期</li>
+        <li>确认证书下有对应的私钥（🔑 图标）</li>
+      </ul>
+
+      <h3>公证失败？</h3>
+      <ul>
+        <li>检查三个环境变量是否都正确设置</li>
+        <li>确认 <code>APPLE_APP_SPECIFIC_PASSWORD</code> 是应用专用密码，不是 Apple ID 真实密码</li>
+        <li>确认 <code>APPLE_TEAM_ID</code> 是 10 位字符串</li>
+        <li>网络问题会导致临时失败，项目内置了 3 次重试机制</li>
+      </ul>
+
+      <h3>Windows 上能签名吗？</h3>
+      <p><strong>不能。</strong> <code>codesign</code> 和 <code>xcrun notarytool</code> 是 Apple 的 macOS 专属工具。必须在 macOS 上执行签名和公证。</p>
+    </div>
+
+    <!-- 快速参考 -->
+    <div class="section">
+      <div class="section-header">
+        <div class="step-number">R</div>
+        <h2>快速参考：环境变量汇总</h2>
+      </div>
+
+      <table>
+        <thead>
+          <tr><th>环境变量</th><th>来源</th><th>用途</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="env-var">APPLE_ID</span></td>
+            <td>Apple ID 邮箱</td>
+            <td>公证登录账号</td>
+          </tr>
+          <tr>
+            <td><span class="env-var">APPLE_APP_SPECIFIC_PASSWORD</span></td>
+            <td>appleid.apple.com 生成</td>
+            <td>公证专用密码</td>
+          </tr>
+          <tr>
+            <td><span class="env-var">APPLE_TEAM_ID</span></td>
+            <td>Developer Portal</td>
+            <td>团队标识</td>
+          </tr>
+          <tr>
+            <td><span class="env-var">APPLE_NOTARY_KEYCHAIN_PROFILE</span></td>
+            <td>可选，Keychain 配置</td>
+            <td>替代 Apple ID 的 Keychain Profile</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer>
+      <p>Open Design · macOS 代码签名与公证教程</p>
+      <p style="margin-top: 8px; font-size: 0.8rem;">基于 electron-builder + xcrun notarytool</p>
+    </footer>
+  </div>
+
+  <script>
+    // 复制按钮功能
+    document.querySelectorAll('.code-block').forEach(block => {
+      const btn = document.createElement('button');
+      btn.className = 'copy-btn';
+      btn.textContent = '复制';
+      btn.addEventListener('click', () => {
+        const code = block.querySelector('pre').textContent;
+        navigator.clipboard.writeText(code).then(() => {
+          btn.textContent = '已复制!';
+          setTimeout(() => btn.textContent = '复制', 2000);
+        });
+      });
+      block.appendChild(btn);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,2085 @@
+{
+  "path": "/pages/form/retractableAnchorPoint",
+  "name": "表单页_带锚点_可收起锚点",
+  "category": [
+    {
+      "name": "表单页",
+      "order": 1
+    },
+    {
+      "name": "带锚点",
+      "order": 4
+    },
+    {
+      "name": "可收起锚点",
+      "order": 3
+    }
+  ],
+  "package": "@hiktpp/form-retractableAnchorPoint",
+  "hui_version": "^2.55.0",
+  "viewport": {
+    "width": 1920,
+    "height": 968
+  },
+  "root": {
+    "class": "h-page-content form-area is-flex is-align-center",
+    "rect": {
+      "x": 352,
+      "y": 118.31,
+      "width": 1440,
+      "height": 849.69
+    },
+    "style": {
+      "display": "flex",
+      "padding": "0px 12px",
+      "overflow": "visible"
+    }
+  },
+  "runtime_components": {
+    "h-page-content": 1,
+    "el-form": 1,
+    "el-row": 6,
+    "el-col": 11,
+    "el-form-item": 11,
+    "el-input": 8,
+    "el-select": 3,
+    "el-tag": 25,
+    "el-select-menu": 3,
+    "el-scrollbar": 4,
+    "el-option": 15,
+    "el-checkbox": 7,
+    "h-svg-icon": 7,
+    "el-radio-group": 1,
+    "el-radio": 3,
+    "el-slider": 1,
+    "el-input-number": 1,
+    "el-button": 71,
+    "el-tooltip": 12,
+    "el-date-picker": 1,
+    "el-switch": 1,
+    "el-upload": 1,
+    "el-table": 1,
+    "el-table-column": 9,
+    "el-pagination": 1,
+    "h-affix": 1,
+    "h-anchor-link": 2
+  },
+  "regions": [
+    {
+      "tag": "div",
+      "class": "h-page-content form-area is-flex is-align-center",
+      "rect": {
+        "x": 352,
+        "y": 118.31,
+        "width": 1440,
+        "height": 849.69
+      },
+      "display": "flex",
+      "position": "relative",
+      "padding": "0px 12px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "form-area__content",
+      "rect": {
+        "x": 370,
+        "y": 118.31,
+        "width": 1416,
+        "height": 1919
+      },
+      "display": "flex",
+      "position": "relative",
+      "padding": "48px 80px 58px",
+      "margin": "0px -12px 0px 0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "form",
+      "class": "el-form el-form--label-top",
+      "rect": {
+        "x": 450,
+        "y": 166.31,
+        "width": 1256,
+        "height": 1813
+      },
+      "display": "block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "group_title",
+      "rect": {
+        "x": 450,
+        "y": 166.31,
+        "width": 1256,
+        "height": 32
+      },
+      "display": "flex",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px 0px 24px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-form-item is-required-right",
+      "rect": {
+        "x": 450,
+        "y": 222.31,
+        "width": 397.33,
+        "height": 61
+      },
+      "display": "block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px 0px 24px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "label",
+      "class": "el-form-item__label",
+      "rect": {
+        "x": 450,
+        "y": 222.31,
+        "width": 397.33,
+        "height": 24
+      },
+      "display": "inline-block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px 0px 4px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-form-item__content",
+      "rect": {
+        "x": 450,
+        "y": 250.31,
+        "width": 397.33,
+        "height": 33
+      },
+      "display": "block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-form-item is-required-right",
+      "rect": {
+        "x": 879.33,
+        "y": 222.31,
+        "width": 397.33,
+        "height": 61
+      },
+      "display": "block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px 0px 24px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "label",
+      "class": "el-form-item__label",
+      "rect": {
+        "x": 879.33,
+        "y": 222.31,
+        "width": 397.33,
+        "height": 24
+      },
+      "display": "inline-block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px 0px 4px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-form-item__content",
+      "rect": {
+        "x": 879.33,
+        "y": 250.31,
+        "width": 397.33,
+        "height": 33
+      },
+      "display": "block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "collapsible-tags-container",
+      "rect": {
+        "x": 879.33,
+        "y": 254.81,
+        "width": 365,
+        "height": 24
+      },
+      "display": "flex",
+      "position": "static",
+      "padding": "0px 4px",
+      "margin": "0px",
+      "gap": "4px",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-form-item is-required-right",
+      "rect": {
+        "x": 1308.66,
+        "y": 222.31,
+        "width": 397.33,
+        "height": 64
+      },
+      "display": "block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px 0px 24px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "label",
+      "class": "el-form-item__label",
+      "rect": {
+        "x": 1308.66,
+        "y": 222.31,
+        "width": 397.33,
+        "height": 24
+      },
+      "display": "inline-block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px 0px 4px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-form-item__content",
+      "rect": {
+        "x": 1308.66,
+        "y": 250.31,
+        "width": 397.33,
+        "height": 36
+      },
+      "display": "block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-radio-group",
+      "rect": {
+        "x": 1308.66,
+        "y": 250.31,
+        "width": 282.66,
+        "height": 32
+      },
+      "display": "inline-flex",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-form-item is-required-right",
+      "rect": {
+        "x": 450,
+        "y": 310.31,
+        "width": 397.33,
+        "height": 61
+      },
+      "display": "block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px 0px 24px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "label",
+      "class": "el-form-item__label",
+      "rect": {
+        "x": 450,
+        "y": 310.31,
+        "width": 397.33,
+        "height": 24
+      },
+      "display": "inline-block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px 0px 4px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-form-item__content",
+      "rect": {
+        "x": 450,
+        "y": 338.31,
+        "width": 397.33,
+        "height": 33
+      },
+      "display": "block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-form-item is-required-right",
+      "rect": {
+        "x": 879.33,
+        "y": 310.31,
+        "width": 397.33,
+        "height": 62
+      },
+      "display": "block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px 0px 24px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "label",
+      "class": "el-form-item__label",
+      "rect": {
+        "x": 879.33,
+        "y": 310.31,
+        "width": 397.33,
+        "height": 24
+      },
+      "display": "inline-block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px 0px 4px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-form-item__content",
+      "rect": {
+        "x": 879.33,
+        "y": 338.31,
+        "width": 397.33,
+        "height": 34
+      },
+      "display": "block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-form-item is-required-right",
+      "rect": {
+        "x": 1308.66,
+        "y": 310.31,
+        "width": 397.33,
+        "height": 61.5
+      },
+      "display": "block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px 0px 24px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "label",
+      "class": "el-form-item__label",
+      "rect": {
+        "x": 1308.66,
+        "y": 310.31,
+        "width": 397.33,
+        "height": 24
+      },
+      "display": "inline-block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px 0px 4px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-form-item__content",
+      "rect": {
+        "x": 1308.66,
+        "y": 338.31,
+        "width": 397.33,
+        "height": 33.5
+      },
+      "display": "block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-form-item is-required-right has-description",
+      "rect": {
+        "x": 450,
+        "y": 396.31,
+        "width": 397.33,
+        "height": 81
+      },
+      "display": "block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px 0px 24px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "label",
+      "class": "el-form-item__label",
+      "rect": {
+        "x": 450,
+        "y": 396.31,
+        "width": 397.33,
+        "height": 24
+      },
+      "display": "inline-block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px 0px 4px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-form-item__content",
+      "rect": {
+        "x": 450,
+        "y": 424.31,
+        "width": 397.33,
+        "height": 53
+      },
+      "display": "block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-form-item is-required-right",
+      "rect": {
+        "x": 879.33,
+        "y": 396.31,
+        "width": 397.33,
+        "height": 60
+      },
+      "display": "block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px 0px 24px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "label",
+      "class": "el-form-item__label",
+      "rect": {
+        "x": 879.33,
+        "y": 396.31,
+        "width": 397.33,
+        "height": 24
+      },
+      "display": "inline-block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px 0px 4px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-form-item__content",
+      "rect": {
+        "x": 879.33,
+        "y": 424.31,
+        "width": 397.33,
+        "height": 32
+      },
+      "display": "block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-form-item is-required-right",
+      "rect": {
+        "x": 450,
+        "y": 501.31,
+        "width": 1256,
+        "height": 166
+      },
+      "display": "block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px 0px 24px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "label",
+      "class": "el-form-item__label",
+      "rect": {
+        "x": 450,
+        "y": 501.31,
+        "width": 1256,
+        "height": 24
+      },
+      "display": "inline-block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px 0px 4px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-form-item__content",
+      "rect": {
+        "x": 450,
+        "y": 529.31,
+        "width": 1256,
+        "height": 138
+      },
+      "display": "block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "ul",
+      "class": "el-upload-list el-upload-list--picture-card",
+      "rect": {
+        "x": 450,
+        "y": 561.31,
+        "width": 328,
+        "height": 116
+      },
+      "display": "inline-block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-upload-list__item-content",
+      "rect": {
+        "x": 455,
+        "y": 566.31,
+        "width": 94,
+        "height": 94
+      },
+      "display": "inline-block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-upload-list__item-content",
+      "rect": {
+        "x": 567,
+        "y": 566.31,
+        "width": 94,
+        "height": 94
+      },
+      "display": "inline-block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-upload--picture-card",
+      "rect": {
+        "x": 674,
+        "y": 561.31,
+        "width": 104,
+        "height": 104
+      },
+      "display": "inline-block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "1px dashed rgba(0, 0, 0, 0.12)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-form-item is-required-right",
+      "rect": {
+        "x": 450,
+        "y": 691.31,
+        "width": 826.66,
+        "height": 120
+      },
+      "display": "block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px 0px 24px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "label",
+      "class": "el-form-item__label",
+      "rect": {
+        "x": 450,
+        "y": 691.31,
+        "width": 826.66,
+        "height": 24
+      },
+      "display": "inline-block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px 0px 4px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-form-item__content",
+      "rect": {
+        "x": 450,
+        "y": 719.31,
+        "width": 826.66,
+        "height": 92
+      },
+      "display": "block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "group_title",
+      "rect": {
+        "x": 450,
+        "y": 835.31,
+        "width": 1256,
+        "height": 32
+      },
+      "display": "flex",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px 0px 24px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-form-item is-required-right",
+      "rect": {
+        "x": 450,
+        "y": 891.31,
+        "width": 1256,
+        "height": 28
+      },
+      "display": "block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px 0px 24px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "label",
+      "class": "el-form-item__label",
+      "rect": {
+        "x": 450,
+        "y": 891.31,
+        "width": 1256,
+        "height": 24
+      },
+      "display": "inline-block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px 0px 4px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "el-table__header-wrapper",
+      "rect": {
+        "x": 450,
+        "y": 959.31,
+        "width": 1256,
+        "height": 40
+      },
+      "display": "flex",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "hidden",
+      "overflowY": "hidden"
+    },
+    {
+      "tag": "table",
+      "class": "el-table__header",
+      "rect": {
+        "x": 450,
+        "y": 959.31,
+        "width": 1256,
+        "height": 40
+      },
+      "display": "table",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "cell show-header-overflow",
+      "rect": {
+        "x": 506,
+        "y": 959.31,
+        "width": 150,
+        "height": 40
+      },
+      "display": "flex",
+      "position": "relative",
+      "padding": "0px 12px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.9)",
+      "overflowX": "hidden",
+      "overflowY": "hidden"
+    },
+    {
+      "tag": "div",
+      "class": "cell show-header-overflow",
+      "rect": {
+        "x": 1016,
+        "y": 959.31,
+        "width": 250,
+        "height": 40
+      },
+      "display": "flex",
+      "position": "relative",
+      "padding": "0px 12px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.9)",
+      "overflowX": "hidden",
+      "overflowY": "hidden"
+    },
+    {
+      "tag": "div",
+      "class": "cell show-header-overflow",
+      "rect": {
+        "x": 1506,
+        "y": 959.31,
+        "width": 200,
+        "height": 40
+      },
+      "display": "flex",
+      "position": "relative",
+      "padding": "0px 12px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.9)",
+      "overflowX": "hidden",
+      "overflowY": "hidden"
+    },
+    {
+      "tag": "div",
+      "class": "el-scrollbar is-type-embed",
+      "rect": {
+        "x": 450,
+        "y": 999.31,
+        "width": 1256,
+        "height": 900
+      },
+      "display": "block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "hidden",
+      "overflowY": "hidden"
+    },
+    {
+      "tag": "div",
+      "class": "el-table-scrollbar__wrap el-scrollbar__wrap el-scrollbar__wrap--hidden-default",
+      "rect": {
+        "x": 450,
+        "y": 999.31,
+        "width": 1256,
+        "height": 900
+      },
+      "display": "block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "auto",
+      "overflowY": "auto"
+    },
+    {
+      "tag": "div",
+      "class": "el-scrollbar__view el-table-scrollbar__view",
+      "rect": {
+        "x": 450,
+        "y": 999.31,
+        "width": 1256,
+        "height": 900
+      },
+      "display": "block",
+      "position": "static",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgba(0, 0, 0, 0.7)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "anchorColor",
+      "rect": {
+        "x": 1018,
+        "y": 166.31,
+        "width": 120,
+        "height": 96
+      },
+      "display": "block",
+      "position": "absolute",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "h-anchor-wrapper folded",
+      "rect": {
+        "x": 1636,
+        "y": 143,
+        "width": 120,
+        "height": 96
+      },
+      "display": "inline-block",
+      "position": "relative",
+      "padding": "16px 0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "h-anchor",
+      "rect": {
+        "x": 1636,
+        "y": 159,
+        "width": 120,
+        "height": 64
+      },
+      "display": "block",
+      "position": "relative",
+      "padding": "0px",
+      "margin": "0px",
+      "gap": "normal",
+      "border": "0px none rgb(44, 62, 80)",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    },
+    {
+      "tag": "div",
+      "class": "form-area__footer",
+      "rect": {
+        "x": 370,
+        "y": 911,
+        "width": 1416,
+        "height": 57
+      },
+      "display": "flex",
+      "position": "sticky",
+      "padding": "12px",
+      "margin": "0px -12px 0px 0px",
+      "gap": "normal",
+      "border": "",
+      "overflowX": "visible",
+      "overflowY": "visible"
+    }
+  ],
+  "buttons": [
+    {
+      "text": "添加",
+      "class": "el-button el-button--default is-icon-text",
+      "rect": {
+        "x": 450,
+        "y": 919.31,
+        "width": 96,
+        "height": 32
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--default is-disabled is-icon-text",
+      "rect": {
+        "x": 554,
+        "y": 919.31,
+        "width": 96,
+        "height": 32
+      },
+      "disabled": true
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1518,
+        "y": 1007.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1554,
+        "y": 1007.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1590,
+        "y": 1007.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1518,
+        "y": 1052.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1554,
+        "y": 1052.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1590,
+        "y": 1052.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1518,
+        "y": 1097.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1554,
+        "y": 1097.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1590,
+        "y": 1097.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1518,
+        "y": 1142.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1554,
+        "y": 1142.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1590,
+        "y": 1142.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1518,
+        "y": 1187.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1554,
+        "y": 1187.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1590,
+        "y": 1187.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1518,
+        "y": 1232.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1554,
+        "y": 1232.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1590,
+        "y": 1232.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1518,
+        "y": 1277.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1554,
+        "y": 1277.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1590,
+        "y": 1277.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1518,
+        "y": 1322.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1554,
+        "y": 1322.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1590,
+        "y": 1322.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1518,
+        "y": 1367.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1554,
+        "y": 1367.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1590,
+        "y": 1367.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1518,
+        "y": 1412.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1554,
+        "y": 1412.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1590,
+        "y": 1412.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1518,
+        "y": 1457.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1554,
+        "y": 1457.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1590,
+        "y": 1457.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1518,
+        "y": 1502.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1554,
+        "y": 1502.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1590,
+        "y": 1502.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1518,
+        "y": 1547.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1554,
+        "y": 1547.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1590,
+        "y": 1547.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1518,
+        "y": 1592.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1554,
+        "y": 1592.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1590,
+        "y": 1592.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1518,
+        "y": 1637.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1554,
+        "y": 1637.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1590,
+        "y": 1637.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1518,
+        "y": 1682.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1554,
+        "y": 1682.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1590,
+        "y": 1682.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1518,
+        "y": 1727.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1554,
+        "y": 1727.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1590,
+        "y": 1727.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1518,
+        "y": 1772.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1554,
+        "y": 1772.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1590,
+        "y": 1772.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1518,
+        "y": 1817.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1554,
+        "y": 1817.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1590,
+        "y": 1817.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "编辑",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1518,
+        "y": 1862.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "删除",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1554,
+        "y": 1862.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "更多",
+      "class": "el-button el-button--link el-button--small",
+      "rect": {
+        "x": 1590,
+        "y": 1862.31,
+        "width": 28,
+        "height": 28
+      },
+      "disabled": false
+    },
+    {
+      "text": "跳转",
+      "class": "el-button el-button--default",
+      "rect": {
+        "x": 1638,
+        "y": 1911.31,
+        "width": 56,
+        "height": 32
+      },
+      "disabled": false
+    },
+    {
+      "text": "提交",
+      "class": "el-button el-button--primary",
+      "rect": {
+        "x": 978,
+        "y": 924,
+        "width": 96,
+        "height": 32
+      },
+      "disabled": false
+    },
+    {
+      "text": "取消",
+      "class": "el-button el-button--default",
+      "rect": {
+        "x": 1082,
+        "y": 924,
+        "width": 96,
+        "height": 32
+      },
+      "disabled": false
+    }
+  ],
+  "inputs": [
+    {
+      "type": "text",
+      "placeholder": "请输入",
+      "value": "",
+      "checked": false,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 450,
+        "y": 250.31,
+        "width": 397.33,
+        "height": 32
+      }
+    },
+    {
+      "type": "text",
+      "placeholder": "",
+      "value": "",
+      "checked": false,
+      "readonly": true,
+      "disabled": false,
+      "rect": {
+        "x": 879.33,
+        "y": 250.31,
+        "width": 397.33,
+        "height": 32
+      }
+    },
+    {
+      "type": "checkbox",
+      "placeholder": "",
+      "value": "",
+      "checked": true,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    },
+    {
+      "type": "checkbox",
+      "placeholder": "",
+      "value": "",
+      "checked": true,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    },
+    {
+      "type": "checkbox",
+      "placeholder": "",
+      "value": "",
+      "checked": false,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    },
+    {
+      "type": "checkbox",
+      "placeholder": "",
+      "value": "",
+      "checked": false,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    },
+    {
+      "type": "checkbox",
+      "placeholder": "",
+      "value": "",
+      "checked": false,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    },
+    {
+      "type": "checkbox",
+      "placeholder": "",
+      "value": "",
+      "checked": false,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    },
+    {
+      "type": "checkbox",
+      "placeholder": "",
+      "value": "",
+      "checked": false,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    },
+    {
+      "type": "radio",
+      "placeholder": "",
+      "value": "单选框1",
+      "checked": true,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 1308.66,
+        "y": 254.31,
+        "width": 24,
+        "height": 24
+      }
+    },
+    {
+      "type": "radio",
+      "placeholder": "",
+      "value": "单选框2",
+      "checked": false,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 1410.88,
+        "y": 254.31,
+        "width": 24,
+        "height": 24
+      }
+    },
+    {
+      "type": "radio",
+      "placeholder": "",
+      "value": "单选框3",
+      "checked": false,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 1513.09,
+        "y": 254.31,
+        "width": 24,
+        "height": 24
+      }
+    },
+    {
+      "type": "text",
+      "placeholder": "请输入",
+      "value": "",
+      "checked": false,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 450,
+        "y": 338.31,
+        "width": 397.33,
+        "height": 32
+      }
+    },
+    {
+      "type": "number",
+      "placeholder": "",
+      "value": "60",
+      "checked": false,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 1180.66,
+        "y": 339.31,
+        "width": 96,
+        "height": 32
+      }
+    },
+    {
+      "type": "text",
+      "placeholder": "开始时间",
+      "value": "",
+      "checked": false,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 1317.66,
+        "y": 339.31,
+        "width": 165.67,
+        "height": 30
+      }
+    },
+    {
+      "type": "text",
+      "placeholder": "结束时间",
+      "value": "",
+      "checked": false,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 1507.33,
+        "y": 339.31,
+        "width": 165.66,
+        "height": 30
+      }
+    },
+    {
+      "type": "text",
+      "placeholder": "请选择",
+      "value": "",
+      "checked": false,
+      "readonly": true,
+      "disabled": false,
+      "rect": {
+        "x": 450,
+        "y": 424.31,
+        "width": 397.33,
+        "height": 32
+      }
+    },
+    {
+      "type": "checkbox",
+      "placeholder": "",
+      "value": "on",
+      "checked": true,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 879.33,
+        "y": 441.03,
+        "width": 0,
+        "height": 0
+      }
+    },
+    {
+      "type": "file",
+      "placeholder": "",
+      "value": "",
+      "checked": false,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "width": 0,
+        "height": 0
+      }
+    },
+    {
+      "type": "textarea",
+      "placeholder": "请输入",
+      "value": "",
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 451,
+        "y": 720.31,
+        "width": 824.66,
+        "height": 90
+      }
+    },
+    {
+      "type": "text",
+      "placeholder": "请选择",
+      "value": "20 条/页",
+      "checked": false,
+      "readonly": true,
+      "disabled": false,
+      "rect": {
+        "x": 521.58,
+        "y": 1910.81,
+        "width": 112,
+        "height": 32
+      }
+    },
+    {
+      "type": "text",
+      "placeholder": "",
+      "value": "1",
+      "checked": false,
+      "readonly": false,
+      "disabled": false,
+      "rect": {
+        "x": 1515.25,
+        "y": 1911.31,
+        "width": 72,
+        "height": 32
+      }
+    }
+  ]
+}

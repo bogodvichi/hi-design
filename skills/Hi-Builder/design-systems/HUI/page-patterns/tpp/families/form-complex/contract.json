@@ -1,0 +1,97 @@
+{
+  "schema_version": "hui-page-pattern.v1",
+  "id": "hui.tpp.family.form-complex",
+  "name": "复杂表单页",
+  "source": {
+    "platform": "HUI-VUE典型页面",
+    "observed_at": "2026-07-31",
+    "catalog": "../../catalog.json"
+  },
+  "match": [
+    "complex-form",
+    "复杂表单",
+    "工单表单",
+    "多层级嵌套"
+  ],
+  "semantics": [
+    "nested-fields",
+    "embedded-table-or-tabs",
+    "multi-section-workflow",
+    "sticky-footer-actions"
+  ],
+  "shared_runtime_components": [
+    "el-button",
+    "el-checkbox",
+    "el-form",
+    "el-input",
+    "el-option",
+    "el-radio",
+    "el-radio-group",
+    "el-scrollbar",
+    "el-select",
+    "el-step",
+    "el-steps",
+    "el-tag",
+    "el-tooltip",
+    "h-svg-icon"
+  ],
+  "invariants": {
+    "regions": {
+      "content": {
+        "display": "flex",
+        "position": "static",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "form": {
+        "display": "block",
+        "position": "static",
+        "padding": "0px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible"
+      },
+      "footer": {
+        "display": "flex",
+        "position": "sticky",
+        "padding": "12px",
+        "gap": "normal",
+        "overflow_x": "visible",
+        "overflow_y": "visible",
+        "height": 57
+      }
+    },
+    "variant_values_must_come_from_page_contract": true
+  },
+  "variants": [
+    {
+      "id": "hui.tpp.page.form.multi-level-nesting",
+      "name": "多层级嵌套",
+      "contract": "../../pages/form/multi-level-nesting.json",
+      "parameters": {
+        "complexity": "nested-fields",
+        "embedded_regions": [
+          "conditional-field-group"
+        ],
+        "default_label_position": null
+      }
+    },
+    {
+      "id": "hui.tpp.page.form.work-order-form",
+      "name": "工单表单",
+      "contract": "../../pages/form/work-order-form.json",
+      "parameters": {
+        "complexity": "workflow",
+        "steps_direction": "vertical",
+        "steps_form_gap": "48px",
+        "embedded_regions": [
+          "table",
+          "tabs",
+          "step-actions"
+        ],
+        "default_label_position": null
+      }
+    }
+  ]
+}

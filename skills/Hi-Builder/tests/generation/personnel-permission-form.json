@@ -1,0 +1,73 @@
+{
+  "schema_version": "pattern-page-spec.v2",
+  "industry": "general",
+  "product": "isc",
+  "product_version": "3.0.0",
+  "id": "personnel-permission-form",
+  "title": "人员权限配置",
+  "page_kind": "form",
+  "pattern_contract": "form/multi-level-nesting.json",
+  "portal": {
+    "active_top_menu": "门禁管理",
+    "section": "人员管理",
+    "tab_title": "人员权限配置",
+    "active_side_menu": "personnel-permission",
+    "side_menus": [
+      {"id": "personnel-list", "label": "人员信息", "icon": "h-icon-user"},
+      {"id": "personnel-permission", "label": "权限配置", "icon": "h-icon-lock"},
+      {"id": "authorization-record", "label": "授权记录", "icon": "h-icon-menu"}
+    ]
+  },
+  "form_sections": [
+    {
+      "id": "basic",
+      "title": "基本信息",
+      "description": "设置权限方案名称及适用人员范围。",
+      "fields": [
+        {"key": "permissionName", "label": "权限名称", "kind": "input", "placeholder": "请输入权限名称", "required": true},
+        {"key": "personScope", "label": "适用人员", "kind": "select", "multiple": true, "placeholder": "请选择人员", "options": ["贺翰", "谢谦", "万世", "梁筠", "叶萍"], "wide": true, "required": true},
+        {"key": "organization", "label": "所属组织", "kind": "select", "placeholder": "请选择组织", "options": ["心技术平台部用户体验部", "园区运营部", "行政管理部"], "required": true},
+        {"key": "permissionTemplate", "label": "权限模板", "kind": "select", "placeholder": "请选择权限模板", "options": ["普通员工权限", "访客通行权限", "管理员权限"]}
+      ]
+    },
+    {
+      "id": "access",
+      "title": "门禁权限",
+      "description": "配置人员可通行的区域、门禁点和通行时段。",
+      "fields": [
+        {"key": "accessMode", "label": "授权方式", "kind": "radio", "options": ["按区域授权", "按门禁点授权"], "wide": true, "required": true},
+        {"key": "accessAreas", "label": "通行区域", "kind": "select", "multiple": true, "placeholder": "请选择通行区域", "options": ["研发园区", "行政办公区", "地下停车场", "访客接待区"], "wide": true, "condition": {"key": "accessMode", "equals": "按区域授权"}, "required": true},
+        {"key": "accessPoints", "label": "门禁点", "kind": "select", "multiple": true, "placeholder": "请选择门禁点", "options": ["研发楼东门", "研发楼西门", "办公楼大厅", "停车场入口"], "wide": true, "condition": {"key": "accessMode", "equals": "按门禁点授权"}, "required": true},
+        {"key": "schedule", "label": "通行计划", "kind": "select", "placeholder": "请选择通行计划", "options": ["全天通行", "工作日通行", "自定义时段"], "required": true},
+        {"key": "credentialTypes", "label": "凭证类型", "kind": "checkbox", "options": ["人脸", "卡片", "指纹"], "wide": true}
+      ]
+    },
+    {
+      "id": "validity",
+      "title": "有效期设置",
+      "description": "设置权限生效范围及状态。",
+      "fields": [
+        {"key": "validity", "label": "有效时间", "kind": "date-range", "wide": true, "required": true},
+        {"key": "enabled", "label": "启用权限", "kind": "switch"},
+        {"key": "remark", "label": "备注", "kind": "textarea", "placeholder": "请输入权限说明", "wide": true}
+      ]
+    }
+  ],
+  "form_actions": ["取消", "保存"],
+  "preview": {
+    "formModel": {
+      "permissionName": "研发园区员工通行权限",
+      "personScope": ["贺翰", "谢谦", "万世"],
+      "organization": "心技术平台部用户体验部",
+      "permissionTemplate": "普通员工权限",
+      "accessMode": "按区域授权",
+      "accessAreas": ["研发园区", "行政办公区"],
+      "accessPoints": [],
+      "schedule": "工作日通行",
+      "credentialTypes": ["人脸", "卡片"],
+      "validity": [],
+      "enabled": true,
+      "remark": ""
+    }
+  }
+}

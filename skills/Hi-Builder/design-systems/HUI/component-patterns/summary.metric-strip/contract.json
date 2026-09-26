@@ -1,0 +1,26 @@
+{
+  "schema_version": "hui-component-pattern.v2",
+  "id": "summary.metric-strip",
+  "name": "指标摘要条",
+  "split_mode": "repeat-item",
+  "vue_component": "MetricStrip",
+  "description": "典型页 statisticsStyle：使用可点击统计卡片在主要内容之前展示关键聚合数据",
+  "category": "summary",
+  "status": "active",
+  "use_when": ["页面需要在主要内容之前概览多个关键指标"],
+  "hui_components": ["h-stats"],
+  "structure": {
+    "root_class": "statisticsStyle",
+    "item_class": "card",
+    "item_parts": ["96x96 image", "content", "h-stats"],
+    "h_stats_slots": ["titlePrefix", "valueSuffix"],
+    "interaction": "点击卡片切换 is-active，再次点击取消"
+  },
+  "observed_style": {
+    "root": {"display": "flex", "flex_wrap": "wrap", "gap": 16, "padding": 16, "effective_background": "var(--h-color-bg-primary)"},
+    "card": {"width": "calc(20% - 13px)", "height": 120, "padding": 10, "border": "2px solid transparent", "background": "var(--h-color-blue-10)", "border_radius": 4},
+    "image": {"width": 96, "height": 96},
+    "content": {"display": "flex", "align_items": "center", "padding_left": 10}
+  },
+  "owner": "hui-common"
+}

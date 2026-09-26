@@ -1,0 +1,333 @@
+/* ReviewManuscriptUpdateModal — 更新评审稿小 Modal 自包含样式。
+   复用 ReviewAddModal 的画框结构与全局 token / 关键帧，但更窄（小弹窗）。
+   表单两项从上到下排列：评审稿（上传）、备注（textarea）。
+   z-index 高于 ReviewListModal（1700）与 ReviewAddModal（1750），叠加在最上层。 */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(28, 27, 26, 0.42);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  -webkit-app-region: no-drag;
+  animation: fade-in 160ms ease-out;
+}
+
+.shell {
+  width: 92vw;
+  max-width: 560px;
+  max-height: calc(100vh - 32px);
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  animation: pop-in 220ms cubic-bezier(0.21, 1.02, 0.73, 1);
+}
+
+.head {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 24px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.headMain {
+  min-width: 0;
+}
+.kicker {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.title {
+  margin: 4px 0 0;
+  font-size: 20px;
+  letter-spacing: -0.01em;
+  font-weight: 650;
+}
+.subtitle {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.closeBtn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  transition:
+    background 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.closeBtn:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
+.closeBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 表单区：两项从上到下排列，纵向滚动 */
+.body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 18px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scrollbar-width: thin;
+}
+
+/* form-item：label 在上、控件在下（小弹窗用纵向布局，更紧凑） */
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.itemLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.req {
+  color: #d14343;
+}
+.itemControl {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.itemError {
+  font-size: 12px;
+  color: #d14343;
+  min-height: 16px;
+  line-height: 16px;
+}
+
+/* 通用 textarea */
+.textarea {
+  width: 100%;
+  min-height: 80px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+  resize: vertical;
+  line-height: 1.5;
+  font-family: inherit;
+  box-sizing: border-box;
+  transition: border-color 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.textarea:focus {
+  border-color: var(--border-strong, var(--border));
+}
+.textarea::placeholder {
+  color: var(--text-muted);
+}
+
+/* 评审稿上传区 */
+.uploadDrop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 12px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    border-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    background 140ms cubic-bezier(0.23, 1, 0.32, 1);
+  text-align: center;
+  min-height: 102px;
+}
+.uploadDrop:hover:not(:disabled) {
+  border-color: var(--border-strong, var(--border));
+  background: var(--bg-subtle);
+}
+.uploadDrop:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.uploadIcon {
+  font-size: 20px;
+}
+.acSpinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--text-muted);
+  border-radius: 50%;
+  animation: rmumSpin 700ms linear infinite;
+}
+@keyframes rmumSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.uploadFileRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  font-size: 12px;
+}
+.uploadFileName {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+.uploadReplace {
+  flex-shrink: 0;
+  padding: 2px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 120ms ease-out;
+}
+.uploadReplace:hover {
+  background: var(--bg-subtle);
+}
+
+/* 底栏：错误提示 + 确定 / 取消 */
+.foot {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 24px;
+  border-top: 1px solid var(--border);
+}
+.footMsg {
+  font-size: 12px;
+  color: var(--text-muted);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.footMsgErr {
+  color: #d14343;
+}
+.footMsgOk {
+  color: #2f9e6f;
+}
+.footActions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 72px;
+  height: 34px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  color: var(--text);
+  font-size: 13px;
+  cursor: pointer;
+  transition:
+    background 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    border-color 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    opacity 140ms ease-out;
+}
+.btn:hover:not(:disabled) {
+  background: var(--bg-subtle);
+  border-color: var(--border-strong, var(--border));
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btnPrimary {
+  background: var(--text);
+  color: var(--bg-elevated);
+  border-color: var(--text);
+}
+.btnPrimary:hover:not(:disabled) {
+  background: var(--text);
+  opacity: 0.9;
+}
+
+/* 评审稿来源容器：来源切换 + 内容 */
+.uploadArea {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* 评审稿来源切换 */
+.sourceToggle {
+  display: inline-flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  width: fit-content;
+}
+.sourceBtn {
+  padding: 5px 14px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    background 120ms ease-out,
+    color 120ms ease-out;
+}
+.sourceBtnActive {
+  background: var(--text);
+  color: var(--bg-elevated);
+}

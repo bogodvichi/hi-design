@@ -1,0 +1,188 @@
+{
+  "schema_version": "hui-runtime-contract.v1",
+  "component_id": "steps",
+  "source": {
+    "url": "http://hui.dev.hikhub.net/hui/components/navigation/steps",
+    "observed_at": "2026-07-31",
+    "evidence": "../evidence/navigation.docs.json",
+    "evidence_sha256": "e10ef37ba907910b3f0d40d9a0892b99ace9f2c5ad09cbd0ebf3bf440a34925a"
+  },
+  "documentation_status": "api-table",
+  "contract_kind": "vue-component",
+  "runtime": {
+    "el-steps": {
+      "props": [
+        {
+          "参数": "space",
+          "说明": "每个 step 的间距，不填写将自适应间距。支持百分比。",
+          "类型": "Number,String",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "space"
+        },
+        {
+          "参数": "direction",
+          "说明": "显示方向",
+          "类型": "string",
+          "可选值": "vertical/horizontal",
+          "默认值": "horizontal",
+          "template_name": "direction"
+        },
+        {
+          "参数": "active",
+          "说明": "设置当前激活步骤",
+          "类型": "number",
+          "可选值": "—",
+          "默认值": "0",
+          "template_name": "active"
+        },
+        {
+          "参数": "process-status",
+          "说明": "设置当前步骤的状态",
+          "类型": "string",
+          "可选值": "wait/process/finish/error/success",
+          "默认值": "process",
+          "template_name": "process-status"
+        },
+        {
+          "参数": "finish-status",
+          "说明": "设置结束步骤的状态",
+          "类型": "string",
+          "可选值": "wait/process/finish/error/success",
+          "默认值": "finish",
+          "template_name": "finish-status"
+        },
+        {
+          "参数": "align-center",
+          "说明": "标题描述居中对齐",
+          "类型": "boolean",
+          "可选值": "-",
+          "默认值": "true",
+          "template_name": "align-center"
+        },
+        {
+          "参数": "right-title",
+          "说明": "title 在右边显示",
+          "类型": "boolean",
+          "可选值": "-",
+          "默认值": "false",
+          "template_name": "right-title"
+        },
+        {
+          "参数": "size  2.60.4+",
+          "说明": "尺寸",
+          "类型": "string",
+          "可选值": "small",
+          "默认值": "",
+          "template_name": "size"
+        },
+        {
+          "参数": "line",
+          "说明": "是否有进度线",
+          "类型": "boolean",
+          "可选值": "-",
+          "默认值": "true",
+          "template_name": "line"
+        },
+        {
+          "参数": "disorder  2.0+",
+          "说明": "无序状态",
+          "类型": "boolean",
+          "可选值": "-",
+          "默认值": "false",
+          "template_name": "disorder"
+        },
+        {
+          "参数": "finished-mark  2.54.1+",
+          "说明": "设置完成步骤状态样式。为true时，已完成的步骤，样式背景色为brand-secondary",
+          "类型": "boolean",
+          "可选值": "-",
+          "默认值": "false",
+          "template_name": "finished-mark"
+        },
+        {
+          "参数": "label-placement  2.60.4+",
+          "说明": "direction 属性为 horizontal 时，可指定标签放置位置。默认放在图标下方，可选 horizontal 放图标右侧",
+          "类型": "string",
+          "可选值": "vertical/horizontal",
+          "默认值": "vertical",
+          "template_name": "label-placement"
+        },
+        {
+          "参数": "type  2.60.4+",
+          "说明": "步骤条类型",
+          "类型": "string",
+          "可选值": "default/navigation",
+          "默认值": "default",
+          "template_name": "type"
+        }
+      ],
+      "events": [
+        {
+          "事件名称": "step-click",
+          "说明": "步骤的点击事件响应",
+          "回调参数": "返回当前步骤索引值",
+          "template_name": "step-click"
+        }
+      ],
+      "slots": [],
+      "methods": []
+    },
+    "el-step": {
+      "props": [
+        {
+          "参数": "title",
+          "说明": "标题",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "title"
+        },
+        {
+          "参数": "description",
+          "说明": "描述性文字",
+          "类型": "string",
+          "可选值": "—",
+          "默认值": "—",
+          "template_name": "description"
+        },
+        {
+          "参数": "icon",
+          "说明": "图标",
+          "类型": "Element Icon 提供的图标，如果要使用自定义图标可以通过 slot 方式写入",
+          "可选值": "string",
+          "默认值": "—",
+          "template_name": "icon"
+        },
+        {
+          "参数": "status",
+          "说明": "设置当前步骤的状态，不设置则根据 steps 确定状态",
+          "类型": "wait/process/finish/error/success",
+          "可选值": "-",
+          "默认值": "",
+          "template_name": "status"
+        }
+      ],
+      "events": [],
+      "slots": [
+        {
+          "name": "icon",
+          "说明": "图标",
+          "template_name": "icon"
+        },
+        {
+          "name": "title",
+          "说明": "标题",
+          "template_name": "title"
+        },
+        {
+          "name": "description",
+          "说明": "描述性文字",
+          "template_name": "description"
+        }
+      ],
+      "methods": []
+    }
+  },
+  "supporting_sections": []
+}
