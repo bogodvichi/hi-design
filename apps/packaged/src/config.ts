@@ -197,6 +197,15 @@ export async function readPackagedConfig(): Promise<PackagedConfig> {
     process.env[PACKAGED_NAMESPACE_ENV] ?? raw.namespace ?? SIDECAR_DEFAULTS.namespace,
   );
   const electronApp = await loadElectronApp();
+  // Set the Electron app name from the baked product name BEFORE calling
+  // getPath("userData"). Electron's requestSingleInstanceLock() and
+  // getPath("userData") both derive from app.name, which defaults to the
+  // package.json "name" field (@open-design/packaged). Without this call,
+  // the personal "Hi Design" and team "Hi Design Team" builds would share
+  // the same single-instance lock and userData directory, making it
+  // impossible to run both products simultaneously.
+  const productName = cleanOptionalString(raw.productName) ?? OPEN_DESIGN_PRODUCT_NAME;
+  electronApp.setName(productName);
   const namespaceBaseRoot = resolvePackagedNamespaceBaseRoot(
     raw.namespaceBaseRoot,
     electronApp.getPath("userData"),
