@@ -37,6 +37,7 @@ function makeConfig(root: string, namespace: string): ToolPackConfig {
     },
     signed: false,
     productName: "Hi Design Team",
+    displayName: "Hi Design",
     silent: true,
     to: "dmg",
     webOutputMode: "standalone",
@@ -48,10 +49,10 @@ describe("resolveMacInstallIdentity", () => {
   it("keeps stable builds on the canonical mac identity", () => {
     expect(resolveMacInstallIdentity(makeConfig("/work", "release-stable"))).toMatchObject({
       appId: "io.hi-design-team.desktop",
-      installerTitle: "Hi Design Team",
+      installerTitle: "Hi Design",
       productName: "Hi Design Team",
-      publicAppBundleName: "Hi Design Team.app",
-      systemAppBundleName: "Hi Design Team.release-stable.app",
+      publicAppBundleName: "Hi Design.app",
+      systemAppBundleName: "Hi Design.release-stable.app",
     });
   });
 
@@ -60,13 +61,14 @@ describe("resolveMacInstallIdentity", () => {
 
     expect(resolveMacInstallIdentity(config)).toEqual({
       appId: "io.hi-design-team.desktop.beta",
+      displayName: "Hi Design Beta",
       executableName: "Hi Design Team Beta",
-      installerTitle: "Hi Design Team Beta",
+      installerTitle: "Hi Design Beta",
       productName: "Hi Design Team Beta",
-      publicAppBundleName: "Hi Design Team Beta.app",
-      systemAppBundleName: "Hi Design Team Beta.release-beta.app",
+      publicAppBundleName: "Hi Design Beta.app",
+      systemAppBundleName: "Hi Design Beta.release-beta.app",
     });
-    expect(resolveMacPaths(config).appPath).toMatch(/Hi Design Team Beta\.app$/);
+    expect(resolveMacPaths(config).appPath).toMatch(/Hi Design Beta\.app$/);
   });
 
   it("uses first-class preview app identity for preview release namespaces", () => {
@@ -74,13 +76,14 @@ describe("resolveMacInstallIdentity", () => {
 
     expect(resolveMacInstallIdentity(config)).toEqual({
       appId: "io.hi-design-team.desktop.preview",
+      displayName: "Hi Design Preview",
       executableName: "Hi Design Team Preview",
-      installerTitle: "Hi Design Team Preview",
+      installerTitle: "Hi Design Preview",
       productName: "Hi Design Team Preview",
-      publicAppBundleName: "Hi Design Team Preview.app",
-      systemAppBundleName: "Hi Design Team Preview.release-preview.app",
+      publicAppBundleName: "Hi Design Preview.app",
+      systemAppBundleName: "Hi Design Preview.release-preview.app",
     });
-    expect(resolveMacPaths(config).appPath).toMatch(/Hi Design Team Preview\.app$/);
+    expect(resolveMacPaths(config).appPath).toMatch(/Hi Design Preview\.app$/);
   });
 
   it("uses first-class prerelease app identity for prerelease release versions and namespaces", () => {
@@ -92,17 +95,19 @@ describe("resolveMacInstallIdentity", () => {
 
     expect(resolveMacInstallIdentity(prereleaseVersionConfig)).toEqual({
       appId: "io.hi-design-team.desktop.prerelease",
+      displayName: "Hi Design Prerelease",
       executableName: "Hi Design Team Prerelease",
-      installerTitle: "Hi Design Team Prerelease",
+      installerTitle: "Hi Design Prerelease",
       productName: "Hi Design Team Prerelease",
-      publicAppBundleName: "Hi Design Team Prerelease.app",
-      systemAppBundleName: "Hi Design Team Prerelease.release-stable.app",
+      publicAppBundleName: "Hi Design Prerelease.app",
+      systemAppBundleName: "Hi Design Prerelease.release-stable.app",
     });
-    expect(resolveMacPaths(prereleaseVersionConfig).appPath).toMatch(/Hi Design Team Prerelease\.app$/);
+    expect(resolveMacPaths(prereleaseVersionConfig).appPath).toMatch(/Hi Design Prerelease\.app$/);
     expect(resolveMacInstallIdentity(prereleaseNamespaceConfig)).toMatchObject({
+      displayName: "Hi Design Prerelease",
       productName: "Hi Design Team Prerelease",
-      publicAppBundleName: "Hi Design Team Prerelease.app",
-      systemAppBundleName: "Hi Design Team Prerelease.release-prerelease.app",
+      publicAppBundleName: "Hi Design Prerelease.app",
+      systemAppBundleName: "Hi Design Prerelease.release-prerelease.app",
     });
   });
 });

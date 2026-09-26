@@ -52,6 +52,7 @@ function createConfig(root: string, webOutputMode: ToolPackConfig["webOutputMode
     },
     signed: false,
     productName: "Hi Design Team",
+    displayName: "Hi Design",
     silent: true,
     to: "dir",
     webOutputMode,

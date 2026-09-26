@@ -2,6 +2,7 @@ import { access, readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
 import { OPEN_DESIGN_PRODUCT_NAME, SIDECAR_DEFAULTS, normalizeNamespace } from "@open-design/sidecar-proto";
+import { OPEN_DESIGN_DISPLAY_NAME } from "@open-design/sidecar-proto";
 
 // `electron` is loaded lazily so this module can also be imported from the
 // headless entry, which runs in a plain Node process without the electron
@@ -33,6 +34,7 @@ export type RawPackagedConfig = {
   nodeCommandRelative?: string;
   resourceRoot?: string;
   productName?: string;
+  displayName?: string;
   // Baked by tools/pack from OPEN_DESIGN_TELEMETRY_RELAY_URL and forwarded to
   // the daemon at runtime; Langfuse credentials never ship in packaged config.
   telemetryRelayUrl?: string;
@@ -72,6 +74,7 @@ export type PackagedConfig = {
   namespaceBaseRoot: string;
   nodeCommand: string | null;
   productName: string;
+  displayName: string;
   resourceRoot: string;
   telemetryRelayUrl: string | null;
   updateMetadataUrl: string | null;
@@ -205,6 +208,7 @@ export async function readPackagedConfig(): Promise<PackagedConfig> {
   // the same single-instance lock and userData directory, making it
   // impossible to run both products simultaneously.
   const productName = cleanOptionalString(raw.productName) ?? OPEN_DESIGN_PRODUCT_NAME;
+  const displayName = cleanOptionalString(raw.displayName) ?? OPEN_DESIGN_DISPLAY_NAME;
   electronApp.setName(productName);
   const namespaceBaseRoot = resolvePackagedNamespaceBaseRoot(
     raw.namespaceBaseRoot,
@@ -242,6 +246,7 @@ export async function readPackagedConfig(): Promise<PackagedConfig> {
     namespaceBaseRoot,
     nodeCommand,
     productName: cleanOptionalString(raw.productName) ?? OPEN_DESIGN_PRODUCT_NAME,
+    displayName: cleanOptionalString(raw.displayName) ?? OPEN_DESIGN_DISPLAY_NAME,
     resourceRoot,
     telemetryRelayUrl: cleanOptionalString(raw.telemetryRelayUrl),
     updateMetadataUrl: cleanOptionalString(raw.updateMetadataUrl),

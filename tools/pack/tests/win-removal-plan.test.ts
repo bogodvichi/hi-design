@@ -39,6 +39,7 @@ function createConfig(root: string, removeCache: boolean): ToolPackConfig {
     },
     signed: false,
     productName: "Hi Design Team",
+    displayName: "Hi Design",
     silent: true,
     to: "dir",
     webOutputMode: "server",

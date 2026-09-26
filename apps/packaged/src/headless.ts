@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import {
   OPEN_DESIGN_PRODUCT_NAME,
+  OPEN_DESIGN_DISPLAY_NAME,
   OPEN_DESIGN_SIDECAR_CONTRACT,
   SIDECAR_DEFAULTS,
 } from "@open-design/sidecar-proto";
@@ -59,6 +60,7 @@ function resolveHeadlessConfig(): PackagedConfig {
     namespaceBaseRoot,
     nodeCommand: null,
     productName: process.env.OD_PRODUCT_NAME?.trim() ?? OPEN_DESIGN_PRODUCT_NAME,
+    displayName: process.env.OD_DISPLAY_NAME?.trim() ?? OPEN_DESIGN_DISPLAY_NAME,
     resourceRoot,
     telemetryRelayUrl:
       process.env.OPEN_DESIGN_TELEMETRY_RELAY_URL?.trim() || null,

@@ -97,6 +97,7 @@ function createConfig(root: string): ToolPackConfig {
     },
     signed: false,
     productName: "Hi Design Team",
+    displayName: "Hi Design",
     silent: true,
     to: "dir",
     webOutputMode: "standalone",
@@ -138,6 +139,7 @@ describe("installPackedWinApp", () => {
         channel: "prerelease",
         namespace: config.namespace,
         productName: config.productName,
+        displayName: config.displayName,
       });
       expect(result.lifecycleTimings.map(({ step }) => step)).toContain("pin installed packaged namespace");
     } finally {

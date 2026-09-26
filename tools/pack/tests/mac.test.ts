@@ -59,6 +59,7 @@ function makeConfig(root: string, overrides: Partial<ToolPackConfig> = {}): Tool
     silent: true,
     signed: false,
     productName: "Hi Design Team",
+    displayName: "Hi Design",
     to: "app",
     webOutputMode: "standalone",
     workspaceRoot: root,
@@ -349,6 +350,7 @@ describe("runElectronBuilder", () => {
       electronBuilderCliPath: cliPath,
       signed: true,
       productName: "Hi Design Team",
+      displayName: "Hi Design",
       webOutputMode: "server",
       ...overrides,
     });
@@ -504,6 +506,7 @@ describe("writeLaunchPackagedConfig", () => {
        appVersion: "0.5.1-beta.2",
        namespace: "release-beta",
        productName: config.productName,
+       displayName: config.displayName,
        nodeCommandRelative: "hi-design-team/bin/node",
        webOutputMode: "standalone",
      });

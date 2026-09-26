@@ -18,6 +18,7 @@ import { execFileAsync } from "./commands.js";
 import {
   ELECTRON_BUILDER_ASAR,
   ELECTRON_BUILDER_FILE_PATTERNS,
+  DISPLAY_NAME,
   MAC_ELECTRON_LANGUAGES,
   PRODUCT_NAME,
   WEB_STANDALONE_HOOK_CONFIG_ENV,
@@ -119,8 +120,8 @@ export async function runElectronBuilder(
     executableName: identity.executableName,
    extraMetadata: {
      main: "./main.cjs",
-      name: resolvePackagedAppName(config),
-     productName: identity.productName,
+     name: resolvePackagedAppName(config),
+     productName: identity.displayName,
      version: packageVersion,
    },
    extraResources: [
@@ -155,10 +156,10 @@ export async function runElectronBuilder(
         schemes: ["opendesign"],
       },
     ],
-    nodeGypRebuild: false,
-    npmRebuild: false,
-    productName: identity.productName,
-    icon: macResources.icon,
+   nodeGypRebuild: false,
+   npmRebuild: false,
+   productName: identity.displayName,
+   icon: macResources.icon,
     publish: [
       {
         provider: "generic",

@@ -60,6 +60,7 @@ export async function writeLaunchPackagedConfig(config: ToolPackConfig, appPath:
         ...raw,
         namespace: config.namespace,
         productName: config.productName,
+        displayName: config.displayName,
       },
       null,
       2,

@@ -6,6 +6,7 @@ import path from "node:path";
 
 import {
   OPEN_DESIGN_PRODUCT_NAME,
+  OPEN_DESIGN_DISPLAY_NAME,
   OPEN_DESIGN_SIDECAR_CONTRACT,
   SIDECAR_DEFAULTS,
 } from "@open-design/sidecar-proto";
@@ -135,6 +136,7 @@ export type ToolPackConfig = {
   silent: boolean;
   signed: boolean;
   productName: string;
+  displayName: string;
   amrProfile?: ToolPackAmrProfile;
   telemetryRelayUrl?: string;
   /**
@@ -489,8 +491,9 @@ export function resolveToolPackConfig(
     requireVelaCli: options.requireVelaCli === true,
     silent: options.silent !== false,
     signed: options.signed === true,
-    productName: process.env.OD_PRODUCT_NAME ?? OPEN_DESIGN_PRODUCT_NAME,
-    amrProfile: resolveToolPackAmrProfile(process.env.OPEN_DESIGN_AMR_PROFILE),
+   productName: process.env.OD_PRODUCT_NAME ?? OPEN_DESIGN_PRODUCT_NAME,
+   displayName: process.env.OD_DISPLAY_NAME ?? OPEN_DESIGN_DISPLAY_NAME,
+   amrProfile: resolveToolPackAmrProfile(process.env.OPEN_DESIGN_AMR_PROFILE),
     telemetryRelayUrl: resolveToolPackTelemetryRelayUrl(process.env.OPEN_DESIGN_TELEMETRY_RELAY_URL),
     updateMetadataUrl: resolveToolPackUpdateMetadataUrl(process.env.OD_UPDATE_METADATA_URL),
     posthogKey: resolveToolPackPosthogKey(process.env.POSTHOG_KEY),

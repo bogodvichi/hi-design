@@ -239,6 +239,12 @@ async function main(): Promise<void> {
   })) {
     return;
   }
+  // Switch the Electron app name to the display name AFTER the lock is
+  // acquired and userData paths are explicitly overridden. The lock was
+  // already keyed on the internal product name ("Hi Design Team"), and
+  // userData/sessionData/logs paths were set via applyPackagedElectronPathOverrides,
+  // so changing app.name here only affects the macOS menu bar label.
+  app.setName(activeConfig.displayName);
   const identity = await writePackagedDesktopIdentity({ paths, stamp });
   await app.whenReady();
 

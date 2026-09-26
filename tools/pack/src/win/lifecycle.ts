@@ -250,6 +250,7 @@ async function pinInstalledPackagedConfigNamespace(
     ...raw,
     namespace: config.namespace,
     productName: config.productName,
+    displayName: config.displayName,
   };
   const body = `${JSON.stringify(pinned, null, 2)}\n`;
   await writeFile(installedConfigPath, body, "utf8");

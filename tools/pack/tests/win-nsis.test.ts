@@ -39,6 +39,7 @@ function makeConfig(namespaceRoot: string): ToolPackConfig {
     },
     signed: false,
     productName: "Hi Design Team",
+    displayName: "Hi Design",
     silent: true,
     to: "nsis",
     webOutputMode: "standalone",

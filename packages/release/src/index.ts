@@ -27,6 +27,7 @@ export type ReleaseChannelDescriptor = {
   channel: ReleaseChannel;
   counterField: "releaseNumber" | null;
   displayLabel: string;
+  displayName: string;
   githubReleaseEnabled: boolean;
   internal: boolean;
   productName: string;
@@ -36,6 +37,7 @@ export type ReleaseChannelDescriptor = {
 
 export type ReleaseInstallIdentity = {
   appId: string;
+  displayName: string;
   executableName: string;
   productName: string;
 };
@@ -54,6 +56,7 @@ export const RELEASE_PLATFORM_NAMESPACE_SUFFIXES = Object.freeze({
 } as const satisfies Record<ReleasePlatform, string>);
 
 const PRODUCT_NAME = process.env.OD_PRODUCT_NAME ?? "Hi Design Team";
+const DISPLAY_NAME = process.env.OD_DISPLAY_NAME ?? "Hi Design";
 const DEFAULT_NAMESPACE = "hi-design-team";
 
 const descriptors: Record<"prerelease" | "stable", ReleaseChannelDescriptor> = {
@@ -63,6 +66,7 @@ const descriptors: Record<"prerelease" | "stable", ReleaseChannelDescriptor> = {
     channel: "prerelease",
     counterField: "releaseNumber",
     displayLabel: "Prerelease",
+    displayName: `${DISPLAY_NAME} Prerelease`,
     githubReleaseEnabled: false,
     internal: true,
     productName: `${PRODUCT_NAME} Prerelease`,
@@ -75,6 +79,7 @@ const descriptors: Record<"prerelease" | "stable", ReleaseChannelDescriptor> = {
     channel: "stable",
     counterField: null,
     displayLabel: "Stable",
+    displayName: DISPLAY_NAME,
     githubReleaseEnabled: true,
     internal: false,
     productName: PRODUCT_NAME,
@@ -101,6 +106,7 @@ export function releaseChannelDescriptor(channel: string): ReleaseChannelDescrip
     channel,
     counterField: "releaseNumber",
     displayLabel,
+    displayName: `${DISPLAY_NAME} ${displayLabel}`,
     githubReleaseEnabled: false,
     internal: true,
     productName: `${PRODUCT_NAME} ${displayLabel}`,
@@ -139,6 +145,7 @@ export function releaseInstallIdentity(channel: ReleaseChannel): ReleaseInstallI
   const descriptor = releaseChannelDescriptor(channel);
   return {
     appId: descriptor.appId,
+    displayName: descriptor.displayName,
     executableName: descriptor.productName,
     productName: descriptor.productName,
   };

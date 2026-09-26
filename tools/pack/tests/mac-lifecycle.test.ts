@@ -79,6 +79,7 @@ function makeConfig(root: string, overrides: Partial<ToolPackConfig> = {}): Tool
     silent: true,
     signed: false,
     productName: "Hi Design Team",
+    displayName: "Hi Design",
     to: "app",
     webOutputMode: "standalone",
     workspaceRoot: root,

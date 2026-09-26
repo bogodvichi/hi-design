@@ -76,6 +76,8 @@ export const SIDECAR_DEFAULTS = Object.freeze({
 // constant drives internal lock names, appIds, registry keys, and IPC paths.
 export const OPEN_DESIGN_PRODUCT_NAME = "Hi Design Team";
 
+export const OPEN_DESIGN_DISPLAY_NAME = "Hi Design";
+
 export function resolveWindowsReleaseNamespaceToken(value: string): string {
   return value.replace(/[^A-Za-z0-9._-]+/g, "-");
 }

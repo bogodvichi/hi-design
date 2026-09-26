@@ -10,7 +10,7 @@ import {
 } from "@open-design/release";
 
 import type { ToolPackConfig } from "../config/index.js";
-import { PRODUCT_NAME } from "./constants.js";
+import { DISPLAY_NAME, PRODUCT_NAME } from "./constants.js";
 
 export type WinInstallIdentity = {
   appId: string;
@@ -28,9 +28,9 @@ export function resolveWinInstallIdentity(config: Pick<ToolPackConfig, "namespac
   const channel = releaseChannelFromVersion(config.appVersion)
     ?? releaseChannelFromNamespace(config.namespace, SIDECAR_DEFAULTS.namespace);
   const channelIdentity = channel == null
-    ? { appId: "io.hi-design-team.desktop", productName: PRODUCT_NAME }
+    ? { appId: "io.hi-design-team.desktop", displayName: DISPLAY_NAME, productName: PRODUCT_NAME }
     : releaseInstallIdentity(channel);
-  const displayName = channel == null ? `${PRODUCT_NAME} ${namespaceToken}` : channelIdentity.productName;
+  const displayName = channel == null ? `${DISPLAY_NAME} ${namespaceToken}` : channelIdentity.displayName;
   // The system identity (install dir, shortcut, app-paths key, uninstaller)
   // carries the namespace so different namespaces can coexist on the same
   // release channel. The default namespace stays clean as the canonical

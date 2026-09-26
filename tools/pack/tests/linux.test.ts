@@ -85,6 +85,7 @@ function makeConfig(): ToolPackConfig {
     silent: true,
     signed: false,
     productName: "Hi Design Team",
+    displayName: "Hi Design",
     to: "all",
     webOutputMode: "server",
     workspaceRoot: "/work",

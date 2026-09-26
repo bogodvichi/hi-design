@@ -39,6 +39,7 @@ import {
   ELECTRON_BUILDER_NODE_GYP_REBUILD,
   ELECTRON_BUILDER_NPM_REBUILD,
   NSIS_INSTALLER_LANGUAGE_BY_WEB_LOCALE,
+  DISPLAY_NAME,
   PRODUCT_NAME,
   WEB_STANDALONE_HOOK_CONFIG_ENV,
   WEB_STANDALONE_RESOURCE_NAME,
@@ -200,7 +201,7 @@ async function runElectronBuilderRaw(
     extraMetadata: {
       main: "./main.cjs",
       name: resolvePackagedAppName(config),
-      productName: PRODUCT_NAME,
+      productName: DISPLAY_NAME,
       version: packageVersion,
     },
     extraResources: [
@@ -229,10 +230,10 @@ async function runElectronBuilderRaw(
       multiLanguageInstaller: true,
       oneClick: false,
       perMachine: false,
-      shortcutName: PRODUCT_NAME,
+      shortcutName: DISPLAY_NAME,
       warningsAsErrors: false,
     },
-    productName: PRODUCT_NAME,
+    productName: DISPLAY_NAME,
     publish: [{ provider: "generic", url: "https://updates.invalid/open-design" }],
     win: {
       artifactName: `${PRODUCT_NAME}-${namespaceToken}.\${ext}`,

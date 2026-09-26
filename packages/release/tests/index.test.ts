@@ -50,6 +50,7 @@ describe("@open-design/release", () => {
     expect(releaseChannelDescriptor("prerelease").productName).toBe("Hi Design Team Prerelease");
     expect(releaseInstallIdentity("prerelease")).toEqual({
       appId: "io.hi-design-team.desktop.prerelease",
+      displayName: "Hi Design Prerelease",
       executableName: "Hi Design Team Prerelease",
       productName: "Hi Design Team Prerelease",
     });
@@ -59,6 +60,7 @@ describe("@open-design/release", () => {
     expect(releaseChannelDescriptor("qa2")).toMatchObject({
       appId: "io.hi-design-team.desktop.qa2",
       channel: "qa2",
+      displayName: "Hi Design Qa2",
       productName: "Hi Design Team Qa2",
       storagePrefix: "qa2",
     });

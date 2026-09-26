@@ -6,10 +6,11 @@ import {
 } from "@open-design/release";
 
 import type { ToolPackConfig } from "../config/index.js";
-import { PRODUCT_NAME } from "./constants.js";
+import { DISPLAY_NAME, PRODUCT_NAME } from "./constants.js";
 
 export type MacInstallIdentity = {
   appId: string;
+  displayName: string;
   executableName: string;
   installerTitle: string;
   productName: string;
@@ -26,9 +27,9 @@ export function resolveMacInstallIdentity(config: Pick<ToolPackConfig, "namespac
   const channel = releaseChannelFromVersion(config.appVersion)
     ?? releaseChannelFromNamespace(config.namespace, SIDECAR_DEFAULTS.namespace);
   const channelIdentity = channel == null
-    ? { appId: "io.hi-design-team.desktop", productName: PRODUCT_NAME }
+    ? { appId: "io.hi-design-team.desktop", displayName: DISPLAY_NAME, productName: PRODUCT_NAME }
     : releaseInstallIdentity(channel);
-  const publicAppBundleName = `${channelIdentity.productName}.app`;
+  const publicAppBundleName = `${channelIdentity.displayName}.app`;
   // The system (installed) app bundle name carries the namespace so different
   // namespaces can coexist in /Applications even on the same release channel.
   // The default namespace stays clean as the canonical baseline. The public
@@ -36,12 +37,12 @@ export function resolveMacInstallIdentity(config: Pick<ToolPackConfig, "namespac
   const isDefaultNamespace = config.namespace === SIDECAR_DEFAULTS.namespace;
   const systemAppBundleName = isDefaultNamespace
     ? publicAppBundleName
-    : `${channelIdentity.productName}.${namespaceToken}.app`;
+    : `${channelIdentity.displayName}.${namespaceToken}.app`;
 
   return {
     ...channelIdentity,
     executableName: channelIdentity.productName,
-    installerTitle: channel == null ? `${PRODUCT_NAME}-${namespaceToken}` : channelIdentity.productName,
+    installerTitle: channel == null ? `${DISPLAY_NAME}-${namespaceToken}` : channelIdentity.displayName,
     publicAppBundleName,
     systemAppBundleName,
   };

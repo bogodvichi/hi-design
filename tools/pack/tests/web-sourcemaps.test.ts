@@ -85,6 +85,7 @@ function fakeConfig(workspaceRoot: string): ToolPackConfig {
     },
     signed: false,
     productName: "Hi Design Team",
+    displayName: "Hi Design",
     silent: true,
     to: "all",
     webOutputMode: "standalone",

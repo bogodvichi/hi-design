@@ -331,6 +331,7 @@ async function resolvePayloadConfig(
       nodeCommand,
       resourceRoot,
       productName: raw.productName?.trim() || config.productName,
+      displayName: raw.displayName?.trim() || config.displayName,
       telemetryRelayUrl: raw.telemetryRelayUrl?.trim() || config.telemetryRelayUrl,
       webOutputMode: webOutputMode as PackagedWebOutputMode,
       webSidecarEntry: await resolveOptionalPayloadEntry(resourcesPath, raw.webSidecarEntryRelative),

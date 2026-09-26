@@ -1,4 +1,5 @@
 export const PRODUCT_NAME = process.env.OD_PRODUCT_NAME ?? "Hi Design Team";
+export const DISPLAY_NAME = process.env.OD_DISPLAY_NAME ?? "Hi Design";
 
 export const INTERNAL_PACKAGES = [
   { directory: "packages/release", name: "@open-design/release" },

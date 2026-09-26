@@ -27,6 +27,7 @@ function fakeConfig(root: string, appVersion = "1.2.3-beta.4"): PackagedConfig {
     namespaceBaseRoot: join(root, "namespaces"),
     nodeCommand: null,
     productName: "Hi Design Team",
+    displayName: "Hi Design",
     posthogHost: null,
     posthogKey: null,
     resourceRoot: join(root, "installed", "resources", "hi-design-team"),
