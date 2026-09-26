@@ -30,21 +30,21 @@ describe("stable GitHub Release asset plan", () => {
 
     try {
       const allowed = [
-        `open-design-${version}-mac-arm64.dmg`,
-        `open-design-${version}-mac-arm64.dmg.sha256`,
-        `open-design-${version}-mac-x64.dmg`,
-        `open-design-${version}-mac-x64.dmg.sha256`,
-        `open-design-${version}-win-x64-setup.exe`,
-        `open-design-${version}-win-x64-setup.exe.sha256`,
+        `hi-design-team-${version}-mac-arm64.dmg`,
+        `hi-design-team-${version}-mac-arm64.dmg.sha256`,
+        `hi-design-team-${version}-mac-x64.dmg`,
+        `hi-design-team-${version}-mac-x64.dmg.sha256`,
+        `hi-design-team-${version}-win-x64-setup.exe`,
+        `hi-design-team-${version}-win-x64-setup.exe.sha256`,
       ];
       for (const name of allowed) {
         await writeAsset(source, name.includes("win") ? "win" : name.includes("x64") ? "mac-intel" : "mac", name);
       }
       for (const name of [
-        `open-design-${version}-mac-arm64-payload.zip`,
-        `open-design-${version}-mac-x64.zip`,
-        `open-design-${version}-win-x64-payload.7z`,
-        `open-design-${version}-win-x64-portable.zip`,
+        `hi-design-team-${version}-mac-arm64-payload.zip`,
+        `hi-design-team-${version}-mac-x64.zip`,
+        `hi-design-team-${version}-win-x64-payload.7z`,
+        `hi-design-team-${version}-win-x64-portable.zip`,
         "latest.yml",
         "latest-mac.yml",
       ]) {

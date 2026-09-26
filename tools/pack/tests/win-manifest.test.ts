@@ -36,13 +36,14 @@ function makeConfig(overrides: Partial<ToolPackConfig> = {}): ToolPackConfig {
         root: "/unused/root",
       },
       runtime: {
-        namespaceBaseRoot: "C:/users/test/AppData/Local/open-design/runtime/win/namespaces",
-        namespaceRoot: "C:/users/test/AppData/Local/open-design/runtime/win/namespaces/test-namespace",
+        namespaceBaseRoot: "C:/users/test/AppData/Local/hi-design-team/runtime/win/namespaces",
+        namespaceRoot: "C:/users/test/AppData/Local/hi-design-team/runtime/win/namespaces/test-namespace",
       },
       cacheRoot: "/unused/cache",
       toolPackRoot: "/unused/tools-pack",
     },
     signed: false,
+    productName: "Hi Design Team",
     silent: true,
     to: "nsis",
     webOutputMode: "standalone",
@@ -53,7 +54,7 @@ function makeConfig(overrides: Partial<ToolPackConfig> = {}): ToolPackConfig {
 
 describe("readBuiltAppManifest", () => {
   it("returns null when the manifest file is missing", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-win-manifest-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-win-manifest-"));
     try {
       const paths = makePaths(root) as WinPaths;
       await expect(readBuiltAppManifest(paths)).resolves.toBeNull();
@@ -63,7 +64,7 @@ describe("readBuiltAppManifest", () => {
   });
 
   it("rejects manifests whose version is not 1", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-win-manifest-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-win-manifest-"));
     try {
       const paths = makePaths(root) as WinPaths;
       await writeFile(paths.builtManifestPath, JSON.stringify({ version: 2, executablePath: "/x" }), "utf8");
@@ -74,7 +75,7 @@ describe("readBuiltAppManifest", () => {
   });
 
   it("returns the parsed manifest when the version matches", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-win-manifest-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-win-manifest-"));
     try {
       const paths = makePaths(root) as WinPaths;
       const manifest: WinBuiltAppManifest = {
@@ -95,7 +96,7 @@ describe("readBuiltAppManifest", () => {
   });
 
   it("returns null when requireExecutable is set and the executable is missing", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-win-manifest-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-win-manifest-"));
     try {
       const paths = makePaths(root) as WinPaths;
       const manifest: WinBuiltAppManifest = {
@@ -118,30 +119,30 @@ describe("readBuiltAppManifest", () => {
 
 describe("writePackagedConfigFile", () => {
   it("omits namespaceBaseRoot for portable builds", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-win-config-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-win-config-"));
     try {
       const filePath = join(root, "config", "hi-design-team-config.json");
       await writePackagedConfigFile(filePath, makeConfig({ portable: true }), "1.2.3");
       const written = JSON.parse(await readFile(filePath, "utf8"));
       expect(written.namespace).toBe("test-namespace");
       expect(written.appVersion).toBe("1.2.3");
+      expect(written.productName).toBe("Hi Design Team");
       expect(written).not.toHaveProperty("namespaceBaseRoot");
     } finally {
       await rm(root, { force: true, recursive: true });
     }
   });
 
-  it("includes namespaceBaseRoot for non-portable builds", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-win-config-"));
-    try {
-      const filePath = join(root, "config", "hi-design-team-config.json");
-      await writePackagedConfigFile(filePath, makeConfig({ portable: false }), "1.2.3");
-      const written = JSON.parse(await readFile(filePath, "utf8"));
-      expect(written.namespaceBaseRoot).toBe(
-        "C:/users/test/AppData/Local/open-design/runtime/win/namespaces",
-      );
-    } finally {
-      await rm(root, { force: true, recursive: true });
-    }
-  });
+ it("bakes productName for non-portable builds", async () => {
+   const root = await mkdtemp(join(tmpdir(), "hi-design-team-win-config-"));
+   try {
+     const filePath = join(root, "config", "hi-design-team-config.json");
+     await writePackagedConfigFile(filePath, makeConfig({ portable: false }), "1.2.3");
+     const written = JSON.parse(await readFile(filePath, "utf8"));
+     expect(written.productName).toBe("Hi Design Team");
+     expect(written).not.toHaveProperty("namespaceBaseRoot");
+   } finally {
+     await rm(root, { force: true, recursive: true });
+   }
+ });
 });

@@ -128,6 +128,7 @@ function createConfig(root: string, cacheRoot: string): ToolPackConfig {
       toolPackRoot: join(root, ".tmp", "tools-pack"),
     },
     signed: false,
+    productName: "Hi Design Team",
     silent: true,
     to: "dir",
     webOutputMode: "standalone",

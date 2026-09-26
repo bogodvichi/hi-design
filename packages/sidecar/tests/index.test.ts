@@ -40,6 +40,7 @@ const fakeContract: SidecarContractDescriptor<FakeStamp> = {
     ipcPath: "FAKE_IPC_PATH",
     namespace: "FAKE_NAMESPACE",
     source: "FAKE_SOURCE",
+    windowsPipePrefix: "FAKE_WINDOWS_PIPE_PREFIX",
   },
   normalizeApp(value) {
     if (value === "api" || value === "ui") return value;

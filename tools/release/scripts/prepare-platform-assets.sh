@@ -46,9 +46,9 @@ case "$RELEASE_TARGET" in
     source_dmg="$TOOLS_PACK_DIR/out/mac/namespaces/$RELEASE_NAMESPACE/dmg/Hi Design-$RELEASE_NAMESPACE.dmg"
     source_zip="$TOOLS_PACK_DIR/out/mac/namespaces/$RELEASE_NAMESPACE/zip/Hi Design-$RELEASE_NAMESPACE.zip"
     source_payload="$TOOLS_PACK_DIR/out/mac/namespaces/$RELEASE_NAMESPACE/payload/Hi Design-$RELEASE_NAMESPACE-payload.zip"
-    versioned_dmg="open-design-$RELEASE_VERSION$RELEASE_ASSET_SUFFIX-mac-$arch.dmg"
-    versioned_zip="open-design-$RELEASE_VERSION$RELEASE_ASSET_SUFFIX-mac-$arch.zip"
-    versioned_payload="open-design-$RELEASE_VERSION$RELEASE_ASSET_SUFFIX-mac-$arch-payload.zip"
+    versioned_dmg="hi-design-team-$RELEASE_VERSION$RELEASE_ASSET_SUFFIX-mac-$arch.dmg"
+    versioned_zip="hi-design-team-$RELEASE_VERSION$RELEASE_ASSET_SUFFIX-mac-$arch.zip"
+    versioned_payload="hi-design-team-$RELEASE_VERSION$RELEASE_ASSET_SUFFIX-mac-$arch-payload.zip"
 
     if [ ! -f "$source_dmg" ]; then
       echo "expected dmg not found at $source_dmg" >&2
@@ -96,7 +96,7 @@ EOF
     ;;
   linux_x64)
     source_appimage="$TOOLS_PACK_DIR/out/linux/namespaces/$RELEASE_NAMESPACE/builder/Hi Design-$RELEASE_NAMESPACE.AppImage"
-    versioned_appimage="open-design-$RELEASE_VERSION$RELEASE_ASSET_SUFFIX-linux-x64.AppImage"
+    versioned_appimage="hi-design-team-$RELEASE_VERSION$RELEASE_ASSET_SUFFIX-linux-x64.AppImage"
     if [ ! -f "$source_appimage" ]; then
       echo "expected AppImage not found at $source_appimage" >&2
       exit 1

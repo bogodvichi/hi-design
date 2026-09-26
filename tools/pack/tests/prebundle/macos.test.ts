@@ -179,7 +179,7 @@ describe("findForbiddenMacPrebundleInputs", () => {
 
 describe("assertMacPrebundleMetafile", () => {
   it("accepts a safe web sidecar metafile", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-mac-prebundle-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-mac-prebundle-"));
     const metafilePath = join(root, "safe.json");
 
     try {
@@ -198,7 +198,7 @@ describe("assertMacPrebundleMetafile", () => {
   });
 
   it("rejects a packaged main metafile that pulled in web runtime closure", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-mac-prebundle-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-mac-prebundle-"));
     const metafilePath = join(root, "unsafe.json");
 
     try {
@@ -217,7 +217,7 @@ describe("assertMacPrebundleMetafile", () => {
   });
 
   it("rejects a daemon metafile that bundled wasm-backed runtime dependencies", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-mac-prebundle-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-mac-prebundle-"));
     const metafilePath = join(root, "unsafe-daemon.json");
 
     try {
@@ -236,7 +236,7 @@ describe("assertMacPrebundleMetafile", () => {
   });
 
   it("rejects a daemon metafile that bundled native runtime dependencies", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-mac-prebundle-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-mac-prebundle-"));
     const metafilePath = join(root, "unsafe-native-daemon.json");
 
     try {

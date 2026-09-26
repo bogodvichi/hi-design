@@ -35,7 +35,7 @@ async function createWorkspaceFixture(workspaceRoot: string): Promise<void> {
     recursive: true,
   });
   await writeFile(
-    join(workspaceRoot, "plugins", "_official", "sample", "open-design.json"),
+    join(workspaceRoot, "plugins", "_official", "sample", "hi-design-team.json"),
     "{\"id\":\"sample\"}\n",
     "utf8",
   );
@@ -43,7 +43,7 @@ async function createWorkspaceFixture(workspaceRoot: string): Promise<void> {
     recursive: true,
   });
   await writeFile(
-    join(workspaceRoot, "plugins", "registry", "community", "open-design-marketplace.json"),
+    join(workspaceRoot, "plugins", "registry", "community", "hi-design-team-marketplace.json"),
     "{\"plugins\":[]}\n",
     "utf8",
   );
@@ -89,7 +89,7 @@ async function createDshRuntimeFixture(workspaceRoot: string): Promise<void> {
 
 describe("prepareResourceTree", () => {
   it("bundles the DeepSeek Harness runtime into the Windows resource tree", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-win-dsh-runtime-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-win-dsh-runtime-"));
     const workspaceRoot = join(root, "workspace");
     const resourceRoot = join(root, "materialized", "hi-design-team");
     const cache = new ToolPackCache(join(root, "cache"));
@@ -134,7 +134,7 @@ describe("prepareResourceTree", () => {
   }, RESOURCE_TREE_CACHE_TEST_TIMEOUT_MS);
 
   it("invalidates the Windows resource tree cache when design templates change", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-win-resources-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-win-resources-"));
     const workspaceRoot = join(root, "workspace");
     const resourceRoot = join(root, "materialized", "hi-design-team");
     const cache = new ToolPackCache(join(root, "cache"));
@@ -180,7 +180,7 @@ describe("prepareResourceTree", () => {
   }, RESOURCE_TREE_CACHE_TEST_TIMEOUT_MS);
 
   it("invalidates the Windows resource tree cache when the plugin-preview manifest changes", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-win-previews-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-win-previews-"));
     const workspaceRoot = join(root, "workspace");
     const resourceRoot = join(root, "materialized", "hi-design-team");
     const cache = new ToolPackCache(join(root, "cache"));
@@ -226,7 +226,7 @@ describe("prepareResourceTree", () => {
   }, RESOURCE_TREE_CACHE_TEST_TIMEOUT_MS);
 
   it("copies a configured Vela CLI binary into the Windows resource tree", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-win-vela-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-win-vela-"));
     const workspaceRoot = join(root, "workspace");
     const resourceRoot = join(root, "materialized", "hi-design-team");
     const source = join(root, "source", "vela.exe");
@@ -258,7 +258,7 @@ describe("prepareResourceTree", () => {
   });
 
   it("fails strict Windows resource preparation when configured Vela CLI is missing", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-win-vela-strict-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-win-vela-strict-"));
     const workspaceRoot = join(root, "workspace");
     const resourceRoot = join(root, "materialized", "hi-design-team");
     const cache = new ToolPackCache(join(root, "cache"));
@@ -283,7 +283,7 @@ describe("prepareResourceTree", () => {
   });
 
   it("invalidates the Windows resource tree cache when the Vela companion changes", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-win-vela-companion-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-win-vela-companion-"));
     const workspaceRoot = join(root, "workspace");
     const resourceRoot = join(root, "materialized", "hi-design-team");
     const source = join(root, "source", "vela.exe");

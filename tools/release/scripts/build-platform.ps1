@@ -199,7 +199,7 @@ function Validate-WinLauncherPayloadArchive([string]$PayloadPath, [string]$Expec
     if (-not (Test-Path -LiteralPath $entryPath)) {
       throw "launcher payload entry executable not found after extraction: $entryPath"
     }
-    $configPath = Join-Path $extractRoot (Convert-ArchiveRelativePath "payload/resources/open-design-config.json")
+    $configPath = Join-Path $extractRoot (Convert-ArchiveRelativePath "payload/resources/hi-design-team-config.json")
     if (-not (Test-Path -LiteralPath $configPath)) {
       throw "launcher payload packaged config not found after extraction: $configPath"
     }

@@ -62,7 +62,7 @@ describe('unescapeProcMountsField', () => {
 describe('detectFuseBackedPath', () => {
   it('detects a path under an AppImage FUSE mount with an escaped space', () => {
     expect(
-      detectFuseBackedPath('/tmp/.mount_Open DePl0rQ/resources/open-design/bin/node', MOUNTS_FIXTURE),
+      detectFuseBackedPath('/tmp/.mount_Open DePl0rQ/resources/hi-design-team/bin/node', MOUNTS_FIXTURE),
     ).toBe(true);
   });
 
@@ -99,14 +99,14 @@ describe('detectFuseBackedPath', () => {
 describe('resolveDaemonPrewarmTargets', () => {
   it('includes the bundled node binary, the daemon dist dir and the bundled plugins', () => {
     const targets = resolveDaemonPrewarmTargets({
-      nodeCommand: '/res/open-design/bin/node',
+      nodeCommand: '/res/hi-design-team/bin/node',
       daemonSidecarEntry: '/res/app/node_modules/@open-design/daemon/dist/sidecar/index.js',
-      resourceRoot: '/res/open-design',
+      resourceRoot: '/res/hi-design-team',
     });
     expect(targets).toEqual([
-      { kind: 'file', path: '/res/open-design/bin/node' },
+      { kind: 'file', path: '/res/hi-design-team/bin/node' },
       { kind: 'dir', path: '/res/app/node_modules/@open-design/daemon/dist' },
-      { kind: 'dir', path: '/res/open-design/plugins' },
+      { kind: 'dir', path: '/res/hi-design-team/plugins' },
     ]);
   });
 
@@ -114,22 +114,22 @@ describe('resolveDaemonPrewarmTargets', () => {
     const targets = resolveDaemonPrewarmTargets({
       nodeCommand: null,
       daemonSidecarEntry: '/res/app/node_modules/@open-design/daemon/dist/sidecar/index.js',
-      resourceRoot: '/res/open-design',
+      resourceRoot: '/res/hi-design-team',
     });
     expect(targets).toEqual([
       { kind: 'dir', path: '/res/app/node_modules/@open-design/daemon/dist' },
-      { kind: 'dir', path: '/res/open-design/plugins' },
+      { kind: 'dir', path: '/res/hi-design-team/plugins' },
     ]);
   });
 
   it('omits the plugins dir when the resource root is unknown', () => {
     const targets = resolveDaemonPrewarmTargets({
-      nodeCommand: '/res/open-design/bin/node',
+      nodeCommand: '/res/hi-design-team/bin/node',
       daemonSidecarEntry: '/res/app/node_modules/@open-design/daemon/dist/sidecar/index.js',
       resourceRoot: null,
     });
     expect(targets).toEqual([
-      { kind: 'file', path: '/res/open-design/bin/node' },
+      { kind: 'file', path: '/res/hi-design-team/bin/node' },
       { kind: 'dir', path: '/res/app/node_modules/@open-design/daemon/dist' },
     ]);
   });

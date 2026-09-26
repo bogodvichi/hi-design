@@ -58,6 +58,7 @@ function makeConfig(root: string, overrides: Partial<ToolPackConfig> = {}): Tool
     },
     silent: true,
     signed: false,
+    productName: "Hi Design Team",
     to: "app",
     webOutputMode: "standalone",
     workspaceRoot: root,
@@ -108,10 +109,10 @@ describe("resolveSeededAppConfigPaths", () => {
   });
 
   it("expands $HOME-style OD_DATA_DIR values", () => {
-    process.env.OD_DATA_DIR = "$HOME/.open-design";
+    process.env.OD_DATA_DIR = "$HOME/.hi-design-team";
     const config = makeConfig("/work");
     expect(resolveSeededAppConfigPaths(config)).toEqual({
-      sourcePath: join(os.homedir(), ".open-design", "app-config.json"),
+      sourcePath: join(os.homedir(), ".hi-design-team", "app-config.json"),
       targetPath: join("/work", ".tmp", "tools-pack", "runtime", "mac", "namespaces", "local-test", "data", "app-config.json"),
     });
   });
@@ -119,7 +120,7 @@ describe("resolveSeededAppConfigPaths", () => {
 
 describe("seedPackagedAppConfig", () => {
   it("copies the current app-config into the packaged runtime namespace", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-mac-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-mac-"));
     try {
       const config = makeConfig(root);
       const sourceDir = join(root, ".od");
@@ -141,7 +142,7 @@ describe("seedPackagedAppConfig", () => {
   });
 
   it("skips seeding for portable builds", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-mac-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-mac-"));
     try {
       const config = makeConfig(root, { portable: true });
       const sourceDir = join(root, ".od");
@@ -161,7 +162,7 @@ describe("seedPackagedAppConfig", () => {
 
 describe("copyResourceTree", () => {
   it("does not embed the build machine Node launcher into mac resources", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-mac-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-mac-"));
     try {
       const config = makeConfig(root);
       const paths = resolveMacPaths(config);
@@ -211,7 +212,7 @@ describe("copyResourceTree", () => {
 
 describe("copyMacPrebundleRuntimeDependencies", () => {
   it("copies the pinned prebuilt fsevents binding into the assembled app", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-mac-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-mac-"));
     try {
       const config = makeConfig(root);
       const chokidarRoot = join(root, "apps", "daemon", "node_modules", "chokidar");
@@ -237,7 +238,7 @@ describe("copyMacPrebundleRuntimeDependencies", () => {
   });
 
   it("rejects a workspace fsevents version that drifted from the assembly contract", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-mac-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-mac-"));
     try {
       const config = makeConfig(root);
       const chokidarRoot = join(root, "apps", "daemon", "node_modules", "chokidar");
@@ -257,7 +258,7 @@ describe("copyMacPrebundleRuntimeDependencies", () => {
 
 describe("renderMacPackagedConfig", () => {
   it("omits nodeCommandRelative so packaged mac sidecars use Electron as Node", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-mac-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-mac-"));
     try {
       const config = makeConfig(root);
 
@@ -275,7 +276,7 @@ describe("renderMacPackagedConfig", () => {
   });
 
   it("bakes the configured updater metadata URL for mac beta validation", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-mac-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-mac-"));
     try {
       const config = makeConfig(root, {
         updateMetadataUrl: "http://127.0.0.1:4567/beta/latest/metadata.json",
@@ -300,7 +301,7 @@ describe("renderMacPackagedConfig", () => {
   // rather than the source tree, so packaging has to carry it into the bundle
   // (same chain as posthogKey) or the feature stays dark in the packaged app.
   it("bakes the injected vela web origin for a workspace-team build", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-mac-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-mac-"));
     try {
       const config = makeConfig(root, {
         amrProfile: "feature-test",
@@ -322,7 +323,7 @@ describe("renderMacPackagedConfig", () => {
   });
 
   it("omits the vela web origin when the build was given none", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-mac-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-mac-"));
     try {
       const packagedConfig = JSON.parse(
         renderMacPackagedConfig({
@@ -347,6 +348,7 @@ describe("runElectronBuilder", () => {
       appVersion: "1.2.3-prerelease.4",
       electronBuilderCliPath: cliPath,
       signed: true,
+      productName: "Hi Design Team",
       webOutputMode: "server",
       ...overrides,
     });
@@ -386,7 +388,7 @@ describe("runElectronBuilder", () => {
   }
 
   it("does not explicitly disable electron-builder notarization for notarized mac builds", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-mac-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-mac-"));
     try {
       const builderConfig = await prepareElectronBuilderConfig(root, { macNotarize: true });
 
@@ -398,7 +400,7 @@ describe("runElectronBuilder", () => {
   });
 
   it("keeps signed-only mac builds from invoking electron-builder notarization", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-mac-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-mac-"));
     try {
       const builderConfig = await prepareElectronBuilderConfig(root, { macNotarize: false });
 
@@ -412,7 +414,7 @@ describe("runElectronBuilder", () => {
 
 describe("createMacElectronRebuildOptions", () => {
   it("targets the packaged Electron ABI for required native modules", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-mac-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-mac-"));
     try {
       const config = makeConfig(root, { electronVersion: "41.3.0" });
       const appRoot = join(root, "assembled", "app");
@@ -436,7 +438,7 @@ describe("createMacElectronRebuildOptions", () => {
 
 describe("validateMacNativeRebuildOutput", () => {
   it("reports a missing rebuilt native module as missing output", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-mac-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-mac-"));
     try {
       await expect(validateMacNativeRebuildOutput(root)).resolves.toBe(
         `native module output is missing: ${join(root, "node_modules", "better-sqlite3", "build", "Release", "better_sqlite3.node")}`,
@@ -447,7 +449,7 @@ describe("validateMacNativeRebuildOutput", () => {
   });
 
   it("preserves non-ENOENT filesystem diagnostics from stat failures", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-mac-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-mac-"));
     try {
       const buildPath = join(root, "node_modules", "better-sqlite3", "build");
       const nativePath = join(buildPath, "Release", "better_sqlite3.node");
@@ -472,7 +474,7 @@ describe("validateMacNativeRebuildOutput", () => {
 
 describe("writeLaunchPackagedConfig", () => {
   it("injects the tools-pack runtime namespace root without mutating the packaged app config", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-mac-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-mac-"));
     try {
       const config = makeConfig(root, { namespace: "release-beta", portable: true });
       const appPath = join(root, "Hi Design.app");
@@ -484,7 +486,7 @@ describe("writeLaunchPackagedConfig", () => {
           {
             appVersion: "0.5.1-beta.2",
             namespace: "packaged-default",
-            nodeCommandRelative: "open-design/bin/node",
+            nodeCommandRelative: "hi-design-team/bin/node",
             webOutputMode: "standalone",
           },
           null,
@@ -498,14 +500,14 @@ describe("writeLaunchPackagedConfig", () => {
       const embeddedConfig = JSON.parse(await readFile(embeddedConfigPath, "utf8")) as Record<string, unknown>;
 
       expect(launchConfigPath).toBe(join(config.roots.runtime.namespaceRoot, "runtime", "hi-design-team-config.json"));
-      expect(launchConfig).toMatchObject({
-        appVersion: "0.5.1-beta.2",
-        namespace: "release-beta",
-        namespaceBaseRoot: config.roots.runtime.namespaceBaseRoot,
-        nodeCommandRelative: "open-design/bin/node",
-        webOutputMode: "standalone",
-      });
-      expect(embeddedConfig).not.toHaveProperty("namespaceBaseRoot");
+     expect(launchConfig).toMatchObject({
+       appVersion: "0.5.1-beta.2",
+       namespace: "release-beta",
+       productName: config.productName,
+       nodeCommandRelative: "hi-design-team/bin/node",
+       webOutputMode: "standalone",
+     });
+     expect(embeddedConfig).not.toHaveProperty("productName");
       expect(embeddedConfig.namespace).toBe("packaged-default");
     } finally {
       await rm(root, { force: true, recursive: true });

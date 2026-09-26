@@ -11,7 +11,7 @@ import type { ToolPackConfig } from "@/config/index.js";
 import { resolveMacPaths } from "@/mac/paths.js";
 
 const requestJsonIpc = vi.fn(async (): Promise<DesktopStatusSnapshot> => ({ state: "running" }));
-const resolveAppIpcPath = vi.fn(() => "/tmp/open-design/ipc/test/desktop.sock");
+const resolveAppIpcPath = vi.fn(() => "/tmp/hi-design-team/ipc/test/desktop.sock");
 const createSidecarLaunchEnv = vi.fn(({ extraEnv }: { extraEnv: NodeJS.ProcessEnv }) => extraEnv);
 const collectProcessTreePids = vi.fn(
   (_processes: unknown[], rootPids: Array<number | null>) =>
@@ -78,6 +78,7 @@ function makeConfig(root: string, overrides: Partial<ToolPackConfig> = {}): Tool
     },
     silent: true,
     signed: false,
+    productName: "Hi Design Team",
     to: "app",
     webOutputMode: "standalone",
     workspaceRoot: root,
@@ -99,7 +100,7 @@ afterEach(() => {
 
 describe("startPackedMacApp", () => {
   it("accepts a clean launcher exit when the delegated desktop becomes healthy", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-mac-lifecycle-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-mac-lifecycle-"));
     try {
       const config = makeConfig(root);
       const paths = resolveMacPaths(config);
@@ -130,7 +131,7 @@ describe("startPackedMacApp", () => {
   });
 
   it("rejects a non-zero launcher exit before desktop handoff", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-mac-lifecycle-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-mac-lifecycle-"));
     try {
       const config = makeConfig(root);
       const paths = resolveMacPaths(config);
@@ -156,7 +157,7 @@ describe("startPackedMacApp", () => {
   });
 
   it("writes a launch override when the bundled config is missing", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-mac-lifecycle-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-mac-lifecycle-"));
     try {
       const config = makeConfig(root);
       const paths = resolveMacPaths(config);
@@ -182,7 +183,7 @@ describe("startPackedMacApp", () => {
   });
 
   it("passes a launch override config path for portable mac starts", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-mac-lifecycle-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-mac-lifecycle-"));
     try {
       const config = makeConfig(root);
       const paths = resolveMacPaths(config);
@@ -197,9 +198,9 @@ describe("startPackedMacApp", () => {
         bundledConfigPath,
         `${JSON.stringify({
           appVersion: "1.2.3",
-          daemonCliEntryRelative: "open-design/bin/od",
+          daemonCliEntryRelative: "hi-design-team/bin/od",
           namespace: config.namespace,
-          nodeCommandRelative: "open-design/bin/node",
+          nodeCommandRelative: "hi-design-team/bin/node",
         }, null, 2)}\n`,
         "utf8",
       );
@@ -221,7 +222,7 @@ describe("startPackedMacApp", () => {
   });
 
   it("uses the preview executable name for preview release namespaces", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-mac-lifecycle-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-mac-lifecycle-"));
     try {
       const config = makeConfig(root, { namespace: "release-preview" });
       const paths = resolveMacPaths(config);
@@ -244,7 +245,7 @@ describe("startPackedMacApp", () => {
 
 describe("stopPackedMacApp", () => {
   it("waits for a packaged-source payload desktop to exit after graceful shutdown", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-mac-lifecycle-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-mac-lifecycle-"));
     const config = makeConfig(root);
     const payloadDesktop = { command: "payload-desktop", pid: 4242, ppid: 1 };
 

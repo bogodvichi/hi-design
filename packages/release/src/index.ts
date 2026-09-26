@@ -53,7 +53,7 @@ export const RELEASE_PLATFORM_NAMESPACE_SUFFIXES = Object.freeze({
   win: "win",
 } as const satisfies Record<ReleasePlatform, string>);
 
-const PRODUCT_NAME = "Hi Design";
+const PRODUCT_NAME = process.env.OD_PRODUCT_NAME ?? "Hi Design Team";
 const DEFAULT_NAMESPACE = "hi-design-team";
 
 const descriptors: Record<"prerelease" | "stable", ReleaseChannelDescriptor> = {

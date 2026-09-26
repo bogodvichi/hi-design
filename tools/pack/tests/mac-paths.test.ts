@@ -37,8 +37,8 @@ describe("macAppExecutablePath", () => {
 
   it("honors a custom executable name", () => {
     const appPath = "/tmp/out/mac/Hi Design.app";
-    expect(macAppExecutablePath(appPath, "open-design-beta")).toBe(
-      join(appPath, "Contents", "MacOS", "open-design-beta"),
+    expect(macAppExecutablePath(appPath, "hi-design-team-beta")).toBe(
+      join(appPath, "Contents", "MacOS", "hi-design-team-beta"),
     );
   });
 });

@@ -59,7 +59,7 @@ export async function writeLaunchPackagedConfig(config: ToolPackConfig, appPath:
       {
         ...raw,
         namespace: config.namespace,
-        namespaceBaseRoot: config.roots.runtime.namespaceBaseRoot,
+        productName: config.productName,
       },
       null,
       2,

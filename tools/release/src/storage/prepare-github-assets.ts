@@ -46,16 +46,16 @@ function findRequiredAsset(files: string[], name: string): string {
 }
 
 const allowedNames = [
-  `open-design-${releaseVersion}-mac-arm64.dmg`,
-  `open-design-${releaseVersion}-mac-arm64.dmg.sha256`,
-  `open-design-${releaseVersion}-mac-x64.dmg`,
-  `open-design-${releaseVersion}-mac-x64.dmg.sha256`,
-  `open-design-${releaseVersion}-win-x64-setup.exe`,
-  `open-design-${releaseVersion}-win-x64-setup.exe.sha256`,
+  `hi-design-team-${releaseVersion}-mac-arm64.dmg`,
+  `hi-design-team-${releaseVersion}-mac-arm64.dmg.sha256`,
+  `hi-design-team-${releaseVersion}-mac-x64.dmg`,
+  `hi-design-team-${releaseVersion}-mac-x64.dmg.sha256`,
+  `hi-design-team-${releaseVersion}-win-x64-setup.exe`,
+  `hi-design-team-${releaseVersion}-win-x64-setup.exe.sha256`,
   ...(enableLinux
     ? [
-        `open-design-${releaseVersion}-linux-x64.AppImage`,
-        `open-design-${releaseVersion}-linux-x64.AppImage.sha256`,
+        `hi-design-team-${releaseVersion}-linux-x64.AppImage`,
+        `hi-design-team-${releaseVersion}-linux-x64.AppImage.sha256`,
       ]
     : []),
 ];

@@ -48,6 +48,7 @@ function makeMacConfig(root: string, namespace: string, appVersion: string): Too
       toolPackRoot: join(root, ".tmp", "tools-pack"),
     },
     signed: false,
+    productName: "Hi Design Team",
     silent: true,
     to: "app",
     webOutputMode: "standalone",
@@ -78,11 +79,11 @@ async function writeFakeMacApp(config: ToolPackConfig): Promise<ReturnType<typeo
     join(resourcesRoot, "hi-design-team-config.json"),
     `${JSON.stringify({
       appVersion: config.appVersion,
-      daemonSidecarEntryRelative: "open-design/prebundled/daemon/daemon-sidecar.mjs",
+      daemonSidecarEntryRelative: "hi-design-team/prebundled/daemon/daemon-sidecar.mjs",
       namespace: config.namespace,
-      nodeCommandRelative: "open-design/bin/node",
+      nodeCommandRelative: "hi-design-team/bin/node",
       webOutputMode: "standalone",
-      webSidecarEntryRelative: "open-design/prebundled/web/web-sidecar.mjs",
+      webSidecarEntryRelative: "hi-design-team/prebundled/web/web-sidecar.mjs",
     }, null, 2)}\n`,
     "utf8",
   );
@@ -100,11 +101,11 @@ describe("tools-pack mac launcher payload archives", () => {
       publicAppBundleName: identity.publicAppBundleName,
       version: "0.9.0-beta.2",
     })).toEqual({
-      appBundleName: "Hi Design Beta.app",
+      appBundleName: "Hi Design Team Beta.app",
       channel: "beta",
       entry: {
-        cwd: "payload/Hi Design Beta.app",
-        executable: "payload/Hi Design Beta.app/Contents/MacOS/Hi Design Beta",
+        cwd: "payload/Hi Design Team Beta.app",
+        executable: "payload/Hi Design Team Beta.app/Contents/MacOS/Hi Design Team Beta",
       },
       namespace: "release-beta",
       payloadRoot: "payload",
@@ -129,14 +130,14 @@ describe("tools-pack mac launcher payload archives", () => {
         entry: { executable: string };
         version: string;
       };
-      expect(manifest.appBundleName).toBe("Hi Design Beta.app");
-      expect(manifest.entry.executable).toBe("payload/Hi Design Beta.app/Contents/MacOS/Hi Design Beta");
+      expect(manifest.appBundleName).toBe("Hi Design Team Beta.app");
+      expect(manifest.entry.executable).toBe("payload/Hi Design Team Beta.app/Contents/MacOS/Hi Design Team Beta");
       expect(manifest.version).toBe("0.9.0-beta.2");
       await expectPathExists(join(extractRoot, manifest.entry.executable));
       await expectPathExists(join(
         extractRoot,
         "payload",
-        "Hi Design Beta.app",
+        "Hi Design Team Beta.app",
         "Contents",
         "Resources",
         "hi-design-team-config.json",

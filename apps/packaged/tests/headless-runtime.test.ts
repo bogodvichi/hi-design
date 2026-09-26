@@ -48,11 +48,11 @@ describe("resolvePackagedMcpBootstrapLaunch", () => {
 
   it("invokes a non-macOS installed launcher directly", () => {
     expect(resolvePackagedMcpBootstrapLaunch({
-      currentExecutablePath: "/tmp/payload/open-design",
-      installedLaunchPath: "/opt/open-design/open-design",
+      currentExecutablePath: "/tmp/payload/hi-design-team",
+      installedLaunchPath: "/opt/hi-design-team/open-design",
       platform: "linux",
     })).toEqual({
-      command: "/opt/open-design/open-design",
+      command: "/opt/hi-design-team/open-design",
       args: ["--headless"],
     });
   });

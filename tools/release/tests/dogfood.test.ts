@@ -27,13 +27,13 @@ const commandPath = join(packageRoot, "src", "storage", "publish-dogfood.ts");
 
 describe("dogfood destination guard", () => {
   it("accepts only keys inside the dogfood prefix", () => {
-    expect(() => assertDogfoodObjectKey("dogfood/0.15.3-beta.7/1234-1/open-design-setup.exe")).not.toThrow();
+    expect(() => assertDogfoodObjectKey("dogfood/0.15.3-beta.7/1234-1/hi-design-team-setup.exe")).not.toThrow();
   });
 
   it("refuses every release channel prefix", () => {
     for (const channel of ["beta", "prerelease", "preview", "stable"]) {
       expect(() => assertDogfoodObjectKey(`${channel}/latest/latest-mac.yml`)).toThrow(/refusing to write outside/);
-      expect(() => assertDogfoodObjectKey(`${channel}/versions/0.15.3/open-design.dmg`)).toThrow(/refusing to write outside/);
+      expect(() => assertDogfoodObjectKey(`${channel}/versions/0.15.3/hi-design-team.dmg`)).toThrow(/refusing to write outside/);
       expect(() => assertDogfoodObjectKey(`${channel}/latest/metadata.json`)).toThrow(/refusing to write outside/);
     }
   });

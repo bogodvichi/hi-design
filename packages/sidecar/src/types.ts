@@ -35,6 +35,7 @@ export type SidecarContractDescriptor<TStamp extends SidecarStampShape = Sidecar
     ipcPath: string;
     namespace: string;
     source: string;
+    windowsPipePrefix: string;
   };
   normalizeApp(app: unknown): TStamp["app"];
   normalizeNamespace(namespace: unknown): string;

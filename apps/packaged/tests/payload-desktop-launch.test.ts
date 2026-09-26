@@ -23,7 +23,7 @@ import {
 
 const stamp: SidecarStamp = {
   app: APP_KEYS.DESKTOP,
-  ipc: "/tmp/open-design/ipc/release-beta/desktop.sock",
+  ipc: "/tmp/hi-design-team/ipc/release-beta/desktop.sock",
   mode: SIDECAR_MODES.RUNTIME,
   namespace: "release-beta",
   source: SIDECAR_SOURCES.PACKAGED,

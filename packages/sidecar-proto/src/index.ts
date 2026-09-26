@@ -35,6 +35,7 @@ export const SIDECAR_ENV = Object.freeze({
   WEB_DIST_DIR: "OD_WEB_DIST_DIR",
   WEB_PORT: "OD_WEB_PORT",
   WEB_TSCONFIG_PATH: "OD_WEB_TSCONFIG_PATH",
+  WINDOWS_PIPE_PREFIX: "OD_SIDECAR_WINDOWS_PIPE_PREFIX",
 } as const);
 
 export const SIDECAR_RUNTIME_ENV = Object.freeze({
@@ -43,6 +44,7 @@ export const SIDECAR_RUNTIME_ENV = Object.freeze({
   ipcPath: SIDECAR_ENV.IPC_PATH,
   namespace: SIDECAR_ENV.NAMESPACE,
   source: SIDECAR_ENV.SOURCE,
+  windowsPipePrefix: SIDECAR_ENV.WINDOWS_PIPE_PREFIX,
 } as const);
 
 export const SIDECAR_STAMP_FLAGS = Object.freeze({
@@ -80,7 +82,8 @@ export function resolveWindowsReleaseNamespaceToken(value: string): string {
 
 export function resolveWindowsUninstallRegistryKey(namespace: string): string {
   const namespaceToken = resolveWindowsReleaseNamespaceToken(namespace);
-  return `Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\${OPEN_DESIGN_PRODUCT_NAME}-${namespaceToken}`;
+  const productName = process.env.OD_PRODUCT_NAME ?? OPEN_DESIGN_PRODUCT_NAME;
+  return `Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\${productName}-${namespaceToken}`;
 }
 
 export const SIDECAR_MESSAGES = Object.freeze({

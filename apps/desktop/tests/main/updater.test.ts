@@ -105,7 +105,7 @@ async function createUpdaterFixture(options: {
   const artifactExt = platform === "win" ? "exe" : "dmg";
   const arch = platform === "win" ? "x64" : "arm64";
   const artifactName = platform === "win"
-    ? `open-design-${version}-win-x64-setup.exe`
+    ? `hi-design-team-${version}-win-x64-setup.exe`
     : `open-design-${version}-mac-arm64.dmg`;
   const artifactPath = `/artifact.${artifactExt}`;
   const artifactBody = Buffer.from(options.artifactBody ?? "open design updater fixture");

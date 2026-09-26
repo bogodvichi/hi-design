@@ -146,7 +146,7 @@ async function matchingVelaCliCommand(
 
 describe("domToPptxBundleResource", () => {
   it("derives the vendored bundle path from the workspace root, not the caller cwd", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-resource-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-resource-"));
     const workspaceRoot = join(root, "workspace");
     const callerCwd = join(root, "caller");
     const previousCwd = process.cwd();

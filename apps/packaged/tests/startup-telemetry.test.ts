@@ -95,7 +95,7 @@ describe('classifyStartupFailure', () => {
     // time, so there is no exit code, signal, or daemon log to read. Splitting
     // it out of `unknown` is what makes the win32 budget-raise measurable.
     const winPipe =
-      'timed out waiting for sidecar status at \\\\.\\pipe\\open-design-release-stable-win-daemon (connect ENOENT \\\\.\\pipe\\open-design-release-stable-win-daemon)';
+      'timed out waiting for sidecar status at \\\\.\\pipe\\hi-design-team-release-stable-win-daemon (connect ENOENT \\\\.\\pipe\\hi-design-team-release-stable-win-daemon)';
     const c = classifyStartupFailure(new Error(winPipe), false);
     expect(c.failureKind).toBe('status-timeout');
     expect(c.exitCode).toBeNull();

@@ -55,9 +55,9 @@ function toNpmName(value: string): string {
 // ad-hoc namespaces coexist while same-channel/same-namespace second instances
 // focus the running window.
 export function resolvePackagedAppName(
-  config: Pick<ToolPackConfig, "namespace">,
+  config: Pick<ToolPackConfig, "namespace" | "productName">,
 ): string {
-  const base = toNpmName(OPEN_DESIGN_PRODUCT_NAME);
+  const base = toNpmName(config.productName);
   if (config.namespace === SIDECAR_DEFAULTS.namespace) return base;
   return `${base}-${toNpmName(config.namespace)}`;
 }
@@ -134,6 +134,7 @@ export type ToolPackConfig = {
   roots: ToolPackRoots;
   silent: boolean;
   signed: boolean;
+  productName: string;
   amrProfile?: ToolPackAmrProfile;
   telemetryRelayUrl?: string;
   /**
@@ -488,6 +489,7 @@ export function resolveToolPackConfig(
     requireVelaCli: options.requireVelaCli === true,
     silent: options.silent !== false,
     signed: options.signed === true,
+    productName: process.env.OD_PRODUCT_NAME ?? OPEN_DESIGN_PRODUCT_NAME,
     amrProfile: resolveToolPackAmrProfile(process.env.OPEN_DESIGN_AMR_PROFILE),
     telemetryRelayUrl: resolveToolPackTelemetryRelayUrl(process.env.OPEN_DESIGN_TELEMETRY_RELAY_URL),
     updateMetadataUrl: resolveToolPackUpdateMetadataUrl(process.env.OD_UPDATE_METADATA_URL),

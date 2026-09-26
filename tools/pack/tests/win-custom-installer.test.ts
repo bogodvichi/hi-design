@@ -43,6 +43,7 @@ function createConfig(root: string, portable: boolean): ToolPackConfig {
       toolPackRoot: join(root, "tools-pack"),
     },
     signed: false,
+    productName: "Hi Design Team",
     silent: true,
     to: "nsis",
     webOutputMode: "standalone",
@@ -104,7 +105,7 @@ async function generateInstallerScript(root: string, portable: boolean): Promise
 
 describe("buildCustomWinNsisInstaller logging", () => {
   it("uses the same runtime-writable log path for portable install and uninstall", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-win-custom-installer-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-win-custom-installer-"));
     try {
       const script = await generateInstallerScript(root, true);
       const installerLogger = nsisFunction(script, "LogInstallerEvent");
@@ -121,7 +122,7 @@ describe("buildCustomWinNsisInstaller logging", () => {
   });
 
   it("retains tools-pack log readback for non-portable install and uninstall", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-win-custom-installer-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-win-custom-installer-"));
     try {
       const script = await generateInstallerScript(root, false);
 

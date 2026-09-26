@@ -249,7 +249,7 @@ async function pinInstalledPackagedConfigNamespace(
   const pinned = {
     ...raw,
     namespace: config.namespace,
-    namespaceBaseRoot: config.roots.runtime.namespaceBaseRoot,
+    productName: config.productName,
   };
   const body = `${JSON.stringify(pinned, null, 2)}\n`;
   await writeFile(installedConfigPath, body, "utf8");

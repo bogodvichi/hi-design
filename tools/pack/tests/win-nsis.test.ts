@@ -38,6 +38,7 @@ function makeConfig(namespaceRoot: string): ToolPackConfig {
       toolPackRoot: "/unused/tools-pack",
     },
     signed: false,
+    productName: "Hi Design Team",
     silent: true,
     to: "nsis",
     webOutputMode: "standalone",
@@ -77,7 +78,7 @@ describe("writeNsisInclude", () => {
       await writeNsisInclude(config, paths);
       const written = await readFile(includePath, "utf8");
 
-      expect(written).toContain('$APPDATA\\Hi Design\\namespaces\\test-namespace\\data\\observations\\installer');
+      expect(written).toContain('$APPDATA\\Hi Design Team\\namespaces\\test-namespace\\data\\observations\\installer');
     } finally {
       await rm(root, { force: true, recursive: true });
     }

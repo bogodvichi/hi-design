@@ -26,6 +26,7 @@ function createPackagedConfig(
     appVersion: packagedVersion,
     ...entrypoints,
     namespace: config.namespace,
+    productName: config.productName,
     ...(config.telemetryRelayUrl == null ? {} : { telemetryRelayUrl: config.telemetryRelayUrl }),
     ...(config.updateMetadataUrl == null ? {} : { updateMetadataUrl: config.updateMetadataUrl }),
     ...(config.posthogKey == null ? {} : { posthogKey: config.posthogKey }),
@@ -34,7 +35,6 @@ function createPackagedConfig(
     ...(config.velaWebUrls == null ? {} : { velaWebUrls: config.velaWebUrls }),
     ...(config.hdwPathPrefix == null ? {} : { hdwPathPrefix: config.hdwPathPrefix }),
     webOutputMode: config.webOutputMode,
-    ...(config.portable ? {} : { namespaceBaseRoot: config.roots.runtime.namespaceBaseRoot }),
   };
 }
 

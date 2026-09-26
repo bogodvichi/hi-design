@@ -47,19 +47,19 @@ describe("@open-design/release", () => {
   });
 
   it("centralizes release identity and namespace derivation", () => {
-    expect(releaseChannelDescriptor("prerelease").productName).toBe("Hi Design Prerelease");
+    expect(releaseChannelDescriptor("prerelease").productName).toBe("Hi Design Team Prerelease");
     expect(releaseInstallIdentity("prerelease")).toEqual({
-      appId: "io.hi-design.desktop.prerelease",
-      executableName: "Hi Design Prerelease",
-      productName: "Hi Design Prerelease",
+      appId: "io.hi-design-team.desktop.prerelease",
+      executableName: "Hi Design Team Prerelease",
+      productName: "Hi Design Team Prerelease",
     });
     expect(releaseNamespace("prerelease")).toBe("release-prerelease");
     expect(releaseNamespace("prerelease", "win")).toBe("release-prerelease-win");
     expect(releaseNamespace("prerelease", "macIntel")).toBe("release-prerelease-intel");
     expect(releaseChannelDescriptor("qa2")).toMatchObject({
-      appId: "io.hi-design.desktop.qa2",
+      appId: "io.hi-design-team.desktop.qa2",
       channel: "qa2",
-      productName: "Hi Design Qa2",
+      productName: "Hi Design Team Qa2",
       storagePrefix: "qa2",
     });
   });
@@ -78,7 +78,7 @@ describe("@open-design/release", () => {
     expect(releaseChannelFromVersion("1.2.3-beta-internal.1")).toBe("beta");
     expect(releaseChannelFromVersion("1.2.3-prerelease.1")).toBe("prerelease");
     expect(releaseChannelFromNamespace("release-preview-linux")).toBe("preview");
-    expect(releaseChannelFromNamespace("open-design")).toBe("stable");
+    expect(releaseChannelFromNamespace("hi-design-team")).toBe("stable");
     expect(releaseChannelFromNamespace("beta-local-flow")).toBeNull();
     expect(releaseChannelFromNamespace("release-local")).toBeNull();
   });

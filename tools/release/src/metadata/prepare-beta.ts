@@ -14,7 +14,7 @@ import {
 
 const execFile = promisify(execFileCallback);
 
-const stableTagPattern = /^open-design-v(\d+\.\d+\.\d+)$/;
+const stableTagPattern = /^hi-design-team-v(\d+\.\d+\.\d+)$/;
 
 type ParsedStableVersion = {
   parsed: ReleaseBaseVersionTuple;
@@ -289,7 +289,7 @@ if (stableMetadataUrl != null && stableMetadataUrl.length > 0) {
   latestStable = parseStableMetadataJson(stableMetadataJson);
   console.log(`[release-beta] stable metadata.json version: ${latestStable.value}`);
 } else {
-  const tags = await fetchGitTags("open-design-v*");
+  const tags = await fetchGitTags("hi-design-team-v*");
   for (const tag of tags) {
     const stableVersion = extractStableVersionFromTag(tag);
     if (stableVersion == null) continue;

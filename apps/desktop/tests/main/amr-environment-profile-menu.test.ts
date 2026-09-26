@@ -49,7 +49,7 @@ describe("AMR Environment Profile desktop menu helpers", () => {
         },
         agentCliEnv: {
           amr: {
-            VELA_BIN: "/opt/open-design/vela",
+            VELA_BIN: "/opt/hi-design-team/vela",
             VELA_LINK_URL: "https://amr.example.test/link",
             OPEN_DESIGN_AMR_PROFILE: "prod",
           },
@@ -71,7 +71,7 @@ describe("AMR Environment Profile desktop menu helpers", () => {
       },
       agentCliEnv: {
         amr: {
-          VELA_BIN: "/opt/open-design/vela",
+          VELA_BIN: "/opt/hi-design-team/vela",
           VELA_LINK_URL: "https://amr.example.test/link",
           OPEN_DESIGN_AMR_PROFILE: "local",
         },

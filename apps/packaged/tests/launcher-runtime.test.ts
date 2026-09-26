@@ -26,6 +26,7 @@ function fakeConfig(root: string, appVersion = "1.2.3-beta.4"): PackagedConfig {
     namespace: "release-beta",
     namespaceBaseRoot: join(root, "namespaces"),
     nodeCommand: null,
+    productName: "Hi Design Team",
     posthogHost: null,
     posthogKey: null,
     resourceRoot: join(root, "installed", "resources", "hi-design-team"),
@@ -207,7 +208,7 @@ describe("resolvePackagedLauncherRuntime", () => {
         `${JSON.stringify({
           appVersion: "1.2.3-beta.5",
           daemonSidecarEntryRelative: "prebundled/daemon/daemon-sidecar.mjs",
-          nodeCommandRelative: "open-design/bin/node",
+          nodeCommandRelative: "hi-design-team/bin/node",
           webOutputMode: "standalone",
           webSidecarEntryRelative: "prebundled/web/web-sidecar.mjs",
         })}\n`,
@@ -359,7 +360,7 @@ describe("resolvePackagedLauncherRuntime", () => {
         `${JSON.stringify({
           appVersion: "1.2.3-beta.5",
           daemonSidecarEntryRelative: "prebundled/daemon/daemon-sidecar.mjs",
-          nodeCommandRelative: "open-design/bin/node",
+          nodeCommandRelative: "hi-design-team/bin/node",
           webOutputMode: "standalone",
           webSidecarEntryRelative: "prebundled/web/web-sidecar.mjs",
         })}\n`,

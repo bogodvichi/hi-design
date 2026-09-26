@@ -46,6 +46,7 @@ function makeConfig(root: string, platform: ToolPackPlatform, namespace: string,
       toolPackRoot: join(root, ".tmp", "tools-pack"),
     },
     signed: false,
+    productName: "Hi Design Team",
     silent: true,
     to: platform === "win" ? "nsis" : "app",
     webOutputMode: "standalone",
@@ -80,8 +81,8 @@ describe("tools-pack launcher layout", () => {
     const macPayload = resolveToolPackLauncherPayloadLayout(mac, "0.8.1-beta.2");
     const winPayload = resolveToolPackLauncherPayloadLayout(win, "0.8.1-beta.2");
 
-    expect(macPayload.archivePath).toBe(join(mac.roots.output.namespaceRoot, "payload", "Hi Design-release-beta-payload.zip"));
-    expect(winPayload.archivePath).toBe(join(win.roots.output.namespaceRoot, "payload", "Hi Design-release-beta-win-payload.7z"));
+    expect(macPayload.archivePath).toBe(join(mac.roots.output.namespaceRoot, "payload", "Hi Design Team-release-beta-payload.zip"));
+    expect(winPayload.archivePath).toBe(join(win.roots.output.namespaceRoot, "payload", "Hi Design Team-release-beta-win-payload.7z"));
     expect(macPayload.payloadRoot).toBe(join(macPayload.versionRoot, "payload"));
     expect(winPayload.payloadRoot).toBe(join(winPayload.versionRoot, "payload"));
     expect(macPayload.archiveRootName).toBe("payload-0.8.1-beta.2");
@@ -91,18 +92,18 @@ describe("tools-pack launcher layout", () => {
     const config = makeConfig(TEST_WORKSPACE_ROOT, "mac", "release-beta", "0.8.1-beta.2");
     const paths = resolveMacPaths(config);
 
-    expect(paths.payloadZipPath).toBe(join(config.roots.output.namespaceRoot, "payload", "Hi Design-release-beta-payload.zip"));
-    expect(paths.dmgPath).toBe(join(config.roots.output.namespaceRoot, "dmg", "Hi Design-release-beta.dmg"));
-    expect(paths.zipPath).toBe(join(config.roots.output.namespaceRoot, "zip", "Hi Design-release-beta.zip"));
+    expect(paths.payloadZipPath).toBe(join(config.roots.output.namespaceRoot, "payload", "Hi Design Team-release-beta-payload.zip"));
+    expect(paths.dmgPath).toBe(join(config.roots.output.namespaceRoot, "dmg", "Hi Design Team-release-beta.dmg"));
+    expect(paths.zipPath).toBe(join(config.roots.output.namespaceRoot, "zip", "Hi Design Team-release-beta.zip"));
   });
 
   it("exposes a stable Windows payload 7z path next to existing Windows artifacts", () => {
     const config = makeConfig(TEST_WORKSPACE_ROOT, "win", "release-beta-win", "0.8.1-beta.2");
     const paths = resolveWinPaths(config);
 
-    expect(paths.launcherPayloadPath).toBe(join(config.roots.output.namespaceRoot, "payload", "Hi Design-release-beta-win-payload.7z"));
-    expect(paths.setupPath).toBe(join(config.roots.output.namespaceRoot, "builder", "Hi Design-release-beta-win-setup.exe"));
-    expect(paths.setupZipPath).toBe(join(config.roots.output.namespaceRoot, "builder", "Hi Design-release-beta-win-portable.zip"));
+    expect(paths.launcherPayloadPath).toBe(join(config.roots.output.namespaceRoot, "payload", "Hi Design Team-release-beta-win-payload.7z"));
+    expect(paths.setupPath).toBe(join(config.roots.output.namespaceRoot, "builder", "Hi Design Team-release-beta-win-setup.exe"));
+    expect(paths.setupZipPath).toBe(join(config.roots.output.namespaceRoot, "builder", "Hi Design Team-release-beta-win-portable.zip"));
   });
 
   it("uses zip payload archives for mac and 7z payload archives for Windows", () => {

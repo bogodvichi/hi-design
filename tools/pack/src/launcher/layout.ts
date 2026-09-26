@@ -66,7 +66,7 @@ export function payloadArchiveExtension(platform: ToolPackPlatform): "7z" | "zip
 }
 
 export function resolveToolPackLauncherPayloadLayout(
-  config: Pick<ToolPackConfig, "appVersion" | "namespace" | "platform" | "roots">,
+ config: Pick<ToolPackConfig, "appVersion" | "namespace" | "platform" | "roots" | "productName">,
   version: string,
 ): ToolPackLauncherPayloadLayout {
   const launcher = resolveToolPackLauncherLayout(config);
@@ -81,7 +81,7 @@ export function resolveToolPackLauncherPayloadLayout(
   const archivePath = join(
     config.roots.output.namespaceRoot,
     "payload",
-    `Hi Design-${namespaceToken}-payload.${payloadArchiveExtension(config.platform)}`,
+   `${config.productName}-${namespaceToken}-payload.${payloadArchiveExtension(config.platform)}`,
   );
   return {
     archivePath,

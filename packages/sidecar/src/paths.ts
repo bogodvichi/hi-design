@@ -256,7 +256,8 @@ export function resolveAppIpcPath<TStamp extends SidecarStampShape>({
   const normalizedNamespace = contract.normalizeNamespace(namespace);
 
   if (process.platform === "win32") {
-    return `\\\\.\\pipe\\${contract.defaults.windowsPipePrefix}-${normalizedNamespace}-${normalizedApp}`;
+    const pipePrefix = env[contract.env.windowsPipePrefix] ?? contract.defaults.windowsPipePrefix;
+    return `\\\\.\\pipe\\${pipePrefix}-${normalizedNamespace}-${normalizedApp}`;
   }
 
   const ipcBase = resolve(env[contract.env.ipcBase] ?? contract.defaults.ipcBase);

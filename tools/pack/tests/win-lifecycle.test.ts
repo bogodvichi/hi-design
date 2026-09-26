@@ -96,6 +96,7 @@ function createConfig(root: string): ToolPackConfig {
       toolPackRoot: join(root, "tools-pack"),
     },
     signed: false,
+    productName: "Hi Design Team",
     silent: true,
     to: "dir",
     webOutputMode: "standalone",
@@ -111,7 +112,7 @@ async function writeFakeUnpackedExe(config: ToolPackConfig): Promise<void> {
 
 describe("installPackedWinApp", () => {
   it("pins the installed portable config to the tools-pack namespace for bare protocol launches", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-win-lifecycle-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-win-lifecycle-"));
     const config = { ...createConfig(root), portable: true };
     const paths = resolveWinPaths(config);
     const installedConfigPath = join(paths.installDir, "resources", "hi-design-team-config.json");
@@ -136,7 +137,7 @@ describe("installPackedWinApp", () => {
       expect(installedConfig).toMatchObject({
         channel: "prerelease",
         namespace: config.namespace,
-        namespaceBaseRoot: config.roots.runtime.namespaceBaseRoot,
+        productName: config.productName,
       });
       expect(result.lifecycleTimings.map(({ step }) => step)).toContain("pin installed packaged namespace");
     } finally {
@@ -145,7 +146,7 @@ describe("installPackedWinApp", () => {
   });
 
   it("creates the exact fresh install directory before invoking transactional NSIS", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-win-lifecycle-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-win-lifecycle-"));
     const config = createConfig(root);
     const paths = resolveWinPaths(config);
 
@@ -174,7 +175,7 @@ describe("installPackedWinApp", () => {
 
 describe("inspectPackedWinApp", () => {
   it("returns status and diagnostics when eval IPC times out", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-win-lifecycle-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-win-lifecycle-"));
 
     try {
       requestJsonIpc.mockReset();
@@ -207,7 +208,7 @@ describe("inspectPackedWinApp", () => {
   });
 
   it("returns status errors with launcher diagnostics when status IPC fails", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-win-lifecycle-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-win-lifecycle-"));
 
     try {
       requestJsonIpc.mockReset();
@@ -234,7 +235,7 @@ describe("inspectPackedWinApp", () => {
   });
 
   it("polls status diagnostics when requested", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-win-lifecycle-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-win-lifecycle-"));
 
     try {
       requestJsonIpc.mockReset();
@@ -266,7 +267,7 @@ describe("inspectPackedWinApp", () => {
   });
 
   it("diagnoses Windows IPC by polling status during repeated fresh starts", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-win-lifecycle-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-win-lifecycle-"));
     const config = createConfig(root);
     const previousTrace = process.env.OD_JSON_IPC_TRACE;
 
@@ -314,7 +315,7 @@ describe("inspectPackedWinApp", () => {
 
 describe("stopPackedWinApp", () => {
   it("waits for a packaged-source payload desktop to exit after graceful shutdown", async () => {
-    const root = await mkdtemp(join(tmpdir(), "open-design-win-lifecycle-"));
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-win-lifecycle-"));
     const config = createConfig(root);
     const payloadDesktop = { command: "payload-desktop", pid: 4242, ppid: 1 };
 

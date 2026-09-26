@@ -50,6 +50,7 @@ function makeWinConfig(root: string, namespace: string, appVersion: string): Too
       toolPackRoot: join(root, ".tmp", "tools-pack"),
     },
     signed: false,
+    productName: "Hi Design Team",
     silent: true,
     to: "nsis",
     webOutputMode: "standalone",
@@ -124,11 +125,11 @@ async function writeFakeWinUnpackedApp(root: string, namespace: string, version:
     join(paths.unpackedRoot, "resources", "hi-design-team-config.json"),
     `${JSON.stringify({
       appVersion: version,
-      daemonSidecarEntryRelative: "open-design/prebundled/daemon/daemon-sidecar.mjs",
+      daemonSidecarEntryRelative: "hi-design-team/prebundled/daemon/daemon-sidecar.mjs",
       namespace,
-      nodeCommandRelative: "open-design/bin/node",
+      nodeCommandRelative: "hi-design-team/bin/node",
       webOutputMode: "standalone",
-      webSidecarEntryRelative: "open-design/prebundled/web/web-sidecar.mjs",
+      webSidecarEntryRelative: "hi-design-team/prebundled/web/web-sidecar.mjs",
     }, null, 2)}\n`,
     "utf8",
   );
@@ -143,11 +144,11 @@ async function writeFakeWinUnpackedApp(root: string, namespace: string, version:
     paths.packagedConfigPath,
     `${JSON.stringify({
       appVersion: version,
-      daemonSidecarEntryRelative: "open-design/prebundled/daemon/daemon-sidecar.mjs",
+      daemonSidecarEntryRelative: "hi-design-team/prebundled/daemon/daemon-sidecar.mjs",
       namespace,
-      nodeCommandRelative: "open-design/bin/node",
+      nodeCommandRelative: "hi-design-team/bin/node",
       webOutputMode: "standalone",
-      webSidecarEntryRelative: "open-design/prebundled/web/web-sidecar.mjs",
+      webSidecarEntryRelative: "hi-design-team/prebundled/web/web-sidecar.mjs",
     }, null, 2)}\n`,
     "utf8",
   );
@@ -262,11 +263,11 @@ describe("tools-pack Windows launcher payload archives", () => {
           paths.packagedConfigPath,
           `${JSON.stringify({
             appVersion: version,
-            daemonSidecarEntryRelative: "open-design/prebundled/daemon/daemon-sidecar.mjs",
+            daemonSidecarEntryRelative: "hi-design-team/prebundled/daemon/daemon-sidecar.mjs",
             namespace,
-            nodeCommandRelative: "open-design/bin/node",
+            nodeCommandRelative: "hi-design-team/bin/node",
             webOutputMode: "standalone",
-            webSidecarEntryRelative: "open-design/prebundled/web/web-sidecar.mjs",
+            webSidecarEntryRelative: "hi-design-team/prebundled/web/web-sidecar.mjs",
           }, null, 2)}\n`,
           "utf8",
         );

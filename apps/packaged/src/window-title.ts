@@ -3,8 +3,9 @@ import {
   releaseChannelFromVersion,
   releaseInstallIdentity,
 } from "@open-design/release";
+import { OPEN_DESIGN_PRODUCT_NAME } from "@open-design/sidecar-proto";
 
-const DEFAULT_WINDOW_TITLE = "Hi Design";
+const DEFAULT_WINDOW_TITLE = process.env.OD_PRODUCT_NAME ?? OPEN_DESIGN_PRODUCT_NAME;
 
 export function resolvePackagedWindowTitle(config: { appVersion: string | null; namespace: string }): string {
   const channel =

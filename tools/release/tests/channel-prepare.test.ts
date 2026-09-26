@@ -141,7 +141,7 @@ async function writeFakeGhScript(root: string): Promise<string> {
 }
 
 /**
- * Hermetic stand-in for the repository's `open-design-v*` tags. The prepare
+ * Hermetic stand-in for the repository's `hi-design-team-v*` tags. The prepare
  * scripts derive the latest-stable floor from `git tag --list`, so without
  * this the tests depend on whatever tags the local clone happens to have —
  * green on tagless CI checkouts, permanently red on any developer clone once
@@ -268,7 +268,7 @@ describe("tools-release local channel prepare validation", () => {
         OPEN_DESIGN_STABLE_VERSION: packagedVersion,
         // Matches the stable fixture metadata above and keeps the tag-derived
         // latest-stable floor below any real packaged version.
-        ...(await createHermeticTagRepoEnv(["open-design-v0.9.0"])),
+        ...(await createHermeticTagRepoEnv(["hi-design-team-v0.9.0"])),
       };
 
       const beta = await runPrepare("beta", {
@@ -356,7 +356,7 @@ describe("tools-release local channel prepare validation", () => {
       expect(stable.outputs.github_release_enabled).toBe("false");
       expect(stable.outputs.publish_side_effects_enabled).toBe("false");
       expect(stable.outputs.run_prepublish_jobs).toBe("false");
-      expect(stable.outputs.version_tag).toBe(`open-design-v${packagedVersion}`);
+      expect(stable.outputs.version_tag).toBe(`hi-design-team-v${packagedVersion}`);
     } finally {
       await server.close();
       await rm(ghRoot, { force: true, recursive: true });

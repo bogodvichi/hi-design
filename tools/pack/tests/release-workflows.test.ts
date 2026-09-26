@@ -161,8 +161,8 @@ describe("release workflows", () => {
     expect(prepareMac).toContain('RELEASE_ASSET_SUFFIX="${RELEASE_ASSET_SUFFIX:-}"');
     expect(prepareWin).toContain("[AllowEmptyString()]");
     expect(prepareWin).toContain("$sourcePayload = [string]$build.payloadPath");
-    expect(prepareWin).toContain("open-design-$ReleaseVersion$ReleaseAssetSuffix-win-x64-payload.7z");
-    expect(publishPlatform).toContain("open-design-${releaseVersion}${assetSuffix}-win-x64-payload.7z");
+    expect(prepareWin).toContain("hi-design-team-$ReleaseVersion$ReleaseAssetSuffix-win-x64-payload.7z");
+    expect(publishPlatform).toContain("hi-design-team-${releaseVersion}${assetSuffix}-win-x64-payload.7z");
     expect(publishPlatform).toContain("payload: assetEntry(payload)");
     expect(publishPlatform).toContain("versionLockObjectKey(releaseVersion, countedReleaseChannel)");
     expect(publishPlatform).toContain("assertCurrentVersionReservation(storage, releaseVersion, versionLockKey, countedReleaseChannel)");
@@ -192,8 +192,8 @@ describe("release workflows", () => {
     expect(prerelease).toContain("pnpm exec tools-release prepare prerelease");
     expect(prerelease).toContain("OPEN_DESIGN_PRERELEASE_METADATA_URL");
     expect(prerelease).toContain("RELEASE_CHANNEL: prerelease");
-    expect(prerelease).toContain("open-design-prerelease-mac-arm64-publish-manifest");
-    expect(prerelease).toContain("open-design-prerelease-win-x64-publish-manifest");
+    expect(prerelease).toContain("hi-design-team-prerelease-mac-arm64-publish-manifest");
+    expect(prerelease).toContain("hi-design-team-prerelease-win-x64-publish-manifest");
     expect(prerelease).toContain("workflow_call:");
     expect(prerelease).toContain("OPEN_DESIGN_STABLE_VERSION: ${{ inputs.release_version }}");
     expect(prerelease).toContain("GITHUB_SHA: ${{ needs.metadata.outputs.commit }}");
@@ -286,8 +286,8 @@ describe("release workflows", () => {
     expect(stable).not.toContain("RELEASE_BRANCH: ${{ github.ref_name }}");
     expect(stable).toContain("tools-release verify-metadata");
     expect(stable).toContain("tools-release summary-metadata");
-    expect(stable).toContain("open-design-release-mac-arm64-publish-manifest");
-    expect(stable).toContain("open-design-release-win-x64-publish-manifest");
+    expect(stable).toContain("hi-design-team-release-mac-arm64-publish-manifest");
+    expect(stable).toContain("hi-design-team-release-win-x64-publish-manifest");
     expect(stable).toContain("--signed");
     expect(stable).toContain("--notarize");
     expect(stable).toContain("run: pnpm exec tools-release prepare stable");

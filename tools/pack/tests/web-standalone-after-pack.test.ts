@@ -318,7 +318,7 @@ describe("web standalone afterPack hook", () => {
 
   it("rejects unsupported packaging platforms", async () => {
     await expect(runWebStandaloneAfterPack({
-      appOutDir: "/tmp/open-design-linux",
+      appOutDir: "/tmp/hi-design-team-linux",
       electronPlatformName: "linux",
       packager: { appInfo: { productFilename: "Hi Design" } },
     })).rejects.toThrow(/unsupported platform: linux/);
@@ -424,7 +424,7 @@ describe("web standalone afterPack hook", () => {
   });
 
   darwinSymlinkIt("signs versioned mac frameworks at their Current version path", async () => {
-    const codesignRoot = await mkdtemp(join(tmpdir(), "open-design-fake-codesign-"));
+    const codesignRoot = await mkdtemp(join(tmpdir(), "hi-design-team-fake-codesign-"));
     const codesignBin = join(codesignRoot, "bin");
     const codesignLog = join(codesignRoot, "codesign.log");
     const oldPath = process.env.PATH;

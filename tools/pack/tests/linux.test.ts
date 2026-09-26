@@ -84,6 +84,7 @@ function makeConfig(): ToolPackConfig {
     },
     silent: true,
     signed: false,
+    productName: "Hi Design Team",
     to: "all",
     webOutputMode: "server",
     workspaceRoot: "/work",
@@ -672,20 +673,20 @@ MimeType=x-scheme-handler/od;
     const out = renderDesktopTemplate(template, {
       namespace: "default",
       execPath: "/home/u/.local/bin/Open-Design.default.AppImage",
-      iconName: "open-design-default",
+      iconName: "hi-design-team-default",
     });
     expect(out).toContain("Name=Hi Design (default)");
     expect(out).toContain(
       "Exec=env -u ELECTRON_RUN_AS_NODE OD_PACKAGED_NAMESPACE=default /home/u/.local/bin/Open-Design.default.AppImage --appimage-extract-and-run %U",
     );
-    expect(out).toContain("Icon=open-design-default");
+    expect(out).toContain("Icon=hi-design-team-default");
   });
 
   it("uses OD_PACKAGED_NAMESPACE (not OD_NAMESPACE) so apps/packaged actually picks up the namespace override", () => {
     const out = renderDesktopTemplate(template, {
       namespace: "ns",
       execPath: "/x",
-      iconName: "open-design-ns",
+      iconName: "hi-design-team-ns",
     });
     expect(out).toMatch(/^Exec=env -u ELECTRON_RUN_AS_NODE OD_PACKAGED_NAMESPACE=ns /m);
     expect(out).not.toMatch(/OD_NAMESPACE=/);
@@ -695,7 +696,7 @@ MimeType=x-scheme-handler/od;
     const out = renderDesktopTemplate(template, {
       namespace: "ns",
       execPath: "/x",
-      iconName: "open-design-ns",
+      iconName: "hi-design-team-ns",
     });
     expect(out).toMatch(/^Exec=env -u ELECTRON_RUN_AS_NODE /m);
   });
@@ -704,7 +705,7 @@ MimeType=x-scheme-handler/od;
     const out = renderDesktopTemplate(template, {
       namespace: "ns",
       execPath: "/x",
-      iconName: "open-design-ns",
+      iconName: "hi-design-team-ns",
     });
     expect(out).toMatch(/^Exec=.*--appimage-extract-and-run .*%U$/m);
   });
@@ -713,7 +714,7 @@ MimeType=x-scheme-handler/od;
     const out = renderDesktopTemplate(template, {
       namespace: "ns",
       execPath: "/x",
-      iconName: "open-design-ns",
+      iconName: "hi-design-team-ns",
     });
     expect(out).not.toMatch(/@@[A-Z_]+@@/);
   });
@@ -722,7 +723,7 @@ MimeType=x-scheme-handler/od;
     const out = renderDesktopTemplate(template, {
       namespace: "ns",
       execPath: "/x",
-      iconName: "open-design-ns",
+      iconName: "hi-design-team-ns",
     });
     expect(out).toContain("MimeType=x-scheme-handler/od;");
   });
@@ -823,7 +824,7 @@ describe("createLinuxDesktopLaunchEnv", () => {
     const config = makeConfig();
     const stamp = {
       app: APP_KEYS.DESKTOP,
-      ipc: "/tmp/open-design/ipc/default/desktop.sock",
+      ipc: "/tmp/hi-design-team/ipc/default/desktop.sock",
       mode: SIDECAR_MODES.RUNTIME,
       namespace: "default",
       source: SIDECAR_SOURCES.TOOLS_PACK,
@@ -871,11 +872,11 @@ describe("shouldRejectLinuxHeadlessInspectOptions", () => {
 
   it("rejects headless eval and screenshot requests", () => {
     expect(shouldRejectLinuxHeadlessInspectOptions({ expr: "document.title" })).toBe(true);
-    expect(shouldRejectLinuxHeadlessInspectOptions({ path: "/tmp/open-design-linux.png" })).toBe(true);
+    expect(shouldRejectLinuxHeadlessInspectOptions({ path: "/tmp/hi-design-team-linux.png" })).toBe(true);
     expect(
       shouldRejectLinuxHeadlessInspectOptions({
         expr: "document.title",
-        path: "/tmp/open-design-linux.png",
+        path: "/tmp/hi-design-team-linux.png",
       }),
     ).toBe(true);
   });
@@ -901,16 +902,16 @@ describe("inspectPackedLinuxApp", () => {
     requestJsonIpcMock
       .mockResolvedValueOnce({ state: "running", url: "od://app/" })
       .mockResolvedValueOnce({ ok: true, value: "Hi Design" })
-      .mockResolvedValueOnce({ path: "/tmp/open-design-linux.png" });
+      .mockResolvedValueOnce({ path: "/tmp/hi-design-team-linux.png" });
 
     const result = await inspectPackedLinuxApp(makeConfig(), {
       expr: "document.title",
-      path: "/tmp/open-design-linux.png",
+      path: "/tmp/hi-design-team-linux.png",
     });
 
     expect(result).toEqual({
       eval: { ok: true, value: "Hi Design" },
-      screenshot: { path: "/tmp/open-design-linux.png" },
+      screenshot: { path: "/tmp/hi-design-team-linux.png" },
       status: { state: "running", url: "od://app/" },
     });
     expect(requestJsonIpcMock).toHaveBeenCalledTimes(3);
