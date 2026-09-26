@@ -50,7 +50,7 @@ describe("resolveMacInstallIdentity", () => {
       installerTitle: "Hi Design",
       productName: "Hi Design",
       publicAppBundleName: "Hi Design.app",
-      systemAppBundleName: "Hi Design.app",
+      systemAppBundleName: "Hi Design.release-stable.app",
     });
   });
 
@@ -63,7 +63,7 @@ describe("resolveMacInstallIdentity", () => {
       installerTitle: "Hi Design Beta",
       productName: "Hi Design Beta",
       publicAppBundleName: "Hi Design Beta.app",
-      systemAppBundleName: "Hi Design Beta.app",
+      systemAppBundleName: "Hi Design Beta.release-beta.app",
     });
     expect(resolveMacPaths(config).appPath).toMatch(/Hi Design Beta\.app$/);
   });
@@ -77,7 +77,7 @@ describe("resolveMacInstallIdentity", () => {
       installerTitle: "Hi Design Preview",
       productName: "Hi Design Preview",
       publicAppBundleName: "Hi Design Preview.app",
-      systemAppBundleName: "Hi Design Preview.app",
+      systemAppBundleName: "Hi Design Preview.release-preview.app",
     });
     expect(resolveMacPaths(config).appPath).toMatch(/Hi Design Preview\.app$/);
   });
@@ -95,12 +95,13 @@ describe("resolveMacInstallIdentity", () => {
       installerTitle: "Hi Design Prerelease",
       productName: "Hi Design Prerelease",
       publicAppBundleName: "Hi Design Prerelease.app",
-      systemAppBundleName: "Hi Design Prerelease.app",
+      systemAppBundleName: "Hi Design Prerelease.release-stable.app",
     });
     expect(resolveMacPaths(prereleaseVersionConfig).appPath).toMatch(/Hi Design Prerelease\.app$/);
     expect(resolveMacInstallIdentity(prereleaseNamespaceConfig)).toMatchObject({
       productName: "Hi Design Prerelease",
       publicAppBundleName: "Hi Design Prerelease.app",
+      systemAppBundleName: "Hi Design Prerelease.release-prerelease.app",
     });
   });
 });

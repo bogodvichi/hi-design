@@ -29,9 +29,14 @@ export function resolveMacInstallIdentity(config: Pick<ToolPackConfig, "namespac
     ? { appId: "io.hi-design.desktop", productName: PRODUCT_NAME }
     : releaseInstallIdentity(channel);
   const publicAppBundleName = `${channelIdentity.productName}.app`;
-  const systemAppBundleName = channel != null
+  // The system (installed) app bundle name carries the namespace so different
+  // namespaces can coexist in /Applications even on the same release channel.
+  // The default namespace stays clean as the canonical baseline. The public
+  // (DMG) name always stays clean for the drag-install surface.
+  const isDefaultNamespace = config.namespace === SIDECAR_DEFAULTS.namespace;
+  const systemAppBundleName = isDefaultNamespace
     ? publicAppBundleName
-    : `${PRODUCT_NAME}.${namespaceToken}.app`;
+    : `${channelIdentity.productName}.${namespaceToken}.app`;
 
   return {
     ...channelIdentity,

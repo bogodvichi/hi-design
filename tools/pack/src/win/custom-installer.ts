@@ -415,10 +415,11 @@ if ($ids) {
 
 async function writeInstallerScript(config: ToolPackConfig, paths: WinPaths, packagedVersion: string): Promise<void> {
   const identity = resolveWinInstallIdentity(config);
-  const launcher = resolveToolPackLauncherLayout(config);
+ const launcher = resolveToolPackLauncherLayout(config);
   const productName = escapeNsisString(identity.displayName);
+ const installDirName = escapeNsisString(identity.installDirName);
   const exeName = escapeNsisString(identity.exeName);
-  const uninstallerName = escapeNsisString(identity.uninstallerName);
+ const uninstallerName = escapeNsisString(identity.uninstallerName);
   const shortcutName = escapeNsisString(identity.shortcutName);
   const registryKey = escapeNsisString(identity.registryKey);
   const appPathsKey = escapeNsisString(identity.appPathsKey);
@@ -479,7 +480,7 @@ RequestExecutionLevel user
 
 Name "${productName}"
 OutFile "\${OUTPUT_EXE}"
-InstallDir "$LOCALAPPDATA\\Programs\\${productName}"
+InstallDir "$LOCALAPPDATA\\Programs\\${installDirName}"
 InstallDirRegKey HKCU "${registryKey}" "InstallLocation"
 Icon "\${APP_ICON}"
 UninstallIcon "\${APP_ICON}"
