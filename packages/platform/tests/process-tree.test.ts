@@ -56,8 +56,8 @@ describe("processCommandExactlyRunsExecutable", () => {
       "darwin",
     )).toBe(true);
     expect(processCommandExactlyRunsExecutable(
-      '"C:\\Program Files\\Hi Design\\Hi Design.exe"',
-      "C:\\Program Files\\Hi Design\\Hi Design.exe",
+      '"C:\\Program Files\\Hi Design Team\\Hi Design Team.exe"',
+      "C:\\Program Files\\Hi Design Team\\Hi Design Team.exe",
       "win32",
     )).toBe(true);
   });
@@ -67,7 +67,7 @@ describe("processCommandExactlyRunsExecutable", () => {
     expect(processCommandExactlyRunsExecutable(`${executable} --inspect`, executable, "darwin")).toBe(false);
     expect(processCommandExactlyRunsExecutable(`${executable} Helper`, executable, "darwin")).toBe(false);
 
-    const windowsExecutable = "C:\\Program Files\\Hi Design\\Hi Design.exe";
+    const windowsExecutable = "C:\\Program Files\\Hi Design Team\\Hi Design Team.exe";
     expect(processCommandExactlyRunsExecutable(
       `"${windowsExecutable}" od://project/123`,
       windowsExecutable,
@@ -83,7 +83,7 @@ describe("processCommandExactlyRunsExecutable", () => {
   it("compares Windows executable paths case-insensitively", () => {
     expect(processCommandExactlyRunsExecutable(
       '"C:\\PROGRAM FILES\\OPEN DESIGN\\OPEN DESIGN.EXE"',
-      "c:\\Program Files\\Hi Design\\Hi Design.exe",
+      "c:\\Program Files\\Hi Design Team\\Hi Design Team.exe",
       "win32",
     )).toBe(true);
   });

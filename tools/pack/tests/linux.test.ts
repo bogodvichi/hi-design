@@ -542,7 +542,7 @@ describe("stopPackedLinuxApp", () => {
       },
     };
     const appDir = join(root, "AppDir");
-    const executablePath = join(appDir, "Hi Design");
+    const executablePath = join(appDir, "Hi Design Team");
     const appRunPath = join(appDir, "AppRun");
     const markerPath = join(runtimeNamespaceRoot, "runtime", "desktop-root.json");
     const stamp = {
@@ -751,7 +751,7 @@ describe("renderLinuxAppImageAppRun", () => {
 
     expect(out).toContain("unset ELECTRON_RUN_AS_NODE");
     expect(out.indexOf("unset ELECTRON_RUN_AS_NODE")).toBeLessThan(out.indexOf('exec "$BIN"'));
-    expect(out).toContain('BIN="$APPDIR/Hi Design"');
+    expect(out).toContain('BIN="$APPDIR/Hi Design Team"');
   });
 
   it("preserves AppImageLauncher install-only behavior", () => {
@@ -779,7 +779,7 @@ describe("renderLinuxAppImageAppRun", () => {
     const appDir = join(root, "AppDir");
     const appRunPath = join(appDir, "AppRun");
     const observedEnvPath = join(root, "observed-env.txt");
-    const electronPath = join(appDir, "Hi Design");
+    const electronPath = join(appDir, "Hi Design Team");
 
     try {
       await mkdir(appDir, { recursive: true });
@@ -965,7 +965,7 @@ describe("matchesAppImageProcess", () => {
     const ok = matchesAppImageProcess(
       {
         pid: 1234,
-        executable: "/tmp/appimage_extracted_fe548e54/Hi Design",
+        executable: "/tmp/appimage_extracted_fe548e54/Hi Design Team",
         env: { APPIMAGE: "/tmp/appimage_extracted_fe548e54/AppRun" },
       },
       installPath,
@@ -977,7 +977,7 @@ describe("matchesAppImageProcess", () => {
     const ok = matchesAppImageProcess(
       {
         pid: 1234,
-        executable: "/tmp/appimage_extracted_fe548e54/Hi Design",
+        executable: "/tmp/appimage_extracted_fe548e54/Hi Design Team",
         env: { APPIMAGE: "/tmp/other/AppRun" },
       },
       installPath,
@@ -989,7 +989,7 @@ describe("matchesAppImageProcess", () => {
     const ok = matchesAppImageProcess(
       {
         pid: 1234,
-        executable: "/tmp/appimage_extracted_fe548e54/Hi Design",
+        executable: "/tmp/appimage_extracted_fe548e54/Hi Design Team",
         env: { APPIMAGE: installPath },
       },
       installPath,
@@ -1001,7 +1001,7 @@ describe("matchesAppImageProcess", () => {
     const ok = matchesAppImageProcess(
       {
         pid: 1234,
-        executable: "/tmp/appimage_extracted_fe548e54/Hi Design",
+        executable: "/tmp/appimage_extracted_fe548e54/Hi Design Team",
         env: { APPIMAGE: "/elsewhere/Other.AppImage" },
       },
       installPath,

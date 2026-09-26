@@ -39,9 +39,8 @@ import { electronBuilderVersionForAppVersion, readRuntimeAppVersion } from "./ve
 import { processWebSourcemaps } from "./web-sourcemaps.js";
 
 const execFileAsync = promisify(execFile);
-
-const PRODUCT_NAME = "Hi Design";
-const APP_IMAGE_PRODUCT_NAME = "Hi-Design";
+const PRODUCT_NAME = process.env.OD_PRODUCT_NAME ?? "Hi Design Team";
+const APP_IMAGE_PRODUCT_NAME = "Hi-Design-Team";
 const DESKTOP_LOG_ECHO_ENV = "OD_DESKTOP_LOG_ECHO";
 // The containerized build sets this to the standalone pnpm binary fetched by
 // buildDockerArgs; runProductionInstall reads it to avoid invoking `npm` inside

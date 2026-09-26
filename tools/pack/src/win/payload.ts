@@ -20,6 +20,7 @@ import {
   resolveToolPackLauncherChannel,
   resolveToolPackLauncherRoot,
 } from "../launcher/layout.js";
+import { PRODUCT_NAME } from "./constants.js";
 import { readPackagedVersion } from "./manifest.js";
 import { WIN_PAYLOAD_SEVEN_Z_CREATE_ARGS, resolveWinNsisOverlayRequiredPaths } from "./custom-installer.js";
 import type { WinBuiltAppManifest, WinPackTiming, WinPaths } from "./types.js";
@@ -28,11 +29,14 @@ const execFileAsync = promisify(execFile);
 const WIN_LAUNCHER_PAYLOAD_BASE_CACHE_VERSION = 2;
 const WIN_LAUNCHER_PAYLOAD_ARCHIVE_CACHE_VERSION = 2;
 
+const WIN_PAYLOAD_EXECUTABLE_NAME = `${PRODUCT_NAME}.exe`;
+const WIN_PAYLOAD_EXECUTABLE_ARCHIVE_PATH = `payload/${WIN_PAYLOAD_EXECUTABLE_NAME}`;
+
 export type WinLauncherPayloadManifest = {
   channel: string;
   entry: {
     cwd: "payload";
-    executable: "payload/Hi Design.exe";
+    executable: string;
   };
   namespace: string;
   payloadRoot: "payload";
@@ -50,7 +54,7 @@ export function buildWinLauncherPayloadManifest(input: {
     channel: input.channel,
     entry: {
       cwd: "payload",
-      executable: "payload/Hi Design.exe",
+      executable: WIN_PAYLOAD_EXECUTABLE_ARCHIVE_PATH,
     },
     namespace: input.namespace,
     payloadRoot: "payload",
@@ -127,7 +131,10 @@ export async function buildWinLauncherPayloadArchive(
     await mkdir(join(overlayRoot, "payload", "resources"), { recursive: true });
     await writeFile(join(overlayRoot, "manifest.json"), `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
     if (input.includeExecutable) {
-      await cp(join(builtApp.unpackedRoot, "Hi Design.exe"), join(overlayRoot, "payload", "Hi Design.exe"));
+      await cp(
+        join(builtApp.unpackedRoot, WIN_PAYLOAD_EXECUTABLE_NAME),
+        join(overlayRoot, "payload", WIN_PAYLOAD_EXECUTABLE_NAME),
+      );
     }
     await writeFile(
       join(overlayRoot, "payload", "resources", PACKAGED_CONFIG_FILE_NAME),
@@ -331,9 +338,9 @@ export async function validateWinLauncherPayloadArchive(input: {
     requirePayloadManifestValue(manifest.platform, "platform", "win32");
     requirePayloadManifestValue(manifest.payloadRoot, "payloadRoot", "payload");
     requirePayloadManifestValue(manifest.entry?.cwd, "entry.cwd", "payload");
-    requirePayloadManifestValue(manifest.entry?.executable, "entry.executable", "payload/Hi Design.exe");
+    requirePayloadManifestValue(manifest.entry?.executable, "entry.executable", WIN_PAYLOAD_EXECUTABLE_ARCHIVE_PATH);
 
-    await stat(join(extractRoot, archiveRelativePath("payload/Hi Design.exe")));
+    await stat(join(extractRoot, archiveRelativePath(WIN_PAYLOAD_EXECUTABLE_ARCHIVE_PATH)));
     await stat(join(extractRoot, archiveRelativePath(`payload/resources/${PACKAGED_CONFIG_FILE_NAME}`)));
     return { manifest, payloadPath, valid: true };
   } finally {

@@ -82,7 +82,7 @@ describe("readBuiltAppManifest", () => {
         appBuilderOutputRoot: join(root, "builder"),
         cacheEntryPath: null,
         configPath: join(root, "config.json"),
-        executablePath: join(root, "Hi Design.exe"),
+        executablePath: join(root, "Hi Design Team.exe"),
         source: "namespace",
         unpackedRoot: join(root, "unpacked"),
         version: 1,

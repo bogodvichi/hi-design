@@ -528,7 +528,7 @@ describe("resolvePackagedLauncherRuntime", () => {
         version: "1.2.3-beta.5",
       });
       const resourcesPath = join(versionPaths.versionRoot, "payload", "resources");
-      const payloadExePath = join(versionPaths.versionRoot, "payload", "Hi Design.exe");
+      const payloadExePath = join(versionPaths.versionRoot, "payload", "Hi Design Team.exe");
       const webStandaloneRoot = join(resourcesPath, "hi-design-team-web-standalone");
       await mkdir(join(resourcesPath, "prebundled", "daemon"), { recursive: true });
       await mkdir(join(resourcesPath, "prebundled", "web"), { recursive: true });
@@ -552,7 +552,7 @@ describe("resolvePackagedLauncherRuntime", () => {
           channel: "beta",
           entry: {
             cwd: "payload",
-            executable: "payload/Hi Design.exe",
+            executable: "payload/Hi Design Team.exe",
           },
           namespace: config.namespace,
           payloadRoot: "payload",

@@ -50,8 +50,8 @@ async function createMacInstalledOuter(): Promise<{
   launchPath: string;
 }> {
   if (process.platform === "win32") {
-    const launchPath = "/Applications/Hi Design.app";
-    const executablePath = `${launchPath}/Contents/MacOS/Hi Design`;
+    const launchPath = "/Applications/Hi Design Team.app";
+    const executablePath = `${launchPath}/Contents/MacOS/Hi Design Team`;
     return {
       executablePath,
       inspectInstalledOuterPath: macInspectMock(launchPath, executablePath),
@@ -60,8 +60,8 @@ async function createMacInstalledOuter(): Promise<{
   }
   const root = await mkdtemp(join(tmpdir(), "od-obsolete-outer-"));
   roots.push(root);
-  const launchPath = join(root, "Hi Design.app");
-  const executablePath = join(launchPath, "Contents", "MacOS", "Hi Design");
+  const launchPath = join(root, "Hi Design Team.app");
+  const executablePath = join(launchPath, "Contents", "MacOS", "Hi Design Team");
   await mkdir(join(launchPath, "Contents", "MacOS"), { recursive: true });
   await writeFile(executablePath, "legacy outer", "utf8");
   return { executablePath, launchPath };
@@ -72,14 +72,14 @@ function fileInspectMock(symbolicLink = false): InspectInstalledOuterPath {
 }
 
 async function createWindowsInstalledOuter(
-  executableName = "Hi Design.exe",
+  executableName = "Hi Design Team.exe",
 ): Promise<{
   executablePath: string;
   inspectInstalledOuterPath?: InspectInstalledOuterPath;
   launchPath: string;
 }> {
   if (process.platform !== "win32") {
-    const executablePath = `C:\\Program Files\\Hi Design\\${executableName}`;
+    const executablePath = `C:\\Program Files\\Hi Design Team\\${executableName}`;
     return { executablePath, inspectInstalledOuterPath: fileInspectMock(), launchPath: executablePath };
   }
   const root = await mkdtemp(join(tmpdir(), "od-obsolete-outer-win-"));
@@ -114,21 +114,21 @@ describe("createObsoleteInstalledOuterRetirement", () => {
     const { executablePath, inspectInstalledOuterPath, launchPath } = await createMacInstalledOuter();
     const snapshots = [
       snapshot(101, 1, executablePath),
-      snapshot(102, 101, `${launchPath}/Contents/Frameworks/Hi Design Helper.app/Contents/MacOS/Hi Design Helper`),
+      snapshot(102, 101, `${launchPath}/Contents/Frameworks/Hi Design Team Helper.app/Contents/MacOS/Hi Design Team Helper`),
       snapshot(103, 102, "helper-child"),
       snapshot(104, 1, `${executablePath} Helper`),
-      snapshot(105, 1, "/unrelated/Hi Design"),
-      snapshot(900, 1, "/payload/Hi Design.app/Contents/MacOS/Hi Design"),
+      snapshot(105, 1, "/unrelated/Hi Design Team"),
+      snapshot(900, 1, "/payload/Hi Design Team.app/Contents/MacOS/Hi Design Team"),
     ];
     const stopProcesses = stopMock();
     const logger = { info: vi.fn(), warn: vi.fn() };
     const retire = createObsoleteInstalledOuterRetirement({
-      currentExecutablePath: "/payload/Hi Design.app/Contents/MacOS/Hi Design",
+      currentExecutablePath: "/payload/Hi Design Team.app/Contents/MacOS/Hi Design Team",
       currentPid: 900,
       installedLaunchPath: launchPath,
       logger,
       payloadDesktopProcess: true,
-      payloadExecutablePath: "/payload/Hi Design.app/Contents/MacOS/Hi Design",
+      payloadExecutablePath: "/payload/Hi Design Team.app/Contents/MacOS/Hi Design Team",
       platform: "darwin",
     }, {
       inspectInstalledOuterPath,
@@ -156,7 +156,7 @@ describe("createObsoleteInstalledOuterRetirement", () => {
     const listProcessSnapshots = vi.fn(async () => []);
     const stopProcesses = vi.fn(async () => stopped([]));
     const retire = createObsoleteInstalledOuterRetirement({
-      currentExecutablePath: "/installed/Hi Design",
+      currentExecutablePath: "/installed/Hi Design Team",
       currentPid: 900,
       installedLaunchPath: launchPath,
       logger: { info: vi.fn(), warn: vi.fn() },
@@ -174,27 +174,27 @@ describe("createObsoleteInstalledOuterRetirement", () => {
     let inspectInstalledOuterPath: InspectInstalledOuterPath | undefined;
     let launchPath: string;
     if (process.platform === "win32") {
-      launchPath = "/Applications/Hi Design.app";
-      const executablePath = `${launchPath}/Contents/MacOS/Hi Design`;
+      launchPath = "/Applications/Hi Design Team.app";
+      const executablePath = `${launchPath}/Contents/MacOS/Hi Design Team`;
       inspectInstalledOuterPath = macInspectMock(launchPath, executablePath, true);
     } else {
       const root = await mkdtemp(join(tmpdir(), "od-obsolete-outer-symlink-"));
       roots.push(root);
-      launchPath = join(root, "Hi Design.app");
+      launchPath = join(root, "Hi Design Team.app");
       const executableDirectory = join(launchPath, "Contents", "MacOS");
       const target = join(root, "target");
       await mkdir(executableDirectory, { recursive: true });
       await writeFile(target, "not the installed executable", "utf8");
-      await symlink(target, join(executableDirectory, "Hi Design"));
+      await symlink(target, join(executableDirectory, "Hi Design Team"));
     }
     const listProcessSnapshots = vi.fn(async () => []);
     const retire = createObsoleteInstalledOuterRetirement({
-      currentExecutablePath: "/payload/Hi Design",
+      currentExecutablePath: "/payload/Hi Design Team",
       currentPid: 900,
       installedLaunchPath: launchPath,
       logger: { info: vi.fn(), warn: vi.fn() },
       payloadDesktopProcess: true,
-      payloadExecutablePath: "/payload/Hi Design",
+      payloadExecutablePath: "/payload/Hi Design Team",
       platform: "darwin",
     }, {
       inspectInstalledOuterPath,
@@ -210,19 +210,19 @@ describe("createObsoleteInstalledOuterRetirement", () => {
     const { executablePath, inspectInstalledOuterPath, launchPath } = await createMacInstalledOuter();
     const stopProcesses = stopMock();
     const retire = createObsoleteInstalledOuterRetirement({
-      currentExecutablePath: "/payload/Hi Design",
+      currentExecutablePath: "/payload/Hi Design Team",
       currentPid: 900,
       installedLaunchPath: launchPath,
       logger: { info: vi.fn(), warn: vi.fn() },
       payloadDesktopProcess: true,
-      payloadExecutablePath: "/payload/Hi Design",
+      payloadExecutablePath: "/payload/Hi Design Team",
       platform: "darwin",
     }, {
       inspectInstalledOuterPath,
       listProcessSnapshots: async () => [
         snapshot(101, 1, executablePath),
         snapshot(800, 101, "handoff daemon"),
-        snapshot(900, 800, "/payload/Hi Design"),
+        snapshot(900, 800, "/payload/Hi Design Team"),
         snapshot(901, 900, "payload helper"),
       ],
       stopProcesses,
@@ -246,12 +246,12 @@ describe("createObsoleteInstalledOuterRetirement", () => {
     });
     const stopProcesses = stopMock();
     const retire = createObsoleteInstalledOuterRetirement({
-      currentExecutablePath: "/payload/Hi Design",
+      currentExecutablePath: "/payload/Hi Design Team",
       currentPid: 900,
       installedLaunchPath: launchPath,
       logger: { info: vi.fn(), warn: vi.fn() },
       payloadDesktopProcess: true,
-      payloadExecutablePath: "/payload/Hi Design",
+      payloadExecutablePath: "/payload/Hi Design Team",
       platform: "darwin",
     }, { inspectInstalledOuterPath, listProcessSnapshots, stopProcesses });
 
@@ -274,19 +274,19 @@ describe("Windows obsolete installed outer retirement", () => {
     const { executablePath, inspectInstalledOuterPath, launchPath } = await createWindowsInstalledOuter();
     const firstSnapshots = [
       snapshot(201, 1, `"${executablePath.toUpperCase()}"`),
-      snapshot(202, 201, "Hi Design.exe --type=gpu-process"),
-      snapshot(203, 202, "Hi Design.exe --type=utility"),
+      snapshot(202, 201, "Hi Design Team.exe --type=gpu-process"),
+      snapshot(203, 202, "Hi Design Team.exe --type=utility"),
       snapshot(204, 1, `"${executablePath}" od://project/123`),
       snapshot(205, 1, `${executablePath}.old`),
-      snapshot(900, 1, "C:\\payload\\Hi Design.exe"),
+      snapshot(900, 1, "C:\\payload\\Hi Design Team.exe"),
     ];
     const secondSnapshots = [
       snapshot(201, 1, `"${executablePath}"`),
-      snapshot(202, 201, "Hi Design.exe --type=gpu-process"),
-      snapshot(206, 202, "Hi Design.exe --type=renderer"),
+      snapshot(202, 201, "Hi Design Team.exe --type=gpu-process"),
+      snapshot(206, 202, "Hi Design Team.exe --type=renderer"),
       snapshot(204, 1, `"${executablePath}" od://project/123`),
       snapshot(205, 1, `${executablePath}.old`),
-      snapshot(900, 1, "C:\\payload\\Hi Design.exe"),
+      snapshot(900, 1, "C:\\payload\\Hi Design Team.exe"),
     ];
     const listProcessSnapshots = vi.fn()
       .mockResolvedValueOnce(firstSnapshots)
@@ -299,7 +299,7 @@ describe("Windows obsolete installed outer retirement", () => {
       installedLaunchPath: launchPath,
       logger,
       payloadDesktopProcess: true,
-      payloadExecutablePath: "c:\\payload\\Hi Design.exe",
+      payloadExecutablePath: "c:\\payload\\Hi Design Team.exe",
       platform: "win32",
     }, { inspectInstalledOuterPath, listProcessSnapshots, stopProcesses });
 
@@ -320,20 +320,20 @@ describe("Windows obsolete installed outer retirement", () => {
     const listProcessSnapshots = vi.fn()
       .mockResolvedValueOnce([
         snapshot(201, 1, `"${executablePath}"`),
-        snapshot(202, 201, "Hi Design.exe --type=gpu-process"),
+        snapshot(202, 201, "Hi Design Team.exe --type=gpu-process"),
       ])
       .mockResolvedValueOnce([
         snapshot(201, 1, "C:\\Windows\\System32\\notepad.exe"),
-        snapshot(202, 201, "Hi Design.exe --type=gpu-process"),
+        snapshot(202, 201, "Hi Design Team.exe --type=gpu-process"),
       ]);
     const stopProcesses = stopMock();
     const retire = createObsoleteInstalledOuterRetirement({
-      currentExecutablePath: "C:\\payload\\Hi Design.exe",
+      currentExecutablePath: "C:\\payload\\Hi Design Team.exe",
       currentPid: 900,
       installedLaunchPath: launchPath,
       logger: { info: vi.fn(), warn: vi.fn() },
       payloadDesktopProcess: true,
-      payloadExecutablePath: "C:\\payload\\Hi Design.exe",
+      payloadExecutablePath: "C:\\payload\\Hi Design Team.exe",
       platform: "win32",
     }, { inspectInstalledOuterPath, listProcessSnapshots, stopProcesses });
 
@@ -343,16 +343,16 @@ describe("Windows obsolete installed outer retirement", () => {
   });
 
   it("rejects installed executables whose basename does not match the payload", async () => {
-    const { inspectInstalledOuterPath, launchPath } = await createWindowsInstalledOuter("Not Hi Design.exe");
+    const { inspectInstalledOuterPath, launchPath } = await createWindowsInstalledOuter("Not Hi Design Team.exe");
     const listProcessSnapshots = vi.fn(async () => []);
     const stopProcesses = stopMock();
     const retire = createObsoleteInstalledOuterRetirement({
-      currentExecutablePath: "C:\\payload\\Hi Design.exe",
+      currentExecutablePath: "C:\\payload\\Hi Design Team.exe",
       currentPid: 900,
       installedLaunchPath: launchPath,
       logger: { info: vi.fn(), warn: vi.fn() },
       payloadDesktopProcess: true,
-      payloadExecutablePath: "C:\\payload\\Hi Design.exe",
+      payloadExecutablePath: "C:\\payload\\Hi Design Team.exe",
       platform: "win32",
     }, { inspectInstalledOuterPath, listProcessSnapshots, stopProcesses });
 
@@ -366,17 +366,17 @@ describe("Windows obsolete installed outer retirement", () => {
     const snapshots = [
       snapshot(201, 1, `"${executablePath}"`),
       snapshot(800, 201, "handoff daemon"),
-      snapshot(900, 800, "C:\\payload\\Hi Design.exe"),
+      snapshot(900, 800, "C:\\payload\\Hi Design Team.exe"),
     ];
     const listProcessSnapshots = vi.fn(async () => snapshots);
     const stopProcesses = stopMock();
     const retire = createObsoleteInstalledOuterRetirement({
-      currentExecutablePath: "C:\\payload\\Hi Design.exe",
+      currentExecutablePath: "C:\\payload\\Hi Design Team.exe",
       currentPid: 900,
       installedLaunchPath: launchPath,
       logger: { info: vi.fn(), warn: vi.fn() },
       payloadDesktopProcess: true,
-      payloadExecutablePath: "C:\\payload\\Hi Design.exe",
+      payloadExecutablePath: "C:\\payload\\Hi Design Team.exe",
       platform: "win32",
     }, { inspectInstalledOuterPath, listProcessSnapshots, stopProcesses });
 
@@ -389,16 +389,16 @@ describe("Windows obsolete installed outer retirement", () => {
   });
 
   it("rejects a symlinked Windows executable before enumerating processes", async () => {
-    const executablePath = "C:\\Program Files\\Hi Design\\Hi Design.exe";
+    const executablePath = "C:\\Program Files\\Hi Design Team\\Hi Design Team.exe";
     const listProcessSnapshots = vi.fn(async () => []);
     const stopProcesses = stopMock();
     const retire = createObsoleteInstalledOuterRetirement({
-      currentExecutablePath: "C:\\payload\\Hi Design.exe",
+      currentExecutablePath: "C:\\payload\\Hi Design Team.exe",
       currentPid: 900,
       installedLaunchPath: executablePath,
       logger: { info: vi.fn(), warn: vi.fn() },
       payloadDesktopProcess: true,
-      payloadExecutablePath: "C:\\payload\\Hi Design.exe",
+      payloadExecutablePath: "C:\\payload\\Hi Design Team.exe",
       platform: "win32",
     }, {
       inspectInstalledOuterPath: fileInspectMock(true),

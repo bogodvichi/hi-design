@@ -28,6 +28,7 @@ required RELEASE_VERSION
 required TOOLS_PACK_DIR
 
 RELEASE_ASSET_SUFFIX="${RELEASE_ASSET_SUFFIX:-}"
+PRODUCT_NAME="${OD_PRODUCT_NAME:-Hi Design Team}"
 
 mkdir -p "$RELEASE_ASSETS_DIR"
 
@@ -43,9 +44,9 @@ case "$RELEASE_TARGET" in
     esac
 
     arch="${RELEASE_TARGET#mac_}"
-    source_dmg="$TOOLS_PACK_DIR/out/mac/namespaces/$RELEASE_NAMESPACE/dmg/Hi Design-$RELEASE_NAMESPACE.dmg"
-    source_zip="$TOOLS_PACK_DIR/out/mac/namespaces/$RELEASE_NAMESPACE/zip/Hi Design-$RELEASE_NAMESPACE.zip"
-    source_payload="$TOOLS_PACK_DIR/out/mac/namespaces/$RELEASE_NAMESPACE/payload/Hi Design-$RELEASE_NAMESPACE-payload.zip"
+    source_dmg="$TOOLS_PACK_DIR/out/mac/namespaces/$RELEASE_NAMESPACE/dmg/$PRODUCT_NAME-$RELEASE_NAMESPACE.dmg"
+    source_zip="$TOOLS_PACK_DIR/out/mac/namespaces/$RELEASE_NAMESPACE/zip/$PRODUCT_NAME-$RELEASE_NAMESPACE.zip"
+    source_payload="$TOOLS_PACK_DIR/out/mac/namespaces/$RELEASE_NAMESPACE/payload/$PRODUCT_NAME-$RELEASE_NAMESPACE-payload.zip"
     versioned_dmg="hi-design-team-$RELEASE_VERSION$RELEASE_ASSET_SUFFIX-mac-$arch.dmg"
     versioned_zip="hi-design-team-$RELEASE_VERSION$RELEASE_ASSET_SUFFIX-mac-$arch.zip"
     versioned_payload="hi-design-team-$RELEASE_VERSION$RELEASE_ASSET_SUFFIX-mac-$arch-payload.zip"
@@ -95,7 +96,7 @@ releaseNotes: "$release_notes"
 EOF
     ;;
   linux_x64)
-    source_appimage="$TOOLS_PACK_DIR/out/linux/namespaces/$RELEASE_NAMESPACE/builder/Hi Design-$RELEASE_NAMESPACE.AppImage"
+    source_appimage="$TOOLS_PACK_DIR/out/linux/namespaces/$RELEASE_NAMESPACE/builder/$PRODUCT_NAME-$RELEASE_NAMESPACE.AppImage"
     versioned_appimage="hi-design-team-$RELEASE_VERSION$RELEASE_ASSET_SUFFIX-linux-x64.AppImage"
     if [ ! -f "$source_appimage" ]; then
       echo "expected AppImage not found at $source_appimage" >&2

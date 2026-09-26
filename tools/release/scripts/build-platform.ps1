@@ -41,6 +41,12 @@ if ([string]::IsNullOrWhiteSpace($ReleaseChannel)) {
   throw "RELEASE_CHANNEL is required"
 }
 
+$ProductName = [string]$env:OD_PRODUCT_NAME
+if ([string]::IsNullOrWhiteSpace($ProductName)) {
+  $ProductName = "Hi Design Team"
+}
+$PayloadExecutablePath = "payload/$ProductName.exe"
+
 function Format-Duration([int64]$Milliseconds) {
   if ($Milliseconds -ge 60000) {
     return "$([Math]::Round($Milliseconds / 60000, 1))m"
@@ -193,9 +199,9 @@ function Validate-WinLauncherPayloadArchive([string]$PayloadPath, [string]$Expec
     Test-JsonString $manifest.platform "platform" "win32"
     Test-JsonString $manifest.payloadRoot "payloadRoot" "payload"
     Test-JsonString $manifest.entry.cwd "entry.cwd" "payload"
-    Test-JsonString $manifest.entry.executable "entry.executable" "payload/Hi Design.exe"
+    Test-JsonString $manifest.entry.executable "entry.executable" $PayloadExecutablePath
 
-    $entryPath = Join-Path $extractRoot (Convert-ArchiveRelativePath "payload/Hi Design.exe")
+    $entryPath = Join-Path $extractRoot (Convert-ArchiveRelativePath $PayloadExecutablePath)
     if (-not (Test-Path -LiteralPath $entryPath)) {
       throw "launcher payload entry executable not found after extraction: $entryPath"
     }
