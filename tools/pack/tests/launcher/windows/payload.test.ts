@@ -91,10 +91,10 @@ function createWinPaths(root: string, namespace: string): WinPaths {
     installTimingPath: join(namespaceRoot, "logs", "install.timing.json"),
     nsisLogPath: join(namespaceRoot, "logs", "nsis.log"),
     nsisIncludePath: join(namespaceRoot, "nsis", "installer.nsh"),
-    packagedConfigPath: join(namespaceRoot, "open-design-config.json"),
+    packagedConfigPath: join(namespaceRoot, "hi-design-team-config.json"),
     packagedMainPrebundleMetaPath: join(namespaceRoot, "prebundle-meta", "packaged-main.meta.json"),
     packagedMainPrebundlePath: join(namespaceRoot, "assembled", "app", "prebundled", "packaged-main.mjs"),
-    resourceRoot: join(namespaceRoot, "resources", "open-design"),
+    resourceRoot: join(namespaceRoot, "resources", "hi-design-team"),
     setupPath: join(namespaceRoot, "builder", "Hi Design-release-beta-win-setup.exe"),
     setupZipPath: join(namespaceRoot, "builder", "Hi Design-release-beta-win-portable.zip"),
     startMenuShortcutPath: join(namespaceRoot, "start-menu.lnk"),
@@ -121,7 +121,7 @@ async function writeFakeWinUnpackedApp(root: string, namespace: string, version:
   await mkdir(join(paths.unpackedRoot, "resources"), { recursive: true });
   await writeFile(join(paths.unpackedRoot, "Hi Design.exe"), "fake executable\n", "utf8");
   await writeFile(
-    join(paths.unpackedRoot, "resources", "open-design-config.json"),
+    join(paths.unpackedRoot, "resources", "hi-design-team-config.json"),
     `${JSON.stringify({
       appVersion: version,
       daemonSidecarEntryRelative: "open-design/prebundled/daemon/daemon-sidecar.mjs",
@@ -135,7 +135,7 @@ async function writeFakeWinUnpackedApp(root: string, namespace: string, version:
   await mkdir(join(paths.unpackedRoot, "resources", "app"), { recursive: true });
   await writeFile(
     join(paths.unpackedRoot, "resources", "app", "package.json"),
-    `${JSON.stringify({ name: "open-design-packaged-app", version })}\n`,
+    `${JSON.stringify({ name: "hi-design-team-packaged-app", version })}\n`,
     "utf8",
   );
   await mkdir(join(paths.packagedConfigPath, ".."), { recursive: true });
@@ -210,7 +210,7 @@ describe("tools-pack Windows launcher payload archives", () => {
       expect(manifest.entry.executable).toBe("payload/Hi Design.exe");
       expect(manifest.version).toBe(version);
       await expectPathExists(join(extractRoot, "payload", "Hi Design.exe"));
-      await expectPathExists(join(extractRoot, "payload", "resources", "open-design-config.json"));
+      await expectPathExists(join(extractRoot, "payload", "resources", "hi-design-team-config.json"));
     } finally {
       await rm(root, { force: true, recursive: true });
     }
@@ -287,7 +287,7 @@ describe("tools-pack Windows launcher payload archives", () => {
 
       const manifest = JSON.parse(await readFile(join(extractRoot, "manifest.json"), "utf8")) as { version: string };
       const config = JSON.parse(
-        await readFile(join(extractRoot, "payload", "resources", "open-design-config.json"), "utf8"),
+        await readFile(join(extractRoot, "payload", "resources", "hi-design-team-config.json"), "utf8"),
       ) as { appVersion: string };
       const packageJson = JSON.parse(
         await readFile(join(extractRoot, "payload", "resources", "app", "package.json"), "utf8"),
@@ -328,7 +328,7 @@ describe("tools-pack Windows launcher payload archives", () => {
 
       const manifest = JSON.parse(await readFile(join(extractRoot, "manifest.json"), "utf8")) as { version: string };
       const configJson = JSON.parse(
-        await readFile(join(extractRoot, "payload", "resources", "open-design-config.json"), "utf8"),
+        await readFile(join(extractRoot, "payload", "resources", "hi-design-team-config.json"), "utf8"),
       ) as { appVersion: string };
       expect(manifest.version).toBe(version);
       expect(configJson.appVersion).toBe(version);

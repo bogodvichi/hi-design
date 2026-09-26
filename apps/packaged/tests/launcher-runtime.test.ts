@@ -28,7 +28,7 @@ function fakeConfig(root: string, appVersion = "1.2.3-beta.4"): PackagedConfig {
     nodeCommand: null,
     posthogHost: null,
     posthogKey: null,
-    resourceRoot: join(root, "installed", "resources", "open-design"),
+    resourceRoot: join(root, "installed", "resources", "hi-design-team"),
     telemetryRelayUrl: null,
     updateMetadataUrl: null,
    velaWebUrl: null,
@@ -57,7 +57,7 @@ async function writeActiveMacPayloadFixture(
   await mkdir(resourcesPath, { recursive: true });
   await writeFile(join(appRoot, "Contents", "MacOS", "Hi Design Beta"), "");
   await writeFile(
-    join(resourcesPath, "open-design-config.json"),
+    join(resourcesPath, "hi-design-team-config.json"),
     `${JSON.stringify({
       appVersion: version,
       ...(telemetryRelayUrl == null ? {} : { telemetryRelayUrl }),
@@ -194,16 +194,16 @@ describe("resolvePackagedLauncherRuntime", () => {
         "MacOS",
         "Hi Design Beta",
       );
-      await mkdir(join(resourcesPath, "open-design", "bin"), { recursive: true });
+      await mkdir(join(resourcesPath, "hi-design-team", "bin"), { recursive: true });
       await mkdir(join(versionPaths.payloadRoot, "Hi Design Beta.app", "Contents", "MacOS"), { recursive: true });
       await mkdir(join(resourcesPath, "prebundled", "daemon"), { recursive: true });
       await mkdir(join(resourcesPath, "prebundled", "web"), { recursive: true });
-      await writeFile(join(resourcesPath, "open-design", "bin", "node"), "");
+      await writeFile(join(resourcesPath, "hi-design-team", "bin", "node"), "");
       await writeFile(payloadExecutablePath, "");
       await writeFile(join(resourcesPath, "prebundled", "daemon", "daemon-sidecar.mjs"), "");
       await writeFile(join(resourcesPath, "prebundled", "web", "web-sidecar.mjs"), "");
       await writeFile(
-        join(resourcesPath, "open-design-config.json"),
+        join(resourcesPath, "hi-design-team-config.json"),
         `${JSON.stringify({
           appVersion: "1.2.3-beta.5",
           daemonSidecarEntryRelative: "prebundled/daemon/daemon-sidecar.mjs",
@@ -261,11 +261,11 @@ describe("resolvePackagedLauncherRuntime", () => {
       expect(runtime.installedLaunchPath).toBe("/Applications/Hi Design Beta.app");
       expect(runtime.targetVersion).toBe("1.2.3-beta.5");
       expect(runtime.config.appVersion).toBe("1.2.3-beta.5");
-      expect(runtime.config.resourceRoot).toBe(join(resourcesPath, "open-design"));
+      expect(runtime.config.resourceRoot).toBe(join(resourcesPath, "hi-design-team"));
       expect(runtime.config.daemonSidecarEntry).toBe(join(resourcesPath, "prebundled", "daemon", "daemon-sidecar.mjs"));
       expect(runtime.config.webSidecarEntry).toBe(join(resourcesPath, "prebundled", "web", "web-sidecar.mjs"));
-      expect(runtime.config.webStandaloneRoot).toBe(join(resourcesPath, "open-design-web-standalone"));
-      expect(runtime.paths.resourceRoot).toBe(join(resourcesPath, "open-design"));
+      expect(runtime.config.webStandaloneRoot).toBe(join(resourcesPath, "hi-design-team-web-standalone"));
+      expect(runtime.paths.resourceRoot).toBe(join(resourcesPath, "hi-design-team"));
       await expect(readFile(runtime.launcherPaths.attemptsPath, "utf8")).rejects.toThrow();
 
       const payloadRuntime = await resolvePackagedLauncherRuntime(config, paths, {
@@ -346,16 +346,16 @@ describe("resolvePackagedLauncherRuntime", () => {
         "MacOS",
         "Hi Design Beta",
       );
-      await mkdir(join(resourcesPath, "open-design", "bin"), { recursive: true });
+      await mkdir(join(resourcesPath, "hi-design-team", "bin"), { recursive: true });
       await mkdir(join(versionPaths.payloadRoot, "Hi Design Beta.app", "Contents", "MacOS"), { recursive: true });
       await mkdir(join(resourcesPath, "prebundled", "daemon"), { recursive: true });
       await mkdir(join(resourcesPath, "prebundled", "web"), { recursive: true });
-      await writeFile(join(resourcesPath, "open-design", "bin", "node"), "");
+      await writeFile(join(resourcesPath, "hi-design-team", "bin", "node"), "");
       await writeFile(payloadExecutablePath, "");
       await writeFile(join(resourcesPath, "prebundled", "daemon", "daemon-sidecar.mjs"), "");
       await writeFile(join(resourcesPath, "prebundled", "web", "web-sidecar.mjs"), "");
       await writeFile(
-        join(resourcesPath, "open-design-config.json"),
+        join(resourcesPath, "hi-design-team-config.json"),
         `${JSON.stringify({
           appVersion: "1.2.3-beta.5",
           daemonSidecarEntryRelative: "prebundled/daemon/daemon-sidecar.mjs",
@@ -528,7 +528,7 @@ describe("resolvePackagedLauncherRuntime", () => {
       });
       const resourcesPath = join(versionPaths.versionRoot, "payload", "resources");
       const payloadExePath = join(versionPaths.versionRoot, "payload", "Hi Design.exe");
-      const webStandaloneRoot = join(resourcesPath, "open-design-web-standalone");
+      const webStandaloneRoot = join(resourcesPath, "hi-design-team-web-standalone");
       await mkdir(join(resourcesPath, "prebundled", "daemon"), { recursive: true });
       await mkdir(join(resourcesPath, "prebundled", "web"), { recursive: true });
       await mkdir(webStandaloneRoot, { recursive: true });
@@ -537,7 +537,7 @@ describe("resolvePackagedLauncherRuntime", () => {
       await writeFile(join(resourcesPath, "prebundled", "daemon", "daemon-sidecar.mjs"), "");
       await writeFile(join(resourcesPath, "prebundled", "web", "web-sidecar.mjs"), "");
       await writeFile(
-        join(resourcesPath, "open-design-config.json"),
+        join(resourcesPath, "hi-design-team-config.json"),
         `${JSON.stringify({
           appVersion: "1.2.3-beta.5",
           daemonSidecarEntryRelative: "prebundled/daemon/daemon-sidecar.mjs",

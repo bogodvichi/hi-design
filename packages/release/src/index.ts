@@ -54,11 +54,11 @@ export const RELEASE_PLATFORM_NAMESPACE_SUFFIXES = Object.freeze({
 } as const satisfies Record<ReleasePlatform, string>);
 
 const PRODUCT_NAME = "Hi Design";
-const DEFAULT_NAMESPACE = "hi-design";
+const DEFAULT_NAMESPACE = "hi-design-team";
 
 const descriptors: Record<"prerelease" | "stable", ReleaseChannelDescriptor> = {
   prerelease: {
-    appId: "io.hi-design.desktop.prerelease",
+    appId: "io.hi-design-team.desktop.prerelease",
     baseVersionField: "baseVersion",
     channel: "prerelease",
     counterField: "releaseNumber",
@@ -70,7 +70,7 @@ const descriptors: Record<"prerelease" | "stable", ReleaseChannelDescriptor> = {
     storagePrefix: "prerelease",
   },
   stable: {
-    appId: "io.hi-design.desktop",
+    appId: "io.hi-design-team.desktop",
     baseVersionField: "baseVersion",
     channel: "stable",
     counterField: null,
@@ -96,7 +96,7 @@ export function releaseChannelDescriptor(channel: string): ReleaseChannelDescrip
   if (channel === "stable" || channel === "prerelease") return descriptors[channel];
   const displayLabel = channel[0]!.toUpperCase() + channel.slice(1);
   return {
-    appId: `io.hi-design.desktop.${channel}`,
+    appId: `io.hi-design-team.desktop.${channel}`,
     baseVersionField: "baseVersion",
     channel,
     counterField: "releaseNumber",

@@ -312,8 +312,8 @@ const DESKTOP_PET_WINDOW_HEIGHT = 300;
 const DESKTOP_PET_WINDOW_MARGIN = 24;
 const UPDATER_STATUS_EVENT = "od:update:status-changed";
 const UPDATER_OPEN_DIALOG_EVENT = "od:update:open-dialog";
-const DESIGN_BROWSER_PARTITION = "persist:open-design-design-browser";
-const FEDERATED_TOOLS_PARTITION = "persist:open-design-federated-tools";
+const DESIGN_BROWSER_PARTITION = "persist:hi-design-team-design-browser";
+const FEDERATED_TOOLS_PARTITION = "persist:hi-design-team-federated-tools";
 const UPDATER_IPC_CHANNELS = [
   "od:update:status",
   "od:update:check",

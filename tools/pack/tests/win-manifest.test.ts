@@ -120,7 +120,7 @@ describe("writePackagedConfigFile", () => {
   it("omits namespaceBaseRoot for portable builds", async () => {
     const root = await mkdtemp(join(tmpdir(), "open-design-win-config-"));
     try {
-      const filePath = join(root, "config", "open-design-config.json");
+      const filePath = join(root, "config", "hi-design-team-config.json");
       await writePackagedConfigFile(filePath, makeConfig({ portable: true }), "1.2.3");
       const written = JSON.parse(await readFile(filePath, "utf8"));
       expect(written.namespace).toBe("test-namespace");
@@ -134,7 +134,7 @@ describe("writePackagedConfigFile", () => {
   it("includes namespaceBaseRoot for non-portable builds", async () => {
     const root = await mkdtemp(join(tmpdir(), "open-design-win-config-"));
     try {
-      const filePath = join(root, "config", "open-design-config.json");
+      const filePath = join(root, "config", "hi-design-team-config.json");
       await writePackagedConfigFile(filePath, makeConfig({ portable: false }), "1.2.3");
       const written = JSON.parse(await readFile(filePath, "utf8"));
       expect(written.namespaceBaseRoot).toBe(

@@ -8,6 +8,7 @@ import { createCommandInvocation, createPackageManagerInvocation } from "@open-d
 
 import { hashJson, hashPath, ToolPackCache } from "../cache/index.js";
 import type { ToolPackConfig } from "../config/index.js";
+import { resolvePackagedAppName } from "../config/index.js";
 import {
   prepareNodePtyRuntime,
   validateNodePtyRuntime,
@@ -277,10 +278,10 @@ async function writeAssembledAppEntrypoints(
     `${JSON.stringify(
       {
         dependencies: options.dependencies ?? createAssembledAppDependencies(config, paths, packedTarballs),
-        description: "Hi Design packaged runtime",
-        main: "./main.cjs",
-        name: "open-design-packaged-app",
-        private: true,
+       description: "Hi Design packaged runtime",
+       main: "./main.cjs",
+       name: resolvePackagedAppName(config),
+       private: true,
         productName: PRODUCT_NAME,
         version: packageVersion,
       },

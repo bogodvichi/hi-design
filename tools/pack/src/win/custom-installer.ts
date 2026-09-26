@@ -5,6 +5,9 @@ import { dirname, join, relative } from "node:path";
 import { promisify } from "node:util";
 
 import type { ToolPackConfig } from "../config/index.js";
+import {
+  PACKAGED_CONFIG_FILE_NAME,
+} from "../config/index.js";
 import { resolveToolPackLauncherLayout } from "../launcher/layout.js";
 import { winResources } from "../resources/index.js";
 import { PRODUCT_NAME } from "./constants.js";
@@ -30,7 +33,7 @@ const NSIS_LANGUAGES = [
 const WIN_NSIS_OVERLAY_RELATIVE_PATHS = [
   `${PRODUCT_NAME}.exe`,
   "resources/app/package.json",
-  "resources/open-design-config.json",
+  `resources/${PACKAGED_CONFIG_FILE_NAME}`,
 ] as const;
 
 export const WIN_PAYLOAD_SEVEN_Z_CREATE_ARGS = ["-t7z", "-m0=LZMA2", "-mx=1", "-mf=off"] as const;

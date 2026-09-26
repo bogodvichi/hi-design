@@ -343,7 +343,7 @@ describe("copyOptionalVelaCliBinary", () => {
   it("rejects a strict build when the Vela CLI version does not match the package pin", async () => {
     const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-vela-version-"));
     const source = join(root, "source", "vela");
-    const resourceRoot = join(root, "resources", "open-design");
+    const resourceRoot = join(root, "resources", "hi-design-team");
 
     try {
       await mkdir(join(root, "source"), { recursive: true });
@@ -370,7 +370,7 @@ describe("copyOptionalVelaCliBinary", () => {
   it("rejects a strict build when Vela lacks authorized staged pulls", async () => {
     const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-vela-capability-"));
     const source = join(root, "source", "vela");
-    const resourceRoot = join(root, "resources", "open-design");
+    const resourceRoot = join(root, "resources", "hi-design-team");
     const expectedVersion = await pinnedVelaCliVersion();
 
     try {
@@ -400,7 +400,7 @@ describe("copyOptionalVelaCliBinary", () => {
   it("rejects a strict build when Vela lacks workspace billing snapshots", async () => {
     const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-vela-billing-"));
     const source = join(root, "source", "vela");
-    const resourceRoot = join(root, "resources", "open-design");
+    const resourceRoot = join(root, "resources", "hi-design-team");
     const expectedVersion = await pinnedVelaCliVersion();
 
     try {
@@ -432,7 +432,7 @@ describe("copyOptionalVelaCliBinary", () => {
 
   it("copies the installed Vela CLI through the default npm resolver", async () => {
     const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-vela-installed-"));
-    const resourceRoot = join(root, "resources", "open-design");
+    const resourceRoot = join(root, "resources", "hi-design-team");
     const platform = process.platform === "win32" ? "win" : process.platform === "darwin" ? "mac" : "linux";
 
     try {
@@ -456,7 +456,7 @@ describe("copyOptionalVelaCliBinary", () => {
   it("accepts a Vela CLI whose pull usage line marks stageDir optional", async () => {
     const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-vela-optional-stage-"));
     const source = join(root, "source", "vela");
-    const resourceRoot = join(root, "resources", "open-design");
+    const resourceRoot = join(root, "resources", "hi-design-team");
 
     try {
       await mkdir(join(root, "source"), { recursive: true });
@@ -483,7 +483,7 @@ describe("copyOptionalVelaCliBinary", () => {
   it("refuses a Vela CLI whose pull usage dropped the staging directory", async () => {
     const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-vela-no-stage-"));
     const source = join(root, "source", "vela");
-    const resourceRoot = join(root, "resources", "open-design");
+    const resourceRoot = join(root, "resources", "hi-design-team");
 
     try {
       await mkdir(join(root, "source"), { recursive: true });
@@ -510,7 +510,7 @@ describe("copyOptionalVelaCliBinary", () => {
   it("copies a configured Vela CLI binary into the POSIX resource bin", async () => {
     const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-vela-"));
     const source = join(root, "source", "vela");
-    const resourceRoot = join(root, "resources", "open-design");
+    const resourceRoot = join(root, "resources", "hi-design-team");
 
     try {
       await mkdir(join(root, "source"), { recursive: true });
@@ -546,7 +546,7 @@ describe("copyOptionalVelaCliBinary", () => {
   it("fails strict mode when the OpenCode companion tree is missing", async () => {
     const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-vela-strict-"));
     const source = join(root, "source", "vela");
-    const resourceRoot = join(root, "resources", "open-design");
+    const resourceRoot = join(root, "resources", "hi-design-team");
 
     try {
       await mkdir(join(root, "source"), { recursive: true });
@@ -569,7 +569,7 @@ describe("copyOptionalVelaCliBinary", () => {
   it("copies the Vela CLI binary without a companion tree in non-strict mode", async () => {
     const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-vela-nonstrict-"));
     const source = join(root, "source", "vela");
-    const resourceRoot = join(root, "resources", "open-design");
+    const resourceRoot = join(root, "resources", "hi-design-team");
 
     try {
       await mkdir(join(root, "source"), { recursive: true });
@@ -595,7 +595,7 @@ describe("copyOptionalVelaCliBinary", () => {
   it("copies a configured Vela CLI binary into the Windows resource bin", async () => {
     const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-vela-win-"));
     const source = join(root, "source", "vela.exe");
-    const resourceRoot = join(root, "resources", "open-design");
+    const resourceRoot = join(root, "resources", "hi-design-team");
 
     try {
       await mkdir(join(root, "source"), { recursive: true });
@@ -621,7 +621,7 @@ describe("copyOptionalVelaCliBinary", () => {
   it("copies a Vela CLI binary resolved from the npm package", async () => {
     const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-vela-npm-"));
     const source = join(root, "source", "vela");
-    const resourceRoot = join(root, "resources", "open-design");
+    const resourceRoot = join(root, "resources", "hi-design-team");
 
     try {
       await mkdir(join(root, "source"), { recursive: true });
@@ -654,7 +654,7 @@ describe("copyOptionalVelaCliBinary", () => {
 
   it("skips copying when the npm resolver reports an unsupported non-strict platform", async () => {
     const root = await mkdtemp(join(tmpdir(), "open-design-tools-pack-vela-skip-"));
-    const resourceRoot = join(root, "resources", "open-design");
+    const resourceRoot = join(root, "resources", "hi-design-team");
 
     try {
       const copied = await copyOptionalVelaCliBinary({

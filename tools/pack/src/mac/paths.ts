@@ -4,6 +4,10 @@ import { join } from "node:path";
 import { APP_KEYS } from "@open-design/sidecar-proto";
 
 import type { ToolPackConfig } from "../config/index.js";
+import {
+  PACKAGED_CONFIG_FILE_NAME,
+  PACKAGED_RESOURCE_DIR_NAME,
+} from "../config/index.js";
 import { PRODUCT_NAME } from "./constants.js";
 import {
   MAC_PREBUNDLE_ENTRYPOINTS_DIR_NAME,
@@ -67,8 +71,8 @@ export function resolveMacPaths(config: ToolPackConfig): MacPaths {
     mountPoint: join(namespaceRoot, "mount"),
     packagedMainPrebundleMetaPath: join(namespaceRoot, MAC_PREBUNDLE_META_DIR_NAME, "packaged-main.meta.json"),
     packagedMainPrebundlePath: join(namespaceRoot, "assembled", MAC_PREBUNDLED_PACKAGED_MAIN_RELATIVE_PATH),
-    packagedConfigPath: join(namespaceRoot, "open-design-config.json"),
-    resourceRoot: join(namespaceRoot, "resources", "open-design"),
+    packagedConfigPath: join(namespaceRoot, PACKAGED_CONFIG_FILE_NAME),
+    resourceRoot: join(namespaceRoot, "resources", PACKAGED_RESOURCE_DIR_NAME),
     payloadZipPath: join(namespaceRoot, "payload", `${PRODUCT_NAME}-${namespaceToken}-payload.zip`),
     systemApplicationsAppPath: join("/Applications", identity.systemAppBundleName),
     tarballsRoot: join(namespaceRoot, "tarballs"),

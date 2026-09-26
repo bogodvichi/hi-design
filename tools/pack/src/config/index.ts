@@ -5,11 +5,16 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 
 import {
+  OPEN_DESIGN_PRODUCT_NAME,
   OPEN_DESIGN_SIDECAR_CONTRACT,
   SIDECAR_DEFAULTS,
 } from "@open-design/sidecar-proto";
 import { resolveNamespace } from "@open-design/sidecar";
-import { releaseChannelFromVersion, releaseNamespace } from "@open-design/release";
+import {
+  releaseChannelFromNamespace,
+  releaseChannelFromVersion,
+  releaseNamespace,
+} from "@open-design/release";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -32,6 +37,30 @@ function resolveToolPackRoot(startDir: string): string {
 }
 
 export const WORKSPACE_ROOT = resolve(resolveToolPackRoot(__dirname), "../..");
+
+export const PACKAGED_CONFIG_FILE_NAME = "hi-design-team-config.json";
+export const PACKAGED_RESOURCE_DIR_NAME = "hi-design-team";
+export const WEB_STANDALONE_RESOURCE_DIR_NAME = "hi-design-team-web-standalone";
+
+function toNpmName(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+// Electron's requestSingleInstanceLock() is keyed by app.name, which comes from
+// the packaged bundle's package.json `name`. The personal "Hi Design" product
+// and the "Hi Design Team" product must be able to run side by side, but two
+// installs of the same product line must still collapse to one instance. We
+// therefore derive the lock name from the internal Hi Design Team identity
+// (not the visible shortcut name) plus the namespace, so release channels and
+// ad-hoc namespaces coexist while same-channel/same-namespace second instances
+// focus the running window.
+export function resolvePackagedAppName(
+  config: Pick<ToolPackConfig, "namespace">,
+): string {
+  const base = toNpmName(OPEN_DESIGN_PRODUCT_NAME);
+  if (config.namespace === SIDECAR_DEFAULTS.namespace) return base;
+  return `${base}-${toNpmName(config.namespace)}`;
+}
 
 export type ToolPackPlatform = "mac" | "win" | "linux";
 export type ToolPackBuildOutput = "all" | "app" | "appimage" | "dir" | "dmg" | "nsis" | "zip";

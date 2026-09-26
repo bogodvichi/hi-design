@@ -2,6 +2,11 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import type { ToolPackConfig } from "../config/index.js";
+import {
+  PACKAGED_CONFIG_FILE_NAME,
+  PACKAGED_RESOURCE_DIR_NAME,
+  resolvePackagedAppName,
+} from "../config/index.js";
 import { domToPptxBundleResource } from "../dom-to-pptx-resource.js";
 import {
   assertNodePtyRuntime,
@@ -112,15 +117,15 @@ export async function runElectronBuilder(
     },
     electronVersion: config.electronVersion,
     executableName: identity.executableName,
-    extraMetadata: {
-      main: "./main.cjs",
-      name: "open-design-packaged-app",
-      productName: identity.productName,
-      version: packageVersion,
-    },
-    extraResources: [
-      { from: paths.resourceRoot, to: "open-design" },
-      { from: paths.packagedConfigPath, to: "open-design-config.json" },
+   extraMetadata: {
+     main: "./main.cjs",
+      name: resolvePackagedAppName(config),
+     productName: identity.productName,
+     version: packageVersion,
+   },
+   extraResources: [
+      { from: paths.resourceRoot, to: PACKAGED_RESOURCE_DIR_NAME },
+      { from: paths.packagedConfigPath, to: PACKAGED_CONFIG_FILE_NAME },
       // Vendored dom-to-pptx browser bundle for editable PPTX export. The desktop
       // main reads it from process.resourcesPath at runtime.
       domToPptxBundleResource(config),

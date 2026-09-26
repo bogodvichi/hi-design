@@ -30,6 +30,9 @@ import {
 } from "@open-design/platform";
 
 import type { ToolPackConfig } from "../config/index.js";
+import {
+  PACKAGED_CONFIG_FILE_NAME,
+} from "../config/index.js";
 import { resolveToolPackLauncherLayout } from "../launcher/layout.js";
 import { readToolPackLauncherRuntimeSnapshot } from "../launcher/runtime-snapshot.js";
 import { readToolPackUpdateCacheLifecycleSnapshot } from "../updates/cache-lifecycle-snapshot.js";
@@ -235,7 +238,7 @@ async function pinInstalledPackagedConfigNamespace(
   config: ToolPackConfig,
   executablePath: string,
 ): Promise<{ installedConfigPath: string; launchConfigPath: string }> {
-  const installedConfigPath = join(dirname(executablePath), "resources", "open-design-config.json");
+  const installedConfigPath = join(dirname(executablePath), "resources", PACKAGED_CONFIG_FILE_NAME);
   if (!(await pathExists(installedConfigPath))) {
     throw new Error(`installed packaged config missing at ${installedConfigPath}`);
   }
@@ -250,7 +253,7 @@ async function pinInstalledPackagedConfigNamespace(
   };
   const body = `${JSON.stringify(pinned, null, 2)}\n`;
   await writeFile(installedConfigPath, body, "utf8");
-  const launchConfigPath = join(config.roots.runtime.namespaceRoot, "runtime", "launch-open-design-config.json");
+  const launchConfigPath = join(config.roots.runtime.namespaceRoot, "runtime", "launch-hi-design-team-config.json");
   await mkdir(dirname(launchConfigPath), { recursive: true });
   await writeFile(launchConfigPath, body, "utf8");
   return { installedConfigPath, launchConfigPath };

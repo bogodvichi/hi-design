@@ -67,7 +67,7 @@ export function extensionForArtifact(name: string | undefined, type: string): st
 export function artifactFileName(candidate: UpdateCandidate): string {
   const ext = extensionForArtifact(candidate.artifact.name, candidate.artifact.type ?? "artifact");
   return [
-    "open-design",
+    "hi-design-team",
     sanitizePathSegment(candidate.version),
     sanitizePathSegment(candidate.platformKey),
     sanitizePathSegment(candidate.arch),
@@ -327,10 +327,10 @@ export function controlLauncherVersionUrl(metadata: Record<string, unknown>): st
 export async function resolveInstalledOuterVersion(config: DesktopUpdaterConfig): Promise<string | null> {
   if (config.installedVersionOverride != null) return config.installedVersionOverride;
   if (config.launcherLaunchPath == null) return null;
-  const outerConfigPath =
-    config.platform === "darwin"
-      ? join(config.launcherLaunchPath, "Contents", "Resources", "open-design-config.json")
-      : join(dirname(config.launcherLaunchPath), "resources", "open-design-config.json");
+ const outerConfigPath =
+   config.platform === "darwin"
+      ? join(config.launcherLaunchPath, "Contents", "Resources", "hi-design-team-config.json")
+      : join(dirname(config.launcherLaunchPath), "resources", "hi-design-team-config.json");
   try {
     const raw: unknown = JSON.parse(await readFile(outerConfigPath, "utf8"));
     if (!isRecord(raw)) return null;

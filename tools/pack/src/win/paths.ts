@@ -3,6 +3,10 @@ import { dirname, join } from "node:path";
 
 import type { ToolPackConfig } from "../config/index.js";
 import {
+  PACKAGED_CONFIG_FILE_NAME,
+  PACKAGED_RESOURCE_DIR_NAME,
+} from "../config/index.js";
+import {
   WIN_PREBUNDLE_ENTRYPOINTS_DIR_NAME,
   WIN_PREBUNDLE_META_DIR_NAME,
   WIN_PREBUNDLED_APP_DIR_NAME,
@@ -53,10 +57,10 @@ export function resolveWinPaths(config: ToolPackConfig): WinPaths {
     latestYmlPath: join(namespaceRoot, "builder", "latest.yml"),
     nsisLogPath: join(namespaceRoot, "logs", "nsis.log"),
     nsisIncludePath: join(namespaceRoot, "nsis", "installer.nsh"),
-    packagedConfigPath: join(namespaceRoot, "open-design-config.json"),
+    packagedConfigPath: join(namespaceRoot, PACKAGED_CONFIG_FILE_NAME),
     packagedMainPrebundleMetaPath: join(namespaceRoot, WIN_PREBUNDLE_META_DIR_NAME, "packaged-main.meta.json"),
     packagedMainPrebundlePath: join(namespaceRoot, "assembled", WIN_PREBUNDLED_PACKAGED_MAIN_RELATIVE_PATH),
-    resourceRoot: join(namespaceRoot, "resources", "open-design"),
+    resourceRoot: join(namespaceRoot, "resources", PACKAGED_RESOURCE_DIR_NAME),
     setupPath: join(namespaceRoot, "builder", `${PRODUCT_NAME}-${namespaceToken}-setup.exe`),
     setupZipPath: join(namespaceRoot, "builder", `${PRODUCT_NAME}-${namespaceToken}-portable.zip`),
     startMenuShortcutPath: join(process.env.APPDATA ?? join(homedir(), "AppData", "Roaming"), "Microsoft", "Windows", "Start Menu", "Programs", identity.shortcutName),

@@ -121,7 +121,7 @@ export async function assertLauncherPayloadBootConfig(input: {
   if (!resourcesEntry.isDirectory() || resourcesEntry.isSymbolicLink()) {
     throw new Error("launcher payload resources must be a plain directory");
   }
-  const packagedConfigPath = join(resourcesPath, "open-design-config.json");
+  const packagedConfigPath = join(resourcesPath, "hi-design-team-config.json");
   if (!containsPath(input.stagingRoot, packagedConfigPath)) {
     throw new Error("launcher payload config path escaped extracted payload");
   }
@@ -129,7 +129,7 @@ export async function assertLauncherPayloadBootConfig(input: {
   if (!isRecord(rawConfig)) throw new Error("launcher payload config must be a JSON object");
   const resourceRoot = typeof rawConfig.resourceRoot === "string" && rawConfig.resourceRoot.length > 0
     ? rawConfig.resourceRoot
-    : join(resourcesPath, "open-design");
+    : join(resourcesPath, "hi-design-team");
   const resourceRootEntry = await lstat(resourceRoot);
   if (!resourceRootEntry.isDirectory() || resourceRootEntry.isSymbolicLink()) {
     throw new Error("launcher payload resource root must be a plain directory");

@@ -167,7 +167,7 @@ describe("startPackedMacApp", () => {
       await chmod(executablePath, 0o755);
 
       const result = await startPackedMacApp(config);
-      const launchConfigPath = join(config.roots.runtime.namespaceRoot, "runtime", "open-design-config.json");
+      const launchConfigPath = join(config.roots.runtime.namespaceRoot, "runtime", "hi-design-team-config.json");
       const launchEnv = spawnLoggedProcess.mock.calls[0]?.[0]?.env as NodeJS.ProcessEnv | undefined;
 
       expect(result.source).toBe("installed");
@@ -187,7 +187,7 @@ describe("startPackedMacApp", () => {
       const config = makeConfig(root);
       const paths = resolveMacPaths(config);
       const executablePath = join(paths.installedAppPath, "Contents", "MacOS", "Hi Design");
-      const bundledConfigPath = join(paths.installedAppPath, "Contents", "Resources", "open-design-config.json");
+      const bundledConfigPath = join(paths.installedAppPath, "Contents", "Resources", "hi-design-team-config.json");
 
       await mkdir(join(paths.installedAppPath, "Contents", "MacOS"), { recursive: true });
       await mkdir(join(paths.installedAppPath, "Contents", "Resources"), { recursive: true });
@@ -205,7 +205,7 @@ describe("startPackedMacApp", () => {
       );
 
       const result = await startPackedMacApp(config);
-      const launchConfigPath = join(config.roots.runtime.namespaceRoot, "runtime", "open-design-config.json");
+      const launchConfigPath = join(config.roots.runtime.namespaceRoot, "runtime", "hi-design-team-config.json");
       const launchEnv = spawnLoggedProcess.mock.calls[0]?.[0]?.env as NodeJS.ProcessEnv | undefined;
 
       expect(result.source).toBe("installed");

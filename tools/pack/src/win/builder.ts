@@ -5,7 +5,13 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 
 import { hashJson, hashPath, type CacheNode, ToolPackCache } from "../cache/index.js";
-import type { ToolPackConfig } from "../config/index.js";
+import {
+  PACKAGED_CONFIG_FILE_NAME,
+  PACKAGED_RESOURCE_DIR_NAME,
+  WEB_STANDALONE_RESOURCE_DIR_NAME,
+  resolvePackagedAppName,
+  type ToolPackConfig,
+} from "../config/index.js";
 import { domToPptxBundleResource } from "../dom-to-pptx-resource.js";
 import {
   assertNodePtyRuntime,
@@ -45,6 +51,7 @@ import {
 } from "./manifest.js";
 import { ensureNsisPersianLanguageAlias, writeNsisInclude } from "./nsis.js";
 import { sanitizeNamespace } from "./paths.js";
+import { resolveWinInstallIdentity } from "./identity.js";
 import {
   resolveElectronBuilderWinTargets,
   shouldBuildWinNsisInstaller,
@@ -176,7 +183,7 @@ async function runElectronBuilderRaw(
     )
     : null;
   const builderConfig = {
-    appId: "io.hi-design.desktop",
+    appId: resolveWinInstallIdentity(config).appId,
     afterPack: webStandaloneHookConfigPath == null ? undefined : winResources.webStandaloneAfterPackHook,
     asar: ELECTRON_BUILDER_ASAR,
     buildDependenciesFromSource: ELECTRON_BUILDER_BUILD_DEPENDENCIES_FROM_SOURCE,
@@ -192,13 +199,13 @@ async function runElectronBuilderRaw(
     executableName: PRODUCT_NAME,
     extraMetadata: {
       main: "./main.cjs",
-      name: "open-design-packaged-app",
+      name: resolvePackagedAppName(config),
       productName: PRODUCT_NAME,
       version: packageVersion,
     },
     extraResources: [
-      { from: paths.resourceRoot, to: "open-design" },
-      { from: paths.packagedConfigPath, to: "open-design-config.json" },
+      { from: paths.resourceRoot, to: PACKAGED_RESOURCE_DIR_NAME },
+      { from: paths.packagedConfigPath, to: PACKAGED_CONFIG_FILE_NAME },
       // Vendored dom-to-pptx browser bundle for editable PPTX export (read from
       // process.resourcesPath by the desktop main at runtime).
       domToPptxBundleResource(config),
@@ -390,7 +397,7 @@ async function assertMaterializedUnpackedVersionConsistency(
     );
   }
 
-  const packagedConfigPath = join(unpackedRoot, "resources", "open-design-config.json");
+  const packagedConfigPath = join(unpackedRoot, "resources", PACKAGED_CONFIG_FILE_NAME);
   const packagedConfig = JSON.parse(await readFile(packagedConfigPath, "utf8")) as { appVersion?: unknown };
   if (packagedConfig.appVersion !== packagedVersion) {
     throw new Error(
@@ -474,10 +481,10 @@ export async function materializeCachedUnpackedForInstaller(
     await cp(sourceUnpackedRoot, paths.unpackedRoot, { recursive: true });
   }
   await mkdir(join(paths.unpackedRoot, "resources"), { recursive: true });
-  await writeFile(
-    join(paths.unpackedRoot, "resources", "open-design-config.json"),
-    await readFile(paths.packagedConfigPath),
-  );
+await writeFile(
+ join(paths.unpackedRoot, "resources", PACKAGED_CONFIG_FILE_NAME),
+ await readFile(paths.packagedConfigPath),
+);
   if (packagedVersion != null) {
     await rewriteUnpackedAppPackageVersion(paths.unpackedRoot, packagedVersion);
     await rewriteWinExecutableVersion(paths.unpackedExePath, packagedVersion);
@@ -833,9 +840,11 @@ export async function runElectronBuilder(
           reuseRequiredPaths: [
             ...resolveWinNsisOverlayRequiredPaths(),
             [
-              "resources/open-design-web-standalone/apps/web/server.js",
-              "resources/open-design-web-standalone/server.js",
-            ],
+              `resources/${WEB_STANDALONE_RESOURCE_DIR_NAME}/apps/web/server.js`,
+              `resources/${WEB_STANDALONE_RESOURCE_DIR_NAME}/server.js`,
+              `resources/${WEB_STANDALONE_RESOURCE_DIR_NAME}/apps/web/server.js`,
+              `resources/${WEB_STANDALONE_RESOURCE_DIR_NAME}/server.js`,
+           ],
           ],
           to: paths.unpackedRoot,
         }],

@@ -13,6 +13,7 @@ import type { ToolPackConfig } from "../config/index.js";
 import { PRODUCT_NAME } from "./constants.js";
 
 export type WinInstallIdentity = {
+  appId: string;
   appPathsKey: string;
   displayName: string;
   exeName: string;
@@ -26,7 +27,10 @@ export function resolveWinInstallIdentity(config: Pick<ToolPackConfig, "namespac
   const namespaceToken = resolveWindowsReleaseNamespaceToken(config.namespace);
   const channel = releaseChannelFromVersion(config.appVersion)
     ?? releaseChannelFromNamespace(config.namespace, SIDECAR_DEFAULTS.namespace);
-  const displayName = channel == null ? `${PRODUCT_NAME} ${namespaceToken}` : releaseInstallIdentity(channel).productName;
+  const channelIdentity = channel == null
+    ? { appId: "io.hi-design-team.desktop", productName: PRODUCT_NAME }
+    : releaseInstallIdentity(channel);
+  const displayName = channel == null ? `${PRODUCT_NAME} ${namespaceToken}` : channelIdentity.productName;
   // The system identity (install dir, shortcut, app-paths key, uninstaller)
   // carries the namespace so different namespaces can coexist on the same
   // release channel. The default namespace stays clean as the canonical
@@ -39,6 +43,7 @@ export function resolveWinInstallIdentity(config: Pick<ToolPackConfig, "namespac
     : displayName;
 
   return {
+    appId: channelIdentity.appId,
     appPathsKey: `Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\${systemName}.exe`,
     displayName,
     exeName: `${PRODUCT_NAME}.exe`,

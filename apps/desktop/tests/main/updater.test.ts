@@ -299,9 +299,9 @@ async function writeReleaseFixture(root: string, key: string, channel: FixtureCh
 }
 
 async function writeLauncherPayloadFixture(destinationRoot: string, version: string): Promise<void> {
-  await mkdir(join(destinationRoot, "payload", "resources", "open-design"), { recursive: true });
+  await mkdir(join(destinationRoot, "payload", "resources", "hi-design-team"), { recursive: true });
   await writeFile(join(destinationRoot, "payload", "Hi Design.exe"), "");
-  await writeFile(join(destinationRoot, "payload", "resources", "open-design-config.json"), "{}\n");
+  await writeFile(join(destinationRoot, "payload", "resources", "hi-design-team-config.json"), "{}\n");
   await writeFile(join(destinationRoot, "manifest.json"), `${JSON.stringify({
     channel: "beta",
     entry: {
@@ -578,7 +578,7 @@ describe("desktop updater", () => {
       }, {
         extractLauncherPayloadArchive: async ({ destinationRoot }) => {
           extractCount += 1;
-          await mkdir(join(destinationRoot, "payload", "resources", "open-design"), { recursive: true });
+          await mkdir(join(destinationRoot, "payload", "resources", "hi-design-team"), { recursive: true });
           await writeFile(join(destinationRoot, "payload", "Hi Design.exe"), "");
           await writeFile(
             join(destinationRoot, "manifest.json"),
@@ -595,7 +595,7 @@ describe("desktop updater", () => {
               version: "1.0.0-beta.2",
             })}\n`,
           );
-          await writeFile(join(destinationRoot, "payload", "resources", "open-design-config.json"), "{}\n");
+          await writeFile(join(destinationRoot, "payload", "resources", "hi-design-team-config.json"), "{}\n");
         },
         launchAppAfterQuit: async (input) => {
           launches.push({
@@ -930,7 +930,7 @@ describe("desktop updater", () => {
     if (installedOuterVersion != null) {
       await mkdir(join(root, "installed", "resources"), { recursive: true });
       await writeFile(
-        join(root, "installed", "resources", "open-design-config.json"),
+        join(root, "installed", "resources", "hi-design-team-config.json"),
         `${JSON.stringify({ appVersion: installedOuterVersion })}\n`,
       );
     }
@@ -963,7 +963,7 @@ describe("desktop updater", () => {
     } as const;
     const updaterDeps: NonNullable<Parameters<typeof createDesktopUpdater>[1]> = {
       extractLauncherPayloadArchive: async ({ destinationRoot }) => {
-        await mkdir(join(destinationRoot, "payload", "resources", "open-design"), { recursive: true });
+        await mkdir(join(destinationRoot, "payload", "resources", "hi-design-team"), { recursive: true });
         await writeFile(join(destinationRoot, "payload", "Hi Design.exe"), "");
         await writeFile(
           join(destinationRoot, "manifest.json"),
@@ -977,7 +977,7 @@ describe("desktop updater", () => {
             version: "1.0.0-beta.2",
           })}\n`,
         );
-        await writeFile(join(destinationRoot, "payload", "resources", "open-design-config.json"), "{}\n");
+        await writeFile(join(destinationRoot, "payload", "resources", "hi-design-team-config.json"), "{}\n");
       },
       launchAppAfterQuit: async () => ({ helperLogPath: join(root, "updates", "helpers", "test.log") }),
       processExecPath: "C:\\Program Files\\Hi Design Beta\\Hi Design Beta.exe",
@@ -1226,7 +1226,7 @@ describe("desktop updater", () => {
       await mkdir(join(root, "state", "lock"), { recursive: true });
       await writeFile(join(root, "state", "lock", "owner.json"), JSON.stringify({
         createdAt: "2026-01-01T00:00:00.000Z",
-        owner: "open-design-updater-lifecycle",
+        owner: "hi-design-team-updater-lifecycle",
         pid: 2_147_483_647,
         version: 1,
       }));
@@ -1318,9 +1318,9 @@ describe("desktop updater", () => {
   it("rebuilds an owned update store with corrupt metadata through clear-cache", async () => {
     const root = makeRoot();
     try {
-      await writeFile(join(root, ".open-design-updater-root.json"), JSON.stringify({
+      await writeFile(join(root, ".hi-design-team-updater-root.json"), JSON.stringify({
         createdAt: "2026-01-01T00:00:00.000Z",
-        owner: "open-design-updater",
+        owner: "hi-design-team-updater",
         source: "tools-pack",
         version: 1,
       }));
@@ -1349,9 +1349,9 @@ describe("desktop updater", () => {
   it("rebuilds an owned update store with unexpected root entries through clear-cache", async () => {
     const root = makeRoot();
     try {
-      await writeFile(join(root, ".open-design-updater-root.json"), JSON.stringify({
+      await writeFile(join(root, ".hi-design-team-updater-root.json"), JSON.stringify({
         createdAt: "2026-01-01T00:00:00.000Z",
-        owner: "open-design-updater",
+        owner: "hi-design-team-updater",
         source: "tools-pack",
         version: 1,
       }));
@@ -1369,7 +1369,7 @@ describe("desktop updater", () => {
 
       expect(cleared.state).toBe(DESKTOP_UPDATE_STATES.IDLE);
       expect(existsSync(join(root, "stray-file.bin"))).toBe(false);
-      expect(existsSync(join(root, ".open-design-updater-root.json"))).toBe(true);
+      expect(existsSync(join(root, ".hi-design-team-updater-root.json"))).toBe(true);
     } finally {
       rmSync(root, { force: true, recursive: true });
     }
@@ -1400,8 +1400,8 @@ describe("desktop updater", () => {
   it("refuses to clear a root whose ownership marker belongs to another updater generation", async () => {
     const root = makeRoot();
     try {
-      await writeFile(join(root, ".open-design-updater-root.json"), JSON.stringify({
-        owner: "open-design-updater",
+      await writeFile(join(root, ".hi-design-team-updater-root.json"), JSON.stringify({
+        owner: "hi-design-team-updater",
         version: 999,
       }));
       await writeFile(join(root, "metadata.json"), "{ not json");
@@ -1522,7 +1522,7 @@ describe("desktop updater", () => {
       }, {
         extractLauncherPayloadArchive: async ({ destinationRoot }) => {
           extractCount += 1;
-          await mkdir(join(destinationRoot, "payload", "resources", "open-design"), { recursive: true });
+          await mkdir(join(destinationRoot, "payload", "resources", "hi-design-team"), { recursive: true });
           await writeFile(join(destinationRoot, "payload", "Hi Design.exe"), "");
           await writeFile(
             join(destinationRoot, "manifest.json"),
@@ -1539,7 +1539,7 @@ describe("desktop updater", () => {
               version: "1.0.0-beta.2",
             })}\n`,
           );
-          await writeFile(join(destinationRoot, "payload", "resources", "open-design-config.json"), "{}\n");
+          await writeFile(join(destinationRoot, "payload", "resources", "hi-design-team-config.json"), "{}\n");
         },
         launchAppAfterQuit: async (input) => {
           launches.push({
@@ -1641,7 +1641,7 @@ describe("desktop updater", () => {
 
       expect(checked.state).toBe(DESKTOP_UPDATE_STATES.ERROR);
       expect(checked.error?.code).toBe("launcher-payload-prepare-failed");
-      expect(checked.error?.message).toContain("open-design-config.json");
+      expect(checked.error?.message).toContain("hi-design-team-config.json");
       expect(existsSync(join(namespaceRoot, "versions", "1.0.0-beta.2"))).toBe(false);
       expect(JSON.parse(await readFile(launcherRuntimePath, "utf8"))).toMatchObject({
         active: { generation: 0, version: "1.0.0-beta.1" },
@@ -1753,9 +1753,9 @@ describe("desktop updater", () => {
       }, {
         extractLauncherPayloadArchive: async ({ destinationRoot }) => {
           await mkdir(join(destinationRoot, "payload", "Hi Design Beta.app", "Contents", "MacOS"), { recursive: true });
-          await mkdir(join(destinationRoot, "payload", "Hi Design Beta.app", "Contents", "Resources", "open-design"), { recursive: true });
+          await mkdir(join(destinationRoot, "payload", "Hi Design Beta.app", "Contents", "Resources", "hi-design-team"), { recursive: true });
           await writeFile(join(destinationRoot, "payload", "Hi Design Beta.app", "Contents", "MacOS", "Hi Design Beta"), "");
-          await writeFile(join(destinationRoot, "payload", "Hi Design Beta.app", "Contents", "Resources", "open-design-config.json"), "{}\n");
+          await writeFile(join(destinationRoot, "payload", "Hi Design Beta.app", "Contents", "Resources", "hi-design-team-config.json"), "{}\n");
           await writeFile(
             join(destinationRoot, "manifest.json"),
             `${JSON.stringify({
@@ -1880,9 +1880,9 @@ describe("desktop updater", () => {
       }, {
         extractLauncherPayloadArchive: async ({ destinationRoot }) => {
           await mkdir(join(destinationRoot, "payload", "Hi Design Prerelease.app", "Contents", "MacOS"), { recursive: true });
-          await mkdir(join(destinationRoot, "payload", "Hi Design Prerelease.app", "Contents", "Resources", "open-design"), { recursive: true });
+          await mkdir(join(destinationRoot, "payload", "Hi Design Prerelease.app", "Contents", "Resources", "hi-design-team"), { recursive: true });
           await writeFile(join(destinationRoot, "payload", "Hi Design Prerelease.app", "Contents", "MacOS", "Hi Design Prerelease"), "");
-          await writeFile(join(destinationRoot, "payload", "Hi Design Prerelease.app", "Contents", "Resources", "open-design-config.json"), "{}\n");
+          await writeFile(join(destinationRoot, "payload", "Hi Design Prerelease.app", "Contents", "Resources", "hi-design-team-config.json"), "{}\n");
           await writeFile(
             join(destinationRoot, "manifest.json"),
             `${JSON.stringify({
@@ -2000,9 +2000,9 @@ describe("desktop updater", () => {
         source: SIDECAR_SOURCES.PACKAGED,
       }, {
         extractLauncherPayloadArchive: async ({ destinationRoot }) => {
-          await mkdir(join(destinationRoot, "payload", "resources", "open-design"), { recursive: true });
+          await mkdir(join(destinationRoot, "payload", "resources", "hi-design-team"), { recursive: true });
           await writeFile(join(destinationRoot, "payload", "Hi Design.exe"), "");
-          await writeFile(join(destinationRoot, "payload", "resources", "open-design-config.json"), "{}\n");
+          await writeFile(join(destinationRoot, "payload", "resources", "hi-design-team-config.json"), "{}\n");
           await writeFile(
             join(destinationRoot, "manifest.json"),
             `${JSON.stringify({
@@ -2111,9 +2111,9 @@ describe("desktop updater", () => {
         source: SIDECAR_SOURCES.PACKAGED,
       }, {
         extractLauncherPayloadArchive: async ({ destinationRoot }) => {
-          await mkdir(join(destinationRoot, "payload", "resources", "open-design"), { recursive: true });
+          await mkdir(join(destinationRoot, "payload", "resources", "hi-design-team"), { recursive: true });
           await writeFile(join(destinationRoot, "payload", "Hi Design.exe"), "");
-          await writeFile(join(destinationRoot, "payload", "resources", "open-design-config.json"), "{}\n");
+          await writeFile(join(destinationRoot, "payload", "resources", "hi-design-team-config.json"), "{}\n");
           await writeFile(
             join(destinationRoot, "manifest.json"),
             `${JSON.stringify({
@@ -2227,9 +2227,9 @@ describe("desktop updater", () => {
         source: SIDECAR_SOURCES.PACKAGED,
       }, {
         extractLauncherPayloadArchive: async ({ destinationRoot }) => {
-          await mkdir(join(destinationRoot, "payload", "resources", "open-design"), { recursive: true });
+          await mkdir(join(destinationRoot, "payload", "resources", "hi-design-team"), { recursive: true });
           await writeFile(join(destinationRoot, "payload", "Hi Design.exe"), "");
-          await writeFile(join(destinationRoot, "payload", "resources", "open-design-config.json"), "{}\n");
+          await writeFile(join(destinationRoot, "payload", "resources", "hi-design-team-config.json"), "{}\n");
           await writeFile(
             join(destinationRoot, "manifest.json"),
             `${JSON.stringify({
@@ -2351,9 +2351,9 @@ describe("desktop updater", () => {
         source: SIDECAR_SOURCES.PACKAGED,
       }, {
         extractLauncherPayloadArchive: async ({ destinationRoot }) => {
-          await mkdir(join(destinationRoot, "payload", "resources", "open-design"), { recursive: true });
+          await mkdir(join(destinationRoot, "payload", "resources", "hi-design-team"), { recursive: true });
           await writeFile(join(destinationRoot, "payload", "Hi Design.exe"), "");
-          await writeFile(join(destinationRoot, "payload", "resources", "open-design-config.json"), "{}\n");
+          await writeFile(join(destinationRoot, "payload", "resources", "hi-design-team-config.json"), "{}\n");
           await writeFile(
             join(destinationRoot, "manifest.json"),
             `${JSON.stringify({
@@ -2929,8 +2929,8 @@ describe("desktop updater", () => {
     const root = makeRoot();
     const fixture = await createUpdaterFixture();
     try {
-      await writeFile(join(root, ".open-design-updater-root.json"), JSON.stringify({
-        owner: "open-design-updater",
+      await writeFile(join(root, ".hi-design-team-updater-root.json"), JSON.stringify({
+        owner: "hi-design-team-updater",
         version: 1,
       }));
       await writeFile(join(root, "state.json"), "{}");
@@ -3881,7 +3881,7 @@ describe("desktop updater", () => {
       const checked = await updater.checkForUpdates();
       expect(checked.state).toBe(DESKTOP_UPDATE_STATES.ERROR);
       expect(checked.error?.code).toBe("update-root-not-owned");
-      expect(existsSync(join(realRoot, ".open-design-updater-root.json"))).toBe(false);
+      expect(existsSync(join(realRoot, ".hi-design-team-updater-root.json"))).toBe(false);
     } finally {
       await fixture.close();
       rmSync(linkParent, { force: true, recursive: true });

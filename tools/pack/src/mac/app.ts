@@ -5,6 +5,7 @@ import { dirname, join, relative } from "node:path";
 import { rebuild, type RebuildOptions } from "@electron/rebuild";
 
 import type { ToolPackConfig } from "../config/index.js";
+import { resolvePackagedAppName } from "../config/index.js";
 import {
   MAC_DAEMON_PREBUNDLE_ESM_REQUIRE_BANNER,
   MAC_PREBUNDLE_COPIED_RUNTIME_DEPENDENCIES,
@@ -349,10 +350,10 @@ export async function writeAssembledApp(
     `${JSON.stringify(
       {
         dependencies,
-        description: "Hi Design packaged runtime",
-        main: "./main.cjs",
-        name: "open-design-packaged-app",
-        ...(optionalDependencies == null ? {} : { optionalDependencies }),
+       description: "Hi Design packaged runtime",
+       main: "./main.cjs",
+       name: resolvePackagedAppName(config),
+       ...(optionalDependencies == null ? {} : { optionalDependencies }),
         private: true,
         productName: identity.productName,
         version: packageVersion,

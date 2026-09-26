@@ -19,7 +19,7 @@ describe("desktop updater feed", () => {
     try {
       const appRoot = join(root, "Hi Design.app");
       await mkdir(join(appRoot, "Contents", "Resources"), { recursive: true });
-      await writeFile(join(appRoot, "Contents", "Resources", "open-design-config.json"), '{"appVersion":"0.7.0"}\n');
+      await writeFile(join(appRoot, "Contents", "Resources", "hi-design-team-config.json"), '{"appVersion":"0.7.0"}\n');
       const macConfig = resolveDesktopUpdaterConfig({
         env: {},
         launcherLaunchPath: appRoot,
@@ -31,7 +31,7 @@ describe("desktop updater feed", () => {
       const winExe = join(root, "win-install", "Hi Design Beta.exe");
       await mkdir(join(root, "win-install", "resources"), { recursive: true });
       await writeFile(winExe, "");
-      await writeFile(join(root, "win-install", "resources", "open-design-config.json"), '{"appVersion":"0.8.0-beta.2"}\n');
+      await writeFile(join(root, "win-install", "resources", "hi-design-team-config.json"), '{"appVersion":"0.8.0-beta.2"}\n');
       const winConfig = resolveDesktopUpdaterConfig({
         env: {},
         launcherLaunchPath: winExe,
@@ -43,7 +43,7 @@ describe("desktop updater feed", () => {
       const malformedExe = join(root, "broken-install", "Hi Design.exe");
       await mkdir(join(root, "broken-install", "resources"), { recursive: true });
       await writeFile(malformedExe, "");
-      await writeFile(join(root, "broken-install", "resources", "open-design-config.json"), "not json\n");
+      await writeFile(join(root, "broken-install", "resources", "hi-design-team-config.json"), "not json\n");
       const malformedConfig = resolveDesktopUpdaterConfig({
         env: {},
         launcherLaunchPath: malformedExe,

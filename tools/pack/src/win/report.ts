@@ -1,6 +1,9 @@
 import { join } from "node:path";
 
 import type { ToolPackConfig } from "../config/index.js";
+import {
+  PACKAGED_RESOURCE_DIR_NAME,
+} from "../config/index.js";
 import { WIN_PREBUNDLED_APP_DIR_NAME } from "./prebundle.js";
 import {
   ELECTRON_BUILDER_ASAR,
@@ -90,7 +93,7 @@ export async function collectWinSizeReport(
     installerBytes: await sizeExistingFileBytes(paths.setupPath),
     outputRootBytes: namespaceSizeIndex.sizePathBytes(config.roots.output.namespaceRoot),
     portableZipBytes: await sizeExistingFileBytes(paths.setupZipPath),
-    resourceRootBytes: sizeIndex.sizePathBytes(join(appResourcesRoot, "open-design")),
+    resourceRootBytes: sizeIndex.sizePathBytes(join(appResourcesRoot, PACKAGED_RESOURCE_DIR_NAME)),
     runtimeNamespaceRoot: config.roots.runtime.namespaceRoot,
     topLevel: {
       appResourcesBytes: sizeIndex.sizePathBytes(join(appResourcesRoot, "app")),

@@ -196,7 +196,7 @@ describe("resolveToolPackConfig PostHog analytics", () => {
 // The vela web origin of an internal (non-public) environment must never be a
 // literal in this public repository. It is injected at packaging time from a CI
 // secret keyed by AMR profile, exactly like POSTHOG_KEY, and flows on into
-// open-design-config.json -> the packaged daemon spawn env (OD_VELA_WEB_URL).
+// hi-design-team-config.json -> the packaged daemon spawn env (OD_VELA_WEB_URL).
 describe("resolveToolPackConfig vela web origin", () => {
   it("bakes every supplied profile origin for runtime environment switching", () => {
     process.env.OD_VELA_WEB_URL_PROD = "https://prod.example.invalid";

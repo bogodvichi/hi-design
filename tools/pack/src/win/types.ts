@@ -41,7 +41,7 @@ export type ElectronBuilderDirCacheMetadata = {
 };
 
 export type ResourceTreeCacheMetadata = {
-  resourceName: "open-design";
+  resourceName: string;
 };
 
 export type WinBuiltAppManifest = {

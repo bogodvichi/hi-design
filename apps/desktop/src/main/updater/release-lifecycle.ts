@@ -224,7 +224,7 @@ export async function withUpdaterLifecycleLock<T>(
   let acquired = await acquire();
   if (!acquired && options.reclaimStale === true) {
     const owner = await readJson<unknown>(join(layout.lockRoot, LOCK_OWNER_FILE));
-    const ownerPid = isRecord(owner) && owner.owner === "open-design-updater-lifecycle"
+    const ownerPid = isRecord(owner) && owner.owner === "hi-design-team-updater-lifecycle"
       && owner.version === RELEASE_CLEANUP_DESCRIPTOR_VERSION
       && typeof owner.pid === "number" && Number.isSafeInteger(owner.pid) && owner.pid > 0
       ? owner.pid
@@ -263,7 +263,7 @@ export async function withUpdaterLifecycleLock<T>(
   try {
     await writeJson(join(layout.lockRoot, LOCK_OWNER_FILE), {
       createdAt: new Date().toISOString(),
-      owner: "open-design-updater-lifecycle",
+      owner: "hi-design-team-updater-lifecycle",
       pid: process.pid,
       version: RELEASE_CLEANUP_DESCRIPTOR_VERSION,
     });

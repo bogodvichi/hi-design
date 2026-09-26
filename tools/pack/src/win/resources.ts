@@ -3,6 +3,9 @@ import { dirname, join } from "node:path";
 
 import { hashJson, hashPath, ToolPackCache } from "../cache/index.js";
 import type { ToolPackConfig } from "../config/index.js";
+import {
+  PACKAGED_RESOURCE_DIR_NAME,
+} from "../config/index.js";
 import { copyBundledResourceTrees, packBundledDshRuntime, winResources } from "../resources/index.js";
 import {
   copyOptionalVelaCliBinary,
@@ -61,10 +64,10 @@ export async function prepareResourceTree(
   const node = {
     id: "win.resource-tree",
     key,
-    outputs: ["open-design"],
+    outputs: [PACKAGED_RESOURCE_DIR_NAME],
     invalidate: async () => null,
     build: async ({ entryRoot }: { entryRoot: string }): Promise<ResourceTreeCacheMetadata> => {
-      const resourceRoot = join(entryRoot, "open-design");
+      const resourceRoot = join(entryRoot, PACKAGED_RESOURCE_DIR_NAME);
       await mkdir(resourceRoot, { recursive: true });
       await copyBundledResourceTrees({
         workspaceRoot: config.workspaceRoot,
@@ -84,16 +87,16 @@ export async function prepareResourceTree(
         requireBundled: config.requireVelaCli,
         resourceRoot,
       });
-      return { resourceName: "open-design" };
+      return { resourceName: PACKAGED_RESOURCE_DIR_NAME };
     },
   };
   const manifest = await cache.acquire({
-    materialize: options.materialize ? [{ from: "open-design", to: paths.resourceRoot }] : [],
+    materialize: options.materialize ? [{ from: PACKAGED_RESOURCE_DIR_NAME, to: paths.resourceRoot }] : [],
     node,
   });
   return {
     key,
-    resourceRoot: options.materialize ? paths.resourceRoot : join(manifest.entryPath, "open-design"),
+    resourceRoot: options.materialize ? paths.resourceRoot : join(manifest.entryPath, PACKAGED_RESOURCE_DIR_NAME),
   };
 }
 

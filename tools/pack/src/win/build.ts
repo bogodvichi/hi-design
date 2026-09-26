@@ -5,6 +5,9 @@ import { basename, join } from "node:path";
 import { ToolPackCache } from "../cache/index.js";
 import type { ToolPackConfig } from "../config/index.js";
 import {
+  PACKAGED_RESOURCE_DIR_NAME,
+} from "../config/index.js";
+import {
   collectWorkspaceTarballs,
   createWinPackagedAppCacheKey,
   ensureWinWorkspaceBuild,
@@ -150,7 +153,7 @@ export async function packWin(config: ToolPackConfig): Promise<WinPackResult> {
     outputRoot: config.roots.output.namespaceRoot,
     payloadPath: (await pathExists(paths.launcherPayloadPath)) ? paths.launcherPayloadPath : null,
     portableZipPath: hasZipTarget && await pathExists(paths.setupZipPath) ? paths.setupZipPath : null,
-    resourceRoot: builtApp == null ? paths.resourceRoot : join(builtApp.unpackedRoot, "resources", "open-design"),
+    resourceRoot: builtApp == null ? paths.resourceRoot : join(builtApp.unpackedRoot, "resources", PACKAGED_RESOURCE_DIR_NAME),
     runtimeNamespaceRoot: config.roots.runtime.namespaceRoot,
     cacheReport: cache.report(),
     segments,

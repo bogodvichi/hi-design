@@ -65,17 +65,17 @@ async function writeFakeMacApp(config: ToolPackConfig): Promise<ReturnType<typeo
   const resourcesRoot = join(paths.appPath, "Contents", "Resources");
   const executablePath = join(paths.appPath, "Contents", "MacOS", identity.executableName);
   await mkdir(join(paths.appPath, "Contents", "MacOS"), { recursive: true });
-  await mkdir(join(resourcesRoot, "open-design", "bin"), { recursive: true });
-  await mkdir(join(resourcesRoot, "open-design", "prebundled", "daemon"), { recursive: true });
-  await mkdir(join(resourcesRoot, "open-design", "prebundled", "web"), { recursive: true });
-  await mkdir(join(resourcesRoot, "open-design-web-standalone"), { recursive: true });
+  await mkdir(join(resourcesRoot, "hi-design-team", "bin"), { recursive: true });
+  await mkdir(join(resourcesRoot, "hi-design-team", "prebundled", "daemon"), { recursive: true });
+  await mkdir(join(resourcesRoot, "hi-design-team", "prebundled", "web"), { recursive: true });
+  await mkdir(join(resourcesRoot, "hi-design-team-web-standalone"), { recursive: true });
   await writeFile(executablePath, "#!/bin/sh\nexit 0\n", "utf8");
   await chmod(executablePath, 0o755);
-  await writeFile(join(resourcesRoot, "open-design", "bin", "node"), "#!/bin/sh\nexit 0\n", "utf8");
-  await writeFile(join(resourcesRoot, "open-design", "prebundled", "daemon", "daemon-sidecar.mjs"), "export {};\n", "utf8");
-  await writeFile(join(resourcesRoot, "open-design", "prebundled", "web", "web-sidecar.mjs"), "export {};\n", "utf8");
+  await writeFile(join(resourcesRoot, "hi-design-team", "bin", "node"), "#!/bin/sh\nexit 0\n", "utf8");
+  await writeFile(join(resourcesRoot, "hi-design-team", "prebundled", "daemon", "daemon-sidecar.mjs"), "export {};\n", "utf8");
+  await writeFile(join(resourcesRoot, "hi-design-team", "prebundled", "web", "web-sidecar.mjs"), "export {};\n", "utf8");
   await writeFile(
-    join(resourcesRoot, "open-design-config.json"),
+    join(resourcesRoot, "hi-design-team-config.json"),
     `${JSON.stringify({
       appVersion: config.appVersion,
       daemonSidecarEntryRelative: "open-design/prebundled/daemon/daemon-sidecar.mjs",
@@ -139,7 +139,7 @@ describe("tools-pack mac launcher payload archives", () => {
         "Hi Design Beta.app",
         "Contents",
         "Resources",
-        "open-design-config.json",
+        "hi-design-team-config.json",
       ));
     } finally {
       await rm(root, { force: true, recursive: true });

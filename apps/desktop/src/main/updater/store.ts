@@ -33,7 +33,7 @@ import type { DesktopUpdaterLogger } from "../updater.js";
  * and the owned-root recovery used by manual clear-cache.
  */
 
-export const OWNERSHIP_SENTINEL = ".open-design-updater-root.json";
+export const OWNERSHIP_SENTINEL = ".hi-design-team-updater-root.json";
 export const STORE_METADATA_FILE = "metadata.json";
 export const RELEASES_DIR = "releases";
 export const STAGING_DIR = "staging";
@@ -261,7 +261,7 @@ export async function ensureOwnedUpdateRoot(
       }
       await writeJson(layout.ownershipSentinelPath, {
         createdAt: new Date().toISOString(),
-        owner: "open-design-updater",
+        owner: "hi-design-team-updater",
         source: config.source,
         version: UPDATE_ROOT_VERSION,
       });

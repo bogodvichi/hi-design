@@ -63,13 +63,16 @@ export const SIDECAR_STAMP_FIELDS = ["app", "mode", "namespace", "ipc", "source"
 
 export const SIDECAR_DEFAULTS = Object.freeze({
  host: "127.0.0.1",
- ipcBase: "/tmp/hi-design/ipc",
+ ipcBase: "/tmp/hi-design-team/ipc",
  namespace: "default",
  projectTmpDirName: ".tmp",
- windowsPipePrefix: "hi-design",
+ windowsPipePrefix: "hi-design-team",
 } as const);
 
-export const OPEN_DESIGN_PRODUCT_NAME = "Hi Design";
+// Internal packaging identity for the Hi Design Team product line. The visible
+// desktop shortcut stays "Hi Design" (see PRODUCT_NAME in tools/pack); this
+// constant drives internal lock names, appIds, registry keys, and IPC paths.
+export const OPEN_DESIGN_PRODUCT_NAME = "Hi Design Team";
 
 export function resolveWindowsReleaseNamespaceToken(value: string): string {
   return value.replace(/[^A-Za-z0-9._-]+/g, "-");

@@ -188,7 +188,7 @@ async function runFixture(options: {
   destinationRoot: string;
   root: string;
 }> {
-  const root = await mkdtemp(join(tmpdir(), "open-design-web-standalone-hook-"));
+  const root = await mkdtemp(join(tmpdir(), "hi-design-team-web-standalone-hook-"));
   const workspaceRoot = join(root, "workspace");
   const standaloneSourceRoot = await writeStandaloneFixture(workspaceRoot, {
     includeHoistedNext: options.includeHoistedNext ?? true,
@@ -243,7 +243,7 @@ async function runFixture(options: {
         ...(options.requireRootWebPackageAudit == null
           ? {}
           : { requireRootWebPackageAudit: options.requireRootWebPackageAudit }),
-        resourceName: "open-design-web-standalone",
+        resourceName: "hi-design-team-web-standalone",
         standaloneSourceRoot,
         version: 1,
         webPublicSourceRoot: join(workspaceRoot, "apps", "web", "public"),
@@ -277,7 +277,7 @@ async function runFixture(options: {
   return {
     appOutDir,
     auditReportPath,
-    destinationRoot: join(resourcesRoot, "open-design-web-standalone"),
+    destinationRoot: join(resourcesRoot, "hi-design-team-web-standalone"),
     root,
   };
 }
@@ -348,11 +348,11 @@ describe("web standalone afterPack hook", () => {
       );
       expect(report.copiedNextDedupeAudit.remainingPaths).toEqual([]);
       expect(resolvedNextPath).toMatch(
-        /open-design-web-standalone\/apps\/web\/node_modules\/next\/package\.json$/,
+        /hi-design-team-web-standalone\/apps\/web\/node_modules\/next\/package\.json$/,
       );
       expect(report.copiedAudit.brokenSymlinks).toEqual([]);
       expect(report.copiedAudit.resolvedModules["next/package.json"].split(path.sep).join("/")).toMatch(
-        /open-design-web-standalone\/apps\/web\/node_modules\/next\/package\.json$/,
+        /hi-design-team-web-standalone\/apps\/web\/node_modules\/next\/package\.json$/,
       );
     } finally {
       await rm(fixture.root, { force: true, recursive: true });
@@ -416,7 +416,7 @@ describe("web standalone afterPack hook", () => {
       expect(path.isAbsolute(nextTarget)).toBe(false);
       expect(report.copiedAudit.externalSymlinks).toEqual([]);
       expect(report.copiedAudit.resolvedModules["next/package.json"].split(path.sep).join("/")).toMatch(
-        /open-design-web-standalone\/node_modules\/\.pnpm\/next@0\.0\.0\/node_modules\/next\/package\.json$/,
+        /hi-design-team-web-standalone\/node_modules\/\.pnpm\/next@0\.0\.0\/node_modules\/next\/package\.json$/,
       );
     } finally {
       await rm(fixture.root, { force: true, recursive: true });

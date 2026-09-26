@@ -27,6 +27,11 @@ import {
 } from "@open-design/platform";
 
 import type { ToolPackConfig } from "./config/index.js";
+import {
+  PACKAGED_CONFIG_FILE_NAME,
+  PACKAGED_RESOURCE_DIR_NAME,
+  resolvePackagedAppName,
+} from "./config/index.js";
 import { domToPptxBundleResource } from "./dom-to-pptx-resource.js";
 import { copyBundledResourceTrees, linuxResources, packBundledDshRuntime } from "./resources/index.js";
 import { copyOptionalVelaCliBinary } from "./vela-cli.js";
@@ -375,11 +380,11 @@ function appImageInstallName(namespace: string): string {
 }
 
 function desktopFileName(namespace: string): string {
-  return `open-design-${sanitizeNamespace(namespace)}.desktop`;
+  return `hi-design-team-${sanitizeNamespace(namespace)}.desktop`;
 }
 
 function iconFileName(namespace: string): string {
-  return `open-design-${sanitizeNamespace(namespace)}.png`;
+  return `hi-design-team-${sanitizeNamespace(namespace)}.png`;
 }
 
 function resolveLinuxPaths(config: ToolPackConfig): LinuxPaths {
@@ -406,8 +411,8 @@ function resolveLinuxPaths(config: ToolPackConfig): LinuxPaths {
       "apps",
       iconFileName(config.namespace),
     ),
-    packagedConfigPath: join(namespaceRoot, "open-design-config.json"),
-    resourceRoot: join(namespaceRoot, "resources", "open-design"),
+    packagedConfigPath: join(namespaceRoot, PACKAGED_CONFIG_FILE_NAME),
+    resourceRoot: join(namespaceRoot, "resources", PACKAGED_RESOURCE_DIR_NAME),
     tarballsRoot: join(namespaceRoot, "tarballs"),
   };
 }
@@ -570,7 +575,7 @@ async function writeAssembledApp(
   const version = await readPackagedVersion(config);
   const packageVersion = electronBuilderVersionForAppVersion(version);
   const packageJson = {
-    name: "open-design-packaged",
+    name: resolvePackagedAppName(config),
     version: packageVersion,
     private: true,
     main: "main.cjs",
@@ -593,7 +598,7 @@ async function writeAssembledApp(
         ...(config.amrProfile == null ? {} : { amrProfile: config.amrProfile }),
         appVersion: version,
         namespace: config.namespace,
-        nodeCommandRelative: "open-design/bin/node",
+        nodeCommandRelative: join(PACKAGED_RESOURCE_DIR_NAME, "bin", "node"),
         ...(config.telemetryRelayUrl == null ? {} : { telemetryRelayUrl: config.telemetryRelayUrl }),
         ...(config.posthogKey == null ? {} : { posthogKey: config.posthogKey }),
         ...(config.posthogHost == null ? {} : { posthogHost: config.posthogHost }),
@@ -643,14 +648,14 @@ async function writeLinuxBuilderConfig(config: ToolPackConfig, paths: LinuxPaths
     executableName: PRODUCT_NAME,
     extraMetadata: {
       main: "./main.cjs",
-      name: "open-design-packaged-app",
+      name: resolvePackagedAppName(config),
       productName: PRODUCT_NAME,
       version: packageVersion,
       ...(config.portable ? {} : { odToolsPackRuntimeRoot: config.roots.runtime.namespaceBaseRoot }),
     },
     extraResources: [
-      { from: paths.resourceRoot, to: "open-design" },
-      { from: paths.packagedConfigPath, to: "open-design-config.json" },
+      { from: paths.resourceRoot, to: PACKAGED_RESOURCE_DIR_NAME },
+      { from: paths.packagedConfigPath, to: PACKAGED_CONFIG_FILE_NAME },
       // Vendored dom-to-pptx browser bundle for editable PPTX export (read from
       // process.resourcesPath by the desktop main at runtime).
       domToPptxBundleResource(config),
@@ -851,7 +856,7 @@ export async function installPackedLinuxApp(config: ToolPackConfig): Promise<Lin
   const rendered = renderDesktopTemplate(template, {
     namespace: sanitizeNamespace(config.namespace),
     execPath: paths.installAppImagePath,
-    iconName: `open-design-${sanitizeNamespace(config.namespace)}`,
+    iconName: `hi-design-team-${sanitizeNamespace(config.namespace)}`,
   });
   const tmpDesktopPath = `${paths.installDesktopFilePath}.tmp`;
   await writeFile(tmpDesktopPath, rendered, "utf8");
@@ -1465,7 +1470,7 @@ function resolveHeadlessBundledNodePath(paths: LinuxPaths): string {
 }
 
 function headlessLauncherPath(config: ToolPackConfig): string {
-  return join(homedir(), ".local", "bin", `open-design-headless-${sanitizeNamespace(config.namespace)}`);
+  return join(homedir(), ".local", "bin", `hi-design-team-headless-${sanitizeNamespace(config.namespace)}`);
 }
 
 function headlessLogPath(config: ToolPackConfig): string {

@@ -114,7 +114,7 @@ describe("installPackedWinApp", () => {
     const root = await mkdtemp(join(tmpdir(), "open-design-win-lifecycle-"));
     const config = { ...createConfig(root), portable: true };
     const paths = resolveWinPaths(config);
-    const installedConfigPath = join(paths.installDir, "resources", "open-design-config.json");
+    const installedConfigPath = join(paths.installDir, "resources", "hi-design-team-config.json");
 
     try {
       await mkdir(dirname(paths.setupPath), { recursive: true });
@@ -155,7 +155,7 @@ describe("installPackedWinApp", () => {
       invokeNsis.mockReset();
       invokeNsis.mockImplementation(async () => {
         await expect(access(paths.installDir)).resolves.toBeUndefined();
-        const installedConfigPath = join(paths.installDir, "resources", "open-design-config.json");
+        const installedConfigPath = join(paths.installDir, "resources", "hi-design-team-config.json");
         await mkdir(dirname(installedConfigPath), { recursive: true });
         await writeFile(paths.installedExePath, "", "utf8");
         await writeFile(installedConfigPath, "{}\n", "utf8");

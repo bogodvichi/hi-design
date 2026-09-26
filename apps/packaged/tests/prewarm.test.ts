@@ -157,10 +157,10 @@ describe('resolveWebPrewarmTargets', () => {
   it('falls back to the standalone bundle root in standalone mode', () => {
     const targets = resolveWebPrewarmTargets({
       webSidecarEntry: entry,
-      webStandaloneRoot: '/res/open-design-web-standalone',
+      webStandaloneRoot: '/res/hi-design-team-web-standalone',
       resolveNextPackageRoot: () => '/res/app/node_modules/next',
     });
-    expect(targets).toEqual([{ kind: 'dir', path: '/res/open-design-web-standalone' }]);
+    expect(targets).toEqual([{ kind: 'dir', path: '/res/hi-design-team-web-standalone' }]);
   });
 
   it('skips the Next framework dirs when next cannot be resolved', () => {

@@ -11,6 +11,9 @@ import {
 
 import { hashJson, hashPath, type ToolPackCache } from "../cache/index.js";
 import type { ToolPackConfig } from "../config/index.js";
+import {
+  PACKAGED_CONFIG_FILE_NAME,
+} from "../config/index.js";
 import { winResources } from "../resources/index.js";
 import { electronBuilderVersionForAppVersion } from "../versioning/index.js";
 import {
@@ -127,7 +130,7 @@ export async function buildWinLauncherPayloadArchive(
       await cp(join(builtApp.unpackedRoot, "Hi Design.exe"), join(overlayRoot, "payload", "Hi Design.exe"));
     }
     await writeFile(
-      join(overlayRoot, "payload", "resources", "open-design-config.json"),
+      join(overlayRoot, "payload", "resources", PACKAGED_CONFIG_FILE_NAME),
       await readFile(paths.packagedConfigPath),
     );
     const packageJsonPath = join(builtApp.unpackedRoot, "resources", "app", "package.json");
@@ -331,7 +334,7 @@ export async function validateWinLauncherPayloadArchive(input: {
     requirePayloadManifestValue(manifest.entry?.executable, "entry.executable", "payload/Hi Design.exe");
 
     await stat(join(extractRoot, archiveRelativePath("payload/Hi Design.exe")));
-    await stat(join(extractRoot, archiveRelativePath("payload/resources/open-design-config.json")));
+    await stat(join(extractRoot, archiveRelativePath(`payload/resources/${PACKAGED_CONFIG_FILE_NAME}`)));
     return { manifest, payloadPath, valid: true };
   } finally {
     await rm(extractRoot, { force: true, recursive: true });

@@ -29,7 +29,7 @@ function resolveHeadlessNamespaceBaseRoot(): string {
     xdgDataHome != null && xdgDataHome.length > 0
       ? xdgDataHome
       : join(homedir(), ".local", "share");
-  return join(dataBase, "open-design", "namespaces");
+  return join(dataBase, "hi-design-team", "namespaces");
 }
 
 function resolveHeadlessAmrProfile(): PackagedConfig["amrProfile"] {
@@ -47,7 +47,7 @@ function resolveHeadlessConfig(): PackagedConfig {
   // this file — the layout written by tools-pack linux headless-install.
   const resourceRoot =
     process.env.OD_RESOURCE_ROOT
-    ?? join(__dirname, "..", "..", "..", "open-design");
+    ?? join(__dirname, "..", "..", "..", "hi-design-team");
 
   return {
     amrProfile: resolveHeadlessAmrProfile(),

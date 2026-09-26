@@ -48,10 +48,10 @@ function createPaths(root: string): WinPaths {
     installTimingPath: join(namespaceRoot, "logs", "install.timing.json"),
     nsisLogPath: join(namespaceRoot, "logs", "nsis.log"),
     nsisIncludePath: join(namespaceRoot, "nsis", "installer.nsh"),
-    packagedConfigPath: join(namespaceRoot, "open-design-config.json"),
+    packagedConfigPath: join(namespaceRoot, "hi-design-team-config.json"),
     packagedMainPrebundleMetaPath: join(namespaceRoot, "prebundle-meta", "packaged-main.meta.json"),
     packagedMainPrebundlePath: join(namespaceRoot, "assembled", "app", "prebundled", "packaged-main.mjs"),
-    resourceRoot: join(namespaceRoot, "resources", "open-design"),
+    resourceRoot: join(namespaceRoot, "resources", "hi-design-team"),
     setupPath: join(namespaceRoot, "builder", "Hi Design-second-setup.exe"),
     setupZipPath: join(namespaceRoot, "builder", "Hi Design-second-portable.zip"),
     startMenuShortcutPath: join(namespaceRoot, "start-menu.lnk"),
@@ -80,14 +80,14 @@ describe("materializeCachedUnpackedForInstaller", () => {
       await mkdir(join(cachedUnpackedRoot, "resources"), { recursive: true });
       await writeFile(join(cachedUnpackedRoot, "Hi Design.exe"), await createVersionedExecutable("0.5.0-beta.1"));
       await writeFile(
-        join(cachedUnpackedRoot, "resources", "open-design-config.json"),
+        join(cachedUnpackedRoot, "resources", "hi-design-team-config.json"),
         `${JSON.stringify({ namespace: "first", version: 1 })}\n`,
         "utf8",
       );
       await mkdir(join(cachedUnpackedRoot, "resources", "app"), { recursive: true });
       await writeFile(
         join(cachedUnpackedRoot, "resources", "app", "package.json"),
-        `${JSON.stringify({ name: "open-design-packaged-app", version: "0.5.0-beta.1" })}\n`,
+        `${JSON.stringify({ name: "hi-design-team-packaged-app", version: "0.5.0-beta.1" })}\n`,
         "utf8",
       );
       const nodePtyPrebuildRoot = join(
@@ -120,13 +120,13 @@ describe("materializeCachedUnpackedForInstaller", () => {
 
       expect(manifest.source).toBe("namespace");
       expect(manifest.unpackedRoot).toBe(paths.unpackedRoot);
-      await expect(readFile(join(paths.unpackedRoot, "resources", "open-design-config.json"), "utf8")).resolves.toContain(
+      await expect(readFile(join(paths.unpackedRoot, "resources", "hi-design-team-config.json"), "utf8")).resolves.toContain(
         '"namespace":"second"',
       );
       await expect(readFile(join(paths.unpackedRoot, "resources", "app", "package.json"), "utf8")).resolves.toContain(
         '"version": "0.5.0-beta.2"',
       );
-      await expect(readFile(join(paths.unpackedRoot, "resources", "open-design-config.json"), "utf8")).resolves.toContain(
+      await expect(readFile(join(paths.unpackedRoot, "resources", "hi-design-team-config.json"), "utf8")).resolves.toContain(
         '"appVersion":"0.5.0-beta.2"',
       );
       await expect(readWinExecutableVersionSnapshot(join(paths.unpackedRoot, "Hi Design.exe"))).resolves.toMatchObject({

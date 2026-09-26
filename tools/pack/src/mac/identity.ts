@@ -26,7 +26,7 @@ export function resolveMacInstallIdentity(config: Pick<ToolPackConfig, "namespac
   const channel = releaseChannelFromVersion(config.appVersion)
     ?? releaseChannelFromNamespace(config.namespace, SIDECAR_DEFAULTS.namespace);
   const channelIdentity = channel == null
-    ? { appId: "io.hi-design.desktop", productName: PRODUCT_NAME }
+    ? { appId: "io.hi-design-team.desktop", productName: PRODUCT_NAME }
     : releaseInstallIdentity(channel);
   const publicAppBundleName = `${channelIdentity.productName}.app`;
   // The system (installed) app bundle name carries the namespace so different
