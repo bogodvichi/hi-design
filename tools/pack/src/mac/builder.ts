@@ -130,6 +130,14 @@ export async function runElectronBuilder(
       // Vendored dom-to-pptx browser bundle for editable PPTX export. The desktop
       // main reads it from process.resourcesPath at runtime.
       domToPptxBundleResource(config),
+      // electron-builder's node_modules copier skips node-pty/prebuilds
+      // because the prebuilds are loaded at runtime via path.join, not via
+      // require, so the copier's dependency walker never reaches them.
+      // Force-copy them into the app bundle so assertNodePtyRuntime passes.
+      {
+        from: join(paths.assembledAppRoot, "node_modules", "node-pty", "prebuilds"),
+        to: "app/node_modules/node-pty/prebuilds",
+      },
     ],
     files: [...ELECTRON_BUILDER_FILE_PATTERNS],
     mac: {

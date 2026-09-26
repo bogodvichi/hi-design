@@ -10,6 +10,8 @@ describe("packaged windows smoke identity", () => {
     })).toEqual({
       displayName: "Hi Design Prerelease",
       namespaceToken: "release-stable-win",
+      productName: "Hi Design Team",
+      systemName: "Hi Design Prerelease-release-stable-win",
     });
     expect(releaseAppVersionArgs("0.8.0-prerelease.2")).toEqual(["--app-version", "0.8.0-prerelease.2"]);
   });
@@ -21,6 +23,8 @@ describe("packaged windows smoke identity", () => {
     })).toEqual({
       displayName: "Hi Design",
       namespaceToken: "release-stable-win",
+      productName: "Hi Design Team",
+      systemName: "Hi Design-release-stable-win",
     });
     expect(resolvePackagedWinInstallIdentity({
       namespace: "default",
@@ -28,6 +32,8 @@ describe("packaged windows smoke identity", () => {
     })).toEqual({
       displayName: "Hi Design",
       namespaceToken: "default",
+      productName: "Hi Design Team",
+      systemName: "Hi Design",
     });
   });
 
@@ -49,6 +55,8 @@ describe("packaged windows smoke identity", () => {
     })).toEqual({
       displayName: "Hi Design beta-local-flow",
       namespaceToken: "beta-local-flow",
+      productName: "Hi Design Team",
+      systemName: "Hi Design beta-local-flow",
     });
     expect(releaseAppVersionArgs("   ")).toEqual([]);
   });

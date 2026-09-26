@@ -484,6 +484,9 @@ importers:
       '@open-design/release':
         specifier: workspace:*
         version: link:../packages/release
+      '@open-design/sidecar-proto':
+        specifier: workspace:*
+        version: link:../packages/sidecar-proto
       '@playwright/test':
         specifier: 1.60.0
         version: 1.60.0

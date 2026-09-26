@@ -3,12 +3,15 @@ import {
   releaseChannelFromVersion,
   releaseInstallIdentity,
 } from "@open-design/release";
+import { OPEN_DESIGN_PRODUCT_NAME } from "@open-design/sidecar-proto";
 
 export { releaseAppVersionArgs } from "./packaged-release-version.js";
 
 export type PackagedWinInstallIdentity = {
   displayName: string;
   namespaceToken: string;
+  productName: string;
+  systemName: string;
 };
 
 function sanitizeNamespace(value: string): string {
@@ -22,6 +25,19 @@ export function resolvePackagedWinInstallIdentity(options: {
   const namespaceToken = sanitizeNamespace(options.namespace);
   const channel = releaseChannelFromVersion(options.releaseVersion)
     ?? releaseChannelFromNamespace(options.namespace, "default");
-  const displayName = channel == null ? `Hi Design ${namespaceToken}` : releaseInstallIdentity(channel).productName;
-  return { displayName, namespaceToken };
+  const identity = channel == null ? null : releaseInstallIdentity(channel);
+  const displayName = identity?.displayName ?? `Hi Design ${namespaceToken}`;
+  const isDefaultNamespace = options.namespace === "default";
+  // Mirror resolveWinInstallIdentity in tools/pack/src/win/identity.ts:
+  // release channels carry the namespace suffix in systemName so different
+  // namespaces can coexist; the default namespace stays clean.
+  const systemName = (identity != null && !isDefaultNamespace)
+    ? `${displayName}-${namespaceToken}`
+    : displayName;
+  return {
+    displayName,
+    namespaceToken,
+    productName: OPEN_DESIGN_PRODUCT_NAME,
+    systemName,
+  };
 }

@@ -547,14 +547,14 @@ winDescribe('packaged windows runtime smoke', () => {
       expectPathInside(install.installerPath, join(outputNamespaceRoot, 'builder'));
       expectPathInside(install.installDir, join(runtimeNamespaceRoot, 'install'));
       expectPathInside(install.uninstallerPath, install.installDir);
-      expect(basename(install.uninstallerPath)).toBe(`Uninstall ${installIdentity.displayName}.exe`);
+      expect(basename(install.uninstallerPath)).toBe(`Uninstall ${installIdentity.systemName}.exe`);
       expect(install.desktopShortcutExists).toBe(true);
       expect(install.startMenuShortcutExists).toBe(true);
-      expect(basename(install.desktopShortcutPath)).toBe(`${installIdentity.displayName}.lnk`);
-      expect(basename(install.startMenuShortcutPath)).toBe(`${installIdentity.displayName}.lnk`);
+      expect(basename(install.desktopShortcutPath)).toBe(`${installIdentity.systemName}.lnk`);
+      expect(basename(install.startMenuShortcutPath)).toBe(`${installIdentity.systemName}.lnk`);
       expect(install.registryEntries.length).toBeGreaterThan(0);
       expect(JSON.stringify(install.registryEntries)).toContain(installIdentity.displayName);
-      expect(JSON.stringify(install.registryEntries)).toContain(`Hi Design-${installIdentity.namespaceToken}`);
+      expect(JSON.stringify(install.registryEntries)).toContain(`${installIdentity.productName}-${installIdentity.namespaceToken}`);
       await assertWindowsInviteProtocolRegistration(install.installDir);
       expect(install.installPayload.fileCount).toBeGreaterThan(0);
       expect(install.installPayload.totalBytes).toBeGreaterThan(0);
