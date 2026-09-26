@@ -65,10 +65,16 @@ export const SIDECAR_STAMP_FIELDS = ["app", "mode", "namespace", "ipc", "source"
 
 export const SIDECAR_DEFAULTS = Object.freeze({
  host: "127.0.0.1",
- ipcBase: "/tmp/hi-design-team/ipc",
+ // Generic default — NOT a product-specific name. Each packaged build must
+ // override via OD_SIDECAR_IPC_BASE (set in apps/packaged/src/index.ts from
+ // the baked productName). A product-specific default here caused cross-
+ // version IPC collisions: a personal "Hi Design" build without the env-var
+ // override fell back to "hi-design-team" and connected to the team version
+ // desktop/daemon/web via the shared named pipe / unix socket.
+ ipcBase: "/tmp/opendesign-sidecar/ipc",
  namespace: "default",
  projectTmpDirName: ".tmp",
- windowsPipePrefix: "hi-design-team",
+ windowsPipePrefix: "opendesign-sidecar",
 } as const);
 
 // Internal packaging identity for the Hi Design Team product line. The visible
