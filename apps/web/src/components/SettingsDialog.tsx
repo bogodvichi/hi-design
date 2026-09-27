@@ -5971,7 +5971,7 @@ export function SettingsDialog({
                             : t(aboutUpdateControl.primaryLabelKey)}
                         </button>
                       ) : null}
-                      {aboutUpdateControl.showReleaseLink ? (
+                      {/* {aboutUpdateControl.showReleaseLink ? (
                         <button
                           type="button"
                           className="settings-about-release-link"
@@ -5979,7 +5979,7 @@ export function SettingsDialog({
                         >
                           {t('settings.updateViewReleases')}
                         </button>
-                      ) : null}
+                      ) : null} */}
                     </div>
                   </div>
                   <div>

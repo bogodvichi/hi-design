@@ -145,10 +145,10 @@ export async function defaultExtractLauncherPayloadArchive(input: LauncherPayloa
     }
     return;
   }
-  if (input.platform === "win32") {
-    await execFileAsync(input.extractorPath ?? "7z", ["x", "-y", `-o${input.destinationRoot}`, input.archivePath], { windowsHide: true });
-    return;
-  }
+ if (input.platform === "win32") {
+    await execFileAsync(input.extractorPath ?? "7z", ["x", "-y", `-o${input.destinationRoot}`, input.archivePath], { windowsHide: true, maxBuffer: 512 * 1024 * 1024 });
+   return;
+ }
   throw new Error(`launcher payload extraction is not supported on ${input.platform}`);
 }
 
