@@ -5134,9 +5134,6 @@ export interface Dict {
   'brandDetail.deleteConfirm': string;
   'brandDetail.viewMore': string;
   'brandDetail.viewLess': string;
-  'settings.resetOnboarding': string;
-  'settings.resetOnboardingDesc': string;
-  'settings.resetOnboardingButton': string;
   // Manual updater/launcher cache clear (disaster recovery, About pane).
   'settings.clearUpdaterCacheTitle': string;
   'settings.clearUpdaterCacheHint': string;

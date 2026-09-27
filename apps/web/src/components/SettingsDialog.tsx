@@ -488,10 +488,8 @@ interface Props {
    * saved state with `''` before the daemon's response lands.
    */
   composioConfigLoading?: boolean;
-  onClose: () => void;
-  /** Hand the explicit onboarding reset back to App, the config state owner. */
-  onResetOnboarding?: (next: AppConfig) => void;
-  onRefreshAgents: (
+ onClose: () => void;
+ onRefreshAgents: (
     options?: AgentRefreshOptions,
   ) => AgentInfo[] | Promise<AgentInfo[] | void> | void;
   onAmrLoginStatusChange?: (status: VelaLoginStatus | null) => void;
@@ -1505,9 +1503,8 @@ export function SettingsDialog({
   onPersist,
   onPersistComposioKey,
   composioConfigLoading = false,
-  onClose,
-  onResetOnboarding,
-  onRefreshAgents,
+ onClose,
+ onRefreshAgents,
   onAmrLoginStatusChange,
   onAmrSignedOut,
   daemonMediaProviders,
@@ -3163,9 +3160,8 @@ export function SettingsDialog({
   const autosaveTimerRef = useRef<number | null>(null);
   const autosaveSavedTimerRef = useRef<number | null>(null);
   const autosaveRetryTimerRef = useRef<number | null>(null);
-  const autosavePendingFlushRef = useRef(false);
-  const explicitOnboardingResetRef = useRef(false);
-  const byokPreflightTrackingRef = useRef<string | null>(null);
+ const autosavePendingFlushRef = useRef(false);
+ const byokPreflightTrackingRef = useRef<string | null>(null);
   const committedClearedByokProviderKeyRef = useRef<string | null>(null);
   const autosaveLatestRef = useRef<AppConfig>(cfg);
   // Baseline used by the draft-only detector: the snapshot at the most
@@ -3179,29 +3175,9 @@ export function SettingsDialog({
   const lastSyncedMediaProvidersVersionRef = useRef(0);
   const [autosaveCommitTick, setAutosaveCommitTick] = useState(0);
   const [autosaveRetryTick, setAutosaveRetryTick] = useState(0);
-  autosaveLatestRef.current = cfg;
+ autosaveLatestRef.current = cfg;
 
-  // App owns the config transition and persistence. Settings only supplies
-  // its latest draft with the explicit reset intent. Cancel a queued autosave
-  // before handing off: the dialog unmounts immediately, and its normal
-  // pending-draft flush must not replay the pre-reset `true` snapshot.
-  const handleResetOnboarding = useCallback(() => {
-    if (!onResetOnboarding) return;
-    explicitOnboardingResetRef.current = true;
-    autosavePendingFlushRef.current = false;
-    if (autosaveTimerRef.current != null) {
-      window.clearTimeout(autosaveTimerRef.current);
-      autosaveTimerRef.current = null;
-    }
-    if (autosaveRetryTimerRef.current != null) {
-      window.clearTimeout(autosaveRetryTimerRef.current);
-      autosaveRetryTimerRef.current = null;
-    }
-    setAutosaveStatus('idle');
-    onResetOnboarding({ ...cfg, onboardingCompleted: false });
-  }, [cfg, onResetOnboarding]);
-
-  useEffect(() => {
+ useEffect(() => {
     if (autosaveSkipFirstRef.current) {
       autosaveSkipFirstRef.current = false;
       return;
@@ -3344,10 +3320,9 @@ export function SettingsDialog({
   // timer to avoid setState after unmount.
   useEffect(() => {
     return () => {
-      if (
-        autosavePendingFlushRef.current
-        && !explicitOnboardingResetRef.current
-      ) {
+     if (
+       autosavePendingFlushRef.current
+     ) {
         const mediaProvidersVersion = mediaProvidersChangeVersionRef.current;
         // Best-effort flush; if it rejects, localStorage already has
         // the latest copy from the synchronous saveConfig call inside
@@ -4344,6 +4319,7 @@ export function SettingsDialog({
                 <small>Image / video / audio</small>
               </span>
             </button>
+            {/* HiDesign MCP nav item hidden — kept for future re-enable.
             <button
               type="button"
               className={`settings-nav-item${activeSection === 'integrations' ? ' active' : ''}`}
@@ -4355,6 +4331,7 @@ export function SettingsDialog({
                 <small>{t('settings.mcpServerHint')}</small>
               </span>
             </button>
+            */}
             <button
               type="button"
               className={`settings-nav-item${activeSection === 'privacy' ? ' active' : ''}`}
@@ -4431,7 +4408,7 @@ export function SettingsDialog({
                 </button>
               </div>
               </div>
-              {cfg.mode === 'daemon' && !amrCardSignedIn ? (
+              {cfg.mode === 'daemon' && !amrCardSignedIn && visibleAgents.some((a) => a.id === 'amr') ? (
                 // Only prompt to sign into HiDesign Cloud when NOT already
                 // signed in — the AMR/vela session IS the cloud identity (one
                 // session drives both), so a logged-in user has nothing to do
@@ -6069,18 +6046,9 @@ export function SettingsDialog({
                   <h4>{t('diagnostics.exportTitle')}</h4>
                   <p className="hint">{t('diagnostics.exportHint')}</p>
                 </div>
-                <ExportDiagnosticsRow />
-              </div>
-              <div className="settings-about-diagnostics">
-                <div className="settings-about-diagnostics-text">
-                  <h4>{t('settings.resetOnboarding')}</h4>
-                  <p className="hint">{t('settings.resetOnboardingDesc')}</p>
-                </div>
-                <Button onClick={handleResetOnboarding}>
-                  {t('settings.resetOnboardingButton')}
-                </Button>
-              </div>
-            </section>
+               <ExportDiagnosticsRow />
+             </div>
+           </section>
           ) : null}
 
           {activeSection === 'workspace' && showWorkspaceSettings ? (

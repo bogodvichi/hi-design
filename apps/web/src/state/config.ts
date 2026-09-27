@@ -1258,7 +1258,7 @@ export async function syncConfigToDaemon(
     ...(config.onboardingCompleted === true
       ? { onboardingCompleted: true }
       : options?.allowOnboardingReset
-        ? { onboardingCompleted: true }
+        ? { onboardingCompleted: false }
         : {}),
     agentId: config.agentId,
     agentModels: config.agentModels,
