@@ -28,7 +28,7 @@ env:
   POSTHOG_CLI_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
   POSTHOG_CLI_PROJECT_ID: ${{ vars.POSTHOG_CLI_PROJECT_ID }}
   OD_HDW_PATH_PREFIX: "/hik-plugin/hidesign-web-offical/hdw"
-  OD_UPDATE_METADATA_URL: "https://pixso.hikvision.com.cn/hik-plugin/hidesign-web/public/webresources/download/stable/latest/metadata.json"
+  OD_UPDATE_METADATA_URL: "https://pixso.hikvision.com.cn/hik-plugin/hidesign-web-offical/public/webresources/download/stable/latest/metadata.json"
 
 jobs:
   verify:
@@ -591,7 +591,7 @@ jobs:
           win_payload_sha=$(shasum -a 256 "$ASSETS_DIR/Hi Design-$VERSION-win-x64-payload.7z" | awk '{print $1}')
 
           # RELEASE_URL="https://github.com/${{ github.repository }}/releases/download/v$VERSION"
-          RELEASE_URL="https://pixso.hikvision.com.cn/hik-plugin/ai-builder-web/public/webresources/download/hi-design/stable/versions/v$VERSION"
+          RELEASE_URL="https://pixso.hikvision.com.cn/hik-plugin/hidesign-web-offical/public/webresources/download/hi-design/stable/versions/v$VERSION"
           cat > "$ASSETS_DIR/metadata.json" <<METADATA
           {
             "channel": "stable",

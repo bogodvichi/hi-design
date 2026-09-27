@@ -46,7 +46,7 @@ env:
   POSTHOG_CLI_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
   POSTHOG_CLI_PROJECT_ID: ${{ vars.POSTHOG_CLI_PROJECT_ID }}
   OD_HDW_PATH_PREFIX: "/hik-plugin/hidesign-web-offical/hdw"
-  OD_UPDATE_METADATA_URL: "https://pixso.hikvision.com.cn/hik-plugin/hidesign-web/public/webresources/download/beta/latest/metadata.json"
+  OD_UPDATE_METADATA_URL: "https://pixso.hikvision.com.cn/hik-plugin/hidesign-web-offical/public/webresources/download/beta/latest/metadata.json"
 
 jobs:
   verify:
@@ -688,7 +688,7 @@ jobs:
           mac_intel_payload_sha=$(shasum -a 256 "$ASSETS_DIR/Hi Design-$VERSION-mac-x64-payload.zip" | awk '{print $1}')
           win_setup_sha=$(shasum -a 256 "$ASSETS_DIR/Hi Design-$VERSION-win-x64-setup.exe" | awk '{print $1}')
           win_payload_sha=$(shasum -a 256 "$ASSETS_DIR/Hi Design-$VERSION-win-x64-payload.7z" | awk '{print $1}')
-          RELEASE_URL="https://pixso.hikvision.com.cn/hik-plugin/ai-builder-web/public/webresources/download/hi-design/beta/versions/v$VERSION"
+          RELEASE_URL="https://pixso.hikvision.com.cn/hik-plugin/hidesign-web-offical/public/webresources/download/hi-design/beta/versions/v$VERSION"
           cat > "$ASSETS_DIR/metadata.json" <<METADATA
           {
             "channel": "beta",
