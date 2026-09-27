@@ -1725,15 +1725,6 @@ export function EntryNavRail({
           <Icon name="home" size={16} />
         </NavButton>
         <NavButton
-          active={view === 'community'}
-          ariaLabel={communityLabel}
-          label={communityLabel+'(旧)'}
-          onClick={() => selectView('community')}
-          testId="entry-nav-community"
-        >
-          <Icon name="globe" size={16} />
-        </NavButton>
-        <NavButton
           active={view === 'square' || view === 'my-publishes'}
           ariaLabel={plazaLabel}
           label={plazaLabel}
@@ -1741,6 +1732,15 @@ export function EntryNavRail({
           testId="entry-nav-plaza"
         >
           <Icon name="sparkles" size={16} />
+        </NavButton>
+        <NavButton
+          active={view === 'community'}
+          ariaLabel="模板"
+          label="模板"
+          onClick={() => selectView('community')}
+          testId="entry-nav-community"
+        >
+          <Icon name="globe" size={16} />
         </NavButton>
 
         {false&&context ? (
