@@ -46,7 +46,7 @@ env:
   POSTHOG_CLI_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
   POSTHOG_CLI_PROJECT_ID: ${{ vars.POSTHOG_CLI_PROJECT_ID }}
   OD_HDW_PATH_PREFIX: "/hik-plugin/hidesign-web-offical/hdw"
-  OD_UPDATE_METADATA_URL: "https://pixso.hikvision.com.cn/hik-plugin/hidesign-web-offical/public/webresources/download/beta/latest/metadata.json"
+  OD_UPDATE_METADATA_URL: "https://pixso.hikvision.com.cn/hik-plugin/hidesign-web-offical/public/webresources/download/hi-design/beta/latest/metadata.json"
 
 jobs:
   verify:
