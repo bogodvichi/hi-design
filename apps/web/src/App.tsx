@@ -5384,17 +5384,6 @@ if (fetchedProject) {
     }
   };
 
-  const handleResetOnboarding = useCallback((next: AppConfig) => {
-    latestPersistedConfigRef.current = next;
-    saveConfig(next);
-    void syncConfigToDaemon(next, { allowOnboardingReset: true });
-    setConfig(next);
-    setSettingsOpen(false);
-    settingsDraftConfigRef.current = null;
-    setSettingsHighlight(null);
-    navigate({ kind: 'home', view: 'onboarding' });
-  }, []);
-
   const handleActiveCloudSignOut = useCallback(async () => {
     const next = resetExecutionConfigAfterSignOut(latestPersistedConfigRef.current);
     latestPersistedConfigRef.current = next;
@@ -5428,9 +5417,8 @@ if (fetchedProject) {
      onPersist={handleConfigPersist}
      onDraftChange={handleSettingsDraftChange}
      onPersistComposioKey={handleConfigPersistComposioKey}
-     onClose={handleCloseSettings}
-     onResetOnboarding={handleResetOnboarding}
-      onAmrSignedOut={handleActiveCloudSignOut}
+    onClose={handleCloseSettings}
+     onAmrSignedOut={handleActiveCloudSignOut}
       onRefreshAgents={refreshAgents}
       onAmrLoginStatusChange={handleAmrLoginStatusChange}
       daemonMediaProviders={daemonMediaProviders}
