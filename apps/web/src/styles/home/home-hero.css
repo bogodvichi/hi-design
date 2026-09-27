@@ -93,7 +93,7 @@
      build — read as undersized once the full mark+wordmark artwork landed). */
   width: min(260px, 65vw);
   /* Logo → composer gap = 24px total: this 18px + the hero's 6px flex gap. */
-  margin-bottom: var(--spacing-18);
+  margin-bottom: var(--spacing-48);
 }
 .home-hero__logo {
   display: block;
@@ -497,6 +497,24 @@
      radius (16px) + the 4px gap (this card's side padding), so the two corners
      run parallel and read as consistent. */
   border-radius: 20px;
+}
+
+/* Lottie badge pinned to the top-right corner of the home composer card.
+   Home-only: the badge is rendered exclusively inside composer-surface--home. */
+.composer-lottie-badge {
+    position: absolute;
+    top: -130px;
+    right: 0px;
+    z-index: 3;
+    width: 172px;
+    height: 172px;
+    pointer-events: none;
+    opacity: 0.92;
+}
+
+.composer-lottie-badge svg {
+  width: 100%;
+  height: 100%;
 }
 /* Keep the approved tray color stable while the inner frame carries focus. */
 .home-hero__composer-card:focus-within {

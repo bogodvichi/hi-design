@@ -119,6 +119,7 @@ import {
   ComposerSurfaceInside,
   ComposerSurfaceOutside,
 } from './composer/ComposerSurface';
+import { ComposerLottieBadge } from './composer/ComposerLottieBadge';
 import {
   ComposerContextChip,
   ComposerOutsideContextList,
@@ -1352,6 +1353,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
       {/* #5517 wraps the input card + workdir row into one visible composer
           card so they read as a single surface. */}
       <ComposerSurface variant="home">
+      <ComposerLottieBadge />
       {/* Files and non-Skill/MCP context sit at the top of the gray tray. */}
       {hasOutsideContext ? (
         <ComposerSurfaceOutside data-testid="home-hero-outside-contexts">
