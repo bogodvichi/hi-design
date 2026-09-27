@@ -2,6 +2,7 @@ import {
   releaseChannelFromNamespace,
   releaseChannelFromVersion,
   releaseInstallIdentity,
+  releaseNamespace,
 } from "@open-design/release";
 import { OPEN_DESIGN_PRODUCT_NAME } from "@open-design/sidecar-proto";
 
@@ -30,8 +31,12 @@ export function resolvePackagedWinInstallIdentity(options: {
   const isDefaultNamespace = options.namespace === "default";
   // Mirror resolveWinInstallIdentity in tools/pack/src/win/identity.ts:
   // release channels carry the namespace suffix in systemName so different
-  // namespaces can coexist; the default namespace stays clean.
-  const systemName = (identity != null && !isDefaultNamespace)
+  // namespaces can coexist; the default namespace stays clean. The standard
+  // release namespace for a channel (release-{channel}-win) already embeds
+  // the channel in displayName, so the suffix is redundant there.
+  const isStandardReleaseNamespace = identity != null
+    && options.namespace === releaseNamespace(channel!, "win");
+  const systemName = (identity != null && !isDefaultNamespace && !isStandardReleaseNamespace)
     ? `${displayName}-${namespaceToken}`
     : displayName;
   return {

@@ -7,6 +7,7 @@ import {
   releaseChannelFromNamespace,
   releaseChannelFromVersion,
   releaseInstallIdentity,
+  releaseNamespace,
 } from "@open-design/release";
 
 import type { ToolPackConfig } from "../config/index.js";
@@ -34,11 +35,15 @@ export function resolveWinInstallIdentity(config: Pick<ToolPackConfig, "namespac
   // The system identity (install dir, shortcut, app-paths key, uninstaller)
   // carries the namespace so different namespaces can coexist on the same
   // release channel. The default namespace stays clean as the canonical
-  // baseline. Non-release namespaces already embed the namespace in
-  // displayName, so only release channels need the suffix. displayName stays
+  // baseline. The standard release namespace for a channel
+  // (release-{channel}-win) already embeds the channel in displayName
+  // (e.g. "Hi Design Beta"), so the suffix is redundant there and only
+  // non-standard namespaces on a release channel need it. displayName stays
   // clean for Add/Remove Programs.
   const isDefaultNamespace = config.namespace === SIDECAR_DEFAULTS.namespace;
-  const systemName = (channel != null && !isDefaultNamespace)
+  const isStandardReleaseNamespace = channel != null
+    && config.namespace === releaseNamespace(channel, "win");
+  const systemName = (channel != null && !isDefaultNamespace && !isStandardReleaseNamespace)
     ? `${displayName}-${namespaceToken}`
     : displayName;
 

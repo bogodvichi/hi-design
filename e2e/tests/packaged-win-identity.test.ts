@@ -24,7 +24,7 @@ describe("packaged windows smoke identity", () => {
       displayName: "Hi Design",
       namespaceToken: "release-stable-win",
       productName: "Hi Design Team",
-      systemName: "Hi Design-release-stable-win",
+      systemName: "Hi Design",
     });
     expect(resolvePackagedWinInstallIdentity({
       namespace: "default",

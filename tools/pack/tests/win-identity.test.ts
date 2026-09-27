@@ -27,23 +27,23 @@ describe("resolveWinInstallIdentity", () => {
 
   it("uses the canonical Windows display name for stable release namespaces", () => {
     expect(resolveWinInstallIdentity({ namespace: "release-stable-win" })).toMatchObject({
-      appPathsKey: "Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\Hi Design-release-stable-win.exe",
+      appPathsKey: "Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\Hi Design.exe",
       displayName: "Hi Design",
       installDirName: "Hi Design Team-release-stable-win",
       registryKey: "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Hi Design Team-release-stable-win",
-      shortcutName: "Hi Design-release-stable-win.lnk",
-      uninstallerName: "Uninstall Hi Design-release-stable-win.exe",
+      shortcutName: "Hi Design.lnk",
+      uninstallerName: "Uninstall Hi Design.exe",
     });
   });
 
   it("uses first-class beta display identity for beta release namespaces", () => {
     expect(resolveWinInstallIdentity({ namespace: "release-beta-win" })).toMatchObject({
-      appPathsKey: "Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\Hi Design Beta-release-beta-win.exe",
+      appPathsKey: "Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\Hi Design Beta.exe",
       displayName: "Hi Design Beta",
       installDirName: "Hi Design Team-release-beta-win",
       registryKey: "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Hi Design Team-release-beta-win",
-      shortcutName: "Hi Design Beta-release-beta-win.lnk",
-      uninstallerName: "Uninstall Hi Design Beta-release-beta-win.exe",
+      shortcutName: "Hi Design Beta.lnk",
+      uninstallerName: "Uninstall Hi Design Beta.exe",
     });
   });
 
@@ -60,12 +60,12 @@ describe("resolveWinInstallIdentity", () => {
 
   it("uses first-class preview display identity for preview release namespaces", () => {
     expect(resolveWinInstallIdentity({ namespace: "release-preview-win" })).toMatchObject({
-      appPathsKey: "Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\Hi Design Preview-release-preview-win.exe",
+      appPathsKey: "Software\\Microsoft\\Windows\\CurrentVersion\\App Paths\\Hi Design Preview.exe",
       displayName: "Hi Design Preview",
       installDirName: "Hi Design Team-release-preview-win",
       registryKey: "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Hi Design Team-release-preview-win",
-      shortcutName: "Hi Design Preview-release-preview-win.lnk",
-      uninstallerName: "Uninstall Hi Design Preview-release-preview-win.exe",
+      shortcutName: "Hi Design Preview.lnk",
+      uninstallerName: "Uninstall Hi Design Preview.exe",
     });
   });
 
@@ -83,7 +83,7 @@ describe("resolveWinInstallIdentity", () => {
     });
     expect(resolveWinInstallIdentity({ namespace: "release-prerelease-win" })).toMatchObject({
       displayName: "Hi Design Prerelease",
-      shortcutName: "Hi Design Prerelease-release-prerelease-win.lnk",
+      shortcutName: "Hi Design Prerelease.lnk",
       installDirName: "Hi Design Team-release-prerelease-win",
     });
   });
