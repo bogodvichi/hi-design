@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
-import { lstat, mkdir, readdir, readFile, realpath, rename, rm } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { lstat, mkdir, readdir, readFile, realpath, rm } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import { promisify } from "node:util";
 
 import {
@@ -109,12 +109,12 @@ export function validateLauncherPayloadManifest(value: unknown, expected: {
 export async function assertLauncherPayloadBootConfig(input: {
   manifest: LauncherPayloadManifest;
   payloadRoot: string;
-  stagingRoot: string;
+  root: string;
 }): Promise<void> {
   const resourcesPath = input.manifest.platform === "darwin"
-    ? join(input.stagingRoot, input.manifest.entry?.cwd ?? "", "Contents", "Resources")
+    ? join(input.root, input.manifest.entry?.cwd ?? "", "Contents", "Resources")
     : join(input.payloadRoot, "resources");
-  if (!containsPath(input.stagingRoot, resourcesPath)) {
+  if (!containsPath(input.root, resourcesPath)) {
     throw new Error("launcher payload resources path escaped extracted payload");
   }
   const resourcesEntry = await lstat(resourcesPath);
@@ -122,7 +122,7 @@ export async function assertLauncherPayloadBootConfig(input: {
     throw new Error("launcher payload resources must be a plain directory");
   }
   const packagedConfigPath = join(resourcesPath, "hi-design-team-config.json");
-  if (!containsPath(input.stagingRoot, packagedConfigPath)) {
+  if (!containsPath(input.root, packagedConfigPath)) {
     throw new Error("launcher payload config path escaped extracted payload");
   }
   const rawConfig = await readJsonStrict<unknown>(packagedConfigPath);
@@ -150,32 +150,6 @@ export async function defaultExtractLauncherPayloadArchive(input: LauncherPayloa
    return;
  }
   throw new Error(`launcher payload extraction is not supported on ${input.platform}`);
-}
-
-/**
- * On Windows, `rename` for a directory can fail with EPERM when the
- * target path was just removed by `rm` but the OS hasn't fully
- * released the directory entry (antivirus scanning, search indexer,
- * or delayed file handle closure). This wraps `rename` with a short
- * retry loop that re-attempts the removal and rename after brief delays.
- */
-async function renameDirectoryWithWindowsRetry(source: string, destination: string, maxAttempts = 4): Promise<void> {
-  const baseDelayMs = 100;
-  await rm(destination, { force: true, recursive: true }).catch(() => undefined);
-  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    try {
-      await rename(source, destination);
-      return;
-    } catch (error) {
-      const code = (error as NodeJS.ErrnoException).code;
-      if (process.platform !== "win32" || (code !== "EPERM" && code !== "EEXIST" && code !== "ENOTEMPTY")) {
-        throw error;
-      }
-      if (attempt === maxAttempts - 1) throw error;
-      await new Promise((resolve) => setTimeout(resolve, baseDelayMs * 2 ** attempt));
-      await rm(destination, { force: true, recursive: true }).catch(() => undefined);
-    }
-  }
 }
 
 export async function assertPreparedLauncherPayloadRelease(input: {
@@ -207,7 +181,7 @@ export async function assertPreparedLauncherPayloadRelease(input: {
   if (!payloadRootEntry.isDirectory() || payloadRootEntry.isSymbolicLink()) {
     throw new Error("launcher payload root must be a plain directory");
   }
-  await assertLauncherPayloadBootConfig({ manifest, payloadRoot, stagingRoot: input.root });
+  await assertLauncherPayloadBootConfig({ manifest, payloadRoot, root: input.root });
   return entryExecutable;
 }
 
@@ -233,12 +207,7 @@ export async function prepareLauncherPayloadRelease(input: {
     root: input.config.launcherRoot,
     version: input.activeRelease.ref.version,
   });
-  const stagingRoot = join(versionPaths.stagingRoot, `prepare-${input.activeRelease.ref.key}`);
-  if (!containsPath(versionPaths.root, stagingRoot)) {
-    throw new Error("launcher payload staging path escaped launcher root");
-  }
-
-  let promoted = false;
+  let extracting = false;
   try {
     await mkdir(versionPaths.versionsRoot, { recursive: true });
     const existingVersion = await lstat(versionPaths.versionRoot).catch(() => null);
@@ -255,9 +224,10 @@ export async function prepareLauncherPayloadRelease(input: {
         });
         existingVersionValid = true;
       } catch {
-        // Keep the existing version root intact until the replacement staging
-        // payload has fully validated. If validation fails below, the old root
-        // remains available for forensic inspection or a later retry.
+        // An invalid version root is not launchable. Remove it so extraction
+        // can rebuild the exact release in place; a failed rebuild is cleaned
+        // up below and never becomes active because runtime.json is unchanged.
+        await rm(versionPaths.versionRoot, { force: true, recursive: true });
       }
       if (existingVersionValid) {
         await cleanupLauncherPayloadRoots({
@@ -278,23 +248,20 @@ export async function prepareLauncherPayloadRelease(input: {
       }
     }
 
-    await rm(stagingRoot, { force: true, recursive: true });
-    await mkdir(dirname(stagingRoot), { recursive: true });
+    extracting = true;
     await input.extractLauncherPayloadArchive({
       archivePath: input.activeRelease.path,
-      destinationRoot: stagingRoot,
+      destinationRoot: versionPaths.versionRoot,
       ...(input.config.launcherPayloadExtractorPath == null ? {} : { extractorPath: input.config.launcherPayloadExtractorPath }),
       platform: input.config.platform,
     });
 
     await assertPreparedLauncherPayloadRelease({
       config: input.config,
-      root: stagingRoot,
+      root: versionPaths.versionRoot,
       version: input.activeRelease.ref.version,
     });
 
-    await renameDirectoryWithWindowsRetry(stagingRoot, versionPaths.versionRoot);
-    promoted = true;
     await cleanupLauncherPayloadRoots({
       config: input.config,
       currentRuntime,
@@ -310,7 +277,9 @@ export async function prepareLauncherPayloadRelease(input: {
       versionPaths,
     });
   } catch (error) {
-    if (!promoted) await rm(stagingRoot, { force: true, recursive: true }).catch(() => undefined);
+    if (extracting) {
+      await rm(versionPaths.versionRoot, { force: true, recursive: true }).catch(() => undefined);
+    }
     throw error;
   }
 }
