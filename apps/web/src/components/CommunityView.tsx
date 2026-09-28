@@ -258,7 +258,7 @@ export function CommunityView({ onRemixTemplate, onUsePrompt, onUsePlugin }: Com
       <div className="community-template-view__header">
       <header className="community-template-view__hero">
         <div>
-          <h1 id="community-template-title" className="entry-section__title">{t('community.title')}</h1>
+          <h1 id="community-template-title" className="entry-section__title">模板</h1>
         </div>
         <div className="community-template-view__search" role="search">
           <Icon name="search" size={16} />
