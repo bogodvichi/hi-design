@@ -152,6 +152,32 @@ export async function defaultExtractLauncherPayloadArchive(input: LauncherPayloa
   throw new Error(`launcher payload extraction is not supported on ${input.platform}`);
 }
 
+/**
+ * On Windows, `rename` for a directory can fail with EPERM when the
+ * target path was just removed by `rm` but the OS hasn't fully
+ * released the directory entry (antivirus scanning, search indexer,
+ * or delayed file handle closure). This wraps `rename` with a short
+ * retry loop that re-attempts the removal and rename after brief delays.
+ */
+async function renameDirectoryWithWindowsRetry(source: string, destination: string, maxAttempts = 4): Promise<void> {
+  const baseDelayMs = 100;
+  await rm(destination, { force: true, recursive: true }).catch(() => undefined);
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    try {
+      await rename(source, destination);
+      return;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (process.platform !== "win32" || (code !== "EPERM" && code !== "EEXIST" && code !== "ENOTEMPTY")) {
+        throw error;
+      }
+      if (attempt === maxAttempts - 1) throw error;
+      await new Promise((resolve) => setTimeout(resolve, baseDelayMs * 2 ** attempt));
+      await rm(destination, { force: true, recursive: true }).catch(() => undefined);
+    }
+  }
+}
+
 export async function assertPreparedLauncherPayloadRelease(input: {
   config: DesktopUpdaterConfig;
   root: string;
@@ -267,8 +293,7 @@ export async function prepareLauncherPayloadRelease(input: {
       version: input.activeRelease.ref.version,
     });
 
-    await rm(versionPaths.versionRoot, { force: true, recursive: true });
-    await rename(stagingRoot, versionPaths.versionRoot);
+    await renameDirectoryWithWindowsRetry(stagingRoot, versionPaths.versionRoot);
     promoted = true;
     await cleanupLauncherPayloadRoots({
       config: input.config,
