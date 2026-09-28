@@ -475,12 +475,13 @@ export function createDesktopUpdater(
     error = nextError;
     const status = snapshot();
     if (previous !== next || nextError != null) {
-      logUpdateEvent("state", {
-        availableVersion: status.availableVersion,
-        errorCode: nextError?.code,
-        next,
-        previous,
-      });
+     logUpdateEvent("state", {
+       availableVersion: status.availableVersion,
+       errorCode: nextError?.code,
+       errorMessage: nextError?.message,
+       next,
+       previous,
+     });
     }
     emit();
     return status;
