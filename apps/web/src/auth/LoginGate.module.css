@@ -51,8 +51,6 @@
    layer has opacity 1; the rest fade out for a crossfade transition. */
 .splitImageLayer {
   position: absolute;
-  top: 0;
-  left: 0;
   inset: 0;
   background-size: cover;
   background-position: center;
