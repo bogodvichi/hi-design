@@ -10,11 +10,13 @@ import {
   deckPreviewSrcDoc,
   RecentProjectsStrip,
 } from '../../src/components/RecentProjectsStrip';
+import { PROJECT_CARD_MOVE_RESULT_EVENT } from '../../src/components/project-card-drag';
 import {
   fetchProjectFiles,
   fetchProjectFileText,
   invalidateProjectFilesCache,
 } from '../../src/providers/registry';
+import { markProjectLocationTarget } from '../../src/lib/recently-opened-projects';
 import type { Project } from '../../src/types';
 
 const recentWorkspaceState = vi.hoisted(() => ({
@@ -223,6 +225,88 @@ class MockWorkspaceEventSource {
 }
 
 describe('RecentProjectsStrip', () => {
+  it('opens the same project action menu from a card context click', () => {
+    const onDuplicate = vi.fn();
+    const { container } = render(
+      <RecentProjectsStrip
+        projects={[project({ id: 'context-project', name: 'Context project' })]}
+        onOpen={() => {}}
+        onDuplicate={onDuplicate}
+      />,
+    );
+    const card = container.querySelector<HTMLElement>('[data-project-id="context-project"]');
+    expect(card).not.toBeNull();
+
+    fireEvent.contextMenu(card?.querySelector('.recent-projects__card-meta') as HTMLElement);
+    expect(screen.getByRole('button', { name: 'More actions' }).getAttribute('aria-expanded')).toBe('false');
+
+    fireEvent.contextMenu(card?.querySelector('.recent-projects__card-thumb') as HTMLElement, {
+      clientX: 120,
+      clientY: 80,
+    });
+
+    expect(screen.getByRole('button', { name: 'More actions' }).getAttribute('aria-expanded')).toBe('true');
+    expect(screen.getByRole('menu')).toHaveStyle({ left: '120px', top: '80px' });
+    const duplicateItem = screen.getByRole('menuitem', { name: 'Copy and open' });
+    fireEvent.click(duplicateItem);
+    expect(onDuplicate).toHaveBeenCalledWith('context-project');
+  });
+
+  it('keeps the retained card selection while scrolling and clears it on an outside click', () => {
+    const { container } = render(
+      <RecentProjectsStrip
+        projects={[project({ id: 'dragged-project', name: 'Dragged project' })]}
+        onOpen={() => {}}
+      />,
+    );
+    const card = container.querySelector<HTMLElement>('[data-project-id="dragged-project"]');
+    expect(card).not.toBeNull();
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent(PROJECT_CARD_MOVE_RESULT_EVENT, {
+        detail: { projectId: 'dragged-project', moved: false },
+      }));
+    });
+    expect(card?.classList.contains('is-selected')).toBe(true);
+
+    fireEvent.click(card?.querySelector('.recent-projects__card-main') as HTMLElement);
+    expect(card?.classList.contains('is-selected')).toBe(true);
+
+    fireEvent.wheel(document.body, { deltaY: 120 });
+    expect(card?.classList.contains('is-selected')).toBe(true);
+
+    fireEvent.pointerDown(document.body, { pointerId: 1, clientX: 10, clientY: 10 });
+    fireEvent.scroll(document.body);
+    fireEvent.pointerUp(document.body, { pointerId: 1, clientX: 10, clientY: 30 });
+    fireEvent.click(document.body);
+    expect(card?.classList.contains('is-selected')).toBe(true);
+
+    fireEvent.pointerDown(document.body, { pointerId: 2, clientX: 10, clientY: 10 });
+    fireEvent.pointerUp(document.body, { pointerId: 2, clientX: 10, clientY: 10 });
+    fireEvent.click(document.body);
+    expect(card?.classList.contains('is-selected')).toBe(false);
+  });
+
+  it('keeps an opened-location card highlighted while scrolling and clears it on an outside click', async () => {
+    markProjectLocationTarget('located-project');
+    const { container } = render(
+      <RecentProjectsStrip
+        projects={[project({ id: 'located-project', name: 'Located project' })]}
+        onOpen={() => {}}
+      />,
+    );
+    const card = container.querySelector<HTMLElement>('[data-project-id="located-project"]');
+    await waitFor(() => expect(card?.classList.contains('is-location-target')).toBe(true));
+
+    fireEvent.wheel(document.body, { deltaY: 120 });
+    expect(card?.classList.contains('is-location-target')).toBe(true);
+
+    fireEvent.pointerDown(document.body, { pointerId: 3, clientX: 10, clientY: 10 });
+    fireEvent.pointerUp(document.body, { pointerId: 3, clientX: 10, clientY: 10 });
+    fireEvent.click(document.body);
+    expect(card?.classList.contains('is-location-target')).toBe(false);
+  });
+
   it('preserves most-recently-opened order for the recent feed instead of re-sorting by updatedAt', () => {
     const { container } = render(
       <RecentProjectsStrip

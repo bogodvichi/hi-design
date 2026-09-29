@@ -1,6 +1,8 @@
 import type { Dict } from '../types';
 
 export const ar: Dict = {
+  'projectDrag.movedTo': 'Moved to “{path}”',
+  'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "المجلدات المنقولة: {succeeded}؛ غير المكتملة: {failed}.",
   'personalScope.folderMoveFailed': "غير مكتمل: {name}. تحقق ثم أعد المحاولة.",
   'personalScope.folderMoveInterrupted': "{name}: تم تأكيد نقل {count} ملفات؛ قد تكون النتائج الأخرى معلقة. تم حفظ التقدم. اختر الوجهة الأصلية للمتابعة: {target}.",

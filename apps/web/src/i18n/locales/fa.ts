@@ -1,6 +1,8 @@
 import type { Dict } from '../types';
 
 export const fa: Dict = {
+  'projectDrag.movedTo': 'Moved to “{path}”',
+  'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "پوشه‌های منتقل‌شده: {succeeded}؛ ناتمام: {failed}.",
   'personalScope.folderMoveFailed': "ناتمام: {name}. بررسی کنید و دوباره تلاش کنید.",
   'personalScope.folderMoveInterrupted': "{name}: انتقال {count} فایل تأیید شد؛ نتایج دیگر ممکن است در انتظار تأیید باشند. پیشرفت ذخیره شد. برای ادامه مقصد اصلی را انتخاب کنید: {target}.",

@@ -30,6 +30,7 @@ import {
  type InstalledPluginRecord,
  type RunContextSelection,
  type ProjectScenarioTaskProfile,
+ type WorkspaceCollabContext,
  type WorkspaceProjectSummary,
 } from '@open-design/contracts';
 import type { OpenDesignHostProjectImportSuccess } from '@open-design/host';
@@ -346,6 +347,15 @@ export interface ProjectTitleHint {
   homeWorkspaceId?: string | null;
   /** True when navigation originates from the Shared-with-me grant surface. */
   sharedWithMe?: boolean;
+  /** Exact source Workspace identity from the collection that opened the
+   * project. Collection routes can be ahead of the shell's ambient context
+   * while a personal/team switch settles. */
+  workspaceContext?: WorkspaceCollabContext;
+}
+
+export interface ProjectMutationSource {
+  project: Project;
+  workspaceContext: WorkspaceCollabContext | null;
 }
 
 interface Props {
@@ -426,7 +436,7 @@ onDuplicateProject?: (
   id: string,
   options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
 ) => Promise<void> | void;
-onRenameProject: (id: string, name: string) => void;
+onRenameProject: (id: string, name: string, source?: ProjectMutationSource) => void;
 onProjectsRefresh?: () => Promise<void> | void;
 onCopyProject?: (
   id: string,

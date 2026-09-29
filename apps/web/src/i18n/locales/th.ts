@@ -1,6 +1,8 @@
 import type { Dict } from '../types';
 
 export const th: Dict = {
+  'projectDrag.movedTo': 'Moved to “{path}”',
+  'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "ย้ายโฟลเดอร์สำเร็จ: {succeeded}; ยังไม่เสร็จ: {failed}",
   'personalScope.folderMoveFailed': "ยังไม่เสร็จ: {name} โปรดตรวจสอบแล้วลองอีกครั้ง",
   'personalScope.folderMoveInterrupted': "{name}: ยืนยันการย้ายแล้ว {count} ไฟล์ ส่วนที่เหลืออาจยังไม่เสร็จหรือรอการยืนยัน บันทึกความคืบหน้าแล้ว เลือกปลายทางเดิมเพื่อดำเนินการต่อ: {target}",

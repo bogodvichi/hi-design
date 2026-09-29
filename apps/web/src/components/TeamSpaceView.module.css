@@ -727,7 +727,8 @@
 .folderList {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--card-grid-min-width)), 1fr));
-  gap: var(--card-grid-gap);
+  column-gap: var(--card-grid-gap);
+  row-gap: var(--card-grid-row-gap);
   align-items: stretch;
 }
 
@@ -770,10 +771,15 @@
 }
 
 .folderCardSelected,
-.folderCardSelected:hover {
-  border: 1px solid #353535;
+.folderCardSelected:hover,
+.folderCardDropActive,
+.folderCardDropActive:hover,
+.folderCardDropActive:focus-within {
+  border: 1.5px solid #353535;
   border-radius: var(--radius);
   outline: none;
+  transform: none;
+  filter: none;
 }
 
 .folderSelectCheck {
@@ -964,7 +970,13 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-top: 8px;
+  margin-top: 0;
+}
+
+/* projectsWrap contributes 16px between its children; add the remaining
+   spacing only when a folder grid actually precedes the project grid. */
+.folderList:not(:empty) + .projectsSection {
+  margin-top: calc(var(--card-grid-row-gap) - 16px);
 }
 
 /* --- Folder card more-menu (top-right anchor, same pattern as

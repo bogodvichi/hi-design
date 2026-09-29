@@ -40,7 +40,7 @@ import type {
   WorkspaceDirectoryItem,
 } from '@open-design/contracts';
 import { EntryView } from './components/EntryView';
-import type { ProjectTitleHint } from './components/EntryShell';
+import type { ProjectMutationSource, ProjectTitleHint } from './components/EntryShell';
 import type { IntegrationTab } from './components/IntegrationsView';
 import { MarketplaceView } from './components/MarketplaceView';
 import { PluginDetailView } from './components/PluginDetailView';
@@ -3930,7 +3930,13 @@ function AppInner() {
     const routeFileName = fileName ?? null;
     const hintedProjectName = projectTitleHint?.name.trim() || null;
     const hintedSharedWithMe = projectTitleHint?.sharedWithMe === true;
-    const recentContext = workspaceContextRef.current;
+    const hintedWorkspaceContext = projectTitleHint?.workspaceContext;
+    const validHintedWorkspaceContext = hintedWorkspaceContext
+      && hintedWorkspaceContext.workspaceId === projectTitleHint?.workspaceId
+      && hintedWorkspaceContext.workspaceMemberId === projectTitleHint?.workspaceMemberId
+      ? hintedWorkspaceContext
+      : null;
+    const recentContext = validHintedWorkspaceContext ?? workspaceContextRef.current;
     const recentSharedHomeWorkspaceId = recentlyOpenedSharedWithMeWorkspaceId(id, {
       workspaceId: recentContext?.workspaceId ?? null,
       workspaceMemberId: recentContext?.workspaceMemberId ?? null,
@@ -3938,7 +3944,7 @@ function AppInner() {
     });
     const requiresBoundCatalogProject = projectTitleHint?.authoritative === true;
     const openingAccountGeneration = currentWorkspaceAccountGeneration();
-    let openingContext = workspaceContextRef.current;
+    let openingContext = validHintedWorkspaceContext ?? workspaceContextRef.current;
     const knownUnboundLocalProject = !requiresBoundCatalogProject
       && projectsRef.current.some((project) =>
         project.id === id && !project.workspaceId?.trim()
@@ -3947,7 +3953,8 @@ function AppInner() {
       ReturnType<typeof resolveCurrentWorkspaceContextReadWitness>
     > | null = null;
     if (
-      !knownUnboundLocalProject
+      !validHintedWorkspaceContext
+      && !knownUnboundLocalProject
       && (
         !openingContext
         || workspaceContextStateRef.current.identityChangePending === true
@@ -4022,6 +4029,10 @@ function AppInner() {
     );
     const openingScopeIsCurrent = () => {
       if (currentWorkspaceAccountGeneration() !== openingAccountGeneration) return false;
+      // A collection card carries the exact Workspace membership that produced
+      // it. That source remains valid even if the shell's ambient context is
+      // still settling on the previously visited personal/team workspace.
+      if (validHintedWorkspaceContext) return true;
       if (!pendingContextWitness) {
         return projectAuthorizationGenerationRef.current === openingAuthorizationGeneration
           && projectListScopeKey(workspaceContextRef.current) === openingScopeKey;
@@ -4406,11 +4417,16 @@ if (fetchedProject) {
     return true;
   }, [clearLocalProject, iframeKeepAlivePool, route]);
 
-  const handleRenameProject = useCallback(async (id: string, name: string) => {
+  const handleRenameProject = useCallback(async (
+    id: string,
+    name: string,
+    source?: ProjectMutationSource,
+  ) => {
     const trimmed = name.trim();
     if (!trimmed) return;
-    const previous = projectsRef.current.find((project) => project.id === id) ?? null;
-    const renameContext = workspaceContextRef.current;
+    const previous = projectsRef.current.find((project) => project.id === id)
+      ?? (source?.project.id === id ? source.project : null);
+    const renameContext = source?.workspaceContext ?? workspaceContextRef.current;
     const renameAccountGeneration = currentWorkspaceAccountGeneration();
     const renameScopeKey = projectListScopeKey(renameContext);
     const renameProjectionKey = JSON.stringify([

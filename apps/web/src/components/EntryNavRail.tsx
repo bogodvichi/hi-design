@@ -74,6 +74,7 @@ import {
   useWorkspaceBillingResponse,
   useWorkspaceContext,
   workspaceBillingBalanceUsd,
+  workspaceContextFromDirectoryItem,
   workspaceBillingSummaryForContext,
   workspaceIdentityCacheKey,
 } from '../collab/useWorkspaceContext';
@@ -86,6 +87,7 @@ import { useDeepSeekV4FlashCampaignVisibility } from '../campaigns/use-deepseek-
 import { navigate, type EntryHomeView } from '../router';
 import { TeamTreeSection } from './TeamTreeSection';
 import { PersonalFuncSection } from './PersonalFuncSection';
+import { useProjectFolderDrop } from './useProjectFolderDrop';
 import type {
   AccountMenuClickProps,
   TrackingWorkspacePage,
@@ -1329,6 +1331,35 @@ export function EntryNavRail({
             lifecycleState: context.lifecycleState,
           } satisfies WorkspaceDirectoryItem]
         : [];
+  const personalWorkspaceItem =
+    identityWorkspaceItems.find((item) => item.isDefaultTeam === true)
+    ?? (context?.workspaceType === 'personal'
+      ? visibleWorkspaceItems.find((item) => item.workspaceId === context.workspaceId) ?? null
+      : null);
+  const {
+    activeFolderId: activeProjectDropId,
+    feedback: projectDropFeedback,
+    getFolderDropProps: getNavigationDropProps,
+  } = useProjectFolderDrop({
+    workspaceId: context?.workspaceId,
+    workspaceContext: context,
+    visibility: context?.workspaceType === 'team' ? 'team' : 'personal',
+    resolveWorkspaceContext: (workspaceId) => {
+      const workspace = visibleWorkspaceItems.find((item) => item.workspaceId === workspaceId);
+      return workspace ? workspaceContextFromDirectoryItem(workspace) : null;
+    },
+  });
+  const personalDropId = personalWorkspaceItem
+    ? `workspace:${personalWorkspaceItem.workspaceId}:root`
+    : null;
+  const personalDropProps = personalWorkspaceItem
+    ? getNavigationDropProps(null, t('personalFunc.all'), {
+        workspaceId: personalWorkspaceItem.workspaceId,
+        visibility: 'personal',
+        canMove: true,
+        dropId: personalDropId ?? undefined,
+      })
+    : undefined;
 
   async function loadWorkspaceDirectory(options: { force?: boolean } = {}) {
     // Capture the identity this read is FOR, and compare against `contextRef`
@@ -1527,7 +1558,48 @@ export function EntryNavRail({
       aria-hidden={open ? undefined : true}
     >
       <div className="entry-nav-rail__panel">
-      <div className="entry-nav-rail__group">
+        {/* Keep the search controls outside the scrolling directory so the
+            scrollbar starts below this fixed header instead of spanning the
+            full rail panel. */}
+        <div className="entry-nav-rail__search-row">
+          <button
+            type="button"
+            className="entry-nav-rail__search"
+            onClick={() => {
+              trackEntryNavigationClick(analytics.track, {
+                page_name: analyticsPage,
+                area: 'entry_nav',
+                element: 'search',
+                target: 'search',
+                entry_from: 'sidebar',
+                ...workspaceDimensions,
+              });
+              onOpenSearch?.();
+            }}
+            aria-label={t('common.search')}
+            data-testid="entry-nav-search"
+          >
+            <Icon name="search" size={14} />
+            <span className="entry-nav-rail__search-placeholder">{t('common.search')}</span>
+            <span className="entry-nav-rail__search-kbd" aria-hidden>⌘K</span>
+          </button>
+          <button
+            type="button"
+            className="entry-nav-rail__collapse od-tooltip"
+            aria-label={t('entry.navCollapse')}
+            title={t('entry.navCollapse')}
+            data-tooltip={t('entry.navCollapse')}
+            data-tooltip-placement="bottom"
+            data-testid="entry-rail-collapse"
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent(ENTRY_RAIL_TOGGLE_EVENT));
+            }}
+          >
+            <Icon name="panel-left" size={15} />
+          </button>
+        </div>
+
+        <div className="entry-nav-rail__group">
 
         {context&&false ? (
           <div className="entry-nav-rail__team-wrap">
@@ -1672,48 +1744,6 @@ export function EntryNavRail({
             ) : null}
           </div>
         ) : null}
-
-        {/* Search + the rail-collapse control in one row. The collapse button
-            moved here from the chrome corner (per product: 收起按钮放在输入框
-            后边) — the corner slot is the brand logo now, and re-opening a
-            collapsed rail is what the logo does there. */}
-        <div className="entry-nav-rail__search-row">
-          <button
-            type="button"
-            className="entry-nav-rail__search"
-            onClick={() => {
-              trackEntryNavigationClick(analytics.track, {
-                page_name: analyticsPage,
-                area: 'entry_nav',
-                element: 'search',
-                target: 'search',
-                entry_from: 'sidebar',
-                ...workspaceDimensions,
-              });
-              onOpenSearch?.();
-            }}
-            aria-label={t('common.search')}
-            data-testid="entry-nav-search"
-          >
-            <Icon name="search" size={14} />
-            <span className="entry-nav-rail__search-placeholder">{t('common.search')}</span>
-            <span className="entry-nav-rail__search-kbd" aria-hidden>⌘K</span>
-          </button>
-          <button
-            type="button"
-            className="entry-nav-rail__collapse od-tooltip"
-            aria-label={t('entry.navCollapse')}
-            title={t('entry.navCollapse')}
-            data-tooltip={t('entry.navCollapse')}
-            data-tooltip-placement="bottom"
-            data-testid="entry-rail-collapse"
-            onClick={() => {
-              window.dispatchEvent(new CustomEvent(ENTRY_RAIL_TOGGLE_EVENT));
-            }}
-          >
-            <Icon name="panel-left" size={15} />
-          </button>
-        </div>
 
         <NavButton
           active={isHome}
@@ -1882,11 +1912,27 @@ export function EntryNavRail({
             </NavButton>
           </>
         )}
-       <PersonalFuncSection />
+       <PersonalFuncSection
+         personalDropProps={personalDropProps}
+         personalDropActive={Boolean(personalDropId && activeProjectDropId === personalDropId)}
+       />
      <TeamTreeSection
        workspaceItems={visibleWorkspaceItems}
        activeTeamId={activeTeamId}
        activeFolderId={activeFolderId}
+       activeProjectDropId={activeProjectDropId}
+       getProjectDropProps={(workspace, folder) => getNavigationDropProps(
+         folder?.id ?? null,
+         folder ? `${workspace.workspaceName}/${folder.name}` : workspace.workspaceName,
+         {
+           workspaceId: workspace.workspaceId,
+           visibility: 'team',
+           canMove: workspace.role !== 'guest',
+           dropId: folder
+             ? `workspace:${workspace.workspaceId}:folder:${folder.id}`
+             : `workspace:${workspace.workspaceId}:root`,
+         },
+       )}
        loading={workspaceDirectoryLoading}
         onCreateTeam={() => setNewTeamOpen(true)}
         onRenameTeam={(teamId, newName) => {
@@ -1939,6 +1985,8 @@ export function EntryNavRail({
           onOpenNotificationSettings={onOpenSettings ? () => onOpenSettings('notifications') : undefined}
         />
       )}
+
+      {projectDropFeedback}
 
       <InviteDialog
         open={inviteOpen}

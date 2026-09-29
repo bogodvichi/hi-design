@@ -1,6 +1,8 @@
 import type { Dict } from '../types';
 
 export const hu: Dict = {
+  'projectDrag.movedTo': 'Moved to “{path}”',
+  'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "Áthelyezett mappák: {succeeded}; befejezetlen: {failed}.",
   'personalScope.folderMoveFailed': "Befejezetlen: {name}. Ellenőrizze, majd próbálja újra.",
   'personalScope.folderMoveInterrupted': "{name}: {count} fájl áthelyezése megerősítve; a többi eredmény még függőben lehet. A folyamat mentve. A folytatáshoz válassza az eredeti célt: {target}.",

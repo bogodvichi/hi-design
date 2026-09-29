@@ -4127,6 +4127,8 @@ export interface Dict {
   'designFiles.moveRoot': string;
   'designFiles.moveNewFolder': string;
   'designFiles.move': string;
+  'projectDrag.movedTo': string;
+  'projectDrag.permissionDenied': string;
   'designFiles.copyPath': string;
   'designFiles.copiedPath': string;
   'designFiles.copyLocalPath': string;

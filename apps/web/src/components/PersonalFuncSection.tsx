@@ -2,6 +2,8 @@ import { Icon, type IconName } from './Icon';
 import { navigate, useRoute } from '../router';
 import { useT } from '../i18n';
 import type { Dict } from '../i18n/types';
+import type { FolderDropProps } from './useProjectFolderDrop';
+import styles from './PersonalFuncSection.module.css';
 
 interface PersonalItem {
   id: 'personal-all' | 'shared-with-me';
@@ -14,7 +16,13 @@ const ITEMS: PersonalItem[] = [
   { id: 'shared-with-me', icon: 'share', labelKey: 'personalFunc.shared' },
 ];
 
-export function PersonalFuncSection() {
+export function PersonalFuncSection({
+  personalDropProps,
+  personalDropActive = false,
+}: {
+  personalDropProps?: FolderDropProps;
+  personalDropActive?: boolean;
+} = {}) {
   const t = useT();
   const route = useRoute();
   const activeView = route.kind === 'home' ? route.view : null;
@@ -28,9 +36,10 @@ export function PersonalFuncSection() {
           <button
             key={item.id}
             type="button"
-            className={`entry-nav-rail__btn${isActive ? ' is-active' : ''}`}
+            className={`entry-nav-rail__btn${isActive ? ' is-active' : ''}${item.id === 'personal-all' && personalDropActive ? ` ${styles.projectDropTarget}` : ''}`}
             onClick={() => navigate({ kind: 'home', view: item.id })}
             aria-current={isActive ? 'page' : undefined}
+            {...(item.id === 'personal-all' ? personalDropProps : undefined)}
           >
             <span className="entry-nav-rail__btn-icon" aria-hidden>
               <Icon name={item.icon} size={18} />

@@ -1,6 +1,8 @@
 import type { Dict } from "../types";
 
 export const zhTW: Dict = {
+  'projectDrag.movedTo': '已移動至「{path}」',
+  'projectDrag.permissionDenied': '移動失敗，無權限',
   'personalScope.folderMoveSummary': "{succeeded} 個資料夾移動成功，{failed} 個未完成。",
   'personalScope.folderMoveFailed': "未完成：{name}。請檢查後重試。",
   'personalScope.folderMoveInterrupted': "「{name}」已確認移動 {count} 個檔案，其餘尚未完成或結果待確認。進度已保留，請選擇原目標繼續：{target}。",

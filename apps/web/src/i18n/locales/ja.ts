@@ -1,6 +1,8 @@
 import type { Dict } from '../types';
 
 export const ja: Dict = {
+  'projectDrag.movedTo': 'Moved to “{path}”',
+  'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "移動完了：{succeeded} フォルダー、未完了：{failed}。",
   'personalScope.folderMoveFailed': "未完了：{name}。確認して再試行してください。",
   'personalScope.folderMoveInterrupted': "「{name}」の {count} ファイルの移動を確認しました。残りは未完了または結果確認待ちです。進行状況は保存済みです。元の移動先を選んで続行してください：{target}。",

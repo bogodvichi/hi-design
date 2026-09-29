@@ -1,6 +1,8 @@
 import type { Dict } from '../types';
 
 export const ptBR: Dict = {
+  'projectDrag.movedTo': 'Moved to “{path}”',
+  'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "Pastas movidas: {succeeded}; incompletas: {failed}.",
   'personalScope.folderMoveFailed': "Incompleto: {name}. Verifique e tente novamente.",
   'personalScope.folderMoveInterrupted': "{name}: {count} arquivos confirmados como movidos; outros resultados podem estar pendentes. Progresso salvo. Selecione o destino original para continuar: {target}.",

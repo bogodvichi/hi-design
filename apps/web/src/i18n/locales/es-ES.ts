@@ -1,6 +1,8 @@
 import type { Dict } from '../types';
 
 export const esES: Dict = {
+  'projectDrag.movedTo': 'Moved to “{path}”',
+  'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "Carpetas movidas: {succeeded}; incompletas: {failed}.",
   'personalScope.folderMoveFailed': "Incompleto: {name}. Comprueba e inténtalo de nuevo.",
   'personalScope.folderMoveInterrupted': "{name}: {count} archivos confirmados como movidos; los demás resultados pueden estar pendientes. Progreso guardado. Selecciona el destino original para continuar: {target}.",

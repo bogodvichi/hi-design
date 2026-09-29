@@ -76,6 +76,12 @@ import { resolveFloatingMenuHorizontalAlign } from '../utils/floating-menu-place
 import { ellipsisTitleHoverProps } from '../utils/ellipsis-title';
 import { Toast } from './Toast';
 import {
+  installProjectCardDragPreview,
+  PROJECT_CARD_MOVE_RESULT_EVENT,
+  type ProjectCardMoveResultDetail,
+  writeProjectCardDrag,
+} from './project-card-drag';
+import {
   workspaceIdentityCacheKey,
   workspaceProjectHeaders,
 } from '../collab/workspace-identity';
@@ -678,6 +684,11 @@ selectionExtension,
   >({});
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
   const [menuPlacement, setMenuPlacement] = useState<'down' | 'up'>('down');
+  const [menuContextPosition, setMenuContextPosition] = useState<{
+    projectId: string;
+    left: number;
+    top: number;
+  } | null>(null);
  const [renameTarget, setRenameTarget] = useState<{ id: string; original: string } | null>(null);
  const [renameInput, setRenameInput] = useState('');
   const [confirmTarget, setConfirmTarget] = useState<Project | null>(null);
@@ -685,7 +696,110 @@ selectionExtension,
   const [copyToPersonalTarget, setCopyToPersonalTarget] = useState<Project | null>(null);
   const [copyPendingId, setCopyPendingId] = useState<string | null>(null);
   const [copyToast, setCopyToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null);
+  const [moveToast, setMoveToast] = useState<{ message: string; tone: 'error' } | null>(null);
+  const [draggingProjectId, setDraggingProjectId] = useState<string | null>(null);
+  const [dragSelectionProjectId, setDragSelectionProjectId] = useState<string | null>(null);
   const [locationTargetId, setLocationTargetId] = useState<string | null>(null);
+  const dragPreviewCleanupRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => () => dragPreviewCleanupRef.current?.(), []);
+  useEffect(() => {
+    const handleMoveResult = (event: Event) => {
+      const detail = (event as CustomEvent<ProjectCardMoveResultDetail>).detail;
+      if (!detail?.projectId) return;
+      setDragSelectionProjectId((current) => {
+        if (detail.moved) return current === detail.projectId ? null : current;
+        return detail.projectId;
+      });
+    };
+    window.addEventListener(PROJECT_CARD_MOVE_RESULT_EVENT, handleMoveResult);
+    return () => window.removeEventListener(PROJECT_CARD_MOVE_RESULT_EVENT, handleMoveResult);
+  }, []);
+  useEffect(() => {
+    if (selectionMode) setDragSelectionProjectId(null);
+  }, [selectionMode]);
+  useEffect(() => {
+    if (dragSelectionProjectId && !projects.some((project) => project.id === dragSelectionProjectId)) {
+      setDragSelectionProjectId(null);
+    }
+  }, [dragSelectionProjectId, projects]);
+  useEffect(() => {
+    if (!dragSelectionProjectId && !locationTargetId) return;
+    let outsidePress: {
+      pointerId: number;
+      startX: number;
+      startY: number;
+      moved: boolean;
+      scrolled: boolean;
+    } | null = null;
+
+    function closestProjectCard(target: EventTarget | null): Element | null {
+      const element = target instanceof Element
+        ? target
+        : target instanceof Node
+          ? target.parentElement
+          : null;
+      return element?.closest('.recent-projects__card') ?? null;
+    }
+
+    function handleProjectSelectionPointerDown(event: PointerEvent) {
+      if (event.button !== 0 || closestProjectCard(event.target)) {
+        outsidePress = null;
+        return;
+      }
+      outsidePress = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        moved: false,
+        scrolled: false,
+      };
+    }
+
+    function handleProjectSelectionPointerMove(event: PointerEvent) {
+      if (!outsidePress || outsidePress.pointerId !== event.pointerId) return;
+      if (
+        Math.abs(event.clientX - outsidePress.startX) > 4
+        || Math.abs(event.clientY - outsidePress.startY) > 4
+      ) {
+        outsidePress.moved = true;
+      }
+    }
+
+    function markProjectSelectionScroll() {
+      if (outsidePress) outsidePress.scrolled = true;
+    }
+
+    function handleProjectSelectionClick(event: MouseEvent) {
+      const press = outsidePress;
+      outsidePress = null;
+      if (!press || press.moved || press.scrolled || closestProjectCard(event.target)) return;
+      setDragSelectionProjectId(null);
+      setLocationTargetId(null);
+    }
+
+    function clearProjectSelectionPress(event: PointerEvent) {
+      if (outsidePress?.pointerId === event.pointerId) outsidePress = null;
+    }
+
+    // A retained drag selection is dismissed only by an actual outside click.
+    // Wheel, touch scrolling, and scrollbar dragging can all produce pointer
+    // or click events; movement/scroll during the gesture disqualifies it.
+    document.addEventListener('pointerdown', handleProjectSelectionPointerDown);
+    document.addEventListener('pointermove', handleProjectSelectionPointerMove);
+    document.addEventListener('pointercancel', clearProjectSelectionPress);
+    document.addEventListener('wheel', markProjectSelectionScroll, true);
+    document.addEventListener('scroll', markProjectSelectionScroll, true);
+    document.addEventListener('click', handleProjectSelectionClick);
+    return () => {
+      document.removeEventListener('pointerdown', handleProjectSelectionPointerDown);
+      document.removeEventListener('pointermove', handleProjectSelectionPointerMove);
+      document.removeEventListener('pointercancel', clearProjectSelectionPress);
+      document.removeEventListener('wheel', markProjectSelectionScroll, true);
+      document.removeEventListener('scroll', markProjectSelectionScroll, true);
+      document.removeEventListener('click', handleProjectSelectionClick);
+    };
+  }, [dragSelectionProjectId, locationTargetId]);
   // recvqbh189zBY6: commitDelete used to await onDelete and drop the result on
   // the floor either way — a 403/network failure closed the dialog exactly
   // like a success, leaving the project right where it was with no signal
@@ -697,12 +811,6 @@ selectionExtension,
   // `canShareProjects` (403 off-team / no rights), so we only badge on success.
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [unsharingId, setUnsharingId] = useState<string | null>(null);
-  const [shareErrorProjectId, setShareErrorProjectId] = useState<string | null>(null);
-  // 'owner-conflict' is the daemon's TEAM_PROJECT_OWNER_CONFLICT refusal: the
-  // team hub already registers this project under another member's ownership.
-  // That state is permanent until the registered owner unshares, so it gets
-  // its own message instead of the retryable 'share' hint.
-  const [shareErrorKind, setShareErrorKind] = useState<'share' | 'unshare' | 'owner-conflict'>('share');
   // Whether a card is team-shared is decided upstream, not here — the grids'
   // 全部项目 / 草稿 partition reads the very same predicate, so the badge and the
   // card's grid can no longer disagree.
@@ -797,13 +905,7 @@ const isShared = isSharedProject ?? NOTHING_SHARED;
       const card = cards ? Array.from(cards).find((item) => item.dataset.projectId === projectId) : null;
       card?.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
     });
-    const timer = window.setTimeout(() => {
-      setLocationTargetId((current) => current === projectId ? null : current);
-    }, 2500);
-    return () => {
-      window.cancelAnimationFrame(frame);
-      window.clearTimeout(timer);
-    };
+    return () => window.cancelAnimationFrame(frame);
   }, [isActive, visibleProjectIdsKey]);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const renameTitleId = useId();
@@ -1365,7 +1467,7 @@ function requestDelete(project: Project) {
    options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
  ) {
    const startedAt = performance.now();
-   setShareErrorProjectId(null);
+   setMoveToast(null);
    setMenuOpenId(project.id);
    setSharingId(project.id);
    try {
@@ -1404,13 +1506,8 @@ function requestDelete(project: Project) {
     } catch (err) {
       onProjectShareFailed?.(project.id);
       console.warn('[RecentProjectsStrip] share project to team failed:', err);
-      setShareErrorProjectId(project.id);
-      setShareErrorKind(
-        workspaceProjectMoveErrorCode(err) === 'TEAM_PROJECT_OWNER_CONFLICT'
-          ? 'owner-conflict'
-          : 'share',
-      );
-      setMenuOpenId(project.id);
+      setMoveToast({ message: t('projectDrag.permissionDenied'), tone: 'error' });
+      setMenuOpenId(null);
       trackWorkspaceProjectActionResult(analytics.track, {
         page_name: analyticsPage,
         area: 'project_collection',
@@ -1433,7 +1530,7 @@ function requestDelete(project: Project) {
     options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
   ) {
     const startedAt = performance.now();
-    setShareErrorProjectId(null);
+    setMoveToast(null);
     setMenuOpenId(project.id);
     setUnsharingId(project.id);
     try {
@@ -1471,9 +1568,8 @@ function requestDelete(project: Project) {
       });
     } catch (err) {
       console.warn('[RecentProjectsStrip] unshare project from team failed:', err);
-      setShareErrorProjectId(project.id);
-      setShareErrorKind('unshare');
-      setMenuOpenId(project.id);
+      setMoveToast({ message: t('projectDrag.permissionDenied'), tone: 'error' });
+      setMenuOpenId(null);
       trackWorkspaceProjectActionResult(analytics.track, {
         page_name: analyticsPage,
         area: 'project_collection',
@@ -1751,6 +1847,9 @@ function requestDelete(project: Project) {
    const requestedCount = ids.length + extensionCount;
    const succeededCount = succeeded.length + extensionSucceededCount;
    const failedCount = requestedCount - succeededCount;
+   if (failedCount > 0) {
+     setMoveToast({ message: t('projectDrag.permissionDenied'), tone: 'error' });
+   }
    bulkMovePendingRef.current = false;
    setBulkMovePending(false);
    if (preserveFailedSelection) {
@@ -2201,6 +2300,13 @@ function requestDelete(project: Project) {
            && (collaborationAvailable || space === 'drafts')
            && (creator.canMutate || creator.canAdmin),
          );
+         const canDragProject = Boolean(
+           !isRecentCollection
+           && !isSharedWithMeCollection
+           && projectHomeWorkspaceId
+           && !selectionMode
+           && !opening,
+         );
          const canDeleteProject = Boolean(
            !isRecentCollection && !isSharedWithMeCollection && onDelete && creator.canMutate,
          );
@@ -2209,6 +2315,9 @@ function requestDelete(project: Project) {
          const hasManagementActions =
            canRenameProject || canMoveProject || canDeleteProject || canRemoveSharedWithMe;
          const hasRecentActions = canOpenLocation || canRemoveRecent;
+         const canOpenCardActionMenu = canShowCardActions
+           && !selectionMode
+           && (hasShareOrCopyActions || hasManagementActions || hasRecentActions);
          // HDW team-series views always present cards as team-owned with the
          // person who created the project in the bottom-left owner pill.
          const isTeamSeriesView = space === 'team' && Boolean(operator);
@@ -2237,8 +2346,35 @@ function requestDelete(project: Project) {
            <div
              key={project.id}
              role="listitem"
-             className={`recent-projects__card${designSystemProject ? ' is-design-system-project' : ''}${shared ? ' is-shared' : ''}${projectType ? ` is-${projectType}` : ''}${menuOpenId === project.id ? ' is-menu-open' : ''}${selected ? ' is-selected' : ''}${locationTarget ? ' is-location-target' : ''}${opening ? ' is-opening' : ''}`}
+             className={`recent-projects__card${designSystemProject ? ' is-design-system-project' : ''}${shared ? ' is-shared' : ''}${projectType ? ` is-${projectType}` : ''}${menuOpenId === project.id ? ' is-menu-open' : ''}${selected || draggingProjectId === project.id || dragSelectionProjectId === project.id ? ' is-selected' : ''}${locationTarget ? ' is-location-target' : ''}${opening ? ' is-opening' : ''}${draggingProjectId === project.id ? ' is-dragging' : ''}`}
              data-project-id={project.id}
+             draggable={canDragProject}
+             onDragStart={(event) => {
+               if (!canDragProject || !projectHomeWorkspaceId) {
+                 event.preventDefault();
+                 return;
+               }
+               writeProjectCardDrag(event.dataTransfer, {
+                 projectId: project.id,
+                 projectName: project.name,
+                 sourceWorkspaceId: projectHomeWorkspaceId,
+                 sourceFolderId: currentFolderId ?? null,
+                 canMove: canMoveProject,
+               });
+               dragPreviewCleanupRef.current?.();
+               dragPreviewCleanupRef.current = installProjectCardDragPreview(
+                 event.dataTransfer,
+                 event.currentTarget,
+                 1,
+               );
+               setDragSelectionProjectId(project.id);
+               setDraggingProjectId(project.id);
+             }}
+             onDragEnd={() => {
+               dragPreviewCleanupRef.current?.();
+               dragPreviewCleanupRef.current = null;
+               setDraggingProjectId(null);
+             }}
             >
               {selectionMode ? (
                 <button
@@ -2341,6 +2477,25 @@ function requestDelete(project: Project) {
                   className={`recent-projects__card-thumb recent-projects__card-thumb-${cover.kind}`}
                   style={cover.style}
                   aria-hidden
+                  onContextMenu={(event) => {
+                    if (!canOpenCardActionMenu) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    const card = event.currentTarget.closest<HTMLElement>('.recent-projects__card');
+                    const anchor = card?.querySelector<HTMLElement>('.recent-projects__card-menu-anchor');
+                    const anchorRect = anchor?.getBoundingClientRect();
+                    trackCollection('more_menu', {
+                      project_key: project.id,
+                      project_relation: creator.ownedBySelf ? 'self' : 'other',
+                    });
+                    setMoveToast(null);
+                    setMenuContextPosition({
+                      projectId: project.id,
+                      left: event.clientX - (anchorRect?.left ?? 0),
+                      top: event.clientY - (anchorRect?.top ?? 0),
+                    });
+                    setMenuOpenId(project.id);
+                  }}
                 >
                   <CoverVisibilitySentinel
                     projectId={project.id}
@@ -2451,7 +2606,7 @@ function requestDelete(project: Project) {
                 </div>
                </div>
               </button>
-              {canShowCardActions && !selectionMode && (hasShareOrCopyActions || hasManagementActions || hasRecentActions) ? (
+              {canOpenCardActionMenu ? (
                <div
                  className="recent-projects__card-menu-anchor"
                   ref={menuOpenId === project.id ? menuContainerRef : undefined}
@@ -2468,7 +2623,8 @@ function requestDelete(project: Project) {
                         project_key: project.id,
                         project_relation: creator.ownedBySelf ? 'self' : 'other',
                       });
-                      setShareErrorProjectId(null);
+                      setMoveToast(null);
+                      setMenuContextPosition(null);
                       setMenuOpenId((current) => current === project.id ? null : project.id);
                     }}
                   >
@@ -2477,9 +2633,15 @@ function requestDelete(project: Project) {
                   {menuOpenId === project.id ? (
                     <div
                       className="recent-projects__card-menu"
-                      data-placement={menuPlacement}
+                      data-placement={menuContextPosition?.projectId === project.id ? undefined : menuPlacement}
                       ref={menuRef}
                       role="menu"
+                      style={menuContextPosition?.projectId === project.id ? {
+                        left: menuContextPosition.left,
+                        top: menuContextPosition.top,
+                        right: 'auto',
+                        bottom: 'auto',
+                      } : undefined}
                       onClick={(event) => event.stopPropagation()}
                     >
                      {canOpenLocation ? (
@@ -2582,17 +2744,6 @@ function requestDelete(project: Project) {
                          </span>
                        </button>
                      ) : null}
-                     {shareErrorProjectId === project.id ? (
-                        <div className="recent-projects__card-menu-error" role="alert">
-                          {t(
-                            shareErrorKind === 'unshare'
-                              ? 'recentProjects.unshareFailed'
-                              : shareErrorKind === 'owner-conflict'
-                                ? 'recentProjects.shareOwnerConflict'
-                                : 'recentProjects.shareFailed',
-                          )}
-                        </div>
-                      ) : null}
                      {canDeleteProject ? (
                        <button
                          type="button"
@@ -2835,6 +2986,16 @@ function requestDelete(project: Project) {
           message={copyToast.message}
           tone={copyToast.tone}
           onDismiss={() => setCopyToast(null)}
+        />
+      ) : null}
+      {moveToast ? (
+        <Toast
+          message={moveToast.message}
+          tone={moveToast.tone}
+          placement="top"
+          role="alert"
+          ttlMs={3000}
+          onDismiss={() => setMoveToast(null)}
         />
       ) : null}
     </section>

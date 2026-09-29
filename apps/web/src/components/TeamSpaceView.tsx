@@ -15,6 +15,7 @@ import { ShareFolderDialog } from './ShareFolderDialog';
 import { FolderSelectionCheck } from './FolderSelectionCheck';
 import { MoveToTeamTreeDialog, type TeamTreeSelection } from './MoveToTeamTreeDialog';
 import { RecentProjectsStrip } from './RecentProjectsStrip';
+import { useProjectFolderDrop } from './useProjectFolderDrop';
 import { AddSkillDialog } from './AddSkillDialog';
 import { AddMcpDialog } from './AddMcpDialog';
 import { CloudSkillList } from './CloudSkillList';
@@ -22,6 +23,8 @@ import { CloudMcpList } from './CloudMcpList';
 import { workspaceContextFromDirectoryItem } from '../collab/useWorkspaceContext';
 import { moveWorkspaceProject } from '../state/projects';
 import type { DesignSystemSummary, Project } from '../types';
+import type { ProjectMutationSource, ProjectTitleHint } from './EntryShell';
+import { projectCollectionTitleHint } from './project-collection-context';
 import styles from './TeamSpaceView.module.css';
 
 const FOLDER_CONTEXT_KEY = 'od:home-folder-context';
@@ -79,9 +82,13 @@ interface Props {
  tab?: string;
  onInvite?: () => void;
  designSystems?: DesignSystemSummary[];
- onOpenProject?: (id: string) => void;
+ onOpenProject?: (
+   id: string,
+   fileName?: string,
+   projectTitleHint?: ProjectTitleHint,
+ ) => Promise<boolean> | boolean | void;
  onDeleteProject?: (id: string) => Promise<boolean | void> | boolean | void;
-  onRenameProject?: (id: string, name: string) => void;
+  onRenameProject?: (id: string, name: string, source?: ProjectMutationSource) => void;
   onDuplicateProject?: (id: string) => Promise<void> | void;
   onCopyProject?: (
     id: string,
@@ -310,7 +317,7 @@ export function TeamSpaceView({ teamId, tab, onInvite, designSystems = [], onOpe
 
       <div className={styles.content} role="tabpanel">
         {activeTab === 'projects' ? (
-          <ProjectsPanel controlsPortalTarget={typeTabsEl} teamId={teamId} workspaceContext={teamWorkspaceContext} operator={operator} showCreateGroup={showCreateGroup} onShowCreateGroupChange={setShowCreateGroup} designSystems={designSystems} onOpenProject={onOpenProject} onDeleteProject={onDeleteProject} onRenameProject={onRenameProject} onDuplicateProject={onDuplicateProject} onCopyProject={onCopyProject} />
+          <ProjectsPanel controlsPortalTarget={typeTabsEl} teamId={teamId} workspaceName={title} workspaceContext={teamWorkspaceContext} operator={operator} showCreateGroup={showCreateGroup} onShowCreateGroupChange={setShowCreateGroup} designSystems={designSystems} onOpenProject={onOpenProject} onDeleteProject={onDeleteProject} onRenameProject={onRenameProject} onDuplicateProject={onDuplicateProject} onCopyProject={onCopyProject} />
         ) : null}
         {activeTab === 'members' ? (
           <MembersTable teamId={teamId} operator={operator} />
@@ -547,6 +554,7 @@ function teamProjectToProject(tp: TeamProject, teamId: string): Project {
 
 function ProjectsPanel({
   teamId,
+  workspaceName,
   workspaceContext,
   operator,
   showCreateGroup,
@@ -560,14 +568,19 @@ function ProjectsPanel({
   controlsPortalTarget,
 }: {
   teamId?: string;
+  workspaceName: string;
   workspaceContext: WorkspaceCollabContext | null;
   operator: OperatorInfo | null;
   showCreateGroup: boolean;
   onShowCreateGroupChange: (v: boolean) => void;
   designSystems?: DesignSystemSummary[];
-  onOpenProject?: (id: string) => void;
+  onOpenProject?: (
+    id: string,
+    fileName?: string,
+    projectTitleHint?: ProjectTitleHint,
+  ) => Promise<boolean> | boolean | void;
   onDeleteProject?: (id: string) => Promise<boolean | void> | boolean | void;
-  onRenameProject?: (id: string, name: string) => void;
+  onRenameProject?: (id: string, name: string, source?: ProjectMutationSource) => void;
   onDuplicateProject?: (id: string) => Promise<void> | void;
   onCopyProject?: (
     id: string,
@@ -588,6 +601,11 @@ function ProjectsPanel({
   const [folderSelectionMode, setFolderSelectionMode] = useState(false);
   const [selectedFolderIds, setSelectedFolderIds] = useState<Set<string>>(() => new Set());
   const [bulkbarEl, setBulkbarEl] = useState<HTMLDivElement | null>(null);
+  const {
+    activeFolderId: projectDropFolderId,
+    feedback: projectDropFeedback,
+    getFolderDropProps,
+  } = useProjectFolderDrop({ workspaceId: teamId, workspaceContext, visibility: 'team' });
 
   useEffect(() => {
     setSelectedFolderIds((current) => {
@@ -930,7 +948,8 @@ function ProjectsPanel({
           return (
            <article
               key={folder.folderId}
-              className={`${styles.folderCard}${selected ? ` ${styles.folderCardSelected}` : ''}`}
+              className={`${styles.folderCard}${selected ? ` ${styles.folderCardSelected}` : ''}${projectDropFolderId === folder.folderId ? ` ${styles.folderCardDropActive}` : ''}`}
+              {...getFolderDropProps(folder.folderId, `${workspaceName}/${folder.folderName}`)}
               role="button"
               tabIndex={0}
               aria-pressed={folderSelectionMode ? selected : undefined}
@@ -1025,11 +1044,27 @@ function ProjectsPanel({
           heading={t('entry.navDrafts')}
           space="team"
           homeWorkspaceId={teamId}
-          onOpen={(id) => onOpenProject?.(id)}
+          onOpen={(id) => {
+            const sourceProject = projects.find((project) => project.id === id);
+            onOpenProject?.(
+              id,
+              undefined,
+              sourceProject && workspaceContext
+                ? projectCollectionTitleHint(sourceProject, workspaceContext)
+                : undefined,
+            );
+          }}
           onDelete={onDeleteProject}
           onRename={(id, name) => {
+            const sourceProject = projects.find((project) => project.id === id);
             setProjects((prev) => prev.map((p) => p.id === id ? { ...p, name } : p));
-            onRenameProject?.(id, name);
+            onRenameProject?.(
+              id,
+              name,
+              sourceProject
+                ? { project: sourceProject, workspaceContext }
+                : undefined,
+            );
           }}
           onDuplicate={onCopyProject && teamId
             ? (id) => onCopyProject(id, { targetWorkspaceId: teamId })
@@ -1089,6 +1124,7 @@ function ProjectsPanel({
           document.body,
         )
       ) : null}
+      {projectDropFeedback}
       {removeTarget ? (
         createPortal(
           <div className={styles.confirmOverlay} onClick={() => setRemoveTarget(null)}>
@@ -1445,9 +1481,13 @@ interface FolderViewProps {
   teamId?: string;
   folderId?: string;
   designSystems?: DesignSystemSummary[];
-  onOpenProject?: (id: string) => void;
+  onOpenProject?: (
+    id: string,
+    fileName?: string,
+    projectTitleHint?: ProjectTitleHint,
+  ) => Promise<boolean> | boolean | void;
   onDeleteProject?: (id: string) => Promise<boolean | void> | boolean | void;
-  onRenameProject?: (id: string, name: string) => void;
+  onRenameProject?: (id: string, name: string, source?: ProjectMutationSource) => void;
   onDuplicateProject?: (id: string) => Promise<void> | void;
   onCopyProject?: (
     id: string,
@@ -1656,6 +1696,8 @@ export function FolderView({ teamId, folderId, designSystems = [], onOpenProject
         <FoldersPanel
           teamId={teamId}
           folderId={folderId}
+          workspaceName={teamName?.trim() || t('teamSpace.defaultTitle')}
+          ancestorFolderNames={breadcrumb.map((item) => item.folderName)}
           workspaceContext={teamWorkspaceContext}
           operator={operator}
           showCreateFolder={showCreateFolder}
@@ -1675,6 +1717,8 @@ export function FolderView({ teamId, folderId, designSystems = [], onOpenProject
 function FoldersPanel({
   teamId,
   folderId,
+  workspaceName,
+  ancestorFolderNames,
   workspaceContext,
   operator,
   showCreateFolder,
@@ -1688,14 +1732,20 @@ function FoldersPanel({
 }: {
   teamId?: string;
   folderId?: string;
+  workspaceName: string;
+  ancestorFolderNames: string[];
   workspaceContext: WorkspaceCollabContext | null;
  operator: OperatorInfo | null;
  showCreateFolder: boolean;
  onShowCreateFolderChange: (v: boolean) => void;
  designSystems?: DesignSystemSummary[];
- onOpenProject?: (id: string) => void;
+ onOpenProject?: (
+   id: string,
+   fileName?: string,
+   projectTitleHint?: ProjectTitleHint,
+ ) => Promise<boolean> | boolean | void;
  onDeleteProject?: (id: string) => Promise<boolean | void> | boolean | void;
-  onRenameProject?: (id: string, name: string) => void;
+  onRenameProject?: (id: string, name: string, source?: ProjectMutationSource) => void;
   onDuplicateProject?: (id: string) => Promise<void> | void;
   onCopyProject?: (
     id: string,
@@ -1715,6 +1765,11 @@ function FoldersPanel({
   const [folderSelectionMode, setFolderSelectionMode] = useState(false);
   const [selectedFolderIds, setSelectedFolderIds] = useState<Set<string>>(() => new Set());
   const [bulkbarEl, setBulkbarEl] = useState<HTMLDivElement | null>(null);
+  const {
+    activeFolderId: projectDropFolderId,
+    feedback: projectDropFeedback,
+    getFolderDropProps,
+  } = useProjectFolderDrop({ workspaceId: teamId, workspaceContext, visibility: 'team' });
 
   useEffect(() => {
     setSelectedFolderIds((current) => {
@@ -2058,7 +2113,11 @@ function FoldersPanel({
           return (
           <article
             key={folder.folderId}
-            className={`${styles.folderCard}${selected ? ` ${styles.folderCardSelected}` : ''}`}
+            className={`${styles.folderCard}${selected ? ` ${styles.folderCardSelected}` : ''}${projectDropFolderId === folder.folderId ? ` ${styles.folderCardDropActive}` : ''}`}
+            {...getFolderDropProps(
+              folder.folderId,
+              [workspaceName, ...ancestorFolderNames, folder.folderName].filter(Boolean).join('/'),
+            )}
             role="button"
             tabIndex={0}
             aria-pressed={folderSelectionMode ? selected : undefined}
@@ -2153,11 +2212,27 @@ function FoldersPanel({
           heading={t('entry.navDrafts')}
           space="team"
           homeWorkspaceId={teamId}
-          onOpen={(id) => onOpenProject?.(id)}
+          onOpen={(id) => {
+            const sourceProject = projects.find((project) => project.id === id);
+            onOpenProject?.(
+              id,
+              undefined,
+              sourceProject && workspaceContext
+                ? projectCollectionTitleHint(sourceProject, workspaceContext)
+                : undefined,
+            );
+          }}
           onDelete={onDeleteProject}
           onRename={(id, name) => {
+            const sourceProject = projects.find((project) => project.id === id);
             setProjects((prev) => prev.map((p) => p.id === id ? { ...p, name } : p));
-            onRenameProject?.(id, name);
+            onRenameProject?.(
+              id,
+              name,
+              sourceProject
+                ? { project: sourceProject, workspaceContext }
+                : undefined,
+            );
           }}
           onDuplicate={onCopyProject && teamId
             ? (id) => onCopyProject(id, { targetWorkspaceId: teamId, targetFolderId: folderId })
@@ -2275,6 +2350,7 @@ function FoldersPanel({
           </DialogFooter>
         </Dialog>
       ) : null}
+      {projectDropFeedback}
       {moveFolderTarget && teamId && folderId ? (
         <MoveToTeamTreeDialog
           onConfirm={(selection) => { void commitFolderMove(selection); }}

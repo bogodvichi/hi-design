@@ -261,7 +261,7 @@ export async function moveWorkspaceProject(input: {
       body: JSON.stringify({
         visibility: input.visibility,
         ...(input.targetWorkspaceId ? { targetWorkspaceId: input.targetWorkspaceId } : {}),
-        ...(input.targetFolderId ? { targetFolderId: input.targetFolderId } : {}),
+        ...(input.targetFolderId !== undefined ? { targetFolderId: input.targetFolderId } : {}),
       }),
     },
   );

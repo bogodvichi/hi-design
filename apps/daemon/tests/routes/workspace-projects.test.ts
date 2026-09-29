@@ -2644,6 +2644,226 @@ async function close(server: http.Server): Promise<void> {
   });
 }
 
+describe('workspace project move serialization', () => {
+  it('does not overlap two moves for the same project', async () => {
+    const workspaceId = 'serialized-move-workspace';
+    const projectId = 'serialized-move-project';
+    const memberId = 'serialized-move-member';
+    let releaseFirst!: () => void;
+    const firstMayFinish = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    let markFirstStarted!: () => void;
+    const firstStarted = new Promise<void>((resolve) => {
+      markFirstStarted = resolve;
+    });
+    let shareCalls = 0;
+    const requestTeamShare = vi.fn(async () => {
+      shareCalls += 1;
+      if (shareCalls === 1) {
+        markFirstStarted();
+        await firstMayFinish;
+      }
+    });
+    const deps = workspaceProjectRouteDeps({
+      workspaceId,
+      projectId,
+      dbDeleteProject: vi.fn(),
+      removeProjectDir: vi.fn(),
+      collabSync: {
+        requestTeamShare,
+        invalidateTeamProjectCatalog: vi.fn(),
+      },
+    }) as any;
+    const originalPrepare = deps.db.prepare.bind(deps.db);
+    deps.db.prepare = (sql: string) => {
+      if (/UPDATE workspace_projects SET folder_id/.test(sql)) {
+        return { run: vi.fn(() => ({ changes: 1 })) };
+      }
+      return originalPrepare(sql);
+    };
+
+    const app = express();
+    app.use(express.json());
+    registerProjectRoutes(app, deps);
+    const routeServer = await listen(app);
+    const headers = {
+      'content-type': 'application/json',
+      'x-od-workspace-id': workspaceId,
+      'x-od-workspace-member-id': memberId,
+      'x-od-workspace-type': 'team',
+      'x-od-workspace-role': 'owner',
+    };
+    const move = () => fetch(
+      `${routeServer.url}/api/workspaces/${workspaceId}/projects/${projectId}/move`,
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ visibility: 'team' }),
+      },
+    );
+
+    try {
+      const first = move();
+      await firstStarted;
+      const second = move();
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      expect(requestTeamShare).toHaveBeenCalledTimes(1);
+
+      releaseFirst();
+      const responses = await Promise.all([first, second]);
+      expect(responses.map((response) => response.status)).toEqual([200, 200]);
+      expect(requestTeamShare).toHaveBeenCalledTimes(2);
+    } finally {
+      releaseFirst();
+      await close(routeServer.server);
+    }
+  });
+});
+
+describe('workspace project move authority boundaries', () => {
+  const workspaceId = 'move-authority-source';
+  const targetWorkspaceId = 'move-authority-target';
+  const projectId = 'move-authority-project';
+
+  function moveHeaders(memberId: string, role: 'owner' | 'admin' | 'member') {
+    return {
+      'content-type': 'application/json',
+      'x-od-workspace-id': workspaceId,
+      'x-od-workspace-member-id': memberId,
+      'x-od-workspace-type': 'team',
+      'x-od-workspace-role': role,
+      'x-od-workspace-member-status': 'active',
+      'x-od-workspace-lifecycle-state': 'active',
+      'x-od-workspace-can-share-projects': 'true',
+    };
+  }
+
+  function authorityDeps(input: {
+    createdBy: string;
+    visibility?: 'personal' | 'team';
+    collabSync: Record<string, unknown>;
+  }) {
+    const deps = workspaceProjectRouteDeps({
+      workspaceId,
+      projectId,
+      dbDeleteProject: vi.fn(),
+      removeProjectDir: vi.fn(),
+      collabSync: input.collabSync,
+      workspaceRowOverrides: {
+        workspaceVisibility: input.visibility ?? 'personal',
+        visibility: input.visibility ?? 'personal',
+        createdByWorkspaceMemberId: input.createdBy,
+        updatedByWorkspaceMemberId: input.createdBy,
+      },
+    }) as any;
+    const originalPrepare = deps.db.prepare.bind(deps.db);
+    deps.db.prepare = (sql: string) => {
+      if (/UPDATE workspace_projects SET folder_id/.test(sql)) {
+        return { run: vi.fn(() => ({ changes: 1 })) };
+      }
+      return originalPrepare(sql);
+    };
+    return deps;
+  }
+
+  it.each(['owner', 'admin'] as const)(
+    'does not let a non-creator %s move a project to another workspace',
+    async (role) => {
+      const requestTeamTransfer = vi.fn(async () => ({ targetOwnerMemberId: 'target-member' }));
+      const app = express();
+      app.use(express.json());
+      registerProjectRoutes(app, authorityDeps({
+        createdBy: 'project-creator',
+        collabSync: {
+          requestTeamTransfer,
+          invalidateTeamProjectCatalog: vi.fn(),
+        },
+      }));
+      const routeServer = await listen(app);
+      try {
+        const response = await fetch(
+          `${routeServer.url}/api/workspaces/${workspaceId}/projects/${projectId}/move`,
+          {
+            method: 'POST',
+            headers: moveHeaders(`workspace-${role}`, role),
+            body: JSON.stringify({ visibility: 'team', targetWorkspaceId }),
+          },
+        );
+        expect(response.status).toBe(403);
+        expect(requestTeamTransfer).not.toHaveBeenCalled();
+      } finally {
+        await close(routeServer.server);
+      }
+    },
+  );
+
+  it('lets the project creator move their project to another workspace', async () => {
+    const creator = 'project-creator';
+    const requestTeamTransfer = vi.fn(async () => ({ targetOwnerMemberId: 'target-member' }));
+    const app = express();
+    app.use(express.json());
+    registerProjectRoutes(app, authorityDeps({
+      createdBy: creator,
+      collabSync: {
+        requestTeamTransfer,
+        invalidateTeamProjectCatalog: vi.fn(),
+      },
+    }));
+    const routeServer = await listen(app);
+    try {
+      const response = await fetch(
+        `${routeServer.url}/api/workspaces/${workspaceId}/projects/${projectId}/move`,
+        {
+          method: 'POST',
+          headers: moveHeaders(creator, 'member'),
+          body: JSON.stringify({ visibility: 'team', targetWorkspaceId }),
+        },
+      );
+      expect(response.status).toBe(200);
+      expect(requestTeamTransfer).toHaveBeenCalledTimes(1);
+    } finally {
+      await close(routeServer.server);
+    }
+  });
+
+  it.each([
+    ['owner', 200, 1],
+    ['admin', 200, 1],
+    ['member', 403, 0],
+  ] as const)(
+    'keeps a non-creator %s folder move scoped to the current team',
+    async (role, expectedStatus, expectedMoves) => {
+      const moveProjectFolder = vi.fn(async () => undefined);
+      const app = express();
+      app.use(express.json());
+      registerProjectRoutes(app, authorityDeps({
+        createdBy: 'project-creator',
+        visibility: 'team',
+        collabSync: {
+          moveProjectFolder,
+          invalidateTeamProjectCatalog: vi.fn(),
+        },
+      }));
+      const routeServer = await listen(app);
+      try {
+        const response = await fetch(
+          `${routeServer.url}/api/workspaces/${workspaceId}/projects/${projectId}/move`,
+          {
+            method: 'POST',
+            headers: moveHeaders(`workspace-${role}`, role),
+            body: JSON.stringify({ visibility: 'team', targetFolderId: 'folder-in-source-team' }),
+          },
+        );
+        expect(response.status).toBe(expectedStatus);
+        expect(moveProjectFolder).toHaveBeenCalledTimes(expectedMoves);
+      } finally {
+        await close(routeServer.server);
+      }
+    },
+  );
+});
+
 describe('workspace project list authority cache boundary', () => {
   it('reuses the bounded read witness while mutations still require fresh authority', async () => {
     const workspaceId = 'project-list-read-workspace';

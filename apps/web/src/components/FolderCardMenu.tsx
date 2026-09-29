@@ -30,13 +30,32 @@ export function FolderCardMenu({
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
+  const [contextPosition, setContextPosition] = useState<{ left: number; top: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const card = containerRef.current?.closest<HTMLElement>('[role="button"]');
+    if (!card) return;
+    const onContextMenu = (event: MouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const anchorRect = containerRef.current?.getBoundingClientRect();
+      setContextPosition({
+        left: event.clientX - (anchorRect?.left ?? 0),
+        top: event.clientY - (anchorRect?.top ?? 0),
+      });
+      setOpen(true);
+    };
+    card.addEventListener('contextmenu', onContextMenu);
+    return () => card.removeEventListener('contextmenu', onContextMenu);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target;
       if (target instanceof Node && containerRef.current?.contains(target)) return;
+      setContextPosition(null);
       setOpen(false);
     };
     document.addEventListener('pointerdown', onPointerDown, { capture: true });
@@ -51,16 +70,25 @@ export function FolderCardMenu({
         aria-label={t('designs.menuMore')}
         aria-haspopup="menu"
         aria-expanded={open}
-        onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setContextPosition(null);
+          setOpen((v) => !v);
+        }}
       >
         <Icon name="more-horizontal" size={14} />
       </button>
       {open ? (
         <div
           className={styles.folderCardMenu}
-        role="menu"
-        onClick={(e) => e.stopPropagation()}
-      >
+          role="menu"
+          style={contextPosition ? {
+            left: contextPosition.left,
+            top: contextPosition.top,
+            right: 'auto',
+          } : undefined}
+          onClick={(e) => e.stopPropagation()}
+        >
         {onShare ? (
           <button
             type="button"

@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { FolderCardMenu } from '../../src/components/FolderCardMenu';
+import styles from '../../src/components/TeamSpaceView.module.css';
 
 vi.mock('../../src/i18n', () => ({
   useT: () => (key: string) => key,
@@ -30,6 +31,24 @@ function openMenu(props: Partial<ComponentProps<typeof FolderCardMenu>> = {}) {
 }
 
 describe('FolderCardMenu order', () => {
+  it('opens the same menu from a folder card context click', () => {
+    const onDelete = vi.fn();
+    render(
+      <article role="button" data-testid="folder-card">
+        <FolderCardMenu onDelete={onDelete} deleteLabel="删除" />
+        <div className={styles.folderCardGrid} data-testid="folder-cover" />
+        <div data-testid="folder-meta">文件夹名称</div>
+      </article>,
+    );
+
+    fireEvent.contextMenu(screen.getByTestId('folder-meta'), { clientX: 96, clientY: 64 });
+
+    expect(screen.getByRole('menu')).toHaveStyle({ left: '96px', top: '64px' });
+    const deleteItem = screen.getByRole('menuitem', { name: '删除' });
+    fireEvent.click(deleteItem);
+    expect(onDelete).toHaveBeenCalledTimes(1);
+  });
+
   it('groups share before management actions', () => {
     const menu = openMenu();
     const items = Array.from(menu.children).map((node) =>

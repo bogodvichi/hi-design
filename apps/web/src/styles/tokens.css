@@ -7,6 +7,7 @@
   /* Shared responsive card grids across home, personal, team, and community. */
   --card-grid-min-width: 300px;
   --card-grid-gap: 16px;
+  --card-grid-row-gap: 32px;
 
   /* HiDesign system palette. Neutrals carry the interface; brand green is
      reserved for sparse feedback, selected assists, and brand emphasis. */

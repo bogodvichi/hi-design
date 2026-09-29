@@ -142,9 +142,14 @@ vi.mock('../../src/components/EntryView', () => ({
         name: string;
         workspaceId: string | null;
         workspaceMemberId: string | null;
+        workspaceContext?: WorkspaceCollabContext;
       },
     ) => Promise<boolean> | boolean | void;
-    onRenameProject?: (id: string, name: string) => Promise<void> | void;
+    onRenameProject?: (
+      id: string,
+      name: string,
+      source?: { project: Project; workspaceContext: WorkspaceCollabContext | null },
+    ) => Promise<void> | void;
     onOpenSettings: () => void;
     onRefreshAgents: () => void | Promise<void>;
     agents: AgentInfo[];
@@ -295,6 +300,38 @@ vi.mock('../../src/components/EntryView', () => ({
         }
       >
         Open own unbound project
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          const sourceContext = workspaceContext('ws-source', 'wm-source');
+          void onOpenProject('project-source', undefined, {
+            authoritative: false,
+            name: 'Renamed in source collection',
+            workspaceId: sourceContext.workspaceId,
+            workspaceMemberId: sourceContext.workspaceMemberId,
+            workspaceContext: sourceContext,
+          });
+        }}
+      >
+        Open project from source collection
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          const sourceContext = workspaceContext('ws-source', 'wm-source');
+          void onRenameProject?.('project-source', 'Renamed in source collection', {
+            project: {
+              ...existingProject,
+              id: 'project-source',
+              name: 'Old source name',
+              workspaceId: sourceContext.workspaceId,
+            },
+            workspaceContext: sourceContext,
+          });
+        }}
+      >
+        Rename project from source collection
       </button>
       <button
         type="button"
@@ -760,7 +797,9 @@ function stubWorkspaceContext(
       return {
         ok: true,
         json: async () =>
-          pathname.endsWith('/workspace/directory')
+          pathname.endsWith('/auth/valid')
+            ? { ok: true, username: 'test-user', userInfo: {} }
+            : pathname.endsWith('/workspace/directory')
             ? workspaceDirectoryFixture([workspaceContext(workspaceId, workspaceMemberId)])
             : pathname.endsWith('/workspace/context')
               ? workspaceContextPayload(workspaceId, workspaceMemberId)
@@ -2151,6 +2190,59 @@ describe('App project creation routing', () => {
       expect(screen.getByTestId('project-workspace-id').textContent).toBe('unbound');
     });
     expect(mockedGetProject).not.toHaveBeenCalled();
+  });
+
+  it('opens a collection project with its source Workspace when the ambient context is stale', async () => {
+    stubWorkspaceContext('ws-personal', 'wm-personal');
+    const sourceContext = workspaceContext('ws-source', 'wm-source');
+    const sourceProject: Project = {
+      ...existingProject,
+      id: 'project-source',
+      name: 'Renamed in source collection',
+      workspaceId: sourceContext.workspaceId,
+    };
+    mockedListProjects.mockResolvedValue([]);
+    mockedGetProject.mockResolvedValue(sourceProject);
+
+    render(<App />);
+    fireEvent.click(await screen.findByRole(
+      'button',
+      { name: 'Open project from source collection' },
+    ));
+
+    await waitFor(() => {
+      expect(mockedGetProject).toHaveBeenCalledWith('project-source', sourceContext);
+      expect(screen.getByTestId('project-title').textContent).toBe(
+        'Renamed in source collection',
+      );
+      expect(screen.getByTestId('project-route-workspace-context').textContent).toBe(
+        'ws-source:wm-source',
+      );
+    });
+  });
+
+  it('renames a collection project with its source Workspace when it is absent from the ambient list', async () => {
+    stubWorkspaceContext('ws-personal', 'wm-personal');
+    const sourceContext = workspaceContext('ws-source', 'wm-source');
+    mockedListProjects.mockResolvedValue([]);
+    mockedPatchProject.mockResolvedValue({
+      ...existingProject,
+      id: 'project-source',
+      name: 'Renamed in source collection',
+      workspaceId: sourceContext.workspaceId,
+    });
+
+    render(<App />);
+    fireEvent.click(await screen.findByRole(
+      'button',
+      { name: 'Rename project from source collection' },
+    ));
+
+    await waitFor(() => expect(mockedPatchProject).toHaveBeenCalledWith(
+      'project-source',
+      { name: 'Renamed in source collection' },
+      sourceContext,
+    ));
   });
 
   it('rejects an authoritative card whose workspace/member scope is already stale', async () => {

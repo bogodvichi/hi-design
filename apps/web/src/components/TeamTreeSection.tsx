@@ -17,6 +17,7 @@ import { navigate } from '../router';
 import { Icon } from './Icon';
 import { Skeleton } from './Loading';
 import { useT } from '../i18n';
+import type { FolderDropProps } from './useProjectFolderDrop';
 import styles from './TeamTreeSection.module.css';
 
 /** Distinct palette for team icons — each workspace gets a deterministic pick. */
@@ -108,6 +109,11 @@ interface Props {
   onCreateTeam?: () => void;
   onRenameTeam?: (teamId: string, newName: string) => void;
   onDeleteTeam?: (teamId: string) => void;
+  activeProjectDropId?: string | null;
+  getProjectDropProps?: (
+    workspace: WorkspaceDirectoryItem,
+    folder: TeamFolder | null,
+  ) => FolderDropProps;
 }
 
 interface TeamNodeProps {
@@ -116,9 +122,22 @@ interface TeamNodeProps {
   activeFolderId?: string;
   onRenameTeam?: (teamId: string, newName: string) => void;
   onDeleteTeam?: (teamId: string) => void;
+  activeProjectDropId?: string | null;
+  getProjectDropProps?: (
+    workspace: WorkspaceDirectoryItem,
+    folder: TeamFolder | null,
+  ) => FolderDropProps;
 }
 
-function TeamNode({ team, activeTeamId, activeFolderId, onRenameTeam, onDeleteTeam }: TeamNodeProps) {
+function TeamNode({
+  team,
+  activeTeamId,
+  activeFolderId,
+  onRenameTeam,
+  onDeleteTeam,
+  activeProjectDropId,
+  getProjectDropProps,
+}: TeamNodeProps) {
   const t = useT();
   const [expanded, setExpanded] = useState(() => loadExpanded(team.workspaceId));
   // null = not yet loaded; [] = loaded, no folders; [...] = loaded, has folders.
@@ -126,6 +145,8 @@ function TeamNode({ team, activeTeamId, activeFolderId, onRenameTeam, onDeleteTe
   const [foldersLoading, setFoldersLoading] = useState(false);
   const isActiveTeam = activeTeamId === team.workspaceId;
   const isTeamSelected = isActiveTeam && !activeFolderId;
+  const teamDropId = `workspace:${team.workspaceId}:root`;
+  const teamDropProps = getProjectDropProps?.(team, null);
 
   // Persist expanded/collapsed state to localStorage so it survives reloads.
   useEffect(() => {
@@ -441,7 +462,10 @@ function TeamNode({ team, activeTeamId, activeFolderId, onRenameTeam, onDeleteTe
 
   return (
     <div className={styles.teamNode}>
-      <div className={`${styles.teamRow}${isTeamSelected ? ` ${styles.isActiveRow}` : ''}`}>
+      <div
+        className={`${styles.teamRow}${isTeamSelected ? ` ${styles.isActiveRow}` : ''}${activeProjectDropId === teamDropId ? ` ${styles.projectDropTarget}` : ''}`}
+        {...teamDropProps}
+      >
         {editing ? (
           <div className={styles.teamLabel}>
             <TeamIcon workspaceId={team.workspaceId} className={styles.teamIcon} />
@@ -547,6 +571,8 @@ function TeamNode({ team, activeTeamId, activeFolderId, onRenameTeam, onDeleteTe
            const isActiveFolder =
              isActiveTeam && activeFolderId === folder.id;
            const isEditingFolder = editingFolderId === folder.id;
+           const folderDropId = `workspace:${team.workspaceId}:folder:${folder.id}`;
+           const folderDropProps = getProjectDropProps?.(team, folder);
            if (isEditingFolder) {
              return (
                <div
@@ -569,12 +595,13 @@ function TeamNode({ team, activeTeamId, activeFolderId, onRenameTeam, onDeleteTe
           return (
               <div
                 key={folder.id}
-                className={`${styles.folderRow}${isActiveFolder ? ` ${styles.isActive}` : ''}`}
+                className={`${styles.folderRow}${isActiveFolder ? ` ${styles.isActive}` : ''}${activeProjectDropId === folderDropId ? ` ${styles.projectDropTarget}` : ''}`}
                onClick={() => handleFolderClick(folder)}
                 onDoubleClick={canManageFolders ? (e) => startFolderEdit(folder, e) : undefined}
                title={folder.name}
                role="button"
                tabIndex={0}
+               {...folderDropProps}
                onKeyDown={(e) => {
                  if (e.key === 'Enter' || e.key === ' ') {
                    e.preventDefault();
@@ -669,6 +696,8 @@ export function TeamTreeSection({
   onCreateTeam,
   onRenameTeam,
   onDeleteTeam,
+  activeProjectDropId,
+  getProjectDropProps,
   loading,
 }: Props) {
   const t = useT();
@@ -698,6 +727,8 @@ export function TeamTreeSection({
                 activeFolderId={activeFolderId}
                 onRenameTeam={onRenameTeam}
                 onDeleteTeam={onDeleteTeam}
+                activeProjectDropId={activeProjectDropId}
+                getProjectDropProps={getProjectDropProps}
               />
             ))}
           </div>

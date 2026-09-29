@@ -2238,6 +2238,28 @@ describe('moveWorkspaceProject error surfaces (recvqzjnshIlOe)', () => {
     expect(workspaceProjectMoveErrorCode(error)).toBeNull();
   });
 
+  it('sends an explicit null folder when moving to a workspace root', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => Response.json({
+      project: { id: 'p-root', visibility: 'team' },
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await moveWorkspaceProject({
+      projectId: 'p-root',
+      visibility: 'team',
+      workspaceContext: teamWorkspaceContext(),
+      targetWorkspaceId: 'ws-target',
+      targetFolderId: null,
+    });
+
+    const request = fetchMock.mock.calls[0]?.[1];
+    expect(JSON.parse(String(request?.body))).toMatchObject({
+      visibility: 'team',
+      targetWorkspaceId: 'ws-target',
+      targetFolderId: null,
+    });
+  });
+
   it('invalidates every cached Workspace project view after a successful move', async () => {
     const context = teamWorkspaceContext({
       workspaceId: 'ws-move-cache-invalidation',

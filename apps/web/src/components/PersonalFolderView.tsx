@@ -4,7 +4,7 @@ import { ModuleBreadcrumb } from './ModuleBreadcrumb';
 // SQLite folders table via `/api/folders` instead of the HDW proxy.
 import { useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
-import type { WorkspaceDirectoryItem } from '@open-design/contracts';
+import type { WorkspaceCollabContext, WorkspaceDirectoryItem } from '@open-design/contracts';
 import { Dialog, DialogFooter, DialogTitle } from '@open-design/components';
 import { navigate } from '../router';
 import { Icon } from './Icon';
@@ -14,7 +14,11 @@ import { MoveToTeamTreeDialog, type TeamTreeSelection } from './MoveToTeamTreeDi
 import { ShareFolderDialog } from './ShareFolderDialog';
 import { RecentProjectsStrip } from './RecentProjectsStrip';
 import { usePersonalFolderMove } from './usePersonalFolderMove';
+import { useProjectFolderDrop } from './useProjectFolderDrop';
+import { workspaceContextFromDirectoryItem } from '../collab/useWorkspaceContext';
 import type { DesignSystemSummary, Project } from '../types';
+import type { ProjectMutationSource, ProjectTitleHint } from './EntryShell';
+import { projectCollectionTitleHint } from './project-collection-context';
 import { useT } from '../i18n';
 import styles from './TeamSpaceView.module.css';
 
@@ -42,9 +46,13 @@ interface PersonalFolderItem {
 interface Props {
   folderId?: string;
   designSystems?: DesignSystemSummary[];
-  onOpenProject?: (id: string) => void;
+  onOpenProject?: (
+    id: string,
+    fileName?: string,
+    projectTitleHint?: ProjectTitleHint,
+  ) => Promise<boolean> | boolean | void;
   onDeleteProject?: (id: string) => Promise<boolean | void> | boolean | void;
-  onRenameProject?: (id: string, name: string) => void;
+  onRenameProject?: (id: string, name: string, source?: ProjectMutationSource) => void;
   onCopyProject?: (
     id: string,
     options?: { targetFolderId?: string | null },
@@ -63,6 +71,7 @@ export function PersonalFolderView({
   const [breadcrumb, setBreadcrumb] = useState<BreadcrumbItem[]>([]);
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [workspaceMemberId, setWorkspaceMemberId] = useState<string | null>(null);
+  const [workspaceContext, setWorkspaceContext] = useState<WorkspaceCollabContext | null>(null);
  const [loading, setLoading] = useState(Boolean(folderId));
 const [showCreateFolder, setShowCreateFolder] = useState(false);
 
@@ -79,6 +88,7 @@ const [showCreateFolder, setShowCreateFolder] = useState(false);
        const personal = body.items?.find((item) => item.isDefaultTeam === true);
        setWorkspaceId(personal?.workspaceId ?? null);
        setWorkspaceMemberId(personal?.workspaceMemberId ?? null);
+       setWorkspaceContext(personal ? workspaceContextFromDirectoryItem(personal) : null);
      } catch {
         // ignore
       }
@@ -179,8 +189,10 @@ const [showCreateFolder, setShowCreateFolder] = useState(false);
       <div className={styles.content} role="tabpanel">
      <PersonalFoldersPanel
        workspaceId={workspaceId}
+       workspaceContext={workspaceContext}
        workspaceMemberId={workspaceMemberId}
        folderId={folderId}
+       ancestorFolderNames={breadcrumb.map((item) => item.folderName)}
        showCreateFolder={showCreateFolder}
        onShowCreateFolderChange={setShowCreateFolder}
        designSystems={designSystems}
@@ -196,8 +208,10 @@ const [showCreateFolder, setShowCreateFolder] = useState(false);
 
 function PersonalFoldersPanel({
   workspaceId,
+  workspaceContext,
   workspaceMemberId,
   folderId,
+  ancestorFolderNames,
   showCreateFolder,
   onShowCreateFolderChange,
   designSystems,
@@ -207,14 +221,20 @@ function PersonalFoldersPanel({
  onCopyProject,
 }: {
  workspaceId: string | null;
+ workspaceContext: WorkspaceCollabContext | null;
   workspaceMemberId: string | null;
  folderId?: string;
+ ancestorFolderNames: string[];
  showCreateFolder: boolean;
  onShowCreateFolderChange: (v: boolean) => void;
  designSystems: DesignSystemSummary[];
- onOpenProject?: (id: string) => void;
+ onOpenProject?: (
+   id: string,
+   fileName?: string,
+   projectTitleHint?: ProjectTitleHint,
+ ) => Promise<boolean> | boolean | void;
  onDeleteProject?: (id: string) => Promise<boolean | void> | boolean | void;
- onRenameProject?: (id: string, name: string) => void;
+ onRenameProject?: (id: string, name: string, source?: ProjectMutationSource) => void;
  onCopyProject?: (
    id: string,
    options?: { targetFolderId?: string | null },
@@ -247,6 +267,11 @@ const [moveFolderTarget, setMoveFolderTarget] = useState<PersonalFolderItem | nu
 const { moveFolders, moving: movingFolder, feedback: moveFeedback } = usePersonalFolderMove({
   workspaceId, workspaceMemberId, setFolders, setSelectedFolderIds,
 });
+const {
+  activeFolderId: projectDropFolderId,
+  feedback: projectDropFeedback,
+  getFolderDropProps,
+} = useProjectFolderDrop({ workspaceId, workspaceContext, visibility: 'personal' });
 const [renameFolderTarget, setRenameFolderTarget] = useState<PersonalFolderItem | null>(null);
 const [renameFolderInput, setRenameFolderInput] = useState('');
 const [renamingFolder, setRenamingFolder] = useState(false);
@@ -524,7 +549,11 @@ const renameFolderTitleId = useId();
           return (
           <article
             key={folder.folderId}
-            className={`${styles.folderCard}${selected ? ` ${styles.folderCardSelected}` : ''}`}
+            className={`${styles.folderCard}${selected ? ` ${styles.folderCardSelected}` : ''}${projectDropFolderId === folder.folderId ? ` ${styles.folderCardDropActive}` : ''}`}
+            {...getFolderDropProps(
+              folder.folderId,
+              [t('personalFunc.all'), ...ancestorFolderNames, folder.folderName].filter(Boolean).join('/'),
+            )}
             role="button"
             tabIndex={0}
             aria-pressed={folderSelectionMode ? selected : undefined}
@@ -619,14 +648,30 @@ const renameFolderTitleId = useId();
           heading={t('entry.navDrafts')}
           space="drafts"
           homeWorkspaceId={workspaceId}
-          onOpen={(id) => onOpenProject?.(id)}
+          onOpen={(id) => {
+            const sourceProject = projects.find((project) => project.id === id);
+            onOpenProject?.(
+              id,
+              undefined,
+              sourceProject && workspaceContext
+                ? projectCollectionTitleHint(sourceProject, workspaceContext)
+                : undefined,
+            );
+          }}
           onDelete={onDeleteProject}
           onDuplicate={folderId && onCopyProject
             ? (id) => onCopyProject(id, { targetFolderId: folderId })
             : undefined}
          onRename={(id, name) => {
+           const sourceProject = projects.find((project) => project.id === id);
            setProjects((prev) => prev.map((p) => p.id === id ? { ...p, name } : p));
-           onRenameProject?.(id, name);
+           onRenameProject?.(
+             id,
+             name,
+             sourceProject
+               ? { project: sourceProject, workspaceContext }
+               : undefined,
+           );
          }}
         hideTitle
          currentWorkspaceId={workspaceId}
@@ -744,6 +789,7 @@ const renameFolderTitleId = useId();
         </Dialog>
       ) : null}
       {moveFeedback}
+      {projectDropFeedback}
       {moveFolderTarget && folderId ? (
         <MoveToTeamTreeDialog
           onConfirm={(selection) => { void commitFolderMove(selection); }}

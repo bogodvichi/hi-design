@@ -10,7 +10,7 @@ import { AddMcpDialog } from './AddMcpDialog';
 import { CloudSkillList } from './CloudSkillList';
 import { CloudMcpList } from './CloudMcpList';
 import { createPortal } from 'react-dom';
-import type { WorkspaceDirectoryItem } from '@open-design/contracts';
+import type { WorkspaceCollabContext, WorkspaceDirectoryItem } from '@open-design/contracts';
 import { Dialog, DialogFooter, DialogTitle } from '@open-design/components';
 import { Icon } from './Icon';
 import { FolderCardMenu } from './FolderCardMenu';
@@ -19,7 +19,11 @@ import { MoveToTeamTreeDialog, type TeamTreeSelection } from './MoveToTeamTreeDi
 import { ShareFolderDialog } from './ShareFolderDialog';
 import { RecentProjectsStrip } from './RecentProjectsStrip';
 import { usePersonalFolderMove } from './usePersonalFolderMove';
+import { useProjectFolderDrop } from './useProjectFolderDrop';
+import { workspaceContextFromDirectoryItem } from '../collab/useWorkspaceContext';
 import type { DesignSystemSummary, Project } from '../types';
+import type { ProjectMutationSource, ProjectTitleHint } from './EntryShell';
+import { projectCollectionTitleHint } from './project-collection-context';
 import { useT } from '../i18n';
 import styles from './TeamSpaceView.module.css';
  
@@ -37,6 +41,7 @@ interface PersonalFolderItem {
 
 function PersonalProjectsPanel({
   workspaceId,
+  workspaceContext,
   workspaceMemberId,
   showCreateGroup,
   onShowCreateGroupChange,
@@ -49,14 +54,19 @@ function PersonalProjectsPanel({
  onCopyProject,
 }: {
   workspaceId: string | null;
+  workspaceContext: WorkspaceCollabContext | null;
   workspaceMemberId: string | null;
   showCreateGroup: boolean;
   onShowCreateGroupChange: (v: boolean) => void;
   designSystems: DesignSystemSummary[];
-  onOpenProject: (id: string) => void;
+  onOpenProject: (
+    id: string,
+    fileName?: string,
+    projectTitleHint?: ProjectTitleHint,
+  ) => Promise<boolean> | boolean | void;
   onDeleteProject: (id: string) => Promise<boolean | void> | boolean | void;
  onDuplicateProject?: (id: string) => Promise<void> | void;
- onRenameProject: (id: string, name: string) => void;
+ onRenameProject: (id: string, name: string, source?: ProjectMutationSource) => void;
  controlsPortalTarget?: HTMLElement | null;
  onCopyProject?: (
    id: string,
@@ -90,6 +100,11 @@ const [moveFolderTarget, setMoveFolderTarget] = useState<PersonalFolderItem | nu
 const { moveFolders, moving: movingFolder, feedback: moveFeedback } = usePersonalFolderMove({
   workspaceId, workspaceMemberId, setFolders, setSelectedFolderIds,
 });
+const {
+  activeFolderId: projectDropFolderId,
+  feedback: projectDropFeedback,
+  getFolderDropProps,
+} = useProjectFolderDrop({ workspaceId, workspaceContext, visibility: 'personal' });
 
   const [renameFolderTarget, setRenameFolderTarget] = useState<PersonalFolderItem | null>(null);
   const [renameFolderInput, setRenameFolderInput] = useState('');
@@ -377,7 +392,8 @@ function handleFolderClick(folder: PersonalFolderItem) {
          return (
           <article
             key={folder.folderId}
-            className={`${styles.folderCard}${selected ? ` ${styles.folderCardSelected}` : ''}`}
+            className={`${styles.folderCard}${selected ? ` ${styles.folderCardSelected}` : ''}${projectDropFolderId === folder.folderId ? ` ${styles.folderCardDropActive}` : ''}`}
+            {...getFolderDropProps(folder.folderId, `${t('personalFunc.all')}/${folder.folderName}`)}
             role="button"
             tabIndex={0}
             aria-pressed={folderSelectionMode ? selected : undefined}
@@ -471,12 +487,28 @@ function handleFolderClick(folder: PersonalFolderItem) {
          heading={t('entry.navDrafts')}
          space="drafts"
          homeWorkspaceId={workspaceId}
-        onOpen={(id) => onOpenProject(id)}
+        onOpen={(id) => {
+          const sourceProject = projects.find((project) => project.id === id);
+          onOpenProject(
+            id,
+            undefined,
+            sourceProject && workspaceContext
+              ? projectCollectionTitleHint(sourceProject, workspaceContext)
+              : undefined,
+          );
+        }}
          onDelete={onDeleteProject}
          onDuplicate={onCopyProject ?? onDuplicateProject}
         onRename={(id, name) => {
+          const sourceProject = projects.find((project) => project.id === id);
           setProjects((prev) => prev.map((p) => p.id === id ? { ...p, name } : p));
-          onRenameProject?.(id, name);
+          onRenameProject?.(
+            id,
+            name,
+            sourceProject
+              ? { project: sourceProject, workspaceContext }
+              : undefined,
+          );
         }}
          hideTitle
           currentWorkspaceId={workspaceId}
@@ -594,6 +626,7 @@ function handleFolderClick(folder: PersonalFolderItem) {
         </Dialog>
       ) : null}
       {moveFeedback}
+      {projectDropFeedback}
       {moveFolderTarget ? (
         <MoveToTeamTreeDialog
           onConfirm={(selection) => { void commitFolderMove(selection); }}
@@ -638,10 +671,14 @@ export function PersonalAllView({
 }: {
   tab?: string;
   designSystems?: DesignSystemSummary[];
-  onOpenProject: (id: string) => void;
+  onOpenProject: (
+    id: string,
+    fileName?: string,
+    projectTitleHint?: ProjectTitleHint,
+  ) => Promise<boolean> | boolean | void;
   onDeleteProject: (id: string) => Promise<boolean | void> | boolean | void;
   onDuplicateProject?: (id: string) => Promise<void> | void;
-  onRenameProject: (id: string, name: string) => void;
+ onRenameProject: (id: string, name: string, source?: ProjectMutationSource) => void;
   onCopyProject?: (id: string) => Promise<void> | void;
 }) {
 const t = useT();
@@ -664,6 +701,7 @@ const [mcpDialogOpen, setMcpDialogOpen] = useState(false);
 
 const [workspaceId, setWorkspaceId] = useState<string | null>(null);
 const [workspaceMemberId, setWorkspaceMemberId] = useState<string | null>(null);
+const [workspaceContext, setWorkspaceContext] = useState<WorkspaceCollabContext | null>(null);
 const [workspaceType, setWorkspaceType] = useState<string | null>(null);
 const [showCreateGroup, setShowCreateGroup] = useState(false);
  const [typeTabsEl, setTypeTabsEl] = useState<HTMLDivElement | null>(null);
@@ -681,6 +719,7 @@ const [showCreateGroup, setShowCreateGroup] = useState(false);
       const personal = body.items?.find((item) => item.isDefaultTeam === true);
       setWorkspaceId(personal?.workspaceId ?? null);
       setWorkspaceMemberId(personal?.workspaceMemberId ?? null);
+      setWorkspaceContext(personal ? workspaceContextFromDirectoryItem(personal) : null);
       setWorkspaceType(personal?.workspaceType ?? null);
     } catch {
        // leave workspaceId null
@@ -778,6 +817,7 @@ const [showCreateGroup, setShowCreateGroup] = useState(false);
          <PersonalProjectsPanel
            controlsPortalTarget={typeTabsEl}
            workspaceId={workspaceId}
+           workspaceContext={workspaceContext}
            workspaceMemberId={workspaceMemberId}
            showCreateGroup={showCreateGroup}
            onShowCreateGroupChange={setShowCreateGroup}

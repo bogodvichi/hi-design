@@ -1,13 +1,11 @@
 // @vitest-environment jsdom
 //
-// Red-spec coverage for the UI half of recvqzjnshIlOe: when the daemon
-// refuses "move to team space" with TEAM_PROJECT_OWNER_CONFLICT (the hub
-// already registers this project under another member's ownership), the
-// card menu must say so — the conflict is permanent until the registered
-// owner unshares, so the generic "Try again." hint is a lie.
+// Moving from the card menu uses the same compact, top-of-page failure toast
+// as drag-and-drop. Keep both team and personal destinations on this contract
+// so failures never expand the card action menu with an inline error.
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { RecentProjectsStrip } from '../../src/components/RecentProjectsStrip';
 import type { Project } from '../../src/types';
@@ -61,10 +59,11 @@ vi.mock('../../src/providers/registry', () => ({
     `/api/projects/${projectId}/files/${fileName}`,
 }));
 
-vi.mock('../../src/collab/useWorkspaceContext', () => ({
+vi.mock('../../src/collab/useWorkspaceContext', async (importOriginal) => ({
+  ...(await importOriginal<Record<string, unknown>>()),
   notifyTeamProjectsChanged: vi.fn(),
   useWorkspaceBilling: () => null,
-
+  useSharedSpaceTeamId: () => null,
   readWorkspaceDirectoryForCurrentGeneration: async () => ({
     items: [
       {
@@ -76,6 +75,16 @@ vi.mock('../../src/collab/useWorkspaceContext', () => ({
         memberStatus: 'active',
         lifecycleState: 'active',
         isDefaultTeam: false,
+      },
+      {
+        workspaceId: 'ws-personal',
+        workspaceName: 'Personal',
+        workspaceType: 'personal',
+        workspaceMemberId: 'wm-personal',
+        role: 'owner',
+        memberStatus: 'active',
+        lifecycleState: 'active',
+        isDefaultTeam: true,
       },
     ],
   }),
@@ -100,9 +109,17 @@ vi.mock('../../src/collab/useWorkspaceContext', () => ({
   }),
 }));
 
+beforeEach(() => {
+  vi.stubGlobal('fetch', vi.fn(async () => ({
+    ok: true,
+    json: async () => ({ data: { folders: [] } }),
+  })));
+});
+
 afterEach(() => {
   cleanup();
   moveWorkspaceProject.mockReset();
+  vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
 
@@ -120,31 +137,36 @@ function project(overrides: Partial<Project>): Project {
   };
 }
 
-async function attemptMoveToTeam(props: Partial<React.ComponentProps<typeof RecentProjectsStrip>> = {}) {
+async function attemptMove(
+  destination: 'Team Two' | 'All mine',
+  props: Partial<React.ComponentProps<typeof RecentProjectsStrip>> = {},
+) {
   render(
     <RecentProjectsStrip
       projects={[project({ id: 'project-1', name: 'Draft' })]}
       onOpen={() => {}}
       collaborationEnabled
+      homeWorkspaceId="ws-personal"
+      space="drafts"
       {...props}
     />,
   );
   fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
-  fireEvent.click(screen.getByRole('menuitem', { name: /Move to team space/i }));
-  // The tree dialog requires a team node to be selected before Confirm is enabled.
+  fireEvent.click(screen.getByRole('menuitem', { name: /Move project/i }));
   await waitFor(() => {
-    expect(screen.getByText('Team Two')).toBeTruthy();
+    expect(screen.getByText(destination)).toBeTruthy();
   });
-  fireEvent.click(screen.getByText('Team Two'));
-  fireEvent.click(screen.getByText('Confirm move'));
+  fireEvent.click(screen.getByText(destination));
+  fireEvent.click(screen.getByText('Confirm'));
   return waitFor(() => {
     const alert = screen.getByRole('alert');
     expect(alert).toBeTruthy();
+    expect(alert.className).toContain('placement-top');
     return alert;
   });
 }
 
-describe('move-to-team owner conflict message (recvqzjnshIlOe)', () => {
+describe('project move failure toast', () => {
   it('hands the exact successful move response to the optimistic owner layer', async () => {
     const onProjectShared = vi.fn();
     render(
@@ -152,45 +174,67 @@ describe('move-to-team owner conflict message (recvqzjnshIlOe)', () => {
         projects={[project({ id: 'project-1', name: 'Draft' })]}
         onOpen={() => {}}
         collaborationEnabled
+        homeWorkspaceId="ws-personal"
+        space="drafts"
         onProjectShared={onProjectShared}
       />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: /Move to team space/i }));
-    // The tree dialog requires a team node to be selected before Confirm is enabled.
+    fireEvent.click(screen.getByRole('menuitem', { name: /Move project/i }));
     await waitFor(() => {
       expect(screen.getByText('Team Two')).toBeTruthy();
     });
     fireEvent.click(screen.getByText('Team Two'));
-    fireEvent.click(screen.getByText('Confirm move'));
+    fireEvent.click(screen.getByText('Confirm'));
 
     await waitFor(() => {
       expect(onProjectShared).toHaveBeenCalledWith(movedTeamProject);
     });
   });
 
-  it('renders the permanent owner-conflict message, not the retry hint', async () => {
+  it('uses the drag-and-drop permission toast for an owner conflict', async () => {
     moveWorkspaceProject.mockRejectedValueOnce(
       Object.assign(new Error('… 403: {"error":"team_project_owner_conflict"}'), {
         code: 'TEAM_PROJECT_OWNER_CONFLICT',
       }),
     );
 
-    const alert = await attemptMoveToTeam();
-    expect(alert.textContent).toBe(
-      'Could not move to team space: another member already shares this project with the team.',
-    );
+    const alert = await attemptMove('Team Two');
+    expect(alert.textContent).toContain('Move failed: no permission');
+    expect(screen.queryByText(/another member already shares/i)).toBeNull();
   });
 
-  it('keeps the retry hint for code-less transient failures', async () => {
+  it('uses the same permission toast for a code-less move failure', async () => {
     moveWorkspaceProject.mockRejectedValueOnce(new Error('network wobble'));
     const onProjectShared = vi.fn();
     const onProjectShareFailed = vi.fn();
 
-    const alert = await attemptMoveToTeam({ onProjectShared, onProjectShareFailed });
-    expect(alert.textContent).toBe('Could not move to team space. Try again.');
+    const alert = await attemptMove('Team Two', { onProjectShared, onProjectShareFailed });
+    expect(alert.textContent).toContain('Move failed: no permission');
+    expect(screen.queryByText(/Try again/i)).toBeNull();
     expect(onProjectShared).not.toHaveBeenCalled();
     expect(onProjectShareFailed).toHaveBeenCalledWith('project-1');
+  });
+
+  it('uses the same permission toast when moving a team project to personal space fails', async () => {
+    moveWorkspaceProject.mockRejectedValueOnce(new Error('forbidden'));
+    const onProjectUnshared = vi.fn();
+
+    const alert = await attemptMove('All mine', {
+      projects: [project({ id: 'project-1', name: 'Draft', workspaceId: 'ws-1' })],
+      space: 'team',
+      onProjectUnshared,
+    });
+
+    expect(alert.textContent).toContain('Move failed: no permission');
+    expect(moveWorkspaceProject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectId: 'project-1',
+        visibility: 'personal',
+        targetWorkspaceId: 'ws-personal',
+      }),
+    );
+    expect(onProjectUnshared).not.toHaveBeenCalled();
   });
 });

@@ -1,6 +1,8 @@
 import type { Dict } from '../types';
 
 export const ko: Dict = {
+  'projectDrag.movedTo': 'Moved to “{path}”',
+  'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "이동 완료 폴더: {succeeded}, 미완료: {failed}.",
   'personalScope.folderMoveFailed': "미완료: {name}. 확인 후 다시 시도하세요.",
   'personalScope.folderMoveInterrupted': "{name}: 파일 {count}개의 이동이 확인되었습니다. 나머지는 미완료 또는 결과 확인 중입니다. 진행 상황이 저장되었습니다. 계속하려면 원래 대상을 선택하세요: {target}.",

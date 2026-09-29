@@ -29,6 +29,10 @@ function fixture() {
   const team: WorkspaceDirectoryItem = {
     ...personal, workspaceId: 'team', workspaceName: 'Team', isDefaultTeam: false,
   };
+  const guestTeam: WorkspaceDirectoryItem = {
+    ...personal, workspaceId: 'guest-team', workspaceName: 'Guest Team',
+    isDefaultTeam: false, role: 'guest',
+  };
   const folder = (id: string, name: string, count = 0) => ({
     folder_id: id, folder_name: name, subfolder_count: count,
   });
@@ -38,6 +42,7 @@ function fixture() {
     'personal:b': [folder('c', 'Blocked grandchild')],
     'personal:q': [folder('r', 'Second child')],
     'team:root': [folder('a', 'Team same id')],
+    'guest-team:root': [folder('guest-folder', 'Guest folder')],
   };
   const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
     const url = new URL(String(input), 'http://localhost');
@@ -57,7 +62,7 @@ function fixture() {
     throw new Error(`Unexpected request: ${url.pathname}`);
   });
   vi.stubGlobal('fetch', fetchMock);
-  return { workspaces: [personal, team], fetchMock };
+  return { workspaces: [personal, team, guestTeam], fetchMock };
 }
 
 function row(name: string): HTMLElement {
@@ -97,6 +102,27 @@ async function openDialog(overrides: Partial<ComponentProps<typeof MoveToTeamTre
 }
 
 describe('folder move destination exclusions', () => {
+  it('hides teams where the user is only a guest from move destinations and search', async () => {
+    const { onConfirm, fetchMock } = await openDialog({
+      currentWorkspaceId: null,
+      disabledKeys: undefined,
+      disabledSubtreeKeys: undefined,
+    });
+
+    expect(screen.queryByText('Guest Team')).toBeNull();
+    expect(screen.queryByText('Guest folder')).toBeNull();
+    expect(confirm().disabled).toBe(true);
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes('workspace_id=guest-team'))).toBe(false);
+
+    await click(row('Team'));
+    expect(confirm().disabled).toBe(false);
+    await click(confirm());
+    expect(onConfirm).toHaveBeenCalledWith({
+      workspaceId: 'team', workspaceName: 'Team', folderId: null,
+      folderName: null, isDefaultTeam: false,
+    });
+  });
+
   it('disables the moving folder and lazily expanded descendants without blocking siblings', async () => {
     const { onConfirm } = await openDialog();
     await click(row('Blocked root'));

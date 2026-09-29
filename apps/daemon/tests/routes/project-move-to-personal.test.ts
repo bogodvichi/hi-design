@@ -25,13 +25,17 @@
 //      on) — the ordinary-project case behind recvqgejeqK2OJ.
 import express from 'express';
 import type http from 'node:http';
-import { mkdtemp, rm } from 'node:fs/promises';
+import fs from 'node:fs';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { registerProjectRoutes } from '../../src/routes/project/index.js';
+import {
+  registerProjectFileRoutes,
+  registerProjectRoutes,
+} from '../../src/routes/project/index.js';
 import { registerCollabContextRoutes } from '../../src/routes/collab-context.js';
 import { startBrandExtraction } from '../../src/brands/index.js';
 import {
@@ -174,8 +178,10 @@ describe('project move to personal on an unbound (never-locally-shared) project'
   // behavior end to end.
   function buildDeps(overrides: {
     teamProjectCatalog?: unknown;
+    hdwCloudClient?: unknown;
     collabSync?: Record<string, unknown>;
     verifyWorkspaceRequestAuthority?: unknown;
+    projectFiles?: Record<string, unknown>;
   } = {}) {
     const noop = vi.fn();
     return {
@@ -227,6 +233,7 @@ describe('project move to personal on an unbound (never-locally-shared) project'
         listTabs: () => [],
         setTabs: noop,
         resolveProjectDir: () => '',
+        ...(overrides.projectFiles ?? {}),
       },
       conversations: { insertConversation: noop },
       templates: {
@@ -262,6 +269,7 @@ describe('project move to personal on an unbound (never-locally-shared) project'
       },
      verifyWorkspaceRequestAuthority: overrides.verifyWorkspaceRequestAuthority,
      teamProjectCatalog: overrides.teamProjectCatalog,
+     hdwCloudClient: overrides.hdwCloudClient,
      fetchWorkspaceDirectory: async () => ({
        ok: true as const,
        items: [
@@ -329,6 +337,386 @@ describe('project move to personal on an unbound (never-locally-shared) project'
     // The actual bug precondition, produced by real code: the backing
     // project has no `workspace_projects` row at all.
     expect(getWorkspaceProjectByProjectId(db, result.projectId)).toBeUndefined();
+  });
+
+  it('preserves the renamed title, file access, and detail path through repeated personal/team moves', async () => {
+    const projectId = `move-round-trip-${Date.now()}`;
+    const renamed = '主视觉（已重命名）';
+    const teamFolderIds = ['team-folder-a', 'team-folder-b', 'team-folder-c'];
+    insertProject(db, {
+      id: projectId,
+      name: '主视觉',
+      skillId: null,
+      designSystemId: null,
+      pendingPrompt: null,
+      metadata: null,
+      customInstructions: null,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    ensureWorkspaceProject(db, {
+      projectId,
+      workspaceId: PERSONAL_WORKSPACE_ID,
+      visibility: 'personal',
+      resourceState: 'active',
+      createdByWorkspaceMemberId: PERSONAL_MEMBER_ID,
+      updatedByWorkspaceMemberId: PERSONAL_MEMBER_ID,
+      resourceHubResourceId: null,
+      cloudTombstonedAt: null,
+      syncState: 'local_only',
+    });
+    const projectDir = path.join(projectsRoot, projectId);
+    const entryFilePath = path.join(projectDir, 'index.html');
+    await mkdir(projectDir, { recursive: true });
+    await writeFile(entryFilePath, '<main>round trip</main>', 'utf8');
+
+    const requestTeamTransfer = vi.fn(async () => ({
+      targetOwnerMemberId: OWNER_MEMBER_ID,
+    }));
+    const requestTeamUnshare = vi.fn(async () => undefined);
+    const moveProjectFolder = vi.fn(async () => undefined);
+    const readProjectFile = vi.fn(async () => ({
+      mime: 'text/html',
+      buffer: Buffer.from('<main>round trip</main>'),
+    }));
+    const app = express();
+    app.use(express.json());
+    const deps = buildDeps({
+      collabSync: {
+        requestTeamShare: vi.fn(async () => undefined),
+        requestTeamTransfer,
+        requestTeamUnshare,
+        moveProjectFolder,
+        refreshTeamProjectMetadata: vi.fn(),
+        invalidateTeamProjectCatalog: vi.fn(),
+      },
+      projectFiles: {
+        readProjectFile,
+      },
+    }) as any;
+    registerProjectRoutes(app, deps);
+    registerProjectFileRoutes(app, {
+      ...deps,
+      http: {
+        ...deps.http,
+        sendMulterError: vi.fn(),
+      },
+      uploads: {
+        upload: {
+          single: () => (_req: unknown, _res: unknown, next: (error?: unknown) => void) => next(),
+        },
+      },
+      node: { fs },
+      projectFiles: {
+        ...deps.projectFiles,
+        listProjectFolders: vi.fn(async () => []),
+        createProjectFolder: vi.fn(),
+        deleteProjectFolder: vi.fn(),
+        searchProjectFiles: vi.fn(async () => []),
+        readProjectFile,
+        resolveProjectDir: () => projectDir,
+        resolveProjectFilePath: vi.fn(async () => ({
+          filePath: entryFilePath,
+          mime: 'text/html',
+          size: Buffer.byteLength('<main>round trip</main>'),
+          mtime: Date.now(),
+        })),
+        parseByteRange: vi.fn(() => null),
+        renameProjectFile: vi.fn(),
+        deleteProjectFile: vi.fn(),
+        sanitizeName: (value: string) => value,
+        sanitizePath: (value: string) => value,
+      },
+      documents: { buildDocumentPreview: vi.fn() },
+      artifacts: { validateArtifactManifestInput: vi.fn() },
+      projectPreviewScopes: {
+        mint: vi.fn(() => 'scope'),
+        expiresAt: vi.fn(() => Date.now() + 60_000),
+        resolve: vi.fn(),
+        renew: vi.fn(),
+      },
+    } as any);
+    const routeServer = await listen(app);
+    const personalHeaders = ownerTeamHeaders({
+      'x-od-workspace-id': PERSONAL_WORKSPACE_ID,
+      'x-od-workspace-member-id': PERSONAL_MEMBER_ID,
+      'x-od-workspace-type': 'personal',
+    });
+    const assertOpen = async (
+      headers: Record<string, string>,
+      workspaceId: string,
+      folderId: string | null,
+    ) => {
+      const detail = await fetch(`${routeServer.url}/api/projects/${projectId}`, { headers });
+      expect(detail.status, await detail.clone().text()).toBe(200);
+      await expect(detail.json()).resolves.toMatchObject({
+        project: { id: projectId, name: renamed, workspaceId },
+        folderId,
+      });
+      const file = await fetch(
+        `${routeServer.url}/api/projects/${projectId}/raw/index.html`,
+        { headers },
+      );
+      expect(file.status, await file.clone().text()).toBe(200);
+      expect(await file.text()).toContain('round trip');
+    };
+
+    try {
+      const rename = await fetch(`${routeServer.url}/api/projects/${projectId}`, {
+        method: 'PATCH',
+        headers: personalHeaders,
+        body: JSON.stringify({ name: renamed }),
+      });
+      expect(rename.status, await rename.clone().text()).toBe(200);
+      await expect(rename.json()).resolves.toMatchObject({ project: { name: renamed } });
+      await assertOpen(personalHeaders, PERSONAL_WORKSPACE_ID, null);
+
+      for (const teamFolderId of teamFolderIds) {
+        const moveToTeam = await fetch(
+          `${routeServer.url}/api/workspaces/${PERSONAL_WORKSPACE_ID}/projects/${projectId}/move`,
+          {
+            method: 'POST',
+            headers: personalHeaders,
+            body: JSON.stringify({
+              visibility: 'team',
+              targetWorkspaceId: TEAM_WORKSPACE_ID,
+              targetFolderId: teamFolderId,
+            }),
+          },
+        );
+        expect(moveToTeam.status, await moveToTeam.clone().text()).toBe(200);
+        await expect(moveToTeam.json()).resolves.toMatchObject({
+          project: {
+            id: projectId,
+            workspaceId: TEAM_WORKSPACE_ID,
+            createdByWorkspaceMemberId: OWNER_MEMBER_ID,
+            currentUserAccess: {
+              canMoveToPersonal: true,
+              canRename: true,
+            },
+          },
+        });
+        await assertOpen(ownerTeamHeaders(), TEAM_WORKSPACE_ID, teamFolderId);
+
+        const moveToPersonal = await fetch(
+          `${routeServer.url}/api/workspaces/${TEAM_WORKSPACE_ID}/projects/${projectId}/move`,
+          {
+            method: 'POST',
+            headers: ownerTeamHeaders(),
+            body: JSON.stringify({
+              visibility: 'personal',
+              targetWorkspaceId: PERSONAL_WORKSPACE_ID,
+              targetFolderId: null,
+            }),
+          },
+        );
+        expect(moveToPersonal.status, await moveToPersonal.clone().text()).toBe(200);
+        await expect(moveToPersonal.json()).resolves.toMatchObject({
+          project: {
+            id: projectId,
+            workspaceId: PERSONAL_WORKSPACE_ID,
+            createdByWorkspaceMemberId: PERSONAL_MEMBER_ID,
+            currentUserAccess: {
+              canMoveToTeam: true,
+              canRename: true,
+            },
+          },
+        });
+        await assertOpen(personalHeaders, PERSONAL_WORKSPACE_ID, null);
+      }
+
+      expect(requestTeamTransfer).toHaveBeenCalledTimes(teamFolderIds.length);
+      expect(requestTeamUnshare).toHaveBeenCalledTimes(teamFolderIds.length);
+      expect(moveProjectFolder).toHaveBeenCalledTimes(teamFolderIds.length);
+    } finally {
+      await close(routeServer.server);
+    }
+  });
+
+  it('repairs a stale personal home before moving its creator-owned team catalog project into a folder', async () => {
+    const projectId = `stale-personal-home-${Date.now()}`;
+    const resourceId = `project-${projectId}`;
+    const targetFolderId = 'team-folder-main-visual';
+    insertProject(db, {
+      id: projectId,
+      name: '主视觉22',
+      skillId: null,
+      designSystemId: null,
+      pendingPrompt: null,
+      metadata: null,
+      customInstructions: null,
+      createdAt: 10,
+      updatedAt: 20,
+    });
+    // Exact production failure shape: content exists and the team catalog
+    // lists it under the destination team, but the daemon still has the one
+    // local binding parked under Personal.
+    ensureWorkspaceProject(db, {
+      projectId,
+      workspaceId: PERSONAL_WORKSPACE_ID,
+      visibility: 'team',
+      resourceState: 'active',
+      createdByWorkspaceMemberId: PERSONAL_MEMBER_ID,
+      updatedByWorkspaceMemberId: PERSONAL_MEMBER_ID,
+      resourceHubResourceId: `personal-${resourceId}`,
+      cloudTombstonedAt: null,
+      syncState: 'synced',
+    });
+    const teamProjectCatalog = {
+      // Mirrors the affected development runtime: Vela is selected but the
+      // binary is unavailable, while the HDW HTTP endpoint remains healthy.
+      list: vi.fn(async () => {
+        throw new Error('vela binary not found');
+      }),
+      upsert: vi.fn(),
+    };
+    const getTeamProject = vi.fn(async () => ({
+      id: `catalog-${projectId}`,
+      workspaceId: TEAM_WORKSPACE_ID,
+      projectId,
+      resourceId,
+      ownerMemberId: OWNER_MEMBER_ID,
+      displayName: '主视觉22',
+      syncState: 'synced',
+      lastSyncedVersionId: 'version-1',
+      createdAt: new Date(10).toISOString(),
+      updatedAt: new Date(20).toISOString(),
+      access: { canView: true, canComment: true, canEdit: true, frozen: false },
+    }));
+    const moveProjectFolder = vi.fn(async () => undefined);
+    const requestTeamShare = vi.fn(async () => undefined);
+    const requestTeamUnshare = vi.fn(async () => undefined);
+    const app = express();
+    app.use(express.json());
+    registerProjectRoutes(app, buildDeps({
+      teamProjectCatalog,
+      hdwCloudClient: { getTeamProject },
+      collabSync: {
+        requestTeamShare,
+        requestTeamUnshare,
+        moveProjectFolder,
+        invalidateTeamProjectCatalog: vi.fn(),
+      },
+    }));
+    const routeServer = await listen(app);
+    try {
+      const response = await fetch(
+        `${routeServer.url}/api/workspaces/${TEAM_WORKSPACE_ID}/projects/${projectId}/move`,
+        {
+          method: 'POST',
+          headers: ownerTeamHeaders(),
+          body: JSON.stringify({
+            visibility: 'team',
+            targetFolderId,
+          }),
+        },
+      );
+      const body = await response.json() as any;
+
+      expect(response.status, JSON.stringify(body)).toBe(200);
+      expect(body.project).toMatchObject({
+        id: projectId,
+        workspaceId: TEAM_WORKSPACE_ID,
+        visibility: 'team',
+        createdByWorkspaceMemberId: OWNER_MEMBER_ID,
+      });
+      expect(getWorkspaceProjectByProjectId(db, projectId)).toMatchObject({
+        workspaceId: TEAM_WORKSPACE_ID,
+        visibility: 'team',
+        folderId: targetFolderId,
+        createdByWorkspaceMemberId: OWNER_MEMBER_ID,
+        resourceHubResourceId: expect.any(String),
+      });
+      expect(moveProjectFolder).toHaveBeenCalledWith(
+        TEAM_WORKSPACE_ID,
+        projectId,
+        targetFolderId,
+        OWNER_MEMBER_ID,
+      );
+      expect(requestTeamShare).not.toHaveBeenCalled();
+      expect(requestTeamUnshare).not.toHaveBeenCalled();
+      expect(getTeamProject).toHaveBeenCalledWith(TEAM_WORKSPACE_ID, projectId);
+    } finally {
+      await close(routeServer.server);
+    }
+  });
+
+  it('does not repair a stale home for a workspace owner who is not the project creator', async () => {
+    const projectId = `stale-personal-home-foreign-${Date.now()}`;
+    const resourceId = `project-${projectId}`;
+    insertProject(db, {
+      id: projectId,
+      name: 'Another member project',
+      skillId: null,
+      designSystemId: null,
+      pendingPrompt: null,
+      metadata: null,
+      customInstructions: null,
+      createdAt: 10,
+      updatedAt: 20,
+    });
+    ensureWorkspaceProject(db, {
+      projectId,
+      workspaceId: PERSONAL_WORKSPACE_ID,
+      visibility: 'team',
+      resourceState: 'active',
+      createdByWorkspaceMemberId: PERSONAL_MEMBER_ID,
+      updatedByWorkspaceMemberId: PERSONAL_MEMBER_ID,
+      resourceHubResourceId: `personal-${resourceId}`,
+      cloudTombstonedAt: null,
+      syncState: 'synced',
+    });
+    const teamProjectCatalog = {
+      list: vi.fn(async () => [{
+        id: `catalog-${projectId}`,
+        workspaceId: TEAM_WORKSPACE_ID,
+        projectId,
+        resourceId,
+        ownerMemberId: 'another-project-creator',
+        displayName: 'Another member project',
+        syncState: 'synced',
+        lastSyncedVersionId: 'version-1',
+        createdAt: new Date(10).toISOString(),
+        updatedAt: new Date(20).toISOString(),
+        access: { canView: true, canComment: true, canEdit: true, frozen: false },
+      }]),
+      upsert: vi.fn(),
+    };
+    const moveProjectFolder = vi.fn(async () => undefined);
+    const app = express();
+    app.use(express.json());
+    registerProjectRoutes(app, buildDeps({
+      teamProjectCatalog,
+      collabSync: {
+        requestTeamShare: vi.fn(),
+        requestTeamUnshare: vi.fn(),
+        moveProjectFolder,
+        invalidateTeamProjectCatalog: vi.fn(),
+      },
+    }));
+    const routeServer = await listen(app);
+    try {
+      const response = await fetch(
+        `${routeServer.url}/api/workspaces/${TEAM_WORKSPACE_ID}/projects/${projectId}/move`,
+        {
+          method: 'POST',
+          headers: ownerTeamHeaders(),
+          body: JSON.stringify({
+            visibility: 'team',
+            targetFolderId: 'forbidden-folder',
+          }),
+        },
+      );
+
+      expect(response.status).toBe(403);
+      expect(getWorkspaceProjectByProjectId(db, projectId)).toMatchObject({
+        workspaceId: PERSONAL_WORKSPACE_ID,
+        createdByWorkspaceMemberId: PERSONAL_MEMBER_ID,
+      });
+      expect(moveProjectFolder).not.toHaveBeenCalled();
+    } finally {
+      await close(routeServer.server);
+    }
   });
 
   it('closes the causal gap: the real endpoint the web client reads for "is this shared" reports the unbound project as shared', async () => {

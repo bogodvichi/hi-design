@@ -152,6 +152,12 @@ function canCreateFolders(workspace: WorkspaceDirectoryItem): boolean {
   return workspace.isDefaultTeam === true || workspace.role === 'owner' || workspace.role === 'admin';
 }
 
+function canMoveIntoWorkspace(workspace: WorkspaceDirectoryItem): boolean {
+  return workspace.isDefaultTeam === true
+    || workspace.workspaceType !== 'team'
+    || workspace.role !== 'guest';
+}
+
 function InlineFolderCreator({ depth, icon = 'folder', onCreate, onCancel }: {
   depth: number;
   icon?: 'folder' | 'folder-project' | null;
@@ -533,7 +539,7 @@ function UnifiedLocationPane({ workspaces, selectedKey, activeBranch, currentWor
         const rootKey = `${workspace.workspaceId}:root`;
         const expanded = expandedKeys.has(workspace.workspaceId);
         const rootFolders = foldersByWorkspace[workspace.workspaceId];
-        const rootDisabled = disabledKeys?.has(rootKey) ?? false;
+        const rootDisabled = isFolderMoveTargetDisabled(workspace.workspaceId, null, disabledKeys, disabledSubtreeKeys);
         const rootSelected = selectedKey === rootKey;
         const label = workspace.isDefaultTeam ? t('personalFunc.all') : workspace.workspaceName;
         return (
@@ -632,7 +638,7 @@ function LegacyWorkspaceTree({ workspace, selectedKey, onSelectRoot, onSelectFol
   const [expanded, setExpanded] = useState(true);
   const [folders, setFolders] = useState<FolderNode[] | null>(null);
   const rootKey = `${workspace.workspaceId}:root`;
-  const rootDisabled = disabledKeys?.has(rootKey) ?? false;
+  const rootDisabled = isFolderMoveTargetDisabled(workspace.workspaceId, null, disabledKeys, disabledSubtreeKeys);
   useEffect(() => { void fetchFolders(workspace.workspaceId, null, workspace.isDefaultTeam).then(setFolders); }, [workspace.isDefaultTeam, workspace.workspaceId]);
   return (
     <div className={styles.teamItem}>
@@ -677,6 +683,10 @@ export function MoveToTeamTreeDialog({
   const [selected, setSelected] = useState<(TeamTreeSelection & { ancestorIds: readonly string[] }) | null>(null);
   const [activeBranch, setActiveBranch] = useState<ActiveBranch | null>(null);
   const initializedLocationRef = useRef(false);
+  const visibleItems = useMemo(
+    () => (items ?? []).filter(canMoveIntoWorkspace),
+    [items],
+  );
 
   useEffect(() => {
     if (propItems) return;
@@ -686,7 +696,7 @@ export function MoveToTeamTreeDialog({
       try {
         const directory = await readWorkspaceDirectoryForCurrentGeneration();
         if (cancelled) return;
-        let next = (directory.items ?? []).filter((item) => !item.isSharedSpace);
+        let next = (directory.items ?? []).filter((item) => !item.isSharedSpace && canMoveIntoWorkspace(item));
         if (mode === 'personal-folders') next = next.filter((item) => item.isDefaultTeam === true);
         else if (mode === 'team') next = next.filter((item) => item.workspaceType === 'team' && !item.isDefaultTeam);
         else next = next.filter((item) => item.workspaceType === 'team' || item.isDefaultTeam === true);
@@ -704,8 +714,8 @@ export function MoveToTeamTreeDialog({
   }, [canMoveToPersonal, includePersonal, currentWorkspaceId, mode, propItems, restrictToWorkspaceId]);
 
   useEffect(() => {
-    if (initializedLocationRef.current || mode !== 'unified' || !currentWorkspaceId || !items?.length) return;
-    const workspace = items.find((item) => item.workspaceId === currentWorkspaceId);
+    if (initializedLocationRef.current || mode !== 'unified' || !currentWorkspaceId || !visibleItems.length) return;
+    const workspace = visibleItems.find((item) => item.workspaceId === currentWorkspaceId);
     if (!workspace) return;
     initializedLocationRef.current = true;
     if (!currentFolderId) {
@@ -749,7 +759,7 @@ export function MoveToTeamTreeDialog({
       });
     });
     return () => { cancelled = true; };
-  }, [currentFolderId, currentWorkspaceId, items, mode, t]);
+  }, [currentFolderId, currentWorkspaceId, mode, t, visibleItems]);
 
   const selectedKey = useMemo(() => selected ? `${selected.workspaceId}:${selected.folderId ?? 'root'}` : null, [selected]);
   const selectRoot = useCallback((workspace: WorkspaceDirectoryItem) => {
@@ -762,13 +772,15 @@ export function MoveToTeamTreeDialog({
     setSelected({ workspaceId: workspace.workspaceId, workspaceName: workspace.isDefaultTeam ? t('personalFunc.all') : workspace.workspaceName, folderId: folder.id, folderName: folder.name, isDefaultTeam: workspace.isDefaultTeam, ancestorIds: folder.ancestorIds });
   }, [t, disabledKeys, disabledSubtreeKeys]);
   const showUnifiedLayout = mode === 'unified';
-  const visibleItems = items ?? [];
   const activeExpandedFolderIds = useMemo(
     () => new Set(activeBranch?.expandedFolderIds ?? []),
     [activeBranch?.expandedFolderIds],
   );
-  const selectedDisabled = !selected || isFolderMoveTargetDisabled(
-    selected.workspaceId,
+  const selectedWorkspace = selected
+    ? visibleItems.find((workspace) => workspace.workspaceId === selected.workspaceId)
+    : null;
+  const selectedDisabled = !selected || !selectedWorkspace || isFolderMoveTargetDisabled(
+    selectedWorkspace.workspaceId,
     selected.folderId ? { id: selected.folderId, ancestorIds: selected.ancestorIds } : null,
     disabledKeys,
     disabledSubtreeKeys,
