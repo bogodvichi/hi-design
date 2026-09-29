@@ -986,12 +986,6 @@ const disabledKeys = useMemo(() => {
  const isTeamProjectCollection = space === 'team' && badgeOverride !== 'shared';
  const canShowCardActions = actionsAvailable && (isRecentCollection || isSharedWithMeCollection || !isGuest);
 
-  useEffect(() => {
-    if (!copyToast) return;
-    const timer = window.setTimeout(() => setCopyToast(null), 4000);
-    return () => window.clearTimeout(timer);
-  }, [copyToast]);
-
  // Bulk-action state for the 多选 bar. Every action below is the batch form of
   // an action the per-card ⋯ menu already offers (move in/out of the team
   // space, delete); nothing new is exposed here that a single card cannot do.
@@ -1587,19 +1581,16 @@ function requestDelete(project: Project) {
     }
   }
 
-  function requestDuplicate(project: Project) {
-    if (!onDuplicate) return;
+  function requestDuplicate(project: Project, allowed: boolean) {
+    if (!onDuplicate || !allowed || copyPendingId) return;
     const creator = resolveCreator(project);
-    // Team projects are readable/copyable by every active non-guest member;
-    // personal and shared-with-me surfaces keep their existing owner-only
-    // duplicate rule.
-    if (!creator.canMutate && !isTeamProjectCollection && !isSharedWithMeCollection) return;
-    if (isGuest && !isSharedWithMeCollection) return;
     trackCollection('duplicate', {
       project_key: project.id,
       project_relation: creator.ownedBySelf ? 'self' : 'other',
     });
     setMenuOpenId(null);
+    setCopyPendingId(project.id);
+    setCopyToast(null);
     const startedAt = performance.now();
     void Promise.resolve(onDuplicate(project.id)).then(() => {
       trackWorkspaceProjectActionResult(analytics.track, {
@@ -1615,6 +1606,7 @@ function requestDelete(project: Project) {
       });
     }).catch((err) => {
       console.warn('[RecentProjectsStrip] duplicate project failed:', err);
+      setCopyToast({ message: t('recentProjects.copyToPersonalFailed'), tone: 'error' });
       trackWorkspaceProjectActionResult(analytics.track, {
         page_name: analyticsPage,
         area: 'project_collection',
@@ -1627,6 +1619,8 @@ function requestDelete(project: Project) {
         error_code: 'request_failed',
         ...workspaceDimensions,
       });
+    }).finally(() => {
+      setCopyPendingId((current) => current === project.id ? null : current);
     });
   }
 
@@ -2669,7 +2663,7 @@ function requestDelete(project: Project) {
                            }
                          }}
                        >
-                         <Icon name="folder" size={12} />
+                         <Icon name="map-pin" size={14} />
                          <span>{t('recentProjects.openLocation')}</span>
                        </button>
                      ) : null}
@@ -2685,7 +2679,7 @@ function requestDelete(project: Project) {
                            setMenuOpenId(null);
                          }}
                        >
-                         <Icon name="share" size={12} />
+                         <Icon name="share" size={14} />
                          <span>{t('sharedSpace.shareToSharedSpace')}</span>
                        </button>
                      ) : null}
@@ -2693,10 +2687,17 @@ function requestDelete(project: Project) {
                        <button
                          type="button"
                          role="menuitem"
-                         onClick={() => requestDuplicate(project)}
+                         disabled={copyPendingId !== null}
+                         onClick={() => requestDuplicate(project, canDuplicateProject)}
                        >
-                         <Icon name="copy" size={12} />
-                         <span>{space === 'recent' ? t('recentProjects.copyAndOpen') : t('designs.menuDuplicate')}</span>
+                         <Icon name="copy" size={14} />
+                         <span>
+                           {copyPendingId === project.id
+                             ? t('recentProjects.copyInProgress')
+                             : space === 'recent'
+                               ? t('recentProjects.copyAndOpen')
+                               : t('designs.menuDuplicate')}
+                         </span>
                        </button>
                      ) : null}
                      {canCopyToPersonal ? (
@@ -2706,7 +2707,7 @@ function requestDelete(project: Project) {
                          disabled={copyPendingId === project.id}
                          onClick={() => requestCopyToPersonal(project)}
                        >
-                         <Icon name="copy" size={12} />
+                         <Icon name="copy" size={14} />
                          <span>
                            {copyPendingId === project.id
                              ? t('recentProjects.shareInProgress')
@@ -2725,7 +2726,7 @@ function requestDelete(project: Project) {
                          title={creator.canMutate ? undefined : t('recentProjects.ownOnlyMutation')}
                          onClick={() => startRename(project)}
                        >
-                         <Icon name="pencil" size={12} />
+                         <Icon name="pencil" size={14} />
                          <span>{t('designs.menuRename')}</span>
                        </button>
                      ) : null}
@@ -2736,7 +2737,7 @@ function requestDelete(project: Project) {
                          disabled={sharingId === project.id || unsharingId === project.id}
                          onClick={() => requestMove(project, 'to-team')}
                        >
-                         <Icon name="move" size={12} />
+                         <Icon name="move" size={14} />
                          <span>
                            {sharingId === project.id || unsharingId === project.id
                              ? t('recentProjects.shareInProgress')
@@ -2752,7 +2753,7 @@ function requestDelete(project: Project) {
                          title={creator.canMutate ? undefined : t('recentProjects.ownOnlyMutation')}
                          onClick={() => requestDelete(project)}
                        >
-                         <Icon name="close" size={12} />
+                         <Icon name="trash" size={14} />
                          <span>{t('designs.menuDelete')}</span>
                        </button>
                      ) : null}
@@ -2765,7 +2766,7 @@ function requestDelete(project: Project) {
                            onRemoveSharedWithMe?.(project.id);
                          }}
                        >
-                         <Icon name="close" size={12} />
+                         <Icon name="minus-circle" size={14} />
                          <span>{t('sharedSpace.removeFromSharedWithMe')}</span>
                        </button>
                      ) : null}
@@ -2779,7 +2780,7 @@ function requestDelete(project: Project) {
                              onRemoveRecent?.(project.id);
                            }}
                          >
-                           <Icon name="close" size={12} />
+                           <Icon name="minus-circle" size={14} />
                            <span>{t('recentProjects.removeRecent')}</span>
                          </button>
                        </>
@@ -2985,6 +2986,9 @@ function requestDelete(project: Project) {
         <Toast
           message={copyToast.message}
           tone={copyToast.tone}
+          placement="top"
+          role="alert"
+          ttlMs={3000}
           onDismiss={() => setCopyToast(null)}
         />
       ) : null}

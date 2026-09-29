@@ -2347,6 +2347,7 @@ export function WorkspaceTabsBar({
           // The single entry tab is permanent and pinned leftmost: it cannot be
           // closed or dragged out of the first slot, whatever section it shows.
           const isPinned = tab.kind === 'entry';
+          const hasProjectNameTooltip = tab.kind === 'project';
           const overflowHidden = !visibleChromeTabIds.has(tab.id);
           const dragOverClass =
             dragOverTarget?.tabId === tab.id && draggingTabId !== tab.id
@@ -2420,7 +2421,11 @@ export function WorkspaceTabsBar({
                 <>
                   <button
                     type="button"
-                    className="workspace-tab__main"
+                    className={`workspace-tab__main${hasProjectNameTooltip ? ' od-tooltip' : ''}`}
+                    title={hasProjectNameTooltip ? display.title : undefined}
+                    data-tooltip={hasProjectNameTooltip ? display.title : undefined}
+                    data-tooltip-placement={hasProjectNameTooltip ? 'bottom' : undefined}
+                    data-tooltip-align={hasProjectNameTooltip ? 'start' : undefined}
                     onClick={() => openTab(tab)}
                   >
                     <span className="workspace-tab__icon" aria-hidden>

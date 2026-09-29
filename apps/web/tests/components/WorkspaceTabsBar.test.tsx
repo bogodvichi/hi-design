@@ -895,6 +895,17 @@ describe('WorkspaceTabsBar navigation semantics', () => {
     });
   });
 
+  it('shows the full project name in the project-tab tooltip', async () => {
+    render(<WorkspaceTabsBar route={{ ...projectRoute }} projects={[project]} />);
+
+    const projectTabButton = await screen.findByRole('button', { name: project.name });
+    expect(projectTabButton).toHaveClass('od-tooltip');
+    expect(projectTabButton).toHaveAttribute('title', project.name);
+    expect(projectTabButton).toHaveAttribute('data-tooltip', project.name);
+    expect(projectTabButton).toHaveAttribute('data-tooltip-placement', 'bottom');
+    expect(projectTabButton).toHaveAttribute('data-tooltip-align', 'start');
+  });
+
   it('coalesces duplicate project tabs restored from saved workspace state', async () => {
     // Regression for #2641: a workspace persisted before the dedupe fix can
     // hold several tabs for the same projectId (distinct tab ids). On restore,

@@ -5427,13 +5427,52 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
   });
 
   app.post('/api/projects/:id/duplicate', async (req, res) => {
-    const sourceProject = getProject(db, req.params.id);
+    let sourceProject = getProject(db, req.params.id);
     try {
+      const createHome = await resolveCreatedProjectHome(req);
+      // Team catalog rows can reach the UI before this daemon has pulled the
+      // source files. Copy is a read-plus-create operation, so any active
+      // non-guest team member may first materialize the source and then create
+      // the duplicate in the request workspace. Without this, another
+      // creator's unopened project failed with PROJECT_MATERIALIZATION_PENDING
+      // even though its card correctly advertised Copy.
+      if (
+        createHome?.workspaceType === 'team'
+        && (!sourceProject || isUnmaterializedSharedPlaceholder(sourceProject))
+      ) {
+        const sourceCtx = await authoritativeWorkspaceProjectContext(
+          req,
+          res,
+          createHome.workspaceId,
+        );
+        if (!sourceCtx) return;
+        const materialization = await materializeTeamProjectForCopy(
+          req.params.id,
+          sourceCtx,
+        );
+        if (materialization === 'denied') {
+          return sendApiError(
+            res,
+            403,
+            'WORKSPACE_PROJECT_PERMISSION_DENIED',
+            'project copy forbidden',
+          );
+        }
+        if (materialization === 'unavailable') {
+          return sendApiError(
+            res,
+            503,
+            'UPSTREAM_UNAVAILABLE',
+            'team project content is temporarily unavailable',
+            { retryable: true },
+          );
+        }
+        sourceProject = getProject(db, req.params.id);
+      }
       const locations = await configuredProjectLocations();
       if (!sourceProject || !projectVisibleForLocations(sourceProject, locations)) {
         return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'not found');
       }
-      const createHome = await resolveCreatedProjectHome(req);
       // recvqbhor3pai2: a project this daemon has never bound anywhere (e.g.
       // a copy left unbound by an earlier headerless duplicate — see
       // `bindDuplicateIntoRequestWorkspace`'s doc comment) must not be

@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { FolderCardMenu } from '../../src/components/FolderCardMenu';
+import { REMIX_ICON_PATHS } from '../../src/components/remix-icon-paths';
 import styles from '../../src/components/TeamSpaceView.module.css';
 
 vi.mock('../../src/i18n', () => ({
@@ -55,6 +56,14 @@ describe('FolderCardMenu order', () => {
       node.getAttribute('role') === 'separator' ? 'separator' : node.textContent,
     );
     expect(items).toEqual(['分享文件夹', 'separator', '重命名', '移动', '删除']);
+    expect(within(menu).getByRole('menuitem', { name: '删除' }).querySelector('path')?.getAttribute('d'))
+      .toBe(REMIX_ICON_PATHS['delete-bin-line']);
+  });
+
+  it('uses the remove icon for non-destructive collection removal', () => {
+    const menu = openMenu({ deleteIcon: 'minus-circle', deleteLabel: '从分享给我的删除' });
+    expect(within(menu).getByRole('menuitem', { name: '从分享给我的删除' }).querySelector('path')?.getAttribute('d'))
+      .toBe(REMIX_ICON_PATHS['indeterminate-circle-line']);
   });
 
   it('does not render an orphan separator when share is unavailable', () => {

@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 import type { ComponentProps } from 'react';
 import type { WorkspaceCollabContext } from '@open-design/contracts';
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RecentProjectsStrip } from '../../src/components/RecentProjectsStrip';
 import { DesignsTab } from '../../src/components/DesignsTab';
+import { REMIX_ICON_PATHS } from '../../src/components/remix-icon-paths';
 import { I18nProvider } from '../../src/i18n';
 import { zhCN } from '../../src/i18n/locales/zh-CN';
 import type { Project } from '../../src/types';
@@ -83,7 +84,8 @@ describe('project card action order', () => {
       onOpenLocation: vi.fn(),
       onRemoveRecent: vi.fn(),
     });
-    expect(order(openMenu())).toEqual([
+    const menu = openMenu();
+    expect(order(menu)).toEqual([
       zhCN['recentProjects.openLocation'],
       'separator',
       '分享',
@@ -92,6 +94,10 @@ describe('project card action order', () => {
       '重命名',
       zhCN['recentProjects.removeRecent'],
     ]);
+    expect(within(menu).getByRole('menuitem', { name: zhCN['recentProjects.openLocation'] }).querySelector('path')?.getAttribute('d'))
+      .toBe(REMIX_ICON_PATHS['map-pin-2-line']);
+    expect(within(menu).getByRole('menuitem', { name: zhCN['recentProjects.removeRecent'] }).querySelector('path')?.getAttribute('d'))
+      .toBe(REMIX_ICON_PATHS['indeterminate-circle-line']);
   });
   it('uses the shared-with-me menu and limits sharing to links', async () => {
     await recent({
@@ -100,8 +106,11 @@ describe('project card action order', () => {
       sharedWithMeHomeWorkspaceId: () => 'owner-workspace',
       onRemoveSharedWithMe: vi.fn(),
     });
-    expect(order(openMenu())).toEqual(['分享', '复制', 'separator', '从分享给我的删除']);
-    fireEvent.click(within(screen.getByRole('menu')).getByRole('menuitem', { name: '分享' }));
+    const menu = openMenu();
+    expect(order(menu)).toEqual(['分享', '复制', 'separator', '从分享给我的删除']);
+    expect(within(menu).getByRole('menuitem', { name: '从分享给我的删除' }).querySelector('path')?.getAttribute('d'))
+      .toBe(REMIX_ICON_PATHS['indeterminate-circle-line']);
+    fireEvent.click(within(menu).getByRole('menuitem', { name: '分享' }));
     expect(state.shareDialogProps).toMatchObject({
       workspaceId: 'owner-workspace',
       canPublishToCommunity: false,
@@ -121,11 +130,85 @@ describe('project card action order', () => {
   });
   it('gives a team project creator the same project actions as personal', async () => {
     await recent({ space: 'team', operator: { memberId: 'wm-1', role: 'member' } });
-    expect(order(openMenu())).toEqual(['分享', '复制', 'separator', '重命名', '移动项目', '删除']);
+    const menu = openMenu();
+    expect(order(menu)).toEqual(['分享', '复制', 'separator', '重命名', '移动项目', '删除']);
+    expect(within(menu).getByRole('menuitem', { name: '删除' }).querySelector('path')?.getAttribute('d'))
+      .toBe(REMIX_ICON_PATHS['delete-bin-line']);
   });
   it('gives a non-creator team member only share and copy, without an orphan separator', async () => {
-    await recent({ space: 'team', operator: { memberId: 'member-other', role: 'member' } });
-    expect(order(openMenu())).toEqual(['分享', '复制']);
+    const onDuplicate = vi.fn();
+    await recent({
+      space: 'team',
+      operator: { memberId: 'member-other', role: 'member' },
+      onDuplicate,
+    });
+    const menu = openMenu();
+    expect(order(menu)).toEqual(['分享', '复制']);
+    fireEvent.click(within(menu).getByRole('menuitem', { name: '复制' }));
+    expect(onDuplicate).toHaveBeenCalledExactlyOnceWith('menu-project');
+    expect(screen.queryByRole('dialog', { name: 'copy target' })).toBeNull();
+  });
+  it('runs Copy and open for a recent team project created by another member', async () => {
+    const onDuplicate = vi.fn(async () => {});
+    await recent({
+      projects: [{
+        ...project(),
+        createdByWorkspaceMemberId: 'member-owner',
+        workspaceVisibility: 'team',
+      }],
+      space: 'recent',
+      homeWorkspaceId: null,
+      operator: { memberId: 'member-other', role: 'member' },
+      onDuplicate,
+      onOpenLocation: vi.fn(),
+      onRemoveRecent: vi.fn(),
+    });
+
+    fireEvent.click(within(openMenu()).getByRole('menuitem', {
+      name: zhCN['recentProjects.copyAndOpen'],
+    }));
+
+    expect(onDuplicate).toHaveBeenCalledExactlyOnceWith('menu-project');
+  });
+  it('runs Copy and open for a recent Shared-with-me project', async () => {
+    const onDuplicate = vi.fn(async () => {});
+    await recent({
+      projects: [{
+        ...project(),
+        workspaceId: 'owner-workspace',
+        createdByWorkspaceMemberId: 'member-owner',
+        workspaceVisibility: 'team',
+      }],
+      space: 'recent',
+      homeWorkspaceId: null,
+      sharedWithMeHomeWorkspaceId: () => 'owner-workspace',
+      onDuplicate,
+      onOpenLocation: vi.fn(),
+      onRemoveRecent: vi.fn(),
+    });
+
+    fireEvent.click(within(openMenu()).getByRole('menuitem', {
+      name: zhCN['recentProjects.copyAndOpen'],
+    }));
+
+    expect(onDuplicate).toHaveBeenCalledExactlyOnceWith('menu-project');
+  });
+  it('shows a visible error when Copy and open fails', async () => {
+    await recent({
+      space: 'recent',
+      homeWorkspaceId: null,
+      onDuplicate: vi.fn(async () => { throw new Error('copy failed'); }),
+      onOpenLocation: vi.fn(),
+      onRemoveRecent: vi.fn(),
+    });
+
+    fireEvent.click(within(openMenu()).getByRole('menuitem', {
+      name: zhCN['recentProjects.copyAndOpen'],
+    }));
+
+    await waitFor(() => {
+      expect(screen.getByText(zhCN['recentProjects.copyToPersonalFailed'])).toBeTruthy();
+    });
   });
   it('omits the separator when there are no share/copy actions', async () => {
     await recent({ homeWorkspaceId: null, onDuplicate: undefined });

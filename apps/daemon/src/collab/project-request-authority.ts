@@ -146,6 +146,23 @@ export async function enforceLocalProjectDataPlaneRequest(input: {
     );
   }
 
+  // Duplicating a Team project reads the source and creates a new project; it
+  // does not mutate the source project's single-writer state. Keep this exact
+  // exception aligned with workspaceResourceMutationAllowed: every active
+  // non-guest Team member may copy, while rename/delete/file writes below
+  // still require the persisted creator identity.
+  if (
+    options.capability === 'duplicateProject'
+    && row.visibility === 'team'
+    && claimed
+    && claimed.memberStatus === 'active'
+    && claimed.role !== 'guest'
+    && claimed.lifecycleState !== 'locked'
+    && claimed.lifecycleState !== 'deleted'
+  ) {
+    return true;
+  }
+
   // A Team project is single-writer. Pulled member mirrors deliberately persist
   // a null creator, so null means "no local writer", not "unattributed local
   // project". Keep those mirrors read-only from the durable row even when Vela

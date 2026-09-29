@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Icon } from './Icon';
+import { Icon, type IconName } from './Icon';
 import { useT } from '../i18n';
 import styles from './TeamSpaceView.module.css';
 
@@ -14,6 +14,7 @@ export function FolderCardMenu({
   renameLabel,
   onDelete,
   deleteLabel,
+  deleteIcon = 'trash',
   onShare,
   shareLabel,
   onMove,
@@ -23,6 +24,7 @@ export function FolderCardMenu({
   renameLabel?: string;
   onDelete?: () => void;
   deleteLabel?: string;
+  deleteIcon?: Extract<IconName, 'trash' | 'minus-circle'>;
   onShare?: () => void;
   shareLabel?: string;
   onMove?: () => void;
@@ -95,7 +97,7 @@ export function FolderCardMenu({
             role="menuitem"
             onClick={(e) => { e.stopPropagation(); setOpen(false); onShare(); }}
           >
-            <Icon name="share" size={12} />
+            <Icon name="share" size={14} />
             <span>{shareLabel}</span>
           </button>
         ) : null}
@@ -108,7 +110,7 @@ export function FolderCardMenu({
             role="menuitem"
             onClick={(e) => { e.stopPropagation(); setOpen(false); onRename(); }}
           >
-            <Icon name="edit" size={12} />
+            <Icon name="edit" size={14} />
             <span>{renameLabel}</span>
           </button>
         ) : null}
@@ -118,7 +120,7 @@ export function FolderCardMenu({
             role="menuitem"
             onClick={(e) => { e.stopPropagation(); setOpen(false); onMove(); }}
           >
-            <Icon name="move" size={12} />
+            <Icon name="move" size={14} />
             <span>{moveLabel}</span>
           </button>
         ) : null}
@@ -128,7 +130,7 @@ export function FolderCardMenu({
             role="menuitem"
             onClick={(e) => { e.stopPropagation(); setOpen(false); onDelete(); }}
           >
-            <Icon name="trash" size={12} />
+            <Icon name={deleteIcon} size={14} />
             <span>{deleteLabel}</span>
           </button>
         ) : null}

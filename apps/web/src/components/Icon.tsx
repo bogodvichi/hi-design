@@ -63,10 +63,12 @@ export type IconName =
   | 'log-in'
   | 'log-out'
   | 'integrations-filled'
+  | 'map-pin'
   | 'maximize'
   | 'mic'
   | 'minimize'
   | 'minus'
+  | 'minus-circle'
   | 'move'
   | 'more-horizontal'
   | 'orbit'
@@ -182,10 +184,12 @@ const REMIX_ICON: Partial<Record<IconName, string>> = {
   'log-in': 'login-circle-line',
   'log-out': 'logout-box-r-line',
   mail: 'mail-line',
+  'map-pin': 'map-pin-2-line',
   maximize: 'fullscreen-line',
   mic: 'mic-line',
   minimize: 'fullscreen-exit-line',
   minus: 'subtract-line',
+  'minus-circle': 'indeterminate-circle-line',
   moon: 'moon-line',
   'more-horizontal': 'more-line',
   orbit: 'planet-line',

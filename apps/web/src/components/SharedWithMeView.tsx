@@ -157,6 +157,7 @@ function FolderCard({
         <FolderCardMenu
           onDelete={onRemove}
           deleteLabel={t('sharedSpace.removeFromSharedWithMe')}
+          deleteIcon="minus-circle"
         />
       ) : null}
       <div className={styles.folderCardGrid}>

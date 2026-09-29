@@ -353,7 +353,7 @@ function FolderContextTag({ active }: { active: boolean }) {
   if (!ctx) return null;
   return (
     <div className="home-hero__folder-tag">
-      <Icon name="folder" size={13} aria-hidden />
+      <Icon name="folder" size={14} aria-hidden />
       <span className="home-hero__folder-tag-path">{ctx.folderPath}</span>
       <button
         type="button"

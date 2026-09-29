@@ -1016,6 +1016,108 @@ describe('workspace project routes', () => {
     expect(projectBody.project.name).toBe('Direct write project');
   });
 
+  it('materializes another creator\'s unopened team project before duplicating it in place', async () => {
+    const sourceProjectId = `workspace-duplicate-placeholder-${Date.now()}`;
+    const sourceOwnerMemberId = 'member-source-owner';
+    const viewerMemberId = 'member-copy-viewer';
+    const resourceId = `project-resource-${sourceProjectId}`;
+    let sourceProject: any = {
+      id: sourceProjectId,
+      name: '共享项目',
+      skillId: null,
+      designSystemId: null,
+      pendingPrompt: null,
+      metadata: { sharedProjectPlaceholderAt: 1 },
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    const materializeTeamProject = vi.fn(async () => {
+      sourceProject = {
+        ...sourceProject,
+        name: 'Teammate project',
+        metadata: { entryFile: 'index.html' },
+      };
+    });
+    const teamProjectCatalog = {
+      list: vi.fn(async () => [{
+        id: `catalog-${sourceProjectId}`,
+        workspaceId,
+        projectId: sourceProjectId,
+        resourceId,
+        ownerMemberId: sourceOwnerMemberId,
+        displayName: 'Teammate project',
+        syncState: 'synced',
+        lastSyncedVersionId: 'version-1',
+        createdAt: new Date(1).toISOString(),
+        updatedAt: new Date(2).toISOString(),
+        access: { canView: true, canComment: true, canEdit: true, frozen: false },
+      }]),
+      upsert: vi.fn(),
+    };
+    const deps = workspaceProjectRouteDeps({
+      workspaceId,
+      projectId: sourceProjectId,
+      dbDeleteProject: vi.fn(),
+      removeProjectDir: vi.fn(),
+      teamProjectCatalog,
+      collabSync: { materializeTeamProject, requestTeamShare: vi.fn() },
+      workspaceRowOverrides: {
+        visibility: 'team',
+        workspaceVisibility: 'team',
+        createdByWorkspaceMemberId: sourceOwnerMemberId,
+        updatedByWorkspaceMemberId: sourceOwnerMemberId,
+        resourceHubResourceId: resourceId,
+        syncState: 'synced',
+      },
+    }) as any;
+    const insertProject = vi.fn((_db: unknown, input: Record<string, unknown>) => input);
+    const writeProjectFile = vi.fn(async () => undefined);
+    deps.projectStore.getProject = (_db: unknown, requestedProjectId: string) =>
+      requestedProjectId === sourceProjectId ? sourceProject : null;
+    deps.projectStore.insertProject = insertProject;
+    deps.projectFiles.listFiles = () => [{ name: 'index.html' }];
+    deps.projectFiles.readProjectFile = async () => ({
+      name: 'index.html',
+      buffer: Buffer.from('<h1>team source</h1>'),
+    });
+    deps.projectFiles.writeProjectFile = writeProjectFile;
+
+    const app = express();
+    app.use(express.json());
+    registerProjectRoutes(app, deps);
+    const routeServer = await listen(app);
+    try {
+      const response = await fetch(
+        `${routeServer.url}/api/projects/${sourceProjectId}/duplicate`,
+        {
+          method: 'POST',
+          headers: headers(viewerMemberId, { 'x-od-workspace-type': 'team' }),
+          body: JSON.stringify({}),
+        },
+      );
+
+      const responseBody = await response.json();
+      expect(response.status, JSON.stringify(responseBody)).toBe(200);
+      expect(materializeTeamProject).toHaveBeenCalledWith(sourceProjectId, {
+        teamId: workspaceId,
+        memberId: sourceOwnerMemberId,
+        role: 'member',
+        lifecycleState: 'active',
+      });
+      expect(writeProjectFile).toHaveBeenCalledWith(
+        'projects',
+        'id',
+        'index.html',
+        expect.any(Buffer),
+        expect.objectContaining({ overwrite: true }),
+        expect.objectContaining({ entryFile: 'index.html' }),
+      );
+      expect(insertProject).toHaveBeenCalled();
+    } finally {
+      await close(routeServer.server);
+    }
+  });
+
   // recvqbklNGDqYY — a fully logged-out request (no x-od-workspace-* headers
   // at all, exactly what the frontend sends once workspaceContext goes null)
   // used to hit the ctx===null branch of enforceWorkspaceProjectMutation and

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   buildPersistedConfig,
+  duplicateSourceWorkspaceId,
   isAutosaveDraftOnlyChange,
   hydrateReadyTeamProject,
   mergeAgentModelChoice,
@@ -69,6 +70,18 @@ describe('projectRouteSurfaceState', () => {
       daemonLive: true,
       resolutionFailure: 'access-revoked',
     })).toBe('missing');
+  });
+});
+
+describe('duplicateSourceWorkspaceId', () => {
+  it('uses the explicit recent-project Workspace when the project is absent from the current list', () => {
+    expect(duplicateSourceWorkspaceId(' ws-source ', undefined)).toBe('ws-source');
+  });
+
+  it('falls back to the persisted project Workspace outside the recent-project path', () => {
+    expect(duplicateSourceWorkspaceId(undefined, {
+      workspaceId: ' ws-persisted ',
+    })).toBe('ws-persisted');
   });
 });
 

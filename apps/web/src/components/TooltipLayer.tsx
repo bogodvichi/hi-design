@@ -51,8 +51,9 @@ function positionTooltip(
   const viewportHeight = window.innerHeight;
   const maxLeft = Math.max(TOOLTIP_MARGIN, viewportWidth - tip.width - TOOLTIP_MARGIN);
   const maxTop = Math.max(TOOLTIP_MARGIN, viewportHeight - tip.height - TOOLTIP_MARGIN);
+  const alignStart = target.dataset.tooltipAlign === 'start';
 
-  let left = rect.left + rect.width / 2 - tip.width / 2;
+  let left = alignStart ? rect.left : rect.left + rect.width / 2 - tip.width / 2;
   let top = rect.top - tip.height - TOOLTIP_GAP;
 
   if (placement === 'bottom') {

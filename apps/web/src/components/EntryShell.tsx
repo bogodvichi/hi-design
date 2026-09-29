@@ -434,7 +434,11 @@ interface Props {
  onDeleteProject: (id: string) => Promise<boolean | void> | boolean | void;
 onDuplicateProject?: (
   id: string,
-  options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
+  options?: {
+    sourceWorkspaceId?: string;
+    targetWorkspaceId?: string;
+    targetFolderId?: string | null;
+  },
 ) => Promise<void> | void;
 onRenameProject: (id: string, name: string, source?: ProjectMutationSource) => void;
 onProjectsRefresh?: () => Promise<void> | void;

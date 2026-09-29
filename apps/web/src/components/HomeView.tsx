@@ -292,7 +292,11 @@ interface Props {
   onViewAllProjects: () => void;
   onDuplicateProject?: (
     id: string,
-    options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
+    options?: {
+      sourceWorkspaceId?: string;
+      targetWorkspaceId?: string;
+      targetFolderId?: string | null;
+    },
   ) => Promise<void> | void;
   onCopySharedProject?: (id: string, homeWorkspaceId: string) => Promise<string | void> | string | void;
   onRenameProject?: (id: string, name: string) => void;
@@ -3413,13 +3417,17 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
     if (bootstrap.kind !== 'found') throw new Error('Project location is unavailable');
     if (bootstrap.scope.kind === 'team' && bootstrap.scope.visibility === 'team') {
       await onDuplicateProject(projectId, {
+        sourceWorkspaceId: bootstrap.scope.workspaceId,
         targetWorkspaceId: bootstrap.scope.workspaceId,
         targetFolderId: bootstrap.folderId,
       });
       return;
     }
     if (bootstrap.scope.kind === 'personal') {
-      await onDuplicateProject(projectId, { targetFolderId: bootstrap.folderId });
+      await onDuplicateProject(projectId, {
+        sourceWorkspaceId: bootstrap.scope.workspaceId,
+        targetFolderId: bootstrap.folderId,
+      });
       return;
     }
     await onDuplicateProject(projectId);

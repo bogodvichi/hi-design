@@ -10,11 +10,17 @@ function response() {
 function request(input: {
   workspaceId?: string;
   memberId?: string;
+  role?: 'owner' | 'admin' | 'member' | 'guest';
+  memberStatus?: 'active' | 'removed';
+  lifecycleState?: 'active' | 'billing_past_due' | 'locked' | 'deleting' | 'deleted';
   query?: Record<string, string>;
 }) {
   const headers: Record<string, string | undefined> = {
     'x-od-workspace-id': input.workspaceId,
     'x-od-workspace-member-id': input.memberId,
+    'x-od-workspace-role': input.role,
+    'x-od-workspace-member-status': input.memberStatus,
+    'x-od-workspace-lifecycle-state': input.lifecycleState,
   };
   return {
     query: input.query ?? {},
@@ -402,6 +408,74 @@ describe('createAuthorizeProjectRequest', () => {
       );
     },
   );
+
+  it.each(['member', 'admin', 'owner'] as const)(
+    'allows an active non-creator Team %s to duplicate without source mutation rights',
+    async (role) => {
+      const row = {
+        workspaceId: 'workspace-a',
+        visibility: 'team',
+        resourceState: 'active',
+        createdByWorkspaceMemberId: 'project-owner',
+      };
+      const sendApiError = vi.fn();
+      const authorize = createAuthorizeProjectRequest({
+        db: {},
+        getWorkspaceProject: () => row,
+        getWorkspaceProjectByProjectId: () => row,
+        sendApiError,
+      });
+
+      await expect(authorize(
+        request({
+          workspaceId: 'workspace-a',
+          memberId: 'member-viewer',
+          role,
+          memberStatus: 'active',
+          lifecycleState: 'active',
+        }),
+        response(),
+        'project-a',
+        { mode: 'write', capability: 'duplicateProject' },
+      )).resolves.toBe(true);
+      expect(sendApiError).not.toHaveBeenCalled();
+    },
+  );
+
+  it('rejects a Team guest duplicating another creator project', async () => {
+    const row = {
+      workspaceId: 'workspace-a',
+      visibility: 'team',
+      resourceState: 'active',
+      createdByWorkspaceMemberId: 'project-owner',
+    };
+    const sendApiError = vi.fn();
+    const authorize = createAuthorizeProjectRequest({
+      db: {},
+      getWorkspaceProject: () => row,
+      getWorkspaceProjectByProjectId: () => row,
+      sendApiError,
+    });
+
+    await expect(authorize(
+      request({
+        workspaceId: 'workspace-a',
+        memberId: 'member-guest',
+        role: 'guest',
+        memberStatus: 'active',
+        lifecycleState: 'active',
+      }),
+      response(),
+      'project-a',
+      { mode: 'write', capability: 'duplicateProject' },
+    )).resolves.toBe(false);
+    expect(sendApiError).toHaveBeenLastCalledWith(
+      expect.anything(),
+      403,
+      'WORKSPACE_PROJECT_PERMISSION_DENIED',
+      expect.any(String),
+    );
+  });
 
   it.each(['rename', 'delete', 'duplicate', 'writeFiles'] as const)(
     'keeps a materialized member mirror read-only for %s during an authority outage',

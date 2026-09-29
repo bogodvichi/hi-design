@@ -838,6 +838,15 @@ export function projectRouteSurfaceState(input: {
   return 'resolving-deep-link';
 }
 
+export function duplicateSourceWorkspaceId(
+  explicitWorkspaceId: string | undefined,
+  sourceProject: Pick<Project, 'workspaceId'> | undefined,
+): string {
+  return explicitWorkspaceId?.trim()
+    || sourceProject?.workspaceId?.trim()
+    || '';
+}
+
 /**
  * Resolves a project a member has just deep-linked to but has no local
  * record of yet. Bounded-retries `getProject` + `pullTeamSharedProjectIfAvailable`
@@ -3479,13 +3488,19 @@ function AppInner() {
 
  const resolveSourceProjectWorkspaceContext = useCallback(async (
     sourceProjectId: string,
+    sourceWorkspaceId?: string,
   ): Promise<WorkspaceCollabContext | null> => {
     const routeProject = routeProjectSnapshotRef.current?.project;
     const sourceProject =
       routeProject?.id === sourceProjectId
         ? routeProject
         : projects.find((project) => project.id === sourceProjectId);
-    const persistedWorkspaceId = sourceProject?.workspaceId?.trim() ?? '';
+    // Home's recent-projects list can contain a localStorage-only project from
+    // another Workspace, so it is not necessarily present in App's current
+    // `projects` list. Its route bootstrap has already resolved the persisted
+    // source Workspace; carry that exact id into this resolver instead of
+    // dropping the authority witness at the component boundary.
+    const persistedWorkspaceId = duplicateSourceWorkspaceId(sourceWorkspaceId, sourceProject);
     if (!persistedWorkspaceId) return null;
 
     const routeContext = projectRouteWorkspaceContextRef.current;
@@ -3546,13 +3561,14 @@ function AppInner() {
       sourceProjectId: string,
       input: {
         name?: string;
+        sourceWorkspaceId?: string;
         targetWorkspaceId?: string;
         targetFolderId?: string | null;
       } = {},
     ) => {
+      const { sourceWorkspaceId, targetFolderId, targetWorkspaceId, name } = input;
       const sourceWorkspaceContext =
-        await resolveSourceProjectWorkspaceContext(sourceProjectId);
-      const { targetFolderId, targetWorkspaceId, name } = input;
+        await resolveSourceProjectWorkspaceContext(sourceProjectId, sourceWorkspaceId);
       if (
         (targetFolderId !== undefined || targetWorkspaceId !== undefined)
         && !sourceWorkspaceContext
