@@ -18,6 +18,11 @@ const LIMIT = 10;
 export const RECENTLY_OPENED_PROJECTS_CHANGED_EVENT = 'od:recently-opened-projects-changed';
 const PROJECT_LOCATION_TARGET_KEY = 'od:project-location-target';
 const PROJECT_LOCATION_TARGET_TTL_MS = 15_000;
+// A just-recorded entry is protected from the cover-digests cleanup for a
+// short window. The daemon can briefly report a brand-new project as missing
+// while its directory/SQLite row is still settling, and a concurrent enrich
+// pass would otherwise delete the entry the user just created.
+const RECENT_ENTRY_GRACE_PERIOD_MS = 30_000;
 
 /**
  * Minimal project shape persisted to localStorage. We store only the
@@ -97,6 +102,7 @@ export function recordRecentlyOpenedProject(
    ...(options?.sharedWithMe === true ? { sharedWithMe: true } : {}),
  };
   write([next, ...filtered]);
+  notifyRecentlyOpenedProjectsChanged();
 }
 
 /**
@@ -363,8 +369,10 @@ export async function enrichRecentlyOpenedProjectCovers(): Promise<string[]> {
   const missingIds = new Set([...missingPersonalProjectIds, ...missingProjectIds]);
   const changed: string[] = [];
   const remaining: RecentlyOpenedProject[] = [];
+  const now = Date.now();
   for (const entry of entries) {
-    if (missingIds.has(entry.id) && entry.sharedWithMe !== true) {
+    const withinGracePeriod = now - entry.openedAt < RECENT_ENTRY_GRACE_PERIOD_MS;
+    if (missingIds.has(entry.id) && entry.sharedWithMe !== true && !withinGracePeriod) {
       // Reuse the return value as a "needs re-render" signal so Home drops
       // genuinely deleted non-share cards immediately. Revoked Shared-with-me
       // entries stay visible until the user explicitly removes the recent record.
@@ -378,6 +386,18 @@ export async function enrichRecentlyOpenedProjectCovers(): Promise<string[]> {
       changed.push(entry.id);
     }
   }
-  if (changed.length > 0) write(remaining);
+  if (changed.length > 0) {
+    // Re-read localStorage before writing to avoid clobbering entries added
+    // between the initial read() above and this write. During the async fetch
+    // window, recordRecentlyOpenedProject (called from handleCreateProject
+    // after the project is persisted) can prepend a new entry to localStorage.
+    // Writing remaining -- built from the stale snapshot -- would overwrite
+    // that new entry, making it disappear from the Home recent-projects strip
+    // until the user re-opens the project from another view.
+    const currentEntries = read();
+    const initialIds = new Set(entries.map((e) => e.id));
+    const preservedNewEntries = currentEntries.filter((e) => !initialIds.has(e.id));
+    write([...preservedNewEntries, ...remaining]);
+  }
   return changed;
 }
