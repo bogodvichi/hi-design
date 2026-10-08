@@ -116,12 +116,11 @@ import {
   ComposerSurfaceEditor,
   ComposerSurfaceFooter,
   ComposerSurfaceInput,
-  ComposerSurfaceInside,
   ComposerSurfaceOutside,
 } from './composer/ComposerSurface';
 import { ComposerLottieBadge } from './composer/ComposerLottieBadge';
 import {
-  ComposerContextChip,
+  composerChipsOutsidePrompt,
   ComposerOutsideContextList,
   composerWorkspaceContextIcon,
   composerWorkspaceContextLabel,
@@ -157,6 +156,7 @@ export interface ExamplePromptInfo {
 }
 
 interface Props {
+  getResourceOrder?: (key: string) => number;
   workspaceContext?: WorkspaceCollabContext | null;
   active?: boolean;
   // Arms the first-run guidance trail (prototype chip → first preset
@@ -373,6 +373,7 @@ function FolderContextTag({ active }: { active: boolean }) {
 
 export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
   {
+    getResourceOrder,
     workspaceContext = null,
     active = true,
     prompt,
@@ -542,10 +543,35 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
     (prompt.trim().length > 0 || stagedFiles.length > 0 || hasContextOnlyPayload)
     && !submitDisabled
     && !submitting;
-  const hasInsideContext = visibleSkills.length > 0
-    || contextOnlyMcpServers.length > 0;
+  const resourceContextItems = composerChipsOutsidePrompt([
+    ...visibleSkills.map((skill) => ({
+      key: `skill-${skill.id}`,
+      order: getResourceOrder?.(`skill-${skill.id}`),
+      kind: 'skill' as const,
+      icon: 'sparkles' as const,
+      label: skill.label,
+      mentionLabels: [skill.record?.name ?? skill.label, skill.id],
+      onOpen: skill.record ? () => onOpenSkillDetails(skill.record!) : undefined,
+      onRemove: onRemoveSkill ? () => onRemoveSkill(skill.id) : onClearActiveSkill,
+      removeLabel: t('chat.removeAria', { name: skill.label }),
+      testId: `home-hero-context-skill-${skill.id}`,
+    })),
+    ...contextOnlyMcpServers.map((server) => ({
+      key: `mcp-${server.id}`,
+      order: getResourceOrder?.(`mcp-${server.id}`),
+      kind: 'mcp' as const,
+      icon: 'link' as const,
+      label: server.label || server.id,
+      mentionLabels: [server.label || server.id, server.id],
+      title: server.command || server.url || server.id,
+      onRemove: () => onRemoveMcpContext(server.id),
+      removeLabel: t('chat.removeAria', { name: server.label || server.id }),
+      testId: `home-hero-context-mcp-${server.id}`,
+    })),
+  ], prompt);
   const hasOutsideContext = Boolean(
     stagedFiles.length > 0
+    || resourceContextItems.length > 0
     || (showActivePluginChip && activePluginTitle)
     || contextOnlyPlugins.length > 0
     || contextOnlyConnectors.length > 0
@@ -1354,10 +1380,11 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
           card so they read as a single surface. */}
       <ComposerSurface variant="home">
       <ComposerLottieBadge />
-      {/* Files and non-Skill/MCP context sit at the top of the gray tray. */}
+      {/* All plus-menu resources share the gray tray above the editor. */}
       {hasOutsideContext ? (
         <ComposerSurfaceOutside data-testid="home-hero-outside-contexts">
           <ComposerOutsideContextList
+            resources={resourceContextItems}
             attachments={stagedFiles.map((file, index) => {
               const key = homeFileKey(file, index);
               const previewUrl = stagedFilePreviewUrls.get(key) ?? null;
@@ -1365,7 +1392,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                 key,
                 name: file.name,
                 kind: isImageFile(file) ? 'image' : 'file',
-                order: index,
+                order: getResourceOrder?.(`file-${index}`) ?? index,
                 previewUrl,
                 onPreview: previewUrl ? () => setPreviewHomeFileKey(key) : undefined,
                 onRemove: () => {
@@ -1384,6 +1411,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
             plugins={[
               ...(showActivePluginChip && activePluginTitle ? [{
                 key: `active-plugin-${activePluginRecord?.id ?? activePluginTitle}`,
+                order: getResourceOrder?.(`active-plugin-${activePluginRecord?.id ?? activePluginTitle}`),
                 kind: 'plugin' as const,
                 icon: 'sparkles' as const,
                 label: activePluginTitle,
@@ -1395,6 +1423,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
               }] : []),
               ...contextOnlyPlugins.map((plugin) => ({
                 key: `plugin-${plugin.id}`,
+                order: getResourceOrder?.(`plugin-${plugin.id}`),
                 kind: 'plugin' as const,
                 icon: 'sparkles' as const,
                 label: plugin.title,
@@ -1406,6 +1435,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
             ]}
             connectors={contextOnlyConnectors.map((connector) => ({
               key: `connector-${connector.id}`,
+              order: getResourceOrder?.(`connector-${connector.id}`),
               kind: 'connector',
               icon: 'link',
               label: connector.name,
@@ -1417,6 +1447,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
               const label = composerWorkspaceContextLabel(item);
               return {
                 key: `workspace-${item.id}`,
+                order: getResourceOrder?.(`workspace-${item.id}`),
                 kind: 'workspace' as const,
                 icon: composerWorkspaceContextIcon(item),
                 label,
@@ -1440,6 +1471,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
             })}
             additional={communityReference ? [{
               key: 'community-reference',
+              order: getResourceOrder?.('community-reference'),
               icon: 'folder',
               label: communityReference.title,
               onRemove: onClearCommunityReference,
@@ -1469,38 +1501,6 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
         }}
         onDrop={handleDrop}
       >
-        {/* Skill and MCP selections stay inside the white composer. */}
-       {hasInsideContext ? (
-         <ComposerSurfaceInside>
-           {visibleSkills.map((skill) => (
-             <ComposerContextChip key={skill.id} item={{
-               key: `skill-${skill.id}`,
-               kind: 'skill',
-               icon: 'sparkles',
-               label: skill.label,
-               onOpen: skill.record ? () => onOpenSkillDetails(skill.record!) : undefined,
-               onRemove: onRemoveSkill ? () => onRemoveSkill(skill.id) : onClearActiveSkill,
-               removeLabel: t('chat.removeAria', { name: skill.label }),
-               testId: `home-hero-context-skill-${skill.id}`,
-             }} />
-           ))}
-           {contextOnlyMcpServers.map((server) => {
-             const label = server.label || server.id;
-             return (
-               <ComposerContextChip key={`mcp-${server.id}`} item={{
-                 key: `mcp-${server.id}`,
-                 kind: 'mcp',
-                 icon: 'link',
-                 label,
-                 title: server.command || server.url || server.id,
-                 onRemove: () => onRemoveMcpContext(server.id),
-                 removeLabel: t('chat.removeAria', { name: label }),
-                 testId: `home-hero-context-mcp-${server.id}`,
-               }} />
-             );
-           })}
-         </ComposerSurfaceInside>
-       ) : null}
        <ComposerSurfaceEditor>
           <div ref={promptEditorRef} className="home-hero__prompt-editor home-hero__lexical">
             <LexicalComposerInput

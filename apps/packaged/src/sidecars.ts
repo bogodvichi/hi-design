@@ -43,6 +43,7 @@ import type { PackagedWebOutputMode } from "./config.js";
 import {
   codexStandaloneBinDir,
   ensureCodexCliForInstalledCodex,
+  scheduleCodexCliCheckAfterStartup,
 } from "./codex-cli-bootstrap.js";
 import type { PackagedNamespacePaths } from "./paths.js";
 import {
@@ -726,8 +727,9 @@ const PACKAGED_POSIX_SYSTEM_BINS = ["/usr/bin", "/bin", "/usr/sbin", "/sbin"] as
 
 export function resolvePackagedPathEnv(basePath = process.env.PATH ?? ""): string {
   const candidates = [
-    ...basePath.split(delimiter),
+    // The official standalone installer may be newer than an old Codex earlier on PATH.
     codexStandaloneBinDir(),
+    ...basePath.split(delimiter),
     ...wellKnownUserToolchainBins(),
     ...PACKAGED_POSIX_SYSTEM_BINS,
   ];
@@ -1093,8 +1095,9 @@ export async function startPackagedSidecars(
   await mkdir(paths.electronUserDataRoot, { recursive: true });
   await mkdir(paths.electronSessionDataRoot, { recursive: true });
 
- const children: ManagedSidecarChild[] = [];
+  const children: ManagedSidecarChild[] = [];
   let webSupervisor: { close(): Promise<void> } | null = null;
+  let cancelCodexCliCheck: (() => void) | null = null;
   // Finder/Dock launches do not source `.zshrc`. Resolve a proxy-only snapshot
   // once per packaged startup so installation, daemon, web, and local agent
   // CLIs all use the same environment from their very first request.
@@ -1116,17 +1119,6 @@ export async function startPackagedSidecars(
   };
 
   try {
-    if (options.requireDesktopAuth) {
-      const installerEnv = mergeProxyAwareEnv(
-        process.platform,
-        startupProxyEnv,
-        process.env,
-      );
-      installerEnv.PATH = resolvePackagedPathEnv();
-      const codexBootstrap = await ensureCodexCliForInstalledCodex({ env: installerEnv });
-      prewarmLog(`[open-design packaged] Codex CLI bootstrap status=${codexBootstrap.status}`);
-    }
-
     // Issue #5835: on Linux AppImage the payload lives on a fresh FUSE mount
     // with a cold page cache. Read the daemon's cold-start set (bundled node
     // binary + daemon dist) into the page cache BEFORE spawning, so the
@@ -1244,11 +1236,28 @@ export async function startPackagedSidecars(
     const webStatus = await supervisor.start();
     options.onPhase?.("web-ready");
 
+    if (options.requireDesktopAuth) {
+      // Do not await networking or installation before rendering the UI.
+      // The daemon's PATH already prioritizes the official standalone Codex
+      // bin directory; subsequent Runs re-resolve it when the installer finishes.
+      cancelCodexCliCheck = scheduleCodexCliCheckAfterStartup(async () => {
+        const installerEnv = mergeProxyAwareEnv(
+          process.platform,
+          startupProxyEnv,
+          process.env,
+        );
+        installerEnv.PATH = resolvePackagedPathEnv();
+        const result = await ensureCodexCliForInstalledCodex({ env: installerEnv });
+        prewarmLog(`[open-design packaged] Codex CLI background check status=${result.status}`);
+      });
+    }
+
     return {
       daemon: daemonStatus,
       web: webStatus,
       currentWebUrl: supervisor.currentUrl,
       async close() {
+        cancelCodexCliCheck?.();
         await supervisor.close();
         for (const child of [...children].reverse()) {
           await closeManagedChild(child).catch((error: unknown) => {
@@ -1258,6 +1267,7 @@ export async function startPackagedSidecars(
       },
     };
   } catch (error) {
+    cancelCodexCliCheck?.();
     await webSupervisor?.close().catch(() => undefined);
     for (const child of [...children].reverse()) {
       await closeManagedChild(child).catch(() => undefined);

@@ -5,11 +5,37 @@ import { homedir } from "node:os";
 import path from "node:path";
 
 const CODEX_INSTALL_TIMEOUT_MS = 120_000;
+const CODEX_VERSION_CHECK_TIMEOUT_MS = 8_000;
+const CODEX_LOCAL_VERSION_TIMEOUT_MS = 5_000;
+const CODEX_CHECK_AFTER_READY_DELAY_MS = 5_000;
+const CODEX_LATEST_RELEASE_URL = "https://releases.openai.com/codex/channels/latest";
+const CODEX_GITHUB_RELEASE_URL = "https://api.github.com/repos/openai/codex/releases/latest";
+
+/**
+ * Perform a single best-effort CLI check only after the packaged UI is ready.
+ * Never block startup or schedule recurring checks for long-lived desktops.
+ * Closing the desktop cancels the pending timer; an already-started check
+ * completes independently of the UI lifecycle.
+ */
+export function scheduleCodexCliCheckAfterStartup(
+  check: () => Promise<void>,
+  delayMs = CODEX_CHECK_AFTER_READY_DELAY_MS,
+): () => void {
+  const timer = setTimeout(() => {
+    void Promise.resolve().then(check).catch((error: unknown) => {
+      console.warn("[open-design packaged] background Codex CLI check failed", error);
+    });
+  }, delayMs);
+  timer.unref?.();
+  return () => clearTimeout(timer);
+}
 
 export type CodexCliBootstrapResult =
   | { status: "already-installed"; path: string }
   | { status: "installed"; path: string }
-  | { status: "skipped-no-codex-app" }
+  | { status: "updated"; path: string; fromVersion: string | null; toVersion: string }
+  | { status: "version-check-failed"; path: string; detail: string }
+  | { status: "update-failed"; path: string; detail: string }
   | { status: "install-failed"; detail: string };
 
 type CodexCliBootstrapOptions = {
@@ -18,6 +44,8 @@ type CodexCliBootstrapOptions = {
   platform?: NodeJS.Platform;
   runInstaller?: (command: string, args: string[], env: NodeJS.ProcessEnv) => Promise<void>;
   pathExists?: (candidate: string, executable?: boolean) => Promise<boolean>;
+  getInstalledVersion?: (binary: string, env: NodeJS.ProcessEnv) => Promise<string>;
+  getLatestVersion?: (env: NodeJS.ProcessEnv, platform: NodeJS.Platform) => Promise<string>;
 };
 
 async function defaultPathExists(candidate: string, executable = false): Promise<boolean> {
@@ -59,10 +87,7 @@ async function resolveStandaloneCodex(
   }
   const delimiter = platform === "win32" ? ";" : ":";
   const names = platform === "win32" ? ["codex.exe", "codex.cmd", "codex.bat"] : ["codex"];
-  const dirs = [
-    ...(env.PATH ?? env.Path ?? "").split(delimiter),
-    codexStandaloneBinDir(platform, home, env),
-  ];
+  const dirs = [codexStandaloneBinDir(platform, home, env), ...(env.PATH ?? env.Path ?? "").split(delimiter)];
   for (const dir of [...new Set(dirs.filter(Boolean))]) {
     for (const name of names) {
       const candidate = api.join(dir, name);
@@ -72,26 +97,86 @@ async function resolveStandaloneCodex(
   return null;
 }
 
-async function hasCodexDesktopInstall(
+async function resolveOfficialInstalledCodex(
+  env: NodeJS.ProcessEnv,
   platform: NodeJS.Platform,
   home: string,
   pathExists: NonNullable<CodexCliBootstrapOptions["pathExists"]>,
-): Promise<boolean> {
+): Promise<string | null> {
   const api = pathApi(platform);
-  // Codex desktop and the CLI share this signed-in state. Using auth.json
-  // instead of the directory itself avoids treating an empty ~/.codex folder
-  // created by another integration as proof that Codex is installed.
-  const candidates = [api.join(home, ".codex", "auth.json")];
-  if (platform === "darwin") {
-    candidates.push(
-      "/Applications/Codex.app/Contents/Resources/codex",
-      api.join(home, "Applications", "Codex.app", "Contents", "Resources", "codex"),
-    );
+  const binDir = codexStandaloneBinDir(platform, home, env);
+  for (const name of platform === "win32" ? ["codex.exe", "codex.cmd", "codex.bat"] : ["codex"]) {
+    const candidate = api.join(binDir, name);
+    if (await pathExists(candidate, true)) return candidate;
   }
-  for (const candidate of candidates) {
-    if (await pathExists(candidate)) return true;
+  return null;
+}
+
+function parseVersion(raw: string): string {
+  const match = raw.match(/(?:^|[^\d])(\d+\.\d+\.\d+(?:-[\w.]+)?)(?!\d)/);
+  if (!match) throw new Error(`invalid Codex version: ${raw.slice(0, 100)}`);
+  return match[1];
+}
+
+function compareVersions(left: string, right: string): number {
+  const [leftMain, leftPre] = left.split("-", 2);
+  const [rightMain, rightPre] = right.split("-", 2);
+  const a = leftMain.split(".").map(Number);
+  const b = rightMain.split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    if (a[i] !== b[i]) return a[i] > b[i] ? 1 : -1;
   }
-  return false;
+  if (leftPre === rightPre) return 0;
+  if (!leftPre) return 1;
+  if (!rightPre) return -1;
+  return leftPre.localeCompare(rightPre, "en", { numeric: true });
+}
+
+async function captureCommand(command: string, args: string[], env: NodeJS.ProcessEnv, timeoutMs: number): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const child = spawn(command, args, { env, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
+    let stdout = "";
+    let stderr = "";
+    let settled = false;
+    const finish = (error?: Error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (error) reject(error);
+      else resolve(stdout);
+    };
+    child.stdout?.on("data", (chunk: Buffer) => {
+      stdout += chunk.toString("utf8");
+      if (stdout.length > 1_048_576) {
+        child.kill();
+        finish(new Error("Codex version metadata too large"));
+      }
+    });
+    child.stderr?.on("data", (chunk: Buffer) => { stderr = `${stderr}${chunk.toString("utf8")}`.slice(-1024); });
+    const timer = setTimeout(() => {
+      child.kill();
+      finish(new Error("Codex version check timed out"));
+    }, timeoutMs);
+    child.once("error", (error) => finish(error));
+    child.once("close", (code) => finish(code === 0 ? undefined : new Error(stderr.trim() || `exit code ${code}`)));
+  });
+}
+
+async function defaultLatestVersion(env: NodeJS.ProcessEnv, platform: NodeJS.Platform): Promise<string> {
+  for (const url of [CODEX_LATEST_RELEASE_URL, CODEX_GITHUB_RELEASE_URL]) {
+    try {
+      const output = platform === "win32"
+        ? await captureCommand("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command",
+          `$ProgressPreference='SilentlyContinue'; (Invoke-WebRequest -UseBasicParsing -Uri '${url}' -TimeoutSec 8).Content`], env, CODEX_VERSION_CHECK_TIMEOUT_MS)
+        : await captureCommand("curl", ["-fsSL", "--connect-timeout", "3", "--max-time", "8", url], env, CODEX_VERSION_CHECK_TIMEOUT_MS);
+      const metadata = JSON.parse(output) as { tag_name?: unknown };
+      if (typeof metadata.tag_name !== "string") throw new Error("release metadata missing tag_name");
+      return parseVersion(metadata.tag_name);
+    } catch {
+      // Mirror the official installer: fall back to GitHub if the release feed is unavailable.
+    }
+  }
+  throw new Error("could not check latest Codex release (network or release metadata unavailable)");
 }
 
 function installerCommand(platform: NodeJS.Platform): { command: string; args: string[] } {
@@ -152,10 +237,39 @@ export async function ensureCodexCliForInstalledCodex(
   const home = options.home ?? homedir();
   const env = options.env ?? process.env;
   const pathExists = options.pathExists ?? defaultPathExists;
-  const existing = await resolveStandaloneCodex(env, platform, home, pathExists);
-  if (existing) return { status: "already-installed", path: existing };
-  if (!(await hasCodexDesktopInstall(platform, home, pathExists))) {
-    return { status: "skipped-no-codex-app" };
+  const getInstalledVersion = (binary: string) =>
+    (options.getInstalledVersion ?? ((executable, childEnv) =>
+      captureCommand(executable, ["--version"], childEnv, CODEX_LOCAL_VERSION_TIMEOUT_MS)))(binary, env).then(parseVersion);
+  let existing = await resolveStandaloneCodex(env, platform, home, pathExists);
+  // A stale explicit CODEX_BIN may coexist with the newer official install
+  // selected during the previous startup. Prefer that newer binary so we
+  // don't download it again on every subsequent launch.
+  if (existing && existing === env.CODEX_BIN?.trim()) {
+    const official = await resolveOfficialInstalledCodex(env, platform, home, pathExists);
+    if (official && official !== existing) {
+      const [requested, standalone] = await Promise.allSettled([
+        getInstalledVersion(existing), getInstalledVersion(official),
+      ]);
+      if (standalone.status === "fulfilled" &&
+          (requested.status === "rejected" || compareVersions(standalone.value, requested.value) > 0)) {
+        existing = official;
+      }
+    }
+  }
+  let latestVersion: string | null = null;
+  let installedVersion: string | null = null;
+  if (existing) {
+    try {
+      [latestVersion, installedVersion] = await Promise.all([
+        (options.getLatestVersion ?? defaultLatestVersion)(env, platform).then(parseVersion),
+        getInstalledVersion(existing).catch(() => null),
+      ]);
+    } catch (error) {
+      return { status: "version-check-failed", path: existing, detail: String(error) };
+    }
+    if (installedVersion && compareVersions(installedVersion, latestVersion) >= 0) {
+      return { status: "already-installed", path: existing };
+    }
   }
 
   const { command, args } = installerCommand(platform);
@@ -164,13 +278,21 @@ export async function ensureCodexCliForInstalledCodex(
       ...env,
       CODEX_NON_INTERACTIVE: "1",
     });
-    const installed = await resolveStandaloneCodex(env, platform, home, pathExists);
-    if (installed) return { status: "installed", path: installed };
-    return { status: "install-failed", detail: "installer completed but the codex command was not found" };
+    // The official installer writes to ~/.local/bin (or LOCALAPPDATA on Windows).
+    // Do not rediscover the stale PATH/CODEX_BIN binary after updating it.
+    const installed = await resolveOfficialInstalledCodex(env, platform, home, pathExists);
+    if (!installed) throw new Error("official installer completed but its Codex CLI was not found");
+    if (latestVersion) {
+      const after = await getInstalledVersion(installed);
+      if (compareVersions(after, latestVersion) < 0) throw new Error(`CLI is still ${after}, latest is ${latestVersion}`);
+      return { status: "updated", path: installed, fromVersion: installedVersion, toVersion: after };
+    }
+    return { status: "installed", path: installed };
   } catch (error) {
     return {
-      status: "install-failed",
+      status: existing ? "update-failed" : "install-failed",
+      ...(existing ? { path: existing } : {}),
       detail: error instanceof Error ? error.message : String(error),
-    };
+    } as CodexCliBootstrapResult;
   }
 }

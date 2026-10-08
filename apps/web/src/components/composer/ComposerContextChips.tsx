@@ -1,6 +1,8 @@
+import { Fragment } from 'react';
 import type { WorkspaceContextItem } from '@open-design/contracts';
 
 import { Icon, type IconName } from '../Icon';
+import { mentionTokenPresent } from '../../utils/inlineMentions';
 
 function classes(...values: Array<string | undefined | false>): string {
   return values.filter(Boolean).join(' ');
@@ -8,6 +10,7 @@ function classes(...values: Array<string | undefined | false>): string {
 
 export interface ComposerContextChipItem {
   key: string;
+  order?: number;
   icon: IconName;
   label: string;
   kind?: 'skill' | 'mcp' | 'plugin' | 'connector' | 'workspace';
@@ -175,29 +178,43 @@ function orderedAttachments(items: ComposerAttachmentChipItem[]): ComposerAttach
 }
 
 /**
- * One ordering contract for both composers: attachments first in their added
- * order, then tool contexts, then referenced workspaces/projects.
+ * All resource kinds share selection order; attachment numbering stays local
+ * to attachments and does not determine their position in the resource row.
  */
 export function ComposerOutsideContextList({
   attachments = [],
   plugins = [],
+  resources = [],
   connectors = [],
   workspaces = [],
   additional = [],
 }: {
   attachments?: ComposerAttachmentChipItem[];
   plugins?: ComposerContextChipItem[];
+  resources?: ComposerContextChipItem[];
   connectors?: ComposerContextChipItem[];
   workspaces?: ComposerContextChipItem[];
   additional?: ComposerContextChipItem[];
 }) {
-  const contextItems = [...plugins, ...connectors, ...workspaces, ...additional];
-  return (
-    <>
-      {orderedAttachments(attachments).map((item, index) => (
-        <ComposerAttachmentChip key={item.key} item={item} displayOrder={index + 1} />
-      ))}
-      {contextItems.map((item) => <ComposerContextChip key={item.key} item={item} />)}
-    </>
-  );
+  const items = [
+    ...orderedAttachments(attachments).map((item, index) => ({
+      key: `attachment:${item.key}`,
+      order: item.order,
+      content: <ComposerAttachmentChip item={item} displayOrder={index + 1} />,
+    })),
+    ...[...plugins, ...resources, ...connectors, ...workspaces, ...additional].map((item) => ({
+      key: item.key,
+      order: item.order,
+      content: <ComposerContextChip item={item} />,
+    })),
+  ].sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
+  return <>{items.map((item) => <Fragment key={item.key}>{item.content}</Fragment>)}</>;
+}
+
+/** A selected resource is shown once: in the editor when mentioned, otherwise above it. */
+export function composerChipsOutsidePrompt(
+  items: Array<ComposerContextChipItem & { mentionLabels: string[] }>,
+  prompt: string,
+): ComposerContextChipItem[] {
+  return items.filter((item) => !item.mentionLabels.some((label) => mentionTokenPresent(prompt, label)));
 }

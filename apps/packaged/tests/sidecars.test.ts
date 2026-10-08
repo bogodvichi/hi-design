@@ -24,6 +24,7 @@ import { delimiter, dirname, join, posix } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 import { createProcessStampArgs, isProcessAlive, stopProcesses, waitForProcessExit } from '@open-design/platform';
+import { codexStandaloneBinDir } from '../src/codex-cli-bootstrap.js';
 import { createJsonIpcServer, resolveAppIpcPath } from '@open-design/sidecar';
 import {
   APP_KEYS,
@@ -389,6 +390,12 @@ describe('packaged child Vite+ environment forwarding', () => {
       NO_PROXY: '.corp.example,localhost,127.0.0.1,[::1]',
       NODE_USE_ENV_PROXY: '1',
     });
+  });
+
+  it('prefers the standalone Codex directory over an older PATH CLI for subsequent Runs', () => {
+    const pathEntries = resolvePackagedPathEnv('/old/codex/bin:/usr/bin').split(delimiter);
+    expect(pathEntries[0]).toBe(codexStandaloneBinDir());
+    expect(pathEntries).toContain('/old/codex/bin');
   });
 
   it('adds custom VP_HOME/bin to the packaged PATH builder', () => {
@@ -800,6 +807,15 @@ describe('buildPackagedDaemonSpawnEnv', () => {
     expect(env.OD_RESOURCE_ROOT).toBe('/tmp/od-pkg/resources');
     expect(env.OD_APP_VERSION).toBe('1.2.3');
     expect(env.OD_LEGACY_DATA_DIR).toBeUndefined();
+  });
+
+  it('does not pin a Codex binary in the daemon environment before the background update', () => {
+    const env = buildPackagedDaemonSpawnEnv(fakePaths(), {
+      appVersion: null,
+      daemonCliEntry: null,
+      requireDesktopAuth: true,
+    });
+    expect(env.CODEX_BIN).toBeUndefined();
   });
 
   it('forwards updater controls needed by a historical desktop handoff', () => {

@@ -97,6 +97,7 @@ import {
   pluginInputsAreValid,
   requiredInputsAreUserFillable,
 } from '../utils/pluginRequiredInputs';
+import { createComposerResourceOrder } from './composer/resource-order';
 import { HomeHero, type ExamplePromptInfo, type HomeHeroHandle } from './HomeHero';
 import { AppWashKineticGrid } from './AppWashKineticGrid';
 import { findChip, HOME_HERO_CHIPS, type HomeHeroChip } from './home-hero/chips';
@@ -413,8 +414,10 @@ interface HomeComposerDraftData {
 }
 
 interface HomeComposerTransientDraft {
+  resourceOrder?: Record<string, number>;
   sessionMode: ChatSessionMode;
   selectedSkills?: SkillSummary[];
+  inlineSkillIds?: string[];
   /** Compatibility with an in-memory draft created before multi-Skill selection. */
   activeSkill?: SkillSummary | null;
   activeSkillCatalogScope: LocalCatalogScope | null;
@@ -764,6 +767,7 @@ export function HomeView({
     chipId: string | null;
   } | null>(null);
   const restoredTransientDraft = useRef(readHomeComposerTransientDraft()).current;
+  const resourceOrder = useRef(createComposerResourceOrder(restoredTransientDraft?.resourceOrder)).current;
   // Legacy drafts may still carry a mode, but the mode feature has been
   // removed. New runs always use the single conversation path.
   const sessionMode: ChatSessionMode = 'design';
@@ -817,6 +821,10 @@ export function HomeView({
     };
   }
   const restoredDraft = restoredDraftRef.current;
+  const inlineSkillIdsRef = useRef(new Set(
+    restoredTransientDraft?.inlineSkillIds
+      ?? selectedSkills.filter((skill) => mentionTokenPresent(restoredDraft.prompt, skill.name)).map((skill) => skill.id),
+  ));
   const [restoredMentionEntities] = useState<InlineMentionEntity[]>(
     () => restoredDraft.mentions ?? [],
   );
@@ -868,8 +876,10 @@ export function HomeView({
   }, [prompt, promptMentions]);
   useEffect(() => {
     writeHomeComposerTransientDraft({
+      resourceOrder: resourceOrder.snapshot(),
       sessionMode,
       selectedSkills,
+      inlineSkillIds: Array.from(inlineSkillIdsRef.current),
       activeSkillCatalogScope,
       selectedPluginContexts,
       selectedMcpContexts,
@@ -2208,6 +2218,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
   }
 
   function stagePluginContext(record: InstalledPluginRecord) {
+    resourceOrder.get(`plugin-${record.id}`);
     setSelectedPluginContexts((current) => (
       current.some((item) => item.record.id === record.id)
         ? current
@@ -2323,6 +2334,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
   }
 
   function removePluginContext(pluginId: string) {
+    resourceOrder.remove(`plugin-${pluginId}`);
     const record = selectedPluginContexts.find((item) => item.record.id === pluginId)?.record ?? null;
     setSelectedPluginContexts((prev) => prev.filter((item) => item.record.id !== pluginId));
     if (record) {
@@ -2334,6 +2346,12 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
   function handlePromptChange(nextPrompt: string, mentions?: InlineMentionEntity[]) {
     setPrompt(nextPrompt);
     if (mentions) setPromptMentions(mentions);
+    setSelectedSkills((current) => current.filter((skill) => (
+      !inlineSkillIdsRef.current.has(skill.id)
+      || (mentions
+        ? mentions.some((mention) => mention.kind === 'skill' && mention.id === skill.id)
+        : mentionTokenPresent(nextPrompt, skill.name) || mentionTokenPresent(nextPrompt, skill.id))
+    )));
     setPromptEditedByUser(true);
     if (!active?.queryTemplate) return;
     const extracted = extractPluginInputsFromPrompt(
@@ -2366,16 +2384,25 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
 
   function stageFiles(files: File[]) {
     if (files.length === 0) return;
-    setStagedFiles((current) => [...current, ...files]);
+    const orderStart = resourceOrder.reserve(files.length);
+    setStagedFiles((current) => {
+      files.forEach((_, index) => resourceOrder.set(`file-${current.length + index}`, orderStart + index));
+      return [...current, ...files];
+    });
     setError(null);
     focusPromptAtEnd();
   }
 
   function removeStagedFile(index: number) {
+    for (let i = index; i < stagedFiles.length - 1; i += 1) {
+      resourceOrder.set(`file-${i}`, resourceOrder.get(`file-${i + 1}`));
+    }
+    resourceOrder.remove(`file-${stagedFiles.length - 1}`);
     setStagedFiles((current) => current.filter((_, i) => i !== index));
   }
 
   function addWorkspaceContext(item: WorkspaceContextItem) {
+    resourceOrder.get(`workspace-${item.id}`);
     setContextWorkspaceItems((current) =>
       current.some((candidate) => candidate.id === item.id)
         ? current
@@ -2385,6 +2412,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
   }
 
   function removeWorkspaceContext(id: string) {
+    resourceOrder.remove(`workspace-${id}`);
     setContextWorkspaceItems((current) => current.filter((item) => item.id !== id));
   }
 
@@ -2606,6 +2634,8 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
   // order already ranks a user-selected Skill above its own), so nothing has
   // to be discarded to keep the rule defined.
   function stageSkill(skill: SkillSummary) {
+    resourceOrder.get(`skill-${skill.id}`);
+    inlineSkillIdsRef.current.delete(skill.id);
     setSelectedSkills((current) => (
       current.some((item) => item.id === skill.id) ? current : [...current, skill]
     ));
@@ -2614,6 +2644,8 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
   }
 
   function removeSkill(skillId: string) {
+    resourceOrder.remove(`skill-${skillId}`);
+    inlineSkillIdsRef.current.delete(skillId);
     const skill = selectedSkills.find((item) => item.id === skillId) ?? null;
     setSelectedSkills((current) => {
       const next = current.filter((item) => item.id !== skillId);
@@ -2627,7 +2659,10 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
   }
 
   function useSkill(skill: SkillSummary, nextPrompt: string | null) {
+    const wasContextOnly = selectedSkills.some((item) => item.id === skill.id)
+      && !inlineSkillIdsRef.current.has(skill.id);
     stageSkill(skill);
+    if (nextPrompt !== null && !wasContextOnly) inlineSkillIdsRef.current.add(skill.id);
     const replacement = nextPrompt ?? localizeSkillPrompt(locale, skill) ?? '';
     if (replacement.trim().length > 0) {
       setPrompt(replacement);
@@ -2648,6 +2683,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
   }
 
   function stageMcpServer(server: McpServerConfig) {
+    resourceOrder.get(`mcp-${server.id}`);
     setSelectedMcpContexts((current) => (
       current.some((item) => item.server.id === server.id)
         ? current
@@ -2658,6 +2694,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
   }
 
   function removeMcpContext(serverId: string) {
+    resourceOrder.remove(`mcp-${serverId}`);
     const server = selectedMcpContexts.find((item) => item.server.id === serverId)?.server ?? null;
     setSelectedMcpContexts((current) => current.filter((item) => item.server.id !== serverId));
     if (server) {
@@ -2682,6 +2719,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
   }
 
   function stageConnectorContext(connector: ConnectorDetail) {
+    resourceOrder.get(`connector-${connector.id}`);
     setSelectedConnectorContexts((current) => (
       current.some((item) => item.connector.id === connector.id)
         ? current
@@ -2692,6 +2730,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
   }
 
   function removeConnectorContext(connectorId: string) {
+    resourceOrder.remove(`connector-${connectorId}`);
     const connector = selectedConnectorContexts.find((item) => item.connector.id === connectorId)?.connector ?? null;
     setSelectedConnectorContexts((current) => current.filter((item) => item.connector.id !== connectorId));
     if (connector) {
@@ -3193,7 +3232,10 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
       // A mentioned Skill travels with whatever the composer selected, rather
       // than replacing it: the pick decides the route, the Skill is material
       // inside it.
-      const resolvedSkillIds = selectedSkills.map((skill) => skill.id);
+      const resolvedSkillIds = selectedSkills
+        .filter((skill) => !inlineSkillIdsRef.current.has(skill.id)
+          || mentionTokenPresent(trimmed, skill.name) || mentionTokenPresent(trimmed, skill.id))
+        .map((skill) => skill.id);
       const resolvedSkillId = resolvedSkillIds[0] ?? null;
       const submittedChip = submittedRouteChipId
         ? findChip(submittedRouteChipId)
@@ -3293,6 +3335,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
       setSelectedSkills([]);
       setActiveSkillCatalogScope(null);
       setStagedFiles([]);
+      resourceOrder.reset();
       setCommunityReference(null);
       setWorkingDir(null);
       setWorkingDirToken(null);
@@ -3451,6 +3494,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
       />
       {isActive ? <AppWashKineticGrid clipBottomTo=".home-hero" /> : null}
       <HomeHero
+        getResourceOrder={resourceOrder.get}
         workspaceContext={workspaceContext}
         ref={inputRef}
         active={isActive}

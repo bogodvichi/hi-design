@@ -137,14 +137,14 @@ describe('ChatComposer infinite re-render regression (#2097)', () => {
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Restored Skill' }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('staged-inside-contexts').textContent).toContain('Restored Skill');
+      expect(screen.getByTestId('staged-outside-contexts').textContent).toContain('Restored Skill');
       expect(screen.getByTestId('staged-outside-contexts').textContent).toContain('brief.pdf');
       expect(window.localStorage.getItem(`${key}:contexts`)).toBe('1');
     });
     expect(
       screen.getByTestId('chat-composer').querySelector('.composer-input-wrap')
-        ?.contains(screen.getByTestId('staged-inside-contexts')),
-    ).toBe(true);
+        ?.contains(screen.getByTestId('staged-outside-contexts')),
+    ).toBe(false);
     first.unmount();
 
     const second = renderComposer({
@@ -154,7 +154,7 @@ describe('ChatComposer infinite re-render regression (#2097)', () => {
     await flushMounts();
 
     expect(composerText()).toBe('keep the whole draft');
-    expect(screen.getByTestId('staged-inside-contexts').textContent).toContain('Restored Skill');
+    expect(screen.getByTestId('staged-outside-contexts').textContent).toContain('Restored Skill');
     expect(screen.getByTestId('staged-outside-contexts').textContent).toContain('brief.pdf');
 
     fireEvent.click(screen.getByLabelText('Remove Restored Skill'));
@@ -172,7 +172,7 @@ describe('ChatComposer infinite re-render regression (#2097)', () => {
     expect(screen.queryByTestId('staged-outside-contexts')).toBeNull();
   });
 
-  it('keeps non-Skill/MCP context cards in the gray tray above the white editor', async () => {
+  it('keeps context cards in selection order in the gray tray above the white editor', async () => {
     renderComposer({
       activeWorkspaceContext: CURRENT_WORKSPACE,
       initialWorkspaceContexts: [REFERENCE_WORKSPACE],
@@ -196,7 +196,7 @@ describe('ChatComposer infinite re-render regression (#2097)', () => {
     expect(input).toHaveAttribute('data-composer-surface-part', 'input');
     expect(workspace.textContent).toBe('Reference project');
     expect(workspace.querySelector('.staged-context-kind')).toBeNull();
-    expect(attachment.compareDocumentPosition(workspace) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(workspace.compareDocumentPosition(attachment) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(outside.querySelector('.staged-chip')).toBeTruthy();
     expect(shell?.contains(outside)).toBe(true);
     expect(input?.contains(outside)).toBe(false);

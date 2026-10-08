@@ -117,7 +117,7 @@ function pickTemplate(chipId: string) {
 }
 
 describe('HomeHero intent rail', () => {
-  it('keeps Skill/MCP cards inside and other context cards outside the white input surface', () => {
+  it('keeps all plus resources in one row outside the white input surface', () => {
     renderHero({
       activeSkillId: 'skill-1',
       activeSkillTitle: 'Prototype Skill',
@@ -136,8 +136,9 @@ describe('HomeHero intent rail', () => {
     const outside = screen.getByTestId('home-hero-outside-contexts');
     expect(composerCard).toHaveAttribute('data-composer-surface', 'home');
     expect(inputCard).toHaveAttribute('data-composer-surface-part', 'input');
-    expect(inputCard?.contains(skill)).toBe(true);
-    expect(inputCard?.contains(mcp)).toBe(true);
+    for (const chip of [skill, mcp, file, workspace]) expect(chip.parentElement).toBe(outside);
+    expect(inputCard?.contains(skill)).toBe(false);
+    expect(inputCard?.contains(mcp)).toBe(false);
     expect(inputCard?.contains(outside)).toBe(false);
     expect(composerCard?.contains(outside)).toBe(true);
     expect(outside.contains(file)).toBe(true);

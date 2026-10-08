@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import { $getRoot } from 'lexical';
+
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { createRef, useState, type ComponentProps } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -14,11 +16,11 @@ vi.mock('../../src/analytics/events', async (importOriginal) => {
   };
 });
 
-import { ChatComposer, type ChatComposerHandle } from '../../src/components/ChatComposer';
+import { ChatComposer, STAGE_ATTACHMENT_EVENT, type ChatComposerHandle } from '../../src/components/ChatComposer';
 import { I18nProvider } from '../../src/i18n';
 import type { Locale } from '../../src/i18n/types';
 import type { AppliedPluginSnapshot, ProjectMetadata } from '@open-design/contracts';
-import { composerText, pressEnter, typeAndSettle, typeInComposer } from '../helpers/lexical-composer';
+import { getComposerEditor, composerText, pressEnter, typeAndSettle, typeInComposer } from '../helpers/lexical-composer';
 
 const COMMUNITY_PLUGIN = {
   id: 'community-deck',
@@ -312,6 +314,114 @@ afterEach(() => {
 });
 
 describe('ChatComposer context pickers', () => {
+
+  it('reserves plus positions before upload and Skill application finish', async () => {
+    const baseFetch = globalThis.fetch;
+    let finishUpload: ((response: Response) => void) | undefined;
+    vi.stubGlobal('fetch', vi.fn((url: string, init?: RequestInit) => {
+      if (url === '/api/projects/project-1/upload' && init?.method === 'POST') {
+        return new Promise<Response>((resolve) => { finishUpload = resolve; });
+      }
+      return baseFetch(url, init);
+    }));
+    renderComposer();
+    await flushMounts();
+    fireEvent.change(screen.getByTestId('chat-file-input'), {
+      target: { files: [new File(['brief'], 'brief.pdf', { type: 'application/pdf' })] },
+    });
+    await waitFor(() => expect(finishUpload).toBeTruthy());
+    deferNextProjectPatch = true;
+    fireEvent.click(screen.getByTestId('chat-plus-trigger'));
+    fireEvent.click(await screen.findByTestId('composer-plus-skills'));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Deck Builder' }));
+    await waitFor(() => expect(resolveDeferredProjectPatch).toBeTruthy());
+    fireEvent.click(screen.getByTestId('chat-plus-trigger'));
+    fireEvent.click(await screen.findByTestId('composer-plus-mcp'));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Slack MCP' }));
+    await act(async () => { resolveDeferredProjectPatch?.(); });
+    await act(async () => {
+      finishUpload?.(new Response(JSON.stringify({
+        files: [{ name: 'brief.pdf', path: 'uploads/brief.pdf', size: 5 }],
+      }), { status: 200, headers: { 'content-type': 'application/json' } }));
+    });
+    await waitFor(() => expect(Array.from(screen.getByTestId('staged-outside-contexts')
+      .querySelectorAll('.staged-name')).map((node) => node.textContent))
+      .toEqual(['brief.pdf', 'Deck Builder', 'Slack MCP']));
+  });
+
+  it('keeps mixed plus resources in selection order across removal and draft restoration', async () => {
+    const onSend = vi.fn();
+    const props = { draftStorageKey: 'ordered-resource-draft', onSend };
+    const first = renderComposer(props);
+    await flushMounts();
+    fireEvent.click(screen.getByTestId('chat-plus-trigger'));
+    fireEvent.click(await screen.findByTestId('composer-plus-mcp'));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Slack MCP' }));
+    act(() => window.dispatchEvent(new CustomEvent(STAGE_ATTACHMENT_EVENT, {
+      detail: { attachments: [{ path: 'brief.pdf', name: 'brief.pdf', kind: 'file' }] },
+    })));
+    fireEvent.click(screen.getByTestId('chat-plus-trigger'));
+    fireEvent.click(await screen.findByTestId('composer-plus-skills'));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Deck Builder' }));
+    const chipNames = () => Array.from(screen.getByTestId('staged-outside-contexts')
+      .querySelectorAll('.staged-name')).map((node) => node.textContent);
+    await waitFor(() => expect(chipNames()).toEqual(['Slack MCP', 'brief.pdf', 'Deck Builder']));
+    fireEvent.click(screen.getByLabelText('Remove Slack MCP'));
+    fireEvent.click(screen.getByTestId('chat-plus-trigger'));
+    fireEvent.click(await screen.findByTestId('composer-plus-mcp'));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Slack MCP' }));
+    expect(chipNames()).toEqual(['brief.pdf', 'Deck Builder', 'Slack MCP']);
+    first.unmount();
+    renderComposer(props);
+    await flushMounts();
+    expect(chipNames()).toEqual(['brief.pdf', 'Deck Builder', 'Slack MCP']);
+    fireEvent.click(screen.getByTestId('chat-send'));
+    await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
+    expect(onSend.mock.calls[0]?.[1]).toEqual([expect.objectContaining({ path: 'brief.pdf' })]);
+    expect(onSend.mock.calls[0]?.[3]?.context).toEqual({ skillIds: ['deck-builder'], mcpServerIds: ['slack'] });
+  });
+  it.each([
+    ['skill-first', 'none'], ['mcp-first', 'none'],
+    ['skill-first', 'skill'], ['mcp-first', 'mcp'], ['skill-first', 'both'],
+  ])('keeps @ resources inline in %s order with %s removed and sends their context', async (order, removed) => {
+    const onSend = vi.fn();
+    renderComposer({ onSend });
+    await flushMounts();
+    const picks = order === 'skill-first'
+      ? [['@deck', 'Deck Builder'], ['@slack', 'Slack MCP']]
+      : [['@slack', 'Slack MCP'], ['@deck', 'Deck Builder']];
+    for (const [query, label] of picks) {
+      await act(async () => {
+        getComposerEditor().update(() => {
+          $getRoot().selectEnd().insertText(query!);
+        }, { discrete: true });
+      });
+      fireEvent.click(await screen.findByText(label!));
+      await waitFor(() => expect(composerText()).toContain(`@${label} `));
+    }
+    const editor = screen.getByTestId('chat-composer-input');
+    expect(Array.from(editor.querySelectorAll('.composer-inline-mention')).map((node) => node.textContent))
+      .toEqual(picks.map(([, label]) => `@${label}`));
+    expect(document.querySelector('[data-composer-surface-part="inside"]')).toBeNull();
+    if (removed !== 'none') {
+      for (const kind of removed === 'both' ? ['skill', 'mcp'] : [removed]) {
+        const pill = editor.querySelector(`[data-mention-kind="${kind}"]`)!;
+        fireEvent.click(pill.querySelector('button')!);
+        await waitFor(() => expect(editor.querySelector(`[data-mention-kind="${kind}"]`)).toBeNull());
+      }
+      await act(async () => {
+        getComposerEditor().update(() => $getRoot().selectEnd().insertText('Continue'), { discrete: true });
+      });
+      expect(document.querySelector('[data-composer-surface-part="inside"]')).toBeNull();
+    }
+    fireEvent.click(screen.getByTestId('chat-send'));
+    await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
+    expect(onSend.mock.calls[0]?.[3]?.context ?? {}).toEqual({
+      ...(removed !== 'skill' && removed !== 'both' ? { skillIds: ['deck-builder'] } : {}),
+      ...(removed !== 'mcp' && removed !== 'both' ? { mcpServerIds: ['slack'] } : {}),
+    });
+  });
+
   it('auto-stages the active workspace context and re-stages after a tab change', async () => {
     const onSend = vi.fn();
     const fileContext = {
@@ -1035,9 +1145,9 @@ describe('ChatComposer context pickers', () => {
       .querySelector('.composer-inline-mention');
     expect(pill?.textContent).toBe('@Slack MCP');
     expect(pill?.getAttribute('data-mention-kind')).toBe('mcp');
-    expect(screen.getByTestId('staged-contexts').textContent).toContain('@Slack MCP');
+    expect(screen.queryByTestId('staged-inside-contexts')).toBeNull();
 
-    fireEvent.click(screen.getByLabelText('Remove Slack MCP'));
+    fireEvent.click(within(pill as HTMLElement).getByRole('button', { name: 'Remove' }));
     await waitFor(() => expect(composerText().trim()).toBe(''));
     expect(screen.queryByTestId('staged-contexts')).toBeNull();
   });
@@ -1052,12 +1162,12 @@ describe('ChatComposer context pickers', () => {
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Slack MCP' }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('staged-inside-contexts').textContent).toContain('Slack MCP');
+      expect(screen.getByTestId('staged-outside-contexts').textContent).toContain('Slack MCP');
     });
     expect(composerText().trim()).toBe('');
 
     await typeAndSettle('Use the connected service');
-    expect(screen.getByTestId('staged-inside-contexts').textContent).toContain('Slack MCP');
+    expect(screen.getByTestId('staged-outside-contexts').textContent).toContain('Slack MCP');
     fireEvent.click(screen.getByTestId('chat-send'));
 
     await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
@@ -1081,18 +1191,9 @@ describe('ChatComposer context pickers', () => {
       .querySelector('.composer-inline-mention');
     expect(pill?.textContent).toBe('@Deck Builder');
     expect(pill?.getAttribute('data-mention-kind')).toBe('skill');
-    expect(screen.getByTestId('staged-contexts').textContent).toContain('@Deck Builder');
+    expect(screen.queryByTestId('staged-inside-contexts')).toBeNull();
 
-    fireEvent.click(
-      within(screen.getByTestId('staged-contexts')).getByRole('button', {
-        name: 'Deck Builder',
-      }),
-    );
-    await waitFor(() => expect(screen.getByTestId('skill-details-modal')).toBeTruthy());
-    expect(screen.getByText('skill body for deck-builder')).toBeTruthy();
-    fireEvent.click(screen.getAllByRole('button', { name: 'Close' }).at(-1)!);
-
-    fireEvent.click(screen.getByLabelText('Remove Deck Builder'));
+    fireEvent.click(within(pill as HTMLElement).getByRole('button', { name: 'Remove' }));
     await waitFor(() => expect(composerText().trim()).toBe(''));
     expect(screen.queryByTestId('staged-contexts')).toBeNull();
   });
@@ -1117,17 +1218,22 @@ describe('ChatComposer context pickers', () => {
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Audit Helper' }));
 
     await waitFor(() => expect(onProjectSkillChange).toHaveBeenCalledWith('deck-builder'));
-    expect(screen.getByTestId('staged-inside-contexts').textContent).toContain('Deck Builder');
-    expect(screen.getByTestId('staged-inside-contexts').textContent).toContain('Audit Helper');
+    expect(screen.getByTestId('staged-outside-contexts').textContent).toContain('Deck Builder');
+    expect(screen.getByTestId('staged-outside-contexts').textContent).toContain('Audit Helper');
     const skillChips = Array.from(
-      screen.getByTestId('staged-inside-contexts').querySelectorAll('.staged-context--skill'),
+      screen.getByTestId('staged-outside-contexts').querySelectorAll('.staged-context--skill'),
     );
     expect(skillChips).toHaveLength(2);
     expect(skillChips[0]?.className).toBe(skillChips[1]?.className);
+
+    fireEvent.click(within(screen.getByTestId('staged-outside-contexts')).getByRole('button', { name: 'Deck Builder' }));
+    await screen.findByTestId('skill-details-modal');
+    expect(screen.getByText('skill body for deck-builder')).toBeTruthy();
+    fireEvent.click(screen.getAllByRole('button', { name: 'Close' }).at(-1)!);
     expect(composerText().trim()).toBe('');
 
     await typeAndSettle('Create the outline');
-    expect(screen.getByTestId('staged-inside-contexts').textContent).toContain('Deck Builder');
+    expect(screen.getByTestId('staged-outside-contexts').textContent).toContain('Deck Builder');
     fireEvent.click(screen.getByTestId('chat-send'));
 
     await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));

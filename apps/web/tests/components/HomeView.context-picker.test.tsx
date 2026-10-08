@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import { $getRoot } from 'lexical';
+
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -50,7 +52,7 @@ vi.mock('../../src/collab/useWorkspaceContext', async (importOriginal) => {
 });
 
 import { HomeView } from '../../src/components/HomeView';
-import { homeHeroPromptText, setHomeHeroPrompt } from '../helpers/home-hero-lexical';
+import { getHomeHeroEditor, homeHeroPromptText, setHomeHeroPrompt } from '../helpers/home-hero-lexical';
 
 // HomeHero's prompt input migrated from a <textarea>+highlight overlay to the
 // same Lexical contenteditable the project composer uses. The `home-hero-input`
@@ -168,6 +170,59 @@ async function pickHomeTemplate(id: string) {
 }
 
 describe('HomeView context picker', () => {
+  it.each([
+    ['skill-first', 'none', false], ['mcp-first', 'none', false],
+    ['skill-first', 'skill', false], ['mcp-first', 'mcp', false], ['skill-first', 'both', true],
+  ] as const)('keeps home @ resources inline in %s order with %s removed and sends their context', async (order, removed, remount) => {
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>(async (url) => new Response(JSON.stringify(
+      String(url).includes('/api/mcp/servers') ? { servers: [MCP_SERVER], templates: [] } : { plugins: [] },
+    ), { status: 200, headers: { 'content-type': 'application/json' } })));
+    const onSubmit = vi.fn();
+    const renderHome = () => render(<HomeView projects={[]} skills={[SKILL]} onSubmit={onSubmit}
+      onOpenProject={() => undefined} onViewAllProjects={() => undefined} />);
+    const view = renderHome();
+    await screen.findByTestId('home-hero-input');
+    const picks = order === 'skill-first'
+      ? [['@proto', 'Prototype Lab'], ['@linear', 'Linear']]
+      : [['@linear', 'Linear'], ['@proto', 'Prototype Lab']];
+    for (const [query, label] of picks) {
+      await act(async () => {
+        getHomeHeroEditor().update(() => {
+          $getRoot().selectEnd().insertText(query!);
+        }, { discrete: true });
+      });
+      fireEvent.mouseDown(await screen.findByRole('option', { name: new RegExp(label!, 'i') }));
+      await waitFor(() => expect(homeHeroPromptText()).toContain(`@${label} `));
+    }
+    if (remount) {
+      view.unmount();
+      renderHome();
+      await waitFor(() => expect(screen.getByTestId('home-hero-input')
+        .querySelectorAll('.composer-inline-mention')).toHaveLength(2));
+    }
+    const editor = screen.getByTestId('home-hero-input');
+    expect(Array.from(editor.querySelectorAll('.composer-inline-mention')).map((node) => node.textContent))
+      .toEqual(picks.map(([, label]) => `@${label}`));
+    expect(document.querySelector('[data-composer-surface-part="inside"]')).toBeNull();
+    if (removed !== 'none') {
+      for (const kind of removed === 'both' ? ['skill', 'mcp'] : [removed]) {
+        const pill = editor.querySelector(`[data-mention-kind="${kind}"]`)!;
+        fireEvent.click(pill.querySelector('button')!);
+        await waitFor(() => expect(editor.querySelector(`[data-mention-kind="${kind}"]`)).toBeNull());
+      }
+      await act(async () => {
+        getHomeHeroEditor().update(() => $getRoot().selectEnd().insertText('Continue'), { discrete: true });
+      });
+      expect(document.querySelector('[data-composer-surface-part="inside"]')).toBeNull();
+    }
+    fireEvent.click(screen.getByTestId('home-hero-submit'));
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0]?.[0]?.initialRunContext ?? {}).toEqual({
+      ...(removed !== 'skill' && removed !== 'both' ? { skillIds: [SKILL.id] } : {}),
+      ...(removed !== 'mcp' && removed !== 'both' ? { mcpServerIds: [MCP_SERVER.id] } : {}),
+    });
+  });
+
   it('preserves selected local catalog provenance while Workspace identity transitions', async () => {
     const fetchMock = vi.fn<typeof fetch>(async (url) => {
       if (typeof url === 'string' && url === '/api/plugins') {
@@ -334,6 +389,7 @@ describe('HomeView context picker', () => {
       return 0;
     });
     const file = new File(['brief'], 'brief.pdf', { type: 'application/pdf' });
+    const secondFile = new File(['notes'], 'notes.txt', { type: 'text/plain' });
 
     const first = render(
       <HomeView
@@ -355,14 +411,20 @@ describe('HomeView context picker', () => {
     fireEvent.click(await screen.findByTestId('composer-plus-mcp'));
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Linear' }));
     fireEvent.change(screen.getByTestId('home-hero-file-input'), {
-      target: { files: [file] },
+      target: { files: [file, secondFile] },
     });
 
     await waitFor(() => {
       expect(screen.getByTestId('home-hero-active-file-0')).toHaveClass('staged-chip');
       const inputCard = screen.getByTestId('home-hero-input').closest('.home-hero__input-card');
-      expect(inputCard?.contains(screen.getByTestId(`home-hero-context-skill-${SKILL.id}`))).toBe(true);
-      expect(inputCard?.contains(screen.getByTestId(`home-hero-context-mcp-${MCP_SERVER.id}`))).toBe(true);
+      const outside = screen.getByTestId('home-hero-outside-contexts');
+      expect(inputCard?.contains(outside)).toBe(false);
+      for (const chip of [
+        screen.getByTestId(`home-hero-context-skill-${SKILL.id}`),
+        screen.getByTestId(`home-hero-context-mcp-${MCP_SERVER.id}`),
+        screen.getByTestId('home-hero-active-file-0'),
+      ]) expect(chip.parentElement).toBe(outside);
+      expect(document.querySelector('[data-composer-surface-part="inside"]')).toBeNull();
       expect(window.localStorage.getItem('open-design:home-composer:transient')).toBe('1');
     });
     first.unmount();
@@ -380,6 +442,18 @@ describe('HomeView context picker', () => {
     await screen.findByTestId('home-hero-input');
 
     expect(homeHeroPromptText()).toBe('keep this home draft');
+    const chipNames = () => Array.from(screen.getByTestId('home-hero-outside-contexts')
+      .querySelectorAll('.staged-name')).map((node) => node.textContent);
+    expect(chipNames()).toEqual(['Prototype Lab', 'Linear', 'brief.pdf', 'notes.txt']);
+    fireEvent.click(screen.getByLabelText('Remove Linear'));
+    fireEvent.click(screen.getByTestId('home-hero-plus-trigger'));
+    fireEvent.click(await screen.findByTestId('composer-plus-mcp'));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Linear' }));
+    expect(chipNames()).toEqual(['Prototype Lab', 'brief.pdf', 'notes.txt', 'Linear']);
+    fireEvent.click(screen.getByLabelText('Remove brief.pdf'));
+    expect(chipNames()).toEqual(['Prototype Lab', 'notes.txt', 'Linear']);
+    fireEvent.change(screen.getByTestId('home-hero-file-input'), { target: { files: [file] } });
+    expect(chipNames()).toEqual(['Prototype Lab', 'notes.txt', 'Linear', 'brief.pdf']);
     expect(screen.getByTestId('home-hero-active-file-0')).toHaveClass('staged-chip');
     expect(screen.getByTestId(`home-hero-context-skill-${SKILL.id}`)).toHaveClass('staged-chip');
     expect(screen.getByTestId(`home-hero-context-mcp-${MCP_SERVER.id}`)).toHaveClass('staged-chip');
@@ -394,7 +468,7 @@ describe('HomeView context picker', () => {
         mcpServerIds: [MCP_SERVER.id],
       },
       contextMcpServers: [expect.objectContaining({ id: MCP_SERVER.id })],
-      attachments: [file],
+      attachments: [secondFile, file],
     }));
   });
 

@@ -49,16 +49,6 @@ export function ComposerSurfaceInput({ className, ...props }: SurfacePartProps) 
   );
 }
 
-export function ComposerSurfaceInside({ className, ...props }: SurfacePartProps) {
-  return (
-    <div
-      {...props}
-      className={classes('home-hero__active', className)}
-      data-composer-surface-part="inside"
-    />
-  );
-}
-
 export function ComposerSurfaceEditor({ className, ...props }: SurfacePartProps) {
   return (
     <div

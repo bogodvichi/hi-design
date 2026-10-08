@@ -113,16 +113,17 @@ import {
   ComposerSurfaceEditor,
   ComposerSurfaceFooter,
   ComposerSurfaceInput,
-  ComposerSurfaceInside,
   ComposerSurfaceOutside,
 } from './composer/ComposerSurface';
 import {
-  ComposerContextChip,
+  type ComposerContextChipItem,
+  composerChipsOutsidePrompt,
   ComposerOutsideContextList,
   composerWorkspaceContextIcon,
   composerWorkspaceContextLabel,
   composerWorkspaceContextTitle,
 } from './composer/ComposerContextChips';
+import { createComposerResourceOrder } from './composer/resource-order';
 import { ANNOTATION_EVENT, type AnnotationEventDetail } from "./PreviewDrawOverlay";
 
 /**
@@ -449,6 +450,7 @@ export interface ChatSendMeta {
 }
 
 interface ComposerTransientDraft {
+  resourceOrder?: Record<string, number>;
   attachments: ChatAttachment[];
   uploadedAttachmentPaths: string[];
   commentAttachments: ChatCommentAttachment[];
@@ -584,6 +586,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
         : null;
     const activeFileDisplayName = activeFileContext ? lastPathSegment(activeFileContext) : null;
     const restoredTransientDraft = useRef(loadComposerTransientDraft(draftStorageKey)).current;
+    const resourceOrder = useRef(createComposerResourceOrder(restoredTransientDraft?.resourceOrder)).current;
     const [draft, setDraft] = useState(() => initialDraft ?? loadComposerDraft(draftStorageKey) ?? "");
     const [placeholderScenario, setPlaceholderScenario] = useState<PlaceholderScenario | null>(null);
     const composerRootRef = useRef<HTMLDivElement | null>(null);
@@ -798,6 +801,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     );
     useEffect(() => {
       saveComposerTransientDraft(draftStorageKey, {
+        resourceOrder: resourceOrder.snapshot(),
         attachments: staged,
         uploadedAttachmentPaths: Array.from(uploadedAttachmentPathsRef.current),
         commentAttachments: stagedVisualComments,
@@ -1660,6 +1664,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
       uploadedAttachmentPathsRef.current.clear();
       deletingAttachmentPathsRef.current.clear();
       nextAttachmentOrderRef.current = 0;
+      resourceOrder.reset();
       setStagedVisualComments([]);
       setStagedSkills([]);
       setStagedMcpServers([]);
@@ -1808,7 +1813,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
     }
 
     function reserveAttachmentOrders(count: number): number {
-      const orderStart = Math.max(nextAttachmentOrderRef.current, nextChatAttachmentOrder(staged));
+      const orderStart = resourceOrder.reserve(count, Math.max(nextAttachmentOrderRef.current, nextChatAttachmentOrder(staged)));
       nextAttachmentOrderRef.current = orderStart + count;
       return orderStart;
     }
@@ -1831,7 +1836,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
     function appendContextAttachment(filePath: string) {
       setStaged((current) => {
         if (current.some((item) => item.path === filePath)) return current;
-        const order = Math.max(nextAttachmentOrderRef.current, nextChatAttachmentOrder(current));
+        const order = resourceOrder.reserve(1, Math.max(nextAttachmentOrderRef.current, nextChatAttachmentOrder(current)));
         nextAttachmentOrderRef.current = order + 1;
         return sortChatAttachmentsByOrder([
           ...current,
@@ -1867,6 +1872,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
       // Agent/CLI, etc.). Only retire the local composer references here; do
       // NOT issue another DELETE request for the same path.
       for (const path of removed) {
+        resourceOrder.remove(`file-${path}`);
         uploadedAttachmentPathsRef.current.delete(path);
         deletingAttachmentPathsRef.current.delete(path);
       }
@@ -1894,6 +1900,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
     }
 
     function stageWorkspaceContext(item: WorkspaceContextItem) {
+      resourceOrder.get(`workspace-${item.id}`);
       contextOnlyWorkspaceIdsRef.current.add(item.id);
       setStagedWorkspaceContexts((current) =>
         current.some((candidate) => candidate.id === item.id)
@@ -1972,8 +1979,10 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
           ...(path ? { absolutePath: path } : {}),
         } satisfies WorkspaceContextItem;
       });
+      for (const item of items) resourceOrder.get(`workspace-${item.id}`);
       const trackedByDir = await addLinkedDirs(items.map((item) => workspaceContextLinkedDir(item) ?? ''));
       if (trackedByDir === false) {
+        for (const item of items) resourceOrder.remove(`workspace-${item.id}`);
         trackContextLinkResult(analytics.track, {
           page_name: 'chat_panel',
           area: 'chat_composer',
@@ -2019,8 +2028,10 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
         });
         return;
       }
+      resourceOrder.get(`workspace-local-code:${selected}`);
       const trackedLinkedDir = await addLinkedDir(selected);
       if (trackedLinkedDir === false) {
+        resourceOrder.remove(`workspace-local-code:${selected}`);
         trackContextLinkResult(analytics.track, {
           page_name: 'chat_panel',
           area: 'chat_composer',
@@ -2070,8 +2081,12 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
     }
 
     async function stageSkillContext(skill: SkillSummary) {
+      resourceOrder.get(`skill-${skill.id}`);
       const applied = await applyProjectSkill(skill);
-      if (!applied) return;
+      if (!applied) {
+        resourceOrder.remove(`skill-${skill.id}`);
+        return;
+      }
       contextOnlySkillIdsRef.current.add(skill.id);
       setStagedSkills((prev) =>
         prev.some((item) => item.id === skill.id) ? [...prev] : [...prev, skill],
@@ -2233,6 +2248,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
     }
 
     function removeStagedSkill(id: string) {
+      resourceOrder.remove(`skill-${id}`);
       trackComposerBar({ element: 'context_remove', resource_kind: 'skill', resource_id: id });
       const skill = stagedSkills.find((s) => s.id === id) ?? null;
       contextOnlySkillIdsRef.current.delete(id);
@@ -2242,6 +2258,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
     }
 
     function removeStagedMcpServer(id: string) {
+      resourceOrder.remove(`mcp-${id}`);
       trackComposerBar({ element: 'context_remove', resource_kind: 'mcp', resource_id: id });
       const server = stagedMcpServers.find((item) => item.id === id) ?? null;
       contextOnlyMcpIdsRef.current.delete(id);
@@ -2253,6 +2270,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
     }
 
     function removeStagedConnector(id: string) {
+      resourceOrder.remove(`connector-${id}`);
       trackComposerBar({ element: 'context_remove', resource_kind: 'connector', resource_id: id });
       const connector = stagedConnectors.find((item) => item.id === id) ?? null;
       contextOnlyConnectorIdsRef.current.delete(id);
@@ -2307,6 +2325,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
       if (trackedLinkedDir && !(await removeTrackedWorkspaceLinkedDir(id, trackedLinkedDir))) {
         return;
       }
+      resourceOrder.remove(`workspace-${id}`);
       if (visibleWorkspaceContext?.id === id) setDismissedWorkspaceContextId(id);
       contextOnlyWorkspaceIdsRef.current.delete(id);
       setStagedWorkspaceContexts((prev) => prev.filter((item) => item.id !== id));
@@ -2335,6 +2354,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
 
     async function uploadFiles(files: File[]) {
       if (files.length === 0) return;
+      const orderStart = reserveAttachmentOrders(files.length);
       const id = await ensureProject();
       if (!id) return;
       setUploading(true);
@@ -2344,7 +2364,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
       // file_upload_result per surface so this path reports
       // `page_name='chat_panel'` / `area='chat_composer'`.
       const cohort = deriveUploadCohort(files);
-      const orderStart = reserveAttachmentOrders(files.length);
       try {
         const result = await uploadProjectFiles(id, files, undefined, workspaceContext);
         if (result.uploaded.length > 0) {
@@ -2397,11 +2416,11 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
     // consumed.
     async function addAssetsFromLibrary(assets: LibraryAsset[]) {
       if (assets.length === 0) return;
+      const orderStart = reserveAttachmentOrders(assets.length);
       const id = await ensureProject();
       if (!id) return;
       setUploading(true);
       setUploadError(null);
-      const orderStart = reserveAttachmentOrders(assets.length);
       try {
         const applied: ChatAttachment[] = [];
         // Element-pick captures carry their picked node's markup; collect it so
@@ -3011,6 +3030,10 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
     }
 
     async function stagePluginContext(record: InstalledPluginRecord) {
+      if (activeAppliedPlugin && activeAppliedPlugin.pluginId !== record.id) {
+        resourceOrder.remove(`plugin-${activeAppliedPlugin.pluginId}`);
+      }
+      resourceOrder.get(`plugin-${record.id}`);
       setMention(null);
       inlineBackedPluginRef.current = null;
       await pluginsSectionRef.current?.applyById(record.id, record);
@@ -3066,6 +3089,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
     }
 
     function stageMcpContext(server: McpServerConfig) {
+      resourceOrder.get(`mcp-${server.id}`);
       contextOnlyMcpIdsRef.current.add(server.id);
       setStagedMcpServers((current) => (
         current.some((item) => item.id === server.id) ? [...current] : [...current, server]
@@ -3087,6 +3111,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
     }
 
     function stageConnectorContext(connector: ConnectorDetail) {
+      resourceOrder.get(`connector-${connector.id}`);
       contextOnlyConnectorIdsRef.current.add(connector.id);
       setStagedConnectors((current) => (
         current.some((item) => item.id === connector.id) ? [...current] : [...current, connector]
@@ -3120,6 +3145,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
         uploadedAttachmentPathsRef.current.delete(p);
         await onProjectFilesChange?.();
       }
+      resourceOrder.remove(`file-${p}`);
       setStaged((s) => s.filter((a) => a.path !== p));
       setStagedVisualComments((current) => current.filter((attachment) => attachment.screenshotPath !== p));
       // Strip the `@<path>` token from the draft and push the result back into
@@ -3284,8 +3310,31 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
       || Boolean(currentRunContextMeta());
     const showStopButton = streaming && !hasComposerPayload;
     const showSendButton = !streaming || hasComposerPayload;
-    const hasInsideStagedContexts = stagedSkills.length > 0
-      || stagedMcpServers.length > 0;
+    const resourceContextItems = composerChipsOutsidePrompt([
+      ...stagedSkills.filter((skill) => contextOnlySkillIdsRef.current.has(skill.id)).map((skill) => ({
+        key: `skill-${skill.id}`,
+        order: resourceOrder.get(`skill-${skill.id}`),
+        kind: 'skill' as const,
+        icon: 'sparkles' as const,
+        label: localizeSkillName(locale, skill),
+        mentionLabels: [skill.name, skill.id],
+        title: skill.description || skill.name,
+        onOpen: () => setDetailsSkill({ id: skill.id, summary: skill }),
+        onRemove: () => removeStagedSkill(skill.id),
+        removeLabel: t('chat.removeAria', { name: skill.name }),
+      })),
+      ...stagedMcpServers.filter((server) => contextOnlyMcpIdsRef.current.has(server.id)).map((server) => ({
+        key: `mcp-${server.id}`,
+        order: resourceOrder.get(`mcp-${server.id}`),
+        kind: 'mcp' as const,
+        icon: 'link' as const,
+        label: server.label || server.id,
+        mentionLabels: [server.label || server.id, server.id],
+        title: server.command || server.url || server.id,
+        onRemove: () => removeStagedMcpServer(server.id),
+        removeLabel: t('chat.removeAria', { name: server.label || server.id }),
+      })),
+    ], draft);
     const outsideWorkspaceContexts = selectedWorkspaceContexts.filter((item) => (
       item.id === visibleWorkspaceContext?.id || contextOnlyWorkspaceIdsRef.current.has(item.id)
     ));
@@ -3299,11 +3348,13 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
           title: activeAppliedPlugin.pluginTitle ?? activeAppliedPlugin.pluginId,
         }
       : null;
-    const hasOutsideStagedContexts = outsideWorkspaceContexts.length > 0
+    const hasOutsideStagedContexts = resourceContextItems.length > 0
+      || outsideWorkspaceContexts.length > 0
       || outsideConnectors.length > 0
       || staged.length > 0
       || Boolean(outsidePluginChip);
-    const hasOnlyCurrentWorkspaceOutside = outsideWorkspaceContexts.length === 1
+    const hasOnlyCurrentWorkspaceOutside = resourceContextItems.length === 0
+      && outsideWorkspaceContexts.length === 1
       && outsideWorkspaceContexts[0]?.id === visibleWorkspaceContext?.id
       && outsideConnectors.length === 0
       && staged.length === 0
@@ -3311,26 +3362,18 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
     const stagedContextSharedProps = {
       currentWorkspaceContextId: visibleWorkspaceContext?.id ?? null,
       projectId,
+      resourceOrder,
       onRemoveWorkspace: removeWorkspaceContext,
-      onRemoveSkill: removeStagedSkill,
-      onRemoveMcp: removeStagedMcpServer,
       onRemoveConnector: removeStagedConnector,
       onRemoveAttachment: removeStaged,
       onRemovePlugin: () => {
+        if (activeAppliedPlugin) resourceOrder.remove(`plugin-${activeAppliedPlugin.pluginId}`);
         pluginsSectionRef.current?.clear();
         setActiveAppliedPlugin(null);
       },
       onPluginDetails: (id: string) => {
         const record = installedPlugins.find((plugin) => plugin.id === id);
         if (record) setDetailsRecord(record);
-      },
-      onSkillDetails: (id: string) => {
-        setDetailsSkill({
-          id,
-          summary: stagedSkills.find((skill) => skill.id === id)
-            ?? skills.find((skill) => skill.id === id)
-            ?? null,
-        });
       },
       t,
     };
@@ -3464,7 +3507,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
         <ComposerSurface
           variant="project"
           className={`composer-shell${manualEditorHeight != null ? ' composer-shell--manual-height' : ''}`}
-          data-testid={hasInsideStagedContexts || hasOutsideStagedContexts ? 'staged-contexts' : undefined}
+          data-testid={hasOutsideStagedContexts ? 'staged-contexts' : undefined}
           style={
             manualEditorHeight != null
               ? ({ '--composer-manual-h': `${manualEditorHeight}px` } as React.CSSProperties)
@@ -3515,8 +3558,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
               }}
             />
           ) : null}
-          {/* Project/workspace/plugin context and file attachments belong to
-              the gray tray, above the white editor surface. */}
+          {/* All plus-menu resources share the gray tray above the editor. */}
           {hasOutsideStagedContexts ? (
             <ComposerSurfaceOutside className={`composer-outside-contexts${
               hasOnlyCurrentWorkspaceOutside ? ' composer-outside-contexts--current-only' : ''
@@ -3524,9 +3566,8 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
               <StagedRunContexts
                 {...stagedContextSharedProps}
                 testId="staged-outside-contexts"
+                resourceItems={resourceContextItems}
                 workspaceItems={outsideWorkspaceContexts}
-                skills={[]}
-                mcpServers={[]}
                 connectors={outsideConnectors}
                 attachments={staged}
                 pluginChip={outsidePluginChip}
@@ -3568,21 +3609,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
               setComposerFocused(false);
             }}
           >
-            {/* Skill and MCP are part of the white editor surface. */}
-            {hasInsideStagedContexts ? (
-              <ComposerSurfaceInside>
-                <StagedRunContexts
-                  {...stagedContextSharedProps}
-                  testId="staged-inside-contexts"
-                  workspaceItems={[]}
-                  skills={stagedSkills}
-                  mcpServers={stagedMcpServers}
-                  connectors={[]}
-                  attachments={[]}
-                  pluginChip={null}
-                />
-              </ComposerSurfaceInside>
-            ) : null}
             <ComposerSurfaceEditor>
               <div className="home-hero__prompt-editor home-hero__lexical">
                 <LexicalComposerInput
@@ -4200,42 +4226,36 @@ function projectFileMentionDescription(file: ProjectFile, fallback: string): str
 function StagedRunContexts({
   testId = 'staged-contexts',
   designSystemPicker,
+  resourceItems,
   workspaceItems,
   currentWorkspaceContextId,
-  skills,
-  mcpServers,
   connectors,
   attachments,
   pluginChip,
   projectId,
+  resourceOrder,
   onRemoveWorkspace,
-  onRemoveSkill,
-  onRemoveMcp,
   onRemoveConnector,
   onRemoveAttachment,
   onRemovePlugin,
   onPluginDetails,
-  onSkillDetails,
   t,
 }: {
   testId?: string;
   designSystemPicker?: ReactNode;
+  resourceItems: ComposerContextChipItem[];
   workspaceItems: WorkspaceContextItem[];
   currentWorkspaceContextId: string | null;
-  skills: SkillSummary[];
-  mcpServers: McpServerConfig[];
   connectors: ConnectorDetail[];
   attachments: ChatAttachment[];
   pluginChip?: { id: string; title: string } | null;
   projectId: string | null;
+  resourceOrder: ReturnType<typeof createComposerResourceOrder>;
   onRemoveWorkspace: (id: string) => void;
-  onRemoveSkill: (id: string) => void;
-  onRemoveMcp: (id: string) => void;
   onRemoveConnector: (id: string) => void;
   onRemoveAttachment: (path: string) => void;
   onRemovePlugin?: () => void;
   onPluginDetails?: (id: string) => void;
-  onSkillDetails?: (id: string) => void;
   t: TranslateFn;
 }) {
   const { workspaceContext } = useProjectCollabContext();
@@ -4264,7 +4284,7 @@ function StagedRunContexts({
       key: attachment.path,
       name: attachment.name,
       kind: attachment.kind,
-      order: attachment.order,
+      order: resourceOrder.get(`file-${attachment.path}`, attachment.order),
       title: attachment.path,
       previewTitle: attachment.name,
       previewUrl: imageUrl,
@@ -4278,6 +4298,7 @@ function StagedRunContexts({
     const label = composerWorkspaceContextLabel(workspaceItem);
     return {
       key: `workspace-${workspaceItem.id}`,
+      order: resourceOrder.get(`workspace-${workspaceItem.id}`),
       kind: 'workspace' as const,
       icon: composerWorkspaceContextIcon(workspaceItem),
       label,
@@ -4303,9 +4324,11 @@ function StagedRunContexts({
         </div>
       ) : null}
       <ComposerOutsideContextList
+        resources={resourceItems}
         attachments={attachmentItems}
         plugins={pluginChip ? [{
           key: `plugin-${pluginChip.id}`,
+          order: resourceOrder.get(`plugin-${pluginChip.id}`),
           kind: 'plugin',
           icon: 'sparkles',
           label: pluginChip.title,
@@ -4315,6 +4338,7 @@ function StagedRunContexts({
         }] : []}
         connectors={connectors.map((connector) => ({
           key: `connector-${connector.id}`,
+          order: resourceOrder.get(`connector-${connector.id}`),
           kind: 'connector',
           icon: 'link',
           label: connector.name,
@@ -4324,32 +4348,6 @@ function StagedRunContexts({
         }))}
         workspaces={workspaceContextItems}
       />
-      {skills.map((s) => (
-        <ComposerContextChip key={s.id} item={{
-          key: `skill-${s.id}`,
-          kind: 'skill',
-          icon: 'sparkles',
-          label: s.name,
-          title: s.description || s.name,
-          onOpen: onSkillDetails ? () => onSkillDetails(s.id) : undefined,
-          onRemove: () => onRemoveSkill(s.id),
-          removeLabel: t('chat.removeAria', { name: s.name }),
-        }} />
-      ))}
-      {mcpServers.map((server) => {
-        const label = server.label || server.id;
-        return (
-          <ComposerContextChip key={server.id} item={{
-            key: `mcp-${server.id}`,
-            kind: 'mcp',
-            icon: 'link',
-            label,
-            title: server.command || server.url || server.id,
-            onRemove: () => onRemoveMcp(server.id),
-            removeLabel: t('chat.removeAria', { name: label }),
-          }} />
-        );
-      })}
     </div>
     {preview && previewUrl ? createPortal(
       <div

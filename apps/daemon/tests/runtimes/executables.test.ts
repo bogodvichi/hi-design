@@ -1,5 +1,5 @@
 import { test } from 'vitest';
-import { relative, resolve } from 'node:path';
+import { delimiter, relative, resolve } from 'node:path';
 import {
   assert, chmodSync, claude, codex, deepseek, join, minimalAgentDef, mkdirSync, mkdtempSync, resolveAgentExecutable, rmSync, tmpdir, withEnvSnapshot, withPlatform, writeFileSync,
 } from './helpers/test-helpers.js';
@@ -9,6 +9,34 @@ import {
 } from '../../src/runtimes/executables.js';
 
 const fsTest = process.platform === 'win32' ? test.skip : test;
+
+fsTest('a new Codex binary installed after daemon startup wins on the next Run', () => {
+  const root = mkdtempSync(join(tmpdir(), 'od-codex-late-install-'));
+  try {
+    return withEnvSnapshot(['PATH', 'OD_AGENT_HOME', 'CODEX_BIN'], () => {
+      const standaloneDir = join(root, 'standalone');
+      const olderDir = join(root, 'older');
+      mkdirSync(standaloneDir, { recursive: true });
+      mkdirSync(olderDir, { recursive: true });
+      const standalone = join(standaloneDir, 'codex');
+      const older = join(olderDir, 'codex');
+      writeFileSync(older, '#!/bin/sh\nexit 0\n');
+      chmodSync(older, 0o755);
+      process.env.PATH = [standaloneDir, olderDir].join(delimiter);
+      process.env.OD_AGENT_HOME = join(root, 'isolated-agent-home');
+      delete process.env.CODEX_BIN;
+      const definition = minimalAgentDef({ id: 'codex', bin: 'codex' });
+
+      assert.equal(resolveAgentExecutable(definition), older);
+      // The daemon stays alive while the background installer adds this file.
+      writeFileSync(standalone, '#!/bin/sh\nexit 0\n');
+      chmodSync(standalone, 0o755);
+      assert.equal(resolveAgentExecutable(definition), standalone);
+    });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 // ---- OpenClaude fallback (issue #235) -------------------------------------
 // OpenClaude (https://github.com/Gitlawb/openclaude) is a Claude Code fork
