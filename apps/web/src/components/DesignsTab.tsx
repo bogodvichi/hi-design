@@ -37,6 +37,7 @@ import {
 import { LiveArtifactBadges } from "./LiveArtifactBadges";
 import { Toast } from "./Toast";
 import {
+	ImageProjectCover,
 	HtmlProjectCoverFrame,
 	coverFromProjectFile,
 	projectCoverUrl,
@@ -1025,7 +1026,13 @@ export function DesignsTab({
 											initial={cover.initial}
 										/>
 									) : (cover.kind === "image" || cover.kind === "logo") && cover.src ? (
-										<img className="thumb-media" src={cover.src} alt="" loading="lazy" />
+										<ImageProjectCover
+										src={cover.src}
+										initial={cover.initial}
+										imgClassName="thumb-media"
+										glyphClassName="project-thumb-glyph"
+										diagnostic={`${p.id}:cover-digest`}
+									/>
 									) : cover.kind === "video" && cover.src ? (
 										<video className="thumb-media" src={cover.src} muted preload="metadata" playsInline />
 									) : cover.kind === "html" ? (

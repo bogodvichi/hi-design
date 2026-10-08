@@ -147,6 +147,7 @@ export interface CollectionSelectionExtension {
   onClear?: () => void;
 }
 import {
+  ImageProjectCover,
   coverFromProjectFile,
   projectCoverUrl,
   projectFallbackVisual,
@@ -2495,14 +2496,15 @@ function requestDelete(project: Project) {
                     projectId={project.id}
                     onVisible={handleCoverCardVisible}
                   />
-                  {(cover.kind === 'image' || cover.kind === 'logo') && cover.src ? (
-                    <img
-                      className="recent-projects__thumb-media"
-                      src={cover.src}
-                      alt=""
-                      loading="lazy"
-                    />
-                  ) : cover.kind === 'video' && cover.src ? (
+                 {(cover.kind === 'image' || cover.kind === 'logo') && cover.src ? (
+                   <ImageProjectCover
+                     src={cover.src}
+                     initial={cover.initial}
+                     imgClassName="recent-projects__thumb-media"
+                     glyphClassName="recent-projects__card-glyph"
+                     diagnostic={`${project.id}:cover-digest`}
+                   />
+                 ) : cover.kind === 'video' && cover.src ? (
                     <video
                       className="recent-projects__thumb-media"
                       src={cover.src}

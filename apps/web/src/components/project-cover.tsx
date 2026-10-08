@@ -193,3 +193,48 @@ export function HtmlProjectCoverFrame({
     />
   );
 }
+
+/**
+ * Image cover with onError fallback to the initial glyph. When coverDigest is
+ * set but the actual cover file is missing (404), the <img> would otherwise
+ * show a broken-image icon. This component swaps to the gradient + initial
+ * glyph so the card always has a visual placeholder.
+ */
+export function ImageProjectCover({
+  src,
+  initial,
+  imgClassName,
+  glyphClassName,
+  diagnostic,
+}: {
+  src: string;
+  initial: string;
+  imgClassName: string;
+  glyphClassName: string;
+  diagnostic: string;
+}) {
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [src]);
+
+  if (failed) {
+    return (
+      <span className={glyphClassName}>{initial}</span>
+    );
+  }
+
+  return (
+    <img
+      className={imgClassName}
+      src={src}
+      alt=""
+      loading="lazy"
+      onError={() => {
+        console.warn('[project-cover] failed to load image cover:', diagnostic);
+        setFailed(true);
+      }}
+    />
+  );
+}
