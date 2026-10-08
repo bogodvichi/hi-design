@@ -36,6 +36,25 @@ describe('PresenceBar', () => {
     expect(screen.getByText('Admin · Viewing this project')).toBeTruthy();
   });
 
+  it('renders the synchronized profile image for the current user', () => {
+    render(
+      <PresenceBar
+        selfMemberId="me"
+        selfMember={{
+          memberId: 'me',
+          name: 'Current User',
+          avatarUrl: 'https://example.test/current-user.jpg',
+        }}
+        members={[{ memberId: 'peer', name: 'Peer User' }]}
+      />,
+    );
+
+    const avatar = screen.getByTitle('Current User');
+    expect(avatar.querySelector('img')?.getAttribute('src')).toBe(
+      'https://example.test/current-user.jpg',
+    );
+  });
+
   it('collapses past the max into a +N overflow chip', () => {
     render(
       <PresenceBar

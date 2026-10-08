@@ -445,6 +445,9 @@ export interface WorkspaceDirectoryItem {
    * personal workspaces so identity surfaces (avatar, byline) can label
    * without a separate context fetch. */
   displayName?: string;
+  /** Signed-in user's profile image, when the directory is projected for the
+   * current session. */
+  avatarUrl?: string | null;
   isDefaultTeam?: boolean;
   /** True when this directory item is the global Shared Space team.
    *  The shared space is a special team where every logged-in user is
@@ -840,13 +843,15 @@ export interface WorkspaceBillingCheckoutResponse {
 /**
  * One member's public directory entry: the id → {name, role} mapping the client
  * needs to render "琼羽 · Owner" on a comment card and "这是 麻薯 创建的共享项目"
- * on the shared-project banner. Avatars are derived client-side from the name;
- * the directory carries no avatar.
+ * on the shared-project banner. `avatarUrl` is returned when HDW has a durable
+ * profile image for that member; callers keep the name-derived fallback when it
+ * is absent.
  */
 export interface CollabCloudMemberDirectoryEntry {
   memberId: string;
   displayName: string;
   role: CollabMemberRole;
+  avatarUrl?: string | null;
 }
 
 /** PUT /teams/:teamId/members/:memberId request body. Idempotent upsert. */

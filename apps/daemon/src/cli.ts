@@ -454,9 +454,9 @@ async function runAuth(args) {
     process.exitCode = 2;
     return;
   }
-  if (flags.help || flags.h || sub !== 'himind') {
-    const usage = 'Usage: od auth himind [--daemon-url <url>] [--json]';
-    if (sub && sub !== 'himind') {
+  if (flags.help || flags.h || (sub !== 'himind' && sub !== 'avatar')) {
+    const usage = 'Usage: od auth <himind|avatar> [--daemon-url <url>] [--json]';
+    if (sub && sub !== 'himind' && sub !== 'avatar') {
       console.error(`unknown subcommand: od auth ${sub}`);
       console.error(usage);
       process.exitCode = 2;
@@ -467,10 +467,18 @@ async function runAuth(args) {
   }
 
   const base = await resolveDaemonUrl({ flagUrl: flags['daemon-url'] });
-  const response = await fetch(`${base}/api/auth/himind/launch`, { method: 'POST' });
+  const isAvatar = sub === 'avatar';
+  const response = await fetch(
+    `${base}${isAvatar ? '/api/auth/avatar' : '/api/auth/himind/launch'}`,
+    { method: isAvatar ? 'GET' : 'POST' },
+  );
   const body = await response.json().catch(() => null);
-  if (!response.ok || !body || typeof body.launchUrl !== 'string') {
-    const message = body?.error?.message || `HiMind login launch failed (HTTP ${response.status})`;
+  const validBody = isAvatar
+    ? body && Object.prototype.hasOwnProperty.call(body, 'avatarUrl')
+    : body && typeof body.launchUrl === 'string';
+  if (!response.ok || !validBody) {
+    const label = isAvatar ? 'Avatar lookup' : 'HiMind login launch';
+    const message = body?.error?.message || `${label} failed (HTTP ${response.status})`;
     if (flags.json) {
       console.log(JSON.stringify({ ok: false, error: { message } }, null, 2));
     } else {
@@ -482,7 +490,7 @@ async function runAuth(args) {
   if (flags.json) {
     console.log(JSON.stringify(body, null, 2));
   } else {
-    console.log(body.launchUrl);
+    console.log(isAvatar ? body.avatarUrl || '' : body.launchUrl);
   }
 }
 

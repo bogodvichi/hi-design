@@ -373,6 +373,7 @@
 }
 
 .avatar {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -385,6 +386,16 @@
   font-size: 13px;
   font-weight: 600;
   flex: 0 0 auto;
+  overflow: hidden;
+}
+
+.avatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
 }
 
 .memberInfo {

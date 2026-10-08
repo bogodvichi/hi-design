@@ -62,6 +62,7 @@ export function currentUserDirectoryEntry(
     // id rather than as a blank card.
     displayName: context.displayName?.trim() || memberId,
     role: context.role,
+    ...(context.avatarUrl !== undefined ? { avatarUrl: context.avatarUrl } : {}),
   };
 }
 
@@ -164,6 +165,7 @@ export function useTeamMembers(
   const currentUserMemberId = currentUser?.memberId ?? null;
   const currentUserDisplayName = currentUser?.displayName ?? null;
   const currentUserRole = currentUser?.role ?? null;
+  const currentUserAvatarUrl = currentUser?.avatarUrl;
   const self = useMemo<CollabCloudMemberDirectoryEntry | null>(
     () =>
       currentUserMemberId && currentUserDisplayName && currentUserRole
@@ -171,12 +173,14 @@ export function useTeamMembers(
             memberId: currentUserMemberId,
             displayName: currentUserDisplayName,
             role: currentUserRole,
+            ...(currentUserAvatarUrl !== undefined ? { avatarUrl: currentUserAvatarUrl } : {}),
           }
         : null,
     [
       currentUserMemberId,
       currentUserDisplayName,
       currentUserRole,
+      currentUserAvatarUrl,
     ],
   );
 
@@ -186,7 +190,11 @@ export function useTeamMembers(
       // The roster wins when it has the member: it is the authoritative name and
       // role, and it stays right when the viewer's own role changes mid-session.
       const entry = byId.get(memberId);
-      if (entry) return entry;
+      if (entry) {
+        return self?.memberId === memberId && self.avatarUrl !== undefined
+          ? { ...entry, avatarUrl: self.avatarUrl }
+          : entry;
+      }
       // Me, with no roster (personal workspace) or before it lands.
       if (self && self.memberId === memberId) return self;
       return null;

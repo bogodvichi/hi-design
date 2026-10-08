@@ -33,6 +33,12 @@ export interface GetUserNameResponse {
   username: string;
 }
 
+/** Current signed-in user's cached UPlus avatar, projected without credentials. */
+export interface GetCurrentUserAvatarResponse {
+  ok: true;
+  avatarUrl: string | null;
+}
+
 /** Successful response from `POST /api/auth/himind/launch`. */
 export interface HiMindLaunchResponse {
   ok: true;

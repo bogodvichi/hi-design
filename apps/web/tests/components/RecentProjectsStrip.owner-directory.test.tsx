@@ -10,6 +10,7 @@ import type { Project } from '../../src/types';
 
 const workspaceState = vi.hoisted(() => ({
   context: null as WorkspaceCollabContext | null,
+  members: [] as CollabCloudMemberDirectoryEntry[],
   resolve: vi.fn<
     (memberId: string | null | undefined) => CollabCloudMemberDirectoryEntry | null
   >(),
@@ -17,7 +18,10 @@ const workspaceState = vi.hoisted(() => ({
 
 vi.mock('../../src/collab/useTeamMembers', () => ({
   currentUserDirectoryEntry: () => null,
-  useTeamMembers: () => ({ resolve: workspaceState.resolve }),
+  useTeamMembers: () => ({
+    members: workspaceState.members,
+    resolve: workspaceState.resolve,
+  }),
 }));
 
 vi.mock('../../src/auth/auth', () => ({
@@ -88,6 +92,7 @@ function project(overrides: Partial<Project> = {}): Project {
 afterEach(() => {
   cleanup();
   workspaceState.context = null;
+  workspaceState.members = [];
   workspaceState.resolve.mockReset();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
@@ -114,6 +119,59 @@ describe('RecentProjectsStrip owner directory fallback', () => {
       '.recent-projects__card-owner',
     );
     expect(owner?.getAttribute('title')).toBe('Ally Zhang');
+  });
+
+  it('uses the durable directory avatar for another project owner', () => {
+    workspaceState.context = teamContext();
+    workspaceState.resolve.mockImplementation((memberId) =>
+      memberId === 'wm-owner'
+        ? {
+            memberId: 'wm-owner',
+            displayName: '翁文秀',
+            role: 'member',
+            avatarUrl: 'https://example.test/wengwenxiu.jpg',
+          }
+        : null,
+    );
+
+    const { container } = render(
+      <RecentProjectsStrip
+        projects={[project()]}
+        onOpen={() => {}}
+        space="team"
+      />,
+    );
+
+    expect(
+      container.querySelector<HTMLImageElement>('.recent-projects__card-owner-avatar img')
+        ?.getAttribute('src'),
+    ).toBe('https://example.test/wengwenxiu.jpg');
+  });
+
+  it('matches the persisted avatar by display name when workspace member ids differ', () => {
+    workspaceState.context = teamContext();
+    workspaceState.resolve.mockReturnValue(null);
+    workspaceState.members = [{
+      memberId: 'member-id-in-current-workspace',
+      displayName: '翁文秀',
+      role: 'member',
+      avatarUrl: 'https://example.test/wengwenxiu.jpg',
+    }];
+
+    const { container } = render(
+      <RecentProjectsStrip
+        projects={[project({
+          createdByWorkspaceMemberId: 'member-id-from-another-workspace',
+          ownerDisplayName: ' 翁文秀 ',
+        })]}
+        onOpen={() => {}}
+      />,
+    );
+
+    expect(
+      container.querySelector<HTMLImageElement>('.recent-projects__card-owner-avatar img')
+        ?.getAttribute('src'),
+    ).toBe('https://example.test/wengwenxiu.jpg');
   });
 
   it('keeps the same real owner name across recent and team spaces', () => {
@@ -165,12 +223,12 @@ describe('RecentProjectsStrip owner directory fallback', () => {
       />,
     );
 
-    const owners = container.querySelectorAll<HTMLElement>('.recent-projects__card-owner');
-    expect(owners).toHaveLength(2);
-    expect(owners[0]?.style.backgroundColor).toBe(owners[1]?.style.backgroundColor);
+    const avatars = container.querySelectorAll<HTMLElement>('.recent-projects__card-owner-avatar');
+    expect(avatars).toHaveLength(2);
+    expect(avatars[0]?.style.backgroundColor).toBe(avatars[1]?.style.backgroundColor);
   });
 
-  it('shows Me when the HDW owner id matches the deterministic current-user team member id', async () => {
+  it('shows the current user name when the HDW owner id matches the deterministic team member id', async () => {
     workspaceState.context = teamContext();
     workspaceState.resolve.mockReturnValue(null);
 
@@ -187,8 +245,8 @@ describe('RecentProjectsStrip owner directory fallback', () => {
 
     await waitFor(() => {
       const owner = container.querySelector<HTMLElement>('.recent-projects__card-owner');
-      expect(owner?.textContent).toBe('Me');
-      expect(owner?.style.backgroundColor).toBe('rgb(0, 0, 0)');
+      expect(owner?.querySelector('.recent-projects__card-owner-name')?.textContent).toBe('Viewer Name');
+      expect(owner?.classList.contains('recent-projects__card-owner--self')).toBe(true);
     });
   });
 
@@ -209,8 +267,9 @@ describe('RecentProjectsStrip owner directory fallback', () => {
 
     await waitFor(() => {
       const owner = container.querySelector<HTMLElement>('.recent-projects__card-owner');
-      expect(owner?.textContent).toBe('Viewer Name');
+      expect(owner?.querySelector('.recent-projects__card-owner-name')?.textContent).toBe('Viewer Name');
       expect(owner?.getAttribute('title')).toBe('Viewer Name');
+      expect(owner?.classList.contains('recent-projects__card-owner--self')).toBe(false);
     });
   });
 });

@@ -762,6 +762,16 @@ function normalizeCodexAppServerItem(item: JsonObject): JsonObject {
       exit_code: item.exitCode,
     };
   }
+  if (type === 'mcpToolCall') {
+    return {
+      ...item,
+      type: 'mcp_tool_call',
+      server: item.server ?? item.serverName,
+      tool: item.tool ?? item.toolName,
+      arguments: item.arguments ?? item.input,
+      result: item.result ?? item.output,
+    };
+  }
   if (type === 'reasoning') {
     const summary = Array.isArray(item.summary)
       ? item.summary.filter((part): part is string => typeof part === 'string').join('\n\n')
@@ -976,6 +986,22 @@ function handleCodexEvent(obj: unknown, onEvent: StreamEventHandler, state: Pars
       }
       return true;
     }
+    if (item.type === 'mcp_tool_call' && typeof item.id === 'string') {
+      state.codexPreviousEventWasAgentMessage = false;
+      state.codexLastAgentMessageEndedWithNewline = false;
+      if (!state.codexToolUses.has(item.id)) {
+        state.codexToolUses.add(item.id);
+        const server = typeof item.server === 'string' ? item.server : 'unknown';
+        const tool = typeof item.tool === 'string' ? item.tool : 'unknown';
+        onEvent({
+          type: 'tool_use',
+          id: item.id,
+          name: `MCP:${server}/${tool}`,
+          input: isRecord(item.arguments) ? item.arguments : {},
+        });
+      }
+      return true;
+    }
   }
 
   if (obj.type === 'item.updated' && isRecord(obj.item)) {
@@ -1030,6 +1056,31 @@ function handleCodexEvent(obj: unknown, onEvent: StreamEventHandler, state: Pars
         state.codexErrorEmitted = true;
         onEvent({ type: 'error', message: connectorToolError });
       }
+      return true;
+    }
+    if (item.type === 'mcp_tool_call' && typeof item.id === 'string') {
+      state.codexPreviousEventWasAgentMessage = false;
+      state.codexLastAgentMessageEndedWithNewline = false;
+      if (!state.codexToolUses.has(item.id)) {
+        state.codexToolUses.add(item.id);
+        const server = typeof item.server === 'string' ? item.server : 'unknown';
+        const tool = typeof item.tool === 'string' ? item.tool : 'unknown';
+        onEvent({
+          type: 'tool_use',
+          id: item.id,
+          name: `MCP:${server}/${tool}`,
+          input: isRecord(item.arguments) ? item.arguments : {},
+        });
+      }
+      const content = stringifyContent(item.result ?? item.error ?? '');
+      onEvent({
+        type: 'tool_result',
+        toolUseId: item.id,
+        content,
+        isError: item.error !== null && item.error !== undefined
+          ? true
+          : item.status === 'failed',
+      });
       return true;
     }
   }

@@ -93,6 +93,15 @@ CREATE TABLE public.community_plugins (
     CONSTRAINT community_plugins_pkey PRIMARY KEY (id)
 );
 
+-- Table: public.community_publisher_profiles
+CREATE TABLE public.community_publisher_profiles (
+    username text NOT NULL,
+    avatar_digest text NOT NULL,
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    updated_at timestamp with time zone NOT NULL DEFAULT now(),
+    CONSTRAINT community_publisher_profiles_pkey PRIMARY KEY (username)
+);
+
 -- Table: public.community_resource_actor_stats
 CREATE TABLE public.community_resource_actor_stats (
     resource_type text NOT NULL,
@@ -350,6 +359,7 @@ ALTER TABLE public.community_plugin_versions ADD CONSTRAINT community_plugin_ver
 ALTER TABLE public.community_plugin_versions ADD CONSTRAINT community_plugin_versions_plugin_id_version_key UNIQUE (plugin_id, version);
 ALTER TABLE public.community_plugins ADD CONSTRAINT community_plugins_status_check CHECK ((status = ANY (ARRAY['published'::text, 'unlisted'::text, 'yanked'::text])));
 ALTER TABLE public.community_plugins ADD CONSTRAINT community_plugins_current_version_id_fkey FOREIGN KEY (current_version_id) REFERENCES community_plugin_versions(id) ON DELETE SET NULL;
+ALTER TABLE public.community_publisher_profiles ADD CONSTRAINT community_publisher_profiles_avatar_digest_fkey FOREIGN KEY (avatar_digest) REFERENCES blobs(digest);
 ALTER TABLE public.community_resource_actor_stats ADD CONSTRAINT community_resource_actor_stats_action_count_check CHECK ((action_count >= 0));
 ALTER TABLE public.community_resource_actor_stats ADD CONSTRAINT community_resource_actor_stats_preview_count_check CHECK ((preview_count >= 0));
 ALTER TABLE public.community_resource_actor_stats ADD CONSTRAINT community_resource_actor_stats_resource_type_check CHECK ((resource_type = ANY (ARRAY['project'::text, 'skill'::text, 'mcp'::text, 'tool'::text])));
@@ -397,6 +407,7 @@ CREATE UNIQUE INDEX idx_community_plugins_name ON public.community_plugins USING
 CREATE INDEX idx_community_plugins_publisher ON public.community_plugins USING btree (publisher_username, created_at DESC) WHERE (deleted_at IS NULL);
 CREATE INDEX idx_community_plugins_tags ON public.community_plugins USING gin (tags) WHERE ((deleted_at IS NULL) AND (status = 'published'::text));
 CREATE INDEX idx_community_plugins_updated ON public.community_plugins USING btree (updated_at DESC) WHERE ((deleted_at IS NULL) AND (status = 'published'::text));
+CREATE INDEX idx_community_publisher_profiles_avatar ON public.community_publisher_profiles USING btree (avatar_digest);
 CREATE INDEX idx_community_resource_actor_stats_actor ON public.community_resource_actor_stats USING btree (actor_key, updated_at DESC);
 CREATE INDEX idx_community_resource_stats_updated ON public.community_resource_stats USING btree (updated_at DESC);
 CREATE INDEX idx_folder_shares_recipient ON public.folder_shares USING btree (recipient_member_id);

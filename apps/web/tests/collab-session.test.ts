@@ -30,9 +30,14 @@ function ctx(overrides: Partial<WorkspaceCollabContext> = {}): WorkspaceCollabCo
 
 describe('resolveCollabSession', () => {
   it('enables collab for an active member of a live team workspace', () => {
-    const decision = resolveCollabSession(ctx());
+    const decision = resolveCollabSession(ctx({ avatarUrl: 'https://example.test/me.jpg' }));
     expect(decision.enabled).toBe(true);
-    expect(decision.member).toEqual({ memberId: 'wm-1', role: 'member', name: 'Ma Shu' });
+    expect(decision.member).toEqual({
+      memberId: 'wm-1',
+      role: 'member',
+      name: 'Ma Shu',
+      avatarUrl: 'https://example.test/me.jpg',
+    });
   });
 
   it('still runs during a billing grace period (past_due)', () => {

@@ -1,4 +1,4 @@
--- hidesign-stable 建表脚本 (19 张表, 索引均带 _stable 标识)
+-- hidesign-stable 建表脚本 (20 张表, 索引均带 _stable 标识)
 -- 源: hidesign @ 10.17.68.13:5432 / 合并 001-012 SQL + JS 建表脚本最终状态
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -243,6 +243,17 @@ CREATE INDEX IF NOT EXISTS idx_community_plugins_updated_stable
 DROP TRIGGER IF EXISTS trg_community_plugins_updated ON community_plugins;
 CREATE TRIGGER trg_community_plugins_updated BEFORE UPDATE ON community_plugins
     FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+
+-- Durable public avatar for each community publisher. Avatar bytes live in
+-- the shared content-addressed blob store and remain available after logout.
+CREATE TABLE IF NOT EXISTS community_publisher_profiles (
+    username        TEXT PRIMARY KEY,
+    avatar_digest   TEXT NOT NULL REFERENCES blobs(digest),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_community_publisher_profiles_avatar_stable
+    ON community_publisher_profiles(avatar_digest);
 
 -- community_plugin_versions
 CREATE TABLE IF NOT EXISTS community_plugin_versions (

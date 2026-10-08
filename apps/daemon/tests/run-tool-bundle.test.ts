@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { resolveHdwAddress } from '../src/http/hdw-constants.js';
 
 import {
   normalizeRunToolBundleForRun,
@@ -233,7 +234,7 @@ describe('run-scoped tool bundles', () => {
         id: 'himind',
         transport: 'http',
         authMode: 'none',
-        url: 'https://pixso.hikvision.com.cn/hik-plugin/hidesign-web/hdw/api/mcp/himind',
+        url: `${resolveHdwAddress().baseUrl}${resolveHdwAddress().pathPrefix}/api/mcp/himind`,
       }],
     });
 

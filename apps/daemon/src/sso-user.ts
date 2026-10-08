@@ -4,6 +4,7 @@ export interface SsoUser {
   username: string;
   displayName: string;
   email: string;
+  avatarUrl: string | null;
 }
 
 /**
@@ -21,6 +22,10 @@ export function getSsoUser(dataDir?: string): SsoUser | null {
       : '';
   const email =
     typeof session.userInfo?.email === 'string' ? session.userInfo.email.trim() : '';
+  const avatarUrl =
+    typeof session.userInfo?.avatarUrl === 'string' && session.userInfo.avatarUrl.trim()
+      ? session.userInfo.avatarUrl.trim()
+      : null;
   if (!username && !displayName) return null;
-  return { username, displayName, email };
+  return { username, displayName, email, avatarUrl };
 }

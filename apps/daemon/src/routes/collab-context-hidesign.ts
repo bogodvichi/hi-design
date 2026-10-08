@@ -229,6 +229,7 @@ async function buildMockData(dataDir?: string) {
   const SHARED_SPACE_ROLE = normalizeWorkspaceRole(sharedSpaceInfo?.role);
   const ssoUser = getSsoUser(dataDir);
   const displayName = ssoUser?.displayName || '';
+  const avatarUrl = ssoUser?.avatarUrl ?? null;
 
   const hdwTeams = await fetchHdwTeams(dataDir);
 
@@ -241,6 +242,7 @@ async function buildMockData(dataDir?: string) {
         workspaceType: 'team' as const,
         workspaceMemberId: SHARED_SPACE_MEMBER_ID,
         displayName,
+        avatarUrl,
         isDefaultTeam: true,
         role: SHARED_SPACE_ROLE,
         memberStatus: 'active' as const,
@@ -252,6 +254,7 @@ async function buildMockData(dataDir?: string) {
         workspaceType: 'team' as const,
         workspaceMemberId: t.workspace_member_id,
         displayName,
+        avatarUrl,
         role: normalizeWorkspaceRole(t.role),
         memberStatus: 'active' as const,
         lifecycleState: 'active' as const,
@@ -267,6 +270,7 @@ async function buildMockData(dataDir?: string) {
         workspaceType: 'team',
         workspaceMemberId: SHARED_SPACE_MEMBER_ID,
         displayName,
+        avatarUrl,
         isDefaultTeam: true,
         role: SHARED_SPACE_ROLE,
         memberStatus: 'active',
@@ -296,6 +300,7 @@ async function buildMockData(dataDir?: string) {
         workspaceType: 'team',
         workspaceMemberId: wsMemberId,
         displayName,
+        avatarUrl,
         role,
         memberStatus: 'active',
         lifecycleState: 'active',

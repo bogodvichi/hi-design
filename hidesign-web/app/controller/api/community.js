@@ -3,6 +3,11 @@
 const { createKnex } = require('../../utils/knex.js');
 const blobStore = require('../../utils/blob-store.js');
 const { generateShortId } = require('../../utils/ids.js');
+const {
+  normalizeUsername,
+  oaSessionCookieFromRequest,
+  validateOASession,
+} = require('./himind_sso');
 const crypto = require('node:crypto');
 
 const Controller = require('egg').Controller;
@@ -28,6 +33,11 @@ class CommunityController extends Controller {
     return base + '/hdw/api/community/cover/' + digest;
   }
 
+  _avatarUrl(digest) {
+    const base = (this.app.config.community && this.app.config.community.publicApiBase) || this.ctx.origin;
+    return base + '/hdw/api/community/avatar/' + digest;
+  }
+
   _parseJsonb(val) {
     if (!val) return undefined;
     if (typeof val === 'string') {
@@ -44,11 +54,13 @@ class CommunityController extends Controller {
       const k = this.getKnex();
       let query = k('community_plugins as cp')
         .leftJoin('community_plugin_versions as cpv', 'cpv.id', 'cp.current_version_id')
+        .leftJoin('community_publisher_profiles as cpp', 'cpp.username', 'cp.publisher_username')
         .whereNull('cp.deleted_at')
         .where('cp.status', 'published')
         .select(
           'cp.id', 'cp.name', 'cp.source',
           'cp.publisher_username', 'cp.publisher_displayname', 'cp.publisher_github', 'cp.publisher_url',
+          'cpp.avatar_digest as publisher_avatar_digest',
           'cp.homepage', 'cp.license',
           'cp.title', 'cp.title_i18n', 'cp.description', 'cp.description_i18n',
           'cp.icon', 'cp.tags', 'cp.capabilities_summary', 'cp.prompt', 'cp.cover_digest',
@@ -96,11 +108,13 @@ class CommunityController extends Controller {
       const k = this.getKnex();
       const row = await k('community_plugins as cp')
         .leftJoin('community_plugin_versions as cpv', 'cpv.id', 'cp.current_version_id')
+        .leftJoin('community_publisher_profiles as cpp', 'cpp.username', 'cp.publisher_username')
         .whereNull('cp.deleted_at')
         .where('cp.name', name)
         .select(
           'cp.id', 'cp.name', 'cp.source',
           'cp.publisher_username', 'cp.publisher_displayname', 'cp.publisher_github', 'cp.publisher_url',
+          'cpp.avatar_digest as publisher_avatar_digest',
           'cp.homepage', 'cp.license',
           'cp.title', 'cp.title_i18n', 'cp.description', 'cp.description_i18n',
           'cp.icon', 'cp.tags', 'cp.capabilities_summary', 'cp.prompt', 'cp.cover_digest',
@@ -285,6 +299,49 @@ class CommunityController extends Controller {
     }
   }
 
+  async syncPublisherAvatar() {
+    const { ctx } = this;
+    const username = normalizeUsername(ctx.params.username);
+    const avatarDigest = typeof ctx.request.body?.avatarDigest === 'string'
+      ? ctx.request.body.avatarDigest.trim().toLowerCase()
+      : '';
+    if (!username || !/^[a-z0-9._-]{2,100}$/.test(username)) {
+      ctx.status = 400;
+      ctx.body = fail('username is invalid');
+      return;
+    }
+    if (!/^[0-9a-f]{64}$/.test(avatarDigest)) {
+      ctx.status = 400;
+      ctx.body = fail('avatarDigest must be a 64-char hex sha256');
+      return;
+    }
+    try {
+      await validateOASession(oaSessionCookieFromRequest(ctx), username);
+    } catch (err) {
+      ctx.logger.warn('[hdw] community avatar OA session validation failed: %s', err.message);
+      ctx.status = 401;
+      ctx.body = fail('OA session is invalid');
+      return;
+    }
+    try {
+      const k = this.getKnex();
+      const blob = await k('blobs').where({ digest: avatarDigest }).first();
+      if (!blob || !(await blobStore.exists(avatarDigest))) {
+        ctx.status = 400;
+        ctx.body = fail('Avatar blob not found');
+        return;
+      }
+      await k('community_publisher_profiles')
+        .insert({ username, avatar_digest: avatarDigest })
+        .onConflict('username')
+        .merge({ avatar_digest: avatarDigest, updated_at: new Date() });
+      ctx.body = ok({ synced: true });
+    } catch (err) {
+      ctx.logger.error('[hdw] community avatar sync error:', err);
+      ctx.body = fail(err.message);
+    }
+  }
+
   async downloadArchive() {
     const { ctx } = this;
     const name = ctx.params.name;
@@ -346,6 +403,42 @@ class CommunityController extends Controller {
     }
   }
 
+  async downloadAvatar() {
+    const { ctx } = this;
+    const digest = (ctx.params.digest || '').toLowerCase();
+    if (!/^[0-9a-f]{64}$/.test(digest)) {
+      ctx.status = 400;
+      ctx.body = { error: 'bad_request', message: 'digest must be a 64-char hex sha256' };
+      return;
+    }
+    try {
+      if (!(await blobStore.exists(digest))) {
+        ctx.status = 404;
+        ctx.body = { error: 'not_found', message: 'Avatar blob not found on disk' };
+        return;
+      }
+      const data = await blobStore.readBlob(digest);
+      let contentType = 'application/octet-stream';
+      if (data.length >= 3 && data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff) contentType = 'image/jpeg';
+      else if (data.length >= 8 && data.subarray(0, 8).equals(Buffer.from([ 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a ]))) contentType = 'image/png';
+      else if (data.length >= 12 && data.subarray(0, 4).toString('ascii') === 'RIFF' && data.subarray(8, 12).toString('ascii') === 'WEBP') contentType = 'image/webp';
+      else if (data.length >= 6 && (data.subarray(0, 6).toString('ascii') === 'GIF87a' || data.subarray(0, 6).toString('ascii') === 'GIF89a')) contentType = 'image/gif';
+      if (contentType === 'application/octet-stream') {
+        ctx.status = 415;
+        ctx.body = { error: 'unsupported_media_type', message: 'Avatar blob is not a supported image' };
+        return;
+      }
+      ctx.set('content-type', contentType);
+      ctx.set('content-length', String(data.length));
+      ctx.set('cache-control', 'public, max-age=31536000, immutable');
+      ctx.body = data;
+    } catch (err) {
+      ctx.logger.error('[hdw] community avatar download error:', err);
+      ctx.status = 500;
+      ctx.body = { error: 'internal_error', message: err.message };
+    }
+  }
+
   async remove() {
     const { ctx } = this;
     const name = ctx.params.name;
@@ -394,6 +487,7 @@ class CommunityController extends Controller {
         displayName: row.publisher_displayname || undefined,
         github: row.publisher_github || undefined,
         url: row.publisher_url || undefined,
+        avatarUrl: row.publisher_avatar_digest ? this._avatarUrl(row.publisher_avatar_digest) : undefined,
       },
       homepage: row.homepage || undefined,
       license: row.license || undefined,

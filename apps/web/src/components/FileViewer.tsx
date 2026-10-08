@@ -5038,6 +5038,14 @@ export function CommentSidePanel({
                    aria-hidden="true"
                  >
                    {commentAuthorInitials(authorDisplayName)}
+                   {author?.avatarUrl ? (
+                     <img
+                       className="comment-user-avatar-image"
+                       src={author.avatarUrl}
+                       alt=""
+                       onError={(event) => event.currentTarget.remove()}
+                     />
+                   ) : null}
                  </span>
                 <span className="comment-card-meta-lines">
                   <strong className="comment-card-author">
@@ -5246,6 +5254,14 @@ export function CommentSidePanel({
                     aria-hidden="true"
                   >
                     {commentAuthorInitials(authorDisplayName)}
+                    {author?.avatarUrl ? (
+                      <img
+                        className="comment-user-avatar-image"
+                        src={author.avatarUrl}
+                        alt=""
+                        onError={(event) => event.currentTarget.remove()}
+                      />
+                    ) : null}
                   </span>
                   <Icon name="message-square" size={12} />
                   <span>{t('chat.comments.nReplies', { n: persistedReplies.length + localReplies.length })}</span>
@@ -16336,6 +16352,8 @@ async function openReviewListModal() {
    || activeComposerComment?.authorDisplayName?.trim()
    || undefined;
  const currentCommentAuthorDisplayName = commentAuthorSelf?.displayName?.trim() || undefined;
+ const activeCommentAuthorAvatarUrl = activeCommentAuthor?.avatarUrl ?? null;
+ const currentCommentAuthorAvatarUrl = commentAuthorSelf?.avatarUrl ?? null;
   const commentComposerPortalMetrics = (() => {
     if (!commentComposerHost || !commentPreviewCanvasNode) return null;
     const hostRect = commentComposerHost.getBoundingClientRect();
@@ -16395,7 +16413,10 @@ async function openReviewListModal() {
        ? allSideComments.filter((comment) => comment.parentId === activeComposerComment.id)
        : []}
      authorDisplayName={activeCommentAuthorDisplayName}
+     authorAvatarUrl={activeCommentAuthorAvatarUrl}
      currentAuthorDisplayName={currentCommentAuthorDisplayName}
+     currentAuthorAvatarUrl={currentCommentAuthorAvatarUrl}
+     currentAuthorMemberId={commentAuthorSelf?.memberId ?? null}
      draft={commentDraft}
      notes={queuedBoardNotes}
      onDraft={setCommentDraft}

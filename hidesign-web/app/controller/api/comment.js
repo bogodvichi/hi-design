@@ -23,6 +23,11 @@ class CommentController extends Controller {
     return this._knex;
   }
 
+  _avatarUrl(digest) {
+    const base = (this.app.config.community && this.app.config.community.publicApiBase) || this.ctx.origin;
+    return base + '/hdw/api/community/avatar/' + digest;
+  }
+
   // PUT /teams/:teamId/members/:memberId
   // Idempotently updates the member's display name and role. A non-empty
   // displayName from the daemon only repairs rows whose value is empty/null
@@ -99,16 +104,26 @@ class CommentController extends Controller {
 
     try {
       const k = this.getKnex();
-      const members = await k('workspace_members')
-        .where({ workspace_id: teamId })
-        .select('workspace_member_id', 'displayname', 'role')
-        .orderBy('created_at', 'asc');
+      const members = await k('workspace_members as wm')
+        .leftJoin(
+          'community_publisher_profiles as cpp',
+          k.raw('LOWER(??) = ??', [ 'wm.username', 'cpp.username' ]),
+        )
+        .where({ 'wm.workspace_id': teamId })
+        .select(
+          'wm.workspace_member_id',
+          'wm.displayname',
+          'wm.role',
+          'cpp.avatar_digest',
+        )
+        .orderBy('wm.created_at', 'asc');
 
       ctx.body = {
         members: members.map(m => ({
           memberId: m.workspace_member_id,
           displayName: m.displayname || null,
           role: m.role,
+          avatarUrl: m.avatar_digest ? this._avatarUrl(m.avatar_digest) : null,
         })),
       };
     } catch (err) {

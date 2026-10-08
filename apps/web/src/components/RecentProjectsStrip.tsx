@@ -473,7 +473,7 @@ selectionExtension,
     context: workspaceContext,
     loading: workspaceContextLoading,
   } = useWorkspaceContext();
-  const { resolve: resolveTeamMember } = useTeamMembers(
+  const { members: teamMembers = [], resolve: resolveTeamMember } = useTeamMembers(
     currentUserDirectoryEntry(workspaceContext),
   );
   const sharedSpaceTeamId = useSharedSpaceTeamId();
@@ -816,9 +816,9 @@ selectionExtension,
   // 全部项目 / 草稿 partition reads the very same predicate, so the badge and the
   // card's grid can no longer disagree.
 const isShared = isSharedProject ?? NOTHING_SHARED;
-// The card owner avatar: first character of the owner display name with a
-// deterministic background colour. The HDW backend JOIN provides
-// ownerDisplayName directly; the UI shows "我" for self-owned projects.
+// The card owner identity: avatar on the left, display name on the right. The
+// current user uses the SSO profile image; other members use the durable
+// profile image returned by the workspace member directory when available.
   const resolveCreator = (project: Project): {
     name: string;
     initial: string;
@@ -834,10 +834,15 @@ const isShared = isSharedProject ?? NOTHING_SHARED;
       ?? projectOwnerMemberIds?.get(project.id)
       ?? null;
     const effectiveMemberId = resolveProjectMemberId(project);
+    const ownerMemberById = resolveTeamMember(ownerMemberId);
     const ownerDisplayName = project.ownerDisplayName?.trim()
       || projectOwnerDisplayNames?.get(project.id)?.trim()
-      || resolveTeamMember(ownerMemberId)?.displayName?.trim()
+      || ownerMemberById?.displayName?.trim()
       || null;
+    const ownerMember = ownerMemberById
+      || (ownerDisplayName
+        ? teamMembers.find((member) => member.displayName.trim() === ownerDisplayName)
+        : null);
     const legacyPersonalSelf = Boolean(
       !operator
       && workspaceContext?.isDefaultTeam
@@ -856,7 +861,9 @@ const isShared = isSharedProject ?? NOTHING_SHARED;
     return {
       name,
       initial,
-      avatarUrl: ownedBySelf ? workspaceContext?.avatarUrl?.trim() || null : null,
+      avatarUrl: ownedBySelf
+        ? workspaceContext?.avatarUrl?.trim() || ownerMember?.avatarUrl?.trim() || null
+        : ownerMember?.avatarUrl?.trim() || null,
       ownedBySelf,
       canMutate: ownedBySelf,
       canAdmin: !ownedBySelf && isAdmin,
@@ -881,6 +888,7 @@ const isShared = isSharedProject ?? NOTHING_SHARED;
     projectOwnerMemberIds,
     projectOwnerDisplayNames,
     resolveTeamMember,
+    teamMembers,
     resolvedLimit,
    selfMemberId,
    showOwnerFilter,
@@ -2575,26 +2583,26 @@ function requestDelete(project: Project) {
                 <div className="recent-projects__card-footer">
                   <div className="recent-projects__card-time">
                     <>
-                      {creator.ownedBySelf ? (
+                      <span
+                        className={`recent-projects__card-owner${creator.ownedBySelf ? ' recent-projects__card-owner--self' : ''}`}
+                        title={creator.name}
+                      >
                         <span
-                          className="recent-projects__card-owner"
-                          style={{ backgroundColor: '#000' }}
+                          className="recent-projects__card-owner-avatar"
+                          style={{ backgroundColor: avatarColorForDisplayName(creator.name) }}
                           aria-hidden
                         >
-                          {t('recentProjects.selfCreator')}
+                          {creator.initial}
+                          {creator.avatarUrl ? (
+                            <img
+                              src={creator.avatarUrl}
+                              alt=""
+                              onError={(event) => event.currentTarget.remove()}
+                            />
+                          ) : null}
                         </span>
-                      ) : (
-                        <span
-                          className="recent-projects__card-owner"
-                          title={creator.name}
-                          style={{
-                            backgroundColor: avatarColorForDisplayName(creator.name),
-                          }}
-                          aria-hidden
-                        >
-                          {creator.name}
-                        </span>
-                      )}
+                        <span className="recent-projects__card-owner-name">{creator.name}</span>
+                      </span>
                       <span className="recent-projects__card-sep" aria-hidden>·</span>
                     </>
                     {relativeTime(project.updatedAt, t)}

@@ -10,7 +10,7 @@ import {
 } from '../../src/collab/useWorkspaceContext';
 
 describe('workspaceContextFromDirectoryItem', () => {
-  it('carries default-team and shared-space flags from a directory item', () => {
+  it('carries current-user identity and workspace flags from a directory item', () => {
     const context = workspaceContextFromDirectoryItem({
       workspaceId: 'ws-shared',
       workspaceName: '共享空间',
@@ -21,14 +21,18 @@ describe('workspaceContextFromDirectoryItem', () => {
       role: 'admin',
       memberStatus: 'active',
       lifecycleState: 'active',
+      displayName: 'Current User',
+      avatarUrl: 'https://example.test/current-user.jpg',
     });
     expect(context.isDefaultTeam).toBe(true);
     expect(context.isSharedSpace).toBe(true);
+    expect(context.displayName).toBe('Current User');
+    expect(context.avatarUrl).toBe('https://example.test/current-user.jpg');
   });
 });
 
 describe('workspaceDirectoryItemFromContext', () => {
-  it('preserves default-team and shared-space flags for exact-scope revalidation', () => {
+  it('preserves current-user identity and workspace flags for exact-scope revalidation', () => {
     const item = workspaceDirectoryItemFromContext({
       workspaceId: 'ws-shared',
       workspaceType: 'team',
@@ -48,8 +52,12 @@ describe('workspaceDirectoryItemFromContext', () => {
       workspaceName: '共享空间',
       isDefaultTeam: true,
       isSharedSpace: true,
+      displayName: 'Current User',
+      avatarUrl: 'https://example.test/current-user.jpg',
     });
     expect(item.isDefaultTeam).toBe(true);
     expect(item.isSharedSpace).toBe(true);
+    expect(item.displayName).toBe('Current User');
+    expect(item.avatarUrl).toBe('https://example.test/current-user.jpg');
   });
 });

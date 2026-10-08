@@ -145,6 +145,46 @@ async function renderWithDownloadedUpdate(context: WorkspaceCollabContext | null
 }
 
 describe('standalone updater rocket placement after the account capsule', () => {
+  it('uses the signed-in user UPlus avatar and falls back to the initial if it fails', async () => {
+    const previousSession = sessionStorage.getItem('open-design:auth-session');
+    sessionStorage.setItem('open-design:auth-session', JSON.stringify({
+      version: 1,
+      username: 'alice',
+      userInfo: {
+        displayName: 'Alice',
+        avatarUrl: 'https://assets.example/alice.jpg',
+      },
+      loginAt: Date.now(),
+    }));
+
+    try {
+      render(
+        <I18nProvider initial="zh-CN">
+          <EntryNavRail
+            view="home"
+            onViewChange={() => {}}
+            onNewProject={() => {}}
+            open
+            context={teamContext()}
+            billing={null}
+          />
+        </I18nProvider>,
+      );
+
+      const trigger = screen.getByTestId('entry-nav-account');
+      const avatar = trigger.querySelector('.entry-nav-rail__account-avatar');
+      const image = avatar?.querySelector('img');
+      expect(image?.getAttribute('src')).toBe('https://assets.example/alice.jpg');
+
+      fireEvent.error(image!);
+      await waitFor(() => expect(avatar?.querySelector('img')).toBeNull());
+      expect(avatar?.textContent).toContain('A');
+    } finally {
+      if (previousSession === null) sessionStorage.removeItem('open-design:auth-session');
+      else sessionStorage.setItem('open-design:auth-session', previousSession);
+    }
+  });
+
   it('shows the shared DeepSeek campaign badge on an unpaid project detail route', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-08-20T10:00:00.000Z'));

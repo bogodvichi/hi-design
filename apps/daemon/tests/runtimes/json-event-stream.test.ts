@@ -1556,6 +1556,112 @@ test('codex parser maps app-server commandExecution lifecycle onto existing tool
   ]);
 });
 
+test('codex parser maps exec mcp_tool_call lifecycle onto existing tool events', () => {
+  const { events, handler } = collectEvents('codex');
+
+  handler.feed(
+    JSON.stringify({
+      type: 'item.started',
+      item: {
+        id: 'mcp-1',
+        type: 'mcp_tool_call',
+        server: 'bench',
+        tool: 'get_benchmark_spec',
+        arguments: {},
+        result: null,
+        error: null,
+        status: 'in_progress',
+      },
+    }) + '\n' +
+    JSON.stringify({
+      type: 'item.completed',
+      item: {
+        id: 'mcp-1',
+        type: 'mcp_tool_call',
+        server: 'bench',
+        tool: 'get_benchmark_spec',
+        arguments: {},
+        result: {
+          content: [{ type: 'text', text: '{"token":"abc"}' }],
+        },
+        error: null,
+        status: 'completed',
+      },
+    }) + '\n',
+  );
+
+  assert.deepEqual(events, [
+    {
+      type: 'tool_use',
+      id: 'mcp-1',
+      name: 'MCP:bench/get_benchmark_spec',
+      input: {},
+    },
+    {
+      type: 'tool_result',
+      toolUseId: 'mcp-1',
+      content: '{"content":[{"type":"text","text":"{\\"token\\":\\"abc\\"}"}]}',
+      isError: false,
+    },
+  ]);
+});
+
+test('codex parser maps app-server mcpToolCall lifecycle onto existing tool events', () => {
+  const { events, handler } = collectEvents('codex');
+
+  handler.feed(
+    JSON.stringify({
+      method: 'item/started',
+      params: {
+        threadId: 'thr-1',
+        turnId: 'turn-1',
+        item: {
+          id: 'mcp-2',
+          type: 'mcpToolCall',
+          serverName: 'bench',
+          toolName: 'get_benchmark_spec',
+          arguments: {},
+          status: 'inProgress',
+        },
+      },
+    }) + '\n' +
+    JSON.stringify({
+      method: 'item/completed',
+      params: {
+        threadId: 'thr-1',
+        turnId: 'turn-1',
+        item: {
+          id: 'mcp-2',
+          type: 'mcpToolCall',
+          serverName: 'bench',
+          toolName: 'get_benchmark_spec',
+          arguments: {},
+          result: {
+            content: [{ type: 'text', text: '{"token":"xyz"}' }],
+          },
+          error: null,
+          status: 'completed',
+        },
+      },
+    }) + '\n',
+  );
+
+  assert.deepEqual(events, [
+    {
+      type: 'tool_use',
+      id: 'mcp-2',
+      name: 'MCP:bench/get_benchmark_spec',
+      input: {},
+    },
+    {
+      type: 'tool_result',
+      toolUseId: 'mcp-2',
+      content: '{"content":[{"type":"text","text":"{\\"token\\":\\"xyz\\"}"}]}',
+      isError: false,
+    },
+  ]);
+});
+
 test('codex json stream surfaces non-fatal error items as a warning status, not raw noise (skills budget notice)', () => {
   const { events, handler } = collectEvents('codex');
 

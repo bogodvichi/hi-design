@@ -470,7 +470,10 @@ export function BoardComposerPopover({
   onDeleteReplyComment,
  replies = [],
  authorDisplayName,
+ authorAvatarUrl,
  currentAuthorDisplayName,
+ currentAuthorAvatarUrl,
+ currentAuthorMemberId,
  allowSendToChat = true,
   t,
   scale = 1,
@@ -542,8 +545,11 @@ export function BoardComposerPopover({
   /** Persisted replies for the currently open comment thread. */
  replies?: PreviewComment[];
  authorDisplayName?: string;
+ authorAvatarUrl?: string | null;
  /** Current viewer's display name for optimistic replies before persistence. */
  currentAuthorDisplayName?: string;
+ currentAuthorAvatarUrl?: string | null;
+ currentAuthorMemberId?: string | null;
  allowSendToChat?: boolean;
   t: TranslateFn;
   scale?: number;
@@ -912,6 +918,14 @@ export function BoardComposerPopover({
                 aria-hidden="true"
               >
                 {commentAuthorInitial(authorLabel)}
+                {authorAvatarUrl ? (
+                  <img
+                    className="comment-user-avatar-image"
+                    src={authorAvatarUrl}
+                    alt=""
+                    onError={(event) => event.currentTarget.remove()}
+                  />
+                ) : null}
               </span>
               <strong className="comment-popover-meta-author">
                 {authorLabel}
@@ -1062,8 +1076,13 @@ export function BoardComposerPopover({
                     localKey: undefined as string | undefined,
                     reply: reply as PreviewComment | undefined,
                     note: reply.note,
-                    createdAt: reply.createdAt,
+                   createdAt: reply.createdAt,
                    authorName: reply.authorDisplayName?.trim() || '?',
+                   authorAvatarUrl:
+                     reply.authorMemberId
+                     && reply.authorMemberId === currentAuthorMemberId
+                       ? currentAuthorAvatarUrl
+                       : null,
                   })),
                   ...localReplies.map((reply) => ({
                     localKey: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -1071,6 +1090,7 @@ export function BoardComposerPopover({
                     note: reply.note,
                     createdAt: reply.createdAt,
                     authorName: currentAuthorLabel,
+                    authorAvatarUrl: currentAuthorAvatarUrl,
                   })),
                 ]
                   .sort((a, b) => (a.createdAt ?? 0) - (b.createdAt ?? 0))
@@ -1093,6 +1113,14 @@ export function BoardComposerPopover({
                         aria-hidden="true"
                       >
                         {commentAuthorInitial(reply.authorName)}
+                        {reply.authorAvatarUrl ? (
+                          <img
+                            className="comment-user-avatar-image"
+                            src={reply.authorAvatarUrl}
+                            alt=""
+                            onError={(event) => event.currentTarget.remove()}
+                          />
+                        ) : null}
                       </span>
                       <strong className="comment-popover-reply-author">
                         {reply.authorName}

@@ -95,7 +95,10 @@ export function PresenceBar({
     const next = { ...member };
     if (resolvedName) next.name = resolvedName;
     else delete next.name;
-    if (directoryEntry) next.role = directoryEntry.role;
+    if (directoryEntry) {
+      next.role = directoryEntry.role;
+      if (directoryEntry.avatarUrl !== undefined) next.avatarUrl = directoryEntry.avatarUrl;
+    }
     return next;
   };
   const resolvedSelf =
@@ -176,6 +179,13 @@ export function PresenceBar({
             title={displayName(member)}
           >
             {initials(displayName(member))}
+            {member.avatarUrl ? (
+              <img
+                src={member.avatarUrl}
+                alt=""
+                onError={(event) => event.currentTarget.remove()}
+              />
+            ) : null}
           </span>
         ))}
         {overflow > 0 && (
@@ -201,6 +211,13 @@ export function PresenceBar({
                     aria-hidden="true"
                   >
                     {initials(displayName(member))}
+                    {member.avatarUrl ? (
+                      <img
+                        src={member.avatarUrl}
+                        alt=""
+                        onError={(event) => event.currentTarget.remove()}
+                      />
+                    ) : null}
                     <span className={styles.onlineDot} />
                   </span>
                   <span className={styles.memberText}>

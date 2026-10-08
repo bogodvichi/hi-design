@@ -82,4 +82,35 @@ describe('BoardComposerPopover reply layout', () => {
     fireEvent.change(input, { target: { value: '' } });
     expect(bar.className).not.toContain('comment-popover-reply-bar--expanded');
   });
+
+  it('renders the current user profile image beside their name', () => {
+    const existing = existingComment();
+    existing.authorMemberId = 'wm-self';
+    const { container } = render(
+      <BoardComposerPopover
+        target={elementTarget()}
+        existing={existing}
+        authorDisplayName="Current User"
+        authorAvatarUrl="https://example.test/current-user.jpg"
+        currentAuthorDisplayName="Current User"
+        currentAuthorAvatarUrl="https://example.test/current-user.jpg"
+        currentAuthorMemberId="wm-self"
+        draft=""
+        notes={[]}
+        onDraft={() => {}}
+        onAddDraft={() => {}}
+        onRemoveQueuedNote={() => {}}
+        onClose={() => {}}
+        onSaveComment={() => {}}
+        onSendBatch={() => {}}
+        onRemoveMember={() => {}}
+        sending={false}
+        t={((key: string) => String(key)) as never}
+      />,
+    );
+
+    expect(
+      container.querySelector<HTMLImageElement>('.comment-popover-meta-avatar img')?.src,
+    ).toBe('https://example.test/current-user.jpg');
+  });
 });

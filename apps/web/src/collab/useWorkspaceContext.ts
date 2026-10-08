@@ -323,6 +323,8 @@ export function workspaceContextFromDirectoryItem(
   };
   if (item.isDefaultTeam !== undefined) context.isDefaultTeam = item.isDefaultTeam;
   if (item.isSharedSpace !== undefined) context.isSharedSpace = item.isSharedSpace;
+  if (item.displayName?.trim()) context.displayName = item.displayName.trim();
+  if (item.avatarUrl !== undefined) context.avatarUrl = item.avatarUrl;
   if (item.workspaceType === 'team') {
     context.teamId = item.workspaceId;
     context.teamName = item.workspaceName;
@@ -570,6 +572,8 @@ export function workspaceDirectoryItemFromContext(
   };
   if (context.isDefaultTeam !== undefined) item.isDefaultTeam = context.isDefaultTeam;
   if (context.isSharedSpace !== undefined) item.isSharedSpace = context.isSharedSpace;
+  if (context.displayName?.trim()) item.displayName = context.displayName.trim();
+  if (context.avatarUrl !== undefined) item.avatarUrl = context.avatarUrl;
   return item;
 }
 

@@ -48,5 +48,6 @@ export function resolveCollabSession(ctx: WorkspaceCollabContext | null): Collab
   }
   const member: CollabPresenceMember = { memberId: ctx.workspaceMemberId, role: ctx.role };
   if (ctx.displayName && ctx.displayName.trim()) member.name = ctx.displayName.trim();
+  if (ctx.avatarUrl !== undefined) member.avatarUrl = ctx.avatarUrl;
   return { enabled: true, reason: 'ok', member };
 }

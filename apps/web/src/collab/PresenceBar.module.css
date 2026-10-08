@@ -49,6 +49,17 @@
   user-select: none;
 }
 
+.avatar img,
+.rowAvatar img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
 .avatar:first-child {
   margin-left: 0;
 }
@@ -182,6 +193,7 @@
   border-radius: 50%;
   background: #22c55e;
   box-shadow: 0 0 0 2px var(--bg-panel, #fff);
+  z-index: 1;
 }
 
 .memberText {

@@ -481,7 +481,10 @@ describe('RecentProjectsStrip', () => {
     expect(avatar?.src).toBe('https://example.com/elian.png');
   });
 
-  it('shows Me in the bottom-left owner slot for self-owned drafts cards', async () => {
+  it('shows the current user name in the bottom-left owner slot for self-owned drafts cards', async () => {
+    Object.assign(recentWorkspaceState.context, {
+      displayName: 'Elian Zhang',
+    });
     const { container } = render(
       <RecentProjectsStrip
         space="drafts"
@@ -491,14 +494,15 @@ describe('RecentProjectsStrip', () => {
     );
 
     await waitFor(() => {
-      const owner = container.querySelector<HTMLElement>('.recent-projects__card-owner');
-      expect(owner?.textContent).toBe('Me');
+      const ownerName = container.querySelector<HTMLElement>('.recent-projects__card-owner-name');
+      expect(ownerName?.textContent).toBe('Elian Zhang');
     });
   });
 
-  it('shows Me alone for self-owned HDW team-series cards', async () => {
+  it('shows the current user avatar and name for self-owned HDW team-series cards', async () => {
     Object.assign(recentWorkspaceState.context, {
       displayName: '林晓',
+      avatarUrl: 'https://example.com/lin-xiao.png',
     });
 
     const { container } = render(
@@ -517,9 +521,10 @@ describe('RecentProjectsStrip', () => {
 
     await waitFor(() => {
       const owner = container.querySelector<HTMLElement>('.recent-projects__card-owner');
-      expect(owner?.textContent).toBe('Me');
+      expect(owner?.querySelector('.recent-projects__card-owner-name')?.textContent).toBe('林晓');
       expect(owner?.classList.contains('recent-projects__card-owner--self')).toBe(true);
       expect(owner?.getAttribute('title')).toBe('林晓');
+      expect(owner?.querySelector('img')?.getAttribute('src')).toBe('https://example.com/lin-xiao.png');
     });
 
     const badges = container.querySelectorAll('.recent-projects__card-badge');
@@ -549,7 +554,7 @@ describe('RecentProjectsStrip', () => {
 
     await waitFor(() => {
       const owner = container.querySelector<HTMLElement>('.recent-projects__card-owner');
-      expect(owner?.textContent).toBe('Ally');
+      expect(owner?.querySelector('.recent-projects__card-owner-name')?.textContent).toBe('Ally');
     });
 
     const badges = container.querySelectorAll('.recent-projects__card-badge');

@@ -79,7 +79,11 @@ function installDaemonStub(): void {
           name: 'square-deck',
           title: 'Square deck',
           version: '1.0.0',
-          publisher: { displayName: 'Project Author' },
+          publisher: {
+            id: 'alice',
+            displayName: 'Project Author',
+            avatarUrl: '/api/hdw/api/community/avatar/alice-avatar',
+          },
           previewUserCount: 120,
           actionCount: 7,
         }],
@@ -128,7 +132,11 @@ describe('SquareView remix recents', () => {
               title: 'Square deck',
               description: 'Presentation',
               version: '1.0.0',
-              publisher: { displayName: 'Project Author' },
+              publisher: {
+                id: 'alice',
+                displayName: 'Project Author',
+                avatarUrl: '/api/hdw/api/community/avatar/alice-avatar',
+              },
               previewUserCount: 120,
               actionCount: 7,
             },
@@ -147,6 +155,9 @@ describe('SquareView remix recents', () => {
 
     expect(await screen.findByText('Square deck')).toBeTruthy();
     expect(screen.getByText('Project Author')).toBeTruthy();
+    expect(document.querySelector<HTMLImageElement>(
+      '.recent-projects__card-owner-avatar img',
+    )?.getAttribute('src')).toBe('/api/hdw/api/community/avatar/alice-avatar');
     expect(document.querySelector('.recent-projects__card')).toBeTruthy();
     const projectMain = document.querySelector('.recent-projects__card-main');
     expect(projectMain).toBeTruthy();

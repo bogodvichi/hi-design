@@ -1820,6 +1820,7 @@
   min-width: 0;
 }
 .comment-popover-meta-avatar {
+  position: relative;
   flex: 0 0 auto;
   width: 24px;
   height: 24px;
@@ -1831,6 +1832,7 @@
   font-size: 13px;
   font-weight: 650;
   line-height: 1;
+  overflow: hidden;
 }
 .comment-popover-meta-author {
   min-width: 0;
@@ -1877,6 +1879,7 @@
   margin-bottom: 4px;
 }
 .comment-popover-reply-avatar {
+  position: relative;
   flex: 0 0 auto;
   width: 24px;
   height: 24px;
@@ -1887,6 +1890,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 .comment-popover-reply-author {
   min-width: 0;
@@ -3123,6 +3127,7 @@
   gap: 1px;
 }
 .comment-card-avatar {
+  position: relative;
   width: 24px;
   height: 24px;
   border-radius: 50%;
@@ -3133,6 +3138,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
 }
 .comment-card-header > .comment-card-meta-stack > .comment-card-meta-lines > .comment-card-author {
   min-width: 0;
@@ -3260,6 +3266,7 @@ button.comment-card-user-inline:focus-visible {
   color: var(--text);
 }
 .comment-card-user-inline .avatar {
+  position: relative;
   width: 18px;
   height: 18px;
   min-width: 18px;
@@ -3271,6 +3278,16 @@ button.comment-card-user-inline:focus-visible {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+}
+
+.comment-user-avatar-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
 }
 .comment-card-user-inline > span:last-child:not(.avatar) {
   min-width: 0;

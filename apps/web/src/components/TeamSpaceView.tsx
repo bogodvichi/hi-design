@@ -320,7 +320,11 @@ export function TeamSpaceView({ teamId, tab, onInvite, designSystems = [], onOpe
           <ProjectsPanel controlsPortalTarget={typeTabsEl} teamId={teamId} workspaceName={title} workspaceContext={teamWorkspaceContext} operator={operator} showCreateGroup={showCreateGroup} onShowCreateGroupChange={setShowCreateGroup} designSystems={designSystems} onOpenProject={onOpenProject} onDeleteProject={onDeleteProject} onRenameProject={onRenameProject} onDuplicateProject={onDuplicateProject} onCopyProject={onCopyProject} />
         ) : null}
         {activeTab === 'members' ? (
-          <MembersTable teamId={teamId} operator={operator} />
+          <MembersTable
+            teamId={teamId}
+            operator={operator}
+            currentUserAvatarUrl={teamWorkspaceContext?.avatarUrl ?? null}
+          />
         ) : null}
         {activeTab === 'skill' ? (
           <CloudSkillList
@@ -1215,7 +1219,15 @@ function ProjectsPanel({
     </div>
   );
 }
-function MembersTable({ teamId, operator }: { teamId?: string; operator: OperatorInfo | null }) {
+function MembersTable({
+  teamId,
+  operator,
+  currentUserAvatarUrl,
+}: {
+  teamId?: string;
+  operator: OperatorInfo | null;
+  currentUserAvatarUrl: string | null;
+}) {
   const t = useT();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(false);
@@ -1392,6 +1404,7 @@ function MembersTable({ teamId, operator }: { teamId?: string; operator: Operato
               <tr><td colSpan={4}>{t('teamSpace.noMembers')}</td></tr>
             ) : members.map((m) => {
               const initial = m.displayName.charAt(0).toUpperCase();
+              const isCurrentUser = m.workspaceMemberId === operatorMemberId;
               const roleClass = styles[`role_${m.role}`] ?? '';
               const changeable = canChangeRole(m);
               const removable = canRemoveMember(m);
@@ -1403,7 +1416,16 @@ function MembersTable({ teamId, operator }: { teamId?: string; operator: Operato
                         className={styles.avatar}
                         style={{ background: avatarColorForDisplayName(m.displayName) }}
                         aria-hidden
-                      >{initial}</span>
+                      >
+                        {initial}
+                        {isCurrentUser && currentUserAvatarUrl ? (
+                          <img
+                            src={currentUserAvatarUrl}
+                            alt=""
+                            onError={(event) => event.currentTarget.remove()}
+                          />
+                        ) : null}
+                      </span>
                       <div className={styles.memberInfo}>
                         <span className={styles.memberName}>{m.displayName}</span>
                         <span className={styles.memberEmail}>{m.email}</span>

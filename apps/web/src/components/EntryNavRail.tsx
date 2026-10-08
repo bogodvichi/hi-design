@@ -38,6 +38,7 @@ import { createPortal } from 'react-dom';
 import { coalescedGet, evictCoalescedGet } from '../lib/coalesced-get';
 import {
   workspaceSeatCapacityState,
+  type GetCurrentUserAvatarResponse,
   type WorkspaceActiveResponse,
   type WorkspaceBillingSummary,
   type WorkspaceCollabContext,
@@ -624,12 +625,45 @@ export function EntryTopRightCluster({
 
  // Account identity (real). No email field on the context → the head shows the
  // avatar + name only.
- const ssoDisplayName = getStoredUserInfo()?.displayName;
- const ssoEmail = getStoredUserInfo()?.email || null;
+ const storedUserInfo = getStoredUserInfo();
+ const ssoDisplayName = storedUserInfo?.displayName;
+ const ssoEmail = storedUserInfo?.email || null;
  const displayName = (typeof ssoDisplayName === 'string' ? ssoDisplayName.trim() : '') || '';
  const accountName = displayName || t('app.brand');
  const accountInitial = accountName.charAt(0).toUpperCase() || '·';
  const accountAvatarColor = avatarColorForDisplayName(displayName);
+ const storedAvatarUrl =
+   typeof storedUserInfo?.avatarUrl === 'string' && storedUserInfo.avatarUrl.trim()
+     ? storedUserInfo.avatarUrl.trim()
+     : null;
+ const [accountAvatarUrl, setAccountAvatarUrl] = useState<string | null>(storedAvatarUrl);
+ const [accountAvatarFailed, setAccountAvatarFailed] = useState(false);
+ useEffect(() => {
+   let cancelled = false;
+   setAccountAvatarUrl(storedAvatarUrl);
+   setAccountAvatarFailed(false);
+   void fetch('/api/auth/avatar', { cache: 'no-store' })
+     .then(async (response) => {
+       if (!response.ok) return null;
+       return (await response.json()) as GetCurrentUserAvatarResponse;
+     })
+     .then((payload) => {
+       if (cancelled || !payload || !Object.prototype.hasOwnProperty.call(payload, 'avatarUrl')) return;
+       setAccountAvatarUrl(
+         typeof payload.avatarUrl === 'string' && payload.avatarUrl.trim()
+           ? payload.avatarUrl.trim()
+           : null,
+       );
+       setAccountAvatarFailed(false);
+     })
+     .catch(() => {
+       // UPlus is optional identity enrichment; keep the color fallback.
+     });
+   return () => {
+     cancelled = true;
+   };
+ }, [displayName, storedAvatarUrl]);
+ const showAccountAvatarImage = Boolean(accountAvatarUrl && !accountAvatarFailed);
 
   // Billing chip: prefer the real summary metadata; fall back to the context
   // plan-tier hint when metadata has not loaded. Money is a separate,
@@ -922,10 +956,16 @@ export function EntryTopRightCluster({
               >
                 <span
                   className="entry-nav-rail__account-avatar"
-                  style={{ background: accountAvatarColor }}
+                  style={showAccountAvatarImage ? undefined : { background: accountAvatarColor }}
                   aria-hidden
                 >
-                  {accountInitial}
+                  {showAccountAvatarImage ? (
+                    <img
+                      src={accountAvatarUrl!}
+                      alt=""
+                      onError={() => setAccountAvatarFailed(true)}
+                    />
+                  ) : accountInitial}
                 </span>
               </button>
               {accountOpen ? (

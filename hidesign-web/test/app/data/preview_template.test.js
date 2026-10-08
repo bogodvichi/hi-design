@@ -28,4 +28,16 @@ describe('test/app/data/preview_template.test.js', () => {
     assert(!template.includes('avatarColorFor(authorName)'));
     assert(!template.includes('avatarColorFor(replyAuthorName)'));
   });
+
+  it('renders persisted member avatars with the color initial as fallback', () => {
+    const templatePath = path.join(__dirname, '../../../app/data/preview_template.html');
+    const template = fs.readFileSync(templatePath, 'utf8');
+
+    assert(template.includes('var MEMBER_AVATARS = /*MEMBER_AVATARS_DATA*/{};'));
+    assert(template.includes('appendMemberAvatar(avatar, comment);'));
+    assert(template.includes('appendMemberAvatar(replyAvatar, reply);'));
+    assert(template.includes('comment.memberId || comment.authorMemberId'));
+    assert(template.includes("image.onerror = function() { image.remove(); };"));
+    assert(template.includes('.comment-avatar > img'));
+  });
 });

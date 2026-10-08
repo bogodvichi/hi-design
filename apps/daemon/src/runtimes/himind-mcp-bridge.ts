@@ -5,10 +5,15 @@ import {
   MCP_BRIDGE_PROTOCOL_VERSION,
   runMcpBridge,
 } from './mcp-bridge.js';
+import { resolveHdwAddress } from '../http/hdw-constants.js';
 
 export const HIMIND_MCP_PROTOCOL_VERSION = MCP_BRIDGE_PROTOCOL_VERSION;
-export const DEFAULT_HIMIND_MCP_PROXY_URL =
-  'https://pixso.hikvision.com.cn/hik-plugin/hidesign-web/hdw/api/mcp/himind';
+function buildDefaultHimindMcpProxyUrl(): string {
+  const { baseUrl, pathPrefix } = resolveHdwAddress();
+  return `${baseUrl}${pathPrefix}/api/mcp/himind`;
+}
+
+export const DEFAULT_HIMIND_MCP_PROXY_URL = buildDefaultHimindMcpProxyUrl();
 
 // The daemon route that mints HiMind's short-lived RS256 JWT after validating
 // the run's OA session.

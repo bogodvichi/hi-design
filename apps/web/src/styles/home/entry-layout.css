@@ -5851,7 +5851,7 @@
   position: relative;
   width: 25px;
   height: 25px;
-  /* Circular avatar; background is set inline from the display name. */
+  /* Circular avatar; the display-name color remains the image fallback. */
   border-radius: 50%;
   color: #fff;
   display: grid;
@@ -5859,6 +5859,13 @@
   font-size: 12px;
   font-weight: 700;
   flex: 0 0 24px;
+  overflow: hidden;
+}
+.entry-nav-rail__account-avatar img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
 }
 .entry-nav-rail__account-name {
   font-size: 13px;

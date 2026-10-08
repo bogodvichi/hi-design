@@ -19,6 +19,7 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { realpathSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import path from 'node:path';
+import { resolveHdwAddress } from './http/hdw-constants.js';
 
 // Wire-level MCP types. Mirrors `packages/contracts/src/api/mcp.ts` — the
 // daemon and web import-from-contracts side both round-trip the same JSON
@@ -572,6 +573,11 @@ function joinPermissionGlob(dir: string, suffix: '*' | '**'): string {
 // flows through the same persistence path as a fully-custom entry.
 // ───────────────────────────────────────────────────────────────────────
 
+// HiMind MCP endpoint: derive from the shared HDW address resolver so the
+// path prefix stays consistent with the rest of the HDW backend routing.
+const HDW_ADDRESS = resolveHdwAddress();
+const HIMIND_MCP_URL = `${HDW_ADDRESS.baseUrl}${HDW_ADDRESS.pathPrefix}/api/mcp/himind`;
+
 export const MCP_TEMPLATES: McpTemplate[] = [
   {
     id: 'himind',
@@ -583,7 +589,7 @@ export const MCP_TEMPLATES: McpTemplate[] = [
     category: 'utilities',
     homepage: 'http://himind.hikvision.com',
     example: '在 HiMind 中检索当前用户知识库里与这个设计任务相关的资料，并标注来源。',
-    url: 'https://pixso.hikvision.com.cn/hik-plugin/hidesign-web/hdw/api/mcp/himind',
+    url: HIMIND_MCP_URL,
   },
   {
     id: 'fde-research-reports',

@@ -618,6 +618,94 @@ export interface HdwCommunityPublishResult {
   version: string;
 }
 
+const COMMUNITY_AVATAR_MAX_BYTES = 3 * 1024 * 1024;
+
+type CommunityAvatarFetcher = (
+  input: string,
+  init?: RequestInit,
+) => Promise<Response>;
+
+export interface SyncHdwCommunityAvatarDeps {
+  fetchAvatar?: CommunityAvatarFetcher;
+  putRaw?: typeof hdwPutRaw;
+  post?: (
+    path: string,
+    body: Record<string, unknown>,
+    cookies?: Cookie[],
+  ) => Promise<{ synced: boolean } | null>;
+}
+
+function isSupportedAvatarImage(data: Buffer): boolean {
+  return (
+    (data.length >= 3 && data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff)
+    || (data.length >= 8 && data.subarray(0, 8).equals(Buffer.from([ 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a ])))
+    || (data.length >= 12 && data.subarray(0, 4).toString('ascii') === 'RIFF' && data.subarray(8, 12).toString('ascii') === 'WEBP')
+    || (data.length >= 6 && (data.subarray(0, 6).toString('ascii') === 'GIF87a' || data.subarray(0, 6).toString('ascii') === 'GIF89a'))
+  );
+}
+
+/**
+ * Persist the current user's UPlus avatar in HDW's content-addressed blob
+ * store, then point the shared community publisher profile at that digest.
+ * The profile survives local logout and applies to historical publications.
+ */
+export async function syncHdwCommunityAvatar(
+  dataDir: string,
+  usernameValue: string,
+  avatarUrlValue: string,
+  deps: SyncHdwCommunityAvatarDeps = {},
+): Promise<boolean> {
+  const username = usernameValue.trim().toLowerCase();
+  const avatarUrl = avatarUrlValue.trim();
+  if (!username || !avatarUrl) return false;
+
+  let parsedUrl: URL;
+  try {
+    parsedUrl = new URL(avatarUrl);
+  } catch {
+    return false;
+  }
+  if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') return false;
+
+  const session = readSsoConfigFile(dataDir);
+  if (!session?.cookies?.length) return false;
+
+  try {
+    const response = await (deps.fetchAvatar ?? fetch)(parsedUrl.toString(), {
+      headers: { Accept: 'image/*', 'User-Agent': UA },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!response.ok) return false;
+    const declaredSize = Number(response.headers.get('content-length') ?? 0);
+    if (declaredSize > COMMUNITY_AVATAR_MAX_BYTES) return false;
+    const avatar = Buffer.from(await response.arrayBuffer());
+    if (avatar.length === 0 || avatar.length > COMMUNITY_AVATAR_MAX_BYTES || !isSupportedAvatarImage(avatar)) {
+      return false;
+    }
+
+    const digest = createHash('sha256').update(avatar).digest('hex');
+    const uploaded = await (deps.putRaw ?? hdwPutRaw)(
+      `/community/blobs/${digest}`,
+      avatar,
+      session.cookies,
+    );
+    if (!uploaded) return false;
+
+    const post = deps.post ?? hdwPost<{ synced: boolean }>;
+    const result = await post(
+      `/community/publishers/${encodeURIComponent(username)}/avatar`,
+      {
+        avatarDigest: digest,
+        oa_cookies: session.cookies.map(({ name, value }) => ({ name, value })),
+      },
+      session.cookies,
+    );
+    return result?.synced === true;
+  } catch {
+    return false;
+  }
+}
+
 export async function uploadHdwCommunityBlob(
   archivePath: string,
   dataDir: string,

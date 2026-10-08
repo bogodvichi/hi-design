@@ -12671,7 +12671,12 @@ describe('FileViewer tweaks toolbar', () => {
     render(
       <CommentSidePanel
         comments={[comment]}
-        currentUser={{ memberId: 'wm-self', displayName: '琼羽', role: 'owner' }}
+        currentUser={{
+          memberId: 'wm-self',
+          displayName: '琼羽',
+          role: 'owner',
+          avatarUrl: 'https://example.test/qiong-yu.jpg',
+        }}
         selectedIds={new Set()}
         activeCommentId={null}
         collapsed={false}
@@ -12691,6 +12696,9 @@ describe('FileViewer tweaks toolbar', () => {
       expect(item.querySelector('.comment-card-avatar')?.textContent).toBe('琼');
     });
     expect(within(item).getByText(/琼羽/)).toBeTruthy();
+    expect(item.querySelector<HTMLImageElement>('.comment-card-avatar img')?.src).toBe(
+      'https://example.test/qiong-yu.jpg',
+    );
   });
 
   it('renders the authoritative display name returned with a saved comment', async () => {

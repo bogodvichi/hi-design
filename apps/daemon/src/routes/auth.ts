@@ -1,6 +1,7 @@
 import type { Express } from 'express';
 import type {
   AiResearchLaunchResponse,
+  GetCurrentUserAvatarResponse,
   HiMindLaunchResponse,
   LoginRequest,
   LoginResponse,
@@ -22,7 +23,15 @@ import {
   uedroValidate,
   type UedroInfo,
 } from '../http/hik_logins/uedro.js';
-import { fetchAiResearchLaunch, fetchHiMindLaunch } from '../http/hdw.js';
+import {
+  fetchAiResearchLaunch,
+  fetchHiMindLaunch,
+  syncHdwCommunityAvatar,
+} from '../http/hdw.js';
+import {
+  fetchUplusAvatarOnLogin,
+  type UplusAvatarResult,
+} from '../integrations/uplus-profile.js';
 
 /**
  * Web login gate endpoint.
@@ -44,12 +53,60 @@ export interface RegisterAuthRoutesDeps {
   FOR_DESIGNER_DIR?: string;
   createHiMindLaunch?: () => Promise<{ launchUrl: string; expiresIn: number } | null>;
   createAiResearchLaunch?: () => Promise<{ launchUrl: string; expiresIn: number } | null>;
+  fetchUplusAvatar?: (username: string, password: string) => Promise<UplusAvatarResult>;
+  syncCommunityAvatar?: (dataDir: string, username: string, avatarUrl: string) => Promise<boolean>;
+}
+
+const UPLUS_AVATAR_TIMEOUT_MS = 15 * 1000;
+const COMMUNITY_AVATAR_SYNC_TIMEOUT_MS = 15 * 1000;
+
+function cachedAvatarUrl(session: SsoSession): string | null {
+  const value = session.userInfo?.avatarUrl;
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((resolve) => {
+        timer = setTimeout(() => resolve(fallback), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): void {
   const { env, sendApiError, dataDir, FOR_DESIGNER_DIR } = deps;
   const expectedUsername = (env.OD_WEB_USERNAME ?? '').trim() || DEFAULT_WEB_USERNAME;
   const expectedPassword = env.OD_WEB_PASSWORD ?? DEFAULT_WEB_PASSWORD;
+  const fetchUplusAvatar = deps.fetchUplusAvatar ?? fetchUplusAvatarOnLogin;
+  const syncCommunityAvatar = deps.syncCommunityAvatar ?? syncHdwCommunityAvatar;
+  let lastCommunityAvatarSyncKey = '';
+  let pendingCommunityAvatarSync: { key: string; promise: Promise<boolean> } | null = null;
+  const cachedCommunityAvatarSyncAttempts = new Set<string>();
+
+  async function trySyncCommunityAvatar(username: string, avatarUrl: string): Promise<boolean> {
+    const syncKey = `${username.trim().toLowerCase()}\0${avatarUrl.trim()}`;
+    if (lastCommunityAvatarSyncKey === syncKey) return true;
+    if (pendingCommunityAvatarSync?.key === syncKey) return pendingCommunityAvatarSync.promise;
+    const promise = withTimeout(
+      syncCommunityAvatar(dataDir, username, avatarUrl),
+      COMMUNITY_AVATAR_SYNC_TIMEOUT_MS,
+      false,
+    );
+    pendingCommunityAvatarSync = { key: syncKey, promise };
+    try {
+      const synced = await promise;
+      if (synced) lastCommunityAvatarSyncKey = syncKey;
+      return synced;
+    } finally {
+      if (pendingCommunityAvatarSync?.promise === promise) pendingCommunityAvatarSync = null;
+    }
+  }
 
   function getSsoCookie(): SsoSession {
     const session = readSsoConfigFile(dataDir);
@@ -115,18 +172,43 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
     }
     let uedro: any = await done_uedproLogin()
     if (result || uedro) {
+      const uplusAvatar = await withTimeout(
+        fetchUplusAvatar(username, password),
+        UPLUS_AVATAR_TIMEOUT_MS,
+        { ok: false, reason: 'request_error' } as UplusAvatarResult,
+      );
+      if (!uplusAvatar.ok) {
+        console.warn('UPlus avatar sync failed during OA login', {
+          reason: uplusAvatar.reason,
+          status: uplusAvatar.status,
+          businessCode: uplusAvatar.businessCode,
+        });
+      }
+      const baseUserInfo = result?.userInfo || uedro?.userInfo;
+      const userInfo = uplusAvatar.ok && uplusAvatar.avatarUrl
+        ? { ...(baseUserInfo ?? {}), avatarUrl: uplusAvatar.avatarUrl }
+        : baseUserInfo;
       // 将 SSO cookie 及羽点登录信息写入本地 session
       setSsoSession(
         result?.username || username,
-        result?.userInfo || uedro?.userInfo,
+        userInfo,
         result?.cookies,
         uedro
       );
+      if (uplusAvatar.ok && uplusAvatar.avatarUrl) {
+        const communityAvatarSynced = await trySyncCommunityAvatar(
+          result?.username || username,
+          uplusAvatar.avatarUrl,
+        );
+        if (!communityAvatarSynced) {
+          console.warn('HDW community avatar sync failed during OA login');
+        }
+      }
       const response: LoginResponse = {
         ok: true,
         username,
         uedro,
-        userInfo: result?.userInfo||uedro?.userInfo
+        userInfo
       };
       res.json(response);
     } else {
@@ -163,6 +245,29 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
     } catch (err) {
       return sendApiError(res, 500, 'INTERNAL_ERROR', 'SSO logout failed');
     }
+  });
+
+  app.get('/api/auth/avatar', async (_req, res) => {
+    const session = getSsoCookie();
+    if (!session.username?.trim() || !session.cookies?.length) {
+      return sendApiError(res, 401, 'UNAUTHORIZED', 'OA login is required');
+    }
+
+    const avatarUrl = cachedAvatarUrl(session);
+    if (avatarUrl) {
+      const syncKey = `${session.username.trim().toLowerCase()}\0${avatarUrl}`;
+      if (!cachedCommunityAvatarSyncAttempts.has(syncKey)) {
+        cachedCommunityAvatarSyncAttempts.add(syncKey);
+        void trySyncCommunityAvatar(session.username, avatarUrl).then((synced) => {
+          if (!synced) console.warn('HDW community avatar sync failed from cached OA session');
+        });
+      }
+    }
+    const response: GetCurrentUserAvatarResponse = {
+      ok: true,
+      avatarUrl,
+    };
+    return res.json(response);
   });
 
   app.post('/api/auth/himind/launch', async (_req, res) => {

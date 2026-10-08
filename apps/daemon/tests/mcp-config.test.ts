@@ -2,6 +2,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { resolveHdwAddress } from '../src/http/hdw-constants.js';
 
 import {
   MCP_TEMPLATES,
@@ -741,7 +742,7 @@ describe('MCP_TEMPLATES', () => {
       transport: 'http',
       authMode: 'none',
       category: 'utilities',
-      url: 'https://pixso.hikvision.com.cn/hik-plugin/hidesign-web/hdw/api/mcp/himind',
+      url: `${resolveHdwAddress().baseUrl}${resolveHdwAddress().pathPrefix}/api/mcp/himind`,
     });
   });
 

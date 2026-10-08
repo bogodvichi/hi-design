@@ -4,7 +4,6 @@
 
 const path = require('path');
 const fs = require('fs');
-const { execSync } = require('child_process');
 
 function readOptionalPem(file) {
   if (!file) return { content: '', error: '' };
@@ -13,27 +12,6 @@ function readOptionalPem(file) {
   } catch (err) {
     return { content: '', error: err.message };
   }
-}
-
-// 默认 7002，被占用时依次尝试 7003-7010，绝不使用 7001。
-// 全部被占则返回 0 让 OS 分配随机端口（仍排除 7001）。
-function resolveListenPort() {
-  const preferred = 7002;
-  const forbidden = 7001;
-  const fallbacks = [7003, 7004, 7005, 7006, 7007, 7008, 7009, 7010];
-  const candidates = [preferred, ...fallbacks].filter(p => p !== forbidden);
-  for (const port of candidates) {
-    try {
-      execSync(
-        `"${process.execPath}" -e "const s=require('net').createServer();s.on('error',()=>process.exit(1));s.listen(${port},'127.0.0.1',()=>{s.close();process.exit(0)})"`,
-        { stdio: 'pipe', timeout: 2000 }
-      );
-    } catch {
-      continue;
-    }
-    return port;
-  }
-  return 0;
 }
 
 /**
@@ -96,7 +74,8 @@ module.exports = appInfo => {
   // 服务监听端口
   config.cluster = {
     listen: {
-      port: resolveListenPort(),
+      // Every worker in an Egg cluster must resolve the same listen port.
+      port: 7002,
     },
   };
 
@@ -199,7 +178,7 @@ module.exports = appInfo => {
     port: '5432',
     user: 'yapovichi',
     password: 'e6a22c32a1fb66309c8b9497952b4639',
-    database: 'hidesign',
+    database: 'hidesign-offical',
   };
 
   // ResourceHub blob 存储目录

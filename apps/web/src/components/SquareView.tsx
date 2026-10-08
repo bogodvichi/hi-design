@@ -39,7 +39,7 @@ import {
   updateRecentlyOpenedProjectCover,
 } from '../lib/recently-opened-projects';
 import { getSharedSpaceMemberId } from '../utils/deterministicId';
-import { getStoredUsername } from '../auth/auth';
+import { getStoredUserInfo, getStoredUsername } from '../auth/auth';
 import { communityTextMatchesQuery } from '../utils/community-search';
 import { ellipsisTitleHoverProps } from '../utils/ellipsis-title';
 import { avatarColorForDisplayName } from '../utils/avatarColor';
@@ -332,6 +332,11 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
   pendingPublishedProject?: PendingPublishedProject | null;
   onPendingPublishedProjectVisible?: (project: PendingPublishedProject) => void;
 }) {
+  const storedAvatarUrl = getStoredUserInfo()?.avatarUrl;
+  const currentUserAvatarUrl =
+    typeof storedAvatarUrl === 'string' && storedAvatarUrl.trim()
+      ? storedAvatarUrl.trim()
+      : null;
  const t = useT();
  const { locale } = useI18n();
  const [plugins, setPlugins] = useState<MarketplacePluginEntry[]>([]);
@@ -628,6 +633,12 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
         const isOwner = isMyPublishes
           ? true
           : typeof entry.publisher?.id === 'string' && entry.publisher.id === username;
+        const publisherAvatarUrl = typeof entry.publisher?.avatarUrl === 'string'
+          && entry.publisher.avatarUrl.trim()
+          ? entry.publisher.avatarUrl.trim()
+          : isOwner
+            ? currentUserAvatarUrl
+            : null;
         return (
           <div
             key={entry.name}
@@ -671,13 +682,22 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
                 </div>
                 <div className="recent-projects__card-footer">
                   <div className="recent-projects__card-time">
-                   <span
-                     className="recent-projects__card-owner"
-                      style={{ backgroundColor: avatarColorForDisplayName(publisherName) }}
-                     title={publisherName}
-                     aria-hidden
-                   >
-                      {publisherName}
+                    <span className="recent-projects__card-owner" title={publisherName}>
+                      <span
+                        className="recent-projects__card-owner-avatar"
+                        style={{ backgroundColor: avatarColorForDisplayName(publisherName) }}
+                        aria-hidden
+                      >
+                        {(Array.from(publisherName)[0] ?? 'H').toUpperCase()}
+                        {publisherAvatarUrl ? (
+                          <img
+                            src={publisherAvatarUrl}
+                            alt=""
+                            onError={(event) => event.currentTarget.remove()}
+                          />
+                        ) : null}
+                      </span>
+                      <span className="recent-projects__card-owner-name">{publisherName}</span>
                     </span>
                     {updatedAt ? (
                       <>

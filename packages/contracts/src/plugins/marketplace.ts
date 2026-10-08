@@ -42,9 +42,10 @@ export const MarketplacePluginEntrySchema = z.object({
   integrity:   z.string().optional(),
   manifestDigest: z.string().optional(),
   publisher: z.object({
-    id:     z.string().optional(),
-    github: z.string().optional(),
-    url:    z.string().optional(),
+    id:        z.string().optional(),
+    github:    z.string().optional(),
+    url:       z.string().optional(),
+    avatarUrl: z.string().optional(),
   }).passthrough().optional(),
   homepage:    z.string().optional(),
   license:     z.string().optional(),

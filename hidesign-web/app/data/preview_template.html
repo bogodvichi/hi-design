@@ -140,7 +140,11 @@
    .comment-avatar {
      width: 22px; height: 22px; border-radius: 50%; color: #fff;
      font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center;
-     flex-shrink: 0; margin-right: 8px; text-transform: uppercase;
+     flex-shrink: 0; margin-right: 8px; text-transform: uppercase; position: relative; overflow: hidden;
+   }
+   .comment-avatar > img {
+     position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit;
+     object-fit: cover; display: block;
    }
    .comment-reply .comment-avatar {
      width: 18px; height: 18px; font-size: 10px; margin-right: 0;
@@ -209,6 +213,7 @@
     var PROJECT_ID = /*PROJECT_ID*/'';
     var TEAM_ID = /*TEAM_ID*/'';
     var COMMENTS_DATA = /*COMMENTS_DATA*/[];
+    var MEMBER_AVATARS = /*MEMBER_AVATARS_DATA*/{};
     (function() {
       var allComments = [];
       var currentFilePath = '';
@@ -255,6 +260,19 @@
        var saturation = AVATAR_SAT_BASE + ((absoluteHash >> 8) % AVATAR_SAT_RANGE);
        var lightness = AVATAR_LIGHT_BASE + ((absoluteHash >> 16) % AVATAR_LIGHT_RANGE);
        return 'hsl(' + hue + ', ' + saturation + '%, ' + lightness + '%)';
+     }
+
+     function appendMemberAvatar(avatar, comment) {
+       var memberId = comment && (comment.memberId || comment.authorMemberId);
+       var avatarUrl = memberId
+         ? MEMBER_AVATARS[String(memberId)]
+         : '';
+       if (!avatarUrl) return;
+       var image = document.createElement('img');
+       image.src = avatarUrl;
+       image.alt = '';
+       image.onerror = function() { image.remove(); };
+       avatar.appendChild(image);
      }
 
      // First character of the name, uppercased. Mirrors commentAuthorInitials
@@ -455,6 +473,7 @@
          avatar.className = 'comment-avatar';
          avatar.style.background = avatarColorForDisplayName(authorName);
          avatar.textContent = commentAuthorInitial(authorName);
+         appendMemberAvatar(avatar, comment);
          header.appendChild(avatar);
          header.appendChild(author);
           var time = document.createElement('span');
@@ -500,6 +519,7 @@
              replyAvatar.className = 'comment-avatar';
              replyAvatar.style.background = avatarColorForDisplayName(replyAuthorName);
              replyAvatar.textContent = commentAuthorInitial(replyAuthorName);
+             appendMemberAvatar(replyAvatar, reply);
              replyHeader.appendChild(replyAvatar);
              replyHeader.appendChild(replyAuthor);
               var replyTime = document.createElement('span');

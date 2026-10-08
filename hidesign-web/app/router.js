@@ -88,6 +88,8 @@ module.exports = app => {
   router.post('/hdw/api/community/plugins', controller.api.community.publish);
   router.del('/hdw/api/community/plugins/:name', controller.api.community.remove);
   router.put('/hdw/api/community/blobs/:digest', controller.api.community.uploadBlob);
+  router.post('/hdw/api/community/publishers/:username/avatar', controller.api.community.syncPublisherAvatar);
+  router.get('/hdw/api/community/avatar/:digest', controller.api.community.downloadAvatar);
   router.get('/hdw/api/community/plugins/:name/versions/:version/archive', controller.api.community.downloadArchive);
   router.get('/hdw/api/community/cover/:digest', controller.api.community.downloadCover);
   router.post('/hdw/api/community/stats/record', controller.api.communityStats.record);

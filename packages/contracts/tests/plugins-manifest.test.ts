@@ -104,6 +104,21 @@ describe('plugin manifest localized text', () => {
     expect(resolveLocalizedText(entry.description_i18n, 'zh-CN')).toBe('中文描述。');
   });
 
+  it('accepts a shared publisher avatar URL', () => {
+    const entry = MarketplacePluginEntrySchema.parse({
+      name: 'open-design/example-avatar',
+      source: 'hdw-community',
+      version: '1.0.0',
+      publisher: {
+        id: 'alice',
+        displayName: 'Alice',
+        avatarUrl: '/api/hdw/api/community/avatar/avatar-digest',
+      },
+    });
+
+    expect(entry.publisher?.avatarUrl).toBe('/api/hdw/api/community/avatar/avatar-digest');
+  });
+
   it('falls back from exact locale to base language, English, then first value', () => {
     expect(resolveLocalizedText({ en: 'English', zh: '中文' }, 'zh-CN')).toBe('中文');
     expect(resolveLocalizedText({ 'zh-CN': '中文' }, 'fr')).toBe('中文');

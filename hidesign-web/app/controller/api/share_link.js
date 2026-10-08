@@ -54,6 +54,69 @@ class ShareLinkController extends Controller {
     return this._publicBase() + '/hdw/share';
   }
 
+  _avatarUrl(digest) {
+    return this._publicBase() + '/hdw/api/community/avatar/' + digest;
+  }
+
+  _commentMemberIds(html) {
+    const match = html.match(
+      /var COMMENTS_DATA = \/\*COMMENTS_DATA\*\/(\[[\s\S]*?\]);\s*(?:var MEMBER_AVATARS|\(function)/,
+    );
+    if (!match) return [];
+    try {
+      const comments = JSON.parse(match[1]);
+      return Array.from(new Set(
+        comments
+          .map(comment => {
+            const memberId = typeof comment.memberId === 'string'
+              ? comment.memberId
+              : comment.authorMemberId;
+            return typeof memberId === 'string' ? memberId.trim() : '';
+          })
+          .filter(Boolean),
+      ));
+    } catch {
+      return [];
+    }
+  }
+
+  async _memberAvatarMap(k, workspaceId, memberIds) {
+    if (memberIds.length === 0) return {};
+    const rows = await k('workspace_members as wm')
+      .join(
+        'community_publisher_profiles as cpp',
+        k.raw('LOWER(??) = ??', [ 'wm.username', 'cpp.username' ]),
+      )
+      .where({ 'wm.workspace_id': workspaceId })
+      .whereIn('wm.workspace_member_id', memberIds)
+      .select('wm.workspace_member_id', 'cpp.avatar_digest');
+    const avatars = {};
+    for (const row of rows) {
+      if (row.workspace_member_id && row.avatar_digest) {
+        avatars[row.workspace_member_id] = this._avatarUrl(row.avatar_digest);
+      }
+    }
+    return avatars;
+  }
+
+  _injectMemberAvatars(html, avatars) {
+    const encoded = JSON.stringify(avatars)
+      .replace(/</g, '\\u003c')
+      .replace(/>/g, '\\u003e');
+    const marker = /\/\*MEMBER_AVATARS_DATA\*\/\{\}/;
+    if (marker.test(html)) {
+      return html.replace(marker, '/*MEMBER_AVATARS_DATA*/' + encoded);
+    }
+
+    // Existing links contain an older generated template. Decorate their
+    // comment avatars at response time so a profile update does not require
+    // regenerating the public link.
+    const compatibility = `<style>.comment-avatar{position:relative;overflow:hidden}.comment-avatar>img{position:absolute;inset:0;width:100%;height:100%;border-radius:inherit;object-fit:cover;display:block}</style><script>(function(){var memberAvatars=${encoded};function memberId(comment){return comment&&(comment.memberId||comment.authorMemberId)||'';}function applyAvatar(node,url){if(!node||!url||node.querySelector('img'))return;var image=document.createElement('img');image.src=url;image.alt='';image.onerror=function(){image.remove();};node.appendChild(image);}function decorate(){var comments=Array.isArray(window.COMMENTS_DATA)?window.COMMENTS_DATA:[];var byId={};comments.forEach(function(comment){byId[comment.id]=comment;});document.querySelectorAll('.comment-card[data-comment-id]').forEach(function(card){var id=card.getAttribute('data-comment-id');var comment=byId[id];if(!comment)return;applyAvatar(card.querySelector('.comment-card-header .comment-avatar'),memberAvatars[memberId(comment)]);var replies=comments.filter(function(item){return item.parentId===id||(item.rootCommentId===id&&item.id!==id);});var replyAvatars=card.querySelectorAll('.comment-reply .comment-avatar');replies.forEach(function(reply,index){applyAvatar(replyAvatars[index],memberAvatars[memberId(reply)]);});});}var list=document.getElementById('commentList');if(list&&window.MutationObserver)new MutationObserver(decorate).observe(list,{childList:true,subtree:true});if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',decorate);else decorate();})();</script>`;
+    return html.includes('</body>')
+      ? html.replace('</body>', compatibility + '</body>')
+      : html + compatibility;
+  }
+
   // ---- Generate: POST /hdw/api/share-link/generate ----
   async generate() {
     const { ctx } = this;
@@ -285,13 +348,18 @@ class ShareLinkController extends Controller {
       }
 
       const data = await blobStore.readBlob(row.html_digest);
+      const sourceHtml = data.toString('utf-8');
+      const memberIds = this._commentMemberIds(sourceHtml);
+      const avatars = await this._memberAvatarMap(k, row.workspace_id, memberIds);
+      const html = this._injectMemberAvatars(sourceHtml, avatars);
+      const response = Buffer.from(html, 'utf-8');
       ctx.set('content-type', 'text/html; charset=utf-8');
-      ctx.set('content-length', String(data.length));
+      ctx.set('content-length', String(response.length));
       // Regeneration keeps the same public token while replacing html_digest.
       // Revalidate that stable URL so updated comments and avatar colors are
       // visible immediately instead of serving the previous generated page.
       ctx.set('cache-control', 'no-cache, must-revalidate');
-      ctx.body = data;
+      ctx.body = response;
     } catch (err) {
       ctx.logger.error('[hdw] share-link view error:', err);
       ctx.status = 500;
