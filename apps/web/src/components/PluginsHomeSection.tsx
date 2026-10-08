@@ -23,6 +23,7 @@ import type {
 import { useI18n, useT } from '../i18n';
 import type { PluginShareAction } from '../state/projects';
 import { Icon } from './Icon';
+import { CenteredLoader } from './Loading';
 import { PluginCard } from './plugins-home/PluginCard';
 import { isFeaturedPlugin, type FacetOption } from './plugins-home/facets';
 import { localizePluginTitle } from './plugins-home/localization';
@@ -185,7 +186,9 @@ export function PluginsHomeSection({
       </header>
 
       {loading ? (
-        <div className="plugins-home__empty">{t('pluginsHome.loadingCatalog')}</div>
+        <div className="plugins-home__loading">
+          <CenteredLoader label={t('pluginsHome.loadingCatalog')} />
+        </div>
       ) : visiblePlugins.length === 0 ? (
         <div className="plugins-home__empty">
           {emptyMessage ?? t('pluginsHome.emptyCatalog')}

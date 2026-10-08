@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import { getStoredUsername } from '../auth/auth';
 import { getTeamMemberId } from '../utils/deterministicId';
 import { Icon, type IconName } from './Icon';
+import { CenteredLoader } from './Loading';
 import { useT } from '../i18n';
 import type { Dict } from '../i18n/types';
 import { avatarColorForDisplayName } from '../utils/avatarColor';
@@ -45,8 +46,8 @@ interface TabDef {
 const TABS: TabDef[] = [
   { id: 'projects', icon: 'folder', labelKey: 'teamSpace.tabProjects' },
   { id: 'members', icon: 'users', labelKey: 'teamSpace.tabMembers' },
-  { id: 'skill', icon: 'puzzle', labelKey: 'teamSpace.tabSkill' },
-  { id: 'mcp', icon: 'integrations-filled', labelKey: 'teamSpace.tabMcp' },
+  { id: 'skill', icon: 'sparkles', labelKey: 'teamSpace.tabSkill' },
+  { id: 'mcp', icon: 'terminal', labelKey: 'teamSpace.tabMcp' },
 ];
 
 type MemberRole = 'owner' | 'admin' | 'member' | 'guest';
@@ -208,11 +209,7 @@ export function TeamSpaceView({ teamId, tab, onInvite, designSystems = [], onOpe
  if (loading) {
     return (
       <section className={styles.view}>
-        <div className={styles.loading}>
-          <span className={styles.loadingDot} />
-          <span className={styles.loadingDot} />
-          <span className={styles.loadingDot} />
-        </div>
+        <CenteredLoader label={t('teamSpace.loading')} />
       </section>
     );
   }
@@ -944,7 +941,9 @@ function ProjectsPanel({
       <div ref={setBulkbarEl} className={styles.folderBulkbar} />
       <div className={styles.folderList}>
         {loading ? (
-          <div className={styles.folderEmpty}>{t('teamSpace.loading')}</div>
+          <div className={styles.folderEmpty}>
+            <CenteredLoader label={t('teamSpace.loading')} />
+          </div>
         ) : folders.length === 0 ? (
           null
         ) : folders.map((folder) => {
@@ -1399,7 +1398,11 @@ function MembersTable({
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={4}>{t('teamSpace.loading')}</td></tr>
+              <tr>
+                <td colSpan={4}>
+                  <CenteredLoader label={t('teamSpace.loading')} />
+                </td>
+              </tr>
             ) : members.length === 0 ? (
               <tr><td colSpan={4}>{t('teamSpace.noMembers')}</td></tr>
             ) : members.map((m) => {
@@ -1650,11 +1653,7 @@ export function FolderView({ teamId, folderId, designSystems = [], onOpenProject
  if (loading) {
     return (
       <section className={styles.view}>
-        <div className={styles.loading}>
-          <span className={styles.loadingDot} />
-          <span className={styles.loadingDot} />
-          <span className={styles.loadingDot} />
-        </div>
+        <CenteredLoader label={t('teamSpace.loading')} />
       </section>
     );
   }
@@ -2127,7 +2126,9 @@ function FoldersPanel({
       <div ref={setBulkbarEl} className={styles.folderBulkbar} />
       {folders?.length?<div className={styles.folderList}>
         {loading ? (
-          <div className={styles.folderEmpty}>{t('teamSpace.loading')}</div>
+          <div className={styles.folderEmpty}>
+            <CenteredLoader label={t('teamSpace.loading')} />
+          </div>
         ) : folders.length === 0 ? (
           null
         ) : folders.map((folder) => {

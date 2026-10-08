@@ -59,7 +59,7 @@ import { formatPickAndImportFailure } from '../utils/pickAndImportError';
 import { useBrandsByDesignSystemId } from '../runtime/brands';
 import { BrandPreviewCard } from './BrandPreviewCard';
 import { Icon } from './Icon';
-import { Skeleton } from './Loading';
+import { Spinner } from './Loading';
 import { Toast } from './Toast';
 import { useOpenFolderImport } from './useOpenFolderImport';
 
@@ -1342,7 +1342,9 @@ function ConnectorsSection({
     return (
       <div className="newproj-section newproj-connectors">
         <label className="newproj-label">{t('newproj.connectorsLabel')}</label>
-        <Skeleton height={56} width="100%" radius={8} />
+        <div className="newproj-region-loading">
+          <Spinner size={18} label={t('common.loading')} />
+        </div>
       </div>
     );
   }
@@ -2251,7 +2253,9 @@ function DesignSystemPicker({
     return (
       <div className="newproj-section">
         <label className="newproj-label">{t('newproj.designSystem')}</label>
-        <Skeleton height={56} width="100%" radius={8} />
+        <div className="newproj-region-loading">
+          <Spinner size={18} label={t('common.loading')} />
+        </div>
       </div>
     );
   }

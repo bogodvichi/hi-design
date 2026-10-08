@@ -337,6 +337,11 @@ export const codexAgentDef = {
       const args = resumeSessionId
         ? ['exec', 'resume', '--json', '--skip-git-repo-check', ...sandboxArgs]
         : ['exec', '--json', '--skip-git-repo-check', ...sandboxArgs];
+      // Keep this inside exec/resume: a root-level -c is validated by newer
+      // Codex CLIs but does not reliably reach their embedded runtime.
+      if (runtimeContext.codexModelCatalogPath) {
+        args.push('-c', `model_catalog_json=${JSON.stringify(runtimeContext.codexModelCatalogPath)}`);
+      }
       if (
         runtimeContext.disablePlugins === true
         || process.env.OD_CODEX_DISABLE_PLUGINS === '1'

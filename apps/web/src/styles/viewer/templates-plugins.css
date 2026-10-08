@@ -859,6 +859,10 @@
   font-size: 13px;
   padding: 8px 0;
 }
+
+.plugin-loop-home__loading {
+  min-height: 180px;
+}
 .plugin-loop-home__empty code {
   font-size: 12px;
   background: var(--bg-subtle);

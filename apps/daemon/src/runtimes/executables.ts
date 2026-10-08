@@ -39,6 +39,36 @@ const AGENT_BIN_ENV_KEYS = new Map<string, string>([
   ['vibe', 'VIBE_BIN'],
 ]);
 
+// Set only when the packaged launcher reports a verified official Codex
+// installation through its namespace-scoped daemon IPC. This is intentionally
+// ephemeral: it neither rewrites user settings nor touches other agent CLIs.
+let preferredInstalledCodexExecutable: string | null = null;
+
+/** Promote the official standalone Codex binary for subsequent new Runs. */
+export function activateInstalledCodexExecutable(): string | null {
+  const { home } = resolveDetectionHome();
+  const candidates = process.platform === 'win32'
+    ? ['codex.exe', 'codex.cmd', 'codex.bat'].map((name) =>
+        path.join(
+          process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local'),
+          'Programs', 'OpenAI', 'Codex', 'bin', name,
+        ))
+    : [path.join(home, '.local', 'bin', 'codex')];
+  for (const candidate of candidates) {
+    const verified = executableFilePath(candidate);
+    if (verified) {
+      preferredInstalledCodexExecutable = verified;
+      return verified;
+    }
+  }
+  return null;
+}
+
+/** Clear the transient preference if the selected CLI is no longer present. */
+export function clearPreferredInstalledCodexExecutable(): void {
+  preferredInstalledCodexExecutable = null;
+}
+
 const TOOLCHAIN_DIR_CACHE_TTL_MS = 5000;
 let cachedToolchainHome: string | null = null;
 let cachedToolchainDirs: string[] | null = null;
@@ -196,6 +226,11 @@ function configuredExecutableOverride(
   def: RuntimeAgentDef,
   configuredEnv: Record<string, string> = {},
 ): string | null {
+  if (def.id === 'codex' && preferredInstalledCodexExecutable) {
+    const selected = executableFilePath(preferredInstalledCodexExecutable);
+    if (selected) return selected;
+    preferredInstalledCodexExecutable = null;
+  }
   const envKey = AGENT_BIN_ENV_KEYS.get(def?.id);
   if (!envKey) return null;
   return executableFilePath(configuredEnv?.[envKey] ?? process.env[envKey]);

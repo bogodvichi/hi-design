@@ -75,6 +75,7 @@ import {
 import { Icon } from './Icon';
 import { Toast } from './Toast';
 import { PluginDetailsModal } from './PluginDetailsModal';
+import { CenteredLoader } from './Loading';
 import { SkillDetailView } from './SkillDetailView';
 import { PluginsHomeSection } from './PluginsHomeSection';
 import { humanizeCategory } from './SkillsSection';
@@ -609,7 +610,11 @@ export function PluginsView({
       {notice ? <Notice outcome={notice} /> : null}
 
       <div className="plugins-view__gallery">
-        {visibleLoading ? <div className="plugins-view__empty">{t('pluginsView.loading')}</div> : null}
+        {visibleLoading ? (
+          <div className="plugins-view__loading">
+            <CenteredLoader label={t('pluginsView.loading')} />
+          </div>
+        ) : null}
 
         {!visibleLoading && activeTab === 'installed' ? (
           <PluginsHomeSection
@@ -2184,9 +2189,8 @@ export function ExtensionsMarketplace({
 
       <div className="plugin-marketplace__catalog">
         {catalogLoading ? (
-          <div className="plugin-marketplace__empty">
-            <Icon name="spinner" size={18} />
-            <strong>{t('pluginsView.loading')}</strong>
+          <div className="plugin-marketplace__loading">
+            <CenteredLoader label={t('pluginsView.loading')} />
           </div>
         ) : visibleCards.length === 0 ? (
           <MarketEmptyState

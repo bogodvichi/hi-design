@@ -488,6 +488,10 @@
   color: var(--text-muted);
   background: var(--bg-subtle);
 }
+
+.routines-loading {
+  min-height: 180px;
+}
 .routines-empty strong { color: var(--text); display: block; margin-bottom: 4px; font-size: 14px; }
 .routines-empty p { margin: 0; font-size: 13px; }
 .routines-empty em { color: var(--text); font-style: normal; font-weight: 600; }

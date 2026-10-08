@@ -30,6 +30,7 @@ import {
   APP_KEYS,
   OPEN_DESIGN_SIDECAR_CONTRACT,
   SIDECAR_ENV,
+  SIDECAR_MESSAGES,
   SIDECAR_MODES,
   SIDECAR_SOURCES,
 } from '@open-design/sidecar-proto';
@@ -42,6 +43,7 @@ import {
   createWebSidecarSupervisor,
   DEFERRED_MANAGED_CHILD_EXIT_GRACE_MS,
   MANAGED_CHILD_EXIT_GRACE_MS,
+  notifyCodexCliUpdated,
   openLog,
   registerPackagedWebUrl,
   resolveManagedChildExitGraceMs,
@@ -194,6 +196,49 @@ describe('packaged web URL registration', () => {
           input: { url: 'http://127.0.0.1:53421' },
           type: 'register-web-url',
         },
+      ]);
+    } finally {
+      await server.close();
+    }
+  });
+});
+
+describe('verified Codex CLI update notification', () => {
+  it('only notifies after a verified installation, or for an existing official CLI', async () => {
+    const namespace = 'codex-update-' + process.pid + '-' + Date.now();
+    const daemonIpc = resolveAppIpcPath({
+      app: APP_KEYS.DAEMON, contract: OPEN_DESIGN_SIDECAR_CONTRACT, namespace,
+    });
+    const received: unknown[] = [];
+    const server = await createJsonIpcServer({
+      socketPath: daemonIpc,
+      handler: async (message) => {
+        received.push(message);
+        return { accepted: true };
+      },
+    });
+    try {
+      expect(await notifyCodexCliUpdated(daemonIpc, {
+        status: 'installed', path: '/tmp/new-cli',
+      })).toBe(true);
+      expect(await notifyCodexCliUpdated(daemonIpc, {
+        status: 'updated', path: '/tmp/new-cli',
+        fromVersion: '0.145.0', toVersion: '0.161.0',
+      })).toBe(true);
+      expect(await notifyCodexCliUpdated(daemonIpc, {
+        status: 'already-installed',
+        path: join(codexStandaloneBinDir(), process.platform === 'win32' ? 'codex.exe' : 'codex'),
+      })).toBe(true);
+      expect(await notifyCodexCliUpdated(daemonIpc, {
+        status: 'already-installed', path: '/tmp/user-pinned-cli',
+      })).toBe(false);
+      expect(await notifyCodexCliUpdated(daemonIpc, {
+        status: 'update-failed', path: '/tmp/old-cli', detail: 'offline',
+      })).toBe(false);
+      expect(received).toEqual([
+        { type: SIDECAR_MESSAGES.CODEX_CLI_UPDATED },
+        { type: SIDECAR_MESSAGES.CODEX_CLI_UPDATED },
+        { type: SIDECAR_MESSAGES.CODEX_CLI_UPDATED },
       ]);
     } finally {
       await server.close();

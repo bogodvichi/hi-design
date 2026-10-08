@@ -95,6 +95,10 @@
   text-align: center;
   grid-column: 1 / -1;
 }
+.recent-projects__loading {
+  grid-column: 1 / -1;
+  min-height: 160px;
+}
 .recent-projects__row {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--card-grid-min-width)), 1fr));

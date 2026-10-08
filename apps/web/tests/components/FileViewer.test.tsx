@@ -670,18 +670,12 @@ describe('FileViewer preview scale', () => {
     expect(css).toContain('.viewer-action');
   });
 
-  it('uses a layered skeleton for the initial preview loading state', () => {
+  it('uses the shared circular loader for the initial preview loading state', () => {
     const css = readExpandedIndexCss();
 
-    expect(css).toContain('.viewer-loading-stage');
-    expect(css).toContain('aspect-ratio: 16 / 9;');
-    expect(css).toContain('.viewer-loading-card-back-one');
-    expect(css).toContain('.viewer-loading-card-main::before');
-    expect(css).toContain('.viewer-loading-chart');
-    expect(css).toContain('@keyframes od-viewer-loading-sweep');
-    expect(css).toMatch(
-      /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*\.viewer-loading-stage,[\s\S]*animation: none;/,
-    );
+    expect(css).toContain('.viewer-loading');
+    expect(css).toContain('.centered-loader');
+    expect(css).not.toContain('.viewer-loading-stage');
   });
 
   it('waits for exact Team authority before loading initial raw source', async () => {

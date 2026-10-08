@@ -30,6 +30,8 @@ export type RuntimeBuildOptions = {
 
 export type RuntimeContext = {
   cwd?: string;
+  /** Complete authenticated catalog snapshot owned by the daemon. */
+  codexModelCatalogPath?: string;
   // Daemon-owned stdio MCP bridges. Runtime adapters can expose managed MCP
   // services (HiMind, AI research) without receiving the user's OA identity or
   // the upstream bearer token. Multiple bridges can be active in one run when

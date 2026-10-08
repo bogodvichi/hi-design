@@ -79,6 +79,7 @@ describe('codex native session resume', () => {
   it('captures the thread id on turn 1 and resumes it (without resending history) on turn 2', async () => {
     binDir = await mkdtemp(path.join(os.tmpdir(), 'od-codex-resume-bin-'));
     const { bin, logPath } = await writeCapturingCodex(binDir, 'codex-capture');
+    await writeFile(path.join(binDir, 'config.toml'), 'base_url = "https://unused.example"\nwire_api = "responses"\n[mcp_servers.legacy]\ntype = "stdio"\ncommand = "node"\n');
 
     clearTelemetryEnv();
     started = (await startServer({ port: 0, returnServer: true })) as StartedServer;
@@ -93,9 +94,12 @@ describe('codex native session resume', () => {
 
     const turn1 = await sendRunAndWait(started.url, conversationId, 'first user request');
     expect(turn1.status).toBe('succeeded');
+    const normalizedConfig = await readFile(path.join(binDir, 'config.toml'), 'utf8');
+    expect(normalizedConfig.match(/# HiDesign: ignored by Codex;/g)).toHaveLength(3);
 
     const turn2 = await sendRunAndWait(started.url, conversationId, 'second user request please');
     expect(turn2.status).toBe('succeeded');
+    expect(await readFile(path.join(binDir, 'config.toml'), 'utf8')).toBe(normalizedConfig);
 
     // Filter to this conversation's chat-turn `exec` calls (cwd points at its
     // project dir). codex is also used as the daemon's background memory-llm and

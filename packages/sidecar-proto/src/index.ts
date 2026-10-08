@@ -90,6 +90,7 @@ export function resolveWindowsUninstallRegistryKey(namespace: string): string {
 
 export const SIDECAR_MESSAGES = Object.freeze({
   CLICK: "click",
+  CODEX_CLI_UPDATED: "codex-cli-updated",
   CONSOLE: "console",
   EVAL: "eval",
   EXPORT_ARTIFACT: "export-artifact",
@@ -582,9 +583,16 @@ export type RegisterWebUrlResult = {
   accepted: true;
 };
 
+/** Notifies the daemon only after an official Codex CLI install succeeds. */
+export type CodexCliUpdatedMessage = {
+  type: typeof SIDECAR_MESSAGES.CODEX_CLI_UPDATED;
+};
+export type CodexCliUpdatedResult = { accepted: boolean };
+
 export type DaemonSidecarMessage =
   | SidecarStatusMessage
   | SidecarShutdownMessage
+  | CodexCliUpdatedMessage
   | RegisterDesktopAuthMessage
   | MintImportTokenMessage
   | RegisterWebUrlMessage;
@@ -955,7 +963,9 @@ function normalizeMessageType(value: unknown, label: string): string {
 export function normalizeDaemonSidecarMessage(input: unknown): DaemonSidecarMessage {
   const value = assertObject(input, "daemon sidecar message");
   const type = normalizeMessageType(value.type, "daemon sidecar message");
-  if (type === SIDECAR_MESSAGES.STATUS || type === SIDECAR_MESSAGES.SHUTDOWN) {
+  if (type === SIDECAR_MESSAGES.STATUS
+    || type === SIDECAR_MESSAGES.SHUTDOWN
+    || type === SIDECAR_MESSAGES.CODEX_CLI_UPDATED) {
     assertKnownKeys(value, ["type"], "daemon sidecar message");
     return { type };
   }

@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { CenteredLoader } from './Loading';
 
 interface Props {
   source: string | null | undefined;
@@ -14,7 +15,11 @@ export function DesignSpecView({ source, loading, loadingLabel }: Props) {
   const lines = useMemo(() => (source ? source.split(/\r?\n/) : []), [source]);
 
   if (loading || source === undefined || source === null) {
-    return <div className="design-spec-empty">{loadingLabel}</div>;
+    return (
+      <div className="design-spec-empty">
+        <CenteredLoader label={loadingLabel} />
+      </div>
+    );
   }
 
   return (

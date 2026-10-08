@@ -1865,37 +1865,11 @@ interface Props {
   manualEditEntryAllowed?: boolean;
 }
 
-function FileViewerLoadingSkeleton() {
+function FileViewerLoading() {
   const t = useT();
   return (
-    <div
-      className="viewer-loading"
-      role="status"
-      aria-busy="true"
-      aria-label={t('fileViewer.loading')}
-    >
-      <div className="viewer-loading-stage" aria-hidden="true">
-        <span className="viewer-loading-card viewer-loading-card-back viewer-loading-card-back-two" />
-        <span className="viewer-loading-card viewer-loading-card-back viewer-loading-card-back-one" />
-        <span className="viewer-loading-card viewer-loading-card-main">
-          <span className="viewer-loading-kicker" />
-          <span className="viewer-loading-title" />
-          <span className="viewer-loading-title viewer-loading-title-short" />
-          <span className="viewer-loading-rule" />
-          <span className="viewer-loading-content">
-            <span className="viewer-loading-copy">
-              <span className="viewer-loading-line" />
-              <span className="viewer-loading-line viewer-loading-line-medium" />
-              <span className="viewer-loading-line viewer-loading-line-short" />
-            </span>
-            <span className="viewer-loading-chart">
-              <span className="viewer-loading-bar viewer-loading-bar-one" />
-              <span className="viewer-loading-bar viewer-loading-bar-two" />
-              <span className="viewer-loading-bar viewer-loading-bar-three" />
-            </span>
-          </span>
-        </span>
-      </div>
+    <div className="viewer-loading" aria-busy="true">
+      <CenteredLoader label={t('fileViewer.loading')} />
     </div>
   );
 }
@@ -1994,7 +1968,7 @@ export const FileViewer = memo(function FileViewer({
         </div>
       );
     }
-    return <FileViewerLoadingSkeleton />;
+    return <FileViewerLoading />;
   }
 
   if (rendererMatch?.renderer.id === 'html' || rendererMatch?.renderer.id === 'deck-html') {
@@ -2619,7 +2593,9 @@ export function LiveArtifactViewer({
           </div>
         </div>
         {mode !== 'preview' && loading ? (
-          <div className="viewer-empty">{t('fileViewer.loading')}</div>
+          <div className="viewer-empty">
+            <CenteredLoader label={t('fileViewer.loading')} />
+          </div>
         ) : mode === 'code' ? (
           <LiveArtifactCodePanel
             projectId={projectId}
@@ -2765,7 +2741,9 @@ function LiveArtifactCodePanel({
         </div>
       </div>
       {loading ? (
-        <div className="viewer-empty">{t('liveArtifact.viewer.code.loading')}</div>
+        <div className="viewer-empty">
+          <CenteredLoader label={t('liveArtifact.viewer.code.loading')} />
+        </div>
       ) : failed ? (
         <div className="viewer-empty">{t('liveArtifact.viewer.code.unavailable')}</div>
       ) : code && code.trim().length > 0 ? (
@@ -4133,20 +4111,10 @@ function FileVersionManagerModal({
         <div className="artifact-version-list" role="listbox" aria-label={t('fileViewer.versions.listAria')}>
           {loading ? (
             <div
-              className="file-version-skeleton-list"
-              role="status"
-              aria-label={t('fileViewer.versions.loading')}
+              className="file-version-loading"
+              aria-busy="true"
             >
-              {[0, 1, 2, 3].map((row) => (
-                <div key={row} className="file-version-skeleton-item" aria-hidden="true">
-                  <div className="file-version-skeleton-row">
-                    <span className="file-version-skeleton-line badge" />
-                    <span className="file-version-skeleton-line time" />
-                  </div>
-                  <span className="file-version-skeleton-line title" />
-                  <span className="file-version-skeleton-line meta" />
-                </div>
-              ))}
+              <CenteredLoader label={t('fileViewer.versions.loading')} />
             </div>
           ) : versions.length === 0 ? (
             <div className="file-version-empty">{t('fileViewer.versions.empty')}</div>
@@ -7750,7 +7718,9 @@ function DocumentPreviewViewer({
       </div>
       <div className="viewer-body">
         {loading ? (
-          <div className="viewer-empty">{t('fileViewer.loading')}</div>
+          <div className="viewer-empty">
+            <CenteredLoader label={t('fileViewer.loading')} />
+          </div>
         ) : preview ? (
           <div className="document-preview">
             <h2>{preview.title}</h2>
@@ -17810,7 +17780,7 @@ async function openReviewListModal() {
       </>)}
       <div className="viewer-body" ref={previewBodyRef}>
         {initialPreviewLoading ? (
-          <FileViewerLoadingSkeleton />
+          <FileViewerLoading />
         ) : (
           <>
             <div

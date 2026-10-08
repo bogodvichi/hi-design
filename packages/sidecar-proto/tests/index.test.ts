@@ -73,6 +73,12 @@ describe("open-design sidecar contract", () => {
   it("validates daemon IPC messages", () => {
     expect(normalizeDaemonSidecarMessage({ type: SIDECAR_MESSAGES.STATUS })).toEqual({ type: "status" });
     expect(normalizeDaemonSidecarMessage({ type: SIDECAR_MESSAGES.SHUTDOWN })).toEqual({ type: "shutdown" });
+    expect(normalizeDaemonSidecarMessage({ type: SIDECAR_MESSAGES.CODEX_CLI_UPDATED }))
+      .toEqual({ type: "codex-cli-updated" });
+    expect(() => normalizeDaemonSidecarMessage({
+      type: SIDECAR_MESSAGES.CODEX_CLI_UPDATED,
+      input: { command: "/tmp/untrusted-codex" },
+    })).toThrow();
     expect(() => normalizeDaemonSidecarMessage({ input: {}, type: SIDECAR_MESSAGES.EVAL })).toThrow();
   });
 

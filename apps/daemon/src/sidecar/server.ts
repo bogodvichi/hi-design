@@ -5,6 +5,7 @@ import {
   OPEN_DESIGN_SIDECAR_CONTRACT,
   SIDECAR_ENV,
   SIDECAR_MESSAGES,
+  SIDECAR_SOURCES,
   normalizeDaemonSidecarMessage,
   type DaemonStatusSnapshot,
   type DesktopExportArtifactInput,
@@ -34,6 +35,7 @@ import {
   signDesktopImportToken,
 } from "../desktop-auth.js";
 import { attachParentMonitor, scheduleHeldDaemonExit } from "./parent-monitor-gate.js";
+import { switchToInstalledCodexCli } from "../runtimes/codex-hot-swap.js";
 
 /**
  * PR #974 round 6 (mrcfps): pure wrapper that overlays the live
@@ -191,6 +193,10 @@ export async function startDaemonSidecar(
           // request so `tools-dev start desktop` sees the live value
           // (the flag flips after REGISTER_DESKTOP_AUTH and stays sticky).
           return withCurrentDesktopAuthGate(state);
+        case SIDECAR_MESSAGES.CODEX_CLI_UPDATED:
+          // Development tooling must never silently rewrite CLI selection.
+          if (runtime.source !== SIDECAR_SOURCES.PACKAGED) return { accepted: false };
+          return { accepted: switchToInstalledCodexCli() };
         case SIDECAR_MESSAGES.SHUTDOWN: {
           const deferred = scheduleHeldDaemonExit(stop, options.exit);
           return deferred ? { accepted: true, deferred: true } : { accepted: true };

@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from '@open-design/components';
 import { Icon } from './Icon';
+import { CenteredLoader } from './Loading';
 import { useI18n, useT } from '../i18n';
 import { ShareResourceDialog } from './ShareResourceDialog';
 import { CommunityResourceStats } from './CommunityResourceStats';
@@ -635,7 +636,15 @@ useEffect(() => {
     : fallbackSearchControl;
 
   if (loading) {
-    return <>{controlsPortal}{inlineControls}<div className={styles.cloudSkillLoading}>{t('personalScope.cloudSkillLoading' as any)}</div></>;
+    return (
+      <>
+        {controlsPortal}
+        {inlineControls}
+        <div className={styles.cloudSkillLoading}>
+          <CenteredLoader label={t('personalScope.cloudSkillLoading' as any)} />
+        </div>
+      </>
+    );
   }
 
   if (error && skills.length === 0) {

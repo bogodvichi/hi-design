@@ -259,7 +259,8 @@ import {
   resolveModelForServiceTier,
 } from './runtimes/models.js';
 import { loadMmdRouteLaunchEnv } from './runtimes/mmd-routes.js';
-import { preflightCodexDefaultModel } from './runtimes/codex-model-preflight.js';
+import { preflightCodexDefaultModel, resolveCodexDefaultCatalogConfig } from './runtimes/codex-model-preflight.js';
+import { CodexModelCatalog } from './runtimes/codex-model-catalog.js';
 import { preparePromptFileForAgent } from './runtimes/prompt-file.js';
 import { TerminalControlSequenceStripper } from './runtimes/terminal-control.js';
 import {
@@ -1325,6 +1326,7 @@ const SANDBOX_MODE_ENABLED = isSandboxModeEnabled(process.env);
 const RUNTIME_DATA_DIR = resolveDataDir(process.env.OD_DATA_DIR, PROJECT_ROOT, {
   requireExplicit: SANDBOX_MODE_ENABLED,
 });
+const codexModelCatalog = new CodexModelCatalog(RUNTIME_DATA_DIR);
 const SANDBOX_RUNTIME = resolveSandboxRuntimeConfig(SANDBOX_MODE_ENABLED, RUNTIME_DATA_DIR);
 ensureSandboxRuntimeDirs(SANDBOX_RUNTIME);
  setRuntimeDataDir(RUNTIME_DATA_DIR);
@@ -13946,18 +13948,15 @@ const projectRouteResult = registerProjectRoutes(app, {
         ? path.join(os.tmpdir(), `od-agy-${run.id}.log`)
         : undefined;
     const promptFile = await preparePromptFileForAgent(def, composed, run.id);
+    let codexModelCatalogPath: string | undefined;
     const cleanupPromptFile = () => {
       if (promptFile) promptFile.cleanup().catch(() => {});
     };
 
-    // Codex CLI parses config.toml before processing any -c overrides. An
-    // invalid `service_tier` value (the Codex app has written "priority",
-    // "default", and other values the CLI rejects) causes an immediate parse
-    // error and exit-1 before any work starts. Normalize it in-place — any
-    // value outside {fast,flex} has its line removed so the CLI uses its
-    // built-in default — so the launch succeeds. Errors are silently swallowed
-    // — a missing or read-only config.toml is fine, and the Codex CLI still
-    // surfaces the original error if the write fails. See issue #4276 / #3408.
+    // Normalize known incompatible/ignored config fields before either exec or
+    // app-server loads the user's config. Recheck on every launch so CLI upgrades
+    // and externally rewritten configs receive the same compatibility repair.
+    // Write failures are logged and Codex retains its original diagnostics.
     if (def.id === 'codex') {
       const { normalizeCodexConfigFile } = await import('./codex-config-normalize.js');
       // Route through spawnEnvForAgent so resolveCodexConfigPath sees the same
@@ -14110,6 +14109,23 @@ const projectRouteResult = registerProjectRoutes(app, {
         })
       : null;
     const useCodexAppServer = codexTransportDecision?.actual === 'app-server';
+    if (def.id === 'codex' && !useCodexAppServer) {
+      const catalogEnv = spawnEnvForAgent('codex', process.env, configuredAgentEnv);
+      const config = await resolveCodexDefaultCatalogConfig(catalogEnv, effectiveCwd);
+      if (config) {
+        const versions = await ensureDetectedRuntimeVersions('codex', configuredAgentEnv);
+        const catalog = await codexModelCatalog.prepare(
+          catalogEnv, versions?.agentCliVersion,
+          safeModel && safeModel !== 'default' ? safeModel : config.model,
+        );
+        if (catalog) codexModelCatalogPath = catalog;
+      }
+      if (run.cancelRequested || design.runs.isTerminal(run.status)) {
+        cleanupPromptFile();
+        cleanupOdNextRunInputProjection();
+        return;
+      }
+    }
     if (codexTransportDecision) {
       run.agentTransport = codexTransportDecision.actual;
       run.agentTransportFallbackReason = codexTransportDecision.fallbackReason;
@@ -14169,6 +14185,7 @@ const projectRouteResult = registerProjectRoutes(app, {
           agentOptions,
           {
             cwd: effectiveCwd,
+            codexModelCatalogPath,
             hasPriorAssistantTurn,
             agentLogFilePath,
             promptFilePath: promptFile?.path,

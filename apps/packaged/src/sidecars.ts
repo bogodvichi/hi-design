@@ -11,6 +11,7 @@ import {
   SIDECAR_MESSAGES,
   SIDECAR_MODES,
   type AppKey,
+  type CodexCliUpdatedResult,
   type DaemonStatusSnapshot,
   type RegisterWebUrlResult,
   type ShutdownResult,
@@ -43,7 +44,9 @@ import type { PackagedWebOutputMode } from "./config.js";
 import {
   codexStandaloneBinDir,
   ensureCodexCliForInstalledCodex,
+  resolveCodexCliUpdaterEnv,
   scheduleCodexCliCheckAfterStartup,
+  type CodexCliBootstrapResult,
 } from "./codex-cli-bootstrap.js";
 import type { PackagedNamespacePaths } from "./paths.js";
 import {
@@ -1043,6 +1046,25 @@ export async function registerPackagedWebUrl(
   }
 }
 
+/** Notify only after a verified CLI install, or a prior official installation. */
+export async function notifyCodexCliUpdated(
+  daemonIpcPath: string,
+  result: CodexCliBootstrapResult,
+): Promise<boolean> {
+  if (!("path" in result)) return false;
+  if (result.status !== "installed" && result.status !== "updated"
+    && !(result.status === "already-installed"
+      && dirname(result.path) === codexStandaloneBinDir())) {
+    return false;
+  }
+  const response = await requestJsonIpc<CodexCliUpdatedResult>(
+    daemonIpcPath,
+    { type: SIDECAR_MESSAGES.CODEX_CLI_UPDATED },
+    { timeoutMs: 2_000 },
+  );
+  return response.accepted === true;
+}
+
 export async function startPackagedSidecars(
   runtime: SidecarRuntimeContext<SidecarStamp>,
   paths: PackagedNamespacePaths,
@@ -1241,13 +1263,24 @@ export async function startPackagedSidecars(
       // The daemon's PATH already prioritizes the official standalone Codex
       // bin directory; subsequent Runs re-resolve it when the installer finishes.
       cancelCodexCliCheck = scheduleCodexCliCheckAfterStartup(async () => {
-        const installerEnv = mergeProxyAwareEnv(
+        const installerEnv = await resolveCodexCliUpdaterEnv(mergeProxyAwareEnv(
           process.platform,
           startupProxyEnv,
           process.env,
-        );
+        ));
         installerEnv.PATH = resolvePackagedPathEnv();
         const result = await ensureCodexCliForInstalledCodex({ env: installerEnv });
+        try {
+          if ("path" in result) {
+            const switched = await notifyCodexCliUpdated(daemon.ipcPath, result);
+            if (switched) {
+              prewarmLog("[open-design packaged] Codex CLI adopted by daemon for new Runs");
+            }
+          }
+        } catch (error) {
+          // An older or closing daemon must not turn an install into an error.
+          prewarmLog("[open-design packaged] Codex CLI hot switch unavailable: " + String(error));
+        }
         prewarmLog(`[open-design packaged] Codex CLI background check status=${result.status}`);
       });
     }

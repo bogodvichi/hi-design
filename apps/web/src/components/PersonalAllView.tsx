@@ -13,6 +13,7 @@ import { createPortal } from 'react-dom';
 import type { WorkspaceCollabContext, WorkspaceDirectoryItem } from '@open-design/contracts';
 import { Dialog, DialogFooter, DialogTitle } from '@open-design/components';
 import { Icon } from './Icon';
+import { CenteredLoader } from './Loading';
 import { FolderCardMenu } from './FolderCardMenu';
 import { FolderSelectionCheck } from './FolderSelectionCheck';
 import { MoveToTeamTreeDialog, type TeamTreeSelection } from './MoveToTeamTreeDialog';
@@ -374,7 +375,9 @@ function handleFolderClick(folder: PersonalFolderItem) {
   if (!workspaceId) {
     return (
       <div className={styles.projectsWrap}>
-        <div className={styles.folderEmpty}>{t('teamSpace.loading')}</div>
+        <div className={styles.folderEmpty}>
+          <CenteredLoader label={t('teamSpace.loading')} />
+        </div>
       </div>
     );
   }
@@ -384,7 +387,9 @@ function handleFolderClick(folder: PersonalFolderItem) {
      <div ref={setBulkbarEl} className={styles.folderBulkbar} />
      <div className={styles.folderList}>
        {loading ? (
-         <div className={styles.folderEmpty}>{t('teamSpace.loading')}</div>
+         <div className={styles.folderEmpty}>
+           <CenteredLoader label={t('teamSpace.loading')} />
+         </div>
        ) : folders.length === 0 ? (
          null
        ) : folders.map((folder) => {

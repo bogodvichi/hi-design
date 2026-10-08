@@ -14,6 +14,7 @@ import {
 import { MediaSurface } from './plugins-home/cards/MediaSurface';
 import { canDuplicatePluginPreview } from './plugins-home/duplicate';
 import { PluginDetailsModal } from './PluginDetailsModal';
+import { CenteredLoader } from './Loading';
 import type { PluginUseAction } from './plugins-home/useActions';
 import { useInView } from './plugins-home/useInView';
 import { useWorkspaceContext } from '../collab/useWorkspaceContext';
@@ -93,6 +94,7 @@ export function CommunityView({ onRemixTemplate, onUsePrompt, onUsePlugin }: Com
     trackPageView(analytics.track, { page_name: 'community' });
   }, [analytics.track]);
   const [plugins, setPlugins] = useState<InstalledPluginRecord[]>([]);
+  const [loading, setLoading] = useState(true);
   // The gallery card opens the FULL plugin details modal (Use split action +
   // Share + close) — the same surface the plugin library uses — while the
   // lightweight footer-Remix preview belongs to the creation page's template
@@ -137,9 +139,16 @@ export function CommunityView({ onRemixTemplate, onUsePrompt, onUsePlugin }: Com
     let cancelled = false;
     // `listPlugins` resolves to [] on a failed/aborted fetch, so a daemon that
     // is not up yet simply leaves the grid empty instead of throwing.
-    void listPlugins().then((rows) => {
-      if (!cancelled) setPlugins(rows);
-    });
+    void listPlugins()
+      .then((rows) => {
+        if (!cancelled) setPlugins(rows);
+      })
+      .catch(() => {
+        if (!cancelled) setPlugins([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => { cancelled = true; };
   }, []);
   const templates = useMemo(
@@ -337,8 +346,13 @@ export function CommunityView({ onRemixTemplate, onUsePrompt, onUsePlugin }: Com
       </div>
       </div>
 
-      <div className="community-template-grid">
-        {filteredTemplates.map((template) => (
+      {loading ? (
+        <div className="community-template-view__loading">
+          <CenteredLoader label={t('common.loading')} />
+        </div>
+      ) : (
+        <div className="community-template-grid">
+          {filteredTemplates.map((template) => (
           <article
             key={template.id}
             className="community-template-card is-clickable"
@@ -379,8 +393,9 @@ export function CommunityView({ onRemixTemplate, onUsePrompt, onUsePlugin }: Com
               </div>
             </footer>
           </article>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
       {detailsRecord ? (
         <PluginDetailsModal
           record={detailsRecord}

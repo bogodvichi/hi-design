@@ -3570,6 +3570,11 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   background: var(--bg-subtle);
 }
 .newproj-section { display: flex; flex-direction: column; gap: 6px; }
+.newproj-region-loading {
+  min-height: 56px;
+  display: grid;
+  place-items: center;
+}
 /* -------- "Start from" rail (blank-first scenario templates) --------
    Horizontal card rail on the prototype/deck tabs. The Blank card is
    always first and selected by default; template cards reroute create

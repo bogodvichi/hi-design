@@ -81,7 +81,7 @@ function openOfficialPresets() {
 }
 
 describe('DesignSystemsTab', () => {
-  it('renders structured list and preview skeletons while design systems load', () => {
+  it('renders the shared circular loader while design systems load', () => {
     const { container } = render(
       <DesignSystemsTab
         loading
@@ -93,11 +93,9 @@ describe('DesignSystemsTab', () => {
       />,
     );
 
-    expect(screen.getByTestId('design-systems-sidebar-skeleton')).toBeTruthy();
-    expect(screen.getByTestId('design-systems-preview-skeleton')).toBeTruthy();
-    expect(screen.getByTestId('design-systems-loading-row-0')).toBeTruthy();
+    expect(screen.getByTestId('design-systems-loading')).toBeTruthy();
     expect(screen.getByText('Loading design systems…')).toBeTruthy();
-    expect(container.querySelector('.loading-spinner')).toBeNull();
+    expect(container.querySelector('.loading-spinner')).toBeTruthy();
   });
 
   it('keeps the summary-derived kit visible while the selected system detail resolves', async () => {

@@ -3,6 +3,7 @@ import type { CritiqueState } from './state/reducer';
 import type { ReplaySpeed, ReplayStatus } from './hooks/useCritiqueReplay';
 import { PanelistLane } from './PanelistLane';
 import { ScoreTicker } from './ScoreTicker';
+import { CenteredLoader } from '../Loading';
 
 interface Props {
   state: CritiqueState;
@@ -38,9 +39,7 @@ export function TheaterTranscript({ state, status, error, speed, onSpeedChange }
   if (status === 'loading') {
     return (
       <section className="theater-transcript" data-status="loading" aria-busy="true">
-        <p className="theater-transcript-loading">
-          {t('critiqueTheater.transcriptLoading')}
-        </p>
+        <CenteredLoader label={t('critiqueTheater.transcriptLoading')} />
       </section>
     );
   }

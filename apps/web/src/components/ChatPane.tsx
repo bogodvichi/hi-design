@@ -81,6 +81,7 @@ import {
 } from './NextStepActions';
 import { AmrGuidance } from './AmrGuidance';
 import { AmrLoginPill } from './AmrLoginPill';
+import { CenteredLoader } from './Loading';
 import {
   AMR_LOGIN_STATUS_EVENT,
   amrLoginStatusEventReason,
@@ -2740,7 +2741,7 @@ export function ChatPane({
                 }
               }}
             >
-              {loading ? <ChatConversationLoading t={t} /> : null}
+              {loading ? <CenteredLoader label={t('common.loading')} /> : null}
               {displayMessages.length === 0 && !loading ? (
                 <div className="chat-empty-wrap">
                   {showImportedFolderArtifacts ? (
@@ -3462,24 +3463,6 @@ type AppliedContextItem =
   | { kind: 'plugin'; title: string; pluginId: string }
   | { kind: 'skill'; title: string }
   | { kind: 'design-system'; title: string; system?: DesignSystemSummary };
-
-function ChatConversationLoading({ t }: { t: TranslateFn }) {
-  return (
-    <div className="chat-loading-state" role="status" aria-live="polite">
-      <span className="chat-loading-mark" aria-hidden>
-        <span />
-        <span />
-        <span />
-      </span>
-      <span className="chat-loading-copy">{t('common.loading')}</span>
-      <span className="chat-loading-lines" aria-hidden>
-        <span />
-        <span />
-        <span />
-      </span>
-    </div>
-  );
-}
 
 function ChatRows({
   messages,

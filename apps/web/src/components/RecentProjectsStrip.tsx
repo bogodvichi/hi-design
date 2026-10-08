@@ -75,6 +75,7 @@ import { useInView } from './plugins-home/useInView';
 import { resolveFloatingMenuHorizontalAlign } from '../utils/floating-menu-placement';
 import { ellipsisTitleHoverProps } from '../utils/ellipsis-title';
 import { Toast } from './Toast';
+import { CenteredLoader } from './Loading';
 import {
   installProjectCardDragPreview,
   PROJECT_CARD_MOVE_RESULT_EVENT,
@@ -2225,7 +2226,9 @@ function requestDelete(project: Project) {
        role="list"
      >
        {loading ? (
-         <div className="recent-projects__empty" role="status">{t('common.loading')}</div>
+         <div className="recent-projects__loading">
+           <CenteredLoader label={t('common.loading')} />
+         </div>
        ) : visibleProjects.length === 0 ? (
          emptyContent !== undefined && !effectiveSearchQuery.trim() && ownerFilter === 'all'
            ? emptyContent == null ? null : <div className="recent-projects__empty-content">{emptyContent}</div>

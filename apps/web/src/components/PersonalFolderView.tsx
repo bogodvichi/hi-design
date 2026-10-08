@@ -8,6 +8,7 @@ import type { WorkspaceCollabContext, WorkspaceDirectoryItem } from '@open-desig
 import { Dialog, DialogFooter, DialogTitle } from '@open-design/components';
 import { navigate } from '../router';
 import { Icon } from './Icon';
+import { CenteredLoader } from './Loading';
 import { FolderCardMenu } from './FolderCardMenu';
 import { FolderSelectionCheck } from './FolderSelectionCheck';
 import { MoveToTeamTreeDialog, type TeamTreeSelection } from './MoveToTeamTreeDialog';
@@ -133,11 +134,7 @@ const [showCreateFolder, setShowCreateFolder] = useState(false);
   if (loading) {
     return (
       <section className={styles.view}>
-        <div className={styles.loading}>
-          <span className={styles.loadingDot} />
-          <span className={styles.loadingDot} />
-          <span className={styles.loadingDot} />
-        </div>
+        <CenteredLoader label={t('teamSpace.loading')} />
       </section>
     );
   }

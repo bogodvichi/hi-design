@@ -60,6 +60,8 @@ interface StartedServer {
 const realFetch = globalThis.fetch;
 let baseUrl: string;
 let server: http.Server;
+const originalCodexHome = process.env.CODEX_HOME;
+let testCodexHome: string;
 const FAKE_VELA_FIXTURE = path.resolve(process.cwd(), 'tests', 'fixtures', 'fake-vela.mjs');
 
 function jsonResponse(body: unknown, init?: ResponseInit): Response {
@@ -207,6 +209,9 @@ async function waitForPidToExit(pid: number, timeoutMs = 5_000): Promise<void> {
 }
 
 beforeAll(async () => {
+  // Connection preflight repairs config; never let fake CLIs use the user's home.
+  testCodexHome = await fsp.mkdtemp(path.join(os.tmpdir(), 'od-conn-codex-home-'));
+  process.env.CODEX_HOME = testCodexHome;
   const started = (await startServer({ port: 0, returnServer: true })) as StartedServer;
   baseUrl = started.url;
   server = started.server;
@@ -218,7 +223,12 @@ afterEach(() => {
   amrModelLoadingCache.resetForTests();
 });
 
-afterAll(() => new Promise<void>((resolve) => server.close(() => resolve())));
+afterAll(async () => {
+  await new Promise<void>((resolve) => server.close(() => resolve()));
+  if (originalCodexHome === undefined) delete process.env.CODEX_HOME;
+  else process.env.CODEX_HOME = originalCodexHome;
+  await fsp.rm(testCodexHome, { recursive: true, force: true });
+});
 
 describe('resolveCodexProxyEnv', () => {
   it('prefers refreshed login-shell proxy values and preserves loopback bypasses', () => {
@@ -2938,6 +2948,38 @@ setImmediate(() => process.exit(0));
       await writeAppConfig(process.env.OD_DATA_DIR, {
         agentModels: previousConfig.agentModels ?? null,
       });
+    }
+  });
+
+  it('normalizes legacy Codex config in the configured home before connection testing', async () => {
+    const codexHome = await fsp.mkdtemp(path.join(os.tmpdir(), 'od-conn-test-legacy-'));
+    const configPath = path.join(codexHome, 'config.toml');
+    const original = 'base_url = "https://unused.example"\nwire_api = "responses"\n[mcp_servers.legacy]\ntype = "stdio"\ncommand = "node"\n';
+    await fsp.writeFile(configPath, original);
+    try {
+      await withFakeCodex(`
+const fs = require('node:fs'), path = require('node:path');
+const config = fs.readFileSync(path.join(process.env.CODEX_HOME, 'config.toml'), 'utf8');
+if (/^(base_url|wire_api|type)\\s*=/m.test(config)) {
+  console.error('unknown configuration field');
+  process.exit(1);
+}
+console.log(JSON.stringify({ type: 'item.completed', item: { type: 'agent_message', text: 'ok' } }));
+setImmediate(() => process.exit(0));
+`, async () => {
+        const res = await realFetch(`${baseUrl}/api/test/connection`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ mode: 'agent', agentId: 'codex', agentCliEnv: { codex: { CODEX_HOME: codexHome } } }),
+        });
+        expect(res.status).toBe(200);
+        await expect(res.json()).resolves.toMatchObject({ ok: true, kind: 'success' });
+        const patched = await fsp.readFile(configPath, 'utf8');
+        expect(patched.match(/# HiDesign: ignored by Codex;/g)).toHaveLength(3);
+        expect(patched).toContain('command = "node"');
+      });
+    } finally {
+      await fsp.rm(codexHome, { recursive: true, force: true });
     }
   });
 

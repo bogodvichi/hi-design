@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from '@open-design/components';
 import { Icon } from './Icon';
+import { CenteredLoader } from './Loading';
 import { useI18n, useT } from '../i18n';
 import { activateWorkspaceResource, openWorkspaceTab } from './WorkspaceTabsBar';
 import { AI_RESEARCH_RESOURCE_KEY } from './AiResearchWorkspaceFrame';
@@ -332,7 +333,11 @@ export function CloudToolList({
     : tools;
 
   if (loading) {
-    return <div className={styles.cloudSkillLoading}>{t('personalScope.cloudToolLoading' as any)}</div>;
+    return (
+      <div className={styles.cloudSkillLoading}>
+        <CenteredLoader label={t('personalScope.cloudToolLoading' as any)} />
+      </div>
+    );
   }
 
   if (error && tools.length === 0) {

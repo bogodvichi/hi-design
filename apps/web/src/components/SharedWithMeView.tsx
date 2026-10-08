@@ -13,6 +13,7 @@ import { navigate } from '../router';
 import type { SharedWithMeProject, WorkspaceDirectoryItem } from '@open-design/contracts';
 import type { ProjectTitleHint } from './EntryShell';
 import { Icon, type IconName } from './Icon';
+import { CenteredLoader } from './Loading';
 import { RecentProjectsStrip } from './RecentProjectsStrip';
 import { FolderCardMenu } from './FolderCardMenu';
 import { CloudSkillList } from './CloudSkillList';
@@ -806,11 +807,7 @@ export function SharedFolderView({
   if (loading) {
     return (
       <section className={styles.view}>
-        <div className={styles.loading}>
-          <span className={styles.loadingDot} />
-          <span className={styles.loadingDot} />
-          <span className={styles.loadingDot} />
-        </div>
+        <CenteredLoader label={t('teamSpace.loading')} />
       </section>
     );
   }

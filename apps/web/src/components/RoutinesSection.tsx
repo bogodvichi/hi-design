@@ -10,6 +10,7 @@ import type {
 } from '@open-design/contracts';
 
 import { Icon } from './Icon';
+import { CenteredLoader } from './Loading';
 import { navigate } from '../router';
 import { useT } from '../i18n';
 import { localizeRunFailureReason } from '../i18n/runErrors';
@@ -845,7 +846,9 @@ export function RoutinesSection({ onClose }: RoutinesSectionProps) {
       ) : null}
 
       {loading ? (
-        <div className="routines-empty">{t('routines.loading')}</div>
+        <div className="routines-loading">
+          <CenteredLoader label={t('routines.loading')} />
+        </div>
       ) : routines.length === 0 ? (
         <div className="routines-empty">
           <strong>{t('routines.empty')}</strong>

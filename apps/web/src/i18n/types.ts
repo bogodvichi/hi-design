@@ -3176,10 +3176,6 @@ export interface Dict {
 
   // Project view / chat pane / composer
   'project.backToProjects': string;
-  'project.restoreAutomaticScenario': string;
-  'project.restoreAutomaticScenarioConfirm': string;
-  'project.restoreAutomaticScenarioBusy': string;
-  'project.restoreAutomaticScenarioFailed': string;
   'project.brandReadyTitle': string;
   'project.brandReadyTitleGeneric': string;
   'project.brandReadyCta': string;

@@ -15,6 +15,7 @@ import {
 } from '../i18n/content';
 import { fetchSkill } from '../providers/registry';
 import { Icon } from './Icon';
+import { CenteredLoader } from './Loading';
 import { useWorkspaceContext } from '../collab/useWorkspaceContext';
 
 interface Props {
@@ -182,7 +183,7 @@ export function SkillDetailView({
           {t('skillDetail.markdownNotice')}
         </div>
         {loading ? (
-          <p role="status">{t('settings.libraryLoading')}</p>
+          <CenteredLoader label={t('settings.libraryLoading')} />
         ) : null}
         {loadFailed ? (
           <>

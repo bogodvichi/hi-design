@@ -5,8 +5,60 @@ import { describe, expect, it, vi } from "vitest";
 import {
   codexStandaloneBinDir,
   ensureCodexCliForInstalledCodex,
+  resolveCodexCliUpdaterEnv,
   scheduleCodexCliCheckAfterStartup,
 } from "../src/codex-cli-bootstrap.js";
+
+describe("resolveCodexCliUpdaterEnv", () => {
+  it("waits asynchronously for a slow login shell and forwards only normalized proxy keys", async () => {
+    vi.useFakeTimers();
+    try {
+      const readLoginShell = vi.fn(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 3_750));
+        return "HTTPS_PROXY=http://proxy.example:8080\nNO_PROXY=.example\nTOKEN=not-a-proxy\n";
+      });
+      const baseEnv = { PATH: "/usr/bin", SHELL: "/bin/zsh" };
+      const promise = resolveCodexCliUpdaterEnv(baseEnv, { platform: "darwin", readLoginShell });
+      await vi.advanceTimersByTimeAsync(3_749);
+      expect(readLoginShell).toHaveBeenCalledWith("/bin/zsh", baseEnv);
+      await vi.advanceTimersByTimeAsync(1);
+      const updatedEnv = await promise;
+      expect(updatedEnv).toMatchObject({
+        PATH: "/usr/bin",
+        HTTPS_PROXY: "http://proxy.example:8080",
+        https_proxy: "http://proxy.example:8080",
+      });
+      expect(updatedEnv.NO_PROXY).toContain(".example");
+      expect(updatedEnv.TOKEN).toBeUndefined();
+      expect("HTTPS_PROXY" in baseEnv).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not re-read login shell when an HTTPS proxy is already configured", async () => {
+    const readLoginShell = vi.fn();
+    const env = { HTTPS_PROXY: "http://proxy.example:8080" };
+    expect(await resolveCodexCliUpdaterEnv(env, { platform: "darwin", readLoginShell })).toBe(env);
+    expect(readLoginShell).not.toHaveBeenCalled();
+  });
+
+  it("keeps existing environment if shell proxy discovery fails", async () => {
+    const env = { PATH: "/usr/bin", SHELL: "/bin/zsh" };
+    const result = await resolveCodexCliUpdaterEnv(env, {
+      platform: "darwin",
+      readLoginShell: async () => { throw new Error("login shell timeout"); },
+    });
+    expect(result).toBe(env);
+  });
+
+  it("does not try POSIX login shell on Windows", async () => {
+    const readLoginShell = vi.fn();
+    const env = { PATH: "C:\\Windows\\System32" };
+    expect(await resolveCodexCliUpdaterEnv(env, { platform: "win32", readLoginShell })).toBe(env);
+    expect(readLoginShell).not.toHaveBeenCalled();
+  });
+});
 
 describe("scheduleCodexCliCheckAfterStartup", () => {
   it("defers the CLI check, does not await its completion, and never checks periodically", async () => {
@@ -147,6 +199,7 @@ describe("ensureCodexCliForInstalledCodex", () => {
       ["-c", "curl -fsSL https://chatgpt.com/codex/install.sh | sh"],
       expect.objectContaining({
         CODEX_NON_INTERACTIVE: "1",
+        CODEX_INSTALLER_USE_RELEASES_OPENAI_COM: "0",
         HTTPS_PROXY: "http://proxy.corp:8080",
         NO_PROXY: "localhost,127.0.0.1,[::1]",
       }),
@@ -178,7 +231,10 @@ describe("ensureCodexCliForInstalledCodex", () => {
     expect(runInstaller).toHaveBeenCalledWith(
       "powershell.exe",
       expect.arrayContaining(["irm https://chatgpt.com/codex/install.ps1 | iex"]),
-      expect.objectContaining({ CODEX_NON_INTERACTIVE: "1" }),
+      expect.objectContaining({
+        CODEX_NON_INTERACTIVE: "1",
+        CODEX_INSTALLER_USE_RELEASES_OPENAI_COM: "0",
+      }),
     );
   });
 

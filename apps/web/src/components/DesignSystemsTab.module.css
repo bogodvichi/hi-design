@@ -12,6 +12,17 @@
   width: 100%;
 }
 
+.regionLoading,
+.detailLoading {
+  min-height: 320px;
+  display: grid;
+  place-items: center;
+}
+
+.detailLoading {
+  min-height: 420px;
+}
+
 .pageHeader {
   display: flex;
   align-items: center;

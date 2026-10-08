@@ -12,6 +12,20 @@ import {
 describe('codex buildArgs session resume', () => {
   const THREAD = '019eef4f-7409-7c82-bebe-30504eed3959';
 
+  it('places the full catalog override inside exec/resume, before the resume id', () => {
+    for (const resumeSessionId of [undefined, THREAD]) {
+      const args = codexAgentDef.buildArgs('prompt', [], [], {}, {
+        codexModelCatalogPath: '/data/full catalog.json',
+        ...(resumeSessionId ? { resumeSessionId } : {}),
+      });
+      expect(args[0]).toBe('exec');
+      const index = args.indexOf('model_catalog_json="/data/full catalog.json"');
+      expect(index).toBeGreaterThan(args.indexOf('resume'));
+      expect(args[index - 1]).toBe('-c');
+      if (resumeSessionId) expect(args.at(-1)).toBe(THREAD);
+    }
+  });
+
   it('injects managed stdio bridges through per-run config args', () => {
     const args = codexAgentDef.buildArgs('prompt', [], [], {}, {
       mcpBridges: [

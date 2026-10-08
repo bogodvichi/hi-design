@@ -493,56 +493,6 @@
 .chat-log.is-loading {
   position: relative;
 }
-.chat-loading-state {
-  min-height: 220px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  color: var(--text-muted);
-  animation: chat-loading-enter 200ms cubic-bezier(0.23, 1, 0.32, 1);
-}
-.chat-loading-mark {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 22px;
-}
-.chat-loading-mark span {
-  width: 6px;
-  height: 6px;
-  border-radius: var(--radius-pill);
-  background: var(--accent);
-  opacity: 0.32;
-  animation: chat-loading-dot 900ms cubic-bezier(0.23, 1, 0.32, 1) infinite;
-}
-.chat-loading-mark span:nth-child(2) { animation-delay: 120ms; }
-.chat-loading-mark span:nth-child(3) { animation-delay: 240ms; }
-.chat-loading-copy {
-  font-size: 12px;
-  font-weight: 600;
-}
-.chat-loading-lines {
-  width: min(260px, 72%);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.chat-loading-lines span {
-  height: 8px;
-  border-radius: var(--radius-pill);
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--text-muted) 10%, transparent),
-    color-mix(in srgb, var(--text-muted) 18%, transparent),
-    color-mix(in srgb, var(--text-muted) 10%, transparent)
-  );
-  background-size: 200% 100%;
-  animation: chat-loading-sheen 1100ms cubic-bezier(0.23, 1, 0.32, 1) infinite;
-}
-.chat-loading-lines span:nth-child(2) { width: 82%; }
-.chat-loading-lines span:nth-child(3) { width: 58%; }
 .chat-virtual-spacer {
   position: relative;
   flex: 0 0 auto;
@@ -559,19 +509,6 @@
   min-width: 0;
   will-change: transform;
 }
-@keyframes chat-loading-enter {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@keyframes chat-loading-dot {
-  0%, 70%, 100% { opacity: 0.3; transform: translateY(0); }
-  35% { opacity: 1; transform: translateY(-4px); }
-}
-@keyframes chat-loading-sheen {
-  from { background-position: 140% 0; }
-  to { background-position: -60% 0; }
-}
-
 /* -------- Messages -------------------------------------------------- */
 .msg {
   padding: 0;

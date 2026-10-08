@@ -46,6 +46,77 @@ import {
 // ---------------------------------------------------------------------------
 
 describe('normalizeCodexConfigContent', () => {
+  it('comments out the three ignored legacy fields without changing provider or MCP behavior', () => {
+    const input = [
+      'base_url = "https://legacy.example/v1" # ignored at root',
+      "wire_api = 'responses'",
+      'model_provider = "custom"',
+      '[model_providers.custom]',
+      'base_url = "https://active.example/v1"',
+      'wire_api = "responses"',
+      '[mcp_servers.iux-aibuilder-mcp]',
+      'type = "stdio"',
+      'command = "node"',
+      'args = ["server.js"]',
+      '[mcp_servers.iux-aibuilder-mcp.env]',
+      'type = "application-data"',
+      'base_url = "https://mcp.example"',
+      '',
+    ].join('\r\n');
+    const expected = input
+      .replace('base_url = "https://legacy', '# HiDesign: ignored by Codex; base_url = "https://legacy')
+      .replace("wire_api = 'responses'", "# HiDesign: ignored by Codex; wire_api = 'responses'")
+      .replace('type = "stdio"', '# HiDesign: ignored by Codex; type = "stdio"');
+    expect(normalizeCodexConfigContent(input)).toBe(expected);
+    expect(normalizeCodexConfigContent(expected)).toBeNull();
+  });
+
+  it('handles quoted MCP names and keys while preserving unknown future options', () => {
+    const input = [
+      '"base_url" = "https://legacy.example"',
+      "'wire_api' = 'responses'",
+      'future_option = true',
+      '[mcp_servers."name.with.dots"] # transport is inferred from url',
+      '"type" = "http"',
+      'url = "https://mcp.example"',
+      '[mcp_servers."name.with.dots".http_headers]',
+      'type = "header-value"',
+    ].join('\n');
+    const result = normalizeCodexConfigContent(input);
+    expect(result).toBe(input
+      .replace('"base_url" =', '# HiDesign: ignored by Codex; "base_url" =')
+      .replace("'wire_api' =", "# HiDesign: ignored by Codex; 'wire_api' =")
+      .replace('"type" =', '# HiDesign: ignored by Codex; "type" ='));
+  });
+
+  it.each(['"""', "'''"])('preserves apparent keys and table headers inside %s strings', (quote) => {
+    const input = [
+      `instructions = ${quote}`,
+      'base_url = "example text"',
+      '[mcp_servers.example]',
+      'type = "stdio"',
+      quote,
+      'wire_api = "responses"',
+      '[mcp_servers.real]',
+      `notes = ${quote}`,
+      '[model_providers.example]',
+      'type = "example text"',
+      quote,
+      'type = "stdio"',
+      'command = "node"',
+    ].join('\n');
+    expect(normalizeCodexConfigContent(input)).toBe(input
+      .replace('wire_api = "responses"', '# HiDesign: ignored by Codex; wire_api = "responses"')
+      .replace('type = "stdio"\ncommand', '# HiDesign: ignored by Codex; type = "stdio"\ncommand'));
+  });
+
+  it('does not normalize matching keys inside inline tables in arrays', () => {
+    const input = 'items = [\n{\nbase_url = "data"\n}\n]\nwire_api = "responses"';
+    expect(normalizeCodexConfigContent(input)).toBe(input.replace(
+      'wire_api = "responses"', '# HiDesign: ignored by Codex; wire_api = "responses"',
+    ));
+  });
+
   it('removes the service_tier line when the value is "priority" (double quotes)', () => {
     const input = `[model]\nservice_tier = "priority"\nmodel = "gpt-5.5"\n`;
     const result = normalizeCodexConfigContent(input);
@@ -285,6 +356,20 @@ describe('normalizeCodexConfigFile', () => {
 
   afterEach(() => {
     rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('retains ignored values as comments on disk and does not rewrite on the next launch', async () => {
+    const configPath = join(tmpDir, 'config.toml');
+    const original = 'base_url = "https://unused.example"\nwire_api = "responses"\n[mcp_servers.legacy]\ntype = "stdio"\ncommand = "node"\n';
+    writeFileSync(configPath, original, { mode: 0o600 });
+    await normalizeCodexConfigFile({ CODEX_HOME: tmpDir });
+    const patched = readFileSync(configPath, 'utf8');
+    expect(patched.match(/# HiDesign: ignored by Codex;/g)).toHaveLength(3);
+    expect(patched.replaceAll('# HiDesign: ignored by Codex; ', '')).toBe(original);
+    if (process.platform !== 'win32') expect(statSync(configPath).mode & 0o777).toBe(0o600);
+    const before = statSync(configPath).mtimeMs;
+    await normalizeCodexConfigFile({ CODEX_HOME: tmpDir });
+    expect(statSync(configPath).mtimeMs).toBe(before);
   });
 
   it('removes service_tier="priority" from config.toml (bug #4276 regression)', async () => {

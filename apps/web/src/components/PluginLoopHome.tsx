@@ -23,6 +23,7 @@ import { localizePluginDescription, localizePluginTitle } from './plugins-home/l
 import type { PluginUseAction } from './plugins-home/useActions';
 import { Icon } from './Icon';
 import { PluginDetailsModal } from './PluginDetailsModal';
+import { CenteredLoader } from './Loading';
 import { TrustBadge } from './TrustBadge';
 import { authorInitials, derivePluginSourceLinks } from '../runtime/plugin-source';
 import { useAnalytics } from '../analytics/provider';
@@ -295,7 +296,9 @@ export function PluginLoopHome({ onSubmit }: Props) {
       </div>
       <div className="plugin-loop-home__grid" role="list">
         {loading ? (
-          <div className="plugin-loop-home__empty">Loading plugins…</div>
+          <div className="plugin-loop-home__loading">
+            <CenteredLoader label={t('pluginsView.loading')} />
+          </div>
         ) : sortedPlugins.length === 0 ? (
           <div className="plugin-loop-home__empty">
             No plugins installed. Install one with{' '}

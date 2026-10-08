@@ -38,6 +38,8 @@ describe('codex app-server transport integration', () => {
   it('reuses one app-server process and resumes its thread on turn two', async () => {
     dir = await mkdtemp(path.join(os.tmpdir(), 'od-codex-app-server-'));
     const { bin, log } = await writeFake(dir);
+    // Upgrade compatibility must run before the persistent app-server reads config.
+    await writeFile(path.join(dir, 'config.toml'), 'base_url = "https://unused.example"\nwire_api = "responses"\n[mcp_servers.legacy]\ntype = "stdio"\ncommand = "node"\n');
     process.env.OD_CODEX_TRANSPORT = 'app-server';
     process.env.OD_PROMPT_CORE = 'native';
 
@@ -66,9 +68,12 @@ describe('codex app-server transport integration', () => {
       agentTransport: 'app-server',
       agentTransportFallbackReason: null,
     });
+    const normalizedConfig = await readFile(path.join(dir, 'config.toml'), 'utf8');
+    expect(normalizedConfig.match(/# HiDesign: ignored by Codex;/g)).toHaveLength(3);
 
     const second = await run(started.url, projectId, project.conversationId, 'second');
     expect(second).toMatchObject({ status: 'succeeded', agentTransport: 'app-server' });
+    expect(await readFile(path.join(dir, 'config.toml'), 'utf8')).toBe(normalizedConfig);
 
     const records = (await readFile(log, 'utf8')).trim().split('\n').filter(Boolean)
       .map((line) => JSON.parse(line) as { kind: string; argv?: string[]; method?: string });
@@ -133,6 +138,7 @@ if(argv.includes('--help')){console.log('Usage: codex exec');process.exit(0)}
 if(argv.includes('debug')&&argv.includes('models')){console.log(JSON.stringify({models:[{slug:'gpt-test',display_name:'GPT Test',visibility:'list'}]}));process.exit(0)}
 if(argv.includes('login')&&argv.includes('status')){console.log('Logged in using ChatGPT');process.exit(0)}
 if(!argv.includes('app-server')) process.exit(2);
+if (/^(base_url|wire_api|type)\\s*=/m.test(fs.readFileSync(require('node:path').join(process.env.CODEX_HOME,'config.toml'),'utf8'))) process.exit(3);
 let buf='',turn=0;
 const send=x=>process.stdout.write(JSON.stringify(x)+'\\n');
 process.stdin.setEncoding('utf8');

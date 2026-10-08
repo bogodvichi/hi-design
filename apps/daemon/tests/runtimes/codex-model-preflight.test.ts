@@ -15,6 +15,7 @@ import {
   extractCodexRootModelConfig,
   parseStableCodexVersion,
   preflightCodexDefaultModel,
+  resolveCodexDefaultCatalogConfig,
 } from '../../src/runtimes/codex-model-preflight.js';
 
 const { statPathFixtures } = vi.hoisted(() => ({
@@ -40,6 +41,30 @@ describe('Codex model capability preflight', () => {
         rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 }),
       ),
     );
+  });
+
+  it('leaves custom catalogs, providers, profiles, and auth overrides with Codex', async () => {
+    for (const config of [
+      'model_catalog_json = "/custom/models.json"',
+      'model_provider = "custom"',
+      'profile = "work"',
+      'chatgpt_base_url = "https://example.invalid"',
+      'cli_auth_credentials_store = "keyring"',
+    ]) {
+      const fixture = await createFixture({ config });
+      expect(await resolveCodexDefaultCatalogConfig(
+        { CODEX_HOME: fixture.codexHome }, fixture.projectRoot,
+      )).toBeNull();
+    }
+    const fixture = await createFixture({ config: 'model = "test-model"' });
+    expect(await resolveCodexDefaultCatalogConfig(
+      { CODEX_HOME: fixture.codexHome, OPENAI_API_KEY: 'key' }, fixture.projectRoot,
+    )).toBeNull();
+    await mkdir(path.join(fixture.projectRoot, '.codex'));
+    await writeFile(path.join(fixture.projectRoot, '.codex/config.toml'), 'model = "other"');
+    expect(await resolveCodexDefaultCatalogConfig(
+      { CODEX_HOME: fixture.codexHome }, fixture.projectRoot,
+    )).toBeNull();
   });
 
   it('reads only root model settings and detects compatibility overlays', () => {

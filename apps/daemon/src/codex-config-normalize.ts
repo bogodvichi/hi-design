@@ -21,8 +21,7 @@
 //
 // The CLI parses config.toml before processing any -c flag overrides, so the
 // only way to prevent the exit is to fix the file on disk. The edit is
-// intentionally scoped: only standalone `service_tier` key lines are touched;
-// everything else in config.toml is preserved verbatim.
+// intentionally scoped to known incompatible fields.
 //
 // The normalizer also removes nested `[features.*]` tables. Current Codex CLI
 // configs model `[features]` as a map of boolean flags; a nested table makes a
@@ -31,7 +30,8 @@
 //   invalid type: map, expected a boolean in `features`
 //
 // The normalization is idempotent: if the file is absent, or if no invalid
-// service_tier value or nested features table is present, it is left unchanged.
+// service_tier value, nested features table, or ignored legacy key is present,
+// it is left unchanged.
 
 import { randomBytes } from 'node:crypto';
 import { rename, readFile, unlink, writeFile } from 'node:fs/promises';
@@ -208,6 +208,62 @@ function removeNestedFeaturesTables(content: string): string | null {
 }
 
 /**
+ * Preserve ignored legacy settings as comments, without activating an old URL
+ * or changing the selected provider. Provider-scoped base_url/wire_api and MCP
+ * env/header fields remain intact. Unknown future settings are not filtered.
+ */
+function commentIgnoredCodexKeys(content: string): string | null {
+  let scope = '';
+  let quote = '';
+  let depth = 0;
+  let changed = false;
+  const lines = splitLinesPreservingEndings(content).map((line) => {
+    // Only inspect complete assignments outside multiline strings/containers.
+    if (!quote && depth === 0) {
+      if (line.trimStart().startsWith('[')) {
+        scope = tableHeaderName(line) ?? '<unknown>';
+      } else {
+        const key = line.match(/^\s*(?:([\w-]+)|"([\w-]+)"|'([\w-]+)')\s*=/);
+        const name = key?.[1] ?? key?.[2] ?? key?.[3];
+        const isMcpServer = /^mcp_servers\s*\.\s*(?:[\w-]+|"(?:[^"\\]|\\.)*"|'[^']*')$/.test(scope);
+        const ignored = (scope === '' && (name === 'base_url' || name === 'wire_api'))
+          || (isMcpServer && name === 'type');
+        // Limit automatic repair to scalar string assignments. Complex values
+        // still reach Codex diagnostics rather than risking a partial edit.
+        if (ignored && /^\s*(?:[\w-]+|"[\w-]+"|'[\w-]+')\s*=\s*(?:"(?:[^"\\\r\n]|\\.)*"|'[^'\r\n]*')\s*(?:#[^\r\n]*)?(?:\r?\n)?$/.test(line)) {
+          changed = true;
+          return `# HiDesign: ignored by Codex; ${line}`;
+        }
+      }
+    }
+    // Track TOML strings and containers so example text cannot change scope.
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i]!;
+      if (quote) {
+        if (quote.startsWith('"') && ch === '\\') { i++; continue; }
+        if (line.startsWith(quote, i)) {
+          i += quote.length - 1;
+          // A multiline string may end with one or two additional quotes.
+          if (quote.length === 3) while (line[i + 1] === ch) i++;
+          quote = '';
+        }
+      } else if (ch === '#') {
+        break;
+      } else if (ch === '"' || ch === "'") {
+        quote = line.startsWith(ch.repeat(3), i) ? ch.repeat(3) : ch;
+        i += quote.length - 1;
+      } else if (ch === '[' || ch === '{') {
+        depth++;
+      } else if (ch === ']' || ch === '}') {
+        depth--;
+      }
+    }
+    return line;
+  });
+  return changed ? lines.join('') : null;
+}
+
+/**
  * Normalize the `service_tier` field in a config.toml string.
  *
  * Any standalone `service_tier` key line whose value is not in
@@ -216,6 +272,7 @@ function removeNestedFeaturesTables(content: string): string | null {
  *
  * Any nested `[features.*]` table is also removed because current Codex CLI
  * configs expect `[features]` entries to be booleans, not maps.
+ * Ignored root base_url/wire_api and MCP type strings are retained as comments.
  *
  * Returns `null` when nothing needed to change, otherwise the patched content.
  */
@@ -261,7 +318,9 @@ export function normalizeCodexConfigContent(content: string): string | null {
     changed = true;
   }
 
-  return changed ? (featuresPatched ?? serviceTierPatched) : null;
+  const normalized = featuresPatched ?? serviceTierPatched;
+  const legacyPatched = commentIgnoredCodexKeys(normalized);
+  return legacyPatched ?? (changed ? normalized : null);
 }
 
 /**
@@ -276,7 +335,12 @@ export interface CodexConfigIO {
   unlink: (path: string) => Promise<void>;
 }
 
-const defaultIO: CodexConfigIO = { readFile, writeFile, rename, unlink };
+const defaultIO: CodexConfigIO = {
+  readFile,
+  writeFile: (file, data, encoding) => writeFile(file, data, { encoding, mode: 0o600 }),
+  rename,
+  unlink,
+};
 
 /**
  * Read `~/<codex-home>/config.toml`, normalize any stale `service_tier`

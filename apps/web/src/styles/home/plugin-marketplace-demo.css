@@ -878,6 +878,10 @@
   background: color-mix(in srgb, var(--text) 2%, transparent);
 }
 
+.plugin-marketplace__loading {
+  min-height: 180px;
+}
+
 .plugin-marketplace__empty strong {
   color: var(--text-strong);
   font-size: 14px;
@@ -1463,6 +1467,10 @@
   align-items: stretch;
 }
 
+.community-template-view__loading {
+  min-height: 240px;
+}
+
 .community-template-card {
   min-width: 0;
   display: flex;
@@ -1813,8 +1821,6 @@
     display: none;
   }
 }
-
-
 
 
 

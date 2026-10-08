@@ -1,15 +1,73 @@
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { constants } from "node:fs";
 import { access, stat } from "node:fs/promises";
 import { homedir } from "node:os";
 import path from "node:path";
+import { mergeProxyAwareEnv } from "@open-design/platform";
 
-const CODEX_INSTALL_TIMEOUT_MS = 120_000;
+// GitHub Releases is selected below to avoid the official release CDN's
+// hardcoded 300-second asset download limit. Give slower enterprise networks
+// enough time to download, verify, and extract the official package.
+// Installation remains background-only and never delays desktop startup.
+const CODEX_INSTALL_TIMEOUT_MS = 45 * 60 * 1000;
 const CODEX_VERSION_CHECK_TIMEOUT_MS = 8_000;
 const CODEX_LOCAL_VERSION_TIMEOUT_MS = 5_000;
+const CODEX_PROXY_LOGIN_SHELL_TIMEOUT_MS = 8_000;
 const CODEX_CHECK_AFTER_READY_DELAY_MS = 5_000;
 const CODEX_LATEST_RELEASE_URL = "https://releases.openai.com/codex/channels/latest";
 const CODEX_GITHUB_RELEASE_URL = "https://api.github.com/repos/openai/codex/releases/latest";
+
+const CODEX_PROXY_ENV_KEYS = new Set([
+  "all_proxy", "http_proxy", "https_proxy", "no_proxy", "node_use_env_proxy",
+]);
+
+/**
+ * The packaged startup's synchronous (2s) login-shell probe can miss
+ * company proxy exports when zsh initialization takes longer. The CLI
+ * updater runs after the UI is ready, so retry that probe asynchronously
+ * here without delaying rendering or introducing a periodic refresh.
+ */
+export async function resolveCodexCliUpdaterEnv(
+  baseEnv: NodeJS.ProcessEnv,
+  options: {
+    platform?: NodeJS.Platform;
+    readLoginShell?: (shell: string, env: NodeJS.ProcessEnv) => Promise<string>;
+  } = {},
+): Promise<NodeJS.ProcessEnv> {
+  const platform = options.platform ?? process.platform;
+  if (platform === "win32" || [
+    baseEnv.HTTPS_PROXY, baseEnv.https_proxy, baseEnv.ALL_PROXY, baseEnv.all_proxy,
+  ].some((value) => Boolean(value?.trim()))) {
+    return baseEnv;
+  }
+
+  const shell = baseEnv.SHELL?.trim() || (platform === "darwin" ? "/bin/zsh" : "/bin/sh");
+  try {
+    const stdout = await (options.readLoginShell ?? ((command, env) =>
+      new Promise<string>((resolve, reject) => {
+        execFile(command, ["-ilc", "command env"], {
+          encoding: "utf8",
+          env,
+          timeout: CODEX_PROXY_LOGIN_SHELL_TIMEOUT_MS,
+          maxBuffer: 1024 * 1024,
+          windowsHide: true,
+        }, (error, output) => error ? reject(error) : resolve(output));
+      })))(shell, baseEnv);
+    const shellProxyEnv: NodeJS.ProcessEnv = {};
+    for (const line of stdout.split(/\r?\n/)) {
+      const separator = line.indexOf("=");
+      if (separator <= 0) continue;
+      const key = line.slice(0, separator);
+      if (CODEX_PROXY_ENV_KEYS.has(key.toLowerCase())) {
+        shellProxyEnv[key] = line.slice(separator + 1);
+      }
+    }
+    return mergeProxyAwareEnv(platform, baseEnv, shellProxyEnv);
+  } catch {
+    // Do not change the CLI installer environment on timeout or shell errors.
+    return baseEnv;
+  }
+}
 
 /**
  * Perform a single best-effort CLI check only after the packaged UI is ready.
@@ -277,6 +335,9 @@ export async function ensureCodexCliForInstalledCodex(
     await (options.runInstaller ?? defaultRunInstaller)(command, args, {
       ...env,
       CODEX_NON_INTERACTIVE: "1",
+      // The official install scripts support this switch; keep their own
+      // release metadata and integrity verification instead of forking them.
+      CODEX_INSTALLER_USE_RELEASES_OPENAI_COM: "0",
     });
     // The official installer writes to ~/.local/bin (or LOCALAPPDATA on Windows).
     // Do not rediscover the stale PATH/CODEX_BIN binary after updating it.

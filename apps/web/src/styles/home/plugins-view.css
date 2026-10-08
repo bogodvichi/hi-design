@@ -681,6 +681,10 @@
   text-align: center;
 }
 
+.plugins-view__loading {
+  min-height: 180px;
+}
+
 .plugins-view__notice {
   padding: 10px 12px;
   border: 1px solid var(--border);

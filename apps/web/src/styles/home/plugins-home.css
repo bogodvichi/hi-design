@@ -150,6 +150,10 @@
   border-radius: var(--radius);
   text-align: center;
 }
+
+.plugins-home__loading {
+  min-height: 180px;
+}
 .plugins-home__empty code {
   font-size: 12px;
   background: var(--bg-subtle);

@@ -15,6 +15,7 @@ import { listPlugins } from '../state/projects';
 import { navigate } from '../router';
 import { useI18n } from '../i18n';
 import { localizePluginDescription, localizePluginTitle } from './plugins-home/localization';
+import { CenteredLoader } from './Loading';
 
 interface Marketplace {
   id: string;
@@ -80,7 +81,9 @@ export function MarketplaceView() {
       </header>
 
       {loading ? (
-        <div className="marketplace-view__loading">{t('common.loading')}</div>
+        <div className="marketplace-view__loading">
+          <CenteredLoader label={t('common.loading')} />
+        </div>
       ) : null}
 
       <section className="marketplace-view__grid" data-testid="marketplace-grid">

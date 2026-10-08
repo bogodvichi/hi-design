@@ -17,6 +17,7 @@
 // contracts so Settings and daemon-side checks reject the same hosts.
 
 import { spawn } from 'node:child_process';
+import { normalizeCodexConfigFile } from './codex-config-normalize.js';
 import { promises as dnsPromises, lookup as dnsLookupCb } from 'node:dns';
 import { promises as fsp } from 'node:fs';
 import os from 'node:os';
@@ -2688,6 +2689,7 @@ async function testAgentConnectionInternal(
       ...baseEnv,
       ...(mmdRouteLaunchEnv || {}),
     }, executableResolution);
+    if (input.agentId === 'codex') await normalizeCodexConfigFile(env);
     model = await resolveConnectionTestModelForAgent(
       def,
       model,

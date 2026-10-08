@@ -29,6 +29,7 @@ import { communityOriginProjectId, communityOriginProjectName, projectFallbackVi
 import type { MarketplacePluginEntry, ProjectPublishCommunityResponse } from '@open-design/contracts';
 import type { WorkspaceDirectoryItem } from '@open-design/contracts';
 import { Icon, type IconName } from './Icon';
+import { CenteredLoader } from './Loading';
 import { useI18n, useT } from '../i18n';
 import type { Dict } from '../i18n/types';
 import { navigate } from '../router';
@@ -559,10 +560,8 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
 
   if (loading) {
     return (
-      <div className={styles.loading}>
-        <span className={styles.loadingDot} />
-        <span className={styles.loadingDot} />
-        <span className={styles.loadingDot} />
+      <div className={styles.folderEmpty}>
+        <CenteredLoader label={t('squareScope.loading')} />
       </div>
     );
   }

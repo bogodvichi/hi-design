@@ -37,6 +37,7 @@ import type {
 import { DesignSystemPicker } from './DesignSystemPicker';
 import type { SkillSummary } from '../types';
 import { Icon, type IconName } from './Icon';
+import { Spinner } from './Loading';
 import { useAnalytics } from '../analytics/provider';
 import {
   trackContextLinkResult,
@@ -1581,7 +1582,9 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
             </div>
             <div className="home-hero__plugin-picker-results">
               {visibleLoading && visiblePickerOptions.length === 0 ? (
-                <div className="home-hero__plugin-picker-empty">{t('homeHero.loadingContext')}</div>
+                <div className="home-hero__plugin-picker-empty">
+                  <Spinner size={16} label={t('homeHero.loadingContext')} />
+                </div>
               ) : null}
               {!visibleLoading && visiblePickerOptions.length === 0 ? (
                 <div className="home-hero__plugin-picker-empty">

@@ -3,6 +3,7 @@ import { execAgentFile } from './invocation.js';
 import { AGENT_DEFS } from './registry.js';
 import {
   DEFAULT_MODEL_OPTION,
+  forgetRememberedLiveModels,
   getRememberedLiveModels,
   mergeFallbackModelMetadata,
   rememberLiveModels,
@@ -63,6 +64,30 @@ const detectedRuntimeCapabilityProbes = new Map<
   string,
   Promise<RuntimeCapabilityMap | null>
 >();
+// An install can finish while a --version/--help probe is in flight. Generation
+// checks prevent that old probe from repopulating the freshly-cleared cache.
+const runtimeProbeGenerations = new Map<string, number>();
+
+function runtimeProbeGeneration(agentId: string): number {
+  return runtimeProbeGenerations.get(agentId) ?? 0;
+}
+
+/** Drop only the updated agent's discovery data; all other CLIs keep their cache. */
+export function invalidateDetectedRuntimeForAgent(agentId: string): void {
+  runtimeProbeGenerations.set(agentId, runtimeProbeGeneration(agentId) + 1);
+  detectedRuntimeVersions.delete(agentId);
+  detectedRuntimeVersionScopes.delete(agentId);
+  detectedRuntimeCapabilityScopes.delete(agentId);
+  agentCapabilities.delete(agentId);
+  forgetRememberedLiveModels(agentId);
+  for (const key of detectedRuntimeVersionProbes.keys()) {
+    if (key.startsWith(agentId + ":")) detectedRuntimeVersionProbes.delete(key);
+  }
+  for (const key of detectedRuntimeCapabilityProbes.keys()) {
+    if (key.startsWith(agentId + ":")) detectedRuntimeCapabilityProbes.delete(key);
+  }
+  forgetUnusableExecutables(agentId);
+}
 
 // How many unusable binaries detection will walk past before giving up on an
 // agent. Each attempt costs one bounded `--version` spawn, and the healthy
@@ -107,7 +132,7 @@ export async function ensureDetectedRuntimeVersions(
   const probeKey = `${agentId}:${context.scope}`;
   const existing = detectedRuntimeVersionProbes.get(probeKey);
   if (existing) return existing;
-  const probe = probeRuntimeVersionsOnly(def, context);
+  const probe = probeRuntimeVersionsOnly(def, context, runtimeProbeGeneration(agentId));
   detectedRuntimeVersionProbes.set(probeKey, probe);
   try {
     return await probe;
@@ -153,9 +178,10 @@ export async function ensureDetectedRuntimeCapabilities(
   const probeKey = `${agentId}:${context.scope}`;
   const existing = detectedRuntimeCapabilityProbes.get(probeKey);
   if (existing) return existing;
+  const generation = runtimeProbeGeneration(agentId);
   const probe = probeCapabilities(def, context.launchPath, context.probeEnv)
     .then((caps) => {
-      if (caps) {
+      if (caps && runtimeProbeGeneration(agentId) === generation) {
         agentCapabilities.set(def.id, caps);
         detectedRuntimeCapabilityScopes.set(def.id, context.scope);
       }
@@ -428,6 +454,7 @@ function runtimeVersionProbeContext(
 async function probeRuntimeVersionsOnly(
   def: RuntimeAgentDef,
   context: RuntimeVersionProbeContext,
+  generation: number,
 ): Promise<DetectedRuntimeVersions | null> {
   const [outcome, amrOpenCodeVersion] = await Promise.all([
     probeVersionAtPath(def, context.launchPath, context.probeEnv),
@@ -444,8 +471,10 @@ async function probeRuntimeVersionsOnly(
         }
       : {}),
   };
-  detectedRuntimeVersions.set(def.id, versions);
-  detectedRuntimeVersionScopes.set(def.id, context.scope);
+  if (runtimeProbeGeneration(def.id) === generation) {
+    detectedRuntimeVersions.set(def.id, versions);
+    detectedRuntimeVersionScopes.set(def.id, context.scope);
+  }
   return { ...versions };
 }
 
@@ -507,6 +536,7 @@ async function probe(
   def: RuntimeAgentDef,
   configuredEnv: Record<string, string> = {},
 ): Promise<DetectedAgent> {
+  const generation = runtimeProbeGeneration(def.id);
   detectedRuntimeVersions.delete(def.id);
   // Forget what a previous pass proved unusable before re-probing: a rescan
   // after the user repairs or reinstalls a CLI must not keep skipping it.
@@ -666,7 +696,7 @@ async function probe(
     probeAmrOpenCodeVersion(def, probeEnv),
   ]);
   const surfacedModelResult = withRememberedAmrModels(def, probeEnv, modelResult);
-  if (caps) {
+  if (caps && runtimeProbeGeneration(def.id) === generation) {
     agentCapabilities.set(def.id, caps);
   }
   const authDiagnostic = auth ? buildAuthDiagnostic(def, auth) : null;
@@ -688,7 +718,8 @@ async function probe(
         }
       : {}),
   };
-  if (Object.keys(runtimeVersions).length > 0) {
+  if (Object.keys(runtimeVersions).length > 0
+    && runtimeProbeGeneration(def.id) === generation) {
     detectedRuntimeVersions.set(def.id, runtimeVersions);
     detectedRuntimeVersionScopes.set(
       def.id,
@@ -774,7 +805,9 @@ function rememberDetectedLiveModels(
   def: RuntimeAgentDef,
   configuredEnv: Record<string, string>,
   agent: DetectedAgent,
+  generation: number,
 ): void {
+  if (runtimeProbeGeneration(def.id) !== generation) return;
   if (def.id === 'amr' && agent.models.length === 0) return;
   const scope = def.id === 'amr'
     ? amrModelScopeFromEnv({
@@ -789,6 +822,7 @@ function rememberDetectedLiveModels(
 export async function detectAgents(
   configuredEnvByAgent: Record<string, Record<string, string>> = {},
 ) {
+  const generations = AGENT_DEFS.map((def) => runtimeProbeGeneration(def.id));
   const results = await Promise.all(
     AGENT_DEFS.map((def) => detectAgent(def, configuredEnvForAgent(configuredEnvByAgent, def.id))),
   );
@@ -798,7 +832,10 @@ export async function detectAgents(
   for (const [index, agent] of results.entries()) {
     const def = AGENT_DEFS[index];
     if (!def) continue;
-    rememberDetectedLiveModels(def, configuredEnvForAgent(configuredEnvByAgent, def.id), agent);
+    rememberDetectedLiveModels(
+      def, configuredEnvForAgent(configuredEnvByAgent, def.id), agent,
+      generations[index] ?? 0,
+    );
   }
   return results;
 }
@@ -812,12 +849,15 @@ export async function detectAgents(
 export async function* detectAgentsStream(
   configuredEnvByAgent: Record<string, Record<string, string>> = {},
 ): AsyncGenerator<DetectedAgent> {
-  const tagged = AGENT_DEFS.map((def, index) =>
-    detectAgent(def, configuredEnvForAgent(configuredEnvByAgent, def.id)).then((agent) => {
-      rememberDetectedLiveModels(def, configuredEnvForAgent(configuredEnvByAgent, def.id), agent);
+  const tagged = AGENT_DEFS.map((def, index) => {
+    const generation = runtimeProbeGeneration(def.id);
+    return detectAgent(def, configuredEnvForAgent(configuredEnvByAgent, def.id)).then((agent) => {
+      rememberDetectedLiveModels(
+        def, configuredEnvForAgent(configuredEnvByAgent, def.id), agent, generation,
+      );
       return { index, agent };
-    }),
-  );
+    });
+  });
   const pending = new Set(tagged.keys());
   while (pending.size > 0) {
     const { index, agent } = await Promise.race(

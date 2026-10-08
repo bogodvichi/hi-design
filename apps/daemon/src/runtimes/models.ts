@@ -32,6 +32,16 @@ export function rememberLiveModels(agentId: string, models: RuntimeModelOption[]
   liveModelOrder.set(key, remembered);
 }
 
+/** A CLI upgrade invalidates its previous live catalog, not other agents' models. */
+export function forgetRememberedLiveModels(agentId: string): void {
+  for (const key of liveModelOrder.keys()) {
+    if (key === agentId || key.startsWith(agentId + '\0')) {
+      liveModelOrder.delete(key);
+      liveModelCache.delete(key);
+    }
+  }
+}
+
 export function resolveDefaultModelFromOptions(
   models: RuntimeModelOption[],
 ): string | null {

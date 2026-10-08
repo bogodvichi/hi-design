@@ -55,7 +55,7 @@ import { SignOutConfirmDialog } from './SignOutConfirmDialog';
 import { notifyAmrLoginStatusChanged } from './amrLoginPolling';
 import { getStoredUserInfo } from '../auth/auth';
 import { Icon } from './Icon';
-import { Skeleton } from './Loading';
+import { Spinner } from './Loading';
 import { GITHUB_STARS_FALLBACK_LABEL, formatStars, useGithubStars } from './useGithubStars';
 import { PlanWordmark, planBadgeTierForWorkspace } from './PlanWordmark';
 import { RemixIcon } from './RemixIcon';
@@ -1710,14 +1710,7 @@ export function EntryNavRail({
                     })}
                    {workspaceDirectoryLoading && visibleWorkspaceItems.length === 0 ? (
                       <div className="entry-nav-rail__menu-skeleton" role="status" aria-live="polite">
-                        <div className="entry-nav-rail__menu-skeleton-row" aria-hidden>
-                          <Skeleton width={19} height={19} radius="50%" />
-                          <Skeleton width="55%" height={13} radius={6} />
-                        </div>
-                        <div className="entry-nav-rail__menu-skeleton-row" aria-hidden>
-                          <Skeleton width={19} height={19} radius="50%" />
-                          <Skeleton width="40%" height={13} radius={6} />
-                        </div>
+                        <Spinner size={16} label={t('common.loading')} />
                       </div>
                     ) : null}
                   </div>

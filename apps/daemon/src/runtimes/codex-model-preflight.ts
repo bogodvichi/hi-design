@@ -398,6 +398,26 @@ async function hasConfirmedChatGptAuth(
   }
 }
 
+/** Only optimize the unmodified native ChatGPT catalog source. */
+export async function resolveCodexDefaultCatalogConfig(
+  env: NodeJS.ProcessEnv,
+  projectRoot?: string | null,
+): Promise<{ model: string | null } | null> {
+  if (hasAuthOrEndpointOverride(env) || await projectConfigExists(projectRoot)
+    || await hasSystemConfigLayer(env) || await hasManagedConfigLayer(env)) return null;
+  let content = '';
+  try {
+    content = await readFile(resolveCodexConfigPath(env), 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') return null;
+  }
+  const config = extractCodexRootModelConfig(content);
+  if (config.hasCompatibilityOverlay || (config.modelProvider && config.modelProvider !== 'openai')) return null;
+  // File auth must not override a user's explicit keyring/ephemeral choice.
+  if (/^\s*cli_auth_credentials_store\s*=\s*["'](?:keyring|ephemeral)["']/m.test(content)) return null;
+  return { model: config.model };
+}
+
 export async function preflightCodexDefaultModel(
   input: CodexModelPreflightInput,
 ): Promise<CodexModelPreflightResult> {

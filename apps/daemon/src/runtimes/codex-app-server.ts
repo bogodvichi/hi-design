@@ -118,6 +118,8 @@ export interface CodexAppServerTurnController {
 
 export class CodexAppServerManager extends EventEmitter {
   private process: ChildProcessWithoutNullStreams | null = null;
+  private activeChildren = 0;
+  private retiring = false;
   private readBuffer = '';
   private nextRequestId = 1;
   private pending = new Map<number | string, PendingRequest>();
@@ -136,6 +138,25 @@ export class CodexAppServerManager extends EventEmitter {
 
   get pid(): number | undefined {
     return this.process?.pid;
+  }
+
+  /** Hold the current app-server alive while a virtual Run is using it. */
+  acquireRunLease(): () => void {
+    this.activeChildren++;
+    let released = false;
+    return () => {
+      if (released) return;
+      released = true;
+      this.activeChildren--;
+      if (this.retiring && this.activeChildren === 0) this.shutdown();
+    };
+  }
+
+  /** Prevent new Runs from reusing this manager, without interrupting existing ones. */
+  retireWhenIdle(): void {
+    if (this.retiring) return;
+    this.retiring = true;
+    if (this.activeChildren === 0) this.shutdown();
   }
 
   private failAll(error: Error) {
@@ -431,6 +452,18 @@ export function getCodexAppServerManager(
   return manager;
 }
 
+/**
+ * On a successful CLI install, new Runs must not reuse a Codex app-server
+ * process that was spawned by the old binary (even when ~/.local/bin/codex
+ * still resolves to the same path). In-flight Runs retain their manager
+ * until their virtual children close, then that manager shuts down.
+ */
+export function retireCodexAppServerManagers(): void {
+  const previous = [...managers.values()];
+  managers.clear();
+  for (const manager of previous) manager.retireWhenIdle();
+}
+
 export interface CodexAppServerVirtualChildOptions
   extends Omit<CodexAppServerTurnOptions, 'prompt' | 'onNotification'> {
   manager?: CodexAppServerManager;
@@ -458,6 +491,8 @@ export class CodexAppServerVirtualChild extends EventEmitter {
       options.env,
       options.startupConfigArgs,
     );
+    const releaseManager = manager.acquireRunLease();
+    this.once('close', releaseManager);
     this.preparePromise = manager.prepare();
     // Startup begins as soon as the virtual child is created so a cold
     // app-server can initialize in parallel with the daemon wiring parsers and

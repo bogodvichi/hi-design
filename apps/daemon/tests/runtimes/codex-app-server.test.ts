@@ -1,10 +1,13 @@
 import { EventEmitter } from 'node:events';
 import { PassThrough } from 'node:stream';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   CodexAppServerManager,
   createCodexAppServerVirtualChild,
+  getCodexAppServerManager,
+  retireCodexAppServerManagers,
+  shutdownCodexAppServers,
 } from '../../src/runtimes/codex-app-server.js';
 
 class FakeAppServerProcess extends EventEmitter {
@@ -18,7 +21,7 @@ class FakeAppServerProcess extends EventEmitter {
   requests: Array<Record<string, unknown>> = [];
   private input = '';
 
-  constructor() {
+  constructor(private readonly autoComplete = true) {
     super();
     this.stdin.setEncoding('utf8');
     this.stdin.on('data', (chunk: string) => {
@@ -69,10 +72,7 @@ class FakeAppServerProcess extends EventEmitter {
           method: 'item/agentMessage/delta',
           params: { threadId, turnId, itemId: 'msg-1', delta: 'HELLO' },
         });
-        this.send({
-          method: 'turn/completed',
-          params: { threadId, turn: { id: turnId, status: 'completed' } },
-        });
+        if (this.autoComplete) this.completeTurn(threadId, turnId);
       });
       return;
     }
@@ -81,6 +81,13 @@ class FakeAppServerProcess extends EventEmitter {
       return;
     }
     this.send({ id, error: { code: -32601, message: `unknown method ${String(method)}` } });
+  }
+
+  completeTurn(threadId = 'thr-1', turnId = 'turn-1') {
+    this.send({
+      method: 'turn/completed',
+      params: { threadId, turn: { id: turnId, status: 'completed' } },
+    });
   }
 
   kill(signal: NodeJS.Signals = 'SIGTERM') {
@@ -94,10 +101,10 @@ class FakeAppServerProcess extends EventEmitter {
   }
 }
 
-function fakeSpawnHarness() {
+function fakeSpawnHarness(autoComplete = true) {
   const processes: FakeAppServerProcess[] = [];
   const spawnImpl = (() => {
-    const proc = new FakeAppServerProcess();
+    const proc = new FakeAppServerProcess(autoComplete);
     processes.push(proc);
     return proc as any;
   }) as any;
@@ -119,6 +126,54 @@ async function collectVirtualTurn(child: ReturnType<typeof createCodexAppServerV
 }
 
 describe('Codex app-server manager', () => {
+  afterEach(() => shutdownCodexAppServers());
+
+  it('rotates cached managers even when the CLI path is unchanged', () => {
+    const original = getCodexAppServerManager('/fake/codex', { PATH: '/bin' });
+    expect(getCodexAppServerManager('/fake/codex', { PATH: '/bin' })).toBe(original);
+    retireCodexAppServerManagers();
+    const updated = getCodexAppServerManager('/fake/codex', { PATH: '/bin' });
+    expect(updated).not.toBe(original);
+    expect(getCodexAppServerManager('/fake/codex', { PATH: '/bin' })).toBe(updated);
+  });
+
+  it('waits for a running turn before shutting down a retired app-server', async () => {
+    const { spawnImpl, processes } = fakeSpawnHarness(false);
+    const manager = new CodexAppServerManager('/fake/codex', { PATH: '/bin' }, spawnImpl);
+    const child = createCodexAppServerVirtualChild({
+      manager, command: '/fake/codex', env: { PATH: '/bin' },
+      cwd: '/workspace', sandbox: 'workspace-write',
+    });
+    const pending = collectVirtualTurn(child);
+    await vi.waitFor(() =>
+      expect(processes[0]?.requests.some((request) => request.method === 'turn/start')).toBe(true),
+    );
+    manager.retireWhenIdle();
+    manager.retireWhenIdle();
+    expect(processes[0]?.killed).toBe(false);
+    processes[0]!.completeTurn();
+    const { result, output } = await pending;
+    expect(result).toEqual({ code: 0, signal: null });
+    expect(output).toContain('HELLO');
+    expect(processes[0]?.killed).toBe(true);
+  });
+
+  it('drains every lease before retiring a manager, with idempotent release', async () => {
+    const { spawnImpl, processes } = fakeSpawnHarness();
+    const manager = new CodexAppServerManager('/fake/codex', { PATH: '/bin' }, spawnImpl);
+    const child = createCodexAppServerVirtualChild({
+      manager, command: '/fake/codex', env: { PATH: '/bin' },
+      cwd: '/workspace', sandbox: 'workspace-write',
+    });
+    const releaseAnotherRun = manager.acquireRunLease();
+    await collectVirtualTurn(child);
+    manager.retireWhenIdle();
+    expect(processes[0]?.killed).toBe(false);
+    releaseAnotherRun();
+    releaseAnotherRun();
+    expect(processes[0]?.killed).toBe(true);
+  });
+
   it('initializes one persistent app-server and routes a turn through thread/start', async () => {
     const { spawnImpl, processes } = fakeSpawnHarness();
     const manager = new CodexAppServerManager('/fake/codex', { PATH: '/bin' }, spawnImpl);
