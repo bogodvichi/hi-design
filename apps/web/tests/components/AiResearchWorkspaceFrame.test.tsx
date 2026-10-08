@@ -69,7 +69,7 @@ describe('AiResearchWorkspaceFrame', () => {
     const guest = getByTestId('ai-research-workspace-frame');
 
     expect(guest.tagName).toBe('WEBVIEW');
-    expect(guest.getAttribute('partition')).toBe('persist:open-design-federated-tools');
+    expect(guest.getAttribute('partition')).toBe('persist:hi-design-team-federated-tools');
     expect(guest.style.display).toBe('flex');
     expect(guest.style.visibility).toBe('hidden');
 

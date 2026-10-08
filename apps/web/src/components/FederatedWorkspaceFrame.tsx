@@ -29,7 +29,7 @@ type WebviewElement = HTMLElement & {
   getURL?(): string;
 };
 
-const FEDERATED_TOOLS_PARTITION = 'persist:open-design-federated-tools';
+const FEDERATED_TOOLS_PARTITION = 'persist:hi-design-team-federated-tools';
 
 function isResourceRoute(
   route: Route | undefined,
