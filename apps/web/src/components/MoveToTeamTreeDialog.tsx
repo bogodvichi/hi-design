@@ -153,6 +153,14 @@ function canCreateFolders(workspace: WorkspaceDirectoryItem): boolean {
 }
 
 function canMoveIntoWorkspace(workspace: WorkspaceDirectoryItem): boolean {
+  if (
+    !workspace.workspaceId
+    || !workspace.workspaceMemberId
+    || workspace.memberStatus !== 'active'
+    || workspace.lifecycleState !== 'active'
+  ) {
+    return false;
+  }
   return workspace.isDefaultTeam === true
     || workspace.workspaceType !== 'team'
     || workspace.role !== 'guest';

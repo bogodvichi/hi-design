@@ -1081,7 +1081,7 @@ function ProjectsPanel({
           selectedLabels: folders.filter((folder) => selectedFolderIds.has(folder.folderId)).map((folder) => folder.folderName),
           hideDelete: folders.some((folder) => selectedFolderIds.has(folder.folderId) && !isTeamFolderEmpty(folder)),
           onMoveSelected: moveSelectedFolders,
-          moveTreeMode: 'team',
+          moveTreeMode: 'unified',
           restrictMoveToWorkspaceId: teamId,
           disabledMoveKeys: new Set([...selectedFolderIds].map((id) => `${teamId}:${id}`)),
           onDeleteSelected: deleteSelectedFolders,
@@ -1188,7 +1188,7 @@ function ProjectsPanel({
           onConfirm={(selection) => { void commitFolderMove(selection); }}
           onCancel={() => { if (!movingFolder) setMoveFolderTarget(null); }}
           busy={movingFolder}
-          mode="team"
+          mode="unified"
           currentWorkspaceId={teamId}
           currentFolderId={null}
           restrictToWorkspaceId={teamId}
@@ -2249,7 +2249,7 @@ function FoldersPanel({
             selectedLabels: folders.filter((folder) => selectedFolderIds.has(folder.folderId)).map((folder) => folder.folderName),
             hideDelete: folders.some((folder) => selectedFolderIds.has(folder.folderId) && !isTeamFolderEmpty(folder)),
             onMoveSelected: moveSelectedFolders,
-           moveTreeMode: 'team',
+           moveTreeMode: 'unified',
            restrictMoveToWorkspaceId: teamId,
            disabledMoveKeys: new Set([...selectedFolderIds].map((id) => `${teamId}:${id}`)),
            onDeleteSelected: deleteSelectedFolders,
@@ -2356,7 +2356,7 @@ function FoldersPanel({
           onConfirm={(selection) => { void commitFolderMove(selection); }}
           onCancel={() => { if (!movingFolder) setMoveFolderTarget(null); }}
           busy={movingFolder}
-          mode="team"
+          mode="unified"
           currentWorkspaceId={teamId}
           currentFolderId={folderId}
           restrictToWorkspaceId={teamId}

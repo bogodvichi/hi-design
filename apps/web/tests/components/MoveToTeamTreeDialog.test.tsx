@@ -33,6 +33,14 @@ function fixture() {
     ...personal, workspaceId: 'guest-team', workspaceName: 'Guest Team',
     isDefaultTeam: false, role: 'guest',
   };
+  const removedTeam: WorkspaceDirectoryItem = {
+    ...personal, workspaceId: 'removed-team', workspaceName: 'Removed Team',
+    isDefaultTeam: false, memberStatus: 'removed',
+  };
+  const lockedTeam: WorkspaceDirectoryItem = {
+    ...personal, workspaceId: 'locked-team', workspaceName: 'Locked Team',
+    isDefaultTeam: false, lifecycleState: 'locked',
+  };
   const folder = (id: string, name: string, count = 0) => ({
     folder_id: id, folder_name: name, subfolder_count: count,
   });
@@ -62,7 +70,7 @@ function fixture() {
     throw new Error(`Unexpected request: ${url.pathname}`);
   });
   vi.stubGlobal('fetch', fetchMock);
-  return { workspaces: [personal, team, guestTeam], fetchMock };
+  return { workspaces: [personal, team, guestTeam, removedTeam, lockedTeam], fetchMock };
 }
 
 function row(name: string): HTMLElement {
@@ -102,7 +110,7 @@ async function openDialog(overrides: Partial<ComponentProps<typeof MoveToTeamTre
 }
 
 describe('folder move destination exclusions', () => {
-  it('hides teams where the user is only a guest from move destinations and search', async () => {
+  it('hides teams without an active writable membership from move destinations and search', async () => {
     const { onConfirm, fetchMock } = await openDialog({
       currentWorkspaceId: null,
       disabledKeys: undefined,
@@ -111,8 +119,12 @@ describe('folder move destination exclusions', () => {
 
     expect(screen.queryByText('Guest Team')).toBeNull();
     expect(screen.queryByText('Guest folder')).toBeNull();
+    expect(screen.queryByText('Removed Team')).toBeNull();
+    expect(screen.queryByText('Locked Team')).toBeNull();
     expect(confirm().disabled).toBe(true);
     expect(fetchMock.mock.calls.some(([input]) => String(input).includes('workspace_id=guest-team'))).toBe(false);
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes('workspace_id=removed-team'))).toBe(false);
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes('workspace_id=locked-team'))).toBe(false);
 
     await click(row('Team'));
     expect(confirm().disabled).toBe(false);
