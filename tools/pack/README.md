@@ -16,9 +16,9 @@ Local packaging control plane for Hi Design.
 - `tools-pack mac cleanup`
 
 Build artifacts are namespace-scoped under `.tmp/tools-pack/out/mac/namespaces/<namespace>/`.
-Public release bundles keep channel-distinct identities: `Hi Design.app`, `Hi Design Beta.app`,
-`Hi Design Prerelease.app`, or `Hi Design Preview.app`. Local `tools-pack install` adds the developer
-namespace so installs can coexist without affecting runtime data/log/cache paths.
+Public release bundles use the unified app identity `Hi Design Team.app` across all channels.
+Local `tools-pack install` adds the developer namespace so installs can coexist without affecting
+runtime data/log/cache paths.
 
 Packaged runtime state is namespace-scoped under `.tmp/tools-pack/runtime/mac/namespaces/<namespace>/`:
 

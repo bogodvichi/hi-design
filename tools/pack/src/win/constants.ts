@@ -1,5 +1,5 @@
 export const PRODUCT_NAME = process.env.OD_PRODUCT_NAME ?? "Hi Design Team";
-export const DISPLAY_NAME = process.env.OD_DISPLAY_NAME ?? "Hi Design";
+export const DISPLAY_NAME = PRODUCT_NAME;
 export const DESKTOP_LOG_ECHO_ENV = "OD_DESKTOP_LOG_ECHO";
 export const WEB_STANDALONE_HOOK_CONFIG_ENV = "OD_TOOLS_PACK_WEB_STANDALONE_HOOK_CONFIG";
 export const WEB_STANDALONE_RESOURCE_NAME = "hi-design-team-web-standalone";

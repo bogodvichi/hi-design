@@ -51,7 +51,7 @@ function makeWinConfig(root: string, namespace: string, appVersion: string): Too
     },
     signed: false,
     productName: "Hi Design Team",
-    displayName: "Hi Design",
+    displayName: "Hi Design Team",
     silent: true,
     to: "nsis",
     webOutputMode: "standalone",

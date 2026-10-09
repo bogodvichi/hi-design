@@ -27,7 +27,7 @@ function fakeConfig(root: string, appVersion = "1.2.3-beta.4"): PackagedConfig {
     namespaceBaseRoot: join(root, "namespaces"),
     nodeCommand: null,
     productName: "Hi Design Team",
-    displayName: "Hi Design",
+    displayName: "Hi Design Team",
     posthogHost: null,
     posthogKey: null,
     resourceRoot: join(root, "installed", "resources", "hi-design-team"),
@@ -53,11 +53,11 @@ async function writeActiveMacPayloadFixture(
     root,
     version,
   });
-  const appRoot = join(versionPaths.payloadRoot, "Hi Design Beta.app");
+  const appRoot = join(versionPaths.payloadRoot, "Hi Design Team.app");
   const resourcesPath = join(appRoot, "Contents", "Resources");
   await mkdir(join(appRoot, "Contents", "MacOS"), { recursive: true });
   await mkdir(resourcesPath, { recursive: true });
-  await writeFile(join(appRoot, "Contents", "MacOS", "Hi Design Beta"), "");
+  await writeFile(join(appRoot, "Contents", "MacOS", "Hi Design Team"), "");
   await writeFile(
     join(resourcesPath, "hi-design-team-config.json"),
     `${JSON.stringify({
@@ -71,8 +71,8 @@ async function writeActiveMacPayloadFixture(
     `${JSON.stringify({
       channel: "beta",
       entry: {
-        cwd: "payload/Hi Design Beta.app",
-        executable: "payload/Hi Design Beta.app/Contents/MacOS/Hi Design Beta",
+        cwd: "payload/Hi Design Team.app",
+        executable: "payload/Hi Design Team.app/Contents/MacOS/Hi Design Team",
       },
       namespace: config.namespace,
       payloadRoot: "payload",
@@ -188,16 +188,16 @@ describe("resolvePackagedLauncherRuntime", () => {
         root,
         version: "1.2.3-beta.5",
       });
-      const resourcesPath = join(versionPaths.payloadRoot, "Hi Design Beta.app", "Contents", "Resources");
+      const resourcesPath = join(versionPaths.payloadRoot, "Hi Design Team.app", "Contents", "Resources");
       const payloadExecutablePath = join(
         versionPaths.payloadRoot,
-        "Hi Design Beta.app",
+        "Hi Design Team.app",
         "Contents",
         "MacOS",
-        "Hi Design Beta",
+        "Hi Design Team",
       );
       await mkdir(join(resourcesPath, "hi-design-team", "bin"), { recursive: true });
-      await mkdir(join(versionPaths.payloadRoot, "Hi Design Beta.app", "Contents", "MacOS"), { recursive: true });
+      await mkdir(join(versionPaths.payloadRoot, "Hi Design Team.app", "Contents", "MacOS"), { recursive: true });
       await mkdir(join(resourcesPath, "prebundled", "daemon"), { recursive: true });
       await mkdir(join(resourcesPath, "prebundled", "web"), { recursive: true });
       await writeFile(join(resourcesPath, "hi-design-team", "bin", "node"), "");
@@ -219,8 +219,8 @@ describe("resolvePackagedLauncherRuntime", () => {
         `${JSON.stringify({
           channel: "beta",
           entry: {
-            cwd: "payload/Hi Design Beta.app",
-            executable: "payload/Hi Design Beta.app/Contents/MacOS/Hi Design Beta",
+            cwd: "payload/Hi Design Team.app",
+            executable: "payload/Hi Design Team.app/Contents/MacOS/Hi Design Team",
           },
           namespace: config.namespace,
           payloadRoot: "payload",
@@ -244,7 +244,7 @@ describe("resolvePackagedLauncherRuntime", () => {
         join(paths.installationRoot, "launcher", "channels", "beta", "namespaces", config.namespace, "install.json"),
         `${JSON.stringify({
           channel: "beta",
-          launchPath: "/Applications/Hi Design Beta.app",
+          launchPath: "/Applications/Hi Design Team.app",
           namespace: config.namespace,
           schemaVersion: LAUNCHER_SCHEMA_VERSION,
         })}\n`,
@@ -254,13 +254,13 @@ describe("resolvePackagedLauncherRuntime", () => {
         // The launcher process runs from the stable installed app bundle, so
         // its stable launch path matches the persisted install descriptor and
         // the payload branch keeps the persisted entry untouched.
-        currentExecutablePath: "/Applications/Hi Design Beta.app",
+        currentExecutablePath: "/Applications/Hi Design Team.app",
       });
 
       expect(runtime.source).toBe("payload");
       expect(runtime.desktopExecutablePath).toBe(payloadExecutablePath);
       expect(runtime.electronNodeCommand).toBeNull();
-      expect(runtime.installedLaunchPath).toBe("/Applications/Hi Design Beta.app");
+      expect(runtime.installedLaunchPath).toBe("/Applications/Hi Design Team.app");
       expect(runtime.targetVersion).toBe("1.2.3-beta.5");
       expect(runtime.config.appVersion).toBe("1.2.3-beta.5");
       expect(runtime.config.resourceRoot).toBe(join(resourcesPath, "hi-design-team"));
@@ -340,16 +340,16 @@ describe("resolvePackagedLauncherRuntime", () => {
         root,
         version: "1.2.3-beta.5",
       });
-      const resourcesPath = join(versionPaths.payloadRoot, "Hi Design Beta.app", "Contents", "Resources");
+      const resourcesPath = join(versionPaths.payloadRoot, "Hi Design Team.app", "Contents", "Resources");
       const payloadExecutablePath = join(
         versionPaths.payloadRoot,
-        "Hi Design Beta.app",
+        "Hi Design Team.app",
         "Contents",
         "MacOS",
-        "Hi Design Beta",
+        "Hi Design Team",
       );
       await mkdir(join(resourcesPath, "hi-design-team", "bin"), { recursive: true });
-      await mkdir(join(versionPaths.payloadRoot, "Hi Design Beta.app", "Contents", "MacOS"), { recursive: true });
+      await mkdir(join(versionPaths.payloadRoot, "Hi Design Team.app", "Contents", "MacOS"), { recursive: true });
       await mkdir(join(resourcesPath, "prebundled", "daemon"), { recursive: true });
       await mkdir(join(resourcesPath, "prebundled", "web"), { recursive: true });
       await writeFile(join(resourcesPath, "hi-design-team", "bin", "node"), "");
@@ -371,8 +371,8 @@ describe("resolvePackagedLauncherRuntime", () => {
         `${JSON.stringify({
           channel: "beta",
           entry: {
-            cwd: "payload/Hi Design Beta.app",
-            executable: "payload/Hi Design Beta.app/Contents/MacOS/Hi Design Beta",
+            cwd: "payload/Hi Design Team.app",
+            executable: "payload/Hi Design Team.app/Contents/MacOS/Hi Design Team",
           },
           namespace: config.namespace,
           payloadRoot: "payload",
@@ -407,15 +407,15 @@ describe("resolvePackagedLauncherRuntime", () => {
       );
 
       const runtime = await resolvePackagedLauncherRuntime(config, paths, {
-        currentExecutablePath: "/Applications/Hi Design Beta.app",
+        currentExecutablePath: "/Applications/Hi Design Team.app",
       });
 
       expect(runtime.source).toBe("payload");
       expect(runtime.payloadDesktopProcess).toBe(false);
-      expect(runtime.installedLaunchPath).toBe("/Applications/Hi Design Beta.app");
+      expect(runtime.installedLaunchPath).toBe("/Applications/Hi Design Team.app");
       expect(JSON.parse(await readFile(installPath, "utf8"))).toMatchObject({
         channel: "beta",
-        launchPath: "/Applications/Hi Design Beta.app",
+        launchPath: "/Applications/Hi Design Team.app",
         namespace: config.namespace,
         schemaVersion: LAUNCHER_SCHEMA_VERSION,
       });
@@ -442,10 +442,10 @@ describe("resolvePackagedLauncherRuntime", () => {
         "versions",
         secondPayload.version,
         "payload",
-        "Hi Design Beta.app",
+        "Hi Design Team.app",
         "Contents",
         "MacOS",
-        "Hi Design Beta",
+        "Hi Design Team",
       );
       await mkdir(currentPackageRuntime.launcherPaths.stateRoot, { recursive: true });
       await writeFile(

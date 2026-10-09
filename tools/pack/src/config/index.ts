@@ -194,7 +194,6 @@ export type ToolPackConfig = {
    * runtime can forward it to the daemon as `OD_HDW_PATH_PREFIX`, where
    * `resolveHdwAddress` uses it instead of the hardcoded
    * `PROD_HDW_PATH_PREFIX` constant. Absent for builds that want the
-   * default `/hik-plugin/hidesign-web/hdw` prefix.
    */
   hdwPathPrefix?: string;
   posthogCliProjectId?: string;
@@ -492,7 +491,7 @@ export function resolveToolPackConfig(
     silent: options.silent !== false,
     signed: options.signed === true,
    productName: process.env.OD_PRODUCT_NAME ?? OPEN_DESIGN_PRODUCT_NAME,
-   displayName: process.env.OD_DISPLAY_NAME ?? OPEN_DESIGN_DISPLAY_NAME,
+   displayName: OPEN_DESIGN_DISPLAY_NAME,
    amrProfile: resolveToolPackAmrProfile(process.env.OPEN_DESIGN_AMR_PROFILE),
     telemetryRelayUrl: resolveToolPackTelemetryRelayUrl(process.env.OPEN_DESIGN_TELEMETRY_RELAY_URL),
     updateMetadataUrl: resolveToolPackUpdateMetadataUrl(process.env.OD_UPDATE_METADATA_URL),

@@ -59,7 +59,7 @@ function makeConfig(root: string, overrides: Partial<ToolPackConfig> = {}): Tool
     silent: true,
     signed: false,
     productName: "Hi Design Team",
-    displayName: "Hi Design",
+    displayName: "Hi Design Team",
     to: "app",
     webOutputMode: "standalone",
     workspaceRoot: root,
@@ -350,7 +350,7 @@ describe("runElectronBuilder", () => {
       electronBuilderCliPath: cliPath,
       signed: true,
       productName: "Hi Design Team",
-      displayName: "Hi Design",
+      displayName: "Hi Design Team",
       webOutputMode: "server",
       ...overrides,
     });
@@ -479,7 +479,7 @@ describe("writeLaunchPackagedConfig", () => {
     const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-mac-"));
     try {
       const config = makeConfig(root, { namespace: "release-beta", portable: true });
-      const appPath = join(root, "Hi Design.app");
+      const appPath = join(root, "Hi Design Team.app");
       const embeddedConfigPath = join(appPath, "Contents", "Resources", "hi-design-team-config.json");
       await mkdir(dirname(embeddedConfigPath), { recursive: true });
       await writeFile(

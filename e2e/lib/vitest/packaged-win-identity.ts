@@ -27,7 +27,7 @@ export function resolvePackagedWinInstallIdentity(options: {
   const channel = releaseChannelFromVersion(options.releaseVersion)
     ?? releaseChannelFromNamespace(options.namespace, "default");
   const identity = channel == null ? null : releaseInstallIdentity(channel);
-  const displayName = identity?.displayName ?? `Hi Design ${namespaceToken}`;
+  const displayName = identity?.displayName ?? `Hi Design Team ${namespaceToken}`;
   const isDefaultNamespace = options.namespace === "default";
   // Mirror resolveWinInstallIdentity in tools/pack/src/win/identity.ts:
   // release channels carry the namespace suffix in systemName so different

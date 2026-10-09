@@ -204,18 +204,16 @@ export async function readPackagedConfig(): Promise<PackagedConfig> {
   // getPath("userData"). Electron's requestSingleInstanceLock() and
   // getPath("userData") both derive from app.name, which defaults to the
   // package.json "name" field (@open-design/packaged). Without this call,
-  // the personal "Hi Design" and team "Hi Design Team" builds would share
-  // the same single-instance lock and userData directory, making it
-  // impossible to run both products simultaneously.
+  // the app would share the same single-instance lock and userData directory
+  // as any other Electron app using the default name.
   const productName = cleanOptionalString(raw.productName) ?? OPEN_DESIGN_PRODUCT_NAME;
   const displayName = cleanOptionalString(raw.displayName) ?? OPEN_DESIGN_DISPLAY_NAME;
   electronApp.setName(productName);
   // Electron caches getPath("userData") from package.json's productName
   // during app init, before setName() can take effect. Explicitly override
-  // it so the namespace base root derives from the internal product name
-  // ("Hi Design Team"), not the display name ("Hi Design") baked into
-  // package.json. Without this, the personal and team builds share the
-  // same Roaming\Hi Design base directory.
+  // it so the namespace base root derives from the product name
+  // ("Hi Design Team"), not the package.json "name" field
+  // (@open-design/packaged) baked into the Electron default.
   electronApp.setPath("userData", join(electronApp.getPath("appData"), productName));
   const namespaceBaseRoot = resolvePackagedNamespaceBaseRoot(
     raw.namespaceBaseRoot,

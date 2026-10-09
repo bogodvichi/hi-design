@@ -31,12 +31,12 @@ describe("macAppBundleName", () => {
 
 describe("macAppExecutablePath", () => {
   it("joins the Contents/MacOS executable path under the bundle", () => {
-    const appPath = "/tmp/out/mac/Hi Design.app";
+    const appPath = "/tmp/out/mac/Hi Design Team.app";
     expect(macAppExecutablePath(appPath)).toBe(join(appPath, "Contents", "MacOS", PRODUCT_NAME));
   });
 
   it("honors a custom executable name", () => {
-    const appPath = "/tmp/out/mac/Hi Design.app";
+    const appPath = "/tmp/out/mac/Hi Design Team.app";
     expect(macAppExecutablePath(appPath, "hi-design-team-beta")).toBe(
       join(appPath, "Contents", "MacOS", "hi-design-team-beta"),
     );

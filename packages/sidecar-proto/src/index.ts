@@ -71,12 +71,13 @@ export const SIDECAR_DEFAULTS = Object.freeze({
  windowsPipePrefix: "hi-design-team",
 } as const);
 
-// Internal packaging identity for the Hi Design Team product line. The visible
-// desktop shortcut stays "Hi Design" (see PRODUCT_NAME in tools/pack); this
-// constant drives internal lock names, appIds, registry keys, and IPC paths.
+// Public packaged app identity for the Hi Design Team product line. Both the
+// internal product name and the visible display name are "Hi Design Team";
+// channel distinction lives in appIds, registry keys, namespaces, and updater
+// feeds, not in the display name.
 export const OPEN_DESIGN_PRODUCT_NAME = "Hi Design Team";
 
-export const OPEN_DESIGN_DISPLAY_NAME = "Hi Design";
+export const OPEN_DESIGN_DISPLAY_NAME = "Hi Design Team";
 
 export function resolveWindowsReleaseNamespaceToken(value: string): string {
   return value.replace(/[^A-Za-z0-9._-]+/g, "-");

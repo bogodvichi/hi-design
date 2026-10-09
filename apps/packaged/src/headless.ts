@@ -60,7 +60,7 @@ function resolveHeadlessConfig(): PackagedConfig {
     namespaceBaseRoot,
     nodeCommand: null,
     productName: process.env.OD_PRODUCT_NAME?.trim() ?? OPEN_DESIGN_PRODUCT_NAME,
-    displayName: process.env.OD_DISPLAY_NAME?.trim() ?? OPEN_DESIGN_DISPLAY_NAME,
+    displayName: OPEN_DESIGN_DISPLAY_NAME,
     resourceRoot,
     telemetryRelayUrl:
       process.env.OPEN_DESIGN_TELEMETRY_RELAY_URL?.trim() || null,

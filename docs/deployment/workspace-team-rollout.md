@@ -197,7 +197,7 @@ gh workflow run release-beta.yml -R nexu-io/open-design \
   -f win_x64_smoke_mode=full
 ```
 
-`release-beta` 必须报告 `release_state=complete`。核对 beta metadata 的 `github.commit` 等于冻结的 Hi Design SHA，平台 artifact 均有 checksum；应用身份必须是 `Hi Design Beta`。
+`release-beta` 必须报告 `release_state=complete`。核对 beta metadata 的 `github.commit` 等于冻结的 Hi Design SHA，平台 artifact 均有 checksum；应用身份必须是 `Hi Design Team`。
 
 ## 6. Test
 

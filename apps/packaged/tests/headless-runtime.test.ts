@@ -31,15 +31,15 @@ describe("resolvePackagedMcpBootstrapLaunch", () => {
   it("uses macOS open against the stable signed app bundle", () => {
     expect(resolvePackagedMcpBootstrapLaunch({
       currentExecutablePath:
-        "/private/payload/Hi Design.app/Contents/MacOS/Hi Design",
-      installedLaunchPath: "/Applications/Hi Design.app",
+        "/private/payload/Hi Design Team.app/Contents/MacOS/Hi Design Team",
+      installedLaunchPath: "/Applications/Hi Design Team.app",
       platform: "darwin",
     })).toEqual({
       command: "/usr/bin/open",
       args: [
         "-g",
         "-j",
-        "/Applications/Hi Design.app",
+        "/Applications/Hi Design Team.app",
         "--args",
         "--headless",
       ],

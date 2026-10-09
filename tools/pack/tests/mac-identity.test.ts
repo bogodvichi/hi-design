@@ -37,7 +37,7 @@ function makeConfig(root: string, namespace: string): ToolPackConfig {
     },
     signed: false,
     productName: "Hi Design Team",
-    displayName: "Hi Design",
+    displayName: "Hi Design Team",
     silent: true,
     to: "dmg",
     webOutputMode: "standalone",
@@ -49,10 +49,10 @@ describe("resolveMacInstallIdentity", () => {
   it("keeps stable builds on the canonical mac identity", () => {
     expect(resolveMacInstallIdentity(makeConfig("/work", "release-stable"))).toMatchObject({
       appId: "io.hi-design-team.desktop",
-      installerTitle: "Hi Design",
+      installerTitle: "Hi Design Team",
       productName: "Hi Design Team",
-      publicAppBundleName: "Hi Design.app",
-      systemAppBundleName: "Hi Design.release-stable.app",
+      publicAppBundleName: "Hi Design Team.app",
+      systemAppBundleName: "Hi Design Team.release-stable.app",
     });
   });
 
@@ -61,14 +61,14 @@ describe("resolveMacInstallIdentity", () => {
 
     expect(resolveMacInstallIdentity(config)).toEqual({
       appId: "io.hi-design-team.desktop.beta",
-      displayName: "Hi Design Beta",
-      executableName: "Hi Design Team Beta",
-      installerTitle: "Hi Design Beta",
-      productName: "Hi Design Team Beta",
-      publicAppBundleName: "Hi Design Beta.app",
-      systemAppBundleName: "Hi Design Beta.release-beta.app",
+      displayName: "Hi Design Team",
+      executableName: "Hi Design Team",
+      installerTitle: "Hi Design Team",
+      productName: "Hi Design Team",
+      publicAppBundleName: "Hi Design Team.app",
+      systemAppBundleName: "Hi Design Team.release-beta.app",
     });
-    expect(resolveMacPaths(config).appPath).toMatch(/Hi Design Beta\.app$/);
+    expect(resolveMacPaths(config).appPath).toMatch(/Hi Design Team\.app$/);
   });
 
   it("uses first-class preview app identity for preview release namespaces", () => {
@@ -76,14 +76,14 @@ describe("resolveMacInstallIdentity", () => {
 
     expect(resolveMacInstallIdentity(config)).toEqual({
       appId: "io.hi-design-team.desktop.preview",
-      displayName: "Hi Design Preview",
-      executableName: "Hi Design Team Preview",
-      installerTitle: "Hi Design Preview",
-      productName: "Hi Design Team Preview",
-      publicAppBundleName: "Hi Design Preview.app",
-      systemAppBundleName: "Hi Design Preview.release-preview.app",
+      displayName: "Hi Design Team",
+      executableName: "Hi Design Team",
+      installerTitle: "Hi Design Team",
+      productName: "Hi Design Team",
+      publicAppBundleName: "Hi Design Team.app",
+      systemAppBundleName: "Hi Design Team.release-preview.app",
     });
-    expect(resolveMacPaths(config).appPath).toMatch(/Hi Design Preview\.app$/);
+    expect(resolveMacPaths(config).appPath).toMatch(/Hi Design Team\.app$/);
   });
 
   it("uses first-class prerelease app identity for prerelease release versions and namespaces", () => {
@@ -95,19 +95,19 @@ describe("resolveMacInstallIdentity", () => {
 
     expect(resolveMacInstallIdentity(prereleaseVersionConfig)).toEqual({
       appId: "io.hi-design-team.desktop.prerelease",
-      displayName: "Hi Design Prerelease",
-      executableName: "Hi Design Team Prerelease",
-      installerTitle: "Hi Design Prerelease",
-      productName: "Hi Design Team Prerelease",
-      publicAppBundleName: "Hi Design Prerelease.app",
-      systemAppBundleName: "Hi Design Prerelease.release-stable.app",
+      displayName: "Hi Design Team",
+      executableName: "Hi Design Team",
+      installerTitle: "Hi Design Team",
+      productName: "Hi Design Team",
+      publicAppBundleName: "Hi Design Team.app",
+      systemAppBundleName: "Hi Design Team.release-stable.app",
     });
-    expect(resolveMacPaths(prereleaseVersionConfig).appPath).toMatch(/Hi Design Prerelease\.app$/);
+    expect(resolveMacPaths(prereleaseVersionConfig).appPath).toMatch(/Hi Design Team\.app$/);
     expect(resolveMacInstallIdentity(prereleaseNamespaceConfig)).toMatchObject({
-      displayName: "Hi Design Prerelease",
-      productName: "Hi Design Team Prerelease",
-      publicAppBundleName: "Hi Design Prerelease.app",
-      systemAppBundleName: "Hi Design Prerelease.release-prerelease.app",
+      displayName: "Hi Design Team",
+      productName: "Hi Design Team",
+      publicAppBundleName: "Hi Design Team.app",
+      systemAppBundleName: "Hi Design Team.release-prerelease.app",
     });
   });
 });

@@ -85,7 +85,7 @@ function makeConfig(): ToolPackConfig {
     silent: true,
     signed: false,
     productName: "Hi Design Team",
-    displayName: "Hi Design",
+    displayName: "Hi Design Team",
     to: "all",
     webOutputMode: "server",
     workspaceRoot: "/work",
@@ -664,7 +664,7 @@ describe("resolveProductionInstallCommand", () => {
 describe("renderDesktopTemplate", () => {
   const template = `[Desktop Entry]
 Type=Application
-Name=Hi Design (@@NAMESPACE@@)
+Name=Hi Design Team (@@NAMESPACE@@)
 Exec=env -u ELECTRON_RUN_AS_NODE OD_PACKAGED_NAMESPACE=@@NAMESPACE@@ @@EXEC_PATH@@ --appimage-extract-and-run %U
 Icon=@@ICON_PATH@@
 MimeType=x-scheme-handler/od;
@@ -676,7 +676,7 @@ MimeType=x-scheme-handler/od;
       execPath: "/home/u/.local/bin/Open-Design.default.AppImage",
       iconName: "hi-design-team-default",
     });
-    expect(out).toContain("Name=Hi Design (default)");
+    expect(out).toContain("Name=Hi Design Team (default)");
     expect(out).toContain(
       "Exec=env -u ELECTRON_RUN_AS_NODE OD_PACKAGED_NAMESPACE=default /home/u/.local/bin/Open-Design.default.AppImage --appimage-extract-and-run %U",
     );
@@ -902,7 +902,7 @@ describe("inspectPackedLinuxApp", () => {
     requestJsonIpcMock.mockReset();
     requestJsonIpcMock
       .mockResolvedValueOnce({ state: "running", url: "od://app/" })
-      .mockResolvedValueOnce({ ok: true, value: "Hi Design" })
+      .mockResolvedValueOnce({ ok: true, value: "Hi Design Team" })
       .mockResolvedValueOnce({ path: "/tmp/hi-design-team-linux.png" });
 
     const result = await inspectPackedLinuxApp(makeConfig(), {
@@ -911,7 +911,7 @@ describe("inspectPackedLinuxApp", () => {
     });
 
     expect(result).toEqual({
-      eval: { ok: true, value: "Hi Design" },
+      eval: { ok: true, value: "Hi Design Team" },
       screenshot: { path: "/tmp/hi-design-team-linux.png" },
       status: { state: "running", url: "od://app/" },
     });

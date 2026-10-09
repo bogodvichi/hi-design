@@ -32,10 +32,10 @@ const stamp: SidecarStamp = {
 function fakeRuntime(payloadDesktopProcess: boolean): PackagedLauncherRuntime {
   return {
     config: {} as PackagedLauncherRuntime["config"],
-    desktopExecutablePath: "/tmp/payload/Hi Design Beta.app/Contents/MacOS/Hi Design Beta",
+    desktopExecutablePath: "/tmp/payload/Hi Design Team.app/Contents/MacOS/Hi Design Team",
     descriptor: {} as PackagedLauncherRuntime["descriptor"],
     electronNodeCommand: null,
-    installedLaunchPath: "/Applications/Hi Design Beta.app",
+    installedLaunchPath: "/Applications/Hi Design Team.app",
     launcherPaths: {} as PackagedLauncherRuntime["launcherPaths"],
     paths: {} as PackagedLauncherRuntime["paths"],
     payloadDesktopProcess,

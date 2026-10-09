@@ -9,7 +9,7 @@ import { buildCustomWinNsisInstaller } from "@/win/custom-installer.js";
 import { resolveWinPaths } from "@/win/paths.js";
 
 const BUILD_HOST_NSIS_LOG_PATH = "D:\\a\\_temp\\tools-pack\\logs\\nsis.log";
-const PORTABLE_NSIS_LOG_DIR = "$TEMP\\Hi Design\\test-namespace";
+const PORTABLE_NSIS_LOG_DIR = "$TEMP\\Hi Design Team\\test-namespace";
 const PORTABLE_NSIS_LOG_PATH = `${PORTABLE_NSIS_LOG_DIR}\\nsis.log`;
 
 function createConfig(root: string, portable: boolean): ToolPackConfig {
@@ -44,7 +44,7 @@ function createConfig(root: string, portable: boolean): ToolPackConfig {
     },
     signed: false,
     productName: "Hi Design Team",
-    displayName: "Hi Design",
+    displayName: "Hi Design Team",
     silent: true,
     to: "nsis",
     webOutputMode: "standalone",

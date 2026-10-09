@@ -49,7 +49,7 @@ function makeMacConfig(root: string, namespace: string, appVersion: string): Too
     },
     signed: false,
     productName: "Hi Design Team",
-    displayName: "Hi Design",
+    displayName: "Hi Design Team",
     silent: true,
     to: "app",
     webOutputMode: "standalone",
@@ -102,11 +102,11 @@ describe("tools-pack mac launcher payload archives", () => {
       publicAppBundleName: identity.publicAppBundleName,
       version: "0.9.0-beta.2",
     })).toEqual({
-      appBundleName: "Hi Design Beta.app",
+      appBundleName: "Hi Design Team.app",
       channel: "beta",
       entry: {
-        cwd: "payload/Hi Design Beta.app",
-        executable: "payload/Hi Design Beta.app/Contents/MacOS/Hi Design Team Beta",
+        cwd: "payload/Hi Design Team.app",
+        executable: "payload/Hi Design Team.app/Contents/MacOS/Hi Design Team",
       },
       namespace: "release-beta",
       payloadRoot: "payload",
@@ -131,14 +131,14 @@ describe("tools-pack mac launcher payload archives", () => {
         entry: { executable: string };
         version: string;
       };
-      expect(manifest.appBundleName).toBe("Hi Design Beta.app");
-      expect(manifest.entry.executable).toBe("payload/Hi Design Beta.app/Contents/MacOS/Hi Design Team Beta");
+      expect(manifest.appBundleName).toBe("Hi Design Team.app");
+      expect(manifest.entry.executable).toBe("payload/Hi Design Team.app/Contents/MacOS/Hi Design Team");
       expect(manifest.version).toBe("0.9.0-beta.2");
       await expectPathExists(join(extractRoot, manifest.entry.executable));
       await expectPathExists(join(
         extractRoot,
         "payload",
-        "Hi Design Beta.app",
+        "Hi Design Team.app",
         "Contents",
         "Resources",
         "hi-design-team-config.json",

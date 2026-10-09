@@ -47,21 +47,21 @@ describe("@open-design/release", () => {
   });
 
   it("centralizes release identity and namespace derivation", () => {
-    expect(releaseChannelDescriptor("prerelease").productName).toBe("Hi Design Team Prerelease");
-    expect(releaseInstallIdentity("prerelease")).toEqual({
-      appId: "io.hi-design-team.desktop.prerelease",
-      displayName: "Hi Design Prerelease",
-      executableName: "Hi Design Team Prerelease",
-      productName: "Hi Design Team Prerelease",
-    });
+    expect(releaseChannelDescriptor("prerelease").productName).toBe("Hi Design Team");
+   expect(releaseInstallIdentity("prerelease")).toEqual({
+     appId: "io.hi-design-team.desktop.prerelease",
+      displayName: "Hi Design Team",
+      executableName: "Hi Design Team",
+      productName: "Hi Design Team",
+   });
     expect(releaseNamespace("prerelease")).toBe("release-prerelease");
     expect(releaseNamespace("prerelease", "win")).toBe("release-prerelease-win");
     expect(releaseNamespace("prerelease", "macIntel")).toBe("release-prerelease-intel");
     expect(releaseChannelDescriptor("qa2")).toMatchObject({
       appId: "io.hi-design-team.desktop.qa2",
       channel: "qa2",
-      displayName: "Hi Design Qa2",
-      productName: "Hi Design Team Qa2",
+      displayName: "Hi Design Team",
+      productName: "Hi Design Team",
       storagePrefix: "qa2",
     });
   });

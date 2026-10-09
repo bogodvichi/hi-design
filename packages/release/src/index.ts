@@ -56,7 +56,7 @@ export const RELEASE_PLATFORM_NAMESPACE_SUFFIXES = Object.freeze({
 } as const satisfies Record<ReleasePlatform, string>);
 
 const PRODUCT_NAME = process.env.OD_PRODUCT_NAME ?? "Hi Design Team";
-const DISPLAY_NAME = process.env.OD_DISPLAY_NAME ?? "Hi Design";
+const DISPLAY_NAME = PRODUCT_NAME;
 const DEFAULT_NAMESPACE = "hi-design-team";
 
 const descriptors: Record<"prerelease" | "stable", ReleaseChannelDescriptor> = {
@@ -66,10 +66,10 @@ const descriptors: Record<"prerelease" | "stable", ReleaseChannelDescriptor> = {
     channel: "prerelease",
     counterField: "releaseNumber",
     displayLabel: "Prerelease",
-    displayName: `${DISPLAY_NAME} Prerelease`,
+    displayName: DISPLAY_NAME,
     githubReleaseEnabled: false,
     internal: true,
-    productName: `${PRODUCT_NAME} Prerelease`,
+    productName: PRODUCT_NAME,
     releaseVersionField: "releaseVersion",
     storagePrefix: "prerelease",
   },
@@ -106,10 +106,10 @@ export function releaseChannelDescriptor(channel: string): ReleaseChannelDescrip
     channel,
     counterField: "releaseNumber",
     displayLabel,
-    displayName: `${DISPLAY_NAME} ${displayLabel}`,
+    displayName: DISPLAY_NAME,
     githubReleaseEnabled: false,
     internal: true,
-    productName: `${PRODUCT_NAME} ${displayLabel}`,
+    productName: PRODUCT_NAME,
     releaseVersionField: "releaseVersion",
     storagePrefix: channel,
   };

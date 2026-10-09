@@ -44,7 +44,7 @@ function makeConfig(overrides: Partial<ToolPackConfig> = {}): ToolPackConfig {
     },
     signed: false,
     productName: "Hi Design Team",
-    displayName: "Hi Design",
+    displayName: "Hi Design Team",
     silent: true,
     to: "nsis",
     webOutputMode: "standalone",

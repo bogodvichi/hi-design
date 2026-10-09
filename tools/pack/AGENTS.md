@@ -29,7 +29,7 @@ Read `tools/pack/CACHE.md` before changing any build-cache node key, adding a ca
 - Tests import source modules through the test-only `@/*` alias. Tests that intentionally inspect source text use the same alias with Vitest's `?raw` suffix; do not reintroduce directory-depth-dependent `../src/` imports or file URLs.
 - Do not hand-build `--od-stamp-*` args; use `createProcessStampArgs` with `OPEN_DESIGN_SIDECAR_CONTRACT`.
 - Do not use port numbers in data/log/runtime/cache path decisions. Namespace decides paths; ports are only transient transports.
-- Public release artifacts must use channel-specific app identity: stable uses `Hi Design`, beta uses `Hi Design Beta`, prerelease uses `Hi Design Prerelease`, and preview uses `Hi Design Preview`. Local tools-pack installs may still use namespace-scoped install paths only as a developer multi-instance validation convention.
+- Public release artifacts use the unified app identity `Hi Design Team` across all channels. Channel distinction lives in namespaces, appIds, registry keys, and updater feeds, not in the display name. Local tools-pack installs may still use namespace-scoped install paths only as a developer multi-instance validation convention.
 - Do not let namespace-named `.app` installs change data/log/runtime/cache path conventions.
 - `--dir` controls tools-pack output/runtime/install validation roots only. It must not be treated as the cache root. The default workspace tools-pack cache is the hot path. `--cache-dir` is a special-case escape hatch for cache isolation or cold-cache validation, not a routine QA/build parameter.
 - Use `--portable` for public/release artifacts so packaged config does not bake local tools-pack runtime roots from the build machine.
@@ -71,10 +71,10 @@ The runtime updater reads `https://releases.open-design.ai/<channel>/latest/meta
 
 Channel identity must be stable across install, update install, shortcuts, registry entries, and app data:
 
-- Stable: `Hi Design`, namespace `default` or stable release namespace.
-- Beta Windows: `Hi Design Beta`, namespace `release-beta-win`, uninstall key `Hi Design-release-beta-win`.
-- Prerelease Windows: `Hi Design Prerelease`, namespace `release-prerelease-win`, uninstall key `Hi Design-release-prerelease-win`.
-- Preview Windows: `Hi Design Preview`, namespace `release-preview-win`, uninstall key `Hi Design-release-preview-win`.
+- Stable: `Hi Design Team`, namespace `default` or stable release namespace.
+- Beta Windows: `Hi Design Team`, namespace `release-beta-win`, uninstall key `Hi Design-release-beta-win`.
+- Prerelease Windows: `Hi Design Team`, namespace `release-prerelease-win`, uninstall key `Hi Design-release-prerelease-win`.
+- Preview Windows: `Hi Design Team`, namespace `release-preview-win`, uninstall key `Hi Design-release-preview-win`.
 - Beta-like ad hoc namespaces such as `beta-local-flow` are test namespaces, not the beta channel. They must not be used for user-flow beta validation because they create a different registry key while sharing a confusing display name/path.
 
 If a local release-channel package is meant to be updated by a real feed, build it with the matching release namespace and an older matching `--app-version` such as `--namespace release-beta-win --app-version 0.10.0-beta.1` or `--namespace release-prerelease-win --app-version 0.10.0-prerelease.1`. Otherwise the installed package and the downloaded package can appear as separate registry entries even though they target the same display name.
@@ -130,9 +130,9 @@ C:\odtp-beta-release-fixed\out\win\namespaces\release-beta-win\builder\Hi Design
 4. Expected user flow:
 
 - User installs `0.8.0-beta.5` through the NSIS UI.
-- User launches `Hi Design Beta`.
+- User launches `Hi Design Team`.
 - App auto-checks the real beta feed and selects the latest Windows launcher payload when the package-launcher context is valid. The installer is the fallback path when the payload artifact or launcher context is unavailable.
-- For the payload path, the app downloads `platforms.win.artifacts.payload`, verifies sha256, prepares the payload under `%APPDATA%\Hi Design\launcher\channels\beta\namespaces\release-beta-win\versions\<version>\payload`, and shows the web updater popup.
+- For the payload path, the app downloads `platforms.win.artifacts.payload`, verifies sha256, prepares the payload under `%APPDATA%\Hi Design Team\launcher\channels\beta\namespaces\release-beta-win\versions\<version>\payload`, and shows the web updater popup.
 - The native Windows File menu must not expose update actions. On macOS, the app menu exposes the state-aware update item and opens the renderer update dialog without making background checks intrusive.
 - The updater popup uses i18n strings and download progress must not flash to 100% before real bytes arrive.
 - Applying the payload update should quit and relaunch the exact executable under the prepared version's `payload` directory, then mark launcher `active` and `lastSuccessful` to that version and clear `attempt.json`.
@@ -147,7 +147,7 @@ Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*' -
   Where-Object { $_.DisplayName -like 'Hi Design*' } |
   Select-Object PSChildName,DisplayName,DisplayVersion,InstallLocation
 
-Get-Content "$env:APPDATA\Hi Design\launcher\channels\beta\namespaces\release-beta-win\runtime.json"
+Get-Content "$env:APPDATA\Hi Design Team\launcher\channels\beta\namespaces\release-beta-win\runtime.json"
 ```
 
 For a clean beta channel result, expect one beta entry with `PSChildName` `Hi Design-release-beta-win` and the latest `DisplayVersion`.

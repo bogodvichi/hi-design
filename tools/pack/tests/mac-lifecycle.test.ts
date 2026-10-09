@@ -79,7 +79,7 @@ function makeConfig(root: string, overrides: Partial<ToolPackConfig> = {}): Tool
     silent: true,
     signed: false,
     productName: "Hi Design Team",
-    displayName: "Hi Design",
+    displayName: "Hi Design Team",
     to: "app",
     webOutputMode: "standalone",
     workspaceRoot: root,
@@ -105,7 +105,7 @@ describe("startPackedMacApp", () => {
     try {
       const config = makeConfig(root);
       const paths = resolveMacPaths(config);
-      const executablePath = join(paths.installedAppPath, "Contents", "MacOS", "Hi Design");
+      const executablePath = join(paths.installedAppPath, "Contents", "MacOS", "Hi Design Team");
       const delegatedPid = 5678;
 
       await mkdir(join(paths.installedAppPath, "Contents", "MacOS"), { recursive: true });
@@ -136,7 +136,7 @@ describe("startPackedMacApp", () => {
     try {
       const config = makeConfig(root);
       const paths = resolveMacPaths(config);
-      const executablePath = join(paths.installedAppPath, "Contents", "MacOS", "Hi Design");
+      const executablePath = join(paths.installedAppPath, "Contents", "MacOS", "Hi Design Team");
 
       await mkdir(join(paths.installedAppPath, "Contents", "MacOS"), { recursive: true });
       await writeFile(executablePath, "#!/bin/sh\nexit 1\n", "utf8");
@@ -162,7 +162,7 @@ describe("startPackedMacApp", () => {
     try {
       const config = makeConfig(root);
       const paths = resolveMacPaths(config);
-      const executablePath = join(paths.installedAppPath, "Contents", "MacOS", "Hi Design");
+      const executablePath = join(paths.installedAppPath, "Contents", "MacOS", "Hi Design Team");
 
       await mkdir(join(paths.installedAppPath, "Contents", "MacOS"), { recursive: true });
       await writeFile(executablePath, "#!/bin/sh\nexit 0\n", "utf8");
@@ -188,7 +188,7 @@ describe("startPackedMacApp", () => {
     try {
       const config = makeConfig(root);
       const paths = resolveMacPaths(config);
-      const executablePath = join(paths.installedAppPath, "Contents", "MacOS", "Hi Design");
+      const executablePath = join(paths.installedAppPath, "Contents", "MacOS", "Hi Design Team");
       const bundledConfigPath = join(paths.installedAppPath, "Contents", "Resources", "hi-design-team-config.json");
 
       await mkdir(join(paths.installedAppPath, "Contents", "MacOS"), { recursive: true });
@@ -227,7 +227,7 @@ describe("startPackedMacApp", () => {
     try {
       const config = makeConfig(root, { namespace: "release-preview" });
       const paths = resolveMacPaths(config);
-      const executablePath = join(paths.installedAppPath, "Contents", "MacOS", "Hi Design Preview");
+      const executablePath = join(paths.installedAppPath, "Contents", "MacOS", "Hi Design Team");
 
       await mkdir(join(paths.installedAppPath, "Contents", "MacOS"), { recursive: true });
       await writeFile(executablePath, "#!/bin/sh\nexit 0\n", "utf8");

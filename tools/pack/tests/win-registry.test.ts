@@ -4,20 +4,20 @@ import { stripRegistryQuotedValue } from "@/win/registry.js";
 
 describe("stripRegistryQuotedValue", () => {
   it("returns the quoted body when the value is fully quoted", () => {
-    expect(stripRegistryQuotedValue('"C:\\Program Files\\Hi Design\\Uninstall.exe"')).toBe(
-      "C:\\Program Files\\Hi Design\\Uninstall.exe",
+    expect(stripRegistryQuotedValue('"C:\\Program Files\\Hi Design Team\\Uninstall.exe"')).toBe(
+      "C:\\Program Files\\Hi Design Team\\Uninstall.exe",
     );
   });
 
   it("returns the inner segment when the quoted region carries trailing flags", () => {
-    expect(stripRegistryQuotedValue('"C:\\Program Files\\Hi Design\\Uninstall.exe" /S')).toBe(
-      "C:\\Program Files\\Hi Design\\Uninstall.exe",
+    expect(stripRegistryQuotedValue('"C:\\Program Files\\Hi Design Team\\Uninstall.exe" /S')).toBe(
+      "C:\\Program Files\\Hi Design Team\\Uninstall.exe",
     );
   });
 
   it("trims unquoted values and leaves them otherwise unchanged", () => {
-    expect(stripRegistryQuotedValue("  C:\\Hi Design\\Uninstall.exe  ")).toBe(
-      "C:\\Hi Design\\Uninstall.exe",
+    expect(stripRegistryQuotedValue("  C:\\Hi Design Team\\Uninstall.exe  ")).toBe(
+      "C:\\Hi Design Team\\Uninstall.exe",
     );
   });
 

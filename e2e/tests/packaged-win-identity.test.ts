@@ -8,10 +8,10 @@ describe("packaged windows smoke identity", () => {
       namespace: "release-stable-win",
       releaseVersion: "0.8.0-prerelease.2",
     })).toEqual({
-      displayName: "Hi Design Prerelease",
+      displayName: "Hi Design Team",
       namespaceToken: "release-stable-win",
       productName: "Hi Design Team",
-      systemName: "Hi Design Prerelease-release-stable-win",
+      systemName: "Hi Design Team-release-stable-win",
     });
     expect(releaseAppVersionArgs("0.8.0-prerelease.2")).toEqual(["--app-version", "0.8.0-prerelease.2"]);
   });
@@ -21,19 +21,19 @@ describe("packaged windows smoke identity", () => {
       namespace: "release-stable-win",
       releaseVersion: "0.8.0",
     })).toEqual({
-      displayName: "Hi Design",
+      displayName: "Hi Design Team",
       namespaceToken: "release-stable-win",
       productName: "Hi Design Team",
-      systemName: "Hi Design",
+      systemName: "Hi Design Team",
     });
     expect(resolvePackagedWinInstallIdentity({
       namespace: "default",
       releaseVersion: undefined,
     })).toEqual({
-      displayName: "Hi Design",
+      displayName: "Hi Design Team",
       namespaceToken: "default",
       productName: "Hi Design Team",
-      systemName: "Hi Design",
+      systemName: "Hi Design Team",
     });
   });
 
@@ -41,11 +41,11 @@ describe("packaged windows smoke identity", () => {
     expect(resolvePackagedWinInstallIdentity({
       namespace: "release-stable-win",
       releaseVersion: "0.8.0-preview.1",
-    }).displayName).toBe("Hi Design Preview");
+    }).displayName).toBe("Hi Design Team");
     expect(resolvePackagedWinInstallIdentity({
       namespace: "release-beta-win",
       releaseVersion: undefined,
-    }).displayName).toBe("Hi Design Beta");
+    }).displayName).toBe("Hi Design Team");
   });
 
   it("[P2] keeps ad hoc namespaces isolated from release channel identities", () => {
@@ -53,10 +53,10 @@ describe("packaged windows smoke identity", () => {
       namespace: "beta-local-flow",
       releaseVersion: undefined,
     })).toEqual({
-      displayName: "Hi Design beta-local-flow",
+      displayName: "Hi Design Team beta-local-flow",
       namespaceToken: "beta-local-flow",
       productName: "Hi Design Team",
-      systemName: "Hi Design beta-local-flow",
+      systemName: "Hi Design Team beta-local-flow",
     });
     expect(releaseAppVersionArgs("   ")).toEqual([]);
   });
