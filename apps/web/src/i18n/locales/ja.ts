@@ -1,6 +1,12 @@
 import type { Dict } from '../types';
 
 export const ja: Dict = {
+  'federated.connecting': '自動ログインを試行中…手動ログインも選択できます。',
+  'federated.unavailable': '自動ログインを利用できません。下のページから手動でログインできます。',
+  'federated.manual': '自動ログインを停止しました。下のページで操作を続けてください。',
+  'federated.unconfirmed': '自動ログインは未確認です。ページは引き続き利用できます。',
+  'federated.manualAction': '手動でログイン',
+  'federated.retryAction': '自動ログインを再試行',
   'projectDrag.movedTo': 'Moved to “{path}”',
   'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "移動完了：{succeeded} フォルダー、未完了：{failed}。",

@@ -1,6 +1,12 @@
 import type { Dict } from '../types';
 
 export const de: Dict = {
+  'federated.connecting': 'Automatische Anmeldung läuft… Eine manuelle Anmeldung ist ebenfalls möglich.',
+  'federated.unavailable': 'Automatische Anmeldung nicht verfügbar. Sie können sich unten manuell anmelden.',
+  'federated.manual': 'Automatische Anmeldung beendet. Fahren Sie auf der Seite unten fort.',
+  'federated.unconfirmed': 'Automatische Anmeldung nicht bestätigt. Die Plattformseite bleibt verfügbar.',
+  'federated.manualAction': 'Manuell anmelden',
+  'federated.retryAction': 'Automatische Anmeldung wiederholen',
   'projectDrag.movedTo': 'Moved to “{path}”',
   'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "Verschobene Ordner: {succeeded}; unvollständig: {failed}.",

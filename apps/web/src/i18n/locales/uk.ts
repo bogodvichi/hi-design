@@ -1,6 +1,12 @@
 import type { Dict } from '../types';
 
 export const uk: Dict = {
+  'federated.connecting': 'Спроба автоматичного входу… Також можна увійти вручну.',
+  'federated.unavailable': 'Автоматичний вхід недоступний. Увійдіть на сторінці нижче.',
+  'federated.manual': 'Автоматичний вхід зупинено. Продовжте на сторінці нижче.',
+  'federated.unconfirmed': 'Автоматичний вхід не підтверджено. Сторінка залишається доступною.',
+  'federated.manualAction': 'Увійти вручну',
+  'federated.retryAction': 'Повторити автоматичний вхід',
   'projectDrag.movedTo': 'Moved to “{path}”',
   'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "Переміщено папок: {succeeded}; не завершено: {failed}.",

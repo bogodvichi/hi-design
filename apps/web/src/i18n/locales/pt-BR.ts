@@ -1,6 +1,12 @@
 import type { Dict } from '../types';
 
 export const ptBR: Dict = {
+  'federated.connecting': 'Tentando entrar automaticamente… Você também pode entrar manualmente.',
+  'federated.unavailable': 'Login automático indisponível. Entre pela página abaixo.',
+  'federated.manual': 'Login automático interrompido. Continue na página abaixo.',
+  'federated.unconfirmed': 'Login automático não confirmado. A página continua disponível.',
+  'federated.manualAction': 'Entrar manualmente',
+  'federated.retryAction': 'Tentar login automático novamente',
   'projectDrag.movedTo': 'Moved to “{path}”',
   'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "Pastas movidas: {succeeded}; incompletas: {failed}.",

@@ -134,7 +134,6 @@ export function CloudToolList({
     item: CloudToolItem;
   } | null>(null);
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  const [openingId, setOpeningId] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const menuTriggerRef = useRef<HTMLButtonElement>(null);
   const includesOfficialCommunityTools = mode === 'square' && scope === 'public';
@@ -272,43 +271,18 @@ export function CloudToolList({
       return;
     }
     const resourceKey = isHiMind ? 'himind' : AI_RESEARCH_RESOURCE_KEY;
-    const launchEndpoint = isHiMind
-      ? '/api/auth/himind/launch'
-      : '/api/auth/ai-research/launch';
-    const activatedExistingHiMind = isHiMind && activateWorkspaceResource(resourceKey);
-    if (openingId) return;
-    if (isHiMind && !activatedExistingHiMind) {
-      openWorkspaceTab({
-        kind: 'external',
-        url,
-        resourceKey,
-        title,
-      });
-    }
-    setOpeningId(tool.resourceId);
+    // The persistent tool tab owns SSO and cancellation. Open first so a failed
+    // launch can never prevent manual login or resurrect a closed tool tab.
     setError(null);
-    try {
-      const res = await fetch(launchEndpoint, { method: 'POST' });
-      const body = await res.json().catch(() => null);
-      if (!res.ok || typeof body?.launchUrl !== 'string') {
-        throw new Error(
-          body?.error?.message
-          ?? (isHiMind ? 'HiMind login failed' : 'AI research login failed'),
-        );
-      }
+    if (!activateWorkspaceResource(resourceKey)) {
       openWorkspaceTab({
         kind: 'external',
         url,
-        bootstrapUrl: body.launchUrl,
         resourceKey,
         title,
       });
-      await recordUse();
-    } catch (err: any) {
-      setError(err?.message ?? String(err));
-    } finally {
-      setOpeningId(null);
     }
+    await recordUse();
   }
 
   const visibleTools = searchQuery.trim()

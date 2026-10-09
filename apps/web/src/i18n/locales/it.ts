@@ -1,6 +1,12 @@
 import type { Dict } from '../types';
 
 export const it: Dict = {
+  'federated.connecting': 'Accesso automatico in corso… Puoi anche accedere manualmente.',
+  'federated.unavailable': 'Accesso automatico non disponibile. Accedi dalla pagina sottostante.',
+  'federated.manual': 'Accesso automatico interrotto. Continua nella pagina sottostante.',
+  'federated.unconfirmed': 'Accesso automatico non confermato. La pagina resta disponibile.',
+  'federated.manualAction': 'Accedi manualmente',
+  'federated.retryAction': 'Riprova accesso automatico',
   'projectDrag.movedTo': 'Moved to “{path}”',
   'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "Cartelle spostate: {succeeded}; incomplete: {failed}.",

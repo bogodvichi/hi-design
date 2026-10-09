@@ -1,6 +1,12 @@
 import type { Dict } from "../types";
 
 export const zhCN: Dict = {
+  'federated.connecting': '正在尝试免密登录…也可选择手动登录。',
+  'federated.unavailable': '免密登录暂不可用，可在下方手动登录。',
+  'federated.manual': '已停止免密尝试，请在下方页面继续操作。',
+  'federated.unconfirmed': '尚未确认免密结果，平台页面仍可正常操作。',
+  'federated.manualAction': '手动登录',
+  'federated.retryAction': '重试免密登录',
   'projectDrag.movedTo': '已移动至「{path}」',
   'projectDrag.permissionDenied': '移动失败，无权限',
   'personalScope.folderMoveSummary': "{succeeded} 个文件夹移动成功，{failed} 个未完成。",

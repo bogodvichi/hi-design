@@ -86,7 +86,7 @@ async function issueFederatedLaunch(controller, options, validateSession = valid
     return;
   }
 
-  const cfg = app.config[options.configKey] || {};
+  const cfg = options.config || app.config[options.configKey] || {};
   if (typeof cfg.ssoSecret !== 'string' || cfg.ssoSecret.length < 32) {
     ctx.status = 503;
     ctx.body = { code: -1, msg: 'FAIL', error: `${options.serviceName} SSO is not configured` };

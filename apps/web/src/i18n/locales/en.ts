@@ -1,6 +1,12 @@
 import type { Dict } from '../types';
 
 export const en: Dict = {
+  'federated.connecting': 'Trying automatic sign-in… You can switch to manual sign-in.',
+  'federated.unavailable': 'Automatic sign-in is unavailable. You can sign in on the page below.',
+  'federated.manual': 'Automatic sign-in stopped. Continue on the page below.',
+  'federated.unconfirmed': 'Automatic sign-in has not been confirmed. The platform page remains available.',
+  'federated.manualAction': 'Sign in manually',
+  'federated.retryAction': 'Retry automatic sign-in',
   'projectDrag.movedTo': 'Moved to “{path}”',
   'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "Folders moved: {succeeded}; incomplete: {failed}.",

@@ -62,6 +62,37 @@ describe('test/app/controller/api/ai_research_sso.test.js', () => {
     });
   });
 
+  it('keeps the AI research key and audience separate when reusing the HiMind signer', async () => {
+    let signed;
+    const controller = {
+      app: {
+        config: {
+          himind: { ssoSecret: 'himind-secret-should-not-be-used-here', ssoAudience: 'himind' },
+          aiResearch: { baseUrl: 'https://research.example/', ssoSecret: 'research-key-at-least-thirty-two-chars', ssoIssuer: 'hidesign-web', ssoAudience: 'design-research-workbench', ticketTtlSeconds: 60 },
+        },
+        jwt: { sign(payload, key, options) { signed = { payload, key, options }; return 'opaque'; } },
+      },
+      ctx: { request: { body: { username: 'alice', oa_cookies: [{ name: 'JwtToken', value: 'opaque' }] } }, headers: {}, logger: { warn() {} } },
+    };
+    await issueTicket(controller, async () => ({ email: 'alice@example.com' }));
+    assert.strictEqual(signed.key, controller.app.config.aiResearch.ssoSecret);
+    assert.strictEqual(signed.payload.aud, 'design-research-workbench');
+    assert.strictEqual(signed.payload.iss, 'hidesign-web');
+    assert.strictEqual(new URL(controller.ctx.body.data.launch_url).pathname, '/api/auth/platform');
+  });
+
+  it('fails closed when OA validation fails without issuing a ticket', async () => {
+    let signed = false;
+    const controller = {
+      app: { config: { aiResearch: { ssoSecret: 'research-key-at-least-thirty-two-chars' } }, jwt: { sign() { signed = true; } } },
+      ctx: { request: { body: { username: 'alice' } }, headers: {}, logger: { warn() {} } },
+    };
+    await issueTicket(controller, async () => { throw new Error('OA session unavailable'); });
+    assert.strictEqual(controller.ctx.status, 401);
+    assert.strictEqual(signed, false);
+    assert.strictEqual(controller.ctx.body.error, 'OA session is invalid');
+  });
+
   it('rejects an mcpToken request with an invalid username before any network call', async () => {
     const ctx = {
       request: { body: { username: '../evil' } },

@@ -1,6 +1,12 @@
 import type { Dict } from '../types';
 
 export const ar: Dict = {
+  'federated.connecting': 'جارٍ محاولة تسجيل الدخول تلقائيًا… يمكنك اختيار الدخول اليدوي.',
+  'federated.unavailable': 'تسجيل الدخول التلقائي غير متاح. يمكنك تسجيل الدخول في الصفحة أدناه.',
+  'federated.manual': 'تم إيقاف تسجيل الدخول التلقائي. تابع في الصفحة أدناه.',
+  'federated.unconfirmed': 'لم يتم تأكيد تسجيل الدخول التلقائي. لا تزال الصفحة متاحة.',
+  'federated.manualAction': 'تسجيل الدخول يدويًا',
+  'federated.retryAction': 'إعادة محاولة الدخول التلقائي',
   'projectDrag.movedTo': 'Moved to “{path}”',
   'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "المجلدات المنقولة: {succeeded}؛ غير المكتملة: {failed}.",

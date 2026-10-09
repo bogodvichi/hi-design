@@ -8,6 +8,7 @@ export function HiMindWorkspaceFrame({ route }: { route: Route }) {
       resourceKey="himind"
       testIdPrefix="himind-workspace"
       launchEndpoint="/api/auth/himind/launch"
+      callbackPath="/api/v1/auth/hidesign/callback"
       readyMessageType="himind:sso-ready"
       authRequiredMessageType="himind:auth-required"
     />

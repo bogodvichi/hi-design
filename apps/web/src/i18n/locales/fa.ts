@@ -1,6 +1,12 @@
 import type { Dict } from '../types';
 
 export const fa: Dict = {
+  'federated.connecting': 'در حال تلاش برای ورود خودکار… می‌توانید ورود دستی را انتخاب کنید.',
+  'federated.unavailable': 'ورود خودکار در دسترس نیست. از صفحه زیر وارد شوید.',
+  'federated.manual': 'ورود خودکار متوقف شد. در صفحه زیر ادامه دهید.',
+  'federated.unconfirmed': 'ورود خودکار تأیید نشده است. صفحه همچنان در دسترس است.',
+  'federated.manualAction': 'ورود دستی',
+  'federated.retryAction': 'تلاش دوباره برای ورود خودکار',
   'projectDrag.movedTo': 'Moved to “{path}”',
   'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "پوشه‌های منتقل‌شده: {succeeded}؛ ناتمام: {failed}.",

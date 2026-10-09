@@ -1,13 +1,16 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { HiMindWorkspaceFrame } from '../../src/components/HiMindWorkspaceFrame';
 import {
   dispatchOpenWorkspaceTab,
   OPEN_WORKSPACE_TAB_EVENT,
 } from '../../src/components/workspaceTabEvents';
 import type { Route } from '../../src/router';
+
+vi.mock('../../src/i18n', () => ({ useT: () => (key: string) => key }));
+beforeEach(() => { vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {})); });
 
 const homeRoute: Route = { kind: 'home', view: 'home' };
 const stableRoute: Route = {
@@ -26,14 +29,14 @@ describe('HiMindWorkspaceFrame', () => {
   it('shows the iframe after it loads even when HiMind does not send an SSO ready message', async () => {
     const bootstrapRoute: Route = {
       ...stableRoute,
-      bootstrapUrl: 'http://himind.example/callback?ticket=opaque',
+      bootstrapUrl: 'http://himind.example/api/v1/auth/hidesign/callback?ticket=opaque',
     };
     const { getByTestId, queryByTestId } = render(
       <HiMindWorkspaceFrame route={bootstrapRoute} />,
     );
     const frame = getByTestId('himind-workspace-frame') as HTMLIFrameElement;
 
-    expect(frame.style.visibility).toBe('hidden');
+    expect(frame.style.visibility).toBe('visible');
     expect(queryByTestId('himind-workspace-loading')).not.toBeNull();
 
     fireEvent.load(frame);
@@ -48,7 +51,7 @@ describe('HiMindWorkspaceFrame', () => {
     const { rerender, getByTestId } = render(<HiMindWorkspaceFrame route={homeRoute} />);
     act(() => dispatchOpenWorkspaceTab({
       ...stableRoute,
-      bootstrapUrl: 'http://himind.example/callback?ticket=opaque',
+      bootstrapUrl: 'http://himind.example/api/v1/auth/hidesign/callback?ticket=opaque',
     }));
     const frame = getByTestId('himind-workspace-frame') as HTMLIFrameElement;
     expect(frame.getAttribute('src')).toContain('ticket=opaque');
@@ -71,13 +74,13 @@ describe('HiMindWorkspaceFrame', () => {
 
     act(() => dispatchOpenWorkspaceTab({
       ...stableRoute,
-      bootstrapUrl: 'http://himind.example/callback?ticket=fresh',
+      bootstrapUrl: 'http://himind.example/api/v1/auth/hidesign/callback?ticket=fresh',
     }));
 
     await waitFor(() => {
       expect(getByTestId('himind-workspace-frame')).toBe(frame);
       expect(frame.getAttribute('src')).toContain('ticket=fresh');
-      expect(frame.style.visibility).toBe('hidden');
+      expect(frame.style.visibility).toBe('visible');
       expect(queryByTestId('himind-workspace-loading')).not.toBeNull();
     });
   });
@@ -114,8 +117,8 @@ describe('HiMindWorkspaceFrame', () => {
   });
 
   it('reauthenticates inside the existing iframe after auth expires', async () => {
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({
-      launchUrl: 'http://himind.example/callback?ticket=fresh',
+    vi.mocked(globalThis.fetch).mockImplementation(async () => new Response(JSON.stringify({
+      launchUrl: 'http://himind.example/api/v1/auth/hidesign/callback?ticket=fresh',
       expiresIn: 60,
     }), { status: 200, headers: { 'content-type': 'application/json' } }));
     const { getByTestId, queryByTestId } = render(<HiMindWorkspaceFrame route={stableRoute} />);
@@ -127,6 +130,10 @@ describe('HiMindWorkspaceFrame', () => {
       expect(queryByTestId('himind-workspace-loading')).toBeNull();
     });
 
+    act(() => window.dispatchEvent(new MessageEvent('message', {
+      data: { type: 'himind:sso-ready', path: '/' },
+      origin: 'http://himind.example', source: frame.contentWindow,
+    })));
     window.dispatchEvent(new MessageEvent('message', {
       data: { type: 'himind:auth-required' },
       origin: 'http://himind.example',
@@ -134,12 +141,12 @@ describe('HiMindWorkspaceFrame', () => {
     }));
 
     await waitFor(() => {
-      expect(frame.style.visibility).toBe('hidden');
+      expect(frame.style.visibility).toBe('visible');
       expect(queryByTestId('himind-workspace-loading')).not.toBeNull();
     });
 
     await waitFor(() => {
-      expect(globalThis.fetch).toHaveBeenCalledWith('/api/auth/himind/launch', { method: 'POST' });
+      expect(globalThis.fetch).toHaveBeenCalledWith('/api/auth/himind/launch', expect.objectContaining({ method: 'POST', signal: expect.any(AbortSignal) }));
       expect(frame.getAttribute('src')).toContain('ticket=fresh');
     });
     expect(getByTestId('himind-workspace-frame')).toBe(frame);

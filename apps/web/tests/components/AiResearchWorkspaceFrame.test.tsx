@@ -8,6 +8,8 @@ import { AiResearchWorkspaceFrame } from '../../src/components/AiResearchWorkspa
 import { dispatchOpenWorkspaceTab } from '../../src/components/workspaceTabEvents';
 import type { Route } from '../../src/router';
 
+vi.mock('../../src/i18n', () => ({ useT: () => (key: string) => key }));
+
 vi.mock('@open-design/host', () => ({
   isOpenDesignHostAvailable: vi.fn(() => false),
 }));
@@ -22,10 +24,12 @@ const stableRoute: Route = {
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
 });
 
 beforeEach(() => {
   vi.mocked(isOpenDesignHostAvailable).mockReturnValue(false);
+  vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
 });
 
 describe('AiResearchWorkspaceFrame', () => {
@@ -71,7 +75,7 @@ describe('AiResearchWorkspaceFrame', () => {
     expect(guest.tagName).toBe('WEBVIEW');
     expect(guest.getAttribute('partition')).toBe('persist:hi-design-team-federated-tools');
     expect(guest.style.display).toBe('flex');
-    expect(guest.style.visibility).toBe('hidden');
+    expect(guest.style.visibility).toBe('visible');
 
     fireEvent(guest, new Event('did-finish-load'));
 

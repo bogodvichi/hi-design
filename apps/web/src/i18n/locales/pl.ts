@@ -1,6 +1,12 @@
 import type { Dict } from '../types';
 
 export const pl: Dict = {
+  'federated.connecting': 'Trwa automatyczne logowanie… Możesz też zalogować się ręcznie.',
+  'federated.unavailable': 'Automatyczne logowanie jest niedostępne. Zaloguj się na stronie poniżej.',
+  'federated.manual': 'Automatyczne logowanie zatrzymane. Kontynuuj na stronie poniżej.',
+  'federated.unconfirmed': 'Automatyczne logowanie nie zostało potwierdzone. Strona pozostaje dostępna.',
+  'federated.manualAction': 'Zaloguj się ręcznie',
+  'federated.retryAction': 'Ponów automatyczne logowanie',
   'projectDrag.movedTo': 'Moved to “{path}”',
   'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "Przeniesione foldery: {succeeded}; nieukończone: {failed}.",

@@ -29,7 +29,7 @@ afterEach(() => {
 });
 
 describe('CloudToolList', () => {
-  it('opens the HiMind SSO callback in an embedded workspace tab', async () => {
+  it('opens HiMind immediately and leaves SSO to the persistent tool tab', async () => {
     const launchUrl = 'http://himind.hikvision.com/api/v1/auth/hidesign/callback?ticket=opaque';
     const fetchMock = vi.spyOn(globalThis, 'fetch');
     fetchMock
@@ -68,17 +68,12 @@ describe('CloudToolList', () => {
       resourceKey: 'himind',
       title: 'HiMind',
     });
-    await waitFor(() => expect(openWorkspaceTabMock).toHaveBeenCalledWith({
-      kind: 'external',
-      url: 'http://himind.hikvision.com/login',
-      bootstrapUrl: launchUrl,
-      resourceKey: 'himind',
-      title: 'HiMind',
-    }));
+    expect(openWorkspaceTabMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(activateWorkspaceResourceMock).toHaveBeenCalledWith('himind');
   });
 
-  it('opens the HiMind tab even when SSO ticket creation fails', async () => {
+  it('does not gate opening HiMind on a launch response', async () => {
     vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(new Response(JSON.stringify({
         tools: [{
@@ -106,7 +101,7 @@ describe('CloudToolList', () => {
 
     fireEvent.click(await screen.findByText('personalScope.cloudToolOpen'));
 
-    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledTimes(2));
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
     expect(openWorkspaceTabMock).toHaveBeenCalledTimes(1);
     expect(openWorkspaceTabMock).toHaveBeenCalledWith({
       kind: 'external',
@@ -116,7 +111,7 @@ describe('CloudToolList', () => {
     });
   });
 
-  it('refreshes the SSO ticket when activating an open HiMind tab', async () => {
+  it('reactivates an open HiMind tab without issuing a duplicate ticket', async () => {
     activateWorkspaceResourceMock.mockReturnValue(true);
     const launchUrl = 'http://himind.hikvision.com/api/v1/auth/hidesign/callback?ticket=renewed';
     vi.spyOn(globalThis, 'fetch')
@@ -147,17 +142,8 @@ describe('CloudToolList', () => {
     fireEvent.click(await screen.findByText('personalScope.cloudToolOpen'));
 
     expect(activateWorkspaceResourceMock).toHaveBeenCalledWith('himind');
-    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledWith(
-      '/api/auth/himind/launch',
-      { method: 'POST' },
-    ));
-    expect(openWorkspaceTabMock).toHaveBeenCalledWith({
-      kind: 'external',
-      url: 'http://himind.hikvision.com/login',
-      bootstrapUrl: launchUrl,
-      resourceKey: 'himind',
-      title: 'HiMind',
-    });
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+    expect(openWorkspaceTabMock).not.toHaveBeenCalled();
   });
 
   it('restores the official community tools when cloud records are missing', async () => {
@@ -192,14 +178,11 @@ describe('CloudToolList', () => {
 
     fireEvent.click(screen.getAllByText('personalScope.cloudToolOpen')[1]!);
 
-    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledWith(
-      '/api/auth/ai-research/launch',
-      { method: 'POST' },
-    ));
+    expect(activateWorkspaceResourceMock).toHaveBeenCalledWith('ai-research-workbench');
+    expect(globalThis.fetch).not.toHaveBeenCalledWith('/api/auth/ai-research/launch', expect.anything());
     await waitFor(() => expect(openWorkspaceTabMock).toHaveBeenCalledWith({
       kind: 'external',
       url: 'https://drw.hikvision.com/',
-      bootstrapUrl: launchUrl,
       resourceKey: 'ai-research-workbench',
       title: 'AI用研工作台',
     }));
@@ -349,7 +332,7 @@ describe('CloudToolList', () => {
     expect(container.querySelectorAll('[class*="cardMenuBtn"]')).toHaveLength(2);
   });
 
-  it('does not open the AI research login page when ticket creation fails', async () => {
+  it('opens AI research before a failing background call and never gates the page', async () => {
     vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(new Response(JSON.stringify({
         tools: [],
@@ -370,9 +353,10 @@ describe('CloudToolList', () => {
 
     fireEvent.click((await screen.findAllByText('personalScope.cloudToolOpen'))[1]!);
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'AI research login ticket could not be issued',
-    );
-    expect(openWorkspaceTabMock).not.toHaveBeenCalled();
+    expect(openWorkspaceTabMock).toHaveBeenCalledWith({
+      kind: 'external', url: 'https://drw.hikvision.com/',
+      resourceKey: 'ai-research-workbench', title: 'AI用研工作台',
+    });
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 });

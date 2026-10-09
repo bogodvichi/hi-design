@@ -1,6 +1,12 @@
 import type { Dict } from '../types';
 
 export const tr: Dict = {
+  'federated.connecting': 'Otomatik giriş deneniyor… Elle giriş yapmayı da seçebilirsiniz.',
+  'federated.unavailable': 'Otomatik giriş kullanılamıyor. Aşağıdaki sayfadan giriş yapabilirsiniz.',
+  'federated.manual': 'Otomatik giriş durduruldu. Aşağıdaki sayfadan devam edin.',
+  'federated.unconfirmed': 'Otomatik giriş doğrulanmadı. Sayfa kullanılabilir durumda.',
+  'federated.manualAction': 'Elle giriş yap',
+  'federated.retryAction': 'Otomatik girişi yeniden dene',
   'projectDrag.movedTo': 'Moved to “{path}”',
   'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "Taşınan klasörler: {succeeded}; tamamlanmayan: {failed}.",
