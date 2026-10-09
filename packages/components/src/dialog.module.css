@@ -8,11 +8,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  z-index: 200;
   animation: dialog-backdrop-fade-in var(--duration-fast, 150ms) var(--curve-decelerate-mid, ease-out);
 }
 
-:where(.dialog) {
+.dialog {
   background: var(--bg-elevated);
   -webkit-app-region: no-drag;
   border-radius: var(--radius-lg);

@@ -739,6 +739,22 @@ export function resolvePackagedPathEnv(basePath = process.env.PATH ?? ""): strin
   return [...new Set(candidates.filter((entry) => entry.length > 0))].join(delimiter);
 }
 
+/** Keep OA/Skillhub traffic direct even when Node's global agent uses the user's proxy. */
+function withPackagedOaProxyBypass(
+  env: NodeJS.ProcessEnv,
+  platform: NodeJS.Platform,
+): NodeJS.ProcessEnv {
+  if (!env.HTTP_PROXY && !env.HTTPS_PROXY && !env.ALL_PROXY) return env;
+  const bypasses = (env.NO_PROXY ?? "").split(/[\s,]+/).filter(Boolean);
+  if (bypasses.includes("*")) return env;
+  const noProxy = [...new Set([...bypasses, ".hikvision.com", ".hikvision.com.cn"])].join(",");
+  return {
+    ...env,
+    NO_PROXY: noProxy,
+    ...(platform === "win32" ? {} : { no_proxy: noProxy }),
+  };
+}
+
 export function resolvePackagedChildBaseEnv(
   env: NodeJS.ProcessEnv = process.env,
   includeProviderSecrets = false,
@@ -756,7 +772,7 @@ export function resolvePackagedChildBaseEnv(
     ? mergeProxyAwareEnv(process.platform, systemProxyEnv, startupProxyEnv, forwardedEnv)
     : mergeProxyAwareEnv(process.platform, startupProxyEnv, forwardedEnv);
   return {
-    ...mergedEnv,
+    ...withPackagedOaProxyBypass(mergedEnv, process.platform),
     // Daemon and web already monitor this protocol-owned parent PID. Packaged
     // launches must provide it too so a SIGKILL/crash of the Electron owner
     // cannot leave sidecars holding namespace IPC endpoints indefinitely.
@@ -779,7 +795,10 @@ export function resolvePackagedStartupProxyEnv(
   loginShellProxyEnv: NodeJS.ProcessEnv,
   platform: NodeJS.Platform = process.platform,
 ): NodeJS.ProcessEnv {
-  return mergeProxyAwareEnv(platform, systemProxyEnv, loginShellProxyEnv);
+  return withPackagedOaProxyBypass(
+    mergeProxyAwareEnv(platform, systemProxyEnv, loginShellProxyEnv),
+    platform,
+  );
 }
 
 export type PackagedDaemonSpawnEnvOptions = {

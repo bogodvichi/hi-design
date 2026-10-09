@@ -301,14 +301,14 @@ describe('packaged child Vite+ environment forwarding', () => {
       HTTP_PROXY: 'http://127.0.0.1:7891',
       HTTPS_PROXY: 'http://127.0.0.1:7891',
       NODE_USE_ENV_PROXY: '1',
-      NO_PROXY: 'localhost,127.0.0.1,[::1]',
+      NO_PROXY: 'localhost,127.0.0.1,[::1],.hikvision.com,.hikvision.com.cn',
     });
     if (process.platform !== 'win32') {
       expect(env).toMatchObject({
         all_proxy: 'socks5://127.0.0.1:1081',
         http_proxy: 'http://127.0.0.1:7891',
         https_proxy: 'http://127.0.0.1:7891',
-        no_proxy: 'localhost,127.0.0.1,::1',
+        no_proxy: 'localhost,127.0.0.1,[::1],.hikvision.com,.hikvision.com.cn',
       });
     }
     expect(env.RANDOM_INTERNAL_FLAG).toBeUndefined();
@@ -334,7 +334,7 @@ describe('packaged child Vite+ environment forwarding', () => {
       HTTP_PROXY: 'http://system-proxy:8080',
       HTTPS_PROXY: 'http://system-proxy:8443',
       ALL_PROXY: 'socks5://system-proxy:1080',
-      NO_PROXY: '.local,localhost,127.0.0.1,[::1]',
+      NO_PROXY: '.local,localhost,127.0.0.1,[::1],.hikvision.com,.hikvision.com.cn',
       NODE_USE_ENV_PROXY: '1',
     });
   });
@@ -432,9 +432,55 @@ describe('packaged child Vite+ environment forwarding', () => {
       HOME: '/Users/tester',
       HTTP_PROXY: 'http://system-proxy:8080',
       HTTPS_PROXY: 'http://shell-proxy:9443',
-      NO_PROXY: '.corp.example,localhost,127.0.0.1,[::1]',
+      NO_PROXY: '.corp.example,localhost,127.0.0.1,[::1],.hikvision.com,.hikvision.com.cn',
       NODE_USE_ENV_PROXY: '1',
     });
+  });
+
+  it.each(['darwin', 'win32'] as const)('adds OA proxy bypasses to the %s startup environment', (platform) => {
+    const env = resolvePackagedStartupProxyEnv(
+      { HTTPS_PROXY: 'http://system-proxy:8080' },
+      { NO_PROXY: '.corp.example,.hikvision.com.cn' },
+      platform,
+    );
+
+    expect(env.HTTPS_PROXY).toBe('http://system-proxy:8080');
+    expect(env.NODE_USE_ENV_PROXY).toBe('1');
+    expect(env.NO_PROXY?.split(',')).toEqual(expect.arrayContaining([
+      '.corp.example', '.hikvision.com', '.hikvision.com.cn',
+    ]));
+    expect(env.NO_PROXY?.split(',').filter((host) => host === '.hikvision.com.cn')).toHaveLength(1);
+    if (platform !== 'win32') expect(env.no_proxy).toBe(env.NO_PROXY);
+  });
+
+  it('keeps OA proxy bypasses when the parent overrides the startup NO_PROXY', () => {
+    const startup = resolvePackagedStartupProxyEnv(
+      { HTTPS_PROXY: 'http://system-proxy:8080' },
+      {},
+    );
+    const env = resolvePackagedChildBaseEnv(
+      { no_proxy: '.parent.example' }, false, {}, false, startup,
+    );
+
+    expect(env.NO_PROXY?.split(',')).toEqual(expect.arrayContaining([
+      '.parent.example', '.hikvision.com', '.hikvision.com.cn',
+    ]));
+    expect(env.HTTPS_PROXY).toBe('http://system-proxy:8080');
+    expect(env.NODE_USE_ENV_PROXY).toBe('1');
+    if (process.platform !== 'win32') expect(env.no_proxy).toBe(env.NO_PROXY);
+  });
+
+  it('preserves wildcard bypasses and an explicit native proxy opt-out', () => {
+    const env = resolvePackagedStartupProxyEnv(
+      { HTTPS_PROXY: 'http://system-proxy:8080' },
+      { NO_PROXY: '*', NODE_USE_ENV_PROXY: '0' },
+      'darwin',
+    );
+
+    expect(env.NO_PROXY).toBe('*');
+    expect(env.no_proxy).toBe('*');
+    expect(env.NODE_USE_ENV_PROXY).toBe('0');
+    expect(resolvePackagedStartupProxyEnv({}, {}, 'darwin')).toEqual({});
   });
 
   it('prefers the standalone Codex directory over an older PATH CLI for subsequent Runs', () => {
