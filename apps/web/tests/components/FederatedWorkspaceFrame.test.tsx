@@ -23,11 +23,20 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.useRealTimers(); });
 describe.each(cases)('$key open-first federated login', ({ Component, key, prefix, url, callback, endpoint }) => {
   const route: Route = { kind: 'external', url, resourceKey: key, title: key };
   const ticketUrl = new URL(callback + '?ticket=fresh', url).href;
-  it('opens the ordinary page while ticket issuance is pending; reactivating does not restart it', () => {
+  it('renders no Hi Design SSO banner, status text, or action buttons', () => {
+    vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
+    const { getByTestId, queryByRole } = render(<Component route={route} />);
+    expect(getByTestId(prefix + '-frame')).toBeTruthy();
+    expect(queryByRole('status')).toBeNull();
+    expect(queryByRole('button')).toBeNull();
+  });
+
+  it('opens the ordinary page while ticket issuance is pending; reactivating does not restart it', async () => {
     const pending = deferred<Response>();
     const fetch = vi.spyOn(globalThis, 'fetch').mockReturnValue(pending.promise);
     const { getByTestId, rerender } = render(<Component route={route} />);
     const frame = getByTestId(prefix + '-frame');
+    await act(async () => {});
     expect(frame.getAttribute('src')).toBe(url);
     expect(frame.style.visibility).not.toBe('hidden');
     expect(fetch).toHaveBeenCalledWith(endpoint, expect.objectContaining({ method: 'POST', signal: expect.any(AbortSignal) }));
@@ -38,26 +47,29 @@ describe.each(cases)('$key open-first federated login', ({ Component, key, prefi
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps the page and a local fallback notice when the OA launch endpoint rejects', async () => {
+  it('keeps the native login page with no host warning when ticket issuance is rejected', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ error: { message: 'OA login is required' } }), { status: 401 }));
-    const { getByTestId, getByText } = render(<Component route={route} />);
-    await waitFor(() => expect(getByText('federated.unavailable')).toBeTruthy());
+    const { getByTestId, queryByRole } = render(<Component route={route} />);
+    await waitFor(() => expect(getByTestId(prefix + '-frame-shell').getAttribute('data-auth-state')).toBe('failed'));
     expect(getByTestId(prefix + '-frame').getAttribute('src')).toBe(url);
     expect(getByTestId(prefix + '-frame').style.visibility).toBe('visible');
+    expect(queryByRole('status')).toBeNull();
+    expect(queryByRole('button')).toBeNull();
   });
 
-  it('manual login aborts and ignores a late successful launch response', async () => {
+  it('autofocus never aborts a delayed launch; the SSO callback still navigates', async () => {
     const pending = deferred<Response>();
     const fetch = vi.spyOn(globalThis, 'fetch').mockReturnValue(pending.promise);
-    const { getByRole, getByTestId } = render(<Component route={route} />);
+    const { getByTestId } = render(<Component route={route} />);
+    const frame = getByTestId(prefix + '-frame');
+    await act(async () => {});
     const signal = fetch.mock.calls[0]![1]!.signal as AbortSignal;
-    fireEvent.click(getByRole('button', { name: 'federated.manualAction' }));
-    expect(signal.aborted).toBe(true);
+    fireEvent(frame, new Event(key === 'himind' ? 'load' : 'did-finish-load'));
+    fireEvent.focus(frame);
+    expect(signal.aborted).toBe(false);
     await act(async () => { pending.resolve(response(ticketUrl)); await pending.promise; });
-    expect(getByTestId(prefix + '-frame').getAttribute('src')).toBe(url);
-    expect(getByTestId(prefix + '-frame-shell').getAttribute('data-auth-state')).toBe('manual');
-    act(() => dispatchOpenWorkspaceTab({ ...route, bootstrapUrl: ticketUrl }));
-    expect(getByTestId(prefix + '-frame').getAttribute('src')).toBe(url);
+    expect(getByTestId(prefix + '-frame').getAttribute('src')).toBe(ticketUrl);
+    expect(getByTestId(prefix + '-frame-shell').getAttribute('data-auth-state')).toBe('callback');
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
@@ -65,6 +77,7 @@ describe.each(cases)('$key open-first federated login', ({ Component, key, prefi
     const pending = deferred<Response>();
     const fetch = vi.spyOn(globalThis, 'fetch').mockReturnValue(pending.promise);
     const { queryByTestId } = render(<Component route={route} />);
+    await act(async () => {});
     const signal = fetch.mock.calls[0]![1]!.signal as AbortSignal;
     act(() => dispatchCloseWorkspaceExternalTab(route));
     expect(signal.aborted).toBe(true);
@@ -72,9 +85,10 @@ describe.each(cases)('$key open-first federated login', ({ Component, key, prefi
     expect(queryByTestId(prefix + '-frame')).toBeNull();
   });
 
-  it('unmounting on identity change aborts the old request', () => {
+  it('unmounting on identity change aborts the old request', async () => {
     const fetch = vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
     const { unmount } = render(<Component route={route} />);
+    await act(async () => {});
     const signal = fetch.mock.calls[0]![1]!.signal as AbortSignal;
     unmount();
     expect(signal.aborted).toBe(true);
@@ -95,8 +109,8 @@ describe.each(cases)('$key open-first federated login', ({ Component, key, prefi
 
   it.each(['https://attacker.example/api/auth/platform?ticket=private', 'javascript:alert(1)'])('rejects an untrusted callback without exposing or navigating its URL', async (unsafe) => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(response(unsafe));
-    const { getByTestId, getByText, container } = render(<Component route={route} />);
-    await waitFor(() => expect(getByText('federated.unavailable')).toBeTruthy());
+    const { getByTestId, container } = render(<Component route={route} />);
+    await waitFor(() => expect(getByTestId(prefix + '-frame-shell').getAttribute('data-auth-state')).toBe('failed'));
     expect(getByTestId(prefix + '-frame').getAttribute('src')).toBe(url);
     expect(container.textContent).not.toContain(unsafe);
   });
@@ -114,30 +128,40 @@ describe.each(cases)('$key open-first federated login', ({ Component, key, prefi
 
   it('a ticket that has already expired is never navigated to', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(response(ticketUrl, 0));
-    const { getByTestId, getByText } = render(<Component route={route} />);
-    await waitFor(() => expect(getByText('federated.unavailable')).toBeTruthy());
+    const { getByTestId } = render(<Component route={route} />);
+    await waitFor(() => expect(getByTestId(prefix + '-frame-shell').getAttribute('data-auth-state')).toBe('failed'));
     expect(getByTestId(prefix + '-frame').getAttribute('src')).toBe(url);
   });
 
-  it('manual mode survives tab reactivation until the user explicitly retries', () => {
+  it('autofocus and tab reactivation do not cancel or duplicate a pending SSO request', async () => {
     const fetch = vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
-    const { getByRole, getByTestId } = render(<Component route={route} />);
-    fireEvent.click(getByRole('button', { name: 'federated.manualAction' }));
+    const { getByTestId, queryByRole } = render(<Component route={route} />);
+    const frame = getByTestId(prefix + '-frame');
+    await act(async () => {});
+    const signal = fetch.mock.calls[0]![1]!.signal as AbortSignal;
+    fireEvent(frame, new Event(key === 'himind' ? 'load' : 'did-finish-load'));
+    fireEvent.focus(frame);
     act(() => dispatchOpenWorkspaceTab(route));
     act(() => dispatchOpenWorkspaceTab(route));
-    expect(getByTestId(prefix + '-frame-shell').getAttribute('data-auth-state')).toBe('manual');
+    expect(signal.aborted).toBe(false);
+    expect(getByTestId(prefix + '-frame-shell').getAttribute('data-auth-state')).toBe('requesting');
     expect(fetch).toHaveBeenCalledTimes(1);
+    expect(queryByRole('status')).toBeNull();
   });
 
-  it('explicit retry starts a new attempt; the prior response cannot override it', async () => {
+  it('a new tab may retry SSO while a late response from the closed tab is ignored', async () => {
     const old = deferred<Response>();
     const fetch = vi.spyOn(globalThis, 'fetch').mockReturnValueOnce(old.promise).mockResolvedValueOnce(response(ticketUrl));
-    const { getByRole, getByTestId } = render(<Component route={route} />);
-    fireEvent.click(getByRole('button', { name: 'federated.manualAction' }));
-    fireEvent.click(getByRole('button', { name: 'federated.retryAction' }));
-    await waitFor(() => expect(getByTestId(prefix + '-frame').getAttribute('src')).toBe(ticketUrl));
+    const first = render(<Component route={route} />);
+    await act(async () => {});
+    const frame = first.getByTestId(prefix + '-frame');
+    fireEvent(frame, new Event(key === 'himind' ? 'load' : 'did-finish-load'));
+    fireEvent.focus(frame);
+    first.unmount();
+    const reopened = render(<Component route={route} />);
+    await waitFor(() => expect(reopened.getByTestId(prefix + '-frame').getAttribute('src')).toBe(ticketUrl));
     await act(async () => { old.resolve(response(ticketUrl.replace('fresh', 'old'))); await old.promise; });
-    expect(getByTestId(prefix + '-frame').getAttribute('src')).toBe(ticketUrl);
+    expect(reopened.getByTestId(prefix + '-frame').getAttribute('src')).toBe(ticketUrl);
     expect(fetch).toHaveBeenCalledTimes(2);
   });
 });

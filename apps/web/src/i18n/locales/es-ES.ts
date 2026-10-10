@@ -1,12 +1,6 @@
 import type { Dict } from '../types';
 
 export const esES: Dict = {
-  'federated.connecting': 'Intentando iniciar sesión automáticamente… También puedes hacerlo manualmente.',
-  'federated.unavailable': 'El inicio automático no está disponible. Inicia sesión en la página inferior.',
-  'federated.manual': 'Inicio automático detenido. Continúa en la página inferior.',
-  'federated.unconfirmed': 'No se ha confirmado el inicio automático. La página sigue disponible.',
-  'federated.manualAction': 'Iniciar sesión manualmente',
-  'federated.retryAction': 'Reintentar inicio automático',
   'projectDrag.movedTo': 'Moved to “{path}”',
   'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "Carpetas movidas: {succeeded}; incompletas: {failed}.",

@@ -37,7 +37,7 @@ describe('HiMindWorkspaceFrame', () => {
     const frame = getByTestId('himind-workspace-frame') as HTMLIFrameElement;
 
     expect(frame.style.visibility).toBe('visible');
-    expect(queryByTestId('himind-workspace-loading')).not.toBeNull();
+    expect(queryByTestId('himind-workspace-loading')).toBeNull();
 
     fireEvent.load(frame);
 
@@ -47,14 +47,14 @@ describe('HiMindWorkspaceFrame', () => {
     });
   });
 
-  it('keeps the same iframe mounted while tabs switch', () => {
+  it('keeps the same iframe mounted while tabs switch', async () => {
     const { rerender, getByTestId } = render(<HiMindWorkspaceFrame route={homeRoute} />);
     act(() => dispatchOpenWorkspaceTab({
       ...stableRoute,
       bootstrapUrl: 'http://himind.example/api/v1/auth/hidesign/callback?ticket=opaque',
     }));
     const frame = getByTestId('himind-workspace-frame') as HTMLIFrameElement;
-    expect(frame.getAttribute('src')).toContain('ticket=opaque');
+    await waitFor(() => expect(frame.getAttribute('src')).toContain('ticket=opaque'));
 
     rerender(<HiMindWorkspaceFrame route={stableRoute} />);
     expect(getByTestId('himind-workspace-frame')).toBe(frame);
@@ -81,7 +81,7 @@ describe('HiMindWorkspaceFrame', () => {
       expect(getByTestId('himind-workspace-frame')).toBe(frame);
       expect(frame.getAttribute('src')).toContain('ticket=fresh');
       expect(frame.style.visibility).toBe('visible');
-      expect(queryByTestId('himind-workspace-loading')).not.toBeNull();
+      expect(queryByTestId('himind-workspace-loading')).toBeNull();
     });
   });
 
@@ -142,7 +142,7 @@ describe('HiMindWorkspaceFrame', () => {
 
     await waitFor(() => {
       expect(frame.style.visibility).toBe('visible');
-      expect(queryByTestId('himind-workspace-loading')).not.toBeNull();
+      expect(queryByTestId('himind-workspace-loading')).toBeNull();
     });
 
     await waitFor(() => {

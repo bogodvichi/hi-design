@@ -44,8 +44,8 @@ describe('AiResearchWorkspaceFrame', () => {
     }));
 
     const frame = getByTestId('ai-research-workspace-frame') as HTMLIFrameElement;
-    expect(frame.getAttribute('src')).toContain('ticket=opaque');
-    expect(queryByTestId('ai-research-workspace-loading')).not.toBeNull();
+    await waitFor(() => expect(frame.getAttribute('src')).toContain('ticket=opaque'));
+    expect(queryByTestId('ai-research-workspace-loading')).toBeNull();
 
     rerender(<AiResearchWorkspaceFrame route={stableRoute} />);
     fireEvent.load(frame);

@@ -30,12 +30,6 @@ export const LOCALE_LABEL: Record<Locale, string> = {
 // flat (not deeply nested) so missing-key TS errors point straight at the
 // offending string instead of a generic object mismatch.
 export interface Dict {
-  'federated.connecting': string;
-  'federated.unavailable': string;
-  'federated.manual': string;
-  'federated.unconfirmed': string;
-  'federated.manualAction': string;
-  'federated.retryAction': string;
   'personalScope.folderMoveSummary': string;
   'personalScope.folderMoveFailed': string;
   'personalScope.folderMoveInterrupted': string;

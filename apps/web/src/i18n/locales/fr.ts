@@ -1,12 +1,6 @@
 import type { Dict } from '../types';
 
 export const fr: Dict = {
-  'federated.connecting': 'Connexion automatique en cours… Vous pouvez aussi vous connecter manuellement.',
-  'federated.unavailable': 'Connexion automatique indisponible. Connectez-vous sur la page ci-dessous.',
-  'federated.manual': 'Connexion automatique arrêtée. Continuez sur la page ci-dessous.',
-  'federated.unconfirmed': 'Connexion automatique non confirmée. La page reste accessible.',
-  'federated.manualAction': 'Connexion manuelle',
-  'federated.retryAction': 'Réessayer la connexion automatique',
   'projectDrag.movedTo': 'Moved to “{path}”',
   'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "Dossiers déplacés : {succeeded} ; incomplets : {failed}.",

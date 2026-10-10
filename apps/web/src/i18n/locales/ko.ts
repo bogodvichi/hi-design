@@ -1,12 +1,6 @@
 import type { Dict } from '../types';
 
 export const ko: Dict = {
-  'federated.connecting': '자동 로그인 시도 중… 수동 로그인을 선택할 수도 있습니다.',
-  'federated.unavailable': '자동 로그인을 사용할 수 없습니다. 아래 페이지에서 수동으로 로그인하세요.',
-  'federated.manual': '자동 로그인을 중지했습니다. 아래 페이지에서 계속 진행하세요.',
-  'federated.unconfirmed': '자동 로그인이 확인되지 않았습니다. 페이지는 계속 사용할 수 있습니다.',
-  'federated.manualAction': '수동 로그인',
-  'federated.retryAction': '자동 로그인 다시 시도',
   'projectDrag.movedTo': 'Moved to “{path}”',
   'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "이동 완료 폴더: {succeeded}, 미완료: {failed}.",

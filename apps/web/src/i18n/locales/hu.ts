@@ -1,12 +1,6 @@
 import type { Dict } from '../types';
 
 export const hu: Dict = {
-  'federated.connecting': 'Automatikus bejelentkezés… Kézi bejelentkezést is választhat.',
-  'federated.unavailable': 'Az automatikus bejelentkezés nem érhető el. Jelentkezzen be az alábbi oldalon.',
-  'federated.manual': 'Az automatikus bejelentkezés leállt. Folytassa az alábbi oldalon.',
-  'federated.unconfirmed': 'Az automatikus bejelentkezés nincs megerősítve. Az oldal továbbra is elérhető.',
-  'federated.manualAction': 'Kézi bejelentkezés',
-  'federated.retryAction': 'Automatikus bejelentkezés újra',
   'projectDrag.movedTo': 'Moved to “{path}”',
   'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "Áthelyezett mappák: {succeeded}; befejezetlen: {failed}.",

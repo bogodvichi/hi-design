@@ -1,12 +1,6 @@
 import type { Dict } from '../types';
 
 export const id: Dict = {
-  'federated.connecting': 'Mencoba masuk otomatis… Anda juga dapat masuk secara manual.',
-  'federated.unavailable': 'Masuk otomatis tidak tersedia. Silakan masuk di halaman di bawah.',
-  'federated.manual': 'Masuk otomatis dihentikan. Lanjutkan di halaman di bawah.',
-  'federated.unconfirmed': 'Masuk otomatis belum dikonfirmasi. Halaman tetap dapat digunakan.',
-  'federated.manualAction': 'Masuk manual',
-  'federated.retryAction': 'Coba lagi masuk otomatis',
   'projectDrag.movedTo': 'Moved to “{path}”',
   'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "Folder dipindahkan: {succeeded}; belum selesai: {failed}.",

@@ -1,12 +1,6 @@
 import type { Dict } from '../types';
 
 export const th: Dict = {
-  'federated.connecting': 'กำลังลองเข้าสู่ระบบอัตโนมัติ… คุณสามารถเลือกเข้าสู่ระบบด้วยตนเองได้',
-  'federated.unavailable': 'ไม่สามารถเข้าสู่ระบบอัตโนมัติได้ โปรดเข้าสู่ระบบในหน้าด้านล่าง',
-  'federated.manual': 'หยุดการเข้าสู่ระบบอัตโนมัติแล้ว ดำเนินการต่อในหน้าด้านล่าง',
-  'federated.unconfirmed': 'ยังไม่ได้ยืนยันการเข้าสู่ระบบอัตโนมัติ คุณยังใช้งานหน้านี้ได้',
-  'federated.manualAction': 'เข้าสู่ระบบด้วยตนเอง',
-  'federated.retryAction': 'ลองเข้าสู่ระบบอัตโนมัติอีกครั้ง',
   'projectDrag.movedTo': 'Moved to “{path}”',
   'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "ย้ายโฟลเดอร์สำเร็จ: {succeeded}; ยังไม่เสร็จ: {failed}",

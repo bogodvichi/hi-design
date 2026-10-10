@@ -1,12 +1,6 @@
 import type { Dict } from "../types";
 
 export const zhTW: Dict = {
-  'federated.connecting': '正在嘗試免密登入…亦可選擇手動登入。',
-  'federated.unavailable': '免密登入暫不可用，可在下方手動登入。',
-  'federated.manual': '已停止免密嘗試，請在下方頁面繼續操作。',
-  'federated.unconfirmed': '尚未確認免密結果，平台頁面仍可正常操作。',
-  'federated.manualAction': '手動登入',
-  'federated.retryAction': '重試免密登入',
   'projectDrag.movedTo': '已移動至「{path}」',
   'projectDrag.permissionDenied': '移動失敗，無權限',
   'personalScope.folderMoveSummary': "{succeeded} 個資料夾移動成功，{failed} 個未完成。",
