@@ -212,7 +212,7 @@ export interface ComposerPlusMenuProps {
   onAttachFiles: () => void;
   attachLoading?: boolean;
 
- /** Fired when the user switches the Skills scope tab (All / Mine / Team). */
+ /** Fired when the Skills submenu opens or its scope tab changes (All / Mine / Team). */
   onSkillTabChange?: (tab: 'all' | 'mine' | 'team' | 'recent') => void;
  /** Fired when the user switches the MCP scope tab (All / Mine / Team). */
   onMcpTabChange?: (tab: 'all' | 'mine' | 'team' | 'recent') => void;
@@ -446,7 +446,10 @@ export function ComposerPlusMenu({
   ) {
     cancelSubmenuClose();
     updateFlyoutGeometry(row);
-    if (submenu !== next) onSubmenuOpen?.(next);
+    if (submenu !== next) {
+      if (next === 'skills') onSkillTabChange?.('all');
+      onSubmenuOpen?.(next);
+    }
     setSubmenu(next);
   }
 

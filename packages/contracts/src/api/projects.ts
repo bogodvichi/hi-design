@@ -508,6 +508,8 @@ export interface CreateProjectRequest {
 export interface UpdateProjectRequest {
   name?: string;
   skillId?: string | null;
+  /** Local lookup provenance captured when the Skill was selected. */
+  skillCatalogScope?: LocalCatalogScope;
   designSystemId?: string | null;
   pendingPrompt?: string | null;
   metadata?: ProjectMetadata | null;

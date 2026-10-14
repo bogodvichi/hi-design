@@ -1,4 +1,3 @@
-import { isOpenDesignHostAvailable } from '@open-design/host';
 import { useEffect, useState } from 'react';
 import { buildPath, navigate, type Route } from '../router';
 import { FederatedBrowserSession } from './FederatedBrowserSession';
@@ -21,7 +20,6 @@ interface FederatedWorkspaceFrameProps {
   callbackPath?: string;
   readyMessageType?: string;
   authRequiredMessageType?: string;
-  useDesktopWebview?: boolean;
 }
 
 function isResourceRoute(
@@ -48,9 +46,7 @@ export function FederatedWorkspaceFrame({
   callbackPath,
   readyMessageType,
   authRequiredMessageType,
-  useDesktopWebview = false,
 }: FederatedWorkspaceFrameProps) {
-  const desktopWebview = useDesktopWebview && isOpenDesignHostAvailable();
   const [frame, setFrame] = useState<FederatedFrameState | null>(() =>
     isResourceRoute(route, resourceKey)
       ? {
@@ -118,7 +114,6 @@ export function FederatedWorkspaceFrame({
       callbackPath={callbackPath}
       readyMessageType={readyMessageType}
       authRequiredMessageType={authRequiredMessageType}
-      desktopWebview={desktopWebview}
       active={isResourceRoute(route, resourceKey)}
     />
   );

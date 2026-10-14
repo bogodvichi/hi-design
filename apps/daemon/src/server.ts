@@ -295,6 +295,8 @@ import {
   fetchVelaRemoteModelsWithRetry,
 } from './runtimes/defs/amr.js';
 import { migrateLegacyDataDirSync } from './migration/index.js';
+import { autoImportInstalledProjects } from './migration/auto-import-installed.js';
+import { enqueuePendingCoverTasks, drainPendingCoverTasks } from './migration/auto-import-installed.js';
 import {
   consumedImportNonces,
   getDesktopAuthSecret,
@@ -3471,6 +3473,32 @@ export async function startServer({
   await recoverStaleLiveArtifactRefreshes({ projectsRoot: PROJECTS_DIR }).catch((error) => {
     console.warn('[od] Failed to recover stale live artifact refreshes:', error);
   });
+
+  // Auto-import projects from locally installed Hi Design product data
+  // directories. Best-effort: errors are logged, never thrown, so the
+  // daemon always starts. Idempotent: projects already imported are skipped.
+  try {
+    const importResult = await autoImportInstalledProjects(db, RUNTIME_DATA_DIR, PROJECTS_DIR);
+    if (importResult.imported > 0) {
+      console.log(
+        `[od] Auto-imported ${importResult.imported} project(s) from ${importResult.scanned} installed product data dir(s)` +
+        `${importResult.skipped > 0 ? `, skipped ${importResult.skipped} already-imported` : ''}`,
+      );
+    }
+    if (importResult.errors.length > 0) {
+      console.warn(`[od] Auto-import errors: ${importResult.errors.join('; ')}`);
+    }
+    // Enqueue cover tasks for imported projects that have an HTML entry
+    // file. The tasks are suspended here and drained later, after the
+    // project routes (and their cover helpers) are registered — which
+    // happens once the desktop renderer is available. This avoids
+    // polling/retrying and lets the renderer trigger covers naturally.
+    if (importResult.importedProjects.length > 0) {
+      enqueuePendingCoverTasks(importResult.importedProjects);
+    }
+  } catch (error) {
+    console.warn('[od] Auto-import of installed product projects failed:', error);
+  }
 
   if (fs.existsSync(staticDir)) {
     app.use(express.static(staticDir));
@@ -9856,6 +9884,15 @@ const projectRouteResult = registerProjectRoutes(app, {
   notifyProjectFileChange: (projectId) =>
     collab.scheduler.notifyChanged(projectId, 'file-change'),
 });
+
+// Drain suspended cover tasks from auto-imported projects now that the
+// project routes (and their cover helpers) are registered. The desktop
+// renderer is available at this point, so triggerCoverForProjectEntry can
+// fire-and-forget each screenshot. If no projects were auto-imported (or
+// they had no HTML entry file), the queue is empty and this is a no-op.
+if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
+  drainPendingCoverTasks(projectRouteResult.coverHelpers.triggerCoverForProjectEntry);
+}
 
  registerMediaRoutes(app, {
     db,

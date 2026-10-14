@@ -646,7 +646,7 @@ export function createDesignSystemServerServices({
 
   async function validateProjectSkillId(
     id: unknown,
-    options: { workspaceId?: string | null } = {},
+    options: { workspaceId?: string | null; workspaceMemberId?: string | null } = {},
   ) {
     // Same invariant as Design Systems and exact-source plugins: project
     // creation follows locally reconciled content. Team membership is checked

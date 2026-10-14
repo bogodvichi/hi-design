@@ -1607,10 +1607,10 @@ function SkillTab({
         };
       }
     } else if (source.kind === 'file') {
-      if (!/^SKILL\.md$/i.test(source.file.name)) {
+      if (!/\.md$/i.test(source.file.name)) {
         return {
           name: null,
-          error: localeText(locale, '单文件导入仅支持 SKILL.md，请重新选择。', 'Single-file import only supports SKILL.md. Please choose it again.'),
+          error: localeText(locale, '单文件导入仅支持 Markdown（.md）文件，请重新选择。', 'Single-file import only supports Markdown (.md) files. Please choose it again.'),
         };
       }
       try {
@@ -1625,15 +1625,15 @@ function SkillTab({
       if (source.files.length !== 1) {
         return {
           name: null,
-          error: localeText(locale, 'Skill 单文件导入只支持选择一个 SKILL.md。', 'Skill single-file import only supports one SKILL.md file.'),
+          error: localeText(locale, 'Skill 单文件导入只支持选择一个 Markdown 文件。', 'Skill single-file import only supports one Markdown file.'),
         };
       }
       const selectedFile = source.files[0]!;
       const fileName = selectedFile.path.split('/').pop() || selectedFile.file.name;
-      if (!/^SKILL\.md$/i.test(fileName)) {
+      if (!/\.md$/i.test(fileName)) {
         return {
           name: null,
-          error: localeText(locale, '单文件导入仅支持 SKILL.md，请重新选择。', 'Single-file import only supports SKILL.md. Please choose it again.'),
+          error: localeText(locale, '单文件导入仅支持 Markdown（.md）文件，请重新选择。', 'Single-file import only supports Markdown (.md) files. Please choose it again.'),
         };
       }
       try {
@@ -1714,6 +1714,9 @@ function SkillTab({
     if (source.kind === 'file') {
       return [{ file: source.file, path: 'SKILL.md' }];
     }
+    if (source.kind === 'files') {
+      return [{ file: source.files[0]!.file, path: 'SKILL.md' }];
+    }
     return source.files.map((f) => ({ file: f.file, path: f.path }));
   }
 
@@ -1775,8 +1778,8 @@ function SkillTab({
           await stageSkillUploadSource({ kind: 'zip', file: entries[0]!.file });
           return;
         }
-        if (skillFile && entries.length === 1) {
-          await stageSkillUploadSource({ kind: 'file', file: skillFile.file });
+        if (entries.length === 1 && (skillFile || !entries[0]!.path.includes('/'))) {
+          await stageSkillUploadSource({ kind: 'file', file: entries[0]!.file });
           return;
         }
         const folderName = entries[0]?.path.split('/').filter(Boolean)[0];
@@ -1792,7 +1795,7 @@ function SkillTab({
     const files = Array.from(e.dataTransfer.files ?? []);
     if (files.length === 1 && /\.(zip)$/i.test(files[0]!.name)) {
       await stageSkillUploadSource({ kind: 'zip', file: files[0]! });
-    } else if (files.length === 1 && /(^|\/)SKILL\.md$/i.test(files[0]!.name)) {
+    } else if (files.length === 1) {
       await stageSkillUploadSource({ kind: 'file', file: files[0]! });
     } else if (files.length > 0) {
       await stageSkillUploadSource({
@@ -1973,8 +1976,8 @@ function SkillTab({
               const files = Array.from(event.currentTarget.files ?? []);
               if (files.length === 0) return;
               const skillFile = files.find((file) => /(^|\/)SKILL\.md$/i.test(file.webkitRelativePath || file.name));
-              if (skillFile && files.length === 1) {
-                void stageSkillUploadSource({ kind: 'file', file: skillFile });
+              if (files.length === 1 && (skillFile || !files[0]!.webkitRelativePath)) {
+                void stageSkillUploadSource({ kind: 'file', file: files[0]! });
               } else {
                 const folderName = files[0]?.webkitRelativePath?.split('/').filter(Boolean)[0];
                 void stageSkillUploadSource({
@@ -2017,7 +2020,7 @@ function SkillTab({
             >
               <span className={styles.dropzoneIcon} aria-hidden><Icon name="upload" size={28} /></span>
               <span className={styles.dropzoneText}>
-                {locale.startsWith('zh') ? '选择文件夹 / ZIP / SKILL.md' : 'Choose folder / ZIP / SKILL.md'}
+                {locale.startsWith('zh') ? '选择文件夹 / ZIP / Markdown 文件' : 'Choose folder / ZIP / Markdown file'}
               </span>
             </button>
           )}

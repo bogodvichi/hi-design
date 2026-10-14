@@ -1,6 +1,7 @@
 import type { Dict } from '../types';
 
 export const ko: Dict = {
+  'composer.skillApplyFailed': "이 Skill을 추가할 수 없습니다. Skill 목록을 새로 고친 후 다시 시도하세요.",
   'projectDrag.movedTo': 'Moved to “{path}”',
   'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "이동 완료 폴더: {succeeded}, 미완료: {failed}.",

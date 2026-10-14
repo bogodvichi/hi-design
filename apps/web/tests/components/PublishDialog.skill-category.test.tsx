@@ -184,6 +184,121 @@ describe('PublishDialog Skill category', () => {
     })));
   });
 
+  it.each([
+    ['native picker', 'design-review.md'],
+    ['file input', 'design-review SKILL.md'],
+    ['drop files', '设计评审.MD'],
+    ['drop entries', 'review.md'],
+  ])(
+    'publishes a renamed Markdown Skill from %s as SKILL.md',
+    async (entryPoint, fileName) => {
+      const content = '---\nname: design-review\n---\n# Design review';
+      const file = new File([content], fileName, { type: 'text/markdown' });
+      if (typeof file.text !== 'function') {
+        Object.defineProperty(file, 'text', { value: async () => content });
+      }
+      if (entryPoint === 'native picker') {
+        getOpenDesignHostMock.mockReturnValue({
+          project: {
+            pickSkillSource: vi.fn().mockResolvedValue({
+              ok: true,
+              kind: 'files',
+              files: [{ path: file.name, data: new TextEncoder().encode(content).buffer }],
+            }),
+          },
+        });
+      }
+      const onPublish = vi.fn();
+      render(
+        <I18nProvider initial="zh-CN">
+          <PublishDialog initialCategory="skill" onClose={() => {}} onPublish={onPublish} />
+        </I18nProvider>,
+      );
+      fireEvent.click(screen.getByRole('tab', { name: '导入本地 Skill' }));
+      const uploadButton = screen.getByRole('button', { name: /选择文件夹 \/ ZIP/ });
+      if (entryPoint === 'native picker') {
+        fireEvent.click(uploadButton);
+      } else if (entryPoint === 'file input') {
+        const input = document.querySelector<HTMLInputElement>('input[type="file"][multiple]');
+        fireEvent.change(input!, { target: { files: [file] } });
+      } else {
+        const items = entryPoint === 'drop entries' ? [{
+          webkitGetAsEntry: () => ({
+            isFile: true,
+            isDirectory: false,
+            file: (callback: (selected: File) => void) => callback(file),
+          }),
+        }] : [];
+        fireEvent.drop(uploadButton, { dataTransfer: { files: [file], items } });
+      }
+      fireEvent.click(screen.getByRole('radio', { name: '开发工具' }));
+      const publishButton = screen.getByRole('button', { name: '确认发布' });
+      await waitFor(() => expect(publishButton).not.toBeDisabled());
+      expect(screen.getByText(file.name)).toBeTruthy();
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(onPublish).not.toHaveBeenCalled();
+      fireEvent.click(publishButton);
+      await waitFor(() => expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({
+        name: 'design-review',
+        upload: [{ file: expect.any(File), path: 'SKILL.md' }],
+      })));
+      const uploaded = onPublish.mock.calls[0]![0].upload[0].file as File;
+      expect(await uploaded.text()).toBe(content);
+    },
+  );
+
+  it.each([
+    { fileName: 'review.md', content: ' ', error: 'SKILL.md 内容为空，请补充内容后重新选择。' },
+    { fileName: 'review.md', content: '# Review', error: 'SKILL.md 缺少 name 字段，请补充后重新选择。' },
+    { fileName: 'review.txt', content: '---\nname: review\n---', error: '单文件导入仅支持 Markdown（.md）文件，请重新选择。' },
+    { fileName: 'review.md', content: '---\nname: review\n---', duplicate: true, error: '已存在同名 Skill，请更换 SKILL.md 中的 name 后重新选择。' },
+  ])('blocks invalid single-file Skill content: $error', async ({ fileName, content, duplicate, error }) => {
+    if (duplicate) {
+      const fetchOriginal = globalThis.fetch;
+      vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => (
+        String(input).startsWith('/api/workspace/skills/cloud/check?')
+          ? jsonResponse({ exists: true })
+          : fetchOriginal(input)
+      )));
+    }
+    getOpenDesignHostMock.mockReturnValue({
+      project: {
+        pickSkillSource: vi.fn().mockResolvedValue({
+          ok: true,
+          kind: 'files',
+          files: [{ path: fileName, data: new TextEncoder().encode(content).buffer }],
+        }),
+      },
+    });
+    const onPublish = vi.fn();
+    render(
+      <I18nProvider initial="zh-CN">
+        <PublishDialog initialCategory="skill" onClose={() => {}} onPublish={onPublish} />
+      </I18nProvider>,
+    );
+    fireEvent.click(screen.getByRole('tab', { name: '导入本地 Skill' }));
+    fireEvent.click(screen.getByRole('button', { name: /选择文件夹 \/ ZIP/ }));
+    fireEvent.click(screen.getByRole('radio', { name: '开发工具' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(error);
+    expect(screen.getByRole('button', { name: '确认发布' })).toBeDisabled();
+    expect(onPublish).not.toHaveBeenCalled();
+  });
+
+  it('still requires SKILL.md inside an imported folder', async () => {
+    const file = new File(['---\nname: review\n---'], 'review.md');
+    Object.defineProperty(file, 'webkitRelativePath', { value: 'review/review.md' });
+    render(
+      <I18nProvider initial="zh-CN">
+        <PublishDialog initialCategory="skill" onClose={() => {}} onPublish={() => {}} />
+      </I18nProvider>,
+    );
+    fireEvent.click(screen.getByRole('tab', { name: '导入本地 Skill' }));
+    const input = document.querySelector<HTMLInputElement>('input[type="file"][multiple]');
+    fireEvent.change(input!, { target: { files: [file] } });
+    expect(await screen.findByRole('alert')).toHaveTextContent('未找到 SKILL.md，请选择包含 SKILL.md 的文件夹或 ZIP 包。');
+    expect(screen.getByRole('button', { name: '确认发布' })).toBeDisabled();
+  });
+
   it('publishes a project selected directly from Personal All', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
@@ -553,11 +668,11 @@ describe('PublishDialog Skill category', () => {
     fireEvent.change(fileInput!, { target: { files: [file] } });
 
     const error = await screen.findByRole('alert');
-    expect(error.textContent).toBe('未找到 SKILL.md，请选择包含 SKILL.md 的文件夹或 ZIP 包。');
+    expect(error.textContent).toBe('SKILL.md 缺少 name 字段，请补充后重新选择。');
     expect(screen.getByRole('button', { name: '确认发布' })).toBeDisabled();
 
     fireEvent.click(screen.getByRole('button', { name: '删除已导入 Skill' }));
-    expect(screen.queryByText('未找到 SKILL.md，请选择包含 SKILL.md 的文件夹或 ZIP 包。')).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('accepts a single SKILL.md file from the native picker', async () => {
@@ -577,7 +692,7 @@ describe('PublishDialog Skill category', () => {
     );
 
     fireEvent.click(screen.getByRole('tab', { name: '导入本地 Skill' }));
-    fireEvent.click(screen.getByRole('button', { name: /选择文件夹 \/ ZIP \/ SKILL.md/ }));
+    fireEvent.click(screen.getByRole('button', { name: /选择文件夹 \/ ZIP \/ Markdown 文件/ }));
 
     await waitFor(() => expect(screen.getByText('SKILL.md')).toBeTruthy());
     expect(screen.queryByRole('alert')).toBeNull();
@@ -602,9 +717,9 @@ describe('PublishDialog Skill category', () => {
     );
 
     fireEvent.click(screen.getByRole('tab', { name: '导入本地 Skill' }));
-    fireEvent.click(screen.getByRole('button', { name: /选择文件夹 \/ ZIP \/ SKILL.md/ }));
+    fireEvent.click(screen.getByRole('button', { name: /选择文件夹 \/ ZIP \/ Markdown 文件/ }));
 
-    expect(await screen.findByText('Skill 单文件导入只支持选择一个 SKILL.md。')).toBeTruthy();
+    expect(await screen.findByText('Skill 单文件导入只支持选择一个 Markdown 文件。')).toBeTruthy();
     expect(screen.getByRole('button', { name: '确认发布' })).toBeDisabled();
   });
 

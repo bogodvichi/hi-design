@@ -263,6 +263,8 @@ const PROJECT_RESOURCE_STRING_FLAGS = new Set([
   ...PROJECT_STRING_FLAGS,
   'workspace',
   'workspace-member',
+  'skill-workspace',
+  'skill-member',
 ]);
  const PROJECT_BOOLEAN_FLAGS = new Set(['help', 'h', 'json', 'follow', 'no-skip-discovery']);
 const WORKSPACE_STRING_FLAGS = new Set([
@@ -7688,6 +7690,8 @@ async function runProject(args) {
                     [--design-system <id>] [--json]
   od project list                         List projects.
   od project info <id>                    Print one project.
+  od project set-skill <id> <skill-id> [--skill-workspace <id> --skill-member <id>]
+                    Select a local Skill using its catalog provenance. [--json]
   od project restore-automatic-scenario <id> [--json]
                                           Restore the daemon-selected default
                                           scenario with a snapshot CAS guard.
@@ -7732,6 +7736,32 @@ Common options:
   const explicitWorkspaceHeaders = workspaceHeadersFromExplicitFlags(flags);
   const workspaceHeaders = explicitWorkspaceHeaders ?? {};
   switch (sub) {
+    case 'set-skill': {
+      const [projectId, skillId] = positionalArgs(rest, PROJECT_RESOURCE_STRING_FLAGS);
+      if (!projectId || !skillId || Boolean(flags['skill-workspace']) !== Boolean(flags['skill-member'])) {
+        console.error('Usage: od project set-skill <id> <skill-id> [--skill-workspace <id> --skill-member <id>] [--json]');
+        process.exit(2);
+      }
+      const body = {
+        skillId,
+        ...(flags['skill-workspace'] && flags['skill-member'] ? {
+          skillCatalogScope: {
+            workspaceId: flags['skill-workspace'],
+            workspaceMemberId: flags['skill-member'],
+          },
+        } : {}),
+      };
+      const response = await fetch(`${base}/api/projects/${encodeURIComponent(projectId)}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json', ...workspaceHeaders },
+        body: JSON.stringify(body),
+      });
+      if (!response.ok) return structuredHttpFailure(response);
+      const data = await response.json();
+      if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
+      console.log(`[project] selected Skill ${skillId} for ${projectId}`);
+      return;
+    }
     case 'list': {
       // After 0.18.0's workspace isolation, GET /api/projects is the NO-SCOPE
       // catalog: it only returns projects that were never adopted into a

@@ -1737,6 +1737,7 @@ export interface Dict {
   'homeWorkingDir.hint': string;
   'homeWorkingDir.missing': string;
   'homeWorkingDir.applyFailed': string;
+  'composer.skillApplyFailed': string;
   'workingDirPicker.title': string;
   'workingDirPicker.homeTitle': string;
   'workingDirPicker.processing': string;

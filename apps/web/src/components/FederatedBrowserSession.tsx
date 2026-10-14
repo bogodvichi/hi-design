@@ -3,8 +3,6 @@ import { dispatchOpenWorkspaceTab } from './workspaceTabEvents';
 import styles from './FederatedBrowserSession.module.css';
 
 export type FederatedAuthState = 'idle' | 'requesting' | 'callback' | 'authenticated' | 'unconfirmed' | 'failed';
-type WebviewElement = HTMLElement & { getURL?(): string; stop?(): void };
-type NavigationEvent = Event & { url?: string; isMainFrame?: boolean; errorCode?: number };
 
 interface Props {
   canonicalUrl: string;
@@ -13,7 +11,6 @@ interface Props {
   resourceKey: string;
   testIdPrefix: string;
   active: boolean;
-  desktopWebview: boolean;
   launchEndpoint?: string;
   callbackPath?: string;
   readyMessageType?: string;
@@ -21,7 +18,6 @@ interface Props {
 }
 
 const ATTEMPT_TIMEOUT_MS = 15_000;
-const FEDERATED_TOOLS_PARTITION = 'persist:hi-design-team-federated-tools';
 
 function parsedUrl(raw: string | null | undefined): URL | null {
   try { return raw ? new URL(raw) : null; } catch { return null; }
@@ -49,12 +45,10 @@ export function FederatedBrowserSession(props: Props) {
   const [auth, setAuth] = useState<FederatedAuthState>('idle');
   const authRef = useRef<FederatedAuthState>('idle');
   const frameRef = useRef<HTMLIFrameElement | null>(null);
-  const webviewRef = useRef<WebviewElement | null>(null);
   const requestRef = useRef<AbortController | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const generation = useRef(0);
   const alive = useRef(true);
-  const callbackStarted = useRef(false);
   const recoveryAttempted = useRef(false);
   const initialBootstrap = useRef(props.bootstrapUrl);
   const lastBootstrap = useRef(props.bootstrapUrl);
@@ -77,7 +71,6 @@ export function FederatedBrowserSession(props: Props) {
     // Do not strand the user on a failed one-time callback. The destination's
     // own login page is the fallback; never show a Hi Design authentication UI.
     if (returnToLogin && wasCallback) {
-      callbackStarted.current = false;
       pageLoadedRef.current = false;
       setPageLoaded(false);
       srcRef.current = options.current.canonicalUrl;
@@ -86,7 +79,6 @@ export function FederatedBrowserSession(props: Props) {
   }, [cancel, changeAuth]);
 
   const loadCallback = useCallback((url: string, timeoutMs = ATTEMPT_TIMEOUT_MS) => {
-    callbackStarted.current = false;
     pageLoadedRef.current = false;
     setPageLoaded(false);
     srcRef.current = url;
@@ -167,67 +159,12 @@ export function FederatedBrowserSession(props: Props) {
     loadCallback(url);
   }, [props.bootstrapUrl, props.canonicalUrl, props.callbackPath, cancel, fail, loadCallback]);
 
-  const observeNavigation = useCallback((raw: string | undefined) => {
-    const current = parsedUrl(raw);
-    const origin = parsedUrl(options.current.canonicalUrl)?.origin;
-    if (!current || current.origin !== origin) return;
-    if (current.pathname === options.current.callbackPath && current.searchParams.has('ticket')) {
-      callbackStarted.current = true;
-      return;
-    }
-    if (callbackStarted.current && current.searchParams.has('err')) {
-      // The platform rejected the ticket. Open its ordinary login page without
-      // exposing the failed SSO flow or retrying automatically.
-      fail(true);
-      return;
-    }
-    if (callbackStarted.current && (current.pathname === '/login' || current.pathname === '/login/')) {
-      fail();
-      return;
-    }
-    if (callbackStarted.current && current.pathname !== options.current.callbackPath) {
-      callbackStarted.current = false;
-      cancel();
-      changeAuth('unconfirmed');
-    }
-  }, [cancel, changeAuth, fail]);
-
   const onLoaded = useCallback(() => {
     pageLoadedRef.current = true;
     setPageLoaded(true);
-    if (options.current.desktopWebview) {
-      try { observeNavigation(webviewRef.current?.getURL?.()); } catch { /* guest not ready */ }
-    }
     // pageLoaded intentionally does not change authentication state. Only the target's
     // trusted authentication signal can confirm a session; errors or timeout offer manual login.
-  }, [observeNavigation]);
-
-  useEffect(() => {
-    const guest = webviewRef.current;
-    if (!props.desktopWebview || !guest) return;
-    const onNavigation = (event: Event) => {
-      const details = event as NavigationEvent;
-      if (details.isMainFrame === false) return;
-      observeNavigation(details.url);
-    };
-    const onFailure = (event: Event) => {
-      const details = event as NavigationEvent;
-      if (details.isMainFrame === false || details.errorCode === -3) return;
-      fail(authRef.current === 'callback');
-    };
-    guest.addEventListener('did-finish-load', onLoaded);
-    guest.addEventListener('did-start-navigation', onNavigation);
-    guest.addEventListener('did-redirect-navigation', onNavigation);
-    guest.addEventListener('did-navigate', onNavigation);
-    guest.addEventListener('did-fail-load', onFailure);
-    return () => {
-      guest.removeEventListener('did-finish-load', onLoaded);
-      guest.removeEventListener('did-start-navigation', onNavigation);
-      guest.removeEventListener('did-redirect-navigation', onNavigation);
-      guest.removeEventListener('did-navigate', onNavigation);
-      guest.removeEventListener('did-fail-load', onFailure);
-    };
-  }, [props.desktopWebview, onLoaded, observeNavigation, fail]);
+  }, []);
 
   useEffect(() => {
     function onMessage(event: MessageEvent) {
@@ -255,27 +192,20 @@ export function FederatedBrowserSession(props: Props) {
     return () => window.removeEventListener('message', onMessage);
   }, [begin, cancel, changeAuth]);
 
-  const { active, desktopWebview, title, testIdPrefix } = props;
+  const { active, title, testIdPrefix } = props;
   const frameStyle = {
     position: 'absolute' as const, inset: 0, width: '100%', height: '100%', border: 'none',
-    display: active ? (desktopWebview ? 'flex' : 'block') : 'none',
+    display: active ? 'block' : 'none',
     visibility: 'visible' as const, pointerEvents: active ? 'auto' as const : 'none' as const,
   };
   return (
     <div className={styles.shell} data-testid={`${testIdPrefix}-frame-shell`}
       data-auth-state={auth} data-page-loaded={pageLoaded} style={{ display: active ? 'flex' : 'none' }}>
       <div className={styles.browser}>
-        {desktopWebview ? (
-          <webview ref={(node) => { webviewRef.current = node as WebviewElement | null; }}
-            src={src} title={title} partition={FEDERATED_TOOLS_PARTITION} className="external-tab-iframe"
-            data-testid={`${testIdPrefix}-frame`} aria-hidden={active ? undefined : true}
-            tabIndex={active ? undefined : -1} style={frameStyle} />
-        ) : (
-          <iframe ref={frameRef} src={src} title={title} onLoad={onLoaded}
-            className="external-tab-iframe" data-testid={`${testIdPrefix}-frame`}
-            aria-hidden={active ? undefined : true} tabIndex={active ? undefined : -1} style={frameStyle}
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox" />
-        )}
+        <iframe ref={frameRef} src={src} title={title} onLoad={onLoaded}
+          className="external-tab-iframe" data-testid={`${testIdPrefix}-frame`}
+          aria-hidden={active ? undefined : true} tabIndex={active ? undefined : -1} style={frameStyle}
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox" />
       </div>
     </div>
   );

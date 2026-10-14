@@ -52,6 +52,7 @@ vi.mock('../../src/collab/useWorkspaceContext', async (importOriginal) => {
 });
 
 import { HomeView } from '../../src/components/HomeView';
+import { I18nProvider } from '../../src/i18n';
 import { getHomeHeroEditor, homeHeroPromptText, setHomeHeroPrompt } from '../helpers/home-hero-lexical';
 
 // HomeHero's prompt input migrated from a <textarea>+highlight overlay to the
@@ -170,6 +171,76 @@ async function pickHomeTemplate(id: string) {
 }
 
 describe('HomeView context picker', () => {
+  it('refreshes all Skills on first plus-menu open without switching scope tabs', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 200 })));
+    const onSkillsRefresh = vi.fn(async () => {
+      view.rerender(home([SKILL, DECK_SKILL]));
+    });
+    const home = (skills: SkillSummary[]) => (
+      <HomeView projects={[]} skills={skills} onSkillsRefresh={onSkillsRefresh}
+        onSubmit={() => undefined} onOpenProject={() => undefined} onViewAllProjects={() => undefined} />
+    );
+    const view = render(home([SKILL]));
+    await screen.findByTestId('home-hero-input');
+    fireEvent.click(screen.getByTestId('home-hero-plus-trigger'));
+    fireEvent.click(await screen.findByTestId('composer-plus-skills'));
+    await waitFor(() => expect(onSkillsRefresh).toHaveBeenCalledWith(true));
+    expect(await screen.findByRole('menuitem', { name: 'Prototype Lab' })).toBeTruthy();
+    expect(await screen.findByRole('menuitem', { name: 'Deck Lab' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'All' })).toHaveAttribute('aria-selected', 'true');
+    expect(onSkillsRefresh).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByTestId('home-hero-plus-trigger'));
+    fireEvent.click(screen.getByTestId('home-hero-plus-trigger'));
+    fireEvent.click(await screen.findByTestId('composer-plus-skills'));
+    await waitFor(() => expect(onSkillsRefresh).toHaveBeenCalledTimes(2));
+  });
+
+  it('refreshes all Skills when home @ opens and reopens without refreshing on query edits', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 200 })));
+    const onSkillsRefresh = vi.fn(async () => {
+      view.rerender(home([SKILL, DECK_SKILL]));
+    });
+    const home = (skills: SkillSummary[]) => (
+      <HomeView projects={[]} skills={skills} onSkillsRefresh={onSkillsRefresh}
+        onSubmit={() => undefined} onOpenProject={() => undefined} onViewAllProjects={() => undefined} />
+    );
+    const view = render(home([SKILL]));
+    await screen.findByTestId('home-hero-input');
+    expect(onSkillsRefresh).not.toHaveBeenCalled();
+    setHomeHeroPrompt('@');
+    await settle();
+    expect(await screen.findByRole('option', { name: /Deck Lab/ })).toBeTruthy();
+    expect(onSkillsRefresh).toHaveBeenCalledWith(true);
+    expect(onSkillsRefresh).toHaveBeenCalledTimes(1);
+
+    setHomeHeroPrompt('@deck');
+    await settle();
+    expect(screen.getByRole('option', { name: /Deck Lab/ })).toBeTruthy();
+    expect(onSkillsRefresh).toHaveBeenCalledTimes(1);
+    setHomeHeroPrompt('');
+    await settle();
+    setHomeHeroPrompt('@');
+    await settle();
+    await waitFor(() => expect(onSkillsRefresh).toHaveBeenCalledTimes(2));
+  });
+
+  it('labels the home @ tab and section as Skill in Chinese', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 200 })));
+    render(
+      <I18nProvider initial="zh-CN">
+        <HomeView projects={[]} skills={[SKILL]} onSubmit={() => undefined}
+          onOpenProject={() => undefined} onViewAllProjects={() => undefined} />
+      </I18nProvider>,
+    );
+    await screen.findByTestId('home-hero-input');
+    setHomeHeroPrompt('@');
+    await settle();
+    expect(await screen.findByRole('tab', { name: 'Skill1' })).toBeTruthy();
+    expect(document.querySelector('.home-hero__mention-section-label')?.textContent).toBe('Skill');
+    expect(screen.queryByRole('tab', { name: /技能/ })).toBeNull();
+  });
+
   it.each([
     ['skill-first', 'none', false], ['mcp-first', 'none', false],
     ['skill-first', 'skill', false], ['mcp-first', 'mcp', false], ['skill-first', 'both', true],

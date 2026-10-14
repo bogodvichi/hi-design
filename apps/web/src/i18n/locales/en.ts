@@ -1342,6 +1342,7 @@ export const en: Dict = {
   'homeWorkingDir.hint': 'Let the agent read this local folder (not imported into Design Files)',
   'homeWorkingDir.missing': 'This working folder no longer exists — pick another',
   'homeWorkingDir.applyFailed': 'Couldn\'t set the working directory — the folder may no longer exist',
+  'composer.skillApplyFailed': 'Could not add this Skill. Refresh the Skill list and try again.',
   'workingDirPicker.title': 'Folder',
   'workingDirPicker.homeTitle': 'Saved in local storage — click to choose a folder',
   'workingDirPicker.processing': 'Processing…',

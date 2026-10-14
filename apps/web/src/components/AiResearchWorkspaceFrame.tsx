@@ -11,7 +11,6 @@ export function AiResearchWorkspaceFrame({ route }: { route: Route }) {
       testIdPrefix="ai-research-workspace"
       launchEndpoint="/api/auth/ai-research/launch"
       callbackPath="/api/auth/platform"
-      useDesktopWebview
     />
   );
 }

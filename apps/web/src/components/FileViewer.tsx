@@ -6333,7 +6333,11 @@ function CommentPreviewOverlays({
             <button
               type="button"
               className="comment-saved-pin"
-              onClick={(event) => {
+             style={{
+               background: avatarColorForDisplayName(comment.authorDisplayName?.trim() || '?'),
+               ...(comment.id === activeExistingCommentId ? { borderColor: '#d96a46' } : null),
+             }}
+             onClick={(event) => {
                 event.stopPropagation();
                 onOpenCommentRef.current(comment, snapshot);
               }}
@@ -6344,25 +6348,13 @@ function CommentPreviewOverlays({
               }
               aria-label={`Open comment for ${label}`}
             >
-              {markerNumber}
+             {commentAuthorInitials(comment.authorDisplayName?.trim() || '?')}
             </button>
           </div>
         );
       }),
-    [visibleComments, scale, overlayOffset],
+     [visibleComments, scale, overlayOffset, activeExistingCommentId],
   );
-  const activeSavedIndex = activeExistingCommentId
-    ? comments.findIndex((comment) => comment.id === activeExistingCommentId)
-    : -1;
-  const activeSavedComment = activeSavedIndex >= 0 ? comments[activeSavedIndex] : undefined;
-  const activePinNumber = activeSavedComment
-    ? (typeof activeSavedComment.pinSeq === 'number' ? activeSavedComment.pinSeq : activeSavedIndex + 1)
-    // A brand-new, not-yet-saved comment: provisional guess at what the
-    // daemon will assign on create — `MAX(pin_seq)+1` across ALL of the
-    // file's comments regardless of status, never open-count+1 (pin
-    // numbers are permanent; deletion or resolution retires them, so a
-    // count-based guess would collide with or resurrect a taken number).
-    : provisionalPinNumber;
   const targetOverlay = activeTarget ?? hoveredTarget;
   return (
     <div className="comment-overlay-layer" aria-hidden={false}>
@@ -6376,16 +6368,14 @@ function CommentPreviewOverlays({
           hoveredMemberId={hoveredPodMemberId}
         />
       ) : null}
-      {showActivePin && activeTarget ? (
-        <div
-          className="comment-active-pin"
-          style={activeCommentPinStyle(activeTarget, scale, overlayOffset)}
-          data-testid="comment-active-pin"
-          aria-hidden="true"
-        >
-          {activePinNumber}
-        </div>
-      ) : null}
+     {showActivePin && activeTarget && !activeExistingCommentId ? (
+       <div
+         className="comment-active-pin"
+         style={activeCommentPinStyle(activeTarget, scale, overlayOffset)}
+         data-testid="comment-active-pin"
+         aria-hidden="true"
+       />
+     ) : null}
       {boardTool === 'pod' && strokePoints.length > 1 ? (
         <svg className="board-pod-stroke">
           <polyline
@@ -15819,7 +15809,7 @@ async function openReviewListModal() {
   }
   // Stable creation-order list (recvq5BVsolIxi): NOT the sidebar's visual
   // order any more (see `visibleSideComments` below) — kept purely so the
-  // canvas pin numbering (CommentPreviewOverlays, activePinNumber) has a
+ // canvas pin numbering (CommentPreviewOverlays markerNumber) has a
   // stable fallback index for a comment that has no server-assigned
   // `pinSeq` yet (a legacy row, or a test fixture), independent of whatever
   // order the sidebar happens to display things in.

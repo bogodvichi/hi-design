@@ -1438,6 +1438,7 @@ function createRendererCrashHtml(ctx: RendererCrashScreenContext): string {
  */
 export type SplashBootStage =
   | "starting"
+  | "migration"
   | "engine"
   | "engineReady"
   | "interface"
@@ -1454,6 +1455,7 @@ export type SplashBootStage =
  */
 const SPLASH_STAGE_SEQUENCE: readonly SplashBootStage[] = [
   "starting",
+  "migration",
   "engine",
   "engineReady",
   "interface",
@@ -1464,6 +1466,7 @@ const SPLASH_STAGE_SEQUENCE: readonly SplashBootStage[] = [
 
 const SPLASH_STAGE_LABELS: Record<SplashBootStage, string> = {
   starting: "Starting HiDesign",
+  migration: "Migrating data from Hi Design",
   engine: "Starting the local engine",
   engineReady: "Local engine ready",
   interface: "Preparing the interface",
@@ -2508,23 +2511,31 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     // late to recover its name. Snapshot the identity when navigation starts.
     rememberPreviewFrameName(details.frame);
   });
+  // Load events can arrive during teardown, after either native object is gone.
+  // Check the window first: accessing its webContents can itself throw then.
+  const isMainWindowUnavailable = () =>
+    stopped || window.isDestroyed() || window.webContents.isDestroyed();
   window.on("page-title-updated", (event) => {
     event.preventDefault();
+    if (isMainWindowUnavailable()) return;
     window.setTitle(windowTitle);
   });
   window.webContents.on("did-start-loading", () => {
+    if (isMainWindowUnavailable()) return;
     console.info("[open-design desktop] main window did-start-loading", {
       pendingUrl,
       url: window.webContents.getURL(),
     });
   });
   window.webContents.on("dom-ready", () => {
+    if (isMainWindowUnavailable()) return;
     console.info("[open-design desktop] main window dom-ready", {
       title: window.getTitle(),
       url: window.webContents.getURL(),
     });
   });
   window.webContents.on("did-finish-load", () => {
+    if (isMainWindowUnavailable()) return;
     console.info("[open-design desktop] main window did-finish-load", {
       title: window.getTitle(),
       url: window.webContents.getURL(),
@@ -2539,6 +2550,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     frameProcessId,
     frameRoutingId,
   ) => {
+    if (isMainWindowUnavailable()) return;
     const failedFrame = isMainFrame
       ? undefined
       : webFrameMain.fromId(frameProcessId, frameRoutingId);
@@ -2568,12 +2580,14 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     if (failure) window.webContents.send(PREVIEW_NAVIGATION_FAILURE_IPC_CHANNEL, failure);
   });
   window.on("unresponsive", () => {
+    if (isMainWindowUnavailable()) return;
     console.error("[open-design desktop] main window unresponsive", {
       pendingUrl,
       url: window.webContents.getURL(),
     });
   });
   window.on("responsive", () => {
+    if (isMainWindowUnavailable()) return;
     console.info("[open-design desktop] main window responsive", {
       pendingUrl,
       url: window.webContents.getURL(),
@@ -3003,6 +3017,11 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     splashStartedAt = created.startedAt;
   }
 
+  // The daemon runs auto-import of legacy Hi Design projects inside
+  // startServer() before app.listen(), so discoverUrl() stays null until
+  // migration completes. Show a dedicated splash stage for that wait.
+  setSplashStage(splash, "migration");
+
   let pendingUpdateDialogRequest: OpenDesignHostUpdaterOpenDialogRequest | null = null;
   let revealed = false;
   let revealing = false;
@@ -3151,6 +3170,11 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
         }
       }
       const url = await options.discoverUrl();
+      // First successful discovery means the daemon is online and any startup
+      // data migration has completed. Advance the splash past "migration".
+      if (url != null && currentUrl == null) {
+        setSplashStage(splash, "engine");
+      }
       // Reload when the discovered URL changes, OR when the renderer is in a
       // failed/blank state (URL unchanged but the page died), so a window
       // restored from the background recovers instead of staying blank.

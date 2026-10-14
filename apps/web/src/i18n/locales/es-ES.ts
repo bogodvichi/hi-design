@@ -1,6 +1,7 @@
 import type { Dict } from '../types';
 
 export const esES: Dict = {
+  'composer.skillApplyFailed': "No se pudo añadir este Skill. Actualiza la lista de Skills e inténtalo de nuevo.",
   'projectDrag.movedTo': 'Moved to “{path}”',
   'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "Carpetas movidas: {succeeded}; incompletas: {failed}.",

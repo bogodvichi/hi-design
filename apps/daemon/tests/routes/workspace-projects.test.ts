@@ -1,6 +1,7 @@
 import express from 'express';
 import type http from 'node:http';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
@@ -149,6 +150,35 @@ describe('workspace project routes', () => {
       createdByWorkspaceMemberId: null,
     });
     expect(project.currentUserAccess.canDelete).toBe(false);
+  });
+
+  it('discovers a copied project on the first personal list read and keeps it private to that owner', async () => {
+    const id = randomUUID();
+    const dir = path.join(process.env.OD_DATA_DIR!, 'projects', id);
+    await mkdir(dir, { recursive: true });
+    await writeFile(path.join(dir, 'index.html'), '<title>Copied project fixture</title>');
+    const team = `${workspaceId}-copied-team`;
+    const teamBody = await listInWorkspace(team, 'copied-reader', '?view=all', {
+      'x-od-workspace-type': 'team',
+    });
+    expect(teamBody.projects.find((project) => project.id === id)).toBeUndefined();
+
+    const personal = `${workspaceId}-copied-personal`;
+    const body = await listInWorkspace(personal, 'copied-owner', '?view=all');
+    expect(body.projects.find((project) => project.id === id)).toMatchObject({
+      id, name: 'Copied project fixture', workspaceId: personal, visibility: 'personal',
+      createdByWorkspaceMemberId: 'copied-owner', syncState: 'local_only',
+    });
+    const repeated = await listInWorkspace(personal, 'copied-owner', '?view=all');
+    expect(repeated.projects.filter((project) => project.id === id)).toHaveLength(1);
+    const otherMember = await listInWorkspace(personal, 'copied-other', '?view=all');
+    expect(otherMember.projects.find((project) => project.id === id)).toBeUndefined();
+    const otherWorkspace = await listInWorkspace(`${personal}-other`, 'copied-owner', '?view=all');
+    expect(otherWorkspace.projects.find((project) => project.id === id)).toBeUndefined();
+    const detail = await fetch(`${baseUrl}/api/projects/${id}/conversations`, { headers: workspaceHeaders(personal, 'copied-owner') });
+    expect(detail.status).toBe(200);
+    const data = await detail.json() as { conversations: Array<unknown> };
+    expect(data.conversations).toHaveLength(1);
   });
 
   // RED LINE — losing a user's pre-workspace ("legacy") projects across the

@@ -314,6 +314,51 @@ afterEach(() => {
 });
 
 describe('ChatComposer context pickers', () => {
+  it.each(['@', '+'])('preserves uploaded Skill provenance when selected through %s in an old project', async (entry) => {
+    const selected = { ...SKILL, id: 'design-review', name: 'design-review',
+      workspaceId: 'uploaded-workspace', ownerMemberId: 'uploader' };
+    skills = [selected];
+    renderComposer({ projectMetadata: { kind: 'prototype', linkedDirs: ['/old-project'] } });
+    await flushMounts();
+    if (entry === '@') {
+      await typeAndSettle('@design-review');
+      fireEvent.click(await screen.findByText('design-review'));
+    } else {
+      fireEvent.click(screen.getByTestId('chat-plus-trigger'));
+      fireEvent.click(await screen.findByTestId('composer-plus-skills'));
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'design-review' }));
+    }
+    await waitFor(() => {
+      const call = fetchMock.mock.calls.find(([url, init]) => url === '/api/projects/project-1' && init?.method === 'PATCH');
+      expect(call).toBeTruthy();
+      expect(JSON.parse(String(call![1]?.body))).toEqual({ skillId: 'design-review',
+        skillCatalogScope: { workspaceId: 'uploaded-workspace', workspaceMemberId: 'uploader' } });
+    });
+    if (entry === '@') {
+      await waitFor(() => expect(composerText()).toBe('@design-review '));
+    } else {
+      await waitFor(() => expect(screen.getByTestId('staged-outside-contexts').textContent).toContain('design-review'));
+    }
+  });
+
+  it.each(['@', '+'])('reports failed Skill selection through %s without staging it', async (entry) => {
+    rejectNextProjectPatch = true;
+    const onShowToast = vi.fn();
+    renderComposer({ onShowToast });
+    await flushMounts();
+    if (entry === '@') {
+      await typeAndSettle('@deck');
+      fireEvent.click(await screen.findByText('Deck Builder'));
+    } else {
+      fireEvent.click(screen.getByTestId('chat-plus-trigger'));
+      fireEvent.click(await screen.findByTestId('composer-plus-skills'));
+      fireEvent.click(await screen.findByRole('menuitem', { name: 'Deck Builder' }));
+    }
+    await waitFor(() => expect(onShowToast).toHaveBeenCalledWith('Could not add this Skill. Refresh the Skill list and try again.'));
+    expect(screen.getByTestId('chat-composer-input').querySelector('[data-mention-kind="skill"]')).toBeNull();
+    expect(screen.queryByTestId('staged-outside-contexts')?.textContent ?? '').not.toContain('Deck Builder');
+  });
+
 
   it('reserves plus positions before upload and Skill application finish', async () => {
     const baseFetch = globalThis.fetch;
@@ -459,6 +504,27 @@ describe('ChatComposer context pickers', () => {
     expect(meta?.context?.workspaceItems).toEqual([browserContext]);
   });
 
+  it('refreshes all Skills when project @ opens and reopens without refreshing on query edits', async () => {
+    const extra = makeSkill({ id: 'audit-helper', name: 'Audit Helper' });
+    const onSkillsRefresh = vi.fn(async () => {
+      view.rerender(composerElement({ skills: [SKILL, extra], onSkillsRefresh }));
+    });
+    const view = renderComposer({ onSkillsRefresh });
+    await flushMounts();
+    expect(onSkillsRefresh).not.toHaveBeenCalled();
+    await typeAndSettle('@');
+    expect(await screen.findByRole('option', { name: /Audit Helper/ })).toBeTruthy();
+    expect(onSkillsRefresh).toHaveBeenCalledWith(true);
+    expect(onSkillsRefresh).toHaveBeenCalledTimes(1);
+
+    await typeAndSettle('@audit');
+    expect(screen.getByRole('option', { name: /Audit Helper/ })).toBeTruthy();
+    expect(onSkillsRefresh).toHaveBeenCalledTimes(1);
+    await typeAndSettle('');
+    await typeAndSettle('@');
+    await waitFor(() => expect(onSkillsRefresh).toHaveBeenCalledTimes(2));
+  });
+
   it('opens the @ panel even when every source is empty', async () => {
     plugins = [];
     skills = [];
@@ -474,15 +540,14 @@ describe('ChatComposer context pickers', () => {
       'Design files',
       'Skills',
       'MCP',
-      'Connectors',
     ]);
     expect(screen.queryByRole('tab', { name: 'Plugins' })).toBeNull();
     expect(screen.getByRole('tab', { name: 'Skills' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'MCP' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Connectors' })).toBeTruthy();
+    expect(screen.queryByRole('tab', { name: 'Connectors' })).toBeNull();
     expect(screen.getByRole('tab', { name: 'Design files' })).toBeTruthy();
     expect(screen.queryByRole('tab', { name: 'Tabs' })).toBeNull();
-    expect(screen.getByText('Search: Design files · Skills · MCP · Connectors')).toBeTruthy();
+    expect(screen.getByText('Search: Design files · Skills · MCP')).toBeTruthy();
   });
 
   it('localizes @ panel tabs and empty states in Chinese mode', async () => {
@@ -498,17 +563,16 @@ describe('ChatComposer context pickers', () => {
     expect(screen.getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
       '全部',
       '设计文件',
-      '技能',
+      'Skill',
       'MCP',
-      '连接器',
     ]);
     expect(screen.queryByRole('tab', { name: '插件' })).toBeNull();
-    expect(screen.getByRole('tab', { name: '技能' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Skill' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'MCP' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: '连接器' })).toBeTruthy();
+    expect(screen.queryByRole('tab', { name: '连接器' })).toBeNull();
     expect(screen.getByRole('tab', { name: '设计文件' })).toBeTruthy();
     expect(screen.queryByRole('tab', { name: '标签页' })).toBeNull();
-    expect(screen.getByText('搜索: 设计文件 · 技能 · MCP · 连接器')).toBeTruthy();
+    expect(screen.getByText('搜索: 设计文件 · Skill · MCP')).toBeTruthy();
 
     await typeAndSettle('@missing');
 
@@ -566,7 +630,7 @@ describe('ChatComposer context pickers', () => {
     expect(within(picker).getByRole('tab', { name: 'Design files1' })).toBeTruthy();
     expect(within(picker).getByRole('tab', { name: 'Skills1' })).toBeTruthy();
     expect(within(picker).getByRole('tab', { name: 'MCP1' })).toBeTruthy();
-    expect(within(picker).getByRole('tab', { name: 'Connectors' })).toBeTruthy();
+    expect(within(picker).queryByRole('tab', { name: 'Connectors' })).toBeNull();
     expect(
       within(picker).getByRole('tab', { name: 'All3' }).querySelector('.mention-tab-count')?.textContent,
     ).toBe('3');
@@ -582,6 +646,38 @@ describe('ChatComposer context pickers', () => {
     await waitFor(() => expect(composerText()).toBe('@designs/landing.html '));
     expect(screen.getByTestId('staged-contexts').textContent).toContain('landing.html');
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/apply'))).toBe(false);
+  });
+
+  it('excludes connected connectors from @ results, counts, and keyboard selection', async () => {
+    const fetchOriginal = fetchMock.getMockImplementation()! as (url: string, init?: RequestInit) => Promise<Response>;
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      if (url === '/api/connectors') {
+        return new Response(JSON.stringify({ connectors: [{
+          id: 'notion', name: 'Notion', provider: 'Composio',
+          category: 'Productivity', status: 'connected', tools: [],
+        }] }), { status: 200 });
+      }
+      return fetchOriginal(url, init);
+    });
+    const onSend = vi.fn();
+    renderComposer({ onSend });
+    await flushMounts();
+    await typeAndSettle('@');
+    const picker = await screen.findByTestId('mention-popover');
+    expect(within(picker).getByRole('tab', { name: 'All2' })).toBeTruthy();
+    expect(within(picker).queryByRole('tab', { name: 'Connectors' })).toBeNull();
+    expect(within(picker).queryByText('Notion')).toBeNull();
+
+    await typeAndSettle('@notion');
+    expect(await screen.findByText('No results for “notion”.')).toBeTruthy();
+    expect(within(picker).queryByRole('option')).toBeNull();
+    await typeAndSettle('@');
+    fireEvent.keyDown(getComposerEditor().getRootElement()!, { key: 'ArrowUp' });
+    pressEnter();
+    await waitFor(() => expect(composerText()).toBe('@Slack MCP '));
+    fireEvent.click(screen.getByTestId('chat-send'));
+    await waitFor(() => expect(onSend).toHaveBeenCalled());
+    expect(onSend.mock.calls[0]?.[3]?.context).toEqual({ mcpServerIds: ['slack'] });
   });
 
   it('does not surface workspace tabs or plugins in the project @ picker', async () => {

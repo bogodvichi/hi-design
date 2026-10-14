@@ -190,98 +190,84 @@ function popoverAnchorStyle(
   };
   const anchorX = offset.x + anchor.x * safeScale;
   const anchorY = offset.y + anchor.y * safeScale;
-  const preferredLeft = clampPopoverCoordinate(anchorX + POPOVER_PAD, POPOVER_PAD);
-  const preferredTop = clampPopoverCoordinate(anchorY + POPOVER_PAD, POPOVER_PAD);
+  const preferredLeft = clampPopoverCoordinate(anchorX + 6, POPOVER_PAD);
+  const preferredTop = clampPopoverCoordinate(anchorY, POPOVER_PAD);
   if (bounds?.width && bounds.width > 0) {
     const viewportLeft = Math.max(0, bounds.scrollLeft ?? 0);
     const viewportTop = Math.max(0, bounds.scrollTop ?? 0);
     const viewportRight = viewportLeft + bounds.width;
     const viewportBottom = bounds.height ? viewportTop + bounds.height : Number.POSITIVE_INFINITY;
-    const position = target.position;
-    const rect = {
-      left: offset.x + position.x * safeScale,
-      top: offset.y + position.y * safeScale,
-      width: Math.max(1, position.width * safeScale),
-      height: Math.max(1, position.height * safeScale),
-    };
-    const rectRight = rect.left + rect.width;
-    const rectBottom = rect.top + rect.height;
     const measured = popoverSizeForPositioning(expanded, measuredSize);
-    const verticalCenterLeft = rect.left + rect.width / 2 - measured.width / 2;
-    const horizontalCenterTop = rect.top + rect.height / 2 - measured.height / 2;
-    const spaces = [
+    // The popover should visually attach to the comment marker itself, not to
+    // the bounds of the annotated element. Align the card edge with the marker
+    // point and only add a small gap so the relationship remains obvious.
+    const gap = 6;
+    const candidates = [
       {
-        side: 'top' as const,
-        space: rect.top - viewportTop - POPOVER_PAD,
-        fits: rect.top - viewportTop - POPOVER_PAD >= measured.height,
+        corner: 'bottom-right' as const,
+        left: anchorX + gap,
+        top: anchorY,
+        availableWidth: viewportRight - anchorX - gap - POPOVER_PAD,
+        availableHeight: viewportBottom - anchorY - POPOVER_PAD,
       },
       {
-        side: 'bottom' as const,
-        space: viewportBottom - rectBottom - POPOVER_PAD,
-        fits: viewportBottom - rectBottom - POPOVER_PAD >= measured.height,
+        corner: 'bottom-left' as const,
+        left: anchorX - measured.width - gap,
+        top: anchorY,
+        availableWidth: anchorX - viewportLeft - gap - POPOVER_PAD,
+        availableHeight: viewportBottom - anchorY - POPOVER_PAD,
       },
       {
-        side: 'left' as const,
-        space: rect.left - viewportLeft - POPOVER_PAD,
-        fits: rect.left - viewportLeft - POPOVER_PAD >= measured.width,
+        corner: 'top-right' as const,
+        left: anchorX + gap,
+        top: anchorY - measured.height,
+        availableWidth: viewportRight - anchorX - gap - POPOVER_PAD,
+        availableHeight: anchorY - viewportTop - POPOVER_PAD,
       },
       {
-        side: 'right' as const,
-        space: viewportRight - rectRight - POPOVER_PAD,
-        fits: viewportRight - rectRight - POPOVER_PAD >= measured.width,
+        corner: 'top-left' as const,
+        left: anchorX - measured.width - gap,
+        top: anchorY - measured.height,
+        availableWidth: anchorX - viewportLeft - gap - POPOVER_PAD,
+        availableHeight: anchorY - viewportTop - POPOVER_PAD,
       },
-    ];
-    const sorted = spaces
-      .filter((item) => Number.isFinite(item.space))
-      .sort((a, b) => Number(b.fits) - Number(a.fits) || b.space - a.space);
-    const sidePosition = (side: PopoverSide): { left: number; top: number; maxHeightLimit?: number } => {
-      if (side === 'top') {
-        const topLimit = rect.top - POPOVER_PAD;
-        const top = Number.isFinite(topLimit)
-          ? Math.max(viewportTop + POPOVER_PAD, topLimit - measured.height)
-          : rect.top - measured.height - POPOVER_PAD;
-        return {
-          left: verticalCenterLeft,
-          top,
-          maxHeightLimit: Number.isFinite(topLimit) ? topLimit - top : undefined,
-        };
-      }
-      if (side === 'bottom') {
-        const top = rectBottom + POPOVER_PAD;
-        return {
-          left: verticalCenterLeft,
-          top,
-          maxHeightLimit: Number.isFinite(viewportBottom) ? viewportBottom - top - POPOVER_PAD : undefined,
-        };
-      }
-      if (side === 'left') {
-        return {
-          left: rect.left - measured.width - POPOVER_PAD,
-          top: horizontalCenterTop,
-        };
-      }
-      return {
-        left: rectRight + POPOVER_PAD,
-        top: horizontalCenterTop,
-      };
-    };
-    const fullyFittingSide = sorted.find((item) => item.fits)?.side;
-    if (fullyFittingSide) {
-      const next = sidePosition(fullyFittingSide);
-      return clampPopoverPositionStyle(next.left, next.top, bounds, measured, next.maxHeightLimit);
-    }
-    const partialVerticalSide = sorted.find((item) =>
-      (item.side === 'bottom' || item.side === 'top') && item.space >= POPOVER_MIN_VISIBLE_HEIGHT
-    )?.side;
-    if (partialVerticalSide) {
-      const next = sidePosition(partialVerticalSide);
-      return clampPopoverPositionStyle(next.left, next.top, bounds, measured, next.maxHeightLimit);
+    ].filter((item) => Number.isFinite(item.availableWidth) && !Number.isNaN(item.availableHeight));
+    const ranked = candidates
+      .map((item) => ({
+        ...item,
+        fits: item.availableWidth >= measured.width && item.availableHeight >= measured.height,
+        visibleArea: Math.max(0, Math.min(measured.width, item.availableWidth))
+          * Math.max(0, Math.min(measured.height, item.availableHeight)),
+        // Keep the default lower-right placement when multiple corners fit equally well.
+        preference: item.corner === 'bottom-right' ? 4
+          : item.corner === 'bottom-left' ? 3
+            : item.corner === 'top-right' ? 2 : 1,
+      }))
+      .sort((a, b) =>
+        Number(b.fits) - Number(a.fits)
+        || b.visibleArea - a.visibleArea
+        || b.preference - a.preference,
+      );
+    const best = ranked[0];
+    if (best) {
+      const availableHeight = Number.isFinite(best.availableHeight)
+        ? Math.floor(best.availableHeight)
+        : measured.height;
+      const nextHeightLimit = best.fits
+        ? measured.height
+        : Math.max(POPOVER_MIN_VISIBLE_HEIGHT, availableHeight);
+      return clampPopoverPositionStyle(
+        best.left,
+        best.top,
+        bounds,
+        measured,
+        nextHeightLimit,
+      );
     }
     const fallbackLeft = anchorX + POPOVER_PAD + measured.width <= viewportRight - POPOVER_PAD
       ? anchorX + POPOVER_PAD
       : anchorX - measured.width - POPOVER_PAD;
-    return clampPopoverPositionStyle(fallbackLeft, anchorY + POPOVER_PAD, bounds, measured);
-  }
+    return clampPopoverPositionStyle(fallbackLeft, anchorY + POPOVER_PAD, bounds, measured);  }
   return {
     left: preferredLeft,
     top: preferredTop,

@@ -180,7 +180,7 @@ function trackedWorkspaceLinkedDirsForContexts(
 
 type ToolsTab = 'plugins' | 'skills' | 'mcp' | 'import';
 
-type MentionTab = 'all' | 'files' | 'skills' | 'mcp' | 'connectors';
+type MentionTab = 'all' | 'files' | 'skills' | 'mcp';
 
 const USER_PLUGIN_SOURCE_KINDS = new Set<PluginSourceKind>([
   'user',
@@ -760,6 +760,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     // Lexical owns the caret, so the mention/slash trigger state only carries
     // the typed query — no cursor offset.
     const [mention, setMention] = useState<{ q: string } | null>(null);
+    const mentionOpen = mention !== null;
     // Active-row index for the @-popover's visible union (files → tabs →
     // plugins → skills → mcp → connectors). Resets to 0 whenever the query
     // identity or tab changes; drives the visual highlight + Enter/Tab target.
@@ -1250,6 +1251,10 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     const handleSkillTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent') => {
       void onSkillsRefresh?.(true);
     }, [onSkillsRefresh]);
+
+    useEffect(() => {
+      if (mentionOpen) void onSkillsRefresh?.(true);
+    }, [mentionOpen, onSkillsRefresh]);
 
    // Re-fetch MCP servers and team cloud templates when the user switches
    // the MCP scope tab in ComposerPlusMenu.
@@ -2959,12 +2964,10 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
         const showFiles = mentionTab === 'all' || mentionTab === 'files';
         const showSkills = mentionTab === 'all' || mentionTab === 'skills';
         const showMcp = mentionTab === 'all' || mentionTab === 'mcp';
-        const showConnectors = mentionTab === 'all' || mentionTab === 'connectors';
         const total =
           (showFiles ? filteredFiles.length : 0) +
           (showSkills ? filteredSkills.length : 0) +
-          (showMcp ? filteredMcpServers.length : 0) +
-          (showConnectors ? filteredConnectors.length : 0);
+          (showMcp ? filteredMcpServers.length : 0);
         if (total > 0) {
           if (key === 'ArrowDown') {
             setMentionIndex((i) => (i + 1) % total);
@@ -2985,7 +2988,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
 
     // Resolve a flat visible-section index to the right insert call. Section
     // order MUST match MentionPopover's render order
-    // (files→skills→mcp→connectors); the activeIndex highlight and Enter target stay in
+    // (files→skills→mcp); the activeIndex highlight and Enter target stay in
     // lockstep across "All" and individual tabs.
     function pickMentionByFlatIndex(flat: number) {
       let i = flat;
@@ -3006,13 +3009,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
       if (mentionTab === 'all' || mentionTab === 'mcp') {
         if (i < filteredMcpServers.length) {
           insertMcpMention(filteredMcpServers[i]!);
-          return;
-        }
-        i -= filteredMcpServers.length;
-      }
-      if (mentionTab === 'all' || mentionTab === 'connectors') {
-        if (i < filteredConnectors.length) {
-          insertConnectorMention(filteredConnectors[i]!);
           return;
         }
       }
@@ -3098,18 +3094,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
       editorRef.current?.focus();
     }
 
-    function insertConnectorMention(connector: ConnectorDetail) {
-      contextOnlyConnectorIdsRef.current.delete(connector.id);
-      setStagedConnectors((current) => (
-        current.some((item) => item.id === connector.id) ? [...current] : [...current, connector]
-      ));
-      editorRef.current?.insertMention({
-        token: inlineMentionToken(connector.name),
-        entity: { id: connector.id, kind: 'connector', label: connector.name },
-      });
-      setMention(null);
-    }
-
     function stageConnectorContext(connector: ConnectorDetail) {
       resourceOrder.get(`connector-${connector.id}`);
       contextOnlyConnectorIdsRef.current.add(connector.id);
@@ -3122,9 +3106,22 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
 
     async function applyProjectSkill(skill: SkillSummary): Promise<boolean> {
       if (!projectId) return false;
-      const result = await patchProject(projectId, { skillId: skill.id }, workspaceContext);
-      if (!result) return false;
+      const workspaceId = skill.workspaceId ?? workspaceContext?.workspaceId;
+      const workspaceMemberId = (workspaceId === workspaceContext?.workspaceId
+        ? workspaceContext?.workspaceMemberId
+        : null) ?? skill.ownerMemberId ?? workspaceContext?.workspaceMemberId;
+      const result = await patchProject(projectId, {
+        skillId: skill.id,
+        ...(workspaceId && workspaceMemberId
+          ? { skillCatalogScope: { workspaceId, workspaceMemberId } }
+          : {}),
+      }, workspaceContext);
+      if (!result) {
+        onShowToast?.(t('composer.skillApplyFailed'));
+        return false;
+      }
       onProjectSkillChange?.(result.skillId ?? skill.id);
+      onProjectMetadataChange?.(result);
       return true;
     }
 
@@ -3208,8 +3205,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
       sendComposedTurn(prompt, staged, nextCommentAttachments, contextMeta);
     }
 
-    // The project @-picker searches project files, skills, active MCP servers,
-    // and connectors. Picked
+    // The project @-picker searches project files, skills, and active MCP servers. Picked
     // entities keep an inline @ token for orientation while richer
     // context is still applied behind the scenes when available.
     const mentionQuery = mention ? mention.q.toLowerCase() : '';
@@ -3254,28 +3250,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
               .slice(0, 8)
           : [],
       [mention, mentionQuery, enabledMcpServers],
-    );
-    const filteredConnectors = useMemo(
-      () =>
-        mention
-          ? connectors
-              .filter((connector) => {
-                if (!mentionQuery) return true;
-                return [
-                  connector.id,
-                  connector.name,
-                  connector.provider,
-                  connector.category,
-                  connector.description ?? '',
-                  connector.accountLabel ?? '',
-                ]
-                  .join(' ')
-                  .toLowerCase()
-                  .includes(mentionQuery);
-              })
-              .slice(0, 8)
-          : [],
-      [mention, mentionQuery, connectors],
     );
     // Already-staged skills drop out of the suggestion list (carried over
     // from main) so the @-popover keeps moving forward as the user picks.
@@ -3654,7 +3628,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
               files={filteredFiles}
               skills={filteredSkills}
               mcpServers={filteredMcpServers}
-              connectors={filteredConnectors}
               query={mention?.q ?? ''}
               tab={mentionTab}
               onTabChange={(nextTab) => {
@@ -3666,7 +3639,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
               onPickFile={insertMention}
               onPickSkill={(skill) => void insertSkillMention(skill)}
               onPickMcp={insertMcpMention}
-              onPickConnector={insertConnectorMention}
             />
           </CaretFloatingLayer>
           <CaretFloatingLayer
@@ -5977,7 +5949,6 @@ function SlashPopover({
 
 function MentionPopover({
   files,
-  connectors,
   skills,
   mcpServers,
   query,
@@ -5988,10 +5959,8 @@ function MentionPopover({
   onPickFile,
   onPickSkill,
   onPickMcp,
-  onPickConnector,
 }: {
   files: ProjectFile[];
-  connectors: ConnectorDetail[];
   skills: SkillSummary[];
   mcpServers: McpServerConfig[];
   query: string;
@@ -6002,7 +5971,6 @@ function MentionPopover({
   onPickFile: (path: string) => void;
   onPickSkill: (skill: SkillSummary) => void;
   onPickMcp: (server: McpServerConfig) => void;
-  onPickConnector: (connector: ConnectorDetail) => void;
 }) {
   const { locale, t } = useI18n();
   const ref = useRef<HTMLDivElement | null>(null);
@@ -6010,25 +5978,22 @@ function MentionPopover({
     {
       id: 'all',
       label: t('chat.mentionTabAll'),
-      count: files.length + skills.length + mcpServers.length + connectors.length,
+      count: files.length + skills.length + mcpServers.length,
     },
     { id: 'files', label: t('chat.mentionTabFiles'), count: files.length },
     { id: 'skills', label: t('chat.mentionTabSkills'), count: skills.length },
     { id: 'mcp', label: t('chat.mentionTabMcp'), count: mcpServers.length },
-    { id: 'connectors', label: t('chat.mentionTabConnectors'), count: connectors.length },
   ];
   const showFiles = tab === 'all' || tab === 'files';
   const showSkills = tab === 'all' || tab === 'skills';
   const showMcp = tab === 'all' || tab === 'mcp';
-  const showConnectors = tab === 'all' || tab === 'connectors';
   const hasVisibleResults =
     (showFiles && files.length > 0) ||
     (showSkills && skills.length > 0) ||
-    (showMcp && mcpServers.length > 0) ||
-    (showConnectors && connectors.length > 0);
+    (showMcp && mcpServers.length > 0);
   useEffect(() => {
     if (ref.current) ref.current.scrollTop = 0;
-  }, [connectors, files, skills, mcpServers, tab]);
+  }, [files, skills, mcpServers, tab]);
   const searchPrompt = `${t('common.search')}: ${tabs.slice(1).map((item) => item.label).join(' · ')}`;
   let optionIndex = 0;
   return (
@@ -6153,38 +6118,6 @@ function MentionPopover({
                     </span>
                   </span>
                   <span className="mention-meta mention-item-kind">{server.transport}</span>
-                </button>
-              );
-            })}
-          </>
-        ) : null}
-        {showConnectors && connectors.length > 0 ? (
-          <>
-            <div className="mention-section-label">{t('chat.mentionSectionConnectors')}</div>
-            {connectors.map((connector) => {
-              const flat = optionIndex;
-              optionIndex += 1;
-              const active = flat === activeIndex;
-              return (
-                <button
-                  key={`connector-${connector.id}`}
-                  id={`mention-opt-${flat}`}
-                  role="option"
-                  aria-selected={active}
-                  className={`mention-item${active ? ' is-active' : ''}`}
-                  type="button"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => onPickConnector(connector)}
-                  title={t('chat.mentionUseConnectorTitle', { name: connector.name })}
-                >
-                  <Icon name="link" size={12} />
-                  <span className="mention-item-body">
-                    <strong>{connector.name}</strong>
-                    <span className="mention-meta mention-meta--desc">
-                      {connector.description || connector.provider || connector.id}
-                    </span>
-                  </span>
-                  <span className="mention-meta mention-item-kind">{connector.accountLabel ?? connector.provider}</span>
                 </button>
               );
             })}

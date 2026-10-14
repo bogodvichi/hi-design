@@ -3,6 +3,8 @@ import express from 'express';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { registerProjectRoutes } from '../../src/routes/project/index.js';
 import { workspaceContextFromDirectoryItem } from '../../src/collab/vela-workspace-context.js';
+import { resolveSkillCatalogScope } from '../../src/skill-catalog-scope.js';
+import type { Project } from '@open-design/contracts';
 
 const WORKSPACE_ID = 'workspace-project-scope';
 const MEMBER_ID = 'member-project-scope';
@@ -174,6 +176,63 @@ function headers() {
 }
 
 describe('project resource selection uses the persisted exact member', () => {
+  it('saves a selected Skill from its catalog partition and preserves it for runs', async () => {
+    const selectedScope = { workspaceId: 'uploaded-skill-workspace', workspaceMemberId: 'uploader' };
+    const validateSkill = vi.fn(async (id, scope) => scope?.workspaceId === selectedScope.workspaceId
+      ? { ok: true, id }
+      : { ok: false, code: 'SKILL_NOT_FOUND', message: 'skill not found' });
+    const deps = buildDeps({ validateSkill });
+    const metadata = { kind: 'prototype', linkedDirs: ['/old-project'], localCatalogScopes: {
+      skill: { workspaceId: 'old-skill-workspace', workspaceMemberId: 'old-owner' },
+      designSystem: { workspaceId: WORKSPACE_ID, workspaceMemberId: MEMBER_ID },
+    } };
+    const project = { id: PROJECT_ID, skillId: 'old-skill', metadata };
+    deps.projectStore.getProject = () => project as never;
+    const updateProject = vi.fn((_db, _id, patch) => ({ ...project, ...patch }));
+    deps.projectStore.updateProject = updateProject;
+    const baseUrl = await start(deps);
+    const response = await fetch(`${baseUrl}/api/projects/${PROJECT_ID}`, {
+      method: 'PATCH', headers: headers(),
+      body: JSON.stringify({ skillId: 'design-review', skillCatalogScope: selectedScope }),
+    });
+    expect(response.status).toBe(200);
+    expect(validateSkill).toHaveBeenCalledWith('design-review', selectedScope);
+    const saved = ((await response.json()) as { project: Project }).project;
+    expect(saved.metadata).toEqual({ ...metadata, usedSkillIds: ['design-review'],
+      localCatalogScopes: { ...metadata.localCatalogScopes, skill: selectedScope } });
+    expect(resolveSkillCatalogScope({ metadata: saved.metadata,
+      workspaceBinding: { workspaceId: WORKSPACE_ID, createdByWorkspaceMemberId: MEMBER_ID } }))
+      .toEqual(selectedScope);
+  });
+
+  it('rejects an unavailable selected Skill without writing project or catalog provenance', async () => {
+    const validateSkill = vi.fn(async () => ({ ok: false, code: 'SKILL_NOT_FOUND', message: 'skill not found' }));
+    const deps = buildDeps({ validateSkill });
+    const baseUrl = await start(deps);
+    const response = await fetch(`${baseUrl}/api/projects/${PROJECT_ID}`, {
+      method: 'PATCH', headers: headers(), body: JSON.stringify({ skillId: 'missing-skill',
+        skillCatalogScope: { workspaceId: 'source-workspace', workspaceMemberId: 'source-member' } }),
+    });
+    expect(response.status).toBe(400);
+    expect(((await response.json()) as { error: { code: string } }).error.code).toBe('SKILL_NOT_FOUND');
+    expect(deps.projectStore.updateProject).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { skillId: 'design-review', skillCatalogScope: { workspaceId: 'source-workspace' } },
+    { skillCatalogScope: { workspaceId: 'source-workspace', workspaceMemberId: 'uploader' } },
+  ])('rejects incomplete Skill selection provenance before resource validation (%j)', async (body) => {
+    const validateSkill = vi.fn();
+    const deps = buildDeps({ validateSkill });
+    const baseUrl = await start(deps);
+    const response = await fetch(`${baseUrl}/api/projects/${PROJECT_ID}`, {
+      method: 'PATCH', headers: headers(), body: JSON.stringify(body),
+    });
+    expect(response.status).toBe(400);
+    expect(validateSkill).not.toHaveBeenCalled();
+    expect(deps.projectStore.updateProject).not.toHaveBeenCalled();
+  });
+
   it('routes project mutations through the central project authority gate', async () => {
     const updateProject = vi.fn();
     const authorizeProjectRequest = vi.fn(async (
@@ -200,7 +259,11 @@ describe('project resource selection uses the persisted exact member', () => {
     const response = await fetch(`${baseUrl}/api/projects/${PROJECT_ID}`, {
       method: 'PATCH',
       headers: headers(),
-      body: JSON.stringify({ name: 'Must not land' }),
+      body: JSON.stringify({
+        name: 'Must not land',
+        skillId: 'design-review',
+        skillCatalogScope: { workspaceId: 'source-workspace', workspaceMemberId: 'uploader' },
+      }),
     });
 
     expect(response.status).toBe(409);
@@ -214,6 +277,7 @@ describe('project resource selection uses the persisted exact member', () => {
       { mode: 'write', capability: 'rename' },
     );
     expect(updateProject).not.toHaveBeenCalled();
+    expect(deps.validation.validateProjectSkillId).not.toHaveBeenCalled();
   });
 
   it('creates a local-only project without fetching Workspace authority', async () => {

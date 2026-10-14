@@ -1474,8 +1474,6 @@
   height: 42px;
   padding: 0;
   border: 3px solid #fff;
-  border-radius: 50% 50% 50% 10px;
-  background: #d96a46;
   color: white;
   font-size: 18px;
   font-weight: 700;
@@ -1485,7 +1483,23 @@
   pointer-events: auto;
   transform: translate(-50%, -50%);
 }
-.comment-saved-pin:hover,
+.comment-saved-pin {
+  border-radius: 50%;
+  overflow: hidden;
+}
+.comment-active-pin {
+  border-radius: 50% 50% 50% 10px;
+  background: #d96a46;
+}
+.comment-saved-pin:hover {
+  filter: brightness(0.9);
+  transform: translate(-50%, calc(-50% - 1px));
+}
+/* The global button:active rule would otherwise replace the centering
+   transform while the pin is being clicked. */
+.comment-overlay-layer .comment-saved-pin:active {
+  transform: translate(-50%, -50%);
+}
 .comment-active-pin:hover {
   background: #c95e3e;
   transform: translate(-50%, calc(-50% - 1px));

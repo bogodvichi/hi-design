@@ -1207,6 +1207,7 @@ export async function deleteTemplate(id: string): Promise<boolean> {
 type ProjectPatch = Omit<Partial<Project>, 'pendingPrompt' | 'customInstructions'> & {
   pendingPrompt?: Project['pendingPrompt'] | null;
   customInstructions?: string | null;
+  skillCatalogScope?: LocalCatalogScope;
 };
 
 export async function patchProject(

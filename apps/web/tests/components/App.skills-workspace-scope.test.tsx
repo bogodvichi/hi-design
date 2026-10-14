@@ -310,6 +310,45 @@ describe('App skills list — workspace scope', () => {
     expect(skillsReadScopes()).toEqual(['ws-a', 'ws-b']);
   });
 
+  it.each(['install', 'team update'])('keeps the complete Skill catalog after %s refresh', async (reason) => {
+    const context = workspaceContext('ws-a');
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const pathname = new URL(String(input), 'http://d.local').pathname;
+      const auth = authValidResponse(pathname);
+      if (auth) return auth;
+      return {
+        ok: true,
+        json: async () => pathname.endsWith('/workspace/directory')
+          ? workspaceDirectoryFixture([context])
+          : pathname.endsWith('/workspace/context') ? { context } : {},
+      } as Response;
+    }));
+    vi.mocked(fetchSkills).mockImplementation((readContext, options) => Promise.resolve(
+      readContext?.workspaceId === context.workspaceId && options?.aggregateAllWorkspaces
+        ? [skill('personal-skill'), skill('team-skill')]
+        : [skill('personal-skill')],
+    ));
+    render(<App />);
+    await screen.findByTestId('entry-skill-team-skill');
+
+    act(() => {
+      if (reason === 'install') {
+        window.dispatchEvent(new CustomEvent('personal:skill-refresh'));
+      } else {
+        const handler = [...workspaceInvalidationHarness.handlers].reverse()
+          .find((handlers) => handlers['team-resources-changed'])?.['team-resources-changed'];
+        expect(handler).toBeTypeOf('function');
+        handler?.({ type: 'team-resources-changed', resourceKind: 'skill' });
+      }
+    });
+    await waitFor(() => expect(vi.mocked(fetchSkills)).toHaveBeenCalledTimes(2));
+    expect(vi.mocked(fetchSkills)).toHaveBeenLastCalledWith(
+      expect.objectContaining({ workspaceId: 'ws-a' }),
+      { aggregateAllWorkspaces: true },
+    );
+    expect(screen.getByTestId('entry-skill-team-skill')).toBeTruthy();
+  });
+
   // Issuing the right request is only half the guarantee. Each read resolves
   // later, and nothing stopped a read issued FOR the workspace the user has
   // since left from committing when it finally landed — restoring that

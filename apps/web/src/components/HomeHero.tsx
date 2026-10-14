@@ -681,6 +681,9 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
     [mcpOptions, mentionActive, mentionQuery],
   );
   const pickerOpen = active && mentionActive;
+  useEffect(() => {
+    if (pickerOpen) onSkillTabChange?.('all');
+  }, [pickerOpen, onSkillTabChange]);
   const tabs: Array<{ id: HomeMentionTab; label: string; count: number }> = [
     // The All overview previews skills and MCP only — files, plugins, and
     // connectors are not surfaced through the @-mention picker.

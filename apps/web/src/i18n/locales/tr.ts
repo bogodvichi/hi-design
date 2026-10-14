@@ -1,6 +1,7 @@
 import type { Dict } from '../types';
 
 export const tr: Dict = {
+  'composer.skillApplyFailed': "Bu Skill eklenemedi. Skill listesini yenileyip tekrar deneyin.",
   'projectDrag.movedTo': 'Moved to “{path}”',
   'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "Taşınan klasörler: {succeeded}; tamamlanmayan: {failed}.",

@@ -9,8 +9,8 @@
 // therefore mounts `WorkspaceTopRightAccountCluster` with the route-owned
 // Workspace authority whenever `route.kind === 'project'`.
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { useEffect, useState } from 'react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { StrictMode, useEffect, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { App } from '../../src/App';
@@ -42,6 +42,13 @@ import {
   resetWorkspaceContextCache,
 } from '../../src/collab/useWorkspaceContext';
 import { resetWorkspaceDirectoryCache } from '../../src/components/EntryNavRail';
+import { PooledIframe, previewIframeKeepAliveKey } from '../../src/components/IframeKeepAlivePool';
+import { resetProjectDisplaySnapshots } from '../../src/state/project-display-cache';
+
+const projectPreviewHarness = vi.hoisted(() => ({
+  enabled: false,
+  onProjectChange: null as ((project: Project) => void) | null,
+}));
 
 const PROJECT_ROUTE: Route = {
   kind: 'project' as const,
@@ -110,7 +117,12 @@ vi.mock('../../src/components/EntryView', () => ({
 }));
 
 vi.mock('../../src/components/ProjectView', () => ({
-  ProjectView: ({ onBack }: { onBack?: () => void }) => {
+  ProjectView: ({ onBack, project, onProjectChange }: {
+    onBack?: () => void;
+    project: Project;
+    onProjectChange: (project: Project) => void;
+  }) => {
+    projectPreviewHarness.onProjectChange = onProjectChange;
     useEffect(() => {
       projectViewMountedMock();
       return () => projectViewUnmountedMock();
@@ -119,6 +131,14 @@ vi.mock('../../src/components/ProjectView', () => ({
       <div>
         <div>Project view</div>
         <button type="button" data-testid="project-back-mock" onClick={onBack}>Back</button>
+        {projectPreviewHarness.enabled && (
+          <PooledIframe
+            cacheKey={previewIframeKeepAliveKey(project.id, 'page.html')}
+            src={`/api/projects/${project.id}/raw/page.html`}
+            title="Project preview"
+            data-testid="project-preview"
+          />
+        )}
       </div>
     );
   },
@@ -333,6 +353,9 @@ function stubFetchByUrl() {
 
 describe('project route — floating account cluster', () => {
   beforeEach(() => {
+    projectPreviewHarness.enabled = false;
+    projectPreviewHarness.onProjectChange = null;
+    resetProjectDisplaySnapshots();
     resetWorkspaceContextCache();
     resetWorkspaceBillingCache();
     resetWorkspaceDirectoryCache();
@@ -367,6 +390,35 @@ describe('project route — floating account cluster', () => {
     resetWorkspaceContextCache();
     resetWorkspaceBillingCache();
     resetWorkspaceDirectoryCache();
+    vi.restoreAllMocks();
+    resetProjectDisplaySnapshots();
+  });
+
+  it.each([
+    ['skillId', 'skill-next'],
+    ['designSystemId', 'system-next'],
+    ['customInstructions', 'Use the updated project instructions'],
+  ] as const)('refreshes the active preview after %s changes without render-phase updates', async (field, value) => {
+    projectPreviewHarness.enabled = true;
+    render(<StrictMode><App /></StrictMode>);
+    const originalFrame = await screen.findByTestId('project-preview');
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    act(() => projectPreviewHarness.onProjectChange?.({ ...project, name: 'Renamed project' }));
+    expect(screen.getByTestId('project-preview')).toBe(originalFrame);
+
+    // Queue a second mutation before React renders so the updater cannot be
+    // evaluated eagerly in the event handler.
+    act(() => {
+      projectPreviewHarness.onProjectChange?.({ ...project, name: 'Renamed again' });
+      projectPreviewHarness.onProjectChange?.({ ...project, [field]: value });
+    });
+
+    expect(screen.getByTestId('project-preview')).not.toBe(originalFrame);
+    expect(document.body.contains(originalFrame)).toBe(false);
+    expect(consoleError.mock.calls.filter(([message]) =>
+      typeof message === 'string' && message.includes('Cannot update a component')
+    )).toEqual([]);
   });
 
   it('keeps the account controls mounted on an open project', async () => {

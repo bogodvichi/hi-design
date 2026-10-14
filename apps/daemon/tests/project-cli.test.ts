@@ -54,6 +54,11 @@ async function startProjectStubServer(): Promise<StubServer> {
       requests.push(captured);
 
       res.setHeader('content-type', 'application/json');
+      if (captured.method === 'PATCH' && captured.url === '/api/projects/project-1') {
+        res.statusCode = 200;
+        res.end(JSON.stringify({ project: { id: 'project-1', ...JSON.parse(raw) } }));
+        return;
+      }
       if (captured.method === 'POST' && captured.url === '/api/projects/source-project/design-system-copy') {
         res.statusCode = 201;
         res.end(JSON.stringify({
@@ -224,6 +229,29 @@ async function runCli(args: string[]): Promise<{ stdout: string; stderr: string;
 }
 
 describe('od project CLI', () => {
+  it('selects a Skill through PATCH with separate project and catalog identities', async () => {
+    stub = await startProjectStubServer();
+    const result = await runCli(['project', 'set-skill', 'project-1', 'design-review',
+      '--workspace', 'project-workspace', '--workspace-member', 'project-member',
+      '--skill-workspace', 'skill-workspace', '--skill-member', 'uploader',
+      '--daemon-url', stub.baseUrl, '--json']);
+    expect(result.code).toBe(0);
+    expect(JSON.parse(result.stdout).project.skillId).toBe('design-review');
+    expect(stub.requests).toHaveLength(1);
+    expect(stub.requests[0]).toMatchObject({ method: 'PATCH', url: '/api/projects/project-1',
+      headers: { 'x-od-workspace-id': 'project-workspace', 'x-od-workspace-member-id': 'project-member' } });
+    expect(JSON.parse(stub.requests[0]!.body)).toEqual({ skillId: 'design-review',
+      skillCatalogScope: { workspaceId: 'skill-workspace', workspaceMemberId: 'uploader' } });
+  });
+
+  it('rejects incomplete Skill catalog provenance before sending a request', async () => {
+    stub = await startProjectStubServer();
+    const result = await runCli(['project', 'set-skill', 'project-1', 'design-review',
+      '--skill-workspace', 'skill-workspace', '--daemon-url', stub.baseUrl, '--json']);
+    expect(result.code).toBe(2);
+    expect(stub.requests).toHaveLength(0);
+  });
+
   it('documents exact workspace identity for bound project and file commands', async () => {
     const projectHelp = await runCli(['project', 'help']);
     const filesHelp = await runCli(['files', 'help']);

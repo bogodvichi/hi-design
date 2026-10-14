@@ -100,6 +100,54 @@ function bindTeamSkill(
 }
 
 describe('listAllSkills Team materialization gate', () => {
+  it('resolves an uploaded private Skill for a legacy project with no recorded creator', async () => {
+    const fixture = await createFixture();
+    const directory = path.join(fixture.userSkills, 'design-review');
+    await mkdir(directory, { recursive: true });
+    await writeSkill(directory, 'design-review', 'private-review-body');
+    ensureWorkspaceResource(fixture.db, 'skill', 'personal-workspace', 'design-review', {
+      visibility: 'personal', resourceState: 'active', createdByWorkspaceMemberId: 'uploader',
+    });
+    const selected = skills.findSkillById(await fixture.services.listAllSkills({
+      workspaceId: 'personal-workspace', workspaceMemberId: 'uploader', aggregateAllWorkspaces: true,
+    }), 'design-review');
+    expect(selected).toMatchObject({ workspaceId: 'personal-workspace', ownerMemberId: 'uploader' });
+    await expect(fixture.services.validateProjectSkillId('design-review', {
+      workspaceId: 'personal-workspace', workspaceMemberId: null,
+    })).resolves.toMatchObject({ ok: false, code: 'SKILL_NOT_FOUND' });
+    const selectedScope = { workspaceId: selected!.workspaceId!, workspaceMemberId: selected!.ownerMemberId! };
+    await expect(fixture.services.validateProjectSkillId('design-review', selectedScope))
+      .resolves.toEqual({ ok: true, id: 'design-review' });
+    await expect(fixture.services.validateProjectSkillId('design-review', {
+      workspaceId: 'personal-workspace', workspaceMemberId: 'another-member',
+    })).resolves.toMatchObject({ ok: false, code: 'SKILL_NOT_FOUND' });
+  });
+
+  it('resolves an all-scope selection through its source and rejects it after retraction', async () => {
+    const fixture = await createFixture();
+    const skillId = 'design-review';
+    const workspaceId = 'uploaded-skill-workspace';
+    await materializeTeamSkill(fixture.userSkills, workspaceId, skillId, 'uploaded-review-body');
+    bindTeamSkill(fixture.db, workspaceId, skillId);
+    const catalog = await fixture.services.listAllSkills({
+      workspaceId: 'old-project-workspace', aggregateAllWorkspaces: true,
+    });
+    const selected = skills.findSkillById(catalog, skillId);
+    expect(selected?.workspaceId).toBe(workspaceId);
+    await expect(fixture.services.validateProjectSkillId(skillId, {
+      workspaceId: 'old-project-workspace',
+    })).resolves.toMatchObject({ ok: false, code: 'SKILL_NOT_FOUND' });
+    const selectedScope = { workspaceId: selected!.workspaceId!, workspaceMemberId: 'uploader' };
+    await expect(fixture.services.validateProjectSkillId(skillId, selectedScope))
+      .resolves.toEqual({ ok: true, id: skillId });
+    expect(skills.findSkillById(await fixture.services.listAllSkillLikeEntries(selectedScope), skillId)?.body)
+      .toContain('uploaded-review-body');
+    updateWorkspaceResource(fixture.db, 'skill', workspaceId,
+      workspaceTeamSkillBindingResourceId(workspaceId, skillId), { resourceState: 'deleted' });
+    await expect(fixture.services.validateProjectSkillId(skillId, selectedScope))
+      .resolves.toMatchObject({ ok: false, code: 'SKILL_NOT_FOUND' });
+  });
+
   it('requires both an exact marker and an active exact Workspace binding', async () => {
     const fixture = await createFixture();
     const skillId = 'same-skill';

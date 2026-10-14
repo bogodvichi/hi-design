@@ -81,6 +81,7 @@ import { connectorService } from '../../connectors/service.js';
 import type { RouteDeps } from '../../server-context.js';
 import { listSkills } from '../../skills.js';
 import { isSafeId } from '../../projects.js';
+import { recoverManagedProjects } from '../../services/managed-project-recovery.js';
 import {
   getDefaultTeamId,
   getSharedSpaceMemberId,
@@ -3626,11 +3627,14 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
         return res.json(body);
       }
       const locations = await configuredProjectLocations();
-      bindUnboundProjectsToPersonalWorkspace(ctx, locations);
       const view = typeof req.query.view === 'string' ? req.query.view : 'all';
       if (view !== 'all' && view !== 'recent' && view !== 'drafts' && view !== 'team') {
         return sendApiError(res, 400, 'BAD_REQUEST', 'view must be all, recent, drafts, or team');
       }
+      if (ctx.workspaceType === 'personal' || ctx.isDefaultTeam === true) {
+        await recoverManagedProjects(db, PROJECTS_DIR, ctx);
+      }
+      bindUnboundProjectsToPersonalWorkspace(ctx, locations);
       const owner = typeof req.query.owner === 'string' ? req.query.owner : 'all';
       const visibility = typeof req.query.visibility === 'string' ? req.query.visibility : 'all';
       const rows = listWorkspaceProjects(db, ctx.workspaceId)
@@ -6248,6 +6252,14 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
         patchProject.id,
         'rename',
       )) return;
+      const selectedSkillCatalogScope = parseLocalCatalogScope(
+        patch.skillCatalogScope,
+        'skillCatalogScope',
+      );
+      if (selectedSkillCatalogScope && !Object.prototype.hasOwnProperty.call(patch, 'skillId')) {
+        return sendApiError(res, 400, 'BAD_REQUEST', 'skillCatalogScope requires skillId');
+      }
+      delete patch.skillCatalogScope;
       // baseDir / folder-import state is privileged: it's set only by the
       // import endpoint and otherwise immutable. Two failure modes to
       // guard against here:
@@ -6486,7 +6498,9 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
         const projectBinding = getWorkspaceProjectByProjectId(db, req.params.id);
         const skillValidation = await validateProjectSkillId(
           patch.skillId,
-          {
+          selectedSkillCatalogScope ?? (patch.skillId === patchProject.skillId
+            ? patchProject.metadata?.localCatalogScopes?.skill
+            : null) ?? {
             workspaceId: projectBinding?.workspaceId ?? null,
             workspaceMemberId: projectBinding?.createdByWorkspaceMemberId ?? null,
           },
@@ -6522,6 +6536,18 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
             ? { ...metadataWithoutScopes, localCatalogScopes: nextScopes }
             : metadataWithoutScopes;
         }
+      }
+      if (typeof patch.skillId === 'string' && patch.skillId && selectedSkillCatalogScope) {
+        // Lookup provenance follows the selected local Skill, independently of
+        // the project's home. Runs already resolve this saved partition.
+        const metadata = patch.metadata ?? patchProject.metadata ?? {};
+        patch.metadata = {
+          ...metadata,
+          localCatalogScopes: {
+            ...metadata.localCatalogScopes,
+            skill: selectedSkillCatalogScope,
+          },
+        };
       }
       if (typeof patch.name === 'string' && patch.name.trim().length > 0) {
         // Design-system workspace projects mirror their design system's

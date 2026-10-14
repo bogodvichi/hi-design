@@ -64,7 +64,7 @@ describe.each(cases)('$key open-first federated login', ({ Component, key, prefi
     const frame = getByTestId(prefix + '-frame');
     await act(async () => {});
     const signal = fetch.mock.calls[0]![1]!.signal as AbortSignal;
-    fireEvent(frame, new Event(key === 'himind' ? 'load' : 'did-finish-load'));
+    fireEvent(frame, new Event('load'));
     fireEvent.focus(frame);
     expect(signal.aborted).toBe(false);
     await act(async () => { pending.resolve(response(ticketUrl)); await pending.promise; });
@@ -120,7 +120,7 @@ describe.each(cases)('$key open-first federated login', ({ Component, key, prefi
     const { getByTestId } = render(<Component route={route} />);
     const frame = getByTestId(prefix + '-frame');
     await waitFor(() => expect(frame.getAttribute('src')).toBe(ticketUrl));
-    fireEvent(frame, new Event(key === 'himind' ? 'load' : 'did-finish-load'));
+    fireEvent(frame, new Event('load'));
     expect(frame.style.visibility).toBe('visible');
     expect(getByTestId(prefix + '-frame-shell').getAttribute('data-page-loaded')).toBe('true');
     expect(getByTestId(prefix + '-frame-shell').getAttribute('data-auth-state')).not.toBe('authenticated');
@@ -139,7 +139,7 @@ describe.each(cases)('$key open-first federated login', ({ Component, key, prefi
     const frame = getByTestId(prefix + '-frame');
     await act(async () => {});
     const signal = fetch.mock.calls[0]![1]!.signal as AbortSignal;
-    fireEvent(frame, new Event(key === 'himind' ? 'load' : 'did-finish-load'));
+    fireEvent(frame, new Event('load'));
     fireEvent.focus(frame);
     act(() => dispatchOpenWorkspaceTab(route));
     act(() => dispatchOpenWorkspaceTab(route));
@@ -155,7 +155,7 @@ describe.each(cases)('$key open-first federated login', ({ Component, key, prefi
     const first = render(<Component route={route} />);
     await act(async () => {});
     const frame = first.getByTestId(prefix + '-frame');
-    fireEvent(frame, new Event(key === 'himind' ? 'load' : 'did-finish-load'));
+    fireEvent(frame, new Event('load'));
     fireEvent.focus(frame);
     first.unmount();
     const reopened = render(<Component route={route} />);

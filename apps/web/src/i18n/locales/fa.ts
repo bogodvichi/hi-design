@@ -1,6 +1,7 @@
 import type { Dict } from '../types';
 
 export const fa: Dict = {
+  'composer.skillApplyFailed': "افزودن این Skill ممکن نشد. فهرست Skill را تازه‌سازی کنید و دوباره تلاش کنید.",
   'projectDrag.movedTo': 'Moved to “{path}”',
   'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "پوشه‌های منتقل‌شده: {succeeded}؛ ناتمام: {failed}.",

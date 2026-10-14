@@ -7,3 +7,4 @@
  */
 export * from './legacy-data-migrator.js';
 export * from './update-apply-observations.js';
+export * from './auto-import-installed.js';

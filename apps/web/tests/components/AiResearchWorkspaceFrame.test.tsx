@@ -61,27 +61,36 @@ describe('AiResearchWorkspaceFrame', () => {
     expect(frame.style.display).toBe('none');
   });
 
-  it('uses an isolated top-level webview in the desktop client', async () => {
+  it('uses an iframe in the desktop client and keeps it mounted across tab switches', async () => {
     vi.mocked(isOpenDesignHostAvailable).mockReturnValue(true);
     const bootstrapRoute: Route = {
       ...stableRoute,
       bootstrapUrl: 'https://drw.hikvision.com/api/auth/platform?ticket=opaque',
     };
-    const { getByTestId, queryByTestId } = render(
+    const { getByTestId, queryByTestId, rerender } = render(
       <AiResearchWorkspaceFrame route={bootstrapRoute} />,
     );
     const guest = getByTestId('ai-research-workspace-frame');
 
-    expect(guest.tagName).toBe('WEBVIEW');
-    expect(guest.getAttribute('partition')).toBe('persist:hi-design-team-federated-tools');
-    expect(guest.style.display).toBe('flex');
+    expect(guest.tagName).toBe('IFRAME');
+    expect(guest.getAttribute('partition')).toBeNull();
+    expect(guest.style.display).toBe('block');
     expect(guest.style.visibility).toBe('visible');
 
-    fireEvent(guest, new Event('did-finish-load'));
+    await waitFor(() => expect(guest.getAttribute('src')).toContain('ticket=opaque'));
+    fireEvent.load(guest);
 
     await waitFor(() => {
       expect(guest.style.visibility).toBe('visible');
       expect(queryByTestId('ai-research-workspace-loading')).toBeNull();
+      expect(getByTestId('ai-research-workspace-frame-shell').getAttribute('data-page-loaded')).toBe('true');
     });
+
+    rerender(<AiResearchWorkspaceFrame route={homeRoute} />);
+    expect(getByTestId('ai-research-workspace-frame')).toBe(guest);
+    expect(guest.style.display).toBe('none');
+    rerender(<AiResearchWorkspaceFrame route={stableRoute} />);
+    expect(getByTestId('ai-research-workspace-frame')).toBe(guest);
+    expect(guest.getAttribute('src')).toContain('ticket=opaque');
   });
 });

@@ -1184,8 +1184,24 @@ function AppInner() {
   } | null>(null);
   const projectsRef = useRef<Project[]>(projects);
   useEffect(() => {
+    const previousProjects = projectsRef.current;
     projectsRef.current = projects;
-  }, [projects]);
+    // Eviction notifies mounted preview subscribers, so it must happen after
+    // commit rather than inside a project state updater during render.
+    for (const project of projects) {
+      const previous = previousProjects.find((p) => p.id === project.id);
+      if (
+        previous
+        && (
+          previous.skillId !== project.skillId
+          || previous.designSystemId !== project.designSystemId
+          || previous.customInstructions !== project.customInstructions
+        )
+      ) {
+        iframeKeepAlivePool.evictProject(project.id, { includeActive: true });
+      }
+    }
+  }, [iframeKeepAlivePool, projects]);
   // Project names from another member's team-catalog row are authoritative:
   // the local mirror can carry an older real name (not only "共享项目") with a
   // newer local timestamp. Scope keys prevent a project id observed in one
@@ -2709,11 +2725,11 @@ function AppInner() {
     workspaceContextState.identityChangePending,
   ]);
 
-  const refreshSkills = useCallback(async (scoped?: boolean) => {
+  const refreshSkills = useCallback(async (scoped = true) => {
     // The workspace-keyed effect and composer scope tabs both need the
     // workspace identity so the daemon can discover `.team-workspaces`
-    // materializations and attach owner/workspace bindings. Internal mutation
-    // catch-up callers may omit it to preserve the legacy full-catalog read.
+    // materializations and attach owner/workspace bindings. Mutation and
+    // focus catch-up reads must keep that complete catalogue too.
     if (workspaceContextStateRef.current.identityChangePending) return;
     const issuedAccountGeneration = currentWorkspaceAccountGeneration();
     const read = beginWorkspaceScopedRead(workspaceContextRef.current);
@@ -4654,23 +4670,9 @@ if (fetchedProject) {
       };
       setRouteProjectSnapshotRevision((current) => current + 1);
     }
-    setProjects((curr) => {
-      const previous = curr.find((p) => p.id === updated.id);
-      const reconciled = previous
-        ? reconcileProjectMutationResult(previous, updated)
-        : updated;
-      if (
-        previous
-        && (
-          previous.skillId !== reconciled.skillId
-          || previous.designSystemId !== reconciled.designSystemId
-          || previous.customInstructions !== reconciled.customInstructions
-        )
-      ) {
-        iframeKeepAlivePool.evictProject(updated.id, { includeActive: true });
-      }
-      return curr.map((p) => (p.id === updated.id ? reconciled : p));
-    });
+    setProjects((curr) => curr.map((p) =>
+      p.id === updated.id ? reconcileProjectMutationResult(p, updated) : p
+    ));
     if (projectContext) {
       patchProjectDisplaySnapshots({
         accountGeneration,
@@ -4679,7 +4681,7 @@ if (fetchedProject) {
           project.id === updated.id ? { ...project, ...updated } : project),
       });
     }
-  }, [iframeKeepAlivePool]);
+  }, []);
 
   const handleProjectRenameStarted = useCallback((
     optimistic: Project,
