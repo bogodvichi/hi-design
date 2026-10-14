@@ -115,6 +115,33 @@ async function writeHyperframesRuntimeFixture(options: {
   }
 }
 
+async function writeNodePtyPrebuildsFixture(options: {
+  platformName: "darwin" | "win32";
+  runtimeSourceRoot: string;
+}): Promise<void> {
+  const arch = options.platformName === "win32" ? "x64" : process.arch;
+  const platform = options.platformName === "darwin" ? "darwin" : "win32";
+  const prebuildsRoot = join(options.runtimeSourceRoot, "node_modules", "node-pty", "prebuilds", `${platform}-${arch}`);
+  await mkdir(prebuildsRoot, { recursive: true });
+
+  const files = options.platformName === "darwin"
+    ? [{ content: "pty-node-binary\n", name: "pty.node" },
+       { content: "spawn-helper-binary\n", executable: true, name: "spawn-helper" }]
+    : [{ content: "conpty\n", name: "conpty.node" },
+       { content: "conpty-list\n", name: "conpty_console_list.node" },
+       { content: "pty\n", name: "pty.node" },
+       { content: "agent\n", name: "winpty-agent.exe" },
+       { content: "dll\n", name: "winpty.dll" }];
+
+  for (const file of files) {
+    const filePath = join(prebuildsRoot, file.name);
+    await writeFile(filePath, file.content, "utf8");
+    if ("executable" in file && file.executable) {
+      await chmod(filePath, 0o755);
+    }
+  }
+}
+
 async function writePnpmLinkedPackage(standaloneRoot: string, packageName: string): Promise<string> {
   const packageDirectoryName = `${packageName}@0.0.0`.split("/").join("+");
   const packageRoot = join(standaloneRoot, "node_modules", ".pnpm", packageDirectoryName, "node_modules", packageName);
@@ -230,6 +257,10 @@ async function runFixture(options: {
     resourcesRoot,
     runtimeSourceRoot: hyperframesRuntimeSourceRoot,
   });
+  await writeNodePtyPrebuildsFixture({
+    platformName,
+    runtimeSourceRoot: hyperframesRuntimeSourceRoot,
+  });
   await writeFile(
     configPath,
     `${JSON.stringify(
@@ -304,6 +335,40 @@ describe("web standalone afterPack hook", () => {
       expect(report.hyperframesCliSmoke.nodePath.split(path.sep).join("/")).toMatch(
         /win-unpacked\/Hi Design Team\.exe$/,
       );
+    } finally {
+      await rm(fixture.root, { force: true, recursive: true });
+    }
+  });
+
+  it("copies node-pty prebuilds into the packaged app before signing", async () => {
+    const fixture = await runFixture({ includeWebNext: true });
+
+    try {
+      const report = JSON.parse(await readFile(fixture.auditReportPath, "utf8")) as {
+        nodePtyPrebuilds: { destinationRoot: string; prebuildsDir: string };
+      };
+      const arch = process.platform === "win32" ? "x64" : process.arch;
+      const platform = process.platform === "win32" ? "win32" : "darwin";
+      const expectedDir = `${platform}-${arch}`;
+      expect(report.nodePtyPrebuilds.prebuildsDir).toBe(expectedDir);
+
+      const prebuildsRoot = join(
+        fixture.destinationRoot,
+        "..",
+        "app",
+        "node_modules",
+        "node-pty",
+        "prebuilds",
+        expectedDir,
+      );
+      expect(await pathExists(prebuildsRoot)).toBe(true);
+
+      const requiredFiles = process.platform === "win32"
+        ? ["conpty.node", "conpty_console_list.node", "pty.node", "winpty-agent.exe", "winpty.dll"]
+        : ["pty.node", "spawn-helper"];
+      for (const file of requiredFiles) {
+        expect(await pathExists(join(prebuildsRoot, file))).toBe(true);
+      }
     } finally {
       await rm(fixture.root, { force: true, recursive: true });
     }

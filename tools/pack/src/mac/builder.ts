@@ -1,4 +1,4 @@
-import { cp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import type { ToolPackConfig } from "../config/index.js";
@@ -188,14 +188,9 @@ export async function runElectronBuilder(
       ...(webStandaloneHookConfigPath == null ? {} : { [WEB_STANDALONE_HOOK_CONFIG_ENV]: webStandaloneHookConfigPath }),
     },
   });
-  // electron-builder's node_modules copier strips node-pty/prebuilds because
-  // the prebuilds are loaded at runtime via path.join, not via require, so
-  // the copier's dependency walker never reaches them. Copy them back from
-  // the assembled app root after electron-builder finishes.
-  const prebuildsSource = join(paths.assembledAppRoot, "node_modules", "node-pty", "prebuilds");
-  const prebuildsDest = join(paths.appPath, "Contents", "Resources", "app", "node_modules", "node-pty", "prebuilds");
-  await mkdir(dirname(prebuildsDest), { recursive: true });
-  await cp(prebuildsSource, prebuildsDest, { recursive: true, force: true });
+  // node-pty/prebuilds are restored inside the afterPack hook (before signing)
+  // because electron-builder's dependency walker strips them during packing.
+  // Verify they survived the signing and DMG/ZIP creation phases.
   await assertNodePtyRuntime({
     appRoot: join(paths.appPath, "Contents", "Resources", "app"),
     arch: resolveNodePtyRuntimeArch(process.arch),

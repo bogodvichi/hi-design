@@ -1,5 +1,5 @@
 const { execFile } = require("node:child_process");
-const { access, cp, lstat, mkdir, readFile, readlink, readdir, realpath, rm, stat, symlink, writeFile } = require("node:fs/promises");
+const { access, chmod, cp, lstat, mkdir, readFile, readlink, readdir, realpath, rm, stat, symlink, writeFile } = require("node:fs/promises");
 const { createRequire } = require("node:module");
 const path = require("node:path");
 const { promisify } = require("node:util");
@@ -647,6 +647,51 @@ async function collectMacAdhocSignTargets(appPath) {
   return targets;
 }
 
+// node-pty loads its prebuilds at runtime via path.join, not require, so
+// electron-builder's dependency walker strips them during packing.  Copy
+// them back here — inside afterPack, before signing — so the code signature
+// stays valid.  Doing this after signing (as the previous post-builder copy
+// did) invalidates the sealed resources and macOS reports "damaged".
+async function copyNodePtyPrebuilds(config, appNodeModulesRoot, platformName) {
+  const arch = platformName === "win32" ? "x64" : process.arch;
+  const prebuildsDir = `${platformName}-${arch}`;
+  const sourceRoot = path.join(config.hyperframesRuntimeSourceRoot, "node_modules", "node-pty", "prebuilds");
+  const destinationRoot = path.join(appNodeModulesRoot, "node-pty", "prebuilds");
+
+  if (!(await pathExists(sourceRoot))) {
+    throw new Error(`[tools-pack web-standalone] node-pty prebuilds source missing: ${sourceRoot}`);
+  }
+
+  await rm(destinationRoot, { force: true, recursive: true });
+  await mkdir(path.dirname(destinationRoot), { recursive: true });
+  await cp(sourceRoot, destinationRoot, { recursive: true, force: true });
+
+  // On darwin the spawn-helper must be executable; cp may not preserve the
+  // executable bit depending on the source filesystem.
+  if (platformName === "darwin") {
+    const spawnHelperPath = path.join(destinationRoot, prebuildsDir, "spawn-helper");
+    if (await pathExists(spawnHelperPath)) {
+      const metadata = await stat(spawnHelperPath);
+      if (metadata.isFile() && (metadata.mode & 0o111) === 0) {
+        await chmod(spawnHelperPath, metadata.mode | 0o111);
+      }
+    }
+  }
+
+  const requiredFiles = platformName === "darwin"
+    ? ["pty.node", "spawn-helper"]
+    : ["conpty.node", "conpty_console_list.node", "pty.node", "winpty-agent.exe", "winpty.dll"];
+
+  for (const file of requiredFiles) {
+    const filePath = path.join(destinationRoot, prebuildsDir, file);
+    if (!(await pathExists(filePath))) {
+      throw new Error(`[tools-pack web-standalone] node-pty prebuild missing: ${filePath}`);
+    }
+  }
+
+  return { destinationRoot, prebuildsDir, sourceRoot };
+}
+
 async function signMacAdhocBundle(appPath) {
   await normalizeMacVersionedFrameworks(appPath);
   const targets = await collectMacAdhocSignTargets(appPath);
@@ -1029,6 +1074,11 @@ async function runWebStandaloneAfterPack(context) {
     context.packager.appInfo.productFilename,
     hyperframesRuntimeCopies,
   );
+  const nodePtyPrebuilds = await copyNodePtyPrebuilds(
+    config,
+    appNodeModulesRoot,
+    context.electronPlatformName,
+  );
   const macAdhocBundleSign = context.electronPlatformName === "darwin" && config.macAdhocBundleSign
     ? await signMacAdhocBundle(appPath)
     : [];
@@ -1044,6 +1094,7 @@ async function runWebStandaloneAfterPack(context) {
     hyperframesCliSmoke,
     hyperframesRuntimeCopies,
     macAdhocBundleSign,
+    nodePtyPrebuilds,
     platformName: context.electronPlatformName,
     resourcesRoot,
     rootBuildResiduePrune,
