@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import type { BrowserWindowConstructorOptions, MenuItemConstructorOptions } from "electron";
+import type { BrowserWindow, BrowserWindowConstructorOptions, MenuItemConstructorOptions } from "electron";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import type { DesktopRuntime } from "../../src/main/runtime.js";
 
@@ -7,6 +7,7 @@ const windows: MockWindow[] = [];
 const ipc = Object.assign(new EventEmitter(), { handle: vi.fn(), removeHandler: vi.fn() });
 const tray = Object.assign(new EventEmitter(), { setToolTip: vi.fn(), setContextMenu: vi.fn(), destroy: vi.fn() });
 let menu: MenuItemConstructorOptions[] = [];
+let petLoad: Promise<void> | undefined;
 
 class MockWindow extends EventEmitter {
   destroyed = false;
@@ -40,7 +41,9 @@ class MockWindow extends EventEmitter {
   setAlwaysOnTop = vi.fn();
   setVisibleOnAllWorkspaces = vi.fn();
   setWindowButtonVisibility = vi.fn();
-  loadURL = vi.fn(async () => undefined);
+  loadURL = vi.fn(async () => {
+    if (this === windows[0]) await petLoad;
+  });
   close() {
     const event = { preventDefault: vi.fn() };
     this.emit("close", event);
@@ -68,6 +71,7 @@ beforeEach(() => {
   vi.spyOn(process, "platform", "get").mockReturnValue("win32");
   vi.spyOn(console, "info").mockImplementation(() => undefined);
   windows.length = 0;
+  petLoad = undefined;
 });
 afterEach(async () => {
   await runtime?.close();
@@ -115,4 +119,52 @@ test("startup reveals the main window; close hides it; tray restores input and o
   expect(main.destroyed).toBe(true);
   expect(tray.destroy).toHaveBeenCalledOnce();
   expect(ipc.listenerCount("od:tray:recent-projects")).toBe(0);
+});
+
+test("Windows displays the main loading window before URL discovery and can restore it before mount", async () => {
+  const { createDesktopRuntime } = await import("../../src/main/runtime.js");
+  runtime = await createDesktopRuntime({ discoverUrl: async () => null });
+  const main = windows[1];
+  expect(runtime.status().windowVisible).toBe(true);
+  expect(main.loadURL).toHaveBeenCalledWith(expect.stringMatching(/^data:text\/html/));
+  main.close();
+  expect(runtime.status().windowVisible).toBe(false);
+  tray.emit("click");
+  await vi.advanceTimersByTimeAsync(0);
+  expect(runtime.status().windowVisible).toBe(true);
+});
+
+test("finishing app mount does not reopen the loading window after the user closes it to the tray", async () => {
+  const { createDesktopRuntime } = await import("../../src/main/runtime.js");
+  runtime = await createDesktopRuntime({ discoverUrl: async () => "http://127.0.0.1:19573/" });
+  const main = windows[1];
+  expect(runtime.status().windowVisible).toBe(true);
+  main.close();
+  await vi.advanceTimersByTimeAsync(2000);
+  expect(runtime.status().windowVisible).toBe(false);
+});
+
+test("a pending desktop-pet page cannot delay app mount completion", async () => {
+  const { createDesktopRuntime } = await import("../../src/main/runtime.js");
+  let finishPet!: () => void;
+  petLoad = new Promise<void>((resolve) => { finishPet = resolve; });
+  const onRevealed = vi.fn();
+  runtime = await createDesktopRuntime({
+    discoverUrl: async () => "http://127.0.0.1:19573/",
+    onRevealed,
+  });
+  await vi.advanceTimersByTimeAsync(2000);
+  expect(onRevealed).toHaveBeenCalledOnce();
+  finishPet();
+});
+
+test("packaged startup transfers the splash to the visible main loading window", async () => {
+  const { createDesktopRuntime } = await import("../../src/main/runtime.js");
+  const splash = new MockWindow({ show: true });
+  runtime = await createDesktopRuntime({
+    discoverUrl: async () => null,
+    splashWindow: splash as unknown as BrowserWindow,
+  });
+  expect(splash.destroyed).toBe(true);
+  expect(runtime.status().windowVisible).toBe(true);
 });

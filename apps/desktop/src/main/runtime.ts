@@ -1621,6 +1621,7 @@ export function createSplashWindow(): SplashWindowHandle {
   // page loads is deferred and replayed rather than dropped (see
   // `registerSplashStageTracking`).
   registerSplashStageTracking(splash);
+  if (process.platform === "win32") ensureWindowVisible(splash);
   void splash.loadURL(createPendingHtml());
   return { startedAt, window: splash };
 }
@@ -2465,11 +2466,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     // that would shrink the window past the usable breakpoint.
     minHeight: 600,
     minWidth: 900,
-    // Starts hidden: the splash window is what the user sees while the real web
-    // app loads in here. We reveal this window only once the app has actually
-    // mounted (see `revealWhenReady` below), so there is never a flash of the
-    // web's own "Loading HiDesign…" shell.
-    show: false,
+    // Windows shows loading in the main window immediately. Other platforms
+    // keep the separate splash until the web app mounts.
+    show: process.platform === "win32",
     title: windowTitle,
     autoHideMenuBar: true,
     ...MAC_WINDOW_CHROME,
@@ -3006,8 +3005,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
 
   // The splash window carries the light brand animation. In packaged builds the
   // entry hands us one it created BEFORE the sidecars booted (so it overlaps the
-  // whole cold start); otherwise we create our own. The main window above stays
-  // hidden behind it until the real app has mounted.
+  // whole cold start); otherwise we create our own. Outside Windows, the main
+  // window stays hidden behind it until the real app has mounted. Windows
+  // loads directly in the main window.
   // When the caller (packaged) hands us a pre-created splash, honour the
   // creation time it captured so the minimum hold is measured from when the
   // animation actually appeared — before the sidecar boot — not from now (which
@@ -3015,7 +3015,12 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // its handle carries a fresh, correct timestamp.
   let splash: BrowserWindow | null = options.splashWindow ?? null;
   let splashStartedAt = options.splashStartedAt ?? Date.now();
-  if (splash == null) {
+  if (process.platform === "win32") {
+    ensureWindowVisible(window);
+    if (splash != null && !splash.isDestroyed()) splash.close();
+    splash = null;
+    registerSplashStageTracking(window);
+  } else if (splash == null) {
     const created = createSplashWindow();
     splash = created.window;
     splashStartedAt = created.startedAt;
@@ -3024,7 +3029,8 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // The daemon runs auto-import of legacy Hi Design projects inside
   // startServer() before app.listen(), so discoverUrl() stays null until
   // migration completes. Show a dedicated splash stage for that wait.
-  setSplashStage(splash, "migration");
+  const bootStageWindow = process.platform === "win32" ? window : splash;
+  setSplashStage(bootStageWindow, "migration");
 
   let pendingUpdateDialogRequest: OpenDesignHostUpdaterOpenDialogRequest | null = null;
   let revealed = false;
@@ -3034,9 +3040,13 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     if (revealed || window.isDestroyed()) return;
     revealed = true;
     showWindowButtons(window);
-    window.show();
-    window.focus();
-    ensureWindowVisible(window);
+    // Windows was shown at construction. Preserve any minimize/close-to-tray
+    // action the user made while the app was still loading.
+    if (process.platform !== "win32") {
+      window.show();
+      window.focus();
+      ensureWindowVisible(window);
+    }
     if (pendingUpdateDialogRequest != null) {
       window.webContents.send(UPDATER_OPEN_DIALOG_EVENT, pendingUpdateDialogRequest);
       pendingUpdateDialogRequest = null;
@@ -3060,9 +3070,8 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   const revealWhenReady = async (): Promise<void> => {
     if (revealing || revealed) return;
     revealing = true;
-    // The web bundle is loading in the hidden main window from here on; let
-    // the splash status line reflect that final phase while we poll for mount.
-    setSplashStage(splash, "workspace");
+    // Advance the loading surface while we wait for the real UI to mount.
+    setSplashStage(bootStageWindow, "workspace");
     const deadline = Date.now() + WEB_MOUNT_REVEAL_TIMEOUT_MS;
     while (!stopped && !window.isDestroyed() && Date.now() < deadline) {
       const mounted = await window.webContents
@@ -3075,7 +3084,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     // minimum-hold so the brand clip plays through. Advance the counter to its
     // final step so the user sees the boot reach completion, not stall at
     // "Opening your workspace".
-    setSplashStage(splash, "finishing");
+    setSplashStage(bootStageWindow, "finishing");
     const remaining = MIN_SPLASH_MS - (Date.now() - splashStartedAt);
     if (remaining > 0) await delay(remaining);
     revealMainWindow();
@@ -3177,7 +3186,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       // First successful discovery means the daemon is online and any startup
       // data migration has completed. Advance the splash past "migration".
       if (url != null && currentUrl == null) {
-        setSplashStage(splash, "engine");
+        setSplashStage(bootStageWindow, "engine");
       }
       // Reload when the discovered URL changes, OR when the renderer is in a
       // failed/blank state (URL unchanged but the page died), so a window
@@ -3197,15 +3206,17 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
         console.info("[open-design desktop] main window loadURL success", { url });
         currentUrl = url;
         pendingUrl = null;
-        const nextPetUrl = desktopPetUrl(url);
-        if (!petWindow.isDestroyed() && nextPetUrl !== currentPetUrl) {
-          await petWindow.loadURL(nextPetUrl);
-          currentPetUrl = nextPetUrl;
-        }
         if (!revealed) {
           void revealWhenReady();
         } else {
           showWindowButtons(window);
+        }
+        const nextPetUrl = desktopPetUrl(url);
+        if (!petWindow.isDestroyed() && nextPetUrl !== currentPetUrl) {
+          currentPetUrl = nextPetUrl;
+          void petWindow.loadURL(nextPetUrl).catch((error: unknown) => {
+            console.error("desktop pet load failed", error);
+          });
         }
       } else if (url == null) {
         pendingUrl = null;
@@ -3223,12 +3234,11 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     }
   };
 
-  void tick();
-
   function show(): void {
     if (stopped || window.isDestroyed()) return;
-    // Preserve the splash reveal gate for tray clicks and external wake-ups.
-    if (!revealed) {
+    // Windows restores the main window even while it is still loading.
+    // Other platforms preserve the splash reveal gate for external wake-ups.
+    if (!revealed && process.platform !== "win32") {
       if (splash != null && !splash.isDestroyed()) {
         splash.show();
         splash.focus();
@@ -3251,6 +3261,13 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       }
     },
   });
+
+  if (process.platform === "win32") {
+    await window.loadURL(createPendingHtml()).catch((error: unknown) => {
+      console.error("desktop loading page failed", error);
+    });
+  }
+  void tick();
 
   return {
     async click(input) {

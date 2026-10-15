@@ -67,8 +67,8 @@ export function installWindowsTray(window: BrowserWindow, options: {
     }).slice(0, 5).map(({ id, name }) => ({ id, name: name.slice(0, 100) }));
     rebuildMenu();
   };
-  const clearRecentProjects = (_event: unknown, _url: string, _inPlace: boolean, isMainFrame: boolean) => {
-    if (!isMainFrame) return;
+  const clearRecentProjects = (details: Electron.Event<Electron.WebContentsDidStartNavigationEventParams>) => {
+    if (!details.isMainFrame || details.isSameDocument) return;
     recentProjects = [];
     rebuildMenu();
   };

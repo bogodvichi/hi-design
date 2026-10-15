@@ -181,11 +181,21 @@ describe("Windows close to system tray", () => {
   test("clears shortcuts on document navigation and ignores queued activation after shutdown", () => {
     dispose = install();
     publish([{ id: "p", name: "Project" }]);
-    window.webContents.emit("did-start-navigation", {}, "od://app/", false, true);
+    window.webContents.emit("did-start-navigation", { isMainFrame: true, isSameDocument: false }, "od://app/", false, true);
     expect(menu[3].enabled).toBe(false);
     tray.emit("click");
     dispose();
     vi.runOnlyPendingTimers();
     expect(window.focus).not.toHaveBeenCalled();
+  });
+
+  test("preserves recent projects across same-document route navigation", () => {
+    dispose = install();
+    publish([{ id: "p1", name: "New project" }]);
+    window.webContents.emit("did-start-navigation", { isMainFrame: true, isSameDocument: true }, "od://app/project/p1", true, true);
+    expect(menu[3].label).toBe("New project");
+    menu[3].click?.(undefined!, undefined!, undefined!);
+    vi.runOnlyPendingTimers();
+    expect(openProject).toHaveBeenCalledWith("p1");
   });
 });
