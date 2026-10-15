@@ -219,13 +219,14 @@ import {
   moveWorkspaceProject,
 } from './state/projects';
 import { useModalWindowDragGuard } from './hooks/useModalWindowDragGuard';
-import { useDesktopTray } from './hooks/useDesktopTray';
 import { resumeThumbnailLoads, suspendThumbnailLoads } from './lib/thumbnail-load-gate';
 import {
   recordRecentlyOpenedProject,
   recentlyOpenedSharedWithMeWorkspaceId,
   removeRecentlyOpenedProject,
   touchRecentlyOpenedProject,
+  updateRecentlyOpenedProjectOwner,
+  RECENTLY_OPENED_PROJECTS_CHANGED_EVENT,
 } from './lib/recently-opened-projects';
 import { updateRecentlyOpenedProjectCover } from './lib/recently-opened-projects';
 import type {
@@ -4146,8 +4147,8 @@ function AppInner() {
   // getProject does not reliably return ownerDisplayName for team-owned rows —
   // that field comes from the HDW team catalog JOIN, not the SQLite projects
   // table. Fetch the scoped catalog entry whenever owner metadata is missing,
-  // including same-workspace opens, so recordRecentlyOpenedProject stores the
-  // creator identity Home needs for the recent-projects strip.
+  // including same-workspace opens, to backfill the creator identity Home
+  // needs without delaying project navigation.
   const enrichProjectWithCatalogOwner = async (
     project: Project,
   ): Promise<Project> => {
@@ -4194,6 +4195,14 @@ function AppInner() {
     }
     recordRecentlyOpenedProject(project, { sharedWithMe: requiresSharedGrant });
     navigate({ kind: 'project', projectId: id, fileName: routeFileName });
+    // Creator labels are display metadata, not an access check. Refresh them
+    // after navigation so a slow catalog does not block opening the dialogue.
+    void enrichProjectWithCatalogOwner(project).then((enriched) => {
+      if (!openingScopeIsCurrent() || enriched === project) return;
+      if (updateRecentlyOpenedProjectOwner(id, enriched)) {
+        window.dispatchEvent(new CustomEvent(RECENTLY_OPENED_PROJECTS_CHANGED_EVENT));
+      }
+    });
     // Best-effort: re-fetch the project so we pick up the latest coverDigest
     // (team catalog may have a newer one than the in-memory list). Update
     // localStorage so the Home strip renders the right cover on return.
@@ -4281,7 +4290,7 @@ function AppInner() {
     );
      if (localProject) {
        await ensureShareBootstrapWitness(localProject);
-        return navigateToOpenedProject(await enrichProjectWithCatalogOwner(localProject));
+        return navigateToOpenedProject(localProject);
      }
      return false;
    }
@@ -4296,7 +4305,7 @@ function AppInner() {
      );
      if (localProject) {
        await ensureShareBootstrapWitness(localProject);
-        return navigateToOpenedProject(await enrichProjectWithCatalogOwner(localProject));
+        return navigateToOpenedProject(localProject);
      }
      return false;
    }
@@ -4316,7 +4325,7 @@ try {
       : curr);
    rememberHintAuthority();
    await ensureShareBootstrapWitness(openedProject);
-    return navigateToOpenedProject(await enrichProjectWithCatalogOwner(openedProject));
+    return navigateToOpenedProject(openedProject);
   }
 const { pulled } = await (shareBasedPull
  ? pullSharedProjectViaShare(id, pullContext)
@@ -4337,7 +4346,7 @@ if (!openingScopeIsCurrent()) return false;
        : curr);
     rememberHintAuthority();
      await ensureShareBootstrapWitness(openedProject);
-      return navigateToOpenedProject(await enrichProjectWithCatalogOwner(openedProject));
+      return navigateToOpenedProject(openedProject);
    }
  }
   const request = beginProjectListRequest('all');
@@ -4358,7 +4367,7 @@ if (!openingScopeIsCurrent()) return false;
 if (fetchedProject) {
   rememberHintAuthority();
    await ensureShareBootstrapWitness(fetchedProject);
-    return navigateToOpenedProject(await enrichProjectWithCatalogOwner(fetchedProject));
+    return navigateToOpenedProject(fetchedProject);
 }
 } catch {
     // Fall through to the same visible missing-project state. The daemon can
@@ -4375,8 +4384,6 @@ if (fetchedProject) {
     rememberAuthoritativeProjectName,
     t,
   ]);
-
-  useDesktopTray(projects, handleOpenProject, !workspaceContextState.identityChangePending);
 
   useEffect(() => {
     if (!config.pet?.enabled || !daemonLive) {
@@ -5501,7 +5508,8 @@ if (fetchedProject) {
     entryKeepAliveMountedRef.current = true;
   }
   const shouldMountEntrySurface =
-    entrySurfaceActive || entryKeepAliveMountedRef.current;
+    entrySurfaceActive || entryKeepAliveMountedRef.current
+    || (clientType === 'desktop' && hostPlatform === 'win32');
   const entrySurface = shouldMountEntrySurface ? (
     <EntryView
       active={entrySurfaceActive}

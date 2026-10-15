@@ -30,6 +30,7 @@ import {
 } from '@open-design/contracts';
 import { projectKindFromMetadataToTracking } from '@open-design/contracts/analytics';
 import { useAnalytics } from '../analytics/provider';
+import { useDesktopTray } from '../hooks/useDesktopTray';
 import {
   trackCommunityGalleryClick,
   trackHomeChatComposerClick,
@@ -649,6 +650,24 @@ export function HomeView({
   const analytics = useAnalytics();
   const workspaceContextState = useWorkspaceContext();
   const { context: workspaceContext } = workspaceContextState;
+  // Home cards and tray shortcuts share the same cross-workspace opening hint.
+  const openRecentProject = useCallback((id: string) => {
+    const project = projects.find((candidate) => candidate.id === id);
+    const projectWorkspaceId = project?.workspaceId?.trim() ?? '';
+    const contextWorkspaceId = workspaceContext?.workspaceId ?? null;
+    const hint: ProjectTitleHint | undefined =
+      projectWorkspaceId && projectWorkspaceId !== contextWorkspaceId
+        ? {
+            name: project?.name?.trim() ?? '',
+            workspaceId: contextWorkspaceId,
+            workspaceMemberId: workspaceContext?.workspaceMemberId ?? null,
+            authoritative: false,
+            homeWorkspaceId: projectWorkspaceId,
+          }
+        : undefined;
+    return onOpenProject(id, undefined, hint);
+  }, [projects, workspaceContext, onOpenProject]);
+  useDesktopTray(projects, openRecentProject, !workspaceContextState.identityChangePending);
   const pluginCatalogWorkspaceContext = workspaceResourceReadContext(workspaceContextState);
   const lastSettledLocalCatalogScopeRef = useRef<LocalCatalogScope | null>(
     localCatalogScopeFromWorkspaceContext(workspaceContext),
@@ -3654,25 +3673,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
            project_id: id,
            ...(projectKind ? { project_kind: projectKind } : {}),
          });
-          // When the project belongs to a different workspace than the current
-          // context (e.g. a regular team project opened from the shared space),
-          // pass homeWorkspaceId so handleOpenProject can resolve that team's
-          // context for the GET/pull authorization. Without this, the backend
-          // rejects the cross-workspace read with 403 and the user sees
-          // "该项目已删除或不存在" even though the project is perfectly alive.
-          const projectWorkspaceId = project?.workspaceId?.trim() ?? '';
-          const contextWorkspaceId = workspaceContext?.workspaceId ?? null;
-          const hint: ProjectTitleHint | undefined =
-            projectWorkspaceId && projectWorkspaceId !== contextWorkspaceId
-              ? {
-                  name: project?.name?.trim() ?? '',
-                  workspaceId: contextWorkspaceId,
-                  workspaceMemberId: workspaceContext?.workspaceMemberId ?? null,
-                  authoritative: false,
-                  homeWorkspaceId: projectWorkspaceId,
-                }
-              : undefined;
-          onOpenProject(id, undefined, hint);
+          openRecentProject(id);
        }}
         onViewAll={() => {
           trackRecentProjectsClick(analytics.track, {

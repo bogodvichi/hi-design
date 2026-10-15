@@ -12,6 +12,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { StrictMode, useEffect, useState } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { installMockOpenDesignHost } from '@open-design/host/testing';
 
 import { App } from '../../src/App';
 import { navigate, type Route } from '../../src/router';
@@ -85,6 +86,7 @@ vi.mock('../../src/router', () => ({
 // route transitions can be driven deterministically in jsdom.
 vi.mock('../../src/auth/LoginGate', () => ({
   LoginGate: ({ children }: { children: React.ReactNode }) => children,
+  useAuth: () => ({ username: 'test-user' }),
 }));
 
 vi.mock('../../src/collab/useProjectRouteWorkspaceContext', async (importOriginal) => {
@@ -419,6 +421,17 @@ describe('project route — floating account cluster', () => {
     expect(consoleError.mock.calls.filter(([message]) =>
       typeof message === 'string' && message.includes('Cannot update a component')
     )).toEqual([]);
+  });
+
+  it('keeps the Home feed mounted for the Windows tray when starting directly in a project', async () => {
+    const restoreHost = installMockOpenDesignHost({ host: { client: { platform: 'win32' } } });
+    try {
+      render(<App />);
+      expect((await screen.findByTestId('entry-view-mock')).getAttribute('data-active')).toBe('false');
+    } finally {
+      cleanup();
+      restoreHost();
+    }
   });
 
   it('keeps the account controls mounted on an open project', async () => {

@@ -17,10 +17,11 @@ import {
   type WorkspaceCollabContext,
 } from '@open-design/contracts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { installMockOpenDesignHost } from '@open-design/host/testing';
 
 import { EntryShell } from '../../src/components/EntryShell';
 import { I18nProvider } from '../../src/i18n';
-import type { AgentInfo, AppConfig } from '../../src/types';
+import type { AgentInfo, AppConfig, Project } from '../../src/types';
 import {
   notifyWorkspaceContextRefresh,
   resetTeamProjectsCache,
@@ -208,6 +209,44 @@ afterEach(() => {
   resetWorkspaceContextCache();
   resetTeamProjectsCache();
   vi.unstubAllGlobals();
+});
+
+it('publishes the exact Home recent feed to the tray, including cross-workspace history', async () => {
+  const storageKey = 'od:recently-opened-projects';
+  const previousRecents = localStorage.getItem(storageKey);
+  const recent: Project = {
+    id: 'home-recent', name: 'Opened project', workspaceId: 'ws-1',
+    skillId: null, designSystemId: null, createdAt: 1, updatedAt: 100,
+  };
+  const gap: Project = {
+    ...recent, id: 'home-gap', name: 'Other team project', workspaceId: 'ws-other', workspaceVisibility: 'team',
+  };
+  localStorage.setItem(storageKey, JSON.stringify([
+    { ...gap, openedAt: Date.now() }, { ...recent, openedAt: Date.now() - 1 },
+  ]));
+  const setRecentProjects = vi.fn();
+  let openFromTray: (id: string) => void = () => undefined;
+  const restoreHost = installMockOpenDesignHost({ host: { tray: {
+    setRecentProjects,
+    subscribeOpenProject: (listener) => { openFromTray = listener; return () => undefined; },
+  } } });
+  try {
+    const props = renderAt('/', { projects: [
+      { ...recent, id: 'never-opened', name: 'Not in Home recents', updatedAt: 1000 }, recent,
+    ] });
+    await waitFor(() => expect(setRecentProjects).toHaveBeenLastCalledWith([
+      { id: gap.id, name: gap.name }, { id: recent.id, name: recent.name },
+    ]));
+    const cards = screen.getByTestId('entry-view-home').querySelectorAll('[data-project-id]');
+    expect([...cards].map((card) => card.getAttribute('data-project-id'))).toEqual([gap.id, recent.id]);
+    act(() => openFromTray(gap.id));
+    expect(props.onOpenProject).toHaveBeenCalledWith(gap.id, undefined, expect.objectContaining({ homeWorkspaceId: 'ws-other' }));
+  } finally {
+    cleanup();
+    restoreHost();
+    if (previousRecents === null) localStorage.removeItem(storageKey);
+    else localStorage.setItem(storageKey, previousRecents);
+  }
 });
 
 describe('EntryShell team project content readiness', () => {

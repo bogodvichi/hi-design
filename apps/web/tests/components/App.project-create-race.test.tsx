@@ -2060,6 +2060,41 @@ describe('App project creation routing', () => {
     expect(screen.queryByTestId('project-view')).toBeNull();
   });
 
+  it('opens a local project before the owner catalog responds, then backfills recent metadata', async () => {
+    // Own bootstrap reads so pending one-shot mocks from other cases cannot
+    // block this timing spec before it reaches the project opener.
+    mockedFetchSkills.mockReset().mockResolvedValue([]);
+    mockedFetchAgentsStream.mockReset().mockResolvedValue([]);
+    mockedGetProject.mockReset().mockResolvedValue(null);
+    stubWorkspaceContext('ws-1', 'wm-1');
+    const baseFetch = globalThis.fetch;
+    const catalog = deferred<Response>();
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const pathname = new URL(String(input), 'http://d.local').pathname;
+      if (pathname.endsWith('/workspace/projects/team')) return catalog.promise;
+      return baseFetch(input, init);
+    }));
+    const project: Project = {
+      id: 'project-fast-open', name: 'Fast project', workspaceId: 'ws-1',
+      skillId: null, designSystemId: null, createdAt: 20, updatedAt: 20,
+    };
+    mockedListProjects.mockReset().mockResolvedValue([project]);
+    render(<App />);
+    try {
+      fireEvent.click(await screen.findByRole('button', { name: 'Open Fast project' }));
+      await waitFor(() => expect(screen.getByTestId('project-title').textContent).toBe('Fast project'));
+      expect(window.location.pathname).toBe('/projects/project-fast-open');
+    } finally {
+      await act(async () => catalog.resolve(new Response(JSON.stringify({ projects: [{
+        projectId: project.id, name: project.name, ownerDisplayName: 'Project creator', ownerMemberId: 'wm-creator',
+      }] }), { headers: { 'Content-Type': 'application/json' } })));
+    }
+    await waitFor(() => {
+      const entries = JSON.parse(localStorage.getItem('od:recently-opened-projects') ?? '[]');
+      expect(entries.find((entry: { id: string }) => entry.id === project.id)?.ownerDisplayName).toBe('Project creator');
+    });
+  });
+
   it('renders the catalog title on the first project frame instead of the local placeholder', async () => {
     stubWorkspaceContext('ws-1', 'wm-1');
     mockedListProjects.mockResolvedValue([{
