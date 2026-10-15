@@ -37,6 +37,7 @@ import { exportArtifact as exportArtifactFromHtml } from "./artifact-export.js";
 import { createElectronPdfTarget, exportPdfFromHtml, savePrintReadyDocumentAsPdf } from "./pdf-export.js";
 import { SPLASH_VIDEO_DATA_URL } from "./splash-video.js";
 import { RendererCrashLoopBreaker } from "./renderer-crash-loop.js";
+import { installWindowsTray } from "./windows-tray.js";
 import type { PrintReadyPdfOptions } from "./pdf-export.js";
 import type { DesktopUpdater } from "./updater.js";
 import { parseDesktopUpdateMenuLabels } from "./update-menu.js";
@@ -3221,6 +3222,27 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
 
   void tick();
 
+  function show(): void {
+    if (stopped || window.isDestroyed()) return;
+    // Preserve the splash reveal gate for tray clicks and external wake-ups.
+    if (!revealed) {
+      if (splash != null && !splash.isDestroyed()) {
+        splash.show();
+        splash.focus();
+      }
+      return;
+    }
+    ensureWindowVisible(window);
+  }
+
+  const disposeTray = installWindowsTray(window, {
+    iconPath: resolveDesktopIconPath(),
+    title: windowTitle,
+    osLocale: options.osLocale,
+    show,
+    quit: options.requestQuit ?? (() => app.quit()),
+  });
+
   return {
     async click(input) {
       if (window.isDestroyed()) return { clicked: false, found: false };
@@ -3237,6 +3259,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     },
     async close() {
       stopped = true;
+      disposeTray();
       if (timer != null) {
         clearTimeout(timer);
         timer = null;
@@ -3309,26 +3332,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       await writeFile(outputPath, image.toPNG());
       return { path: outputPath };
     },
-    show() {
-      if (window.isDestroyed()) return;
-      // Before the splash reveal gate has fired (revealWhenReady), the main
-      // window is still hidden and surfacing it here would show the half-loaded
-      // web shell and bypass the gate — reintroducing the startup flash this is
-      // meant to remove (e.g. a packaged second-instance focus arriving mid
-      // boot). Bring the splash forward instead; the main window is revealed on
-      // its own once the app has mounted.
-      if (!revealed) {
-        if (splash != null && !splash.isDestroyed()) {
-          splash.show();
-          splash.focus();
-        }
-        return;
-      }
-      // A minimized window must be restored before focus — `focus()` alone
-      // leaves it in the Dock, silently breaking the deeplink hand-off whose
-      // entire payload is this bring-to-front.
-      ensureWindowVisible(window);
-    },
+    show,
     status() {
       return {
         pid: process.pid,

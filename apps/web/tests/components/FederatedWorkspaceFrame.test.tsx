@@ -40,24 +40,12 @@ describe.each(cases)('$key open-first federated login', ({ Component, key, prefi
     expect(frame.getAttribute('src')).toBe(url);
     expect(frame.style.visibility).not.toBe('hidden');
     expect(fetch).toHaveBeenCalledWith(endpoint, expect.objectContaining({ method: 'POST', signal: expect.any(AbortSignal) }));
+    expect(fetch.mock.calls[0]![1]?.body).toBeUndefined();
     act(() => dispatchOpenWorkspaceTab(route));
     rerender(<Component route={{ kind: 'home', view: 'home' }} />);
     rerender(<Component route={route} />);
     expect(getByTestId(prefix + '-frame')).toBe(frame);
     expect(fetch).toHaveBeenCalledTimes(1);
-  });
-
-  it('binds HiMind launches to the current parent origin', async () => {
-    const fetch = vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
-    render(<Component route={route} />);
-    await act(async () => {});
-    const init = fetch.mock.calls[0]![1]!;
-    if (key === 'himind') {
-      expect(init.headers).toEqual({ 'Content-Type': 'application/json' });
-      expect(JSON.parse(init.body as string)).toEqual({ parent_origin: window.location.origin });
-    } else {
-      expect(init.body).toBeUndefined();
-    }
   });
 
   it('keeps the native login page with no host warning when ticket issuance is rejected', async () => {

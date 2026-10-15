@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { HiMindLaunchRequest } from '@open-design/contracts';
 import { dispatchOpenWorkspaceTab } from './workspaceTabEvents';
 import styles from './FederatedBrowserSession.module.css';
 
@@ -13,7 +12,6 @@ interface Props {
   testIdPrefix: string;
   active: boolean;
   launchEndpoint?: string;
-  bindParentOrigin?: boolean;
   callbackPath?: string;
   readyMessageType?: string;
   authRequiredMessageType?: string;
@@ -104,7 +102,7 @@ export function FederatedBrowserSession(props: Props) {
 
   const begin = useCallback(async () => {
     cancel();
-    const { launchEndpoint, callbackPath, canonicalUrl, bindParentOrigin } = options.current;
+    const { launchEndpoint, callbackPath, canonicalUrl } = options.current;
     if (!launchEndpoint) { changeAuth('unconfirmed'); return; }
     const id = generation.current;
     const controller = new AbortController();
@@ -114,11 +112,7 @@ export function FederatedBrowserSession(props: Props) {
       if (id === generation.current && alive.current) fail();
     }, ATTEMPT_TIMEOUT_MS);
     try {
-      const launchBody: HiMindLaunchRequest = { parent_origin: window.location.origin };
-      const response = await fetch(launchEndpoint, {
-        method: 'POST', signal: controller.signal,
-        ...(bindParentOrigin ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(launchBody) } : {}),
-      });
+      const response = await fetch(launchEndpoint, { method: 'POST', signal: controller.signal });
       const body = await response.json();
       if (id !== generation.current || !alive.current) return;
       const url = trustedCallback(body?.launchUrl, parsedUrl(canonicalUrl)?.origin, callbackPath);

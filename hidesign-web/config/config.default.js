@@ -123,9 +123,6 @@ module.exports = appInfo => {
     ssoIssuer: process.env.HIMIND_SSO_ISSUER || 'hidesign-web',
     ssoAudience: process.env.HIMIND_SSO_AUDIENCE || 'himind',
     ticketTtlSeconds: 60,
-    // Desktop loopback origins use the current launch's port; hosted web
-    // origins must be explicitly listed here as exact HTTP(S) origins.
-    parentOrigins: (process.env.HIMIND_PARENT_ORIGINS || '').split(',').map(origin => origin.trim()).filter(Boolean),
     // RS256 private key stays on this central service. The local HiDesign
     // daemon only receives a short-lived user assertion and never sees the key.
     mcpJwtPrivateKey:

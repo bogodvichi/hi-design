@@ -93,31 +93,6 @@ async function issueFederatedLaunch(controller, options, validateSession = valid
     return;
   }
 
-  // The caller's validated parent is integrity-protected by the SSO ticket.
-  // Never infer it from a referrer or an unsigned callback query parameter.
-  let parentOrigin;
-  const rawParentOrigin = ctx.request.body.parent_origin;
-  if (options.configKey === 'himind' && rawParentOrigin !== undefined) {
-    let parsed;
-    try {
-      if (typeof rawParentOrigin !== 'string') throw new Error('invalid origin');
-      parsed = new URL(rawParentOrigin);
-      if (![ 'http:', 'https:' ].includes(parsed.protocol) || rawParentOrigin !== parsed.origin) throw new Error('invalid origin');
-    } catch (_) {
-      ctx.status = 400;
-      ctx.body = { code: -1, msg: 'FAIL', error: 'parent_origin must be an exact HTTP(S) origin' };
-      return;
-    }
-    const loopback = [ '127.0.0.1', 'localhost', '[::1]' ].includes(parsed.hostname);
-    const allowed = Array.isArray(cfg.parentOrigins) && cfg.parentOrigins.includes(parsed.origin);
-    if (!loopback && !allowed) {
-      ctx.status = 403;
-      ctx.body = { code: -1, msg: 'FAIL', error: 'parent_origin is not an allowed HiDesign origin' };
-      return;
-    }
-    parentOrigin = parsed.origin;
-  }
-
   let info;
   try {
     info = await validateSession(oaSessionCookieFromRequest(ctx), username);
@@ -140,7 +115,6 @@ async function issueFederatedLaunch(controller, options, validateSession = valid
     email,
     display_name: displayName,
     jti,
-    ...(parentOrigin ? { parent_origin: parentOrigin } : {}),
   }, cfg.ssoSecret, { algorithm: 'HS256', expiresIn: ttl });
 
   const callback = new URL(options.callbackPath, cfg.baseUrl);
