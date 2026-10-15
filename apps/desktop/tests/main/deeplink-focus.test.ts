@@ -34,8 +34,21 @@ describe("ensureWindowVisible", () => {
       restore: vi.fn(),
       show: vi.fn(),
       focus: vi.fn(),
+      webContents: { isDestroyed: () => false, focus: vi.fn() },
     };
   }
+
+  it("returns input focus to the Windows page after restoring the native window", () => {
+    vi.spyOn(process, "platform", "get").mockReturnValue("win32");
+    try {
+      const window = mockWindow({ minimized: true, visible: false });
+      ensureWindowVisible(window as unknown as BrowserWindow);
+      expect(window.webContents.focus).toHaveBeenCalledOnce();
+      expect(window.focus.mock.invocationCallOrder[0]).toBeLessThan(window.webContents.focus.mock.invocationCallOrder[0]);
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
 
   // The revealed path of `DesktopRuntime.show()` routes through this helper:
   // `focus()` alone leaves a minimized window in the Dock, which would turn the

@@ -385,7 +385,14 @@ export type OpenDesignHostUpdaterOpenDialogRequest = {
 
 export type OpenDesignHostUpdaterOpenDialogListener = (request: OpenDesignHostUpdaterOpenDialogRequest) => void;
 
+export type OpenDesignHostRecentProject = { id: string; name: string };
+
 export type OpenDesignHostBridge = {
+  /** Native Windows tray shortcuts; absent in web and older desktop hosts. */
+  tray?: {
+    setRecentProjects(projects: OpenDesignHostRecentProject[]): void;
+    subscribeOpenProject(listener: (projectId: string) => void): () => void;
+  };
   // Optional so older host builds still satisfy the bridge shape; callers
   // must feature-detect before invoking.
   appearance?: {

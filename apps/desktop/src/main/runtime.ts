@@ -1838,6 +1838,9 @@ export function ensureWindowVisible(window: BrowserWindow): void {
   if (window.isMinimized()) window.restore();
   if (!window.isVisible()) window.show();
   window.focus();
+  if (process.platform === "win32" && !window.webContents.isDestroyed()) {
+    window.webContents.focus();
+  }
 }
 
 /**
@@ -3241,6 +3244,12 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     osLocale: options.osLocale,
     show,
     quit: options.requestQuit ?? (() => app.quit()),
+    openProject: (projectId) => {
+      show();
+      if (!stopped && !window.isDestroyed()) {
+        window.webContents.send("od:tray:open-project", projectId);
+      }
+    },
   });
 
   return {

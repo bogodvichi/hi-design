@@ -69,6 +69,7 @@ export type {
   OpenDesignHostUpdaterOpenDialogRequest,
   OpenDesignHostUpdaterOpenDialogListener,
   OpenDesignHostBridge,
+  OpenDesignHostRecentProject,
   OpenDesignHostGlobalScope,
 } from "./protocol.js";
 

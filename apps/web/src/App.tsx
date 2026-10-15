@@ -219,6 +219,7 @@ import {
   moveWorkspaceProject,
 } from './state/projects';
 import { useModalWindowDragGuard } from './hooks/useModalWindowDragGuard';
+import { useDesktopTray } from './hooks/useDesktopTray';
 import { resumeThumbnailLoads, suspendThumbnailLoads } from './lib/thumbnail-load-gate';
 import {
   recordRecentlyOpenedProject,
@@ -4374,6 +4375,8 @@ if (fetchedProject) {
     rememberAuthoritativeProjectName,
     t,
   ]);
+
+  useDesktopTray(projects, handleOpenProject, !workspaceContextState.identityChangePending);
 
   useEffect(() => {
     if (!config.pet?.enabled || !daemonLive) {

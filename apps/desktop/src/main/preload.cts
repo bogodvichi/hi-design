@@ -2,6 +2,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 
 import type {
   OpenDesignHostBridge,
+  OpenDesignHostRecentProject,
   OpenDesignHostActionResult,
   OpenDesignHostBrowserClearDataOptions,
   OpenDesignHostCaptureOptions,
@@ -394,6 +395,19 @@ ipcRenderer.on(APP_CONFIG_CHANGED_IPC_CHANNEL, () => {
 });
 
 const hostBridge = {
+  ...(process.platform === 'win32' ? {
+    tray: {
+      setRecentProjects: (projects: OpenDesignHostRecentProject[]): void =>
+        ipcRenderer.send('od:tray:recent-projects', projects),
+      subscribeOpenProject: (listener: (projectId: string) => void): (() => void) => {
+        const handler = (_event: unknown, projectId: unknown): void => {
+          if (typeof projectId === 'string') listener(projectId);
+        };
+        ipcRenderer.on('od:tray:open-project', handler);
+        return () => ipcRenderer.removeListener('od:tray:open-project', handler);
+      },
+    },
+  } : {}),
   version: OPEN_DESIGN_HOST_VERSION,
   client: {
     type: 'desktop',
