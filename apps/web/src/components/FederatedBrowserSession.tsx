@@ -15,6 +15,7 @@ interface Props {
   callbackPath?: string;
   readyMessageType?: string;
   authRequiredMessageType?: string;
+  onTrustedMessage?: (event: MessageEvent, signal: AbortSignal) => void;
 }
 
 const ATTEMPT_TIMEOUT_MS = 15_000;
@@ -167,11 +168,13 @@ export function FederatedBrowserSession(props: Props) {
   }, []);
 
   useEffect(() => {
+    const lifetime = new AbortController();
     function onMessage(event: MessageEvent) {
       const { canonicalUrl, readyMessageType, authRequiredMessageType, title, resourceKey } = options.current;
       const origin = parsedUrl(canonicalUrl)?.origin;
       if (!origin || !frameRef.current?.contentWindow
         || event.source !== frameRef.current.contentWindow || event.origin !== origin) return;
+      options.current.onTrustedMessage?.(event, lifetime.signal);
       if (readyMessageType && event.data?.type === readyMessageType) {
         let next: URL;
         try { next = new URL(typeof event.data.path === 'string' ? event.data.path : '/', origin); } catch { return; }
@@ -189,7 +192,10 @@ export function FederatedBrowserSession(props: Props) {
       }
     }
     window.addEventListener('message', onMessage);
-    return () => window.removeEventListener('message', onMessage);
+    return () => {
+      lifetime.abort();
+      window.removeEventListener('message', onMessage);
+    };
   }, [begin, cancel, changeAuth]);
 
   const { active, title, testIdPrefix } = props;

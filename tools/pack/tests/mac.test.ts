@@ -1,4 +1,5 @@
-import { access, mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { access, chmod, mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import os, { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import process from "node:process";
@@ -365,15 +366,31 @@ describe("runElectronBuilder", () => {
       "prebuilds",
       `darwin-${process.arch}`,
     );
+    const sourcePrebuildRoot = join(paths.assembledAppRoot, "node_modules", "node-pty", "prebuilds", `darwin-${process.arch}`);
+    await mkdir(sourcePrebuildRoot, { recursive: true });
+    await writeFile(join(sourcePrebuildRoot, "pty.node"), Buffer.alloc(32 * 1024, 1));
+    await writeFile(join(sourcePrebuildRoot, "spawn-helper"), "#!/bin/sh\nexit 0\n", "utf8");
+    await chmod(join(sourcePrebuildRoot, "spawn-helper"), 0o755);
     await writeFile(
       cliPath,
       [
-        'import { chmod, mkdir, writeFile } from "node:fs/promises";',
+        'import { createHash } from "node:crypto";',
+        'import { chmod, cp, mkdir, readFile, writeFile } from "node:fs/promises";',
+        'import { join } from "node:path";',
         `const prebuildRoot = ${JSON.stringify(nodePtyPrebuildRoot)};`,
+        `const resourcesRoot = ${JSON.stringify(join(paths.appPath, "Contents", "Resources"))};`,
+        'const builder = JSON.parse(await readFile(process.argv[process.argv.indexOf("--config") + 1], "utf8"));',
         "await mkdir(prebuildRoot, { recursive: true });",
         'await writeFile(new URL("pty.node", `file://${prebuildRoot}/`), Buffer.alloc(32 * 1024, 1));',
         'await writeFile(new URL("spawn-helper", `file://${prebuildRoot}/`), "#!/bin/sh\\nexit 0\\n", "utf8");',
         'await chmod(new URL("spawn-helper", `file://${prebuildRoot}/`), 0o755);',
+        'for (const resource of builder.extraResources ?? []) {',
+        '  if (resource.to === "app/node_modules/node-pty/prebuilds") await cp(resource.from, join(resourcesRoot, resource.to), { recursive: true });',
+        '}',
+        // Signing changes the native binary before sealing its resource hash.
+        'const binary = join(prebuildRoot, "pty.node");',
+        'await writeFile(binary, Buffer.concat([await readFile(binary), Buffer.from("signed")]));',
+        `await writeFile(${JSON.stringify(join(root, "sealed-native-hash.txt"))}, createHash("sha256").update(await readFile(binary)).digest("hex"));`,
         "",
       ].join("\n"),
       "utf8",
@@ -383,11 +400,29 @@ describe("runElectronBuilder", () => {
 
     return JSON.parse(await readFile(paths.appBuilderConfigPath, "utf8")) as {
       afterSign?: string;
+      extraResources: { from: string; to: string }[];
       mac?: {
         notarize?: boolean;
       };
     };
   }
+
+  it("preserves the native runtime bytes sealed by electron-builder", async () => {
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-mac-"));
+    try {
+      const builderConfig = await prepareElectronBuilderConfig(root, { macNotarize: true });
+      const paths = resolveMacPaths(makeConfig(root, { appVersion: "1.2.3-prerelease.4" }));
+      expect(builderConfig.extraResources).toContainEqual({
+        from: join(paths.assembledAppRoot, "node_modules", "node-pty", "prebuilds"),
+        to: "app/node_modules/node-pty/prebuilds",
+      });
+      const binary = join(paths.appPath, "Contents", "Resources", "app", "node_modules", "node-pty", "prebuilds", `darwin-${process.arch}`, "pty.node");
+      const hash = createHash("sha256").update(await readFile(binary)).digest("hex");
+      expect(hash).toBe(await readFile(join(root, "sealed-native-hash.txt"), "utf8"));
+    } finally {
+      await rm(root, { force: true, recursive: true });
+    }
+  });
 
   it("does not explicitly disable electron-builder notarization for notarized mac builds", async () => {
     const root = await mkdtemp(join(tmpdir(), "hi-design-team-tools-pack-mac-"));

@@ -20,6 +20,7 @@ interface FederatedWorkspaceFrameProps {
   callbackPath?: string;
   readyMessageType?: string;
   authRequiredMessageType?: string;
+  onTrustedMessage?: (event: MessageEvent, signal: AbortSignal) => void;
 }
 
 function isResourceRoute(
@@ -46,6 +47,7 @@ export function FederatedWorkspaceFrame({
   callbackPath,
   readyMessageType,
   authRequiredMessageType,
+  onTrustedMessage,
 }: FederatedWorkspaceFrameProps) {
   const [frame, setFrame] = useState<FederatedFrameState | null>(() =>
     isResourceRoute(route, resourceKey)
@@ -114,6 +116,7 @@ export function FederatedWorkspaceFrame({
       callbackPath={callbackPath}
       readyMessageType={readyMessageType}
       authRequiredMessageType={authRequiredMessageType}
+      onTrustedMessage={onTrustedMessage}
       active={isResourceRoute(route, resourceKey)}
     />
   );

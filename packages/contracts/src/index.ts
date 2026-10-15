@@ -7,6 +7,7 @@ export * from './api/strategy-rollout.js';
 export * from './api/agent-sessions.js';
 export * from './api/agent-setup.js';
 export * from './api/auth.js';
+export * from './api/hik.js';
 export * from './api/attribution.js';
 export * from './api/amrWallet.js';
 export * from './api/amr-auth.js';

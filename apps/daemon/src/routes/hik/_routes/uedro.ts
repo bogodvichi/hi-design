@@ -1,5 +1,6 @@
 ﻿import type { Express } from 'express';
 import multer from 'multer';
+import type { UedroUserListRequest } from '@open-design/contracts';
 import * as https from 'node:https';
 import * as http from 'node:http';
 import { Buffer } from 'node:buffer';
@@ -196,7 +197,18 @@ export function registerHikUedroRoutes(app: Express, deps: RegisterHikUedroRoute
         return sendApiError(res, 401, 'UNAUTHORIZED', 'uedro session not found, please login first');
       }
 
-      const body = (req.body ?? {}) as Record<string, any>;
+      const body = (req.body ?? {}) as Partial<UedroUserListRequest>;
+      const expectedUsername = body.expectedUsername;
+      if (expectedUsername !== undefined && (typeof expectedUsername !== 'string' || !expectedUsername.trim())) {
+        return sendApiError(res, 400, 'INVALID_REQUEST', 'expectedUsername must be a non-empty string');
+      }
+      const matchesIdentity = (current: ReturnType<typeof readSsoConfigFile>) =>
+        current?.username?.trim().toLowerCase() === expectedUsername?.trim().toLowerCase()
+          && !!current?.cookies?.length
+          && !!current?.uedro?.cookies?.length;
+      if (expectedUsername !== undefined && !matchesIdentity(session)) {
+        return sendApiError(res, 401, 'UNAUTHORIZED', 'OA user changed, please reopen HiMind');
+      }
       const upstreamBody = JSON.stringify({
         userName: typeof body.userName === 'string' ? body.userName : '',
         pageNo: typeof body.pageNo === 'number' ? body.pageNo : 1,
@@ -207,6 +219,10 @@ export function registerHikUedroRoutes(app: Express, deps: RegisterHikUedroRoute
         body: upstreamBody,
         extraHeaders: uedroHeaders(uedroCookies),
       });
+
+      if (expectedUsername !== undefined && !matchesIdentity(readSsoConfigFile(dataDir))) {
+        return sendApiError(res, 401, 'UNAUTHORIZED', 'OA user changed, please reopen HiMind');
+      }
 
       // 透传上游响应：code==='0' 视为成功，否则原样返回错误体
       let upstream: any;
