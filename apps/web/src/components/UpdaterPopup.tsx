@@ -13,6 +13,7 @@ import {
   restartSafetyFromActionResult,
   restartSafetyFromUpdaterStatus,
   subscribeToUpdaterStatus,
+  type UpdaterDownloadProgress,
   type UpdaterModel,
   type UpdaterRestartSafety,
 } from '../lib/updater';
@@ -28,6 +29,43 @@ import {
 import styles from './UpdaterPopup.module.css';
 
 const INSTALL_HANDOFF_WATCHDOG_MS = 10_000;
+const SIM_TICK_MS = 200;
+const SIM_RESET_MS = 2_000;
+const SIM_STEP_MIN = 2;
+const SIM_STEP_MAX = 10;
+const RING_RADIUS = 9;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+
+/**
+ * Dev-only simulated download progress. In production this hook is inert
+ * and the real `model.downloadProgress` from the updater status subscription
+ * is used instead. In development a timer cycles 0→100 repeatedly so the
+ * progress bar can be visually verified without a real update feed.
+ */
+function useSimulatedDownloadProgress(): UpdaterDownloadProgress | null {
+  const isDev = process.env.NODE_ENV !== 'production';
+  const [percent, setPercent] = useState(0);
+  //return null;
+  useEffect(() => {
+    if (!isDev) return;
+    if (percent >= 100) {
+      const reset = setTimeout(() => setPercent(0), SIM_RESET_MS);
+      return () => clearTimeout(reset);
+    }
+    const step = Math.random() * (SIM_STEP_MAX - SIM_STEP_MIN) + SIM_STEP_MIN;
+    const timer = setTimeout(() => setPercent((p) => Math.min(100, p + step)), SIM_TICK_MS);
+    return () => clearTimeout(timer);
+  }, [percent, isDev]);
+
+  if (!isDev) return null;
+  return { percent: Math.round(percent), receivedBytes: 0, totalBytes: 100 };
+}
+
+/** Returns effective download progress: real updater data in prod, simulated in dev. */
+function useDownloadProgress(real: UpdaterDownloadProgress | null): UpdaterDownloadProgress | null {
+  const simulated = useSimulatedDownloadProgress();
+  return simulated ?? real;
+}
 
 /** Rocket badge from the update visual language, on the ready indicator. */
 function RocketBadgeIcon({ className }: { className?: string }) {
@@ -159,6 +197,7 @@ export function UpdaterPopup({
   }, []);
 
   const ready = model.environment === 'desktop' && model.shouldShowControl;
+  const downloadProgress = useDownloadProgress(model.downloadProgress);
   const installBusy = installState === 'opening' || installState === 'handoff' || installState === 'quitting';
   const quitRecoverable = installState === 'recoverable' || installState === 'quitting';
   const canStartInstall = ready || installState === 'recoverable';
@@ -370,6 +409,24 @@ export function UpdaterPopup({
           HiDesign {model.currentVersion ?? appVersionBefore}
         </span>
         {ready ? <span className={styles.updateBadge}>{t('updater.available')}</span> : null}
+        {downloadProgress != null ? (
+          <div className={styles.downloadRing} data-testid="updater-download-progress">
+            <svg className={styles.downloadRingSvg} viewBox="0 0 24 24">
+              <circle className={styles.downloadRingTrack} cx="12" cy="12" r={RING_RADIUS} />
+              <circle
+                className={styles.downloadRingFill}
+                cx="12"
+                cy="12"
+                r={RING_RADIUS}
+                style={
+                  downloadProgress.percent == null
+                    ? undefined
+                    : { strokeDashoffset: RING_CIRCUMFERENCE * (1 - downloadProgress.percent / 100) }
+                }
+              />
+            </svg>
+          </div>
+        ) : null}
       </button>
       <AnimatePresence>
         {panelOpen ? (
