@@ -39,6 +39,12 @@ export interface GetCurrentUserAvatarResponse {
   avatarUrl: string | null;
 }
 
+/** Body for `POST /api/auth/himind/launch`; omitted for a standalone CLI launch. */
+export interface HiMindLaunchRequest {
+  /** Exact current parent origin, bound into the signed SSO ticket. */
+  parent_origin?: string;
+}
+
 /** Successful response from `POST /api/auth/himind/launch`. */
 export interface HiMindLaunchResponse {
   ok: true;

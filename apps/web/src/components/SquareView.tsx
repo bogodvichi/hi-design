@@ -1075,6 +1075,7 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [workspaceMemberId, setWorkspaceMemberId] = useState<string | null>(null);
   const [workspaceType, setWorkspaceType] = useState<string | null>(null);
+  const [workspaceLoading, setWorkspaceLoading] = useState(true);
   const [selfSharedSpaceMemberId, setSelfSharedSpaceMemberId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -1095,6 +1096,8 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
         setWorkspaceType(workspace?.workspaceType ?? null);
       } catch {
         // leave workspaceId null
+      } finally {
+        if (!cancelled) setWorkspaceLoading(false);
       }
     })();
     return () => { cancelled = true; };
@@ -1362,7 +1365,13 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
      ) : activeTab === 'mcp' ? (
          <CloudMcpList workspaceId={workspaceId} workspaceMemberId={workspaceMemberId} workspaceType={workspaceType} ownerMemberId={isMyPublishes ? workspaceMemberId : null} mode="square" scope="public" searchQuery={!isMyPublishes ? communitySearchQuery : ''} />
      ) : activeTab === 'tool' ? (
+       workspaceLoading ? (
+         <div className={styles.folderEmpty}>
+           <CenteredLoader label={t('personalScope.cloudToolLoading')} />
+         </div>
+       ) : (
          <CloudToolList workspaceId={workspaceId} workspaceMemberId={workspaceMemberId} workspaceType={workspaceType} ownerMemberId={isMyPublishes ? workspaceMemberId : null} mode="square" scope="public" searchQuery={!isMyPublishes ? communitySearchQuery : ''} />
+       )
      ) : (
           <PlaceholderPanel
             icon={activeDef.icon}

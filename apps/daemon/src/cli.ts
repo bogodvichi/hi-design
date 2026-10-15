@@ -107,7 +107,7 @@ const MCP_BOOLEAN_FLAGS = new Set([
   'h',
 ]);
 
-const AUTH_STRING_FLAGS = new Set(['daemon-url']);
+const AUTH_STRING_FLAGS = new Set(['daemon-url', 'parent-origin']);
 const AUTH_BOOLEAN_FLAGS = new Set(['help', 'h', 'json']);
 
 // Hoisted next to MCP_*_FLAGS for the same TDZ reason as the MEDIA flags
@@ -457,7 +457,7 @@ async function runAuth(args) {
     return;
   }
   if (flags.help || flags.h || (sub !== 'himind' && sub !== 'avatar')) {
-    const usage = 'Usage: od auth <himind|avatar> [--daemon-url <url>] [--json]';
+    const usage = 'Usage: od auth <himind|avatar> [--parent-origin <origin>] [--daemon-url <url>] [--json]';
     if (sub && sub !== 'himind' && sub !== 'avatar') {
       console.error(`unknown subcommand: od auth ${sub}`);
       console.error(usage);
@@ -472,7 +472,13 @@ async function runAuth(args) {
   const isAvatar = sub === 'avatar';
   const response = await fetch(
     `${base}${isAvatar ? '/api/auth/avatar' : '/api/auth/himind/launch'}`,
-    { method: isAvatar ? 'GET' : 'POST' },
+    {
+      method: isAvatar ? 'GET' : 'POST',
+      ...(!isAvatar && flags['parent-origin'] !== undefined ? {
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ parent_origin: flags['parent-origin'] }),
+      } : {}),
+    },
   );
   const body = await response.json().catch(() => null);
   const validBody = isAvatar

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { I18nProvider } from '../../src/i18n';
@@ -108,6 +108,66 @@ describe('SquareView remix recents', () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
+  });
+
+  it('waits for workspace resolution before showing community tools in cloud order', async () => {
+    let resolveDirectory!: (response: Response) => void;
+    const directory = new Promise<Response>((resolve) => { resolveDirectory = resolve; });
+    let resolveTools!: (response: Response) => void;
+    const tools = new Promise<Response>((resolve) => { resolveTools = resolve; });
+    const fetchMock = vi.fn((input: RequestInfo | URL) => {
+      const pathname = new URL(String(input), 'http://daemon.local').pathname;
+      if (pathname === '/api/workspace/directory') return directory;
+      if (pathname === '/api/workspace/tool/cloud') return tools;
+      return Promise.resolve(jsonResponse({}));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { container } = render(<I18nProvider><SquareView tab="tool" /></I18nProvider>);
+    await act(async () => {});
+    expect(screen.queryByText('HiMind')).toBeNull();
+    expect(screen.queryByText('AI用研工作台')).toBeNull();
+    expect(screen.getByRole('status')).toBeTruthy();
+
+    await act(async () => {
+      resolveDirectory(jsonResponse({
+        items: [{ workspaceId: 'shared-space', workspaceMemberId: 'member', workspaceType: 'team' }],
+        activeWorkspaceId: 'shared-space',
+      }));
+    });
+    expect(screen.queryByText('HiMind')).toBeNull();
+    expect(screen.getByRole('status')).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledWith('/api/workspace/tool/cloud?scope=public', expect.objectContaining({
+      headers: {
+        'x-od-workspace-id': 'shared-space',
+        'x-od-workspace-member-id': 'member',
+        'x-od-workspace-type': 'team',
+      },
+    }));
+
+    await act(async () => {
+      resolveTools(jsonResponse({ tools: [{
+        resourceId: 'research', ownerMemberId: '', url: 'https://drw.hikvision.com/',
+        name: 'AI用研工作台', label: 'AI用研工作台', description: '', createdAt: '', updatedAt: '',
+      }] }));
+    });
+    expect(Array.from(container.querySelectorAll('article strong')).map((node) => node.textContent))
+      .toEqual(['AI用研工作台', 'HiMind']);
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
+  it.each(['empty', 'unauthorized', 'offline'])('shows official tools when the workspace directory is %s', async (result) => {
+    vi.stubGlobal('fetch', vi.fn(async () => {
+      if (result === 'offline') throw new Error('offline');
+      if (result === 'unauthorized') return new Response(null, { status: 401 });
+      return jsonResponse({ items: [] });
+    }));
+
+    render(<I18nProvider><SquareView tab="tool" /></I18nProvider>);
+
+    expect(await screen.findByText('HiMind')).toBeTruthy();
+    expect(screen.getByText('AI用研工作台')).toBeTruthy();
+    expect(screen.queryByRole('status')).toBeNull();
   });
 
   it('uses the shared community search box to filter project cards', async () => {

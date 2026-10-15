@@ -2,12 +2,14 @@ import type { Express } from 'express';
 import type {
   AiResearchLaunchResponse,
   GetCurrentUserAvatarResponse,
+  HiMindLaunchRequest,
   HiMindLaunchResponse,
   LoginRequest,
   LoginResponse,
   LogoutResponse,
 } from '@open-design/contracts';
 import type { Cookie } from '../http/http.js';
+import { isLocalSameOrigin } from '../origin-validation.js';
 import {
   readSsoConfigFile,
   writeSsoConfigFile,
@@ -51,7 +53,7 @@ export interface RegisterAuthRoutesDeps {
   sendApiError: (...args: any[]) => any;
   dataDir: string;
   FOR_DESIGNER_DIR?: string;
-  createHiMindLaunch?: () => Promise<{ launchUrl: string; expiresIn: number } | null>;
+  createHiMindLaunch?: (parentOrigin?: string) => Promise<{ launchUrl: string; expiresIn: number } | null>;
   createAiResearchLaunch?: () => Promise<{ launchUrl: string; expiresIn: number } | null>;
   fetchUplusAvatar?: (username: string, password: string) => Promise<UplusAvatarResult>;
   syncCommunityAvatar?: (dataDir: string, username: string, avatarUrl: string) => Promise<boolean>;
@@ -270,13 +272,29 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
     return res.json(response);
   });
 
-  app.post('/api/auth/himind/launch', async (_req, res) => {
+  app.post('/api/auth/himind/launch', async (req, res) => {
     const session = getSsoCookie();
     if (!session.username?.trim() || !session.cookies?.length) {
       return sendApiError(res, 401, 'UNAUTHORIZED', 'OA login is required');
     }
+    const body = (req.body ?? {}) as HiMindLaunchRequest;
+    const rawOrigin = body.parent_origin === undefined ? req.headers.origin : body.parent_origin;
+    let parentOrigin: string | undefined;
+    if (rawOrigin !== undefined) {
+      try {
+        const parsed = new URL(rawOrigin);
+        if (!['http:', 'https:'].includes(parsed.protocol) || rawOrigin !== parsed.origin) throw new Error('invalid origin');
+        parentOrigin = parsed.origin;
+      } catch {
+        return sendApiError(res, 400, 'BAD_REQUEST', 'parent_origin must be an exact HTTP(S) origin');
+      }
+      if ((req.headers.origin !== undefined && req.headers.origin !== parentOrigin)
+        || !isLocalSameOrigin({ headers: { host: req.headers.host, origin: parentOrigin } }, req.socket.localPort, env)) {
+        return sendApiError(res, 403, 'FORBIDDEN', 'parent_origin is not an allowed HiDesign origin');
+      }
+    }
     try {
-      const launch = await (deps.createHiMindLaunch ?? (() => fetchHiMindLaunch(dataDir)))();
+      const launch = await (deps.createHiMindLaunch ?? ((origin) => fetchHiMindLaunch(dataDir, undefined, origin)))(parentOrigin);
       if (!launch) {
         return sendApiError(res, 502, 'BAD_GATEWAY', 'HiMind login ticket could not be issued');
       }

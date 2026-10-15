@@ -17,6 +17,7 @@ interface FederatedWorkspaceFrameProps {
   resourceKey: string;
   testIdPrefix: string;
   launchEndpoint?: string;
+  bindParentOrigin?: boolean;
   callbackPath?: string;
   readyMessageType?: string;
   authRequiredMessageType?: string;
@@ -44,6 +45,7 @@ export function FederatedWorkspaceFrame({
   resourceKey,
   testIdPrefix,
   launchEndpoint,
+  bindParentOrigin,
   callbackPath,
   readyMessageType,
   authRequiredMessageType,
@@ -113,6 +115,7 @@ export function FederatedWorkspaceFrame({
       resourceKey={resourceKey}
       testIdPrefix={testIdPrefix}
       launchEndpoint={launchEndpoint}
+      bindParentOrigin={bindParentOrigin}
       callbackPath={callbackPath}
       readyMessageType={readyMessageType}
       authRequiredMessageType={authRequiredMessageType}

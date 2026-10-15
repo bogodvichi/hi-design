@@ -47,6 +47,19 @@ describe.each(cases)('$key open-first federated login', ({ Component, key, prefi
     expect(fetch).toHaveBeenCalledTimes(1);
   });
 
+  it('binds HiMind launches to the current parent origin', async () => {
+    const fetch = vi.spyOn(globalThis, 'fetch').mockReturnValue(new Promise(() => {}));
+    render(<Component route={route} />);
+    await act(async () => {});
+    const init = fetch.mock.calls[0]![1]!;
+    if (key === 'himind') {
+      expect(init.headers).toEqual({ 'Content-Type': 'application/json' });
+      expect(JSON.parse(init.body as string)).toEqual({ parent_origin: window.location.origin });
+    } else {
+      expect(init.body).toBeUndefined();
+    }
+  });
+
   it('keeps the native login page with no host warning when ticket issuance is rejected', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ error: { message: 'OA login is required' } }), { status: 401 }));
     const { getByTestId, queryByRole } = render(<Component route={route} />);

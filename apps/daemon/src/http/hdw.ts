@@ -135,6 +135,7 @@ export async function hdwPost<T>(
 export async function fetchHiMindLaunch(
   dataDir: string,
   post: typeof hdwPost = hdwPost,
+  parentOrigin?: string,
 ): Promise<{ launchUrl: string; expiresIn: number } | null> {
   const session = readSsoConfigFile(dataDir);
   const username = session?.username?.trim().toLowerCase() ?? '';
@@ -143,6 +144,7 @@ export async function fetchHiMindLaunch(
     '/auth/himind/launch',
     {
       username,
+      ...(parentOrigin ? { parent_origin: parentOrigin } : {}),
       // The Pixso gateway does not forward the standard Cookie header to the
       // Egg upstream. Send the OA cookie jar as structured server-to-server
       // input so hidesign-web can validate it without exposing it to the web UI.

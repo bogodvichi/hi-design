@@ -41,4 +41,17 @@ describe('fetchHiMindLaunch', () => {
       ],
     });
   });
+
+  it('forwards each launches parent origin alongside the OA identity', async () => {
+    dataDir = await mkdtemp(path.join(tmpdir(), 'od-himind-origin-'));
+    writeSsoConfigFile(dataDir, { username: 'Alice', cookies: [{ name: 'SESSION', value: 'opaque', domain: 'oa.example' }] });
+    const post = vi.fn().mockResolvedValue({ launch_url: 'https://himind.example/callback?ticket=opaque', expires_in: 60 });
+    for (const parentOrigin of ['http://127.0.0.1:50023', 'http://127.0.0.1:50123', 'https://design.example']) {
+      // Added third argument preserves callers that inject the HTTP adapter.
+      await fetchHiMindLaunch(dataDir, post, parentOrigin);
+      expect(post).toHaveBeenLastCalledWith('/auth/himind/launch', {
+        username: 'alice', oa_cookies: [{ name: 'SESSION', value: 'opaque' }], parent_origin: parentOrigin,
+      });
+    }
+  });
 });
