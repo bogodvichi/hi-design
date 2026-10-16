@@ -33,6 +33,7 @@ import {
   resolvePackagedAppName,
 } from "./config/index.js";
 import { domToPptxBundleResource } from "./dom-to-pptx-resource.js";
+import { desktopIconResource } from "./dom-to-pptx-resource.js";
 import { copyBundledResourceTrees, linuxResources, packBundledDshRuntime } from "./resources/index.js";
 import { copyOptionalVelaCliBinary } from "./vela-cli.js";
 import { electronBuilderVersionForAppVersion, readRuntimeAppVersion } from "./versioning/index.js";
@@ -657,6 +658,9 @@ async function writeLinuxBuilderConfig(config: ToolPackConfig, paths: LinuxPaths
       // Vendored dom-to-pptx browser bundle for editable PPTX export (read from
       // process.resourcesPath by the desktop main at runtime).
       domToPptxBundleResource(config),
+      // Tray/window icon for the packaged desktop runtime (read from
+      // process.resourcesPath at runtime; dev resolves from the source tree).
+      desktopIconResource(config),
     ],
     ...(config.to === "dir"
       ? {}

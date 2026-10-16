@@ -13,6 +13,7 @@ import {
   type ToolPackConfig,
 } from "../config/index.js";
 import { domToPptxBundleResource } from "../dom-to-pptx-resource.js";
+import { desktopIconResource } from "../dom-to-pptx-resource.js";
 import {
   assertNodePtyRuntime,
   validateNodePtyRuntime,
@@ -210,6 +211,9 @@ async function runElectronBuilderRaw(
       // Vendored dom-to-pptx browser bundle for editable PPTX export (read from
       // process.resourcesPath by the desktop main at runtime).
       domToPptxBundleResource(config),
+      // Tray/window icon for the packaged desktop runtime (read from
+      // process.resourcesPath at runtime; dev resolves from the source tree).
+      desktopIconResource(config),
     ],
     files: [...ELECTRON_BUILDER_FILE_PATTERNS],
     forceCodeSigning: false,

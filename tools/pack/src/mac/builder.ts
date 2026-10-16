@@ -8,6 +8,7 @@ import {
   resolvePackagedAppName,
 } from "../config/index.js";
 import { domToPptxBundleResource } from "../dom-to-pptx-resource.js";
+import { desktopIconResource } from "../dom-to-pptx-resource.js";
 import {
   assertNodePtyRuntime,
   resolveNodePtyRuntimeArch,
@@ -130,6 +131,9 @@ export async function runElectronBuilder(
       // Vendored dom-to-pptx browser bundle for editable PPTX export. The desktop
       // main reads it from process.resourcesPath at runtime.
       domToPptxBundleResource(config),
+      // Tray/window icon for the packaged desktop runtime (read from
+      // process.resourcesPath at runtime; dev resolves from the source tree).
+      desktopIconResource(config),
     ],
     files: [...ELECTRON_BUILDER_FILE_PATTERNS],
     mac: {

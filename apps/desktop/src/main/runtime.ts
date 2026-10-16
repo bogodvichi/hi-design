@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { createHmac, randomBytes } from "node:crypto";
 import { appendFile, mkdir, readFile, readdir, realpath, stat, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { release } from "node:os";
 import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -1627,6 +1628,14 @@ export function createSplashWindow(): SplashWindowHandle {
 }
 
 function resolveDesktopIconPath(): string {
+  // Packaged builds ship app-icon.png as an extraResource under
+  // process.resourcesPath (see tools/pack win/mac/linux builders).
+  // Dev resolves it from the monorepo source tree relative to this file.
+  const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
+  if (resourcesPath != null) {
+    const packaged = join(resourcesPath, "app-icon.png");
+    if (existsSync(packaged)) return packaged;
+  }
   return resolve(dirname(fileURLToPath(import.meta.url)), "../../../web/public/app-icon.png");
 }
 
@@ -2456,7 +2465,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
 
   const consoleEntries: DesktopConsoleEntry[] = [];
   const petWindow = createDesktopPetWindow(preloadPath, options.osLocale);
-  const windowTitle = options.windowTitle ?? "HiDesign";
+  const windowTitle = options.windowTitle ?? "HiDesignTeam";
   const window = new BrowserWindow({
     height: 900,
     icon: resolveDesktopIconPath(),
