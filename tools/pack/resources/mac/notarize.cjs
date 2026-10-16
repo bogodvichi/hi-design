@@ -49,6 +49,11 @@ function isTransientNotaryError(error) {
     "EAI_AGAIN",
     "socket hang up",
     "network connection was lost",
+    // xcrun notarytool reports network failures in Apple's NSURLErrorDomain
+    // (e.g. Code=-1001 "The request timed out."). These are transient
+    // runner-to-Apple connectivity issues that a retry can recover from.
+    "NSURLErrorDomain",
+    "request timed out",
   ].some((marker) => message.includes(marker));
 }
 
