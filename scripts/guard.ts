@@ -57,7 +57,8 @@ const residualSkippedDirectories = new Set([
   "node_modules",
   "out",
   "hidesign-web",
-  "ybvichi.github.io"
+  "ybvichi.github.io",
+  "public"
 ]);
 
 const residualAllowedExactPaths = new Set([
