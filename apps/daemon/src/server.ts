@@ -860,6 +860,7 @@ import { registerAttributionRoutes } from './routes/attribution.js';
 import { registerDaemonRoutes } from './routes/daemon.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerHikUedroRoutes } from './routes/hik/_routes/uedro.js';
+import { registerHikHikkeRoutes } from './routes/hik/_routes/hikke.js';
 import { registerHdwRoutes } from './routes/hik/_routes/hdw.js';
 import { registerGenuiRoutes } from './routes/genui.js';
 import { registerDesignSystemRoutes } from './routes/design-systems.js';
@@ -8853,6 +8854,11 @@ const teamResourceListByKind = {
   });
 
  registerHikUedroRoutes(app, {
+   dataDir: RUNTIME_DATA_DIR,
+   sendApiError,
+ });
+
+ registerHikHikkeRoutes(app, {
    dataDir: RUNTIME_DATA_DIR,
    sendApiError,
  });

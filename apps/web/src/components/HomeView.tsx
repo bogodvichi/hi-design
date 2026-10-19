@@ -29,6 +29,7 @@ import {
   automaticStrategyTaskProfileForRouteId,
 } from '@open-design/contracts';
 import { projectKindFromMetadataToTracking } from '@open-design/contracts/analytics';
+import { FeedbackFab } from './feedback/FeedbackFab';
 import { useAnalytics } from '../analytics/provider';
 import { useDesktopTray } from '../hooks/useDesktopTray';
 import {
@@ -3900,6 +3901,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
             </DialogFooter>
         </Dialog>
       ) : null}
+      <FeedbackFab />
     </div>
   );
 }

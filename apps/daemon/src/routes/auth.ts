@@ -139,6 +139,7 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
         testToken: hikke.testToken,
         userInfo: hikke.userInfo,
         loginAt: hikke.loginAt,
+       cookies: hikke.cookies,
       };
     }
     writeSsoConfigFile(dataDir, session, FOR_DESIGNER_DIR);

@@ -46,6 +46,8 @@ export interface SsoSession {
     testToken?: string;
     userInfo?: Record<string, unknown>;
     loginAt?: number;
+   /** Cookies acquired during Hikke login (testToken session et al.). Used by hikke demand routes. */
+   cookies?: Cookie[];
   };
 }
 
