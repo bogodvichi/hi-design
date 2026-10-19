@@ -162,9 +162,9 @@
 }
 
 /* Download progress ring: a small circular indicator on the right side of
-   the .entry-updater-menu container. Only renders during the DOWNLOADING
-   state. When percent is null (total bytes unknown) the ring shows an
-   indeterminate spinning arc instead of a fixed fill. */
+   the version pill. Only renders during the DOWNLOADING state. When percent
+   is null (total bytes unknown) the ring shows an indeterminate spinning arc
+   instead of a fixed fill. The accompanying text badge uses .updateBadge. */
 .downloadRing {
   width: 20px;
   height: 20px;
@@ -180,13 +180,13 @@
 
 .downloadRingTrack {
   fill: none;
-  stroke: var(--border-soft);
+  stroke: color-mix(in srgb, var(--text-muted) 35%, transparent);
   stroke-width: 2.5;
 }
 
 .downloadRingFill {
   fill: none;
-  stroke: var(--brand);
+  stroke: color-mix(in srgb, var(--brand), black 20%);
   stroke-width: 2.5;
   stroke-linecap: round;
   stroke-dasharray: 56.55;

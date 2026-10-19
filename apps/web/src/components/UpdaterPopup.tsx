@@ -410,7 +410,12 @@ export function UpdaterPopup({
         </span>
         {ready ? <span className={styles.updateBadge}>{t('updater.available')}</span> : null}
         {downloadProgress != null ? (
-          <div className={styles.downloadRing} data-testid="updater-download-progress">
+          <span className={styles.updateBadge} data-testid="updater-download-progress">
+            {t('updater.downloading')}
+          </span>
+        ) : null}
+        {downloadProgress != null ? (
+          <div className={styles.downloadRing} aria-hidden="true">
             <svg className={styles.downloadRingSvg} viewBox="0 0 24 24">
               <circle className={styles.downloadRingTrack} cx="12" cy="12" r={RING_RADIUS} />
               <circle

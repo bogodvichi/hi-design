@@ -40,6 +40,13 @@ export interface SsoSession {
     basicInfo?: any;
     loginAt?: number | undefined;
   } | any;
+  /** 海客 Hikke tokens/profile acquired during the same login. */
+  hikke?: {
+    hikkeToken?: string;
+    testToken?: string;
+    userInfo?: Record<string, unknown>;
+    loginAt?: number;
+  };
 }
 
 export interface SsoLoginResult {

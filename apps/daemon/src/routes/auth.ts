@@ -23,6 +23,7 @@ import {
   uedroValidate,
   type UedroInfo,
 } from '../http/hik_logins/uedro.js';
+import { hikkeLogin, hikkeValidate, type HikkeLoginResult } from '../http/hik_logins/hikke.js';
 import {
   fetchAiResearchLaunch,
   fetchHiMindLaunch,
@@ -119,6 +120,7 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
     userInfo?: any,
     cookies?: Cookie[],
     uedro?: UedroInfo,
+    hikke?: HikkeLoginResult,
   ) {
     const session: SsoSession = {
       cookies: cookies || [],
@@ -129,6 +131,14 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
     if (uedro) {
       session.uedro = {
         cookies: uedro.cookies
+      };
+    }
+    if (hikke) {
+      session.hikke = {
+        hikkeToken: hikke.hikkeToken,
+        testToken: hikke.testToken,
+        userInfo: hikke.userInfo,
+        loginAt: hikke.loginAt,
       };
     }
     writeSsoConfigFile(dataDir, session, FOR_DESIGNER_DIR);
@@ -161,6 +171,16 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
       }
       return uedro;
     }
+    // Hikke is the required primary platform: establish and initialize its session first.
+    let hikke: HikkeLoginResult;
+    try {
+      hikke = await hikkeLogin(username, password);
+    } catch (hikkeErr: any) {
+      // Do not log credentials or token values.
+      console.warn('Hikke login failed:', hikkeErr?.message || hikkeErr);
+      return sendApiError(res, 502, 'BAD_GATEWAY', 'Hikke login failed; multi-platform login was not completed');
+    }
+
     let result: any = null;
     let error = null;
     // 2. 尝试海康 SSO 登录
@@ -168,10 +188,9 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
       result = await hicooLogin(username, password);
     } catch (err: any) {
       error = err;
-
     }
-    let uedro: any = await done_uedproLogin()
-    if (result || uedro) {
+    const uedro: any = await done_uedproLogin();
+    if (result || uedro || hikke) {
       const uplusAvatar = await withTimeout(
         fetchUplusAvatar(username, password),
         UPLUS_AVATAR_TIMEOUT_MS,
@@ -184,7 +203,7 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
           businessCode: uplusAvatar.businessCode,
         });
       }
-      const baseUserInfo = result?.userInfo || uedro?.userInfo;
+      const baseUserInfo = result?.userInfo || uedro?.userInfo || hikke?.userInfo;
       const userInfo = uplusAvatar.ok && uplusAvatar.avatarUrl
         ? { ...(baseUserInfo ?? {}), avatarUrl: uplusAvatar.avatarUrl }
         : baseUserInfo;
@@ -193,7 +212,8 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
         result?.username || username,
         userInfo,
         result?.cookies,
-        uedro
+        uedro,
+        hikke,
       );
       if (uplusAvatar.ok && uplusAvatar.avatarUrl) {
         const communityAvatarSynced = await trySyncCommunityAvatar(
@@ -333,12 +353,14 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
       const session = getSsoCookie();
       const result = await hicooValidate(session, dataDir, FOR_DESIGNER_DIR);
       const uedroResult = await uedroValidate(session.uedro?.cookies);
+      const hikkeResult = await hikkeValidate(session.hikke);
       if ((!result.ok&&!session.userInfo)//OA登录没成功并且也没有得到用户信息，说明后续没有其他的系统登录成功过
         || !uedroResult.ok // 如果羽点超时，需要重登录
+        || !hikkeResult.ok // 如果骇海客超时，需要重新登录
       ) {
         // 会话失效，清除本地 session
         clearSsoSession();
-        const response: any = { ok: false, username: result.username || '',uedroResult };
+        const response: any = { ok: false, username: result.username || '', uedroResult, hikkeResult };
         return res.json(response);
       }
       // 会话有效
