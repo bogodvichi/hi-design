@@ -18,14 +18,14 @@
   z-index: 1000;
 }
 
-.fab:hover {
-  transform: translateY(-2px);
-  background: var(--brand);
-  color: var(--brand-text);
-  box-shadow: var(--shadow-lg);
+.fab:hover:not(:disabled) {
+  transform: none;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  box-shadow: var(--shadow-md);
 }
 
-.fab:active {
+.fab:active:not(:disabled) {
   transform: translateY(0);
   box-shadow: var(--shadow-sm);
 }
