@@ -14,7 +14,7 @@ import type {
   MemoryExtractionEvent,
 } from '@open-design/contracts';
 import { useT } from '../i18n';
-import { toastSlideUp } from '../motion';
+import { toastSlideDown } from '../motion';
 
 interface ActiveToast {
   key: number;
@@ -186,7 +186,7 @@ export function MemoryToast({
 
   const pillStyle: CSSProperties = {
     position: 'fixed',
-    bottom: 20,
+    top: 64,
     right: 20,
     zIndex: 1000,
     padding: '8px 14px',
@@ -214,7 +214,7 @@ export function MemoryToast({
             role="status"
             aria-live="polite"
             style={pillStyle}
-            variants={toastSlideUp}
+            variants={toastSlideDown}
             initial="hidden"
             animate="visible"
             exit="exit"
@@ -233,7 +233,7 @@ export function MemoryToast({
             onClick={onOpenMemory}
             whileHover={{ y: -1, boxShadow: '0 10px 28px rgba(0,0,0,0.24)' }}
             style={pillStyle}
-            variants={toastSlideUp}
+            variants={toastSlideDown}
             initial="hidden"
             animate="visible"
             exit="exit"

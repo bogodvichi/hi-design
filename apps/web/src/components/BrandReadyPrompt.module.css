@@ -4,7 +4,8 @@
    workspace panel, not the full viewport, so it never covers the chat composer. */
 .prompt {
   position: fixed;
-  bottom: max(32px, env(safe-area-inset-bottom));
+  top: max(64px, calc(env(safe-area-inset-top) + 64px));
+  bottom: auto;
   left: var(--brand-ready-left-offset, 0px);
   right: 0;
   margin: 0 auto;
@@ -27,7 +28,8 @@
 
 @media (max-width: 900px) {
   .prompt {
-    bottom: max(96px, calc(env(safe-area-inset-bottom) + 96px));
+    top: max(64px, calc(env(safe-area-inset-top) + 64px));
+    bottom: auto;
     left: 12px;
     right: 12px;
     width: auto;

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Icon } from '../Icon';
+import { Toast } from '../Toast';
 import { FeedbackDialog } from './FeedbackDialog';
 import styles from './FeedbackFab.module.css';
 
@@ -14,6 +15,7 @@ import styles from './FeedbackFab.module.css';
 export function FeedbackFab() {
   const [open, setOpen] = useState(false);
   const [hint, setHint] = useState(true);
+  const [submitted, setSubmitted] = useState(false);
   const dismissedRef = useRef(false);
 
   // Show the "反馈" tooltip hint for the first few seconds, then retire it
@@ -43,7 +45,22 @@ export function FeedbackFab() {
         </span>
         {hint && !open ? <span className={styles.fabHint}>反馈</span> : null}
       </button>
-      {open ? <FeedbackDialog onClose={() => setOpen(false)} /> : null}
+      {open ? (
+        <FeedbackDialog
+          onClose={() => setOpen(false)}
+          onSuccess={() => {
+            setOpen(false);
+            setSubmitted(true);
+          }}
+        />
+      ) : null}
+      {submitted ? (
+        <Toast
+          message="提交反馈成功，感谢您的反馈"
+          tone="success"
+          onDismiss={() => setSubmitted(false)}
+        />
+      ) : null}
     </>
   );
 }

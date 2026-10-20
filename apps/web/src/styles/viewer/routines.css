@@ -100,10 +100,11 @@
 }
 
 /* ----- Toast (#451) ---------------------------------------------------- */
-/* Single transient bottom-center toast for project-scoped actions. */
+/* Transient toasts appear at the top-center by default. */
 .od-toast {
   position: fixed;
-  bottom: 24px;
+  top: 64px;
+  bottom: auto;
   left: 50%;
   transform: translateX(-50%);
   max-width: 480px;
@@ -144,7 +145,8 @@
   position: absolute;
 }
 .od-toast.od-toast-browser-snapshot {
-  bottom: 34px;
+  top: 64px;
+  bottom: auto;
   width: min(460px, calc(100vw - 48px));
   max-width: calc(100vw - 48px);
   padding: 14px 52px 14px 18px;
@@ -164,6 +166,10 @@
   bottom: auto;
   z-index: 1800;
 }
+.od-toast.placement-bottom {
+  top: auto;
+  bottom: 24px;
+}
 /* Toasts that stack extra blocks (details / code / browser snapshot) can't
    wear the capsule radius — their tall rectangular content would clip. */
 .od-toast:has(.od-toast-details),
@@ -172,12 +178,14 @@
   border-radius: var(--radius, 12px);
 }
 .project-actions-toast-anchor {
-  position: relative;
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
   z-index: 60;
-  flex: 0 0 auto;
   width: min(420px, calc(100% - 32px));
   max-width: calc(100% - 32px);
-  margin: 0 auto 12px;
+  margin: 0;
   pointer-events: none;
 }
 .chat-log-wrap.has-chat-log-tray {
@@ -201,13 +209,13 @@
   animation: none;
 }
 /* Workspace-owned toasts (Download Page snapshot progress/result, tab
-   launcher errors) anchor to the workspace pane's bottom-center instead of
-   the viewport's, so they never drift over the chat pane or the composer
-   send area in split view. Requires `.workspace` to be the
+   launcher errors) anchor to the workspace pane's top-center instead of
+   the viewport's, so they never drift over the chat pane in split view.
+   Requires `.workspace` to be the
    containing block — see `position: relative` in workspace/drawer.css. */
 .workspace-toast-anchor {
   position: absolute;
-  inset: auto 24px 24px;
+  inset: 24px 24px auto;
   display: flex;
   justify-content: center;
   z-index: 60;
@@ -224,8 +232,7 @@
 }
 /* Launcher/share feedback toasts match the design-systems treatment: pinned
    near the pane's TOP edge as a pill, success wearing the light-green /
-   medium-green palette. Browser-snapshot toasts keep the bottom anchor —
-   their card carries actions and previews sized for the bottom edge. */
+   medium-green palette. */
 .workspace-toast-anchor:not(:has(.od-toast-browser-snapshot)) {
   inset: 24px 24px auto;
 }
@@ -326,7 +333,7 @@
 .od-toast.tone-loading .od-toast-icon {
   color: var(--text-muted, #6e7781);
 }
-/* Entrance: gentle rise + fade (ease-out per the UI animation philosophy).
+/* Entrance: gentle drop + fade (ease-out per the UI animation philosophy).
    Exit: the .leaving class plays a faster fade-out before onDismiss unmounts
    the toast, so confirmations like "copied to clipboard" don't blink away. */
 .od-toast {
@@ -338,7 +345,7 @@
 @keyframes od-toast-in {
   from {
     opacity: 0;
-    transform: translateX(-50%) translateY(8px);
+    transform: translateX(-50%) translateY(-8px);
   }
   to {
     opacity: 1;
@@ -352,7 +359,7 @@
   }
   to {
     opacity: 0;
-    transform: translateX(-50%) translateY(8px);
+    transform: translateX(-50%) translateY(-8px);
   }
 }
 @media (prefers-reduced-motion: reduce) {

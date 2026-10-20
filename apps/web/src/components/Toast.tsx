@@ -71,7 +71,7 @@ export function Toast({
   onDismiss,
   role = 'status',
   tone = 'default',
-  placement = 'bottom',
+  placement = 'top',
 }: ToastProps) {
   const t = useT();
   // When code is present the toast is a manual-action surface; never

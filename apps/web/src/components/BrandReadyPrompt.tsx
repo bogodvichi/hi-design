@@ -7,7 +7,7 @@ import { motion } from 'motion/react';
 
 import { Icon } from './Icon';
 import { useT } from '../i18n';
-import { toastSlideUp } from '../motion';
+import { toastSlideDown } from '../motion';
 import styles from './BrandReadyPrompt.module.css';
 
 export interface BrandReadyPromptProps {
@@ -61,7 +61,7 @@ export function BrandReadyPrompt({
       style={style}
       role="status"
       aria-live="polite"
-      variants={toastSlideUp}
+      variants={toastSlideDown}
       initial="hidden"
       animate="visible"
       exit="exit"

@@ -4279,10 +4279,9 @@ export function FileWorkspace({
           onClose={() => setLauncherOpen(false)}
         />
       ) : null}
-      {/* Workspace-owned toasts anchor to this pane's bottom-center instead of
+      {/* Workspace-owned toasts anchor to this pane's top-center instead of
           the viewport's: a bare fixed .od-toast centers across the whole
-          window, drifting over the chat pane and covering the composer send
-          area in split view. */}
+          window and drifts over the chat pane in split view. */}
       {browserSnapshotToast ? (
         <div className="workspace-toast-anchor">
           <Toast

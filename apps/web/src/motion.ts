@@ -39,8 +39,8 @@ export const scaleIn: Variants = {
   exit: { opacity: 0, scale: 0.97, transition: { duration: 0.15 } },
 };
 
-export const toastSlideUp: Variants = {
-  hidden: { opacity: 0, y: 20, scale: 0.95 },
+export const toastSlideDown: Variants = {
+  hidden: { opacity: 0, y: -20, scale: 0.95 },
   visible: {
     opacity: 1,
     y: 0,

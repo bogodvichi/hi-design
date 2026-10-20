@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { TinyMCEEditor } from './TinyMCEEditor';
 import { Button, Dialog, DialogFooter } from '@open-design/components';
 import { Icon } from '../Icon';
+import { FeedbackTypeSelect } from './FeedbackTypeSelect';
 import styles from './FeedbackDialog.module.css';
 
 /**
@@ -22,6 +23,16 @@ interface FeedbackSession {
   feedbackProjectId: string;
   feedbackParentId: string;
 }
+
+const FEEDBACK_GUIDE_HTML = [
+  '<p style="font-size: 14px;"><strong>1. 当前存在的问题</strong><span style="opacity: 0.5;">（请描述具体问题、复现步骤及影响，尽可能附上相关截图）</span></p>',
+  '<p><br></p>',
+  '<p style="font-size: 14px;"><strong>2. 期望的解决方案</strong><span style="opacity: 0.5;">（请描述期望效果，如有参考案例，也可以一并提供）</span></p>',
+  '<p><br></p>',
+].join('');
+
+const DEFAULT_DEMAND_CLASS_NAME = '平台体验';
+const OTHER_DEMAND_CLASS_VALUE = '__other__';
 
 /** 从海客分类树里挑一个可读名称（上游字段名不稳定，text / name 都见过）。 */
 function pickDisplayName(node: DemandClassNode | undefined): string {
@@ -78,22 +89,29 @@ function flattenClassTree(nodes: DemandClassNode[] | undefined): DemandClassNode
   return result;
 }
 
-type SubmitState = 'idle' | 'submitting' | 'success' | 'error';
+type SubmitState = 'idle' | 'submitting' | 'error';
 
 /**
  * 反馈对话框。挂在 Home 视图右下角的 FAB 之后弹出。
  *
  * 通过 `createPortal` 渲染到 `document.body` 下，避免被父容器的
  * overflow / transform / z-index 裁剪。顶部 banner 大图作为标题区，
- * 下方两个表单项：反馈类别（来自海客 `/demand-class` 接口的分类树）
- * + 反馈内容（富文本编辑器，默认占位「请输入你的反馈意见」）。
+ * 下方表单包含反馈类型（来自海客 `/demand-class` 接口的分类树）
+ * + 标题 + 带默认填写指引的富文本编辑器。
  *
  * 提交时调用 `/api/hik/hikke/demand` 创建一条需求，以当前 SSO 用户
  * 作为创建人（hikkeToken 鉴权在 daemon 侧解析为创建人）。
  */
-export function FeedbackDialog({ onClose }: { onClose: () => void }) {
+export function FeedbackDialog({
+  onClose,
+  onSuccess,
+}: {
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const [session, setSession] = useState<FeedbackSession | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [classes, setClasses] = useState<DemandClassNode[]>([]);
   const [classesLoading, setClassesLoading] = useState(false);
@@ -104,11 +122,11 @@ export function FeedbackDialog({ onClose }: { onClose: () => void }) {
   const [contentError, setContentError] = useState<string | null>(null);
   const [submitState, setSubmitState] = useState<SubmitState>('idle');
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [createdDemandId, setCreatedDemandId] = useState<string | null>(null);
 
   // TinyMCE 编辑器实例引用。`editorContentRef` 缓存当前 HTML，提交时直接取。
   const editorRef = useRef<any>(null);
   const editorContentRef = useRef('');
+  const initialEditorContentRef = useRef('');
   const [editorEmpty, setEditorEmpty] = useState(true);
 
   // Portal 目标设为 document.body，确保对话框脱离 home-view 容器。
@@ -130,6 +148,8 @@ export function FeedbackDialog({ onClose }: { onClose: () => void }) {
         if (!cancelled) setSession(json?.data ?? null);
       } catch (err) {
         if (!cancelled) setSessionError('读取海客会话失败：' + (err instanceof Error ? err.message : String(err)));
+      } finally {
+        if (!cancelled) setSessionLoading(false);
       }
     })();
     return () => {
@@ -152,15 +172,28 @@ export function FeedbackDialog({ onClose }: { onClose: () => void }) {
         if (!json?.ok) {
           setClassesLoading(false);
           setClassesError(json?.msg || '加载反馈类别失败');
+          setSelectedClassId(OTHER_DEMAND_CLASS_VALUE);
           return;
         }
         const tree = extractClassTree(json?.data);
-        setClasses(flattenClassTree(tree));
+        const nextClasses = flattenClassTree(tree);
+        setClasses(nextClasses);
+        setSelectedClassId((current) => {
+          if (current) return current;
+          const defaultClass = nextClasses.find(
+            (node) => pickDisplayName(node).trim() === DEFAULT_DEMAND_CLASS_NAME,
+          );
+          const defaultClassId = typeof defaultClass?.id === 'number'
+            ? String(defaultClass.id)
+            : defaultClass?.id;
+          return defaultClassId || OTHER_DEMAND_CLASS_VALUE;
+        });
         setClassesLoading(false);
       } catch (err) {
         if (cancelled) return;
         setClassesLoading(false);
         setClassesError('加载反馈类别失败：' + (err instanceof Error ? err.message : String(err)));
+        setSelectedClassId(OTHER_DEMAND_CLASS_VALUE);
       }
     })();
     return () => {
@@ -168,7 +201,7 @@ export function FeedbackDialog({ onClose }: { onClose: () => void }) {
     };
   }, [session?.feedbackProjectId]);
 
-  // TinyMCE 内容变化时同步缓存 + 空状态。占位符由 TinyMCE `placeholder` 配置处理。
+  // TinyMCE 内容变化时同步缓存 + 空状态。
   const handleEditorChange = (content: string) => {
     editorContentRef.current = content;
     const empty = !editorRef.current?.getContent()?.trim();
@@ -195,7 +228,7 @@ export function FeedbackDialog({ onClose }: { onClose: () => void }) {
       return;
     }
     const description = (editorContentRef.current || '').trim();
-    if (!description) {
+    if (!description || description === initialEditorContentRef.current) {
       setContentError('请填写反馈内容');
       setSubmitState('error');
       return;
@@ -213,18 +246,14 @@ export function FeedbackDialog({ onClose }: { onClose: () => void }) {
           description,
           projectId: session.feedbackProjectId,
           parentId: session.feedbackParentId || '',
-          demandClassId: selectedClassId || '',
+          demandClassId: selectedClassId === OTHER_DEMAND_CLASS_VALUE ? '' : selectedClassId,
         }),
       });
       const json = await res.json();
       if (!res.ok || !json?.ok) {
         throw new Error(json?.msg || `HTTP ${res.status}`);
       }
-      const id = typeof json?.data?.id === 'string' || typeof json?.data?.id === 'number'
-        ? String(json.data.id)
-        : null;
-      setCreatedDemandId(id);
-      setSubmitState('success');
+      onSuccess();
     } catch (err) {
       setSubmitError('提交反馈失败：' + (err instanceof Error ? err.message : String(err)));
       setSubmitState('error');
@@ -234,6 +263,17 @@ export function FeedbackDialog({ onClose }: { onClose: () => void }) {
   const creatorName = session ? pickUserDisplayName(session.userInfo) : '';
   // 反馈类别加载中或未登录时，提交按钮不可用。
   const submitDisabled = submitState === 'submitting' || !session || classesLoading;
+  const typeLoading = sessionLoading || classesLoading || Boolean(
+    session?.feedbackProjectId && !classesError && !selectedClassId && classes.length === 0,
+  );
+  const typeOptions = [
+    ...classes.flatMap((node) => {
+      const id = typeof node.id === 'number' ? String(node.id) : node.id || '';
+      const label = pickDisplayName(node).trim();
+      return id && label ? [{ value: id, label }] : [];
+    }),
+    { value: OTHER_DEMAND_CLASS_VALUE, label: '其它' },
+  ];
 
   if (!portalTarget) return null;
 
@@ -263,50 +303,25 @@ export function FeedbackDialog({ onClose }: { onClose: () => void }) {
         </button>
       </div>
 
-      {submitState === 'success' ? (
-        <div className={styles.successBody}>
-          <div className={styles.successIcon}>
-            <Icon name="check" size={28} aria-hidden />
-          </div>
-          <div className={styles.successText}>反馈已提交</div>
-          {/* {createdDemandId ? (
-            <div className={styles.successMeta}>需求编号 #{createdDemandId}</div>
-          ) : null} */}
-          <DialogFooter className={styles.footer}>
-            <Button variant="primary" onClick={onClose}>完成</Button>
-          </DialogFooter>
-        </div>
-      ) : (
-        <div className={styles.body}>
+      <div className={styles.body}>
+        <div className={styles.formContent}>
           {sessionError ? (
             <div className={styles.fieldError}>{sessionError}</div>
           ) : null}
 
           <div className={styles.field}>
-            <label className={styles.label} htmlFor="feedback-class">反馈类别</label>
-            <div className={styles.selectWrap}>
-              <select
-                id="feedback-class"
-                className={styles.select}
-                value={selectedClassId}
-                onChange={(e) => setSelectedClassId(e.target.value)}
-                disabled={classesLoading || !classes.length}
-              >
-                <option value="">
-                  {classesLoading ? '加载中…' : '不限'}
-                </option>
-                {classes.map((node) => {
-                  const id = typeof node.id === 'number' ? String(node.id) : node.id || '';
-                  return (
-                    <option key={id} value={id}>{pickDisplayName(node)}</option>
-                  );
-                })}
-              </select>
-              <Icon name="chevron-down" size={16} className={styles.selectChevron} aria-hidden />
+            <label className={styles.label} htmlFor="feedback-class">反馈类型</label>
+            <FeedbackTypeSelect
+              id="feedback-class"
+              value={selectedClassId}
+              options={typeOptions}
+              loading={typeLoading}
+              disabled={!session}
+              onChange={setSelectedClassId}
+            />
+            <div className={styles.fieldErrorSlot}>
+              {classesError ? <span className={styles.fieldError}>{classesError}</span> : null}
             </div>
-              <div className={styles.fieldErrorSlot}>
-                {classesError ? <span className={styles.fieldError}>{classesError}</span> : null}
-              </div>
           </div>
 
           <div className={styles.field}>
@@ -338,6 +353,8 @@ export function FeedbackDialog({ onClose }: { onClose: () => void }) {
               <TinyMCEEditor
                 onInit={(editor) => {
                   editorRef.current = editor;
+                  editor.setContent(FEEDBACK_GUIDE_HTML);
+                  initialEditorContentRef.current = editor.getContent().trim();
                 }}
                 onEditorChange={handleEditorChange}
                 init={{
@@ -345,16 +362,16 @@ export function FeedbackDialog({ onClose }: { onClose: () => void }) {
                   language_url: '/tinymce/zh_CN.js',
                   skin_url: '/tinymce/skins/ui/oxide',
                   content_css: '/tinymce/skins/content/default/content.min.css',
+                  content_style: 'body { font-size: 14px; }',
                   body_id: 'tinymce_body_id',
-                  placeholder: '请输入你的反馈意见',
-                  min_height: 300,
-                  max_height: 360,
+                  min_height: 240,
+                  max_height: 240,
                   resize: false,
                   menubar: false,
                   branding: false,
                   statusbar: false,
                   elementpath: false,
-                  toolbar_mode: 'wrap',
+                  toolbar_mode: 'sliding',
                   // 不让 TinyMCE 把 images_upload_handler 返回的相对路径
                   // `/api/hik/hikke/download?…` 转成 `http://127.0.0.1:PORT/…`
                   // 绝对路径，提交时 daemon 的 rewriteImageUrls 直接匹配相对路径。
@@ -418,21 +435,21 @@ export function FeedbackDialog({ onClose }: { onClose: () => void }) {
           {submitError ? (
             <div className={styles.fieldError}>{submitError}</div>
           ) : null}
-
-          <DialogFooter className={styles.footer}>
-            <Button variant="ghost" onClick={onClose} disabled={submitState === 'submitting'}>
-              取消
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleSubmit}
-              disabled={submitDisabled}
-            >
-              {submitState === 'submitting' ? '提交中…' : '提交反馈'}
-            </Button>
-          </DialogFooter>
         </div>
-      )}
+
+        <DialogFooter className={styles.footer}>
+          <Button variant="ghost" onClick={onClose} disabled={submitState === 'submitting'}>
+            取消
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleSubmit}
+            disabled={submitDisabled}
+          >
+            {submitState === 'submitting' ? '提交中…' : '提交'}
+          </Button>
+        </DialogFooter>
+      </div>
     </Dialog>,
     portalTarget,
   );

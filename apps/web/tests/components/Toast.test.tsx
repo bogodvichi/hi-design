@@ -12,8 +12,14 @@ afterEach(() => {
 
 describe('Toast', () => {
   it('renders the message and primary line by default', () => {
-    render(<Toast message="Folder opened." />);
+    const { container } = render(<Toast message="Folder opened." />);
     expect(screen.getByText('Folder opened.')).not.toBeNull();
+    expect(container.querySelector('.od-toast')?.className).toContain('placement-top');
+  });
+
+  it('keeps an explicit bottom placement available for exceptional surfaces', () => {
+    const { container } = render(<Toast message="Pinned low" placement="bottom" />);
+    expect(container.querySelector('.od-toast')?.className).toContain('placement-bottom');
   });
 
   it('renders the optional secondary details line beneath the message', () => {
