@@ -624,7 +624,7 @@ export const ru: Dict = {
   'settings.cliEnvCodexBaseUrl': 'Base URL прокси Codex/OpenAI',
   'settings.cliEnvCodexApiKey': 'API key Codex/OpenAI CLI',
   'settings.modelCustom': 'Пользовательская (введите ниже)…',
-  'settings.modelCustomLabel': 'Пользовательский ID модели',
+  'settings.modelCustomLabel': 'Пользовательская модель',
   'settings.modelCustomPlaceholder': 'например, anthropic/claude-sonnet-4-6',
   'settings.mediaProviders': 'Медиа-провайдеры',
   'settings.mediaProvidersHint': 'API-ключи для генерации изображений, видео и аудио. Хранятся локально и синхронизируются с локальным демоном.',

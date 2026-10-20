@@ -35,6 +35,7 @@ const ICON_EXT: Record<string, 'svg' | 'png'> = {
   aider: 'png',
   'trae-cli': 'png',
   devin: 'png',
+  lanz: 'png',
 };
 
 // Runtime variants that share the same vendor mark. Keep one bundled asset

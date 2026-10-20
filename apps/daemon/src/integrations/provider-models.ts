@@ -37,6 +37,16 @@ function appendVersionedApiPath(baseUrl: string, suffix: string): string {
   return url.toString();
 }
 
+function isLanzOpenAiGateway(input: ProviderModelsInput): boolean {
+  if (input.protocol !== 'openai') return false;
+  const url = new URL(input.baseUrl);
+  return url.hostname === 'lanz.hikvision.com'
+    && !url.port
+    && url.pathname.replace(/\/+$/, '') === '/v3/openai/model'
+    && !url.search
+    && !url.hash;
+}
+
 function statusToKind(status: number): ConnectionTestKind {
   if (status === 401) return 'auth_failed';
   if (status === 403) return 'forbidden';
@@ -363,6 +373,18 @@ export async function listProviderModels(
     }
 
     if (!response.ok) {
+      // Lanz supports inference but does not expose an OpenAI /models route.
+      // Seed its documented default only for that exact missing catalogue;
+      // authentication, permission, and other endpoint errors stay visible.
+      if (response.status === 404 && isLanzOpenAiGateway(input)) {
+        return {
+          ok: true,
+          kind: 'success',
+          latencyMs,
+          models: [{ id: 'EB-DeepSeek-Flash', label: 'EB-DeepSeek-Flash' }],
+          detail: 'Lanz has no model catalogue endpoint; showing its configured default. Use the connection test to validate access.',
+        };
+      }
       const detail = parseError
         ? rawText.trim().slice(0, 240) || parseError
         : extractProviderErrorDetail(data, rawText);

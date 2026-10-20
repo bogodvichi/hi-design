@@ -624,7 +624,7 @@ export const ptBR: Dict = {
   'settings.cliEnvCodexBaseUrl': 'Base URL do proxy Codex/OpenAI',
   'settings.cliEnvCodexApiKey': 'API key da Codex/OpenAI CLI',
   'settings.modelCustom': 'Personalizado (digite abaixo)…',
-  'settings.modelCustomLabel': 'Id do modelo personalizado',
+  'settings.modelCustomLabel': 'Modelo personalizado',
   'settings.modelCustomPlaceholder': 'ex.: anthropic/claude-sonnet-4-6',
   'settings.mediaProviders': 'Provedores de mídia',
   'settings.mediaProvidersHint': 'Chaves de API para geração de imagem, vídeo e áudio. Salvas localmente e sincronizadas com o daemon local.',

@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
+import type { LanzAccountCredentials } from '@open-design/contracts';
+import { loadLanzAccount } from './lanz-account';
 
 import { motion, useReducedMotion } from 'motion/react';
 import type { Variants } from 'motion/react';
@@ -34,6 +36,7 @@ export interface AuthContextValue {
   username: string | null;
   /** 服务端返回的用户信息 */
   userInfo: any | null;
+  lanzAccount?: LanzAccountCredentials | null;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -105,10 +108,20 @@ export function LoginGate({ children }: LoginGateProps) {
   const [fingerprint, setFingerprint] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [userInfo, setUserInfo] = useState<any | null>(null);
+  const [lanzAccount, setLanzAccount] = useState<LanzAccountCredentials | null>(null);
+
+  useEffect(() => {
+    setLanzAccount(null);
+    if (authed !== true || !username) return;
+    const controller = new AbortController();
+    void loadLanzAccount(username, controller.signal).then((account) => {
+      if (!controller.signal.aborted) setLanzAccount(account);
+    });
+    return () => controller.abort();
+  }, [authed, username]);
 
  useLayoutEffect(() => {
    checkAuthStatus().then((result: any) => {
-     console.log('我拿到用户信息了吗？',result);
      setAuthed(result.ok);
      if (result.ok) {
        setUsername(result.username ?? null);
@@ -171,7 +184,7 @@ export function LoginGate({ children }: LoginGateProps) {
    );
  }
  return (
-   <AuthContext.Provider value={{ username, userInfo }}>
+   <AuthContext.Provider value={{ username, userInfo, lanzAccount: lanzAccount?.username.toLowerCase() === username?.toLowerCase() ? lanzAccount : null }}>
      <div
        className={authed ? undefined : styles.appLocked}
        inert={!authed}

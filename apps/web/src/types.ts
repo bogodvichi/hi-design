@@ -385,6 +385,8 @@ export interface PetConfig {
 }
 
 export interface AppConfig {
+  /** Owner of automatically linked Lanz credentials; never changes when selecting a model. */
+  lanzAccountUsername?: string;
   mode: ExecMode;
   apiKey: string;
   baseUrl: string;

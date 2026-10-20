@@ -624,7 +624,7 @@ export const tr: Dict = {
   'settings.cliEnvCodexBaseUrl': 'Codex/OpenAI proxy Base URL',
   'settings.cliEnvCodexApiKey': 'Codex/OpenAI CLI API key',
   'settings.modelCustom': 'Özel (aşağıya yazın)…',
-  'settings.modelCustomLabel': 'Özel model kimliği',
+  'settings.modelCustomLabel': 'Özel model',
   'settings.modelCustomPlaceholder': 'örn. anthropic/claude-sonnet-4-6',
   'settings.mediaProviders': 'Medya sağlayıcıları',
   'settings.mediaProvidersHint': 'Görsel, video ve ses oluşumu için API anahtarları. Yerel saklanır ve yerel arka plan servisiyle senkronize edilir.',

@@ -426,13 +426,13 @@ describe('SettingsDialog API protocol switching', () => {
       mode: 'api',
       apiProtocol: 'openai',
       apiKey: '',
-      baseUrl: 'https://api.openai.com/v1',
-      model: 'gpt-4o',
-      apiProviderBaseUrl: 'https://api.openai.com/v1',
+      baseUrl: 'http://lanz.hikvision.com/v3/openai/model',
+      model: 'EB-DeepSeek-Flash',
+      apiProviderBaseUrl: 'http://lanz.hikvision.com/v3/openai/model',
     });
   });
 
-  it('keeps Atlas Cloud as an OpenAI-compatible known provider without changing the OpenAI default', () => {
+  it('keeps Atlas Cloud as an OpenAI-compatible known provider while lanz remains the default', () => {
     const openai = switchApiProtocolConfig(baseConfig, 'openai');
     const atlas = updateCurrentApiProtocolConfig(openai, {
       baseUrl: 'https://api.atlascloud.ai/v1',
@@ -441,9 +441,9 @@ describe('SettingsDialog API protocol switching', () => {
     });
 
     expect(openai).toMatchObject({
-      baseUrl: 'https://api.openai.com/v1',
-      model: 'gpt-4o',
-      apiProviderBaseUrl: 'https://api.openai.com/v1',
+      baseUrl: 'http://lanz.hikvision.com/v3/openai/model',
+      model: 'EB-DeepSeek-Flash',
+      apiProviderBaseUrl: 'http://lanz.hikvision.com/v3/openai/model',
     });
     expect(atlas).toMatchObject({
       apiProtocol: 'openai',

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useAuth } from '../auth/LoginGate';
+import { applyLanzAccountConfig, isLanzBaseUrl } from '../state/lanz-account';
 import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 import { Button, VisuallyHidden } from '@open-design/components';
 import type {
@@ -1118,24 +1120,21 @@ function apiProtocolFromProviderDraftKey(draftKey: string): ApiProtocol | null {
 }
 
 function restorePendingByokProviderDraft(config: AppConfig): AppConfig {
-  const currentDraftKey = byokProviderKeyForConfig(config);
-  const candidateKeys = config.byokPendingProviderKey
-    ? [config.byokPendingProviderKey, currentDraftKey]
-    : [currentDraftKey];
-  for (const draftKey of candidateKeys) {
-    const draft = config.byokProviderConfigDrafts?.[draftKey];
-    const protocol = apiProtocolFromProviderDraftKey(draftKey);
-    if (!draft || !protocol) continue;
-    return applyApiProtocolConfig(
-      {
-        ...config,
-        maxTokens: draft.maxTokens,
-      },
-      protocol,
-      draft.apiConfig,
-    );
-  }
-  return config;
+  // Only an explicitly pending setup may override the saved active config.
+  // Provider-switch snapshots can contain an older key (including an empty one).
+  const draftKey = config.byokPendingProviderKey;
+  if (!draftKey) return config;
+  const draft = config.byokProviderConfigDrafts?.[draftKey];
+  const protocol = apiProtocolFromProviderDraftKey(draftKey);
+  if (!draft || !protocol) return config;
+  return applyApiProtocolConfig(
+    {
+      ...config,
+      maxTokens: draft.maxTokens,
+    },
+    protocol,
+    draft.apiConfig,
+  );
 }
 
 function applyApiProtocolConfig(
@@ -1363,10 +1362,12 @@ export function amrWalletValueLabel(input: {
 function apiModelOptionLabel(
   model: ProviderModelOption,
   sourceLabel?: string,
+  defaultLabel?: string,
 ): string {
   const baseLabel = model.label && model.label !== model.id
     ? `${model.label} (${model.id})`
     : model.id;
+  if (defaultLabel) return `${baseLabel} - ${defaultLabel}`;
   return sourceLabel ? `${baseLabel} · ${sourceLabel}` : baseLabel;
 }
 
@@ -1519,6 +1520,7 @@ export function SettingsDialog({
   onDraftChange,
 }: Props) {
   const { t, locale, setLocale } = useI18n();
+  const { lanzAccount } = useAuth();
   const analytics = useAnalytics();
   // Backfill the fixed-origin base URL on mount too, so a config persisted with
   // an empty baseUrl (e.g. selected AIHubMix before this resolution existed)
@@ -1609,6 +1611,20 @@ export function SettingsDialog({
     };
     previousInitialRef.current = initial;
   }, [initial]);
+
+  useEffect(() => {
+    if (!lanzAccount) return;
+    for (const draft of Object.values(byokProviderFormDraftsRef.current)) {
+      if (isLanzBaseUrl(draft.apiConfig.baseUrl)) {
+        draft.apiConfig = { ...draft.apiConfig, apiKey: lanzAccount.apiKey };
+      }
+    }
+    setCfg((current) => applyLanzAccountConfig(current, lanzAccount));
+    autosaveLastSavedRef.current = applyLanzAccountConfig(
+      autosaveLastSavedRef.current,
+      lanzAccount,
+    );
+  }, [lanzAccount]);
 
   // Revert the live theme preview to the most recently persisted appearance.
   // That is the initial appearance until autosave succeeds; after autosave,
@@ -1861,7 +1877,6 @@ export function SettingsDialog({
   const providerModelsFirstResetRef = useRef(true);
   const providerModelsSkipNextResetRef = useRef(false);
   const deferAfterKeyCleanRef = useRef(false);
-  const providerAutoTestKeyRef = useRef<string | null>(null);
   const byokLastUnsuccessfulTestKeyRef = useRef<string | null>(null);
   const apiKeyInputRef = useRef<HTMLInputElement | null>(null);
   const baseUrlInputRef = useRef<HTMLInputElement | null>(null);
@@ -2116,7 +2131,6 @@ export function SettingsDialog({
       return;
     }
     providerTestRevisionRef.current += 1;
-    providerAutoTestKeyRef.current = null;
     setByokPreconditionNotice(null);
     setProviderTestState((state) =>
       state.status === 'running' ? state : { status: 'idle' },
@@ -2561,9 +2575,7 @@ export function SettingsDialog({
     }
   };
 
-  const handleTestProvider = async (
-    options: { silentPreconditions?: boolean } = {},
-  ) => {
+  const handleTestProvider = async () => {
     if (providerTestState.status === 'running') {
       return;
     }
@@ -2574,21 +2586,16 @@ export function SettingsDialog({
     const configKeyChanged = lastUnsuccessfulConfigKey !== null &&
       lastUnsuccessfulConfigKey !== currentConfigKey;
     if (hasFirstPartyHostTypo) {
-      if (!options.silentPreconditions) {
-        setByokPreconditionNotice({
-          action: 'test',
-          field: 'base_url',
-          message: t('settings.testInvalidBaseUrl'),
-        });
-        focusByokRequiredField('base_url');
-      }
+      setByokPreconditionNotice({
+        action: 'test',
+        field: 'base_url',
+        message: t('settings.testInvalidBaseUrl'),
+      });
+      focusByokRequiredField('base_url');
       byokLastUnsuccessfulTestKeyRef.current = currentConfigKey;
       return;
     }
     if (blockingIssues.length > 0) {
-      if (options.silentPreconditions) {
-        return;
-      }
       showByokDraftValidationNotice('test', byokDraftValidation);
       const byokProviderId = byokProtocolToTracking(apiProtocol);
       if (byokProviderId) {
@@ -2694,24 +2701,6 @@ export function SettingsDialog({
         providerTestAbortRef.current = null;
       }
     }
-  };
-
-  const handleAutoTestProvider = () => {
-    if (providerTestState.status === 'running') {
-      return;
-    }
-    if (byokFirstPartyBaseUrl?.hostTypo) {
-      return;
-    }
-    if (blockingByokDraftIssues(byokDraftValidation).length > 0) {
-      return;
-    }
-    const key = providerConnectionTestKey(apiProtocol, cfg);
-    if (providerAutoTestKeyRef.current === key) {
-      return;
-    }
-    providerAutoTestKeyRef.current = key;
-    void handleTestProvider({ silentPreconditions: true });
   };
 
   const handleFetchProviderModels = async (
@@ -3572,13 +3561,8 @@ export function SettingsDialog({
       setAutosaveCommitTick((tick) => tick + 1);
     }
     if (cleanedApiKey !== cfg.apiKey) {
-      // Writing the cleaned key changes cfg.apiKey, which re-runs the reset
-      // effects above: one nulls providerModelsCommittedKey, the other bumps
-      // providerTestRevisionRef / clears providerAutoTestKeyRef. So committing
-      // the model key or starting the auto-test here would be clobbered — the
-      // model commit before the auto-fetch effect reads it. Defer the commit
-      // until the cleaned value has landed (effect below); connection testing
-      // waits for model discovery and reconciliation.
+      // Commit model discovery after the cleaned key has landed; changing the
+      // key resets providerModelsCommittedKey in the effect above.
       deferAfterKeyCleanRef.current = true;
       updateApiConfig({ apiKey: cleanedApiKey });
       return;
@@ -3602,56 +3586,26 @@ export function SettingsDialog({
     cfg.apiKey,
     providerModelsKey,
   ]);
+  // Populate the model list for a complete saved configuration. Connectivity
+  // tests are initiated only by the Test button.
   useEffect(() => {
-    if (cfg.mode !== 'api') return;
-    if (visualStabilityMode) return;
-    if (providerTestState.status === 'running') return;
+    if (cfg.mode !== 'api' || visualStabilityMode) return;
+    if (!providerModelDiscoverySupported || apiProtocol === 'aihubmix') return;
     if (byokFirstPartyBaseUrl?.hostTypo) return;
     if (blockingByokDraftIssues(byokDraftValidation).length > 0) return;
-    if (providerModelDiscoverySupported) {
-      if (
-        apiProtocol !== 'aihubmix' &&
-        providerModelsCommittedKey !== providerModelsKey
-      ) {
-        const timer = window.setTimeout(() => {
-          setProviderModelsCommittedKey(providerModelsKey);
-        }, 200);
-        return () => window.clearTimeout(timer);
-      }
-      if (
-        providerModelsState.status !== 'done' ||
-        providerModelsState.cacheKey !== providerModelsKey
-      ) return;
-      if (
-        !providerModelsState.result.ok &&
-        (
-          providerModelsState.result.kind === 'auth_failed' ||
-          providerModelsState.result.kind === 'forbidden'
-        )
-      ) return;
-      if (pendingProviderModelReconciliation !== null) return;
-    }
-    const key = providerConnectionTestKey(apiProtocol, cfg);
-    if (providerAutoTestKeyRef.current === key) return;
+    if (providerModelsCommittedKey === providerModelsKey) return;
     const timer = window.setTimeout(() => {
-      handleAutoTestProvider();
-    }, providerModelDiscoverySupported ? 0 : 500);
+      setProviderModelsCommittedKey(providerModelsKey);
+    }, 200);
     return () => window.clearTimeout(timer);
   }, [
     apiProtocol,
     byokFirstPartyBaseUrl?.hostTypo,
     byokDraftValidation,
-    cfg.apiKey,
-    cfg.apiVersion,
-    cfg.baseUrl,
     cfg.mode,
-    cfg.model,
     providerModelDiscoverySupported,
-    pendingProviderModelReconciliation,
     providerModelsCommittedKey,
     providerModelsKey,
-    providerModelsState,
-    providerTestState.status,
     visualStabilityMode,
   ]);
   useEffect(() => {
@@ -5575,20 +5529,11 @@ export function SettingsDialog({
                         ? t('settings.modelSourceAccount')
                         : t('settings.modelSourceSuggested')
                       : undefined,
+                    m.id === defaultKnownProviderModel(selectedProvider)
+                      ? t('common.default')
+                      : undefined,
                   ),
                 }))}
-                modelsLoadedFromAccountMessage={
-                  loadedAccountModelCount > 0
-                    ? t(
-                        hidesAccountModelSourceLabel(apiProtocol)
-                          ? 'settings.modelsLoadedCount'
-                          : 'settings.modelsLoadedFromAccount',
-                        {
-                          count: loadedAccountModelCount,
-                        },
-                      )
-                    : null
-                }
                 providerModelsFailureMessage={providerModelsFailureMessage}
                 forceTextInput={apiProtocol === 'azure'}
                 showAzureModelFetchHint={apiProtocol === 'azure'}

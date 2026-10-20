@@ -88,6 +88,7 @@ import {
 } from "../runtime/todos";
 import type { Dict } from "../i18n/types";
 import { agentDisplayName, agentIconId, exactAgentDisplayName } from "../utils/agentLabels";
+import { isApiProtocolAgentId } from "../utils/apiProtocol";
 import { AgentIcon } from "./AgentIcon";
 import { filterImplicitProducedFiles } from "../produced-files";
 import type {
@@ -1509,12 +1510,13 @@ function isFeedbackEligible({
   return !!message.endedAt;
 }
 
-// The agent name without the trailing model id — the role header shows the
-// brand logo + name only, so the `· model` suffix is dropped there.
+// API headers show the provider and the model captured for this reply.
+// Local CLI headers keep their existing brand-only presentation.
 export function assistantRoleName(
   message: ChatMessage,
   t: TranslateFn
 ): string {
+  if (isApiProtocolAgentId(message.agentId)) return assistantRoleLabel(message, t);
   const fromName = message.agentName?.trim();
   if (fromName) {
     const base = fromName.split(" · ")[0]?.trim() || fromName;

@@ -12,7 +12,7 @@ afterEach(() => {
 
 const labels = {
   customModel: 'Custom model',
-  customModelLabel: 'Custom model id',
+  customModelLabel: 'Custom model',
   customModelPlaceholder: 'Deployment name',
   fetchModelsUnsupported: 'Fetch models is unavailable.',
   model: 'Deployment name',
@@ -33,7 +33,6 @@ describe('ByokModelField', () => {
         model="deployment-one"
         modelSelectRef={null}
         models={[{ id: 'suggested-model', label: 'Suggested model' }]}
-        modelsLoadedFromAccountMessage="Loaded 1 model from your account."
         providerModelsFailureMessage="Provider models could not be loaded."
         forceTextInput
         showAzureModelFetchHint={false}
@@ -49,7 +48,7 @@ describe('ByokModelField', () => {
 
     expect(screen.getByLabelText('Deployment name')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Deployment name' })).toBeNull();
-    expect(screen.getByRole('status').textContent).toContain('Loaded 1 model');
+    expect(screen.queryByRole('status')).toBeNull();
     expect(screen.getByRole('alert').textContent).toContain('Provider models');
 
     fireEvent.change(screen.getByLabelText('Deployment name'), {

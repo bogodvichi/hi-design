@@ -1,3 +1,5 @@
+import { isApiProtocolAgentId } from './apiProtocol';
+
 const AGENT_LABELS: Record<string, string> = {
   aider: 'Aider',
   amp: 'Amp',
@@ -69,6 +71,10 @@ export function agentIconId(
   agentId?: string | null,
   fallbackName?: string | null,
 ): string {
+  if (
+    isApiProtocolAgentId(agentId)
+    && /^lanz(?:-openai)?(?:\s*·|$)/i.test(fallbackName?.trim() ?? '')
+  ) return 'lanz';
   for (const raw of [agentId, fallbackName]) {
     if (!raw) continue;
     const base = raw.split(' · ')[0]?.trim() || raw;

@@ -52,6 +52,7 @@ describe('KNOWN_PROVIDERS', () => {
     ]));
     expect(moonshot?.retiredModels).toContain('kimi-k2-0711-preview');
     expect(moonshotPreset).toEqual(expect.objectContaining({
+      title: moonshot?.label,
       protocol: moonshot?.protocol,
       baseUrl: moonshot?.baseUrl,
       preferredModels: moonshot?.preferredModels,
@@ -962,6 +963,29 @@ afterEach(() => {
 });
 
 describe('loadConfig', () => {
+  it('defaults new API setup to lanz and preserves saved provider choices', () => {
+    expect(KNOWN_PROVIDERS[0]?.label).toBe('lanz-openai');
+    expect(BYOK_PROVIDER_PRESETS[0]).toMatchObject({ id: 'lanz', title: 'lanz-openai' });
+    expect(BYOK_PROVIDER_PRESETS.some((preset) => preset.id === 'lanz-anthropic')).toBe(false);
+    expect(KNOWN_PROVIDERS.some((provider) => provider.baseUrl.includes('/v3/anthropic/model'))).toBe(false);
+    expect(loadConfig()).toMatchObject({
+      apiProtocol: 'openai',
+      baseUrl: 'http://lanz.hikvision.com/v3/openai/model',
+      apiProviderBaseUrl: 'http://lanz.hikvision.com/v3/openai/model',
+      model: 'EB-DeepSeek-Flash',
+    });
+
+    const savedProvider = {
+      apiProtocol: 'openai',
+      baseUrl: 'https://api.openai.com/v1',
+      apiProviderBaseUrl: 'https://api.openai.com/v1',
+      model: 'my-custom-model',
+    };
+    store.set('open-design:config', JSON.stringify(savedProvider));
+
+    expect(loadConfig()).toMatchObject(savedProvider);
+  });
+
   it('enables completion sound and desktop notifications for a fresh config', () => {
     expect(loadConfig().notifications).toEqual({
       soundEnabled: true,
@@ -1201,7 +1225,7 @@ describe('loadConfig', () => {
 
     const config = loadConfig();
 
-    expect(config.apiProtocol).toBe('anthropic');
+    expect(config.apiProtocol).toBe(DEFAULT_CONFIG.apiProtocol);
     expect(config.apiKey).toBe('');
     expect(config.apiVersion).toBe('');
     expect(config.baseUrl).toBe(DEFAULT_CONFIG.baseUrl);
@@ -1239,7 +1263,7 @@ describe('loadConfig', () => {
 
     const config = loadConfig();
 
-    expect(config.apiProtocol).toBe('anthropic');
+    expect(config.apiProtocol).toBe(DEFAULT_CONFIG.apiProtocol);
     expect(config.apiKey).toBe('');
     expect(config.apiVersion).toBe('');
     expect(config.baseUrl).toBe(DEFAULT_CONFIG.baseUrl);
@@ -1255,7 +1279,7 @@ describe('loadConfig', () => {
     const persisted = JSON.parse(
       store.get('open-design:config') ?? '{}',
     ) as Partial<AppConfig>;
-    expect(persisted.apiProtocol).toBe('anthropic');
+    expect(persisted.apiProtocol).toBe(DEFAULT_CONFIG.apiProtocol);
     expect(persisted.apiKey).toBe('');
     expect(persisted.apiVersion).toBe('');
     expect(persisted.baseUrl).toBe(DEFAULT_CONFIG.baseUrl);
@@ -1431,7 +1455,7 @@ describe('loadConfig', () => {
   });
 
   it('sets an explicit apiProtocol for new default configs', () => {
-    expect(DEFAULT_CONFIG.apiProtocol).toBe('anthropic');
+    expect(DEFAULT_CONFIG.apiProtocol).toBe('openai');
     expect(DEFAULT_CONFIG.configMigrationVersion).toBe(3);
     expect(DEFAULT_CONFIG.accentColor).toBe('#353535');
   });

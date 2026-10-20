@@ -1716,9 +1716,12 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
    divider strip). Spec: outline pill, weight 500, medium size. The compound
    selector out-specifies `button.icon-btn` (height/radius/padding base). */
 .agent-card-installed .agent-card-test-btn {
+  margin: 0 16px 0 4px;
+}
+.agent-card-installed .agent-card-test-btn,
+.settings-byok-connection-test .settings-test-btn {
   align-self: center;
   flex-shrink: 0;
-  margin: 0 16px 0 4px;
   padding: 0 18px;
   height: 36px;
   min-width: auto;
@@ -1729,7 +1732,13 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
   font-size: 13px;
   font-weight: 500;
 }
-.agent-card-installed .agent-card-test-btn:hover:not(:disabled) {
+.agent-card-installed .agent-card-test-btn:disabled,
+.settings-byok-connection-test .settings-test-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.agent-card-installed .agent-card-test-btn:hover:not(:disabled),
+.settings-byok-connection-test .settings-test-btn:hover:not(:disabled) {
   background: color-mix(in srgb, var(--accent-tint) 58%, transparent);
   border-color: color-mix(in srgb, var(--accent) 40%, var(--border));
   color: var(--accent-strong);
@@ -2596,25 +2605,6 @@ button.agent-group-rescan-btn:hover:not(:disabled) {
 }
 .settings-byok-ready {
   color: var(--text-muted);
-}
-.settings-section-byok .settings-test-btn,
-.settings-section-byok .settings-test-btn.loading {
-  border-color: var(--selected);
-  background: var(--selected);
-  color: #fff;
-  box-shadow:
-    0 0 0 3px var(--selected-soft),
-    0 1px 2px color-mix(in srgb, var(--selected) 22%, transparent);
-}
-.settings-section-byok .settings-test-btn:hover:not(:disabled),
-.settings-section-byok .settings-test-btn:focus-visible:not(:disabled) {
-  border-color: color-mix(in srgb, var(--selected) 82%, var(--text-strong));
-  background: color-mix(in srgb, var(--selected) 88%, var(--text-strong));
-  color: #fff;
-}
-.settings-section-byok .settings-test-btn:disabled {
-  opacity: 0.72;
-  color: #fff;
 }
 .settings-memory-summary-value {
   color: var(--text-muted);

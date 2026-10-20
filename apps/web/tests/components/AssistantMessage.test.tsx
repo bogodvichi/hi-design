@@ -90,6 +90,22 @@ function projectCollabValue(workspaceContext = PROJECT_A_CONTEXT) {
   };
 }
 
+describe('assistant provider logo', () => {
+  it('shows the Lanz logo beside the saved provider and model label', () => {
+    const { container } = render(
+      <AssistantMessage
+        message={baseMessage({ agentId: 'openai-api', agentName: 'lanz · EB-DeepSeek-Flash' })}
+        streaming={false}
+        projectId="proj-1"
+      />,
+    );
+    const icon = container.querySelector('.role-agent-icon');
+    expect(icon?.getAttribute('src')).toBe('/agent-icons/lanz.png');
+    expect(icon?.getAttribute('width')).toBe('20');
+    expect(container.querySelector('.role-name')?.textContent).toBe('lanz · EB-DeepSeek-Flash');
+  });
+});
+
 describe('internal control markers', () => {
   // Acceptance: a resumed CLI repeated the daemon's internal title directive on
   // a later turn, and `<od-title>LV奢侈品电商原型</od-title>` rendered as body text.

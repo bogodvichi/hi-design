@@ -30,14 +30,21 @@ export function apiProtocolLabel(protocol: ApiProtocol | undefined): string {
 export function apiProtocolModelLabel(
   protocol: ApiProtocol | undefined,
   model: string,
+  providerName?: string,
 ): string {
-  const label = `${apiProtocolLabel(protocol)} via OpenCode`;
+  const label = providerName
+    ?.replace(/(?:\s+—\s+|-)(?:Anthropic|OpenAI)(?=\s+\(|$)/iu, '')
+    .trim() || apiProtocolLabel(protocol);
   const trimmed = model.trim();
   return trimmed ? `${label} · ${trimmed}` : label;
 }
 
 export function apiProtocolAgentId(protocol: ApiProtocol | undefined): string {
   return API_PROTOCOL_AGENT_IDS[protocol ?? 'anthropic'];
+}
+
+export function isApiProtocolAgentId(agentId: string | null | undefined): boolean {
+  return Object.values(API_PROTOCOL_AGENT_IDS).some((id) => id === agentId);
 }
 
 export function usesAnthropicProxy(cfg: AppConfig): boolean {

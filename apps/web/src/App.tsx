@@ -2,7 +2,8 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { flushSync } from 'react-dom';
 import { AnimatePresence, motion, MotionConfig } from 'motion/react';
 import { Button } from '@open-design/components';
-import { LoginGate } from './auth/LoginGate';
+import { LoginGate, useAuth } from './auth/LoginGate';
+import { applyLanzAccountConfig, scopeLanzAccountConfig } from './state/lanz-account';
 import { reportAgentDetectDiagnostics } from './analytics/agent-detect';
 import { useAnalytics } from './analytics/provider';
 import {
@@ -973,6 +974,7 @@ export function App() {
 }
 
 function AppInner() {
+  const { username, lanzAccount } = useAuth();
   const { t } = useI18n();
   const iframeKeepAlivePool = useIframeKeepAlivePool();
   const clientType = useMemo(() => detectClientType(), []);
@@ -1062,7 +1064,12 @@ function AppInner() {
       root.classList.remove('is-window-blurred');
     };
   }, [clientType, hostPlatform]);
-  const [config, setConfig] = useState<AppConfig>(() => loadConfig());
+  const [config, setConfig] = useState<AppConfig>(() => {
+    const loaded = loadConfig();
+    const scoped = scopeLanzAccountConfig(loaded, username);
+    if (scoped !== loaded) saveConfig(scoped);
+    return scoped;
+  });
   const configRef = useRef(config);
   configRef.current = config;
   const latestPersistedConfigRef = useRef(config);
@@ -1424,6 +1431,18 @@ function AppInner() {
   // so they don't race ahead of the daemon-stored choice and overwrite it
   // with a freshly picked first-available agent.
   const [daemonConfigLoaded, setDaemonConfigLoaded] = useState(false);
+  useEffect(() => {
+    if (!daemonConfigLoaded) return;
+    const previous = latestPersistedConfigRef.current;
+    const scoped = scopeLanzAccountConfig(previous, username);
+    const next = lanzAccount && lanzAccount.username.toLowerCase() === username?.toLowerCase()
+      ? applyLanzAccountConfig(scoped, lanzAccount)
+      : scoped;
+    if (next === previous) return;
+    latestPersistedConfigRef.current = next;
+    saveConfig(next);
+    setConfig(next);
+  }, [daemonConfigLoaded, username, lanzAccount]);
   // True only when GET /api/app-config returned a real config object. Gates
   // features that need to know the daemon-backed config has actually landed
   // rather than treating a failed/null fetch as "no preference yet".

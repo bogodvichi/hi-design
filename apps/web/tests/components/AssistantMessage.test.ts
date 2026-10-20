@@ -1,8 +1,29 @@
 import { describe, expect, it } from 'vitest';
-import { assistantRoleLabel } from '../../src/components/AssistantMessage';
+import { assistantRoleLabel, assistantRoleName } from '../../src/components/AssistantMessage';
 import type { ChatMessage } from '../../src/types';
 
 const t = () => 'Assistant';
+
+describe('assistantRoleName', () => {
+  it.each(['EB-DeepSeek-Flash', 'EB-G61'])('shows the API provider and per-reply model %s', (model) => {
+    const message: ChatMessage = {
+      id: 'lanz-reply',
+      role: 'assistant',
+      content: '',
+      agentId: 'openai-api',
+      agentName: `lanz · ${model}`,
+    };
+
+    expect(assistantRoleName(message, t)).toBe(`lanz · ${model}`);
+  });
+
+  it('keeps local CLI role headers unchanged', () => {
+    expect(assistantRoleName({
+      id: 'cli-reply', role: 'assistant', content: '',
+      agentId: 'claude', agentName: 'Claude · claude-sonnet-4-6',
+    }, t)).toBe('Claude');
+  });
+});
 
 describe('assistantRoleLabel', () => {
   it('prefers the persisted assistant display name over the protocol id', () => {

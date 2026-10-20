@@ -15,9 +15,15 @@ describe('api protocol labels', () => {
 
   it('includes the selected model when labeling API assistant messages', () => {
     expect(apiProtocolModelLabel('openai', 'google/gemma-4-e4b')).toBe(
-      'OpenAI API via OpenCode · google/gemma-4-e4b',
+      'OpenAI API · google/gemma-4-e4b',
     );
-    expect(apiProtocolModelLabel('azure', '  ')).toBe('Azure OpenAI via OpenCode');
+    expect(apiProtocolModelLabel('azure', '  ')).toBe('Azure OpenAI');
+  });
+
+  it.each(['EB-DeepSeek-Flash', 'EB-G61'])('labels lanz with the selected model %s', (model) => {
+    expect(apiProtocolModelLabel('openai', model, 'lanz-openai')).toBe(`lanz · ${model}`);
+    expect(apiProtocolModelLabel('openai', model, 'lanz — OpenAI')).toBe(`lanz · ${model}`);
+    expect(apiProtocolModelLabel('anthropic', model, 'lanz — Anthropic')).toBe(`lanz · ${model}`);
   });
 
   it('includes explicit local CLI models when labeling agent messages', () => {

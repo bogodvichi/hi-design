@@ -19,11 +19,11 @@ export function ByokProviderPicker({
   onProviderSelect,
 }: ByokProviderPickerProps) {
   const options = [
-    { id: '', label: customProviderLabel },
     ...providers.map((provider, index) => ({
       id: String(index),
       label: provider.label,
     })),
+    { id: '', label: customProviderLabel },
   ];
 
   return (

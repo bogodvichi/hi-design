@@ -624,7 +624,7 @@ export const hu: Dict = {
   'settings.cliEnvCodexBaseUrl': 'Codex/OpenAI proxy Base URL',
   'settings.cliEnvCodexApiKey': 'Codex/OpenAI CLI API-kulcs',
   'settings.modelCustom': 'Egyedi (gépeld be alább)…',
-  'settings.modelCustomLabel': 'Egyedi modell-id',
+  'settings.modelCustomLabel': 'Egyedi modell',
   'settings.modelCustomPlaceholder': 'pl. anthropic/claude-sonnet-4-6',
   'settings.mediaProviders': 'Média-szolgáltatók',
   'settings.mediaProvidersHint': 'API-kulcsok kép-, videó- és hanggeneráláshoz. Helyben tárolva, és a helyi daemonnal szinkronizálva.',

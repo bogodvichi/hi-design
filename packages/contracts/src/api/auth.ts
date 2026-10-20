@@ -52,3 +52,28 @@ export interface AiResearchLaunchResponse {
   launchUrl: string;
   expiresIn: number;
 }
+
+/** Fixed Lanz OpenAI gateway, configured after the current OA account signs in. */
+export const LANZ_OPENAI_BASE_URL = 'http://lanz.hikvision.com/v3/openai/model';
+export const LANZ_DEFAULT_MODEL = 'EB-DeepSeek-Flash';
+
+export type LanzAccountFailureKind =
+  | 'not_signed_in'
+  | 'session_expired'
+  | 'account_mismatch'
+  | 'key_unavailable'
+  | 'unavailable';
+
+/** Device-local credential response. Never log, cache in HTTP, or send to analytics. */
+export interface LanzAccountCredentials {
+  ok: true;
+  username: string;
+  apiKey: string;
+  baseUrl: string;
+  defaultModel: string;
+}
+
+export type LanzAccountResponse =
+  | LanzAccountCredentials
+  | { ok: false; kind: LanzAccountFailureKind };
+

@@ -859,6 +859,7 @@ import { registerAutomationRoutes } from './routes/automation.js';
 import { registerAttributionRoutes } from './routes/attribution.js';
 import { registerDaemonRoutes } from './routes/daemon.js';
 import { registerAuthRoutes } from './routes/auth.js';
+import { registerLanzAccountRoutes } from './routes/auth-lanz.js';
 import { registerHikUedroRoutes } from './routes/hik/_routes/uedro.js';
 import { registerHikHikkeRoutes } from './routes/hik/_routes/hikke.js';
 import { registerHdwRoutes } from './routes/hik/_routes/hdw.js';
@@ -8845,6 +8846,11 @@ const teamResourceListByKind = {
   const forDesignerDir = DAEMON_RESOURCE_ROOT
     ? path.join(DAEMON_RESOURCE_ROOT, 'for-designer')
     : path.join(PROJECT_ROOT, 'for-designer');
+
+  registerLanzAccountRoutes(app, {
+    paths: { RUNTIME_DATA_DIR },
+    http: { requireLocalDaemonRequest },
+  });
 
   registerAuthRoutes(app, {
     env: process.env,

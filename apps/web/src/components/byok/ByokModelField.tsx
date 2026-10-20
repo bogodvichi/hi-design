@@ -21,7 +21,6 @@ interface ByokModelFieldProps {
   model: string;
   modelSelectRef: Ref<HTMLButtonElement>;
   models: AgentModelOption[];
-  modelsLoadedFromAccountMessage: string | null;
   providerModelsFailureMessage: string | null;
   forceTextInput?: boolean;
   showAzureModelFetchHint: boolean;
@@ -41,7 +40,6 @@ export function ByokModelField({
   model,
   modelSelectRef,
   models,
-  modelsLoadedFromAccountMessage,
   providerModelsFailureMessage,
   forceTextInput = false,
   showAzureModelFetchHint,
@@ -112,11 +110,6 @@ export function ByokModelField({
           />
         </label>
       )}
-      {modelsLoadedFromAccountMessage ? (
-        <span className="field-inline-status success" role="status">
-          {modelsLoadedFromAccountMessage}
-        </span>
-      ) : null}
       {providerModelsFailureMessage ? (
         <span className="field-error" role="alert">
           {providerModelsFailureMessage}

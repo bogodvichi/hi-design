@@ -7,6 +7,13 @@ import { installMockOpenDesignHost } from '@open-design/host/testing';
 import type { WorkspaceCollabContext } from '@open-design/contracts';
 import { en } from '../../src/i18n/locales/en';
 
+const lanzAuth = vi.hoisted(() => ({
+  account: null as import('@open-design/contracts').LanzAccountCredentials | null,
+}));
+vi.mock('../../src/auth/LoginGate', () => ({
+  useAuth: () => ({ username: 'alice', userInfo: null, lanzAccount: lanzAuth.account }),
+}));
+
 function optionNames(container: HTMLElement): string[] {
   return within(container).getAllByRole('option').map((option) => {
     const labelledBy = option.getAttribute('aria-labelledby');
@@ -54,6 +61,17 @@ const {
   openExternalUrlMock: vi.fn(),
   analyticsTrackMock: vi.fn(),
 }));
+
+async function waitForProviderModelDiscovery(): Promise<void> {
+  await waitFor(() => {
+    expect(analyticsTrackMock).toHaveBeenCalledWith(
+      'settings_byok_models_fetch_result',
+      expect.objectContaining({ result: 'success' }),
+      undefined,
+    );
+  });
+  expect(screen.queryByText(/✓ Loaded \d+ models(?: from your account)?\./)).toBeNull();
+}
 
 vi.mock('../../src/utils/notifications', async () => {
   const actual = await vi.importActual<typeof import('../../src/utils/notifications')>(
@@ -113,6 +131,7 @@ import { providerModelsCacheKey } from '../../src/components/providerModelsCache
 import { I18nProvider } from '../../src/i18n';
 import { LOCALES } from '../../src/i18n/types';
 import { MAX_MAX_TOKENS, MIN_MAX_TOKENS } from '../../src/state/maxTokens';
+import { loadConfig, saveConfig } from '../../src/state/config';
 import { workspaceDirectoryFixture } from '../helpers/workspace-context';
 import type {
   AgentInfo,
@@ -602,6 +621,33 @@ describe('SettingsDialog privacy settings interactions', () => {
 });
 
 describe('SettingsDialog execution settings BYOK interactions', () => {
+  afterEach(() => { lanzAuth.account = null; });
+  it('fills Lanz after login even when its empty provider draft was already opened', () => {
+    const initial: AppConfig = {
+      ...baseConfig, apiProtocol: 'openai', apiKey: '',
+      baseUrl: 'http://lanz.hikvision.com/v3/openai/model',
+      apiProviderBaseUrl: 'http://lanz.hikvision.com/v3/openai/model',
+      model: 'EB-G61',
+    };
+    const view = renderSettingsDialog(initial);
+    fireEvent.click(screen.getByRole('tab', { name: 'OpenAI' }));
+    lanzAuth.account = {
+      ok: true, username: 'alice', apiKey: 'test-account-key',
+      baseUrl: initial.baseUrl, defaultModel: 'EB-DeepSeek-Flash',
+    };
+    view.rerender(
+      <SettingsDialog initial={initial} agents={availableAgents} daemonLive
+        appVersionInfo={null} initialSection="execution" onPersist={view.onPersist}
+        onPersistComposioKey={view.onPersistComposioKey} onClose={view.onClose}
+        onRefreshAgents={view.onRefreshAgents} />,
+    );
+    fireEvent.click(screen.getByRole('tab', { name: 'lanz-openai' }));
+    const input = screen.getByLabelText('API key') as HTMLInputElement;
+    expect(input.value).toBe('test-account-key');
+    expect(input.type).toBe('password');
+    expect((screen.getByLabelText('Base URL') as HTMLInputElement).value).toBe(initial.baseUrl);
+  });
+
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
@@ -646,11 +692,11 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     renderSettingsDialog();
 
     expect(screen.getByRole('tablist', { name: en['settings.protocolAria'] })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Anthropic' }).getAttribute('aria-selected')).toBe('true');
+    expect(screen.getByRole('tab', { name: 'Anthropic (Claude)' }).getAttribute('aria-selected')).toBe('true');
     expect(screen.getByRole('tab', { name: 'OpenAI' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Azure OpenAI' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Google Gemini' })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: 'Ollama Cloud' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'Ollama Cloud (managed)' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'SenseAudio' })).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'AIHubMix' })).toBeTruthy();
     expect(screen.queryByRole('tab', { name: 'AWS Bedrock' })).toBeNull();
@@ -707,7 +753,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     expect(apiKeyInput.value).toBe('sk-openai-provider');
     expect(apiKeyInput.type).toBe('text');
 
-    fireEvent.click(screen.getByRole('tab', { name: 'DeepSeek' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'DeepSeek — OpenAI' }));
 
     expect(apiKeyInput.value).toBe('');
     expect(apiKeyInput.type).toBe('password');
@@ -721,7 +767,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     expect(apiKeyInput.value).toBe('sk-openai-provider');
     expect(apiKeyInput.type).toBe('text');
 
-    fireEvent.click(screen.getByRole('tab', { name: 'DeepSeek' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'DeepSeek — OpenAI' }));
 
     expect(apiKeyInput.value).toBe('sk-deepseek-provider');
     expect(apiKeyInput.type).toBe('password');
@@ -737,14 +783,14 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
 
     const apiKeyInput = screen.getByLabelText('API key') as HTMLInputElement;
     fireEvent.change(apiKeyInput, { target: { value: 'sk-openai-provider' } });
-    fireEvent.click(screen.getByRole('tab', { name: 'DeepSeek' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'DeepSeek — OpenAI' }));
     fireEvent.change(apiKeyInput, { target: { value: 'sk-deepseek-provider' } });
 
     expect(screen.getByRole('tab', { name: 'OpenAI' }).getAttribute('title')).toBe(
       'OpenAI - Configured',
     );
-    expect(screen.getByRole('tab', { name: 'DeepSeek' }).getAttribute('title')).toBe(
-      'DeepSeek - Configured',
+    expect(screen.getByRole('tab', { name: 'DeepSeek — OpenAI' }).getAttribute('title')).toBe(
+      'DeepSeek — OpenAI - Configured',
     );
   });
 
@@ -758,7 +804,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
 
     const apiKeyInput = screen.getByLabelText('API key') as HTMLInputElement;
     fireEvent.change(apiKeyInput, { target: { value: 'sk-openai-provider' } });
-    fireEvent.click(screen.getByRole('tab', { name: 'DeepSeek' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'DeepSeek — OpenAI' }));
 
     await waitForPersist(
       first.onPersist,
@@ -803,6 +849,44 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
       'https://api.openai.com/v1',
     );
     expect(screen.getByRole('combobox', { name: 'Model' }).textContent).toContain('gpt-4o');
+  });
+
+  it.each(['', 'sk-lanz-old'])('keeps the saved Lanz key when reopening with an older provider draft %j', async (oldKey) => {
+    vi.useFakeTimers();
+    const baseUrl = 'http://lanz.hikvision.com/v3/openai/model';
+    const apiConfig = {
+      apiKey: oldKey,
+      baseUrl,
+      model: 'EB-DeepSeek-Flash',
+      apiProviderBaseUrl: baseUrl,
+    };
+    try {
+      const first = renderSettingsDialog({
+        ...apiConfig,
+        apiProtocol: 'openai',
+        byokPendingProviderKey: `openai:${baseUrl}`,
+        byokProviderConfigDrafts: {
+          [`openai:${baseUrl}`]: { apiConfig },
+        },
+      });
+      fireEvent.change(screen.getByLabelText('API key'), {
+        target: { value: 'sk-lanz-saved' },
+      });
+      await act(async () => { await vi.advanceTimersByTimeAsync(400); });
+      const saved = first.onPersist.mock.calls.at(-1)?.[0] as AppConfig;
+      expect(saved).toMatchObject({ apiKey: 'sk-lanz-saved', byokPendingProviderKey: undefined });
+      saveConfig(saved);
+      first.unmount();
+
+      const reopened = renderSettingsDialog(loadConfig());
+      expect((screen.getByLabelText('API key') as HTMLInputElement).value).toBe('sk-lanz-saved');
+      expect((screen.getByLabelText('Base URL') as HTMLInputElement).value).toBe(baseUrl);
+      expect(screen.getByRole('combobox', { name: 'Model' }).textContent).toContain('EB-DeepSeek-Flash');
+      reopened.unmount();
+    } finally {
+      vi.useRealTimers();
+      localStorage.removeItem('open-design:config');
+    }
   });
 
   it('keeps BYOK file-editing limits discoverable from the provider heading (issue #1106)', () => {
@@ -972,12 +1056,12 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
   it('offers managed and self-hosted Ollama presets with editable base URLs', () => {
     renderSettingsDialog();
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Ollama Cloud' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Ollama Cloud (managed)' }));
     const providerPopover = openGatewayPresetPopover();
     expect(optionNames(providerPopover)).toEqual([
-      'Custom provider',
       'Ollama Cloud (managed)',
       'Ollama Self-hosted (local)',
+      'Custom provider',
     ]);
     fireEvent.click(screen.getByRole('combobox', { name: 'Provider preset' }));
     expect((screen.getByLabelText('Base URL') as HTMLInputElement).readOnly).toBe(false);
@@ -990,7 +1074,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     expect(screen.getByRole('button', { name: 'Test' })).toBeTruthy();
   });
 
-  it('saves and auto-tests the self-hosted Ollama preset without an API key', async () => {
+  it('saves and manually tests the self-hosted Ollama preset without an API key', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
       if (url === '/api/workspace/context') {
@@ -1027,7 +1111,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     vi.stubGlobal('fetch', fetchMock);
     const { onPersist } = renderSettingsDialog();
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Ollama Cloud' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Ollama Cloud (managed)' }));
     selectGatewayPreset('Ollama Self-hosted (local)');
 
     await waitForPersist(
@@ -1042,6 +1126,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
       {},
     );
 
+    fireEvent.click(screen.getByRole('button', { name: 'Test' }));
     await waitFor(() => {
       expect(screen.getByText(/Connected\. Replied in 28 ms/)).toBeTruthy();
     });
@@ -1065,7 +1150,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
       target: { value: 'openai-key' },
     });
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Anthropic' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Anthropic (Claude)' }));
     expect((screen.getByLabelText('API key') as HTMLInputElement).value).toBe('anthropic-key');
 
     fireEvent.click(screen.getByRole('tab', { name: 'OpenAI' }));
@@ -1404,7 +1489,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     });
     fireEvent.blur(screen.getByLabelText('API key'));
 
-    expect(await screen.findByText(/✓ Loaded \d+ models(?: from your account)?\./)).toBeTruthy();
+    await waitForProviderModelDiscovery();
     expect(fetchProviderModelsMock).toHaveBeenCalledWith(
       expect.objectContaining({
         protocol: 'openai',
@@ -1418,7 +1503,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     const modelPopover = screen.getByTestId('settings-byok-model-popover');
     expect(optionNames(modelPopover)).toEqual(expect.arrayContaining([
       'Account Model (gpt-account) · From your account',
-      'gpt-4o · Suggested',
+      'gpt-4o - Default',
       'Custom (type below)…',
     ]));
     expect(analyticsTrackMock).toHaveBeenCalledWith(
@@ -1439,12 +1524,12 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     expect(screen.queryByRole('button', { name: 'Fetch models' })).toBeNull();
     expect(screen.getByText(/Azure deployments can’t be fetched automatically/)).toBeTruthy();
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Ollama Cloud' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Ollama Cloud (managed)' }));
     expect(screen.queryByRole('button', { name: 'Fetch models' })).toBeNull();
     expect(screen.getByText('Model discovery is not available for this protocol.')).toBeTruthy();
 
     fetchProviderModelsMock.mockClear();
-    fireEvent.click(screen.getByRole('tab', { name: 'Xiaomi MiMo' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'MiMo (Xiaomi) — OpenAI' }));
     await new Promise((resolve) => window.setTimeout(resolve, 350));
 
     expect(fetchProviderModelsMock).not.toHaveBeenCalled();
@@ -1478,8 +1563,8 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
 
     // If onByokKeyCommit committed the dirty-key cache key, the auto-fetch
     // effect would bail on providerModelsCommittedKey !== providerModelsKey
-    // and this text would never appear.
-    expect(await screen.findByText(/✓ Loaded \d+ models(?: from your account)?\./)).toBeTruthy();
+    // and model discovery would never run.
+    await waitForProviderModelDiscovery();
     expect(fetchProviderModelsMock).toHaveBeenCalledWith(
       expect.objectContaining({
         protocol: 'openai',
@@ -1507,7 +1592,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'OpenAI' }));
 
-    expect(await screen.findByText(/✓ Loaded \d+ models(?: from your account)?\./)).toBeTruthy();
+    await waitForProviderModelDiscovery();
     expect(screen.getByRole('combobox', { name: 'Model' }).textContent).toContain(
       'Account Ready (account-ready-model) · From your account',
     );
@@ -1565,9 +1650,9 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Moonshot' }));
 
-    expect(await screen.findByText(/✓ Loaded \d+ models(?: from your account)?\./)).toBeTruthy();
+    await waitForProviderModelDiscovery();
     expect(screen.getByRole('combobox', { name: 'Model' }).textContent).toContain(
-      'Kimi K2.6 (kimi-k2.6) · From your account',
+      'Kimi K2.6 (kimi-k2.6) - Default',
     );
     expect(screen.getByRole('combobox', { name: 'Model' }).textContent).not.toContain(
       'account-first',
@@ -1580,9 +1665,9 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
       }),
       {},
     );
-    await waitFor(() => {
-      expect(testedModels).toEqual(['kimi-k2.6']);
-    });
+    expect(testedModels).toEqual([]);
+    fireEvent.click(screen.getByRole('button', { name: 'Test' }));
+    await waitFor(() => expect(testedModels).toEqual(['kimi-k2.6']));
   });
 
   it('does not treat the first upstream model as the default when no preference matches', async () => {
@@ -1605,7 +1690,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'OpenAI' }));
 
-    expect(await screen.findByText(/✓ Loaded \d+ models(?: from your account)?\./)).toBeTruthy();
+    await waitForProviderModelDiscovery();
     expect(screen.getByRole('combobox', { name: 'Model' }).textContent).not.toContain(
       'account-first',
     );
@@ -1643,7 +1728,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Custom provider' }));
 
-    expect((screen.getByLabelText('Custom model id') as HTMLInputElement).value).toBe('');
+    expect((screen.getByLabelText('Custom model') as HTMLInputElement).value).toBe('');
 
     fireEvent.change(screen.getByLabelText('Base URL'), {
       target: { value: 'https://custom.example.com/v1' },
@@ -1653,7 +1738,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     });
     fireEvent.blur(screen.getByLabelText('API key'));
 
-    expect(await screen.findByText(/✓ Loaded \d+ models(?: from your account)?\./)).toBeTruthy();
+    await waitForProviderModelDiscovery();
     expect(screen.getByRole('combobox', { name: 'Model' }).textContent).toContain(
       'Endpoint Model (endpoint-model) · From your account',
     );
@@ -1685,13 +1770,13 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'OpenAI' }));
 
-    expect(await screen.findByText(/✓ Loaded \d+ models(?: from your account)?\./)).toBeTruthy();
+    await waitForProviderModelDiscovery();
 
-    fireEvent.click(screen.getByRole('tab', { name: 'DeepSeek' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'DeepSeek — OpenAI' }));
     expect(screen.queryByText(/✓ Loaded \d+ models(?: from your account)?\./)).toBeNull();
 
     fireEvent.click(screen.getByRole('tab', { name: 'OpenAI' }));
-    expect(screen.getByText(/✓ Loaded \d+ models(?: from your account)?\./)).toBeTruthy();
+    expect(screen.getByRole('combobox', { name: 'Model' }).textContent).toContain('Account Ready (account-ready-model)');
     expect(fetchProviderModelsMock).toHaveBeenCalledTimes(1);
   });
 
@@ -1716,7 +1801,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     // provider preset id before discovery runs.
     fireEvent.click(screen.getByRole('combobox', { name: 'Model' }));
     const modelPopover = screen.getByTestId('settings-byok-model-popover');
-    fireEvent.click(within(modelPopover).getByRole('option', { name: 'gpt-4o' }));
+    fireEvent.click(within(modelPopover).getByRole('option', { name: 'gpt-4o - Default' }));
 
     // Supplying the key triggers account-model discovery.
     fireEvent.change(screen.getByLabelText('API key'), {
@@ -1724,7 +1809,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     });
     fireEvent.blur(screen.getByLabelText('API key'));
 
-    expect(await screen.findByText(/✓ Loaded \d+ models(?: from your account)?\./)).toBeTruthy();
+    await waitForProviderModelDiscovery();
 
     // The explicit pick must survive discovery — no silent rewrite to the
     // first fetched account model.
@@ -1741,7 +1826,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     );
   });
 
-  it('does not show a BYOK Test button or nag when the API key is still missing', () => {
+  it('shows a disabled BYOK Test button without nagging when the API key is missing', () => {
     renderSettingsDialog({
       apiProtocol: 'anthropic',
       apiKey: '',
@@ -1749,14 +1834,15 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
       model: 'claude-sonnet-4-5',
     });
 
-    expect(screen.queryByRole('button', { name: 'Test' })).toBeNull();
+    expect((screen.getByRole('button', { name: 'Test' }) as HTMLButtonElement).disabled).toBe(true);
 
     fireEvent.blur(screen.getByLabelText('API key'));
 
     expect(screen.queryByText('Fill API key to test the connection.')).toBeNull();
   });
 
-  it('auto-tests a saved complete BYOK config when Settings opens', async () => {
+  it('tests a saved complete BYOK config only after clicking Test', async () => {
+    vi.useFakeTimers();
     const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
       const url = input.toString();
       if (url === '/api/workspace/context') {
@@ -1787,15 +1873,28 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
 
     renderSettingsDialog({ apiKey: 'sk-ant-test-provider' });
 
-    expect(await screen.findByText(/Connected\. Replied in 21 ms/)).toBeTruthy();
+    try {
+      for (let step = 0; step < 4; step += 1) {
+        await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
+      }
+      expect(fetchMock.mock.calls.filter(([input]) => input.toString() === '/api/test/connection')).toHaveLength(0);
+      fireEvent.click(screen.getByRole('button', { name: 'Test' }));
+      await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+      expect(screen.getByText(/Connected\. Replied in 21 ms/)).toBeTruthy();
 
-    const testConnectionCalls = fetchMock.mock.calls.filter(
-      ([input]) => input.toString() === '/api/test/connection',
-    );
-    expect(testConnectionCalls).toHaveLength(1);
+      fireEvent.change(screen.getByLabelText('API key'), { target: { value: 'sk-ant-updated' } });
+      fireEvent.blur(screen.getByLabelText('API key'));
+      for (let step = 0; step < 4; step += 1) {
+        await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
+      }
+      expect(fetchMock.mock.calls.filter(([input]) => input.toString() === '/api/test/connection')).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
-  it('auto-tests BYOK after required fields become locally valid', async () => {
+  it('does not test BYOK automatically after required fields become valid and blur', async () => {
+    vi.useFakeTimers();
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = input.toString();
       if (url === '/api/workspace/directory') {
@@ -1833,11 +1932,19 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
       target: { value: 'sk-ant-test-provider' },
     });
 
-    expect(await screen.findByText(/Connected\. Replied in 14 ms/)).toBeTruthy();
-    const testConnectionCalls = fetchMock.mock.calls.filter(
-      ([input]) => input.toString() === '/api/test/connection',
-    );
-    expect(testConnectionCalls).toHaveLength(1);
+    fireEvent.blur(screen.getByLabelText('API key'));
+    try {
+      for (let step = 0; step < 4; step += 1) {
+        await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
+      }
+      expect(fetchMock.mock.calls.filter(([input]) => input.toString() === '/api/test/connection')).toHaveLength(0);
+      fireEvent.click(screen.getByRole('button', { name: 'Test' }));
+      await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+      expect(screen.getByText(/Connected\. Replied in 14 ms/)).toBeTruthy();
+      expect(fetchMock.mock.calls.filter(([input]) => input.toString() === '/api/test/connection')).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('filters long BYOK model lists after provider discovery succeeds without hiding the current selection', async () => {
@@ -1865,7 +1972,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     });
 
     fireEvent.click(screen.getByRole('tab', { name: 'OpenAI' }));
-    expect(await screen.findByText(/✓ Loaded \d+ models(?: from your account)?\./)).toBeTruthy();
+    await waitForProviderModelDiscovery();
 
     const modelPicker = screen.getByRole('combobox', { name: 'Model' });
     fireEvent.click(modelPicker);
@@ -1881,7 +1988,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     ]);
   });
 
-  it('reports the account model count when account models are combined with provider suggestions', async () => {
+  it('merges account models with provider suggestions without a loaded-count hint', async () => {
     fetchProviderModelsMock.mockResolvedValueOnce({
       ok: true,
       kind: 'success',
@@ -1905,9 +2012,10 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
       apiProviderBaseUrl: 'https://open.bigmodel.cn/api/paas/v4',
     });
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Zhipu AI' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Zhipu' }));
 
-    expect(await screen.findByText('✓ Loaded 8 models from your account.')).toBeTruthy();
+    await waitForProviderModelDiscovery();
+    expect(screen.queryByText('✓ Loaded 8 models from your account.')).toBeNull();
     fireEvent.click(screen.getByRole('combobox', { name: 'Model' }));
     const modelPopover = screen.getByTestId('settings-byok-model-popover');
     expect(within(modelPopover).getByRole('option', { name: 'glm-4-plus · Suggested' })).toBeTruthy();
@@ -1933,9 +2041,9 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     });
 
     fireEvent.click(screen.getByRole('tab', { name: 'OpenAI' }));
-    expect((screen.getByLabelText('Custom model id') as HTMLInputElement).value).toBe('custom-still-here');
+    expect((screen.getByLabelText('Custom model') as HTMLInputElement).value).toBe('custom-still-here');
 
-    expect(await screen.findByText(/✓ Loaded \d+ models(?: from your account)?\./)).toBeTruthy();
+    await waitForProviderModelDiscovery();
     expect(fetchProviderModelsMock).toHaveBeenCalledWith(
       expect.objectContaining({
         protocol: 'openai',
@@ -1949,13 +2057,13 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     const modelPopover = screen.getByTestId('settings-byok-model-popover');
     expect(optionNames(modelPopover)).toEqual(expect.arrayContaining([
       'Remote Alpha (remote-alpha) · From your account',
-      'gpt-4o · From your account',
+      'gpt-4o - Default',
       'Custom (type below)…',
     ]));
-    expect((screen.getByLabelText('Custom model id') as HTMLInputElement).value).toBe('custom-still-here');
+    expect((screen.getByLabelText('Custom model') as HTMLInputElement).value).toBe('custom-still-here');
   });
 
-  it('clears stale fetched-model status when provider fields change', async () => {
+  it('clears stale fetched-model options when provider fields change', async () => {
     fetchProviderModelsMock.mockResolvedValueOnce({
       ok: true,
       kind: 'success',
@@ -1971,15 +2079,17 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     });
 
     fireEvent.click(screen.getByRole('tab', { name: 'OpenAI' }));
-    expect(await screen.findByText(/✓ Loaded \d+ models(?: from your account)?\./)).toBeTruthy();
+    await waitForProviderModelDiscovery();
 
     fireEvent.change(screen.getByLabelText('Base URL'), {
       target: { value: 'https://proxy.example.com/v1' },
     });
 
-    await waitFor(() => {
-      expect(screen.queryByText(/✓ Loaded \d+ models(?: from your account)?\./)).toBeNull();
-    });
+    fireEvent.click(screen.getByRole('combobox', { name: 'Model' }));
+    const modelPopover = screen.getByTestId('settings-byok-model-popover');
+    expect(within(modelPopover).queryByRole('option', {
+      name: 'Remote Alpha (remote-alpha) · From your account',
+    })).toBeNull();
   });
 
   it('does not reuse discovered models for Anthropic full Messages endpoints', () => {
@@ -2013,7 +2123,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
       expect.arrayContaining([expect.stringContaining('deepseek-chat')]),
     );
     expect(within(modelPopover).getByRole('option', { name: 'Custom (type below)…' })).toBeTruthy();
-    expect((screen.getByLabelText('Custom model id') as HTMLInputElement).value).toBe(
+    expect((screen.getByLabelText('Custom model') as HTMLInputElement).value).toBe(
       'mimo-v2.5-pro',
     );
     expect(fetchProviderModelsMock).not.toHaveBeenCalled();
@@ -2074,7 +2184,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     const modelPopover = screen.getByTestId('settings-byok-model-popover');
     fireEvent.click(within(modelPopover).getByRole('option', { name: 'Custom (type below)…' }));
 
-    const customModelInput = screen.getByLabelText('Custom model id') as HTMLInputElement;
+    const customModelInput = screen.getByLabelText('Custom model') as HTMLInputElement;
     expect(customModelInput).toBeTruthy();
     fireEvent.change(customModelInput, {
       target: { value: 'gpt-4.1-custom' },
@@ -2301,7 +2411,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     expect(
       within(baseUrlField as HTMLElement).getByText('Base URL is invalid or unreachable.'),
     ).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Test' })).toBeNull();
+    expect((screen.getByRole('button', { name: 'Test' }) as HTMLButtonElement).disabled).toBe(true);
     expect(screen.queryByText('Ready to test')).toBeNull();
 
     await new Promise((resolve) => window.setTimeout(resolve, 600));
@@ -2349,9 +2459,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
 
     fireEvent.blur(screen.getByLabelText('API key'));
 
-    // The auto-test must survive the apiKey-cleanup re-render: if it fired in
-    // the blur tick it would be dropped by the stale-revision guard and the
-    // success state would never reach the UI.
+    fireEvent.click(screen.getByRole('button', { name: 'Test' }));
     await waitFor(() => {
       expect(screen.getByText(/Connected\. Replied in 7 ms/)).toBeTruthy();
     });
@@ -2404,12 +2512,9 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
       expect(apiKeyInput.value).toBe('sk-ant-test-provider');
     });
     expect(screen.getByText(en['settings.apiKeyCleaned'])).toBeTruthy();
-    await waitFor(() => {
-      const testConnectionCalls = fetchMock.mock.calls.filter(
-        ([input]) => input.toString() === '/api/test/connection',
-      );
-      expect(testConnectionCalls).toHaveLength(1);
-    });
+    expect(fetchMock.mock.calls.filter(
+      ([input]) => input.toString() === '/api/test/connection',
+    )).toHaveLength(0);
   });
 
   it('lets users retry a failed BYOK connection test without editing the API key', async () => {
@@ -2569,6 +2674,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
 
     renderSettingsDialog({ apiKey: 'sk-ant-test-provider' });
 
+    fireEvent.click(screen.getByRole('button', { name: 'Test' }));
     expect(await screen.findByText('Base URL is invalid or unreachable.')).toBeTruthy();
     const baseUrlField = screen.getByLabelText('Base URL').closest('label');
     expect(baseUrlField).toBeTruthy();
@@ -2609,6 +2715,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
 
     renderSettingsDialog({ apiKey: 'sk-ant-test-provider' });
 
+    fireEvent.click(screen.getByRole('button', { name: 'Test' }));
     expect(await screen.findByText('Invalid API key.')).toBeTruthy();
     const apiKeyField = screen.getByLabelText('API key').closest('label');
     expect(apiKeyField).toBeTruthy();
@@ -2662,7 +2769,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
 
     expect(await screen.findByText("Model 'missing-model' not found on this endpoint.")).toBeTruthy();
     await waitFor(() => {
-      expect(document.activeElement).toBe(screen.getByLabelText('Custom model id'));
+      expect(document.activeElement).toBe(screen.getByLabelText('Custom model'));
     });
   });
 });

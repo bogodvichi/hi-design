@@ -624,7 +624,7 @@ export const ja: Dict = {
   'settings.cliEnvCodexBaseUrl': 'Codex/OpenAI プロキシの Base URL',
   'settings.cliEnvCodexApiKey': 'Codex/OpenAI CLI API key',
   'settings.modelCustom': 'カスタム（下に入力）…',
-  'settings.modelCustomLabel': 'カスタムモデル ID',
+  'settings.modelCustomLabel': 'カスタムモデル',
   'settings.modelCustomPlaceholder': '例: anthropic/claude-sonnet-4-6',
   'settings.mediaProviders': 'メディアプロバイダー',
   'settings.mediaProvidersHint': '画像・動画・音声生成のための API キー。ローカルに保存され、ローカルデーモンに同期されます。',

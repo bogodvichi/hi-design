@@ -1941,6 +1941,14 @@ function selectedKnownProviderForConfig(config: AppConfig) {
   );
 }
 
+function configuredApiModelLabel(config: AppConfig): string {
+  return apiProtocolModelLabel(
+    config.apiProtocol,
+    config.model,
+    selectedKnownProviderForConfig(config)?.label,
+  );
+}
+
 function isOpenCodeByokChatProtocol(
   protocol: AppConfig['apiProtocol'],
 ): protocol is ByokChatProtocol {
@@ -4933,7 +4941,7 @@ const coalescedCoverRefresh = useCoalescedCallback(
     }
     return {
       agentId: apiProtocolAgentId(config.apiProtocol),
-      agentName: apiProtocolModelLabel(config.apiProtocol, config.model),
+      agentName: configuredApiModelLabel(config),
     };
   }, [config, agentsById]);
 
@@ -7579,7 +7587,7 @@ const coalescedCoverRefresh = useCoalescedCallback(
               selectedAgent?.name,
               effectiveSelectedAgentChoice?.model,
             )
-          : apiProtocolModelLabel(config.apiProtocol, config.model);
+          : configuredApiModelLabel(config);
       const preTurnFileNames = projectFiles.map((f) => f.name);
       const assistantId = meta?.assistantMessageId ?? randomUUID();
       const assistantMsg: ChatMessage = {
@@ -9492,7 +9500,7 @@ const coalescedCoverRefresh = useCoalescedCallback(
           selectedPluginActionAgent?.name,
           effectiveSelectedPluginActionChoice?.model,
         )
-      : apiProtocolModelLabel(config.apiProtocol, config.model);
+      : configuredApiModelLabel(config);
   const handlePluginFolderAgentAction = useCallback(
     async (relativePath: string, action: PluginFolderAgentAction) => {
       if (currentConversationActionDisabled || !activeConversationId) return;

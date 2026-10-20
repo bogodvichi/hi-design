@@ -624,7 +624,7 @@ export const ko: Dict = {
   'settings.cliEnvCodexBaseUrl': 'Codex/OpenAI 프록시 Base URL',
   'settings.cliEnvCodexApiKey': 'Codex/OpenAI CLI API key',
   'settings.modelCustom': '직접 입력…',
-  'settings.modelCustomLabel': '사용자 지정 모델 ID',
+  'settings.modelCustomLabel': '사용자 지정 모델',
   'settings.modelCustomPlaceholder': '예: anthropic/claude-sonnet-4-6',
   'settings.mediaProviders': '미디어 프로바이더',
   'settings.mediaProvidersHint': '이미지, 비디오, 오디오 생성을 위한 API 키입니다. 로컬에 저장되며 로컬 데몬과 동기화됩니다.',

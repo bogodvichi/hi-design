@@ -629,7 +629,7 @@ export const zhTW: Dict = {
   "settings.cliEnvCodexBaseUrl": "Codex/OpenAI proxy base URL",
   "settings.cliEnvCodexApiKey": "Codex/OpenAI CLI API key",
   "settings.modelCustom": "自訂（在下方填寫）…",
-  "settings.modelCustomLabel": "自訂模型 id",
+  "settings.modelCustomLabel": "自訂模型",
   "settings.modelCustomPlaceholder": "例如 anthropic/claude-sonnet-4-6",
   "settings.mediaProviders": "媒體生成提供商",
   "settings.mediaProvidersHint": "連接圖片、影片、音訊和搜尋供應商。",

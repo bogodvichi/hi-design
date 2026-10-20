@@ -6,6 +6,14 @@ import { describe, expect, it } from 'vitest';
 import { AgentIcon } from '../../src/components/AgentIcon';
 
 describe('AgentIcon', () => {
+  it('renders the supplied Lanz logo at the chat header size', () => {
+    const markup = renderToStaticMarkup(<AgentIcon id="lanz" size={20} />);
+
+    expect(markup).toContain('src="/agent-icons/lanz.png"');
+    expect(markup).toContain('width="20"');
+    expect(markup).not.toContain('agent-icon-fallback');
+  });
+
   it('renders a color-baked agent SVG as an <img> pointing at the bundled asset', () => {
     // qoder has explicit fill colors (#111113, #2adb5c) so it does NOT
     // need theme-aware rendering — `<img>` is fine.

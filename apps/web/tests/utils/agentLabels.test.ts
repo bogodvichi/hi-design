@@ -2,9 +2,22 @@ import { describe, expect, it } from 'vitest';
 
 import {
   agentDisplayName,
+  agentIconId,
   agentModelDisplayName,
   exactAgentDisplayName,
 } from '../../src/utils/agentLabels';
+
+describe('agentIconId', () => {
+  it.each(['lanz', 'lanz-openai'])('uses the Lanz logo for API replies from %s', (provider) => {
+    expect(agentIconId('openai-api', `${provider} · EB-DeepSeek-Flash`)).toBe('lanz');
+  });
+
+  it('keeps other API and local CLI icons unchanged', () => {
+    expect(agentIconId('openai-api', 'OpenAI · gpt-4o')).toBe('openai-api');
+    expect(agentIconId('codex', 'Codex · gpt-5.4')).toBe('codex');
+    expect(agentIconId('codex', 'lanz · EB-DeepSeek-Flash')).toBe('codex');
+  });
+});
 
 describe('agentDisplayName', () => {
   it('returns the canonical label for known agent ids', () => {

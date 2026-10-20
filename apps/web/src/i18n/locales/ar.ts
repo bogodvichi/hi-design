@@ -624,7 +624,7 @@ export const ar: Dict = {
   'settings.cliEnvCodexBaseUrl': 'Base URL لوكيل Codex/OpenAI',
   'settings.cliEnvCodexApiKey': 'مفتاح API لـ Codex/OpenAI CLI',
   'settings.modelCustom': 'مخصص (اكتب أدناه)...',
-  'settings.modelCustomLabel': 'معرف النموذج المخصص',
+  'settings.modelCustomLabel': 'النموذج المخصص',
   'settings.modelCustomPlaceholder': 'مثلاً: anthropic/claude-sonnet-4-6',
   'settings.mediaProviders': 'مزودو الوسائط',
   'settings.mediaProvidersHint': 'مفاتيح API لإنشاء الصور والفيديو والصوت. تخزن محلياً وتزامن مع البرنامج الخفي المحلي.',

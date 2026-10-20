@@ -286,6 +286,87 @@ test('[P0] @critical BYOK quick fill provider updates fields and saved settings 
   await expect(reopenedDialog.getByLabel('API key')).toHaveValue('sk-openai-test');
 });
 
+test('[P1] Lanz keeps the newly saved API key after closing and reopening settings', async ({ page }, testInfo) => {
+  await page.route('**/api/auth/valid', (route) =>
+    route.fulfill({ json: { ok: true, username: 'lanz-ui-test', userInfo: {} } }),
+  );
+  const baseUrl = 'http://lanz.hikvision.com/v3/openai/model';
+  const apiConfig = {
+    apiKey: '',
+    baseUrl,
+    model: 'EB-DeepSeek-Flash',
+    apiProviderBaseUrl: baseUrl,
+  };
+  await routeAgents(page, [{
+    id: 'codex', name: 'Codex CLI', bin: 'codex', available: true,
+    models: [{ id: 'default', label: 'Default' }],
+  }]);
+  await page.route('**/api/provider/models', (route) => route.fulfill({ json: {
+    ok: true, kind: 'success', latencyMs: 1,
+    models: [{ id: apiConfig.model, label: apiConfig.model }],
+  } }));
+  let connectionTests = 0;
+  await page.route('**/api/test/connection', (route) => {
+    connectionTests += 1;
+    return route.fulfill({ json: {
+      ok: true, kind: 'ok', latencyMs: 1, model: apiConfig.model, sample: 'pong',
+    } });
+  });
+  let appConfig = {
+    ...apiConfig,
+    mode: 'api',
+    apiProtocol: 'openai',
+    agentId: 'codex',
+    onboardingCompleted: true,
+    privacyDecisionAt: 1,
+    telemetry: { metrics: false, content: false },
+    byokPendingProviderKey: `openai:${baseUrl}`,
+    byokProviderConfigDrafts: {
+      [`openai:${baseUrl}`]: { apiConfig },
+    },
+  };
+  await page.addInitScript(({ key, config }) => {
+    if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(config));
+  }, { key: STORAGE_KEY, config: appConfig });
+  await page.route('**/api/app-config', async (route) => {
+    if (route.request().method() === 'PUT') {
+      appConfig = { ...appConfig, ...route.request().postDataJSON() };
+    }
+    await route.fulfill({ json: { config: appConfig } });
+  });
+  await page.goto('/settings');
+  await settingsSurface(page).getByTestId('settings-nav-execution').click();
+
+  const dialog = settingsSurface(page);
+  const saved = page.waitForResponse((response) =>
+    response.request().method() === 'PUT'
+    && new URL(response.url()).pathname === '/api/app-config',
+  );
+  await dialog.getByLabel('API key').fill('sk-lanz-ui-test');
+  expect((await saved).ok()).toBe(true);
+  await expect.poll(() => readSavedConfig(page)).toMatchObject({ apiKey: 'sk-lanz-ui-test' });
+  await closeEntrySettings(page, dialog);
+  await expect(page.getByTestId('inline-model-switcher-chip')).toHaveAttribute(
+    'data-tooltip', 'lanz · EB-DeepSeek-Flash',
+  );
+  await page.goto('/settings');
+  await settingsSurface(page).getByTestId('settings-nav-execution').click();
+
+  const reopened = settingsSurface(page);
+  await expect(reopened.getByLabel('API key')).toHaveValue('sk-lanz-ui-test');
+  await expect(reopened.getByLabel('Base URL')).toHaveValue(baseUrl);
+  await expectModelComboboxText(reopened, 'EB-DeepSeek-Flash');
+  expect(connectionTests).toBe(0);
+  const tested = page.waitForResponse((response) =>
+    response.request().method() === 'POST'
+    && new URL(response.url()).pathname === '/api/test/connection',
+  );
+  await reopened.getByRole('button', { name: 'Test', exact: true }).click();
+  expect((await tested).ok()).toBe(true);
+  expect(connectionTests).toBe(1);
+  await page.screenshot({ path: testInfo.outputPath('lanz-settings-reopened.png') });
+});
+
 test('[P1] BYOK Anthropic gateway preset updates fields and persists after reopening', async ({ page }) => {
   await openExecutionSettings(page, {
     mode: 'api',

@@ -628,7 +628,7 @@ export const zhCN: Dict = {
   "settings.cliEnvCodexBaseUrl": "Codex/OpenAI proxy base URL",
   "settings.cliEnvCodexApiKey": "Codex/OpenAI CLI API key",
   "settings.modelCustom": "自定义（在下方填写）…",
-  "settings.modelCustomLabel": "自定义模型 id",
+  "settings.modelCustomLabel": "自定义模型",
   "settings.modelCustomPlaceholder": "例如 anthropic/claude-sonnet-4-6",
   "settings.mediaProviders": "媒体生成提供商",
   "settings.mediaProvidersHint": "连接图片、视频、音频和搜索提供商。",

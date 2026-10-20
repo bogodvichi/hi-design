@@ -33,13 +33,10 @@ export function ByokConnectionTestControl({
   suppressReadyState = false,
   onTestProvider,
 }: ByokConnectionTestControlProps) {
-  const showTestButton = canRunConnectionTest && baseUrlValid;
-  const showReadyState = showTestButton && !suppressReadyState;
+  const canTest = canRunConnectionTest && baseUrlValid;
+  const showReadyState = canTest && !suppressReadyState;
   const showResultStatus =
     providerTestState.status === 'done' && !suppressResultStatus;
-  const showStatus =
-    providerTestState.status === 'running' || showResultStatus || showReadyState;
-  if (!showTestButton && !showStatus) return null;
 
   return (
     <div className="settings-byok-connection-test">
@@ -72,37 +69,35 @@ export function ByokConnectionTestControl({
           </span>
         ) : null}
       </div>
-      {showTestButton ? (
-        <button
-          type="button"
-          className={
-            'ghost icon-btn settings-test-btn' +
-            (providerTestState.status === 'running' ? ' loading' : '')
-          }
-          onClick={() => void onTestProvider()}
-          disabled={providerTestState.status === 'running'}
-          title={labels.testTitle}
-        >
-          {providerTestState.status === 'running' ? (
-            <>
-              <Icon
-                name="spinner"
-                size={14}
-                className="icon-spin"
-              />
-              <span>{labels.test}</span>
-            </>
-          ) : providerTestState.status === 'done' &&
-            !providerTestState.result.ok ? (
-            <>
-              <Icon name="reload" size={14} />
-              <span>{labels.testRetry}</span>
-            </>
-          ) : (
-            labels.test
-          )}
-        </button>
-      ) : null}
+      <button
+        type="button"
+        className={
+          'ghost icon-btn settings-test-btn' +
+          (providerTestState.status === 'running' ? ' loading' : '')
+        }
+        onClick={() => void onTestProvider()}
+        disabled={!canTest || providerTestState.status === 'running'}
+        title={labels.testTitle}
+      >
+        {providerTestState.status === 'running' ? (
+          <>
+            <Icon
+              name="spinner"
+              size={13}
+              className="icon-spin"
+            />
+            <span>{labels.test}</span>
+          </>
+        ) : providerTestState.status === 'done' &&
+          !providerTestState.result.ok ? (
+          <>
+            <Icon name="reload" size={13} />
+            <span>{labels.testRetry}</span>
+          </>
+        ) : (
+          labels.test
+        )}
+      </button>
     </div>
   );
 }

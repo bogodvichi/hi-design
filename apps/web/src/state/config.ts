@@ -77,16 +77,16 @@ export const DEFAULT_ORBIT: OrbitConfig = {
 export const DEFAULT_CONFIG: AppConfig = {
   mode: 'daemon',
   apiKey: '',
-  baseUrl: 'https://api.anthropic.com',
-  model: 'claude-sonnet-4-5',
+  baseUrl: 'http://lanz.hikvision.com/v3/openai/model',
+  model: 'EB-DeepSeek-Flash',
   // New configs should be explicit. loadConfig() still detects parsed legacy
   // saved configs that did not have this field and migrates those from their
   // saved baseUrl/model before applying the current migration version.
-  apiProtocol: 'anthropic',
+  apiProtocol: 'openai',
   apiVersion: '',
   apiProtocolConfigs: {},
   configMigrationVersion: CONFIG_MIGRATION_VERSION,
-  apiProviderBaseUrl: 'https://api.anthropic.com',
+  apiProviderBaseUrl: 'http://lanz.hikvision.com/v3/openai/model',
   agentId: null,
   skillId: null,
   designSystemId: null,
@@ -140,6 +140,13 @@ export interface KnownProvider {
 // presets and are reconciled with the live account catalogue before automatic
 // selection. They are not a replacement for provider model discovery.
 export const KNOWN_PROVIDERS: KnownProvider[] = [
+  {
+    label: 'lanz-openai',
+    protocol: 'openai',
+    baseUrl: 'http://lanz.hikvision.com/v3/openai/model',
+    preferredModels: ['EB-DeepSeek-Flash'],
+    apiKeyConsoleLink: { host: 'lanz.hikvision.com', url: 'https://lanz.hikvision.com/' },
+  },
   {
     label: 'Anthropic (Claude)',
     protocol: 'anthropic',
@@ -503,46 +510,46 @@ export interface ByokProviderPresetConfig {
 }
 
 const BYOK_PROVIDER_PRESET_SPECS = [
-  { id: 'anthropic', title: 'Anthropic', providerLabel: 'Anthropic (Claude)' },
-  { id: 'openai', title: 'OpenAI', providerLabel: 'OpenAI' },
-  { id: 'atlascloud', title: 'Atlas Cloud', providerLabel: 'Atlas Cloud' },
-  { id: 'google-ai-studio', title: 'Google Gemini', providerLabel: 'Google Gemini' },
-  { id: 'ollama', title: 'Ollama Cloud', providerLabel: 'Ollama Cloud (managed)' },
-  { id: 'azure', title: 'Azure OpenAI', providerLabel: 'Azure OpenAI' },
-  { id: 'siliconflow-cn', title: 'SiliconFlow (CN)', providerLabel: 'SiliconFlow (CN)' },
+  { id: 'lanz', providerLabel: 'lanz-openai' },
+  { id: 'anthropic', providerLabel: 'Anthropic (Claude)' },
+  { id: 'openai', providerLabel: 'OpenAI' },
+  { id: 'atlascloud', providerLabel: 'Atlas Cloud' },
+  { id: 'google-ai-studio', providerLabel: 'Google Gemini' },
+  { id: 'ollama', providerLabel: 'Ollama Cloud (managed)' },
+  { id: 'azure', providerLabel: 'Azure OpenAI' },
+  { id: 'siliconflow-cn', providerLabel: 'SiliconFlow (CN)' },
   {
     id: 'siliconflow-global',
-    title: 'SiliconFlow (Global)',
     providerLabel: 'SiliconFlow (Global)',
   },
-  { id: 'ppio', title: 'PPIO', providerLabel: 'PPIO' },
-  { id: 'nvidia', title: 'NVIDIA', providerLabel: 'NVIDIA' },
-  { id: 'stepfun', title: 'StepFun', providerLabel: 'StepFun' },
-  { id: 'deepseek', title: 'DeepSeek', providerLabel: 'DeepSeek — OpenAI' },
-  { id: 'openrouter', title: 'OpenRouter', providerLabel: 'OpenRouter' },
-  { id: 'mistral', title: 'Mistral AI', providerLabel: 'Mistral AI' },
-  { id: 'xai', title: 'xAI', providerLabel: 'xAI' },
-  { id: 'together', title: 'Together AI', providerLabel: 'Together AI' },
-  { id: 'huggingface', title: 'Hugging Face', providerLabel: 'Hugging Face' },
-  { id: 'qwen', title: 'Qwen', providerLabel: 'Qwen' },
-  { id: 'volcengine', title: 'Volcengine Ark', providerLabel: 'Volcengine Ark' },
-  { id: 'qianfan', title: 'Baidu Qianfan', providerLabel: 'Baidu Qianfan' },
-  { id: 'vllm', title: 'vLLM', providerLabel: 'vLLM' },
-  { id: 'mimo', title: 'Xiaomi MiMo', providerLabel: 'MiMo (Xiaomi) — OpenAI' },
-  { id: 'minimax', title: 'MiniMax', providerLabel: 'MiniMax — Anthropic (CN)' },
-  { id: 'moonshot', title: 'Moonshot', providerLabel: 'Moonshot' },
-  { id: 'zhipu', title: 'Zhipu AI', providerLabel: 'Zhipu' },
+  { id: 'ppio', providerLabel: 'PPIO' },
+  { id: 'nvidia', providerLabel: 'NVIDIA' },
+  { id: 'stepfun', providerLabel: 'StepFun' },
+  { id: 'deepseek', providerLabel: 'DeepSeek — OpenAI' },
+  { id: 'openrouter', providerLabel: 'OpenRouter' },
+  { id: 'mistral', providerLabel: 'Mistral AI' },
+  { id: 'xai', providerLabel: 'xAI' },
+  { id: 'together', providerLabel: 'Together AI' },
+  { id: 'huggingface', providerLabel: 'Hugging Face' },
+  { id: 'qwen', providerLabel: 'Qwen' },
+  { id: 'volcengine', providerLabel: 'Volcengine Ark' },
+  { id: 'qianfan', providerLabel: 'Baidu Qianfan' },
+  { id: 'vllm', providerLabel: 'vLLM' },
+  { id: 'mimo', providerLabel: 'MiMo (Xiaomi) — OpenAI' },
+  { id: 'minimax', providerLabel: 'MiniMax — Anthropic (CN)' },
+  { id: 'moonshot', providerLabel: 'Moonshot' },
+  { id: 'zhipu', providerLabel: 'Zhipu' },
 ] as const;
 
 export const BYOK_PROVIDER_PRESETS: ReadonlyArray<ByokProviderPresetConfig> =
-  BYOK_PROVIDER_PRESET_SPECS.map(({ id, title, providerLabel }) => {
+  BYOK_PROVIDER_PRESET_SPECS.map(({ id, providerLabel }) => {
     const provider = KNOWN_PROVIDERS.find((item) => item.label === providerLabel);
     if (!provider) {
       throw new Error(`Missing known provider for BYOK preset: ${providerLabel}`);
     }
     return {
       id,
-      title,
+      title: provider.label,
       protocol: provider.protocol,
       baseUrl: provider.baseUrl,
       preferredModels: provider.preferredModels,

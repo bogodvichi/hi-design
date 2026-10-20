@@ -71,7 +71,7 @@ import {
   type VelaLoginStatus,
 } from '../providers/daemon';
 import type { AgentInfo, ApiProtocol, AppConfig, ExecMode } from '../types';
-import { apiProtocolLabel } from '../utils/apiProtocol';
+import { apiProtocolModelLabel } from '../utils/apiProtocol';
 import { isVisibleLocalCliAgent } from '../utils/visibleAgents';
 import { AgentIcon } from './AgentIcon';
 import { Icon } from './Icon';
@@ -1182,7 +1182,13 @@ export function InlineModelSwitcher({
       ? currentAgent
         ? displayAgentChipName(currentAgent)
         : t('inlineSwitcher.noAgent')
-      : apiProtocolLabel(apiProtocol);
+      : apiProtocolModelLabel(
+          apiProtocol,
+          '',
+          KNOWN_PROVIDERS.find((provider) =>
+            provider.protocol === apiProtocol && provider.baseUrl === config.baseUrl,
+          )?.label,
+        );
   const chipModel =
     config.mode === 'daemon'
       ? isDeepSeekV4FlashCampaignModel(currentModelId)
@@ -1200,9 +1206,11 @@ export function InlineModelSwitcher({
   // a user-configured endpoint, treated as connected.
   const chipConnected =
     config.mode === 'daemon' ? currentAgent?.available === true : true;
-  const chipAgentLabel = currentAgent
-    ? displayAgentName(currentAgent)
-    : t('inlineSwitcher.chipTitle');
+  const chipAgentLabel = config.mode === 'api'
+    ? chipPrimary
+    : currentAgent
+      ? displayAgentName(currentAgent)
+      : t('inlineSwitcher.chipTitle');
 
   const handleChipClick = useCallback(() => {
     const nextOpen = !open;

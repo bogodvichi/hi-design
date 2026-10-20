@@ -624,7 +624,7 @@ export const esES: Dict = {
   'settings.cliEnvCodexBaseUrl': 'Base URL del proxy de Codex/OpenAI',
   'settings.cliEnvCodexApiKey': 'API key de Codex/OpenAI CLI',
   'settings.modelCustom': 'Personalizado (escribe abajo)…',
-  'settings.modelCustomLabel': 'Id de modelo personalizado',
+  'settings.modelCustomLabel': 'Modelo personalizado',
   'settings.modelCustomPlaceholder': 'p. ej., anthropic/claude-sonnet-4-6',
   'settings.mediaProviders': 'Proveedores de medios',
   'settings.mediaProvidersHint': 'Claves de API para generación de imagen, vídeo y audio. Se guardan localmente y se sincronizan con el daemon local.',

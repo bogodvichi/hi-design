@@ -624,7 +624,7 @@ export const fa: Dict = {
   'settings.cliEnvCodexBaseUrl': 'Base URL پراکسی Codex/OpenAI',
   'settings.cliEnvCodexApiKey': 'API key برای Codex/OpenAI CLI',
   'settings.modelCustom': 'سفارشی (در زیر تایپ کنید)…',
-  'settings.modelCustomLabel': 'شناسه مدل سفارشی',
+  'settings.modelCustomLabel': 'مدل سفارشی',
   'settings.modelCustomPlaceholder': 'مثلاً anthropic/claude-sonnet-4-6',
   'settings.mediaProviders': 'ارائه‌دهندگان رسانه',
   'settings.mediaProvidersHint': 'کلیدهای API برای تولید تصویر، ویدئو و صدا. به صورت محلی ذخیره و با daemon محلی همگام می‌شود.',

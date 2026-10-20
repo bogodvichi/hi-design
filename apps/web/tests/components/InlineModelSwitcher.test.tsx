@@ -292,6 +292,22 @@ describe('InlineModelSwitcher AMR row', () => {
     expect(chip.getAttribute('aria-label')).toMatch(/·/u);
   });
 
+  it.each([true, false])('labels the API composer chip with its provider instead of the retained CLI (compact=%s)', (compact) => {
+    renderSwitcher({
+      mode: 'api',
+      agentId: 'codex',
+      apiProtocol: 'openai',
+      baseUrl: 'http://lanz.hikvision.com/v3/openai/model',
+      apiProviderBaseUrl: 'http://lanz.hikvision.com/v3/openai/model',
+      model: 'EB-DeepSeek-Flash',
+    }, [codexAgent], {}, { compact });
+
+    const chip = screen.getByTestId('inline-model-switcher-chip');
+    expect(chip.getAttribute('data-tooltip')).toContain('lanz · EB-DeepSeek-Flash');
+    expect(chip.getAttribute('aria-label')).toContain('lanz · EB-DeepSeek-Flash');
+    expect(chip.getAttribute('data-tooltip')).not.toContain('Codex');
+  });
+
   it('shows an explicit AMR default choice instead of the concrete catalog fallback', () => {
     renderSwitcher(
       {
