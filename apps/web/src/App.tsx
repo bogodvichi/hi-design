@@ -63,7 +63,9 @@ import {
 import { ProjectCreationPendingView } from './components/ProjectCreationPendingView';
 import { AmrArtifactUpgradeGate } from './components/AmrArtifactUpgradeGate';
 import { AmrArtifactUpgradeHomeCard } from './components/AmrArtifactUpgradeHomeCard';
+import { BackToTopButton } from './components/BackToTopButton';
 import { ExperienceSurvey } from './components/ExperienceSurvey';
+import { FeedbackFab } from './components/feedback/FeedbackFab';
 import { TooltipLayer } from './components/TooltipLayer';
 import { UpdateDialog } from './components/UpdateDialog';
 import { UpdaterPopup } from './components/UpdaterPopup';
@@ -6062,6 +6064,12 @@ if (fetchedProject) {
           />
         </div>
       </div>
+      {route.kind === 'project' ? null : (
+        <>
+          <BackToTopButton key={JSON.stringify(route)} />
+          <FeedbackFab />
+        </>
+      )}
       {clientType === 'desktop' ? null : (
         <PetOverlay
           pet={config.pet?.enabled ? config.pet : undefined}

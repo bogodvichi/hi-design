@@ -96,6 +96,20 @@ describe('smoothScrollToTop', () => {
     expect(earlyTravel).toBeGreaterThan(lateTravel);
   });
 
+  it('uses a longer, gently accelerated profile for explicit back-to-top actions', () => {
+    const el = makeContainer(900);
+    smoothScrollToTop(el, 'gentle');
+    pumpFrame(16); // stamp start
+
+    pumpFrame(100);
+    const earlyTravel = 900 - el.scrollTop;
+    expect(earlyTravel).toBeGreaterThan(0);
+    expect(earlyTravel).toBeLessThan(450);
+
+    runAllFrames();
+    expect(el.scrollTop).toBe(0);
+  });
+
   it('jumps instantly when the user prefers reduced motion', () => {
     stubMatchMedia(true);
     const el = makeContainer(700);

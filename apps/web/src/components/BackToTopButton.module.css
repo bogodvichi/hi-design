@@ -1,0 +1,32 @@
+.button.button {
+  position: fixed;
+  right: 24px;
+  bottom: 92px;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: #fff;
+  color: #333;
+  box-shadow: var(--shadow-md);
+  z-index: 1000;
+}
+
+.button.button:hover:not(:disabled) {
+  background: #fff;
+  border-color: transparent;
+  box-shadow: var(--shadow-lg, var(--shadow-md));
+}
+
+.button.button:active:not(:disabled) {
+  background: #fff;
+}
+
+@media (max-width: 640px) {
+  .button.button {
+    right: 24px;
+    bottom: 92px;
+  }
+}

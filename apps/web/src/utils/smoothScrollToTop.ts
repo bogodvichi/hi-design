@@ -52,11 +52,32 @@ function unitBezier(
 
 // House ease-out (AGENTS.md → UI animation philosophy).
 const EASE_OUT = unitBezier(0.23, 1, 0.32, 1);
-const MIN_DURATION_MS = 260;
-const MAX_DURATION_MS = 600;
-// Each extra ~6px of distance buys 1ms, so a viewport-sized hop lands near
-// the minimum and multi-screen flights saturate at the cap.
-const DISTANCE_PER_MS = 6;
+// A gentler acceleration/deceleration curve for an explicit user-requested
+// trip. It avoids the fast initial pull that is useful for automatic route
+// transitions but can feel abrupt on a visible back-to-top control.
+const GENTLE_EASE = unitBezier(0.4, 0, 0.2, 1);
+
+type SmoothScrollProfile = 'default' | 'gentle';
+
+const SCROLL_PROFILES = {
+  default: {
+    ease: EASE_OUT,
+    minDurationMs: 260,
+    maxDurationMs: 600,
+    distancePerMs: 6,
+  },
+  gentle: {
+    ease: GENTLE_EASE,
+    minDurationMs: 420,
+    maxDurationMs: 900,
+    distancePerMs: 4,
+  },
+} satisfies Record<SmoothScrollProfile, {
+  ease: (x: number) => number;
+  minDurationMs: number;
+  maxDurationMs: number;
+  distancePerMs: number;
+}>;
 
 const inFlight = new WeakMap<HTMLElement, () => void>();
 
@@ -68,7 +89,10 @@ function prefersReducedMotion(): boolean {
   );
 }
 
-export function smoothScrollToTop(container: HTMLElement): void {
+export function smoothScrollToTop(
+  container: HTMLElement,
+  profile: SmoothScrollProfile = 'default',
+): void {
   inFlight.get(container)?.();
 
   container.scrollLeft = 0;
@@ -80,9 +104,10 @@ export function smoothScrollToTop(container: HTMLElement): void {
     return;
   }
 
+  const motion = SCROLL_PROFILES[profile];
   const duration = Math.min(
-    MAX_DURATION_MS,
-    MIN_DURATION_MS + from / DISTANCE_PER_MS,
+    motion.maxDurationMs,
+    motion.minDurationMs + from / motion.distancePerMs,
   );
 
   let frame = 0;
@@ -100,7 +125,7 @@ export function smoothScrollToTop(container: HTMLElement): void {
   const step = (now: number) => {
     if (start === null) start = now;
     const t = Math.min(1, (now - start) / duration);
-    container.scrollTop = from * (1 - EASE_OUT(t));
+    container.scrollTop = from * (1 - motion.ease(t));
     if (t < 1) {
       frame = requestAnimationFrame(step);
     } else {

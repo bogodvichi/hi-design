@@ -1,9 +1,9 @@
 .fab {
   position: fixed;
-  right: 28px;
-  bottom: 64px;
-  width: 52px;
-  height: 52px;
+  right: 24px;
+  bottom: 40px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   border: none;
   padding: 0;
@@ -11,7 +11,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  background: var(--accent);
+  background: color-mix(in srgb, var(--accent) 85%, transparent);
   color: var(--accent-contrast);
   box-shadow: var(--shadow-md);
   transition: transform 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
@@ -20,7 +20,7 @@
 
 .fab:hover:not(:disabled) {
   transform: none;
-  background: var(--accent);
+  background: color-mix(in srgb, var(--accent) 85%, transparent);
   color: var(--accent-contrast);
   box-shadow: var(--shadow-md);
 }
@@ -43,9 +43,9 @@
 
 .fabHint {
   position: absolute;
-  right: calc(100% + 10px);
-  top: 50%;
-  transform: translateY(-50%);
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%) translateY(4px);
   background: var(--text-strong);
   color: #fff;
   font-size: 12px;
@@ -54,35 +54,33 @@
   border-radius: 6px;
   white-space: nowrap;
   pointer-events: none;
-  animation: hint-in 0.2s ease;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.16s ease, transform 0.16s ease, visibility 0.16s ease;
+}
+
+.fab:hover .fabHint,
+.fab:focus-visible .fabHint {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
 }
 
 .fabHint::after {
   content: '';
   position: absolute;
-  left: 100%;
-  top: 50%;
-  transform: translateY(-50%);
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
   border: 5px solid transparent;
-  border-left-color: var(--text-strong);
-}
-
-@keyframes hint-in {
-  from {
-    opacity: 0;
-    transform: translateY(-50%) translateX(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(-50%) translateX(0);
-  }
+  border-top-color: var(--text-strong);
 }
 
 @media (max-width: 640px) {
   .fab {
-    right: 16px;
-    bottom: 16px;
-    width: 48px;
-    height: 48px;
+    right: 24px;
+    bottom: 40px;
+    width: 40px;
+    height: 40px;
   }
 }

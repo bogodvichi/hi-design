@@ -1,49 +1,73 @@
-import { useEffect, useRef, useState } from 'react';
-import { Icon } from '../Icon';
+import { useState } from 'react';
 import { Toast } from '../Toast';
 import { FeedbackDialog } from './FeedbackDialog';
 import styles from './FeedbackFab.module.css';
 
 /**
- * Floating feedback button pinned to the bottom-right of the home view.
+ * Floating feedback button pinned to the bottom-right of non-conversation views.
  *
- * A circular button with an envelope glyph. Click opens the feedback dialog
+ * A circular button with a feedback glyph. Click opens the feedback dialog
  * which submits a demand to the Hikke requirements project via the daemon
  * `/api/hik/hikke/demand` route. The current SSO user is the implicit creator
  * (the hikkeToken auth resolves the creator server-side).
  */
 export function FeedbackFab() {
   const [open, setOpen] = useState(false);
-  const [hint, setHint] = useState(true);
   const [submitted, setSubmitted] = useState(false);
-  const dismissedRef = useRef(false);
-
-  // Show the "反馈" tooltip hint for the first few seconds, then retire it
-  // so it doesn't visually clutter the corner on every home visit.
-  useEffect(() => {
-    if (dismissedRef.current) return;
-    const t = window.setTimeout(() => setHint(false), 6000);
-    return () => window.clearTimeout(t);
-  }, []);
 
   return (
     <>
       <button
         type="button"
         className={styles.fab}
-        aria-label="反馈"
+        aria-label="问题反馈"
         aria-haspopup="dialog"
         aria-expanded={open}
-        onClick={() => {
-          dismissedRef.current = true;
-          setHint(false);
-          setOpen(true);
-        }}
+        aria-describedby="feedback-fab-tooltip"
+        onClick={() => setOpen(true)}
       >
         <span className={styles.fabIcon}>
-          <Icon name="mail" size={22} strokeWidth={1.6} aria-hidden />
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 48 48"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden
+          >
+            <path
+              d="M44 6H4V36H13V41L23 36H44V6Z"
+              stroke="currentColor"
+              strokeWidth="4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M14 19.5V22.5"
+              stroke="currentColor"
+              strokeWidth="4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M24 19.5V22.5"
+              stroke="currentColor"
+              strokeWidth="4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+            <path
+              d="M34 19.5V22.5"
+              stroke="currentColor"
+              strokeWidth="4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
         </span>
-        {hint && !open ? <span className={styles.fabHint}>反馈</span> : null}
+        <span id="feedback-fab-tooltip" role="tooltip" className={styles.fabHint}>
+          问题反馈
+        </span>
       </button>
       {open ? (
         <FeedbackDialog
