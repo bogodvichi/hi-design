@@ -70,6 +70,7 @@ import { rewriteCliArgsForDefaultStart } from "./cli-args.js";
 import { ensureDaemonGateForDesktop } from "./desktop-auth-gate.js";
 import { loadWorkspaceLocalEnv } from "./local-env.js";
 import { resolveSharedPortsFromRunningState } from "./shared-ports.js";
+import { resolveDevAgentEnv } from "./agent-env.js";
 
 type CliOptions = ToolDevOptions & {
   envFile?: string | string[];
@@ -449,6 +450,7 @@ async function spawnDaemonRuntime(
       appName: APP_KEYS.DAEMON,
       config,
       env: {
+        ...resolveDevAgentEnv(),
         [SIDECAR_ENV.DAEMON_PORT]: String(daemonPort ?? 0),
         ...(webPort == null ? {} : { [SIDECAR_ENV.WEB_PORT]: String(webPort) }),
         ...(options.parentPid == null ? {} : { [TOOLS_DEV_PARENT_PID_ENV]: String(options.parentPid) }),
