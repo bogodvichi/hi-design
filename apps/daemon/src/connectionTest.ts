@@ -66,6 +66,7 @@ import type { AgentCliEnvPrefs } from './app-config.js';
 import type { RuntimeAgentDef } from './runtimes/types.js';
 import { preparePromptFileForAgent, type PreparedPromptFile } from './runtimes/prompt-file.js';
 import { configuredAllowedInternalHosts } from './origin-validation.js';
+import { LANZ_OPENAI_BASE_URL } from '@open-design/contracts';
 import {
   isAllowlistedInternalHost,
   isBlockedExternalApiHostname,
@@ -203,10 +204,10 @@ export async function validateBaseUrlResolved(
 /**
  * Validate a base URL that the USER deliberately configured as a provider
  * endpoint (connection test, model discovery, BYOK chat dispatch). Identical
- * to {@link validateBaseUrlResolved} except it honors the operator's
- * `OD_ALLOWED_INTERNAL_HOSTS` allowlist (issue #3225), so an internally hosted
- * gateway on an RFC1918 address can be reached when — and only when — the
- * operator opted in.
+ * to {@link validateBaseUrlResolved} except it trusts the built-in Lanz
+ * provider and the operator's `OD_ALLOWED_INTERNAL_HOSTS` additions (issue
+ * #3225). Lanz works without per-device configuration; other internally
+ * hosted gateways require the operator to opt in.
  *
  * INVARIANT: use this ONLY for user-configured endpoints. URLs that arrive
  * inside an upstream response (image/video download links) are
@@ -218,7 +219,10 @@ export function validateUserProviderBaseUrl(
   lookup: DnsLookupFn = defaultDnsLookup,
 ): Promise<BaseUrlValidationResult> {
   return validateBaseUrlResolved(baseUrl, lookup, {
-    allowedInternalHosts: configuredAllowedInternalHosts(),
+    allowedInternalHosts: [
+      new URL(LANZ_OPENAI_BASE_URL).hostname,
+      ...configuredAllowedInternalHosts(),
+    ],
   });
 }
 
