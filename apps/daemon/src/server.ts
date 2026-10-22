@@ -325,6 +325,7 @@ import {
   splitDerivedSkillId,
 } from './skills.js';
 import { resolveSkillCatalogScope } from './skill-catalog-scope.js';
+import { listCloudSkillResources } from './skills/cloud-catalog.js';
 import {
   prepareSkillFromZip,
   prepareSkillFromFiles,
@@ -7676,9 +7677,19 @@ const designSystemBackingProjects = new Map<string, string>();
       return res.json(finalizeSkillList(maasSkills));
    }
    try {
-     const resources = await hdwCloudClient.listResources(workspaceId, 'skill', ownerMemberId, resourceScope || undefined);
+     const resources = await listCloudSkillResources({
+       client: hdwCloudClient,
+       workspace: { workspaceId, workspaceMemberId: scope.principal.memberId, workspaceType: 'team' },
+       ownerMemberId,
+       scope: resourceScope || undefined,
+       readDirectory: fetchWorkspaceDirectoryForAccountSurface,
+     });
        const skills = resources.map((r) => ({
         resourceId: r.id,
+        homeWorkspaceId: r.homeWorkspaceId,
+        homeWorkspaceMemberId: r.homeWorkspaceMemberId,
+        homeWorkspaceType: r.homeWorkspaceType,
+        canManage: r.canManage,
         localId: (r.metadata as any)?.localId ?? r.id,
         title: (r.metadata as any)?.title ?? r.id,
         description: (r.metadata as any)?.description ?? null,
@@ -7697,7 +7708,7 @@ const designSystemBackingProjects = new Map<string, string>();
        })).filter((skill) => communitySkillMatchesQuery(skill, searchQuery));
       res.json(finalizeSkillList([...maasSkills, ...skills]));
     } catch (err: any) {
-      if (maasSkillhubResolved) return res.json(finalizeSkillList(maasSkills));
+      if (maasSkillhubResolved && resourceScope !== 'public') return res.json(finalizeSkillList(maasSkills));
       res.status(500).json({ error: err instanceof Error ? err.message : 'cloud skill list failed' });
     }
   });

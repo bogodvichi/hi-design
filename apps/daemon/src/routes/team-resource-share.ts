@@ -155,9 +155,6 @@ export function registerTeamResourceShareRoutes(
    const scope = await resolveScope(req, res);
    if (!scope) return;
    try {
-     if (deps.authorizeShare && !await deps.authorizeShare(id, scope)) {
-       return res.status(403).json({ error: 'WORKSPACE_RESOURCE_SHARE_DENIED' });
-     }
       const resourceScope = typeof req.query.scope === 'string' ? req.query.scope : undefined;
       const logoCandidate = typeof req.body?.logoKey === 'string' ? req.body.logoKey.trim() : '';
       const categoryCandidate = typeof req.body?.category === 'string' ? req.body.category.trim() : '';
@@ -171,6 +168,20 @@ export function registerTeamResourceShareRoutes(
         ...(requestedLogoKey ? { logoKey: requestedLogoKey } : {}),
         ...(requestedCategory ? { category: requestedCategory } : {}),
       };
+      if (basePath === 'skills' && resourceScope === 'public') {
+        if (!requestedCategory) {
+          return res.status(400).json({ error: 'INVALID_SKILL_CATEGORY', message: 'category is required for community publishing' });
+        }
+        if (!share.publishCloud) {
+          return res.status(503).json({ error: 'CLOUD_SKILL_PUBLISH_UNAVAILABLE' });
+        }
+        const result = await share.publishCloud(id, scope, skillMetadata);
+        invalidateListTeam(scope);
+        return res.json({ shared: true, version: result.version });
+      }
+     if (deps.authorizeShare && !await deps.authorizeShare(id, scope)) {
+       return res.status(403).json({ error: 'WORKSPACE_RESOURCE_SHARE_DENIED' });
+     }
       const result = await share.share(id, scope, {
         ...(resourceScope ? { resourceScope } : {}),
         ...(Object.keys(skillMetadata).length > 0 ? { metadata: skillMetadata } : {}),

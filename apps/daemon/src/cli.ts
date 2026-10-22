@@ -18,7 +18,7 @@ import { splitResearchSubcommand } from './research/cli-args.js';
 import { resolveDaemonUrl } from './daemon-url.js';
 import { requestJsonIpc } from '@open-design/sidecar';
 import { SIDECAR_ENV, SIDECAR_MESSAGES } from '@open-design/sidecar-proto';
-import { EXPORT_FORMATS, EXPORT_IMAGE_FORMATS } from '@open-design/contracts';
+import { EXPORT_FORMATS, EXPORT_IMAGE_FORMATS, isSkillCategory } from '@open-design/contracts';
 import { HDW_BASE } from './http/hdw.js';
 import type { ArtifactLintFinding, LintArtifactCliResultEnvelope, LintArtifactResponse, LintFailOn } from '@open-design/contracts';
 import { buildExportCliRequestBody, buildExportCliResultEnvelope, resolveExportCliDeckMode } from './export-cli-request.js';
@@ -10282,9 +10282,10 @@ async function runSkills(args) {
   if (!args[0] || args[0] === 'help' || args.includes('--help') || args.includes('-h')) {
     console.log(`Usage:
   od skill install <https://github.com/owner/repo|github:owner/repo|https://…tar.gz|https://…tgz> [--json]
-  od skill hub list [--query <text>] --workspace <id> --workspace-member <id> [--json]
+  od skill hub list [--source hdw|all|maas-skillhub] [--mine] [--query <text>] --workspace <id> --workspace-member <id> [--json]
   od skill hub install <id> --workspace <id> --workspace-member <id> [--json]
   od skill hub uninstall <id> --workspace <id> --workspace-member <id> [--json]
+  od skill publish <cloud-resource-id> --category <category> --workspace <id> --workspace-member <id> [--logo <key>] [--json]
   od skill list
   od skill show <id>
   od skill uninstall <id>
@@ -10293,18 +10294,41 @@ async function runSkills(args) {
     process.exit(args[0] ? 0 : 2);
   }
   if (args[0] === 'hub') return runSkillHub(args.slice(1));
+  if (args[0] === 'publish') return runSkillPublish(args.slice(1));
   if (args[0] === 'install' || args[0] === 'add') return runSkillInstall(args.slice(1));
   if (args[0] === 'uninstall' || args[0] === 'remove') return runSkillUninstall(args.slice(1));
   return runLibraryList('skills', args);
 }
 
+async function runSkillPublish(rest) {
+  const stringFlags = new Set([...LIBRARY_STRING_FLAGS, 'category', 'logo']);
+  const flags = parseFlags(rest, { string: stringFlags, boolean: LIBRARY_BOOLEAN_FLAGS });
+  const id = positionalArgs(rest, stringFlags)[0];
+  if (!id || !isSkillCategory(flags.category)) {
+    console.error('Usage: od skill publish <cloud-resource-id> --category <development_tools|content_creation|data_analysis|productivity|other> --workspace <id> --workspace-member <id> [--logo <key>] [--json]');
+    process.exit(2);
+  }
+  const headers = workspaceHeadersFromExplicitFlags(flags, true);
+  const base = (await libraryDaemonUrl(flags)).replace(/\/$/, '');
+  const resp = await fetch(`${base}/api/workspace/skills/${encodeURIComponent(id)}/share?scope=public`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    body: JSON.stringify({ category: flags.category, ...(flags.logo ? { logoKey: flags.logo } : {}) }),
+  });
+  if (!resp.ok) return structuredHttpFailure(resp);
+  const data = await resp.json();
+  if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
+  console.log(`Published ${id}`);
+}
+
 async function runSkillHub(rest) {
-  const flags = parseFlags(rest, { string: LIBRARY_STRING_FLAGS, boolean: LIBRARY_BOOLEAN_FLAGS });
-  const positional = positionalArgs(rest, LIBRARY_STRING_FLAGS);
+  const stringFlags = new Set([...LIBRARY_STRING_FLAGS, 'source']);
+  const flags = parseFlags(rest, { string: stringFlags, boolean: new Set([...LIBRARY_BOOLEAN_FLAGS, 'mine']) });
+  const positional = positionalArgs(rest, stringFlags);
   const action = positional[0];
   if (!action || action === 'help' || flags.help || flags.h) {
     console.log(`Usage:
-  od skill hub list [--query <text>] --workspace <id> --workspace-member <id> [--json]
+  od skill hub list [--source hdw|all|maas-skillhub] [--mine] [--query <text>] --workspace <id> --workspace-member <id> [--json]
   od skill hub install <id> --workspace <id> --workspace-member <id> [--json]
   od skill hub uninstall <id> --workspace <id> --workspace-member <id> [--json]`);
     process.exit(action ? 0 : 2);
@@ -10312,7 +10336,13 @@ async function runSkillHub(rest) {
   const base = (await libraryDaemonUrl(flags)).replace(/\/$/, '');
   const workspaceHeaders = workspaceHeadersFromExplicitFlags(flags, true);
   if (action === 'list') {
-    const params = new URLSearchParams({ source: 'maas-skillhub', scope: 'public' });
+    const source = flags.source ?? (flags.mine ? 'hdw' : 'maas-skillhub');
+    if (!['hdw', 'all', 'maas-skillhub'].includes(source) || (flags.mine && source !== 'hdw')) {
+      console.error('Skill source must be hdw, all, or maas-skillhub; --mine requires hdw.');
+      process.exit(2);
+    }
+    const params = new URLSearchParams({ source, scope: 'public' });
+    if (flags.mine) params.set('owner_member_id', flags['workspace-member']);
     if (typeof flags.query === 'string' && flags.query.trim()) params.set('q', flags.query.trim());
     const resp = await fetch(`${base}/api/workspace/skills/cloud?${params}`, {
       headers: workspaceHeaders,

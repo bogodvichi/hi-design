@@ -62,10 +62,10 @@ vi.mock('../../src/collab/useWorkspaceContext', () => ({
 }));
 
 vi.mock('../../src/collab/workspace-identity', () => ({
-  workspaceProjectHeaders: () => ({
-    'x-od-workspace-id': 'workspace-1',
-    'x-od-workspace-member-id': 'member-1',
-    'x-od-workspace-type': 'team',
+  workspaceProjectHeaders: (context: any) => ({
+    'x-od-workspace-id': context.workspaceId,
+    'x-od-workspace-member-id': context.workspaceMemberId,
+    'x-od-workspace-type': context.workspaceType,
   }),
 }));
 
@@ -81,6 +81,31 @@ function jsonResponse(body: unknown): Response {
 }
 
 describe('PublishDialog Skill category', () => {
+  it('publishes a team Skill using its cloud resource id and selected team identity', async () => {
+    const onPublish = vi.fn();
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === '/api/workspace/directory') return jsonResponse({ items: [
+        { workspaceId: 'workspace-1', workspaceName: 'Personal', workspaceType: 'team', workspaceMemberId: 'member-1', isDefaultTeam: true, memberStatus: 'active' },
+        { workspaceId: 'team-a', workspaceName: '技术平台部', workspaceType: 'team', workspaceMemberId: 'member-a', memberStatus: 'active' },
+      ] });
+      if (url === '/api/workspace/skills/cloud?owner_member_id=member-a') return jsonResponse({ skills: [
+        { localId: 'requirement-analysis', resourceId: 'skill-team-a-requirement-analysis', title: 'Requirement analysis' },
+      ] });
+      if (url === '/api/workspace/skills/skill-team-a-requirement-analysis/share?scope=public') return jsonResponse({ shared: true, version: 3 });
+      return jsonResponse({ skills: [] });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<I18nProvider initial="zh-CN"><PublishDialog initialCategory="skill" onClose={() => {}} onPublish={onPublish} /></I18nProvider>);
+    fireEvent.click(await screen.findByRole('button', { name: /技术平台部/ }));
+    fireEvent.click(await screen.findByText('Requirement analysis'));
+    fireEvent.click(screen.getByRole('radio', { name: '开发工具' }));
+    fireEvent.click(screen.getByRole('button', { name: '确认发布' }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/workspace/skills/skill-team-a-requirement-analysis/share?scope=public',
+      expect.objectContaining({ method: 'POST', headers: expect.objectContaining({ 'x-od-workspace-id': 'team-a', 'x-od-workspace-member-id': 'member-a' }) })));
+    await waitFor(() => expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({ name: 'Requirement analysis' })));
+  });
+
   beforeEach(() => {
     uploadSkillToCloudMock.mockReset();
     uploadSkillToCloudMock.mockResolvedValue({ ok: true, title: 'my-skill' });

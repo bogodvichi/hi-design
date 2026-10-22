@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { CloudSkillList } from '../../src/components/CloudSkillList';
@@ -16,6 +16,31 @@ function jsonResponse(body: unknown): Response {
 }
 
 describe('CloudSkillList Skillhub integration', () => {
+  it.each(['取消发布', '删除'])('uses the source team identity for %s on My publishes', async (action) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.startsWith('/api/workspace/skills/cloud?')) return jsonResponse({ skills: [{
+        resourceId: 'skill-team-analysis', localId: 'ued-requirement-analysis', title: 'ued-requirement-analysis', ownerMemberId: 'team-member',
+        homeWorkspaceId: 'team-a', homeWorkspaceMemberId: 'team-member', homeWorkspaceType: 'team', canManage: true,
+      }] });
+      if (url === '/api/skills') return jsonResponse({ skills: [] });
+      return jsonResponse({ ok: true });
+    });
+    globalThis.fetch = fetchMock as typeof fetch;
+    render(<I18nProvider initial="zh-CN"><CloudSkillList workspaceId="personal" workspaceMemberId="personal-member" workspaceType="team"
+      ownerMemberId="personal-member" mode="square" scope="public" /></I18nProvider>);
+    const title = await screen.findByText('ued-requirement-analysis');
+    fireEvent.click(title.closest('article')!.querySelector('button')!);
+    fireEvent.click(screen.getByRole('button', { name: action }));
+    const dialog = await screen.findByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('button', { name: action }));
+    const path = '/api/workspace/skills/cloud/skill-team-analysis' + (action === '取消发布' ? '/unpublish' : '');
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(path, expect.objectContaining({
+      method: action === '取消发布' ? 'POST' : 'DELETE',
+      headers: expect.objectContaining({ 'x-od-workspace-id': 'team-a', 'x-od-workspace-member-id': 'team-member' }),
+    })));
+  });
+
   afterEach(() => {
     cleanup();
     globalThis.fetch = originalFetch;

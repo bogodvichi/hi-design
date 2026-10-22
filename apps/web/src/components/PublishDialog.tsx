@@ -9,7 +9,7 @@ import { Icon, type IconName } from './Icon';
 import { useI18n, useT } from '../i18n';
 import type { Dict, Locale } from '../i18n/types';
 import type { Project } from '../types';
-import type { McpServerConfig, WorkspaceCollabContext, WorkspaceDirectoryItem } from '@open-design/contracts';
+import type { McpServerConfig, PublishCloudSkillRequest, PublishCloudSkillResponse, WorkspaceCollabContext, WorkspaceDirectoryItem } from '@open-design/contracts';
 import {
   importProjectFiles,
   importProjectZip,
@@ -1833,20 +1833,20 @@ function SkillTab({
     setBusy(true);
     try {
       if (source === 'internal') {
-        if (!selectedSkill) return;
+        if (!selectedSkill || !category) return;
         const shareContext = selectedSkillWorkspace
           ? workspaceContextFromDirectoryItem(selectedSkillWorkspace)
           : workspaceContext;
         const headers = shareContext ? workspaceProjectHeaders(shareContext) : {};
         const response = await fetch(
-          `/api/workspace/skills/${encodeURIComponent(selectedSkill.id)}/share?scope=public`,
+          `/api/workspace/skills/${encodeURIComponent(selectedSkill.resourceId ?? selectedSkill.id)}/share?scope=public`,
           {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', ...headers },
-            body: JSON.stringify({ logoKey, category }),
+            body: JSON.stringify({ logoKey, category } satisfies PublishCloudSkillRequest),
           },
         );
-        const body = (await response.json().catch(() => ({}))) as { shared?: boolean; message?: string; error?: string };
+        const body = (await response.json().catch(() => ({}))) as Partial<PublishCloudSkillResponse> & { message?: string; error?: string };
         if (!response.ok || !body.shared) {
           throw new Error(body.message || body.error || t('pluginsView.shareFailed', { title: selectedSkill.name }));
         }

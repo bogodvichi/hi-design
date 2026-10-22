@@ -38,6 +38,10 @@ describe('od skill install CLI', () => {
           headers: req.headers,
         });
         res.setHeader('content-type', 'application/json');
+        if (req.url?.endsWith('/share?scope=public')) {
+          res.end(JSON.stringify({ shared: true, version: 3 }));
+          return;
+        }
         if (req.url === '/api/skills') {
           res.end(JSON.stringify({ skills: [
             { id: 'remote-skill', name: 'remote-skill', aggregatesExamples: true },
@@ -103,6 +107,34 @@ describe('od skill install CLI', () => {
     } else {
       expect(result.stdout.trim()).toBe('remote-skill\tremote-skill');
     }
+  });
+
+  it('publishes the cloud Skill with an explicit workspace and category', async () => {
+    const result = await runCli(['skill', 'publish', 'skill-team-a-analysis', '--category', 'data_analysis',
+      '--logo', 'research', '--workspace', 'team-a', '--workspace-member', 'member-a', '--daemon-url', baseUrl, '--json']);
+    expect(result.code).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({ shared: true, version: 3 });
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({ method: 'POST', url: '/api/workspace/skills/skill-team-a-analysis/share?scope=public',
+      headers: { 'x-od-workspace-id': 'team-a', 'x-od-workspace-member-id': 'member-a' },
+      body: JSON.stringify({ category: 'data_analysis', logoKey: 'research' }) });
+  });
+
+  it('rejects an invalid publication category before sending a request', async () => {
+    const result = await runCli(['skill', 'publish', 'skill-team-a-analysis', '--category', 'invalid',
+      '--workspace', 'team-a', '--workspace-member', 'member-a', '--daemon-url', baseUrl]);
+    expect(result.code).toBe(2);
+    expect(requests).toHaveLength(0);
+  });
+
+  it.each([false, true])('queries the community cloud Skill catalog with My publishes %s', async (mine) => {
+    const result = await runCli(['skill', 'hub', 'list', '--source', 'hdw', ...(mine ? ['--mine'] : []),
+      '--workspace', 'personal', '--workspace-member', 'personal-member', '--daemon-url', baseUrl, '--json']);
+    expect(result.code).toBe(0);
+    const query = new URL(requests[0]!.url, baseUrl).searchParams;
+    expect(query.get('scope')).toBe('public');
+    expect(query.get('source')).toBe('hdw');
+    expect(query.get('owner_member_id')).toBe(mine ? 'personal-member' : null);
   });
 
   it('POSTs the plugin-compatible source and prints the response as JSON', async () => {

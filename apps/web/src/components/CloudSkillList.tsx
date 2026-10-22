@@ -20,6 +20,7 @@ import {
   type SkillCategory,
   type SkillCategoryCounts,
   type SkillCategoryFilter,
+  type CloudSkillWorkspaceContext,
 } from '@open-design/contracts';
 import {
   skillCategoryButtonLabel,
@@ -30,7 +31,7 @@ import { resolveFloatingMenuHorizontalAlign } from '../utils/floating-menu-place
 import { recordCommunityStat } from '../utils/community-stats';
 import { isSkillLogoKey, SkillLogo } from './SkillLogo';
 
-interface CloudSkill {
+interface CloudSkill extends Partial<CloudSkillWorkspaceContext> {
   resourceId: string;
   localId: string;
   title: string;
@@ -42,7 +43,6 @@ createdAt: string;
 updatedAt: string;
 // Shared-with-me fields (only present in shared mode)
 sharedByDisplayname?: string | null;
-homeWorkspaceId?: string;
 provider?: string;
 sourceLabel?: string;
 publisherName?: string | null;
@@ -498,7 +498,7 @@ useEffect(() => {
         '/api/workspace/skills/cloud/' + encodeURIComponent(skill.resourceId),
         {
           method: 'DELETE',
-          headers: workspaceHeaders(workspaceId, workspaceMemberId, workspaceType),
+          headers: workspaceHeaders(skill.homeWorkspaceId ?? workspaceId, skill.homeWorkspaceMemberId ?? workspaceMemberId, skill.homeWorkspaceType ?? workspaceType),
         },
       );
       if (!res.ok) {
@@ -523,7 +523,7 @@ useEffect(() => {
         '/api/workspace/skills/cloud/' + encodeURIComponent(skill.resourceId) + '/unpublish',
         {
           method: 'POST',
-          headers: workspaceHeaders(workspaceId, workspaceMemberId, workspaceType),
+          headers: workspaceHeaders(skill.homeWorkspaceId ?? workspaceId, skill.homeWorkspaceMemberId ?? workspaceMemberId, skill.homeWorkspaceType ?? workspaceType),
         },
       );
       if (!res.ok) {
@@ -739,6 +739,7 @@ useEffect(() => {
            || skill.teamShared === true
           || (skill.provider !== 'maas-skillhub' && localSkillIds.has(skill.localId.toLowerCase()));
           const canManageCloudRecord = skill.provider !== 'maas-skillhub' && !skill.teamShared;
+          const isResourceOwner = skill.canManage ?? skill.ownerMemberId === workspaceMemberId;
           const isInstalling = installingId === skill.resourceId;
           const isUninstalling = uninstallingId === skill.resourceId;
           const isUnpublishing = unpublishingId === skill.resourceId;
@@ -841,7 +842,7 @@ useEffect(() => {
                             {t('personalScope.cloudSkillUninstall' as any)}
                           </button>
                         ) : null}
-                       {canManageCloudRecord && mode === 'square' && skill.ownerMemberId === workspaceMemberId ? (
+                       {canManageCloudRecord && mode === 'square' && isResourceOwner ? (
                           <button
                             type="button"
                             className={styles.cardMenuItem}
@@ -852,7 +853,7 @@ useEffect(() => {
                             {t('squareScope.unpublish' as any)}
                           </button>
                         ) : null}
-                       {canManageCloudRecord && (mode === 'personal' || (mode === 'square' && skill.ownerMemberId === workspaceMemberId)) ? (
+                       {canManageCloudRecord && (mode === 'personal' || (mode === 'square' && isResourceOwner)) ? (
                           <button
                             type="button"
                             className={styles.cardMenuItemDanger}
@@ -932,7 +933,7 @@ useEffect(() => {
           resourceId={shareItem.resourceId}
           kind="skill"
           resourceName={shareItem.title}
-          homeWorkspaceId={workspaceId ?? ''}
+          homeWorkspaceId={shareItem.homeWorkspaceId ?? workspaceId ?? ''}
           onClose={() => setShareItem(null)}
         />
       ) : null}

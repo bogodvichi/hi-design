@@ -114,6 +114,8 @@ export function teamResourceRequestScopeForWorkspaceId(
 export interface TeamResourceShareService {
   /** Share a resource to the team. Returns the published version, or null off-team. */
   share(resourceId: string, scope: TeamResourceRequestScope, options?: { resourceScope?: string; metadata?: Record<string, unknown> }): Promise<{ version: number } | null>;
+  /** Publish an owned cloud resource without requiring a locally installed copy. */
+  publishCloud?(resourceId: string, scope: TeamResourceRequestScope, metadata: Record<string, unknown>): Promise<{ version: number | null }>;
   /** Remove a resource from the team index. Returns false off-team/unconfigured. */
   unshare(resourceId: string, scope: TeamResourceRequestScope): Promise<boolean>;
   /** Ids of resources shared to the team. */
@@ -197,6 +199,23 @@ export function createTeamResourceShareService(
         return shared;
       };
    return {
+    async publishCloud(resourceId, scope, metadata) {
+      if (!scope.canShare) throw new TeamResourceShareForbiddenError();
+      const { teamId, memberId } = scope.principal;
+      const resource = await client.getResource(teamId, resourceId);
+      if (!resource) throw new Error('cloud resource not found');
+      if (resource.kind !== options.kind || resource.ownerMemberId !== memberId) {
+        throw new TeamResourceShareForbiddenError();
+      }
+      const { payload } = await client.request<{ code: number; msg?: string }>(
+        'PUT',
+        `/api/workspaces/${encodeURIComponent(teamId)}/resources/${encodeURIComponent(resourceId)}`,
+        { metadata: { ...resource.metadata, ...metadata }, scope: 'public' },
+        { 'x-hdw-workspace-id': teamId },
+      );
+      if (payload.code !== 0) throw new Error(payload.msg || 'cloud resource publish failed');
+      return { version: resource.version };
+    },
     async share(resourceId, scope, options) {
        if (!scope.canShare) throw new TeamResourceShareForbiddenError();
         const { principal } = scope;

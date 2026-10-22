@@ -18,6 +18,25 @@ export const SKILL_CATEGORIES = [
 
 export type SkillCategory = (typeof SKILL_CATEGORIES)[number];
 
+/** Publish an owned cloud Skill through POST /api/workspace/skills/:resourceId/share?scope=public. */
+export interface PublishCloudSkillRequest {
+  category: SkillCategory;
+  logoKey?: string;
+}
+
+export interface PublishCloudSkillResponse {
+  shared: boolean;
+  version?: number | null;
+}
+
+/** Source identity for a public Skill collected from another accessible workspace. */
+export interface CloudSkillWorkspaceContext {
+  homeWorkspaceId: string;
+  homeWorkspaceMemberId: string;
+  homeWorkspaceType: 'personal' | 'team';
+  canManage: boolean;
+}
+
 export type SkillCategoryFilter = 'all' | SkillCategory;
 
 export type SkillCategoryCounts = Record<SkillCategoryFilter, number>;
