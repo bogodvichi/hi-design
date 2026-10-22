@@ -3257,7 +3257,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
       if (!mention) return [];
       const stagedSkillIds = new Set(stagedSkills.map((s) => s.id));
       return skills
-        .filter((s) => !stagedSkillIds.has(s.id))
+        .filter((s) => !s.parentSkillId && !stagedSkillIds.has(s.id))
         .filter((s) => skillMatchesQuery(s, mentionQuery))
         .sort((a, b) => skillMentionRank(a, mentionQuery) - skillMentionRank(b, mentionQuery));
     }, [mention, mentionQuery, skills, stagedSkills]);
@@ -5045,7 +5045,7 @@ function ToolsSkillsPanel({
   const [query, setQuery] = useState('');
   const [pendingId, setPendingId] = useState<string | null>(null);
   const visibleSkills = useMemo(
-    () => skills.filter((s) => skillMatchesQuery(s, query)).slice(0, 24),
+    () => skills.filter((s) => !s.parentSkillId && skillMatchesQuery(s, query)).slice(0, 24),
     [skills, query],
   );
   return (

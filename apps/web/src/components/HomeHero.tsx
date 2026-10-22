@@ -669,7 +669,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
   const skillMatches = useMemo(
     () =>
       mentionActive
-        ? skillOptions.filter((skill) => skillMatchesQuery(skill, mentionQuery, locale))
+        ? skillOptions.filter((skill) => !skill.parentSkillId && skillMatchesQuery(skill, mentionQuery, locale))
         : [],
     [locale, mentionActive, mentionQuery, skillOptions],
   );

@@ -93,6 +93,8 @@ export interface SkillInfo {
   examplePrompt: string;
   examplePromptI18n?: Record<string, string>;
   aggregatesExamples: boolean;
+  /** Owning Skill for a derived preview entry, excluded from Skill pickers. */
+  parentSkillId?: string;
   /**
    * Per-skill Critique Theater override declared via `od.critique.policy`
    * in the skill's SKILL.md frontmatter. The daemon's rollout resolver
@@ -394,6 +396,7 @@ export async function listSkills(
           seenIds.add(derivedId);
           out.push({
             id: derivedId,
+            parentSkillId: parentId,
             name: humanizeExampleName(example.key),
             description,
             ...(descriptionI18n ? { descriptionI18n } : {}),

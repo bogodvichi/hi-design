@@ -77,6 +77,21 @@ function expectPickRowPreventsMousedown(name: RegExp) {
 }
 
 describe('ComposerPlusMenu pick-row caret protection', () => {
+  it.each(['All', 'Mine', 'Team'])('excludes example entries from the %s Skill tab', async (tab) => {
+    const personal = { id: 'personal-parent', name: 'Personal parent', aggregatesExamples: true, workspaceId: 'personal-ws' };
+    const team = { id: 'team-parent', name: 'Team parent', aggregatesExamples: true, workspaceId: 'team-allowed' };
+    const examples = [personal, team].map((parent) => ({
+      ...parent, id: `${parent.id}:report`, name: `${parent.name} example`, parentSkillId: parent.id, aggregatesExamples: false,
+    }));
+    renderMenu({ skills: [personal, team, ...examples] as never, personalWorkspaceId: 'personal-ws' });
+    fireEvent.click(screen.getByTestId('plus-trigger'));
+    fireEvent.click(screen.getByTestId('composer-plus-skills'));
+    fireEvent.click(screen.getByRole('tab', { name: tab }));
+    expect(screen.queryByRole('menuitem', { name: personal.name }) !== null).toBe(tab !== 'Team');
+    expect(screen.queryByRole('menuitem', { name: team.name }) !== null).toBe(tab !== 'Mine');
+    for (const example of examples) expect(screen.queryByText(example.name)).toBeNull();
+  });
+
   it('always shows All, Mine, and Team and filters Mine/Team by personal workspace id', () => {
     renderMenu({
       skills: [PERSONAL_SKILL, TEAM_SKILL, OTHER_TEAM_SKILL],

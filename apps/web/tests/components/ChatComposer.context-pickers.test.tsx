@@ -314,6 +314,23 @@ afterEach(() => {
 });
 
 describe('ChatComposer context pickers', () => {
+  it.each(['+', '@'])('offers one parent Skill with three examples through project %s', async (entry) => {
+    const parent = { ...SKILL, id: 'ued-requirement-analysis', name: 'ued-requirement-analysis', aggregatesExamples: true };
+    const examples = ['Analysis Report', 'Dashboard Analysis Report', 'Single View Analysis Report']
+      .map((name) => ({ ...SKILL, id: `${parent.id}:${name.toLowerCase().replaceAll(' ', '-')}`, name, parentSkillId: parent.id }));
+    skills = [parent, ...examples];
+    renderComposer();
+    await flushMounts();
+    if (entry === '+') {
+      fireEvent.click(screen.getByTestId('chat-plus-trigger'));
+      fireEvent.click(await screen.findByTestId('composer-plus-skills'));
+    } else {
+      await typeAndSettle('@');
+    }
+    expect(await screen.findByText(parent.name)).toBeTruthy();
+    for (const example of examples) expect(screen.queryByText(example.name)).toBeNull();
+  });
+
   it.each(['@', '+'])('preserves uploaded Skill provenance when selected through %s in an old project', async (entry) => {
     const selected = { ...SKILL, id: 'design-review', name: 'design-review',
       workspaceId: 'uploaded-workspace', ownerMemberId: 'uploader' };

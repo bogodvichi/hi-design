@@ -38,6 +38,13 @@ describe('od skill install CLI', () => {
           headers: req.headers,
         });
         res.setHeader('content-type', 'application/json');
+        if (req.url === '/api/skills') {
+          res.end(JSON.stringify({ skills: [
+            { id: 'remote-skill', name: 'remote-skill', aggregatesExamples: true },
+            { id: 'remote-skill:report', name: 'Report', parentSkillId: 'remote-skill' },
+          ] }));
+          return;
+        }
         res.end(JSON.stringify({
           skill: {
             id: 'remote-skill',
@@ -84,6 +91,19 @@ describe('od skill install CLI', () => {
       };
     }
   }
+
+  it.each([false, true])('lists the parent Skill without its examples with JSON mode %s', async (json) => {
+    const result = await runCli(['skill', 'list', '--daemon-url', baseUrl, ...(json ? ['--json'] : [])]);
+    expect(result.code).toBe(0);
+    expect(requests[0]?.url).toBe('/api/skills');
+    if (json) {
+      expect(JSON.parse(result.stdout).skills).toEqual([
+        { id: 'remote-skill', name: 'remote-skill', aggregatesExamples: true },
+      ]);
+    } else {
+      expect(result.stdout.trim()).toBe('remote-skill\tremote-skill');
+    }
+  });
 
   it('POSTs the plugin-compatible source and prints the response as JSON', async () => {
     const result = await runCli([

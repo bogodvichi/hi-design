@@ -551,20 +551,21 @@ export function ComposerPlusMenu({
  const permittedTeamWorkspaceIds = new Set(teamWorkspaceIds);
   const usedSkillIdSet = new Set(usedSkillIds);
   const usedMcpIdSet = new Set(usedMcpIds);
+ const selectableSkills = skills.filter((skill) => !skill.parentSkillId);
  const tabSkills =
    skillTab === 'mine'
-     ? skills.filter((skill) => (
+     ? selectableSkills.filter((skill) => (
          !skill.workspaceId?.trim()
          || skill.workspaceId === personalSkillWorkspaceId
        ))
      : skillTab === 'team'
-       ? skills.filter((skill) => (
+       ? selectableSkills.filter((skill) => (
            Boolean(skill.workspaceId?.trim())
            && skill.workspaceId !== personalSkillWorkspaceId
          ))
        : skillTab === 'recent'
-         ? skills.filter((skill) => usedSkillIdSet.has(skill.id))
-       : skills;
+         ? selectableSkills.filter((skill) => usedSkillIdSet.has(skill.id))
+       : selectableSkills;
  const filteredSkills = needle
    ? tabSkills.filter((skill) => skillMatchesQuery(skill, needle))
    : tabSkills;

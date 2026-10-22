@@ -171,6 +171,25 @@ async function pickHomeTemplate(id: string) {
 }
 
 describe('HomeView context picker', () => {
+  it.each(['+', '@'])('offers one parent Skill with three examples through home %s', async (entry) => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 200 })));
+    const parent = { ...SKILL, id: 'ued-requirement-analysis', name: 'ued-requirement-analysis', aggregatesExamples: true };
+    const examples = ['Analysis Report', 'Dashboard Analysis Report', 'Single View Analysis Report']
+      .map((name) => ({ ...SKILL, id: `${parent.id}:${name.toLowerCase().replaceAll(' ', '-')}`, name, parentSkillId: parent.id }));
+    render(<HomeView projects={[]} skills={[parent, ...examples]} onSubmit={() => undefined}
+      onOpenProject={() => undefined} onViewAllProjects={() => undefined} />);
+    await screen.findByTestId('home-hero-input');
+    if (entry === '+') {
+      fireEvent.click(screen.getByTestId('home-hero-plus-trigger'));
+      fireEvent.click(await screen.findByTestId('composer-plus-skills'));
+    } else {
+      setHomeHeroPrompt('@');
+      await settle();
+    }
+    expect(await screen.findByRole(entry === '+' ? 'menuitem' : 'option', { name: /ued-requirement-analysis/ })).toBeTruthy();
+    for (const example of examples) expect(screen.queryByText(example.name)).toBeNull();
+  });
+
   it('refreshes all Skills on first plus-menu open without switching scope tabs', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 200 })));
     const onSkillsRefresh = vi.fn(async () => {

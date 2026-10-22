@@ -10240,6 +10240,9 @@ async function runLibraryList(name, args) {
       });
       if (!resp.ok) return structuredHttpFailure(resp);
       const data = await resp.json();
+      if (name === 'skills' && Array.isArray(data.skills)) {
+        data.skills = data.skills.filter((skill) => !skill.parentSkillId);
+      }
       if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
       const rows = data?.[name === 'design-systems' ? 'designSystems' : name] ?? [];
       for (const row of rows) {

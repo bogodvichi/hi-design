@@ -215,14 +215,16 @@ export interface SkillSummary {
   hasBody: boolean;
   examplePrompt: string;
   examplePromptI18n?: Record<string, string>;
-  // True when this skill exists only to group derived `<parent>:<child>`
-  // example cards. The Examples gallery hides such cards because their
+  // True when this Skill has derived `<parent>:<child>` example cards.
+  // Skill pickers retain the parent; the Examples gallery hides it because its
   // preview would duplicate one of the derived cards and add no extra
   // information, but the entry stays in the listing so `findSkillById`
   // resolves the parent for system-prompt composition and "Use this
   // prompt" fast-create on a derived card still composes the parent's
   // SKILL.md body.
   aggregatesExamples: boolean;
+  /** Owning Skill for a derived preview entry. Skill pickers exclude these entries. */
+  parentSkillId?: string;
   /**
    * True for a skill materialized locally from a TEAMMATE's team share (the
    * puller's copy — never set on the sharer's own skill; mirrors

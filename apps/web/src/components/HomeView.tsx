@@ -1531,7 +1531,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
   );
 
   const selectableSkills = useMemo(
-    () => skills.filter((skill) => !skill.aggregatesExamples),
+    () => skills.filter((skill) => !skill.parentSkillId),
     [skills],
   );
 
