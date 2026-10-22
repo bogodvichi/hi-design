@@ -1,4 +1,4 @@
-import type { Express } from 'express';
+import type { Express, RequestHandler } from 'express';
 import type {
   AiResearchLaunchResponse,
   GetCurrentUserAvatarResponse,
@@ -6,6 +6,8 @@ import type {
   LoginRequest,
   LoginResponse,
   LogoutResponse,
+  UedroLaunchRequest,
+  UedroLaunchResponse,
 } from '@open-design/contracts';
 import type { Cookie } from '../http/http.js';
 import {
@@ -18,6 +20,8 @@ import {
   type SsoSession,
 } from '../http/hik_logins/hicoo.js';
 import {
+  createUedroLaunchUrl,
+  normalizeUedroLaunchTarget,
   uedroLogin,
   uedroLogout,
   uedroValidate,
@@ -52,8 +56,10 @@ export interface RegisterAuthRoutesDeps {
   sendApiError: (...args: any[]) => any;
   dataDir: string;
   FOR_DESIGNER_DIR?: string;
+  requireLocalDaemonRequest?: RequestHandler;
   createHiMindLaunch?: () => Promise<{ launchUrl: string; expiresIn: number } | null>;
   createAiResearchLaunch?: () => Promise<{ launchUrl: string; expiresIn: number } | null>;
+  createUedroLaunch?: (targetUrl: string) => Promise<{ launchUrl: string; expiresIn: number } | null>;
   fetchUplusAvatar?: (username: string, password: string) => Promise<UplusAvatarResult>;
   syncCommunityAvatar?: (dataDir: string, username: string, avatarUrl: string) => Promise<boolean>;
 }
@@ -86,6 +92,8 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
   const expectedPassword = env.OD_WEB_PASSWORD ?? DEFAULT_WEB_PASSWORD;
   const fetchUplusAvatar = deps.fetchUplusAvatar ?? fetchUplusAvatarOnLogin;
   const syncCommunityAvatar = deps.syncCommunityAvatar ?? syncHdwCommunityAvatar;
+  const requireLocalDaemonRequest: RequestHandler =
+    deps.requireLocalDaemonRequest ?? ((_req, _res, next) => next());
   let lastCommunityAvatarSyncKey = '';
   let pendingCommunityAvatarSync: { key: string; promise: Promise<boolean> } | null = null;
   const cachedCommunityAvatarSyncAttempts = new Set<string>();
@@ -289,6 +297,43 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
       avatarUrl,
     };
     return res.json(response);
+  });
+
+  app.post('/api/auth/uedro/launch', requireLocalDaemonRequest, async (req, res) => {
+    res.setHeader('Cache-Control', 'no-store');
+    const body = (req.body ?? {}) as Partial<UedroLaunchRequest>;
+    const targetUrl = normalizeUedroLaunchTarget(body.targetUrl);
+    if (!targetUrl) {
+      return sendApiError(res, 400, 'BAD_REQUEST', 'targetUrl must be an official UEDRO page');
+    }
+
+    const session = getSsoCookie();
+    const cookies = session.uedro?.cookies;
+    if (!cookies?.length) {
+      return sendApiError(res, 401, 'UNAUTHORIZED', 'UEDRO login is required');
+    }
+
+    try {
+      const launch = await (
+        deps.createUedroLaunch
+        ?? ((target: string) => createUedroLaunchUrl(cookies, target).then((launchUrl) => ({
+          launchUrl,
+          expiresIn: 60,
+        })))
+      )(targetUrl);
+      if (!launch) {
+        return sendApiError(res, 502, 'BAD_GATEWAY', 'UEDRO login ticket could not be issued');
+      }
+      const response: UedroLaunchResponse = {
+        ok: true,
+        launchUrl: launch.launchUrl,
+        expiresIn: launch.expiresIn,
+      };
+      return res.json(response);
+    } catch (err) {
+      console.warn('UEDRO SSO launch failed:', err instanceof Error ? err.message : String(err));
+      return sendApiError(res, 502, 'BAD_GATEWAY', 'UEDRO login ticket could not be issued');
+    }
   });
 
   app.post('/api/auth/himind/launch', async (_req, res) => {

@@ -130,6 +130,7 @@ import {
   renewProjectPreviewBaseScope,
   publishProjectFilePublic,
   unpublishProjectFilePublic,
+  openExternalUrl,
   LiveArtifactRefreshError,
   refreshLiveArtifact,
   restoreProjectFileVersion,
@@ -239,7 +240,8 @@ import { HandoffButton } from './HandoffButton';
 import { SocialShareGrid } from './SocialShareGrid';
 import { Toast } from './Toast';
  import { ReviewAddModal } from './ReviewAddModal';
- import { buildReviewWebUrl, resolveReviewWebPort } from './reviewMeta';
+ import { UEDRO_HOME_URL } from './reviewMeta';
+ import { resolveUedroLaunchUrl } from './uedroLaunch';
  import { exportProjectAsAxureZip } from '../runtime/axure-export';
  import {
    PreviewDrawOverlay,
@@ -15451,12 +15453,11 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     setDeployMenuOpen(false);
     setReviewMenuOpen((v) => !v);
  };
-// 打开历史评审页面：走 daemon 反向代理（/uedro → uedro.hikvision.com.cn），新窗口打开羽点首页。
+// 打开历史评审页面：优先用已保存的 SSO 会话换取一次性票据，直接打开羽点正式站点。
 async function openReviewListModal() {
   setReviewMenuOpen(false);
-  const webPort = await resolveReviewWebPort();
-  const reviewUrl = buildReviewWebUrl('/uedro/home', webPort);
-  if (reviewUrl) window.open(reviewUrl, '_blank', 'noopener');
+  const launchUrl = await resolveUedroLaunchUrl(UEDRO_HOME_URL);
+  if (launchUrl) await openExternalUrl(launchUrl);
 }
 // 打开发起评审 Modal。表单数据由独立组件 ReviewAddModal 自行拉取并提交。
   function openReviewAddModal() {

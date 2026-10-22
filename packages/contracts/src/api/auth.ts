@@ -53,6 +53,18 @@ export interface AiResearchLaunchResponse {
   expiresIn: number;
 }
 
+/** Body for `POST /api/auth/uedro/launch`. Omit the target for `/uedro/home`. */
+export interface UedroLaunchRequest {
+  targetUrl?: string;
+}
+
+/** Successful response from `POST /api/auth/uedro/launch`. */
+export interface UedroLaunchResponse {
+  ok: true;
+  launchUrl: string;
+  expiresIn: number;
+}
+
 /** Fixed Lanz OpenAI gateway, configured after the current OA account signs in. */
 export const LANZ_OPENAI_BASE_URL = 'http://lanz.hikvision.com/v3/openai/model';
 export const LANZ_DEFAULT_MODEL = 'EB-DeepSeek-Flash';

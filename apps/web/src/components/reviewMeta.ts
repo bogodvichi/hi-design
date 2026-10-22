@@ -134,63 +134,73 @@ const REVIEW_TYPE_LABEL: Record<string, string> = {
   '11': 'Pixso Handoff',
 };
 
-const REVIEW_WEB_HOST = '127.0.0.1';
+export const UEDRO_WEB_ORIGIN = 'https://uedro.hikvision.com.cn';
+export const UEDRO_HOME_URL = `${UEDRO_WEB_ORIGIN}/uedro/home`;
+const UEDRO_PAGE_QUERY_POLICY = {
+  '/uedro/home': { required: [], optional: [] },
+  '/uedro/ux': { required: ['id'], optional: [] },
+  '/uedro/ua': { required: ['id'], optional: [] },
+  '/uedro/pdf-js': {
+    required: ['id'],
+    optional: ['projectid', 'projName', 'projManager'],
+  },
+  '/uedro/xlsx': {
+    required: ['id'],
+    optional: ['projectid', 'projName', 'projManager'],
+  },
+} as const satisfies Record<string, { required: readonly string[]; optional: readonly string[] }>;
 
-/** Normalize a dynamic web port and reject values that cannot identify a listener. */
-export function normalizeReviewWebPort(value: unknown): string | null {
-  if (typeof value !== 'string' && typeof value !== 'number') return null;
-  const raw = String(value).trim();
-  if (!/^\d+$/.test(raw)) return null;
-  const port = Number(raw);
-  return Number.isInteger(port) && port >= 1 && port <= 65_535 ? String(port) : null;
+export const UEDRO_ALLOWED_PAGE_PATHS = new Set(Object.keys(UEDRO_PAGE_QUERY_POLICY));
+
+function hasAllowedUedroPageQuery(url: URL): boolean {
+  const policy = UEDRO_PAGE_QUERY_POLICY[
+    url.pathname as keyof typeof UEDRO_PAGE_QUERY_POLICY
+  ];
+  if (!policy) return false;
+  const allowed = new Set<string>([...policy.required, ...policy.optional]);
+  for (const key of url.searchParams.keys()) {
+    if (!allowed.has(key)) return false;
+  }
+  for (const key of allowed) {
+    if (url.searchParams.getAll(key).length > 1) return false;
+  }
+  for (const key of policy.required) {
+    const value = url.searchParams.get(key);
+    if (value === null || !value.trim()) return false;
+  }
+  return true;
 }
 
-/** Extract the web listener port from the daemon's advertised webBaseUrl. */
-export function reviewWebPortFromBaseUrl(value: unknown): string | null {
-  if (typeof value !== 'string') return null;
+/** Parse a browser target only when it belongs to an official UEDRO page. */
+export function parseAllowedUedroPageUrl(value: unknown): URL | null {
+  if (typeof value !== 'string' || !value.trim()) return null;
   try {
-    const url = new URL(value);
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
-    return normalizeReviewWebPort(url.port);
+    const url = new URL(value.trim());
+    if (
+      url.protocol !== 'https:'
+      || url.origin !== UEDRO_WEB_ORIGIN
+      || url.username
+      || url.password
+      || url.hash
+      || !UEDRO_ALLOWED_PAGE_PATHS.has(url.pathname)
+      || !hasAllowedUedroPageQuery(url)
+    ) {
+      return null;
+    }
+    return url;
   } catch {
     return null;
   }
 }
 
-/**
- * Resolve the browser-facing web port. HTTP pages expose it directly; packaged
- * `od://app/` pages ask the daemon, which receives OD_WEB_PORT from its launcher.
- */
-export async function resolveReviewWebPort(): Promise<string | null> {
-  if (typeof window === 'undefined') return null;
-  const currentPort = normalizeReviewWebPort(window.location.port);
-  if (currentPort) return currentPort;
-  try {
-    const response = await fetch('/api/mcp/install-info', { cache: 'no-store' });
-    if (!response.ok) return null;
-    const data = (await response.json()) as { webBaseUrl?: unknown } | null;
-    return reviewWebPortFromBaseUrl(data?.webBaseUrl);
-  } catch {
-    return null;
-  }
-}
-
-/**
- * Build a browser URL for the local web listener. The host stays loopback
- * because packaged builds use `od://app/`, which cannot be opened externally.
- */
-export function buildReviewWebUrl(path: string, webPort: unknown): string | null {
-  const port = normalizeReviewWebPort(webPort);
-  if (!port || !path.startsWith('/')) return null;
-  return `http://${REVIEW_WEB_HOST}:${port}${path}`;
+/** Build an official UEDRO URL instead of routing the browser through localhost. */
+export function buildUedroWebUrl(path: string): string | null {
+  if (!path.startsWith('/')) return null;
+  return parseAllowedUedroPageUrl(`${UEDRO_WEB_ORIGIN}${path}`)?.toString() ?? null;
 }
 
 /**
  * 按评审类型构造羽点稿件预览页 URL（点击卡片时新开页查看稿件内容）。
- *
- * 本地 web 端口是动态的，但主机固定为 127.0.0.1：daemon 的根路径反向代理
- * 会透传到羽点上游并注入 SSO cookie。生产环境入口是 `od://app/`，不能把该
- * origin 拼进需要交给浏览器打开的 URL。
  *
  * manuscriptId 取自 `manuscriptDtos[0].manuscriptId`；不同 reviewType 走羽点
  * 不同的预览前端路由（对齐原站卡片点击行为）：
@@ -198,22 +208,22 @@ export function buildReviewWebUrl(path: string, webPort: unknown): string | null
  *   "2" 视觉评审 → /uedro/ua?id=<manuscriptId>
  *   "3" 文稿评审 → /uedro/pdf-js?id=<manuscriptId>&projectid=null&projName=&projManager=null
  *   "4" 表格评审 → /uedro/xlsx?id=<manuscriptId>&projectid=null&projName=&projManager=null
- * 缺少 manuscriptId、端口或类型无对应预览页（海客/插件/Pixso 等）时返回 null，
+ * 缺少 manuscriptId 或类型无对应预览页（海客/插件/Pixso 等）时返回 null，
  * 由调用方决定不响应点击。
  */
-export function buildManuscriptPreviewUrl(reviewType: unknown, manuscriptId: unknown, webPort: unknown): string | null {
+export function buildManuscriptPreviewUrl(reviewType: unknown, manuscriptId: unknown): string | null {
   if (manuscriptId === undefined || manuscriptId === null || manuscriptId === '') return null;
   const id = encodeURIComponent(String(manuscriptId));
   const t = reviewType === undefined || reviewType === null ? '' : String(reviewType);
   switch (t) {
     case '1':
-      return buildReviewWebUrl(`/uedro/ux?id=${id}`, webPort);
+      return buildUedroWebUrl(`/uedro/ux?id=${id}`);
     case '2':
-      return buildReviewWebUrl(`/uedro/ua?id=${id}`, webPort);
+      return buildUedroWebUrl(`/uedro/ua?id=${id}`);
     case '3':
-      return buildReviewWebUrl(`/uedro/pdf-js?id=${id}&projectid=null&projName=&projManager=null`, webPort);
+      return buildUedroWebUrl(`/uedro/pdf-js?id=${id}&projectid=null&projName=&projManager=null`);
     case '4':
-      return buildReviewWebUrl(`/uedro/xlsx?id=${id}&projectid=null&projName=&projManager=null`, webPort);
+      return buildUedroWebUrl(`/uedro/xlsx?id=${id}&projectid=null&projName=&projManager=null`);
     default:
       return null;
   }

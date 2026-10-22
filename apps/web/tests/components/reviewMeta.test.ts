@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildManuscriptPreviewUrl,
-  buildReviewWebUrl,
-  reviewWebPortFromBaseUrl,
+  buildUedroWebUrl,
+  parseAllowedUedroPageUrl,
+  UEDRO_HOME_URL,
 } from '../../src/components/reviewMeta';
 
 describe('buildManuscriptPreviewUrl', () => {
@@ -11,42 +12,43 @@ describe('buildManuscriptPreviewUrl', () => {
     ['2', '/uedro/ua?id=manuscript-1'],
     ['3', '/uedro/pdf-js?id=manuscript-1&projectid=null&projName=&projManager=null'],
     ['4', '/uedro/xlsx?id=manuscript-1&projectid=null&projName=&projManager=null'],
-  ])('uses the loopback web port for review type %s', (reviewType, path) => {
-    expect(buildManuscriptPreviewUrl(reviewType, 'manuscript-1', '38127')).toBe(
-      `http://127.0.0.1:38127${path}`,
+  ])('uses the official UEDRO site for review type %s', (reviewType, path) => {
+    expect(buildManuscriptPreviewUrl(reviewType, 'manuscript-1')).toBe(
+      `https://uedro.hikvision.com.cn${path}`,
     );
   });
 
   it('encodes the manuscript id in the preview URL', () => {
-    expect(buildManuscriptPreviewUrl('1', 'manuscript 1/2', 26001)).toBe(
-      'http://127.0.0.1:26001/uedro/ux?id=manuscript%201%2F2',
+    expect(buildManuscriptPreviewUrl('1', 'manuscript 1/2')).toBe(
+      'https://uedro.hikvision.com.cn/uedro/ux?id=manuscript%201%2F2',
     );
   });
 
-  it('returns null when the manuscript id or web port is missing', () => {
-    expect(buildManuscriptPreviewUrl('1', '', '26001')).toBeNull();
-    expect(buildManuscriptPreviewUrl('1', 'manuscript-1', '')).toBeNull();
+  it('returns null when the manuscript id is missing', () => {
+    expect(buildManuscriptPreviewUrl('1', '')).toBeNull();
   });
 
   it('returns null when the review type has no preview', () => {
-    expect(buildManuscriptPreviewUrl('5', 'manuscript-1', '26001')).toBeNull();
+    expect(buildManuscriptPreviewUrl('5', 'manuscript-1')).toBeNull();
   });
 });
 
-describe('review web URLs', () => {
-  it('builds every review page under the fixed loopback host', () => {
-    expect(buildReviewWebUrl('/uedro/home', '53836')).toBe('http://127.0.0.1:53836/uedro/home');
+describe('official UEDRO URLs', () => {
+  it('builds the historical review home URL', () => {
+    expect(buildUedroWebUrl('/uedro/home')).toBe(UEDRO_HOME_URL);
   });
 
-  it('extracts the dynamic port from the daemon webBaseUrl', () => {
-    expect(reviewWebPortFromBaseUrl('http://127.0.0.1:64248')).toBe('64248');
-    expect(reviewWebPortFromBaseUrl('http://localhost:53421/studio')).toBe('53421');
+  it('accepts only allowlisted UEDRO pages', () => {
+    expect(parseAllowedUedroPageUrl(UEDRO_HOME_URL)?.hostname).toBe('uedro.hikvision.com.cn');
+    expect(parseAllowedUedroPageUrl('https://uedro.hikvision.com.cn:443/uedro/ux?id=1')?.pathname).toBe('/uedro/ux');
+    expect(parseAllowedUedroPageUrl('https://uedro.hikvision.com.cn/uedro/admin')).toBeNull();
   });
 
-  it('rejects invalid ports and base URLs', () => {
-    expect(buildReviewWebUrl('/uedro/home', '0')).toBeNull();
-    expect(buildReviewWebUrl('/uedro/home', '70000')).toBeNull();
-    expect(reviewWebPortFromBaseUrl('od://app/')).toBeNull();
-    expect(reviewWebPortFromBaseUrl('not a URL')).toBeNull();
+  it('rejects non-official origins and unsafe URL parts', () => {
+    expect(buildUedroWebUrl('/uedro/home?next=https://example.com')).toBeNull();
+    expect(parseAllowedUedroPageUrl('https://uedro.hikvision.com.cn.evil.example/uedro/home')).toBeNull();
+    expect(parseAllowedUedroPageUrl('http://uedro.hikvision.com.cn/uedro/home')).toBeNull();
+    expect(parseAllowedUedroPageUrl('https://user:pass@uedro.hikvision.com.cn/uedro/home')).toBeNull();
+    expect(parseAllowedUedroPageUrl('https://uedro.hikvision.com.cn/uedro/home#fragment')).toBeNull();
   });
 });

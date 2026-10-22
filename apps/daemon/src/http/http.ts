@@ -73,6 +73,17 @@ export interface RawResult {
 
 type RawRequestBody = string | Buffer;
 
+export interface RawRequestOptions {
+  body?: RawRequestBody;
+  extraHeaders?: Record<string, string>;
+  /**
+   * Return true to stop following redirects and surface the next URL as
+   * `finalUrl`. This is used for one-time SSO tickets that must be consumed by
+   * the browser rather than by the daemon.
+   */
+  stopRedirect?: (nextUrl: string, currentUrl: string, status: number) => boolean;
+}
+
 export function parseCookieHeaders(headers: string[], baseUrl: string): Cookie[] {
   const result: Cookie[] = [];
   const urlObj = new URL(baseUrl);
@@ -242,7 +253,7 @@ export function rawRequest(
   method: string,
   urlStr: string,
   cookies: Cookie[],
-  opts: { body?: RawRequestBody; extraHeaders?: Record<string, string> } = {},
+  opts: RawRequestOptions = {},
 ): Promise<RawResult> {
   return new Promise((resolve, reject) => {
     const doReq = (m: string, u: string, jar: Cookie[], redirects = 0) => {
@@ -286,6 +297,15 @@ export function rawRequest(
             if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
               const next = new URL(res.headers.location as string, u).toString();
               res.resume();
+              if (opts.stopRedirect?.(next, u, res.statusCode)) {
+                return resolve({
+                  finalUrl: next,
+                  body: '',
+                  status: res.statusCode,
+                  headers: res.headers,
+                  cookies: jar,
+                });
+              }
               return doReq('GET', next, jar, redirects + 1);
             }
 
@@ -326,7 +346,17 @@ export function rawRequest(
             const newCookies = parseCookieHeaders(res.setCookies, u);
             const updatedJar = mergeCookies(jar, newCookies);
             if (res.status >= 300 && res.status < 400 && res.location) {
-              doReq('GET', new URL(res.location, u).toString(), updatedJar, redirects + 1);
+              const next = new URL(res.location, u).toString();
+              if (opts.stopRedirect?.(next, u, res.status)) {
+                resolve({
+                  finalUrl: next,
+                  body: '',
+                  status: res.status,
+                  cookies: updatedJar,
+                });
+                return;
+              }
+              doReq('GET', next, updatedJar, redirects + 1);
               return;
             }
             resolve({ finalUrl: u, body: res.body, status: res.status, cookies: updatedJar });
@@ -356,6 +386,15 @@ export function rawRequest(
             if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
               const next = new URL(res.headers.location as string, u).toString();
               res.resume();
+              if (opts.stopRedirect?.(next, u, res.statusCode)) {
+                return resolve({
+                  finalUrl: next,
+                  body: '',
+                  status: res.statusCode,
+                  headers: res.headers,
+                  cookies: jar,
+                });
+              }
               return doReq('GET', next, jar, redirects + 1);
             }
             const chunks: Buffer[] = [];

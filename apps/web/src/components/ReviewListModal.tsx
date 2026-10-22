@@ -6,10 +6,10 @@ import {
   computeRemainDays,
   formatVersion,
   pick,
-  resolveReviewWebPort,
   reviewTypeMeta,
   withTotal,
 } from './reviewMeta';
+import { resolveUedroLaunchUrl } from './uedroLaunch';
 import { ReviewDetailDrawer } from './ReviewDetailModal';
 import { ReviewManuscriptUpdateModal } from './ReviewManuscriptUpdateModal';
 import { ReviewEditModal } from './ReviewEditModal';
@@ -641,9 +641,10 @@ function ReviewCard({
        // 卡片内交互（更多菜单 / 各操作按钮）自行 stopPropagation，避免误触发新开页。
        // 用 openExternalUrl 在系统默认浏览器打开，而非 Electron 新窗口。
        void (async () => {
-         const webPort = await resolveReviewWebPort();
-         const previewUrl = buildManuscriptPreviewUrl(r?.reviewType, manuscriptId, webPort);
-         if (previewUrl) await openExternalUrl(previewUrl);
+         const previewUrl = buildManuscriptPreviewUrl(r?.reviewType, manuscriptId);
+         if (!previewUrl) return;
+         const launchUrl = await resolveUedroLaunchUrl(previewUrl);
+         if (launchUrl) await openExternalUrl(launchUrl);
        })();
       }}
     >

@@ -1,10 +1,34 @@
 import * as crypto from 'crypto';
-import { rawRequest, type Cookie } from '../http.js';
+import {
+  rawRequest,
+  type Cookie,
+  type RawRequestOptions,
+  type RawResult,
+} from '../http.js';
 
 // ── 常量 ──────────────────────────────────────────────────────────
 
 /** 羽点（uedro）门户基础地址。 */
 export const UEDRO_BASE = 'https://uedro.hikvision.com.cn';
+
+/** Browser pages that may be opened through the UEDRO CAS launch flow. */
+const UEDRO_PAGE_QUERY_POLICY = {
+  '/uedro/home': { required: [], optional: [] },
+  '/uedro/ux': { required: ['id'], optional: [] },
+  '/uedro/ua': { required: ['id'], optional: [] },
+  '/uedro/pdf-js': {
+    required: ['id'],
+    optional: ['projectid', 'projName', 'projManager'],
+  },
+  '/uedro/xlsx': {
+    required: ['id'],
+    optional: ['projectid', 'projName', 'projManager'],
+  },
+} as const satisfies Record<string, { required: readonly string[]; optional: readonly string[] }>;
+
+export const UEDRO_ALLOWED_PAGE_PATHS = new Set(Object.keys(UEDRO_PAGE_QUERY_POLICY));
+
+export const UEDRO_HOME_URL = UEDRO_BASE + '/uedro/home';
 
 /**
  * 登录入口页。`service` 参数即登录成功后要跳转回的目标地址，
@@ -70,6 +94,13 @@ export interface UedroLogoutResult {
   ok: boolean;
 }
 
+type UedroRequest = (
+  method: string,
+  urlStr: string,
+  cookies: Cookie[],
+  opts?: RawRequestOptions,
+) => Promise<RawResult>;
+
 // ── 内部工具 ──────────────────────────────────────────────────────
 
 /**
@@ -104,6 +135,117 @@ function parseUedroResponse(body: string): { code: string; msg?: string; data: a
 
 function buildCookieHeader(cookies: Cookie[]): string {
   return cookies.map((c) => `${c.name}=${c.value}`).join('; ');
+}
+
+function hasAllowedUedroPageQuery(url: URL): boolean {
+  const policy = UEDRO_PAGE_QUERY_POLICY[
+    url.pathname as keyof typeof UEDRO_PAGE_QUERY_POLICY
+  ];
+  if (!policy) return false;
+  const allowed = new Set<string>([...policy.required, ...policy.optional]);
+  for (const key of url.searchParams.keys()) {
+    if (!allowed.has(key)) return false;
+  }
+  for (const key of allowed) {
+    if (url.searchParams.getAll(key).length > 1) return false;
+  }
+  for (const key of policy.required) {
+    const value = url.searchParams.get(key);
+    if (value === null || !value.trim()) return false;
+  }
+  return true;
+}
+
+/**
+ * Validate an official UEDRO browser target and strip nothing implicitly.
+ * Missing input resolves to the historical-review home page.
+ */
+export function normalizeUedroLaunchTarget(value: unknown = undefined): string | null {
+  if (value === undefined || value === null) return UEDRO_HOME_URL;
+  if (typeof value !== 'string' || !value.trim()) return null;
+  try {
+    const url = new URL(value.trim());
+    if (
+      url.protocol !== 'https:'
+      || url.origin !== UEDRO_BASE
+      || url.username
+      || url.password
+      || url.hash
+      || !UEDRO_ALLOWED_PAGE_PATHS.has(url.pathname)
+      || !hasAllowedUedroPageQuery(url)
+    ) {
+      return null;
+    }
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+/** True only for the requested UEDRO page carrying a CAS service ticket. */
+export function isUedroTicketUrl(value: string, targetUrl: string): boolean {
+  const target = normalizeUedroLaunchTarget(targetUrl);
+  if (!target) return false;
+  try {
+    const expected = new URL(target);
+    const actual = new URL(value);
+    return actual.protocol === 'https:'
+      && actual.origin === UEDRO_BASE
+      && actual.pathname === expected.pathname
+      && !actual.username
+      && !actual.password
+      && !actual.hash
+      && hasMatchingUedroSearchParams(actual, expected);
+  } catch {
+    return false;
+  }
+}
+
+function hasMatchingUedroSearchParams(actual: URL, expected: URL): boolean {
+  const tickets = actual.searchParams.getAll('ticket');
+  if (
+    tickets.length !== 1
+    || !tickets[0]?.startsWith('ST-')
+    || tickets[0].length <= 3
+    || actual.searchParams.size !== expected.searchParams.size + 1
+  ) {
+    return false;
+  }
+  for (const [key] of expected.searchParams) {
+    const expectedValues = expected.searchParams.getAll(key);
+    const actualValues = actual.searchParams.getAll(key);
+    if (
+      actualValues.length !== expectedValues.length
+      || actualValues.some((value, index) => value !== expectedValues[index])
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Ask UEDRO's CAS endpoint for a fresh service ticket without following the
+ * final redirect. The returned URL must be consumed exactly once by the
+ * browser, otherwise its ticket may already be invalid.
+ */
+export async function createUedroLaunchUrl(
+  cookies: Cookie[],
+  targetUrl: string = UEDRO_HOME_URL,
+  request: UedroRequest = rawRequest,
+): Promise<string> {
+  const target = normalizeUedroLaunchTarget(targetUrl);
+  if (!target) throw new Error('invalid uedro launch target');
+  if (!cookies?.length) throw new Error('uedro login is required');
+
+  const casUrl = `${UEDRO_BASE}/portal/cas/login?service=${encodeURIComponent(target)}`;
+  const result = await request('GET', casUrl, cookies, {
+    stopRedirect: (nextUrl) => isUedroTicketUrl(nextUrl, target),
+  });
+  if (!isUedroTicketUrl(result.finalUrl, target)) {
+    throw new Error('uedro login ticket could not be issued');
+  }
+  return result.finalUrl;
 }
 
 export function uedroHeaders(cookies: Cookie[], extra?: Record<string, string>): Record<string, string> {

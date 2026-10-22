@@ -8857,6 +8857,7 @@ const teamResourceListByKind = {
     sendApiError,
     dataDir: RUNTIME_DATA_DIR,
     FOR_DESIGNER_DIR: forDesignerDir,
+    requireLocalDaemonRequest,
   });
 
  registerHikUedroRoutes(app, {

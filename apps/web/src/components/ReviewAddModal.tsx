@@ -4,7 +4,9 @@ import styles from './ReviewAddModal.module.css';
 import { exportProjectAsAxureZip } from '../runtime/axure-export';
 import { getProject } from '../state/projects';
 import { getStoredUserInfo } from '../auth/auth';
-import { buildManuscriptPreviewUrl, resolveReviewWebPort } from './reviewMeta';
+import { openExternalUrl } from '../providers/registry';
+import { buildManuscriptPreviewUrl } from './reviewMeta';
+import { resolveUedroLaunchUrl } from './uedroLaunch';
 import { PersonPicker, type Person } from './PersonPicker';
 
 /**
@@ -454,12 +456,11 @@ export function ReviewAddModal({
         return;
       }
       setOkMsg('创建成功');
-      // 创建成功后新开页面窗口跳转到评审页（对齐 ReviewListModal 卡片点击行为），
-      // 随后关闭本 modal。
-      const webPort = await resolveReviewWebPort();
-      const previewUrl = buildManuscriptPreviewUrl(subtype, manuscriptId, webPort);
+      // 创建成功后用系统浏览器打开正式羽点评审页，随后关闭本 modal。
+      const previewUrl = buildManuscriptPreviewUrl(subtype, manuscriptId);
       if (previewUrl && aliveRef.current) {
-        window.open(previewUrl, '_blank', 'noopener');
+        const launchUrl = await resolveUedroLaunchUrl(previewUrl);
+        if (launchUrl) await openExternalUrl(launchUrl);
       }
       setTimeout(() => {
         if (aliveRef.current) onClose();

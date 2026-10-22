@@ -107,7 +107,7 @@ const MCP_BOOLEAN_FLAGS = new Set([
   'h',
 ]);
 
-const AUTH_STRING_FLAGS = new Set(['daemon-url']);
+const AUTH_STRING_FLAGS = new Set(['daemon-url', 'target-url']);
 const AUTH_BOOLEAN_FLAGS = new Set(['help', 'h', 'json']);
 
 // Hoisted next to MCP_*_FLAGS for the same TDZ reason as the MEDIA flags
@@ -456,9 +456,10 @@ async function runAuth(args) {
     process.exitCode = 2;
     return;
   }
-  if (flags.help || flags.h || (sub !== 'himind' && sub !== 'avatar')) {
-    const usage = 'Usage: od auth <himind|avatar> [--daemon-url <url>] [--json]';
-    if (sub && sub !== 'himind' && sub !== 'avatar') {
+  const supportedSubcommands = new Set(['himind', 'avatar', 'uedro-launch']);
+  if (flags.help || flags.h || (sub && !supportedSubcommands.has(sub))) {
+    const usage = 'Usage: od auth <himind|avatar|uedro-launch> [--target-url <url>] [--daemon-url <url>] [--json]';
+    if (sub && !supportedSubcommands.has(sub)) {
       console.error(`unknown subcommand: od auth ${sub}`);
       console.error(usage);
       process.exitCode = 2;
@@ -470,16 +471,38 @@ async function runAuth(args) {
 
   const base = await resolveDaemonUrl({ flagUrl: flags['daemon-url'] });
   const isAvatar = sub === 'avatar';
+  const isUedroLaunch = sub === 'uedro-launch';
+  const requestInit: RequestInit = isAvatar
+    ? { method: 'GET' }
+    : isUedroLaunch
+      ? {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(
+            flags['target-url'] ? { targetUrl: flags['target-url'] } : {},
+          ),
+        }
+      : { method: 'POST' };
   const response = await fetch(
-    `${base}${isAvatar ? '/api/auth/avatar' : '/api/auth/himind/launch'}`,
-    { method: isAvatar ? 'GET' : 'POST' },
+    `${base}${
+      isAvatar
+        ? '/api/auth/avatar'
+        : isUedroLaunch
+          ? '/api/auth/uedro/launch'
+          : '/api/auth/himind/launch'
+    }`,
+    requestInit,
   );
   const body = await response.json().catch(() => null);
   const validBody = isAvatar
     ? body && Object.prototype.hasOwnProperty.call(body, 'avatarUrl')
     : body && typeof body.launchUrl === 'string';
   if (!response.ok || !validBody) {
-    const label = isAvatar ? 'Avatar lookup' : 'HiMind login launch';
+    const label = isAvatar
+      ? 'Avatar lookup'
+      : isUedroLaunch
+        ? 'UEDRO login launch'
+        : 'HiMind login launch';
     const message = body?.error?.message || `${label} failed (HTTP ${response.status})`;
     if (flags.json) {
       console.log(JSON.stringify({ ok: false, error: { message } }, null, 2));
