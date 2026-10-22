@@ -2452,6 +2452,7 @@ files folder so the FileViewer can preview them immediately.`);
 // ---------------------------------------------------------------------------
 
 async function runMcp(args) {
+  if (args[0] === 'publish' || args[0] === 'cloud') return runMcpCloud(args);
   if (args[0] === 'install') {
     return runMcpInstall(args.slice(1));
   }
@@ -2489,6 +2490,9 @@ async function runMcp(args) {
 
 function printMcpHelp() {
   console.log(`Usage: od mcp [--daemon-url <url>]
+
+  od mcp cloud list [--mine] --workspace <id> --workspace-member <id> [--json]
+  od mcp publish <cloud-resource-id> --workspace <id> --workspace-member <id> [--description <text>] [--logo <key>] [--json]
 
 Run a stdio MCP (Model Context Protocol) server that proxies project
 tool calls to a running HiDesign daemon. Wire it into a coding agent
@@ -2594,6 +2598,31 @@ function emitInstallResult(useJson, result) {
   } else {
     console.error(`✗ ${result.message}`);
   }
+}
+
+async function runMcpCloud(args) {
+  const stringFlags = new Set([...LIBRARY_STRING_FLAGS, 'description', 'logo']);
+  const flags = parseFlags(args.slice(1), { string: stringFlags, boolean: new Set([...LIBRARY_BOOLEAN_FLAGS, 'mine']) });
+  const positionals = positionalArgs(args.slice(1), stringFlags);
+  if (flags.help || flags.h) return printMcpHelp();
+  const publish = args[0] === 'publish';
+  if ((!publish && positionals[0] !== 'list') || (publish && !positionals[0])) {
+    printMcpHelp(); process.exit(2);
+  }
+  const headers = workspaceHeadersFromExplicitFlags(flags, true);
+  const base = (await libraryDaemonUrl(flags)).replace(/\/$/, '');
+  const params = new URLSearchParams({ scope: 'public' });
+  if (flags.mine) params.set('owner_member_id', flags['workspace-member']);
+  const path = publish ? `/api/workspace/mcp/cloud/${encodeURIComponent(positionals[0])}/publish` : `/api/workspace/mcp/cloud?${params}`;
+  const resp = await fetch(base + path, { method: publish ? 'POST' : 'GET',
+    headers: { 'Content-Type': 'application/json', ...headers },
+    ...(publish ? { body: JSON.stringify({ ...(flags.description !== undefined ? { description: flags.description } : {}), ...(flags.logo ? { logoKey: flags.logo } : {}) }) } : {}),
+  });
+  if (!resp.ok) return structuredHttpFailure(resp);
+  const data = await resp.json();
+  if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
+  if (publish) console.log(`Published ${positionals[0]}`);
+  else for (const template of data.templates ?? []) console.log(`${template.resourceId}\t${template.label}`);
 }
 
 async function runMcpInstall(args) {

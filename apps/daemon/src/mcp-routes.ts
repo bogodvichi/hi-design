@@ -11,8 +11,11 @@ import { hdwPost, hdwPut, hdwDelete, hdwGetRaw } from './http/hdw.js';
 import { readSsoConfigFile } from './http/hik_logins/hicoo.js';
 import type { HdwCloudClient } from './integrations/hdw-cloud.js';
 import type { RouteDeps } from './server-context.js';
+import { listCloudResourceRecords } from './collab/cloud-resource-catalog.js';
+import { publishCloudMcp } from './collab/cloud-mcp-publication.js';
+import { TeamResourceShareForbiddenError } from './collab/team-resource-share.js';
 
-export interface RegisterMcpRoutesDeps extends RouteDeps<'http' | 'paths' | 'mcp'> {
+export interface RegisterMcpRoutesDeps extends RouteDeps<'http' | 'paths' | 'mcp' | 'cloudResourceAccess'> {
   hdwClient: HdwCloudClient | null;
 }
 
@@ -470,19 +473,26 @@ export function registerMcpRoutes(app: Express, ctx: RegisterMcpRoutesDeps) {
   const workspaceId = getWorkspaceId(req);
   if (!workspaceId) return res.json({ templates: [] });
   try {
-     const params: Record<string, string> = { kind: 'mcp' };
      // owner_member_id is optional: when provided, results are filtered
      // to that owner (my-publishes). When absent, all resources are
      // returned (community browse). Do NOT default to the caller's
      // member ID from the workspace header.
      const ownerMemberId = typeof req.query.owner_member_id === 'string' ? req.query.owner_member_id : '';
-     if (ownerMemberId) params.owner_member_id = ownerMemberId;
      const scope = typeof req.query.scope === 'string' ? req.query.scope : '';
-     if (scope) params.scope = scope;
-     const raw = await hdwGetRaw<{ resources: Array<Record<string, unknown>> }>(`/workspaces/${encodeURIComponent(workspaceId)}/resources`, params, getSsoCookies());
+     const authority = await ctx.cloudResourceAccess.resolveScope(req);
+     if (!authority.ok) return res.status(authority.status).json({ error: authority.code, message: authority.message });
+     if (!hdwClient) return res.status(503).json({ error: 'HDW_CLOUD_NOT_CONFIGURED' });
+     const records = await listCloudResourceRecords({
+       kind: 'mcp', client: hdwClient,
+       workspace: { workspaceId: authority.scope.principal.teamId, workspaceMemberId: authority.scope.principal.memberId, workspaceType: 'team' },
+       ...(ownerMemberId ? { ownerMemberId } : {}),
+       ...(scope ? { scope } : {}),
+       readDirectory: ctx.cloudResourceAccess.readDirectory,
+     });
+     const raw = { resources: records };
       const templates = (raw?.resources ?? []).map((r) => {
         const meta = (r.metadata as Record<string, unknown>) ?? {};
-        const stats = (r.stats as Record<string, unknown> | undefined) ?? {};
+        const stats = r.stats;
        // Backfill id for templates published before the id-generation
        // fix so the cloud list can match installed servers correctly.
        const id = typeof meta.id === 'string' && meta.id.trim()
@@ -491,10 +501,14 @@ export function registerMcpRoutes(app: Express, ctx: RegisterMcpRoutesDeps) {
        // Keep the technical id stable for install matching while preserving
        // the human-facing label used by community cards.
         return {
+          ...meta,
           resourceId: r.id as string,
           ownerMemberId: r.ownerMemberId as string,
           ...(r.scope ? { scope: r.scope as string } : {}),
-          ...meta,
+          homeWorkspaceId: r.homeWorkspaceId,
+          homeWorkspaceMemberId: r.homeWorkspaceMemberId,
+          homeWorkspaceType: r.homeWorkspaceType,
+          canManage: r.canManage,
           publisherName:
             (typeof meta.publisherName === 'string' && meta.publisherName.trim())
               ? meta.publisherName.trim()
@@ -506,13 +520,27 @@ export function registerMcpRoutes(app: Express, ctx: RegisterMcpRoutesDeps) {
          label: typeof meta.label === 'string' && meta.label.trim() ? meta.label.trim() : id,
          createdAt: r.createdAt as string,
          updatedAt: r.updatedAt as string,
-         peopleCount: typeof stats.actionUserCount === 'number' ? stats.actionUserCount : 0,
-         actionCount: typeof stats.actionCount === 'number' ? stats.actionCount : 0,
+         peopleCount: stats?.actionUserCount ?? 0,
+         actionCount: stats?.actionCount ?? 0,
        };
       });
       res.json({ templates });
    } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : 'cloud mcp list failed' });
+    }
+  });
+
+  app.post('/api/workspace/mcp/cloud/:resourceId/publish', async (req, res) => {
+    if (!isLocalSameOrigin(req, getResolvedPort())) return res.status(403).json({ error: 'cross-origin request rejected' });
+    try {
+      const authority = await ctx.cloudResourceAccess.resolveScope(req);
+      if (!authority.ok) return res.status(authority.status).json({ error: authority.code, message: authority.message });
+      if (!hdwClient) return res.status(503).json({ error: 'HDW_CLOUD_NOT_CONFIGURED' });
+      await publishCloudMcp(hdwClient, String(req.params.resourceId), authority.scope, req.body ?? {});
+      res.json({ ok: true });
+    } catch (error) {
+      if (error instanceof TeamResourceShareForbiddenError) return res.status(403).json({ error: 'NOT_RESOURCE_OWNER' });
+      res.status(500).json({ error: error instanceof Error ? error.message : 'cloud MCP publish failed' });
     }
   });
 

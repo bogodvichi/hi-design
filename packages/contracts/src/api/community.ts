@@ -29,8 +29,8 @@ export interface PublishCloudSkillResponse {
   version?: number | null;
 }
 
-/** Source identity for a public Skill collected from another accessible workspace. */
-export interface CloudSkillWorkspaceContext {
+/** Source identity for a public resource collected from another accessible workspace. */
+export interface CloudResourceWorkspaceContext {
   homeWorkspaceId: string;
   homeWorkspaceMemberId: string;
   homeWorkspaceType: 'personal' | 'team';

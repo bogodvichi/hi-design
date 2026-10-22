@@ -1,4 +1,6 @@
-import type { Express } from 'express';
+import type { Express, Request } from 'express';
+import type { WorkspaceDirectoryItem } from '@open-design/contracts';
+import type { TeamResourceScopeResolution } from './routes/team-resource-share.js';
 import type { SkillInfo } from './skills.js';
 import type { DesignSystemSummary } from './design-systems/index.js';
 import type { RoutineRoutesService } from './routes/routine.js';
@@ -192,6 +194,10 @@ export interface ServerContext {
   mcp: any;
   plugins: any;
   hdwClient: HdwCloudClient | null;
+  cloudResourceAccess: {
+    readDirectory: () => Promise<{ ok: boolean; items: WorkspaceDirectoryItem[] }>;
+    resolveScope: (req: Request) => Promise<TeamResourceScopeResolution>;
+  };
   resources: ResourceDeps;
   routines: RoutineDeps;
   projectPreviewScopes: ProjectPreviewScopeDeps;

@@ -537,6 +537,7 @@ export interface HdwResourceRecord {
   id: string;
   kind: string;
   ownerMemberId: string;
+  scope?: string | null;
   /** Owner display name, enriched from the HDW workspace_members table
    *  by joining ownerMemberId -> workspace_member_id at query time. */
   ownerDisplayName?: string | null;

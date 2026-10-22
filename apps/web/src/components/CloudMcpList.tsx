@@ -254,16 +254,16 @@ export function CloudMcpList({
      const localResponse = localResult.status === 'fulfilled' && localResult.value.ok
        ? await localResult.value.json()
        : null;
-     if (!cloudResponse && !localResponse) throw new Error('Failed to load cloud MCP templates');
+     if (!cloudResponse && (mode === 'square' || !localResponse)) throw new Error('Failed to load cloud MCP templates');
 
     const merged = new Map<string, CloudMcpItem>();
     for (const template of (cloudResponse?.templates ?? []) as CloudMcpResponseItem[]) {
-      merged.set(template.id.toLowerCase(), { ...template, logoKey: normalizeLogoKey(template.logoKey) });
+      merged.set(mode === 'square' ? template.resourceId : template.id.toLowerCase(), { ...template, logoKey: normalizeLogoKey(template.logoKey) });
     }
     // Merge locally-installed servers that have no matching cloud
     // template (e.g. servers added through the Settings MCP panel or
     // installed from a community template not owned by this user).
-    for (const server of (localResponse?.servers ?? []) as Array<{
+    for (const server of (mode === 'square' ? [] : localResponse?.servers ?? []) as Array<{
       id: string;
       label?: string;
       templateId?: string;
@@ -413,7 +413,7 @@ export function CloudMcpList({
         '/api/workspace/mcp/cloud/' + encodeURIComponent(tpl.resourceId),
         {
           method: 'DELETE',
-          headers: workspaceHeaders(workspaceId, workspaceMemberId, workspaceType),
+          headers: workspaceHeaders(tpl.homeWorkspaceId ?? workspaceId, tpl.homeWorkspaceMemberId ?? workspaceMemberId, tpl.homeWorkspaceType ?? workspaceType),
         },
       );
       if (!res.ok) {
@@ -440,7 +440,7 @@ export function CloudMcpList({
         '/api/workspace/mcp/cloud/' + encodeURIComponent(tpl.resourceId) + '/unpublish',
         {
           method: 'POST',
-          headers: workspaceHeaders(workspaceId, workspaceMemberId, workspaceType),
+          headers: workspaceHeaders(tpl.homeWorkspaceId ?? workspaceId, tpl.homeWorkspaceMemberId ?? workspaceMemberId, tpl.homeWorkspaceType ?? workspaceType),
         },
       );
       if (!res.ok) {
@@ -562,6 +562,7 @@ export function CloudMcpList({
         {visibleTemplates.map((tpl) => {
           // Case-insensitive match so Memoryxxx and memoryxxx are treated as the same installed server.
           const isInstalled = tpl.teamLocal || localTemplateIds.has(tpl.id.toLowerCase());
+          const isResourceOwner = tpl.canManage ?? tpl.ownerMemberId === workspaceMemberId;
           const isInstalling = installingId === tpl.resourceId;
           const isUninstalling = uninstallingId === tpl.resourceId;
           const isUnpublishing = unpublishingId === tpl.resourceId;
@@ -630,7 +631,7 @@ export function CloudMcpList({
                             {t('personalScope.cloudMcpUninstall' as any)}
                           </button>
                         ) : null}
-                        {mode === 'square' && tpl.ownerMemberId === workspaceMemberId && !tpl.localOnly ? (
+                        {mode === 'square' && isResourceOwner && !tpl.localOnly ? (
                           <button
                             type="button"
                             className={styles.cardMenuItem}
@@ -641,7 +642,7 @@ export function CloudMcpList({
                             {t('squareScope.unpublish' as any)}
                           </button>
                         ) : null}
-                        {(mode === 'personal' || (mode === 'square' && tpl.ownerMemberId === workspaceMemberId)) && !tpl.localOnly ? (
+                        {(mode === 'personal' || (mode === 'square' && isResourceOwner)) && !tpl.localOnly ? (
                           <button
                             type="button"
                             className={styles.cardMenuItemDanger}
@@ -721,7 +722,7 @@ export function CloudMcpList({
           resourceId={shareItem.resourceId}
           kind="mcp"
           resourceName={shareItem.label}
-          homeWorkspaceId={workspaceId ?? ''}
+          homeWorkspaceId={shareItem.homeWorkspaceId ?? workspaceId ?? ''}
           onClose={() => setShareItem(null)}
         />
       ) : null}

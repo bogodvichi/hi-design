@@ -28,6 +28,7 @@ import { Toast } from './Toast';
 import { communityOriginProjectId, communityOriginProjectName, projectFallbackVisual } from './project-cover';
 import type { MarketplacePluginEntry, ProjectPublishCommunityResponse } from '@open-design/contracts';
 import type { WorkspaceDirectoryItem } from '@open-design/contracts';
+import { workspaceProjectHeaders } from '../collab/workspace-identity';
 import { Icon, type IconName } from './Icon';
 import { CenteredLoader } from './Loading';
 import { useI18n, useT } from '../i18n';
@@ -1200,6 +1201,14 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
                   if (!response.ok) throw await publishResponseError(response, 'Tool publish failed');
                   window.dispatchEvent(new CustomEvent('personal:tool-refresh'));
                   } else if ('config' in selection) {
+                    if (selection.resourceId && selection.workspaceContext) {
+                      const response = await fetch('/api/workspace/mcp/cloud/' + encodeURIComponent(selection.resourceId) + '/publish', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', ...workspaceProjectHeaders(selection.workspaceContext) },
+                        body: JSON.stringify({ description: selection.description, ...(selection.logoKey ? { logoKey: selection.logoKey } : {}) }),
+                      });
+                      if (!response.ok) throw await publishResponseError(response, 'MCP publish failed');
+                    } else {
                     const checkRes = await fetch(
                       `/api/workspace/mcp/cloud/check?label=${encodeURIComponent(selection.label)}`,
                       { cache: 'no-store', headers },
@@ -1230,6 +1239,7 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
                       body: JSON.stringify({ template, scope: 'public' }),
                     });
                     if (!response.ok) throw await publishResponseError(response, 'MCP publish failed');
+                    }
                     window.dispatchEvent(new CustomEvent('personal:mcp-refresh'));
                 } else if ('body' in selection) {
                    if (selection.upload) {

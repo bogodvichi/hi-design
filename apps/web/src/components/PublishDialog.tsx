@@ -9,7 +9,7 @@ import { Icon, type IconName } from './Icon';
 import { useI18n, useT } from '../i18n';
 import type { Dict, Locale } from '../i18n/types';
 import type { Project } from '../types';
-import type { McpServerConfig, PublishCloudSkillRequest, PublishCloudSkillResponse, WorkspaceCollabContext, WorkspaceDirectoryItem } from '@open-design/contracts';
+import type { CloudMcpTemplate, PublishCloudSkillRequest, PublishCloudSkillResponse, WorkspaceCollabContext, WorkspaceDirectoryItem } from '@open-design/contracts';
 import {
   importProjectFiles,
   importProjectZip,
@@ -381,6 +381,8 @@ export interface PublishMcpSelection {
   description: string;
   config: string;
   logoKey?: McpConfigSelection['logoKey'];
+  resourceId?: string;
+  workspaceContext?: WorkspaceCollabContext;
 }
 
 /** What the caller receives when the user confirms a skill publish. */
@@ -1238,7 +1240,9 @@ function McpTab({
 }) {
   const { locale } = useI18n();
   const [source, setSource] = useState<FileSource>('internal');
-  const [servers, setServers] = useState<McpServerConfig[]>([]);
+  const [servers, setServers] = useState<CloudMcpTemplate[]>([]);
+  const [workspaces, setWorkspaces] = useState<WorkspaceDirectoryItem[]>([]);
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [description, setDescription] = useState('');
   const [logoKey, setLogoKey] = useState<McpLogoKey>('orbit');
@@ -1247,29 +1251,48 @@ function McpTab({
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setLoadError(null);
-    fetch('/api/mcp/servers', { cache: 'no-store' })
+    fetch('/api/workspace/directory', { cache: 'no-store' })
       .then(async (response) => {
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.json() as Promise<{ servers?: McpServerConfig[] }>;
+        return response.json() as Promise<{ items?: WorkspaceDirectoryItem[] }>;
       })
       .then((body) => {
-        if (!cancelled) setServers(body.servers ?? []);
+        if (cancelled) return;
+        const items = (body.items ?? []).filter((item) => item.memberStatus === 'active' && item.lifecycleState !== 'deleted'
+          && (!item.isSharedSpace || item.isDefaultTeam) && (item.isDefaultTeam || item.workspaceType === 'team'));
+        setWorkspaces(items);
+        const initial = items.find((item) => item.isDefaultTeam) ?? items[0];
+        setWorkspaceId(initial?.workspaceId ?? null);
+        if (!initial) setLoading(false);
       })
       .catch(() => {
         if (!cancelled) {
           setLoadError(localeText(locale, 'MCP 列表加载失败，请稍后重试。', 'The MCP list could not be loaded. Please try again.'));
+          setLoading(false);
         }
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
   }, []);
 
-  const selected = servers.find((server) => server.id === selectedId) ?? null;
-  const canConfirm = source === 'internal' && selected !== null;
+  const selectedWorkspace = workspaces.find((item) => item.workspaceId === workspaceId) ?? null;
+  useEffect(() => {
+    if (!selectedWorkspace) return;
+    let cancelled = false;
+    setLoading(true); setLoadError(null);
+    const headers = workspaceProjectHeaders(workspaceContextFromDirectoryItem(selectedWorkspace));
+    fetch('/api/workspace/mcp/cloud?owner_member_id=' + encodeURIComponent(selectedWorkspace.workspaceMemberId), { cache: 'no-store', headers })
+      .then(async (response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json() as Promise<{ templates?: CloudMcpTemplate[] }>;
+      })
+      .then((body) => { if (!cancelled) setServers(body.templates ?? []); })
+      .catch(() => { if (!cancelled) { setServers([]); setLoadError(localeText(locale, 'MCP 列表加载失败，请稍后重试。', 'The MCP list could not be loaded. Please try again.')); } })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [selectedWorkspace, locale]);
+
+  const selected = servers.find((server) => server.resourceId === selectedId) ?? null;
+  const canConfirm = source === 'internal' && selected !== null && selectedWorkspace !== null && !loading;
   useEffect(() => {
     if (source === 'internal') onCanConfirmChange?.(canConfirm);
   }, [canConfirm, onCanConfirmChange, source]);
@@ -1298,14 +1321,13 @@ function McpTab({
   confirmRef.current = {
     canConfirm,
     onConfirm: () => {
-      if (!selected) return;
-      const config = selected.transport === 'stdio'
-        ? { type: 'stdio', command: selected.command ?? '', ...(selected.args?.length ? { args: selected.args } : {}) }
-        : { type: selected.transport, url: selected.url ?? '' };
+      if (!selected || !selectedWorkspace) return;
       onPublish({
         label: (selected.label || selected.id).trim(),
         description: description.trim(),
-        config: JSON.stringify(config, null, 2),
+        config: '',
+        resourceId: selected.resourceId,
+        workspaceContext: workspaceContextFromDirectoryItem(selectedWorkspace),
         logoKey,
       });
     },
@@ -1322,24 +1344,35 @@ function McpTab({
             {locale.startsWith('zh') ? '手动输入' : 'Enter manually'}
           </button>
         </div>
+        <div className={styles.projectBrowser}>
+          <aside className={styles.projectWorkspaceTree} aria-label={locale.startsWith('zh') ? 'MCP 位置' : 'MCP locations'}>
+            <WorkspaceTree nodes={workspaces.map((item) => ({
+              id: `mcp-workspace:${item.workspaceId}`, label: item.isDefaultTeam ? localeText(locale, '个人所有', 'Personal') : item.workspaceName,
+              tag: item.isDefaultTeam ? localeText(locale, '个人', 'Personal') : localeText(locale, '团队', 'Team'),
+              selected: item.workspaceId === workspaceId,
+              onSelect: () => { if (item.workspaceId === workspaceId) return; setWorkspaceId(item.workspaceId); setSelectedId(null); setServers([]); },
+            }))} />
+          </aside>
+          <div className={styles.projectBrowserMain}>
         {loading ? (
           <div className={styles.loading}><span className={styles.loadingDot} /><span className={styles.loadingDot} /><span className={styles.loadingDot} /></div>
         ) : loadError ? (
           <p className={styles.inlineError} role="alert">{loadError}</p>
         ) : servers.length === 0 ? (
-          <div className={styles.emptyState}><span className={styles.emptyStateText}>{locale.startsWith('zh') ? '个人所有中暂无 MCP，可切换为手动输入。' : 'No personal MCPs yet. You can enter one manually.'}</span></div>
+          <div className={styles.emptyState}><span className={styles.emptyStateText}>{locale.startsWith('zh') ? '当前位置暂无 MCP，可切换为手动输入。' : 'No MCPs in this location. You can enter one manually.'}</span></div>
         ) : (
           <div className={styles.projectOptions} role="listbox" aria-label={locale.startsWith('zh') ? '选择 MCP' : 'Choose an MCP'}>
             {servers.map((server) => {
-              const selectedServer = selectedId === server.id;
+              const selectedServer = selectedId === server.resourceId;
               return (
                 <button
-                  key={server.id}
+                  key={server.resourceId}
                   type="button"
                   role="option"
                   aria-selected={selectedServer}
                   className={selectedServer ? `${styles.projectOption} ${styles.projectOptionSingle} ${styles.projectOptionActive}` : `${styles.projectOption} ${styles.projectOptionSingle}`}
-                  onClick={() => { setSelectedId(server.id); setDescription(''); }}
+                  onClick={() => { setSelectedId(server.resourceId); setDescription(server.description ?? '');
+                    setLogoKey(MCP_LOGO_KEYS.some((key) => key === server.logoKey) ? server.logoKey as McpLogoKey : 'orbit'); }}
                 >
                   <span className={styles.resourceLogo} aria-hidden><Icon name="terminal" size={17} /></span>
                   <span className={styles.projectOptionText}>
@@ -1351,6 +1384,8 @@ function McpTab({
             })}
           </div>
         )}
+          </div>
+        </div>
       </section>
       <DefaultLogoPicker value={logoKey} onChange={setLogoKey} locale={locale} />
       {selected ? (

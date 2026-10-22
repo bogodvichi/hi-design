@@ -9,6 +9,8 @@
 // daemon persists the same shape to <dataDir>/mcp-config.json and rewrites
 // per-spawn config files (e.g. project-cwd `.mcp.json` for Claude Code).
 
+import type { CloudResourceWorkspaceContext } from './community.js';
+
 export type McpTransport = 'stdio' | 'sse' | 'http';
 export type McpAuthMode = 'none' | 'oauth';
 
@@ -189,7 +191,7 @@ export type McpOAuthPostMessage =
 
 /** A cloud-stored MCP template. Same shape as `McpTemplate` plus
  *  cloud metadata (resourceId, owner, version, timestamps). */
-export interface CloudMcpTemplate extends McpTemplate {
+export interface CloudMcpTemplate extends McpTemplate, Partial<CloudResourceWorkspaceContext> {
   /** HDW resource id. Used for install/uninstall/delete operations. */
   resourceId: string;
   /** Workspace member id of the owner. */
@@ -207,6 +209,16 @@ export interface CloudMcpTemplate extends McpTemplate {
 /** Response from `GET /api/workspace/mcp/cloud`. */
 export interface CloudMcpListResponse {
   templates: CloudMcpTemplate[];
+}
+
+/** Publish an existing cloud MCP through POST /api/workspace/mcp/cloud/:resourceId/publish. */
+export interface PublishCloudMcpRequest {
+  description?: string;
+  logoKey?: string;
+}
+
+export interface PublishCloudMcpResponse {
+  ok: boolean;
 }
 
 /** Body for `POST /api/workspace/mcp/cloud` (create a new cloud MCP template). */

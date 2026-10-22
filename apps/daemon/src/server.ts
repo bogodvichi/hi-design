@@ -325,7 +325,7 @@ import {
   splitDerivedSkillId,
 } from './skills.js';
 import { resolveSkillCatalogScope } from './skill-catalog-scope.js';
-import { listCloudSkillResources } from './skills/cloud-catalog.js';
+import { listCloudResourceRecords } from './collab/cloud-resource-catalog.js';
 import {
   prepareSkillFromZip,
   prepareSkillFromFiles,
@@ -7677,7 +7677,8 @@ const designSystemBackingProjects = new Map<string, string>();
       return res.json(finalizeSkillList(maasSkills));
    }
    try {
-     const resources = await listCloudSkillResources({
+     const resources = await listCloudResourceRecords({
+       kind: 'skill',
        client: hdwCloudClient,
        workspace: { workspaceId, workspaceMemberId: scope.principal.memberId, workspaceType: 'team' },
        ownerMemberId,
@@ -9216,6 +9217,7 @@ const openDesignPublicMetadata = createOpenDesignPublicMetadataService();
    paths: pathDeps,
    mcp: { pendingAuth: mcpPendingAuth, daemonUrlRef },
    hdwClient: hdwCloudClient,
+   cloudResourceAccess: { readDirectory: fetchWorkspaceDirectoryForAccountSurface, resolveScope: resolveTeamResourceScope },
  });
  registerXaiRoutes(app, {
    http: httpDeps,
@@ -17988,6 +17990,7 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
     research: researchDeps,
     mcp: { pendingAuth: mcpPendingAuth, daemonUrlRef },
     hdwClient: hdwCloudClient,
+    cloudResourceAccess: { readDirectory: fetchWorkspaceDirectoryForAccountSurface, resolveScope: resolveTeamResourceScope },
     plugins: {
      connectorService,
       detectSkillPluginCandidateOnRunSuccess: detectSkillPluginCandidateForRun,

@@ -20,7 +20,7 @@ import {
   type SkillCategory,
   type SkillCategoryCounts,
   type SkillCategoryFilter,
-  type CloudSkillWorkspaceContext,
+  type CloudResourceWorkspaceContext,
 } from '@open-design/contracts';
 import {
   skillCategoryButtonLabel,
@@ -31,7 +31,7 @@ import { resolveFloatingMenuHorizontalAlign } from '../utils/floating-menu-place
 import { recordCommunityStat } from '../utils/community-stats';
 import { isSkillLogoKey, SkillLogo } from './SkillLogo';
 
-interface CloudSkill extends Partial<CloudSkillWorkspaceContext> {
+interface CloudSkill extends Partial<CloudResourceWorkspaceContext> {
   resourceId: string;
   localId: string;
   title: string;

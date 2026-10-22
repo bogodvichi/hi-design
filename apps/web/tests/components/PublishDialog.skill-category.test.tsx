@@ -81,6 +81,27 @@ function jsonResponse(body: unknown): Response {
 }
 
 describe('PublishDialog Skill category', () => {
+  it('selects an uninstalled owned team MCP and preserves its cloud identity for publication', async () => {
+    const onPublish = vi.fn();
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url === '/api/workspace/directory') return jsonResponse({ items: [
+        { workspaceId: 'workspace-1', workspaceName: 'Personal', workspaceType: 'team', workspaceMemberId: 'member-1', role: 'owner', isDefaultTeam: true, memberStatus: 'active' },
+        { workspaceId: 'team', workspaceName: '技术平台部', workspaceType: 'team', workspaceMemberId: 'team-member', role: 'owner', memberStatus: 'active' },
+      ] });
+      if (url.includes('/api/workspace/mcp/cloud?owner_member_id=team-member')) return jsonResponse({ templates: [
+        { id: 'team-mcp', resourceId: 'mcp-team', label: 'Team MCP', transport: 'http', url: 'https://mcp.example' },
+      ] });
+      return jsonResponse({ templates: [], servers: [] });
+    }));
+    render(<I18nProvider initial="zh-CN"><PublishDialog initialCategory="mcp" onClose={() => {}} onPublish={onPublish} /></I18nProvider>);
+    fireEvent.click(await screen.findByRole('button', { name: /技术平台部/ }));
+    fireEvent.click(await screen.findByText('Team MCP'));
+    fireEvent.click(screen.getByRole('button', { name: '确认发布' }));
+    await waitFor(() => expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({ resourceId: 'mcp-team',
+      workspaceContext: expect.objectContaining({ workspaceId: 'team', workspaceMemberId: 'team-member' }) })));
+  });
+
   it('publishes a team Skill using its cloud resource id and selected team identity', async () => {
     const onPublish = vi.fn();
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
