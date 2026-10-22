@@ -13,9 +13,33 @@ export type AppRuntimeLookup = {
   namespace: string;
 };
 
-export const DAEMON_STARTUP_TIMEOUT_MS = 120_000;
-const WEB_STARTUP_TIMEOUT_MS = 35_000;
-const DESKTOP_STARTUP_TIMEOUT_MS = 15_000;
+function resolveStartupTimeoutMs(envName: string, fallbackMs: number): number {
+  const raw = process.env[envName];
+  if (raw == null || raw.trim().length === 0) return fallbackMs;
+
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) return fallbackMs;
+  return parsed;
+}
+
+export const DAEMON_STARTUP_TIMEOUT_MS = resolveStartupTimeoutMs("OD_DAEMON_STARTUP_TIMEOUT_MS", 120_000);
+
+// The web sidecar cannot publish its status until `next dev` finishes its first-start
+// initialization (`getRequestHandlers()` -> tsconfig/webpack config load + dev file
+// watchers). That step is I/O bound and routinely takes 16-60s on this workspace, so the
+// legacy 35s budget killed healthy-but-slow starts: the child never got to print anything,
+// `tools-dev` reported "web did not expose status in time", and every retry started the
+// same slow initialization from scratch. Keep this generous and overridable.
+export const WEB_STARTUP_TIMEOUT_MS = resolveStartupTimeoutMs("OD_WEB_STARTUP_TIMEOUT_MS", 180_000);
+const DESKTOP_STARTUP_TIMEOUT_MS = resolveStartupTimeoutMs("OD_DESKTOP_STARTUP_TIMEOUT_MS", 60_000);
+
+function formatTimeoutSeconds(timeoutMs: number): string {
+  return (timeoutMs / 1000).toFixed(0);
+}
+
+function formatElapsedSeconds(startedAt: number): string {
+  return ((Date.now() - startedAt) / 1000).toFixed(1);
+}
 
 type ProcessAliveProbe = () => boolean;
 
@@ -59,7 +83,10 @@ export async function waitForDaemonRuntime(
     await new Promise((resolveWait) => setTimeout(resolveWait, 150));
   }
   assertSpawnedProcessAlive(APP_KEYS.DAEMON, isProcessAlive);
-  throw new Error("daemon did not expose status in time");
+  throw new Error(
+    `daemon did not expose status in time after ${formatElapsedSeconds(startedAt)}s (limit ${formatTimeoutSeconds(timeoutMs)}s); `
+      + "raise OD_DAEMON_STARTUP_TIMEOUT_MS if this build is unusually slow",
+  );
 }
 
 export async function inspectWebRuntime(runtime: AppRuntimeLookup, timeoutMs = 800): Promise<WebStatusSnapshot | null> {
@@ -84,7 +111,10 @@ export async function waitForWebRuntime(
     await new Promise((resolveWait) => setTimeout(resolveWait, 150));
   }
   assertSpawnedProcessAlive(APP_KEYS.WEB, isProcessAlive);
-  throw new Error("web did not expose status in time");
+  throw new Error(
+    `web did not expose status in time after ${formatElapsedSeconds(startedAt)}s (limit ${formatTimeoutSeconds(timeoutMs)}s); `
+      + "`next dev` first-start initialization can take a minute on large workspaces, so raise OD_WEB_STARTUP_TIMEOUT_MS",
+  );
 }
 
 export async function inspectDesktopRuntime(runtime: AppRuntimeLookup, timeoutMs = 800): Promise<DesktopStatusSnapshot | null> {
@@ -109,5 +139,8 @@ export async function waitForDesktopRuntime(
     await new Promise((resolveWait) => setTimeout(resolveWait, 150));
   }
   assertSpawnedProcessAlive(APP_KEYS.DESKTOP, isProcessAlive);
-  throw new Error("desktop did not expose status in time");
+  throw new Error(
+    `desktop did not expose status in time after ${formatElapsedSeconds(startedAt)}s (limit ${formatTimeoutSeconds(timeoutMs)}s); `
+      + "raise OD_DESKTOP_STARTUP_TIMEOUT_MS if the Electron cold start is slow",
+  );
 }

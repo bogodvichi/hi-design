@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   DAEMON_STARTUP_TIMEOUT_MS,
+  WEB_STARTUP_TIMEOUT_MS,
   waitForDaemonRuntime,
   waitForDesktopRuntime,
   waitForWebRuntime,
@@ -11,6 +12,13 @@ import {
 describe("sidecar startup waits", () => {
   it("allows daemon initialization to continue past the legacy 35 second deadline", () => {
     assert.equal(DAEMON_STARTUP_TIMEOUT_MS, 120_000);
+  });
+
+  it("leaves web startup enough time for the slow next.js dev first-start initialization", () => {
+    // `next dev` blocks on `getRequestHandlers()` (tsconfig/webpack config load plus dev
+    // watchers) before the sidecar publishes status; on this workspace that measured
+    // 16-60s, so the legacy 35s deadline killed healthy starts.
+    assert.ok(WEB_STARTUP_TIMEOUT_MS >= 180_000, `only ${WEB_STARTUP_TIMEOUT_MS}ms`);
   });
 
   it("fails immediately when a spawned app exits before publishing status", async () => {

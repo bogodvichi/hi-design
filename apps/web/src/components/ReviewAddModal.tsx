@@ -4,7 +4,7 @@ import styles from './ReviewAddModal.module.css';
 import { exportProjectAsAxureZip } from '../runtime/axure-export';
 import { getProject } from '../state/projects';
 import { getStoredUserInfo } from '../auth/auth';
-import { buildManuscriptPreviewUrl } from './reviewMeta';
+import { buildManuscriptPreviewUrl, resolveReviewWebPort } from './reviewMeta';
 import { PersonPicker, type Person } from './PersonPicker';
 
 /**
@@ -456,8 +456,9 @@ export function ReviewAddModal({
       setOkMsg('创建成功');
       // 创建成功后新开页面窗口跳转到评审页（对齐 ReviewListModal 卡片点击行为），
       // 随后关闭本 modal。
-      const previewUrl = buildManuscriptPreviewUrl(subtype, manuscriptId);
-      if (previewUrl) {
+      const webPort = await resolveReviewWebPort();
+      const previewUrl = buildManuscriptPreviewUrl(subtype, manuscriptId, webPort);
+      if (previewUrl && aliveRef.current) {
         window.open(previewUrl, '_blank', 'noopener');
       }
       setTimeout(() => {

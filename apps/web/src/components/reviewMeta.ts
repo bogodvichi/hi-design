@@ -134,14 +134,63 @@ const REVIEW_TYPE_LABEL: Record<string, string> = {
   '11': 'Pixso Handoff',
 };
 
+const REVIEW_WEB_HOST = '127.0.0.1';
+
+/** Normalize a dynamic web port and reject values that cannot identify a listener. */
+export function normalizeReviewWebPort(value: unknown): string | null {
+  if (typeof value !== 'string' && typeof value !== 'number') return null;
+  const raw = String(value).trim();
+  if (!/^\d+$/.test(raw)) return null;
+  const port = Number(raw);
+  return Number.isInteger(port) && port >= 1 && port <= 65_535 ? String(port) : null;
+}
+
+/** Extract the web listener port from the daemon's advertised webBaseUrl. */
+export function reviewWebPortFromBaseUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return null;
+    return normalizeReviewWebPort(url.port);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolve the browser-facing web port. HTTP pages expose it directly; packaged
+ * `od://app/` pages ask the daemon, which receives OD_WEB_PORT from its launcher.
+ */
+export async function resolveReviewWebPort(): Promise<string | null> {
+  if (typeof window === 'undefined') return null;
+  const currentPort = normalizeReviewWebPort(window.location.port);
+  if (currentPort) return currentPort;
+  try {
+    const response = await fetch('/api/mcp/install-info', { cache: 'no-store' });
+    if (!response.ok) return null;
+    const data = (await response.json()) as { webBaseUrl?: unknown } | null;
+    return reviewWebPortFromBaseUrl(data?.webBaseUrl);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Build a browser URL for the local web listener. The host stays loopback
+ * because packaged builds use `od://app/`, which cannot be opened externally.
+ */
+export function buildReviewWebUrl(path: string, webPort: unknown): string | null {
+  const port = normalizeReviewWebPort(webPort);
+  if (!port || !path.startsWith('/')) return null;
+  return `http://${REVIEW_WEB_HOST}:${port}${path}`;
+}
+
 /**
  * 按评审类型构造羽点稿件预览页 URL（点击卡片时新开页查看稿件内容）。
  *
- * 返回根相对路径（`/uedro/ux?id=…`），由 daemon 的根路径反向代理透传到羽点
- * 上游——直接访问 `https://uedro.hikvision.com.cn/…` 需要登录，浏览器跨源也
- * 带不上 uedro 会话 cookie；走本地代理则始终同源，daemon 注入本地 SSO session
- * 里的 uedro cookie。详见 `apps/daemon/src/routes/hik/_routes/uedro.ts` 的
- * `/uedro` / `/portal` 反向代理。
+ * 本地 web 端口是动态的，但主机固定为 127.0.0.1：daemon 的根路径反向代理
+ * 会透传到羽点上游并注入 SSO cookie。生产环境入口是 `od://app/`，不能把该
+ * origin 拼进需要交给浏览器打开的 URL。
  *
  * manuscriptId 取自 `manuscriptDtos[0].manuscriptId`；不同 reviewType 走羽点
  * 不同的预览前端路由（对齐原站卡片点击行为）：
@@ -149,22 +198,22 @@ const REVIEW_TYPE_LABEL: Record<string, string> = {
  *   "2" 视觉评审 → /uedro/ua?id=<manuscriptId>
  *   "3" 文稿评审 → /uedro/pdf-js?id=<manuscriptId>&projectid=null&projName=&projManager=null
  *   "4" 表格评审 → /uedro/xlsx?id=<manuscriptId>&projectid=null&projName=&projManager=null
- * 缺少 manuscriptId 或类型无对应预览页（海客/插件/Pixso 等）时返回 null，
+ * 缺少 manuscriptId、端口或类型无对应预览页（海客/插件/Pixso 等）时返回 null，
  * 由调用方决定不响应点击。
  */
-export function buildManuscriptPreviewUrl(reviewType: unknown, manuscriptId: unknown): string | null {
+export function buildManuscriptPreviewUrl(reviewType: unknown, manuscriptId: unknown, webPort: unknown): string | null {
   if (manuscriptId === undefined || manuscriptId === null || manuscriptId === '') return null;
   const id = encodeURIComponent(String(manuscriptId));
   const t = reviewType === undefined || reviewType === null ? '' : String(reviewType);
   switch (t) {
     case '1':
-      return `http://127.0.0.1:9529/uedro/ux?id=${id}`;
+      return buildReviewWebUrl(`/uedro/ux?id=${id}`, webPort);
     case '2':
-      return `http://127.0.0.1:9529/uedro/ua?id=${id}`;
+      return buildReviewWebUrl(`/uedro/ua?id=${id}`, webPort);
     case '3':
-      return `http://127.0.0.1:9529/uedro/pdf-js?id=${id}&projectid=null&projName=&projManager=null`;
+      return buildReviewWebUrl(`/uedro/pdf-js?id=${id}&projectid=null&projName=&projManager=null`, webPort);
     case '4':
-      return `http://127.0.0.1:9529/uedro/xlsx?id=${id}&projectid=null&projName=&projManager=null`;
+      return buildReviewWebUrl(`/uedro/xlsx?id=${id}&projectid=null&projName=&projManager=null`, webPort);
     default:
       return null;
   }

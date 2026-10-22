@@ -239,6 +239,7 @@ import { HandoffButton } from './HandoffButton';
 import { SocialShareGrid } from './SocialShareGrid';
 import { Toast } from './Toast';
  import { ReviewAddModal } from './ReviewAddModal';
+ import { buildReviewWebUrl, resolveReviewWebPort } from './reviewMeta';
  import { exportProjectAsAxureZip } from '../runtime/axure-export';
  import {
    PreviewDrawOverlay,
@@ -15453,7 +15454,9 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
 // 打开历史评审页面：走 daemon 反向代理（/uedro → uedro.hikvision.com.cn），新窗口打开羽点首页。
 async function openReviewListModal() {
   setReviewMenuOpen(false);
-  window.open('http://127.0.0.1:9529/uedro/home', '_blank', 'noopener');
+  const webPort = await resolveReviewWebPort();
+  const reviewUrl = buildReviewWebUrl('/uedro/home', webPort);
+  if (reviewUrl) window.open(reviewUrl, '_blank', 'noopener');
 }
 // 打开发起评审 Modal。表单数据由独立组件 ReviewAddModal 自行拉取并提交。
   function openReviewAddModal() {

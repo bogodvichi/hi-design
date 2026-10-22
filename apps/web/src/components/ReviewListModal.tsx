@@ -1,7 +1,15 @@
 ﻿import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './ReviewListModal.module.css';
-import { pick, computeRemainDays, withTotal, reviewTypeMeta, formatVersion, buildManuscriptPreviewUrl } from './reviewMeta';
+import {
+  buildManuscriptPreviewUrl,
+  computeRemainDays,
+  formatVersion,
+  pick,
+  resolveReviewWebPort,
+  reviewTypeMeta,
+  withTotal,
+} from './reviewMeta';
 import { ReviewDetailDrawer } from './ReviewDetailModal';
 import { ReviewManuscriptUpdateModal } from './ReviewManuscriptUpdateModal';
 import { ReviewEditModal } from './ReviewEditModal';
@@ -528,11 +536,6 @@ function ReviewCard({
   const manuscriptId = r?.manuscriptDtos?.[0]?.manuscriptId;
   const hasManuscript = Boolean(manuscriptId);
 
-  // 点击整张卡片新开羽点稿件预览页（按 reviewType 走对应前端路由）。
-  // 无 manuscriptId 或无对应预览页类型时返回 null，卡片不响应点击的「打开预览」语义
-  //（卡片本身仍可被「更多」菜单等内部交互正常使用，故此处不阻断事件冒泡）。
-  const previewUrl = buildManuscriptPreviewUrl(r?.reviewType, manuscriptId);
-
   /** 统一发起一项卡片操作：置 pending、调路由、回写 toast。 */
   async function runAction(action: CardAction) {
     setMenu((m) => ({ ...m, open: false, pending: action, toast: null }));
@@ -637,13 +640,11 @@ function ReviewCard({
        // 点击整张卡片：打开对应 reviewType 的羽点稿件预览页（新标签）。
        // 卡片内交互（更多菜单 / 各操作按钮）自行 stopPropagation，避免误触发新开页。
        // 用 openExternalUrl 在系统默认浏览器打开，而非 Electron 新窗口。
-       // previewUrl 是根相对路径（/uedro/ux?id=…），openExternalUrl 走
-       // shell.openExternal / daemon open-external 都需要完整 http(s) URL，
-       // 否则会退化为当前标签页跳转。用 window.location.origin 补全。
-       if (previewUrl) {
-         const absolute = new URL(previewUrl, window.location.origin).toString();
-         void openExternalUrl(absolute);
-       }
+       void (async () => {
+         const webPort = await resolveReviewWebPort();
+         const previewUrl = buildManuscriptPreviewUrl(r?.reviewType, manuscriptId, webPort);
+         if (previewUrl) await openExternalUrl(previewUrl);
+       })();
       }}
     >
       <div className={styles.cardHead}>
