@@ -15444,6 +15444,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     setExportReadyNudge(false);
     markExportReadyNudgeSeen(projectId, file.name);
     setDeployMenuOpen(false);
+    setReviewMenuOpen(false);
     setDownloadMenuOpenForPixso((v) => !v);
   };
   const openReviewMenu = () => {
@@ -15451,6 +15452,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     setExportReadyNudge(false);
     markExportReadyNudgeSeen(projectId, file.name);
     setDeployMenuOpen(false);
+    setDownloadMenuOpenForPixso(false);
     setReviewMenuOpen((v) => !v);
  };
 // 打开历史评审页面：优先用已保存的 SSO 会话换取一次性票据，直接打开羽点正式站点。
