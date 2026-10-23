@@ -71,10 +71,11 @@ describe('BoardComposerPopover action row', () => {
     expect(body).not.toBeNull();
     expect(titlebar).not.toBeNull();
     expect(actions).not.toBeNull();
-    // The close button stays pinned while every other composer section scrolls.
+    // The close button and titlebar stay pinned while composer content scrolls.
     expect(closeButton!.parentElement).toBe(popover);
     expect(wrapper!.parentElement).toBe(popover);
-    expect(wrapper!.contains(titlebar!)).toBe(true);
+    expect(titlebar!.parentElement).toBe(popover);
+    expect(wrapper!.contains(titlebar!)).toBe(false);
     expect(wrapper!.contains(body!)).toBe(true);
     expect(wrapper!.contains(actions!)).toBe(true);
   });

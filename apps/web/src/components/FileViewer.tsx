@@ -4432,6 +4432,18 @@ function commentAuthorInitials(name: string): string {
   return (first ?? '?').toUpperCase();
 }
 
+function commentMatchesSearch(
+  comment: PreviewComment,
+  query: string,
+  resolveAuthor: (memberId: string | null | undefined) => CollabCloudMemberDirectoryEntry | null,
+): boolean {
+  if (!query) return true;
+  const authorDisplayName = comment.authorDisplayName?.trim()
+    || resolveAuthor(comment.authorMemberId)?.displayName
+    || '';
+  return [comment.note, authorDisplayName].some((value) => value?.toLowerCase().includes(query));
+}
+
 function commentAuthorRoleLabel(role: CollabMemberRole): string {
   return role.charAt(0).toUpperCase() + role.slice(1);
 }
@@ -4568,13 +4580,12 @@ export function CommentSidePanel({
 
   // Derived: filter by search query + filter mode, then sort.
   const filteredComments = useMemo(() => {
-   const q = searchQuery.trim().toLowerCase();
-   const currentDisplayName = currentUser?.displayName?.trim().toLowerCase();
-   const currentMemberId = currentUser?.memberId?.trim().toLowerCase();
-   let list = comments;
-   if (q) {
-     list = list.filter((c) => c.note.toLowerCase().includes(q));
-   }
+    const q = searchQuery.trim().toLowerCase();
+    const currentMemberId = currentUser?.memberId?.trim().toLowerCase();
+    let list = comments;
+    if (q) {
+      list = list.filter((c) => commentMatchesSearch(c, q, resolveCommentAuthor));
+    }
     // "Show resolved" is off by default: hide resolved comments unless the
     // user explicitly opts in.
     if (!filterShowResolved) {
@@ -4605,7 +4616,18 @@ export function CommentSidePanel({
      sortedList.sort((a, b) => commentActivityAt(a) - commentActivityAt(b));
    }
    return sortedList;
-  }, [comments, searchQuery, filterShowResolved, filterCurrentPage, filterRelatedToMe, currentFilePath, replySource, sortMode, currentUser]);
+  }, [
+    comments,
+    searchQuery,
+    filterShowResolved,
+    filterCurrentPage,
+    filterRelatedToMe,
+    currentFilePath,
+    replySource,
+    sortMode,
+    currentUser,
+    resolveCommentAuthor,
+  ]);
 
   const unresolvedCount = useMemo(
     () => comments.filter((c) => c.status !== 'resolved').length,

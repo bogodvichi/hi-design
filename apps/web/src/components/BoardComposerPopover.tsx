@@ -636,6 +636,10 @@ export function BoardComposerPopover({
     : manualPosition
       ? clampPopoverPositionStyle(manualPosition.left, manualPosition.top, bounds, measuredPopover)
       : autoStyle;
+  const popoverTop = numericStyleValue(popoverStyle ?? {}, 'top');
+  const popoverStyleWithTop = popoverStyle
+    ? { ...popoverStyle, '--comment-popover-top': `${popoverTop ?? 0}px` } as CSSProperties
+    : undefined;
   const startPopoverDrag = (event: ReactPointerEvent<HTMLButtonElement>) => {
     if (docked) return;
     event.preventDefault();
@@ -803,7 +807,7 @@ export function BoardComposerPopover({
       role="dialog"
       aria-modal="false"
       aria-label="Annotation"
-      style={popoverStyle}
+      style={popoverStyleWithTop}
       onKeyDown={(event) => {
         if (event.key === 'Escape') {
           event.preventDefault();
@@ -820,7 +824,6 @@ export function BoardComposerPopover({
       >
         <Icon name="close" size={14} />
       </button>
-      <div className="comment-popover-composer-wrap">
       {!docked ? (
         <div className="comment-popover-titlebar">
           <button
@@ -892,9 +895,9 @@ export function BoardComposerPopover({
           ) : null}
         </div>
       ) : null}
-      {/* Everything above the action row scrolls; the action row itself lives
-          outside this box (see below) so a height-clamped card can never push
-          the buttons out of view. */}
+      <div className="comment-popover-composer-wrap">
+      {/* Composer content scrolls; the titlebar and close button stay outside
+          the wrapper so they remain fixed while the card is height-clamped. */}
       <div className="comment-popover-body">
         {existing ? (
           <section className="comment-popover-section comment-popover-section-params">

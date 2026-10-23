@@ -176,7 +176,7 @@ export function planWorkspaceProjectReconciliation(input: {
   workspaceId: string;
   workspaceMemberId: string;
   /** Every member ID that can identify the same signed-in user. */
-  selfMemberIds?: readonly string[];
+  selfMemberIds?: readonly string[] | undefined;
   remoteProjects: readonly RemoteTeamProjectRef[];
   localBindings: ReadonlyMap<string, LocalTeamProjectBinding>;
 }): WorkspaceProjectReconcileAction[] {

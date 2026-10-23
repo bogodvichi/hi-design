@@ -1525,16 +1525,15 @@
 }
 /* Composer variant (BoardComposerPopover). The card's height is clamped to the
    space left in the preview stage, so when the anchored element sits low the
-   card is shorter than its content. Keep the close button outside the scroller
-   so it remains available while the rest of the composer scrolls.
+   card is shorter than its content. Keep the close button and titlebar outside
+   the scroller so they remain available while the rest of the composer scrolls.
    The read-only `.annotation-hover-popover` keeps the plain scrolling card;
    it has no `.comment-popover-body` and no actions to protect. */
 .comment-popover-composer {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  max-height: calc(100vh - 120px) !important;
-  bottom:0;
+  max-height: calc(100% - var(--comment-popover-top, 120px)) !important;
 }
 .comment-popover-composer-wrap {
   display: flex;
@@ -1542,6 +1541,15 @@
   flex-direction: column;
   min-height: 0;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--text-muted) 34%, transparent) transparent;
+}
+.comment-popover-composer-wrap::-webkit-scrollbar {
+  width: 6px;
+}
+.comment-popover-composer-wrap::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-muted) 34%, transparent);
 }
 .comment-popover-body {
   flex: 1 1 auto;
@@ -1556,6 +1564,9 @@
   overflow: visible;
 }
 .comment-popover-composer .comment-popover-actions {
+  flex: 0 0 auto;
+}
+.comment-popover-composer > .comment-popover-titlebar {
   flex: 0 0 auto;
 }
 .comment-popover-titlebar {
