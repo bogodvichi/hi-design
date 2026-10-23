@@ -2335,6 +2335,29 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       lifecycleState: ctx.lifecycleState,
     };
   }
+
+  function workspaceProjectSelfMemberIds(workspaceCtx: WorkspaceProjectContext): Set<string> {
+    const username = getSsoUser(ctx.paths.RUNTIME_DATA_DIR)?.username ?? '';
+    return new Set([
+      workspaceCtx.workspaceMemberId,
+      getTeamMemberId(getDefaultTeamId(), username),
+      getSharedSpaceMemberId(username),
+      getTeamMemberId(workspaceCtx.workspaceId, username),
+    ].filter((memberId) => memberId.trim()));
+  }
+
+  function reconcileCreatorForRemoteAccess(input: {
+    existingCreator: string | null | undefined;
+    isOwner: boolean;
+    ctx: WorkspaceProjectContext;
+    selfMemberIds: Set<string>;
+  }): string | null {
+    if (input.isOwner) return input.ctx.workspaceMemberId;
+    const existingCreator = input.existingCreator?.trim() || null;
+    if (!existingCreator) return null;
+    return input.selfMemberIds.has(existingCreator) ? null : existingCreator;
+  }
+
   function msFromIso(value: string): number {
     const parsed = Date.parse(value);
     return Number.isFinite(parsed) ? parsed : Date.now();
@@ -2524,14 +2547,18 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
     // Ownership match required, same reasoning as accessForRemoteTeamProject
     // above: never rebind a row to make a reader look like this project's
     // creator just because B's generic canEdit happens to read true for them.
-    // The same user has different member IDs across workspaces, so also
-    // check against the default-team (personal space) member ID — after a
-    // cross-workspace move the remote catalog's ownerMemberId still carries
-    // the personal space's member ID, which won't match ctx.workspaceMemberId.
-    const defaultMemberId = getTeamMemberId(getDefaultTeamId());
-    const isOwner = remote.ownerMemberId === ctx.workspaceMemberId
-      || (defaultMemberId != null && remote.ownerMemberId === defaultMemberId);
-    const persistedCreatorMemberId = isOwner ? ctx.workspaceMemberId : null;
+    // The same user has different member IDs across workspaces. Recognize the
+    // active ID, the default-team ID, the Shared Space ID, and the legacy
+    // deterministic workspace ID so a stale cloud owner cannot make the
+    // reconciler erase a local row that this user owns.
+    const selfMemberIds = workspaceProjectSelfMemberIds(ctx);
+    const isOwner = selfMemberIds.has(remote.ownerMemberId);
+    const persistedCreatorMemberId = reconcileCreatorForRemoteAccess({
+      existingCreator: existing?.createdByWorkspaceMemberId,
+      isOwner,
+      ctx,
+      selfMemberIds,
+    });
     const canEdit = remote.access.canEdit && remote.access.canView && !remote.access.frozen && isOwner;
     const expectedResourceState = remote.access.frozen ? 'frozen' : 'active';
     const expectedSyncState = velaProjectSyncStateToProject(remote.syncState);
@@ -2580,7 +2607,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
     const wronglyPermissive = existing
       && existing.workspaceId === ctx.workspaceId
       && existingVisibility === 'team'
-      && existing.createdByWorkspaceMemberId === ctx.workspaceMemberId;
+      && selfMemberIds.has(existing.createdByWorkspaceMemberId);
     if (!exactRemoteBinding && !wronglyPermissive) return;
     rebindWorkspaceProject(db, remote.projectId, {
       workspaceId: ctx.workspaceId,

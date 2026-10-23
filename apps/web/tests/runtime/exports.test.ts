@@ -1067,6 +1067,55 @@ describe('binary project/design-system downloads', () => {
     expect(capturedFilename).toBe('Main-Page-v1.zip');
     expect(capturedBlob?.type).toBe('application/zip');
   });
+
+  it('resolves an async fallback once when the project archive request fails', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('archive failed', { status: 500 })));
+    const fallback = vi.fn(async () => '<main>loaded source</main>');
+
+    await exportProjectAsZip({
+      projectId: 'project-1',
+      filePath: 'screens/page.html',
+      fallbackHtml: fallback,
+      fallbackTitle: 'Main Page',
+    });
+
+    expect(fallback).toHaveBeenCalledTimes(1);
+    expect(capturedFilename).toBe('Main-Page.zip');
+    expect(capturedBlob?.type).toBe('application/zip');
+  });
+
+  it('keeps accepting a string fallback for the single-file ZIP', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('archive failed', { status: 500 })));
+
+    await exportProjectAsZip({
+      projectId: 'project-1',
+      filePath: 'index.html',
+      fallbackHtml: '<main>inline fallback</main>',
+      fallbackTitle: 'Inline Fallback',
+    });
+
+    expect(capturedFilename).toBe('Inline-Fallback.zip');
+    expect(capturedBlob?.type).toBe('application/zip');
+  });
+
+  it('rejects a missing fallback instead of downloading an empty ZIP', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('archive failed', { status: 500 })));
+    const fallback = vi.fn(async () => '   ');
+
+    await expect(exportProjectAsZip({
+      projectId: 'project-1',
+      filePath: 'index.html',
+      fallbackHtml: fallback,
+      fallbackTitle: 'Unavailable',
+    })).rejects.toThrow('HTML source is unavailable');
+
+    expect(fallback).toHaveBeenCalledTimes(1);
+    expect(capturedBlob).toBeUndefined();
+    expect(capturedFilename).toBeUndefined();
+  });
 });
 
 // `exportAsMd` is a pass-through (the file body is the artifact source

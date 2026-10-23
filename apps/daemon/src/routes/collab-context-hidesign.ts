@@ -24,7 +24,7 @@ import {
   type RemoveSharedWithMeResourceResponse,
 } from '@open-design/contracts';
 import type { SqliteDb } from '../db.js';
-import { getProject, rebindWorkspaceProject, getFolderTree } from '../db.js';
+import { getProject, getWorkspaceProjectByProjectId, rebindWorkspaceProject, getFolderTree } from '../db.js';
 import { createHdwFolders, shareFolderProjectsToSharedSpace, fetchSharedFolders, uploadHdwCommunityBlob, fetchHdwFolderTree } from '../http/hdw.js';
 import { createHdwFolderShares } from '../http/hdw.js';
 import { unshareHdwFolder } from '../http/hdw.js';
@@ -169,6 +169,57 @@ function normalizeWorkspaceRole(role: string | undefined): CollabMemberRole {
     return role;
   }
   return 'member';
+}
+
+/**
+ * Resolve the signed-in user's member ID in the workspace receiving a share.
+ * Shared Space and regular teams use different cloud identity conventions, so
+ * prefer the authoritative directory value and only fall back to the legacy
+ * deterministic derivation when that directory is temporarily unavailable.
+ */
+async function resolveWorkspaceShareMemberId(
+  dataDir: string | undefined,
+  workspaceId: string,
+  username: string,
+): Promise<string> {
+  const normalizedWorkspaceId = workspaceId.trim();
+  const normalizedUsername = username.trim();
+  if (normalizedWorkspaceId === getSharedSpaceTeamId()) {
+    try {
+      const sharedSpace = await fetchSharedSpaceInfo(dataDir);
+      if (
+        sharedSpace?.workspace_id === normalizedWorkspaceId
+        && sharedSpace.workspace_member_id
+      ) {
+        return sharedSpace.workspace_member_id;
+      }
+    } catch {
+      // Sharing can still proceed with the deterministic Shared Space ID.
+    }
+    return getSharedSpaceMemberId(normalizedUsername);
+  }
+
+  try {
+    const teams = await fetchHdwTeams(dataDir);
+    const team = teams.find((item) => item.workspace_id === normalizedWorkspaceId);
+    if (team?.workspace_member_id) return team.workspace_member_id;
+  } catch {
+    // A directory outage must not block the share request.
+  }
+  return getTeamMemberId(normalizedWorkspaceId, normalizedUsername);
+}
+
+function workspaceProjectCreatorForShare(
+  db: SqliteDb | null | undefined,
+  projectId: string,
+  workspaceId: string,
+  fallbackMemberId: string,
+): string {
+  const existing = db ? getWorkspaceProjectByProjectId(db, projectId) : null;
+  const existingCreator = existing?.createdByWorkspaceMemberId ?? null;
+  return existing?.workspaceId === workspaceId && existingCreator
+    ? existingCreator
+    : fallbackMemberId;
 }
 
 function makeBilling(workspaceId: string, workspaceMemberId: string) {
@@ -642,6 +693,11 @@ export function registerCollabContextHideSignRoutes(
       res.status(401).json({ error: 'not_authenticated', message: 'SSO session is required to share' });
       return;
     }
+    const ownerMemberId = await resolveWorkspaceShareMemberId(
+      deps.dataDir,
+      homeWorkspaceId,
+      createdByUsername,
+    );
 
     // Best-effort: publish the project to the team resource hub before
     // writing the HDW share record. A hub failure must not block the share.
@@ -650,7 +706,7 @@ export function registerCollabContextHideSignRoutes(
     if (deps.requestTeamShare) {
       try {
         const sharePrincipal: ResourceHubPrincipal = {
-          memberId: getTeamMemberId(homeWorkspaceId, createdByUsername),
+          memberId: ownerMemberId,
           teamId: homeWorkspaceId,
           role: 'owner',
           lifecycleState: 'active',
@@ -689,6 +745,13 @@ export function registerCollabContextHideSignRoutes(
           workspaceId: homeWorkspaceId,
           visibility: 'team',
           resourceState: 'active',
+          createdByWorkspaceMemberId: workspaceProjectCreatorForShare(
+            deps.db,
+            projectId,
+            homeWorkspaceId,
+            ownerMemberId,
+          ),
+          updatedByWorkspaceMemberId: ownerMemberId,
           cloudTombstonedAt: null,
           syncState: 'pending_upload',
         });
@@ -802,6 +865,11 @@ export function registerCollabContextHideSignRoutes(
       res.status(401).json({ error: 'not_authenticated', message: 'SSO session is required to share' });
       return;
     }
+    const ownerMemberId = await resolveWorkspaceShareMemberId(
+      deps.dataDir,
+      homeWorkspaceId,
+      createdByUsername,
+    );
 
     // Team folders may be shared by owner/admin/member, but never by guests.
     // Personal/default-workspace folders keep their existing sharing behavior.
@@ -918,7 +986,7 @@ export function registerCollabContextHideSignRoutes(
       for (const item of items) {
         try {
           const sharePrincipal: ResourceHubPrincipal = {
-            memberId: getTeamMemberId(homeWorkspaceId, createdByUsername),
+            memberId: ownerMemberId,
             teamId: homeWorkspaceId,
             role: 'owner',
             lifecycleState: 'active',
@@ -946,6 +1014,13 @@ export function registerCollabContextHideSignRoutes(
             workspaceId: homeWorkspaceId,
             visibility: 'team',
             resourceState: 'active',
+            createdByWorkspaceMemberId: workspaceProjectCreatorForShare(
+              deps.db,
+              item.project_id,
+              homeWorkspaceId,
+              ownerMemberId,
+            ),
+            updatedByWorkspaceMemberId: ownerMemberId,
             cloudTombstonedAt: null,
             syncState: 'pending_upload',
           });

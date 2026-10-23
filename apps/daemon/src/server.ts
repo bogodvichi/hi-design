@@ -65,7 +65,11 @@ import {
 import { emittedRenderableQuestionForm } from './question-form-detect.js';
 import { resolveProjectRoot } from './project-root.js';
 import { setRuntimeDataDir } from './ids.js';
-import { getDefaultTeamId, getTeamMemberId } from './ids.js';
+import {
+  getDefaultTeamId,
+  getSharedSpaceMemberId,
+  getTeamMemberId,
+} from './ids.js';
 import { fetchHdwTeams, hdwPut } from './http/hdw.js';
 import { fetchAiResearchMcpToken, fetchHiMindMcpToken } from './http/hdw.js';
 import { fetchSharedSpaceInfo } from './http/hdw.js';
@@ -4576,9 +4580,18 @@ export async function startServer({
           capturedWorkspaceId,
         );
         if (!scope) return null;
+        const username = getSsoUser(RUNTIME_DATA_DIR)?.username ?? '';
+        const selfMemberIds = Array.from(new Set([
+          scope.principal.memberId,
+          ...directory.items.map((item) => item.workspaceMemberId),
+          getTeamMemberId(getDefaultTeamId(), username),
+          getSharedSpaceMemberId(username),
+          getTeamMemberId(capturedWorkspaceId, username),
+        ].filter((memberId): memberId is string => Boolean(memberId?.trim()))));
         return {
           workspaceId: capturedWorkspaceId,
           workspaceMemberId: scope.principal.memberId,
+          selfMemberIds,
           principal: scope.principal,
         };
       },
@@ -4679,18 +4692,22 @@ export async function startServer({
         // Reconciling a binding against B's catalog changes no project content,
         // so it must not restamp "last changed" — see SYNC_KEEPS_UPDATED_AT.
         // Unification safety net: if the patch nulls createdBy but
-        // updatedBy is set, preserve the existing creator so the
-        // owner's write access survives reconciliation. For genuine
-        // non-owners the existing value is already null, so this
-        // changes nothing.
+        // updatedBy is set, preserve a foreign creator so the mirror's
+        // ownership evidence survives reconciliation. A stale ID that still
+        // belongs to this user must be cleared; the planner has already
+        // decided it is not the remote owner.
         let synced = { ...patch, updatedAt: SYNC_KEEPS_UPDATED_AT };
         if (
           patch.createdByWorkspaceMemberId == null &&
           patch.updatedByWorkspaceMemberId
         ) {
           const existingBinding = getWorkspaceProjectByProjectId(db, projectId) as any;
-          if (existingBinding?.createdByWorkspaceMemberId) {
-            synced.createdByWorkspaceMemberId = existingBinding.createdByWorkspaceMemberId;
+          const existingCreator = existingBinding?.createdByWorkspaceMemberId;
+          if (
+            existingCreator
+            && !identity.selfMemberIds?.includes(existingCreator)
+          ) {
+            synced.createdByWorkspaceMemberId = existingCreator;
           }
         }
         if (rebindWorkspaceProject(db, projectId, synced)) return;

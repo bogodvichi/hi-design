@@ -868,11 +868,25 @@ export function exportReactComponentAsZip(
 export async function exportProjectAsZip(opts: {
   projectId: string;
   filePath: string;
-  fallbackHtml: string;
+  fallbackHtml: string | (() => Promise<string | null> | string | null);
   fallbackTitle: string;
   versionId?: string;
   workspaceContext?: WorkspaceCollabContext | null;
 }): Promise<void> {
+  let fallbackPromise: Promise<string> | null = null;
+  const resolveFallback = () => {
+    fallbackPromise ??= Promise.resolve(
+      typeof opts.fallbackHtml === 'function'
+        ? opts.fallbackHtml()
+        : opts.fallbackHtml,
+    ).then((html) => {
+      if (typeof html !== 'string' || html.trim().length === 0) {
+        throw new Error('HTML source is unavailable');
+      }
+      return html;
+    });
+    return fallbackPromise;
+  };
   if (opts.versionId) {
     const segments = opts.filePath
       .split('/')
@@ -892,7 +906,7 @@ export async function exportProjectAsZip(opts: {
       return;
     } catch (err) {
       console.warn('[exportProjectAsZip] falling back to single-file ZIP:', err);
-      exportAsZip(opts.fallbackHtml, opts.fallbackTitle);
+      exportAsZip(await resolveFallback(), opts.fallbackTitle);
       return;
     }
   }
@@ -911,7 +925,7 @@ export async function exportProjectAsZip(opts: {
     triggerDownload(blob, archiveFilenameFrom(resp, opts.fallbackTitle, root));
   } catch (err) {
     console.warn('[exportProjectAsZip] falling back to single-file ZIP:', err);
-    exportAsZip(opts.fallbackHtml, opts.fallbackTitle);
+    exportAsZip(await resolveFallback(), opts.fallbackTitle);
   }
 }
 

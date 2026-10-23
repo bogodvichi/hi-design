@@ -1525,16 +1525,23 @@
 }
 /* Composer variant (BoardComposerPopover). The card's height is clamped to the
    space left in the preview stage, so when the anchored element sits low the
-   card is shorter than its content. With the whole card as the scroller the
-   action row simply fell below the fold and the user could not reach cancel /
-   send at all. Invariant: the card is a fixed frame — only the body scrolls,
-   and the action row is always inside the visible box.
+   card is shorter than its content. Keep the close button outside the scroller
+   so it remains available while the rest of the composer scrolls.
    The read-only `.annotation-hover-popover` keeps the plain scrolling card;
    it has no `.comment-popover-body` and no actions to protect. */
 .comment-popover-composer {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  max-height: calc(100vh - 120px) !important;
+  bottom:0;
+}
+.comment-popover-composer-wrap {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
 }
 .comment-popover-body {
   flex: 1 1 auto;
@@ -1542,6 +1549,11 @@
      would push the action row back out of the frame. */
   min-height: 0;
   overflow: auto;
+}
+.comment-popover-composer-wrap > .comment-popover-body {
+  flex: 0 0 auto;
+  min-height: auto;
+  overflow: visible;
 }
 .comment-popover-composer .comment-popover-actions {
   flex: 0 0 auto;
@@ -1844,7 +1856,6 @@
   padding: 8px 12px 10px;
 }
 .comment-popover-reply-bar--expanded .comment-popover-reply-input {
-  max-height: none;
   padding-right: 10px;
 }
 .comment-popover-reply-floating-actions {
@@ -2122,9 +2133,8 @@
   overflow-wrap: anywhere;
 }
 .comment-popover textarea {
-  max-height: 112px;
-  overflow-y: auto;
-  resize: none;
+  max-height: 300px;
+  overflow: overlay;
 }
 .comment-popover-actions {
   display: flex;

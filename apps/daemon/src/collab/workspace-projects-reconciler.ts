@@ -146,7 +146,7 @@ export interface WorkspaceProjectDemotePatch {
 export interface WorkspaceProjectRevokePatch {
   visibility: 'team';
   resourceState: 'deleted';
-  createdByWorkspaceMemberId: null;
+  createdByWorkspaceMemberId: string | null;
   resourceHubResourceId: string | null;
   cloudTombstonedAt: null;
   syncState: 'synced';
@@ -175,10 +175,18 @@ export type WorkspaceProjectReconcileAction =
 export function planWorkspaceProjectReconciliation(input: {
   workspaceId: string;
   workspaceMemberId: string;
+  /** Every member ID that can identify the same signed-in user. */
+  selfMemberIds?: readonly string[];
   remoteProjects: readonly RemoteTeamProjectRef[];
   localBindings: ReadonlyMap<string, LocalTeamProjectBinding>;
 }): WorkspaceProjectReconcileAction[] {
   const { workspaceId, workspaceMemberId, remoteProjects, localBindings } = input;
+  const selfMemberIds = new Set([
+    workspaceMemberId,
+    ...(input.selfMemberIds ?? []).filter((memberId) => memberId.trim()),
+  ]);
+  const isSelfMemberId = (memberId: string | null | undefined) =>
+    memberId != null && selfMemberIds.has(memberId);
   const actions: WorkspaceProjectReconcileAction[] = [];
   const remoteIds = new Set(remoteProjects.map((project) => project.projectId));
 
@@ -189,15 +197,21 @@ export function planWorkspaceProjectReconciliation(input: {
   // a match against the CURRENT member earns an editable local binding.
   for (const remote of remoteProjects) {
     const local = localBindings.get(remote.projectId) ?? null;
-    const isOwner = remote.ownerMemberId === workspaceMemberId;
+    const isOwner = isSelfMemberId(remote.ownerMemberId);
     // Catalog reconciliation may race the background first pull. The catalog
     // proves remote ownership, but it does not prove that this daemon has
     // committed the owner's content. Preserve creator-null while the durable
     // placeholder stamp exists; only the full mirror materializer may clear
     // that stamp and restore the real owner in its content transaction.
+    // A legacy cloud row may still identify the same user by an old
+    // deterministic workspace ID. Canonicalize it to the active member ID.
+    // When the remote owner is somebody else, keep a foreign creator instead
+    // of erasing the only local evidence of who owns the mirror.
     const wantCreatedBy = isOwner && local?.materializationPending !== true
       ? workspaceMemberId
-      : null;
+      : isSelfMemberId(local?.createdByWorkspaceMemberId)
+        ? null
+        : local?.createdByWorkspaceMemberId ?? null;
     const alreadyCorrect =
       local != null &&
       local.workspaceId === workspaceId &&
@@ -237,7 +251,7 @@ export function planWorkspaceProjectReconciliation(input: {
     if (local.workspaceId !== workspaceId || local.visibility !== 'team') continue;
     if (remoteIds.has(projectId)) continue;
     if (local.resourceState === 'deleted') continue;
-    if (local.createdByWorkspaceMemberId !== workspaceMemberId) {
+    if (!isSelfMemberId(local.createdByWorkspaceMemberId)) {
       actions.push({
         kind: 'revoke',
         projectId,
@@ -245,7 +259,7 @@ export function planWorkspaceProjectReconciliation(input: {
         patch: {
           visibility: 'team',
           resourceState: 'deleted',
-          createdByWorkspaceMemberId: null,
+          createdByWorkspaceMemberId: local.createdByWorkspaceMemberId,
           resourceHubResourceId: local.resourceHubResourceId,
           cloudTombstonedAt: null,
           syncState: 'synced',
@@ -273,6 +287,8 @@ export function planWorkspaceProjectReconciliation(input: {
 export interface WorkspaceProjectsReconcileIdentity {
   workspaceId: string;
   workspaceMemberId: string;
+  /** Other historical/cross-workspace IDs belonging to the same user. */
+  selfMemberIds?: readonly string[];
   /** Optional transport identity captured by the authority resolver. The
    *  pure planner does not inspect it, but the remote catalog reader must
    *  receive the same captured principal instead of reconstructing one
@@ -364,6 +380,10 @@ function metadataRefreshPatch(input: {
   const { identity, remote, localBinding, localProject } = input;
   const displayName = remote.displayName?.trim() ?? '';
   const originUpdatedAt = remote.originProjectUpdatedAt;
+  const selfMemberIds = new Set([
+    identity.workspaceMemberId,
+    ...(identity.selfMemberIds ?? []),
+  ]);
   if (
     !displayName ||
     typeof originUpdatedAt !== 'number' ||
@@ -375,12 +395,15 @@ function metadataRefreshPatch(input: {
   // Only a foreign, active, read-only mirror may accept catalog metadata.
   // The owner's project can contain a rename that has not reached the hub yet.
   if (
-    remote.ownerMemberId === identity.workspaceMemberId ||
+    selfMemberIds.has(remote.ownerMemberId) ||
     !localBinding ||
     localBinding.workspaceId !== identity.workspaceId ||
     localBinding.visibility !== 'team' ||
     localBinding.resourceState !== 'active' ||
-    localBinding.createdByWorkspaceMemberId !== null
+    (
+      localBinding.createdByWorkspaceMemberId != null
+      && selfMemberIds.has(localBinding.createdByWorkspaceMemberId)
+    )
   ) return null;
 
   return { name: displayName, updatedAt: originUpdatedAt };
@@ -455,6 +478,7 @@ export async function reconcileWorkspaceProjectsWithRemote(
   const actions = planWorkspaceProjectReconciliation({
     workspaceId: identity.workspaceId,
     workspaceMemberId: identity.workspaceMemberId,
+    selfMemberIds: identity.selfMemberIds,
     remoteProjects: knownRemoteProjects,
     localBindings,
   });

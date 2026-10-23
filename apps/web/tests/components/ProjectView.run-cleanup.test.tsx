@@ -416,6 +416,43 @@ describe('selectPrimaryProjectFile', () => {
 
     expect(selectPrimaryProjectFile([sidecar, html])).toBe(html);
   });
+
+  it('does not auto-select a project that only contains non-HTML artifacts', () => {
+    const image = projectFile('cover.png', 'image', 2_000);
+    const pdf = projectFile('brief.pdf', 'pdf', 1_000);
+
+    expect(selectPrimaryProjectFile([image, pdf])).toBeNull();
+  });
+
+  it('recognizes .htm files without requiring an html kind', () => {
+    const html = projectFile('landing.htm', 'text', 1_000);
+
+    expect(selectPrimaryProjectFile([html])).toBe(html);
+  });
+
+  it('recognizes HTML from the MIME type, including parameters', () => {
+    const html = {
+      ...projectFile('landing', 'text', 1_000),
+      mime: 'text/html; charset=utf-8',
+    };
+
+    expect(selectPrimaryProjectFile([html])).toBe(html);
+  });
+
+  it('lets an HTML entry outrank a primary manifest for a non-HTML artifact', () => {
+    const primaryComponent = projectFile('main.tsx', 'code', 2_000, {
+      entry: 'main.tsx',
+      exports: ['jsx'],
+      kind: 'react-component',
+      primary: true,
+      renderer: 'react-component',
+      title: 'Main component',
+      version: 1,
+    });
+    const html = projectFile('index.html', 'html', 1_000);
+
+    expect(selectPrimaryProjectFile([primaryComponent, html])).toBe(html);
+  });
 });
 
 describe('retry target resolution', () => {

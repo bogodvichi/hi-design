@@ -134,6 +134,58 @@ describe('planWorkspaceProjectReconciliation (pure)', () => {
     ]);
   });
 
+  it('recognizes a legacy self member ID and repairs the active creator ID', () => {
+    const local: LocalTeamProjectBinding = {
+      projectId: 'p1',
+      workspaceId: WORKSPACE_ID,
+      visibility: 'team',
+      createdByWorkspaceMemberId: 'legacy-self-member',
+      resourceHubResourceId: 'resource-abc',
+    };
+    const actions = planWorkspaceProjectReconciliation({
+      workspaceId: WORKSPACE_ID,
+      workspaceMemberId: OWNER_MEMBER_ID,
+      selfMemberIds: ['legacy-self-member'],
+      remoteProjects: [{ projectId: 'p1', ownerMemberId: 'legacy-self-member' }],
+      localBindings: new Map([['p1', local]]),
+    });
+
+    expect(actions).toEqual([
+      expect.objectContaining({
+        kind: 'bind',
+        patch: expect.objectContaining({
+          createdByWorkspaceMemberId: OWNER_MEMBER_ID,
+        }),
+      }),
+    ]);
+  });
+
+  it('preserves a foreign creator when the remote owner is someone else', () => {
+    const foreignCreator = 'foreign-owner';
+    const local: LocalTeamProjectBinding = {
+      projectId: 'p1',
+      workspaceId: WORKSPACE_ID,
+      visibility: 'personal',
+      createdByWorkspaceMemberId: foreignCreator,
+      resourceHubResourceId: 'resource-abc',
+    };
+    const actions = planWorkspaceProjectReconciliation({
+      workspaceId: WORKSPACE_ID,
+      workspaceMemberId: READER_MEMBER_ID,
+      remoteProjects: [{ projectId: 'p1', ownerMemberId: OWNER_MEMBER_ID }],
+      localBindings: new Map([['p1', local]]),
+    });
+
+    expect(actions).toEqual([
+      expect.objectContaining({
+        kind: 'bind',
+        patch: expect.objectContaining({
+          createdByWorkspaceMemberId: foreignCreator,
+        }),
+      }),
+    ]);
+  });
+
   // A pulled teammate mirror is not this member's personal project. Once the
   // authoritative catalog confirms the share is gone, quarantine the mirror
   // in place instead of misattributing its stale bytes to the reader.
@@ -165,6 +217,31 @@ describe('planWorkspaceProjectReconciliation (pure)', () => {
           syncState: 'synced',
         },
       },
+    ]);
+  });
+
+  it('preserves the foreign creator when revoking a teammate mirror', () => {
+    const local: LocalTeamProjectBinding = {
+      projectId: 'p1',
+      workspaceId: WORKSPACE_ID,
+      visibility: 'team',
+      createdByWorkspaceMemberId: OWNER_MEMBER_ID,
+      resourceHubResourceId: 'resource-abc',
+    };
+    const actions = planWorkspaceProjectReconciliation({
+      workspaceId: WORKSPACE_ID,
+      workspaceMemberId: READER_MEMBER_ID,
+      remoteProjects: [],
+      localBindings: new Map([['p1', local]]),
+    });
+
+    expect(actions).toEqual([
+      expect.objectContaining({
+        kind: 'revoke',
+        patch: expect.objectContaining({
+          createdByWorkspaceMemberId: OWNER_MEMBER_ID,
+        }),
+      }),
     ]);
   });
 

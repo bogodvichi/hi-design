@@ -1718,6 +1718,122 @@ describe('FileViewer SVG artifacts', () => {
     });
   });
 
+  it('keeps the full HTML action bar visible without eagerly loading large safe source', async () => {
+    const safeHtml =
+      '<!doctype html><html><head><title>Large</title></head><body><main>Large safe page</main></body></html>';
+    const file = baseFile({
+      name: 'index.html',
+      path: 'index.html',
+      mime: 'text/html',
+      kind: 'html',
+      size: 3 * 1024 * 1024,
+      artifactManifest: {
+        version: 1,
+        kind: 'html',
+        title: 'Large safe page',
+        entry: 'index.html',
+        renderer: 'html',
+        exports: ['html'],
+      },
+    });
+    const rawReads: string[] = [];
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
+      if (url.startsWith('/api/projects/project-1/text-preview/index.html')) {
+        return new Response(JSON.stringify({
+          text: safeHtml,
+          poweredPreview: { required: false, reasons: [] },
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      if (url.startsWith('/api/projects/project-1/raw/index.html')) {
+        rawReads.push(url);
+        return new Response(safeHtml, {
+          status: 200,
+          headers: { 'Content-Type': 'text/html' },
+        });
+      }
+      return new Response('', { status: 404 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const { container } = render(
+      <FileViewer projectId="project-1" projectKind="prototype" file={file} />,
+    );
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/api/projects/project-1/text-preview/index.html'),
+        { cache: 'no-store' },
+      );
+    });
+    expect(rawReads).toHaveLength(0);
+    expect(screen.getByRole('button', { name: 'Present' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Versions' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Export' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Share' })).toBeTruthy();
+    expect(screen.getByTestId('chrome-comment-panel-toggle')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '评审' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '推送' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Code' }));
+    await waitFor(() => {
+      expect(container.querySelector('.viewer-source')?.textContent).toContain('Large safe page');
+    });
+    expect(rawReads).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Preview' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Code' }));
+    await waitFor(() => {
+      expect(container.querySelector('.viewer-source')?.textContent).toContain('Large safe page');
+    });
+    expect(rawReads).toHaveLength(1);
+  });
+
+  it('shows the source failure state and does not download when large HTML raw loading fails', async () => {
+    const safeHtml =
+      '<!doctype html><html><head><title>Large</title></head><body><main>Large safe page</main></body></html>';
+    const file = baseFile({
+      name: 'index.html',
+      path: 'index.html',
+      mime: 'text/html',
+      kind: 'html',
+      size: 3 * 1024 * 1024,
+    });
+    const rawReads: string[] = [];
+    const fetchMock = vi.fn(async (input: string | URL | Request) => {
+      const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
+      if (url.startsWith('/api/projects/project-1/text-preview/index.html')) {
+        return new Response(JSON.stringify({
+          text: safeHtml,
+          poweredPreview: { required: false, reasons: [] },
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+      if (url.startsWith('/api/projects/project-1/raw/index.html')) {
+        rawReads.push(url);
+        return new Response('', { status: 500 });
+      }
+      return new Response('', { status: 404 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<FileViewer projectId="project-1" projectKind="prototype" file={file} />);
+    await screen.findByRole('button', { name: 'Present' });
+    expect(rawReads).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Code' }));
+    await waitFor(() => {
+      expect(screen.getAllByText('Export failed. Please try again.').length).toBeGreaterThan(0);
+    });
+    expect(rawReads).toHaveLength(1);
+    expect(document.querySelector('a[download]')).toBeNull();
+  });
+
   it('evicts least-recent inactive preview iframes once the pool exceeds its limit', () => {
     function Harness({ activeKey }: { activeKey: string | null }) {
       return (

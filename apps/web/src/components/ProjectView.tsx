@@ -256,6 +256,7 @@ import { filterImplicitProducedFiles } from '../produced-files';
 import { InlineModelSwitcher } from './InlineModelSwitcher';
 import type { ProviderModelsCache } from './providerModelsCache';
 import { Icon } from './Icon';
+import { isProjectHtmlFile } from './project-file-html';
 import { localizePluginTitle } from './plugins-home/localization';
 import { PresenceBar } from '../collab/PresenceBar';
 import { useProjectCollab, type ProjectCollab } from '../collab/useProjectCollab';
@@ -12409,7 +12410,7 @@ function filterProjectFilesByMinMtime(
 
 export function selectPrimaryProjectFile(files: ProjectFile[]): ProjectFile | null {
   const candidates = files
-    .filter((file) => !isProcessArtifactFile(file.name))
+    .filter((file) => !isProcessArtifactFile(file.name) && isProjectHtmlFile(file))
     .map((file) => ({ file, rank: primaryProjectFileRank(file) }))
     .filter((candidate) => Number.isFinite(candidate.rank));
   if (candidates.length === 0) return null;
@@ -12429,17 +12430,10 @@ function isProcessArtifactFile(name: string): boolean {
 }
 
 function primaryProjectFileRank(file: ProjectFile): number {
+  if (!isProjectHtmlFile(file)) return Number.POSITIVE_INFINITY;
   if (manifestDeclaresPrimary(file)) return 0;
   if (file.artifactManifest && file.artifactManifest.metadata?.inferred !== true) return 1;
-  if (file.kind === 'html') return 2;
-  if (file.kind === 'image') return 3;
-  if (file.kind === 'video') return 4;
-  if (file.kind === 'sketch') return 5;
-  if (file.kind === 'pdf') return 6;
-  if (file.kind === 'presentation') return 7;
-  if (file.kind === 'document') return 8;
-  if (file.kind === 'spreadsheet') return 9;
-  return Number.POSITIVE_INFINITY;
+  return 2;
 }
 
 function manifestDeclaresPrimary(file: ProjectFile): boolean {
@@ -13138,7 +13132,7 @@ export async function findSameTurnHtmlWriteForRecoveredArtifact({
 }): Promise<ProjectFile | null> {
   const recovered = normalizeHtmlForRecoveredArtifactComparison(artifactHtml);
   if (!recovered) return null;
-  const candidates = producedFiles.filter(isHtmlProjectFile);
+  const candidates = producedFiles.filter(isProjectHtmlFile);
   if (candidates.length === 0) return null;
   const contents = await Promise.all(candidates.map((file) => readProjectHtml(file.name)));
   const normalized = contents.map(normalizeHtmlForRecoveredArtifactComparison);
@@ -13155,11 +13149,6 @@ export async function findSameTurnHtmlWriteForRecoveredArtifact({
   // turn" and we'd bind the echo to the wrong, unrelated file.
   const exact = candidates.find((_file, i) => normalized[i] === recovered);
   return exact ?? null;
-}
-
-function isHtmlProjectFile(file: ProjectFile): boolean {
-  const name = (file.path || file.name).toLowerCase();
-  return file.kind === 'html' || /\.(?:html?|xhtml)$/u.test(name);
 }
 
 function normalizeHtmlForRecoveredArtifactComparison(value: string | null | undefined): string {

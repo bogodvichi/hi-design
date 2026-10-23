@@ -293,6 +293,7 @@ import type {
   PreviewCommentTarget,
 } from '../types';
 import { ManualEditPanel, emptyManualEditDraft, type ManualEditDraft } from './ManualEditPanel';
+import { isProjectHtmlFile } from './project-file-html';
 import {
   applyManualEditPatch,
   isManualEditFullHtmlDocument,
@@ -3306,10 +3307,6 @@ function formatVersionDateTime(value: number | undefined, locale: Locale): strin
   } catch {
     return date.toLocaleString();
   }
-}
-
-function isHtmlVersionableFile(file: ProjectFile): boolean {
-  return file.kind === 'html' || /\.html?$/i.test(file.name);
 }
 
 function fileVersionSourceLabel(version: ProjectFileVersion, t: TranslateFn): string {
@@ -7963,10 +7960,14 @@ function HtmlViewer({
       { requestId },
     );
     const started = performance.now();
-    const originPromise = resolveArtifactExportOrigin(context)
-      .catch(() => unknownExportOrigin());
+    let originPromise: Promise<ArtifactExportOriginProps> | null = null;
+    const resolveOriginOnce = () => {
+      originPromise ??= resolveArtifactExportOrigin(context)
+        .catch(() => unknownExportOrigin());
+      return originPromise;
+    };
     const finish = async (result: 'success' | 'failed' | 'cancelled', errorCode?: string) => {
-      const originProps = await originPromise;
+      const originProps = await resolveOriginOnce();
       trackArtifactExportResult(
         analytics.track,
         {
@@ -8207,6 +8208,7 @@ function HtmlViewer({
   ));
   const initialSource = liveHtml ?? initialSourceSnapshot?.source ?? null;
   const [source, setSource] = useState<string | null>(initialSource);
+  const [sourceModeFailureIdentity, setSourceModeFailureIdentity] = useState<string | null>(null);
   const [routingSource, setRoutingSource] = useState<string | null>(initialSource);
   const srcDocPreviewBaseIdentity =
     `${sourceAuthorizationScopeKey ?? 'pending'}\0${projectId}\0${file.name}`;
@@ -9379,6 +9381,71 @@ const [reviewAddModalOpen, setReviewAddModalOpen] = useState(false);
       sourceLoadMode: HtmlSourceLoadMode;
     }>;
   } | null>(null);
+  const currentSourceIdentityRef = useRef(currentSourceIdentity);
+  currentSourceIdentityRef.current = currentSourceIdentity;
+  const currentSourceRevisionIdentity =
+    `${currentSourceIdentity}\0${sourceSnapshotRefreshKey}`;
+  const currentSourceRevisionIdentityRef = useRef(currentSourceRevisionIdentity);
+  currentSourceRevisionIdentityRef.current = currentSourceRevisionIdentity;
+  const loadedSourceRevisionIdentityRef = useRef<string | null>(
+    source !== null ? currentSourceRevisionIdentity : null,
+  );
+  const fullSourceLoadInFlightRef = useRef<{
+    revisionIdentity: string;
+    promise: Promise<string | null>;
+  } | null>(null);
+  const loadFullSource = (options?: { force?: boolean }): Promise<string | null> => {
+    const revisionIdentity = currentSourceRevisionIdentityRef.current;
+    const loaded = sourceRef.current;
+    if (
+      options?.force !== true &&
+      loaded !== null
+      && loaded.trim().length > 0
+      && loadedSourceRevisionIdentityRef.current === revisionIdentity
+    ) {
+      return Promise.resolve(loaded);
+    }
+    const identity = currentSourceIdentityRef.current;
+    const inFlight = fullSourceLoadInFlightRef.current;
+    if (inFlight?.revisionIdentity === revisionIdentity) return inFlight.promise;
+    const cacheBustKey = `${file.mtime}-${reloadKey}-${filesRefreshKey}`;
+    const promise = fetchProjectFileText(projectId, file.name, {
+      cache: 'no-store',
+      cacheBustKey,
+      workspaceContext,
+    }).then((text) => {
+      if (
+        currentSourceIdentityRef.current !== identity
+        || currentSourceRevisionIdentityRef.current !== revisionIdentity
+      ) return null;
+      if (typeof text !== 'string' || text.trim().length === 0) return null;
+      sourceRef.current = text;
+      loadedSourceRevisionIdentityRef.current = revisionIdentity;
+      sourceFileKeyRef.current = identity;
+      sourceEverLoadedRef.current = true;
+      sourceLoadedKeysRef.current.add(sourceLoadedFileKey);
+      lastGoodSourceForRoutingRef.current = text;
+      setSource(text);
+      setRoutingSource(text);
+      setRoutingSourceIdentity(identity);
+      if (sourceAuthorizationScopeKey) {
+        setHtmlSourceSnapshot({
+          authorizationScopeKey: sourceAuthorizationScopeKey,
+          projectId,
+          fileName: file.name,
+          refreshKey: sourceSnapshotRefreshKey,
+          source: text,
+        });
+      }
+      return text;
+    }).catch(() => null).finally(() => {
+      if (fullSourceLoadInFlightRef.current?.revisionIdentity === revisionIdentity) {
+        fullSourceLoadInFlightRef.current = null;
+      }
+    });
+    fullSourceLoadInFlightRef.current = { revisionIdentity, promise };
+    return promise;
+  };
   const renderedSourceAuthorizationScopeKeyRef = useRef(sourceAuthorizationScopeKey);
   if (renderedSourceAuthorizationScopeKeyRef.current !== sourceAuthorizationScopeKey) {
     renderedSourceAuthorizationScopeKeyRef.current = sourceAuthorizationScopeKey;
@@ -9386,11 +9453,14 @@ const [reviewAddModalOpen, setReviewAddModalOpen] = useState(false);
     // closed before this render commits so no frame can briefly expose source,
     // publication, deployment, or edit state proven under the prior scope.
     setSource(null);
+    setSourceModeFailureIdentity(null);
     setRoutingSource(null);
     setRoutingSourceIdentity(null);
     setServerPoweredPreviewRequired(false);
     sourceRef.current = null;
     sourceFileKeyRef.current = null;
+    loadedSourceRevisionIdentityRef.current = null;
+    fullSourceLoadInFlightRef.current = null;
     sourceEverLoadedRef.current = false;
     lastGoodSourceForRoutingRef.current = null;
     prevSourceBeforeReloadRef.current = null;
@@ -9919,6 +9989,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       setRoutingSourceIdentity(sourceFileKey);
       setServerPoweredPreviewRequired(false);
       sourceRef.current = liveHtml;
+      loadedSourceRevisionIdentityRef.current = currentSourceRevisionIdentityRef.current;
       return;
     }
     const fileChanged = sourceFileKeyRef.current !== sourceFileKey;
@@ -9938,6 +10009,8 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       setRoutingSourceIdentity(cachedSource === null ? null : sourceFileKey);
       setServerPoweredPreviewRequired(false);
       sourceRef.current = cachedSource;
+      loadedSourceRevisionIdentityRef.current =
+        cachedSource === null ? null : currentSourceRevisionIdentityRef.current;
       if (cachedSource !== null) {
         sourceEverLoadedRef.current = true;
         sourceLoadedKeysRef.current.add(sourceLoadedFileKey);
@@ -9998,11 +10071,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
         }).then(async (preview) => {
           const previewText = preview?.text ?? null;
           if (previewTextNeedsFullSourceForSafeInline(previewText)) {
-            const fullText = await fetchProjectFileText(projectId, file.name, {
-              cache: 'no-store',
-              cacheBustKey,
-              workspaceContext,
-            });
+            const fullText = await loadFullSource({ force: true });
             if (fullText !== null) {
               return {
                 text: fullText,
@@ -10017,15 +10086,11 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
             sourceLoadMode: 'routing-preview' as HtmlSourceLoadMode,
           };
         })
-      : fetchProjectFileText(projectId, file.name, {
-          cache: 'no-store',
-          cacheBustKey,
-          workspaceContext,
-        }).then((text) => ({
-        text,
-        poweredPreviewRequired: false,
-        sourceLoadMode: 'full' as HtmlSourceLoadMode,
-      }));
+      : loadFullSource({ force: true }).then((text) => ({
+          text,
+          poweredPreviewRequired: false,
+          sourceLoadMode: 'full' as HtmlSourceLoadMode,
+        }));
       sourceLoad = { key: sourceLoadKey, promise };
       sourceLoadInFlightRef.current = sourceLoad;
       void promise.finally(() => {
@@ -10035,7 +10100,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       });
     }
     void sourceLoad.promise.then(({ text, poweredPreviewRequired, sourceLoadMode }) => {
-      if (cancelled) return;
+      if (cancelled || currentSourceIdentityRef.current !== sourceFileKey) return;
       setServerPoweredPreviewRequired(poweredPreviewRequired);
       // Chokidar emits agent rewrites as unlink+add+change bursts; a
       // transient null mid-burst would blank source → srcDoc empty →
@@ -10043,7 +10108,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       if (text == null) {
         if (shouldDeferPassivePreviewSource) {
           sourceEverLoadedRef.current = true;
-      sourceLoadedKeysRef.current.add(sourceLoadedFileKey);
+          sourceLoadedKeysRef.current.add(sourceLoadedFileKey);
           setRoutingSource('');
           setRoutingSourceIdentity(sourceFileKey);
           setServerPoweredPreviewRequired(false);
@@ -10087,6 +10152,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       setRoutingSource(text);
       setRoutingSourceIdentity(sourceFileKey);
       if (sourceLoadMode === 'routing-preview') {
+        if (sourceRef.current !== null) return;
         sourceRef.current = null;
       } else {
         if (sourceAuthorizationScopeKey) {
@@ -10100,6 +10166,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
         }
         setSource(text);
         sourceRef.current = text;
+        loadedSourceRevisionIdentityRef.current = currentSourceRevisionIdentityRef.current;
       }
     });
     return () => {
@@ -10164,6 +10231,12 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
 
   const routingHtmlSource = source ?? routingSource ?? lastGoodSourceForRoutingRef.current;
   const passiveLargeHtmlPreview = shouldDeferPassivePreviewSource && source === null;
+  const routingPreviewReady =
+    passiveLargeHtmlPreview &&
+    routingSourceIdentity === currentSourceIdentity &&
+    typeof routingSource === 'string' &&
+    routingSource.trim().length > 0;
+  const artifactActionAvailable = source !== null || routingPreviewReady;
   // Detect deck-shaped HTML even when the project's skill didn't declare
   // `mode: deck`. Freeform projects often produce a deck because the user
   // asked for one in plain prose; without this, prev/next and Present
@@ -10875,6 +10948,9 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     sourceEverLoadedRef.current = sourceLoadedKeysRef.current.has(sourceLoadedFileKey);
     lastGoodSourceForRoutingRef.current = null;
     prevSourceBeforeReloadRef.current = null;
+    fullSourceLoadInFlightRef.current = null;
+    loadedSourceRevisionIdentityRef.current = null;
+    setSourceModeFailureIdentity(null);
   }, [projectId, file.name, sourceLoadedFileKey]);
   const previewSrcMatchesCurrentBase = previewSrcUrl === effectiveBasePreviewSrcUrl
     || previewSrcUrl.startsWith(`${effectiveBasePreviewSrcUrl}&`);
@@ -14213,9 +14289,13 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     }
   }
 
-  function openInNewTab() {
-    if (!source) return;
-    openSandboxedPreviewInNewTab(source, exportTitle, {
+  async function openInNewTab() {
+    const content = await loadFullSource();
+    if (!content) {
+      setExportToast({ message: t('fileViewer.exportFailed'), tone: 'error' });
+      return;
+    }
+    openSandboxedPreviewInNewTab(content, exportTitle, {
       deck: effectiveDeck,
       baseHref: latestSrcDocPreviewBaseHref,
       initialSlideIndex: htmlPreviewSlideState.get(previewStateKey)?.active ?? 0,
@@ -14603,7 +14683,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
 
   function presentNewTab() {
     setPresentMenuOpen(false);
-    openInNewTab();
+    void openInNewTab();
   }
 
   function reloadHtmlPreview() {
@@ -14687,7 +14767,16 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
   function selectMode(nextMode: 'preview' | 'source') {
     // Read-only viewer of a team-shared project can preview but not inspect source.
     if (viewerOnly && nextMode === 'source') return;
-    if (nextMode === 'source') setDrawOverlayOpen(false);
+    if (nextMode === 'source') {
+      setDrawOverlayOpen(false);
+      const identity = currentSourceIdentityRef.current;
+      setSourceModeFailureIdentity(null);
+      void loadFullSource().then((content) => {
+        if (currentSourceIdentityRef.current !== identity || content !== null) return;
+        setSourceModeFailureIdentity(identity);
+        setExportToast({ message: t('fileViewer.exportFailed'), tone: 'error' });
+      });
+    }
     setMode(nextMode);
   }
 
@@ -15059,7 +15148,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     }
   }
 
-  const showPresent = source !== null;
+  const showPresent = artifactActionAvailable;
   const exportTitle = file.name.replace(/\.html?$/i, '') || file.name;
   const artifactKind = file.artifactManifest?.kind ?? file.artifactKind ?? null;
   const rendererId = file.artifactManifest?.renderer ?? null;
@@ -15075,7 +15164,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     rendererId === 'markdown' ||
     file.kind === 'text' && /\.mdx?$/i.test(file.name);
   const isShareableArtifact =
-    file.kind === 'html' ||
+    isProjectHtmlFile(file) ||
     isDeckArtifact ||
     artifactKind === 'html' ||
     rendererId === 'html';
@@ -15083,8 +15172,8 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
   // unified chrome action still renders (disabled) for read-only members instead
   // of vanishing. `canShare`/`canDownload` keep the `&& !viewerOnly` gate that
   // guards the actual export/publish handlers.
-  const rawCanShare = source !== null && isShareableArtifact;
-  const rawCanDownload = source !== null && (isShareableArtifact || isMarkdownArtifact);
+  const rawCanShare = artifactActionAvailable && isShareableArtifact;
+  const rawCanDownload = artifactActionAvailable && (isShareableArtifact || isMarkdownArtifact);
   const canShare = rawCanShare && !viewerOnly;
   const canDownload = rawCanDownload && !viewerOnly;
   // PPTX export is slide-based, so show it only for explicit decks plus
@@ -15100,7 +15189,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
   // not upgraded. Only an explicit `false` hides it.
   const showPptxExport = canShare && deckExportSignal && slideRendererAvailable !== false;
   const canPptx = showPptxExport && !streaming;
-  const showMarkdownExport = source !== null && isMarkdownArtifact && !viewerOnly;
+  const showMarkdownExport = artifactActionAvailable && isMarkdownArtifact && !viewerOnly;
   const showImageExport = canShare;
   // Read-only viewer of a team-shared project: comment-only copy for the
   // disabled edit/export controls and the comment composer's send-to-chat path.
@@ -15126,7 +15215,6 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
 
   async function exportHtmlPdf(context?: HtmlVersionExportContext | null) {
     const pdfTitle = context?.title ?? exportTitle;
-    const pdfSource = context?.content ?? source ?? '';
     const pdfDeck = deckExportSignalForContext(context);
     if (isOpenDesignHostAvailable()) {
       const res = await exportProjectScreenshotPdf({
@@ -15150,7 +15238,11 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     }
     await exportProjectAsPdf({
       deck: pdfDeck,
-      fallbackPdf: () => exportAsPdf(pdfSource, pdfTitle, { deck: pdfDeck, onProgress: onExportProgress }),
+      fallbackPdf: async () => {
+        const content = context?.content?.trim() ? context.content : await loadFullSource();
+        if (!content) throw new Error(t('fileViewer.exportFailed'));
+        await exportAsPdf(content, pdfTitle, { deck: pdfDeck, onProgress: onExportProgress });
+      },
       filePath: file.name,
       projectId,
       title: pdfTitle,
@@ -15167,7 +15259,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     fireShareExport('zip', () => exportProjectAsZip({
       projectId,
       filePath: file.name,
-      fallbackHtml: context?.content ?? source ?? '',
+      fallbackHtml: context?.content ?? (() => loadFullSource()),
       fallbackTitle: context?.title ?? exportTitle,
       workspaceContext,
       ...(context?.versionId ? { versionId: context.versionId } : {}),
@@ -15294,13 +15386,18 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
   };
   const openShareMenu = () => openUnifiedActionMenu('share', 'share_dropdown');
   const openDownloadMenu = () => openUnifiedActionMenu('export', 'download_dropdown');
-  function triggerPixsoExport(isSplit?:boolean) {
+  async function triggerPixsoExport(isSplit?:boolean) {
     setDownloadMenuOpenForPixso(false);
-    let html = source || '';
-    if (!html.includes('<head>') && !html.includes('<HEAD>')) {
+    const content = await loadFullSource();
+    if (!content) {
+      setExportToast({ message: t('fileViewer.exportFailed'), tone: 'error' });
+      return;
+    }
+    if (!content.includes('<head>') && !content.includes('<HEAD>')) {
       setExportToast({ message: '当前文件不是有效的 HTML，无法导入 Pixso', tone: 'error' });
       return;
     }
+    let html = content;
     setExportToast({ message: '正在推送到 Pixso...', tone: 'loading' });
     let ws: WebSocket | null = null;
     let sent = false;
@@ -16044,7 +16141,11 @@ async function openReviewListModal() {
     return t('fileViewer.deployLinkPreparingLabel');
   };
   const initialPreviewLoading = source === null && !sourceEverLoadedRef.current;
-  const sourceModeLoading = mode === 'source' && source === null;
+  const sourceModeFailed =
+    mode === 'source' &&
+    source === null &&
+    sourceModeFailureIdentity === currentSourceIdentity;
+  const sourceModeLoading = mode === 'source' && source === null && !sourceModeFailed;
   const boardAvailable = mode === 'preview' && source !== null;
   const showPreviewToolbarControls = mode === 'preview';
   // Independent of the rail's lazy per-slide documents so a collapsed rail
@@ -16052,7 +16153,7 @@ async function openReviewListModal() {
   const showDeckThumbnailRail = effectiveDeck && source !== null && deckSlideTotal > 0 && !manualEditMode;
   const showDeckFloatingNav = effectiveDeck && deckSlideTotal > 0 && !manualEditMode && !inTabPresent;
   const deckNavTotal = Math.max(deckSlideTotal, activeDeckSlideIndex + 1, 1);
-  const versioningAvailable = isHtmlVersionableFile(file);
+  const versioningAvailable = isProjectHtmlFile(file);
   const commentPreviewLayoutClass = [
     'comment-preview-layer',
     localCommentSideDockActive ? 'comment-preview-layer-with-side-dock' : '',
@@ -16823,7 +16924,7 @@ async function openReviewListModal() {
                     data-od-version-entry="true"
                     className="viewer-toolbar-more-item"
                     role="menuitem"
-                    disabled={source === null}
+                    disabled={!artifactActionAvailable}
                     onClick={() => {
                       fireArtifactToolbarClick('versions', 'more_menu');
                       setVersionModalOpen('more_menu');
@@ -17033,7 +17134,7 @@ async function openReviewListModal() {
               // ever led to an empty panel. This supersedes recvq56vFjQKfT,
               // which had un-gated the entry on the reasoning that browsing
               // history is a read action.
-              disabled={source === null || viewerOnly}
+              disabled={!artifactActionAvailable || viewerOnly}
               aria-label={t('fileViewer.versions.entry')}
               aria-expanded={Boolean(versionModalOpen)}
               data-tooltip={viewerOnly ? viewerOnlyDisabledTitle : t('fileViewer.versions.entryFull')}
@@ -17128,7 +17229,7 @@ async function openReviewListModal() {
                   className="chrome-action chrome-action-secondary chrome-action-with-label chrome-action-text-only"
                   aria-haspopup="menu"
                   aria-expanded={downloadMenuOpenForPixso}
-                  disabled={viewerOnly || source === null}
+                  disabled={viewerOnly || !artifactActionAvailable}
                   title={viewerOnly ? viewerOnlyDisabledTitle : '推送 Pixso'}
                   onClick={openDownloadMenuForPixso}
                 >
@@ -17142,7 +17243,7 @@ async function openReviewListModal() {
                       role="menuitem"
                       onClick={() => {
                         setDeployMenuOpen(false);
-                        triggerPixsoExport();
+                        void triggerPixsoExport();
                       }}
                     >
                       <span className="share-menu-icon"><RemixIcon name="file-code-line" size={15} /></span>
@@ -17527,7 +17628,14 @@ async function openReviewListModal() {
                         }
                         await exportProjectAsPdf({
                           deck: deckExportSignal,
-                          fallbackPdf: () => exportAsPdf(source ?? '', exportTitle, { deck: deckExportSignal, onProgress: onExportProgress }),
+                          fallbackPdf: async () => {
+                            const content = await loadFullSource();
+                            if (!content) throw new Error(t('fileViewer.exportFailed'));
+                            await exportAsPdf(content, exportTitle, {
+                              deck: deckExportSignal,
+                              onProgress: onExportProgress,
+                            });
+                          },
                           filePath: file.name,
                           projectId,
                           title: exportTitle,
@@ -17588,7 +17696,7 @@ async function openReviewListModal() {
                       fireShareExport('zip', () => exportProjectAsZip({
                         projectId,
                         filePath: file.name,
-                        fallbackHtml: source ?? '',
+                        fallbackHtml: () => loadFullSource(),
                         fallbackTitle: exportTitle,
                         workspaceContext,
                       }));
@@ -17637,7 +17745,11 @@ async function openReviewListModal() {
                       role="menuitem"
                       onClick={() => {
                         setDeployMenuOpen(false);
-                        fireShareExport('markdown', () => exportAsMd(source ?? '', exportTitle));
+                        fireShareExport('markdown', async () => {
+                          const content = await loadFullSource();
+                          if (!content) throw new Error(t('fileViewer.exportFailed'));
+                          exportAsMd(content, exportTitle);
+                        });
                       }}
                     >
                       <span className="share-menu-icon"><RemixIcon name="file-line" size={15} /></span>
@@ -18207,6 +18319,8 @@ async function openReviewListModal() {
             {mode !== 'preview' ? (
               sourceModeLoading ? (
                 <div className="viewer-empty">{t('fileViewer.loading')}</div>
+              ) : sourceModeFailed ? (
+                <div className="viewer-empty">{t('fileViewer.exportFailed')}</div>
               ) : (
                 <pre className="viewer-source">{source}</pre>
               )
@@ -18215,7 +18329,7 @@ async function openReviewListModal() {
         )}
       </div>
       {speakerNotesPanel}
-      {workspaceActive && inTabPresent && source && typeof document !== 'undefined' ? createPortal(
+      {workspaceActive && inTabPresent && artifactActionAvailable && typeof document !== 'undefined' ? createPortal(
         <div
           ref={presentOverlayRef}
           className="present-overlay"

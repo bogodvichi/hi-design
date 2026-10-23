@@ -1,13 +1,9 @@
 // @vitest-environment jsdom
 
 // Acceptance defect #89: with the inspect/comment tool active, clicking an
-// element low in the preview stage opened the annotation popover with its
-// action row (cancel / send-to-chat) cut off — the card's height is clamped to
-// the space left below the anchor, and the whole card was the scroller, so the
-// buttons sat below the fold with no way to reach them.
-//
-// The invariant this locks in: the action row lives OUTSIDE the scrolling
-// region, so no height clamp can ever scroll it out of the card.
+// element low in the preview stage opened the annotation popover with content
+// cut off by the height clamp. Keep the close button fixed outside one scrolling
+// composer wrapper so the rest of the content remains reachable.
 
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -61,18 +57,26 @@ describe('BoardComposerPopover action row', () => {
     expect(screen.getByTestId('comment-popover-save')).toBeTruthy();
   });
 
-  it('keeps the action row outside the scrolling body so a height clamp cannot hide it', () => {
+  it('keeps the close button outside the scrolling composer wrapper', () => {
     renderPopover();
     const popover = screen.getByTestId('comment-popover');
+    const closeButton = popover.querySelector('.comment-popover-close-btn');
+    const wrapper = popover.querySelector('.comment-popover-composer-wrap');
     const body = popover.querySelector('.comment-popover-body');
+    const titlebar = popover.querySelector('.comment-popover-titlebar');
     const actions = popover.querySelector('.comment-popover-actions');
 
+    expect(closeButton).not.toBeNull();
+    expect(wrapper).not.toBeNull();
     expect(body).not.toBeNull();
+    expect(titlebar).not.toBeNull();
     expect(actions).not.toBeNull();
-    // The scroller is the body, not the card, and the actions are not in it.
-    expect(body!.contains(actions!)).toBe(false);
-    // ...they are a direct child of the card, so they always occupy the frame.
-    expect(actions!.parentElement).toBe(popover);
+    // The close button stays pinned while every other composer section scrolls.
+    expect(closeButton!.parentElement).toBe(popover);
+    expect(wrapper!.parentElement).toBe(popover);
+    expect(wrapper!.contains(titlebar!)).toBe(true);
+    expect(wrapper!.contains(body!)).toBe(true);
+    expect(wrapper!.contains(actions!)).toBe(true);
   });
 
   it('clamps the card height, which is what made the clipping reachable', () => {

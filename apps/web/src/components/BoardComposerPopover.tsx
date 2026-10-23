@@ -820,6 +820,7 @@ export function BoardComposerPopover({
       >
         <Icon name="close" size={14} />
       </button>
+      <div className="comment-popover-composer-wrap">
       {!docked ? (
         <div className="comment-popover-titlebar">
           <button
@@ -1408,6 +1409,7 @@ export function BoardComposerPopover({
           </div>
         </div>
       ) : null}
+      </div>
     </div>
   );
 }

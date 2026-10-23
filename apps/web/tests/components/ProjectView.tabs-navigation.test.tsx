@@ -443,6 +443,36 @@ describe('ProjectView tab URL hydration', () => {
     expect(mockedCacheTabsLocally).toHaveBeenCalledTimes(2);
   });
 
+  it('does not auto-open a project that only contains image and PDF artifacts', async () => {
+    mockedLoadTabs.mockResolvedValue({ tabs: [], active: null });
+    mockedFetchProjectFiles.mockResolvedValue([
+      {
+        name: 'cover.png',
+        path: 'cover.png',
+        type: 'file',
+        size: 1,
+        mtime: 2,
+        mime: 'image/png',
+        kind: 'image',
+      },
+      {
+        name: 'brief.pdf',
+        path: 'brief.pdf',
+        type: 'file',
+        size: 1,
+        mtime: 1,
+        mime: 'application/pdf',
+        kind: 'pdf',
+      },
+    ]);
+
+    renderProjectView();
+
+    await waitFor(() => expect(mockedFetchProjectFiles).toHaveBeenCalled());
+    expect(screen.getByTestId('workspace-active-tab').textContent).toBe('');
+    expect(mockedCacheTabsLocally).not.toHaveBeenCalled();
+  });
+
   it('does not auto-open the primary file when saved tabs were explicitly empty', async () => {
     mockedLoadTabs.mockResolvedValue({ tabs: [], active: null, hasSavedState: true });
     mockedFetchProjectFiles.mockResolvedValue([
