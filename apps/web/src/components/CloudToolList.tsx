@@ -1,5 +1,5 @@
 import { PageEmptyState } from './PageEmptyState';
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Dialog,
@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from '@open-design/components';
 import { Icon } from './Icon';
+import { CardActionMenu } from './CardActionMenu';
 import { CenteredLoader } from './Loading';
 import { useI18n, useT } from '../i18n';
 import { activateWorkspaceResource, openWorkspaceTab } from './WorkspaceTabsBar';
@@ -133,23 +134,7 @@ export function CloudToolList({
     type: 'unpublish' | 'delete';
     item: CloudToolItem;
   } | null>(null);
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const menuTriggerRef = useRef<HTMLButtonElement>(null);
   const includesOfficialCommunityTools = mode === 'square' && scope === 'public';
-
-  useEffect(() => {
-    if (!menuOpenId) return;
-    const closeOutside = (event: PointerEvent) => {
-      if (event.target instanceof Node
-        && (menuRef.current?.contains(event.target) || menuTriggerRef.current?.contains(event.target))) {
-        return;
-      }
-      setMenuOpenId(null);
-    };
-    document.addEventListener('pointerdown', closeOutside, { capture: true });
-    return () => document.removeEventListener('pointerdown', closeOutside, { capture: true });
-  }, [menuOpenId]);
 
   const loadTools = useCallback(async () => {
     if (!workspaceId) {
@@ -214,7 +199,6 @@ export function CloudToolList({
     } finally {
       setUnpublishingId(null);
       setConfirmAction(null);
-      setMenuOpenId(null);
     }
   }
 
@@ -238,7 +222,6 @@ export function CloudToolList({
     } finally {
       setDeletingId(null);
       setConfirmAction(null);
-      setMenuOpenId(null);
     }
   }
 
@@ -362,7 +345,7 @@ export function CloudToolList({
         </button>
         <button
           type="button"
-          className="primary"
+          className={confirmAction.type === 'delete' ? undefined : 'primary'}
           disabled={!!unpublishingId || !!deletingId}
           onClick={() => {
             if (confirmAction.type === 'unpublish') void handleUnpublish(confirmAction.item);
@@ -389,8 +372,6 @@ export function CloudToolList({
       ) : null}
       <div className={styles.cloudSkillGrid}>
         {visibleTools.map((tool) => {
-          const isUnpublishing = unpublishingId === tool.resourceId;
-          const isDeleting = deletingId === tool.resourceId;
           const canManage = mode === 'personal'
             || (mode === 'square' && tool.ownerMemberId === workspaceMemberId);
           const isHiMind = isHiMindTool(tool);
@@ -437,7 +418,7 @@ export function CloudToolList({
                     />
                   )}
                 </span>
-                <div className={styles.cardHeaderInfo}>
+                <div className={`${styles.cardHeaderInfo}${canManage ? ` ${styles.resourceCardHeaderInfo}` : ''}`}>
                   <strong className={styles.cardTitle}>{title}</strong>
                   {mode === 'square' ? (
                     <small className={`${styles.cardMeta} ${styles.cardAuthorLine}`}>
@@ -451,56 +432,12 @@ export function CloudToolList({
                     </small>
                   )}
                 </div>
-                {canManage ? (
-                  <>
-                    <button
-                      type="button"
-                      className={styles.cardMenuBtn}
-                      ref={menuOpenId === tool.resourceId ? menuTriggerRef : undefined}
-                      title=""
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMenuOpenId(menuOpenId === tool.resourceId ? null : tool.resourceId);
-                      }}
-                    >
-                      <Icon name="more-horizontal" size={16} />
-                    </button>
-                    {menuOpenId === tool.resourceId ? (
-                        <div className={styles.cardMenu} ref={menuRef}>
-                          {mode === 'square' ? (
-                            <button
-                              type="button"
-                              className={styles.cardMenuItem}
-                              disabled={isUnpublishing}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setConfirmAction({ type: 'unpublish', item: tool });
-                                setMenuOpenId(null);
-                              }}
-                            >
-                              <Icon name="eye-off" size={14} />
-                              {t('squareScope.unpublish' as any)}
-                            </button>
-                          ) : null}
-                          <button
-                            type="button"
-                            className={styles.cardMenuItemDanger}
-                            disabled={isDeleting}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setConfirmAction({ type: 'delete', item: tool });
-                              setMenuOpenId(null);
-                            }}
-                          >
-                            <Icon name="trash" size={14} />
-                            {mode === 'square'
-                              ? t('common.delete' as any)
-                              : t('personalScope.cloudToolDelete' as any)}
-                          </button>
-                        </div>
-                    ) : null}
-                  </>
-                ) : null}
+                {canManage ? <CardActionMenu className={styles.resourceCardMenuAnchor} items={[
+                  ...(mode === 'square' ? [{ id: 'unpublish' as const, label: t('squareScope.unpublish'),
+                    disabled: !!unpublishingId || !!deletingId, onClick: () => setConfirmAction({ type: 'unpublish', item: tool }) }] : []),
+                  { id: 'delete', label: mode === 'square' ? t('common.delete') : t('personalScope.cloudToolDelete'),
+                    disabled: !!unpublishingId || !!deletingId, onClick: () => setConfirmAction({ type: 'delete', item: tool }) },
+                ]} /> : null}
               </div>
               {description
                 ? <p className={`${styles.cardDesc}${mode === 'square' ? ` ${styles.squareCardDesc}` : ''}`}>{description}</p>

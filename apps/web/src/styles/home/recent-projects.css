@@ -513,7 +513,7 @@
   right: 8px;
   z-index: 20;
 }
-.recent-projects__card-more {
+.recent-projects__card-menu-anchor > .recent-projects__card-more {
   appearance: none;
   display: inline-flex;
   align-items: center;
@@ -565,11 +565,6 @@
 .recent-projects__card-menu[data-placement='up'] {
   top: auto;
   bottom: calc(100% + 6px);
-}
-.recent-projects__card-menu-separator {
-  height: var(--stroke-thin, 1px);
-  margin: var(--spacing-4, 4px) var(--spacing-6, 6px);
-  background: var(--border);
 }
 .recent-projects__card-menu button {
   appearance: none;

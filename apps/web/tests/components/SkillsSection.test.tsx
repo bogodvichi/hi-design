@@ -290,6 +290,7 @@ describe('SkillsSection', () => {
 
     const row = await screen.findByTestId('skill-row-user-skill');
     fireEvent.click(within(row).getByTestId('skills-delete'));
+    expect(within(row).getByTestId('skills-delete-confirm').className).not.toMatch(/\bdanger\b/);
     fireEvent.click(within(row).getByTestId('skills-delete-confirm'));
 
     await waitFor(() => {

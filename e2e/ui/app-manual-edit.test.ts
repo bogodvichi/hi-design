@@ -21,9 +21,12 @@ function artifactPreviewFrame(page: Page) {
 
 test.beforeEach(async ({ page }) => {
   await applyStandardMocks(page);
+  await page.route('**/api/auth/valid', (route) => route.fulfill({
+    json: { ok: true, username: 'manual-edit-test' },
+  }));
 });
 
-test('[P0] manual edit inspector previews and persists page and selected element styles', async ({ page }) => {
+test('[P0] manual edit inspector previews and persists page and selected element styles', async ({ page }, testInfo) => {
   await routeMockAgents(page);
   const projectId = await createEmptyProject(page, 'Manual edit smoke');
   await seedHtmlArtifact(page, projectId, 'manual-edit.html', manualEditHtml());
@@ -83,12 +86,31 @@ test('[P0] manual edit inspector previews and persists page and selected element
   const title = frame.getByRole('heading', { name: 'Original Hero' });
   await expect.poll(async () => title.evaluate((el) => getComputedStyle(el).fontSize)).toBe('48px');
   await expect(title).toHaveCSS('color', 'rgb(239, 68, 68)');
-  await inspectSaveButton(page).click({ force: true });
   await expectFileSource(page, projectId, 'manual-edit.html', [
     'font-size: 48px',
     'color:',
   ]);
   await expectFileSourceExcludes(page, projectId, 'manual-edit.html', ['data-od-edit-selected']);
+  await expect.poll(() => previewCss(page, 'body', 'backgroundColor')).toBe('rgb(238, 242, 255)');
+  await expect(page.locator('.manual-edit-right')).toBeVisible();
+  await expect(page.locator('.manual-edit-floating')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Save$/ })).toHaveCount(0);
+  await expect(frame.locator('.od-edit-guide-box-selected')).toBeVisible();
+  const inspectorBounds = await page.locator('.manual-edit-right').boundingBox();
+  const canvasBounds = await page.locator('.manual-edit-canvas').boundingBox();
+  expect(inspectorBounds!.x).toBeGreaterThanOrEqual(canvasBounds!.x + canvasBounds!.width - 1);
+  await expect.poll(() => frame.locator('body').evaluate(() =>
+    (window as Window & { __manualEditSmokeMarker?: string }).__manualEditSmokeMarker,
+  )).toBe('stable-frame');
+  await page.locator('.manual-edit-titlebar').click();
+  await testInfo.attach('manual-edit-layout', { body: JSON.stringify({
+    title: await title.evaluate((el) => ({ rect: el.getBoundingClientRect().toJSON(), opacity: getComputedStyle(el).opacity, visibility: getComputedStyle(el).visibility, htmlAttrs: document.documentElement.outerHTML.slice(0, 400) })),
+    canvas: await page.locator('.manual-edit-canvas').evaluate((el) => ({ rect: el.getBoundingClientRect().toJSON(), left: el.scrollLeft, top: el.scrollTop })),
+  }), contentType: 'application/json' });
+  await expect(title).toBeInViewport();
+  await expect(title).toHaveCSS('opacity', '1');
+  await expect(frame.locator('.od-edit-guide-box-selected')).toBeInViewport();
+  await page.screenshot({ path: testInfo.outputPath('manual-edit-docked-autosave.png') });
   await expect(page.locator('.manual-edit-error')).toHaveCount(0);
 
   await page.getByTestId('manual-edit-mode-toggle').click();
@@ -152,9 +174,8 @@ test('[P0] manual edit mode preserves the current page in a multi-page mobile ap
     }));
   });
 
-  const selectedHtml = page.locator('.manual-edit-modal label')
-    .filter({ hasText: 'Selected element HTML' })
-    .locator('textarea');
+  await page.locator('.manual-edit-modal summary').click();
+  const selectedHtml = page.getByRole('textbox', { name: 'Selected element HTML' });
   await expect(selectedHtml).toBeVisible();
   const currentHtml = await selectedHtml.inputValue();
   const editedHtml = currentHtml.replace(
@@ -163,7 +184,6 @@ test('[P0] manual edit mode preserves the current page in a multi-page mobile ap
   );
   expect(editedHtml).not.toBe(currentHtml);
   await selectedHtml.fill(editedHtml);
-  await inspectSaveButton(page).click();
 
   // Saving rebuilds the srcDoc transport. The consumed Profile snapshot must
   // not replay over the newer Home navigation when that later load completes.
@@ -848,7 +868,6 @@ test('[P0] @critical edited HTML file restores selected tab and preview after re
   await expect(fontSizeInput).toBeVisible();
   await fontSizeInput.fill('52');
   await parameters.locator('.cc-row').filter({ hasText: 'Text color' }).locator('input:not([type="color"])').fill('#2563eb');
-  await inspectSaveButton(page).click({ force: true });
   await expectFileSource(page, projectId, 'restore-edit.html', ['font-size: 52px', 'color:']);
 
   await activeEditToggle.click();
@@ -1239,9 +1258,6 @@ function inspectorSection(page: Page, title: string) {
   return page.locator('.manual-edit-modal .cc-section').filter({ hasText: title }).first();
 }
 
-function inspectSaveButton(page: Page) {
-  return page.locator('.manual-edit-modal').getByRole('button', { name: /^Save$/ });
-}
 
 function tabBySuffix(page: Page, name: string) {
   return page

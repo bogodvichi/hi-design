@@ -1,3 +1,4 @@
+import { CardActionMenu } from './CardActionMenu';
 import { PageEmptyState } from './PageEmptyState';
 import { ModuleBreadcrumb } from './ModuleBreadcrumb';
 // Hi广场 — community plaza surface.
@@ -178,72 +179,12 @@ function ProjectCardMenu({ publicationStatus, onPublish, onUnpublish, onDelete, 
   busy?: string | null;
 }) {
   const t = useT();
-  const [open, setOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLButtonElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const closeOutside = (event: PointerEvent) => {
-      if (event.target instanceof Node && containerRef.current?.contains(event.target)) return;
-      setOpen(false);
-    };
-    document.addEventListener('pointerdown', closeOutside, { capture: true });
-    return () => document.removeEventListener('pointerdown', closeOutside, { capture: true });
-  }, [open]);
-
-  return (
-    <div className="recent-projects__card-menu-anchor" ref={containerRef}
-      onClick={(event) => event.stopPropagation()}
-      onKeyDown={(event) => {
-        if (event.key === 'Escape' && open) {
-          event.preventDefault();
-          event.stopPropagation();
-          setOpen(false);
-          triggerRef.current?.focus();
-        }
-        if (open && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
-          event.preventDefault();
-          const items = Array.from(containerRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]:not(:disabled)') ?? []);
-          const index = items.indexOf(document.activeElement as HTMLButtonElement);
-          const next = event.key === 'ArrowDown' ? index + 1 : index < 0 ? items.length - 1 : index - 1;
-          items[(next + items.length) % items.length]?.focus();
-        }
-      }}>
-      <button type="button" className="recent-projects__card-more" ref={triggerRef}
-        aria-label={t('designs.menuMore')} aria-haspopup="menu" aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}>
-        <Icon name="more-horizontal" size={14} aria-hidden />
-      </button>
-      {open ? (
-        <div className="recent-projects__card-menu" role="menu">
-          {publicationStatus === 'unpublished' ? (
-            <>
-              <button type="button" role="menuitem" disabled={!!busy} onClick={() => { setOpen(false); onPublish?.(); }}>
-                <Icon name="arrow-up" size={12} aria-hidden /><span>{t('pluginCard.publish')}</span>
-              </button>
-              <button type="button" role="menuitem" disabled={!!busy} onClick={() => { setOpen(false); onDelete?.(); }}>
-                <Icon name="close" size={12} aria-hidden /><span>{t('common.delete')}</span>
-              </button>
-            </>
-          ) : (
-            <>
-              {publicationStatus === 'published' ? (
-                <>
-                  <button type="button" role="menuitem" disabled={!!busy} onClick={() => { setOpen(false); onUnpublish?.(); }}>
-                    <Icon name="eye-off" size={12} aria-hidden /><span>{t('squareScope.unpublish')}</span>
-                  </button>
-                  <button type="button" role="menuitem" disabled={!!busy} onClick={() => { setOpen(false); onDelete?.(); }}>
-                    <Icon name="close" size={12} aria-hidden /><span>{t('common.delete')}</span>
-                  </button>
-                </>
-              ) : null}
-            </>
-          )}
-        </div>
-      ) : null}
-    </div>
-  );
+  return <CardActionMenu triggerLabel={t('designs.menuMore')} items={[
+    ...(publicationStatus === 'unpublished' ? [{ id: 'publish' as const, label: t('pluginCard.publish'), disabled: !!busy, onClick: () => onPublish?.() }] : []),
+    ...(publicationStatus === 'published' ? [{ id: 'unpublish' as const, label: t('squareScope.unpublish'), disabled: !!busy, onClick: () => onUnpublish?.() }] : []),
+    ...(publicationStatus === 'published' || publicationStatus === 'unpublished'
+      ? [{ id: 'delete' as const, label: t('common.delete'), disabled: !!busy, onClick: () => onDelete?.() }] : []),
+  ]} />;
 }
 
 // Reuse the project type selector's visual contract for publication status.

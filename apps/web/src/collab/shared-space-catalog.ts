@@ -7,7 +7,7 @@
 // resolves the current user from the SSO session, so no workspace headers are
 // needed.
 
-import type { SharedWithMeProject, SharedWithMeResponse } from '@open-design/contracts';
+import type { SharedWithMeProject, SharedWithMeResponse, SharedResourceKind, RemoveSharedWithMeResourceResponse } from '@open-design/contracts';
 import { coalescedGet, forceCoalescedGet } from '../lib/coalesced-get';
 
 const SHARED_WITH_ME_CACHE_KEY = 'shared-with-me-projects';
@@ -167,4 +167,14 @@ export async function unshareResourceFromSharedSpace(shareId: string): Promise<b
   if (!response.ok) return false;
   const body = await response.json().catch(() => null);
   return body?.ok === true;
+}
+
+/** Remove only the signed-in recipient's reference, preserving the original resource. */
+export async function removeResourceFromSharedWithMe(shareId: string, kind: SharedResourceKind): Promise<boolean> {
+  const response = await fetch(`/api/resource-share/shared-with-me/${encodeURIComponent(shareId)}?kind=${kind}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) return false;
+  const body = await response.json() as RemoveSharedWithMeResourceResponse;
+  return body.ok === true;
 }

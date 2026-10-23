@@ -37,6 +37,33 @@ export interface CloudResourceWorkspaceContext {
   canManage: boolean;
 }
 
+export type SharedResourceKind = 'skill' | 'mcp';
+
+/** A recipient-specific reference; shareId identifies access, resourceId identifies the original. */
+export interface SharedWithMeResource {
+  shareId: string;
+  resourceId: string;
+  kind: SharedResourceKind;
+  homeWorkspaceId: string;
+  sharedByUsername: string;
+  sharedByDisplayname: string | null;
+  sharedAt: string;
+  ownerMemberId: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+/** GET /api/resource-share/shared-with-me?kind=skill|mcp. */
+export interface SharedWithMeResourcesResponse {
+  resources: SharedWithMeResource[];
+}
+
+/** DELETE /api/resource-share/shared-with-me/:shareId?kind=skill|mcp. */
+export interface RemoveSharedWithMeResourceResponse {
+  ok: boolean;
+}
+
 export type SkillCategoryFilter = 'all' | SkillCategory;
 
 export type SkillCategoryCounts = Record<SkillCategoryFilter, number>;

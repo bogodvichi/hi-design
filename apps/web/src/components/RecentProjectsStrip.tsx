@@ -2680,9 +2680,6 @@ function requestDelete(project: Project) {
                          <span>{t('recentProjects.openLocation')}</span>
                        </button>
                      ) : null}
-                     {canOpenLocation && (hasShareOrCopyActions || hasManagementActions) ? (
-                       <div className="recent-projects__card-menu-separator" role="separator" />
-                     ) : null}
                      {canShareProject ? (
                        <button
                          type="button"
@@ -2727,9 +2724,6 @@ function requestDelete(project: Project) {
                              : t('recentProjects.copyToPersonal')}
                          </span>
                        </button>
-                     ) : null}
-                     {hasShareOrCopyActions && hasManagementActions ? (
-                       <div className="recent-projects__card-menu-separator" role="separator" />
                      ) : null}
                      {canRenameProject ? (
                        <button

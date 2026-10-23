@@ -416,6 +416,56 @@ describe('manual edit bridge target normalization', () => {
     dom.window.close();
   });
 
+  it('keeps selected chrome when guides are disabled and the pointer moves to another element', () => {
+    const dom = new JSDOM(
+      `<h1 data-od-id="title">Title</h1><p data-od-id="other">Other</p>${buildManualEditBridge(true)}`,
+      { runScripts: 'dangerously', url: 'http://localhost' },
+    );
+    for (const el of dom.window.document.querySelectorAll('h1, p')) {
+      el.getBoundingClientRect = () => ({ x: 10, y: 30, width: 160, height: 36, top: 30, right: 170, bottom: 66, left: 10 } as DOMRect);
+    }
+    dom.window.dispatchEvent(new dom.window.MessageEvent('message', { data: { type: 'od-edit-selected-target', id: 'title' } }));
+    dom.window.dispatchEvent(new dom.window.MessageEvent('message', { data: { type: 'od-edit-guides-mode', enabled: false } }));
+    dom.window.document.querySelector('p')!.dispatchEvent(new dom.window.Event('pointermove', { bubbles: true }));
+    expect(dom.window.document.querySelector('.od-edit-guide-box-selected')).not.toBeNull();
+    expect(dom.window.document.querySelector('.od-edit-guide-label')?.textContent).toBeTruthy();
+    expect(dom.window.document.querySelector('.od-edit-guide-box-hover')).toBeNull();
+    dom.window.close();
+  });
+
+  it('announces inline drafts while keeping selection and preserves the caret on an unchanged save echo', () => {
+    const dom = new JSDOM(`<h1 data-od-id="title">Title</h1>${buildManualEditBridge(true)}`, { runScripts: 'dangerously', url: 'http://localhost' });
+    const title = dom.window.document.querySelector('h1')!;
+    title.getBoundingClientRect = () => ({ x: 0, y: 0, width: 160, height: 36, top: 0, right: 160, bottom: 36, left: 0 } as DOMRect);
+    const post = vi.spyOn(dom.window.parent, 'postMessage');
+    title.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    title.textContent = 'New title';
+    title.dispatchEvent(new dom.window.InputEvent('input', { bubbles: true }));
+    expect(post).toHaveBeenCalledWith({ type: 'od-edit-text-draft', id: 'title', value: 'New title' }, '*');
+    expect(title.hasAttribute('data-od-edit-selected')).toBe(true);
+    const textNode = title.firstChild;
+    dom.window.dispatchEvent(new dom.window.MessageEvent('message', { data: { type: 'od-edit-preview-text', id: 'title', value: 'New title' } }));
+    expect(title.firstChild).toBe(textNode);
+    title.dispatchEvent(new dom.window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(post).toHaveBeenCalledWith({ type: 'od-edit-text-draft', id: 'title', value: 'Title' }, '*');
+    dom.window.close();
+  });
+
+  it('previews image fields and link labels without replacing their surrounding markup', () => {
+    const dom = new JSDOM(`<a data-od-id="link"><span aria-hidden="true"></span><span>Old label</span></a><img data-od-id="image" src="old.png">${buildManualEditBridge(true)}`, { runScripts: 'dangerously', url: 'http://localhost' });
+    const label = dom.window.document.querySelector('a span:last-child');
+    for (const patch of [
+      { kind: 'set-link', id: 'link', text: 'New label', href: '/new' },
+      { kind: 'set-image', id: 'image', src: 'new.png', alt: 'New image' },
+    ]) dom.window.dispatchEvent(new dom.window.MessageEvent('message', { data: { type: 'od-edit-preview-content', patch } }));
+    expect(dom.window.document.querySelector('a span:last-child')).toBe(label);
+    expect(label?.textContent).toBe('New label');
+    expect(dom.window.document.querySelector('a')?.getAttribute('href')).toBe('/new');
+    expect(dom.window.document.querySelector('img')?.getAttribute('src')).toBe('new.png');
+    expect(dom.window.document.querySelector('img')?.getAttribute('alt')).toBe('New image');
+    dom.window.close();
+  });
+
   it('draws the same element hover guides again after edit mode exits and re-enters', () => {
     const dom = new JSDOM(
       `<main data-od-source-path="path-0"><h1 data-od-source-path="path-0-0">Plain title</h1></main>${buildManualEditBridge(true)}`,

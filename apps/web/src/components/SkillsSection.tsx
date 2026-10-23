@@ -915,7 +915,7 @@ function SkillRow({
             <span className="skills-delete-confirm" role="group">
               <button
                 type="button"
-                className="btn danger"
+                className="btn"
                 onClick={onCommitDelete}
                 data-testid="skills-delete-confirm"
               >

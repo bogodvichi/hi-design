@@ -2492,6 +2492,7 @@ function printMcpHelp() {
   console.log(`Usage: od mcp [--daemon-url <url>]
 
   od mcp cloud list [--mine] --workspace <id> --workspace-member <id> [--json]
+  od mcp cloud delete <cloud-resource-id> --workspace <id> --workspace-member <id> [--json]
   od mcp publish <cloud-resource-id> --workspace <id> --workspace-member <id> [--description <text>] [--logo <key>] [--json]
 
 Run a stdio MCP (Model Context Protocol) server that proxies project
@@ -2601,6 +2602,7 @@ function emitInstallResult(useJson, result) {
 }
 
 async function runMcpCloud(args) {
+  if (args[0] === 'cloud' && args[1] === 'delete') return runCloudResourceDelete('mcp', args.slice(2));
   const stringFlags = new Set([...LIBRARY_STRING_FLAGS, 'description', 'logo']);
   const flags = parseFlags(args.slice(1), { string: stringFlags, boolean: new Set([...LIBRARY_BOOLEAN_FLAGS, 'mine']) });
   const positionals = positionalArgs(args.slice(1), stringFlags);
@@ -2623,6 +2625,22 @@ async function runMcpCloud(args) {
   if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
   if (publish) console.log(`Published ${positionals[0]}`);
   else for (const template of data.templates ?? []) console.log(`${template.resourceId}\t${template.label}`);
+}
+
+async function runCloudResourceDelete(kind, rest) {
+  const flags = parseFlags(rest, { string: LIBRARY_STRING_FLAGS, boolean: LIBRARY_BOOLEAN_FLAGS });
+  const id = positionalArgs(rest, LIBRARY_STRING_FLAGS)[0];
+  if (!id) {
+    console.error(`Usage: od ${kind === 'skills' ? 'skill' : 'mcp cloud'} delete <cloud-resource-id> --workspace <id> --workspace-member <id> [--json]`);
+    process.exit(2);
+  }
+  const headers = workspaceHeadersFromExplicitFlags(flags, true);
+  const base = (await libraryDaemonUrl(flags)).replace(/\/$/, '');
+  const resp = await fetch(`${base}/api/workspace/${kind}/cloud/${encodeURIComponent(id)}`, { method: 'DELETE', headers });
+  if (!resp.ok) return structuredHttpFailure(resp);
+  const data = await resp.json();
+  if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
+  console.log(`Deleted ${id}`);
 }
 
 async function runMcpInstall(args) {
@@ -7607,16 +7625,19 @@ async function postImportFolderToDaemon(base, body, baseDir, workspaceHeaders = 
 // /api/shared-space/* and /api/workspace/projects/shared-with-me routes.
 // The CLI form is the embeddability contract: external agents can list
 // shared projects, share, and unshare without going through the web UI.
-const SHARED_SPACE_STRING_FLAGS = new Set([
-  'daemon-url', 'project', 'workspace', 'recipient', 'name',
-]);
-const SHARED_SPACE_BOOLEAN_FLAGS = new Set(['help', 'h', 'json']);
-
 async function runSharedSpace(args) {
+  const SHARED_SPACE_STRING_FLAGS = new Set([
+    'daemon-url', 'project', 'workspace', 'recipient', 'name', 'kind',
+  ]);
+  const SHARED_SPACE_BOOLEAN_FLAGS = new Set(['help', 'h', 'json']);
   if (args.length === 0 || args[0] === 'help' || args.includes('--help') || args.includes('-h')) {
     console.log(`Usage:
   od shared-space list [--json]
                         List projects shared TO you in the shared space.
+  od shared-space list --kind <skill|mcp> [--json]
+                        List resources shared TO you.
+  od shared-space remove-resource <shareId> --kind <skill|mcp> [--json]
+                        Remove only your shared resource reference.
   od shared-space share --project <id> --workspace <home-workspace-id>
                         --recipient <username> [--recipient <username> ...]
                         [--name "<display name>"] [--json]
@@ -7638,6 +7659,25 @@ Common options:
     boolean: SHARED_SPACE_BOOLEAN_FLAGS,
   });
   const base = (await cliDaemonBaseUrl(flags)).replace(/\/$/, '');
+
+  if ((sub === 'list' && flags.kind !== undefined) || sub === 'remove-resource') {
+    const kind = flags.kind;
+    const shareId = positionalArgs(rest, SHARED_SPACE_STRING_FLAGS)[0];
+    if (!['skill', 'mcp'].includes(kind) || (sub === 'remove-resource' && !shareId)) {
+      console.error('Usage: od shared-space list --kind <skill|mcp> or remove-resource <shareId> --kind <skill|mcp> [--json]');
+      process.exit(2);
+    }
+    const suffix = sub === 'list' ? '' : `/${encodeURIComponent(shareId)}`;
+    const response = await fetch(`${base}/api/resource-share/shared-with-me${suffix}?kind=${kind}`, {
+      method: sub === 'list' ? 'GET' : 'DELETE',
+    });
+    if (!response.ok) return structuredHttpFailure(response);
+    const data = await response.json();
+    if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
+    if (sub === 'remove-resource') console.log('Removed from Shared with me.');
+    else for (const resource of data.resources ?? []) console.log(`${resource.shareId}\t${resource.metadata?.title ?? resource.metadata?.label ?? resource.resourceId}`);
+    return;
+  }
 
   if (sub === 'list') {
     let resp;
@@ -10315,6 +10355,7 @@ async function runSkills(args) {
   od skill hub install <id> --workspace <id> --workspace-member <id> [--json]
   od skill hub uninstall <id> --workspace <id> --workspace-member <id> [--json]
   od skill publish <cloud-resource-id> --category <category> --workspace <id> --workspace-member <id> [--logo <key>] [--json]
+  od skill delete <cloud-resource-id> --workspace <id> --workspace-member <id> [--json]
   od skill list
   od skill show <id>
   od skill uninstall <id>
@@ -10324,6 +10365,7 @@ async function runSkills(args) {
   }
   if (args[0] === 'hub') return runSkillHub(args.slice(1));
   if (args[0] === 'publish') return runSkillPublish(args.slice(1));
+  if (args[0] === 'delete') return runCloudResourceDelete('skills', args.slice(1));
   if (args[0] === 'install' || args[0] === 'add') return runSkillInstall(args.slice(1));
   if (args[0] === 'uninstall' || args[0] === 'remove') return runSkillUninstall(args.slice(1));
   return runLibraryList('skills', args);

@@ -31,7 +31,7 @@ describe('CloudSkillList Skillhub integration', () => {
       ownerMemberId="personal-member" mode="square" scope="public" /></I18nProvider>);
     const title = await screen.findByText('ued-requirement-analysis');
     fireEvent.click(title.closest('article')!.querySelector('button')!);
-    fireEvent.click(screen.getByRole('button', { name: action }));
+    fireEvent.click(screen.getByRole('menuitem', { name: action }));
     const dialog = await screen.findByRole('alertdialog');
     fireEvent.click(within(dialog).getByRole('button', { name: action }));
     const path = '/api/workspace/skills/cloud/skill-team-analysis' + (action === '取消发布' ? '/unpublish' : '');

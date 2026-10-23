@@ -969,7 +969,6 @@ export function DesignsTab({
 														<Icon name="copy" size={12} />
 														<span>{t("designs.menuDuplicate")}</span>
 													</button>
-													<div className="design-card-menu-separator" role="separator" />
 												</>
 											) : null}
 											<button

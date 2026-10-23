@@ -58,6 +58,7 @@ export type IconName =
   | 'lightbulb'
   | 'arrow-right'
   | 'link'
+  | 'unlink'
   | 'lock'
   | 'mail'
   | 'log-in'
@@ -736,6 +737,12 @@ export function Icon({ name, size = 14, strokeWidth = 1.6, ...rest }: Props) {
         <svg {...common}>
           <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 1 0-7.07-7.07L11.75 5.18" />
           <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 1 0 7.07 7.07l1.71-1.71" />
+        </svg>
+      );
+    case 'unlink':
+      return (
+        <svg {...common}>
+          <path d="m18.84 12.25 1.41-1.41a5 5 0 0 0-7.07-7.07l-1.41 1.41M5.16 11.75l-1.41 1.41a5 5 0 0 0 7.07 7.07l1.41-1.41M8 2v3M2 8h3M16 19v3M19 16h3" />
         </svg>
       );
     case 'lock':

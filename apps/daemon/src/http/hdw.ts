@@ -1,4 +1,5 @@
 import { getSharedSpaceTeamId, getSharedSpaceMemberId, getCollaboratorMemberId } from '../ids.js';
+import type { SharedWithMeResource } from '@open-design/contracts';
 import { UA, type Cookie } from './http.js';
 import { readSsoConfigFile, readSsoUsername } from './hik_logins/hicoo.js';
 import { createHash } from 'node:crypto';
@@ -1249,19 +1250,7 @@ export async function fetchHdwMarketplaceManifestText(
 // workspace_resource_shares table via the HDW resource-share controller.
 // ---------------------------------------------------------------------------
 
-export interface HdwSharedWithMeResource {
-  shareId: string;
-  resourceId: string;
-  kind: string;
-  homeWorkspaceId: string;
-  sharedByUsername: string;
-  sharedByDisplayname: string | null;
-  sharedAt: string;
-  ownerMemberId: string | null;
-  metadata: Record<string, unknown> | null;
-  createdAt: string | null;
-  updatedAt: string | null;
-}
+export type HdwSharedWithMeResource = SharedWithMeResource;
 
 export async function fetchResourcesSharedWithMe(
   dataDir: string | undefined,

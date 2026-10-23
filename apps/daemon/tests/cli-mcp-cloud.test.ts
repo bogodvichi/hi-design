@@ -15,7 +15,7 @@ beforeAll(async () => {
     req.on('end', () => {
       requests.push({ url: req.url, headers: req.headers, body });
       res.setHeader('content-type', 'application/json');
-      res.end(JSON.stringify(req.method === 'POST' ? { ok: true } : { templates: [{ resourceId: 'mcp-team', label: 'Team MCP' }] }));
+      res.end(JSON.stringify(req.method !== 'GET' ? { ok: true } : { templates: [{ resourceId: 'mcp-team', label: 'Team MCP' }] }));
     });
   });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -24,11 +24,17 @@ beforeAll(async () => {
 afterAll(async () => { await new Promise<void>((resolve) => server.close(() => resolve())); });
 beforeEach(() => { requests.length = 0; });
 
-async function cli(args: string[]) {
-  return run(process.execPath, [path.join(root, 'node_modules/tsx/dist/cli.mjs'), path.join(root, 'apps/daemon/src/cli.ts'), 'mcp', ...args,
+async function cli(args: string[], kind = 'mcp') {
+  return run(process.execPath, [path.join(root, 'node_modules/tsx/dist/cli.mjs'), path.join(root, 'apps/daemon/src/cli.ts'), kind, ...args,
     '--workspace', 'team', '--workspace-member', 'team-member', '--daemon-url', base, '--json'], { cwd: root, timeout: 15_000, env: { ...process.env, NODE_OPTIONS: undefined } });
 }
 describe('cloud MCP CLI', () => {
+  it.each(['skill', 'mcp'])('deletes an owned %s cloud resource through the source workspace API', async (kind) => {
+    const result = await cli([...(kind === 'mcp' ? ['cloud'] : []), 'delete', 'cloud-resource'], kind);
+    expect(JSON.parse(result.stdout)).toEqual({ ok: true });
+    expect(requests).toEqual([expect.objectContaining({ url: `/api/workspace/${kind === 'skill' ? 'skills' : 'mcp'}/cloud/cloud-resource`,
+      headers: expect.objectContaining({ 'x-od-workspace-id': 'team', 'x-od-workspace-member-id': 'team-member' }), body: '' })]);
+  });
   it.each([false, true])('lists community MCPs with mine=%s through the shared API', async (mine) => {
     const result = await cli(['cloud', 'list', ...(mine ? ['--mine'] : [])]);
     expect(JSON.parse(result.stdout)).toMatchObject({ templates: [{ resourceId: 'mcp-team' }] });

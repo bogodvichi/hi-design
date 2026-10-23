@@ -1,4 +1,7 @@
-import { useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
+import { Button } from '@open-design/components';
+import type { ManualEditSaveState } from '../edit-mode/use-manual-edit-autosave';
+import panelStyles from './ManualEditPanel.module.css';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { ProjectDesignTokenSuggestion, ProjectDesignTokenSuggestionProp } from '../providers/registry';
 import { useT } from '../i18n';
 import { emptyManualEditStyles, type ManualEditHistoryEntry, type ManualEditPatch, type ManualEditStyles, type ManualEditTarget } from '../edit-mode/types';
@@ -27,15 +30,17 @@ export function ManualEditPanel({
   selectedTarget,
   draft,
   error,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
   busy,
-  resetAvailable = false,
   onDraftChange,
   onStyleChange,
   onInvalidStyle,
   onError,
-  onCancelDraft,
-  onSaveDraft,
-  onResetDraft,
+  onRetrySave,
+  saveState = 'saved',
   onExit,
   onApplyPatch,
   onPickImage,
@@ -44,11 +49,6 @@ export function ManualEditPanel({
   onApplyTokenSuggestion,
   onInspectValueSelect,
   pageStylesEnabled = true,
-  floatingStyle,
-  floatingClassName,
-  onFloatingPositionChange,
-  locked = false,
-  onToggleLock,
 }: {
   targets: ManualEditTarget[];
   selectedTarget: ManualEditTarget | null;
@@ -58,7 +58,6 @@ export function ManualEditPanel({
   canUndo: boolean;
   canRedo: boolean;
   busy?: boolean;
-  resetAvailable?: boolean;
   pageStylesEnabled?: boolean;
   onSelectTarget: (target: ManualEditTarget) => void;
   onDraftChange: (draft: ManualEditDraft) => void;
@@ -70,28 +69,16 @@ export function ManualEditPanel({
   tokenSuggestionsLoading?: boolean;
   onApplyTokenSuggestion?: (prop: keyof ManualEditStyles, value: string) => void;
   onInspectValueSelect?: (prop: ProjectDesignTokenSuggestionProp, value: string) => void;
-  floatingStyle?: CSSProperties;
-  floatingClassName?: string;
-  onFloatingPositionChange?: (position: { left: number; top: number }) => void;
-  /** When true the panel is pinned: no dragging, and it does not reposition
-   *  when a different element is selected. Owned by the parent. */
-  locked?: boolean;
-  onToggleLock?: () => void;
   onError: (message: string) => void;
   onClearSelection: () => void;
   onExit?: () => void;
-  onCancelDraft: () => void;
-  onSaveDraft: () => void;
-  onResetDraft: () => void;
+  onRetrySave: () => void;
+  saveState?: ManualEditSaveState;
   onUndo: () => void;
   onRedo: () => void;
 }) {
   const t = useT();
   const [uploadingImage, setUploadingImage] = useState(false);
-  // Pin toggle: draggable (pin pulled out) vs locked/fixed (pin pushed in).
-  // The lock lives in the parent so it can ALSO freeze the panel's position —
-  // a locked panel never follows the selected element.
-  const dragEnabled = !locked;
   const selectedTargetRef = useRef<ManualEditTarget | null>(selectedTarget);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const targetForInspector = selectedTarget;
@@ -131,84 +118,10 @@ export function ManualEditPanel({
     onStyleChange?.(targetForInspector.id, normalized.styles, label);
   };
 
-  // Drag the whole floating panel: a pointer-down anywhere on it starts the
-  // move UNLESS it lands on an interactive control (input / button / field /
-  // the HTML box / …), so the user can still select and edit inside the panel
-  // normally. Only "empty" chrome — the titlebar, section headers, gaps —
-  // initiates a drag.
-  const DRAG_IGNORE_SELECTOR =
-    'input, textarea, select, button, a[href], label, [contenteditable], [role="button"], [role="slider"], [role="combobox"], [role="textbox"]';
-  const startPanelDrag = (event: ReactPointerEvent<HTMLElement>) => {
-    if (!onFloatingPositionChange || !dragEnabled || event.button !== 0) return;
-    const origin = event.target as HTMLElement | null;
-    if (origin?.closest(DRAG_IGNORE_SELECTOR)) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const panel = event.currentTarget.closest('.manual-edit-right') as HTMLElement | null;
-    const parent = panel?.parentElement;
-    if (!panel || !parent) return;
-    const startX = event.clientX;
-    const startY = event.clientY;
-    const startLeft = panel.offsetLeft;
-    const startTop = panel.offsetTop;
-    const parentRect = parent.getBoundingClientRect();
-    const panelRect = panel.getBoundingClientRect();
-    const pad = 8;
-    const maxLeft = Math.max(pad, parentRect.width - panelRect.width - pad);
-    const maxTop = Math.max(pad, parentRect.height - panelRect.height - pad);
-    const ownerDocument = panel.ownerDocument;
-    const prevCursor = ownerDocument.body.style.cursor;
-    const prevUserSelect = ownerDocument.body.style.userSelect;
-    ownerDocument.body.style.cursor = 'grabbing';
-    ownerDocument.body.style.userSelect = 'none';
-    const move = (moveEvent: PointerEvent) => {
-      onFloatingPositionChange({
-        left: clamp(startLeft + moveEvent.clientX - startX, pad, maxLeft),
-        top: clamp(startTop + moveEvent.clientY - startY, pad, maxTop),
-      });
-    };
-    const up = () => {
-      ownerDocument.body.style.cursor = prevCursor;
-      ownerDocument.body.style.userSelect = prevUserSelect;
-      ownerDocument.removeEventListener('pointermove', move);
-      ownerDocument.removeEventListener('pointerup', up);
-      ownerDocument.removeEventListener('pointercancel', up);
-    };
-    ownerDocument.addEventListener('pointermove', move);
-    ownerDocument.addEventListener('pointerup', up);
-    ownerDocument.addEventListener('pointercancel', up);
-  };
-
   return (
-    <aside
-      className={`manual-edit-right${floatingStyle ? ' manual-edit-floating' : ''}${floatingClassName ? ` ${floatingClassName}` : ''}`}
-      style={floatingStyle}
-    >
-      <section
-        className={`manual-edit-modal cc-panel${floatingStyle && !dragEnabled ? ' is-drag-locked' : ''}`}
-        onPointerDown={floatingStyle ? startPanelDrag : undefined}
-      >
+    <aside className={`manual-edit-right ${panelStyles.panel}`}>
+      <section className={`manual-edit-modal cc-panel ${panelStyles.surface}`}>
         <div className="manual-edit-titlebar">
-          {floatingStyle ? (
-            <button
-              type="button"
-              className={`manual-edit-drag-handle${dragEnabled ? ' is-draggable' : ' is-locked'}`}
-              onClick={() => onToggleLock?.()}
-              aria-pressed={dragEnabled}
-              aria-label={t('manualEdit.movePanel')}
-              title={t('manualEdit.movePanel')}
-            >
-              {dragEnabled ? (
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                  <path d="M13.8273 1.69L22.3126 10.1753L20.8984 11.5895L20.1913 10.8824L15.9486 15.125L15.2415 18.6606L13.8273 20.0748L9.58466 15.8321L4.63492 20.7819L3.2207 19.3677L8.17045 14.4179L3.92781 10.1753L5.34202 8.76107L8.87756 8.05396L13.1202 3.81132L12.4131 3.10422L13.8273 1.69ZM14.5344 5.22554L9.86358 9.89637L7.0417 10.4607L13.5418 16.9609L14.1062 14.139L18.7771 9.46818L14.5344 5.22554Z" />
-                </svg>
-              ) : (
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-                  <path d="M18 3V5H17V11L19 14V16H13V23H11V16H5V14L7 11V5H6V3H18Z" />
-                </svg>
-              )}
-            </button>
-          ) : null}
           <span title={panelTitle}>{panelTitle}</span>
           {onExit ? (
             <button
@@ -322,32 +235,24 @@ export function ManualEditPanel({
               ) : null}
             </div>
             <div className="manual-edit-footer-right">
-              {resetAvailable ? (
-                <button
-                  type="button"
-                  className="manual-edit-footer-btn subtle"
-                  disabled={busy}
-                  onClick={onResetDraft}
-                >
-                  {t('ds.reset')}
-                </button>
+              <span className={panelStyles.saveState} role="status" aria-live="polite">
+                {t(`manualEdit.autosave.${error || saveState === 'error' ? 'error' : busy ? 'saving' : saveState}`)}
+              </span>
+              {saveState === 'error' ? (
+                <Button variant="subtle" disabled={busy} onClick={onRetrySave}>
+                  {t('manualEdit.autosave.retry')}
+                </Button>
               ) : null}
-              <button
-                type="button"
-                className="manual-edit-footer-btn subtle"
-                disabled={busy}
-                onClick={onCancelDraft}
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                type="button"
-                className="manual-edit-footer-btn primary"
-                disabled={busy}
-                onClick={onSaveDraft}
-              >
-                {t('common.save')}
-              </button>
+              <Button variant="ghost" size="icon" className={panelStyles.historyButton}
+                disabled={busy || !canUndo} onClick={onUndo}
+                aria-label={t('manualEdit.undo')} title={t('manualEdit.undo')}>
+                <Icon name="undo" size={16} />
+              </Button>
+              <Button variant="ghost" size="icon" className={panelStyles.historyButton}
+                disabled={busy || !canRedo} onClick={onRedo}
+                aria-label={t('manualEdit.redo')} title={t('manualEdit.redo')}>
+                <Icon name="redo" size={16} />
+              </Button>
             </div>
           </div>
 
@@ -416,14 +321,17 @@ function ContentInspector({
   return (
     <div className="cc-inspector manual-edit-content-inspector">
       <Section title={t('manualEdit.sectionContent')}>
-        <label className="manual-edit-field">
-          <span>{t('manualEdit.selectedHtml')}</span>
+        <details className={panelStyles.advanced}>
+          <summary>{t('manualEdit.selectedHtml')}</summary>
+          <label className="manual-edit-field">
           <textarea
             className="manual-edit-code"
+            aria-label={t('manualEdit.selectedHtml')}
             value={draft.outerHtml}
             onChange={(event) => update({ outerHtml: event.currentTarget.value })}
           />
-        </label>
+          </label>
+        </details>
       </Section>
     </div>
   );
@@ -465,9 +373,7 @@ function readableManualEditTargetName(target: ManualEditTarget): string {
   return 'Text';
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
+
 
 function firstReadableText(...values: Array<string | undefined>): string {
   for (const value of values) {

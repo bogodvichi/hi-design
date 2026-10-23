@@ -140,6 +140,101 @@ describe('FileViewer manual edit regressions', () => {
     });
   }
 
+  it('previews text immediately and autosaves without closing or remounting the inspector', async () => {
+    const initial = '<!doctype html><html><body><h1 data-od-id="hero">Hero</h1><p data-od-id="other">Other</p></body></html>';
+    let persisted = initial;
+    const writes: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes('/files') && init?.method === 'POST') {
+        persisted = (JSON.parse(String(init.body)) as { content: string }).content;
+        writes.push(persisted);
+        return Response.json({ file: htmlPreviewFile() });
+      }
+      if (url.includes('/raw/')) return new Response(persisted);
+      return Response.json({ deployments: [], versions: [] });
+    }));
+    render(<FileViewer projectId="project-1" projectKind="prototype" file={htmlPreviewFile()} liveHtml={initial} />);
+    await enterManualEditMode();
+    await selectManualEditTarget();
+    const panel = document.querySelector('.manual-edit-right')!;
+    const textarea = panel.querySelector('textarea')!;
+    const frame = await previewFrame();
+    const transport = frame.srcdoc;
+    const post = vi.spyOn(frame.contentWindow!, 'postMessage');
+    expect(panel.classList.contains('manual-edit-floating')).toBe(false);
+    expect(screen.queryByRole('button', { name: /^Save$/ })).toBeNull();
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(textarea, { target: { value: 'Updated hero' } });
+      expect(post).toHaveBeenCalledWith({ type: 'od-edit-preview-text', id: 'hero', value: 'Updated hero' }, '*');
+      expect(writes).toHaveLength(0);
+      await act(async () => { await vi.advanceTimersByTimeAsync(399); });
+      expect(writes).toHaveLength(0);
+      await act(async () => { await vi.advanceTimersByTimeAsync(121); });
+      expect(writes).toHaveLength(1);
+      expect(writes[0]).toContain('Updated hero');
+      expect(document.querySelector('.manual-edit-right')).toBe(panel);
+      expect(panel.querySelector('textarea')).toBe(textarea);
+      expect(frame.srcdoc).toBe(transport);
+      vi.useRealTimers();
+      await selectManualEditTarget({ ...heroTarget(), id: 'other', text: 'Other', fields: { text: 'Other' } });
+      expect(panel.querySelector('textarea')).toBe(textarea);
+      expect(textarea.value).toBe('Other');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('retains both element drafts and newer input while an earlier save is in flight', async () => {
+    const initial = '<!doctype html><html><body><h1 data-od-id="hero">Hero</h1><p data-od-id="other">Other</p></body></html>';
+    let persisted = initial;
+    const writes: string[] = [];
+    let release!: (response: Response) => void;
+    const firstWrite = new Promise<Response>((resolve) => { release = resolve; });
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      if (String(input).includes('/files') && init?.method === 'POST') {
+        persisted = (JSON.parse(String(init.body)) as { content: string }).content;
+        writes.push(persisted);
+        return writes.length === 1 ? firstWrite : Response.json({ file: htmlPreviewFile() });
+      }
+      if (String(input).includes('/raw/')) return new Response(persisted);
+      return Response.json({ deployments: [], versions: [] });
+    }));
+    render(<FileViewer projectId="project-1" projectKind="prototype" file={htmlPreviewFile()} liveHtml={initial} />);
+    await enterManualEditMode();
+    await selectManualEditTarget();
+    const frame = await previewFrame();
+    const textarea = document.querySelector<HTMLTextAreaElement>('.manual-edit-right textarea')!;
+    const post = vi.spyOn(frame.contentWindow!, 'postMessage');
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(textarea, { target: { value: 'First edit' } });
+      await act(async () => { await vi.advanceTimersByTimeAsync(520); });
+      expect(writes).toHaveLength(1);
+      const select = (target: ManualEditTarget) => act(() => {
+        window.dispatchEvent(new MessageEvent('message', { source: frame.contentWindow, data: { type: 'od-edit-select', target } }));
+      });
+      select({ ...heroTarget(), id: 'other', text: 'Other', fields: { text: 'Other' } });
+      fireEvent.change(textarea, { target: { value: 'Other edited' } });
+      select(heroTarget());
+      expect(textarea.value).toBe('First edit');
+      fireEvent.change(textarea, { target: { value: 'Newest hero' } });
+      await act(async () => {
+        release(Response.json({ file: htmlPreviewFile() }));
+        await firstWrite;
+        await vi.advanceTimersByTimeAsync(250);
+      });
+      expect(writes).toHaveLength(3);
+      expect(persisted).toContain('Newest hero');
+      expect(persisted).toContain('Other edited');
+      expect(textarea.value).toBe('Newest hero');
+      const textPreviews = post.mock.calls.map(([message]) => message as { type?: string; id?: string; value?: string })
+        .filter((message) => message.type === 'od-edit-preview-text' && message.id === 'hero');
+      expect(textPreviews.at(-1)?.value).toBe('Newest hero');
+    } finally { vi.useRealTimers(); }
+  });
+
   it('removes invalid fields from pending manual edit style saves without dropping unrelated fields', () => {
     expect(cancelManualEditPendingStyleSnapshot({
       id: 'hero',
@@ -209,7 +304,7 @@ describe('FileViewer manual edit regressions', () => {
     await clickManualEditBackground();
 
     expect(screen.getByText('PAGE')).toBeTruthy();
-    expect(document.querySelector('.manual-edit-page-card')).not.toBeNull();
+    expect(document.querySelector('.manual-edit-floating')).toBeNull();
   });
 
   it('pins the inspector to a target only after clicking the hover affordance', async () => {
@@ -359,49 +454,40 @@ describe('FileViewer manual edit regressions', () => {
     const baseSizeInput = await findStyleInput(FONT_SIZE_ROW);
 
     fireEvent.change(baseSizeInput, { target: { value: '18' } });
-    fireEvent.click(screen.getByText('Save'));
     await waitFor(() => {
       expect(screen.getByText(/Could not save the edited file/)).toBeTruthy();
     });
 
-    fireEvent.change(baseSizeInput, { target: { value: '19' } });
-    fireEvent.click(screen.getByText('Save'));
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     await waitFor(() => {
+      expect(saveAttempts).toBe(2);
       expect(screen.queryByText(/Could not save the edited file/)).toBeNull();
+      expect(screen.getByText('All changes saved')).toBeTruthy();
     });
   });
 
-  it('closes the inspector without saving on cancel, staying in edit mode', async () => {
+  it('flushes changes before closing the inspector and stays in edit mode', async () => {
     const source = '<!doctype html><html><body><main data-od-id="hero">Hero</main></body></html>';
-    const fetchMock = vi.fn(async () =>
-      new Response(source, { status: 200, headers: { 'Content-Type': 'text/html' } }),
-    );
-    vi.stubGlobal('fetch', fetchMock);
-
-    render(
-      <FileViewer projectId="project-1" projectKind="prototype" file={htmlPreviewFile()}
-        liveHtml={source}
-      />,
-    );
-
+    const writes: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      if (String(input).includes('/files') && init?.method === 'POST') {
+        writes.push(String(init.body));
+        return Response.json({ file: htmlPreviewFile() });
+      }
+      return new Response(source);
+    }));
+    render(<FileViewer projectId="project-1" projectKind="prototype" file={htmlPreviewFile()} liveHtml={source} />);
     await enterManualEditMode();
     await selectManualEditTarget();
-    const baseSizeInput = await findStyleInput(FONT_SIZE_ROW);
-
-    fireEvent.change(baseSizeInput, { target: { value: '18' } });
-    fireEvent.click(screen.getByText('Cancel'));
-
-    await waitFor(() => {
-      expect(document.querySelector('.manual-edit-right')).toBeNull();
-    });
+    fireEvent.change(await findStyleInput(FONT_SIZE_ROW), { target: { value: '18' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Close edit panel' }));
+    await waitFor(() => expect(document.querySelector('.manual-edit-right')).toBeNull());
+    expect(writes).toHaveLength(1);
+    expect(writes[0]).toContain('18px');
     expect(document.querySelector('.manual-edit-workspace')).not.toBeNull();
-    expect(fetchMock).not.toHaveBeenCalledWith(
-      '/api/projects/project-1/files',
-      expect.objectContaining({ method: 'POST' }),
-    );
   });
 
-  it('closes the inspector after save succeeds, staying in edit mode', async () => {
+  it('keeps the inspector open after automatic saving', async () => {
     const source = '<!doctype html><html><body><main data-od-id="hero">Hero</main></body></html>';
     const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
@@ -426,14 +512,13 @@ describe('FileViewer manual edit regressions', () => {
     const baseSizeInput = await findStyleInput(FONT_SIZE_ROW);
 
     fireEvent.change(baseSizeInput, { target: { value: '18' } });
-    fireEvent.click(screen.getByText('Save'));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/projects/project-1/files',
         expect.objectContaining({ method: 'POST' }),
       );
-      expect(document.querySelector('.manual-edit-right')).toBeNull();
+      expect(document.querySelector('.manual-edit-right')).not.toBeNull();
     });
     expect(document.querySelector('.manual-edit-workspace')).not.toBeNull();
   });
@@ -484,13 +569,12 @@ describe('FileViewer manual edit regressions', () => {
     const textarea = document.querySelector('.manual-edit-right textarea') as HTMLTextAreaElement;
     expect(textarea).toBeTruthy();
     fireEvent.change(textarea, { target: { value: 'Hero edited' } });
-    fireEvent.click(screen.getByText('Save'));
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
         '/api/projects/project-1/files',
         expect.objectContaining({ method: 'POST' }),
       );
-      expect(document.querySelector('.manual-edit-right')).toBeNull();
+      expect(document.querySelector('.manual-edit-right')).not.toBeNull();
     });
 
     // The reloaded document's bridge asks where to scroll back to. The reply
@@ -548,7 +632,6 @@ describe('FileViewer manual edit regressions', () => {
     const textarea = document.querySelector('.manual-edit-right textarea') as HTMLTextAreaElement;
 
     fireEvent.change(textarea, { target: { value: 'Hero edited' } });
-    fireEvent.click(screen.getByText('Save'));
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(
@@ -563,7 +646,7 @@ describe('FileViewer manual edit regressions', () => {
     });
   });
 
-  it('holds a dropped drag as a pending style and only persists it on save', async () => {
+  it('automatically persists a dropped drag', async () => {
     const source = '<!doctype html><html><body><main data-od-id="hero">Hero</main></body></html>';
     const savedBodies: string[] = [];
     const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
@@ -599,11 +682,7 @@ describe('FileViewer manual edit regressions', () => {
       '/api/projects/project-1/files',
       expect.objectContaining({ method: 'POST' }),
     );
-    await waitFor(() => {
-      expect(screen.getByText('Reset')).toBeTruthy();
-    });
 
-    fireEvent.click(screen.getByText('Save'));
 
     await waitFor(() => {
       expect(savedBodies.length).toBe(1);
@@ -674,7 +753,6 @@ describe('FileViewer manual edit regressions', () => {
     });
 
     fireEvent.change(screen.getByLabelText('Text'), { target: { value: 'Edited from panel' } });
-    fireEvent.click(screen.getByText('Save'));
     act(() => {
       window.dispatchEvent(new MessageEvent('message', {
         data: {

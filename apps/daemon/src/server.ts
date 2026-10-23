@@ -8011,6 +8011,7 @@ const designSystemBackingProjects = new Map<string, string>();
        return res.status(403).json({ error: 'NOT_RESOURCE_OWNER', message: 'you can only delete resources you own' });
      }
     await hdwCloudClient.removeResource(workspaceId, resourceId);
+    skillsTeamList.invalidate(scope);
     res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err instanceof Error ? err.message : 'cloud skill delete failed' });

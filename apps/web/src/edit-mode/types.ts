@@ -164,6 +164,12 @@ export interface ManualEditPreviewAppliedMessage {
   error?: string;
 }
 
+export interface ManualEditTextDraftMessage {
+  type: 'od-edit-text-draft';
+  id: string;
+  value: string;
+}
+
 export interface ManualEditTextCommitMessage {
   type: 'od-edit-text-commit';
   id: string;
@@ -178,8 +184,7 @@ export interface ManualEditTextSessionMessage {
   committed?: boolean;
 }
 
-/** Free drag-to-reposition finished: the element's new translate() value, to
- *  be committed as a pending style so the panel's Save persists it. */
+/** Free drag-to-reposition finished; the transform follows the style autosave path. */
 export interface ManualEditDragCommitMessage {
   type: 'od-edit-drag-commit';
   id: string;
@@ -197,6 +202,7 @@ export type ManualEditBridgeMessage =
   | ManualEditInspectSelectMessage
   | ManualEditBackgroundMessage
   | ManualEditPreviewAppliedMessage
+  | ManualEditTextDraftMessage
   | ManualEditTextCommitMessage
   | ManualEditTextSessionMessage
   | ManualEditDragCommitMessage;

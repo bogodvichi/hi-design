@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act } from 'react';
-import type { CSSProperties } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { Simulate } from 'react-dom/test-utils';
 import { JSDOM } from 'jsdom';
@@ -34,9 +33,7 @@ type OnInvalidStyle = (id: string, keys: Array<keyof ManualEditStyles>) => void;
 type OnApplyPatch = (patch: ManualEditPatch, label: string) => void;
 type OnError = (message: string) => void;
 type OnClearSelection = () => void;
-type OnSaveDraft = () => void;
-type OnCancelDraft = () => void;
-type OnResetDraft = () => void;
+type OnRetrySave = () => void;
 
 describe('ManualEditPanel', () => {
   let dom: JSDOM;
@@ -94,11 +91,12 @@ describe('ManualEditPanel', () => {
     expect(host.querySelector('.manual-edit-titlebar')?.textContent).not.toContain('div.container');
   });
 
-  it('shows a drag handle for floating edit panels', () => {
-    renderPanel({ floatingStyle: { left: 20, top: 24, width: 320, height: 380 } });
-
-    expect(host.querySelector('.manual-edit-drag-handle')).not.toBeNull();
-    expect(host.querySelector('.manual-edit-drag-handle')?.getAttribute('aria-label')).toBe('Move edit panel');
+  it('keeps the same controls mounted when selecting another text element', () => {
+    renderPanel();
+    const textarea = host.querySelector('textarea');
+    renderPanel({ selectedTarget: { ...target, id: 'other-title', label: 'Other title' } });
+    expect(host.querySelector('textarea')).toBe(textarea);
+    expect(host.querySelector('.manual-edit-drag-handle')).toBeNull();
   });
 
   it('does not show page-level controls inside an element inspector', () => {
@@ -121,8 +119,9 @@ describe('ManualEditPanel', () => {
     expect(scrollRegion?.contains(deleteButton)).toBe(false);
     expect(footer?.contains(deleteButton)).toBe(true);
     expect(deleteButton?.textContent).toBe('');
-    expect(footer?.textContent).toContain('Cancel');
-    expect(footer?.textContent).toContain('Save');
+    expect(footer?.textContent).toContain('All changes saved');
+    expect(footer?.querySelector('button[aria-label="Undo"]')).not.toBeNull();
+    expect(footer?.textContent).not.toContain('Cancel');
   });
 
   it('routes delete as a direct icon-only action', () => {
@@ -146,27 +145,21 @@ describe('ManualEditPanel', () => {
     );
   });
 
-  it('routes footer reset, cancel, and save actions', () => {
-    const onResetDraft = vi.fn<OnResetDraft>();
-    const onCancelDraft = vi.fn<OnCancelDraft>();
-    const onSaveDraft = vi.fn<OnSaveDraft>();
-    renderPanel({ resetAvailable: true, onResetDraft, onCancelDraft, onSaveDraft });
-
-    const footerButtons = Array.from(host.querySelectorAll('.manual-edit-footer button'));
-    const reset = footerButtons.find((button) => button.textContent === 'Reset') as HTMLButtonElement | undefined;
-    const cancel = footerButtons.find((button) => button.textContent === 'Cancel') as HTMLButtonElement | undefined;
-    const save = footerButtons.find((button) => button.textContent === 'Save') as HTMLButtonElement | undefined;
-    if (!reset || !cancel || !save) throw new Error('Footer action buttons not found');
-
-    act(() => {
-      reset.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
-      cancel.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
-      save.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
-    });
-
-    expect(onResetDraft).toHaveBeenCalledTimes(1);
-    expect(onCancelDraft).toHaveBeenCalledTimes(1);
-    expect(onSaveDraft).toHaveBeenCalledTimes(1);
+  it('routes undo, redo, and failed autosave retry without a manual save button', () => {
+    const onUndo = vi.fn();
+    const onRedo = vi.fn();
+    const onRetrySave = vi.fn<OnRetrySave>();
+    renderPanel({ onUndo, onRedo, onRetrySave, canUndo: true, canRedo: true, saveState: 'error' });
+    const buttons = host.querySelectorAll<HTMLButtonElement>('.manual-edit-footer button');
+    for (const button of buttons) {
+      if (['Undo', 'Redo'].includes(button.getAttribute('aria-label') ?? '') || button.textContent === 'Retry') {
+        act(() => button.click());
+      }
+    }
+    expect(onUndo).toHaveBeenCalledOnce();
+    expect(onRedo).toHaveBeenCalledOnce();
+    expect(onRetrySave).toHaveBeenCalledOnce();
+    expect(Array.from(buttons).some((button) => button.textContent === 'Save')).toBe(false);
   });
 
   it('edits selected text content from the panel', () => {
@@ -835,16 +828,16 @@ describe('ManualEditPanel', () => {
     onStyleChange = vi.fn<OnStyleChange>(),
     onInvalidStyle = vi.fn<OnInvalidStyle>(),
     onClearSelection = vi.fn<OnClearSelection>(),
-    onCancelDraft = vi.fn<OnCancelDraft>(),
-    onSaveDraft = vi.fn<OnSaveDraft>(),
-    onResetDraft = vi.fn<OnResetDraft>(),
+    onRetrySave = vi.fn<OnRetrySave>(),
+    onUndo = vi.fn(),
+    onRedo = vi.fn(),
+    canUndo = false,
+    canRedo = false,
+    saveState = 'saved',
     attributesText = '{}',
     selectedTarget = target,
     styles = emptyManualEditStyles(),
-    resetAvailable = false,
     pageStylesEnabled = true,
-    floatingStyle,
-    onFloatingPositionChange,
     tokenSuggestions,
     tokenSuggestionsLoading,
     onApplyTokenSuggestion,
@@ -856,16 +849,16 @@ describe('ManualEditPanel', () => {
     onStyleChange?: OnStyleChange;
     onInvalidStyle?: OnInvalidStyle;
     onClearSelection?: OnClearSelection;
-    onCancelDraft?: OnCancelDraft;
-    onSaveDraft?: OnSaveDraft;
-    onResetDraft?: OnResetDraft;
+    onRetrySave?: OnRetrySave;
+    onUndo?: () => void;
+    onRedo?: () => void;
+    canUndo?: boolean;
+    canRedo?: boolean;
+    saveState?: 'saved' | 'pending' | 'saving' | 'error';
     attributesText?: string;
     selectedTarget?: ManualEditTarget | null;
     styles?: ReturnType<typeof emptyManualEditStyles>;
-    resetAvailable?: boolean;
     pageStylesEnabled?: boolean;
-    floatingStyle?: CSSProperties;
-    onFloatingPositionChange?: (position: { left: number; top: number }) => void;
     tokenSuggestions?: ProjectDesignTokenSuggestion[];
     tokenSuggestionsLoading?: boolean;
     onApplyTokenSuggestion?: (prop: keyof ManualEditStyles, value: string) => void;
@@ -886,9 +879,8 @@ describe('ManualEditPanel', () => {
           draft={draft}
           history={[]}
           error={null}
-          canUndo={false}
-          canRedo={false}
-          resetAvailable={resetAvailable}
+          canUndo={canUndo}
+          canRedo={canRedo}
           pageStylesEnabled={pageStylesEnabled}
           onSelectTarget={vi.fn<(target: ManualEditTarget) => void>()}
           onDraftChange={onDraftChange}
@@ -897,13 +889,10 @@ describe('ManualEditPanel', () => {
           onApplyPatch={onApplyPatch}
           onError={onError}
           onClearSelection={onClearSelection}
-          onCancelDraft={onCancelDraft}
-          onSaveDraft={onSaveDraft}
-          onResetDraft={onResetDraft}
-          onUndo={vi.fn<() => void>()}
-          onRedo={vi.fn<() => void>()}
-          floatingStyle={floatingStyle}
-          onFloatingPositionChange={onFloatingPositionChange}
+          onRetrySave={onRetrySave}
+          saveState={saveState}
+          onUndo={onUndo}
+          onRedo={onRedo}
           tokenSuggestions={tokenSuggestions}
           tokenSuggestionsLoading={tokenSuggestionsLoading}
           onApplyTokenSuggestion={onApplyTokenSuggestion}

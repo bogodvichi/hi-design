@@ -572,6 +572,10 @@ export function buildManualEditBridge(enabled: boolean): string {
   function renderSelectedChrome(layer, target){
     if (!target || !target.rect) return;
     renderBox(layer, target, 'selected');
+    addGuideNode(layer, 'od-edit-guide-label', {
+      left: Math.max(2, target.rect.x) + 'px',
+      top: Math.max(2, target.rect.y - 22) + 'px'
+    }, target.label || target.tagName);
     var rect = target.rect;
     var points = [
       [rect.x, rect.y],
@@ -591,7 +595,7 @@ export function buildManualEditBridge(enabled: boolean): string {
     }
   }
   function renderSelectedChromeForCurrent(){
-    if (!enabled || !guidesEnabled || !selectedTargetId) {
+    if (!enabled || !selectedTargetId) {
       clearGuidesLayer();
       return;
     }
@@ -695,7 +699,7 @@ export function buildManualEditBridge(enabled: boolean): string {
   }
   function renderHoverRelation(hoverTarget){
     if (!enabled || !guidesEnabled || !hoverTarget || !hoverTarget.rect) {
-      clearGuidesLayer();
+      renderSelectedChromeForCurrent();
       return;
     }
     var selectedEl = selectedTargetId ? findById(selectedTargetId) : null;
@@ -816,6 +820,8 @@ export function buildManualEditBridge(enabled: boolean): string {
     el.removeAttribute('contenteditable');
     el.removeAttribute('data-od-editing');
     el.removeEventListener('keydown', session.onKey);
+    el.removeEventListener('input', session.onInput);
+    el.removeEventListener('compositionend', session.onInput);
     if (guard) guard.editingEl = null;
     var value = (el.textContent || '').trim();
     var changed = value !== session.originalText.trim();
@@ -827,6 +833,7 @@ export function buildManualEditBridge(enabled: boolean): string {
       }, '*');
     } else if (!commit) {
       el.textContent = session.originalText;
+      if (session.drafted) window.parent.postMessage({ type: 'od-edit-text-draft', id: stableId(el), value: session.originalText }, '*');
     }
     postTextSession(el, false, { committed: !!commit, changed: changed });
     return true;
@@ -840,7 +847,7 @@ export function buildManualEditBridge(enabled: boolean): string {
     if (activeTextEdit) finishActiveTextEdit(true);
     if (el.getAttribute('contenteditable') === 'true') return;
     var originalText = el.textContent || '';
-    clearSelectedTarget();
+    setSelectedTarget(stableId(el));
     el.setAttribute('contenteditable', 'plaintext-only');
     el.setAttribute('data-od-editing', 'true');
     if (guard) guard.editingEl = el;
@@ -856,8 +863,16 @@ export function buildManualEditBridge(enabled: boolean): string {
         finishActiveTextEdit(false);
       }
     }
-    activeTextEdit = { el: el, originalText: originalText, onKey: onKey };
+    function onInput(ev){
+      if (!activeTextEdit || ev.isComposing) return;
+      activeTextEdit.drafted = true;
+      window.parent.postMessage({ type: 'od-edit-text-draft', id: stableId(el), value: el.textContent || '' }, '*');
+      renderSelectedChromeForCurrent();
+    }
+    activeTextEdit = { el: el, originalText: originalText, onKey: onKey, onInput: onInput, drafted: false };
     el.addEventListener('keydown', onKey);
+    el.addEventListener('input', onInput);
+    el.addEventListener('compositionend', onInput);
     postTextSession(el, true);
   }
   function camelToKebab(name){ return String(name).replace(/[A-Z]/g, function(m){ return '-' + m.toLowerCase(); }); }
@@ -898,6 +913,7 @@ export function buildManualEditBridge(enabled: boolean): string {
         if (typeof value !== 'string' || value.trim() === '') el.style.removeProperty(cssName);
         else el.style.setProperty(cssName, value.trim());
       }
+      renderSelectedChromeForCurrent();
       window.parent.postMessage({ type: 'od-edit-preview-style-applied', id: id, version: Number(version) || 0, ok: true }, '*');
     } catch (e) {
       window.parent.postMessage({ type: 'od-edit-preview-style-applied', id: id, version: Number(version) || 0, ok: false, error: e && e.message ? String(e.message) : 'Could not apply preview styles' }, '*');
@@ -935,7 +951,7 @@ export function buildManualEditBridge(enabled: boolean): string {
     }
     if (ev.data.type === 'od-edit-guides-mode') {
       guidesEnabled = ev.data.enabled !== false;
-      if (!guidesEnabled) clearGuidesLayer();
+      if (!guidesEnabled) renderSelectedChromeForCurrent();
       return;
     }
     if (ev.data.type === 'od-edit-capture-chrome') {
@@ -988,6 +1004,26 @@ export function buildManualEditBridge(enabled: boolean): string {
       applyPreviewStyles(ev.data.id, ev.data.styles || {}, ev.data.version);
       return;
     }
+    if (ev.data.type === 'od-edit-preview-content') {
+      var patch = ev.data.patch || {};
+      var contentEl = findById(patch.id || '');
+      if (!contentEl) return;
+      if (patch.kind === 'set-image') {
+        contentEl.setAttribute('src', patch.src);
+        contentEl.setAttribute('alt', patch.alt);
+      } else if (patch.kind === 'set-link') {
+        contentEl.setAttribute('href', patch.href);
+        if (!contentEl.children.length) contentEl.textContent = patch.text;
+        else {
+          var walker = document.createTreeWalker(contentEl, 4);
+          var texts = [];
+          while (walker.nextNode()) if (walker.currentNode.nodeValue.trim()) texts.push(walker.currentNode);
+          if (texts.length === 1) texts[0].nodeValue = patch.text;
+        }
+      }
+      renderSelectedChromeForCurrent();
+      return;
+    }
     if (ev.data.type === 'od-edit-preview-text') {
       // Live text preview from the host panel's 文本 textarea — the counterpart
       // to od-edit-preview-style. Setting textContent on the (blurred, the host
@@ -1000,7 +1036,9 @@ export function buildManualEditBridge(enabled: boolean): string {
       // its own originalText on cancel, so both paths still reconcile.
       var ptEl = findById(ev.data.id || '');
       if (ptEl && ptEl !== document.body && ptEl.children.length === 0) {
-        ptEl.textContent = String(ev.data.value == null ? '' : ev.data.value);
+        var nextText = String(ev.data.value == null ? '' : ev.data.value);
+        if (ptEl.textContent !== nextText) ptEl.textContent = nextText;
+        renderSelectedChromeForCurrent();
       }
       return;
     }
@@ -1217,7 +1255,7 @@ export function buildManualEditBridge(enabled: boolean): string {
     // its stable-id dedupe during ordinary movement.
     postHoverTarget(hoveredEl);
   }, true);
-  window.addEventListener('resize', postTargets);
+  window.addEventListener('resize', function(){ postTargets(); renderSelectedChromeForCurrent(); });
   var hoverGuidesScrollScheduled = false;
   var scheduleGuideFrame = window.requestAnimationFrame
     ? window.requestAnimationFrame.bind(window)
@@ -1229,10 +1267,10 @@ export function buildManualEditBridge(enabled: boolean): string {
     hoverGuidesScrollScheduled = true;
     scheduleGuideFrame(function(){
       hoverGuidesScrollScheduled = false;
-      if (!lastHoverEl) return;
+      if (!lastHoverEl) { renderSelectedChromeForCurrent(); return; }
       if (!lastHoverEl.isConnected) {
         lastHoverEl = null;
-        clearGuidesLayer();
+        renderSelectedChromeForCurrent();
         return;
       }
       renderHoverRelation(targetFrom(lastHoverEl, false));
@@ -1313,14 +1351,26 @@ html[data-od-edit-mode] [data-od-editing="true"] {
 }
 [data-od-edit-guides-layer] .od-edit-guide-box {
   position: fixed;
-  border: 1px solid var(--selected, var(--accent, CanvasText));
+  border: 1px solid #635bff;
   box-sizing: border-box;
 }
 [data-od-edit-guides-layer] .od-edit-guide-box-hover {
   border-style: dashed;
 }
 [data-od-edit-guides-layer] .od-edit-guide-box-selected {
-  border-style: solid;
+  border: 2px solid #635bff;
+  background: rgb(99 91 255 / 5%);
+}
+[data-od-edit-guides-layer] .od-edit-guide-label {
+  position: fixed;
+  max-width: 240px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 3px 6px;
+  border-radius: 3px;
+  background: #635bff;
+  color: #fff;
 }
 [data-od-edit-guides-layer] .od-edit-guide-handle {
   position: fixed;
@@ -1328,7 +1378,7 @@ html[data-od-edit-mode] [data-od-editing="true"] {
   height: 10px;
   margin-left: -5px;
   margin-top: -5px;
-  border: 2px solid var(--selected, var(--accent, CanvasText));
+  border: 2px solid #635bff;
   border-radius: 999px;
   background: Canvas;
   box-sizing: border-box;

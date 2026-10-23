@@ -308,12 +308,20 @@ export function createHdwCloudClient(options: HdwCloudClientOptions = {}) {
      if (ownerMemberId) params.set('owner_member_id', ownerMemberId);
      if (scope) params.set('scope', scope);
      const qs = params.toString() ? '?' + params : '';
-    const { payload } = await request<{ resources: HdwResourceRecord[] }>(
+    const read = () => request<{ resources: HdwResourceRecord[] }>(
       'GET',
       `/api/workspaces/${encodeURIComponent(workspaceId)}/resources${qs}`,
       undefined,
       { 'x-hdw-workspace-id': workspaceId },
     );
+    // A failed upstream read must not discard the catalog after an isolated
+    // database error. Retry this idempotent list once; writes never use this path.
+    const { payload } = await read().catch((error: unknown) => {
+      if (error instanceof HdwCloudError && error.status === 500 && error.code === 'internal_error') {
+        return read();
+      }
+      throw error;
+    });
     return payload.resources ?? [];
   },
 

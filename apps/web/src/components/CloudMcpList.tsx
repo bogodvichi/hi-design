@@ -1,5 +1,5 @@
 import { PageEmptyState } from './PageEmptyState';
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Dialog,
@@ -11,6 +11,8 @@ import { Icon } from './Icon';
 import { CenteredLoader } from './Loading';
 import { useI18n, useT } from '../i18n';
 import { ShareResourceDialog } from './ShareResourceDialog';
+import { ResourceCard } from './ResourceCard';
+import { RemoveSharedResourceDialog } from './RemoveSharedResourceDialog';
 import { CommunityResourceStats } from './CommunityResourceStats';
 import { McpLogo, resolveMcpLogoKey } from './McpLogo';
 import type { CloudMcpTemplate } from '@open-design/contracts';
@@ -20,10 +22,10 @@ import { recordCommunityStat } from '../utils/community-stats';
 
 // Extended type that includes shared-with-me fields (only present in shared mode).
 interface CloudMcpItem extends CloudMcpTemplate {
+  shareId?: string;
   sharedByDisplayname?: string | null;
   homeWorkspaceId?: string;
   teamLocal?: boolean;
-  localOnly?: boolean;
   publisherName?: string | null;
   logoKey?: string;
   peopleCount?: number | null;
@@ -92,24 +94,9 @@ export function CloudMcpList({
   const [uninstallingId, setUninstallingId] = useState<string | null>(null);
   const [unpublishingId, setUnpublishingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
- const [confirmAction, setConfirmAction] = useState<{ type: 'uninstall' | 'unpublish' | 'delete'; item: CloudMcpItem } | null>(null);
- const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+ const [confirmAction, setConfirmAction] = useState<{ type: 'unpublish' | 'delete'; item: CloudMcpItem } | null>(null);
  const [shareItem, setShareItem] = useState<CloudMcpItem | null>(null);
- const menuRef = useRef<HTMLDivElement>(null);
- const menuTriggerRef = useRef<HTMLButtonElement>(null);
-
- useEffect(() => {
-   if (!menuOpenId) return;
-   const closeOutside = (event: PointerEvent) => {
-     if (event.target instanceof Node
-       && (menuRef.current?.contains(event.target) || menuTriggerRef.current?.contains(event.target))) {
-       return;
-     }
-     setMenuOpenId(null);
-   };
-   document.addEventListener('pointerdown', closeOutside, { capture: true });
-   return () => document.removeEventListener('pointerdown', closeOutside, { capture: true });
- }, [menuOpenId]);
+ const [removeShareId, setRemoveShareId] = useState<string | null>(null);
 
   const loadLocalServers = useCallback(async () => {
     try {
@@ -147,6 +134,7 @@ export function CloudMcpList({
         const list: CloudMcpItem[] = (body.resources ?? []).map((r: any) => ({
           id: r.metadata?.id ?? r.resourceId,
           resourceId: r.resourceId,
+          shareId: r.shareId,
           label: r.metadata?.label ?? r.resourceId,
           description: r.metadata?.description ?? '',
           transport: r.metadata?.transport ?? 'stdio',
@@ -213,6 +201,8 @@ export function CloudMcpList({
        if (server.workspaceId !== workspaceId) continue;
        const templateId = server.templateId ?? server.id;
        const existing = merged.get(templateId.toLowerCase());
+       // A local connection is installation state, not a surviving team resource.
+       if (!existing && cloudResponse) continue;
        merged.set(templateId.toLowerCase(), {
           id: templateId,
           resourceId: existing?.resourceId ?? `local:${server.id}`,
@@ -244,57 +234,14 @@ export function CloudMcpList({
    if (ownerFilter) params.set('owner_member_id', ownerFilter);
    if (scope) params.set('scope', scope);
     const headers = workspaceHeaders(workspaceId, workspaceMemberId, workspaceType);
-     const [cloudResult, localResult] = await Promise.allSettled([
-       fetch('/api/workspace/mcp/cloud?' + params, { cache: 'no-store', headers }),
-       fetch('/api/mcp/servers', { cache: 'no-store' }),
-     ]);
-     const cloudResponse = cloudResult.status === 'fulfilled' && cloudResult.value.ok
-       ? await cloudResult.value.json()
-       : null;
-     const localResponse = localResult.status === 'fulfilled' && localResult.value.ok
-       ? await localResult.value.json()
-       : null;
-     if (!cloudResponse && (mode === 'square' || !localResponse)) throw new Error('Failed to load cloud MCP templates');
-
-    const merged = new Map<string, CloudMcpItem>();
-    for (const template of (cloudResponse?.templates ?? []) as CloudMcpResponseItem[]) {
-      merged.set(mode === 'square' ? template.resourceId : template.id.toLowerCase(), { ...template, logoKey: normalizeLogoKey(template.logoKey) });
-    }
-    // Merge locally-installed servers that have no matching cloud
-    // template (e.g. servers added through the Settings MCP panel or
-    // installed from a community template not owned by this user).
-    for (const server of (mode === 'square' ? [] : localResponse?.servers ?? []) as Array<{
-      id: string;
-      label?: string;
-      templateId?: string;
-      transport: 'stdio' | 'sse' | 'http';
-      command?: string;
-      args?: string[];
-      url?: string;
-      authMode?: 'none' | 'oauth';
-    }>) {
-      const templateId = server.templateId ?? server.id;
-      if (merged.has(templateId.toLowerCase())) continue;
-      merged.set(templateId.toLowerCase(), {
-         id: templateId,
-         resourceId: `local:${server.id}`,
-         label: server.label ?? server.id,
-         description: '',
-         transport: server.transport,
-         category: 'utilities',
-         command: server.command,
-         args: server.args,
-         url: server.url,
-         authMode: server.authMode,
-         ownerMemberId: '',
-         version: null,
-         versionId: null,
-         createdAt: '',
-         updatedAt: '',
-         localOnly: true,
-       });
-     }
-     setTemplates([...merged.values()]);
+    const response = await fetch('/api/workspace/mcp/cloud?' + params, { cache: 'no-store', headers });
+    if (!response.ok) throw new Error('Failed to load cloud MCP templates');
+    const body = await response.json();
+    // Ownership comes from the cloud catalog. Local connections only supply
+    // installed state through loadLocalServers; they never add owned records.
+    setTemplates(((body.templates ?? []) as CloudMcpResponseItem[]).map((template) => ({
+      ...template, logoKey: normalizeLogoKey(template.logoKey),
+    })));
   } catch (err: any) {
      setError(err?.message ?? String(err));
    } finally {
@@ -329,7 +276,7 @@ export function CloudMcpList({
         const body = await res.json().catch(() => null);
         throw new Error(body?.error ?? 'Install failed');
       }
-      await loadLocalServers();
+      setLocalTemplateIds((current) => new Set(current).add(tpl.id.toLowerCase()));
       if (mode === 'square' && scope === 'public') {
         const stats = await recordCommunityStat({
           resourceType: 'mcp',
@@ -362,25 +309,8 @@ export function CloudMcpList({
 
  async function handleUninstall(tpl: CloudMcpItem) {
    setUninstallingId(tpl.resourceId);
+   setError(null);
    try {
-     if (tpl.localOnly) {
-       // Local-only server (no cloud template) — remove directly from
-       // mcp-config.json via the /api/mcp/servers PUT endpoint.
-       const currentRes = await fetch('/api/mcp/servers', { cache: 'no-store' });
-       if (!currentRes.ok) throw new Error('Failed to load current MCP servers');
-       const currentBody = await currentRes.json();
-       const filtered = ((currentBody.servers ?? []) as Array<{ id: string }>)
-         .filter((s) => s.id.toLowerCase() !== tpl.id.toLowerCase());
-       const putRes = await fetch('/api/mcp/servers', {
-         method: 'PUT',
-         headers: { 'content-type': 'application/json' },
-         body: JSON.stringify({ servers: filtered }),
-       });
-       if (!putRes.ok) {
-         const body = await putRes.json().catch(() => null);
-         throw new Error(body?.error ?? 'Uninstall failed');
-       }
-     } else {
        const uninstallUrl = '/api/workspace/mcp/cloud/' + encodeURIComponent(tpl.resourceId) + '/uninstall'
          + (tpl.homeWorkspaceId ? '?home_workspace_id=' + encodeURIComponent(tpl.homeWorkspaceId) : '');
        const res = await fetch(uninstallUrl, {
@@ -391,9 +321,11 @@ export function CloudMcpList({
          const body = await res.json().catch(() => null);
          throw new Error(body?.error ?? 'Uninstall failed');
        }
-     }
-     await loadTemplates();
-     await loadLocalServers();
+     setLocalTemplateIds((current) => {
+       const next = new Set(current);
+       next.delete(tpl.id.toLowerCase());
+       return next;
+     });
      window.dispatchEvent(new CustomEvent('personal:mcp-refresh', {
         detail: { source: 'cloud-mcp-list' },
       }));
@@ -401,8 +333,6 @@ export function CloudMcpList({
       setError(err?.message ?? String(err));
     } finally {
       setUninstallingId(null);
-      setConfirmAction(null);
-      setMenuOpenId(null);
     }
   }
 
@@ -429,7 +359,6 @@ export function CloudMcpList({
     } finally {
       setDeletingId(null);
       setConfirmAction(null);
-      setMenuOpenId(null);
     }
   }
 
@@ -456,7 +385,6 @@ export function CloudMcpList({
     } finally {
       setUnpublishingId(null);
       setConfirmAction(null);
-      setMenuOpenId(null);
     }
   }
 
@@ -506,22 +434,18 @@ export function CloudMcpList({
       ariaLabelledBy={titleId}
     >
       <DialogTitle id={titleId}>
-        {confirmAction.type === 'uninstall'
-          ? t('personalScope.cloudMcpUninstallConfirmTitle' as any)
-          : confirmAction.type === 'unpublish'
-            ? t('squareScope.unpublishConfirmTitle' as any)
-            : mode === 'square'
-              ? t('squareScope.deleteConfirmTitle' as any)
-              : t('personalScope.cloudMcpDeleteConfirmTitle' as any)}
+        {confirmAction.type === 'unpublish'
+          ? t('squareScope.unpublishConfirmTitle' as any)
+          : mode === 'square'
+            ? t('squareScope.deleteConfirmTitle' as any)
+            : t('personalScope.cloudMcpDeleteConfirmTitle' as any)}
       </DialogTitle>
       <DialogDescription>
-        {confirmAction.type === 'uninstall'
-          ? t('personalScope.cloudMcpUninstallConfirmDesc' as any)
-          : confirmAction.type === 'unpublish'
-            ? t('squareScope.unpublishConfirmDesc' as any, { title: confirmAction.item.label })
-            : mode === 'square'
-              ? t('squareScope.deleteConfirmDesc' as any, { title: confirmAction.item.label })
-              : t('personalScope.cloudMcpDeleteConfirmDesc' as any)}
+        {confirmAction.type === 'unpublish'
+          ? t('squareScope.unpublishConfirmDesc' as any, { title: confirmAction.item.label })
+          : mode === 'square'
+            ? t('squareScope.deleteConfirmDesc' as any, { title: confirmAction.item.label })
+            : t('personalScope.cloudMcpDeleteConfirmDesc' as any)}
       </DialogDescription>
       <DialogFooter className="row">
         <button
@@ -533,24 +457,19 @@ export function CloudMcpList({
         </button>
         <button
           type="button"
-          className="primary"
+          className={confirmAction.type === 'delete' ? undefined : 'primary'}
           disabled={!!uninstallingId || !!unpublishingId || !!deletingId}
           onClick={() => {
-            if (confirmAction.type === 'uninstall') void handleUninstall(confirmAction.item);
-            else if (confirmAction.type === 'unpublish') void handleUnpublish(confirmAction.item);
+            if (confirmAction.type === 'unpublish') void handleUnpublish(confirmAction.item);
             else void handleDelete(confirmAction.item);
           }}
         >
-          {confirmAction.type === 'uninstall'
-            ? (uninstallingId ? <Icon name="spinner" size={14} /> : null)
-            : (unpublishingId || deletingId ? <Icon name="spinner" size={14} /> : null)}
-          {confirmAction.type === 'uninstall'
-            ? t('personalScope.cloudMcpUninstall' as any)
-            : confirmAction.type === 'unpublish'
-              ? t('squareScope.unpublish' as any)
-              : mode === 'square'
-                ? t('common.delete' as any)
-                : t('personalScope.cloudMcpDelete' as any)}
+          {unpublishingId || deletingId ? <Icon name="spinner" size={14} /> : null}
+          {confirmAction.type === 'unpublish'
+            ? t('squareScope.unpublish' as any)
+            : mode === 'square'
+              ? t('common.delete' as any)
+              : t('personalScope.cloudMcpDelete' as any)}
         </button>
       </DialogFooter>
     </Dialog>
@@ -558,165 +477,50 @@ export function CloudMcpList({
 
   return (
     <>
+      {error ? <div className={styles.cloudSkillError} role="alert">{error}</div> : null}
       <div className={styles.cloudSkillGrid}>
         {visibleTemplates.map((tpl) => {
           // Case-insensitive match so Memoryxxx and memoryxxx are treated as the same installed server.
           const isInstalled = tpl.teamLocal || localTemplateIds.has(tpl.id.toLowerCase());
           const isResourceOwner = tpl.canManage ?? tpl.ownerMemberId === workspaceMemberId;
-          const isInstalling = installingId === tpl.resourceId;
-          const isUninstalling = uninstallingId === tpl.resourceId;
-          const isUnpublishing = unpublishingId === tpl.resourceId;
-           const isDeleting = deletingId === tpl.resourceId;
-           const logoKey = resolveMcpLogoKey(tpl.logoKey, tpl.id || tpl.label);
-           return (
-            <article key={tpl.resourceId} className={styles.teamAssetCard} role="button" tabIndex={0}>
-              <div className={styles.cardHeader}>
-                <span className={styles.cardIcon} aria-hidden>
-                  <McpLogo logoKey={logoKey} size={40} />
-                </span>
-                <div className={styles.cardHeaderInfo}>
-                  <strong className={styles.cardTitle}>{tpl.label}</strong>
-                {mode === 'square' ? (
-                  <small className={`${styles.cardMeta} ${styles.cardAuthorLine}`}>
-                    {tpl.publisherName?.trim() || 'HiDesign'}
-                    {tpl.updatedAt ? ' · ' + formatRelativeDate(tpl.updatedAt, t) : ''}
-                  </small>
-                ) : (
-                  <small className={styles.cardMeta}>
-                    {tpl.localOnly
-                      ? t('personalScope.cloudMcpInstalled' as any)
-                      : tpl.teamLocal
-                      ? t('pluginsView.teamSharedBadge' as any)
-                      : mode === 'shared' && tpl.sharedByDisplayname
-                      ? t('personalScope.cloudMcpSharedBy' as any, { name: tpl.sharedByDisplayname })
-                      : t('personalScope.cloudMcpSource' as any)}
-                    {tpl.updatedAt ? ' · ' + formatRelativeDate(tpl.updatedAt, t) : ''}
-                  </small>
-                )}
-               </div>
-              {(mode === 'personal' || mode === 'square' || (isInstalled && !tpl.teamLocal)) ? (
-                <>
-                  <button
-                    type="button"
-                    className={styles.cardMenuBtn}
-                    ref={menuOpenId === tpl.resourceId ? menuTriggerRef : undefined}
-                    title=""
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setMenuOpenId(menuOpenId === tpl.resourceId ? null : tpl.resourceId);
-                    }}
-                  >
-                    <Icon name="more-horizontal" size={16} />
-                  </button>
-                  {menuOpenId === tpl.resourceId ? (
-                     <div className={styles.cardMenu} ref={menuRef}>
-                        {(mode === 'personal' || mode === 'square') && !tpl.localOnly ? (
-                          <button
-                            type="button"
-                            className={styles.cardMenuItem}
-                            onClick={(e) => { e.stopPropagation(); setShareItem(tpl); setMenuOpenId(null); }}
-                          >
-                            <Icon name="share" size={14} />
-                            {t('personalScope.cloudMcpShare' as any)}
-                          </button>
-                        ) : null}
-                        {isInstalled ? (
-                          <button
-                            type="button"
-                            className={styles.cardMenuItem}
-                            disabled={isUninstalling}
-                            onClick={(e) => { e.stopPropagation(); setConfirmAction({ type: 'uninstall', item: tpl }); }}
-                          >
-                            <Icon name="trash" size={14} />
-                            {t('personalScope.cloudMcpUninstall' as any)}
-                          </button>
-                        ) : null}
-                        {mode === 'square' && isResourceOwner && !tpl.localOnly ? (
-                          <button
-                            type="button"
-                            className={styles.cardMenuItem}
-                            disabled={isUnpublishing}
-                            onClick={(e) => { e.stopPropagation(); setConfirmAction({ type: 'unpublish', item: tpl }); setMenuOpenId(null); }}
-                          >
-                            <Icon name="eye-off" size={14} />
-                            {t('squareScope.unpublish' as any)}
-                          </button>
-                        ) : null}
-                        {(mode === 'personal' || (mode === 'square' && isResourceOwner)) && !tpl.localOnly ? (
-                          <button
-                            type="button"
-                            className={styles.cardMenuItemDanger}
-                            disabled={isDeleting}
-                            onClick={(e) => { e.stopPropagation(); setConfirmAction({ type: 'delete', item: tpl }); setMenuOpenId(null); }}
-                          >
-                            <Icon name="close" size={14} />
-                            {mode === 'square'
-                              ? t('common.delete' as any)
-                              : t('personalScope.cloudMcpDelete' as any)}
-                          </button>
-                        ) : null}
-                     </div>
-                  ) : null}
-                </>
-              ) : null}
-            </div>
-            {tpl.description
-              ? <p className={`${styles.cardDesc}${mode === 'square' ? ` ${styles.squareCardDesc}` : ''}`}>{tpl.description}</p>
-              : null}
-            {mode !== 'shared' ? (
-                <footer className={`community-template-card__foot ${styles.resourceCardFooter}`}>
-                  {mode === 'square' ? (
-                    <CommunityResourceStats
-                      primaryCount={tpl.peopleCount}
-                      secondaryCount={tpl.actionCount}
-                      primaryIcon="users"
-                      secondaryIcon="link"
-                      primaryLabel={locale.startsWith('zh') ? '接入人数' : 'Connected users'}
-                      secondaryLabel={locale.startsWith('zh') ? '接入次数' : 'Connections'}
-                    />
-                  ) : null}
-                  <div className="community-template-card__actions">
-                    <button
-                      type="button"
-                      disabled={isInstalled || isInstalling}
-                      onClick={() => void handleInstall(tpl)}
-                    >
-                      <Icon name={isInstalled ? 'check' : isInstalling ? 'spinner' : 'plus'} size={14} aria-hidden />
-                      {isInstalled
-                        ? t('personalScope.cloudMcpInstalled' as any)
-                        : isInstalling
-                          ? t('personalScope.cloudMcpInstalling' as any)
-                          : t('personalScope.cloudMcpAdd' as any)}
-                    </button>
-                  </div>
-                </footer>
-              ) : isInstalled ? (
-                <div className={styles.cardActions}>
-                  <span className={styles.capabilityComplete}>
-                    <Icon name="check" size={14} />
-                    {t('personalScope.cloudMcpInstalled' as any)}
-                  </span>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  className={styles.capabilityAdd}
-                  disabled={isInstalling}
-                  onClick={() => void handleInstall(tpl)}
-                >
-                  {isInstalling
-                    ? <Icon name="spinner" size={14} />
-                    : <Icon name="plus" size={14} />}
-                  {isInstalling
-                    ? t('personalScope.cloudMcpInstalling' as any)
-                    : t('personalScope.cloudMcpAdd' as any)}
-                </button>
-              )}
-            </article>
-          );
+          const hasCloudRecord = !tpl.resourceId.startsWith('local:');
+          const canDelete = hasCloudRecord && isResourceOwner && mode !== 'shared';
+          const canShare = hasCloudRecord && (mode === 'personal' || mode === 'square' || mode === 'shared' || (mode === 'team' && isResourceOwner));
+          const logoKey = resolveMcpLogoKey(tpl.logoKey, tpl.id || tpl.label);
+          const meta = mode === 'square'
+            ? `${tpl.publisherName?.trim() || 'HiDesign'}${tpl.updatedAt ? ' · ' + formatRelativeDate(tpl.updatedAt, t) : ''}`
+            : [
+              mode === 'shared' && tpl.sharedByDisplayname ? t('personalScope.cloudMcpSharedBy' as any, { name: tpl.sharedByDisplayname })
+                : tpl.teamLocal ? t('pluginsView.teamSharedBadge' as any) : t('personalScope.cloudMcpSource' as any),
+              tpl.updatedAt ? formatRelativeDate(tpl.updatedAt, t) : '',
+            ].filter(Boolean).join(' · ');
+          return <ResourceCard key={tpl.resourceId} kind="mcp" title={tpl.label}
+            icon={<McpLogo logoKey={logoKey} size={40} />} meta={meta} description={tpl.description}
+            installed={!!isInstalled} installing={installingId === tpl.resourceId} uninstalling={uninstallingId === tpl.resourceId}
+            busy={!!installingId || !!uninstallingId || !!unpublishingId || !!deletingId}
+            onInstall={() => void handleInstall(tpl)}
+            actions={{
+              ...(canShare ? { share: () => setShareItem(tpl) } : {}),
+              ...(isInstalled && !tpl.teamLocal ? { uninstall: () => void handleUninstall(tpl) } : {}),
+              ...(canDelete && mode === 'square' ? { unpublish: () => setConfirmAction({ type: 'unpublish', item: tpl }) } : {}),
+              ...(canDelete ? { delete: () => setConfirmAction({ type: 'delete', item: tpl }) } : {}),
+              ...(mode === 'shared' && tpl.shareId ? { removeShare: () => setRemoveShareId(tpl.shareId!) } : {}),
+            }}
+            stats={mode === 'square' ? <CommunityResourceStats
+              primaryCount={tpl.peopleCount} secondaryCount={tpl.actionCount} primaryIcon="users" secondaryIcon="link"
+              primaryLabel={locale.startsWith('zh') ? '接入人数' : 'Connected users'}
+              secondaryLabel={locale.startsWith('zh') ? '接入次数' : 'Connections'} /> : null}
+          />;
         })}
       </div>
       {typeof document !== 'undefined' && dialog ? createPortal(dialog, document.body) : dialog}
+      {removeShareId ? <RemoveSharedResourceDialog key={removeShareId} shareId={removeShareId} kind="mcp"
+        onClose={() => setRemoveShareId(null)}
+        onRemoved={() => {
+          setTemplates((current) => current.filter((item) => item.shareId !== removeShareId));
+          setRemoveShareId(null);
+        }}
+      /> : null}
       {shareItem ? (
         <ShareResourceDialog
           resourceId={shareItem.resourceId}

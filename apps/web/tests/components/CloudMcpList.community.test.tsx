@@ -30,7 +30,7 @@ describe('public MCP catalog', () => {
   it.each(['取消发布', '删除'])('uses the source identity for %s', async (action) => {
     const fetchMock = fixture(); const title = await screen.findByText('Team MCP');
     fireEvent.click(title.closest('article')!.querySelector('button')!);
-    fireEvent.click(screen.getByRole('button', { name: action }));
+    fireEvent.click(screen.getByRole('menuitem', { name: action }));
     fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: action }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/workspace/mcp/cloud/mcp-team' + (action === '取消发布' ? '/unpublish' : ''),
       expect.objectContaining({ headers: expect.objectContaining({ 'x-od-workspace-id': 'team', 'x-od-workspace-member-id': 'team-member' }) })));

@@ -326,47 +326,32 @@ describe('FileViewer manual edit history regressions', () => {
     expect(frame.srcdoc).toBe(transportBeforeSave);
   });
 
-  it('only exposes reset after the selected element draft changes', async () => {
-    const initialSource = '<!doctype html><html><body><h1 data-od-id="hero">Hero</h1></body></html>';
-    const fetchMock = vi.fn(async (input: string | URL | Request) => {
-      const url = typeof input === 'string' ? input : input instanceof Request ? input.url : String(input);
-      if (url.includes('/api/projects/project-1/deployments')) {
-        return new Response(JSON.stringify({ deployments: [] }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        });
+  it('can undo automatically saved text and restores the inspector values', async () => {
+    let persistedSource = '<!doctype html><html><body><h1 data-od-id="hero">Hero</h1></body></html>';
+    const initial = persistedSource;
+    const writes: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      if (String(input).includes('/files') && init?.method === 'POST') {
+        persistedSource = (JSON.parse(String(init.body)) as { content: string }).content;
+        writes.push(persistedSource);
+        return Response.json({ file: htmlPreviewFile() });
       }
-      if (url.includes('/api/projects/project-1/raw/preview.html')) {
-        return new Response(initialSource, { status: 200 });
-      }
-      return new Response('{}', { status: 200, headers: { 'Content-Type': 'application/json' } });
-    });
-    vi.stubGlobal('fetch', fetchMock);
-
-    render(
-      <FileViewer projectId="project-1" projectKind="prototype" file={htmlPreviewFile()}
-        liveHtml={initialSource}
-      />,
-    );
-
+      if (String(input).includes('/raw/')) return new Response(persistedSource);
+      return Response.json({ deployments: [], versions: [] });
+    }));
+    render(<FileViewer projectId="project-1" projectKind="prototype" file={htmlPreviewFile()} liveHtml={initial} />);
     await enterManualEditMode();
     await selectManualEditTarget();
-
-    expect(panelState.props?.resetAvailable).toBe(false);
-
-    act(() => {
-      const currentDraft = panelState.props?.draft;
-      if (!currentDraft) throw new Error('Manual edit draft not found');
-      panelState.props?.onDraftChange({ ...currentDraft, text: 'Panel edited copy' });
-    });
-
-    await waitFor(() => expect(panelState.props?.resetAvailable).toBe(true));
-
-    await act(async () => {
-      panelState.props?.onResetDraft();
-    });
-
-    await waitFor(() => expect(panelState.props?.resetAvailable).toBe(false));
+    act(() => { panelState.props?.onDraftChange({ ...panelState.props.draft, text: 'Edited' }); });
+    await waitFor(() => expect(panelState.props?.saveState).toBe('saved'));
+    expect(writes).toHaveLength(1);
+    act(() => { panelState.props?.onUndo(); });
+    await waitFor(() => expect(writes).toHaveLength(2));
+    expect(writes[1]).toBe(initial);
+    await waitFor(() => expect(panelState.props?.draft.text).toBe('Hero'));
+    act(() => { panelState.props?.onRedo(); });
+    await waitFor(() => expect(writes).toHaveLength(3));
+    await waitFor(() => expect(panelState.props?.draft.text).toBe('Edited'));
   });
 
   it('clears the selected target after deleting an element', async () => {

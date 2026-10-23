@@ -11,6 +11,8 @@ import { Icon } from './Icon';
 import { CenteredLoader } from './Loading';
 import { useI18n, useT } from '../i18n';
 import { ShareResourceDialog } from './ShareResourceDialog';
+import { ResourceCard } from './ResourceCard';
+import { RemoveSharedResourceDialog } from './RemoveSharedResourceDialog';
 import { CommunityResourceStats } from './CommunityResourceStats';
 import styles from './CloudSkillList.module.css';
 import {
@@ -29,10 +31,13 @@ import {
 } from '../utils/skill-category-labels';
 import { resolveFloatingMenuHorizontalAlign } from '../utils/floating-menu-placement';
 import { recordCommunityStat } from '../utils/community-stats';
+import { coalescedGet } from '../lib/coalesced-get';
+import { currentWorkspaceContextRequestToken } from '../collab/useWorkspaceContext';
 import { isSkillLogoKey, SkillLogo } from './SkillLogo';
 
 interface CloudSkill extends Partial<CloudResourceWorkspaceContext> {
   resourceId: string;
+  shareId?: string;
   localId: string;
   title: string;
   description: string | null;
@@ -66,6 +71,16 @@ function workspaceHeaders(
   if (workspaceMemberId) headers['x-od-workspace-member-id'] = workspaceMemberId;
   if (workspaceType) headers['x-od-workspace-type'] = workspaceType;
   return headers;
+}
+
+function readCloudSkillCatalog(params: URLSearchParams, headers: Record<string, string>) {
+  const url = '/api/workspace/skills/cloud?' + params;
+  const key = JSON.stringify(['cloud-skills', currentWorkspaceContextRequestToken(), url, headers]);
+  return coalescedGet(key, async () => {
+    const res = await fetch(url, { cache: 'no-store', headers });
+    if (!res.ok) throw new Error('Failed to load cloud skills');
+    return res.json() as Promise<{ skills?: CloudSkill[]; categoryCounts?: Partial<SkillCategoryCounts> }>;
+  }, 0);
 }
 
 // Minimal relative-date formatter (today / yesterday / N days ago).
@@ -121,27 +136,13 @@ export function CloudSkillList({
   const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
   const [categoryMenuAlign, setCategoryMenuAlign] = useState<'start' | 'end'>('start');
   const [failedIconIds, setFailedIconIds] = useState<Set<string>>(new Set());
- const [confirmAction, setConfirmAction] = useState<{ type: 'uninstall' | 'unpublish' | 'delete'; item: CloudSkill } | null>(null);
- const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+ const [confirmAction, setConfirmAction] = useState<{ type: 'unpublish' | 'delete'; item: CloudSkill } | null>(null);
  const [shareItem, setShareItem] = useState<CloudSkill | null>(null);
+ const [removeShareId, setRemoveShareId] = useState<string | null>(null);
  const showCommunityControls = mode === 'square' && sourceProvider === 'all';
  const categoryMenuRef = useRef<HTMLDivElement | null>(null);
  const categoryMenuPanelRef = useRef<HTMLDivElement | null>(null);
- const menuRef = useRef<HTMLDivElement>(null);
- const menuTriggerRef = useRef<HTMLButtonElement>(null);
-
- useEffect(() => {
-   if (!menuOpenId) return;
-   const closeOutside = (event: PointerEvent) => {
-     if (event.target instanceof Node
-       && (menuRef.current?.contains(event.target) || menuTriggerRef.current?.contains(event.target))) {
-       return;
-     }
-     setMenuOpenId(null);
-   };
-   document.addEventListener('pointerdown', closeOutside, { capture: true });
-   return () => document.removeEventListener('pointerdown', closeOutside, { capture: true });
- }, [menuOpenId]);
+ const loadRequestId = useRef(0);
 
  const countCategories = useCallback((items: readonly CloudSkill[]): SkillCategoryCounts => {
    const counts = emptySkillCategoryCounts();
@@ -172,6 +173,8 @@ export function CloudSkillList({
   }, [workspaceId, workspaceMemberId, workspaceType]);
 
   const loadSkills = useCallback(async () => {
+    const requestId = ++loadRequestId.current;
+    const isCurrent = () => loadRequestId.current === requestId;
     // ── Design intent (do not change) ──────────────────────────────
     // Personal skills are cloud resources owned by the current user,
     // stored in the shared HDW space — NOT local on-disk files. The
@@ -190,6 +193,7 @@ export function CloudSkillList({
         const body = await res.json();
         const list: CloudSkill[] = (body.resources ?? []).map((r: any) => ({
           resourceId: r.resourceId,
+          shareId: r.shareId,
           localId: r.metadata?.localId ?? r.resourceId,
           title: r.metadata?.title ?? r.resourceId,
           description: r.metadata?.description ?? null,
@@ -201,13 +205,17 @@ export function CloudSkillList({
           sharedByDisplayname: r.sharedByDisplayname ?? null,
           homeWorkspaceId: r.homeWorkspaceId ?? '',
           category: normalizeSkillCategory(r.metadata?.category),
+          logoKey: r.metadata?.logoKey,
         }));
+        if (!isCurrent()) return;
+        setError(null);
         setSkills(list);
         setCategoryCounts(countCategories(list));
       } catch (err: any) {
+        if (!isCurrent()) return;
         setError(err?.message ?? String(err));
       } finally {
-        setLoading(false);
+        if (isCurrent()) setLoading(false);
       }
       return;
     }
@@ -265,6 +273,8 @@ export function CloudSkillList({
         });
       }
       const list = [...merged.values()];
+      if (!isCurrent()) return;
+      setError(null);
       setSkills(list);
       setCategoryCounts(countCategories(list));
       return;
@@ -280,12 +290,9 @@ export function CloudSkillList({
       if (ownerFilter) params.set('owner_member_id', ownerFilter);
       if (debouncedSearch) params.set('q', debouncedSearch);
       const headers = workspaceHeaders(workspaceId, workspaceMemberId, workspaceType);
-      const res = await fetch('/api/workspace/skills/cloud?' + params, {
-        cache: 'no-store',
-        headers,
-      });
-      if (!res.ok) { throw new Error('Failed to load cloud skills'); }
-      const body = await res.json();
+      const body = await readCloudSkillCatalog(params, headers);
+      if (!isCurrent()) return;
+      setError(null);
       const list: CloudSkill[] = ((body.skills ?? []) as CloudSkill[]).map((skill) => ({
         ...skill,
         category: normalizeSkillCategory(skill.category),
@@ -308,12 +315,9 @@ export function CloudSkillList({
       if (debouncedSearch) params.set('q', debouncedSearch);
       if (showCommunityControls && activeCategory !== 'all') params.set('category', activeCategory);
       const headers = workspaceHeaders(workspaceId, workspaceMemberId, workspaceType);
-      const res = await fetch('/api/workspace/skills/cloud?' + params, {
-        cache: 'no-store',
-        headers,
-      });
-      if (!res.ok) { throw new Error('Failed to load cloud skills'); }
-      const body = await res.json();
+      const body = await readCloudSkillCatalog(params, headers);
+      if (!isCurrent()) return;
+      setError(null);
       const list: CloudSkill[] = ((body.skills ?? []) as CloudSkill[]).map((skill) => ({
         ...skill,
         category: normalizeSkillCategory(skill.category),
@@ -326,9 +330,10 @@ export function CloudSkillList({
       } : countCategories(list));
     }
     } catch (err: any) {
+     if (!isCurrent()) return;
      setError(err?.message ?? String(err));
    } finally {
-     setLoading(false);
+     if (isCurrent()) setLoading(false);
    }
  }, [workspaceId, workspaceMemberId, workspaceType, ownerMemberId, mode, scope, sourceProvider, debouncedSearch, showCommunityControls, activeCategory, countCategories]);
 
@@ -393,6 +398,7 @@ useLayoutEffect(() => {
 
 useEffect(() => {
   void Promise.all([loadSkills(), loadLocalSkills()]);
+  return () => { loadRequestId.current += 1; };
 }, [loadSkills, loadLocalSkills]);
 
  useEffect(() => {
@@ -477,8 +483,14 @@ useEffect(() => {
         const body = await res.json().catch(() => null);
       throw new Error(body?.message ?? body?.error ?? 'Uninstall failed');
       }
-      // Actively refresh list data from server after uninstall
-      await Promise.all([loadSkills(), loadLocalSkills()]);
+      setLocalSkillIds((current) => {
+        const next = new Set(current);
+        next.delete(skill.localId.toLowerCase());
+        return next;
+      });
+      setSkills((current) => current.map((item) => (
+        item.resourceId === skill.resourceId ? { ...item, installed: false } : item
+      )));
       window.dispatchEvent(new CustomEvent('personal:skill-refresh', {
         detail: { source: 'cloud-skill-list' },
       }));
@@ -486,8 +498,6 @@ useEffect(() => {
       setError(err?.message ?? String(err));
     } finally {
       setUninstallingId(null);
-      setConfirmAction(null);
-      setMenuOpenId(null);
     }
   }
 
@@ -512,7 +522,6 @@ useEffect(() => {
     } finally {
       setDeletingId(null);
       setConfirmAction(null);
-      setMenuOpenId(null);
     }
   }
 
@@ -536,7 +545,6 @@ useEffect(() => {
     } finally {
       setUnpublishingId(null);
       setConfirmAction(null);
-      setMenuOpenId(null);
     }
   }
 
@@ -678,22 +686,18 @@ useEffect(() => {
       ariaLabelledBy={titleId}
     >
       <DialogTitle id={titleId}>
-        {confirmAction.type === 'uninstall'
-          ? t('personalScope.cloudSkillUninstallConfirmTitle' as any)
-          : confirmAction.type === 'unpublish'
-            ? t('squareScope.unpublishConfirmTitle' as any)
-            : mode === 'square'
-              ? t('squareScope.deleteConfirmTitle' as any)
-              : t('personalScope.cloudSkillDeleteConfirmTitle' as any)}
+        {confirmAction.type === 'unpublish'
+          ? t('squareScope.unpublishConfirmTitle' as any)
+          : mode === 'square'
+            ? t('squareScope.deleteConfirmTitle' as any)
+            : t('personalScope.cloudSkillDeleteConfirmTitle' as any)}
       </DialogTitle>
       <DialogDescription>
-        {confirmAction.type === 'uninstall'
-          ? t('personalScope.cloudSkillUninstallConfirmDesc' as any)
-          : confirmAction.type === 'unpublish'
-            ? t('squareScope.unpublishConfirmDesc' as any, { title: confirmAction.item.title })
-            : mode === 'square'
-              ? t('squareScope.deleteConfirmDesc' as any, { title: confirmAction.item.title })
-              : t('personalScope.cloudSkillDeleteConfirmDesc' as any)}
+        {confirmAction.type === 'unpublish'
+          ? t('squareScope.unpublishConfirmDesc' as any, { title: confirmAction.item.title })
+          : mode === 'square'
+            ? t('squareScope.deleteConfirmDesc' as any, { title: confirmAction.item.title })
+            : t('personalScope.cloudSkillDeleteConfirmDesc' as any)}
       </DialogDescription>
       <DialogFooter className="row">
         <button
@@ -705,24 +709,19 @@ useEffect(() => {
         </button>
         <button
           type="button"
-          className="primary"
+          className={confirmAction.type === 'delete' ? undefined : 'primary'}
           disabled={!!uninstallingId || !!unpublishingId || !!deletingId}
           onClick={() => {
-            if (confirmAction.type === 'uninstall') void handleUninstall(confirmAction.item);
-            else if (confirmAction.type === 'unpublish') void handleUnpublish(confirmAction.item);
+            if (confirmAction.type === 'unpublish') void handleUnpublish(confirmAction.item);
             else void handleDelete(confirmAction.item);
           }}
         >
-          {confirmAction.type === 'uninstall'
-            ? (uninstallingId ? <Icon name="spinner" size={14} /> : null)
-            : (unpublishingId || deletingId ? <Icon name="spinner" size={14} /> : null)}
-          {confirmAction.type === 'uninstall'
-            ? t('personalScope.cloudSkillUninstall' as any)
-            : confirmAction.type === 'unpublish'
-              ? t('squareScope.unpublish' as any)
-              : mode === 'square'
-                ? t('common.delete' as any)
-                : t('personalScope.cloudSkillDelete' as any)}
+          {unpublishingId || deletingId ? <Icon name="spinner" size={14} /> : null}
+          {confirmAction.type === 'unpublish'
+            ? t('squareScope.unpublish' as any)
+            : mode === 'square'
+              ? t('common.delete' as any)
+              : t('personalScope.cloudSkillDelete' as any)}
         </button>
       </DialogFooter>
     </Dialog>
@@ -738,196 +737,54 @@ useEffect(() => {
          const isInstalled = skill.installed === true
            || skill.teamShared === true
           || (skill.provider !== 'maas-skillhub' && localSkillIds.has(skill.localId.toLowerCase()));
-          const canManageCloudRecord = skill.provider !== 'maas-skillhub' && !skill.teamShared;
+          const canManageCloudRecord = skill.provider !== 'maas-skillhub' && !skill.resourceId.startsWith('team:');
           const isResourceOwner = skill.canManage ?? skill.ownerMemberId === workspaceMemberId;
-          const isInstalling = installingId === skill.resourceId;
-          const isUninstalling = uninstallingId === skill.resourceId;
-          const isUnpublishing = unpublishingId === skill.resourceId;
-          const isDeleting = deletingId === skill.resourceId;
+          const canDelete = canManageCloudRecord && isResourceOwner && mode !== 'shared';
+          const canShare = canManageCloudRecord && (mode === 'personal' || mode === 'square' || mode === 'shared' || (mode === 'team' && isResourceOwner));
           const showOriginalIcon = Boolean(skill.iconUrl) && !failedIconIds.has(skill.resourceId);
-          return (
-            <article key={skill.resourceId} className={styles.teamAssetCard} role="button" tabIndex={0}>
-              <div className={styles.cardHeader}>
-                <span className={styles.cardIcon} aria-hidden>
-                  {showOriginalIcon ? (
-                    <img
-                      className={styles.cardCover}
-                      src={skill.iconUrl!}
-                      alt=""
-                      loading="lazy"
-                      onError={() => setFailedIconIds((current) => (
-                        new Set(current).add(skill.resourceId)
-                      ))}
-                    />
-                  ) : isSkillLogoKey(skill.logoKey) ? (
-                    <SkillLogo
-                      logoKey={skill.logoKey}
-                      size={48}
-                      className={styles.cardCover}
-                    />
-                  ) : (
-                    <img
-                      className={styles.cardCover}
-                      src="/community/default-skill-logo.svg"
-                      alt=""
-                    />
-                  )}
-                </span>
-                <div className={styles.cardHeaderInfo}>
-                  <strong className={styles.cardTitle}>{skill.title}</strong>
-                 {mode === 'square' ? (
-                   <>
-                     <small className={`${styles.cardMeta} ${styles.cardAuthorLine}`}>
-                       {skill.publisherName?.trim() || 'HiDesign'}
-                       {skill.updatedAt ? ' · ' + formatRelativeDate(skill.updatedAt, t) : ''}
-                     </small>
-                     <small className={`${styles.cardMeta} ${styles.cardSourceLine}`}>
-                       {skill.sourceLabel || t('personalScope.cloudSkillSource' as any)}
-                     </small>
-                   </>
-                ) : (
-                  <small className={styles.cardMeta}>
-                    {(() => {
-                      const parts: string[] = [];
-                      if (skill.teamShared) {
-                        parts.push(t('pluginsView.teamSharedBadge' as any));
-                      } else if (mode === 'shared' && skill.sharedByDisplayname) {
-                        parts.push(t('personalScope.cloudSkillSharedBy' as any, { name: skill.sharedByDisplayname }));
-                      }
-                      if (skill.publisherName) {
-                        parts.push(t('squareScope.publisher' as any, { name: skill.publisherName }));
-                      }
-                      if (skill.updatedAt) {
-                        parts.push(formatRelativeDate(skill.updatedAt, t));
-                      }
-                      return parts.join(' · ');
-                    })()}
-                  </small>
-                )}
-               </div>
-            {((canManageCloudRecord && (mode === 'personal' || mode === 'square')) || (isInstalled && !skill.teamShared)) ? (
-               <>
-                  <button
-                    type="button"
-                    className={styles.cardMenuBtn}
-                    ref={menuOpenId === skill.resourceId ? menuTriggerRef : undefined}
-                    title=""
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setMenuOpenId(menuOpenId === skill.resourceId ? null : skill.resourceId);
-                    }}
-                  >
-                    <Icon name="more-horizontal" size={16} />
-                  </button>
-                  {menuOpenId === skill.resourceId ? (
-                      <div className={styles.cardMenu} ref={menuRef}>
-                       {canManageCloudRecord && (mode === 'personal' || mode === 'square') ? (
-                          <button
-                            type="button"
-                            className={styles.cardMenuItem}
-                            onClick={(e) => { e.stopPropagation(); setShareItem(skill); setMenuOpenId(null); }}
-                          >
-                            <Icon name="share" size={14} />
-                            {t('personalScope.cloudSkillShare' as any)}
-                          </button>
-                        ) : null}
-                        {isInstalled ? (
-                          <button
-                            type="button"
-                            className={styles.cardMenuItem}
-                            disabled={isUninstalling}
-                            onClick={(e) => { e.stopPropagation(); setConfirmAction({ type: 'uninstall', item: skill }); }}
-                          >
-                            <Icon name="trash" size={14} />
-                            {t('personalScope.cloudSkillUninstall' as any)}
-                          </button>
-                        ) : null}
-                       {canManageCloudRecord && mode === 'square' && isResourceOwner ? (
-                          <button
-                            type="button"
-                            className={styles.cardMenuItem}
-                            disabled={isUnpublishing}
-                            onClick={(e) => { e.stopPropagation(); setConfirmAction({ type: 'unpublish', item: skill }); setMenuOpenId(null); }}
-                          >
-                            <Icon name="eye-off" size={14} />
-                            {t('squareScope.unpublish' as any)}
-                          </button>
-                        ) : null}
-                       {canManageCloudRecord && (mode === 'personal' || (mode === 'square' && isResourceOwner)) ? (
-                          <button
-                            type="button"
-                            className={styles.cardMenuItemDanger}
-                            disabled={isDeleting}
-                            onClick={(e) => { e.stopPropagation(); setConfirmAction({ type: 'delete', item: skill }); setMenuOpenId(null); }}
-                          >
-                            <Icon name="close" size={14} />
-                            {mode === 'square'
-                              ? t('common.delete' as any)
-                              : t('personalScope.cloudSkillDelete' as any)}
-                          </button>
-                        ) : null}
-                      </div>
-                  ) : null}
-                </>
-              ) : null}
-            </div>
-              {skill.description
-                ? <p className={`${styles.cardDesc}${mode === 'square' ? ` ${styles.squareCardDesc}` : ''}`}>{skill.description}</p>
-                : null}
-              {mode !== 'shared' ? (
-                <footer className={`community-template-card__foot ${styles.resourceCardFooter}`}>
-                  {mode === 'square' ? (
-                    <CommunityResourceStats
-                      primaryCount={skill.peopleCount}
-                      secondaryCount={skill.actionCount}
-                      primaryIcon="users"
-                      secondaryIcon="download"
-                      primaryLabel={locale.startsWith('zh') ? '接入人数' : 'Connected users'}
-                      secondaryLabel={locale.startsWith('zh') ? '接入次数' : 'Connections'}
-                    />
-                  ) : null}
-                  <div className="community-template-card__actions">
-                    <button
-                      type="button"
-                      disabled={isInstalled || isInstalling}
-                      onClick={() => void handleInstall(skill)}
-                    >
-                      <Icon name={isInstalled ? 'check' : isInstalling ? 'spinner' : 'plus'} size={14} aria-hidden />
-                      {isInstalled
-                        ? t('personalScope.cloudSkillInstalled' as any)
-                        : isInstalling
-                          ? t('personalScope.cloudSkillInstalling' as any)
-                          : t('personalScope.cloudSkillAdd' as any)}
-                    </button>
-                  </div>
-                </footer>
-              ) : isInstalled ? (
-                <div className={styles.cardActions}>
-                  <span className={styles.capabilityComplete}>
-                    <Icon name="check" size={14} />
-                    {t('personalScope.cloudSkillInstalled' as any)}
-                  </span>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  className={styles.capabilityAdd}
-                  disabled={isInstalling}
-                  onClick={() => void handleInstall(skill)}
-                >
-                  {isInstalling
-                    ? <Icon name="spinner" size={14} />
-                    : <Icon name="plus" size={14} />}
-                  {isInstalling
-                    ? t('personalScope.cloudSkillInstalling' as any)
-                    : t('personalScope.cloudSkillAdd' as any)}
-                </button>
-              )}
-            </article>
-          );
+          const meta = mode === 'square'
+            ? `${skill.publisherName?.trim() || 'HiDesign'}${skill.updatedAt ? ' · ' + formatRelativeDate(skill.updatedAt, t) : ''}`
+            : [
+              mode === 'shared' && skill.sharedByDisplayname
+                ? t('personalScope.cloudSkillSharedBy' as any, { name: skill.sharedByDisplayname })
+                : skill.teamShared ? t('pluginsView.teamSharedBadge' as any) : '',
+              skill.publisherName ? t('squareScope.publisher' as any, { name: skill.publisherName }) : '',
+              skill.updatedAt ? formatRelativeDate(skill.updatedAt, t) : '',
+            ].filter(Boolean).join(' · ');
+          return <ResourceCard key={skill.resourceId} kind="skill" title={skill.title}
+            icon={showOriginalIcon ? (
+              <img className={styles.cardCover} src={skill.iconUrl!} alt="" loading="lazy"
+                onError={() => setFailedIconIds((current) => new Set(current).add(skill.resourceId))} />
+            ) : isSkillLogoKey(skill.logoKey) ? (
+              <SkillLogo logoKey={skill.logoKey} size={48} className={styles.cardCover} />
+            ) : <img className={styles.cardCover} src="/community/default-skill-logo.svg" alt="" />}
+            meta={meta}
+            source={mode === 'square' ? skill.sourceLabel || t('personalScope.cloudSkillSource' as any) : null}
+            description={skill.description} installed={isInstalled} installing={installingId === skill.resourceId} uninstalling={uninstallingId === skill.resourceId}
+            busy={!!installingId || !!uninstallingId || !!unpublishingId || !!deletingId}
+            onInstall={() => void handleInstall(skill)}
+            actions={{
+              ...(canShare ? { share: () => setShareItem(skill) } : {}),
+              ...(isInstalled && !skill.teamShared ? { uninstall: () => void handleUninstall(skill) } : {}),
+              ...(canDelete && mode === 'square' ? { unpublish: () => setConfirmAction({ type: 'unpublish', item: skill }) } : {}),
+              ...(canDelete ? { delete: () => setConfirmAction({ type: 'delete', item: skill }) } : {}),
+              ...(mode === 'shared' && skill.shareId ? { removeShare: () => setRemoveShareId(skill.shareId!) } : {}),
+            }}
+            stats={mode === 'square' ? <CommunityResourceStats
+              primaryCount={skill.peopleCount} secondaryCount={skill.actionCount} primaryIcon="users" secondaryIcon="download"
+              primaryLabel={locale.startsWith('zh') ? '接入人数' : 'Connected users'}
+              secondaryLabel={locale.startsWith('zh') ? '接入次数' : 'Connections'} /> : null}
+          />;
         })}
       </div>
       {typeof document !== 'undefined' && dialog ? createPortal(dialog, document.body) : dialog}
+      {removeShareId ? <RemoveSharedResourceDialog key={removeShareId} shareId={removeShareId} kind="skill"
+        onClose={() => setRemoveShareId(null)}
+        onRemoved={() => {
+          setSkills((current) => current.filter((item) => item.shareId !== removeShareId));
+          setRemoveShareId(null);
+        }}
+      /> : null}
       {shareItem ? (
         <ShareResourceDialog
           resourceId={shareItem.resourceId}

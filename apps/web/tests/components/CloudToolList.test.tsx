@@ -174,7 +174,7 @@ describe('CloudToolList', () => {
     expect(container.querySelector('img[src="/ai-research-workbench/logo.svg"]')).toBeTruthy();
     expect(container.querySelectorAll('article')).toHaveLength(2);
     expect(Array.from(container.querySelectorAll('article')).some((card) => card.className.includes('aiResearchCard'))).toBe(true);
-    expect(container.querySelector('[class*="cardMenuBtn"]')).toBeNull();
+    expect(container.querySelector('.recent-projects__card-more')).toBeNull();
 
     fireEvent.click(screen.getAllByText('personalScope.cloudToolOpen')[1]!);
 
@@ -246,7 +246,7 @@ describe('CloudToolList', () => {
     );
 
     expect(await screen.findByText('Owned tool')).toBeTruthy();
-    const menuButton = container.querySelector<HTMLButtonElement>('[class*="cardMenuBtn"]');
+    const menuButton = container.querySelector<HTMLButtonElement>('.recent-projects__card-more');
     expect(menuButton).toBeTruthy();
     fireEvent.click(menuButton!);
     expect(screen.getByText('personalScope.cloudToolDelete')).toBeTruthy();
@@ -280,7 +280,7 @@ describe('CloudToolList', () => {
     );
 
     expect(await screen.findByText('Owned published tool')).toBeTruthy();
-    const menuButtons = container.querySelectorAll<HTMLButtonElement>('[class*="cardMenuBtn"]');
+    const menuButtons = container.querySelectorAll<HTMLButtonElement>('.recent-projects__card-more');
     expect(menuButtons).toHaveLength(1);
 
     fireEvent.click(menuButtons[0]!);
@@ -329,7 +329,7 @@ describe('CloudToolList', () => {
     expect(await screen.findByText('张亚婷5')).toBeTruthy();
     expect(screen.getByText('石敬超')).toBeTruthy();
     expect(screen.getByText('AI用研工作台')).toBeTruthy();
-    expect(container.querySelectorAll('[class*="cardMenuBtn"]')).toHaveLength(2);
+    expect(container.querySelectorAll('.recent-projects__card-more')).toHaveLength(2);
   });
 
   it('opens AI research before a failing background call and never gates the page', async () => {

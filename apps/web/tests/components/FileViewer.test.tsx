@@ -3881,7 +3881,7 @@ describe('FileViewer SVG artifacts', () => {
   it.each([
     { retryId: 'copy', retryLabel: 'same session' },
     { retryId: 'other-copy', retryLabel: 'new session' },
-  ])('keeps a settled Enter-commit failure with a $retryLabel retry', async ({ retryId }) => {
+  ])('retries retained Enter-commit changes before saving a $retryLabel retry', async ({ retryId }) => {
     const initialSource = [
       '<html><body>',
       '<p data-od-id="copy">Copy</p>',
@@ -3989,35 +3989,9 @@ describe('FileViewer SVG artifacts', () => {
         data: { type: 'od-edit-text-session', id: retryId, active: false, committed: true, changed: true },
       }));
     });
-    await waitFor(() => expect(postCount).toBe(2));
-
-    fireEvent.click(toggle);
-    if (retryId === 'copy') {
-      await waitFor(() => expect(toggle.getAttribute('aria-pressed')).toBe('false'));
-      return;
-    }
-
-    await act(async () => {
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-    expect(toggle.getAttribute('aria-pressed')).toBe('true');
-
-    act(() => {
-      window.dispatchEvent(new MessageEvent('message', {
-        source: frame.contentWindow,
-        data: { type: 'od-edit-text-session', id: 'copy', active: true },
-      }));
-      window.dispatchEvent(new MessageEvent('message', {
-        source: frame.contentWindow,
-        data: { type: 'od-edit-text-commit', id: 'copy', value: 'Saved original retry' },
-      }));
-      window.dispatchEvent(new MessageEvent('message', {
-        source: frame.contentWindow,
-        data: { type: 'od-edit-text-session', id: 'copy', active: false, committed: true, changed: true },
-      }));
-    });
-    await waitFor(() => expect(postCount).toBe(3));
+    await waitFor(() => expect(postCount).toBe(retryId === 'copy' ? 2 : 3));
+    if (retryId !== 'copy') expect(persistedSource).toContain('Unsaved copy');
+    expect(persistedSource).toContain('Saved retry');
     fireEvent.click(toggle);
     await waitFor(() => expect(toggle.getAttribute('aria-pressed')).toBe('false'));
   });

@@ -1,5 +1,7 @@
 import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent as ReactClipboardEvent, type CSSProperties, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { createPortal, flushSync } from 'react-dom';
+import { useManualEditAutosave } from '../edit-mode/use-manual-edit-autosave';
+import manualEditStyles from './ManualEditPanel.module.css';
 import { Button, Input, Select } from '@open-design/components';
 import {
   getLatestHostPreviewNavigationFailure,
@@ -1553,40 +1555,6 @@ function pickLatestShareDeployment(
     .filter((deployment): deployment is WebDeploymentInfo =>
       Boolean(deployment && shareUrlForDeployment(deployment) && deployResultState(deployment.status) !== 'failed'))
     .sort(compareDeploymentsByNewest)[0] ?? null;
-}
-
-function manualEditFloatingPanelStyle(
-  target: ManualEditTarget,
-  previewScale: number,
-  canvasSize: PreviewCanvasSize | undefined,
-): CSSProperties {
-  const scale = Number.isFinite(previewScale) && previewScale > 0 ? previewScale : 1;
-  const panelWidth = 320;
-  const preferredPanelHeight = 380;
-  const pad = 12;
-  const canvasWidth = canvasSize?.width ?? 1200;
-  const canvasHeight = canvasSize?.height ?? 800;
-  const panelHeight = Math.min(preferredPanelHeight, Math.max(260, canvasHeight - pad * 2));
-  const targetLeft = target.rect.x * scale;
-  const targetTop = target.rect.y * scale;
-  const targetRight = (target.rect.x + target.rect.width) * scale;
-  let left = targetRight + pad;
-  if (left + panelWidth > canvasWidth - pad) {
-    left = Math.max(pad, targetLeft - panelWidth - pad);
-  }
-  const top = Math.max(
-    pad,
-    Math.min(targetTop, Math.max(pad, canvasHeight - panelHeight - pad)),
-  );
-  // Height is left to the content (auto): a short inspector (e.g. typography
-  // only) should be a compact card, not a tall half-empty panel. The cap only
-  // engages for long inspectors, at which point the scroll body takes over.
-  return {
-    left,
-    top,
-    width: panelWidth,
-    maxHeight: panelHeight,
-  };
 }
 
 // Anchors the hover "edit params" affordance to the top-right corner of the
@@ -9341,10 +9309,7 @@ const [reviewAddModalOpen, setReviewAddModalOpen] = useState(false);
   const [selectedManualEditTarget, setSelectedManualEditTarget] = useState<ManualEditTarget | null>(null);
   const [manualEditHoverTarget, setManualEditHoverTarget] = useState<ManualEditTarget | null>(null);
   const [manualEditPageStylesOpen, setManualEditPageStylesOpen] = useState(false);
-  const [manualEditPanelPosition, setManualEditPanelPosition] = useState<{ left: number; top: number } | null>(null);
-  const [manualEditDraftDirty, setManualEditDraftDirty] = useState(false);
   const selectedManualEditTargetIdRef = useRef<string | null>(null);
-  const manualEditSelectionDraftRef = useRef<{ id: string; draft: ManualEditDraft } | null>(null);
   // Tracks the iframe's in-flight inline text edit. `finishManualEditTextSession`
   // posts the explicit finish and resolves only after the iframe acks AND the
   // resulting commit has been applied, so exit/dismiss/cancel never tear down
@@ -9363,12 +9328,19 @@ const [reviewAddModalOpen, setReviewAddModalOpen] = useState(false);
   } | null>(null);
   const [manualEditDraft, setManualEditDraft] = useState<ManualEditDraft>(() => emptyManualEditDraft());
   const [manualEditHistory, setManualEditHistory] = useState<ManualEditHistoryEntry[]>([]);
+  const manualEditHistoryRef = useRef<ManualEditHistoryEntry[]>([]);
+  manualEditHistoryRef.current = manualEditHistory;
   const [manualEditUndone, setManualEditUndone] = useState<ManualEditHistoryEntry[]>([]);
+  const manualEditUndoneRef = useRef<ManualEditHistoryEntry[]>([]);
+  manualEditUndoneRef.current = manualEditUndone;
   const [manualEditError, setManualEditError] = useState<string | null>(null);
   const [manualEditSaving, setManualEditSaving] = useState(false);
   const manualEditSavingRef = useRef(false);
   const manualEditPendingStyleRef = useRef<ManualEditPendingStyleSave | null>(null);
-  const manualEditStyleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const manualEditIdentityRef = useRef(currentSourceIdentity);
+  manualEditIdentityRef.current = currentSourceIdentity;
+  const manualEditWriteQueueRef = useRef<Promise<boolean>>(Promise.resolve(true));
+  const manualEditAutosave = useManualEditAutosave(currentSourceIdentity, applyManualEdit);
   const manualEditPreviewVersionRef = useRef(0);
   const sourceRef = useRef<string | null>(source);
   // Holds the last-good source snapshot taken just before reloadHtmlPreview
@@ -12558,15 +12530,12 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     setManualEditViewportWidth(null);
     setManualEditTargets([]);
     setSelectedManualEditTarget(null);
-    setManualEditPanelPosition(null);
     selectedManualEditTargetIdRef.current = null;
     setManualEditDraft(emptyManualEditDraft());
-    setManualEditDraftDirty(false);
     setManualEditHistory([]);
     setManualEditUndone([]);
     setManualEditError(null);
     manualEditPendingStyleRef.current = null;
-    clearManualEditStyleTimer();
   }, [file.name]);
 
   // Selecting a new file or turning inspect/comment-inspect off resets the panel target.
@@ -12811,10 +12780,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       setSelectedManualEditTarget(null);
       setManualEditHoverTarget(null);
       setManualEditPageStylesOpen(false);
-      setManualEditPanelPosition(null);
-      setManualEditDraftDirty(false);
       selectedManualEditTargetIdRef.current = null;
-      manualEditSelectionDraftRef.current = null;
       manualEditTextSessionIdRef.current = null;
       manualEditTextSessionStartSequenceRef.current = null;
       manualEditTextFinishRef.current = null;
@@ -12823,10 +12789,6 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       manualEditTextLatestCommitRef.current = null;
       setManualEditError(null);
       manualEditPendingStyleRef.current = null;
-      if (manualEditStyleTimerRef.current) {
-        clearTimeout(manualEditStyleTimerRef.current);
-        manualEditStyleTimerRef.current = null;
-      }
       return;
     }
     function onMessage(ev: MessageEvent) {
@@ -12881,6 +12843,14 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
         }
         return;
       }
+      if (data.type === 'od-edit-text-draft') {
+        const patch: ManualEditPatch = { id: data.id, kind: 'set-text', value: data.value };
+        manualEditAutosave.schedule(patch, t('manualEdit.applyContent'));
+        if (selectedManualEditTargetIdRef.current === data.id) {
+          setManualEditDraft((current) => ({ ...current, text: data.value }));
+        }
+        return;
+      }
       if (data.type === 'od-edit-text-commit') {
         // Keep the apply promise reachable so any teardown (host- or
         // iframe-initiated) can await it and honor a failed save before tearing
@@ -12889,11 +12859,12 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
         const sessionId = String(data.id);
         const sequence = manualEditTextCommitSequenceRef.current + 1;
         manualEditTextCommitSequenceRef.current = sequence;
-        const commit = applyManualEdit({
+        manualEditAutosave.schedule({
           id: sessionId,
           kind: 'set-text',
           value: String(data.value),
         }, 'Edit text');
+        const commit = manualEditAutosave.flush();
         manualEditTextCommitInFlightRef.current = commit;
         const record: NonNullable<typeof manualEditTextLatestCommitRef.current> = {
           promise: commit,
@@ -12944,8 +12915,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       }
       if (data.type === 'od-edit-drag-commit') {
         // Free drag-to-reposition dropped: route the new translate() through
-        // the same pending-style pipeline the inspector uses, so the panel's
-        // Save persists it alongside every other edit in this session.
+        // the same automatic style-save pipeline the inspector uses.
         const id = String(data.id || '');
         if (!id) return;
         const transform = String(data.transform || '');
@@ -12954,7 +12924,6 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
         void handleManualEditStyleChange(id, dragStyles, 'Move element');
         if (selectedManualEditTargetIdRef.current === id) {
           setManualEditDraft((current) => ({ ...current, styles: { ...current.styles, ...dragStyles } }));
-          setManualEditDraftDirty(true);
         }
         return;
       }
@@ -12986,9 +12955,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       return;
     }
     const sourceStyles = readManualEditStyles(savedSource, id);
-    const supersededStyles = manualEditPendingStyleRef.current?.id === id
-      ? manualEditPendingStyleRef.current.styles
-      : {};
+    const supersededStyles = manualEditLiveStylesRef.current.get(id)?.styles ?? {};
     const repairStyles: Partial<ManualEditStyles> = {};
     for (const key of Object.keys(savedStyles) as Array<keyof ManualEditStyles>) {
       if (Object.prototype.hasOwnProperty.call(supersededStyles, key)) continue;
@@ -13006,17 +12973,11 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     setManualEditError('Saved styles differed from the active preview. Reconciled the selected target from source.');
   }
 
-  function clearManualEditStyleTimer() {
-    if (!manualEditStyleTimerRef.current) return;
-    clearTimeout(manualEditStyleTimerRef.current);
-    manualEditStyleTimerRef.current = null;
-  }
-
   function cancelManualEditPendingStyles(id: string, keys: Array<keyof ManualEditStyles>) {
+    manualEditAutosave.cancelStyles(id, keys);
     const nextPending = cancelManualEditPendingStyleSnapshot(manualEditPendingStyleRef.current, id, keys);
     if (!nextPending) {
       manualEditPendingStyleRef.current = null;
-      clearManualEditStyleTimer();
       return;
     }
     manualEditPendingStyleRef.current = nextPending;
@@ -13037,53 +12998,13 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     });
     setManualEditError(null);
     previewStyleToIframe(id, styles, version);
+    manualEditAutosave.schedule({ id, kind: 'set-style', styles: pendingStyles }, label);
   }
 
   async function flushManualEditStyleSave(): Promise<boolean> {
-    const pending = manualEditPendingStyleRef.current;
-    if (!pending) return true;
-    if (manualEditSavingRef.current) return false;
-    const ok = await applyManualEdit(
-      { id: pending.id, kind: 'set-style', styles: pending.styles },
-      pending.label,
-    );
-    // Keep the exact failed snapshot for retry. If another style change landed
-    // while this save was in flight, it has already replaced/extended the ref
-    // and must likewise remain pending.
-    if (ok && manualEditPendingStyleRef.current === pending) {
-      manualEditPendingStyleRef.current = null;
-    }
+    const ok = await manualEditAutosave.flush();
+    if (ok) manualEditPendingStyleRef.current = null;
     return ok;
-  }
-
-  function cancelManualEditStyleDraft() {
-    const pending = manualEditPendingStyleRef.current;
-    if (!pending) return;
-    clearManualEditStyleTimer();
-    manualEditPendingStyleRef.current = null;
-    const base = sourceRef.current ?? '';
-    const target = pending.id === '__body__'
-      ? null
-      : selectedManualEditTarget?.id === pending.id
-        ? selectedManualEditTarget
-        : manualEditTargets.find((item) => item.id === pending.id) ?? null;
-    const sourceStyles = target
-      ? inspectorManualEditStyles(target, base)
-      : readManualEditStyles(base, pending.id);
-    const resetStyles = MANUAL_EDIT_STYLE_PROPS.reduce<Partial<ManualEditStyles>>((acc, key) => {
-      acc[key] = sourceStyles[key] ?? '';
-      return acc;
-    }, {});
-    manualEditLiveStylesRef.current.delete(pending.id);
-    previewStyleToIframe(pending.id, resetStyles, nextManualEditPreviewVersion());
-    if (!target || target.id === selectedManualEditTarget?.id) {
-      setManualEditDraft((current) => ({
-        ...current,
-        styles: target ? sourceStyles : current.styles,
-        fullSource: base,
-      }));
-    }
-    setManualEditError(null);
   }
 
   // Ends the iframe's inline text edit and resolves only once it acks (and any
@@ -13203,7 +13124,6 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     if (manualEditTextFailedSessionIdsRef.current.size > 0) return false;
     const ok = await flushManualEditStyleSave();
     if (!ok) return false;
-    setManualEditPanelPosition(null);
     setManualEditMode(false);
     return true;
   }
@@ -13249,14 +13169,17 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
 
   async function selectManualEditTarget(target: ManualEditTarget) {
     setManualEditPageStylesOpen(false);
-    if (manualEditPendingStyleRef.current?.id !== target.id) cancelManualEditStyleDraft();
     const base = sourceRef.current ?? '';
     const nextDraft = manualEditDraftForTarget(target, base);
+    const pendingContent = manualEditAutosave.contentFor(target.id);
+    if (pendingContent?.kind === 'set-text') nextDraft.text = pendingContent.value;
+    if (pendingContent?.kind === 'set-link') Object.assign(nextDraft, { text: pendingContent.text, href: pendingContent.href });
+    if (pendingContent?.kind === 'set-image') Object.assign(nextDraft, { src: pendingContent.src, alt: pendingContent.alt });
+    if (pendingContent?.kind === 'set-outer-html') nextDraft.outerHtml = pendingContent.html;
+    Object.assign(nextDraft.styles, manualEditLiveStylesRef.current.get(target.id)?.styles);
     selectedManualEditTargetIdRef.current = target.id;
-    manualEditSelectionDraftRef.current = { id: target.id, draft: nextDraft };
     setSelectedManualEditTarget(target);
     setManualEditDraft(nextDraft);
-    setManualEditDraftDirty(false);
     setManualEditError(null);
   }
 
@@ -13281,22 +13204,19 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     if (!(await settlePendingManualEditCommit())) {
       return;
     }
-    cancelManualEditStyleDraft();
+    if (!(await flushManualEditStyleSave())) return;
     selectedManualEditTargetIdRef.current = null;
-    manualEditSelectionDraftRef.current = null;
     manualEditTextSessionIdRef.current = null;
     manualEditTextSessionStartSequenceRef.current = null;
     setSelectedManualEditTarget(null);
-    setManualEditPanelPosition(null);
     setManualEditDraft(emptyManualEditDraft(sourceRef.current ?? ''));
-    setManualEditDraftDirty(false);
     setManualEditError(null);
   }
 
   // The inspector is scoped to one element (or the page). Closing it should
   // only collapse the panel and keep the user in edit mode — exiting edit is
   // the toolbar toggle's job. Dismiss flushes any in-flight tweak first so
-  // nothing is lost; cancel reverts the in-flight unsaved tweak instead.
+  // nothing is lost.
   async function dismissManualEditPanel() {
     // Closing the panel must not swallow a failed text commit: keep it open
     // with the error if the pending edit could not be saved.
@@ -13309,71 +13229,65 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     else setManualEditPageStylesOpen(false);
   }
 
+  function changeManualEditDraft(draft: ManualEditDraft) {
+    setManualEditDraft(draft);
+    if (!selectedManualEditTarget) return;
+    if (draft.text === manualEditDraft.text && draft.href === manualEditDraft.href
+      && draft.src === manualEditDraft.src && draft.alt === manualEditDraft.alt
+      && draft.outerHtml === manualEditDraft.outerHtml) return;
+    const content = manualEditContentPatchForDraft(selectedManualEditTarget, draft);
+    // Advanced HTML must validate before it enters the automatic save queue.
+    if (content.patch.kind === 'set-outer-html') {
+      const validation = applyManualEditPatch(sourceRef.current ?? '', content.patch);
+      if (!validation.ok) {
+        setManualEditError(validation.error ?? 'Could not apply edit.');
+        return;
+      }
+    }
+    previewManualEditContent(content.patch);
+    manualEditAutosave.schedule(content.patch, content.label);
+  }
+
+  function previewManualEditContent(patch: ManualEditPatch): boolean {
+    if (patch.kind === 'set-text') return previewTextToIframe(patch.id, patch.value);
+    if (patch.kind !== 'set-link' && patch.kind !== 'set-image') return false;
+    const win = iframeRef.current?.contentWindow;
+    if (!win) return false;
+    win.postMessage({ type: 'od-edit-preview-content', patch }, '*');
+    return true;
+  }
+
   function manualEditContentPatchForDraft(
     target: ManualEditTarget,
     draft: ManualEditDraft,
-    base: string,
-  ): { patch: ManualEditPatch; label: string } | null {
-    const fields = readManualEditFields(base, target.id);
+  ): { patch: ManualEditPatch; label: string } {
+    const label = t('manualEdit.applyContent');
     if (target.kind === 'text' || target.kind === 'token') {
-      const currentText = fields.text ?? target.fields.text ?? target.text;
-      if (draft.text !== currentText) {
-        return { patch: { id: target.id, kind: 'set-text', value: draft.text }, label: t('manualEdit.applyContent') };
-      }
-      return null;
+      return { patch: { id: target.id, kind: 'set-text', value: draft.text }, label };
     }
     if (target.kind === 'link') {
-      const currentText = fields.text ?? target.fields.text ?? target.text;
-      const currentHref = fields.href ?? target.fields.href ?? '';
-      if (draft.text !== currentText || draft.href !== currentHref) {
-        return { patch: { id: target.id, kind: 'set-link', text: draft.text, href: draft.href }, label: t('manualEdit.applyContent') };
-      }
-      return null;
+      return { patch: { id: target.id, kind: 'set-link', text: draft.text, href: draft.href }, label };
     }
     if (target.kind === 'image') {
-      const currentSrc = fields.src ?? target.fields.src ?? '';
-      const currentAlt = fields.alt ?? target.fields.alt ?? '';
-      if (draft.src !== currentSrc || draft.alt !== currentAlt) {
-        return { patch: { id: target.id, kind: 'set-image', src: draft.src, alt: draft.alt }, label: t('manualEdit.applyContent') };
-      }
-      return null;
+      return { patch: { id: target.id, kind: 'set-image', src: draft.src, alt: draft.alt }, label };
     }
-    const currentOuterHtml = readManualEditOuterHtml(base, target.id) || target.outerHtml;
-    if (draft.outerHtml !== currentOuterHtml) {
-      return { patch: { id: target.id, kind: 'set-outer-html', html: draft.outerHtml }, label: t('manualEdit.applyHtml') };
-    }
-    return null;
+    return { patch: { id: target.id, kind: 'set-outer-html', html: draft.outerHtml }, label: t('manualEdit.applyHtml') };
   }
 
-  async function saveManualEditPanelDraft() {
-    const selectedTarget = selectedManualEditTarget;
-    const contentPatchBeforeText = selectedTarget
-      ? manualEditContentPatchForDraft(selectedTarget, manualEditDraft, sourceRef.current ?? '')
-      : null;
-    const panelContentChanged = contentPatchBeforeText !== null;
-    const textCommitSequenceBeforeSave = manualEditTextCommitSequenceRef.current;
-    const hadTextCommitInFlight = Boolean(manualEditTextCommitInFlightRef.current);
-    if (!(await settlePendingManualEditCommit(!panelContentChanged))) return;
-    const inlineTextCommitted =
-      hadTextCommitInFlight ||
-      manualEditTextCommitSequenceRef.current !== textCommitSequenceBeforeSave;
-    if (selectedTarget && (panelContentChanged || !inlineTextCommitted)) {
-      const base = sourceRef.current ?? '';
-      const contentPatch = manualEditContentPatchForDraft(selectedTarget, manualEditDraft, base);
-      if (contentPatch && !(await applyManualEdit(contentPatch.patch, contentPatch.label))) return;
-    }
-    const ok = await flushManualEditStyleSave();
-    if (!ok) return;
-    if (selectedManualEditTarget) void clearManualEditTargetSelection();
-    else setManualEditPageStylesOpen(false);
+  async function retryManualEditAutosave() {
+    if (!(await flushManualEditStyleSave())) return;
+    await settlePendingManualEditCommit();
   }
 
   function syncRetainedManualEditDocument(savedSource: string, patch: ManualEditPatch): void {
     let liveDocumentMatchesSavedSource = false;
     if (patch.kind === 'set-text') {
       const savedText = readManualEditFields(savedSource, patch.id).text;
+      const pending = manualEditAutosave.contentFor(patch.id);
       liveDocumentMatchesSavedSource = savedText !== undefined
-        && previewTextToIframe(patch.id, savedText);
+        && previewTextToIframe(patch.id, pending?.kind === 'set-text' ? pending.value : savedText);
+    } else if (patch.kind === 'set-link' || patch.kind === 'set-image') {
+      liveDocumentMatchesSavedSource = previewManualEditContent(manualEditAutosave.contentFor(patch.id) ?? patch);
     } else if (patch.kind === 'set-style') {
       const targetStillExists = patch.id === '__body__'
         || Boolean(readManualEditOuterHtml(savedSource, patch.id));
@@ -13420,49 +13334,14 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     return { ...patch, styles: restoredStyles };
   }
 
-  async function resetManualEditPanelDraft() {
-    if (manualEditTextSessionIdRef.current) await finishManualEditTextSession(false);
-    cancelManualEditStyleDraft();
-    if (!selectedManualEditTarget) {
-      setManualEditDraft(emptyManualEditDraft(sourceRef.current ?? ''));
-      setManualEditError(null);
-      return;
-    }
-    const snapshot = manualEditSelectionDraftRef.current?.id === selectedManualEditTarget.id
-      ? manualEditSelectionDraftRef.current.draft
-      : manualEditDraftForTarget(selectedManualEditTarget, sourceRef.current ?? '');
-    const base = sourceRef.current ?? '';
-    const currentOuterHtml = readManualEditOuterHtml(base, selectedManualEditTarget.id);
-    if (snapshot.outerHtml && currentOuterHtml && snapshot.outerHtml !== currentOuterHtml) {
-      const ok = await applyManualEdit(
-        { id: selectedManualEditTarget.id, kind: 'set-outer-html', html: snapshot.outerHtml },
-        'Reset element',
-      );
-      if (!ok) return;
-    }
-    const refreshedBase = sourceRef.current ?? base;
-    setManualEditDraft({
-      ...snapshot,
-      fullSource: refreshedBase,
-      styles: inspectorManualEditStyles(selectedManualEditTarget, refreshedBase),
-    });
-    setManualEditDraftDirty(false);
-    setManualEditError(null);
-    postSelectedManualEditTargetToIframe(selectedManualEditTarget.id);
+  function applyManualEdit(patch: ManualEditPatch, label: string): Promise<boolean> {
+    const write = manualEditWriteQueueRef.current.then(() => performManualEdit(patch, label, currentSourceIdentity));
+    manualEditWriteQueueRef.current = write.catch(() => false);
+    return write;
   }
 
-  async function cancelManualEditPanel() {
-    if (manualEditTextSessionIdRef.current) await finishManualEditTextSession(false);
-    if (selectedManualEditTarget) {
-      void clearManualEditTargetSelection();
-    } else {
-      cancelManualEditStyleDraft();
-      setManualEditPageStylesOpen(false);
-    }
-  }
-
-  async function applyManualEdit(patch: ManualEditPatch, label: string): Promise<boolean> {
-    if (manualEditSavingRef.current) return false;
+  async function performManualEdit(patch: ManualEditPatch, label: string, identity: string): Promise<boolean> {
+    if (manualEditIdentityRef.current !== identity) return false;
     if (sourceRef.current == null) return false;
     manualEditSavingRef.current = true;
     setManualEditSaving(true);
@@ -13473,6 +13352,10 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       if (!result.ok) {
         setManualEditError(result.error ?? 'Could not apply edit.');
         return false;
+      }
+      if (result.source === baseSource) {
+        if (patch.kind === 'set-text') manualEditTextFailedSessionIdsRef.current.delete(patch.id);
+        return true;
       }
       if (!(await confirmManualEditHistorySource(
         baseSource,
@@ -13487,12 +13370,14 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       if (patch.kind !== 'set-style') {
         await capturePreviewScrollPosition();
       }
+      if (manualEditIdentityRef.current !== identity) return false;
       const saved = await writeProjectTextFileDetailed(projectId, file.name, result.source, {
         artifactManifest: file.artifactManifest,
         versionSource: 'manual',
         versionLabel: label,
         ...(parentVersionId ? { parentVersionId } : {}),
       }, workspaceContext);
+      if (manualEditIdentityRef.current !== identity) return false;
       if (!saved.ok) {
         const status = 'status' in saved ? saved.status : undefined;
         const code = 'code' in saved ? saved.code : undefined;
@@ -13517,51 +13402,38 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       if (patch.kind !== 'set-style') {
         setManualEditFrozenSource(result.source);
       }
-      setManualEditHistory((current) => [entry, ...current]);
+      manualEditHistoryRef.current = [entry, ...manualEditHistoryRef.current];
+      setManualEditHistory(manualEditHistoryRef.current);
+      manualEditUndoneRef.current = [];
       setManualEditUndone([]);
+      if (patch.kind === 'set-text') manualEditTextFailedSessionIdsRef.current.delete(patch.id);
       setManualEditDraft((current) => ({ ...current, fullSource: result.source }));
-      if (patch.kind === 'set-text') {
+      if (patch.kind === 'set-text' || patch.kind === 'set-link' || patch.kind === 'set-image') {
+        const fields = readManualEditFields(result.source, patch.id);
         setSelectedManualEditTarget((current) => current?.id === patch.id
-          ? { ...current, text: patch.value, fields: { ...current.fields, text: patch.value } }
+          ? { ...current, fields: { ...current.fields, ...fields } }
           : current);
-        setManualEditDraft((current) => ({ ...current, text: patch.value, fullSource: result.source }));
-      } else if (patch.kind === 'set-link') {
-        setSelectedManualEditTarget((current) => current?.id === patch.id
-          ? { ...current, text: patch.text, fields: { ...current.fields, text: patch.text, href: patch.href } }
-          : current);
-        setManualEditDraft((current) => ({ ...current, text: patch.text, href: patch.href, fullSource: result.source }));
-      } else if (patch.kind === 'set-image') {
-        setSelectedManualEditTarget((current) => current?.id === patch.id
-          ? { ...current, fields: { ...current.fields, src: patch.src, alt: patch.alt } }
-          : current);
-        setManualEditDraft((current) => ({ ...current, src: patch.src, alt: patch.alt, fullSource: result.source }));
+        // Direct actions such as image upload update the form; an autosave
+        // acknowledgement must leave any newer typing in that form intact.
+        if (!manualEditAutosave.contentFor(patch.id) && selectedManualEditTargetIdRef.current === patch.id) {
+          setManualEditDraft((current) => ({ ...current, ...fields }));
+        }
       } else if (patch.kind === 'remove-element') {
         if (manualEditPendingStyleRef.current?.id === patch.id) {
           manualEditPendingStyleRef.current = null;
-          clearManualEditStyleTimer();
         }
         selectedManualEditTargetIdRef.current = null;
-        manualEditSelectionDraftRef.current = null;
         setSelectedManualEditTarget(null);
         setManualEditTargets((current) => current.filter((target) => target.id !== patch.id));
         setManualEditDraft(emptyManualEditDraft(result.source));
-        setManualEditDraftDirty(false);
         postSelectedManualEditTargetToIframe(null);
       } else {
         setManualEditDraft((current) => ({ ...current, fullSource: result.source }));
       }
-      if (
-        patch.kind !== 'remove-element' &&
-        patch.kind !== 'set-token' &&
-        patch.kind !== 'set-full-source' &&
-        selectedManualEditTargetIdRef.current === patch.id
-      ) {
-        setManualEditDraftDirty(true);
-      }
       if (patch.kind === 'set-style') {
         reconcileManualEditStyleSave(patch.id, patch.styles, result.source);
       }
-      // Text and style edits already changed the live DOM through the edit
+      // Content and style edits already changed the live DOM through the edit
       // bridge. Adopt that exact persisted source revision so the watcher echo
       // does not navigate an equivalent srcDoc over the visible document.
       // Other content patches still take one normal document refresh because
@@ -13570,6 +13442,9 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       setManualEditError(null);
       await onFileSaved?.();
       return true;
+    } catch (error) {
+      setManualEditError(error instanceof Error ? error.message : 'Could not save the edited file.');
+      return false;
     } finally {
       manualEditSavingRef.current = false;
       setManualEditSaving(false);
@@ -13582,6 +13457,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       cacheBustKey: Date.now(),
       workspaceContext,
     });
+    if (manualEditIdentityRef.current !== currentSourceIdentity) return false;
     if (persisted == null || persisted === expectedSource) return true;
     setSource(persisted);
     sourceRef.current = persisted;
@@ -13604,8 +13480,20 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
   }
 
   async function undoManualEdit() {
+    if (!(await settlePendingManualEditCommit())) return;
+    if (!(await flushManualEditStyleSave())) return;
+    const write = manualEditWriteQueueRef.current.then(async () => {
+      if (manualEditIdentityRef.current !== currentSourceIdentity) return false;
+      await performManualEditUndo();
+      return true;
+    });
+    manualEditWriteQueueRef.current = write.catch(() => false);
+    await write;
+  }
+
+  async function performManualEditUndo() {
     if (manualEditSavingRef.current) return;
-    const [latest, ...rest] = manualEditHistory;
+    const [latest, ...rest] = manualEditHistoryRef.current;
     if (!latest) return;
     manualEditSavingRef.current = true;
     setManualEditSaving(true);
@@ -13615,12 +13503,14 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
         'The file changed outside manual edit mode. History was cleared to avoid overwriting newer content.',
       ))) return;
       const parentVersionId = await resolveManualEditParentVersionId(latest.afterSource);
+      if (manualEditIdentityRef.current !== currentSourceIdentity) return;
       const saved = await writeProjectTextFileDetailed(projectId, file.name, latest.beforeSource, {
         artifactManifest: file.artifactManifest,
         versionSource: 'manual',
         versionLabel: `Undo ${latest.label}`,
         ...(parentVersionId ? { parentVersionId } : {}),
       }, workspaceContext);
+      if (manualEditIdentityRef.current !== currentSourceIdentity) return;
       if (!saved.ok) {
         setManualEditError(describeManualEditSaveFailure('Could not save the undo result', saved));
         return;
@@ -13636,8 +13526,13 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
         reconcileRetainedManualEditHistoryDocument(latest.beforeSource, latest.patch),
       );
       setManualEditFrozenSource(latest.beforeSource);
+      if (selectedManualEditTarget) {
+        setManualEditDraft(manualEditDraftForTarget(selectedManualEditTarget, latest.beforeSource));
+      }
+      manualEditHistoryRef.current = rest;
       setManualEditHistory(rest);
-      setManualEditUndone((current) => [latest, ...current]);
+      manualEditUndoneRef.current = [latest, ...manualEditUndoneRef.current];
+      setManualEditUndone(manualEditUndoneRef.current);
       setManualEditDraft((current) => ({ ...current, fullSource: latest.beforeSource }));
       await onFileSaved?.();
     } finally {
@@ -13647,8 +13542,20 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
   }
 
   async function redoManualEdit() {
+    if (!(await settlePendingManualEditCommit())) return;
+    if (!(await flushManualEditStyleSave())) return;
+    const write = manualEditWriteQueueRef.current.then(async () => {
+      if (manualEditIdentityRef.current !== currentSourceIdentity) return false;
+      await performManualEditRedo();
+      return true;
+    });
+    manualEditWriteQueueRef.current = write.catch(() => false);
+    await write;
+  }
+
+  async function performManualEditRedo() {
     if (manualEditSavingRef.current) return;
-    const [latest, ...rest] = manualEditUndone;
+    const [latest, ...rest] = manualEditUndoneRef.current;
     if (!latest) return;
     manualEditSavingRef.current = true;
     setManualEditSaving(true);
@@ -13658,12 +13565,14 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
         'The file changed outside manual edit mode. History was cleared to avoid overwriting newer content.',
       ))) return;
       const parentVersionId = await resolveManualEditParentVersionId(latest.beforeSource);
+      if (manualEditIdentityRef.current !== currentSourceIdentity) return;
       const saved = await writeProjectTextFileDetailed(projectId, file.name, latest.afterSource, {
         artifactManifest: file.artifactManifest,
         versionSource: 'manual',
         versionLabel: `Redo ${latest.label}`,
         ...(parentVersionId ? { parentVersionId } : {}),
       }, workspaceContext);
+      if (manualEditIdentityRef.current !== currentSourceIdentity) return;
       if (!saved.ok) {
         setManualEditError(describeManualEditSaveFailure('Could not save the redo result', saved));
         return;
@@ -13679,8 +13588,13 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
         reconcileRetainedManualEditHistoryDocument(latest.afterSource, latest.patch),
       );
       setManualEditFrozenSource(latest.afterSource);
+      if (selectedManualEditTarget) {
+        setManualEditDraft(manualEditDraftForTarget(selectedManualEditTarget, latest.afterSource));
+      }
+      manualEditUndoneRef.current = rest;
       setManualEditUndone(rest);
-      setManualEditHistory((current) => [latest, ...current]);
+      manualEditHistoryRef.current = [latest, ...manualEditHistoryRef.current];
+      setManualEditHistory(manualEditHistoryRef.current);
       setManualEditDraft((current) => ({ ...current, fullSource: latest.afterSource }));
       await onFileSaved?.();
     } finally {
@@ -16147,14 +16061,12 @@ async function openReviewListModal() {
     showDeckThumbnailRail ? 'comment-preview-layer-with-deck-rail' : '',
     showDeckThumbnailRail && deckThumbnailsCollapsed ? 'comment-preview-layer-deck-rail-collapsed' : '',
   ].filter(Boolean).join(' ');
-  // Edit mode opens clean: the inspector only appears once the user pins an
-  // element (click its hover affordance / a container) or opens page styles by
-  // clicking the empty canvas. No more full-height panel popping on toggle.
+  // The dock opens on an explicit element or page selection and stays mounted
+  // while the user moves between elements.
   const manualEditPageCardActive =
     manualEditMode && !selectedManualEditTarget && manualEditPageStylesOpen;
   const manualEditPanelActive =
     manualEditMode && (!!selectedManualEditTarget || manualEditPageCardActive);
-  const manualEditResetAvailable = selectedManualEditTarget ? manualEditDraftDirty : false;
   const manualEditPanel = manualEditPanelActive ? (
     <ManualEditPanel
       targets={manualEditTargets}
@@ -16165,21 +16077,18 @@ async function openReviewListModal() {
       canUndo={manualEditHistory.length > 0}
       canRedo={manualEditUndone.length > 0}
       busy={manualEditSaving}
-      resetAvailable={manualEditResetAvailable}
       pageStylesEnabled={manualEditPageStylesEnabled}
       onSelectTarget={(target) => {
         void selectManualEditTarget(target);
       }}
-      onDraftChange={(draft) => {
-        setManualEditDraft(draft);
-        setManualEditDraftDirty(Boolean(selectedManualEditTarget));
-      }}
+      onDraftChange={changeManualEditDraft}
+      saveState={manualEditAutosave.state}
       onStyleChange={(id, styles, label) => {
         void handleManualEditStyleChange(id, styles, label);
       }}
       onInvalidStyle={cancelManualEditPendingStyles}
       onApplyPatch={(patch, label) => {
-        void applyManualEdit(patch, label);
+        void flushManualEditStyleSave().then((ok) => ok && applyManualEdit(patch, label));
       }}
       onError={setManualEditError}
       onClearSelection={() => {
@@ -16188,14 +16097,8 @@ async function openReviewListModal() {
       onExit={() => {
         void dismissManualEditPanel();
       }}
-      onCancelDraft={() => {
-        void cancelManualEditPanel();
-      }}
-      onSaveDraft={() => {
-        void saveManualEditPanelDraft();
-      }}
-      onResetDraft={() => {
-        void resetManualEditPanelDraft();
+      onRetrySave={() => {
+        void retryManualEditAutosave();
       }}
       onUndo={() => {
         void undoManualEdit();
@@ -16203,18 +16106,6 @@ async function openReviewListModal() {
       onRedo={() => {
         void redoManualEdit();
       }}
-      floatingClassName={manualEditPageCardActive ? 'manual-edit-page-card' : undefined}
-      floatingStyle={selectedManualEditTarget
-        ? {
-            ...manualEditFloatingPanelStyle(
-              selectedManualEditTarget,
-              overlayPreviewScale,
-              previewBodySize,
-            ),
-            ...(manualEditPanelPosition ?? {}),
-          }
-        : { top: 12, right: 12, width: 320 }}
-      onFloatingPositionChange={selectedManualEditTarget ? setManualEditPanelPosition : undefined}
       onPickImage={async (pickedFile) => {
         const result = await uploadProjectFiles(projectId, [pickedFile], undefined, workspaceContext);
         const uploaded = result.uploaded[0];
@@ -17782,7 +17673,7 @@ async function openReviewListModal() {
             <div
             hidden={mode !== 'preview'}
             aria-hidden={mode !== 'preview' ? true : undefined}
-            className={`${manualEditMode ? 'manual-edit-workspace' : commentPreviewLayoutClass} preview-viewport preview-viewport-${previewViewport}${drawOverlayOpen ? ' preview-draw-active' : ''}`}
+            className={`${manualEditMode ? `manual-edit-workspace ${manualEditPanelActive ? manualEditStyles.workspaceWithPanel : ''}` : commentPreviewLayoutClass} preview-viewport preview-viewport-${previewViewport}${drawOverlayOpen ? ' preview-draw-active' : ''}`}
             data-testid={manualEditMode ? undefined : 'comment-preview-layout'}
             ref={manualEditMode ? undefined : setCommentComposerHostRef}
             style={{
@@ -17816,7 +17707,7 @@ async function openReviewListModal() {
               />
             ) : null}
             <div
-              className={manualEditMode ? 'manual-edit-canvas' : 'comment-preview-canvas'}
+              className={manualEditMode ? `manual-edit-canvas ${manualEditStyles.canvas}` : 'comment-preview-canvas'}
               data-testid={manualEditMode ? undefined : 'comment-preview-canvas'}
               ref={manualEditMode ? undefined : setCommentPreviewCanvasRef}
             >

@@ -20,6 +20,8 @@ import {
   buildWorkspacePermissions,
   type CollabMemberRole,
   type TeamProject,
+  type SharedWithMeResourcesResponse,
+  type RemoveSharedWithMeResourceResponse,
 } from '@open-design/contracts';
 import type { SqliteDb } from '../db.js';
 import { getProject, rebindWorkspaceProject, getFolderTree } from '../db.js';
@@ -975,7 +977,7 @@ export function registerCollabContextHideSignRoutes(
     const kind = req.query.kind === 'mcp' ? 'mcp' : 'skill';
     try {
       const resources = await fetchResourcesSharedWithMe(deps.dataDir, kind);
-      res.json({ resources });
+      res.json({ resources } satisfies SharedWithMeResourcesResponse);
     } catch (err) {
       console.warn('[collab-context-hidesign] GET /api/resource-share/shared-with-me error', err);
       res.status(503).json({ error: 'UPSTREAM_UNAVAILABLE', message: 'shared space server is unreachable', retryable: true });
@@ -1041,6 +1043,27 @@ export function registerCollabContextHideSignRoutes(
     } catch (err) {
       console.warn('[collab-context-hidesign] POST /api/resource-share/share error', err);
       res.status(503).json({ error: 'UPSTREAM_UNAVAILABLE', message: 'shared space server is unreachable', retryable: true });
+    }
+  });
+
+  app.delete('/api/resource-share/shared-with-me/:shareId', async (req: Request, res: Response) => {
+    const kind = req.query.kind;
+    if (kind !== 'skill' && kind !== 'mcp') return res.status(400).json({ error: 'INVALID_RESOURCE_KIND' });
+    if (!deps.dataDir || !readSsoConfigFile(deps.dataDir)?.username?.trim()) {
+      return res.status(401).json({ error: 'not_authenticated' });
+    }
+    try {
+      // The server's SSO identity chooses the recipient; never accept a caller's
+      // recipient or resource ID as authority to delete someone else's share.
+      const resources = await fetchResourcesSharedWithMe(deps.dataDir, kind);
+      const shareId = String(req.params.shareId);
+      if (!resources.some((resource) => resource.shareId === shareId)) {
+        return res.status(403).json({ error: 'NOT_SHARE_RECIPIENT' });
+      }
+      const ok = await unshareResourceFromSharedSpace(deps.dataDir, shareId);
+      return res.status(ok ? 200 : 502).json({ ok } satisfies RemoveSharedWithMeResourceResponse);
+    } catch {
+      return res.status(503).json({ ok: false, error: 'UPSTREAM_UNAVAILABLE' });
     }
   });
 
