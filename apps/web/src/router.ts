@@ -62,7 +62,7 @@ export type Route =
       teamId?: string;
       /** Folder id for the team-folder view. */
       folderId?: string;
-      /** Optional tab for personal-all / shared-with-me / team-space views (`skill` | `mcp` | `tool`). */
+      /** Optional tab for resource views; team-space also supports `members`. */
       tab?: string;
       /** Folder id for the shared-folder view. */
       sharedFolderId?: string;
@@ -246,7 +246,7 @@ if (parts[0] === 'drafts' && !parts[1]) {
    if (parts[2] === 'folder' && parts[3]) {
      return { kind: 'home', view: 'team-folder', teamId, folderId: decodeURIComponent(parts[3]) };
    }
-     if (parts[2] === 'skill' || parts[2] === 'mcp') {
+     if (parts[2] === 'members' || parts[2] === 'skill' || parts[2] === 'mcp') {
        return { kind: 'home', view: 'team-space', teamId, tab: parts[2] };
      }
      return { kind: 'home', view: 'team-space', teamId };

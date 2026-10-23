@@ -99,7 +99,7 @@ interface Props {
 
 export function TeamSpaceView({ teamId, tab, onInvite, designSystems = [], onOpenProject, onDeleteProject, onRenameProject, onDuplicateProject, onCopyProject }: Props) {
   const t = useT();
-  const routeTab = tab === 'skill' || tab === 'mcp' ? tab : 'projects';
+  const routeTab = tab === 'members' || tab === 'skill' || tab === 'mcp' ? tab : 'projects';
   const [activeTab, setActiveTab] = useState<TeamTab>(routeTab);
 
   // Keep the local tab in sync with the URL when the browser back/forward
