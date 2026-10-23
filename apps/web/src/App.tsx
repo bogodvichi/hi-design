@@ -7,9 +7,6 @@ import { applyLanzAccountConfig, scopeLanzAccountConfig } from './state/lanz-acc
 import { reportAgentDetectDiagnostics } from './analytics/agent-detect';
 import { useAnalytics } from './analytics/provider';
 import {
-  trackExperienceSurveyDismissed,
-  trackExperienceSurveySent,
-  trackExperienceSurveyShown,
   trackFileUploadResult,
   trackProjectCreateResult,
 } from './analytics/events';
@@ -64,7 +61,6 @@ import { ProjectCreationPendingView } from './components/ProjectCreationPendingV
 import { AmrArtifactUpgradeGate } from './components/AmrArtifactUpgradeGate';
 import { AmrArtifactUpgradeHomeCard } from './components/AmrArtifactUpgradeHomeCard';
 import { BackToTopButton } from './components/BackToTopButton';
-import { ExperienceSurvey } from './components/ExperienceSurvey';
 import { FeedbackFab } from './components/feedback/FeedbackFab';
 import { TooltipLayer } from './components/TooltipLayer';
 import { UpdateDialog } from './components/UpdateDialog';
@@ -6080,15 +6076,6 @@ if (fetchedProject) {
       )}
       <TooltipLayer />
       <UpdateDialog />
-      {/* Mounted at shell level, outside the route views, so a survey armed by
-          an export inside a project stays on screen when the user navigates
-          back to home. */}
-      <ExperienceSurvey
-        metricsConsent={config.telemetry?.metrics === true}
-        onExposure={() => trackExperienceSurveyShown(analytics.track)}
-        onDismiss={() => trackExperienceSurveyDismissed(analytics.track)}
-        onSubmit={(answers) => trackExperienceSurveySent(analytics.track, answers)}
-      />
       <AmrArtifactUpgradeGate
         cloudModelSelected={config.mode === 'daemon' && config.agentId === 'amr'}
         homeVisible={route.kind === 'home' && route.view === 'home'}
