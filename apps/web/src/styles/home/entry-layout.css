@@ -2625,38 +2625,6 @@
   height: auto;
   display: block;
 }
-.entry-blank__mark-line {
-  stroke-width: 0.78;
-  /* pathLength=1 normalizes every stroke, so dasharray 1 = the full path.
-     Resting offset 0 keeps the mark fully drawn — identical before, during
-     idle, and after the hover demo. */
-  stroke-dasharray: 1;
-  stroke-dashoffset: 0;
-}
-.entry-blank__mark-line--cursor {
-  stroke-width: 0.7;
-}
-/* Hovering the mark replays a draw-on demo (outline → circle → cursor).
-   It settles at the resting frame; nothing about the mark persists changed. */
-@media (prefers-reduced-motion: no-preference) {
-  .entry-blank__mark:hover .entry-blank__mark-line {
-    animation: entry-blank-mark-draw 760ms var(--ease-out) backwards;
-  }
-  .entry-blank__mark:hover .entry-blank__mark-line:nth-child(2) {
-    animation-delay: 120ms;
-  }
-  .entry-blank__mark:hover .entry-blank__mark-line:nth-child(3) {
-    animation-delay: 260ms;
-  }
-}
-@keyframes entry-blank-mark-draw {
-  from {
-    stroke-dashoffset: 1;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
 .entry-blank__desc {
   margin: 0;
   font-size: 13px;
