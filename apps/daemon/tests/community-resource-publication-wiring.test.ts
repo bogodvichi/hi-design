@@ -30,7 +30,9 @@ describe('community Skill/MCP/tool publication actions', () => {
       `app.delete('/api/workspace/${kind}/cloud/:resourceId'`,
     );
     expect(unpublish).toContain(notFoundCode);
-    expect(unpublish).toContain('record.ownerMemberId !== getOwnerMemberId(req)');
+    expect(unpublish).toContain(kind === 'mcp'
+      ? 'record.ownerMemberId !== authority.scope.principal.memberId'
+      : 'record.ownerMemberId !== getOwnerMemberId(req)');
     expect(unpublish).toContain('{ metadata: record.metadata ?? {}, scope: null }');
 
     const deletionStart = mcpRoutes.indexOf(`app.delete('/api/workspace/${kind}/cloud/:resourceId'`);
@@ -41,6 +43,11 @@ describe('community Skill/MCP/tool publication actions', () => {
     expect(deletionEnd).toBeGreaterThan(deletionStart);
     const deletion = mcpRoutes.slice(deletionStart, deletionEnd);
     expect(deletion).toContain('hdwDelete(');
+    if (kind === 'mcp') {
+      expect(deletion).toContain("req.query.community === '1'");
+      expect(deletion).toContain("!isCommunityPublicationCopy(record.metadata)");
+      expect(deletion).toContain('scope: null');
+    }
   });
 
   it('keeps Skill unpublish separate from permanent delete', () => {
@@ -56,6 +63,9 @@ describe('community Skill/MCP/tool publication actions', () => {
       "app.delete('/api/workspace/skills/cloud/:resourceId'",
     ));
     expect(deletion).toContain('hdwCloudClient.removeResource(workspaceId, resourceId)');
+    expect(deletion).toContain("req.query.community === '1'");
+    expect(deletion).toContain('!isCommunityPublicationCopy(cloudResource.metadata)');
+    expect(deletion).toContain('scope: null');
   });
 
   it('lets HDW move a public resource back to its null personal scope', () => {

@@ -781,6 +781,7 @@ const [showCreateGroup, setShowCreateGroup] = useState(false);
             <button
               type="button"
               className={styles.outlineBtn}
+              disabled={!workspaceContext}
               onClick={() => setSkillDialogOpen(true)}
             >
               <Icon name="sparkles" size={16} aria-hidden />
@@ -791,7 +792,8 @@ const [showCreateGroup, setShowCreateGroup] = useState(false);
            <button
              type="button"
              className={styles.outlineBtn}
-           onClick={() => setMcpDialogOpen(true)}
+             disabled={!workspaceContext}
+            onClick={() => setMcpDialogOpen(true)}
            >
               <Icon name="terminal" size={16} aria-hidden />
               <span>{t('personalScope.addMcp')}</span>

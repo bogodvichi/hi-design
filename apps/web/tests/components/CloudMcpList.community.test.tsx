@@ -32,7 +32,7 @@ describe('public MCP catalog', () => {
     fireEvent.click(title.closest('article')!.querySelector('button')!);
     fireEvent.click(screen.getByRole('menuitem', { name: action }));
     fireEvent.click(within(await screen.findByRole('alertdialog')).getByRole('button', { name: action }));
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/workspace/mcp/cloud/mcp-team' + (action === '取消发布' ? '/unpublish' : ''),
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith('/api/workspace/mcp/cloud/mcp-team' + (action === '取消发布' ? '/unpublish' : '?community=1'),
       expect.objectContaining({ headers: expect.objectContaining({ 'x-od-workspace-id': 'team', 'x-od-workspace-member-id': 'team-member' }) })));
   });
 });

@@ -23,6 +23,7 @@ vi.mock('../../src/components/McpConfigForm', () => ({
 const personalWorkspace = {
   workspaceId: 'personal', workspaceMemberId: 'personal-member', workspaceType: 'team',
   role: 'owner', lifecycleState: 'active', memberStatus: 'active',
+  permissions: { canShareProjects: true, canWriteSyncedFiles: true },
 } as WorkspaceCollabContext;
 const response = (body: unknown, status = 200) => Response.json(body, { status });
 
@@ -104,7 +105,7 @@ describe('Personal Skill/MCP newly added resources', () => {
     const file = new File(['---\nname: skill-demo\n---\nbody'], 'SKILL.md', { type: 'text/markdown' });
     Object.defineProperty(file, 'text', { value: async () => '---\nname: skill-demo\n---\nbody' });
     fireEvent.change(input, { target: { files: [file] } });
-    fireEvent.click(screen.getByRole('button', { name: /确认添加/u }));
+    fireEvent.click(screen.getByRole('button', { name: '确认' }));
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
     expect(uploadSkillToCloudMock).toHaveBeenCalledTimes(1);
     expect(fetchMock).toHaveBeenCalledWith('/api/workspace/skills/cloud/res-skill-source/install?home_workspace_id=personal', expect.objectContaining({
