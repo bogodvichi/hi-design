@@ -45,6 +45,27 @@ export function registerMcpRoutes(app: Express, ctx: RegisterMcpRoutesDeps) {
         : server.url === tpl.url);
   }
 
+  async function removeExactCloudMcpServers(resourceId: string, home: string, workspace: string, member: string) {
+    const cfg = await readMcpConfig(RUNTIME_DATA_DIR);
+    const matches = cfg.servers.filter((server) => (
+      server.workspaceId === workspace
+      && server.ownerMemberId === member
+      && server.cloudResourceId === resourceId
+      && server.cloudHomeWorkspaceId === home
+    ));
+    if (matches.length === 0) return [];
+
+    const removedIds = matches.map((server) => server.id);
+    const removedIdSet = new Set(removedIds);
+    await writeMcpConfig(RUNTIME_DATA_DIR, {
+      servers: cfg.servers.filter((server) => !removedIdSet.has(server.id)),
+    });
+    for (const serverId of removedIds) {
+      await clearToken(RUNTIME_DATA_DIR, serverId);
+    }
+    return removedIds;
+  }
+
   // Slug rule mirroring the web-side suggestMcpServerId so install produces
   // valid, collision-free server ids from a template label.
   function suggestServerId(label: string, taken: ReadonlySet<string>): string {
@@ -722,6 +743,12 @@ try {
       if (!data) {
         return res.status(502).json({ error: 'HDW cloud delete failed' });
       }
+      await removeExactCloudMcpServers(
+        resourceId,
+        workspaceId,
+        workspaceId,
+        authority.scope.principal.memberId,
+      );
       res.json({ ok: true });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : 'cloud mcp delete failed' });

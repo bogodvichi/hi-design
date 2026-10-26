@@ -15,6 +15,7 @@ import { registerMcpRoutes, type RegisterMcpRoutesDeps } from '../src/mcp-routes
 import { registerCollabContextHideSignRoutes } from '../src/routes/collab-context-hidesign.js';
 import { registerFolderRoutes } from '../src/routes/folders.js';
 import { readMcpConfig, writeMcpConfig } from '../src/mcp-config.js';
+import { getToken, setToken } from '../src/mcp-tokens.js';
 import { closeDatabase, createWorkspaceFolder, ensureWorkspaceProject, insertProject, openDatabase } from '../src/db.js';
 
 const hdw = vi.hoisted(() => ({ post: vi.fn(), put: vi.fn(), delete: vi.fn(), folders: vi.fn(), grants: vi.fn(), shares: vi.fn() }));
@@ -198,12 +199,12 @@ describe('identity audit safety invariants', () => {
     expect(publish.mock.calls[0]?.[1]).not.toBe(publish.mock.calls[1]?.[1]);
   });
 
-  function mcpFixture(authorized = false, teamId = 'shared', memberId = 'alice') {
+  function mcpFixture(authorized = false, teamId = 'shared', memberId = 'alice', owner = 'bob') {
     const r = router();
     const resolveScope = vi.fn(async () => authorized
       ? { ok: true, scope: { principal: { ...principal, teamId, memberId }, canShare: true } }
       : { ok: false, status: 403, code: 'WORKSPACE_ACCESS_DENIED' });
-    const getResource = vi.fn(async (_workspace: string, id: string) => ({ id, ownerMemberId: 'bob', metadata: {
+    const getResource = vi.fn(async (_workspace: string, id: string) => ({ id, ownerMemberId: owner, scope: 'public', metadata: {
       id: 'same-slug', label: 'Different MCP', transport: 'http', url: 'https://different.invalid/mcp',
     } }));
     registerMcpRoutes(r.app, {
@@ -244,5 +245,76 @@ describe('identity audit safety invariants', () => {
     });
     expect(res.statusCode).toBe(200);
     expect((await readMcpConfig(dir)).servers.map((s) => s.id)).toContain('same-slug');
+  });
+
+  it('removes the exact local MCP and token after permanent cloud deletion', async () => {
+    await writeMcpConfig(dir, { servers: [
+      {
+        id: 'cloud-resource', templateId: 'same-slug', label: 'Installed', transport: 'http',
+        url: 'https://installed.invalid/mcp', enabled: true, authMode: 'oauth',
+        cloudResourceId: 'cloud-resource', cloudHomeWorkspaceId: 'shared',
+        workspaceId: 'shared', ownerMemberId: 'alice',
+      },
+      {
+        id: 'other-workspace-same-slug', templateId: 'same-slug', label: 'Other workspace',
+        transport: 'http', url: 'https://other.invalid/mcp', enabled: true,
+        cloudResourceId: 'cloud-resource', cloudHomeWorkspaceId: 'first-team',
+        workspaceId: 'first-team', ownerMemberId: 'alice',
+      },
+      {
+        id: 'unrelated', templateId: 'unrelated', label: 'Unrelated', transport: 'http',
+        url: 'https://unrelated.invalid/mcp', enabled: true,
+        cloudResourceId: 'other-resource', cloudHomeWorkspaceId: 'shared',
+        workspaceId: 'shared', ownerMemberId: 'alice',
+      },
+    ] });
+    await setToken(dir, 'cloud-resource', {
+      accessToken: 'audit-fake-access-token', tokenType: 'Bearer', savedAt: 1,
+    });
+    await setToken(dir, 'unrelated', {
+      accessToken: 'audit-fake-kept-token', tokenType: 'Bearer', savedAt: 1,
+    });
+    hdw.delete.mockResolvedValue({ ok: true });
+    const r = mcpFixture(true, 'shared', 'alice', 'alice');
+    const res = await r.call('delete', '/api/workspace/mcp/cloud/:resourceId', {
+      params: { resourceId: 'cloud-resource' },
+      headers: { 'x-od-workspace-id': 'shared', 'x-od-workspace-member-id': 'alice' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect((await readMcpConfig(dir)).servers.map((server) => server.id)).toEqual([
+      'other-workspace-same-slug',
+      'unrelated',
+    ]);
+    await expect(getToken(dir, 'cloud-resource')).resolves.toBeNull();
+    await expect(getToken(dir, 'unrelated')).resolves.toMatchObject({
+      accessToken: 'audit-fake-kept-token',
+    });
+  });
+
+  it('preserves the local MCP when a legacy community publication is retracted', async () => {
+    await writeMcpConfig(dir, { servers: [{
+      id: 'cloud-resource', templateId: 'same-slug', label: 'Installed', transport: 'http',
+      url: 'https://installed.invalid/mcp', enabled: true,
+      cloudResourceId: 'cloud-resource', cloudHomeWorkspaceId: 'shared',
+      workspaceId: 'shared', ownerMemberId: 'alice',
+    }] });
+    await setToken(dir, 'cloud-resource', {
+      accessToken: 'audit-fake-access-token', tokenType: 'Bearer', savedAt: 1,
+    });
+    hdw.put.mockResolvedValue({ ok: true });
+    const r = mcpFixture(true, 'shared', 'alice', 'alice');
+    const res = await r.call('delete', '/api/workspace/mcp/cloud/:resourceId', {
+      params: { resourceId: 'cloud-resource' },
+      query: { community: '1' },
+      headers: { 'x-od-workspace-id': 'shared', 'x-od-workspace-member-id': 'alice' },
+    });
+
+    expect(res.body).toEqual({ ok: true, originalPreserved: true });
+    expect(hdw.delete).not.toHaveBeenCalled();
+    expect((await readMcpConfig(dir)).servers.map((server) => server.id)).toEqual(['cloud-resource']);
+    await expect(getToken(dir, 'cloud-resource')).resolves.toMatchObject({
+      accessToken: 'audit-fake-access-token',
+    });
   });
 });

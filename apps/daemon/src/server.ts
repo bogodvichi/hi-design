@@ -348,6 +348,7 @@ import {
   workspaceTeamSkillBindingActivationFence,
   workspaceTeamSkillBindingResourceId,
 } from './skills/workspace-team-binding.js';
+import { uninstallCloudSkillFromWorkspace } from './skills/cloud-uninstall.js';
 import { validateLinkedDirs } from './linked-dirs.js';
 import { installFromTarget, uninstallById, sanitizeRepoName } from './library-install.js';
 import {
@@ -8025,6 +8026,13 @@ const designSystemBackingProjects = new Map<string, string>();
      }
      await hdwCloudClient.removeResource(workspaceId, resourceId);
     skillsTeamList.invalidate(scope);
+    await uninstallCloudSkillFromWorkspace({
+      db,
+      userSkillsDir: USER_SKILLS_DIR,
+      workspaceId,
+      resourceId,
+      deleteVersion: teamResourceVersions.delete,
+    });
     res.json({ ok: true });
   } catch (err: any) {
     res.status(500).json({ error: err instanceof Error ? err.message : 'cloud skill delete failed' });
