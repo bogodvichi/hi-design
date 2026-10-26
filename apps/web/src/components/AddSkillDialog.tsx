@@ -176,13 +176,33 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
         setToast({ message: result.error.message || t('pluginsView.importFailed'), tone: 'error' });
         return;
       }
+      // A Personal Skill must be usable immediately after being added.
+      // Upload creates the owned cloud source; install materializes that source
+      // locally under the authenticated Personal Workspace.
+      if (!result.resourceId || !workspaceContext) {
+        window.dispatchEvent(new CustomEvent('personal:skill-refresh'));
+        setToast({ message: 'Skill 已保存，但无法自动添加；请在个人所有列表中手动添加。', tone: 'error' });
+        return;
+      }
+      const installRes = await fetch(
+        `/api/workspace/skills/cloud/${encodeURIComponent(result.resourceId)}/install?home_workspace_id=${encodeURIComponent(workspaceContext.workspaceId)}`,
+        { method: 'POST', headers: workspaceProjectHeaders(workspaceContext) },
+      );
+      const installBody = await installRes.json().catch(() => ({})) as { installed?: boolean; error?: string; message?: string };
+      window.dispatchEvent(new CustomEvent('personal:skill-refresh'));
+      if (!installRes.ok || installBody.installed !== true) {
+        setToast({
+          message: `Skill 已保存，但自动添加失败：${installBody.message || installBody.error || '请在个人所有列表中手动添加'}`,
+          tone: 'error',
+        });
+        return;
+      }
       setToast({
         message: t('personalScope.importAndShareSuccess', { name: result.title }),
         tone: 'success',
       });
       onClose();
       setUploadSource(null);
-      window.dispatchEvent(new CustomEvent('personal:skill-refresh'));
     } finally {
       setBusy(null);
     }

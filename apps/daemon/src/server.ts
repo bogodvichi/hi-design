@@ -333,6 +333,7 @@ import {
 } from './skills.js';
 import { resolveSkillCatalogScope } from './skill-catalog-scope.js';
 import { listCloudResourceRecords } from './collab/cloud-resource-catalog.js';
+import { isCommunityPublicationCopy } from './collab/community-resource-copy.js';
 import {
   prepareSkillFromZip,
   prepareSkillFromFiles,
@@ -8007,10 +8008,22 @@ const designSystemBackingProjects = new Map<string, string>();
     if (!cloudResource) {
       return res.status(404).json({ error: 'CLOUD_SKILL_NOT_FOUND' });
     }
-     if (cloudResource.ownerMemberId !== scope.principal.memberId) {
-       return res.status(403).json({ error: 'NOT_RESOURCE_OWNER', message: 'you can only delete resources you own' });
+      if (cloudResource.ownerMemberId !== scope.principal.memberId) {
+        return res.status(403).json({ error: 'NOT_RESOURCE_OWNER', message: 'you can only delete resources you own' });
+      }
+     // Protect the original record created by older direct-publication flows.
+     if (req.query.community === '1' && !isCommunityPublicationCopy(cloudResource.metadata)) {
+       if (cloudResource.scope !== 'public') return res.status(409).json({ error: 'NOT_COMMUNITY_PUBLICATION' });
+       const { readSsoConfigFile } = await import('./http/hik_logins/hicoo.js');
+       const restored = await hdwPut(
+         `/workspaces/${encodeURIComponent(workspaceId)}/resources/${encodeURIComponent(resourceId)}`,
+         { metadata: cloudResource.metadata ?? {}, scope: null },
+         readSsoConfigFile(RUNTIME_DATA_DIR)?.cookies ?? [],
+       );
+       if (!restored) return res.status(502).json({ error: 'HDW cloud community removal failed' });
+       return res.json({ ok: true, originalPreserved: true });
      }
-    await hdwCloudClient.removeResource(workspaceId, resourceId);
+     await hdwCloudClient.removeResource(workspaceId, resourceId);
     skillsTeamList.invalidate(scope);
     res.json({ ok: true });
   } catch (err: any) {
@@ -8119,7 +8132,7 @@ const designSystemBackingProjects = new Map<string, string>();
      });
      // Invalidate the cached team listing so the client's refetch sees it.
      skillsTeamList.invalidate(scope);
-      res.json({ shared: true, title: prepared.title, category, version: result?.version });
+      res.json({ shared: true, title: prepared.title, category, version: result?.version, resourceId: result?.resourceId, localId: prepared.slug });
    } catch (err: any) {
      res.status(500).json({ error: err instanceof Error ? err.message : 'cloud skill upload failed' });
    } finally {

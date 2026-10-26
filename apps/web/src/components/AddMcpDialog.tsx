@@ -145,22 +145,32 @@ export function AddMcpDialog({ open, onClose, scope, onAdded, workspaceContext: 
         throw new Error(body?.error ?? 'Create failed');
       }
 
-      const data = await res.json().catch(() => null) as { template?: { id?: string; label?: string; transport?: string } } | null;
-      const tpl = data?.template;
-      if (tpl?.id) {
-        onAdded?.({
-          id: tpl.id,
-          label: tpl.label ?? tpl.id,
-          transport: (tpl.transport === 'sse' || tpl.transport === 'http' ? tpl.transport : 'stdio') as McpTransport,
-        });
-      }
-
-     setToast({
-       message: t('personalScope.mcpFormSuccess'),
-       tone: 'success',
-      });
-      onClose();
-      window.dispatchEvent(new CustomEvent('personal:mcp-refresh'));
+       const data = await res.json().catch(() => null) as {
+         template?: { id?: string; resourceId?: string; label?: string; transport?: string };
+       } | null;
+       const tpl = data?.template;
+       // Cloud creation alone does not connect the MCP to the local runtime.
+       // The server ID returned by install is the one the composer can use.
+       if (!tpl?.resourceId || !workspaceContext) {
+         window.dispatchEvent(new CustomEvent('personal:mcp-refresh'));
+         throw new Error('MCP 已保存，但无法自动连接；请在个人所有列表中手动连接。');
+       }
+       const installRes = await fetch(
+         `/api/workspace/mcp/cloud/${encodeURIComponent(tpl.resourceId)}/install?home_workspace_id=${encodeURIComponent(workspaceContext.workspaceId)}`,
+         { method: 'POST', headers: submitHeaders },
+       );
+       const installed = await installRes.json().catch(() => ({})) as { installed?: boolean; serverId?: string; message?: string; error?: string };
+       window.dispatchEvent(new CustomEvent('personal:mcp-refresh'));
+       if (!installRes.ok || installed.installed !== true || !installed.serverId) {
+         throw new Error(`MCP 已保存，但自动连接失败：${installed.message || installed.error || '请在个人所有列表中手动连接'}`);
+       }
+       onAdded?.({
+         id: installed.serverId,
+         label: tpl.label ?? tpl.id ?? installed.serverId,
+         transport: (tpl.transport === 'sse' || tpl.transport === 'http' ? tpl.transport : 'stdio') as McpTransport,
+       });
+       setToast({ message: t('personalScope.mcpFormSuccess'), tone: 'success' });
+       onClose();
     } catch (err: any) {
       setToast({
         message: err?.message ?? String(err),

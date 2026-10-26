@@ -505,7 +505,7 @@ useEffect(() => {
     setDeletingId(skill.resourceId);
     try {
       const res = await fetch(
-        '/api/workspace/skills/cloud/' + encodeURIComponent(skill.resourceId),
+        '/api/workspace/skills/cloud/' + encodeURIComponent(skill.resourceId) + (mode === 'square' ? '?community=1' : ''),
         {
           method: 'DELETE',
           headers: workspaceHeaders(skill.homeWorkspaceId ?? workspaceId, skill.homeWorkspaceMemberId ?? workspaceMemberId, skill.homeWorkspaceType ?? workspaceType),

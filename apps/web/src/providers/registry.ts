@@ -558,7 +558,7 @@ export async function uploadSkillToCloud(
   scope?: string,
   category?: SkillCategory,
   logoKey?: string,
-): Promise<{ ok: true; title: string } | { error: SkillImportError }> {
+): Promise<{ ok: true; title: string; resourceId?: string; localId?: string } | { error: SkillImportError }> {
   try {
     const form = new FormData();
     if ('zip' in files) {
@@ -593,8 +593,8 @@ export async function uploadSkillToCloud(
         },
       };
     }
-    const json = (await resp.json()) as { shared?: boolean; title?: string };
-    return { ok: true, title: json.title ?? 'skill' };
+    const json = (await resp.json()) as { shared?: boolean; title?: string; resourceId?: string; localId?: string };
+    return { ok: true, title: json.title ?? 'skill', resourceId: json.resourceId, localId: json.localId };
   } catch (err) {
     return {
       error: {

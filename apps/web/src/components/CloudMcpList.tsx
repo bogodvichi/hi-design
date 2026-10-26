@@ -367,7 +367,7 @@ export function CloudMcpList({
     setDeletingId(tpl.resourceId);
     try {
       const res = await fetch(
-        '/api/workspace/mcp/cloud/' + encodeURIComponent(tpl.resourceId),
+        '/api/workspace/mcp/cloud/' + encodeURIComponent(tpl.resourceId) + (mode === 'square' ? '?community=1' : ''),
         {
           method: 'DELETE',
           headers: workspaceHeaders(tpl.homeWorkspaceId ?? workspaceId, tpl.homeWorkspaceMemberId ?? workspaceMemberId, tpl.homeWorkspaceType ?? workspaceType),

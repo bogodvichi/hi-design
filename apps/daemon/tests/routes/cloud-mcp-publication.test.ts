@@ -11,7 +11,10 @@ afterEach(async () => { if (server) await new Promise<void>((resolve) => server.
 async function fixture(owner = 'team-member') {
   const cloudFetch = vi.fn<typeof fetch>(async (input, init) => {
     const url = new URL(String(input));
-    if (init?.method === 'PUT') return Response.json({ code: 0 });
+    if (init?.method === 'POST' && url.pathname.endsWith('/resources')) {
+      return Response.json({ code: 0, data: { resource: { id: 'mcp-copy' } } });
+    }
+    if (init?.method === 'PUT') throw new Error('publishing must never mutate the original MCP');
     const record = { id: 'mcp-team', kind: 'mcp', ownerMemberId: owner, version: null, metadata: {
       id: 'same-name', label: 'Team MCP', transport: 'http', category: 'utilities', url: 'https://mcp.example',
       headers: { Authorization: 'private-value' }, headerFields: [{ key: 'Authorization', placeholder: 'private-value', secret: true }],
@@ -58,20 +61,24 @@ describe('cloud team MCP community publication', () => {
     expect(await response.json()).toMatchObject({ templates: [{ resourceId: 'mcp-team', homeWorkspaceId: 'team', homeWorkspaceMemberId: 'team-member', canManage: true }] });
     if (mine) expect(f.cloudFetch.mock.calls.some(([url]) => String(url).includes('owner_member_id=team-member'))).toBe(true);
   });
-  it('publishes the original owned cloud MCP without creating another record or exposing credential values', async () => {
+  it('creates an independent public MCP copy without modifying the owned source or leaking credentials', async () => {
     const f = await fixture(); const response = await f.publish();
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ ok: true });
-    const update = f.cloudFetch.mock.calls.find(([, init]) => init?.method === 'PUT');
-    expect(String(update?.[0])).toContain('/workspaces/team/resources/mcp-team');
-    const body = JSON.parse(String(update?.[1]?.body));
-    expect(body).toMatchObject({ scope: 'public', metadata: { id: 'same-name', description: 'Published description' } });
+    expect(await response.json()).toMatchObject({ ok: true, resourceId: 'mcp-copy' });
+    const create = f.cloudFetch.mock.calls.find(([url, init]) =>
+      init?.method === 'POST' && String(url).endsWith('/resources'));
+    expect(String(create?.[0])).toContain('/workspaces/team/resources');
+    const body = JSON.parse(String(create?.[1]?.body));
+    expect(body).toMatchObject({
+      kind: 'mcp', ownerMemberId: 'team-member', scope: 'public',
+      metadata: { id: 'same-name', description: 'Published description', communitySourceResourceId: 'mcp-team' },
+    });
     expect(JSON.stringify(body)).not.toContain('private-value');
-    expect(f.cloudFetch.mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
+    expect(f.cloudFetch.mock.calls.some(([, init]) => init?.method === 'PUT' || init?.method === 'DELETE')).toBe(false);
   });
   it('refuses to publish a resource owned by another team member', async () => {
     const f = await fixture('other-member');
     expect((await f.publish()).status).toBe(403);
-    expect(f.cloudFetch.mock.calls.some(([, init]) => init?.method === 'PUT')).toBe(false);
+    expect(f.cloudFetch.mock.calls.some(([, init]) => init?.method === 'PUT' || init?.method === 'POST')).toBe(false);
   });
 });

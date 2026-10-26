@@ -1,5 +1,6 @@
 import type { CloudResourceWorkspaceContext, WorkspaceCollabContext, WorkspaceDirectoryItem } from '@open-design/contracts';
 import type { HdwCloudClient, HdwResourceRecord } from '../integrations/hdw-cloud.js';
+import { isCommunityPublicationCopy } from './community-resource-copy.js';
 
 export async function listCloudResourceRecords(input: {
   kind: 'skill' | 'mcp';
@@ -22,7 +23,9 @@ export async function listCloudResourceRecords(input: {
   const groups = await Promise.all(workspaces.map(async (workspace) => {
     const ownerMemberId = mine ? workspace.workspaceMemberId : input.ownerMemberId;
     const resources = await input.client.listResources(workspace.workspaceId, input.kind, ownerMemberId, input.scope);
-    return resources.map((resource) => ({
+    // Personal/team libraries contain owned sources, not the detached
+    // community publication copies (including copies later unpublished).
+    return resources.filter((resource) => input.scope === 'public' || !isCommunityPublicationCopy(resource.metadata)).map((resource) => ({
       ...resource,
       homeWorkspaceId: workspace.workspaceId,
       homeWorkspaceMemberId: workspace.workspaceMemberId,

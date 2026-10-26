@@ -14,6 +14,7 @@ import type { HdwCloudClient } from './integrations/hdw-cloud.js';
 import type { RouteDeps } from './server-context.js';
 import { listCloudResourceRecords } from './collab/cloud-resource-catalog.js';
 import { publishCloudMcp, sanitizeCloudMcpMetadata } from './collab/cloud-mcp-publication.js';
+import { isCommunityPublicationCopy } from './collab/community-resource-copy.js';
 import { TeamResourceShareForbiddenError } from './collab/team-resource-share.js';
 
 export interface RegisterMcpRoutesDeps extends RouteDeps<'http' | 'paths' | 'mcp' | 'cloudResourceAccess'> {
@@ -548,8 +549,8 @@ export function registerMcpRoutes(app: Express, ctx: RegisterMcpRoutesDeps) {
       const authority = await ctx.cloudResourceAccess.resolveScope(req);
       if (!authority.ok) return res.status(authority.status).json({ error: authority.code, message: authority.message });
       if (!hdwClient) return res.status(503).json({ error: 'HDW_CLOUD_NOT_CONFIGURED' });
-      await publishCloudMcp(hdwClient, String(req.params.resourceId), authority.scope, req.body ?? {});
-      res.json({ ok: true });
+      const published = await publishCloudMcp(hdwClient, String(req.params.resourceId), authority.scope, req.body ?? {});
+      res.json({ ok: true, resourceId: published.resourceId });
     } catch (error) {
       if (error instanceof TeamResourceShareForbiddenError) return res.status(403).json({ error: 'NOT_RESOURCE_OWNER' });
       res.status(500).json({ error: error instanceof Error ? error.message : 'cloud MCP publish failed' });
@@ -699,10 +700,22 @@ try {
     if (!record) {
       return res.status(404).json({ error: 'CLOUD_MCP_NOT_FOUND' });
     }
-    if (record.ownerMemberId !== authority.scope.principal.memberId) {
-      return res.status(403).json({ error: 'NOT_RESOURCE_OWNER', message: 'you can only delete resources you own' });
-    }
-     const data = await hdwDelete(
+     if (record.ownerMemberId !== authority.scope.principal.memberId) {
+       return res.status(403).json({ error: 'NOT_RESOURCE_OWNER', message: 'you can only delete resources you own' });
+     }
+     // Legacy community posts pointed to the owner's original record.
+     // A community delete only retracts that publication, preserving the original.
+     if (req.query.community === '1' && !isCommunityPublicationCopy(record.metadata)) {
+       if (record.scope !== 'public') return res.status(409).json({ error: 'NOT_COMMUNITY_PUBLICATION' });
+       const restored = await hdwPut(
+         `/workspaces/${encodeURIComponent(workspaceId)}/resources/${encodeURIComponent(resourceId)}`,
+         { metadata: record.metadata ?? {}, scope: null },
+         getSsoCookies(),
+       );
+       if (!restored) return res.status(502).json({ error: 'HDW cloud community removal failed' });
+       return res.json({ ok: true, originalPreserved: true });
+     }
+      const data = await hdwDelete(
        `/workspaces/${encodeURIComponent(workspaceId)}/resources/${encodeURIComponent(resourceId)}`,
        getSsoCookies(),
      );

@@ -1,6 +1,7 @@
 import type { PublishCloudMcpRequest } from '@open-design/contracts';
 import type { HdwCloudClient } from '../integrations/hdw-cloud.js';
-import { TeamResourceShareForbiddenError, type TeamResourceRequestScope } from './team-resource-share.js';
+import type { TeamResourceRequestScope } from './team-resource-share.js';
+import { publishCommunityResourceCopy } from './community-resource-copy.js';
 
 /** Public MCP records contain connection templates, never stored credential values. */
 export async function publishCloudMcp(
@@ -8,21 +9,17 @@ export async function publishCloudMcp(
   resourceId: string,
   scope: TeamResourceRequestScope,
   input: PublishCloudMcpRequest,
-): Promise<void> {
-  if (!scope.canShare) throw new TeamResourceShareForbiddenError();
-  const { teamId, memberId } = scope.principal;
-  const record = await client.getResource(teamId, resourceId);
-  if (!record) throw new Error('cloud MCP not found');
-  if (record.kind !== 'mcp' || record.ownerMemberId !== memberId) throw new TeamResourceShareForbiddenError();
-  const source = record.metadata ?? {};
-  const metadata = sanitizeCloudMcpMetadata(source);
-  if (typeof input.description === 'string') metadata.description = input.description;
-  if (typeof input.logoKey === 'string') metadata.logoKey = input.logoKey;
-  const { payload } = await client.request<{ code: number; msg?: string }>(
-    'PUT', `/api/workspaces/${encodeURIComponent(teamId)}/resources/${encodeURIComponent(resourceId)}`,
-    { metadata, scope: 'public' }, { 'x-hdw-workspace-id': teamId },
-  );
-  if (payload.code !== 0) throw new Error(payload.msg || 'cloud MCP publish failed');
+): Promise<{ resourceId: string }> {
+  const published = await publishCommunityResourceCopy({
+    client, sourceResourceId: resourceId, scope, kind: 'mcp',
+    metadata: (source) => {
+      const metadata = sanitizeCloudMcpMetadata(source.metadata ?? {});
+      if (typeof input.description === 'string') metadata.description = input.description;
+      if (typeof input.logoKey === 'string') metadata.logoKey = input.logoKey;
+      return metadata;
+    },
+  });
+  return { resourceId: published.resourceId };
 }
 
 export function sanitizeCloudMcpMetadata(source: Record<string, unknown>): Record<string, unknown> {

@@ -177,7 +177,7 @@ export function registerTeamResourceShareRoutes(
         }
         const result = await share.publishCloud(id, scope, skillMetadata);
         invalidateListTeam(scope);
-        return res.json({ shared: true, version: result.version });
+        return res.json({ shared: true, version: result.version, resourceId: result.resourceId });
       }
      if (deps.authorizeShare && !await deps.authorizeShare(id, scope)) {
        return res.status(403).json({ error: 'WORKSPACE_RESOURCE_SHARE_DENIED' });

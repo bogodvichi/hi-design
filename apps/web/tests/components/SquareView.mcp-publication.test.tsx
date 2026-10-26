@@ -16,7 +16,7 @@ vi.mock('../../src/components/PublishDialog', () => ({
 }));
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 describe('community MCP publication request', () => {
-  it('uses the original cloud resource and selected source identity without duplicate creation', async () => {
+  it('passes the original source identity for server-side independent community copy creation', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url === '/api/workspace/directory') return Response.json({ items: [{ workspaceId: 'personal', workspaceMemberId: 'personal-member', workspaceType: 'team', isDefaultTeam: true }] });

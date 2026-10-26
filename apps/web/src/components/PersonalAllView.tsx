@@ -847,10 +847,10 @@ const [showCreateGroup, setShowCreateGroup] = useState(false);
       </div>
 
      {activeTab === 'skill' ? (
-       <AddSkillDialog open={skillDialogOpen} onClose={() => setSkillDialogOpen(false)} />
+       <AddSkillDialog open={skillDialogOpen} onClose={() => setSkillDialogOpen(false)} workspaceContext={workspaceContext} />
      ) : null}
      {activeTab === 'mcp' ? (
-       <AddMcpDialog open={mcpDialogOpen} onClose={() => setMcpDialogOpen(false)} />
+       <AddMcpDialog open={mcpDialogOpen} onClose={() => setMcpDialogOpen(false)} workspaceContext={workspaceContext} />
      ) : null}
     </section>
  );
