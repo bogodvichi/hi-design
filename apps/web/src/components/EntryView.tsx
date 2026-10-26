@@ -31,7 +31,7 @@ import type {
 // hero + recent projects + plugins). Keeping the redesign in a sibling
 // component lets future rebases against upstream `EntryView` (props,
 // connector lifecycle, exported helpers) stay close to a no-op here.
-import { EntryShell, type ProjectTitleHint } from './EntryShell';
+import { EntryShell, type ProjectMutationSource, type ProjectTitleHint } from './EntryShell';
 import type { IntegrationTab } from './IntegrationsView';
 import type { CreateInput, ImportClaudeDesignOutcome } from './NewProjectPanel';
 import {
@@ -135,7 +135,7 @@ interface Props {
     projectTitleHint?: ProjectTitleHint,
   ) => Promise<boolean> | boolean | void;
   onOpenLiveArtifact: (projectId: string, artifactId: string) => void;
-  onDeleteProject: (id: string) => void;
+  onDeleteProject: (id: string, source?: ProjectMutationSource) => Promise<boolean | void> | boolean | void;
  onDuplicateProject?: (
    id: string,
    options?: {
@@ -147,7 +147,7 @@ interface Props {
  onRenameProject: (id: string, name: string) => void;
  onCopyProject?: (
    id: string,
-   options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
+   options?: { sourceWorkspaceId?: string; targetWorkspaceId?: string; targetFolderId?: string | null },
  ) => Promise<void> | void;
  onCopySharedProject?: (id: string, homeWorkspaceId: string) => Promise<string | void> | string | void;
   onProjectsRefresh?: () => Promise<void> | void;

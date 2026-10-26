@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { installMockOpenDesignHost } from '@open-design/host/testing';
 import {
+  applyProjectFileTextEdits,
   buildWorkspacePermissions,
   buildWorkspaceSeatSummary,
   type WorkspaceCollabContext,
@@ -850,6 +851,19 @@ describe('writeProjectTextFileDetailed', () => {
     vi.unstubAllGlobals();
   });
 
+  it('uploads only text edits when a base revision is provided', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => Response.json({ file: { name: 'preview.html' } }));
+    vi.stubGlobal('fetch', fetchMock);
+    const before = `<p style="color:red">标题🙂</p><!--${'x'.repeat(7 * 1024 * 1024)}-->`;
+    const result = await writeProjectTextFileDetailed('project-1', 'preview.html', before.replace('color:red', 'color:blue'), { baseSource: before });
+    expect(result.ok).toBe(true);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const payload = JSON.parse(String(fetchMock.mock.calls[0]![1]?.body));
+    expect(payload).not.toHaveProperty('content');
+    expect(applyProjectFileTextEdits(before, payload.patch.edits)).toBe(before.replace('color:red', 'color:blue'));
+    expect(new TextEncoder().encode(JSON.stringify(payload)).length).toBeLessThan(1024);
+  });
+
   it('surfaces daemon save errors instead of collapsing them to null', async () => {
     vi.stubGlobal(
       'fetch',
@@ -1301,6 +1315,15 @@ describe('fetchProjectFileText', () => {
   afterEach(() => {
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
+  });
+
+  it('revalidates the known saved text and reuses it on a bodyless 304', async () => {
+    const fetchMock = vi.fn(async () => new Response(null, { status: 304 }));
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(fetchProjectFileText('project-1', 'preview.html', { knownSource: '<p>Saved</p>' })).resolves.toBe('<p>Saved</p>');
+    expect(fetchMock).toHaveBeenCalledWith('/api/projects/project-1/files/preview.html', {
+      headers: { 'If-None-Match': expect.stringMatching(/^W\/"od-text-[a-f0-9]{64}"$/u) },
+    });
   });
 
   it('can bypass caches when fetching source text', async () => {

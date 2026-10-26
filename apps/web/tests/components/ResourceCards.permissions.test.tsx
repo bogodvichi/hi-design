@@ -24,7 +24,7 @@ function fixture(kind: 'skill' | 'mcp', mode: Mode, installed = false, owner = '
     if (url === '/api/workspace/skills/team') return Response.json({ resources: deleted ? [] : [{ id: 'test-resource', hubResourceId: 'cloud-resource', ownerMemberId: owner }] });
     if (url.startsWith('/api/workspace/mcp/cloud?')) return Response.json({ templates: deleted ? [] : [record] });
     if (url === '/api/skills') return Response.json({ skills: installed ? [{ id: 'test-resource' }] : [] });
-    if (url === '/api/mcp/servers') return Response.json({ servers: installed || mode === 'team' ? [{ id: 'test-resource', templateId: 'test-resource', workspaceId: mode === 'team' ? 'team' : undefined, ownerMemberId: owner, transport: 'http' }] : [] });
+    if (url === '/api/mcp/servers') return Response.json({ servers: installed || mode === 'team' ? [{ id: 'test-resource', templateId: 'test-resource', cloudResourceId: 'cloud-resource', cloudHomeWorkspaceId: 'team', workspaceId: 'team', ownerMemberId: owner, transport: 'http' }] : [] });
     return Response.json({});
   });
   vi.stubGlobal('fetch', fetchMock);
@@ -34,6 +34,25 @@ function fixture(kind: 'skill' | 'mcp', mode: Mode, installed = false, owner = '
 }
 
 describe.each(['skill', 'mcp'] as const)('%s card consistency and permissions', (kind) => {
+  it('does not expose sharing for a foreign public resource, while keeping the owner action', async () => {
+    const owned = { resourceId: 'owned', id: 'owned', localId: 'owned', title: 'Owned resource', label: 'Owned resource', ownerMemberId: 'me', canManage: true, homeWorkspaceId: 'team', transport: 'http', url: 'https://mcp.example' };
+    const foreign = { ...owned, resourceId: 'foreign', id: 'foreign', localId: 'foreign', title: 'Foreign resource', label: 'Foreign resource', ownerMemberId: 'other', canManage: false };
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes('/cloud?')) return Response.json(kind === 'skill' ? { skills: [foreign, owned] } : { templates: [foreign, owned] });
+      if (url === '/api/mcp/servers') return Response.json({ servers: [] });
+      if (url === '/api/skills') return Response.json({ skills: [] });
+      return Response.json({ resources: [] });
+    }));
+    const List = kind === 'skill' ? CloudSkillList : CloudMcpList;
+    render(<I18nProvider initial="zh-CN"><List workspaceId="team" workspaceMemberId="me" workspaceType="team" mode="square" scope="public" /></I18nProvider>);
+    const foreignCard = (await screen.findByText('Foreign resource')).closest('article')!;
+    expect(within(foreignCard).queryByRole('button', { name: '更多' })).toBeNull();
+    const ownerCard = (await screen.findByText('Owned resource')).closest('article')!;
+    fireEvent.click(within(ownerCard).getByRole('button', { name: '更多' }));
+    expect(within(ownerCard).getByRole('menuitem', { name: '分享' })).toBeTruthy();
+  });
+
   it('offers share removal and forwarding without original resource management', async () => {
     fixture(kind, 'shared');
     const card = (await screen.findByText('Test resource')).closest('article')!;

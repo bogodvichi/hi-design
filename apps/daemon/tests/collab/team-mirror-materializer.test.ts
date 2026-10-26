@@ -78,6 +78,34 @@ async function database() {
   return openDatabase(root, { dataDir: root });
 }
 
+it('restored ownership retains the catalog resource ID when materializing the owner project', async () => {
+  const db = await database();
+  insertProject(db, { id: input.id, name: 'Existing project', createdAt: 1, updatedAt: 1 });
+  ensureWorkspaceProject(db, { projectId: input.id, workspaceId: scope.workspaceId, visibility: 'team',
+    createdByWorkspaceMemberId: null, resourceHubResourceId: 'historic-resource', syncState: 'synced' });
+  materializePulledTeamMirror(db, { ...input, resourceHubResourceId: 'historic-resource' }, { ...scope, viewerMemberId: scope.ownerMemberId });
+  const row = getWorkspaceProjectByProjectId(db, input.id);
+  expect(row?.resourceHubResourceId).toBe('historic-resource');
+  expect(row?.createdByWorkspaceMemberId).toBe(scope.ownerMemberId);
+});
+
+it('a recipient keeps the durable catalog resource ID without becoming its owner', async () => {
+  const db = await database();
+  materializePulledTeamMirror(db, { ...input, resourceHubResourceId: 'historic-resource' }, scope);
+  const row = getWorkspaceProjectByProjectId(db, input.id);
+  expect(row?.resourceHubResourceId).toBe('historic-resource');
+  expect(row?.createdByWorkspaceMemberId).toBeNull();
+});
+
+it('first-open placeholder adopts the verified catalog resource without becoming writable', async () => {
+  const db = await database();
+  materializePulledTeamMirror(db, input, scope, undefined, { placeholder: true });
+  materializePulledTeamMirror(db, { ...input, resourceHubResourceId: 'historic-resource' }, scope);
+  const row = getWorkspaceProjectByProjectId(db, input.id);
+  expect(row?.resourceHubResourceId).toBe('historic-resource');
+  expect(row?.createdByWorkspaceMemberId).toBeNull();
+});
+
 describe('authorized team mirror SQLite materialization', () => {
   it('reads a newer legacy cursor after an authorized materialization', () => {
     expect(

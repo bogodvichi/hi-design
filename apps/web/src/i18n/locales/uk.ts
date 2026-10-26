@@ -5702,4 +5702,11 @@ export const uk: Dict = {
   'share.publishSuccessHint': "\"{name}\" has been published to the community.",
   'share.openInCommunity': "View in Community",
   'contentEmpty.title': "Поки немає вмісту",
+  "chat.compact.action": "Стиснути контекст",
+  "chat.compact.busy": "Стиснення контексту…",
+  "chat.compact.description": "Claude Code · Підсумок попередніх повідомлень",
+  "chat.compact.unavailable": "Виберіть Claude Code",
+  "chat.compact.noAttachments": "Видаліть вкладення перед запуском /compact.",
+  "chat.compact.failed": "Не вдалося стиснути контекст",
+  "chat.contextRecovery.title": "Відновлення контексту",
 };

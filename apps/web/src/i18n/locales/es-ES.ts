@@ -5702,4 +5702,11 @@ export const esES: Dict = {
   'share.publishSuccessHint': "\"{name}\" has been published to the community.",
   'share.openInCommunity': "View in Community",
   'contentEmpty.title': "Aún no hay contenido",
+  "chat.compact.action": "Comprimir contexto",
+  "chat.compact.busy": "Comprimiendo contexto…",
+  "chat.compact.description": "Claude Code · Resumir mensajes anteriores",
+  "chat.compact.unavailable": "Selecciona Claude Code",
+  "chat.compact.noAttachments": "Elimina los adjuntos antes de ejecutar /compact.",
+  "chat.compact.failed": "Error al comprimir el contexto",
+  "chat.contextRecovery.title": "Recuperar contexto",
 };

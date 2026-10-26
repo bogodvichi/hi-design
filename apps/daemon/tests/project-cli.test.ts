@@ -54,9 +54,17 @@ async function startProjectStubServer(): Promise<StubServer> {
       requests.push(captured);
 
       res.setHeader('content-type', 'application/json');
+      if (captured.method === 'POST' && captured.url === '/api/projects/project-1/files') {
+        res.end(JSON.stringify({ file: { name: 'nested/index.html' } }));
+        return;
+      }
       if (captured.method === 'PATCH' && captured.url === '/api/projects/project-1') {
         res.statusCode = 200;
         res.end(JSON.stringify({ project: { id: 'project-1', ...JSON.parse(raw) } }));
+        return;
+      }
+      if (captured.method === 'POST' && captured.url === '/api/projects/project-1/conversations/conv-1/compact') {
+        res.end(JSON.stringify({ compacted: true, message: { content: 'Context compacted' } }));
         return;
       }
       if (captured.method === 'POST' && captured.url === '/api/projects/source-project/design-system-copy') {
@@ -736,5 +744,40 @@ describe('od project CLI', () => {
       'x-od-workspace-member-id': 'member-1',
       'x-od-workspace-role': 'admin',
     });
+  });
+});
+
+
+describe('conversation compact CLI', () => {
+  it('uses the shared endpoint with workspace identity, JSON output, and a focus file', async () => {
+    stub = await startProjectStubServer();
+    tempRoot = mkdtempSync(join(tmpdir(), 'od-cli-compact-'));
+    const focusFile = join(tempRoot, 'focus.txt');
+    writeFileSync(focusFile, 'Keep layout constraints');
+    const result = await runCli(['conversation', 'compact', 'project-1', 'conv-1', '--prompt-file', focusFile,
+      '--workspace', 'ws-1', '--workspace-member', 'member-1', '--daemon-url', stub.baseUrl, '--json']);
+    expect(result.code).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({ compacted: true });
+    expect(stub.requests).toHaveLength(1);
+    expect(stub.requests[0]).toMatchObject({ method: 'POST', url: '/api/projects/project-1/conversations/conv-1/compact',
+      headers: { 'x-od-workspace-id': 'ws-1', 'x-od-workspace-member-id': 'member-1' } });
+    expect(JSON.parse(stub.requests[0]!.body)).toEqual({ instructions: 'Keep layout constraints' });
+  });
+});
+
+describe('incremental file CLI', () => {
+  it('sends a patch file through the same file endpoint with workspace identity', async () => {
+    stub = await startProjectStubServer();
+    tempRoot = mkdtempSync(join(tmpdir(), 'od-cli-file-patch-'));
+    const patch = { baseDigest: 'a'.repeat(64), edits: [{ start: 12, deleteCount: 3, insert: 'blue' }] };
+    const patchFile = join(tempRoot, 'patch.json');
+    writeFileSync(patchFile, JSON.stringify(patch));
+    const result = await runCli(['files', 'patch', 'project-1', 'nested/index.html', '--prompt-file', patchFile,
+      '--workspace', 'ws-1', '--workspace-member', 'member-1', '--daemon-url', stub.baseUrl, '--json']);
+    expect(result.code).toBe(0);
+    expect(JSON.parse(result.stdout)).toMatchObject({ file: { name: 'nested/index.html' } });
+    expect(stub.requests).toHaveLength(1);
+    expect(JSON.parse(stub.requests[0]!.body)).toEqual({ name: 'nested/index.html', patch, versionSource: 'manual' });
+    expect(stub.requests[0]!.headers).toMatchObject({ 'x-od-workspace-id': 'ws-1', 'x-od-workspace-member-id': 'member-1' });
   });
 });

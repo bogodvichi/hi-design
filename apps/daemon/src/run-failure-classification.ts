@@ -275,7 +275,7 @@ function isSessionResumeExpiredText(text: string): boolean {
 
 function promptTooLargeDetail(text: string): TrackingRunFailureDetail | null {
   if (
-    /\b(?:Payload Too Large|Request Entity Too Large|request entity too large|request body exceeds configured limit)\b/i.test(text) ||
+    /\b(?:Payload Too Large|Request Entity Too Large|request entity too large|request body (?:so|too) large|request body exceeds configured limit)\b/i.test(text) ||
     /\[code=request_too_large\]/i.test(text)
   ) {
     return 'request_too_large';

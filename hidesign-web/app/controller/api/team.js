@@ -30,6 +30,9 @@ class TeamController extends Controller {
     if (!member) {
       return { error: '操作者不在该团队中(无权限)' };
     }
+    if (!this.ctx.state?.user?.username || member.username !== this.ctx.state.user.username) {
+      return { error: '操作者与登录身份不一致' };
+    }
     if (!allowedRoles.includes(member.role)) {
       return { error: '权限不足' };
     }
@@ -478,6 +481,11 @@ class TeamController extends Controller {
         return;
       }
       const workspaceId = members[0].workspace_id;
+      if (members.some(member => member.workspace_id !== workspaceId)) {
+        ctx.status = 400;
+        ctx.body = { code: -1, msg: 'FAIL', error: '不能跨团队批量移除成员' };
+        return;
+      }
 
       // owner 或 admin 可移除成员
       const check = await this._checkOperator(operatorId, workspaceId, ['owner', 'admin']);

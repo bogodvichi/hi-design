@@ -52,11 +52,11 @@ interface Props {
     fileName?: string,
     projectTitleHint?: ProjectTitleHint,
   ) => Promise<boolean> | boolean | void;
-  onDeleteProject?: (id: string) => Promise<boolean | void> | boolean | void;
+  onDeleteProject?: (id: string, source?: ProjectMutationSource) => Promise<boolean | void> | boolean | void;
   onRenameProject?: (id: string, name: string, source?: ProjectMutationSource) => void;
   onCopyProject?: (
     id: string,
-    options?: { targetFolderId?: string | null },
+    options?: { sourceWorkspaceId?: string; targetFolderId?: string | null },
   ) => Promise<void> | void;
 }
 
@@ -230,11 +230,11 @@ function PersonalFoldersPanel({
    fileName?: string,
    projectTitleHint?: ProjectTitleHint,
  ) => Promise<boolean> | boolean | void;
- onDeleteProject?: (id: string) => Promise<boolean | void> | boolean | void;
+ onDeleteProject?: (id: string, source?: ProjectMutationSource) => Promise<boolean | void> | boolean | void;
  onRenameProject?: (id: string, name: string, source?: ProjectMutationSource) => void;
  onCopyProject?: (
    id: string,
-   options?: { targetFolderId?: string | null },
+   options?: { sourceWorkspaceId?: string; targetFolderId?: string | null },
  ) => Promise<void> | void;
 }) {
  const t = useT();
@@ -645,6 +645,7 @@ const renameFolderTitleId = useId();
           heading={t('entry.navDrafts')}
           space="drafts"
           homeWorkspaceId={workspaceId}
+          workspaceContextOverride={workspaceContext}
           onOpen={(id) => {
             const sourceProject = projects.find((project) => project.id === id);
             onOpenProject?.(
@@ -655,9 +656,12 @@ const renameFolderTitleId = useId();
                 : undefined,
             );
           }}
-          onDelete={onDeleteProject}
+          onDelete={onDeleteProject ? (id) => {
+            const sourceProject = projects.find((project) => project.id === id);
+            return sourceProject ? onDeleteProject(id, { project: sourceProject, workspaceContext }) : false;
+          } : undefined}
           onDuplicate={folderId && onCopyProject
-            ? (id) => onCopyProject(id, { targetFolderId: folderId })
+            ? (id) => onCopyProject(id, { sourceWorkspaceId: workspaceId ?? undefined, targetFolderId: folderId })
             : undefined}
          onRename={(id, name) => {
            const sourceProject = projects.find((project) => project.id === id);

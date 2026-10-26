@@ -32,7 +32,7 @@ function fixture(kind: 'skill' | 'mcp', mode: 'square' | 'shared', succeeds = tr
       if (!installed && localRefreshFails) return Response.json({}, { status: 503 });
       return url === '/api/skills'
         ? Response.json({ skills: installed ? [{ id: 'test-resource' }] : [] })
-        : Response.json({ servers: installed ? [{ id: 'local', templateId: 'test-resource' }] : [] });
+        : Response.json({ servers: installed ? [{ id: 'local', templateId: 'test-resource', cloudResourceId: 'cloud-resource', cloudHomeWorkspaceId: 'origin', workspaceId: 'personal', ownerMemberId: 'me' }] : [] });
     }
     return Response.json({});
   });

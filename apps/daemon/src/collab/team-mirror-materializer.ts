@@ -200,7 +200,7 @@ export function materializePulledTeamMirror(
         ? scope.viewerMemberId
         : null;
     const resourceHubResourceId =
-      receipt?.resourceId ?? projectResourceIdFor(input.id, ownerPrincipal);
+      receipt?.resourceId ?? input.resourceHubResourceId ?? projectResourceIdFor(input.id, ownerPrincipal);
     if (
       receipt &&
       receipt.resourceId !== projectResourceIdFor(input.id, ownerPrincipal)
@@ -275,6 +275,13 @@ export function materializePulledTeamMirror(
        (
          existingBinding.createdByWorkspaceMemberId === expectedCreator
          || (
+           !receipt && !options.placeholder
+           && scope.ownerMemberId === scope.viewerMemberId
+           && existingBinding.createdByWorkspaceMemberId === null
+           && input.resourceHubResourceId !== undefined
+           && existingBinding.resourceHubResourceId === input.resourceHubResourceId
+         )
+         || (
            !options.placeholder
            && existingIsPlaceholder
            && existingBinding.createdByWorkspaceMemberId === null
@@ -282,7 +289,8 @@ export function materializePulledTeamMirror(
        ) &&
        (
          existingBinding.resourceHubResourceId === null ||
-         existingBinding.resourceHubResourceId === resourceHubResourceId
+         existingBinding.resourceHubResourceId === resourceHubResourceId ||
+         (!receipt && !options.placeholder && existingIsPlaceholder && Boolean(input.resourceHubResourceId))
        )
      );
     if (!compatibleBinding) {

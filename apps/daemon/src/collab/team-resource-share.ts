@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 // Team resource sharing. A member with publish rights promotes a personal
 // resource — a design system, plugin, or skill — into the team scope: the
 // resource's directory is packed and pushed by the login-backed Vela CLI under
@@ -26,6 +27,7 @@ import {
 } from './hdw-http-team-projects.js';
 import {
   createHdwCloudClientFromEnv,
+  HdwCloudError,
   type HdwCloudClient,
 } from '../integrations/hdw-cloud.js';
 
@@ -179,8 +181,18 @@ export function createTeamResourceShareService(
         principal?.teamId
           ? `${options.idPrefix}-${sanitizeResourceIdSegment(principal.teamId)}`
           : options.idPrefix;
-      const resourceIdFor = (id: string, principal?: ResourceHubPrincipal | null) =>
-        `${scopedIdPrefixFor(principal)}-${sanitizeResourceIdSegment(id)}`;
+      const resourceIdFor = async (id: string, principal?: ResourceHubPrincipal | null) => {
+        if (!principal) throw new TeamResourceShareForbiddenError();
+        const legacyId = `${scopedIdPrefixFor(principal)}-${sanitizeResourceIdSegment(id)}`;
+        let legacy;
+        try { legacy = await client.getResource(principal.teamId, legacyId); }
+        catch (error) {
+          if (!(error instanceof HdwCloudError) || ![403, 404].includes(error.status)) throw error;
+        }
+        // Keep existing URLs and shares for the proven owner only.
+        if (legacy?.ownerMemberId === principal.memberId && legacy.kind === options.kind) return legacy.id;
+        return `${options.idPrefix}-${createHash('sha256').update(JSON.stringify([principal.teamId, principal.memberId, id])).digest('hex')}`;
+      };
       const adapter: ResourcePublishAdapter = createHdwHttpResourceAdapter({
         resolveProjectDir: options.resolveDir,
         ...(options.describeResource ? { describeProject: options.describeResource } : {}),
@@ -226,7 +238,7 @@ export function createTeamResourceShareService(
           ...(options?.resourceScope ? { resourceScope: options.resourceScope } : {}),
           ...(options?.metadata ? { metadata: options.metadata } : {}),
         });
-         if (result) sharedFor(principal.teamId).add(resourceId);
+         if (result) sharedFor(JSON.stringify([principal.teamId, principal.memberId])).add(resourceId);
          return result;
        },
         async unshare(resourceId, scope) {
@@ -236,7 +248,7 @@ export function createTeamResourceShareService(
             throw new TeamResourceShareForbiddenError();
           }
           await adapter.unpublish?.({ projectId: resourceId, principal });
-          sharedFor(principal.teamId).delete(resourceId);
+          sharedFor(JSON.stringify([principal.teamId, principal.memberId])).delete(resourceId);
           return true;
         },
         async sharedIds(scope) {
@@ -244,7 +256,7 @@ export function createTeamResourceShareService(
         },
         async sharedResources(scope, readOptions) {
           const { principal } = scope;
-          const shared = sharedFor(principal.teamId);
+          const shared = sharedFor(JSON.stringify([principal.teamId, principal.memberId]));
           try {
             const out = await (options.run ?? defaultRun)(
               ['shared', '--json'],
@@ -256,23 +268,26 @@ export function createTeamResourceShareService(
               ? []
               : parseSharedResourceRecords(out, options.kind, options.idPrefix);
             const byId = new Map<string, TeamResourceShareRecord>();
-            for (const resource of legacyResources) byId.set(resource.id, resource);
-            for (const resource of scopedResources) byId.set(resource.id, resource);
-            const resources = [...byId.values()];
+            for (const resource of legacyResources) byId.set(resource.hubResourceId ?? resource.id, resource);
+            for (const resource of scopedResources) byId.set(resource.hubResourceId ?? resource.id, resource);
+            const resources = [...byId.values()].map(resource => {
+              if (resource.ownerMemberId === principal.memberId || !resource.hubResourceId) return resource;
+              return { ...resource, id: resource.hubResourceId, hubResourceId: resource.hubResourceId };
+            });
             shared.clear();
             for (const resource of resources) shared.add(resource.id);
             return resources
               .map((resource) => {
-                resource.canUnshare = canManageSharedResource(principal, resource);
+                resource.canUnshare = resource.ownerMemberId === principal.memberId;
                 return resource;
               })
               .sort((a, b) => a.id.localeCompare(b.id));
           } catch (error) {
             if (readOptions?.authoritative) throw error;
-            return [...shared].sort().map((id) => ({ id, canUnshare: true }));
+            return [...shared].sort().map((id) => ({ id, canUnshare: false }));
           }
         },
-        isShared: (resourceId, scope) => sharedFor(scope.principal.teamId).has(resourceId),
+        isShared: (resourceId, scope) => sharedFor(JSON.stringify([scope.principal.teamId, scope.principal.memberId])).has(resourceId),
         configured: true,
       };
     }
@@ -501,7 +516,7 @@ export function parseSharedResourceRecords(
       enumerable: false,
       configurable: true,
     });
-    records.set(localId, record);
+    records.set(resource.id, record);
   }
   return [...records.values()].sort((a, b) => a.id.localeCompare(b.id));
 }

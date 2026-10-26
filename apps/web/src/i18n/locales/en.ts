@@ -5714,4 +5714,11 @@ export const en: Dict = {
   'share.publishSuccessHint': "\"{name}\" has been published to the community.",
   'share.openInCommunity': "View in Community",
  'contentEmpty.title': "No content yet",
+  "chat.compact.action": "Compact context",
+  "chat.compact.busy": "Compacting context…",
+  "chat.compact.description": "Claude Code · Summarize older messages in this session",
+  "chat.compact.unavailable": "Available when using Claude Code",
+  "chat.compact.noAttachments": "Remove attachments before running /compact.",
+  "chat.compact.failed": "Context compaction failed",
+  "chat.contextRecovery.title": "Context recovery",
 };

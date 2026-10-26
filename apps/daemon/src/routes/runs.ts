@@ -1,3 +1,4 @@
+import { activeClaudeCompactions } from '../runtimes/claude-compact.js';
 import type { Express, Request, Response } from 'express';
 import type Database from 'better-sqlite3';
 import fs from 'node:fs';
@@ -1737,6 +1738,10 @@ export function registerRunRoutes(app: Express, ctx: RegisterRunRoutesDeps) {
       if (!authorization.ok) return;
       authorizedBoundMutation = authorization.authorizedBoundMutation;
     }
+    if (typeof requestBody.conversationId === 'string' && activeClaudeCompactions.has(requestBody.conversationId)) {
+      return sendApiError(res, 409, 'CONFLICT', 'Context compaction is running. Wait for it to finish.');
+    }
+
     let clarificationResolution;
     try {
       clarificationResolution = resolveClarificationContinuation(requestBody);
@@ -4422,6 +4427,10 @@ export function registerRunRoutes(app: Express, ctx: RegisterRunRoutesDeps) {
       if (!authorization.ok) return;
       authorizedBoundMutation = authorization.authorizedBoundMutation;
     }
+    if (typeof requestBody.conversationId === 'string' && activeClaudeCompactions.has(requestBody.conversationId)) {
+      return sendApiError(res, 409, 'CONFLICT', 'Context compaction is running. Wait for it to finish.');
+    }
+
     let clarificationResolution;
     try {
       clarificationResolution = resolveClarificationContinuation(requestBody);

@@ -183,6 +183,7 @@ vi.mock('../../src/components/ChatComposer', () => ({
     }));
     return (
       <>
+        <button type="button" data-testid="composer-compact" onClick={() => onSend?.('/compact Keep layout constraints', [], [])}>compact</button>
         <output data-testid="composer-streaming">{streaming ? 'streaming' : 'idle'}</output>
         <button
           type="button"
@@ -1799,3 +1800,68 @@ const conversations: Conversation[] = [
 const projectMetadata: ProjectMetadata = {
   kind: 'prototype',
 };
+
+
+describe('context size recovery shortcuts', () => {
+  function renderFailure(error = 'API Error: 400 {"error":"request body so large (1000)"}', agentId = 'claude') {
+    const onNewConversation = vi.fn();
+    const onNativeCommandComplete = vi.fn();
+    const onSend = vi.fn();
+    const props = {
+      projectKindForTracking: 'prototype' as const,
+      messages: [{ id: 'failed', role: 'assistant' as const, content: error, agentId, createdAt: 1, runStatus: 'failed' as const,
+        events: [{ kind: 'status' as const, label: 'error', detail: error, code: 'AGENT_EXECUTION_FAILED' }] }],
+      streaming: false, error: null, projectId: 'project-1', projectFiles: [],
+      onEnsureProject: async () => 'project-1', onSend, onStop: vi.fn(), conversations,
+      activeConversationId: 'conv-1', onSelectConversation: vi.fn(), onDeleteConversation: vi.fn(),
+      onNewConversation, onNativeCommandComplete, projectMetadata,
+      config: { mode: 'daemon', agentId } as NonNullable<Parameters<typeof ChatPane>[0]['config']>,
+    };
+    const view = render(<ChatPane {...props} />);
+    return { ...view, onNewConversation, onNativeCommandComplete, onSend };
+  }
+  it('places exactly two actions after the failure card and creates a blank conversation through the existing handler', () => {
+    const { onNewConversation, container } = renderFailure();
+    const actions = screen.getByTestId('context-recovery-actions');
+    expect(within(actions).getAllByRole('button')).toHaveLength(2);
+    const errorCard = container.querySelector('[data-user-action-card="run-recovery"]')!;
+    expect(errorCard.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(within(actions).getByRole('button', { name: 'chat.newConversation' }));
+    expect(onNewConversation).toHaveBeenCalledOnce();
+  });
+  it('runs the native command against the current conversation and records the returned message', async () => {
+    const message = { id: 'compacted', role: 'assistant', content: 'Context compacted', createdAt: 2 };
+    const fetch = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({ compacted: true, message })));
+    vi.stubGlobal('fetch', fetch);
+    const { onNativeCommandComplete, onSend } = renderFailure();
+    fireEvent.click(within(screen.getByTestId('context-recovery-actions')).getByRole('button', { name: 'chat.compact.action' }));
+    await waitFor(() => expect(onNativeCommandComplete).toHaveBeenCalledWith('conv-1', message));
+    expect(fetch.mock.calls.some(([url]) => String(url).endsWith('/conversations/conv-1/compact'))).toBe(true);
+    expect(onSend).not.toHaveBeenCalled();
+  });
+  it('routes a typed /compact command without the ordinary prompt pipeline', async () => {
+    const fetch = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) => new Response(JSON.stringify({ compacted: true, message: { id: 'native', role: 'assistant', content: 'Compacted', createdAt: 2 } })));
+    vi.stubGlobal('fetch', fetch);
+    const { onSend, onNativeCommandComplete } = renderFailure();
+    fireEvent.click(screen.getByTestId('composer-compact'));
+    await waitFor(() => expect(onNativeCommandComplete).toHaveBeenCalledOnce());
+    expect(JSON.parse(String((fetch.mock.calls.find(([url]) => String(url).endsWith('/compact'))?.[1] as RequestInit).body))).toMatchObject({ instructions: 'Keep layout constraints' });
+    expect(onSend).not.toHaveBeenCalled();
+  });
+  it('keeps new conversation available and shows the actual error when compaction fails', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: { message: 'request body so large (1000)' } }), { status: 422 })));
+    const { onNativeCommandComplete } = renderFailure();
+    fireEvent.click(within(screen.getByTestId('context-recovery-actions')).getByRole('button', { name: 'chat.compact.action' }));
+    await waitFor(() => expect(screen.getByTestId('compact-command-status').textContent).toContain('request body so large (1000)'));
+    expect(onNativeCommandComplete).not.toHaveBeenCalled();
+    expect(within(screen.getByTestId('context-recovery-actions')).getByRole('button', { name: 'chat.newConversation' }).hasAttribute('disabled')).toBe(false);
+  });
+  it('does not show context recovery for unrelated failures', () => {
+    renderFailure('API Error: 400 invalid tool schema');
+    expect(screen.queryByTestId('context-recovery-actions')).toBeNull();
+  });
+  it('does not offer executable Claude compaction for another runtime', () => {
+    renderFailure('Prompt is too long', 'codex');
+    expect(within(screen.getByTestId('context-recovery-actions')).getByRole('button', { name: 'chat.compact.action' }).hasAttribute('disabled')).toBe(true);
+  });
+});

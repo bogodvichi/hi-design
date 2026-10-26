@@ -35,6 +35,8 @@ export interface McpServerConfig {
   id: string;
   label?: string;
   templateId?: string;
+  cloudResourceId?: string;
+  cloudHomeWorkspaceId?: string;
   ownerMemberId?: string;
   workspaceId?: string;
   transport: McpTransport;
@@ -191,10 +193,17 @@ export function sanitizeMcpServer(raw: unknown): McpServerConfig | null {
   // in the config must have all three fields present and equal.
   next.label = id;
   next.templateId = id;
+  if (raw.cloudResourceId) {
+    if (typeof raw.templateId === 'string') next.templateId = raw.templateId;
+    if (typeof raw.label === 'string') next.label = raw.label;
+  }
   // Preserve workspace ownership metadata for scope filtering in the
   // composer "+" menu ("Mine" / "Team" tabs). Written during cloud install.
   if (typeof raw.ownerMemberId === 'string' && raw.ownerMemberId.trim()) {
     next.ownerMemberId = raw.ownerMemberId.trim();
+  }
+  for (const key of ['cloudResourceId', 'cloudHomeWorkspaceId'] as const) {
+    if (typeof raw[key] === 'string' && raw[key].trim()) next[key] = raw[key].trim();
   }
   if (typeof raw.workspaceId === 'string' && raw.workspaceId.trim()) {
     next.workspaceId = raw.workspaceId.trim();

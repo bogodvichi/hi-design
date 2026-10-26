@@ -3,8 +3,6 @@
 const { createKnex } = require('../../utils/knex.js');
 const crypto = require('node:crypto');
 
-const { getTeamMemberId } = require('../../utils/ids.js');
-
 const Controller = require('egg').Controller;
 
 // Team project catalog endpoints: list, get, upsert, remove, transfer.
@@ -19,9 +17,8 @@ const Controller = require('egg').Controller;
 //
 // Response format: raw JSON to match the daemon's HdwCloudClient.
 // The transfer resolves the TARGET workspace's member ID for the source
-// owner: it looks up the source member's username from workspace_members,
-// then derives the target member ID via getTeamMemberId(targetWorkspaceId,
-// username). This ensures the target resource and team_project rows bind
+// owner from the authenticated account's actual target workspace_members row.
+// This ensures the target resource and team_project rows bind
 // to the correct member identity in the target workspace, not the source
 // workspace's member ID.
 
@@ -54,6 +51,8 @@ class TeamProjectController extends Controller {
         .where({ 'tp.workspace_id': workspaceId })
         .select('tp.*', 'r.metadata as resource_metadata', 'wm.displayname as owner_displayname')
         .orderBy('tp.updated_at', 'desc');
+      if (ctx.state.personalOwnerMemberId) query.where('tp.owner_member_id', ctx.state.personalOwnerMemberId);
+      if (ctx.state.allowedProjectIds) query.whereIn('tp.project_id', ctx.state.allowedProjectIds);
       if (folderFilter === 'root') {
         query.whereNull('tp.folder_id');
       } else if (folderFilter) {
@@ -118,6 +117,25 @@ class TeamProjectController extends Controller {
     try {
       const k = this.getKnex();
 
+      const existing = await k('team_projects').where({ workspace_id: workspaceId, project_id: projectId }).first();
+      if (existing) {
+        if (body.ownerMemberId && body.ownerMemberId !== existing.owner_member_id) {
+          ctx.status = 409;
+          ctx.body = { error: 'team_project_owner_conflict' };
+          return;
+        }
+        // Older clients recompute the ID after transfers. Keep the durable
+        // resource reference and owner already stored by the transaction.
+        body.resourceId = existing.resource_id;
+        body.ownerMemberId = existing.owner_member_id;
+      }
+      const resource = await k('resources').where({ id: body.resourceId }).first();
+      if (resource && (resource.deleted_at || resource.workspace_id !== workspaceId || resource.owner_member_id !== body.ownerMemberId)) {
+        ctx.status = 409;
+        ctx.body = { error: 'resource_owner_conflict' };
+        return;
+      }
+
       // Ensure the resource exists (upsert with 'project' kind if new).
       const ownerMemberId = body.ownerMemberId || (body.metadata && body.metadata.ownerMemberId) || 'system';
       await k('resources')
@@ -137,7 +155,6 @@ class TeamProjectController extends Controller {
       const id = crypto.randomUUID();
       const mergeObj = {
         resource_id: body.resourceId,
-        owner_member_id: ownerMemberId,
       };
       if (body.displayName !== undefined) mergeObj.display_name = body.displayName;
       if (body.syncState) mergeObj.sync_state = body.syncState;
@@ -232,9 +249,15 @@ class TeamProjectController extends Controller {
     }
 
     const targetWorkspaceId = body.targetWorkspaceId;
+    if (targetWorkspaceId === sourceWorkspaceId) {
+      ctx.status = 400;
+      ctx.body = { error: 'invalid_request', message: 'Source and target workspace must differ' };
+      return;
+    }
 
     try {
-      const k = this.getKnex();
+      await this.getKnex().transaction(async k => {
+      await k.raw('SELECT pg_advisory_xact_lock(hashtextextended(?, 0))', [projectId]);
 
       // Find the source team project + its resource + current published version.
       const source = await k('team_projects as tp')
@@ -248,8 +271,20 @@ class TeamProjectController extends Controller {
         .first();
 
       if (!source) {
+        const previous = await k('project_transfers')
+          .where({ project_id: projectId, source_workspace_id: sourceWorkspaceId, target_workspace_id: targetWorkspaceId })
+          .orderBy('transferred_at', 'desc').first();
+        if (previous) {
+          const target = await k('team_projects').where({ workspace_id: targetWorkspaceId, project_id: projectId, resource_id: previous.target_resource_id }).first();
+          const current = target && await k('resource_versions').where({ id: target.last_synced_version_id }).first();
+          if (current) {
+            ctx.body = { resourceId: target.resource_id, workspaceId: targetWorkspaceId,
+              version: current.version, versionId: current.id, targetOwnerMemberId: target.owner_member_id };
+            return;
+          }
+        }
         ctx.status = 404;
-        ctx.body = { error: 'not_found', message: 'Source team project not found' };
+        ctx.body = { error: 'source_not_published', message: 'Source team project has not been published' };
         return;
       }
 
@@ -267,27 +302,16 @@ class TeamProjectController extends Controller {
       }
 
       const targetResourceId = `project-transfer-${crypto.randomUUID()}`;
-      // Use the caller-provided target owner member ID when available
-      // (the daemon resolves the target team's member ID before calling).
-      // Fall back to the server-side lookup only when the caller does not
-      // provide one — e.g. when the source owner's username must be
-      // resolved from workspace_members and then mapped via
-      // getTeamMemberId(targetWorkspaceId, username). This fallback is
-      // needed for shared space members that may not have a row in
-      // workspace_members.
-      let targetOwnerMemberId = body.targetOwnerMemberId;
-      if (!targetOwnerMemberId) {
-        const sourceMember = await k('workspace_members')
-          .where({
-            workspace_id: sourceWorkspaceId,
-            workspace_member_id: source.owner_member_id,
-          })
-          .select('username')
-          .first();
-        targetOwnerMemberId = sourceMember?.username
-          ? getTeamMemberId(targetWorkspaceId, sourceMember.username)
-          : source.owner_member_id; // fallback: keep source ID if member row missing
+      const targetMember = await k('workspace_members').where({
+        workspace_id: targetWorkspaceId, username: ctx.state.user.username,
+      }).first();
+      if (!targetMember || !['owner', 'admin', 'member'].includes(targetMember.role)
+        || (body.targetOwnerMemberId && body.targetOwnerMemberId !== targetMember.workspace_member_id)) {
+        ctx.status = 403;
+        ctx.body = { error: 'target_workspace_access_denied' };
+        return;
       }
+      const targetOwnerMemberId = targetMember.workspace_member_id;
 
       // Run the transfer in a transaction. The transaction returns the
       // targetVersionId so we can include it in the response.
@@ -364,6 +388,10 @@ class TeamProjectController extends Controller {
           .where({ id: source.id })
           .del();
 
+        // Shares follow the same project; ownership is not transferred to recipients.
+        await trx('workspace_project_shares').where({ project_id: projectId, home_workspace_id: sourceWorkspaceId })
+          .update({ home_workspace_id: targetWorkspaceId });
+
         // 9. Log the transfer.
         await trx('project_transfers').insert({
           id: crypto.randomUUID(),
@@ -386,6 +414,7 @@ class TeamProjectController extends Controller {
         versionId: committedVersionId,
         targetOwnerMemberId,
       };
+      });
     } catch (err) {
       ctx.logger.error('[hdw] transfer error:', err);
       ctx.status = 500;

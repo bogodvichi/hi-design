@@ -73,6 +73,7 @@ export interface UseConversationChatResult {
   loading: boolean;
   /** A failed authoritative transcript read must never be treated as empty history. */
   sendDisabled: boolean;
+  onNativeCommandComplete: (conversationId: string, message: ChatMessage) => void;
   onSend: (
     prompt: string,
     attachments: ChatAttachment[],
@@ -404,6 +405,11 @@ export function useConversationChat(
     error,
     loading,
     sendDisabled: messagesReadyScopeKey !== messageScopeKey,
+    onNativeCommandComplete: (targetConversationId: string, message: ChatMessage) => {
+      if (targetConversationId !== conversationId) return;
+      setMessages((current) => current.some((m) => m.id === message.id) ? current : [...current, message]);
+      setError(null);
+    },
     onSend,
     onRetry,
     onStop,

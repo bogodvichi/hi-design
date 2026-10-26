@@ -348,7 +348,7 @@ class ShareLinkController extends Controller {
       }
 
       const data = await blobStore.readBlob(row.html_digest);
-      const sourceHtml = data.toString('utf-8');
+      const sourceHtml = data.toString('utf-8').replace(/(\/blobs\/[0-9a-f]{64})(?![0-9a-f])/g, '$1?share_token=' + encodeURIComponent(token));
       const memberIds = this._commentMemberIds(sourceHtml);
       const avatars = await this._memberAvatarMap(k, row.workspace_id, memberIds);
       const html = this._injectMemberAvatars(sourceHtml, avatars);

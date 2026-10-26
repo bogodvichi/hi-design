@@ -65,13 +65,13 @@ function PersonalProjectsPanel({
     fileName?: string,
     projectTitleHint?: ProjectTitleHint,
   ) => Promise<boolean> | boolean | void;
-  onDeleteProject: (id: string) => Promise<boolean | void> | boolean | void;
+  onDeleteProject: (id: string, source?: ProjectMutationSource) => Promise<boolean | void> | boolean | void;
  onDuplicateProject?: (id: string) => Promise<void> | void;
  onRenameProject: (id: string, name: string, source?: ProjectMutationSource) => void;
  controlsPortalTarget?: HTMLElement | null;
  onCopyProject?: (
    id: string,
-   options?: { targetFolderId?: string | null },
+   options?: { sourceWorkspaceId?: string; targetFolderId?: string | null },
  ) => Promise<void> | void;
 }) {
   const t = useT();
@@ -492,6 +492,7 @@ function handleFolderClick(folder: PersonalFolderItem) {
          heading={t('entry.navDrafts')}
          space="drafts"
          homeWorkspaceId={workspaceId}
+          workspaceContextOverride={workspaceContext}
         onOpen={(id) => {
           const sourceProject = projects.find((project) => project.id === id);
           onOpenProject(
@@ -502,8 +503,13 @@ function handleFolderClick(folder: PersonalFolderItem) {
               : undefined,
           );
         }}
-         onDelete={onDeleteProject}
-         onDuplicate={onCopyProject ?? onDuplicateProject}
+         onDelete={onDeleteProject ? (id) => {
+            const sourceProject = projects.find((project) => project.id === id);
+            return sourceProject ? onDeleteProject(id, { project: sourceProject, workspaceContext }) : false;
+          } : undefined}
+         onDuplicate={onCopyProject
+            ? (id) => onCopyProject(id, { sourceWorkspaceId: workspaceId ?? undefined })
+            : onDuplicateProject}
         onRename={(id, name) => {
           const sourceProject = projects.find((project) => project.id === id);
           setProjects((prev) => prev.map((p) => p.id === id ? { ...p, name } : p));
@@ -681,10 +687,10 @@ export function PersonalAllView({
     fileName?: string,
     projectTitleHint?: ProjectTitleHint,
   ) => Promise<boolean> | boolean | void;
-  onDeleteProject: (id: string) => Promise<boolean | void> | boolean | void;
+  onDeleteProject: (id: string, source?: ProjectMutationSource) => Promise<boolean | void> | boolean | void;
   onDuplicateProject?: (id: string) => Promise<void> | void;
  onRenameProject: (id: string, name: string, source?: ProjectMutationSource) => void;
-  onCopyProject?: (id: string) => Promise<void> | void;
+  onCopyProject?: (id: string, options?: { sourceWorkspaceId?: string }) => Promise<void> | void;
 }) {
 const t = useT();
 type ScopeTab = 'projects' | 'skill' | 'mcp';

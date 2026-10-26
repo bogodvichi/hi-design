@@ -3,6 +3,7 @@ import express from 'express';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
@@ -31,6 +32,87 @@ beforeAll(async () => {
 afterAll(async () => {
   await Promise.resolve(shutdown?.());
   await new Promise<void>((resolve) => server.close(() => resolve()));
+});
+
+describe('project file request limits', () => {
+  it('applies a small patch to a seven MiB file and rejects stale concurrent edits', async () => {
+    const id = 'incremental-manual-edit';
+    const json = { 'Content-Type': 'application/json' };
+    const created = await fetch(`${baseUrl}/api/projects`, {
+      method: 'POST', headers: json,
+      body: JSON.stringify({ id, name: 'Incremental edit', metadata: { kind: 'prototype' } }),
+    });
+    expect(created.ok).toBe(true);
+    const original = `<html><body><p style="color:red">标题🙂</p><!--${'x'.repeat(7 * 1024 * 1024)}--></body></html>`;
+    const url = `${baseUrl}/api/projects/${id}/files`;
+    const seeded = await fetch(url, { method: 'POST', headers: json, body: JSON.stringify({ name: 'large.html', content: original }) });
+    expect(seeded.ok).toBe(true);
+    await seeded.arrayBuffer();
+    const body = JSON.stringify({
+      name: 'large.html', versionSource: 'manual', versionLabel: 'Change text color',
+      patch: { baseDigest: createHash('sha256').update(original).digest('hex'), edits: [{ start: original.indexOf('red'), deleteCount: 3, insert: 'blue' }] },
+    });
+    expect(Buffer.byteLength(body)).toBeLessThan(1024);
+    const responses = await Promise.all([
+      fetch(url, { method: 'POST', headers: json, body }),
+      fetch(url, { method: 'POST', headers: json, body }),
+    ]);
+    expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
+    for (const response of responses) await response.arrayBuffer();
+    const reloaded = await fetch(`${url}/large.html`);
+    expect(await reloaded.text()).toBe(original.replace('color:red', 'color:blue'));
+    const currentEtag = `W/"od-text-${createHash('sha256').update(original.replace('color:red', 'color:blue')).digest('hex')}"`;
+    const unchanged = await fetch(`${url}/large.html`, { headers: { 'If-None-Match': currentEtag } });
+    expect(unchanged.status).toBe(304);
+    expect(await unchanged.text()).toBe('');
+    const changed = await fetch(`${url}/large.html`, { headers: { 'If-None-Match': `W/"od-text-${createHash('sha256').update(original).digest('hex')}"` } });
+    expect(changed.status).toBe(200);
+    expect(await changed.text()).toBe(original.replace('color:red', 'color:blue'));
+    const invalid = await fetch(url, { method: 'POST', headers: json, body: JSON.stringify({
+      name: 'large.html', patch: {
+        baseDigest: createHash('sha256').update(original.replace('color:red', 'color:blue')).digest('hex'),
+        edits: [{ start: 0, deleteCount: original.length + 10, insert: '' }],
+      },
+    }) });
+    expect(invalid.status).toBe(400);
+    await invalid.arrayBuffer();
+    expect(await (await fetch(`${url}/large.html`)).text()).toBe(original.replace('color:red', 'color:blue'));
+    const versions = await fetch(`${url}/large.html/versions`);
+    expect(((await versions.json()) as { versions: unknown[] }).versions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ source: 'manual', label: 'Change text color', current: true }),
+    ]));
+  });
+
+  it('saves and reloads a seven MiB HTML edit through the production file endpoint', async () => {
+    const id = 'large-manual-edit-body';
+    const created = await fetch(`${baseUrl}/api/projects`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, name: 'Large manual edit', metadata: { kind: 'prototype' } }),
+    });
+    expect(created.ok).toBe(true);
+    const content = `<!doctype html><html><body><p>Edited line</p><!--${'x'.repeat(7 * 1024 * 1024)}--></body></html>`;
+    const saved = await fetch(`${baseUrl}/api/projects/${id}/files`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'large.html', content, versionSource: 'manual' }),
+    });
+    expect(saved.status).toBe(200);
+    await saved.arrayBuffer();
+    const reloaded = await fetch(`${baseUrl}/api/projects/${id}/files/large.html`);
+    expect(reloaded.ok).toBe(true);
+    expect(await reloaded.text()).toBe(content);
+  });
+
+  it('keeps the four MiB JSON limit on adjacent non-upload routes', async () => {
+    const response = await fetch(`${baseUrl}/api/projects/large-manual-edit-body/files/rename`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'x'.repeat(4 * 1024 * 1024) }),
+    });
+    expect(response.status).toBe(413);
+    await response.arrayBuffer();
+  });
 });
 
 describe('server route inventory', () => {

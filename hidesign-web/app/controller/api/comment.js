@@ -147,6 +147,25 @@ class CommentController extends Controller {
       return;
     }
 
+    if (ctx.state.commentModeration) {
+      const moderation = ctx.state.commentModeration;
+      try {
+        const k = this.getKnex();
+        const rows = await k('project_comments')
+          .where({ team_id: teamId, project_id: projectId, id: moderation.id })
+          .update({ status: moderation.status, deleted: moderation.deleted,
+            updated_at: Date.now(), seq: k.raw('DEFAULT') })
+          .returning('seq');
+        ctx.status = rows.length ? 200 : 404;
+        ctx.body = rows.length ? { seq: Number(rows[0].seq) } : { error: 'comment_not_found' };
+      } catch (err) {
+        ctx.logger.error('Comment moderation error:', err);
+        ctx.status = 500;
+        ctx.body = { error: 'internal_error', message: err.message };
+      }
+      return;
+    }
+
     // Validate/coerce field values (mirrors mergeSyncedPreviewComment in db.ts)
     const status = VALID_STATUSES.has(comment.status) ? comment.status : 'open';
     const selectionKind = comment.selectionKind === 'pod' ? 'pod'
@@ -198,10 +217,9 @@ class CommentController extends Controller {
           ? (parent.root_comment_id || parent.parent_id || parent.id)
           : parentId;
       }
-      // Use DEFAULT for seq so the column's BIGSERIAL default (nextval) runs
-      // with the table owner's privileges, not the connecting user's. This
-      // avoids needing USAGE on the sequence. ON CONFLICT DO UPDATE SET
-      // seq = DEFAULT so edits also get a fresh seq for pull cursors.
+      // Both inserts and edits need a fresh sequence for pull cursors.
+      // DEFAULT calls nextval with the connecting role's privileges. Grant
+      // sequence USAGE or migrate an empty legacy relay with script 019.
       const result = await k.raw(
         `INSERT INTO project_comments (
           id, team_id, project_id, conversation_id, member_id,

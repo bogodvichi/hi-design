@@ -15,6 +15,17 @@ export async function publishCloudMcp(
   if (!record) throw new Error('cloud MCP not found');
   if (record.kind !== 'mcp' || record.ownerMemberId !== memberId) throw new TeamResourceShareForbiddenError();
   const source = record.metadata ?? {};
+  const metadata = sanitizeCloudMcpMetadata(source);
+  if (typeof input.description === 'string') metadata.description = input.description;
+  if (typeof input.logoKey === 'string') metadata.logoKey = input.logoKey;
+  const { payload } = await client.request<{ code: number; msg?: string }>(
+    'PUT', `/api/workspaces/${encodeURIComponent(teamId)}/resources/${encodeURIComponent(resourceId)}`,
+    { metadata, scope: 'public' }, { 'x-hdw-workspace-id': teamId },
+  );
+  if (payload.code !== 0) throw new Error(payload.msg || 'cloud MCP publish failed');
+}
+
+export function sanitizeCloudMcpMetadata(source: Record<string, unknown>): Record<string, unknown> {
   const metadata: Record<string, unknown> = {};
   for (const key of ['id', 'templateId', 'label', 'description', 'transport', 'category', 'authMode', 'homepage', 'example', 'command', 'args', 'url', 'logoKey', 'publisherName']) {
     if (source[key] !== undefined) metadata[key] = source[key];
@@ -28,11 +39,5 @@ export async function publishCloudMcp(
       ...(typeof field.secret === 'boolean' ? { secret: field.secret } : {}),
     }));
   }
-  if (typeof input.description === 'string') metadata.description = input.description;
-  if (typeof input.logoKey === 'string') metadata.logoKey = input.logoKey;
-  const { payload } = await client.request<{ code: number; msg?: string }>(
-    'PUT', `/api/workspaces/${encodeURIComponent(teamId)}/resources/${encodeURIComponent(resourceId)}`,
-    { metadata, scope: 'public' }, { 'x-hdw-workspace-id': teamId },
-  );
-  if (payload.code !== 0) throw new Error(payload.msg || 'cloud MCP publish failed');
+  return metadata;
 }

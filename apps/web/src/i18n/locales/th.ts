@@ -5702,4 +5702,11 @@ export const th: Dict = {
   'share.publishSuccessHint': "\"{name}\" has been published to the community.",
   'share.openInCommunity': "View in Community",
   'contentEmpty.title': "ยังไม่มีเนื้อหา",
+  "chat.compact.action": "บีบอัดบริบท",
+  "chat.compact.busy": "กำลังบีบอัดบริบท…",
+  "chat.compact.description": "Claude Code · สรุปข้อความก่อนหน้า",
+  "chat.compact.unavailable": "เลือก Claude Code",
+  "chat.compact.noAttachments": "นำไฟล์แนบออกก่อนเรียกใช้ /compact",
+  "chat.compact.failed": "บีบอัดบริบทไม่สำเร็จ",
+  "chat.contextRecovery.title": "กู้คืนบริบท",
 };

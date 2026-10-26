@@ -5702,4 +5702,11 @@ export const id: Dict = {
   'share.publishSuccessHint': "\"{name}\" has been published to the community.",
   'share.openInCommunity': "View in Community",
   'contentEmpty.title': "Belum ada konten",
+  "chat.compact.action": "Padatkan konteks",
+  "chat.compact.busy": "Memadatkan konteks…",
+  "chat.compact.description": "Claude Code · Ringkas pesan sebelumnya",
+  "chat.compact.unavailable": "Pilih Claude Code",
+  "chat.compact.noAttachments": "Hapus lampiran sebelum menjalankan /compact.",
+  "chat.compact.failed": "Gagal memadatkan konteks",
+  "chat.contextRecovery.title": "Pemulihan konteks",
 };

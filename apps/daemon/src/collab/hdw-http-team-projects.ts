@@ -19,6 +19,7 @@ function toTeamProject(record: HdwTeamProjectRecord): TeamProject | null {
   if (record.syncState !== 'synced') return null;
   const project: TeamProject = {
     projectId: record.projectId,
+    resourceId: record.resourceId,
     ownerMemberId: record.ownerMemberId,
     sharedAt: record.createdAt,
   };
@@ -131,8 +132,9 @@ export function createHdwHttpTeamProjectCatalog(
     async upsert(input, principal): Promise<void> {
       const workspaceId = principal?.teamId?.trim();
       if (!workspaceId) throw new Error('explicit workspace scope is required');
+    const existing = await client.getTeamProject(workspaceId, input.projectId);
     await client.upsertTeamProject(workspaceId, input.projectId, {
-      resourceId: input.resourceId ?? projectResourceId(input.projectId),
+      resourceId: existing?.resourceId ?? input.resourceId ?? projectResourceId(input.projectId),
       ...(input.displayName?.trim() ? { displayName: input.displayName.trim() } : {}),
       ...(input.syncState ? { syncState: input.syncState } : {}),
       ...(input.lastSyncedVersionId?.trim()
@@ -176,8 +178,9 @@ export function createHdwHttpTeamProjectCatalogClient(
     ): Promise<VelaTeamProjectRecord | null> {
       const workspaceId = principal.teamId.trim();
       if (!workspaceId) throw new Error('explicit workspace scope is required');
+    const existing = await client.getTeamProject(workspaceId, input.projectId);
     const record = await client.upsertTeamProject(workspaceId, input.projectId, {
-      resourceId: input.resourceId,
+      resourceId: existing?.resourceId ?? input.resourceId,
       ...(input.displayName?.trim() ? { displayName: input.displayName.trim() } : {}),
       ...(input.syncState ? { syncState: input.syncState } : {}),
       ...(input.lastSyncedVersionId?.trim()

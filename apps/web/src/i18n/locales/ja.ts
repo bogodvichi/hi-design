@@ -5702,4 +5702,11 @@ export const ja: Dict = {
   'share.publishSuccessHint': "\"{name}\" has been published to the community.",
   'share.openInCommunity': "View in Community",
   'contentEmpty.title': "コンテンツはまだありません",
+  "chat.compact.action": "コンテキストを圧縮",
+  "chat.compact.busy": "コンテキストを圧縮中…",
+  "chat.compact.description": "Claude Code · 過去のメッセージを要約",
+  "chat.compact.unavailable": "Claude Code を選択してください",
+  "chat.compact.noAttachments": "/compact の実行前に添付を削除してください。",
+  "chat.compact.failed": "コンテキストの圧縮に失敗しました",
+  "chat.contextRecovery.title": "コンテキストの復旧",
 };

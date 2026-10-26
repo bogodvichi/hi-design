@@ -10,12 +10,13 @@ function createKnex(config = {}) {
         // for the full pool acquire timeout.
         connectionTimeoutMillis: 5000,
       },
-      // egg-scripts 默认按 CPU 核数启动 worker,每个 worker 各持一份单例 knex。
-      // max=10 × N 核仍远低于 PostgreSQL max_connections(53300),留有充足余量。
-      // min=2 保持预热连接,避免冷启动延迟;空闲后 30s 回收至 min。
+      // Each Egg worker owns a pool. Keep idle connections releasable and
+      // budget the aggregate across every service sharing this database.
+      // The start script uses four workers: at most eight connections/service.
+      // PostgreSQL 53300 is an error code, not the connection capacity.
       pool: {
-        min: 2,
-        max: 20,
+        min: 0,
+        max: 2,
         idleTimeoutMillis: 30000,
         // Propagate connection creation errors so callers see the real
         // failure (e.g. DB unreachable) instead of a generic pool timeout.

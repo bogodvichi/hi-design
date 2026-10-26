@@ -5871,4 +5871,11 @@ export interface Dict {
   'share.publishSuccessHint': string;
   'share.openInCommunity': string;
  'contentEmpty.title': string;
+  'chat.compact.action': string;
+  'chat.compact.busy': string;
+  'chat.compact.description': string;
+  'chat.compact.unavailable': string;
+  'chat.compact.noAttachments': string;
+  'chat.compact.failed': string;
+  'chat.contextRecovery.title': string;
 }

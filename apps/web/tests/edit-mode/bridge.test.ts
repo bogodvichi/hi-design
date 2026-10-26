@@ -12,6 +12,58 @@ import {
 } from '../../src/edit-mode/bridge';
 
 describe('manual edit bridge target normalization', () => {
+  it('selects each runtime-rendered line of text inside a recommendation card', () => {
+    const dom = new JSDOM(
+      `<div id="root" data-od-source-path="path-0"></div>${buildManualEditBridge(true)}`,
+      { runScripts: 'dangerously', url: 'http://localhost' },
+    );
+    dom.window.document.getElementById('root')!.innerHTML = '<div class="card"><span class="label">建议动作</span><h3 class="action">建议调整目标拆解</h3><p class="signal"><strong>经营信号</strong> <span class="detail">进入客流未达到当前目标</span></p><p class="related">关联图表：客流目标达成分析</p></div>';
+    const postMessage = vi.spyOn(dom.window.parent, 'postMessage');
+    try {
+      for (const selector of ['.label', '.action', '.detail', '.related']) {
+        postMessage.mockClear();
+        const el = dom.window.document.querySelector(selector)!;
+        el.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, cancelable: true }));
+        const selection = postMessage.mock.calls.find(([message]) => message.type === 'od-edit-select')?.[0];
+        expect(selection?.target).toMatchObject({ className: selector.slice(1), kind: 'text' });
+        dom.window.dispatchEvent(new dom.window.MessageEvent('message', { data: { type: 'od-edit-text-finish', commit: false } }));
+      }
+    } finally {
+      dom.window.close();
+    }
+  });
+
+  it('selects each runtime-rendered nested div instead of its source-authored root', () => {
+    const dom = new JSDOM(
+      `<div id="root" data-od-source-path="path-0"></div>${buildManualEditBridge(true)}`,
+      { runScripts: 'dangerously', url: 'http://localhost' },
+    );
+    const root = dom.window.document.getElementById('root')!;
+    root.innerHTML = '<div class="dashboard"><div class="card"><div class="chart"></div></div><div class="sidebar"></div></div>';
+    vi.spyOn(dom.window.Element.prototype, 'getBoundingClientRect').mockReturnValue({
+      x: 0, y: 0, width: 100, height: 80,
+      top: 0, right: 100, bottom: 80, left: 0,
+      toJSON: () => ({}),
+    });
+    const postMessage = vi.spyOn(dom.window.parent, 'postMessage');
+    for (const selector of ['.dashboard', '.card', '.chart', '.sidebar']) {
+      postMessage.mockClear();
+      const el = root.querySelector(selector)!;
+      el.dispatchEvent(new dom.window.Event('pointerover', { bubbles: true }));
+      el.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, cancelable: true }));
+      expect(postMessage).toHaveBeenCalledWith({
+        type: 'od-edit-select',
+        target: expect.objectContaining({ className: selector.slice(1), kind: 'container' }),
+      }, '*');
+    }
+    dom.window.document.dispatchEvent(new dom.window.Event('DOMContentLoaded'));
+    const bulk = postMessage.mock.calls.find(([message]) => message.type === 'od-edit-targets')?.[0];
+    expect(bulk.targets.map((target: { className: string }) => target.className)).toEqual([
+      '', 'dashboard', 'card', 'chart', 'sidebar',
+    ]);
+    dom.window.close();
+  });
+
   it('prefers explicit data-od-id over generated ids', () => {
     const dom = new JSDOM('<main><h1 data-od-id="hero">Title</h1></main>');
     const target = dom.window.document.querySelector('h1')!;
@@ -245,14 +297,14 @@ describe('manual edit bridge target normalization', () => {
     dom.window.close();
   });
 
-  it('does not expose runtime-only path targets unless they carry a source marker', () => {
+  it('allows runtime text selection while distinguishing it from source-mapped text', () => {
     const dom = new JSDOM('<main><h1>Runtime title</h1><p data-od-source-path="path-0-1">Source text</p></main>');
     const runtimeTitle = dom.window.document.querySelector('h1')!;
     const sourceText = dom.window.document.querySelector('p')!;
 
     expect(isSourceMappableManualEditElement(runtimeTitle)).toBe(false);
     expect(isSourceMappableManualEditElement(sourceText)).toBe(true);
-    expect(isMeaningfulManualEditElement(runtimeTitle, { width: 80, height: 24 })).toBe(false);
+    expect(isMeaningfulManualEditElement(runtimeTitle, { width: 80, height: 24 })).toBe(true);
   });
 
   it('omits selected outerHTML from bulk target posts but includes it for selected targets', () => {
@@ -260,7 +312,7 @@ describe('manual edit bridge target normalization', () => {
 
     expect(bridge).toContain('targets.push(targetFrom(nodes[i], false))');
     expect(bridge).toContain('targetFrom(el, true)');
-    expect(bridge).toContain('if (!isSourceMappable(nodes[i])) continue;');
+    expect(bridge).toContain('if (!isEditableTarget(nodes[i])) continue;');
     expect(bridge).toContain('return el;');
     expect(bridge).not.toContain('if (isPrimaryTarget(el)) return el;');
   });
@@ -294,7 +346,7 @@ describe('manual edit bridge target normalization', () => {
     dom.window.close();
   });
 
-  it('ignores runtime-inserted elements that are not present in source', () => {
+  it('selects runtime-inserted text using a separate runtime address', () => {
     const dom = new JSDOM(
       `<main data-od-source-path="path-0"><h1 data-od-source-path="path-0-0">Source title</h1></main>${buildManualEditBridge(true)}`,
       { runScripts: 'dangerously', url: 'http://localhost' },
@@ -308,11 +360,11 @@ describe('manual edit bridge target normalization', () => {
     runtimePill.dispatchEvent(new dom.window.Event('pointerover', { bubbles: true }));
     runtimePill.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true, cancelable: true }));
 
-    expect(runtimePill.hasAttribute('data-od-runtime-id')).toBe(false);
-    expect(postMessage).not.toHaveBeenCalledWith(expect.objectContaining({
-      type: 'od-edit-hover',
-    }), '*');
-    expect(postMessage).toHaveBeenCalledWith({ type: 'od-edit-background' }, '*');
+    expect(runtimePill.getAttribute('data-od-runtime-id')).toMatch(/^runtime:/);
+    expect(postMessage).toHaveBeenCalledWith({
+      type: 'od-edit-select',
+      target: expect.objectContaining({ className: 'status-pill ready', kind: 'text' }),
+    }, '*');
 
     dom.window.close();
   });

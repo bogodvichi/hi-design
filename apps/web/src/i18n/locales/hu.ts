@@ -5702,4 +5702,11 @@ export const hu: Dict = {
   'share.publishSuccessHint': "\"{name}\" has been published to the community.",
   'share.openInCommunity': "View in Community",
   'contentEmpty.title': "Még nincs tartalom",
+  "chat.compact.action": "Kontextus tömörítése",
+  "chat.compact.busy": "Kontextus tömörítése…",
+  "chat.compact.description": "Claude Code · Korábbi üzenetek összefoglalása",
+  "chat.compact.unavailable": "Válaszd a Claude Code-ot",
+  "chat.compact.noAttachments": "A /compact futtatása előtt távolítsd el a mellékleteket.",
+  "chat.compact.failed": "A kontextus tömörítése sikertelen",
+  "chat.contextRecovery.title": "Kontextus helyreállítása",
 };

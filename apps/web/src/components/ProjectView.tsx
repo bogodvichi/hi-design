@@ -9899,6 +9899,12 @@ const coalescedCoverRefresh = useCoalescedCallback(
     projectFiles,
   ]);
 
+  const handleNativeCommandComplete = useCallback((conversationId: string, message: ChatMessage) => {
+    if (messagesConversationIdRef.current !== conversationId) return;
+    setMessages((current) => current.some((m) => m.id === message.id) ? current : [...current, message]);
+    setError(null);
+  }, []);
+
   const handleNewConversation = useCallback(async () => {
     if (projectMutationReadOnly) return;
     if (creatingConversationRef.current) return;
@@ -10343,6 +10349,7 @@ const coalescedCoverRefresh = useCoalescedCallback(
             error: conversationLoadError ?? error,
             errorSourceAssistantId:
               conversationLoadError ? null : errorSourceAssistantId,
+            onNativeCommandComplete: handleNativeCommandComplete,
             onSend: handleComposerSend,
             onRetry: handleRetry,
             onStop: handleStop,
@@ -10366,6 +10373,7 @@ const coalescedCoverRefresh = useCoalescedCallback(
       handleAssistantFeedback,
       handleRetry,
       handleComposerSend,
+      handleNativeCommandComplete,
       handleStop,
       messages,
       removeQueuedChatSend,
@@ -11885,6 +11893,7 @@ const coalescedCoverRefresh = useCoalescedCallback(
                 projectMutationReadOnly ? undefined : handleForkFromMessage
               }
               forkingMessageId={forkingMessageId}
+              onNativeCommandComplete={handleNativeCommandComplete}
               onNewConversation={handleNewConversation}
               newConversationDisabled={newConversationDisabled}
               conversations={conversations}

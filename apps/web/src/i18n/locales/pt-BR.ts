@@ -5702,4 +5702,11 @@ export const ptBR: Dict = {
   'share.publishSuccessHint': "\"{name}\" has been published to the community.",
   'share.openInCommunity': "View in Community",
   'contentEmpty.title': "Ainda não há conteúdo",
+  "chat.compact.action": "Compactar contexto",
+  "chat.compact.busy": "Compactando contexto…",
+  "chat.compact.description": "Claude Code · Resumir mensagens anteriores",
+  "chat.compact.unavailable": "Selecione Claude Code",
+  "chat.compact.noAttachments": "Remova os anexos antes de executar /compact.",
+  "chat.compact.failed": "Falha ao compactar contexto",
+  "chat.contextRecovery.title": "Recuperar contexto",
 };

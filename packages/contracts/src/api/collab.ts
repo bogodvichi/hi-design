@@ -186,6 +186,8 @@ export interface CollabSyncIntentResponse extends OkResponse {
  */
 export interface TeamProject {
   projectId: string;
+  /** Durable resource ID returned by the authoritative catalog; ownership repair does not rename content. */
+  resourceId?: string;
   ownerMemberId: string;
   sharedAt: string;
   /** Display name stored on the team resource index; avoids pulling the tree just

@@ -726,10 +726,6 @@
   background: transparent;
   box-shadow: none;
 }
-.op-todo .op-card-head {
-  border-bottom: 0;
-  background: transparent;
-}
 .op-todo .op-title {
   letter-spacing: 0.02em;
   text-transform: uppercase;
@@ -792,35 +788,6 @@
   overflow: hidden;
 }
 
-/*
- * Todo cards always expose a clickable expand/collapse affordance. Completed
- * task lists start collapsed to their progress summary, but remain available
- * for review. Removing the bottom border in the collapsed state keeps the
- * compact summary from looking like an empty disclosure with a hanging line.
- */
-.op-todo .op-todo-head {
-  display: flex;
-  align-items: stretch;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--bg-panel);
-  overflow: hidden;
-}
-.op-todo .op-todo-toggle {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1;
-  min-width: 0;
-  padding: 8px 12px;
-  background: transparent;
-  border: 0;
-  cursor: pointer;
-  text-align: left;
-  font: inherit;
-  color: inherit;
-}
 .op-todo .op-todo-icon {
   display: inline-flex;
   align-items: center;
@@ -834,28 +801,6 @@
   color: var(--green);
   font-size: 11px;
   font-weight: 600;
-}
-.op-todo .op-todo-continue {
-  display: inline-flex;
-  align-items: center;
-  margin: 6px 10px 6px 0;
-  padding: 2px 12px;
-  font-size: 12px;
-  font-weight: 500;
-  border: 1px solid var(--green-border);
-  padding: 2px 10px;
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-pill);
-  background: var(--bg-panel);
-  color: var(--text-strong);
-  font: inherit;
-  font-size: 11px;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.op-todo .op-todo-continue:hover {
-  background: var(--bg-subtle);
 }
 .op-todo-current {
   margin-left: 8px;

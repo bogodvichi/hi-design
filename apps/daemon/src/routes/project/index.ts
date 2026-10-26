@@ -1,3 +1,4 @@
+import { HdwCloudError } from '../../integrations/hdw-cloud.js';
 import { createHash, randomUUID } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import path from 'node:path';
@@ -18,6 +19,8 @@ import {
 } from '@open-design/contracts/runtime/preview-guards';
 import {
   automaticStrategyTaskProfileForProjectMetadata,
+  applyProjectFileTextEdits,
+  projectFileTextPatchSchema,
   type ChatSessionMode,
   type LocalCatalogScope,
   type PluginManifest,
@@ -2629,8 +2632,8 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
     | 'unavailable';
 
   /**
-   * Repair a stale local project home before a move that originates from a
-   * team-catalog card.
+   * Repair a stale local project home before a mutation from a team-catalog
+   * card. Copy and delete must observe the same home as folder moves.
    *
    * A completed cross-workspace transfer can be visible in HDW before this
    * daemon's single `workspace_projects` row is rebound. The card therefore
@@ -2640,7 +2643,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
    * deliberately creator-only: workspace owner/admin authority must not turn
    * a different member's stale binding into a cross-workspace move grant.
    */
-  async function reconcileCatalogMoveBinding(
+  async function reconcileCatalogProjectBinding(
     projectId: string,
     ctx: WorkspaceProjectContext,
   ): Promise<CatalogMoveBindingReconciliation> {
@@ -2650,7 +2653,9 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       !existing
       || (
         existing.workspaceId === ctx.workspaceId
-        && existingVisibility === 'team'
+        // A default-team catalog entry may be a recipient share of a Personal
+        // project. Its read-only access must not replace the author's home.
+        && (existingVisibility === 'team' || (existingVisibility === 'personal' && ctx.isDefaultTeam === true))
       )
     ) {
       return 'unchanged';
@@ -2874,6 +2879,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
     const binding = getWorkspaceProjectByProjectId(db, projectId);
     if (
       !project
+      || isUnmaterializedSharedPlaceholder(project)
       || !binding
       || binding.workspaceId !== ctx.workspaceId
       || binding.visibility !== 'team'
@@ -2937,11 +2943,31 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
     } catch {
       return 'unavailable';
     }
-    if (isUnmaterializedSharedPlaceholder(getProject(db, projectId))) {
+    const materialized = getProject(db, projectId);
+    if (!materialized || isUnmaterializedSharedPlaceholder(materialized)) {
       return 'unavailable';
     }
     return 'materialized';
   }
+
+  /** Catalog cards may precede local content or an externally transferred home.
+   * Reuse the verified catalog/pull path before evaluating local mutations. */
+  async function prepareTeamCatalogProject(
+    projectId: string,
+    context: WorkspaceProjectContext,
+    operation: 'owner' | 'copy' = 'owner',
+  ): Promise<CatalogOnlyOwnerMaterialization> {
+    const project = getProject(db, projectId);
+    if (!project || isUnmaterializedSharedPlaceholder(project)) {
+      return operation === 'copy'
+        ? materializeTeamProjectForCopy(projectId, context)
+        : materializeCatalogOnlyOwnerProject(projectId, context);
+    }
+    const reconciliation = await reconcileCatalogProjectBinding(projectId, context);
+    return reconciliation === 'denied' || reconciliation === 'unavailable'
+      ? reconciliation : 'materialized';
+  }
+
  function catalogEnrichedLocalTeamProjectSummary(
    summary: any,
    remote: VelaTeamProjectRecord,
@@ -3827,10 +3853,8 @@ async function requestTeamVisibility(projectIds: string[], ctx: WorkspaceProject
       } catch { /* best-effort: blob may already exist or cover may be absent */ }
     }
     if (visibility === 'team') {
-       // When transferring to a different workspace, use the metadata-only
-       // transfer path if the collab runtime supports it. Falls back to
-       // a full publish inside the runtime when the adapter doesn't support
-       // transferToWorkspace.
+       // Cross-workspace moves require an atomic server transfer. Only an
+       // explicitly unpublished source may be published before retrying it.
       if (targetWorkspaceId && targetWorkspaceId !== ctx.workspaceId) {
         if (!collabSync.requestTeamTransfer) {
           throw new Error('cross-workspace transfer is not supported by the current resource transport');
@@ -3844,13 +3868,17 @@ async function requestTeamVisibility(projectIds: string[], ctx: WorkspaceProject
           teamId: targetWorkspaceId,
           ...(targetMemberId ? { memberId: targetMemberId } : {}),
         };
-         const result = await collabSync.requestTeamTransfer(
-           projectId,
-           ctx.workspaceId,
-           targetWorkspaceId,
-           principal,
-           effectiveCoverDigest,
-         );
+         let result;
+         try {
+           result = await collabSync.requestTeamTransfer(projectId, ctx.workspaceId, targetWorkspaceId, principal, effectiveCoverDigest);
+         } catch (error) {
+           if (!(error instanceof HdwCloudError) || error.code !== 'source_not_published') throw error;
+           // A local personal project may never have been uploaded. Publish
+           // under the verified source identity, then use the atomic transfer.
+           // Timeouts/permission failures must never enter this branch.
+           await collabSync.requestTeamShare(projectId, workspaceProjectPrincipal(ctx), effectiveCoverDigest);
+           result = await collabSync.requestTeamTransfer(projectId, ctx.workspaceId, targetWorkspaceId, principal, effectiveCoverDigest);
+         }
          if (result?.targetOwnerMemberId) {
            transferMeta = { targetOwnerMemberId: result.targetOwnerMemberId };
          }
@@ -3958,13 +3986,15 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
             (item) =>
               item.workspaceId === targetWorkspaceId
               && item.memberStatus === 'active'
-              && item.lifecycleState !== 'deleted',
+              && item.lifecycleState === 'active'
+              && item.role !== 'guest',
           )
         : directory.items.find(
             (item) =>
               item.isDefaultTeam === true
               && item.memberStatus === 'active'
-              && item.lifecycleState !== 'deleted',
+              && item.lifecycleState === 'active'
+              && item.role !== 'guest',
           );
       if (!target) return null;
       return {
@@ -4047,34 +4077,12 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
        ? req.body.coverDigest.trim() || null
        : null;
       let project = getProject(db, req.params.projectId);
-      if (ctx.workspaceType === 'team' && project && !isUnmaterializedSharedPlaceholder(project)) {
-        const bindingReconciliation = await reconcileCatalogMoveBinding(project.id, ctx);
-        if (bindingReconciliation === 'denied') {
+      if (ctx.workspaceType === 'team') {
+        const preparation = await prepareTeamCatalogProject(req.params.projectId, ctx);
+        if (preparation === 'denied') {
           return sendApiError(res, 403, 'PROJECT_DELETE_FORBIDDEN', 'project move forbidden');
         }
-        if (bindingReconciliation === 'unavailable') {
-          return sendApiError(
-            res,
-            503,
-            'UPSTREAM_UNAVAILABLE',
-            'team project catalog is temporarily unavailable',
-            { retryable: true },
-          );
-        }
-      }
-      if (
-        visibility === 'personal'
-        && ctx.workspaceType === 'team'
-        && (!project || isUnmaterializedSharedPlaceholder(project))
-      ) {
-        const materialization = await materializeCatalogOnlyOwnerProject(
-          req.params.projectId,
-          ctx,
-        );
-        if (materialization === 'denied') {
-          return sendApiError(res, 403, 'PROJECT_DELETE_FORBIDDEN', 'project move forbidden');
-        }
-        if (materialization === 'unavailable') {
+        if (preparation === 'unavailable') {
           return sendApiError(
             res,
             503,
@@ -4083,9 +4091,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
             { retryable: true },
           );
         }
-        if (materialization === 'materialized') {
-          project = getProject(db, req.params.projectId);
-        }
+        project = getProject(db, req.params.projectId);
       }
       const locations = await configuredProjectLocations();
      if (!project || !projectVisibleForLocations(project, locations)) return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'not found');
@@ -4180,6 +4186,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
         && (!targetWorkspaceId || targetWorkspaceId === ctx.workspaceId)
       ) {
         const personal = await resolveTargetWorkspaceIdentity();
+        if (!personal) throw new Error('TARGET_WORKSPACE_ACCESS_DENIED');
        if (personal) {
          resolvedTargetWorkspaceId = personal.workspaceId;
          targetMemberId = personal.workspaceMemberId;
@@ -4209,6 +4216,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
             resolvedTargetContext = targetIdentity.context;
           }
         }
+        if (!targetMemberId || !resolvedTargetContext) throw new Error('TARGET_WORKSPACE_ACCESS_DENIED');
         const transferMeta = await requestTeamVisibility([project.id], ctx, visibility, resolvedTargetWorkspaceId, targetMemberId, coverDigest);
         if (!targetMemberId && transferMeta?.targetOwnerMemberId) {
           targetMemberId = transferMeta.targetOwnerMemberId;
@@ -4306,7 +4314,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
             ...(coverDigests.length > 0 ? { coverDigests } : {}),
           });
           if (shareResult && collabSync.requestTeamShare) {
-            const principal = workspaceProjectPrincipal(ctx);
+            const principal = workspaceProjectPrincipal(resolvedTargetContext ?? ctx);
             try { await collabSync.requestTeamShare(project.id, principal, cd, targetFolderId); } catch { /* best-effort */ }
           }
         }
@@ -4399,6 +4407,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
         && (!batchTargetWorkspaceId || batchTargetWorkspaceId === ctx.workspaceId)
       ) {
         const personal = await resolveTargetWorkspaceIdentity();
+        if (!personal) throw new Error('TARGET_WORKSPACE_ACCESS_DENIED');
         if (personal) {
          batchResolvedTargetWorkspaceId = personal.workspaceId;
          batchTargetMemberId = personal.workspaceMemberId;
@@ -4441,37 +4450,26 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
          }
        }
      });
-     moveMany(projectIds);
-     if (!batchIsFolderOnly) {
-     try {
-      const batchTransferMeta = await requestTeamVisibility(projectIds, ctx, visibility, batchResolvedTargetWorkspaceId, batchTargetMemberId, batchCoverDigest);
-       // If the directory did not resolve a target member ID, use the
-       // server-authoritative target owner member ID as a fallback and
-       // re-patch the rows. When the directory already resolved the
-       // correct member ID, keep it — the directory is the local
-       // source of truth for workspace memberships.
-       if (!batchTargetMemberId && batchTransferMeta?.targetOwnerMemberId) {
-         batchTargetMemberId = batchTransferMeta.targetOwnerMemberId;
-         for (const id of projectIds) {
-           const summary = summaries.find((item: any) => item?.id === id);
-           const movePatch = workspaceProjectMovePatch(
-             id, summary, ctx, visibility,
-             batchResolvedTargetWorkspaceId, batchTargetMemberId,
-           );
-           if (batchIsCrossWorkspace) {
-             rebindWorkspaceProject(db, id, movePatch);
-           } else {
-             updateWorkspaceProject(db, batchResolvedTargetWorkspaceId || ctx.workspaceId, id, movePatch);
-           }
+     if (batchIsCrossWorkspace) {
+       if (!batchTargetMemberId || !batchResolvedTargetContext) throw new Error('TARGET_WORKSPACE_ACCESS_DENIED');
+       for (const id of projectIds) {
+         try {
+           await requestTeamVisibility([id], ctx, visibility, batchResolvedTargetWorkspaceId, batchTargetMemberId, batchCoverDigest);
+           // Keep every confirmed transfer bound to its real destination,
+           // even when a later item in this batch fails.
+           moveMany([id]);
+         } catch (error) { throw new TeamProjectSyncError(error); }
+       }
+     } else {
+       moveMany(projectIds);
+       if (!batchIsFolderOnly) {
+         try {
+           await requestTeamVisibility(projectIds, ctx, visibility, batchResolvedTargetWorkspaceId, batchTargetMemberId, batchCoverDigest);
+         } catch (error) {
+           db.transaction((items: any[]) => { for (const item of items) restoreWorkspaceProjectRow(item); })(previousRows.filter(Boolean));
+           throw new TeamProjectSyncError(error);
          }
        }
-     } catch (error) {
-       const rollbackMany = db.transaction((items: any[]) => {
-         for (const item of items) restoreWorkspaceProjectRow(item);
-       });
-       rollbackMany(previousRows.filter(Boolean));
-       throw new TeamProjectSyncError(error);
-     }
      }
      if (visibility === 'team') {
        const ensureCommentAnchors = db.transaction((ids: string[]) => {
@@ -4491,11 +4489,10 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
          setProjectFolder(db, batchResponseWorkspaceId, id, null);
        }
      }
-      // Push the folder assignment to the HDW team-projects catalog so
-      // teammates see the projects in the right folder. Best-effort: the
-      // local rows already committed; a remote sync failure should not
-      // fail the whole batch move.
+      // Preserve committed transfers, but do not report a folder assignment
+      // as successful when the authoritative catalog rejected it.
      if (visibility === 'team' && batchTargetFolderId !== undefined) {
+       let folderSyncError: unknown;
        for (const id of projectIds) {
          try {
            const batchOperatorMemberId = batchIsCrossWorkspace
@@ -4507,11 +4504,13 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
              batchTargetFolderId,
              batchOperatorMemberId,
            );
-         } catch {
-           // Best-effort per-project; continue with the rest.
+         } catch (error) {
+           setProjectFolder(db, batchResponseWorkspaceId, id, null);
+           folderSyncError = error;
          }
        }
-       collabSync.invalidateTeamProjectCatalog?.();
+       try { collabSync.invalidateTeamProjectCatalog?.(); } catch { /* cache only */ }
+       if (folderSyncError) throw new TeamProjectSyncError(folderSyncError);
      }
       // Auto-share all batch-moved projects to folder recipients when the
       // target folder (or an ancestor) is shared. Best-effort: sharing
@@ -4546,7 +4545,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
               ...(coverDigests.length > 0 ? { coverDigests } : {}),
             });
             if (shareResult && collabSync.requestTeamShare) {
-              const principal = workspaceProjectPrincipal(ctx);
+              const principal = workspaceProjectPrincipal(batchResolvedTargetContext ?? ctx);
               for (const id of projectIds) {
                 const proj = getProject(db, id);
                 const cd = proj?.coverDigest ?? null;
@@ -5461,6 +5460,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
     let sourceProject = getProject(db, req.params.id);
     try {
       const createHome = await resolveCreatedProjectHome(req);
+      const sourceBinding = getWorkspaceProjectByProjectId(db, req.params.id);
       // Team catalog rows can reach the UI before this daemon has pulled the
       // source files. Copy is a read-plus-create operation, so any active
       // non-guest team member may first materialize the source and then create
@@ -5469,7 +5469,11 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
       // even though its card correctly advertised Copy.
       if (
         createHome?.workspaceType === 'team'
-        && (!sourceProject || isUnmaterializedSharedPlaceholder(sourceProject))
+        && (
+          !sourceProject
+          || isUnmaterializedSharedPlaceholder(sourceProject)
+          || (sourceBinding && sourceBinding.workspaceId !== createHome.workspaceId)
+        )
       ) {
         const sourceCtx = await authoritativeWorkspaceProjectContext(
           req,
@@ -5477,10 +5481,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
           createHome.workspaceId,
         );
         if (!sourceCtx) return;
-        const materialization = await materializeTeamProjectForCopy(
-          req.params.id,
-          sourceCtx,
-        );
+        const materialization = await prepareTeamCatalogProject(req.params.id, sourceCtx, 'copy');
         if (materialization === 'denied') {
           return sendApiError(
             res,
@@ -6637,7 +6638,29 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
 
   app.delete('/api/projects/:id', async (req, res) => {
     try {
-      const project = getProject(db, req.params.id);
+      let project = getProject(db, req.params.id);
+      const asserted = workspaceProjectContextFromRequest(req);
+      const binding = getWorkspaceProjectByProjectId(db, req.params.id);
+      if (
+        asserted && asserted !== 'missing'
+        && (
+          !project || isUnmaterializedSharedPlaceholder(project)
+          || (binding && binding.workspaceId !== asserted.workspaceId)
+        )
+      ) {
+        const deleteContext = await authoritativeWorkspaceProjectContext(req, res, asserted.workspaceId);
+        if (!deleteContext) return;
+        if (deleteContext.workspaceType === 'team') {
+          const preparation = await prepareTeamCatalogProject(req.params.id, deleteContext);
+          if (preparation === 'denied') {
+            return sendApiError(res, 403, 'WORKSPACE_PROJECT_PERMISSION_DENIED', 'project delete forbidden');
+          }
+          if (preparation === 'unavailable') {
+            return sendApiError(res, 503, 'UPSTREAM_UNAVAILABLE', 'team project content is temporarily unavailable', { retryable: true });
+          }
+          project = getProject(db, req.params.id);
+        }
+      }
       if (!project) {
         return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'not found');
       }
@@ -9141,6 +9164,12 @@ function triggerCoverForProjectEntry(
         fileSplat,
         project?.metadata,
       );
+      if (/^W\/"od-text-[a-f0-9]{64}"$/u.test(String(req.headers['if-none-match']))) {
+        const textEtag = `W/"od-text-${createHash('sha256').update(new TextDecoder().decode(file.buffer)).digest('hex')}"`;
+        res.setHeader('ETag', textEtag);
+        res.setHeader('Cache-Control', 'no-cache');
+        if (req.headers['if-none-match'] === textEtag) return res.status(304).end();
+      }
       res.type(file.mime).send(file.buffer);
     } catch (err: any) {
       const status = err && err.code === 'ENOENT' ? 404 : 400;
@@ -9154,8 +9183,8 @@ function triggerCoverForProjectEntry(
   });
 
   // Two ways to upload: multipart for binary files (images), and JSON
-  // {name, content, encoding} for sketches and pasted text. The frontend
-  // uses both depending on the file source.
+  // {name, content, encoding} for sketches and pasted text. Existing text
+  // files also accept {name, patch} with a baseline digest and text edits.
   app.post(
     '/api/projects/:id/files',
     (req, res, next) => {
@@ -9167,6 +9196,9 @@ function triggerCoverForProjectEntry(
     async (req, res) => {
       try {
         const uploadProject = getProject(db, req.params.id);
+        if (req.body?.patch !== undefined && !uploadProject) {
+          return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
+        }
         const cleanupRejectedUpload = () => {
           if (req.file?.path) fs.promises.unlink(req.file.path).catch(() => {});
         };
@@ -9267,6 +9299,7 @@ function triggerCoverForProjectEntry(
         const {
           name,
           content,
+          patch: requestedPatch,
           encoding,
           artifactManifest,
           artifact,
@@ -9275,14 +9308,20 @@ function triggerCoverForProjectEntry(
           versionPrompt,
           parentVersionId: requestedParentVersionId,
         } = req.body || {};
-        if (typeof name !== 'string' || typeof content !== 'string') {
+        if (typeof name !== 'string' || (typeof content !== 'string' && requestedPatch === undefined)
+          || (content !== undefined && requestedPatch !== undefined)) {
           return sendApiError(
             res,
             400,
             'BAD_REQUEST',
-            'name and content required',
+            'name and exactly one of content or patch required',
           );
         }
+        const parsedPatch = requestedPatch === undefined ? null : projectFileTextPatchSchema.safeParse(requestedPatch);
+        if (parsedPatch && (!parsedPatch.success || (encoding !== undefined && encoding !== 'utf8') || artifact === true)) {
+          return sendApiError(res, 400, 'BAD_REQUEST', 'invalid text patch');
+        }
+        const textPatch = parsedPatch?.success ? parsedPatch.data : null;
         if (rejectInternalVersionPath(res, name)) return;
         const desiredName = sanitizePath(name);
         if (rejectInternalVersionPath(res, desiredName)) return;
@@ -9303,11 +9342,23 @@ function triggerCoverForProjectEntry(
             );
           }
         }
-        const buf =
+        let buf = textPatch ? Buffer.alloc(0) :
           encoding === 'base64'
             ? Buffer.from(content, 'base64')
             : Buffer.from(content, 'utf8');
         const writeAndCapture = async (versionLock?: HtmlVersionLock) => {
+          if (textPatch) {
+            const current = await readProjectFile(PROJECTS_DIR, req.params.id, desiredName, uploadProject.metadata);
+            const currentSource = new TextDecoder().decode(current.buffer);
+            if (createHash('sha256').update(currentSource).digest('hex') !== textPatch.baseDigest) {
+              throw Object.assign(new Error('The file changed since this edit was prepared.'), { code: 'FILE_EDIT_CONFLICT' });
+            }
+            try {
+              buf = Buffer.from(applyProjectFileTextEdits(currentSource, textPatch.edits), 'utf8');
+            } catch (error) {
+              throw Object.assign(error instanceof Error ? error : new Error('Invalid text patch'), { code: 'INVALID_TEXT_PATCH' });
+            }
+          }
           const parentVersionId = uploadProject && requestedSource === 'manual' && versionLock
             ? await matchedHtmlParentVersionId(
               uploadProject,
@@ -9362,7 +9413,7 @@ function triggerCoverForProjectEntry(
             : null;
           return { meta, versionCapture };
         };
-        const { meta, versionCapture } = uploadProject && requestedSource
+        const { meta, versionCapture } = uploadProject && (requestedSource || textPatch)
           ? await withProjectFileVersionLock(
             PROJECTS_DIR,
             req.params.id,
@@ -9383,6 +9434,9 @@ function triggerCoverForProjectEntry(
         res.json(body);
       } catch (err: any) {
         const message = String(err?.message || err);
+        if (err?.code === 'FILE_EDIT_CONFLICT') return sendApiError(res, 409, err.code, message);
+        if (err?.code === 'INVALID_TEXT_PATCH') return sendApiError(res, 400, 'BAD_REQUEST', message);
+        if (req.body?.patch !== undefined && err?.code === 'ENOENT') return sendApiError(res, 404, 'FILE_NOT_FOUND', 'file not found');
         if (/^invalid (source|versionSource);/u.test(message)) {
           return sendApiError(res, 400, 'BAD_REQUEST', message);
         }

@@ -1,4 +1,5 @@
 import { afterEach } from 'vitest';
+import { webcrypto } from 'node:crypto';
 import { configure } from '@testing-library/react';
 
 // Extend vitest's expect with @testing-library/jest-dom matchers (e.g.
@@ -7,6 +8,11 @@ import { configure } from '@testing-library/react';
 import '@testing-library/jest-dom/vitest';
 
 import { resetPluginsCache } from '../../src/state/projects';
+
+// jsdom omits SubtleCrypto; incremental saves use the browser's real SHA-256 API.
+if (!globalThis.crypto.subtle) {
+  Object.defineProperty(globalThis.crypto, 'subtle', { configurable: true, value: webcrypto.subtle });
+}
 
 // Failure budget for waitFor/findBy under CI CPU contention — not expected
 // duration. Recent Web workspace flakes clustered at 1015–1093ms, so 3s gives

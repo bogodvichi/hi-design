@@ -116,7 +116,7 @@ export interface HdwHttpResourceAdapterOptions {
     projectId: string,
   ) => Record<string, unknown> | null | Promise<Record<string, unknown> | null>;
   /** (projectId, principal) -> hub resourceId. */
-  resourceIdFor?: (projectId: string, principal?: ResourceHubPrincipal | null) => string;
+  resourceIdFor?: (projectId: string, principal?: ResourceHubPrincipal | null) => string | Promise<string>;
   /** Hub resource kind. */
   kind?: string;
   /** Whether the caller currently has a team identity. */
@@ -134,6 +134,14 @@ export function createHdwHttpResourceAdapter(
   const resourceIdFor = options.resourceIdFor ?? projectResourceIdFor;
   const kind = options.kind ?? PROJECT_KIND;
 
+  async function resolveResourceId(projectId: string, principal?: ResourceHubPrincipal | null) {
+    if (kind === PROJECT_KIND && !options.resourceIdFor && principal) {
+      const record = await options.client.getTeamProject(principal.teamId, projectId);
+      if (record) return record.resourceId;
+    }
+    return resourceIdFor(projectId, principal);
+  }
+
   async function gated<T>(
     principal: ResourceHubPrincipal | null | undefined,
     fn: () => Promise<T>,
@@ -146,7 +154,7 @@ export function createHdwHttpResourceAdapter(
    async publish({ projectId, principal, resourceScope, metadata: metadataOverride }) {
       return gated(principal, async () => {
        const dir = await options.resolveProjectDir(projectId);
-       const resourceId = resourceIdFor(projectId, principal);
+       const resourceId = await resolveResourceId(projectId, principal);
        const workspaceId = principal!.teamId;
        const entries = await collectManifestEntries(dir);
        const manifest: HdwManifest = { entries };
@@ -192,7 +200,8 @@ export function createHdwHttpResourceAdapter(
         }
 
         return {
-          version: result.version,
+          resourceId,
+         version: result.version,
           ...(result.versionId ? { versionId: result.versionId } : {}),
         };
       }, null);
@@ -200,7 +209,7 @@ export function createHdwHttpResourceAdapter(
 
     syncLatest({ projectId, principal }) {
       return gated(principal, async () => {
-        const resourceId = resourceIdFor(projectId, principal);
+        const resourceId = await resolveResourceId(projectId, principal);
         const head = await options.client.getPublishedHead(
           principal!.teamId,
           resourceId,
@@ -217,7 +226,7 @@ export function createHdwHttpResourceAdapter(
     async pull({ projectId, principal }) {
       return gated(principal, async () => {
         const dir = await resolvePullDir(projectId);
-        const resourceId = resourceIdFor(projectId, principal);
+        const resourceId = await resolveResourceId(projectId, principal);
         const workspaceId = principal!.teamId;
 
         const result = await options.client.pullResource(
@@ -241,7 +250,8 @@ export function createHdwHttpResourceAdapter(
         }
 
         return {
-          version: result.version,
+          resourceId,
+         version: result.version,
           ...(result.versionId ? { versionId: result.versionId } : {}),
         };
       }, null);
@@ -249,7 +259,7 @@ export function createHdwHttpResourceAdapter(
 
     async unpublish({ projectId, principal }) {
       await gated(principal, async () => {
-        const resourceId = resourceIdFor(projectId, principal);
+        const resourceId = await resolveResourceId(projectId, principal);
         await options.client.removeResource(principal!.teamId, resourceId);
       }, undefined);
     },
@@ -264,6 +274,7 @@ export function createHdwHttpResourceAdapter(
           coverDigest,
        );
        return {
+         resourceId: result.resourceId,
          version: result.version,
          ...(result.versionId ? { versionId: result.versionId } : {}),
          ...(result.targetOwnerMemberId ? { targetOwnerMemberId: result.targetOwnerMemberId } : {}),

@@ -9,11 +9,13 @@
  *   3. generic command/output fallback
  */
 import { useState } from 'react';
+import { Button } from '@open-design/components';
 import { useT } from '../i18n';
 import { isTodoWriteToolName, parseTodoWriteInput } from '../runtime/todos';
 import { getToolRenderer, toRenderProps } from '../runtime/tool-renderers';
 import type { AgentEvent } from '../types';
 import { Icon, type IconName } from './Icon';
+import todoStyles from './TodoCard.module.css';
 
 interface Props {
   use: Extract<AgentEvent, { kind: 'tool_use' }>;
@@ -295,10 +297,10 @@ export function TodoCard({
   const showContinue = !!onContinue && !allComplete && !runStreaming;
   return (
     <div className={`op-card op-todo${expanded ? '' : ' op-todo-collapsed'}`}>
-      <div className="op-card-head op-todo-head">
-        <button
+      <div className={`op-todo-head ${todoStyles.header}`}>
+        <Button
           type="button"
-          className="op-todo-toggle"
+          className={`op-todo-toggle ${todoStyles.toggle}`}
           aria-expanded={expanded}
           onClick={() => setOverrideExpanded(!expanded)}
           title={expanded ? t('tool.todosCollapse') : t('tool.todosExpand')}
@@ -319,15 +321,15 @@ export function TodoCard({
           <span className="op-todo-chev" aria-hidden>
             <Icon name="chevron-down" size={14} />
           </span>
-        </button>
+        </Button>
         {showContinue ? (
-          <button
+          <Button
             type="button"
-            className="op-todo-continue"
+            className={`op-todo-continue ${todoStyles.continueButton}`}
             onClick={() => onContinue?.()}
           >
             {t('assistant.continueRemaining')}
-          </button>
+          </Button>
         ) : null}
       </div>
       <div className={`accordion-collapsible${expanded ? ' open' : ''}`}>

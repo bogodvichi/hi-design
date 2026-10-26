@@ -128,6 +128,86 @@ test('[P0] manual edit inspector previews and persists page and selected element
   await expect(actionMenu.getByRole('menuitem', { name: /Export as PDF/i })).toBeVisible();
 });
 
+test('[P1] manual edit selects individual runtime text lines and saves a seven MiB HTML file', async ({ page }, testInfo) => {
+  await routeMockAgents(page);
+  const projectId = await createEmptyProject(page, 'Nested div editing');
+  const content = `<!doctype html><html><head><style>
+    body { margin: 0; font: 16px sans-serif; }
+    .dashboard { padding: 24px; background: #f4f5f8; }
+    .card { padding: 24px; background: white; }
+    .chart, .other { padding: 24px; margin-top: 16px; background: #eef2ff; }
+    .chart h3, .chart p { margin: 12px 0; }
+  </style></head><body><div id="root"></div><script>
+    document.getElementById('root').innerHTML = '<div class="dashboard"><div class="card"><div class="chart"><span class="recommendation-label">建议动作</span><h3 class="recommendation-title">建议调整目标拆解</h3><p><strong>经营信号</strong> <span class="recommendation-detail">进入客流未达到当前目标</span></p><p class="recommendation-related">关联图表：客流目标达成分析</p></div><div class="other">Other chart</div></div></div>';
+  </script><!--${'x'.repeat(7 * 1024 * 1024)}--></body></html>`;
+  await seedHtmlArtifact(page, projectId, 'nested.html', content);
+  await page.goto(`/projects/${projectId}/files/nested.html`);
+  await openDesignFile(page, 'nested.html');
+  const frame = artifactPreviewFrame(page);
+  await expect(frame.locator('.chart')).toBeVisible();
+  await page.getByTestId('manual-edit-mode-toggle').click();
+  await expect(frame.locator('html[data-od-edit-mode]')).toHaveCount(1);
+
+  for (const selector of ['.recommendation-title', '.recommendation-label', '.recommendation-detail', '.recommendation-related']) {
+    await selectPreviewElementThroughBridge(page, frame, selector, 'Parameters');
+    await expect(frame.locator('.chart[data-od-edit-selected]')).toHaveCount(0);
+  }
+  for (const selector of ['.chart', '.card', '.dashboard']) {
+    await selectPreviewElementThroughBridge(page, frame, selector, 'Parameters', { x: 12, y: 40 });
+    await expect(frame.locator('#root[data-od-edit-selected]')).toHaveCount(0);
+  }
+  await selectPreviewElementThroughBridge(page, frame, '.recommendation-title', 'Parameters');
+  const sourceRefreshes: number[] = [];
+  page.on('response', (response) => {
+    const path = new URL(response.url()).pathname;
+    if (response.request().method() === 'GET' && [
+      `/api/projects/${projectId}/files/nested.html`, `/api/projects/${projectId}/raw/nested.html`,
+    ].includes(path)) sourceRefreshes.push(response.status());
+  });
+  const background = inspectorSection(page, 'Parameters').locator('.cc-row')
+    .filter({ hasText: 'Background' }).locator('input:not([type="color"])');
+  const saved = page.waitForResponse((response) => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === `/api/projects/${projectId}/files`);
+  await background.fill('#ffcc00');
+  const styleResponse = await saved;
+  expect(styleResponse.ok()).toBe(true);
+  const stylePayload = styleResponse.request().postDataJSON();
+  expect(stylePayload).not.toHaveProperty('content');
+  expect(Buffer.byteLength(styleResponse.request().postData()!)).toBeLessThan(4096);
+  await expectFileSource(page, projectId, 'nested.html', ['data-od-manual-edit-runtime-overrides', 'background-color:']);
+  await expect(frame.locator('.recommendation-title')).toHaveCSS('background-color', 'rgb(255, 204, 0)');
+  await expect(page.locator('.manual-edit-error')).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath('text-line-selected.png') });
+
+  const textSaved = page.waitForResponse((response) => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === `/api/projects/${projectId}/files`);
+  await page.getByRole('textbox', { name: 'Text', exact: true }).fill('已调整目标拆解');
+  const textResponse = await textSaved;
+  expect(textResponse.ok()).toBe(true);
+  expect(textResponse.request().postDataJSON()).not.toHaveProperty('content');
+  expect(Buffer.byteLength(textResponse.request().postData()!)).toBeLessThan(8192);
+  await expectFileSource(page, projectId, 'nested.html', ['od-manual-edit-runtime-overrides', '已调整目标拆解']);
+
+  for (const [action, expected] of [['Undo', '建议调整目标拆解'], ['Redo', '已调整目标拆解']] as const) {
+    const written = page.waitForResponse((response) => response.request().method() === 'POST'
+      && new URL(response.url()).pathname === `/api/projects/${projectId}/files`);
+    await page.getByRole('button', { name: action, exact: true }).click();
+    const response = await written;
+    expect(response.ok()).toBe(true);
+    expect(response.request().postDataJSON()).not.toHaveProperty('content');
+    expect(Buffer.byteLength(response.request().postData()!)).toBeLessThan(8192);
+    await expect(frame.locator('.recommendation-title')).toHaveText(expected);
+  }
+  expect(sourceRefreshes.every((status) => status === 304)).toBe(true);
+
+  await page.reload();
+  const restored = artifactPreviewFrame(page);
+  await expect(restored.locator('.recommendation-title')).toHaveText('已调整目标拆解');
+  await expect(restored.locator('.recommendation-title')).toHaveCSS('background-color', 'rgb(255, 204, 0)');
+  await expect(restored.locator('.recommendation-detail')).toHaveText('进入客流未达到当前目标');
+  await expect(restored.locator('.other')).toHaveCSS('background-color', 'rgb(238, 242, 255)');
+});
+
 test('[P0] manual edit mode preserves the current page in a multi-page mobile app', async ({ page }) => {
   await routeMockAgents(page);
   const projectId = await createEmptyProject(page, 'Multi-page mobile edit');
@@ -315,6 +395,7 @@ async function selectPreviewElementThroughBridge(
   frame: ReturnType<Page['frameLocator']>,
   selector: string,
   section: string,
+  position?: { x: number; y: number },
 ) {
   await expect(frame.locator('html[data-od-edit-mode]')).toHaveCount(1);
   // Entering manual-edit mode re-injects the edit bridge and re-emits its targets
@@ -326,7 +407,7 @@ async function selectPreviewElementThroughBridge(
   // timeout so a single dropped click rides through the settle window instead of
   // failing the whole run.
   await expect(async () => {
-    await frame.locator(selector).click({ timeout: 5_000 });
+    await frame.locator(selector).click({ timeout: 5_000, ...(position ? { position } : {}) });
     await expect(frame.locator(`${selector}[data-od-edit-selected="true"]`)).toHaveCount(1, { timeout: 2_000 });
   }).toPass({ timeout: 30_000 });
   await expect(page.locator('.manual-edit-modal')).toContainText(section);

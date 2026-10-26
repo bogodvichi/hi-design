@@ -1,0 +1,58 @@
+.header {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.header:hover {
+  background: var(--bg-subtle);
+}
+
+/* Todo disclosure and continuation have their own compact sizing. */
+.toggle.toggle {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  height: auto;
+  min-height: 36px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.toggle.toggle:hover:not(:disabled) {
+  background: transparent;
+}
+
+.continueButton.continueButton {
+  flex: none;
+  height: 26px;
+  margin: 0 8px 0 0;
+  padding: 0 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-pill);
+  background: var(--bg-panel);
+  color: var(--text-strong);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.continueButton.continueButton:hover:not(:disabled) {
+  background: var(--bg-subtle);
+}

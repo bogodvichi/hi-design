@@ -18,7 +18,7 @@ import { splitResearchSubcommand } from './research/cli-args.js';
 import { resolveDaemonUrl } from './daemon-url.js';
 import { requestJsonIpc } from '@open-design/sidecar';
 import { SIDECAR_ENV, SIDECAR_MESSAGES } from '@open-design/sidecar-proto';
-import { EXPORT_FORMATS, EXPORT_IMAGE_FORMATS, isSkillCategory } from '@open-design/contracts';
+import { EXPORT_FORMATS, EXPORT_IMAGE_FORMATS, isSkillCategory, projectFileTextPatchSchema } from '@open-design/contracts';
 import { HDW_BASE } from './http/hdw.js';
 import type { ArtifactLintFinding, LintArtifactCliResultEnvelope, LintArtifactResponse, LintFailOn } from '@open-design/contracts';
 import { buildExportCliRequestBody, buildExportCliResultEnvelope, resolveExportCliDeckMode } from './export-cli-request.js';
@@ -8973,6 +8973,8 @@ async function runFiles(args) {
   od files read   <projectId> <relpath>        Stream file bytes to stdout.
   od files write  <projectId> <relpath> [< stdin]
                                                Write content from stdin.
+  od files patch  <projectId> <relpath> --prompt-file <path|->
+                                               Apply JSON {baseDigest, edits} without uploading the file.
   od files upload <projectId> <localpath> [--as <relpath>]
                                                Upload a local file.
   od files delete <projectId> <name>           Delete a project file.
@@ -9064,6 +9066,29 @@ Common options:
       if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
       if (data?.versionWarning?.message) console.error(`[files] warning: ${data.versionWarning.message}`);
       console.log(`[files] uploaded ${data?.file?.name ?? desiredName}`);
+      return;
+    }
+    case 'patch': {
+      const [id, rel] = positionalArgs(rest, PROJECT_RESOURCE_STRING_FLAGS);
+      if (!id || !rel || typeof flags['prompt-file'] !== 'string') {
+        console.error('Usage: od files patch <projectId> <relpath> --prompt-file <path|-> [--json]');
+        process.exit(2);
+      }
+      const parsed = projectFileTextPatchSchema.safeParse(JSON.parse(await readPromptFromFlags(flags)));
+      if (!parsed.success) {
+        console.error('Invalid text patch: expected a SHA-256 baseDigest and ordered text edits.');
+        process.exit(2);
+      }
+      const resp = await fetch(`${base}/api/projects/${encodeURIComponent(id)}/files`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', ...workspaceHeaders },
+        body: JSON.stringify({ name: rel, patch: parsed.data, versionSource: 'manual',
+          ...(typeof flags.label === 'string' ? { versionLabel: flags.label } : {}) }),
+      });
+      if (!resp.ok) return structuredHttpFailure(resp);
+      const data = await resp.json();
+      if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
+      console.log(`[files] patched ${data?.file?.name ?? rel}`);
       return;
     }
     case 'write': {
@@ -9548,6 +9573,7 @@ async function runConversation(args) {
                                            conversation's messages in (Side Chat).
                                            --fork-after stops the copy at one
                                            source message.
+  od conversation compact <projectId> <conversationId> [--prompt "<focus>" | --prompt-file <path|->] [--json]
   od conversation list <projectId>           List conversations in a project.
   od conversation info <conversationId>      Print one conversation.
 
@@ -9561,7 +9587,7 @@ Common options:
   const sub = args[0];
   const rest = args.slice(1);
   const conversationStringFlags =
-    sub === 'new' || sub === 'list'
+    sub === 'new' || sub === 'list' || sub === 'compact'
       ? PROJECT_RESOURCE_STRING_FLAGS
       : PROJECT_STRING_FLAGS;
   const flags = parseFlags(rest, {
@@ -9570,10 +9596,32 @@ Common options:
   });
   const base = (await projectDaemonUrl(flags)).replace(/\/$/, '');
   const workspaceHeaders =
-    sub === 'new' || sub === 'list'
+    sub === 'new' || sub === 'list' || sub === 'compact'
       ? workspaceHeadersFromExplicitFlags(flags) ?? {}
       : {};
   switch (sub) {
+    case 'compact': {
+      const [projectId, conversationId] = positionalArgs(rest, conversationStringFlags);
+      if (!projectId || !conversationId) {
+        console.error('Usage: od conversation compact <projectId> <conversationId> [--prompt <focus> | --prompt-file <path|->] [--json]');
+        process.exit(2);
+      }
+      const instructions = (await readPromptFromFlags(flags)) ?? '';
+      let response;
+      try {
+        response = await fetch(`${base}/api/projects/${encodeURIComponent(projectId)}/conversations/${encodeURIComponent(conversationId)}/compact`, {
+          method: 'POST', headers: { 'content-type': 'application/json', ...workspaceHeaders },
+          body: JSON.stringify({ instructions: instructions.trim() }),
+        });
+      } catch (error) {
+        surfaceFetchError(error, base);
+        process.exit(3);
+      }
+      if (!response.ok) return structuredHttpFailure(response);
+      const result = await response.json();
+      process.stdout.write(flags.json ? JSON.stringify(result, null, 2) + '\n' : result.message.content + '\n');
+      return;
+    }
     case 'new': {
       const [id] = positionalArgs(rest, conversationStringFlags);
       if (!id) {

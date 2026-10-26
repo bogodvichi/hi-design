@@ -1,5 +1,6 @@
 import type { Express } from 'express';
 import fs from 'node:fs';
+import { createHash } from 'node:crypto';
 import { SIDECAR_ENV } from '@open-design/sidecar-proto';
 import { buildMcpInstallPayload, type McpInstallPayload } from './mcp-install-info.js';
 import { installCodexMcp, probeCodexInstall, uninstallCodexMcp } from './codex-cli.js';
@@ -12,7 +13,7 @@ import { readSsoConfigFile } from './http/hik_logins/hicoo.js';
 import type { HdwCloudClient } from './integrations/hdw-cloud.js';
 import type { RouteDeps } from './server-context.js';
 import { listCloudResourceRecords } from './collab/cloud-resource-catalog.js';
-import { publishCloudMcp } from './collab/cloud-mcp-publication.js';
+import { publishCloudMcp, sanitizeCloudMcpMetadata } from './collab/cloud-mcp-publication.js';
 import { TeamResourceShareForbiddenError } from './collab/team-resource-share.js';
 
 export interface RegisterMcpRoutesDeps extends RouteDeps<'http' | 'paths' | 'mcp' | 'cloudResourceAccess'> {
@@ -31,6 +32,17 @@ export function registerMcpRoutes(app: Express, ctx: RegisterMcpRoutesDeps) {
     (req.headers['x-od-workspace-id'] as string) || '';
   const getOwnerMemberId = (req: any) =>
     (req.headers['x-od-workspace-member-id'] as string) || '';
+
+  function matchesCloudInstall(server: McpServerConfig, tpl: McpTemplate, resourceId: string, home: string, workspace: string, member: string) {
+    if (server.workspaceId !== workspace || server.ownerMemberId !== member) return false;
+    if (server.cloudResourceId) return server.cloudResourceId === resourceId && server.cloudHomeWorkspaceId === home;
+    // Preserve credentials/IDs of unambiguous legacy installations. Equal
+    // display slugs alone never establish resource identity.
+    return home === workspace && server.templateId === tpl.id && server.transport === tpl.transport
+      && (tpl.transport === 'stdio'
+        ? server.command === tpl.command && JSON.stringify(server.args ?? []) === JSON.stringify(tpl.args ?? [])
+        : server.url === tpl.url);
+  }
 
   // Slug rule mirroring the web-side suggestMcpServerId so install produces
   // valid, collision-free server ids from a template label.
@@ -548,8 +560,11 @@ export function registerMcpRoutes(app: Express, ctx: RegisterMcpRoutesDeps) {
     if (!isLocalSameOrigin(req, getResolvedPort())) {
       return res.status(403).json({ error: 'cross-origin request rejected' });
     }
-    const workspaceId = getWorkspaceId(req);
-    const ownerMemberId = getOwnerMemberId(req);
+    const authority = await ctx.cloudResourceAccess.resolveScope(req);
+    if (!authority.ok) return res.status(authority.status).json({ error: authority.code, message: authority.message });
+    if (!authority.scope.canShare) return res.status(403).json({ error: 'WORKSPACE_ACCESS_DENIED' });
+    const workspaceId = authority.scope.principal.teamId;
+    const ownerMemberId = authority.scope.principal.memberId;
     if (!workspaceId || !ownerMemberId) {
       return res.status(400).json({ error: 'workspace_id and owner_member_id are required' });
     }
@@ -575,7 +590,7 @@ try {
      const data = await hdwPost<{ resource: Record<string, unknown> }>(`/workspaces/${encodeURIComponent(workspaceId)}/resources`, {
        kind: 'mcp',
        ownerMemberId,
-       metadata: tplObj,
+       metadata: sanitizeCloudMcpMetadata(tplObj),
        ...(scope ? { scope } : {}),
      }, getSsoCookies());
       if (!data) {
@@ -606,11 +621,17 @@ try {
      return res.status(400).json({ error: 'template is required' });
    }
    try {
-      const workspaceId = getWorkspaceId(req);
+      const authority = await ctx.cloudResourceAccess.resolveScope(req);
+    if (!authority.ok) return res.status(authority.status).json({ error: authority.code, message: authority.message });
+    if (!authority.scope.canShare) return res.status(403).json({ error: 'WORKSPACE_ACCESS_DENIED' });
+    const workspaceId = authority.scope.principal.teamId;
       if (!workspaceId) return res.status(400).json({ error: 'workspace_id is required' });
+      if (!hdwClient) return res.status(503).json({ error: 'HDW_CLOUD_NOT_CONFIGURED' });
+      const record = await hdwClient.getResource(workspaceId, resourceId);
+      if (!record || record.ownerMemberId !== authority.scope.principal.memberId) return res.status(403).json({ error: 'NOT_RESOURCE_OWNER' });
       const data = await hdwPut<{ resource: Record<string, unknown> }>(
         `/workspaces/${encodeURIComponent(workspaceId)}/resources/${encodeURIComponent(resourceId)}`,
-        { metadata: template },
+        { metadata: sanitizeCloudMcpMetadata(template) },
         getSsoCookies(),
       );
       if (!data) {
@@ -636,12 +657,15 @@ try {
    const resourceId = typeof req.params.resourceId === 'string' ? decodeURIComponent(req.params.resourceId) : '';
    if (!resourceId) return res.status(400).json({ error: 'invalid resource id' });
    try {
-     const workspaceId = getWorkspaceId(req);
+     const authority = await ctx.cloudResourceAccess.resolveScope(req);
+    if (!authority.ok) return res.status(authority.status).json({ error: authority.code, message: authority.message });
+    if (!authority.scope.canShare) return res.status(403).json({ error: 'WORKSPACE_ACCESS_DENIED' });
+    const workspaceId = authority.scope.principal.teamId;
      if (!workspaceId) return res.status(400).json({ error: 'workspace_id is required' });
      if (!hdwClient) return res.status(503).json({ error: 'HDW_CLOUD_NOT_CONFIGURED' });
      const record = await hdwClient.getResource(workspaceId, resourceId);
      if (!record) return res.status(404).json({ error: 'CLOUD_MCP_NOT_FOUND' });
-     if (record.ownerMemberId !== getOwnerMemberId(req)) {
+     if (record.ownerMemberId !== authority.scope.principal.memberId) {
        return res.status(403).json({ error: 'NOT_RESOURCE_OWNER', message: 'you can only unpublish resources you own' });
      }
      const data = await hdwPut<{ resource: Record<string, unknown> }>(
@@ -663,7 +687,10 @@ try {
   const resourceId = typeof req.params.resourceId === 'string' ? decodeURIComponent(req.params.resourceId) : '';
   if (!resourceId) return res.status(400).json({ error: 'invalid resource id' });
   try {
-    const workspaceId = getWorkspaceId(req);
+    const authority = await ctx.cloudResourceAccess.resolveScope(req);
+    if (!authority.ok) return res.status(authority.status).json({ error: authority.code, message: authority.message });
+    if (!authority.scope.canShare) return res.status(403).json({ error: 'WORKSPACE_ACCESS_DENIED' });
+    const workspaceId = authority.scope.principal.teamId;
     if (!workspaceId) return res.status(400).json({ error: 'workspace_id is required' });
     // Ownership verification: fetch the resource and confirm the
     // caller's member ID matches the resource owner before deleting.
@@ -672,7 +699,7 @@ try {
     if (!record) {
       return res.status(404).json({ error: 'CLOUD_MCP_NOT_FOUND' });
     }
-    if (record.ownerMemberId !== getOwnerMemberId(req)) {
+    if (record.ownerMemberId !== authority.scope.principal.memberId) {
       return res.status(403).json({ error: 'NOT_RESOURCE_OWNER', message: 'you can only delete resources you own' });
     }
      const data = await hdwDelete(
@@ -694,7 +721,9 @@ app.post('/api/workspace/mcp/cloud/:resourceId/install', async (req, res) => {
   }
   const resourceId = typeof req.params.resourceId === 'string' ? decodeURIComponent(req.params.resourceId) : '';
   if (!resourceId) return res.status(400).json({ error: 'invalid resource id' });
-  const workspaceId = getWorkspaceId(req);
+  const authority = await ctx.cloudResourceAccess.resolveScope(req);
+  if (!authority.ok) return res.status(authority.status).json({ error: authority.code, message: authority.message });
+  const workspaceId = authority.scope.principal.teamId;
   if (!workspaceId) return res.status(400).json({ error: 'workspace_id is required' });
   if (!hdwClient) return res.status(503).json({ error: 'HDW_CLOUD_NOT_CONFIGURED' });
   try {
@@ -714,18 +743,26 @@ app.post('/api/workspace/mcp/cloud/:resourceId/install', async (req, res) => {
       } as McpTemplate & { resourceId: string; ownerMemberId: string; createdAt: string; updatedAt: string };
      const cfg = await readMcpConfig(RUNTIME_DATA_DIR);
      const taken = new Set(cfg.servers.map((s) => s.id));
-     const existing = cfg.servers.find((s) => s.templateId === cloudTpl.id);
+     const existing = cfg.servers.find((s) => matchesCloudInstall(s, cloudTpl, resourceId, lookupWsId, workspaceId, authority.scope.principal.memberId));
      if (existing) {
+       existing.cloudResourceId = resourceId;
+       existing.cloudHomeWorkspaceId = lookupWsId;
+       await writeMcpConfig(RUNTIME_DATA_DIR, cfg);
        return res.json({ installed: true, serverId: existing.id });
      }
-    const server = templateToServer(cloudTpl, taken);
+    const installId = `cloud-${createHash('sha256').update(JSON.stringify([lookupWsId, resourceId, workspaceId, authority.scope.principal.memberId])).digest('hex').slice(0, 24)}`;
+    const server = templateToServer({ ...cloudTpl, id: installId }, taken);
     if (!server) {
       return res.status(400).json({ error: 'template is missing required fields (command or url)' });
     }
     // Stamp workspace ownership so the composer "+" menu can filter
     // "Mine" (ownerMemberId === requesting member) and "Team"
     // (workspaceId === team workspace) locally without a cloud round-trip.
-    server.ownerMemberId = cloudTpl.ownerMemberId || getOwnerMemberId(req);
+    server.ownerMemberId = authority.scope.principal.memberId;
+    server.templateId = cloudTpl.id;
+    server.label = cloudTpl.label;
+    server.cloudResourceId = resourceId;
+    server.cloudHomeWorkspaceId = lookupWsId;
     server.workspaceId = workspaceId;
     const sanitized = sanitizeMcpServer(server);
      if (!sanitized) {
@@ -745,7 +782,9 @@ app.delete('/api/workspace/mcp/cloud/:resourceId/uninstall', async (req, res) =>
   }
   const resourceId = typeof req.params.resourceId === 'string' ? decodeURIComponent(req.params.resourceId) : '';
   if (!resourceId) return res.status(400).json({ error: 'invalid resource id' });
-  const workspaceId = getWorkspaceId(req);
+  const authority = await ctx.cloudResourceAccess.resolveScope(req);
+  if (!authority.ok) return res.status(authority.status).json({ error: authority.code, message: authority.message });
+  const workspaceId = authority.scope.principal.teamId;
   if (!workspaceId) return res.status(400).json({ error: 'workspace_id is required' });
   if (!hdwClient) return res.status(503).json({ error: 'HDW_CLOUD_NOT_CONFIGURED' });
   try {
@@ -763,7 +802,7 @@ app.delete('/api/workspace/mcp/cloud/:resourceId/uninstall', async (req, res) =>
         updatedAt: record.updatedAt,
       } as McpTemplate & { resourceId: string; ownerMemberId: string; createdAt: string; updatedAt: string };
      const cfg = await readMcpConfig(RUNTIME_DATA_DIR);
-     const match = cfg.servers.find((s) => s.templateId === cloudTpl.id);
+     const match = cfg.servers.find((s) => matchesCloudInstall(s, cloudTpl, resourceId, lookupWsId, workspaceId, authority.scope.principal.memberId));
      if (!match) {
        return res.json({ ok: true, serverId: '' });
      }

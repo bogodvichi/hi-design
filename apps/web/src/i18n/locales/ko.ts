@@ -5702,4 +5702,11 @@ export const ko: Dict = {
   'share.publishSuccessHint': "\"{name}\" has been published to the community.",
   'share.openInCommunity': "View in Community",
   'contentEmpty.title': "아직 콘텐츠가 없습니다",
+  "chat.compact.action": "컨텍스트 압축",
+  "chat.compact.busy": "컨텍스트 압축 중…",
+  "chat.compact.description": "Claude Code · 이전 메시지 요약",
+  "chat.compact.unavailable": "Claude Code를 선택하세요",
+  "chat.compact.noAttachments": "/compact 실행 전에 첨부 파일을 제거하세요.",
+  "chat.compact.failed": "컨텍스트 압축 실패",
+  "chat.contextRecovery.title": "컨텍스트 복구",
 };

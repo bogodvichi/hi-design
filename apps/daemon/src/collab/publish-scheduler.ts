@@ -29,6 +29,7 @@ export interface ResourcePublishInput {
 }
 
 export interface PublishedResourceVersion {
+  resourceId?: string;
   version: number;
   versionId?: string;
   /** For cross-workspace transfers: the owner's member ID in the TARGET
@@ -72,7 +73,7 @@ export interface ResourcePublishAdapter {
    * This is a metadata-only operation: blobs stay where they are, only the
    * resource row and catalog entry move. Returns the new version in the
    * target workspace, or null when the adapter does not support transfer
-   * (caller should fall back to publish + unpublish). Optional: adapters
+   * (caller must keep the source unchanged). Optional: adapters
   * that don't support cross-workspace transfer can omit this.
   */
   transferToWorkspace?(input: ResourcePublishInput & { reason: string } & {

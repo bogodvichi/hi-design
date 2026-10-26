@@ -5697,4 +5697,11 @@ export const fa: Dict = {
   'share.publishSuccessHint': "\"{name}\" has been published to the community.",
   'share.openInCommunity': "View in Community",
   'contentEmpty.title': "هنوز محتوایی وجود ندارد",
+  "chat.compact.action": "فشرده‌سازی زمینه",
+  "chat.compact.busy": "در حال فشرده‌سازی زمینه…",
+  "chat.compact.description": "Claude Code · خلاصه‌سازی پیام‌های قبلی",
+  "chat.compact.unavailable": "Claude Code را انتخاب کنید",
+  "chat.compact.noAttachments": "پیش از اجرای /compact پیوست‌ها را حذف کنید.",
+  "chat.compact.failed": "فشرده‌سازی زمینه ناموفق بود",
+  "chat.contextRecovery.title": "بازیابی زمینه",
 };

@@ -1,3 +1,5 @@
+import { Button } from '@open-design/components';
+import { compactConversation } from '../state/projects';
 import {
   Fragment,
   memo,
@@ -14,7 +16,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { hasOdCard, OD_NEXT_STRATEGY_ID } from '@open-design/contracts';
+import { hasOdCard, OD_NEXT_STRATEGY_ID, isContextSizeError, parseCompactCommand } from '@open-design/contracts';
 import { useAnalytics } from '../analytics/provider';
 import { getResolvedDeviceId } from '../analytics/client';
 import {
@@ -76,6 +78,7 @@ import { AssistantMessage, type QuestionFormSubmitHandler } from './AssistantMes
 import { TodoCard } from './ToolCard';
 import type { BrandBrowserAssistConfirm } from './OdCard';
 import {
+  ContextRecoveryActions,
   DESIGN_SYSTEM_NEXT_STEP_ACTIONS,
   type NextStepActionsVariant,
 } from './NextStepActions';
@@ -637,6 +640,7 @@ interface Props {
   onForkFromMessage?: (assistantMessage: ChatMessage) => void;
   forkingMessageId?: string | null;
   // Header "+" button — kicks off ProjectView's create-conversation flow.
+  onNativeCommandComplete?: (conversationId: string, message: ChatMessage) => void;
   onNewConversation?: () => void;
   newConversationDisabled?: boolean;
   // Conversation list that used to live in the topbar. The chat tab now
@@ -1003,6 +1007,7 @@ export function ChatPane({
   onArtifactDownload,
   onForkFromMessage,
   forkingMessageId = null,
+  onNativeCommandComplete,
   onNewConversation,
   newConversationDisabled = false,
   conversations,
@@ -1077,6 +1082,26 @@ export function ChatPane({
   const { workspaceContext } = useProjectCollabContext();
   const { t, locale } = useI18n();
   const analytics = useAnalytics();
+  const compactPendingRef = useRef(false);
+  const [compactState, setCompactState] = useState<{ conversationId: string; busy: boolean; error?: string; message?: ChatMessage } | null>(null);
+  const compactBusy = compactState?.conversationId === activeConversationId && compactState.busy;
+  const nativeCompactAvailable = config?.mode === 'daemon' && config.agentId === 'claude' && !viewerOnly;
+  const executeCompact = async (instructions = '') => {
+    if (!projectId || !activeConversationId || compactPendingRef.current || streaming) return;
+    if (!nativeCompactAvailable) return;
+    const conversationId = activeConversationId;
+    compactPendingRef.current = true;
+    setCompactState({ conversationId, busy: true });
+    try {
+      const result = await compactConversation(projectId, conversationId, { instructions, locale }, workspaceContext);
+      onNativeCommandComplete?.(conversationId, result.message);
+      setCompactState({ conversationId, busy: false, message: result.message });
+    } catch (error) {
+      setCompactState({ conversationId, busy: false, error: error instanceof Error ? error.message : String(error) });
+    } finally {
+      compactPendingRef.current = false;
+    }
+  };
   const displayMessages = useMemo(
     () => foldStrategyTaskTurns(
       messages.filter((message) => !shouldHideEmptyBrandAssistantMessage(message, projectMetadata)),
@@ -2436,7 +2461,8 @@ export function ChatPane({
      skills={skills}
      streaming={streaming}
       onSkillsRefresh={onSkillsRefresh}
-     sendDisabled={sendDisabled}
+     sendDisabled={sendDisabled || compactBusy}
+      nativeCompactAvailable={nativeCompactAvailable}
       inputDisabled={viewerOnly}
       initialDraft={initialDraft}
       composerPlaceholder={composerPlaceholder}
@@ -2446,6 +2472,16 @@ export function ChatPane({
       commentAttachments={commentsToAttachments(attachedComments)}
       onRemoveCommentAttachment={onDetachComment}
       onSend={(prompt, attachments, commentAttachments, meta) => {
+        const nativeCommand = parseCompactCommand(prompt);
+        if (nativeCommand && nativeCompactAvailable) {
+          if (streaming || compactPendingRef.current) return 'restore-draft';
+          if (attachments.length || commentAttachments.length) {
+            setCompactState({ conversationId: activeConversationId ?? '', busy: false, error: t('chat.compact.noAttachments') });
+            return 'restore-draft';
+          }
+          void executeCompact(nativeCommand.instructions);
+          return;
+        }
         pinnedToBottomRef.current = true;
         scrolledToFormRef.current = new Set();
         if (editingQueuedSendId && onUpdateQueuedSend) {
@@ -2637,9 +2673,9 @@ export function ChatPane({
                     type="button"
                     className="chat-history-new"
                     data-testid="conversation-history-new"
-                    disabled={newConversationDisabled}
+                    disabled={newConversationDisabled || compactBusy}
                     onClick={() => {
-                      if (newConversationDisabled) return;
+                      if (newConversationDisabled || compactPendingRef.current) return;
                       trackChatPanelClick(analytics.track, {
                         page_name: 'chat_panel',
                         area: 'chat_panel',
@@ -2654,6 +2690,12 @@ export function ChatPane({
                   </button>
                 ) : null}
               </div>
+              {nativeCompactAvailable ? (
+                <Button className="chat-history-new" disabled={streaming || compactBusy}
+                  onClick={() => { setShowConvList(false); void executeCompact(); }}>
+                  <Icon name="refresh" size={12} />{t('chat.compact.action')}
+                </Button>
+              ) : null}
               <label className="chat-history-search">
                 <Icon name="search" size={12} />
                 <input
@@ -3080,6 +3122,22 @@ export function ChatPane({
                     }
                   }}
                 />
+              ) : null}
+              {displayError && !viewerOnly && (failedRunErrorEvent?.code === 'AGENT_PROMPT_TOO_LARGE' || failedRunErrorEvent?.failureCategory === 'prompt_too_large' || isContextSizeError(rawError ?? '')) ? (
+                <ContextRecoveryActions
+                  onCompact={() => { void executeCompact(); }}
+                  onNewConversation={onNewConversation}
+                  busy={compactBusy || streaming}
+                  compactAvailable={nativeCompactAvailable}
+                  newConversationDisabled={newConversationDisabled}
+                />
+              ) : null}
+              {compactState?.conversationId === activeConversationId && (compactState.busy || compactState.error || (compactState.message && !messages.some((m) => m.id === compactState.message?.id))) ? (
+                <UserActionCard icon={compactState.error ? 'alert-triangle' : 'refresh'}
+                  title={t(compactState.busy ? 'chat.compact.busy' : compactState.error ? 'chat.compact.failed' : 'chat.compact.action')}
+                  tone={compactState.error ? 'danger' : 'neutral'}
+                  status={compactState.error ?? compactState.message?.content}
+                  testId="compact-command-status" />
               ) : null}
               {/* Dynamic spacer: when a turn is anchored to the top, this
                   grows just enough to let the user message reach the top of

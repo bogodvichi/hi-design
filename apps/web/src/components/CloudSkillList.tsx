@@ -740,7 +740,10 @@ useEffect(() => {
           const canManageCloudRecord = skill.provider !== 'maas-skillhub' && !skill.resourceId.startsWith('team:');
           const isResourceOwner = skill.canManage ?? skill.ownerMemberId === workspaceMemberId;
           const canDelete = canManageCloudRecord && isResourceOwner && mode !== 'shared';
-          const canShare = canManageCloudRecord && (mode === 'personal' || mode === 'square' || mode === 'shared' || (mode === 'team' && isResourceOwner));
+          // In community/personal/team views only the resource owner can
+          // grant new shares. Keep the existing shared-with-me forwarding
+          // affordance; HDW still validates every attempted share.
+          const canShare = canManageCloudRecord && (isResourceOwner || mode === 'shared');
           const showOriginalIcon = Boolean(skill.iconUrl) && !failedIconIds.has(skill.resourceId);
           const meta = mode === 'square'
             ? `${skill.publisherName?.trim() || 'HiDesign'}${skill.updatedAt ? ' · ' + formatRelativeDate(skill.updatedAt, t) : ''}`

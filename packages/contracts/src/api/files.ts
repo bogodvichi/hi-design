@@ -1,5 +1,42 @@
 import type { OkResponse } from '../common.js';
 import type { ArtifactKind, ArtifactManifest } from './artifacts.js';
+import { z } from 'zod';
+
+/** Hash the UTF-8 decoded text; offsets/counts are UTF-16 indices in that base revision. */
+export const projectFileTextPatchSchema = z.object({
+  baseDigest: z.string().regex(/^[a-f0-9]{64}$/u),
+  edits: z.array(z.object({
+    start: z.number().int().nonnegative(),
+    deleteCount: z.number().int().nonnegative(),
+    insert: z.string(),
+  }).strict()).max(10000),
+}).strict();
+
+export type ProjectFileTextPatch = z.infer<typeof projectFileTextPatchSchema>;
+
+export interface PatchProjectTextFileRequest {
+  name: string;
+  patch: ProjectFileTextPatch;
+  artifactManifest?: ArtifactManifest;
+  versionSource?: ProjectFileVersionSource;
+  versionLabel?: string;
+  parentVersionId?: string;
+}
+
+export function applyProjectFileTextEdits(source: string, edits: ProjectFileTextPatch['edits']): string {
+  let cursor = 0;
+  const parts: string[] = [];
+  for (const edit of edits) {
+    if (!Number.isSafeInteger(edit.start) || !Number.isSafeInteger(edit.deleteCount)
+      || edit.start < cursor || edit.deleteCount < 0 || edit.start + edit.deleteCount > source.length) {
+      throw new Error('Invalid or overlapping text edit range');
+    }
+    parts.push(source.slice(cursor, edit.start), edit.insert);
+    cursor = edit.start + edit.deleteCount;
+  }
+  parts.push(source.slice(cursor));
+  return parts.join('');
+}
 
 export type ProjectFileKind =
   | 'html'

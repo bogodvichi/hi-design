@@ -1,3 +1,4 @@
+import { Button } from '@open-design/components';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useI18n } from '../i18n';
@@ -943,4 +944,33 @@ function designToolboxSkillIcon(skill: SkillSummary): IconName {
   if (skill.category === 'animation-motion') return 'sliders';
   if (skill.category === 'creative-direction') return 'sparkles';
   return 'file';
+}
+
+
+export function ContextRecoveryActions({ onCompact, onNewConversation, busy, compactAvailable, newConversationDisabled }: {
+  onCompact: () => void;
+  onNewConversation?: (() => void) | undefined;
+  busy: boolean;
+  compactAvailable: boolean;
+  newConversationDisabled: boolean;
+}) {
+  const { t } = useI18n();
+  return (
+    <div className={styles.root} role="group" aria-label={t('chat.contextRecovery.title')} data-testid="context-recovery-actions">
+      <div className={styles.toolboxList}>
+        <Button className={styles.toolboxRow} disabled={busy || !compactAvailable}
+          title={!compactAvailable ? t('chat.compact.unavailable') : undefined}
+          aria-busy={busy} onClick={onCompact}>
+          <Icon name={busy ? 'spinner' : 'refresh'} size={14} className={busy ? 'icon-spin' : styles.toolboxRowIcon} />
+          <span className={styles.toolboxRowTitle}>{t(busy ? 'chat.compact.busy' : 'chat.compact.action')}</span>
+          <Icon name="chevron-right" size={13} className={styles.toolboxRowArrow} />
+        </Button>
+        <Button className={styles.toolboxRow} disabled={busy || newConversationDisabled || !onNewConversation} onClick={onNewConversation}>
+          <Icon name="plus" size={14} className={styles.toolboxRowIcon} />
+          <span className={styles.toolboxRowTitle}>{t('chat.newConversation')}</span>
+          <Icon name="chevron-right" size={13} className={styles.toolboxRowArrow} />
+        </Button>
+      </div>
+    </div>
+  );
 }

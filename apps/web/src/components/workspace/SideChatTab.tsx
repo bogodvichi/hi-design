@@ -37,6 +37,7 @@ export interface ActiveConversationChatState {
     meta?: ChatSendMeta,
   ) => void;
   onRetry?: (assistantMessage: ChatMessage) => void;
+  onNativeCommandComplete?: (conversationId: string, message: ChatMessage) => void;
   onStop: () => void;
   onRemoveQueuedSend?: (id: string) => void;
   // Editing a queued send replaces its full payload (prompt + attachments +
@@ -170,6 +171,7 @@ export function SideChatTab({
           // persisted `conversation.messageCount` keeps the list count stable.
           onSelectConversation={onSelectConversation}
           onDeleteConversation={onDeleteConversation}
+          onNativeCommandComplete={controlledChat?.onNativeCommandComplete ?? chat.onNativeCommandComplete}
           onNewConversation={onNewConversation}
           researchAvailable={config.mode === 'daemon'}
           config={config}

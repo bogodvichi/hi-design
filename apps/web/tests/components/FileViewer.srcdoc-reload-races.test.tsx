@@ -36,6 +36,8 @@
 //   interactive (manualEditFrozenSource still shows the old HTML).
 
 import type { ComponentProps } from 'react';
+import { projectFileWriteContent } from '../helpers/project-file-write';
+
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ProjectFile } from '../../src/types';
@@ -1162,7 +1164,7 @@ describe('FileViewer srcDoc reload — prevSourceBeforeReloadRef race conditions
 
       // File-write (save) POST — record and return success.
       if (url.includes('/api/projects/project-1/files') && init?.method === 'POST') {
-        const payload = JSON.parse(String(init.body)) as { content: string };
+        const payload = { content: projectFileWriteContent(init.body, initialSource) };
         savedSources.push(payload.content);
         return new Response(
           JSON.stringify({ file: manualEditFile() }),

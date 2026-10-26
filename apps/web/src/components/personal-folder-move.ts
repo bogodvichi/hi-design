@@ -1,5 +1,5 @@
 import type { WorkspaceCollabContext } from '@open-design/contracts';
-import { resolveProjectWorkspaceContext } from '../collab/useProjectWorkspaceScope';
+import { ProjectWorkspaceScopeFetchError, resolveProjectWorkspaceContext } from '../collab/useProjectWorkspaceScope';
 import { workspaceProjectHeaders } from '../collab/workspace-identity';
 import { currentWorkspaceAccountGeneration, resolveBoundProjectWorkspaceContext } from '../collab/useWorkspaceContext';
 import { moveWorkspaceProject } from '../state/projects';
@@ -100,7 +100,7 @@ async function confirmTargetAssignment(
   if (!response.ok) throw new Error('Could not verify pending folder assignment');
   const detail = object(await response.json());
   const project = object(detail.project);
-  if (project.id !== projectId || project.workspaceId !== journal.targetWorkspaceId || detail.folderId !== node.targetId) {
+  if (project.id !== projectId || project.workspaceId !== journal.targetWorkspaceId || (detail.folderId !== null && detail.folderId !== node.targetId)) {
     throw new Error('Project no longer belongs to the pending destination');
   }
   // The transfer committed locally but its best-effort upstream folder sync
@@ -198,7 +198,16 @@ export async function movePersonalFolderRoots(input: MoveInput): Promise<Persona
         await ensureTargetTree(plan, beforeWrite);
         for (const node of plan.tree) {
           for (const projectId of node.projectIds) {
-            const context = await resolveProjectWorkspaceContext(projectId);
+            // Scope reads must use a verified membership, not the creator
+            // fallback returned to headerless legacy readers. Check the target
+            // first so a lost transfer response is reconciled before retrying.
+            let context: WorkspaceCollabContext | null;
+            try {
+              context = await resolveProjectWorkspaceContext(projectId, target, target.workspaceId);
+            } catch (error) {
+              if (!(error instanceof ProjectWorkspaceScopeFetchError) || error.failure !== 'forbidden') throw error;
+              context = await resolveProjectWorkspaceContext(projectId, source, source.workspaceId);
+            }
             assertIdentity();
             if (context?.workspaceId === plan.targetWorkspaceId && context.workspaceMemberId === plan.targetWorkspaceMemberId) {
               await confirmTargetAssignment(plan, node, projectId, context, beforeWrite);
@@ -211,7 +220,7 @@ export async function movePersonalFolderRoots(input: MoveInput): Promise<Persona
               await moveWorkspaceProject({ projectId, visibility: 'team', workspaceContext: context, targetWorkspaceId: target.workspaceId, targetFolderId: node.targetId });
               // HTTP success alone is not completion: require both the persisted
               // workspace binding and the upstream folder association to agree.
-              const movedContext = await resolveProjectWorkspaceContext(projectId);
+              const movedContext = await resolveProjectWorkspaceContext(projectId, target, target.workspaceId);
               if (movedContext?.workspaceId !== target.workspaceId || movedContext.workspaceMemberId !== target.workspaceMemberId) throw new Error('Project destination not confirmed');
               await confirmTargetAssignment(plan, node, projectId, movedContext, beforeWrite);
             }

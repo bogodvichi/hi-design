@@ -6,6 +6,7 @@ import {
   fetchSharedSpaceInfo,
   fetchSharedWithMe,
   hdwGet,
+  HdwPostError,
   shareToSharedSpace,
   unshareFromSharedSpace,
   fetchResourcesSharedWithMe,
@@ -24,7 +25,7 @@ import {
   type RemoveSharedWithMeResourceResponse,
 } from '@open-design/contracts';
 import type { SqliteDb } from '../db.js';
-import { getProject, getWorkspaceProjectByProjectId, rebindWorkspaceProject, getFolderTree } from '../db.js';
+import { getProject, getWorkspaceProjectByProjectId, rebindWorkspaceProject, getFolderTree, getWorkspaceFolder } from '../db.js';
 import { createHdwFolders, shareFolderProjectsToSharedSpace, fetchSharedFolders, uploadHdwCommunityBlob, fetchHdwFolderTree } from '../http/hdw.js';
 import { createHdwFolderShares } from '../http/hdw.js';
 import { unshareHdwFolder } from '../http/hdw.js';
@@ -45,6 +46,7 @@ import { ensureProject } from '../projects.js';
  */
 
 export interface RegisterCollabContextHideSignRoutesDeps {
+  serveWorkspaceContext?: boolean;
   env?: NodeJS.ProcessEnv;
   /** Daemon data root — used to read the SSO session for display-name injection. */
   dataDir?: string;
@@ -273,7 +275,7 @@ function makeBilling(workspaceId: string, workspaceMemberId: string) {
  */
 async function buildMockData(dataDir?: string) {
 
-  // Fetch the shared space info from HDW (or local fallback).
+  // Fetch the shared space info from HDW; an unavailable directory is an error.
   // All users are members of the shared space team.
   const sharedSpaceInfo = await fetchSharedSpaceInfo(dataDir);
   const SHARED_SPACE_ID = sharedSpaceInfo?.workspace_id || getSharedSpaceTeamId();
@@ -413,6 +415,7 @@ export function registerCollabContextHideSignRoutes(
     }
   }
 
+  if (deps.serveWorkspaceContext !== false) {
   app.get('/api/workspace/directory', async (req: Request, res: Response) => {
     logRequest('GET', '/api/workspace/directory', req);
     const data = await readWorkspaceData(res);
@@ -573,6 +576,8 @@ export function registerCollabContextHideSignRoutes(
     req.on('close', () => clearInterval(ping));
   });
 
+  }
+
   // --- Shared Space routes --------------------------------------------------
   //
   // These proxy the HDW shared-space endpoints so the web UI and `od` CLI
@@ -699,6 +704,26 @@ export function registerCollabContextHideSignRoutes(
       createdByUsername,
     );
 
+    // Publishing and subsequent ownership checks must use the same
+    // authenticated Workspace identity. Shared Space member IDs in particular
+    // are not derived with the ordinary team-member formula.
+    const workspaceData = await readWorkspaceData(res);
+    if (!workspaceData) return;
+    const sourceWorkspace = workspaceData.directory.items.find((item) => item.workspaceId === homeWorkspaceId);
+    if (!sourceWorkspace || sourceWorkspace.role === 'guest') {
+      res.status(403).json({ error: 'forbidden', message: 'Current user cannot share from this workspace' });
+      return;
+    }
+    const binding = deps.db ? getWorkspaceProjectByProjectId(deps.db, projectId) : null;
+    if (binding && binding.workspaceId !== homeWorkspaceId) {
+      res.status(409).json({ error: 'PROJECT_WORKSPACE_MISMATCH', message: 'Sharing cannot move a project to another workspace' });
+      return;
+    }
+    if (binding && binding.createdByWorkspaceMemberId !== sourceWorkspace.workspaceMemberId) {
+      res.status(403).json({ error: 'forbidden', message: 'Only the project owner can share this project' });
+      return;
+    }
+
     // Best-effort: publish the project to the team resource hub before
     // writing the HDW share record. A hub failure must not block the share.
     // The coverDigest is passed so markTeamProject upserts
@@ -706,9 +731,9 @@ export function registerCollabContextHideSignRoutes(
     if (deps.requestTeamShare) {
       try {
         const sharePrincipal: ResourceHubPrincipal = {
-          memberId: ownerMemberId,
+          memberId: sourceWorkspace.workspaceMemberId,
           teamId: homeWorkspaceId,
-          role: 'owner',
+          role: sourceWorkspace.role,
           lifecycleState: 'active',
           workspaceType: 'team',
         };
@@ -719,7 +744,8 @@ export function registerCollabContextHideSignRoutes(
           ),
         ]);
       } catch (err) {
-        console.warn('[collab-context-hidesign] requestTeamShare best-effort failed', err);
+        res.status(502).json({ error: 'UPSTREAM_UNAVAILABLE', message: 'Project publication failed; retry sharing' });
+        return;
       }
     }
 
@@ -742,7 +768,6 @@ export function registerCollabContextHideSignRoutes(
       // never picks it up for cloud upload.
       if (deps.db) {
         rebindWorkspaceProject(deps.db, projectId, {
-          workspaceId: homeWorkspaceId,
           visibility: 'team',
           resourceState: 'active',
           createdByWorkspaceMemberId: workspaceProjectCreatorForShare(
@@ -880,6 +905,10 @@ export function registerCollabContextHideSignRoutes(
       res.status(403).json({ error: 'forbidden', message: 'Current user is not a member of this workspace' });
       return;
     }
+    if (homeWorkspaceId !== workspaceId) {
+      res.status(409).json({ error: 'PROJECT_WORKSPACE_MISMATCH', message: 'Sharing cannot move a folder to another workspace' });
+      return;
+    }
     const isDefaultWorkspace = 'isDefaultTeam' in sourceWorkspace && sourceWorkspace.isDefaultTeam === true;
     if (!isDefaultWorkspace && sourceWorkspace.role === 'guest') {
       res.status(403).json({ error: 'forbidden', message: 'Guests cannot share team folders' });
@@ -905,6 +934,24 @@ export function registerCollabContextHideSignRoutes(
     if (tree.length === 0) {
       res.status(404).json({ error: 'not_found', message: 'Folder not found in local database or HDW' });
       return;
+    }
+
+    // Validate the complete local tree before any remote mutation.
+    if (deps.db && !treeFromHdw) {
+      const memberId = sourceWorkspace.workspaceMemberId;
+      const invalid = tree.some((folder) => {
+        const local = getWorkspaceFolder(deps.db!, workspaceId, folder.folderId);
+        if (!local || (isDefaultWorkspace && local.ownerMemberId !== memberId)) return true;
+        return folder.projectIds.some((id) => {
+          const binding = getWorkspaceProjectByProjectId(deps.db!, id);
+          return !binding || binding.workspaceId !== workspaceId
+            || binding.createdByWorkspaceMemberId !== memberId;
+        });
+      });
+      if (invalid) {
+        res.status(403).json({ error: 'NOT_RESOURCE_OWNER', message: 'Only the owner can share personal folders and projects' });
+        return;
+      }
     }
 
     // Step 2: Batch-create cloud folders (idempotent — skips existing).
@@ -939,7 +986,8 @@ export function registerCollabContextHideSignRoutes(
    })),
  });
  if (folderSharesResult === null) {
-   console.warn('[collab-context-hidesign] createHdwFolderShares failed — folder_shares records were not written');
+   res.status(502).json({ error: 'UPSTREAM_UNAVAILABLE', message: 'Folder grants were not saved' });
+   return;
  }
 
     // Step 3: Batch-share all projects with folder_id.
@@ -966,6 +1014,29 @@ export function registerCollabContextHideSignRoutes(
       }
     }
 
+    if (deps.requestTeamShare && !treeFromHdw) {
+      for (const item of items) {
+        try {
+          const sharePrincipal: ResourceHubPrincipal = {
+            memberId: sourceWorkspace.workspaceMemberId,
+            teamId: homeWorkspaceId,
+            role: sourceWorkspace.role,
+            lifecycleState: 'active',
+            workspaceType: 'team',
+          };
+          await Promise.race([
+            deps.requestTeamShare(item.project_id, sharePrincipal, item.cover_digest ?? null, item.folder_id),
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('requestTeamShare timeout')), 15_000),
+            ),
+          ]);
+        } catch (err) {
+          res.status(502).json({ error: 'UPSTREAM_UNAVAILABLE', message: 'Project publication failed; retry sharing' });
+          return;
+        }
+      }
+    }
+
     let projectShareResult: { shared: number; skipped: number } | null = null;
     if (items.length > 0) {
       projectShareResult = await shareFolderProjectsToSharedSpace(deps.dataDir, {
@@ -977,31 +1048,9 @@ export function registerCollabContextHideSignRoutes(
       });
     }
 
-    // Best-effort: publish each project to the team resource hub so
-    // team_projects.cover_digest is set on HDW. A hub failure must not
-    // block the share — the sync flow will retry on the next poll.
-    // Skip for HDW-sourced trees (regular team folders) — those projects
-    // are already in team_projects and do not need to be re-published.
-    if (deps.requestTeamShare && !treeFromHdw) {
-      for (const item of items) {
-        try {
-          const sharePrincipal: ResourceHubPrincipal = {
-            memberId: ownerMemberId,
-            teamId: homeWorkspaceId,
-            role: 'owner',
-            lifecycleState: 'active',
-            workspaceType: 'team',
-          };
-          await Promise.race([
-            deps.requestTeamShare(item.project_id, sharePrincipal, item.cover_digest ?? null, item.folder_id),
-            new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error('requestTeamShare timeout')), 15_000),
-            ),
-          ]);
-        } catch (err) {
-          console.warn('[collab-context-hidesign] requestTeamShare best-effort failed for folder project', item.project_id, err);
-        }
-      }
+    if (items.length > 0 && projectShareResult === null) {
+      res.status(502).json({ error: 'UPSTREAM_UNAVAILABLE', message: 'Project grants were not saved' });
+      return;
     }
 
     // After the HDW share records are written, update local SQLite rows
@@ -1011,7 +1060,6 @@ export function registerCollabContextHideSignRoutes(
       for (const item of items) {
         try {
           rebindWorkspaceProject(deps.db, item.project_id, {
-            workspaceId: homeWorkspaceId,
             visibility: 'team',
             resourceState: 'active',
             createdByWorkspaceMemberId: workspaceProjectCreatorForShare(
@@ -1116,6 +1164,15 @@ export function registerCollabContextHideSignRoutes(
       }
       res.json(result);
     } catch (err) {
+      if (err instanceof HdwPostError && err.status === 403 && err.code === 'NOT_RESOURCE_OWNER') {
+        // Do not bypass the HDW ownership guard or recast a forbidden share
+        // as a transient outage: the author must reconcile the cloud owner.
+        res.status(403).json({
+          error: 'NOT_RESOURCE_OWNER',
+          message: 'resource ownership does not match the signed-in account',
+        });
+        return;
+      }
       console.warn('[collab-context-hidesign] POST /api/resource-share/share error', err);
       res.status(503).json({ error: 'UPSTREAM_UNAVAILABLE', message: 'shared space server is unreachable', retryable: true });
     }

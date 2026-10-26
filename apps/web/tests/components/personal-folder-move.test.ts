@@ -4,7 +4,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { movePersonalFolderRoots } from '../../src/components/personal-folder-move';
 
 const mocks = vi.hoisted(() => ({ resolve: vi.fn(), context: vi.fn(), move: vi.fn(), generation: 1 }));
-vi.mock('../../src/collab/useProjectWorkspaceScope', () => ({ resolveProjectWorkspaceContext: mocks.resolve }));
+vi.mock('../../src/collab/useProjectWorkspaceScope', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../src/collab/useProjectWorkspaceScope')>(),
+  resolveProjectWorkspaceContext: mocks.resolve,
+}));
 vi.mock('../../src/collab/useWorkspaceContext', () => ({
   resolveBoundProjectWorkspaceContext: mocks.context,
   currentWorkspaceAccountGeneration: () => mocks.generation,

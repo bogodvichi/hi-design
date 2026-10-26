@@ -1,4 +1,5 @@
 import { emptyManualEditStyles, MANUAL_EDIT_STYLE_PROPS, type ManualEditFields, type ManualEditPatch, type ManualEditStyles } from './types';
+import { manualEditRuntimeSelector } from './runtime-target';
 
 const MANUAL_EDIT_RUNTIME_OVERRIDES_ID = 'od-manual-edit-runtime-overrides';
 const MANUAL_EDIT_RUNTIME_APPLY_ID = 'od-manual-edit-runtime-apply';
@@ -19,6 +20,7 @@ const RUNTIME_OVERRIDE_APPLIER_SOURCE = `
     return String(value).replace(/"/g, '\\\\"');
   }
   function byId(id) {
+    if (id.indexOf('runtime:') === 0) return document.querySelector(id.slice('runtime:'.length));
     return document.querySelector('[data-od-id="' + cssEscape(id) + '"]');
   }
   function textValue(value) {
@@ -121,6 +123,18 @@ export function applyManualEditPatch(source: string, patch: ManualEditPatch): Ma
 
   const el = findEditableElement(doc, patch.id);
   if (!el) {
+    if (manualEditRuntimeSelector(patch.id)) {
+      let dynamic: { ok: boolean };
+      if (patch.kind === 'set-style' || patch.kind === 'remove-element') {
+        setRuntimeStyleOverride(doc, patch.id, patch.kind === 'remove-element' ? { display: 'none' } : patch.styles);
+        dynamic = { ok: true };
+      } else {
+        dynamic = setRuntimeContentOverride(doc, patch);
+      }
+      return dynamic.ok
+        ? { ok: true, source: serializeSource(doc, source) }
+        : { ok: false, source, error: `Unsupported runtime patch: ${patch.kind}` };
+    }
     const dynamic = applyDynamicBrandKitPatch(doc, patch);
     return dynamic.ok
       ? { ok: true, source: serializeSource(doc, source) }
@@ -187,7 +201,10 @@ export function applyManualEditPatch(source: string, patch: ManualEditPatch): Ma
 export function readManualEditFields(source: string, id: string): ManualEditFields {
   const doc = parseSource(source);
   const el = doc ? findEditableElement(doc, id) : null;
-  if (!el) return {};
+  if (!el) {
+    const overrides = doc && manualEditRuntimeSelector(id) ? readRuntimeContentOverrides(doc) : {};
+    return overrides.links?.[id] ?? overrides.images?.[id] ?? (overrides.text?.[id] !== undefined ? { text: overrides.text[id] } : {});
+  }
   const kind = inferKind(el);
   if (kind === 'link') {
     return {
@@ -207,8 +224,13 @@ export function readManualEditFields(source: string, id: string): ManualEditFiel
 export function readManualEditStyles(source: string, id: string): ManualEditStyles {
   const doc = parseSource(source);
   const el = doc ? findEditableElement(doc, id) : null;
-  if (!el) return emptyManualEditStyles();
-  const style = (el as HTMLElement).style;
+  if (!doc) return emptyManualEditStyles();
+  const style = el ? (el as HTMLElement).style : doc.createElement('div').style;
+  const selector = manualEditRuntimeSelector(id);
+  if (!el && selector) {
+    const css = doc.querySelector('style[data-od-manual-edit-runtime-overrides]')?.textContent ?? '';
+    style.cssText = css.match(runtimeStyleRulePattern(selector))?.[1] ?? '';
+  }
   return MANUAL_EDIT_STYLE_PROPS.reduce<ManualEditStyles>((acc, key) => {
     acc[key] = (style[key as unknown as keyof CSSStyleDeclaration] as string | undefined) ?? '';
     return acc;
@@ -218,7 +240,7 @@ export function readManualEditStyles(source: string, id: string): ManualEditStyl
 export function readManualEditAttributes(source: string, id: string): Record<string, string> {
   const doc = parseSource(source);
   const el = doc ? findEditableElement(doc, id) : null;
-  if (!el) return {};
+  if (!el) return doc && manualEditRuntimeSelector(id) ? readRuntimeContentOverrides(doc).attrs?.[id] ?? {} : {};
   const attrs: Record<string, string> = {};
   Array.from(el.attributes).forEach((attr) => {
     if (attr.name === 'data-od-runtime-id') return;
@@ -229,6 +251,7 @@ export function readManualEditAttributes(source: string, id: string): Record<str
 
 export function readManualEditOuterHtml(source: string, id: string): string {
   const doc = parseSource(source);
+  if (doc && manualEditRuntimeSelector(id)) return readRuntimeContentOverrides(doc).html?.[id] ?? '';
   return (doc ? findEditableElement(doc, id)?.outerHTML : '') ?? '';
 }
 
@@ -277,6 +300,7 @@ function inferKind(el: Element): 'text' | 'link' | 'image' | 'container' {
 
 function findEditableElement(doc: Document, id: string): Element | null {
   if (id === '__body__') return doc.body;
+  if (manualEditRuntimeSelector(id)) return null;
   return (
     doc.querySelector(`[data-od-id="${cssEscape(id)}"]`) ??
     doc.querySelector(`[data-od-runtime-id="${cssEscape(id)}"]`) ??
@@ -563,7 +587,14 @@ function safeJsonForScript(value: unknown): string {
 
 function setRuntimeStyleOverride(doc: Document, id: string, styles: Partial<ManualEditStyles>): void {
   const style = runtimeStyleElement(doc);
-  const selector = `[data-od-id="${cssStringEscape(id)}"]`;
+  const runtimeSelector = manualEditRuntimeSelector(id);
+  const selector = runtimeSelector || `[data-od-id="${cssStringEscape(id)}"]`;
+  if (runtimeSelector) {
+    const previous = doc.createElement('div');
+    previous.style.cssText = (style.textContent ?? '').match(runtimeStyleRulePattern(selector))?.[1] ?? '';
+    setInlineStyles(previous, styles);
+    styles = Object.fromEntries(MANUAL_EDIT_STYLE_PROPS.map((key) => [key, previous.style[key as keyof CSSStyleDeclaration]]));
+  }
   const cleaned = removeRuntimeStyleRule(style.textContent ?? '', selector);
   const body = Object.entries(styles)
     .map(([name, value]) => {
@@ -585,8 +616,12 @@ function runtimeStyleElement(doc: Document): HTMLStyleElement {
 }
 
 function removeRuntimeStyleRule(css: string, selector: string): string {
+  return css.replace(runtimeStyleRulePattern(selector), '\n').trim();
+}
+
+function runtimeStyleRulePattern(selector: string): RegExp {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return css.replace(new RegExp(`\\n?${escaped}\\s*\\{[^}]*\\}\\s*`, 'g'), '\n').trim();
+  return new RegExp(`\\n?${escaped}\\s*\\{([^}]*)\\}\\s*`);
 }
 
 function findElementByPath(doc: Document, id: string): Element | null {

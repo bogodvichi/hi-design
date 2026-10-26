@@ -3679,12 +3679,13 @@ function AppInner() {
       sourceProjectId: string,
       input: {
         name?: string;
+        sourceWorkspaceId?: string;
         targetWorkspaceId?: string;
         targetFolderId?: string | null;
       } = {},
     ) => {
       const sourceWorkspaceContext =
-        await resolveSourceProjectWorkspaceContext(sourceProjectId);
+        await resolveSourceProjectWorkspaceContext(sourceProjectId, input.sourceWorkspaceId);
       const { targetFolderId, targetWorkspaceId, name } = input;
       if (
         (targetFolderId !== undefined || targetWorkspaceId !== undefined) &&
@@ -4432,12 +4433,10 @@ if (fetchedProject) {
     navigate({ kind: 'project', projectId, fileName: liveArtifactTabId(artifactId) });
   }, []);
 
-  const handleDeleteProject = useCallback(async (id: string) => {
-    // Carry the active workspace identity so the daemon's cross-workspace
-    // ownership check actually runs — see deleteProject's docblock
-    // (recvq5ecTkar91: a leaked-in project was really deletable, not just
-    // visible, because this call sent no workspace headers at all).
-    const mutationContext = workspaceContextRef.current;
+  const handleDeleteProject = useCallback(async (id: string, source?: ProjectMutationSource) => {
+    // Folder collections may be ahead of the shell's active workspace.
+    const mutationContext = source ? source.workspaceContext : workspaceContextRef.current;
+    if (source && !mutationContext) throw new Error('Source workspace context is required');
     const mutationAccountGeneration = currentWorkspaceAccountGeneration();
     await deleteProjectApi(id, mutationContext);
     if (mutationContext) {

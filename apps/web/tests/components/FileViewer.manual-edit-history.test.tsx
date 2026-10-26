@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import { projectFileWriteContent } from '../helpers/project-file-write';
+
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ComponentProps } from 'react';
@@ -106,6 +108,33 @@ afterEach(() => {
 });
 
 describe('FileViewer manual edit history regressions', () => {
+  it('refreshes a conflicting revision without retrying it as a full-file upload', async () => {
+    const initialSource = '<!doctype html><html><body><h1 data-od-id="hero">Hero</h1></body></html>';
+    const externalSource = initialSource.replace('Hero', 'Changed elsewhere');
+    const writes: unknown[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      if (String(input).includes('/files') && init?.method === 'POST') {
+        writes.push(JSON.parse(String(init.body)));
+        return Response.json({ error: { code: 'FILE_EDIT_CONFLICT', message: 'The file changed.' } }, { status: 409 });
+      }
+      if (String(input).includes('/raw/')) return new Response(writes.length ? externalSource : initialSource);
+      return Response.json({ deployments: [], versions: [] });
+    }));
+    render(<FileViewer projectId="project-1" projectKind="prototype" file={htmlPreviewFile()} liveHtml={initialSource} />);
+    await enterManualEditMode();
+    await selectManualEditTarget();
+    await act(async () => {
+      await panelState.props?.onApplyPatch({ id: 'hero', kind: 'set-text', value: 'My change' }, 'Content: Hero');
+    });
+    expect(writes).toHaveLength(1);
+    expect(writes[0]).toHaveProperty('patch.baseDigest');
+    expect(writes[0]).not.toHaveProperty('content');
+    await waitFor(() => expect(panelState.props?.draft.fullSource).toBe(externalSource));
+    expect(panelState.props?.error).toContain('changed outside manual edit');
+    expect(panelState.props?.canUndo).toBe(false);
+    expect((screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement).srcdoc).toContain('Changed elsewhere');
+  });
+
   it('flushes pending style edits before activating draw mode from manual edit', async () => {
     const initialSource = '<!doctype html><html><body><h1 data-od-id="hero" style="color: #111111">Hero</h1></body></html>';
     let saveResolve!: (value: Response) => void;
@@ -122,7 +151,7 @@ describe('FileViewer manual edit history regressions', () => {
         });
       }
       if (url.includes('/api/projects/project-1/files') && init?.method === 'POST') {
-        const payload = JSON.parse(String(init.body)) as { content: string };
+        const payload = { content: projectFileWriteContent(init.body, initialSource) };
         savedSources.push(payload.content);
         return saveResponse;
       }
@@ -184,8 +213,7 @@ describe('FileViewer manual edit history regressions', () => {
     expect(editFrame.getAttribute('data-od-render-mode')).toBe('srcdoc');
     expect(editFrame.srcdoc).toContain('data-od-edit-bridge');
 
-    // Exiting edit mode is the toolbar toggle's job — the panel's own close
-    // button only collapses the inspector and stays in edit.
+    // Exiting through the toolbar must preserve srcDoc-only previews.
     clickManualTool('manual-edit-mode-toggle');
 
     await waitFor(() => {
@@ -210,7 +238,7 @@ describe('FileViewer manual edit history regressions', () => {
         });
       }
       if (url.includes('/api/projects/project-1/files') && init?.method === 'POST') {
-        const payload = JSON.parse(String(init.body)) as { content: string };
+        const payload = { content: projectFileWriteContent(init.body, persistedSource) };
         persistedSource = payload.content;
         savedSources.push(payload.content);
         return new Response(JSON.stringify({ file: htmlPreviewFile() }), {
@@ -273,7 +301,7 @@ describe('FileViewer manual edit history regressions', () => {
         });
       }
       if (url.includes('/api/projects/project-1/files') && init?.method === 'POST') {
-        const payload = JSON.parse(String(init.body)) as { content: string };
+        const payload = { content: projectFileWriteContent(init.body, initialSource) };
         savedSources.push(payload.content);
         return new Response(JSON.stringify({ file: htmlPreviewFile() }), {
           status: 200,
@@ -332,7 +360,7 @@ describe('FileViewer manual edit history regressions', () => {
     const writes: string[] = [];
     vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       if (String(input).includes('/files') && init?.method === 'POST') {
-        persistedSource = (JSON.parse(String(init.body)) as { content: string }).content;
+        persistedSource = projectFileWriteContent(init.body, persistedSource);
         writes.push(persistedSource);
         return Response.json({ file: htmlPreviewFile() });
       }
@@ -367,7 +395,7 @@ describe('FileViewer manual edit history regressions', () => {
         });
       }
       if (url.includes('/api/projects/project-1/files') && init?.method === 'POST') {
-        const payload = JSON.parse(String(init.body)) as { content: string };
+        const payload = { content: projectFileWriteContent(init.body, persistedSource) };
         persistedSource = payload.content;
         savedSources.push(payload.content);
         return new Response(JSON.stringify({ file: htmlPreviewFile() }), {

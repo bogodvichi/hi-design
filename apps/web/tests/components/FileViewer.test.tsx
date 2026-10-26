@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import { projectFileWriteContent } from '../helpers/project-file-write';
+
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { useLayoutEffect, useRef, useState, type ReactElement } from 'react';
@@ -3510,7 +3512,7 @@ describe('FileViewer SVG artifacts', () => {
         });
       }
       if (url.endsWith('/api/projects/project-1/files') && init?.method === 'POST') {
-        const body = JSON.parse(String(init.body)) as { content: string };
+        const body = { content: projectFileWriteContent(init.body, persistedSource) };
         persistedSource = body.content;
         writes.push(body.content);
         return new Response(JSON.stringify({ file: { ...file, mtime: file.mtime + writes.length } }), {
@@ -4199,7 +4201,7 @@ describe('FileViewer SVG artifacts', () => {
       const value = String(url);
       if (value.includes('/files') && opts?.method === 'POST') {
         postCount += 1;
-        persistedSource = (JSON.parse(String(opts.body)) as { content: string }).content;
+        persistedSource = projectFileWriteContent(opts.body, persistedSource);
         return new Response(JSON.stringify({ file: { name: 'page.html', mtime: 2 } }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
@@ -4305,7 +4307,7 @@ describe('FileViewer SVG artifacts', () => {
     vi.stubGlobal('fetch', vi.fn(async (url: unknown, opts?: { method?: string; body?: BodyInit | null }) => {
       const value = String(url);
       if (value.includes('/files') && opts?.method === 'POST') {
-        persistedSource = (JSON.parse(String(opts.body)) as { content: string }).content;
+        persistedSource = projectFileWriteContent(opts.body, persistedSource);
         return new Response(JSON.stringify({ file: { name: 'page.html', mtime: 2 } }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },
@@ -4396,7 +4398,7 @@ describe('FileViewer SVG artifacts', () => {
     vi.stubGlobal('fetch', vi.fn(async (url: unknown, opts?: { method?: string; body?: BodyInit | null }) => {
       const value = String(url);
       if (value.includes('/files') && opts?.method === 'POST') {
-        persistedSource = (JSON.parse(String(opts.body)) as { content: string }).content;
+        persistedSource = projectFileWriteContent(opts.body, persistedSource);
         return new Response(JSON.stringify({ file: { name: 'page.html', mtime: 2 } }), {
           status: 200,
           headers: { 'Content-Type': 'application/json' },

@@ -6158,4 +6158,11 @@ export const zhTW: Dict = {
   'share.publishSuccessHint': "「{name}」已成功發布到社群。",
   'share.openInCommunity': "在社群中查看",
   'contentEmpty.title': "暫無內容",
+  "chat.compact.action": "壓縮上下文",
+  "chat.compact.busy": "正在壓縮上下文…",
+  "chat.compact.description": "Claude Code · 壓縮目前對話的較早訊息，保留重要上下文",
+  "chat.compact.unavailable": "請切換至 Claude Code 後使用",
+  "chat.compact.noAttachments": "執行 /compact 前請先移除附件。",
+  "chat.compact.failed": "上下文壓縮失敗",
+  "chat.contextRecovery.title": "上下文恢復操作",
 };

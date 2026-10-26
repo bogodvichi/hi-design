@@ -88,12 +88,12 @@ interface Props {
    fileName?: string,
    projectTitleHint?: ProjectTitleHint,
  ) => Promise<boolean> | boolean | void;
- onDeleteProject?: (id: string) => Promise<boolean | void> | boolean | void;
+ onDeleteProject?: (id: string, source?: ProjectMutationSource) => Promise<boolean | void> | boolean | void;
   onRenameProject?: (id: string, name: string, source?: ProjectMutationSource) => void;
   onDuplicateProject?: (id: string) => Promise<void> | void;
   onCopyProject?: (
     id: string,
-    options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
+    options?: { sourceWorkspaceId?: string; targetWorkspaceId?: string; targetFolderId?: string | null },
   ) => Promise<void> | void;
 }
 
@@ -580,12 +580,12 @@ function ProjectsPanel({
     fileName?: string,
     projectTitleHint?: ProjectTitleHint,
   ) => Promise<boolean> | boolean | void;
-  onDeleteProject?: (id: string) => Promise<boolean | void> | boolean | void;
+  onDeleteProject?: (id: string, source?: ProjectMutationSource) => Promise<boolean | void> | boolean | void;
   onRenameProject?: (id: string, name: string, source?: ProjectMutationSource) => void;
   onDuplicateProject?: (id: string) => Promise<void> | void;
   onCopyProject?: (
     id: string,
-    options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
+    options?: { sourceWorkspaceId?: string; targetWorkspaceId?: string; targetFolderId?: string | null },
   ) => Promise<void> | void;
   controlsPortalTarget?: HTMLElement | null;
 }) {
@@ -1047,6 +1047,7 @@ function ProjectsPanel({
           heading={t('entry.navDrafts')}
           space="team"
           homeWorkspaceId={teamId}
+          workspaceContextOverride={workspaceContext}
           onOpen={(id) => {
             const sourceProject = projects.find((project) => project.id === id);
             onOpenProject?.(
@@ -1057,7 +1058,10 @@ function ProjectsPanel({
                 : undefined,
             );
           }}
-          onDelete={onDeleteProject}
+          onDelete={onDeleteProject ? (id) => {
+            const sourceProject = projects.find((project) => project.id === id);
+            return sourceProject ? onDeleteProject(id, { project: sourceProject, workspaceContext }) : false;
+          } : undefined}
           onRename={(id, name) => {
             const sourceProject = projects.find((project) => project.id === id);
             setProjects((prev) => prev.map((p) => p.id === id ? { ...p, name } : p));
@@ -1070,7 +1074,7 @@ function ProjectsPanel({
             );
           }}
           onDuplicate={onCopyProject && teamId
-            ? (id) => onCopyProject(id, { targetWorkspaceId: teamId })
+            ? (id) => onCopyProject(id, { sourceWorkspaceId: teamId, targetWorkspaceId: teamId })
             : onDuplicateProject}
          hideTitle
          controlsPortalTarget={controlsPortalTarget}
@@ -1511,12 +1515,12 @@ interface FolderViewProps {
     fileName?: string,
     projectTitleHint?: ProjectTitleHint,
   ) => Promise<boolean> | boolean | void;
-  onDeleteProject?: (id: string) => Promise<boolean | void> | boolean | void;
+  onDeleteProject?: (id: string, source?: ProjectMutationSource) => Promise<boolean | void> | boolean | void;
   onRenameProject?: (id: string, name: string, source?: ProjectMutationSource) => void;
   onDuplicateProject?: (id: string) => Promise<void> | void;
   onCopyProject?: (
     id: string,
-    options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
+    options?: { sourceWorkspaceId?: string; targetWorkspaceId?: string; targetFolderId?: string | null },
   ) => Promise<void> | void;
 }
 
@@ -1765,12 +1769,12 @@ function FoldersPanel({
    fileName?: string,
    projectTitleHint?: ProjectTitleHint,
  ) => Promise<boolean> | boolean | void;
- onDeleteProject?: (id: string) => Promise<boolean | void> | boolean | void;
+ onDeleteProject?: (id: string, source?: ProjectMutationSource) => Promise<boolean | void> | boolean | void;
   onRenameProject?: (id: string, name: string, source?: ProjectMutationSource) => void;
   onDuplicateProject?: (id: string) => Promise<void> | void;
   onCopyProject?: (
     id: string,
-    options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
+    options?: { sourceWorkspaceId?: string; targetWorkspaceId?: string; targetFolderId?: string | null },
   ) => Promise<void> | void;
 }) {
   const t = useT();
@@ -1893,7 +1897,8 @@ function FoldersPanel({
     void loadProjects();
     function onFoldersUpdated(e: Event) {
       const detail = (e as CustomEvent).detail;
-      if (detail?.folderId !== folderId) return;
+      if (detail?.teamId && detail.teamId !== teamId) return;
+      if (detail?.folderId != null && detail.folderId !== folderId) return;
       void loadProjects();
     }
     window.addEventListener('hdw:subfolders-updated', onFoldersUpdated);
@@ -2235,6 +2240,7 @@ function FoldersPanel({
           heading={t('entry.navDrafts')}
           space="team"
           homeWorkspaceId={teamId}
+          workspaceContextOverride={workspaceContext}
           onOpen={(id) => {
             const sourceProject = projects.find((project) => project.id === id);
             onOpenProject?.(
@@ -2245,7 +2251,10 @@ function FoldersPanel({
                 : undefined,
             );
           }}
-          onDelete={onDeleteProject}
+          onDelete={onDeleteProject ? (id) => {
+            const sourceProject = projects.find((project) => project.id === id);
+            return sourceProject ? onDeleteProject(id, { project: sourceProject, workspaceContext }) : false;
+          } : undefined}
           onRename={(id, name) => {
             const sourceProject = projects.find((project) => project.id === id);
             setProjects((prev) => prev.map((p) => p.id === id ? { ...p, name } : p));
@@ -2258,7 +2267,7 @@ function FoldersPanel({
             );
           }}
           onDuplicate={onCopyProject && teamId
-            ? (id) => onCopyProject(id, { targetWorkspaceId: teamId, targetFolderId: folderId })
+            ? (id) => onCopyProject(id, { sourceWorkspaceId: teamId, targetWorkspaceId: teamId, targetFolderId: folderId })
             : onDuplicateProject}
          hideTitle
          operator={operator}

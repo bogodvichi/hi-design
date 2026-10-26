@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Dialog, DialogFooter, DialogTitle } from '@open-design/components';
 import { PersonPicker, type Person } from './PersonPicker';
-import { useT } from '../i18n';
+import { useI18n, useT } from '../i18n';
 import { getStoredUserInfo } from '../auth/auth';
-import { shareResourceToSharedSpace } from '../collab/shared-space-catalog';
+import { ResourceShareOwnerError, shareResourceToSharedSpace } from '../collab/shared-space-catalog';
 import styles from './ShareToSharedSpaceDialog.module.css';
 
 /**
@@ -31,6 +31,7 @@ export function ShareResourceDialog({
   onShared?: () => void;
 }) {
   const t = useT();
+  const { locale } = useI18n();
   const [selected, setSelected] = useState<Person[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,8 +82,14 @@ export function ShareResourceDialog({
       setSuccess(true);
       onShared?.();
       setTimeout(() => onClose(), 800);
-    } catch {
-      setError(t('sharedSpace.shareFailed'));
+    } catch (error) {
+      if (error instanceof ResourceShareOwnerError) {
+        setError(locale.startsWith('zh')
+          ? '无法分享：当前账号与云端登记的资源所有者不一致。请核对发布账号或联系管理员确认资源归属。'
+          : 'Cannot share: the signed-in account is not the cloud resource owner. Check the publishing account or ask an administrator to verify ownership.');
+      } else {
+        setError(t('sharedSpace.shareFailed'));
+      }
     } finally {
       setSubmitting(false);
     }

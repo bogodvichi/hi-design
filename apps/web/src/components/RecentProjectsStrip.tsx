@@ -173,6 +173,8 @@ interface Props {
   /** The workspace ID this strip's projects belong to. Required for
    * "分享" to know the project's home workspace. */
   homeWorkspaceId?: string | null;
+  /** Collection routes resolve their own identity independently of the shell. */
+  workspaceContextOverride?: WorkspaceCollabContext | null;
   /** Return false when opening failed and the grid stayed mounted, so aborted
    * background cover work can resume after the foreground attempt finishes. */
   onOpen: (id: string) => boolean | void | Promise<boolean | void>;
@@ -433,6 +435,7 @@ export function RecentProjectsStrip({
   heading,
   description,
   homeWorkspaceId,
+  workspaceContextOverride,
   onOpen,
   onViewAll,
   onOpenLocation,
@@ -471,9 +474,13 @@ selectionExtension,
   const analyticsPage = space === 'drafts' ? 'drafts' : space === 'team' ? 'all_projects' : 'home';
   const rowRef = useRef<HTMLDivElement | null>(null);
   const {
-    context: workspaceContext,
-    loading: workspaceContextLoading,
+    context: ambientWorkspaceContext,
+    loading: ambientWorkspaceContextLoading,
   } = useWorkspaceContext();
+  const workspaceContext = workspaceContextOverride === undefined
+    ? ambientWorkspaceContext : workspaceContextOverride;
+  const workspaceContextLoading = workspaceContextOverride === undefined
+    ? ambientWorkspaceContextLoading : workspaceContextOverride === null;
   const { members: teamMembers = [], resolve: resolveTeamMember } = useTeamMembers(
     currentUserDirectoryEntry(workspaceContext),
   );

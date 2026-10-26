@@ -2176,3 +2176,15 @@ describe('classifyRunFailure — sampled 0.15.1 provider request failures', () =
     expect(isResumableFailure(result)).toBe(resumable);
   });
 });
+
+
+describe('Claude gateway request size errors', () => {
+  it('classifies the screenshot error as a request size failure', () => {
+    expect(classifyForAgent('claude', 'AGENT_EXECUTION_FAILED',
+      'API Error: 400 {"error":"request body so large (1000)"}')).toMatchObject({
+      failure_category: 'prompt_too_large',
+      failure_detail: 'request_too_large',
+      retryable: false,
+    });
+  });
+});

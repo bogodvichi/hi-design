@@ -1,4 +1,5 @@
-import { getSharedSpaceTeamId, getSharedSpaceMemberId, getCollaboratorMemberId } from '../ids.js';
+import { hdwSessionHeaders } from './hdw-session.js';
+import { getSharedSpaceMemberId } from '../ids.js';
 import type { SharedWithMeResource } from '@open-design/contracts';
 import { UA, type Cookie } from './http.js';
 import { readSsoConfigFile, readSsoUsername } from './hik_logins/hicoo.js';
@@ -41,13 +42,14 @@ export async function hdwGet<T>(
       }
     }
     const headers: Record<string, string> = {
+      ...hdwSessionHeaders(),
       Accept: 'application/json',
       'User-Agent': UA,
     };
     if (cookies?.length) {
       headers.Cookie = cookies.map(c => `${c.name}=${c.value}`).join('; ');
     }
-    const resp = await fetch(url, { headers, signal: AbortSignal.timeout(10_000) });
+    const resp = await fetch(url, { redirect: 'error', headers, signal: AbortSignal.timeout(10_000) });
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
       console.warn(`[hdw] GET ${path} failed: HTTP ${resp.status} ${resp.statusText} ${text.slice(0, 200)}`);
@@ -80,13 +82,14 @@ export async function hdwGetRaw<T>(
       }
     }
     const headers: Record<string, string> = {
+      ...hdwSessionHeaders(),
       Accept: 'application/json',
       'User-Agent': UA,
     };
     if (cookies?.length) {
       headers.Cookie = cookies.map(c => `${c.name}=${c.value}`).join('; ');
     }
-    const resp = await fetch(url, { headers, signal: AbortSignal.timeout(10_000) });
+    const resp = await fetch(url, { redirect: 'error', headers, signal: AbortSignal.timeout(10_000) });
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
       console.warn(`[hdw] GET raw ${path} failed: HTTP ${resp.status} ${resp.statusText} ${text.slice(0, 200)}`);
@@ -99,15 +102,26 @@ export async function hdwGetRaw<T>(
   }
 }
 
+/** Known HDW HTTP rejection. Only strict callers use this; legacy helpers
+ * still return null for unavailable responses. Never include cookie values. */
+export class HdwPostError extends Error {
+  constructor(readonly status: number, readonly code: string) {
+    super(`HDW request rejected (${status}): ${code}`);
+    this.name = 'HdwPostError';
+  }
+}
+
 export async function hdwPost<T>(
   path: string,
   body: Record<string, unknown>,
   cookies?: Cookie[],
+  options?: { throwOnError?: boolean },
 ): Promise<T | null> {
   try {
     const url = new URL(`${HDW_BASE}${path}`);
     const bodyStr = JSON.stringify(body);
     const headers: Record<string, string> = {
+      ...hdwSessionHeaders(),
       Accept: 'application/json',
       'Content-Type': 'application/json',
       'User-Agent': UA,
@@ -115,20 +129,31 @@ export async function hdwPost<T>(
     if (cookies?.length) {
       headers.Cookie = cookies.map(c => `${c.name}=${c.value}`).join('; ');
     }
-    const resp = await fetch(url, { method: 'POST', headers, body: bodyStr, signal: AbortSignal.timeout(10_000) });
+    const resp = await fetch(url, { redirect: 'error', method: 'POST', headers, body: bodyStr, signal: AbortSignal.timeout(10_000) });
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
       console.warn(`[hdw] POST ${path} failed: HTTP ${resp.status} ${resp.statusText} ${text.slice(0, 200)}`);
+      if (options?.throwOnError) {
+        let code = 'UPSTREAM_REQUEST_FAILED';
+        try {
+          const body = JSON.parse(text) as { error?: unknown };
+          if (typeof body.error === 'string') code = body.error;
+        } catch { /* Upstream may return non-JSON. */ }
+        throw new HdwPostError(resp.status, code);
+      }
       return null;
     }
     const json = (await resp.json()) as HdwResponse<T>;
     if (json.code !== 0 || !json.data) {
       console.warn(`[hdw] POST ${path} error: code=${json.code} msg=${json.msg} error=${json.error ?? ''}`);
+      if (options?.throwOnError) throw new HdwPostError(502, json.error ?? 'UPSTREAM_INVALID_RESPONSE');
       return null;
     }
-  return json.data;
+    return json.data;
   } catch (err) {
+    if (err instanceof HdwPostError) throw err;
     console.warn(`[hdw] POST ${path} network error: ${(err as Error).message}`);
+    if (options?.throwOnError) throw new HdwPostError(503, 'UPSTREAM_UNAVAILABLE');
     return null;
   }
 }
@@ -262,6 +287,7 @@ export async function hdwPutRaw(
   try {
     const url = new URL(`${HDW_BASE}${path}`);
     const headers: Record<string, string> = {
+      ...hdwSessionHeaders(),
       'Content-Type': 'application/octet-stream',
       'Content-Length': String(body.length),
       'User-Agent': UA,
@@ -269,7 +295,7 @@ export async function hdwPutRaw(
     if (cookies?.length) {
       headers.Cookie = cookies.map(c => `${c.name}=${c.value}`).join('; ');
     }
-    const resp = await fetch(url, { method: 'PUT', headers, body, signal: AbortSignal.timeout(10_000) });
+    const resp = await fetch(url, { redirect: 'error', method: 'PUT', headers, body, signal: AbortSignal.timeout(10_000) });
     if (!resp.ok) return false;
     const json = (await resp.json()) as HdwResponse<unknown>;
     return json.code === 0;
@@ -389,6 +415,7 @@ export async function unshareHdwFolder(
   try {
     const url = new URL(`${HDW_BASE}/folder/unshare`);
     const headers: Record<string, string> = {
+      ...hdwSessionHeaders(),
       'Content-Type': 'application/json',
       Accept: 'application/json',
       'User-Agent': UA,
@@ -396,7 +423,7 @@ export async function unshareHdwFolder(
     if (session?.cookies?.length) {
       headers.Cookie = session.cookies.map((c) => `${c.name}=${c.value}`).join('; ');
     }
-    const resp = await fetch(url, {
+    const resp = await fetch(url, { redirect: 'error',
       method: 'DELETE',
       headers,
       body: JSON.stringify({
@@ -529,6 +556,7 @@ export async function hdwPut<T>(
     const url = new URL(`${HDW_BASE}${path}`);
     const bodyStr = JSON.stringify(body);
     const headers: Record<string, string> = {
+      ...hdwSessionHeaders(),
       Accept: 'application/json',
       'Content-Type': 'application/json',
       'User-Agent': UA,
@@ -536,7 +564,7 @@ export async function hdwPut<T>(
     if (cookies?.length) {
       headers.Cookie = cookies.map(c => `${c.name}=${c.value}`).join('; ');
     }
-    const resp = await fetch(url, { method: 'PUT', headers, body: bodyStr, signal: AbortSignal.timeout(10_000) });
+    const resp = await fetch(url, { redirect: 'error', method: 'PUT', headers, body: bodyStr, signal: AbortSignal.timeout(10_000) });
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
       console.warn(`[hdw] PUT ${path} failed: HTTP ${resp.status} ${resp.statusText} ${text.slice(0, 200)}`);
@@ -561,13 +589,14 @@ export async function hdwDelete<T>(
   try {
     const url = new URL(`${HDW_BASE}${path}`);
     const headers: Record<string, string> = {
+      ...hdwSessionHeaders(),
       Accept: 'application/json',
       'User-Agent': UA,
     };
     if (cookies?.length) {
       headers.Cookie = cookies.map(c => `${c.name}=${c.value}`).join('; ');
     }
-    const resp = await fetch(url, { method: 'DELETE', headers, signal: AbortSignal.timeout(10_000) });
+    const resp = await fetch(url, { redirect: 'error', method: 'DELETE', headers, signal: AbortSignal.timeout(10_000) });
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
       console.warn(`[hdw] DELETE ${path} failed: HTTP ${resp.status} ${resp.statusText} ${text.slice(0, 200)}`);
@@ -740,6 +769,7 @@ export async function publishHdwCommunityPluginDetailed(
     const url = new URL(`${HDW_BASE}/community/plugins`);
     const bodyStr = JSON.stringify(input);
     const headers: Record<string, string> = {
+      ...hdwSessionHeaders(),
       Accept: 'application/json',
       'Content-Type': 'application/json',
       'User-Agent': UA,
@@ -747,7 +777,7 @@ export async function publishHdwCommunityPluginDetailed(
     if (session?.cookies?.length) {
       headers.Cookie = session.cookies.map(c => `${c.name}=${c.value}`).join('; ');
     }
-    const resp = await fetch(url, { method: 'POST', headers, body: bodyStr, signal: AbortSignal.timeout(10_000) });
+    const resp = await fetch(url, { redirect: 'error', method: 'POST', headers, body: bodyStr, signal: AbortSignal.timeout(10_000) });
     if (!resp.ok) {
       return { ok: false, errorMsg: `HTTP ${resp.status} ${resp.statusText}` };
     }
@@ -948,14 +978,7 @@ export async function fetchSharedSpaceInfo(
   if (email) params.email = email;
   const cloud = await hdwGet<HdwSharedSpaceInfo>('/shared-space/info', params, session?.cookies);
   if (cloud) return cloud;
-  return {
-    workspace_id: getSharedSpaceTeamId(),
-    workspace_name: '共享空间',
-    workspace_type: 'team',
-    workspace_member_id: getSharedSpaceMemberId(username),
-    collaborator_member_id: getCollaboratorMemberId(username),
-    role: 'member',
-  };
+  throw new HdwTeamDirectoryUnavailableError();
 }
 
 export async function fetchSharedWithMe(
@@ -1044,13 +1067,14 @@ export async function unshareFromSharedSpace(
   try {
     const url = new URL(`${HDW_BASE}/shared-space/${encodeURIComponent(shareId)}`);
     const headers: Record<string, string> = {
+      ...hdwSessionHeaders(),
       Accept: 'application/json',
       'User-Agent': UA,
     };
     if (session?.cookies?.length) {
       headers.Cookie = session.cookies.map(c => `${c.name}=${c.value}`).join('; ');
     }
-    const resp = await fetch(url, { method: 'DELETE', headers, signal: AbortSignal.timeout(10_000) });
+    const resp = await fetch(url, { redirect: 'error', method: 'DELETE', headers, signal: AbortSignal.timeout(10_000) });
     if (!resp.ok) return false;
     const json = (await resp.json()) as HdwResponse<unknown>;
     return json.code === 0;
@@ -1069,13 +1093,14 @@ export async function unshareProjectFromSharedSpace(
   try {
     const url = new URL(`${HDW_BASE}/shared-space/project/${encodeURIComponent(projectId)}`);
     const headers: Record<string, string> = {
+      ...hdwSessionHeaders(),
       Accept: 'application/json',
       'User-Agent': UA,
     };
     if (session?.cookies?.length) {
       headers.Cookie = session.cookies.map(c => `${c.name}=${c.value}`).join('; ');
     }
-    const resp = await fetch(url, { method: 'DELETE', headers, signal: AbortSignal.timeout(10_000) });
+    const resp = await fetch(url, { redirect: 'error', method: 'DELETE', headers, signal: AbortSignal.timeout(10_000) });
     if (!resp.ok) return false;
     const json = (await resp.json()) as HdwResponse<unknown>;
     return json.code === 0;
@@ -1094,13 +1119,14 @@ export async function downloadHdwCommunityArchive(
     const archivePath = `/community/plugins/${encodeURIComponent(name)}/versions/${encodeURIComponent(version)}/archive`;
     const url = new URL(HDW_BASE + archivePath);
     const headers: Record<string, string> = {
+      ...hdwSessionHeaders(),
       Accept: 'application/octet-stream',
       'User-Agent': UA,
     };
     if (session?.cookies?.length) {
       headers.Cookie = session.cookies.map(cook => `${cook.name}=${cook.value}`).join('; ');
     }
-    const resp = await fetch(url, { headers, signal: AbortSignal.timeout(10_000) });
+    const resp = await fetch(url, { redirect: 'error', headers, signal: AbortSignal.timeout(10_000) });
     if (!resp.ok) return null;
     const ab = await resp.arrayBuffer();
     return Buffer.from(ab);
@@ -1293,6 +1319,7 @@ export async function shareResourceToSharedSpace(
       })),
     },
     session?.cookies,
+    { throwOnError: true },
   );
 }
 
@@ -1305,13 +1332,14 @@ export async function unshareResourceFromSharedSpace(
   try {
     const url = new URL(`${HDW_BASE}/resource-share/${encodeURIComponent(shareId)}`);
     const headers: Record<string, string> = {
+      ...hdwSessionHeaders(),
       Accept: 'application/json',
       'User-Agent': UA,
     };
     if (session?.cookies?.length) {
       headers.Cookie = session.cookies.map(c => `${c.name}=${c.value}`).join('; ');
     }
-    const resp = await fetch(url, { method: 'DELETE', headers, signal: AbortSignal.timeout(10_000) });
+    const resp = await fetch(url, { redirect: 'error', method: 'DELETE', headers, signal: AbortSignal.timeout(10_000) });
     if (!resp.ok) return false;
     const json = (await resp.json()) as HdwResponse<unknown>;
     return json.code === 0;

@@ -1,3 +1,5 @@
+import { hdwSessionHeaders, type HdwSession } from '../http/hdw-session.js';
+import { readSsoConfigFile } from '../http/hik_logins/hicoo.js';
 // hdw cloud HTTP client — the transport layer for the hdw ResourceHub service.
 //
 // This mirrors the CollabCloudClient pattern: a factory with injectable
@@ -58,6 +60,7 @@ export interface HdwCloudClientOptions {
   config?: HdwCloudConfig;
   fetch?: FetchLike;
   timeoutMs?: number;
+  readSession?: () => HdwSession | null;
 }
 
 export function createHdwCloudClient(options: HdwCloudClientOptions = {}) {
@@ -77,6 +80,7 @@ export function createHdwCloudClient(options: HdwCloudClientOptions = {}) {
   function authHeaders(extra?: Record<string, string>): Record<string, string> {
     const headers: Record<string, string> = {
       'content-type': 'application/json',
+      ...hdwSessionHeaders(options.readSession?.()),
       ...extra,
     };
    if (config!.token) headers.authorization = `Bearer ${config!.token}`;
@@ -96,6 +100,7 @@ export function createHdwCloudClient(options: HdwCloudClientOptions = {}) {
    try {
       const response = await fetchImpl(new URL(prefixedPath(path), config!.baseUrl), {
         method,
+        redirect: 'error',
         headers: authHeaders(extraHeaders),
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
         signal: controller.signal,
@@ -243,10 +248,11 @@ export function createHdwCloudClient(options: HdwCloudClientOptions = {}) {
         ),
         {
           method: 'PUT',
+          redirect: 'error',
           headers: {
+            ...authHeaders(),
             'content-type': 'application/octet-stream',
             'x-hdw-workspace-id': workspaceId,
-            ...(config!.token ? { authorization: `Bearer ${config!.token}` } : {}),
           },
           body: data,
           signal: controller.signal,
@@ -280,9 +286,10 @@ export function createHdwCloudClient(options: HdwCloudClientOptions = {}) {
         ),
         {
           method: 'GET',
+          redirect: 'error',
           headers: {
             'x-hdw-workspace-id': workspaceId,
-            ...(config!.token ? { authorization: `Bearer ${config!.token}` } : {}),
+            ...authHeaders(),
           },
           signal: controller.signal,
         },
@@ -500,14 +507,7 @@ export function createHdwCloudClientFromEnv(
 ): HdwCloudClient | null {
   const config = readHdwCloudConfig(env);
   if (!config) return null;
-  if (!config.token && dataDir) {
-    try {
-      const { readSsoConfigFile } = require('../http/hik_logins/hicoo.js');
-      const sso = readSsoConfigFile(dataDir);
-      if (sso?.cookies?.length) config.cookies = sso.cookies;
-    } catch { /* SSO not available — proceed without cookies */ }
-  }
-  return createHdwCloudClient({ config });
+  return createHdwCloudClient({ config, ...(dataDir ? { readSession: () => readSsoConfigFile(dataDir) } : {}) });
 }
 
 // ---- Wire types for hdw REST API ----

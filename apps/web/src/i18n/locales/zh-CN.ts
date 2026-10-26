@@ -6148,4 +6148,11 @@ export const zhCN: Dict = {
   'share.publishSuccessHint': "「{name}」已成功发布到社区。",
   'share.openInCommunity': "在社区中查看",
  'contentEmpty.title': "暂无内容",
+  "chat.compact.action": "压缩上下文",
+  "chat.compact.busy": "正在压缩上下文…",
+  "chat.compact.description": "Claude Code · 压缩当前会话的较早消息，保留重要上下文",
+  "chat.compact.unavailable": "请切换到 Claude Code 后使用",
+  "chat.compact.noAttachments": "执行 /compact 前请先移除附件。",
+  "chat.compact.failed": "上下文压缩失败",
+  "chat.contextRecovery.title": "上下文恢复操作",
 };

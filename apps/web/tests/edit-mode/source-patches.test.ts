@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { JSDOM } from 'jsdom';
 import {
   applyManualEditPatch,
@@ -51,6 +51,40 @@ describe('manual edit source patches', () => {
   afterEach(() => {
     Reflect.deleteProperty(globalThis, 'DOMParser');
     Reflect.deleteProperty(globalThis, 'CSS');
+  });
+
+  it('persists independent styles for nested runtime divs across reloads and subsequent edits', () => {
+    const source = '<!doctype html><html><body><div id="root"></div><script>document.getElementById("root").innerHTML = \'<div class="card"><div class="chart">Chart</div><div class="other">Other</div></div>\';</script></body></html>';
+    const id = 'runtime:body > div:nth-of-type(1) > div:nth-of-type(1) > div:nth-of-type(1)';
+    const first = applyManualEditPatch(source, { kind: 'set-style', id, styles: { color: 'red', paddingTop: '8px' } });
+    expect(first.ok).toBe(true);
+    const second = applyManualEditPatch(first.source, { kind: 'set-style', id, styles: { backgroundColor: 'blue' } });
+    expect(second.ok).toBe(true);
+    expect(readManualEditStyles(second.source, id)).toMatchObject({ color: 'red', paddingTop: '8px', backgroundColor: 'blue' });
+    const reloaded = new JSDOM(second.source, { runScripts: 'dangerously' });
+    expect(reloaded.window.getComputedStyle(reloaded.window.document.querySelector('.chart')!).color).toBe('rgb(255, 0, 0)');
+    expect(reloaded.window.getComputedStyle(reloaded.window.document.querySelector('.chart')!).backgroundColor).toBe('rgb(0, 0, 255)');
+    expect(reloaded.window.getComputedStyle(reloaded.window.document.querySelector('.other')!).backgroundColor).toBe('rgba(0, 0, 0, 0)');
+    reloaded.window.close();
+
+    const cleared = applyManualEditPatch(second.source, { kind: 'set-style', id, styles: { color: '' } });
+    expect(readManualEditStyles(cleared.source, id)).toMatchObject({ color: '', paddingTop: '8px', backgroundColor: 'blue' });
+  });
+
+  it('reapplies text edits when a script creates the selected runtime div after document load', async () => {
+    const source = '<!doctype html><html><body><div id="root"></div></body></html>';
+    const id = 'runtime:body > div:nth-of-type(1) > div:nth-of-type(1)';
+    const result = applyManualEditPatch(source, { kind: 'set-text', id, value: 'Edited chart' });
+    expect(result.ok).toBe(true);
+    expect(readManualEditFields(result.source, id)).toEqual({ text: 'Edited chart' });
+    const dom = new JSDOM(result.source, { runScripts: 'dangerously' });
+    try {
+      dom.window.document.getElementById('root')!.innerHTML = '<div class="chart">Original</div><div class="other">Other</div>';
+      await vi.waitFor(() => expect(dom.window.document.querySelector('.chart')!.textContent).toBe('Edited chart'));
+      expect(dom.window.document.querySelector('.other')!.textContent).toBe('Other');
+    } finally {
+      dom.window.close();
+    }
   });
 
   it('updates only the selected text target', () => {

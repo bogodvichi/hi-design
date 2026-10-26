@@ -84,6 +84,8 @@ import type {
   UpdateDeployConfigRequest,
 } from '../types';
 import type { ArtifactManifest } from '../artifacts/types';
+import { createProjectFileTextPatch } from '../runtime/project-file-text-patch';
+import { artifactVersionContentDigest } from '../artifacts/version-origin';
 import { GENERIC_DEPLOY_ENVELOPE_CODES } from '../analytics/deploy-error-code';
 import {
   isOpenDesignHostAvailable,
@@ -2538,9 +2540,12 @@ export async function fetchProjectFileText(
     cacheBustKey?: string | number;
     signal?: AbortSignal;
     workspaceContext?: WorkspaceCollabContext | null;
+    knownSource?: string;
   },
 ): Promise<string | null> {
-  const url = projectFileUrl(projectId, name, options?.workspaceContext);
+  const url = options?.knownSource === undefined
+    ? projectFileUrl(projectId, name, options?.workspaceContext)
+    : `/api/projects/${encodeURIComponent(projectId)}/files/${name.split('/').map(encodeURIComponent).join('/')}`;
   const cacheBustKey = options?.cacheBustKey;
   const requestUrl =
     cacheBustKey == null
@@ -2554,8 +2559,15 @@ export async function fetchProjectFileText(
   }
 
   try {
+    if (options?.knownSource !== undefined) {
+      init.headers = {
+        ...init.headers,
+        'If-None-Match': `W/"od-text-${await artifactVersionContentDigest(options.knownSource)}"`,
+      };
+    }
     const resp = await fetch(requestUrl, init);
     if (options?.signal?.aborted) return null;
+    if (resp.status === 304 && options?.knownSource !== undefined) return options.knownSource;
     if (!resp.ok) {
       console.warn('[fetchProjectFileText] failed:', {
         name,
@@ -2934,6 +2946,7 @@ export async function writeProjectTextFileDetailed(
     versionLabel?: string;
     versionPrompt?: string | null;
     parentVersionId?: string;
+    baseSource?: string;
   },
   workspaceContext?: WorkspaceCollabContext | null,
 ): Promise<WriteProjectTextFileResult> {
@@ -2946,7 +2959,9 @@ export async function writeProjectTextFileDetailed(
       },
       body: JSON.stringify({
         name,
-        content,
+        ...(options?.baseSource !== undefined
+          ? { patch: await createProjectFileTextPatch(options.baseSource, content) }
+          : { content }),
         artifactManifest: options?.artifactManifest,
         versionSource: options?.versionSource,
         versionLabel: options?.versionLabel,

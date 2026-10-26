@@ -293,6 +293,7 @@ import type {
   PreviewCommentTarget,
 } from '../types';
 import { ManualEditPanel, emptyManualEditDraft, type ManualEditDraft } from './ManualEditPanel';
+import { manualEditRuntimeSelector } from '../edit-mode/runtime-target';
 import { isProjectHtmlFile } from './project-file-html';
 import {
   applyManualEditPatch,
@@ -1502,12 +1503,16 @@ function manualEditPreviewShellStyle(
   viewport: PreviewViewportId,
   previewScale: number,
   frozenWidth: number | null,
+  dockFitScale = 1,
 ): CSSProperties & Record<string, string | number> {
   if (viewport === 'desktop' && frozenWidth) {
+    // Keep the HTML viewport frozen while fitting its painted pixels into
+    // the narrower canvas, instead of covering it with the right inspector.
+    const visibleScale = previewScale * dockFitScale;
     return {
       width: `${frozenWidth / previewScale}px`,
-      height: `${100 / previewScale}%`,
-      transform: `scale(${previewScale})`,
+      height: `${100 / visibleScale}%`,
+      transform: `scale(${visibleScale})`,
       transformOrigin: '0 0',
     };
   }
@@ -9435,6 +9440,7 @@ const [reviewAddModalOpen, setReviewAddModalOpen] = useState(false);
       cache: 'no-store',
       cacheBustKey,
       workspaceContext,
+      ...(manualEditMode && loaded !== null ? { knownSource: loaded } : {}),
     }).then((text) => {
       if (
         currentSourceIdentityRef.current !== identity
@@ -13045,7 +13051,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     savedStyles: Partial<ManualEditStyles>,
     savedSource: string,
   ) {
-    if (id !== '__body__' && !readManualEditOuterHtml(savedSource, id)) {
+    if (id !== '__body__' && !manualEditRuntimeSelector(id) && !readManualEditOuterHtml(savedSource, id)) {
       setManualEditError('The selected target no longer exists in the saved source. Refreshing the preview.');
       setSelectedManualEditTarget(null);
       setManualEditFrozenSource(null);
@@ -13289,7 +13295,10 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       src: fields.src ?? target.fields.src ?? '',
       alt: fields.alt ?? target.fields.alt ?? '',
       styles: inspectorManualEditStyles(target, base),
-      attributesText: JSON.stringify(readManualEditAttributes(base, target.id), null, 2),
+      attributesText: JSON.stringify({
+        ...(manualEditRuntimeSelector(target.id) ? target.attributes : {}),
+        ...readManualEditAttributes(base, target.id),
+      }, null, 2),
       outerHtml: readManualEditOuterHtml(base, target.id) || target.outerHtml,
       fullSource: base,
     };
@@ -13309,22 +13318,6 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     setSelectedManualEditTarget(null);
     setManualEditDraft(emptyManualEditDraft(sourceRef.current ?? ''));
     setManualEditError(null);
-  }
-
-  // The inspector is scoped to one element (or the page). Closing it should
-  // only collapse the panel and keep the user in edit mode — exiting edit is
-  // the toolbar toggle's job. Dismiss flushes any in-flight tweak first so
-  // nothing is lost.
-  async function dismissManualEditPanel() {
-    // Closing the panel must not swallow a failed text commit: keep it open
-    // with the error if the pending edit could not be saved.
-    if (!(await settlePendingManualEditCommit())) {
-      return;
-    }
-    const ok = await flushManualEditStyleSave();
-    if (!ok) return;
-    if (selectedManualEditTarget) void clearManualEditTargetSelection();
-    else setManualEditPageStylesOpen(false);
   }
 
   function changeManualEditDraft(draft: ManualEditDraft) {
@@ -13455,7 +13448,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
         if (patch.kind === 'set-text') manualEditTextFailedSessionIdsRef.current.delete(patch.id);
         return true;
       }
-      if (!(await confirmManualEditHistorySource(
+      if (patch.kind === 'set-full-source' && !(await confirmManualEditHistorySource(
         baseSource,
         'The file changed outside manual edit mode. Refreshing before applying manual edits.',
       ))) return false;
@@ -13470,6 +13463,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       }
       if (manualEditIdentityRef.current !== identity) return false;
       const saved = await writeProjectTextFileDetailed(projectId, file.name, result.source, {
+        ...(patch.kind !== 'set-full-source' ? { baseSource } : {}),
         artifactManifest: file.artifactManifest,
         versionSource: 'manual',
         versionLabel: label,
@@ -13477,6 +13471,11 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       }, workspaceContext);
       if (manualEditIdentityRef.current !== identity) return false;
       if (!saved.ok) {
+        if (saved.code === 'FILE_EDIT_CONFLICT') {
+          setManualEditError(describeManualEditSaveFailure('Could not save the edited file', saved));
+          await confirmManualEditHistorySource(baseSource, 'The file changed outside manual edit mode. Refreshing before applying manual edits.');
+          return false;
+        }
         const status = 'status' in saved ? saved.status : undefined;
         const code = 'code' in saved ? saved.code : undefined;
         const message = 'message' in saved ? saved.message : 'Unknown save error';
@@ -13561,6 +13560,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     sourceRef.current = persisted;
     setInlinedSource(null);
     manualEditPersistedDocumentRef.current = null;
+    setManualEditFrozenSource(persisted);
     setManualEditHistory([]);
     setManualEditUndone([]);
     manualEditPendingStyleRef.current = null;
@@ -13596,13 +13596,14 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     manualEditSavingRef.current = true;
     setManualEditSaving(true);
     try {
-      if (!(await confirmManualEditHistorySource(
+      if (latest.patch.kind === 'set-full-source' && !(await confirmManualEditHistorySource(
         latest.afterSource,
         'The file changed outside manual edit mode. History was cleared to avoid overwriting newer content.',
       ))) return;
       const parentVersionId = await resolveManualEditParentVersionId(latest.afterSource);
       if (manualEditIdentityRef.current !== currentSourceIdentity) return;
       const saved = await writeProjectTextFileDetailed(projectId, file.name, latest.beforeSource, {
+        ...(latest.patch.kind !== 'set-full-source' ? { baseSource: latest.afterSource } : {}),
         artifactManifest: file.artifactManifest,
         versionSource: 'manual',
         versionLabel: `Undo ${latest.label}`,
@@ -13610,6 +13611,11 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       }, workspaceContext);
       if (manualEditIdentityRef.current !== currentSourceIdentity) return;
       if (!saved.ok) {
+        if (saved.code === 'FILE_EDIT_CONFLICT') {
+          setManualEditError(describeManualEditSaveFailure('Could not save the undo result', saved));
+          await confirmManualEditHistorySource(latest.afterSource, 'The file changed outside manual edit mode. History was cleared to avoid overwriting newer content.');
+          return;
+        }
         setManualEditError(describeManualEditSaveFailure('Could not save the undo result', saved));
         return;
       }
@@ -13658,13 +13664,14 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     manualEditSavingRef.current = true;
     setManualEditSaving(true);
     try {
-      if (!(await confirmManualEditHistorySource(
+      if (latest.patch.kind === 'set-full-source' && !(await confirmManualEditHistorySource(
         latest.beforeSource,
         'The file changed outside manual edit mode. History was cleared to avoid overwriting newer content.',
       ))) return;
       const parentVersionId = await resolveManualEditParentVersionId(latest.beforeSource);
       if (manualEditIdentityRef.current !== currentSourceIdentity) return;
       const saved = await writeProjectTextFileDetailed(projectId, file.name, latest.afterSource, {
+        ...(latest.patch.kind !== 'set-full-source' ? { baseSource: latest.beforeSource } : {}),
         artifactManifest: file.artifactManifest,
         versionSource: 'manual',
         versionLabel: `Redo ${latest.label}`,
@@ -13672,6 +13679,11 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       }, workspaceContext);
       if (manualEditIdentityRef.current !== currentSourceIdentity) return;
       if (!saved.ok) {
+        if (saved.code === 'FILE_EDIT_CONFLICT') {
+          setManualEditError(describeManualEditSaveFailure('Could not save the redo result', saved));
+          await confirmManualEditHistorySource(latest.beforeSource, 'The file changed outside manual edit mode. History was cleared to avoid overwriting newer content.');
+          return;
+        }
         setManualEditError(describeManualEditSaveFailure('Could not save the redo result', saved));
         return;
       }
@@ -16190,6 +16202,22 @@ async function openReviewListModal() {
     manualEditMode && !selectedManualEditTarget && manualEditPageStylesOpen;
   const manualEditPanelActive =
     manualEditMode && (!!selectedManualEditTarget || manualEditPageCardActive);
+  // Mirror the comment dock: 8px outer inset, 12px separation, a 320px
+  // (max 42%) inspector, and a 1px border on both sides of the canvas.
+  // Account for all of this when fitting the frozen-width HTML preview,
+  // otherwise its right edge gets clipped by the newly added spacing.
+  const manualEditDockInnerWidth = Math.max(0, (previewBodySize?.width ?? 0) - 16);
+  const manualEditDockWidth = manualEditPanelActive
+    ? Math.min(320, manualEditDockInnerWidth * 0.42)
+    : 0;
+  const manualEditCanvasWidth = Math.max(1, manualEditDockInnerWidth - 12 - manualEditDockWidth - 2);
+  const manualEditDockFitScale = manualEditPanelActive && previewViewport === 'desktop'
+    && manualEditViewportWidth && previewBodySize?.width
+    ? Math.min(1, manualEditCanvasWidth / manualEditViewportWidth)
+    : 1;
+  const manualEditCanvasBounds = previewBodySize && manualEditPanelActive
+    ? { ...previewBodySize, width: manualEditCanvasWidth }
+    : previewBodySize;
   const manualEditPanel = manualEditPanelActive ? (
     <ManualEditPanel
       targets={manualEditTargets}
@@ -16218,7 +16246,7 @@ async function openReviewListModal() {
         void clearManualEditTargetSelection();
       }}
       onExit={() => {
-        void dismissManualEditPanel();
+        void requestManualEditSafeExitRef.current();
       }}
       onRetrySave={() => {
         void retryManualEditAutosave();
@@ -16243,8 +16271,8 @@ async function openReviewListModal() {
   ) : null;
   const manualEditHoverAffordance =
     manualEditMode &&
-    manualEditHoverTarget &&
-    manualEditHoverTarget.id !== selectedManualEditTarget?.id ? (
+    !selectedManualEditTarget &&
+    manualEditHoverTarget ? (
       <button
         type="button"
         className="manual-edit-hover-action"
@@ -16253,8 +16281,8 @@ async function openReviewListModal() {
         title={t('manualEdit.editParams')}
         style={manualEditHoverIconStyle(
           manualEditHoverTarget,
-          overlayPreviewScale,
-          previewBodySize,
+          overlayPreviewScale * manualEditDockFitScale,
+          manualEditCanvasBounds,
         )}
         onClick={() => {
           const target = manualEditHoverTarget;
@@ -17849,7 +17877,7 @@ async function openReviewListModal() {
                 <div
                   style={
                     manualEditMode
-                      ? manualEditPreviewShellStyle(previewViewport, previewScale, manualEditViewportWidth)
+                      ? manualEditPreviewShellStyle(previewViewport, previewScale, manualEditViewportWidth, manualEditDockFitScale)
                       : previewScaleShellStyle(previewViewport, previewScale)
                   }
                 >

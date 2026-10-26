@@ -38,14 +38,18 @@ import {
 } from '../../src/routes/project/index.js';
 import { registerCollabContextRoutes } from '../../src/routes/collab-context.js';
 import { startBrandExtraction } from '../../src/brands/index.js';
+import * as projectFiles from '../../src/projects.js';
+import * as hdw from '../../src/http/hdw.js';
 import {
   closeDatabase,
+  deleteProject as dbDeleteProject,
   deleteWorkspaceProject,
   ensureWorkspaceProject,
   getProject,
   getWorkspaceProject,
   getWorkspaceProjectByProjectId,
   insertProject,
+  insertConversation,
   listConversations,
   listWorkspaceProjectBindings,
   listWorkspaceProjects,
@@ -312,6 +316,207 @@ describe('project move to personal on an unbound (never-locally-shared) project'
      }),
     } as unknown as Parameters<typeof registerProjectRoutes>[1];
   }
+
+  it.each(['read-only-share', 'catalog-outage', 'other-creator'] as const)(
+    'keeps a personal folder project home authoritative during transfer (%s)', async (scenario) => {
+      const projectId = 'shared-personal-folder-project';
+      insertProject(db, {
+        id: projectId, name: 'Shared personal project', skillId: null, designSystemId: null,
+        pendingPrompt: null, metadata: null, customInstructions: null, createdAt: 10, updatedAt: 20,
+      });
+      ensureWorkspaceProject(db, {
+        projectId, workspaceId: PERSONAL_WORKSPACE_ID, visibility: 'personal', resourceState: 'active',
+        createdByWorkspaceMemberId: scenario === 'other-creator' ? 'another-member' : PERSONAL_MEMBER_ID,
+        updatedByWorkspaceMemberId: PERSONAL_MEMBER_ID, syncState: 'synced',
+      });
+      const teamProjectCatalog = {
+        list: vi.fn(async () => {
+          if (scenario === 'catalog-outage') throw new Error('catalog unavailable');
+          return [{
+            id: 'personal-share', workspaceId: PERSONAL_WORKSPACE_ID, projectId,
+            resourceId: 'personal-share-resource', ownerMemberId: PERSONAL_MEMBER_ID,
+            displayName: 'Shared personal project', syncState: 'synced', lastSyncedVersionId: 'v1',
+            createdAt: new Date(10).toISOString(), updatedAt: new Date(20).toISOString(),
+            access: { canView: true, canComment: true, canEdit: false, frozen: false },
+          }];
+        }),
+        upsert: vi.fn(),
+      };
+      const requestTeamTransfer = vi.fn(async () => ({ version: 1, targetOwnerMemberId: OWNER_MEMBER_ID }));
+      const moveProjectFolder = vi.fn();
+      const authority = verifiedTeamAuthority({ workspaceId: PERSONAL_WORKSPACE_ID, memberId: PERSONAL_MEMBER_ID, role: 'member' });
+      const app = express();
+      app.use(express.json());
+      registerProjectRoutes(app, buildDeps({
+        teamProjectCatalog,
+        verifyWorkspaceRequestAuthority: async () => {
+          const verified = await authority();
+          return { ...verified, context: { ...verified.context, isDefaultTeam: true } };
+        },
+        collabSync: { requestTeamTransfer, moveProjectFolder, invalidateTeamProjectCatalog: vi.fn() },
+      }));
+      const routeServer = await listen(app);
+      try {
+        const response = await fetch(`${routeServer.url}/api/workspaces/${PERSONAL_WORKSPACE_ID}/projects/${projectId}/move`, {
+          method: 'POST',
+          headers: ownerTeamHeaders({
+            'x-od-workspace-id': PERSONAL_WORKSPACE_ID,
+            'x-od-workspace-member-id': PERSONAL_MEMBER_ID,
+            'x-od-workspace-role': 'member',
+          }),
+          body: JSON.stringify({ visibility: 'team', targetWorkspaceId: TEAM_WORKSPACE_ID, targetFolderId: 'existing-target-folder' }),
+        });
+        const body = await response.json();
+        expect(response.status, JSON.stringify(body)).toBe(scenario === 'other-creator' ? 403 : 200);
+        expect(teamProjectCatalog.list).not.toHaveBeenCalled();
+        if (scenario === 'other-creator') {
+          expect(requestTeamTransfer).not.toHaveBeenCalled();
+          expect(getWorkspaceProjectByProjectId(db, projectId)?.workspaceId).toBe(PERSONAL_WORKSPACE_ID);
+        } else {
+          expect(requestTeamTransfer).toHaveBeenCalledWith(projectId, PERSONAL_WORKSPACE_ID, TEAM_WORKSPACE_ID,
+            expect.objectContaining({ teamId: TEAM_WORKSPACE_ID, memberId: OWNER_MEMBER_ID }), null);
+          expect(moveProjectFolder).toHaveBeenCalledWith(TEAM_WORKSPACE_ID, projectId, 'existing-target-folder', OWNER_MEMBER_ID);
+          expect(listWorkspaceProjects(db, TEAM_WORKSPACE_ID)).toEqual([
+            expect.objectContaining({ id: projectId, folderId: 'existing-target-folder', createdByWorkspaceMemberId: OWNER_MEMBER_ID }),
+          ]);
+        }
+      } finally {
+        await close(routeServer.server);
+      }
+    },
+  );
+
+  describe.each(['missing', 'placeholder', 'stale-home'] as const)('folder card with %s local state', (state) => {
+    it.each([
+      ['move', 'ready'], ['copy', 'ready'], ['delete', 'ready'],
+      ['move', 'catalog-outage'], ['copy', 'catalog-outage'], ['delete', 'catalog-outage'],
+      ['move', 'other-owner'], ['delete', 'other-owner'],
+      ['move', 'frozen'], ['copy', 'frozen'], ['delete', 'frozen'],
+      ['move', 'pull-failure'], ['copy', 'pull-failure'], ['delete', 'pull-failure'],
+      ['move', 'pull-incomplete'], ['copy', 'pull-incomplete'], ['delete', 'pull-incomplete'],
+    ] as const)('handles %s with %s authority/content', async (action, scenario) => {
+      const projectId = 'folder-card-project';
+      const resourceId = `project-${projectId}`;
+      const project = {
+        id: projectId, name: 'Folder project', skillId: null, designSystemId: null,
+        pendingPrompt: null, metadata: null, customInstructions: null, createdAt: 10, updatedAt: 20,
+      };
+      if (state !== 'missing') {
+        insertProject(db, { ...project, metadata: state === 'placeholder' ? { sharedProjectPlaceholderAt: 1 } : null });
+        ensureWorkspaceProject(db, {
+          projectId, workspaceId: state === 'stale-home' ? PERSONAL_WORKSPACE_ID : TEAM_WORKSPACE_ID,
+          visibility: state === 'stale-home' ? 'personal' : 'team', resourceState: 'active',
+          createdByWorkspaceMemberId: state === 'stale-home' ? PERSONAL_MEMBER_ID : OWNER_MEMBER_ID,
+          updatedByWorkspaceMemberId: OWNER_MEMBER_ID, resourceHubResourceId: resourceId, syncState: 'synced',
+        });
+      }
+      const sourceDir = path.join(projectsRoot, projectId);
+      if (state === 'stale-home') {
+        await mkdir(sourceDir, { recursive: true });
+        await writeFile(path.join(sourceDir, 'index.html'), '<main>source content</main>');
+      }
+      let published = true;
+      const teamProjectCatalog = {
+        list: vi.fn(async () => published ? [{
+          id: 'catalog-project', workspaceId: TEAM_WORKSPACE_ID, projectId, resourceId,
+          ownerMemberId: scenario === 'other-owner' ? 'another-member' : OWNER_MEMBER_ID,
+          displayName: project.name, syncState: 'synced',
+          lastSyncedVersionId: 'version-1', createdAt: new Date(10).toISOString(), updatedAt: new Date(20).toISOString(),
+          access: { canView: true, canComment: true, canEdit: scenario !== 'frozen', frozen: scenario === 'frozen' },
+        }] : []),
+        upsert: vi.fn(),
+      };
+      if (scenario === 'catalog-outage') teamProjectCatalog.list.mockRejectedValue(new Error('catalog offline'));
+      const materializeTeamProject = vi.fn(async () => {
+        if (scenario === 'pull-failure') throw new Error('content offline');
+        if (scenario === 'pull-incomplete') return;
+        if (getProject(db, projectId)) updateProject(db, projectId, { metadata: {} });
+        else insertProject(db, project);
+        ensureWorkspaceProject(db, {
+          projectId, workspaceId: TEAM_WORKSPACE_ID, visibility: 'team', resourceState: 'active',
+          createdByWorkspaceMemberId: OWNER_MEMBER_ID, updatedByWorkspaceMemberId: OWNER_MEMBER_ID,
+          resourceHubResourceId: resourceId, syncState: 'synced',
+        });
+        await mkdir(sourceDir, { recursive: true });
+        await writeFile(path.join(sourceDir, 'index.html'), '<main>source content</main>');
+      });
+      const moveProjectFolder = vi.fn(async () => undefined);
+      const requestTeamUnshare = vi.fn(async () => { published = false; });
+      const deps = buildDeps({
+        teamProjectCatalog,
+        verifyWorkspaceRequestAuthority: verifiedTeamAuthority({ memberId: OWNER_MEMBER_ID, role: 'owner' }),
+        collabSync: {
+          materializeTeamProject, moveProjectFolder, requestTeamUnshare,
+          invalidateTeamProjectCatalog: vi.fn(), refreshTeamProjectMetadata: vi.fn(),
+        },
+        projectFiles: {
+          ensureProject: projectFiles.ensureProject, listFiles: projectFiles.listFiles,
+          readProjectFile: projectFiles.readProjectFile, writeProjectFile: projectFiles.writeProjectFile,
+        },
+      });
+      deps.projectStore.insertProject = insertProject;
+      const deleteLocalProject = vi.fn(dbDeleteProject);
+      deps.projectStore.dbDeleteProject = deleteLocalProject;
+      deps.projectStore.removeProjectDir = projectFiles.removeProjectDir;
+      deps.conversations.insertConversation = insertConversation;
+      deps.design = { runs: { list: () => [], cancel: vi.fn() } } as typeof deps.design;
+      const revokeGrants = vi.spyOn(hdw, 'unshareProjectFromSharedSpace').mockResolvedValue(true);
+      const app = express();
+      app.use(express.json());
+      registerProjectRoutes(app, deps);
+      const routeServer = await listen(app);
+      try {
+        const endpoint = action === 'move'
+          ? `/api/workspaces/${TEAM_WORKSPACE_ID}/projects/${projectId}/move`
+          : `/api/projects/${projectId}${action === 'copy' ? '/duplicate' : ''}`;
+        const response = await fetch(`${routeServer.url}${endpoint}`, {
+          method: action === 'delete' ? 'DELETE' : 'POST', headers: ownerTeamHeaders(),
+          ...(action === 'delete' ? {} : { body: JSON.stringify(action === 'move'
+            ? { visibility: 'team', targetWorkspaceId: TEAM_WORKSPACE_ID, targetFolderId: 'target-folder' } : {}) }),
+        });
+        const body = await response.json() as { project: { id: string } };
+        // An already materialized exact-home project does not need a content
+        // pull; the other scenarios require a fresh catalog witness.
+        const hasCompleteLocalContent = state === 'stale-home'
+          && (scenario === 'pull-failure' || scenario === 'pull-incomplete');
+        if (scenario !== 'ready' && !hasCompleteLocalContent) {
+          expect(response.status, JSON.stringify(body)).toBe(
+            scenario === 'other-owner' || scenario === 'frozen' ? 403 : 503,
+          );
+          expect(deleteLocalProject).not.toHaveBeenCalled();
+          expect(requestTeamUnshare).not.toHaveBeenCalled();
+          expect(moveProjectFolder).not.toHaveBeenCalled();
+          expect(published).toBe(true);
+          if (scenario !== 'pull-failure' && scenario !== 'pull-incomplete') {
+            expect(materializeTeamProject).not.toHaveBeenCalled();
+          }
+          return;
+        }
+        expect(response.status, JSON.stringify(body)).toBe(200);
+        if (action === 'delete') {
+          expect(getProject(db, projectId)).toBeNull();
+          expect(getWorkspaceProjectByProjectId(db, projectId)).toBeUndefined();
+          expect(published).toBe(false);
+          expect(revokeGrants).toHaveBeenCalled();
+          expect(fs.existsSync(sourceDir)).toBe(false);
+        } else {
+          expect(getProject(db, projectId)?.name).toBe(project.name);
+          expect(getWorkspaceProjectByProjectId(db, projectId)?.workspaceId).toBe(TEAM_WORKSPACE_ID);
+          expect(fs.readFileSync(path.join(sourceDir, 'index.html'), 'utf8')).toContain('source content');
+          if (action === 'move') {
+            expect(moveProjectFolder).toHaveBeenCalledWith(TEAM_WORKSPACE_ID, projectId, 'target-folder', OWNER_MEMBER_ID);
+            expect(listWorkspaceProjects(db, TEAM_WORKSPACE_ID).find((row) => row.id === projectId)?.folderId).toBe('target-folder');
+          } else {
+            expect(body.project.id).not.toBe(projectId);
+            expect(fs.readFileSync(path.join(projectsRoot, body.project.id, 'index.html'), 'utf8')).toContain('source content');
+          }
+        }
+      } finally {
+        await close(routeServer.server);
+        revokeGrants.mockRestore();
+      }
+    });
+  });
 
   it('never locally binds the backing project a real design-system extraction creates', async () => {
     // Real production call, no hand-written database rows: this is exactly

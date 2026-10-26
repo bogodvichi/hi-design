@@ -1,5 +1,5 @@
 import { PageEmptyState } from './PageEmptyState';
-import { useCallback, useEffect, useId, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Dialog,
@@ -38,6 +38,12 @@ type CloudMcpResponseItem = Omit<CloudMcpItem, 'logoKey'> & { logoKey?: unknown 
 
 function normalizeLogoKey(value: unknown): CloudMcpTemplate['logoKey'] {
   return typeof value === 'string' ? value : undefined;
+}
+
+// A connected cloud MCP is identified by its source workspace + resource ID,
+// not by its template slug, which may be shared by multiple resources.
+function cloudInstallKey(homeWorkspaceId: string | null | undefined, resourceId: string): string {
+  return JSON.stringify([homeWorkspaceId || '', resourceId]);
 }
 
 // Build workspace headers from the string props the parent passes.
@@ -88,6 +94,7 @@ export function CloudMcpList({
   const titleId = useId();
   const [templates, setTemplates] = useState<CloudMcpItem[]>([]);
   const [localTemplateIds, setLocalTemplateIds] = useState<Set<string>>(new Set());
+  const localReadGeneration = useRef(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [installingId, setInstallingId] = useState<string | null>(null);
@@ -99,19 +106,31 @@ export function CloudMcpList({
  const [removeShareId, setRemoveShareId] = useState<string | null>(null);
 
   const loadLocalServers = useCallback(async () => {
+    const generation = ++localReadGeneration.current;
     try {
       const res = await fetch('/api/mcp/servers', { cache: 'no-store' });
       if (!res.ok) return;
       const body = await res.json();
      const ids = new Set<string>(
-       ((body.servers ?? []) as Array<{ templateId?: string }>)
-         .filter((s) => s.templateId)
-         .map((s) => (s.templateId as string).toLowerCase()),
+       ((body.servers ?? []) as Array<{ cloudResourceId?: string; cloudHomeWorkspaceId?: string; workspaceId?: string; ownerMemberId?: string }>)
+         .filter((s) => s.cloudResourceId && s.workspaceId === workspaceId && s.ownerMemberId === workspaceMemberId)
+         .map((s) => cloudInstallKey(s.cloudHomeWorkspaceId, s.cloudResourceId!)),
      );
-      setLocalTemplateIds(ids);
+      // Ignore reads begun before a confirmed connection mutation.
+      if (generation === localReadGeneration.current) setLocalTemplateIds(ids);
     } catch {
       // leave the previous set intact
     }
+  }, [workspaceId, workspaceMemberId]);
+
+  const applyConnectionState = useCallback((key: string, connected: boolean) => {
+    ++localReadGeneration.current;
+    setLocalTemplateIds((current) => {
+      const next = new Set(current);
+      if (connected) next.add(key);
+      else next.delete(key);
+      return next;
+    });
   }, []);
 
   const loadTemplates = useCallback(async () => {
@@ -220,7 +239,9 @@ export function CloudMcpList({
           createdAt: existing?.createdAt ?? '',
           updatedAt: existing?.updatedAt ?? '',
           ...existing,
-          teamLocal: true,
+          // Cloud-catalog entries remain disconnectable. Only a local-only
+          // fallback is read-only; an installed cloud entry is not.
+          teamLocal: !existing,
         });
       }
       setTemplates([...merged.values()]);
@@ -255,16 +276,25 @@ export function CloudMcpList({
 
   useEffect(() => {
     const handler = (event: Event) => {
-      if (event instanceof CustomEvent && event.detail?.source === 'cloud-mcp-list') return;
+      if (event instanceof CustomEvent && event.detail?.source === 'cloud-mcp-list') {
+        if (event.detail.instanceId === titleId) return;
+        if (event.detail.action === 'install' || event.detail.action === 'uninstall') {
+          if (event.detail.workspaceId === workspaceId && event.detail.workspaceMemberId === workspaceMemberId) {
+            applyConnectionState(event.detail.installKey, event.detail.action === 'install');
+          }
+          return;
+        }
+      }
       void loadTemplates();
       void loadLocalServers();
     };
     window.addEventListener('personal:mcp-refresh', handler);
     return () => window.removeEventListener('personal:mcp-refresh', handler);
-  }, [loadTemplates, loadLocalServers]);
+  }, [titleId, workspaceId, workspaceMemberId, applyConnectionState, loadTemplates, loadLocalServers]);
 
   async function handleInstall(tpl: CloudMcpItem) {
     setInstallingId(tpl.resourceId);
+    setError(null);
     try {
       const installUrl = '/api/workspace/mcp/cloud/' + encodeURIComponent(tpl.resourceId) + '/install'
         + (tpl.homeWorkspaceId ? '?home_workspace_id=' + encodeURIComponent(tpl.homeWorkspaceId) : '');
@@ -276,30 +306,30 @@ export function CloudMcpList({
         const body = await res.json().catch(() => null);
         throw new Error(body?.error ?? 'Install failed');
       }
-      setLocalTemplateIds((current) => new Set(current).add(tpl.id.toLowerCase()));
+      const installKey = cloudInstallKey(tpl.homeWorkspaceId || workspaceId, tpl.resourceId);
+      applyConnectionState(installKey, true);
+      window.dispatchEvent(new CustomEvent('personal:mcp-refresh', {
+        detail: { source: 'cloud-mcp-list', instanceId: titleId, action: 'install', installKey, workspaceId, workspaceMemberId },
+      }));
       if (mode === 'square' && scope === 'public') {
-        const stats = await recordCommunityStat({
+        // Metrics are best-effort and must not hold the button in a busy state.
+        void recordCommunityStat({
           resourceType: 'mcp',
           resourceId: tpl.resourceId,
           metric: 'action',
           workspaceId,
           workspaceMemberId,
           workspaceType,
+        }).then((stats) => {
+          if (stats) {
+            setTemplates((current) => current.map((item) => (
+              item.resourceId === tpl.resourceId
+                ? { ...item, peopleCount: stats.actionUserCount, actionCount: stats.actionCount }
+                : item
+            )));
+          }
         });
-        if (stats) {
-          setTemplates((current) => current.map((item) => (
-            item.resourceId === tpl.resourceId
-              ? { ...item, peopleCount: stats.actionUserCount, actionCount: stats.actionCount }
-              : item
-          )));
-        }
       }
-      // Notify other surfaces (ChatComposer, HomeView, other CloudMcpList
-      // instances) that the local MCP installation set changed. The source
-      // tag lets our own listener skip the redundant reload.
-      window.dispatchEvent(new CustomEvent('personal:mcp-refresh', {
-        detail: { source: 'cloud-mcp-list' },
-      }));
     } catch (err: any) {
       setError(err?.message ?? String(err));
     } finally {
@@ -321,13 +351,10 @@ export function CloudMcpList({
          const body = await res.json().catch(() => null);
          throw new Error(body?.error ?? 'Uninstall failed');
        }
-     setLocalTemplateIds((current) => {
-       const next = new Set(current);
-       next.delete(tpl.id.toLowerCase());
-       return next;
-     });
+     const installKey = cloudInstallKey(tpl.homeWorkspaceId || workspaceId, tpl.resourceId);
+     applyConnectionState(installKey, false);
      window.dispatchEvent(new CustomEvent('personal:mcp-refresh', {
-        detail: { source: 'cloud-mcp-list' },
+        detail: { source: 'cloud-mcp-list', instanceId: titleId, action: 'uninstall', installKey, workspaceId, workspaceMemberId },
       }));
     } catch (err: any) {
       setError(err?.message ?? String(err));
@@ -352,7 +379,7 @@ export function CloudMcpList({
       }
       await loadTemplates();
       window.dispatchEvent(new CustomEvent('personal:mcp-refresh', {
-        detail: { source: 'cloud-mcp-list' },
+        detail: { source: 'cloud-mcp-list', instanceId: titleId },
       }));
     } catch (err: any) {
       setError(err?.message ?? String(err));
@@ -378,7 +405,7 @@ export function CloudMcpList({
       }
       await loadTemplates();
       window.dispatchEvent(new CustomEvent('personal:mcp-refresh', {
-        detail: { source: 'cloud-mcp-list' },
+        detail: { source: 'cloud-mcp-list', instanceId: titleId },
       }));
     } catch (err: any) {
       setError(err?.message ?? String(err));
@@ -480,12 +507,15 @@ export function CloudMcpList({
       {error ? <div className={styles.cloudSkillError} role="alert">{error}</div> : null}
       <div className={styles.cloudSkillGrid}>
         {visibleTemplates.map((tpl) => {
-          // Case-insensitive match so Memoryxxx and memoryxxx are treated as the same installed server.
-          const isInstalled = tpl.teamLocal || localTemplateIds.has(tpl.id.toLowerCase());
+          // Cloud identity includes the source workspace; equal slugs can belong to different users.
+          const isInstalled = tpl.teamLocal || localTemplateIds.has(cloudInstallKey(tpl.homeWorkspaceId || workspaceId, tpl.resourceId));
           const isResourceOwner = tpl.canManage ?? tpl.ownerMemberId === workspaceMemberId;
           const hasCloudRecord = !tpl.resourceId.startsWith('local:');
           const canDelete = hasCloudRecord && isResourceOwner && mode !== 'shared';
-          const canShare = hasCloudRecord && (mode === 'personal' || mode === 'square' || mode === 'shared' || (mode === 'team' && isResourceOwner));
+          // Public cards are discoverable by everyone, but only the cloud
+          // owner may share them. Preserve the existing shared-with-me
+          // forwarding entry; the server remains authoritative for grants.
+          const canShare = hasCloudRecord && (isResourceOwner || mode === 'shared');
           const logoKey = resolveMcpLogoKey(tpl.logoKey, tpl.id || tpl.label);
           const meta = mode === 'square'
             ? `${tpl.publisherName?.trim() || 'HiDesign'}${tpl.updatedAt ? ' · ' + formatRelativeDate(tpl.updatedAt, t) : ''}`

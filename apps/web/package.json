@@ -43,6 +43,7 @@
     "@xterm/addon-fit": "0.10.0",
     "@xterm/xterm": "5.5.0",
     "@zumer/snapdom": "2.18.0",
+    "diff": "8.0.4",
     "dompurify": "3.4.2",
     "jspdf": "4.2.1",
     "lexical": "0.36.2",

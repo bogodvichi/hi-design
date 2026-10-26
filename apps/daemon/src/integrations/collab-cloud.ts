@@ -15,6 +15,7 @@ import type {
 } from '@open-design/contracts';
 
 import { readHdwCloudConfig } from './hdw-cloud.js';
+import { hdwSessionHeaders } from '../http/hdw-session.js';
 
 const DEFAULT_FETCH_TIMEOUT_MS = 8_000;
 
@@ -95,9 +96,11 @@ export function createCollabCloudClient(options: CollabCloudClientOptions = {}) 
   }
   const fetchImpl = options.fetch ?? fetch;
   const timeoutMs = options.timeoutMs ?? DEFAULT_FETCH_TIMEOUT_MS;
+  const hdw = readHdwCloudConfig();
+  const usesHdwSession = config.baseUrl === hdw?.baseUrl && config.pathPrefix === hdw.pathPrefix;
 
   function authHeaders(extra?: Record<string, string>): Record<string, string> {
-    const headers: Record<string, string> = { 'content-type': 'application/json', ...extra };
+    const headers: Record<string, string> = { 'content-type': 'application/json', ...(usesHdwSession ? hdwSessionHeaders() : {}), ...extra };
     if (config!.token) headers.authorization = `Bearer ${config!.token}`;
     return headers;
   }
@@ -113,6 +116,7 @@ export function createCollabCloudClient(options: CollabCloudClientOptions = {}) 
     try {
       const response = await fetchImpl(new URL((config!.pathPrefix ?? '') + path, config!.baseUrl), {
         method,
+        redirect: 'error',
         headers: authHeaders(extraHeaders),
         ...(body === undefined ? {} : { body: JSON.stringify(body) }),
         signal: controller.signal,

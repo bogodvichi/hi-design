@@ -5702,4 +5702,11 @@ export const ar: Dict = {
   'share.publishSuccessHint': "\"{name}\" has been published to the community.",
   'share.openInCommunity': "View in Community",
   'contentEmpty.title': "لا يوجد محتوى بعد",
+  "chat.compact.action": "ضغط السياق",
+  "chat.compact.busy": "جارٍ ضغط السياق…",
+  "chat.compact.description": "Claude Code · تلخيص الرسائل السابقة",
+  "chat.compact.unavailable": "اختر Claude Code",
+  "chat.compact.noAttachments": "أزل المرفقات قبل تشغيل /compact.",
+  "chat.compact.failed": "فشل ضغط السياق",
+  "chat.contextRecovery.title": "استعادة السياق",
 };

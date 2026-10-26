@@ -63,27 +63,32 @@ const projectViewLifecycle = vi.hoisted(() => ({
   mounts: vi.fn(),
   unmounts: vi.fn(),
   renders: vi.fn(),
+  folderActions: false,
 }));
 
-vi.mock('../../src/components/EntryView', () => ({
-  EntryView: ({
-    projects,
-    projectsLoading,
-  }: {
-    projects: Project[];
-    projectsLoading?: boolean;
-  }) => (
-    <main>
-      <div data-testid="entry-home-surface" />
-      <div data-testid="entry-projects-loading">{String(Boolean(projectsLoading))}</div>
-      {projects.map((project) => (
-        <div key={project.id} data-testid={`entry-project-${project.id}`}>
-          {project.name}
-        </div>
-      ))}
-    </main>
-  ),
+vi.mock('../../src/auth/LoginGate', () => ({
+  LoginGate: ({ children }: { children: React.ReactNode }) => children,
+  useAuth: () => ({ username: 'test-user' }),
 }));
+
+vi.mock('../../src/components/EntryView', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/components/EntryView')>();
+  return {
+    EntryView: (props: React.ComponentProps<typeof actual.EntryView>) => projectViewLifecycle.folderActions
+      ? <actual.EntryView {...props} />
+      : (
+        <main>
+          <div data-testid="entry-home-surface" />
+          <div data-testid="entry-projects-loading">{String(Boolean(props.projectsLoading))}</div>
+          {props.projects.map((project) => (
+            <div key={project.id} data-testid={`entry-project-${project.id}`}>
+              {project.name}
+            </div>
+          ))}
+        </main>
+      ),
+  };
+});
 
 vi.mock('../../src/components/ProjectView', async () => {
   const { useEffect } = await vi.importActual<typeof import('react')>('react');
@@ -318,6 +323,7 @@ describe('App project list across a workspace switch', () => {
     projectViewLifecycle.mounts.mockClear();
     projectViewLifecycle.unmounts.mockClear();
     projectViewLifecycle.renders.mockClear();
+    projectViewLifecycle.folderActions = false;
   });
 
   afterEach(() => {
@@ -328,6 +334,56 @@ describe('App project list across a workspace switch', () => {
     resetTeamProjectsCache();
     resetCoalescedGet();
     resetProjectDisplaySnapshots();
+  });
+
+  describe.each(['team', 'personal'] as const)('%s folder outside App project cache', (kind) => {
+    it.each(['copy', 'delete'] as const)('uses the source workspace for %s', async (action) => {
+      projectViewLifecycle.folderActions = true;
+      const source = { ...WORKSPACE_A_PROJECT, workspaceId: 'ws-a', createdByWorkspaceMemberId: 'member-ws-a' };
+      const copied = { ...source, id: 'copied-project' };
+      let present = true;
+      const requests: Array<{ path: string; init: RequestInit }> = [];
+      const directory = workspaceDirectoryFixture([workspaceContext('ws-b'), workspaceContext('ws-a')]);
+      directory.items[1]!.isDefaultTeam = kind === 'personal';
+      vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const path = new URL(String(input), 'http://localhost').pathname;
+        if (path === '/api/workspace/directory') return Response.json(directory);
+        if (path === '/api/workspace/context') return Response.json(workspaceContextPayload('ws-b'));
+        if (init?.method === 'POST' || init?.method === 'DELETE') {
+          requests.push({ path, init });
+          if (path === `/api/projects/${source.id}/duplicate`) return Response.json({ project: copied, conversationId: 'copied-conversation' });
+          if (path.endsWith('/move')) return Response.json({ project: copied });
+          if (path === `/api/projects/${source.id}`) present = false;
+          return Response.json({ ok: true });
+        }
+        if (path === '/api/workspace/projects/team') return Response.json({ projects: present ? [{
+          projectId: source.id, name: source.name, ownerMemberId: source.createdByWorkspaceMemberId,
+          folderId: 'folder', sharedAt: '2026-10-23T00:00:00Z',
+        }] : [] });
+        if (path === '/api/folders/folder/projects') return Response.json({ code: 0, data: { projects: present ? [source] : [] } });
+        if (path === '/api/hdw/api/folder/detail') return Response.json({ code: 0, data: { folder_id: 'folder', folder_name: 'Folder' } });
+        return Response.json({ code: 0, data: { folders: [], path: [{ folder_id: 'folder', folder_name: 'Folder' }] } });
+      }));
+      // Folder grids fetch their own rows; App has never opened this project.
+      vi.mocked(listProjects).mockResolvedValue([]);
+      window.history.replaceState(null, '', kind === 'team' ? '/team/ws-a/folder/folder' : '/personal/folder/folder');
+      render(<App />);
+      fireEvent.click(await screen.findByRole('button', { name: 'More actions' }));
+      fireEvent.click(screen.getByRole('menuitem', { name: action === 'copy' ? 'Copy' : 'Delete' }));
+      if (action === 'delete') fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+      const expectedPath = `/api/projects/${source.id}${action === 'copy' ? '/duplicate' : ''}`;
+      await waitFor(() => expect(requests.some((request) => request.path === expectedPath)).toBe(true));
+      const request = requests.find((item) => item.path === expectedPath)!;
+      expect(new Headers(request.init.headers).get('x-od-workspace-id')).toBe('ws-a');
+      expect(new Headers(request.init.headers).get('x-od-workspace-member-id')).toBe('member-ws-a');
+      if (action === 'copy') {
+        await waitFor(() => expect(requests.some((item) => item.path.endsWith('/copied-project/move'))).toBe(true));
+        const move = requests.find((item) => item.path.endsWith('/copied-project/move'))!;
+        expect(JSON.parse(String(move.init.body))).toMatchObject({ targetWorkspaceId: 'ws-a', targetFolderId: 'folder' });
+      } else {
+        await waitFor(() => expect(screen.queryByRole('button', { name: 'More actions' })).toBeNull());
+      }
+    });
   });
 
   it('never renders the previous workspace\'s projects while the new list is in flight', async () => {

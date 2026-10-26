@@ -201,6 +201,17 @@ the active-run staging implementation is in
 - [`runtimes/claude-stream.ts`](../apps/daemon/src/runtimes/claude-stream.ts)
   translates Claude's structured stdout into the shared event stream. The
   generic run lifecycle owns process termination and cancellation.
+- Native `/compact [focus]` uses the active conversation's exact Claude session
+  and project cwd. It bypasses ordinary prompt/context/attachment composition.
+  The slash menu and conversation menu expose the command; context-size errors
+  also offer **Compact context** and **New conversation** below the error card.
+  Only a `compact_boundary` event confirms compaction. Missing sessions, busy
+  conversations, unsupported CLI versions, and provider errors remain explicit
+  failures; the command never reseeds a replacement session. A successful
+  command retains the session handle and stable instruction cache, and advances
+  the message cursor so subsequent native continuation can skip the old transcript.
+  `od conversation compact <projectId> <conversationId> --json` calls the same
+  endpoint; `--prompt` or `--prompt-file <path|->` supplies optional focus text.
 - Selected skills use the shared composition/staging path in §4; a run does
   not symlink them into `~/.claude/skills/`.
 

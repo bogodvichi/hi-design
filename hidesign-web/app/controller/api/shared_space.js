@@ -100,6 +100,7 @@ class SharedSpaceController extends Controller {
         .insert(rows)
         .onConflict('id')
        .merge({
+         home_workspace_id: homeWorkspaceId,
          created_by_member_id: createdByMemberId,
          created_by_username: createdByUsername,
          created_by_displayname: createdByDisplayname || null,
@@ -155,7 +156,7 @@ class SharedSpaceController extends Controller {
     try {
       const k = this.getKnex();
       const sharedSpaceId = getSharedSpaceTeamId();
-      const createdByMemberId = createdByMemberIdInput || getSharedSpaceMemberId(createdByUsername);
+      const createdByMemberId = getSharedSpaceMemberId(createdByUsername);
       const now = new Date();
 
       // Deduplicate recipients by username, exclude the sharer themselves
@@ -191,7 +192,7 @@ class SharedSpaceController extends Controller {
             project_id: item.project_id,
             home_workspace_id: homeWorkspaceId,
             shared_space_id: sharedSpaceId,
-            recipient_member_id: r.recipient_member_id || getSharedSpaceMemberId(r.username),
+            recipient_member_id: getSharedSpaceMemberId(r.username),
             recipient_username: r.username,
             created_by_member_id: createdByMemberId,
             created_by_username: createdByUsername,
@@ -470,6 +471,13 @@ class SharedSpaceController extends Controller {
       const sharedSpaceId = getSharedSpaceTeamId();
       const memberId = getSharedSpaceMemberId(username);
       const collaboratorId = getCollaboratorMemberId(username);
+      const existingMember = await k('workspace_members')
+        .where({ workspace_id: sharedSpaceId, workspace_member_id: memberId }).first();
+      if (existingMember && existingMember.username !== username) {
+        ctx.status = 409;
+        ctx.body = { code: -1, error: 'MEMBER_IDENTITY_CONFLICT' };
+        return;
+      }
 
       // Idempotently ensure the shared space team exists.
       // Using onConflict().ignore() eliminates the check-then-insert race

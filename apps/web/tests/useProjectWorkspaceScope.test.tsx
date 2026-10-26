@@ -421,6 +421,27 @@ describe('useProjectWorkspaceScope', () => {
     outage.unmount();
   });
 
+  it('retries a bound cloud project while its first pull has not created the local row yet', async () => {
+    vi.useFakeTimers();
+    const response = teamScope('first-cloud-pull', 'cloud-home', 'recipient');
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('{}', { status: 404 }))
+      .mockImplementation(async () => new Response(JSON.stringify(response), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+    const hook = renderHook(() => useProjectWorkspaceScope(
+      'first-cloud-pull', response.scope.context, 'cloud-home',
+    ));
+    await act(async () => {
+      for (let turn = 0; turn < 10; turn += 1) await Promise.resolve();
+    });
+    expect(hook.result.current.failure).toBe('unavailable');
+    expect(hook.result.current.scope).toBeNull();
+    await act(async () => { await vi.advanceTimersByTimeAsync(5_000); });
+    expect(hook.result.current.scope).toEqual(response.scope);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(new Headers(fetchMock.mock.calls[1]?.[1]?.headers).get('x-od-workspace-member-id')).toBe('recipient');
+  });
+
   it('does not poll a settled forbidden scope on the retry timer', async () => {
     vi.useFakeTimers();
     const fetchMock = vi.fn(async () => new Response('{}', { status: 403 }));

@@ -1,5 +1,8 @@
 // @vitest-environment jsdom
 
+import { projectFileWriteContent } from '../helpers/project-file-write';
+import { readFileSync } from 'node:fs';
+
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -140,6 +143,56 @@ describe('FileViewer manual edit regressions', () => {
     });
   }
 
+  it('matches the comment dock spacing and card appearance', () => {
+    const css = readFileSync('src/components/ManualEditPanel.module.css', 'utf-8');
+    expect(css).toContain('padding: 8px;\n  gap: 12px;');
+    expect(css).toContain('border: 1px solid var(--border);\n  border-radius: var(--radius-lg);');
+    expect(css).toContain('box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);');
+    expect(css).toContain('border: 1px solid var(--border);\n  border-radius: var(--radius-md);');
+  });
+
+  it('docks the inspector without covering the frozen-width HTML preview', async () => {
+    const originalRect = Element.prototype.getBoundingClientRect;
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      if (this.classList.contains('viewer-body')) {
+        return { x: 0, y: 0, width: 1200, height: 800, top: 0, left: 0,
+          right: 1200, bottom: 800, toJSON: () => ({}) } as DOMRect;
+      }
+      return originalRect.call(this);
+    });
+    vi.spyOn(Element.prototype, 'clientWidth', 'get').mockImplementation(function (this: Element) {
+      return this.classList.contains('viewer-body') ? 1200 : 0;
+    });
+    const source = '<!doctype html><html><body><main data-od-id="hero">Hero</main></body></html>';
+    vi.stubGlobal('fetch', vi.fn(async () =>
+      new Response(source, { status: 200, headers: { 'Content-Type': 'text/html' } }),
+    ));
+
+    render(<FileViewer projectId="project-1" projectKind="prototype"
+      file={htmlPreviewFile()} liveHtml={source} />);
+    await enterManualEditMode();
+    const workspace = document.querySelector<HTMLElement>('.manual-edit-workspace')!;
+    const shell = workspace.querySelector<HTMLElement>('.manual-edit-canvas > div > div')!;
+    expect(workspace.querySelector('.manual-edit-right')).toBeNull();
+    expect(shell.style.width).toBe('1200px');
+    expect(shell.style.transform).toBe('scale(1)');
+
+    await selectManualEditTarget();
+    const panel = workspace.querySelector<HTMLElement>('.manual-edit-right')!;
+    const canvas = workspace.querySelector<HTMLElement>('.manual-edit-canvas')!;
+    expect(workspace.className).toContain('workspaceWithPanel');
+    expect(panel.parentElement).toBe(workspace);
+    expect(canvas.parentElement).toBe(workspace);
+    expect(shell.style.width).toBe('1200px'); // no responsive reflow
+    const visualScale = Number(shell.style.transform.slice('scale('.length, -1));
+    // Same layout as comments: 8px outer padding on each side,
+    // a 12px gutter, 320px inspector, and 1px preview border per side.
+    const availableWidth = 1200 - 8 * 2 - 12 - 320 - 2;
+    expect(visualScale).toBeCloseTo(availableWidth / 1200);
+    // The painted HTML now fits fully inside the inset preview card.
+    expect(1200 * visualScale).toBeCloseTo(850);
+  });
+
   it('previews text immediately and autosaves without closing or remounting the inspector', async () => {
     const initial = '<!doctype html><html><body><h1 data-od-id="hero">Hero</h1><p data-od-id="other">Other</p></body></html>';
     let persisted = initial;
@@ -147,7 +200,7 @@ describe('FileViewer manual edit regressions', () => {
     vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       const url = String(input);
       if (url.includes('/files') && init?.method === 'POST') {
-        persisted = (JSON.parse(String(init.body)) as { content: string }).content;
+        persisted = projectFileWriteContent(init.body, persisted);
         writes.push(persisted);
         return Response.json({ file: htmlPreviewFile() });
       }
@@ -194,7 +247,7 @@ describe('FileViewer manual edit regressions', () => {
     const firstWrite = new Promise<Response>((resolve) => { release = resolve; });
     vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       if (String(input).includes('/files') && init?.method === 'POST') {
-        persisted = (JSON.parse(String(init.body)) as { content: string }).content;
+        persisted = projectFileWriteContent(init.body, persisted);
         writes.push(persisted);
         return writes.length === 1 ? firstWrite : Response.json({ file: htmlPreviewFile() });
       }
@@ -329,8 +382,18 @@ describe('FileViewer manual edit regressions', () => {
     // Selected target inspector exposes the localized font-size control.
     await findStyleInput(FONT_SIZE_ROW);
     expect(screen.queryByText('PAGE')).toBeNull();
-    // Affordance hides once its element is the pinned selection.
+    // A pinned inspector makes the hover shortcut redundant, including over
+    // neighboring elements while the selection stays in place.
     expect(screen.queryByTestId('manual-edit-hover-open')).toBeNull();
+    const frame = await previewFrame();
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: { type: 'od-edit-hover', target: { ...heroTarget(), id: 'neighbor', label: 'Neighbor' } },
+        source: frame.contentWindow,
+      }));
+    });
+    expect(screen.queryByTestId('manual-edit-hover-open')).toBeNull();
+    expect(document.querySelector('.manual-edit-right')).not.toBeNull();
   });
 
   it('does not let a pending manual edit style save survive a file switch', async () => {
@@ -466,13 +529,15 @@ describe('FileViewer manual edit regressions', () => {
     });
   });
 
-  it('flushes changes before closing the inspector and stays in edit mode', async () => {
+  it.each([200, 403])('closes the inspector and exits edit mode only after saving succeeds (HTTP %i)', async (status) => {
     const source = '<!doctype html><html><body><main data-od-id="hero">Hero</main></body></html>';
     const writes: string[] = [];
     vi.stubGlobal('fetch', vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
       if (String(input).includes('/files') && init?.method === 'POST') {
         writes.push(String(init.body));
-        return Response.json({ file: htmlPreviewFile() });
+        return status === 200
+          ? Response.json({ file: htmlPreviewFile() })
+          : Response.json({ error: { code: 'FORBIDDEN', message: 'Save rejected.' } }, { status });
       }
       return new Response(source);
     }));
@@ -481,10 +546,19 @@ describe('FileViewer manual edit regressions', () => {
     await selectManualEditTarget();
     fireEvent.change(await findStyleInput(FONT_SIZE_ROW), { target: { value: '18' } });
     fireEvent.click(screen.getByRole('button', { name: 'Close edit panel' }));
-    await waitFor(() => expect(document.querySelector('.manual-edit-right')).toBeNull());
+    if (status === 200) {
+      await waitFor(() => {
+        expect(document.querySelector('.manual-edit-right')).toBeNull();
+        expect(screen.getByTestId('manual-edit-mode-toggle').getAttribute('aria-pressed')).toBe('false');
+      });
+      expect(document.querySelector('.manual-edit-workspace')).toBeNull();
+    } else {
+      await waitFor(() => expect(screen.getByText(/Save rejected/)).toBeTruthy());
+      expect(document.querySelector('.manual-edit-right')).not.toBeNull();
+      expect(screen.getByTestId('manual-edit-mode-toggle').getAttribute('aria-pressed')).toBe('true');
+    }
     expect(writes).toHaveLength(1);
     expect(writes[0]).toContain('18px');
-    expect(document.querySelector('.manual-edit-workspace')).not.toBeNull();
   });
 
   it('keeps the inspector open after automatic saving', async () => {
@@ -687,7 +761,7 @@ describe('FileViewer manual edit regressions', () => {
     await waitFor(() => {
       expect(savedBodies.length).toBe(1);
     });
-    const payload = JSON.parse(savedBodies[0]!) as { content: string };
+    const payload = { content: projectFileWriteContent(savedBodies[0], source) };
     expect(payload.content).toContain('translate(12px, 8px)');
   });
 
@@ -769,7 +843,7 @@ describe('FileViewer manual edit regressions', () => {
     await waitFor(() => {
       expect(savedBodies.length).toBe(1);
     });
-    const payload = JSON.parse(savedBodies[0]!) as { content: string };
+    const payload = { content: projectFileWriteContent(savedBodies[0], source) };
     expect(payload.content).toContain('<main data-od-id="hero">Edited from panel</main>');
     expect(payload.content).not.toContain('<main data-od-id="hero">Hero</main>');
   });

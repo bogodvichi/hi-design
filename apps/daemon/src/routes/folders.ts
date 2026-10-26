@@ -1,5 +1,5 @@
-import type { Express, RequestHandler } from 'express';
-import type { FolderMoveCleanupRequest } from '@open-design/contracts';
+import type { Express, Request, RequestHandler } from 'express';
+import type { FolderMoveCleanupRequest, Project, TeamProject } from '@open-design/contracts';
 import {
   createWorkspaceFolder,
   listSubFolders,
@@ -15,6 +15,7 @@ import {
   listProjectsInFolder,
   repairOrphanedWorkspaceProjectFolders,
   normalizeProject,
+  getWorkspaceProjectByProjectId,
   type WorkspaceFolderInput,
 } from '../db.js';
 import {
@@ -30,6 +31,8 @@ export interface RegisterFolderRoutesDeps {
     sendApiError: (...args: any[]) => any;
   };
   dataDir?: string;
+  verifyMember?: (req: Request, workspaceId: string) => Promise<string | null>;
+  listCloudRootProjects?: (workspaceId: string) => Promise<TeamProject[]>;
 }
 
 interface FolderRow {
@@ -50,6 +53,23 @@ interface FolderRow {
 export function registerFolderRoutes(app: Express, deps: RegisterFolderRoutesDeps): void {
   const { db, http } = deps;
   const { requireLocalDaemonRequest, sendApiError } = http;
+  if (deps.verifyMember) {
+    app.use('/api/folders', requireLocalDaemonRequest, async (req, res, next) => {
+      const workspaceId = String(req.query.workspace_id || req.body?.workspace_id || req.body?.workspaceId || req.headers['x-od-workspace-id'] || '').trim();
+      try {
+        const memberId = workspaceId && await deps.verifyMember!(req, workspaceId);
+        if (!memberId) return sendApiError(res, 403, 'WORKSPACE_ACCESS_DENIED', 'Workspace membership could not be verified');
+        req.headers['x-od-workspace-member-id'] = memberId;
+        const folderId = req.path.split('/')[1];
+        if (folderId && !['root', 'counts'].includes(folderId)) {
+          const folder = getWorkspaceFolder(db, workspaceId, folderId) as FolderRow | undefined;
+          if (folder && folder.ownerMemberId !== memberId) return sendApiError(res, 403, 'NOT_RESOURCE_OWNER', 'Folder ownership could not be verified');
+        }
+        next();
+      } catch { return sendApiError(res, 503, 'AUTHORITY_UNAVAILABLE', 'Workspace directory is unavailable'); }
+    });
+  }
+
 
   // Batch project counts for all folders in a workspace. Used by the team
   // space view to enrich the HDW folder list (which doesn't return
@@ -168,14 +188,41 @@ try {
    if (folderId === null && req.query.personal_scope === '1' && headerMemberId) {
      repairOrphanedWorkspaceProjectFolders(db, workspaceId, headerMemberId);
    }
+ if (!headerMemberId) return sendApiError(res, 403, 'WORKSPACE_CONTEXT_REQUIRED', 'A workspace member is required');
  const rows = listProjectsInFolder(db, workspaceId, folderId, headerMemberId);
-  const projects = rows.map((row) => ({
+  const projects: Project[] = rows.map((row) => ({
     ...normalizeProject(row),
     workspaceId: row.workspaceId ?? null,
     createdByWorkspaceMemberId: row.createdByWorkspaceMemberId ?? null,
     updatedByWorkspaceMemberId: row.updatedByWorkspaceMemberId ?? null,
     workspaceVisibility: row.workspaceVisibility ?? null,
   }));
+  // The personal root also contains this member's cloud projects, including
+  // restored ownership and projects not yet downloaded on this device.
+  // These are display rows only; opening still requires the full pull gate.
+  if (folderId === null && req.query.personal_scope === '1' && deps.listCloudRootProjects) {
+    const listed = new Set(projects.map((project) => project.id));
+    for (const remote of await deps.listCloudRootProjects(workspaceId)) {
+      if (remote.ownerMemberId !== headerMemberId || remote.folderId || listed.has(remote.projectId)) continue;
+      const local = getWorkspaceProjectByProjectId(db, remote.projectId);
+      if (local?.workspaceId === workspaceId && local.folderId) continue;
+      projects.push({
+        id: remote.projectId,
+        name: remote.name || remote.projectId,
+        skillId: remote.skillId ?? null,
+        designSystemId: remote.designSystemId ?? null,
+        ...(remote.metadata ? { metadata: remote.metadata } : {}),
+        createdAt: remote.createdAt ?? Date.parse(remote.sharedAt),
+        updatedAt: remote.updatedAt ?? Date.parse(remote.sharedAt),
+        coverDigest: remote.coverDigest ?? null,
+        ownerDisplayName: remote.ownerDisplayName ?? null,
+        workspaceId,
+        createdByWorkspaceMemberId: remote.ownerMemberId,
+        workspaceVisibility: 'team',
+      });
+      listed.add(remote.projectId);
+    }
+  }
     res.json({ code: 0, data: { projects } });
   } catch (err) {
     sendApiError(res, 500, 'INTERNAL_ERROR', err instanceof Error ? err.message : String(err));

@@ -2,7 +2,7 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { SharedWithMeView } from '../../src/components/SharedWithMeView';
+import { SharedFolderView, SharedWithMeView } from '../../src/components/SharedWithMeView';
 import { I18nProvider } from '../../src/i18n';
 import {
   readRecentlyOpenedProjectEntries,
@@ -98,13 +98,16 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe('SharedWithMeView project actions', () => {
+describe.each([false, true])('shared project actions (folder=%s)', (nested) => {
+  const View = (props: { onOpenProject: () => void; onCopySharedProject: (id: string, workspaceId: string) => Promise<void> }) => nested
+    ? <SharedFolderView folderId="shared-folder" {...props} />
+    : <SharedWithMeView {...props} />;
   it('copies using the source workspace recorded on the share', async () => {
     const onCopySharedProject = vi.fn(async () => {});
     await act(async () => {
       render(
         <I18nProvider initial="zh-CN">
-          <SharedWithMeView onOpenProject={vi.fn()} onCopySharedProject={onCopySharedProject} />
+          <View onOpenProject={vi.fn()} onCopySharedProject={onCopySharedProject} />
         </I18nProvider>,
       );
     });
@@ -128,7 +131,7 @@ describe('SharedWithMeView project actions', () => {
     await act(async () => {
       render(
         <I18nProvider initial="zh-CN">
-          <SharedWithMeView onOpenProject={vi.fn()} onCopySharedProject={vi.fn()} />
+          <View onOpenProject={vi.fn()} onCopySharedProject={vi.fn()} />
         </I18nProvider>,
       );
     });
@@ -152,6 +155,9 @@ describe('SharedWithMeView project actions', () => {
     });
   });
 
+});
+
+describe('SharedWithMeView folder actions', () => {
   it('removes a shared folder through the recipient-only unshare path', async () => {
     state.rows = [];
     state.directoryItems = [{

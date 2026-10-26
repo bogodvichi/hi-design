@@ -5702,4 +5702,11 @@ export const ru: Dict = {
   'share.publishSuccessHint': "\"{name}\" has been published to the community.",
   'share.openInCommunity': "View in Community",
   'contentEmpty.title': "Пока нет содержимого",
+  "chat.compact.action": "Сжать контекст",
+  "chat.compact.busy": "Сжатие контекста…",
+  "chat.compact.description": "Claude Code · Сводка предыдущих сообщений",
+  "chat.compact.unavailable": "Выберите Claude Code",
+  "chat.compact.noAttachments": "Удалите вложения перед запуском /compact.",
+  "chat.compact.failed": "Не удалось сжать контекст",
+  "chat.contextRecovery.title": "Восстановление контекста",
 };

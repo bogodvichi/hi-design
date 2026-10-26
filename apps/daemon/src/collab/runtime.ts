@@ -107,8 +107,8 @@ export interface CollabRuntime {
   /**
    * Transfer a project from one workspace to another. When the adapter
    * supports `transferToWorkspace`, this is a metadata-only operation on
-   * the resource hub (blobs never move). Falls back to a publish + unpublish
-   * cycle when the adapter doesn't support transfer.
+   * the resource hub (blobs never move). Rejects when atomic transfer is
+   * unavailable; it never falls back to deleting the source.
    */
   requestTeamTransfer(
     projectId: string,
@@ -244,6 +244,10 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
   const syncStates = new Map<string, ProjectSyncState>();
   const owners = new Map<string, string>();
   const unshared = new Set<string>();
+  const transferredScopes = new Set<string>();
+  const transferScopeKey = (projectId: string, workspaceId: string) => JSON.stringify([projectId, workspaceId]);
+  const wasTransferred = (projectId: string, principal?: ResourceHubPrincipal | null) =>
+    !!principal && transferredScopes.has(transferScopeKey(projectId, principal.teamId));
   const barePublishResults = new Map<
     string,
     Map<string, PublishedResourceVersion>
@@ -391,6 +395,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
     lastSyncedVersionId?: string,
     coverDigest?: string | null,
     folderId?: string | null,
+    resourceId?: string,
   ) {
     const descriptor = await options.describeProject?.(projectId) ?? null;
     const displayName = typeof descriptor?.name === 'string'
@@ -407,7 +412,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
       await options.teamProjectCatalog?.upsert(
         {
           projectId,
-          resourceId: projectResourceIdFor(projectId, target),
+          resourceId: resourceId ?? projectResourceIdFor(projectId, target),
           ...(displayName ? { displayName } : {}),
           syncState,
           ...(lastSyncedVersionId ? { lastSyncedVersionId } : {}),
@@ -563,6 +568,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
   const schedulerAdapter: ResourcePublishAdapter = {
     async publish({ projectId: key, reason }) {
       const { projectId, principal } = parseScopedProjectKey(key);
+      if (wasTransferred(projectId, principal)) return null;
       // Fresh-install wipe guard, layer 2 (recvqzaDvUU6B3): every scheduler
       // flush re-asks whether this project's local copy is publishable at
       // all. An unmaterialized placeholder answers no, so even a publish
@@ -576,6 +582,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
         if (principals.length > 0) {
           const versions = new Map<string, PublishedResourceVersion>();
           for (const scopedPrincipal of principals) {
+            if (wasTransferred(projectId, scopedPrincipal)) continue;
             const result = await baseAdapter.publish({
               projectId,
               reason,
@@ -653,6 +660,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
         reason,
         ...(principal ? { principal } : {}),
       });
+      if (wasTransferred(projectId, principal)) return { version: null };
       if (!result) return { version: null };
       publishedResult = result;
       if (unshared.has(key) || unshared.has(projectId)) {
@@ -716,6 +724,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
     adapter: schedulerAdapter,
     onPublished: (result) => {
       const { projectId, principal } = parseScopedProjectKey(result.projectId);
+      if (wasTransferred(projectId, principal)) return;
       const key = principal ? scopedProjectKey(projectId, principal) : projectId;
       if (unshared.has(result.projectId) || unshared.has(key) || unshared.has(projectId)) {
         void schedulerAdapter.unpublish?.({ projectId: result.projectId }).catch((error: unknown) => {
@@ -778,6 +787,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
     },
     onError: (result) => {
       const { projectId, principal } = parseScopedProjectKey(result.projectId);
+      if (wasTransferred(projectId, principal)) return;
       const key = principal ? scopedProjectKey(projectId, principal) : projectId;
       if (unshared.has(result.projectId) || unshared.has(key) || unshared.has(projectId)) {
         syncStates.set(key, 'local_only');
@@ -809,6 +819,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
   // owns debouncing/coalescing/flush — this only adds the state update.
   const schedulerFacade: CollabRuntimeScheduler = {
     notifyChanged(projectId, reason, principal) {
+      if (wasTransferred(projectId, principal)) return;
       markLocalChangePending(projectId, principal);
       scheduler.notifyChanged(
         principal ? scopedProjectKey(projectId, principal) : projectId,
@@ -816,6 +827,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
       );
     },
     runBoundary(projectId, principal) {
+      if (wasTransferred(projectId, principal)) return;
       markLocalChangePending(projectId, principal);
       scheduler.runBoundary(
         principal ? scopedProjectKey(projectId, principal) : projectId,
@@ -864,6 +876,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
       if (principal) rememberTeamShare(projectId, principal, 'pending_upload');
       else syncStates.set(projectId, 'pending_upload');
       const key = principal ? scopedProjectKey(projectId, principal) : projectId;
+      if (principal) transferredScopes.delete(transferScopeKey(projectId, principal.teamId));
       unshared.delete(projectId);
       unshared.delete(key);
       return publishNow(projectId, 'share', principal, coverDigest, folderId);
@@ -908,80 +921,45 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
       syncStates.set(projectId, 'local_only');
       sharePrincipals.delete(projectId);
     },
-   async requestTeamTransfer(projectId, sourceWorkspaceId, targetWorkspaceId, principal, coverDigest) {
-     // Resolve a concrete principal — the route always passes one, but
-     // guard the null path so the type contract holds.
-     const effectivePrincipal = principal ?? await getProjectPrincipal(projectId);
-     if (!effectivePrincipal) {
-       throw new Error('requestTeamTransfer requires a principal or an existing team share');
-     }
-     // If the adapter supports metadata-only transfer, use it.
-     if (baseAdapter.transferToWorkspace) {
-       try {
-         const result = await baseAdapter.transferToWorkspace({
-           projectId,
-           reason: 'transfer',
-           sourceWorkspaceId,
-           targetWorkspaceId,
-            principal: effectivePrincipal,
-            ...(coverDigest ? { coverDigest } : {}),
-         });
-        if (result) {
-           // Update runtime bookkeeping for the target workspace.
-           // Use the target workspace's member ID (resolved by the hdw
-           // server) for the target principal, not the source workspace's.
-           const targetMemberId = result.targetOwnerMemberId ?? effectivePrincipal.memberId;
-           const targetPrincipal: ResourceHubPrincipal = {
-             ...effectivePrincipal,
-             teamId: targetWorkspaceId,
-             memberId: targetMemberId,
-           };
-          rememberTeamShare(projectId, targetPrincipal, 'synced');
-          published.set(scopedProjectKey(projectId, targetPrincipal), result.version);
-           // Clean up source workspace principal if it existed.
-           // Use source memberId (from effectivePrincipal) for the source key.
-           const sourceKey = scopedProjectKey(projectId, {
-             ...effectivePrincipal,
-             teamId: sourceWorkspaceId,
-           });
-         published.delete(sourceKey);
-         syncStates.delete(sourceKey);
-         sharePrincipals.get(projectId)?.delete(sourceWorkspaceId);
-         // Upsert the target catalog entry with the cover digest (and
-         // other metadata like displayName) so team_projects.cover_digest
-         // is persisted even when the HDW transfer endpoint does not store
-         // it. This is idempotent — if the transfer already set the cover
-         // digest, the upsert just overwrites it with the same value.
-         await markTeamProject(
-           projectId,
-           'synced',
-           targetPrincipal,
-           result.versionId,
-           coverDigest ?? undefined,
-         );
-         return {
-           version: result.version,
-           ...(result.versionId ? { versionId: result.versionId } : {}),
-           ...(result.targetOwnerMemberId ? { targetOwnerMemberId: result.targetOwnerMemberId } : {}),
-         };
-         }
-       } catch (error) {
-         // Fall through to publish + unpublish fallback.
-          options.onError?.({ projectId, error, principal: effectivePrincipal });
-       }
-     }
-    // Fallback: unpublish from source, then publish to target.
-    // NOTE: This fallback path does not resolve the target workspace's
-    // member ID — the publish uses the source workspace's memberId as
-    // ownerMemberId. This path is only reached when the adapter does not
-    // support transferToWorkspace (not the case for the hdw adapter).
-     const sourcePrincipal: ResourceHubPrincipal = { ...effectivePrincipal, teamId: sourceWorkspaceId };
-      await baseAdapter.unpublish?.({ projectId, principal: sourcePrincipal });
-      await options.teamProjectCatalog?.remove?.(projectId, sourcePrincipal);
-      const targetPrincipal: ResourceHubPrincipal = { ...effectivePrincipal, teamId: targetWorkspaceId };
-     rememberTeamShare(projectId, targetPrincipal, 'pending_upload');
-     return publishNow(projectId, 'transfer', targetPrincipal, coverDigest);
-   },
+    async requestTeamTransfer(projectId, sourceWorkspaceId, targetWorkspaceId, principal, coverDigest) {
+      const effectivePrincipal = principal ?? await getProjectPrincipal(projectId);
+      if (!effectivePrincipal || !baseAdapter.transferToWorkspace) {
+        throw new Error('Atomic workspace transfer is unavailable');
+      }
+      const sourcePrincipal = sharePrincipals.get(projectId)?.get(sourceWorkspaceId);
+      if (sourcePrincipal) await cancelTeamProjectMetadataRefresh(projectId, sourcePrincipal);
+      // A timeout may mean the transaction committed. Never delete the source
+      // or publish another copy as a fallback; the server resolves retries.
+      const result = await baseAdapter.transferToWorkspace({
+        projectId, reason: 'transfer', sourceWorkspaceId, targetWorkspaceId,
+        principal: effectivePrincipal, ...(coverDigest ? { coverDigest } : {}),
+      });
+      if (!result) throw new Error('Atomic workspace transfer is unavailable');
+      transferredScopes.add(transferScopeKey(projectId, sourceWorkspaceId));
+      transferredScopes.delete(transferScopeKey(projectId, targetWorkspaceId));
+      const targetPrincipal: ResourceHubPrincipal = {
+        ...effectivePrincipal, teamId: targetWorkspaceId,
+        memberId: result.targetOwnerMemberId ?? effectivePrincipal.memberId,
+      };
+      if (sourcePrincipal) {
+        const sourceKey = scopedProjectKey(projectId, sourcePrincipal);
+        published.delete(sourceKey);
+        scopedOwners.delete(sourceKey);
+        syncStates.set(sourceKey, 'local_only');
+      }
+      sharePrincipals.get(projectId)?.delete(sourceWorkspaceId);
+      rememberTeamShare(projectId, targetPrincipal, 'synced');
+      published.set(scopedProjectKey(projectId, targetPrincipal), result.version);
+      // The transfer already committed. A metadata refresh failure must not
+      // conceal success and leave the local project bound to the old space.
+      try {
+        await markTeamProject(projectId, 'synced', targetPrincipal, result.versionId,
+          coverDigest ?? undefined, undefined, result.resourceId);
+      } catch (error) {
+        options.onError?.({ projectId, error, principal: targetPrincipal });
+      }
+      return result;
+    },
     projectOwnerMemberId: (projectId, principal) => {
       if (principal) return scopedOwners.get(scopedProjectKey(projectId, principal)) ?? null;
       return owners.get(projectId) ?? null;

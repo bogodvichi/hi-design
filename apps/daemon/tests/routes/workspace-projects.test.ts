@@ -15,12 +15,14 @@ import {
   type WorkspaceDirectoryFetchResult,
 } from '../../src/collab/vela-workspace-context.js';
 import { recoverPersistedTeamShareOwnership } from '../../src/collab/persisted-team-share.js';
+import { HdwCloudError } from '../../src/integrations/hdw-cloud.js';
 
 describe('workspace project routes', () => {
   let server: http.Server;
   let baseUrl: string;
 
   beforeAll(async () => {
+    vi.stubEnv('OD_WORKSPACE_CONTEXT_SOURCE', 'local');
     const started = (await startServer({ port: 0, returnServer: true })) as {
       url: string;
       server: http.Server;
@@ -29,7 +31,7 @@ describe('workspace project routes', () => {
     server = started.server;
   });
 
-  afterAll(() => new Promise<void>((resolve) => server.close(() => resolve())));
+  afterAll(() => new Promise<void>((resolve) => server.close(() => { vi.unstubAllEnvs(); resolve(); })));
 
   const workspaceId = `ws-${Date.now()}`;
 
@@ -2889,6 +2891,10 @@ describe('workspace project move authority boundaries', () => {
         updatedByWorkspaceMemberId: input.createdBy,
       },
     }) as any;
+    deps.fetchWorkspaceDirectory = async () => ({ ok: true, items: [{
+      workspaceId: targetWorkspaceId, workspaceName: 'Target', workspaceType: 'team',
+      workspaceMemberId: 'target-member', role: 'member', memberStatus: 'active', lifecycleState: 'active',
+    }] });
     const originalPrepare = deps.db.prepare.bind(deps.db);
     deps.db.prepare = (sql: string) => {
       if (/UPDATE workspace_projects SET folder_id/.test(sql)) {
@@ -2957,6 +2963,83 @@ describe('workspace project move authority boundaries', () => {
     } finally {
       await close(routeServer.server);
     }
+  });
+
+  it.each(['source_not_published', 'timeout', 'forbidden'])(
+    'publishes a missing source only after an explicit server result (%s)', async (code) => {
+      const requestTeamShare = vi.fn(async () => ({ version: 1 }));
+      const requestTeamTransfer = vi.fn()
+        .mockRejectedValueOnce(new HdwCloudError(code === 'source_not_published' ? 404 : 503, code))
+        .mockResolvedValue({ targetOwnerMemberId: 'target-member' });
+      const app = express();
+      app.use(express.json());
+      registerProjectRoutes(app, authorityDeps({ createdBy: 'project-creator', collabSync: {
+        requestTeamShare, requestTeamTransfer, invalidateTeamProjectCatalog: vi.fn(),
+      } }));
+      const routeServer = await listen(app);
+      try {
+        const response = await fetch(`${routeServer.url}/api/workspaces/${workspaceId}/projects/${projectId}/move`, {
+          method: 'POST', headers: moveHeaders('project-creator', 'member'),
+          body: JSON.stringify({ visibility: 'team', targetWorkspaceId }),
+        });
+        if (code === 'source_not_published') {
+          expect(response.status).toBe(200);
+          expect(requestTeamShare).toHaveBeenCalledWith(projectId, expect.objectContaining({ teamId: workspaceId, memberId: 'project-creator' }), null);
+          expect(requestTeamTransfer).toHaveBeenCalledTimes(2);
+        } else {
+          expect(response.status).toBe(503);
+          expect(requestTeamShare).not.toHaveBeenCalled();
+          expect(requestTeamTransfer).toHaveBeenCalledTimes(1);
+        }
+      } finally { await close(routeServer.server); }
+    },
+  );
+
+  it.each(['single', 'batch'])('uses the destination identity for post-move folder sharing (%s)', async (mode) => {
+    const hdw = await import('../../src/http/hdw.js');
+    const sso = await import('../../src/http/hik_logins/hicoo.js');
+    const readSession = vi.spyOn(sso, 'readSsoConfigFile').mockReturnValue({ username: 'alice', cookies: [] } as any);
+    const shareFolder = vi.spyOn(hdw, 'shareProjectsIntoSharedFolder').mockResolvedValue({ shared: 1 } as any);
+    const requestTeamShare = vi.fn(async () => ({ version: 1 }));
+    const app = express(); app.use(express.json());
+    registerProjectRoutes(app, authorityDeps({ createdBy: 'project-creator', collabSync: {
+      requestTeamTransfer: vi.fn(async () => ({ targetOwnerMemberId: 'target-member' })),
+      requestTeamShare, moveProjectFolder: vi.fn(), invalidateTeamProjectCatalog: vi.fn(),
+    } }));
+    const routeServer = await listen(app);
+    try {
+      const route = mode === 'single' ? `${projectId}/move` : 'batch-move';
+      const response = await fetch(`${routeServer.url}/api/workspaces/${workspaceId}/projects/${route}`, {
+        method: 'POST', headers: moveHeaders('project-creator', 'member'),
+        body: JSON.stringify({ visibility: 'team', targetWorkspaceId, targetFolderId: 'destination', projectIds: [projectId] }),
+      });
+      expect(response.status).toBe(200);
+      expect(requestTeamShare).toHaveBeenCalledWith(projectId, expect.objectContaining({ teamId: targetWorkspaceId, memberId: 'target-member' }), null, 'destination');
+    } finally {
+      readSession.mockRestore(); shareFolder.mockRestore(); await close(routeServer.server);
+    }
+  });
+
+  it('reports batch folder synchronization failure without undoing committed transfers', async () => {
+    const requestTeamTransfer = vi.fn(async () => ({ targetOwnerMemberId: 'target-member' }));
+    const deps = authorityDeps({ createdBy: 'project-creator', collabSync: {
+      requestTeamTransfer, moveProjectFolder: vi.fn(async () => { throw new Error('folder unavailable'); }),
+      invalidateTeamProjectCatalog: vi.fn(),
+    } });
+    const rebind = vi.fn();
+    deps.projectStore.rebindWorkspaceProject = rebind;
+    const app = express(); app.use(express.json()); registerProjectRoutes(app, deps);
+    const routeServer = await listen(app);
+    try {
+      const response = await fetch(`${routeServer.url}/api/workspaces/${workspaceId}/projects/batch-move`, {
+        method: 'POST', headers: moveHeaders('project-creator', 'member'),
+        body: JSON.stringify({ visibility: 'team', targetWorkspaceId, targetFolderId: 'destination', projectIds: [projectId] }),
+      });
+      expect(response.status).toBe(503);
+      expect(requestTeamTransfer).toHaveBeenCalledTimes(1);
+      expect(rebind).toHaveBeenCalledTimes(1);
+      expect(rebind).toHaveBeenCalledWith(deps.db, projectId, expect.objectContaining({ workspaceId: targetWorkspaceId, createdByWorkspaceMemberId: 'target-member' }));
+    } finally { await close(routeServer.server); }
   });
 
   it.each([

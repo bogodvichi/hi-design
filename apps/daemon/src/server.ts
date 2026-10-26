@@ -1,4 +1,7 @@
 // @ts-nocheck
+import { configureHdwSession, hdwSessionIdentity } from './http/hdw-session.js';
+import { readSsoConfigFile } from './http/hik_logins/hicoo.js';
+import { activeClaudeCompactions } from './runtimes/claude-compact.js';
 import type {
   DesktopExportArtifactInput,
   DesktopExportArtifactResult,
@@ -1335,13 +1338,13 @@ const SANDBOX_MODE_ENABLED = isSandboxModeEnabled(process.env);
 const RUNTIME_DATA_DIR = resolveDataDir(process.env.OD_DATA_DIR, PROJECT_ROOT, {
   requireExplicit: SANDBOX_MODE_ENABLED,
 });
+configureHdwSession(() => readSsoConfigFile(RUNTIME_DATA_DIR));
 const codexModelCatalog = new CodexModelCatalog(RUNTIME_DATA_DIR);
 const SANDBOX_RUNTIME = resolveSandboxRuntimeConfig(SANDBOX_MODE_ENABLED, RUNTIME_DATA_DIR);
 ensureSandboxRuntimeDirs(SANDBOX_RUNTIME);
  setRuntimeDataDir(RUNTIME_DATA_DIR);
  // Ensure the shared space team exists in the HDW database on startup.
- // Best-effort: if the HDW server is not running yet, the local fallback
- // in fetchSharedSpaceInfo still returns a valid info object.
+ // Best-effort warmup. Permission checks require a later successful read.
  fetchSharedSpaceInfo(RUNTIME_DATA_DIR).catch(() => {});
  const PLUGIN_LOCKFILE_PATH = path.join(RUNTIME_DATA_DIR, 'od-plugin-lock.json');
 // Canonical (realpath-resolved) form of RUNTIME_DATA_DIR for the few callers
@@ -2967,6 +2970,9 @@ export async function startServer({
   // wall — well past 4mb for image/markup-heavy sites. Give it a dedicated limit
   // (registered before the global parser so it claims the body first).
   app.use('/api/brands/:id/extract-from-html', express.json({ limit: '32mb' }));
+  // Initial imports and full-source edits can include bundled scripts and images.
+  // Keep the larger body allowance on the exact file upload/save endpoint.
+  app.use(/^\/api\/projects\/[^/]+\/files\/?$/u, express.json({ limit: '32mb' }));
   app.use(express.json({ limit: '4mb' }));
   const projectPreviewScopes = createProjectPreviewScopeRegistry();
 
@@ -3565,11 +3571,11 @@ export async function startServer({
   const workspaceTypes = createWorkspaceTypeRegistry();
   const configuredAmrEnv = () =>
     agentCliEnvForAgent(readAppConfigSync(RUNTIME_DATA_DIR).agentCliEnv, 'amr');
+  const workspaceAccountIdentity = () => process.env.OD_WORKSPACE_CONTEXT_SOURCE?.trim() === 'vela'
+    ? velaWorkspaceDirectoryIdentity(readVelaControlApiContext, configuredAmrEnv())
+    : hdwSessionIdentity(readSsoConfigFile(RUNTIME_DATA_DIR));
   const workspaceExactAuthorityCache = createWorkspaceExactAuthorityCache({
-    identity: () => velaWorkspaceDirectoryIdentity(
-      readVelaControlApiContext,
-      configuredAmrEnv(),
-    ),
+    identity: () => workspaceAccountIdentity(),
   });
   const workspaceDirectoryAuthority = createWorkspaceDirectoryAuthorityBroker({
     fetchDirectory: async () => {
@@ -3610,14 +3616,13 @@ export async function startServer({
              role: 'member',//sharedSpaceInfo.role,
              memberStatus: 'active' as const,
              lifecycleState: 'active' as const,
-             isSharedSpace: true,
              isDefaultTeam: true,
            }] : []),
           ];
           workspaceTypes.learn(items);
           return { ok: true, items };
         } catch {
-          return { ok: true, items: [] };
+          return { ok: false, items: [], reason: 'upstream', status: 503 };
         }
       }
       const result = await fetchVelaWorkspaceDirectory({
@@ -3626,10 +3631,7 @@ export async function startServer({
       if (result.ok) workspaceTypes.learn(result.items);
       return result;
     },
-    identityKey: () => velaWorkspaceDirectoryIdentity(
-      readVelaControlApiContext,
-      configuredAmrEnv(),
-    ),
+    identityKey: () => workspaceAccountIdentity(),
     onDecision: (input) => recordWorkspaceAuthorityDecision({
       mode: workspaceAuthorityCacheMode,
       ...input,
@@ -3655,7 +3657,7 @@ export async function startServer({
     req: any;
     requireTeam?: boolean;
   }, options: { fresh?: boolean; backgroundFresh?: boolean } = {}) => {
-    if (process.env.OD_WORKSPACE_CONTEXT_SOURCE?.trim() === 'vela') {
+    if (process.env.OD_WORKSPACE_CONTEXT_SOURCE?.trim() !== 'local') {
       let fetchDirectory = fetchFreshMutationWorkspaceDirectory;
       if (options.fresh === false) {
         fetchDirectory = fetchWorkspaceDirectory;
@@ -3917,10 +3919,7 @@ export async function startServer({
   );
   const workspaceExactContextCache = createWorkspaceExactContextCache({
     provider: workspaceContext,
-    identity: () => velaWorkspaceDirectoryIdentity(
-      readVelaControlApiContext,
-      configuredAmrEnv(),
-    ),
+    identity: () => workspaceAccountIdentity(),
     onDecision: (input) => recordWorkspaceAuthorityDecision({
       mode: workspaceAuthorityCacheMode,
       ...input,
@@ -3934,20 +3933,14 @@ export async function startServer({
       ...input,
     }),
   });
-  let workspaceHubAccountIdentity = velaWorkspaceDirectoryIdentity(
-    readVelaControlApiContext,
-    configuredAmrEnv(),
-  );
+  let workspaceHubAccountIdentity = workspaceAccountIdentity();
   const resetWorkspaceIdentityCaches = (): void => {
     workspaceDirectoryAuthority.resetIdentity();
     workspaceExactAuthorityCache.resetIdentity();
     workspaceExactContextCache.resetIdentity();
   };
   const refreshWorkspaceHubAccountIdentity = (): void => {
-    const currentIdentity = velaWorkspaceDirectoryIdentity(
-      readVelaControlApiContext,
-      configuredAmrEnv(),
-    );
+    const currentIdentity = workspaceAccountIdentity();
     if (currentIdentity === workspaceHubAccountIdentity) return;
     workspaceHubAccountIdentity = currentIdentity;
     resetWorkspaceIdentityCaches();
@@ -4058,7 +4051,8 @@ export async function startServer({
           visibility: 'team',
           createdByWorkspaceMemberId: input.ownerMemberId ?? input.updatedByMemberId ?? null,
           updatedByWorkspaceMemberId: input.updatedByMemberId ?? input.ownerMemberId ?? null,
-          resourceHubResourceId: projectResourceIdFor(input.projectId, input.principal),
+          resourceHubResourceId: getWorkspaceProject(db, workspaceId, input.projectId)?.resourceHubResourceId
+            ?? projectResourceIdFor(input.projectId, input.principal),
           cloudTombstonedAt: null,
           syncState: 'synced',
         }
@@ -4746,12 +4740,14 @@ export async function startServer({
   );
   const resolveSharedProject = async (
     projectId: string,
-    scope?: TeamMirrorPullScope | null,
+    scope?: Pick<TeamMirrorPullScope, 'workspaceId' | 'viewerMemberId'> | null,
   ) => {
     // Catalog reads are data-plane operations: never let the Vela adapter
     // substitute the daemon's mutable active Workspace.
     if (!scope?.workspaceId || !scope.viewerMemberId) return null;
-    const project = velaCliTeamProjectCatalog
+    // Personal catalog lists are owner-scoped; a recipient must authorize the
+    // exact shared project instead of searching their own project list.
+    const project = (hdwTeamProjectCatalog ?? velaCliTeamProjectCatalog)
       ? await (hdwTeamProjectCatalog ?? velaCliTeamProjectCatalog)!.get(projectId, scope.workspaceId)
       : (await teamProjectsLister(scope.workspaceId))
           .find((entry) => entry.projectId === projectId) ?? null;
@@ -4771,22 +4767,11 @@ export async function startServer({
    projectId: string,
    explicitScope: { workspaceId: string; workspaceMemberId: string },
  ): Promise<string | null> => {
-   const list = await withoutLocallyUnsharedProjects(
-     await teamProjectsLister(explicitScope.workspaceId),
-     explicitScope,
-   );
-    const raw = list.find((entry) => entry.projectId === projectId)?.ownerMemberId ?? null;
-    // Cross-workspace override: the HDW cloud catalog's ownerMemberId can
-    // still carry the personal-space (default team) member ID after a
-    // transfer. The same user has different member IDs across workspaces,
-    // so if the raw value matches the default-team member ID, substitute
-    // the current workspace's member ID. This keeps /collab/status's
-    // ownerMemberId aligned with the project workspace scope's member ID
-    // so the frontend's isOwner check resolves correctly.
-    const defaultMemberId = getTeamMemberId(getDefaultTeamId());
-    return raw && defaultMemberId && raw === defaultMemberId
-      ? explicitScope.workspaceMemberId
-      : raw;
+    const project = await resolveSharedProject(projectId, {
+      workspaceId: explicitScope.workspaceId,
+      viewerMemberId: explicitScope.workspaceMemberId,
+    });
+    return project?.ownerMemberId ?? null;
  };
  // GET /collab/status is a display read whose request authority has already
  // been verified. Reuse the explicit workspace+member catalog cache here so
@@ -4796,15 +4781,13 @@ export async function startServer({
    projectId: string,
    explicitScope: { workspaceId: string; workspaceMemberId: string },
  ): Promise<string | null> => {
+   if (hdwTeamProjectCatalog) return resolveSharedProjectOwner(projectId, explicitScope);
    const list = await withoutLocallyUnsharedProjects(
      await teamProjectsDisplayCache(explicitScope),
      explicitScope,
    );
     const raw = list.find((entry) => entry.projectId === projectId)?.ownerMemberId ?? null;
-    const defaultMemberId = getTeamMemberId(getDefaultTeamId());
-    return raw && defaultMemberId && raw === defaultMemberId
-      ? explicitScope.workspaceMemberId
-      : raw;
+    return raw;
  };
   // Presence is project-bound data. Its relay scope comes only from the
   // persisted project binding; an ambient active workspace is never a fallback.
@@ -5698,10 +5681,7 @@ export async function startServer({
     return context ? teamMembersCache(context) : [];
   };
   const accountBillingSummary = createAccountBillingSummaryCache({
-    identity: () => velaWorkspaceDirectoryIdentity(
-      readVelaControlApiContext,
-      configuredAmrEnv(),
-    ),
+    identity: () => workspaceAccountIdentity(),
     fetch: () => fetchVelaBillingSummary({ configuredEnv: configuredAmrEnv() }),
   });
   const workspaceBillingRuntime = createWorkspaceBillingRuntimeCoordinator({
@@ -5781,6 +5761,7 @@ export async function startServer({
   };
  let workspaceAnalyticsService: AnalyticsService | null = null;
  registerCollabContextHideSignRoutes(app, {
+   serveWorkspaceContext: process.env.OD_WORKSPACE_CONTEXT_SOURCE?.trim() !== 'vela',
    dataDir: RUNTIME_DATA_DIR,
    hdwTeamProjectCatalog: hdwTeamProjectCatalog,
    db: db,
@@ -5977,10 +5958,7 @@ export async function startServer({
     identityKey: string,
   ) => `${identityKey}\0${workspaceId}`;
   const currentWorkspaceDirectoryIdentity = () =>
-    velaWorkspaceDirectoryIdentity(
-      readVelaControlApiContext,
-      configuredAmrEnv(),
-    );
+    workspaceAccountIdentity();
   const syncWorkspaceDirectoryRealtimeHealth = (): void => {
     const currentIdentity = currentWorkspaceDirectoryIdentity();
     workspaceDirectoryAuthority.setRealtimeHealthy(
@@ -6993,6 +6971,7 @@ export async function startServer({
     resource: TeamResourceShareRecord,
     scope: TeamResourceRequestScope,
     cloudInstall = false,
+    homeWorkspaceId?: string,
   ): Promise<void> {
     const dirId = stripPrefixAndValidateId(
       resource.id,
@@ -7124,12 +7103,12 @@ export async function startServer({
         },
         pullInto: cloudInstall
           ? async (stagedFolder) => {
-              const result = await hdwCloudClient?.pullResource(workspaceId, hubResourceId, 'published');
+              const result = await hdwCloudClient?.pullResource(homeWorkspaceId || workspaceId, hubResourceId, 'published');
               if (!result) throw new Error('cloud skill not found on hub');
               for (const entry of result.manifest.entries) {
                 const normalized = entry.path.replaceAll('\\', '/').replace(/^\/+/u, '');
                 if (!normalized || normalized.split('/').some((s) => s === '..' || s === '.')) continue;
-                const blob = await hdwCloudClient?.downloadBlob(workspaceId, entry.digest);
+                const blob = await hdwCloudClient?.downloadBlob(homeWorkspaceId || workspaceId, entry.digest);
                 if (!blob) continue;
                 const filePath = path.join(stagedFolder, normalized);
                 await fs.promises.mkdir(path.dirname(filePath), { recursive: true });
@@ -7147,7 +7126,10 @@ export async function startServer({
         verifyWorkspaceScope: () => teamResourceScopeStillAuthorized(scope),
         verifyStillShared: stillShared,
       });
-      if (materialized.status !== 'committed') return;
+      if (materialized.status !== 'committed') {
+        if (cloudInstall) throw new Error('Skill installation did not commit');
+        return;
+      }
       if (cloudInstall) {
         markTeamSynced();
       } else {
@@ -7176,6 +7158,7 @@ export async function startServer({
         );
       }
     } catch (error) {
+      if (cloudInstall) throw error;
       console.warn(
         `[team-resources] failed to pull shared skill ${resource.id}:`,
         error instanceof Error ? error.message : error,
@@ -7846,7 +7829,7 @@ const designSystemBackingProjects = new Map<string, string>();
       versionId: cloudResource.versionId ?? undefined,
       version: cloudResource.version ?? undefined,
     };
-   await syncSharedTeamSkill(record, scope, true);
+   await syncSharedTeamSkill(record, scope, true, lookupWsId);
    res.json({ installed: true, localId });
   } catch (err: any) {
     res.status(500).json({ error: err instanceof Error ? err.message : 'cloud skill install failed' });
@@ -8923,6 +8906,18 @@ const teamResourceListByKind = {
 
 registerFolderRoutes(app, {
   db,
+  listCloudRootProjects: hdwTeamProjectCatalog
+    ? (workspaceId) => hdwTeamProjectCatalog.list(workspaceId, 'root')
+    : undefined,
+  verifyMember: async (req, workspaceId) => {
+    const directory = await fetchFreshMutationWorkspaceDirectory();
+    if (!directory.ok) return null;
+    const entry = directory.items.find(item => item.workspaceId === workspaceId && item.memberStatus === 'active' && item.lifecycleState === 'active');
+    const claimed = req.headers['x-od-workspace-member-id'];
+    if (!entry || (claimed && claimed !== entry.workspaceMemberId)) return null;
+    if (!['GET', 'HEAD'].includes(req.method) && entry.role === 'guest') return null;
+    return entry.workspaceMemberId;
+  },
   http: { requireLocalDaemonRequest, sendApiError },
   dataDir: RUNTIME_DATA_DIR,
 });
@@ -11652,6 +11647,9 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
     };
 
   const startChatRun = async (chatBody, run) => {
+    if (activeClaudeCompactions.has(run.conversationId)) {
+      return design.runs.fail(run, 'CONFLICT', 'Context compaction is running. Wait for it to finish.');
+    }
     const lifecycle = createRunLifecycleTracer(run);
     lifecycle.mark('chat_run_started');
     const pendingNativeSessionContinue =

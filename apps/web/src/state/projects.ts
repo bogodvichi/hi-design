@@ -3082,3 +3082,19 @@ export async function remixHdwPlugin(name: string): Promise<RemixHdwPluginResult
     return { ok: false, message: (err as Error).message };
   }
 }
+
+
+export async function compactConversation(
+  projectId: string,
+  conversationId: string,
+  request: import('@open-design/contracts').CompactConversationRequest,
+  workspaceContext?: WorkspaceCollabContext | null,
+): Promise<import('@open-design/contracts').CompactConversationResponse> {
+  const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/conversations/${encodeURIComponent(conversationId)}/compact`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...(workspaceContext ? workspaceProjectHeaders(workspaceContext) : {}) },
+    body: JSON.stringify(request),
+  });
+  if (!response.ok) throw new Error(await readErrorMessage(response));
+  return response.json();
+}

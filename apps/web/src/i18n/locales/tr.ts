@@ -5702,4 +5702,11 @@ export const tr: Dict = {
   'share.publishSuccessHint': "\"{name}\" has been published to the community.",
   'share.openInCommunity': "View in Community",
   'contentEmpty.title': "Henüz içerik yok",
+  "chat.compact.action": "Bağlamı sıkıştır",
+  "chat.compact.busy": "Bağlam sıkıştırılıyor…",
+  "chat.compact.description": "Claude Code · Önceki mesajları özetle",
+  "chat.compact.unavailable": "Claude Code seçin",
+  "chat.compact.noAttachments": "/compact çalıştırmadan önce ekleri kaldırın.",
+  "chat.compact.failed": "Bağlam sıkıştırılamadı",
+  "chat.contextRecovery.title": "Bağlam kurtarma",
 };

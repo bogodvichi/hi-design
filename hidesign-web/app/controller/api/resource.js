@@ -59,7 +59,12 @@ class ResourceController extends Controller {
       // the caller didn't send one; otherwise use the provided ownerMemberId.
       let effectiveOwner = ownerMemberId;
       const existing = await k('resources').where({ id: resourceId }).first();
-      if (existing && !body.ownerMemberId) {
+      if (existing) {
+        if (existing.workspace_id !== workspaceId || (body.ownerMemberId && existing.owner_member_id !== ownerMemberId)) {
+          ctx.status = 409;
+          ctx.body = { error: 'resource_owner_conflict', message: 'Publication cannot transfer ownership' };
+          return;
+        }
         effectiveOwner = existing.owner_member_id;
       }
       await k('resources')
@@ -75,7 +80,7 @@ class ResourceController extends Controller {
         .merge({
           deleted_at: null,
           ...(metadata ? { metadata: JSON.stringify(metadata) } : {}),
-          ...(body.ownerMemberId ? { owner_member_id: effectiveOwner } : {}),
+
           ...(scope !== null ? { scope } : {}),
         });
 
@@ -255,7 +260,7 @@ class ResourceController extends Controller {
         // team_projects, pending_version_uploads, and
         // workspace_resource_shares automatically.
         deleted = await trx('resources')
-          .where({ id: resourceId })
+          .where({ id: resourceId, workspace_id: ctx.params.workspaceId })
           .del();
       });
 
@@ -292,7 +297,7 @@ class ResourceController extends Controller {
       return;
     }
 
-    const id = (metadata.id) ? metadata.id : 'res-' + crypto.randomUUID();
+    const id = 'res-' + crypto.randomUUID();
 
     try {
       const k = this.getKnex();
@@ -333,10 +338,18 @@ class ResourceController extends Controller {
   // resource. Returns {code, msg, data} envelope.
   async update() {
     const { ctx } = this;
+    const workspaceId = ctx.params.workspaceId;
     const resourceId = ctx.params.resourceId;
     const body = ctx.request.body || {};
     const metadata = body.metadata || null;
 
+    // Always constrain resource mutations to the workspace authorized by the
+    // HTTP access guard. Never update a resource by ID alone.
+    if (!workspaceId) {
+      ctx.status = 400;
+      ctx.body = { code: -1, msg: 'workspaceId is required' };
+      return;
+    }
     if (!metadata) {
       ctx.body = { code: -1, msg: 'metadata is required' };
       return;
@@ -349,7 +362,7 @@ class ResourceController extends Controller {
         updateFields.scope = body.scope || null;
       }
       const updated = await k('resources')
-        .where({ id: resourceId })
+        .where({ id: resourceId, workspace_id: workspaceId })
         .whereNull('deleted_at')
         .update(updateFields);
 
@@ -358,7 +371,7 @@ class ResourceController extends Controller {
         return;
       }
 
-      const row = await k('resources').where({ id: resourceId }).first();
+      const row = await k('resources').where({ id: resourceId, workspace_id: workspaceId }).first();
       const meta = typeof row.metadata === 'string' ? JSON.parse(row.metadata) : (row.metadata || {});
       ctx.body = {
         code: 0,

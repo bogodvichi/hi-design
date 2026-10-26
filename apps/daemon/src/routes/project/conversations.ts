@@ -1,4 +1,12 @@
 import type { Express } from 'express';
+import { applyAgentLaunchEnv, resolveAgentLaunch, spawnEnvForAgent } from '../../agents.js';
+import { agentCliEnvForAgent } from '../../app-config.js';
+import { getAgentSessionRecord, upsertAgentSession } from '../../db.js';
+import { resolveAgentResumeContext } from '../../agent-session-resume.js';
+import { resolveProjectDir } from '../../projects.js';
+import { loadMmdRouteLaunchEnv } from '../../runtimes/mmd-routes.js';
+import { activeClaudeCompactions, runClaudeCompact } from '../../runtimes/claude-compact.js';
+import type { CompactConversationResponse } from '@open-design/contracts';
 import { type ChatSessionMode } from '@open-design/contracts';
 import { readAnalyticsContext } from '../../analytics.js';
 import { backfillBrandExtractionTranscriptForProject } from '../../brands/index.js';
@@ -75,6 +83,81 @@ export function registerProjectConversationRoutes(app: Express, ctx: RegisterPro
     const conversation = getConversation(db, conversationId);
     return conversation?.projectId === projectId ? conversation : null;
   };
+
+  app.post('/api/projects/:id/conversations/:cid/compact', async (req, res) => {
+    if (!await authorizeProjectRequest(req, res, req.params.id, { mode: 'write', capability: 'writeFiles' })) return;
+    const conversation = getRoutableConversation(req.params.id, req.params.cid);
+    const project = getProject(db, req.params.id);
+    if (!conversation || !project) return sendApiError(res, 404, 'NOT_FOUND', 'Conversation not found.');
+    const instructions = req.body?.instructions ?? '';
+    if (typeof instructions !== 'string' || /[\r\n]/.test(instructions) || instructions.length > 4_000) {
+      return sendApiError(res, 400, 'BAD_REQUEST', 'Compaction instructions must be a single line of at most 4000 characters.');
+    }
+    const record = getAgentSessionRecord(db, conversation.id, 'claude');
+    const cwd = resolveProjectDir(PROJECTS_DIR, project.id, project.metadata);
+    const resume = resolveAgentResumeContext(db, {
+      conversationId: conversation.id, agentId: 'claude', currentModel: record?.model ?? null, currentCwd: cwd,
+    });
+    if (!record || !resume.isResuming) {
+      return sendApiError(res, 409, 'CONFLICT', 'No current Claude session can be compacted. Start a new conversation.');
+    }
+    const def = getAgentDef('claude');
+    const config = await readAppConfig(ctx.paths.RUNTIME_DATA_DIR);
+    const configuredEnv = agentCliEnvForAgent(config.agentCliEnv, 'claude');
+    const launch = resolveAgentLaunch(def, configuredEnv);
+    if (!launch.launchPath) return sendApiError(res, 409, 'AGENT_UNAVAILABLE', 'Claude Code CLI is unavailable.');
+    const routeEnv = await loadMmdRouteLaunchEnv({ ...process.env, ...configuredEnv }, record.model);
+    const env = applyAgentLaunchEnv(spawnEnvForAgent('claude', process.env, {
+      ...configuredEnv, ...routeEnv, OD_DATA_DIR: ctx.paths.RUNTIME_DATA_DIR,
+    }), launch);
+    // Claim after asynchronous preflight so a concurrent normal turn wins visibly.
+    if (activeClaudeCompactions.has(conversation.id) || design.runs.list({ conversationId: conversation.id, status: 'active' }).length) {
+      return sendApiError(res, 409, 'CONFLICT', 'This conversation is busy. Stop the current task before compacting.');
+    }
+    const latestRecord = getAgentSessionRecord(db, conversation.id, 'claude');
+    if (JSON.stringify(latestRecord) !== JSON.stringify(record)) {
+      return sendApiError(res, 409, 'CONFLICT', 'The Claude session changed. Retry compaction.');
+    }
+    const run = design.runs.create({ projectId: project.id, conversationId: conversation.id, agentId: 'claude' });
+    activeClaudeCompactions.add(conversation.id);
+    run.onFinalize = () => activeClaudeCompactions.delete(conversation.id);
+    const result: { response?: CompactConversationResponse } = {};
+    design.runs.start(run, async () => {
+      try {
+        const outcome = await runClaudeCompact({
+          command: launch.launchPath!, sessionId: record.sessionId, model: record.model, cwd, env, instructions,
+          onChild: (child) => {
+            run.child = child;
+            run.childPid = child.pid ?? null;
+            run.processGroupId = process.platform !== 'win32' ? child.pid ?? null : null;
+          },
+        });
+        if (run.cancelRequested || !getRoutableConversation(project.id, conversation.id)) throw new Error('Compaction canceled or conversation removed.');
+        const chinese = typeof req.body?.locale === 'string' && req.body.locale.startsWith('zh');
+        const message = {
+          id: randomId(), role: 'assistant' as const, agentId: 'claude', agentName: 'Claude Code',
+          content: outcome.compacted
+            ? (chinese ? '上下文已压缩，后续消息将继续使用当前 Claude 会话。' : 'Context compacted. Subsequent messages will continue in this Claude session.')
+            : outcome.detail,
+          createdAt: Date.now(),
+        };
+        // Advance the visible cursor without invalidating the native handle or stable prompt cache.
+        db.transaction(() => {
+          upsertMessage(db, conversation.id, message);
+          upsertAgentSession(db, { ...record, conversationId: conversation.id, agentId: 'claude', lastMessageId: message.id });
+        })();
+        result.response = { compacted: outcome.compacted, ...(outcome.preTokens !== undefined ? { preTokens: outcome.preTokens } : {}), message };
+        design.runs.finish(run, 'succeeded', 0);
+      } catch (error) {
+        design.runs.fail(run, 'AGENT_EXECUTION_FAILED', error instanceof Error ? error.message : String(error));
+      }
+    });
+    await design.runs.wait(run);
+    if (run.status !== 'succeeded' || !result.response) {
+      return sendApiError(res, 422, 'AGENT_EXECUTION_FAILED', run.error || 'Claude context compaction failed.');
+    }
+    res.json(result.response);
+  });
 
   // ---- Conversations --------------------------------------------------------
 

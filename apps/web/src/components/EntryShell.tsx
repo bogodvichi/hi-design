@@ -431,7 +431,7 @@ interface Props {
    projectTitleHint?: ProjectTitleHint,
  ) => Promise<boolean> | boolean | void;
  onOpenLiveArtifact: (projectId: string, artifactId: string) => void;
- onDeleteProject: (id: string) => Promise<boolean | void> | boolean | void;
+ onDeleteProject: (id: string, source?: ProjectMutationSource) => Promise<boolean | void> | boolean | void;
 onDuplicateProject?: (
   id: string,
   options?: {
@@ -444,7 +444,7 @@ onRenameProject: (id: string, name: string, source?: ProjectMutationSource) => v
 onProjectsRefresh?: () => Promise<void> | void;
 onCopyProject?: (
   id: string,
-  options?: { targetWorkspaceId?: string; targetFolderId?: string | null },
+  options?: { sourceWorkspaceId?: string; targetWorkspaceId?: string; targetFolderId?: string | null },
 ) => Promise<void> | void;
 onCopySharedProject?: (id: string, homeWorkspaceId: string) => Promise<string | void> | string | void;
  onTeamProjectContentReady?: (

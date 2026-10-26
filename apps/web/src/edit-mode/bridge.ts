@@ -1,3 +1,5 @@
+import { MANUAL_EDIT_RUNTIME_TARGET_PREFIX } from './runtime-target';
+
 export const MANUAL_EDIT_DISCOVERY_SELECTOR =
   'main, nav, section, article, aside, header, footer, div, h1, h2, h3, h4, h5, h6, p, a, button, img, ul, ol, li, dl, dt, dd, table, thead, tbody, tfoot, tr, td, th, caption, blockquote, figure, figcaption, label, summary, pre, code, strong, em, b, i, small, mark, span';
 export const MANUAL_EDIT_SOURCE_PATH_ATTR = 'data-od-source-path';
@@ -9,6 +11,7 @@ export const MANUAL_EDIT_HOST_NODE_SELECTOR = [
   '[data-od-comment-bridge-style]',
   '[data-od-edit-bridge-style]',
   '[data-od-deck-fix]',
+  '[data-od-edit-guides-layer]',
 ].join(',');
 
 export type ManualEditKind = 'text' | 'link' | 'image' | 'container';
@@ -39,7 +42,7 @@ export function manualEditStableIdForElement(el: Element): string {
 }
 
 export function isMeaningfulManualEditElement(el: Element, rect: Pick<DOMRect, 'width' | 'height'>): boolean {
-  return isSourceMappableManualEditElement(el) && el.matches(MANUAL_EDIT_DISCOVERY_SELECTOR) && rect.width >= 4 && rect.height >= 4;
+  return !el.closest(MANUAL_EDIT_HOST_NODE_SELECTOR) && el.matches(MANUAL_EDIT_DISCOVERY_SELECTOR) && rect.width >= 4 && rect.height >= 4;
 }
 
 export function isSourceMappableManualEditElement(el: Element): boolean {
@@ -178,28 +181,27 @@ export function buildManualEditBridge(enabled: boolean): string {
   function isHostNode(el){
     return !!(el && el.matches && el.matches(hostNodeSelector));
   }
-  function domPath(el){
-    var parts = [];
-    var node = el;
-    while (node && node !== document.body) {
-      var parent = node.parentElement;
-      if (!parent) break;
-      var children = Array.prototype.slice.call(parent.children).filter(function(child){ return !isHostNode(child); });
-      parts.unshift(children.indexOf(node));
-      node = parent;
-    }
-    return parts.length ? 'path-' + parts.join('-') : '';
-  }
   function stableId(el){
     var explicit = el.getAttribute('data-od-id');
     if (explicit) return explicit;
-    var generated = el.getAttribute(sourcePathAttr) || el.getAttribute('data-od-runtime-id') || domPath(el);
+    var generated = el.getAttribute(sourcePathAttr) || el.getAttribute('data-od-runtime-id') || runtimeId(el);
     if (generated) el.setAttribute('data-od-runtime-id', generated);
     return generated || 'unknown';
   }
-  function isSourceMappable(el){
-    if (!el || !el.hasAttribute || isHostNode(el)) return false;
-    return !!(el.hasAttribute('data-od-id') || el.hasAttribute(sourcePathAttr));
+  function runtimeId(el){
+    var parts = [];
+    for (var node = el; node && node !== document.body; node = node.parentElement) {
+      var index = 1;
+      for (var sibling = node.previousElementSibling; sibling; sibling = sibling.previousElementSibling) {
+        if (sibling.tagName === node.tagName) index++;
+      }
+      parts.unshift(node.tagName.toLowerCase() + ':nth-of-type(' + index + ')');
+    }
+    return ${JSON.stringify(MANUAL_EDIT_RUNTIME_TARGET_PREFIX)} + 'body > ' + parts.join(' > ');
+  }
+  function isEditableTarget(el){
+    if (!el || !el.closest || el.closest(hostNodeSelector)) return false;
+    return isDiscoveryTarget(el);
   }
   function markBrandKitTarget(el, id, kind, label){
     if (!el || !el.setAttribute || isHostNode(el)) return;
@@ -291,6 +293,7 @@ export function buildManualEditBridge(enabled: boolean): string {
     var text = (el.textContent || '').replace(/\\s+/g, ' ').trim();
     if (text) return text.slice(0, 42);
     if (kind === 'image') return el.getAttribute('alt') || id;
+    if (id.indexOf(${JSON.stringify(MANUAL_EDIT_RUNTIME_TARGET_PREFIX)}) === 0) return el.id || el.className || tag;
     return tag + ' #' + id;
   }
   function attrsFor(el){
@@ -486,7 +489,7 @@ export function buildManualEditBridge(enabled: boolean): string {
     var targets = [];
     for (var i = 0; i < nodes.length; i++) {
       var rect = nodes[i].getBoundingClientRect();
-      if (!isSourceMappable(nodes[i])) continue;
+      if (!isEditableTarget(nodes[i])) continue;
       if (!isHiddenTarget(nodes[i], rect) && (rect.width < 4 || rect.height < 4)) continue;
       targets.push(targetFrom(nodes[i], false));
     }
@@ -759,7 +762,7 @@ export function buildManualEditBridge(enabled: boolean): string {
     annotateBrandKitRuntimeTargets();
     var el = event.target;
     while (el && el !== document.documentElement) {
-      if (el !== document.body && el !== document.documentElement && isSourceMappable(el) && isDiscoveryTarget(el)) {
+      if (el !== document.body && el !== document.documentElement && isEditableTarget(el) && isDiscoveryTarget(el)) {
         return el;
       }
       el = el.parentElement;
@@ -884,6 +887,7 @@ export function buildManualEditBridge(enabled: boolean): string {
           || document.querySelector('[data-od-runtime-id="' + cssEscapeId(id) + '"]')
           || document.querySelector('[' + sourcePathAttr + '="' + cssEscapeId(id) + '"]');
     if (el) return el;
+    if (id.indexOf(${JSON.stringify(MANUAL_EDIT_RUNTIME_TARGET_PREFIX)}) === 0) return document.querySelector(id.slice(${MANUAL_EDIT_RUNTIME_TARGET_PREFIX.length}));
     if (typeof id === 'string' && id.indexOf('path-') === 0) {
       var parts = id.slice('path-'.length).split('-').map(function(s){ return Number(s); });
       var node = document.body;

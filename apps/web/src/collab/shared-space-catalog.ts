@@ -137,6 +137,14 @@ export async function shareFolderToSharedSpace(input: {
  * Share a skill or MCP resource to specific recipients in the shared space.
  * Calls the daemon proxy which forwards to the HDW resource-share endpoint.
  */
+/** The HDW owner check is authoritative; never retry or bypass a 403. */
+export class ResourceShareOwnerError extends Error {
+  constructor() {
+    super('NOT_RESOURCE_OWNER');
+    this.name = 'ResourceShareOwnerError';
+  }
+}
+
 export async function shareResourceToSharedSpace(input: {
   resourceId: string;
   kind: 'skill' | 'mcp';
@@ -153,7 +161,13 @@ export async function shareResourceToSharedSpace(input: {
       recipients: input.recipients,
     }),
   });
-  if (!response.ok) return null;
+  if (!response.ok) {
+    if (response.status === 403) {
+      const body = await response.json().catch(() => null) as { error?: unknown } | null;
+      if (body?.error === 'NOT_RESOURCE_OWNER') throw new ResourceShareOwnerError();
+    }
+    return null;
+  }
   return await response.json();
 }
 

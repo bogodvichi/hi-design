@@ -23,6 +23,8 @@ export interface McpServerConfig {
   /** Optional template id this entry was instantiated from. Lets the UI
    * render the template's logo/help text without re-deriving from the URL. */
   templateId?: string;
+  cloudResourceId?: string;
+  cloudHomeWorkspaceId?: string;
   /** Workspace member id of the owner who installed this server. Used by
    * the composer "+" menu to filter "Mine" (ownerMemberId === current
    * user's member id) vs "Team" (workspaceId === team workspace id). */

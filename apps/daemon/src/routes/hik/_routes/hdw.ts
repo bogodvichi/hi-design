@@ -1,3 +1,4 @@
+import { hdwSessionHeaders } from '../../../http/hdw-session.js';
 import type { Express } from 'express';
 import * as https from 'node:https';
 import * as http from 'node:http';
@@ -115,6 +116,10 @@ function proxyToUpstream(
   dataDir?: string,
 ): void {
   const doReq = (u: URL, redirects: number) => {
+    if (u.origin !== targetUrl.origin) {
+      if (!res.headersSent) sendApiError(res, 502, 'BAD_GATEWAY', 'HDW cross-origin redirect rejected');
+      return;
+    }
     if (redirects > 15) {
       if (!res.headersSent) sendApiError(res, 502, 'BAD_GATEWAY', 'hdw proxy too many redirects');
       return;
@@ -145,6 +150,7 @@ function proxyToUpstream(
       try {
         const sso = readSsoConfigFile(dataDir);
         if (sso?.cookies?.length) {
+          Object.assign(headers, hdwSessionHeaders(sso));
           headers['Cookie'] = sso.cookies.map((c: { name: string; value: string }) => `${c.name}=${c.value}`).join('; ');
         }
       } catch { /* SSO not available — proceed without cookies */ }

@@ -25,7 +25,13 @@ class FolderController extends Controller {
     if (!member) {
       return { error: '操作者不在该团队中(无权限)' };
     }
-    if (allowedRoles && !allowedRoles.includes(member.role)) {
+    if (!this.ctx.state?.user?.username || member.username !== this.ctx.state.user.username) {
+      return { error: '操作者与登录身份不一致' };
+    }
+    const personalOwner = workspaceId === getSharedSpaceTeamId()
+      && this.ctx.state.personalOwnerMemberId === member.workspace_member_id
+      && member.role !== 'guest';
+    if (allowedRoles && !allowedRoles.includes(member.role) && !personalOwner) {
       return { error: '权限不足' };
     }
     return { member };
@@ -77,6 +83,7 @@ class FolderController extends Controller {
         folder_pid: folderPid,
         workspace_id: workspaceId,
         folder_name: folderName,
+        owner_member_id: ctx.state.folderOwnerMemberId,
         recipient_member_id: ctx.request.body.recipient_member_id || null,
         created_at: now,
       }, ['folder_id', 'folder_pid', 'workspace_id', 'folder_name']);
@@ -133,6 +140,7 @@ class FolderController extends Controller {
           folder_pid: f.folder_pid || null,
           workspace_id: workspaceId,
           folder_name: f.folder_name,
+          owner_member_id: ctx.state.folderOwnerMemberId,
           recipient_member_id: f.recipient_member_id || null,
           created_at: now,
         }));
@@ -348,6 +356,7 @@ class FolderController extends Controller {
       const { folder_pid: folderPid } = ctx.query;
 
       const query = k('folders');
+      if (ctx.state.personalOwnerMemberId) query.where('folders.owner_member_id', ctx.state.personalOwnerMemberId);
       if (workspaceId) {
         query.where({ 'folders.workspace_id': workspaceId });
       }
@@ -395,10 +404,7 @@ class FolderController extends Controller {
           //  不需要有 folder_shares 记录)
           query
             .where('folders.folder_pid', folderPid)
-            .whereRaw(
-              `EXISTS (SELECT 1 FROM folder_shares WHERE folder_id = ? AND recipient_member_id = ?)`,
-              [folderPid, recipientMemberId],
-            );
+; // Ancestor grant authorization is enforced by workspace-access.
         }
       } else {
         // 团队空间场景:不使用 folder_shares 过滤
@@ -797,9 +803,14 @@ class FolderController extends Controller {
       }
 
       // folder_id 现在直接在 team_projects 上,移动 = 更新 folder_id
-      await k('team_projects')
+      const updated = await k('team_projects')
         .where({ project_id: projectId, workspace_id: workspaceId })
         .update({ folder_id: targetFolderId });
+      if (!updated) {
+        ctx.status = 404;
+        ctx.body = { code: -1, error: 'PROJECT_NOT_FOUND' };
+        return;
+      }
 
       ctx.body = { code: 0, msg: 'SUCCESS', data: { folder_id: targetFolderId, project_id: projectId } };
     } catch (err) {
@@ -952,6 +963,7 @@ class FolderController extends Controller {
       }
 
       await k('workspace_project_shares').insert(rows).onConflict('id').merge([
+        'home_workspace_id',
         'created_by_member_id',
         'created_by_username',
         'created_by_displayname',

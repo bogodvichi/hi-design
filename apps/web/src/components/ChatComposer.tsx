@@ -1,6 +1,9 @@
 'use client';
 
+import { parseCompactCommand } from '@open-design/contracts';
+
 import {
+  Fragment,
   forwardRef,
   useCallback,
   useEffect,
@@ -13,6 +16,7 @@ import {
 } from "react";
 import { createPortal } from 'react-dom';
 import { Button } from '@open-design/components';
+import slashStyles from './SlashPopover.module.css';
 import { useI18n } from '../i18n';
 import { localizePluginDescription, localizePluginTitle } from './plugins-home/localization';
 import type { Dict, Locale } from '../i18n/types';
@@ -252,6 +256,7 @@ interface Props {
   activeProjectFileName?: string | null;
   streaming: boolean;
   sendDisabled?: boolean;
+  nativeCompactAvailable?: boolean;
   // Read-only viewer of a team-shared project: makes the Lexical editor
   // non-editable (in addition to `sendDisabled` blocking the send action) so
   // the user cannot type into the composer at all.
@@ -531,6 +536,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       activeProjectFileName = null,
       streaming,
       sendDisabled = false,
+      nativeCompactAvailable = false,
       inputDisabled = false,
       initialDraft,
       composerPlaceholder,
@@ -1374,6 +1380,9 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
     // ready for an argument.
     const slashCommands = useMemo<SlashCommand[]>(() => {
       const list: SlashCommand[] = [];
+      if (nativeCompactAvailable) {
+        list.push({ id: 'claude-compact', label: '/compact', insert: '/compact ', descKey: 'chat.compact.description', icon: 'sparkles' });
+      }
       // External MCP servers — `/mcp` opens settings, `/mcp <id>` inserts a
       // prompt-side hint nudging the model to use that server's tools. The
       // hint flows through to the agent verbatim; the daemon already wired
@@ -1385,7 +1394,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
           insert: '/mcp ',
           descKey: 'pet.slashMcp',
           icon: 'sliders',
-          argHint: 'open settings · <server-id> to insert hint',
         });
       }
       for (const s of enabledMcpServers) {
@@ -1395,7 +1403,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
           insert: `Use the \`${s.id}\` MCP server tools. `,
           descKey: 'pet.slashMcp',
           icon: 'sparkles',
-          argHint: s.label || s.transport,
+          argHint: s.label && s.label !== s.id ? s.label : undefined,
         });
       }
       if (researchAvailable) {
@@ -1408,8 +1416,9 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
           argHint: t('pet.slashSearchArg'),
         });
       }
-      return list;
-    }, [researchAvailable, t, enabledMcpServers, onOpenMcpSettings]);
+      // Keep HiDesign commands out of the palette for now; typed commands still work.
+      return list.filter((command) => command.id === 'claude-compact');
+    }, [nativeCompactAvailable, researchAvailable, t, enabledMcpServers, onOpenMcpSettings]);
 
     const filteredSlash = useMemo(() => {
       if (!slash) return [] as SlashCommand[];
@@ -3160,6 +3169,10 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
     async function submit() {
       const prompt = draft.trim();
       if (sendDisabled) return;
+      if (nativeCompactAvailable && parseCompactCommand(prompt)) {
+        beginComposedSend(() => onSend(prompt, staged, currentCommentAttachments()));
+        return;
+      }
       // Intercept `/pet …` and `/mcp` before sending so the slash command
       // never hits the agent — these are local UX hooks, not model prompts.
       if (tryHandlePetSlash()) return;
@@ -5898,51 +5911,62 @@ function SlashPopover({
   onHover: (index: number) => void;
   t: TranslateFn;
 }) {
+  const showGroups = commands.some((command) => command.id === 'claude-compact');
+  const listRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    listRef.current?.querySelector<HTMLElement>('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' });
+  }, [activeIndex, commands]);
   return (
     <div
-      className="slash-popover"
+      className={slashStyles.root}
       data-testid="slash-popover"
       role="listbox"
       aria-label={t('pet.slashPopoverAria')}
     >
-      <div className="slash-popover-head">
+      <div className={slashStyles.header}>
         <span>{t('pet.slashPopoverTitle')}</span>
-        <span className="slash-popover-hint">{t('pet.slashPopoverHint')}</span>
+        <span className={slashStyles.hint}>{t('pet.slashPopoverHint')}</span>
       </div>
-      {commands.map((cmd, idx) => {
-        const active = idx === activeIndex;
-        return (
-          <button
-            key={cmd.id}
-            id={`slash-opt-${idx}`}
-            type="button"
-            role="option"
-            aria-selected={active}
-            className={`slash-item${active ? ' active' : ''}`}
-            onMouseDown={(e) => {
-              // Prevent the textarea from losing focus before the click
-              // handler fires — otherwise selectionStart resets and the
-              // pick replacement targets the wrong substring.
-              e.preventDefault();
-            }}
-            onMouseEnter={() => onHover(idx)}
-            onClick={() => onPick(cmd)}
-          >
-            <span className="slash-item-icon" aria-hidden>
-              <Icon name={cmd.icon} size={13} />
-            </span>
-            <span className="slash-item-body">
-              <span className="slash-item-row">
-                <code className="slash-item-label">{cmd.label}</code>
-                {cmd.argHint ? (
-                  <span className="slash-item-arg">{cmd.argHint}</span>
-                ) : null}
-              </span>
-              <span className="slash-item-desc">{t(cmd.descKey)}</span>
-            </span>
-          </button>
-        );
-      })}
+      <div ref={listRef} className={slashStyles.list}>
+        {commands.map((cmd, idx) => {
+          const active = idx === activeIndex;
+          return (
+            <Fragment key={cmd.id}>
+              {showGroups && (idx === 0 || (cmd.id === 'claude-compact') !== (commands[idx - 1]?.id === 'claude-compact')) ? (
+                <div className={slashStyles.group} role="presentation">{cmd.id === 'claude-compact' ? 'Claude Code' : 'HiDesign'}</div>
+              ) : null}
+              <Button
+                id={`slash-opt-${idx}`}
+                type="button"
+                role="option"
+                aria-selected={active}
+                className={slashStyles.item}
+                onMouseDown={(e) => {
+                  // Prevent the textarea from losing focus before the click
+                  // handler fires — otherwise selectionStart resets and the
+                  // pick replacement targets the wrong substring.
+                  e.preventDefault();
+                }}
+                onMouseEnter={() => onHover(idx)}
+                onClick={() => onPick(cmd)}
+              >
+                <span className={slashStyles.icon} aria-hidden>
+                  <Icon name={cmd.icon} size={14} />
+                </span>
+                <span className={slashStyles.body}>
+                  <span className={slashStyles.row}>
+                    <code className={slashStyles.label} title={cmd.label}>{cmd.label}</code>
+                    {cmd.argHint ? (
+                      <span className={slashStyles.argument} title={cmd.argHint}>{cmd.argHint}</span>
+                    ) : null}
+                  </span>
+                  <span className={slashStyles.description}>{t(cmd.descKey)}</span>
+                </span>
+              </Button>
+            </Fragment>
+          );
+        })}
+      </div>
     </div>
   );
 }

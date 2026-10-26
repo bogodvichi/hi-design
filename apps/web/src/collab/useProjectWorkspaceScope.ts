@@ -183,7 +183,7 @@ export function projectWorkspaceScopeAuthorizesAmr(
   return scope?.kind === 'personal' || scope?.kind === 'team';
 }
 
-class ProjectWorkspaceScopeFetchError extends Error {
+export class ProjectWorkspaceScopeFetchError extends Error {
   constructor(
     readonly failure: NonNullable<ProjectWorkspaceScopeState['failure']>,
   ) {
@@ -248,7 +248,10 @@ async function fetchProjectWorkspaceScope(
       );
       if (!response.ok) {
         throw new ProjectWorkspaceScopeFetchError(
-          response.status === 404
+          // A known cloud project may not have a local row until its first
+          // pull commits. Keep that exact identity retryable instead of
+          // permanently treating the daemon's scope endpoint as unsupported.
+          response.status === 404 && !workspaceAuthority
             ? 'unsupported'
             : response.status === 403
               ? 'forbidden'

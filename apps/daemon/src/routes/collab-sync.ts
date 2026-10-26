@@ -71,6 +71,8 @@ export interface PulledProjectManifest {
 
 export interface RegisterPulledProjectInput {
   id: string;
+  /** Only populated from a freshly authorized cloud catalog, never request input. */
+  resourceHubResourceId?: string;
   name: string;
   skillId: string | null;
   designSystemId: string | null;
@@ -1074,6 +1076,7 @@ const readManifest = deps.readManifest ?? readProjectManifest;
     const { existing, fallbackName, manifest, now, projectId } = prepared;
    const input = {
      id: projectId,
+     ...(teamProject?.resourceId ? { resourceHubResourceId: teamProject.resourceId } : {}),
      name: cleanPulledProjectName(teamProject?.name) ?? fallbackName,
      skillId: teamProject?.skillId ?? manifest?.skillId ?? null,
      designSystemId: teamProject?.designSystemId ?? manifest?.designSystemId ?? null,
