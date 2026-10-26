@@ -43,4 +43,33 @@ describe('test/app/controller/api/share_link_avatar.test.js', () => {
     assert(rendered.includes('https://hdw.example.test/avatar.jpg'));
     assert(rendered.indexOf('<script>') < rendered.indexOf('</body>'));
   });
+
+  it('injects project content containing String.replace patterns literally', () => {
+    const template = '<template-before>/*HTML_FILES_DATA*/[]</template-before><template-after></template-after>';
+    const htmlFiles = [{
+      name: 'index.html',
+      filePath: 'index.html',
+      content: '$` $& $1 $$',
+      home: true,
+    }];
+    const replacement = JSON.stringify(htmlFiles)
+      .replace(/</g, '\\u003c')
+      .replace(/>/g, '\\u003e');
+    const rendered = controller()._replaceTemplateMarker(
+      template,
+      /\/\*HTML_FILES_DATA\*\/\[\]/,
+      '/*HTML_FILES_DATA*/' + replacement
+    );
+
+    assert.strictEqual(
+      rendered,
+      '<template-before>/*HTML_FILES_DATA*/' + replacement
+        + '</template-before><template-after></template-after>'
+    );
+    const encoded = rendered.slice(
+      rendered.indexOf('/*HTML_FILES_DATA*/') + '/*HTML_FILES_DATA*/'.length,
+      rendered.indexOf('</template-before>')
+    );
+    assert.deepStrictEqual(JSON.parse(encoded), htmlFiles);
+  });
 });

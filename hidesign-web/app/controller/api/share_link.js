@@ -58,6 +58,12 @@ class ShareLinkController extends Controller {
     return this._publicBase() + '/hdw/api/community/avatar/' + digest;
   }
 
+  _replaceTemplateMarker(template, marker, value) {
+    // Function replacements keep `$&`, `$'`, and `$`` in project content as
+    // literal text instead of interpreting them as String.replace patterns.
+    return template.replace(marker, () => value);
+  }
+
   _commentMemberIds(html) {
     const match = html.match(
       /var COMMENTS_DATA = \/\*COMMENTS_DATA\*\/(\[[\s\S]*?\]);\s*(?:var MEMBER_AVATARS|\(function)/,
@@ -105,7 +111,11 @@ class ShareLinkController extends Controller {
       .replace(/>/g, '\\u003e');
     const marker = /\/\*MEMBER_AVATARS_DATA\*\/\{\}/;
     if (marker.test(html)) {
-      return html.replace(marker, '/*MEMBER_AVATARS_DATA*/' + encoded);
+      return this._replaceTemplateMarker(
+        html,
+        marker,
+        '/*MEMBER_AVATARS_DATA*/' + encoded
+      );
     }
 
     // Existing links contain an older generated template. Decorate their
@@ -113,7 +123,7 @@ class ShareLinkController extends Controller {
     // regenerating the public link.
     const compatibility = `<style>.comment-avatar{position:relative;overflow:hidden}.comment-avatar>img{position:absolute;inset:0;width:100%;height:100%;border-radius:inherit;object-fit:cover;display:block}</style><script>(function(){var memberAvatars=${encoded};function memberId(comment){return comment&&(comment.memberId||comment.authorMemberId)||'';}function applyAvatar(node,url){if(!node||!url||node.querySelector('img'))return;var image=document.createElement('img');image.src=url;image.alt='';image.onerror=function(){image.remove();};node.appendChild(image);}function decorate(){var comments=Array.isArray(window.COMMENTS_DATA)?window.COMMENTS_DATA:[];var byId={};comments.forEach(function(comment){byId[comment.id]=comment;});document.querySelectorAll('.comment-card[data-comment-id]').forEach(function(card){var id=card.getAttribute('data-comment-id');var comment=byId[id];if(!comment)return;applyAvatar(card.querySelector('.comment-card-header .comment-avatar'),memberAvatars[memberId(comment)]);var replies=comments.filter(function(item){return item.parentId===id||(item.rootCommentId===id&&item.id!==id);});var replyAvatars=card.querySelectorAll('.comment-reply .comment-avatar');replies.forEach(function(reply,index){applyAvatar(replyAvatars[index],memberAvatars[memberId(reply)]);});});}var list=document.getElementById('commentList');if(list&&window.MutationObserver)new MutationObserver(decorate).observe(list,{childList:true,subtree:true});if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',decorate);else decorate();})();</script>`;
     return html.includes('</body>')
-      ? html.replace('</body>', compatibility + '</body>')
+      ? this._replaceTemplateMarker(html, '</body>', compatibility + '</body>')
       : html + compatibility;
   }
 
@@ -251,15 +261,18 @@ class ShareLinkController extends Controller {
       const replacement = JSON.stringify(htmlFiles)
         .replace(/</g, '\\u003c')
         .replace(/>/g, '\\u003e');
-      template = template.replace(
+      template = this._replaceTemplateMarker(
+        template,
         /\/\*HTML_FILES_DATA\*\/\[\]/,
         '/*HTML_FILES_DATA*/' + replacement
       );
-      template = template.replace(
+      template = this._replaceTemplateMarker(
+        template,
         /\/\*PROJECT_ID\*\/''/,
         '/*PROJECT_ID*/' + JSON.stringify(projectId)
       );
-      template = template.replace(
+      template = this._replaceTemplateMarker(
+        template,
         /\/\*TEAM_ID\*\/''/,
         '/*TEAM_ID*/' + JSON.stringify(workspaceId)
       );
@@ -271,7 +284,8 @@ class ShareLinkController extends Controller {
       const commentsReplacement = JSON.stringify(commentsData)
         .replace(/</g, '\\u003c')
         .replace(/>/g, '\\u003e');
-      template = template.replace(
+      template = this._replaceTemplateMarker(
+        template,
         /\/\*COMMENTS_DATA\*\/\[\]/,
         '/*COMMENTS_DATA*/' + commentsReplacement
       );
