@@ -4,6 +4,8 @@ import {
   buildUedroWebUrl,
   parseAllowedUedroPageUrl,
   UEDRO_HOME_URL,
+  reviewTypeLabel,
+  reviewTypeMeta,
 } from '../../src/components/reviewMeta';
 
 describe('buildManuscriptPreviewUrl', () => {
@@ -30,6 +32,14 @@ describe('buildManuscriptPreviewUrl', () => {
 
   it('returns null when the review type has no preview', () => {
     expect(buildManuscriptPreviewUrl('5', 'manuscript-1')).toBeNull();
+  });
+});
+
+describe('HTML review metadata', () => {
+  it('shows the official label and an HTML avatar, without inventing a preview path', () => {
+    expect(reviewTypeLabel({ reviewType: '12' })).toBe('html评审');
+    expect(reviewTypeMeta({ reviewType: '12' })?.char).toBe('H');
+    expect(buildManuscriptPreviewUrl('12', 'manuscript-1')).toBeNull();
   });
 });
 

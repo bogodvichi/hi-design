@@ -2,6 +2,7 @@
 import { createPortal } from 'react-dom';
 import styles from './ReviewListModal.module.css';
 import {
+  HTML_REVIEW_TYPE,
   buildManuscriptPreviewUrl,
   computeRemainDays,
   formatVersion,
@@ -67,6 +68,7 @@ const REVIEW_TYPES: { value: string; label: string }[] = [
   { value: '5', label: '海客评审' },
   { value: '10', label: '插件评审' },
   { value: '11', label: 'Pixso-Handoff' },
+  { value: HTML_REVIEW_TYPE, label: 'html评审' },
 ];
 
 export function ReviewListModal({

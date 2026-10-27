@@ -5,6 +5,9 @@
  * 纯函数、无 React 依赖，两端都 import。
  */
 
+/** 羽点新增 HTML 评审的 reviewType；创建请求按字符串透传。 */
+export const HTML_REVIEW_TYPE = '12';
+
 /** 取值：缺失时回退为 fallback，再不行给「—」。0 视为有效值（保留）。 */
 export function pick(...vals: any[]): string {
   for (const v of vals) {
@@ -90,6 +93,7 @@ export function collectVersions(list: any[]): number[] {
  *   "5"  海客评审 → 海（随机深色）
  *   "10" 插件评审 → 插（随机深色）
  *   "11" Pixso Handoff → P（首字母大写，随机深色）
+ *   "12" html评审 → H（蓝）
  *
  * 随机深色按 reviewNum 稳定哈希取色，避免 React 重渲染时颜色抖动。
  * 无法识别的 reviewType 返回 null（不渲染头像）。
@@ -102,6 +106,7 @@ export const REVIEW_TYPE_META: Record<string, { char: string; color: string }> =
   '5': { char: '海', color: 'rgb(120, 60, 160)' },
   '10': { char: '插', color: 'rgb(90, 110, 180)' },
   '11': { char: 'P', color: 'rgb(60, 130, 140)' },
+  [HTML_REVIEW_TYPE]: { char: 'H', color: 'rgb(54, 116, 184)' },
 };
 
 export function reviewTypeMeta(r: any): { char: string; color: string } | null {
@@ -132,6 +137,7 @@ const REVIEW_TYPE_LABEL: Record<string, string> = {
   '5': '海客评审',
   '10': '插件评审',
   '11': 'Pixso Handoff',
+  [HTML_REVIEW_TYPE]: 'html评审',
 };
 
 export const UEDRO_WEB_ORIGIN = 'https://uedro.hikvision.com.cn';

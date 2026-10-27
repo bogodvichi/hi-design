@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import styles from './ReviewManuscriptUpdateModal.module.css';
 import { exportProjectAsAxureZip } from '../runtime/axure-export';
 import { getProject } from '../state/projects';
+import { HTML_REVIEW_TYPE } from './reviewMeta';
 
 /**
  * 更新评审稿 Modal：重新上传当前评审的评审稿。
@@ -28,6 +29,7 @@ const SUBTYPE_UPLOAD_HINT: Record<string, string> = {
   '3': '请上传 pdf、word 格式的评审文件，小于 100MB',
   '4': '请上传 .xlsx 格式文件（目前不支持对象、窗格嵌入），小于 10MB',
   '11': '请上传 Pixso 平台导出 Handoff 评审文件，小于 100MB',
+  [HTML_REVIEW_TYPE]: '请上传符合羽点 html评审要求的稿件文件',
 };
 const DEFAULT_HINT = '请上传评审稿';
 
@@ -353,6 +355,8 @@ export function ReviewManuscriptUpdateModal({
                   <button
                     type="button"
                     className={`${styles.sourceBtn} ${manuscriptSource === 'project' ? styles.sourceBtnActive : ''}`}
+                     disabled={String(category) === HTML_REVIEW_TYPE}
+                     title={String(category) === HTML_REVIEW_TYPE ? 'html评审请上传符合类型的评审稿' : undefined}
                     onClick={() => {
                       setManuscriptSource('project');
                       clearFieldError('upload');

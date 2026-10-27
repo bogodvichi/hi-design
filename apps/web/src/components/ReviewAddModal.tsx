@@ -5,7 +5,7 @@ import { exportProjectAsAxureZip } from '../runtime/axure-export';
 import { getProject } from '../state/projects';
 import { getStoredUserInfo } from '../auth/auth';
 import { openExternalUrl } from '../providers/registry';
-import { buildManuscriptPreviewUrl } from './reviewMeta';
+import { HTML_REVIEW_TYPE, buildManuscriptPreviewUrl } from './reviewMeta';
 import { resolveUedroLaunchUrl } from './uedroLaunch';
 import { PersonPicker, type Person } from './PersonPicker';
 
@@ -32,13 +32,14 @@ import { PersonPicker, type Person } from './PersonPicker';
  * 上游响应 {code:'0'} 视为成功。
  */
 
-/** 评审子类型选项（对齐原站 select2：1 交互 / 2 视觉 / 3 文稿 / 4 表格 / 11 Pixso-Handoff）。 */
+/** 评审子类型选项（对齐羽点：1 交互 / 2 视觉 / 3 文稿 / 4 表格 / 11 Pixso-Handoff / 12 html）。 */
 const REVIEW_SUBTYPES: { value: string; label: string }[] = [
   { value: '1', label: '交互评审' },
   { value: '2', label: '视觉评审' },
   { value: '3', label: '文稿评审' },
   { value: '4', label: '表格评审' },
   { value: '11', label: 'Pixso-Handoff' },
+  { value: HTML_REVIEW_TYPE, label: 'html评审' },
 ];
 
 /** 评审子类型对应的稿件提示（对齐原站 uploadDrag 的 drag_text）。 */
@@ -48,6 +49,7 @@ const SUBTYPE_UPLOAD_HINT: Record<string, string> = {
   '3': '请上传 pdf、word 格式的评审文件，小于 100MB',
   '4': '请上传 .xlsx 格式文件（目前不支持对象、窗格嵌入），小于 10MB',
   '11': '请上传 Pixso 平台导出 Handoff 评审文件，小于 100MB',
+  [HTML_REVIEW_TYPE]: '请上传符合羽点 html评审要求的稿件文件',
 };
 
 /** 项目对象（来自 /uedro/web/project/v1/projectList）：{projNum,projName,projManager,...}。 */
@@ -473,6 +475,12 @@ export function ReviewAddModal({
     }
   }
 
+  /** HTML 评审需要上传对应稿件，不能把项目导出的 Axure zip 当作 HTML 稿件。 */
+  function switchSubtype(nextSubtype: string) {
+    setSubtype(nextSubtype);
+    if (nextSubtype === HTML_REVIEW_TYPE) setManuscriptSource('upload');
+  }
+
   /** 切换评审类型时重置项目相关状态。 */
   function switchModel(m: 1 | 2) {
     setReviewModel(m);
@@ -586,7 +594,7 @@ export function ReviewAddModal({
                         className={`${styles.select} ${styles.subtypeInline}`}
                         value={subtype}
                         onChange={(e) => {
-                          setSubtype(e.target.value);
+                          switchSubtype(e.target.value);
                           clearFieldError('upload');
                         }}
                       >
@@ -622,7 +630,7 @@ export function ReviewAddModal({
                       className={`${styles.select} ${styles.subtypeInline}`}
                       value={subtype}
                       onChange={(e) => {
-                        setSubtype(e.target.value);
+                        switchSubtype(e.target.value);
                         clearFieldError('upload');
                       }}
                     >
@@ -744,6 +752,8 @@ export function ReviewAddModal({
                     <button
                       type="button"
                       className={`${styles.sourceBtn} ${manuscriptSource === 'project' ? styles.sourceBtnActive : ''}`}
+                         disabled={subtype === HTML_REVIEW_TYPE}
+                         title={subtype === HTML_REVIEW_TYPE ? 'html评审请上传符合类型的评审稿' : undefined}
                       onClick={() => {
                         setManuscriptSource('project');
                         clearFieldError('upload');

@@ -457,6 +457,10 @@
   background: var(--text);
   color: var(--bg-elevated);
 }
+.sourceBtn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
 .uploadDrop {
   display: flex;
   flex-direction: column;
