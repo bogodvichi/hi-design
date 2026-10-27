@@ -1517,6 +1517,14 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
   app.get('/api/projects/:id/archive', async (req, res) => {
     try {
       const root = typeof req.query?.root === 'string' ? req.query.root : '';
+      const format = req.query?.format;
+      if (format !== undefined && format !== 'html-review') {
+        return sendApiError(res, 400, 'BAD_REQUEST', 'unsupported project archive format');
+      }
+      const entryFile = typeof req.query?.entryFile === 'string' ? req.query.entryFile : '';
+      if (entryFile && format !== 'html-review') {
+        return sendApiError(res, 400, 'BAD_REQUEST', 'entryFile requires html-review format');
+      }
       if (!await authorizeExportRead(req, res, { allowNavigationQuery: true })) return;
       const project = getProject(db, req.params.id);
       const { stream, baseName } = await createProjectArchiveStream(
@@ -1524,6 +1532,7 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
         req.params.id,
         root,
         project?.metadata,
+        format === 'html-review' ? { format, entryFile } : undefined,
       );
       const fallbackName = project?.name || req.params.id;
       const fileSlug = sanitizeArchiveFilename(baseName || fallbackName) || 'project';

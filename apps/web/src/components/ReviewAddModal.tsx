@@ -2,11 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './ReviewAddModal.module.css';
 import { exportProjectAsAxureZip } from '../runtime/axure-export';
+import { exportProjectAsHtmlReviewZip } from '../runtime/uedro-html-review-export';
 import { getProject } from '../state/projects';
 import { getStoredUserInfo } from '../auth/auth';
 import { openExternalUrl } from '../providers/registry';
-import { HTML_REVIEW_TYPE, buildManuscriptPreviewUrl } from './reviewMeta';
+import { HTML_REVIEW_TYPE, UEDRO_HOME_URL, buildManuscriptPreviewUrl } from './reviewMeta';
 import { resolveUedroLaunchUrl } from './uedroLaunch';
+import type { WorkspaceCollabContext } from '@open-design/contracts';
 import { PersonPicker, type Person } from './PersonPicker';
 
 /**
@@ -49,7 +51,7 @@ const SUBTYPE_UPLOAD_HINT: Record<string, string> = {
   '3': '请上传 pdf、word 格式的评审文件，小于 100MB',
   '4': '请上传 .xlsx 格式文件（目前不支持对象、窗格嵌入），小于 10MB',
   '11': '请上传 Pixso 平台导出 Handoff 评审文件，小于 100MB',
-  [HTML_REVIEW_TYPE]: '请上传符合羽点 html评审要求的稿件文件',
+  [HTML_REVIEW_TYPE]: '请上传 html 评审文件 zip 包，小于 500MB',
 };
 
 /** 项目对象（来自 /uedro/web/project/v1/projectList）：{projNum,projName,projManager,...}。 */
@@ -73,10 +75,14 @@ export function ReviewAddModal({
   open,
   onClose,
   projectId,
+  entryFile,
+  workspaceContext,
 }: {
   open: boolean;
   onClose: () => void;
   projectId?: string;
+  entryFile?: string | null;
+  workspaceContext?: WorkspaceCollabContext | null;
 }) {
   // ── 表单状态 ──
   const [reviewModel, setReviewModel] = useState<1 | 2>(2); // 1 项目 / 2 部门，默认部门评审
@@ -98,11 +104,11 @@ export function ReviewAddModal({
   // 评审稿
   const [uploadInfo, setUploadInfo] = useState<UploadInfo | null>(null);
   const [uploading, setUploading] = useState(false);
-  // 评审稿来源：'project' 来自当前项目（导出 Axure 包） / 'upload' 手动上传
+  // 评审稿来源：'project' 根据类型导出项目 ZIP（HTML 或 Axure） / 'upload' 手动上传
   const [manuscriptSource, setManuscriptSource] = useState<'project' | 'upload'>('project');
   // 当前 open-design 项目名称（用于"来自当前项目"时显示 zip 文件名）
   const [odProjectName, setOdProjectName] = useState('');
-  // 从当前项目生成 Axure 包并上传中
+  // 从当前项目打包 ZIP 并上传中
   const [exporting, setExporting] = useState(false);
   // 提交
   const [submitting, setSubmitting] = useState(false);
@@ -278,17 +284,21 @@ export function ReviewAddModal({
   }
 
   /** 上传评审稿：multipart/form-data，字段 file + excelJson（固定空串）。 */
-  /** 计算"来自当前项目"时导出 Axure 包的文件名（与 axure-export.ts 逻辑一致）。 */
+  /** 当前项目 ZIP 文件名：按选中类型生成 HTML 资源包或 Axure 交互稿。 */
   const projectZipName = useMemo(() => {
-    const raw = odProjectName.trim() || 'axure-prototype';
+    const raw = odProjectName.trim() || (subtype === HTML_REVIEW_TYPE ? 'html-review' : 'axure-prototype');
     const name = raw
       .replace(/[/\\:*?"<>|]/g, '')
       .replace(/\s+/g, ' ')
       .trim() || 'axure-prototype';
     return `${name}.zip`;
-  }, [odProjectName]);
+  }, [odProjectName, subtype]);
 
   async function handleUpload(file: File) {
+    if (subtype === HTML_REVIEW_TYPE && (!/\.zip$/i.test(file.name) || file.size >= 500 * 1024 * 1024)) {
+      setFieldErrors({ upload: 'html评审请上传小于 500MB 的 ZIP 压缩包' });
+      return;
+    }
     setUploading(true);
     setError(null);
     try {
@@ -360,7 +370,7 @@ export function ReviewAddModal({
 
     // 解析最终 manuscriptId：
     // - "上传"模式：直接用已有 uploadInfo。
-    // - "来自当前项目"模式：提交时生成 Axure zip → 上传拿 manuscriptId。
+    // - "来自当前项目"模式：HTML 评审导出 HTML 资源 ZIP，其它类型保留 Axure 导出。
     setSubmitting(true);
     let manuscriptId = uploadInfo?.manuscriptId ?? '';
     if (manuscriptSource === 'project') {
@@ -371,11 +381,9 @@ export function ReviewAddModal({
       }
       setExporting(true);
       try {
-        const result = await exportProjectAsAxureZip({
-          projectId,
-          projectName: odProjectName,
-          returnBlob: true,
-        });
+        const result = subtype === HTML_REVIEW_TYPE
+          ? await exportProjectAsHtmlReviewZip({ projectId, projectName: odProjectName, entryFile, workspaceContext })
+          : await exportProjectAsAxureZip({ projectId, projectName: odProjectName, returnBlob: true });
         if (!result.ok) {
           setError(result.error);
           setFieldErrors({ upload: result.error });
@@ -383,7 +391,7 @@ export function ReviewAddModal({
           return;
         }
         if (!result.blob || !result.zipName) {
-          const msg = '导出 Axure 包失败：未生成文件';
+          const msg = '生成评审稿 ZIP 失败：未生成文件';
           setError(msg);
           setFieldErrors({ upload: msg });
           setSubmitting(false);
@@ -404,10 +412,15 @@ export function ReviewAddModal({
           setSubmitting(false);
           return;
         }
-        manuscriptId = upJson.data.manuscriptId;
+        if (upJson.data?.reviewType && String(upJson.data.reviewType) !== subtype) {
+          setFieldErrors({ upload: '羽点识别的评审稿类型与当前选择不一致，请检查 ZIP 内容' });
+          setSubmitting(false);
+          return;
+        }
+        manuscriptId = upJson.data?.manuscriptId;
       } catch (err: any) {
         if (!aliveRef.current) return;
-        const msg = '导出 Axure 包失败: ' + (err?.message || String(err));
+        const msg = '生成评审稿 ZIP 失败: ' + (err?.message || String(err));
         setError(msg);
         setFieldErrors({ upload: msg });
         setSubmitting(false);
@@ -416,7 +429,7 @@ export function ReviewAddModal({
         if (aliveRef.current) setExporting(false);
       }
       if (!manuscriptId) {
-        setFieldErrors({ upload: '导出后未获得评审稿 ID' });
+        setFieldErrors({ upload: '上传后未获得评审稿 ID' });
         setSubmitting(false);
         return;
       }
@@ -459,7 +472,8 @@ export function ReviewAddModal({
       }
       setOkMsg('创建成功');
       // 创建成功后用系统浏览器打开正式羽点评审页，随后关闭本 modal。
-      const previewUrl = buildManuscriptPreviewUrl(subtype, manuscriptId);
+      const previewUrl = buildManuscriptPreviewUrl(subtype, manuscriptId)
+        ?? (subtype === HTML_REVIEW_TYPE ? UEDRO_HOME_URL : null);
       if (previewUrl && aliveRef.current) {
         const launchUrl = await resolveUedroLaunchUrl(previewUrl);
         if (launchUrl) await openExternalUrl(launchUrl);
@@ -475,10 +489,9 @@ export function ReviewAddModal({
     }
   }
 
-  /** HTML 评审需要上传对应稿件，不能把项目导出的 Axure zip 当作 HTML 稿件。 */
+  /** 改变类型时保留稿件来源，导出阶段按选中类型生成对应的 ZIP。 */
   function switchSubtype(nextSubtype: string) {
     setSubtype(nextSubtype);
-    if (nextSubtype === HTML_REVIEW_TYPE) setManuscriptSource('upload');
   }
 
   /** 切换评审类型时重置项目相关状态。 */
@@ -752,8 +765,6 @@ export function ReviewAddModal({
                     <button
                       type="button"
                       className={`${styles.sourceBtn} ${manuscriptSource === 'project' ? styles.sourceBtnActive : ''}`}
-                         disabled={subtype === HTML_REVIEW_TYPE}
-                         title={subtype === HTML_REVIEW_TYPE ? 'html评审请上传符合类型的评审稿' : undefined}
                       onClick={() => {
                         setManuscriptSource('project');
                         clearFieldError('upload');
@@ -1019,6 +1030,7 @@ function UploadArea({
        <input
           ref={inputRef}
           type="file"
+           accept={subtype === HTML_REVIEW_TYPE ? '.zip' : undefined}
           style={{ display: 'none' }}
           onChange={(e) => handleFiles(e.target.files)}
         />
@@ -1055,6 +1067,7 @@ function UploadArea({
       <input
         ref={inputRef}
         type="file"
+           accept={subtype === HTML_REVIEW_TYPE ? '.zip' : undefined}
         style={{ display: 'none' }}
         onChange={(e) => handleFiles(e.target.files)}
       />

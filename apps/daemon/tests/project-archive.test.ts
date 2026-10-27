@@ -41,6 +41,41 @@ describe('buildProjectArchive', () => {
     if (projectsRoot) rmSync(projectsRoot, { recursive: true, force: true });
   });
 
+
+  it('builds a UEDRO html-review ZIP with a root entry and matching assets, not project notes', async () => {
+    const { stream } = await createProjectArchiveStream(
+      projectsRoot, projectId, '', undefined, { format: 'html-review', entryFile: 'ui-design/index.html' },
+    );
+    const zip = await JSZip.loadAsync(await collectStream(stream));
+    const names = Object.values(zip.files).filter((file) => !file.dir).map((file) => file.name);
+    expect(names).toContain('index.html');
+    expect(names).toContain('ui-design/index.html');
+    expect(names).toContain('ui-design/src/app.css');
+    expect(names).toContain('ui-design/frames/phone.html');
+    expect(names).not.toContain('README.md');
+    expect(names).not.toContain('DESIGN-HANDOFF.md');
+    expect(await zip.file('index.html')?.async('string')).toContain('ui-design/index.html');
+  });
+
+  it('keeps the real root index.html unchanged in a UEDRO html-review ZIP', async () => {
+    const dir = path.join(projectsRoot, projectId);
+    await writeFile(path.join(dir, 'index.html'), '<!doctype html><title>Root Website</title>');
+    const { stream } = await createProjectArchiveStream(
+      projectsRoot, projectId, '', undefined, { format: 'html-review' },
+    );
+    const zip = await JSZip.loadAsync(await collectStream(stream));
+    expect(await zip.file('index.html')?.async('string')).toContain('Root Website');
+  });
+
+  it('rejects missing or invalid HTML review entry files', async () => {
+    await expect(createProjectArchiveStream(
+      projectsRoot, projectId, '', undefined, { format: 'html-review', entryFile: '../secret.html' },
+    )).rejects.toThrow();
+    await expect(createProjectArchiveStream(
+      projectsRoot, projectId, '', undefined, { format: 'html-review', entryFile: 'README.md' },
+    )).rejects.toThrow();
+  });
+
   it('zips the requested subdirectory tree', async () => {
     const { buffer, baseName } = await buildProjectArchive(projectsRoot, projectId, 'ui-design');
     expect(baseName).toBe('ui-design');

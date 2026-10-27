@@ -344,7 +344,20 @@ export async function buildProjectArchive(projectsRoot, projectId, root, metadat
 // in daemon memory at once. All paths are collected and validated before the
 // first response byte is emitted, preserving the route's fail-before-download
 // behavior for missing, empty, or unsafe roots.
-export async function createProjectArchiveStream(projectsRoot, projectId, root, metadata?) {
+// UEDRO type 12 accepts a runnable HTML website ZIP. Include web assets only;
+// do not copy project notes, agent files, or build configuration into a review.
+const HTML_REVIEW_RESOURCE_EXTS = /\.(?:html?|css|js|mjs|cjs|json|webmanifest|xml|svg|map|png|jpe?g|gif|webp|avif|bmp|ico|woff2?|ttf|otf|eot|mp4|webm|mp3|wav|ogg|m4a|wasm|bin|gltf|glb|pdf|txt)$/i;
+const HTML_REVIEW_MAX_SOURCE_BYTES = 500 * 1024 * 1024;
+
+function htmlReviewEntryDocument(entryPath) {
+  const href = entryPath.split('/').map(encodeURIComponent).join('/');
+  return '<!doctype html>\n<html lang="zh"><head><meta charset="UTF-8">' +
+    '<meta http-equiv="refresh" content="0;url=' + href + '">' +
+    '<title>HTML Review</title></head><body>' +
+    '<a href="' + href + '">打开评审页面</a></body></html>\n';
+}
+
+export async function createProjectArchiveStream(projectsRoot, projectId, root, metadata?, options?) {
   const projectRoot = resolveProjectDir(projectsRoot, projectId, metadata);
   let archiveRoot = projectRoot;
   let archiveBaseName = '';
@@ -388,15 +401,56 @@ export async function createProjectArchiveStream(projectsRoot, projectId, root, 
     throw err;
   }
 
+  const htmlReview = options?.format === 'html-review';
+  if (htmlReview && root) throw new Error('HTML review ZIP must use the project root');
+  const zipEntries = htmlReview
+    ? entries.filter((entry) => HTML_REVIEW_RESOURCE_EXTS.test(entry.relPath))
+    : entries;
+  const htmlEntries = htmlReview
+    ? zipEntries.filter((entry) => /\.html?$/i.test(entry.relPath))
+    : [];
+  if (htmlReview && !htmlEntries.length) {
+    throw new Error('当前项目没有 HTML 页面，无法创建 html评审压缩包');
+  }
+  if (htmlReview) {
+    const totalBytes = zipEntries.reduce((sum, entry) => sum + entry.size, 0);
+    if (totalBytes >= HTML_REVIEW_MAX_SOURCE_BYTES) {
+      throw new Error('当前项目的 HTML 资源超过 500MB，请先精简后再上传');
+    }
+  }
+  const requestedEntry = htmlReview && typeof options?.entryFile === 'string'
+    ? options.entryFile.trim()
+    : '';
+  const matchingEntry = requestedEntry
+    ? htmlEntries.find((entry) => entry.relPath === requestedEntry)
+    : undefined;
+  if (requestedEntry && !matchingEntry) {
+    throw new Error('当前页面不是项目内可用的 HTML 文件，请重新打开 HTML 页面后发起评审');
+  }
+  // A real root index.html wins: never overwrite the user's original landing
+  // page, even when the active viewer shows a nested screen.
+  const selectedEntry = htmlReview
+    ? htmlEntries.find((entry) => entry.relPath.toLowerCase() === 'index.html')
+      ?? matchingEntry
+      ?? htmlEntries.find((entry) => /(^|\/)index\.html?$/i.test(entry.relPath))
+      ?? htmlEntries.find((entry) => /(^|\/)page\.html?$/i.test(entry.relPath))
+      ?? htmlEntries.sort((a, b) => b.mtime - a.mtime)[0]
+    : undefined;
   const zip = new JSZip();
-  for (const entry of entries) {
+  for (const entry of zipEntries) {
     zip.file(entry.relPath, createLazyArchiveFileStream(entry.fullPath), {
       date: new Date(entry.mtime),
       binary: true,
     });
   }
-  addDesignHandoff(zip, entries, archiveBaseName || path.basename(projectRoot));
-  addDesignManifest(zip, entries, archiveBaseName || path.basename(projectRoot));
+  if (htmlReview) {
+    if (selectedEntry.relPath !== 'index.html') {
+      zip.file('index.html', htmlReviewEntryDocument(selectedEntry.relPath));
+    }
+  } else {
+    addDesignHandoff(zip, entries, archiveBaseName || path.basename(projectRoot));
+    addDesignManifest(zip, entries, archiveBaseName || path.basename(projectRoot));
+  }
   // Level 6 is the zlib default — balances speed and ratio for typical
   // project trees (HTML/CSS/JS plus a handful of assets). Level 9 buys
   // <5% on already-compressed PNGs/fonts at 2-3× CPU; level 1 produces
@@ -573,7 +627,7 @@ async function collectArchiveEntries(dir, relDir, out) {
     // metadata collection. Keep the archive allowlist fail-closed; the lazy
     // O_NOFOLLOW open below repeats the check when bytes are actually read.
     if (!st.isFile() || st.isSymbolicLink()) continue;
-    out.push({ relPath: rel, fullPath: full, mtime: st.mtimeMs });
+    out.push({ relPath: rel, fullPath: full, mtime: st.mtimeMs, size: st.size });
   }
 }
 

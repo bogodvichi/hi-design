@@ -19110,7 +19110,7 @@ async function openReviewListModal() {
         />,
         document.body,
      ) : null}
-    <ReviewAddModal open={reviewAddModalOpen} onClose={() => setReviewAddModalOpen(false)} projectId={projectId} />
+    <ReviewAddModal open={reviewAddModalOpen} onClose={() => setReviewAddModalOpen(false)} projectId={projectId} entryFile={file?.name} workspaceContext={workspaceContext} />
     {unifiedShareOpen ? (
       <UnifiedShareDialog
         projectId={projectId}

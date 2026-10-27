@@ -2,6 +2,7 @@
 import { createPortal } from 'react-dom';
 import styles from './ReviewManuscriptUpdateModal.module.css';
 import { exportProjectAsAxureZip } from '../runtime/axure-export';
+import { exportProjectAsHtmlReviewZip } from '../runtime/uedro-html-review-export';
 import { getProject } from '../state/projects';
 import { HTML_REVIEW_TYPE } from './reviewMeta';
 
@@ -29,7 +30,7 @@ const SUBTYPE_UPLOAD_HINT: Record<string, string> = {
   '3': '请上传 pdf、word 格式的评审文件，小于 100MB',
   '4': '请上传 .xlsx 格式文件（目前不支持对象、窗格嵌入），小于 10MB',
   '11': '请上传 Pixso 平台导出 Handoff 评审文件，小于 100MB',
-  [HTML_REVIEW_TYPE]: '请上传符合羽点 html评审要求的稿件文件',
+  [HTML_REVIEW_TYPE]: '请上传 html 评审文件 zip 包，小于 500MB',
 };
 const DEFAULT_HINT = '请上传评审稿';
 
@@ -80,6 +81,7 @@ export function ReviewManuscriptUpdateModal({
   const aliveRef = useRef(true);
 
   const hint = SUBTYPE_UPLOAD_HINT[String(category)] ?? DEFAULT_HINT;
+  const fileAccept = String(category) === HTML_REVIEW_TYPE ? '.zip' : undefined;
 
   function clearFieldError(key: string) {
     setFieldErrors((prev) => {
@@ -150,6 +152,10 @@ export function ReviewManuscriptUpdateModal({
    * 上游返回 {manuscriptId, middleManuscriptId, reviewType, ...}。
    */
   async function handleUpload(file: File) {
+    if (String(category) === HTML_REVIEW_TYPE && (!/\.zip$/i.test(file.name) || file.size >= 500 * 1024 * 1024)) {
+      setFieldErrors({ upload: 'html评审请上传小于 500MB 的 ZIP 压缩包' });
+      return;
+    }
     setUploading(true);
     setError(null);
     try {
@@ -203,7 +209,7 @@ export function ReviewManuscriptUpdateModal({
 
     // 第一步：拿到 middleManuscriptId。
     // - "上传"模式：直接用已有 reUploadInfo。
-    // - "来自当前项目"模式：提交时生成 Axure zip → reUpload 拿 middleManuscriptId。
+    // - "来自当前项目"模式：HTML 评审生成可预览的 HTML ZIP，其它类型保留 Axure ZIP。
     setSubmitting(true);
     let middleManuscriptId = reUploadInfo?.middleManuscriptId ?? '';
     let finalManuscriptId = manuscriptId;
@@ -216,11 +222,9 @@ export function ReviewManuscriptUpdateModal({
       }
       setExporting(true);
       try {
-        const result = await exportProjectAsAxureZip({
-          projectId,
-          projectName: odProjectName,
-          returnBlob: true,
-        });
+        const result = String(category) === HTML_REVIEW_TYPE
+          ? await exportProjectAsHtmlReviewZip({ projectId, projectName: odProjectName })
+          : await exportProjectAsAxureZip({ projectId, projectName: odProjectName, returnBlob: true });
         if (!result.ok) {
           setError(result.error);
           setFieldErrors({ upload: result.error });
@@ -228,7 +232,7 @@ export function ReviewManuscriptUpdateModal({
           return;
         }
         if (!result.blob || !result.zipName) {
-          const msg = '导出 Axure 包失败：未生成文件';
+          const msg = '生成评审稿 ZIP 失败：未生成文件';
           setError(msg);
           setFieldErrors({ upload: msg });
           setSubmitting(false);
@@ -250,11 +254,16 @@ export function ReviewManuscriptUpdateModal({
           setSubmitting(false);
           return;
         }
+        if (upJson.data?.reviewType && String(upJson.data.reviewType) !== String(category)) {
+          setFieldErrors({ upload: '羽点识别的评审稿类型与当前评审不一致，请检查 ZIP 内容' });
+          setSubmitting(false);
+          return;
+        }
         middleManuscriptId = upJson.data.middleManuscriptId;
         finalManuscriptId = upJson.data.manuscriptId || manuscriptId;
       } catch (err: any) {
         if (!aliveRef.current) return;
-        const msg = '导出 Axure 包失败: ' + (err?.message || String(err));
+        const msg = '生成评审稿 ZIP 失败: ' + (err?.message || String(err));
         setError(msg);
         setFieldErrors({ upload: msg });
         setSubmitting(false);
@@ -355,8 +364,6 @@ export function ReviewManuscriptUpdateModal({
                   <button
                     type="button"
                     className={`${styles.sourceBtn} ${manuscriptSource === 'project' ? styles.sourceBtnActive : ''}`}
-                     disabled={String(category) === HTML_REVIEW_TYPE}
-                     title={String(category) === HTML_REVIEW_TYPE ? 'html评审请上传符合类型的评审稿' : undefined}
                     onClick={() => {
                       setManuscriptSource('project');
                       clearFieldError('upload');
@@ -373,6 +380,7 @@ export function ReviewManuscriptUpdateModal({
                 ) : (
                   <UploadArea
                     hint={hint}
+                    accept={fileAccept}
                     uploading={uploading}
                     uploadInfo={reUploadInfo}
                     onPick={handleUpload}
@@ -428,12 +436,14 @@ export function ReviewManuscriptUpdateModal({
 /** 评审稿上传区：拖拽 / 点击选文件，上传中显 spinner，成功后显文件名 + 替换 / 删除。 */
 function UploadArea({
   hint,
+  accept,
   uploading,
   uploadInfo,
   onPick,
   onRemove,
 }: {
   hint: string;
+  accept?: string;
   uploading: boolean;
   uploadInfo: ReUploadInfo | null;
   onPick: (file: File) => void;
@@ -461,6 +471,7 @@ function UploadArea({
         <input
           ref={inputRef}
           type="file"
+          accept={accept}
           style={{ display: 'none' }}
           onChange={(e) => handleFiles(e.target.files)}
         />
@@ -497,6 +508,7 @@ function UploadArea({
       <input
         ref={inputRef}
         type="file"
+          accept={accept}
         style={{ display: 'none' }}
         onChange={(e) => handleFiles(e.target.files)}
       />

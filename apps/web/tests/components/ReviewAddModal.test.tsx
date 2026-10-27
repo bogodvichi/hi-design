@@ -15,13 +15,16 @@ vi.mock('../../src/components/PersonPicker', () => ({
 }));
 vi.mock('../../src/auth/auth', () => ({ getStoredUserInfo: () => null }));
 vi.mock('../../src/runtime/axure-export', () => ({ exportProjectAsAxureZip: vi.fn() }));
-vi.mock('../../src/state/projects', () => ({ getProject: vi.fn() }));
+vi.mock('../../src/runtime/uedro-html-review-export', () => ({ exportProjectAsHtmlReviewZip: vi.fn() }));
+vi.mock('../../src/state/projects', () => ({ getProject: vi.fn(async () => null) }));
 vi.mock('../../src/providers/registry', () => ({ openExternalUrl: vi.fn() }));
 vi.mock('../../src/components/uedroLaunch', () => ({
   resolveUedroLaunchUrl: vi.fn(async () => null),
 }));
 
 import { ReviewAddModal } from '../../src/components/ReviewAddModal';
+import { exportProjectAsAxureZip } from '../../src/runtime/axure-export';
+import { exportProjectAsHtmlReviewZip } from '../../src/runtime/uedro-html-review-export';
 
 afterEach(() => {
   cleanup();
@@ -38,6 +41,60 @@ describe('HTML review creation', () => {
     expect(screen.getByRole('option', { name: 'html评审' }).getAttribute('value')).toBe('12');
   });
 
+
+  it('packages the current HTML project and submits that ZIP before creating an HTML review', async () => {
+    vi.mocked(exportProjectAsHtmlReviewZip).mockResolvedValue({
+      ok: true,
+      blob: new Blob(['ZIP with index.html and assets'], { type: 'application/zip' }),
+      zipName: '可视化页面',
+    });
+    const requests: Array<{ url: string; init?: RequestInit }> = [];
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      const path = String(url);
+      requests.push({ url: path, init });
+      if (path.endsWith('/uploadManuscript')) {
+        return { ok: true, json: async () => ({ ok: true, data: { manuscriptId: 'html-project-1', reviewType: '12' } }) };
+      }
+      if (path.endsWith('/reviewAddition')) {
+        return { ok: true, json: async () => ({ ok: true, data: 'review-project-1' }) };
+      }
+      throw new Error('Unexpected request: ' + path);
+    }));
+
+    render(<ReviewAddModal open onClose={() => {}} projectId="project-7" entryFile="screens/main.html" />);
+    fireEvent.change(screen.getByPlaceholderText('请输入评审名称'), { target: { value: '来自当前项目的 HTML 评审' } });
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: '12' } });
+    const sourceButton = screen.getByRole('button', { name: '来自当前项目' }) as HTMLButtonElement;
+    expect(sourceButton.disabled).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: '请输入名称（评审组长）' }));
+    fireEvent.click(screen.getByRole('button', { name: '请输入名称（作者）' }));
+    fireEvent.click(screen.getByRole('button', { name: '请输入名称（核心评委）' }));
+    fireEvent.click(screen.getByRole('button', { name: '确定' }));
+
+    await waitFor(() => {
+      expect(exportProjectAsHtmlReviewZip).toHaveBeenCalledWith({
+        projectId: 'project-7',
+        projectName: '',
+        entryFile: 'screens/main.html',
+        workspaceContext: undefined,
+      });
+      expect(requests.map((r) => r.url)).toEqual([
+        '/api/hik/uedro/uploadManuscript',
+        '/api/hik/uedro/reviewAddition',
+      ]);
+    });
+    const upload = requests[0]!.init?.body as FormData;
+    const file = upload.get('file') as File;
+    expect(file.name).toBe('可视化页面.zip');
+    expect(file.type).toBe('application/zip');
+    expect(upload.get('excelJson')).toBe('');
+    expect(JSON.parse(String(requests[1]!.init?.body))).toMatchObject({
+      reviewType: '12',
+      manuscriptId: 'html-project-1',
+      reviewModel: 2,
+    });
+    expect(exportProjectAsAxureZip).not.toHaveBeenCalled();
+  });
   it('submits the selected HTML reviewType after an HTML manuscript upload', async () => {
     const requests: Array<{ url: string; body?: unknown }> = [];
     vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
@@ -61,17 +118,18 @@ describe('HTML review creation', () => {
     });
     fireEvent.change(screen.getByRole('combobox'), { target: { value: '12' } });
 
-    // Axure export cannot be submitted as an HTML manuscript.
-    expect((screen.getByRole('button', { name: '来自当前项目' }) as HTMLButtonElement).disabled).toBe(true);
+    // HTML review supports both project-generated ZIPs and manual ZIP upload.
+    expect((screen.getByRole('button', { name: '来自当前项目' }) as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: '上传' }));
     fireEvent.click(screen.getByRole('button', { name: '请输入名称（评审组长）' }));
     fireEvent.click(screen.getByRole('button', { name: '请输入名称（作者）' }));
     fireEvent.click(screen.getByRole('button', { name: '请输入名称（核心评委）' }));
 
-    const file = new File(['<!doctype html><title>Review</title>'], 'page.html', { type: 'text/html' });
+    const file = new File(['ZIP-contents'], 'page.zip', { type: 'application/zip' });
     fireEvent.change(document.querySelector('input[type="file"]')!, {
       target: { files: [file] },
     });
-    await waitFor(() => expect(screen.getByText('page.html')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('page.zip')).toBeTruthy());
     fireEvent.click(screen.getByRole('button', { name: '确定' }));
 
     await waitFor(() => {
