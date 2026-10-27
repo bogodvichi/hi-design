@@ -10,11 +10,11 @@ import { beginAuth, exchangeCodeForToken, refreshAccessToken } from './mcp-oauth
 import { clearToken, getToken, isTokenExpired, readAllTokens, setToken } from './mcp-tokens.js';
 import { hdwPost, hdwPut, hdwDelete, hdwGetRaw } from './http/hdw.js';
 import { readSsoConfigFile } from './http/hik_logins/hicoo.js';
-import type { HdwCloudClient } from './integrations/hdw-cloud.js';
+import { HdwCloudError, type HdwCloudClient } from './integrations/hdw-cloud.js';
 import type { RouteDeps } from './server-context.js';
 import { listCloudResourceRecords } from './collab/cloud-resource-catalog.js';
 import { publishCloudMcp, sanitizeCloudMcpMetadata } from './collab/cloud-mcp-publication.js';
-import { isCommunityPublicationCopy } from './collab/community-resource-copy.js';
+import { isCommunityPublicationCopy, canInstallCloudResource, unpublishCommunityResource, updateCommunityPublication } from './collab/community-resource-copy.js';
 import { TeamResourceShareForbiddenError } from './collab/team-resource-share.js';
 
 export interface RegisterMcpRoutesDeps extends RouteDeps<'http' | 'paths' | 'mcp' | 'cloudResourceAccess'> {
@@ -494,7 +494,8 @@ export function registerMcpRoutes(app: Express, ctx: RegisterMcpRoutesDeps) {
     }
     try {
       const data = await hdwGetRaw<{ exists?: boolean }>(`/workspaces/${encodeURIComponent(workspaceId)}/resources/check`, { kind: 'mcp', name: label }, getSsoCookies());
-      res.json({ exists: data?.exists ?? false });
+      if (!data) return res.status(503).json({ error: 'NAME_CHECK_UNAVAILABLE' });
+      res.json({ exists: data.exists === true });
     } catch (err) {
       res.status(500).json({ error: err instanceof Error ? err.message : 'cloud mcp check failed' });
     }
@@ -574,6 +575,7 @@ export function registerMcpRoutes(app: Express, ctx: RegisterMcpRoutesDeps) {
       res.json({ ok: true, resourceId: published.resourceId });
     } catch (error) {
       if (error instanceof TeamResourceShareForbiddenError) return res.status(403).json({ error: 'NOT_RESOURCE_OWNER' });
+      if (error instanceof HdwCloudError && error.status === 409) return res.status(409).json({ error: error.code, message: error.message });
       res.status(500).json({ error: error instanceof Error ? error.message : 'cloud MCP publish failed' });
     }
   });
@@ -609,14 +611,21 @@ export function registerMcpRoutes(app: Express, ctx: RegisterMcpRoutesDeps) {
  }
 try {
      const scope = typeof req.body?.scope === 'string' ? req.body.scope : null;
-     const data = await hdwPost<{ resource: Record<string, unknown> }>(`/workspaces/${encodeURIComponent(workspaceId)}/resources`, {
-       kind: 'mcp',
-       ownerMemberId,
-       metadata: sanitizeCloudMcpMetadata(tplObj),
-       ...(scope ? { scope } : {}),
-     }, getSsoCookies());
-      if (!data) {
-        return res.status(502).json({ error: 'HDW cloud create failed' });
+      if (!hdwClient) return res.status(503).json({ error: 'HDW_CLOUD_NOT_CONFIGURED' });
+      const response = await hdwClient.request<{
+        code: number; msg?: string; data?: { resource: Record<string, unknown> };
+      }>('POST', `/api/workspaces/${encodeURIComponent(workspaceId)}/resources`, {
+        kind: 'mcp',
+        ownerMemberId,
+        metadata: {
+          ...sanitizeCloudMcpMetadata(tplObj),
+          ...(scope === 'public' ? { publicationSourceType: 'local_import', publishedAt: new Date().toISOString(), publicationVersion: 1 } : {}),
+        },
+        ...(scope ? { scope } : {}),
+      }, { 'x-hdw-workspace-id': workspaceId });
+      const data = response.payload.data;
+      if (response.payload.code !== 0 || !data?.resource) {
+        return res.status(502).json({ error: 'HDW_CLOUD_CREATE_FAILED', message: response.payload.msg });
       }
       const tpl = {
         resourceId: data.resource.id as string,
@@ -628,6 +637,7 @@ try {
       };
       res.json({ template: tpl });
     } catch (err) {
+      if (err instanceof HdwCloudError) return res.status(err.status).json({ error: err.code, message: err.message });
       res.status(500).json({ error: err instanceof Error ? err.message : 'cloud mcp create failed' });
     }
   });
@@ -668,7 +678,25 @@ try {
       };
       res.json({ template: tpl });
     } catch (err) {
+      if (err instanceof HdwCloudError) return res.status(err.status).json({ error: err.code, message: err.message });
       res.status(500).json({ error: err instanceof Error ? err.message : 'cloud mcp update failed' });
+    }
+  });
+
+
+  // Explicit snapshot update. Source changes never automatically alter community.
+  app.post('/api/workspace/mcp/cloud/:resourceId/update-publication', async (req, res) => {
+    if (!isLocalSameOrigin(req, getResolvedPort())) return res.status(403).json({ error: 'cross-origin request rejected' });
+    const authority = await ctx.cloudResourceAccess.resolveScope(req);
+    if (!authority.ok) return res.status(authority.status).json({ error: authority.code, message: authority.message });
+    if (!hdwClient) return res.status(503).json({ error: 'HDW_CLOUD_NOT_CONFIGURED' });
+    try {
+      const result = await updateCommunityPublication(hdwClient, String(req.params.resourceId), authority.scope, sanitizeCloudMcpMetadata);
+      return res.json({ ok: true, ...result });
+    } catch (error) {
+      if (error instanceof TeamResourceShareForbiddenError) return res.status(403).json({ error: 'NOT_RESOURCE_OWNER_OR_NOT_REFERENCE' });
+      if (error instanceof HdwCloudError) return res.status(error.status).json({ error: error.code, message: error.message });
+      return res.status(409).json({ error: 'PUBLICATION_UPDATE_FAILED', message: error instanceof Error ? error.message : String(error) });
     }
   });
 
@@ -690,13 +718,14 @@ try {
      if (record.ownerMemberId !== authority.scope.principal.memberId) {
        return res.status(403).json({ error: 'NOT_RESOURCE_OWNER', message: 'you can only unpublish resources you own' });
      }
-     const data = await hdwPut<{ resource: Record<string, unknown> }>(
-       `/workspaces/${encodeURIComponent(workspaceId)}/resources/${encodeURIComponent(resourceId)}`,
-       { metadata: record.metadata ?? {}, scope: null },
-       getSsoCookies(),
-     );
-     if (!data) return res.status(502).json({ error: 'HDW cloud unpublish failed' });
-     res.json({ ok: true });
+     const type = await unpublishCommunityResource(hdwClient, record, workspaceId, async (metadata) => {
+       const data = await hdwPut(
+         `/workspaces/${encodeURIComponent(workspaceId)}/resources/${encodeURIComponent(resourceId)}`,
+         { metadata, scope: null }, getSsoCookies(),
+       );
+       if (!data) throw new Error('HDW cloud unpublish failed');
+     });
+     res.json({ ok: true, sourceType: type });
    } catch (err) {
      res.status(500).json({ error: err instanceof Error ? err.message : 'cloud mcp unpublish failed' });
    }
@@ -721,28 +750,25 @@ try {
     if (!record) {
       return res.status(404).json({ error: 'CLOUD_MCP_NOT_FOUND' });
     }
-     if (record.ownerMemberId !== authority.scope.principal.memberId) {
-       return res.status(403).json({ error: 'NOT_RESOURCE_OWNER', message: 'you can only delete resources you own' });
+     const isOwner = record.ownerMemberId === authority.scope.principal.memberId;
+     const isTeamManager = authority.scope.principal.role === 'owner' || authority.scope.principal.role === 'admin';
+     if (record.kind !== 'mcp') return res.status(404).json({ error: 'CLOUD_MCP_NOT_FOUND' });
+     if (!isOwner && (!isTeamManager || req.query.community === '1')) {
+       return res.status(403).json({ error: 'NOT_RESOURCE_OWNER', message: 'only the creator or a team manager may delete this MCP' });
      }
-     // Legacy community posts pointed to the owner's original record.
-     // A community delete only retracts that publication, preserving the original.
-     if (req.query.community === '1' && !isCommunityPublicationCopy(record.metadata)) {
-       if (record.scope !== 'public') return res.status(409).json({ error: 'NOT_COMMUNITY_PUBLICATION' });
-       const restored = await hdwPut(
-         `/workspaces/${encodeURIComponent(workspaceId)}/resources/${encodeURIComponent(resourceId)}`,
-         { metadata: record.metadata ?? {}, scope: null },
-         getSsoCookies(),
-       );
-       if (!restored) return res.status(502).json({ error: 'HDW cloud community removal failed' });
-       return res.json({ ok: true, originalPreserved: true });
+     // Compatibility for stale Community clients: DELETE means unpublish,
+     // without removing personal/team sources or already connected MCPs.
+     if (req.query.community === '1') {
+       const type = await unpublishCommunityResource(hdwClient, record, workspaceId, async (metadata) => {
+         const restored = await hdwPut(
+           `/workspaces/${encodeURIComponent(workspaceId)}/resources/${encodeURIComponent(resourceId)}`,
+           { metadata, scope: null }, getSsoCookies(),
+         );
+         if (!restored) throw new Error('HDW cloud community removal failed');
+       });
+       return res.json({ ok: true, sourceType: type });
      }
-      const data = await hdwDelete(
-       `/workspaces/${encodeURIComponent(workspaceId)}/resources/${encodeURIComponent(resourceId)}`,
-       getSsoCookies(),
-     );
-      if (!data) {
-        return res.status(502).json({ error: 'HDW cloud delete failed' });
-      }
+     await hdwClient.removeResource(workspaceId, resourceId);
       await removeExactCloudMcpServers(
         resourceId,
         workspaceId,
@@ -751,6 +777,7 @@ try {
       );
       res.json({ ok: true });
     } catch (err) {
+      if (err instanceof HdwCloudError) return res.status(err.status).json({ error: err.code, message: err.message });
       res.status(500).json({ error: err instanceof Error ? err.message : 'cloud mcp delete failed' });
     }
   });
@@ -773,6 +800,11 @@ app.post('/api/workspace/mcp/cloud/:resourceId/install', async (req, res) => {
       const record = await hdwClient.getResource(lookupWsId, resourceId);
       if (!record) {
         return res.status(404).json({ error: 'CLOUD_MCP_NOT_FOUND' });
+      }
+      if (!canInstallCloudResource(record, {
+        workspaceId, memberId: authority.scope.principal.memberId,
+      }, lookupWsId)) {
+        return res.status(410).json({ error: 'COMMUNITY_PUBLICATION_UNAVAILABLE', message: '该发布已取消，无法新增连接或从社区更新' });
       }
       const cloudTpl = {
         resourceId: record.id,
@@ -826,29 +858,34 @@ app.delete('/api/workspace/mcp/cloud/:resourceId/uninstall', async (req, res) =>
   if (!authority.ok) return res.status(authority.status).json({ error: authority.code, message: authority.message });
   const workspaceId = authority.scope.principal.teamId;
   if (!workspaceId) return res.status(400).json({ error: 'workspace_id is required' });
-  if (!hdwClient) return res.status(503).json({ error: 'HDW_CLOUD_NOT_CONFIGURED' });
   try {
-     const homeWsId = typeof req.query.home_workspace_id === 'string' ? req.query.home_workspace_id : '';
-      const lookupWsId = homeWsId || workspaceId;
-      const record = await hdwClient.getResource(lookupWsId, resourceId);
-      if (!record) {
-        return res.status(404).json({ error: 'CLOUD_MCP_NOT_FOUND' });
-      }
-      const cloudTpl = {
-        resourceId: record.id,
-        ownerMemberId: record.ownerMemberId,
-        ...((record.metadata as Record<string, unknown>) ?? {}),
-        createdAt: record.createdAt,
-        updatedAt: record.updatedAt,
-      } as McpTemplate & { resourceId: string; ownerMemberId: string; createdAt: string; updatedAt: string };
-     const cfg = await readMcpConfig(RUNTIME_DATA_DIR);
-     const match = cfg.servers.find((s) => matchesCloudInstall(s, cloudTpl, resourceId, lookupWsId, workspaceId, authority.scope.principal.memberId));
-     if (!match) {
-       return res.json({ ok: true, serverId: '' });
-     }
-     const next = cfg.servers.filter((s) => s.id !== match.id);
-     await writeMcpConfig(RUNTIME_DATA_DIR, { servers: next });
-     res.json({ ok: true, serverId: match.id });
+    const homeWsId = typeof req.query.home_workspace_id === 'string' ? req.query.home_workspace_id : '';
+    const lookupWsId = homeWsId || workspaceId;
+    const memberId = authority.scope.principal.memberId;
+
+    // Local disconnection must not depend on a still-existing publication.
+    // The exact four-part identity prevents touching another member's MCP,
+    // including one using the same label or template slug.
+    const removed = await removeExactCloudMcpServers(resourceId, lookupWsId, workspaceId, memberId);
+    if (removed.length > 0) return res.json({ ok: true, serverId: removed[0], removedServerIds: removed });
+
+    // Older installations may lack cloudResourceId. For those ONLY, query
+    // their original template and run the strict legacy config matcher.
+    if (!hdwClient) return res.json({ ok: true, serverId: '' });
+    const record = await hdwClient.getResource(lookupWsId, resourceId);
+    if (!record) return res.json({ ok: true, serverId: '' });
+    const cloudTpl = {
+      resourceId: record.id, ownerMemberId: record.ownerMemberId,
+      ...((record.metadata as Record<string, unknown>) ?? {}),
+      createdAt: record.createdAt, updatedAt: record.updatedAt,
+    } as McpTemplate & { resourceId: string; ownerMemberId: string; createdAt: string; updatedAt: string };
+    const cfg = await readMcpConfig(RUNTIME_DATA_DIR);
+    const match = cfg.servers.find(s =>
+      matchesCloudInstall(s, cloudTpl, resourceId, lookupWsId, workspaceId, memberId));
+    if (!match) return res.json({ ok: true, serverId: '' });
+    await writeMcpConfig(RUNTIME_DATA_DIR, { servers: cfg.servers.filter(s => s.id !== match.id) });
+    await clearToken(RUNTIME_DATA_DIR, match.id);
+    return res.json({ ok: true, serverId: match.id });
    } catch (err) {
      res.status(500).json({ error: err instanceof Error ? err.message : 'cloud mcp uninstall failed' });
    }

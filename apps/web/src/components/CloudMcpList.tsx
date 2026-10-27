@@ -30,6 +30,8 @@ interface CloudMcpItem extends CloudMcpTemplate {
   logoKey?: string;
   peopleCount?: number | null;
   actionCount?: number | null;
+  publicationSourceType?: 'reference' | 'local_import' | 'legacy';
+  communitySourceResourceId?: string | null;
 }
 
 // Catalog and share metadata can carry null or an unvalidated logo field.
@@ -78,6 +80,7 @@ export function CloudMcpList({
  workspaceType,
  ownerMemberId,
  mode = 'personal',
+ memberRole,
  scope,
  searchQuery = '',
 }: {
@@ -86,6 +89,7 @@ export function CloudMcpList({
  workspaceType: string | null;
  ownerMemberId?: string | null;
  mode?: 'personal' | 'shared' | 'square' | 'team';
+ memberRole?: 'owner' | 'admin' | 'member' | 'guest';
  scope?: string;
  searchQuery?: string;
 }) {
@@ -100,6 +104,7 @@ export function CloudMcpList({
   const [installingId, setInstallingId] = useState<string | null>(null);
   const [uninstallingId, setUninstallingId] = useState<string | null>(null);
   const [unpublishingId, setUnpublishingId] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
  const [confirmAction, setConfirmAction] = useState<{ type: 'unpublish' | 'delete'; item: CloudMcpItem } | null>(null);
  const [shareItem, setShareItem] = useState<CloudMcpItem | null>(null);
@@ -370,12 +375,17 @@ export function CloudMcpList({
         '/api/workspace/mcp/cloud/' + encodeURIComponent(tpl.resourceId) + (mode === 'square' ? '?community=1' : ''),
         {
           method: 'DELETE',
-          headers: workspaceHeaders(tpl.homeWorkspaceId ?? workspaceId, tpl.homeWorkspaceMemberId ?? workspaceMemberId, tpl.homeWorkspaceType ?? workspaceType),
+           // Team deletion never targets the home workspace of an external link.
+           headers: mode === 'team'
+             ? workspaceHeaders(workspaceId, workspaceMemberId, workspaceType)
+             : workspaceHeaders(tpl.homeWorkspaceId ?? workspaceId, tpl.homeWorkspaceMemberId ?? workspaceMemberId, tpl.homeWorkspaceType ?? workspaceType),
         },
       );
       if (!res.ok) {
         const body = await res.json().catch(() => null);
-        throw new Error(body?.error ?? 'Delete failed');
+        throw new Error(body?.error === 'SOURCE_HAS_PUBLICATION'
+          ? (locale.startsWith('zh') ? '该 MCP 正在社区中发布，请先取消发布后再删除源资源。' : 'Unpublish this MCP before deleting its source.')
+          : body?.message ?? body?.error ?? 'Delete failed');
       }
       await loadTemplates();
       window.dispatchEvent(new CustomEvent('personal:mcp-refresh', {
@@ -386,6 +396,28 @@ export function CloudMcpList({
     } finally {
       setDeletingId(null);
       setConfirmAction(null);
+    }
+  }
+
+
+  async function handleUpdatePublication(tpl: CloudMcpItem) {
+    setUpdatingId(tpl.resourceId);
+    setError(null);
+    try {
+      const res = await fetch('/api/workspace/mcp/cloud/' + encodeURIComponent(tpl.resourceId) + '/update-publication', {
+        method: 'POST',
+        headers: workspaceHeaders(tpl.homeWorkspaceId ?? workspaceId,
+          tpl.homeWorkspaceMemberId ?? workspaceMemberId, tpl.homeWorkspaceType ?? workspaceType),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || body.error || 'Update publication failed');
+      }
+      await loadTemplates();
+    } catch (err: any) {
+      setError(err?.message ?? String(err));
+    } finally {
+      setUpdatingId(null);
     }
   }
 
@@ -469,10 +501,16 @@ export function CloudMcpList({
       </DialogTitle>
       <DialogDescription>
         {confirmAction.type === 'unpublish'
-          ? t('squareScope.unpublishConfirmDesc' as any, { title: confirmAction.item.label })
+           ? (locale.startsWith('zh')
+             ? `取消发布后，「${confirmAction.item.label}」将从社区和我的发布中移除。${confirmAction.item.publicationSourceType === 'reference' || confirmAction.item.communitySourceResourceId ? '个人或团队中的源资源保留。' : confirmAction.item.publicationSourceType === 'local_import' ? '本地导入的社区资源将被移除。' : '历史资源的源记录将安全保留。'}如需重新发布请从源路径重新选择。`
+             : `Unpublishing removes "${confirmAction.item.label}" from Community and My Publications. Existing local connections remain. To publish again, choose the source again.`)
           : mode === 'square'
             ? t('squareScope.deleteConfirmDesc' as any, { title: confirmAction.item.label })
-            : t('personalScope.cloudMcpDeleteConfirmDesc' as any)}
+            : mode === 'team'
+              ? (locale.startsWith('zh')
+                ? `确定删除团队 MCP「${confirmAction.item.label}」吗？团队成员已有的连接及项目引用可能受到影响。`
+                : `Delete team MCP "${confirmAction.item.label}"? Existing connections and project references may stop working.`)
+              : t('personalScope.cloudMcpDeleteConfirmDesc' as any)}
       </DialogDescription>
       <DialogFooter className="row">
         <button
@@ -511,11 +549,14 @@ export function CloudMcpList({
           const isInstalled = tpl.teamLocal || localTemplateIds.has(cloudInstallKey(tpl.homeWorkspaceId || workspaceId, tpl.resourceId));
           const isResourceOwner = tpl.canManage ?? tpl.ownerMemberId === workspaceMemberId;
           const hasCloudRecord = !tpl.resourceId.startsWith('local:');
-          const canDelete = hasCloudRecord && isResourceOwner && mode !== 'shared';
+          const isTeamManager = mode === 'team' && (memberRole === 'owner' || memberRole === 'admin');
+          const isTeamNative = (tpl.homeWorkspaceId ?? workspaceId) === workspaceId;
+          const canDelete = hasCloudRecord && mode !== 'shared' && memberRole !== 'guest'
+            && (mode === 'team' ? isTeamNative && (isResourceOwner || isTeamManager) : isResourceOwner);
           // Public cards are discoverable by everyone, but only the cloud
           // owner may share them. Preserve the existing shared-with-me
           // forwarding entry; the server remains authoritative for grants.
-          const canShare = hasCloudRecord && (isResourceOwner || mode === 'shared');
+          const canShare = hasCloudRecord && (isResourceOwner || mode === 'shared' || (mode === 'team' && memberRole != null && memberRole !== 'guest'));
           const logoKey = resolveMcpLogoKey(tpl.logoKey, tpl.id || tpl.label);
           const meta = mode === 'square'
             ? `${tpl.publisherName?.trim() || 'HiDesign'}${tpl.updatedAt ? ' · ' + formatRelativeDate(tpl.updatedAt, t) : ''}`
@@ -527,13 +568,15 @@ export function CloudMcpList({
           return <ResourceCard key={tpl.resourceId} kind="mcp" title={tpl.label}
             icon={<McpLogo logoKey={logoKey} size={40} />} meta={meta} description={tpl.description}
             installed={!!isInstalled} installing={installingId === tpl.resourceId} uninstalling={uninstallingId === tpl.resourceId}
-            busy={!!installingId || !!uninstallingId || !!unpublishingId || !!deletingId}
+            busy={!!installingId || !!uninstallingId || !!unpublishingId || !!updatingId || !!deletingId}
             onInstall={() => void handleInstall(tpl)}
+             canConnect={mode !== 'team' || (memberRole != null && memberRole !== 'guest')}
             actions={{
               ...(canShare ? { share: () => setShareItem(tpl) } : {}),
               ...(isInstalled && !tpl.teamLocal ? { uninstall: () => void handleUninstall(tpl) } : {}),
               ...(canDelete && mode === 'square' ? { unpublish: () => setConfirmAction({ type: 'unpublish', item: tpl }) } : {}),
-              ...(canDelete ? { delete: () => setConfirmAction({ type: 'delete', item: tpl }) } : {}),
+              ...(canDelete && mode === 'square' && (tpl.publicationSourceType === 'reference' || !!tpl.communitySourceResourceId) ? { updatePublication: () => void handleUpdatePublication(tpl) } : {}),
+              ...(canDelete && mode !== 'square' ? { delete: () => setConfirmAction({ type: 'delete', item: tpl }) } : {}),
               ...(mode === 'shared' && tpl.shareId ? { removeShare: () => setRemoveShareId(tpl.shareId!) } : {}),
             }}
             stats={mode === 'square' ? <CommunityResourceStats

@@ -184,26 +184,72 @@ class FolderController extends Controller {
         ctx.body = { code: -1, msg: 'FAIL', error: '缺少必要参数 operator_member_id' };
         return;
       }
-      const check = await this._checkOperator(operatorId, folder.workspace_id, ['owner', 'admin']);
+      const check = await this._checkOperator(operatorId, folder.workspace_id, ['owner', 'admin', 'member']);
       if (check.error) {
         ctx.body = { code: -1, msg: 'FAIL', error: check.error };
         return;
       }
 
-      const [childFolder, childProject] = await Promise.all([
-        k('folders').where({ folder_pid: folderId }).select('folder_id').first(),
-        k('team_projects')
-          .where({ folder_id: folderId, workspace_id: folder.workspace_id })
-          .select('project_id')
-          .first(),
-      ]);
-      if (childFolder || childProject) {
-        ctx.body = { code: -1, msg: 'FAIL', error: '文件夹非空，无法删除' };
+      if (!['owner', 'admin'].includes(check.member.role) && folder.owner_member_id !== check.member.workspace_member_id) {
+        ctx.body = { code: -1, msg: 'FAIL', error: '仅文件夹创建人或团队管理者可以删除' };
         return;
       }
 
-      await k('folders').where({ folder_id: folderId }).del();
-      ctx.body = { code: 0, msg: 'SUCCESS', data: { deleted: true } };
+      // Count the complete subtree, not merely direct children. Nonempty
+      // deletion requires a team manager and an explicit confirmation flag.
+      const treeResult = await k.raw(
+        `WITH RECURSIVE descendants AS (
+          SELECT folder_id, workspace_id FROM folders WHERE folder_id = ? AND workspace_id = ?
+          UNION ALL
+          SELECT child.folder_id, child.workspace_id FROM folders child
+          JOIN descendants parent ON child.folder_pid = parent.folder_id
+          WHERE child.workspace_id = ?
+        ) SELECT folder_id FROM descendants`,
+        [folderId, folder.workspace_id, folder.workspace_id],
+      );
+      const folderIds = (treeResult.rows || []).map(row => row.folder_id);
+      const projectRows = await k('team_projects')
+        .where({ workspace_id: folder.workspace_id })
+        .whereIn('folder_id', folderIds)
+        .select('project_id', 'resource_id');
+      const nonempty = folderIds.length > 1 || projectRows.length > 0;
+      if (nonempty && !['owner', 'admin'].includes(check.member.role)) {
+        ctx.body = { code: -1, msg: 'FAIL', error: '非空文件夹仅团队管理者可删除' };
+        return;
+      }
+      if (nonempty && ctx.query.recursive !== '1') {
+        ctx.body = { code: -1, msg: 'FAIL', error: 'NONEMPTY_FOLDER_REQUIRES_CONFIRMATION' };
+        return;
+      }
+      if (nonempty && (Number(ctx.query.expected_folders) !== folderIds.length - 1
+        || Number(ctx.query.expected_projects) !== projectRows.length)) {
+        ctx.body = { code: -1, msg: 'FAIL', error: 'FOLDER_CONTENT_CHANGED' };
+        return;
+      }
+      await k.transaction(async trx => {
+        if (projectRows.length > 0) {
+          const projectIds = projectRows.map(row => row.project_id);
+          const resourceIds = projectRows.map(row => row.resource_id);
+          // Retain immutable versions for operator-led recovery.
+          await trx('resources').where({ workspace_id: folder.workspace_id, kind: 'project' })
+            .whereIn('id', resourceIds).update({ deleted_at: new Date() });
+          await trx('share_links').where({ workspace_id: folder.workspace_id })
+            .whereIn('project_id', projectIds).del();
+          await trx('workspace_project_shares').where({ home_workspace_id: folder.workspace_id })
+            .whereIn('project_id', projectIds).del();
+          await trx('workspace_resource_shares').where({ home_workspace_id: folder.workspace_id })
+            .whereIn('resource_id', resourceIds).del();
+          await trx('team_projects').where({ workspace_id: folder.workspace_id })
+            .whereIn('folder_id', folderIds).del();
+        }
+        await trx('folder_shares').whereIn('folder_id', folderIds).del();
+        // folder_pid has ON DELETE CASCADE, removing the entire subtree.
+        await trx('folders').where({ folder_id: folderId, workspace_id: folder.workspace_id }).del();
+      });
+      ctx.body = { code: 0, msg: 'SUCCESS', data: {
+        deleted: true, deleted_folders: folderIds.length,
+        deleted_projects: projectRows.length,
+      } };
     } catch (err) {
       ctx.logger.error('Folder delete error:', err);
       ctx.body = { code: -1, msg: 'FAIL', error: err.message };
@@ -232,9 +278,14 @@ class FolderController extends Controller {
         ctx.body = { code: -1, msg: 'FAIL', error: '缺少必要参数 operator_member_id' };
         return;
       }
-      const check = await this._checkOperator(operatorId, folder.workspace_id, ['owner', 'admin']);
+      const check = await this._checkOperator(operatorId, folder.workspace_id, ['owner', 'admin', 'member']);
       if (check.error) {
         ctx.body = { code: -1, msg: 'FAIL', error: check.error };
+        return;
+      }
+
+      if (!['owner', 'admin'].includes(check.member.role) && folder.owner_member_id !== check.member.workspace_member_id) {
+        ctx.body = { code: -1, msg: 'FAIL', error: '仅文件夹创建人或团队管理者可以重命名' };
         return;
       }
 
@@ -362,7 +413,7 @@ class FolderController extends Controller {
       }
       query.select(
           'folders.folder_id', 'folders.folder_pid', 'folders.workspace_id',
-          'folders.folder_name', 'folders.created_at', 'folders.recipient_member_id',
+          'folders.folder_name', 'folders.created_at', 'folders.recipient_member_id', 'folders.owner_member_id',
           k.raw('(SELECT COUNT(*) FROM folders sub WHERE sub.folder_pid = folders.folder_id) AS subfolder_count'),
           k.raw('(SELECT COUNT(*) FROM team_projects tp WHERE tp.folder_id = folders.folder_id) AS project_count'),
           k.raw(`(
@@ -829,29 +880,32 @@ class FolderController extends Controller {
     const { ctx } = this;
     const { folder_id: folderId, workspace_id: workspaceId } = ctx.query;
 
-    if (!folderId) {
-      ctx.body = { code: -1, msg: 'FAIL', error: '缺少必要参数 folder_id' };
+    if (!folderId || !workspaceId) {
+      ctx.body = { code: -1, msg: 'FAIL', error: '缺少必要参数 folder_id 或 workspace_id' };
       return;
     }
 
     try {
       const k = this.getKnex();
 
-      // Recursive CTE: start at the target folder, walk down via folder_pid
+      // Recursive CTE is scoped to the verified workspace at EVERY depth.
+      // A colliding folder_pid from a different team must not leak its tree
+      // or inflate the pre-delete impact confirmation.
       const result = await k.raw(
         `WITH RECURSIVE descendants AS (
-          SELECT folder_id, folder_pid, folder_name, 0 AS depth
+          SELECT folder_id, folder_pid, folder_name, workspace_id, 0 AS depth
             FROM folders
-          WHERE folder_id = ?
+          WHERE folder_id = ? AND workspace_id = ?
           UNION ALL
-          SELECT f.folder_id, f.folder_pid, f.folder_name, d.depth + 1
+          SELECT f.folder_id, f.folder_pid, f.folder_name, f.workspace_id, d.depth + 1
             FROM folders f
-            JOIN descendants d ON f.folder_pid = d.folder_id
+            JOIN descendants d ON f.folder_pid = d.folder_id AND f.workspace_id = d.workspace_id
+          WHERE f.workspace_id = ?
         )
         SELECT folder_id, folder_pid, folder_name, depth
           FROM descendants
           ORDER BY depth`,
-        [folderId],
+        [folderId, workspaceId, workspaceId],
       );
 
       const folders = (result.rows || []).map(r => ({
@@ -868,13 +922,8 @@ class FolderController extends Controller {
       // Batch-query project IDs for every folder in the tree
       const folderIds = folders.map(f => f.folderId);
       const projectRows = await k('team_projects')
+        .where({ workspace_id: workspaceId })
         .whereIn('folder_id', folderIds)
-        .where(function() {
-          if (workspaceId) {
-            this.where('workspace_id', workspaceId);
-          }
-        })
-        .where('sync_state', 'synced')
         .select('folder_id', 'project_id');
 
       const projectsByFolder = {};

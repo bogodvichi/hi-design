@@ -6,6 +6,127 @@ const crypto = require('node:crypto');
 const path = require('node:path');
 
 const Controller = require('egg').Controller;
+const RESOURCE_NAME_KINDS = new Set(['skill', 'mcp']);
+const metadataOf = row => {
+  try {
+    return typeof row?.metadata === 'string'
+      ? JSON.parse(row.metadata) : (row?.metadata || {});
+  } catch {
+    return {};
+  }
+};
+const resourceName = (kind, meta) => {
+  const value = kind === 'skill'
+    ? (meta.title || meta.name || meta.localId || meta.label)
+    : (meta.label || meta.title);
+  return typeof value === 'string' ? value.normalize('NFKC').trim().toLocaleLowerCase('en') : '';
+};
+const isReferencePublication = meta =>
+  typeof meta.communitySourceResourceId === 'string' && Boolean(meta.communitySourceResourceId.trim());
+const isPublication = meta =>
+  isReferencePublication(meta) || meta.publicationSourceType === 'local_import';
+
+/**
+ * Global logical-source names are registered by resource_id and indexed by
+ * (kind, normalized_name). Existing legacy duplicates may retain their names;
+ * new names cannot collide. Registration and resource writes share one
+ * transaction and an advisory lock on the normalized name.
+ *
+ * Deploy 020_resource_name_registry.sql and its backfill before this code.
+ * Missing registry tables intentionally fail closed instead of allowing
+ * unverified names through.
+ */
+async function assertRegistryReady(k) {
+  const state = await k('resource_name_registry_state')
+    .where({ id: 'global', ready: true }).first();
+  if (!state) {
+    const error = new Error('Name registry backfill is not complete');
+    error.code = 'RESOURCE_NAME_REGISTRY_NOT_READY';
+    throw error;
+  }
+}
+async function validateResourceIdentity(trx, kind, id, metadata, options = {}) {
+  if (!RESOURCE_NAME_KINDS.has(kind)) return;
+  await assertRegistryReady(trx);
+  const name = resourceName(kind, metadata);
+  if (!name) {
+    const error = new Error('Resource name is required');
+    error.code = 'RESOURCE_NAME_REQUIRED';
+    throw error;
+  }
+  const reference = isReferencePublication(metadata);
+  const existing = await trx('resources').where({ id }).first();
+  const previousMeta = existing ? metadataOf(existing) : {};
+  if (existing && (existing.kind !== kind
+    || isReferencePublication(previousMeta) !== reference
+    || (reference && previousMeta.communitySourceResourceId !== metadata.communitySourceResourceId)
+    || (previousMeta.publicationSourceType === 'local_import' && metadata.publicationSourceType !== 'local_import'))) {
+    const error = new Error('Cannot change the identity or source of an existing resource');
+    error.code = 'RESOURCE_IDENTITY_CONFLICT';
+    throw error;
+  }
+  const key = reference
+    ? 'community-ref:' + kind + ':' + metadata.communitySourceResourceId
+    : 'source-name:' + kind + ':' + name;
+  await trx.raw('SELECT pg_advisory_xact_lock(hashtext(?))', [key]);
+  if (reference) {
+    // Indexed on (kind, metadata ->> communitySourceResourceId) for public rows.
+    const duplicate = await trx('resources')
+      .where({ kind, scope: 'public' }).whereNull('deleted_at')
+      .whereRaw("metadata ->> 'communitySourceResourceId' = ?", [metadata.communitySourceResourceId])
+      .whereNot('id', id).first();
+    if (duplicate) {
+      const error = new Error('This resource is already published');
+      error.code = 'RESOURCE_ALREADY_PUBLISHED';
+      throw error;
+    }
+    // Source row locking prevents concurrent deletion and new publication.
+    const source = await trx('resources').where({ id: metadata.communitySourceResourceId })
+      .whereNull('deleted_at').forUpdate().first();
+    if (!source || source.kind !== kind || isReferencePublication(metadataOf(source))
+      || (options.workspaceId && source.workspace_id !== options.workspaceId)
+      || (options.ownerMemberId && source.owner_member_id !== options.ownerMemberId)) {
+      const error = new Error('Source resource unavailable or not owned by publisher');
+      error.code = 'PUBLICATION_SOURCE_INVALID';
+      throw error;
+    }
+    return;
+  }
+  // Keep existing historic same-name resources fully editable. New names,
+  // including renames, must not conflict with ANY historic claim.
+  if (existing && !isReferencePublication(previousMeta)
+    && resourceName(kind, previousMeta) === name) return;
+  const collision = await trx('resource_name_registry')
+    .where({ kind, normalized_name: name }).whereNot('resource_id', id).first();
+  if (collision) {
+    const error = new Error('Platform resource with the same name already exists');
+    error.code = 'RESOURCE_NAME_CONFLICT';
+    throw error;
+  }
+}
+async function syncResourceNameRegistry(trx, kind, id, metadata) {
+  if (!RESOURCE_NAME_KINDS.has(kind) || isReferencePublication(metadata)) return;
+  const fields = { kind, normalized_name: resourceName(kind, metadata) };
+  const existing = await trx('resource_name_registry').where({ resource_id: id }).first();
+  if (existing) {
+    await trx('resource_name_registry').where({ resource_id: id }).update(fields);
+  } else {
+    await trx('resource_name_registry').insert({ resource_id: id, ...fields });
+  }
+}
+const policyFailure = (ctx, error) => {
+  if (error?.code === 'RESOURCE_NAME_REGISTRY_NOT_READY') {
+    ctx.status = 503;
+    ctx.body = { error: error.code, message: error.message };
+    return true;
+  }
+  if (!['RESOURCE_NAME_CONFLICT', 'RESOURCE_ALREADY_PUBLISHED', 'PUBLICATION_SOURCE_INVALID', 'SOURCE_HAS_PUBLICATION', 'RESOURCE_NAME_REQUIRED', 'RESOURCE_OWNER_CONFLICT', 'RESOURCE_IDENTITY_CONFLICT'].includes(error?.code)) return false;
+  ctx.status = error.code === 'RESOURCE_NAME_REQUIRED' ? 400 : 409;
+  ctx.body = { error: error.code, message: error.message };
+  return true;
+};
+
+
 
 // Resource endpoints: publish (two-phase), get published head, pull, remove.
 //
@@ -55,34 +176,31 @@ class ResourceController extends Controller {
     try {
       const k = this.getKnex();
 
-      // Ensure the resource exists (upsert). Preserve an existing owner if
-      // the caller didn't send one; otherwise use the provided ownerMemberId.
-      let effectiveOwner = ownerMemberId;
-      const existing = await k('resources').where({ id: resourceId }).first();
-      if (existing) {
-        if (existing.workspace_id !== workspaceId || (body.ownerMemberId && existing.owner_member_id !== ownerMemberId)) {
-          ctx.status = 409;
-          ctx.body = { error: 'resource_owner_conflict', message: 'Publication cannot transfer ownership' };
-          return;
+      // Atomically reserve globally unique logical-source names (or the
+      // source->publication relationship) before creating a published version.
+      await k.transaction(async trx => {
+        const existing = await trx('resources').where({ id: resourceId }).forUpdate().first();
+        if (existing && (existing.workspace_id !== workspaceId
+          || (body.ownerMemberId && existing.owner_member_id !== ownerMemberId))) {
+          const error = new Error('Publication cannot transfer ownership');
+          error.code = 'RESOURCE_OWNER_CONFLICT';
+          throw error;
         }
-        effectiveOwner = existing.owner_member_id;
-      }
-      await k('resources')
-        .insert({
-          id: resourceId,
-          workspace_id: workspaceId,
-          kind,
-          owner_member_id: effectiveOwner,
-          metadata: metadata ? JSON.stringify(metadata) : null,
-          scope,
-        })
-        .onConflict('id')
-        .merge({
+        // Older clients may update an existing Skill version without resending
+        // its metadata. Reuse the persisted logical-source name in that case.
+        const effectiveMetadata = metadata ?? (existing ? metadataOf(existing) : {});
+        await validateResourceIdentity(trx, kind, resourceId, effectiveMetadata, { workspaceId, ownerMemberId });
+        await trx('resources').insert({
+          id: resourceId, workspace_id: workspaceId, kind,
+          owner_member_id: existing?.owner_member_id || ownerMemberId,
+          metadata: metadata ? JSON.stringify(metadata) : null, scope,
+        }).onConflict('id').merge({
           deleted_at: null,
           ...(metadata ? { metadata: JSON.stringify(metadata) } : {}),
-
           ...(scope !== null ? { scope } : {}),
         });
+        await syncResourceNameRegistry(trx, kind, resourceId, effectiveMetadata);
+      });
 
       // Compute manifest digest and ensure all blobs are recorded.
       const manifestJson = JSON.stringify(body.manifest);
@@ -160,6 +278,7 @@ class ResourceController extends Controller {
 
       ctx.body = { version, versionId, missingBlobs: [] };
     } catch (err) {
+      if (policyFailure(ctx, err)) return;
       ctx.logger.error('[hdw] publish error:', err);
       ctx.status = 500;
       ctx.body = { error: 'internal_error', message: err.message };
@@ -239,6 +358,18 @@ class ResourceController extends Controller {
         missingBlobs,
       };
     } catch (err) {
+      if (err?.code === 'ENOENT') {
+        // A Dev backend can share the ResourceHub database with another
+        // instance without sharing its on-disk Blob directory. Never expose
+        // internal filesystem paths to the browser in this case.
+        ctx.logger.warn('[hdw] requested published manifest is absent from local Blob storage');
+        ctx.status = 503;
+        ctx.body = {
+          error: 'local_blob_unavailable',
+          message: '历史资源文件尚未同步到本机 HDW，请稍后重试或联系管理员。',
+        };
+        return;
+      }
       ctx.logger.error('[hdw] materialize error:', err);
       ctx.status = 500;
       ctx.body = { error: 'internal_error', message: err.message };
@@ -255,13 +386,28 @@ class ResourceController extends Controller {
       let deleted = 0;
 
       await k.transaction(async trx => {
-        // Hard delete the resource. FK ON DELETE CASCADE handles
-        // resource_versions, resource_refs, resource_version_blobs,
-        // team_projects, pending_version_uploads, and
-        // workspace_resource_shares automatically.
-        deleted = await trx('resources')
-          .where({ id: resourceId, workspace_id: ctx.params.workspaceId })
-          .del();
+        const original = await trx('resources')
+          .where({ id: resourceId, workspace_id: ctx.params.workspaceId }).forUpdate().first();
+        if (!original) return;
+        if (RESOURCE_NAME_KINDS.has(original.kind) && !isPublication(metadataOf(original))) {
+          // Legacy direct-publications must first be explicitly unpublished.
+          if (original.scope === 'public') {
+            const error = new Error('Please unpublish this resource before deleting its source');
+            error.code = 'SOURCE_HAS_PUBLICATION';
+            throw error;
+          }
+          // An active community reference must be removed before its source.
+          const reference = await trx('resources').where({ kind: original.kind, scope: 'public' })
+            .whereNull('deleted_at')
+            .whereRaw("metadata ->> 'communitySourceResourceId' = ?", [resourceId]).first();
+          if (reference) {
+            const error = new Error('Please unpublish this resource before deleting its source');
+            error.code = 'SOURCE_HAS_PUBLICATION';
+            throw error;
+          }
+        }
+        // Deleting a publication never cascades into its source resource.
+        deleted = await trx('resources').where({ id: resourceId, workspace_id: ctx.params.workspaceId }).del();
       });
 
       if (deleted === 0) {
@@ -272,6 +418,7 @@ class ResourceController extends Controller {
 
       ctx.body = { code: 0, msg: 'ok', data: { ok: true } };
     } catch (err) {
+      if (policyFailure(ctx, err)) return;
       ctx.logger.error('[hdw] remove resource error:', err);
       ctx.status = 500;
       ctx.body = { error: 'internal_error', message: err.message };
@@ -301,13 +448,14 @@ class ResourceController extends Controller {
 
     try {
       const k = this.getKnex();
-      await k('resources').insert({
-        id,
-        workspace_id: workspaceId,
-        kind,
-        owner_member_id: ownerMemberId,
-        metadata: JSON.stringify(metadata),
-        scope,
+      await k.transaction(async trx => {
+        await validateResourceIdentity(trx, kind, id, metadata, { workspaceId, ownerMemberId });
+        await trx('resources').insert({
+          id, workspace_id: workspaceId, kind,
+          owner_member_id: ownerMemberId,
+          metadata: JSON.stringify(metadata), scope,
+        });
+        await syncResourceNameRegistry(trx, kind, id, metadata);
       });
 
       const row = await k('resources').where({ id }).first();
@@ -328,6 +476,7 @@ class ResourceController extends Controller {
         },
       };
     } catch (err) {
+      if (policyFailure(ctx, err)) return;
       ctx.logger.error('[hdw] resource create error:', err);
       ctx.body = { code: -1, msg: 'internal error', error: err.message };
     }
@@ -357,14 +506,24 @@ class ResourceController extends Controller {
 
     try {
       const k = this.getKnex();
-      const updateFields = { metadata: JSON.stringify(metadata) };
-      if (Object.prototype.hasOwnProperty.call(body, 'scope')) {
-        updateFields.scope = body.scope || null;
-      }
-      const updated = await k('resources')
-        .where({ id: resourceId, workspace_id: workspaceId })
-        .whereNull('deleted_at')
-        .update(updateFields);
+      const updated = await k.transaction(async trx => {
+        const row = await trx('resources')
+          .where({ id: resourceId, workspace_id: workspaceId })
+          .whereNull('deleted_at').forUpdate().first();
+        if (!row) return 0;
+        await validateResourceIdentity(trx, row.kind, resourceId, metadata, {
+          workspaceId, ownerMemberId: row.owner_member_id,
+        });
+        const updateFields = { metadata: JSON.stringify(metadata) };
+        if (Object.prototype.hasOwnProperty.call(body, 'scope')) {
+          updateFields.scope = body.scope || null;
+        }
+        const affected = await trx('resources')
+          .where({ id: resourceId, workspace_id: workspaceId })
+          .whereNull('deleted_at').update(updateFields);
+        if (affected > 0) await syncResourceNameRegistry(trx, row.kind, resourceId, metadata);
+        return affected;
+      });
 
       if (updated === 0) {
         ctx.body = { code: -1, msg: 'resource not found' };
@@ -389,6 +548,7 @@ class ResourceController extends Controller {
         },
       };
     } catch (err) {
+      if (policyFailure(ctx, err)) return;
       ctx.logger.error('[hdw] resource update error:', err);
       ctx.body = { code: -1, msg: 'internal error', error: err.message };
     }
@@ -556,7 +716,7 @@ class ResourceController extends Controller {
     const { ctx } = this;
     const workspaceId = ctx.params.workspaceId;
     const kind = ctx.query.kind || '';
-    const name = (ctx.query.name || '').trim().toLowerCase();
+    const name = (ctx.query.name || '').normalize('NFKC').trim().toLocaleLowerCase('en');
 
     if (!workspaceId || !kind || !name) {
       ctx.status = 400;
@@ -566,19 +726,13 @@ class ResourceController extends Controller {
 
     try {
       const k = this.getKnex();
-      const rows = await k('resources')
-        .where({ kind, workspace_id: workspaceId })
-        .whereNull('deleted_at')
-        .select('metadata');
-
-      const exists = rows.some(row => {
-        const meta = typeof row.metadata === 'string' ? JSON.parse(row.metadata) : (row.metadata || {});
-        const title = (meta.title || meta.label || '').trim().toLowerCase();
-        return title === name;
-      });
+      await assertRegistryReady(k);
+      const exists = Boolean(await k('resource_name_registry')
+        .where({ kind, normalized_name: name }).first());
 
       ctx.body = { exists };
     } catch (err) {
+      if (policyFailure(ctx, err)) return;
       ctx.logger.error('[hdw] resource check error:', err);
       ctx.status = 500;
       ctx.body = { error: 'internal_error', message: err.message };

@@ -58,6 +58,8 @@ publisherName?: string | null;
  category?: SkillCategory;
  peopleCount?: number | null;
  actionCount?: number | null;
+ publicationSourceType?: 'reference' | 'local_import' | 'legacy';
+ communitySourceResourceId?: string | null;
 }
 
 // Build workspace headers from the string props the parent passes.
@@ -103,6 +105,7 @@ export function CloudSkillList({
  ownerMemberId,
  sourceProvider,
  mode = 'personal',
+ memberRole,
  scope,
  controlsPortalTarget,
  externalSearchQuery,
@@ -113,6 +116,7 @@ export function CloudSkillList({
  ownerMemberId?: string | null;
  sourceProvider?: string | null;
  mode?: 'personal' | 'shared' | 'square' | 'team';
+ memberRole?: 'owner' | 'admin' | 'member' | 'guest';
  scope?: string;
  controlsPortalTarget?: HTMLElement | null;
  externalSearchQuery?: string;
@@ -127,6 +131,7 @@ export function CloudSkillList({
   const [installingId, setInstallingId] = useState<string | null>(null);
   const [uninstallingId, setUninstallingId] = useState<string | null>(null);
   const [unpublishingId, setUnpublishingId] = useState<string | null>(null);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const effectiveSearchQuery = externalSearchQuery ?? searchQuery;
@@ -508,12 +513,17 @@ useEffect(() => {
         '/api/workspace/skills/cloud/' + encodeURIComponent(skill.resourceId) + (mode === 'square' ? '?community=1' : ''),
         {
           method: 'DELETE',
-          headers: workspaceHeaders(skill.homeWorkspaceId ?? workspaceId, skill.homeWorkspaceMemberId ?? workspaceMemberId, skill.homeWorkspaceType ?? workspaceType),
+           // Team deletion never targets the home workspace of an external link.
+           headers: mode === 'team'
+             ? workspaceHeaders(workspaceId, workspaceMemberId, workspaceType)
+             : workspaceHeaders(skill.homeWorkspaceId ?? workspaceId, skill.homeWorkspaceMemberId ?? workspaceMemberId, skill.homeWorkspaceType ?? workspaceType),
         },
       );
       if (!res.ok) {
         const body = await res.json().catch(() => null);
-        throw new Error(body?.error ?? 'Delete failed');
+        throw new Error(body?.error === 'SOURCE_HAS_PUBLICATION'
+          ? (locale.startsWith('zh') ? '该 Skill 正在社区中发布，请先取消发布后再删除源资源。' : 'Unpublish this Skill before deleting its source.')
+          : body?.message ?? body?.error ?? 'Delete failed');
       }
       // Actively refresh both cloud list and local installed set after delete
       await Promise.all([loadSkills(), loadLocalSkills()]);
@@ -522,6 +532,28 @@ useEffect(() => {
     } finally {
       setDeletingId(null);
       setConfirmAction(null);
+    }
+  }
+
+
+  async function handleUpdatePublication(skill: CloudSkill) {
+    setUpdatingId(skill.resourceId);
+    setError(null);
+    try {
+      const res = await fetch('/api/workspace/skills/cloud/' + encodeURIComponent(skill.resourceId) + '/update-publication', {
+        method: 'POST',
+        headers: workspaceHeaders(skill.homeWorkspaceId ?? workspaceId,
+          skill.homeWorkspaceMemberId ?? workspaceMemberId, skill.homeWorkspaceType ?? workspaceType),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.message || body.error || 'Update publication failed');
+      }
+      await Promise.all([loadSkills(), loadLocalSkills()]);
+    } catch (err: any) {
+      setError(err?.message ?? String(err));
+    } finally {
+      setUpdatingId(null);
     }
   }
 
@@ -694,10 +726,16 @@ useEffect(() => {
       </DialogTitle>
       <DialogDescription>
         {confirmAction.type === 'unpublish'
-          ? t('squareScope.unpublishConfirmDesc' as any, { title: confirmAction.item.title })
+           ? (locale.startsWith('zh')
+             ? `取消发布后，「${confirmAction.item.title}」将从社区和我的发布中移除。${confirmAction.item.publicationSourceType === 'reference' ? '个人或团队中的源资源保留。' : confirmAction.item.publicationSourceType === 'local_import' ? '本地导入的社区资源将被移除。' : '历史资源的源记录将安全保留。'}如需重新发布请从源路径重新选择。`
+             : `Unpublishing removes "${confirmAction.item.title}" from Community and My Publications. The original source, if any, is preserved. To publish again, choose the source again.`)
           : mode === 'square'
             ? t('squareScope.deleteConfirmDesc' as any, { title: confirmAction.item.title })
-            : t('personalScope.cloudSkillDeleteConfirmDesc' as any)}
+            : mode === 'team'
+              ? (locale.startsWith('zh')
+                ? `确定删除团队 Skill「${confirmAction.item.title}」吗？团队成员已有的连接及项目引用可能受到影响。`
+                : `Delete team Skill "${confirmAction.item.title}"? Existing connections and project references may stop working.`)
+              : t('personalScope.cloudSkillDeleteConfirmDesc' as any)}
       </DialogDescription>
       <DialogFooter className="row">
         <button
@@ -739,11 +777,16 @@ useEffect(() => {
           || (skill.provider !== 'maas-skillhub' && localSkillIds.has(skill.localId.toLowerCase()));
           const canManageCloudRecord = skill.provider !== 'maas-skillhub' && !skill.resourceId.startsWith('team:');
           const isResourceOwner = skill.canManage ?? skill.ownerMemberId === workspaceMemberId;
-          const canDelete = canManageCloudRecord && isResourceOwner && mode !== 'shared';
+          const isTeamManager = mode === 'team' && (memberRole === 'owner' || memberRole === 'admin');
+          const isTeamNative = (skill.homeWorkspaceId ?? workspaceId) === workspaceId;
+          // Team resource deletion is scoped to the team's own cloud record.
+          // Linking an external source must never grant permission to erase it.
+          const canDelete = canManageCloudRecord && mode !== 'shared' && memberRole !== 'guest'
+            && (mode === 'team' ? isTeamNative && (isResourceOwner || isTeamManager) : isResourceOwner);
           // In community/personal/team views only the resource owner can
           // grant new shares. Keep the existing shared-with-me forwarding
           // affordance; HDW still validates every attempted share.
-          const canShare = canManageCloudRecord && (isResourceOwner || mode === 'shared');
+          const canShare = canManageCloudRecord && (isResourceOwner || mode === 'shared' || (mode === 'team' && memberRole != null && memberRole !== 'guest'));
           const showOriginalIcon = Boolean(skill.iconUrl) && !failedIconIds.has(skill.resourceId);
           const meta = mode === 'square'
             ? `${skill.publisherName?.trim() || 'HiDesign'}${skill.updatedAt ? ' · ' + formatRelativeDate(skill.updatedAt, t) : ''}`
@@ -764,13 +807,15 @@ useEffect(() => {
             meta={meta}
             source={mode === 'square' ? skill.sourceLabel || t('personalScope.cloudSkillSource' as any) : null}
             description={skill.description} installed={isInstalled} installing={installingId === skill.resourceId} uninstalling={uninstallingId === skill.resourceId}
-            busy={!!installingId || !!uninstallingId || !!unpublishingId || !!deletingId}
+            busy={!!installingId || !!uninstallingId || !!unpublishingId || !!updatingId || !!deletingId}
             onInstall={() => void handleInstall(skill)}
+             canConnect={mode !== 'team' || (memberRole != null && memberRole !== 'guest')}
             actions={{
               ...(canShare ? { share: () => setShareItem(skill) } : {}),
               ...(isInstalled && !skill.teamShared ? { uninstall: () => void handleUninstall(skill) } : {}),
               ...(canDelete && mode === 'square' ? { unpublish: () => setConfirmAction({ type: 'unpublish', item: skill }) } : {}),
-              ...(canDelete ? { delete: () => setConfirmAction({ type: 'delete', item: skill }) } : {}),
+              ...(canDelete && mode === 'square' && skill.publicationSourceType === 'reference' ? { updatePublication: () => void handleUpdatePublication(skill) } : {}),
+              ...(canDelete && mode !== 'square' ? { delete: () => setConfirmAction({ type: 'delete', item: skill }) } : {}),
               ...(mode === 'shared' && skill.shareId ? { removeShare: () => setRemoveShareId(skill.shareId!) } : {}),
             }}
             stats={mode === 'square' ? <CommunityResourceStats

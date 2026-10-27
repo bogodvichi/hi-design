@@ -135,6 +135,38 @@ test('recipient grants permit reads but never ownership changes', async () => {
   assert.equal((await f.call('resource', 'show', { params })).invoked, true);
   assert.equal((await f.call('resource', 'update', { params, method: 'PUT' })).ctx.status, 403);
 });
+test('cross-workspace resource grant permits an authenticated recipient but rejects strangers', async () => {
+  const record = { id: 'private-source', workspace_id: 'owner-team', owner_member_id: 'owner-member', kind: 'mcp', scope: null };
+  const recipient = ids.getSharedSpaceMemberId('alice');
+  const f = fixture({ resources: [record], workspace_resource_shares: [{
+    resource_id: 'private-source', home_workspace_id: 'owner-team', recipient_member_id: recipient,
+  }] });
+  const params = { workspaceId: 'owner-team', resourceId: 'private-source' };
+  assert.equal((await f.call('resource', 'show', { params })).invoked, true);
+  assert.equal((await f.call('resource', 'remove', { method: 'DELETE', params })).ctx.status, 403);
+  const stranger = fixture({ resources: [record] });
+  assert.equal((await stranger.call('resource', 'show', { params })).ctx.status, 403);
+});
+
+test('MCP reference publication preserves trusted provenance through the metadata filter', async () => {
+  const metadata = {
+    id: 'template', label: 'MCP', transport: 'http', url: 'https://example.invalid',
+    publicationSourceType: 'reference', communitySourceResourceId: 'original-mcp',
+    communitySourceWorkspaceId: personal, publishedAt: '2026-10-27T00:00:00.000Z',
+    publicationVersion: 1, legacyCommunityUnpublishedAt: '2026-10-28T00:00:00.000Z',
+    arbitraryCredential: 'must never persist',
+  };
+  const { invoked, ctx } = await fixture().call('resource', 'create', {
+    method: 'POST', request: { body: { kind: 'mcp', metadata } },
+  });
+  assert.equal(invoked, true);
+  for (const key of ['publicationSourceType', 'communitySourceResourceId', 'communitySourceWorkspaceId',
+    'publishedAt', 'publicationVersion', 'legacyCommunityUnpublishedAt']) {
+    assert.equal(ctx.request.body.metadata[key], metadata[key], key);
+  }
+  assert.equal(ctx.request.body.metadata.arbitraryCredential, undefined);
+});
+
 test('workspace path must match even when resource ID is known', async () => {
   const result = await fixture().call('resource', 'remove', { method: 'DELETE', params: { workspaceId: 'other', resourceId: 'bob-private' } });
   assert.equal(result.invoked, false); assert.equal(result.ctx.status, 404);
@@ -194,6 +226,135 @@ test('shared-folder project grants use the authenticated issuer', async () => {
   assert.equal(result.ctx.request.body.created_by_username, 'alice');
   assert.equal(result.ctx.request.body.created_by_member_id, ids.getSharedSpaceMemberId('alice'));
 });
+test('team managers can delete native Skill/MCP but not other resource kinds or another workspace', async () => {
+  const workspaceId = 'team-delete-roles';
+  for (const kind of ['skill', 'mcp', 'project'] as const) {
+    for (const role of ['owner', 'admin', 'member', 'guest'] as const) {
+      const f = fixture({
+        workspace_members: [{ workspace_id: workspaceId, username: 'alice', workspace_member_id: 'alice', role }],
+        resources: [{ id: 'resource-1', workspace_id: workspaceId, kind, owner_member_id: 'bob' }],
+      });
+      const result = await f.call('resource', 'remove', {
+        method: 'DELETE', params: { workspaceId, resourceId: 'resource-1' },
+      });
+      const allowed = kind !== 'project' && (role === 'owner' || role === 'admin');
+      assert.equal(result.invoked, allowed, `${kind} / ${role}`);
+      if (!allowed) assert.equal(result.ctx.status, 403);
+    }
+  }
+});
+
+test('team project removal accepts managers and the creator, not other members or guests', async () => {
+  const workspaceId = 'team-project-delete';
+  for (const [role, ownerId, allowed] of [
+    ['owner', 'bob', true], ['admin', 'bob', true], ['member', 'bob', false],
+    ['member', 'alice', true], ['guest', 'alice', false],
+  ] as const) {
+    const f = fixture({
+      workspace_members: [{ workspace_id: workspaceId, username: 'alice', workspace_member_id: 'alice', role }],
+      resources: [{ id: 'resource-1', workspace_id: workspaceId, kind: 'project', owner_member_id: ownerId }],
+      team_projects: [{ project_id: 'project-1', workspace_id: workspaceId, resource_id: 'resource-1' }],
+    });
+    const result = await f.call('teamProject', 'remove', {
+      method: 'DELETE', params: { workspaceId, projectId: 'project-1' },
+    });
+    assert.equal(result.invoked, allowed, `${role} / creator ${ownerId}`);
+    if (!allowed) assert.equal(result.ctx.status, 403);
+  }
+});
+
+test('team folder placement admits managers and project creators but not unrelated members or guests', async () => {
+  const workspaceId = 'team-folder-roles';
+  for (const [role, owner, allowed] of [
+    ['owner', 'bob', true], ['admin', 'bob', true], ['member', 'bob', false],
+    ['member', 'alice', true], ['guest', 'alice', false],
+  ] as const) {
+    const f = fixture({
+      workspace_members: [{ workspace_id: workspaceId, username: 'alice', workspace_member_id: 'alice', role }],
+      resources: [{ id: 'resource', workspace_id: workspaceId, kind: 'project', owner_member_id: owner }],
+      team_projects: [{ project_id: 'project-1', workspace_id: workspaceId, resource_id: 'resource' }],
+    });
+    const result = await f.call('folder', 'moveProject', {
+      method: 'POST', params: {}, request: { body: { workspace_id: workspaceId, project_id: 'project-1', folder_id: null } },
+    });
+    assert.equal(result.invoked, allowed, `${role} / ${owner}`);
+    if (!allowed) assert.equal(result.ctx.status, 403);
+  }
+});
+
+test('team folder-project sharing permits members but not guests or foreign projects', async () => {
+  const workspaceId = 'team-folder-share';
+  const data = {
+    resources: [{ id: 'resource', workspace_id: workspaceId, kind: 'project', owner_member_id: 'bob' }],
+    team_projects: [{ project_id: 'project-1', workspace_id: workspaceId, resource_id: 'resource' }],
+  };
+  for (const role of ['member', 'guest'] as const) {
+    const f = fixture({ ...data,
+      workspace_members: [{ workspace_id: workspaceId, username: 'alice', workspace_member_id: 'alice', role }],
+    });
+    const result = await f.call('folder', 'shareProjects', {
+      method: 'POST', params: {}, request: { body: { workspace_id: workspaceId, project_ids: ['project-1'] } },
+    });
+    assert.equal(result.invoked, role === 'member');
+    if (role === 'guest') assert.equal(result.ctx.status, 403);
+  }
+  const f = fixture({ ...data,
+    workspace_members: [{ workspace_id: 'foreign-team', username: 'alice', workspace_member_id: 'alice', role: 'admin' }],
+  });
+  const rejected = await f.call('folder', 'moveProject', {
+    method: 'POST', params: {}, request: { body: { workspace_id: 'foreign-team', project_id: 'project-1' } },
+  });
+  assert.equal(rejected.invoked, false);
+  assert.equal(rejected.ctx.status, 404);
+});
+
+test('cross-team project transfers are refused for every role, including the creator', async () => {
+  const sourceWorkspace = 'transfer-source';
+  for (const role of ['owner', 'admin', 'member', 'guest'] as const) {
+    const f = fixture({
+      workspace_members: [{ workspace_id: sourceWorkspace, username: 'alice', workspace_member_id: 'alice', role }],
+      resources: [{ id: 'resource', workspace_id: sourceWorkspace, owner_member_id: 'alice', kind: 'project' }],
+      team_projects: [{ project_id: 'project', workspace_id: sourceWorkspace, resource_id: 'resource' }],
+    });
+    const result = await f.call('teamProject', 'transfer', {
+      method: 'POST',
+      params: { workspaceId: sourceWorkspace, projectId: 'project' },
+      request: { body: { targetWorkspaceId: 'other-team' } },
+    });
+    assert.equal(result.invoked, false, role);
+    assert.equal(result.ctx.status, 403, role);
+  }
+});
+
+test('guests may inspect existing links and add comments, but only formal members can generate links', async () => {
+  const workspaceId = 'team-sharing';
+  const rows = {
+    resources: [{ id: 'resource', workspace_id: workspaceId, kind: 'project', owner_member_id: 'creator' }],
+    team_projects: [{ project_id: 'project', workspace_id: workspaceId, resource_id: 'resource' }],
+  };
+  for (const role of ['guest', 'member', 'admin'] as const) {
+    const f = fixture({ ...rows,
+      workspace_members: [{ workspace_id: workspaceId, username: 'alice', workspace_member_id: 'alice', role }],
+    });
+    const view = await f.call('shareLink', 'get', {
+      method: 'GET', params: {}, query: { workspace_id: workspaceId, project_id: 'project' },
+    });
+    assert.equal(view.invoked, true, role);
+    const generate = await f.call('shareLink', 'generate', {
+      method: 'POST', params: {}, request: { body: { workspace_id: workspaceId, project_id: 'project' } },
+    });
+    assert.equal(generate.invoked, role !== 'guest', role);
+    if (role === 'guest') assert.equal(generate.ctx.status, 403);
+
+    const comment = await f.call('comment', 'pushComment', {
+      method: 'POST', params: { teamId: workspaceId, projectId: 'project' },
+      request: { body: { comment: { id: 'comment-one', text: 'Feedback' } } },
+    });
+    assert.equal(comment.invoked, true, role);
+    assert.equal(comment.ctx.request.body.comment.memberId, 'alice');
+  }
+});
+
 function snapshot(): IdentitySnapshot { return { workspace_members: [], resources: [], resource_versions: [], team_projects: [], workspace_project_shares: [], folders: [], folder_shares: [] }; }
 test('recovery repairs the exact legacy namespace mismatch and is idempotent', () => {
   const data = snapshot();

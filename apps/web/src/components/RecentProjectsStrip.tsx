@@ -49,6 +49,7 @@ import {
 } from './EntryNavRail';
 import {
   copyProjectToPersonal,
+  moveTeamProjectFolderAssignment,
   moveWorkspaceProject,
   workspaceProjectMoveErrorCode,
 } from '../state/projects';
@@ -142,6 +143,9 @@ export interface CollectionSelectionExtension {
   moveRootSelectedLabel?: string;
   /** Hide bulk delete when the parent-owned selection contains non-deletable items. */
   hideDelete?: boolean;
+  /** Disable bulk deletion while recursively counting the affected contents. */
+  blocksDelete?: boolean;
+  deleteConfirmDescription?: string;
   /** Delete the parent-owned selected items and return how many succeeded. */
   onDeleteSelected?: () => Promise<number>;
   onModeChange?: (active: boolean) => void;
@@ -960,6 +964,11 @@ const disabledKeys = useMemo(() => {
    const project = moveToTeamTarget;
    setMoveToTeamTarget(null);
    if (!project) return;
+   const projectWorkspaceId = project.workspaceId?.trim() || currentWorkspaceId || workspaceContext?.workspaceId;
+   if (!projectWorkspaceId || selection.workspaceId !== projectWorkspaceId) {
+     setMoveToast({ message: '不允许跨团队移动项目，请选择当前团队内的文件夹。', tone: 'error' });
+     return;
+   }
    if (selection.isDefaultTeam) {
      void handleUnshareFromTeam(project, {
        targetWorkspaceId: selection.workspaceId,
@@ -974,6 +983,13 @@ const disabledKeys = useMemo(() => {
  }
  function handleBulkMoveToTeamConfirm(selection: TeamTreeSelection) {
    setBulkMoveToTeamOpen(false);
+   const selectedWorkspaces = selectedProjects.map(({ project }) =>
+     project.workspaceId?.trim() || currentWorkspaceId || workspaceContext?.workspaceId);
+   if (extensionSelectedCount > 0) selectedWorkspaces.push(currentWorkspaceId || workspaceContext?.workspaceId);
+   if (!selectedWorkspaces.length || selectedWorkspaces.some((source) => !source || source !== selection.workspaceId)) {
+     setMoveToast({ message: '不允许跨团队移动项目，请选择当前团队内的文件夹。', tone: 'error' });
+     return;
+   }
    const action = selection.isDefaultTeam ? 'to-personal' : 'to-team';
    void commitBulkMove(action, {
      targetWorkspaceId: selection.workspaceId,
@@ -1001,7 +1017,7 @@ const disabledKeys = useMemo(() => {
    ? operator.role === 'guest'
    : workspaceContext?.role === 'guest';
  const isTeamProjectCollection = space === 'team' && badgeOverride !== 'shared';
- const canShowCardActions = actionsAvailable && (isRecentCollection || isSharedWithMeCollection || !isGuest);
+ const canShowCardActions = actionsAvailable && (isRecentCollection || isSharedWithMeCollection || isTeamProjectCollection || !isGuest);
 
  // Bulk-action state for the 多选 bar. Every action below is the batch form of
   // an action the per-card ⋯ menu already offers (move in/out of the team
@@ -1009,19 +1025,21 @@ const disabledKeys = useMemo(() => {
   const selectedProjects = visibleProjects.filter(({ project }) => selectedProjectIds.has(project.id));
   const extensionSelectedCount = selectionExtension?.selectedCount ?? 0;
   const selectedCount = selectedProjectIds.size + extensionSelectedCount;
-  // Same gate as the per-card menu: only the owner can rename, delete, or
-  // duplicate. Admins can move but not delete, so the bulk toolbar needs two
-  // disabled states — one for move (admins allowed) and one for delete
-  // (owner only).
-  const selectionHasForeignProject = selectedProjects.some(({ creator }) => !creator.canMutate);
+  // Team managers may organize/delete another creator's project but cannot
+  // change its content, so bulk action rights differ from edit rights.
+  const selectionHasForeignProject = selectedProjects.some(({ creator }) =>
+    !(creator.canMutate || (isTeamProjectCollection && creator.canAdmin)));
   const selectionHasNonAdminProject = selectedProjects.some(({ creator }) => !(creator.canMutate || creator.canAdmin));
   const bulkMoveDisabled = selectedCount === 0
+    || isGuest
     || bulkMovePending
     || selectionHasNonAdminProject
     || selectionExtension?.blocksMove === true
     || (extensionSelectedCount > 0 && !selectionExtension?.onMoveSelected);
   const bulkDeleteDisabled = selectedCount === 0
+    || isGuest
     || bulkMovePending
+    || selectionExtension?.blocksDelete === true
     || selectionHasForeignProject
     || (extensionSelectedCount > 0 && !selectionExtension?.onDeleteSelected);
   const selectedLabels = [
@@ -1461,7 +1479,7 @@ function startRename(project: Project) {
 
 function requestDelete(project: Project) {
   const creator = resolveCreator(project);
-   if (!creator.canMutate) return;
+   if (!creator.canMutate && !(isTeamProjectCollection && creator.canAdmin)) return;
    trackCollection('delete', {
      project_key: project.id,
      project_relation: 'self',
@@ -1482,14 +1500,29 @@ function requestDelete(project: Project) {
    setMenuOpenId(project.id);
    setSharingId(project.id);
    try {
-     const movedProject = await moveWorkspaceProject({
-       projectId: project.id,
-       visibility: 'team',
-       workspaceContext,
-       targetWorkspaceId: options?.targetWorkspaceId,
-       targetFolderId: options?.targetFolderId ?? null,
-     });
-     onProjectShared?.(movedProject);
+     // A team manager can reorganize another creator's project without
+     // materializing its content or taking its ownership. The HDW metadata
+     // endpoint verifies the exact team and member role independently.
+     if (isTeamProjectCollection && resolveCreator(project).canAdmin) {
+       const sourceWorkspaceId = project.workspaceId ?? workspaceContext?.workspaceId;
+       if (!sourceWorkspaceId || sourceWorkspaceId !== options?.targetWorkspaceId) {
+         throw new Error('cross-team project moves are forbidden');
+       }
+       await moveTeamProjectFolderAssignment({
+         projectId: project.id,
+         workspaceId: sourceWorkspaceId,
+         targetFolderId: options?.targetFolderId ?? null,
+       });
+     } else {
+       const movedProject = await moveWorkspaceProject({
+         projectId: project.id,
+         visibility: 'team',
+         workspaceContext,
+         targetWorkspaceId: options?.targetWorkspaceId,
+         targetFolderId: options?.targetFolderId ?? null,
+       });
+       onProjectShared?.(movedProject);
+     }
      notifyTeamProjectsChanged();
      window.dispatchEvent(new CustomEvent('personal:folders-updated'));
      window.dispatchEvent(
@@ -1808,9 +1841,25 @@ function requestDelete(project: Project) {
    setBulkMovePending(true);
    try {
    const visibility = action === 'to-team' ? 'team' : 'personal';
+   const teamManagerProjectIds = new Set(selectedProjects
+     .filter(({ creator }) => isTeamProjectCollection && creator.canAdmin)
+     .map(({ project }) => project.id));
    const moved = await Promise.all(
      ids.map(async (id) => {
        try {
+         if (teamManagerProjectIds.has(id) && action === 'to-team') {
+           const source = selectedProjects.find(({ project }) => project.id === id)?.project;
+           const sourceWorkspaceId = source?.workspaceId ?? workspaceContext?.workspaceId;
+           if (!sourceWorkspaceId || sourceWorkspaceId !== options?.targetWorkspaceId) {
+             throw new Error('cross-team project moves are forbidden');
+           }
+           await moveTeamProjectFolderAssignment({
+             projectId: id,
+             workspaceId: sourceWorkspaceId,
+             targetFolderId: options?.targetFolderId ?? null,
+           });
+           return { id, project: null };
+         }
          const project = await moveWorkspaceProject({
            projectId: id,
            visibility,
@@ -1827,11 +1876,14 @@ function requestDelete(project: Project) {
       }),
     );
     const succeeded = moved.filter(
-      (result): result is { id: string; project: WorkspaceProjectSummary } => result !== null,
+      (result): result is { id: string; project: WorkspaceProjectSummary | null } => result !== null,
     );
     for (const result of succeeded) {
-      if (action === 'to-team') onProjectShared?.(result.project);
-      else onProjectUnshared?.(result.id);
+      if (action === 'to-team') {
+        if (result.project) onProjectShared?.(result.project);
+      } else {
+        onProjectUnshared?.(result.id);
+      }
     }
    let extensionSucceededCount = 0;
    if (extensionCount > 0 && moveExtensionItems) {
@@ -1918,6 +1970,9 @@ function requestDelete(project: Project) {
     const requestedCount = ids.length + extensionCount;
     const succeededCount = deleted.filter((id): id is string => id !== null).length + extensionSucceededCount;
     const failedCount = requestedCount - succeededCount;
+    if (failedCount > 0) {
+      setMoveToast({ message: `已删除 ${succeededCount}/${requestedCount} 项，${failedCount} 项未删除，请刷新后重试。`, tone: 'error' });
+    }
     trackWorkspaceProjectActionResult(analytics.track, {
       page_name: analyticsPage,
       area: 'project_collection',
@@ -2283,7 +2338,7 @@ function requestDelete(project: Project) {
            && (
              isSharedWithMeCollection
              || recentSharedWithMe
-             || (isTeamProjectCollection || recentTeamProject ? !isGuest : (creator.canMutate || creator.canAdmin))
+             || (isTeamProjectCollection || recentTeamProject ? true : (creator.canMutate || creator.canAdmin))
            ),
          );
          const canDuplicateProject = Boolean(
@@ -2305,23 +2360,25 @@ function requestDelete(project: Project) {
            && !recentSharedWithMe
            && onRename
            && creator.canMutate
-           && (!recentTeamProject || !isGuest),
+           && !isGuest,
          );
          const canMoveProject = Boolean(
            !isRecentCollection
            && !isSharedWithMeCollection
            && (collaborationAvailable || space === 'drafts')
+           && !isGuest
            && (creator.canMutate || creator.canAdmin),
          );
          const canDragProject = Boolean(
-           !isRecentCollection
+           canMoveProject
+           && !isRecentCollection
            && !isSharedWithMeCollection
            && projectHomeWorkspaceId
            && !selectionMode
            && !opening,
          );
          const canDeleteProject = Boolean(
-           !isRecentCollection && !isSharedWithMeCollection && onDelete && creator.canMutate,
+           !isRecentCollection && !isSharedWithMeCollection && !isGuest && onDelete && (creator.canMutate || (isTeamProjectCollection && creator.canAdmin)),
          );
          const canRemoveSharedWithMe = Boolean(isSharedWithMeCollection && onRemoveSharedWithMe);
          const hasShareOrCopyActions = canShareProject || canDuplicateProject || canCopyToPersonal;
@@ -2373,6 +2430,7 @@ function requestDelete(project: Project) {
                  sourceWorkspaceId: projectHomeWorkspaceId,
                  sourceFolderId: currentFolderId ?? null,
                  canMove: canMoveProject,
+                 managerOnlyFolderMove: isTeamProjectCollection && creator.canAdmin,
                });
                dragPreviewCleanupRef.current?.();
                dragPreviewCleanupRef.current = installProjectCardDragPreview(
@@ -2763,8 +2821,8 @@ function requestDelete(project: Project) {
                        <button
                          type="button"
                          role="menuitem"
-                         disabled={!creator.canMutate}
-                         title={creator.canMutate ? undefined : t('recentProjects.ownOnlyMutation')}
+                         disabled={!canDeleteProject}
+                         title={canDeleteProject ? undefined : t('recentProjects.ownOnlyMutation')}
                          onClick={() => requestDelete(project)}
                        >
                          <Icon name="trash" size={14} />
@@ -2823,13 +2881,14 @@ function requestDelete(project: Project) {
            canPublishToCommunity={sharedWithMeHomeWorkspaceId?.(sharedSpaceTarget.id)
              ? false
              : space === 'team'
-               ? resolveCreator(sharedSpaceTarget).ownedBySelf
+               ? resolveCreator(sharedSpaceTarget).ownedBySelf && !isGuest
                : true}
            canShareFile={sharedWithMeHomeWorkspaceId?.(sharedSpaceTarget.id)
              ? false
              : isTeamProjectCollection
-               ? resolveCreator(sharedSpaceTarget).ownedBySelf
+               ? !isGuest
                : true}
+          canGenerateLink={!isGuest && !isSharedWithMeCollection && !sharedWithMeHomeWorkspaceId?.(sharedSpaceTarget.id)}
           onClose={() => setSharedSpaceTarget(null)}
           onShared={() => {
             notifyTeamProjectsChanged();
@@ -2943,6 +3002,7 @@ function requestDelete(project: Project) {
        currentWorkspaceId={currentWorkspaceId ?? workspaceContext?.workspaceId ?? null}
        currentFolderId={currentFolderId ?? null}
        disabledKeys={disabledKeys}
+       restrictToWorkspaceId={currentWorkspaceId ?? workspaceContext?.workspaceId ?? undefined}
       canMoveToPersonal={resolveCreator(moveToTeamTarget).ownedBySelf}
      />
   ) : null}
@@ -2953,7 +3013,7 @@ function requestDelete(project: Project) {
        mode="unified"
        currentWorkspaceId={currentWorkspaceId ?? workspaceContext?.workspaceId ?? null}
        currentFolderId={currentFolderId ?? null}
-       restrictToWorkspaceId={extensionSelectedCount > 0 ? selectionExtension?.restrictMoveToWorkspaceId : undefined}
+       restrictToWorkspaceId={currentWorkspaceId ?? workspaceContext?.workspaceId ?? undefined}
        disabledSubtreeKeys={extensionSelectedCount > 0 ? selectionExtension?.disabledMoveKeys : undefined}
        disabledKeys={disabledKeys}
       canMoveToPersonal={!selectedProjects.some(({ creator }) => !creator.ownedBySelf)}
@@ -2972,7 +3032,7 @@ function requestDelete(project: Project) {
         >
           <DialogTitle id={bulkDeleteTitleId}>{t('designs.deleteTitle')}</DialogTitle>
           <DialogDescription>
-            {t('designs.deleteSelectedConfirm', { n: selectedCount })}
+            {selectionExtension?.deleteConfirmDescription ?? t('designs.deleteSelectedConfirm', { n: selectedCount })}
           </DialogDescription>
           <DialogFooter className="row">
             <button type="button" onClick={() => setBulkDeleteOpen(false)}>

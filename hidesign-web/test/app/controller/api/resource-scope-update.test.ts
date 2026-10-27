@@ -36,25 +36,34 @@ function fixture({ kind = 'mcp', scope = 'public', workspaceId = 'ws-owner' } = 
     updated_at: '2026-01-01',
   };
   let mutationCount = 0;
+  const claim = { resource_id: 'resource-1', kind, normalized_name: 'original' };
+  const state = { id: 'global', ready: true };
   const k = (table) => {
-    assert.equal(table, 'resources');
+    assert.ok(['resources', 'resource_name_registry', 'resource_name_registry_state'].includes(table));
+    const target = table === 'resources' ? resource : table === 'resource_name_registry' ? claim : state;
     const filters = {};
+    const notFilters = {};
     let onlyActive = false;
-    const matching = () => Object.entries(filters).every(([key, value]) => resource[key] === value)
-      && (!onlyActive || resource.deleted_at === null);
+    const matching = () => Object.entries(filters).every(([key, value]) => target[key] === value)
+      && Object.entries(notFilters).every(([key, value]) => target[key] !== value)
+      && (!onlyActive || target.deleted_at === null);
     return {
       where(conditions) { Object.assign(filters, conditions); return this; },
+      whereNot(key, value) { notFilters[key] = value; return this; },
       whereNull(name) { if (name === 'deleted_at') onlyActive = true; return this; },
+      forUpdate() { return this; },
+      async select() { return matching() ? [{ ...target }] : []; },
       async update(changes) {
         if (!matching()) return 0;
-        Object.assign(resource, changes);
-        mutationCount++;
+        Object.assign(target, changes);
+        if (table === 'resources') mutationCount++;
         return 1;
       },
-      async first() { return matching() ? { ...resource } : undefined; },
+      async first() { return matching() ? { ...target } : undefined; },
     };
   };
-  async function call({ requestedWorkspace = workspaceId, metadata = { label: 'Updated' }, nextScope = undefined, hasScope = true } = {}) {
+  k.transaction = async fn => fn(k);
+  k.raw = async () => ({ rows: [] });  async function call({ requestedWorkspace = workspaceId, metadata = { label: 'Updated' }, nextScope = undefined, hasScope = true } = {}) {
     const body = { metadata, ...(hasScope ? { scope: nextScope } : {}) };
     const ctx = {
       params: { workspaceId: requestedWorkspace, resourceId: resource.id },

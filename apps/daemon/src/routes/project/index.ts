@@ -380,6 +380,7 @@ export interface RegisterProjectRoutesDeps extends RouteDeps<'db' | 'design' | '
  daemonUrlRef?: { current: string };
  /** HDW cloud client for team project metadata reads and cover_digest updates. Null when not configured. */
  hdwCloudClient?: {
+   removeTeamProject?(workspaceId: string, projectId: string, deleteResource?: boolean): Promise<void>;
    getTeamProject?(workspaceId: string, projectId: string): Promise<{
      id?: string;
      workspaceId?: string;
@@ -599,17 +600,18 @@ function projectAccess(
     canShareLocal,
     disabledReason: baseDisabledReason,
   } = workspaceResourceAccess(wp, ctx);
- // Team-shared projects keep creator-only content management (rename/delete/
- // restore), while every active non-guest member may copy the project because
- // copying creates a new resource instead of mutating the source. Workspace
- // owner/admin roles retain move authority through the move route.
- const canMutate =
-   privilegedOrCreatorCanMutate
-   && (wp.visibility !== 'team' || selfCreated);
- const canDuplicate =
-   wp.visibility === 'team'
-     ? !frozen && ctx.memberStatus === 'active' && ctx.role !== 'guest'
-     : canMutate;
+  // Team creators exclusively own content edits; managers govern deletion.
+  // Non-guest teammates may copy into a new independently owned project.
+  const canMutate =
+    privilegedOrCreatorCanMutate
+    && (wp.visibility !== 'team' || selfCreated);
+  const canDuplicate =
+    wp.visibility === 'team'
+      ? !frozen && ctx.memberStatus === 'active' && ctx.role !== 'guest'
+      : canMutate;
+  const canDeleteTeamProject = wp.visibility === 'team' && !frozen
+    && ctx.workspaceType === 'team' && ctx.memberStatus === 'active'
+    && (ctx.role === 'owner' || ctx.role === 'admin');
  const disabledReason =
    baseDisabledReason === 'permission_denied' && canDuplicate
      ? undefined
@@ -617,7 +619,7 @@ function projectAccess(
  return {
    canOpen: !frozen && ctx.memberStatus === 'active',
    canRename: canMutate,
-   canDelete: canMutate,
+    canDelete: canMutate || canDeleteTeamProject,
    canDuplicate,
    // Never offer a share the workspace cannot host: the affordance is the
    // entry point that produced the impossible rows in the first place.
@@ -626,10 +628,11 @@ function projectAccess(
      ctx.canShareProjects &&
      wp.visibility === 'personal' &&
      teamShareRefusalFor(ctx, workspaceTypes) === null,
-   // Only the project owner can move to personal — admins cannot.
-   canMoveToPersonal: canMutate && ctx.canShareProjects && wp.visibility === 'team' && selfCreated,
-    canExport: !frozen && ctx.memberStatus === 'active',
-    canSendTo: !frozen && ctx.memberStatus === 'active',
+    // Team resources cannot move directly into another (Personal) workspace.
+    // The default-team legacy visibility toggle remains in-place only.
+    canMoveToPersonal: canMutate && ctx.isDefaultTeam && ctx.canShareProjects && wp.visibility === 'team' && selfCreated,
+    canExport: canMutate,
+    canSendTo: !frozen && ctx.memberStatus === 'active' && ctx.role !== 'guest',
     canRestoreVersion: canMutate,
     ...(disabledReason ? { disabledReason } : {}),
   };
@@ -2393,10 +2396,11 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
   const defaultMemberId = getTeamMemberId(getDefaultTeamId());
   const isOwner = ownerMemberId === ctx.workspaceMemberId
     || (defaultMemberId != null && ownerMemberId === defaultMemberId);
-  // Rename/delete/restore remain creator-only. Copy is deliberately broader:
-  // any active non-guest Team member may create a new project from this one.
-  const canMutate = canView && isOwner;
-  const canDuplicate = canView && ctx.role !== 'guest';
+   // Content edits, export and review stay creator-only; the team owner/admin
+   // may delete a teammate's project without taking its content ownership.
+   const canMutate = canView && isOwner;
+   const canDelete = canView && (isOwner || ctx.role === 'owner' || ctx.role === 'admin');
+   const canDuplicate = canView && ctx.role !== 'guest';
  const disabledReason = frozen
      ? isWorkspaceLocked(ctx)
        ? 'workspace_locked'
@@ -2407,15 +2411,14 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
    return {
      canOpen: canView,
      canRename: canMutate,
-     canDelete: canMutate,
+      canDelete,
      canDuplicate,
-     // Remote catalog records are always team-shared, so an owner can move
-     // back to personal but never needs a "move to team" affordance.
-     canMoveToTeam: false,
-     // Only the project owner can move to personal — admins cannot.
-     canMoveToPersonal: canView && isOwner && ctx.canShareProjects,
-     canExport: canView,
-     canSendTo: canView,
+      // Remote catalog entries are team-shared. Only the legacy in-place
+      // default-team visibility toggle may return to Personal; team moves do not.
+      canMoveToTeam: false,
+      canMoveToPersonal: canView && isOwner && ctx.isDefaultTeam && ctx.canShareProjects,
+      canExport: canMutate,
+      canSendTo: canView && ctx.role !== 'guest',
      canRestoreVersion: canMutate,
      ...(disabledReason ? { disabledReason } : {}),
    };
@@ -4064,6 +4067,13 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
      const targetWorkspaceId = typeof req.body?.targetWorkspaceId === 'string'
        ? req.body.targetWorkspaceId.trim()
        : null;
+      // Move only reorganizes resources inside their existing workspace.
+      if (targetWorkspaceId && targetWorkspaceId !== ctx.workspaceId) {
+        return sendApiError(res, 403, 'WORKSPACE_ACCESS_DENIED', 'cross-team project moves are forbidden');
+      }
+      if (ctx.workspaceType === 'team' && !ctx.isDefaultTeam && visibility === 'personal') {
+        return sendApiError(res, 403, 'WORKSPACE_ACCESS_DENIED', 'moving to personal space is forbidden');
+      }
      const effectiveWorkspaceId = targetWorkspaceId || ctx.workspaceId;
      // Optional folder target within the (effective) team workspace. When
      // present the project is assigned to this folder after the visibility
@@ -4276,7 +4286,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
     }
     // Commit the local folder only after the authoritative remote folder write
     // succeeds. Personal moves have no remote team catalog to update.
-    if (targetFolderId !== undefined) {
+    if (hasExplicitTargetFolder) {
       setProjectFolder(db, responseWorkspaceId, project.id, targetFolderId);
     } else if (visibility === 'personal') {
       setProjectFolder(db, responseWorkspaceId, project.id, null);
@@ -4360,9 +4370,15 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
       const batchTargetWorkspaceId = typeof req.body?.targetWorkspaceId === 'string'
         ? req.body.targetWorkspaceId.trim()
         : undefined;
+      if (batchTargetWorkspaceId && batchTargetWorkspaceId !== ctx.workspaceId) {
+        return sendApiError(res, 403, 'WORKSPACE_ACCESS_DENIED', 'cross-team project moves are forbidden');
+      }
+      if (ctx.workspaceType === 'team' && !ctx.isDefaultTeam && visibility === 'personal') {
+        return sendApiError(res, 403, 'WORKSPACE_ACCESS_DENIED', 'moving to personal space is forbidden');
+      }
       const batchTargetFolderId = typeof req.body?.targetFolderId === 'string'
         ? req.body.targetFolderId.trim() || null
-        : undefined;
+        : req.body?.targetFolderId === null ? null : undefined;
       const batchCoverDigest = typeof req.body?.coverDigest === 'string'
         ? req.body.coverDigest.trim() || null
         : null;
@@ -6641,6 +6657,29 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
       let project = getProject(db, req.params.id);
       const asserted = workspaceProjectContextFromRequest(req);
       const binding = getWorkspaceProjectByProjectId(db, req.params.id);
+      // Managers may clean up other members' team projects without receiving
+      // permission to edit their content. Require verified exact-team scope.
+      if (asserted && asserted !== 'missing' && hdwCloudClient
+        && typeof hdwCloudClient.getTeamProject === 'function'
+        && typeof hdwCloudClient.removeTeamProject === 'function'
+        && (!project || binding?.createdByWorkspaceMemberId !== asserted.workspaceMemberId)) {
+        const teamCtx = await authoritativeWorkspaceProjectContext(req, res, asserted.workspaceId);
+        if (!teamCtx) return;
+        if (teamCtx.workspaceType === 'team' && !teamCtx.isDefaultTeam
+          && (teamCtx.role === 'owner' || teamCtx.role === 'admin')) {
+          const remote = await hdwCloudClient.getTeamProject(teamCtx.workspaceId, req.params.id);
+          if (remote && remote.ownerMemberId !== teamCtx.workspaceMemberId) {
+            await hdwCloudClient.removeTeamProject(teamCtx.workspaceId, req.params.id, true);
+            if (binding?.workspaceId === teamCtx.workspaceId && project) {
+              await cancelRunsOwnedBy(design.runs, { projectId: req.params.id });
+              dbDeleteProject(db, req.params.id);
+              await removeProjectDir(PROJECTS_DIR, req.params.id).catch(() => {});
+            }
+            collabSync.invalidateTeamProjectCatalog?.();
+            return res.json({ ok: true });
+          }
+        }
+      }
       if (
         asserted && asserted !== 'missing'
         && (

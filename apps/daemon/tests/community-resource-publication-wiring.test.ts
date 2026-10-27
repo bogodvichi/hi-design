@@ -33,7 +33,9 @@ describe('community Skill/MCP/tool publication actions', () => {
     expect(unpublish).toContain(kind === 'mcp'
       ? 'record.ownerMemberId !== authority.scope.principal.memberId'
       : 'record.ownerMemberId !== getOwnerMemberId(req)');
-    expect(unpublish).toContain('{ metadata: record.metadata ?? {}, scope: null }');
+    expect(unpublish).toContain(kind === 'mcp'
+      ? 'unpublishCommunityResource(hdwClient, record'
+      : '{ metadata: record.metadata ?? {}, scope: null }');
 
     const deletionStart = mcpRoutes.indexOf(`app.delete('/api/workspace/${kind}/cloud/:resourceId'`);
     const deletionEnd = kind === 'mcp'
@@ -42,10 +44,10 @@ describe('community Skill/MCP/tool publication actions', () => {
     expect(deletionStart).toBeGreaterThan(-1);
     expect(deletionEnd).toBeGreaterThan(deletionStart);
     const deletion = mcpRoutes.slice(deletionStart, deletionEnd);
-    expect(deletion).toContain('hdwDelete(');
+    expect(deletion).toContain(kind === 'mcp' ? 'hdwClient.removeResource(workspaceId, resourceId)' : 'hdwDelete(');
     if (kind === 'mcp') {
       expect(deletion).toContain("req.query.community === '1'");
-      expect(deletion).toContain("!isCommunityPublicationCopy(record.metadata)");
+      expect(deletion).toContain('unpublishCommunityResource(hdwClient, record');
       expect(deletion).toContain('scope: null');
     }
   });
@@ -57,14 +59,14 @@ describe('community Skill/MCP/tool publication actions', () => {
       "app.delete('/api/workspace/skills/cloud/:resourceId'",
     );
     expect(unpublish).toContain('cloudResource.ownerMemberId !== scope.principal.memberId');
-    expect(unpublish).toContain('{ metadata: cloudResource.metadata ?? {}, scope: null }');
+    expect(unpublish).toContain('unpublishCommunityResource(hdwCloudClient, cloudResource');
 
     const deletion = server.slice(server.indexOf(
       "app.delete('/api/workspace/skills/cloud/:resourceId'",
     ));
     expect(deletion).toContain('hdwCloudClient.removeResource(workspaceId, resourceId)');
     expect(deletion).toContain("req.query.community === '1'");
-    expect(deletion).toContain('!isCommunityPublicationCopy(cloudResource.metadata)');
+    expect(deletion).toContain('unpublishCommunityResource(hdwCloudClient, cloudResource');
     expect(deletion).toContain('scope: null');
   });
 

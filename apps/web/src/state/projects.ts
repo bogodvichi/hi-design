@@ -265,6 +265,34 @@ export async function moveWorkspaceProject(input: {
   return json.project;
 }
 
+/**
+ * Reassign an existing Team project's folder without taking ownership of its
+ * contents. HDW authorizes the signed-in team owner/admin or the creator and
+ * rejects guests, foreign projects and cross-workspace folder targets.
+ *
+ * Unlike /workspaces/:id/projects/:id/move, this metadata-only operation does
+ * not materialize or transfer someone else's resource into the local daemon.
+ */
+export async function moveTeamProjectFolderAssignment(input: {
+  projectId: string;
+  workspaceId: string;
+  targetFolderId: string | null;
+}): Promise<void> {
+  const response = await fetch('/api/hdw/api/folder/project/move', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      workspace_id: input.workspaceId,
+      project_id: input.projectId,
+      folder_id: input.targetFolderId,
+    }),
+  });
+  const body = await response.json().catch(() => null) as { code?: number; error?: string; msg?: string } | null;
+  if (!response.ok || body?.code !== 0) {
+    throw new Error(body?.error || body?.msg || `team project folder move failed (${response.status})`);
+  }
+}
+
 function omitWorkspaceContext<T extends { workspaceContext?: WorkspaceCollabContext | null }>(
   input: T,
 ): Omit<T, 'workspaceContext'> {

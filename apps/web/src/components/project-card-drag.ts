@@ -12,6 +12,8 @@ export interface ProjectCardDragPayload {
   sourceWorkspaceId: string;
   sourceFolderId: string | null;
   canMove: boolean;
+  /** Team manager reorganizing someone else's project: metadata-only path. */
+  managerOnlyFolderMove?: boolean;
 }
 
 export function writeProjectCardDrag(
@@ -48,6 +50,7 @@ export function readProjectCardDrag(dataTransfer: DataTransfer): ProjectCardDrag
       sourceWorkspaceId: value.sourceWorkspaceId,
       sourceFolderId: value.sourceFolderId ?? null,
       canMove: value.canMove,
+      managerOnlyFolderMove: value.managerOnlyFolderMove === true,
     };
   } catch {
     return null;

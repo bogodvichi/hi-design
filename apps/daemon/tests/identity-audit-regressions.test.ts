@@ -199,21 +199,27 @@ describe('identity audit safety invariants', () => {
     expect(publish.mock.calls[0]?.[1]).not.toBe(publish.mock.calls[1]?.[1]);
   });
 
-  function mcpFixture(authorized = false, teamId = 'shared', memberId = 'alice', owner = 'bob') {
+  function mcpFixture(authorized = false, teamId = 'shared', memberId = 'alice', owner = 'bob', missingCloud = false) {
     const r = router();
     const resolveScope = vi.fn(async () => authorized
       ? { ok: true, scope: { principal: { ...principal, teamId, memberId }, canShare: true } }
       : { ok: false, status: 403, code: 'WORKSPACE_ACCESS_DENIED' });
-    const getResource = vi.fn(async (_workspace: string, id: string) => ({ id, ownerMemberId: owner, scope: 'public', metadata: {
+    const getResource = vi.fn(async (_workspace: string, id: string) => missingCloud ? null : ({ id, ownerMemberId: owner, scope: 'public', metadata: {
       id: 'same-slug', label: 'Different MCP', transport: 'http', url: 'https://different.invalid/mcp',
     } }));
+    const request = vi.fn(async (_method: string, _path: string, body: any) => ({
+      status: 200, etag: null,
+      payload: { code: 0, data: { resource: { id: 'new', kind: 'mcp',
+        ownerMemberId: memberId, metadata: body?.metadata ?? {} } } },
+    }));
+    const removeResource = vi.fn(async () => {});
     registerMcpRoutes(r.app, {
       http: { isLocalSameOrigin: () => true, resolvedPortRef: { current: 1 } },
       paths: { RUNTIME_DATA_DIR: dir, OD_BIN: '', PROJECTS_DIR: '' },
       mcp: { pendingAuth: new Map(), daemonUrlRef: { current: '' } },
-      hdwClient: { getResource }, cloudResourceAccess: { resolveScope },
+      hdwClient: { getResource, request, removeResource }, cloudResourceAccess: { resolveScope },
     } as unknown as RegisterMcpRoutesDeps);
-    return { ...r, resolveScope };
+    return { ...r, resolveScope, getResource, request, removeResource };
   }
 
   it('rejects MCP deletion when the caller claims someone else member ID', async () => {
@@ -226,15 +232,15 @@ describe('identity audit safety invariants', () => {
   });
 
   it('strips credential placeholders before public MCP creation', async () => {
-    hdw.post.mockResolvedValue({ resource: { id: 'new', metadata: {} } });
     const r = mcpFixture(true);
     await r.call('post', '/api/workspace/mcp/cloud', { headers: { 'x-od-workspace-id': 'shared', 'x-od-workspace-member-id': 'alice' },
       body: { scope: 'public', template: { id: 'mcp', label: 'MCP', transport: 'http', url: 'https://mcp.invalid', headerFields: [
         { key: 'Authorization', placeholder: 'audit-fake-secret', secret: false },
       ] } },
     });
-    expect(hdw.post).toHaveBeenCalledTimes(1);
-    expect(JSON.stringify(hdw.post.mock.calls)).not.toContain('audit-fake-secret');
+    expect(r.request).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify(r.request.mock.calls)).not.toContain('audit-fake-secret');
+    expect(r.request.mock.calls[0]?.[2]?.metadata).toMatchObject({ publicationSourceType: 'local_import' });
   });
 
   it('does not uninstall a different MCP with the same slug in another workspace', async () => {
@@ -245,6 +251,29 @@ describe('identity audit safety invariants', () => {
     });
     expect(res.statusCode).toBe(200);
     expect((await readMcpConfig(dir)).servers.map((s) => s.id)).toContain('same-slug');
+  });
+
+
+  it('disconnects the exact locally installed MCP after its community cloud record was cancelled', async () => {
+    await writeMcpConfig(dir, { servers: [
+      { id: 'mine', templateId: 'same-slug', label: 'Mine', transport: 'http',
+        url: 'https://mine.invalid/mcp', enabled: true, workspaceId: 'shared',
+        ownerMemberId: 'alice', cloudResourceId: 'gone-publication', cloudHomeWorkspaceId: 'source-team' },
+      { id: 'others', templateId: 'same-slug', label: 'Others', transport: 'http',
+        url: 'https://other.invalid/mcp', enabled: true, workspaceId: 'another-team',
+        ownerMemberId: 'bob', cloudResourceId: 'gone-publication', cloudHomeWorkspaceId: 'source-team' },
+    ] });
+    await setToken(dir, 'mine', { accessToken: 'audit-fake-access-token', tokenType: 'Bearer', savedAt: 1 });
+    const r = mcpFixture(true, 'shared', 'alice', 'bob', true);
+    const res = await r.call('delete', '/api/workspace/mcp/cloud/:resourceId/uninstall', {
+      params: { resourceId: 'gone-publication' },
+      query: { home_workspace_id: 'source-team' },
+      headers: { 'x-od-workspace-id': 'shared', 'x-od-workspace-member-id': 'alice' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect((await readMcpConfig(dir)).servers.map(s => s.id)).toEqual(['others']);
+    await expect(getToken(dir, 'mine')).resolves.toBeNull();
+    expect(r.getResource).not.toHaveBeenCalled();
   });
 
   it('removes the exact local MCP and token after permanent cloud deletion', async () => {
@@ -282,6 +311,7 @@ describe('identity audit safety invariants', () => {
     });
 
     expect(res.statusCode).toBe(200);
+    expect(r.removeResource).toHaveBeenCalledWith('shared', 'cloud-resource');
     expect((await readMcpConfig(dir)).servers.map((server) => server.id)).toEqual([
       'other-workspace-same-slug',
       'unrelated',
@@ -310,8 +340,8 @@ describe('identity audit safety invariants', () => {
       headers: { 'x-od-workspace-id': 'shared', 'x-od-workspace-member-id': 'alice' },
     });
 
-    expect(res.body).toEqual({ ok: true, originalPreserved: true });
-    expect(hdw.delete).not.toHaveBeenCalled();
+    expect(res.body).toEqual({ ok: true, sourceType: 'legacy' });
+    expect(r.removeResource).not.toHaveBeenCalled();
     expect((await readMcpConfig(dir)).servers.map((server) => server.id)).toEqual(['cloud-resource']);
     await expect(getToken(dir, 'cloud-resource')).resolves.toMatchObject({
       accessToken: 'audit-fake-access-token',

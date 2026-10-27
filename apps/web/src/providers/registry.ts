@@ -589,7 +589,9 @@ export async function uploadSkillToCloud(
       return {
         error: {
           code: 'upload_error',
-          message: payload?.error ?? payload?.message ?? `Upload failed (${resp.status}).`,
+          message: resp.status === 409 && payload?.error === 'RESOURCE_NAME_CONFLICT'
+            ? '平台中已有相同 Skill，请重新命名。'
+            : payload?.message ?? payload?.error ?? `Upload failed (${resp.status}).`,
         },
       };
     }

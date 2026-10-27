@@ -142,7 +142,9 @@ export function AddMcpDialog({ open, onClose, scope, onAdded, workspaceContext: 
 
       if (!res.ok) {
         const body = await res.json().catch(() => null);
-        throw new Error(body?.error ?? 'Create failed');
+        throw new Error(res.status === 409 && body?.error === 'RESOURCE_NAME_CONFLICT'
+          ? t('personalScope.mcpDuplicateLabel')
+          : body?.message ?? body?.error ?? 'Create failed');
       }
 
        const data = await res.json().catch(() => null) as {

@@ -1,10 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import type { HdwCloudClient, HdwResourceRecord } from '../../src/integrations/hdw-cloud.js';
+import { HdwCloudError, type HdwCloudClient, type HdwResourceRecord } from '../../src/integrations/hdw-cloud.js';
 import type { TeamResourceRequestScope } from '../../src/collab/team-resource-share.js';
 import {
   COMMUNITY_SOURCE_RESOURCE_ID,
   isCommunityPublicationCopy,
   publishCommunityResourceCopy,
+  SourceSkillSnapshotUnavailableError,
 } from '../../src/collab/community-resource-copy.js';
 
 const scope: TeamResourceRequestScope = {
@@ -110,6 +111,43 @@ describe('community Skill/MCP copy isolation', () => {
     expect(removeResource).toHaveBeenCalledTimes(1);
     expect(removeResource.mock.calls[0]?.[1]).toMatch(/^community-skill-/u);
     expect(source.scope).toBeNull();
+  });
+
+
+  it('rejects a missing Skill manifest before creating a community resource', async () => {
+    const client = {
+      getResource: vi.fn(async () => original('skill')),
+      pullResource: vi.fn(async () => {
+        throw new HdwCloudError(500, 'internal_error',
+          "ENOENT: no such file or directory, open 'D:\\private\\blobs\\missing'");
+      }),
+      publishResource: vi.fn(), removeResource: vi.fn(),
+    } as unknown as HdwCloudClient;
+    const publish = publishCommunityResourceCopy({
+      client, kind: 'skill', sourceResourceId: 'skill-original', scope,
+      metadata: source => ({ ...(source.metadata ?? {}) }),
+    });
+    await expect(publish).rejects.toBeInstanceOf(SourceSkillSnapshotUnavailableError);
+    await expect(publish).rejects.toThrow('源 Skill 文件不完整');
+    expect(client.publishResource).not.toHaveBeenCalled();
+    expect(client.removeResource).not.toHaveBeenCalled();
+  });
+
+  it('rejects a source Skill whose referenced blobs are missing before publish', async () => {
+    const client = {
+      getResource: vi.fn(async () => original('skill')),
+      pullResource: vi.fn(async () => ({
+        manifest: { entries: [{ path: 'SKILL.md', digest: 'missing', size: 8 }] },
+        version: 1, missingBlobs: ['missing'],
+      })),
+      publishResource: vi.fn(), removeResource: vi.fn(),
+    } as unknown as HdwCloudClient;
+    await expect(publishCommunityResourceCopy({
+      client, kind: 'skill', sourceResourceId: 'skill-original', scope,
+      metadata: source => ({ ...(source.metadata ?? {}) }),
+    })).rejects.toBeInstanceOf(SourceSkillSnapshotUnavailableError);
+    expect(client.publishResource).not.toHaveBeenCalled();
+    expect(client.removeResource).not.toHaveBeenCalled();
   });
 
   it('blocks publishing someone else\'s source and prevents re-publishing a community copy', async () => {

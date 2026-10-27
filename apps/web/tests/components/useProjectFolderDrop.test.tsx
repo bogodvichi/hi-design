@@ -14,11 +14,13 @@ import { useProjectFolderDrop } from '../../src/components/useProjectFolderDrop'
 
 const mocks = vi.hoisted(() => ({
   moveWorkspaceProject: vi.fn(),
+  moveTeamProjectFolderAssignment: vi.fn(),
   notifyTeamProjectsChanged: vi.fn(),
 }));
 
 vi.mock('../../src/state/projects', () => ({
   moveWorkspaceProject: mocks.moveWorkspaceProject,
+  moveTeamProjectFolderAssignment: mocks.moveTeamProjectFolderAssignment,
 }));
 
 vi.mock('../../src/collab/useWorkspaceContext', () => ({
@@ -57,7 +59,7 @@ const workspaceContext = {
   workspaceId: 'workspace-1',
 } as WorkspaceCollabContext;
 
-function Harness({ canMove }: { canMove: boolean }) {
+function Harness({ canMove, managerOnlyFolderMove = false }: { canMove: boolean; managerOnlyFolderMove?: boolean }) {
   const { activeFolderId, feedback, getFolderDropProps } = useProjectFolderDrop({
     workspaceId: 'workspace-1',
     workspaceContext,
@@ -80,6 +82,7 @@ function Harness({ canMove }: { canMove: boolean }) {
           sourceWorkspaceId: 'workspace-1',
           sourceFolderId: 'folder-1',
           canMove,
+          managerOnlyFolderMove,
         })}
       />
       {feedback}
@@ -135,6 +138,7 @@ function CrossWorkspaceHarness({
 describe('useProjectFolderDrop', () => {
   beforeEach(() => {
     mocks.moveWorkspaceProject.mockReset().mockResolvedValue(undefined);
+    mocks.moveTeamProjectFolderAssignment.mockReset().mockResolvedValue(undefined);
     mocks.notifyTeamProjectsChanged.mockReset();
   });
 
@@ -169,6 +173,20 @@ describe('useProjectFolderDrop', () => {
     window.removeEventListener(PROJECT_CARD_MOVE_RESULT_EVENT, onMoveResult);
   });
 
+  it('uses the HDW metadata-only move when a manager organizes another member project', async () => {
+    render(<Harness canMove managerOnlyFolderMove />);
+    const dataTransfer = createDataTransfer();
+    fireEvent.dragStart(screen.getByTestId('drag-source'), { dataTransfer });
+    fireEvent.drop(screen.getByTestId('target-folder'), { dataTransfer });
+    await waitFor(() => expect(mocks.moveTeamProjectFolderAssignment).toHaveBeenCalledWith({
+      projectId: 'project-1',
+      workspaceId: 'workspace-1',
+      targetFolderId: 'folder-2',
+    }));
+    expect(mocks.moveWorkspaceProject).not.toHaveBeenCalled();
+    expect(await screen.findByText('已移动至「团队名称/路径/路径」')).toBeInTheDocument();
+  });
+
   it('does not send a move request when the project has no permission', async () => {
     const moveResults: ProjectCardMoveResultDetail[] = [];
     const onMoveResult = (event: Event) => {
@@ -188,26 +206,19 @@ describe('useProjectFolderDrop', () => {
     window.removeEventListener(PROJECT_CARD_MOVE_RESULT_EVENT, onMoveResult);
   });
 
-  it('moves a project across workspaces into a navigation root', async () => {
+  it('blocks a cross-workspace project drop even when the target looks writable', async () => {
     render(<CrossWorkspaceHarness />);
     const dataTransfer = createDataTransfer();
     fireEvent.dragStart(screen.getByTestId('cross-workspace-source'), { dataTransfer });
     fireEvent.dragOver(screen.getByTestId('personal-root'), { dataTransfer });
     expect(screen.getByTestId('personal-root')).toHaveAttribute('data-active', 'true');
-
     fireEvent.drop(screen.getByTestId('personal-root'), { dataTransfer });
 
-    await waitFor(() => expect(mocks.moveWorkspaceProject).toHaveBeenCalledWith({
-      projectId: 'project-1',
-      visibility: 'personal',
-      workspaceContext,
-      targetWorkspaceId: 'personal-workspace',
-      targetFolderId: null,
-    }));
-    expect(await screen.findByText('已移动至「个人」')).toBeInTheDocument();
+    expect(await screen.findByText('移动失败，无权限')).toBeInTheDocument();
+    expect(mocks.moveWorkspaceProject).not.toHaveBeenCalled();
   });
 
-  it('uses the source workspace identity when the current workspace context is stale', async () => {
+  it('rejects cross-workspace moves even when the source identity is correctly resolved', async () => {
     const stalePersonalContext = {
       workspaceId: 'personal-workspace',
       workspaceType: 'personal',
@@ -231,14 +242,8 @@ describe('useProjectFolderDrop', () => {
     fireEvent.dragStart(screen.getByTestId('cross-workspace-source'), { dataTransfer });
     fireEvent.drop(screen.getByTestId('personal-root'), { dataTransfer });
 
-    await waitFor(() => expect(mocks.moveWorkspaceProject).toHaveBeenCalledWith({
-      projectId: 'project-1',
-      visibility: 'personal',
-      workspaceContext: sourceTeamContext,
-      targetWorkspaceId: 'personal-workspace',
-      targetFolderId: null,
-    }));
-    expect(await screen.findByText('已移动至「个人」')).toBeInTheDocument();
+    expect(await screen.findByText('移动失败，无权限')).toBeInTheDocument();
+    expect(mocks.moveWorkspaceProject).not.toHaveBeenCalled();
   });
 
   it('shows permission feedback for a read-only navigation destination', async () => {

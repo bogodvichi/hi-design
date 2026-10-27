@@ -19,7 +19,6 @@ import { PersonPicker, type Person } from './PersonPicker';
 import { getStoredUserInfo } from '../auth/auth';
 import { shareProjectToSharedSpace } from '../collab/shared-space-catalog';
 import { workspaceProjectHeaders } from '../collab/workspace-identity';
-import { moveWorkspaceProject } from '../state/projects';
 import styles from './UnifiedShareDialog.module.css';
 
 type ShareTab = 'community' | 'file' | 'link';
@@ -40,6 +39,7 @@ interface UnifiedShareDialogProps {
   workspaceContext: WorkspaceCollabContext | null;
   canPublishToCommunity?: boolean;
   canShareFile?: boolean;
+  canGenerateLink?: boolean;
   onShared?: () => void;
   onClose: () => void;
 }
@@ -76,6 +76,7 @@ export function UnifiedShareDialog({
   workspaceContext,
   canPublishToCommunity = true,
   canShareFile = true,
+  canGenerateLink = true,
   onShared,
   onClose,
 }: UnifiedShareDialogProps) {
@@ -241,42 +242,16 @@ export function UnifiedShareDialog({
  }
 
  async function handleGenerateLink() {
+   if (!canGenerateLink) return;
    setLinkError(null);
    setLinkGenerating(true);
    setSharingToTeam(false);
    try {
-     // Before generating a public share link, the project must live in the
-     // shared space (team visibility) so HDW can serve it to anonymous
-     // viewers. Query the project's workspace scope; if it is not already
-     // 'team', promote it first — the move route pushes content to HDW.
-     if (workspaceContext) {
-       let needsTeamShare = true;
-       try {
-         const scopeResp = await fetch(
-           `/api/projects/${encodeURIComponent(projectId)}/workspace-scope`,
-           { headers: workspaceProjectHeaders(workspaceContext) },
-         );
-         if (scopeResp.ok) {
-           const scopeData = (await scopeResp.json()) as { scope?: { visibility?: string } };
-           if (scopeData.scope?.visibility === 'team') {
-             needsTeamShare = false;
-           }
-         }
-       } catch {
-         // Scope query failed — assume team share is needed and let the
-         // move route reject if the project is already team-visible.
-       }
-       if (needsTeamShare) {
-         setSharingToTeam(true);
-         await moveWorkspaceProject({
-           projectId,
-           visibility: 'team',
-           workspaceContext,
-          });
-          onShared?.();
-          setSharingToTeam(false);
-       }
-     }
+      // Generating a link is a sharing operation, not a workspace transfer.
+      // In particular, another team member's read-only local mirror may not
+      // have a workspace-scope record at all. Never silently promote/move
+      // a project to a different visibility or workspace here; HDW verifies
+      // that this exact project already belongs to the requested workspace.
      const resp = await fetch('/api/hdw/api/share-link/generate', {
        method: 'POST',
        headers: {
@@ -501,7 +476,7 @@ const footerActionDisabled =
               </>
             )}
            {!shareLink && !linkLoading && !linkGenerating && !sharingToTeam && !linkError && (
-             <p className={styles.linkHint}>{t('share.generateLinkHint')}</p>
+             <p className={styles.linkHint}>{canGenerateLink ? t('share.generateLinkHint') : '暂无分享链接，请联系团队成员生成'}</p>
            )}
           </div>
         )}
@@ -511,13 +486,15 @@ const footerActionDisabled =
         <Button onClick={onClose} className={styles.footerSecondary}>
           {t('share.close')}
         </Button>
-        <Button
-          onClick={handleFooterAction}
-          disabled={footerActionDisabled}
-          className={styles.footerAction}
-        >
-          {footerActionLabel}
-        </Button>
+        {(activeTab !== 'link' || canGenerateLink) ? (
+          <Button
+            onClick={handleFooterAction}
+            disabled={footerActionDisabled}
+            className={styles.footerAction}
+          >
+            {footerActionLabel}
+          </Button>
+        ) : null}
       </DialogFooter>
     </Dialog>,
     document.body,

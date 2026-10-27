@@ -266,7 +266,7 @@ export function TeamSpaceView({ teamId, tab, onInvite, designSystems = [], onOpe
             <span>{t('teamSpace.inviteMember')}</span>
           </button>
         ) : null}
-        {canManageWorkspace && activeTab === 'skill' ? (
+        {canCreateWorkspaceContent && activeTab === 'skill' ? (
           <button
             type="button"
             className={styles.outlineBtn}
@@ -276,7 +276,7 @@ export function TeamSpaceView({ teamId, tab, onInvite, designSystems = [], onOpe
             <span>{t('personalScope.addSkill')}</span>
           </button>
         ) : null}
-        {canManageWorkspace && activeTab === 'mcp' ? (
+        {canCreateWorkspaceContent && activeTab === 'mcp' ? (
           <button
             type="button"
             className={styles.outlineBtn}
@@ -329,6 +329,7 @@ export function TeamSpaceView({ teamId, tab, onInvite, designSystems = [], onOpe
             workspaceMemberId={operator?.memberId ?? null}
             workspaceType={teamWorkspaceType}
             mode="team"
+            memberRole={operator?.role ?? undefined}
           />
         ) : null}
         {activeTab === 'mcp' ? (
@@ -337,6 +338,7 @@ export function TeamSpaceView({ teamId, tab, onInvite, designSystems = [], onOpe
             workspaceMemberId={operator?.memberId ?? null}
             workspaceType={teamWorkspaceType}
             mode="team"
+            memberRole={operator?.role ?? undefined}
           />
         ) : null}
       </div>
@@ -379,9 +381,104 @@ interface TeamFolderItem {
   folderId: string;
   folderName: string;
   projectCount: number;
+  ownerMemberId: string | null;
   subfolderCount: number;
   subfolderPreview: Array<{ name: string; kind: 'folder' | 'project'; coverDigest?: string | null }>;
   createdAt: string;
+}
+
+interface TeamFolderDeleteImpact { folderCount: number; projectCount: number }
+
+async function readTeamFolderDeleteImpact(workspaceId: string, folderId: string): Promise<TeamFolderDeleteImpact> {
+  const params = new URLSearchParams({ workspace_id: workspaceId, folder_id: folderId });
+  const response = await fetch(`/api/hdw/api/folder/tree?${params}`, { cache: 'no-store' });
+  if (!response.ok) throw new Error('Folder tree unavailable');
+  const body = await response.json();
+  if (body?.code !== 0 || !Array.isArray(body?.data?.folders) || !body.data.folders.length) {
+    throw new Error('Folder tree unavailable');
+  }
+  const nodes = body.data.folders as Array<{ projectIds?: string[] }>;
+  return {
+    folderCount: Math.max(0, nodes.length - 1),
+    projectCount: new Set(nodes.flatMap((node) => node.projectIds ?? [])).size,
+  };
+}
+
+function teamFolderDeleteUrl(folderId: string, memberId: string, impact: TeamFolderDeleteImpact): string {
+  const params = new URLSearchParams({ operator_member_id: memberId });
+  if (impact.folderCount > 0 || impact.projectCount > 0) {
+    params.set('recursive', '1');
+    params.set('expected_folders', String(impact.folderCount));
+    params.set('expected_projects', String(impact.projectCount));
+  }
+  return `/api/hdw/api/folder/${encodeURIComponent(folderId)}?${params}`;
+}
+
+function useTeamFolderDeleteImpact(teamId: string | undefined, folderId: string | null) {
+  const [state, setState] = useState<{ folderId: string; impact: TeamFolderDeleteImpact | 'error' } | null>(null);
+  useEffect(() => {
+    if (!teamId || !folderId) { setState(null); return; }
+    let active = true;
+    setState(null);
+    void readTeamFolderDeleteImpact(teamId, folderId).then(
+      (impact) => { if (active) setState({ folderId, impact }); },
+      () => { if (active) setState({ folderId, impact: 'error' }); },
+    );
+    return () => { active = false; };
+  }, [teamId, folderId]);
+  return state?.folderId === folderId ? state.impact : null;
+}
+
+interface TeamFolderBulkDeleteImpact {
+  byId: Record<string, TeamFolderDeleteImpact>;
+  folderCount: number;
+  projectCount: number;
+}
+
+/** Snapshot impact before allowing confirmation; backend rechecks counts. */
+function useTeamFolderBulkDeleteImpact(teamId: string | undefined, selectedIds: ReadonlySet<string>) {
+  const idsKey = `${teamId ?? ''}:${[...selectedIds].sort().join('|')}`;
+  const [state, setState] = useState<{ key: string; impact: TeamFolderBulkDeleteImpact | 'error' } | null>(null);
+  useEffect(() => {
+    if (!teamId || !selectedIds.size) { setState(null); return; }
+    let active = true;
+    const folderIds = [...selectedIds];
+    setState(null);
+    void Promise.all(folderIds.map(async (id) => [id, await readTeamFolderDeleteImpact(teamId, id)] as const)).then(
+      (entries) => {
+        if (!active) return;
+        setState({ key: idsKey, impact: {
+          byId: Object.fromEntries(entries),
+          folderCount: entries.reduce((sum, [, impact]) => sum + impact.folderCount, 0),
+          projectCount: entries.reduce((sum, [, impact]) => sum + impact.projectCount, 0),
+        } });
+      },
+      () => { if (active) setState({ key: idsKey, impact: 'error' }); },
+    );
+    return () => { active = false; };
+  }, [teamId, idsKey]);
+  return state?.key === idsKey ? state.impact : null;
+}
+
+async function deleteSelectedTeamFolders(input: {
+  memberId: string;
+  folders: readonly TeamFolderItem[];
+  selectedIds: ReadonlySet<string>;
+  impact: TeamFolderBulkDeleteImpact;
+}): Promise<Set<string>> {
+  const selected = input.folders.filter((folder) => input.selectedIds.has(folder.folderId));
+  const succeeded = await Promise.all(selected.map(async (folder) => {
+    const impact = input.impact.byId[folder.folderId];
+    if (!impact) return null;
+    try {
+      const response = await fetch(teamFolderDeleteUrl(folder.folderId, input.memberId, impact), { method: 'DELETE' });
+      const body = await response.json().catch(() => null);
+      return response.ok && body?.code === 0 ? folder.folderId : null;
+    } catch {
+      return null;
+    }
+  }));
+  return new Set(succeeded.filter((id): id is string => id !== null));
 }
 
 function isTeamFolderEmpty(folder: TeamFolderItem): boolean {
@@ -598,9 +695,13 @@ function ProjectsPanel({
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<TeamFolderItem | null>(null);
+  const removeImpact = useTeamFolderDeleteImpact(teamId, removeTarget?.folderId ?? null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+  useEffect(() => setRemoveError(null), [removeTarget?.folderId]);
   const [removing, setRemoving] = useState(false);
   const [folderSelectionMode, setFolderSelectionMode] = useState(false);
   const [selectedFolderIds, setSelectedFolderIds] = useState<Set<string>>(() => new Set());
+  const bulkDeleteImpact = useTeamFolderBulkDeleteImpact(teamId, selectedFolderIds);
   const [bulkbarEl, setBulkbarEl] = useState<HTMLDivElement | null>(null);
   const {
     activeFolderId: projectDropFolderId,
@@ -656,6 +757,7 @@ function ProjectsPanel({
       setFolders(list.map((f) => ({
         folderId: f.folder_id || f.id || '',
         folderName: f.folder_name || f.name || '',
+        ownerMemberId: f.owner_member_id ?? null,
         projectCount: counts[f.folder_id || f.id || ''] ?? (Number(f.project_count) || 0),
          subfolderCount: Number(f.subfolder_count) || 0,
          subfolderPreview: Array.isArray(f.subfolder_preview)
@@ -751,48 +853,33 @@ function ProjectsPanel({
 
   async function confirmRemoveGroup() {
     const folder = removeTarget;
-    if (!folder || !teamId || !operatorMemberId) return;
+    if (!folder || !teamId || !operatorMemberId || !removeImpact || removeImpact === 'error') return;
     setRemoving(true);
-    setRemoveTarget(null);
-    // Optimistic removal.
-    setFolders((prev) => prev.filter((f) => f.folderId !== folder.folderId));
+    setRemoveError(null);
     try {
-      const res = await fetch(
-        `/api/hdw/api/folder/${folder.folderId}?operator_member_id=${encodeURIComponent(operatorMemberId)}`,
-        { method: 'DELETE' },
-      );
+      const res = await fetch(teamFolderDeleteUrl(folder.folderId, operatorMemberId, removeImpact), { method: 'DELETE' });
       const body = await res.json().catch(() => null);
       if (!res.ok || body?.code !== 0) {
-        // Re-add on failure.
-        setFolders((prev) => [...prev, folder]);
-      } else {
-        window.dispatchEvent(new CustomEvent('hdw:folders-updated', { detail: { teamId } }));
+        setRemoveError(body?.error === 'FOLDER_CONTENT_CHANGED'
+          ? '文件夹内容已变化，请重新打开删除确认。'
+          : body?.error || '删除失败，请重试。');
+        return;
       }
+      setFolders((prev) => prev.filter((f) => f.folderId !== folder.folderId));
+      setRemoveTarget(null);
+      window.dispatchEvent(new CustomEvent('hdw:folders-updated', { detail: { teamId } }));
     } catch {
-      setFolders((prev) => [...prev, folder]);
+      setRemoveError('网络异常，删除失败，请重试。');
     } finally {
       setRemoving(false);
     }
   }
 
   async function deleteSelectedFolders(): Promise<number> {
-    if (!operatorMemberId || selectedFolderIds.size === 0) return 0;
-    const ids = folders
-      .filter((folder) => selectedFolderIds.has(folder.folderId) && isTeamFolderEmpty(folder))
-      .map((folder) => folder.folderId);
-    const results = await Promise.all(ids.map(async (folderId) => {
-      try {
-        const res = await fetch(
-          `/api/hdw/api/folder/${encodeURIComponent(folderId)}?operator_member_id=${encodeURIComponent(operatorMemberId)}`,
-          { method: 'DELETE' },
-        );
-        const body = await res.json().catch(() => null);
-        return res.ok && body?.code === 0 ? folderId : null;
-      } catch {
-        return null;
-      }
-    }));
-    const deletedIds = new Set(results.filter((id): id is string => id !== null));
+    if (!teamId || !operatorMemberId || !selectedFolderIds.size || !bulkDeleteImpact || bulkDeleteImpact === 'error') return 0;
+    const deletedIds = await deleteSelectedTeamFolders({
+      memberId: operatorMemberId, folders, selectedIds: selectedFolderIds, impact: bulkDeleteImpact,
+    });
     if (deletedIds.size > 0) {
       setFolders((current) => current.filter((folder) => !deletedIds.has(folder.folderId)));
       window.dispatchEvent(new CustomEvent('hdw:folders-updated', { detail: { teamId } }));
@@ -969,11 +1056,11 @@ function ProjectsPanel({
              <FolderSelectionCheck selected={selected} />
            ) : canShare ? (
              <FolderCardMenu
-                onRename={canManage ? () => startFolderRename(folder) : undefined}
+                onRename={canManage || (operatorMemberId != null && operatorMemberId === folder.ownerMemberId) ? () => startFolderRename(folder) : undefined}
                renameLabel={t('common.rename')}
                onMove={canManage ? () => setMoveFolderTarget(folder) : undefined}
                moveLabel={t('designFiles.move')}
-               onDelete={canManage && isTeamFolderEmpty(folder) ? () => setRemoveTarget(folder) : undefined}
+               onDelete={canManage || (isTeamFolderEmpty(folder) && operatorMemberId != null && operatorMemberId === folder.ownerMemberId) ? () => setRemoveTarget(folder) : undefined}
                deleteLabel={t('teamSpace.deleteGroup')}
                onShare={() => setShareFolderTarget(folder)}
                shareLabel={t('sharedSpace.shareFolderMenuLabel')}
@@ -1086,7 +1173,11 @@ function ProjectsPanel({
         selectionExtension={{
           selectedCount: selectedFolderIds.size,
           selectedLabels: folders.filter((folder) => selectedFolderIds.has(folder.folderId)).map((folder) => folder.folderName),
-          hideDelete: folders.some((folder) => selectedFolderIds.has(folder.folderId) && !isTeamFolderEmpty(folder)),
+          blocksDelete: selectedFolderIds.size > 0 && (!bulkDeleteImpact || bulkDeleteImpact === 'error'),
+          deleteConfirmDescription: bulkDeleteImpact && bulkDeleteImpact !== 'error' && selectedFolderIds.size > 0
+            ? `确定删除所选 ${selectedFolderIds.size} 个文件夹吗？其下还有 ${bulkDeleteImpact.folderCount} 个子文件夹、${bulkDeleteImpact.projectCount} 个项目，全部将同步删除。`
+            : undefined,
+          hideDelete: folders.some((folder) => selectedFolderIds.has(folder.folderId) && !(canManage || (isTeamFolderEmpty(folder) && operatorMemberId === folder.ownerMemberId))),
           onMoveSelected: moveSelectedFolders,
           moveTreeMode: 'unified',
           restrictMoveToWorkspaceId: teamId,
@@ -1140,12 +1231,19 @@ function ProjectsPanel({
                 <Icon name="close" size={14} />
               </button>
               <h3 className={styles.confirmTitle}>{t('teamSpace.deleteFolderConfirmTitle')}</h3>
-              <p className={styles.confirmMsg}>{t('teamSpace.deleteFolderConfirmMsg', { name: removeTarget.folderName })}</p>
+              <p className={styles.confirmMsg}>{removeImpact === null
+                ? '正在检查文件夹包含的内容…'
+                : removeImpact === 'error'
+                  ? '无法确认文件夹内容，请重试。'
+                  : removeImpact.folderCount || removeImpact.projectCount
+                    ? `删除「${removeTarget.folderName}」会同步删除 ${removeImpact.folderCount} 个子文件夹和 ${removeImpact.projectCount} 个项目，可能影响其他成员，请确认。`
+                    : t('teamSpace.deleteFolderConfirmMsg', { name: removeTarget.folderName })}</p>
+              {removeError ? <p className={styles.roleError} role="alert">{removeError}</p> : null}
               <div className={styles.confirmActions}>
                 <button type="button" className={styles.confirmCancel} onClick={() => setRemoveTarget(null)}>
                   {t('teamSpace.removeCancelBtn')}
                 </button>
-                <button type="button" className={`${styles.confirmOk} ${styles.confirmDanger}`} onClick={confirmRemoveGroup} disabled={removing}>
+                <button type="button" className={`${styles.confirmOk} ${styles.confirmDanger}`} onClick={confirmRemoveGroup} disabled={removing || !removeImpact || removeImpact === 'error'}>
                   {t('teamSpace.deleteFolder')}
                 </button>
               </div>
@@ -1652,7 +1750,6 @@ export function FolderView({ teamId, folderId, designSystems = [], onOpenProject
   const operatorRole = operator?.role ?? null;
   const canCreateProjects =
     operatorRole === 'owner' || operatorRole === 'admin' || operatorRole === 'member';
-  const canManageFolders = operatorRole === 'owner' || operatorRole === 'admin';
 
  if (loading) {
     return (
@@ -1702,7 +1799,7 @@ export function FolderView({ teamId, folderId, designSystems = [], onOpenProject
             <span>{t('entry.navNewProject')}</span>
           </button>
         ) : null}
-        {canManageFolders ? (
+        {canCreateProjects ? (
           <button
             type="button"
             className={styles.outlineBtn}
@@ -1786,9 +1883,13 @@ function FoldersPanel({
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<TeamFolderItem | null>(null);
+  const removeImpact = useTeamFolderDeleteImpact(teamId, removeTarget?.folderId ?? null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+  useEffect(() => setRemoveError(null), [removeTarget?.folderId]);
   const [removing, setRemoving] = useState(false);
   const [folderSelectionMode, setFolderSelectionMode] = useState(false);
   const [selectedFolderIds, setSelectedFolderIds] = useState<Set<string>>(() => new Set());
+  const bulkDeleteImpact = useTeamFolderBulkDeleteImpact(teamId, selectedFolderIds);
   const [bulkbarEl, setBulkbarEl] = useState<HTMLDivElement | null>(null);
   const {
     activeFolderId: projectDropFolderId,
@@ -1846,6 +1947,7 @@ function FoldersPanel({
        setFolders(list.map((f) => ({
          folderId: f.folder_id || f.id || '',
          folderName: f.folder_name || f.name || '',
+         ownerMemberId: f.owner_member_id ?? null,
          projectCount: counts[f.folder_id || f.id || ''] ?? (Number(f.project_count) || 0),
           subfolderCount: Number(f.subfolder_count) || 0,
           subfolderPreview: Array.isArray(f.subfolder_preview)
@@ -1942,46 +2044,33 @@ function FoldersPanel({
 
   async function confirmRemoveFolder() {
     const folder = removeTarget;
-    if (!folder || !teamId || !operatorMemberId) return;
+    if (!folder || !teamId || !operatorMemberId || !removeImpact || removeImpact === 'error') return;
     setRemoving(true);
-    setRemoveTarget(null);
-    setFolders((prev) => prev.filter((f) => f.folderId !== folder.folderId));
+    setRemoveError(null);
     try {
-      const res = await fetch(
-        `/api/hdw/api/folder/${folder.folderId}?operator_member_id=${encodeURIComponent(operatorMemberId)}`,
-        { method: 'DELETE' },
-      );
+      const res = await fetch(teamFolderDeleteUrl(folder.folderId, operatorMemberId, removeImpact), { method: 'DELETE' });
       const body = await res.json().catch(() => null);
       if (!res.ok || body?.code !== 0) {
-        setFolders((prev) => [...prev, folder]);
-      } else {
-        window.dispatchEvent(new CustomEvent('hdw:subfolders-updated', { detail: { teamId, folderId } }));
+        setRemoveError(body?.error === 'FOLDER_CONTENT_CHANGED'
+          ? '文件夹内容已变化，请重新打开删除确认。'
+          : body?.error || '删除失败，请重试。');
+        return;
       }
+      setFolders((prev) => prev.filter((f) => f.folderId !== folder.folderId));
+      setRemoveTarget(null);
+      window.dispatchEvent(new CustomEvent('hdw:subfolders-updated', { detail: { teamId, folderId } }));
     } catch {
-      setFolders((prev) => [...prev, folder]);
+      setRemoveError('网络异常，删除失败，请重试。');
     } finally {
       setRemoving(false);
     }
   }
 
   async function deleteSelectedFolders(): Promise<number> {
-    if (!teamId || !folderId || !operatorMemberId || selectedFolderIds.size === 0) return 0;
-    const ids = folders
-      .filter((folder) => selectedFolderIds.has(folder.folderId) && isTeamFolderEmpty(folder))
-      .map((folder) => folder.folderId);
-    const results = await Promise.all(ids.map(async (selectedId) => {
-      try {
-        const res = await fetch(
-          `/api/hdw/api/folder/${encodeURIComponent(selectedId)}?operator_member_id=${encodeURIComponent(operatorMemberId)}`,
-          { method: 'DELETE' },
-        );
-        const body = await res.json().catch(() => null);
-        return res.ok && body?.code === 0 ? selectedId : null;
-      } catch {
-        return null;
-      }
-    }));
-    const deletedIds = new Set(results.filter((id): id is string => id !== null));
+    if (!teamId || !folderId || !operatorMemberId || !selectedFolderIds.size || !bulkDeleteImpact || bulkDeleteImpact === 'error') return 0;
+    const deletedIds = await deleteSelectedTeamFolders({
+      memberId: operatorMemberId, folders, selectedIds: selectedFolderIds, impact: bulkDeleteImpact,
+    });
     if (deletedIds.size > 0) {
       setFolders((current) => current.filter((folder) => !deletedIds.has(folder.folderId)));
       window.dispatchEvent(new CustomEvent('hdw:subfolders-updated', { detail: { teamId, folderId } }));
@@ -2162,11 +2251,11 @@ function FoldersPanel({
              <FolderSelectionCheck selected={selected} />
            ) : canShare ? (
              <FolderCardMenu
-                onRename={canManage ? () => startFolderRename(folder) : undefined}
+                onRename={canManage || (operatorMemberId != null && operatorMemberId === folder.ownerMemberId) ? () => startFolderRename(folder) : undefined}
                renameLabel={t('common.rename')}
                onMove={canManage ? () => setMoveFolderTarget(folder) : undefined}
                moveLabel={t('designFiles.move')}
-               onDelete={canManage && isTeamFolderEmpty(folder) ? () => setRemoveTarget(folder) : undefined}
+               onDelete={canManage || (isTeamFolderEmpty(folder) && operatorMemberId != null && operatorMemberId === folder.ownerMemberId) ? () => setRemoveTarget(folder) : undefined}
                deleteLabel={t('teamSpace.deleteFolder')}
                onShare={() => setShareFolderTarget(folder)}
                shareLabel={t('sharedSpace.shareFolderMenuLabel')}
@@ -2279,7 +2368,11 @@ function FoldersPanel({
          selectionExtension={{
            selectedCount: selectedFolderIds.size,
             selectedLabels: folders.filter((folder) => selectedFolderIds.has(folder.folderId)).map((folder) => folder.folderName),
-            hideDelete: folders.some((folder) => selectedFolderIds.has(folder.folderId) && !isTeamFolderEmpty(folder)),
+            blocksDelete: selectedFolderIds.size > 0 && (!bulkDeleteImpact || bulkDeleteImpact === 'error'),
+            deleteConfirmDescription: bulkDeleteImpact && bulkDeleteImpact !== 'error' && selectedFolderIds.size > 0
+              ? `确定删除所选 ${selectedFolderIds.size} 个文件夹吗？其下还有 ${bulkDeleteImpact.folderCount} 个子文件夹、${bulkDeleteImpact.projectCount} 个项目，全部将同步删除。`
+              : undefined,
+            hideDelete: folders.some((folder) => selectedFolderIds.has(folder.folderId) && !(canManage || (isTeamFolderEmpty(folder) && operatorMemberId === folder.ownerMemberId))),
             onMoveSelected: moveSelectedFolders,
            moveTreeMode: 'unified',
            restrictMoveToWorkspaceId: teamId,
@@ -2332,12 +2425,19 @@ function FoldersPanel({
                 <Icon name="close" size={14} />
               </button>
               <h3 className={styles.confirmTitle}>{t('teamSpace.deleteFolderConfirmTitle')}</h3>
-              <p className={styles.confirmMsg}>{t('teamSpace.deleteFolderConfirmMsg', { name: removeTarget.folderName })}</p>
+              <p className={styles.confirmMsg}>{removeImpact === null
+                ? '正在检查文件夹包含的内容…'
+                : removeImpact === 'error'
+                  ? '无法确认文件夹内容，请重试。'
+                  : removeImpact.folderCount || removeImpact.projectCount
+                    ? `删除「${removeTarget.folderName}」会同步删除 ${removeImpact.folderCount} 个子文件夹和 ${removeImpact.projectCount} 个项目，可能影响其他成员，请确认。`
+                    : t('teamSpace.deleteFolderConfirmMsg', { name: removeTarget.folderName })}</p>
+              {removeError ? <p className={styles.roleError} role="alert">{removeError}</p> : null}
               <div className={styles.confirmActions}>
                 <button type="button" className={styles.confirmCancel} onClick={() => setRemoveTarget(null)} disabled={removing}>
                   {t('teamSpace.removeCancelBtn')}
                 </button>
-                <button type="button" className={`${styles.confirmOk} ${styles.confirmDanger}`} onClick={confirmRemoveFolder} disabled={removing}>
+                <button type="button" className={`${styles.confirmOk} ${styles.confirmDanger}`} onClick={confirmRemoveFolder} disabled={removing || !removeImpact || removeImpact === 'error'}>
                   {t('teamSpace.deleteFolder')}
                 </button>
               </div>

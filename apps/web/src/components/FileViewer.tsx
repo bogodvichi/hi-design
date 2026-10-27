@@ -6863,7 +6863,7 @@ function ReactComponentViewer({
   const [publishFailureKey, setPublishFailureKey] = useState<PublicFilePublishFailureKey | null>(null);
   const filePublished = publishedFileUrl.length > 0;
   // Public links need a signed-in workspace (any type); see canPublishPublicFile.
-  const canPublishPublic = canPublishPublicFile(workspaceContext);
+  const canPublishPublic = canPublishPublicFile(workspaceContext) && workspaceContext?.role !== 'guest';
   const publicFileRequestSeqRef = useRef(0);
   const publicFileIdentityRef = useRef({ projectId, fileName: file.name });
   const shareRef = useRef<HTMLDivElement | null>(null);
@@ -8321,7 +8321,7 @@ const [reviewAddModalOpen, setReviewAddModalOpen] = useState(false);
   const [publishFailureKey, setPublishFailureKey] = useState<PublicFilePublishFailureKey | null>(null);
   const filePublished = publishedFileUrl.length > 0;
   // Public links need a signed-in workspace (any type); see canPublishPublicFile.
-  const canPublishPublic = canPublishPublicFile(workspaceContext);
+  const canPublishPublic = canPublishPublicFile(workspaceContext) && workspaceContext?.role !== 'guest';
   const publicFileRequestSeqRef = useRef(0);
   const publicFileIdentityRef = useRef({ projectId, fileName: file.name });
   // False when closed; otherwise records which entry opened the modal so the
@@ -15208,8 +15208,23 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
   // guards the actual export/publish handlers.
   const rawCanShare = artifactActionAvailable && isShareableArtifact;
   const rawCanDownload = artifactActionAvailable && (isShareableArtifact || isMarkdownArtifact);
-  const canShare = rawCanShare && !viewerOnly;
-  const canDownload = rawCanDownload && !viewerOnly;
+  // Role checks are a second boundary when the view's writer status is stale.
+  const isTeamGuest = workspaceContext?.workspaceType === 'team' && workspaceContext.role === 'guest';
+  const canShare = rawCanShare && !viewerOnly && !isTeamGuest;
+  const canDownload = rawCanDownload && !viewerOnly && !isTeamGuest;
+  // Team viewing rights are distinct from editing rights: formal members
+  // may share files and links, while guests may only inspect existing links.
+  // Export and community publication remain restricted to the creator.
+  const activeTeamViewer = workspaceContext?.workspaceType === 'team'
+    && workspaceContext.memberStatus === 'active'
+    && workspaceContext.lifecycleState === 'active';
+  const canInspectExistingTeamLink = activeTeamViewer;
+  const canInitiateTeamShare = activeTeamViewer && !isTeamGuest;
+  const canOpenShareDialog = !viewerOnly || canInspectExistingTeamLink;
+  // Explicit guest exclusion prevents a transient/stale writable snapshot
+  // from showing guest mutations while ownership is revalidating.
+  const canShareProjectFile = !isTeamGuest && (!viewerOnly || canInitiateTeamShare);
+  const canGenerateProjectLink = !isTeamGuest && (!viewerOnly || canInitiateTeamShare);
   // PPTX export is slide-based, so show it only for explicit decks plus
   // structured deck runtimes. Do not key this off plain `.slide`: ordinary
   // parallax/long pages may use that class but must remain page-mode exports.
@@ -15508,6 +15523,9 @@ async function openReviewListModal() {
 }
 // 打开发起评审 Modal。表单数据由独立组件 ReviewAddModal 自行拉取并提交。
   function openReviewAddModal() {
+    // Read-only teammates and guests may inspect review history but cannot
+    // initiate reviews. Keep this guard independent of the menu affordance.
+    if (viewerOnly || isTeamGuest) return;
     setReviewMenuOpen(false);
     setReviewAddModalOpen(true);
   }
@@ -17235,8 +17253,8 @@ async function openReviewListModal() {
                 className="chrome-action chrome-action-secondary chrome-action-with-label chrome-action-text-only"
                 aria-haspopup="menu"
                 aria-expanded={reviewMenuOpen}
-                disabled={viewerOnly || Boolean(exportToast)}
-                title={viewerOnly ? viewerOnlyDisabledTitle : undefined}
+                disabled={Boolean(exportToast)}
+                title={viewerOnly || isTeamGuest ? '可查看历史评审，发起评审仅限项目创建人' : undefined}
                 onClick={openReviewMenu}
               >
                 <RemixIcon name="chat-new-line" size={15} />
@@ -17244,17 +17262,17 @@ async function openReviewListModal() {
               </button>
                {reviewMenuOpen ? (
                  <div className="share-menu-popover" role="menu">
-                   <button
-                     type="button"
-                     className="share-menu-item"
-                     role="menuitem"
-                     onClick={() => {
-                       openReviewAddModal();
-                     }}
-                   >
-                     <span className="share-menu-icon"><RemixIcon name="chat-new-line" size={15} /></span>
-                     <span className="share-menu-text"><span>发起评审</span></span>
-                   </button>
+                    {!viewerOnly && !isTeamGuest ? (
+                     <button
+                       type="button"
+                       className="share-menu-item"
+                       role="menuitem"
+                       onClick={openReviewAddModal}
+                     >
+                       <span className="share-menu-icon"><RemixIcon name="chat-new-line" size={15} /></span>
+                       <span className="share-menu-text"><span>发起评审</span></span>
+                     </button>
+                   ) : null}
                    <button
                      type="button"
                      className="share-menu-item"
@@ -17279,8 +17297,8 @@ async function openReviewListModal() {
                   className="chrome-action chrome-action-secondary chrome-action-with-label chrome-action-text-only"
                   aria-haspopup="menu"
                   aria-expanded={downloadMenuOpenForPixso}
-                  disabled={viewerOnly || !artifactActionAvailable}
-                  title={viewerOnly ? viewerOnlyDisabledTitle : '推送 Pixso'}
+                  disabled={viewerOnly || isTeamGuest || !artifactActionAvailable}
+                  title={viewerOnly || isTeamGuest ? viewerOnlyDisabledTitle : '推送 Pixso'}
                   onClick={openDownloadMenuForPixso}
                 >
                   <span>推送</span>
@@ -17323,8 +17341,8 @@ async function openReviewListModal() {
                     aria-haspopup="menu"
                     aria-expanded={deployMenuOpen && unifiedActionTab === 'export'}
                     aria-label={t('fileViewer.unifiedExportTab')}
-                    disabled={viewerOnly}
-                    title={viewerOnly ? viewerOnlyDisabledTitle : undefined}
+                    disabled={viewerOnly || isTeamGuest}
+                    title={viewerOnly || isTeamGuest ? viewerOnlyDisabledTitle : undefined}
                     onClick={openDownloadMenu}
                   >
                     <RemixIcon name="download-line" size={15} />
@@ -17338,8 +17356,8 @@ async function openReviewListModal() {
                    aria-haspopup="menu"
                    aria-expanded={deployMenuOpen && unifiedActionTab === 'share'}
                    aria-label={shareMenuLabel}
-                   disabled={viewerOnly}
-                   title={viewerOnly ? viewerOnlyDisabledTitle : undefined}
+                   disabled={!canOpenShareDialog}
+                   title={!canOpenShareDialog ? viewerOnlyDisabledTitle : undefined}
                     onClick={() => setUnifiedShareOpen(true)}
                  >
                     <RemixIcon name="share-forward-line" size={15} />
@@ -19100,7 +19118,9 @@ async function openReviewListModal() {
         projectName={projectName || ''}
         entryFile={file?.name || null}
         workspaceContext={workspaceContext}
-        canPublishToCommunity={collab.isOwner}
+        canPublishToCommunity={collab.isOwner && !viewerOnly && !isTeamGuest}
+        canShareFile={canShareProjectFile}
+        canGenerateLink={canGenerateProjectLink}
         onClose={() => setUnifiedShareOpen(false)}
       />
     ) : null}

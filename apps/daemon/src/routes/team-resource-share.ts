@@ -20,6 +20,7 @@ import {
   type TeamResourceShareRecord,
   type TeamResourceShareService,
 } from '../collab/team-resource-share.js';
+import { SourceSkillSnapshotUnavailableError } from '../collab/community-resource-copy.js';
 
 export interface TeamResourceShareListing {
   ids: string[];
@@ -199,6 +200,7 @@ export function registerTeamResourceShareRoutes(
       if (error instanceof TeamResourceShareForbiddenError) {
         return res.status(403).json({ error: 'WORKSPACE_RESOURCE_SHARE_DENIED' });
       }
+      if (error instanceof SourceSkillSnapshotUnavailableError) return res.status(409).json({ error: error.code, message: error.message });
       res.status(500).json({ error: error instanceof Error ? error.message : 'share failed' });
     }
   });

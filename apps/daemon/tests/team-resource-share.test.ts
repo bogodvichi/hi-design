@@ -13,6 +13,7 @@ import type {
   WorkspaceDirectoryItem,
 } from '@open-design/contracts';
 import type { ResourceHubPrincipal } from '../src/collab/resource-principal.js';
+import type { HdwCloudClient } from '../src/integrations/hdw-cloud.js';
 
 const unreachableRun = async (): Promise<string> => {
   throw new Error('Vela should not run when the permission gate stops sharing');
@@ -124,6 +125,33 @@ describe('team resource share permission gate', () => {
     expect(await service.share('ds-1', scope)).toBeNull();
     expect(await service.unshare('ds-1', scope)).toBe(false);
     expect(await service.sharedIds(scope)).toEqual([]);
+  });
+
+  it('serializes the exact cloud ID of team Skill resources for their creators', async () => {
+    const teamScope: TeamResourceRequestScope = {
+      principal: {
+        teamId: 'team-a', memberId: 'creator', role: 'member', lifecycleState: 'active', workspaceType: 'team',
+      },
+      canShare: true,
+    };
+    const service = createTeamResourceShareService({
+      kind: 'skill',
+      idPrefix: 'skill',
+      resolveDir: () => '/unused',
+      hdwClient: {} as HdwCloudClient,
+      env: {},
+      run: async () => JSON.stringify({ resources: [{
+        id: 'skill-team-a-skill-one', kind: 'skill', deletedAt: null,
+        ownerMemberId: 'creator', metadata: { localId: 'skill-one', title: 'Skill One' },
+      }] }),
+    });
+    const records = await service.sharedResources(teamScope, { authoritative: true });
+    expect(records[0]).toMatchObject({
+      id: 'skill-one', hubResourceId: 'skill-team-a-skill-one', canUnshare: true,
+    });
+    expect(JSON.parse(JSON.stringify(records))[0]).toMatchObject({
+      id: 'skill-one', hubResourceId: 'skill-team-a-skill-one',
+    });
   });
 
   it('removes a team resource through the Vela CLI', async () => {

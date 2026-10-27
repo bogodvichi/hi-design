@@ -262,8 +262,16 @@ export function createTeamResourceShareService(
             for (const resource of legacyResources) byId.set(resource.hubResourceId ?? resource.id, resource);
             for (const resource of scopedResources) byId.set(resource.hubResourceId ?? resource.id, resource);
             const resources = [...byId.values()].map(resource => {
-              if (resource.ownerMemberId === principal.memberId || !resource.hubResourceId) return resource;
-              return { ...resource, id: resource.hubResourceId, hubResourceId: resource.hubResourceId };
+              if (!resource.hubResourceId) return resource;
+              // The parser stores hubResourceId as non-enumerable for internal
+              // materialization. The HTTP team catalog must explicitly expose
+              // the exact team-local cloud ID even to the owner, otherwise the
+              // UI sees a synthetic team:... ID and cannot remove its own item.
+              return {
+                ...resource,
+                id: resource.ownerMemberId === principal.memberId ? resource.id : resource.hubResourceId,
+                hubResourceId: resource.hubResourceId,
+              };
             });
             shared.clear();
             for (const resource of resources) shared.add(resource.id);

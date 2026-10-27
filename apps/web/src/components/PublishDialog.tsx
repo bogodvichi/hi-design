@@ -233,6 +233,12 @@ function toPublishDialogMessage(
   const text = raw.trim();
   const lower = text.toLowerCase();
 
+  if (/resource_name_conflict|platform resource with the same name/.test(lower)) {
+    return localeText(locale, '平台中已有相同 Skill，请重新命名。', 'A Skill with the same name already exists on the platform. Rename it.');
+  }
+  if (/resource_already_published|already published/.test(lower)) {
+    return localeText(locale, '该资源已发布，请先取消原有发布。', 'This resource is already published. Unpublish it first.');
+  }
   if (/expected a .zip file|select a project folder or .zip file/.test(lower)) {
     return localeText(locale, '文件格式不支持，请选择项目文件夹或 ZIP 压缩包。', 'Unsupported file type. Choose a project folder or ZIP archive.');
   }

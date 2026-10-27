@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import type { ProjectVisibility, WorkspaceCollabContext } from '@open-design/contracts';
 import { notifyTeamProjectsChanged } from '../collab/useWorkspaceContext';
 import { useT } from '../i18n';
-import { moveWorkspaceProject } from '../state/projects';
+import { moveTeamProjectFolderAssignment, moveWorkspaceProject } from '../state/projects';
 import { Toast } from './Toast';
 import {
   hasProjectCardDrag,
@@ -91,6 +91,7 @@ export function useProjectFolderDrop(input: {
           || destination?.canMove === false
           || !targetWorkspaceId
           || !sourceWorkspaceContext
+          || payload.sourceWorkspaceId !== targetWorkspaceId
           || (!destination && payload.sourceWorkspaceId !== input.workspaceId)
         ) {
           fail(payload?.projectId);
@@ -103,13 +104,20 @@ export function useProjectFolderDrop(input: {
 
         setMoving(true);
         setNotice(null);
-        void moveWorkspaceProject({
-          projectId: payload.projectId,
-          visibility: targetVisibility,
-          workspaceContext: sourceWorkspaceContext,
-          targetWorkspaceId,
-          targetFolderId: folderId,
-        }).then(() => {
+        const move = payload.managerOnlyFolderMove && targetVisibility === 'team'
+          ? moveTeamProjectFolderAssignment({
+              projectId: payload.projectId,
+              workspaceId: targetWorkspaceId,
+              targetFolderId: folderId,
+            })
+          : moveWorkspaceProject({
+              projectId: payload.projectId,
+              visibility: targetVisibility,
+              workspaceContext: sourceWorkspaceContext,
+              targetWorkspaceId,
+              targetFolderId: folderId,
+            });
+        void move.then(() => {
           notifyProjectCardMoveResult({ projectId: payload.projectId, moved: true });
           notifyTeamProjectsChanged();
           window.dispatchEvent(new CustomEvent('personal:folders-updated'));

@@ -7,6 +7,7 @@ const ACTION_ICONS = {
   share: 'share',
   publish: 'arrow-up',
   unpublish: 'eye-off',
+  'update-publication': 'refresh',
   delete: 'trash',
   'remove-share': 'minus-circle',
 } as const satisfies Record<string, IconName>;

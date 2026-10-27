@@ -185,7 +185,17 @@ function createWorkspaceAccess(app, dependencies = {}) {
     if (domain === 'resource') {
       if (p.resourceId) {
         const existing = await k('resources').where({ id: p.resourceId }).first();
-        if (existing || action !== 'publish') await resource(username, p.workspaceId, p.resourceId, action === 'materialize' ? false : write);
+        if (existing || action !== 'publish') {
+          // A team owner/admin may remove native Skill/MCP resources, but may
+          // neither edit another creator's content nor remove other kinds.
+          const actor = action === 'remove' && existing?.workspace_id === p.workspaceId
+            && ['skill', 'mcp'].includes(existing.kind) && p.workspaceId !== personalWorkspace
+            ? await member(username, p.workspaceId, true)
+            : null;
+          const managerDelete = actor && (actor.role === 'owner' || actor.role === 'admin');
+          await resource(username, p.workspaceId, p.resourceId,
+            action === 'materialize' || managerDelete ? false : write);
+        }
         else await member(username, p.workspaceId, true);
       } else if (!(action === 'list' && query.scope === 'public')) await member(username, ws, write);
       if (['publish', 'create'].includes(action)) body.ownerMemberId = (await member(username, ws, true)).workspace_member_id;
@@ -199,6 +209,21 @@ function createWorkspaceAccess(app, dependencies = {}) {
           for (const key of ['envFields', 'headerFields']) {
             if (Array.isArray(body.metadata[key])) clean[key] = body.metadata[key].map(field => ({ key: field.key, label: field.label, required: field.required, secret: field.secret }));
           }
+          // Publication provenance is server-owned lifecycle metadata, not a
+          // connection secret. The former MCP allowlist silently stripped it,
+          // breaking reference links, version updates and safe cancellation.
+          const sourceType = body.metadata.publicationSourceType;
+          if (sourceType === 'reference' || sourceType === 'local_import') {
+            clean.publicationSourceType = sourceType;
+          }
+          for (const key of ['communitySourceResourceId', 'communitySourceWorkspaceId', 'publishedAt', 'legacyCommunityUnpublishedAt']) {
+            const value = body.metadata[key];
+            if (typeof value === 'string' && value.length > 0 && value.length < 512) clean[key] = value;
+          }
+          if (Number.isSafeInteger(body.metadata.publicationVersion) && body.metadata.publicationVersion > 0) {
+            clean.publicationVersion = body.metadata.publicationVersion;
+          }
+
           body.metadata = clean;
         }
       }
@@ -221,15 +246,16 @@ function createWorkspaceAccess(app, dependencies = {}) {
         if (row) await project(username, ws, p.projectId, true);
         body.ownerMemberId = actor.workspace_member_id;
       } else if (action === 'transfer') {
-        await member(username, ws, true);
-        const target = await member(username, body.targetWorkspaceId, true);
-        const source = await k('team_projects').where({ workspace_id: ws, project_id: p.projectId }).first();
-        if (source) await project(username, ws, p.projectId, true);
-        else {
-          const targetProject = await k('team_projects').where({ workspace_id: body.targetWorkspaceId, project_id: p.projectId }).first();
-          if (targetProject) await project(username, body.targetWorkspaceId, p.projectId, true);
+        // Moving a project between workspaces is forbidden; sharing/copying
+        // remain separately authorized operations.
+        throw denied(403, 'CROSS_TEAM_MOVE_FORBIDDEN');
+      } else if (action === 'remove') {
+        const actor = await member(username, ws, true);
+        if (ws !== personalWorkspace && ['owner', 'admin'].includes(actor.role)) {
+          await project(username, ws, p.projectId, false);
+        } else {
+          await project(username, ws, p.projectId, true);
         }
-        body.targetOwnerMemberId = target.workspace_member_id;
       } else await project(username, ws, p.projectId, write);
       return;
     }
@@ -238,8 +264,12 @@ function createWorkspaceAccess(app, dependencies = {}) {
       if (action === 'share' || action === 'shareBatch') {
         body.created_by_username = username;
         body.created_by_member_id = getSharedSpaceMemberId(username);
-        if (domain === 'resourceShare') await resource(username, ws, body.resource_id, true);
-        else for (const id of body.project_id ? [body.project_id] : (body.items || []).map(item => item.project_id)) await project(username, ws, id, true);
+        // Team members may share team resources without changing ownership.
+        // Personal resources remain owner-only and guests cannot initiate shares.
+        const teamMemberShare = ws && ws !== personalWorkspace;
+        if (teamMemberShare) await member(username, ws, true);
+        if (domain === 'resourceShare') await resource(username, ws, body.resource_id, !teamMemberShare);
+        else for (const id of body.project_id ? [body.project_id] : (body.items || []).map(item => item.project_id)) await project(username, ws, id, !teamMemberShare);
         return;
       }
       const table = domain === 'sharedSpace' ? 'workspace_project_shares' : 'workspace_resource_shares';
@@ -274,8 +304,19 @@ function createWorkspaceAccess(app, dependencies = {}) {
       if (body.folder_pid) await scopedFolder(body.folder_pid, write);
       if (body.target_folder_id) await scopedFolder(body.target_folder_id, true);
       for (const folderId of body.folder_ids || []) await scopedFolder(folderId, true);
-      if (body.project_id) await project(username, ws, body.project_id, true);
-      for (const id of body.project_ids || []) await project(username, ws, id, true);
+      // Folder placement is not a content edit: team managers may move
+      // another creator's project inside its home team. All formal members
+      // may share a folder's projects without taking ownership of them.
+      if (body.project_id || (Array.isArray(body.project_ids) && body.project_ids.length > 0)) {
+        const actor = await member(username, ws, true);
+        const isTeam = ws !== personalWorkspace;
+        const manager = isTeam && ['owner', 'admin'].includes(actor.role);
+        const shareOnly = isTeam && action === 'shareProjects';
+        const managerFolderMove = manager && ['addProject', 'removeProject', 'moveProject'].includes(action);
+        const requireOwner = !(shareOnly || managerFolderMove);
+        if (body.project_id) await project(username, ws, body.project_id, requireOwner);
+        for (const projectId of body.project_ids || []) await project(username, ws, projectId, requireOwner);
+      }
       for (const item of body.shares || []) {
         await scopedFolder(item.folder_id, true);
         item.shared_by_username = username;
@@ -318,7 +359,14 @@ function createWorkspaceAccess(app, dependencies = {}) {
       const id = body.project_id || query.project_id;
       let home = ws;
       if (!home) home = (await k('share_links').where({ project_id: id }).first())?.workspace_id;
-      await project(username, home, id, true);
+      if (action === 'get') {
+        await project(username, home, id, false);
+      } else if (action === 'generate') {
+        await project(username, home, id, false);
+        await member(username, home, true);
+      } else {
+        await project(username, home, id, true);
+      }
       return;
     }
     if (domain === 'blob') {

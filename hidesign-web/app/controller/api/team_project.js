@@ -216,9 +216,23 @@ class TeamProjectController extends Controller {
 
     try {
       const k = this.getKnex();
-      const deleted = await k('team_projects')
-        .where({ workspace_id: workspaceId, project_id: projectId })
-        .del();
+      const deleteResource = ctx.query.delete_resource === '1';
+      const deleted = await k.transaction(async trx => {
+        const row = await trx('team_projects')
+          .where({ workspace_id: workspaceId, project_id: projectId })
+          .first();
+        if (!row) return 0;
+        if (deleteResource) {
+          // Management deletes are workspace-scoped. Keep immutable versions
+          // intact while removing public access and marking the resource gone.
+          await trx('resources').where({ id: row.resource_id, workspace_id: workspaceId, kind: 'project' })
+            .update({ deleted_at: new Date() });
+          await trx('share_links').where({ workspace_id: workspaceId, project_id: projectId }).del();
+          await trx('workspace_project_shares').where({ home_workspace_id: workspaceId, project_id: projectId }).del();
+          await trx('workspace_resource_shares').where({ home_workspace_id: workspaceId, resource_id: row.resource_id }).del();
+        }
+        return trx('team_projects').where({ workspace_id: workspaceId, project_id: projectId }).del();
+      });
 
       if (deleted === 0) {
         ctx.status = 404;

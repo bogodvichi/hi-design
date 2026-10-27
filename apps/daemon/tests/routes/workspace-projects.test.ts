@@ -812,8 +812,9 @@ describe('workspace project routes', () => {
         createdByWorkspaceMemberId: projectOwnerId,
         currentUserAccess: {
           canRename: false,
-          canDelete: false,
+          canDelete: true,
           canDuplicate: true,
+          canExport: false,
           canMoveToPersonal: false,
           canRestoreVersion: false,
         },
@@ -859,7 +860,8 @@ describe('workspace project routes', () => {
           canRename: true,
           canDelete: true,
           canDuplicate: true,
-          canMoveToPersonal: true,
+          canExport: true,
+          canMoveToPersonal: false,
           canRestoreVersion: true,
         },
       });
@@ -1696,7 +1698,7 @@ describe('workspace project routes', () => {
           canDelete: false,
           canMoveToPersonal: false,
           canRestoreVersion: false,
-          canExport: true,
+          canExport: false,
         },
       });
       expect(body.projects[0].project.id).toBe(remoteProjectId);
@@ -1708,6 +1710,56 @@ describe('workspace project routes', () => {
       await close(routeServer.server);
     }
   });
+
+  it.each([
+    ['owner', 'team-owner', true, true],
+    ['admin', 'team-admin', true, true],
+    ['member', 'team-peer', false, true],
+    ['guest', 'team-guest', false, false],
+    ['member', 'resource-author', true, true],
+  ] as const)(
+    'exposes separate management, creator and guest project capabilities (%s/%s)',
+    async (role, memberId, canDelete, canCopy) => {
+      const projectId = `team-remote-permission-${Date.now()}`;
+      const resourceId = `hub-${projectId}`;
+      const teamProjectCatalog = {
+        list: vi.fn(async () => [{
+          id: `catalog-${projectId}`, workspaceId, projectId, resourceId,
+          ownerMemberId: 'resource-author', displayName: 'Team collaboration resource',
+          syncState: 'synced', lastSyncedVersionId: 'v1',
+          createdAt: new Date(10).toISOString(), updatedAt: new Date(20).toISOString(),
+          access: { canView: true, canComment: true, canEdit: true, frozen: false },
+        }]),
+      };
+      const app = express();
+      app.use(express.json());
+      registerProjectRoutes(app, workspaceProjectRouteDeps({
+        workspaceId, projectId: `local-${projectId}`,
+        dbDeleteProject: vi.fn(), removeProjectDir: vi.fn(), teamProjectCatalog,
+      }));
+      const routeServer = await listen(app);
+      try {
+        const response = await fetch(
+          `${routeServer.url}/api/workspaces/${workspaceId}/projects?view=team`,
+          { headers: headers(memberId, { 'x-od-workspace-type': 'team', 'x-od-workspace-role': role }) },
+        );
+        expect(response.status, await response.clone().text()).toBe(200);
+        const body = await response.json() as { projects: Array<any> };
+        const access = body.projects.find((item) => item.resourceHubResourceId === resourceId)?.currentUserAccess;
+        expect(access).toMatchObject({
+          canOpen: true,
+          canDelete,
+          canDuplicate: canCopy,
+          canRename: memberId === 'resource-author',
+          canExport: memberId === 'resource-author',
+          canSendTo: role !== 'guest',
+          canMoveToPersonal: false,
+        });
+      } finally {
+        await close(routeServer.server);
+      }
+    },
+  );
 
   it.each([
     ['syncing', 'pending_upload'],
@@ -1795,11 +1847,12 @@ describe('workspace project routes', () => {
         id: projectId,
         name: 'Owner project title',
         createdByWorkspaceMemberId: ownerMemberId,
-        updatedByWorkspaceMemberId: adminMemberId,
+        updatedByWorkspaceMemberId: ownerMemberId,
         resourceHubResourceId: resourceId,
         currentUserAccess: {
           canRename: false,
-          canDelete: false,
+          canDelete: true,
+          canExport: false,
           canMoveToPersonal: false,
         },
         project: {
@@ -2218,7 +2271,7 @@ describe('workspace project routes', () => {
         }),
         body: JSON.stringify({ visibility: 'team' }),
       });
-      expect(moveResp.status).toBe(200);
+      expect(moveResp.status, await moveResp.clone().text()).toBe(200);
       expect(invalidateTeamProjectCatalog).toHaveBeenCalled();
     } finally {
       await close(routeServer.server);
@@ -2254,7 +2307,7 @@ describe('workspace project routes', () => {
         }),
         body: JSON.stringify({ visibility: 'team' }),
       });
-      expect(moveResp.status).toBe(200);
+      expect(moveResp.status, await moveResp.clone().text()).toBe(200);
     } finally {
       await close(routeServer.server);
     }
@@ -2282,13 +2335,13 @@ describe('workspace project routes', () => {
         }),
         body: JSON.stringify({ visibility: 'team' }),
       });
-      expect(moveResp.status).toBe(200);
+      expect(moveResp.status, await moveResp.clone().text()).toBe(200);
       expect(requestTeamShare).toHaveBeenCalledWith(projectId, {
         memberId: 'member-share-principal',
         teamId: workspaceId,
         role: 'admin',
         lifecycleState: 'active',
-      });
+      }, null);
     } finally {
       await close(routeServer.server);
     }
@@ -2936,7 +2989,7 @@ describe('workspace project move authority boundaries', () => {
     },
   );
 
-  it('lets the project creator move their project to another workspace', async () => {
+  it('forbids cross-team transfers even for the project creator', async () => {
     const creator = 'project-creator';
     const requestTeamTransfer = vi.fn(async () => ({ targetOwnerMemberId: 'target-member' }));
     const app = express();
@@ -2958,15 +3011,16 @@ describe('workspace project move authority boundaries', () => {
           body: JSON.stringify({ visibility: 'team', targetWorkspaceId }),
         },
       );
-      expect(response.status).toBe(200);
-      expect(requestTeamTransfer).toHaveBeenCalledTimes(1);
+      expect(response.status).toBe(403);
+      await expect(response.json()).resolves.toMatchObject({ error: { code: 'WORKSPACE_ACCESS_DENIED' } });
+      expect(requestTeamTransfer).not.toHaveBeenCalled();
     } finally {
       await close(routeServer.server);
     }
   });
 
   it.each(['source_not_published', 'timeout', 'forbidden'])(
-    'publishes a missing source only after an explicit server result (%s)', async (code) => {
+    'forbids cross-team transfer before attempting source recovery (%s)', async (code) => {
       const requestTeamShare = vi.fn(async () => ({ version: 1 }));
       const requestTeamTransfer = vi.fn()
         .mockRejectedValueOnce(new HdwCloudError(code === 'source_not_published' ? 404 : 503, code))
@@ -2982,29 +3036,24 @@ describe('workspace project move authority boundaries', () => {
           method: 'POST', headers: moveHeaders('project-creator', 'member'),
           body: JSON.stringify({ visibility: 'team', targetWorkspaceId }),
         });
-        if (code === 'source_not_published') {
-          expect(response.status).toBe(200);
-          expect(requestTeamShare).toHaveBeenCalledWith(projectId, expect.objectContaining({ teamId: workspaceId, memberId: 'project-creator' }), null);
-          expect(requestTeamTransfer).toHaveBeenCalledTimes(2);
-        } else {
-          expect(response.status).toBe(503);
-          expect(requestTeamShare).not.toHaveBeenCalled();
-          expect(requestTeamTransfer).toHaveBeenCalledTimes(1);
-        }
+        expect(response.status).toBe(403);
+        expect(requestTeamShare).not.toHaveBeenCalled();
+        expect(requestTeamTransfer).not.toHaveBeenCalled();
       } finally { await close(routeServer.server); }
     },
   );
 
-  it.each(['single', 'batch'])('uses the destination identity for post-move folder sharing (%s)', async (mode) => {
+  it.each(['single', 'batch'])('does not share destination folders during forbidden cross-team moves (%s)', async (mode) => {
     const hdw = await import('../../src/http/hdw.js');
     const sso = await import('../../src/http/hik_logins/hicoo.js');
     const readSession = vi.spyOn(sso, 'readSsoConfigFile').mockReturnValue({ username: 'alice', cookies: [] } as any);
     const shareFolder = vi.spyOn(hdw, 'shareProjectsIntoSharedFolder').mockResolvedValue({ shared: 1 } as any);
     const requestTeamShare = vi.fn(async () => ({ version: 1 }));
     const app = express(); app.use(express.json());
+    const requestTeamTransfer = vi.fn(async () => ({ targetOwnerMemberId: 'target-member' }));
+    const moveProjectFolder = vi.fn();
     registerProjectRoutes(app, authorityDeps({ createdBy: 'project-creator', collabSync: {
-      requestTeamTransfer: vi.fn(async () => ({ targetOwnerMemberId: 'target-member' })),
-      requestTeamShare, moveProjectFolder: vi.fn(), invalidateTeamProjectCatalog: vi.fn(),
+      requestTeamTransfer, requestTeamShare, moveProjectFolder, invalidateTeamProjectCatalog: vi.fn(),
     } }));
     const routeServer = await listen(app);
     try {
@@ -3013,14 +3062,17 @@ describe('workspace project move authority boundaries', () => {
         method: 'POST', headers: moveHeaders('project-creator', 'member'),
         body: JSON.stringify({ visibility: 'team', targetWorkspaceId, targetFolderId: 'destination', projectIds: [projectId] }),
       });
-      expect(response.status).toBe(200);
-      expect(requestTeamShare).toHaveBeenCalledWith(projectId, expect.objectContaining({ teamId: targetWorkspaceId, memberId: 'target-member' }), null, 'destination');
+      expect(response.status).toBe(403);
+      expect(requestTeamTransfer).not.toHaveBeenCalled();
+      expect(requestTeamShare).not.toHaveBeenCalled();
+      expect(moveProjectFolder).not.toHaveBeenCalled();
+      expect(shareFolder).not.toHaveBeenCalled();
     } finally {
       readSession.mockRestore(); shareFolder.mockRestore(); await close(routeServer.server);
     }
   });
 
-  it('reports batch folder synchronization failure without undoing committed transfers', async () => {
+  it('rejects cross-team batch moves before rebinding local ownership or syncing folders', async () => {
     const requestTeamTransfer = vi.fn(async () => ({ targetOwnerMemberId: 'target-member' }));
     const deps = authorityDeps({ createdBy: 'project-creator', collabSync: {
       requestTeamTransfer, moveProjectFolder: vi.fn(async () => { throw new Error('folder unavailable'); }),
@@ -3035,10 +3087,9 @@ describe('workspace project move authority boundaries', () => {
         method: 'POST', headers: moveHeaders('project-creator', 'member'),
         body: JSON.stringify({ visibility: 'team', targetWorkspaceId, targetFolderId: 'destination', projectIds: [projectId] }),
       });
-      expect(response.status).toBe(503);
-      expect(requestTeamTransfer).toHaveBeenCalledTimes(1);
-      expect(rebind).toHaveBeenCalledTimes(1);
-      expect(rebind).toHaveBeenCalledWith(deps.db, projectId, expect.objectContaining({ workspaceId: targetWorkspaceId, createdByWorkspaceMemberId: 'target-member' }));
+      expect(response.status).toBe(403);
+      expect(requestTeamTransfer).not.toHaveBeenCalled();
+      expect(rebind).not.toHaveBeenCalled();
     } finally { await close(routeServer.server); }
   });
 
@@ -3072,6 +3123,116 @@ describe('workspace project move authority boundaries', () => {
         );
         expect(response.status).toBe(expectedStatus);
         expect(moveProjectFolder).toHaveBeenCalledTimes(expectedMoves);
+      } finally {
+        await close(routeServer.server);
+      }
+    },
+  );
+  it.each([
+    [null, 1],
+    [undefined, 0],
+  ] as const)(
+    'batch move interprets targetFolderId=%s as an explicit root move only when supplied',
+    async (targetFolderId, expectedRemoteMoves) => {
+      const moveProjectFolder = vi.fn(async () => undefined);
+      const requestTeamShare = vi.fn(async () => ({ version: 1 }));
+      const app = express();
+      app.use(express.json());
+      registerProjectRoutes(app, authorityDeps({
+        createdBy: 'another-project-creator',
+        visibility: 'team',
+        collabSync: {
+          moveProjectFolder,
+          requestTeamShare,
+          invalidateTeamProjectCatalog: vi.fn(),
+        },
+      }));
+      const routeServer = await listen(app);
+      try {
+        const response = await fetch(
+          `${routeServer.url}/api/workspaces/${workspaceId}/projects/batch-move`,
+          {
+            method: 'POST',
+            headers: moveHeaders('workspace-admin', 'admin'),
+            body: JSON.stringify({ visibility: 'team', projectIds: [projectId], targetFolderId }),
+          },
+        );
+        expect(response.status, await response.clone().text()).toBe(200);
+        expect(moveProjectFolder).toHaveBeenCalledTimes(expectedRemoteMoves);
+        if (targetFolderId === null) {
+          expect(moveProjectFolder).toHaveBeenCalledWith(workspaceId, projectId, null, 'workspace-admin');
+        }
+        expect(requestTeamShare).not.toHaveBeenCalled();
+      } finally {
+        await close(routeServer.server);
+      }
+    },
+  );
+
+});
+
+describe('team project manager deletion without content ownership', () => {
+  const team = 'manager-delete-workspace';
+  const remoteProjectId = 'manager-delete-remote-project';
+
+  it.each([
+    ['owner', true],
+    ['admin', true],
+    ['member', false],
+    ['guest', false],
+  ] as const)(
+    'allows only team management roles to remove an unmaterialized teammate project (%s)',
+    async (role, allowed) => {
+      const removeTeamProject = vi.fn(async () => undefined);
+      const getTeamProject = vi.fn(async () => ({
+        workspaceId: team,
+        projectId: remoteProjectId,
+        ownerMemberId: 'another-project-creator',
+        resourceId: 'hub-resource',
+      }));
+      const deps = workspaceProjectRouteDeps({
+        workspaceId: team,
+        projectId: remoteProjectId,
+        dbDeleteProject: vi.fn(),
+        removeProjectDir: vi.fn(),
+        workspaceRowOverrides: {
+          visibility: 'team', workspaceVisibility: 'team',
+          createdByWorkspaceMemberId: 'another-project-creator',
+        },
+      }) as any;
+      // A remote catalog-only card has not materialized any writable local
+      // project. Management must not pull its bytes or take its authorship.
+      deps.projectStore.getProject = () => null;
+      deps.hdwCloudClient = { getTeamProject, removeTeamProject };
+      deps.collabSync = { invalidateTeamProjectCatalog: vi.fn() };
+      const app = express();
+      app.use(express.json());
+      registerProjectRoutes(app, deps);
+      const routeServer = await listen(app);
+      try {
+        const response = await fetch(
+          `${routeServer.url}/api/projects/${remoteProjectId}`,
+          {
+            method: 'DELETE',
+            headers: {
+              'content-type': 'application/json',
+              'x-od-workspace-id': team,
+              'x-od-workspace-member-id': 'team-manager',
+              'x-od-workspace-type': 'team',
+              'x-od-workspace-role': role,
+            },
+          },
+        );
+        if (allowed) {
+          expect(response.status, await response.clone().text()).toBe(200);
+          expect(removeTeamProject).toHaveBeenCalledWith(team, remoteProjectId, true);
+          expect(deps.collabSync.invalidateTeamProjectCatalog).toHaveBeenCalled();
+        } else {
+          expect(response.status).not.toBe(200);
+          expect(removeTeamProject).not.toHaveBeenCalled();
+        }
+        expect(deps.projectStore.dbDeleteProject).not.toHaveBeenCalled();
+        expect(deps.projectStore.removeProjectDir).not.toHaveBeenCalled();
       } finally {
         await close(routeServer.server);
       }

@@ -111,6 +111,15 @@ async function publishResponseError(response: Response, fallback: string): Promi
     if (typeof errorRecord.code === 'string') errorCode = errorRecord.code.trim();
   }
 
+  if (response.status === 409) {
+    if (errorMessage === 'RESOURCE_NAME_CONFLICT') {
+      return new Error(fallback.toLowerCase().includes('mcp')
+        ? '平台中已有相同 MCP，请重新命名。' : '平台中已有相同 Skill，请重新命名。');
+    }
+    if (errorMessage === 'RESOURCE_ALREADY_PUBLISHED') {
+      return new Error('该资源已发布，请先取消原有发布。');
+    }
+  }
   if (
     fallback === 'Project publish failed'
     && response.status === 404

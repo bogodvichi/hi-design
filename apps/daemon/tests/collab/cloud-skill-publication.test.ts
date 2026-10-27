@@ -16,21 +16,40 @@ afterEach(async () => {
   if (server) await new Promise<void>((resolve) => server.close(() => resolve()));
 });
 
-async function fixture(options: { owner?: string; kind?: string; missing?: boolean; updateCode?: number; canShare?: boolean } = {}) {
-  const updates: unknown[] = [];
-  const cloudFetch = vi.fn<typeof fetch>(async (_input, init) => {
-    if (init?.method === 'PUT') {
-      updates.push(JSON.parse(String(init.body)));
-      return Response.json({ code: options.updateCode ?? 0, msg: 'update result' });
+async function fixture(options: {
+  owner?: string; kind?: string; missing?: boolean;
+  snapshotMissing?: boolean; updateCode?: number; canShare?: boolean;
+} = {}) {
+  const updates: Array<{ path: string; body: Record<string, unknown> }> = [];
+  const manifest = { entries: [{ path: 'SKILL.md', digest: 'source-digest', size: 15 }] };
+  const cloudFetch = vi.fn<typeof fetch>(async (input, init) => {
+    const path = new URL(String(input)).pathname;
+    const method = init?.method ?? 'GET';
+    if (method === 'GET' && path.endsWith('/resources/' + resourceId)) {
+      if (options.missing) return Response.json({ error: 'NOT_FOUND' }, { status: 404 });
+      return Response.json({
+        id: resourceId, kind: options.kind ?? 'skill', ownerMemberId: options.owner ?? 'member-a',
+        scope: null, metadata: { localId: 'requirement-analysis', title: 'Requirement analysis', preserved: true },
+        version: 3,
+      });
     }
-    if (options.missing) return Response.json({ error: 'NOT_FOUND' }, { status: 404 });
-    return Response.json({ id: resourceId, kind: options.kind ?? 'skill', ownerMemberId: options.owner ?? 'member-a',
-      metadata: { localId: 'requirement-analysis', title: 'Requirement analysis', preserved: true }, version: 3 });
+    if (method === 'POST' && path.endsWith('/resources/' + resourceId + '/materialize')) {
+      if (options.snapshotMissing) return Response.json({ error: 'NOT_FOUND' }, { status: 404 });
+      return Response.json({ version: 3, versionId: 'source-v3', manifest, missingBlobs: [] });
+    }
+    if (method === 'PUT' && /\/resources\/community-skill-[^/]+\/versions$/u.test(path)) {
+      updates.push({ path, body: JSON.parse(String(init?.body)) as Record<string, unknown> });
+      if (options.updateCode === -1) return Response.json({ error: 'UPSTREAM_ERROR' }, { status: 500 });
+      return Response.json({ version: 1, versionId: 'publication-v1', missingBlobs: [] });
+    }
+    throw new Error('Unexpected HDW request: ' + method + ' ' + path);
   });
   const resolveDir = vi.fn(() => { throw new Error('cloud-only Skill has no local directory'); });
   const share = createTeamResourceShareService({
     kind: 'skill', idPrefix: 'skill', resolveDir,
-    hdwClient: createHdwCloudClient({ config: { baseUrl: 'https://cloud.example', pathPrefix: '/hdw', token: 'test-token' }, fetch: cloudFetch }),
+    hdwClient: createHdwCloudClient({
+      config: { baseUrl: 'https://cloud.example', pathPrefix: '/hdw', token: 'test-token' }, fetch: cloudFetch,
+    }),
     env: {},
   });
   const app = express();
@@ -40,7 +59,7 @@ async function fixture(options: { owner?: string; kind?: string; missing?: boole
   server = app.listen(0, '127.0.0.1');
   await new Promise<void>((resolve) => server.on('listening', resolve));
   const address = server.address() as { port: number };
-  return { updates, cloudFetch, resolveDir,
+  return { updates, cloudFetch, resolveDir, manifest,
     publish: (query = '?scope=public', body: unknown = { category: 'data_analysis', logoKey: 'research' }) =>
       fetch(`http://127.0.0.1:${address.port}/api/workspace/skills/${resourceId}/share${query}`, {
         method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
@@ -49,15 +68,37 @@ async function fixture(options: { owner?: string; kind?: string; missing?: boole
 }
 
 describe('publishing an existing cloud Skill to the community', () => {
-  it('publishes the owned cloud resource without requiring a local personal binding or uploading its files again', async () => {
+  it('publishes a separate community snapshot while leaving the cloud Skill source unchanged', async () => {
     const f = await fixture();
     const response = await f.publish();
     expect(response.status).toBe(200);
-    expect(await response.json()).toMatchObject({ shared: true, version: 3 });
+    const result = await response.json() as { shared: boolean; version: number; resourceId: string };
+    expect(result).toMatchObject({ shared: true, version: 1 });
+    expect(result.resourceId).toMatch(/^community-skill-/u);
     expect(f.resolveDir).not.toHaveBeenCalled();
-    expect(f.updates).toEqual([{ scope: 'public', metadata: { localId: 'requirement-analysis', title: 'Requirement analysis', preserved: true,
-      category: 'data_analysis', logoKey: 'research' } }]);
-    expect(f.cloudFetch.mock.calls[1]?.[0].toString()).toBe(`https://cloud.example/hdw/api/workspaces/team-a/resources/${resourceId}`);
+    expect(f.updates).toHaveLength(1);
+    expect(f.updates[0]).toMatchObject({
+      path: expect.stringMatching(/\/resources\/community-skill-[^/]+\/versions$/u),
+      body: {
+        kind: 'skill', scope: 'public', ownerMemberId: 'member-a', manifest: f.manifest,
+        metadata: {
+          localId: 'requirement-analysis', title: 'Requirement analysis', preserved: true,
+          category: 'data_analysis', logoKey: 'research',
+          communitySourceResourceId: resourceId, communitySourceWorkspaceId: 'team-a',
+          publicationSourceType: 'reference',
+        },
+      },
+    });
+    expect(f.cloudFetch.mock.calls.filter(([url, init]) =>
+      init?.method === 'PUT' && String(url).endsWith('/resources/' + resourceId))).toHaveLength(0);
+  });
+
+  it('returns a safe 409 without creating a community resource when the source snapshot is missing', async () => {
+    const f = await fixture({ snapshotMissing: true });
+    const response = await f.publish();
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({ error: 'SOURCE_SKILL_SNAPSHOT_INCOMPLETE' });
+    expect(f.updates).toHaveLength(0);
   });
 
   it.each([{ owner: 'someone-else' }, { kind: 'plugin' }, { canShare: false }])('rejects unauthorized publication %j', async (options) => {

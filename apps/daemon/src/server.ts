@@ -333,7 +333,7 @@ import {
 } from './skills.js';
 import { resolveSkillCatalogScope } from './skill-catalog-scope.js';
 import { listCloudResourceRecords } from './collab/cloud-resource-catalog.js';
-import { isCommunityPublicationCopy } from './collab/community-resource-copy.js';
+import { isCommunityPublicationCopy, canInstallCloudResource, unpublishCommunityResource, updateCommunityPublication, SourceSkillSnapshotUnavailableError } from './collab/community-resource-copy.js';
 import {
   prepareSkillFromZip,
   prepareSkillFromFiles,
@@ -1096,7 +1096,7 @@ import {
   createHdwHttpTeamProjectCatalogFromEnv,
   shouldUseHdwHttpTeamProjectCatalog,
 } from './collab/hdw-http-team-projects.js';
-import { createHdwCloudClientFromEnv } from './integrations/hdw-cloud.js';
+import { createHdwCloudClientFromEnv, HdwCloudError } from './integrations/hdw-cloud.js';
 import {
   createMaasSkillhubClient,
   installMaasSkillLocally,
@@ -7566,20 +7566,11 @@ const designSystemBackingProjects = new Map<string, string>();
     if (!title) {
       return res.status(400).json({ error: 'title is required' });
     }
-    if (!hdwCloudClient) {
-      return res.json({ exists: false });
-    }
-   try {
-      // Case-insensitive duplicate check: list the owner's skill resources
-      // and compare titles in lowercase. The HDW resources/check endpoint
-      // is case-sensitive, so we do the comparison ourselves.
-      const resources = await hdwCloudClient.listResources(workspaceId, 'skill', ownerMemberId);
-      const lowerTitle = title.toLowerCase();
-      const exists = resources.some((r) => {
-        const resourceTitle = (r.metadata as any)?.title;
-        return typeof resourceTitle === 'string' && resourceTitle.toLowerCase() === lowerTitle;
-      });
-     res.json({ exists });
+    if (!hdwCloudClient) return res.status(503).json({ error: 'NAME_CHECK_UNAVAILABLE' });
+    try {
+      // Central HDW checks all workspaces; create repeats this under a transaction.
+      const exists = await hdwCloudClient.checkResource(workspaceId, 'skill', title);
+      res.json({ exists });
    } catch (err: any) {
      res.status(500).json({ error: err instanceof Error ? err.message : 'cloud skill check failed' });
    }
@@ -7706,6 +7697,8 @@ const designSystemBackingProjects = new Map<string, string>();
         publisherName: (r.metadata as any)?.publisherName ?? r.ownerDisplayName ?? r.ownerMemberId ?? null,
         category: normalizeSkillCategory((r.metadata as any)?.category),
         logoKey: typeof (r.metadata as any)?.logoKey === 'string' ? (r.metadata as any).logoKey : null,
+        publicationSourceType: (r.metadata as any)?.publicationSourceType ?? ((r.metadata as any)?.communitySourceResourceId ? 'reference' : 'legacy'),
+        communitySourceResourceId: (r.metadata as any)?.communitySourceResourceId ?? null,
          peopleCount: r.stats?.actionUserCount ?? 0,
          actionCount: r.stats?.actionCount ?? 0,
        })).filter((skill) => communitySkillMatchesQuery(skill, searchQuery));
@@ -7822,6 +7815,11 @@ const designSystemBackingProjects = new Map<string, string>();
     const cloudResource = await hdwCloudClient.getResource(lookupWsId, resourceId);
     if (!cloudResource) {
       return res.status(404).json({ error: 'CLOUD_SKILL_NOT_FOUND' });
+    }
+    if (!canInstallCloudResource(cloudResource, {
+      workspaceId, memberId: scope.principal.memberId,
+    }, lookupWsId)) {
+      return res.status(410).json({ error: 'COMMUNITY_PUBLICATION_UNAVAILABLE', message: '该发布已取消，无法新增接入或从社区更新' });
     }
     const localId = (cloudResource.metadata as any)?.localId ?? cloudResource.id;
     const record: TeamResourceShareRecord = {
@@ -7954,6 +7952,23 @@ const designSystemBackingProjects = new Map<string, string>();
   });
  // Stop exposing a cloud skill in the public community while keeping its
  // cloud record available in the owner's personal scope.
+
+ // Manually update an active community reference to the latest source snapshot.
+ app.post('/api/workspace/skills/cloud/:resourceId/update-publication', async (req: any, res: any) => {
+   const resolution = await resolveTeamResourceScope(req);
+   if (!resolution.ok) return res.status(resolution.status).json({ error: resolution.code, message: resolution.message });
+   if (!hdwCloudClient) return res.status(503).json({ error: 'HDW_CLOUD_NOT_CONFIGURED' });
+   try {
+     const result = await updateCommunityPublication(hdwCloudClient, String(req.params.resourceId), resolution.scope);
+     skillsTeamList.invalidate(resolution.scope);
+     res.json({ ok: true, ...result });
+   } catch (err: any) {
+     if (err instanceof SourceSkillSnapshotUnavailableError) return res.status(409).json({ error: err.code, message: err.message });
+     if (err instanceof HdwCloudError) return res.status(err.status).json({ error: err.code, message: err.message });
+     res.status(409).json({ error: 'PUBLICATION_UPDATE_FAILED', message: err instanceof Error ? err.message : String(err) });
+   }
+ });
+
  app.post('/api/workspace/skills/cloud/:resourceId/unpublish', async (req: any, res: any) => {
    const resourceId = typeof req.params.resourceId === 'string' ? decodeURIComponent(req.params.resourceId) : '';
    if (!resourceId) return res.status(400).json({ error: 'invalid resource id' });
@@ -7974,16 +7989,16 @@ const designSystemBackingProjects = new Map<string, string>();
      if (cloudResource.ownerMemberId !== scope.principal.memberId) {
        return res.status(403).json({ error: 'NOT_RESOURCE_OWNER', message: 'you can only unpublish resources you own' });
      }
-     const { readSsoConfigFile } = await import('./http/hik_logins/hicoo.js');
-     const data = await hdwPut<{ resource: Record<string, unknown> }>(
-       `/workspaces/${encodeURIComponent(workspaceId)}/resources/${encodeURIComponent(resourceId)}`,
-       { metadata: cloudResource.metadata ?? {}, scope: null },
-       readSsoConfigFile(RUNTIME_DATA_DIR)?.cookies ?? [],
-     );
-     if (!data) {
-       return res.status(502).json({ error: 'HDW cloud unpublish failed' });
-     }
-     res.json({ ok: true });
+     const type = await unpublishCommunityResource(hdwCloudClient, cloudResource, workspaceId, async (metadata) => {
+       const { readSsoConfigFile } = await import('./http/hik_logins/hicoo.js');
+       const data = await hdwPut(
+         `/workspaces/${encodeURIComponent(workspaceId)}/resources/${encodeURIComponent(resourceId)}`,
+         { metadata, scope: null }, readSsoConfigFile(RUNTIME_DATA_DIR)?.cookies ?? [],
+       );
+       if (!data) throw new Error('HDW cloud unpublish failed');
+     });
+     skillsTeamList.invalidate(scope);
+     res.json({ ok: true, sourceType: type });
    } catch (err: any) {
      res.status(500).json({ error: err instanceof Error ? err.message : 'cloud skill unpublish failed' });
    }
@@ -8009,20 +8024,27 @@ const designSystemBackingProjects = new Map<string, string>();
     if (!cloudResource) {
       return res.status(404).json({ error: 'CLOUD_SKILL_NOT_FOUND' });
     }
-      if (cloudResource.ownerMemberId !== scope.principal.memberId) {
-        return res.status(403).json({ error: 'NOT_RESOURCE_OWNER', message: 'you can only delete resources you own' });
+      // Team managers may clean up native team Skills, but cannot change
+      // content ownership or unpublish another creator's community entry.
+      const isOwner = cloudResource.ownerMemberId === scope.principal.memberId;
+      const isTeamManager = scope.principal.role === 'owner' || scope.principal.role === 'admin';
+      if (cloudResource.kind !== 'skill') return res.status(404).json({ error: 'CLOUD_SKILL_NOT_FOUND' });
+      if (!isOwner && (!isTeamManager || req.query.community === '1')) {
+        return res.status(403).json({ error: 'NOT_RESOURCE_OWNER', message: 'only the creator or a team manager may delete this skill' });
       }
-     // Protect the original record created by older direct-publication flows.
-     if (req.query.community === '1' && !isCommunityPublicationCopy(cloudResource.metadata)) {
-       if (cloudResource.scope !== 'public') return res.status(409).json({ error: 'NOT_COMMUNITY_PUBLICATION' });
-       const { readSsoConfigFile } = await import('./http/hik_logins/hicoo.js');
-       const restored = await hdwPut(
-         `/workspaces/${encodeURIComponent(workspaceId)}/resources/${encodeURIComponent(resourceId)}`,
-         { metadata: cloudResource.metadata ?? {}, scope: null },
-         readSsoConfigFile(RUNTIME_DATA_DIR)?.cookies ?? [],
-       );
-       if (!restored) return res.status(502).json({ error: 'HDW cloud community removal failed' });
-       return res.json({ ok: true, originalPreserved: true });
+     // Compatibility for stale Community clients: DELETE means unpublish;
+     // never uninstall or remove the personal/team source in this branch.
+     if (req.query.community === '1') {
+       const type = await unpublishCommunityResource(hdwCloudClient, cloudResource, workspaceId, async (metadata) => {
+         const { readSsoConfigFile } = await import('./http/hik_logins/hicoo.js');
+         const restored = await hdwPut(
+           `/workspaces/${encodeURIComponent(workspaceId)}/resources/${encodeURIComponent(resourceId)}`,
+           { metadata, scope: null }, readSsoConfigFile(RUNTIME_DATA_DIR)?.cookies ?? [],
+         );
+         if (!restored) throw new Error('HDW cloud community removal failed');
+       });
+       skillsTeamList.invalidate(scope);
+       return res.json({ ok: true, sourceType: type });
      }
      await hdwCloudClient.removeResource(workspaceId, resourceId);
     skillsTeamList.invalidate(scope);
@@ -8035,6 +8057,7 @@ const designSystemBackingProjects = new Map<string, string>();
     });
     res.json({ ok: true });
   } catch (err: any) {
+    if (err instanceof HdwCloudError) return res.status(err.status).json({ error: err.code, message: err.message });
     res.status(500).json({ error: err instanceof Error ? err.message : 'cloud skill delete failed' });
   }
 });
@@ -8110,21 +8133,25 @@ const designSystemBackingProjects = new Map<string, string>();
      return res.status(status).json({ error: message });
    }
 
+   let communityImportId: string | null = null;
    try {
-     // One-off HDW adapter that resolves to the temp directory.
+     // Personal uploads preserve their stable logical-source ID. Each local
+     // Community import gets a fresh publication identity, so repeating an
+     // upload of the same name is rejected by HDW's global name registry
+     // rather than silently overwriting an existing Community publication.
+     communityImportId = resourceScope === 'public' ? `community-import-skill-${randomUUID()}` : null;
      const sanitizeResourceIdSegment = (value: string) => value.replace(/[^a-zA-Z0-9_-]/g, '-');
      const scopedIdPrefixFor = (principal?: { teamId?: string } | null) =>
-       principal?.teamId
-         ? `skill-${sanitizeResourceIdSegment(principal.teamId)}`
-         : 'skill';
+       principal?.teamId ? `skill-${sanitizeResourceIdSegment(principal.teamId)}` : 'skill';
      const resourceIdFor = (id: string, principal?: { teamId?: string } | null) =>
-       `${scopedIdPrefixFor(principal)}-${sanitizeResourceIdSegment(id)}`;
+       communityImportId ?? `${scopedIdPrefixFor(principal)}-${sanitizeResourceIdSegment(id)}`;
      const adapter = createHdwHttpResourceAdapter({
        resolveProjectDir: async () => prepared!.dir,
         describeProject: async () => ({
           localId: prepared!.slug,
           title: prepared!.title,
           category,
+          ...(resourceScope === 'public' ? { publicationSourceType: 'local_import', publishedAt: new Date().toISOString(), publicationVersion: 1 } : {}),
           ...(prepared!.description ? { description: prepared!.description } : {}),
           ...(requestedLogoKey ? { logoKey: requestedLogoKey } : {}),
         }),
@@ -8143,6 +8170,14 @@ const designSystemBackingProjects = new Map<string, string>();
      skillsTeamList.invalidate(scope);
       res.json({ shared: true, title: prepared.title, category, version: result?.version, resourceId: result?.resourceId, localId: prepared.slug });
    } catch (err: any) {
+     // HDW's two-phase upload may have reserved a name before blobs arrived.
+     // Roll back only this newly-generated community import on failure; never
+     // delete a pre-existing personal/team Skill or an unrelated publication.
+     if (communityImportId) {
+       await hdwCloudClient.removeResource(scope.principal.teamId, communityImportId)
+         .catch((cleanupError: unknown) => console.warn('[skill-upload] could not clean incomplete community import', cleanupError));
+     }
+     if (err instanceof HdwCloudError) return res.status(err.status).json({ error: err.code, message: err.message });
      res.status(500).json({ error: err instanceof Error ? err.message : 'cloud skill upload failed' });
    } finally {
      await cleanupSkillTempDir(tempRoot).catch(() => {});

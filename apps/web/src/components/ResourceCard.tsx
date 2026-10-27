@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Button } from '@open-design/components';
 import { Icon } from './Icon';
 import { CardActionMenu, type CardActionMenuItem } from './CardActionMenu';
-import { useT } from '../i18n';
+import { useI18n, useT } from '../i18n';
 import styles from './CloudSkillList.module.css';
 
 interface ResourceCardProps {
@@ -18,18 +18,21 @@ interface ResourceCardProps {
   uninstalling?: boolean;
   busy: boolean;
   onInstall: () => void;
+  canConnect?: boolean;
   actions: {
     share?: () => void;
     uninstall?: () => void;
     unpublish?: () => void;
+    updatePublication?: () => void;
     delete?: () => void;
     removeShare?: () => void;
   };
 }
 
 /** One visual contract for Skill/MCP cards; callers supply only permitted actions. */
-export function ResourceCard({ kind, title, icon, meta, source, description, stats, installed, installing, uninstalling = false, busy, onInstall, actions }: ResourceCardProps) {
+export function ResourceCard({ kind, title, icon, meta, source, description, stats, installed, installing, uninstalling = false, busy, onInstall, canConnect = true, actions }: ResourceCardProps) {
   const t = useT();
+  const { locale } = useI18n();
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const prefix = kind === 'skill' ? 'personalScope.cloudSkill' : 'personalScope.cloudMcp';
@@ -41,6 +44,7 @@ export function ResourceCard({ kind, title, icon, meta, source, description, sta
   const menuItems: CardActionMenuItem[] = [
     ...(actions.share ? [{ id: 'share' as const, label: t(`${prefix}Share`), onClick: actions.share }] : []),
     ...(actions.unpublish ? [{ id: 'unpublish' as const, label: t('squareScope.unpublish'), onClick: actions.unpublish }] : []),
+    ...(actions.updatePublication ? [{ id: 'update-publication' as const, label: locale.startsWith('zh') ? '更新发布' : 'Update publication', onClick: actions.updatePublication }] : []),
     ...(actions.delete ? [{ id: 'delete' as const, label: t('common.delete'), onClick: actions.delete }] : []),
     ...(actions.removeShare ? [{ id: 'remove-share' as const, label: t('sharedSpace.removeFromSharedWithMe'), onClick: actions.removeShare }] : []),
   ];
@@ -62,7 +66,7 @@ export function ResourceCard({ kind, title, icon, meta, source, description, sta
           <Button className={styles.resourceCardInstallButton} data-installed={installed}
             data-reversing={showUninstall} aria-label={showUninstall ? uninstallLabel : label}
             aria-busy={installing || uninstalling}
-            disabled={busy || installing || uninstalling || (installed && !canUninstall)}
+            disabled={!canConnect || busy || installing || uninstalling || (installed && !canUninstall)}
             onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}
             onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
             onClick={() => {
