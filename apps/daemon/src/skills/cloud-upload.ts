@@ -11,6 +11,7 @@
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { inflateRawSync } from 'node:zlib';
 import path from 'node:path';
+import { parseFrontmatter } from '../design-systems/frontmatter.js';
 import { validateProjectPath } from '../projects.js';
 
 const EOCD_SIG = 0x06054b50;
@@ -37,6 +38,8 @@ export interface PreparedSkillDir {
   slug: string;
   /** Display title (from SKILL.md frontmatter or fallback). */
   title: string;
+  /** Description from SKILL.md frontmatter; omitted when absent or empty. */
+  description?: string;
   /** Temp root that should be cleaned up after publish. */
   tempRoot: string;
 }
@@ -81,8 +84,14 @@ export async function prepareSkillFromZip(
     }
   }
 
-  const { slug, title } = parseSkillMetadata(skillEntry.body.toString('utf8'), skillDir);
-  return { dir: writeDir, slug, title, tempRoot };
+  const metadata = parseSkillMetadata(skillEntry.body.toString('utf8'), skillDir);
+  return {
+    dir: writeDir,
+    slug: metadata.slug,
+    title: metadata.title,
+    ...(metadata.description ? { description: metadata.description } : {}),
+    tempRoot,
+  };
 }
 
 /**
@@ -120,8 +129,14 @@ export async function prepareSkillFromFiles(
     }
   }
 
-  const { slug, title } = parseSkillMetadata(skillEntry.body.toString('utf8'), skillDir);
-  return { dir: writeDir, slug, title, tempRoot };
+  const metadata = parseSkillMetadata(skillEntry.body.toString('utf8'), skillDir);
+  return {
+    dir: writeDir,
+    slug: metadata.slug,
+    title: metadata.title,
+    ...(metadata.description ? { description: metadata.description } : {}),
+    tempRoot,
+  };
 }
 
 /** Clean up the temp directory after publish (best-effort). */
@@ -134,19 +149,25 @@ export async function cleanupSkillTempDir(tempRoot: string): Promise<void> {
 function parseSkillMetadata(
   content: string,
   fallbackFolder: string,
-): { slug: string; title: string } {
-  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+): { slug: string; title: string; description?: string } {
   let name = '';
-  if (match) {
-    const block = match[1] ?? '';
-    const nameMatch = block.match(/^name:\s*(.+)$/m);
-    if (nameMatch) {
-      name = nameMatch[1]!.trim().replace(/^["']|["']$/g, '').trim();
+  let description: string | undefined;
+  try {
+    const { data } = parseFrontmatter(content);
+    if (typeof data.name === 'string') {
+      name = data.name.trim();
     }
+    if (typeof data.description === 'string') {
+      const parsedDescription = data.description.trim();
+      if (parsedDescription) description = parsedDescription;
+    }
+  } catch {
+    // A malformed frontmatter block should not block publishing; keep the
+    // folder-derived title and omit the optional description.
   }
   const title = name || fallbackFolder || 'skill';
   const slug = slugify(title);
-  return { slug, title };
+  return { slug, title, ...(description ? { description } : {}) };
 }
 
 function slugify(name: string): string {

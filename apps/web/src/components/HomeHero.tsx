@@ -291,7 +291,7 @@ interface HomeMentionOption {
   id: string;
   icon: IconName;
   title: string;
-  description: string;
+  description?: string;
   meta: string;
   pluginRecord?: InstalledPluginRecord;
   disabled?: boolean;
@@ -698,11 +698,11 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
       ? {
           id: 'skills',
           label: t('homeHero.skills'),
-          options: skillMatches.map((skill) => ({
+          options: skillMatches.map((skill): HomeMentionOption => ({
             id: `skill-${skill.id}`,
             icon: selectedSkillIds.has(skill.id) ? 'check' : 'file',
             title: localizeSkillName(locale, skill),
-            description: localizeSkillDescription(locale, skill) || skill.id,
+            description: localizeSkillDescription(locale, skill) || undefined,
             meta: selectedSkillIds.has(skill.id) ? t('common.active') : skill.mode,
             onPick: () => pickSkill(skill),
           })),
@@ -712,7 +712,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
       ? {
           id: 'mcp',
           label: 'MCP',
-          options: mcpMatches.map((server) => ({
+          options: mcpMatches.map((server): HomeMentionOption => ({
             id: `mcp-${server.id}`,
             icon: 'link',
             title: server.label || server.id,
@@ -1629,7 +1629,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
                         </span>
                         <span className="home-hero__plugin-option-main">
                           <span>{item.title}</span>
-                          <span>{item.description}</span>
+                          {item.description ? <span>{item.description}</span> : null}
                         </span>
                         <span className="home-hero__plugin-option-meta">
                           {item.meta}

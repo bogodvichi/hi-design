@@ -6105,9 +6105,11 @@ function MentionPopover({
                   <Icon name={isStaged ? 'check' : 'file'} size={12} />
                   <span className="mention-item-body">
                     <strong>{localizeSkillName(locale, skill)}</strong>
-                    <span className="mention-meta mention-meta--desc">
-                      {localizeSkillDescription(locale, skill) || skill.id}
-                    </span>
+                    {localizeSkillDescription(locale, skill) ? (
+                      <span className="mention-meta mention-meta--desc">
+                        {localizeSkillDescription(locale, skill)}
+                      </span>
+                    ) : null}
                   </span>
                   <span className="mention-meta mention-item-kind">{isStaged ? t('chat.mentionActiveSkill') : skill.mode}</span>
                 </button>

@@ -8125,6 +8125,7 @@ const designSystemBackingProjects = new Map<string, string>();
           localId: prepared!.slug,
           title: prepared!.title,
           category,
+          ...(prepared!.description ? { description: prepared!.description } : {}),
           ...(requestedLogoKey ? { logoKey: requestedLogoKey } : {}),
         }),
        resourceIdFor,

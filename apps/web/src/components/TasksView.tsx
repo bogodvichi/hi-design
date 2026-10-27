@@ -227,7 +227,7 @@ function templateFromSkill(skill: SkillSummary, kind: AutomationTemplateKind): A
     kind,
     icon: kind === 'orbit' ? 'orbit' : 'file-code',
     title: skill.name,
-    description: skill.description || skill.id,
+    description: skill.description,
     defaultName: skill.name,
     prompt: skill.examplePrompt || skill.description || `Run ${skill.name}.`,
     skillId: skill.id,
@@ -1016,7 +1016,9 @@ export function TasksView({ skills = [], designTemplates = [], connectors = [] }
                   {kindLabel(template.kind, t)}
                 </span>
                 <span className="automation-template-card__title">{template.title}</span>
-                <span className="automation-template-card__desc">{template.description}</span>
+                {template.description ? (
+                  <span className="automation-template-card__desc">{template.description}</span>
+                ) : null}
                 <span className="automation-template-card__cta">
                   {t('automations.useTemplate')}
                   <Icon name="chevron-right" size={14} />

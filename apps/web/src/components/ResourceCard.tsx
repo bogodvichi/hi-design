@@ -55,7 +55,7 @@ export function ResourceCard({ kind, title, icon, meta, source, description, sta
         </div>
         <CardActionMenu items={menuItems.map((item) => ({ ...item, disabled: busy }))} className={styles.resourceCardMenuAnchor} />
       </div>
-      {description ? <p className={`${styles.cardDesc} ${styles.squareCardDesc}`}>{description}</p> : null}
+      {description ? <p title={description} className={`${styles.cardDesc} ${styles.squareCardDesc}`}>{description}</p> : null}
       <footer className={`community-template-card__foot ${styles.resourceCardFooter}`}>
         {stats}
         <div className="community-template-card__actions">

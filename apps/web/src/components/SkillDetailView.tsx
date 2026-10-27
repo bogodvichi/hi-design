@@ -172,7 +172,7 @@ export function SkillDetailView({
         </div>
       </div>
 
-      <p className="skill-detail__description">{description}</p>
+      {description ? <p title={description} className="skill-detail__description">{description}</p> : null}
 
       <section
         className="skill-detail__markdown"

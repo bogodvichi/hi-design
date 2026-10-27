@@ -1989,7 +1989,7 @@ function SkillTab({
                         />
                         <span className={styles.projectOptionText}>
                           <strong>{skill.name}</strong>
-                          <small>{skill.description || skillCategoryLabel(normalizeSkillCategory(skill.category), locale)}</small>
+                          {skill.description ? <small>{skill.description}</small> : null}
                         </span>
                       </button>
                     );

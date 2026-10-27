@@ -728,7 +728,7 @@ export function NewAutomationModal({
                         key={`skill-${skill.id}`}
                         icon="file"
                         label={skill.name}
-                        meta={skill.description || skill.mode}
+                        meta={skill.description}
                         selected={selectedSkillIds.includes(skill.id)}
                         onPick={() => pickSkill(skill)}
                       />
@@ -993,7 +993,7 @@ function MentionItem({
       </span>
       <span className="automation-mention-item__body">
         <span className="automation-mention-item__title">{label}</span>
-        <span className="automation-mention-item__meta">{meta}</span>
+        {meta ? <span className="automation-mention-item__meta">{meta}</span> : null}
       </span>
     </button>
   );
