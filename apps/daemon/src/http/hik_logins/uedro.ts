@@ -1,4 +1,5 @@
 import * as crypto from 'crypto';
+import { PlatformLoginError, runPlatformLogin } from './login-error.js';
 import {
   rawRequest,
   type Cookie,
@@ -285,10 +286,15 @@ export async function uedroLogin(
   password: string,
   serviceUrl: string = 'https://uedro.hikvision.com.cn/portal/',
 ): Promise<UedroLoginResult> {
+  return runPlatformLogin('uedro', () => loginUedro(username, password, serviceUrl));
+}
+
+async function loginUedro(username: string, password: string, serviceUrl: string): Promise<UedroLoginResult> {
   // Step 1: 取 RSA 公钥（同时下发 EPORTAL_JSESSIONID）,并加密用户名，密码
   const step1 = await rawRequest('GET', UEDRO_PUBLIC_KEY_URL, [], {
     extraHeaders: uedroHeaders([]),
   });
+  if (step1.status < 200 || step1.status >= 300) throw new PlatformLoginError('uedro');
   let publicKey: string;
   try {
     const parsed = parseUedroResponse(step1.body);
@@ -327,18 +333,16 @@ export async function uedroLogin(
     extraHeaders: uedroHeaders(step1.cookies),
   });
 
-  // 登录失败：响应体 code !== '0'，msg 提示原因
-  let redirectUrl: string | undefined;
-  try {
-    const parsed = parseUedroResponse(step2.body);
-    if (parsed.code !== '0') {
-      throw new Error(parsed.msg || 'uedro login failed');
-    }
-    redirectUrl = typeof parsed.data === 'string' ? parsed.data : undefined;
-  } catch (err: any) {
-    // 网关层错误（非 JSON / 5xx）也归一到登录失败
-    throw new Error(err.message || 'uedro login failed');
+  if (step2.status < 200 || step2.status >= 300) {
+    throw new PlatformLoginError('uedro', step2.status === 401 ? 401 : 502);
   }
+
+  // Only known credential rejection codes are 401; unknown business failures are upstream errors.
+  const parsed = parseUedroResponse(step2.body);
+  if (parsed.code !== '0') {
+    throw new PlatformLoginError('uedro', ['0xb5e15000', '401'].includes(parsed.code) ? 401 : 502);
+  }
+  const redirectUrl = typeof parsed.data === 'string' ? parsed.data : undefined;
 
   let mergedCookies = step2.cookies;
 
@@ -351,6 +355,7 @@ export async function uedroLogin(
     const step3 = await rawRequest('GET', redirectUrl, mergedCookies, {
       extraHeaders: uedroHeaders(mergedCookies),
     });
+    if (step3.status < 200 || step3.status >= 300) throw new PlatformLoginError('uedro');
     mergedCookies = step3.cookies;
   }
 

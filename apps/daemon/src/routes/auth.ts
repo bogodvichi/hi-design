@@ -28,6 +28,7 @@ import {
   type UedroInfo,
 } from '../http/hik_logins/uedro.js';
 import { hikkeLogin, hikkeValidate, type HikkeLoginResult } from '../http/hik_logins/hikke.js';
+import { normalizeLoginError } from '../http/hik_logins/login-error.js';
 import {
   fetchAiResearchLaunch,
   fetchHiMindLaunch,
@@ -175,8 +176,9 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
         if (uedroResult.ok) {
           uedro = uedroResult
         }
-      } catch (uedroErr: any) {
-        console.warn('uedro login failed:', uedroErr?.message || uedroErr);
+      } catch (uedroErr: unknown) {
+        const failure = normalizeLoginError('uedro', uedroErr);
+        console.warn('uedro login failed:', { status: failure.status, code: failure.code });
       }
       return uedro;
     }
@@ -184,10 +186,11 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
     let hikke: HikkeLoginResult;
     try {
       hikke = await hikkeLogin(username, password);
-    } catch (hikkeErr: any) {
+    } catch (hikkeErr: unknown) {
       // Do not log credentials or token values.
-      console.warn('Hikke login failed:', hikkeErr?.message || hikkeErr);
-      return sendApiError(res, 502, 'BAD_GATEWAY', 'Hikke login failed; multi-platform login was not completed');
+      const failure = normalizeLoginError('hikke', hikkeErr);
+      console.warn('Hikke login failed:', { status: failure.status, code: failure.code });
+      return sendApiError(res, failure.status, failure.code, failure.message);
     }
 
     let result: any = null;
@@ -195,8 +198,9 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
     // 2. 尝试海康 SSO 登录
     try {
       result = await hicooLogin(username, password);
-    } catch (err: any) {
-      error = err;
+    } catch (err: unknown) {
+      error = normalizeLoginError('hicoo', err);
+      console.warn('SSO login failed:', { status: error.status, code: error.code });
     }
     const uedro: any = await done_uedproLogin();
     if (result || uedro || hikke) {
@@ -241,19 +245,8 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
       };
       res.json(response);
     } else {
-      if (error) {
-        if (error.message === 'SSO login page unavailable') {
-          return sendApiError(res, 401, 'UNAUTHORIZED', 'SSO login page unavailable');
-        }
-        if (error.message === 'SSO form fields not found') {
-          return sendApiError(res, 401, 'UNAUTHORIZED', 'SSO form fields not found');
-        }
-        if (error.message === 'invalid username or password') {
-          return sendApiError(res, 401, 'UNAUTHORIZED', 'invalid username or password');
-        }
-        return sendApiError(res, 500, 'INTERNAL_ERROR', 'SSO login failed,' + JSON.stringify(error));
-      }
-      res.json({ok:false,username});
+      const failure = normalizeLoginError('hicoo', error);
+      return sendApiError(res, failure.status, failure.code, failure.message);
     }
   });
 

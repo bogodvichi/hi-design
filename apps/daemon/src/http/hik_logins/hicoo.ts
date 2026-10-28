@@ -4,6 +4,7 @@ import os from 'node:os';
 import * as crypto from 'crypto';
 import { rawRequest, type Cookie } from '../http.js';
 import { generateToken } from '../token.js';
+import { PlatformLoginError, runPlatformLogin } from './login-error.js';
 
 // ── 常量 ──────────────────────────────────────────────────────────
 
@@ -285,6 +286,10 @@ function copyForDesignerToUserDirAndRun(sourceDir: string, session: SsoSession):
  * @returns 登录结果，包含 cookies、username、userInfo
  */
 export async function hicooLogin(username: string, password: string): Promise<SsoLoginResult> {
+  return runPlatformLogin('hicoo', () => loginHicoo(username, password));
+}
+
+async function loginHicoo(username: string, password: string): Promise<SsoLoginResult> {
   const ssoEntryUrl = `http://sso.hikvision.com.cn/domino/login?RedirectTo=${Buffer.from('http://hicoo.hikvision.com.cn/algomarket/algorithmRetrieval').toString('base64')}`;
 
   // Step 1: GET SSO login page
@@ -333,11 +338,17 @@ export async function hicooLogin(username: string, password: string): Promise<Ss
     extraHeaders: { Referer: step1.finalUrl, Origin: new URL(step1.finalUrl).origin },
   });
 
+  if (step2.status < 200 || step2.status >= 300) {
+    throw new PlatformLoginError('hicoo', step2.status === 401 ? 401 : 502);
+  }
+
   const hasJwt = step2.cookies.some(c => c.name === 'JwtToken');
   const hasLtpa = step2.cookies.some(c => c.name === 'LtpaToken');
 
   if (!hasJwt || !hasLtpa) {
-    throw new Error('invalid username or password');
+    const rejection = step2.body.match(/<[^>]+id=["']msg["'][^>]*>([\s\S]*?)<\//i)?.[1];
+    const invalidCredentials = rejection && /用户名或密码(?:错误|不正确)/.test(rejection);
+    throw new PlatformLoginError('hicoo', invalidCredentials ? 401 : 502);
   }
 
   let result =  {
@@ -367,6 +378,9 @@ export async function hicooLogin(username: string, password: string): Promise<Ss
       },
     },
   );
+  if (checkResult.status < 200 || checkResult.status >= 300) {
+    throw new PlatformLoginError('hicoo');
+  }
   result.userInfo = JSON.parse(checkResult?.body).data;
   return result;
 }

@@ -1,5 +1,6 @@
 import * as crypto from 'node:crypto';
 import { rawRequest, type Cookie } from '../http.js';
+import { PlatformLoginError, runPlatformLogin } from './login-error.js';
 
 /** 海客 Hikke API origin. Can be overridden for controlled test environments. */
 export const HIKKE_ORIGIN = (process.env.HIKKE_ORIGIN || 'https://hikke.hikvision.com.cn').replace(/\/$/, '');
@@ -31,7 +32,9 @@ export interface HikkeValidateResult {
 }
 
 function parseEnvelope(body: string, status: number, operation: string): any {
-  if (status < 200 || status >= 300) throw new Error(`Hikke ${operation} failed (HTTP ${status})`);
+  if (status < 200 || status >= 300) {
+    throw new PlatformLoginError('hikke', operation === 'login' && status === 401 ? 401 : 502);
+  }
   let parsed: any;
   try {
     parsed = JSON.parse(body);
@@ -39,11 +42,15 @@ function parseEnvelope(body: string, status: number, operation: string): any {
     throw new Error(`Hikke ${operation} returned invalid JSON`);
   }
   if (parsed && typeof parsed === 'object') {
-    if (parsed.success === false || parsed.ok === false) {
-      throw new Error(typeof parsed.message === 'string' ? parsed.message : `Hikke ${operation} rejected`);
+    // Hikke's login API returns HTTP 200 with errcode/errmsg on rejection.
+    if (parsed.errcode !== undefined && ![0, '0'].includes(parsed.errcode)) {
+      throw new PlatformLoginError('hikke', operation === 'login' && [40020, '40020'].includes(parsed.errcode) ? 401 : 502);
     }
     if (parsed.code !== undefined && ![0, '0', 200, '200'].includes(parsed.code)) {
-      throw new Error(typeof parsed.msg === 'string' ? parsed.msg : `Hikke ${operation} rejected`);
+      throw new PlatformLoginError('hikke', operation === 'login' && [401, '401'].includes(parsed.code) ? 401 : 502);
+    }
+    if (parsed.success === false || parsed.ok === false) {
+      throw new PlatformLoginError('hikke');
     }
     if (parsed.success === true && Object.prototype.hasOwnProperty.call(parsed, 'result')) return parsed.result;
     if (Object.prototype.hasOwnProperty.call(parsed, 'data')) return parsed.data;
@@ -75,6 +82,10 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /** Log into Hikke using the same account, then resolve both Hikke tokens and user profile. */
 export async function hikkeLogin(username: string, password: string): Promise<HikkeLoginResult> {
+  return runPlatformLogin('hikke', () => loginHikke(username, password));
+}
+
+async function loginHikke(username: string, password: string): Promise<HikkeLoginResult> {
   const multipart = buildMultipart({ uid: username, password: rsaEncrypt(password) });
   const loginResponse = await rawRequest('POST', HIKKE_LOGIN_URL, [], {
     body: multipart.body,
