@@ -10,6 +10,7 @@ import { HTML_REVIEW_TYPE, UEDRO_HOME_URL, buildManuscriptPreviewUrl } from './r
 import { resolveUedroLaunchUrl } from './uedroLaunch';
 import type { WorkspaceCollabContext } from '@open-design/contracts';
 import { PersonPicker, type Person } from './PersonPicker';
+import { DEFAULT_HTML_REVIEW_H5_SIZE, HTML_REVIEW_H5_SIZES, appendHtmlReviewUploadFields, type HtmlReviewCarrierType } from './uedroHtmlUpload';
 
 /**
  * 发起评审 Modal：在羽点（uedro）上发起一条真实评审。
@@ -93,6 +94,8 @@ export function ReviewAddModal({
   // 部门模式：自由输入评审名称
   const [deptReviewName, setDeptReviewName] = useState('');
   const [subtype, setSubtype] = useState('1'); // select2，默认交互评审
+  const [carrierType, setCarrierType] = useState<HtmlReviewCarrierType>('web');
+  const [h5Size, setH5Size] = useState(DEFAULT_HTML_REVIEW_H5_SIZE);
   const [endtime, setEndtime] = useState(''); // datetime-local 值
   const [content, setContent] = useState(''); // 评审备注
   // 人员（对象数组，原站把整个人员对象塞进提交体）
@@ -192,6 +195,8 @@ export function ReviewAddModal({
       setSelectedTemplate(null);
       setDeptReviewName('');
       setSubtype('1');
+      setCarrierType('web');
+      setH5Size(DEFAULT_HTML_REVIEW_H5_SIZE);
       setEndtime('');
       setContent('');
       setMainjudge([]);
@@ -305,6 +310,7 @@ export function ReviewAddModal({
       const fd = new FormData();
       fd.append('file', file);
       fd.append('excelJson', '');
+        appendHtmlReviewUploadFields(fd, subtype, carrierType, h5Size);
       const resp = await fetch('/api/hik/uedro/uploadManuscript', { method: 'POST', body: fd });
       const j = await resp.json().catch(() => null);
       if (!aliveRef.current) return;
@@ -402,6 +408,7 @@ export function ReviewAddModal({
         const fd = new FormData();
         fd.append('file', file);
         fd.append('excelJson', '');
+        appendHtmlReviewUploadFields(fd, subtype, carrierType, h5Size);
         const upResp = await fetch('/api/hik/uedro/uploadManuscript', { method: 'POST', body: fd });
         const upJson = await upResp.json().catch(() => null);
         if (!aliveRef.current) return;
@@ -801,6 +808,36 @@ export function ReviewAddModal({
                 <span className={styles.itemError}>{fieldErrors.upload || ''}</span>
               </div>
            </div>
+             {subtype === HTML_REVIEW_TYPE ? (
+               <div className={styles.item}>
+                 <label className={styles.itemLabel}>评审稿类型</label>
+                 <div className={styles.itemControl}>
+                   <div className={styles.radioRow}>
+                     <label className={styles.radio}>
+                       <input type="radio" name="html-review-carrier" checked={carrierType === 'web'}
+                         onChange={() => { setCarrierType('web'); setUploadInfo(null); clearFieldError('upload'); }}
+                       />
+                       Web
+                     </label>
+                     <label className={styles.radio}>
+                       <input type="radio" name="html-review-carrier" checked={carrierType === 'h5'}
+                         onChange={() => { setCarrierType('h5'); setUploadInfo(null); clearFieldError('upload'); }}
+                       />
+                       H5
+                     </label>
+                   </div>
+                   {carrierType === 'h5' ? (
+                     <select aria-label="H5尺寸" className={styles.select} value={h5Size}
+                       onChange={(e) => { setH5Size(e.target.value); setUploadInfo(null); clearFieldError('upload'); }}
+                     >
+                       {HTML_REVIEW_H5_SIZES.map((size) => (
+                         <option key={size.value} value={size.value}>{size.label}</option>
+                       ))}
+                     </select>
+                   ) : null}
+                 </div>
+               </div>
+             ) : null}
             <div className={styles.item}>
               <label className={styles.itemLabel}>抄送人员</label>
               <div className={styles.itemControl}>

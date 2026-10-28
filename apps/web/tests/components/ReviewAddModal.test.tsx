@@ -88,6 +88,9 @@ describe('HTML review creation', () => {
     expect(file.name).toBe('可视化页面.zip');
     expect(file.type).toBe('application/zip');
     expect(upload.get('excelJson')).toBe('');
+    expect(upload.get('reviewType')).toBe('12');
+    expect(upload.get('carrierType')).toBe('web');
+    expect(upload.get('h5Size')).toBe('390x844');
     expect(JSON.parse(String(requests[1]!.init?.body))).toMatchObject({
       reviewType: '12',
       manuscriptId: 'html-project-1',
@@ -95,6 +98,30 @@ describe('HTML review creation', () => {
     });
     expect(exportProjectAsAxureZip).not.toHaveBeenCalled();
   });
+  it('supports H5 carrier and dimensions when uploading an HTML ZIP', async () => {
+    let uploadBody: FormData | null = null;
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (!String(url).endsWith('/uploadManuscript')) throw new Error('Unexpected request');
+      uploadBody = init?.body as FormData;
+      return { ok: true, json: async () => ({
+        ok: true, data: { manuscriptId: 'h5-1', reviewType: 12 },
+      }) };
+    }));
+    render(<ReviewAddModal open onClose={() => {}} />);
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: '12' } });
+    fireEvent.click(screen.getByRole('radio', { name: 'H5' }));
+    fireEvent.change(screen.getByRole('combobox', { name: 'H5尺寸' }), { target: { value: '412x915' } });
+    fireEvent.click(screen.getByRole('button', { name: '上传' }));
+    fireEvent.change(document.querySelector('input[type="file"]')!, {
+      target: { files: [new File(['ZIP'], 'h5.zip', { type: 'application/zip' })] },
+    });
+    await waitFor(() => expect(screen.getByText('h5.zip')).toBeTruthy());
+    const formData = uploadBody as FormData | null;
+    expect(formData?.get('reviewType')).toBe('12');
+    expect(formData?.get('carrierType')).toBe('h5');
+    expect(formData?.get('h5Size')).toBe('412x915');
+  });
+
   it('submits the selected HTML reviewType after an HTML manuscript upload', async () => {
     const requests: Array<{ url: string; body?: unknown }> = [];
     vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {

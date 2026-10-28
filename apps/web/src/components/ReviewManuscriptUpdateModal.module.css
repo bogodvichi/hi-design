@@ -332,7 +332,29 @@
   background: var(--text);
   color: var(--bg-elevated);
 }
-.sourceBtn:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
+
+/* HTML-review carrier controls match UEDRO's Web / H5 choice. */
+.carrierRow {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  min-height: 32px;
+}
+.carrierOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+.carrierSelect {
+  height: 34px;
+  width: 100%;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-panel);
+  color: var(--text);
+  font-size: 13px;
 }

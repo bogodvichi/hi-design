@@ -402,6 +402,8 @@ export function ReviewListModal({
         reviewName={pick(updateReview?.reviewName, updateReview?.name)}
         projectId={projectId}
         manuscriptId={updateReview?.manuscriptDtos?.[0]?.manuscriptId ?? ''}
+         initialCarrierType={String(updateReview?.carrierType ?? updateReview?.manuscriptDtos?.[0]?.carrierType ?? 'web')}
+         initialH5Size={String(updateReview?.h5Size ?? updateReview?.manuscriptDtos?.[0]?.h5Size ?? '390x844')}
       />
       <ReviewEditModal
         open={editOpen}

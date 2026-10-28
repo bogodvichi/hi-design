@@ -107,13 +107,27 @@ const REWRITE_CONTENT_TYPES = [
 
 /**
  * 评审稿上传 multer 单例：memoryStorage 把文件留在内存，再以 multipart 透传上游。
- * 字段：file（单个文件）+ excelJson（可选文本字段，原站固定传空串）。
+ * 字段：file + excelJson；HTML 评审另附 reviewType/carrierType/h5Size 文本字段。
  */
 const manuscriptUpload = multer({ storage: multer.memoryStorage() }).fields([
   { name: 'file', maxCount: 1 },
   { name: 'excelJson', maxCount: 1 },
   { name: 'manuscriptId', maxCount: 1 },
 ]);
+
+/** Extra multipart fields from UEDRO's HTML-review uploadDrag component. */
+export function htmlReviewMultipartParts(body: Record<string, unknown>): { name: string; data: string }[] {
+  if (String(body?.reviewType ?? '') !== '12') return [];
+  const allowedH5Sizes = new Set(['390x844', '375x667', '430x932', '360x740', '412x915']);
+  const h5Size = typeof body.h5Size === 'string' && allowedH5Sizes.has(body.h5Size)
+    ? body.h5Size
+    : '390x844';
+  return [
+    { name: 'reviewType', data: '12' },
+    { name: 'carrierType', data: body.carrierType === 'h5' ? 'h5' : 'web' },
+    { name: 'h5Size', data: h5Size },
+  ];
+}
 
 /** 从本地 SSO session 取出羽点会话 cookie；缺失时返回 null 并由调用方回 401。 */
 function readUedroCookies(dataDir: string): Cookie[] | null {
@@ -526,7 +540,7 @@ export function registerHikUedroRoutes(app: Express, deps: RegisterHikUedroRoute
    * POST /api/hik/uedro/uploadManuscript — 上传评审稿。
    *
    * 透传上游 `POST /uedro/web/manuscript/v1/upload`（multipart/form-data）。
-   * 前端发 multipart（含 `file` + `excelJson`），daemon 用 multer memoryStorage 接收，
+   * 前端发 multipart（含 `file` + `excelJson`，HTML 评审附加三个专用字段），daemon 用 multer memoryStorage 接收，
    * 再以原生 https 模块把 multipart 重组成流透传上游——不能复用 `rawRequest`，因其把
    * body `toString('utf8')` 缓存进内存会破坏二进制文件流。
    *
@@ -559,6 +573,7 @@ export function registerHikUedroRoutes(app: Express, deps: RegisterHikUedroRoute
        [
          { name: 'file', filename: Buffer.from(file.originalname, 'latin1').toString('utf8'), contentType: file.mimetype || 'application/octet-stream', data: file.buffer },
          { name: 'excelJson', data: excelJson },
+          ...htmlReviewMultipartParts(req.body ?? {}),
        ],
        'upload manuscript',
      );
@@ -616,6 +631,7 @@ export function registerHikUedroRoutes(app: Express, deps: RegisterHikUedroRoute
           { name: 'file', filename: Buffer.from(file.originalname, 'latin1').toString('utf8'), contentType: file.mimetype || 'application/octet-stream', data: file.buffer },
           { name: 'manuscriptId', data: manuscriptId },
           { name: 'excelJson', data: excelJson },
+          ...htmlReviewMultipartParts(req.body ?? {}),
         ],
         'reUpload manuscript',
       );

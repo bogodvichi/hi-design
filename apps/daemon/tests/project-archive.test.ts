@@ -76,6 +76,16 @@ describe('buildProjectArchive', () => {
     )).rejects.toThrow();
   });
 
+  it('refuses HTML review archives without HTML pages', async () => {
+    const emptyProjectId = 'project-only-notes';
+    const dir = path.join(projectsRoot, emptyProjectId);
+    await mkdir(dir, { recursive: true });
+    await writeFile(path.join(dir, 'README.md'), '# Not an HTML page');
+    await expect(createProjectArchiveStream(
+      projectsRoot, emptyProjectId, '', undefined, { format: 'html-review' },
+    )).rejects.toThrow(/没有 HTML 页面/);
+  });
+
   it('zips the requested subdirectory tree', async () => {
     const { buffer, baseName } = await buildProjectArchive(projectsRoot, projectId, 'ui-design');
     expect(baseName).toBe('ui-design');

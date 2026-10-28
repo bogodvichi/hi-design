@@ -5,6 +5,7 @@ import { exportProjectAsAxureZip } from '../runtime/axure-export';
 import { exportProjectAsHtmlReviewZip } from '../runtime/uedro-html-review-export';
 import { getProject } from '../state/projects';
 import { HTML_REVIEW_TYPE } from './reviewMeta';
+import { DEFAULT_HTML_REVIEW_H5_SIZE, HTML_REVIEW_H5_SIZES, appendHtmlReviewUploadFields, type HtmlReviewCarrierType } from './uedroHtmlUpload';
 
 /**
  * 更新评审稿 Modal：重新上传当前评审的评审稿。
@@ -51,6 +52,8 @@ export function ReviewManuscriptUpdateModal({
   reviewName,
   projectId,
   manuscriptId,
+  initialCarrierType,
+  initialH5Size,
 }: {
   open: boolean;
   onClose: () => void;
@@ -64,8 +67,12 @@ export function ReviewManuscriptUpdateModal({
   projectId?: string;
   /** 当前评审稿的已有稿件 ID（reUpload 必填字段）。 */
   manuscriptId: string;
+  initialCarrierType?: string;
+  initialH5Size?: string;
 }) {
   const [reUploadInfo, setReUploadInfo] = useState<ReUploadInfo | null>(null);
+  const [carrierType, setCarrierType] = useState<HtmlReviewCarrierType>('web');
+  const [h5Size, setH5Size] = useState(DEFAULT_HTML_REVIEW_H5_SIZE);
   const [uploading, setUploading] = useState(false);
   const [description, setDescription] = useState('');
   // 评审稿来源：'upload' 手动上传 / 'project' 来自当前项目（导出 Axure 包）
@@ -92,15 +99,15 @@ export function ReviewManuscriptUpdateModal({
     });
   }
 
-  /** 计算"来自当前项目"时导出 Axure 包的文件名（与 axure-export.ts 逻辑一致）。 */
+  /** 当前项目评审稿 ZIP 文件名（HTML 资源包或 Axure 交互稿）。 */
   const projectZipName = useMemo(() => {
-    const raw = odProjectName.trim() || 'axure-prototype';
+    const raw = odProjectName.trim() || (String(category) === HTML_REVIEW_TYPE ? 'html-review' : 'axure-prototype');
     const name = raw
       .replace(/[/\\:*?"<>|]/g, '')
       .replace(/\s+/g, ' ')
       .trim() || 'axure-prototype';
     return `${name}.zip`;
-  }, [odProjectName]);
+  }, [odProjectName, category]);
 
   // 拉取当前 open-design 项目名称（用于"来自当前项目"显示 zip 文件名）。
   useEffect(() => {
@@ -133,6 +140,15 @@ export function ReviewManuscriptUpdateModal({
     }
   }, [open]);
 
+  // Populate the HTML carrier from the existing review where UEDRO supplies it.
+  useEffect(() => {
+    if (!open) return;
+    setCarrierType(initialCarrierType === 'h5' ? 'h5' : 'web');
+    setH5Size(HTML_REVIEW_H5_SIZES.some((size) => size.value === initialH5Size)
+      ? initialH5Size!
+      : DEFAULT_HTML_REVIEW_H5_SIZE);
+  }, [open, reviewId, initialCarrierType, initialH5Size]);
+
   // Esc 关闭。
   useEffect(() => {
     if (!open) return;
@@ -163,6 +179,7 @@ export function ReviewManuscriptUpdateModal({
       fd.append('file', file);
       fd.append('manuscriptId', manuscriptId);
       fd.append('excelJson', '');
+        appendHtmlReviewUploadFields(fd, String(category), carrierType, h5Size);
       const resp = await fetch('/api/hik/uedro/reUploadManuscript', { method: 'POST', body: fd });
       const j = await resp.json().catch(() => null);
       if (!aliveRef.current) return;
@@ -244,6 +261,7 @@ export function ReviewManuscriptUpdateModal({
         fd.append('file', file);
         fd.append('manuscriptId', manuscriptId);
         fd.append('excelJson', '');
+        appendHtmlReviewUploadFields(fd, String(category), carrierType, h5Size);
         const upResp = await fetch('/api/hik/uedro/reUploadManuscript', { method: 'POST', body: fd });
         const upJson = await upResp.json().catch(() => null);
         if (!aliveRef.current) return;
@@ -394,6 +412,37 @@ export function ReviewManuscriptUpdateModal({
               <span className={styles.itemError}>{fieldErrors.upload || ''}</span>
             </div>
           </div>
+
+          {String(category) === HTML_REVIEW_TYPE ? (
+            <div className={styles.item}>
+              <label className={styles.itemLabel}>评审稿类型</label>
+              <div className={styles.itemControl}>
+                <div className={styles.carrierRow}>
+                  <label className={styles.carrierOption}>
+                    <input type="radio" name="html-review-update-carrier" checked={carrierType === 'web'}
+                      onChange={() => { setCarrierType('web'); setReUploadInfo(null); clearFieldError('upload'); }}
+                    />
+                    Web
+                  </label>
+                  <label className={styles.carrierOption}>
+                    <input type="radio" name="html-review-update-carrier" checked={carrierType === 'h5'}
+                      onChange={() => { setCarrierType('h5'); setReUploadInfo(null); clearFieldError('upload'); }}
+                    />
+                    H5
+                  </label>
+                </div>
+                {carrierType === 'h5' ? (
+                  <select aria-label="H5尺寸" className={styles.carrierSelect} value={h5Size}
+                    onChange={(e) => { setH5Size(e.target.value); setReUploadInfo(null); clearFieldError('upload'); }}
+                  >
+                    {HTML_REVIEW_H5_SIZES.map((size) => (
+                      <option key={size.value} value={size.value}>{size.label}</option>
+                    ))}
+                  </select>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
 
           {/* 备注：多行文本，可空。 */}
           <div className={styles.item}>
