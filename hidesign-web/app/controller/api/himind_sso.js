@@ -71,7 +71,9 @@ async function validateOASession(cookie, requestedUsername) {
   const info = body && body.data;
   if (!info || typeof info !== 'object') throw new Error('OA user info is unavailable');
   const verifiedUsername = usernameFromUserInfo(info);
-  if (!verifiedUsername || verifiedUsername !== requestedUsername) {
+  // Legacy clients send only the OA Cookie. Its provider-verified identity is
+  // authoritative; a supplied username remains a strict identity constraint.
+  if (!verifiedUsername || (requestedUsername && verifiedUsername !== requestedUsername)) {
     throw new Error('OA session identity does not match requested username');
   }
   return info;

@@ -15,7 +15,10 @@ runInNewContext(readFileSync(new URL('app/utils/workspace-access.js', root), 'ut
     if (id === './knex.js') return { createKnex() { throw new Error('Real database forbidden'); } };
     if (id === './ids.js') return ids;
     if (id === './oa-session-cookies') return require(fileURLToPath(new URL('app/utils/oa-session-cookies.js', root)));
-    if (id === '../controller/api/himind_sso') return { validateOASession() { throw new Error('Real network forbidden'); } };
+    if (id === '../controller/api/himind_sso') return {
+      validateOASession() { throw new Error('Real network forbidden'); },
+      usernameFromUserInfo(info: any) { return info?.username || ''; },
+    };
     throw new Error(id);
   },
 });
@@ -42,7 +45,7 @@ function fixture(extra: Record<string, any[]> = {}, valid = true) {
   };
   let validations = 0;
   const access = module.exports.createWorkspaceAccess({ config: {} }, { knex,
-    async validateSession(cookie: string, username: string) { validations++; assert.equal(cookie, 'session=fake'); assert.equal(username, 'alice'); if (!valid) throw new Error('expired'); },
+    async validateSession(cookie: string, username: string) { validations++; assert.equal(cookie, 'session=fake'); assert.ok(username === 'alice' || username === ''); if (!valid) throw new Error('expired'); return { username: 'alice' }; },
   });
   async function call(domain: string, action: string, overrides: Record<string, any> = {}) {
     const ctx = { headers: { 'x-hdw-username': 'alice', cookie: 'session=fake' }, state: {}, method: 'GET',
@@ -57,6 +60,34 @@ function fixture(extra: Record<string, any[]> = {}, valid = true) {
 test('expired OA session never reaches a resource mutation', async () => {
   const { invoked, ctx } = await fixture({}, false).call('resource', 'create', { method: 'POST' });
   assert.equal(invoked, false); assert.equal(ctx.status, 401);
+});
+test('0.21.3 Cookie-only project lists resolve the OA identity before checking team membership', async () => {
+  const f = fixture({ workspace_members: [{ workspace_id: 'team', username: 'alice', workspace_member_id: 'team-alice', role: 'member' }] });
+  const request = { headers: { cookie: 'session=fake' }, params: { workspaceId: 'team' } };
+  const first = await f.call('teamProject', 'list', request);
+  assert.equal(first.invoked, true);
+  assert.equal(first.ctx.state.user.username, 'alice');
+  const second = await f.call('teamProject', 'list', request);
+  assert.equal(second.invoked, true);
+  assert.equal(second.validations, 1);
+  const stranger = await f.call('teamProject', 'list', { ...request, params: { workspaceId: 'other-team' } });
+  assert.equal(stranger.invoked, false);
+  assert.equal(stranger.ctx.status, 403);
+});
+test('Cookie-only project lists reject missing or expired sessions', async () => {
+  for (const [valid, headers] of [[true, {}], [false, { cookie: 'session=fake' }]] as const) {
+    const result = await fixture({}, valid).call('teamProject', 'list', { headers });
+    assert.equal(result.invoked, false);
+    assert.equal(result.ctx.status, 401);
+  }
+});
+test('a cached Cookie-only identity cannot be replaced by a claimed username', async () => {
+  const f = fixture();
+  assert.equal((await f.call('teamProject', 'list', { headers: { cookie: 'session=fake' } })).invoked, true);
+  const forged = await f.call('teamProject', 'list', { headers: { cookie: 'session=fake', 'x-hdw-username': 'bob' } });
+  assert.equal(forged.invoked, false);
+  assert.equal(forged.ctx.status, 401);
+  assert.equal(forged.validations, 1);
 });
 test('legacy clients can browse explicitly public Skill and MCP catalogs without a session', async () => {
   for (const kind of ['skill', 'mcp']) {

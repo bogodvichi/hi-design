@@ -6,7 +6,7 @@ const crypto = require('node:crypto');
 const { createKnex } = require('./knex.js');
 const { getSharedSpaceTeamId, getSharedSpaceMemberId, getCollaboratorMemberId } = require('./ids.js');
 const { serializeOASessionCookies } = require('./oa-session-cookies');
-const { validateOASession } = require('../controller/api/himind_sso');
+const { validateOASession, usernameFromUserInfo } = require('../controller/api/himind_sso');
 
 function denied(status, code) {
   const error = new Error(code);
@@ -40,7 +40,6 @@ function createWorkspaceAccess(app, dependencies = {}) {
       if (typeof id === 'string') username = (await db()('workspace_members').where({ workspace_member_id: id }).first())?.username;
     }
     username = typeof username === 'string' ? username.trim().toLowerCase() : '';
-    if (!username) throw denied(401, 'AUTHENTICATION_REQUIRED');
     let cookie = ctx.headers.cookie || serializeOASessionCookies(body.oa_cookies);
     if (ctx.headers['x-hdw-oa-session']) {
       try {
@@ -50,12 +49,20 @@ function createWorkspaceAccess(app, dependencies = {}) {
       } catch { throw denied(401, 'INVALID_SESSION'); }
     }
     if (!cookie) throw denied(401, 'AUTHENTICATION_REQUIRED');
-    const key = crypto.createHash('sha256').update(username + '\0' + cookie).digest('hex');
-    if ((sessions.get(key) || 0) <= Date.now()) {
-      try { await validate(cookie, username); } catch { throw denied(401, 'INVALID_SESSION'); }
+    const key = crypto.createHash('sha256').update(cookie).digest('hex');
+    let session = sessions.get(key);
+    if (!session || session.expiresAt <= Date.now()) {
+      try {
+        const info = await validate(cookie, username);
+        const actor = username || usernameFromUserInfo(info);
+        if (!actor) throw new Error('missing verified identity');
+        session = { username: actor, expiresAt: Date.now() + 30000 };
+      } catch { throw denied(401, 'INVALID_SESSION'); }
       if (sessions.size >= 1000) sessions.clear();
-      sessions.set(key, Date.now() + 30000);
+      sessions.set(key, session);
     }
+    if (username && username !== session.username) throw denied(401, 'INVALID_SESSION');
+    username = session.username;
     ctx.state.user = { username };
     return username;
   }
