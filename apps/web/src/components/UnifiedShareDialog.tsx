@@ -1,3 +1,4 @@
+import { responseError, userFacingError } from '../utils/userFacingError';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -169,11 +170,11 @@ export function UnifiedShareDialog({
       );
       const data = await resp.json();
       if (!resp.ok) {
-        throw new Error(data?.message || data?.error || `HTTP ${resp.status}`);
+        throw await responseError(resp, data);
       }
       setPublishResult(data as CommunityPublishResult);
     } catch (err) {
-      setPublishError(err instanceof Error ? err.message : String(err));
+      setPublishError(userFacingError(err, t, 'feedback.publishFailed', t('feedback.objectProject')));
     } finally {
       setPublishing(false);
     }
@@ -265,9 +266,7 @@ export function UnifiedShareDialog({
      });
      const data = await resp.json();
      if (!resp.ok) {
-       throw new Error(
-         data?.message || data?.msg || data?.error || `HTTP ${resp.status}`,
-       );
+       throw Object.assign(new Error(data?.message || data?.msg || `HTTP ${resp.status}`), { code: data?.error?.code ?? data?.error });
      }
      const url = extractShareUrl(data);
      if (url) {
@@ -276,7 +275,7 @@ export function UnifiedShareDialog({
        setLinkError(t('share.noLink'));
      }
    } catch (err) {
-     setLinkError(err instanceof Error ? err.message : String(err));
+     setLinkError(userFacingError(err, t, 'feedback.linkFailed', t('feedback.objectProject')));
    } finally {
      setLinkGenerating(false);
      setSharingToTeam(false);

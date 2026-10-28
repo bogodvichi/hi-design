@@ -35,7 +35,7 @@ import {
   parsePackagedHeadlessRequest,
   resolvePackagedMcpBootstrapLaunch,
 } from "./headless-runtime.js";
-import { PackagedPathAccessError } from "./errors.js";
+import { PackagedPathAccessError, pathAccessDialogCopy } from "./errors.js";
 import {
   exitPackagedLauncherForExistingDesktop,
   inspectExistingDesktopForLauncher,
@@ -370,7 +370,8 @@ void main().catch(async (error: unknown) => {
   const isPathAccess = error instanceof PackagedPathAccessError;
   if (isPathAccess) {
     try {
-      dialog.showErrorBox(error.title, error.message);
+      const copy = pathAccessDialogCopy(error, app.getPreferredSystemLanguages()[0] ?? "en");
+      dialog.showErrorBox(copy.title, copy.message);
     } catch {
       // Fall through to console logging + process exit.
     }

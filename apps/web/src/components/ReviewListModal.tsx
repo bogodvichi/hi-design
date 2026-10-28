@@ -1,3 +1,5 @@
+import { userFacingError } from '../utils/userFacingError';
+import { useT } from '../i18n';
 ﻿import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './ReviewListModal.module.css';
@@ -81,6 +83,7 @@ export function ReviewListModal({
   /** 当前 open-design 项目 ID，供「更新评审稿」走 Axure 导出流程使用。 */
   projectId?: string;
 }) {
+  const t = useT();
   // loading 区分两种语义：首屏/筛选切换的整屏 loading，和滚动到底的「加载更多」loading。
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -166,7 +169,7 @@ export function ReviewListModal({
       setReachedEnd(reachedEnd);
     } catch (err: any) {
       if (!aliveRef.current || reqId !== reqIdRef.current) return;
-      setError('评审列表加载失败: ' + (err?.message || String(err)));
+      setError(userFacingError(err, t, 'feedback.loadReviewFailed'));
       setItems([]);
       setReachedEnd(true);
     } finally {
@@ -198,7 +201,7 @@ export function ReviewListModal({
       if (!aliveRef.current || reqId !== reqIdRef.current) return;
       // 加载更多失败不冲掉已加载内容，仅退回页码并在列表底部提示可重试。
       setPage(page);
-      setMoreError('加载更多失败: ' + (err?.message || String(err)));
+      setMoreError(userFacingError(err, t, 'feedback.loadReviewFailed'));
     } finally {
       if (aliveRef.current && reqId === reqIdRef.current) {
         loadingMoreRef.current = false;
@@ -444,6 +447,7 @@ function ReviewCard({
   onOpenUpdate: (review: any) => void;
   onOpenEdit: (review: any) => void;
 }) {
+  const t = useT();
   // 主标题：优先项目名，缺失则取首个稿件文件名（即示例中的 xlsx 文件名），再退到评审名称。
   const manuscriptFile = r?.manuscriptDtos?.[0]?.fileName;
   const title = pick(r?.projectName, manuscriptFile, r?.reviewName);
@@ -587,7 +591,7 @@ function ReviewCard({
       }
 
       if (action === 'remind') {
-        if (!reviewId || reviewId === '—') throw new Error('缺少 reviewId');
+        if (!reviewId || reviewId === '—') throw new Error(t('feedback.reviewInfoFailed'));
         const resp = await fetch('/api/hik/uedro/urge', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -600,7 +604,7 @@ function ReviewCard({
      }
 
       if (action === 'finish') {
-        if (!reviewId || reviewId === '—') throw new Error('缺少 reviewId');
+        if (!reviewId || reviewId === '—') throw new Error(t('feedback.reviewInfoFailed'));
         const resp = await fetch('/api/hik/uedro/reviewFinish', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -614,7 +618,7 @@ function ReviewCard({
 
       // notify：切换订阅态。原站 editSubscriptionStatus 用 status=true/false。
       const nextOn = !menu.notifyOn;
-      if (!reviewId || reviewId === '—') throw new Error('缺少 reviewId');
+      if (!reviewId || reviewId === '—') throw new Error(t('feedback.reviewInfoFailed'));
       const resp = await fetch('/api/hik/uedro/editSubscriptionStatus', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -632,7 +636,7 @@ function ReviewCard({
       setMenu((m) => ({
         ...m,
         pending: null,
-        toast: { text: (err?.message || String(err)).slice(0, 80), tone: 'err' },
+        toast: { text: userFacingError(err, t, 'feedback.saveFailed'), tone: 'err' },
       }));
     }
   }

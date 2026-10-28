@@ -1,3 +1,5 @@
+import { userFacingError } from '../utils/userFacingError';
+import { useT } from '../i18n';
 // Import from Figma — offline `.fig` decode (or a Figma URL) → webpage.
 //
 // Reachable from the composer "+" menu on the homepage and in a project chat.
@@ -47,6 +49,7 @@ export function FigmaImportModal({
   onImported,
   onFigmaUrl,
 }: Props) {
+  const t = useT();
   const [mode, setMode] = useState<Mode>('file');
   const [file, setFile] = useState<File | null>(null);
   const [url, setUrl] = useState('');
@@ -69,13 +72,13 @@ export function FigmaImportModal({
     if (files.length === 0) return;
     const fig = files.find((f) => f.name.toLowerCase().endsWith('.fig'));
     if (!fig) {
-      setError('That isn’t a .fig file. Export your Figma file as .fig (File → Save local copy) and drop it here.');
+      setError(t('feedback.figFileRequired'));
       return;
     }
     setMode('file');
     setFile(fig);
     setError(null);
-  }, []);
+  }, [t]);
 
   const runImport = useCallback(async () => {
     if (!file) return;
@@ -84,7 +87,7 @@ export function FigmaImportModal({
     const projectId = await resolveProjectId();
     if (!projectId) {
       setStatus('error');
-      setError('Could not open a project to import into.');
+      setError(t('feedback.figProjectFailed'));
       return;
     }
     const outcome = await importProjectFigma(
@@ -95,24 +98,24 @@ export function FigmaImportModal({
     );
     if (!outcome.ok) {
       setStatus('error');
-      setError(outcome.error);
+      setError(userFacingError(outcome.error, t, 'feedback.importFailed'));
       return;
     }
     setResult(outcome.result);
     setStatus('done');
     // Hand the snapshot + prompt to the host (prefill composer / navigate).
     onImported(outcome.result, projectId);
-  }, [file, notes, onImported, resolveProjectId, workspaceContext]);
+  }, [file, notes, onImported, resolveProjectId, workspaceContext, t]);
 
   const submitUrl = useCallback(() => {
     const trimmed = url.trim();
     if (!FIGMA_URL_RE.test(trimmed)) {
-      setError('Enter a Figma file URL (https://figma.com/file/… or /design/…).');
+      setError(t('feedback.figUrlRequired'));
       return;
     }
     onFigmaUrl?.(trimmed, notes.trim());
     onClose();
-  }, [url, notes, onFigmaUrl, onClose]);
+  }, [url, notes, onFigmaUrl, onClose, t]);
 
   const importing = status === 'importing';
 

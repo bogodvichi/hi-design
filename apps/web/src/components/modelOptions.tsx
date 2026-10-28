@@ -637,7 +637,7 @@ export const SearchableModelSelect = forwardRef<
                   }}
                 >
                   {companyGroups.length === 0 ? (
-                    <div className="model-select-searchable__empty">No matching models</div>
+                    <div className="model-select-searchable__empty">{t('feedback.noData')}</div>
                   ) : (
                     <>
                       <div className="model-select-searchable__companies">
@@ -693,7 +693,7 @@ export const SearchableModelSelect = forwardRef<
                 >
                   {filteredOptions.map((option, index) => renderModelOption(option, index))}
                   {filteredOptions.length === 0 ? (
-                    <div className="model-select-searchable__empty">No matching models</div>
+                    <div className="model-select-searchable__empty">{t('feedback.noData')}</div>
                   ) : null}
                 </div>
               )}

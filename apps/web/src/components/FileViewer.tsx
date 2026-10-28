@@ -1,3 +1,4 @@
+import { userFacingError } from '../utils/userFacingError';
 import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState, type ClipboardEvent as ReactClipboardEvent, type CSSProperties, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react';
 import { createPortal, flushSync } from 'react-dom';
 import { useManualEditAutosave } from '../edit-mode/use-manual-edit-autosave';
@@ -13052,7 +13053,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     savedSource: string,
   ) {
     if (id !== '__body__' && !manualEditRuntimeSelector(id) && !readManualEditOuterHtml(savedSource, id)) {
-      setManualEditError('The selected target no longer exists in the saved source. Refreshing the preview.');
+      setManualEditError(t('feedback.selectionChanged'));
       setSelectedManualEditTarget(null);
       setManualEditFrozenSource(null);
       setReloadKey((key) => key + 1);
@@ -13074,7 +13075,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       ...current,
       styles: { ...current.styles, ...repairStyles },
     }));
-    setManualEditError('Saved styles differed from the active preview. Reconciled the selected target from source.');
+    setManualEditError(t('feedback.stylesReconciled'));
   }
 
   function cancelManualEditPendingStyles(id: string, keys: Array<keyof ManualEditStyles>) {
@@ -13331,7 +13332,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     if (content.patch.kind === 'set-outer-html') {
       const validation = applyManualEditPatch(sourceRef.current ?? '', content.patch);
       if (!validation.ok) {
-        setManualEditError(validation.error ?? 'Could not apply edit.');
+        setManualEditError(userFacingError(validation.error ?? 'Could not apply edit.', t, 'feedback.saveEditFailed', t('feedback.objectFile')));
         return;
       }
     }
@@ -13441,7 +13442,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       const baseSource = sourceRef.current;
       const result = applyManualEditPatch(baseSource, patch);
       if (!result.ok) {
-        setManualEditError(result.error ?? 'Could not apply edit.');
+        setManualEditError(userFacingError(result.error ?? 'Could not apply edit.', t, 'feedback.saveEditFailed', t('feedback.objectFile')));
         return false;
       }
       if (result.source === baseSource) {
@@ -13472,16 +13473,11 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       if (manualEditIdentityRef.current !== identity) return false;
       if (!saved.ok) {
         if (saved.code === 'FILE_EDIT_CONFLICT') {
-          setManualEditError(describeManualEditSaveFailure('Could not save the edited file', saved));
+          setManualEditError(userFacingError(saved, t, 'feedback.saveEditFailed', t('feedback.objectFile')));
           await confirmManualEditHistorySource(baseSource, 'The file changed outside manual edit mode. Refreshing before applying manual edits.');
           return false;
         }
-        const status = 'status' in saved ? saved.status : undefined;
-        const code = 'code' in saved ? saved.code : undefined;
-        const message = 'message' in saved ? saved.message : 'Unknown save error';
-        setManualEditError(
-          `Could not save the edited file${status ? ` (${status}${code ? ` ${code}` : ''})` : ''}: ${message}`,
-        );
+        setManualEditError(userFacingError(saved, t, 'feedback.saveEditFailed', t('feedback.objectFile')));
         return false;
       }
       captureCoverAfterSave(result.source);
@@ -13540,7 +13536,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       await onFileSaved?.();
       return true;
     } catch (error) {
-      setManualEditError(error instanceof Error ? error.message : 'Could not save the edited file.');
+      setManualEditError(userFacingError(error instanceof Error ? error.message : 'Could not save the edited file.', t, 'feedback.saveEditFailed', t('feedback.objectFile')));
       return false;
     } finally {
       manualEditSavingRef.current = false;
@@ -13565,16 +13561,8 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     setManualEditUndone([]);
     manualEditPendingStyleRef.current = null;
     setManualEditDraft((current) => ({ ...current, fullSource: persisted }));
-    setManualEditError(message);
+    setManualEditError(userFacingError(message, t, 'feedback.saveEditFailed', t('feedback.objectFile')));
     return false;
-  }
-
-  function describeManualEditSaveFailure(
-    prefix: string,
-    saved: Exclude<Awaited<ReturnType<typeof writeProjectTextFileDetailed>>, { ok: true }>,
-  ): string {
-    const status = saved.status ? ` (${saved.status}${saved.code ? ` ${saved.code}` : ''})` : '';
-    return `${prefix}${status}: ${saved.message}`;
   }
 
   async function undoManualEdit() {
@@ -13612,11 +13600,11 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       if (manualEditIdentityRef.current !== currentSourceIdentity) return;
       if (!saved.ok) {
         if (saved.code === 'FILE_EDIT_CONFLICT') {
-          setManualEditError(describeManualEditSaveFailure('Could not save the undo result', saved));
+          setManualEditError(userFacingError(saved, t, 'feedback.saveUndoFailed', t('feedback.objectFile')));
           await confirmManualEditHistorySource(latest.afterSource, 'The file changed outside manual edit mode. History was cleared to avoid overwriting newer content.');
           return;
         }
-        setManualEditError(describeManualEditSaveFailure('Could not save the undo result', saved));
+        setManualEditError(userFacingError(saved, t, 'feedback.saveUndoFailed', t('feedback.objectFile')));
         return;
       }
       // Same srcDoc rebuild as a committed patch — keep the scroll position
@@ -13680,11 +13668,11 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       if (manualEditIdentityRef.current !== currentSourceIdentity) return;
       if (!saved.ok) {
         if (saved.code === 'FILE_EDIT_CONFLICT') {
-          setManualEditError(describeManualEditSaveFailure('Could not save the redo result', saved));
+          setManualEditError(userFacingError(saved, t, 'feedback.saveRedoFailed', t('feedback.objectFile')));
           await confirmManualEditHistorySource(latest.beforeSource, 'The file changed outside manual edit mode. History was cleared to avoid overwriting newer content.');
           return;
         }
-        setManualEditError(describeManualEditSaveFailure('Could not save the redo result', saved));
+        setManualEditError(userFacingError(saved, t, 'feedback.saveRedoFailed', t('feedback.objectFile')));
         return;
       }
       // Same srcDoc rebuild as a committed patch — keep the scroll position
@@ -16279,7 +16267,7 @@ async function openReviewListModal() {
         const result = await uploadProjectFiles(projectId, [pickedFile], undefined, workspaceContext);
         const uploaded = result.uploaded[0];
         if (!uploaded?.path) {
-          setManualEditError(result.error ?? t('manualEdit.uploadImageFailed'));
+          setManualEditError(userFacingError(result.error ?? t('manualEdit.uploadImageFailed'), t, 'feedback.saveEditFailed', t('feedback.objectFile')));
           return null;
         }
         setManualEditError(null);

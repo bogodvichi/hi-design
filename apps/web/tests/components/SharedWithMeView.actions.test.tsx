@@ -138,10 +138,11 @@ describe.each([false, true])('shared project actions (folder=%s)', (nested) => {
 
     fireEvent.click(await screen.findByRole('button', { name: 'trigger remove' }));
 
-    expect(screen.getByText('删除后，该用户将不再可访问和使用')).toBeTruthy();
+    expect(screen.getByRole('dialog').textContent).toContain('移除后，你将无法访问');
+    expect(screen.getByRole('dialog').querySelector('strong')?.textContent).toBeTruthy();
     expect(state.unshare).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('button', { name: '删除' }));
+    fireEvent.click(screen.getByRole('button', { name: '确定' }));
 
     await waitFor(() => {
       expect(state.unshare).toHaveBeenCalledExactlyOnceWith('share-1');
@@ -185,12 +186,13 @@ describe('SharedWithMeView folder actions', () => {
     });
 
     fireEvent.click(await screen.findByRole('button', { name: '更多操作' }));
-    fireEvent.click(screen.getByRole('menuitem', { name: '从分享给我的删除' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '移除分享' }));
 
-    expect(screen.getByText('删除后，该用户将不再可访问和使用')).toBeTruthy();
+    expect(screen.getByRole('dialog').textContent).toContain('移除后，你将无法访问');
+    expect(screen.getByRole('dialog').querySelector('strong')?.textContent).toBeTruthy();
     expect(state.unshareFolder).not.toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole('button', { name: '删除' }));
+    fireEvent.click(screen.getByRole('button', { name: '确定' }));
 
     await waitFor(() => {
       expect(state.unshareFolder).toHaveBeenCalledExactlyOnceWith({

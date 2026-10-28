@@ -1,3 +1,4 @@
+import { useT } from '../i18n';
 // OD Library — full-size, kind-aware asset preview.
 //
 // The grid only shows a thumbnail; this modal renders the asset for real:
@@ -16,7 +17,7 @@
 // Plus a metadata bar (kind / source / dimensions / size / date / tags) and
 // prev/next navigation so the user can flip through the grid without closing.
 //
-// Copy is intentionally inline (not yet i18n-keyed), matching LibrarySection.
+// Feedback and controls use the shared translation dictionary.
 
 import { type CSSProperties, useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -100,11 +101,12 @@ function FontSpecimen({ asset, rawUrl }: { asset: LibraryAsset; rawUrl: string }
 }
 
 function ColorStage({ asset, rawUrl }: { asset: LibraryAsset; rawUrl: string }) {
+  const t = useT();
   const needsText = !asset.palette?.length;
   const { text, loading } = useRawText(rawUrl, needsText);
   const value = colorOf(asset, text);
-  if (loading && !value) return <div className={styles.stageNote}>Loading…</div>;
-  if (!value) return <div className={styles.stageNote}>No color value available.</div>;
+  if (loading && !value) return <div className={styles.stageNote}>{t('feedback.loading')}</div>;
+  if (!value) return <div className={styles.stageNote}>{t('feedback.noData')}</div>;
   const swatches = asset.palette?.length ? asset.palette : [value];
   return (
     <div className={styles.colorStage}>
@@ -124,17 +126,19 @@ function ColorStage({ asset, rawUrl }: { asset: LibraryAsset; rawUrl: string }) 
 }
 
 function TextStage({ rawUrl }: { rawUrl: string }) {
+  const t = useT();
   const { text, loading, error } = useRawText(rawUrl, true);
-  if (loading) return <div className={styles.stageNote}>Loading…</div>;
-  if (error) return <div className={styles.stageNote}>Could not load text.</div>;
+  if (loading) return <div className={styles.stageNote}>{t('feedback.loading')}</div>;
+  if (error) return <div className={styles.stageNote}>{t('feedback.previewFailed')}</div>;
   return <pre className={styles.textStage}>{text}</pre>;
 }
 
 function UrlStage({ asset, rawUrl }: { asset: LibraryAsset; rawUrl: string }) {
+  const t = useT();
   const needsText = !asset.sourceUrl;
   const { text } = useRawText(rawUrl, needsText);
   const href = asset.sourceUrl || (text ?? '').trim();
-  if (!href) return <div className={styles.stageNote}>No link available.</div>;
+  if (!href) return <div className={styles.stageNote}>{t('feedback.noData')}</div>;
   return (
     <div className={styles.urlStage}>
       <KindIcon kind="url" size={40} className={styles.urlGlyph} />
@@ -142,7 +146,7 @@ function UrlStage({ asset, rawUrl }: { asset: LibraryAsset; rawUrl: string }) {
         {href}
       </a>
       <a className={styles.urlOpen} href={href} target="_blank" rel="noreferrer">
-        Open in new tab →
+        {t('feedback.openNewTab')} →
       </a>
     </div>
   );
@@ -182,6 +186,7 @@ function Stage({ asset }: { asset: LibraryAsset }) {
  * the modal's stylesheet.
  */
 function ElementPanel({ asset }: { asset: LibraryAsset }) {
+  const t = useT();
   const element = elementMetaOf(asset);
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -219,19 +224,19 @@ function ElementPanel({ asset }: { asset: LibraryAsset }) {
         {dims ? <span style={{ fontSize: 12, color: 'var(--text-muted, #6b7280)' }}>{dims}</span> : null}
         {element.hasHtml ? (
           <button type="button" style={{ ...chipBtn, marginLeft: 'auto' }} onClick={() => setOpen((o) => !o)}>
-            {open ? 'Hide HTML' : 'Show HTML'}
+            {open ? t('feedback.hideHtml') : t('feedback.showHtml')}
           </button>
         ) : null}
       </div>
       {open && element.hasHtml ? (
         loading ? (
-          <div className={styles.stageNote}>Loading…</div>
+          <div className={styles.stageNote}>{t('feedback.loading')}</div>
         ) : error ? (
-          <div className={styles.stageNote}>Could not load element HTML.</div>
+          <div className={styles.stageNote}>{t('feedback.previewFailed')}</div>
         ) : (
           <div style={{ position: 'relative' }}>
             <button type="button" style={{ ...chipBtn, position: 'absolute', top: 6, right: 6, background: 'var(--panel, #fff)' }} onClick={copy}>
-              {copied ? 'Copied' : 'Copy'}
+              {copied ? t('feedback.copied') : t('feedback.copy')}
             </button>
             <pre
               style={{
@@ -267,6 +272,7 @@ export function LibraryPreviewModal({
   onOpenProject,
   onEditAsPage,
 }: Props) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   const editAsPage = useCallback(async () => {
     if (!onEditAsPage) return;
@@ -338,7 +344,7 @@ export function LibraryPreviewModal({
             {title}
           </span>
           {src ? <span className={styles.headSource}>{SOURCE_LABELS[src]}</span> : null}
-          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Close preview">
+          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label={t('feedback.closePreview')}>
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
               <path d="M18 6 6 18M6 6l12 12" />
             </svg>
@@ -347,7 +353,7 @@ export function LibraryPreviewModal({
 
         <div className={styles.stage}>
           {hasPrev ? (
-            <button type="button" className={`${styles.nav} ${styles.navPrev}`} onClick={onPrev} aria-label="Previous asset">
+            <button type="button" className={`${styles.nav} ${styles.navPrev}`} onClick={onPrev} aria-label={t('feedback.previousAsset')}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="m15 18-6-6 6-6" />
               </svg>
@@ -357,7 +363,7 @@ export function LibraryPreviewModal({
             <Stage asset={asset} />
           </div>
           {hasNext ? (
-            <button type="button" className={`${styles.nav} ${styles.navNext}`} onClick={onNext} aria-label="Next asset">
+            <button type="button" className={`${styles.nav} ${styles.navNext}`} onClick={onNext} aria-label={t('feedback.nextAsset')}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
                 <path d="m9 18 6-6-6-6" />
               </svg>

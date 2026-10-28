@@ -1,3 +1,4 @@
+import { userFacingError } from '../utils/userFacingError';
 // Modal wrapper around NewProjectPanel.
 //
 // Reuses the existing NewProjectPanel surface so all of the per-kind
@@ -120,12 +121,12 @@ function NewProjectModalBody({
     try {
       const result = await onCreate(input);
       if (result === false) {
-        setCreateError('Could not create project. Please try again.');
+        setCreateError(t('feedback.saveFailed'));
         return;
       }
       onClose();
     } catch (err) {
-      setCreateError(err instanceof Error ? err.message : 'Could not create project. Please try again.');
+      setCreateError(userFacingError(err, t, 'feedback.saveFailed', t('feedback.objectProject')));
     } finally {
       setCreating(false);
     }

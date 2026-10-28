@@ -1,5 +1,7 @@
 'use client';
 
+import { userFacingError } from '../utils/userFacingError';
+
 import { parseCompactCommand } from '@open-design/contracts';
 
 import {
@@ -2391,12 +2393,9 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
         if (partial) {
           const failedCount = result.failed.length;
           const uploadedCount = result.uploaded.length;
-          const detail = result.error ? ` (${result.error})` : '';
-          setUploadError(
-            uploadedCount > 0
-              ? `Attached ${uploadedCount} file(s), but ${failedCount} failed${detail}.`
-              : `Attachment upload failed for ${failedCount} file(s)${detail}.`,
-          );
+          setUploadError(uploadedCount > 0
+            ? t('feedback.attachmentPartial', { succeeded: uploadedCount, failed: failedCount })
+            : userFacingError(result.error, t, 'feedback.attachmentFailed'));
           console.warn('Some attachments failed to upload', result.failed);
         }
         trackFileUploadResult(analytics.track, {
@@ -2409,7 +2408,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
         });
       } catch (err) {
         const detail = err instanceof Error ? err.message : String(err);
-        setUploadError(`Attachment upload failed (${detail}).`);
+        setUploadError(userFacingError(err, t, 'feedback.attachmentFailed'));
         trackFileUploadResult(analytics.track, {
           page_name: 'chat_panel',
           area: 'chat_composer',
@@ -2476,13 +2475,12 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
         if (failed > 0) {
           setUploadError(
             applied.length > 0
-              ? `Added ${applied.length} item(s), but ${failed} failed.`
-              : `Could not add ${failed} item(s) from the library.`,
+              ? t('feedback.addAssetsPartial', { succeeded: applied.length, failed })
+              : t('feedback.addAssetsFailed'),
           );
         }
       } catch (err) {
-        const detail = err instanceof Error ? err.message : String(err);
-        setUploadError(`Could not add from library (${detail}).`);
+        setUploadError(userFacingError(err, t, 'feedback.addAssetsFailed'));
       } finally {
         setUploading(false);
       }
@@ -2545,8 +2543,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
                 uploaded = assignChatAttachmentOrders(result.uploaded, orderStart);
               }
               if (result.failed.length > 0) {
-                const detailText = result.error ? ` (${result.error})` : '';
-                setUploadError(`Attachment upload failed for ${result.failed.length} file(s)${detailText}.`);
+                setUploadError(userFacingError(result.error, t, 'feedback.attachmentFailed'));
                 if (uploaded.length === 0) {
                   ack({ ok: false, message: t('chat.annotationUploadFailed') });
                   return;
@@ -2667,7 +2664,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
             ack({ ok: false, message: t('chat.annotationFailed') });
           } catch (err) {
             console.warn('Could not send annotation', err);
-            setUploadError(err instanceof Error ? err.message : t('chat.annotationFailed'));
+            setUploadError(userFacingError(err, t, 'chat.annotationFailed'));
             ack({ ok: false, message: t('chat.annotationFailed') });
           } finally {
             setUploading(false);
@@ -4507,7 +4504,7 @@ function ToolsPluginsPanel({
   onApply: (record: InstalledPluginRecord) => void | Promise<void>;
   onShowDetails: (record: InstalledPluginRecord) => void;
 }) {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [source, setSource] = useState<'community' | 'mine'>('community');
   const [query, setQuery] = useState('');
@@ -4611,7 +4608,7 @@ function ToolsPluginsPanel({
                   )}
                 </span>
                 {pendingId === p.id ? (
-                  <span className="composer-tools-row-pending">Applying…</span>
+                  <span className="composer-tools-row-pending">{t('feedback.applying')}</span>
                 ) : null}
               </button>
               <button
@@ -4644,6 +4641,7 @@ function ToolsMcpPanel({
   onInsert: (serverId: string) => void;
   onManage: () => void;
 }) {
+  const { t } = useI18n();
   const [query, setQuery] = useState('');
   const visibleServers = useMemo(
     () => servers.filter((s) => mcpServerMatchesQuery(s, query)),
@@ -4673,7 +4671,7 @@ function ToolsMcpPanel({
         </div>
       ) : (
         <div className="composer-tools-list">
-          <div className="composer-tools-section-label">Configured</div>
+          <div className="composer-tools-section-label">{t('feedback.configured')}</div>
           {visibleServers.map((s) => (
             <button
               key={s.id}
@@ -4695,7 +4693,7 @@ function ToolsMcpPanel({
       )}
       {visibleTemplates.length > 0 ? (
         <div className="composer-tools-list">
-          <div className="composer-tools-section-label">Templates</div>
+          <div className="composer-tools-section-label">{t('feedback.templates')}</div>
           {visibleTemplates.map((tpl) => (
             <button
               key={tpl.id}
@@ -4726,7 +4724,7 @@ function ToolsMcpPanel({
         onClick={onManage}
       >
         <Icon name="settings" size={12} />
-        <span>Manage MCP servers…</span>
+        <span>{t('feedback.manageMcp')}</span>
       </button>
     </>
   );
@@ -5054,7 +5052,7 @@ function ToolsSkillsPanel({
   currentSkillId: string | null;
   onPick: (skill: SkillSummary) => void | Promise<void>;
 }) {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const [query, setQuery] = useState('');
   const [pendingId, setPendingId] = useState<string | null>(null);
   const visibleSkills = useMemo(
@@ -5107,7 +5105,7 @@ function ToolsSkillsPanel({
                   </span>
                 </span>
                 {pendingId === skill.id ? (
-                  <span className="composer-tools-row-pending">Applying…</span>
+                  <span className="composer-tools-row-pending">{t('feedback.applying')}</span>
                 ) : null}
               </button>
             );

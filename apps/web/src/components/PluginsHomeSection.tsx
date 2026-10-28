@@ -154,11 +154,11 @@ export function PluginsHomeSection({
     const result = savePluginId(record.id);
     const title = localizePluginTitle(locale, record);
     if (result === 'saved') {
-      setSaveToast(`Saved ${title}.`);
+      setSaveToast(t('feedback.saveNamedSuccess', { name: title }));
     } else if (result === 'already-saved') {
-      setSaveToast(`${title} is already saved.`);
+      setSaveToast(t('feedback.alreadySaved', { name: title }));
     } else {
-      setSaveToast('Could not save this plugin in this browser.');
+      setSaveToast(t('feedback.saveFailed'));
     }
   }
 

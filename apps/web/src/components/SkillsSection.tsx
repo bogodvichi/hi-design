@@ -1,3 +1,4 @@
+import { userFacingError } from '../utils/userFacingError';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import { Button } from '@open-design/components';
@@ -516,7 +517,7 @@ export function SkillsSection({ cfg, setCfg, onSkillsRefresh, onSkillsChanged }:
     ) return;
     setDraftSaving(false);
     if ('error' in result) {
-      setDraftError(result.error.message);
+      setDraftError(userFacingError(result.error, t, 'feedback.saveFailed', t('feedback.objectSkill')));
       return;
     }
     const updated = result.skill;
@@ -589,7 +590,7 @@ export function SkillsSection({ cfg, setCfg, onSkillsRefresh, onSkillsChanged }:
         || workspaceCatalogIdentityRef.current !== issuedIdentity
       ) return;
       if ('error' in result) {
-        setDraftError(result.error.message);
+        setDraftError(userFacingError(result.error, t, 'feedback.saveFailed', t('feedback.objectSkill')));
         return;
       }
       setConfirmDeleteId(null);
@@ -678,7 +679,7 @@ export function SkillsSection({ cfg, setCfg, onSkillsRefresh, onSkillsChanged }:
         {/* Row 2: filter dropdowns */}
         <div className="library-filter-selects">
           <label className="library-filter-select">
-            <span className="library-filter-select-label">Source</span>
+            <span className="library-filter-select-label">{t('feedback.source')}</span>
             <select
               value={sourceFilter}
               data-active={sourceFilter !== 'all' ? 'true' : undefined}
@@ -699,7 +700,7 @@ export function SkillsSection({ cfg, setCfg, onSkillsRefresh, onSkillsChanged }:
             </select>
           </label>
           <label className="library-filter-select">
-            <span className="library-filter-select-label">Type</span>
+            <span className="library-filter-select-label">{t('feedback.type')}</span>
             <select
               value={modeFilter}
               data-active={modeFilter !== 'all' ? 'true' : undefined}
@@ -720,7 +721,7 @@ export function SkillsSection({ cfg, setCfg, onSkillsRefresh, onSkillsChanged }:
               className="library-filter-select"
               data-testid="skills-category-filters"
             >
-              <span className="library-filter-select-label">Category</span>
+              <span className="library-filter-select-label">{t('feedback.category')}</span>
               <select
                 value={categoryFilter}
                 data-active={categoryFilter !== 'all' ? 'true' : undefined}

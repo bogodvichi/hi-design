@@ -1,3 +1,4 @@
+import { userFacingError } from '../utils/userFacingError';
 import { ModuleBreadcrumb } from './ModuleBreadcrumb';
 // Folder view for the "/personal/folder/:folderId" route. Mirrors
 // TeamSpaceView's FolderView + FoldersPanel but operates on the local
@@ -393,7 +394,7 @@ const renameFolderTitleId = useId();
       onShowCreateFolderChange(false);
       window.dispatchEvent(new CustomEvent('personal:folders-updated'));
     } catch (err: any) {
-      setCreateError(err?.message || String(err));
+      setCreateError(userFacingError(err, t, 'feedback.saveFailed'));
     } finally {
       setCreating(false);
     }

@@ -1,3 +1,4 @@
+import { userFacingError } from '../utils/userFacingError';
 // Local "New team" creation form — calls the HDW create-team API.
 //
 // Replaces the old `teamConsoleUrl('create-team')` external link with an
@@ -125,7 +126,7 @@ function NewTeamModalBody({
       onCreated?.(data?.data ?? {});
       onClose();
     } catch (err: any) {
-      setError(err?.message || String(err));
+      setError(userFacingError(err, t, 'feedback.saveFailed'));
     } finally {
       setSubmitting(false);
     }

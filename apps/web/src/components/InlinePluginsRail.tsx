@@ -57,7 +57,7 @@ interface Props {
 }
 
 export function InlinePluginsRail(props: Props) {
-  const { locale } = useI18n();
+  const { locale, t } = useI18n();
   const shellWorkspace = useWorkspaceContext();
   const projectCollab = useProjectCollabContext();
   const workspaceContext = props.projectId
@@ -178,7 +178,7 @@ export function InlinePluginsRail(props: Props) {
     setPendingId(null);
     if (!result) {
       setError(
-        `Failed to apply ${record.title}. Make sure the daemon is reachable.`,
+        t('feedback.applyFailed'),
       );
       return;
     }

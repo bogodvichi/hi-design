@@ -1,3 +1,4 @@
+import { userFacingError } from '../utils/userFacingError';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from './Icon';
@@ -129,7 +130,7 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
     try {
       const result = await installSkill({ source: trimmed }, workspaceContext);
       if ('error' in result) {
-        setToast({ message: result.error.message || t('pluginsView.importFailed'), tone: 'error' });
+        setToast({ message: userFacingError(result.error, t, 'feedback.saveFailed', t('feedback.objectSkill')), tone: 'error' });
         return;
       }
       if (await checkCloudSkillDuplicate(result.skill.name)) {
@@ -174,7 +175,7 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
       const uploadInput = buildCloudUploadInput(uploadSource);
       const result = await uploadSkillToCloud(uploadInput, workspaceContext);
       if ('error' in result) {
-        setToast({ message: result.error.message || t('pluginsView.importFailed'), tone: 'error' });
+        setToast({ message: userFacingError(result.error, t, 'feedback.saveFailed', t('feedback.objectSkill')), tone: 'error' });
         return;
       }
       // A Personal Skill must be usable immediately after being added.
@@ -182,7 +183,7 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
       // locally under the authenticated Personal Workspace.
       if (!result.resourceId || !workspaceContext) {
         window.dispatchEvent(new CustomEvent('personal:skill-refresh'));
-        setToast({ message: 'Skill 已保存，但无法自动添加；请在个人所有列表中手动添加。', tone: 'error' });
+        setToast({ message: t('feedback.skillSavedInstallFailed'), tone: 'error' });
         return;
       }
       const installRes = await fetch(
@@ -193,7 +194,7 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
       window.dispatchEvent(new CustomEvent('personal:skill-refresh'));
       if (!installRes.ok || installBody.installed !== true) {
         setToast({
-          message: `Skill 已保存，但自动添加失败：${installBody.message || installBody.error || '请在个人所有列表中手动添加'}`,
+          message: t('feedback.skillSavedInstallFailed'),
           tone: 'error',
         });
         return;

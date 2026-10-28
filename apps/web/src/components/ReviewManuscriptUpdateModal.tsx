@@ -1,3 +1,5 @@
+import { userFacingError } from '../utils/userFacingError';
+import { useT } from '../i18n';
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './ReviewManuscriptUpdateModal.module.css';
@@ -70,6 +72,7 @@ export function ReviewManuscriptUpdateModal({
   initialCarrierType?: string;
   initialH5Size?: string;
 }) {
+  const t = useT();
   const [reUploadInfo, setReUploadInfo] = useState<ReUploadInfo | null>(null);
   const [carrierType, setCarrierType] = useState<HtmlReviewCarrierType>('web');
   const [h5Size, setH5Size] = useState(DEFAULT_HTML_REVIEW_H5_SIZE);
@@ -184,7 +187,7 @@ export function ReviewManuscriptUpdateModal({
       const j = await resp.json().catch(() => null);
       if (!aliveRef.current) return;
       if (!resp.ok || !j?.ok) {
-        setError(j?.error?.message || j?.msg || `上传失败 HTTP ${resp.status}`);
+        setError(userFacingError(j?.error ?? j?.msg, t, 'feedback.uploadReviewFailed'));
         setReUploadInfo(null);
         return;
       }
@@ -192,7 +195,7 @@ export function ReviewManuscriptUpdateModal({
       clearFieldError('upload');
     } catch (err: any) {
       if (!aliveRef.current) return;
-      setError('评审稿上传失败: ' + (err?.message || String(err)));
+      setError(userFacingError(err, t, 'feedback.uploadReviewFailed'));
     } finally {
       if (aliveRef.current) setUploading(false);
     }
@@ -243,8 +246,8 @@ export function ReviewManuscriptUpdateModal({
           ? await exportProjectAsHtmlReviewZip({ projectId, projectName: odProjectName })
           : await exportProjectAsAxureZip({ projectId, projectName: odProjectName, returnBlob: true });
         if (!result.ok) {
-          setError(result.error);
-          setFieldErrors({ upload: result.error });
+          setError(userFacingError(result.error, t, 'feedback.uploadReviewFailed'));
+          setFieldErrors({ upload: userFacingError(result.error, t, 'feedback.uploadReviewFailed') });
           setSubmitting(false);
           return;
         }
@@ -266,7 +269,7 @@ export function ReviewManuscriptUpdateModal({
         const upJson = await upResp.json().catch(() => null);
         if (!aliveRef.current) return;
         if (!upResp.ok || !upJson?.ok) {
-          const msg = upJson?.error?.message || upJson?.msg || `上传失败 HTTP ${upResp.status}`;
+          const msg = userFacingError(upJson?.error ?? upJson?.msg, t, 'feedback.uploadReviewFailed');
           setError(msg);
           setFieldErrors({ upload: msg });
           setSubmitting(false);
@@ -281,7 +284,7 @@ export function ReviewManuscriptUpdateModal({
         finalManuscriptId = upJson.data.manuscriptId || manuscriptId;
       } catch (err: any) {
         if (!aliveRef.current) return;
-        const msg = '生成评审稿 ZIP 失败: ' + (err?.message || String(err));
+        const msg = userFacingError(err, t, 'feedback.uploadReviewFailed');
         setError(msg);
         setFieldErrors({ upload: msg });
         setSubmitting(false);
@@ -290,7 +293,7 @@ export function ReviewManuscriptUpdateModal({
         if (aliveRef.current) setExporting(false);
       }
       if (!middleManuscriptId) {
-        setFieldErrors({ upload: '上传后未获得中间稿件 ID' });
+        setFieldErrors({ upload: t('feedback.reviewUploadResultFailed') });
         setSubmitting(false);
         return;
       }
@@ -315,7 +318,7 @@ export function ReviewManuscriptUpdateModal({
       const j = await resp.json().catch(() => null);
       if (!aliveRef.current) return;
       if (!resp.ok || !j?.ok) {
-        setError(j?.error?.message || j?.msg || `更新评审稿失败 HTTP ${resp.status}`);
+        setError(userFacingError(j?.error ?? j?.msg, t, 'feedback.updateReviewFailed'));
         return;
       }
       setOkMsg('更新成功');
@@ -325,7 +328,7 @@ export function ReviewManuscriptUpdateModal({
       }, 1200);
     } catch (err: any) {
       if (!aliveRef.current) return;
-      setError('更新评审稿失败: ' + (err?.message || String(err)));
+      setError(userFacingError(err, t, 'feedback.updateReviewFailed'));
     } finally {
       if (aliveRef.current) setSubmitting(false);
     }

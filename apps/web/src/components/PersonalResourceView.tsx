@@ -1,3 +1,4 @@
+import { userFacingError } from '../utils/userFacingError';
 // Shared view for the "/personal-skill" and "/personal-mcp" routes.
 // Renders a header with an "Add" button (top-right) and a placeholder
 // content panel. For skills, the Add button opens a dialog with two
@@ -108,7 +109,7 @@ export function PersonalResourceView({ kind }: { kind: ResourceKind }) {
     try {
       const result = await installSkill({ source: trimmed }, workspaceContext);
       if ('error' in result) {
-        setToast({ message: result.error.message || t('pluginsView.importFailed'), tone: 'error' });
+        setToast({ message: userFacingError(result.error, t, 'feedback.importFailed', t('feedback.objectSkill')), tone: 'error' });
         return;
       }
       // Import succeeded — now push to team hub.
@@ -138,12 +139,12 @@ export function PersonalResourceView({ kind }: { kind: ResourceKind }) {
     try {
       const input = await readSkillImportInputFromFolder(folderFiles, t);
       if ('error' in input) {
-        setToast({ message: input.error.message, tone: 'error' });
+        setToast({ message: userFacingError(input.error, t, 'feedback.importFailed', t('feedback.objectSkill')), tone: 'error' });
         return;
       }
       const result = await importSkill(input, workspaceContext);
       if ('error' in result) {
-        setToast({ message: result.error.message || t('pluginsView.importFailed'), tone: 'error' });
+        setToast({ message: userFacingError(result.error, t, 'feedback.importFailed', t('feedback.objectSkill')), tone: 'error' });
         return;
       }
       // Import succeeded — now push to team hub.

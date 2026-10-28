@@ -1,3 +1,4 @@
+import { responseError, userFacingError } from '../utils/userFacingError';
 import { PageEmptyState } from './PageEmptyState';
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -80,7 +81,7 @@ function readCloudSkillCatalog(params: URLSearchParams, headers: Record<string, 
   const key = JSON.stringify(['cloud-skills', currentWorkspaceContextRequestToken(), url, headers]);
   return coalescedGet(key, async () => {
     const res = await fetch(url, { cache: 'no-store', headers });
-    if (!res.ok) throw new Error('Failed to load cloud skills');
+    if (!res.ok) throw await responseError(res);
     return res.json() as Promise<{ skills?: CloudSkill[]; categoryCounts?: Partial<SkillCategoryCounts> }>;
   }, 0);
 }
@@ -194,7 +195,7 @@ export function CloudSkillList({
       setError(null);
       try {
         const res = await fetch('/api/resource-share/shared-with-me?kind=skill', { cache: 'no-store' });
-        if (!res.ok) { throw new Error('Failed to load shared skills'); }
+        if (!res.ok) { throw await responseError(res); }
         const body = await res.json();
         const list: CloudSkill[] = (body.resources ?? []).map((r: any) => ({
           resourceId: r.resourceId,
@@ -218,7 +219,7 @@ export function CloudSkillList({
         setCategoryCounts(countCategories(list));
       } catch (err: any) {
         if (!isCurrent()) return;
-        setError(err?.message ?? String(err));
+        setError(userFacingError(err, t, 'feedback.loadSkillsFailed', t('feedback.objectSkill')));
       } finally {
         if (isCurrent()) setLoading(false);
       }
@@ -245,7 +246,10 @@ export function CloudSkillList({
       const teamResponse = teamResult.status === 'fulfilled' && teamResult.value.ok
         ? await teamResult.value.json()
         : null;
-      if (!cloudResponse && !teamResponse) throw new Error('Failed to load team skills');
+      if (!cloudResponse && !teamResponse) {
+        if (cloudResult.status === 'fulfilled') throw await responseError(cloudResult.value);
+        throw cloudResult.reason;
+      }
 
       const merged = new Map<string, CloudSkill>();
       for (const skill of (cloudResponse?.skills ?? []) as CloudSkill[]) {
@@ -336,11 +340,11 @@ export function CloudSkillList({
     }
     } catch (err: any) {
      if (!isCurrent()) return;
-     setError(err?.message ?? String(err));
+     setError(userFacingError(err, t, 'feedback.loadSkillsFailed', t('feedback.objectSkill')));
    } finally {
      if (isCurrent()) setLoading(false);
    }
- }, [workspaceId, workspaceMemberId, workspaceType, ownerMemberId, mode, scope, sourceProvider, debouncedSearch, showCommunityControls, activeCategory, countCategories]);
+ }, [workspaceId, workspaceMemberId, workspaceType, ownerMemberId, mode, scope, sourceProvider, debouncedSearch, showCommunityControls, activeCategory, countCategories, t]);
 
 useEffect(() => {
   const timer = window.setTimeout(() => setDebouncedSearch(effectiveSearchQuery.trim()), 250);
@@ -430,8 +434,7 @@ useEffect(() => {
        headers: workspaceHeaders(workspaceId, workspaceMemberId, workspaceType),
      });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.message ?? body?.error ?? 'Install failed');
+        throw await responseError(res);
       }
       const body = await res.json() as { localId?: string };
       const installedLocalId = body.localId || skill.localId;
@@ -465,7 +468,7 @@ useEffect(() => {
         detail: { source: 'cloud-skill-list' },
       }));
     } catch (err: any) {
-      setError(err?.message ?? String(err));
+      setError(userFacingError(err, t, 'feedback.installFailed', t('feedback.objectSkill')));
     } finally {
       setInstallingId(null);
     }
@@ -485,8 +488,7 @@ useEffect(() => {
         headers: workspaceHeaders(workspaceId, workspaceMemberId, workspaceType),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-      throw new Error(body?.message ?? body?.error ?? 'Uninstall failed');
+        throw await responseError(res);
       }
       setLocalSkillIds((current) => {
         const next = new Set(current);
@@ -500,7 +502,7 @@ useEffect(() => {
         detail: { source: 'cloud-skill-list' },
       }));
     } catch (err: any) {
-      setError(err?.message ?? String(err));
+      setError(userFacingError(err, t, 'feedback.uninstallFailed', t('feedback.objectSkill')));
     } finally {
       setUninstallingId(null);
     }
@@ -520,15 +522,12 @@ useEffect(() => {
         },
       );
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.error === 'SOURCE_HAS_PUBLICATION'
-          ? (locale.startsWith('zh') ? '该 Skill 正在社区中发布，请先取消发布后再删除源资源。' : 'Unpublish this Skill before deleting its source.')
-          : body?.message ?? body?.error ?? 'Delete failed');
+        throw await responseError(res);
       }
       // Actively refresh both cloud list and local installed set after delete
       await Promise.all([loadSkills(), loadLocalSkills()]);
     } catch (err: any) {
-      setError(err?.message ?? String(err));
+      setError(userFacingError(err, t, 'feedback.deleteFailed', t('feedback.objectSkill')));
     } finally {
       setDeletingId(null);
       setConfirmAction(null);
@@ -551,7 +550,7 @@ useEffect(() => {
       }
       await Promise.all([loadSkills(), loadLocalSkills()]);
     } catch (err: any) {
-      setError(err?.message ?? String(err));
+      setError(userFacingError(err, t, 'feedback.updatePublicationFailed', t('feedback.objectSkill')));
     } finally {
       setUpdatingId(null);
     }
@@ -568,12 +567,11 @@ useEffect(() => {
         },
       );
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.error ?? 'Unpublish failed');
+        throw await responseError(res);
       }
       await Promise.all([loadSkills(), loadLocalSkills()]);
     } catch (err: any) {
-      setError(err?.message ?? String(err));
+      setError(userFacingError(err, t, 'feedback.unpublishFailed', t('feedback.objectSkill')));
     } finally {
       setUnpublishingId(null);
       setConfirmAction(null);
@@ -827,6 +825,7 @@ useEffect(() => {
       </div>
       {typeof document !== 'undefined' && dialog ? createPortal(dialog, document.body) : dialog}
       {removeShareId ? <RemoveSharedResourceDialog key={removeShareId} shareId={removeShareId} kind="skill"
+        resourceName={skills.find((item) => item.shareId === removeShareId)?.title ?? t('feedback.objectSkill')}
         onClose={() => setRemoveShareId(null)}
         onRemoved={() => {
           setSkills((current) => current.filter((item) => item.shareId !== removeShareId));

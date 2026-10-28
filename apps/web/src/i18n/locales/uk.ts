@@ -1,6 +1,8 @@
+import { feedbackEn } from '../feedback-copy';
 import type { Dict } from '../types';
 
 export const uk: Dict = {
+  ...feedbackEn,
   'composer.skillApplyFailed': "Не вдалося додати цей Skill. Оновіть список Skills і спробуйте ще раз.",
   'projectDrag.movedTo': 'Moved to “{path}”',
   'projectDrag.permissionDenied': 'Move failed: no permission',

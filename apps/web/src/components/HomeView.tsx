@@ -1796,7 +1796,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
       // still matches the visible active state — concurrent clicks
       // would otherwise stomp a successful later apply.
       setActive((prev) => (prev?.record.id === record.id ? { ...prev, inputsValid: false } : prev));
-      setError(`Failed to apply ${record.title}. Make sure the daemon is reachable.`);
+      setError(t('feedback.applyFailed'));
       return false;
     }
     const reconciledInputs: Record<string, unknown> = { ...optimisticInputs };
@@ -2348,7 +2348,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
       });
       onOpenProject(project.id);
     } catch {
-      setError('Could not create a blank project. Make sure the daemon is reachable.');
+      setError(t('feedback.saveFailed'));
     }
   }
 
@@ -3180,7 +3180,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
           setError(
             missing.length > 0
               ? missingRequiredInputsMessage(missing)
-              : `Failed to apply ${submittedActive.record.title}. Check the plugin parameters and try again.`,
+              : t('feedback.applyFailed'),
           );
           return;
         }

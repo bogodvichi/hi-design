@@ -289,7 +289,7 @@ describe('CloudSkillList Skillhub integration', () => {
     expect(screen.queryByRole('searchbox')).toBeNull();
   });
 
-  it('shows the daemon error when installation fails while cards are visible', async () => {
+  it('explains the install conflict without exposing the daemon message', async () => {
     globalThis.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = input.toString();
       if (url === '/api/skills') return jsonResponse({ skills: [] });
@@ -312,7 +312,7 @@ describe('CloudSkillList Skillhub integration', () => {
       if (url.includes('/resource-1/install') && init?.method === 'POST') {
         return new Response(JSON.stringify({
           error: 'WORKSPACE_RESOURCE_ID_CONFLICT',
-          message: 'A skill named "design-review" is already installed',
+          message: '已安装的 Skill 与当前内容冲突，请联系团队管理员。',
         }), {
           status: 409,
           headers: { 'content-type': 'application/json' },
@@ -336,7 +336,7 @@ describe('CloudSkillList Skillhub integration', () => {
     expect(await screen.findByText('Design Review')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: '添加' }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      'A skill named "design-review" is already installed',
+      '已安装的 Skill 与当前内容冲突，请联系团队管理员。',
     );
   });
 });

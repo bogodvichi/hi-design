@@ -206,7 +206,7 @@ describe('MCP connection state without page refresh', () => {
       workspaceType="team" mode="personal"
     /></I18nProvider>);
     fireEvent.click(await screen.findByRole('button', { name: '连接' }));
-    expect(await screen.findByRole('alert')).toHaveProperty('textContent', 'Connect failed');
+    expect(await screen.findByRole('alert')).toHaveProperty('textContent', '连接失败，请稍后重试。');
     expect(screen.getByRole('button', { name: '连接' })).toBeTruthy();
   });
 });

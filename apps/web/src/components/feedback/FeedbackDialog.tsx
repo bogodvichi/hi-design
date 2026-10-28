@@ -1,3 +1,5 @@
+import { useT } from '../../i18n';
+import { userFacingError } from '../../utils/userFacingError';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { TinyMCEEditor } from './TinyMCEEditor';
@@ -109,6 +111,7 @@ export function FeedbackDialog({
   onClose: () => void;
   onSuccess: () => void;
 }) {
+  const t = useT();
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const [session, setSession] = useState<FeedbackSession | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
@@ -147,7 +150,7 @@ export function FeedbackDialog({
         const json = await res.json();
         if (!cancelled) setSession(json?.data ?? null);
       } catch (err) {
-        if (!cancelled) setSessionError('读取海客会话失败：' + (err instanceof Error ? err.message : String(err)));
+        if (!cancelled) setSessionError(userFacingError(err, t, 'feedback.feedbackSessionFailed'));
       } finally {
         if (!cancelled) setSessionLoading(false);
       }
@@ -192,7 +195,7 @@ export function FeedbackDialog({
       } catch (err) {
         if (cancelled) return;
         setClassesLoading(false);
-        setClassesError('加载反馈类别失败：' + (err instanceof Error ? err.message : String(err)));
+        setClassesError(userFacingError(err, t, 'feedback.feedbackCategoriesFailed'));
         setSelectedClassId(OTHER_DEMAND_CLASS_VALUE);
       }
     })();
@@ -255,7 +258,7 @@ export function FeedbackDialog({
       }
       onSuccess();
     } catch (err) {
-      setSubmitError('提交反馈失败：' + (err instanceof Error ? err.message : String(err)));
+      setSubmitError(userFacingError(err, t, 'feedback.feedbackSubmitFailed'));
       setSubmitState('error');
     }
   };

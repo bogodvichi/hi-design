@@ -1,6 +1,8 @@
+import { feedbackEn } from '../feedback-copy';
 import type { Dict } from '../types';
 
 export const en: Dict = {
+  ...feedbackEn,
   'projectDrag.movedTo': 'Moved to “{path}”',
   'projectDrag.permissionDenied': 'Move failed: no permission',
   'personalScope.folderMoveSummary': "Folders moved: {succeeded}; incomplete: {failed}.",
@@ -925,10 +927,10 @@ export const en: Dict = {
   'sharedSpace.shareSuccess': 'Successfully shared',
  'sharedSpace.shareFailed': 'Share failed, please try again',
  'sharedSpace.removeFromSharedWithMe': 'Remove from Shared with me',
- 'sharedSpace.removeFromSharedWithMeTitle': 'Remove from Shared with me?',
+ 'sharedSpace.removeFromSharedWithMeTitle': "Remove share",
  'sharedSpace.removeFromSharedWithMeBody': 'After removal, this user will no longer be able to access or use it.',
- 'sharedSpace.removeFromSharedWithMeConfirm': 'Remove',
- 'sharedSpace.removeFromSharedWithMeFailed': 'Removal failed. Please try again.',
+ 'sharedSpace.removeFromSharedWithMeConfirm': "Confirm",
+ 'sharedSpace.removeFromSharedWithMeFailed': "Could not remove the share. Try again later.",
 'sharedSpace.cannotShareToSelf': 'You cannot share to yourself. Please choose a different recipient.',
 'sharedSpace.shareFolderDialogTitle': 'Share Folder',
 'sharedSpace.shareFolderDialogDesc': 'Select members to share with. They will be able to view and comment on all projects (including subfolders) in this folder in the shared space.',

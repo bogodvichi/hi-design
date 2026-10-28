@@ -12,6 +12,17 @@ const list = (owner: string) => <I18nProvider initial="zh-CN"><CloudSkillList wo
   workspaceMemberId="me" workspaceType="team" ownerMemberId={owner} mode="square" scope="public" /></I18nProvider>;
 
 describe('cloud Skill list request ordering', () => {
+  it('explains a permission failure without exposing a code or calling it empty data', async () => {
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) =>
+      String(input).startsWith('/api/workspace/skills/cloud?')
+        ? Response.json({ error: 'RESOURCE_ACCESS_DENIED' }, { status: 403 })
+        : Response.json({ skills: [] })));
+    render(list('me'));
+    expect(await screen.findByText('没有 Skill 的访问权限，请联系所有者或团队管理员。')).toBeTruthy();
+    expect(screen.queryByText('暂无数据')).toBeNull();
+    expect(screen.queryByText('Failed to load cloud skills')).toBeNull();
+  });
+
   it.each(['failure', 'success'])('ignores a stale %s after a newer request succeeds', async (result) => {
     let finish!: (response: Response) => void;
     const pending = new Promise<Response>((resolve) => { finish = resolve; });

@@ -1,3 +1,5 @@
+import { userFacingError } from '../utils/userFacingError';
+import { useT } from '../i18n';
 // OD Library — manual upload modal.
 //
 // Opened from the Library toolbar's Upload button (and seeded by a section-wide
@@ -12,7 +14,7 @@
 // without trusting the client. Uploads run concurrently and the grid refreshes
 // once the batch settles (live clipper-style SSE also refreshes it).
 //
-// Copy is intentionally inline (not yet i18n-keyed), matching LibrarySection.
+// Feedback and controls use the shared translation dictionary.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -46,6 +48,7 @@ const nextItemId = () => `upload-${(uploadSeq += 1)}`;
 const maxMb = Math.round(LIBRARY_UPLOAD_MAX_BYTES / 1_000_000);
 
 export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
+  const t = useT();
   const [items, setItems] = useState<UploadItem[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -59,13 +62,13 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
         it.id === id
           ? outcome.ok
             ? { ...it, status: outcome.deduped ? 'deduped' : 'done' }
-            : { ...it, status: 'error', message: outcome.error ?? 'Upload failed' }
+            : { ...it, status: 'error', message: outcome.code === 'PAYLOAD_TOO_LARGE' ? t('feedback.fileTooLarge', { max: maxMb }) : outcome.code === 'UNSUPPORTED_MEDIA_TYPE' ? t('feedback.unsupportedFormat') : userFacingError(outcome.error, t, 'feedback.uploadFailed') }
           : it,
       ),
     );
     // Refresh the grid once every dispatched upload has settled.
     if (inFlight.current === 0) onUploaded();
-  }, [onUploaded]);
+  }, [onUploaded, t]);
 
   const addFiles = useCallback(
     (files: File[]) => {
@@ -82,11 +85,11 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
   const addText = useCallback(
     (text: string) => {
       const id = nextItemId();
-      setItems((prev) => [{ id, name: `Pasted text · ${text.length} chars`, status: 'uploading' }, ...prev]);
+      setItems((prev) => [{ id, name: t('feedback.pastedText', { count: text.length }), status: 'uploading' }, ...prev]);
       inFlight.current += 1;
       void uploadLibraryText(text).then((outcome) => finishItem(id, outcome));
     },
-    [finishItem],
+    [finishItem, t],
   );
 
   // Enqueue files handed in from a section-wide drop. The ref guard makes this
@@ -173,11 +176,11 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
         exit="exit"
         role="dialog"
         aria-modal="true"
-        aria-label="Upload to Library"
+        aria-label={t('feedback.uploadLibrary')}
       >
         <header className={styles.head}>
-          <span className={styles.headTitle}>Upload to Library</span>
-          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Close upload">
+          <span className={styles.headTitle}>{t('feedback.uploadLibrary')}</span>
+          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label={t('feedback.closeUpload')}>
             <Icon name="close" size={18} />
           </button>
         </header>
@@ -207,10 +210,10 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
         >
           <Icon name="upload" size={26} className={styles.dropIcon} />
           <p className={styles.dropTitle}>
-            Drag &amp; drop, paste, or <span className={styles.dropLink}>choose files</span>
+            {t('feedback.dropOrPaste')} <span className={styles.dropLink}>{t('feedback.chooseFiles')}</span>
           </p>
           <p className={styles.dropHint}>
-            Images, fonts, text, HTML, and JSON / design data · up to {maxMb} MB each
+            {t('feedback.uploadFormats', { max: maxMb })}
           </p>
           <input
             ref={inputRef}
@@ -240,12 +243,12 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
                 </span>
                 <span className={styles.itemStatus}>
                   {it.status === 'uploading'
-                    ? 'Uploading…'
+                    ? t('feedback.uploading')
                     : it.status === 'deduped'
-                      ? 'Already in Library'
+                      ? t('feedback.alreadyInLibrary')
                       : it.status === 'done'
-                        ? 'Added'
-                        : (it.message ?? 'Failed')}
+                        ? t('feedback.saved')
+                        : (it.message ?? t('feedback.uploadFailed'))}
                 </span>
               </li>
             ))}
@@ -255,13 +258,13 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
         <footer className={styles.foot}>
           <span className={styles.summary}>
             {items.length === 0
-              ? 'Nothing uploaded yet'
+              ? t('feedback.noData')
               : pending
-                ? 'Uploading…'
-                : `${okCount} added${errCount ? ` · ${errCount} failed` : ''}`}
+                ? t('feedback.uploading')
+                : t('feedback.uploadSummary', { succeeded: okCount, failed: errCount })}
           </span>
           <Button variant="ghost" onClick={onClose}>
-            Done
+            {t('common.close')}
           </Button>
         </footer>
       </motion.div>

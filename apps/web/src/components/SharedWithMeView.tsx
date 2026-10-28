@@ -105,7 +105,12 @@ function RemoveSharedProjectDialog({
       ariaLabel={t('sharedSpace.removeFromSharedWithMeTitle')}
     >
       <DialogTitle>{t('sharedSpace.removeFromSharedWithMeTitle')}</DialogTitle>
-      <DialogDescription>{t('sharedSpace.removeFromSharedWithMeBody')}</DialogDescription>
+      <DialogDescription>
+        {t('folderName' in target ? 'feedback.shareFolderImpact' : 'feedback.shareProjectImpact')}{' '}
+        {t('feedback.shareQuestionBefore')}{' '}
+        <strong>{'folderName' in target ? target.folderName : target.displayName}</strong>
+        {' '}{t('feedback.shareQuestionAfter')}
+      </DialogDescription>
       {error ? <p role="alert">{error}</p> : null}
       <DialogFooter className="row">
         <button type="button" onClick={onClose} disabled={busy}>

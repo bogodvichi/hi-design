@@ -424,7 +424,7 @@ export function PluginsView({
     if (!result) {
       setNotice({
         ok: false,
-        message: `Failed to apply ${record.title}. Make sure the daemon is reachable.`,
+        message: t('feedback.applyFailed'),
       });
       return;
     }
@@ -2960,6 +2960,7 @@ function Notice({
 }: {
   outcome: PluginInstallOutcome | { ok: boolean; message: string };
 }) {
+  const { t } = useI18n();
   const warnings = 'warnings' in outcome ? outcome.warnings : [];
   const log = 'log' in outcome ? outcome.log : [];
   return (
@@ -2972,7 +2973,7 @@ function Notice({
       ) : null}
       {log.length > 0 ? (
         <details className="plugins-view__notice-log">
-          <summary>Install log</summary>
+          <summary>{t('feedback.installLog')}</summary>
           <ul>
             {log.map((line, idx) => (
               <li key={`${line}-${idx}`}>{line}</li>
@@ -3295,7 +3296,7 @@ function AvailablePluginDetailsModal({
 
           <section className="plugin-details-modal__section">
             <div className="plugin-details-modal__section-head">
-              <h3 className="plugin-details-modal__section-title">About</h3>
+              <h3 className="plugin-details-modal__section-title">{t('feedback.about')}</h3>
             </div>
             <p className="plugin-details-modal__description">
               {availablePluginDescription(plugin.entry, locale) ?? 'No description provided.'}
@@ -3387,11 +3388,11 @@ function AvailablePluginDetailsModal({
 
           <section className="plugin-details-modal__section">
             <div className="plugin-details-modal__section-head">
-              <h3 className="plugin-details-modal__section-title">Catalog</h3>
+              <h3 className="plugin-details-modal__section-title">{t('feedback.catalog')}</h3>
             </div>
             <dl className="plugin-details-modal__source">
               <div>
-                <dt>Source</dt>
+                <dt>{t('feedback.source')}</dt>
                 <dd>
                   <code>{selectedVersionInfo?.source ?? plugin.entry.source}</code>
                 </dd>
@@ -3413,7 +3414,7 @@ function AvailablePluginDetailsModal({
                 </div>
               ) : null}
               <div>
-                <dt>Catalog</dt>
+                <dt>{t('feedback.catalog')}</dt>
                 <dd>{sourceName}</dd>
               </div>
               <div>

@@ -1668,7 +1668,7 @@ describe('ChatComposer context pickers', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByText('Attachment upload failed for 1 file(s) (storage offline).')).toBeTruthy();
+      expect(screen.getByText('Could not upload attachments. Try again.')).toBeTruthy();
     });
     expect(screen.queryByTestId('staged-contexts')).toBeNull();
 
@@ -1679,7 +1679,7 @@ describe('ChatComposer context pickers', () => {
     });
 
     await waitFor(() => {
-      expect(screen.queryByText('Attachment upload failed for 1 file(s) (storage offline).')).toBeNull();
+      expect(screen.queryByText('Could not upload attachments. Try again.')).toBeNull();
     });
     expect(screen.getByTestId('staged-contexts').textContent).toContain('recovered.txt');
   });

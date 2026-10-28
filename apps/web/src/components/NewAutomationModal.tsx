@@ -1,3 +1,4 @@
+import { userFacingError } from '../utils/userFacingError';
 // New / edit automation modal. The persistence layer is /api/routines; the
 // user-facing model is a scheduled agent conversation that can start in a new
 // project or append a new conversation to an existing project.
@@ -509,7 +510,7 @@ export function NewAutomationModal({
       onSaved(json.routine);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      setError(userFacingError(err, t, 'feedback.saveFailed'));
     } finally {
       setSubmitting(false);
     }

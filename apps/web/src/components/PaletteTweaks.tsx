@@ -1,3 +1,4 @@
+import { useT } from '../i18n';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Icon } from './Icon';
 
@@ -27,6 +28,7 @@ type Props = {
 };
 
 export function PaletteTweaks({ open, selected, onChange, onPreview, onClose }: Props) {
+  const t = useT();
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [hovered, setHovered] = useState<PaletteId | 'original' | null>(null);
 
@@ -71,7 +73,7 @@ export function PaletteTweaks({ open, selected, onChange, onPreview, onClose }: 
   return (
     <div className="palette-tweaks" ref={rootRef} role="dialog" aria-label="Themes">
       <div className="palette-tweaks-header">
-        <span className="palette-tweaks-title">Themes</span>
+        <span className="palette-tweaks-title">{t('feedback.themes')}</span>
         <span className="palette-tweaks-sub">5 curated theme palettes</span>
       </div>
       <ul className="palette-tweaks-list" role="listbox">
@@ -86,7 +88,7 @@ export function PaletteTweaks({ open, selected, onChange, onPreview, onClose }: 
           <span className="palette-tweaks-stripe palette-tweaks-stripe-original" aria-hidden>
             <span className="palette-tweaks-chip palette-tweaks-chip-original" />
           </span>
-          <span className="palette-tweaks-label">Original</span>
+          <span className="palette-tweaks-label">{t('feedback.original')}</span>
           {isOriginal ? (
             <span className="palette-tweaks-check" aria-hidden>
               <Icon name="check" size={14} />

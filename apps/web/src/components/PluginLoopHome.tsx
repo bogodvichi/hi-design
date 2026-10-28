@@ -150,7 +150,7 @@ export function PluginLoopHome({ onSubmit }: Props) {
     });
     setPendingApplyId(null);
     if (!result) {
-      setError(`Failed to apply ${record.title}. Make sure the daemon is reachable.`);
+      setError(t('feedback.applyFailed'));
       return;
     }
     const inputs: Record<string, unknown> = {};

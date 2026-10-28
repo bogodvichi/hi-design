@@ -1,6 +1,8 @@
+import { feedbackEn } from '../feedback-copy';
 import type { Dict } from '../types';
 
 export const hu: Dict = {
+  ...feedbackEn,
   'composer.skillApplyFailed': "Nem sikerült hozzáadni ezt a Skillt. Frissítsd a Skill-listát, és próbáld újra.",
   'projectDrag.movedTo': 'Moved to “{path}”',
   'projectDrag.permissionDenied': 'Move failed: no permission',

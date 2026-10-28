@@ -1,3 +1,4 @@
+import { responseError, userFacingError } from '../utils/userFacingError';
 import { PageEmptyState } from './PageEmptyState';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -153,7 +154,7 @@ export function CloudMcpList({
       setError(null);
       try {
         const res = await fetch('/api/resource-share/shared-with-me?kind=mcp', { cache: 'no-store' });
-        if (!res.ok) { throw new Error('Failed to load shared MCP templates'); }
+        if (!res.ok) { throw await responseError(res); }
         const body = await res.json();
         const list: CloudMcpItem[] = (body.resources ?? []).map((r: any) => ({
           id: r.metadata?.id ?? r.resourceId,
@@ -182,7 +183,7 @@ export function CloudMcpList({
         }));
         setTemplates(list);
       } catch (err: any) {
-        setError(err?.message ?? String(err));
+        setError(userFacingError(err, t, 'feedback.loadMcpFailed', t('feedback.objectMcp')));
       } finally {
         setLoading(false);
       }
@@ -204,7 +205,10 @@ export function CloudMcpList({
       const localResponse = localResult.status === 'fulfilled' && localResult.value.ok
         ? await localResult.value.json()
         : null;
-      if (!cloudResponse && !localResponse) throw new Error('Failed to load team MCP templates');
+      if (!cloudResponse && !localResponse) {
+        if (cloudResult.status === 'fulfilled') throw await responseError(cloudResult.value);
+        throw cloudResult.reason;
+      }
 
      const merged = new Map<string, CloudMcpItem>();
      for (const template of (cloudResponse?.templates ?? []) as CloudMcpResponseItem[]) {
@@ -261,7 +265,7 @@ export function CloudMcpList({
    if (scope) params.set('scope', scope);
     const headers = workspaceHeaders(workspaceId, workspaceMemberId, workspaceType);
     const response = await fetch('/api/workspace/mcp/cloud?' + params, { cache: 'no-store', headers });
-    if (!response.ok) throw new Error('Failed to load cloud MCP templates');
+    if (!response.ok) throw await responseError(response);
     const body = await response.json();
     // Ownership comes from the cloud catalog. Local connections only supply
     // installed state through loadLocalServers; they never add owned records.
@@ -269,7 +273,7 @@ export function CloudMcpList({
       ...template, logoKey: normalizeLogoKey(template.logoKey),
     })));
   } catch (err: any) {
-     setError(err?.message ?? String(err));
+     setError(userFacingError(err, t, 'feedback.loadMcpFailed', t('feedback.objectMcp')));
    } finally {
      setLoading(false);
    }
@@ -308,8 +312,7 @@ export function CloudMcpList({
         headers: workspaceHeaders(workspaceId, workspaceMemberId, workspaceType),
       });
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.error ?? 'Install failed');
+        throw await responseError(res);
       }
       const installKey = cloudInstallKey(tpl.homeWorkspaceId || workspaceId, tpl.resourceId);
       applyConnectionState(installKey, true);
@@ -336,7 +339,7 @@ export function CloudMcpList({
         });
       }
     } catch (err: any) {
-      setError(err?.message ?? String(err));
+      setError(userFacingError(err, t, 'feedback.connectFailed', t('feedback.objectMcp')));
     } finally {
       setInstallingId(null);
     }
@@ -353,8 +356,7 @@ export function CloudMcpList({
          headers: workspaceHeaders(workspaceId, workspaceMemberId, workspaceType),
        });
        if (!res.ok) {
-         const body = await res.json().catch(() => null);
-         throw new Error(body?.error ?? 'Uninstall failed');
+         throw await responseError(res);
        }
      const installKey = cloudInstallKey(tpl.homeWorkspaceId || workspaceId, tpl.resourceId);
      applyConnectionState(installKey, false);
@@ -362,7 +364,7 @@ export function CloudMcpList({
         detail: { source: 'cloud-mcp-list', instanceId: titleId, action: 'uninstall', installKey, workspaceId, workspaceMemberId },
       }));
     } catch (err: any) {
-      setError(err?.message ?? String(err));
+      setError(userFacingError(err, t, 'feedback.disconnectFailed', t('feedback.objectMcp')));
     } finally {
       setUninstallingId(null);
     }
@@ -382,17 +384,14 @@ export function CloudMcpList({
         },
       );
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.error === 'SOURCE_HAS_PUBLICATION'
-          ? (locale.startsWith('zh') ? '该 MCP 正在社区中发布，请先取消发布后再删除源资源。' : 'Unpublish this MCP before deleting its source.')
-          : body?.message ?? body?.error ?? 'Delete failed');
+        throw await responseError(res);
       }
       await loadTemplates();
       window.dispatchEvent(new CustomEvent('personal:mcp-refresh', {
         detail: { source: 'cloud-mcp-list', instanceId: titleId },
       }));
     } catch (err: any) {
-      setError(err?.message ?? String(err));
+      setError(userFacingError(err, t, 'feedback.deleteFailed', t('feedback.objectMcp')));
     } finally {
       setDeletingId(null);
       setConfirmAction(null);
@@ -415,7 +414,7 @@ export function CloudMcpList({
       }
       await loadTemplates();
     } catch (err: any) {
-      setError(err?.message ?? String(err));
+      setError(userFacingError(err, t, 'feedback.updatePublicationFailed', t('feedback.objectMcp')));
     } finally {
       setUpdatingId(null);
     }
@@ -432,15 +431,14 @@ export function CloudMcpList({
         },
       );
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.error ?? 'Unpublish failed');
+        throw await responseError(res);
       }
       await loadTemplates();
       window.dispatchEvent(new CustomEvent('personal:mcp-refresh', {
         detail: { source: 'cloud-mcp-list', instanceId: titleId },
       }));
     } catch (err: any) {
-      setError(err?.message ?? String(err));
+      setError(userFacingError(err, t, 'feedback.unpublishFailed', t('feedback.objectMcp')));
     } finally {
       setUnpublishingId(null);
       setConfirmAction(null);
@@ -588,6 +586,7 @@ export function CloudMcpList({
       </div>
       {typeof document !== 'undefined' && dialog ? createPortal(dialog, document.body) : dialog}
       {removeShareId ? <RemoveSharedResourceDialog key={removeShareId} shareId={removeShareId} kind="mcp"
+        resourceName={templates.find((item) => item.shareId === removeShareId)?.label ?? t('feedback.objectMcp')}
         onClose={() => setRemoveShareId(null)}
         onRemoved={() => {
           setTemplates((current) => current.filter((item) => item.shareId !== removeShareId));

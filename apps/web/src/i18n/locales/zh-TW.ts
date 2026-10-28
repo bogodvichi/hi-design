@@ -1,6 +1,8 @@
+import { feedbackEn } from '../feedback-copy';
 import type { Dict } from "../types";
 
 export const zhTW: Dict = {
+  ...feedbackEn,
   'projectDrag.movedTo': '已移動至「{path}」',
   'projectDrag.permissionDenied': '移動失敗，無權限',
   'personalScope.folderMoveSummary': "{succeeded} 個資料夾移動成功，{failed} 個未完成。",

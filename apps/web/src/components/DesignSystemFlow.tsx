@@ -1,3 +1,4 @@
+import { userFacingError } from '../utils/userFacingError';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { Button, Textarea } from '@open-design/components';
 import type {
@@ -529,7 +530,7 @@ export function DesignSystemCreationFlow({
         setGithubAuthorizationUrl(null);
       }
       if (connector?.status === 'error' && connector.lastError) {
-        setGithubConnectorError(connector.lastError);
+        setGithubConnectorError(userFacingError(connector.lastError, t, 'feedback.connectFailed'));
       }
       if (timedOut) {
         setGithubConnectorError(
@@ -539,7 +540,7 @@ export function DesignSystemCreationFlow({
     } catch (err) {
       if (githubConnectorRefreshId.current !== refreshId) return;
       setGithubConnector(null);
-      setGithubConnectorError(err instanceof Error ? err.message : t('dsCreate.githubConnectorCheckFailed'));
+      setGithubConnectorError(userFacingError(err, t, 'dsCreate.githubConnectorCheckFailed'));
     } finally {
       if (githubConnectorRefreshId.current === refreshId) {
         githubConnectorRequestInFlight.current = false;
@@ -606,7 +607,7 @@ export function DesignSystemCreationFlow({
     setGithubConnectorError(null);
     try {
       const result = await connectConnector(GITHUB_CONNECTOR_ID);
-      if (result.error) setGithubConnectorError(result.error);
+      if (result.error) setGithubConnectorError(userFacingError(result.error, t, 'feedback.connectFailed'));
       if (result.connector) {
         setGithubConnector(result.connector);
         githubConnectorRef.current = result.connector;
@@ -621,7 +622,7 @@ export function DesignSystemCreationFlow({
         setGithubAuthorizationUrl(null);
       }
     } catch (err) {
-      setGithubConnectorError(err instanceof Error ? err.message : t('dsCreate.githubAuthorizeFailed'));
+      setGithubConnectorError(userFacingError(err, t, 'dsCreate.githubAuthorizeFailed'));
     } finally {
       setGithubConnectorAction(null);
     }
@@ -641,7 +642,7 @@ export function DesignSystemCreationFlow({
       setGithubAuthorizationPending(false);
       setGithubAuthorizationUrl(null);
     } catch (err) {
-      setGithubConnectorError(err instanceof Error ? err.message : t('dsCreate.githubDisconnectFailed'));
+      setGithubConnectorError(userFacingError(err, t, 'dsCreate.githubDisconnectFailed'));
     } finally {
       setGithubConnectorAction(null);
     }
@@ -1004,7 +1005,7 @@ export function DesignSystemCreationFlow({
       emitCreateResult('success', result.designSystemId, undefined, result.projectId);
       onGenerateSettled?.(snapshot, { result: 'success' });
     } catch (err) {
-      setVisibleError(err instanceof Error ? err.message : t('dsCreate.prepareProjectFailed'));
+      setVisibleError(userFacingError(err, t, 'dsCreate.prepareProjectFailed'));
       setStep('setup');
       const errorCode = err instanceof Error
         ? `DS_GENERATE_THREW:${err.message.slice(0, 80)}`
@@ -1882,7 +1883,7 @@ export function DesignSystemDetailView({
       setProjectChatLoadError(
         error instanceof Error
           ? error.message
-          : 'Could not load messages for this conversation.',
+          : t('feedback.loadMessagesFailed'),
       );
       console.warn('Failed to load design-system project messages', error);
     });
@@ -3641,11 +3642,12 @@ interface WebkitFileSystemDirectoryEntry extends WebkitFileSystemEntry {
 }
 
 function SourceContextCard({ provenance }: { provenance?: DesignSystemProvenance }) {
+  const { t } = useI18n();
   const rows = provenanceRows(provenance);
   if (rows.length === 0) return null;
   return (
     <div className="ds-source-context-card">
-      <strong>Source context</strong>
+      <strong>{t('feedback.sourceContext')}</strong>
       {rows.map((row) => (
         <div key={row.label}>
           <span>{row.label}</span>

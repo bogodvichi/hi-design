@@ -1,3 +1,4 @@
+import { userFacingError } from '../utils/userFacingError';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useAnalytics } from '../analytics/provider';
 import { trackFileManagerClick } from '../analytics/events';
@@ -849,7 +850,7 @@ export function DesignFilesPanel({
       });
       setRenaming(null);
     } catch (err) {
-      alert(err instanceof Error ? err.message : String(err));
+      setInstallNotice({ message: userFacingError(err, t, 'feedback.renameFailed', t('feedback.objectFile')) });
       setRenaming({ name, draft, saving: false });
     }
   }
@@ -1322,7 +1323,7 @@ export function DesignFilesPanel({
         : '';
       if (message || url) setInstallNotice(buildActionNotice(message || url, url));
     } catch (err) {
-      setInstallNotice({ message: err instanceof Error ? err.message : String(err) });
+      setInstallNotice({ message: userFacingError(err, t, 'feedback.installFailed') });
     } finally {
       setInstallingFolder(null);
       setSharingFolder(null);

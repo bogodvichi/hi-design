@@ -1,3 +1,5 @@
+import { useT } from '../i18n';
+import { userFacingError } from '../utils/userFacingError';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './ReviewAddModal.module.css';
@@ -115,6 +117,7 @@ export function ReviewAddModal({
   const [exporting, setExporting] = useState(false);
   // 提交
   const [submitting, setSubmitting] = useState(false);
+  const t = useT();
   const [error, setError] = useState<string | null>(null);
   const [okMsg, setOkMsg] = useState<string | null>(null);
   // 字段级错误：提交时收集，填写正确后自动清除对应 key。
@@ -266,7 +269,7 @@ export function ReviewAddModal({
       if (!resp.ok || !j?.ok) {
         setReviewTemplates([]);
         setSelectedTemplate(null);
-        setError(j?.error?.message || '查询不到项目对应的评审名称类型，无法发起评审');
+        setError(userFacingError(j?.error, t, 'feedback.reviewInfoFailed'));
         return;
       }
       // 上游 data 是 JSON 串（"[{...}]" 或 "[null]"），解析成数组。
@@ -283,7 +286,7 @@ export function ReviewAddModal({
       if (!valid.length) setError('该项目没有可用的评审名称模板');
     } catch (err: any) {
       if (!aliveRef.current) return;
-      setError('评审名称模板加载失败: ' + (err?.message || String(err)));
+      setError(userFacingError(err, t, 'feedback.loadReviewFailed'));
       setReviewTemplates([]);
     }
   }
@@ -315,7 +318,7 @@ export function ReviewAddModal({
       const j = await resp.json().catch(() => null);
       if (!aliveRef.current) return;
       if (!resp.ok || !j?.ok) {
-        setError(j?.error?.message || j?.msg || `上传失败 HTTP ${resp.status}`);
+        setError(userFacingError(j?.error ?? j?.msg, t, 'feedback.uploadReviewFailed'));
         setUploadInfo(null);
         return;
       }
@@ -323,7 +326,7 @@ export function ReviewAddModal({
       clearFieldError('upload');
    } catch (err: any) {
       if (!aliveRef.current) return;
-      setError('评审稿上传失败: ' + (err?.message || String(err)));
+      setError(userFacingError(err, t, 'feedback.uploadReviewFailed'));
     } finally {
       if (aliveRef.current) setUploading(false);
     }
@@ -391,8 +394,8 @@ export function ReviewAddModal({
           ? await exportProjectAsHtmlReviewZip({ projectId, projectName: odProjectName, entryFile, workspaceContext })
           : await exportProjectAsAxureZip({ projectId, projectName: odProjectName, returnBlob: true });
         if (!result.ok) {
-          setError(result.error);
-          setFieldErrors({ upload: result.error });
+          setError(userFacingError(result.error, t, 'feedback.uploadReviewFailed'));
+          setFieldErrors({ upload: userFacingError(result.error, t, 'feedback.uploadReviewFailed') });
           setSubmitting(false);
           return;
         }
@@ -413,7 +416,7 @@ export function ReviewAddModal({
         const upJson = await upResp.json().catch(() => null);
         if (!aliveRef.current) return;
         if (!upResp.ok || !upJson?.ok) {
-          const msg = upJson?.error?.message || upJson?.msg || `上传失败 HTTP ${upResp.status}`;
+          const msg = userFacingError(upJson?.error ?? upJson?.msg, t, 'feedback.uploadReviewFailed');
           setError(msg);
           setFieldErrors({ upload: msg });
           setSubmitting(false);
@@ -427,7 +430,7 @@ export function ReviewAddModal({
         manuscriptId = upJson.data?.manuscriptId;
       } catch (err: any) {
         if (!aliveRef.current) return;
-        const msg = '生成评审稿 ZIP 失败: ' + (err?.message || String(err));
+        const msg = userFacingError(err, t, 'feedback.uploadReviewFailed');
         setError(msg);
         setFieldErrors({ upload: msg });
         setSubmitting(false);
@@ -474,7 +477,7 @@ export function ReviewAddModal({
       const j = await resp.json().catch(() => null);
       if (!aliveRef.current) return;
       if (!resp.ok || !j?.ok) {
-        setError(j?.error?.message || j?.msg || `发起评审失败 HTTP ${resp.status}`);
+        setError(userFacingError(j?.error ?? j?.msg, t, 'feedback.saveFailed'));
         return;
       }
       setOkMsg('创建成功');
@@ -490,7 +493,7 @@ export function ReviewAddModal({
       }, 1200);
     } catch (err: any) {
       if (!aliveRef.current) return;
-      setError('发起评审失败: ' + (err?.message || String(err)));
+      setError(userFacingError(err, t, 'feedback.saveFailed'));
     } finally {
       if (aliveRef.current) setSubmitting(false);
     }

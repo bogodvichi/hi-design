@@ -2285,6 +2285,7 @@ function PluginActionPanel({
   ) => Promise<{ message?: string; url?: string } | void> | { message?: string; url?: string } | void;
   activePluginActionPaths?: Set<string>;
 }) {
+  const t = useT();
   const noticeByFolder = notices;
   const runAction = onRunAction;
 
@@ -2295,9 +2296,9 @@ function PluginActionPanel({
           <Icon name="sparkles" size={15} />
         </span>
         <div>
-          <div className="plugin-action-panel__title">Plugin ready</div>
+          <div className="plugin-action-panel__title">{t('feedback.pluginReady')}</div>
           <div className="plugin-action-panel__subtitle">
-            Send the next step to the agent so it can run the od CLI.
+            {t('feedback.pluginNextStep')}
           </div>
         </div>
       </div>
@@ -2375,7 +2376,7 @@ function PluginActionPanel({
                     onClick={() => onRequestOpenFile(folder.manifestPath)}
                   >
                     <Icon name="file-code" size={13} />
-                    <span>Open manifest</span>
+                    <span>{t('feedback.openManifest')}</span>
                   </button>
                 ) : null}
               </div>

@@ -1,3 +1,4 @@
+import { responseError, userFacingError } from '../utils/userFacingError';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from './Icon';
@@ -141,10 +142,7 @@ export function AddMcpDialog({ open, onClose, scope, onAdded, workspaceContext: 
       });
 
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(res.status === 409 && body?.error === 'RESOURCE_NAME_CONFLICT'
-          ? t('personalScope.mcpDuplicateLabel')
-          : body?.message ?? body?.error ?? 'Create failed');
+        throw await responseError(res);
       }
 
        const data = await res.json().catch(() => null) as {
@@ -175,7 +173,7 @@ export function AddMcpDialog({ open, onClose, scope, onAdded, workspaceContext: 
        onClose();
     } catch (err: any) {
       setToast({
-        message: err?.message ?? String(err),
+        message: userFacingError(err, t, 'feedback.saveFailed', t('feedback.objectMcp')),
         tone: 'error',
       });
     } finally {

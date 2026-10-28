@@ -1,3 +1,4 @@
+import { responseError, userFacingError } from '../utils/userFacingError';
 import { PageEmptyState } from './PageEmptyState';
 import { useCallback, useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -155,19 +156,19 @@ export function CloudToolList({
         cache: 'no-store',
         headers,
       });
-      if (!res.ok) throw new Error('Failed to load cloud tools');
+      if (!res.ok) throw await responseError(res);
       const body = await res.json();
       const loadedTools = body.tools ?? [];
       setTools(includesOfficialCommunityTools
         ? withOfficialCommunityTools(loadedTools)
         : loadedTools);
     } catch (err: any) {
-      setError(err?.message ?? String(err));
+      setError(userFacingError(err, t, 'feedback.loadToolsFailed', t('feedback.objectContent')));
       if (includesOfficialCommunityTools) setTools(withOfficialCommunityTools([]));
     } finally {
       setLoading(false);
     }
-  }, [workspaceId, workspaceMemberId, workspaceType, mode, scope, ownerMemberId, includesOfficialCommunityTools]);
+  }, [workspaceId, workspaceMemberId, workspaceType, mode, scope, ownerMemberId, includesOfficialCommunityTools, t]);
 
   useEffect(() => {
     void loadTools();
@@ -190,12 +191,11 @@ export function CloudToolList({
         },
       );
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.error ?? 'Unpublish failed');
+        throw await responseError(res);
       }
       await loadTools();
     } catch (err: any) {
-      setError(err?.message ?? String(err));
+      setError(userFacingError(err, t, 'feedback.unpublishFailed', t('feedback.objectContent')));
     } finally {
       setUnpublishingId(null);
       setConfirmAction(null);
@@ -213,12 +213,11 @@ export function CloudToolList({
         },
       );
       if (!res.ok) {
-        const body = await res.json().catch(() => null);
-        throw new Error(body?.error ?? 'Delete failed');
+        throw await responseError(res);
       }
       await loadTools();
     } catch (err: any) {
-      setError(err?.message ?? String(err));
+      setError(userFacingError(err, t, 'feedback.deleteFailed', t('feedback.objectContent')));
     } finally {
       setDeletingId(null);
       setConfirmAction(null);
