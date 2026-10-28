@@ -1,3 +1,5 @@
+'use client';
+
 import { userFacingError } from '../utils/userFacingError';
 import { useT } from '../i18n';
 // xAI / SuperGrok OAuth control rendered inside the Grok provider row in
@@ -10,10 +12,6 @@ import { useT } from '../i18n';
 // talk to the OD UI directly. Polling /api/xai/auth/status is the only
 // delivery channel for "auth completed".
 //
-// TODO(i18n): the visible strings are hardcoded English for the PoC;
-// migrate to apps/web/src/i18n/types.ts before stable release.
-
-'use client';
 
 import { useEffect, useRef, useState } from 'react';
 
