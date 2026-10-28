@@ -19,10 +19,16 @@ vi.mock('../../src/runtime/uedro-html-review-export', () => ({ exportProjectAsHt
 vi.mock('../../src/state/projects', () => ({ getProject: vi.fn(async () => null) }));
 vi.mock('../../src/providers/registry', () => ({ openExternalUrl: vi.fn() }));
 vi.mock('../../src/components/uedroLaunch', () => ({
-  resolveUedroLaunchUrl: vi.fn(async () => null),
+  resolveUedroLaunchUrl: vi.fn(async (targetUrl: string) => (
+    targetUrl === 'https://uedro.hikvision.com.cn/uedro/html?id=html-project-1&projectid=null&projName=&projManager=null'
+      ? `${targetUrl}&ticket=ST-123456`
+      : null
+  )),
 }));
 
 import { ReviewAddModal } from '../../src/components/ReviewAddModal';
+import { openExternalUrl } from '../../src/providers/registry';
+import { resolveUedroLaunchUrl } from '../../src/components/uedroLaunch';
 import { exportProjectAsAxureZip } from '../../src/runtime/axure-export';
 import { exportProjectAsHtmlReviewZip } from '../../src/runtime/uedro-html-review-export';
 
@@ -95,6 +101,14 @@ describe('HTML review creation', () => {
       reviewType: '12',
       manuscriptId: 'html-project-1',
       reviewModel: 2,
+    });
+    await waitFor(() => {
+      expect(resolveUedroLaunchUrl).toHaveBeenCalledWith(
+        'https://uedro.hikvision.com.cn/uedro/html?id=html-project-1&projectid=null&projName=&projManager=null',
+      );
+      expect(openExternalUrl).toHaveBeenCalledWith(
+        'https://uedro.hikvision.com.cn/uedro/html?id=html-project-1&projectid=null&projName=&projManager=null&ticket=ST-123456',
+      );
     });
     expect(exportProjectAsAxureZip).not.toHaveBeenCalled();
   });

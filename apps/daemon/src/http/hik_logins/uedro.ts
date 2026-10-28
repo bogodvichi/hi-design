@@ -14,6 +14,10 @@ export const UEDRO_BASE = 'https://uedro.hikvision.com.cn';
 /** Browser pages that may be opened through the UEDRO CAS launch flow. */
 const UEDRO_PAGE_QUERY_POLICY = {
   '/uedro/home': { required: [], optional: [] },
+  '/uedro/html': {
+    required: ['id'],
+    optional: ['projectid', 'projName', 'projManager'],
+  },
   '/uedro/ux': { required: ['id'], optional: [] },
   '/uedro/ua': { required: ['id'], optional: [] },
   '/uedro/pdf-js': {

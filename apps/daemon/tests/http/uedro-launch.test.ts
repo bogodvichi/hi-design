@@ -59,6 +59,8 @@ describe('UEDRO launch targets', () => {
 
   it('accepts allowed pages and rejects all other origins or paths', () => {
     expect(normalizeUedroLaunchTarget(TARGET)).toBe(TARGET);
+    const htmlTarget = 'https://uedro.hikvision.com.cn/uedro/html?id=ac1c03d94fc14529b22f1654e338d7ff&projectid=null&projName=&projManager=null';
+    expect(normalizeUedroLaunchTarget(htmlTarget)).toBe(htmlTarget);
     expect(normalizeUedroLaunchTarget('https://uedro.hikvision.com.cn/uedro/admin')).toBeNull();
     expect(normalizeUedroLaunchTarget('https://uedro.hikvision.com.cn.evil.example/uedro/home')).toBeNull();
     expect(normalizeUedroLaunchTarget('http://uedro.hikvision.com.cn/uedro/home')).toBeNull();

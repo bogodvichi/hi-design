@@ -144,6 +144,10 @@ export const UEDRO_WEB_ORIGIN = 'https://uedro.hikvision.com.cn';
 export const UEDRO_HOME_URL = `${UEDRO_WEB_ORIGIN}/uedro/home`;
 const UEDRO_PAGE_QUERY_POLICY = {
   '/uedro/home': { required: [], optional: [] },
+  '/uedro/html': {
+    required: ['id'],
+    optional: ['projectid', 'projName', 'projManager'],
+  },
   '/uedro/ux': { required: ['id'], optional: [] },
   '/uedro/ua': { required: ['id'], optional: [] },
   '/uedro/pdf-js': {
@@ -233,6 +237,16 @@ export function buildManuscriptPreviewUrl(reviewType: unknown, manuscriptId: unk
     default:
       return null;
   }
+}
+
+/**
+ * HTML 评审创建成功后按稿件 ID 打开羽点 HTML 评审页。
+ * 该页面消费的是 `uploadManuscript` 返回的 manuscriptId。
+ */
+export function buildHtmlReviewUrl(manuscriptId: unknown): string | null {
+  if (manuscriptId === undefined || manuscriptId === null || manuscriptId === '') return null;
+  const id = encodeURIComponent(String(manuscriptId));
+  return buildUedroWebUrl(`/uedro/html?id=${id}&projectid=null&projName=&projManager=null`);
 }
 
 export function reviewTypeLabel(r: any): string {

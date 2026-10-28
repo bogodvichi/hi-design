@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildHtmlReviewUrl,
   buildManuscriptPreviewUrl,
   buildUedroWebUrl,
   parseAllowedUedroPageUrl,
@@ -36,10 +37,13 @@ describe('buildManuscriptPreviewUrl', () => {
 });
 
 describe('HTML review metadata', () => {
-  it('shows the official label and an HTML avatar, without inventing a preview path', () => {
+  it('shows the official label, an HTML avatar, and the creation page URL', () => {
     expect(reviewTypeLabel({ reviewType: '12' })).toBe('html评审');
     expect(reviewTypeMeta({ reviewType: '12' })?.char).toBe('H');
     expect(buildManuscriptPreviewUrl('12', 'manuscript-1')).toBeNull();
+    expect(buildHtmlReviewUrl('ac1c03d94fc14529b22f1654e338d7ff')).toBe(
+      'https://uedro.hikvision.com.cn/uedro/html?id=ac1c03d94fc14529b22f1654e338d7ff&projectid=null&projName=&projManager=null',
+    );
   });
 });
 

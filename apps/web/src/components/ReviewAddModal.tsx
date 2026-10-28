@@ -8,7 +8,7 @@ import { exportProjectAsHtmlReviewZip } from '../runtime/uedro-html-review-expor
 import { getProject } from '../state/projects';
 import { getStoredUserInfo } from '../auth/auth';
 import { openExternalUrl } from '../providers/registry';
-import { HTML_REVIEW_TYPE, UEDRO_HOME_URL, buildManuscriptPreviewUrl } from './reviewMeta';
+import { HTML_REVIEW_TYPE, buildHtmlReviewUrl, buildManuscriptPreviewUrl } from './reviewMeta';
 import { resolveUedroLaunchUrl } from './uedroLaunch';
 import type { WorkspaceCollabContext } from '@open-design/contracts';
 import { PersonPicker, type Person } from './PersonPicker';
@@ -482,8 +482,9 @@ export function ReviewAddModal({
       }
       setOkMsg('创建成功');
       // 创建成功后用系统浏览器打开正式羽点评审页，随后关闭本 modal。
-      const previewUrl = buildManuscriptPreviewUrl(subtype, manuscriptId)
-        ?? (subtype === HTML_REVIEW_TYPE ? UEDRO_HOME_URL : null);
+      const previewUrl = subtype === HTML_REVIEW_TYPE
+        ? buildHtmlReviewUrl(manuscriptId)
+        : buildManuscriptPreviewUrl(subtype, manuscriptId);
       if (previewUrl && aliveRef.current) {
         const launchUrl = await resolveUedroLaunchUrl(previewUrl);
         if (launchUrl) await openExternalUrl(launchUrl);

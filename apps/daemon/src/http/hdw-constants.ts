@@ -38,13 +38,13 @@ function resolveHdwPathPrefix(env: NodeJS.ProcessEnv, isProduction: boolean): st
 export const PROD_HDW_BASE_URL = 'https://pixso.hikvision.com.cn';
 
 /** Local development uses the local HDW backend. */
-export const DEV_HDW_BASE_URL = 'http://127.0.0.1:7002';
+export const DEV_HDW_BASE_URL = PROD_HDW_BASE_URL//'http://127.0.0.1:7002';
 
 /** Official production gateway (remote service on 7003); keep separate from online Dev. */
 export const PROD_HDW_PATH_PREFIX = '/hik-plugin/hidesign-web/hdw';
 
 /** Local Egg serves /hdw directly. /hik-plugin/hidesign-web is only the remote gateway prefix. */
-export const DEV_HDW_PATH_PREFIX = '/hdw';
+export const DEV_HDW_PATH_PREFIX = PROD_HDW_PATH_PREFIX//'/hdw';
 
 /** Trusted Dev ResourceHub gateway, used only to READ verified historical Blobs
  * that the local Egg instance (7002) lacks. Never used for writes or official builds. */
