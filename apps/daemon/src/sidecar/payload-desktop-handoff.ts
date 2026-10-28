@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { spawn } from "node:child_process";
+import type { spawn } from "node:child_process";
 import { lstat, rm } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, resolve, sep } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -20,7 +20,7 @@ import {
   type LauncherRuntimeDescriptor,
   type LauncherVersionPointer,
 } from "@open-design/launcher-proto";
-import { createProcessStampArgs } from "@open-design/platform";
+import { createProcessStampArgs, launchDetachedApplication } from "@open-design/platform";
 import { releaseChannelFromNamespace, releaseChannelFromVersion } from "@open-design/release";
 import {
   readJsonFile,
@@ -512,20 +512,12 @@ export async function executeLegacyPayloadDesktopHandoff(
   const persist = options.writeJsonFile ?? writeJsonFile;
   const releaseParentMonitor = holdParentMonitorExit();
   try {
-    let child: ReturnType<typeof spawn>;
     try {
-      child = (options.spawn ?? spawn)(prepared.descriptor.payloadExecutablePath, args, {
+      await launchDetachedApplication(prepared.descriptor.payloadExecutablePath, args, {
         cwd: dirname(prepared.descriptor.payloadExecutablePath),
-        detached: true,
         env: desktopProcessEnv(options.env ?? process.env, prepared.runtimeRoot),
-        stdio: "ignore",
-        windowsHide: true,
+        spawn: options.spawn,
       });
-      await new Promise<void>((resolveSpawn, rejectSpawn) => {
-        child.once("spawn", () => resolveSpawn());
-        child.once("error", rejectSpawn);
-      });
-      child.unref();
     } catch {
       return { kind: "aborted", reason: "spawn-failed" };
     }

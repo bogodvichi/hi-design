@@ -50,6 +50,34 @@ function fakeRuntime(payloadDesktopProcess: boolean): PackagedLauncherRuntime {
 }
 
 describe("payload desktop delegation", () => {
+  it("launches the macOS payload as an independent application instead of retaining the outer Dock entry", async () => {
+    const root = await mkdtemp(join(tmpdir(), "od-payload-dock-"));
+    const runtime = fakeRuntime(false);
+    runtime.launcherPaths = {
+      attemptsPath: join(root, "attempt.json"),
+      channel: "beta",
+      namespace: "release-beta",
+    } as PackagedLauncherRuntime["launcherPaths"];
+    const child = {
+      once: vi.fn((event: string, callback: (...args: unknown[]) => void) => {
+        if (event === "spawn" || event === "close") queueMicrotask(() => callback(0));
+        return child;
+      }),
+      unref: vi.fn(),
+    };
+    const spawn = vi.fn(() => child as never);
+    try {
+      await launchPackagedPayloadDesktop(runtime, stamp, { platform: "darwin", spawn: spawn as never });
+      expect(spawn.mock.calls[0]).toEqual([
+        "/usr/bin/open",
+        expect.arrayContaining(["-n", "-a", "/tmp/payload/Hi Design Team.app", "--args"]),
+        expect.any(Object),
+      ]);
+    } finally {
+      await rm(root, { force: true, recursive: true });
+    }
+  });
+
   it("plans an early outer-to-payload handoff with stable after-quit and stamp args", () => {
     const runtime = fakeRuntime(false);
     const plan = planPackagedPayloadDesktopDelegation(runtime, stamp, {
@@ -132,7 +160,7 @@ describe("payload desktop delegation", () => {
       let spawnSawAttempt: boolean | null = null;
       const child = {
         once: vi.fn((event: string, callback: (...args: unknown[]) => void) => {
-          if (event === "spawn") queueMicrotask(callback);
+          if (event === "spawn" || event === "close") queueMicrotask(() => callback(0));
           return child;
         }),
         unref: vi.fn(),
@@ -177,7 +205,7 @@ describe("payload desktop delegation", () => {
       };
       const child = {
         once: vi.fn((event: string, callback: (...args: unknown[]) => void) => {
-          if (event === "spawn") queueMicrotask(callback);
+          if (event === "spawn" || event === "close") queueMicrotask(() => callback(0));
           return child;
         }),
         unref: vi.fn(),
@@ -202,7 +230,7 @@ describe("payload desktop delegation", () => {
     const root = await mkdtemp(join(tmpdir(), "od-delegated-spawn-"));
     try {
       const once = vi.fn((event: string, callback: (...args: unknown[]) => void) => {
-        if (event === "spawn") queueMicrotask(callback);
+        if (event === "spawn" || event === "close") queueMicrotask(() => callback(0));
         return child;
       });
       const child = {

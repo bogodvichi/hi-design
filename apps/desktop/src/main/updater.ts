@@ -422,7 +422,7 @@ export function createDesktopUpdater(
       : launchMacInstallerAfterQuit(input, { now, spawnDetached })
   ));
   const launchAppAfterQuit = deps.launchAppAfterQuit ?? (async (input) => {
-    return await launchPayloadAppAfterQuit(input, { now, spawnDetached });
+    return await launchPayloadAppAfterQuit(input, { now, platform: config.platform, spawnDetached });
   });
   const listeners = new Set<() => void>();
   let candidate: UpdateCandidate | null = null;

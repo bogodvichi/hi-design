@@ -51,7 +51,7 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
   const [toast, setToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const folderInputRef = useRef<HTMLInputElement>(null);
-  const zipInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const canConfirm =
     activeTab === 'upload'
       ? uploadSource !== null
@@ -81,6 +81,7 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
 
   const hasTeam = workspaceContextHasTeamIdentity(workspaceContext);
   const isMac = isMacPlatform();
+  const canPickFilesAndFolders = isMac && Boolean(getOpenDesignHost()?.project?.pickSkillSource);
 
   async function checkCloudSkillDuplicate(name: string): Promise<boolean> {
     try {
@@ -236,6 +237,18 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
     return source.files.map((f) => ({ file: f.file, path: f.path }));
   }
 
+  function selectUploadFile(file: File) {
+    setToast(null);
+    if (/\.zip$/i.test(file.name)) {
+      setUploadSource({ kind: 'zip', file });
+    } else if (/\.md$/i.test(file.name)) {
+      setUploadSource({ kind: 'file', file });
+    } else {
+      setUploadSource(null);
+      setToast({ message: '单文件导入仅支持 Markdown（.md）或 ZIP 文件，请重新选择。', tone: 'error' });
+    }
+  }
+
   async function handleMacClick() {
     const host = getOpenDesignHost();
     if (!host?.project?.pickSkillSource) {
@@ -257,18 +270,10 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
       } else if (result.files.length === 1) {
         const selected = result.files[0]!;
         const fileName = selected.path.split('/').pop() || selected.path;
-        if (!/^SKILL.md$/i.test(fileName)) {
-          setUploadSource(null);
-          setToast({ message: '单文件导入仅支持 SKILL.md，请重新选择。', tone: 'error' });
-          return;
-        }
-        setUploadSource({
-          kind: 'file',
-          file: new File([selected.data], 'SKILL.md', { type: 'text/markdown' }),
-        });
+        selectUploadFile(new File([selected.data], fileName, { type: 'text/markdown' }));
       } else {
         setUploadSource(null);
-        setToast({ message: 'Skill 单文件导入只支持选择一个 SKILL.md。', tone: 'error' });
+        setToast({ message: 'Skill 单文件导入只支持选择一个 Markdown 文件。', tone: 'error' });
       }
     } catch {
       // Fall back silently
@@ -302,8 +307,8 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
           setUploadSource({ kind: 'zip', file: entries[0]!.file });
           return;
         }
-        if (skillFile && entries.length === 1) {
-          setUploadSource({ kind: 'file', file: skillFile.file });
+        if (entries.length === 1 && (skillFile || !entries[0]!.path.includes('/'))) {
+          selectUploadFile(entries[0]!.file);
           return;
         }
         setUploadSource({ kind: 'folder', files: entries });
@@ -312,10 +317,8 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
     }
 
     const files = Array.from(e.dataTransfer.files ?? []);
-    if (files.length === 1 && /\.(zip)$/i.test(files[0]!.name)) {
-      setUploadSource({ kind: 'zip', file: files[0]! });
-    } else if (files.length === 1 && /(^|\/)SKILL\.md$/i.test(files[0]!.name)) {
-      setUploadSource({ kind: 'file', file: files[0]! });
+    if (files.length === 1) {
+      selectUploadFile(files[0]!);
     } else if (files.length > 0) {
       setUploadSource({
         kind: 'folder',
@@ -326,7 +329,7 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
 
   function renderUploadLabel(): string {
     if (!uploadSource) {
-      return isMac
+      return canPickFilesAndFolders
         ? t('personalScope.skillDropZoneHint')
         : t('personalScope.skillDropZoneHintFolder');
     }
@@ -421,8 +424,8 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
                   const files = Array.from(event.currentTarget.files ?? []);
                   if (files.length === 0) return;
                   const skillFile = files.find((f) => /(^|\/)SKILL\.md$/i.test(f.webkitRelativePath || f.name));
-                  if (skillFile && files.length === 1) {
-                    setUploadSource({ kind: 'file', file: skillFile });
+                  if (files.length === 1 && (skillFile || !files[0]!.webkitRelativePath)) {
+                    selectUploadFile(files[0]!);
                   } else {
                     setUploadSource({
                       kind: 'folder',
@@ -435,14 +438,14 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
                 }}
               />
               <input
-                ref={zipInputRef}
+                ref={fileInputRef}
                 type="file"
-                accept=".zip"
+                accept=".zip,.md"
                 disabled={busy !== null}
                 style={{ display: 'none' }}
                 onChange={(event) => {
                   const f = event.currentTarget.files?.[0] ?? null;
-                  if (f) setUploadSource({ kind: 'zip', file: f });
+                  if (f) selectUploadFile(f);
                 }}
               />
               <button
@@ -453,7 +456,7 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 onClick={() => {
-                  if (isMac) void handleMacClick();
+                  if (canPickFilesAndFolders) void handleMacClick();
                   else folderInputRef.current?.click();
                 }}
               >
@@ -465,14 +468,14 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
                 </strong>
                 <span>{t('personalScope.skillDropZoneSubhint')}</span>
               </button>
-              {!isMac && (
+              {!canPickFilesAndFolders && (
                 <button
                   type="button"
                   className={styles.selectZipBtn}
                   disabled={busy !== null}
-                  onClick={() => zipInputRef.current?.click()}
+                  onClick={() => fileInputRef.current?.click()}
                 >
-                  {t('personalScope.skillSelectZip')}
+                  {t('publishDialog.selectFile')}
                   <Icon name="file" size={14} aria-hidden />
                 </button>
               )}

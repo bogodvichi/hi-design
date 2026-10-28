@@ -3,6 +3,7 @@ import { getSharedSpaceMemberId } from '../ids.js';
 import type { SharedWithMeResource } from '@open-design/contracts';
 import { UA, type Cookie } from './http.js';
 import { readSsoConfigFile, readSsoUsername } from './hik_logins/hicoo.js';
+import { handoffAiResearchDirectory } from './ai-research-directory.js';
 import { createHash } from 'node:crypto';
 import { promises as fsp } from 'node:fs';
 import * as fs from 'node:fs';
@@ -185,6 +186,7 @@ export async function fetchHiMindLaunch(
 export async function fetchAiResearchLaunch(
   dataDir: string,
   post: typeof hdwPost = hdwPost,
+  handoff = handoffAiResearchDirectory,
 ): Promise<{ launchUrl: string; expiresIn: number } | null> {
   const session = readSsoConfigFile(dataDir);
   const username = session?.username?.trim().toLowerCase() ?? '';
@@ -197,6 +199,10 @@ export async function fetchAiResearchLaunch(
     },
   );
   if (!data || typeof data.launch_url !== 'string' || !data.launch_url) return null;
+  if (session.uedro?.cookies?.length) {
+    try { await handoff(data.launch_url, session.uedro.cookies as Cookie[]); }
+    catch { console.warn('[ai-research-directory] handoff unavailable'); }
+  }
   return {
     launchUrl: data.launch_url,
     expiresIn: Number.isFinite(data.expires_in) ? data.expires_in : 60,

@@ -46,7 +46,6 @@ class ShareLinkController extends Controller {
     // serves the share page, rather than being pinned to publicApiBase.
     // The share page is always at {base}/hdw/share/{token}, so
     // ../api/workspaces/... resolves to {base}/hdw/api/workspaces/...
-    // which works under any reverse-proxy prefix (e.g. /hik-plugin/hidesign-web).
     return '../api/workspaces/' + encodeURIComponent(workspaceId) + '/blobs/' + digest;
   }
 

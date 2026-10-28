@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process";
 import { chmod, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { launchDetachedApplication } from "@open-design/platform";
 
 import {
   buildLauncherAfterQuitArgs,
@@ -267,22 +268,17 @@ export async function launchWindowsInstallerAfterQuit(
 
 export async function launchPayloadAppAfterQuit(
   input: DeferredAppLaunchInput,
-  deps: { now: () => Date; spawnDetached: SpawnInstallerHelper },
+  deps: { now: () => Date; platform?: string; spawnDetached: SpawnInstallerHelper },
 ): Promise<DeferredLaunchResult> {
   try {
-    const child = deps.spawnDetached(
+    await launchDetachedApplication(
       input.launchPath,
       [
         ...buildLauncherAfterQuitArgs({ targetPid: input.appPid, timeoutMs: input.timeoutMs }),
         ...(input.delegated == null ? [] : buildLauncherDelegatedArgs(input.delegated)),
       ],
-      { cwd: input.cwd, detached: true, stdio: "ignore", windowsHide: true },
+      { cwd: input.cwd, platform: deps.platform, spawn: deps.spawnDetached },
     );
-    await new Promise<void>((resolveSpawn, rejectSpawn) => {
-      child.once("spawn", () => resolveSpawn());
-      child.once("error", rejectSpawn);
-    });
-    child.unref();
     return {};
   } catch (error) {
     return { error: error instanceof Error ? error.message : String(error) };

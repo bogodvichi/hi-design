@@ -1,8 +1,8 @@
-import { spawn } from "node:child_process";
+import type { spawn } from "node:child_process";
 import { dirname } from "node:path";
 
 import { buildLauncherAfterQuitArgs, buildLauncherDelegatedArgs } from "@open-design/launcher-proto";
-import { createProcessStampArgs } from "@open-design/platform";
+import { createProcessStampArgs, launchDetachedApplication } from "@open-design/platform";
 import { OPEN_DESIGN_SIDECAR_CONTRACT, type SidecarStamp } from "@open-design/sidecar-proto";
 
 import {
@@ -69,6 +69,7 @@ export async function launchPackagedPayloadDesktop(
   options: {
     currentPid?: number;
     forwardedArgs?: readonly string[];
+    platform?: NodeJS.Platform;
     recordFailedAttempt?: (runtime: PackagedLauncherRuntime) => Promise<void>;
     spawn?: typeof spawn;
     timeoutMs?: number;
@@ -82,17 +83,11 @@ export async function launchPackagedPayloadDesktop(
   // evidence, and every later cold start would retry the same broken payload.
   await armPackagedLauncherRuntimeAttempt(runtime);
   try {
-    const child = (options.spawn ?? spawn)(plan.command, plan.args, {
+    await launchDetachedApplication(plan.command, plan.args, {
       cwd: plan.cwd,
-      detached: true,
-      stdio: "ignore",
-      windowsHide: true,
+      platform: options.platform,
+      spawn: options.spawn,
     });
-    await new Promise<void>((resolveSpawn, rejectSpawn) => {
-      child.once("spawn", () => resolveSpawn());
-      child.once("error", rejectSpawn);
-    });
-    child.unref();
   } catch (error) {
     await (options.recordFailedAttempt ?? recordPackagedLauncherRuntimeFailedAttempt)(runtime);
     throw error;

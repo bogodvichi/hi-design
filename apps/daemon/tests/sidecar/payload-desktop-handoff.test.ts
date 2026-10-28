@@ -138,7 +138,7 @@ describe("legacy payload desktop handoff", () => {
 
       const child = {
         once: vi.fn((event: string, callback: (...args: unknown[]) => void) => {
-          if (event === "spawn") queueMicrotask(callback);
+          if (event === "spawn" || event === "close") queueMicrotask(() => callback(0));
           return child;
         }),
         unref: vi.fn(),
@@ -469,7 +469,7 @@ describe("legacy payload desktop handoff", () => {
     try {
       const child = {
         once: vi.fn((event: string, callback: (...args: unknown[]) => void) => {
-          if (event === "spawn") queueMicrotask(callback);
+          if (event === "spawn" || event === "close") queueMicrotask(() => callback(0));
           return child;
         }),
         unref: vi.fn(),
@@ -539,7 +539,7 @@ describe("legacy payload desktop handoff", () => {
 
       const child = {
         once: vi.fn((event: string, callback: (...args: unknown[]) => void) => {
-          if (event === "spawn") queueMicrotask(callback);
+          if (event === "spawn" || event === "close") queueMicrotask(() => callback(0));
           return child;
         }),
         unref: vi.fn(),
@@ -615,9 +615,9 @@ describe("legacy payload desktop handoff", () => {
 
       const child = {
         once: vi.fn((event: string, callback: (...args: unknown[]) => void) => {
-          if (event === "spawn") {
+          if (event === "spawn" || event === "close") {
             parentAlive = false;
-            queueMicrotask(callback);
+            queueMicrotask(() => callback(0));
           }
           return child;
         }),
@@ -682,7 +682,7 @@ describe("legacy payload desktop handoff", () => {
       let daemonExited = false;
       const child = {
         once: vi.fn((event: string, callback: (...args: unknown[]) => void) => {
-          if (event === "spawn") queueMicrotask(callback);
+          if (event === "spawn" || event === "close") queueMicrotask(() => callback(0));
           return child;
         }),
         unref: vi.fn(),
@@ -756,7 +756,7 @@ describe("legacy payload desktop handoff", () => {
       let daemonExited = false;
       const child = {
         once: vi.fn((event: string, callback: (...args: unknown[]) => void) => {
-          if (event === "spawn") queueMicrotask(callback);
+          if (event === "spawn" || event === "close") queueMicrotask(() => callback(0));
           return child;
         }),
         unref: vi.fn(),

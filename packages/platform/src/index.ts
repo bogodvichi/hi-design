@@ -17,6 +17,7 @@
 
 export type { CommandInvocation, CommandInvocationRequest } from "./command.js";
 export { createCommandInvocation, createPackageManagerInvocation } from "./command.js";
+export { launchDetachedApplication } from "./application.js";
 
 export type {
   ResolveLoginShellProxyEnvOptions,
