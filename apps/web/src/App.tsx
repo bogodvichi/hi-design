@@ -5886,6 +5886,9 @@ if (fetchedProject) {
             activeProject.workspaceId,
          )}
           project={activeProject}
+          initialSharedWithMe={
+            recentlyOpenedSharedWithMeWorkspaceId(activeProject.id) !== null
+          }
           workspaceContextOverride={
             activeProject.workspaceId
               ? activeProjectWorkspaceContext

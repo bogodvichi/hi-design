@@ -1836,6 +1836,58 @@ describe('a Home auto-send observes a project billing scope that settles after m
     );
   });
 
+  it('opens a received project with chat hidden while writer authority is pending', () => {
+    window.sessionStorage.removeItem(`od:auto-send-first:${PROJECT_ID}`);
+    projectCollabMocks.writerAuthority = 'pending';
+    projectCollabMocks.viewerOnly = true;
+    const overrides = {
+      project: { ...project(), pendingPrompt: '' },
+      initialSharedWithMe: true,
+    };
+    const view = renderProjectView(overrides);
+    const split = () => view.container.querySelector('.split')!;
+    const chatSlot = () => split().querySelector('.split-chat-slot')!;
+
+    expect(split()).toHaveClass('split-focus');
+    expect(chatSlot()).toHaveClass('split-chat-slot-hidden');
+    expect(chatSlot()).toHaveAttribute('aria-hidden', 'true');
+
+    projectCollabMocks.writerAuthority = 'denied';
+    view.rerender(projectViewElement(overrides));
+    projectCollabMocks.writerAuthority = 'pending';
+    view.rerender(projectViewElement(overrides));
+    expect(split()).toHaveClass('split-focus');
+    expect(chatSlot()).toHaveClass('split-chat-slot-hidden');
+
+    view.rerender(projectViewElement({
+      project: { ...project(), id: 'another-project', pendingPrompt: '' },
+      initialSharedWithMe: false,
+    }));
+    expect(split()).not.toHaveClass('split-focus');
+  });
+
+  it.each([
+    { initialSharedWithMe: false, writerAuthority: 'pending' as const },
+    { initialSharedWithMe: false, writerAuthority: 'allowed' as const },
+    { initialSharedWithMe: true, writerAuthority: 'allowed' as const },
+  ])('keeps chat open for a writer or an ordinary pending project ($initialSharedWithMe, $writerAuthority)', ({ initialSharedWithMe, writerAuthority }) => {
+    window.sessionStorage.removeItem(`od:auto-send-first:${PROJECT_ID}`);
+    projectCollabMocks.writerAuthority = writerAuthority;
+    const view = renderProjectView({
+      project: { ...project(), pendingPrompt: '' },
+      initialSharedWithMe,
+    });
+
+    expect(view.container.querySelector('.split')).not.toHaveClass('split-focus');
+    expect(view.container.querySelector('.split-chat-slot')).not.toHaveAttribute('aria-hidden');
+    projectCollabMocks.writerAuthority = 'pending';
+    view.rerender(projectViewElement({
+      project: { ...project(), pendingPrompt: '' },
+      initialSharedWithMe,
+    }));
+    expect(view.container.querySelector('.split')).not.toHaveClass('split-focus');
+  });
+
   it('starts daemon tab persistence only after Team writer authority is allowed', async () => {
     window.sessionStorage.removeItem(`od:auto-send-first:${PROJECT_ID}`);
     workspaceScopeMocks.projectScope = {

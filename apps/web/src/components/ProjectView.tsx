@@ -631,6 +631,8 @@ interface Props {
   initialProjectDetail?: ProjectDetailSeed | null;
   /** The seeded project row is a Team-bound placeholder, not content authority. */
   initialMaterializationPending?: boolean;
+  /** Opening/history presentation hint; never grants or denies writer authority. */
+  initialSharedWithMe?: boolean;
   /** Workspace/member authorization lifetime for async title reads. */
   projectAuthorizationKey?: string;
   amrAuthRetryContinuation?: AmrAuthRetryContinuation | null;
@@ -2062,6 +2064,7 @@ export function ProjectView({
   initialWorkspaceScope,
   initialProjectDetail,
   initialMaterializationPending = false,
+  initialSharedWithMe = false,
   projectAuthorizationKey = project.id,
   amrAuthRetryContinuation = null,
   onArmAmrAuthRetryContinuation,
@@ -2675,7 +2678,18 @@ export function ProjectView({
     projectCollab.writerAuthority,
     readOnlyFocusProjectId,
   );
-  const workspaceFocused = stableReadOnlyFocus || workspaceFocusRequested;
+  // The share entry already knows this is a received project before the first
+  // collab poll. Start in preview layout while that poll is pending; a settled
+  // writer verdict still wins over a stale history hint.
+  const openingSharedLayoutRef = useRef({ projectId: project.id, pending: initialSharedWithMe });
+  if (openingSharedLayoutRef.current.projectId !== project.id) {
+    openingSharedLayoutRef.current = { projectId: project.id, pending: initialSharedWithMe };
+  }
+  if (projectCollab.writerAuthority !== 'pending') {
+    openingSharedLayoutRef.current.pending = false;
+  }
+  const workspaceFocused = stableReadOnlyFocus || workspaceFocusRequested
+    || openingSharedLayoutRef.current.pending;
   const showProjectChatCollapseControl = projectChatCollapseControlVisible(
     workspaceFocused,
     personalProject,

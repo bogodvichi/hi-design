@@ -424,6 +424,7 @@ vi.mock('../../src/components/ProjectView', () => ({
     onOpenAmrSettings,
     onOpenSettings,
     workspaceContextOverride,
+    initialSharedWithMe,
   }: {
     onBack: () => void;
     onCreateProjectFromDesignSystem?: (designSystemId: string, title: string) => Promise<void> | void;
@@ -460,11 +461,13 @@ vi.mock('../../src/components/ProjectView', () => ({
     onOpenAmrSettings?: () => void;
     onOpenSettings?: () => void;
     workspaceContextOverride?: WorkspaceCollabContext | null;
+    initialSharedWithMe?: boolean;
   }) => (
     <main data-testid="project-view">
       <span data-testid="project-title">{project.name}</span>
       <span data-testid="project-authoritative-title">{authoritativeProjectName ?? 'none'}</span>
       <span data-testid="project-workspace-id">{project.workspaceId ?? 'unbound'}</span>
+      <span data-testid="project-initial-shared-with-me">{String(initialSharedWithMe === true)}</span>
       <span data-testid="project-route-workspace-context">
         {workspaceContextOverride
           ? `${workspaceContextOverride.workspaceId}:${workspaceContextOverride.workspaceMemberId}`
@@ -2180,6 +2183,7 @@ describe('App project creation routing', () => {
       await waitFor(() => expect(pullRequests).toHaveLength(1));
       await waitFor(() => expect(screen.getByTestId('project-title').textContent).toBe(received.name));
       expect(screen.getByTestId('project-workspace-id').textContent).toBe(homeWorkspaceId);
+      expect(screen.getByTestId('project-initial-shared-with-me').textContent).toBe('true');
       expect(window.location.pathname).toBe(`/projects/${received.id}`);
       const pullHeaders = new Headers(pullRequests[0]!.headers);
       expect(pullHeaders.get('x-od-workspace-id')).toBe(homeMembership ? homeWorkspaceId : 'ws-1');
