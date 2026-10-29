@@ -60,15 +60,6 @@ const releasePublishMetadataScriptPath = join(
 );
 const releaseBetaPosixBuildScriptPath = join(workspaceRoot, "tools", "release", "scripts", "build-platform.sh");
 const releaseBetaWindowsBuildScriptPath = join(workspaceRoot, "tools", "release", "scripts", "build-platform.ps1");
-const releaseBetaPlatformPublishScriptPath = join(
-  workspaceRoot,
-  "tools",
-  "release",
-  "src",
-  "storage",
-  "publish-platform.ts",
-);
-
 function workflowFixtureEnv(
   overrides: Record<string, string>,
   executableDir?: string,
@@ -606,20 +597,21 @@ describe("packaged smoke workflow", () => {
 
   it("[P2] preserves prerelease linux AppImage smoke reports for release publication", async () => {
     const workflow = await readFile(releasePrereleaseWorkflowPath, "utf8");
-    const linuxBuildStep = workflow.match(
-      /- name: Build prerelease linux artifacts\r?\n(?:.+\r?\n)+?(?=\r?\n      - name: Smoke prerelease linux AppImage runtime)/m,
-    );
-    expect(linuxBuildStep?.[0]).toBeDefined();
-    expect(linuxBuildStep?.[0]).toContain(
-      'node -e \'const fs = require("node:fs"); JSON.parse(fs.readFileSync(process.argv[1], "utf8"));\' "$build_json_path"',
-    );
-    expect(workflow).toContain("Smoke prerelease linux AppImage runtime");
-    expect(workflow).toContain("manifest.json");
-    expect(workflow).toContain("tools-pack.json");
-    expect(workflow).toContain("Upload linux e2e spec report");
-    expect(workflow).toContain("open-design-prerelease-linux-e2e-report");
-    expectReleaseLinuxBuildPreservesEvidence(workflow, "Build prerelease linux artifacts");
-    expectReleaseLinuxSmokePreservesEvidenceBeforeApt(workflow, "Smoke prerelease linux AppImage runtime");
+    const build = sectionBetween(workflow, "      - name: Build prerelease linux artifacts", "      - name: Smoke prerelease linux AppImage runtime");
+    expect(build).toContain('report_dir="$RUNNER_TEMP/release-report/linux_x64"');
+    expect(build).toContain('tee "$report_dir/tools-pack.json"');
+    expect(build).toContain('tee -a "$report_dir/tools-pack.log"');
+    expect(build).toContain('JSON.parse(fs.readFileSync(process.argv[1], "utf8"))');
+    const smoke = sectionBetween(workflow, "      - name: Smoke prerelease linux AppImage runtime", "      - name: Upload linux e2e spec report");
+    expect(smoke).toContain('cat > "$report_dir/manifest.json"');
+    expect(smoke).toContain('tee "$report_dir/vitest.log"');
+    const aptIndex = smoke.indexOf("sudo apt-get update");
+    expect(aptIndex).toBeGreaterThan(0);
+    expect(smoke.indexOf('mkdir -p "$report_dir/screenshots"')).toBeGreaterThan(0);
+    expect(smoke.indexOf('mkdir -p "$report_dir/screenshots"')).toBeLessThan(aptIndex);
+    expect(smoke.indexOf('cat > "$report_dir/manifest.json"')).toBeLessThan(aptIndex);
+    expect(workflow).toContain("name: open-design-prerelease-linux-e2e-report");
+    expect(workflow).toContain("name: open-design-prerelease-linux-x64-publish-manifest");
   });
 
   it("[P2] keeps release namespaces aligned with release channels", async () => {
@@ -1046,43 +1038,43 @@ describe("packaged smoke workflow", () => {
   });
 
   it.each(["beta", "stable"])("generates usable HiDesign %s installer and payload metadata from the built artifacts", async (channel) => {
-
+    const version = channel === "beta" ? "0.21.4-beta.1" : "0.21.4";
     const workflow = await readFile(channel === "beta" ? releaseBetaWorkflowPath : releaseStableWorkflowPath, "utf8");
     const step = sectionBetween(workflow, "      - name: Generate metadata.json", "      - name: Create draft");
     const script = step.slice(step.indexOf("        run: |\n") + "        run: |\n".length)
       .split("\n").map((line) => line.slice(10)).join("\n")
-      .replaceAll("${{ inputs.release_version }}", "0.21.4");
+      .replaceAll("${{ inputs.release_version }}", version);
     const temp = await mkdtemp(join(tmpdir(), "od-hidesign-metadata-"));
     const assets = join(temp, "release-assets");
     const targets = [
       ["mac", "arm64", "dmg", "mac-arm64.dmg", "mac-arm64-payload.zip"],
       ["macIntel", "x64", "dmg", "mac-x64.dmg", "mac-x64-payload.zip"],
       ["win", "x64", "installer", "win-x64-setup.exe", "win-x64-payload.7z"],
-    ];
+    ] as const;
     try {
       await mkdir(assets);
       for (const [, , , installer, payload] of targets) {
         for (const suffix of [installer, payload]) {
-          await writeFile(join(assets, `Hi Design-0.21.4-${suffix}`), suffix);
+          await writeFile(join(assets, `Hi Design-${version}-${suffix}`), suffix);
         }
       }
       // Execute the actual generator with local bytes; no publishing or network calls.
       await execFileAsync("bash", ["-c", script], { env: workflowFixtureEnv({ RUNNER_TEMP: temp }) });
       const metadata = JSON.parse(await readFile(join(assets, "metadata.json"), "utf8"));
       expect(metadata.channel).toBe(channel);
-      expect(metadata[`${channel}Version`]).toBe("0.21.4");
+      expect(metadata[`${channel}Version`]).toBe(version);
       expect(Object.keys(metadata.platforms).sort()).toEqual(["mac", "macIntel", "win"]);
       for (const [platform, arch, installerKind, installer, payload] of targets) {
         expect(metadata.platforms[platform]).toMatchObject({ enabled: true, arch });
-        for (const [kind, suffix] of [[installerKind, installer], ["payload", payload]]) {
+        for (const [kind, suffix] of [[installerKind, installer], ["payload", payload]] as const) {
           expect(metadata.platforms[platform].artifacts[kind]).toEqual({
-            url: `https://pixso.hikvision.com.cn/hik-plugin/hidesign-web-offical/public/webresources/download/hi-design/${channel}/versions/v0.21.4/Hi.Design-0.21.4-${suffix}`,
+            url: `https://pixso.hikvision.com.cn/hik-plugin/hidesign-web-offical/public/webresources/download/hi-design/${channel}/versions/v${version}/Hi.Design-${version}-${suffix}`,
             sha256: createHash("sha256").update(suffix).digest("hex"),
           });
         }
       }
       // Missing build output must fail instead of publishing incomplete metadata.
-      await rm(join(assets, "Hi Design-0.21.4-win-x64-payload.7z"));
+      await rm(join(assets, `Hi Design-${version}-win-x64-payload.7z`));
       await expect(execFileAsync("bash", ["-c", script], { env: workflowFixtureEnv({ RUNNER_TEMP: temp }) })).rejects.toThrow();
     } finally {
       await rm(temp, { recursive: true, force: true });
@@ -1657,27 +1649,6 @@ function expectCountedReleaseWorkflowCallContract(workflow: string, channel: "pr
   expect(workflow).toContain("mac_intel_url: ${{ steps.outputs.outputs.mac_x64_dmg_url }}");
   expect(workflow).toContain("win_url: ${{ steps.outputs.outputs.win_x64_installer_url }}");
   expect(workflow).toContain("linux_url: ${{ steps.outputs.outputs.linux_x64_appImage_url }}");
-}
-
-function expectReleaseLinuxBuildPreservesEvidence(workflow: string, stepName: string): void {
-  const step = workflow.match(new RegExp(`- name: ${stepName}\\r?\\n(?:.+\\r?\\n)+?(?=\\r?\\n      - name: Smoke .+ linux AppImage runtime)`, "m"))?.[0];
-  expect(step).toBeDefined();
-  expect(step).toContain('report_dir="$RUNNER_TEMP/release-report/linux"');
-  expect(step).toContain('mkdir -p "$report_dir"');
-  expect(step).toContain('build_json_path="$report_dir/tools-pack.json"');
-  expect(step).toContain('build_log_path="$report_dir/tools-pack.log"');
-  expect(step).toContain('printf \'%s\\n\' "$build_output" | tee "$build_json_path"');
-}
-
-function expectReleaseLinuxSmokePreservesEvidenceBeforeApt(workflow: string, stepName: string): void {
-  const step = workflow.match(new RegExp(`- name: ${stepName}\\r?\\n(?:.+\\r?\\n)+?(?=\\r?\\n      - name: Upload linux e2e spec report)`, "m"))?.[0];
-  expect(step).toBeDefined();
-  const aptIndex = step?.indexOf("sudo apt-get update") ?? -1;
-  const reportDirIndex = step?.indexOf('report_dir="$RUNNER_TEMP/release-report/linux"') ?? -1;
-
-  expect(aptIndex).toBeGreaterThan(-1);
-  expect(reportDirIndex).toBeGreaterThan(-1);
-  expect(reportDirIndex).toBeLessThan(aptIndex);
 }
 
 async function startStablePrereleaseMetadataServer(objects: Record<string, unknown>): Promise<{

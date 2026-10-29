@@ -107,8 +107,8 @@ describe("release workflows", () => {
     expect(prerelease).toContain("pnpm exec tools-release prepare prerelease");
     expect(prerelease).toContain("OPEN_DESIGN_PRERELEASE_METADATA_URL");
     expect(prerelease).toContain("RELEASE_CHANNEL: prerelease");
-    expect(prerelease).toContain("hi-design-team-prerelease-mac-arm64-publish-manifest");
-    expect(prerelease).toContain("hi-design-team-prerelease-win-x64-publish-manifest");
+    expect(prerelease).toContain("open-design-prerelease-mac-arm64-publish-manifest");
+    expect(prerelease).toContain("open-design-prerelease-win-x64-publish-manifest");
     expect(prerelease).toContain("workflow_call:");
     expect(prerelease).toContain("OPEN_DESIGN_STABLE_VERSION: ${{ inputs.release_version }}");
     expect(prerelease).toContain("GITHUB_SHA: ${{ needs.metadata.outputs.commit }}");
@@ -215,7 +215,7 @@ describe("release workflows", () => {
     expect(prerelease).toContain("OPEN_DESIGN_AMR_PROFILE: ${{ inputs.amr_profile }}");
     expect(prerelease).toContain("OD_VELA_WEB_URL:");
     for (const profile of ["FEATURE_TEST", "TEST", "PROD"]) {
-      expect(prerelease).toContain(`OD_VELA_WEB_URL_${profile}: ${{ secrets.VELA_WEB_URL_${profile} }}`);
+      expect(prerelease).toContain(`OD_VELA_WEB_URL_${profile}: \${{ secrets.VELA_WEB_URL_${profile} }}`);
     }
   });
 
