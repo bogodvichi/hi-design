@@ -7060,36 +7060,31 @@ export async function startServer({
       });
       return true;
     }
-   if (ownerLocalSourceReady) return;
+   // Explicit cloud installs always read the remote snapshot. These local
+   // shortcuts are only for background synchronization of team resources.
+   if (!cloudInstall && ownerLocalSourceReady) return;
    if (
+     !cloudInstall &&
      fs.existsSync(targetDir) &&
       workspaceId &&
       resource.versionId &&
     teamResourceVersions.get(workspaceId, 'skill', resource.id) === resource.versionId
   ) {
-      if (cloudInstall) {
-        markTeamSynced();
-      } else {
-        await activateWorkspaceTeamSkillIfStillShared({
+      await activateWorkspaceTeamSkillIfStillShared({
           captureActivationFence,
           stillShared,
           activationFenceIsCurrent: (fence) => captureActivationFence() === fence,
           activate: markTeamSynced,
-        });
-      }
+      });
       return;
     }
-  if (fs.existsSync(targetDir) && !resource.versionId) {
-      if (cloudInstall) {
-        markTeamSynced();
-      } else {
-        await activateWorkspaceTeamSkillIfStillShared({
+  if (!cloudInstall && fs.existsSync(targetDir) && !resource.versionId) {
+      await activateWorkspaceTeamSkillIfStillShared({
           captureActivationFence,
           stillShared,
           activationFenceIsCurrent: (fence) => captureActivationFence() === fence,
           activate: markTeamSynced,
-        });
-      }
+      });
       return;
     }
 

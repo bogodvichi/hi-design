@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+vi.mock('../../src/auth/LoginGate', () => import('../helpers/auth-gate'));
+
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import type { DesignSystemSummary, WorkspaceCollabContext } from '@open-design/contracts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -43,7 +45,8 @@ vi.mock('../../src/collab/workspace-events', () => ({
   }),
 }));
 
-vi.mock('../../src/router', () => ({
+vi.mock('../../src/router', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/router')>()),
   navigate: vi.fn(),
   useRoute: () => ({ kind: 'home' as const, view: 'design-systems' as const }),
 }));
@@ -298,7 +301,7 @@ describe('App design-system catalog loading race', () => {
     // removed, so startup no longer needs three duplicate snapshots.
     await waitFor(() =>
       expect(readPhases.filter((readPhase) => readPhase === 'startup').length)
-        .toBeGreaterThanOrEqual(2),
+        .toBe(1),
     );
 
     phase = 'a';

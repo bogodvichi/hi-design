@@ -82,7 +82,7 @@ describe("processCommandExactlyRunsExecutable", () => {
 
   it("compares Windows executable paths case-insensitively", () => {
     expect(processCommandExactlyRunsExecutable(
-      '"C:\\PROGRAM FILES\\OPEN DESIGN\\OPEN DESIGN.EXE"',
+      '"C:\\PROGRAM FILES\\HI DESIGN TEAM\\HI DESIGN TEAM.EXE"',
       "c:\\Program Files\\Hi Design Team\\Hi Design Team.exe",
       "win32",
     )).toBe(true);

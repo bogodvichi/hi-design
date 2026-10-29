@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+vi.mock('../../src/auth/LoginGate', () => import('../helpers/auth-gate'));
+
 // Regression guard for the reduced-motion gate on the motion/react layer.
 //
 // The CSS `@media (prefers-reduced-motion: reduce)` block only disables CSS
@@ -35,7 +37,8 @@ import {
   syncConfigToDaemon,
 } from '../../src/state/config';
 
-vi.mock('../../src/router', () => ({
+vi.mock('../../src/router', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/router')>()),
   navigate: vi.fn(),
   useRoute: () => ({ kind: 'home' as const, view: 'home' as const }),
 }));

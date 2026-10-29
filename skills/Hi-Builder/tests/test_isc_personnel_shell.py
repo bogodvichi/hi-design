@@ -42,6 +42,11 @@ class ShellStructureParser(HTMLParser):
 
 
 class IscPersonnelShellTest(unittest.TestCase):
+    def setUp(self) -> None:
+        output_dir = tempfile.TemporaryDirectory(prefix="hi-builder-personnel-test-")
+        self.addCleanup(output_dir.cleanup)
+        self.output_dir = Path(output_dir.name)
+
     def test_isc_3_shell_registers_all_framework_variants(self) -> None:
         product_root = (
             ROOT / "design-systems/industry-products/general/products/isc"
@@ -772,7 +777,7 @@ class IscPersonnelShellTest(unittest.TestCase):
                 encoding="utf-8"
             )
         )
-        output_path = ROOT / "output/personnel-permission-form.html"
+        output_path = self.output_dir / "personnel-permission-form.html"
         html = compile_pattern_page(spec, output_path)
         output_path.write_text(html, encoding="utf-8")
         self.assertEqual(spec["product_version"], "3.0.0")
@@ -1024,7 +1029,7 @@ class IscPersonnelShellTest(unittest.TestCase):
                 encoding="utf-8"
             )
         )
-        output_path = ROOT / "output/isc3-access-personnel-list.html"
+        output_path = self.output_dir / "isc3-access-personnel-list.html"
         html = compile_pattern_page(spec, output_path)
         output_path.write_text(html, encoding="utf-8")
         page_config = extract_frozen_json(html, "PAGE_CONFIG")
@@ -1315,7 +1320,7 @@ class IscPersonnelShellTest(unittest.TestCase):
                 encoding="utf-8"
             )
         )
-        output_path = ROOT / "output/isc3-personnel-field-config.html"
+        output_path = self.output_dir / "isc3-personnel-field-config.html"
         html = compile_pattern_page(spec, output_path)
         output_path.write_text(html, encoding="utf-8")
         page_config = extract_frozen_json(html, "PAGE_CONFIG")
@@ -1839,7 +1844,7 @@ class IscPersonnelShellTest(unittest.TestCase):
                 encoding="utf-8"
             )
         )
-        output_path = ROOT / "output/isc3-access-personnel-detail.html"
+        output_path = self.output_dir / "isc3-access-personnel-detail.html"
         html = compile_pattern_page(spec, output_path)
         output_path.write_text(html, encoding="utf-8")
         page_config = extract_frozen_json(html, "PAGE_CONFIG")
@@ -1978,7 +1983,7 @@ class IscPersonnelShellTest(unittest.TestCase):
             )
         )
         spec["product_version"] = "3.0"
-        html = compile_pattern_page(spec, ROOT / "output/personnel-permission-form.html")
+        html = compile_pattern_page(spec, self.output_dir / "personnel-permission-form.html")
         self.assertIn('"product_shell_standard": "isc-3.0.0"', html)
         self.assertIn('class="isc-personnel-sidebar__scrollbar"', html)
         bundle = build_capability_bundle("general", "isc", "form", "3.0.0")

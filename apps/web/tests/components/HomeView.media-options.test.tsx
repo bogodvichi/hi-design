@@ -1,5 +1,8 @@
 // @vitest-environment jsdom
 
+import { pickHomeTemplate } from '../helpers/home-intent';
+import { requestHomeChip } from '../../src/runtime/home-intent';
+
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -124,7 +127,7 @@ describe('HomeView media composer options', () => {
     expect(screen.queryByTestId('home-hero-design-system-trigger')).toBeNull();
 
     await clickHomeRailChip('image');
-    await waitFor(() => expect(screen.getByTestId('home-hero-template-trigger').textContent).not.toContain('None'));
+    await waitFor(() => expect(window.localStorage.getItem('open-design:home-composer:chip')).not.toBeNull());
     expect(promptIsEmpty()).toBe(true);
     expect(screen.queryByTestId('home-hero-footer-option-designSystem')).toBeNull();
     expect(screen.queryByTestId('home-hero-footer-option-model')).toBeNull();
@@ -133,7 +136,7 @@ describe('HomeView media composer options', () => {
     expect(screen.queryByTestId('home-hero-footer-option-duration')).toBeNull();
 
     await clickHomeRailChip('video');
-    await waitFor(() => expect(screen.getByTestId('home-hero-template-trigger').textContent).not.toContain('None'));
+    await waitFor(() => expect(window.localStorage.getItem('open-design:home-composer:chip')).not.toBeNull());
     expect(promptIsEmpty()).toBe(true);
     expect(screen.queryByTestId('home-hero-footer-option-designSystem')).toBeNull();
     expect(screen.queryByTestId('home-hero-footer-option-model')).toBeNull();
@@ -143,14 +146,14 @@ describe('HomeView media composer options', () => {
 
     // HyperFrames / Audio keep no pre-flight pills at all.
     await clickHomeRailChip('hyperframes');
-    await waitFor(() => expect(screen.getByTestId('home-hero-template-trigger').textContent).not.toContain('None'));
+    await waitFor(() => expect(window.localStorage.getItem('open-design:home-composer:chip')).not.toBeNull());
     expect(promptIsEmpty()).toBe(true);
     expect(screen.queryByTestId('home-hero-footer-option-ratio')).toBeNull();
     expect(screen.queryByTestId('home-hero-footer-option-duration')).toBeNull();
     expect(screen.queryByTestId('home-hero-footer-option-model')).toBeNull();
 
     await clickHomeRailChip('audio');
-    await waitFor(() => expect(screen.getByTestId('home-hero-template-trigger').textContent).not.toContain('None'));
+    await waitFor(() => expect(window.localStorage.getItem('open-design:home-composer:chip')).not.toBeNull());
     expect(promptIsEmpty()).toBe(true);
     expect(screen.queryByTestId('home-hero-footer-option-audioType')).toBeNull();
     expect(screen.queryByTestId('home-hero-footer-option-model')).toBeNull();
@@ -202,12 +205,12 @@ describe('HomeView media composer options', () => {
     renderHome();
 
     await clickHomeRailChip('image');
-    await waitFor(() => expect(screen.getByTestId('home-hero-template-trigger').textContent).not.toContain('None'));
+    await waitFor(() => expect(window.localStorage.getItem('open-design:home-composer:chip')).not.toBeNull());
     expect(screen.queryByRole('dialog', { name: /replace current prompt/i })).toBeNull();
 
     await setHomePrompt('Make this prompt personally tuned.');
     await clickHomeRailChip('video');
-    await waitFor(() => expect(screen.getByTestId('home-hero-template-trigger').textContent).not.toContain('None'));
+    await waitFor(() => expect(window.localStorage.getItem('open-design:home-composer:chip')).not.toBeNull());
     expect(screen.queryByRole('dialog', { name: /replace current prompt/i })).toBeNull();
   });
 
@@ -218,7 +221,7 @@ describe('HomeView media composer options', () => {
     // Audio type / model / duration / voice are no longer footer pills — the
     // agent asks for them during the run. The composer just stays empty.
     await clickHomeRailChip('audio');
-    await waitFor(() => expect(screen.getByTestId('home-hero-template-trigger').textContent).not.toContain('None'));
+    await waitFor(() => expect(window.localStorage.getItem('open-design:home-composer:chip')).not.toBeNull());
     expect(promptIsEmpty()).toBe(true);
     expect(screen.queryByTestId('home-hero-footer-option-audioType')).toBeNull();
     expect(screen.queryByTestId('home-hero-footer-option-duration')).toBeNull();
@@ -231,20 +234,20 @@ describe('HomeView media composer options', () => {
     renderHome();
 
     await clickHomeRailChip('image');
-    await waitFor(() => expect(screen.getByTestId('home-hero-template-trigger').textContent).not.toContain('None'));
+    await waitFor(() => expect(window.localStorage.getItem('open-design:home-composer:chip')).not.toBeNull());
     expect(screen.queryByRole('combobox', { name: 'Template' })).toBeNull();
     expect(screen.queryByRole('combobox', { name: 'Model' })).toBeNull();
     expect(screen.queryByRole('combobox', { name: 'Ratio' })).toBeNull();
 
     await clickHomeRailChip('video');
-    await waitFor(() => expect(screen.getByTestId('home-hero-template-trigger').textContent).not.toContain('None'));
+    await waitFor(() => expect(window.localStorage.getItem('open-design:home-composer:chip')).not.toBeNull());
     expect(screen.queryByRole('combobox', { name: 'Duration' })).toBeNull();
     expect(screen.queryByRole('combobox', { name: 'Template' })).toBeNull();
     expect(screen.queryByRole('combobox', { name: 'Model' })).toBeNull();
     expect(screen.queryByRole('combobox', { name: 'Ratio' })).toBeNull();
 
     await clickHomeRailChip('audio');
-    await waitFor(() => expect(screen.getByTestId('home-hero-template-trigger').textContent).not.toContain('None'));
+    await waitFor(() => expect(window.localStorage.getItem('open-design:home-composer:chip')).not.toBeNull());
     // No audio pills/combobox at all now — those questions moved to the agent.
     expect(screen.queryByTestId('home-hero-footer-option-audioType')).toBeNull();
     expect(screen.queryByRole('combobox', { name: 'Audio type' })).toBeNull();
@@ -290,7 +293,7 @@ describe('HomeView media composer options', () => {
     const view = render(<HomeView {...props} />);
 
     await clickHomeRailChip('image');
-    await waitFor(() => expect(screen.getByTestId('home-hero-template-trigger').textContent).not.toContain('None'));
+    await waitFor(() => expect(window.localStorage.getItem('open-design:home-composer:chip')).not.toBeNull());
     await setHomePrompt('Create a campaign image.');
     await submitHome();
     await waitFor(() => {
@@ -303,6 +306,8 @@ describe('HomeView media composer options', () => {
 
     onSubmit.mockClear();
     view.rerender(<HomeView {...props} promptTemplates={PROMPT_TEMPLATES} />);
+    // The first accepted create cleared its draft. Enter the next request.
+    await setHomePrompt('Create another campaign image.');
     await submitHome();
 
     await waitFor(() => {
@@ -326,7 +331,7 @@ describe('HomeView media composer options', () => {
     });
 
     await clickHomeRailChip('video');
-    await waitFor(() => expect(screen.getByTestId('home-hero-template-trigger').textContent).not.toContain('None'));
+    await waitFor(() => expect(window.localStorage.getItem('open-design:home-composer:chip')).not.toBeNull());
     setHomePrompt('Create a launch teaser.');
     await submitHome();
 
@@ -358,7 +363,7 @@ describe('HomeView media composer options', () => {
     renderHome({ onSubmit });
 
     await clickHomeRailChip('video');
-    await waitFor(() => expect(screen.getByTestId('home-hero-template-trigger').textContent).not.toContain('None'));
+    await waitFor(() => expect(window.localStorage.getItem('open-design:home-composer:chip')).not.toBeNull());
     await setHomePrompt('Create a launch teaser.');
     await submitHome();
 
@@ -384,7 +389,7 @@ describe('HomeView media composer options', () => {
     renderHome({ onSubmit });
 
     await clickHomeRailChip('video');
-    await waitFor(() => expect(screen.getByTestId('home-hero-template-trigger').textContent).not.toContain('None'));
+    await waitFor(() => expect(window.localStorage.getItem('open-design:home-composer:chip')).not.toBeNull());
     await setHomePrompt('Create a launch teaser.');
     await submitHome();
 
@@ -533,7 +538,8 @@ describe('HomeView media composer options', () => {
     renderHome();
 
     await screen.findByTestId('home-hero-input');
-    expect((screen.getByTestId('home-hero-template-trigger') as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => requestHomeChip('image'));
+    expect(window.localStorage.getItem('open-design:home-composer:chip')).toBeNull();
     expect(fetchMock.mock.calls.some(([url]) => (
       typeof url === 'string' && url.includes('/api/plugins/od-media-generation/apply')
     ))).toBe(false);
@@ -674,18 +680,7 @@ function stubFetch(options: {
 }
 
 async function clickHomeRailChip(id: string) {
-  // #5517 removed the inline template rail from Home: every scenario template
-  // is picked from the composer footer's radial Template picker. Wait until the
-  // trigger and the wedge are enabled first — plugins load asynchronously, so
-  // both are briefly disabled after mount.
-  const trigger = await screen.findByTestId('home-hero-template-trigger');
-  await waitFor(() => expect((trigger as HTMLButtonElement).disabled).toBe(false));
-  fireEvent.click(trigger);
-  const wedgeId = `home-hero-template-wedge-${id}`;
-  await waitFor(() =>
-    expect(screen.getByTestId(wedgeId).getAttribute('aria-disabled')).not.toBe('true'),
-  );
-  fireEvent.click(screen.getByTestId(wedgeId));
+  await pickHomeTemplate(id);
 }
 
 // Drive the Lexical editor and let the OnChange -> onPromptChange -> setPrompt

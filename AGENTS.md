@@ -219,10 +219,11 @@ confidence methodology in `specs/current/ci.md`.
 
 ## Release channel model
 
-- `beta` is the daily R&D/development validation channel. It is optimized for fast development feedback and is not part of the stable promotion gate.
-- `prerelease` is the internal validation channel for stable delivery. Stable releases remain gated by validated prerelease artifacts.
-- `preview` is an independent early-access channel with stable-like release rigor. It should use preview versions such as `X.Y.Z-preview.N`, publish to the `preview` R2 channel, publish updater feeds under `preview/latest`, and follow stable's platform policy including the existing optional Linux enablement.
-- `stable` is the formal delivery channel. Do not make stable promotion depend on preview; stable continues to depend on prerelease only.
+- `beta` is the daily R&D/development validation channel. The current HiDesign workflow directly builds macOS arm64, macOS x64, and Windows x64 artifacts from the selected ref and version, then creates a GitHub prerelease.
+- `stable` is the formal delivery channel. The current HiDesign workflow directly builds the same three platforms from the selected ref and version, then publishes a GitHub release as latest. It does not require promotion from `prerelease`. Both direct workflows generate metadata pointing to their respective HiDesign download channels.
+- `prerelease` retains the tools-release/R2 validation pipeline, including optional Linux coverage. The standalone `tools-release prepare stable` helper retains its prerelease promotion checks; the current HiDesign stable workflow does not invoke that helper.
+- The dedicated `preview` and `betas` workflow entrypoints are retired. Do not restore their workflow contracts as requirements for the current HiDesign beta/stable lanes.
+- Build success is not packaged-client acceptance. The direct stable workflow currently runs typecheck and guard before packaging; it does not run a test suite or installation/startup/upgrade acceptance. Adding those checks is separate release-hardening work, not part of the stale-test cleanup.
 - Public packaged app identity is unified across channels: all channels use `Hi Design Team` as the display name, app bundle name, shortcut name, and installer label. Channel distinction lives in namespaces, appIds, registry keys, and updater feeds, not in the display name. Do not ship beta, prerelease, or preview mac DMGs whose drag-install app bundle differs from `Hi Design Team.app`.
 - Windows beta updater validation must use the real beta namespace `release-beta-win`; otherwise a local beta-like namespace can create a separate uninstall registry key while looking like the same `Hi Design Team` app. See `tools/pack/AGENTS.md` for the architecture map and high-confidence acceptance harness.
 

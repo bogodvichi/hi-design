@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+vi.mock('../../src/auth/LoginGate', () => import('../helpers/auth-gate'));
+
 /**
  * Regression coverage for 飞书 "Team plus 还有余额被识别成 free，弹窗要求升级套餐"
  * (P0). `resolvePlanTier` (collab/team-plan.ts) is DESIGNED so the workspace
@@ -36,7 +38,8 @@ import { resetCoalescedGet } from '../../src/lib/coalesced-get';
 import { workspaceDirectoryFixture } from '../helpers/workspace-context';
 
 const homeRouteMock = { kind: 'home' as const, view: 'home' as const };
-vi.mock('../../src/router', () => ({
+vi.mock('../../src/router', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/router')>()),
   navigate: vi.fn(),
   useRoute: () => homeRouteMock,
 }));

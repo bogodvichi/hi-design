@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+
+vi.mock('../../src/auth/LoginGate', () => import('../helpers/auth-gate'));
+
 //
 // The app-level skills list must be read under the caller's workspace identity,
 // and re-read when that identity changes.

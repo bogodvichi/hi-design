@@ -14,13 +14,11 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const repoRoot = path.resolve(__dirname, '../../../..');
-// `live-artifact` moved from skills/ to design-templates/ in PR #955 as
-// part of the skills/design-templates split (see specs/current/
-// skills-and-design-templates.md). The root path now points there.
-const liveArtifactRoot = path.join(repoRoot, 'design-templates/live-artifact');
+// Bundled examples are distributed through the official plugin registry.
+const liveArtifactRoot = path.join(repoRoot, 'plugins/_official/examples/live-artifact');
 const liveArtifactSkillPath = path.join(
   repoRoot,
-  'design-templates/live-artifact/SKILL.md',
+  'plugins/_official/examples/live-artifact/SKILL.md',
 );
 const liveArtifactSkillMarkdown = readFileSync(liveArtifactSkillPath, 'utf8');
 const liveArtifactSkillBody = [
@@ -36,19 +34,13 @@ const liveArtifactSkillBody = [
   liveArtifactSkillMarkdown.replace(/^---[\s\S]*?---\n\n/, '').trim(),
 ].join('\n');
 
-// `hyperframes` also moved to design-templates/ in PR #955 — same split
-// as `live-artifact` above.
-const hyperframesRoot = path.join(repoRoot, 'design-templates/hyperframes');
+// HyperFrames uses the same official example registry.
+const hyperframesRoot = path.join(repoRoot, 'plugins/_official/examples/hyperframes');
 const hyperframesSkillPath = path.join(
-  repoRoot,
-  'design-templates/hyperframes/SKILL.md',
-);
-const officialHyperframesSkillPath = path.join(
   repoRoot,
   'plugins/_official/examples/hyperframes/SKILL.md',
 );
 const hyperframesSkillMarkdown = readFileSync(hyperframesSkillPath, 'utf8');
-const officialHyperframesSkillMarkdown = readFileSync(officialHyperframesSkillPath, 'utf8');
 const hyperframesSkillBody = [
   `> **Skill root (absolute):** \`${hyperframesRoot}\``,
   '>',
@@ -280,16 +272,14 @@ describe('composeSystemPrompt', () => {
     expect(prompt).not.toContain('rendered by you directly via npx');
   });
 
-  it('keeps both hyperframes skill copies aligned with the daemon render handoff', () => {
-    for (const markdown of [hyperframesSkillMarkdown, officialHyperframesSkillMarkdown]) {
-      expect(markdown).toContain('"$OD_NODE_BIN" "$OD_BIN" media scaffold');
-      expect(markdown).toContain('media generate --surface video --model hyperframes-html --composition-dir <rel>');
-      expect(markdown).toContain('Do not run HyperFrames `render`');
-      expect(markdown).not.toContain('npx hyperframes');
-      expect(markdown).not.toContain('AGENT_RENDERED');
-      expect(markdown).not.toContain('rendered by you directly via npx');
-      expect(markdown).not.toContain('dispatcher path returns a 400');
-    }
+  it('keeps the official hyperframes skill aligned with the daemon render handoff', () => {
+    expect(hyperframesSkillMarkdown).toContain('"$OD_NODE_BIN" "$OD_BIN" media scaffold');
+    expect(hyperframesSkillMarkdown).toContain('media generate --surface video --model hyperframes-html --composition-dir <rel>');
+    expect(hyperframesSkillMarkdown).toContain('Do not run HyperFrames `render`');
+    expect(hyperframesSkillMarkdown).not.toContain('npx hyperframes');
+    expect(hyperframesSkillMarkdown).not.toContain('AGENT_RENDERED');
+    expect(hyperframesSkillMarkdown).not.toContain('rendered by you directly via npx');
+    expect(hyperframesSkillMarkdown).not.toContain('dispatcher path returns a 400');
   });
 
   it('does not add the responsive web contract to deck metadata without platform fields', () => {

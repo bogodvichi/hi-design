@@ -814,18 +814,24 @@ app.post('/api/workspace/mcp/cloud/:resourceId/install', async (req, res) => {
         updatedAt: record.updatedAt,
       } as McpTemplate & { resourceId: string; ownerMemberId: string; createdAt: string; updatedAt: string };
      const cfg = await readMcpConfig(RUNTIME_DATA_DIR);
-     const taken = new Set(cfg.servers.map((s) => s.id));
      const existing = cfg.servers.find((s) => matchesCloudInstall(s, cloudTpl, resourceId, lookupWsId, workspaceId, authority.scope.principal.memberId));
-     if (existing) {
-       existing.cloudResourceId = resourceId;
-       existing.cloudHomeWorkspaceId = lookupWsId;
-       await writeMcpConfig(RUNTIME_DATA_DIR, cfg);
-       return res.json({ installed: true, serverId: existing.id });
-     }
-    const installId = `cloud-${createHash('sha256').update(JSON.stringify([lookupWsId, resourceId, workspaceId, authority.scope.principal.memberId])).digest('hex').slice(0, 24)}`;
+     const taken = new Set(cfg.servers.filter((s) => s !== existing).map((s) => s.id));
+    const installId = existing?.id ?? `cloud-${createHash('sha256').update(JSON.stringify([lookupWsId, resourceId, workspaceId, authority.scope.principal.memberId])).digest('hex').slice(0, 24)}`;
     const server = templateToServer({ ...cloudTpl, id: installId }, taken);
     if (!server) {
       return res.status(400).json({ error: 'template is missing required fields (command or url)' });
+    }
+    // Refresh the remote definition while retaining user-entered credentials
+    // only for the same transport and HTTP origin.
+    if (existing) {
+      const sameTarget = existing.transport === server.transport && (server.transport === 'stdio'
+        || new URL(existing.url!).origin === new URL(server.url!).origin);
+      if (sameTarget) {
+        if (server.transport === 'stdio' && existing.env) server.env = { ...server.env, ...existing.env };
+        if (server.transport !== 'stdio' && existing.headers) server.headers = { ...server.headers, ...existing.headers };
+      } else {
+        await clearToken(RUNTIME_DATA_DIR, existing.id);
+      }
     }
     // Stamp workspace ownership so the composer "+" menu can filter
     // "Mine" (ownerMemberId === requesting member) and "Team"
@@ -840,7 +846,8 @@ app.post('/api/workspace/mcp/cloud/:resourceId/install', async (req, res) => {
      if (!sanitized) {
        return res.status(400).json({ error: 'derived server config failed validation' });
      }
-     cfg.servers.push(sanitized);
+     if (existing) cfg.servers[cfg.servers.indexOf(existing)] = sanitized;
+     else cfg.servers.push(sanitized);
      await writeMcpConfig(RUNTIME_DATA_DIR, { servers: cfg.servers });
      res.json({ installed: true, serverId: sanitized.id });
    } catch (err) {

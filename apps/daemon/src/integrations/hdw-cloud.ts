@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { hdwSessionHeaders, type HdwSession } from '../http/hdw-session.js';
 import { readSsoConfigFile } from '../http/hik_logins/hicoo.js';
 // hdw cloud HTTP client — the transport layer for the hdw ResourceHub service.
@@ -13,12 +12,7 @@ import { readSsoConfigFile } from '../http/hik_logins/hicoo.js';
 // workspace identity is carried as request headers so hdw can authorize
 // per-workspace without a shared session.
 
-import {
-  resolveHdwAddress,
-  DEV_HDW_BASE_URL,
-  DEV_HDW_PATH_PREFIX,
-  DEV_HDW_BLOB_READ_FALLBACK,
-} from '../http/hdw-constants.js';
+import { resolveHdwAddress } from '../http/hdw-constants.js';
 
 const DEFAULT_FETCH_TIMEOUT_MS = 30_000;
 
@@ -126,45 +120,6 @@ export function createHdwCloudClient(options: HdwCloudClientOptions = {}) {
  }
 
 
-  // Two HDW processes can share the Dev database without sharing Blob disks.
-  // Only local Egg 7002 may recover existing immutable bytes from the trusted
-  // Dev gateway. All catalog reads, mutations and uploads stay on 7002.
-  const devBlobRecoveryEnabled = process.env.NODE_ENV !== 'production'
-    && config.baseUrl.replace(/\/+$/u, '') === DEV_HDW_BASE_URL
-    && pathPrefix === DEV_HDW_PATH_PREFIX;
-  const missingBlobMessage = '历史资源文件尚未同步到本机 HDW，请稍后重试或联系管理员。';
-
-  function isLocalManifestMissing(error: unknown): boolean {
-    return error instanceof HdwCloudError
-      && ((error.status === 503 && error.code === 'local_blob_unavailable')
-        || (error.status === 500 && /ENOENT|no such file or directory/iu.test(error.message)));
-  }
-
-  /** Authenticated read via a fixed first-party Dev gateway (no redirects). */
-  async function readFromTrustedDev<T>(method: 'GET' | 'POST', path: string, workspaceId: string, body?: object): Promise<T> {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
-    try {
-      const response = await fetchImpl(new URL(DEV_HDW_BLOB_READ_FALLBACK + path), {
-        method,
-        redirect: 'error',
-        headers: authHeaders({ 'x-hdw-workspace-id': workspaceId }),
-        ...(body === undefined ? {} : { body: JSON.stringify(body) }),
-        signal: controller.signal,
-      });
-      if (!response.ok) {
-        const status = response.status === 401 || response.status === 403 ? response.status : 503;
-        throw new HdwCloudError(status, 'DEV_BLOB_RECOVERY_UNAVAILABLE', missingBlobMessage);
-      }
-      return await response.json() as T;
-    } catch (error) {
-      if (error instanceof HdwCloudError) throw error;
-      throw new HdwCloudError(503, 'DEV_BLOB_RECOVERY_UNAVAILABLE', missingBlobMessage);
-    } finally {
-      clearTimeout(timeout);
-    }
-  }
-
   async function readBlobFromUrl(url: URL, workspaceId: string): Promise<Buffer> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
@@ -265,9 +220,7 @@ export function createHdwCloudClient(options: HdwCloudClientOptions = {}) {
       }
     },
 
-    /** Read immutable published Skill trees. Local Dev HDW and remote Dev
-     * may have the same database but different Blob disks; recover only when
-     * the precise version matches and cloud files are complete. */
+    /** Read the published snapshot from the configured remote HDW service. */
     async pullResource(
       workspaceId: string,
       resourceId: string,
@@ -275,48 +228,15 @@ export function createHdwCloudClient(options: HdwCloudClientOptions = {}) {
     ): Promise<HdwPullResult | null> {
       const resourcePath = '/api/workspaces/' + encodeURIComponent(workspaceId)
         + '/resources/' + encodeURIComponent(resourceId);
-      let localSnapshot: HdwPullResult | null = null;
       try {
         const { payload } = await request<HdwPullResult>(
           'POST', resourcePath + '/materialize', { ref }, { 'x-hdw-workspace-id': workspaceId },
         );
-        localSnapshot = payload;
+        return payload;
       } catch (error) {
         if (error instanceof HdwCloudError && error.status === 404) return null;
-        if (!devBlobRecoveryEnabled || ref !== 'published' || !isLocalManifestMissing(error)) throw error;
+        throw error;
       }
-
-      if (localSnapshot && (!devBlobRecoveryEnabled || ref !== 'published'
-        || !localSnapshot.missingBlobs?.length)) return localSnapshot;
-
-      // The manifest itself may be missing, or it may be present but point at
-      // older immutable file bodies missing from 7002. Both cases are read-only.
-      let localVersion: HdwVersionHead | null = localSnapshot
-        ? { version: localSnapshot.version, versionId: localSnapshot.versionId }
-        : null;
-      if (!localVersion) {
-        try {
-          const head = await request<HdwVersionHead>(
-            'GET', resourcePath + '/refs/' + encodeURIComponent(ref),
-            undefined, { 'x-hdw-workspace-id': workspaceId },
-          );
-          localVersion = head.payload;
-        } catch {
-          throw new HdwCloudError(503, 'DEV_BLOB_RECOVERY_UNAVAILABLE', missingBlobMessage);
-        }
-      }
-
-      const recovered = await readFromTrustedDev<HdwPullResult>(
-        'POST', resourcePath + '/materialize', workspaceId, { ref },
-      );
-      if (!localVersion?.versionId || recovered?.versionId !== localVersion.versionId
-        || recovered.version !== localVersion.version) {
-        throw new HdwCloudError(409, 'DEV_BLOB_VERSION_MISMATCH', '本地与 Dev 云端的历史资源版本不一致，已停止读取。');
-      }
-      if (!Array.isArray(recovered.manifest?.entries) || recovered.missingBlobs?.length) {
-        throw new HdwCloudError(503, 'DEV_BLOB_RECOVERY_UNAVAILABLE', missingBlobMessage);
-      }
-      return recovered;
     },
 
     /** Soft-delete a resource (tombstone). */
@@ -372,27 +292,11 @@ export function createHdwCloudClient(options: HdwCloudClientOptions = {}) {
       }
     },
 
-    /** Download bytes locally first. Missing local Dev blobs are read only
-     * from the trusted Dev gateway and verified against their content hash. */
+    /** Download file bytes from the same remote service as the catalog. */
     async downloadBlob(workspaceId: string, digest: string): Promise<Buffer> {
       const blobPath = '/api/workspaces/' + encodeURIComponent(workspaceId)
         + '/blobs/' + encodeURIComponent(digest);
-      try {
-        return await readBlobFromUrl(new URL(prefixedPath(blobPath), config!.baseUrl), workspaceId);
-      } catch (error) {
-        if (!devBlobRecoveryEnabled || !(error instanceof HdwCloudError)
-          || error.status !== 404 || !/^[0-9a-f]{64}$/u.test(digest)) throw error;
-        let recovered: Buffer;
-        try {
-          recovered = await readBlobFromUrl(new URL(DEV_HDW_BLOB_READ_FALLBACK + blobPath), workspaceId);
-        } catch {
-          throw new HdwCloudError(503, 'DEV_BLOB_RECOVERY_UNAVAILABLE', missingBlobMessage);
-        }
-        if (createHash('sha256').update(recovered).digest('hex') !== digest) {
-          throw new HdwCloudError(502, 'DEV_BLOB_INTEGRITY_FAILED', '历史资源文件校验失败，已停止安装。');
-        }
-        return recovered;
-      }
+      return readBlobFromUrl(new URL(prefixedPath(blobPath), config!.baseUrl), workspaceId);
     },
 
    async listResources(

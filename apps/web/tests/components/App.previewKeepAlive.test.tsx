@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+vi.mock('../../src/auth/LoginGate', () => import('../helpers/auth-gate'));
+
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -39,7 +41,8 @@ const PROJECT_ROUTE: Route = {
 const SETTINGS_ROUTE: Route = { kind: 'home', view: 'settings' };
 const useRouteMock = vi.fn<() => Route>(() => PROJECT_ROUTE);
 
-vi.mock('../../src/router', () => ({
+vi.mock('../../src/router', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/router')>()),
   navigate: vi.fn(),
   useRoute: () => useRouteMock(),
 }));

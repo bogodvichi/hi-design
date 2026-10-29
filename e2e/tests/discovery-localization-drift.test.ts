@@ -5,7 +5,7 @@ import { dirname, resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const testDir = dirname(fileURLToPath(import.meta.url));
-const repoRoot = resolve(testDir, '../../../..');
+const repoRoot = resolve(testDir, '../..');
 
 const promptPaths = [
   'packages/contracts/src/prompts/discovery.ts',
@@ -57,24 +57,9 @@ describe('active skill clarification policy', () => {
       forbidden: ['ALWAYS ask or recommend', 'Only after those are clear'],
     },
     {
-      path: 'design-templates/html-ppt/SKILL.md',
-      required: 'ask only when blocked',
-      forbidden: ['ALWAYS ask or recommend', 'Only after those are clear'],
-    },
-    {
       path: 'plugins/_official/examples/audio-jingle/SKILL.md',
       required: 'Missing metadata is not\nan instruction to ask',
       forbidden: ['(unknown — ask)'],
-    },
-    {
-      path: 'design-templates/audio-jingle/SKILL.md',
-      required: 'Missing metadata is not\nan instruction to ask',
-      forbidden: ['(unknown — ask)'],
-    },
-    {
-      path: 'design-templates/image-poster/SKILL.md',
-      required: 'Ask only when the choice would materially change',
-      forbidden: ['(unknown\n— ask)'],
     },
     {
       path: 'plugins/_official/examples/image-poster/SKILL.md',
@@ -82,24 +67,9 @@ describe('active skill clarification policy', () => {
       forbidden: ['(unknown\n— ask)'],
     },
     {
-      path: 'design-templates/contact-widget/SKILL.md',
-      required: 'Ask one\n   consolidated form only if a missing value would materially change',
-      forbidden: ['Ask the user for: primary color'],
-    },
-    {
-      path: 'design-templates/guizang-ppt/SKILL.md',
-      required: 'Infer a direction; ask only when comparison is requested',
-      forbidden: ['mandatory first step', 'first let the user pick', 'questions one by one'],
-    },
-    {
       path: 'plugins/_official/examples/guizang-ppt/SKILL.md',
       required: 'Infer a direction; ask only when comparison is requested',
       forbidden: ['mandatory first step', 'first let the user pick', 'questions one by one'],
-    },
-    {
-      path: 'design-templates/guizang-ppt/references/styles.md',
-      required: 'Show the choices\nonly when the user explicitly asks',
-      forbidden: ['first let the user pick'],
     },
     {
       path: 'plugins/_official/examples/guizang-ppt/references/styles.md',
@@ -132,24 +102,8 @@ describe('active skill clarification policy', () => {
 describe('product clarification copy', () => {
   it.each([
     {
-      path: 'design-templates/open-design-landing/inputs.example.json',
-      required: 'When unresolved choices would materially change the result',
-    },
-    {
-      path: 'design-templates/open-design-landing/example.html',
-      required: 'When unresolved choices would materially change the result',
-    },
-    {
       path: 'plugins/_official/examples/open-design-landing/example.html',
       required: 'When unresolved choices would materially change the result',
-    },
-    {
-      path: 'design-templates/open-design-landing-deck/inputs.example.json',
-      required: 'only when they materially affect the result',
-    },
-    {
-      path: 'design-templates/replit-deck/examples/README.md',
-      required: 'clarify material unknowns when needed',
     },
   ])('$path describes clarification as on demand', ({ path, required }) => {
     const source = readFileSync(resolve(repoRoot, path), 'utf8');

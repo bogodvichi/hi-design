@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+vi.mock('../../src/auth/LoginGate', () => import('../helpers/auth-gate'));
+
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -17,7 +19,8 @@ import {
 import { fetchAmrModels } from '../../src/providers/daemon';
 import { listProjects, listTemplates } from '../../src/state/projects';
 
-vi.mock('../../src/router', () => ({
+vi.mock('../../src/router', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/router')>()),
   navigate: vi.fn(),
   useRoute: () => ({ kind: 'home' as const, view: 'home' as const }),
 }));

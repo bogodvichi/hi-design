@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+vi.mock('../../src/auth/LoginGate', () => import('../helpers/auth-gate'));
+
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useSyncExternalStore } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -33,7 +35,8 @@ const homeRouteMock = { kind: 'home' as const, view: 'home' as const };
 const routeListeners = new Set<() => void>();
 const useRouteMock = vi.fn(() => homeRouteMock);
 
-vi.mock('../../src/router', () => ({
+vi.mock('../../src/router', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/router')>()),
   navigate: vi.fn((route: unknown) => {
     useRouteMock.mockReturnValue(route as never);
     routeListeners.forEach((notify) => notify());
@@ -633,7 +636,7 @@ describe('App connectors settings flows', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Save connectors key' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Save connectors key' }));
 
     await waitFor(() => {
       expect(mockedSyncComposioConfigToDaemon).toHaveBeenCalledWith(
@@ -681,7 +684,7 @@ describe('App connectors settings flows', () => {
 
     render(<App />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Clear connectors key' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Clear connectors key' }));
 
     await waitFor(() => {
       expect(mockedSyncComposioConfigToDaemon).toHaveBeenCalledWith({

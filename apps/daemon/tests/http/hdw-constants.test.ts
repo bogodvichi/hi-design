@@ -2,17 +2,17 @@ import { describe, expect, it } from 'vitest';
 import { resolveHdwAddress } from '../../src/http/hdw-constants.js';
 
 describe('HDW environment routing', () => {
-  it('routes local Dev directly to the local Egg server at port 7002', () => {
+  it('routes development to the remote 7002 gateway', () => {
     expect(resolveHdwAddress({ NODE_ENV: 'development' })).toEqual({
-      baseUrl: 'http://127.0.0.1:7002',
-      pathPrefix: '/hdw',
+      baseUrl: 'https://pixso.hikvision.com.cn',
+      pathPrefix: '/hik-plugin/hidesign-web/hdw',
     });
   });
 
-  it('routes production to the verified official gateway, never local or online Dev', () => {
+  it('routes production to the same remote 7002 gateway', () => {
     expect(resolveHdwAddress({ NODE_ENV: 'production' })).toEqual({
       baseUrl: 'https://pixso.hikvision.com.cn',
-      pathPrefix: '/hik-plugin/hidesign-web-offical/hdw',
+      pathPrefix: '/hik-plugin/hidesign-web/hdw',
     });
   });
 

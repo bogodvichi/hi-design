@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+
+vi.mock('../../src/auth/LoginGate', () => import('../helpers/auth-gate'));
+
 //
 // Community Remix must create the copied project INSIDE the workspace the user
 // is standing in. Product reproduction: 「通过 remix 后的方案, 不出现在我当前

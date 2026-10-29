@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+
+vi.mock('../../src/auth/LoginGate', () => import('../helpers/auth-gate'));
+
 //
 // Acceptance #11 — "the onboarding page shows up on every login (it used to
 // show once)". Two halves, both regressions of the same invariant:
@@ -19,7 +22,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { App, resetExecutionConfigAfterSignOut } from '../../src/App';
 import type { AppConfig } from '../../src/types';
-import { loadConfig, fetchDaemonConfig, syncConfigToDaemon } from '../../src/state/config';
+import { loadConfig, fetchDaemonConfig, syncConfigToDaemon, DEFAULT_CONFIG } from '../../src/state/config';
 import {
   daemonIsLive,
   fetchAgentsStream,
@@ -278,7 +281,7 @@ describe('App onboarding completion persistence', () => {
     vi.clearAllMocks();
   });
 
-  it('clears only execution and onboarding state for an active Cloud sign-out', () => {
+  it('clears execution secrets while retaining completed onboarding for an active Cloud sign-out', () => {
     const current = {
       ...returningUserConfig(),
       mode: 'api',
@@ -320,18 +323,18 @@ describe('App onboarding completion persistence', () => {
     } as AppConfig;
 
     expect(resetExecutionConfigAfterSignOut(current)).toMatchObject({
-      onboardingCompleted: false,
+      onboardingCompleted: true,
       mode: 'daemon',
       agentId: null,
       agentModels: {},
       agentCliEnv: {},
       agentCliEnvIntent: {},
       apiKey: '',
-      apiProtocol: 'anthropic',
+      apiProtocol: DEFAULT_CONFIG.apiProtocol,
       apiVersion: '',
-      baseUrl: 'https://api.anthropic.com',
-      model: 'claude-sonnet-4-5',
-      apiProviderBaseUrl: 'https://api.anthropic.com',
+      baseUrl: DEFAULT_CONFIG.baseUrl,
+      model: DEFAULT_CONFIG.model,
+      apiProviderBaseUrl: DEFAULT_CONFIG.apiProviderBaseUrl,
       apiProtocolConfigs: {},
       byokImageModel: undefined,
       byokVideoModel: undefined,
@@ -358,11 +361,11 @@ describe('App onboarding completion persistence', () => {
       await entryViewCapture.activeSignOut?.();
     });
 
-    expect(screen.getByTestId('onboarding-completed').textContent).toBe('false');
+    expect(screen.getByTestId('onboarding-completed').textContent).toBe('true');
     expect(screen.getByTestId('agent-id').textContent).toBe('none');
     expect(mockedSyncConfigToDaemon).toHaveBeenLastCalledWith(
       expect.objectContaining({
-        onboardingCompleted: false,
+        onboardingCompleted: true,
         mode: 'daemon',
         agentId: null,
         apiKey: '',

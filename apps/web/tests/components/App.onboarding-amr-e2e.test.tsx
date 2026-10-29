@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+
+vi.mock('../../src/auth/LoginGate', () => import('../helpers/auth-gate'));
+
 //
 // High-fidelity integration test for the onboarding -> home agent-selection
 // bug: the user picks (or accepts the recommended default) HiDesign AMR

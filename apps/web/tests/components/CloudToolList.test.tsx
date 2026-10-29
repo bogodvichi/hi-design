@@ -5,13 +5,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { CloudToolList } from '../../src/components/CloudToolList';
 
-const { activateWorkspaceResourceMock, openWorkspaceTabMock } = vi.hoisted(() => ({
+const { activateWorkspaceResourceMock, openWorkspaceTabMock, translate } = vi.hoisted(() => ({
   activateWorkspaceResourceMock: vi.fn(() => false),
   openWorkspaceTabMock: vi.fn(),
+  translate: (key: string) => key,
 }));
 
 vi.mock('../../src/i18n', () => ({
-  useT: () => (key: string) => key,
+  useT: () => translate,
   useI18n: () => ({ locale: 'zh-CN' }),
 }));
 

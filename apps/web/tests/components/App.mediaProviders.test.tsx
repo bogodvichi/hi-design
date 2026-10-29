@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+vi.mock('../../src/auth/LoginGate', () => import('../helpers/auth-gate'));
+
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { useSyncExternalStore } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -33,7 +35,8 @@ const routeListeners = new Set<() => void>();
 const navigateMock = vi.fn();
 const useRouteMock = vi.fn(() => homeRouteMock);
 
-vi.mock('../../src/router', () => ({
+vi.mock('../../src/router', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/router')>()),
   navigate: (...args: unknown[]) => {
     navigateMock(...args);
     useRouteMock.mockReturnValue(args[0] as never);
@@ -242,7 +245,7 @@ describe('App media provider sync flows', () => {
     });
 
     render(<App />);
-    fireEvent.click(screen.getByRole('button', { name: 'Open media settings' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Open media settings' }));
 
     await waitFor(() => {
       expect(screen.getByRole('dialog', { name: 'Settings dialog' })).toBeTruthy();

@@ -5509,8 +5509,7 @@ if (fetchedProject) {
     && !entryKeepAliveMountedRef.current
     && (
       pendingFirstRunOnboardingRoute
-      || projectsLoading
-      || workspaceContextLoading
+      || (route.view !== 'home' && (projectsLoading || workspaceContextLoading))
     );
   const entrySurfaceActive = entrySurfaceRouteActive && !entrySurfaceColdLoading;
   if (

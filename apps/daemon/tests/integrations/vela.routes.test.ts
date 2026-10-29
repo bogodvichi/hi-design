@@ -1,10 +1,11 @@
 // HTTP-level coverage for the AMR (vela) integration routes.
 //
-// Boots the real daemon Express app on a random port (same shape as
-// memory-config-route.test.ts) and exercises the three endpoints from the
+// Mounts the real Vela route registrar on a random port and exercises the
 // outside — `/api/integrations/vela/{status,login,logout}` — so the Settings
 // AmrLoginPill provider helpers, the spawn lifecycle, and the
-// ~/.amr/config.json projection all stay in lockstep.
+// ~/.amr/config.json projection all stay in lockstep. The HiDesign daemon
+// registers a separate mock facade before these routes; that facade is not
+// the real Vela login and wallet contract exercised by this suite.
 //
 // HOME is redirected to a tmpdir per test so the suite never touches the
 // developer's real `~/.amr/config.json`. VELA_BIN points at the
@@ -25,7 +26,6 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { startServer } from '../../src/server.js';
 import { readAppConfig, writeAppConfig } from '../../src/app-config.js';
 import {
   clearAllVelaLiveAccounts,
@@ -37,11 +37,6 @@ import {
   velaLiveAccountCacheKey,
 } from '../../src/integrations/vela.js';
 import { registerVelaRoutes } from '../../src/routes/vela.js';
-
-interface StartedServer {
-  url: string;
-  server: http.Server;
-}
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FAKE_VELA = path.resolve(HERE, '..', 'fixtures', 'fake-vela.mjs');
@@ -214,9 +209,18 @@ beforeAll(async () => {
       },
     },
   });
-  const started = (await startServer({ port: 0, returnServer: true })) as StartedServer;
-  baseUrl = started.url;
-  server = started.server;
+  const app = express();
+  app.use(express.json());
+  registerVelaRoutes(app, {
+    paths: { RUNTIME_DATA_DIR: dataDir },
+    appConfig: { readAppConfig },
+    // The composition root supplies the externally reachable origin.
+    http: { getPublicBaseUrl: () => process.env.OD_PUBLIC_BASE_URL?.replace(/\/+$/u, '') || baseUrl },
+    env: process.env,
+  });
+  server = createServer(app);
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 });
 
 afterAll(() => new Promise<void>((resolve) => server.close(() => resolve())));
@@ -2251,7 +2255,7 @@ describe('ALL /api/integrations/vela/api-proxy/*', () => {
         upstreamRes.headers = {
           connection: 'x-upstream-hop',
           'x-upstream-hop': 'drop-me',
-          'keep-alive': 'timeout=5',
+          'keep-alive': 'timeout=987',
           'proxy-authenticate': 'Basic',
           'proxy-authorization': 'Basic test-only',
           te: 'trailers',
@@ -2278,7 +2282,8 @@ describe('ALL /api/integrations/vela/api-proxy/*', () => {
       expect(response.headers.get('x-request-id')).toBe('billing-request-1');
       expect(response.headers.get('connection')).not.toBe('x-upstream-hop');
       expect(response.headers.get('x-upstream-hop')).toBeNull();
-      expect(response.headers.get('keep-alive')).not.toBe('timeout=5');
+      // Node can generate its own keep-alive header for this local connection.
+      expect(response.headers.get('keep-alive')).not.toBe('timeout=987');
       for (const name of [
         'proxy-authenticate',
         'proxy-authorization',

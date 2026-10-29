@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
+vi.mock('../../src/auth/LoginGate', () => import('../helpers/auth-gate'));
+
 import type { ReactNode } from 'react';
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type {
@@ -30,7 +32,8 @@ const routeState = vi.hoisted(() => ({
     | { kind: 'project'; projectId: string },
 }));
 
-vi.mock('../../src/router', () => ({
+vi.mock('../../src/router', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/router')>()),
   navigate: vi.fn(),
   useRoute: () => routeState.current,
 }));
@@ -271,7 +274,7 @@ describe('App updater dialog integration', () => {
     expect(unsubscribeOpenDialog).toHaveBeenCalledTimes(1);
   });
 
-  it('shows the update-ready rocket in the project-detail account cluster', async () => {
+  it('opens the ready-update prompt from the project-detail account cluster', async () => {
     routeState.current = { kind: 'project', projectId: 'project-1' };
     restoreHost = installMockOpenDesignHost({
       host: {
@@ -289,6 +292,9 @@ describe('App updater dialog integration', () => {
 
     expect(await screen.findByTestId('project-top-right-account-cluster')).toBeTruthy();
     expect(await screen.findByTestId('entry-nav-updater')).toBeTruthy();
-    expect(screen.getByTestId('updater-rocket-glyph')).toBeTruthy();
+    const trigger = screen.getByTestId('entry-nav-updater');
+    await waitFor(() => expect(trigger.textContent).toContain('Update'));
+    fireEvent.click(trigger);
+    expect(await screen.findByLabelText('Update ready')).toBeTruthy();
   });
 });

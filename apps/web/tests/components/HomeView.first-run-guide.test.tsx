@@ -1,5 +1,8 @@
 // @vitest-environment jsdom
 
+import { pickHomeTemplate } from '../helpers/home-intent';
+
+
 // First-run guidance trail (home-hero/firstRunGuide.ts).
 //
 // A brand-new user (no projects, fresh storage) gets a sheen pulse on the
@@ -9,7 +12,7 @@
 // Users with existing projects have the trail completed silently.
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 
 vi.mock('../../src/components/home-hero/PlaceholderCarousel', () => ({
   PlaceholderCarousel: () => null,
@@ -32,7 +35,13 @@ const SAMPLE_PROJECT = {
 function stubPluginsFetch() {
   vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL) => {
     if (typeof url === 'string' && url === '/api/plugins') {
-      return new Response(JSON.stringify({ plugins: [] }), {
+      return new Response(JSON.stringify({ plugins: [{
+        id: 'example-web-prototype', title: 'Web Prototype', version: '1.0.0',
+        sourceKind: 'bundled', trust: 'bundled', source: '/tmp/web-prototype',
+        fsPath: '/tmp/web-prototype', installedAt: 0, updatedAt: 0,
+        manifest: { name: 'example-web-prototype', title: 'Web Prototype', version: '1.0.0',
+          od: { kind: 'scenario', taskKind: 'new-generation' } },
+      }] }), {
         status: 200,
         headers: { 'content-type': 'application/json' },
       });
@@ -60,15 +69,7 @@ afterEach(() => {
   window.localStorage.clear();
 });
 
-// #5517 removed the inline template rail from Home, so beat 1 of the guide no
-// longer has a chip card to sheen; the stage still arms on mount and advances
-// when a template is picked from the composer footer's radial picker.
-async function pickHomeTemplate(id: string) {
-  const trigger = await screen.findByTestId('home-hero-template-trigger');
-  await waitFor(() => expect((trigger as HTMLButtonElement).disabled).toBe(false));
-  fireEvent.click(trigger);
-  fireEvent.click(await screen.findByTestId(`home-hero-template-wedge-${id}`));
-}
+// Scenario selection now arrives through the entry-shell handoff.
 
 describe('Home first-run guide trail', () => {
   it('arms beat 1 for a fresh user and advances when a template is picked', async () => {
@@ -126,10 +127,9 @@ describe('Home first-run guide trail', () => {
       </I18nProvider>,
     );
 
-    // The user clicks a chip while projects are still loading — the stage
-    // moves to 'card' before we know whether they are new.
+    // Task selection must not advance guidance before project discovery settles.
     await pickHomeTemplate('prototype');
-    expect(readHomeGuideStage()).toBe('card');
+    expect(readHomeGuideStage()).toBe('chip');
 
     // Loading resolves: existing user. The stage must close so no chip's
     // example cards ever show the first-preset sheen.
@@ -149,49 +149,6 @@ describe('Home first-run guide trail', () => {
     });
   });
 
-  it('carries a default prototype straight to beat 2 through the static prompt-example fallback', async () => {
-    // The chip's default plugin exists (so the chip binds) but nothing
-    // matches the example filter — the chip renders static prompt-example
-    // cards, and the guide's beat 2 must land on the first of those.
-    const WEB_PROTOTYPE_PLUGIN = {
-      id: 'example-web-prototype',
-      title: 'Web Prototype',
-      version: '0.1.0',
-      trust: 'bundled' as const,
-      sourceKind: 'bundled' as const,
-      source: '/tmp/web-prototype',
-      capabilitiesGranted: ['prompt:inject'],
-      fsPath: '/tmp/web-prototype',
-      installedAt: 0,
-      updatedAt: 0,
-      manifest: {
-        name: 'example-web-prototype',
-        title: 'Web Prototype',
-        version: '0.1.0',
-        description: 'General-purpose desktop web prototype.',
-        od: { kind: 'scenario', taskKind: 'new-generation' },
-      },
-    };
-    vi.stubGlobal('fetch', vi.fn(async (url: RequestInfo | URL) => {
-      if (typeof url === 'string' && url === '/api/plugins') {
-        return new Response(JSON.stringify({ plugins: [WEB_PROTOTYPE_PLUGIN] }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        });
-      }
-      throw new Error(`unexpected fetch ${url}`);
-    }));
-    renderHome([]);
-
-    const exampleCards = await screen.findAllByTestId('home-hero-prompt-example');
-    await waitFor(
-      () => {
-        expect(exampleCards[0]?.className).toContain('home-hero__attention-sheen');
-      },
-      { timeout: 3000 },
-    );
-    expect(readHomeGuideStage()).toBe('done');
-  });
 
   it('never replays once done', async () => {
     writeHomeGuideStage('done');

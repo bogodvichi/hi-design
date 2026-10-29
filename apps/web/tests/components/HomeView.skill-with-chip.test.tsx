@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import { pickHomeTemplate, seedHomeDraft } from '../helpers/home-intent';
+
 import { act } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -165,17 +167,6 @@ async function settle() {
   });
 }
 
-async function pickHomeTemplate(id: string) {
-  const trigger = await screen.findByTestId('home-hero-template-trigger');
-  await waitFor(() => expect((trigger as HTMLButtonElement).disabled).toBe(false));
-  fireEvent.click(trigger);
-  const wedge = await screen.findByTestId(`home-hero-template-wedge-${id}`);
-  await waitFor(() =>
-    expect(screen.getByTestId(`home-hero-template-wedge-${id}`).getAttribute('aria-disabled'))
-      .not.toBe('true'));
-  fireEvent.click(wedge);
-}
-
 // The @-mention popover's own pick path: type an `@query` into the live Lexical
 // editor, then mouseDown the listed option. This is exactly what
 // `HomeHero.pickSkill` (HomeHero.tsx:991) is wired to, which forwards to
@@ -185,7 +176,7 @@ async function mentionSkill(query: string, label: RegExp) {
   setHomeHeroPrompt(query);
   await settle();
   fireEvent.mouseDown(await screen.findByRole('option', { name: label }));
-  await waitFor(() => expect(screen.getByTestId('home-hero-active-skill')).toBeTruthy());
+  await waitFor(() => expect(screen.getByTestId('home-hero-input').querySelector('[data-mention-kind="skill"]')).toBeTruthy());
 }
 
 function renderHome(onSubmit: SubmitSpy) {
@@ -228,8 +219,7 @@ describe('HomeView — @-mentioning a Skill on top of a picked task type', () =>
     // 1. The user picks the task type they want to build.
     await pickHomeTemplate('deck');
     await waitFor(() =>
-      expect(screen.getByTestId('home-hero-template-trigger').textContent)
-        .toContain('Slide deck'));
+      expect(JSON.parse(window.localStorage.getItem('open-design:home-composer:chip') ?? '{}').chipId).toBe('deck'));
 
     // 2. Then they @-mention a Skill to shape HOW it is built. The Skill's
     //    `od.mode` is `prototype`; it is not a second task-type pick.
@@ -249,13 +239,14 @@ describe('HomeView — @-mentioning a Skill on top of a picked task type', () =>
     stubFetch();
     stubAnimationFrame();
     const onSubmit = submitSpy();
+    seedHomeDraft({
+      chipId: 'prototype', pluginId: 'example-web-prototype',
+      projectKind: 'prototype', prototypeSubtypeId: 'mobile',
+    });
     renderHome(onSubmit);
 
-    // 1. Task type, then its second-level scene.
-    await pickHomeTemplate('prototype');
-    const scene = await screen.findByTestId('home-hero-subtype-mobile');
-    fireEvent.click(scene);
-    await waitFor(() => expect(scene.getAttribute('aria-selected')).toBe('true'));
+    await waitFor(() => expect(JSON.parse(window.localStorage.getItem('open-design:home-composer:chip') ?? '{}'))
+      .toMatchObject({ chipId: 'prototype', prototypeSubtypeId: 'mobile' }));
 
     // 2. A Skill whose `od.mode` is `deck` — again, not a task-type pick.
     await mentionSkill('@deck', /deck lab/i);

@@ -1,6 +1,8 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { pickHomeTemplate } from '../helpers/home-intent';
+
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/components/home-hero/PlaceholderCarousel', () => ({
@@ -143,18 +145,6 @@ function stubAnimationFrame() {
   });
 }
 
-// Mirrors HomeView.prefill.test.tsx's local helper: the inline template rail
-// was replaced by the composer footer's radial Template picker (#5517).
-async function pickHomeTemplate(id: string) {
-  const trigger = await screen.findByTestId('home-hero-template-trigger');
-  await waitFor(() => expect((trigger as HTMLButtonElement).disabled).toBe(false));
-  fireEvent.click(trigger);
-  const wedge = await screen.findByTestId(`home-hero-template-wedge-${id}`);
-  await waitFor(() =>
-    expect(screen.getByTestId(`home-hero-template-wedge-${id}`).getAttribute('aria-disabled')).not.toBe('true'),
-  );
-  fireEvent.click(wedge);
-}
 
 function fetchMockFor(plugins: unknown[]) {
   return vi.fn<typeof fetch>(async (url) => {
@@ -199,9 +189,9 @@ describe('HomeView chip/plugin selection survives a real unmount+remount', () =>
     await screen.findByTestId('home-hero-input');
     await pickHomeTemplate('prototype');
 
-    // The trigger resolves the localized `homeHero.chip.prototype` label.
+    // The persisted binding records the selected creation type.
     await waitFor(() => {
-      expect(screen.getByTestId('home-hero-template-trigger').textContent).toContain('Prototype');
+      expect(JSON.parse(window.localStorage.getItem('open-design:home-composer:chip') ?? '{}').chipId).toBe('prototype');
     });
 
     // Real teardown — the same kind of unmount App.tsx performs when
@@ -221,15 +211,9 @@ describe('HomeView chip/plugin selection survives a real unmount+remount', () =>
 
     await screen.findByTestId('home-hero-input');
     await waitFor(() => {
-      expect(screen.getByTestId('home-hero-template-trigger').textContent).toContain('Prototype');
+      expect(JSON.parse(window.localStorage.getItem('open-design:home-composer:chip') ?? '{}').chipId).toBe('prototype');
     });
-    // Restoring a persisted type is background hydration, not a submit. Keep
-    // the type rail interactive and defer the plugin apply until the user
-    // actually sends; otherwise a slow local apply washes out and disables
-    // every type pill while Home is loading.
-    expect(
-      (screen.getByTestId('home-hero-type-pill-prototype') as HTMLButtonElement).disabled,
-    ).toBe(false);
+    // Restore the binding without applying the plugin before a submit.
     expect(
       fetchMock.mock.calls.some(
         ([url]) => typeof url === 'string' && url.includes('/api/plugins/example-web-prototype/apply'),
@@ -261,9 +245,7 @@ describe('HomeView chip/plugin selection survives a real unmount+remount', () =>
 
     await screen.findByTestId('home-hero-input');
     await waitFor(() => {
-      expect(screen.getByTestId('home-hero-template-trigger').textContent).toContain('Prototype');
-      expect(screen.getByTestId(`home-hero-subtype-${legacyChipId}`).getAttribute('aria-selected'))
-        .toBe('true');
+      expect(JSON.parse(window.localStorage.getItem('open-design:home-composer:chip') ?? '{}').chipId).toBe('prototype');
       expect(JSON.parse(window.localStorage.getItem('open-design:home-composer:chip') ?? '{}'))
         .toMatchObject({ chipId: 'prototype', prototypeSubtypeId: legacyChipId });
     });

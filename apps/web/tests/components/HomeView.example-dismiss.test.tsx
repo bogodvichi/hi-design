@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import { seedHomeDraft } from '../helpers/home-intent';
+
 import { act } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -144,27 +146,6 @@ function stubAnimationFrame() {
   vi.stubGlobal('cancelAnimationFrame', (id: number) => window.clearTimeout(id));
 }
 
-async function pickHomeTemplate(id: string) {
-  const trigger = await screen.findByTestId('home-hero-template-trigger');
-  await waitFor(() => expect((trigger as HTMLButtonElement).disabled).toBe(false));
-  fireEvent.click(trigger);
-  const wedge = await screen.findByTestId(`home-hero-template-wedge-${id}`);
-  await waitFor(() =>
-    expect(screen.getByTestId(`home-hero-template-wedge-${id}`).getAttribute('aria-disabled'))
-      .not.toBe('true'));
-  fireEvent.click(wedge);
-}
-
-async function pickExampleCard(pluginId: string) {
-  let card: HTMLElement | undefined;
-  await waitFor(() => {
-    card = screen.queryAllByTestId('home-hero-plugin-preset')
-      .find((item) => item.getAttribute('data-plugin-id') === pluginId);
-    expect(card).toBeTruthy();
-  });
-  fireEvent.click(card!);
-  await waitFor(() => expect(homeHeroPromptText().trim().length).toBeGreaterThan(0));
-}
 
 function renderHome(onSubmit: SubmitSpy) {
   return render(
@@ -324,19 +305,21 @@ describe('HomeView — dismissing a picked example card', () => {
       { ...testCase, remount: false },
       { ...testCase, remount: true, name: `${testCase.name} — after a Home remount` },
     ]),
-  )('$name: dismissing the example returns the composer to its task type', async (testCase) => {
+  )('$name: dismissing a restored example returns the composer to its task type', async (testCase) => {
     stubFetch();
     stubAnimationFrame();
     const onSubmit = submitSpy();
 
+    seedHomeDraft({
+      chipId: testCase.chipId,
+      pluginId: testCase.cardId,
+      projectKind: testCase.projectKind,
+      prototypeSubtypeId: testCase.scene,
+      explicitPick: true,
+      examplePick: true,
+    }, 'Continue this saved design brief.');
     const mounted = renderHome(onSubmit);
-    await pickHomeTemplate(testCase.chipId);
-    if (testCase.scene) {
-      const scene = await screen.findByTestId(`home-hero-subtype-${testCase.scene}`);
-      fireEvent.click(scene);
-      await waitFor(() => expect(scene.getAttribute('aria-selected')).toBe('true'));
-    }
-    await pickExampleCard(testCase.cardId);
+    await screen.findByTestId('home-hero-active-plugin');
     const seededPrompt = homeHeroPromptText();
 
     if (testCase.remount) {
@@ -346,7 +329,7 @@ describe('HomeView — dismissing a picked example card', () => {
     }
 
     const pill = await screen.findByTestId('home-hero-active-plugin');
-    fireEvent.click(within(pill).getByLabelText('Clear active plugin'));
+    fireEvent.click(within(pill).getByRole('button', { name: /^Remove / }));
     await act(async () => {
       await Promise.resolve();
     });
@@ -377,12 +360,16 @@ describe('HomeView — dismissing a picked example card', () => {
     stubAnimationFrame();
     const onSubmit = submitSpy();
 
+    seedHomeDraft({
+      chipId: 'prototype',
+      pluginId: 'example-social-carousel',
+      projectKind: 'prototype',
+      prototypeSubtypeId: 'landing-marketing',
+      explicitPick: true,
+      examplePick: true,
+    }, 'Continue this saved social carousel brief.');
     const mounted = renderHome(onSubmit);
-    await pickHomeTemplate('prototype');
-    const scene = await screen.findByTestId('home-hero-subtype-landing-marketing');
-    fireEvent.click(scene);
-    await waitFor(() => expect(scene.getAttribute('aria-selected')).toBe('true'));
-    await pickExampleCard('example-social-carousel');
+    await screen.findByTestId('home-hero-active-plugin');
     const seededPrompt = homeHeroPromptText();
 
     mounted.unmount();

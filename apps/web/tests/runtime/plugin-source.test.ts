@@ -229,7 +229,7 @@ describe('derivePluginSourceLinks · author + contribute', () => {
 
 describe('authorInitials', () => {
   it('builds two-letter monograms', () => {
-    expect(authorInitials('HiDesign')).toBe('OD');
+    expect(authorInitials('HiDesign')).toBe('HD');
     expect(authorInitials('jane')).toBe('J');
     expect(authorInitials('Long Multi Word Name')).toBe('LM');
   });

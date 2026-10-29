@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+vi.mock('../../src/auth/LoginGate', () => import('../helpers/auth-gate'));
+
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import {
   buildWorkspacePermissions,
@@ -110,6 +112,7 @@ vi.mock('../../src/components/IframeKeepAlivePool', async (importOriginal) => ({
 
 vi.mock('../../src/components/EntryView', () => ({
   EntryView: ({
+    active = true,
     onCreateProject,
     onCreatePluginShareProject,
     onDeleteProject,
@@ -123,6 +126,7 @@ vi.mock('../../src/components/EntryView', () => ({
     projects,
     projectsLoading,
   }: {
+    active?: boolean;
     onCreateProject: (input: unknown) => boolean | Promise<boolean>;
     onCreatePluginShareProject: (
       pluginId: string,
@@ -160,7 +164,7 @@ vi.mock('../../src/components/EntryView', () => ({
     projects: Project[];
     projectsLoading?: boolean;
   }) => (
-    <main>
+    <main hidden={!active}>
       <div data-testid="entry-home-surface" />
       <div data-testid="amr-login-status">{String(amrLoggedIn)}</div>
       <div data-testid="entry-projects-loading">{String(Boolean(projectsLoading))}</div>
@@ -756,6 +760,7 @@ const freshProject: Project = {
 };
 
 const existingProject: Project = {
+  ownerDisplayName: 'Test project owner',
   id: 'project-existing',
   name: 'Existing project',
   skillId: null,
@@ -836,6 +841,37 @@ function stubWorkspaceContext(
 
 describe('App project creation routing', () => {
   beforeEach(() => {
+    // Clear queued one-shot responses as well as call counts between races.
+    [
+      mockedDaemonIsLive,
+      mockedFetchAgentsStream,
+      mockedFetchAppVersionInfo,
+      mockedFetchDesignSystems,
+      mockedFetchDesignTemplates,
+      mockedFetchPromptTemplates,
+      mockedFetchSkills,
+      mockedUploadProjectFiles,
+      mockedReplaceProjectWorkingDir,
+      mockedCreateDesignSystemProjectFromProject,
+      mockedCreateProject,
+      mockedCreatePluginShareProject,
+      mockedDeleteProject,
+      mockedDuplicateProject,
+      mockedGetProject,
+      mockedListProjects,
+      mockedListTemplates,
+      mockedPatchProject,
+      mockedFetchDaemonConfig,
+      mockedFetchComposioConfigFromDaemon,
+      mockedLoadConfig,
+      mockedMergeDaemonConfig,
+      mockedSaveConfig,
+      mockedSyncComposioConfigToDaemon,
+      mockedSyncConfigToDaemon,
+    ].forEach((mock) => mock.mockReset());
+    mockedSyncConfigToDaemon.mockResolvedValue(undefined);
+    mockedSyncComposioConfigToDaemon.mockResolvedValue(true);
+    mockedListProjects.mockResolvedValue([]);
     resetCoalescedGet();
     resetWorkspaceContextCache();
     resetTeamProjectsCache();
@@ -845,6 +881,7 @@ describe('App project creation routing', () => {
     projectViewRenameFenceHarness.token = null;
     workspaceTabsHarness.projectIds.clear();
     window.history.replaceState(null, '', '/');
+    window.dispatchEvent(new PopStateEvent('popstate'));
     mockedDaemonIsLive.mockResolvedValue(true);
     mockedFetchAgentsStream.mockResolvedValue([]);
     mockedFetchSkills.mockResolvedValue([]);
@@ -1006,7 +1043,11 @@ describe('App project creation routing', () => {
     mockedListProjects.mockResolvedValue([]);
     const skillsFirst = deferred<Awaited<ReturnType<typeof fetchSkills>>>();
     const systemsFirst = deferred<Awaited<ReturnType<typeof fetchDesignSystems>>>();
-    mockedFetchSkills.mockImplementationOnce(() => skillsFirst.promise);
+    mockedFetchSkills.mockImplementation((issued) => issued?.workspaceId === context.workspaceId
+      ? skillsFirst.promise : Promise.resolve([]));
+    const scopedSkillReads = () => mockedFetchSkills.mock.calls.filter(
+      ([issued]) => issued?.workspaceId === context.workspaceId,
+    );
     mockedFetchDesignSystems.mockImplementation((issuedContext) => {
       if (issuedContext?.workspaceId === context.workspaceId) return systemsFirst.promise;
       return Promise.resolve([]);
@@ -1014,18 +1055,22 @@ describe('App project creation routing', () => {
 
     render(<App />);
     await waitFor(() => {
-      expect(mockedFetchSkills).toHaveBeenCalledTimes(1);
+      expect(scopedSkillReads().length).toBeGreaterThan(0);
       expect(mockedFetchDesignSystems.mock.calls.filter(
         ([issued]) => issued?.workspaceId === context.workspaceId,
-      )).toHaveLength(1);
+      ).length).toBeGreaterThan(0);
     });
 
+    const skillsAtBoot = scopedSkillReads().length;
+    const systemsAtBoot = mockedFetchDesignSystems.mock.calls.filter(
+      ([issued]) => issued?.workspaceId === context.workspaceId,
+    ).length;
     const onActive = workspaceInvalidationHarness.onActive.at(-1);
     act(() => onActive?.());
-    await waitFor(() => expect(mockedFetchSkills).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(scopedSkillReads()).toHaveLength(skillsAtBoot + 1));
     expect(mockedFetchDesignSystems.mock.calls.filter(
       ([issued]) => issued?.workspaceId === context.workspaceId,
-    )).toHaveLength(2);
+    )).toHaveLength(systemsAtBoot + 1);
 
     skillsFirst.resolve([]);
     systemsFirst.resolve([]);
@@ -1033,10 +1078,10 @@ describe('App project creation routing', () => {
     mockedFetchSkills.mockResolvedValue([]);
     mockedFetchDesignSystems.mockResolvedValue([]);
     act(() => onActive?.());
-    await waitFor(() => expect(mockedFetchSkills).toHaveBeenCalledTimes(3));
+    await waitFor(() => expect(scopedSkillReads()).toHaveLength(skillsAtBoot + 2));
     expect(mockedFetchDesignSystems.mock.calls.filter(
       ([issued]) => issued?.workspaceId === context.workspaceId,
-    )).toHaveLength(3);
+    )).toHaveLength(systemsAtBoot + 2);
   });
 
   it('auto-picks the first available agent in registry order after streamed probes settle', async () => {
@@ -1309,7 +1354,7 @@ describe('App project creation routing', () => {
     expect(window.location.pathname).toBe(`/projects/${requestedProjectId}`);
     expect(screen.getByText('Build the retained artifact prompt')).toBeTruthy();
     expect(screen.getByText('Preparing...')).toBeTruthy();
-    expect(screen.queryByTestId('entry-home-surface')).toBeNull();
+    expect(screen.getByTestId('entry-home-surface').closest('[hidden]')).not.toBeNull();
     expect(screen.queryByTestId('project-view')).toBeNull();
 
     creation.resolve({
@@ -1346,7 +1391,7 @@ describe('App project creation routing', () => {
     creation.reject(new Error('Could not create project'));
 
     await screen.findByTestId('entry-home-surface');
-    expect(window.location.pathname).toBe('/');
+    expect(window.location.pathname).toBe('/home');
     expect(screen.queryByTestId('project-creation-pending-view')).toBeNull();
     expect(screen.queryByTestId(`entry-project-${requestedProjectId}`)).toBeNull();
     expect(workspaceTabsHarness.projectIds.has(requestedProjectId!)).toBe(false);
@@ -1810,7 +1855,7 @@ describe('App project creation routing', () => {
         'Fresh project',
       );
     });
-    expect(window.location.pathname).toBe('/');
+    expect(window.location.pathname).toBe('/home');
     expect(screen.queryByTestId('entry-project-project-existing')).toBeNull();
   });
 
@@ -2244,7 +2289,8 @@ describe('App project creation routing', () => {
       expect(screen.getByTestId('project-title').textContent).toBe('Catalog authority');
     });
     expect(window.location.pathname).toBe('/projects/project-shared');
-    expect(mockedGetProject).not.toHaveBeenCalled();
+    // The project opens from the local row; only its background cover refresh reads GET.
+    expect(mockedGetProject).toHaveBeenCalledTimes(1);
   });
 
   it('retains the exact card-opening context while the ambient workspace revalidates', async () => {
@@ -2352,7 +2398,8 @@ describe('App project creation routing', () => {
       expect(screen.getByTestId('project-title').textContent).toBe('Own local project');
       expect(screen.getByTestId('project-workspace-id').textContent).toBe('unbound');
     });
-    expect(mockedGetProject).not.toHaveBeenCalled();
+    // The project opens from the local row; only its background cover refresh reads GET.
+    expect(mockedGetProject).toHaveBeenCalledTimes(1);
   });
 
   it('opens a collection project with its source Workspace when the ambient context is stale', async () => {
@@ -2528,7 +2575,8 @@ describe('App project creation routing', () => {
       );
       expect(screen.getByTestId('project-workspace-id').textContent).toBe('ws-b');
     });
-    expect(mockedGetProject).not.toHaveBeenCalled();
+    // The project opens from the local row; only its background cover refresh reads GET.
+    expect(mockedGetProject).toHaveBeenCalledTimes(1);
   });
 
   it('does not open a project bound to another workspace through a non-hint path', async () => {
@@ -2543,7 +2591,7 @@ describe('App project creation routing', () => {
       updatedAt: 20,
     };
     mockedListProjects.mockResolvedValue([workspaceAProject]);
-    mockedGetProject.mockResolvedValue(workspaceAProject);
+    mockedGetProject.mockResolvedValue(null);
 
     render(<App />);
     fireEvent.click(await screen.findByRole(
@@ -2607,7 +2655,7 @@ describe('App project creation routing', () => {
         'ws-1',
       );
     });
-    expect(mockedGetProject).not.toHaveBeenCalled();
+    expect(mockedGetProject).toHaveBeenCalledTimes(1);
   });
 
   it('opens a known unbound local project without waiting for cloud Workspace discovery', async () => {
@@ -2629,7 +2677,8 @@ describe('App project creation routing', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Open Existing project' }));
 
     await screen.findByTestId('project-view');
-    expect(mockedGetProject).not.toHaveBeenCalled();
+    // The project opens from the local row; only its background cover refresh reads GET.
+    expect(mockedGetProject).toHaveBeenCalledTimes(1);
     expect(screen.getByTestId('project-workspace-id').textContent).toBe('unbound');
   });
 
@@ -2928,6 +2977,7 @@ describe('App project creation routing', () => {
     mockedListProjects.mockResolvedValue([{
       id: 'project-shared',
       name: '共享项目',
+      ownerDisplayName: 'Test project owner',
       skillId: null,
       designSystemId: null,
       workspaceId: 'ws-1',
@@ -3842,7 +3892,7 @@ describe('App project creation routing', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close settings' }));
 
     await waitFor(() => {
-      expect(window.location.pathname).toBe('/');
+      expect(window.location.pathname).toBe('/home');
       expect(screen.getByTestId('entry-home-surface')).toBeTruthy();
     });
   });
@@ -3897,7 +3947,7 @@ describe('App project creation routing', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Close settings' }));
 
     await waitFor(() => {
-      expect(window.location.pathname).toBe('/');
+      expect(window.location.pathname).toBe('/home');
       expect(screen.getByTestId('entry-home-surface')).toBeTruthy();
     });
   });

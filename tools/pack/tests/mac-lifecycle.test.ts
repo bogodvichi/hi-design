@@ -10,31 +10,44 @@ import type { DesktopStatusSnapshot } from "@open-design/sidecar-proto";
 import type { ToolPackConfig } from "@/config/index.js";
 import { resolveMacPaths } from "@/mac/paths.js";
 
-const requestJsonIpc = vi.fn(async (): Promise<DesktopStatusSnapshot> => ({ state: "running" }));
-const resolveAppIpcPath = vi.fn(() => "/tmp/hi-design-team/ipc/test/desktop.sock");
-const createSidecarLaunchEnv = vi.fn(({ extraEnv }: { extraEnv: NodeJS.ProcessEnv }) => extraEnv);
-const collectProcessTreePids = vi.fn(
-  (_processes: unknown[], rootPids: Array<number | null>) =>
-    rootPids.filter((pid): pid is number => typeof pid === "number"),
-);
-const listProcessSnapshots = vi.fn(async () => [] as Array<{ command: string; pid: number; ppid: number }>);
-const matchesStampedProcess = vi.fn<typeof import("@open-design/platform").matchesStampedProcess>(() => false);
-const stopProcesses = vi.fn(async (pids: number[]) => ({ remainingPids: [], stoppedPids: pids }));
-const spawnLoggedProcess = vi.fn(async ({ env }: { env: NodeJS.ProcessEnv }) => {
-  return Object.assign(new EventEmitter(), {
-    env,
-    pid: 1234,
-    unref: vi.fn(),
-  }) as unknown as ChildProcess & { env: NodeJS.ProcessEnv };
-});
+const {
+  requestJsonIpc,
+  resolveAppIpcPath,
+  createSidecarLaunchEnv,
+  collectProcessTreePids,
+  listProcessSnapshots,
+  matchesStampedProcess,
+  stopProcesses,
+  spawnLoggedProcess,
+} = vi.hoisted(() => ({
+  requestJsonIpc: vi.fn(async (): Promise<DesktopStatusSnapshot> => ({ state: "running" })),
+  resolveAppIpcPath: vi.fn(() => "/tmp/hi-design-team/ipc/test/desktop.sock"),
+  createSidecarLaunchEnv: vi.fn(({ extraEnv }: { extraEnv: NodeJS.ProcessEnv }) => extraEnv),
+  collectProcessTreePids: vi.fn(
+    (_processes: unknown[], rootPids: Array<number | null>) =>
+      rootPids.filter((pid): pid is number => typeof pid === "number"),
+  ),
+  listProcessSnapshots: vi.fn(async () => [] as Array<{ command: string; pid: number; ppid: number }>),
+  matchesStampedProcess: vi.fn<typeof import("@open-design/platform").matchesStampedProcess>(() => false),
+  stopProcesses: vi.fn(async (pids: number[]) => ({ remainingPids: [], stoppedPids: pids })),
+  spawnLoggedProcess: vi.fn(async ({ env }: { env: NodeJS.ProcessEnv }) => {
+    return Object.assign(new EventEmitter(), {
+      env,
+      pid: 1234,
+      unref: vi.fn(),
+    }) as unknown as ChildProcess & { env: NodeJS.ProcessEnv };
+  }),
+}));
 
-vi.mock("@open-design/sidecar", () => ({
+vi.mock("@open-design/sidecar", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@open-design/sidecar")>()),
   createSidecarLaunchEnv,
   requestJsonIpc,
   resolveAppIpcPath,
 }));
 
-vi.mock("@open-design/platform", () => ({
+vi.mock("@open-design/platform", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@open-design/platform")>()),
   collectProcessTreePids,
   createProcessStampArgs: vi.fn(() => []),
   isProcessAlive: vi.fn(() => true),
@@ -175,9 +188,11 @@ describe("startPackedMacApp", () => {
       expect(result.source).toBe("installed");
       expect(result.status?.state).toBe("running");
       expect(launchEnv?.OD_PACKAGED_CONFIG_PATH).toBe(launchConfigPath);
-      await expect(readFile(launchConfigPath, "utf8")).resolves.toContain(
-        `"namespaceBaseRoot": ${JSON.stringify(config.roots.runtime.namespaceBaseRoot)}`,
-      );
+      expect(JSON.parse(await readFile(launchConfigPath, "utf8"))).toMatchObject({
+        namespace: config.namespace,
+        productName: config.productName,
+        displayName: config.displayName,
+      });
     } finally {
       await rm(root, { force: true, recursive: true });
     }
@@ -213,9 +228,11 @@ describe("startPackedMacApp", () => {
       expect(result.source).toBe("installed");
       expect(result.status?.state).toBe("running");
       expect(launchEnv?.OD_PACKAGED_CONFIG_PATH).toBe(launchConfigPath);
-      await expect(readFile(launchConfigPath, "utf8")).resolves.toContain(
-        `"namespaceBaseRoot": ${JSON.stringify(config.roots.runtime.namespaceBaseRoot)}`,
-      );
+      expect(JSON.parse(await readFile(launchConfigPath, "utf8"))).toMatchObject({
+        namespace: config.namespace,
+        productName: config.productName,
+        displayName: config.displayName,
+      });
       await expect(readFile(launchConfigPath, "utf8")).resolves.toContain('"appVersion": "1.2.3"');
     } finally {
       await rm(root, { force: true, recursive: true });

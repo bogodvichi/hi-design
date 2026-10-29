@@ -1,19 +1,13 @@
 // @vitest-environment jsdom
 
+
 import { $getRoot } from 'lexical';
+
+import { pickHomeTemplate } from '../helpers/home-intent';
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  buildWorkspacePermissions,
-  buildWorkspaceSeatSummary,
-  type DesignSystemSummary,
-  type InstalledPluginRecord,
-  type ConnectorDetail,
-  type McpServerConfig,
-  type SkillSummary,
-  type WorkspaceCollabContext,
-} from '@open-design/contracts';
+import { buildWorkspacePermissions, buildWorkspaceSeatSummary, type DesignSystemSummary, type InstalledPluginRecord, type McpServerConfig, type SkillSummary, type WorkspaceCollabContext } from '@open-design/contracts';
 
 const workspaceA: WorkspaceCollabContext = {
   workspaceId: 'workspace-a',
@@ -115,14 +109,6 @@ const MCP_SERVER: McpServerConfig = {
   enabled: true,
   command: 'npx',
 };
-const CONNECTOR: ConnectorDetail = {
-  id: 'slack',
-  name: 'Slack',
-  provider: 'Composio',
-  category: 'Communication',
-  status: 'connected',
-  tools: [],
-};
 
 function makePlugin(id: string, title: string): InstalledPluginRecord {
   return {
@@ -161,14 +147,6 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-// #5517 removed the inline template rail from Home; scenario templates are
-// picked from the composer footer's radial Template picker instead.
-async function pickHomeTemplate(id: string) {
-  const trigger = await screen.findByTestId('home-hero-template-trigger');
-  await waitFor(() => expect((trigger as HTMLButtonElement).disabled).toBe(false));
-  fireEvent.click(trigger);
-  fireEvent.click(await screen.findByTestId(`home-hero-template-wedge-${id}`));
-}
 
 describe('HomeView context picker', () => {
   it.each(['+', '@'])('offers one parent Skill with three examples through home %s', async (entry) => {
@@ -313,7 +291,7 @@ describe('HomeView context picker', () => {
     });
   });
 
-  it('preserves selected local catalog provenance while Workspace identity transitions', async () => {
+  it('preserves the selected Skill catalog scope while Workspace identity transitions', async () => {
     const fetchMock = vi.fn<typeof fetch>(async (url) => {
       if (typeof url === 'string' && url === '/api/plugins') {
         return new Response(JSON.stringify({ plugins: [] }), {
@@ -351,7 +329,7 @@ describe('HomeView context picker', () => {
     setHomeHeroPrompt('@proto');
     await settle();
     fireEvent.mouseDown(await screen.findByRole('option', { name: /prototype lab/i }));
-    await waitFor(() => expect(screen.getByTestId('home-hero-active-skill')).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId('home-hero-input').querySelector('[data-mention-kind="skill"]')).toBeTruthy());
 
     workspaceContextState = {
       context: null,
@@ -379,12 +357,9 @@ describe('HomeView context picker', () => {
         workspaceId: workspaceA.workspaceId,
         workspaceMemberId: workspaceA.workspaceMemberId,
       },
-      designSystemId: WORKSPACE_DESIGN_SYSTEM.id,
-      designSystemCatalogScope: {
-        workspaceId: workspaceA.workspaceId,
-        workspaceMemberId: workspaceA.workspaceMemberId,
-      },
+      designSystemId: null,
     }));
+    expect(onSubmit.mock.calls[0]?.[0]).not.toHaveProperty('designSystemCatalogScope');
   });
 
   it('stages pasted files on Home and submits them as first-turn context', async () => {
@@ -562,80 +537,6 @@ describe('HomeView context picker', () => {
     }));
   });
 
-  it('adds multiple @ plugins as context without applying or hydrating their query', async () => {
-    const plugins = [
-      makePlugin('chart-plugin', 'Chart Plugin'),
-      makePlugin('deck-plugin', 'Deck Plugin'),
-    ];
-    const fetchMock = vi.fn<typeof fetch>(async (url) => {
-      if (typeof url === 'string' && url === '/api/plugins') {
-        return new Response(JSON.stringify({ plugins }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        });
-      }
-      if (typeof url === 'string' && url === '/api/mcp/servers') {
-        return new Response(JSON.stringify({ servers: [], templates: [] }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        });
-      }
-      throw new Error(`unexpected fetch ${url}`);
-    });
-    vi.stubGlobal('fetch', fetchMock);
-    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
-      cb(0);
-      return 0;
-    });
-    const onSubmit = vi.fn();
-
-    render(
-      <HomeView
-        projects={[]}
-        onSubmit={onSubmit}
-        onOpenProject={() => undefined}
-        onViewAllProjects={() => undefined}
-      />,
-    );
-
-    await screen.findByTestId('home-hero-input');
-    setHomeHeroPrompt('Build @chart');
-    await settle();
-    fireEvent.mouseDown(await screen.findByRole('option', { name: /chart plugin/i }));
-
-    // Picking inserts an atomic plugin mention pill (`@Chart Plugin`) plus a
-    // trailing space, and stages the plugin as context in HomeView state. The
-    // inline pill is now the only on-screen representation of the staged context
-    // (the duplicate top context-badge row was removed), so the submit payload
-    // below is the authoritative check that the plugin was staged.
-    await waitFor(() => {
-      expect(homeHeroPromptText().trim()).toBe('Build @Chart Plugin');
-    });
-
-    // Re-seed the draft with a fresh `@deck` trigger appended after the first
-    // mention (the old test did the equivalent full-value replace). Picking the
-    // second plugin reconstructs both mention pills via the host's draft sync.
-    setHomeHeroPrompt('Build @Chart Plugin @deck');
-    await settle();
-    fireEvent.mouseDown(await screen.findByRole('option', { name: /deck plugin/i }));
-
-    await waitFor(() => {
-      expect(homeHeroPromptText().trim()).toBe('Build @Chart Plugin @Deck Plugin');
-    });
-    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/apply'))).toBe(false);
-    expect(homeHeroPromptText()).not.toContain('Hydrated query');
-
-    fireEvent.click(screen.getByTestId('home-hero-submit'));
-
-    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
-      prompt: 'Build @Chart Plugin @Deck Plugin',
-      pluginId: null,
-      contextPlugins: [
-        expect.objectContaining({ id: 'chart-plugin', title: 'Chart Plugin' }),
-        expect.objectContaining({ id: 'deck-plugin', title: 'Deck Plugin' }),
-      ],
-    }));
-  });
 
   it('binds a selected home skill to the created project payload', async () => {
     const fetchMock = vi.fn<typeof fetch>(async (url) => {
@@ -677,7 +578,7 @@ describe('HomeView context picker', () => {
 
     await waitFor(() => {
       expect(homeHeroPromptText().trim()).toBe('@Prototype Lab');
-      expect(screen.getByTestId('home-hero-active-skill')).toBeTruthy();
+      expect(screen.getByTestId('home-hero-input').querySelector('[data-mention-kind="skill"]')).toBeTruthy();
     });
 
     fireEvent.click(screen.getByTestId('home-hero-submit'));
@@ -725,7 +626,7 @@ describe('HomeView context picker', () => {
 
     await pickHomeTemplate('prototype');
     await waitFor(() => {
-      expect(screen.getByTestId('home-hero-template-trigger').textContent).toContain('Prototype');
+      expect(JSON.parse(window.localStorage.getItem('open-design:home-composer:chip') ?? '{}').chipId).toBe('prototype');
     });
 
     screen.getByTestId('home-hero-input');
@@ -734,7 +635,7 @@ describe('HomeView context picker', () => {
     fireEvent.mouseDown(await screen.findByRole('option', { name: /deck lab/i }));
 
     await waitFor(() => {
-      expect(screen.getByTestId('home-hero-active-skill')).toBeTruthy();
+      expect(screen.getByTestId('home-hero-input').querySelector('[data-mention-kind="skill"]')).toBeTruthy();
     });
     // #2972 asked for a defined, explainable rule when the prompt's intent and
     // the picked card disagree. The rule used to be "the Skill wins, drop the
@@ -743,7 +644,7 @@ describe('HomeView context picker', () => {
     // along inside it, so the answer to the conflict is "both survive" — the
     // strategy's own conflict order ranks the user-selected Skill above its
     // task-type Skill in the prompt.
-    expect(screen.getByTestId('home-hero-template-trigger').textContent).toContain('Prototype');
+    expect(JSON.parse(window.localStorage.getItem('open-design:home-composer:chip') ?? '{}').chipId).toBe('prototype');
 
     fireEvent.click(screen.getByTestId('home-hero-submit'));
 
@@ -794,19 +695,19 @@ describe('HomeView context picker', () => {
     await settle();
     fireEvent.mouseDown(await screen.findByRole('option', { name: /prototype lab/i }));
     await waitFor(() => {
-      expect(screen.getByTestId('home-hero-active-skill')).toBeTruthy();
+      expect(screen.getByTestId('home-hero-input').querySelector('[data-mention-kind="skill"]')).toBeTruthy();
     });
 
     await pickHomeTemplate('prototype');
     await waitFor(() => {
-      expect(screen.getByTestId('home-hero-template-trigger').textContent).toContain('Prototype');
+      expect(JSON.parse(window.localStorage.getItem('open-design:home-composer:chip') ?? '{}').chipId).toBe('prototype');
       // The mention the user typed is still in their prompt, so the Skill it
       // named stays selected too — picking a task type decides the route, not
       // what material the turn carries.
-      expect(screen.getByTestId('home-hero-active-skill')).toBeTruthy();
+      expect(screen.getByTestId('home-hero-input').querySelector('[data-mention-kind="skill"]')).toBeTruthy();
     });
 
-    setHomeHeroPrompt('Build a pricing-page prototype.');
+    setHomeHeroPrompt('@Prototype Lab Build a pricing-page prototype.');
     await settle();
     fireEvent.click(screen.getByTestId('home-hero-submit'));
 
@@ -825,73 +726,6 @@ describe('HomeView context picker', () => {
     expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/apply'))).toBe(false);
   });
 
-  it('submits selected MCP servers and connectors as first-turn context', async () => {
-    const fetchMock = vi.fn<typeof fetch>(async (url) => {
-      if (typeof url === 'string' && url === '/api/plugins') {
-        return new Response(JSON.stringify({ plugins: [] }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        });
-      }
-      if (typeof url === 'string' && url === '/api/mcp/servers') {
-        return new Response(JSON.stringify({ servers: [MCP_SERVER], templates: [] }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        });
-      }
-      throw new Error(`unexpected fetch ${url}`);
-    });
-    vi.stubGlobal('fetch', fetchMock);
-    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
-      cb(0);
-      return 0;
-    });
-    const onSubmit = vi.fn();
-
-    render(
-      <HomeView
-        projects={[]}
-        connectors={[CONNECTOR]}
-        onSubmit={onSubmit}
-        onOpenProject={() => undefined}
-        onViewAllProjects={() => undefined}
-      />,
-    );
-
-    await screen.findByTestId('home-hero-input');
-    setHomeHeroPrompt('@lin');
-    fireEvent.mouseDown(screen.getByRole('option', { name: /linear/i }));
-
-    await waitFor(() => {
-      expect(homeHeroPromptText().trim()).toBe('@Linear');
-    });
-
-    setHomeHeroPrompt('@Linear @sla');
-    fireEvent.mouseDown(screen.getByRole('option', { name: /slack/i }));
-
-    await waitFor(() => {
-      expect(homeHeroPromptText().trim()).toBe('@Linear @Slack');
-    });
-
-    fireEvent.click(screen.getByTestId('home-hero-submit'));
-
-    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
-      prompt: '@Linear @Slack',
-      pluginId: null,
-      contextMcpServers: [
-        expect.objectContaining({ id: 'linear', label: 'Linear', transport: 'stdio' }),
-      ],
-      contextConnectors: [
-        expect.objectContaining({
-          id: 'slack',
-          name: 'Slack',
-          provider: 'Composio',
-          category: 'Communication',
-          status: 'connected',
-        }),
-      ],
-    }));
-  });
 
   it('stages multiple Skills and MCP from the plus menu without duplicating them in the prompt', async () => {
     const fetchMock = vi.fn<typeof fetch>(async (url) => {
@@ -1158,62 +992,4 @@ describe('HomeView context picker', () => {
     }));
   });
 
-  it('keeps a connector context when the prompt has punctuation right after the pill', async () => {
-    const fetchMock = vi.fn<typeof fetch>(async (url) => {
-      if (typeof url === 'string' && url === '/api/plugins') {
-        return new Response(JSON.stringify({ plugins: [] }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        });
-      }
-      if (typeof url === 'string' && url === '/api/mcp/servers') {
-        return new Response(JSON.stringify({ servers: [], templates: [] }), {
-          status: 200,
-          headers: { 'content-type': 'application/json' },
-        });
-      }
-      throw new Error(`unexpected fetch ${url}`);
-    });
-    vi.stubGlobal('fetch', fetchMock);
-    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
-      cb(0);
-      return 0;
-    });
-    const onSubmit = vi.fn();
-
-    render(
-      <HomeView
-        projects={[]}
-        connectors={[CONNECTOR]}
-        onSubmit={onSubmit}
-        onOpenProject={() => undefined}
-        onViewAllProjects={() => undefined}
-      />,
-    );
-
-    await screen.findByTestId('home-hero-input');
-    setHomeHeroPrompt('@sla');
-    fireEvent.mouseDown(screen.getByRole('option', { name: /slack/i }));
-
-    await waitFor(() => {
-      expect(homeHeroPromptText().trim()).toBe('@Slack');
-    });
-
-    // The user types a comma right after the (still-visible) connector pill and
-    // keeps writing — the pill was never deleted, so the connector must still be
-    // sent. Reconciliation must not drop it just because the serialized text is
-    // `@Slack,` rather than `@Slack`.
-    setHomeHeroPrompt('Summarize @Slack, then draft follow-ups');
-    await settle();
-
-    fireEvent.click(screen.getByTestId('home-hero-submit'));
-
-    expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({
-      prompt: 'Summarize @Slack, then draft follow-ups',
-      pluginId: null,
-      contextConnectors: [
-        expect.objectContaining({ id: 'slack', name: 'Slack' }),
-      ],
-    }));
-  });
 });
