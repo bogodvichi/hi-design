@@ -64,6 +64,7 @@ import {
 import type { AmrAuthRetryContinuation } from '../../src/runtime/amr-auth-retry-continuation';
 import type { VelaLoginStatus } from '../../src/providers/daemon';
 import { workspaceDirectoryFixture } from '../helpers/workspace-context';
+import { recordRecentlyOpenedProject } from '../../src/lib/recently-opened-projects';
 
 const workspaceInvalidationHarness = vi.hoisted(() => ({
   handlers: [] as Array<Record<string, (payload: any) => void>>,
@@ -143,6 +144,8 @@ vi.mock('../../src/components/EntryView', () => ({
         workspaceId: string | null;
         workspaceMemberId: string | null;
         workspaceContext?: WorkspaceCollabContext;
+        homeWorkspaceId?: string;
+        sharedWithMe?: boolean;
       },
     ) => Promise<boolean> | boolean | void;
     onRenameProject?: (
@@ -250,6 +253,25 @@ vi.mock('../../src/components/EntryView', () => ({
       <button type="button" onClick={() => void onOpenProject('project-missing')}>
         Open missing project
       </button>
+      <button type="button" onClick={() => void onOpenProject('project-received')}>
+        Open received project from history
+      </button>
+      {['ws-1', 'ws-source'].map((homeWorkspaceId) => (
+        <button
+          key={homeWorkspaceId}
+          type="button"
+          onClick={() => void onOpenProject('project-received', undefined, {
+            authoritative: true,
+            name: 'Received project',
+            workspaceId: 'ws-1',
+            workspaceMemberId: 'wm-1',
+            homeWorkspaceId,
+            sharedWithMe: true,
+          })}
+        >
+          Open received project from {homeWorkspaceId}
+        </button>
+      ))}
       <button
         type="button"
         onClick={() => projects[0] && void onRenameProject?.(projects[0].id, 'Rename A')}
@@ -2093,6 +2115,108 @@ describe('App project creation routing', () => {
       const entries = JSON.parse(localStorage.getItem('od:recently-opened-projects') ?? '[]');
       expect(entries.find((entry: { id: string }) => entry.id === project.id)?.ownerDisplayName).toBe('Project creator');
     });
+  });
+
+  it.each([
+    { homeWorkspaceId: 'ws-1', homeMembership: true, fromRecent: false },
+    { homeWorkspaceId: 'ws-source', homeMembership: true, fromRecent: false },
+    { homeWorkspaceId: 'ws-source', homeMembership: false, fromRecent: false },
+    { homeWorkspaceId: 'ws-1', homeMembership: true, fromRecent: true },
+  ])('pulls a first-open received project outside the team catalog ($homeWorkspaceId, member=$homeMembership, recent=$fromRecent)', async ({ homeWorkspaceId, homeMembership, fromRecent }) => {
+    localStorage.removeItem('od:recently-opened-projects');
+    stubWorkspaceContext('ws-1', 'wm-1');
+    const baseFetch = globalThis.fetch;
+    const directoryContexts = [workspaceContext('ws-1', 'wm-1')];
+    if (homeWorkspaceId !== 'ws-1' && homeMembership) {
+      directoryContexts.push(workspaceContext(homeWorkspaceId, 'wm-source'));
+    }
+    const received: Project = {
+      ...existingProject,
+      id: 'project-received',
+      name: 'Received project',
+      workspaceId: homeWorkspaceId,
+      createdByWorkspaceMemberId: 'wm-owner',
+    };
+    let pulled = false;
+    const pullRequests: RequestInit[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const pathname = new URL(String(input), 'http://d.local').pathname;
+      if (pathname.endsWith('/workspace/directory')) {
+        return Response.json(workspaceDirectoryFixture(directoryContexts));
+      }
+      if (pathname.endsWith('/workspace/projects/shared-with-me')) {
+        return Response.json({ projects: [{ projectId: received.id, homeWorkspaceId }] });
+      }
+      if (pathname.endsWith('/workspace/projects/team')) {
+        return Response.json({ projects: [] });
+      }
+      if (pathname === `/api/projects/${received.id}/workspace-scope`) {
+        return Response.json({ scope: {
+          kind: 'team', projectId: received.id, workspaceId: homeWorkspaceId,
+          visibility: 'team', context: workspaceContext(homeWorkspaceId, homeWorkspaceId === 'ws-1' ? 'wm-1' : 'wm-source'),
+        } });
+      }
+      if (pathname === `/api/projects/${received.id}`) {
+        return Response.json({ project: received }, { status: pulled ? 200 : 404 });
+      }
+      if (pathname === `/api/projects/${received.id}/collab/pull` && init?.method === 'POST') {
+        pullRequests.push(init);
+        pulled = true;
+        return Response.json({ ok: true, version: 1 });
+      }
+      return baseFetch(input, init);
+    }));
+    mockedGetProject.mockReset().mockImplementation(async () => pulled ? received : null);
+    mockedListProjects.mockReset().mockResolvedValue([]);
+
+    try {
+      if (fromRecent) recordRecentlyOpenedProject(received, { sharedWithMe: true });
+      render(<App />);
+      await waitFor(() => expect(screen.getByTestId('entry-projects-loading').textContent).toBe('false'));
+      fireEvent.click(screen.getByRole('button', {
+        name: `Open received project from ${fromRecent ? 'history' : homeWorkspaceId}`,
+      }));
+
+      await waitFor(() => expect(pullRequests).toHaveLength(1));
+      await waitFor(() => expect(screen.getByTestId('project-title').textContent).toBe(received.name));
+      expect(screen.getByTestId('project-workspace-id').textContent).toBe(homeWorkspaceId);
+      expect(window.location.pathname).toBe(`/projects/${received.id}`);
+      const pullHeaders = new Headers(pullRequests[0]!.headers);
+      expect(pullHeaders.get('x-od-workspace-id')).toBe(homeMembership ? homeWorkspaceId : 'ws-1');
+      expect(pullHeaders.get('x-od-workspace-member-id')).toBe(homeMembership && homeWorkspaceId !== 'ws-1' ? 'wm-source' : 'wm-1');
+    } finally {
+      localStorage.removeItem('od:recently-opened-projects');
+    }
+  });
+
+  it('rejects a revoked received-project card before pulling', async () => {
+    localStorage.removeItem('od:recently-opened-projects');
+    stubWorkspaceContext('ws-1', 'wm-1');
+    const baseFetch = globalThis.fetch;
+    const pullRequests: string[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const pathname = new URL(String(input), 'http://d.local').pathname;
+      if (pathname.endsWith('/workspace/projects/shared-with-me')) {
+        return Response.json({ projects: [] });
+      }
+      if (pathname.endsWith('/collab/pull')) pullRequests.push(pathname);
+      if (pathname.startsWith('/api/projects/project-received')) {
+        return Response.json({ error: 'FORBIDDEN' }, { status: 403 });
+      }
+      return baseFetch(input, init);
+    }));
+    mockedListProjects.mockReset().mockResolvedValue([]);
+    mockedGetProject.mockReset().mockResolvedValue(null);
+
+    render(<App />);
+    await waitFor(() => expect(screen.getByTestId('entry-projects-loading').textContent).toBe('false'));
+    fireEvent.click(screen.getByRole('button', { name: 'Open received project from ws-1' }));
+
+    await waitFor(() => expect(iframePoolHarness.evictProject).toHaveBeenCalledWith(
+      'project-received', { includeActive: true },
+    ));
+    await waitFor(() => expect(screen.queryByTestId('project-view')).toBeNull());
+    expect(pullRequests).toEqual([]);
   });
 
   it('renders the catalog title on the first project frame instead of the local placeholder', async () => {

@@ -735,10 +735,8 @@ async function pullTeamSharedProjectIfAvailable(
 }
 
 /**
- * Share-based pull for recipients who are NOT members of the project's home
- * workspace. The catalog lookup is skipped (the project is not in the shared
- * space's team catalog) and the pull endpoint's share-verification fallback
- * authorizes the request via the workspace_project_shares record.
+ * Received projects need not appear in the home workspace's team catalog.
+ * Pull directly and let the daemon verify the workspace or share grant.
  */
 async function pullSharedProjectViaShare(
   projectId: string,
@@ -4054,14 +4052,13 @@ function AppInner() {
      }
      if (currentWorkspaceAccountGeneration() !== openingAccountGeneration) return false;
    }
-   // When the user is NOT a member of the home workspace (resolveBoundProjectWorkspaceContext
-   // returned null), the backend's share-verification fallback authorizes the pull and read
-   // via the share record. The catalog lookup (fetchTeamProjectCatalogEntry) must be skipped
-  // because the project is not in the shared space's team catalog — the pull endpoint itself
-  // verifies the share and constructs the correct scope internally.
-  let shareBasedPull = pullContext === openingContext
-     && Boolean(homeWorkspaceId)
-     && homeWorkspaceId !== expectedWorkspaceId;
+   // A received share can live in the current workspace or another workspace
+   // the viewer belongs to. Neither case requires a team-catalog entry.
+   const shareBasedPull = hintedSharedWithMe
+     || recentSharedHomeWorkspaceId !== null
+     || (pullContext === openingContext
+       && Boolean(homeWorkspaceId)
+       && homeWorkspaceId !== expectedWorkspaceId);
   const hintMatchesOpeningScope =
       !projectTitleHint
       || Boolean(
