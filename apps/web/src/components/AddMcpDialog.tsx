@@ -9,7 +9,6 @@ import type { WorkspaceCollabContext } from '@open-design/contracts';
 import type { McpTransport } from '@open-design/contracts';
 import { workspaceProjectHeaders } from '../collab/workspace-identity';
 import { McpConfigForm, type McpConfigSelection } from './McpConfigForm';
-import { CloudMcpList } from './CloudMcpList';
 import styles from './PersonalResourceView.module.css';
 
 interface Props {
@@ -32,10 +31,7 @@ export function AddMcpDialog({ open, onClose, scope, onAdded, workspaceContext: 
   });
   const [canConfirm, setCanConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [communityBusy, setCommunityBusy] = useState(false);
-  const isBusy = busy || communityBusy;
   const [toast, setToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null);
-  const [activeTab, setActiveTab] = useState<'community' | 'json'>('json');
 
   useEffect(() => {
     if (!toast) return;
@@ -46,15 +42,13 @@ export function AddMcpDialog({ open, onClose, scope, onAdded, workspaceContext: 
   useEffect(() => {
     if (open) {
       setBusy(false);
-      setCommunityBusy(false);
       setToast(null);
       setCanConfirm(false);
-      setActiveTab('json');
     }
   }, [open]);
 
   function closeDialog() {
-    if (isBusy) return;
+    if (busy) return;
     onClose();
   }
 
@@ -208,70 +202,35 @@ export function AddMcpDialog({ open, onClose, scope, onAdded, workspaceContext: 
            className={styles.closeBtn}
            aria-label={t('pluginsView.createClose')}
            onClick={closeDialog}
-            disabled={isBusy}
+            disabled={busy}
           >
             <Icon name="close" size={17} aria-hidden />
           </button>
         </header>
        <div className={styles.dialogBody}>
-          <div className={styles.tabBar} role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'community'}
-              className={activeTab === 'community' ? `${styles.tabBtn} ${styles.tabBtnActive}` : styles.tabBtn}
-              onClick={() => setActiveTab('community')}
-              disabled={isBusy}
-            >
-              {t('personalScope.mcpTabCommunity')}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'json'}
-              className={activeTab === 'json' ? `${styles.tabBtn} ${styles.tabBtnActive}` : styles.tabBtn}
-              onClick={() => setActiveTab('json')}
-              disabled={isBusy}
-            >
-              {t('personalScope.mcpTabJson')}
-            </button>
-          </div>
-
-          {activeTab === 'community' ? (
-            <CloudMcpList
-              workspaceId={workspaceContext?.workspaceId ?? null}
-              workspaceMemberId={workspaceContext?.workspaceMemberId ?? null}
-              workspaceType={workspaceContext?.workspaceType ?? null}
-              mode="square"
-              scope="public"
-              picker
-              onBusyChange={setCommunityBusy}
-            />
-          ) : (
-            <McpConfigForm
-              confirmRef={confirmRef}
-              onCanConfirmChange={setCanConfirm}
-              onSubmit={(selection) => void handleSubmit(selection)}
-            />
-          )}
+          <McpConfigForm
+            confirmRef={confirmRef}
+            onCanConfirmChange={setCanConfirm}
+            onSubmit={(selection) => void handleSubmit(selection)}
+          />
         </div>
         <footer className={styles.dialogFooter}>
           <button
             type="button"
             className={styles.cancelBtn}
             onClick={closeDialog}
-            disabled={isBusy}
+            disabled={busy}
           >
             {t('common.cancel')}
           </button>
-          {activeTab !== 'community' ? <button
+          <button
             type="button"
             className={styles.primaryBtn}
             disabled={busy || !canConfirm}
             onClick={() => confirmRef.current.onConfirm()}
           >
             {busy ? t('personalScope.mcpFormSubmitting') : t('personalScope.mcpConfirmAdd')}
-          </button> : null}
+          </button>
         </footer>
       </section>
       {toast ? (

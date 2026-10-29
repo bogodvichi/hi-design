@@ -17,7 +17,6 @@ import styles from './PersonalResourceView.module.css';
 import { getOpenDesignHost } from '@open-design/host';
 import { isMacPlatform } from '../utils/platform';
 import { findSkillMdInZip } from '../runtime/zip-reader';
-import { CloudSkillList } from './CloudSkillList';
 
 interface Props {
   open: boolean;
@@ -32,7 +31,7 @@ interface Props {
 
 type BusyState = 'import' | 'upload' | 'sharing' | null;
 
-type SkillSource = 'community' | 'upload' | 'url';
+type SkillSource = 'upload' | 'url';
 
 type CollectedFile = { file: File; path: string };
 type UploadSource =
@@ -50,8 +49,7 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
   const [url, setUrl] = useState('');
   const [uploadSource, setUploadSource] = useState<UploadSource | null>(null);
   const [busy, setBusy] = useState<BusyState>(null);
-  const [communityBusy, setCommunityBusy] = useState(false);
-  const isBusy = busy !== null || communityBusy;
+  const isBusy = busy !== null;
   const [toast, setToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -59,9 +57,7 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
   const canConfirm =
     activeTab === 'upload'
       ? uploadSource !== null
-      : activeTab === 'url'
-        ? url.trim().length > 0
-        : false;
+      : url.trim().length > 0;
 
   useEffect(() => {
     if (!toast) return;
@@ -74,7 +70,6 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
       setUrl('');
       setUploadSource(null);
       setBusy(null);
-      setCommunityBusy(false);
       setActiveTab('upload');
     }
   }, [open]);
@@ -383,16 +378,6 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
             <button
               type="button"
               role="tab"
-              aria-selected={activeTab === 'community'}
-              className={activeTab === 'community' ? `${styles.tabBtn} ${styles.tabBtnActive}` : styles.tabBtn}
-              onClick={() => setActiveTab('community')}
-              disabled={isBusy}
-            >
-              {t('personalScope.skillTabCommunity')}
-            </button>
-            <button
-              type="button"
-              role="tab"
               aria-selected={activeTab === 'upload'}
               className={activeTab === 'upload' ? `${styles.tabBtn} ${styles.tabBtnActive}` : styles.tabBtn}
               onClick={() => setActiveTab('upload')}
@@ -412,18 +397,7 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
             </button>
           </div>
 
-          {activeTab === 'community' ? (
-            <CloudSkillList
-              workspaceId={workspaceContext?.workspaceId ?? null}
-              workspaceMemberId={workspaceContext?.workspaceMemberId ?? null}
-              workspaceType={workspaceContext?.workspaceType ?? null}
-              mode="square"
-              scope="public"
-              sourceProvider="all"
-              picker
-              onBusyChange={setCommunityBusy}
-            />
-          ) : activeTab === 'upload' ? (
+          {activeTab === 'upload' ? (
             <div className={styles.section}>
               <input
                 ref={folderInputRef}
@@ -519,7 +493,7 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
           >
             {t('common.cancel')}
           </button>
-          {activeTab !== 'community' ? <button
+          <button
             type="button"
             className={styles.primaryBtn}
             disabled={busy !== null || workspaceContextLoading || !canConfirm}
@@ -531,7 +505,7 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
             {busy !== null
               ? t('pluginsView.importing')
               : t('personalScope.skillConfirmAdd')}
-          </button> : null}
+          </button>
         </footer>
       </section>
       {toast ? (
