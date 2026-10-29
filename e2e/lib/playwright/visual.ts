@@ -277,6 +277,11 @@ export async function configureVisualPage(page: Page, options: VisualPageOptions
     });
   }
 
+  // Page routes take precedence over the shared context's host-login fixture.
+  await page.route('**/api/auth/valid', (route) => route.fulfill({
+    json: { ok: true, username: 'e2e-user', userInfo: { username: 'e2e-user' } },
+  }));
+
   await page.addInitScript(([key, config, githubStarsKey, githubStarsCount, visualStabilityKey]) => {
     window.localStorage.setItem(key, JSON.stringify(config));
     window.localStorage.setItem(

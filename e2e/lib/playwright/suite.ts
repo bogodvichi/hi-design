@@ -1,7 +1,7 @@
 import { mkdir, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { expect, test as base } from '@playwright/test';
+import { expect, test as base, type BrowserContext } from '@playwright/test';
 
 import { seedCampaignDismissals } from './campaign-dismissals.ts';
 import {
@@ -29,6 +29,7 @@ type WorkerFixtures = {
 
 export const test = base.extend<TestFixtures, WorkerFixtures>({
   context: async ({ context }, use) => {
+    await seedHostAuthentication(context);
     await seedCampaignDismissals(context);
     await use(context);
   },
@@ -129,10 +130,19 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
  */
 export const clusterTest = base.extend({
   context: async ({ context }, use) => {
+    await seedHostAuthentication(context);
     await seedCampaignDismissals(context);
     await use(context);
   },
 });
+
+// Business UI suites start after the independent HiDesign host login. This
+// does not change the AMR/Workspace session controlled by each suite's fixtures.
+async function seedHostAuthentication(context: BrowserContext): Promise<void> {
+  await context.route('**/api/auth/valid', (route) => route.fulfill({
+    json: { ok: true, username: 'e2e-user', userInfo: { username: 'e2e-user' } },
+  }));
+}
 
 export { expect };
 export type { PlaywrightToolsDevSuite };
