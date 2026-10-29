@@ -10397,37 +10397,6 @@ const coalescedCoverRefresh = useCoalescedCallback(
     ],
   );
 
-  // Canonical project-type chip shown next to the editable title. We label
-  // by the resolved skill/template `mode` (the real type taxonomy) rather
-  // than the skill's display name, so every project kind — prototype, deck,
-  // template, image, video, audio, design system — reads as one consistent,
-  // short type just like "Design system". Returns null for freeform projects
-  // (no resolvable type), which hides the chip.
-  const projectTypeLabel = useMemo<string | null>(() => {
-    if (projectIsDesignSystemProject) return t('dsManager.tabDesignSystem');
-    const summary =
-      skills.find((s) => s.id === project.skillId) ??
-      designTemplates.find((s) => s.id === project.skillId);
-    switch (summary?.mode) {
-      case 'prototype':
-        return t('project.typePrototype');
-      case 'deck':
-        return t('project.typeDeck');
-      case 'template':
-        return t('project.typeTemplate');
-      case 'design-system':
-        return t('dsManager.tabDesignSystem');
-      case 'image':
-        return t('project.typeImage');
-      case 'video':
-        return t('project.typeVideo');
-      case 'audio':
-        return t('project.typeAudio');
-      default:
-        return null;
-    }
-  }, [projectIsDesignSystemProject, skills, designTemplates, project.skillId, t]);
-
   const activeDesignSystemSummary = useMemo(() => {
     if (!projectDesignSystemId) return null;
     return designSystems.find((d) => d.id === projectDesignSystemId) ?? null;
@@ -12023,9 +11992,6 @@ const coalescedCoverRefresh = useCoalescedCallback(
                   >
                     {currentProject.name}
                   </span>
-                  {projectTypeLabel ? (
-                    <span className="meta" data-testid="project-meta">{projectTypeLabel}</span>
-                  ) : null}
                 </span>
               )}
             />

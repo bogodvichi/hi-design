@@ -38,6 +38,7 @@ vi.mock('../../src/providers/registry', () => ({
 }));
 
 vi.mock('../../src/collab/useWorkspaceContext', () => ({
+  useSharedSpaceTeamId: () => null,
   useWorkspaceContext: () => ({
     context: designsWorkspaceState.context,
 		loading: designsWorkspaceState.loading,

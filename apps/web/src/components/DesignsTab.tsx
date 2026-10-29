@@ -838,7 +838,6 @@ export function DesignsTab({
 										/>
 									</div>
 									<div className="design-card-meta-block">
-										<ProjectTag category="live-artifact" />
 										<LiveArtifactBadges
 											className="design-card-badges"
 											status={artifact.status}
@@ -1471,29 +1470,6 @@ function ProjectBrandCover({
 		</span>
 	);
 }
-
-type ProjectCategory = "prototype" | "live-artifact" | "web-clone" | "slide" | "media" | "brand";
-
-
-function ProjectTag({ category }: { category: ProjectCategory }) {
-	const t = useT();
-	const label =
-		category === "live-artifact"
-			? t("designs.tagLiveArtifact")
-			: category === "web-clone"
-				? t("designs.tagWebClone")
-				: category === "slide"
-					? t("designs.tagSlide")
-					: category === "brand"
-						? "Brand"
-					: category === "media"
-						? t("designs.tagMedia")
-						: t("designs.tagPrototype");
-	return (
-		<span className={`design-card-tag tag-${category}`}>{label}</span>
-	);
-}
-
 
 function findDesignSystemLogoFile(files: ProjectFile[]): ProjectFile | null {
 	const logoCandidates = files

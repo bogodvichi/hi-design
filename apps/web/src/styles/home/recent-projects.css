@@ -432,18 +432,13 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* Bottom row: owner·time on the left, kind tag (原型/幻灯片…) pushed to the
-   bottom-right corner. */
+/* Bottom row: project owner and update time. */
 .recent-projects__card-footer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--spacing-8);
   min-width: 0;
-}
-.recent-projects__card-footer .design-card-tag-row {
-  flex: 0 0 auto;
-  margin: 0;
 }
 .recent-projects__card-time {
   font-size: 12px;
@@ -992,10 +987,6 @@
 .recent-projects__row--list .recent-projects__card-time {
   grid-column: 1;
   min-width: 0;
-}
-.recent-projects__row--list .design-card-tag-row {
-  grid-column: 2;
-  justify-self: end;
 }
 .recent-projects__row--list .recent-projects__card-glyph {
   font-size: 20px;

@@ -334,11 +334,7 @@ describe('RecentProjectsStrip', () => {
     expect(sortTrigger.getAttribute('aria-expanded')).toBe('false');
   });
 
-  it('keeps a workspace-directory outage in the background owner lookup from escaping', async () => {
-    recentWorkspaceState.resolveBoundProjectWorkspaceContext.mockRejectedValueOnce(
-      Object.assign(new Error('workspace-directory 503'), { status: 503 }),
-    );
-
+  it('renders foreign-project ownership without a remote workspace-directory lookup', () => {
     render(
       <RecentProjectsStrip
         projects={[project({
@@ -350,11 +346,9 @@ describe('RecentProjectsStrip', () => {
       />,
     );
 
-    await waitFor(() => {
-      expect(recentWorkspaceState.resolveBoundProjectWorkspaceContext)
-        .toHaveBeenCalledWith('ws-foreign');
-    });
+    expect(recentWorkspaceState.resolveBoundProjectWorkspaceContext).not.toHaveBeenCalled();
     expect(screen.getByText('Foreign project')).toBeTruthy();
+    expect(document.querySelector('.recent-projects__card-owner--self')).toBeNull();
   });
 
   it('turns a script-activated deck into a deterministic visible first-page cover', () => {
@@ -616,10 +610,10 @@ describe('RecentProjectsStrip', () => {
       });
     });
 
-    await waitFor(() => expect(container.querySelector('.recent-projects__card-thumb-html')).not.toBeNull());
-    expect(
-      (container.querySelector('iframe') as HTMLIFrameElement | null)?.getAttribute('src'),
-    ).toContain('workspaceId=ws-1');
+    await waitFor(() => {
+      expect(container.querySelector('.recent-projects__card-thumb-html')).not.toBeNull();
+      expect(container.querySelector('iframe')?.getAttribute('src')).toContain('workspaceId=ws-1');
+    });
     const readyProjectCalls = vi.mocked(fetchProjectFiles).mock.calls.filter(
       ([id]) => id === 'project-ready',
     );
@@ -813,7 +807,7 @@ describe('RecentProjectsStrip', () => {
     await waitFor(() => expect(fetchProjectFiles).toHaveBeenCalled());
     expect(fetchProjectFiles).toHaveBeenCalledTimes(2);
 
-    fireEvent.click(screen.getByTitle('Project 1'));
+    fireEvent.click(screen.getByText('Project 1', { exact: true }).closest('button')!);
 
     expect(onOpen).toHaveBeenCalledWith('project-1');
     expect(activeSignals.size).toBe(0);
@@ -853,7 +847,7 @@ describe('RecentProjectsStrip', () => {
     );
     await waitFor(() => expect(fetchProjectFiles).toHaveBeenCalledTimes(2));
 
-    fireEvent.click(screen.getByTitle('Project 1'));
+    fireEvent.click(screen.getByText('Project 1', { exact: true }).closest('button')!);
     expect(activeSignals.size).toBe(0);
     expect(fetchProjectFiles).toHaveBeenCalledTimes(2);
 
@@ -907,7 +901,7 @@ describe('RecentProjectsStrip', () => {
     expect(coverFetch.mock.calls.filter(([input]) => String(input).includes('/api/projects/')))
       .toHaveLength(2);
 
-    fireEvent.click(screen.getByTitle('Project 1'));
+    fireEvent.click(screen.getByText('Project 1', { exact: true }).closest('button')!);
 
     expect(onOpen).toHaveBeenCalledWith('project-1');
     expect(activeCoverSignals.size).toBe(0);
@@ -964,7 +958,7 @@ describe('RecentProjectsStrip', () => {
     await waitFor(() => expect(fetchProjectFiles).toHaveBeenCalledTimes(3));
     expect(vi.mocked(fetchProjectFiles).mock.calls[2]?.[0]).toBe('project-5');
 
-    fireEvent.click(screen.getByTitle('Project 2'));
+    fireEvent.click(screen.getByText('Project 2', { exact: true }).closest('button')!);
 
     expect(activeSignals.size).toBe(0);
     await act(async () => {});
@@ -1189,7 +1183,7 @@ describe('RecentProjectsStrip', () => {
     expect(container.querySelectorAll('.recent-projects__card')).toHaveLength(6);
   });
 
-  it('matches project cards with previews and design-system tags', async () => {
+  it('renders project previews without project-type or design-system tags', async () => {
     stubCoverProbe();
 
     const { container } = render(
@@ -1215,11 +1209,11 @@ describe('RecentProjectsStrip', () => {
       />,
     );
 
-    expect(screen.getByText('Design System')).toBeTruthy();
-    expect(screen.getAllByText('Prototype').length).toBeGreaterThan(0);
+    expect(screen.queryByText('Design System')).toBeNull();
+    expect(screen.queryByText('Prototype')).toBeNull();
     const designSystemCard = container.querySelector('.recent-projects__card.is-design-system-project');
     expect(designSystemCard).toBeTruthy();
-    expect(designSystemCard?.querySelectorAll('.design-card-tag')).toHaveLength(1);
+    expect(container.querySelector('.design-card-tag')).toBeNull();
 
     await waitFor(() => {
       expect(designSystemCard?.querySelector('.recent-projects__card-thumb-image img')).toBeTruthy();
@@ -1357,39 +1351,38 @@ describe('RecentProjectsStrip', () => {
 });
 
 describe('recvq5fpqrXzV1 — per-card move-to-team menu item', () => {
-  // A personal-only workspace has no team plane to move a draft INTO — the
-  // daemon 403s the request. The bulk toolbar already gates its equivalent
-  // actions on `collaborationAvailable` (canBulkMoveToTeam/
-  // canBulkMoveToPersonal); this per-card "..." menu item was missing the
-  // same gate, so it stayed clickable and always failed.
-  it('hides the move-to-team/move-out-of-team item when collaboration is unavailable', () => {
+  // Drafts can move between personal folders through the unified Move project
+  // action even without collaboration. Recent cards have a separate menu.
+  it('allows personal folder moves when collaboration is unavailable', () => {
     render(
       <RecentProjectsStrip
         projects={[project({ id: 'project-1', name: 'Draft' })]}
         onOpen={() => {}}
         onDuplicate={() => {}}
         collaborationEnabled={false}
+        space="drafts"
       />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
 
-    expect(screen.queryByRole('menuitem', { name: /Move to team space|Move out of team space/i })).toBeNull();
+    expect((screen.getByRole('menuitem', { name: 'Move project' }) as HTMLButtonElement).disabled).toBe(false);
   });
 
-  it('shows the move-to-team item when collaboration is available', () => {
+  it('shows the move item when collaboration is available', () => {
     render(
       <RecentProjectsStrip
         projects={[project({ id: 'project-1', name: 'Draft' })]}
         onOpen={() => {}}
         onDuplicate={() => {}}
         collaborationEnabled
+        space="drafts"
       />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
 
-    expect(screen.getByRole('menuitem', { name: /Move to team space/i })).toBeTruthy();
+    expect(screen.getByRole('menuitem', { name: 'Move project' })).toBeTruthy();
   });
 });
 
@@ -1405,6 +1398,7 @@ describe('recvqabp2Uy23r — shared badge grid overlay vs list inline', () => {
         projects={[project({ id: 'project-1', name: 'Shared One' })]}
         onOpen={() => {}}
         heading="All projects"
+        badgeOverride="shared"
         isSharedProject={(id) => id === 'project-1'}
       />,
     );
@@ -1421,6 +1415,7 @@ describe('recvqabp2Uy23r — shared badge grid overlay vs list inline', () => {
         projects={[project({ id: 'project-1', name: 'Shared One' })]}
         onOpen={() => {}}
         heading="All projects"
+        badgeOverride="shared"
         isSharedProject={(id) => id === 'project-1'}
       />,
     );
@@ -1448,12 +1443,8 @@ describe('recvqabp2Uy23r — shared badge grid overlay vs list inline', () => {
 });
 
 describe('recvqbipG9QDTt — Recent Projects filter needs a visible clear entry', () => {
-  // RecentProjectsStrip mounts once per host view and stays alive across
-  // EntryShell tab switches — Home's instance in particular is only ever
-  // hidden via `content-visibility`, never unmounted — so kindFilter /
-  // ownerFilter state survives a round trip through another tab with no
-  // visible sign anything is filtered. A filter that now matches zero
-  // projects reads as "my projects disappeared" instead of "a filter is on".
+  // Owner filters can leave an otherwise populated collection empty. Keep the
+  // selected filter visible so that state is distinguishable from data loss.
   it('shows no clear-filters entry while the default (unfiltered) view is showing', () => {
     render(
       <RecentProjectsStrip
@@ -1466,7 +1457,7 @@ describe('recvqbipG9QDTt — Recent Projects filter needs a visible clear entry'
     expect(screen.queryByTestId('recent-projects-clear-filters')).toBeNull();
   });
 
-  it('shows the empty-state message once the type filter hides every project', () => {
+  it('shows the empty-state message once the owner filter hides every project', () => {
     render(
       <RecentProjectsStrip
         projects={[project({ id: 'project-1', name: 'Only Project' })]}
@@ -1475,63 +1466,56 @@ describe('recvqbipG9QDTt — Recent Projects filter needs a visible clear entry'
       />,
     );
 
-    // Every project here falls back to the 'prototype' card category
-    // (projectCategory's default), so filtering to Media leaves zero
-    // matches — exactly the "did my projects disappear?" scenario reported.
-    fireEvent.click(screen.getByRole('button', { name: 'Any type' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Media' }));
+    fireEvent.click(screen.getByRole('button', { name: 'All' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Others' }));
 
     expect(screen.queryByText('Only Project')).toBeNull();
     expect(screen.queryByTestId('recent-projects-clear-filters')).toBeNull();
-    // The filter button now shows the active filter label (Media), not "Any type"
-    expect(screen.getByRole('button', { name: 'Media' })).toBeTruthy();
-  })
+    expect(screen.getByText('No matching results')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Others' })).toBeTruthy();
+  });
 });
 
 describe('recvqaRqM0dv2x — per-card Duplicate menu item', () => {
-  // Duplicating a project you did not create always 403s (the daemon's
-  // canDuplicate mirrors canMutate: privileged-or-selfCreated only). The item
-  // used to render without the same ownedBySelf gate Rename/Delete already
-  // carry, so it stayed enabled on a foreign team-shared card and looked like
-  // a dead click when pressed.
-  it('disables Duplicate for a project owned by another team member', () => {
+  // Personal drafts expose Copy only for the creator. Team and shared-with-me
+  // collections have their own access matrix and separate coverage.
+  it('hides Copy for a draft owned by another team member', () => {
     const onDuplicate = vi.fn();
     render(
       <RecentProjectsStrip
         projects={[project({ id: 'project-1', name: 'Shared project', createdByWorkspaceMemberId: null })]}
         onOpen={() => {}}
         onDuplicate={onDuplicate}
+        space="drafts"
         projectOwnerMemberIds={new Map([['project-1', 'someone-else']])}
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
-    const duplicateItem = screen.getByRole('menuitem', { name: 'Duplicate project' });
-    expect((duplicateItem as HTMLButtonElement).disabled).toBe(true);
-
-    fireEvent.click(duplicateItem);
+    expect(screen.queryByRole('button', { name: 'More actions' })).toBeNull();
+    expect(screen.queryByRole('menuitem', { name: 'Copy' })).toBeNull();
     expect(onDuplicate).not.toHaveBeenCalled();
   });
 
-  it('keeps Duplicate enabled and wired for a project the current member created', () => {
+  it('keeps Copy enabled and wired for a draft the current member created', () => {
     const onDuplicate = vi.fn();
     render(
       <RecentProjectsStrip
         projects={[project({ id: 'project-1', name: 'My project' })]}
         onOpen={() => {}}
         onDuplicate={onDuplicate}
+        space="drafts"
       />,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
-    const duplicateItem = screen.getByRole('menuitem', { name: 'Duplicate project' });
+    const duplicateItem = screen.getByRole('menuitem', { name: 'Copy' });
     expect((duplicateItem as HTMLButtonElement).disabled).toBe(false);
 
     fireEvent.click(duplicateItem);
     expect(onDuplicate).toHaveBeenCalledWith('project-1');
   });
 
-  it('shows only Duplicate in personal drafts even when a home workspace exists', () => {
+  it('shows Copy without Copy project to in personal drafts even when a home workspace exists', () => {
     render(
       <RecentProjectsStrip
         projects={[project({ id: 'project-1', name: 'My project' })]}
@@ -1544,7 +1528,7 @@ describe('recvqaRqM0dv2x — per-card Duplicate menu item', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
 
-    expect(screen.getByRole('menuitem', { name: 'Duplicate project' })).toBeTruthy();
+    expect(screen.getByRole('menuitem', { name: 'Copy' })).toBeTruthy();
     expect(screen.queryByRole('menuitem', { name: 'Copy project to' })).toBeNull();
   });
 });
@@ -1564,17 +1548,18 @@ describe('team-shared project with unresolved owner identity', () => {
         onOpen={() => {}}
         onRename={onRename}
         onDelete={onDelete}
+        space="drafts"
         collaborationEnabled
         isSharedProject={(projectId) => projectId === 'project-1'}
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
-
-    expect((screen.getByRole('menuitem', { name: 'Rename' }) as HTMLButtonElement).disabled).toBe(true);
-    expect(screen.queryByRole('menuitem', { name: /Move out of team space/i })).toBeNull();
-    expect((screen.getByRole('menuitem', { name: /In team space/i }) as HTMLButtonElement).disabled).toBe(true);
-    expect((screen.getByRole('menuitem', { name: 'Delete' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByRole('button', { name: 'More actions' })).toBeNull();
+    expect(screen.queryByRole('menuitem', { name: 'Rename' })).toBeNull();
+    expect(screen.queryByRole('menuitem', { name: 'Move project' })).toBeNull();
+    expect(screen.queryByRole('menuitem', { name: 'Delete' })).toBeNull();
+    expect(onRename).not.toHaveBeenCalled();
+    expect(onDelete).not.toHaveBeenCalled();
   });
 });
 
@@ -1589,6 +1574,7 @@ describe('recvqbh189zBY6 — single-card delete confirmation', () => {
         projects={[project({ id: 'project-1', name: 'My project' })]}
         onOpen={() => {}}
         onDelete={onDelete}
+        space="drafts"
       />,
     );
 
@@ -1613,6 +1599,7 @@ describe('recvqbh189zBY6 — single-card delete confirmation', () => {
         projects={[project({ id: 'project-1', name: 'My project' })]}
         onOpen={() => {}}
         onDelete={onDelete}
+        space="drafts"
       />,
     );
 
@@ -1639,6 +1626,7 @@ describe('recvqbh189zBY6 — single-card delete confirmation', () => {
         projects={[project({ id: 'project-1', name: 'My project' })]}
         onOpen={() => {}}
         onDelete={onDelete}
+        space="drafts"
       />,
     );
 

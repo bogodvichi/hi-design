@@ -9,12 +9,18 @@ describe('incremental file writes', () => {
     const dom = new JSDOM('');
     globalThis.DOMParser = dom.window.DOMParser;
     try {
-      const before = `<!DOCTYPE html><html><body><div id="root"></div><!--${'x'.repeat(7 * 1024 * 1024)}--></body></html>\n`;
-      const result = applyManualEditPatch(before, { kind: 'set-style', id: 'runtime:body > div:nth-of-type(1) > p:nth-of-type(1)', styles: { color: 'blue' } });
+      // Capture the editor's real serialization changes on a small document;
+      // parsing a multi-MiB DOM is unrelated to this diff/round-trip contract.
+      const template = '<!DOCTYPE html><html><body><div id="root"></div><!--LARGE_PAYLOAD--></body></html>\n';
+      const result = applyManualEditPatch(template, { kind: 'set-style', id: 'runtime:body > div:nth-of-type(1) > p:nth-of-type(1)', styles: { color: 'blue' } });
       expect(result.ok).toBe(true);
-      const patch = await createProjectFileTextPatch(before, result.source);
+      expect(result.source).toContain('<!--LARGE_PAYLOAD-->');
+      const payload = 'x'.repeat(7 * 1024 * 1024);
+      const before = template.replace('LARGE_PAYLOAD', payload);
+      const after = result.source.replace('LARGE_PAYLOAD', payload);
+      const patch = await createProjectFileTextPatch(before, after);
       expect(new TextEncoder().encode(JSON.stringify(patch)).length).toBeLessThan(4096);
-      expect(applyProjectFileTextEdits(before, patch.edits)).toBe(result.source);
+      expect(applyProjectFileTextEdits(before, patch.edits)).toBe(after);
     } finally {
       Reflect.deleteProperty(globalThis, 'DOMParser');
       dom.window.close();

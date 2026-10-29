@@ -3587,17 +3587,13 @@ export type ProjectCategory =
   | 'media'
   | 'brand';
 
-/** Every chip a project card can wear, `ProjectCategory` plus the
- *  design-system tag the card substitutes for it. */
+/** Internal project-card categories, including design-system projects. */
 export type ProjectCardCategory = ProjectCategory | 'design-system';
 
 /**
- * The type a card actually advertises — the single source of truth behind both
- * the chip in the card footer and the header's type filter. It mirrors the
- * card's own branch: a design-system project wears the Design System tag,
- * everything else falls through to {@link projectCategory}. Filtering must go
- * through this, never through the raw `metadata.kind`, or the dropdown starts
- * offering types no chip displays.
+ * Resolve the internal category independently of type-label visibility.
+ * Design-system projects retain their own category; all others fall through
+ * to {@link projectCategory}.
  */
 export function projectCardCategory(project: Project): ProjectCardCategory {
   return isDesignSystemProject(project) ? 'design-system' : projectCategory(project);
@@ -3621,24 +3617,6 @@ export function projectCategory(project: Project): ProjectCategory {
   }
   return 'prototype';
 }
-
-export function ProjectTag({ category }: { category: ProjectCategory }) {
-  const t = useT();
-  const label =
-    category === 'live-artifact'
-      ? t('designs.tagLiveArtifact')
-      : category === 'web-clone'
-        ? t('designs.tagWebClone')
-        : category === 'slide'
-          ? t('designs.tagSlide')
-          : category === 'brand'
-            ? 'Brand'
-          : category === 'media'
-            ? t('designs.tagMedia')
-            : t('designs.tagPrototype');
-  return <span className={`design-card-tag tag-${category}`}>{label}</span>;
-}
-
 
 function findDesignSystemLogoFile(files: ProjectFile[]): ProjectFile | null {
   const logoCandidates = files

@@ -19,7 +19,7 @@ import type { Project } from '../types';
 import { Icon } from './Icon';
 import { useT } from '../i18n';
 import { relativeTimeLong } from '../utils/chatTime';
-import { projectCover, projectCategory, ProjectTag } from './RecentProjectsStrip';
+import { projectCover } from './RecentProjectsStrip';
 import type { WorkspaceCollabContext } from '@open-design/contracts';
 
 interface Props {
@@ -178,9 +178,6 @@ export function ProjectSearchModal({
                   </span>
                   <span className="project-search-item-name">
                     {project.name || t('chat.untitledConversation')}
-                  </span>
-                  <span className="project-search-item-tag">
-                    <ProjectTag category={projectCategory(project)} />
                   </span>
                   <span className="project-search-item-meta">
                     {relativeTimeLong(project.updatedAt, t)}

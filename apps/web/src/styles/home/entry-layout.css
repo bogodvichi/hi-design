@@ -8904,11 +8904,6 @@ button.entry-nav-rail__menu-credits-row:active:not(:disabled) {
   font-size: 13px;
   font-weight: 500;
 }
-.project-search-item-tag {
-  flex: 0 0 auto;
-  display: inline-flex;
-  align-items: center;
-}
 .project-search-item-meta {
   flex: 0 0 auto;
   min-width: 52px;

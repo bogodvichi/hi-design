@@ -69,23 +69,27 @@ describe('DesignsTab select mode', () => {
     cleanup();
   });
 
-  it('refreshes the projects list from the toolbar button', async () => {
+  it('refreshes the projects list when the tab becomes active', async () => {
     const onRefresh = vi.fn().mockResolvedValue(undefined);
-    render(
+    const props = {
+      projects: [project],
+      skills: [],
+      designSystems: [],
+      onOpen: vi.fn(),
+      onOpenLiveArtifact: vi.fn(),
+      onDelete: vi.fn(),
+      onRename: vi.fn(),
+      onRefresh,
+    };
+    const { rerender } = render(
       <DesignsTab
-        projects={[project]}
-        skills={[]}
-        designSystems={[]}
-        onOpen={vi.fn()}
-        onOpenLiveArtifact={vi.fn()}
-        onDelete={vi.fn()}
-        onRename={vi.fn()}
-        onRefresh={onRefresh}
+        {...props}
         isActive={false}
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
+    expect(onRefresh).not.toHaveBeenCalled();
+    rerender(<DesignsTab {...props} isActive />);
 
     await waitFor(() => {
       expect(onRefresh).toHaveBeenCalledTimes(1);
@@ -157,8 +161,10 @@ describe('DesignsTab select mode', () => {
     });
   });
 
-  it('contains refresh failures and returns the toolbar button to idle', async () => {
-    const onRefresh = vi.fn().mockRejectedValue(new Error('daemon unavailable'));
+  it('contains automatic refresh failures and retries on focus', async () => {
+    const onRefresh = vi.fn()
+      .mockRejectedValueOnce(new Error('daemon unavailable'))
+      .mockResolvedValue(undefined);
     render(
       <DesignsTab
         projects={[project]}
@@ -169,21 +175,17 @@ describe('DesignsTab select mode', () => {
         onDelete={vi.fn()}
         onRename={vi.fn()}
         onRefresh={onRefresh}
-        isActive={false}
+        isActive
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: 'Refresh' }));
-
     await waitFor(() => {
-      expect(screen.getByRole('alert').textContent).toContain(
-        'Refresh request failed. Check your connection and try again.',
-      );
+      expect(onRefresh).toHaveBeenCalledTimes(1);
     });
-    expect(
-      (screen.getByRole('button', { name: 'Refresh' }) as HTMLButtonElement)
-        .disabled,
-    ).toBe(false);
+    expect(screen.queryByRole('alert')).toBeNull();
+    await act(async () => fireEvent.focus(window));
+    expect(onRefresh).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
   it('auto-refreshes while the projects tab is active', async () => {
@@ -447,7 +449,7 @@ describe('DesignsTab select mode', () => {
     }
   });
 
-  it('marks design-system projects with a dedicated tag', () => {
+  it('renders design-system projects without a type tag', () => {
     render(
       <DesignsTab
         projects={[
@@ -470,7 +472,8 @@ describe('DesignsTab select mode', () => {
       />,
     );
 
-    expect(screen.getByText('Design System')).toBeTruthy();
+    expect(screen.getByText('Acme Design System')).toBeTruthy();
+    expect(screen.queryByText('Design System')).toBeNull();
   });
 
   it('uses the same updated time in recent and yours tabs', () => {
