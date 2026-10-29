@@ -1,4 +1,4 @@
-import type { feedbackEn } from './feedback-copy';
+import type { feedbackEn } from './feedback-copy.js';
 
 // Supported UI locales. Adding a new locale requires creating a new
 // dictionary in `./locales/` and registering it in `./index.tsx`.
