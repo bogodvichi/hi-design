@@ -17,6 +17,7 @@ import styles from './PersonalResourceView.module.css';
 import { getOpenDesignHost } from '@open-design/host';
 import { isMacPlatform } from '../utils/platform';
 import { findSkillMdInZip } from '../runtime/zip-reader';
+import { CloudSkillList } from './CloudSkillList';
 
 interface Props {
   open: boolean;
@@ -49,6 +50,8 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
   const [url, setUrl] = useState('');
   const [uploadSource, setUploadSource] = useState<UploadSource | null>(null);
   const [busy, setBusy] = useState<BusyState>(null);
+  const [communityBusy, setCommunityBusy] = useState(false);
+  const isBusy = busy !== null || communityBusy;
   const [toast, setToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -71,12 +74,13 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
       setUrl('');
       setUploadSource(null);
       setBusy(null);
+      setCommunityBusy(false);
       setActiveTab('upload');
     }
   }, [open]);
 
   function closeDialog() {
-    if (busy) return;
+    if (isBusy) return;
     onClose();
   }
 
@@ -369,7 +373,7 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
             className={styles.closeBtn}
             aria-label={t('pluginsView.createClose')}
             onClick={closeDialog}
-            disabled={busy !== null}
+            disabled={isBusy}
           >
             <Icon name="close" size={17} aria-hidden />
           </button>
@@ -382,7 +386,7 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
               aria-selected={activeTab === 'community'}
               className={activeTab === 'community' ? `${styles.tabBtn} ${styles.tabBtnActive}` : styles.tabBtn}
               onClick={() => setActiveTab('community')}
-              disabled={busy !== null}
+              disabled={isBusy}
             >
               {t('personalScope.skillTabCommunity')}
             </button>
@@ -392,7 +396,7 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
               aria-selected={activeTab === 'upload'}
               className={activeTab === 'upload' ? `${styles.tabBtn} ${styles.tabBtnActive}` : styles.tabBtn}
               onClick={() => setActiveTab('upload')}
-              disabled={busy !== null}
+              disabled={isBusy}
             >
               {t('personalScope.skillTabUpload')}
             </button>
@@ -402,16 +406,23 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
               aria-selected={activeTab === 'url'}
               className={activeTab === 'url' ? `${styles.tabBtn} ${styles.tabBtnActive}` : styles.tabBtn}
               onClick={() => setActiveTab('url')}
-              disabled={busy !== null}
+              disabled={isBusy}
             >
               {t('personalScope.skillTabUrl')}
             </button>
           </div>
 
           {activeTab === 'community' ? (
-            <div className={styles.section}>
-              <p className={styles.sectionBody}>{t('squareScope.emptyNote')}</p>
-            </div>
+            <CloudSkillList
+              workspaceId={workspaceContext?.workspaceId ?? null}
+              workspaceMemberId={workspaceContext?.workspaceMemberId ?? null}
+              workspaceType={workspaceContext?.workspaceType ?? null}
+              mode="square"
+              scope="public"
+              sourceProvider="all"
+              picker
+              onBusyChange={setCommunityBusy}
+            />
           ) : activeTab === 'upload' ? (
             <div className={styles.section}>
               <input
@@ -504,11 +515,11 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
             type="button"
             className={styles.cancelBtn}
             onClick={closeDialog}
-            disabled={busy !== null}
+            disabled={isBusy}
           >
             {t('common.cancel')}
           </button>
-          <button
+          {activeTab !== 'community' ? <button
             type="button"
             className={styles.primaryBtn}
             disabled={busy !== null || workspaceContextLoading || !canConfirm}
@@ -520,7 +531,7 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
             {busy !== null
               ? t('pluginsView.importing')
               : t('personalScope.skillConfirmAdd')}
-          </button>
+          </button> : null}
         </footer>
       </section>
       {toast ? (

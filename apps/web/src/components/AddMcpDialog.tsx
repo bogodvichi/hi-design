@@ -9,6 +9,7 @@ import type { WorkspaceCollabContext } from '@open-design/contracts';
 import type { McpTransport } from '@open-design/contracts';
 import { workspaceProjectHeaders } from '../collab/workspace-identity';
 import { McpConfigForm, type McpConfigSelection } from './McpConfigForm';
+import { CloudMcpList } from './CloudMcpList';
 import styles from './PersonalResourceView.module.css';
 
 interface Props {
@@ -31,6 +32,8 @@ export function AddMcpDialog({ open, onClose, scope, onAdded, workspaceContext: 
   });
   const [canConfirm, setCanConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [communityBusy, setCommunityBusy] = useState(false);
+  const isBusy = busy || communityBusy;
   const [toast, setToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null);
   const [activeTab, setActiveTab] = useState<'community' | 'json'>('json');
 
@@ -43,6 +46,7 @@ export function AddMcpDialog({ open, onClose, scope, onAdded, workspaceContext: 
   useEffect(() => {
     if (open) {
       setBusy(false);
+      setCommunityBusy(false);
       setToast(null);
       setCanConfirm(false);
       setActiveTab('json');
@@ -50,7 +54,7 @@ export function AddMcpDialog({ open, onClose, scope, onAdded, workspaceContext: 
   }, [open]);
 
   function closeDialog() {
-    if (busy) return;
+    if (isBusy) return;
     onClose();
   }
 
@@ -204,7 +208,7 @@ export function AddMcpDialog({ open, onClose, scope, onAdded, workspaceContext: 
            className={styles.closeBtn}
            aria-label={t('pluginsView.createClose')}
            onClick={closeDialog}
-            disabled={busy}
+            disabled={isBusy}
           >
             <Icon name="close" size={17} aria-hidden />
           </button>
@@ -217,7 +221,7 @@ export function AddMcpDialog({ open, onClose, scope, onAdded, workspaceContext: 
               aria-selected={activeTab === 'community'}
               className={activeTab === 'community' ? `${styles.tabBtn} ${styles.tabBtnActive}` : styles.tabBtn}
               onClick={() => setActiveTab('community')}
-              disabled={busy}
+              disabled={isBusy}
             >
               {t('personalScope.mcpTabCommunity')}
             </button>
@@ -227,16 +231,22 @@ export function AddMcpDialog({ open, onClose, scope, onAdded, workspaceContext: 
               aria-selected={activeTab === 'json'}
               className={activeTab === 'json' ? `${styles.tabBtn} ${styles.tabBtnActive}` : styles.tabBtn}
               onClick={() => setActiveTab('json')}
-              disabled={busy}
+              disabled={isBusy}
             >
               {t('personalScope.mcpTabJson')}
             </button>
           </div>
 
           {activeTab === 'community' ? (
-            <div className={styles.section}>
-              <p className={styles.sectionBody}>{t('squareScope.emptyNote')}</p>
-            </div>
+            <CloudMcpList
+              workspaceId={workspaceContext?.workspaceId ?? null}
+              workspaceMemberId={workspaceContext?.workspaceMemberId ?? null}
+              workspaceType={workspaceContext?.workspaceType ?? null}
+              mode="square"
+              scope="public"
+              picker
+              onBusyChange={setCommunityBusy}
+            />
           ) : (
             <McpConfigForm
               confirmRef={confirmRef}
@@ -250,18 +260,18 @@ export function AddMcpDialog({ open, onClose, scope, onAdded, workspaceContext: 
             type="button"
             className={styles.cancelBtn}
             onClick={closeDialog}
-            disabled={busy}
+            disabled={isBusy}
           >
             {t('common.cancel')}
           </button>
-          <button
+          {activeTab !== 'community' ? <button
             type="button"
             className={styles.primaryBtn}
             disabled={busy || !canConfirm}
             onClick={() => confirmRef.current.onConfirm()}
           >
             {busy ? t('personalScope.mcpFormSubmitting') : t('personalScope.mcpConfirmAdd')}
-          </button>
+          </button> : null}
         </footer>
       </section>
       {toast ? (

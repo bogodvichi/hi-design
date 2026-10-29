@@ -61,7 +61,8 @@ describe('CloudSkillList Skillhub integration', () => {
       if (url.startsWith('/api/workspace/skills/cloud?')) {
         const query = new URL(url, 'http://localhost').searchParams;
         expect(query.get('scope')).toBe('public');
-        expect(query.get('source')).toBe('all');
+        if (query.get('source') === 'hdw') return jsonResponse({ skills: [] });
+        expect(query.get('source')).toBe('maas-skillhub');
         return jsonResponse({
           skills: [{
             resourceId: 'resource-1',
@@ -174,15 +175,16 @@ describe('CloudSkillList Skillhub integration', () => {
           provider: 'hdw',
           category: 'other',
         };
+        const isMaas = query.get('source') === 'maas-skillhub';
         return jsonResponse({
-          skills: developmentOnly ? [developmentSkill] : [developmentSkill, otherSkill],
+          skills: isMaas ? [developmentSkill] : developmentOnly ? [] : [otherSkill],
           categoryCounts: {
-            all: 2,
-            development_tools: 1,
+            all: 1,
+            development_tools: isMaas ? 1 : 0,
             content_creation: 0,
             data_analysis: 0,
             productivity: 0,
-            other: 1,
+            other: isMaas ? 0 : 1,
           },
         });
       }
@@ -235,6 +237,7 @@ describe('CloudSkillList Skillhub integration', () => {
       const url = input.toString();
       if (url === '/api/skills') return jsonResponse({ skills: [] });
       if (url.startsWith('/api/workspace/skills/cloud?')) {
+        if (new URL(url, 'http://localhost').searchParams.get('source') === 'hdw') return jsonResponse({ skills: [] });
         return jsonResponse({
           skills: [{
             resourceId: 'resource-visual',

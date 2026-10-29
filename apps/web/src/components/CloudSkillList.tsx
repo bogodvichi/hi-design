@@ -110,6 +110,8 @@ export function CloudSkillList({
  scope,
  controlsPortalTarget,
  externalSearchQuery,
+ picker = false,
+ onBusyChange,
 }: {
  workspaceId: string | null;
  workspaceMemberId: string | null;
@@ -121,6 +123,8 @@ export function CloudSkillList({
  scope?: string;
  controlsPortalTarget?: HTMLElement | null;
  externalSearchQuery?: string;
+ picker?: boolean;
+ onBusyChange?: (busy: boolean) => void;
 }) {
   const t = useT();
   const { locale } = useI18n();
@@ -149,6 +153,10 @@ export function CloudSkillList({
  const categoryMenuRef = useRef<HTMLDivElement | null>(null);
  const categoryMenuPanelRef = useRef<HTMLDivElement | null>(null);
  const loadRequestId = useRef(0);
+
+ useEffect(() => {
+   onBusyChange?.(installingId !== null);
+ }, [installingId, onBusyChange]);
 
  const countCategories = useCallback((items: readonly CloudSkill[]): SkillCategoryCounts => {
    const counts = emptySkillCategoryCounts();
@@ -324,6 +332,37 @@ export function CloudSkillList({
       if (debouncedSearch) params.set('q', debouncedSearch);
       if (showCommunityControls && activeCategory !== 'all') params.set('category', activeCategory);
       const headers = workspaceHeaders(workspaceId, workspaceMemberId, workspaceType);
+      if (sourceProvider === 'all') {
+        // Each source can render as soon as it resolves; Skillhub authentication
+        // must not hold back the HiDesign community catalog (or vice versa).
+        const sources = ['maas-skillhub', 'hdw'];
+        const catalogs = new Map<string, SkillCategoryCounts>();
+        setSkills([]);
+        const results = await Promise.allSettled(sources.map(async (source) => {
+          const sourceParams = new URLSearchParams(params);
+          sourceParams.set('source', source);
+          const body = await readCloudSkillCatalog(sourceParams, headers);
+          if (!isCurrent()) return;
+          const list = (body.skills ?? []).map((skill) => ({
+            ...skill,
+            category: normalizeSkillCategory(skill.category),
+          }));
+          catalogs.set(source, { ...emptySkillCategoryCounts(), ...(body.categoryCounts ?? countCategories(list)) });
+          setSkills((current) => [...current, ...list].sort((a, b) => (
+            sources.indexOf(a.provider ?? 'hdw') - sources.indexOf(b.provider ?? 'hdw')
+          )));
+          const counts = emptySkillCategoryCounts();
+          for (const catalog of catalogs.values()) {
+            for (const category of ['all', ...SKILL_CATEGORIES] as const) counts[category] += catalog[category];
+          }
+          setCategoryCounts(counts);
+          if (list.length > 0) setLoading(false);
+        }));
+        if (!isCurrent()) return;
+        const hdwResult = results[1];
+        if (hdwResult?.status === 'rejected') throw hdwResult.reason;
+        return;
+      }
       const body = await readCloudSkillCatalog(params, headers);
       if (!isCurrent()) return;
       setError(null);
@@ -808,7 +847,7 @@ useEffect(() => {
             busy={!!installingId || !!uninstallingId || !!unpublishingId || !!updatingId || !!deletingId}
             onInstall={() => void handleInstall(skill)}
              canConnect={mode !== 'team' || (memberRole != null && memberRole !== 'guest')}
-            actions={{
+            actions={picker ? {} : {
               ...(canShare ? { share: () => setShareItem(skill) } : {}),
               ...(isInstalled && !skill.teamShared ? { uninstall: () => void handleUninstall(skill) } : {}),
               ...(canDelete && mode === 'square' ? { unpublish: () => setConfirmAction({ type: 'unpublish', item: skill }) } : {}),

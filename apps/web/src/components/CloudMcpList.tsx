@@ -84,6 +84,8 @@ export function CloudMcpList({
  memberRole,
  scope,
  searchQuery = '',
+ picker = false,
+ onBusyChange,
 }: {
  workspaceId: string | null;
  workspaceMemberId: string | null;
@@ -93,6 +95,8 @@ export function CloudMcpList({
  memberRole?: 'owner' | 'admin' | 'member' | 'guest';
  scope?: string;
  searchQuery?: string;
+ picker?: boolean;
+ onBusyChange?: (busy: boolean) => void;
 }) {
   const t = useT();
   const { locale } = useI18n();
@@ -110,6 +114,10 @@ export function CloudMcpList({
  const [confirmAction, setConfirmAction] = useState<{ type: 'unpublish' | 'delete'; item: CloudMcpItem } | null>(null);
  const [shareItem, setShareItem] = useState<CloudMcpItem | null>(null);
  const [removeShareId, setRemoveShareId] = useState<string | null>(null);
+
+ useEffect(() => {
+   onBusyChange?.(installingId !== null);
+ }, [installingId, onBusyChange]);
 
   const loadLocalServers = useCallback(async () => {
     const generation = ++localReadGeneration.current;
@@ -569,7 +577,7 @@ export function CloudMcpList({
             busy={!!installingId || !!uninstallingId || !!unpublishingId || !!updatingId || !!deletingId}
             onInstall={() => void handleInstall(tpl)}
              canConnect={mode !== 'team' || (memberRole != null && memberRole !== 'guest')}
-            actions={{
+            actions={picker ? {} : {
               ...(canShare ? { share: () => setShareItem(tpl) } : {}),
               ...(isInstalled && !tpl.teamLocal ? { uninstall: () => void handleUninstall(tpl) } : {}),
               ...(canDelete && mode === 'square' ? { unpublish: () => setConfirmAction({ type: 'unpublish', item: tpl }) } : {}),
