@@ -244,6 +244,8 @@ export interface SkillSummary {
   /** Workspace id this skill was installed from. Paired with
    * `ownerMemberId` for scope filtering. */
   workspaceId?: string;
+  /** Cloud source binding used to refresh installation state without reloading the catalog. */
+  cloudResourceId?: string;
 }
 
 // Body shape for POST /api/skills/import. The daemon turns this into a

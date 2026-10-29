@@ -128,6 +128,8 @@ export interface SkillInfo {
   /** Workspace id this skill was installed from. Paired with
    * `ownerMemberId` for scope filtering. */
   workspaceId?: string;
+  /** Cloud source binding, including the provider prefix when present. */
+  cloudResourceId?: string;
 }
 
 interface DerivedExample {
@@ -479,6 +481,9 @@ export async function listSkills(
       }
       if (binding.workspaceId) {
         patched.workspaceId = binding.workspaceId;
+      }
+      if (binding.resourceHubResourceId) {
+        patched.cloudResourceId = binding.resourceHubResourceId;
       }
       return patched;
     });

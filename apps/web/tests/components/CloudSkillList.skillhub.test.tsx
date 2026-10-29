@@ -115,13 +115,7 @@ describe('CloudSkillList Skillhub integration', () => {
     expect(container.querySelector('img[src="https://maas.example.test/design-review.png"]'))
       .toBeTruthy();
     fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'design' } });
-    await waitFor(() => {
-      expect(fetchMock.mock.calls.some(([input]) => {
-        const url = input.toString();
-        return url.startsWith('/api/workspace/skills/cloud?')
-          && new URL(url, 'http://localhost').searchParams.get('q') === 'design';
-      })).toBe(true);
-    });
+    expect(fetchMock.mock.calls.filter(([input]) => String(input).startsWith('/api/workspace/skills/cloud?'))).toHaveLength(2);
     fireEvent.click(screen.getByRole('button', { name: '添加' }));
 
     await waitFor(() => {
@@ -142,7 +136,7 @@ describe('CloudSkillList Skillhub integration', () => {
     window.removeEventListener('personal:skill-refresh', refreshListener);
   });
 
-  it('shows category counts and reloads the community list when a category is selected', async () => {
+  it('shows category counts and filters the loaded community list locally', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = input.toString();
       if (url === '/api/skills') return jsonResponse({ skills: [] });
@@ -219,20 +213,14 @@ describe('CloudSkillList Skillhub integration', () => {
     expect(screen.getByRole('menuitemradio', { name: '其他 (1)' })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('menuitemradio', { name: '开发工具 (1)' }));
-    await waitFor(() => {
-      expect(fetchMock.mock.calls.some(([input]) => {
-        const url = new URL(input.toString(), 'http://localhost');
-        return url.pathname === '/api/workspace/skills/cloud'
-          && url.searchParams.get('category') === 'development_tools';
-      })).toBe(true);
-    });
+    expect(fetchMock.mock.calls.filter(([input]) => String(input).startsWith('/api/workspace/skills/cloud?'))).toHaveLength(2);
     await waitFor(() => expect(screen.queryByText('Misc Helper')).toBeNull());
     expect(screen.getByText('Developer Helper')).toBeTruthy();
     expect(screen.queryByRole('menu')).toBeNull();
     toolbarTarget.remove();
   });
 
-  it('uses the shared external community search query for Skill requests', async () => {
+  it('filters the loaded catalog using the shared external community search query', async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = input.toString();
       if (url === '/api/skills') return jsonResponse({ skills: [] });
@@ -282,13 +270,7 @@ describe('CloudSkillList Skillhub integration', () => {
 
     expect(await screen.findByText('Visual Helper')).toBeTruthy();
     expect(container.querySelector('img[src="/community/default-skill-logo.svg"]')).toBeTruthy();
-    await waitFor(() => {
-      expect(fetchMock.mock.calls.some(([input]) => {
-        const url = new URL(input.toString(), 'http://localhost');
-        return url.pathname === '/api/workspace/skills/cloud'
-          && url.searchParams.get('q') === 'visual';
-      })).toBe(true);
-    });
+    expect(fetchMock.mock.calls.filter(([input]) => String(input).startsWith('/api/workspace/skills/cloud?'))).toHaveLength(2);
     expect(screen.queryByRole('searchbox')).toBeNull();
   });
 

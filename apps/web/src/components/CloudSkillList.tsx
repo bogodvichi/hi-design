@@ -1,6 +1,6 @@
 import { responseError, userFacingError } from '../utils/userFacingError';
 import { PageEmptyState } from './PageEmptyState';
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Dialog,
@@ -20,10 +20,8 @@ import {
   SKILL_CATEGORIES,
   emptySkillCategoryCounts,
   normalizeSkillCategory,
-  type SkillCategory,
   type SkillCategoryCounts,
   type SkillCategoryFilter,
-  type CloudResourceWorkspaceContext,
 } from '@open-design/contracts';
 import {
   skillCategoryButtonLabel,
@@ -35,33 +33,8 @@ import { recordCommunityStat } from '../utils/community-stats';
 import { coalescedGet } from '../lib/coalesced-get';
 import { currentWorkspaceContextRequestToken } from '../collab/useWorkspaceContext';
 import { isSkillLogoKey, SkillLogo } from './SkillLogo';
-
-interface CloudSkill extends Partial<CloudResourceWorkspaceContext> {
-  resourceId: string;
-  shareId?: string;
-  localId: string;
-  title: string;
-  description: string | null;
-  ownerMemberId: string;
- version: number | null;
- versionId: string | null;
-createdAt: string;
-updatedAt: string;
-// Shared-with-me fields (only present in shared mode)
-sharedByDisplayname?: string | null;
-provider?: string;
-sourceLabel?: string;
-publisherName?: string | null;
- iconUrl?: string | null;
- logoKey?: string | null;
- installed?: boolean;
- teamShared?: boolean;
- category?: SkillCategory;
- peopleCount?: number | null;
- actionCount?: number | null;
- publicationSourceType?: 'reference' | 'local_import' | 'legacy';
- communitySourceResourceId?: string | null;
-}
+import { readCommunitySkillCatalog, invalidateCommunitySkillCatalog, type CloudSkill } from '../runtime/community-skill-catalog';
+import { communityTextMatchesQuery } from '../utils/community-search';
 
 // Build workspace headers from the string props the parent passes.
 function workspaceHeaders(
@@ -99,6 +72,33 @@ function formatRelativeDate(
   return t('personalScope.cloudSkillUpdatedDaysAgo', { n: days });
 }
 
+type SkillCardBatchProps = { skills: CloudSkill[]; start: number; renderSkill: (skill: CloudSkill) => ReactNode };
+const SkillCardBatch = memo(function SkillCardBatch({ skills, start, renderSkill }: SkillCardBatchProps) {
+  return <>{skills.slice(start, start + 12).map(renderSkill)}</>;
+});
+
+// Keep batch state here so revealing another batch does not rebuild the cards
+// already mounted. Creating the entire catalog's JSX up front also blocks clicks.
+function SkillCardGrid({ skills, renderSkill, progressive }: Omit<SkillCardBatchProps, 'start'> & { progressive: boolean }) {
+  const [visibleCount, setVisibleCount] = useState(12);
+  useEffect(() => {
+    if (!progressive || visibleCount >= skills.length) return;
+    const revealNext = () => setVisibleCount((count) => Math.min(count + 12, skills.length));
+    if (typeof window.requestIdleCallback === 'function') {
+      const handle = window.requestIdleCallback(revealNext, { timeout: 100 });
+      return () => window.cancelIdleCallback(handle);
+    }
+    const handle = window.setTimeout(revealNext, 16);
+    return () => window.clearTimeout(handle);
+  }, [progressive, visibleCount, skills.length]);
+
+  return <div className={styles.cloudSkillGrid}>{progressive
+    ? Array.from({ length: Math.ceil(Math.min(visibleCount, skills.length) / 12) }, (_, index) => (
+      <SkillCardBatch key={index} skills={skills} start={index * 12} renderSkill={renderSkill} />
+    ))
+    : skills.map(renderSkill)}</div>;
+}
+
 export function CloudSkillList({
  workspaceId,
  workspaceMemberId,
@@ -131,6 +131,8 @@ export function CloudSkillList({
   const titleId = useId();
   const [skills, setSkills] = useState<CloudSkill[]>([]);
   const [localSkillIds, setLocalSkillIds] = useState<Set<string>>(new Set());
+  const [localCloudIds, setLocalCloudIds] = useState<Set<string>>(new Set());
+  const [localSkillsReady, setLocalSkillsReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [installingId, setInstallingId] = useState<string | null>(null);
@@ -150,9 +152,17 @@ export function CloudSkillList({
  const [shareItem, setShareItem] = useState<CloudSkill | null>(null);
  const [removeShareId, setRemoveShareId] = useState<string | null>(null);
  const showCommunityControls = mode === 'square' && sourceProvider === 'all';
+ const useCommunityCatalog = mode === 'square' && scope === 'public' && !ownerMemberId
+   && (sourceProvider === 'all' || sourceProvider === 'maas-skillhub' || sourceProvider === 'hdw');
+ const catalogSearch = useCommunityCatalog ? '' : debouncedSearch;
+ const catalogCategory = useCommunityCatalog ? 'all' : activeCategory;
  const categoryMenuRef = useRef<HTMLDivElement | null>(null);
  const categoryMenuPanelRef = useRef<HTMLDivElement | null>(null);
  const loadRequestId = useRef(0);
+ const localRequestId = useRef(0);
+ const identityKey = JSON.stringify([currentWorkspaceContextRequestToken(), workspaceId, workspaceMemberId, workspaceType]);
+ const currentIdentity = useRef(identityKey);
+ currentIdentity.current = identityKey;
 
  useEffect(() => {
    onBusyChange?.(installingId !== null);
@@ -169,6 +179,12 @@ export function CloudSkillList({
  }, []);
 
  const loadLocalSkills = useCallback(async () => {
+   const requestId = ++localRequestId.current;
+   const token = currentWorkspaceContextRequestToken();
+   const isCurrent = () => localRequestId.current === requestId && currentWorkspaceContextRequestToken() === token;
+   setLocalSkillIds(new Set());
+   setLocalCloudIds(new Set());
+   setLocalSkillsReady(false);
    if (!workspaceId) { setLocalSkillIds(new Set()); return; }
    try {
      const res = await fetch('/api/skills', {
@@ -177,18 +193,23 @@ export function CloudSkillList({
      });
      if (!res.ok) return;
   const body = await res.json();
+  if (!isCurrent()) return;
+  const installed = (body.skills ?? []) as Array<{ id: string; cloudResourceId?: string }>;
   const ids = new Set<string>(
-    ((body.skills ?? []) as Array<{ id: string }>).map((s) => s.id.toLowerCase()),
+    installed.map((s) => s.id.toLowerCase()),
   );
   setLocalSkillIds(ids);
+  setLocalCloudIds(new Set(installed.flatMap((skill) => skill.cloudResourceId ? [skill.cloudResourceId] : [])));
+  setLocalSkillsReady(true);
     } catch {
-      // leave the previous set intact
+      // Installation controls stay unavailable until a scoped read succeeds.
     }
   }, [workspaceId, workspaceMemberId, workspaceType]);
 
-  const loadSkills = useCallback(async () => {
+  const loadSkills = useCallback(async (revalidate = false) => {
     const requestId = ++loadRequestId.current;
-    const isCurrent = () => loadRequestId.current === requestId;
+    const token = currentWorkspaceContextRequestToken();
+    const isCurrent = () => loadRequestId.current === requestId && currentWorkspaceContextRequestToken() === token;
     // ── Design intent (do not change) ──────────────────────────────
     // Personal skills are cloud resources owned by the current user,
     // stored in the shared HDW space — NOT local on-disk files. The
@@ -305,7 +326,7 @@ export function CloudSkillList({
       const params = new URLSearchParams();
       const ownerFilter = ownerMemberId ?? workspaceMemberId ?? null;
       if (ownerFilter) params.set('owner_member_id', ownerFilter);
-      if (debouncedSearch) params.set('q', debouncedSearch);
+      if (catalogSearch) params.set('q', catalogSearch);
       const headers = workspaceHeaders(workspaceId, workspaceMemberId, workspaceType);
       const body = await readCloudSkillCatalog(params, headers);
       if (!isCurrent()) return;
@@ -329,38 +350,45 @@ export function CloudSkillList({
       if (ownerFilter) params.set('owner_member_id', ownerFilter);
       if (scope) params.set('scope', scope);
       if (sourceProvider) params.set('source', sourceProvider);
-      if (debouncedSearch) params.set('q', debouncedSearch);
-      if (showCommunityControls && activeCategory !== 'all') params.set('category', activeCategory);
+      if (catalogSearch) params.set('q', catalogSearch);
+      if (showCommunityControls && catalogCategory !== 'all') params.set('category', catalogCategory);
       const headers = workspaceHeaders(workspaceId, workspaceMemberId, workspaceType);
-      if (sourceProvider === 'all') {
-        // Each source can render as soon as it resolves; Skillhub authentication
-        // must not hold back the HiDesign community catalog (or vice versa).
-        const sources = ['maas-skillhub', 'hdw'];
-        const catalogs = new Map<string, SkillCategoryCounts>();
-        setSkills([]);
-        const results = await Promise.allSettled(sources.map(async (source) => {
+      if (useCommunityCatalog) {
+        const sources = sourceProvider === 'all' ? ['maas-skillhub', 'hdw'] : [sourceProvider!];
+        const reads = sources.map((source) => {
           const sourceParams = new URLSearchParams(params);
           sourceParams.set('source', source);
-          const body = await readCloudSkillCatalog(sourceParams, headers);
+          return readCommunitySkillCatalog(sourceParams, headers, token, revalidate);
+        });
+        const catalogs = new Map(sources.flatMap((source, index) => (
+          reads[index]!.cached ? [[source, reads[index]!.cached!] as const] : []
+        )));
+        const publish = () => {
           if (!isCurrent()) return;
-          const list = (body.skills ?? []).map((skill) => ({
-            ...skill,
-            category: normalizeSkillCategory(skill.category),
-          }));
-          catalogs.set(source, { ...emptySkillCategoryCounts(), ...(body.categoryCounts ?? countCategories(list)) });
-          setSkills((current) => [...current, ...list].sort((a, b) => (
-            sources.indexOf(a.provider ?? 'hdw') - sources.indexOf(b.provider ?? 'hdw')
-          )));
-          const counts = emptySkillCategoryCounts();
-          for (const catalog of catalogs.values()) {
-            for (const category of ['all', ...SKILL_CATEGORIES] as const) counts[category] += catalog[category];
+          const list = sources.flatMap((source) => catalogs.get(source) ?? []);
+          setSkills(list);
+          setLoading(list.length === 0 && catalogs.size < sources.length);
+        };
+        publish();
+        const results = await Promise.allSettled(reads.map(async (read, index) => {
+          try {
+            const list = await read.updated;
+            if (catalogs.get(sources[index]!) === list) return;
+            catalogs.set(sources[index]!, list);
+            publish();
+          } catch (error) {
+            const status = (error as { status?: number }).status;
+            if (status === 401 || status === 403) {
+              catalogs.delete(sources[index]!);
+              publish();
+            }
+            throw error;
           }
-          setCategoryCounts(counts);
-          if (list.length > 0) setLoading(false);
         }));
         if (!isCurrent()) return;
-        const hdwResult = results[1];
+        const hdwResult = results[sources.indexOf('hdw')];
         if (hdwResult?.status === 'rejected') throw hdwResult.reason;
+        if (results.every((result) => result.status === 'rejected')) throw (results[0] as PromiseRejectedResult).reason;
         return;
       }
       const body = await readCloudSkillCatalog(params, headers);
@@ -383,7 +411,7 @@ export function CloudSkillList({
    } finally {
      if (isCurrent()) setLoading(false);
    }
- }, [workspaceId, workspaceMemberId, workspaceType, ownerMemberId, mode, scope, sourceProvider, debouncedSearch, showCommunityControls, activeCategory, countCategories, t]);
+ }, [workspaceId, workspaceMemberId, workspaceType, ownerMemberId, mode, scope, sourceProvider, catalogSearch, showCommunityControls, catalogCategory, useCommunityCatalog, countCategories, t]);
 
 useEffect(() => {
   const timer = window.setTimeout(() => setDebouncedSearch(effectiveSearchQuery.trim()), 250);
@@ -445,21 +473,31 @@ useLayoutEffect(() => {
 }, [categoryMenuOpen]);
 
 useEffect(() => {
-  void Promise.all([loadSkills(), loadLocalSkills()]);
+  void loadSkills(true);
   return () => { loadRequestId.current += 1; };
-}, [loadSkills, loadLocalSkills]);
+}, [loadSkills]);
+
+useEffect(() => {
+  void loadLocalSkills();
+  return () => { localRequestId.current += 1; };
+}, [loadLocalSkills]);
 
  useEffect(() => {
    const handler = (event: Event) => {
-     if (event instanceof CustomEvent && event.detail?.source === 'cloud-skill-list') return;
+     if (event instanceof CustomEvent && event.detail?.source === 'cloud-skill-list') {
+       if (event.detail.instanceId !== titleId) void loadLocalSkills();
+       return;
+     }
+     invalidateCommunitySkillCatalog(event);
      void loadSkills();
      void loadLocalSkills();
    };
     window.addEventListener('personal:skill-refresh', handler);
     return () => window.removeEventListener('personal:skill-refresh', handler);
-  }, [loadSkills, loadLocalSkills]);
+  }, [loadSkills, loadLocalSkills, titleId]);
 
   async function handleInstall(skill: CloudSkill) {
+    const issuedIdentity = currentIdentity.current;
     setInstallingId(skill.resourceId);
     setError(null);
    try {
@@ -476,7 +514,10 @@ useEffect(() => {
         throw await responseError(res);
       }
       const body = await res.json() as { localId?: string };
+      if (currentIdentity.current !== issuedIdentity) return;
       const installedLocalId = body.localId || skill.localId;
+      const cloudId = skill.provider === 'maas-skillhub' ? `maas-skillhub:${skill.resourceId}` : skill.resourceId;
+      setLocalCloudIds((current) => new Set(current).add(cloudId));
      setLocalSkillIds((current) => new Set([...current].concat(installedLocalId.toLowerCase())));
       setSkills((current) => current.map((item) => (
         item.resourceId === skill.resourceId
@@ -504,7 +545,7 @@ useEffect(() => {
         }
       }
       window.dispatchEvent(new CustomEvent('personal:skill-refresh', {
-        detail: { source: 'cloud-skill-list' },
+        detail: { source: 'cloud-skill-list', instanceId: titleId },
       }));
     } catch (err: any) {
       setError(userFacingError(err, t, 'feedback.installFailed', t('feedback.objectSkill')));
@@ -514,6 +555,7 @@ useEffect(() => {
   }
 
   async function handleUninstall(skill: CloudSkill) {
+   const issuedIdentity = currentIdentity.current;
    setUninstallingId(skill.resourceId);
    setError(null);
    try {
@@ -529,6 +571,13 @@ useEffect(() => {
       if (!res.ok) {
         throw await responseError(res);
       }
+      if (currentIdentity.current !== issuedIdentity) return;
+      const cloudId = skill.provider === 'maas-skillhub' ? `maas-skillhub:${skill.resourceId}` : skill.resourceId;
+      setLocalCloudIds((current) => {
+        const next = new Set(current);
+        next.delete(cloudId);
+        return next;
+      });
       setLocalSkillIds((current) => {
         const next = new Set(current);
         next.delete(skill.localId.toLowerCase());
@@ -538,7 +587,7 @@ useEffect(() => {
         item.resourceId === skill.resourceId ? { ...item, installed: false } : item
       )));
       window.dispatchEvent(new CustomEvent('personal:skill-refresh', {
-        detail: { source: 'cloud-skill-list' },
+        detail: { source: 'cloud-skill-list', instanceId: titleId },
       }));
     } catch (err: any) {
       setError(userFacingError(err, t, 'feedback.uninstallFailed', t('feedback.objectSkill')));
@@ -564,6 +613,7 @@ useEffect(() => {
         throw await responseError(res);
       }
       // Actively refresh both cloud list and local installed set after delete
+      invalidateCommunitySkillCatalog();
       await Promise.all([loadSkills(), loadLocalSkills()]);
     } catch (err: any) {
       setError(userFacingError(err, t, 'feedback.deleteFailed', t('feedback.objectSkill')));
@@ -587,6 +637,7 @@ useEffect(() => {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.message || body.error || 'Update publication failed');
       }
+      invalidateCommunitySkillCatalog();
       await Promise.all([loadSkills(), loadLocalSkills()]);
     } catch (err: any) {
       setError(userFacingError(err, t, 'feedback.updatePublicationFailed', t('feedback.objectSkill')));
@@ -608,6 +659,7 @@ useEffect(() => {
       if (!res.ok) {
         throw await responseError(res);
       }
+      invalidateCommunitySkillCatalog();
       await Promise.all([loadSkills(), loadLocalSkills()]);
     } catch (err: any) {
       setError(userFacingError(err, t, 'feedback.unpublishFailed', t('feedback.objectSkill')));
@@ -616,6 +668,14 @@ useEffect(() => {
       setConfirmAction(null);
     }
   }
+
+  const searchedSkills = useCommunityCatalog ? skills.filter((skill) => communityTextMatchesQuery([
+    skill.title, skill.localId, skill.description, skill.publisherName, skill.sourceLabel,
+  ], effectiveSearchQuery)) : skills;
+  const visibleSkills = useCommunityCatalog && activeCategory !== 'all'
+    ? searchedSkills.filter((skill) => normalizeSkillCategory(skill.category) === activeCategory)
+    : searchedSkills;
+  const visibleCounts = useCommunityCatalog ? countCategories(searchedSkills) : categoryCounts;
 
   const fallbackSearchControl = sourceProvider === 'maas-skillhub' && !showCommunityControls ? (
     <label className={styles.searchBox}>
@@ -671,7 +731,7 @@ useEffect(() => {
                 setCategoryMenuOpen(false);
               }}
             >
-              {skillCategoryLabel(category, locale)} ({categoryCounts[category]})
+              {skillCategoryLabel(category, locale)} ({visibleCounts[category]})
             </button>
           ))}
         </div>
@@ -724,7 +784,7 @@ useEffect(() => {
     );
   }
 
-  if (error && skills.length === 0) {
+  if (error && visibleSkills.length === 0) {
     return (
       <>
         {controlsPortal}
@@ -736,7 +796,7 @@ useEffect(() => {
     );
   }
 
-  if (skills.length === 0) {
+  if (visibleSkills.length === 0) {
     return (
       <>
         {controlsPortal}
@@ -807,9 +867,11 @@ useEffect(() => {
       {controlsPortal}
       {inlineControls}
       {error ? <div className={styles.cloudSkillError} role="alert">{error}</div> : null}
-      <div className={styles.cloudSkillGrid}>
-        {skills.map((skill) => {
-         const isInstalled = skill.installed === true
+      <SkillCardGrid progressive={useCommunityCatalog}
+        key={JSON.stringify([identityKey, effectiveSearchQuery, activeCategory])}
+        skills={visibleSkills} renderSkill={(skill) => {
+         const cloudId = skill.provider === 'maas-skillhub' ? `maas-skillhub:${skill.resourceId}` : skill.resourceId;
+         const isInstalled = localCloudIds.has(cloudId) || (!useCommunityCatalog && skill.installed === true)
            || skill.teamShared === true
           || (skill.provider !== 'maas-skillhub' && localSkillIds.has(skill.localId.toLowerCase()));
           const canManageCloudRecord = skill.provider !== 'maas-skillhub' && !skill.resourceId.startsWith('team:');
@@ -846,7 +908,7 @@ useEffect(() => {
             description={skill.description} installed={isInstalled} installing={installingId === skill.resourceId} uninstalling={uninstallingId === skill.resourceId}
             busy={!!installingId || !!uninstallingId || !!unpublishingId || !!updatingId || !!deletingId}
             onInstall={() => void handleInstall(skill)}
-             canConnect={mode !== 'team' || (memberRole != null && memberRole !== 'guest')}
+             canConnect={(!useCommunityCatalog || localSkillsReady) && (mode !== 'team' || (memberRole != null && memberRole !== 'guest'))}
             actions={picker ? {} : {
               ...(canShare ? { share: () => setShareItem(skill) } : {}),
               ...(isInstalled && !skill.teamShared ? { uninstall: () => void handleUninstall(skill) } : {}),
@@ -860,8 +922,7 @@ useEffect(() => {
               primaryLabel={locale.startsWith('zh') ? '接入人数' : 'Connected users'}
               secondaryLabel={locale.startsWith('zh') ? '接入次数' : 'Connections'} /> : null}
           />;
-        })}
-      </div>
+        }} />
       {typeof document !== 'undefined' && dialog ? createPortal(dialog, document.body) : dialog}
       {removeShareId ? <RemoveSharedResourceDialog key={removeShareId} shareId={removeShareId} kind="skill"
         resourceName={skills.find((item) => item.shareId === removeShareId)?.title ?? t('feedback.objectSkill')}
