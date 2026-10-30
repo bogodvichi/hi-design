@@ -5,6 +5,35 @@
 const path = require('path');
 const fs = require('fs');
 
+const HIDE_SIGN_SSO_CREDENTIAL_PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----
+MIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCXlgmDdTAVXYyt
+9MO8rJ6Zv6+dop34w0P6M39WpVlUX7h4jV/M1jdefo76MCUOM0mZhsCWareNRV74
+02XU7hK2jMjIJjCuUN2mCTnLQD2sYydVhmqXjncTc2x0mCahTbIBSViIcSUD/edg
+GTy1+haBtrR2CohZQ2dB8idyM4ZTbxdJQNYvBOd3lij3xf+949k2sFtDQaFTUT9t
+iKBSZKg1HylN1gbHXMfhaEK54o0cSzzvCWEtPtvAYibI0aup1xQxP3U2cyQ/bZG4
+pZH9c7N/5h0mkvj59l65GAJlUY+hyWro12/DTpp3E4nIh4AQFB6vVBHH2zw97oYT
+pMLw47IhAgMBAAECggEAASKRhjkv6Xu1rHTkHhd+WvhAhoyyx488hQNA7I/G8tie
+o5nHZbEyC/DPb18leMYGwsckeJS/3zWKC3SXjBuPI8GQqqTGHjVbzUsxKzQM/p1J
+AdX9b46GXZ5rW2vrH3ba24bUrgsV8+ykuWBRqsdiOMJQL/FqzWROFyC1ja6ih3ad
+XWFo4JUKP2SYnotRcVY4n672nv7hIGB4fX0CNFHP65Z2eZ+b4OhYP7s+d0cFLiVV
+RXhuv3kwcTkGFfOqq7qYg5cGsaiY9uihlhrcUbr+91RdANwh3+sU32dVGPEv18RT
+xmBrmTn6t0Jox3qyE6DQ952ntkmBhEZaj18+UV+2WQKBgQDO8wbD01LA35ydDRmo
+r1xubDt+07kXm3Vu1D2K40NrorSi8fToM0iQfaJmOOEYVbGe/BbUI6RYizzfu4sy
+8QJCKNg5XHdeKHJxgJuW4o2L6+oN+kuMjslS/96GGBtauQbUjdcwYCMvNUWrcTp4
+2N4pUMNS7s/hjZqXYeO+0vShNQKBgQC7g8J49aJ5JBkwUU2LyBMaYsyxNzEQWhRX
+cg1PHIWXxfMV1XlVQmCl1IvhgbVe89WYbdAI/E303STxVc1R4eBB88aj2/niOm8s
+Wu6pRQx0GGCguKCJk82K4FScw21E5wxiHC58uWFMS58v3kFZH9lW5qj6O8n8WZ9m
+vKNME5m2vQKBgBs9HZzUycWdKQ361W/AdRgLouEUmP4kdhZ6VQdc1ljqd4Ai/Ks7
+ZMev4Zo2zlnXnaNhZtfRQSZuXTrNgorX8gYnPh5+ry9zf2y1EsWPWDYcfRgN47fC
+a3lDOFTKA3+zbtS3PqWdYcQq7Nqd8qZJVSR2/t6BlFcJvllChylstsopAoGBAIVk
+ZMqhirP8rwKFQ9HlQVmq4QxMQ9XrDr9qPfeCRbLDOXrVwpuZPaGaQuvn1rs2YEMw
+EybhPR+s1aPsssPGGD8yiKN2UBvUD9QQ1+iIWySXVt3emS1lfHmHvglKqIe0iUWd
+4KAPTBz3SsXFqN0a4ASGz7w7HiQrKU7vcIclBltNAoGBAJvXlkhN7JiGtkWDdwRQ
+sum4NMjFJqXVzBfpCSYUV4wy2CtURlcF9LXlKnTtG/0qLKcC2MxUFGdPoyi4Lt5P
+MpR2hmRiMbnNrDQW+BUlie6RLhb/JJlzholmXHgu6ymXKjmWPlgx5Aqaj0th+XdR
+g7jTIs/H5Flki4jHAxO/RKap
+-----END PRIVATE KEY-----`;
+
 function readOptionalPem(file) {
   if (!file) return { content: '', error: '' };
   try {
@@ -170,6 +199,14 @@ module.exports = appInfo => {
     mcpUpstreamUrl:
       process.env.AI_RESEARCH_MCP_UPSTREAM_URL
       || 'https://drw.hikvision.com/api/research-mcp',
+  };
+
+  // Deferred Hikke/UEDRO passwords are sealed by the desktop daemon with the
+  // matching public key. This value is intentionally embedded in the central
+  // service config; rotate the pair and key ID if it needs to be replaced.
+  config.ssoCredential = {
+    privateKey: HIDE_SIGN_SSO_CREDENTIAL_PRIVATE_KEY,
+    keyId: 'hidesign-sso-01',
   };
 
   // 数据库配置

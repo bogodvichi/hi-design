@@ -10,7 +10,7 @@ import {
   shouldBypassProxy,
   type Cookie,
 } from '../../../http/http.js';
-import { readSsoConfigFile } from '../../../http/hik_logins/hicoo.js';
+import { ensureHikkeSession } from '../../../http/hik_logins/session-guard.js';
 import { HIKKE_ORIGIN } from '../../../http/hik_logins/hikke.js';
 
 /**
@@ -221,18 +221,6 @@ function rewriteImageUrls(html: string): string {
   });
 }
 
-/** 从本地 SSO session 取出海客会话 token + cookie；缺失时返回 null。 */
-function readHikkeSession(
-  dataDir: string,
-): { hikkeToken: string; cookies: Cookie[]; userInfo: Record<string, unknown> } | null {
-  const session = readSsoConfigFile(dataDir);
-  const hikke = session?.hikke;
-  if (!hikke?.hikkeToken) return null;
-  const cookies = hikke.cookies?.length ? hikke.cookies : [];
-  const userInfo = (hikke.userInfo ?? {}) as Record<string, unknown>;
-  return { hikkeToken: hikke.hikkeToken, cookies, userInfo };
-}
-
 /** 构造海客上游请求头：Authorization + 浏览器同源头 + 语言。 */
 function hikkeHeaders(hikkeToken: string): Record<string, string> {
   return {
@@ -256,7 +244,7 @@ export function registerHikHikkeRoutes(app: Express, deps: RegisterHikHikkeRoute
    * 未登录时返回 401，前端引导用户重新登录。
    */
   app.get('/api/hik/hikke/session', async (_req, res) => {
-    const hikke = readHikkeSession(dataDir);
+    const hikke = await ensureHikkeSession(dataDir);
     if (!hikke) {
       return sendApiError(res, 401, 'UNAUTHORIZED', 'hikke session not found, please login first');
     }
@@ -278,7 +266,7 @@ export function registerHikHikkeRoutes(app: Express, deps: RegisterHikHikkeRoute
    * 前端反馈对话框用它填充「反馈类别」下拉。
    */
   app.get('/api/hik/hikke/demand-class', async (req, res) => {
-    const hikke = readHikkeSession(dataDir);
+    const hikke = await ensureHikkeSession(dataDir);
     if (!hikke) {
       return sendApiError(res, 401, 'UNAUTHORIZED', 'hikke session not found, please login first');
     }
@@ -312,7 +300,7 @@ export function registerHikHikkeRoutes(app: Express, deps: RegisterHikHikkeRoute
    * 透传上游 `GET /minder-demand/v1/demand/:id`。
    */
   app.get('/api/hik/hikke/demand/:id', async (req, res) => {
-    const hikke = readHikkeSession(dataDir);
+    const hikke = await ensureHikkeSession(dataDir);
     if (!hikke) {
       return sendApiError(res, 401, 'UNAUTHORIZED', 'hikke session not found, please login first');
     }
@@ -352,7 +340,7 @@ export function registerHikHikkeRoutes(app: Express, deps: RegisterHikHikkeRoute
    * 调用方可覆盖。未登录或无 hikke token 时返回 401。
    */
   app.post('/api/hik/hikke/demand', async (req, res) => {
-    const hikke = readHikkeSession(dataDir);
+    const hikke = await ensureHikkeSession(dataDir);
     if (!hikke) {
       return sendApiError(res, 401, 'UNAUTHORIZED', 'hikke session not found, please login first');
     }
@@ -421,7 +409,7 @@ export function registerHikHikkeRoutes(app: Express, deps: RegisterHikHikkeRoute
         return sendApiError(res, 400, 'BAD_REQUEST', 'hikke upload receive failed: ' + (err?.message || String(err)));
       }
       void (async () => {
-        const hikke = readHikkeSession(dataDir);
+        const hikke = await ensureHikkeSession(dataDir);
         if (!hikke) {
           return sendApiError(res, 401, 'UNAUTHORIZED', 'hikke session not found, please login first');
         }
@@ -478,7 +466,7 @@ export function registerHikHikkeRoutes(app: Express, deps: RegisterHikHikkeRoute
    * 响应原样返回上游的 Content-Type / body（二进制流）。
    */
   app.get('/api/hik/hikke/download', async (req, res) => {
-    const hikke = readHikkeSession(dataDir);
+    const hikke = await ensureHikkeSession(dataDir);
     if (!hikke) {
       return sendApiError(res, 401, 'UNAUTHORIZED', 'hikke session not found, please login first');
     }

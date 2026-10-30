@@ -15,6 +15,7 @@ import {
   type Cookie,
 } from '../../../http/http.js';
 import { readSsoConfigFile } from '../../../http/hik_logins/hicoo.js';
+import { ensureUedroSession } from '../../../http/hik_logins/session-guard.js';
 import { UEDRO_BASE, UEDRO_LOGIN_URL, uedroHeaders } from '../../../http/hik_logins/uedro.js';
 
 /**
@@ -129,13 +130,6 @@ export function htmlReviewMultipartParts(body: Record<string, unknown>): { name:
   ];
 }
 
-/** 从本地 SSO session 取出羽点会话 cookie；缺失时返回 null 并由调用方回 401。 */
-function readUedroCookies(dataDir: string): Cookie[] | null {
-  const session = readSsoConfigFile(dataDir);
-  const uedroCookies = session?.uedro?.cookies;
-  return uedroCookies?.length ? uedroCookies : null;
-}
-
 export function registerHikUedroRoutes(app: Express, deps: RegisterHikUedroRoutesDeps): void {
   const { dataDir, sendApiError } = deps;
 
@@ -150,8 +144,7 @@ export function registerHikUedroRoutes(app: Express, deps: RegisterHikUedroRoute
    */
   app.post('/api/hik/uedro/reviewList', async (req, res) => {
     try {
-      const session = readSsoConfigFile(dataDir);
-      const uedroCookies = session?.uedro?.cookies;
+      const uedroCookies = await ensureUedroSession(dataDir);
       if (!uedroCookies?.length) {
         return sendApiError(res, 401, 'UNAUTHORIZED', 'uedro session not found, please login first');
       }
@@ -205,8 +198,8 @@ export function registerHikUedroRoutes(app: Express, deps: RegisterHikUedroRoute
    */
   app.post('/api/hik/uedro/userList', async (req, res) => {
     try {
+      const uedroCookies = await ensureUedroSession(dataDir);
       const session = readSsoConfigFile(dataDir);
-      const uedroCookies = session?.uedro?.cookies;
       if (!uedroCookies?.length) {
         return sendApiError(res, 401, 'UNAUTHORIZED', 'uedro session not found, please login first');
       }
@@ -266,8 +259,7 @@ export function registerHikUedroRoutes(app: Express, deps: RegisterHikUedroRoute
    */
   app.post('/api/hik/uedro/projectList', async (req, res) => {
     try {
-      const session = readSsoConfigFile(dataDir);
-      const uedroCookies = session?.uedro?.cookies;
+      const uedroCookies = await ensureUedroSession(dataDir);
       if (!uedroCookies?.length) {
         return sendApiError(res, 401, 'UNAUTHORIZED', 'uedro session not found, please login first');
       }
@@ -313,8 +305,8 @@ export function registerHikUedroRoutes(app: Express, deps: RegisterHikUedroRoute
    * 上游若返回 JSON（鉴权失败 / 稿件不存在），content-type 是 application/json，
    * 此时按 JSON 错误体处理而不是当文件下载。3xx 跟随重定向并合并 cookie。
    */
-  app.get('/api/hik/uedro/downloadManuscript', (req, res) => {
-    const uedroCookies = readUedroCookies(dataDir);
+  app.get('/api/hik/uedro/downloadManuscript', async (req, res) => {
+    const uedroCookies = await ensureUedroSession(dataDir);
     if (!uedroCookies) {
       return sendApiError(res, 401, 'UNAUTHORIZED', 'uedro session not found, please login first');
     }
@@ -335,7 +327,7 @@ export function registerHikUedroRoutes(app: Express, deps: RegisterHikUedroRoute
    * 上游响应 `{ code:'0', msg:'success', data:null }`，code !== '0' 视为失败。
    */
   app.post('/api/hik/uedro/urge', async (req, res) => {
-    const uedroCookies = readUedroCookies(dataDir);
+    const uedroCookies = await ensureUedroSession(dataDir);
     if (!uedroCookies) {
       return sendApiError(res, 401, 'UNAUTHORIZED', 'uedro session not found, please login first');
     }
@@ -370,7 +362,7 @@ export function registerHikUedroRoutes(app: Express, deps: RegisterHikUedroRoute
    * status=true 开启通知，false 关闭。code !== '0' 视为失败。
    */
   app.post('/api/hik/uedro/editSubscriptionStatus', async (req, res) => {
-    const uedroCookies = readUedroCookies(dataDir);
+    const uedroCookies = await ensureUedroSession(dataDir);
     if (!uedroCookies) {
       return sendApiError(res, 401, 'UNAUTHORIZED', 'uedro session not found, please login first');
     }
@@ -410,7 +402,7 @@ export function registerHikUedroRoutes(app: Express, deps: RegisterHikUedroRoute
    * 用 GET 形式而非 postUedroJson，因上游是 GET（无请求体）。
    */
   app.get('/api/hik/uedro/reviewOne', async (req, res) => {
-    const uedroCookies = readUedroCookies(dataDir);
+    const uedroCookies = await ensureUedroSession(dataDir);
     if (!uedroCookies) {
       return sendApiError(res, 401, 'UNAUTHORIZED', 'uedro session not found, please login first');
     }
@@ -508,7 +500,7 @@ export function registerHikUedroRoutes(app: Express, deps: RegisterHikUedroRoute
    * 由前端 JSON.parse 后填入评审名称下拉。`[null]` 表示该项目无可用模板。
    */
   app.post('/api/hik/uedro/reviewName', async (req, res) => {
-    const uedroCookies = readUedroCookies(dataDir);
+    const uedroCookies = await ensureUedroSession(dataDir);
     if (!uedroCookies) {
       return sendApiError(res, 401, 'UNAUTHORIZED', 'uedro session not found, please login first');
     }
@@ -553,7 +545,7 @@ export function registerHikUedroRoutes(app: Express, deps: RegisterHikUedroRoute
       next();
     });
   }, async (req, res) => {
-    const uedroCookies = readUedroCookies(dataDir);
+    const uedroCookies = await ensureUedroSession(dataDir);
     if (!uedroCookies) {
       return sendApiError(res, 401, 'UNAUTHORIZED', 'uedro session not found, please login first');
     }
@@ -606,7 +598,7 @@ export function registerHikUedroRoutes(app: Express, deps: RegisterHikUedroRoute
       next();
     });
   }, async (req, res) => {
-    const uedroCookies = readUedroCookies(dataDir);
+    const uedroCookies = await ensureUedroSession(dataDir);
     if (!uedroCookies) {
       return sendApiError(res, 401, 'UNAUTHORIZED', 'uedro session not found, please login first');
     }
@@ -775,7 +767,7 @@ export function registerHikUedroRoutes(app: Express, deps: RegisterHikUedroRoute
    * 上游响应 `{code:'0'}` 视为成功。
    */
   app.get('/api/hik/uedro/reviewRepeat', async (req, res) => {
-    const uedroCookies = readUedroCookies(dataDir);
+    const uedroCookies = await ensureUedroSession(dataDir);
     if (!uedroCookies) {
       return sendApiError(res, 401, 'UNAUTHORIZED', 'uedro session not found, please login first');
     }
@@ -869,8 +861,8 @@ export function registerHikUedroRoutes(app: Express, deps: RegisterHikUedroRoute
  * @param sendApiError 错误响应工具
  */
 function createUedroProxyHandler(mountPath: string, dataDir: string, sendApiError: (...args: any[]) => any) {
-  return (req: any, res: any) => {
-    const uedroCookies = readUedroCookies(dataDir);
+  return async (req: any, res: any) => {
+    const uedroCookies = await ensureUedroSession(dataDir);
     if (!uedroCookies) {
       return sendApiError(res, 401, 'UNAUTHORIZED', 'uedro session not found, please login first');
     }
@@ -1104,7 +1096,7 @@ function rewriteUrl(u: string): string {
  * 统一封装「取 uedro cookie → POST 上游 → 解析 JSON → 回 `{ ok, data }`」。
  *
  * subProcess/reviewProgress/progressQuantity 三个详情路由结构完全
- * 一致，抽出公共逻辑避免每个路由各写一遍 try/catch + JSON.parse。与 `readUedroCookies`
+ * 一致，抽出公共逻辑避免每个路由各写一遍 try/catch + JSON.parse。与 `ensureUedroSession`
  * 同属 uedro 路由的复用层。
  *
  * - `buildBody`：从请求体挑字段并施加类型校验/缺省，产出上游请求体。
@@ -1127,7 +1119,7 @@ async function postUedroJson(
     mapData?: (upstream: any) => any;
   },
 ): Promise<void> {
-  const uedroCookies = readUedroCookies(opts.dataDir);
+  const uedroCookies = await ensureUedroSession(opts.dataDir);
   if (!uedroCookies) {
     return opts.sendApiError(res, 401, 'UNAUTHORIZED', 'uedro session not found, please login first');
   }

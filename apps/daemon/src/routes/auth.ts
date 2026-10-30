@@ -22,12 +22,9 @@ import {
 import {
   createUedroLaunchUrl,
   normalizeUedroLaunchTarget,
-  uedroLogin,
   uedroLogout,
-  uedroValidate,
-  type UedroInfo,
 } from '../http/hik_logins/uedro.js';
-import { hikkeLogin, hikkeValidate, type HikkeLoginResult } from '../http/hik_logins/hikke.js';
+import { encryptPassword, ensureUedroSession } from '../http/hik_logins/session-guard.js';
 import { normalizeLoginError } from '../http/hik_logins/login-error.js';
 import {
   fetchAiResearchLaunch,
@@ -126,10 +123,9 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
 
   function setSsoSession(
     username: string,
+    deferredPassword: string,
     userInfo?: any,
     cookies?: Cookie[],
-    uedro?: UedroInfo,
-    hikke?: HikkeLoginResult,
   ) {
     const session: SsoSession = {
       cookies: cookies || [],
@@ -137,20 +133,8 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
       userInfo,
       loginAt: Date.now(),
     };
-    if (uedro) {
-      session.uedro = {
-        cookies: uedro.cookies
-      };
-    }
-    if (hikke) {
-      session.hikke = {
-        hikkeToken: hikke.hikkeToken,
-        testToken: hikke.testToken,
-        userInfo: hikke.userInfo,
-        loginAt: hikke.loginAt,
-       cookies: hikke.cookies,
-      };
-    }
+    session.uedro = { password: encryptPassword(deferredPassword) };
+    session.hikke = { password: encryptPassword(deferredPassword) };
     writeSsoConfigFile(dataDir, session, FOR_DESIGNER_DIR);
   }
 
@@ -166,44 +150,17 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
     if (!username || !password) {
       return sendApiError(res, 400, 'BAD_REQUEST', 'username and password are required');
     }
-    async function done_uedproLogin() {
-      // a. 接入羽点登录，https://uedro.hikvision.com.cn/portal/ui/login?service=https%3A%2F%2Fuedro.hikvision.com.cn%3A443%2Fportal%2F
-      // SSO 登录成功后，用同一账号顺带登录羽点门户，写入登录后信息。
-      // 羽点登录失败不阻断主登录流程，仅记录告警，保证 SSO 会话可用。
-      let uedro = null;
-      try {
-        const uedroResult = await uedroLogin(username, password);
-        if (uedroResult.ok) {
-          uedro = uedroResult
-        }
-      } catch (uedroErr: unknown) {
-        const failure = normalizeLoginError('uedro', uedroErr);
-        console.warn('uedro login failed:', { status: failure.status, code: failure.code });
-      }
-      return uedro;
-    }
-    // Hikke is the required primary platform: establish and initialize its session first.
-    let hikke: HikkeLoginResult;
-    try {
-      hikke = await hikkeLogin(username, password);
-    } catch (hikkeErr: unknown) {
-      // Do not log credentials or token values.
-      const failure = normalizeLoginError('hikke', hikkeErr);
-      console.warn('Hikke login failed:', { status: failure.status, code: failure.code });
-      return sendApiError(res, failure.status, failure.code, failure.message);
-    }
-
     let result: any = null;
     let error = null;
-    // 2. 尝试海康 SSO 登录
+    // Hicoo is the only login gate. Hikke and UEDRO are prepared for deferred
+    // login instead of making the initial sign-in wait on them.
     try {
       result = await hicooLogin(username, password);
     } catch (err: unknown) {
       error = normalizeLoginError('hicoo', err);
       console.warn('SSO login failed:', { status: error.status, code: error.code });
     }
-    const uedro: any = await done_uedproLogin();
-    if (result || uedro || hikke) {
+    if (result) {
       const uplusAvatar = await withTimeout(
         fetchUplusAvatar(username, password),
         UPLUS_AVATAR_TIMEOUT_MS,
@@ -216,17 +173,16 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
           businessCode: uplusAvatar.businessCode,
         });
       }
-      const baseUserInfo = result?.userInfo || uedro?.userInfo || hikke?.userInfo;
+      const baseUserInfo = result?.userInfo;
       const userInfo = uplusAvatar.ok && uplusAvatar.avatarUrl
         ? { ...(baseUserInfo ?? {}), avatarUrl: uplusAvatar.avatarUrl }
         : baseUserInfo;
-      // 将 SSO cookie 及羽点登录信息写入本地 session
+      // 将 SSO cookie 写入本地 session，并保存两个平台的延迟登录密码。
       setSsoSession(
         result?.username || username,
+        password,
         userInfo,
         result?.cookies,
-        uedro,
-        hikke,
       );
       if (uplusAvatar.ok && uplusAvatar.avatarUrl) {
         const communityAvatarSynced = await trySyncCommunityAvatar(
@@ -240,7 +196,6 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
       const response: LoginResponse = {
         ok: true,
         username,
-        uedro,
         userInfo
       };
       res.json(response);
@@ -300,8 +255,7 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
       return sendApiError(res, 400, 'BAD_REQUEST', 'targetUrl must be an official UEDRO page');
     }
 
-    const session = getSsoCookie();
-    const cookies = session.uedro?.cookies;
+    const cookies = await ensureUedroSession(dataDir);
     if (!cookies?.length) {
       return sendApiError(res, 401, 'UNAUTHORIZED', 'UEDRO login is required');
     }
@@ -391,21 +345,15 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
     try {
       const session = getSsoCookie();
       const result = await hicooValidate(session, dataDir, FOR_DESIGNER_DIR);
-      const uedroResult = await uedroValidate(session.uedro?.cookies);
-      const hikkeResult = await hikkeValidate(session.hikke);
-      if ((!result.ok&&!session.userInfo)//OA登录没成功并且也没有得到用户信息，说明后续没有其他的系统登录成功过
-        || !uedroResult.ok // 如果羽点超时，需要重登录
-        || !hikkeResult.ok // 如果骇海客超时，需要重新登录
-      ) {
+      if (!result.ok && !session.userInfo) {
         // 会话失效，清除本地 session
         clearSsoSession();
-        const response: any = { ok: false, username: result.username || '', uedroResult, hikkeResult };
+        const response: any = { ok: false, username: result.username || '' };
         return res.json(response);
       }
       // 会话有效
       const response: any = {
         ok: true,
-        uedroResult,
         username: result.username,
         userInfo: result.userInfo
       };

@@ -243,27 +243,6 @@ function LoginScreen({ onAuthed, fingerprint }: { onAuthed: (cb:any) => void; fi
     try {
       const result = await login(name, password, remember);
       if (result.ok) {
-        // 登录成功后拉取羽点评审列表（联调验证）
-        fetch('/api/hik/uedro/reviewList', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            reviewName: '',
-            processType: 0,
-            reviewModel: 0,
-            reviewType: '',
-            pageSize: 9,
-            pageNo: 1,
-            total: 0,
-          }),
-        })
-          .then((res) => res.json())
-          .then((data) => {
-            console.log('uedro reviewList', data);
-          })
-          .catch((err) => {
-            console.warn('uedro reviewList failed', err);
-          });
         onAuthed(()=>{
           setPending(false);
         });

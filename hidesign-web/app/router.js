@@ -14,6 +14,7 @@ module.exports = app => {
   router.post('/hdw/api/auth/ai-research/launch', controller.api.aiResearchSso.launch);
   router.post('/hdw/api/auth/himind/mcp-token', controller.api.himindSso.mcpToken);
   router.post('/hdw/api/auth/ai-research/mcp-token', controller.api.aiResearchSso.mcpToken);
+  router.post('/hdw/api/auth/sso-credential/decrypt', controller.api.ssoCredential.decrypt);
   router.all('/hdw/api/mcp/himind', controller.api.himindMcpProxy.forward);
   // api:team // 团队管理
   router.post('/hdw/api/team/add', access('team', 'add'), controller.api.team.add);

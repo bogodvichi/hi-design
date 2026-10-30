@@ -35,6 +35,8 @@ export interface SsoSession {
   deviceHash?: string;
   /** 羽点（uedro）门户登录信息，SSO 登录成功后顺带写入。 */
   uedro?: {
+    /** Device-bound encrypted password, kept for deferred UEDRO re-login. */
+    password?: string;
     cookies?: Cookie[] | undefined;
     serviceUrl?: string | undefined;
     casJwt?: string | undefined;
@@ -43,6 +45,8 @@ export interface SsoSession {
   } | any;
   /** 海客 Hikke tokens/profile acquired during the same login. */
   hikke?: {
+    /** Device-bound encrypted password, kept for deferred Hikke re-login. */
+    password?: string;
     hikkeToken?: string;
     testToken?: string;
     userInfo?: Record<string, unknown>;
@@ -84,7 +88,7 @@ export function extractJwtToken(cookies: Cookie[]): string | undefined {
 }
 
 /** 获取设备指纹（MAC地址 + 主机名） */
-function getDeviceFingerprint(): string {
+export function getDeviceFingerprint(): string {
   const interfaces = os.networkInterfaces();
   let mac = '';
   for (const name of Object.keys(interfaces)) {
