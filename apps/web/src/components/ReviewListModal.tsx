@@ -1,3 +1,4 @@
+import { Toast } from './Toast';
 import { userFacingError } from '../utils/userFacingError';
 import { useT } from '../i18n';
 ﻿import { useEffect, useRef, useState } from 'react';
@@ -533,13 +534,6 @@ function ReviewCard({
     return () => document.removeEventListener('mousedown', onDocClick);
   }, [menu.open]);
 
-  // toast 展示 2.5s 后自动清除，避免状态残留。
-  useEffect(() => {
-    if (!menu.toast) return;
-    const t = setTimeout(() => setMenu((m) => ({ ...m, toast: null })), 2500);
-    return () => clearTimeout(t);
-  }, [menu.toast]);
-
   const reviewId = pick(r?.reviewId, r?.id);
   const manuscriptId = r?.manuscriptDtos?.[0]?.manuscriptId;
   const hasManuscript = Boolean(manuscriptId);
@@ -849,9 +843,8 @@ function ReviewCard({
             </div>
           ) : null}
           {menu.toast ? (
-            <span className={`${styles.actionToast} ${menu.toast.tone === 'err' ? styles.actionToastErr : ''}`}>
-              {menu.toast.text}
-            </span>
+            <Toast message={menu.toast.text} tone={menu.toast.tone === 'err' ? 'error' : 'success'}
+              onDismiss={() => setMenu((m) => ({ ...m, toast: null }))} />
           ) : null}
         </div>
       </div>

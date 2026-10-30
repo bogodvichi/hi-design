@@ -18,6 +18,7 @@ import {
 } from '../../src/providers/registry';
 import { markProjectLocationTarget } from '../../src/lib/recently-opened-projects';
 import type { Project } from '../../src/types';
+import { ToastProvider } from '../../src/components/ToastProvider';
 
 const recentWorkspaceState = vi.hoisted(() => ({
   context: {
@@ -1477,6 +1478,34 @@ describe('recvqbipG9QDTt — Recent Projects filter needs a visible clear entry'
 });
 
 describe('recvqaRqM0dv2x — per-card Duplicate menu item', () => {
+  it('reports copy success globally even when navigation unmounts the project list', async () => {
+    let complete!: () => void;
+    const onDuplicate = vi.fn(() => new Promise<void>((resolve) => { complete = resolve; }));
+    const { rerender } = render(
+      <ToastProvider><RecentProjectsStrip
+        projects={[project({ id: 'project-1', name: 'My project' })]}
+        onOpen={() => {}} onDuplicate={onDuplicate} space="drafts"
+      /></ToastProvider>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Copy' }));
+    expect(screen.queryByText('Project copied successfully')).toBeNull();
+    rerender(<ToastProvider>{null}</ToastProvider>);
+    await act(async () => complete());
+    expect(screen.getByRole('status').textContent).toContain('Project copied successfully');
+  });
+
+  it('reports a failed copy globally with actionable feedback', async () => {
+    render(<ToastProvider><RecentProjectsStrip
+      projects={[project({ id: 'project-1', name: 'My project' })]}
+      onOpen={() => {}} onDuplicate={async () => { throw new Error('SQLITE_BUSY'); }} space="drafts"
+    /></ToastProvider>);
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    await act(async () => fireEvent.click(screen.getByRole('menuitem', { name: 'Copy' })));
+    expect(screen.getByRole('alert').textContent).toContain('Copy failed');
+    expect(screen.getByRole('alert').textContent).not.toContain('SQLITE_BUSY');
+  });
+
   // Personal drafts expose Copy only for the creator. Team and shared-with-me
   // collections have their own access matrix and separate coverage.
   it('hides Copy for a draft owned by another team member', () => {
@@ -1570,12 +1599,12 @@ describe('recvqbh189zBY6 — single-card delete confirmation', () => {
   it('keeps the dialog open with a visible error when the delete request fails', async () => {
     const onDelete = vi.fn(async () => false);
     render(
-      <RecentProjectsStrip
+      <ToastProvider><RecentProjectsStrip
         projects={[project({ id: 'project-1', name: 'My project' })]}
         onOpen={() => {}}
         onDelete={onDelete}
         space="drafts"
-      />,
+      /></ToastProvider>,
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
@@ -1586,7 +1615,8 @@ describe('recvqbh189zBY6 — single-card delete confirmation', () => {
 
     await waitFor(() => {
       expect(onDelete).toHaveBeenCalledWith('project-1');
-      expect(within(dialog).getByRole('alert')).toBeTruthy();
+      expect(screen.getByRole('alert').textContent).toContain('Could not delete');
+      expect(dialog.contains(screen.getByRole('alert'))).toBe(false);
     });
     // The dialog is still open — nothing pretended the project was gone.
     expect(screen.getByRole('alertdialog')).toBeTruthy();

@@ -1,3 +1,5 @@
+import { userFacingError } from '../utils/userFacingError';
+import { notifyToast } from './toast-context';
 import { ModuleBreadcrumb } from './ModuleBreadcrumb';
 import { useId, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { Dialog, DialogFooter, DialogTitle } from '@open-design/components';
@@ -696,8 +698,7 @@ function ProjectsPanel({
   const [createError, setCreateError] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<TeamFolderItem | null>(null);
   const removeImpact = useTeamFolderDeleteImpact(teamId, removeTarget?.folderId ?? null);
-  const [removeError, setRemoveError] = useState<string | null>(null);
-  useEffect(() => setRemoveError(null), [removeTarget?.folderId]);
+
   const [removing, setRemoving] = useState(false);
   const [folderSelectionMode, setFolderSelectionMode] = useState(false);
   const [selectedFolderIds, setSelectedFolderIds] = useState<Set<string>>(() => new Set());
@@ -823,6 +824,7 @@ function ProjectsPanel({
     const name = newGroupName.trim();
     if (!name) { setCreateError(t('teamSpace.groupNameRequired')); return; }
     if (!teamId || !operatorMemberId) return;
+    if (creating) return;
     setCreating(true);
     setCreateError(null);
     try {
@@ -837,15 +839,16 @@ function ProjectsPanel({
       });
       const body = await res.json().catch(() => null);
       if (!res.ok || body?.code !== 0) {
-        setCreateError(body?.error || body?.msg || t('teamSpace.createGroupError'));
+        notifyToast({ message: userFacingError(body?.error ?? body?.msg, t, 'feedback.saveFailed'), tone: 'error' });
         return;
       }
       // Success — close dialog, reset input, refresh list.
+      notifyToast({ message: t('feedback.created'), tone: 'success' });
       setNewGroupName('');
       onShowCreateGroupChange(false);
       window.dispatchEvent(new CustomEvent('hdw:folders-updated', { detail: { teamId } }));
     } catch (err: any) {
-      setCreateError(err?.message || String(err));
+      notifyToast({ message: userFacingError(err, t, 'feedback.saveFailed'), tone: 'error' });
     } finally {
       setCreating(false);
     }
@@ -854,22 +857,24 @@ function ProjectsPanel({
   async function confirmRemoveGroup() {
     const folder = removeTarget;
     if (!folder || !teamId || !operatorMemberId || !removeImpact || removeImpact === 'error') return;
+    if (removing) return;
     setRemoving(true);
-    setRemoveError(null);
+
     try {
       const res = await fetch(teamFolderDeleteUrl(folder.folderId, operatorMemberId, removeImpact), { method: 'DELETE' });
       const body = await res.json().catch(() => null);
       if (!res.ok || body?.code !== 0) {
-        setRemoveError(body?.error === 'FOLDER_CONTENT_CHANGED'
+        notifyToast({ message: body?.error === 'FOLDER_CONTENT_CHANGED'
           ? '文件夹内容已变化，请重新打开删除确认。'
-          : body?.error || '删除失败，请重试。');
+          : userFacingError(body?.error, t, 'feedback.deleteFailed'), tone: 'error' });
         return;
       }
       setFolders((prev) => prev.filter((f) => f.folderId !== folder.folderId));
+      notifyToast({ message: t('feedback.deleted'), tone: 'success' });
       setRemoveTarget(null);
       window.dispatchEvent(new CustomEvent('hdw:folders-updated', { detail: { teamId } }));
     } catch {
-      setRemoveError('网络异常，删除失败，请重试。');
+      notifyToast({ message: t('feedback.deleteFailed'), tone: 'error' });
     } finally {
       setRemoving(false);
     }
@@ -971,10 +976,15 @@ function ProjectsPanel({
             })
           : 0;
       if (moved > 0) {
+        notifyToast({ message: t('projectDrag.movedTo', { path: [selection.workspaceName, selection.folderName].filter(Boolean).join(' / ') }), tone: 'success' });
         setFolders((current) => current.filter((folder) => folder.folderId !== target.folderId));
         setMoveFolderTarget(null);
         window.dispatchEvent(new CustomEvent('hdw:folders-updated', { detail: { teamId } }));
+      } else {
+        notifyToast({ message: t('recentProjects.moveFailed'), tone: 'error' });
       }
+    } catch (err) {
+      notifyToast({ message: userFacingError(err, t, 'recentProjects.moveFailed'), tone: 'error' });
     } finally {
       setMovingFolder(false);
     }
@@ -997,6 +1007,7 @@ function ProjectsPanel({
       cancelFolderRename();
       return;
     }
+    if (renamingFolder) return;
     setRenamingFolder(true);
     try {
       const res = await fetch('/api/hdw/api/folder/rename', {
@@ -1011,14 +1022,17 @@ function ProjectsPanel({
       });
       const body = await res.json().catch(() => null);
       if (res.ok && body?.code === 0) {
+        notifyToast({ message: t('feedback.renamed'), tone: 'success' });
+        cancelFolderRename();
         setFolders((prev) => prev.map((f) => f.folderId === renameFolderTarget.folderId ? { ...f, folderName: trimmed } : f));
         window.dispatchEvent(new CustomEvent('hdw:folders-updated', { detail: { teamId } }));
+      } else {
+        notifyToast({ message: userFacingError(body?.error ?? body?.msg, t, 'feedback.renameFailed'), tone: 'error' });
       }
     } catch {
-      // ignore
+      notifyToast({ message: t('feedback.renameFailed'), tone: 'error' });
     } finally {
       setRenamingFolder(false);
-      cancelFolderRename();
     }
   }
 
@@ -1238,7 +1252,6 @@ function ProjectsPanel({
                   : removeImpact.folderCount || removeImpact.projectCount
                     ? `删除「${removeTarget.folderName}」会同步删除 ${removeImpact.folderCount} 个子文件夹和 ${removeImpact.projectCount} 个项目，可能影响其他成员，请确认。`
                     : t('teamSpace.deleteFolderConfirmMsg', { name: removeTarget.folderName })}</p>
-              {removeError ? <p className={styles.roleError} role="alert">{removeError}</p> : null}
               <div className={styles.confirmActions}>
                 <button type="button" className={styles.confirmCancel} onClick={() => setRemoveTarget(null)}>
                   {t('teamSpace.removeCancelBtn')}
@@ -1332,7 +1345,7 @@ function MembersTable({
   const t = useT();
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(false);
-  const [roleError, setRoleError] = useState<string | null>(null);
+
 
   const [removeTarget, setRemoveTarget] = useState<TeamMember | null>(null);
 
@@ -1430,7 +1443,7 @@ function MembersTable({
     if (!operatorMemberId) return;
     // Optimistic removal.
     setMembers((prev) => prev.filter((m) => m.workspaceMemberId !== member.workspaceMemberId));
-    setRoleError(null);
+
     try {
       const res = await fetch('/api/hdw/api/team/member/remove', {
         method: 'POST',
@@ -1444,11 +1457,13 @@ function MembersTable({
       if (!res.ok || body?.code !== 0) {
         // Re-add on failure.
         setMembers((prev) => [...prev, member].sort((a, b) => a.displayName.localeCompare(b.displayName)));
-        setRoleError(body?.error || body?.msg || `HTTP ${res.status}`);
+        notifyToast({ message: userFacingError(body?.error ?? body?.msg, t, 'feedback.deleteFailed'), tone: 'error' });
+      } else {
+        notifyToast({ message: t('feedback.memberRemoved'), tone: 'success' });
       }
     } catch (err: any) {
       setMembers((prev) => [...prev, member].sort((a, b) => a.displayName.localeCompare(b.displayName)));
-      setRoleError(err?.message || String(err));
+      notifyToast({ message: userFacingError(err, t, 'feedback.deleteFailed'), tone: 'error' });
     }
   }
 
@@ -1459,7 +1474,7 @@ function MembersTable({
     setMembers((prev) => prev.map((m) =>
       m.workspaceMemberId === member.workspaceMemberId ? { ...m, role: newRole } : m,
     ));
-    setRoleError(null);
+
     try {
       const res = await fetch('/api/hdw/api/team/member/role', {
         method: 'POST',
@@ -1476,13 +1491,15 @@ function MembersTable({
         setMembers((prev) => prev.map((m) =>
           m.workspaceMemberId === member.workspaceMemberId ? { ...m, role: prevRole } : m,
         ));
-        setRoleError(body?.error || body?.msg || `HTTP ${res.status}`);
+        notifyToast({ message: userFacingError(body?.error ?? body?.msg, t, 'feedback.saveFailed'), tone: 'error' });
+      } else {
+        notifyToast({ message: t('feedback.roleUpdated'), tone: 'success' });
       }
     } catch (err: any) {
       setMembers((prev) => prev.map((m) =>
         m.workspaceMemberId === member.workspaceMemberId ? { ...m, role: prevRole } : m,
       ));
-      setRoleError(err?.message || String(err));
+      notifyToast({ message: userFacingError(err, t, 'feedback.saveFailed'), tone: 'error' });
     }
   }
 
@@ -1575,7 +1592,6 @@ function MembersTable({
             })}
           </tbody>
         </table>
-        {roleError ? <p className={styles.roleError}>{roleError}</p> : null}
       </div>
       {removeTarget ? (
         <div className={styles.confirmOverlay} onClick={() => setRemoveTarget(null)}>
@@ -1884,8 +1900,7 @@ function FoldersPanel({
   const [createError, setCreateError] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<TeamFolderItem | null>(null);
   const removeImpact = useTeamFolderDeleteImpact(teamId, removeTarget?.folderId ?? null);
-  const [removeError, setRemoveError] = useState<string | null>(null);
-  useEffect(() => setRemoveError(null), [removeTarget?.folderId]);
+
   const [removing, setRemoving] = useState(false);
   const [folderSelectionMode, setFolderSelectionMode] = useState(false);
   const [selectedFolderIds, setSelectedFolderIds] = useState<Set<string>>(() => new Set());
@@ -2014,6 +2029,7 @@ function FoldersPanel({
     const name = newFolderName.trim();
     if (!name) { setCreateError(t('teamSpace.folderNameRequired')); return; }
     if (!teamId || !folderId || !operatorMemberId) return;
+    if (creating) return;
     setCreating(true);
     setCreateError(null);
     try {
@@ -2029,14 +2045,15 @@ function FoldersPanel({
       });
       const body = await res.json().catch(() => null);
       if (!res.ok || body?.code !== 0) {
-        setCreateError(body?.error || body?.msg || t('teamSpace.createFolderError'));
+        notifyToast({ message: userFacingError(body?.error ?? body?.msg, t, 'feedback.saveFailed'), tone: 'error' });
         return;
       }
+      notifyToast({ message: t('feedback.created'), tone: 'success' });
       setNewFolderName('');
       onShowCreateFolderChange(false);
       window.dispatchEvent(new CustomEvent('hdw:subfolders-updated', { detail: { teamId, folderId } }));
     } catch (err: any) {
-      setCreateError(err?.message || String(err));
+      notifyToast({ message: userFacingError(err, t, 'feedback.saveFailed'), tone: 'error' });
     } finally {
       setCreating(false);
     }
@@ -2045,22 +2062,24 @@ function FoldersPanel({
   async function confirmRemoveFolder() {
     const folder = removeTarget;
     if (!folder || !teamId || !operatorMemberId || !removeImpact || removeImpact === 'error') return;
+    if (removing) return;
     setRemoving(true);
-    setRemoveError(null);
+
     try {
       const res = await fetch(teamFolderDeleteUrl(folder.folderId, operatorMemberId, removeImpact), { method: 'DELETE' });
       const body = await res.json().catch(() => null);
       if (!res.ok || body?.code !== 0) {
-        setRemoveError(body?.error === 'FOLDER_CONTENT_CHANGED'
+        notifyToast({ message: body?.error === 'FOLDER_CONTENT_CHANGED'
           ? '文件夹内容已变化，请重新打开删除确认。'
-          : body?.error || '删除失败，请重试。');
+          : userFacingError(body?.error, t, 'feedback.deleteFailed'), tone: 'error' });
         return;
       }
       setFolders((prev) => prev.filter((f) => f.folderId !== folder.folderId));
+      notifyToast({ message: t('feedback.deleted'), tone: 'success' });
       setRemoveTarget(null);
       window.dispatchEvent(new CustomEvent('hdw:subfolders-updated', { detail: { teamId, folderId } }));
     } catch {
-      setRemoveError('网络异常，删除失败，请重试。');
+      notifyToast({ message: t('feedback.deleteFailed'), tone: 'error' });
     } finally {
       setRemoving(false);
     }
@@ -2162,11 +2181,16 @@ function FoldersPanel({
             })
           : 0;
       if (moved > 0) {
+        notifyToast({ message: t('projectDrag.movedTo', { path: [selection.workspaceName, selection.folderName].filter(Boolean).join(' / ') }), tone: 'success' });
         setFolders((current) => current.filter((folder) => folder.folderId !== target.folderId));
         setMoveFolderTarget(null);
         window.dispatchEvent(new CustomEvent('hdw:subfolders-updated', { detail: { teamId, folderId } }));
         window.dispatchEvent(new CustomEvent('hdw:folders-updated', { detail: { teamId } }));
+      } else {
+        notifyToast({ message: t('recentProjects.moveFailed'), tone: 'error' });
       }
+    } catch (err) {
+      notifyToast({ message: userFacingError(err, t, 'recentProjects.moveFailed'), tone: 'error' });
     } finally {
       setMovingFolder(false);
     }
@@ -2189,6 +2213,7 @@ function FoldersPanel({
       cancelFolderRename();
       return;
     }
+    if (renamingFolder) return;
     setRenamingFolder(true);
     try {
       const res = await fetch('/api/hdw/api/folder/rename', {
@@ -2203,14 +2228,17 @@ function FoldersPanel({
       });
       const body = await res.json().catch(() => null);
       if (res.ok && body?.code === 0) {
+        notifyToast({ message: t('feedback.renamed'), tone: 'success' });
+        cancelFolderRename();
         setFolders((prev) => prev.map((f) => f.folderId === renameFolderTarget.folderId ? { ...f, folderName: trimmed } : f));
         window.dispatchEvent(new CustomEvent('hdw:subfolders-updated', { detail: { teamId, folderId } }));
+      } else {
+        notifyToast({ message: userFacingError(body?.error ?? body?.msg, t, 'feedback.renameFailed'), tone: 'error' });
       }
     } catch {
-      // ignore
+      notifyToast({ message: t('feedback.renameFailed'), tone: 'error' });
     } finally {
       setRenamingFolder(false);
-      cancelFolderRename();
     }
   }
 
@@ -2432,7 +2460,6 @@ function FoldersPanel({
                   : removeImpact.folderCount || removeImpact.projectCount
                     ? `删除「${removeTarget.folderName}」会同步删除 ${removeImpact.folderCount} 个子文件夹和 ${removeImpact.projectCount} 个项目，可能影响其他成员，请确认。`
                     : t('teamSpace.deleteFolderConfirmMsg', { name: removeTarget.folderName })}</p>
-              {removeError ? <p className={styles.roleError} role="alert">{removeError}</p> : null}
               <div className={styles.confirmActions}>
                 <button type="button" className={styles.confirmCancel} onClick={() => setRemoveTarget(null)} disabled={removing}>
                   {t('teamSpace.removeCancelBtn')}

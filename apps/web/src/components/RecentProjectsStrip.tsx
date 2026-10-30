@@ -1,3 +1,4 @@
+import { notifyToast } from './toast-context';
 import { PageEmptyState } from './PageEmptyState';
 // Horizontal "Recent projects" rail for the Home view.
 //
@@ -816,12 +817,9 @@ selectionExtension,
       document.removeEventListener('click', handleProjectSelectionClick);
     };
   }, [dragSelectionProjectId, locationTargetId]);
-  // recvqbh189zBY6: commitDelete used to await onDelete and drop the result on
-  // the floor either way — a 403/network failure closed the dialog exactly
-  // like a success, leaving the project right where it was with no signal
-  // that anything went wrong. Track failure so the dialog can stay open and
-  // say so instead of silently doing nothing.
-  const [deleteFailed, setDeleteFailed] = useState(false);
+  // Keep the confirmation open after a failed delete so users can retry;
+  // the global toast reports the outcome above the dialog.
+
   const [deletePending, setDeletePending] = useState(false);
   // Project → team-space sharing (the project card entry). The daemon gates on
   // `canShareProjects` (403 off-team / no rights), so we only badge on success.
@@ -947,7 +945,9 @@ const bulkMovePendingRef = useRef(false);
 const singleMovePendingRef = useRef(false);
 const personalCollection = space === 'drafts'
   && (workspaceContext?.workspaceType === 'personal' || workspaceContext?.isDefaultTeam === true);
-const isTeamProjectHome = (project: Project) => project.workspaceVisibility === 'team' || !personalCollection;
+// Personal cloud publications also carry visibility='team'; ownership follows the home workspace.
+const isTeamProjectHome = (project: Project) => !personalCollection
+  || Boolean(project.workspaceId && project.workspaceId !== workspaceContext?.workspaceId);
 // Disabled tree-node keys for the move-to dialog. When moving within the
 // same workspace (personal-folders mode), the current folder/root is
 // disabled so a project cannot be moved into its own current location.
@@ -1501,7 +1501,7 @@ function requestDelete(project: Project) {
      project_relation: 'self',
    });
    setMenuOpenId(null);
-   setDeleteFailed(false);
+
    setConfirmTarget(project);
  }
 
@@ -1674,6 +1674,7 @@ function requestDelete(project: Project) {
     setCopyToast(null);
     const startedAt = performance.now();
     void Promise.resolve(onDuplicate(project.id)).then(() => {
+      notifyToast({ message: t('feedback.copiedProject'), tone: 'success' });
       trackWorkspaceProjectActionResult(analytics.track, {
         page_name: analyticsPage,
         area: 'project_collection',
@@ -1687,7 +1688,7 @@ function requestDelete(project: Project) {
       });
     }).catch((err) => {
       console.warn('[RecentProjectsStrip] duplicate project failed:', err);
-      setCopyToast({ message: t('recentProjects.copyToPersonalFailed'), tone: 'error' });
+      notifyToast({ message: userFacingError(err, t, 'recentProjects.copyToPersonalFailed'), tone: 'error' });
       trackWorkspaceProjectActionResult(analytics.track, {
         page_name: analyticsPage,
         area: 'project_collection',
@@ -1732,7 +1733,7 @@ function requestDelete(project: Project) {
       notifyTeamProjectsChanged();
       window.dispatchEvent(new CustomEvent('personal:folders-updated'));
       window.dispatchEvent(new CustomEvent('shared:projects-refresh'));
-      setCopyToast({ message: t('recentProjects.copyToPersonalSuccess'), tone: 'success' });
+      notifyToast({ message: t('recentProjects.copyToPersonalSuccess'), tone: 'success', details: [selection.workspaceName, selection.folderName].filter(Boolean).join(' / ') });
       trackWorkspaceProjectActionResult(analytics.track, {
         page_name: analyticsPage,
         area: 'project_collection',
@@ -1746,7 +1747,7 @@ function requestDelete(project: Project) {
       });
     } catch (err) {
       console.warn('[RecentProjectsStrip] copy project to personal failed:', err);
-      setCopyToast({ message: t('recentProjects.copyToPersonalFailed'), tone: 'error' });
+      notifyToast({ message: userFacingError(err, t, 'recentProjects.copyToPersonalFailed'), tone: 'error' });
       trackWorkspaceProjectActionResult(analytics.track, {
         page_name: analyticsPage,
         area: 'project_collection',
@@ -1768,7 +1769,7 @@ function requestDelete(project: Project) {
     if (!confirmTarget || !onDelete || deletePending) return;
     const target = confirmTarget;
     const startedAt = performance.now();
-    setDeleteFailed(false);
+
     setDeletePending(true);
     try {
       const result = await onDelete(target.id);
@@ -1789,9 +1790,11 @@ function requestDelete(project: Project) {
           error_code: 'request_failed',
           ...workspaceDimensions,
         });
-        setDeleteFailed(true);
+        notifyToast({ message: t('feedback.deleteFailed'), tone: 'error' });
+
         return;
       }
+      notifyToast({ message: t('feedback.deleted'), tone: 'success' });
       setConfirmTarget(null);
       trackWorkspaceProjectActionResult(analytics.track, {
         page_name: analyticsPage,
@@ -1806,7 +1809,8 @@ function requestDelete(project: Project) {
       });
     } catch (err) {
       console.warn('[RecentProjectsStrip] delete project failed:', err);
-      setDeleteFailed(true);
+      notifyToast({ message: userFacingError(err, t, 'feedback.deleteFailed'), tone: 'error' });
+
       trackWorkspaceProjectActionResult(analytics.track, {
         page_name: analyticsPage,
         area: 'project_collection',
@@ -1948,9 +1952,7 @@ function requestDelete(project: Project) {
    const requestedCount = ids.length + extensionCount;
    const succeededCount = succeeded.length + extensionSucceededCount;
    const failedCount = requestedCount - succeededCount;
-   if (failedCount > 0) {
-     setMoveToast({ message: t('recentProjects.moveSummary', { succeeded: succeededCount, failed: failedCount }), details: failureDetails.join('\n'), tone: 'error' });
-   }
+   setMoveToast({ message: failedCount ? t('recentProjects.moveSummary', { succeeded: succeededCount, failed: failedCount }) : t('feedback.moved', { count: succeededCount }), details: failureDetails.join('\n'), tone: failedCount ? 'error' : 'success' });
    bulkMovePendingRef.current = false;
    setBulkMovePending(false);
    if (failedCount === 0) exitSelectionMode();
@@ -2007,9 +2009,7 @@ function requestDelete(project: Project) {
     const requestedCount = ids.length + extensionCount;
     const succeededCount = deleted.filter((id): id is string => id !== null).length + extensionSucceededCount;
     const failedCount = requestedCount - succeededCount;
-    if (failedCount > 0) {
-      setMoveToast({ message: `已删除 ${succeededCount}/${requestedCount} 项，${failedCount} 项未删除，请刷新后重试。`, tone: 'error' });
-    }
+    notifyToast({ message: t('feedback.deleteSummary', { succeeded: succeededCount, failed: failedCount }), tone: failedCount ? 'error' : 'success' });
     trackWorkspaceProjectActionResult(analytics.track, {
       page_name: analyticsPage,
       area: 'project_collection',
@@ -2994,7 +2994,7 @@ function requestDelete(project: Project) {
           onClose={() => {
             if (deletePending) return;
             setConfirmTarget(null);
-            setDeleteFailed(false);
+
           }}
           closeOnBackdrop={!deletePending}
           ariaLabelledBy={confirmTitleId}
@@ -3003,18 +3003,13 @@ function requestDelete(project: Project) {
           <DialogDescription>
             {t('designs.deleteConfirm', { name: confirmTarget.name })}
           </DialogDescription>
-          {deleteFailed ? (
-            <p className="recent-projects__card-menu-error" role="alert">
-              {t('ds.actionFailed')}
-            </p>
-          ) : null}
           <DialogFooter className="row">
             <button
               type="button"
               disabled={deletePending}
               onClick={() => {
                 setConfirmTarget(null);
-                setDeleteFailed(false);
+
               }}
             >
               {t('designs.renameCancel')}
@@ -3099,8 +3094,8 @@ function requestDelete(project: Project) {
           message={copyToast.message}
           tone={copyToast.tone}
           placement="top"
-          role="alert"
-          ttlMs={3000}
+          role={copyToast.tone === 'error' ? 'alert' : 'status'}
+          ttlMs={4000}
           onDismiss={() => setCopyToast(null)}
         />
       ) : null}

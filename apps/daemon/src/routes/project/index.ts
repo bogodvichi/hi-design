@@ -629,10 +629,11 @@ function projectAccess(
    // Never offer a share the workspace cannot host: the affordance is the
    // entry point that produced the impossible rows in the first place.
    canMoveToTeam:
+     (isPersonalProjectWorkspace(ctx) && canMutate && selfCreated && ctx.canShareProjects) || (
      canShareLocal &&
      ctx.canShareProjects &&
      wp.visibility === 'personal' &&
-     (isPersonalProjectWorkspace(ctx) || teamShareRefusalFor(ctx, workspaceTypes) === null),
+     (isPersonalProjectWorkspace(ctx) || teamShareRefusalFor(ctx, workspaceTypes) === null)),
     canMoveToPersonal: false,
     canExport: canMutate,
     canSendTo: !frozen && ctx.memberStatus === 'active' && ctx.role !== 'guest',
@@ -3820,7 +3821,8 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       const selfCreated = summary.createdByWorkspaceMemberId != null
         && summary.createdByWorkspaceMemberId === ctx.workspaceMemberId;
       return isPersonalProjectWorkspace(ctx)
-        && summary.visibility === 'personal'
+        // A cloud publication in the verified Personal home can have team visibility.
+        // Only its creator can transfer it; a real team home never enters this branch.
         && targetVisibility === 'team'
         && summary.currentUserAccess.canRename
         && selfCreated && ctx.canShareProjects && ctx.memberStatus === 'active';

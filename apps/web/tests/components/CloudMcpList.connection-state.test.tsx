@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testi
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { CloudMcpList } from '../../src/components/CloudMcpList';
 import { I18nProvider } from '../../src/i18n';
+import { ToastProvider } from '../../src/components/ToastProvider';
 
 type Mode = 'square' | 'personal' | 'team';
 const workspaceMemberId = 'member';
@@ -49,7 +50,7 @@ function setup(mode: Mode, initiallyConnected = false) {
   });
   vi.stubGlobal('fetch', fetchMock);
   const props = { workspaceId, workspaceMemberId, workspaceType: 'team', mode, ...(mode === 'square' ? { scope: 'public' } : {}) } as const;
-  const renderList = () => render(<I18nProvider initial="zh-CN"><CloudMcpList {...props} /></I18nProvider>);
+  const renderList = () => render(<I18nProvider initial="zh-CN"><ToastProvider><CloudMcpList {...props} /></ToastProvider></I18nProvider>);
   return { renderList, fetchMock, get catalogFetches() { return catalogFetches; } };
 }
 
@@ -90,10 +91,10 @@ describe('MCP connection state without page refresh', () => {
   it('syncs the same connection immediately between mounted community and personal lists', async () => {
     const state = setup('square');
     // Both surfaces use the same workspace/member identity.
-    render(<I18nProvider initial="zh-CN">
+    render(<I18nProvider initial="zh-CN"><ToastProvider>
       <section aria-label="社区"><CloudMcpList workspaceId="personal-workspace" workspaceMemberId={workspaceMemberId} workspaceType="team" mode="square" scope="public" /></section>
       <section aria-label="个人所有"><CloudMcpList workspaceId="personal-workspace" workspaceMemberId={workspaceMemberId} workspaceType="team" mode="personal" /></section>
-    </I18nProvider>);
+    </ToastProvider></I18nProvider>);
     const community = within(screen.getByRole('region', { name: '社区' }));
     const personal = within(screen.getByRole('region', { name: '个人所有' }));
     fireEvent.click(await community.findByRole('button', { name: '连接' }));
@@ -121,9 +122,9 @@ describe('MCP connection state without page refresh', () => {
       throw new Error('Unexpected request: ' + url);
     });
     vi.stubGlobal('fetch', fetchMock);
-    render(<I18nProvider initial="zh-CN">
+    render(<I18nProvider initial="zh-CN"><ToastProvider>
       <CloudMcpList workspaceId="personal-workspace" workspaceMemberId={workspaceMemberId} workspaceType="team" mode="square" scope="public" />
-    </I18nProvider>);
+    </ToastProvider></I18nProvider>);
     const first = (await screen.findByText('Workspace A MCP')).closest('article')!;
     const second = (await screen.findByText('Workspace B MCP')).closest('article')!;
     fireEvent.click(within(first).getByRole('button', { name: '连接' }));
@@ -144,10 +145,10 @@ describe('MCP connection state without page refresh', () => {
       }] });
       return Response.json({ templates: [catalogItem] });
     }));
-    render(<I18nProvider initial="zh-CN"><CloudMcpList
+    render(<I18nProvider initial="zh-CN"><ToastProvider><CloudMcpList
       workspaceId="team-workspace" workspaceMemberId={workspaceMemberId}
       workspaceType="team" mode="team"
-    /></I18nProvider>);
+    /></ToastProvider></I18nProvider>);
     expect(await screen.findByRole('button', { name: '连接' })).toBeTruthy();
   });
 
@@ -161,10 +162,10 @@ describe('MCP connection state without page refresh', () => {
       if (init?.method === 'POST') return Response.json({ installed: true });
       throw new Error('Unexpected request: ' + url);
     }));
-    render(<I18nProvider initial="zh-CN"><CloudMcpList
+    render(<I18nProvider initial="zh-CN"><ToastProvider><CloudMcpList
       workspaceId="personal-workspace" workspaceMemberId={workspaceMemberId}
       workspaceType="team" mode="personal"
-    /></I18nProvider>);
+    /></ToastProvider></I18nProvider>);
     fireEvent.click(await screen.findByRole('button', { name: '连接' }));
     expect(await screen.findByRole('button', { name: '已连接' })).toBeTruthy();
     await act(async () => { resolveLocalRead(Response.json({ servers: [] })); });
@@ -182,10 +183,10 @@ describe('MCP connection state without page refresh', () => {
       if (url === '/api/community/stats/record') return pendingStats;
       throw new Error('Unexpected request: ' + url);
     }));
-    render(<I18nProvider initial="zh-CN"><CloudMcpList
+    render(<I18nProvider initial="zh-CN"><ToastProvider><CloudMcpList
       workspaceId="personal-workspace" workspaceMemberId={workspaceMemberId}
       workspaceType="team" mode="square" scope="public"
-    /></I18nProvider>);
+    /></ToastProvider></I18nProvider>);
     fireEvent.click(await screen.findByRole('button', { name: '连接' }));
     const connected = await screen.findByRole('button', { name: '已连接' });
     expect(connected.hasAttribute('disabled')).toBe(false);
@@ -201,10 +202,10 @@ describe('MCP connection state without page refresh', () => {
       if (init?.method === 'POST') return Response.json({ error: 'Connect failed' }, { status: 500 });
       throw new Error('Unexpected request: ' + url);
     }));
-    render(<I18nProvider initial="zh-CN"><CloudMcpList
+    render(<I18nProvider initial="zh-CN"><ToastProvider><CloudMcpList
       workspaceId="personal-workspace" workspaceMemberId={workspaceMemberId}
       workspaceType="team" mode="personal"
-    /></I18nProvider>);
+    /></ToastProvider></I18nProvider>);
     fireEvent.click(await screen.findByRole('button', { name: '连接' }));
     expect(await screen.findByRole('alert')).toHaveProperty('textContent', '连接失败，请稍后重试。');
     expect(screen.getByRole('button', { name: '连接' })).toBeTruthy();

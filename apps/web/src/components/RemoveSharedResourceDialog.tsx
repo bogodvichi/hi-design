@@ -1,3 +1,4 @@
+import { notifyToast } from './toast-context';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Button, Dialog, DialogDescription, DialogFooter, DialogTitle } from '@open-design/components';
@@ -14,14 +15,17 @@ export function RemoveSharedResourceDialog({ shareId, kind, resourceName, onClos
 }) {
   const t = useT();
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState(false);
   async function remove() {
     if (busy) return;
-    setBusy(true); setError(false);
+    setBusy(true);
     try {
-      if (await removeResourceFromSharedWithMe(shareId, kind)) onRemoved();
-      else setError(true);
-    } catch { setError(true); }
+      if (await removeResourceFromSharedWithMe(shareId, kind)) {
+        notifyToast({ message: t('feedback.removed'), tone: 'success' });
+        onRemoved();
+      } else {
+        notifyToast({ message: t('sharedSpace.removeFromSharedWithMeFailed'), tone: 'error' });
+      }
+    } catch { notifyToast({ message: t('sharedSpace.removeFromSharedWithMeFailed'), tone: 'error' }); }
     finally { setBusy(false); }
   }
   return createPortal(<Dialog role="alertdialog" ariaLabel={t('sharedSpace.removeFromSharedWithMeTitle')}
@@ -30,7 +34,6 @@ export function RemoveSharedResourceDialog({ shareId, kind, resourceName, onClos
     <DialogDescription>{t('feedback.shareResourceBody')}{' '}
       {t('feedback.shareQuestionBefore')}{' '}<strong>{resourceName}</strong>{' '}{t('feedback.shareQuestionAfter')}
     </DialogDescription>
-    {error ? <p role="alert">{t('sharedSpace.removeFromSharedWithMeFailed')}</p> : null}
     <DialogFooter>
       <Button disabled={busy} onClick={onClose}>{t('common.cancel')}</Button>
       <Button disabled={busy} onClick={() => void remove()}>{t('sharedSpace.removeFromSharedWithMeConfirm')}</Button>

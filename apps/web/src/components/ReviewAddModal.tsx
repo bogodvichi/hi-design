@@ -1,3 +1,4 @@
+import { notifyToast } from './toast-context';
 import { useT } from '../i18n';
 import { userFacingError } from '../utils/userFacingError';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -119,7 +120,6 @@ export function ReviewAddModal({
   const [submitting, setSubmitting] = useState(false);
   const t = useT();
   const [error, setError] = useState<string | null>(null);
-  const [okMsg, setOkMsg] = useState<string | null>(null);
   // 字段级错误：提交时收集，填写正确后自动清除对应 key。
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
@@ -214,7 +214,7 @@ export function ReviewAddModal({
       setExporting(false);
       setSubmitting(false);
       setError(null);
-      setOkMsg(null);
+
       setFieldErrors({});
     }
   }, [open]);
@@ -269,7 +269,7 @@ export function ReviewAddModal({
       if (!resp.ok || !j?.ok) {
         setReviewTemplates([]);
         setSelectedTemplate(null);
-        setError(userFacingError(j?.error, t, 'feedback.reviewInfoFailed'));
+        notifyToast({ message: userFacingError(j?.error, t, 'feedback.reviewInfoFailed'), tone: 'error' });
         return;
       }
       // 上游 data 是 JSON 串（"[{...}]" 或 "[null]"），解析成数组。
@@ -286,7 +286,7 @@ export function ReviewAddModal({
       if (!valid.length) setError('该项目没有可用的评审名称模板');
     } catch (err: any) {
       if (!aliveRef.current) return;
-      setError(userFacingError(err, t, 'feedback.loadReviewFailed'));
+      notifyToast({ message: userFacingError(err, t, 'feedback.loadReviewFailed'), tone: 'error' });
       setReviewTemplates([]);
     }
   }
@@ -318,7 +318,7 @@ export function ReviewAddModal({
       const j = await resp.json().catch(() => null);
       if (!aliveRef.current) return;
       if (!resp.ok || !j?.ok) {
-        setError(userFacingError(j?.error ?? j?.msg, t, 'feedback.uploadReviewFailed'));
+        notifyToast({ message: userFacingError(j?.error ?? j?.msg, t, 'feedback.uploadReviewFailed'), tone: 'error' });
         setUploadInfo(null);
         return;
       }
@@ -326,7 +326,7 @@ export function ReviewAddModal({
       clearFieldError('upload');
    } catch (err: any) {
       if (!aliveRef.current) return;
-      setError(userFacingError(err, t, 'feedback.uploadReviewFailed'));
+      notifyToast({ message: userFacingError(err, t, 'feedback.uploadReviewFailed'), tone: 'error' });
     } finally {
       if (aliveRef.current) setUploading(false);
     }
@@ -335,7 +335,7 @@ export function ReviewAddModal({
   /** 提交评审。 */
   async function handleSubmit() {
     setError(null);
-    setOkMsg(null);
+
     const errs: Record<string, string> = {};
     // 必填校验（对齐原站 rules）。
     if (reviewModel === 1 && !project?.projNum) {
@@ -394,14 +394,14 @@ export function ReviewAddModal({
           ? await exportProjectAsHtmlReviewZip({ projectId, projectName: odProjectName, entryFile, workspaceContext })
           : await exportProjectAsAxureZip({ projectId, projectName: odProjectName, returnBlob: true });
         if (!result.ok) {
-          setError(userFacingError(result.error, t, 'feedback.uploadReviewFailed'));
+          notifyToast({ message: userFacingError(result.error, t, 'feedback.uploadReviewFailed'), tone: 'error' });
           setFieldErrors({ upload: userFacingError(result.error, t, 'feedback.uploadReviewFailed') });
           setSubmitting(false);
           return;
         }
         if (!result.blob || !result.zipName) {
           const msg = '生成评审稿 ZIP 失败：未生成文件';
-          setError(msg);
+          notifyToast({ message: msg, tone: 'error' });
           setFieldErrors({ upload: msg });
           setSubmitting(false);
           return;
@@ -417,7 +417,7 @@ export function ReviewAddModal({
         if (!aliveRef.current) return;
         if (!upResp.ok || !upJson?.ok) {
           const msg = userFacingError(upJson?.error ?? upJson?.msg, t, 'feedback.uploadReviewFailed');
-          setError(msg);
+          notifyToast({ message: msg, tone: 'error' });
           setFieldErrors({ upload: msg });
           setSubmitting(false);
           return;
@@ -431,7 +431,7 @@ export function ReviewAddModal({
       } catch (err: any) {
         if (!aliveRef.current) return;
         const msg = userFacingError(err, t, 'feedback.uploadReviewFailed');
-        setError(msg);
+        notifyToast({ message: msg, tone: 'error' });
         setFieldErrors({ upload: msg });
         setSubmitting(false);
         return;
@@ -477,10 +477,10 @@ export function ReviewAddModal({
       const j = await resp.json().catch(() => null);
       if (!aliveRef.current) return;
       if (!resp.ok || !j?.ok) {
-        setError(userFacingError(j?.error ?? j?.msg, t, 'feedback.saveFailed'));
+        notifyToast({ message: userFacingError(j?.error ?? j?.msg, t, 'feedback.saveFailed'), tone: 'error' });
         return;
       }
-      setOkMsg('创建成功');
+      notifyToast({ message: t('feedback.created'), tone: 'success' });
       // 创建成功后用系统浏览器打开正式羽点评审页，随后关闭本 modal。
       const previewUrl = subtype === HTML_REVIEW_TYPE
         ? buildHtmlReviewUrl(manuscriptId)
@@ -489,12 +489,10 @@ export function ReviewAddModal({
         const launchUrl = await resolveUedroLaunchUrl(previewUrl);
         if (launchUrl) await openExternalUrl(launchUrl);
       }
-      setTimeout(() => {
-        if (aliveRef.current) onClose();
-      }, 1200);
+      if (aliveRef.current) onClose();
     } catch (err: any) {
       if (!aliveRef.current) return;
-      setError(userFacingError(err, t, 'feedback.saveFailed'));
+      notifyToast({ message: userFacingError(err, t, 'feedback.saveFailed'), tone: 'error' });
     } finally {
       if (aliveRef.current) setSubmitting(false);
     }
@@ -857,8 +855,8 @@ export function ReviewAddModal({
        </div>
 
         <div className={styles.foot}>
-          <span className={`${styles.footMsg} ${error ? styles.footMsgErr : ''} ${okMsg ? styles.footMsgOk : ''}`}>
-            {error || okMsg || ''}
+          <span className={`${styles.footMsg} ${error ? styles.footMsgErr : ''}`}>
+            {error || ''}
           </span>
           <div className={styles.footActions}>
             <button type="button" className={styles.btn} onClick={onClose} disabled={submitting}>

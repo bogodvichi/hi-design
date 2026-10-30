@@ -40,7 +40,7 @@ import {
 
 import { useWorkspaceContext, workspaceContextFromDirectoryItem } from '../collab/useWorkspaceContext';
 import { workspaceProjectHeaders } from '../collab/workspace-identity';
-import { Toast } from './Toast';
+import { notifyToast } from './toast-context';
 import { getOpenDesignHost } from '@open-design/host';
 import {
   SKILL_CATEGORIES,
@@ -1489,7 +1489,6 @@ function SkillTab({
   const [category, setCategory] = useState<SkillCategory | null>(null);
   const [logoKey, setLogoKey] = useState<SkillLogoKey>('craft');
   const [busy, setBusy] = useState<boolean>(false);
-  const [toast, setToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const skillValidationSeqRef = useRef(0);
@@ -1602,12 +1601,6 @@ function SkillTab({
   }, [activeSkillWorkspaceId, skillWorkspaces]);
 
   useEffect(() => { onCanConfirmChange?.(canConfirm); }, [canConfirm, onCanConfirmChange]);
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 3500);
-    return () => clearTimeout(timer);
-  }, [toast]);
 
 
   async function checkCloudSkillDuplicate(name: string): Promise<boolean> {
@@ -1738,7 +1731,7 @@ function SkillTab({
     const validationSeq = ++skillValidationSeqRef.current;
     setUploadSource(source);
     setUploadError(null);
-    setToast(null);
+
     setValidatedSkillName(null);
     setValidatingUpload(true);
     const result = await validateSkillUploadSource(source);
@@ -1914,7 +1907,7 @@ function SkillTab({
         workspaceContext,
       });
     } catch (error) {
-      setToast({ message: toPublishDialogMessage(error, locale, 'Skill 发布失败，请稍后重试。', 'Skill publishing failed. Please try again.'), tone: 'error' });
+      notifyToast({ message: toPublishDialogMessage(error, locale, 'Skill 发布失败，请稍后重试。', 'Skill publishing failed. Please try again.'), tone: 'error' });
     } finally {
       setBusy(false);
     }
@@ -2042,7 +2035,7 @@ function SkillTab({
                   setUploadError(null);
                   setValidatedSkillName(null);
                   setValidatingUpload(false);
-                  setToast(null);
+
                 }}
                 aria-label={locale.startsWith('zh') ? '删除已导入 Skill' : 'Remove imported Skill'}
               >
@@ -2074,11 +2067,6 @@ function SkillTab({
       <SkillCategoryPicker value={category} onChange={setCategory} locale={locale} disabled={busy} />
       <SkillLogoPicker value={logoKey} onChange={setLogoKey} locale={locale} />
 
-      {toast ? (
-        <div onClick={(e) => e.stopPropagation()}>
-          <Toast message={toast.message} tone={toast.tone} onDismiss={() => setToast(null)} />
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -2161,7 +2149,7 @@ export function PublishDialog({ onClose, onPublish, initialCategory }: Props) {
   const [activeCategory, setActiveCategory] = useState<PublishCategory>(initialCategory ?? 'projects');
   const [canConfirm, setCanConfirm] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const [publishError, setPublishError] = useState<string | null>(null);
+
   const dialogId = useId();
   const confirmRef = useRef<{ canConfirm: boolean; onConfirm: () => void }>({
     canConfirm: false,
@@ -2193,12 +2181,13 @@ export function PublishDialog({ onClose, onPublish, initialCategory }: Props) {
     selection: PublishProjectSelection | PublishToolSelection | PublishMcpSelection | PublishSkillSelection,
   ) {
     setPublishing(true);
-    setPublishError(null);
+
     try {
       await onPublish(selection);
+      notifyToast({ message: t('feedback.published'), tone: 'success' });
       onClose();
     } catch (error) {
-      setPublishError(toPublishDialogMessage(error, locale, '发布失败，请稍后重试。', 'Publishing failed. Please try again.'));
+      notifyToast({ message: toPublishDialogMessage(error, locale, '发布失败，请稍后重试。', 'Publishing failed. Please try again.'), tone: 'error' });
     } finally {
       setPublishing(false);
     }
@@ -2281,7 +2270,6 @@ export function PublishDialog({ onClose, onPublish, initialCategory }: Props) {
          )}
         </div>
 
-        {publishError ? <p className={styles.publishError} role="alert">{publishError}</p> : null}
         <footer className={styles.footer}>
           <button type="button" className={styles.cancelBtn} onClick={onClose} disabled={publishing}>
             {t('common.cancel')}

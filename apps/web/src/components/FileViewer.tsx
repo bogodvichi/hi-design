@@ -3820,7 +3820,7 @@ function FileVersionManagerModal({
       }
       setVersionExportToast({ message: t('fileViewer.exportDone'), tone: 'success' });
     } catch (err) {
-      const message = err instanceof Error && err.message ? err.message : t('fileViewer.exportFailed');
+      const message = userFacingError(err, t, 'fileViewer.exportFailed');
       setVersionExportToast({ message, tone: 'error' });
     }
   }
@@ -8059,7 +8059,7 @@ function HtmlViewer({
     }
     const failToast = (err?: unknown) => {
       stopTicker();
-      const message = err instanceof Error && err.message ? err.message : t('fileViewer.exportFailed');
+      const message = userFacingError(err, t, 'fileViewer.exportFailed');
       if (toastFormats.has(format)) setExportToast({ message, tone: 'error' });
     };
     try {

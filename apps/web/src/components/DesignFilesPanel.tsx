@@ -1,3 +1,4 @@
+import { notifyToast } from './toast-context';
 import { userFacingError } from '../utils/userFacingError';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useAnalytics } from '../analytics/provider';
@@ -841,6 +842,7 @@ export function DesignFilesPanel({
     try {
       const renamed = await onRenameFile(name, nextName);
       if (!renamed) throw new Error('Rename failed');
+      notifyToast({ message: t('feedback.renamed'), tone: 'success' });
       setSelected((prev) => {
         if (!prev.has(name)) return prev;
         const next = new Set(prev);
@@ -850,7 +852,7 @@ export function DesignFilesPanel({
       });
       setRenaming(null);
     } catch (err) {
-      setInstallNotice({ message: userFacingError(err, t, 'feedback.renameFailed', t('feedback.objectFile')) });
+      notifyToast({ message: userFacingError(err, t, 'feedback.renameFailed', t('feedback.objectFile')), tone: 'error' });
       setRenaming({ name, draft, saving: false });
     }
   }

@@ -1,3 +1,5 @@
+import { userFacingError } from '../utils/userFacingError';
+import { notifyToast } from './toast-context';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../i18n';
 import {
@@ -698,7 +700,9 @@ function ExampleCard({
                   role="menuitem"
                   onClick={() => {
                     setShareOpen(false);
-                    exportAsPdf(html, exportTitle, { deck: isDeck });
+                    void Promise.resolve(exportAsPdf(html, exportTitle, { deck: isDeck })).catch((err) => {
+                      notifyToast({ message: userFacingError(err, t, 'feedback.pdfExportFailed'), tone: 'error' });
+                    });
                   }}
                 >
                   <span className="share-menu-icon">📄</span>

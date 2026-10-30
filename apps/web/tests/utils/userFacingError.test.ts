@@ -9,6 +9,12 @@ const translate = (dict: Dict) => (key: keyof Dict, vars?: Record<string, string
 const t = translate(zhCN);
 
 describe('user-facing feedback', () => {
+  it.each(['PDF_EXPORT_FAILED', 'EXPORT_POPUP_BLOCKED'])('localizes export failure %s', (code) => {
+    const message = userFacingError(new Error(code), t, 'feedback.saveFailed');
+    expect(message).toContain('PDF');
+    expect(message).not.toContain(code);
+  });
+
   it('explains denied access without repeating the failed operation', () => {
     expect(userFacingError({ code: 'RESOURCE_ACCESS_DENIED' }, t, 'feedback.loadSkillsFailed', 'Skill'))
       .toBe('没有 Skill 的访问权限，请联系所有者或团队管理员。');

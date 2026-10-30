@@ -1,3 +1,6 @@
+import { notifyToast } from './toast-context';
+import { userFacingError } from '../utils/userFacingError';
+import { useT } from '../i18n';
 ﻿import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './ReviewAddModal.module.css';
@@ -65,10 +68,10 @@ export function ReviewEditModal({
   reviewId: string;
   reviewName?: string;
 }) {
+  const t = useT();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [okMsg, setOkMsg] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [confirmOpen, setConfirmOpen] = useState(false);
   const aliveRef = useRef(true);
@@ -101,7 +104,7 @@ export function ReviewEditModal({
         setLoading(false);
         setSubmitting(false);
         setError(null);
-        setOkMsg(null);
+
         setFieldErrors({});
         setConfirmOpen(false);
         setReviewNameVal('');
@@ -180,7 +183,7 @@ export function ReviewEditModal({
   /** 校验 + 弹出二次确认。 */
   function handleSubmitClick() {
     setError(null);
-    setOkMsg(null);
+
     const errs: Record<string, string> = {};
     if (!coreReviewers.length) {
       errs.coreReviewers = '请添加核心评委';
@@ -222,16 +225,14 @@ export function ReviewEditModal({
       const j = await resp.json().catch(() => null);
       if (!aliveRef.current) return;
       if (!resp.ok || !j?.ok) {
-        setError(j?.error?.message || j?.msg || `编辑评审失败 HTTP ${resp.status}`);
+        notifyToast({ message: userFacingError(j?.error ?? j?.msg, t, 'feedback.saveFailed'), tone: 'error' });
         return;
       }
-      setOkMsg('编辑成功');
-      setTimeout(() => {
-        if (aliveRef.current) onClose();
-      }, 1200);
+      notifyToast({ message: t('feedback.updated'), tone: 'success' });
+      onClose();
     } catch (err: any) {
       if (!aliveRef.current) return;
-      setError('编辑评审失败: ' + (err?.message || String(err)));
+      notifyToast({ message: userFacingError(err, t, 'feedback.saveFailed'), tone: 'error' });
     } finally {
       if (aliveRef.current) setSubmitting(false);
     }
@@ -388,8 +389,8 @@ export function ReviewEditModal({
         </div>
 
         <div className={styles.foot}>
-          <span className={`${styles.footMsg} ${error ? styles.footMsgErr : ''} ${okMsg ? styles.footMsgOk : ''}`}>
-            {error || okMsg || ''}
+          <span className={`${styles.footMsg} ${error ? styles.footMsgErr : ''}`}>
+            {error || ''}
           </span>
           <div className={styles.footActions}>
             <button

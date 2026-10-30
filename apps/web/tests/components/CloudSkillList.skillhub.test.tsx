@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { CloudSkillList } from '../../src/components/CloudSkillList';
 import { I18nProvider } from '../../src/i18n';
+import { ToastProvider } from '../../src/components/ToastProvider';
 
 const originalFetch = globalThis.fetch;
 
@@ -27,8 +28,8 @@ describe('CloudSkillList Skillhub integration', () => {
       return jsonResponse({ ok: true });
     });
     globalThis.fetch = fetchMock as typeof fetch;
-    render(<I18nProvider initial="zh-CN"><CloudSkillList workspaceId="personal" workspaceMemberId="personal-member" workspaceType="team"
-      ownerMemberId="personal-member" mode="square" scope="public" /></I18nProvider>);
+    render(<I18nProvider initial="zh-CN"><ToastProvider><CloudSkillList workspaceId="personal" workspaceMemberId="personal-member" workspaceType="team"
+      ownerMemberId="personal-member" mode="square" scope="public" /></ToastProvider></I18nProvider>);
     const title = await screen.findByText('ued-requirement-analysis');
     fireEvent.click(title.closest('article')!.querySelector('button')!);
     fireEvent.click(screen.getByRole('menuitem', { name: action }));
@@ -96,7 +97,7 @@ describe('CloudSkillList Skillhub integration', () => {
     globalThis.fetch = fetchMock as typeof fetch;
 
     const { container } = render(
-      <I18nProvider initial="zh-CN">
+      <I18nProvider initial="zh-CN"><ToastProvider>
         <CloudSkillList
           workspaceId="current-workspace"
           workspaceMemberId="current-member"
@@ -105,7 +106,7 @@ describe('CloudSkillList Skillhub integration', () => {
           mode="square"
           scope="public"
         />
-      </I18nProvider>,
+      </ToastProvider></I18nProvider>,
     );
 
     expect(await screen.findByText('Skillhub Design Review')).toBeTruthy();
@@ -190,7 +191,7 @@ describe('CloudSkillList Skillhub integration', () => {
     document.body.appendChild(toolbarTarget);
 
     const { container } = render(
-      <I18nProvider initial="zh-CN">
+      <I18nProvider initial="zh-CN"><ToastProvider>
         <CloudSkillList
           workspaceId="current-workspace"
           workspaceMemberId="current-member"
@@ -200,7 +201,7 @@ describe('CloudSkillList Skillhub integration', () => {
           scope="public"
           controlsPortalTarget={toolbarTarget}
         />
-      </I18nProvider>,
+      </ToastProvider></I18nProvider>,
     );
 
     expect(await screen.findByText('Misc Helper')).toBeTruthy();
@@ -255,7 +256,7 @@ describe('CloudSkillList Skillhub integration', () => {
     globalThis.fetch = fetchMock as typeof fetch;
 
     const { container } = render(
-      <I18nProvider initial="zh-CN">
+      <I18nProvider initial="zh-CN"><ToastProvider>
         <CloudSkillList
           workspaceId="current-workspace"
           workspaceMemberId="current-member"
@@ -265,7 +266,7 @@ describe('CloudSkillList Skillhub integration', () => {
           scope="public"
           externalSearchQuery="visual"
         />
-      </I18nProvider>,
+      </ToastProvider></I18nProvider>,
     );
 
     expect(await screen.findByText('Visual Helper')).toBeTruthy();
@@ -307,7 +308,7 @@ describe('CloudSkillList Skillhub integration', () => {
     }) as typeof fetch;
 
     render(
-      <I18nProvider initial="zh-CN">
+      <I18nProvider initial="zh-CN"><ToastProvider>
         <CloudSkillList
           workspaceId="current-workspace"
           workspaceMemberId="current-member"
@@ -315,7 +316,7 @@ describe('CloudSkillList Skillhub integration', () => {
           sourceProvider="maas-skillhub"
           mode="square"
         />
-      </I18nProvider>,
+      </ToastProvider></I18nProvider>,
     );
 
     expect(await screen.findByText('Design Review')).toBeTruthy();

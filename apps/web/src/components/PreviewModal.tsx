@@ -1,3 +1,5 @@
+import { userFacingError } from '../utils/userFacingError';
+import { notifyToast } from './toast-context';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useT } from '../i18n';
 import { copyToClipboard } from '../lib/copy-to-clipboard';
@@ -834,7 +836,9 @@ export function PreviewModal({
                               onSharePopoverItemClick?.('pdf');
                               setTemplateShareOpen(false);
                               if (activeHtml) {
-                                exportAsPdf(activeHtml, exportTitle, { deck: activeDeck });
+                                void Promise.resolve(exportAsPdf(activeHtml, exportTitle, { deck: activeDeck })).catch((err) => {
+                                  notifyToast({ message: userFacingError(err, t, 'feedback.pdfExportFailed'), tone: 'error' });
+                                });
                               }
                             }}
                           >
@@ -882,19 +886,19 @@ export function PreviewModal({
                               setTemplateShareOpen(false);
                               const iframe = previewIframeRef.current;
                               if (!iframe) return;
-                              const snap =
-                                (await captureHostIframeSnapshot(iframe)) ??
-                                (await requestPreviewSnapshot(iframe));
                               try {
+                                const snap =
+                                  (await captureHostIframeSnapshot(iframe)) ??
+                                  (await requestPreviewSnapshot(iframe));
                                 if (snap) {
                                   exportAsImage(snap.dataUrl, exportTitle);
                                 } else {
                                   console.warn('[PreviewModal] snapshot capture returned null');
-                                  alert(t('common.exportImageFailed'));
+                                  notifyToast({ message: t('common.exportImageFailed'), tone: 'error' });
                                 }
                               } catch (err) {
                                 console.warn('[PreviewModal] failed to convert snapshot:', err);
-                                alert(t('common.exportImageFailed'));
+                                notifyToast({ message: t('common.exportImageFailed'), tone: 'error' });
                               }
                             }}
                           >

@@ -1,3 +1,4 @@
+import { notifyToast } from './toast-context';
 import { userFacingError } from '../utils/userFacingError';
 import { useT } from '../i18n';
 ﻿import { useEffect, useMemo, useRef, useState } from 'react';
@@ -85,8 +86,6 @@ export function ReviewManuscriptUpdateModal({
   // 从当前项目生成 Axure 包并上传中
   const [exporting, setExporting] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [okMsg, setOkMsg] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const aliveRef = useRef(true);
 
@@ -137,8 +136,8 @@ export function ReviewManuscriptUpdateModal({
       setOdProjectName('');
       setExporting(false);
       setSubmitting(false);
-      setError(null);
-      setOkMsg(null);
+
+
       setFieldErrors({});
     }
   }, [open]);
@@ -176,7 +175,7 @@ export function ReviewManuscriptUpdateModal({
       return;
     }
     setUploading(true);
-    setError(null);
+
     try {
       const fd = new FormData();
       fd.append('file', file);
@@ -187,7 +186,7 @@ export function ReviewManuscriptUpdateModal({
       const j = await resp.json().catch(() => null);
       if (!aliveRef.current) return;
       if (!resp.ok || !j?.ok) {
-        setError(userFacingError(j?.error ?? j?.msg, t, 'feedback.uploadReviewFailed'));
+        notifyToast({ message: userFacingError(j?.error ?? j?.msg, t, 'feedback.uploadReviewFailed'), tone: 'error' });
         setReUploadInfo(null);
         return;
       }
@@ -195,7 +194,7 @@ export function ReviewManuscriptUpdateModal({
       clearFieldError('upload');
     } catch (err: any) {
       if (!aliveRef.current) return;
-      setError(userFacingError(err, t, 'feedback.uploadReviewFailed'));
+      notifyToast({ message: userFacingError(err, t, 'feedback.uploadReviewFailed'), tone: 'error' });
     } finally {
       if (aliveRef.current) setUploading(false);
     }
@@ -203,8 +202,8 @@ export function ReviewManuscriptUpdateModal({
 
   /** 提交（第二步）：调 reUploadConfirm，传 manuscriptId + middleManuscriptId + description。 */
   async function handleSubmit() {
-    setError(null);
-    setOkMsg(null);
+
+
     const errs: Record<string, string> = {};
     if (!manuscriptId) {
       errs.upload = '缺少稿件 ID';
@@ -246,14 +245,14 @@ export function ReviewManuscriptUpdateModal({
           ? await exportProjectAsHtmlReviewZip({ projectId, projectName: odProjectName })
           : await exportProjectAsAxureZip({ projectId, projectName: odProjectName, returnBlob: true });
         if (!result.ok) {
-          setError(userFacingError(result.error, t, 'feedback.uploadReviewFailed'));
+          notifyToast({ message: userFacingError(result.error, t, 'feedback.uploadReviewFailed'), tone: 'error' });
           setFieldErrors({ upload: userFacingError(result.error, t, 'feedback.uploadReviewFailed') });
           setSubmitting(false);
           return;
         }
         if (!result.blob || !result.zipName) {
           const msg = '生成评审稿 ZIP 失败：未生成文件';
-          setError(msg);
+          notifyToast({ message: msg, tone: 'error' });
           setFieldErrors({ upload: msg });
           setSubmitting(false);
           return;
@@ -270,7 +269,7 @@ export function ReviewManuscriptUpdateModal({
         if (!aliveRef.current) return;
         if (!upResp.ok || !upJson?.ok) {
           const msg = userFacingError(upJson?.error ?? upJson?.msg, t, 'feedback.uploadReviewFailed');
-          setError(msg);
+          notifyToast({ message: msg, tone: 'error' });
           setFieldErrors({ upload: msg });
           setSubmitting(false);
           return;
@@ -285,7 +284,7 @@ export function ReviewManuscriptUpdateModal({
       } catch (err: any) {
         if (!aliveRef.current) return;
         const msg = userFacingError(err, t, 'feedback.uploadReviewFailed');
-        setError(msg);
+        notifyToast({ message: msg, tone: 'error' });
         setFieldErrors({ upload: msg });
         setSubmitting(false);
         return;
@@ -318,17 +317,14 @@ export function ReviewManuscriptUpdateModal({
       const j = await resp.json().catch(() => null);
       if (!aliveRef.current) return;
       if (!resp.ok || !j?.ok) {
-        setError(userFacingError(j?.error ?? j?.msg, t, 'feedback.updateReviewFailed'));
+        notifyToast({ message: userFacingError(j?.error ?? j?.msg, t, 'feedback.updateReviewFailed'), tone: 'error' });
         return;
       }
-      setOkMsg('更新成功');
-      // 1.2s 后自动关闭，让调用方接力刷新列表 / toast。
-      setTimeout(() => {
-        if (aliveRef.current) onClose();
-      }, 1200);
+      notifyToast({ message: t('feedback.updated'), tone: 'success' });
+      onClose();
     } catch (err: any) {
       if (!aliveRef.current) return;
-      setError(userFacingError(err, t, 'feedback.updateReviewFailed'));
+      notifyToast({ message: userFacingError(err, t, 'feedback.updateReviewFailed'), tone: 'error' });
     } finally {
       if (aliveRef.current) setSubmitting(false);
     }
@@ -462,9 +458,6 @@ export function ReviewManuscriptUpdateModal({
         </div>
 
         <div className={styles.foot}>
-          <span className={`${styles.footMsg} ${error ? styles.footMsgErr : ''} ${okMsg ? styles.footMsgOk : ''}`}>
-            {error || okMsg || ''}
-          </span>
           <div className={styles.footActions}>
             <button type="button" className={styles.btn} onClick={onClose} disabled={submitting || exporting}>
               取消

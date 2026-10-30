@@ -25,6 +25,7 @@ import {
 } from '../../src/components/FileWorkspace';
 import { ENABLE_BLANK_PAGE_WORKSPACE_ENTRYPOINT } from '../../src/components/workspace/tab-launcher';
 import { I18nProvider } from '../../src/i18n';
+import { ToastProvider } from '../../src/components/ToastProvider';
 import { DesignFilesPanel } from '../../src/components/DesignFilesPanel';
 import {
   projectFolderNameFromResponse,
@@ -998,6 +999,7 @@ describe('FileWorkspace upload input', () => {
         tabsState={{ tabs: [], active: null }}
         onTabsStateChange={onTabsStateChange}
       />,
+      { wrapper: ToastProvider },
     );
 
     fireEvent.change(screen.getByTestId('design-files-upload-input'), {
@@ -1005,13 +1007,12 @@ describe('FileWorkspace upload input', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('upload-error-banner').textContent).toContain(
-        'storage offline',
-      );
+      expect(screen.getByRole('alert').textContent).toContain('Could not upload');
+      expect(screen.getByRole('alert').textContent).not.toContain('storage offline');
     });
 
-    fireEvent.click(screen.getByTestId('upload-error-dismiss'));
-    expect(screen.queryByTestId('upload-error-banner')).toBeNull();
+    fireEvent.click(within(screen.getByRole('alert')).getByRole('button', { name: 'Dismiss' }));
+    expect(screen.queryByRole('alert')).toBeNull();
 
     // Images render as masonry cards; a single click on the thumb opens the
     // file in a workspace tab (there is no in-panel preview pane to land in).
@@ -1052,6 +1053,7 @@ describe('FileWorkspace upload input', () => {
         tabsState={{ tabs: [], active: null }}
         onTabsStateChange={vi.fn()}
       />,
+      { wrapper: ToastProvider },
     );
 
     fireEvent.change(screen.getByTestId('design-files-upload-input'), {
@@ -1064,9 +1066,8 @@ describe('FileWorkspace upload input', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('upload-error-banner').textContent).toContain(
-        'Uploaded 1 file(s), but 1 failed (permission denied).',
-      );
+      expect(screen.getByRole('alert').textContent).toContain('Upload complete: 1 succeeded; 1 failed.');
+      expect(screen.getByRole('alert').textContent).not.toContain('permission denied');
     });
   });
 
@@ -1166,7 +1167,7 @@ describe('FileWorkspace upload input', () => {
     expect(projectBRenders.every((r) => r.folderCount === 0)).toBe(true);
   });
 
-  it('clears a prior upload failure after a later successful upload', async () => {
+  it('reports successful retry after a failed upload', async () => {
     mockedUploadProjectFiles
       .mockRejectedValueOnce(new Error('storage offline'))
       .mockResolvedValueOnce({
@@ -1193,6 +1194,7 @@ describe('FileWorkspace upload input', () => {
         tabsState={{ tabs: [], active: null }}
         onTabsStateChange={vi.fn()}
       />,
+      { wrapper: ToastProvider },
     );
 
     const input = screen.getByTestId('design-files-upload-input');
@@ -1201,7 +1203,7 @@ describe('FileWorkspace upload input', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByTestId('upload-error-banner').textContent).toContain('storage offline');
+      expect(screen.getByRole('alert').textContent).toContain('Could not upload');
     });
 
     fireEvent.change(input, {
@@ -1209,7 +1211,7 @@ describe('FileWorkspace upload input', () => {
     });
 
     await waitFor(() => expect(onRefreshFiles).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(screen.queryByTestId('upload-error-banner')).toBeNull());
+    expect(await screen.findByText('Upload complete: 1 succeeded; 0 failed.')).toBeTruthy();
   });
 
   it('falls back to the browser file list when a dragged entry cannot be read', async () => {

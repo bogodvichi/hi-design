@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WorkspaceCollabContext } from '@open-design/contracts';
 import { I18nProvider } from '../../src/i18n';
+import { ToastProvider } from '../../src/components/ToastProvider';
 import { AddSkillDialog } from '../../src/components/AddSkillDialog';
 
 const { uploadSkillToCloud, getOpenDesignHost, isMacPlatform } = vi.hoisted(() => ({
@@ -60,9 +61,9 @@ describe.each(workspaces)('Skill upload in $workspaceId', (workspace) => {
       }
       if (entryPoint === 'file input') isMacPlatform.mockReturnValue(false);
       const onClose = vi.fn();
-      render(<I18nProvider initial="zh-CN">
+      render(<I18nProvider initial="zh-CN"><ToastProvider>
         <AddSkillDialog open onClose={onClose} workspaceContext={workspace} />
-      </I18nProvider>);
+      </ToastProvider></I18nProvider>);
       const zone = screen.getByRole('button', { name: /拖拽或点击上传/ });
       if (entryPoint === 'native picker') {
         fireEvent.click(zone);
@@ -97,9 +98,9 @@ describe.each(workspaces)('Skill upload in $workspaceId', (workspace) => {
 });
 
 it('rejects a non-Markdown single file before uploading', async () => {
-  render(<I18nProvider initial="zh-CN">
+  render(<I18nProvider initial="zh-CN"><ToastProvider>
     <AddSkillDialog open onClose={vi.fn()} workspaceContext={workspaces[0]} />
-  </I18nProvider>);
+  </ToastProvider></I18nProvider>);
   fireEvent.drop(screen.getByRole('button', { name: /拖拽或点击上传/ }), {
     dataTransfer: { files: [new File([content], 'skill.txt')], items: [] },
   });
@@ -113,9 +114,9 @@ it('preserves a folder manifest and its accompanying files', async () => {
   Object.defineProperty(manifest, 'webkitRelativePath', { value: 'example/SKILL.md' });
   Object.defineProperty(reference, 'webkitRelativePath', { value: 'example/references/guide.md' });
   const onClose = vi.fn();
-  render(<I18nProvider initial="zh-CN">
+  render(<I18nProvider initial="zh-CN"><ToastProvider>
     <AddSkillDialog open onClose={onClose} workspaceContext={workspaces[0]} />
-  </I18nProvider>);
+  </ToastProvider></I18nProvider>);
   fireEvent.change(document.querySelector('input[type="file"][multiple]')!, {
     target: { files: [manifest, reference] },
   });

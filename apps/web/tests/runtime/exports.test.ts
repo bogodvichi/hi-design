@@ -1335,7 +1335,7 @@ describe('sandboxed preview Blob exports', () => {
     expect(doc).toContain("window.__odPrintReady===true");
   });
 
-  it('shows an alert and revokes the blob URL when the popup is blocked', async () => {
+  it('rejects and revokes the blob URL when the popup is blocked', async () => {
     vi.stubGlobal('window', {
       open: () => null,
       addEventListener: () => {},
@@ -1344,9 +1344,8 @@ describe('sandboxed preview Blob exports', () => {
     const revokeSpy = URL.revokeObjectURL as ReturnType<typeof vi.fn>;
     revokeSpy.mockClear();
 
-    await exportAsPdf('<p>test</p>', 'Blocked');
-
-    expect(alert).toHaveBeenCalledWith('Popup blocked! Click the popup-blocked icon in your browser address bar (or browser menu), choose "Always allow pop-ups" for this site, then retry Export PDF.');
+    await expect(exportAsPdf('<p>test</p>', 'Blocked')).rejects.toThrow('EXPORT_POPUP_BLOCKED');
+    expect(alert).not.toHaveBeenCalled();
     expect(revokeSpy).toHaveBeenCalledWith('blob:test');
   });
 
@@ -1380,6 +1379,16 @@ describe('sandboxed preview Blob exports', () => {
     // native printToPDF path, so a self-printing document would trigger a
     // second print dialog.
     expect(htmlArg).not.toContain('window.print()');
+  });
+
+  it('rejects a native PDF failure so the export caller cannot report success', async () => {
+    const restoreHost = installMockOpenDesignHost({ host: { pdf: { print: vi.fn().mockResolvedValue({ ok: false }) } } });
+    try {
+      await expect(exportAsPdf('<p>test</p>', 'Failed')).rejects.toThrow('PDF_EXPORT_FAILED');
+      expect(alert).not.toHaveBeenCalled();
+    } finally {
+      restoreHost();
+    }
   });
 
   it('passes deck intent through the desktop native print bridge', async () => {

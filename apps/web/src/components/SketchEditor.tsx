@@ -1,3 +1,4 @@
+import { notifyToast } from './toast-context';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import {
@@ -329,7 +330,7 @@ export function SketchEditor({
       });
     } catch (err) {
       console.warn('[SketchEditor] export image failed', err);
-      alert(t('common.exportImageFailed'));
+      notifyToast({ message: t('common.exportImageFailed'), tone: 'error' });
     } finally {
       setExporting(false);
     }

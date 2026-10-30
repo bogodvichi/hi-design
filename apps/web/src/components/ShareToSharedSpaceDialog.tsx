@@ -1,3 +1,4 @@
+import { notifyToast } from './toast-context';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Dialog, DialogFooter, DialogTitle } from '@open-design/components';
@@ -31,7 +32,6 @@ export function ShareToSharedSpaceDialog({
   const [selected, setSelected] = useState<Person[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
 
   // Current user's email — used to exclude self from the recipient picker.
   // Sharing to yourself is not allowed in the shared space.
@@ -41,7 +41,7 @@ export function ShareToSharedSpaceDialog({
   const excludeEmails = selfEmail ? [selfEmail] : [];
 
   async function handleSubmit() {
-    if (selected.length === 0) return;
+    if (selected.length === 0 || submitting) return;
     // Guard against self-share even if the picker somehow let one through.
     if (selfEmail && selected.some((p) => {
       const email = typeof p.email === 'string' ? p.email.trim().toLowerCase() : '';
@@ -73,14 +73,14 @@ export function ShareToSharedSpaceDialog({
        }),
       });
       if (!result) {
-        setError(t('sharedSpace.shareFailed'));
+        notifyToast({ message: t('sharedSpace.shareFailed'), tone: 'error' });
         return;
       }
-      setSuccess(true);
+      notifyToast({ message: t('sharedSpace.shareSuccess'), tone: 'success' });
       onShared?.();
-      setTimeout(() => onClose(), 800);
+      onClose();
     } catch {
-      setError(t('sharedSpace.shareFailed'));
+      notifyToast({ message: t('sharedSpace.shareFailed'), tone: 'error' });
     } finally {
       setSubmitting(false);
     }
@@ -115,11 +115,6 @@ export function ShareToSharedSpaceDialog({
      />
       {error ? (
         <p className={styles.error} role="alert">{error}</p>
-      ) : null}
-      {success ? (
-        <p className={styles.success} role="status">
-          {t('sharedSpace.shareSuccess')}
-        </p>
       ) : null}
       <DialogFooter className="row">
         <button type="button" onClick={onClose} disabled={submitting}>

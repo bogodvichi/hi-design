@@ -1,3 +1,4 @@
+import { notifyToast } from './toast-context';
 // Reusable "invite teammates" dialog for the team workspace.
 //
 // Each row pairs a single-select PersonPicker with its own role dropdown
@@ -13,6 +14,7 @@ import { getTeamMemberId } from '../utils/deterministicId';
 import { Icon } from './Icon';
 import { PersonPicker, type Person } from './PersonPicker';
 import { useI18n } from '../i18n';
+import { userFacingError } from '../utils/userFacingError';
 
 const ROLE_OPTIONS = ['admin', 'member', 'guest'] as const;
 
@@ -228,11 +230,11 @@ export function InviteDialog({
       });
       const body = await res.json().catch(() => null);
       if (!res.ok || body?.code !== 0) {
-        showToast(body?.error || body?.msg || t('workspaceInvite.submitFailed'));
+        notifyToast({ message: userFacingError(body?.error ?? body?.msg, t, 'workspaceInvite.submitFailed'), tone: 'error' });
         setSubmitting(false);
         return;
       }
-      showToast(t('workspaceInvite.sent'));
+      notifyToast({ message: t('workspaceInvite.sent'), tone: 'success' });
       window.dispatchEvent(new CustomEvent('hdw:members-updated', { detail: { teamId: resolvedTeamId } }));
       setSuccess(true);
       onSubmit?.();
@@ -244,7 +246,7 @@ export function InviteDialog({
         setSubmitting(false);
       }, 1000);
     } catch (caught) {
-      showToast(t('workspaceInvite.submitFailed'));
+      notifyToast({ message: t('workspaceInvite.submitFailed'), tone: 'error' });
       setSubmitting(false);
     }
   }

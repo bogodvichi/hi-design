@@ -1,3 +1,4 @@
+import { notifyToast } from './toast-context';
 import { responseError, userFacingError } from '../utils/userFacingError';
 import { PageEmptyState } from './PageEmptyState';
 import { useCallback, useEffect, useId, useState } from 'react';
@@ -194,8 +195,9 @@ export function CloudToolList({
         throw await responseError(res);
       }
       await loadTools();
+      notifyToast({ message: t('feedback.unpublished'), tone: 'success' });
     } catch (err: any) {
-      setError(userFacingError(err, t, 'feedback.unpublishFailed', t('feedback.objectContent')));
+      notifyToast({ message: userFacingError(err, t, 'feedback.unpublishFailed', t('feedback.objectContent')), tone: 'error' });
     } finally {
       setUnpublishingId(null);
       setConfirmAction(null);
@@ -216,8 +218,9 @@ export function CloudToolList({
         throw await responseError(res);
       }
       await loadTools();
+      notifyToast({ message: t('feedback.deleted'), tone: 'success' });
     } catch (err: any) {
-      setError(userFacingError(err, t, 'feedback.deleteFailed', t('feedback.objectContent')));
+      notifyToast({ message: userFacingError(err, t, 'feedback.deleteFailed', t('feedback.objectContent')), tone: 'error' });
     } finally {
       setDeletingId(null);
       setConfirmAction(null);

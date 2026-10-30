@@ -366,12 +366,12 @@ describe('project move to personal on an unbound (never-locally-shared) project'
   );
 
   describe.each(['single', 'batch'] as const)('personal-to-team transfer (%s)', (mode) => {
-    it.each(['writable', 'guest', 'removed', 'locked', 'personal', 'folder-failed', 'unpublished', 'timeout', 'forbidden'] as const)(
+    it.each(['writable', 'cloud-published', 'guest', 'removed', 'locked', 'personal', 'folder-failed', 'unpublished', 'timeout', 'forbidden'] as const)(
       'requires a writable team destination and preserves confirmed transfers (%s)', async (destination) => {
         const projectId = 'personal-transfer-policy';
         insertProject(db, { id: projectId, name: 'Personal project', skillId: null, designSystemId: null,
           pendingPrompt: null, metadata: null, customInstructions: null, createdAt: 10, updatedAt: 20 });
-        ensureWorkspaceProject(db, { projectId, workspaceId: PERSONAL_WORKSPACE_ID, visibility: 'personal',
+        ensureWorkspaceProject(db, { projectId, workspaceId: PERSONAL_WORKSPACE_ID, visibility: destination === 'cloud-published' ? 'team' : 'personal',
           resourceState: 'active', createdByWorkspaceMemberId: PERSONAL_MEMBER_ID, updatedByWorkspaceMemberId: PERSONAL_MEMBER_ID });
         const requestTeamTransfer = vi.fn(async () => ({ targetOwnerMemberId: OWNER_MEMBER_ID }));
         const requestTeamShare = vi.fn(async () => undefined);
@@ -403,11 +403,11 @@ describe('project move to personal on an unbound (never-locally-shared) project'
             body: JSON.stringify({ projectIds: [projectId], visibility: 'team', targetWorkspaceId: TEAM_WORKSPACE_ID, targetFolderId: 'destination' }),
           });
           const body = await response.json();
-          const transferred = ['writable', 'folder-failed', 'unpublished'].includes(destination);
-          expect(response.status, JSON.stringify(body)).toBe(['writable', 'unpublished'].includes(destination) ? 200
+          const transferred = ['writable', 'cloud-published', 'folder-failed', 'unpublished'].includes(destination);
+          expect(response.status, JSON.stringify(body)).toBe(['writable', 'cloud-published', 'unpublished'].includes(destination) ? 200
             : ['folder-failed', 'timeout', 'forbidden'].includes(destination) ? 503 : 403);
           expect(requestTeamTransfer).toHaveBeenCalledTimes(destination === 'unpublished' ? 2
-            : ['writable', 'folder-failed', 'timeout', 'forbidden'].includes(destination) ? 1 : 0);
+            : ['writable', 'cloud-published', 'folder-failed', 'timeout', 'forbidden'].includes(destination) ? 1 : 0);
           expect(requestTeamShare).toHaveBeenCalledTimes(destination === 'unpublished' ? 1 : 0);
           if (destination === 'unpublished') expect(requestTeamShare).toHaveBeenCalledWith(projectId,
             expect.objectContaining({ teamId: PERSONAL_WORKSPACE_ID, memberId: PERSONAL_MEMBER_ID }), null);

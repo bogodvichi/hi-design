@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { ToastProvider } from '../../src/components/ToastProvider';
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -46,7 +47,7 @@ describe('PreviewModal image export', () => {
 
   it('renders the Export as image button in the share menu', () => {
     render(
-      <PreviewModal {...baseProps} onClose={() => {}} />,
+      <ToastProvider><PreviewModal {...baseProps} onClose={() => {}} /></ToastProvider>,
     );
 
     openShareMenu();
@@ -79,7 +80,7 @@ describe('PreviewModal image export', () => {
     });
 
     render(
-      <PreviewModal {...baseProps} onClose={() => {}} />,
+      <ToastProvider><PreviewModal {...baseProps} onClose={() => {}} /></ToastProvider>,
     );
 
     openShareMenu();
@@ -103,7 +104,7 @@ describe('PreviewModal image export', () => {
     });
 
     render(
-      <PreviewModal {...baseProps} onClose={() => {}} />,
+      <ToastProvider><PreviewModal {...baseProps} onClose={() => {}} /></ToastProvider>,
     );
 
     openShareMenu();
@@ -117,29 +118,30 @@ describe('PreviewModal image export', () => {
     expect(exportAsImageMock).toHaveBeenCalledWith(fakeDataUrl, 'main');
   });
 
-  it('alerts when snapshot capture returns null', async () => {
+  it('shows a top error when snapshot capture returns null', async () => {
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     captureHostIframeSnapshotMock.mockResolvedValueOnce(null);
     requestPreviewSnapshotMock.mockResolvedValueOnce(null);
 
     render(
-      <PreviewModal {...baseProps} onClose={() => {}} />,
+      <ToastProvider><PreviewModal {...baseProps} onClose={() => {}} /></ToastProvider>,
     );
 
     openShareMenu();
     fireEvent.click(screen.getByRole('menuitem', { name: /export as image/i }));
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('alert').textContent).toContain('Image capture failed');
     });
 
     // exportAsImage must not be called when snapshot is null.
     expect(exportAsImageMock).not.toHaveBeenCalled();
 
+    expect(alertSpy).not.toHaveBeenCalled();
     alertSpy.mockRestore();
   });
 
-  it('alerts when exportAsImage throws', async () => {
+  it('shows a top error when exportAsImage throws', async () => {
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {});
     captureHostIframeSnapshotMock.mockResolvedValueOnce(null);
     requestPreviewSnapshotMock.mockResolvedValueOnce({
@@ -152,16 +154,17 @@ describe('PreviewModal image export', () => {
     });
 
     render(
-      <PreviewModal {...baseProps} onClose={() => {}} />,
+      <ToastProvider><PreviewModal {...baseProps} onClose={() => {}} /></ToastProvider>,
     );
 
     openShareMenu();
     fireEvent.click(screen.getByRole('menuitem', { name: /export as image/i }));
 
     await waitFor(() => {
-      expect(alertSpy).toHaveBeenCalledTimes(1);
+      expect(screen.getByRole('alert').textContent).toContain('Image capture failed');
     });
 
+    expect(alertSpy).not.toHaveBeenCalled();
     alertSpy.mockRestore();
   });
 

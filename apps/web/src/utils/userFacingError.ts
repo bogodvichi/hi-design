@@ -20,6 +20,8 @@ export async function responseError(response: Response, payload?: unknown): Prom
 }
 
 const CODE_KEYS: Record<string, FeedbackKey> = {
+  PDF_EXPORT_FAILED: 'feedback.pdfExportFailed',
+  EXPORT_POPUP_BLOCKED: 'feedback.popupBlocked',
   AUTHENTICATION_REQUIRED: 'feedback.signInRequired',
   INVALID_SESSION: 'feedback.sessionExpired',
   RESOURCE_ACCESS_DENIED: 'feedback.accessDenied',

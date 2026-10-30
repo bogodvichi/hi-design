@@ -1,3 +1,4 @@
+import { notifyToast } from './toast-context';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Dialog, DialogFooter, DialogTitle } from '@open-design/components';
@@ -35,7 +36,6 @@ export function ShareResourceDialog({
   const [selected, setSelected] = useState<Person[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
 
   // Current user's email — used to exclude self from the recipient picker.
   const selfEmail = typeof getStoredUserInfo()?.email === 'string'
@@ -44,7 +44,7 @@ export function ShareResourceDialog({
   const excludeEmails = selfEmail ? [selfEmail] : [];
 
   async function handleSubmit() {
-    if (selected.length === 0) return;
+    if (selected.length === 0 || submitting) return;
     // Guard against self-share even if the picker somehow let one through.
     if (selfEmail && selected.some((p) => {
       const email = typeof p.email === 'string' ? p.email.trim().toLowerCase() : '';
@@ -76,19 +76,19 @@ export function ShareResourceDialog({
           }),
       });
       if (!result) {
-        setError(t('sharedSpace.shareFailed'));
+        notifyToast({ message: t('sharedSpace.shareFailed'), tone: 'error' });
         return;
       }
-      setSuccess(true);
+      notifyToast({ message: t('sharedSpace.shareSuccess'), tone: 'success' });
       onShared?.();
-      setTimeout(() => onClose(), 800);
+      onClose();
     } catch (error) {
       if (error instanceof ResourceShareOwnerError) {
-        setError(locale.startsWith('zh')
+        notifyToast({ message: locale.startsWith('zh')
           ? '无法分享：当前账号与云端登记的资源所有者不一致。请核对发布账号或联系管理员确认资源归属。'
-          : 'Cannot share: the signed-in account is not the cloud resource owner. Check the publishing account or ask an administrator to verify ownership.');
+          : 'Cannot share: the signed-in account is not the cloud resource owner. Check the publishing account or ask an administrator to verify ownership.', tone: 'error' });
       } else {
-        setError(t('sharedSpace.shareFailed'));
+        notifyToast({ message: t('sharedSpace.shareFailed'), tone: 'error' });
       }
     } finally {
       setSubmitting(false);
@@ -124,11 +124,6 @@ export function ShareResourceDialog({
       />
       {error ? (
         <p className={styles.error} role="alert">{error}</p>
-      ) : null}
-      {success ? (
-        <p className={styles.success} role="status">
-          {t('sharedSpace.shareSuccess')}
-        </p>
       ) : null}
       <DialogFooter className="row">
         <button type="button" onClick={onClose} disabled={submitting}>

@@ -1,3 +1,4 @@
+import { notifyToast } from './toast-context';
 import { responseError, userFacingError } from '../utils/userFacingError';
 import { PageEmptyState } from './PageEmptyState';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
@@ -346,8 +347,9 @@ export function CloudMcpList({
           }
         });
       }
+      notifyToast({ message: t('feedback.connected'), tone: 'success' });
     } catch (err: any) {
-      setError(userFacingError(err, t, 'feedback.connectFailed', t('feedback.objectMcp')));
+      notifyToast({ message: userFacingError(err, t, 'feedback.connectFailed', t('feedback.objectMcp')), tone: 'error' });
     } finally {
       setInstallingId(null);
     }
@@ -371,8 +373,9 @@ export function CloudMcpList({
      window.dispatchEvent(new CustomEvent('personal:mcp-refresh', {
         detail: { source: 'cloud-mcp-list', instanceId: titleId, action: 'uninstall', installKey, workspaceId, workspaceMemberId },
       }));
+      notifyToast({ message: t('feedback.disconnected'), tone: 'success' });
     } catch (err: any) {
-      setError(userFacingError(err, t, 'feedback.disconnectFailed', t('feedback.objectMcp')));
+      notifyToast({ message: userFacingError(err, t, 'feedback.disconnectFailed', t('feedback.objectMcp')), tone: 'error' });
     } finally {
       setUninstallingId(null);
     }
@@ -398,8 +401,9 @@ export function CloudMcpList({
       window.dispatchEvent(new CustomEvent('personal:mcp-refresh', {
         detail: { source: 'cloud-mcp-list', instanceId: titleId },
       }));
+      notifyToast({ message: t('feedback.deleted'), tone: 'success' });
     } catch (err: any) {
-      setError(userFacingError(err, t, 'feedback.deleteFailed', t('feedback.objectMcp')));
+      notifyToast({ message: userFacingError(err, t, 'feedback.deleteFailed', t('feedback.objectMcp')), tone: 'error' });
     } finally {
       setDeletingId(null);
       setConfirmAction(null);
@@ -421,8 +425,9 @@ export function CloudMcpList({
         throw new Error(body.message || body.error || 'Update publication failed');
       }
       await loadTemplates();
+      notifyToast({ message: t('feedback.updated'), tone: 'success' });
     } catch (err: any) {
-      setError(userFacingError(err, t, 'feedback.updatePublicationFailed', t('feedback.objectMcp')));
+      notifyToast({ message: userFacingError(err, t, 'feedback.updatePublicationFailed', t('feedback.objectMcp')), tone: 'error' });
     } finally {
       setUpdatingId(null);
     }
@@ -445,8 +450,9 @@ export function CloudMcpList({
       window.dispatchEvent(new CustomEvent('personal:mcp-refresh', {
         detail: { source: 'cloud-mcp-list', instanceId: titleId },
       }));
+      notifyToast({ message: t('feedback.unpublished'), tone: 'success' });
     } catch (err: any) {
-      setError(userFacingError(err, t, 'feedback.unpublishFailed', t('feedback.objectMcp')));
+      notifyToast({ message: userFacingError(err, t, 'feedback.unpublishFailed', t('feedback.objectMcp')), tone: 'error' });
     } finally {
       setUnpublishingId(null);
       setConfirmAction(null);

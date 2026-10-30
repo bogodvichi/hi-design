@@ -2,7 +2,7 @@ import { userFacingError } from '../utils/userFacingError';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from './Icon';
-import { Toast } from './Toast';
+import { notifyToast } from './toast-context';
 import { useT } from '../i18n';
 import { useWorkspaceContext } from '../collab/useWorkspaceContext';
 import { workspaceContextHasTeamIdentity, type WorkspaceCollabContext } from '@open-design/contracts';
@@ -50,7 +50,6 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
   const [uploadSource, setUploadSource] = useState<UploadSource | null>(null);
   const [busy, setBusy] = useState<BusyState>(null);
   const isBusy = busy !== null;
-  const [toast, setToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const folderInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -58,12 +57,6 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
     activeTab === 'upload'
       ? uploadSource !== null
       : url.trim().length > 0;
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 3500);
-    return () => clearTimeout(timer);
-  }, [toast]);
 
   useEffect(() => {
     if (open) {
@@ -129,18 +122,18 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
     try {
       const result = await installSkill({ source: trimmed }, workspaceContext);
       if ('error' in result) {
-        setToast({ message: userFacingError(result.error, t, 'feedback.saveFailed', t('feedback.objectSkill')), tone: 'error' });
+        notifyToast({ message: userFacingError(result.error, t, 'feedback.saveFailed', t('feedback.objectSkill')), tone: 'error' });
         return;
       }
       if (await checkCloudSkillDuplicate(result.skill.name)) {
         await deleteSkill(result.skill.id, workspaceContext);
-        setToast({ message: t('personalScope.skillDuplicateName' as any), tone: 'error' });
+        notifyToast({ message: t('personalScope.skillDuplicateName' as any), tone: 'error' });
         return;
       }
       setBusy('sharing');
       const shareResult = await shareSkillToTeam(result.skill.id, result.skill.name);
       if (shareResult.ok) {
-        setToast({
+        notifyToast({
           message: t('personalScope.importAndShareSuccess', { name: result.skill.name }),
           tone: 'success',
         });
@@ -148,11 +141,13 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
         onClose();
         window.dispatchEvent(new CustomEvent('personal:skill-refresh'));
       } else {
-        setToast({
+        notifyToast({
           message: t('personalScope.importSuccessShareFailed', { name: result.skill.name }),
           tone: 'error',
         });
       }
+    } catch (err) {
+      notifyToast({ message: userFacingError(err, t, 'feedback.importFailed', t('feedback.objectSkill')), tone: 'error' });
     } finally {
       setBusy(null);
     }
@@ -164,17 +159,17 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
     try {
       const skillName = await deriveSkillName(uploadSource);
       if (!skillName) {
-        setToast({ message: t('pluginsView.skillMissingFile'), tone: 'error' });
+        notifyToast({ message: t('pluginsView.skillMissingFile'), tone: 'error' });
         return;
       }
       if (await checkCloudSkillDuplicate(skillName)) {
-        setToast({ message: t('personalScope.skillDuplicateName' as any), tone: 'error' });
+        notifyToast({ message: t('personalScope.skillDuplicateName' as any), tone: 'error' });
         return;
       }
       const uploadInput = buildCloudUploadInput(uploadSource);
       const result = await uploadSkillToCloud(uploadInput, workspaceContext);
       if ('error' in result) {
-        setToast({ message: userFacingError(result.error, t, 'feedback.saveFailed', t('feedback.objectSkill')), tone: 'error' });
+        notifyToast({ message: userFacingError(result.error, t, 'feedback.saveFailed', t('feedback.objectSkill')), tone: 'error' });
         return;
       }
       // A Personal Skill must be usable immediately after being added.
@@ -182,7 +177,7 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
       // locally under the authenticated Personal Workspace.
       if (!result.resourceId || !workspaceContext) {
         window.dispatchEvent(new CustomEvent('personal:skill-refresh'));
-        setToast({ message: t('feedback.skillSavedInstallFailed'), tone: 'error' });
+        notifyToast({ message: t('feedback.skillSavedInstallFailed'), tone: 'error' });
         return;
       }
       const installRes = await fetch(
@@ -192,18 +187,20 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
       const installBody = await installRes.json().catch(() => ({})) as { installed?: boolean; error?: string; message?: string };
       window.dispatchEvent(new CustomEvent('personal:skill-refresh'));
       if (!installRes.ok || installBody.installed !== true) {
-        setToast({
+        notifyToast({
           message: t('feedback.skillSavedInstallFailed'),
           tone: 'error',
         });
         return;
       }
-      setToast({
+      notifyToast({
         message: t('personalScope.importAndShareSuccess', { name: result.title }),
         tone: 'success',
       });
       onClose();
       setUploadSource(null);
+    } catch (err) {
+      notifyToast({ message: userFacingError(err, t, 'feedback.importFailed', t('feedback.objectSkill')), tone: 'error' });
     } finally {
       setBusy(null);
     }
@@ -238,14 +235,13 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
   }
 
   function selectUploadFile(file: File) {
-    setToast(null);
     if (/\.zip$/i.test(file.name)) {
       setUploadSource({ kind: 'zip', file });
     } else if (/\.md$/i.test(file.name)) {
       setUploadSource({ kind: 'file', file });
     } else {
       setUploadSource(null);
-      setToast({ message: '单文件导入仅支持 Markdown（.md）或 ZIP 文件，请重新选择。', tone: 'error' });
+      notifyToast({ message: '单文件导入仅支持 Markdown（.md）或 ZIP 文件，请重新选择。', tone: 'error' });
     }
   }
 
@@ -273,7 +269,7 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
         selectUploadFile(new File([selected.data], fileName, { type: 'text/markdown' }));
       } else {
         setUploadSource(null);
-        setToast({ message: 'Skill 单文件导入只支持选择一个 Markdown 文件。', tone: 'error' });
+        notifyToast({ message: 'Skill 单文件导入只支持选择一个 Markdown 文件。', tone: 'error' });
       }
     } catch {
       // Fall back silently
@@ -508,11 +504,6 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
           </button>
         </footer>
       </section>
-      {toast ? (
-        <div onClick={(e) => e.stopPropagation()}>
-          <Toast message={toast.message} tone={toast.tone} onDismiss={() => setToast(null)} />
-        </div>
-      ) : null}
     </div>,
     document.body,
   ) : null;

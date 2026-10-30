@@ -1,3 +1,4 @@
+import { notifyToast } from './toast-context';
 import { responseError, userFacingError } from '../utils/userFacingError';
 import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -90,7 +91,7 @@ export function UnifiedShareDialog({
   const [communityTitle, setCommunityTitle] = useState(projectName);
   const [communityDesc, setCommunityDesc] = useState('');
   const [publishing, setPublishing] = useState(false);
-  const [publishError, setPublishError] = useState<string | null>(null);
+
   const [publishResult, setPublishResult] = useState<CommunityPublishResult | null>(null);
 
   // Share link state
@@ -98,7 +99,7 @@ export function UnifiedShareDialog({
   const [linkLoading, setLinkLoading] = useState(false);
   const [linkGenerating, setLinkGenerating] = useState(false);
   const [sharingToTeam, setSharingToTeam] = useState(false);
- const [linkError, setLinkError] = useState<string | null>(null);
+
  const [copied, setCopied] = useState(false);
 
  // Share-to-person state (mirrors ShareToSharedSpaceDialog)
@@ -112,7 +113,7 @@ export function UnifiedShareDialog({
     if (activeTab !== 'link') return;
     let cancelled = false;
     setLinkLoading(true);
-    setLinkError(null);
+
     const params = new URLSearchParams();
     params.set('project_id', projectId);
     if (workspaceId) params.set('workspace_id', workspaceId);
@@ -151,7 +152,7 @@ export function UnifiedShareDialog({
   async function handlePublish() {
     if (!canPublishToCommunity || !canPublish) return;
     setPublishing(true);
-    setPublishError(null);
+
     try {
       const resp = await fetch(
         `/api/projects/${encodeURIComponent(projectId)}/publish-community`,
@@ -173,8 +174,9 @@ export function UnifiedShareDialog({
         throw await responseError(resp, data);
       }
       setPublishResult(data as CommunityPublishResult);
+      notifyToast({ message: t('feedback.published'), tone: 'success' });
     } catch (err) {
-      setPublishError(userFacingError(err, t, 'feedback.publishFailed', t('feedback.objectProject')));
+      notifyToast({ message: userFacingError(err, t, 'feedback.publishFailed', t('feedback.objectProject')), tone: 'error' });
     } finally {
       setPublishing(false);
     }
@@ -185,9 +187,10 @@ export function UnifiedShareDialog({
     try {
       await navigator.clipboard.writeText(shareLink);
       setCopied(true);
+      notifyToast({ message: t('feedback.copied'), tone: 'success' });
       setTimeout(() => setCopied(false), 2000);
    } catch {
-     // ignore
+     notifyToast({ message: t('feedback.copyFailed'), tone: 'error' });
    }
  }
 
@@ -229,14 +232,15 @@ export function UnifiedShareDialog({
          }),
      });
      if (!result) {
-       setShareError(t('sharedSpace.shareFailed'));
+       notifyToast({ message: t('sharedSpace.shareFailed'), tone: 'error' });
        return;
      }
       setShareSuccess(true);
+      notifyToast({ message: t('sharedSpace.shareSuccess'), tone: 'success' });
       onShared?.();
-      setTimeout(() => onClose(), 800);
+      onClose();
    } catch {
-     setShareError(t('sharedSpace.shareFailed'));
+     notifyToast({ message: t('sharedSpace.shareFailed'), tone: 'error' });
    } finally {
      setShareSubmitting(false);
    }
@@ -244,7 +248,7 @@ export function UnifiedShareDialog({
 
  async function handleGenerateLink() {
    if (!canGenerateLink) return;
-   setLinkError(null);
+
    setLinkGenerating(true);
    setSharingToTeam(false);
    try {
@@ -271,11 +275,12 @@ export function UnifiedShareDialog({
      const url = extractShareUrl(data);
      if (url) {
        setShareLink(url);
+       notifyToast({ message: t('feedback.linkCreated'), tone: 'success' });
      } else {
-       setLinkError(t('share.noLink'));
+       notifyToast({ message: t('share.noLink'), tone: 'error' });
      }
    } catch (err) {
-     setLinkError(userFacingError(err, t, 'feedback.linkFailed', t('feedback.objectProject')));
+     notifyToast({ message: userFacingError(err, t, 'feedback.linkFailed', t('feedback.objectProject')), tone: 'error' });
    } finally {
      setLinkGenerating(false);
      setSharingToTeam(false);
@@ -416,7 +421,6 @@ const footerActionDisabled =
                     className={styles.fieldTextarea}
                   />
                 </label>
-                {publishError && <p className={styles.error}>{publishError}</p>}
               </>
             )}
           </div>
@@ -436,7 +440,6 @@ const footerActionDisabled =
              />
            </label>
            {shareError && <p className={styles.error}>{shareError}</p>}
-           {shareSuccess && <p className={styles.successHint}>{t('sharedSpace.shareSuccess')}</p>}
          </div>
        )}
 
@@ -450,7 +453,6 @@ const footerActionDisabled =
            {linkLoading && <p className={styles.linkHint}>{t('share.querying')}</p>}
            {sharingToTeam && <p className={styles.linkHint}>{t('share.sharingToTeam')}</p>}
            {linkGenerating && <p className={styles.linkHint}>{t('share.generating')}</p>}
-           {linkError && <p className={styles.error}>{linkError}</p>}
            {shareLink && !linkLoading && !linkGenerating && !sharingToTeam && (
               <>
                 <div className={styles.copyRow}>
@@ -474,7 +476,7 @@ const footerActionDisabled =
                 </a>
               </>
             )}
-           {!shareLink && !linkLoading && !linkGenerating && !sharingToTeam && !linkError && (
+           {!shareLink && !linkLoading && !linkGenerating && !sharingToTeam && (
              <p className={styles.linkHint}>{canGenerateLink ? t('share.generateLinkHint') : '暂无分享链接，请联系团队成员生成'}</p>
            )}
           </div>

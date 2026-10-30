@@ -1,3 +1,5 @@
+import { notifyToast } from './toast-context';
+import { userFacingError } from '../utils/userFacingError';
 import {
   startTransition,
   useCallback,
@@ -11319,12 +11321,9 @@ const coalescedCoverRefresh = useCoalescedCallback(
     if (projectDuplicateStarting || !onDuplicateProject) return;
     setProjectDuplicateStarting(true);
     void Promise.resolve(onDuplicateProject(currentProject.id, {}))
+      .then(() => notifyToast({ message: t('feedback.copiedProject'), tone: 'success' }))
       .catch((err) => {
-        setProjectActionsToast({
-          message: err instanceof Error ? err.message : String(err),
-          details: null,
-          tone: 'error',
-        });
+        notifyToast({ message: userFacingError(err, t, 'feedback.copyFailed'), tone: 'error' });
       })
       .finally(() => {
         setProjectDuplicateStarting(false);
@@ -11333,6 +11332,7 @@ const coalescedCoverRefresh = useCoalescedCallback(
     currentProject.id,
     onDuplicateProject,
     projectDuplicateStarting,
+    t,
   ]);
 
   // Continue in CLI / Finalize design package handlers + keyboard

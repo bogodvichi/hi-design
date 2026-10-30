@@ -48,6 +48,8 @@ import {
   memoryToastSubscriptionMode,
 } from './components/MemoryToast';
 import { Toast } from './components/Toast';
+import { notifyToast } from './components/toast-context';
+import { userFacingError } from './utils/userFacingError';
 import { CenteredLoader } from './components/Loading';
 import { PetOverlay, type PetTaskCenter } from './components/pet/PetOverlay';
 import { buildPetTaskCenter } from './components/pet/taskCenter';
@@ -4556,6 +4558,7 @@ if (fetchedProject) {
         && projectListScopeKey(workspaceContextRef.current) === renameScopeKey;
       if (!isCurrentScope) return;
       if (!persisted) {
+        notifyToast({ message: t('feedback.renameFailed'), tone: 'error' });
         setProjects((current) => current.map((project) =>
           project.id === id && project.name === trimmed
             ? {
@@ -4569,6 +4572,7 @@ if (fetchedProject) {
         await refreshProjects();
         return;
       }
+      notifyToast({ message: t('feedback.renamed'), tone: 'success' });
       setProjects((current) => current.map((project) =>
         project.id === id
           ? {
@@ -4594,8 +4598,12 @@ if (fetchedProject) {
         projectRenameStatesRef.current.delete(renameProjectionKey);
       }
     });
-    await queued;
-  }, [refreshProjects]);
+    try {
+      await queued;
+    } catch (err) {
+      notifyToast({ message: userFacingError(err, t, 'feedback.renameFailed'), tone: 'error' });
+    }
+  }, [refreshProjects, t]);
 
   // Project Back returns to the exact surface that opened the project (team
   // folder, personal list, community/tool view, etc.), not to whichever
@@ -6120,6 +6128,7 @@ if (fetchedProject) {
       {workingDirError ? (
         <Toast
           message={workingDirError}
+          tone="error"
           role="alert"
           onDismiss={() => setWorkingDirError(null)}
         />

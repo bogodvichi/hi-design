@@ -6002,6 +6002,7 @@ export function SettingsDialog({
           {aboutToast ? (
             <Toast
               message={aboutToast}
+              tone={aboutToast === t('settings.clearUpdaterCacheSuccess') ? 'success' : 'error'}
               onDismiss={() => setAboutToast(null)}
             />
           ) : null}

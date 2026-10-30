@@ -1,3 +1,5 @@
+import { userFacingError } from '../utils/userFacingError';
+import { notifyToast } from './toast-context';
 import {
   memo,
   useCallback,
@@ -2391,7 +2393,7 @@ export function FileWorkspace({
       result = await uploadProjectFiles(projectId, picked, uploadDir, workspaceContext);
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
-      setUploadError(`Upload failed for ${picked.length} file(s) (${detail}).`);
+      notifyToast({ message: userFacingError(err, t, 'feedback.uploadFailed'), tone: 'error' });
       trackFileUploadResult(analytics.track, {
         page_name: 'file_manager',
         area: 'file_manager',
@@ -2409,14 +2411,7 @@ export function FileWorkspace({
     }
 
     if (result.failed.length > 0) {
-      const failedCount = result.failed.length;
-      const uploadedCount = result.uploaded.length;
-      const detail = result.error ? ` (${result.error})` : '';
-      setUploadError(
-        uploadedCount > 0
-          ? `Uploaded ${uploadedCount} file(s), but ${failedCount} failed${detail}.`
-          : `Upload failed for ${failedCount} file(s)${detail}.`,
-      );
+      notifyToast({ message: t('feedback.uploadSummary', { succeeded: result.uploaded.length, failed: result.failed.length }), tone: 'error' });
       console.warn('Project upload had failures', result.failed);
       trackFileUploadResult(analytics.track, {
         page_name: 'file_manager',
@@ -2427,6 +2422,7 @@ export function FileWorkspace({
         ...(result.error ? { error_code: result.error } : {}),
       });
     } else if (result.uploaded.length > 0) {
+      notifyToast({ message: t('feedback.uploadSummary', { succeeded: result.uploaded.length, failed: 0 }), tone: 'success' });
       trackFileUploadResult(analytics.track, {
         page_name: 'file_manager',
         area: 'file_manager',
@@ -2576,6 +2572,7 @@ export function FileWorkspace({
     const deletePath = projectFileDeletePath(files, name);
     const ok = await deleteProjectFile(projectId, deletePath, workspaceContext);
     if (ok) {
+      notifyToast({ message: t('feedback.deleted'), tone: 'success' });
       await onRefreshFiles();
       const nextTabs = persistedTabs.filter((n) => n !== name);
       if (activeTab === name) {
@@ -2600,6 +2597,8 @@ export function FileWorkspace({
         delete next[name];
         return next;
       });
+    } else {
+      notifyToast({ message: t('feedback.deleteFailed'), tone: 'error' });
     }
   }
 
@@ -2638,9 +2637,7 @@ export function FileWorkspace({
         return next;
       });
     }
-    if (failed.length > 0) {
-      alert(t('workspace.deleteSelectedFilesPartial', { n: failed.length }));
-    }
+    notifyToast({ message: t('feedback.deleteSummary', { succeeded: deleted.length, failed: failed.length }), tone: failed.length ? 'error' : 'success' });
   }
 
   async function handleRename(oldName: string, nextName: string): Promise<ProjectFile | null> {
@@ -2733,7 +2730,11 @@ export function FileWorkspace({
       undefined,
       workspaceContext,
     );
-    if (!file) return;
+    if (!file) {
+      notifyToast({ message: t('feedback.saveFailed'), tone: 'error' });
+      return;
+    }
+    notifyToast({ message: t('feedback.created'), tone: 'success' });
     await onRefreshFiles();
     await refreshProjectFolders();
     openFile(file.name, { forcePersist: true });
@@ -2762,6 +2763,7 @@ export function FileWorkspace({
         return;
       }
       setPageCreatorOpen(false);
+      notifyToast({ message: t('feedback.created'), tone: 'success' });
       setPageCreatorQuery('');
       setPageCreatorCategory('slides');
       await onRefreshFiles();

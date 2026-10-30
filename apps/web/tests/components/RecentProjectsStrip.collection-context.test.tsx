@@ -56,7 +56,8 @@ it('offers copy and removal of a received share without moving or deleting its s
   expect(onRemoveSharedWithMe).toHaveBeenCalledWith('shared-project');
 });
 
-it.each([false, true])('transfers a personal project to a team using its source identity (bulk=%s)', async (bulk) => {
+it.each([['personal', false], ['personal', true], ['team', false], ['team', true]] as const)(
+  'transfers a personally owned project with visibility=%s using its source identity (bulk=%s)', async (visibility, bulk) => {
   const requests: RequestInit[] = [];
   vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     if (String(input).endsWith('/move')) {
@@ -67,7 +68,7 @@ it.each([false, true])('transfers a personal project to a team using its source 
     return Response.json({ items: [], members: [], files: [] });
   }));
   render(<RecentProjectsStrip
-    projects={[{ id: 'project', name: 'Project', workspaceId: 'source', workspaceVisibility: 'personal', createdByWorkspaceMemberId: 'source-member', createdAt: 1, updatedAt: 1, skillId: null, designSystemId: null }]}
+    projects={[{ id: 'project', name: 'Project', workspaceId: 'source', workspaceVisibility: visibility, createdByWorkspaceMemberId: 'source-member', createdAt: 1, updatedAt: 1, skillId: null, designSystemId: null }]}
     space="drafts" homeWorkspaceId="source" currentWorkspaceId="source"
     workspaceContextOverride={{ ...source, isDefaultTeam: true }} onOpen={vi.fn()}
   />);

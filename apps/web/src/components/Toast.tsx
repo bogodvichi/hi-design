@@ -1,19 +1,11 @@
-// Lightweight transient toast for the new project-actions toolbar
-// (Continue in CLI / Finalize design package — #451). Mirrors the
-// canonical state-based pattern from PromptTemplatePreviewModal:
-// transient state cleared on a setTimeout, no portal, no DOM
-// imperative work. Single-toast queue; multi-toast support is
-// deliberately deferred to a follow-up.
-//
-// Renders an optional secondary `details` line beneath the primary
-// message so daemon error envelopes that carry an upstream
-// explanation (e.g. Anthropic account-usage-cap reasons) can surface
-// the real upstream message alongside the daemon's category label.
+'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useContext, useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import { Icon } from './Icon';
 import { useT } from '../i18n';
+import { notifyToast, ToastViewportContext } from './toast-context';
 
 export interface ToastProps {
   message: string;
@@ -59,7 +51,27 @@ const TONE_ICON: Record<
   loading: 'spinner',
 };
 
-export function Toast({
+/** Existing callers inherit app-owned result lifetime without migrating their state. */
+export function Toast(props: ToastProps) {
+  const viewport = useContext(ToastViewportContext);
+  const key = useId();
+  const onDismiss = useRef(props.onDismiss);
+  onDismiss.current = props.onDismiss;
+  const globalResult = !!viewport && !props.code && (props.tone === 'success' || props.tone === 'error');
+  const { message, tone, details, actionLabel, actionAriaLabel, onAction, className, role } = props;
+  const onActionRef = useRef(onAction);
+  onActionRef.current = onAction;
+  useEffect(() => {
+    if (!globalResult) return;
+    notifyToast({ key, message, tone, details, actionLabel, actionAriaLabel, className, role,
+      onAction: onAction ? () => onActionRef.current?.() : undefined,
+      onDismiss: () => onDismiss.current?.(),
+    });
+  }, [globalResult, key, message, tone, details, actionLabel, actionAriaLabel, className, role, !!onAction]);
+  return globalResult ? null : <ToastContent {...props} />;
+}
+
+export function ToastContent({
   message,
   className,
   details,
@@ -69,14 +81,15 @@ export function Toast({
   code,
   ttlMs = DEFAULT_TTL,
   onDismiss,
-  role = 'status',
   tone = 'default',
+  role = tone === 'error' ? 'alert' : 'status',
   placement = 'top',
 }: ToastProps) {
   const t = useT();
+  const viewport = useContext(ToastViewportContext);
   // When code is present the toast is a manual-action surface; never
   // auto-dismiss it out from under the user mid-copy.
-  const effectiveTtl = code ? 0 : ttlMs;
+  const effectiveTtl = code ? 0 : tone === 'success' || tone === 'error' ? DEFAULT_TTL : ttlMs;
   const [leaving, setLeaving] = useState(false);
 
   // Callers pass `onDismiss={() => setToast(null)}` — a fresh closure on every
@@ -122,7 +135,7 @@ export function Toast({
   // `transform`, clobbering the `translateX(-50%)` centering and leaving the
   // toast off-centre. Keep this a plain div so the CSS keyframes are the single
   // source of truth for both motion and centering.
-  return (
+  const content = (
     <div
       className={`od-toast tone-${tone} placement-${placement}${className ? ` ${className}` : ''}${leaving ? ' leaving' : ''}`}
       role={role}
@@ -172,4 +185,5 @@ export function Toast({
       ) : null}
     </div>
   );
+  return viewport ? createPortal(content, viewport) : content;
 }

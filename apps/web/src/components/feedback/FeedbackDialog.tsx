@@ -1,3 +1,4 @@
+import { notifyToast } from '../toast-context';
 import { useT } from '../../i18n';
 import { userFacingError } from '../../utils/userFacingError';
 import { useEffect, useRef, useState } from 'react';
@@ -258,7 +259,7 @@ export function FeedbackDialog({
       }
       onSuccess();
     } catch (err) {
-      setSubmitError(userFacingError(err, t, 'feedback.feedbackSubmitFailed'));
+      notifyToast({ message: userFacingError(err, t, 'feedback.feedbackSubmitFailed'), tone: 'error' });
       setSubmitState('error');
     }
   };

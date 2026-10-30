@@ -1,3 +1,4 @@
+import { notifyToast } from './toast-context';
 import { PageEmptyState } from './PageEmptyState';
 import { ModuleBreadcrumb } from './ModuleBreadcrumb';
 // Scope view for the "/share-me" route. Fetches projects shared to
@@ -260,10 +261,10 @@ export function SharedWithMeView({
   const sharedRowsRef = useRef<SharedWithMeProject[]>([]);
   const [removeTarget, setRemoveTarget] = useState<SharedWithMeProject | null>(null);
   const [removeBusy, setRemoveBusy] = useState(false);
-  const [removeError, setRemoveError] = useState<string | null>(null);
+
   const [removeFolderTarget, setRemoveFolderTarget] = useState<SharedFolderItem | null>(null);
   const [removeFolderBusy, setRemoveFolderBusy] = useState(false);
-  const [removeFolderError, setRemoveFolderError] = useState<string | null>(null);
+
 
   // Resolve the shared space workspace ID + member ID from the directory
   // (the item with isDefaultTeam === true is the shared space).
@@ -394,18 +395,18 @@ export function SharedWithMeView({
   const requestRemoveSharedProject = useCallback((projectId: string) => {
     const row = sharedRowsRef.current.find((item) => item.projectId === projectId);
     if (!row) return;
-    setRemoveError(null);
+
     setRemoveTarget(row);
   }, []);
 
   const confirmRemoveSharedProject = useCallback(async () => {
     if (!removeTarget || removeBusy) return;
     setRemoveBusy(true);
-    setRemoveError(null);
+
     try {
       const ok = await unshareFromSharedSpace(removeTarget.shareId);
       if (!ok) {
-        setRemoveError(t('sharedSpace.removeFromSharedWithMeFailed'));
+        notifyToast({ message: t('sharedSpace.removeFromSharedWithMeFailed'), tone: 'error' });
         return;
       }
       sharedRowsRef.current = sharedRowsRef.current.filter(
@@ -419,29 +420,30 @@ export function SharedWithMeView({
         removeTarget.projectId,
         removeTarget.homeWorkspaceId,
       );
+      notifyToast({ message: t('feedback.removed'), tone: 'success' });
       setRemoveTarget(null);
       window.dispatchEvent(new CustomEvent('shared:folders-updated'));
       window.dispatchEvent(new CustomEvent('shared:subfolders-updated'));
     } catch {
-      setRemoveError(t('sharedSpace.removeFromSharedWithMeFailed'));
+      notifyToast({ message: t('sharedSpace.removeFromSharedWithMeFailed'), tone: 'error' });
     } finally {
       setRemoveBusy(false);
     }
   }, [removeBusy, removeTarget, t]);
 
   const requestRemoveSharedFolder = useCallback((folder: SharedFolderItem) => {
-    setRemoveFolderError(null);
+
     setRemoveFolderTarget(folder);
   }, []);
 
   const confirmRemoveSharedFolder = useCallback(async () => {
     if (!removeFolderTarget || removeFolderBusy) return;
     if (!workspaceMemberId || !removeFolderTarget.workspaceId) {
-      setRemoveFolderError(t('sharedSpace.removeFromSharedWithMeFailed'));
+      notifyToast({ message: t('sharedSpace.removeFromSharedWithMeFailed'), tone: 'error' });
       return;
     }
     setRemoveFolderBusy(true);
-    setRemoveFolderError(null);
+
     try {
       const ok = await unshareFolderFromSharedSpace({
         folderId: removeFolderTarget.folderId,
@@ -449,7 +451,7 @@ export function SharedWithMeView({
         recipientMemberId: workspaceMemberId,
       });
       if (!ok) {
-        setRemoveFolderError(t('sharedSpace.removeFromSharedWithMeFailed'));
+        notifyToast({ message: t('sharedSpace.removeFromSharedWithMeFailed'), tone: 'error' });
         return;
       }
       setFolders((current) => current.filter((folder) => folder.folderId !== removeFolderTarget.folderId));
@@ -463,12 +465,13 @@ export function SharedWithMeView({
           markRecentlyOpenedProjectSharedWithMe(row.projectId, row.homeWorkspaceId);
         }
       }
+      notifyToast({ message: t('feedback.removed'), tone: 'success' });
       setRemoveFolderTarget(null);
       window.dispatchEvent(new CustomEvent('shared:projects-refresh'));
       window.dispatchEvent(new CustomEvent('shared:folders-updated'));
       window.dispatchEvent(new CustomEvent('shared:subfolders-updated'));
     } catch {
-      setRemoveFolderError(t('sharedSpace.removeFromSharedWithMeFailed'));
+      notifyToast({ message: t('sharedSpace.removeFromSharedWithMeFailed'), tone: 'error' });
     } finally {
       setRemoveFolderBusy(false);
     }
@@ -580,22 +583,24 @@ export function SharedWithMeView({
       <RemoveSharedProjectDialog
         target={removeTarget}
         busy={removeBusy}
-        error={removeError}
+        error={null}
         onClose={() => {
           if (removeBusy) return;
-          setRemoveError(null);
-          setRemoveTarget(null);
+
+          notifyToast({ message: t('feedback.removed'), tone: 'success' });
+      setRemoveTarget(null);
         }}
         onConfirm={() => { void confirmRemoveSharedProject(); }}
       />
       <RemoveSharedProjectDialog
         target={removeFolderTarget}
         busy={removeFolderBusy}
-        error={removeFolderError}
+        error={null}
         onClose={() => {
           if (removeFolderBusy) return;
-          setRemoveFolderError(null);
-          setRemoveFolderTarget(null);
+
+          notifyToast({ message: t('feedback.removed'), tone: 'success' });
+      setRemoveFolderTarget(null);
         }}
         onConfirm={() => { void confirmRemoveSharedFolder(); }}
       />
@@ -635,7 +640,7 @@ export function SharedFolderView({
   const sharedRowsRef = useRef<SharedWithMeProject[]>([]);
   const [removeTarget, setRemoveTarget] = useState<SharedWithMeProject | null>(null);
   const [removeBusy, setRemoveBusy] = useState(false);
-  const [removeError, setRemoveError] = useState<string | null>(null);
+
 
   // Build breadcrumb path by walking up the folder_pid chain.
   useEffect(() => {
@@ -771,18 +776,18 @@ export function SharedFolderView({
   const requestRemoveSharedProject = useCallback((projectId: string) => {
     const row = sharedRowsRef.current.find((item) => item.projectId === projectId);
     if (!row) return;
-    setRemoveError(null);
+
     setRemoveTarget(row);
   }, []);
 
   const confirmRemoveSharedProject = useCallback(async () => {
     if (!removeTarget || removeBusy) return;
     setRemoveBusy(true);
-    setRemoveError(null);
+
     try {
       const ok = await unshareFromSharedSpace(removeTarget.shareId);
       if (!ok) {
-        setRemoveError(t('sharedSpace.removeFromSharedWithMeFailed'));
+        notifyToast({ message: t('sharedSpace.removeFromSharedWithMeFailed'), tone: 'error' });
         return;
       }
       sharedRowsRef.current = sharedRowsRef.current.filter(
@@ -793,11 +798,12 @@ export function SharedFolderView({
         removeTarget.projectId,
         removeTarget.homeWorkspaceId,
       );
+      notifyToast({ message: t('feedback.removed'), tone: 'success' });
       setRemoveTarget(null);
       window.dispatchEvent(new CustomEvent('shared:folders-updated'));
       window.dispatchEvent(new CustomEvent('shared:subfolders-updated'));
     } catch {
-      setRemoveError(t('sharedSpace.removeFromSharedWithMeFailed'));
+      notifyToast({ message: t('sharedSpace.removeFromSharedWithMeFailed'), tone: 'error' });
     } finally {
       setRemoveBusy(false);
     }
@@ -878,11 +884,12 @@ export function SharedFolderView({
       <RemoveSharedProjectDialog
         target={removeTarget}
         busy={removeBusy}
-        error={removeError}
+        error={null}
         onClose={() => {
           if (removeBusy) return;
-          setRemoveError(null);
-          setRemoveTarget(null);
+
+          notifyToast({ message: t('feedback.removed'), tone: 'success' });
+      setRemoveTarget(null);
         }}
         onConfirm={() => { void confirmRemoveSharedProject(); }}
       />

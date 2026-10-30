@@ -2,7 +2,7 @@ import { responseError, userFacingError } from '../utils/userFacingError';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from './Icon';
-import { Toast } from './Toast';
+import { notifyToast } from './toast-context';
 import { useT } from '../i18n';
 import { useWorkspaceContext } from '../collab/useWorkspaceContext';
 import type { WorkspaceCollabContext } from '@open-design/contracts';
@@ -31,18 +31,11 @@ export function AddMcpDialog({ open, onClose, scope, onAdded, workspaceContext: 
   });
   const [canConfirm, setCanConfirm] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [toast, setToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null);
-
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 3500);
-    return () => clearTimeout(timer);
-  }, [toast]);
 
   useEffect(() => {
     if (open) {
       setBusy(false);
-      setToast(null);
+
       setCanConfirm(false);
     }
   }, [open]);
@@ -63,7 +56,7 @@ export function AddMcpDialog({ open, onClose, scope, onAdded, workspaceContext: 
       try {
         parsedConfig = JSON.parse(selection.config) as Record<string, unknown>;
      } catch {
-       setToast({ message: t('personalScope.mcpFormJsonInvalid'), tone: 'error' });
+       notifyToast({ message: t('personalScope.mcpFormJsonInvalid'), tone: 'error' });
        setBusy(false);
         return;
       }
@@ -83,7 +76,7 @@ export function AddMcpDialog({ open, onClose, scope, onAdded, workspaceContext: 
         if (checkRes.ok) {
           const checkBody = await checkRes.json();
          if (checkBody.exists) {
-           setToast({ message: t('personalScope.mcpDuplicateLabel'), tone: 'error' });
+           notifyToast({ message: t('personalScope.mcpDuplicateLabel'), tone: 'error' });
            setBusy(false);
             return;
           }
@@ -167,10 +160,10 @@ export function AddMcpDialog({ open, onClose, scope, onAdded, workspaceContext: 
          label: tpl.label ?? tpl.id ?? installed.serverId,
          transport: (tpl.transport === 'sse' || tpl.transport === 'http' ? tpl.transport : 'stdio') as McpTransport,
        });
-       setToast({ message: t('personalScope.mcpFormSuccess'), tone: 'success' });
+       notifyToast({ message: t('personalScope.mcpFormSuccess'), tone: 'success' });
        onClose();
     } catch (err: any) {
-      setToast({
+      notifyToast({
         message: userFacingError(err, t, 'feedback.saveFailed', t('feedback.objectMcp')),
         tone: 'error',
       });
@@ -233,11 +226,6 @@ export function AddMcpDialog({ open, onClose, scope, onAdded, workspaceContext: 
           </button>
         </footer>
       </section>
-      {toast ? (
-        <div onClick={(e) => e.stopPropagation()}>
-          <Toast message={toast.message} tone={toast.tone} onDismiss={() => setToast(null)} />
-        </div>
-      ) : null}
     </div>,
     document.body,
   ) : null;

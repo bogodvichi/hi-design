@@ -1,3 +1,4 @@
+import { notifyToast } from './toast-context';
 import { responseError, userFacingError } from '../utils/userFacingError';
 import { PageEmptyState } from './PageEmptyState';
 import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
@@ -551,8 +552,9 @@ useEffect(() => {
       window.dispatchEvent(new CustomEvent('personal:skill-refresh', {
         detail: { source: 'cloud-skill-list', instanceId: titleId },
       }));
+      notifyToast({ message: t('feedback.installed'), tone: 'success' });
     } catch (err: any) {
-      setError(userFacingError(err, t, 'feedback.installFailed', t('feedback.objectSkill')));
+      notifyToast({ message: userFacingError(err, t, 'feedback.installFailed', t('feedback.objectSkill')), tone: 'error' });
     } finally {
       setInstallingId(null);
     }
@@ -593,8 +595,9 @@ useEffect(() => {
       window.dispatchEvent(new CustomEvent('personal:skill-refresh', {
         detail: { source: 'cloud-skill-list', instanceId: titleId },
       }));
+      notifyToast({ message: t('feedback.uninstalled'), tone: 'success' });
     } catch (err: any) {
-      setError(userFacingError(err, t, 'feedback.uninstallFailed', t('feedback.objectSkill')));
+      notifyToast({ message: userFacingError(err, t, 'feedback.uninstallFailed', t('feedback.objectSkill')), tone: 'error' });
     } finally {
       setUninstallingId(null);
     }
@@ -619,8 +622,9 @@ useEffect(() => {
       // Actively refresh both cloud list and local installed set after delete
       invalidateCommunitySkillCatalog();
       await Promise.all([loadSkills(), loadLocalSkills()]);
+      notifyToast({ message: t('feedback.deleted'), tone: 'success' });
     } catch (err: any) {
-      setError(userFacingError(err, t, 'feedback.deleteFailed', t('feedback.objectSkill')));
+      notifyToast({ message: userFacingError(err, t, 'feedback.deleteFailed', t('feedback.objectSkill')), tone: 'error' });
     } finally {
       setDeletingId(null);
       setConfirmAction(null);
@@ -643,8 +647,9 @@ useEffect(() => {
       }
       invalidateCommunitySkillCatalog();
       await Promise.all([loadSkills(), loadLocalSkills()]);
+      notifyToast({ message: t('feedback.updated'), tone: 'success' });
     } catch (err: any) {
-      setError(userFacingError(err, t, 'feedback.updatePublicationFailed', t('feedback.objectSkill')));
+      notifyToast({ message: userFacingError(err, t, 'feedback.updatePublicationFailed', t('feedback.objectSkill')), tone: 'error' });
     } finally {
       setUpdatingId(null);
     }
@@ -665,8 +670,9 @@ useEffect(() => {
       }
       invalidateCommunitySkillCatalog();
       await Promise.all([loadSkills(), loadLocalSkills()]);
+      notifyToast({ message: t('feedback.unpublished'), tone: 'success' });
     } catch (err: any) {
-      setError(userFacingError(err, t, 'feedback.unpublishFailed', t('feedback.objectSkill')));
+      notifyToast({ message: userFacingError(err, t, 'feedback.unpublishFailed', t('feedback.objectSkill')), tone: 'error' });
     } finally {
       setUnpublishingId(null);
       setConfirmAction(null);

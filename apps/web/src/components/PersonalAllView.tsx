@@ -1,3 +1,5 @@
+import { userFacingError } from '../utils/userFacingError';
+import { notifyToast } from './toast-context';
 // Scope view for the "/personal-all" route. Mirrors TeamSpaceView's layout
 // (header + subtitle + type tabs + projects panel with folder cards) and
 // reuses its CSS module so the surface stays visually consistent across
@@ -210,6 +212,7 @@ const {
     const name = newGroupName.trim();
     if (!name) { setCreateError(t('teamSpace.folderNameRequired')); return; }
     if (!workspaceId) return;
+    if (creating) return;
     setCreating(true);
     setCreateError(null);
     try {
@@ -226,14 +229,15 @@ const {
      });
       const body = await res.json().catch(() => null);
       if (!res.ok || body?.code !== 0) {
-        setCreateError(body?.error || body?.msg || t('teamSpace.createGroupError'));
+        notifyToast({ message: userFacingError(body?.error ?? body?.msg, t, 'feedback.saveFailed'), tone: 'error' });
         return;
       }
+      notifyToast({ message: t('feedback.created'), tone: 'success' });
       setNewGroupName('');
       onShowCreateGroupChange(false);
       window.dispatchEvent(new CustomEvent('personal:folders-updated'));
     } catch (err: any) {
-      setCreateError(err?.message || String(err));
+      notifyToast({ message: userFacingError(err, t, 'feedback.saveFailed'), tone: 'error' });
     } finally {
       setCreating(false);
     }
@@ -242,6 +246,7 @@ const {
   async function confirmRemoveGroup() {
     const folder = removeTarget;
     if (!folder || !workspaceId) return;
+    if (removing) return;
     setRemoving(true);
     setRemoveTarget(null);
     setFolders((prev) => prev.filter((f) => f.folderId !== folder.folderId));
@@ -255,11 +260,14 @@ const {
       );
       const body = await res.json().catch(() => null);
       if (!res.ok || body?.code !== 0) {
+        notifyToast({ message: t('feedback.deleteFailed'), tone: 'error' });
         setFolders((prev) => [...prev, folder]);
       } else {
+        notifyToast({ message: t('feedback.deleted'), tone: 'success' });
         window.dispatchEvent(new CustomEvent('personal:folders-updated'));
       }
     } catch {
+      notifyToast({ message: t('feedback.deleteFailed'), tone: 'error' });
       setFolders((prev) => [...prev, folder]);
     } finally {
       setRemoving(false);
@@ -346,6 +354,7 @@ function handleFolderClick(folder: PersonalFolderItem) {
       cancelFolderRename();
       return;
     }
+    if (renamingFolder) return;
     setRenamingFolder(true);
     try {
       const res = await fetch(
@@ -361,14 +370,17 @@ function handleFolderClick(folder: PersonalFolderItem) {
       );
       const body = await res.json().catch(() => null);
       if (res.ok && body?.code === 0) {
+        notifyToast({ message: t('feedback.renamed'), tone: 'success' });
+        cancelFolderRename();
         setFolders((prev) => prev.map((f) => f.folderId === renameFolderTarget.folderId ? { ...f, folderName: trimmed } : f));
         window.dispatchEvent(new CustomEvent('personal:folders-updated'));
+      } else {
+        notifyToast({ message: userFacingError(body?.error ?? body?.msg, t, 'feedback.renameFailed'), tone: 'error' });
       }
     } catch {
-      // ignore
+      notifyToast({ message: t('feedback.renameFailed'), tone: 'error' });
     } finally {
       setRenamingFolder(false);
-      cancelFolderRename();
     }
   }
 

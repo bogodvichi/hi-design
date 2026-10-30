@@ -3,6 +3,8 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { I18nProvider } from '../../src/i18n';
 import { ShareResourceDialog } from '../../src/components/ShareResourceDialog';
+import { ToastProvider } from '../../src/components/ToastProvider';
+import { useState } from 'react';
 
 vi.mock('../../src/components/PersonPicker', () => ({
   PersonPicker: ({ onChange }: { onChange: (people: unknown[]) => void }) => (
@@ -17,8 +19,8 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 describe('resource sharing authorization feedback', () => {
   const view = () => render(
     <I18nProvider initial="zh-CN">
-      <ShareResourceDialog resourceId="fake-resource" kind="mcp" resourceName="Example MCP"
-        homeWorkspaceId="owner-workspace" onClose={vi.fn()} />
+      <ToastProvider><ShareResourceDialog resourceId="fake-resource" kind="mcp" resourceName="Example MCP"
+        homeWorkspaceId="owner-workspace" onClose={vi.fn()} /></ToastProvider>
     </I18nProvider>,
   );
   it('shows owner mismatch instead of a misleading retry message after HTTP 403', async () => {
@@ -40,5 +42,20 @@ describe('resource sharing authorization feedback', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Choose recipient' }));
     fireEvent.click(screen.getByRole('button', { name: '分享' }));
     expect((await screen.findByRole('alert')).textContent).toContain('分享失败');
+  });
+
+  it('keeps successful sharing visible at the top after the dialog closes', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ ok: true })));
+    function Sharing() {
+      const [open, setOpen] = useState(true);
+      return <ToastProvider>{open ? <ShareResourceDialog resourceId="fake-resource" kind="mcp"
+        resourceName="Example MCP" homeWorkspaceId="owner-workspace" onClose={() => setOpen(false)} /> : null}</ToastProvider>;
+    }
+    render(<I18nProvider initial="zh-CN"><Sharing /></I18nProvider>);
+    fireEvent.click(screen.getByRole('button', { name: 'Choose recipient' }));
+    fireEvent.click(screen.getByRole('button', { name: '分享' }));
+    expect((await screen.findByRole('status')).textContent).toContain('已成功分享');
+    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('status').closest('[data-toast-viewport]')).not.toBeNull();
   });
 });
