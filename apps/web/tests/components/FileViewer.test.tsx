@@ -10099,7 +10099,7 @@ describe('FileViewer tweaks toolbar', () => {
       }));
     });
 
-    fireEvent.click(screen.getByTestId('comment-panel-toggle'));
+    clickAgentTool('comment-panel-toggle');
 
     await waitFor(() => {
       expect(screen.getByTestId('artifact-preview-frame')).toBe(urlFrame);
@@ -11632,6 +11632,112 @@ describe('FileViewer tweaks toolbar', () => {
     expect(screen.queryByTestId('comment-saved-marker-slide-one-title')).toBeNull();
   });
 
+  it('hides canvas pins for comments filtered out of the side panel', async () => {
+    const olderComment: PreviewComment = {
+      id: 'comment-alpha',
+      projectId: 'project-1',
+      conversationId: 'conversation-1',
+      filePath: 'preview.html',
+      elementId: 'alpha-note',
+      selector: '[data-od-id="alpha-note"]',
+      label: 'Alpha note',
+      text: 'Alpha',
+      htmlHint: '<p data-od-id="alpha-note">Alpha</p>',
+      position: { x: 8, y: 12, width: 120, height: 40 },
+      note: 'Alpha feedback',
+      status: 'open',
+      createdAt: 10,
+      updatedAt: 10,
+      pinSeq: 1,
+    };
+    const newerComment: PreviewComment = {
+      ...olderComment,
+      id: 'comment-beta',
+      elementId: 'beta-note',
+      selector: '[data-od-id="beta-note"]',
+      label: 'Beta note',
+      text: 'Beta',
+      htmlHint: '<p data-od-id="beta-note">Beta</p>',
+      position: { x: 8, y: 72, width: 120, height: 40 },
+      note: 'Beta feedback',
+      createdAt: 20,
+      updatedAt: 20,
+      pinSeq: 2,
+    };
+
+    render(
+      <FileViewer
+        projectId="project-1"
+        projectKind="prototype"
+        file={htmlPreviewFile()}
+        liveHtml='<html><body><p data-od-id="alpha-note">Alpha</p><p data-od-id="beta-note">Beta</p></body></html>'
+        previewComments={[olderComment, newerComment]}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('chrome-comment-panel-toggle'));
+    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
+    window.dispatchEvent(new MessageEvent('message', {
+      source: frame.contentWindow,
+      data: {
+        type: 'od:comment-targets',
+        targets: [
+          {
+            elementId: 'alpha-note',
+            selector: '[data-od-id="alpha-note"]',
+            label: 'Alpha note',
+            text: 'Alpha',
+            position: { x: 8, y: 12, width: 120, height: 40 },
+            htmlHint: '<p data-od-id="alpha-note">Alpha</p>',
+          },
+          {
+            elementId: 'beta-note',
+            selector: '[data-od-id="beta-note"]',
+            label: 'Beta note',
+            text: 'Beta',
+            position: { x: 8, y: 72, width: 120, height: 40 },
+            htmlHint: '<p data-od-id="beta-note">Beta</p>',
+          },
+        ],
+      },
+    }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('comment-saved-marker-alpha-note')).toBeTruthy();
+      expect(screen.getByTestId('comment-saved-marker-beta-note')).toBeTruthy();
+    });
+
+    const search = screen.getByPlaceholderText('Search comments');
+    fireEvent.change(search, { target: { value: 'Alpha' } });
+
+    await waitFor(() => {
+      const visibleItems = screen.getAllByTestId('comment-side-item');
+      expect(visibleItems).toHaveLength(1);
+      expect(visibleItems[0]!.getAttribute('data-comment-id')).toBe('comment-alpha');
+      expect(screen.getByTestId('comment-saved-marker-alpha-note')).toBeTruthy();
+      expect(screen.queryByTestId('comment-saved-marker-beta-note')).toBeNull();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /hide comments/i }));
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('comment-side-panel')).toBeNull();
+      expect(screen.getByTestId('comment-saved-marker-alpha-note')).toBeTruthy();
+      expect(screen.queryByTestId('comment-saved-marker-beta-note')).toBeNull();
+    });
+
+    fireEvent.click(screen.getByTestId('comment-side-collapsed-rail'));
+    const reopenedSearch = await screen.findByPlaceholderText('Search comments');
+    expect((reopenedSearch as HTMLInputElement).value).toBe('Alpha');
+    fireEvent.change(reopenedSearch, { target: { value: '' } });
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('comment-side-item')).toHaveLength(2);
+      expect(screen.getByTestId('comment-saved-marker-alpha-note')).toBeTruthy();
+      expect(screen.getByTestId('comment-saved-marker-beta-note')).toBeTruthy();
+    });
+  });
+
   it('orders side comments by creation time (newest first) while keeping activity timestamps', () => {
     // recvq5BVsolIxi: default sidebar order is "newest CREATED first", not
     // "most recently ACTIVE first" — the comment updated most recently
@@ -12042,6 +12148,62 @@ describe('FileViewer tweaks toolbar', () => {
     });
   });
 
+  it('positions saved pins from the DOM-relative mouse offset with an origin fallback', () => {
+    const pointedComment: PreviewComment = {
+      id: 'comment-pointed',
+      projectId: 'project-1',
+      conversationId: 'conversation-1',
+      filePath: 'preview.html',
+      elementId: 'pin-pointed',
+      selector: '[data-od-pin="pin-pointed"]',
+      label: 'pin-pointed',
+      text: '',
+      htmlHint: '',
+      position: { x: 8, y: 12, width: 120, height: 48, mx: 192, my: 88 },
+      note: 'Pointed comment',
+      status: 'open',
+      createdAt: 10,
+      updatedAt: 10,
+      pinSeq: 1,
+    };
+    const legacyComment: PreviewComment = {
+      ...pointedComment,
+      id: 'comment-legacy',
+      elementId: 'pin-legacy',
+      selector: '[data-od-pin="pin-legacy"]',
+      label: 'pin-legacy',
+      position: { x: 8, y: 12, width: 120, height: 48 },
+      note: 'Legacy comment',
+      pinSeq: 2,
+    };
+
+    render(
+      <FileViewer
+        projectId="project-1"
+        projectKind="prototype"
+        file={htmlPreviewFile()}
+        liveHtml='<html><body><main data-od-id="hero">Hero</main></body></html>'
+        previewComments={[pointedComment, legacyComment]}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('chrome-comment-panel-toggle'));
+
+    const pointedPin = screen
+      .getByTestId('comment-saved-marker-pin-pointed')
+      .querySelector('.comment-saved-pin') as HTMLElement | null;
+    expect(pointedPin).not.toBeNull();
+    expect(pointedPin?.style.left).toBe('192px');
+    expect(pointedPin?.style.top).toBe('88px');
+
+    const legacyPin = screen
+      .getByTestId('comment-saved-marker-pin-legacy')
+      .querySelector('.comment-saved-pin') as HTMLElement | null;
+    expect(legacyPin).not.toBeNull();
+    expect(legacyPin?.style.left).toBe('0px');
+    expect(legacyPin?.style.top).toBe('0px');
+  });
+
   it('lets element comments queue to chat while a task is running', async () => {
     const onSendBoardCommentAttachments = vi.fn().mockResolvedValue({
       status: 'queued',
@@ -12150,7 +12312,7 @@ describe('FileViewer tweaks toolbar', () => {
     expect(screen.getByTestId('comment-panel-toggle').getAttribute('aria-pressed')).toBe('true');
   });
 
-  it('opens annotation parameters and comments on click only', async () => {
+  it('opens the comment composer on click and marks the active target outline', async () => {
     render(
       <FileViewer
         projectId="project-1"
@@ -12194,17 +12356,90 @@ describe('FileViewer tweaks toolbar', () => {
       data: { ...target, type: 'od:comment-target' },
     }));
 
-    const summary = await screen.findByTestId('comment-popover-style-summary');
-    expect(summary.textContent).toContain('Color');
-    expect(summary.textContent).toContain('#1A1916');
-    expect(summary.textContent).toContain('13.5px');
     expect(await screen.findByTestId('comment-popover-input')).toBeTruthy();
-    expect(screen.getByTestId('comment-target-overlay')).toBeTruthy();
-    expect(screen.getByTestId('comment-panel-toggle').getAttribute('aria-pressed')).toBe('false');
-    expect(screen.getByTestId('board-mode-toggle').getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getByTestId('comment-target-overlay').classList.contains('selected')).toBe(true);
     expect(screen.queryByTestId('inspect-panel')).toBeNull();
     await waitFor(() => {
       expect(screen.queryByTestId('annotation-hover-popover')).toBeNull();
+    });
+  });
+
+  it('keeps the comment anchor at the mouse point when target geometry refreshes', async () => {
+    render(
+      <FileViewer
+        projectId="project-1"
+        projectKind="prototype"
+        file={htmlPreviewFile()}
+        liveHtml='<html><body><main data-od-id="hero">Hero</main><p data-od-id="mood">Mood</p></body></html>'
+      />,
+    );
+
+    const frame = screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement;
+    clickAgentTool('chrome-comment-panel-toggle');
+
+    const heroTarget = {
+      elementId: 'hero',
+      selector: '[data-od-id="hero"]',
+      label: 'Hero',
+      text: 'Hero',
+      position: { x: 8, y: 12, width: 312, height: 63 },
+      hoverPoint: { x: 200, y: 100 },
+      htmlHint: '<main data-od-id="hero">Hero</main>',
+    };
+    window.dispatchEvent(new MessageEvent('message', {
+      source: frame.contentWindow,
+      data: { ...heroTarget, type: 'od:comment-target' },
+    }));
+
+    expect((await screen.findByTestId('comment-active-pin')).style.left).toBe('200px');
+    window.dispatchEvent(new MessageEvent('message', {
+      source: frame.contentWindow,
+      data: {
+        ...heroTarget,
+        hoverPoint: undefined,
+        type: 'od:comment-active-target-update',
+      },
+    }));
+    await waitFor(() => {
+      expect(screen.getByTestId('comment-active-pin').style.left).toBe('200px');
+      expect(screen.getByTestId('comment-active-pin').style.top).toBe('100px');
+    });
+
+    const moodTarget = {
+      elementId: 'mood',
+      selector: '[data-od-id="mood"]',
+      label: 'Mood',
+      text: 'Mood',
+      position: { x: 80, y: 240, width: 200, height: 60 },
+      hoverPoint: { x: 420, y: 300 },
+      htmlHint: '<p data-od-id="mood">Mood</p>',
+    };
+    window.dispatchEvent(new MessageEvent('message', {
+      source: frame.contentWindow,
+      data: { ...moodTarget, type: 'od:comment-target' },
+    }));
+    await waitFor(() => {
+      expect(screen.getByTestId('comment-active-pin').style.left).toBe('420px');
+    });
+
+    const refreshedMoodTarget = {
+      ...moodTarget,
+      position: { ...moodTarget.position, y: 140 },
+      hoverPoint: undefined,
+    };
+    window.dispatchEvent(new MessageEvent('message', {
+      source: frame.contentWindow,
+      data: { ...refreshedMoodTarget, type: 'od:comment-active-target-update' },
+    }));
+    window.dispatchEvent(new MessageEvent('message', {
+      source: frame.contentWindow,
+      data: { type: 'od:comment-targets', targets: [refreshedMoodTarget] },
+    }));
+
+    await waitFor(() => {
+      const pin = screen.getByTestId('comment-active-pin');
+      expect(pin.style.left).toBe('420px');
+      expect(pin.style.top).toBe('200px');
     });
   });
 
@@ -12382,11 +12617,14 @@ describe('FileViewer tweaks toolbar', () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId('comment-panel-toggle'));
+    fireEvent.click(screen.getByTestId('chrome-comment-panel-toggle'));
     fireEvent.click(screen.getByRole('button', { name: 'Open comment for pin-transition' }));
 
-    expect((await screen.findByTestId('comment-popover-input') as HTMLTextAreaElement).value)
+    expect((await screen.findByTestId('comment-popover-existing-note')).textContent)
       .toBe('Do not recreate this stale comment');
+    expect(screen.getByTestId('comment-popover')).toBeTruthy();
+    expect(screen.getByTestId('comment-saved-marker-pin-transition')).toBeTruthy();
+    expect(screen.getByTestId('comment-target-overlay').classList.contains('selected')).toBe(true);
 
     rerender(
       <FileViewer
@@ -12394,15 +12632,17 @@ describe('FileViewer tweaks toolbar', () => {
         projectKind="prototype"
         file={htmlPreviewFile()}
         liveHtml='<html><body><main data-od-id="hero">Hero</main></body></html>'
-        previewComments={[{ ...openComment, status: 'applying' }]}
+        previewComments={[{ ...openComment, status: 'resolved' }]}
       />,
     );
 
     await waitFor(() => {
+      expect(screen.queryByTestId('comment-popover')).toBeNull();
       expect(screen.queryByTestId('comment-popover-input')).toBeNull();
+      expect(screen.queryByTestId('comment-saved-marker-pin-transition')).toBeNull();
+      expect(screen.queryByTestId('comment-active-pin')).toBeNull();
+      expect(screen.queryByTestId('comment-target-overlay')).toBeNull();
     });
-    expect(screen.queryByTestId('comment-saved-marker-pin-transition')).toBeNull();
-    expect(screen.queryByText('Do not recreate this stale comment')).toBeNull();
   });
 
   it('keeps a saved comment open when deletion is rejected', async () => {

@@ -107,7 +107,7 @@ class CommentController extends Controller {
       const members = await k('workspace_members as wm')
         .leftJoin(
           'community_publisher_profiles as cpp',
-          k.raw('LOWER(??) = ??', [ 'wm.username', 'cpp.username' ]),
+          k.raw('LOWER(??) = LOWER(??)', [ 'wm.username', 'cpp.username' ]),
         )
         .where({ 'wm.workspace_id': teamId })
         .select(
@@ -191,21 +191,33 @@ class CommentController extends Controller {
     const displayName = typeof comment.displayName === 'string' && comment.displayName.trim()
       ? comment.displayName.trim()
       : null;
+    const pushedUsername = typeof comment.username === 'string' && comment.username.trim()
+      ? comment.username.trim()
+      : null;
 
     try {
       const k = this.getKnex();
-      // Prefer the pushed display name, but fall back to the member directory
-      // when older daemon builds still omit it.
+      // Prefer values pushed by the daemon, but fall back to the member
+      // directory when older builds omit the author profile fields.
       let resolvedDisplayName = displayName;
-      if (!resolvedDisplayName && typeof comment.memberId === 'string' && comment.memberId) {
+      let resolvedUsername = pushedUsername;
+      if (
+        (!resolvedDisplayName || !resolvedUsername)
+        && typeof comment.memberId === 'string'
+        && comment.memberId
+      ) {
         const member = await k('workspace_members')
           .where({ workspace_id: teamId, workspace_member_id: comment.memberId })
-          .first('displayname');
+          .first('displayname', 'username');
         if (member && member.displayname) {
           resolvedDisplayName = member.displayname;
         }
+        if (member && member.username) {
+          resolvedUsername = member.username;
+        }
       }
       const authorDisplayName = resolvedDisplayName || '';
+      const authorUsername = resolvedUsername || '';
       let resolvedRootCommentId = rootCommentId;
       if (parentId && !resolvedRootCommentId) {
         // Older daemon builds may send parentId without rootCommentId. Look up
@@ -223,14 +235,14 @@ class CommentController extends Controller {
       const result = await k.raw(
         `INSERT INTO project_comments (
           id, team_id, project_id, conversation_id, member_id,
-            displayname,
+            displayname, username,
             parent_id, root_comment_id,
             note, file_path, element_id, selector, label, text, html_hint,
             position, style, selection_kind, member_count, pod_members,
             slide_index, attachments, status, anchor_state, anchored_version,
             last_good_position, created_at, updated_at, deleted, seq
           ) VALUES (
-            ?, ?, ?, ?, ?, ?,
+            ?, ?, ?, ?, ?, ?, ?,
             ?,
             ?, ?, ?, ?, ?, ?, ?,
             ?,
@@ -253,7 +265,8 @@ class CommentController extends Controller {
           ON CONFLICT (team_id, project_id, id) DO UPDATE SET
             conversation_id = EXCLUDED.conversation_id,
             member_id = EXCLUDED.member_id,
-            displayname = EXCLUDED.displayname,
+            displayname = COALESCE(NULLIF(EXCLUDED.displayname, ''), project_comments.displayname),
+            username = COALESCE(NULLIF(EXCLUDED.username, ''), project_comments.username),
             note = EXCLUDED.note,
             file_path = EXCLUDED.file_path,
             element_id = EXCLUDED.element_id,
@@ -283,6 +296,7 @@ class CommentController extends Controller {
           typeof comment.conversationId === 'string' ? comment.conversationId : '',
           typeof comment.memberId === 'string' ? comment.memberId : '',
           authorDisplayName,
+          authorUsername,
           parentId, resolvedRootCommentId,
           typeof comment.note === 'string' ? comment.note : '',
           typeof comment.filePath === 'string' ? comment.filePath : '',
@@ -333,11 +347,14 @@ class CommentController extends Controller {
         return;
       }
 
-      const rows = await k('project_comments')
-        .where({ team_id: teamId, project_id: projectId })
-        .where('seq', '>', sinceSeq)
-        .orderBy('seq', 'asc')
-        .select('*');
+      const rows = await k('project_comments as pc')
+        .leftJoin('community_publisher_profiles as cpp', function () {
+          this.on(k.raw('LOWER(??) = LOWER(??)', [ 'pc.username', 'cpp.username' ]));
+        })
+        .where({ 'pc.team_id': teamId, 'pc.project_id': projectId })
+        .where('pc.seq', '>', sinceSeq)
+        .orderBy('pc.seq', 'asc')
+        .select('pc.*', 'cpp.avatar_digest');
 
       const comments = rows.map(r => ({
         id: r.id,
@@ -345,6 +362,8 @@ class CommentController extends Controller {
         conversationId: r.conversation_id,
         memberId: r.member_id,
         displayName: r.displayname || null,
+        username: r.username || undefined,
+        avatarUrl: r.avatar_digest ? this._avatarUrl(r.avatar_digest) : null,
         seq: Number(r.seq),
         note: r.note,
         filePath: r.file_path,

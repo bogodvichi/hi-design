@@ -85,6 +85,23 @@ describe('pin_seq assignment (recvq5BVsolIxi)', () => {
     expect(edited?.note).toBe('First, edited');
   });
 
+  it('round-trips pointer coordinates inside the existing position JSON', () => {
+    const db = seededDb();
+    const position = { x: 8, y: 12, width: 120, height: 48, mx: 200, my: 100 };
+    const created = upsertPreviewComment(db, 'project-1', 'conversation-1', {
+      target: target({ position }),
+      note: 'Pointer-positioned comment',
+    });
+
+    const stored = db
+      .prepare('SELECT position_json FROM preview_comments WHERE id = ?')
+      .get(created!.id) as { position_json: string };
+    expect(JSON.parse(stored.position_json)).toEqual(position);
+
+    const loaded = getPreviewComment(db, 'project-1', 'conversation-1', created!.id);
+    expect(loaded?.position).toEqual(position);
+  });
+
   it('scopes pin_seq per (project, file) — a different file restarts at 1', () => {
     const db = seededDb();
     const onIndex = upsertPreviewComment(db, 'project-1', 'conversation-1', {

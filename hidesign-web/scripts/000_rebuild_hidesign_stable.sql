@@ -360,6 +360,7 @@ CREATE TABLE IF NOT EXISTS project_comments (
     project_id          TEXT NOT NULL,
     conversation_id     TEXT NOT NULL DEFAULT '',
     member_id           TEXT NOT NULL DEFAULT '',
+    username            TEXT,
     displayname         TEXT,
     parent_id           TEXT,
     root_comment_id     TEXT,

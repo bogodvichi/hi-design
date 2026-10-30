@@ -1069,10 +1069,13 @@ export function BoardComposerPopover({
                    createdAt: reply.createdAt,
                    authorName: reply.authorDisplayName?.trim() || '?',
                    authorAvatarUrl:
-                     reply.authorMemberId
-                     && reply.authorMemberId === currentAuthorMemberId
-                       ? currentAuthorAvatarUrl
-                       : null,
+                     reply.authorAvatarUrl
+                     || (
+                       reply.authorMemberId
+                       && reply.authorMemberId === currentAuthorMemberId
+                         ? currentAuthorAvatarUrl
+                         : null
+                     ),
                   })),
                   ...localReplies.map((reply) => ({
                     localKey: `${Date.now()}-${Math.random().toString(36).slice(2)}`,

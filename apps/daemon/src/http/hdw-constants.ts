@@ -38,10 +38,10 @@ function resolveHdwPathPrefix(env: NodeJS.ProcessEnv, isProduction: boolean): st
 export const PROD_HDW_BASE_URL = 'https://pixso.hikvision.com.cn';
 
 /** Development and packaged clients share the remote HDW backend. */
-export const DEV_HDW_BASE_URL = PROD_HDW_BASE_URL;
+export const DEV_HDW_BASE_URL = 'http://127.0.0.1:7002';
 
 /** Remote HDW gateway backed by the server on port 7002. */
 export const PROD_HDW_PATH_PREFIX = '/hik-plugin/hidesign-web/hdw';
 
 /** Development reads and writes use the same remote catalog and file store. */
-export const DEV_HDW_PATH_PREFIX = PROD_HDW_PATH_PREFIX;
+export const DEV_HDW_PATH_PREFIX = '/hdw';

@@ -159,7 +159,9 @@ function asMember(memberId: string): { authorization: string } {
     return res.body.comment as {
       id: string;
       authorMemberId?: string;
+      authorUsername?: string;
       authorDisplayName?: string;
+      authorAvatarUrl?: string | null;
       note: string;
       pinSeq?: number;
       sortKey?: number;
@@ -170,7 +172,9 @@ function asMember(memberId: string): { authorization: string } {
     listPreviewComments(db, PROJECT, CONVERSATION) as Array<{
       id: string;
       authorMemberId?: string;
+      authorUsername?: string;
       authorDisplayName?: string;
+      authorAvatarUrl?: string | null;
       note: string;
     }>;
 
@@ -407,13 +411,70 @@ describe('preview comment permission gating', () => {
       writeSsoConfigFile(ssoDir, {
         username: 'yebo',
         cookies: [],
-        userInfo: { displayName: '叶波' },
+        userInfo: {
+          displayName: '叶波',
+          avatarUrl: 'https://hdw.example.test/hdw/api/community/avatar/yebo-avatar',
+        },
       });
       const api = await startServer({ runtimeDataDir: ssoDir });
       const comment = await api.createComment('m-author');
 
+      expect(comment.authorUsername).toBe('yebo');
       expect(comment.authorDisplayName).toBe('叶波');
+      expect(comment.authorAvatarUrl).toBe(
+        'https://hdw.example.test/hdw/api/community/avatar/yebo-avatar',
+      );
+      expect(api.listComments()[0]?.authorUsername).toBe('yebo');
       expect(api.listComments()[0]?.authorDisplayName).toBe('叶波');
+      expect(api.listComments()[0]?.authorAvatarUrl).toBe(
+        'https://hdw.example.test/hdw/api/community/avatar/yebo-avatar',
+      );
+    } finally {
+      fs.rmSync(ssoDir, { recursive: true, force: true });
+    }
+  });
+
+  it('preserves the original author snapshot when an existing comment is edited', async () => {
+    const ssoDir = fs.mkdtempSync(path.join(os.tmpdir(), 'od-comment-sso-'));
+    try {
+      writeSsoConfigFile(ssoDir, {
+        username: 'yebo',
+        cookies: [],
+        userInfo: {
+          displayName: '叶波',
+          avatarUrl: 'https://hdw.example.test/hdw/api/community/avatar/original',
+        },
+      });
+      const api = await startServer({ runtimeDataDir: ssoDir });
+      const created = await api.createComment('m-author', 'before');
+
+      writeSsoConfigFile(ssoDir, {
+        username: 'yebo-renamed',
+        cookies: [],
+        userInfo: {
+          displayName: '新名字',
+          avatarUrl: 'https://hdw.example.test/hdw/api/community/avatar/changed',
+        },
+      });
+      const edit = await api.json(
+        `/api/projects/${PROJECT}/conversations/${CONVERSATION}/comments`,
+        {
+          method: 'POST',
+          member: 'm-author',
+          body: {
+            id: created.id,
+            target: api.commentTarget,
+            note: 'after',
+          },
+        },
+      );
+
+      expect(edit.status).toBe(200);
+      expect(edit.body.comment.authorUsername).toBe('yebo');
+      expect(edit.body.comment.authorDisplayName).toBe('叶波');
+      expect(edit.body.comment.authorAvatarUrl).toBe(
+        'https://hdw.example.test/hdw/api/community/avatar/original',
+      );
     } finally {
       fs.rmSync(ssoDir, { recursive: true, force: true });
     }

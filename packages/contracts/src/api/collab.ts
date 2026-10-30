@@ -911,6 +911,10 @@ export interface CollabCloudComment {
    * so receivers can render names without a separate member-directory lookup.
    */
   displayName?: string;
+  /** Author's stable English login name, used to resolve their durable avatar. */
+  username?: string;
+  /** Author avatar URL resolved by HDW (or captured from the local identity). */
+  avatarUrl?: string | null;
   /**
    * Reply linkage: id of the comment this entry replies to. Absent for a
    * top-level comment. Carried through the relay so receiving daemons can

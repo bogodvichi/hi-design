@@ -265,6 +265,7 @@ import {
   planLostAnchorWriteBacks,
   provisionalNextPinNumber,
   resolveCommentAnchor,
+  savedCommentHoverPoint,
   selectionKindLabel,
   targetFromSnapshot,
   type AnchorWriteBack,
@@ -4504,6 +4505,7 @@ export function CommentSidePanel({
  onReplyComment,
  replyComments,
   currentFilePath,
+  onVisibleCommentIdsChange,
 }: {
   comments: PreviewComment[];
   /** Full comment list including replies, used to populate reply threads.
@@ -4513,6 +4515,8 @@ export function CommentSidePanel({
   /** The file currently shown in the viewer. Used by the "current page only"
    *  filter and the file-name badge on each comment card. */
   currentFilePath?: string;
+  /** Reports the top-level comments currently visible after search/filtering. */
+  onVisibleCommentIdsChange?: (commentIds: ReadonlySet<string>) => void;
   selectedIds: Set<string>;
   activeCommentId: string | null;
   collapsed: boolean;
@@ -4634,6 +4638,14 @@ export function CommentSidePanel({
     currentUser,
     resolveCommentAuthor,
   ]);
+  const filteredCommentIds = useMemo(
+    () => new Set(filteredComments.map((comment) => comment.id)),
+    [filteredComments],
+  );
+
+  useEffect(() => {
+    onVisibleCommentIdsChange?.(filteredCommentIds);
+  }, [filteredCommentIds, onVisibleCommentIdsChange]);
 
   const unresolvedCount = useMemo(
     () => comments.filter((c) => c.status !== 'resolved').length,
@@ -5002,10 +5014,10 @@ export function CommentSidePanel({
                    aria-hidden="true"
                  >
                    {commentAuthorInitials(authorDisplayName)}
-                   {author?.avatarUrl ? (
+                   {(comment.authorAvatarUrl || author?.avatarUrl) ? (
                      <img
                        className="comment-user-avatar-image"
-                       src={author.avatarUrl}
+                       src={comment.authorAvatarUrl || author?.avatarUrl || undefined}
                        alt=""
                        onError={(event) => event.currentTarget.remove()}
                      />
@@ -5218,10 +5230,10 @@ export function CommentSidePanel({
                     aria-hidden="true"
                   >
                     {commentAuthorInitials(authorDisplayName)}
-                    {author?.avatarUrl ? (
+                    {(comment.authorAvatarUrl || author?.avatarUrl) ? (
                       <img
                         className="comment-user-avatar-image"
-                        src={author.avatarUrl}
+                        src={comment.authorAvatarUrl || author?.avatarUrl || undefined}
                         alt=""
                         onError={(event) => event.currentTarget.remove()}
                       />
@@ -5392,12 +5404,14 @@ function CommentSideDock({
   onReplyComment,
  replyComments,
   currentFilePath,
+  onVisibleCommentIdsChange,
   composer,
 }: {
   comments: PreviewComment[];
   replyComments?: PreviewComment[];
   projectId?: string;
   currentFilePath?: string;
+  onVisibleCommentIdsChange?: (commentIds: ReadonlySet<string>) => void;
   selectedIds: Set<string>;
   activeCommentId: string | null;
   collapsed: boolean;
@@ -5442,6 +5456,7 @@ function CommentSideDock({
        replyComments={replyComments}
        projectId={projectId}
         currentFilePath={currentFilePath}
+        onVisibleCommentIdsChange={onVisibleCommentIdsChange}
        selectedIds={selectedIds}
         activeCommentId={activeCommentId}
         collapsed={collapsed}
@@ -6194,6 +6209,7 @@ function anchorStateLabel(state: PreviewCommentAnchorState): string {
 
 function CommentPreviewOverlays({
   comments,
+  markerNumbers,
   provisionalPinNumber,
   liveTargets,
   hoveredTarget,
@@ -6213,6 +6229,9 @@ function CommentPreviewOverlays({
   onOpenComment,
 }: {
   comments: PreviewComment[];
+  /** Creation-order pin numbers preserved when search/filtering narrows the
+   *  marker list, so legacy comments without `pinSeq` keep stable labels. */
+  markerNumbers?: ReadonlyMap<string, number>;
   /** Next pin number for a brand-new comment. Computed by the caller over the
    *  file's comments across ALL statuses (see `provisionalNextPinNumber`) —
    *  wider than `comments`, which carries only the open ones the canvas pins. */
@@ -6251,7 +6270,9 @@ function CommentPreviewOverlays({
           // in `comments` — which the caller passes in stable CREATION
           // order (see FileViewer's creationSortedSideComments), so the
           // fallback matches exactly what `pinSeq` would have assigned.
-          const markerNumber = typeof comment.pinSeq === 'number' ? comment.pinSeq : globalIndex + 1;
+          const markerNumber =
+            markerNumbers?.get(comment.id)
+            ?? (typeof comment.pinSeq === 'number' ? comment.pinSeq : globalIndex + 1);
           if (driftLadder) {
             // Keep stale/lost comments and carry their state so the marker can
             // badge them, instead of silently dropping a drifted anchor.
@@ -6274,7 +6295,7 @@ function CommentPreviewOverlays({
           } => Boolean(item.snapshot),
         )
         .filter(({ comment }) => commentVisibleOnDeckSlide(comment, activeSlideIndex)),
-    [comments, liveTargets, activeSlideIndex, driftLadder, currentVersion],
+    [comments, markerNumbers, liveTargets, activeSlideIndex, driftLadder, currentVersion],
   );
   // Team collaboration durability: when a comment first drifts to `lost`, persist its
   // last-good position once so the ghost pin survives reload. The ref set keeps
@@ -6329,11 +6350,12 @@ function CommentPreviewOverlays({
             <button
               type="button"
               className="comment-saved-pin"
-             style={{
-               background: avatarColorForDisplayName(comment.authorDisplayName?.trim() || '?'),
-               ...(comment.id === activeExistingCommentId ? { borderColor: '#d96a46' } : null),
-             }}
-             onClick={(event) => {
+              style={{
+                ...savedCommentPinStyle(snapshot, scale),
+                background: avatarColorForDisplayName(comment.authorDisplayName?.trim() || '?'),
+                ...(comment.id === activeExistingCommentId ? { borderColor: '#d96a46' } : null),
+              }}
+              onClick={(event) => {
                 event.stopPropagation();
                 onOpenCommentRef.current(comment, snapshot);
               }}
@@ -6344,7 +6366,15 @@ function CommentPreviewOverlays({
               }
               aria-label={`Open comment for ${label}`}
             >
-             {commentAuthorInitials(comment.authorDisplayName?.trim() || '?')}
+              {commentAuthorInitials(comment.authorDisplayName?.trim() || '?')}
+              {comment.authorAvatarUrl ? (
+                <img
+                  className="comment-user-avatar-image"
+                  src={comment.authorAvatarUrl}
+                  alt=""
+                  onError={(event) => event.currentTarget.remove()}
+                />
+              ) : null}
             </button>
           </div>
         );
@@ -6397,6 +6427,57 @@ function activeCommentPinStyle(
     left: Math.round(offset.x + anchor.x * safeScale),
     top: Math.round(offset.y + anchor.y * safeScale),
   };
+}
+
+function savedCommentPinStyle(
+  snapshot: PreviewCommentSnapshot,
+  scale: number,
+): CSSProperties {
+  const safeScale = Number.isFinite(scale) && scale > 0 ? scale : 1;
+  const anchor = snapshot.hoverPoint ?? {
+    x: snapshot.position.x,
+    y: snapshot.position.y,
+  };
+  return {
+    left: Math.round((anchor.x - snapshot.position.x) * safeScale),
+    top: Math.round((anchor.y - snapshot.position.y) * safeScale),
+  };
+}
+
+function retainCommentHoverPoint(
+  current: PreviewCommentSnapshot,
+  refreshed: PreviewCommentSnapshot,
+): PreviewCommentSnapshot {
+  if (
+    current.elementId !== refreshed.elementId
+    || refreshed.hoverPoint
+    || !current.hoverPoint
+  ) {
+    return refreshed;
+  }
+  return {
+    ...refreshed,
+    hoverPoint: {
+      x: current.hoverPoint.x + refreshed.position.x - current.position.x,
+      y: current.hoverPoint.y + refreshed.position.y - current.position.y,
+    },
+  };
+}
+
+function retainLiveCommentHoverPoints(
+  current: Map<string, PreviewCommentSnapshot>,
+  refreshed: Map<string, PreviewCommentSnapshot>,
+): Map<string, PreviewCommentSnapshot> {
+  let merged: Map<string, PreviewCommentSnapshot> | null = null;
+  refreshed.forEach((snapshot, elementId) => {
+    const previous = current.get(elementId);
+    if (!previous) return;
+    const retained = retainCommentHoverPoint(previous, snapshot);
+    if (retained === snapshot) return;
+    merged ??= new Map(refreshed);
+    merged.set(elementId, retained);
+  });
+  return merged ?? refreshed;
 }
 
 export function CommentTargetOverlay({
@@ -9720,6 +9801,27 @@ const [reviewAddModalOpen, setReviewAddModalOpen] = useState(false);
   const [shareGuideToast, setShareGuideToast] = useState<string | null>(null);
   const [selectedSideCommentIds, setSelectedSideCommentIds] = useState<Set<string>>(() => new Set());
   const [commentSidePanelCollapsed, setCommentSidePanelCollapsed] = useState(false);
+  const [commentPanelVisibleCommentIds, setCommentPanelVisibleCommentIds] =
+    useState<ReadonlySet<string> | null>(null);
+  const handleCommentPanelVisibleIdsChange = useCallback(
+    (commentIds: ReadonlySet<string>) => {
+      setCommentPanelVisibleCommentIds((current) => {
+        if (current === commentIds) return current;
+        if (current && current.size === commentIds.size) {
+          let unchanged = true;
+          for (const commentId of commentIds) {
+            if (!current.has(commentId)) {
+              unchanged = false;
+              break;
+            }
+          }
+          if (unchanged) return current;
+        }
+        return new Set(commentIds);
+      });
+    },
+    [],
+  );
   const [strokePoints, setStrokePoints] = useState<StrokePoint[]>([]);
   const previewStateKey = `${projectId}:${file.name}`;
   // A configured portal is an overlay contract from the first render, even
@@ -12696,31 +12798,37 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       setStrokePoints((current) => (current.length > 0 ? [] : current));
       return;
     }
-    const snapshotFromData = (data: Partial<PreviewCommentSnapshot>): PreviewCommentSnapshot => ({
-      filePath: file.name,
-      elementId: String(data.elementId || ''),
-      selector: String(data.selector || ''),
-      label: String(data.label || ''),
-      text: String(data.text || ''),
-      position: {
-        x: clampBridgeCoordinate(data.position?.x),
-        y: clampBridgeCoordinate(data.position?.y),
-        width: clampBridgeCoordinate(data.position?.width),
-        height: clampBridgeCoordinate(data.position?.height),
-      },
-      hoverPoint: data.hoverPoint
-        ? {
-            x: clampBridgeCoordinate(data.hoverPoint.x),
-            y: clampBridgeCoordinate(data.hoverPoint.y),
-          }
-        : undefined,
-      htmlHint: String(data.htmlHint || ''),
-      style: normalizeAnnotationStyle(data.style),
-      selectionKind: data.selectionKind === 'pod' ? 'pod' : 'element',
-      memberCount: finiteBridgeInteger(data.memberCount),
-      podMembers: Array.isArray(data.podMembers) ? data.podMembers : undefined,
-      ...(typeof data.slideIndex === 'number' ? { slideIndex: data.slideIndex } : {}),
-    });
+    const snapshotFromData = (data: Partial<PreviewCommentSnapshot>): PreviewCommentSnapshot => {
+      const mx = finiteBridgeInteger(data.position?.mx);
+      const my = finiteBridgeInteger(data.position?.my);
+      return {
+        filePath: file.name,
+        elementId: String(data.elementId || ''),
+        selector: String(data.selector || ''),
+        label: String(data.label || ''),
+        text: String(data.text || ''),
+        position: {
+          x: clampBridgeCoordinate(data.position?.x),
+          y: clampBridgeCoordinate(data.position?.y),
+          width: clampBridgeCoordinate(data.position?.width),
+          height: clampBridgeCoordinate(data.position?.height),
+          ...(mx === undefined ? {} : { mx }),
+          ...(my === undefined ? {} : { my }),
+        },
+        hoverPoint: data.hoverPoint
+          ? {
+              x: clampBridgeCoordinate(data.hoverPoint.x),
+              y: clampBridgeCoordinate(data.hoverPoint.y),
+            }
+          : undefined,
+        htmlHint: String(data.htmlHint || ''),
+        style: normalizeAnnotationStyle(data.style),
+        selectionKind: data.selectionKind === 'pod' ? 'pod' : 'element',
+        memberCount: finiteBridgeInteger(data.memberCount),
+        podMembers: Array.isArray(data.podMembers) ? data.podMembers : undefined,
+        ...(typeof data.slideIndex === 'number' ? { slideIndex: data.slideIndex } : {}),
+      };
+    };
     function onMessage(ev: MessageEvent) {
       if (!isOurPreviewIframeSource(ev.source)) return;
       const data = ev.data as (Partial<PreviewCommentSnapshot> & {
@@ -12736,22 +12844,25 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
           if (!snapshot.elementId || !isValidCommentOverlayPosition(snapshot.position)) return;
           next.set(snapshot.elementId, snapshot);
         });
-        setLiveCommentTargets((current) => (
-          liveCommentTargetMapsEqual(current, next) ? current : next
-        ));
+        setLiveCommentTargets((current) => {
+          const merged = retainLiveCommentHoverPoints(current, next);
+          return liveCommentTargetMapsEqual(current, merged) ? current : merged;
+        });
         setActiveCommentTarget((current) => {
           if (!current) return null;
           if (current.selectionKind === 'pod') return current;
           const updated = next.get(current.elementId);
           if (!updated || !isValidCommentOverlayPosition(updated.position)) return null;
-          return commentSnapshotEqual(current, updated) ? current : updated;
+          const retained = retainCommentHoverPoint(current, updated);
+          return commentSnapshotEqual(current, retained) ? current : retained;
         });
         setHoveredCommentTarget((current) => {
           if (!current) return null;
           if (current.selectionKind === 'pod') return current;
           const updated = next.get(current.elementId);
           if (!updated || !isValidCommentOverlayPosition(updated.position)) return null;
-          return commentSnapshotEqual(current, updated) ? current : updated;
+          const retained = retainCommentHoverPoint(current, updated);
+          return commentSnapshotEqual(current, retained) ? current : retained;
         });
         return;
       }
@@ -12763,19 +12874,20 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
         // steady hover doesn't re-render the whole overlay each frame.
         setLiveCommentTargets((current) => {
           const existing = current.get(snapshot.elementId);
-          if (existing && commentSnapshotEqual(existing, snapshot)) return current;
-          return new Map(current).set(snapshot.elementId, snapshot);
+          const retained = existing ? retainCommentHoverPoint(existing, snapshot) : snapshot;
+          if (existing && commentSnapshotEqual(existing, retained)) return current;
+          return new Map(current).set(snapshot.elementId, retained);
         });
-        setActiveCommentTarget((current) =>
-          current && current.elementId === snapshot.elementId && !commentSnapshotEqual(current, snapshot)
-            ? snapshot
-            : current,
-        );
-        setHoveredCommentTarget((current) =>
-          current && current.elementId === snapshot.elementId && !commentSnapshotEqual(current, snapshot)
-            ? snapshot
-            : current,
-        );
+        setActiveCommentTarget((current) => {
+          if (!current || current.elementId !== snapshot.elementId) return current;
+          const retained = retainCommentHoverPoint(current, snapshot);
+          return commentSnapshotEqual(current, retained) ? current : retained;
+        });
+        setHoveredCommentTarget((current) => {
+          if (!current || current.elementId !== snapshot.elementId) return current;
+          const retained = retainCommentHoverPoint(current, snapshot);
+          return commentSnapshotEqual(current, retained) ? current : retained;
+        });
         return;
       }
       if (data.type === 'od:comment-leave') {
@@ -14839,6 +14951,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       label: comment.label,
       text: comment.text,
       position: comment.position,
+      hoverPoint: savedCommentHoverPoint(comment.position, comment.position),
       htmlHint: comment.htmlHint,
       style: comment.style,
       selectionKind: comment.selectionKind ?? 'element',
@@ -15876,6 +15989,34 @@ async function openReviewListModal() {
       .sort((a, b) => commentCreatedAt(a) - commentCreatedAt(b)),
     [file.name, previewComments],
   );
+  const canvasPinNumbersById = useMemo(
+    () => new Map(creationSortedSideComments.map((comment, index) => [
+      comment.id,
+      typeof comment.pinSeq === 'number' ? comment.pinSeq : index + 1,
+    ])),
+    [creationSortedSideComments],
+  );
+  // The side panel owns search and filter semantics. Respect its actual
+  // visible set while it is mounted so the canvas never shows a pin whose
+  // card has been filtered out, including when the panel is collapsed.
+  const visibleCanvasSideComments = useMemo(() => {
+    if (
+      !commentPanelOpen
+      || !commentPanelVisibleCommentIds
+    ) {
+      return creationSortedSideComments;
+    }
+    return creationSortedSideComments.filter((comment) =>
+      commentPanelVisibleCommentIds.has(comment.id),
+    );
+  }, [
+    commentPanelOpen,
+    commentPanelVisibleCommentIds,
+    creationSortedSideComments,
+  ]);
+  useEffect(() => {
+    if (!commentPanelOpen) setCommentPanelVisibleCommentIds(null);
+  }, [commentPanelOpen]);
   // Provisional number for the next (not-yet-saved) pin. Computed over the
   // file's comments across ALL statuses — a resolved/attached/failed comment
   // keeps its pin_seq row in the daemon DB, so its number stays retired even
@@ -15956,11 +16097,16 @@ async function openReviewListModal() {
     { x: overlayPreviewTransform.offsetX, y: overlayPreviewTransform.offsetY },
     previewBodySize,
   );
+  // Canvas anchors render from the same current-file/open set, constrained by
+  // the side panel's visible filters. Clear any active target when a sidebar
+  // update removes its anchor from that set.
   useEffect(() => {
     if (!boardMode || !activePreviewCommentId) return;
-    const stillOpen = allSideComments.some((comment) => comment.id === activePreviewCommentId);
-    if (!stillOpen) clearBoardComposer();
-  }, [activePreviewCommentId, boardMode, allSideComments]);
+    const stillVisible = visibleCanvasSideComments.some(
+      (comment) => comment.id === activePreviewCommentId,
+    );
+    if (!stillVisible) clearBoardComposer();
+  }, [activePreviewCommentId, boardMode, visibleCanvasSideComments]);
   useEffect(() => {
     if (!effectiveDeck || slideState == null || !boardMode) return;
     if (!activePreviewCommentId) return;
@@ -16366,7 +16512,10 @@ async function openReviewListModal() {
    || activeComposerComment?.authorDisplayName?.trim()
    || undefined;
  const currentCommentAuthorDisplayName = commentAuthorSelf?.displayName?.trim() || undefined;
- const activeCommentAuthorAvatarUrl = activeCommentAuthor?.avatarUrl ?? null;
+ const activeCommentAuthorAvatarUrl =
+   activeComposerComment?.authorAvatarUrl
+   || activeCommentAuthor?.avatarUrl
+   || null;
  const currentCommentAuthorAvatarUrl = commentAuthorSelf?.avatarUrl ?? null;
   const commentComposerPortalMetrics = (() => {
     if (!commentComposerHost || !commentPreviewCanvasNode) return null;
@@ -16569,6 +16718,7 @@ async function openReviewListModal() {
      replyComments={allProjectComments}
     projectId={projectId}
      currentFilePath={file.name}
+     onVisibleCommentIdsChange={handleCommentPanelVisibleIdsChange}
      selectedIds={selectedSideCommentIds}
       activeCommentId={activeSideCommentId}
       // The panel used to be pinned open whenever it was portaled (it docked
@@ -18144,7 +18294,8 @@ async function openReviewListModal() {
               </div>
               {boardMode ? (
                 <CommentPreviewOverlays
-                  comments={commentCreateMode ? creationSortedSideComments : []}
+                  comments={commentCreateMode ? visibleCanvasSideComments : []}
+                  markerNumbers={canvasPinNumbersById}
                   provisionalPinNumber={nextProvisionalPinNumber}
                   driftLadder={collab.enabled}
                   currentVersion={collab.publishedVersion ?? undefined}

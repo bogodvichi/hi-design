@@ -461,7 +461,16 @@ export function registerProjectCommentRoutes(app: Express, ctx: RegisterProjectC
       const authorDisplayName = workspaceContext?.displayName?.trim()
         || ssoDisplayName
         || undefined;
-      body.authorDisplayName = authorDisplayName;
+      const authorUsername = typeof ssoSession?.username === 'string'
+        ? ssoSession.username.trim() || undefined
+        : undefined;
+      const ssoAvatarUrl = typeof ssoSession?.userInfo?.avatarUrl === 'string'
+        ? ssoSession.userInfo.avatarUrl.trim()
+        : '';
+      const authorAvatarUrl =
+        workspaceContext?.avatarUrl?.trim()
+        || ssoAvatarUrl
+        || undefined;
       const requestedId = typeof body.id === 'string' && body.id.trim() ? body.id.trim() : '';
       let existing: PreviewComment | null = null;
       if (requestedId) {
@@ -483,8 +492,17 @@ export function registerProjectCommentRoutes(app: Express, ctx: RegisterProjectC
         } else if (authorMemberId) {
           body.authorMemberId = authorMemberId;
         }
-      } else if (authorMemberId) {
-        body.authorMemberId = authorMemberId;
+        // Preserve the original author's identity snapshot on every edit. A
+        // later login/display-name/avatar change by the same caller must not
+        // rewrite who authored this comment.
+        body.authorUsername = existing.authorUsername || authorUsername;
+        body.authorDisplayName = existing.authorDisplayName || authorDisplayName;
+        body.authorAvatarUrl = existing.authorAvatarUrl || authorAvatarUrl;
+      } else {
+        if (authorMemberId) body.authorMemberId = authorMemberId;
+        body.authorUsername = authorUsername;
+        body.authorDisplayName = authorDisplayName;
+        body.authorAvatarUrl = authorAvatarUrl;
       }
       // Resolved BEFORE the upsert (not just before the push below) so a
       // genuinely new comment's pin_seq starts unconfirmed on a team-shared

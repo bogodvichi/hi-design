@@ -1433,9 +1433,9 @@
 .comment-target-overlay {
   position: absolute;
   pointer-events: none;
-  border: 1px solid var(--comment-overlay-border, #1677ff);
-  background: var(--comment-overlay-bg, rgba(22, 119, 255, 0.24));
-  box-shadow: 0 0 0 1px var(--comment-overlay-ring, rgba(22, 119, 255, 0.18));
+  border: 1px dashed var(--comment-overlay-border, #1677ff);
+  background: transparent;
+  box-shadow: none;
 }
 .comment-target-overlay.selected {
   border-width: 2px;
@@ -3260,16 +3260,36 @@ button.comment-card-user-inline:focus-visible {
 
 
 
-/* Anchor for the transient comment-save toast. Centered at the top
-   of the artifact preview so the confirmation is visible without
-   covering the popover's former position. */
+/* Anchor for the transient comment-save toast. Keep the anchor full-width:
+   its transform makes the fixed-position toast use this element as its
+   containing block, so a shrink-to-fit anchor would squeeze the message. */
 .comment-toast-anchor {
   position: absolute;
   top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
+  right: 16px;
+  left: 16px;
+  display: flex;
+  justify-content: center;
   z-index: 60;
+  pointer-events: none;
+}
+.comment-toast-anchor .od-toast,
+.comment-toast-anchor .od-toast.placement-top,
+.comment-toast-anchor .od-toast.placement-bottom {
+  position: relative;
+  inset: auto;
+  width: max-content;
+  max-width: min(480px, 100%);
+  min-width: 0;
+  transform: none;
+  animation: none;
   pointer-events: auto;
+}
+.comment-toast-anchor .od-toast-message {
+  overflow-wrap: anywhere;
+}
+.comment-toast-anchor .od-toast.leaving {
+  animation: none;
 }
 
 .screenshot-toast-anchor {

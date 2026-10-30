@@ -158,6 +158,35 @@ describe('previewCommentToCloud', () => {
     expect(cloud.displayName).toBe('Alice');
   });
 
+  it('carries the stable author username and avatar snapshot onto the cloud comment', () => {
+    const cloud = previewCommentToCloud(
+      {
+        id: 'c1',
+        projectId: 'p1',
+        conversationId: 'conv-local',
+        filePath: 'index.html',
+        elementId: 'hero',
+        selector: '[data-od-id="hero"]',
+        label: 'h1.hero',
+        text: 'Hero',
+        position: { x: 1, y: 2, width: 3, height: 4 },
+        htmlHint: '<h1>',
+        note: 'looks off',
+        status: 'open',
+        createdAt: 10,
+        updatedAt: 20,
+        authorMemberId: 'm-author',
+        authorUsername: '  alice  ',
+        authorAvatarUrl: 'https://hdw.example.test/hdw/api/community/avatar/avatar-digest',
+      } as any,
+      'm-fallback',
+    );
+    expect(cloud.username).toBe('alice');
+    expect(cloud.avatarUrl).toBe(
+      'https://hdw.example.test/hdw/api/community/avatar/avatar-digest',
+    );
+  });
+
   it('falls back to the sharing member display name when the comment has no author display name', () => {
     const cloud = previewCommentToCloud(
       {
@@ -215,6 +244,8 @@ describe('mergeSyncedPreviewComment', () => {
     const comment = cloudComment('c1', {
       memberId: 'm-author',
       displayName: 'Alice',
+      username: 'alice',
+      avatarUrl: 'https://hdw.example.test/hdw/api/community/avatar/avatar-digest',
       anchorState: 'anchored',
       anchoredVersion: 3,
     });
@@ -228,6 +259,10 @@ describe('mergeSyncedPreviewComment', () => {
     // The AUTHOR is preserved for cross-member attribution.
     expect(stored[0]!.authorMemberId).toBe('m-author');
     expect(stored[0]!.authorDisplayName).toBe('Alice');
+    expect(stored[0]!.authorUsername).toBe('alice');
+    expect(stored[0]!.authorAvatarUrl).toBe(
+      'https://hdw.example.test/hdw/api/community/avatar/avatar-digest',
+    );
     expect(stored[0]!.anchorState).toBe('anchored');
     expect(stored[0]!.anchoredVersion).toBe(3);
   });

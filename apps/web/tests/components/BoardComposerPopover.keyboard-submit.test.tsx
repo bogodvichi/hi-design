@@ -147,7 +147,7 @@ describe('BoardComposerPopover keyboard submit', () => {
     expect(Number.parseInt(popover.style.maxHeight, 10)).toBeGreaterThan(0);
   });
 
-  it('places the composer outside a wide selected element when vertical space is available', () => {
+  it('anchors the composer to the mouse point instead of the selected element edges', () => {
     renderPopover({
       targetOverride: {
         hoverPoint: { x: 400, y: 250 },
@@ -158,9 +158,11 @@ describe('BoardComposerPopover keyboard submit', () => {
 
     const popover = screen.getByTestId('comment-popover');
     const top = Number.parseInt(popover.style.top, 10);
+    const left = Number.parseInt(popover.style.left, 10);
 
-    expect(top).toBeGreaterThanOrEqual(334);
-    expect(Number.parseInt(popover.style.maxHeight, 10)).toBeLessThanOrEqual(252);
+    expect(top).toBe(250);
+    expect(left).toBeGreaterThan(400);
+    expect(Number.parseInt(popover.style.maxHeight, 10)).toBeGreaterThan(0);
   });
 
   it('drags the composer and clamps it inside the preview bounds', () => {

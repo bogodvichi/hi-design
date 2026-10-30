@@ -141,21 +141,26 @@ export function FeedbackDialog({
   // 拉取海客 session：判断是否登录 + 取反馈落点 projectId / parentId。
   useEffect(() => {
     let cancelled = false;
-    void (async () => {
-      try {
-        const res = await fetch('/api/hik/hikke/session', { credentials: 'same-origin' });
-        if (!res.ok) {
-          if (!cancelled) setSessionError('未登录海客，请先在设置中完成海客登录');
-          return;
+    // StrictMode replays mount effects as setup -> cleanup -> setup in dev.
+    // Deferring the first request keeps the throwaway mount from sending it.
+    queueMicrotask(() => {
+      if (cancelled) return;
+      void (async () => {
+        try {
+          const res = await fetch('/api/hik/hikke/session', { credentials: 'same-origin' });
+          if (!res.ok) {
+            if (!cancelled) setSessionError('未登录海客，请先在设置中完成海客登录');
+            return;
+          }
+          const json = await res.json();
+          if (!cancelled) setSession(json?.data ?? null);
+        } catch (err) {
+          if (!cancelled) setSessionError(userFacingError(err, t, 'feedback.feedbackSessionFailed'));
+        } finally {
+          if (!cancelled) setSessionLoading(false);
         }
-        const json = await res.json();
-        if (!cancelled) setSession(json?.data ?? null);
-      } catch (err) {
-        if (!cancelled) setSessionError(userFacingError(err, t, 'feedback.feedbackSessionFailed'));
-      } finally {
-        if (!cancelled) setSessionLoading(false);
-      }
-    })();
+      })();
+    });
     return () => {
       cancelled = true;
     };

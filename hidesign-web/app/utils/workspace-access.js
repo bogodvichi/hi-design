@@ -186,6 +186,7 @@ function createWorkspaceAccess(app, dependencies = {}) {
         }
         body.comment.memberId = memberId;
         body.comment.displayName = actor?.displayname || username;
+        body.comment.username = actor?.username || username;
       }
       return;
     }

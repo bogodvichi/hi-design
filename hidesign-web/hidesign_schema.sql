@@ -172,6 +172,7 @@ CREATE TABLE public.project_comments (
     project_id text NOT NULL,
     conversation_id text NOT NULL,
     member_id text NOT NULL,
+    username text,
     seq bigint NOT NULL DEFAULT nextval('project_comments_seq_seq'::regclass),
     note text NOT NULL,
     file_path text NOT NULL,

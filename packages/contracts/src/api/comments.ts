@@ -13,6 +13,14 @@ export interface PreviewCommentPosition {
   y: number;
   width: number;
   height: number;
+  /**
+   * Pointer offset from the target DOM element's top-left corner when the
+   * comment was created. Stored alongside the DOM bounds in the existing
+   * position JSON; consumers fall back to x/y for comments created before
+   * these fields existed.
+   */
+  mx?: number;
+  my?: number;
 }
 
 export interface PreviewAnnotationStyle {
@@ -148,8 +156,12 @@ export interface PreviewComment {
   anchoredVersion?: number;
   /** Comment author's workspaceMemberId (for cross-member attribution/display). */
   authorMemberId?: string;
+  /** Comment author's stable English login name, captured at authoring time. */
+  authorUsername?: string;
   /** Denormalized comment author display name, captured at authoring time. */
   authorDisplayName?: string;
+  /** Denormalized comment author avatar URL, captured at authoring/sync time. */
+  authorAvatarUrl?: string | null;
   /**
    * Reply linkage: id of the comment this entry is a reply to. Absent for a
    * top-level comment. The parent is expected to live in the same project

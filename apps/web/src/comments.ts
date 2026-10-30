@@ -18,7 +18,7 @@ export interface PreviewCommentSnapshot {
   selector: string;
   label: string;
   text: string;
-  position: { x: number; y: number; width: number; height: number };
+  position: PreviewComment['position'];
   hoverPoint?: { x: number; y: number };
   htmlHint: string;
   style?: PreviewAnnotationStyle;
@@ -82,13 +82,20 @@ export function commentTargetDisplayName(
 
 export function targetFromSnapshot(snapshot: PreviewCommentSnapshot): PreviewCommentTarget {
   const podMembers = normalizeMembers(snapshot.podMembers);
+  const position = normalizePosition(snapshot.position);
+  const hoverX = optionalFinite(snapshot.hoverPoint?.x);
+  const hoverY = optionalFinite(snapshot.hoverPoint?.y);
+  if (hoverX !== undefined && hoverY !== undefined) {
+    position.mx = hoverX - position.x;
+    position.my = hoverY - position.y;
+  }
   return {
     filePath: snapshot.filePath,
     elementId: snapshot.elementId,
     selector: snapshot.selector,
     label: snapshot.label,
     text: trimContextText(snapshot.text),
-    position: normalizePosition(snapshot.position),
+    position,
     htmlHint: trimHtmlHint(snapshot.htmlHint),
     style: normalizeStyle(snapshot.style),
     selectionKind: snapshot.selectionKind === 'pod' ? 'pod' : 'element',
@@ -103,6 +110,19 @@ export function targetFromSnapshot(snapshot: PreviewCommentSnapshot): PreviewCom
     podMembers: podMembers.length > 0 ? podMembers : undefined,
     ...(snapshot.slideIndex === undefined ? {} : { slideIndex: snapshot.slideIndex }),
   };
+}
+
+export function savedCommentHoverPoint(
+  position: PreviewComment['position'] | undefined,
+  currentPosition?: PreviewComment['position'],
+): { x: number; y: number } | undefined {
+  const offsetX = optionalFinite(position?.mx);
+  const offsetY = optionalFinite(position?.my);
+  const currentX = optionalFinite((currentPosition ?? position)?.x);
+  const currentY = optionalFinite((currentPosition ?? position)?.y);
+  return offsetX === undefined || offsetY === undefined || currentX === undefined || currentY === undefined
+    ? undefined
+    : { x: currentX + offsetX, y: currentY + offsetY };
 }
 
 export function isValidCommentOverlayPosition(
@@ -226,7 +246,7 @@ export function liveSnapshotForComment(
   // collab UI) so this path is unchanged for existing single-user callers.
   const snapshot = snapshots.get(comment.elementId);
   if (snapshot && snapshot.filePath === comment.filePath && isValidCommentOverlayPosition(snapshot.position)) {
-    return snapshot;
+    return withSavedCommentHoverPoint(snapshot, comment);
   }
   if (comment.elementId.startsWith('pin-') && isValidCommentOverlayPosition(comment.position)) {
     return ghostSnapshotFromComment(comment);
@@ -261,13 +281,18 @@ export function resolveCommentAnchor(
 ): CommentAnchorResolution {
   const exact = snapshots.get(comment.elementId);
   if (exact && exact.filePath === comment.filePath && isValidCommentOverlayPosition(exact.position)) {
-    return { state: anchoredOrReanchored(comment, currentVersion), snapshot: exact };
+    return {
+      state: anchoredOrReanchored(comment, currentVersion),
+      snapshot: withSavedCommentHoverPoint(exact, comment),
+    };
   }
   if (comment.elementId.startsWith('pin-') && isValidCommentOverlayPosition(comment.position)) {
     return { state: anchoredOrReanchored(comment, currentVersion), snapshot: ghostSnapshotFromComment(comment) };
   }
   const fuzzy = fuzzyFindSnapshot(comment, snapshots);
-  if (fuzzy) return { state: 'stale', snapshot: fuzzy };
+  if (fuzzy) {
+    return { state: 'stale', snapshot: withSavedCommentHoverPoint(fuzzy, comment) };
+  }
   const ghostPos = validPosition(comment.lastGoodPosition) ?? validPosition(comment.position);
   return { state: 'lost', snapshot: ghostPos ? ghostSnapshotFromComment(comment, ghostPos) : null };
 }
@@ -364,21 +389,26 @@ function validPosition(
 
 function ghostSnapshotFromComment(
   comment: PreviewComment,
-  position?: PreviewCommentSnapshot['position'],
+  position?: PreviewComment['position'],
 ): PreviewCommentSnapshot {
+  const snapshotPosition = normalizePosition(position ?? comment.position);
+  const savedHoverPoint =
+    savedCommentHoverPoint(position, snapshotPosition)
+    ?? savedCommentHoverPoint(comment.position, snapshotPosition);
   return {
     filePath: comment.filePath,
     elementId: comment.elementId,
     selector: comment.selector,
     label: comment.label,
     text: trimContextText(comment.text),
-    position: normalizePosition(position ?? comment.position),
+    position: snapshotPosition,
     htmlHint: trimHtmlHint(comment.htmlHint),
     style: normalizeStyle(comment.style),
     selectionKind: comment.selectionKind === 'pod' ? 'pod' : 'element',
     memberCount: comment.memberCount,
     podMembers: normalizeMembers(comment.podMembers),
     slideIndex: comment.slideIndex,
+    ...(savedHoverPoint ? { hoverPoint: savedHoverPoint } : {}),
   };
 }
 
@@ -697,16 +727,35 @@ function visualAnnotationIntentWithoutScreenshot(): string {
 }
 
 function normalizePosition(input: PreviewComment['position']): PreviewComment['position'] {
-  return {
+  const position: PreviewComment['position'] = {
     x: finite(input?.x),
     y: finite(input?.y),
     width: finite(input?.width),
     height: finite(input?.height),
   };
+  const mx = optionalFinite(input?.mx);
+  const my = optionalFinite(input?.my);
+  if (mx !== undefined && my !== undefined) {
+    position.mx = mx;
+    position.my = my;
+  }
+  return position;
 }
 
 function finite(value: number | undefined): number {
   return Number.isFinite(value) ? Math.round(value as number) : 0;
+}
+
+function optionalFinite(value: number | undefined): number | undefined {
+  return Number.isFinite(value) ? Math.round(value as number) : undefined;
+}
+
+function withSavedCommentHoverPoint(
+  snapshot: PreviewCommentSnapshot,
+  comment: PreviewComment,
+): PreviewCommentSnapshot {
+  const hoverPoint = savedCommentHoverPoint(comment.position, snapshot.position);
+  return hoverPoint ? { ...snapshot, hoverPoint } : snapshot;
 }
 
 function normalizeSelectionKind(

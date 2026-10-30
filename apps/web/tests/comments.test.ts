@@ -15,6 +15,7 @@ import {
   overlayBoundsFromSnapshot,
   queuedSlideNavTarget,
   removeAttachedComment,
+  savedCommentHoverPoint,
   targetFromSnapshot,
 } from '../src/comments';
 import type { PreviewCommentSnapshot } from '../src/comments';
@@ -63,6 +64,56 @@ describe('preview comment attachment helpers', () => {
       fontSize: '13.5px',
       fontFamily: 'Inter, sans-serif',
     });
+  });
+
+  it('stores the pointer offset relative to the DOM bounds in position JSON', () => {
+    const target = targetFromSnapshot({
+      filePath: 'index.html',
+      elementId: 'hero-title',
+      selector: '[data-od-id="hero-title"]',
+      label: 'h1.hero-title',
+      text: 'Hero title',
+      position: { x: 10.4, y: 20.5, width: 300.2, height: 88.8 },
+      hoverPoint: { x: 120.6, y: 44.4 },
+      htmlHint: '<h1 data-od-id="hero-title">',
+    });
+
+    expect(target.position).toEqual({
+      x: 10,
+      y: 21,
+      width: 300,
+      height: 89,
+      mx: 111,
+      my: 23,
+    });
+  });
+
+  it('expands the saved DOM-relative pointer offset against current bounds', () => {
+    expect(savedCommentHoverPoint(
+      { x: 10, y: 20, width: 300, height: 80, mx: 110, my: 24 },
+      { x: 40, y: 900, width: 300, height: 80 },
+    )).toEqual({ x: 150, y: 924 });
+  });
+
+  it('omits incomplete or invalid pointer coordinates from position JSON', () => {
+    const base = {
+      filePath: 'index.html',
+      elementId: 'hero-title',
+      selector: '[data-od-id="hero-title"]',
+      label: 'h1.hero-title',
+      text: 'Hero title',
+      position: { x: 10, y: 20, width: 300, height: 80 },
+      htmlHint: '<h1 data-od-id="hero-title">',
+    };
+
+    expect(targetFromSnapshot({
+      ...base,
+      hoverPoint: { x: 121, y: Number.NaN },
+    }).position).toEqual(base.position);
+    expect(targetFromSnapshot({
+      ...base,
+      hoverPoint: { x: Number.POSITIVE_INFINITY, y: 44 },
+    }).position).toEqual(base.position);
   });
 
   it('creates ordered compact send payloads from attached comments', () => {
@@ -526,6 +577,101 @@ describe('resolveCommentAnchor drift ladder', () => {
     const res = resolveCommentAnchor(comment({ elementId: 'hero-title' }), snapshots);
     expect(res.state).toBe('anchored');
     expect(res.snapshot?.elementId).toBe('hero-title');
+  });
+
+  it('restores the saved pointer point on an exact anchor hit', () => {
+    const snapshots = new Map([['hero-title', snap({ elementId: 'hero-title' })]]);
+    const res = resolveCommentAnchor(
+      comment({
+        elementId: 'hero-title',
+        position: { x: 10, y: 20, width: 300, height: 80, mx: 210, my: 44 },
+      }),
+      snapshots,
+    );
+
+    expect(res.state).toBe('anchored');
+    expect(res.snapshot?.hoverPoint).toEqual({ x: 220, y: 64 });
+  });
+
+  it('restores the saved pointer point when a moved element is re-found by content', () => {
+    const snapshots = new Map([
+      ['path-2-9', snap({ elementId: 'path-2-9', position: { x: 40, y: 900, width: 300, height: 80 } })],
+    ]);
+    const res = resolveCommentAnchor(
+      comment({
+        elementId: 'path-1-0',
+        position: { x: 10, y: 20, width: 300, height: 80, mx: 170, my: 52 },
+        lastGoodPosition: { x: 10, y: 20, width: 300, height: 80 },
+      }),
+      snapshots,
+    );
+
+    expect(res.state).toBe('stale');
+    expect(res.snapshot?.hoverPoint).toEqual({ x: 210, y: 952 });
+  });
+
+  it('restores the saved pointer point for free pins and lost anchors', () => {
+    const savedPosition = { x: 30, y: 40, width: 18, height: 18, mx: 5, my: 6 };
+    const freePin = resolveCommentAnchor(
+      comment({
+        elementId: 'pin-saved',
+        selector: '[data-od-pin="pin-saved"]',
+        position: savedPosition,
+      }),
+      new Map(),
+    );
+    expect(freePin.state).toBe('anchored');
+    expect(freePin.snapshot?.hoverPoint).toEqual({ x: 35, y: 46 });
+
+    const lost = resolveCommentAnchor(
+      comment({
+        elementId: 'gone',
+        selector: '[data-od-id="gone"]',
+        htmlHint: '<div data-od-id="gone">',
+        text: 'No live match',
+        position: savedPosition,
+        lastGoodPosition: { x: 50, y: 60, width: 18, height: 18 },
+      }),
+      new Map(),
+    );
+    expect(lost.state).toBe('lost');
+    expect(lost.snapshot?.hoverPoint).toEqual({ x: 55, y: 66 });
+  });
+
+  it('moves the saved pointer point with the DOM as the page scrolls', () => {
+    const saved = comment({
+      elementId: 'hero-title',
+      position: { x: 10, y: 20, width: 300, height: 80, mx: 110, my: 24 },
+    });
+    const first = resolveCommentAnchor(
+      saved,
+      new Map([['hero-title', snap({ elementId: 'hero-title' })]]),
+    );
+    const scrolled = resolveCommentAnchor(
+      saved,
+      new Map([[
+        'hero-title',
+        snap({ elementId: 'hero-title', position: { x: 10, y: -80, width: 300, height: 80 } }),
+      ]]),
+    );
+
+    expect(first.snapshot?.hoverPoint).toEqual({ x: 120, y: 44 });
+    expect(scrolled.snapshot?.hoverPoint).toEqual({ x: 120, y: -56 });
+  });
+
+  it('keeps legacy positions without pointer coordinates working', () => {
+    const snapshots = new Map([['hero-title', snap({ elementId: 'hero-title' })]]);
+    const res = resolveCommentAnchor(
+      comment({
+        elementId: 'hero-title',
+        position: { x: 10, y: 20, width: 300, height: 80 },
+      }),
+      snapshots,
+    );
+
+    expect(res.state).toBe('anchored');
+    expect(res.snapshot?.position).toEqual({ x: 10, y: 20, width: 300, height: 80 });
+    expect(res.snapshot?.hoverPoint).toBeUndefined();
   });
 
   it('flags an exact hit against an older content version as reanchored', () => {

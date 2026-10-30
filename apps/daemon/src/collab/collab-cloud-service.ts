@@ -135,6 +135,9 @@ export function previewCommentToCloud(
   const effectiveDisplayName = comment.authorDisplayName?.trim()
     || displayName;
   if (effectiveDisplayName) cloud.displayName = effectiveDisplayName;
+  const authorUsername = comment.authorUsername?.trim();
+  if (authorUsername) cloud.username = authorUsername;
+  if (comment.authorAvatarUrl) cloud.avatarUrl = comment.authorAvatarUrl;
   if (comment.style !== undefined) cloud.style = comment.style;
   if (comment.selectionKind !== undefined) cloud.selectionKind = comment.selectionKind;
   if (comment.memberCount !== undefined) cloud.memberCount = comment.memberCount;
