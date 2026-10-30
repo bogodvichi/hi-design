@@ -1780,6 +1780,18 @@ describe('FileViewer SVG artifacts', () => {
     expect(screen.getByRole('button', { name: '评审' })).toBeTruthy();
     expect(screen.getByRole('button', { name: '推送' })).toBeTruthy();
 
+    fireEvent.click(await screen.findByRole('button', { name: '100%' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '75%' }));
+    expect(screen.getByRole('button', { name: '75%' })).toBeTruthy();
+    expect(container.querySelector('[style*="scale(0.75)"]')).toBeTruthy();
+    expect(rawReads).toHaveLength(0);
+
+    fireEvent.click(screen.getByRole('button', { name: 'More' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: '50%' }));
+    expect(screen.getByRole('button', { name: '50%' })).toBeTruthy();
+    expect(container.querySelector('[style*="scale(0.5)"]')).toBeTruthy();
+    expect(rawReads).toHaveLength(0);
+
     fireEvent.click(screen.getByRole('tab', { name: 'Code' }));
     await waitFor(() => {
       expect(container.querySelector('.viewer-source')?.textContent).toContain('Large safe page');

@@ -340,7 +340,7 @@ function UnifiedLocationPane({ workspaces, selectedKey, activeBranch, currentWor
   const t = useT();
   const [foldersByWorkspace, setFoldersByWorkspace] = useState<Record<string, FolderNode[]>>({});
   const [loadingKeys, setLoadingKeys] = useState<Set<string>>(() => new Set());
-  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => new Set(currentWorkspaceId ? [currentWorkspaceId] : []));
+  const [expandedKeys, setExpandedKeys] = useState<Set<string>>(() => new Set(workspaces.map((workspace) => workspace.workspaceId)));
   const [creatingRootId, setCreatingRootId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [searching, setSearching] = useState(false);
@@ -362,8 +362,8 @@ function UnifiedLocationPane({ workspaces, selectedKey, activeBranch, currentWor
 
   useEffect(() => { for (const workspace of workspaces) void loadRootFolders(workspace); }, [loadRootFolders, workspaces]);
   useEffect(() => {
-    if (currentWorkspaceId) setExpandedKeys(new Set([currentWorkspaceId]));
-  }, [currentWorkspaceId]);
+    setExpandedKeys(new Set(workspaces.map((workspace) => workspace.workspaceId)));
+  }, [currentWorkspaceId, workspaces]);
 
   useEffect(() => {
     const handlePointerDown = (event: PointerEvent) => {
@@ -694,8 +694,11 @@ export function MoveToTeamTreeDialog({
   const [activeBranch, setActiveBranch] = useState<ActiveBranch | null>(null);
   const initializedLocationRef = useRef(false);
   const visibleItems = useMemo(
-    () => (items ?? []).filter((item) => canMoveIntoWorkspace(item) && (!copyMode || item.isDefaultTeam === true)),
-    [items, copyMode],
+    () => (items ?? []).filter((item) => canMoveIntoWorkspace(item)
+      && (!copyMode || item.isDefaultTeam === true)
+      && (canMoveToPersonal || !item.isDefaultTeam)
+      && (!restrictToWorkspaceId || item.workspaceId === restrictToWorkspaceId || (canMoveToPersonal && item.isDefaultTeam))),
+    [items, copyMode, canMoveToPersonal, restrictToWorkspaceId],
   );
 
   useEffect(() => {
@@ -711,8 +714,6 @@ export function MoveToTeamTreeDialog({
         if (mode === 'personal-folders') next = next.filter((item) => item.isDefaultTeam === true);
         else if (mode === 'team') next = next.filter((item) => item.workspaceType === 'team' && !item.isDefaultTeam);
         else next = next.filter((item) => item.workspaceType === 'team' || item.isDefaultTeam === true);
-        if (!canMoveToPersonal) next = next.filter((item) => !item.isDefaultTeam);
-        if (restrictToWorkspaceId) next = next.filter((item) => item.workspaceId === restrictToWorkspaceId);
         setItems(next);
       } catch {
         if (!cancelled) { setItems([]); setLoadFailed(true); }
@@ -805,8 +806,10 @@ export function MoveToTeamTreeDialog({
   const dialog = (
     <Dialog className={`${styles.dialog}${showUnifiedLayout ? ` ${styles.dialogWide}` : ''}`} onClose={() => { if (!busy) onCancel(); }} closeOnEscape={!busy} ariaLabelledBy={titleId}>
       <DialogTitle id={titleId}>{titleLabel ?? (copyMode ? t('recentProjects.copyToPersonal') : showUnifiedLayout ? t('recentProjects.moveTo') : (includePersonal || mode !== 'team') ? t('recentProjects.moveTo') : t('recentProjects.moveToTeam'))}</DialogTitle>
-      {!copyMode && selected && selected.workspaceId !== currentWorkspaceId && !selected.isDefaultTeam && canMoveToPersonal ? (
-        <p className={styles.transferNotice}>{t('recentProjects.transferNotice')}</p>
+      {!copyMode && selected && selected.workspaceId !== currentWorkspaceId ? (
+        <p className={styles.transferNotice}>{selected.isDefaultTeam ? <>
+          {t('recentProjects.moveToPersonalDescPre')}<strong>{t('recentProjects.moveToPersonalDescStrong')}</strong>{t('recentProjects.moveToPersonalDescPost')}
+        </> : t('recentProjects.transferNotice')}</p>
       ) : null}
       <fieldset disabled={busy} className={styles.locations} aria-busy={busy}>
       {loading ? (

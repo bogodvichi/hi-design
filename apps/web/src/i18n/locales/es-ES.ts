@@ -2,10 +2,10 @@ import { feedbackEn } from '../feedback-copy';
 import type { Dict } from '../types';
 
 export const esES: Dict = {
-  'recentProjects.transferNotice': "Los elementos seleccionados y todo el contenido de las carpetas pasarán al equipo. Los miembros podrán ver y comentar, los creadores editar y los administradores gestionar. No podrán volver directamente al espacio personal.",
+  'recentProjects.transferNotice': "Los elementos seleccionados y todo el contenido de las carpetas pasarán al equipo. Los miembros podrán ver y comentar, los creadores editar y los administradores gestionar.",
   'recentProjects.moveFailed': "No se pudo mover. Revisa el destino e inténtalo de nuevo.",
   'recentProjects.moveSummary': "Movidos: {succeeded}; pendientes: {failed}. Reintenta los elementos restantes.",
-  'recentProjects.moveFolderPending': "El proyecto se ha movido al equipo, pero no se pudo confirmar la carpeta de destino. Vuelve a intentarlo.",
+  'recentProjects.moveFolderPending': "El proyecto se ha trasladado, pero no se ha podido confirmar la carpeta de destino. Reinténtalo para completar la ubicación.",
   ...feedbackEn,
   'composer.skillApplyFailed': "No se pudo añadir este Skill. Actualiza la lista de Skills e inténtalo de nuevo.",
   'projectDrag.movedTo': 'Moved to “{path}”',

@@ -2,10 +2,10 @@ import { feedbackEn } from '../feedback-copy';
 import type { Dict } from '../types';
 
 export const tr: Dict = {
-  'recentProjects.transferNotice': "Seçilen öğeler ve klasörlerin tüm içeriği takıma taşınır. Üyeler görüntüleyip yorum yapabilir, oluşturanlar düzenleyebilir, yöneticiler yönetebilir. Kişisel alana doğrudan geri taşınamaz.",
+  'recentProjects.transferNotice': "Seçilen öğeler ve klasörlerin tüm içeriği takıma taşınır. Üyeler görüntüleyip yorum yapabilir, oluşturanlar düzenleyebilir, yöneticiler yönetebilir.",
   'recentProjects.moveFailed': "Taşınamadı. Hedefi kontrol edip tekrar deneyin.",
   'recentProjects.moveSummary': "Taşınan: {succeeded}; tamamlanmamış: {failed}. Kalan öğeleri tekrar deneyin.",
-  'recentProjects.moveFolderPending': "Proje takıma taşındı ancak hedef klasör doğrulanamadı. Tekrar deneyin.",
+  'recentProjects.moveFolderPending': "Proje taşındı ancak hedef klasör doğrulanamadı. Klasör yerleşimini tamamlamak için yeniden deneyin.",
   ...feedbackEn,
   'composer.skillApplyFailed': "Bu Skill eklenemedi. Skill listesini yenileyip tekrar deneyin.",
   'projectDrag.movedTo': 'Moved to “{path}”',

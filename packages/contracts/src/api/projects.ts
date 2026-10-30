@@ -674,8 +674,9 @@ export interface WorkspaceProjectSummary {
   updatedByWorkspaceMemberId?: string | null;
   /**
    * E resource-hub mapping seam. When present, this is Spec E's
-   * ResourceRecord.id for a `kind: 'project'` cloud resource. Personal projects
-   * are local-only and normally keep this null; team-visible projects receive
+   * ResourceRecord.id for a `kind: 'project'` cloud resource. Locally created
+   * Personal projects normally keep this null; transfers into Personal retain
+   * the mapping and cloud history. Team-visible projects receive
    * the cloud resource through C's orchestration of E's upload/version/mirror
    * mechanism.
    */
@@ -706,8 +707,9 @@ export interface WorkspaceProjectsResponse {
 export interface MoveWorkspaceProjectRequest {
   visibility: ProjectVisibility;
   /**
-   * Only personally owned projects can transfer to a writable team workspace.
-   * Team projects remain in their current team. Omitted/null keeps the workspace.
+   * Creators may transfer their projects between Personal and a writable team.
+   * Direct transfers between teams are forbidden. For personal moves from a
+   * team, omission resolves the caller's Personal workspace.
    */
   targetWorkspaceId?: string | null;
   targetFolderId?: string | null;

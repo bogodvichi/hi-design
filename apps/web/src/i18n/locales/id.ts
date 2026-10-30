@@ -2,10 +2,10 @@ import { feedbackEn } from '../feedback-copy';
 import type { Dict } from '../types';
 
 export const id: Dict = {
-  'recentProjects.transferNotice': "Item terpilih dan seluruh isi folder akan dipindahkan ke tim. Anggota dapat melihat dan berkomentar, pembuat dapat mengedit, dan admin dapat mengelola. Tidak dapat dipindahkan langsung kembali ke ruang pribadi.",
+  'recentProjects.transferNotice': "Item terpilih dan seluruh isi folder akan dipindahkan ke tim. Anggota dapat melihat dan berkomentar, pembuat dapat mengedit, dan admin dapat mengelola.",
   'recentProjects.moveFailed': "Gagal memindahkan. Periksa tujuan dan coba lagi.",
   'recentProjects.moveSummary': "Dipindahkan: {succeeded}; belum selesai: {failed}. Coba lagi item yang tersisa.",
-  'recentProjects.moveFolderPending': "Proyek telah dipindahkan ke tim, tetapi folder tujuan belum dapat dikonfirmasi. Coba lagi.",
+  'recentProjects.moveFolderPending': "Proyek telah dipindahkan, tetapi folder tujuan belum dapat dikonfirmasi. Coba lagi untuk menyelesaikan penempatan folder.",
   ...feedbackEn,
   'composer.skillApplyFailed': "Skill ini tidak dapat ditambahkan. Muat ulang daftar Skill dan coba lagi.",
   'projectDrag.movedTo': 'Moved to “{path}”',

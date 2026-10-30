@@ -2,10 +2,10 @@ import { feedbackEn } from '../feedback-copy';
 import type { Dict } from '../types';
 
 export const de: Dict = {
-  'recentProjects.transferNotice': "Ausgewählte Elemente und alle Ordnerinhalte werden ins Team verschoben. Mitglieder können ansehen und kommentieren, Ersteller bearbeiten und Admins verwalten. Direktes Zurückverschieben ist ausgeschlossen.",
+  'recentProjects.transferNotice': "Ausgewählte Elemente und alle Ordnerinhalte werden ins Team verschoben. Mitglieder können ansehen und kommentieren, Ersteller bearbeiten und Admins verwalten.",
   'recentProjects.moveFailed': "Verschieben fehlgeschlagen. Ziel prüfen und erneut versuchen.",
   'recentProjects.moveSummary': "Verschoben: {succeeded}; unvollständig: {failed}. Übrige Elemente erneut versuchen.",
-  'recentProjects.moveFolderPending': "Das Projekt wurde ins Team verschoben, aber der Zielordner konnte nicht bestätigt werden. Bitte erneut versuchen.",
+  'recentProjects.moveFolderPending': "Das Projekt wurde verschoben, aber der Zielordner konnte nicht bestätigt werden. Erneut versuchen, um die Zuordnung abzuschließen.",
   ...feedbackEn,
   'composer.skillApplyFailed': "Dieser Skill konnte nicht hinzugefügt werden. Aktualisiere die Skill-Liste und versuche es erneut.",
   'projectDrag.movedTo': 'Moved to “{path}”',

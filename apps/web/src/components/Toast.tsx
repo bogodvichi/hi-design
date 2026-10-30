@@ -9,6 +9,8 @@ import { notifyToast, ToastViewportContext } from './toast-context';
 
 export interface ToastProps {
   message: string;
+  /** Stable operation identity so retries replace results across remounts. */
+  toastKey?: string;
   className?: string;
   details?: string | null;
   actionLabel?: string | null;
@@ -54,7 +56,8 @@ const TONE_ICON: Record<
 /** Existing callers inherit app-owned result lifetime without migrating their state. */
 export function Toast(props: ToastProps) {
   const viewport = useContext(ToastViewportContext);
-  const key = useId();
+  const generatedKey = useId();
+  const key = props.toastKey ?? generatedKey;
   const onDismiss = useRef(props.onDismiss);
   onDismiss.current = props.onDismiss;
   const globalResult = !!viewport && !props.code && (props.tone === 'success' || props.tone === 'error');

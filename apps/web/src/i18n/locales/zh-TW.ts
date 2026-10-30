@@ -2,10 +2,10 @@ import { feedbackEn } from '../feedback-copy';
 import type { Dict } from "../types";
 
 export const zhTW: Dict = {
-  'recentProjects.transferNotice': "所選專案及資料夾內的全部內容將移出個人空間，轉為團隊專案。團隊成員可檢視和評論，建立者可編輯，管理員可管理；無法直接移回個人空間。",
+  'recentProjects.transferNotice': "所選專案及資料夾內的全部內容將移出個人空間，轉為團隊專案。團隊成員可檢視和評論，建立者可編輯，管理員可管理。",
   'recentProjects.moveFailed': "移動失敗，請檢查目標位置後重試。",
   'recentProjects.moveSummary': "已完成 {succeeded} 項，{failed} 項未完成。可重試剩餘項。",
-  'recentProjects.moveFolderPending': "專案已轉入團隊，但目標資料夾尚未確認。請重試完成歸位。",
+  'recentProjects.moveFolderPending': '專案已完成轉移，但目標資料夾尚未確認。請重試以完成資料夾歸位。',
   ...feedbackEn,
   'projectDrag.movedTo': '已移動至「{path}」',
   'projectDrag.permissionDenied': '移動失敗，無權限',

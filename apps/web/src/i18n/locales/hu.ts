@@ -2,10 +2,10 @@ import { feedbackEn } from '../feedback-copy';
 import type { Dict } from '../types';
 
 export const hu: Dict = {
-  'recentProjects.transferNotice': "A kijelölt elemek és a mappák teljes tartalma a csapathoz kerülnek. A tagok megtekinthetik és kommentelhetik, a létrehozók szerkeszthetik, az adminisztrátorok kezelhetik őket. Közvetlenül nem helyezhetők vissza a személyes térbe.",
+  'recentProjects.transferNotice': "A kijelölt elemek és a mappák teljes tartalma a csapathoz kerülnek. A tagok megtekinthetik és kommentelhetik, a létrehozók szerkeszthetik, az adminisztrátorok kezelhetik őket.",
   'recentProjects.moveFailed': "Az áthelyezés sikertelen. Ellenőrizze a célt, és próbálja újra.",
   'recentProjects.moveSummary': "Áthelyezve: {succeeded}; befejezetlen: {failed}. Próbálja újra a fennmaradó elemeket.",
-  'recentProjects.moveFolderPending': "A projekt a csapathoz került, de a célmappát nem sikerült megerősíteni. Próbálja újra.",
+  'recentProjects.moveFolderPending': "A projekt átkerült, de a célmappa nem erősíthető meg. Próbálja újra a mappa hozzárendelését.",
   ...feedbackEn,
   'composer.skillApplyFailed': "Nem sikerült hozzáadni ezt a Skillt. Frissítsd a Skill-listát, és próbáld újra.",
   'projectDrag.movedTo': 'Moved to “{path}”',

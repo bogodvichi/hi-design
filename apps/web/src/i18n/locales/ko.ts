@@ -2,10 +2,10 @@ import { feedbackEn } from '../feedback-copy';
 import type { Dict } from '../types';
 
 export const ko: Dict = {
-  'recentProjects.transferNotice': "선택 항목과 폴더의 모든 내용이 팀으로 이동합니다. 팀원은 보기와 댓글, 만든 사람은 편집, 관리자는 관리할 수 있습니다. 개인 공간으로 직접 되돌릴 수 없습니다.",
+  'recentProjects.transferNotice': "선택 항목과 폴더의 모든 내용이 팀으로 이동합니다. 팀원은 보기와 댓글, 만든 사람은 편집, 관리자는 관리할 수 있습니다.",
   'recentProjects.moveFailed': "이동하지 못했습니다. 대상 위치를 확인하고 다시 시도하세요.",
   'recentProjects.moveSummary': "완료: {succeeded}, 미완료: {failed}. 남은 항목을 다시 시도하세요.",
-  'recentProjects.moveFolderPending': "프로젝트가 팀으로 이동했지만 대상 폴더를 확인하지 못했습니다. 다시 시도하세요.",
+  'recentProjects.moveFolderPending': "프로젝트가 이동되었지만 대상 폴더를 확인하지 못했습니다. 폴더 배치를 완료하려면 다시 시도하세요.",
   ...feedbackEn,
   'composer.skillApplyFailed': "이 Skill을 추가할 수 없습니다. Skill 목록을 새로 고친 후 다시 시도하세요.",
   'projectDrag.movedTo': 'Moved to “{path}”',

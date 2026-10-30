@@ -8,6 +8,15 @@ import { notifyToast } from '../../src/components/toast-context';
 afterEach(() => { cleanup(); vi.useRealTimers(); vi.restoreAllMocks(); });
 
 describe('global operation feedback', () => {
+  it('replaces the same operation result across failed retries instead of stacking notices', () => {
+    const { rerender } = render(<ToastProvider><Toast message="Move failed" tone="error" toastKey="project-move" /></ToastProvider>);
+    for (let attempt = 0; attempt < 3; attempt++) {
+      rerender(<ToastProvider>{null}</ToastProvider>);
+      rerender(<ToastProvider><Toast message="Move failed" tone="error" toastKey="project-move" /></ToastProvider>);
+    }
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+  });
+
   it('portals existing toasts out of dialogs into one viewport', () => {
     render(<ToastProvider><div role="dialog"><Toast message="Saved" tone="success" /></div></ToastProvider>);
     expect(screen.getByRole('dialog').querySelector('.od-toast')).toBeNull();

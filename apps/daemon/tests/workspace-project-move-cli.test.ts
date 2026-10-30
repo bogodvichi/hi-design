@@ -9,7 +9,9 @@ const cli = fileURLToPath(new URL('../src/cli.ts', import.meta.url));
 const daemonRoot = fileURLToPath(new URL('..', import.meta.url));
 
 describe('workspace project transfer CLI', () => {
-  it.each(['move', 'batch-move'])('sends source identity and the exact destination for %s', async (command) => {
+  it.each(['move', 'batch-move'].flatMap((command) => ['team', 'personal'].map((visibility) => ({ command, visibility }))))(
+    'sends source identity and the exact destination for $command to $visibility', async ({ command, visibility }) => {
+    const source = visibility === 'team' ? 'personal' : 'team';
     const requests: Array<{ url: string; headers: http.IncomingHttpHeaders; body: unknown }> = [];
     const server = http.createServer(async (req, res) => {
       let body = '';
@@ -24,16 +26,16 @@ describe('workspace project transfer CLI', () => {
     try {
       const { stdout } = await execFileAsync(process.execPath, ['--import', 'tsx', cli,
         'workspace', 'projects', command, ...(command === 'move' ? ['project'] : ['--project', 'project']),
-        '--workspace', 'personal', '--workspace-type', 'personal', '--member', 'personal-member',
-        '--visibility', 'team', '--target-workspace', 'target', '--target-folder', 'root',
+        '--workspace', source, '--workspace-type', source, '--member', `${source}-member`,
+        '--visibility', visibility, '--target-workspace', 'target', '--target-folder', 'root',
         '--daemon-url', `http://127.0.0.1:${address.port}`, '--json',
       ], { cwd: daemonRoot, env: { ...process.env } });
       expect(JSON.parse(stdout)).toMatchObject({ project: { workspaceId: 'target' } });
       expect(requests).toHaveLength(1);
       expect(requests[0]).toMatchObject({
-        url: `/api/workspaces/personal/projects/${command === 'move' ? 'project/move' : 'batch-move'}`,
-        headers: { 'x-od-workspace-id': 'personal', 'x-od-workspace-member-id': 'personal-member' },
-        body: { visibility: 'team', targetWorkspaceId: 'target', targetFolderId: null,
+        url: `/api/workspaces/${source}/projects/${command === 'move' ? 'project/move' : 'batch-move'}`,
+        headers: { 'x-od-workspace-id': source, 'x-od-workspace-member-id': `${source}-member` },
+        body: { visibility, targetWorkspaceId: 'target', targetFolderId: null,
           ...(command === 'batch-move' ? { projectIds: ['project'] } : {}) },
       });
     } finally {

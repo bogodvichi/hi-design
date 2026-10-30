@@ -2,10 +2,10 @@ import { feedbackEn } from '../feedback-copy';
 import type { Dict } from '../types';
 
 export const th: Dict = {
-  'recentProjects.transferNotice': "รายการที่เลือกและเนื้อหาทั้งหมดในโฟลเดอร์จะย้ายไปยังทีม สมาชิกดูและแสดงความคิดเห็นได้ ผู้สร้างแก้ไขได้ และผู้ดูแลจัดการได้ ไม่สามารถย้ายกลับพื้นที่ส่วนตัวโดยตรง",
+  'recentProjects.transferNotice': "รายการที่เลือกและเนื้อหาทั้งหมดในโฟลเดอร์จะย้ายไปยังทีม สมาชิกดูและแสดงความคิดเห็นได้ ผู้สร้างแก้ไขได้ และผู้ดูแลจัดการได้",
   'recentProjects.moveFailed': "ย้ายไม่สำเร็จ ตรวจสอบปลายทางแล้วลองอีกครั้ง",
   'recentProjects.moveSummary': "ย้ายแล้ว {succeeded} รายการ ยังไม่เสร็จ {failed} รายการ ลองรายการที่เหลืออีกครั้ง",
-  'recentProjects.moveFolderPending': "โปรเจกต์ย้ายไปยังทีมแล้ว แต่ยังยืนยันโฟลเดอร์ปลายทางไม่ได้ โปรดลองอีกครั้ง",
+  'recentProjects.moveFolderPending': "ย้ายโครงการแล้ว แต่ยังยืนยันโฟลเดอร์ปลายทางไม่ได้ โปรดลองอีกครั้งเพื่อจัดวางโฟลเดอร์ให้เสร็จ",
   ...feedbackEn,
   'composer.skillApplyFailed': "ไม่สามารถเพิ่ม Skill นี้ได้ โปรดรีเฟรชรายการ Skill แล้วลองอีกครั้ง",
   'projectDrag.movedTo': 'Moved to “{path}”',

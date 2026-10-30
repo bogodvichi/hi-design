@@ -8,11 +8,13 @@ import { workspaceContextFixture } from '../helpers/workspace-context';
 
 const source = workspaceContextFixture({ workspaceId: 'source', workspaceMemberId: 'source-member' });
 const ambient = workspaceContextFixture({ workspaceId: 'other', workspaceMemberId: 'other-member' });
+const workspaceMocks = vi.hoisted(() => ({ resolveBound: vi.fn() }));
 vi.mock('../../src/collab/useWorkspaceContext', async (importOriginal) => ({
   ...await importOriginal<typeof import('../../src/collab/useWorkspaceContext')>(),
   useWorkspaceContext: () => ({ context: ambient, loading: false, failure: null }),
   useSharedSpaceTeamId: () => null,
   notifyTeamProjectsChanged: vi.fn(),
+  resolveBoundProjectWorkspaceContext: workspaceMocks.resolveBound,
 }));
 vi.mock('../../src/collab/useTeamMembers', async (importOriginal) => ({
   ...await importOriginal<typeof import('../../src/collab/useTeamMembers')>(),
@@ -35,7 +37,7 @@ vi.mock('../../src/components/MoveToTeamTreeDialog', () => ({
     })}>choose local folder</button>
   </>,
 }));
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
+afterEach(() => { cleanup(); vi.unstubAllGlobals(); workspaceMocks.resolveBound.mockReset(); });
 
 it('offers copy and removal of a received share without moving or deleting its source project', async () => {
   const onDuplicate = vi.fn();
@@ -154,7 +156,78 @@ it('retries only failed items after a partial batch move', async () => {
   await waitFor(() => expect(moved).toEqual(['a', 'b', 'b']));
 });
 
+it.each([false, true])('retries only folder placement in Personal after a committed transfer (bulk=%s)', async (bulk) => {
+  const requests: string[] = [];
+  workspaceMocks.resolveBound.mockResolvedValue({ ...source, workspaceId: 'target', workspaceMemberId: 'personal-member', isDefaultTeam: true });
+  const onProjectUnshared = vi.fn();
+  vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.endsWith('/move')) {
+      requests.push(url);
+      if (requests.length === 1) return Response.json({ error: { code: 'UPSTREAM_UNAVAILABLE', details: { movedProject: {
+        id: 'project', workspaceId: 'target', visibility: 'personal', createdByWorkspaceMemberId: 'personal-member',
+      } } } }, { status: 503 });
+      expect(new Headers(init?.headers).get('x-od-workspace-member-id')).toBe('personal-member');
+      return Response.json({ project: { id: 'project', workspaceId: 'target', visibility: 'personal' } });
+    }
+    return Response.json({ items: [], members: [], files: [] });
+  }));
+  const props: ComponentProps<typeof RecentProjectsStrip> = {
+    projects: [{ id: 'project', name: 'Project', workspaceId: 'source', workspaceVisibility: 'team',
+      createdByWorkspaceMemberId: 'source-member', createdAt: 1, updatedAt: 1, skillId: null, designSystemId: null }],
+    space: 'team', homeWorkspaceId: 'source', currentWorkspaceId: 'source', workspaceContextOverride: source,
+    onOpen: vi.fn(), onProjectUnshared,
+  };
+  const view = render(<RecentProjectsStrip {...props} />);
+  if (bulk) {
+    fireEvent.click(screen.getByRole('button', { name: 'recentProjects.multiSelect' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Project' }));
+    fireEvent.click(screen.getByRole('button', { name: 'recentProjects.moveTo' }));
+  } else {
+    fireEvent.click(screen.getByRole('button', { name: 'designs.menuMore' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'recentProjects.moveTo' }));
+  }
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'choose destination' })); });
+  expect(onProjectUnshared).not.toHaveBeenCalled();
+  view.rerender(<RecentProjectsStrip {...props} projects={[]} />);
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'choose destination' })); });
+  expect(requests).toEqual(['/api/workspaces/source/projects/project/move', '/api/workspaces/target/projects/project/move']);
+  expect(onProjectUnshared).toHaveBeenCalledWith('project');
+});
+
 describe.each(['team', 'drafts'] as const)('%s collection project moves', (space) => {
+  it.each([false, true])('moves a creator-owned team project to Personal using its source identity (bulk=%s)', async (bulk) => {
+    const requests: RequestInit[] = [];
+    const onProjectUnshared = vi.fn();
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith('/move')) {
+        expect(String(input)).toBe('/api/workspaces/source/projects/project/move');
+        requests.push(init!);
+        return Response.json({ project: { id: 'project', workspaceId: 'target', visibility: 'personal' } });
+      }
+      return Response.json({ items: [], members: [], files: [] });
+    }));
+    render(<RecentProjectsStrip
+      projects={[{ id: 'project', name: 'Project', workspaceId: 'source', workspaceVisibility: 'team', createdByWorkspaceMemberId: 'source-member', createdAt: 1, updatedAt: 1, skillId: null, designSystemId: null }]}
+      space={space} heading="Folder" homeWorkspaceId="source" currentWorkspaceId="source" currentFolderId="folder"
+      workspaceContextOverride={source} onOpen={vi.fn()} onProjectUnshared={onProjectUnshared}
+    />);
+    if (bulk) {
+      fireEvent.click(screen.getByRole('button', { name: 'recentProjects.multiSelect' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Project' }));
+      fireEvent.click(screen.getByRole('button', { name: 'recentProjects.moveTo' }));
+    } else {
+      fireEvent.click(screen.getByRole('button', { name: 'designs.menuMore' }));
+      fireEvent.click(screen.getByRole('menuitem', { name: 'recentProjects.moveTo' }));
+    }
+    expect(screen.getByTestId('move-picker')).toHaveAttribute('data-personal', 'true');
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'choose destination' })); });
+    await waitFor(() => expect(onProjectUnshared).toHaveBeenCalledWith('project'));
+    expect(requests).toHaveLength(1);
+    expect(new Headers(requests[0]!.headers).get('x-od-workspace-member-id')).toBe('source-member');
+    expect(JSON.parse(String(requests[0]!.body))).toMatchObject({ visibility: 'personal', targetWorkspaceId: 'target', targetFolderId: 'destination' });
+  });
+
   it.each([false, true])('rejects cross-team moves from the picker (bulk=%s)', async (bulk) => {
     const requests: RequestInit[] = [];
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -178,7 +251,7 @@ describe.each(['team', 'drafts'] as const)('%s collection project moves', (space
       fireEvent.click(screen.getByRole('button', { name: 'designs.menuMore' }));
       fireEvent.click(screen.getByRole('menuitem', { name: 'recentProjects.moveTo' }));
     }
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'choose destination' })); });
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'choose target team' })); });
     expect(requests).toHaveLength(0);
     expect(await screen.findByText('不允许跨团队移动项目，请选择当前团队内的文件夹。')).toBeInTheDocument();
   });

@@ -583,7 +583,7 @@ function teamShareRefusalFor(
   });
 }
 
-/** Personal homes may transfer owned projects into a team; team homes stay put. */
+/** Personal homes include the default one-person team used by the cloud. */
 function isPersonalProjectWorkspace(ctx: WorkspaceProjectContext): boolean {
   return ctx.workspaceType === 'personal' || ctx.isDefaultTeam === true;
 }
@@ -634,7 +634,7 @@ function projectAccess(
      ctx.canShareProjects &&
      wp.visibility === 'personal' &&
      (isPersonalProjectWorkspace(ctx) || teamShareRefusalFor(ctx, workspaceTypes) === null)),
-    canMoveToPersonal: false,
+    canMoveToPersonal: canMutate && selfCreated && wp.visibility === 'team' && ctx.role !== 'guest',
     canExport: canMutate,
     canSendTo: !frozen && ctx.memberStatus === 'active' && ctx.role !== 'guest',
     canRestoreVersion: canMutate,
@@ -2417,10 +2417,8 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
      canRename: canMutate,
       canDelete,
      canDuplicate,
-      // Remote catalog entries are team-shared. Only the legacy in-place
-      // default-team visibility toggle may return to Personal; team moves do not.
       canMoveToTeam: false,
-      canMoveToPersonal: false,
+      canMoveToPersonal: canMutate && ctx.role !== 'guest',
       canExport: canMutate,
       canSendTo: canView && ctx.role !== 'guest',
      canRestoreVersion: canMutate,
@@ -2494,8 +2492,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
    * move also nulls `resourceHubResourceId`, which is the key
    * `listRemoteTeamProjectSummaries` dedupes on — so without this gate the
    * stale row is re-materialised as a `visibility: 'team'` card and the
-   * project silently un-unshares itself. Worse, a remote summary is never
-   * `canMoveToPersonal`, so the user cannot undo it.
+   * project silently reappears as shared.
    *
    * `cloudTombstonedAt` is the local truth for "this member unshared it", and
    * a re-share clears it (see `workspaceProjectMovePatch`). Scoping by owner
@@ -3818,6 +3815,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
     // current team and must not grant custody over a project in another
     // workspace. Only the project creator may re-home it.
     if (isCrossWorkspace) {
+      if (targetVisibility === 'personal') return summary.currentUserAccess.canMoveToPersonal;
       const selfCreated = summary.createdByWorkspaceMemberId != null
         && summary.createdByWorkspaceMemberId === ctx.workspaceMemberId;
       return isPersonalProjectWorkspace(ctx)
@@ -3864,7 +3862,7 @@ async function requestTeamVisibility(projectIds: string[], ctx: WorkspaceProject
         await uploadHdwCommunityBlob(coverPath, RUNTIME_DATA_DIR);
       } catch { /* best-effort: blob may already exist or cover may be absent */ }
     }
-    if (visibility === 'team') {
+    if (visibility === 'team' || (targetWorkspaceId && targetWorkspaceId !== ctx.workspaceId)) {
        // Cross-workspace moves require an atomic server transfer. Only an
        // explicitly unpublished source may be published before retrying it.
       if (targetWorkspaceId && targetWorkspaceId !== ctx.workspaceId) {
@@ -3884,7 +3882,8 @@ async function requestTeamVisibility(projectIds: string[], ctx: WorkspaceProject
          try {
            result = await collabSync.requestTeamTransfer(projectId, ctx.workspaceId, targetWorkspaceId, principal, effectiveCoverDigest);
          } catch (error) {
-           if (!(error instanceof HdwCloudError) || error.code !== 'source_not_published') throw error;
+           if (visibility !== 'team' || !isPersonalProjectWorkspace(ctx)
+             || !(error instanceof HdwCloudError) || error.code !== 'source_not_published') throw error;
            // A local personal project may never have been uploaded. Publish
            // under the verified source identity, then use the atomic transfer.
            // Timeouts/permission failures must never enter this branch.
@@ -3957,9 +3956,9 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
    workspaceId: effectiveWorkspaceId,
    createdByWorkspaceMemberId,
    updatedByWorkspaceMemberId,
-    resourceHubResourceId: visibility === 'team' ? projectResourceIdFor(id, effectivePrincipal) : null,
-    cloudTombstonedAt: visibility === 'team' ? null : Date.now(),
-    syncState: visibility === 'team' ? 'pending_upload' : 'local_only',
+    resourceHubResourceId: visibility === 'team' || isCrossWorkspace ? projectResourceIdFor(id, effectivePrincipal) : null,
+    cloudTombstonedAt: visibility === 'team' || isCrossWorkspace ? null : Date.now(),
+    syncState: visibility === 'team' ? 'pending_upload' : isCrossWorkspace ? 'synced' : 'local_only',
   };
  }function restoreWorkspaceProjectRow(row: any) {
    rebindWorkspaceProject(db, row.id, {
@@ -4076,13 +4075,11 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
      const targetWorkspaceId = typeof req.body?.targetWorkspaceId === 'string'
        ? req.body.targetWorkspaceId.trim()
        : null;
-      // Cross-workspace moves only transfer personal projects into a team.
+      // Cross-workspace moves are between Personal and a team. The verified
+      // destination below must match the requested visibility.
       if (targetWorkspaceId && targetWorkspaceId !== ctx.workspaceId
-        && (!isPersonalProjectWorkspace(ctx) || visibility !== 'team')) {
+        && visibility === 'team' && !isPersonalProjectWorkspace(ctx)) {
         return sendApiError(res, 403, 'WORKSPACE_ACCESS_DENIED', 'cross-team project moves are forbidden');
-      }
-      if (ctx.workspaceType === 'team' && !ctx.isDefaultTeam && visibility === 'personal') {
-        return sendApiError(res, 403, 'WORKSPACE_ACCESS_DENIED', 'moving to personal space is forbidden');
       }
      const effectiveWorkspaceId = targetWorkspaceId || ctx.workspaceId;
      // Optional folder target within the (effective) team workspace. When
@@ -4144,6 +4141,9 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
             { retryable: true },
           );
         }
+        if (orphanRecovery === 'none') {
+          return sendApiError(res, 403, 'PROJECT_DELETE_FORBIDDEN', 'project ownership could not be verified');
+        }
       }
      // Capture whether a binding existed BEFORE ensureWorkspaceProjection,
      // which may create one for an orphan project. Without this, the
@@ -4159,7 +4159,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
    // null. The current user is the only one who can create personal
    // projects in this workspace, so attributing the binding to them is
    // correct and lets the selfCreated check in workspaceMoveAllowed pass.
-   if (!row.createdByWorkspaceMemberId && ctx.workspaceMemberId) {
+   if (!row.createdByWorkspaceMemberId && ctx.workspaceMemberId && isPersonalProjectWorkspace(ctx)) {
      db.prepare(
        `UPDATE workspace_projects
            SET created_by_workspace_member_id = ?,
@@ -4179,7 +4179,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
      hadExistingBinding
      && canMoveWithinCurrentWorkspace
      && (!targetWorkspaceId || targetWorkspaceId === ctx.workspaceId)
-     && summary.visibility === visibility;
+     && (summary.visibility === visibility || (visibility === 'personal' && isPersonalProjectWorkspace(ctx)));
    if (!isFolderOnlyMoveRequest && !workspaceMoveAllowed(summary, visibility, ctx, targetWorkspaceId)) {
      return sendApiError(res, 403, 'PROJECT_DELETE_FORBIDDEN', 'project move forbidden');
    }
@@ -4219,7 +4219,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
      // the whole operation.
      const isFolderOnlyMove =
        (!resolvedTargetWorkspaceId || resolvedTargetWorkspaceId === ctx.workspaceId)
-       && summary.visibility === visibility;
+       && (summary.visibility === visibility || (visibility === 'personal' && isPersonalProjectWorkspace(ctx)));
      if (resolvedTargetWorkspaceId && resolvedTargetWorkspaceId !== ctx.workspaceId) {
        try {
          // Resolve the target member ID from the workspace directory
@@ -4237,8 +4237,9 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
           }
         }
         if (!targetMemberId || !resolvedTargetContext
-          || resolvedTargetContext.workspaceType !== 'team' || resolvedTargetContext.isDefaultTeam) {
-          return sendApiError(res, 403, 'WORKSPACE_ACCESS_DENIED', 'target must be an accessible team workspace');
+          || (visibility === 'personal' ? !isPersonalProjectWorkspace(resolvedTargetContext)
+            : resolvedTargetContext.workspaceType !== 'team' || resolvedTargetContext.isDefaultTeam)) {
+          return sendApiError(res, 403, 'WORKSPACE_ACCESS_DENIED', 'target must match the requested project visibility');
         }
         const transferMeta = await requestTeamVisibility([project.id], ctx, visibility, resolvedTargetWorkspaceId, targetMemberId, coverDigest);
         if (!targetMemberId && transferMeta?.targetOwnerMemberId) {
@@ -4251,7 +4252,9 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
        rebindWorkspaceProject(db, project.id, movePatch);
      } else {
        const movePatch = workspaceProjectMovePatch(project.id, summary, ctx, visibility, resolvedTargetWorkspaceId);
-       updateWorkspaceProject(db, effectiveWorkspaceId, project.id, movePatch);
+       if (!isFolderOnlyMove || visibility === 'team') {
+         updateWorkspaceProject(db, effectiveWorkspaceId, project.id, movePatch);
+       }
        if (!isFolderOnlyMove) {
          try {
            await requestTeamVisibility([project.id], ctx, visibility, resolvedTargetWorkspaceId, null, coverDigest);
@@ -4273,7 +4276,8 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
     // Push a team folder assignment to HDW before committing it locally. A
     // failed remote write must not be reported as a successful move while the
     // two catalogs point at different folders.
-    if (visibility === 'team' && hasExplicitTargetFolder) {
+    if ((visibility === 'team' || responseWorkspaceId !== ctx.workspaceId
+      || (isPersonalProjectWorkspace(ctx) && row.resourceHubResourceId)) && hasExplicitTargetFolder) {
       try {
         const operatorMemberId = resolvedTargetWorkspaceId && resolvedTargetWorkspaceId !== ctx.workspaceId
           ? (targetMemberId ?? ctx.workspaceMemberId)
@@ -4360,7 +4364,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
     // user has a different member ID in each workspace. The web keeps this
     // response as a short-lived ownership witness, so that false permission
     // strands the card until a later catalog refresh.
-    const responseContext = visibility === 'team' && responseWorkspaceId !== ctx.workspaceId
+    const responseContext = responseWorkspaceId !== ctx.workspaceId
       ? (resolvedTargetContext ?? ctx)
       : ctx;
     res.json({ project: normalizeWorkspaceProjectRow(updatedRow, responseContext) });
@@ -4369,6 +4373,9 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
         return sendApiError(res, 409, 'TEAM_PROJECT_OWNER_CONFLICT', String(err));
       }
       if (err instanceof TeamProjectSyncError) {
+        if (err.cause instanceof HdwCloudError && err.cause.status === 403) {
+          return sendApiError(res, 403, 'WORKSPACE_ACCESS_DENIED', 'project transfer was denied by the cloud service');
+        }
         return sendApiError(
           res,
           503,
@@ -4393,11 +4400,8 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
         ? req.body.targetWorkspaceId.trim()
         : undefined;
       if (batchTargetWorkspaceId && batchTargetWorkspaceId !== ctx.workspaceId
-        && (!isPersonalProjectWorkspace(ctx) || visibility !== 'team')) {
+        && visibility === 'team' && !isPersonalProjectWorkspace(ctx)) {
         return sendApiError(res, 403, 'WORKSPACE_ACCESS_DENIED', 'cross-team project moves are forbidden');
-      }
-      if (ctx.workspaceType === 'team' && !ctx.isDefaultTeam && visibility === 'personal') {
-        return sendApiError(res, 403, 'WORKSPACE_ACCESS_DENIED', 'moving to personal space is forbidden');
       }
       const batchTargetFolderId = typeof req.body?.targetFolderId === 'string'
         ? req.body.targetFolderId.trim() || null
@@ -4426,7 +4430,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
     // Apply the same scoped folder-organization authority as the single move.
     const batchIsFolderOnlyRequest =
       (!batchTargetWorkspaceId || batchTargetWorkspaceId === ctx.workspaceId)
-      && summaries.every((item: any) => item?.visibility === visibility);
+      && (summaries.every((item: any) => item?.visibility === visibility) || (visibility === 'personal' && isPersonalProjectWorkspace(ctx)));
     const forbidden = batchIsFolderOnlyRequest
       ? summaries.filter((item: any) => !workspaceFolderMoveAllowed(item, ctx))
       : summaries.filter((item: any) => !workspaceMoveAllowed(item, visibility, ctx, batchTargetWorkspaceId));
@@ -4473,10 +4477,11 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
      // Folder-only batch move: same workspace AND same visibility for all
      // projects — just reassign folders, skip the server sync.
      const batchIsFolderOnly = !batchIsCrossWorkspace
-       && summaries.every((item: any) => item?.visibility === visibility);
+       && (summaries.every((item: any) => item?.visibility === visibility) || (visibility === 'personal' && isPersonalProjectWorkspace(ctx)));
      const previousRows = projectIds.map((id: string) => rows.find((item: any) => item.id === id));
      const moveMany = db.transaction((ids: string[]) => {
        for (const id of ids) {
+         if (batchIsFolderOnly && visibility === 'personal') continue;
          const summary = summaries.find((item: any) => item?.id === id);
          const movePatch = workspaceProjectMovePatch(
            id, summary, ctx, visibility,
@@ -4491,8 +4496,9 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
      });
      if (batchIsCrossWorkspace) {
        if (!batchTargetMemberId || !batchResolvedTargetContext
-         || batchResolvedTargetContext.workspaceType !== 'team' || batchResolvedTargetContext.isDefaultTeam) {
-         return sendApiError(res, 403, 'WORKSPACE_ACCESS_DENIED', 'target must be an accessible team workspace');
+         || (visibility === 'personal' ? !isPersonalProjectWorkspace(batchResolvedTargetContext)
+           : batchResolvedTargetContext.workspaceType !== 'team' || batchResolvedTargetContext.isDefaultTeam)) {
+         return sendApiError(res, 403, 'WORKSPACE_ACCESS_DENIED', 'target must match the requested project visibility');
        }
        for (const id of projectIds) {
          try {
@@ -4533,7 +4539,8 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
      }
       // Preserve committed transfers, but do not report a folder assignment
       // as successful when the authoritative catalog rejected it.
-     if (visibility === 'team' && batchTargetFolderId !== undefined) {
+     if ((visibility === 'team' || batchIsCrossWorkspace
+       || (isPersonalProjectWorkspace(ctx) && rows.some((row: any) => row.resourceHubResourceId))) && batchTargetFolderId !== undefined) {
        let folderSyncError: unknown;
        for (const id of projectIds) {
          try {
@@ -4599,7 +4606,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
       }
 
       const updatedRows = listWorkspaceProjects(db, batchResponseWorkspaceId);
-      const batchResponseContext = visibility === 'team' && batchResponseWorkspaceId !== ctx.workspaceId
+      const batchResponseContext = batchResponseWorkspaceId !== ctx.workspaceId
         ? (batchResolvedTargetContext ?? ctx)
         : ctx;
       const projects = projectIds.map((id: string) => normalizeWorkspaceProjectRow(
@@ -4612,6 +4619,9 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
         return sendApiError(res, 409, 'TEAM_PROJECT_OWNER_CONFLICT', String(err));
       }
       if (err instanceof TeamProjectSyncError) {
+        if (err.cause instanceof HdwCloudError && err.cause.status === 403) {
+          return sendApiError(res, 403, 'WORKSPACE_ACCESS_DENIED', 'project transfer was denied by the cloud service');
+        }
         return sendApiError(
           res,
           503,

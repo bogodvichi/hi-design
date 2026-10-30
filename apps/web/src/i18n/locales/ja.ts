@@ -2,10 +2,10 @@ import { feedbackJa } from '../feedback-copy';
 import type { Dict } from '../types';
 
 export const ja: Dict = {
-  'recentProjects.transferNotice': "選択項目とフォルダーの全内容をチームへ移動します。メンバーは閲覧・コメント、作成者は編集、管理者は管理できます。個人へ直接戻せません。",
+  'recentProjects.transferNotice': "選択項目とフォルダーの全内容をチームへ移動します。メンバーは閲覧・コメント、作成者は編集、管理者は管理できます。",
   'recentProjects.moveFailed': "移動できませんでした。移動先を確認して再試行してください。",
   'recentProjects.moveSummary': "完了：{succeeded} 件、未完了：{failed} 件。残りを再試行できます。",
-  'recentProjects.moveFolderPending': "チームへの移動は完了しましたが、移動先フォルダーを確認できませんでした。再試行してください。",
+  'recentProjects.moveFolderPending': "プロジェクトは移動済みですが、移動先フォルダーを確認できませんでした。再試行してフォルダーの配置を完了してください。",
   ...feedbackJa,
   'composer.skillApplyFailed': "この Skill を追加できませんでした。Skill 一覧を更新して再試行してください。",
   'projectDrag.movedTo': 'Moved to “{path}”',

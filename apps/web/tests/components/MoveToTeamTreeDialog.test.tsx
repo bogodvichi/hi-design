@@ -112,6 +112,24 @@ async function openDialog(overrides: Partial<ComponentProps<typeof MoveToTeamTre
 }
 
 describe('folder move destination exclusions', () => {
+  it('offers Personal alongside the current team and warns before transferring out', async () => {
+    const { workspaces } = fixture();
+    await openDialog({ currentWorkspaceId: 'team', restrictToWorkspaceId: 'team', canMoveToPersonal: true,
+      workspaceItems: [...workspaces, { ...workspaces[1]!, workspaceId: 'another-team', workspaceName: 'Another Team' }],
+      disabledKeys: undefined, disabledSubtreeKeys: undefined });
+    expect(row('Team')).toBeInTheDocument();
+    expect(screen.queryByText('Another Team')).toBeNull();
+    await click(row('personalFunc.all'));
+    expect(screen.getByText('recentProjects.moveToPersonalDescStrong')).toBeInTheDocument();
+    expect(confirm().disabled).toBe(false);
+  });
+
+  it('does not offer Personal when the project is not owned by the operator', async () => {
+    await openDialog({ currentWorkspaceId: 'team', restrictToWorkspaceId: 'team', canMoveToPersonal: false });
+    expect(screen.queryByText('personalFunc.all')).toBeNull();
+    expect(row('Team')).toBeInTheDocument();
+  });
+
   it('offers only personal destinations when copying a team project to Personal', async () => {
     await openDialog({ copyMode: true, currentWorkspaceId: 'team', disabledKeys: undefined });
     expect(screen.queryByText('Team')).toBeNull();

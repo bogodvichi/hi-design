@@ -16913,7 +16913,7 @@ async function openReviewListModal() {
                 <RemixIcon name="message-3-line" size={15} />
                 <span className="viewer-comment-count" aria-hidden>{allProjectTopLevelComments.length}</span>
               </button> */}
-              {source !== null && mode === 'preview' ? (
+              {artifactActionAvailable && mode === 'preview' ? (
                 <div className="zoom-menu viewer-toolbar-zoom" ref={zoomMenuRef}>
                   <button
                     type="button"
@@ -17094,7 +17094,7 @@ async function openReviewListModal() {
                      <RemixIcon name="message-3-line" size={15} />
                       <span>{t('chat.tabComments')} ({allProjectTopLevelComments.length})</span>
                    </button>
-                    {source !== null && mode === 'preview' ? (
+                    {artifactActionAvailable && mode === 'preview' ? (
                       <>
                         <div className="viewer-toolbar-more-separator" role="separator" />
                         {[50, 75, 100, 125, 150, 200].map((level) => (

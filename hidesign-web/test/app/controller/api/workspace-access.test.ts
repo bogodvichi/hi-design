@@ -173,8 +173,34 @@ test('only the personal project owner may transfer into a writable team', async 
   }
 });
 
-test('team assets cannot transfer to personal or another team', async () => {
-  for (const targetWorkspaceId of [personal, 'other-team']) {
+test('team creators may transfer to Personal while management rights never substitute for ownership', async () => {
+  for (const [owner, sourceRole, targetRole, allowed] of [
+    ['team-alice', 'member', 'member', true],
+    ['team-alice', 'owner', 'member', true],
+    ['team-alice', 'admin', 'member', true],
+    ['bob', 'owner', 'member', false],
+    ['bob', 'admin', 'member', false],
+    ['team-alice', 'guest', 'member', false],
+    ['team-alice', 'member', 'guest', false],
+  ] as const) {
+    const f = fixture({
+      workspace_members: [
+        { workspace_id: personal, username: 'alice', workspace_member_id: 'alice', role: targetRole },
+        { workspace_id: 'team', username: 'alice', workspace_member_id: 'team-alice', role: sourceRole },
+      ],
+      team_projects: [{ workspace_id: 'team', project_id: 'project', resource_id: 'source' }],
+      resources: [{ workspace_id: 'team', id: 'source', kind: 'project', owner_member_id: owner }],
+    });
+    const result = await f.call('teamProject', 'transfer', { method: 'POST',
+      params: { workspaceId: 'team', projectId: 'project' }, request: { body: { targetWorkspaceId: personal } },
+    });
+    assert.equal(result.invoked, allowed, `${owner}/${sourceRole}/${targetRole}`);
+    if (!allowed) assert.equal(result.ctx.status, 403);
+  }
+});
+
+test('team assets cannot transfer directly to another team or the same workspace', async () => {
+  for (const targetWorkspaceId of ['other-team', 'team']) {
     const result = await fixture().call('teamProject', 'transfer', { method: 'POST',
       params: { workspaceId: 'team', projectId: 'project' }, request: { body: { targetWorkspaceId } },
     });

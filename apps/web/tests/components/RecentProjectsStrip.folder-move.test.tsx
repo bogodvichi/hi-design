@@ -4,6 +4,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { RecentProjectsStrip } from '../../src/components/RecentProjectsStrip';
 import type { MoveToTeamTreeDialog } from '../../src/components/MoveToTeamTreeDialog';
+import { workspaceContextFixture } from '../helpers/workspace-context';
 
 vi.mock('../../src/i18n', async (importOriginal) => {
   const translate = (key: string) => key;
@@ -23,7 +24,9 @@ afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 async function click(name: string) { await act(async () => { fireEvent.click(screen.getByRole('button', { name })); }); }
 async function setup(onMoveSelected: () => Promise<number>) {
   const onClear = vi.fn(); const onModeChange = vi.fn();
-  render(<RecentProjectsStrip projects={[]} space="drafts" heading="Personal" onOpen={vi.fn()} emptyContent={null} canManageProjectCollection selectionExtension={{ selectedCount: 2, onMoveSelected, onClear, onModeChange, preserveFailedMoveSelection: true }} />);
+  render(<RecentProjectsStrip projects={[]} space="drafts" heading="Personal" onOpen={vi.fn()} emptyContent={null}
+    currentWorkspaceId="personal" workspaceContextOverride={workspaceContextFixture({ workspaceId: 'personal', workspaceMemberId: 'personal-member', isDefaultTeam: true })}
+    canManageProjectCollection selectionExtension={{ selectedCount: 2, onMoveSelected, onClear, onModeChange, preserveFailedMoveSelection: true, canMoveToPersonal: true }} />);
   await click('recentProjects.multiSelect');
   onClear.mockClear(); onModeChange.mockClear();
   await click('recentProjects.moveTo');

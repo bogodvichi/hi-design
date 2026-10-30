@@ -56,7 +56,6 @@ import {
   WorkspaceProjectMoveError,
 } from '../state/projects';
 import { userFacingError } from '../utils/userFacingError';
-import { navigate } from '../router';
 import {
   workspaceContextHasTeamIdentity,
   type WorkspaceCollabContext,
@@ -713,7 +712,8 @@ selectionExtension,
   const [copyToPersonalTarget, setCopyToPersonalTarget] = useState<Project | null>(null);
   const [copyPendingId, setCopyPendingId] = useState<string | null>(null);
   const [copyToast, setCopyToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null);
-  const [moveToast, setMoveToast] = useState<{ message: string; tone: 'error' | 'success'; details?: string; destination?: TeamTreeSelection } | null>(null);
+  const [moveToast, setMoveToast] = useState<{ message: string; tone: 'error' | 'success'; details?: string } | null>(null);
+  const moveToastKey = useId();
   const [draggingProjectId, setDraggingProjectId] = useState<string | null>(null);
   const [dragSelectionProjectId, setDragSelectionProjectId] = useState<string | null>(null);
   const [locationTargetId, setLocationTargetId] = useState<string | null>(null);
@@ -943,6 +943,7 @@ const [bulkMoveToTeamOpen, setBulkMoveToTeamOpen] = useState(false);
 const [bulkMovePending, setBulkMovePending] = useState(false);
 const bulkMovePendingRef = useRef(false);
 const singleMovePendingRef = useRef(false);
+const personalMoveRecoveryRef = useRef(new Map<string, { project: WorkspaceProjectSummary; source: Project }>());
 const personalCollection = space === 'drafts'
   && (workspaceContext?.workspaceType === 'personal' || workspaceContext?.isDefaultTeam === true);
 // Personal cloud publications also carry visibility='team'; ownership follows the home workspace.
@@ -972,8 +973,13 @@ const disabledKeys = useMemo(() => {
    if (!project || singleMovePendingRef.current) return;
    const projectWorkspaceId = project.workspaceId?.trim() || currentWorkspaceId || workspaceContext?.workspaceId;
    const personalTransfer = !isTeamProjectHome(project) && resolveCreator(project).ownedBySelf && !selection.isDefaultTeam;
-   if (!projectWorkspaceId || (selection.workspaceId !== projectWorkspaceId && !personalTransfer)
-     || (isTeamProjectHome(project) && selection.isDefaultTeam)) {
+   const transferToPersonal = selection.isDefaultTeam && resolveCreator(project).ownedBySelf;
+   if (personalMoveRecoveryRef.current.has(project.id) && !selection.isDefaultTeam) {
+     setMoveToast({ message: t('recentProjects.moveFolderPending'), tone: 'error' });
+     return;
+   }
+   if (!projectWorkspaceId || (selection.workspaceId !== projectWorkspaceId && !personalTransfer && !transferToPersonal)
+     || (isTeamProjectHome(project) && selection.isDefaultTeam && !transferToPersonal)) {
      setMoveToast({ message: '不允许跨团队移动项目，请选择当前团队内的文件夹。', tone: 'error' });
      return;
    }
@@ -984,7 +990,7 @@ const disabledKeys = useMemo(() => {
        : await handleShareToTeam(project, { targetWorkspaceId: selection.workspaceId, targetFolderId: selection.folderId });
      if (succeeded) {
        setMoveToTeamTarget(null);
-       setMoveToast({ message: t('projectDrag.movedTo', { path: [selection.workspaceName, selection.folderName].filter(Boolean).join(' / ') }), tone: 'success', destination: selection });
+       setMoveToast({ message: t('projectDrag.movedTo', { path: [selection.workspaceName, selection.folderName].filter(Boolean).join(' / ') }), tone: 'success' });
      }
    } finally {
      singleMovePendingRef.current = false;
@@ -997,8 +1003,10 @@ const disabledKeys = useMemo(() => {
    if (extensionSelectedCount > 0) selectedWorkspaces.push(currentWorkspaceId || workspaceContext?.workspaceId);
    const personalTransfer = personalCollection && !selection.isDefaultTeam
      && selectedProjects.every(({ project, creator }) => !isTeamProjectHome(project) && creator.ownedBySelf);
-   if (!selectedWorkspaces.length || selectedWorkspaces.some((source) => !source || (source !== selection.workspaceId && !personalTransfer))
-     || (!personalCollection && selection.isDefaultTeam)) {
+   const transferToPersonal = selection.isDefaultTeam && selectedProjects.every(({ creator }) => creator.ownedBySelf)
+     && (extensionSelectedCount === 0 || (personalCollection && selectionExtension?.canMoveToPersonal === true));
+   if (!selectedWorkspaces.length || selectedWorkspaces.some((source) => !source || (source !== selection.workspaceId && !personalTransfer && !transferToPersonal))
+     || (!personalCollection && selection.isDefaultTeam && !transferToPersonal)) {
      setMoveToast({ message: '不允许跨团队移动项目，请选择当前团队内的文件夹。', tone: 'error' });
      return;
    }
@@ -1009,8 +1017,8 @@ const disabledKeys = useMemo(() => {
    });
    if (succeeded) {
      setBulkMoveToTeamOpen(false);
-     setMoveToast({ message: t('projectDrag.movedTo', { path: [selection.workspaceName, selection.folderName].filter(Boolean).join(' / ') }), tone: 'success', destination: selection });
-   } else setMoveToast((current) => current ? { ...current, destination: { ...selection, folderId: null, folderName: null } } : current);
+     setMoveToast({ message: t('projectDrag.movedTo', { path: [selection.workspaceName, selection.folderName].filter(Boolean).join(' / ') }), tone: 'success' });
+   }
  }
  const isSharedWithMeCollection = badgeOverride === 'shared';
  const isRecentCollection = space === 'recent';
@@ -1039,6 +1047,11 @@ const disabledKeys = useMemo(() => {
   // an action the per-card ⋯ menu already offers (move in/out of the team
   // space, delete); nothing new is exposed here that a single card cannot do.
   const selectedProjects = visibleProjects.filter(({ project }) => selectedProjectIds.has(project.id));
+  for (const [id, pending] of personalMoveRecoveryRef.current) {
+    if (selectedProjectIds.has(id) && !selectedProjects.some(({ project }) => project.id === id)) {
+      selectedProjects.push({ project: pending.source, creator: resolveCreator(pending.source) });
+    }
+  }
   const extensionSelectedCount = selectionExtension?.selectedCount ?? 0;
   const selectedCount = selectedProjectIds.size + extensionSelectedCount;
   // Team managers may organize/delete another creator's project but cannot
@@ -1075,7 +1088,7 @@ const disabledKeys = useMemo(() => {
     setSelectedProjectIds((current) => {
       if (current.size === 0) return current;
       const visibleIds = new Set(visibleProjects.map(({ project }) => project.id));
-      const next = new Set([...current].filter((id) => visibleIds.has(id)));
+      const next = new Set([...current].filter((id) => visibleIds.has(id) || personalMoveRecoveryRef.current.has(id)));
       return next.size === current.size ? current : next;
     });
   }, [visibleProjects]);
@@ -1607,13 +1620,19 @@ function requestDelete(project: Project) {
     setMenuOpenId(project.id);
     setUnsharingId(project.id);
     try {
+      const pending = personalMoveRecoveryRef.current.get(project.id)?.project;
+      const sourceWorkspaceId = pending?.workspaceId ?? project.workspaceId;
+      const sourceContext = sourceWorkspaceId && sourceWorkspaceId !== workspaceContext?.workspaceId
+        ? await resolveBoundProjectWorkspaceContext(sourceWorkspaceId, { fresh: true })
+        : workspaceContext;
       await moveWorkspaceProject({
         projectId: project.id,
         visibility: 'personal',
-        workspaceContext,
+        workspaceContext: sourceContext,
         targetWorkspaceId: options?.targetWorkspaceId,
         targetFolderId: options?.targetFolderId ?? null,
       });
+     personalMoveRecoveryRef.current.delete(project.id);
      onProjectUnshared?.(project.id);
      notifyTeamProjectsChanged();
      window.dispatchEvent(new CustomEvent('personal:folders-updated'));
@@ -1641,8 +1660,14 @@ function requestDelete(project: Project) {
       });
       return true;
     } catch (err) {
+      if (err instanceof WorkspaceProjectMoveError && err.movedProject) {
+        personalMoveRecoveryRef.current.set(project.id, { project: err.movedProject, source: project });
+        notifyTeamProjectsChanged();
+        window.dispatchEvent(new CustomEvent('personal:folders-updated'));
+      }
       console.warn('[RecentProjectsStrip] unshare project from team failed:', err);
-      setMoveToast({ message: userFacingError(err, t, 'recentProjects.moveFailed'), tone: 'error' });
+      setMoveToast({ message: err instanceof WorkspaceProjectMoveError && err.movedProject
+        ? t('recentProjects.moveFolderPending') : userFacingError(err, t, 'recentProjects.moveFailed'), tone: 'error' });
       setMenuOpenId(null);
       trackWorkspaceProjectActionResult(analytics.track, {
         page_name: analyticsPage,
@@ -1882,6 +1907,8 @@ function requestDelete(project: Project) {
    const moved = await Promise.all(
      ids.map(async (id) => {
        try {
+         const pendingPersonalMove = personalMoveRecoveryRef.current.get(id)?.project;
+         if (pendingPersonalMove && action !== 'to-personal') throw new Error(t('recentProjects.moveFolderPending'));
          if (teamManagerProjectIds.has(id) && action === 'to-team') {
            const source = selectedProjects.find(({ project }) => project.id === id)?.project;
            const sourceWorkspaceId = source?.workspaceId ?? workspaceContext?.workspaceId;
@@ -1898,10 +1925,13 @@ function requestDelete(project: Project) {
          const project = await moveWorkspaceProject({
            projectId: id,
            visibility,
-           workspaceContext,
+           workspaceContext: pendingPersonalMove
+             ? await resolveBoundProjectWorkspaceContext(pendingPersonalMove.workspaceId, { fresh: true })
+             : workspaceContext,
            targetWorkspaceId: options?.targetWorkspaceId,
            targetFolderId: options?.targetFolderId ?? null,
          });
+         personalMoveRecoveryRef.current.delete(id);
          return { id, project };
         } catch (err) {
           const source = selectedProjects.find(({ project }) => project.id === id)?.project;
@@ -1909,7 +1939,8 @@ function requestDelete(project: Project) {
             ? t('recentProjects.moveFolderPending') : userFacingError(err, t, 'recentProjects.moveFailed')}`);
           if (err instanceof WorkspaceProjectMoveError && err.movedProject) {
             committedTransfers++;
-            onProjectShared?.(err.movedProject);
+            if (action === 'to-personal' && source) personalMoveRecoveryRef.current.set(id, { project: err.movedProject, source });
+            else onProjectShared?.(err.movedProject);
           }
           else if (action === 'to-team') onProjectShareFailed?.(id);
           console.warn('[RecentProjectsStrip] bulk move project failed:', err);
@@ -3035,7 +3066,7 @@ function requestDelete(project: Project) {
        currentFolderId={currentFolderId ?? null}
        disabledKeys={disabledKeys}
        restrictToWorkspaceId={isTeamProjectHome(moveToTeamTarget) ? moveToTeamTarget.workspaceId ?? currentWorkspaceId ?? workspaceContext?.workspaceId : undefined}
-      canMoveToPersonal={!isTeamProjectHome(moveToTeamTarget)}
+      canMoveToPersonal={resolveCreator(moveToTeamTarget).ownedBySelf}
      />
   ) : null}
   {bulkMoveToTeamOpen ? (
@@ -3049,7 +3080,8 @@ function requestDelete(project: Project) {
        restrictToWorkspaceId={personalCollection ? undefined : currentWorkspaceId ?? workspaceContext?.workspaceId ?? undefined}
        disabledSubtreeKeys={extensionSelectedCount > 0 ? selectionExtension?.disabledMoveKeys : undefined}
        disabledKeys={disabledKeys}
-      canMoveToPersonal={personalCollection && !selectedProjects.some(({ project }) => isTeamProjectHome(project))}
+      canMoveToPersonal={selectedProjects.every(({ creator }) => creator.ownedBySelf)
+        && (extensionSelectedCount === 0 || (personalCollection && selectionExtension?.canMoveToPersonal === true))}
        titleLabel={selectionExtension?.moveDialogTitle}
        treeDescription={selectionExtension?.moveTreeDescription}
        rootSelectedLabel={selectionExtension?.moveRootSelectedLabel}
@@ -3101,21 +3133,13 @@ function requestDelete(project: Project) {
       ) : null}
       {moveToast ? (
         <Toast
+          toastKey={moveToastKey}
           message={moveToast.message}
           details={moveToast.details}
           tone={moveToast.tone}
           placement="top"
           role={moveToast.tone === 'error' ? 'alert' : 'status'}
           ttlMs={moveToast.tone === 'error' ? 0 : 6000}
-          actionLabel={moveToast.destination ? t('recentProjects.openLocation') : undefined}
-          onAction={moveToast.destination ? () => {
-            const destination = moveToast.destination!;
-            navigate({ kind: 'home', view: destination.isDefaultTeam
-              ? destination.folderId ? 'personal-folder' : 'personal-all'
-              : destination.folderId ? 'team-folder' : 'team-space',
-              teamId: destination.isDefaultTeam ? undefined : destination.workspaceId,
-              folderId: destination.folderId ?? undefined });
-          } : undefined}
           onDismiss={() => setMoveToast(null)}
         />
       ) : null}
