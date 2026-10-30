@@ -2,6 +2,10 @@ import { feedbackJa } from '../feedback-copy';
 import type { Dict } from '../types';
 
 export const ja: Dict = {
+  'recentProjects.transferNotice': "選択項目とフォルダーの全内容をチームへ移動します。メンバーは閲覧・コメント、作成者は編集、管理者は管理できます。個人へ直接戻せません。",
+  'recentProjects.moveFailed': "移動できませんでした。移動先を確認して再試行してください。",
+  'recentProjects.moveSummary': "完了：{succeeded} 件、未完了：{failed} 件。残りを再試行できます。",
+  'recentProjects.moveFolderPending': "チームへの移動は完了しましたが、移動先フォルダーを確認できませんでした。再試行してください。",
   ...feedbackJa,
   'composer.skillApplyFailed': "この Skill を追加できませんでした。Skill 一覧を更新して再試行してください。",
   'projectDrag.movedTo': 'Moved to “{path}”',
@@ -1514,6 +1518,9 @@ export const ja: Dict = {
   'pluginsHome.searchPlaceholder': 'プラグインを検索…',
   'pluginsHome.searchAria': 'プラグインを検索',
   'pluginsHome.clearSearch': '検索をクリア',
+  'communitySkills.sortAria': '並び替え',
+  'communitySkills.sortPopular': '人気順',
+  'communitySkills.sortUpdated': '更新が新しい順',
   'pluginsHome.sortAria': '並び順',
   'pluginsHome.sortHot': '人気',
   'pluginsHome.sortNewest': '新着',

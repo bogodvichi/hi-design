@@ -5,6 +5,7 @@ import type { WorkspaceDirectoryItem } from '@open-design/contracts';
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MoveToTeamTreeDialog } from '../../src/components/MoveToTeamTreeDialog';
+import { readWorkspaceDirectoryForCurrentGeneration } from '../../src/collab/useWorkspaceContext';
 
 vi.mock('../../src/i18n', () => {
   const translate = (key: string) => key;
@@ -18,6 +19,7 @@ afterEach(() => {
   cleanup();
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.mocked(readWorkspaceDirectoryForCurrentGeneration).mockReset();
 });
 
 function fixture() {
@@ -110,6 +112,28 @@ async function openDialog(overrides: Partial<ComponentProps<typeof MoveToTeamTre
 }
 
 describe('folder move destination exclusions', () => {
+  it('offers only personal destinations when copying a team project to Personal', async () => {
+    await openDialog({ copyMode: true, currentWorkspaceId: 'team', disabledKeys: undefined });
+    expect(screen.queryByText('Team')).toBeNull();
+    expect(screen.getByText('personalFunc.all')).toBeInTheDocument();
+  });
+  it('explains personal-to-team ownership changes before confirmation', async () => {
+    await openDialog();
+    expect(screen.queryByText('recentProjects.transferNotice')).toBeNull();
+    await click(row('Team'));
+    expect(screen.getByText('recentProjects.transferNotice')).toBeInTheDocument();
+  });
+
+  it('distinguishes a directory failure from no destinations and retries the load', async () => {
+    vi.mocked(readWorkspaceDirectoryForCurrentGeneration)
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockResolvedValueOnce({ items: fixture().workspaces, activeWorkspaceId: null });
+    render(<MoveToTeamTreeDialog onConfirm={vi.fn()} onCancel={vi.fn()} mode="unified" />);
+    expect(await screen.findByRole('alert')).toHaveTextContent('feedback.serviceUnavailable');
+    expect(screen.queryByText('recentProjects.treeNoWorkspaces')).toBeNull();
+    await click(screen.getByRole('button', { name: 'preview.retry' }));
+    expect(await screen.findByText('Team')).toBeInTheDocument();
+  });
   it('hides teams without an active writable membership from move destinations and search', async () => {
     const { onConfirm, fetchMock } = await openDialog({
       currentWorkspaceId: null,

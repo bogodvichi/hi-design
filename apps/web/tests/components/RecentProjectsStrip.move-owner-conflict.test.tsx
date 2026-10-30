@@ -1,8 +1,6 @@
 // @vitest-environment jsdom
 //
-// Moving from the card menu uses the same compact, top-of-page failure toast
-// as drag-and-drop. Keep both team and personal destinations on this contract
-// so failures never expand the card action menu with an inline error.
+// Card moves keep their destination open on failure and show actionable feedback.
 
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -10,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RecentProjectsStrip } from '../../src/components/RecentProjectsStrip';
 import type { Project } from '../../src/types';
 import type { WorkspaceProjectSummary } from '@open-design/contracts';
+import { workspaceContextFixture } from '../helpers/workspace-context';
 
 const movedTeamProject: WorkspaceProjectSummary = {
   id: 'project-1',
@@ -90,8 +89,9 @@ vi.mock('../../src/collab/useWorkspaceContext', async (importOriginal) => ({
   }),
   useWorkspaceContext: () => ({
     context: {
-      workspaceId: 'ws-1',
-      workspaceType: 'team',
+      workspaceId: 'ws-personal',
+      workspaceType: 'personal',
+      isDefaultTeam: true,
       workspaceMemberId: 'wm-1',
       role: 'member',
       memberStatus: 'active',
@@ -193,7 +193,7 @@ describe('project move failure toast', () => {
     });
   });
 
-  it('uses the drag-and-drop permission toast for an owner conflict', async () => {
+  it('shows a move failure for an owner conflict', async () => {
     moveWorkspaceProject.mockRejectedValueOnce(
       Object.assign(new Error('… 403: {"error":"team_project_owner_conflict"}'), {
         code: 'TEAM_PROJECT_OWNER_CONFLICT',
@@ -201,40 +201,33 @@ describe('project move failure toast', () => {
     );
 
     const alert = await attemptMove('Team Two');
-    expect(alert.textContent).toContain('Move failed: no permission');
+    expect(alert.textContent).toContain('Could not move');
     expect(screen.queryByText(/another member already shares/i)).toBeNull();
   });
 
-  it('uses the same permission toast for a code-less move failure', async () => {
+  it('does not mislabel a code-less failure as a permission denial', async () => {
     moveWorkspaceProject.mockRejectedValueOnce(new Error('network wobble'));
     const onProjectShared = vi.fn();
     const onProjectShareFailed = vi.fn();
 
     const alert = await attemptMove('Team Two', { onProjectShared, onProjectShareFailed });
-    expect(alert.textContent).toContain('Move failed: no permission');
-    expect(screen.queryByText(/Try again/i)).toBeNull();
+    expect(alert.textContent).toContain('Could not move');
+    expect(screen.getByRole('dialog')).toBeTruthy();
     expect(onProjectShared).not.toHaveBeenCalled();
     expect(onProjectShareFailed).toHaveBeenCalledWith('project-1');
   });
 
-  it('uses the same permission toast when moving a team project to personal space fails', async () => {
-    moveWorkspaceProject.mockRejectedValueOnce(new Error('forbidden'));
-    const onProjectUnshared = vi.fn();
-
-    const alert = await attemptMove('All mine', {
-      projects: [project({ id: 'project-1', name: 'Draft', workspaceId: 'ws-1' })],
-      space: 'team',
-      onProjectUnshared,
-    });
-
-    expect(alert.textContent).toContain('Move failed: no permission');
-    expect(moveWorkspaceProject).toHaveBeenCalledWith(
-      expect.objectContaining({
-        projectId: 'project-1',
-        visibility: 'personal',
-        targetWorkspaceId: 'ws-personal',
-      }),
-    );
-    expect(onProjectUnshared).not.toHaveBeenCalled();
+  it('excludes personal and other teams when organizing a team project', async () => {
+    render(<RecentProjectsStrip
+      projects={[project({ workspaceId: 'ws-1', workspaceVisibility: 'team' })]}
+      space="team" homeWorkspaceId="ws-1" currentWorkspaceId="ws-1" collaborationEnabled onOpen={() => {}}
+      workspaceContextOverride={workspaceContextFixture({ workspaceId: 'ws-1', workspaceMemberId: 'wm-1' })}
+    />);
+    fireEvent.click(screen.getByRole('button', { name: 'More actions' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Move project/i }));
+    expect(await screen.findByText('No workspaces available')).toBeTruthy();
+    expect(screen.queryByText('All mine')).toBeNull();
+    expect(screen.queryByText('Team Two')).toBeNull();
+    expect(moveWorkspaceProject).not.toHaveBeenCalled();
   });
 });

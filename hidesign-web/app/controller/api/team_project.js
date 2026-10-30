@@ -273,6 +273,17 @@ class TeamProjectController extends Controller {
       await this.getKnex().transaction(async k => {
       await k.raw('SELECT pg_advisory_xact_lock(hashtextextended(?, 0))', [projectId]);
 
+      const targetMember = await k('workspace_members').where({
+        workspace_id: targetWorkspaceId, username: ctx.state.user.username,
+      }).first();
+      if (!targetMember || !['owner', 'admin', 'member'].includes(targetMember.role)
+        || (body.targetOwnerMemberId && body.targetOwnerMemberId !== targetMember.workspace_member_id)) {
+        ctx.status = 403;
+        ctx.body = { error: 'target_workspace_access_denied' };
+        return;
+      }
+      const targetOwnerMemberId = targetMember.workspace_member_id;
+
       // Find the source team project + its resource + current published version.
       const source = await k('team_projects as tp')
         .join('resources as r', 'r.id', 'tp.resource_id')
@@ -291,7 +302,7 @@ class TeamProjectController extends Controller {
         if (previous) {
           const target = await k('team_projects').where({ workspace_id: targetWorkspaceId, project_id: projectId, resource_id: previous.target_resource_id }).first();
           const current = target && await k('resource_versions').where({ id: target.last_synced_version_id }).first();
-          if (current) {
+          if (current && target.owner_member_id === targetOwnerMemberId) {
             ctx.body = { resourceId: target.resource_id, workspaceId: targetWorkspaceId,
               version: current.version, versionId: current.id, targetOwnerMemberId: target.owner_member_id };
             return;
@@ -316,17 +327,6 @@ class TeamProjectController extends Controller {
       }
 
       const targetResourceId = `project-transfer-${crypto.randomUUID()}`;
-      const targetMember = await k('workspace_members').where({
-        workspace_id: targetWorkspaceId, username: ctx.state.user.username,
-      }).first();
-      if (!targetMember || !['owner', 'admin', 'member'].includes(targetMember.role)
-        || (body.targetOwnerMemberId && body.targetOwnerMemberId !== targetMember.workspace_member_id)) {
-        ctx.status = 403;
-        ctx.body = { error: 'target_workspace_access_denied' };
-        return;
-      }
-      const targetOwnerMemberId = targetMember.workspace_member_id;
-
       // Run the transfer in a transaction. The transaction returns the
       // targetVersionId so we can include it in the response.
       const committedVersionId = await k.transaction(async trx => {

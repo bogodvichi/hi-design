@@ -66,6 +66,24 @@ export interface RemoveSharedWithMeResourceResponse {
 
 export type SkillCategoryFilter = 'all' | SkillCategory;
 
+/** Optional `sort` query on GET /api/workspace/skills/cloud; omitted preserves catalog order. */
+export type CommunitySkillSort = 'popular' | 'updated';
+
+export function isCommunitySkillSort(value: unknown): value is CommunitySkillSort {
+  return value === 'popular' || value === 'updated';
+}
+
+/** Rank the complete merged catalog without changing its cached source order. Ties stay stable. */
+export function sortCommunitySkills<T extends {
+  peopleCount?: number | null;
+  actionCount?: number | null;
+  updatedAt?: string | null;
+}>(skills: readonly T[], sort: CommunitySkillSort): T[] {
+  return [...skills].sort((a, b) => sort === 'popular'
+    ? (b.peopleCount ?? 0) - (a.peopleCount ?? 0) || (b.actionCount ?? 0) - (a.actionCount ?? 0)
+    : (Date.parse(b.updatedAt ?? '') || 0) - (Date.parse(a.updatedAt ?? '') || 0));
+}
+
 export type SkillCategoryCounts = Record<SkillCategoryFilter, number>;
 
 /** Response from the Skill/MCP/tool cloud unpublish endpoints. */

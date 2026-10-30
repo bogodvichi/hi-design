@@ -3,6 +3,7 @@ import { PageEmptyState } from './PageEmptyState';
 import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
+  Button,
   Dialog,
   DialogDescription,
   DialogFooter,
@@ -18,6 +19,8 @@ import { CommunityResourceStats } from './CommunityResourceStats';
 import styles from './CloudSkillList.module.css';
 import {
   SKILL_CATEGORIES,
+  sortCommunitySkills,
+  type CommunitySkillSort,
   emptySkillCategoryCounts,
   normalizeSkillCategory,
   type SkillCategoryCounts,
@@ -145,7 +148,8 @@ export function CloudSkillList({
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState<SkillCategoryFilter>('all');
   const [categoryCounts, setCategoryCounts] = useState<SkillCategoryCounts>(() => emptySkillCategoryCounts());
-  const [categoryMenuOpen, setCategoryMenuOpen] = useState(false);
+  const [sort, setSort] = useState<CommunitySkillSort | null>(null);
+  const [openMenu, setOpenMenu] = useState<'category' | 'sort' | null>(null);
   const [categoryMenuAlign, setCategoryMenuAlign] = useState<'start' | 'end'>('start');
   const [failedIconIds, setFailedIconIds] = useState<Set<string>>(new Set());
  const [confirmAction, setConfirmAction] = useState<{ type: 'unpublish' | 'delete'; item: CloudSkill } | null>(null);
@@ -423,14 +427,14 @@ useEffect(() => {
 }, [activeCategory, showCommunityControls]);
 
 useEffect(() => {
-  if (!categoryMenuOpen) return;
+  if (!openMenu) return;
   const handlePointerDown = (event: PointerEvent) => {
     const target = event.target;
     if (target instanceof Node && categoryMenuRef.current?.contains(target)) return;
-    setCategoryMenuOpen(false);
+    setOpenMenu(null);
   };
   const handleKeyDown = (event: KeyboardEvent) => {
-    if (event.key === 'Escape') setCategoryMenuOpen(false);
+    if (event.key === 'Escape') setOpenMenu(null);
   };
   document.addEventListener('pointerdown', handlePointerDown);
   document.addEventListener('keydown', handleKeyDown);
@@ -438,13 +442,13 @@ useEffect(() => {
     document.removeEventListener('pointerdown', handlePointerDown);
     document.removeEventListener('keydown', handleKeyDown);
   };
-}, [categoryMenuOpen]);
+}, [openMenu]);
 
 useLayoutEffect(() => {
-  if (!categoryMenuOpen) return;
+  if (!openMenu) return;
   const anchor = categoryMenuRef.current;
   const menu = categoryMenuPanelRef.current;
-  const trigger = anchor?.querySelector<HTMLElement>(':scope > button');
+  const trigger = anchor?.querySelector<HTMLElement>('[aria-expanded="true"]');
   if (!anchor || !menu || !trigger) return;
 
   const measure = () => {
@@ -470,7 +474,7 @@ useLayoutEffect(() => {
     window.removeEventListener('scroll', measure, true);
     observer?.disconnect();
   };
-}, [categoryMenuOpen]);
+}, [openMenu]);
 
 useEffect(() => {
   void loadSkills(true);
@@ -672,9 +676,14 @@ useEffect(() => {
   const searchedSkills = useCommunityCatalog ? skills.filter((skill) => communityTextMatchesQuery([
     skill.title, skill.localId, skill.description, skill.publisherName, skill.sourceLabel,
   ], effectiveSearchQuery)) : skills;
-  const visibleSkills = useCommunityCatalog && activeCategory !== 'all'
+  const filteredSkills = useCommunityCatalog && activeCategory !== 'all'
     ? searchedSkills.filter((skill) => normalizeSkillCategory(skill.category) === activeCategory)
     : searchedSkills;
+  const visibleSkills = showCommunityControls && sort ? sortCommunitySkills(filteredSkills, sort) : filteredSkills;
+  const sortOptions = [
+    { value: 'popular', label: t('communitySkills.sortPopular') },
+    { value: 'updated', label: t('communitySkills.sortUpdated') },
+  ] as const;
   const visibleCounts = useCommunityCatalog ? countCategories(searchedSkills) : categoryCounts;
 
   const fallbackSearchControl = sourceProvider === 'maas-skillhub' && !showCommunityControls ? (
@@ -701,41 +710,74 @@ useEffect(() => {
   ) : null;
 
   const categoryControl = showCommunityControls ? (
-    <div ref={categoryMenuRef} className="recent-projects__filter-wrap">
-      <button
-        type="button"
-        className={`recent-projects__select-toggle${activeCategory !== 'all' || categoryMenuOpen ? ' is-active' : ''}`}
-        aria-haspopup="menu"
-        aria-expanded={categoryMenuOpen}
-        onClick={() => setCategoryMenuOpen((open) => !open)}
-      >
-        {skillCategoryButtonLabel(locale)}
-        <Icon name="chevron-down" size={13} />
-      </button>
-      {categoryMenuOpen ? (
-        <div
-          ref={categoryMenuPanelRef}
-          className={`recent-projects__filter-menu is-align-${categoryMenuAlign}`}
-          role="menu"
-          aria-label={skillCategorySelectLabel(locale)}
+    <div ref={categoryMenuRef} className="recent-projects__controls">
+      <div className="recent-projects__filter-wrap">
+        <Button
+          className={`${styles.filterToggle} recent-projects__select-toggle${activeCategory !== 'all' || openMenu === 'category' ? ' is-active' : ''}`}
+          aria-haspopup="menu"
+          aria-expanded={openMenu === 'category'}
+          onClick={() => setOpenMenu((open) => open === 'category' ? null : 'category')}
         >
-          {(['all', ...SKILL_CATEGORIES] as SkillCategoryFilter[]).map((category) => (
-            <button
-              key={category}
-              type="button"
-              role="menuitemradio"
-              aria-checked={activeCategory === category}
-              className={activeCategory === category ? 'is-active' : undefined}
-              onClick={() => {
-                setActiveCategory(category);
-                setCategoryMenuOpen(false);
-              }}
-            >
-              {skillCategoryLabel(category, locale)} ({visibleCounts[category]})
-            </button>
-          ))}
-        </div>
-      ) : null}
+          {activeCategory === 'all' ? skillCategoryButtonLabel(locale) : skillCategoryLabel(activeCategory, locale)}
+          <Icon name="chevron-down" size={13} />
+        </Button>
+        {openMenu === 'category' ? (
+          <div
+            ref={categoryMenuPanelRef}
+            className={`recent-projects__filter-menu is-align-${categoryMenuAlign}`}
+            role="menu"
+            aria-label={skillCategorySelectLabel(locale)}
+          >
+            {(['all', ...SKILL_CATEGORIES] as SkillCategoryFilter[]).map((category) => (
+              <button
+                key={category}
+                type="button"
+                role="menuitemradio"
+                aria-checked={activeCategory === category}
+                className={activeCategory === category ? 'is-active' : undefined}
+                onClick={() => {
+                  setActiveCategory(category);
+                  setOpenMenu(null);
+                }}
+              >
+                {skillCategoryLabel(category, locale)} ({visibleCounts[category]})
+              </button>
+            ))}
+          </div>
+        ) : null}
+      </div>
+      <div className="recent-projects__filter-wrap">
+        <Button
+          className={`${styles.filterToggle} recent-projects__select-toggle${sort || openMenu === 'sort' ? ' is-active' : ''}`}
+          aria-label={t('communitySkills.sortAria')}
+          aria-haspopup="menu"
+          aria-expanded={openMenu === 'sort'}
+          onClick={() => setOpenMenu((open) => open === 'sort' ? null : 'sort')}
+        >
+          {sortOptions.find((option) => option.value === sort)?.label ?? t('communitySkills.sortAria')}
+          <Icon name="chevron-down" size={13} />
+        </Button>
+        {openMenu === 'sort' ? (
+          <div
+            ref={categoryMenuPanelRef}
+            className={`recent-projects__filter-menu is-align-${categoryMenuAlign}`}
+            role="menu"
+            aria-label={t('communitySkills.sortAria')}
+          >
+            {sortOptions.map((option) => (
+              <Button
+                key={option.value}
+                role="menuitemradio"
+                aria-checked={sort === option.value}
+                className={sort === option.value ? 'is-active' : undefined}
+                onClick={() => { setSort(option.value); setOpenMenu(null); }}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
+        ) : null}
+      </div>
     </div>
   ) : null;
 

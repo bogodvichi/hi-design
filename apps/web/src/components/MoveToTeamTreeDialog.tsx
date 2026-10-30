@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { WorkspaceDirectoryItem } from '@open-design/contracts';
-import { Dialog, DialogFooter, DialogTitle } from '@open-design/components';
+import { Button, Dialog, DialogFooter, DialogTitle } from '@open-design/components';
 import { readWorkspaceDirectoryForCurrentGeneration } from '../collab/useWorkspaceContext';
 import { Icon } from './Icon';
 import { Skeleton } from './Loading';
@@ -688,12 +688,14 @@ export function MoveToTeamTreeDialog({
   const titleId = useId();
   const [items, setItems] = useState<readonly WorkspaceDirectoryItem[] | null>(propItems ?? null);
   const [loading, setLoading] = useState(!propItems);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [selected, setSelected] = useState<(TeamTreeSelection & { ancestorIds: readonly string[] }) | null>(null);
   const [activeBranch, setActiveBranch] = useState<ActiveBranch | null>(null);
   const initializedLocationRef = useRef(false);
   const visibleItems = useMemo(
-    () => (items ?? []).filter(canMoveIntoWorkspace),
-    [items],
+    () => (items ?? []).filter((item) => canMoveIntoWorkspace(item) && (!copyMode || item.isDefaultTeam === true)),
+    [items, copyMode],
   );
 
   useEffect(() => {
@@ -701,6 +703,7 @@ export function MoveToTeamTreeDialog({
     let cancelled = false;
     const load = async () => {
       setLoading(true);
+      setLoadFailed(false);
       try {
         const directory = await readWorkspaceDirectoryForCurrentGeneration();
         if (cancelled) return;
@@ -712,14 +715,14 @@ export function MoveToTeamTreeDialog({
         if (restrictToWorkspaceId) next = next.filter((item) => item.workspaceId === restrictToWorkspaceId);
         setItems(next);
       } catch {
-        if (!cancelled) setItems([]);
+        if (!cancelled) { setItems([]); setLoadFailed(true); }
       } finally {
         if (!cancelled) setLoading(false);
       }
     };
     void load();
     return () => { cancelled = true; };
-  }, [canMoveToPersonal, includePersonal, currentWorkspaceId, mode, propItems, restrictToWorkspaceId]);
+  }, [canMoveToPersonal, includePersonal, currentWorkspaceId, mode, propItems, restrictToWorkspaceId, loadAttempt]);
 
   useEffect(() => {
     if (initializedLocationRef.current || mode !== 'unified' || !currentWorkspaceId || !visibleItems.length) return;
@@ -771,14 +774,14 @@ export function MoveToTeamTreeDialog({
 
   const selectedKey = useMemo(() => selected ? `${selected.workspaceId}:${selected.folderId ?? 'root'}` : null, [selected]);
   const selectRoot = useCallback((workspace: WorkspaceDirectoryItem) => {
-    if (isFolderMoveTargetDisabled(workspace.workspaceId, null, disabledKeys, disabledSubtreeKeys)) return;
+    if (busy || isFolderMoveTargetDisabled(workspace.workspaceId, null, disabledKeys, disabledSubtreeKeys)) return;
     setSelected({ workspaceId: workspace.workspaceId, workspaceName: workspace.isDefaultTeam ? t('personalFunc.all') : workspace.workspaceName, folderId: null, folderName: null, isDefaultTeam: workspace.isDefaultTeam, ancestorIds: [] });
     setActiveBranch({ workspace, folder: null });
-  }, [t, disabledKeys, disabledSubtreeKeys]);
+  }, [t, disabledKeys, disabledSubtreeKeys, busy]);
   const selectFolder = useCallback((workspace: WorkspaceDirectoryItem, folder: FolderNode) => {
-    if (isFolderMoveTargetDisabled(workspace.workspaceId, folder, disabledKeys, disabledSubtreeKeys)) return;
+    if (busy || isFolderMoveTargetDisabled(workspace.workspaceId, folder, disabledKeys, disabledSubtreeKeys)) return;
     setSelected({ workspaceId: workspace.workspaceId, workspaceName: workspace.isDefaultTeam ? t('personalFunc.all') : workspace.workspaceName, folderId: folder.id, folderName: folder.name, isDefaultTeam: workspace.isDefaultTeam, ancestorIds: folder.ancestorIds });
-  }, [t, disabledKeys, disabledSubtreeKeys]);
+  }, [t, disabledKeys, disabledSubtreeKeys, busy]);
   const showUnifiedLayout = mode === 'unified';
   const activeExpandedFolderIds = useMemo(
     () => new Set(activeBranch?.expandedFolderIds ?? []),
@@ -800,12 +803,21 @@ export function MoveToTeamTreeDialog({
   };
 
   const dialog = (
-    <Dialog className={`${styles.dialog}${showUnifiedLayout ? ` ${styles.dialogWide}` : ''}`} onClose={onCancel} closeOnEscape ariaLabelledBy={titleId}>
+    <Dialog className={`${styles.dialog}${showUnifiedLayout ? ` ${styles.dialogWide}` : ''}`} onClose={() => { if (!busy) onCancel(); }} closeOnEscape={!busy} ariaLabelledBy={titleId}>
       <DialogTitle id={titleId}>{titleLabel ?? (copyMode ? t('recentProjects.copyToPersonal') : showUnifiedLayout ? t('recentProjects.moveTo') : (includePersonal || mode !== 'team') ? t('recentProjects.moveTo') : t('recentProjects.moveToTeam'))}</DialogTitle>
+      {!copyMode && selected && selected.workspaceId !== currentWorkspaceId && !selected.isDefaultTeam && canMoveToPersonal ? (
+        <p className={styles.transferNotice}>{t('recentProjects.transferNotice')}</p>
+      ) : null}
+      <fieldset disabled={busy} className={styles.locations} aria-busy={busy}>
       {loading ? (
         <div className={styles.skeletonList}>
           <div className={styles.skeletonRow}><Skeleton width={16} height={16} radius={4} /><Skeleton width="60%" height={13} radius={6} /></div>
           <div className={styles.skeletonRow}><Skeleton width={16} height={16} radius={4} /><Skeleton width="45%" height={13} radius={6} /></div>
+        </div>
+      ) : loadFailed ? (
+        <div className={styles.emptyState} role="alert">
+          <p>{t('feedback.serviceUnavailable')}</p>
+          <Button onClick={() => setLoadAttempt((attempt) => attempt + 1)}>{t('preview.retry')}</Button>
         </div>
       ) : visibleItems.length === 0 ? (
         <div className={styles.emptyState}>{t('recentProjects.treeNoWorkspaces')}</div>
@@ -846,10 +858,12 @@ export function MoveToTeamTreeDialog({
           </div>
         </div>
       )}
+      </fieldset>
       <DialogFooter className={styles.footer}>
+        {selected ? <span className={styles.destination}>{[selected.workspaceName, selected.folderName].filter(Boolean).join(' / ')}</span> : null}
         <button type="button" onClick={onCancel} disabled={busy}>{t('common.cancel')}</button>
         <button type="button" className={`primary ${styles.confirmBtn}`} onClick={handleConfirm} disabled={selectedDisabled || loading || busy}>
-          {copyMode ? t('recentProjects.confirmCopyToPersonal') : t('recentProjects.confirmMove')}
+          {busy ? t('common.loading') : copyMode ? t('recentProjects.confirmCopyToPersonal') : t('recentProjects.confirmMove')}
         </button>
       </DialogFooter>
     </Dialog>

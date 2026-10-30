@@ -2,6 +2,10 @@ import { feedbackEn } from '../feedback-copy';
 import type { Dict } from '../types';
 
 export const hu: Dict = {
+  'recentProjects.transferNotice': "A kijelölt elemek és a mappák teljes tartalma a csapathoz kerülnek. A tagok megtekinthetik és kommentelhetik, a létrehozók szerkeszthetik, az adminisztrátorok kezelhetik őket. Közvetlenül nem helyezhetők vissza a személyes térbe.",
+  'recentProjects.moveFailed': "Az áthelyezés sikertelen. Ellenőrizze a célt, és próbálja újra.",
+  'recentProjects.moveSummary': "Áthelyezve: {succeeded}; befejezetlen: {failed}. Próbálja újra a fennmaradó elemeket.",
+  'recentProjects.moveFolderPending': "A projekt a csapathoz került, de a célmappát nem sikerült megerősíteni. Próbálja újra.",
   ...feedbackEn,
   'composer.skillApplyFailed': "Nem sikerült hozzáadni ezt a Skillt. Frissítsd a Skill-listát, és próbáld újra.",
   'projectDrag.movedTo': 'Moved to “{path}”',
@@ -1514,6 +1518,9 @@ export const hu: Dict = {
   'pluginsHome.searchPlaceholder': 'Pluginok keresése…',
   'pluginsHome.searchAria': 'Pluginek keresése',
   'pluginsHome.clearSearch': 'Keresés törlése',
+  'communitySkills.sortAria': 'Rendezés',
+  'communitySkills.sortPopular': 'Legnépszerűbb',
+  'communitySkills.sortUpdated': 'Nemrég frissítve',
   'pluginsHome.sortAria': 'Rendezési sorrend',
   'pluginsHome.sortHot': 'Felkapott',
   'pluginsHome.sortNewest': 'Legújabb',

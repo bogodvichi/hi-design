@@ -694,6 +694,11 @@ export interface WorkspaceProjectSummary {
   coverDigest?: string | null;
 }
 
+/** ApiError.details when ownership transferred but the folder write failed. */
+export interface WorkspaceProjectMoveFailureDetails {
+  movedProject: WorkspaceProjectSummary;
+}
+
 export interface WorkspaceProjectsResponse {
   projects: WorkspaceProjectSummary[];
 }
@@ -701,12 +706,11 @@ export interface WorkspaceProjectsResponse {
 export interface MoveWorkspaceProjectRequest {
   visibility: ProjectVisibility;
   /**
-   * Target workspace for a cross-workspace transfer. When set, the project is
-   * moved to this workspace's team space instead of the current workspace's.
-   * Omitted/null means "transfer within the current workspace" (the original
-   * behavior), preserving backward compatibility.
+   * Only personally owned projects can transfer to a writable team workspace.
+   * Team projects remain in their current team. Omitted/null keeps the workspace.
    */
   targetWorkspaceId?: string | null;
+  targetFolderId?: string | null;
 }
 
 export interface BatchDeleteWorkspaceProjectsRequest {
@@ -717,6 +721,7 @@ export interface BatchMoveWorkspaceProjectsRequest {
   projectIds: string[];
   visibility: ProjectVisibility;
   targetWorkspaceId?: string | null;
+  targetFolderId?: string | null;
 }
 
 export interface CreateProjectResponse extends ProjectResponse {

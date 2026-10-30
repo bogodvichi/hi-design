@@ -583,6 +583,11 @@ function teamShareRefusalFor(
   });
 }
 
+/** Personal homes may transfer owned projects into a team; team homes stay put. */
+function isPersonalProjectWorkspace(ctx: WorkspaceProjectContext): boolean {
+  return ctx.workspaceType === 'personal' || ctx.isDefaultTeam === true;
+}
+
 function projectAccess(
   wp: WorkspaceProjectAccessInput,
   ctx: WorkspaceProjectContext,
@@ -627,10 +632,8 @@ function projectAccess(
      canShareLocal &&
      ctx.canShareProjects &&
      wp.visibility === 'personal' &&
-     teamShareRefusalFor(ctx, workspaceTypes) === null,
-    // Team resources cannot move directly into another (Personal) workspace.
-    // The default-team legacy visibility toggle remains in-place only.
-    canMoveToPersonal: canMutate && ctx.isDefaultTeam && ctx.canShareProjects && wp.visibility === 'team' && selfCreated,
+     (isPersonalProjectWorkspace(ctx) || teamShareRefusalFor(ctx, workspaceTypes) === null),
+    canMoveToPersonal: false,
     canExport: canMutate,
     canSendTo: !frozen && ctx.memberStatus === 'active' && ctx.role !== 'guest',
     canRestoreVersion: canMutate,
@@ -2416,7 +2419,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       // Remote catalog entries are team-shared. Only the legacy in-place
       // default-team visibility toggle may return to Personal; team moves do not.
       canMoveToTeam: false,
-      canMoveToPersonal: canView && isOwner && ctx.isDefaultTeam && ctx.canShareProjects,
+      canMoveToPersonal: false,
       canExport: canMutate,
       canSendTo: canView && ctx.role !== 'guest',
      canRestoreVersion: canMutate,
@@ -3816,7 +3819,11 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
     if (isCrossWorkspace) {
       const selfCreated = summary.createdByWorkspaceMemberId != null
         && summary.createdByWorkspaceMemberId === ctx.workspaceMemberId;
-      return selfCreated && ctx.canShareProjects && ctx.memberStatus === 'active';
+      return isPersonalProjectWorkspace(ctx)
+        && summary.visibility === 'personal'
+        && targetVisibility === 'team'
+        && summary.currentUserAccess.canRename
+        && selfCreated && ctx.canShareProjects && ctx.memberStatus === 'active';
     }
     if (targetVisibility === 'team') return summary.currentUserAccess.canMoveToTeam;
     return summary.currentUserAccess.canMoveToPersonal;
@@ -4067,8 +4074,9 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
      const targetWorkspaceId = typeof req.body?.targetWorkspaceId === 'string'
        ? req.body.targetWorkspaceId.trim()
        : null;
-      // Move only reorganizes resources inside their existing workspace.
-      if (targetWorkspaceId && targetWorkspaceId !== ctx.workspaceId) {
+      // Cross-workspace moves only transfer personal projects into a team.
+      if (targetWorkspaceId && targetWorkspaceId !== ctx.workspaceId
+        && (!isPersonalProjectWorkspace(ctx) || visibility !== 'team')) {
         return sendApiError(res, 403, 'WORKSPACE_ACCESS_DENIED', 'cross-team project moves are forbidden');
       }
       if (ctx.workspaceType === 'team' && !ctx.isDefaultTeam && visibility === 'personal') {
@@ -4226,7 +4234,10 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
             resolvedTargetContext = targetIdentity.context;
           }
         }
-        if (!targetMemberId || !resolvedTargetContext) throw new Error('TARGET_WORKSPACE_ACCESS_DENIED');
+        if (!targetMemberId || !resolvedTargetContext
+          || resolvedTargetContext.workspaceType !== 'team' || resolvedTargetContext.isDefaultTeam) {
+          return sendApiError(res, 403, 'WORKSPACE_ACCESS_DENIED', 'target must be an accessible team workspace');
+        }
         const transferMeta = await requestTeamVisibility([project.id], ctx, visibility, resolvedTargetWorkspaceId, targetMemberId, coverDigest);
         if (!targetMemberId && transferMeta?.targetOwnerMemberId) {
           targetMemberId = transferMeta.targetOwnerMemberId;
@@ -4276,6 +4287,15 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
         // this point. Keep its local folder at the destination root so both
         // sides remain discoverable, then surface a retryable sync failure.
         setProjectFolder(db, responseWorkspaceId, project.id, null);
+        if (responseWorkspaceId !== ctx.workspaceId && resolvedTargetContext) {
+          const movedRow = listWorkspaceProjects(db, responseWorkspaceId).find((item: any) => item.id === project.id);
+          const details: import('@open-design/contracts').WorkspaceProjectMoveFailureDetails = {
+            movedProject: normalizeWorkspaceProjectRow(movedRow, resolvedTargetContext) as import('@open-design/contracts').WorkspaceProjectSummary,
+          };
+          return sendApiError(res, 503, 'UPSTREAM_UNAVAILABLE', 'project transferred; destination folder synchronization failed', {
+            retryable: true, details,
+          });
+        }
         throw new TeamProjectSyncError(error);
       }
       try {
@@ -4370,7 +4390,8 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
       const batchTargetWorkspaceId = typeof req.body?.targetWorkspaceId === 'string'
         ? req.body.targetWorkspaceId.trim()
         : undefined;
-      if (batchTargetWorkspaceId && batchTargetWorkspaceId !== ctx.workspaceId) {
+      if (batchTargetWorkspaceId && batchTargetWorkspaceId !== ctx.workspaceId
+        && (!isPersonalProjectWorkspace(ctx) || visibility !== 'team')) {
         return sendApiError(res, 403, 'WORKSPACE_ACCESS_DENIED', 'cross-team project moves are forbidden');
       }
       if (ctx.workspaceType === 'team' && !ctx.isDefaultTeam && visibility === 'personal') {
@@ -4467,7 +4488,10 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
        }
      });
      if (batchIsCrossWorkspace) {
-       if (!batchTargetMemberId || !batchResolvedTargetContext) throw new Error('TARGET_WORKSPACE_ACCESS_DENIED');
+       if (!batchTargetMemberId || !batchResolvedTargetContext
+         || batchResolvedTargetContext.workspaceType !== 'team' || batchResolvedTargetContext.isDefaultTeam) {
+         return sendApiError(res, 403, 'WORKSPACE_ACCESS_DENIED', 'target must be an accessible team workspace');
+       }
        for (const id of projectIds) {
          try {
            await requestTeamVisibility([id], ctx, visibility, batchResolvedTargetWorkspaceId, batchTargetMemberId, batchCoverDigest);

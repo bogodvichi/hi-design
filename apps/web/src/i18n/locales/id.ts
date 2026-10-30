@@ -2,6 +2,10 @@ import { feedbackEn } from '../feedback-copy';
 import type { Dict } from '../types';
 
 export const id: Dict = {
+  'recentProjects.transferNotice': "Item terpilih dan seluruh isi folder akan dipindahkan ke tim. Anggota dapat melihat dan berkomentar, pembuat dapat mengedit, dan admin dapat mengelola. Tidak dapat dipindahkan langsung kembali ke ruang pribadi.",
+  'recentProjects.moveFailed': "Gagal memindahkan. Periksa tujuan dan coba lagi.",
+  'recentProjects.moveSummary': "Dipindahkan: {succeeded}; belum selesai: {failed}. Coba lagi item yang tersisa.",
+  'recentProjects.moveFolderPending': "Proyek telah dipindahkan ke tim, tetapi folder tujuan belum dapat dikonfirmasi. Coba lagi.",
   ...feedbackEn,
   'composer.skillApplyFailed': "Skill ini tidak dapat ditambahkan. Muat ulang daftar Skill dan coba lagi.",
   'projectDrag.movedTo': 'Moved to “{path}”',
@@ -1514,6 +1518,9 @@ export const id: Dict = {
   'pluginsHome.searchPlaceholder': 'Cari plugin…',
   'pluginsHome.searchAria': 'Cari plugin',
   'pluginsHome.clearSearch': 'Hapus pencarian',
+  'communitySkills.sortAria': 'Urutkan',
+  'communitySkills.sortPopular': 'Paling populer',
+  'communitySkills.sortUpdated': 'Baru diperbarui',
   'pluginsHome.sortAria': 'Urutan penyortiran',
   'pluginsHome.sortHot': 'Sedang tren',
   'pluginsHome.sortNewest': 'Terbaru',

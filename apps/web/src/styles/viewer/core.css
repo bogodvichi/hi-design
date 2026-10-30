@@ -606,6 +606,8 @@
   min-height: 0;
   min-width: 0;
   position: relative;
+  /* Keep content overlays below the viewer toolbar and its menus. */
+  z-index: 0;
   background: var(--bg);
   overflow: auto;
 }

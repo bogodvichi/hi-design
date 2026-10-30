@@ -52,7 +52,10 @@ import {
   moveTeamProjectFolderAssignment,
   moveWorkspaceProject,
   workspaceProjectMoveErrorCode,
+  WorkspaceProjectMoveError,
 } from '../state/projects';
+import { userFacingError } from '../utils/userFacingError';
+import { navigate } from '../router';
 import {
   workspaceContextHasTeamIdentity,
   type WorkspaceCollabContext,
@@ -709,7 +712,7 @@ selectionExtension,
   const [copyToPersonalTarget, setCopyToPersonalTarget] = useState<Project | null>(null);
   const [copyPendingId, setCopyPendingId] = useState<string | null>(null);
   const [copyToast, setCopyToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null);
-  const [moveToast, setMoveToast] = useState<{ message: string; tone: 'error' } | null>(null);
+  const [moveToast, setMoveToast] = useState<{ message: string; tone: 'error' | 'success'; details?: string; destination?: TeamTreeSelection } | null>(null);
   const [draggingProjectId, setDraggingProjectId] = useState<string | null>(null);
   const [dragSelectionProjectId, setDragSelectionProjectId] = useState<string | null>(null);
   const [locationTargetId, setLocationTargetId] = useState<string | null>(null);
@@ -941,6 +944,10 @@ const [moveToTeamTarget, setMoveToTeamTarget] = useState<Project | null>(null);
 const [bulkMoveToTeamOpen, setBulkMoveToTeamOpen] = useState(false);
 const [bulkMovePending, setBulkMovePending] = useState(false);
 const bulkMovePendingRef = useRef(false);
+const singleMovePendingRef = useRef(false);
+const personalCollection = space === 'drafts'
+  && (workspaceContext?.workspaceType === 'personal' || workspaceContext?.isDefaultTeam === true);
+const isTeamProjectHome = (project: Project) => project.workspaceVisibility === 'team' || !personalCollection;
 // Disabled tree-node keys for the move-to dialog. When moving within the
 // same workspace (personal-folders mode), the current folder/root is
 // disabled so a project cannot be moved into its own current location.
@@ -960,41 +967,50 @@ const disabledKeys = useMemo(() => {
    setMoveToTreeMode('unified');
    setMoveToTeamTarget(project);
 }
- function handleMoveToTeamConfirm(selection: TeamTreeSelection) {
+ async function handleMoveToTeamConfirm(selection: TeamTreeSelection) {
    const project = moveToTeamTarget;
-   setMoveToTeamTarget(null);
-   if (!project) return;
+   if (!project || singleMovePendingRef.current) return;
    const projectWorkspaceId = project.workspaceId?.trim() || currentWorkspaceId || workspaceContext?.workspaceId;
-   if (!projectWorkspaceId || selection.workspaceId !== projectWorkspaceId) {
+   const personalTransfer = !isTeamProjectHome(project) && resolveCreator(project).ownedBySelf && !selection.isDefaultTeam;
+   if (!projectWorkspaceId || (selection.workspaceId !== projectWorkspaceId && !personalTransfer)
+     || (isTeamProjectHome(project) && selection.isDefaultTeam)) {
      setMoveToast({ message: '不允许跨团队移动项目，请选择当前团队内的文件夹。', tone: 'error' });
      return;
    }
-   if (selection.isDefaultTeam) {
-     void handleUnshareFromTeam(project, {
-       targetWorkspaceId: selection.workspaceId,
-       targetFolderId: selection.folderId,
-     });
-   } else {
-     void handleShareToTeam(project, {
-       targetWorkspaceId: selection.workspaceId,
-       targetFolderId: selection.folderId,
-     });
+   singleMovePendingRef.current = true;
+   try {
+     const succeeded = selection.isDefaultTeam
+       ? await handleUnshareFromTeam(project, { targetWorkspaceId: selection.workspaceId, targetFolderId: selection.folderId })
+       : await handleShareToTeam(project, { targetWorkspaceId: selection.workspaceId, targetFolderId: selection.folderId });
+     if (succeeded) {
+       setMoveToTeamTarget(null);
+       setMoveToast({ message: t('projectDrag.movedTo', { path: [selection.workspaceName, selection.folderName].filter(Boolean).join(' / ') }), tone: 'success', destination: selection });
+     }
+   } finally {
+     singleMovePendingRef.current = false;
    }
  }
- function handleBulkMoveToTeamConfirm(selection: TeamTreeSelection) {
-   setBulkMoveToTeamOpen(false);
+ async function handleBulkMoveToTeamConfirm(selection: TeamTreeSelection) {
+   if (bulkMovePendingRef.current) return;
    const selectedWorkspaces = selectedProjects.map(({ project }) =>
      project.workspaceId?.trim() || currentWorkspaceId || workspaceContext?.workspaceId);
    if (extensionSelectedCount > 0) selectedWorkspaces.push(currentWorkspaceId || workspaceContext?.workspaceId);
-   if (!selectedWorkspaces.length || selectedWorkspaces.some((source) => !source || source !== selection.workspaceId)) {
+   const personalTransfer = personalCollection && !selection.isDefaultTeam
+     && selectedProjects.every(({ project, creator }) => !isTeamProjectHome(project) && creator.ownedBySelf);
+   if (!selectedWorkspaces.length || selectedWorkspaces.some((source) => !source || (source !== selection.workspaceId && !personalTransfer))
+     || (!personalCollection && selection.isDefaultTeam)) {
      setMoveToast({ message: '不允许跨团队移动项目，请选择当前团队内的文件夹。', tone: 'error' });
      return;
    }
    const action = selection.isDefaultTeam ? 'to-personal' : 'to-team';
-   void commitBulkMove(action, {
+   const succeeded = await commitBulkMove(action, {
      targetWorkspaceId: selection.workspaceId,
      targetFolderId: selection.folderId,
    });
+   if (succeeded) {
+     setBulkMoveToTeamOpen(false);
+     setMoveToast({ message: t('projectDrag.movedTo', { path: [selection.workspaceName, selection.folderName].filter(Boolean).join(' / ') }), tone: 'success', destination: selection });
+   } else setMoveToast((current) => current ? { ...current, destination: { ...selection, folderId: null, folderName: null } } : current);
  }
  const isSharedWithMeCollection = badgeOverride === 'shared';
  const isRecentCollection = space === 'recent';
@@ -1514,10 +1530,13 @@ function requestDelete(project: Project) {
          targetFolderId: options?.targetFolderId ?? null,
        });
      } else {
+       const sourceContext = project.workspaceId && project.workspaceId !== workspaceContext?.workspaceId
+         ? await resolveBoundProjectWorkspaceContext(project.workspaceId, { fresh: true })
+         : workspaceContext;
        const movedProject = await moveWorkspaceProject({
          projectId: project.id,
          visibility: 'team',
-         workspaceContext,
+         workspaceContext: sourceContext,
          targetWorkspaceId: options?.targetWorkspaceId,
          targetFolderId: options?.targetFolderId ?? null,
        });
@@ -1547,10 +1566,19 @@ function requestDelete(project: Project) {
         duration_ms: Math.round(performance.now() - startedAt),
         ...workspaceDimensions,
       });
+      return true;
     } catch (err) {
-      onProjectShareFailed?.(project.id);
+      if (err instanceof WorkspaceProjectMoveError && err.movedProject) {
+        const moved = err.movedProject;
+        onProjectShared?.(moved);
+        setMoveToTeamTarget({ ...project, workspaceId: moved.workspaceId, workspaceVisibility: moved.visibility, createdByWorkspaceMemberId: moved.createdByWorkspaceMemberId });
+        notifyTeamProjectsChanged();
+        window.dispatchEvent(new CustomEvent('personal:folders-updated'));
+      } else onProjectShareFailed?.(project.id);
       console.warn('[RecentProjectsStrip] share project to team failed:', err);
-      setMoveToast({ message: t('projectDrag.permissionDenied'), tone: 'error' });
+      setMoveToast({ message: err instanceof WorkspaceProjectMoveError && err.movedProject
+        ? t('recentProjects.moveFolderPending')
+        : userFacingError(err, t, 'recentProjects.moveFailed'), tone: 'error' });
       setMenuOpenId(null);
       trackWorkspaceProjectActionResult(analytics.track, {
         page_name: analyticsPage,
@@ -1564,6 +1592,7 @@ function requestDelete(project: Project) {
         error_code: workspaceProjectMoveErrorCode(err) ?? 'request_failed',
         ...workspaceDimensions,
       });
+      return false;
     } finally {
       setSharingId(null);
     }
@@ -1610,9 +1639,10 @@ function requestDelete(project: Project) {
         duration_ms: Math.round(performance.now() - startedAt),
         ...workspaceDimensions,
       });
+      return true;
     } catch (err) {
       console.warn('[RecentProjectsStrip] unshare project from team failed:', err);
-      setMoveToast({ message: t('projectDrag.permissionDenied'), tone: 'error' });
+      setMoveToast({ message: userFacingError(err, t, 'recentProjects.moveFailed'), tone: 'error' });
       setMenuOpenId(null);
       trackWorkspaceProjectActionResult(analytics.track, {
         page_name: analyticsPage,
@@ -1626,6 +1656,7 @@ function requestDelete(project: Project) {
         error_code: workspaceProjectMoveErrorCode(err) ?? 'request_failed',
         ...workspaceDimensions,
       });
+      return false;
     } finally {
       setUnsharingId(null);
     }
@@ -1692,7 +1723,7 @@ function requestDelete(project: Project) {
     setCopyToast(null);
     try {
       const sourceWorkspaceContext = await resolveBoundProjectWorkspaceContext(
-        project.workspaceId?.trim() ?? '',
+        project.workspaceId?.trim() || homeWorkspaceId || '',
       );
       if (!sourceWorkspaceContext) throw new Error('source workspace unavailable');
       await copyProjectToPersonal(project.id, sourceWorkspaceContext, {
@@ -1834,13 +1865,13 @@ function requestDelete(project: Project) {
    const extensionCount = extensionSelectedCount;
    const moveExtensionItems = selectionExtension?.onMoveSelected;
    const startedAt = performance.now();
-   const preserveFailedSelection = extensionCount > 0 && selectionExtension?.preserveFailedMoveSelection === true;
    if (ids.length === 0 && extensionCount === 0) return;
-   if (!preserveFailedSelection) exitSelectionMode();
    bulkMovePendingRef.current = true;
    setBulkMovePending(true);
    try {
    const visibility = action === 'to-team' ? 'team' : 'personal';
+   const failureDetails: string[] = [];
+   let committedTransfers = 0;
    const teamManagerProjectIds = new Set(selectedProjects
      .filter(({ creator }) => isTeamProjectCollection && creator.canAdmin)
      .map(({ project }) => project.id));
@@ -1869,7 +1900,14 @@ function requestDelete(project: Project) {
          });
          return { id, project };
         } catch (err) {
-          if (action === 'to-team') onProjectShareFailed?.(id);
+          const source = selectedProjects.find(({ project }) => project.id === id)?.project;
+          failureDetails.push(`${source?.name ?? id}: ${err instanceof WorkspaceProjectMoveError && err.movedProject
+            ? t('recentProjects.moveFolderPending') : userFacingError(err, t, 'recentProjects.moveFailed')}`);
+          if (err instanceof WorkspaceProjectMoveError && err.movedProject) {
+            committedTransfers++;
+            onProjectShared?.(err.movedProject);
+          }
+          else if (action === 'to-team') onProjectShareFailed?.(id);
           console.warn('[RecentProjectsStrip] bulk move project failed:', err);
           return null;
         }
@@ -1893,8 +1931,8 @@ function requestDelete(project: Project) {
        console.warn('[RecentProjectsStrip] bulk move collection item failed:', err);
      }
    }
-   if (succeeded.length > 0 || extensionSucceededCount > 0) notifyTeamProjectsChanged();
-   if (succeeded.length > 0 || extensionSucceededCount > 0) {
+   if (succeeded.length > 0 || extensionSucceededCount > 0 || committedTransfers > 0) notifyTeamProjectsChanged();
+   if (succeeded.length > 0 || extensionSucceededCount > 0 || committedTransfers > 0) {
      window.dispatchEvent(new CustomEvent('personal:folders-updated'));
      window.dispatchEvent(
        new CustomEvent('hdw:folders-updated', {
@@ -1911,16 +1949,14 @@ function requestDelete(project: Project) {
    const succeededCount = succeeded.length + extensionSucceededCount;
    const failedCount = requestedCount - succeededCount;
    if (failedCount > 0) {
-     setMoveToast({ message: t('projectDrag.permissionDenied'), tone: 'error' });
+     setMoveToast({ message: t('recentProjects.moveSummary', { succeeded: succeededCount, failed: failedCount }), details: failureDetails.join('\n'), tone: 'error' });
    }
    bulkMovePendingRef.current = false;
    setBulkMovePending(false);
-   if (preserveFailedSelection) {
-     if (failedCount === 0) exitSelectionMode();
-     else {
-       const succeededIds = new Set(succeeded.map((item) => item.id));
-       setSelectedProjectIds((current) => new Set([...current].filter((id) => !succeededIds.has(id))));
-     }
+   if (failedCount === 0) exitSelectionMode();
+   else {
+     const succeededIds = new Set(succeeded.map((item) => item.id));
+     setSelectedProjectIds((current) => new Set([...current].filter((id) => !succeededIds.has(id))));
    }
     trackWorkspaceProjectActionResult(analytics.track, {
       page_name: analyticsPage,
@@ -1934,6 +1970,7 @@ function requestDelete(project: Project) {
       ...(failedCount > 0 ? { error_code: 'one_or_more_failed' } : {}),
       ...workspaceDimensions,
     });
+    return failedCount === 0;
    } finally {
      bulkMovePendingRef.current = false;
      setBulkMovePending(false);
@@ -2352,8 +2389,8 @@ function requestDelete(project: Project) {
          const canCopyToPersonal = Boolean(
            homeWorkspaceId
            && space !== 'drafts'
-           && !isTeamProjectCollection
-           && !isSharedWithMeCollection,
+           && !isSharedWithMeCollection
+           && !isGuest,
          );
          const canRenameProject = Boolean(
            !isSharedWithMeCollection
@@ -2996,27 +3033,28 @@ function requestDelete(project: Project) {
    {moveToTeamTarget ? (
      <MoveToTeamTreeDialog
        onConfirm={handleMoveToTeamConfirm}
-       onCancel={() => setMoveToTeamTarget(null)}
-       busy={sharingId === moveToTeamTarget.id}
+       onCancel={() => { if (!singleMovePendingRef.current) setMoveToTeamTarget(null); }}
+       busy={sharingId === moveToTeamTarget.id || unsharingId === moveToTeamTarget.id}
        mode={moveToTreeMode}
        currentWorkspaceId={currentWorkspaceId ?? workspaceContext?.workspaceId ?? null}
        currentFolderId={currentFolderId ?? null}
        disabledKeys={disabledKeys}
-       restrictToWorkspaceId={currentWorkspaceId ?? workspaceContext?.workspaceId ?? undefined}
-      canMoveToPersonal={resolveCreator(moveToTeamTarget).ownedBySelf}
+       restrictToWorkspaceId={isTeamProjectHome(moveToTeamTarget) ? moveToTeamTarget.workspaceId ?? currentWorkspaceId ?? workspaceContext?.workspaceId : undefined}
+      canMoveToPersonal={!isTeamProjectHome(moveToTeamTarget)}
      />
   ) : null}
   {bulkMoveToTeamOpen ? (
      <MoveToTeamTreeDialog
        onConfirm={handleBulkMoveToTeamConfirm}
-       onCancel={() => setBulkMoveToTeamOpen(false)}
+       onCancel={() => { if (!bulkMovePendingRef.current) setBulkMoveToTeamOpen(false); }}
+       busy={bulkMovePending}
        mode="unified"
        currentWorkspaceId={currentWorkspaceId ?? workspaceContext?.workspaceId ?? null}
        currentFolderId={currentFolderId ?? null}
-       restrictToWorkspaceId={currentWorkspaceId ?? workspaceContext?.workspaceId ?? undefined}
+       restrictToWorkspaceId={personalCollection ? undefined : currentWorkspaceId ?? workspaceContext?.workspaceId ?? undefined}
        disabledSubtreeKeys={extensionSelectedCount > 0 ? selectionExtension?.disabledMoveKeys : undefined}
        disabledKeys={disabledKeys}
-      canMoveToPersonal={!selectedProjects.some(({ creator }) => !creator.ownedBySelf)}
+      canMoveToPersonal={personalCollection && !selectedProjects.some(({ project }) => isTeamProjectHome(project))}
        titleLabel={selectionExtension?.moveDialogTitle}
        treeDescription={selectionExtension?.moveTreeDescription}
        rootSelectedLabel={selectionExtension?.moveRootSelectedLabel}
@@ -3069,10 +3107,20 @@ function requestDelete(project: Project) {
       {moveToast ? (
         <Toast
           message={moveToast.message}
+          details={moveToast.details}
           tone={moveToast.tone}
           placement="top"
-          role="alert"
-          ttlMs={3000}
+          role={moveToast.tone === 'error' ? 'alert' : 'status'}
+          ttlMs={moveToast.tone === 'error' ? 0 : 6000}
+          actionLabel={moveToast.destination ? t('recentProjects.openLocation') : undefined}
+          onAction={moveToast.destination ? () => {
+            const destination = moveToast.destination!;
+            navigate({ kind: 'home', view: destination.isDefaultTeam
+              ? destination.folderId ? 'personal-folder' : 'personal-all'
+              : destination.folderId ? 'team-folder' : 'team-space',
+              teamId: destination.isDefaultTeam ? undefined : destination.workspaceId,
+              folderId: destination.folderId ?? undefined });
+          } : undefined}
           onDismiss={() => setMoveToast(null)}
         />
       ) : null}

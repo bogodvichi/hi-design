@@ -31,6 +31,8 @@ import {
   PLUGIN_SHARE_ACTION_PLUGIN_IDS,
   emptySkillCategoryCounts,
   isSkillCategory,
+  isCommunitySkillSort,
+  sortCommunitySkills,
   normalizeSkillCategory,
 } from '@open-design/contracts';
 import { isTodoWriteToolName, stopReasonIsTruncation, todoItemsFromTodoWriteInput } from '@open-design/contracts';
@@ -7587,6 +7589,10 @@ const designSystemBackingProjects = new Map<string, string>();
    const sourceProvider = typeof req.query.source === 'string' ? req.query.source : '';
    const searchQuery = typeof req.query.q === 'string' ? req.query.q.trim() : '';
    const requestedCategory = typeof req.query.category === 'string' ? req.query.category.trim() : '';
+   const requestedSort = req.query.sort;
+   if (requestedSort !== undefined && !isCommunitySkillSort(requestedSort)) {
+     return res.status(400).json({ error: 'INVALID_SKILL_SORT' });
+   }
    if (requestedCategory && !isSkillCategory(requestedCategory)) {
      return res.status(400).json({ error: 'INVALID_SKILL_CATEGORY' });
    }
@@ -7598,10 +7604,11 @@ const designSystemBackingProjects = new Map<string, string>();
        counts[category] += 1;
        return { ...item, category };
      });
-     return {
-       skills: requestedCategory
+     const filtered = requestedCategory
          ? normalized.filter((item) => item.category === requestedCategory)
-         : normalized,
+         : normalized;
+     return {
+       skills: requestedSort ? sortCommunitySkills(filtered, requestedSort) : filtered,
        categoryCounts: counts,
      };
    };

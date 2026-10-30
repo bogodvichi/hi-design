@@ -2,6 +2,10 @@ import { feedbackZhCN } from '../feedback-copy';
 import type { Dict } from "../types";
 
 export const zhCN: Dict = {
+  'recentProjects.transferNotice': "所选项目及文件夹内的全部内容将移出个人空间，转为团队项目。团队成员可查看和评论，创建者可编辑，管理员可管理；不能直接移回个人空间。",
+  'recentProjects.moveFailed': "移动失败，请检查目标位置后重试。",
+  'recentProjects.moveSummary': "已完成 {succeeded} 项，{failed} 项未完成。可重试剩余项。",
+  'recentProjects.moveFolderPending': "项目已转入团队，但目标文件夹尚未确认。请重试完成归位。",
   ...feedbackZhCN,
   'projectDrag.movedTo': '已移动至「{path}」',
   'projectDrag.permissionDenied': "没有目标位置的操作权限，请联系所有者或团队管理员。",
@@ -1528,6 +1532,9 @@ export const zhCN: Dict = {
   "pluginsHome.searchPlaceholder": "搜索插件…",
   "pluginsHome.searchAria": "搜索插件",
   "pluginsHome.clearSearch": "清除搜索",
+  "communitySkills.sortAria": "排序",
+  "communitySkills.sortPopular": "最受欢迎",
+  "communitySkills.sortUpdated": "最近更新",
   "pluginsHome.sortAria": "排序方式",
   "pluginsHome.sortHot": "热门",
   "pluginsHome.sortNewest": "最新",

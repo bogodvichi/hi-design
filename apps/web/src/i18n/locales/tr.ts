@@ -2,6 +2,10 @@ import { feedbackEn } from '../feedback-copy';
 import type { Dict } from '../types';
 
 export const tr: Dict = {
+  'recentProjects.transferNotice': "Seçilen öğeler ve klasörlerin tüm içeriği takıma taşınır. Üyeler görüntüleyip yorum yapabilir, oluşturanlar düzenleyebilir, yöneticiler yönetebilir. Kişisel alana doğrudan geri taşınamaz.",
+  'recentProjects.moveFailed': "Taşınamadı. Hedefi kontrol edip tekrar deneyin.",
+  'recentProjects.moveSummary': "Taşınan: {succeeded}; tamamlanmamış: {failed}. Kalan öğeleri tekrar deneyin.",
+  'recentProjects.moveFolderPending': "Proje takıma taşındı ancak hedef klasör doğrulanamadı. Tekrar deneyin.",
   ...feedbackEn,
   'composer.skillApplyFailed': "Bu Skill eklenemedi. Skill listesini yenileyip tekrar deneyin.",
   'projectDrag.movedTo': 'Moved to “{path}”',
@@ -1514,6 +1518,9 @@ export const tr: Dict = {
   'pluginsHome.searchPlaceholder': 'Eklenti ara…',
   'pluginsHome.searchAria': 'Eklenti ara',
   'pluginsHome.clearSearch': 'Aramayı temizle',
+  'communitySkills.sortAria': 'Sırala',
+  'communitySkills.sortPopular': 'En popüler',
+  'communitySkills.sortUpdated': 'Son güncellenen',
   'pluginsHome.sortAria': 'Sıralama düzeni',
   'pluginsHome.sortHot': 'Popüler',
   'pluginsHome.sortNewest': 'En yeni',

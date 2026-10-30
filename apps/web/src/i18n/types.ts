@@ -1913,6 +1913,9 @@ export interface Dict extends Record<keyof typeof feedbackEn, string> {
   'pluginsHome.searchPlaceholder': string;
   'pluginsHome.searchAria': string;
   'pluginsHome.clearSearch': string;
+  'communitySkills.sortAria': string;
+  'communitySkills.sortPopular': string;
+  'communitySkills.sortUpdated': string;
   'pluginsHome.sortAria': string;
   'pluginsHome.sortHot': string;
   'pluginsHome.sortNewest': string;
@@ -4133,6 +4136,10 @@ export interface Dict extends Record<keyof typeof feedbackEn, string> {
   'designFiles.moveNewFolder': string;
   'designFiles.move': string;
   'projectDrag.movedTo': string;
+  'recentProjects.transferNotice': string;
+  'recentProjects.moveFailed': string;
+  'recentProjects.moveSummary': string;
+  'recentProjects.moveFolderPending': string;
   'projectDrag.permissionDenied': string;
   'designFiles.copyPath': string;
   'designFiles.copiedPath': string;

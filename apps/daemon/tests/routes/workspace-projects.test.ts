@@ -572,7 +572,7 @@ describe('workspace project routes', () => {
   // call the resulting row pins (presence, comments, publish) is answered
   // `403 missing_principal` — forever, and silently. The share must fail loudly
   // at the moment it is requested instead of persisting an impossible row.
-  it('refuses a team share requested from a personal workspace', async () => {
+  it('refuses an in-place personal workspace team share while offering transfer to a team', async () => {
     const suffix = Date.now();
     const projectId = `workspace-personal-share-${suffix}`;
     const personalWorkspaceId = `${workspaceId}-personal-${suffix}`;
@@ -615,8 +615,8 @@ describe('workspace project routes', () => {
     const body = (await listResp.json()) as { projects: Array<any> };
     const row = body.projects.find((item) => item.id === projectId);
     expect(row).toMatchObject({ id: projectId, visibility: 'personal' });
-    // …and the UI affordance that offers the impossible action is gone.
-    expect(row.currentUserAccess.canMoveToTeam).toBe(false);
+    // The picker can offer a different team; the personal home cannot host a team share.
+    expect(row.currentUserAccess.canMoveToTeam).toBe(true);
   });
 
   it('supports batch operations on explicitly scoped projects without requiring a prior list request', async () => {

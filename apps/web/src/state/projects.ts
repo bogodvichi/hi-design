@@ -178,7 +178,7 @@ export function resolvedWorkspaceContextForWrite(
 export class WorkspaceProjectMoveError extends Error {
   readonly code: ApiErrorCode | null;
 
-  constructor(message: string, code: ApiErrorCode | null) {
+  constructor(message: string, code: ApiErrorCode | null, readonly movedProject?: WorkspaceProjectSummary) {
     super(message);
     this.name = 'WorkspaceProjectMoveError';
     this.code = code;
@@ -238,10 +238,15 @@ export async function moveWorkspaceProject(input: {
   if (!resp.ok) {
     let message = `workspace project move failed with status ${resp.status}`;
     let code: ApiErrorCode | null = null;
+    let movedProject: WorkspaceProjectSummary | undefined;
     try {
       const body = await resp.json() as { error?: unknown };
       if (body.error && typeof body.error === 'object') {
-        const errorBody = body.error as { code?: unknown; message?: unknown };
+        const errorBody = body.error as { code?: unknown; message?: unknown; details?: Partial<import('@open-design/contracts').WorkspaceProjectMoveFailureDetails> };
+        if (errorBody.details?.movedProject?.id === input.projectId) {
+          movedProject = errorBody.details.movedProject;
+          invalidateWorkspaceProjectLists(context);
+        }
         if (
           typeof errorBody.code === 'string' &&
           (API_ERROR_CODES as readonly string[]).includes(errorBody.code)
@@ -255,7 +260,7 @@ export async function moveWorkspaceProject(input: {
     } catch {
       // Keep the generic fallback when the error body is absent or invalid.
     }
-    throw new WorkspaceProjectMoveError(message, code);
+    throw new WorkspaceProjectMoveError(message, code, movedProject);
   }
   // A share/unshare changes membership across several projections at once
   // (`recent`, `drafts`, `team`, and `all`). Do not let the coalescing window

@@ -2140,6 +2140,14 @@ describe('moveWorkspaceProject error surfaces (recvqzjnshIlOe)', () => {
     resetProjectDisplaySnapshots();
   });
 
+  it('preserves the committed destination when the folder assignment fails after transfer', async () => {
+    const movedProject = { id: 'p1', workspaceId: 'target', visibility: 'team', folderId: null };
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({ error: { code: 'UPSTREAM_UNAVAILABLE',
+      message: 'folder synchronization failed', details: { movedProject } } }, { status: 503 })));
+    await expect(moveWorkspaceProject({ projectId: 'p1', visibility: 'team', workspaceContext: teamWorkspaceContext() }))
+      .rejects.toMatchObject({ code: 'UPSTREAM_UNAVAILABLE', movedProject });
+  });
+
   it('carries the daemon contract error code so the UI can tell a permanent owner conflict from a transient failure', async () => {
     vi.stubGlobal('fetch', vi.fn<typeof fetch>(async () => new Response(
       JSON.stringify({

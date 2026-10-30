@@ -18,7 +18,7 @@ import { splitResearchSubcommand } from './research/cli-args.js';
 import { resolveDaemonUrl } from './daemon-url.js';
 import { requestJsonIpc } from '@open-design/sidecar';
 import { SIDECAR_ENV, SIDECAR_MESSAGES } from '@open-design/sidecar-proto';
-import { EXPORT_FORMATS, EXPORT_IMAGE_FORMATS, isSkillCategory, projectFileTextPatchSchema } from '@open-design/contracts';
+import { EXPORT_FORMATS, EXPORT_IMAGE_FORMATS, isSkillCategory, isCommunitySkillSort, projectFileTextPatchSchema } from '@open-design/contracts';
 import { HDW_BASE } from './http/hdw.js';
 import type { ArtifactLintFinding, LintArtifactCliResultEnvelope, LintArtifactResponse, LintFailOn } from '@open-design/contracts';
 import { buildExportCliRequestBody, buildExportCliResultEnvelope, resolveExportCliDeckMode } from './export-cli-request.js';
@@ -272,6 +272,7 @@ const WORKSPACE_STRING_FLAGS = new Set([
   'member', 'role', 'email', 'app-user', 'lifecycle-state',
   'member-status', 'can-share-projects', 'can-write-synced-files',
   'workspace-type',
+  'target-workspace', 'target-folder',
 ]);
 const WORKSPACE_BOOLEAN_FLAGS = new Set(['help', 'h', 'json']);
 // `od templates …` mirrors NewProjectPanel / ExamplesTab. Same surface,
@@ -8193,9 +8194,9 @@ async function runWorkspace(args) {
   od workspace invite --workspace <id> --member <id> --email <addr> [--role admin|member] [--json]
   od workspace projects team --workspace <id> --member <id> [--json]
   od workspace projects list --workspace <id> --member <id> [--view recent|drafts|team|all] [--json]
-  od workspace projects move <projectId> --workspace <id> --member <id> --visibility personal|team [--json]
+  od workspace projects move <projectId> --workspace <id> --member <id> --visibility personal|team [--target-workspace <id>] [--target-folder <id|root>] [--json]
   od workspace projects batch-delete --workspace <id> --member <id> --project <id> [--project <id> ...] [--json]
-  od workspace projects batch-move --workspace <id> --member <id> --visibility personal|team --project <id> [--project <id> ...] [--json]
+  od workspace projects batch-move --workspace <id> --member <id> --visibility personal|team --project <id> [--project <id> ...] [--target-workspace <id>] [--target-folder <id|root>] [--json]
   od workspace members list --workspace <id> --member <id> [--json]
   od workspace billing [--workspace-type personal|team --workspace <id>] [--json]
 
@@ -8427,7 +8428,10 @@ Common options:
       const data = await request(`/api/workspaces/${encodeURIComponent(workspaceId)}/projects/${encodeURIComponent(projectId)}/move`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ visibility }),
+        body: JSON.stringify({ visibility,
+          ...(flags['target-workspace'] ? { targetWorkspaceId: String(flags['target-workspace']) } : {}),
+          ...(flags['target-folder'] ? { targetFolderId: flags['target-folder'] === 'root' ? null : String(flags['target-folder']) } : {}),
+        }),
       });
       if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
       console.log(`[workspace] moved ${projectId} to ${visibility}`);
@@ -8456,7 +8460,10 @@ Common options:
       const data = await request(`/api/workspaces/${encodeURIComponent(workspaceId)}/projects/batch-move`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ projectIds, visibility }),
+        body: JSON.stringify({ projectIds, visibility,
+          ...(flags['target-workspace'] ? { targetWorkspaceId: String(flags['target-workspace']) } : {}),
+          ...(flags['target-folder'] ? { targetFolderId: flags['target-folder'] === 'root' ? null : String(flags['target-folder']) } : {}),
+        }),
       });
       if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
       console.log(`[workspace] moved ${projectIds.length} project(s) to ${visibility}`);
@@ -10399,7 +10406,7 @@ async function runSkills(args) {
   if (!args[0] || args[0] === 'help' || args.includes('--help') || args.includes('-h')) {
     console.log(`Usage:
   od skill install <https://github.com/owner/repo|github:owner/repo|https://…tar.gz|https://…tgz> [--json]
-  od skill hub list [--source hdw|all|maas-skillhub] [--mine] [--query <text>] --workspace <id> --workspace-member <id> [--json]
+  od skill hub list [--source hdw|all|maas-skillhub] [--mine] [--query <text>] [--sort popular|updated] --workspace <id> --workspace-member <id> [--json]
   od skill hub install <id> --workspace <id> --workspace-member <id> [--json]
   od skill hub uninstall <id> --workspace <id> --workspace-member <id> [--json]
   od skill publish <cloud-resource-id> --category <category> --workspace <id> --workspace-member <id> [--logo <key>] [--json]
@@ -10441,13 +10448,13 @@ async function runSkillPublish(rest) {
 }
 
 async function runSkillHub(rest) {
-  const stringFlags = new Set([...LIBRARY_STRING_FLAGS, 'source']);
+  const stringFlags = new Set([...LIBRARY_STRING_FLAGS, 'source', 'sort']);
   const flags = parseFlags(rest, { string: stringFlags, boolean: new Set([...LIBRARY_BOOLEAN_FLAGS, 'mine']) });
   const positional = positionalArgs(rest, stringFlags);
   const action = positional[0];
   if (!action || action === 'help' || flags.help || flags.h) {
     console.log(`Usage:
-  od skill hub list [--source hdw|all|maas-skillhub] [--mine] [--query <text>] --workspace <id> --workspace-member <id> [--json]
+  od skill hub list [--source hdw|all|maas-skillhub] [--mine] [--query <text>] [--sort popular|updated] --workspace <id> --workspace-member <id> [--json]
   od skill hub install <id> --workspace <id> --workspace-member <id> [--json]
   od skill hub uninstall <id> --workspace <id> --workspace-member <id> [--json]`);
     process.exit(action ? 0 : 2);
@@ -10461,6 +10468,13 @@ async function runSkillHub(rest) {
       process.exit(2);
     }
     const params = new URLSearchParams({ source, scope: 'public' });
+    if (flags.sort !== undefined) {
+      if (!isCommunitySkillSort(flags.sort)) {
+        console.error('Skill sort must be popular or updated.');
+        process.exit(2);
+      }
+      params.set('sort', flags.sort);
+    }
     if (flags.mine) params.set('owner_member_id', flags['workspace-member']);
     if (typeof flags.query === 'string' && flags.query.trim()) params.set('q', flags.query.trim());
     const resp = await fetch(`${base}/api/workspace/skills/cloud?${params}`, {

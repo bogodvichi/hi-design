@@ -1,3 +1,12 @@
+/* Keep both community controls independent of the shared Button CSS load order. */
+.filterToggle:global(.recent-projects__select-toggle) {
+  gap: var(--spacing-6);
+  height: 28px;
+  padding: 0 var(--spacing-12);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-13);
+}
+
 .searchBox {
   display: flex;
   align-items: center;

@@ -154,6 +154,34 @@ test('request owner is replaced by the verified directory member', async () => {
   const { invoked, ctx } = await fixture().call('resource', 'create', { method: 'POST', request: { body: { ownerMemberId: 'bob' } } });
   assert.equal(invoked, true); assert.equal(ctx.request.body.ownerMemberId, 'alice');
 });
+
+test('only the personal project owner may transfer into a writable team', async () => {
+  for (const [owner, targetRole, allowed] of [['alice', 'member', true], ['bob', 'admin', false], ['alice', 'guest', false]] as const) {
+    const f = fixture({
+      workspace_members: [
+        { workspace_id: personal, username: 'alice', workspace_member_id: 'alice', role: 'member' },
+        { workspace_id: 'team', username: 'alice', workspace_member_id: 'team-alice', role: targetRole },
+      ],
+      team_projects: [{ workspace_id: personal, project_id: 'project', resource_id: 'source' }],
+      resources: [{ workspace_id: personal, id: 'source', kind: 'project', owner_member_id: owner }],
+    });
+    const result = await f.call('teamProject', 'transfer', { method: 'POST',
+      params: { workspaceId: personal, projectId: 'project' }, request: { body: { targetWorkspaceId: 'team' } },
+    });
+    assert.equal(result.invoked, allowed);
+    if (!allowed) assert.equal(result.ctx.status, 403);
+  }
+});
+
+test('team assets cannot transfer to personal or another team', async () => {
+  for (const targetWorkspaceId of [personal, 'other-team']) {
+    const result = await fixture().call('teamProject', 'transfer', { method: 'POST',
+      params: { workspaceId: 'team', projectId: 'project' }, request: { body: { targetWorkspaceId } },
+    });
+    assert.equal(result.invoked, false);
+    assert.equal(result.ctx.status, 403);
+  }
+});
 test('private resource of another personal-space user is not readable or deletable', async () => {
   for (const method of ['GET', 'DELETE']) {
     const { invoked, ctx } = await fixture().call('resource', method === 'GET' ? 'show' : 'remove', { method, params: { workspaceId: personal, resourceId: 'bob-private' } });

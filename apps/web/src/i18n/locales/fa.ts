@@ -2,6 +2,10 @@ import { feedbackEn } from '../feedback-copy';
 import type { Dict } from '../types';
 
 export const fa: Dict = {
+  'recentProjects.transferNotice': "موارد انتخاب‌شده و تمام محتوای پوشه‌ها به تیم منتقل می‌شوند. اعضا می‌توانند مشاهده و نظر بدهند، سازندگان ویرایش کنند و مدیران مدیریت کنند. انتقال مستقیم به فضای شخصی ممکن نیست.",
+  'recentProjects.moveFailed': "انتقال انجام نشد. مقصد را بررسی و دوباره تلاش کنید.",
+  'recentProjects.moveSummary': "منتقل‌شده: {succeeded}؛ ناتمام: {failed}. موارد باقی‌مانده را دوباره امتحان کنید.",
+  'recentProjects.moveFolderPending': "پروژه به تیم منتقل شد، اما پوشه مقصد تأیید نشد. دوباره تلاش کنید.",
   ...feedbackEn,
   'composer.skillApplyFailed': "افزودن این Skill ممکن نشد. فهرست Skill را تازه‌سازی کنید و دوباره تلاش کنید.",
   'projectDrag.movedTo': 'Moved to “{path}”',
@@ -1514,6 +1518,9 @@ export const fa: Dict = {
   'pluginsHome.searchPlaceholder': 'جستجوی پلاگین‌ها…',
   'pluginsHome.searchAria': 'جستجوی افزونه‌ها',
   'pluginsHome.clearSearch': 'پاک کردن جستجو',
+  'communitySkills.sortAria': 'مرتب‌سازی',
+  'communitySkills.sortPopular': 'محبوب‌ترین',
+  'communitySkills.sortUpdated': 'اخیراً به‌روزرسانی‌شده',
   'pluginsHome.sortAria': 'ترتیب مرتب‌سازی',
   'pluginsHome.sortHot': 'پرطرفدار',
   'pluginsHome.sortNewest': 'جدیدترین',

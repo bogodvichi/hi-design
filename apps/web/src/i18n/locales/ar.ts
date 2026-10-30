@@ -2,6 +2,10 @@ import { feedbackEn } from '../feedback-copy';
 import type { Dict } from '../types';
 
 export const ar: Dict = {
+  'recentProjects.transferNotice': "ستُنقل العناصر المحددة وجميع محتويات المجلدات إلى الفريق. يمكن للأعضاء العرض والتعليق، وللمنشئين التحرير، وللمسؤولين الإدارة. لا يمكن إعادتها مباشرة إلى المساحة الشخصية.",
+  'recentProjects.moveFailed': "تعذر النقل. تحقق من الوجهة وحاول مجددًا.",
+  'recentProjects.moveSummary': "تم نقل {succeeded}؛ لم يكتمل {failed}. أعد محاولة العناصر المتبقية.",
+  'recentProjects.moveFolderPending': "تم نقل المشروع إلى الفريق، لكن تعذر تأكيد المجلد الوجهة. حاول مجددًا.",
   ...feedbackEn,
   'composer.skillApplyFailed': "تعذرت إضافة هذا Skill. حدّث قائمة Skill وحاول مرة أخرى.",
   'projectDrag.movedTo': 'Moved to “{path}”',
@@ -1514,6 +1518,9 @@ export const ar: Dict = {
   'pluginsHome.searchPlaceholder': 'البحث عن الإضافات…',
   'pluginsHome.searchAria': 'البحث في الإضافات',
   'pluginsHome.clearSearch': 'مسح البحث',
+  'communitySkills.sortAria': 'ترتيب',
+  'communitySkills.sortPopular': 'الأكثر شيوعًا',
+  'communitySkills.sortUpdated': 'تم تحديثه مؤخرًا',
   'pluginsHome.sortAria': 'ترتيب الفرز',
   'pluginsHome.sortHot': 'الأكثر رواجًا',
   'pluginsHome.sortNewest': 'الأحدث',

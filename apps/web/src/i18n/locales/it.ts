@@ -2,6 +2,10 @@ import { feedbackEn } from '../feedback-copy';
 import type { Dict } from '../types';
 
 export const it: Dict = {
+  'recentProjects.transferNotice': "Gli elementi selezionati e tutto il contenuto delle cartelle passeranno al team. I membri potranno visualizzare e commentare, gli autori modificare e gli amministratori gestire. Non sarà possibile riportarli direttamente nello spazio personale.",
+  'recentProjects.moveFailed': "Spostamento non riuscito. Controlla la destinazione e riprova.",
+  'recentProjects.moveSummary': "Spostati: {succeeded}; incompleti: {failed}. Riprova gli elementi rimanenti.",
+  'recentProjects.moveFolderPending': "Il progetto è stato spostato nel team, ma la cartella di destinazione non è stata confermata. Riprova.",
   ...feedbackEn,
   'composer.skillApplyFailed': "Impossibile aggiungere questo Skill. Aggiorna l’elenco degli Skill e riprova.",
   'projectDrag.movedTo': 'Moved to “{path}”',
@@ -1514,6 +1518,9 @@ export const it: Dict = {
   'pluginsHome.searchPlaceholder': 'Cerca plugin…',
   'pluginsHome.searchAria': 'Cerca plugin',
   'pluginsHome.clearSearch': 'Cancella ricerca',
+  'communitySkills.sortAria': 'Ordina',
+  'communitySkills.sortPopular': 'Più popolari',
+  'communitySkills.sortUpdated': 'Aggiornati di recente',
   'pluginsHome.sortAria': 'Ordinamento',
   'pluginsHome.sortHot': 'Di tendenza',
   'pluginsHome.sortNewest': 'Più recenti',

@@ -2,6 +2,10 @@ import { feedbackEn } from '../feedback-copy';
 import type { Dict } from '../types';
 
 export const en: Dict = {
+  'recentProjects.transferNotice': "Selected items and all folder contents will leave Personal and become team projects. Members can view and comment, creators can edit, and admins can manage. Direct moves back to Personal are unavailable.",
+  'recentProjects.moveFailed': "Could not move. Check the destination and try again.",
+  'recentProjects.moveSummary': "Moved: {succeeded}; incomplete: {failed}. Retry the remaining items.",
+  'recentProjects.moveFolderPending': "The project has moved to the team, but its destination folder could not be confirmed. Retry to complete the folder assignment.",
   ...feedbackEn,
   'projectDrag.movedTo': 'Moved to “{path}”',
   'projectDrag.permissionDenied': 'Move failed: no permission',
@@ -1512,6 +1516,9 @@ export const en: Dict = {
   'pluginsHome.searchPlaceholder': 'Search plugins…',
   'pluginsHome.searchAria': 'Search plugins',
   'pluginsHome.clearSearch': 'Clear search',
+  'communitySkills.sortAria': 'Sort',
+  'communitySkills.sortPopular': 'Most popular',
+  'communitySkills.sortUpdated': 'Recently updated',
   'pluginsHome.sortAria': 'Sort order',
   'pluginsHome.sortHot': 'Trending',
   'pluginsHome.sortNewest': 'Newest',

@@ -1,28 +1,6 @@
-// Regression coverage for recvqfNnRETNtM ("提取的设计系统,移回仅自己可见失败") and
-// recvqgejeqK2OJ ("移动到团队空间后,没有办法移回了").
-//
-// Root cause: `/api/workspaces/:workspaceId/projects/:projectId/move` binds a
-// project with NO existing `workspace_projects` row via
-// `ensureWorkspaceProjection(project, ctx, 'personal')`, hard-coding
-// `visibility: 'personal'` regardless of what the caller actually requested.
-// `canMoveToPersonal` then requires the row to ALREADY be `visibility: 'team'`
-// — a requirement the route itself just made impossible to satisfy — so the
-// very first "move to personal" ever attempted on an unbound project always
-// 403s with `PROJECT_DELETE_FORBIDDEN`, no matter how privileged the caller
-// is. See `reconcileUnboundProjectBeforeMove` in
-// `apps/daemon/src/routes/project/index.ts` for the fix and its full
-// reasoning.
-//
-// Two real, independently-producible sources of an unbound project are
-// exercised here, matching the two Feishu reports:
-//   1. `startBrandExtraction` (the real "extract design system" backing
-//      pipeline, `apps/daemon/src/brands/index.ts`) never calls
-//      `ensureWorkspaceProject` for the project it creates — confirmed by
-//      calling the real function and asserting the row is absent, not by
-//      hand-writing a database row.
-//   2. `POST /api/projects` with no workspace headers (the same "legacy /
-//      orphan project" shape the rest of this test directory already relies
-//      on) — the ordinary-project case behind recvqgejeqK2OJ.
+// Personal projects transfer into teams. Team assets cannot move back to Personal.
+// Legacy catalog-only and orphan fixtures must be refused before materialization
+// or ownership writes, including creator and management requests.
 import express from 'express';
 import type http from 'node:http';
 import fs from 'node:fs';
@@ -40,6 +18,7 @@ import { registerCollabContextRoutes } from '../../src/routes/collab-context.js'
 import { startBrandExtraction } from '../../src/brands/index.js';
 import * as projectFiles from '../../src/projects.js';
 import * as hdw from '../../src/http/hdw.js';
+import { HdwCloudError } from '../../src/integrations/hdw-cloud.js';
 import {
   closeDatabase,
   deleteProject as dbDeleteProject,
@@ -386,6 +365,64 @@ describe('project move to personal on an unbound (never-locally-shared) project'
     },
   );
 
+  describe.each(['single', 'batch'] as const)('personal-to-team transfer (%s)', (mode) => {
+    it.each(['writable', 'guest', 'removed', 'locked', 'personal', 'folder-failed', 'unpublished', 'timeout', 'forbidden'] as const)(
+      'requires a writable team destination and preserves confirmed transfers (%s)', async (destination) => {
+        const projectId = 'personal-transfer-policy';
+        insertProject(db, { id: projectId, name: 'Personal project', skillId: null, designSystemId: null,
+          pendingPrompt: null, metadata: null, customInstructions: null, createdAt: 10, updatedAt: 20 });
+        ensureWorkspaceProject(db, { projectId, workspaceId: PERSONAL_WORKSPACE_ID, visibility: 'personal',
+          resourceState: 'active', createdByWorkspaceMemberId: PERSONAL_MEMBER_ID, updatedByWorkspaceMemberId: PERSONAL_MEMBER_ID });
+        const requestTeamTransfer = vi.fn(async () => ({ targetOwnerMemberId: OWNER_MEMBER_ID }));
+        const requestTeamShare = vi.fn(async () => undefined);
+        if (destination === 'unpublished') requestTeamTransfer.mockRejectedValueOnce(new HdwCloudError(404, 'source_not_published'));
+        if (destination === 'timeout' || destination === 'forbidden') requestTeamTransfer.mockRejectedValueOnce(new HdwCloudError(503, destination));
+        const moveProjectFolder = vi.fn(async () => { if (destination === 'folder-failed') throw new Error('folder unavailable'); });
+        const authority = verifiedTeamAuthority({ workspaceId: PERSONAL_WORKSPACE_ID, memberId: PERSONAL_MEMBER_ID, role: 'member' });
+        const deps = buildDeps({
+          verifyWorkspaceRequestAuthority: async () => {
+            const verified = await authority();
+            return { ...verified, context: { ...verified.context, isDefaultTeam: true } };
+          },
+          collabSync: { requestTeamTransfer, requestTeamShare, moveProjectFolder, invalidateTeamProjectCatalog: vi.fn() },
+        });
+        const directory = await deps.fetchWorkspaceDirectory!();
+        if (!directory.ok) throw new Error("fixture directory unavailable");
+        deps.fetchWorkspaceDirectory = async () => ({ ...directory, items: directory.items.map((item) => item.workspaceId !== TEAM_WORKSPACE_ID ? item : {
+          ...item,
+          role: destination === 'guest' ? 'guest' : item.role,
+          memberStatus: destination === 'removed' ? 'removed' : item.memberStatus,
+          lifecycleState: destination === 'locked' ? 'locked' : item.lifecycleState,
+          isDefaultTeam: destination === 'personal',
+        }) });
+        const app = express(); app.use(express.json()); registerProjectRoutes(app, deps);
+        const routeServer = await listen(app);
+        try {
+          const response = await fetch(`${routeServer.url}/api/workspaces/${PERSONAL_WORKSPACE_ID}/projects/${mode === 'single' ? `${projectId}/move` : 'batch-move'}`, {
+            method: 'POST', headers: ownerTeamHeaders({ 'x-od-workspace-id': PERSONAL_WORKSPACE_ID, 'x-od-workspace-member-id': PERSONAL_MEMBER_ID }),
+            body: JSON.stringify({ projectIds: [projectId], visibility: 'team', targetWorkspaceId: TEAM_WORKSPACE_ID, targetFolderId: 'destination' }),
+          });
+          const body = await response.json();
+          const transferred = ['writable', 'folder-failed', 'unpublished'].includes(destination);
+          expect(response.status, JSON.stringify(body)).toBe(['writable', 'unpublished'].includes(destination) ? 200
+            : ['folder-failed', 'timeout', 'forbidden'].includes(destination) ? 503 : 403);
+          expect(requestTeamTransfer).toHaveBeenCalledTimes(destination === 'unpublished' ? 2
+            : ['writable', 'folder-failed', 'timeout', 'forbidden'].includes(destination) ? 1 : 0);
+          expect(requestTeamShare).toHaveBeenCalledTimes(destination === 'unpublished' ? 1 : 0);
+          if (destination === 'unpublished') expect(requestTeamShare).toHaveBeenCalledWith(projectId,
+            expect.objectContaining({ teamId: PERSONAL_WORKSPACE_ID, memberId: PERSONAL_MEMBER_ID }), null);
+          expect(getWorkspaceProjectByProjectId(db, projectId)?.workspaceId).toBe(transferred ? TEAM_WORKSPACE_ID : PERSONAL_WORKSPACE_ID);
+          if (transferred) expect(listWorkspaceProjects(db, PERSONAL_WORKSPACE_ID)).toHaveLength(0);
+          if (mode === 'single' && destination === 'folder-failed') {
+            expect(listWorkspaceProjects(db, TEAM_WORKSPACE_ID)[0]?.folderId).toBeNull();
+            expect(body).toMatchObject({ error: { details: { movedProject: { id: projectId, workspaceId: TEAM_WORKSPACE_ID, visibility: 'team',
+              currentUserAccess: { canMoveToPersonal: false } } } } });
+          }
+        } finally { await close(routeServer.server); }
+      },
+    );
+  });
+
   describe.each(['missing', 'placeholder', 'stale-home'] as const)('folder card with %s local state', (state) => {
     it.each([
       ['move', 'ready'], ['copy', 'ready'], ['delete', 'ready'],
@@ -544,10 +581,10 @@ describe('project move to personal on an unbound (never-locally-shared) project'
     expect(getWorkspaceProjectByProjectId(db, result.projectId)).toBeUndefined();
   });
 
-  it('preserves the renamed title, file access, and detail path through repeated personal/team moves', async () => {
+  it('preserves renamed content through a team transfer and refuses a direct move back', async () => {
     const projectId = `move-round-trip-${Date.now()}`;
     const renamed = '主视觉（已重命名）';
-    const teamFolderIds = ['team-folder-a', 'team-folder-b', 'team-folder-c'];
+    const teamFolderIds = ['team-folder-a'];
     insertProject(db, {
       id: projectId,
       name: '主视觉',
@@ -696,7 +733,7 @@ describe('project move to personal on an unbound (never-locally-shared) project'
             workspaceId: TEAM_WORKSPACE_ID,
             createdByWorkspaceMemberId: OWNER_MEMBER_ID,
             currentUserAccess: {
-              canMoveToPersonal: true,
+              canMoveToPersonal: false,
               canRename: true,
             },
           },
@@ -715,23 +752,12 @@ describe('project move to personal on an unbound (never-locally-shared) project'
             }),
           },
         );
-        expect(moveToPersonal.status, await moveToPersonal.clone().text()).toBe(200);
-        await expect(moveToPersonal.json()).resolves.toMatchObject({
-          project: {
-            id: projectId,
-            workspaceId: PERSONAL_WORKSPACE_ID,
-            createdByWorkspaceMemberId: PERSONAL_MEMBER_ID,
-            currentUserAccess: {
-              canMoveToTeam: true,
-              canRename: true,
-            },
-          },
-        });
-        await assertOpen(personalHeaders, PERSONAL_WORKSPACE_ID, null);
+        expect(moveToPersonal.status).toBe(403);
+        await assertOpen(ownerTeamHeaders(), TEAM_WORKSPACE_ID, teamFolderId);
       }
 
       expect(requestTeamTransfer).toHaveBeenCalledTimes(teamFolderIds.length);
-      expect(requestTeamUnshare).toHaveBeenCalledTimes(teamFolderIds.length);
+      expect(requestTeamUnshare).not.toHaveBeenCalled();
       expect(moveProjectFolder).toHaveBeenCalledTimes(teamFolderIds.length);
     } finally {
       await close(routeServer.server);
@@ -1023,7 +1049,7 @@ describe('project move to personal on an unbound (never-locally-shared) project'
     }
   });
 
-  it('materializes a catalog-only project owned by the exact caller before moving it to personal', async () => {
+  it('refuses a catalog-only owner move to personal before materialization', async () => {
     const projectId = `catalog-only-owner-${Date.now()}`;
     const resourceId = `project-${projectId}`;
     const teamProjectCatalog = {
@@ -1092,26 +1118,12 @@ describe('project move to personal on an unbound (never-locally-shared) project'
         },
       );
 
-      const body = await response.json() as any;
-      expect(response.status, JSON.stringify(body)).toBe(200);
-      expect(materializeTeamProject).toHaveBeenCalledWith(projectId, {
-        memberId: OWNER_MEMBER_ID,
-        teamId: TEAM_WORKSPACE_ID,
-        role: 'owner',
-        lifecycleState: 'active',
-      });
-      expect(requestTeamUnshare).toHaveBeenCalledTimes(1);
-      expect(getProject(db, projectId)).toMatchObject({
-        id: projectId,
-        name: 'Catalog-only owner project',
-      });
-     expect(getWorkspaceProjectByProjectId(db, projectId)).toMatchObject({
-        workspaceId: PERSONAL_WORKSPACE_ID,
-       visibility: 'personal',
-        createdByWorkspaceMemberId: PERSONAL_MEMBER_ID,
-        updatedByWorkspaceMemberId: PERSONAL_MEMBER_ID,
-     });
-   } finally {
+      expect(response.status).toBe(403);
+      expect(materializeTeamProject).not.toHaveBeenCalled();
+      expect(requestTeamUnshare).not.toHaveBeenCalled();
+      expect(getProject(db, projectId)).toBeNull();
+      expect(getWorkspaceProjectByProjectId(db, projectId)).toBeUndefined();
+    } finally {
      await close(routeServer.server);
    }
  });
@@ -1342,7 +1354,7 @@ describe('project move to personal on an unbound (never-locally-shared) project'
     }
   });
 
-  it('fails a catalog-only owner move retryably without unsharing when materialization fails', async () => {
+  it('refuses a catalog-only move without attempting a failing materialization', async () => {
     const projectId = `catalog-only-pull-failure-${Date.now()}`;
     const teamProjectCatalog = {
       list: vi.fn(async () => [{
@@ -1387,13 +1399,9 @@ describe('project move to personal on an unbound (never-locally-shared) project'
         },
       );
 
-      expect(response.status).toBe(503);
-      await expect(response.json()).resolves.toMatchObject({
-        error: {
-          code: 'UPSTREAM_UNAVAILABLE',
-          retryable: true,
-        },
-      });
+      expect(response.status).toBe(403);
+      await expect(response.json()).resolves.toMatchObject({ error: { code: 'WORKSPACE_ACCESS_DENIED' } });
+      expect(materializeTeamProject).not.toHaveBeenCalled();
       expect(requestTeamUnshare).not.toHaveBeenCalled();
       expect(getProject(db, projectId)).toBeNull();
       expect(getWorkspaceProjectByProjectId(db, projectId)).toBeUndefined();
@@ -1458,7 +1466,7 @@ describe('project move to personal on an unbound (never-locally-shared) project'
   );
 
   it.each(['owner', 'admin'] as const)(
-    'lets a Workspace %s use the one-request catalog witness to recover a real unbound extraction project (recvqfNnRETNtM)',
+    'prevents a Workspace %s from extracting a team design system into personal space',
     async (role) => {
       const result = await startBrandExtraction({
         designMd: DESIGN_MD_INPUT,
@@ -1506,29 +1514,16 @@ describe('project move to personal on an unbound (never-locally-shared) project'
             body: JSON.stringify({ visibility: 'personal' }),
           },
         );
-        const body = await resp.json() as any;
-        expect(resp.status, `expected 200, got ${resp.status}: ${JSON.stringify(body)}`).toBe(200);
-        expect(body.project).toMatchObject({
-          id: result.projectId,
-          visibility: 'personal',
-          syncState: 'local_only',
-          resourceHubResourceId: null,
-        });
-
-       const row = getWorkspaceProjectByProjectId(db, result.projectId);
-        expect(row).toMatchObject({
-          workspaceId: PERSONAL_WORKSPACE_ID,
-          visibility: 'personal',
-          createdByWorkspaceMemberId: PERSONAL_MEMBER_ID,
-          updatedByWorkspaceMemberId: PERSONAL_MEMBER_ID,
-        });
-     } finally {
+        expect(resp.status).toBe(403);
+        expect(teamProjectCatalog.list).not.toHaveBeenCalled();
+        expect(getWorkspaceProjectByProjectId(db, result.projectId)).toBeUndefined();
+    } finally {
        await close(routeServer.server);
      }
     },
   );
 
-  it('restores an exact creator orphan binding after unshare fails so the creator can retry', async () => {
+  it('keeps repeated forbidden team-to-personal attempts free of binding and unshare side effects', async () => {
     const projectId = `retryable-orphan-${Date.now()}`;
     insertProject(db, {
       id: projectId,
@@ -1586,31 +1581,18 @@ describe('project move to personal on an unbound (never-locally-shared) project'
       );
 
       const failed = await move();
-      expect(failed.status).toBe(503);
-      await expect(failed.json()).resolves.toMatchObject({
-        error: { code: 'UPSTREAM_UNAVAILABLE', retryable: true },
-      });
-      expect(getWorkspaceProjectByProjectId(db, projectId)).toMatchObject({
-        workspaceId: TEAM_WORKSPACE_ID,
-        visibility: 'team',
-        createdByWorkspaceMemberId: OWNER_MEMBER_ID,
-      });
-
-      const retried = await move();
-      expect(retried.status).toBe(200);
-      expect(requestTeamUnshare).toHaveBeenCalledTimes(2);
-     expect(getWorkspaceProjectByProjectId(db, projectId)).toMatchObject({
-        workspaceId: PERSONAL_WORKSPACE_ID,
-       visibility: 'personal',
-        createdByWorkspaceMemberId: PERSONAL_MEMBER_ID,
-        updatedByWorkspaceMemberId: PERSONAL_MEMBER_ID,
-     });
-   } finally {
+      expect(failed.status).toBe(403);
+      await expect(failed.json()).resolves.toMatchObject({ error: { code: 'WORKSPACE_ACCESS_DENIED' } });
+      expect((await move()).status).toBe(403);
+      expect(requestTeamUnshare).not.toHaveBeenCalled();
+      expect(teamProjectCatalog.list).not.toHaveBeenCalled();
+      expect(getWorkspaceProjectByProjectId(db, projectId)).toBeUndefined();
+    } finally {
      await close(routeServer.server);
    }
  });
 
- it('403s PROJECT_DELETE_FORBIDDEN for the same orphan project when the fix is bypassed (documents the pre-fix failure)', async () => {
+ it('rejects team-to-personal even without a team catalog', async () => {
     // Same setup as above, but WITHOUT a teamProjectCatalog wired up — the
     // exact condition `reconcileUnboundProjectBeforeMove` early-returns on
     // (`if (!teamProjectCatalog) return;`). This is what production looked
@@ -1644,13 +1626,13 @@ describe('project move to personal on an unbound (never-locally-shared) project'
       );
       expect(resp.status).toBe(403);
       const body = await resp.json() as any;
-      expect(body.error.code).toBe('PROJECT_DELETE_FORBIDDEN');
+      expect(body.error.code).toBe('WORKSPACE_ACCESS_DENIED');
     } finally {
       await close(routeServer.server);
     }
   });
 
-  it('moves an ordinary orphaned project back to personal once the team hub confirms it is shared (recvqgejeqK2OJ)', async () => {
+  it('refuses moving an unbound team project into personal space', async () => {
     // No brand/design-system involved at all — a plain project created with
     // no workspace headers (`POST /api/projects` without headers), the same
     // orphan shape the rest of this directory's suite already relies on
@@ -1702,16 +1684,10 @@ describe('project move to personal on an unbound (never-locally-shared) project'
           body: JSON.stringify({ visibility: 'personal' }),
         },
       );
-      const body = await resp.json() as any;
-      expect(resp.status, `expected 200, got ${resp.status}: ${JSON.stringify(body)}`).toBe(200);
-     expect(body.project).toMatchObject({ id: projectId, visibility: 'personal' });
-      expect(getWorkspaceProjectByProjectId(db, projectId)).toMatchObject({
-        workspaceId: PERSONAL_WORKSPACE_ID,
-        visibility: 'personal',
-        createdByWorkspaceMemberId: PERSONAL_MEMBER_ID,
-        updatedByWorkspaceMemberId: PERSONAL_MEMBER_ID,
-      });
-   } finally {
+      expect(resp.status).toBe(403);
+      expect(teamProjectCatalog.list).not.toHaveBeenCalled();
+      expect(getWorkspaceProjectByProjectId(db, projectId)).toBeUndefined();
+    } finally {
      await close(routeServer.server);
    }
  });
@@ -1779,7 +1755,7 @@ describe('project move to personal on an unbound (never-locally-shared) project'
     }
   });
 
-  it('keeps an ordinary bound Team project creator-only for move-to-personal', async () => {
+  it('prevents even the creator from moving a bound team project to personal space', async () => {
     const projectId = `bound-team-project-${Date.now()}`;
     insertProject(db, {
       id: projectId,
@@ -1837,16 +1813,13 @@ describe('project move to personal on an unbound (never-locally-shared) project'
           body: JSON.stringify({ visibility: 'personal' }),
         },
       );
-     expect(creator.status).toBe(200);
-     expect(requestTeamUnshare).toHaveBeenCalledTimes(1);
-     expect(teamProjectCatalog.list).not.toHaveBeenCalled();
+      expect(creator.status).toBe(403);
+      expect(requestTeamUnshare).not.toHaveBeenCalled();
+      expect(teamProjectCatalog.list).not.toHaveBeenCalled();
       expect(getWorkspaceProjectByProjectId(db, projectId)).toMatchObject({
-        workspaceId: PERSONAL_WORKSPACE_ID,
-        visibility: 'personal',
-        createdByWorkspaceMemberId: PERSONAL_MEMBER_ID,
-        updatedByWorkspaceMemberId: PERSONAL_MEMBER_ID,
+        workspaceId: TEAM_WORKSPACE_ID, visibility: 'team', createdByWorkspaceMemberId: 'project-creator',
       });
-   } finally {
+    } finally {
      await close(routeServer.server);
    }
  });
@@ -1988,14 +1961,9 @@ describe('project move to personal on an unbound (never-locally-shared) project'
         },
       );
       expect(resp.status).toBe(403);
-      const body = await resp.json() as any;
-      expect(body.error.code).toBe('PROJECT_DELETE_FORBIDDEN');
-      expect(teamProjectCatalog.list).toHaveBeenCalled();
-
-      // And the row this defaulted to stays a normal, genuinely personal
-      // local draft — not silently promoted to team.
-      const row = getWorkspaceProjectByProjectId(db, projectId);
-      expect(row).toMatchObject({ visibility: 'personal' });
+      await expect(resp.json()).resolves.toMatchObject({ error: { code: 'WORKSPACE_ACCESS_DENIED' } });
+      expect(teamProjectCatalog.list).not.toHaveBeenCalled();
+      expect(getWorkspaceProjectByProjectId(db, projectId)).toBeUndefined();
     } finally {
       await close(routeServer.server);
     }

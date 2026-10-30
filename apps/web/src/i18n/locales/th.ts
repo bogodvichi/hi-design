@@ -2,6 +2,10 @@ import { feedbackEn } from '../feedback-copy';
 import type { Dict } from '../types';
 
 export const th: Dict = {
+  'recentProjects.transferNotice': "รายการที่เลือกและเนื้อหาทั้งหมดในโฟลเดอร์จะย้ายไปยังทีม สมาชิกดูและแสดงความคิดเห็นได้ ผู้สร้างแก้ไขได้ และผู้ดูแลจัดการได้ ไม่สามารถย้ายกลับพื้นที่ส่วนตัวโดยตรง",
+  'recentProjects.moveFailed': "ย้ายไม่สำเร็จ ตรวจสอบปลายทางแล้วลองอีกครั้ง",
+  'recentProjects.moveSummary': "ย้ายแล้ว {succeeded} รายการ ยังไม่เสร็จ {failed} รายการ ลองรายการที่เหลืออีกครั้ง",
+  'recentProjects.moveFolderPending': "โปรเจกต์ย้ายไปยังทีมแล้ว แต่ยังยืนยันโฟลเดอร์ปลายทางไม่ได้ โปรดลองอีกครั้ง",
   ...feedbackEn,
   'composer.skillApplyFailed': "ไม่สามารถเพิ่ม Skill นี้ได้ โปรดรีเฟรชรายการ Skill แล้วลองอีกครั้ง",
   'projectDrag.movedTo': 'Moved to “{path}”',
@@ -1514,6 +1518,9 @@ export const th: Dict = {
   'pluginsHome.searchPlaceholder': 'ค้นหาปลั๊กอิน…',
   'pluginsHome.searchAria': 'ค้นหาปลั๊กอิน',
   'pluginsHome.clearSearch': 'ล้างการค้นหา',
+  'communitySkills.sortAria': 'เรียงลำดับ',
+  'communitySkills.sortPopular': 'ยอดนิยม',
+  'communitySkills.sortUpdated': 'อัปเดตล่าสุด',
   'pluginsHome.sortAria': 'ลำดับการจัดเรียง',
   'pluginsHome.sortHot': 'มาแรง',
   'pluginsHome.sortNewest': 'ใหม่ล่าสุด',

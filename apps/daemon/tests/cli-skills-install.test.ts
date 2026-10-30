@@ -137,6 +137,21 @@ describe('od skill install CLI', () => {
     expect(query.get('owner_member_id')).toBe(mine ? 'personal-member' : null);
   });
 
+  it.each(['popular', 'updated'])('requests cloud Skill ordering by %s', async (sort) => {
+    const result = await runCli(['skill', 'hub', 'list', '--source', 'all', '--sort', sort,
+      '--workspace', 'personal', '--workspace-member', 'personal-member', '--daemon-url', baseUrl, '--json']);
+    expect(result.code).toBe(0);
+    expect(new URL(requests[0]!.url, baseUrl).searchParams.get('sort')).toBe(sort);
+    expect(() => JSON.parse(result.stdout)).not.toThrow();
+  });
+
+  it('rejects an unsupported Skill sort without sending a request', async () => {
+    const result = await runCli(['skill', 'hub', 'list', '--sort', 'invalid',
+      '--workspace', 'personal', '--workspace-member', 'personal-member', '--daemon-url', baseUrl]);
+    expect(result.code).toBe(2);
+    expect(requests).toHaveLength(0);
+  });
+
   it('POSTs the plugin-compatible source and prints the response as JSON', async () => {
     const result = await runCli([
       'skill',

@@ -2,6 +2,10 @@ import { feedbackEn } from '../feedback-copy';
 import type { Dict } from '../types';
 
 export const uk: Dict = {
+  'recentProjects.transferNotice': "Вибрані елементи та весь вміст папок перейдуть до команди. Учасники зможуть переглядати й коментувати, автори редагувати, адміністратори керувати. Пряме повернення до особистого простору недоступне.",
+  'recentProjects.moveFailed': "Не вдалося перемістити. Перевірте місце призначення та спробуйте знову.",
+  'recentProjects.moveSummary': "Переміщено: {succeeded}; не завершено: {failed}. Повторіть для решти елементів.",
+  'recentProjects.moveFolderPending': "Проєкт переміщено до команди, але папку призначення не вдалося підтвердити. Спробуйте ще раз.",
   ...feedbackEn,
   'composer.skillApplyFailed': "Не вдалося додати цей Skill. Оновіть список Skills і спробуйте ще раз.",
   'projectDrag.movedTo': 'Moved to “{path}”',
@@ -1514,6 +1518,9 @@ export const uk: Dict = {
   'pluginsHome.searchPlaceholder': 'Пошук плагінів…',
   'pluginsHome.searchAria': 'Пошук плагінів',
   'pluginsHome.clearSearch': 'Очистити пошук',
+  'communitySkills.sortAria': 'Сортування',
+  'communitySkills.sortPopular': 'Найпопулярніші',
+  'communitySkills.sortUpdated': 'Нещодавно оновлені',
   'pluginsHome.sortAria': 'Порядок сортування',
   'pluginsHome.sortHot': 'Популярні',
   'pluginsHome.sortNewest': 'Найновіші',
