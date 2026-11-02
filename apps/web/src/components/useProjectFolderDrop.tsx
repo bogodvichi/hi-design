@@ -4,6 +4,7 @@ import type { ProjectVisibility, WorkspaceCollabContext } from '@open-design/con
 import { notifyTeamProjectsChanged } from '../collab/useWorkspaceContext';
 import { useT } from '../i18n';
 import { moveTeamProjectFolderAssignment, moveWorkspaceProject } from '../state/projects';
+import { userFacingError } from '../utils/userFacingError';
 import { Toast } from './Toast';
 import {
   hasProjectCardDrag,
@@ -85,13 +86,16 @@ export function useProjectFolderDrop(input: {
             ? input.workspaceContext
             : input.resolveWorkspaceContext?.(payload.sourceWorkspaceId) ?? null
           : null;
+        const crossWorkspace = payload?.sourceWorkspaceId !== targetWorkspaceId;
+        const personalSource = sourceWorkspaceContext?.workspaceType === 'personal'
+          || sourceWorkspaceContext?.isDefaultTeam === true;
         if (
           !payload
           || !payload.canMove
           || destination?.canMove === false
           || !targetWorkspaceId
           || !sourceWorkspaceContext
-          || payload.sourceWorkspaceId !== targetWorkspaceId
+          || (crossWorkspace && (payload.managerOnlyFolderMove || (!personalSource && targetVisibility !== 'personal')))
           || (!destination && payload.sourceWorkspaceId !== input.workspaceId)
         ) {
           fail(payload?.projectId);
@@ -147,8 +151,9 @@ export function useProjectFolderDrop(input: {
             message: t('projectDrag.movedTo', { path: destinationPath }),
             tone: 'success',
           });
-        }).catch(() => {
-          fail(payload.projectId);
+        }).catch((error: unknown) => {
+          setNotice({ message: userFacingError(error, t, 'recentProjects.moveFailed'), tone: 'error' });
+          notifyProjectCardMoveResult({ projectId: payload.projectId, moved: false });
         }).finally(() => {
           setMoving(false);
         });
