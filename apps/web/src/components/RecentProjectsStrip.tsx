@@ -81,6 +81,7 @@ import { Toast } from './Toast';
 import { CenteredLoader } from './Loading';
 import {
   installProjectCardDragPreview,
+  prepareProjectCardDragPreview,
   PROJECT_CARD_MOVE_RESULT_EVENT,
   type ProjectCardMoveResultDetail,
   writeProjectCardDrag,
@@ -2449,6 +2450,12 @@ function requestDelete(project: Project) {
              className={`recent-projects__card${designSystemProject ? ' is-design-system-project' : ''}${shared ? ' is-shared' : ''}${projectType ? ` is-${projectType}` : ''}${menuOpenId === project.id ? ' is-menu-open' : ''}${selected || draggingProjectId === project.id || dragSelectionProjectId === project.id ? ' is-selected' : ''}${locationTarget ? ' is-location-target' : ''}${opening ? ' is-opening' : ''}${draggingProjectId === project.id ? ' is-dragging' : ''}`}
              data-project-id={project.id}
              draggable={canDragProject}
+             onPointerEnter={(event) => {
+               if (canDragProject) void prepareProjectCardDragPreview(event.currentTarget);
+             }}
+             onPointerDown={(event) => {
+               if (canDragProject) void prepareProjectCardDragPreview(event.currentTarget);
+             }}
              onDragStart={(event) => {
                if (!canDragProject || !projectHomeWorkspaceId) {
                  event.preventDefault();

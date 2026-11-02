@@ -51,6 +51,11 @@
   min-height: 0;
   overflow: hidden;
 }
+/* Modals inside content must cover the body-level account/updater cluster
+   (z-index: 150), including when a page creates its own stacking context. */
+.workspace-shell__body:has([aria-modal='true']) {
+  z-index: 160;
+}
 .workspace-shell__body > .app,
 .workspace-shell__body > .entry-shell {
   height: 100%;

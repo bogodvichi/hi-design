@@ -160,8 +160,7 @@
 
 .project-card-drag-preview {
   position: fixed;
-  top: -10000px;
-  left: -10000px;
+  z-index: 10000;
   box-sizing: content-box;
   padding: 16px;
   pointer-events: none;
