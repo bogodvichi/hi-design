@@ -6,10 +6,11 @@ import { Buffer } from 'node:buffer';
 import { URL } from 'node:url';
 import { UA, shouldBypassProxy } from '../../../http/http.js';
 import { HDW_BASE } from '../../../http/hdw.js';
+import { resolveHdwSharePublicBase } from '../../../http/hdw-constants.js';
 import { readSsoConfigFile } from '../../../http/hik_logins/hicoo.js';
 import type { SqliteDb } from '../../../db.js';
 import { listProjectPreviewComments } from '../../../db.js';
-import type { PreviewComment } from '@open-design/contracts';
+import type { HdwRuntimeConfigResponse, PreviewComment } from '@open-design/contracts';
 
 /**
  * Hidesign-Web (HDW) API 反向代理路由。
@@ -26,10 +27,19 @@ export interface RegisterHdwRoutesDeps {
   dataDir?: string;
   /** Daemon SQLite database — used to collect project comments for share-link generation. */
   db?: SqliteDb;
+  /** Environment override used by tests and embedded launchers. */
+  env?: NodeJS.ProcessEnv;
 }
 
 export function registerHdwRoutes(app: Express, deps: RegisterHdwRoutesDeps): void {
-  const { sendApiError, dataDir, db } = deps;
+  const { sendApiError, dataDir, db, env } = deps;
+  app.get('/api/hdw/runtime-config', (_req, res) => {
+    const body: HdwRuntimeConfigResponse = {
+      sharePublicBase: resolveHdwSharePublicBase(env),
+    };
+    res.setHeader('Cache-Control', 'no-store');
+    res.json(body);
+  });
   app.use('/api/hdw/api', createHdwProxyHandler(sendApiError, dataDir, undefined, db));
   // Public share-link viewer: /api/hdw/share/:token -> HDW /hdw/share/:token
   app.use('/api/hdw/share', createHdwProxyHandler(sendApiError, dataDir, '/share'));

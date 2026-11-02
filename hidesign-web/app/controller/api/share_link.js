@@ -6,6 +6,7 @@ const { generateShortId } = require('../../utils/ids.js');
 const crypto = require('node:crypto');
 const path = require('node:path');
 const fs = require('node:fs/promises');
+const { URL } = require('node:url');
 
 const Controller = require('egg').Controller;
 
@@ -37,8 +38,26 @@ class ShareLinkController extends Controller {
     return this._knex;
   }
 
-  _publicBase() {
-    return (this.app.config.community && this.app.config.community.publicApiBase) || this.ctx.origin;
+  _normalizePublicBase(value) {
+    if (typeof value !== 'string') return null;
+    const candidate = value.trim();
+    if (!candidate) return null;
+
+    try {
+      const parsed = new URL(candidate);
+      if (![ 'http:', 'https:' ].includes(parsed.protocol)) return null;
+      if (parsed.username || parsed.password || parsed.search || parsed.hash) return null;
+      const pathname = parsed.pathname.replace(/\/+$/, '');
+      return parsed.origin + pathname;
+    } catch (_err) {
+      return null;
+    }
+  }
+
+  _publicBase(requestedBase) {
+    return this._normalizePublicBase(requestedBase)
+      || this._normalizePublicBase(this.app.config.community && this.app.config.community.publicApiBase)
+      || this._normalizePublicBase(this.ctx.origin);
   }
 
   _blobUrl(workspaceId, digest) {
@@ -49,12 +68,12 @@ class ShareLinkController extends Controller {
     return '../api/workspaces/' + encodeURIComponent(workspaceId) + '/blobs/' + digest;
   }
 
-  _shareBaseUrl() {
-    return this._publicBase() + '/hdw/share';
+  _shareBaseUrl(publicBase) {
+    return this._publicBase(publicBase) + '/hdw/share';
   }
 
   _avatarUrl(digest) {
-    return this._publicBase() + '/hdw/api/community/avatar/' + digest;
+    return '../api/community/avatar/' + digest;
   }
 
   _replaceTemplateMarker(template, marker, value) {
@@ -133,6 +152,7 @@ class ShareLinkController extends Controller {
     const projectId = body.project_id;
     const workspaceId = body.workspace_id;
     const displayName = body.display_name || null;
+    const publicBase = this._publicBase(body.public_base);
 
     if (!projectId || !workspaceId) {
       ctx.body = fail('project_id and workspace_id are required');
@@ -162,7 +182,7 @@ class ShareLinkController extends Controller {
       // Content will be filled when the project is synced and generate is called again.
       if (!tp) {
         if (existing) {
-          const url = this._shareBaseUrl() + '/' + existing.token;
+          const url = this._shareBaseUrl(publicBase) + '/' + existing.token;
           ctx.body = ok({ token: existing.token, url });
           return;
         }
@@ -178,7 +198,7 @@ class ShareLinkController extends Controller {
           html_digest: null,
           display_name: displayName || null,
         });
-        const url = this._shareBaseUrl() + '/' + token;
+        const url = this._shareBaseUrl(publicBase) + '/' + token;
         ctx.body = ok({ token, url });
         return;
       }
@@ -201,7 +221,7 @@ class ShareLinkController extends Controller {
       if (!versionRow) {
         // Project exists in team_projects but has no published version yet.
         if (existing) {
-          const url = this._shareBaseUrl() + '/' + existing.token;
+          const url = this._shareBaseUrl(publicBase) + '/' + existing.token;
           ctx.body = ok({ token: existing.token, url });
           return;
         }
@@ -217,7 +237,7 @@ class ShareLinkController extends Controller {
           html_digest: null,
           display_name: displayName || tp.display_name || null,
         });
-        const url = this._shareBaseUrl() + '/' + token;
+        const url = this._shareBaseUrl(publicBase) + '/' + token;
         ctx.body = ok({ token, url });
         return;
       }
@@ -316,7 +336,7 @@ class ShareLinkController extends Controller {
             updated_at: new Date(),
           });
         const updated = await k('share_links').where({ id: existing.id }).first();
-        const url = this._shareBaseUrl() + '/' + updated.token;
+        const url = this._shareBaseUrl(publicBase) + '/' + updated.token;
         ctx.body = ok({ token: updated.token, url });
       } else {
         const token = generateShortId(20);
@@ -331,7 +351,7 @@ class ShareLinkController extends Controller {
           html_digest: htmlDigest,
           display_name: effectiveDisplayName,
         });
-        const url = this._shareBaseUrl() + '/' + token;
+        const url = this._shareBaseUrl(publicBase) + '/' + token;
         ctx.body = ok({ token, url });
       }
     } catch (err) {
@@ -384,6 +404,7 @@ class ShareLinkController extends Controller {
   async get() {
     const { ctx } = this;
     const projectId = ctx.query.project_id;
+    const publicBase = this._publicBase(ctx.query.public_base);
 
     if (!projectId) {
       ctx.body = fail('project_id is required');
@@ -401,7 +422,7 @@ class ShareLinkController extends Controller {
         return;
       }
 
-      const url = this._shareBaseUrl() + '/' + row.token;
+      const url = this._shareBaseUrl(publicBase) + '/' + row.token;
       ctx.body = ok({
         token: row.token,
         url,

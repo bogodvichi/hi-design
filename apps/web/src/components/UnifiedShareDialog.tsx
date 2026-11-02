@@ -13,7 +13,10 @@ import {
   Input,
   Textarea,
 } from '@open-design/components';
-import type { WorkspaceCollabContext } from '@open-design/contracts';
+import type {
+  HdwRuntimeConfigResponse,
+  WorkspaceCollabContext,
+} from '@open-design/contracts';
 
 import { useT } from '../i18n';
 import { RemixIcon } from './RemixIcon';
@@ -50,10 +53,9 @@ interface UnifiedShareDialogProps {
  * Extract the public share URL from an HDW share-link API response.
  * Handles both the envelope shape `{ code, msg, data: { token, url } }`
  * and a direct `{ token, url }` payload. When only a token is returned,
- * constructs the viewer URL via the daemon's `/api/hdw/share/:token`
- * proxy so the link is reachable from the user's browser.
+ * constructs the viewer URL from the runtime-resolved HDW share base.
  */
-function extractShareUrl(data: unknown): string {
+function extractShareUrl(data: unknown, publicBase: string): string {
   if (!data || typeof data !== 'object') return '';
   const obj = data as Record<string, unknown>;
   // Envelope: { code: 0, data: { token, url } }
@@ -64,10 +66,27 @@ function extractShareUrl(data: unknown): string {
   if (typeof inner.url === 'string' && inner.url.trim()) {
     return inner.url.trim();
   }
-  if (typeof inner.token === 'string' && inner.token.trim()) {
-    return `${window.location.origin}/api/hdw/share/${inner.token.trim()}`;
+  const base = publicBase.trim().replace(/\/+$/, '');
+  if (base && typeof inner.token === 'string' && inner.token.trim()) {
+    return `${base}/hdw/share/${encodeURIComponent(inner.token.trim())}`;
   }
   return '';
+}
+
+async function fetchHdwSharePublicBase(signal?: AbortSignal): Promise<string> {
+  const response = await fetch('/api/hdw/runtime-config', {
+    cache: 'no-store',
+    signal,
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  const data = await response.json() as Partial<HdwRuntimeConfigResponse>;
+  const publicBase = typeof data.sharePublicBase === 'string'
+    ? data.sharePublicBase.trim().replace(/\/+$/, '')
+    : '';
+  if (!/^https?:\/\//i.test(publicBase)) {
+    throw new Error('Invalid HDW share public base');
+  }
+  return publicBase;
 }
 
 export function UnifiedShareDialog({
@@ -83,6 +102,8 @@ export function UnifiedShareDialog({
   onClose,
 }: UnifiedShareDialogProps) {
   const t = useT();
+  const effectiveWorkspaceId =
+    workspaceContext?.workspaceId.trim() || workspaceId.trim();
   const [activeTab, setActiveTab] = useState<ShareTab>(
     canPublishToCommunity ? 'community' : canShareFile ? 'file' : 'link',
   );
@@ -99,6 +120,8 @@ export function UnifiedShareDialog({
   const [linkLoading, setLinkLoading] = useState(false);
   const [linkGenerating, setLinkGenerating] = useState(false);
   const [sharingToTeam, setSharingToTeam] = useState(false);
+  const [sharePublicBase, setSharePublicBase] = useState('');
+  const [runtimeConfigLoading, setRuntimeConfigLoading] = useState(false);
 
  const [copied, setCopied] = useState(false);
 
@@ -112,37 +135,46 @@ export function UnifiedShareDialog({
   useEffect(() => {
     if (activeTab !== 'link') return;
     let cancelled = false;
+    const controller = new AbortController();
     setLinkLoading(true);
+    setRuntimeConfigLoading(true);
+    setSharePublicBase('');
+    setShareLink('');
 
-    const params = new URLSearchParams();
-    params.set('project_id', projectId);
-    if (workspaceId) params.set('workspace_id', workspaceId);
-    fetch(`/api/hdw/api/share-link?${params}`, {
-      headers: workspaceContext ? workspaceProjectHeaders(workspaceContext) : {},
-    })
-      .then(async (resp) => {
+    void (async () => {
+      try {
+        const publicBase = await fetchHdwSharePublicBase(controller.signal);
         if (cancelled) return;
-        // 404 = no share link yet; leave shareLink empty so the UI shows
-        // the "generate" affordance.
-        if (resp.status === 404) return null;
+        setSharePublicBase(publicBase);
+
+        const params = new URLSearchParams();
+        params.set('project_id', projectId);
+        if (effectiveWorkspaceId) params.set('workspace_id', effectiveWorkspaceId);
+        params.set('public_base', publicBase);
+        const resp = await fetch(`/api/hdw/api/share-link?${params}`, {
+          headers: workspaceContext ? workspaceProjectHeaders(workspaceContext) : {},
+          signal: controller.signal,
+        });
+        if (cancelled) return;
+        // 404 and `{ code: 0, data: null }` both mean no share link yet.
+        if (resp.status === 404) return;
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-        return resp.json();
-      })
-      .then((data) => {
-        if (cancelled) return;
-        const url = extractShareUrl(data);
-        if (url) setShareLink(url);
-      })
-      .catch(() => {
-        // Network/parse failure — leave empty; user can still generate.
-      })
-      .finally(() => {
-        if (!cancelled) setLinkLoading(false);
-      });
+        const data = await resp.json();
+        if (!cancelled) setShareLink(extractShareUrl(data, publicBase));
+      } catch {
+        // Network/parse/config failure leaves the generate affordance visible.
+      } finally {
+        if (!cancelled) {
+          setLinkLoading(false);
+          setRuntimeConfigLoading(false);
+        }
+      }
+    })();
     return () => {
       cancelled = true;
+      controller.abort();
     };
-  }, [activeTab, projectId, workspaceId, workspaceContext]);
+  }, [activeTab, effectiveWorkspaceId, projectId, workspaceContext]);
 
   const canPublish = useMemo(
     () => communityTitle.trim().length > 0 && !publishing && !publishResult,
@@ -249,14 +281,35 @@ export function UnifiedShareDialog({
  async function handleGenerateLink() {
    if (!canGenerateLink) return;
 
-   setLinkGenerating(true);
-   setSharingToTeam(false);
+   setLinkGenerating(!workspaceContext);
+   setSharingToTeam(Boolean(workspaceContext));
    try {
-      // Generating a link is a sharing operation, not a workspace transfer.
-      // In particular, another team member's read-only local mirror may not
-      // have a workspace-scope record at all. Never silently promote/move
-      // a project to a different visibility or workspace here; HDW verifies
-      // that this exact project already belongs to the requested workspace.
+      const publicBase = sharePublicBase || await fetchHdwSharePublicBase();
+      setSharePublicBase(publicBase);
+
+      if (workspaceContext) {
+        const syncResp = await fetch(
+          `/api/projects/${encodeURIComponent(projectId)}/collab/sync-intent`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...workspaceProjectHeaders(workspaceContext),
+            },
+            body: JSON.stringify({ event: 'project_team_share_requested' }),
+          },
+        );
+        if (!syncResp.ok) throw await responseError(syncResp);
+        const syncData = await syncResp.json() as { syncState?: unknown };
+        if (syncData.syncState !== 'synced') {
+          throw Object.assign(new Error('Team project upload was not confirmed'), {
+            code: 'TEAM_PROJECT_PUBLISH_UNAVAILABLE',
+          });
+        }
+        setSharingToTeam(false);
+      }
+
+      setLinkGenerating(true);
      const resp = await fetch('/api/hdw/api/share-link/generate', {
        method: 'POST',
        headers: {
@@ -265,14 +318,15 @@ export function UnifiedShareDialog({
        },
        body: JSON.stringify({
          project_id: projectId,
-         ...(workspaceId ? { workspace_id: workspaceId } : {}),
+         ...(effectiveWorkspaceId ? { workspace_id: effectiveWorkspaceId } : {}),
+         public_base: publicBase,
        }),
      });
      const data = await resp.json();
      if (!resp.ok) {
        throw Object.assign(new Error(data?.message || data?.msg || `HTTP ${resp.status}`), { code: data?.error?.code ?? data?.error });
      }
-     const url = extractShareUrl(data);
+     const url = extractShareUrl(data, publicBase);
      if (url) {
        setShareLink(url);
        notifyToast({ message: t('feedback.linkCreated'), tone: 'success' });
@@ -326,7 +380,7 @@ const footerActionDisabled =
     : activeTab === 'file'
       ? shareRecipients.length === 0 || shareSubmitting || shareSuccess
       : activeTab === 'link'
-        ? linkGenerating || sharingToTeam
+        ? linkLoading || runtimeConfigLoading || linkGenerating || sharingToTeam
         : false;
 
  function handleFooterAction() {

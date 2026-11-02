@@ -23,3 +23,9 @@ export type HiMindDirectorySearchResult = {
   type: 'hidesign:directory-search-result:v1';
   requestId: string;
 } & ({ ok: true; people: HiMindDirectoryPerson[] } | { ok: false });
+
+/** Runtime metadata needed by the web client to build HDW share links. */
+export interface HdwRuntimeConfigResponse {
+  /** Explicit share base resolved from the effective HDW gateway address. */
+  sharePublicBase: string;
+}

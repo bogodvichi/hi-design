@@ -34,6 +34,21 @@ function resolveHdwPathPrefix(env: NodeJS.ProcessEnv, isProduction: boolean): st
   return isProduction ? PROD_HDW_PATH_PREFIX : DEV_HDW_PATH_PREFIX;
 }
 
+/**
+ * Resolve the public origin and mount path that serve HDW share pages.
+ * HDW APIs live under `<base><prefix>/api`, while share pages live under
+ * `<base><prefix>/share`. The effective HDW path prefix already ends in
+ * `/hdw`, so callers must not append another one.
+ */
+export function resolveHdwSharePublicBase(env: NodeJS.ProcessEnv = process.env): string {
+  const { baseUrl, pathPrefix } = resolveHdwAddress(env);
+  const normalizedBase = baseUrl.trim().replace(/\/+$/, '');
+  const normalizedPrefix = pathPrefix.trim().replace(/\/+$/, '');
+  const sharePath = normalizedPrefix.replace(/\/hdw$/i, '');
+  if (!sharePath) return normalizedBase;
+  return `${normalizedBase}/${sharePath.replace(/^\/+/, '')}`;
+}
+
 /** Production HDW backend origin (Pixso). */
 export const PROD_HDW_BASE_URL = 'https://pixso.hikvision.com.cn';
 
