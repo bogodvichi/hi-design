@@ -70,6 +70,15 @@ def get_config():
         m = machine
         if m in gm and gm[m]:
             group = gm[m]
+    # 组织归属以本次静态名单为准；名单外用户保持 identity.json / 机器兜底结果。
+    # 映射文件异常不阻塞采集、重试或本地备份。
+    try:
+        from static_org_map import lookup_group
+        static_group = lookup_group(user)
+        if static_group:
+            group = static_group
+    except Exception:
+        pass
     return url, user, group, machine
 
 def load_baselines():
@@ -893,6 +902,23 @@ def report(url, payload):
         return False
 
 def main():
+    if not DRY:
+        try:
+            from update_collector import check_for_updates
+            update_result = check_for_updates()
+            if update_result.get("status") == "updated":
+                print(
+                    "  ✅ 采集脚本已更新: {} -> {}（下次定时采集生效）".format(
+                        update_result.get("previous_version") or "unknown",
+                        update_result.get("version"),
+                    )
+                )
+        except Exception as update_error:
+            print(
+                "  ⚠️ 采集脚本更新跳过: {}: {}".format(
+                    type(update_error).__name__, str(update_error)[:160]
+                )
+            )
     url, user, group, machine = get_config()
     baselines = load_baselines()
     retry_queue = load_retry_queue()

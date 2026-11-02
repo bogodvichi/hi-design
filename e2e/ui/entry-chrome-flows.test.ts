@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { expect, test } from '@/playwright/suite';
 import { ensureRailOpen, openNewProjectModal } from '@/playwright/rail';
 import { AMR_PERSONAL_WORKSPACE_CONTEXT, AMR_PERSONAL_WORKSPACE_HEADERS, mockAmrPersonalWorkspace, settingsSurface } from '@/playwright/amr';
@@ -491,7 +492,7 @@ test('[P0] @critical recent projects strip opens a project card from Home', asyn
 });
 
 test('[P1] project context menu stays clickable near the bottom and right edges', async ({ page }) => {
-  await page.setViewportSize({ width: 760, height: 520 });
+  await page.setViewportSize({ width: 760, height: 360 });
   await mockAmrPersonalWorkspace(page);
   const response = await page.request.post('/api/projects', {
     headers: AMR_PERSONAL_WORKSPACE_HEADERS,
@@ -499,11 +500,15 @@ test('[P1] project context menu stays clickable near the bottom and right edges'
   });
   expect(response.ok(), await response.text()).toBeTruthy();
   const created = await response.json() as { project: WorkspaceProjectSummary['project'] };
+  // Match the HDW owner namespace used by the host's e2e-user login fixture.
+  const ownerDigest = createHash('sha256').update(`${AMR_PERSONAL_WORKSPACE_CONTEXT.workspaceId}_e2e-user`).digest();
+  const ownerMemberId = [...ownerDigest.subarray(0, 25)]
+    .map(byte => 'abcdefghijklmnopqrstuvwxyz0123456789'[byte % 36]).join('');
   const summary: WorkspaceProjectSummary = {
     ...created.project,
     project: created.project,
     workspaceId: AMR_PERSONAL_WORKSPACE_CONTEXT.workspaceId,
-    createdByWorkspaceMemberId: AMR_PERSONAL_WORKSPACE_CONTEXT.workspaceMemberId,
+    createdByWorkspaceMemberId: ownerMemberId,
     visibility: 'personal',
     resourceState: 'active',
     currentUserAccess: {
@@ -512,9 +517,10 @@ test('[P1] project context menu stays clickable near the bottom and right edges'
     },
   };
   await page.route('**/api/workspaces/*/projects?*', route => route.fulfill({ json: { projects: [summary] } }));
-  await gotoEntryHome(page);
+  await page.goto('/drafts', { waitUntil: 'domcontentloaded' });
   const card = page.locator(`[data-project-id="${created.project.id}"]`);
   await expect(card).toBeVisible();
+  await expect(card.getByRole('button', { name: 'More actions' })).toBeAttached();
   await card.scrollIntoViewIfNeeded();
   const thumb = card.locator('.recent-projects__card-thumb');
   const box = await thumb.boundingBox();
