@@ -113,18 +113,18 @@ it('keeps the destination open while moving, prevents duplicate requests, and al
   expect(screen.getByRole('alert')).toHaveTextContent('feedback.serviceUnavailable');
 });
 
-it.each(['member', 'guest'] as const)('offers copying team assets to Personal only to permitted roles (%s)', (role) => {
+it.each(['member', 'guest'] as const)('omits Copy project to while preserving permitted Copy actions (%s)', (role) => {
   vi.stubGlobal('fetch', vi.fn(async () => Response.json({ items: [], members: [], files: [] })));
   render(<RecentProjectsStrip
     projects={[{ id: 'project', name: 'Project', workspaceId: 'source', workspaceVisibility: 'team', createdByWorkspaceMemberId: 'source-member', createdAt: 1, updatedAt: 1, skillId: null, designSystemId: null }]}
     space="team" homeWorkspaceId="source" currentWorkspaceId="source"
-    workspaceContextOverride={source} operator={{ memberId: 'source-member', role }} onOpen={vi.fn()}
+    workspaceContextOverride={source} operator={{ memberId: 'source-member', role }} onOpen={vi.fn()} onDuplicate={vi.fn()}
   />);
   fireEvent.click(screen.getByRole('button', { name: 'designs.menuMore' }));
-  const copy = screen.queryByRole('menuitem', { name: 'recentProjects.copyToPersonal' });
+  expect(screen.queryByRole('menuitem', { name: 'recentProjects.copyToPersonal' })).toBeNull();
+  const copy = screen.queryByRole('menuitem', { name: 'designs.menuDuplicate' });
   if (role === 'guest') { expect(copy).toBeNull(); return; }
-  fireEvent.click(copy!);
-  expect(screen.getByTestId('move-picker')).toHaveAttribute('data-copy', 'true');
+  expect(copy).toBeInTheDocument();
 });
 
 it('retries only failed items after a partial batch move', async () => {

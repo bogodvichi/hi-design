@@ -144,7 +144,7 @@ interface Props {
      targetFolderId?: string | null;
    },
  ) => Promise<void> | void;
- onRenameProject: (id: string, name: string) => void;
+ onRenameProject: (id: string, name: string) => Promise<Project | null | void> | void;
  onCopyProject?: (
    id: string,
    options?: { sourceWorkspaceId?: string; targetWorkspaceId?: string; targetFolderId?: string | null },

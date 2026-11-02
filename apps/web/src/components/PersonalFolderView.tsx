@@ -55,7 +55,7 @@ interface Props {
     projectTitleHint?: ProjectTitleHint,
   ) => Promise<boolean> | boolean | void;
   onDeleteProject?: (id: string, source?: ProjectMutationSource) => Promise<boolean | void> | boolean | void;
-  onRenameProject?: (id: string, name: string, source?: ProjectMutationSource) => void;
+  onRenameProject?: (id: string, name: string, source?: ProjectMutationSource) => Promise<Project | null | void> | void;
   onCopyProject?: (
     id: string,
     options?: { sourceWorkspaceId?: string; targetFolderId?: string | null },
@@ -233,7 +233,7 @@ function PersonalFoldersPanel({
    projectTitleHint?: ProjectTitleHint,
  ) => Promise<boolean> | boolean | void;
  onDeleteProject?: (id: string, source?: ProjectMutationSource) => Promise<boolean | void> | boolean | void;
- onRenameProject?: (id: string, name: string, source?: ProjectMutationSource) => void;
+ onRenameProject?: (id: string, name: string, source?: ProjectMutationSource) => Promise<Project | null | void> | void;
  onCopyProject?: (
    id: string,
    options?: { sourceWorkspaceId?: string; targetFolderId?: string | null },
@@ -675,16 +675,20 @@ const renameFolderTitleId = useId();
           onDuplicate={folderId && onCopyProject
             ? (id) => onCopyProject(id, { sourceWorkspaceId: workspaceId ?? undefined, targetFolderId: folderId })
             : undefined}
-         onRename={(id, name) => {
+         onRename={async (id, name) => {
            const sourceProject = projects.find((project) => project.id === id);
-           setProjects((prev) => prev.map((p) => p.id === id ? { ...p, name } : p));
-           onRenameProject?.(
+           const persisted = await onRenameProject?.(
              id,
              name,
              sourceProject
                ? { project: sourceProject, workspaceContext }
                : undefined,
            );
+           if (persisted) {
+             setProjects((prev) => prev.map((project) => project.id === id && project.workspaceId === sourceProject?.workspaceId
+               ? { ...project, name: persisted.name, metadata: persisted.metadata, updatedAt: persisted.updatedAt }
+               : project));
+           }
          }}
         hideTitle
          currentWorkspaceId={workspaceId}

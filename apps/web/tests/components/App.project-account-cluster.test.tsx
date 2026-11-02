@@ -76,7 +76,8 @@ const projectViewUnmountedMock = vi.hoisted(() => vi.fn());
 const entryViewMountedMock = vi.hoisted(() => vi.fn());
 const entryViewUnmountedMock = vi.hoisted(() => vi.fn());
 
-vi.mock('../../src/router', () => ({
+vi.mock('../../src/router', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../src/router')>(),
   navigate: vi.fn(),
   useRoute: () => useRouteMock(),
 }));
@@ -445,6 +446,34 @@ describe('project route — floating account cluster', () => {
     expect(screen.getByTestId('entry-nav-account-updater')).toBeTruthy();
     expect(screen.getByTestId('entry-nav-message-center')).toBeTruthy();
     expect(screen.queryByTestId('entry-top-right-credits')).toBeNull();
+  });
+
+  it('keeps one account cluster through project and tool tab switches', async () => {
+    sessionStorage.setItem('od.workspaceSelection.v1', JSON.stringify({
+      workspaceId: AMBIENT_DIRECTORY_ITEM.workspaceId,
+      workspaceMemberId: AMBIENT_DIRECTORY_ITEM.workspaceMemberId,
+    }));
+    const view = render(<App />);
+    await screen.findByTestId('entry-nav-account');
+
+    const toolRoutes: Route[] = [
+      TOOL_ROUTE,
+      { ...TOOL_ROUTE, resourceKey: 'himind', title: 'HiMind' },
+      { ...TOOL_ROUTE, resourceKey: 'ai-research-workbench', title: 'AI research' },
+      TOOL_ROUTE,
+      PROJECT_ROUTE,
+    ];
+    for (const route of toolRoutes) {
+      useRouteMock.mockReturnValue(route);
+      view.rerender(<App />);
+
+      await waitFor(() => {
+        expect(screen.queryAllByTestId('entry-nav-account')).toHaveLength(1);
+        expect(screen.queryAllByTestId('entry-nav-account-updater')).toHaveLength(1);
+        expect(screen.queryAllByTestId('entry-nav-message-center')).toHaveLength(1);
+        expect(document.querySelectorAll('.entry-top-right-cluster')).toHaveLength(1);
+      });
+    }
   });
 
   it.each([

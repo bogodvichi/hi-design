@@ -289,7 +289,7 @@ describe('workspace tabs chrome styles', () => {
     // Round-4 skin: tabs are 12px rounded rects, not the old --radius-large.
     expect(ruleValue(projectTab, 'border-radius')).toBe('12px');
     // Tabs auto-shrink: flex-grow 0 (never balloon), flex-shrink 1 (squeeze to
-    // fit) down to --workspace-tab-min-width before the strip scrolls.
+    // fit) down to --workspace-tab-min-width before excess tabs enter the ··· menu.
     expect(ruleValue(projectTab, 'flex')).toBe('0 1 156px');
     expect(ruleValue(projectTab, 'min-width')).toBe('var(--workspace-tab-min-width, 56px)');
     expect(ruleValue(activeProjectTab, 'background')).toBe('#ffffff');
@@ -299,7 +299,7 @@ describe('workspace tabs chrome styles', () => {
     expect(projectChrome).not.toContain('overflow:');
     expect(projectStrip).not.toContain('overflow:');
     expect(projectStrip).not.toContain('overflow-x:');
-    expect(ruleValue(sharedStrip, 'overflow-x')).toBe('auto');
+    expect(ruleValue(sharedStrip, 'overflow-x')).toBe('hidden');
     expect(ruleValue(sharedStrip, 'overflow-y')).toBe('hidden');
     expect(ruleValue(main, 'gap')).toBe('4px');
     expect(ruleValue(main, 'padding-inline')).toBe('8px 4px');

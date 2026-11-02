@@ -191,6 +191,13 @@ export async function fetchAiResearchLaunch(
   const session = readSsoConfigFile(dataDir);
   const username = session?.username?.trim().toLowerCase() ?? '';
   if (!username || !session?.cookies?.length) return null;
+  // Complete deferred login before issuing the short-lived DRW ticket.
+  let directoryCookies: Cookie[] | null = null;
+  try {
+    // The session guard uses hdwPost for credential decryption.
+    const { ensureUedroSession } = await import('./hik_logins/session-guard.js');
+    directoryCookies = await ensureUedroSession(dataDir);
+  } catch { console.warn('[ai-research-directory] handoff unavailable'); }
   const data = await post<{ launch_url: string; expires_in: number }>(
     '/auth/ai-research/launch',
     {
@@ -199,8 +206,8 @@ export async function fetchAiResearchLaunch(
     },
   );
   if (!data || typeof data.launch_url !== 'string' || !data.launch_url) return null;
-  if (session.uedro?.cookies?.length) {
-    try { await handoff(data.launch_url, session.uedro.cookies as Cookie[]); }
+  if (directoryCookies?.length) {
+    try { await handoff(data.launch_url, directoryCookies); }
     catch { console.warn('[ai-research-directory] handoff unavailable'); }
   }
   return {

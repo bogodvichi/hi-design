@@ -39,6 +39,7 @@ import type {
   WorkspaceProjectsResponse,
 } from '@open-design/contracts';
 import { randomUUID } from '../utils/uuid';
+import { responseError } from '../utils/userFacingError';
 import { markProjectDisplaySnapshotsDirty } from './project-display-cache';
 import {
   workspaceIdentityCacheKey,
@@ -1247,6 +1248,7 @@ export async function patchProject(
   id: string,
   patch: ProjectPatch,
   workspaceContext?: WorkspaceCollabContext | null,
+  options?: { throwOnError?: boolean },
 ): Promise<Project | null> {
   try {
     const resp = await fetch(`/api/projects/${encodeURIComponent(id)}`, {
@@ -1257,7 +1259,7 @@ export async function patchProject(
       },
       body: JSON.stringify(patch),
     });
-    if (!resp.ok) return null;
+    if (!resp.ok) throw await responseError(resp);
     const json = (await resp.json()) as { project: Project };
     // Any successful project patch can change fields rendered by the project
     // lists (name, metadata, updatedAt, bindings displayed on cards). A list
@@ -1272,7 +1274,8 @@ export async function patchProject(
       evictCoalescedGet('local-projects');
     }
     return json.project;
-  } catch {
+  } catch (error) {
+    if (options?.throwOnError) throw error;
     return null;
   }
 }

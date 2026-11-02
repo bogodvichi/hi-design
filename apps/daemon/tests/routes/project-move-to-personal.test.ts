@@ -20,6 +20,7 @@ import * as hdw from '../../src/http/hdw.js';
 import { HdwCloudError } from '../../src/integrations/hdw-cloud.js';
 import {
   closeDatabase,
+  createWorkspaceFolder,
   deleteProject as dbDeleteProject,
   deleteWorkspaceProject,
   ensureWorkspaceProject,
@@ -297,6 +298,148 @@ describe('project move to personal on an unbound (never-locally-shared) project'
     } as unknown as Parameters<typeof registerProjectRoutes>[1];
   }
 
+  describe.each(['single', 'batch'] as const)('personal folder organization (%s)', (mode) => {
+    it.each(['personal', 'default-team'] as const)('preserves cloud bindings while organizing a %s home locally', async (home) => {
+      const projectIds = ['published-original', 'cloud-personal', 'local-copy'];
+      for (const projectId of projectIds) {
+        insertProject(db, { id: projectId, name: projectId, skillId: null, designSystemId: null,
+          pendingPrompt: null, metadata: null, customInstructions: null, createdAt: 10, updatedAt: 20 });
+        ensureWorkspaceProject(db, {
+          projectId, workspaceId: PERSONAL_WORKSPACE_ID,
+          visibility: projectId === 'published-original' ? 'team' : 'personal', resourceState: 'active',
+          createdByWorkspaceMemberId: PERSONAL_MEMBER_ID, updatedByWorkspaceMemberId: PERSONAL_MEMBER_ID,
+          resourceHubResourceId: projectId === 'local-copy' ? null : `resource-${projectId}`,
+          syncState: projectId === 'local-copy' ? 'local_only' : 'synced',
+        });
+      }
+      const folderId = createWorkspaceFolder(db, { workspaceId: PERSONAL_WORKSPACE_ID,
+        folderPid: null, folderName: 'Personal folder', ownerMemberId: PERSONAL_MEMBER_ID });
+      const childFolderId = createWorkspaceFolder(db, { workspaceId: PERSONAL_WORKSPACE_ID,
+        folderPid: folderId, folderName: 'Child folder', ownerMemberId: PERSONAL_MEMBER_ID });
+      const bindings = projectIds.map((id) => getWorkspaceProjectByProjectId(db, id));
+      const projects = projectIds.map((id) => getProject(db, id));
+      const moveProjectFolder = vi.fn(async () => { throw new HdwCloudError(404, 'FOLDER_NOT_FOUND'); });
+      const requestTeamTransfer = vi.fn();
+      const requestTeamShare = vi.fn();
+      const requestTeamUnshare = vi.fn();
+      const authority = verifiedTeamAuthority({ workspaceId: PERSONAL_WORKSPACE_ID, memberId: PERSONAL_MEMBER_ID, role: 'owner' });
+      const app = express();
+      app.use(express.json());
+      registerProjectRoutes(app, buildDeps({
+        verifyWorkspaceRequestAuthority: async () => {
+          const verified = await authority();
+          return { ...verified, context: { ...verified.context,
+            workspaceType: home === 'personal' ? 'personal' as const : 'team' as const,
+            isDefaultTeam: home === 'default-team',
+          } };
+        },
+        hdwCloudClient: { getTeamProject: vi.fn(async () => ({ folderId: 'cloud-shared-folder' })) },
+        collabSync: { moveProjectFolder, requestTeamTransfer, requestTeamShare, requestTeamUnshare },
+      }));
+      const routeServer = await listen(app);
+      try {
+        for (const targetFolderId of [folderId, childFolderId, null]) {
+          for (const ids of mode === 'single' ? projectIds.map((id) => [id]) : [projectIds]) {
+            const response = await fetch(`${routeServer.url}/api/workspaces/${PERSONAL_WORKSPACE_ID}/projects/${mode === 'single' ? `${ids[0]}/move` : 'batch-move'}`, {
+              method: 'POST', headers: ownerTeamHeaders({
+                'x-od-workspace-id': PERSONAL_WORKSPACE_ID, 'x-od-workspace-member-id': PERSONAL_MEMBER_ID,
+                'x-od-workspace-type': home === 'personal' ? 'personal' : 'team',
+                'x-od-workspace-is-default-team': String(home === 'default-team'),
+              }),
+              body: JSON.stringify({ visibility: 'personal', targetWorkspaceId: PERSONAL_WORKSPACE_ID,
+                targetFolderId, ...(mode === 'batch' ? { projectIds: ids } : {}) }),
+            });
+            expect(response.status, await response.clone().text()).toBe(200);
+          }
+          for (const [index, projectId] of projectIds.entries()) {
+            const detail = await fetch(`${routeServer.url}/api/projects/${projectId}`, {
+              headers: ownerTeamHeaders({ 'x-od-workspace-id': PERSONAL_WORKSPACE_ID,
+                'x-od-workspace-member-id': PERSONAL_MEMBER_ID }),
+            });
+            expect(detail.status, await detail.clone().text()).toBe(200);
+            expect(await detail.json()).toMatchObject({ folderId: targetFolderId });
+            const { updatedAt: _updatedAt, ...binding } = bindings[index]!;
+            expect(getWorkspaceProjectByProjectId(db, projectId)).toMatchObject({ ...binding, folderId: targetFolderId });
+            expect(getProject(db, projectId)).toEqual(projects[index]);
+          }
+        }
+        expect(moveProjectFolder).not.toHaveBeenCalled();
+        expect(requestTeamTransfer).not.toHaveBeenCalled();
+        expect(requestTeamShare).not.toHaveBeenCalled();
+        expect(requestTeamUnshare).not.toHaveBeenCalled();
+      } finally { await close(routeServer.server); }
+    });
+  });
+
+  it.each(['creator', 'other-owner', 'frozen', 'team-home'] as const)(
+    'organizes a cloud-only personal project without requiring content editing (%s)', async (scenario) => {
+      const projectId = 'cloud-only-personal-project';
+      const personalHome = scenario !== 'team-home';
+      const workspaceId = personalHome ? PERSONAL_WORKSPACE_ID : TEAM_WORKSPACE_ID;
+      const memberId = personalHome ? PERSONAL_MEMBER_ID : OWNER_MEMBER_ID;
+      const resourceId = 'cloud-personal-resource';
+      const teamProjectCatalog = { list: vi.fn(async () => [{
+        id: 'catalog-entry', workspaceId, projectId, resourceId, ownerMemberId: scenario === 'other-owner' ? 'another-member' : memberId,
+        displayName: 'Cloud project', syncState: 'synced', lastSyncedVersionId: 'version-1',
+        createdAt: new Date(10).toISOString(), updatedAt: new Date(20).toISOString(),
+        access: { canView: true, canComment: true, canEdit: false, frozen: scenario === 'frozen' },
+      }]), upsert: vi.fn() };
+      const materializeTeamProject = vi.fn(async () => {
+        insertProject(db, { id: projectId, name: 'Cloud project', skillId: null, designSystemId: null,
+          pendingPrompt: null, metadata: null, customInstructions: null, createdAt: 10, updatedAt: 20 });
+        ensureWorkspaceProject(db, { projectId, workspaceId, visibility: 'team', resourceState: 'active',
+          createdByWorkspaceMemberId: memberId, resourceHubResourceId: resourceId, syncState: 'synced' });
+      });
+      const moveProjectFolder = vi.fn();
+      const requestTeamUnshare = vi.fn();
+      const authority = verifiedTeamAuthority({ workspaceId, memberId, role: 'member' });
+      const app = express();
+      app.use(express.json());
+      registerProjectRoutes(app, buildDeps({ teamProjectCatalog,
+        verifyWorkspaceRequestAuthority: async () => {
+          const verified = await authority();
+          return { ...verified, context: { ...verified.context, isDefaultTeam: personalHome } };
+        },
+        collabSync: { materializeTeamProject, moveProjectFolder, requestTeamUnshare },
+      }));
+      const routeServer = await listen(app);
+      try {
+        const response = await fetch(`${routeServer.url}/api/workspaces/${workspaceId}/projects/${projectId}/move`, {
+          method: 'POST', headers: ownerTeamHeaders({ 'x-od-workspace-id': workspaceId, 'x-od-workspace-member-id': memberId }),
+          body: JSON.stringify({ visibility: personalHome ? 'personal' : 'team', targetWorkspaceId: workspaceId, targetFolderId: 'local-folder' }),
+        });
+        expect(response.status, await response.clone().text()).toBe(scenario === 'creator' ? 200 : 403);
+        expect(materializeTeamProject).toHaveBeenCalledTimes(scenario === 'creator' ? 1 : 0);
+        expect(moveProjectFolder).not.toHaveBeenCalled();
+        expect(requestTeamUnshare).not.toHaveBeenCalled();
+        if (scenario === 'creator') expect(getWorkspaceProjectByProjectId(db, projectId)).toMatchObject({
+          workspaceId, visibility: 'team', folderId: 'local-folder', resourceHubResourceId: resourceId, syncState: 'synced',
+        });
+      } finally { await close(routeServer.server); }
+    },
+  );
+
+  it('still reconciles a real team project folder from the cloud on detail reads', async () => {
+    const projectId = 'team-folder-detail';
+    insertProject(db, { id: projectId, name: projectId, skillId: null, designSystemId: null,
+      pendingPrompt: null, metadata: null, customInstructions: null, createdAt: 10, updatedAt: 20 });
+    ensureWorkspaceProject(db, { projectId, workspaceId: TEAM_WORKSPACE_ID, visibility: 'team',
+      resourceState: 'active', createdByWorkspaceMemberId: OWNER_MEMBER_ID,
+      resourceHubResourceId: 'team-resource', syncState: 'synced' });
+    const app = express();
+    app.use(express.json());
+    registerProjectRoutes(app, buildDeps({
+      hdwCloudClient: { getTeamProject: vi.fn(async () => ({ folderId: 'remote-team-folder' })) },
+    }));
+    const routeServer = await listen(app);
+    try {
+      const response = await fetch(`${routeServer.url}/api/projects/${projectId}`, { headers: ownerTeamHeaders() });
+      expect(response.status, await response.clone().text()).toBe(200);
+      expect(await response.json()).toMatchObject({ folderId: 'remote-team-folder' });
+      expect(getWorkspaceProjectByProjectId(db, projectId)?.folderId).toBe('remote-team-folder');
+    } finally { await close(routeServer.server); }
+  });
+
   it.each(['read-only-share', 'catalog-outage', 'other-creator'] as const)(
     'keeps a personal folder project home authoritative during transfer (%s)', async (scenario) => {
       const projectId = 'shared-personal-folder-project';
@@ -495,7 +638,6 @@ describe('project move to personal on an unbound (never-locally-shared) project'
               } } } });
             }
             if (scenario === 'folder-failed') {
-              moveProjectFolder.mockResolvedValue(undefined);
               const retry = await fetch(`${routeServer.url}/api/workspaces/${PERSONAL_WORKSPACE_ID}/projects/${mode === 'single' ? `${projectId}/move` : 'batch-move'}`, {
                 method: 'POST', headers: ownerTeamHeaders({ 'x-od-workspace-id': PERSONAL_WORKSPACE_ID, 'x-od-workspace-member-id': PERSONAL_MEMBER_ID }),
                 body: JSON.stringify({ visibility: 'personal', targetWorkspaceId: PERSONAL_WORKSPACE_ID,
@@ -503,7 +645,8 @@ describe('project move to personal on an unbound (never-locally-shared) project'
               });
               expect(retry.status, await retry.clone().text()).toBe(200);
               expect(requestTeamTransfer).toHaveBeenCalledTimes(1);
-              expect(moveProjectFolder).toHaveBeenCalledTimes(2);
+              // Once transferred, organizing Personal folders no longer needs the cloud.
+              expect(moveProjectFolder).toHaveBeenCalledTimes(1);
               expect(listWorkspaceProjects(db, PERSONAL_WORKSPACE_ID)[0]?.folderId).toBe('personal-folder');
               expect(getWorkspaceProjectByProjectId(db, projectId)).toMatchObject({ syncState: 'synced', cloudTombstonedAt: null });
               expect(getWorkspaceProjectByProjectId(db, projectId)?.resourceHubResourceId).toBeTruthy();

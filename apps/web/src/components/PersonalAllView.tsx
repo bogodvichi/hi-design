@@ -69,7 +69,7 @@ function PersonalProjectsPanel({
   ) => Promise<boolean> | boolean | void;
   onDeleteProject: (id: string, source?: ProjectMutationSource) => Promise<boolean | void> | boolean | void;
  onDuplicateProject?: (id: string) => Promise<void> | void;
- onRenameProject: (id: string, name: string, source?: ProjectMutationSource) => void;
+ onRenameProject: (id: string, name: string, source?: ProjectMutationSource) => Promise<Project | null | void> | void;
  controlsPortalTarget?: HTMLElement | null;
  onCopyProject?: (
    id: string,
@@ -522,16 +522,20 @@ function handleFolderClick(folder: PersonalFolderItem) {
          onDuplicate={onCopyProject
             ? (id) => onCopyProject(id, { sourceWorkspaceId: workspaceId ?? undefined })
             : onDuplicateProject}
-        onRename={(id, name) => {
+        onRename={async (id, name) => {
           const sourceProject = projects.find((project) => project.id === id);
-          setProjects((prev) => prev.map((p) => p.id === id ? { ...p, name } : p));
-          onRenameProject?.(
+          const persisted = await onRenameProject?.(
             id,
             name,
             sourceProject
               ? { project: sourceProject, workspaceContext }
               : undefined,
           );
+          if (persisted) {
+            setProjects((prev) => prev.map((project) => project.id === id && project.workspaceId === sourceProject?.workspaceId
+              ? { ...project, name: persisted.name, metadata: persisted.metadata, updatedAt: persisted.updatedAt }
+              : project));
+          }
         }}
          hideTitle
           currentWorkspaceId={workspaceId}
@@ -701,7 +705,7 @@ export function PersonalAllView({
   ) => Promise<boolean> | boolean | void;
   onDeleteProject: (id: string, source?: ProjectMutationSource) => Promise<boolean | void> | boolean | void;
   onDuplicateProject?: (id: string) => Promise<void> | void;
- onRenameProject: (id: string, name: string, source?: ProjectMutationSource) => void;
+ onRenameProject: (id: string, name: string, source?: ProjectMutationSource) => Promise<Project | null | void> | void;
   onCopyProject?: (id: string, options?: { sourceWorkspaceId?: string }) => Promise<void> | void;
 }) {
 const t = useT();

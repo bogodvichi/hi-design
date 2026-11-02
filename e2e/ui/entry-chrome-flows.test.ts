@@ -121,6 +121,64 @@ test('[P0] @critical entry chrome exposes the primary home creation surface and 
   await expect(settingsDialog.getByRole('button', { name: /show pet picker/i })).toHaveCount(0);
 });
 
+test('[P1] account controls reserve space after late loading and across tool tabs', async ({ page }, testInfo) => {
+  await routeTabWorkspaceApi(page, { activeWorkspaceId: TAB_PERSONAL_WORKSPACE.workspaceId }, []);
+  await page.route('**/api/workspaces/*/projects?*', (route) => route.fulfill({
+    json: { projects: [] },
+  }));
+  await page.route('**/api/workspace/tool/cloud?*', (route) => route.fulfill({
+    json: { tools: ['Tool one', 'Tool two'].map((title) => ({
+      resourceId: title,
+      ownerMemberId: 'tool-publisher',
+      url: `https://tools.example.test/${encodeURIComponent(title)}`,
+      name: title, label: title, description: '', createdAt: '', updatedAt: '',
+    })) },
+  }));
+  let releaseContext!: () => void;
+  const contextReady = new Promise<void>((resolve) => { releaseContext = resolve; });
+  await page.route('**/api/workspace/context', async (route) => {
+    await contextReady;
+    await route.fallback();
+  });
+  await page.route('https://tools.example.test/**', (route) => route.fulfill({
+    contentType: 'text/html',
+    body: '<!doctype html><title>Tool fixture</title><p>Tool fixture</p>',
+  }));
+  await page.route('**/api/community/stats/record', (route) => route.fulfill({ json: {} }));
+
+  await gotoEntryHome(page);
+  await expect(page.getByTestId('entry-nav-account')).toHaveCount(0);
+  releaseContext();
+  await expect(page.getByTestId('entry-nav-account')).toBeVisible();
+
+  async function expectReservedSpace() {
+    await expect(page.locator('.entry-top-right-cluster')).toHaveCount(1);
+    await expect(page.getByTestId('entry-nav-account')).toBeVisible();
+    await expect(page.getByTestId('entry-nav-message-center')).toBeVisible();
+    await expect.poll(async () => {
+      const strip = await page.locator('.workspace-tabs-chrome .workspace-tabs-strip').boundingBox();
+      const cluster = await page.locator('.entry-top-right-cluster').boundingBox();
+      return strip && cluster ? cluster.x - (strip.x + strip.width) : -1;
+    }).toBeGreaterThanOrEqual(15);
+  }
+
+  await expectReservedSpace();
+  await page.goto('/square/tool');
+  for (const title of ['Tool one', 'Tool two']) {
+    await page.locator('article[role="button"]').filter({ hasText: title }).click();
+    await expect(page.getByRole('button', { name: title, exact: true })).toBeVisible();
+    await expectReservedSpace();
+    await page.locator('.workspace-tab.is-pinned .workspace-tab__main').click();
+  }
+  await page.getByRole('button', { name: 'Tool one', exact: true }).click();
+  await expectReservedSpace();
+  for (const width of [760, 1024, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await expectReservedSpace();
+  }
+  await page.screenshot({ path: testInfo.outputPath('tool-tabs-account.png') });
+});
+
 test('[P0] @critical workspace selection remains isolated across two browser tabs', async ({ page, context }) => {
   const server = { activeWorkspaceId: TAB_PERSONAL_WORKSPACE.workspaceId };
   const requestsA: WorkspaceContextRequestWitness[] = [];

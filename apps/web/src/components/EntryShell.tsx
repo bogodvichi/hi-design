@@ -440,7 +440,7 @@ onDuplicateProject?: (
     targetFolderId?: string | null;
   },
 ) => Promise<void> | void;
-onRenameProject: (id: string, name: string, source?: ProjectMutationSource) => void;
+onRenameProject: (id: string, name: string, source?: ProjectMutationSource) => Promise<Project | null | void> | void;
 onProjectsRefresh?: () => Promise<void> | void;
 onCopyProject?: (
   id: string,

@@ -585,6 +585,7 @@ export function EntryTopRightCluster({
   const workspaceDimensions = workspaceAnalyticsDimensions(context);
   const clusterRef = useRef<HTMLDivElement | null>(null);
   const tabsSafeAreaOwnerRef = useRef<symbol | null>(null);
+  const clusterVisible = Boolean(leadingSlot || context);
 
   useLayoutEffect(() => {
     const cluster = clusterRef.current;
@@ -617,7 +618,7 @@ export function EntryTopRightCluster({
       }
       tabsSafeAreaOwnerRef.current = null;
     };
-  }, []);
+  }, [clusterVisible]);
 
   const isTeam = Boolean(context) && context!.workspaceType === 'team';
   const permissions = context?.permissions;
@@ -847,7 +848,7 @@ export function EntryTopRightCluster({
     });
   }
 
-  if ((!leadingSlot && !context) || typeof document === 'undefined') return null;
+  if (!clusterVisible || typeof document === 'undefined') return null;
 
   return (
     <>

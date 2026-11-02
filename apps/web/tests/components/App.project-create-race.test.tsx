@@ -2452,6 +2452,7 @@ describe('App project creation routing', () => {
       'project-source',
       { name: 'Renamed in source collection' },
       sourceContext,
+      { throwOnError: true },
     ));
   });
 
@@ -3381,6 +3382,46 @@ describe('App project creation routing', () => {
         'After local rename',
       );
     });
+  });
+
+  it('keeps a saved rename successful when refreshing the list fails', async () => {
+    mockedListProjects.mockResolvedValue([existingProject]);
+    mockedPatchProject.mockResolvedValueOnce({ ...existingProject, name: 'Rename A' });
+    render(<App />);
+    await screen.findByTestId('entry-project-project-existing');
+    mockedListProjects.mockRejectedValueOnce(new Error('list refresh unavailable'));
+    const dispatch = vi.spyOn(window, 'dispatchEvent');
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Rename first project A' }));
+      await waitFor(() => {
+        expect(screen.getByTestId('entry-project-project-existing').textContent).toContain('Rename A');
+        expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'od:operation-toast', detail: expect.objectContaining({ tone: 'success' }),
+        }));
+      });
+      await act(async () => Promise.resolve());
+      expect(dispatch.mock.calls.filter(([event]) => event.type === 'od:operation-toast')
+        .map(([event]) => (event as CustomEvent).detail.tone)).toEqual(['success']);
+    } finally { dispatch.mockRestore(); }
+  });
+
+  it('rolls back a refused rename and shows the preserved permission error', async () => {
+    mockedListProjects.mockResolvedValue([existingProject]);
+    mockedPatchProject.mockRejectedValueOnce(Object.assign(new Error('workspace project write is not allowed'), {
+      code: 'WORKSPACE_PROJECT_PERMISSION_DENIED', status: 403,
+    }));
+    render(<App />);
+    await screen.findByTestId('entry-project-project-existing');
+    const dispatch = vi.spyOn(window, 'dispatchEvent');
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Rename first project A' }));
+      await waitFor(() => {
+        expect(screen.getByTestId('entry-project-project-existing').textContent).toContain('Existing project');
+        expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({
+          type: 'od:operation-toast', detail: expect.objectContaining({ tone: 'error', message: expect.stringMatching(/access.*project/i) }),
+        }));
+      });
+    } finally { dispatch.mockRestore(); }
   });
 
   it('serializes list renames and rolls repeated failures back to the confirmed name', async () => {

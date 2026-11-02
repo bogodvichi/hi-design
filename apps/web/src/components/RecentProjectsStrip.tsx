@@ -49,7 +49,6 @@ import {
   resolveWorkspaceInviteTarget,
 } from './EntryNavRail';
 import {
-  copyProjectToPersonal,
   moveTeamProjectFolderAssignment,
   moveWorkspaceProject,
   workspaceProjectMoveErrorCode,
@@ -709,7 +708,6 @@ selectionExtension,
  const [renameInput, setRenameInput] = useState('');
   const [confirmTarget, setConfirmTarget] = useState<Project | null>(null);
   const [sharedSpaceTarget, setSharedSpaceTarget] = useState<Project | null>(null);
-  const [copyToPersonalTarget, setCopyToPersonalTarget] = useState<Project | null>(null);
   const [copyPendingId, setCopyPendingId] = useState<string | null>(null);
   const [copyToast, setCopyToast] = useState<{ message: string; tone: 'success' | 'error' } | null>(null);
   const [moveToast, setMoveToast] = useState<{ message: string; tone: 'error' | 'success'; details?: string } | null>(null);
@@ -1034,7 +1032,7 @@ const disabledKeys = useMemo(() => {
    || collaborationAvailable
  );
  // Guests have no mutation rights in team spaces — hide the entire card menu
- // (copy-to-personal, move, rename, delete, share) so a guest never sees
+ // (copy, move, rename, delete, share) so a guest never sees
  // actions they cannot perform. The effective role comes from the HDW
  // operator (team view) or the OpenDesign collab workspace context.
  const isGuest = operator
@@ -1731,65 +1729,6 @@ function requestDelete(project: Project) {
     });
   }
 
-  function requestCopyToPersonal(project: Project) {
-    trackCollection('copy_to_personal', {
-      project_key: project.id,
-      project_relation: 'other',
-    });
-    setMenuOpenId(null);
-    setCopyToPersonalTarget(project);
-  }
-
-  async function handleCopyToPersonalConfirm(selection: TeamTreeSelection) {
-    const project = copyToPersonalTarget;
-    if (!project || copyPendingId) return;
-    const startedAt = performance.now();
-    setCopyToPersonalTarget(null);
-    setCopyPendingId(project.id);
-    setCopyToast(null);
-    try {
-      const sourceWorkspaceContext = await resolveBoundProjectWorkspaceContext(
-        project.workspaceId?.trim() || homeWorkspaceId || '',
-      );
-      if (!sourceWorkspaceContext) throw new Error('source workspace unavailable');
-      await copyProjectToPersonal(project.id, sourceWorkspaceContext, {
-        targetFolderId: selection.folderId,
-      });
-      notifyTeamProjectsChanged();
-      window.dispatchEvent(new CustomEvent('personal:folders-updated'));
-      window.dispatchEvent(new CustomEvent('shared:projects-refresh'));
-      notifyToast({ message: t('recentProjects.copyToPersonalSuccess'), tone: 'success', details: [selection.workspaceName, selection.folderName].filter(Boolean).join(' / ') });
-      trackWorkspaceProjectActionResult(analytics.track, {
-        page_name: analyticsPage,
-        area: 'project_collection',
-        action: 'copy_to_personal',
-        result: 'success',
-        requested_count: 1,
-        succeeded_count: 1,
-        failed_count: 0,
-        duration_ms: Math.round(performance.now() - startedAt),
-        ...workspaceDimensions,
-      });
-    } catch (err) {
-      console.warn('[RecentProjectsStrip] copy project to personal failed:', err);
-      notifyToast({ message: userFacingError(err, t, 'recentProjects.copyToPersonalFailed'), tone: 'error' });
-      trackWorkspaceProjectActionResult(analytics.track, {
-        page_name: analyticsPage,
-        area: 'project_collection',
-        action: 'copy_to_personal',
-        result: 'failed',
-        requested_count: 1,
-        succeeded_count: 0,
-        failed_count: 1,
-        error_code: 'request_failed',
-        duration_ms: Math.round(performance.now() - startedAt),
-        ...workspaceDimensions,
-      });
-    } finally {
-      setCopyPendingId(null);
-    }
-  }
-
   async function commitDelete() {
     if (!confirmTarget || !onDelete || deletePending) return;
     const target = confirmTarget;
@@ -2417,12 +2356,6 @@ function requestDelete(project: Project) {
              || (isTeamProjectCollection || recentTeamProject ? !isGuest : creator.canMutate)
            ),
          );
-         const canCopyToPersonal = Boolean(
-           homeWorkspaceId
-           && space !== 'drafts'
-           && !isSharedWithMeCollection
-           && !isGuest,
-         );
          const canRenameProject = Boolean(
            !isSharedWithMeCollection
            && !recentSharedWithMe
@@ -2449,7 +2382,7 @@ function requestDelete(project: Project) {
            !isRecentCollection && !isSharedWithMeCollection && !isGuest && onDelete && (creator.canMutate || (isTeamProjectCollection && creator.canAdmin)),
          );
          const canRemoveSharedWithMe = Boolean(isSharedWithMeCollection && onRemoveSharedWithMe);
-         const hasShareOrCopyActions = canShareProject || canDuplicateProject || canCopyToPersonal;
+         const hasShareOrCopyActions = canShareProject || canDuplicateProject;
          const hasManagementActions =
            canRenameProject || canMoveProject || canDeleteProject || canRemoveSharedWithMe;
          const hasRecentActions = canOpenLocation || canRemoveRecent;
@@ -2843,21 +2776,6 @@ function requestDelete(project: Project) {
                          </span>
                        </button>
                      ) : null}
-                     {canCopyToPersonal ? (
-                       <button
-                         type="button"
-                         role="menuitem"
-                         disabled={copyPendingId === project.id}
-                         onClick={() => requestCopyToPersonal(project)}
-                       >
-                         <Icon name="copy" size={14} />
-                         <span>
-                           {copyPendingId === project.id
-                             ? t('recentProjects.shareInProgress')
-                             : t('recentProjects.copyToPersonal')}
-                         </span>
-                       </button>
-                     ) : null}
                      {canRenameProject ? (
                        <button
                          type="button"
@@ -2967,19 +2885,6 @@ function requestDelete(project: Project) {
               }),
             );
           }}
-        />
-      ) : null}
-      {copyToPersonalTarget ? (
-        <MoveToTeamTreeDialog
-          onConfirm={(selection) => { void handleCopyToPersonalConfirm(selection); }}
-          onCancel={() => setCopyToPersonalTarget(null)}
-          busy={copyPendingId === copyToPersonalTarget.id}
-          mode="unified"
-          copyMode
-          currentWorkspaceId={currentWorkspaceId ?? workspaceContext?.workspaceId ?? null}
-          currentFolderId={currentFolderId ?? null}
-          disabledKeys={disabledKeys}
-          canMoveToPersonal
         />
       ) : null}
       {renameTarget ? (

@@ -2843,6 +2843,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
   async function materializeCatalogOnlyOwnerProject(
     projectId: string,
     ctx: WorkspaceProjectContext,
+    operation: 'owner' | 'organize' = 'owner',
   ): Promise<CatalogOnlyOwnerMaterialization> {
     if (!teamProjectCatalog) return 'missing';
     let remoteProjects: VelaTeamProjectRecord[];
@@ -2866,7 +2867,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
     if (
       effectiveRemoteOwnerId !== ctx.workspaceMemberId
       || remote.access.frozen
-      || !remote.access.canEdit
+      || (operation !== 'organize' && !remote.access.canEdit)
     ) {
       return 'denied';
     }
@@ -2959,13 +2960,13 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
   async function prepareTeamCatalogProject(
     projectId: string,
     context: WorkspaceProjectContext,
-    operation: 'owner' | 'copy' = 'owner',
+    operation: 'owner' | 'copy' | 'organize' = 'owner',
   ): Promise<CatalogOnlyOwnerMaterialization> {
     const project = getProject(db, projectId);
     if (!project || isUnmaterializedSharedPlaceholder(project)) {
       return operation === 'copy'
         ? materializeTeamProjectForCopy(projectId, context)
-        : materializeCatalogOnlyOwnerProject(projectId, context);
+        : materializeCatalogOnlyOwnerProject(projectId, context, operation);
     }
     const reconciliation = await reconcileCatalogProjectBinding(projectId, context);
     return reconciliation === 'denied' || reconciliation === 'unavailable'
@@ -4095,7 +4096,11 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
        : null;
       let project = getProject(db, req.params.projectId);
       if (ctx.workspaceType === 'team') {
-        const preparation = await prepareTeamCatalogProject(req.params.projectId, ctx);
+        // Organizing an owned Personal cloud project changes only its local
+        // folder; content-edit authority is still required for other moves.
+        const personalFolderMove = isPersonalProjectWorkspace(ctx) && visibility === 'personal'
+          && (!targetWorkspaceId || targetWorkspaceId === ctx.workspaceId) && hasExplicitTargetFolder;
+        const preparation = await prepareTeamCatalogProject(req.params.projectId, ctx, personalFolderMove ? 'organize' : 'owner');
         if (preparation === 'denied') {
           return sendApiError(res, 403, 'PROJECT_DELETE_FORBIDDEN', 'project move forbidden');
         }
@@ -4276,8 +4281,10 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
     // Push a team folder assignment to HDW before committing it locally. A
     // failed remote write must not be reported as a successful move while the
     // two catalogs point at different folders.
-    if ((visibility === 'team' || responseWorkspaceId !== ctx.workspaceId
-      || (isPersonalProjectWorkspace(ctx) && row.resourceHubResourceId)) && hasExplicitTargetFolder) {
+    // Personal folder organization is local even when the project is published.
+    // Its cloud binding and shared location stay unchanged.
+    if ((visibility === 'team' || responseWorkspaceId !== ctx.workspaceId)
+      && !(isFolderOnlyMove && isPersonalProjectWorkspace(ctx)) && hasExplicitTargetFolder) {
       try {
         const operatorMemberId = resolvedTargetWorkspaceId && resolvedTargetWorkspaceId !== ctx.workspaceId
           ? (targetMemberId ?? ctx.workspaceMemberId)
@@ -4539,8 +4546,8 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
      }
       // Preserve committed transfers, but do not report a folder assignment
       // as successful when the authoritative catalog rejected it.
-     if ((visibility === 'team' || batchIsCrossWorkspace
-       || (isPersonalProjectWorkspace(ctx) && rows.some((row: any) => row.resourceHubResourceId))) && batchTargetFolderId !== undefined) {
+     if ((visibility === 'team' || batchIsCrossWorkspace)
+       && !(batchIsFolderOnly && isPersonalProjectWorkspace(ctx)) && batchTargetFolderId !== undefined) {
        let folderSyncError: unknown;
        for (const id of projectIds) {
          try {
@@ -6168,7 +6175,11 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
           Object.prototype.hasOwnProperty.call(remoteProject, 'folderId')
           || Object.prototype.hasOwnProperty.call(remoteProject, 'folder_id')
         );
-        if (hasRemoteFolder && remoteProject) {
+        const home = hasRemoteFolder
+          ? await resolveTargetWorkspaceIdentity(bindingWorkspaceId) : null;
+        // A published Personal project keeps its local organization independent
+        // of the folder shown to cloud recipients.
+        if (hasRemoteFolder && remoteProject && !(home && isPersonalProjectWorkspace(home.context))) {
           const remoteFolderValue = remoteProject.folderId ?? remoteProject.folder_id ?? null;
           const remoteFolderId =
             typeof remoteFolderValue === 'string' && remoteFolderValue.trim()

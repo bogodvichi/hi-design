@@ -3312,6 +3312,61 @@ test('[P1] projects grid card rename updates the card title and persists after r
   expect(project.name).toBe(renamedName);
 });
 
+test('[P1] personal collection rename preserves the saved name on denial and supports retry', async ({ page }, testInfo) => {
+  test.setTimeout(T.xlong);
+  const originalName = `Personal rename ${Date.now()}`;
+  const renamedName = `${originalName} saved`;
+  await page.goto('/');
+  await createProject(page, originalName);
+  await expectWorkspaceReady(page);
+  const { projectId } = getProjectContextFromUrl(page);
+  const context = { ...AMR_PERSONAL_WORKSPACE_CONTEXT, isDefaultTeam: true };
+  await page.route('**/api/workspace/directory', (route) => route.fulfill({
+    json: { items: [context], activeWorkspaceId: context.workspaceId },
+  }));
+  await page.route('**/api/workspace/context', (route) => route.fulfill({ json: { context } }));
+  await page.route('**/api/workspaces/*/projects?*', (route) => route.fulfill({ json: { projects: [] } }));
+  await page.route('**/api/folders?*', (route) => route.fulfill({ json: { code: 0, data: { folders: [] } } }));
+  await page.route('**/api/folders/root/projects?*', async (route) => {
+    const project = await fetchProjectById(page, projectId);
+    await route.fulfill({ json: { code: 0, data: { projects: [{
+      ...project, workspaceId: context.workspaceId,
+      createdByWorkspaceMemberId: null, workspaceVisibility: 'personal',
+    }] } } });
+  });
+  let deny = true;
+  await page.route(`**/api/projects/${projectId}`, async (route) => {
+    if (route.request().method() !== 'PATCH' || !deny) return route.continue();
+    expect(route.request().headers()['x-od-workspace-id']).toBe(context.workspaceId);
+    await route.fulfill({ status: 403, json: { error: {
+      code: 'WORKSPACE_PROJECT_PERMISSION_DENIED', message: 'workspace project write is not allowed',
+    } } });
+  });
+  await page.goto('/personal-all');
+  const card = page.locator(`[data-project-id="${projectId}"]`);
+  await expect(card).toContainText(originalName);
+  async function rename() {
+    await card.hover();
+    await card.getByRole('button', { name: /more actions/i }).click();
+    await page.getByRole('menuitem', { name: /^rename$/i }).click();
+    await page.locator('.modal-rename').getByRole('textbox').fill(renamedName);
+    await page.locator('.modal-rename button.primary').click();
+  }
+  await rename();
+  await expect(page.getByRole('alert').filter({ hasText: /access|permission/i })).toBeVisible();
+  await expect(card).toContainText(originalName);
+  await expect(card).not.toContainText(renamedName);
+  expect((await fetchProjectById(page, projectId)).name).toBe(originalName);
+  await testInfo.attach('rename-denied', { body: await page.screenshot(), contentType: 'image/png' });
+  deny = false;
+  await rename();
+  await expect(card).toContainText(renamedName);
+  expect((await fetchProjectById(page, projectId)).name).toBe(renamedName);
+  await page.reload();
+  await expect(card).toContainText(renamedName);
+  await testInfo.attach('rename-saved', { body: await page.screenshot(), contentType: 'image/png' });
+});
+
 test('[P1] projects select mode supports multi-select delete with cancel and confirm', async ({ page }) => {
   const firstName = `Batch delete A ${Date.now()}`;
   const secondName = `Batch delete B ${Date.now()}`;

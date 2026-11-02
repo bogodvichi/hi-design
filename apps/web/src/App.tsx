@@ -4481,8 +4481,8 @@ if (fetchedProject) {
   ) => {
     const trimmed = name.trim();
     if (!trimmed) return;
-    const previous = projectsRef.current.find((project) => project.id === id)
-      ?? (source?.project.id === id ? source.project : null);
+    const previous = (source?.project.id === id ? source.project : null)
+      ?? projectsRef.current.find((project) => project.id === id);
     const renameContext = source?.workspaceContext ?? workspaceContextRef.current;
     const renameAccountGeneration = currentWorkspaceAccountGeneration();
     const renameScopeKey = projectListScopeKey(renameContext);
@@ -4526,12 +4526,18 @@ if (fetchedProject) {
       });
     }
     const runRename = async () => {
-      const persisted = await patchProject(id, { name: trimmed }, renameContext);
+      let persisted: Project | null = null;
+      let renameError: unknown;
+      try {
+        persisted = await patchProject(id, { name: trimmed }, renameContext, { throwOnError: true });
+      } catch (error) {
+        renameError = error;
+      }
       if (persisted) renameState.confirmed = persisted;
       const isLatestQueuedRename =
         projectRenameStatesRef.current.get(renameProjectionKey) === renameState
         && renameState.generation === renameGeneration;
-      if (!isLatestQueuedRename) return;
+      if (!isLatestQueuedRename) return null;
       const nextProject = persisted ?? renameState.confirmed;
       const pendingProjection = pendingProjectNameProjectionsRef.current.get(renameProjectionKey);
       if (pendingProjection?.mutationVersion === renameMutationVersion) {
@@ -4556,9 +4562,11 @@ if (fetchedProject) {
       const isCurrentScope =
         currentWorkspaceAccountGeneration() === renameAccountGeneration
         && projectListScopeKey(workspaceContextRef.current) === renameScopeKey;
-      if (!isCurrentScope) return;
+      if (!isCurrentScope) {
+        return currentWorkspaceAccountGeneration() === renameAccountGeneration ? nextProject : null;
+      }
       if (!persisted) {
-        notifyToast({ message: t('feedback.renameFailed'), tone: 'error' });
+        notifyToast({ message: userFacingError(renameError, t, 'feedback.renameFailed', t('feedback.objectProject')), tone: 'error' });
         setProjects((current) => current.map((project) =>
           project.id === id && project.name === trimmed
             ? {
@@ -4570,7 +4578,7 @@ if (fetchedProject) {
             : project
         ));
         await refreshProjects();
-        return;
+        return nextProject;
       }
       notifyToast({ message: t('feedback.renamed'), tone: 'success' });
       setProjects((current) => current.map((project) =>
@@ -4583,7 +4591,14 @@ if (fetchedProject) {
             }
           : project
       ));
-      await refreshProjects();
+      // The write is already saved; a list refresh failure must not report a
+      // failed rename or discard the confirmed result needed by collections.
+      try {
+        await refreshProjects();
+      } catch {
+        // Normal list refresh/reconnect paths will reconcile later.
+      }
+      return persisted;
     };
     const queued = renameState.tail.then(runRename, runRename);
     renameState.tail = queued.then(
@@ -4599,9 +4614,10 @@ if (fetchedProject) {
       }
     });
     try {
-      await queued;
+      return await queued;
     } catch (err) {
       notifyToast({ message: userFacingError(err, t, 'feedback.renameFailed'), tone: 'error' });
+      return null;
     }
   }, [refreshProjects, t]);
 
@@ -6016,11 +6032,11 @@ if (fetchedProject) {
           identityScopeKey={workspaceTabsIdentityScopeKey}
         />
         {/* Avatar + credits keep their home-view spot (the fixed top-right
-            corner over the tabs chrome) while a project tab is open. EntryShell
+            corner over the tabs chrome) while a project or tool tab is open. EntryShell
             now remains mounted as a hidden Home keep-alive, but its active prop
             suppresses the rail-owned updater/account overlays; the visible
-            project route therefore owns the one top-right cluster on screen. */}
-        {route.kind === 'project' ? (
+            project/tool route therefore owns the one top-right cluster on screen. */}
+        {route.kind === 'project' || route.kind === 'external' ? (
           <WorkspaceTopRightAccountCluster
             onOpenSettings={openSettings}
             onSignedOut={handleActiveCloudSignOut}

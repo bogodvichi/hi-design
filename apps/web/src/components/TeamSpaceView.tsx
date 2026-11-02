@@ -91,7 +91,7 @@ interface Props {
    projectTitleHint?: ProjectTitleHint,
  ) => Promise<boolean> | boolean | void;
  onDeleteProject?: (id: string, source?: ProjectMutationSource) => Promise<boolean | void> | boolean | void;
-  onRenameProject?: (id: string, name: string, source?: ProjectMutationSource) => void;
+  onRenameProject?: (id: string, name: string, source?: ProjectMutationSource) => Promise<Project | null | void> | void;
   onDuplicateProject?: (id: string) => Promise<void> | void;
   onCopyProject?: (
     id: string,
@@ -680,7 +680,7 @@ function ProjectsPanel({
     projectTitleHint?: ProjectTitleHint,
   ) => Promise<boolean> | boolean | void;
   onDeleteProject?: (id: string, source?: ProjectMutationSource) => Promise<boolean | void> | boolean | void;
-  onRenameProject?: (id: string, name: string, source?: ProjectMutationSource) => void;
+  onRenameProject?: (id: string, name: string, source?: ProjectMutationSource) => Promise<Project | null | void> | void;
   onDuplicateProject?: (id: string) => Promise<void> | void;
   onCopyProject?: (
     id: string,
@@ -1163,16 +1163,20 @@ function ProjectsPanel({
             const sourceProject = projects.find((project) => project.id === id);
             return sourceProject ? onDeleteProject(id, { project: sourceProject, workspaceContext }) : false;
           } : undefined}
-          onRename={(id, name) => {
+          onRename={async (id, name) => {
             const sourceProject = projects.find((project) => project.id === id);
-            setProjects((prev) => prev.map((p) => p.id === id ? { ...p, name } : p));
-            onRenameProject?.(
+            const persisted = await onRenameProject?.(
               id,
               name,
               sourceProject
                 ? { project: sourceProject, workspaceContext }
                 : undefined,
             );
+            if (persisted) {
+              setProjects((prev) => prev.map((project) => project.id === id && project.workspaceId === sourceProject?.workspaceId
+                ? { ...project, name: persisted.name, metadata: persisted.metadata, updatedAt: persisted.updatedAt }
+                : project));
+            }
           }}
           onDuplicate={onCopyProject && teamId
             ? (id) => onCopyProject(id, { sourceWorkspaceId: teamId, targetWorkspaceId: teamId })
@@ -1630,7 +1634,7 @@ interface FolderViewProps {
     projectTitleHint?: ProjectTitleHint,
   ) => Promise<boolean> | boolean | void;
   onDeleteProject?: (id: string, source?: ProjectMutationSource) => Promise<boolean | void> | boolean | void;
-  onRenameProject?: (id: string, name: string, source?: ProjectMutationSource) => void;
+  onRenameProject?: (id: string, name: string, source?: ProjectMutationSource) => Promise<Project | null | void> | void;
   onDuplicateProject?: (id: string) => Promise<void> | void;
   onCopyProject?: (
     id: string,
@@ -1883,7 +1887,7 @@ function FoldersPanel({
    projectTitleHint?: ProjectTitleHint,
  ) => Promise<boolean> | boolean | void;
  onDeleteProject?: (id: string, source?: ProjectMutationSource) => Promise<boolean | void> | boolean | void;
-  onRenameProject?: (id: string, name: string, source?: ProjectMutationSource) => void;
+  onRenameProject?: (id: string, name: string, source?: ProjectMutationSource) => Promise<Project | null | void> | void;
   onDuplicateProject?: (id: string) => Promise<void> | void;
   onCopyProject?: (
     id: string,
@@ -2372,16 +2376,20 @@ function FoldersPanel({
             const sourceProject = projects.find((project) => project.id === id);
             return sourceProject ? onDeleteProject(id, { project: sourceProject, workspaceContext }) : false;
           } : undefined}
-          onRename={(id, name) => {
+          onRename={async (id, name) => {
             const sourceProject = projects.find((project) => project.id === id);
-            setProjects((prev) => prev.map((p) => p.id === id ? { ...p, name } : p));
-            onRenameProject?.(
+            const persisted = await onRenameProject?.(
               id,
               name,
               sourceProject
                 ? { project: sourceProject, workspaceContext }
                 : undefined,
             );
+            if (persisted) {
+              setProjects((prev) => prev.map((project) => project.id === id && project.workspaceId === sourceProject?.workspaceId
+                ? { ...project, name: persisted.name, metadata: persisted.metadata, updatedAt: persisted.updatedAt }
+                : project));
+            }
           }}
           onDuplicate={onCopyProject && teamId
             ? (id) => onCopyProject(id, { sourceWorkspaceId: teamId, targetWorkspaceId: teamId, targetFolderId: folderId })

@@ -20,6 +20,11 @@ describe('user-facing feedback', () => {
       .toBe('没有 Skill 的访问权限，请联系所有者或团队管理员。');
   });
 
+  it('explains a project workspace denial without exposing backend diagnostics', () => {
+    expect(userFacingError({ code: 'WORKSPACE_PROJECT_PERMISSION_DENIED' }, t, 'feedback.renameFailed', '项目'))
+      .toBe('没有项目的访问权限，请联系所有者或团队管理员。');
+  });
+
   it.each(['AUTHENTICATION_REQUIRED', 'INVALID_SESSION'])('maps %s to an actionable sign-in message', (code) => {
     expect(userFacingError({ error: { code } }, t, 'feedback.saveFailed')).toMatch(/登录/);
   });

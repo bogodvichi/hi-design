@@ -1297,6 +1297,14 @@ describe('patchProject', () => {
       patchProject('someone-elses-project', { name: 'Renamed' }, personalWorkspaceContext()),
     ).resolves.toBeNull();
   });
+
+  it('preserves the daemon error for rename callers that need actionable feedback', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => Response.json({
+      error: { code: 'WORKSPACE_PROJECT_PERMISSION_DENIED', message: 'workspace project write is not allowed' },
+    }, { status: 403 })));
+    await expect(patchProject('p1', { name: 'Renamed' }, personalWorkspaceContext(), { throwOnError: true }))
+      .rejects.toMatchObject({ code: 'WORKSPACE_PROJECT_PERMISSION_DENIED', status: 403 });
+  });
 });
 
 describe('createDesignSystemProjectFromProject', () => {

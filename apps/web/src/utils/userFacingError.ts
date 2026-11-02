@@ -26,6 +26,7 @@ const CODE_KEYS: Record<string, FeedbackKey> = {
   INVALID_SESSION: 'feedback.sessionExpired',
   RESOURCE_ACCESS_DENIED: 'feedback.accessDenied',
   WORKSPACE_ACCESS_DENIED: 'feedback.accessDenied',
+  WORKSPACE_PROJECT_PERMISSION_DENIED: 'feedback.accessDenied',
   PROJECT_ACCESS_DENIED: 'feedback.accessDenied',
   NOT_RESOURCE_OWNER: 'feedback.operationDenied',
   PROJECT_DELETE_FORBIDDEN: 'feedback.operationDenied',
