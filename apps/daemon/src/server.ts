@@ -9497,12 +9497,12 @@ const projectRouteResult = registerProjectRoutes(app, {
        invalidatePresenceReadCache(projectId);
        return result;
      },
-     materializeTeamProject: async (projectId, principal) => {
+     materializeTeamProject: async (projectId, principal, ownerMemberId) => {
         const outcome = await collabSyncRoutes.pullSharedProject(projectId, {
           workspaceId: principal.teamId,
           resourceTeamId: principal.teamId,
           viewerMemberId: principal.memberId,
-          ownerMemberId: principal.memberId,
+          ownerMemberId: ownerMemberId ?? principal.memberId,
         });
         if (outcome.status !== 'pulled') {
           throw new Error(`team project materialization ${outcome.status}`);

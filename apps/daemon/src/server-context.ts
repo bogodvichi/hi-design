@@ -242,8 +242,9 @@ export interface ServerContext {
     * Pull and atomically register a catalog-only Team project before an
      * exact-owner mutation needs local state. This preserves a Personal copy
      * before unshare and gives a second-device rename a real row to update.
+     * Folder managers pass the creator separately from their viewer identity.
      */
-    materializeTeamProject?(projectId: string, principal: ResourceHubPrincipal): Promise<void>;
+    materializeTeamProject?(projectId: string, principal: ResourceHubPrincipal, ownerMemberId?: string): Promise<void>;
     /**
      * Re-upsert the shared project's hub catalog entry after a metadata-only
      * change (rename). Without this a rename with no follow-up content

@@ -226,6 +226,34 @@ class MockWorkspaceEventSource {
 }
 
 describe('RecentProjectsStrip', () => {
+  it.each([
+    { x: 540, y: 540, top: 216, left: -18, height: 452 },
+    { x: 60, y: 70, top: -16, left: -326, height: 452 },
+    { x: 540, y: 440, top: 284, left: -18, height: 152, boundaryTop: 360 },
+  ])('keeps the context menu inside the visible scroll area at ($x, $y)', ({ x, y, top, left, height, boundaryTop = 60 }) => {
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains('entry-main--scroll')) {
+        return { left: 50, top: boundaryTop, right: 550, bottom: 560, width: 500, height: 560 - boundaryTop } as DOMRect;
+      }
+      if (this.classList.contains('recent-projects__card-menu')) {
+        return { left: 0, top: 0, right: 144, bottom: 220, width: 144, height: 220 } as DOMRect;
+      }
+      return { left: 400, top: 100, right: 426, bottom: 126, width: 26, height: 26 } as DOMRect;
+    });
+    const { container } = render(<div className="entry-main--scroll">
+      <RecentProjectsStrip projects={[project({})]} onOpen={() => {}} onDuplicate={vi.fn()} />
+    </div>);
+    const thumb = container.querySelector('.recent-projects__card-thumb')!;
+    fireEvent.contextMenu(thumb, { clientX: x, clientY: y });
+    expect(screen.getByRole('menu')).toHaveStyle({
+      left: `${left}px`, top: `${top}px`, maxHeight: `${height}px`, overflowY: 'auto',
+    });
+
+    // Reposition an already-open menu; the project id does not change.
+    fireEvent.contextMenu(thumb, { clientX: 200, clientY: 320 });
+    expect(screen.getByRole('menu')).toHaveStyle({ left: '-200px' });
+  });
+
   it('opens the same project action menu from a card context click', () => {
     const onDuplicate = vi.fn();
     const { container } = render(

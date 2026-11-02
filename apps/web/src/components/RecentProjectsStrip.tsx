@@ -704,6 +704,7 @@ selectionExtension,
     left: number;
     top: number;
   } | null>(null);
+  const [menuContextStyle, setMenuContextStyle] = useState<CSSProperties>({});
  const [renameTarget, setRenameTarget] = useState<{ id: string; original: string } | null>(null);
  const [renameInput, setRenameInput] = useState('');
   const [confirmTarget, setConfirmTarget] = useState<Project | null>(null);
@@ -1130,7 +1131,35 @@ const disabledKeys = useMemo(() => {
       const visibleTop = Math.max(0, scrollRect?.top ?? 0);
       const visibleBottom = Math.min(viewportHeight, scrollRect?.bottom ?? viewportHeight);
       const triggerRect = trigger.getBoundingClientRect();
-      const menuHeight = menu.getBoundingClientRect().height;
+      const menuRect = menu.getBoundingClientRect();
+      const menuHeight = menu.scrollHeight
+        ? menu.scrollHeight + menu.offsetHeight - menu.clientHeight
+        : menuRect.height;
+      if (menuContextPosition?.projectId === menuOpenId) {
+        const anchorRect = anchor.getBoundingClientRect();
+        const minLeft = Math.max(0, scrollRect?.left ?? 0) + PROJECT_MENU_VIEWPORT_MARGIN;
+        const maxRight = Math.min(window.innerWidth, scrollRect?.right ?? window.innerWidth) - PROJECT_MENU_VIEWPORT_MARGIN;
+        const minTop = visibleTop + PROJECT_MENU_VIEWPORT_MARGIN;
+        const maxBottom = visibleBottom - PROJECT_MENU_VIEWPORT_MARGIN;
+        const maxHeight = Math.max(0, maxBottom - minTop);
+        const maxWidth = Math.max(0, maxRight - minLeft);
+        const height = Math.min(menuHeight, maxHeight);
+        const x = anchorRect.left + menuContextPosition.left;
+        const y = anchorRect.top + menuContextPosition.top;
+        const spaceBelow = maxBottom - y;
+        const spaceAbove = y - minTop;
+        const top = spaceBelow < height && spaceAbove > spaceBelow ? y - height : y;
+        setMenuContextStyle({
+          left: Math.max(minLeft, Math.min(x, maxRight - menuRect.width)) - anchorRect.left,
+          top: Math.max(minTop, Math.min(top, maxBottom - height)) - anchorRect.top,
+          maxHeight,
+          maxWidth,
+          minWidth: Math.min(144, maxWidth),
+          overflowY: 'auto',
+          gridAutoRows: 'max-content',
+        });
+        return;
+      }
       const spaceBelow =
         visibleBottom - triggerRect.bottom - PROJECT_MENU_GAP - PROJECT_MENU_VIEWPORT_MARGIN;
       const spaceAbove =
@@ -1156,7 +1185,7 @@ const disabledKeys = useMemo(() => {
       window.removeEventListener('scroll', measureMenuPlacement, true);
       observer?.disconnect();
     };
-  }, [menuOpenId]);
+  }, [menuOpenId, menuContextPosition]);
 
   // Cover fetching must key off the *set of project ids and their readiness*, not the
   // `visibleProjects` array reference. That reference changes on every render
@@ -2714,6 +2743,7 @@ function requestDelete(project: Project) {
                         top: menuContextPosition.top,
                         right: 'auto',
                         bottom: 'auto',
+                        ...menuContextStyle,
                       } : undefined}
                       onClick={(event) => event.stopPropagation()}
                     >

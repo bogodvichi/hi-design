@@ -1,11 +1,12 @@
 import { expect, test } from '@/playwright/suite';
 import { ensureRailOpen, openNewProjectModal } from '@/playwright/rail';
-import { settingsSurface } from '@/playwright/amr';
+import { AMR_PERSONAL_WORKSPACE_CONTEXT, AMR_PERSONAL_WORKSPACE_HEADERS, mockAmrPersonalWorkspace, settingsSurface } from '@/playwright/amr';
 import { expectStableCount } from '@/playwright/assertions';
 import { openHomeTemplateMenu } from '@/playwright/home-hero';
 import type {
   WorkspaceCollabContext,
   WorkspaceDirectoryItem,
+  WorkspaceProjectSummary,
 } from '@open-design/contracts';
 import type { Page, Request } from '@playwright/test';
 import { applyStandardMocks, fulfillAgentsRoute, routeSuccessfulRuns, STORAGE_KEY } from '@/playwright/mock-factory';
@@ -487,6 +488,57 @@ test('[P0] @critical recent projects strip opens a project card from Home', asyn
   await expect(recentStrip).toBeVisible();
   await recentStrip.locator(`[data-project-id="${created.project.id}"]`).click();
   await expect(page).toHaveURL(new RegExp(`/projects/${created.project.id}`));
+});
+
+test('[P1] project context menu stays clickable near the bottom and right edges', async ({ page }) => {
+  await page.setViewportSize({ width: 760, height: 520 });
+  await mockAmrPersonalWorkspace(page);
+  const response = await page.request.post('/api/projects', {
+    headers: AMR_PERSONAL_WORKSPACE_HEADERS,
+    data: { id: `context-menu-${crypto.randomUUID()}`, name: 'Context menu near window edge', skillId: null, designSystemId: null },
+  });
+  expect(response.ok(), await response.text()).toBeTruthy();
+  const created = await response.json() as { project: WorkspaceProjectSummary['project'] };
+  const summary: WorkspaceProjectSummary = {
+    ...created.project,
+    project: created.project,
+    workspaceId: AMR_PERSONAL_WORKSPACE_CONTEXT.workspaceId,
+    createdByWorkspaceMemberId: AMR_PERSONAL_WORKSPACE_CONTEXT.workspaceMemberId,
+    visibility: 'personal',
+    resourceState: 'active',
+    currentUserAccess: {
+      canOpen: true, canRename: true, canDelete: true, canDuplicate: true,
+      canMoveToTeam: true, canMoveToPersonal: false, canExport: true, canSendTo: true, canRestoreVersion: true,
+    },
+  };
+  await page.route('**/api/workspaces/*/projects?*', route => route.fulfill({ json: { projects: [summary] } }));
+  await gotoEntryHome(page);
+  const card = page.locator(`[data-project-id="${created.project.id}"]`);
+  await expect(card).toBeVisible();
+  await card.scrollIntoViewIfNeeded();
+  const thumb = card.locator('.recent-projects__card-thumb');
+  const box = await thumb.boundingBox();
+  expect(box).not.toBeNull();
+  await thumb.click({ button: 'right', position: { x: box!.width - 8, y: box!.height - 8 } });
+  const menu = card.getByRole('menu');
+  await expect(menu).toBeVisible();
+  await expect.poll(() => menu.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const boundary = element.closest('.entry-main--scroll')!.getBoundingClientRect();
+    return rect.top >= Math.max(0, boundary.top)
+      && rect.bottom <= Math.min(innerHeight, boundary.bottom)
+      && rect.left >= Math.max(0, boundary.left)
+      && rect.right <= Math.min(innerWidth, boundary.right);
+  })).toBe(true);
+  const lastAction = menu.getByRole('menuitem').last();
+  await lastAction.scrollIntoViewIfNeeded();
+  expect(await lastAction.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return element.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+  })).toBe(true);
+  await page.screenshot({ path: 'ui/reports/project-context-menu-edge.png' });
+  await menu.getByRole('menuitem', { name: 'Rename', exact: true }).click();
+  await expect(page.getByRole('dialog')).toBeVisible();
 });
 
 test('[P1] design systems page is reachable from entry nav and supports search, preview, and default selection', async ({ page }) => {
