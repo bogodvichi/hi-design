@@ -56,7 +56,10 @@ export function resolveEntryRailAccountFooterState(
   workspaceState: WorkspaceContextState,
   amrLoggedIn: boolean | null | undefined,
   amrSessionState?: import('@open-design/contracts').AmrSessionState,
+  oaAuthenticated = false,
 ): EntryRailAccountFooterState {
+  // Workspace readiness cannot invalidate an independently verified OA login.
+  if (oaAuthenticated) return 'hidden';
   if (requiresAmrReauthentication(amrSessionState, workspaceState.failure)) return 'sign-in';
   if (workspaceState.context) return 'hidden';
   if (workspaceState.loading) return 'syncing';

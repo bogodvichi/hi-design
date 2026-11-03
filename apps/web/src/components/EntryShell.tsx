@@ -609,19 +609,21 @@ onCopySharedProject,
  // unresolved or unavailable authority into an anonymous, unbound create.
  const workspaceContextState = useWorkspaceContext();
  const { context: workspaceContext, loading: workspaceLoading } = workspaceContextState;
+ const { username: currentUsername } = useAuth();
  const accountFooterState = resolveEntryRailAccountFooterState(
    workspaceContextState,
    amrLoggedIn,
    amrSessionState,
+   Boolean(currentUsername),
  );
 const railWorkspaceContext = accountFooterState === 'sign-in'
+  || requiresAmrReauthentication(amrSessionState, workspaceContextState.failure)
   ? null
   : workspaceContext;
 const usesOpenDesignCloud = config.mode === 'daemon' && config.agentId === 'amr';
 // Current user's Shared Space member ID — derived deterministically from
 // the username so it does NOT depend on which workspace is currently
 // selected. Personal projects store this ID as `createdByWorkspaceMemberId`.
-const { username: currentUsername } = useAuth();
 const [selfSharedSpaceMemberId, setSelfSharedSpaceMemberId] = useState<string | null>(null);
 const sharedSpaceTeamId = useSharedSpaceTeamId();
 useEffect(() => {
@@ -1797,6 +1799,9 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
            ) : null
          }
          context={railWorkspaceContext}
+         workspaceLoading={workspaceLoading}
+         workspaceUnavailable={workspaceContextState.failure === 'unavailable'}
+         onRetryWorkspace={() => notifyWorkspaceContextRefresh()}
          billing={workspaceBilling}
          balanceUsd={workspaceBalanceUsd}
          onOpenSettings={onOpenSettings}
@@ -1806,10 +1811,7 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
          onSignInCloud={() => navigate({ kind: 'home', view: 'onboarding' })}
          onSignedOut={onSignedOut}
          updaterSlot={active ? updaterSlot : undefined}
-         // A loading or unavailable workspace read is not proof of sign-out.
-         // Keep the account slot neutral until Cloud answers successfully;
-         // only a successful null context (or known local sign-out) may show
-         // the sign-in card.
+         // OA identity displays immediately; workspace status belongs to its tree.
         footerNotice={accountFooterNotice}
         activeTeamId={entryRoute.teamId}
         activeFolderId={entryRoute.folderId}

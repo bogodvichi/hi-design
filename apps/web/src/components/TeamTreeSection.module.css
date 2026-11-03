@@ -408,6 +408,16 @@
   font-weight: 500;
 }
 
+.syncError {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 12px;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
 /* Neutralize the global `button:active { transform: translateY(1px) }` from
    primitives.css so tree buttons don't drift on click. */
 .teamLabel:active,

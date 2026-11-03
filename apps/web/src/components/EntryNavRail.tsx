@@ -6,10 +6,10 @@ import { PageRefreshButton } from './PageRefreshButton';
 // (`GET /api/workspace/context`, shared via `useWorkspaceContext`), never the
 // demo's hardcoded 琼羽 / Refly / 800 placeholders:
 //
-//   • Account section (top) — real `context.displayName` + an account menu
+//   • Account section (top) — verified OA identity + an account menu
 //     (settings / GitHub help / feature request / socials / sign out — theme and
 //     language live in 设置·通用 only, matching #5517).
-//     No header block when there is no cloud identity (context === null) —
+//     No header block when neither OA nor a cloud account is signed in —
 //     the rail starts at the search box; expand/collapse lives in the
 //     workspace tabs bar's pinned Home toggle.
 //   • Billing chip — real plan tier + explicitly scoped USD balance when Vela
@@ -54,6 +54,7 @@ import { resetCloudSignInTipDismissal } from './CloudSignInTip';
 import { SignOutConfirmDialog } from './SignOutConfirmDialog';
 import { notifyAmrLoginStatusChanged } from './amrLoginPolling';
 import { getStoredUserInfo } from '../auth/auth';
+import { useAuth } from '../auth/LoginGate';
 import { Icon } from './Icon';
 import { Spinner } from './Loading';
 import { GITHUB_STARS_FALLBACK_LABEL, formatStars, useGithubStars } from './useGithubStars';
@@ -224,8 +225,11 @@ interface Props {
   /** Extra content for the floating top-right cluster, rendered LEFT of the
    *  account module (e.g. the DeepSeek campaign badge). */
   topRightSlot?: ReactNode;
-  /** The one shared workspace context; null → local (no cloud identity) state. */
+  /** Verified workspace authority; null does not imply OA sign-out. */
   context: WorkspaceCollabContext | null;
+  workspaceLoading?: boolean;
+  workspaceUnavailable?: boolean;
+  onRetryWorkspace?: () => void;
   /** Account billing metadata (via the vela CLI 收口). Null → the billing
    *  chip falls back to the context plan-tier hint. */
   billing?: WorkspaceBillingSummary | null;
@@ -585,7 +589,9 @@ export function EntryTopRightCluster({
   const workspaceDimensions = workspaceAnalyticsDimensions(context);
   const clusterRef = useRef<HTMLDivElement | null>(null);
   const tabsSafeAreaOwnerRef = useRef<symbol | null>(null);
-  const clusterVisible = Boolean(leadingSlot || context);
+  const { username: oaUsername, userInfo: oaUserInfo } = useAuth();
+  const hasAccount = Boolean(oaUsername || context);
+  const clusterVisible = Boolean(leadingSlot || hasAccount);
 
   useLayoutEffect(() => {
     const cluster = clusterRef.current;
@@ -626,11 +632,11 @@ export function EntryTopRightCluster({
 
  // Account identity (real). No email field on the context → the head shows the
  // avatar + name only.
- const storedUserInfo = getStoredUserInfo();
+ const storedUserInfo = oaUsername ? oaUserInfo : getStoredUserInfo();
  const ssoDisplayName = storedUserInfo?.displayName;
  const ssoEmail = storedUserInfo?.email || null;
  const displayName = (typeof ssoDisplayName === 'string' ? ssoDisplayName.trim() : '') || '';
- const accountName = displayName || t('app.brand');
+ const accountName = displayName || oaUsername || t('app.brand');
  const accountInitial = accountName.charAt(0).toUpperCase() || '·';
  const accountAvatarColor = avatarColorForDisplayName(displayName);
  const storedAvatarUrl =
@@ -663,7 +669,7 @@ export function EntryTopRightCluster({
    return () => {
      cancelled = true;
    };
- }, [displayName, storedAvatarUrl]);
+ }, [displayName, storedAvatarUrl, oaUsername]);
  const showAccountAvatarImage = Boolean(accountAvatarUrl && !accountAvatarFailed);
 
   // Billing chip: prefer the real summary metadata; fall back to the context
@@ -735,6 +741,10 @@ export function EntryTopRightCluster({
   // mount, so shells without an open menu spend zero requests on it.
   const [accountEmail, setAccountEmail] = useState<string | null>(ssoEmail);
   useEffect(() => {
+    if (oaUsername) {
+      setAccountEmail(ssoEmail);
+      return;
+    }
     if (!accountOpen) return;
     // Refetch on EVERY open (the previous value stays visible while the read
     // is in flight, so there is no flicker). A fetch-once cache here went
@@ -747,7 +757,7 @@ export function EntryTopRightCluster({
     return () => {
       cancelled = true;
     };
-  }, [accountOpen]);
+  }, [accountOpen, oaUsername, ssoEmail]);
   // Hover-open for the account menu (#5517 interaction). The popover floats
   // below the trigger, so closing is delayed just long enough for the pointer
   // to cross the gap; re-entering the container (menu included — it's a DOM
@@ -876,7 +886,7 @@ export function EntryTopRightCluster({
               console, mirroring the menu's 额度 row), avatar on the right.
               The capsule owns the pill material; the segments inside are
               chrome-free click targets. */}
-        {context ? (
+        {hasAccount ? (
           <>
             
               <div className="entry-top-right-account-pill">
@@ -1090,9 +1100,9 @@ export function EntryTopRightCluster({
       {/* Panel + unread polling live here (outside the hover menu, which
           unmounts when closed); the bell button above just opens it.
           Signed-out shells have no account module — `EntryNavRail` mounts its
-          own MessageCenter for that branch, so this one is context-gated to
+          own MessageCenter for that branch, so this one is account-gated to
           keep exactly one instance (and one unread poller) alive. */}
-      {context ? (
+      {hasAccount ? (
         <MessageCenter
           hideTrigger
           returnFocusRef={messageCenterButtonRef}
@@ -1273,8 +1283,13 @@ export function EntryNavRail({
  footerNotice,
  activeTeamId,
  activeFolderId,
+ workspaceLoading,
+ workspaceUnavailable,
+ onRetryWorkspace,
 }: Props) {
   const { t } = useI18n();
+  const { username: oaUsername } = useAuth();
+  const hasAccount = Boolean(oaUsername || context);
   const analytics = useAnalytics();
   const analyticsPage = entryViewToTracking(view);
   const workspaceDimensions = workspaceAnalyticsDimensions(context);
@@ -1300,7 +1315,7 @@ export function EntryNavRail({
   // no cloud identity, because the whole account module is absent then.
   // Deriving both from one expression is what keeps "exactly one" true — two
   // independent renders would double the rocket.
-  const footerUpdaterSlot = context ? null : updaterSlot;
+  const footerUpdaterSlot = hasAccount ? null : updaterSlot;
 
   // Message-center panel for the SIGNED-OUT shell only (its rail item under
   // 设置 is the one opener there). The signed-in panel — plus the unread badge
@@ -1967,7 +1982,9 @@ export function EntryNavRail({
              : `workspace:${workspace.workspaceId}:root`,
          },
        )}
-       loading={workspaceDirectoryLoading}
+       loading={workspaceDirectoryLoading || workspaceLoading}
+       unavailable={workspaceUnavailable}
+       onRetry={onRetryWorkspace}
         onCreateTeam={() => setNewTeamOpen(true)}
         onRenameTeam={(teamId, newName) => {
           setWorkspaceItems((prev) =>
@@ -2007,9 +2024,9 @@ export function EntryNavRail({
 
       {/* Signed-out message-center panel + unread polling (the rail's bell
           item above is its opener). Signed-in mounts move into
-          `EntryTopRightCluster` — context-gating both sides is what keeps
+          `EntryTopRightCluster` — account-gating both sides is what keeps
           exactly one panel (and one unread poller) alive. */}
-      {context ? null : (
+      {hasAccount ? null : (
         <MessageCenter
           hideTrigger
           returnFocusRef={messageCenterRailRef}

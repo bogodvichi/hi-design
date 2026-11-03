@@ -9,6 +9,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EntryShell } from '../../src/components/EntryShell';
+import * as oaAuth from '../../src/auth/LoginGate';
 import {
   notifyWorkspaceContextRefresh,
   resetTeamProjectsCache,
@@ -575,7 +576,8 @@ describe('EntryShell AMR workspace precheck race', () => {
     expect(onCreateProject).toHaveBeenCalledTimes(1);
   });
 
-  it('moves a locally signed-in account from initial syncing to compact auto recovery', async () => {
+  it('keeps a verified OA account visible while workspace loading fails independently', async () => {
+    vi.spyOn(oaAuth, 'useAuth').mockReturnValue({ username: 'oa-user', userInfo: { displayName: 'OA User' } });
     window.history.replaceState(null, '', '/');
     const workspace = teamContext('workspace-a', 'member-a');
     const contextFailure = deferred<Response>();
@@ -634,7 +636,8 @@ describe('EntryShell AMR workspace precheck race', () => {
       </I18nProvider>,
     );
 
-    expect(await screen.findByTestId('entry-rail-account-sync-tip')).toBeTruthy();
+    expect(await screen.findByRole('button', { name: 'OA User' })).toBeTruthy();
+    expect(screen.queryByTestId('entry-rail-account-sync-tip')).toBeNull();
     expect(contextReads).toBe(1);
 
     await act(async () => {
@@ -644,7 +647,9 @@ describe('EntryShell AMR workspace precheck race', () => {
     });
 
     expect(screen.queryByTestId('entry-cloud-signin-tip')).toBeNull();
-    expect(screen.getByTestId('entry-rail-account-recovery-tip')).toBeTruthy();
+    expect(screen.queryByTestId('entry-rail-account-recovery-tip')).toBeNull();
+    expect(screen.getByRole('button', { name: 'OA User' })).toBeTruthy();
+    expect(screen.getByText('Could not sync workspaces. Try again.')).toBeTruthy();
   });
 
   it('returns a definitively expired Cloud session to the existing sign-in gate', async () => {

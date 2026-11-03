@@ -12,6 +12,7 @@
 
 import { useState, useRef, useEffect, type KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
+import { Button } from '@open-design/components';
 import type { WorkspaceDirectoryItem } from '@open-design/contracts';
 import { navigate } from '../router';
 import { Icon } from './Icon';
@@ -105,6 +106,8 @@ interface Props {
   /** True while the workspace directory is still being fetched. Shows a
    *  shimmer placeholder tree until the real team items arrive. */
   loading?: boolean;
+  unavailable?: boolean;
+  onRetry?: () => void;
   /** Called when the user clicks "新建团队" in the footer. */
   onCreateTeam?: () => void;
   onRenameTeam?: (teamId: string, newName: string) => void;
@@ -699,6 +702,8 @@ export function TeamTreeSection({
   activeProjectDropId,
   getProjectDropProps,
   loading,
+  unavailable,
+  onRetry,
 }: Props) {
   const t = useT();
   // Only show team workspaces in the tree.
@@ -710,6 +715,12 @@ export function TeamTreeSection({
 
   return (
     <div className={styles.container} data-testid="team-tree-section">
+      {unavailable && !loading ? (
+        <div className={styles.syncError} role="status">
+          <span>{t('feedback.workspaceSyncFailed')}</span>
+          {onRetry ? <Button variant="ghost" onClick={onRetry}>{t('feedback.retry')}</Button> : null}
+        </div>
+      ) : null}
       {showSkeleton ? (
         <div className={styles.tree} role="status" aria-live="polite">
           <SkeletonRow />

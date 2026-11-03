@@ -1,4 +1,6 @@
 export const feedbackEn = {
+  "feedback.workspaceSyncFailed": "Could not sync workspaces. Try again.",
+  "feedback.retry": "Retry",
   "feedback.pdfExportFailed": "Could not export PDF. Try again or use the browser version.",
   "feedback.popupBlocked": "Allow pop-ups for this site in your browser, then export PDF again.",
   "feedback.created": "Created successfully",
@@ -147,6 +149,8 @@ export const feedbackEn = {
 };
 
 export const feedbackZhCN = {
+  "feedback.workspaceSyncFailed": "工作区同步失败，请重试。",
+  "feedback.retry": "重试",
   "feedback.pdfExportFailed": "PDF 导出失败，请重试或使用浏览器版本。",
   "feedback.popupBlocked": "浏览器阻止了导出窗口，请允许本站弹出窗口后重新导出 PDF。",
   "feedback.created": "创建成功",
@@ -295,6 +299,8 @@ export const feedbackZhCN = {
 } satisfies Record<keyof typeof feedbackEn, string>;
 
 export const feedbackJa = {
+  "feedback.workspaceSyncFailed": "ワークスペースを同期できませんでした。もう一度お試しください。",
+  "feedback.retry": "再試行",
   "feedback.pdfExportFailed": "PDF を出力できませんでした。再試行するかブラウザー版をご利用ください。",
   "feedback.popupBlocked": "このサイトのポップアップをブラウザーで許可し、PDF を再度出力してください。",
   "feedback.created": "作成しました",
