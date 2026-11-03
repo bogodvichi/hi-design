@@ -363,54 +363,53 @@ export async function hicooValidate(
   dataDir: string,
   forDesignerDir?: string,
 ): Promise<SsoValidResult> {
-  const { cookies, username, userInfo, uedro } = session;
+  const { cookies = [], username = '', userInfo } = session;
   const jwtToken = extractJwtToken(cookies || []);
+  const invalid: SsoValidResult = { ok: false, isValid: false, username };
+  if (!username || !jwtToken) return invalid;
 
-  // 有 userInfo，直接返回缓存
-  if (userInfo) {
-    return {
-      ok: true,
-      isValid:true,
-      username: username || '',
-      userInfo
-    };
+  // Expiry is only an early rejection. An unexpired token still needs the
+  // provider check below; cached userInfo never proves a live OA session.
+  try {
+    const claims = JSON.parse(Buffer.from(jwtToken.split('.')[1] ?? '', 'base64url').toString('utf8'));
+    if (typeof claims.exp !== 'number' || claims.exp * 1000 <= Date.now()) return invalid;
+  } catch {
+    return invalid;
   }
 
-  // 有 jwtToken，访问 hicoo 验证会话是否仍然有效
-  // const token = generateToken(username || '');
-  // const cookieStr = (cookies || [])
-  //   .map((c: Cookie) => `${c.name}=${c.value}`)
-  //   .join('; ');
-
-  // const checkResult: any = await rawRequest(
-  //   'GET',
-  //   'http://hicoo.hikvision.com.cn/ai/gateway/user/userService/v1/user/casInfo/query?_=' + Math.random(),
-  //   [],
-  //   {
-  //     extraHeaders: {
-  //       Cookie: cookieStr,
-  //       'Content-Type': 'application/json',
-  //       Accept: 'application/json, text/plain, */*',
-  //       'X-Requested-With': 'XMLHttpRequest',
-  //       'User-Agent': UA,
-  //       token,
-  //       username: username || '',
-  //     },
-  //   },
-  // );
-
-  // // 如果最终 URL 跳转到 sso.hikvision.com.cn，说明会话已失效
-  // if (checkResult.finalUrl.includes('sso.hikvision.com')) {
-  //   return {
-  //     ok: false,
-  //     isValid: false,
-  //     username: username || '',
-  //   };
-  // }
-
-  return {
-    ok: false,
-    isValid:false,
-    username: username || ''
-  };
+  const result = await rawRequest(
+    'GET',
+    `http://hicoo.hikvision.com.cn/ai/gateway/user/userService/v1/user/casInfo/query?_=${Date.now()}`,
+    cookies,
+    {
+      extraHeaders: {
+        Cookie: cookies.map(c => `${c.name}=${c.value}`).join('; '),
+        'Content-Type': 'application/json',
+        Accept: 'application/json, text/plain, */*',
+        'X-Requested-With': 'XMLHttpRequest',
+        'User-Agent': UA,
+        token: generateToken(username),
+        username,
+      },
+    },
+  );
+  if (result.status === 401 || result.status === 403) return invalid;
+  if (result.status < 400
+    && /^sso\.hikvision\.com(?:\.cn)?$/i.test(new URL(result.finalUrl).hostname)) return invalid;
+  if (result.status < 200 || result.status >= 300) throw new Error('OA session verification unavailable');
+  const body = JSON.parse(result.body) as { data?: Record<string, unknown> | null };
+  if (body.data === null) return invalid;
+  if (!body.data || typeof body.data !== 'object' || Array.isArray(body.data)) {
+    throw new Error('OA session verification returned an invalid response');
+  }
+  const info = body.data;
+  const identity = [
+    'username', 'userName', 'user_name', 'loginName', 'login_name',
+    'accountName', 'account_name', 'account', 'userCode', 'user_code',
+  ].map(key => info[key]).find(value => typeof value === 'string' && value.trim());
+  const email = [info.email, info.mail].find(value => typeof value === 'string' && value.includes('@'));
+  const verifiedUsername = typeof identity === 'string' ? identity : typeof email === 'string' ? email.split('@')[0] : '';
+  if (!verifiedUsername) throw new Error('OA session verification returned no identity');
+  if (verifiedUsername.trim().toLowerCase() !== username.trim().toLowerCase()) return invalid;
+  return { ok: true, isValid: true, username, userInfo: { ...userInfo, ...info } };
 }

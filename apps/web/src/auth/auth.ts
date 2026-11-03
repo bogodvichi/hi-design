@@ -36,6 +36,9 @@ export type LoginResult =
 const AUTH_SESSION_KEY = 'open-design:auth-session';
 const AUTH_SESSION_VERSION = 1;
 
+/** Workspace credential rejection asks the OA gate to verify its own session. */
+export const AUTH_STATUS_REFRESH_EVENT = 'open-design:auth-status-refresh';
+
 function readSessionFrom(storage: Storage): AuthSession | null {
   try {
     const raw = storage.getItem(AUTH_SESSION_KEY);
@@ -82,17 +85,19 @@ export function getStoredUserInfo(): any {
  * 如果服务端返回了用户名，说明已登录；否则未登录。
  */
 export async function checkAuthStatus(): Promise<
-  { ok: true; username: string; userInfo?: any } | { ok: false }
+  { ok: true; username: string; userInfo?: any } | { ok: false; error?: 'unavailable' }
 > {
   try {
     const response = await fetch(
       `/api/auth/valid`,
+      { cache: 'no-store' },
     );
     if (!response.ok) {
-      return { ok: false };
+      return response.status === 401 ? { ok: false } : { ok: false, error: 'unavailable' };
     }
 
     const data = (await response.json()) as { ok: boolean; username: string; userInfo?: any };
+    if (data.ok === false) return { ok: false };
     if (data.ok && typeof data.username === 'string' && data.username.length > 0) {
       // 同步保存 username + userInfo 到 sessionStorage，确保 FileViewer 等组件能获取
       if (data.userInfo) {
@@ -101,10 +106,10 @@ export async function checkAuthStatus(): Promise<
       return { ok: true, username: data.username, userInfo: data.userInfo };
     }
   } catch {
-    // 网络错误，视为未登录
+    return { ok: false, error: 'unavailable' };
   }
 
-  return { ok: false };
+  return { ok: false, error: 'unavailable' };
 }
 
 /** 将 username 同步到 sessionStorage（不覆盖已有的 localStorage 记住状态） */

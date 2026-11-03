@@ -3,6 +3,7 @@ import { getDefaultTeamId, getTeamMemberId, getSharedSpaceMemberId, getSharedSpa
 import {
   fetchHdwTeams,
   HdwTeamDirectoryUnavailableError,
+  HdwAuthenticationError,
   fetchSharedSpaceInfo,
   fetchSharedWithMe,
   hdwGet,
@@ -405,6 +406,10 @@ export function registerCollabContextHideSignRoutes(
     try {
       return await buildMockData(deps.dataDir);
     } catch (error) {
+      if (error instanceof HdwAuthenticationError) {
+        res.status(401).json({ error: 'UNAUTHORIZED', message: error.message, retryable: false });
+        return null;
+      }
       if (!(error instanceof HdwTeamDirectoryUnavailableError)) throw error;
       res.status(503).json({
         error: 'UPSTREAM_UNAVAILABLE',

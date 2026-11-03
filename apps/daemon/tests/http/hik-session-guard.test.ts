@@ -135,7 +135,7 @@ describe('deferred Hikke and UEDRO sessions', () => {
   it('relogs into UEDRO and refreshes the stored session after validation fails', async () => {
     writeSsoConfigFile(dataDir, {
       username: 'alice',
-      cookies: [],
+      cookies: [{ name: 'oa', value: 'opaque', domain: 'oa.hikvision.com.cn' }],
       uedro: {
         cookies: [{ name: 'EPORTAL_JSESSIONID', value: 'stale', domain: 'uedro.hikvision.com.cn' }],
         password: encryptPassword('secret'),
@@ -151,7 +151,7 @@ describe('deferred Hikke and UEDRO sessions', () => {
     });
 
     await expect(ensureUedroSession(dataDir)).resolves.toEqual([
-      { name: 'EPORTAL_JSESSIONID', value: 'fresh' },
+      { name: 'EPORTAL_JSESSIONID', value: 'fresh', domain: 'uedro.hikvision.com.cn' },
     ]);
     expect(uedroLogin).toHaveBeenCalledWith('alice', 'secret');
     expect(readSsoConfigFile(dataDir)?.uedro).toMatchObject({

@@ -60,6 +60,19 @@ describe('HDW team directory availability', () => {
     }
   });
 
+  it('preserves expired-session rejection without retrying it as an outage', async () => {
+    upstream = () => Response.json({ code: -1, error: 'INVALID_SESSION' }, { status: 401 });
+    for (const route of ['/api/workspace/directory', '/api/workspace/context']) {
+      vi.mocked(fetch).mockClear();
+      const response = await localFetch(origin + route);
+      expect(response.status).toBe(401);
+      expect(fetch).toHaveBeenCalledOnce();
+    }
+    vi.mocked(fetch).mockClear();
+    await expect(fetchHdwTeams(process.env.OD_DATA_DIR)).rejects.toMatchObject({ status: 401 });
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
   it('distinguishes a valid empty membership list from an API error or malformed payload', async () => {
     upstream = () => Response.json({ code: 0, data: { teams: [] } });
     await expect(fetchHdwTeams(process.env.OD_DATA_DIR)).resolves.toEqual([]);

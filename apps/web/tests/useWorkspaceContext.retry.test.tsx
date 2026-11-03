@@ -4,6 +4,7 @@ import { act, cleanup, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { resetCoalescedGet } from '../src/lib/coalesced-get';
+import { AUTH_STATUS_REFRESH_EVENT } from '../src/auth/auth';
 import {
   __setWorkspaceContextRetryBackoffForTests,
   resetWorkspaceContextCache,
@@ -135,6 +136,27 @@ describe('useWorkspaceContext failure retry (P1.B)', () => {
     expect(contextReads).toBe(readsBeforeReset);
     await flush(1);
     expect(contextReads).toBe(readsBeforeReset + 1);
+  });
+
+  it.each(['/api/workspace/directory', '/api/workspace/context'])('requests OA verification after %s rejects credentials, without outage retries', async (rejectedRoute) => {
+    const refresh = vi.fn();
+    window.addEventListener(AUTH_STATUS_REFRESH_EVENT, refresh);
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === rejectedRoute) return Response.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+      return jsonResponse(workspaceDirectoryFixture([TEAM_CONTEXT]));
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const hook = renderHook(() => useWorkspaceContext());
+      await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+      expect(hook.result.current.failure).toBe('reauth-required');
+      expect(refresh).toHaveBeenCalledOnce();
+      const reads = fetchMock.mock.calls.length;
+      await act(async () => { await vi.advanceTimersByTimeAsync(10_000); });
+      expect(fetchMock).toHaveBeenCalledTimes(reads);
+    } finally {
+      window.removeEventListener(AUTH_STATUS_REFRESH_EVENT, refresh);
+    }
   });
 
   it('contains a workspace-directory 503 and recovers on the scheduled retry', async () => {

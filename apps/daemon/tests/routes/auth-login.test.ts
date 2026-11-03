@@ -163,6 +163,39 @@ describe('auth routes', () => {
     expect(readSsoConfigFile(dataDir)).toBeNull();
   });
 
+  it('clears an expired OA session even when a cached profile exists', async () => {
+    writeSsoConfigFile(dataDir, {
+      username: 'previous-user', cookies: [], userInfo: { displayName: 'Cached' },
+    });
+    vi.mocked(hicooValidate).mockResolvedValueOnce({ ok: false, isValid: false, username: 'previous-user' });
+    const response = await fetch(`${baseUrl}/api/auth/valid`);
+    expect(await response.json()).toEqual({ ok: false, username: 'previous-user' });
+    expect(readSsoConfigFile(dataDir)).toBeNull();
+    expect(hikkeValidate).not.toHaveBeenCalled();
+    expect(uedroValidate).not.toHaveBeenCalled();
+  });
+
+  it('does not clear a replacement login when an old verification finishes', async () => {
+    writeSsoConfigFile(dataDir, { username: 'previous-user', cookies: [{ name: 'oa', value: 'old', domain: 'hicoo.hikvision.com.cn' }] });
+    vi.mocked(hicooValidate).mockImplementationOnce(async () => {
+      writeSsoConfigFile(dataDir, { username: 'new-user', cookies: [{ name: 'oa', value: 'new', domain: 'hicoo.hikvision.com.cn' }] });
+      return { ok: false, isValid: false, username: 'previous-user' };
+    });
+    const response = await fetch(`${baseUrl}/api/auth/valid`);
+    expect(response.status).toBe(503);
+    expect(readSsoConfigFile(dataDir)?.username).toBe('new-user');
+  });
+
+  it('preserves saved credentials when OA verification is unavailable', async () => {
+    writeSsoConfigFile(dataDir, { username: 'previous-user', cookies: [], userInfo: { displayName: 'Cached' } });
+    vi.mocked(hicooValidate).mockRejectedValueOnce(new Error('offline'));
+    const response = await fetch(`${baseUrl}/api/auth/valid`);
+    expect(response.status).toBe(503);
+    expect(readSsoConfigFile(dataDir)?.username).toBe('previous-user');
+    expect(hikkeValidate).not.toHaveBeenCalled();
+    expect(uedroValidate).not.toHaveBeenCalled();
+  });
+
   it('reuses valid UEDRO cookies to mint a launch URL', async () => {
     const cookies = [{ name: 'EPORTAL_JSESSIONID', value: 'current', domain: 'uedro.hikvision.com.cn' }];
     writeSsoConfigFile(dataDir, {
@@ -192,7 +225,8 @@ describe('auth routes', () => {
     const freshCookies = [{ name: 'EPORTAL_JSESSIONID', value: 'fresh', domain: 'uedro.hikvision.com.cn' }];
     writeSsoConfigFile(dataDir, {
       username: 'synthetic-user',
-      cookies: [],
+      // Deferred decryption needs an OA session, independently of the stale UEDRO cookies.
+      cookies: [{ name: 'oa', value: 'opaque', domain: 'hicoo.hikvision.com.cn' }],
       uedro: {
         cookies: [{ name: 'EPORTAL_JSESSIONID', value: 'stale', domain: 'uedro.hikvision.com.cn' }],
         password: encryptPassword('synthetic-password'),

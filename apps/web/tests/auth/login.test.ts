@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest';
-import { login } from '../../src/auth/auth';
+import { checkAuthStatus, login } from '../../src/auth/auth';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -9,4 +9,11 @@ it.each([
 ])('maps HTTP $status to the correct login UI error', async ({ status, error }) => {
   vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: { code: 'unused' } }), { status })));
   await expect(login('synthetic-user', 'synthetic-password', false)).resolves.toEqual({ ok: false, error });
+});
+
+it('distinguishes unavailable OA verification from an expired session', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => new Response('{}', { status: 503 })));
+  await expect(checkAuthStatus()).resolves.toEqual({ ok: false, error: 'unavailable' });
+  vi.stubGlobal('fetch', vi.fn(async () => Response.json({ ok: false })));
+  await expect(checkAuthStatus()).resolves.toEqual({ ok: false });
 });

@@ -17,6 +17,7 @@ import {
 } from '@open-design/contracts';
 import { coalescedGet, forceCoalescedGet } from '../lib/coalesced-get';
 import { BackoffController, type BackoffOptions } from '../lib/backoff';
+import { AUTH_STATUS_REFRESH_EVENT } from '../auth/auth';
 import {
   markProjectDisplaySnapshotsDirty,
   patchProjectDisplaySnapshots,
@@ -248,6 +249,7 @@ export function currentWorkspaceContextRequestToken(): string {
 async function fetchWorkspaceDirectory(): Promise<WorkspaceDirectoryResponse> {
   const response = await fetch('/api/workspace/directory', { cache: 'no-store' });
   if (!response.ok) {
+    if (response.status === 401) window.dispatchEvent(new Event(AUTH_STATUS_REFRESH_EVENT));
     const error = new Error(`workspace-directory ${response.status}`) as Error & {
       status?: number;
     };
@@ -784,6 +786,7 @@ export function useWorkspaceContext(): WorkspaceContextState {
           }),
         });
         if (!res.ok) {
+          if (res.status === 401) window.dispatchEvent(new Event(AUTH_STATUS_REFRESH_EVENT));
           const error = new Error(`workspace-context ${res.status}`) as Error & {
             status?: number;
           };

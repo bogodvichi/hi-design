@@ -10,6 +10,7 @@ import type {
   UedroLaunchResponse,
 } from '@open-design/contracts';
 import type { Cookie } from '../http/http.js';
+import { hdwSessionIdentity } from '../http/hdw-session.js';
 import {
   readSsoConfigFile,
   writeSsoConfigFile,
@@ -362,7 +363,12 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
     try {
       const session = getSsoCookie();
       const result = await hicooValidate(session, dataDir, FOR_DESIGNER_DIR);
-      if (!result.ok && !session.userInfo) {
+      // A verification started before a new login must not clear or restore
+      // that replacement account when the old OA request finishes later.
+      if (hdwSessionIdentity(session) !== hdwSessionIdentity(readSsoConfigFile(dataDir))) {
+        return sendApiError(res, 503, 'UPSTREAM_UNAVAILABLE', 'OA session changed during verification');
+      }
+      if (!result.ok) {
         // 会话失效，清除本地 session
         clearSsoSession();
         const response: any = { ok: false, username: result.username || '' };
@@ -378,7 +384,7 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
       };
       return res.json(response);
     } catch (err) {
-      return sendApiError(res, 500, 'INTERNAL_ERROR', 'auth valid failed');
+      return sendApiError(res, 503, 'UPSTREAM_UNAVAILABLE', 'OA session verification is temporarily unavailable');
     }
   });
 }

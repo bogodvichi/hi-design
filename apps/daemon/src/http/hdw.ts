@@ -31,10 +31,19 @@ interface HdwResponse<T> {
   error?: string;
 }
 
+export class HdwAuthenticationError extends Error {
+  readonly status = 401;
+  constructor() {
+    super('OA login is required');
+    this.name = 'HdwAuthenticationError';
+  }
+}
+
 export async function hdwGet<T>(
   path: string,
   params?: Record<string, string>,
   cookies?: Cookie[],
+  options?: { throwOnUnauthorized?: boolean },
 ): Promise<T | null> {
   try {
     const url = new URL(`${HDW_BASE}${path}`);
@@ -54,6 +63,7 @@ export async function hdwGet<T>(
     const resp = await fetch(url, { redirect: 'error', headers, signal: AbortSignal.timeout(10_000) });
     if (!resp.ok) {
       const text = await resp.text().catch(() => '');
+      if (resp.status === 401 && options?.throwOnUnauthorized) throw new HdwAuthenticationError();
       console.warn(`[hdw] GET ${path} failed: HTTP ${resp.status} ${resp.statusText} ${text.slice(0, 200)}`);
       return null;
     }
@@ -64,6 +74,7 @@ export async function hdwGet<T>(
     }
     return json.data;
   } catch (err) {
+    if (err instanceof HdwAuthenticationError) throw err;
     console.warn(`[hdw] GET ${path} network error: ${(err as Error).message}`);
     return null;
   }
@@ -932,7 +943,7 @@ export async function fetchHdwTeams(dataDir: string | undefined): Promise<HdwTea
     const username = session?.username?.trim() ?? '';
   if (!username) return [];
   const data = await withRetry(
-    () => hdwGet<{ teams: HdwTeam[] }>('/team/my', { username }, session?.cookies),
+    () => hdwGet<{ teams: HdwTeam[] }>('/team/my', { username }, session?.cookies, { throwOnUnauthorized: true }),
   );
   // A failed membership read is not an authoritative empty directory.
   // Let callers keep their last successful view and retry after recovery.
@@ -990,7 +1001,7 @@ export async function fetchSharedSpaceInfo(
   const params: Record<string, string> = { username };
   if (displayName) params.displayname = displayName;
   if (email) params.email = email;
-  const cloud = await hdwGet<HdwSharedSpaceInfo>('/shared-space/info', params, session?.cookies);
+  const cloud = await hdwGet<HdwSharedSpaceInfo>('/shared-space/info', params, session?.cookies, { throwOnUnauthorized: true });
   if (cloud) return cloud;
   throw new HdwTeamDirectoryUnavailableError();
 }

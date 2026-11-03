@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useLayoutEffect, useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
 import type { LanzAccountCredentials } from '@open-design/contracts';
 import { loadLanzAccount } from './lanz-account';
@@ -11,6 +11,7 @@ import { useAppVersion } from '../analytics/provider';
 import {
   DEFAULT_PASSWORD,
   DEFAULT_USERNAME,
+  AUTH_STATUS_REFRESH_EVENT,
   checkAuthStatus,
   login,
 } from './auth';
@@ -121,45 +122,36 @@ export function LoginGate({ children }: LoginGateProps) {
   }, [authed, username]);
 
  useLayoutEffect(() => {
-   checkAuthStatus().then((result: any) => {
-     setAuthed(result.ok);
-     if (result.ok) {
-       setUsername(result.username ?? null);
-       setUserInfo(result.userInfo ?? null);
-     }
-   });
+   let cancelled = false;
+   let epoch = 0;
+   let retry: ReturnType<typeof setTimeout> | undefined;
+   const refresh = () => {
+     const requestEpoch = ++epoch;
+     clearTimeout(retry);
+     void checkAuthStatus().then((result) => {
+       if (cancelled || requestEpoch !== epoch) return;
+       if (!result.ok && result.error === 'unavailable') {
+         // An outage is not a sign-out. Keep the current surface and retry,
+         // including during startup when no authenticated answer exists yet.
+         retry = setTimeout(refresh, 5000);
+         return;
+       }
+       setAuthed(result.ok);
+       setUsername(result.ok ? result.username : null);
+       setUserInfo(result.ok ? result.userInfo ?? null : null);
+     });
+   };
+   window.addEventListener(AUTH_STATUS_REFRESH_EVENT, refresh);
+   // OA heartbeat only; Hikke and UEDRO remain demand-driven.
+   const heartbeat = setInterval(refresh, 5 * 60 * 1000);
+   refresh();
+   return () => {
+     cancelled = true;
+     clearTimeout(retry);
+     clearInterval(heartbeat);
+     window.removeEventListener(AUTH_STATUS_REFRESH_EVENT, refresh);
+   };
  }, []);
-
-  // 心跳：登录成功后定期调用 /api/auth/valid 维持 uedro 门户会话。
-  // uedro 的 EPORTAL_JSESSIONID 长时间无活动会被服务端过期，定时校验
-  // 相当于一次真实访问，可续期；若返回失效则回到登录界面。
-  const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  useEffect(() => {
-    if (authed !== true) {
-      if (heartbeatRef.current) {
-        clearInterval(heartbeatRef.current);
-        heartbeatRef.current = null;
-      }
-      return;
-    }
-    const HEARTBEAT_INTERVAL = 5 * 60 * 1000; // 5 分钟
-    heartbeatRef.current = setInterval(() => {
-      checkAuthStatus().then((result: any) => {
-        if (!result.ok) {
-          // 会话失效，回到登录界面
-          setAuthed(false);
-          setUsername(null);
-          setUserInfo(null);
-        }
-      });
-    }, HEARTBEAT_INTERVAL);
-    return () => {
-      if (heartbeatRef.current) {
-        clearInterval(heartbeatRef.current);
-        heartbeatRef.current = null;
-      }
-    };
-  }, [authed]);
 
   // 获取浏览器指纹
   // useEffect(() => {
@@ -193,16 +185,8 @@ export function LoginGate({ children }: LoginGateProps) {
         {authed ? children : null}
      </div>
       {!authed ? <LoginScreen onAuthed={(cb:any) => {
-        // 登录成功后立即调一次 valid，既刷新用户信息也充当首次心跳。
-        checkAuthStatus().then((result: any) => {
-          cb();
-          setAuthed(result.ok);
-          if (result.ok) {
-            setUsername(result.username ?? null);
-            setUserInfo(result.userInfo ?? null);
-          }
-        });
-        //setAuthed(true)
+        cb();
+        window.dispatchEvent(new Event(AUTH_STATUS_REFRESH_EVENT));
       }} fingerprint={fingerprint} /> : null}
     </AuthContext.Provider>
   );
