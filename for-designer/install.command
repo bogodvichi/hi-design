@@ -51,20 +51,27 @@ for base in "${TCC_BASES[@]}"; do
 done
 TARGET_ROOT="$HOME_ROOT/ai-usage-tracker"
 if [ "$NEED_MIGRATE" = "1" ]; then
+  TARGET_NEW=0
   if [ -d "$TARGET_ROOT" ]; then
     echo "⚠️  目标目录已存在：$TARGET_ROOT"
-    echo "    将复用现有目录,仅同步本次安装的脚本与配置(不覆盖 data/ 数据)。"
+    echo "    只填充缺失文件，不覆盖旧身份、状态数据和已升级脚本。"
   else
-    echo "📦 检测到项目位于 TCC 保护目录($ROOT),影响定时任务权限。"
-    echo "   正在复制到 $TARGET_ROOT ..."
+    echo "📦 检测到项目位于 TCC 保护目录($ROOT)，迁移至 $TARGET_ROOT ..."
+    TARGET_NEW=1
     mkdir -p "$TARGET_ROOT"
   fi
-  # 同步项目文件(排除 data/ 避免覆盖已有采集数据;排除 .git)
-  rsync -a --exclude "data/" --exclude ".git/" "$ROOT/" "$TARGET_ROOT/" 2>/dev/null || \
-    cp -R "$ROOT/scripts" "$ROOT/config" "$ROOT/"*.command "$TARGET_ROOT/" 2>/dev/null || true
-  # 若目标无 data/ 而源有,带过去(首次迁移)
-  if [ ! -d "$TARGET_ROOT/data" ] && [ -d "$ROOT/data" ]; then
-    cp -R "$ROOT/data" "$TARGET_ROOT/data" 2>/dev/null || true
+  # rsync --ignore-existing 防止从旧下载包覆盖目标中更高版本的脚本。
+  # identity.json 和 version.json 永不从旧目录覆盖；新的版本由正式升级器维护。
+  rsync -a --ignore-existing --exclude "data/" --exclude ".git/" \
+    --exclude "config/identity.json" --exclude "version.json" \
+    "$ROOT/" "$TARGET_ROOT/" 2>/dev/null || \
+    cp -Rn "$ROOT/scripts" "$ROOT/config" "$ROOT/"*.command "$TARGET_ROOT/" 2>/dev/null || true
+  # 仅首次迁移时转移源目录历史数据与身份；以后不覆盖使用者的资料。
+  if [ "$TARGET_NEW" = "1" ]; then
+    [ -d "$ROOT/data" ] && cp -Rn "$ROOT/data" "$TARGET_ROOT/" 2>/dev/null || true
+    [ -f "$ROOT/config/identity.json" ] && mkdir -p "$TARGET_ROOT/config" && \
+      cp -n "$ROOT/config/identity.json" "$TARGET_ROOT/config/identity.json" 2>/dev/null || true
+    [ -f "$ROOT/version.json" ] && cp -n "$ROOT/version.json" "$TARGET_ROOT/version.json" 2>/dev/null || true
   fi
   ROOT="$TARGET_ROOT"
   PARSE="$ROOT/scripts/parse.py"
@@ -144,7 +151,8 @@ if [ -f "$COWORK_COLLECT" ]; then
   [ -z "$PY_ABS" ] && PY_ABS=$(command -v python3 2>/dev/null || command -v python 2>/dev/null || echo "")
   if [ -n "$PY_ABS" ]; then
     mkdir -p "$(dirname "$PLIST_FILE")" "$(dirname "$LOG_FILE")"
-    cat > "$PLIST_FILE" <<PLIST
+    PLIST_TMP="${PLIST_FILE}.$$"
+    cat > "$PLIST_TMP" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -170,13 +178,24 @@ if [ -f "$COWORK_COLLECT" ]; then
 </dict>
 </plist>
 PLIST
-    # 卸载旧的（如果有）再加载新的
-    launchctl unload "$PLIST_FILE" 2>/dev/null || true
-    if launchctl load "$PLIST_FILE" 2>/dev/null; then
-      echo "✅ 已注册 Cowork 定时采集（每小时整点自动执行）"
-      echo "   日志：$LOG_FILE"
+    # 配置完全一致且 launchd 已加载时，不卸载、不重建任务。
+    if [ -f "$PLIST_FILE" ] && cmp -s "$PLIST_TMP" "$PLIST_FILE" && \
+       launchctl list "$PLIST_LABEL" >/dev/null 2>&1; then
+      rm -f "$PLIST_TMP"
+      echo "✅ Cowork 定时采集已存在，继续沿用原计划任务"
     else
-      echo "⚠️  launchd 注册失败。请检查权限后重试,或手动跑：$PY_ABS \"$COWORK_COLLECT\""
+      if ! [ -f "$PLIST_FILE" ] || ! cmp -s "$PLIST_TMP" "$PLIST_FILE"; then
+        mv "$PLIST_TMP" "$PLIST_FILE"
+      else
+        rm -f "$PLIST_TMP"
+      fi
+      launchctl unload "$PLIST_FILE" 2>/dev/null || true
+      if launchctl load "$PLIST_FILE" 2>/dev/null; then
+        echo "✅ 已注册 Cowork 定时采集（每小时整点执行）"
+        echo "   日志：$LOG_FILE"
+      else
+        echo "⚠️  launchd 注册失败。请检查权限后重试,或手动跑：$PY_ABS \"$COWORK_COLLECT\""
+      fi
     fi
   else
     echo "⚠️  未找到 python3,跳过定时采集注册。"

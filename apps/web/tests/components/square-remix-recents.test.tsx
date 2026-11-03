@@ -399,6 +399,43 @@ describe('SquareView remix recents', () => {
     expect(screen.getByText('行程 PDF 正文第二行')).toBeTruthy();
   });
 
+  it.each(['text/plain', 'image/png', 'image/svg+xml'])('renders community file previews as %s', async (contentType) => {
+    const image = contentType.startsWith('image/');
+    const fileName = image ? 'design.png' : 'notes.txt';
+    const content = '<script>literal source text</script>\n项目实际内容';
+    const createObjectURL = vi.fn(() => 'blob:http://daemon.local/project-image');
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal('URL', class extends URL {
+      static createObjectURL = createObjectURL;
+      static revokeObjectURL = revokeObjectURL;
+    });
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      const pathname = new URL(String(input), 'http://daemon.local').pathname;
+      if (pathname === '/api/marketplaces/hdw-community/plugins') {
+        return jsonResponse({ plugins: [{ name: 'file-project', title: 'File project', version: '1.0.0' }] });
+      }
+      if (pathname === '/api/marketplaces/hdw-community/plugins/file-project/preview') {
+        return new Response(content, { headers: {
+          'content-type': contentType,
+          'x-open-design-preview-file': encodeURIComponent(fileName),
+        } });
+      }
+      return jsonResponse({});
+    }));
+    const view = render(<I18nProvider initial="en"><SquareView /></I18nProvider>);
+    fireEvent.click((await screen.findByText('File project')).closest('button')!);
+    if (image) {
+      expect((await screen.findByRole('img', { name: fileName })).getAttribute('src'))
+        .toBe('blob:http://daemon.local/project-image');
+      expect(createObjectURL).toHaveBeenCalledOnce();
+      view.unmount();
+      expect(revokeObjectURL).toHaveBeenCalledWith('blob:http://daemon.local/project-image');
+    } else {
+      expect(await screen.findByText((_text, node) => node?.tagName === 'PRE' && node.textContent === content)).toBeTruthy();
+      expect(document.querySelector('script')).toBeNull();
+    }
+  });
+
   it('records a remixed project in recently opened projects and polls its cover', async () => {
     const selfSharedSpaceMemberId = await getSharedSpaceMemberId('square-tester');
 

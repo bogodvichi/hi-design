@@ -813,6 +813,8 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
 type CommunityProjectPreviewContent =
   | { kind: 'html'; html: string }
   | { kind: 'markdown'; markdown: string; fileName: string | null }
+  | { kind: 'text'; text: string; fileName: string | null }
+  | { kind: 'image'; url: string; fileName: string | null }
   | { kind: 'document'; preview: ProjectFilePreview; fileName: string | null };
 
 function communityPreviewFileName(response: Response): string | null {
@@ -889,22 +891,44 @@ function SquarePluginPreview({
   const isRemixing = remixingName === entry.name;
 
   // Fetch the actual project preview from the daemon. Community projects can
-  // ship HTML, Markdown, or document-style files such as PDFs; keep one
+  // ship HTML, images, text, or document-style files; keep one
   // preview surface and switch rendering by response Content-Type.
   const [previewContent, setPreviewContent] = useState<CommunityProjectPreviewContent | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const previewRequest = useRef<AbortController | null>(null);
+
+  useEffect(() => () => previewRequest.current?.abort(), []);
+  useEffect(() => () => {
+    if (previewContent?.kind === 'image') URL.revokeObjectURL(previewContent.url);
+  }, [previewContent]);
 
   const fetchPreview = useCallback(async () => {
+    previewRequest.current?.abort();
+    const request = new AbortController();
+    previewRequest.current = request;
     setPreviewContent(null);
     setPreviewError(null);
     try {
       const resp = await fetch(
         `/api/marketplaces/hdw-community/plugins/${encodeURIComponent(entry.name)}/preview`,
+        { signal: request.signal },
       );
       if (!resp.ok) throw new Error('preview fetch failed');
 
       const contentType = (resp.headers.get('content-type') ?? '').toLowerCase();
       const fileName = communityPreviewFileName(resp);
+
+      if (contentType.startsWith('image/')) {
+        const blob = await resp.blob();
+        if (request.signal.aborted) return;
+        setPreviewContent({ kind: 'image', url: URL.createObjectURL(blob), fileName });
+        return;
+      }
+
+      if (contentType.includes('text/plain')) {
+        setPreviewContent({ kind: 'text', text: await resp.text(), fileName });
+        return;
+      }
 
       if (contentType.includes('text/markdown')) {
         setPreviewContent({
@@ -926,7 +950,7 @@ function SquarePluginPreview({
 
       setPreviewContent({ kind: 'html', html: await resp.text() });
     } catch {
-      setPreviewError(t('squareScope.loadFailed'));
+      if (!request.signal.aborted) setPreviewError(t('squareScope.loadFailed'));
     }
   }, [entry.name, t]);
 
@@ -948,7 +972,18 @@ function SquarePluginPreview({
             fileName={previewContent.fileName}
           />
         )
-      : undefined;
+      : previewContent?.kind === 'text' || previewContent?.kind === 'image'
+        ? (
+            <div className={publishStyles.communityPreviewScroll}>
+              <div className={publishStyles.communityPreviewDocument}>
+                {previewContent.fileName ? <div className={publishStyles.communityPreviewFileName}>{previewContent.fileName}</div> : null}
+                {previewContent.kind === 'image'
+                  ? <img className={publishStyles.communityPreviewImage} src={previewContent.url} alt={previewContent.fileName || title} />
+                  : <pre className={publishStyles.communityPreviewText}>{previewContent.text}</pre>}
+              </div>
+            </div>
+          )
+        : undefined;
 
   const modal = (
     <PreviewModal

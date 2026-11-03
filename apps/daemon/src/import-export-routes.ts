@@ -56,6 +56,7 @@ import {
 import { resolveSkillCatalogScope } from './skill-catalog-scope.js';
 import { findSkillById } from './skills.js';
 import { renderProjectCover, selectProjectCoverEntry } from './artifacts/project-cover.js';
+import { kindFor, mimeFor } from './projects.js';
 
 export interface RegisterImportRoutesDeps extends RouteDeps<'db' | 'http' | 'uploads' | 'node' | 'ids' | 'paths' | 'imports' | 'auth' | 'projectStore' | 'conversations' | 'projectFiles' | 'validation'> {
   fetchProjectCreationWorkspaceDirectory?: () => Promise<WorkspaceDirectoryFetchResult>;
@@ -2086,7 +2087,9 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
           ? body.entryFile.trim()
           : typeof project.metadata?.entryFile === 'string' ? project.metadata.entryFile : null;
         const entryFile = selectProjectCoverEntry(projectFiles, preferredEntry) ?? '';
-        const previewType = /\.html?$/i.test(entryFile) ? 'html' : /\.pdf$/i.test(entryFile) ? 'pdf' : undefined;
+        const previewType = entryFile
+          ? /\.md(?:own)?$/i.test(entryFile) ? 'markdown' : mimeFor(entryFile).startsWith('image/') ? 'image' : kindFor(entryFile)
+          : undefined;
 
         // Inject open-design.json and SKILL.md into the archive so the
         // remix endpoint can find plugin manifests. Mirrors the CLI

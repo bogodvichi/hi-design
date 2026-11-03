@@ -41,6 +41,7 @@ import {
 } from '@open-design/contracts';
 import { readMeta as readBrandMeta } from '../../brands/store.js';
 import { createProjectArtifactFile } from '../../artifacts/create.js';
+import { renderProjectCover, selectProjectCoverEntry } from '../../artifacts/project-cover.js';
 import { ArtifactPublicationBlockedError } from '../../artifacts/publication-guard.js';
 import { ArtifactRegressionError } from '../../artifacts/stub-guard.js';
 import {
@@ -445,6 +446,7 @@ interface ProjectCoverDeps {
   updateProject: (db: any, id: string, patch: Record<string, unknown>) => void;
   ensureProject: (projectsRoot: string, projectId: string, metadata?: unknown) => Promise<string>;
   readProjectFile: (projectsRoot: string, projectId: string, fileName: string, metadata?: unknown) => Promise<{ buffer: Buffer }>;
+  listFiles: typeof import('../../projects.js').listFiles;
   notifyTeamProjectCoverChanged?: (workspaceId: string, projectId: string) => void;
 }
 
@@ -465,6 +467,7 @@ function createProjectCoverHelpers(deps: ProjectCoverDeps) {
     updateProject,
     ensureProject,
     readProjectFile,
+    listFiles,
     notifyTeamProjectCoverChanged,
   } = deps;
 
@@ -500,7 +503,7 @@ function createProjectCoverHelpers(deps: ProjectCoverDeps) {
   async function generateProjectCover(
     projectId: string,
     fileName: string,
-    htmlContent: string,
+    content: Buffer,
     projectMeta: { name?: string; metadata?: Record<string, unknown> | null } | null,
   ) {
     if (typeof desktopArtifactExporter !== 'function' || !daemonUrlRef) return;
@@ -513,15 +516,18 @@ function createProjectCoverHelpers(deps: ProjectCoverDeps) {
         imageFormat: 'png',
         width: 1200,
         height: 800,
-        sourceHtml: htmlContent,
+        sourceHtml: '',
         projectId,
         projectsRoot: projectsDir,
         title: projectMeta?.name || fileName,
       });
-      const coverResult = await desktopArtifactExporter(exportInput);
-      if (!coverResult?.ok || !coverResult.path) return;
+      const coverBuffer = await renderProjectCover({
+        file: { name: fileName, buffer: content },
+        title: projectMeta?.name || fileName,
+        ...(exportInput.baseHref ? { baseHref: exportInput.baseHref } : {}),
+        exporter: desktopArtifactExporter,
+      });
       const { promises: fsp } = await import('node:fs');
-      const coverBuffer = await fsp.readFile(coverResult.path);
       const digest = createHash('sha256').update(coverBuffer).digest('hex');
       const dir = await ensureProject(
         projectsDir,
@@ -536,7 +542,9 @@ function createProjectCoverHelpers(deps: ProjectCoverDeps) {
       if (wp?.visibility === 'team' && wp.workspaceId) {
         notifyTeamProjectCoverChanged?.(wp.workspaceId, projectId);
       }
+      return digest;
     } catch { /* best-effort: no cover */ }
+    return null;
   }
 
   function triggerCoverForProjectEntry(
@@ -545,13 +553,13 @@ function createProjectCoverHelpers(deps: ProjectCoverDeps) {
   ) {
     void (async () => {
       try {
-        const entryFile =
-          typeof projectMeta?.metadata?.entryFile === 'string' && projectMeta.metadata.entryFile
-            ? projectMeta.metadata.entryFile
-            : 'index.html';
+        const entryFile = selectProjectCoverEntry(
+          await listFiles(projectsDir, projectId, { metadata: projectMeta?.metadata }),
+          typeof projectMeta?.metadata?.entryFile === 'string' ? projectMeta.metadata.entryFile : null,
+        );
+        if (!entryFile) return;
         const file = await readProjectFile(projectsDir, projectId, entryFile, projectMeta?.metadata ?? null);
-        if (!/\.html?$/i.test(entryFile)) return;
-        await generateProjectCover(projectId, entryFile, file.buffer.toString('utf8'), projectMeta);
+        await generateProjectCover(projectId, entryFile, file.buffer, projectMeta);
       } catch { /* best-effort: no cover */ }
     })();
   }
@@ -2115,6 +2123,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
    updateProject,
    ensureProject,
    readProjectFile,
+   listFiles,
    ...(ctx.notifyTeamProjectCoverChanged
      ? { notifyTeamProjectCoverChanged: ctx.notifyTeamProjectCoverChanged }
      : {}),
@@ -8097,115 +8106,22 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
     }
   });
 
- // ---- Fire-and-forget cover generation ----
- // After an HTML file is saved, render it to a PNG screenshot via the
- // desktop artifact exporter, store it as .cover.png in the project
- // directory, compute a SHA-256 digest, and update projects.cover_digest.
- // For team projects, also upload the blob to HDW and update
- // team_projects.cover_digest.  All steps are best-effort: a failure
- // leaves the project without a cover, not without a saved file.
-/**
- * Upload a cover PNG buffer to HDW cloud for a team project and update
- * team_projects.cover_digest.  No-op for personal/unshared projects or
- * when HDW cloud is not configured.  All errors are swallowed.
- */
-async function syncCoverToHdw(
-  projectId: string,
-  coverBuffer: Buffer,
-  projectDir: string,
-) {
-  const wp = getWorkspaceProjectByProjectId(db, projectId);
-  if (!wp || wp.visibility !== 'team' || !wp.resourceHubResourceId) return;
-  try {
-    const { uploadHdwCommunityBlob } = await import('../../http/hdw.js');
-    const { RUNTIME_DATA_DIR } = ctx.paths;
-    const { promises: fsp } = await import('node:fs');
-    const tmpPath = path.join(projectDir, '.cover.tmp.png');
-    await fsp.writeFile(tmpPath, coverBuffer);
-    const blob = await uploadHdwCommunityBlob(tmpPath, RUNTIME_DATA_DIR);
-    await fsp.unlink(tmpPath).catch(() => {});
-    if (blob && hdwCloudClient?.upsertTeamProject) {
-      await hdwCloudClient.upsertTeamProject(
-        wp.workspaceId,
-        projectId,
-        {
-          resourceId: wp.resourceHubResourceId,
-          coverDigest: blob.digest,
-          ownerMemberId: wp.createdByWorkspaceMemberId || undefined,
-        },
-      );
-    }
-  } catch { /* best-effort: local cover is still set */ }
-}
- async function generateProjectCover(
-   projectId: string,
-   fileName: string,
-   htmlContent: string,
-   projectMeta: { name?: string; metadata?: Record<string, unknown> | null } | null,
- ) {
-   if (typeof desktopArtifactExporter !== 'function' || !daemonUrlRef) return;
-   try {
-     const { buildDesktopArtifactExportInput } = await import('../../pdf-export.js');
-     const exportInput = await buildDesktopArtifactExportInput({
-       daemonUrl: daemonUrlRef.current,
-       fileName,
-       format: 'image',
-       imageFormat: 'png',
-       width: 1200,
-       height: 800,
-       sourceHtml: htmlContent,
-       projectId,
-       projectsRoot: PROJECTS_DIR,
-       title: projectMeta?.name || fileName,
-     });
-     const coverResult = await desktopArtifactExporter(exportInput);
-     if (!coverResult?.ok || !coverResult.path) return;
-     const { promises: fsp } = await import('node:fs');
-     const coverBuffer = await fsp.readFile(coverResult.path);
-     const digest = createHash('sha256').update(coverBuffer).digest('hex');
-     const dir = await ensureProject(
-       PROJECTS_DIR,
-       projectId,
-       projectMeta?.metadata,
-     );
-    const coverFile = path.join(dir, '.cover.png');
-    await fsp.writeFile(coverFile, coverBuffer);
-   updateProject(db, projectId, { coverDigest: digest });
-   await syncCoverToHdw(projectId, coverBuffer, dir);
-   return digest;
- } catch { /* best-effort: no cover */ }
- return null;
-}
-/**
- * Resolve the entry HTML file for a project and trigger cover generation.
- * Used after project creation (duplicate, copy-to-personal, community
- * template remix) so the new project gets a screenshot saved to the local
- * database and synced to HDW cloud for team projects.  Best-effort: a
- * failure leaves the project without a cover, not without a saved file.
- */
-function triggerCoverForProjectEntry(
-  projectId: string,
-  projectMeta: { name?: string; metadata?: Record<string, unknown> | null } | null,
-) {
-  void (async () => {
-    try {
-      const entryFile =
-        typeof projectMeta?.metadata?.entryFile === 'string' && projectMeta.metadata.entryFile
-          ? projectMeta.metadata.entryFile
-          : 'index.html';
-      const file = await readProjectFile(PROJECTS_DIR, projectId, entryFile, projectMeta?.metadata ?? null);
-      if (!/\.html?$/i.test(entryFile)) return;
-      await generateProjectCover(projectId, entryFile, file.buffer.toString('utf8'), projectMeta);
-    } catch { /* best-effort: no cover */ }
-  })();
-}
+ // Saving and explicit generation use the same renderer as community publishing.
+ const { generateProjectCover, triggerCoverForProjectEntry, syncCoverToHdw } = createProjectCoverHelpers({
+   db,
+   projectsDir: PROJECTS_DIR,
+   runtimeDataDir: ctx.paths.RUNTIME_DATA_DIR,
+   desktopArtifactExporter: desktopArtifactExporter ?? null,
+   daemonUrlRef: daemonUrlRef ?? null,
+   hdwCloudClient: hdwCloudClient ?? null,
+   getWorkspaceProjectByProjectId,
+   updateProject,
+   ensureProject,
+   readProjectFile,
+   listFiles,
+ });
 
- // POST /api/projects/:id/cover/generate — triggers daemon-side native
- // cover generation (Electron webContents.capturePage) for the project's
-  // entry HTML, or a specific HTML file when `?file=` is provided.  Used
-  // by the web client in the desktop environment where browser-side SVG
-  // foreignObject capture is skipped.  Returns the computed cover digest
-  // so the client can patch localStorage.
+ // POST /api/projects/:id/cover/generate — capture the project entry or ?file=.
  app.post('/api/projects/:id/cover/generate', async (req, res) => {
    try {
      const project = getProject(db, req.params.id);
@@ -8222,24 +8138,21 @@ function triggerCoverForProjectEntry(
        project.id,
        'writeFiles',
      )) return;
-     // Use the file specified in ?file= query param, or fall back to the
-     // project's entry file.  This lets the web client request a cover for
-     // a specific HTML file that was just modified or created.
      const requestedFile = typeof req.query?.file === 'string' && req.query.file
        ? req.query.file
        : null;
-     const targetFile = requestedFile
-       ?? (typeof project.metadata?.entryFile === 'string' && project.metadata.entryFile
-         ? project.metadata.entryFile
-         : 'index.html');
-     const file = await readProjectFile(PROJECTS_DIR, req.params.id, targetFile, project?.metadata ?? null);
-     if (!/\.html?$/i.test(targetFile)) {
-       return sendApiError(res, 400, 'BAD_REQUEST', 'target file is not HTML');
+     const targetFile = requestedFile ?? selectProjectCoverEntry(
+       await listFiles(PROJECTS_DIR, project.id, { metadata: project.metadata }),
+       typeof project.metadata?.entryFile === 'string' ? project.metadata.entryFile : null,
+     );
+     if (!targetFile) {
+       return sendApiError(res, 404, 'FILE_NOT_FOUND', 'project has no cover source');
      }
+     const file = await readProjectFile(PROJECTS_DIR, req.params.id, targetFile, project?.metadata ?? null);
      const digest = await generateProjectCover(
        req.params.id,
        targetFile,
-       file.buffer.toString('utf8'),
+       file.buffer,
        { name: project.name, metadata: project.metadata },
      );
       if (!digest) {
@@ -9404,8 +9317,8 @@ function triggerCoverForProjectEntry(
               ...(versionCapture ? { version: versionCapture.version } : {}),
               ...(versionCapture?.versionWarning ? { versionWarning: versionCapture.versionWarning } : {}),
             };
-            if (uploadProject && /\.html?$/i.test(meta.name)) {
-              void generateProjectCover(req.params.id, meta.name, buf.toString('utf8'), uploadProject).catch(() => {});
+            if (uploadProject) {
+              triggerCoverForProjectEntry(req.params.id, uploadProject);
             }
             return res.json(body);
           } finally {
@@ -9544,8 +9457,8 @@ function triggerCoverForProjectEntry(
           ...(versionCapture ? { version: versionCapture.version } : {}),
           ...(versionCapture?.versionWarning ? { versionWarning: versionCapture.versionWarning } : {}),
         };
-        if (uploadProject && /\.html?$/i.test(meta.name)) {
-          void generateProjectCover(req.params.id, meta.name, buf.toString('utf8'), uploadProject).catch(() => {});
+        if (uploadProject) {
+          triggerCoverForProjectEntry(req.params.id, uploadProject);
         }
         res.json(body);
       } catch (err: any) {
@@ -9697,6 +9610,19 @@ export function registerProjectUploadRoutes(app: Express, ctx: RegisterProjectUp
   const { PROJECTS_DIR } = ctx.paths;
   const { getProject, getWorkspaceProject, getWorkspaceProjectByProjectId } = ctx.projectStore;
   const { readProjectFile } = ctx.projectFiles;
+  const { triggerCoverForProjectEntry } = createProjectCoverHelpers({
+    db,
+    projectsDir: PROJECTS_DIR,
+    runtimeDataDir: ctx.paths.RUNTIME_DATA_DIR,
+    desktopArtifactExporter: ctx.desktopArtifactExporter ?? null,
+    daemonUrlRef: ctx.daemonUrlRef ?? null,
+    hdwCloudClient: ctx.hdwCloudClient ?? null,
+    getWorkspaceProjectByProjectId,
+    updateProject: ctx.projectStore.updateProject,
+    ensureProject: ctx.projectFiles.ensureProject,
+    readProjectFile,
+    listFiles: ctx.projectFiles.listFiles,
+  });
   const { fs } = ctx.node;
   const authorizeProjectRequest =
     ctx.authorizeProjectRequest ??
@@ -9775,6 +9701,7 @@ export function registerProjectUploadRoutes(app: Express, ctx: RegisterProjectUp
         }
         /** @type {import('@open-design/contracts').UploadProjectFilesResponse} */
         const body = { files: out };
+        if (project && out.length) triggerCoverForProjectEntry(project.id, project);
         res.json(body);
       } catch (err: any) {
         sendApiError(res, 500, 'INTERNAL_ERROR', 'upload failed');

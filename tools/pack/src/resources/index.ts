@@ -91,6 +91,25 @@ export async function copyBundledResourceTrees({
       recursive: true,
     });
   }
+
+  // Bundle only distributable ForDesigner files. In particular, never ship the
+  // sample data/ state files, local identity.json, tests, or Python __pycache__.
+  // They are user-owned state and must not be introduced by a packaged build.
+  const forDesignerSource = join(workspaceRoot, 'for-designer');
+  const forDesignerDest = join(resourceRoot, 'for-designer');
+  const distributable = {
+    '.': ['README.txt', 'version.json', 'install.bat', 'install.command', 'install.ps1'],
+    config: ['server.json', 'groups.json', 'group-map.json', 'pricing.json', 'member-groups.json'],
+    scripts: ['collect_cowork.py', 'parse.py', 'static_org_map.py', 'update_collector.py'],
+  } as const;
+  for (const [folder, names] of Object.entries(distributable)) {
+    const dst = folder === '.' ? forDesignerDest : join(forDesignerDest, folder);
+    await mkdir(dst, { recursive: true });
+    for (const name of names) {
+      const src = folder === '.' ? join(forDesignerSource, name) : join(forDesignerSource, folder, name);
+      await cp(src, join(dst, name));
+    }
+  }
 }
 
 export const DSH_RUNTIME_RESOURCE_DIRECTORY = join("agent-runtimes", "deepseek-harness");

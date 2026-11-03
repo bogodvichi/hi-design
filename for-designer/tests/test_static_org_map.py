@@ -32,6 +32,11 @@ class StaticOrgMapTests(unittest.TestCase):
         }
         self.assertEqual({k: len(v) for k, v in static_org_map.GROUP_MEMBERS.items()}, expected)
         self.assertEqual(len(static_org_map.MEMBER_TO_GROUP), 66)
+        with (ROOT / 'config' / 'member-groups.json').open('r', encoding='utf-8') as handle:
+            packaged_map = json.load(handle)
+        self.assertEqual(packaged_map, static_org_map.MEMBER_TO_GROUP)
+        with (ROOT / 'version.json').open('r', encoding='utf-8') as handle:
+            self.assertEqual(json.load(handle)['version'], '1.0.2')
 
     def test_all_names_and_duplicate_prefix_aliases(self):
         for group, members in static_org_map.GROUP_MEMBERS.items():

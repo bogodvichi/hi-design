@@ -8,7 +8,7 @@ $root = $PSScriptRoot
 $machine = $env:COMPUTERNAME
 
 # 检测是否在交互式环境运行（后台静默运行时 stdin 不是交互式）
-$interactive = [Environment]::UserInteractive -and ![Environment]::GetCommandLineArgs().Contains("-NonInteractive")
+$interactive = [Environment]::UserInteractive -and ![Environment]::GetCommandLineArgs().Contains("-NonInteractive") -and ($env:HIDESIGN_FOR_DESIGNER_SILENT -ne "1")
 
 # trap:任何未捕获异常都打印 + 暂停,绝不闪退(让用户能看到错误)
 trap {
@@ -101,27 +101,38 @@ if (Test-Path $coworkScript) {
         } elseif (-not $verResolved) {
             Write-Host "WARNING: Could not determine Python version (found: $([string]$verLine)). Scheduled collection skipped. Please ensure python is installed and runnable, then re-run install.bat."
         } else {
-            # 先删旧任务（如果有）
-            try { Unregister-ScheduledTask -TaskName $taskName -Confirm:$false 2>$null } catch {}
+            # 已有有效任务不要每次登录就删除重建，避免错过当前采集或丢失定时设置。
+            # 只有缺失或执行路径发生变化时才注册；失败不删除原任务。
             $registered = $false
-            # 方式1：Register-ScheduledTask（需要管理员权限）
             try {
-                $action = New-ScheduledTaskAction -Execute $pyExe -Argument "`"$coworkScript`""
-                # 每小时重复:从当前时刻起,每 1 小时重复,持续 10 年(约 3650 天)
-                $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Hours 1) -RepetitionDuration (New-TimeSpan -Days 3650)
-                # 关键:显式关闭电池限制。笔记本默认 DisallowStartIfOnBatteries=True,
-                # 会导致电池模式下任务永远不执行(采集静默失败)。
-                $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable
-                $settings.DisallowStartIfOnBatteries = $false
-                $settings.StopIfGoingOnBatteries = $false
-                Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Description "AI 使用采集：每小时扫描 Claude Code + Codex 会话并上报" -Force 2>$null | Out-Null
-                $registered = $true
-                Write-Host "已注册 Cowork 定时采集（计划任务，每小时）"
+                $existing = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+                if ($existing) {
+                    $matched = @($existing.Actions) | Where-Object {
+                        [string]::Equals([string]$_.Execute, [string]$pyExe, [StringComparison]::OrdinalIgnoreCase) -and
+                        ([string]$_.Arguments).Contains($coworkScript)
+                    }
+                    if ($matched.Count -gt 0 -and @($existing.Triggers).Count -gt 0) {
+                        $registered = $true
+                        Write-Host "Cowork 定时采集已存在，保留原任务（不重复注册）"
+                    }
+                }
             } catch {}
-            # 方式2：降级到 schtasks（命令行，当前用户权限即可）
+            # 方式1：原地注册/更新，不提前删除旧任务
             if (-not $registered) {
                 try {
-                    schtasks /Delete /TN $taskName /F 2>$null | Out-Null
+                    $action = New-ScheduledTaskAction -Execute $pyExe -Argument "`"$coworkScript`""
+                    $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Hours 1) -RepetitionDuration (New-TimeSpan -Days 3650)
+                    $settings = New-ScheduledTaskSettingsSet -StartWhenAvailable
+                    $settings.DisallowStartIfOnBatteries = $false
+                    $settings.StopIfGoingOnBatteries = $false
+                    Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings -Description "AI 使用采集：每小时扫描 Claude Code + Codex 会话并上报" -Force 2>$null | Out-Null
+                    $registered = $true
+                    Write-Host "已注册 Cowork 定时采集（计划任务，每小时）"
+                } catch {}
+            }
+            # 方式2：降级到 schtasks，以 /F 覆盖同名任务但不预先删除
+            if (-not $registered) {
+                try {
                     $result = schtasks /Create /TN $taskName /TR "`"$pyExe`" `"$coworkScript`"" /SC HOURLY /MO 1 /F 2>&1
                     if ($LASTEXITCODE -eq 0) {
                         $registered = $true

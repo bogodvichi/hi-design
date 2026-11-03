@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import * as crypto from 'crypto';
+import { ensureForDesignerInstalled } from '../../hik_logins/for-designer.js';
 import { rawRequest, type Cookie } from '../http.js';
 import { generateToken } from '../token.js';
 
@@ -166,7 +167,7 @@ const filePath = path.join(dataDir, 'config.sso.json');
    fs.writeFileSync(filePath, JSON.stringify(lockedSession, null, 2), 'utf-8');
     // 拷贝 for-designer 到用户目录
     if (forDesignerDir) {
-      copyForDesignerToUserDirAndRun(forDesignerDir, session);
+      ensureForDesignerInstalled(forDesignerDir, session);
     }
   } catch {
     // 写入失败时静默处理
@@ -184,79 +185,6 @@ export function removeSsoConfigFile(dataDir: string): void {
     // 删除失败时静默处理
   }
   ssoCache.delete(filePath);
-}
-
-// ── for-designer 拷贝 ─────────────────────────────────────────────
-
-function copyDirRecursive(src: string, dest: string): void {
-  fs.mkdirSync(dest, { recursive: true });
-  const entries = fs.readdirSync(src, { withFileTypes: true });
-  for (const entry of entries) {
-    const srcPath = path.join(src, entry.name);
-    const destPath = path.join(dest, entry.name);
-    if (entry.isDirectory()) {
-      if (entry.name !== '.git' && entry.name !== 'node_modules') {
-        copyDirRecursive(srcPath, destPath);
-      }
-    } else {
-      fs.copyFileSync(srcPath, destPath);
-    }
-  }
-}
-
-function copyForDesignerToUserDirAndRun(sourceDir: string, session: SsoSession): void {
-  const dd = session?.userInfo?.departmentDetail?.split('/');
-  const user = session?.userInfo?.displayName;
-  const group = dd[3] || dd[2] || dd[1] || dd[0];
-  const identity = {
-    user,
-    group,
-    machine: os.hostname(),
-  };
-
-  // 确定目标目录：用户目录下的 for-designer，和源目录同名
-  const targetDir = path.join(os.homedir(), 'for-designer');
-
-  try {
-    // 拷贝 sourceDir 到目标目录
-    copyDirRecursive(sourceDir, targetDir);
-
-    // 写入 identity.json
-    const configDir = path.join(targetDir, 'config');
-    fs.mkdirSync(configDir, { recursive: true });
-    fs.writeFileSync(path.join(configDir, 'identity.json'), JSON.stringify(identity, null, 2), 'utf-8');
-
-    // 执行安装脚本
-    if (process.platform === 'win32') {
-      const batPath = path.join(targetDir, 'install.bat');
-      if (fs.existsSync(batPath)) {
-        import('child_process').then(({ spawn }) => {
-          // windowsHide 与 detached 同时使用可能导致窗口仍弹出，
-          // 故仅保留 windowsHide + unref() 来隐藏窗口且不阻塞主进程
-          const child = spawn('cmd', ['/c', batPath], {
-            stdio: 'ignore',
-            cwd: targetDir,
-            windowsHide: true,
-          });
-          child.unref();
-        });
-      }
-    } else if (process.platform === 'darwin') {
-      const cmdPath = path.join(targetDir, 'install.command');
-      if (fs.existsSync(cmdPath)) {
-        fs.chmodSync(cmdPath, 0o755);
-        import('child_process').then(({ spawn }) => {
-          spawn('bash', [cmdPath], {
-            detached: true,
-            stdio: 'ignore',
-            cwd: targetDir,
-          }).unref();
-        });
-      }
-    }
-  } catch {
-    // 拷贝或执行失败时静默处理，不影响登录流程
-  }
 }
 
 // ── SSO 业务逻辑 ─────────────────────────────────────────────────

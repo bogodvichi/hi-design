@@ -3,6 +3,7 @@ import type http from 'node:http';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import JSZip from 'jszip';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { InstalledPluginRecord } from '@open-design/contracts';
 import { closeDatabase, getProject, listWorkspaceProjects, openDatabase } from '../src/db.js';
@@ -276,6 +277,49 @@ describe('HDW marketplace project preview', () => {
     } finally {
       await close(server.server);
     }
+  });
+
+  it.each(['', 'open-design.json', 'DESIGN-MANIFEST.json'])('serves DOCX contents using the archive entry: %s', async (manifestName) => {
+    const root = await makeTempRoot('od-marketplace-preview-docx-');
+    const plugin = { name: 'document-project', title: 'Document project', version: '1.0.0' };
+    const { cacheDir, server } = await createPreviewHarness(root, plugin);
+    const zip = new JSZip();
+    zip.file('word/document.xml', '<w:document><w:p><w:r><w:t>社区文档实际正文</w:t></w:r></w:p></w:document>');
+    await mkdir(path.join(cacheDir, 'docs'), { recursive: true });
+    await writeFile(path.join(cacheDir, 'docs', 'guide.docx'), await zip.generateAsync({ type: 'nodebuffer' }));
+    await writeFile(path.join(cacheDir, 'SKILL.md'), '# injected description');
+    if (manifestName) {
+      await writeFile(path.join(cacheDir, 'README.md'), '# unrelated package instructions');
+      await writeFile(path.join(cacheDir, manifestName), JSON.stringify(manifestName === 'open-design.json'
+        ? { od: { preview: { entry: './docs/guide.docx' } } }
+        : { entryFile: 'docs/guide.docx' }));
+    }
+    try {
+      const response = await fetch(`${server.url}/api/marketplaces/hdw-community/plugins/${plugin.name}/preview`);
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toContain('application/json');
+      expect(decodeURIComponent(response.headers.get('x-open-design-preview-file') ?? '')).toBe('docs/guide.docx');
+      expect(await response.json()).toMatchObject({ kind: 'document', sections: [{ lines: ['社区文档实际正文'] }] });
+    } finally { await close(server.server); }
+  });
+
+  it.each([
+    { name: 'notes.txt', mime: 'text/plain', content: '纯文本正文\n<script>literal text</script>' },
+    { name: 'diagram.svg', mime: 'image/svg+xml', content: '<svg xmlns="http://www.w3.org/2000/svg"><text>图片预览</text></svg>' },
+    { name: 'photo.png', mime: 'image/png', content: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChw9E8oU7AAAAAElFTkSuQmCC', 'base64') },
+  ])('serves the actual $name content with its MIME type', async ({ name, mime, content }) => {
+    const root = await makeTempRoot('od-marketplace-preview-file-');
+    const plugin = { name: 'file-project', title: 'File project', version: '1.0.0' };
+    const { cacheDir, server } = await createPreviewHarness(root, plugin);
+    await writeFile(path.join(cacheDir, name), content);
+    await writeFile(path.join(cacheDir, 'SKILL.md'), '# injected metadata');
+    try {
+      const response = await fetch(`${server.url}/api/marketplaces/hdw-community/plugins/${plugin.name}/preview`);
+      expect(response.status).toBe(200);
+      expect(response.headers.get('content-type')).toContain(mime);
+      expect(decodeURIComponent(response.headers.get('x-open-design-preview-file') ?? '')).toBe(name);
+      expect(Buffer.from(await response.arrayBuffer())).toEqual(Buffer.from(content));
+    } finally { await close(server.server); }
   });
 });
 

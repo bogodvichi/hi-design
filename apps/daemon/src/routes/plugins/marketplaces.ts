@@ -1,6 +1,7 @@
 import type { Express, Request } from 'express';
 import { extractCommunityArchive } from '../../community-archive.js';
 import { buildDocumentPreview } from '../../document-preview.js';
+import { kindFor, mimeFor } from '../../projects.js';
 import { normalizeHdwCommunityCoverUrls } from '../../http/hdw-community-cover.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -99,7 +100,20 @@ async function listCommunityPreviewFiles(root: string): Promise<string[]> {
   return files;
 }
 
-function previewPathRank(rel: string, kind: 'html' | 'markdown' | 'pdf'): number {
+type CommunityPreviewKind = 'html' | 'markdown' | 'document' | 'image' | 'text';
+
+function communityPreviewKind(file: string): CommunityPreviewKind | null {
+  if (COMMUNITY_PREVIEW_SKIP_FILES.has(path.posix.basename(file).toLowerCase())) return null;
+  if (/\.md(?:own)?$/i.test(file)) return 'markdown';
+  const kind = kindFor(file);
+  if (kind === 'html') return 'html';
+  if (['pdf', 'document', 'presentation', 'spreadsheet'].includes(kind)) return 'document';
+  if (mimeFor(file).startsWith('image/')) return 'image';
+  if (kind === 'text' || kind === 'code' || /\.(csv|tsv|ya?ml|xml|log)$/i.test(file)) return 'text';
+  return null;
+}
+
+function previewPathRank(rel: string, kind: CommunityPreviewKind): number {
   const normalized = rel.replace(/\\/g, '/');
   const lower = normalized.toLowerCase();
   const base = path.posix.basename(lower);
@@ -135,21 +149,33 @@ function previewPathRank(rel: string, kind: 'html' | 'markdown' | 'pdf'): number
 
 function selectCommunityPreviewFile(
   files: string[],
-  kind: 'html' | 'markdown' | 'pdf',
+  kind: CommunityPreviewKind,
 ): string | null {
-  const matcher = kind === 'html'
-    ? /\.html?$/i
-    : kind === 'markdown'
-      ? /\.md(?:own)?$/i
-      : /\.pdf$/i;
-
   const candidates = files
-    .filter((rel) => matcher.test(rel))
+    .filter((rel) => communityPreviewKind(rel) === kind)
     .map((rel) => ({ rel, rank: previewPathRank(rel, kind) }))
     .filter((item) => Number.isFinite(item.rank))
     .sort((a, b) => a.rank - b.rank || a.rel.localeCompare(b.rel));
 
   return candidates[0]?.rel ?? null;
+}
+
+async function resolveCommunityPreviewFile(root: string, files: string[]): Promise<string | null> {
+  for (const manifestName of ['open-design.json', 'DESIGN-MANIFEST.json']) {
+    try {
+      const manifest = JSON.parse(await fs.promises.readFile(path.join(root, manifestName), 'utf8'));
+      const entry = manifestName === 'open-design.json' ? manifest.od?.preview?.entry : manifest.entryFile;
+      const rel = typeof entry === 'string' ? entry.trim().replace(/^\.\//, '').replace(/\\/g, '/') : '';
+      // Only select files enumerated inside the extracted archive, never a
+      // manifest-supplied absolute path, traversal, or symlink.
+      if (files.includes(rel) && communityPreviewKind(rel)) return rel;
+    } catch { /* Older archives may have no entry metadata. */ }
+  }
+  for (const kind of ['html', 'markdown', 'document', 'image', 'text'] as const) {
+    const rel = selectCommunityPreviewFile(files, kind);
+    if (rel) return rel;
+  }
+  return null;
 }
 
 export function registerPluginMarketplaceRoutes(app: Express, deps: RegisterPluginMarketplaceRoutesDeps): void {
@@ -521,36 +547,27 @@ export function registerPluginMarketplaceRoutes(app: Express, deps: RegisterPlug
      }
 
      const previewFiles = await listCommunityPreviewFiles(cacheDir);
-     const htmlRel = selectCommunityPreviewFile(previewFiles, 'html');
-     if (htmlRel) {
-       const buf = await fs.promises.readFile(path.join(cacheDir, ...htmlRel.split('/')));
-       res.setHeader('Content-Type', 'text/html; charset=utf-8');
-       res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self' data: blob:; media-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'none'; frame-ancestors 'self'");
+     const previewRel = await resolveCommunityPreviewFile(cacheDir, previewFiles);
+     if (previewRel) {
+       const buffer = await fs.promises.readFile(path.join(cacheDir, ...previewRel.split('/')));
+       const kind = communityPreviewKind(previewRel);
        res.setHeader('X-Content-Type-Options', 'nosniff');
-       return res.send(buf);
-     }
-
-     const markdownRel = selectCommunityPreviewFile(previewFiles, 'markdown');
-     if (markdownRel) {
-       const markdown = await fs.promises.readFile(
-         path.join(cacheDir, ...markdownRel.split('/')),
-         'utf8',
-       );
-       res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
-       res.setHeader('X-Content-Type-Options', 'nosniff');
-       res.setHeader('X-Open-Design-Preview-File', encodeURIComponent(markdownRel));
-       return res.send(markdown);
-     }
-
-     const pdfRel = selectCommunityPreviewFile(previewFiles, 'pdf');
-     if (pdfRel) {
-       const pdfBuffer = await fs.promises.readFile(path.join(cacheDir, ...pdfRel.split('/')));
-       const preview = await buildDocumentPreview({
-         name: path.posix.basename(pdfRel),
-         buffer: pdfBuffer,
-       });
-       res.setHeader('X-Open-Design-Preview-File', encodeURIComponent(pdfRel));
-       return res.json(preview);
+       res.setHeader('X-Open-Design-Preview-File', encodeURIComponent(previewRel));
+       if (kind === 'html') {
+         res.setHeader('Content-Type', 'text/html; charset=utf-8');
+         res.setHeader('Content-Security-Policy', "default-src 'none'; img-src 'self' data: blob:; media-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'none'; frame-ancestors 'self'");
+         return res.send(buffer);
+       }
+       if (kind === 'document') {
+         return res.json(await buildDocumentPreview({ name: path.posix.basename(previewRel), buffer }));
+       }
+       if (kind === 'image') {
+         res.setHeader('Content-Type', mimeFor(previewRel));
+         res.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; sandbox");
+         return res.send(buffer);
+       }
+       res.setHeader('Content-Type', kind === 'markdown' ? 'text/markdown; charset=utf-8' : 'text/plain; charset=utf-8');
+       return res.send(buffer);
      }
 
      const desc = String(entry.description ?? '');

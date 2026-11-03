@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const state = vi.hoisted(() => ({ url: '', loadedBytes: 0, destroyed: false, contentHeight: 800 }));
-beforeEach(() => { state.destroyed = false; state.contentHeight = 800; });
+const state = vi.hoisted(() => ({ url: '', loadedBytes: 0, destroyed: false, contentHeight: 800, painted: false, opacity: 1 }));
+beforeEach(() => { state.destroyed = false; state.contentHeight = 800; state.painted = false; state.opacity = 1; });
 vi.mock('electron', () => ({
   BrowserWindow: class {
     webContents = {
@@ -10,7 +10,7 @@ vi.mock('electron', () => ({
         if (script.includes('document.write(')) state.loadedBytes = Buffer.byteLength(script);
         return state.contentHeight;
       }),
-      capturePage: vi.fn(async () => ({ toPNG: () => Buffer.from('png') })),
+      capturePage: vi.fn(async () => ({ toPNG: () => Buffer.from(state.painted ? 'png' : 'stale-blank-frame') })),
     };
     async loadURL(url: string) {
       state.url = url;
@@ -18,6 +18,8 @@ vi.mock('electron', () => ({
     }
     getContentSize() { return [1200, 800]; }
     setContentSize() {}
+    setOpacity(opacity: number) { state.opacity = opacity; }
+    showInactive() { expect(state.opacity).toBe(0); state.painted = true; }
     isDestroyed() { return state.destroyed; }
     destroy() { state.destroyed = true; }
   },
@@ -27,9 +29,17 @@ vi.mock('../../src/main/pdf-export.js', () => ({
 }));
 
 import { exportArtifact } from '../../src/main/artifact-export.js';
-import { rm } from 'node:fs/promises';
+import { readFile, rm } from 'node:fs/promises';
 
 describe('large HTML cover capture', () => {
+  it('paints the cover without a visible window or focus change before capturing', async () => {
+    const result = await exportArtifact({ deck: false, viewportOnly: true, format: 'image', title: 'Document', html: '<h1>Document contents</h1>' });
+    try {
+      expect(result.ok).toBe(true);
+      expect(await readFile(result.path!)).toEqual(Buffer.from('png'));
+    } finally { if (result.path) await rm(result.path, { force: true }); }
+  });
+
   it('captures a tall document as one viewport when requested', async () => {
     state.contentHeight = 50_000;
     const result = await exportArtifact({ deck: false, viewportOnly: true, format: 'image', title: 'Cover', html: '<h1>Long document</h1>' });

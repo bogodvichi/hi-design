@@ -81,6 +81,12 @@ async function renderImage(
   window: BrowserWindow,
   input: DesktopExportArtifactInput,
 ): Promise<DesktopExportArtifactResult> {
+  // As with deck capture, let the compositor paint without flashing a window
+  // or taking focus. A hidden viewport can otherwise retain the blank shell.
+  window.setOpacity(0);
+  window.showInactive();
+  await waitForPrintableContent(window);
+
   // For a non-deck page, grow the window to the content height so capturePage
   // grabs the full scrollable page rather than just the first viewport.
   if (!input.deck && !input.viewportOnly) {

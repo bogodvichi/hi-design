@@ -24,6 +24,7 @@ import {
   normalizeUedroLaunchTarget,
   uedroLogout,
 } from '../http/hik_logins/uedro.js';
+import { ensureForDesignerInstalled } from '../http/hik_logins/for-designer.js';
 import { encryptPassword, ensureUedroSession } from '../http/hik_logins/session-guard.js';
 import { normalizeLoginError } from '../http/hik_logins/login-error.js';
 import {
@@ -96,6 +97,20 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
   let pendingCommunityAvatarSync: { key: string; promise: Promise<boolean> } | null = null;
   const cachedCommunityAvatarSyncAttempts = new Set<string>();
 
+  // Startup session verification may run repeatedly; sync the collector once
+  // per authenticated user per daemon lifetime, not on every auth request.
+  let lastForDesignerAuthUser = '';
+  function ensureCollectorForCachedSso(session: SsoSession): void {
+    const username = session.username?.trim();
+    if (!FOR_DESIGNER_DIR || !username || !session.userInfo || username === lastForDesignerAuthUser) return;
+    try {
+      ensureForDesignerInstalled(FOR_DESIGNER_DIR, session);
+      lastForDesignerAuthUser = username;
+    } catch (error) {
+      console.warn('ForDesigner startup sync skipped:', error instanceof Error ? error.message : String(error));
+    }
+  }
+
   async function trySyncCommunityAvatar(username: string, avatarUrl: string): Promise<boolean> {
     const syncKey = `${username.trim().toLowerCase()}\0${avatarUrl.trim()}`;
     if (lastCommunityAvatarSyncKey === syncKey) return true;
@@ -136,10 +151,12 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
     session.uedro = { password: encryptPassword(deferredPassword) };
     session.hikke = { password: encryptPassword(deferredPassword) };
     writeSsoConfigFile(dataDir, session, FOR_DESIGNER_DIR);
+    if (FOR_DESIGNER_DIR) lastForDesignerAuthUser = username;
   }
 
   function clearSsoSession() {
     removeSsoConfigFile(dataDir);
+    lastForDesignerAuthUser = '';
   }
 
   app.post('/api/auth/login', async (req, res) => {
@@ -351,6 +368,8 @@ export function registerAuthRoutes(app: Express, deps: RegisterAuthRoutesDeps): 
         const response: any = { ok: false, username: result.username || '' };
         return res.json(response);
       }
+      // 旧登录态启动客户端时也检查采集器，不必强制用户重新登录。
+      ensureCollectorForCachedSso(session);
       // 会话有效
       const response: any = {
         ok: true,

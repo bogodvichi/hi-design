@@ -8,7 +8,7 @@ import { dirname, join } from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
-const rendererState = vi.hoisted(() => ({ loadedUrls: [] as string[], saveDir: '' }));
+const rendererState = vi.hoisted(() => ({ loadedUrls: [] as string[], injectedDocument: '', saveDir: '' }));
 
 vi.mock('electron', () => {
   const image = {
@@ -29,6 +29,8 @@ vi.mock('electron', () => {
         sendCommand: async () => undefined,
       },
       executeJavaScript: async (source: string): Promise<unknown> => {
+        const documentWrite = source.match(/^document\.open\(\);document\.write\((.*)\);document\.close\(\);$/s);
+        if (documentWrite?.[1]) rendererState.injectedDocument = JSON.parse(documentWrite[1]);
         if (source.includes("document.querySelectorAll('.slide")) return 0;
         if (source.includes('document.documentElement.scrollHeight')) return 1;
         if (source === 'window.devicePixelRatio || 1') return 1;
@@ -78,6 +80,7 @@ afterAll(async () => {
 });
 
 function lastLoadedDocument(): string {
+  if (rendererState.injectedDocument) return rendererState.injectedDocument;
   const url = rendererState.loadedUrls[rendererState.loadedUrls.length - 1];
   if (!url?.startsWith('data:text/html;charset=utf-8,')) throw new Error(`unexpected loaded URL: ${url}`);
   return decodeURIComponent(url.slice('data:text/html;charset=utf-8,'.length));
@@ -92,6 +95,7 @@ describe('export title replacement-pattern safety (#6795)', () => {
   it('keeps replacement-pattern sequences verbatim in PDF export titles', async () => {
     for (const title of TITLES) {
       rendererState.loadedUrls.length = 0;
+      rendererState.injectedDocument = '';
       const result = await exportPdfFromHtml({
         baseHref: undefined,
         deck: true,
@@ -109,6 +113,7 @@ describe('export title replacement-pattern safety (#6795)', () => {
   it('keeps replacement-pattern sequences verbatim in image export titles', async () => {
     for (const title of TITLES) {
       rendererState.loadedUrls.length = 0;
+      rendererState.injectedDocument = '';
       const result = await exportArtifact({
         baseHref: undefined,
         deck: false,

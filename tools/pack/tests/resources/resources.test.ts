@@ -231,6 +231,10 @@ describe("copyBundledResourceTrees", () => {
       await mkdir(join(workspaceRoot, "design-systems", "sample"), {
         recursive: true,
       });
+      await mkdir(join(workspaceRoot, "for-designer", "scripts"), { recursive: true });
+      await mkdir(join(workspaceRoot, "for-designer", "config"), { recursive: true });
+      await mkdir(join(workspaceRoot, "for-designer", "data"), { recursive: true });
+      await mkdir(join(workspaceRoot, "for-designer", "scripts", "__pycache__"), { recursive: true });
       await mkdir(join(workspaceRoot, "craft", "sample"), { recursive: true });
       await mkdir(join(workspaceRoot, "plugins", "_official", "sample"), {
         recursive: true,
@@ -261,6 +265,20 @@ describe("copyBundledResourceTrees", () => {
         "utf8",
       );
       await writeFile(designTemplatePath, "# Orbit General\n", "utf8");
+      await writeFile(join(workspaceRoot, "for-designer", "version.json"), '{"version":"1.0.2"}\n', "utf8");
+      await writeFile(join(workspaceRoot, "for-designer", "scripts", "collect_cowork.py"), '# collector\n', "utf8");
+      for (const name of ["parse.py", "static_org_map.py", "update_collector.py"]) {
+        await writeFile(join(workspaceRoot, "for-designer", "scripts", name), "# script\n", "utf8");
+      }
+      for (const name of ["install.command", "install.bat", "install.ps1", "README.txt"]) {
+        await writeFile(join(workspaceRoot, "for-designer", name), "installer", "utf8");
+      }
+      for (const name of ["server.json", "groups.json", "group-map.json", "pricing.json", "member-groups.json"]) {
+        await writeFile(join(workspaceRoot, "for-designer", "config", name), "{}", "utf8");
+      }
+      await writeFile(join(workspaceRoot, "for-designer", "config", "identity.json"), '{"user":"sensitive"}', "utf8");
+      await writeFile(join(workspaceRoot, "for-designer", "data", "report_retry_queue.json"), '{"pending":247}', "utf8");
+      await writeFile(join(workspaceRoot, "for-designer", "scripts", "__pycache__", "collector.pyc"), "cache", "utf8");
       await writeFile(communityPetPath, "{\"name\":\"sample\"}\n", "utf8");
       await writeFile(
         join(workspaceRoot, "plugins", "_official", "sample", "open-design.json"),
@@ -309,6 +327,18 @@ describe("copyBundledResourceTrees", () => {
           "utf8",
         ),
       ).resolves.toBe("# Orbit General\n");
+      await expect(readFile(join(resourceRoot, "for-designer", "version.json"), "utf8"))
+        .resolves.toContain('1.0.2');
+      await expect(readFile(join(resourceRoot, "for-designer", "scripts", "collect_cowork.py"), "utf8"))
+        .resolves.toBe('# collector\n');
+      await expect(readFile(join(resourceRoot, "for-designer", "config", "member-groups.json"), "utf8"))
+        .resolves.toBe("{}");
+      await expect(access(join(resourceRoot, "for-designer", "data", "report_retry_queue.json")))
+        .rejects.toThrow();
+      await expect(access(join(resourceRoot, "for-designer", "config", "identity.json")))
+        .rejects.toThrow();
+      await expect(access(join(resourceRoot, "for-designer", "scripts", "__pycache__", "collector.pyc")))
+        .rejects.toThrow();
       await expect(
         readFile(
           join(resourceRoot, "community-pets", "sample", "pet.json"),
