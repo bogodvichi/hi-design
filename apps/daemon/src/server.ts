@@ -10239,48 +10239,45 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
            if (display) cliArgs.push('--publisher-displayname', display);
          } catch { /* best-effort: CLI falls back to 'unknown' */ }
        }
-       // Generate a cover screenshot of the entry HTML so /square can show
-       // a preview image for remote (not-yet-downloaded) community plugins.
-       // The desktop renderer renders the page to PNG; we upload the PNG as
-       // a blob to HDW and pass the digest to the CLI as --cover-digest.
-       // If the renderer is unavailable or the screenshot fails, publish
-      // proceeds without a cover — the card just shows a placeholder.
+      // Use the same format-aware cover pipeline as direct community publishing.
       let capturedCoverDigest: string | null = null;
-      if (action === 'publish-hdw' && typeof desktopArtifactExporter === 'function' && typeof body.entryFile === 'string' && body.entryFile.trim()) {
+      if (action === 'publish-hdw' && typeof desktopArtifactExporter === 'function') {
         try {
-          const entryFileName = body.entryFile.trim();
+          const { renderProjectCover, selectProjectCoverEntry } = await import('./artifacts/project-cover.js');
           const { buildDesktopArtifactExportInput } = await import('./pdf-export.js');
-           const { uploadHdwCommunityBlob } = await import('./http/hdw.js');
-           const { readProjectFile } = await import('./projects.js');
-           const fileResult = await readProjectFile(PROJECTS_DIR, req.params.id, entryFileName, project.metadata);
-           const htmlContent = fileResult.buffer.toString('utf8');
-           const exportInput = await buildDesktopArtifactExportInput({
-             daemonUrl: daemonUrlRef.current,
-             fileName: entryFileName,
-             format: 'image',
-             imageFormat: 'png',
-             width: 1200,
-             height: 800,
-             sourceHtml: htmlContent,
-             projectId: req.params.id,
-             projectsRoot: PROJECTS_DIR,
-             title: project.name || entryFileName,
-           });
-           const coverResult = await desktopArtifactExporter(exportInput);
-           if (coverResult.ok && coverResult.path) {
-             const { promises: fsp } = await import('node:fs');
-             const coverBuffer = await fsp.readFile(coverResult.path);
-             // Write to a temp file then upload via the blob uploader.
-             const tmpCoverPath = `${folder}.cover.png`;
-             await fsp.writeFile(tmpCoverPath, coverBuffer);
-           const coverBlob = await uploadHdwCommunityBlob(tmpCoverPath, RUNTIME_DATA_DIR);
-           await fsp.unlink(tmpCoverPath).catch(() => {});
-           if (coverBlob) {
-             cliArgs.push('--cover-digest', coverBlob.digest);
-              capturedCoverDigest = coverBlob.digest;
-           }
-         }
-        } catch { /* best-effort: publish without cover */ }
+          const { uploadHdwCommunityBlob } = await import('./http/hdw.js');
+          const { readProjectFile, listFiles } = await import('./projects.js');
+          const files = await listFiles(PROJECTS_DIR, project.id, { metadata: project.metadata });
+          const entryFileName = selectProjectCoverEntry(files, body.entryFile || project.metadata?.entryFile);
+          if (entryFileName) {
+            const fileResult = await readProjectFile(PROJECTS_DIR, project.id, entryFileName, project.metadata);
+            const exportInput = await buildDesktopArtifactExportInput({
+              daemonUrl: daemonUrlRef.current,
+              fileName: entryFileName,
+              format: 'image',
+              sourceHtml: '',
+              projectId: req.params.id,
+              projectsRoot: PROJECTS_DIR,
+              title: project.name || entryFileName,
+            });
+            const coverBuffer = await renderProjectCover({
+              file: { name: entryFileName, buffer: fileResult.buffer },
+              title: project.name || entryFileName,
+              ...(exportInput.baseHref ? { baseHref: exportInput.baseHref } : {}),
+              exporter: desktopArtifactExporter,
+            });
+            const { promises: fsp } = await import('node:fs');
+            const tmpCoverPath = `${folder}.cover.png`;
+            try {
+              await fsp.writeFile(tmpCoverPath, coverBuffer);
+              const coverBlob = await uploadHdwCommunityBlob(tmpCoverPath, RUNTIME_DATA_DIR);
+              if (coverBlob) {
+                cliArgs.push('--cover-digest', coverBlob.digest);
+                capturedCoverDigest = coverBlob.digest;
+              }
+            } finally { await fsp.unlink(tmpCoverPath).catch(() => {}); }
+          }
+        } catch (error) { console.warn('[community] cover generation failed:', (error as Error).message); }
       }
 ﻿      // Web-side cover image: browser captures PNG screenshot of preview
       // iframe and sends it as base64 data URL. Works without desktop app.

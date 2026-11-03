@@ -341,6 +341,10 @@ export type DesktopExportArtifactImageFormat = "png" | "jpeg";
 // bytes to the HTTP caller (the `od export` CLI), then removes the temp file.
 export type DesktopExportArtifactInput = {
   baseHref?: string;
+  /** Native document source served by the caller (for example a PDF). */
+  sourceUrl?: string;
+  /** Capture one cover viewport instead of expanding to the full page. */
+  viewportOnly?: boolean;
   deck: boolean;
   format: DesktopExportArtifactFormat;
   html: string;
@@ -911,15 +915,24 @@ const DESKTOP_EXPORT_ARTIFACT_IMAGE_FORMATS: readonly DesktopExportArtifactImage
 
 function normalizeDesktopExportArtifactInput(input: unknown): DesktopExportArtifactInput {
   const value = assertObject(input, "desktop artifact export input");
-  assertKnownKeys(value, ["baseHref", "deck", "format", "html", "imageFormat", "title", "width", "height"], "desktop artifact export input");
+  assertKnownKeys(value, ["baseHref", "sourceUrl", "viewportOnly", "deck", "format", "html", "imageFormat", "title", "width", "height"], "desktop artifact export input");
   if (!DESKTOP_EXPORT_ARTIFACT_FORMATS.includes(value.format as DesktopExportArtifactFormat)) {
     throw new Error(`unsupported artifact export format: ${String(value.format)}`);
   }
   if (value.imageFormat != null && !DESKTOP_EXPORT_ARTIFACT_IMAGE_FORMATS.includes(value.imageFormat as DesktopExportArtifactImageFormat)) {
     throw new Error(`unsupported artifact export image format: ${String(value.imageFormat)}`);
   }
+  const sourceUrl = value.sourceUrl == null ? undefined : normalizeNonEmptyString(value.sourceUrl, "desktop artifact export sourceUrl");
+  if (sourceUrl) {
+    const url = new URL(sourceUrl);
+    if (url.protocol !== 'http:' || !['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname) || url.username || url.password) {
+      throw new Error('desktop artifact export sourceUrl must be a loopback HTTP URL');
+    }
+  }
   return {
     ...(value.baseHref == null ? {} : { baseHref: normalizeNonEmptyString(value.baseHref, "desktop artifact export baseHref") }),
+    ...(sourceUrl == null ? {} : { sourceUrl }),
+    ...(value.viewportOnly == null ? {} : { viewportOnly: normalizeBoolean(value.viewportOnly, "desktop artifact export viewportOnly") }),
     deck: normalizeBoolean(value.deck, "desktop artifact export deck"),
     format: value.format as DesktopExportArtifactFormat,
     html: normalizeNonEmptyString(value.html, "desktop artifact export html"),

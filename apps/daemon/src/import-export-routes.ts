@@ -55,6 +55,7 @@ import {
 } from './community-used-ids.js';
 import { resolveSkillCatalogScope } from './skill-catalog-scope.js';
 import { findSkillById } from './skills.js';
+import { renderProjectCover, selectProjectCoverEntry } from './artifacts/project-cover.js';
 
 export interface RegisterImportRoutesDeps extends RouteDeps<'db' | 'http' | 'uploads' | 'node' | 'ids' | 'paths' | 'imports' | 'auth' | 'projectStore' | 'conversations' | 'projectFiles' | 'validation'> {
   fetchProjectCreationWorkspaceDirectory?: () => Promise<WorkspaceDirectoryFetchResult>;
@@ -2080,7 +2081,12 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
           ? session.userInfo.displayName.trim()
           : publisherUsername;
 
-        const entryFile = typeof body.entryFile === 'string' ? body.entryFile.trim() : '';
+        const projectFiles = await listFiles(PROJECTS_DIR, req.params.id, { metadata: project.metadata });
+        const preferredEntry = typeof body.entryFile === 'string' && body.entryFile.trim()
+          ? body.entryFile.trim()
+          : typeof project.metadata?.entryFile === 'string' ? project.metadata.entryFile : null;
+        const entryFile = selectProjectCoverEntry(projectFiles, preferredEntry) ?? '';
+        const previewType = /\.html?$/i.test(entryFile) ? 'html' : /\.pdf$/i.test(entryFile) ? 'pdf' : undefined;
 
         // Inject open-design.json and SKILL.md into the archive so the
         // remix endpoint can find plugin manifests. Mirrors the CLI
@@ -2104,7 +2110,7 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
             mode: 'prototype',
             platform: 'desktop',
             surface: 'web',
-            ...(entryFile ? { preview: { type: 'html', entry: entryFile } } : {}),
+            ...(entryFile && previewType ? { preview: { type: previewType, entry: entryFile } } : {}),
             pipeline: { stages: [{ id: 'generate', atoms: ['file-write', 'live-artifact'] }] },
             capabilities: ['prompt:inject', 'fs:write'],
           },
@@ -2122,7 +2128,7 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
           'od:',
           '  mode: prototype',
           '  scenario: web-design',
-          ...(entryFile ? ['  preview:', '    type: html', '    entry: ' + entryFile] : []),
+          ...(entryFile && previewType ? ['  preview:', '    type: ' + previewType, '    entry: ' + entryFile] : []),
           '---',
           '',
         ].join('\n');
@@ -2130,7 +2136,7 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
           + '# ' + title + '\n\n'
           + (description || 'Shared from ' + title) + '\n\n'
           + '## What this template is\n\n'
-          + 'A self-contained HTML design shared from the HiDesign community. '
+          + 'A project shared from the HiDesign community. '
           + 'Open the entry file to view the design, then customize content, colors, and layout for your needs.\n\n'
           + '## Workflow\n\n'
           + '1. Open ' + (entryFile ? '`' + entryFile + '`' : 'the HTML file') + ' to view the design.\n'
@@ -2175,35 +2181,29 @@ export function registerProjectExportRoutes(app: Express, ctx: RegisterProjectEx
           return sendApiError(res, 502, 'UPSTREAM_UNAVAILABLE', 'failed to upload archive to community storage');
         }
 
-        // Generate a cover screenshot so /square can show a preview image.
-        // Mirrors the publish-hdw flow: try the desktop renderer first (from
-        // entryFile), then fall back to a browser-supplied base64 coverImage.
+        // Render each entry according to its file type, then fall back to a
+        // browser-supplied cover when the native renderer is unavailable.
         let coverDigest: string | null = null;
         if (entryFile && typeof desktopArtifactExporter === 'function') {
           try {
             const fileResult = await readProjectFile(PROJECTS_DIR, req.params.id, entryFile, project.metadata);
-            const htmlContent = fileResult.buffer.toString('utf8');
-            const exportInput = await buildDesktopArtifactExportInput({
-              daemonUrl: daemonUrlRef.current,
-              fileName: entryFile,
-              format: 'image',
-              imageFormat: 'png',
-              width: 1200,
-              height: 800,
-              sourceHtml: htmlContent,
-              projectId: req.params.id,
-              projectsRoot: PROJECTS_DIR,
-              title: project.name || entryFile,
+            const baseInput = await buildDesktopArtifactExportInput({
+              daemonUrl: daemonUrlRef.current, fileName: entryFile,
+              format: 'image', sourceHtml: '', projectId: req.params.id, projectsRoot: PROJECTS_DIR,
             });
-            const coverResult = await desktopArtifactExporter(exportInput);
-            if (coverResult.ok && coverResult.path) {
-              const tmpCoverPath = path.join(tmpDir, `cover-${req.params.id}-${Date.now()}.png`);
-              await fs.promises.writeFile(tmpCoverPath, await fs.promises.readFile(coverResult.path));
+            const coverBuffer = await renderProjectCover({
+              file: { name: entryFile, buffer: fileResult.buffer },
+              title: project.name || entryFile,
+              ...(baseInput.baseHref ? { baseHref: baseInput.baseHref } : {}),
+              exporter: desktopArtifactExporter,
+            });
+            const tmpCoverPath = path.join(tmpDir, `cover-${req.params.id}-${Date.now()}.png`);
+            try {
+              await fs.promises.writeFile(tmpCoverPath, coverBuffer);
               const coverBlob = await uploadHdwCommunityBlob(tmpCoverPath, dataDir);
-              await fs.promises.unlink(tmpCoverPath).catch(() => {});
               if (coverBlob) coverDigest = coverBlob.digest;
-            }
-          } catch { /* best-effort: publish without cover */ }
+            } finally { await fs.promises.unlink(tmpCoverPath).catch(() => {}); }
+          } catch (error) { console.warn('[community] cover generation failed:', (error as Error).message); }
         }
         if (!coverDigest && typeof body.coverImage === 'string' && body.coverImage.startsWith('data:image/')) {
           try {

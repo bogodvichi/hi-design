@@ -366,6 +366,16 @@ describe("open-design sidecar contract", () => {
     ).toThrow(/unsupported artifact export image format/);
   });
 
+  it("accepts native document covers only from loopback HTTP and validates viewport capture", () => {
+    const input = { deck: false, format: "image", html: "<p>Fallback</p>", title: "PDF", sourceUrl: "http://127.0.0.1:1234/source.pdf", viewportOnly: true };
+    expect(normalizeDesktopSidecarMessage({ type: SIDECAR_MESSAGES.EXPORT_ARTIFACT, input }))
+      .toEqual({ type: SIDECAR_MESSAGES.EXPORT_ARTIFACT, input });
+    for (const sourceUrl of ["file:///etc/passwd", "https://example.com/file.pdf", "http://user:secret@localhost/file.pdf"]) {
+      expect(() => normalizeDesktopSidecarMessage({ type: SIDECAR_MESSAGES.EXPORT_ARTIFACT, input: { ...input, sourceUrl } })).toThrow(/loopback HTTP/);
+    }
+    expect(() => normalizeDesktopSidecarMessage({ type: SIDECAR_MESSAGES.EXPORT_ARTIFACT, input: { ...input, viewportOnly: 'yes' } })).toThrow();
+  });
+
   it("validates desktop update IPC message inputs", () => {
     expect(
       normalizeDesktopSidecarMessage({

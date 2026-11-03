@@ -14,6 +14,7 @@ import { registerPluginMarketplaceRoutes } from '../src/routes/plugins/marketpla
 const tempRoots: string[] = [];
 
 afterEach(async () => {
+  vi.unstubAllGlobals();
   closeDatabase();
   await Promise.all(tempRoots.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
 });
@@ -53,6 +54,48 @@ async function makeInstalledPlugin(root: string): Promise<InstalledPluginRecord>
 }
 
 describe('HDW marketplace project remix', () => {
+  it.each(['', '?username=alice'])('repairs cached cover URLs when the catalog is offline%s', async (query) => {
+    const root = await makeTempRoot('od-marketplace-cached-cover-');
+    const dataDir = path.join(root, 'data');
+    const db = openDatabase(root, { dataDir });
+    const digest = 'a'.repeat(64);
+    const seeded = ensureMarketplaceManifest(db, {
+      id: 'hdw-community',
+      url: 'https://hdw.example/community.json',
+      trust: 'trusted',
+      manifestText: JSON.stringify({
+        specVersion: '1.0.0', name: 'hdw-community', version: '1.0.0',
+        plugins: [{
+          name: 'cached-project', version: '1.0.0', source: 'github:test/project',
+          publisher: { id: 'alice' },
+          coverUrl: `http://pixso.hikvision.com.cn/hdw/api/community/cover/${digest}`,
+        }],
+      }),
+    });
+    if (!seeded.ok) throw new Error('marketplace fixture failed to seed');
+    const nativeFetch = globalThis.fetch;
+    const fetcher: typeof fetch = (input, init) => String(input).startsWith('https://pixso.hikvision.com.cn/')
+      ? Promise.resolve(Response.json({ code: -1 }, { status: 503 }))
+      : nativeFetch(input, init);
+    vi.stubGlobal('fetch', fetcher);
+    const app = express();
+    registerPluginMarketplaceRoutes(app, {
+      db, dataDir, bundledMarketplaceEntries: [],
+      createMarketplaceFetcher: () => async () => ({ ok: false, status: 503, text: async () => '' }),
+      marketplaceRegistryIdFromUrl: () => null,
+    });
+    const server = await listen(app);
+    try {
+      const response = await fetch(`${server.url}/api/marketplaces/hdw-community/plugins${query}`);
+      expect(response.status).toBe(200);
+      const body = await response.json() as { plugins: Array<{ coverUrl?: string }> };
+      expect(body.plugins[0]?.coverUrl)
+        .toBe(`/api/hdw/api/community/cover/${digest}`);
+    } finally {
+      await close(server.server);
+    }
+  });
+
   it('creates a bound personal project and asks the project cover pipeline to run', async () => {
     const root = await makeTempRoot('od-marketplace-remix-');
     const dataDir = path.join(root, 'data');

@@ -1,4 +1,5 @@
 import { hdwSessionHeaders } from './hdw-session.js';
+import { normalizeHdwCommunityCoverUrls } from './hdw-community-cover.js';
 import { getSharedSpaceMemberId } from '../ids.js';
 import type { SharedWithMeResource } from '@open-design/contracts';
 import { UA, type Cookie } from './http.js';
@@ -1155,10 +1156,8 @@ export const HDW_MARKETPLACE_URL = `${HDW_BASE}${HDW_MARKETPLACE_PATH}`;
 /**
  * Locally stored mapping of plugin name → cover blob digest.
  *
- * The HDW backend accepts `coverDigest` on the publish endpoint but does not
- * persist or return it in the marketplace manifest. We store the mapping
- * ourselves so `fetchHdwMarketplaceManifestText` can augment each entry with
- * a `coverUrl` pointing to the HDW blob proxy (`/api/hdw/api/community/blobs/<digest>`).
+ * Legacy fallback for catalogs that do not return a cover URL or digest.
+ * `fetchHdwMarketplaceManifestText` routes covers through the active HDW proxy.
  */
 function coverDigestsPath(dataDir: string): string {
   return path.join(dataDir, 'hdw-cover-digests.json');
@@ -1258,10 +1257,7 @@ export async function fetchHdwMarketplaceManifestText(
   const session = readSsoConfigFile(dataDir);
   const manifest = await hdwGet<unknown>(hdwPath, params, session?.cookies);
   if (!manifest) return null;
-  // Augment plugin entries with coverUrl from locally stored cover digests.
-  // The HDW backend does not return coverDigest in the marketplace manifest,
-  // so we look up the digest we stored at publish time and construct a
-  // coverUrl pointing to the HDW blob proxy endpoint.
+  // Prefer cloud metadata, retaining local digests for older catalogs.
   const coverDigests = readCoverDigests(dataDir);
   // Cloud-sourced: check HDW manifest's own cover_digest field first.
   const m = manifest as { plugins?: Array<Record<string, unknown>> };
@@ -1272,13 +1268,14 @@ export async function fetchHdwMarketplaceManifestText(
         ? entry.cover_digest.trim()
         : undefined;
       if (cloudDigest && !entry.coverUrl) {
-        entry.coverUrl = `/api/hdw/api/community/blobs/${cloudDigest}`;
+        entry.coverUrl = `/api/hdw/api/community/cover/${cloudDigest}`;
       }
       // Fallback: locally stored digest from publish time.
       if (name && coverDigests[name] && !entry.coverUrl) {
-        entry.coverUrl = `/api/hdw/api/community/blobs/${coverDigests[name]}`;
+        entry.coverUrl = `/api/hdw/api/community/cover/${coverDigests[name]}`;
       }
     }
+    normalizeHdwCommunityCoverUrls(m.plugins);
   }
   return JSON.stringify(manifest);
 }

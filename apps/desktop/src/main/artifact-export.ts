@@ -28,6 +28,7 @@ export async function exportArtifact(
   const window = new BrowserWindow({
     height,
     show: false,
+    ...(input.viewportOnly ? { useContentSize: true } : {}),
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
     width,
   });
@@ -35,7 +36,21 @@ export async function exportArtifact(
   try {
     window.webContents.setWindowOpenHandler(() => ({ action: "deny" }));
     window.webContents.on("will-navigate", (event) => event.preventDefault());
-    await window.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(buildDocument(input))}`);
+    if (input.sourceUrl) {
+      await window.loadURL(input.sourceUrl);
+      // Native PDF rendering continues after navigation completes.
+      await window.webContents.executeJavaScript('new Promise(resolve => setTimeout(resolve, 1500))');
+    } else {
+      // Keep the opaque data origin without putting large documents in a URL
+      // (Chromium rejects multi-megabyte data URLs before rendering begins).
+      await window.loadURL('data:text/html;charset=utf-8,<!doctype html><html></html>');
+      await window.webContents.executeJavaScript(
+        `document.open();document.write(${JSON.stringify(buildDocument(input))});document.close();`,
+      );
+    }
+    await window.webContents.executeJavaScript(
+      'Promise.race([Promise.resolve(window.__odCoverReady), new Promise(resolve => setTimeout(resolve, 8000))])',
+    );
     await waitForPrintableContent(window);
 
     if (input.format === "pdf") return await renderPdf(window, input);
@@ -68,7 +83,7 @@ async function renderImage(
 ): Promise<DesktopExportArtifactResult> {
   // For a non-deck page, grow the window to the content height so capturePage
   // grabs the full scrollable page rather than just the first viewport.
-  if (!input.deck) {
+  if (!input.deck && !input.viewportOnly) {
     const contentHeight = (await window.webContents.executeJavaScript(
       `Math.max(document.documentElement.scrollHeight, document.body ? document.body.scrollHeight : 0)`,
       true,

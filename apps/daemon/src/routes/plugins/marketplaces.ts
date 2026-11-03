@@ -1,6 +1,7 @@
 import type { Express, Request } from 'express';
 import { extractCommunityArchive } from '../../community-archive.js';
 import { buildDocumentPreview } from '../../document-preview.js';
+import { normalizeHdwCommunityCoverUrls } from '../../http/hdw-community-cover.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type * as BetterSqlite3 from 'better-sqlite3';
@@ -259,6 +260,9 @@ export function registerPluginMarketplaceRoutes(app: Express, deps: RegisterPlug
       const row = getMarketplace(db, req.params.id) as MarketplaceRow | null;
       if (!row) return res.status(404).json({ error: 'marketplace not found' });
       const username = typeof req.query.username === 'string' ? req.query.username.trim() : '';
+      if (req.params.id === 'hdw-community') {
+        normalizeHdwCommunityCoverUrls(row.manifest.plugins ?? []);
+      }
       if (username) {
         // Pass publisher_username to HDW so the backend filters at the DB
         // query level — no need to return the full marketplace.
