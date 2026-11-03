@@ -25,11 +25,14 @@ describe('test/app/controller/api/share_link_avatar.test.js', () => {
 
   it('limits public avatar lookup to members who appear in comments', () => {
     const html = `<script>
-      var COMMENTS_DATA = /*COMMENTS_DATA*/[{"id":"one","memberId":"member-weng"},{"id":"two","authorMemberId":"member-weng"},{"id":"three","authorMemberId":"member-zhang"}];
+      var COMMENTS_DATA = /*COMMENTS_DATA*/[{"id":"one","memberId":"member-weng"},{"id":"two","authorMemberId":"member-weng"},{"id":"three","authorMemberId":"member-zhang"},{"id":"four","memberId":"local-viewer","authorMemberId":"remote-author"}];
       var MEMBER_AVATARS = /*MEMBER_AVATARS_DATA*/{};
     </script>`;
 
-    assert.deepStrictEqual(controller()._commentMemberIds(html), [ 'member-weng', 'member-zhang' ]);
+    assert.deepStrictEqual(
+      controller()._commentMemberIds(html),
+      [ 'member-weng', 'member-zhang', 'local-viewer', 'remote-author' ]
+    );
   });
 
   it('hydrates avatars in existing share pages without regenerating the link', () => {
@@ -38,8 +41,11 @@ describe('test/app/controller/api/share_link_avatar.test.js', () => {
     });
 
     assert(rendered.includes('MutationObserver'));
-    assert(rendered.includes('comment.memberId||comment.authorMemberId'));
+    assert(rendered.includes('comment.authorMemberId||comment.memberId'));
+    assert(rendered.includes('comment.authorAvatarUrl||comment.avatarUrl'));
     assert(rendered.includes('memberAvatars[memberId(comment)]'));
+    assert(rendered.includes('avatarUrl(comment)'));
+    assert(rendered.includes('avatarUrl(reply)'));
     assert(rendered.includes('https://hdw.example.test/avatar.jpg'));
     assert(rendered.indexOf('<script>') < rendered.indexOf('</body>'));
   });

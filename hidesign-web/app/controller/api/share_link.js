@@ -89,17 +89,16 @@ class ShareLinkController extends Controller {
     if (!match) return [];
     try {
       const comments = JSON.parse(match[1]);
-      return Array.from(new Set(
-        comments
-          .map(comment => {
-            const memberId = typeof comment.memberId === 'string'
-              ? comment.memberId
-              : comment.authorMemberId;
-            return typeof memberId === 'string' ? memberId.trim() : '';
-          })
-          .filter(Boolean),
-      ));
-    } catch {
+      const memberIds = [];
+      for (const comment of comments) {
+        for (const memberId of [ comment.memberId, comment.authorMemberId ]) {
+          if (typeof memberId === 'string' && memberId.trim()) {
+            memberIds.push(memberId.trim());
+          }
+        }
+      }
+      return Array.from(new Set(memberIds));
+    } catch (_err) {
       return [];
     }
   }
@@ -139,7 +138,7 @@ class ShareLinkController extends Controller {
     // Existing links contain an older generated template. Decorate their
     // comment avatars at response time so a profile update does not require
     // regenerating the public link.
-    const compatibility = `<style>.comment-avatar{position:relative;overflow:hidden}.comment-avatar>img{position:absolute;inset:0;width:100%;height:100%;border-radius:inherit;object-fit:cover;display:block}</style><script>(function(){var memberAvatars=${encoded};function memberId(comment){return comment&&(comment.memberId||comment.authorMemberId)||'';}function applyAvatar(node,url){if(!node||!url||node.querySelector('img'))return;var image=document.createElement('img');image.src=url;image.alt='';image.onerror=function(){image.remove();};node.appendChild(image);}function decorate(){var comments=Array.isArray(window.COMMENTS_DATA)?window.COMMENTS_DATA:[];var byId={};comments.forEach(function(comment){byId[comment.id]=comment;});document.querySelectorAll('.comment-card[data-comment-id]').forEach(function(card){var id=card.getAttribute('data-comment-id');var comment=byId[id];if(!comment)return;applyAvatar(card.querySelector('.comment-card-header .comment-avatar'),memberAvatars[memberId(comment)]);var replies=comments.filter(function(item){return item.parentId===id||(item.rootCommentId===id&&item.id!==id);});var replyAvatars=card.querySelectorAll('.comment-reply .comment-avatar');replies.forEach(function(reply,index){applyAvatar(replyAvatars[index],memberAvatars[memberId(reply)]);});});}var list=document.getElementById('commentList');if(list&&window.MutationObserver)new MutationObserver(decorate).observe(list,{childList:true,subtree:true});if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',decorate);else decorate();})();</script>`;
+    const compatibility = `<style>.comment-avatar{position:relative;overflow:hidden}.comment-avatar>img{position:absolute;inset:0;width:100%;height:100%;border-radius:inherit;object-fit:cover;display:block}</style><script>(function(){var memberAvatars=${encoded};function memberId(comment){return comment&&(comment.authorMemberId||comment.memberId)||'';}function avatarUrl(comment){return comment&&(comment.authorAvatarUrl||comment.avatarUrl)||memberAvatars[memberId(comment)]||'';}function applyAvatar(node,url){if(!node||!url||node.querySelector('img'))return;var image=document.createElement('img');image.src=url;image.alt='';image.onerror=function(){image.remove();};node.appendChild(image);}function decorate(){var comments=Array.isArray(window.COMMENTS_DATA)?window.COMMENTS_DATA:[];var byId={};comments.forEach(function(comment){byId[comment.id]=comment;});document.querySelectorAll('.comment-card[data-comment-id]').forEach(function(card){var id=card.getAttribute('data-comment-id');var comment=byId[id];if(!comment)return;applyAvatar(card.querySelector('.comment-card-header .comment-avatar'),avatarUrl(comment));var replies=comments.filter(function(item){return item.parentId===id||(item.rootCommentId===id&&item.id!==id);});var replyAvatars=card.querySelectorAll('.comment-reply .comment-avatar');replies.forEach(function(reply,index){applyAvatar(replyAvatars[index],avatarUrl(reply));});});}var list=document.getElementById('commentList');if(list&&window.MutationObserver)new MutationObserver(decorate).observe(list,{childList:true,subtree:true});if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',decorate);else decorate();})();</script>`;
     return html.includes('</body>')
       ? this._replaceTemplateMarker(html, '</body>', compatibility + '</body>')
       : html + compatibility;
