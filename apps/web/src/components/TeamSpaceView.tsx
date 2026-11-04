@@ -1548,7 +1548,12 @@ function MembersTable({
                           <img
                             src={currentUserAvatarUrl}
                             alt=""
-                            onError={(event) => event.currentTarget.remove()}
+                            onError={(event) => {
+                              event.currentTarget.hidden = true;
+                            }}
+                            onLoad={(event) => {
+                              event.currentTarget.hidden = false;
+                            }}
                           />
                         ) : null}
                       </span>

@@ -55,6 +55,35 @@ describe('PresenceBar', () => {
     );
   });
 
+  it('hides a failed profile image without deleting its React-managed node', () => {
+    const { unmount } = render(
+      <PresenceBar
+        selfMemberId="me"
+        selfMember={{
+          memberId: 'me',
+          name: 'Current User',
+          avatarUrl: 'https://example.test/broken-avatar.jpg',
+        }}
+        members={[{ memberId: 'peer', name: 'Peer User' }]}
+      />,
+    );
+
+    const avatar = screen.getByTitle('Current User');
+    const image = avatar.querySelector('img');
+    expect(image).not.toBeNull();
+
+    fireEvent.error(image!);
+
+    expect(image?.isConnected).toBe(true);
+    expect(image?.hidden).toBe(true);
+    expect(avatar.contains(image)).toBe(true);
+
+    fireEvent.load(image!);
+
+    expect(image?.hidden).toBe(false);
+    expect(() => unmount()).not.toThrow();
+  });
+
   it('collapses past the max into a +N overflow chip', () => {
     render(
       <PresenceBar

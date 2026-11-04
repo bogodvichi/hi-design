@@ -228,11 +228,12 @@ describe('SketchEditor save', () => {
     document.body.appendChild(portal);
 
     const close = await waitFor(() => {
-      const button = portal.querySelector<HTMLButtonElement>('.od-sketch-dialog-close');
+      const button = document.querySelector<HTMLButtonElement>('.od-sketch-dialog-close:not([hidden])');
       expect(button).toBeTruthy();
       return button!;
     });
 
+    expect(portal.querySelector('.od-sketch-dialog-close')).toBeNull();
     expect(portal.textContent).toContain('将选区包裹为画框');
     expect(portal.textContent).toContain('生成');
     expect(portal.querySelector('button[title="将选区包裹为画框"]')).toBeTruthy();
@@ -260,7 +261,7 @@ describe('SketchEditor save', () => {
 	          <h2>Mermaid to Excalidraw</h2>
 	          <textarea placeholder="Write Mermaid diagram definition here..."></textarea>
 	          <div class="ttd-dialog-panel-button-container">
-	            <button type="button">Insert <span>→</span></button>
+	            <button type="button">Insert <kbd>Cmd</kbd><kbd>Enter</kbd><span>→</span></button>
 	            <div class="ttd-dialog-submit-shortcut">
 	              <div class="ttd-dialog-submit-shortcut__key">Cmd</div>
 	              <div class="ttd-dialog-submit-shortcut__key">Enter</div>
@@ -276,11 +277,14 @@ describe('SketchEditor save', () => {
     document.body.appendChild(portal);
 
     await waitFor(() => expect(portal.classList.contains('od-sketch-modal')).toBe(true));
-    expect(insert.querySelector('kbd')).toBeNull();
-    expect(portal.querySelector('.ttd-dialog-submit-shortcut')).toBeNull();
-    expect(portal.querySelector('.ttd-dialog-submit-shortcut__key')).toBeNull();
-    expect(insert.textContent).not.toContain('Cmd');
-    expect(insert.textContent).not.toContain('Enter');
+    const buttonShortcutKeys = Array.from(insert.querySelectorAll('kbd'));
+    const submitShortcut = portal.querySelector('.ttd-dialog-submit-shortcut');
+    expect(buttonShortcutKeys).toHaveLength(2);
+    expect(buttonShortcutKeys.every((key) => key.classList.contains('od-sketch-shortcut-hidden'))).toBe(true);
+    expect(buttonShortcutKeys.every((key) => key.getAttribute('aria-hidden') === 'true')).toBe(true);
+    expect(submitShortcut).not.toBeNull();
+    expect(submitShortcut?.classList.contains('od-sketch-shortcut-hidden')).toBe(true);
+    expect(submitShortcut?.getAttribute('aria-hidden')).toBe('true');
 
     const enter = new KeyboardEvent('keydown', {
       key: 'Enter',
@@ -322,7 +326,7 @@ describe('SketchEditor save', () => {
     expect(mockData.lastProps?.onLibraryChange).toBeUndefined();
   });
 
-  it('keeps sketch context menus minimal and clamps them inside the canvas', () => {
+  it('keeps sketch context menus minimal without removing React-managed children', () => {
     const root = document.createElement('div');
     const popover = document.createElement('div');
     const menu = document.createElement('ul');
@@ -341,6 +345,7 @@ describe('SketchEditor save', () => {
       menu.appendChild(separator);
     }
     document.body.appendChild(root);
+    const originalChildren = Array.from(menu.children);
 
     vi.spyOn(root, 'getBoundingClientRect').mockReturnValue({
       x: 0,
@@ -367,14 +372,25 @@ describe('SketchEditor save', () => {
 
     applySketchContextMenuSimplification(root, root);
 
-    expect(Array.from(menu.querySelectorAll('li')).map((item) => item.getAttribute('data-testid'))).toEqual([
+    const hiddenAction = menu.querySelector<HTMLLIElement>('[data-testid="addToLibrary"]');
+    const hiddenSeparator = menu.querySelector<HTMLHRElement>('hr');
+    const visibleItems = Array.from(menu.querySelectorAll<HTMLLIElement>('li')).filter(
+      (item) => !item.classList.contains('od-sketch-context-menu-hidden'),
+    );
+    const visuallyOrderedItems = [...visibleItems].sort(
+      (left, right) => Number(left.style.order) - Number(right.style.order),
+    );
+
+    expect(originalChildren.every((child) => menu.contains(child))).toBe(true);
+    expect(menu.children).toHaveLength(originalChildren.length);
+    expect(hiddenAction?.classList.contains('od-sketch-context-menu-hidden')).toBe(true);
+    expect(hiddenSeparator?.classList.contains('od-sketch-context-menu-hidden')).toBe(true);
+    expect(visuallyOrderedItems.map((item) => item.getAttribute('data-testid'))).toEqual([
       'copy',
       'paste',
       'copyAsPng',
       'copyAsSvg',
     ]);
-    expect(menu.querySelector('[data-testid="addToLibrary"]')).toBeNull();
-    expect(menu.querySelector('hr')).toBeNull();
     expect(menu.classList.contains('od-sketch-context-menu')).toBe(true);
     expect(popover.classList.contains('od-sketch-context-popover')).toBe(true);
     expect(popover.style.left).toBe('92px');
@@ -443,11 +459,16 @@ describe('SketchEditor save', () => {
 
   it('rewrites Excalidraw web embed whitelist toast to the local validation message', async () => {
     mockData.excalidrawToast = '目前不允许嵌入此网址。请在 GitHub 上提交 issue 请求将此网址加入白名单';
-    renderEditor({ dirty: true });
+    const { unmount } = renderEditor({ dirty: true });
+    const message = document.querySelector('.Toast__message');
+    const textNode = message?.firstChild;
 
     await waitFor(() => expect(screen.getByText('sketch.tooltipEmbeddable')).toBeTruthy());
     expect(screen.queryByText(/GitHub|白名单/)).toBeNull();
     expect(document.querySelector('.Toast')?.getAttribute('data-od-embed-toast-rewritten')).toBe('true');
+    expect(message?.firstChild).toBe(textNode);
+    expect(textNode?.isConnected).toBe(true);
+    expect(() => unmount()).not.toThrow();
   });
 
   it('strips Excalidraw runtime app state before passing initial data back to Excalidraw', () => {

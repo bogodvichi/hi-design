@@ -2702,7 +2702,12 @@ function requestDelete(project: Project) {
                             <img
                               src={creator.avatarUrl}
                               alt=""
-                              onError={(event) => event.currentTarget.remove()}
+                              onError={(event) => {
+                                event.currentTarget.hidden = true;
+                              }}
+                              onLoad={(event) => {
+                                event.currentTarget.hidden = false;
+                              }}
                             />
                           ) : null}
                         </span>

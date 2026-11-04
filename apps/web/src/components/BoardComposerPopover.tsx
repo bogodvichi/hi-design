@@ -913,7 +913,12 @@ export function BoardComposerPopover({
                     className="comment-user-avatar-image"
                     src={authorAvatarUrl}
                     alt=""
-                    onError={(event) => event.currentTarget.remove()}
+                    onError={(event) => {
+                      event.currentTarget.hidden = true;
+                    }}
+                    onLoad={(event) => {
+                      event.currentTarget.hidden = false;
+                    }}
                   />
                 ) : null}
               </span>
@@ -1111,7 +1116,12 @@ export function BoardComposerPopover({
                             className="comment-user-avatar-image"
                             src={reply.authorAvatarUrl}
                             alt=""
-                            onError={(event) => event.currentTarget.remove()}
+                            onError={(event) => {
+                              event.currentTarget.hidden = true;
+                            }}
+                            onLoad={(event) => {
+                              event.currentTarget.hidden = false;
+                            }}
                           />
                         ) : null}
                       </span>

@@ -1,6 +1,7 @@
 import { notifyToast } from './toast-context';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Excalidraw,
   MainMenu,
@@ -46,6 +47,11 @@ interface SketchToastState {
   details?: string | null;
   tone: 'default' | 'success' | 'error' | 'loading';
   actionFileName?: string;
+}
+
+interface SketchDialogClosePlacement {
+  top: number;
+  right: number;
 }
 
 type SketchTooltipLabelKey =
@@ -109,6 +115,7 @@ export function SketchEditor({
   const [exporting, setExporting] = useState(false);
   const [theme, setTheme] = useState(readExcalidrawTheme);
   const [toast, setToast] = useState<SketchToastState | null>(null);
+  const [dialogClosePlacement, setDialogClosePlacement] = useState<SketchDialogClosePlacement | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const onSceneChangeRef = useLatestRef(onSceneChange);
   const onClearRef = useLatestRef(onClear);
@@ -211,7 +218,13 @@ export function SketchEditor({
       applySketchContextMenuSimplification(document.body, root);
       rewriteExcalidrawUnableToEmbedToasts(root, sketchTooltipLabels.embeddable);
       rewriteExcalidrawUnableToEmbedToasts(document.body, sketchTooltipLabels.embeddable);
-      enhanceSketchExcalidrawPortals(locale, closeActiveSketchDialog);
+      const nextDialogClosePlacement = enhanceSketchExcalidrawPortals(locale);
+      setDialogClosePlacement((current) => (
+        current?.top === nextDialogClosePlacement?.top
+        && current?.right === nextDialogClosePlacement?.right
+          ? current
+          : nextDialogClosePlacement
+      ));
     };
     const scheduleEnhancements = () => {
       if (frame !== null) return;
@@ -222,6 +235,7 @@ export function SketchEditor({
     const observer = new MutationObserver(scheduleEnhancements);
     observer.observe(root, { childList: true, subtree: true, characterData: true });
     observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    window.addEventListener('resize', scheduleEnhancements);
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key !== 'Escape') return;
       if (!document.querySelector('.od-sketch-modal .Modal')) return;
@@ -237,6 +251,7 @@ export function SketchEditor({
     return () => {
       observer.disconnect();
       if (frame !== null) window.cancelAnimationFrame(frame);
+      window.removeEventListener('resize', scheduleEnhancements);
       document.removeEventListener('keydown', handleEscape, true);
       document.removeEventListener('keydown', handleCommandEnter, true);
     };
@@ -376,6 +391,7 @@ export function SketchEditor({
 
   const canClear = sketchSceneHasContent(scene) || legacyItems.length > 0 || hasPreservedRawItems;
   const canSave = dirty || sketchSceneHasContent(scene) || legacyItems.length > 0 || hasPreservedRawItems;
+  const dialogCloseLabel = sketchTextOverrides(locale)?.Close ?? 'Close';
 
   const renderMainMenu = useCallback(() => (
     <MainMenu>
@@ -448,6 +464,24 @@ export function SketchEditor({
           {renderMainMenu()}
         </Excalidraw>
       </div>
+      {typeof document !== 'undefined'
+        ? createPortal(
+          <button
+            type="button"
+            className="od-sketch-dialog-close"
+            data-testid="sketch-dialog-close"
+            hidden={!dialogClosePlacement}
+            style={dialogClosePlacement ? {
+              top: `${dialogClosePlacement.top}px`,
+              right: `${dialogClosePlacement.right}px`,
+            } : undefined}
+            aria-label={dialogCloseLabel}
+            title={dialogCloseLabel}
+            onClick={closeActiveSketchDialog}
+          />,
+          document.body,
+        )
+        : null}
       {toast ? (
         <Toast
           message={toast.message}
@@ -785,38 +819,29 @@ export function applySketchContextMenuSimplification(root: HTMLElement, viewport
     const allowedByAction = new Map<string, HTMLLIElement>();
     for (const child of Array.from(menu.children)) {
       if (child instanceof HTMLHRElement) {
-        child.remove();
+        child.classList.add('od-sketch-context-menu-hidden');
         continue;
       }
       if (!(child instanceof HTMLLIElement)) continue;
       const actionName = child.getAttribute('data-testid') ?? '';
-      if (!SKETCH_CONTEXT_MENU_ALLOWED_ACTIONS.has(actionName)) {
-        child.remove();
+      const allowed = SKETCH_CONTEXT_MENU_ALLOWED_ACTIONS.has(actionName);
+      child.classList.toggle('od-sketch-context-menu-hidden', !allowed);
+      if (!allowed) {
+        child.style.removeProperty('order');
         continue;
       }
+      child.style.order = String(SKETCH_CONTEXT_MENU_ACTION_ORDER.indexOf(
+        actionName as typeof SKETCH_CONTEXT_MENU_ACTION_ORDER[number],
+      ));
       allowedByAction.set(actionName, child);
     }
 
     const orderedItems = SKETCH_CONTEXT_MENU_ACTION_ORDER
       .map((actionName) => allowedByAction.get(actionName))
       .filter((item): item is HTMLLIElement => Boolean(item));
+    popover.classList.toggle('od-sketch-context-popover-empty', orderedItems.length === 0);
     if (orderedItems.length === 0) {
-      popover.remove();
       continue;
-    }
-    // Only touch the DOM when the order is actually wrong. This runs on every
-    // MutationObserver tick, and re-`appendChild`-ing nodes that are already in
-    // place detaches and re-inserts them each frame. Because those mutations
-    // re-trigger the observer, an unconditional reorder becomes a self-sustaining
-    // per-frame churn that cancels the in-flight pointer interaction, making the
-    // menu items impossible to click.
-    const currentItems = Array.from(menu.children).filter(
-      (child): child is HTMLLIElement => child instanceof HTMLLIElement,
-    );
-    const alreadyOrdered = currentItems.length === orderedItems.length
-      && currentItems.every((item, index) => item === orderedItems[index]);
-    if (!alreadyOrdered) {
-      for (const item of orderedItems) menu.appendChild(item);
     }
 
     clampSketchContextPopover(popover, viewportRoot);
@@ -986,7 +1011,11 @@ function rewriteExcalidrawUnableToEmbedToasts(root: HTMLElement, replacement: st
   for (const messageNode of Array.from(root.querySelectorAll<HTMLElement>('.Toast__message'))) {
     const current = normalizeTooltipLabel(messageNode.textContent);
     if (!current || current === normalizedReplacement || !isExcalidrawUnableToEmbedToast(current)) continue;
-    messageNode.textContent = normalizedReplacement;
+    const textNode = Array.from(messageNode.childNodes).find(
+      (node): node is Text => node.nodeType === Node.TEXT_NODE,
+    );
+    if (!textNode) continue;
+    textNode.nodeValue = normalizedReplacement;
     messageNode.closest<HTMLElement>('.Toast')?.setAttribute('data-od-embed-toast-rewritten', 'true');
   }
 }
@@ -999,40 +1028,40 @@ function isExcalidrawUnableToEmbedToast(message: string): boolean {
     && (lower.includes('issue') || lower.includes('whitelist') || message.includes('白名单') || message.includes('白名單'));
 }
 
-function enhanceSketchExcalidrawPortals(locale: Locale, onClose: () => void): void {
+function enhanceSketchExcalidrawPortals(locale: Locale): SketchDialogClosePlacement | null {
+  let closePlacement: SketchDialogClosePlacement | null = null;
   for (const portal of Array.from(document.querySelectorAll<HTMLElement>('.excalidraw-modal-container'))) {
     portal.classList.add('od-sketch-modal');
     portal.classList.toggle('od-sketch-help-modal', Boolean(portal.querySelector('.HelpDialog__header')));
     applySketchDomI18nOverrides(portal, locale);
     for (const content of Array.from(portal.querySelectorAll<HTMLElement>('.Modal__content'))) {
-      removeSketchMermaidShortcutHints(content);
-      let close = content.querySelector<HTMLButtonElement>(':scope > .od-sketch-dialog-close');
-      if (!close) {
-        close = document.createElement('button');
-        close.type = 'button';
-        close.className = 'od-sketch-dialog-close';
-        close.addEventListener('click', (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          onClose();
-        });
-        content.appendChild(close);
+      hideSketchMermaidShortcutHints(content);
+      if (closePlacement) continue;
+      const modal = portal.querySelector<HTMLElement>('.Modal') ?? content;
+      const rect = modal.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        closePlacement = {
+          top: Math.max(8, Math.round(rect.top + 14)),
+          right: Math.max(8, Math.round(window.innerWidth - rect.right + 14)),
+        };
+      } else {
+        closePlacement = { top: 14, right: 14 };
       }
-      const label = sketchTextOverrides(locale)?.Close ?? 'Close';
-      close.setAttribute('aria-label', label);
-      close.setAttribute('title', label);
     }
   }
+  return closePlacement;
 }
 
-function removeSketchMermaidShortcutHints(content: HTMLElement): void {
+function hideSketchMermaidShortcutHints(content: HTMLElement): void {
   const insertButton = findSketchMermaidInsertButton(content);
   if (!insertButton) return;
   for (const hint of Array.from(insertButton.querySelectorAll('kbd'))) {
-    hint.remove();
+    hint.classList.add('od-sketch-shortcut-hidden');
+    hint.setAttribute('aria-hidden', 'true');
   }
   for (const hint of Array.from(content.querySelectorAll('.ttd-dialog-submit-shortcut'))) {
-    hint.remove();
+    hint.classList.add('od-sketch-shortcut-hidden');
+    hint.setAttribute('aria-hidden', 'true');
   }
 }
 

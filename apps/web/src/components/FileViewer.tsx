@@ -5019,7 +5019,12 @@ export function CommentSidePanel({
                        className="comment-user-avatar-image"
                        src={comment.authorAvatarUrl || author?.avatarUrl || undefined}
                        alt=""
-                       onError={(event) => event.currentTarget.remove()}
+                       onError={(event) => {
+                         event.currentTarget.hidden = true;
+                       }}
+                       onLoad={(event) => {
+                         event.currentTarget.hidden = false;
+                       }}
                      />
                    ) : null}
                  </span>
@@ -5235,7 +5240,12 @@ export function CommentSidePanel({
                         className="comment-user-avatar-image"
                         src={comment.authorAvatarUrl || author?.avatarUrl || undefined}
                         alt=""
-                        onError={(event) => event.currentTarget.remove()}
+                        onError={(event) => {
+                          event.currentTarget.hidden = true;
+                        }}
+                        onLoad={(event) => {
+                          event.currentTarget.hidden = false;
+                        }}
                       />
                     ) : null}
                   </span>
@@ -6372,7 +6382,12 @@ function CommentPreviewOverlays({
                   className="comment-user-avatar-image"
                   src={comment.authorAvatarUrl}
                   alt=""
-                  onError={(event) => event.currentTarget.remove()}
+                  onError={(event) => {
+                    event.currentTarget.hidden = true;
+                  }}
+                  onLoad={(event) => {
+                    event.currentTarget.hidden = false;
+                  }}
                 />
               ) : null}
             </button>

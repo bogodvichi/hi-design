@@ -643,7 +643,12 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
                           <img
                             src={publisherAvatarUrl}
                             alt=""
-                            onError={(event) => event.currentTarget.remove()}
+                            onError={(event) => {
+                              event.currentTarget.hidden = true;
+                            }}
+                            onLoad={(event) => {
+                              event.currentTarget.hidden = false;
+                            }}
                           />
                         ) : null}
                       </span>

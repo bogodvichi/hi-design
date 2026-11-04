@@ -625,6 +625,8 @@
 }
 .sketch-excalidraw-wrap .od-sketch-context-menu,
 .od-sketch-context-menu {
+  display: flex;
+  flex-direction: column;
   min-width: 168px;
   /* Widen enough for the longest localized row ("复制为 PNG 到剪贴板" plus its
      Shift+Option shortcut) and never expose a horizontal scrollbar — the old
@@ -639,6 +641,11 @@
   border-radius: 8px;
   background: color-mix(in srgb, var(--bg-elevated) 94%, black);
   box-shadow: 0 14px 36px rgb(0 0 0 / 30%);
+}
+.od-sketch-context-menu > .od-sketch-context-menu-hidden,
+.od-sketch-context-popover.od-sketch-context-popover-empty,
+.od-sketch-shortcut-hidden {
+  display: none !important;
 }
 .sketch-excalidraw-wrap .od-sketch-context-menu .context-menu-item,
 .od-sketch-context-menu .context-menu-item {
@@ -703,10 +710,10 @@
   display: none !important;
 }
 .od-sketch-dialog-close {
-  position: absolute;
+  position: fixed;
   top: 14px;
   right: 14px;
-  z-index: 2;
+  z-index: 10000;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -719,6 +726,9 @@
   color: var(--text-muted);
   cursor: pointer;
   box-shadow: var(--shadow-sm);
+}
+.od-sketch-dialog-close[hidden] {
+  display: none !important;
 }
 .od-sketch-dialog-close:hover {
   background: var(--bg-fill-secondary);
