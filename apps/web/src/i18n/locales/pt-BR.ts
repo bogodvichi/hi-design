@@ -443,6 +443,7 @@ export const ptBR: Dict = {
   'settings.general': 'Geral',
   'settings.generalHint': 'Idioma, aparência, notificações, locais dos projetos, privacidade e detalhes do app.',
   'settings.modeAria': 'Modo de execução',
+  'settings.modeInUse': 'Em uso',
   'settings.protocolAria': 'Protocolo de API',
   'settings.modeDaemon': 'CLI local',
   'settings.modeDaemonHelp': 'Execute por uma CLI de agente de código na sua máquina',

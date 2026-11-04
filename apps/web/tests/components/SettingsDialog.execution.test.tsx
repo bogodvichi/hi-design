@@ -622,6 +622,41 @@ describe('SettingsDialog privacy settings interactions', () => {
 
 describe('SettingsDialog execution settings BYOK interactions', () => {
   afterEach(() => { lanzAuth.account = null; });
+  it.each(['daemon', 'api'] as const)('marks only the selected %s execution mode as currently in use', (mode) => {
+    renderSettingsDialog({ mode, agentId: 'codex' });
+    const activeTab = screen.getByRole('tab', { name: mode === 'daemon' ? /Local CLI/i : /API providers/i });
+
+    expect(within(activeTab).getByText(en['settings.modeInUse'])).toBeTruthy();
+    expect(screen.getAllByText(en['settings.modeInUse'])).toHaveLength(1);
+  });
+
+  it('moves the currently in use label to API immediately even with an incomplete draft', async () => {
+    const { onPersist } = renderSettingsDialog({ mode: 'daemon', agentId: 'codex' });
+    fireEvent.click(screen.getByRole('tab', { name: /API providers/i }));
+
+    expect(screen.getByRole('tab', { name: /API providers/i })).toHaveAttribute('aria-selected', 'true');
+    expect(within(screen.getByRole('tab', { name: /API providers/i })).getByText(en['settings.modeInUse'])).toBeTruthy();
+    expect(screen.getAllByText(en['settings.modeInUse'])).toHaveLength(1);
+    await waitForPersist(onPersist, expect.objectContaining({ mode: 'daemon' }));
+  });
+
+  it.each([true, false])('moves the currently in use label immediately without waiting for save (success=%s)', async (succeeds) => {
+    const { onPersist } = renderSettingsDialog({ apiKey: 'sk-ant-configured', agentId: 'codex' });
+    let finishSave!: () => void;
+    onPersist.mockImplementationOnce(() => new Promise<void>((resolve, reject) => {
+      finishSave = () => succeeds ? resolve() : reject(new Error('save failed'));
+    }));
+    fireEvent.click(screen.getByRole('tab', { name: /Local CLI/i }));
+
+    expect(within(screen.getByRole('tab', { name: /Local CLI/i })).getByText(en['settings.modeInUse'])).toBeTruthy();
+    await waitForPersist(onPersist, expect.objectContaining({ mode: 'daemon' }));
+    await act(async () => { finishSave(); });
+
+    const activeTab = screen.getByRole('tab', { name: /Local CLI/i });
+    expect(within(activeTab).getByText(en['settings.modeInUse'])).toBeTruthy();
+    expect(screen.getAllByText(en['settings.modeInUse'])).toHaveLength(1);
+  });
+
   it('fills Lanz after login even when its empty provider draft was already opened', () => {
     const initial: AppConfig = {
       ...baseConfig, apiProtocol: 'openai', apiKey: '',

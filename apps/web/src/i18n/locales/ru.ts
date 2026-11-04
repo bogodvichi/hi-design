@@ -443,6 +443,7 @@ export const ru: Dict = {
   'settings.general': 'Основные',
   'settings.generalHint': 'Язык, внешний вид, уведомления, расположения проектов, приватность и сведения о приложении.',
   'settings.modeAria': 'Режим выполнения',
+  'settings.modeInUse': 'Используется',
   'settings.protocolAria': 'Протокол API',
   'settings.modeDaemon': 'Локальный CLI',
   'settings.modeDaemonHelp': 'Запуск через CLI код-агента на вашем компьютере',

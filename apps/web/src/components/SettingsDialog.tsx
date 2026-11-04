@@ -3,6 +3,7 @@ import { useAuth } from '../auth/LoginGate';
 import { applyLanzAccountConfig, isLanzBaseUrl } from '../state/lanz-account';
 import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 import { Button, VisuallyHidden } from '@open-design/components';
+import styles from './SettingsDialog.module.css';
 import type {
   AmrWalletSnapshot,
   WorkspaceCollabContext,
@@ -4340,7 +4341,12 @@ export function SettingsDialog({
                       : t('settings.modeDaemonOffline')
                   }
                 >
-                  <span className="seg-title">{t('settings.localCli')}</span>
+                  <span className="seg-title">
+                    {t('settings.localCli')}
+                    {cfg.mode === 'daemon' ? (
+                      <span className={styles.currentMode}>{t('settings.modeInUse')}</span>
+                    ) : null}
+                  </span>
                   <span className="seg-meta">
                     {daemonLive
                       ? t('settings.modeDaemonInstalledMeta', { count: installedCount })
@@ -4357,7 +4363,12 @@ export function SettingsDialog({
                   }
                   onClick={() => setMode('api')}
                 >
-                  <span className="seg-title">{t('settings.modeApiMeta')}</span>
+                  <span className="seg-title">
+                    {t('settings.modeApiMeta')}
+                    {cfg.mode === 'api' ? (
+                      <span className={styles.currentMode}>{t('settings.modeInUse')}</span>
+                    ) : null}
+                  </span>
                   <span className="seg-meta">{t('settings.modeApi')}</span>
                 </button>
               </div>

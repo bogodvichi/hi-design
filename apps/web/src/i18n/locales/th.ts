@@ -443,6 +443,7 @@ export const th: Dict = {
   'settings.general': 'ทั่วไป',
   'settings.generalHint': 'ภาษา รูปลักษณ์ การแจ้งเตือน ตำแหน่งโปรเจกต์ ความเป็นส่วนตัว และรายละเอียดแอป',
   'settings.modeAria': 'โหมดการทำงาน',
+  'settings.modeInUse': 'กำลังใช้งาน',
   'settings.protocolAria': 'โปรโตคอล API',
   'settings.modeDaemon': 'CLI ในเครื่อง',
   'settings.modeDaemonHelp': 'ทำงานผ่าน code-agent CLI บนเครื่องของคุณ',

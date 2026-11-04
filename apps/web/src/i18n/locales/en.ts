@@ -442,6 +442,7 @@ export const en: Dict = {
   'settings.general': 'General',
   'settings.generalHint': 'Language, appearance, notifications, project locations, privacy, and app details.',
   'settings.modeAria': 'Execution mode',
+  'settings.modeInUse': 'Currently in use',
   'settings.protocolAria': 'API protocol',
   'settings.modeDaemon': 'Local CLI',
   'settings.modeDaemonHelp': 'Run via a code-agent CLI on your machine',

@@ -443,6 +443,7 @@ export const ar: Dict = {
   'settings.general': 'عام',
   'settings.generalHint': 'اللغة والمظهر والإشعارات ومواقع المشاريع والخصوصية وتفاصيل التطبيق.',
   'settings.modeAria': 'وضع التنفيذ',
+  'settings.modeInUse': 'قيد الاستخدام',
   'settings.protocolAria': 'بروتوكول API',
   'settings.modeDaemon': 'CLI محلي',
   'settings.modeDaemonHelp': 'التشغيل عبر واجهة CLI على جهازك',

@@ -443,6 +443,7 @@ export const ko: Dict = {
   'settings.general': '일반',
   'settings.generalHint': '언어, 외관, 알림, 프로젝트 위치, 개인정보 및 앱 세부 정보.',
   'settings.modeAria': '실행 모드',
+  'settings.modeInUse': '현재 사용 중',
   'settings.protocolAria': 'API 프로토콜',
   'settings.modeDaemon': '로컬 CLI',
   'settings.modeDaemonHelp': '사용자 기기의 코드 에이전트 CLI를 통해 실행합니다',

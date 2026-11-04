@@ -443,6 +443,7 @@ export const ja: Dict = {
   'settings.general': '一般',
   'settings.generalHint': '言語、外観、通知、プロジェクトの場所、プライバシー、アプリ詳細。',
   'settings.modeAria': '実行モード',
+  'settings.modeInUse': '使用中',
   'settings.protocolAria': 'API プロトコル',
   'settings.modeDaemon': 'ローカル CLI',
   'settings.modeDaemonHelp': 'マシン上のコードエージェント CLI 経由で実行',

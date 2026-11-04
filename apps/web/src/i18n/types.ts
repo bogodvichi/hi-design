@@ -389,6 +389,7 @@ export interface Dict extends Record<keyof typeof feedbackEn, string> {
   'settings.general': string;
   'settings.generalHint': string;
   'settings.modeAria': string;
+  'settings.modeInUse': string;
   'settings.protocolAria': string;
   'settings.modeDaemon': string;
   'settings.modeDaemonHelp': string;

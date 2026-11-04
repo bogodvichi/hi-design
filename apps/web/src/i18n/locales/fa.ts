@@ -443,6 +443,7 @@ export const fa: Dict = {
   'settings.general': 'عمومی',
   'settings.generalHint': 'زبان، ظاهر، اعلان‌ها، مکان پروژه‌ها، حریم خصوصی و جزئیات برنامه.',
   'settings.modeAria': 'حالت اجرا',
+  'settings.modeInUse': 'در حال استفاده',
   'settings.protocolAria': 'پروتکل API',
   'settings.modeDaemon': 'CLI محلی',
   'settings.modeDaemonHelp': 'اجرا از طریق CLI عامل کد روی دستگاه شما',

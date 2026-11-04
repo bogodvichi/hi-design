@@ -443,6 +443,7 @@ export const tr: Dict = {
   'settings.general': 'Genel',
   'settings.generalHint': 'Dil, görünüm, bildirimler, proje konumları, gizlilik ve uygulama ayrıntıları.',
   'settings.modeAria': 'Çalıştırma modu',
+  'settings.modeInUse': 'Şu anda kullanımda',
   'settings.protocolAria': 'API protokolü',
   'settings.modeDaemon': 'Yerel CLI',
   'settings.modeDaemonHelp': 'Yerel kod ajanı CLI ile çalıştır',

@@ -432,6 +432,7 @@ export const zhCN: Dict = {
   "settings.general": "通用",
   "settings.generalHint": "语言、外观、通知、项目位置、隐私和应用详情。",
   "settings.modeAria": "执行模式",
+  "settings.modeInUse": "当前使用",
   "settings.protocolAria": "API 协议",
   "settings.modeDaemon": "本机 CLI",
   "settings.modeDaemonHelp": "通过本机的代码代理 CLI 执行",

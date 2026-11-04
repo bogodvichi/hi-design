@@ -443,6 +443,7 @@ export const hu: Dict = {
   'settings.general': 'Általános',
   'settings.generalHint': 'Nyelv, megjelenés, értesítések, projekt-helyek, adatvédelem és alkalmazásadatok.',
   'settings.modeAria': 'Végrehajtási mód',
+  'settings.modeInUse': 'Jelenleg használatban',
   'settings.protocolAria': 'API protokoll',
   'settings.modeDaemon': 'Helyi CLI',
   'settings.modeDaemonHelp': 'Futtatás a gépeden lévő code-agent CLI-n keresztül',

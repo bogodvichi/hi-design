@@ -443,6 +443,7 @@ export const it: Dict = {
   'settings.general': 'Generali',
   'settings.generalHint': 'Lingua, aspetto, notifiche, posizioni dei progetti, privacy e dettagli dell’app.',
   'settings.modeAria': 'Modalità di esecuzione',
+  'settings.modeInUse': 'In uso',
   'settings.protocolAria': 'Protocollo API',
   'settings.modeDaemon': 'CLI locale',
   'settings.modeDaemonHelp': 'Esegui tramite un agente CLI sulla tua macchina',

@@ -443,6 +443,7 @@ export const id: Dict = {
   'settings.general': 'Umum',
   'settings.generalHint': 'Bahasa, tampilan, notifikasi, lokasi proyek, privasi, dan detail aplikasi.',
   'settings.modeAria': 'Mode eksekusi',
+  'settings.modeInUse': 'Sedang digunakan',
   'settings.protocolAria': 'Protokol API',
   'settings.modeDaemon': 'CLI lokal',
   'settings.modeDaemonHelp': 'Jalankan lewat code-agent CLI di komputer ini',

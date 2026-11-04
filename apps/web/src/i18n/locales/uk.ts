@@ -443,6 +443,7 @@ export const uk: Dict = {
   'settings.general': 'Загальні',
   'settings.generalHint': 'Мова, вигляд, сповіщення, розташування проєктів, приватність і відомості про застосунок.',
   'settings.modeAria': 'Режим виконання',
+  'settings.modeInUse': 'Використовується',
   'settings.protocolAria': 'Протокол API',
   'settings.modeDaemon': 'Локальний CLI',
   'settings.modeDaemonHelp': 'Запуск через CLI кодового агента на вашому комп\'ютері',

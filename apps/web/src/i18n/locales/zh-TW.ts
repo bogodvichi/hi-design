@@ -432,6 +432,7 @@ export const zhTW: Dict = {
   "settings.general": "通用",
   "settings.generalHint": "語言、外觀、通知、專案位置、隱私和應用程式詳細資訊。",
   "settings.modeAria": "執行模式",
+  "settings.modeInUse": "目前使用",
   "settings.protocolAria": "API 協定",
   "settings.modeDaemon": "本機 CLI",
   "settings.modeDaemonHelp": "透過本機的程式碼代理 CLI 執行",
