@@ -155,6 +155,29 @@ test('request owner is replaced by the verified directory member', async () => {
   assert.equal(invoked, true); assert.equal(ctx.request.body.ownerMemberId, 'alice');
 });
 
+test('team project sharing allows formal members without requiring project ownership', async () => {
+  for (const role of ['owner', 'admin', 'member', 'guest', null]) {
+    const f = fixture({
+      workspace_members: role ? [{ workspace_id: 'team', username: 'alice', workspace_member_id: 'team-alice', role }] : [],
+      resources: [{ id: 'source', workspace_id: 'team', kind: 'project', owner_member_id: 'team-bob' }],
+      team_projects: [{ workspace_id: 'team', project_id: 'project', resource_id: 'source' }],
+    });
+    const result = await f.call('sharedSpace', 'share', {
+      method: 'POST', params: {}, request: { body: {
+        project_id: 'project', home_workspace_id: 'team', created_by_username: 'bob',
+      } },
+    });
+    const allowed = role !== 'guest' && role !== null;
+    assert.equal(result.invoked, allowed, String(role));
+    if (allowed) {
+      assert.equal(result.ctx.request.body.created_by_username, 'alice');
+      assert.equal(result.ctx.request.body.created_by_member_id, ids.getSharedSpaceMemberId('alice'));
+    } else {
+      assert.equal(result.ctx.status, 403);
+    }
+  }
+});
+
 test('only the personal project owner may transfer into a writable team', async () => {
   for (const [owner, targetRole, allowed] of [['alice', 'member', true], ['bob', 'admin', false], ['alice', 'guest', false]] as const) {
     const f = fixture({

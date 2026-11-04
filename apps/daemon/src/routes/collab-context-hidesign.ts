@@ -58,8 +58,8 @@ export interface RegisterCollabContextHideSignRoutesDeps {
    *  `ownerMemberId` with the local DB's authoritative
    *  `created_by_workspace_member_id` after cross-workspace transfers. */
   db?: SqliteDb | null;
-  /** Publishes a project to the team resource hub before sharing. Best-effort:
-   *  wrapped in try/catch so a hub failure does not block the HDW share write. */
+  /** Publishes locally owned projects before sharing. Existing team projects
+   *  only create recipient grants and must not be republished as the caller. */
   requestTeamShare?: (projectId: string, share?: string | ResourceHubPrincipal, coverDigest?: string | null, folderId?: string | null) => Promise<{ version: number | null; versionId?: string }>;
   /** Projects root directory — used to locate .cover.png for HDW blob upload. */
   projectsDir?: string;
@@ -657,27 +657,6 @@ export function registerCollabContextHideSignRoutes(
             r !== null && typeof r === 'object' && typeof (r as { username?: unknown }).username === 'string',
         )
       : [];
-    const bodyCoverDigest = typeof body?.coverDigest === 'string' ? body.coverDigest.trim() : null;
-    // Fall back to the local projects.cover_digest when the caller did not
-    // supply one explicitly. This keeps team_projects.cover_digest on HDW
-    // in sync with the locally captured cover screenshot without requiring
-    // every web/CLI caller to thread the digest through.
-    let coverDigest = bodyCoverDigest;
-    if (!coverDigest && deps.db && deps.projectsDir && deps.dataDir) {
-      try {
-        const project = getProject(deps.db, projectId);
-        coverDigest = project?.coverDigest ?? null;
-        // Ensure the cover blob actually exists on HDW before syncing the
-        // digest. A cover captured while the project was personal has a
-        // local .cover.png but no blob on HDW, so the HDW cover endpoint
-        // would return 404.
-        if (coverDigest) {
-          const coverDir = await ensureProject(deps.projectsDir, projectId, project?.metadata);
-          const coverPath = path.join(coverDir, '.cover.png');
-          await uploadHdwCommunityBlob(coverPath, deps.dataDir!);
-        }
-      } catch { /* best-effort: blob may already exist or cover may be absent */ }
-    }
     if (!projectId || !homeWorkspaceId || recipients.length === 0) {
       res.status(400).json({ error: 'invalid_request', message: 'project_id, home_workspace_id, and recipients are required' });
       return;
@@ -724,16 +703,33 @@ export function registerCollabContextHideSignRoutes(
       res.status(409).json({ error: 'PROJECT_WORKSPACE_MISMATCH', message: 'Sharing cannot move a project to another workspace' });
       return;
     }
-    if (binding && binding.createdByWorkspaceMemberId !== sourceWorkspace.workspaceMemberId) {
+    // Team shares grant access to the existing cloud project. Republishing a
+    // reader's mirror would claim its ownership and upload stale content.
+    // Cloud-only cards have no local binding; HDW validates the source project.
+    const sharingTeamProject = homeWorkspaceId !== getSharedSpaceTeamId()
+      && (!binding || (binding.visibility === 'team' && binding.resourceState === 'active'));
+    if (!sharingTeamProject && binding && binding.createdByWorkspaceMemberId !== sourceWorkspace.workspaceMemberId) {
       res.status(403).json({ error: 'forbidden', message: 'Only the project owner can share this project' });
       return;
     }
 
-    // Best-effort: publish the project to the team resource hub before
-    // writing the HDW share record. A hub failure must not block the share.
-    // The coverDigest is passed so markTeamProject upserts
-    // team_projects.cover_digest on HDW.
-    if (deps.requestTeamShare) {
+    let coverDigest = !sharingTeamProject && typeof body?.coverDigest === 'string' ? body.coverDigest.trim() : null;
+    // Only an owner publishing a local project may update the cloud cover.
+    if (!sharingTeamProject && !coverDigest && deps.db && deps.projectsDir) {
+      try {
+        const project = getProject(deps.db, projectId);
+        coverDigest = project?.coverDigest ?? null;
+        if (coverDigest) {
+          const coverDir = await ensureProject(deps.projectsDir, projectId, project?.metadata);
+          const coverPath = path.join(coverDir, '.cover.png');
+          await uploadHdwCommunityBlob(coverPath, deps.dataDir);
+        }
+      } catch { /* best-effort: blob may already exist or cover may be absent */ }
+    }
+
+    // Publish a local owner's project before granting access. Existing team
+    // projects already have cloud content and retain their original cover.
+    if (deps.requestTeamShare && !sharingTeamProject) {
       try {
         const sharePrincipal: ResourceHubPrincipal = {
           memberId: sourceWorkspace.workspaceMemberId,
@@ -771,7 +767,7 @@ export function registerCollabContextHideSignRoutes(
       // so the project is treated as a team project for sync and listing.
       // Without this, the row keeps visibility='personal' and the sync flow
       // never picks it up for cloud upload.
-      if (deps.db) {
+      if (deps.db && !sharingTeamProject) {
         rebindWorkspaceProject(deps.db, projectId, {
           visibility: 'team',
           resourceState: 'active',

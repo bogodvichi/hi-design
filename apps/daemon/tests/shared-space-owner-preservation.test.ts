@@ -8,7 +8,7 @@ import { getSharedSpaceMemberId, getSharedSpaceTeamId, getTeamMemberId } from '.
 import { registerCollabContextHideSignRoutes, type RegisterCollabContextHideSignRoutesDeps } from '../src/routes/collab-context-hidesign.js';
 import {
   closeDatabase, createWorkspaceFolder, ensureWorkspaceProject,
-  getWorkspaceProjectByProjectId, insertProject, listProjectsInFolder,
+  getWorkspaceProjectByProjectId, insertProject, listProjectsInFolder, rebindWorkspaceProject,
   openDatabase,
 } from '../src/db.js';
 import { planWorkspaceProjectReconciliation } from '../src/collab/workspace-projects-reconciler.js';
@@ -123,6 +123,64 @@ afterEach(async () => {
 });
 
 describe('shared-space project owner preservation', () => {
+  it.each(['owner', 'admin', 'member'] as const)('lets a team %s share another creator\'s project without republishing or changing its binding', async (role) => {
+    hdwMocks.fetchHdwTeams.mockResolvedValue([{
+      workspace_id: 'team-1', workspace_member_id: 'sharing-member', role,
+    }]);
+    seedProject('team-1', 'another-owner');
+    rebindWorkspaceProject(db, 'project-1', { visibility: 'team', syncState: 'synced' });
+    const original = getWorkspaceProjectByProjectId(db, 'project-1');
+    const requestTeamShare = vi.fn(async () => ({ version: 1 }));
+    await startRoutes(requestTeamShare);
+
+    const response = await share({
+      project_id: 'project-1', home_workspace_id: 'team-1', coverDigest: 'caller-cover',
+    });
+
+    expect(response.status).toBe(200);
+    expect(hdwMocks.shareToSharedSpace).toHaveBeenCalledWith('/test-data', {
+      projectId: 'project-1', homeWorkspaceId: 'team-1',
+      createdByUsername: 'project-owner', displayName: '项目所有者',
+      recipients: [{ username: 'recipient' }],
+    });
+    expect(requestTeamShare).not.toHaveBeenCalled();
+    expect(getWorkspaceProjectByProjectId(db, 'project-1')).toEqual(original);
+  });
+
+  it('shares an existing cloud team project before it has a local mirror without publishing as the caller', async () => {
+    const requestTeamShare = vi.fn(async () => ({ version: 1 }));
+    await startRoutes(requestTeamShare);
+
+    expect((await share({ project_id: 'cloud-project', home_workspace_id: 'team-1' })).status).toBe(200);
+    expect(hdwMocks.shareToSharedSpace).toHaveBeenCalled();
+    expect(requestTeamShare).not.toHaveBeenCalled();
+    expect(getWorkspaceProjectByProjectId(db, 'cloud-project')).toBeUndefined();
+  });
+
+  it.each(['guest', 'non-member', 'personal', 'frozen', 'deleted'] as const)('rejects a %s attempt to share another creator\'s project', async (scenario) => {
+    const workspaceId = scenario === 'personal' ? getSharedSpaceTeamId() : 'team-1';
+    seedProject(workspaceId, 'another-owner');
+    rebindWorkspaceProject(db, 'project-1', {
+      visibility: 'team',
+      resourceState: scenario === 'frozen' || scenario === 'deleted' ? scenario : 'active',
+    });
+    if (scenario === 'guest') {
+      hdwMocks.fetchHdwTeams.mockResolvedValue([{
+        workspace_id: 'team-1', workspace_member_id: 'sharing-member', role: 'guest',
+      }]);
+    } else if (scenario === 'non-member') {
+      hdwMocks.fetchHdwTeams.mockResolvedValue([]);
+    }
+    const original = getWorkspaceProjectByProjectId(db, 'project-1');
+    const requestTeamShare = vi.fn(async () => ({ version: 1 }));
+    await startRoutes(requestTeamShare);
+
+    expect((await share({ project_id: 'project-1', home_workspace_id: workspaceId })).status).toBe(403);
+    expect(hdwMocks.shareToSharedSpace).not.toHaveBeenCalled();
+    expect(requestTeamShare).not.toHaveBeenCalled();
+    expect(getWorkspaceProjectByProjectId(db, 'project-1')).toEqual(original);
+  });
+
   it.each([
     { workspaceId: getSharedSpaceTeamId(), memberId: getSharedSpaceMemberId('project-owner') },
     { workspaceId: 'team-1', memberId: 'directory-issued-owner-id' },
@@ -188,7 +246,7 @@ describe('shared-space project owner preservation', () => {
     expect(getWorkspaceProjectByProjectId(db, 'project-1')).toEqual(original);
   });
 
-  it('does not publish another member\'s project as the sharing caller', async () => {
+  it('rejects sharing another member\'s unpublished local project', async () => {
     seedProject('team-1', 'another-owner');
     const requestTeamShare = vi.fn(async () => ({ version: 1 }));
     await startRoutes(requestTeamShare);
@@ -200,6 +258,7 @@ describe('shared-space project owner preservation', () => {
   });
 
   it('publishes with the home-team owner while creating recipient-scoped share records', async () => {
+    seedProject('team-1', getTeamMemberId('team-1', 'project-owner'));
     const requestTeamShare = vi.fn(async () => ({ version: 1 }));
     await startRoutes(requestTeamShare);
 
