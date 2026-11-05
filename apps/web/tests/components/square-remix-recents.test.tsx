@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { I18nProvider } from '../../src/i18n';
@@ -108,6 +109,25 @@ describe('SquareView remix recents', () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
+  });
+
+  it('shows the publisher initial after an avatar fails, even with the shared image display rule', async () => {
+    const style = document.createElement('style');
+    style.textContent = readFileSync('src/styles/home/recent-projects.css', 'utf8');
+    document.head.appendChild(style);
+    try {
+      const { container } = render(<I18nProvider initial="en"><SquareView /></I18nProvider>);
+      await screen.findByText('Square deck');
+      const image = container.querySelector<HTMLImageElement>('.recent-projects__card-owner-avatar img')!;
+      expect(getComputedStyle(image).display).toBe('block');
+      fireEvent.error(image);
+      expect(getComputedStyle(image).display).toBe('none');
+      expect(image.parentElement?.textContent).toBe('P');
+      fireEvent.load(image);
+      expect(getComputedStyle(image).display).toBe('block');
+    } finally {
+      style.remove();
+    }
   });
 
   it('waits for workspace resolution before showing community tools in cloud order', async () => {

@@ -1385,7 +1385,9 @@ function projectCover(
 	if (override) {
 		return {
 			kind: override.kind,
-			src: projectCoverUrl(
+			src: override.generated
+				? `/api/projects/${encodeURIComponent(project.id)}/cover?v=${project.updatedAt}`
+				: projectCoverUrl(
 				project.id,
 				override.name,
 				override.mtime,
@@ -1404,9 +1406,12 @@ function projectCover(
 			project.updatedAt,
 			workspaceContext,
 		);
-		if (meta?.kind === "image") return { kind: "image", src, style, initial };
+		if (meta?.kind === "image" || /\.(png|jpe?g|gif|webp|avif|bmp|ico|svg)$/i.test(entry)) return { kind: "image", src, style, initial };
 		if (meta?.kind === "video") return { kind: "video", src, style, initial };
 		if (/\.html?$/i.test(entry)) return { kind: "html", src, style, initial, name: entry };
+		if (/\.(txt|md|markdown|mdx|csv|tsv|log)$/i.test(entry)) {
+			return { kind: "image", src: `/api/projects/${encodeURIComponent(project.id)}/cover?v=${project.updatedAt}`, style, initial };
+		}
 	}
 	return { kind: "fallback", style, initial };
 }

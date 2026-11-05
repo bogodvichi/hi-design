@@ -7835,28 +7835,56 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
  }
 
   // ---- Project cover (screenshot thumbnail) ----
+  const pendingCoverRepairs = new Map<string, Promise<string | null | undefined>>();
+
+  /** Repair a derived thumbnail once, sharing the render across concurrent card reads. */
+  async function repairProjectCover(project: NonNullable<ReturnType<typeof getProject>>) {
+    let pending = pendingCoverRepairs.get(project.id);
+    if (!pending) {
+      pending = (async () => {
+        if (project.metadata?.sharedProjectPlaceholderAt != null) return null;
+        const entry = selectProjectCoverEntry(
+          await listFiles(PROJECTS_DIR, project.id, { metadata: project.metadata }),
+          typeof project.metadata?.entryFile === 'string' ? project.metadata.entryFile : null,
+        );
+        if (!entry) return null;
+        const file = await readProjectFile(PROJECTS_DIR, project.id, entry, project.metadata);
+        return generateProjectCover(project.id, entry, file.buffer, project);
+      })();
+      pendingCoverRepairs.set(project.id, pending);
+      void pending.finally(() => pendingCoverRepairs.delete(project.id)).catch(() => {});
+    }
+    return pending;
+  }
+
   // GET /api/projects/:id/cover — serves the stored cover PNG so the web
-  // card can render a single <img> instead of an iframe preview.
+  // card can render a single <img> instead of an iframe preview. Historical
+  // projects lazily materialize a missing thumbnail from their existing content.
   app.get('/api/projects/:id/cover', async (req, res) => {
     try {
       const project = getProject(db, req.params.id);
       if (!project) {
         return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
       }
-      if (!project.coverDigest) {
-        return sendApiError(res, 404, 'NOT_FOUND', 'cover not generated yet');
-      }
+      if (!await authorizeProjectReadWithShare(req, res, project.id, { allowNavigationQuery: true })) return;
       const dir = await ensureProject(PROJECTS_DIR, req.params.id, project?.metadata);
       const coverFile = path.join(dir, '.cover.png');
+      let digest = project.coverDigest;
+      let data: Buffer | undefined;
       try {
-        const data = await fs.promises.readFile(coverFile);
-        res.set('content-type', 'image/png');
-        res.set('cache-control', 'public, max-age=86400');
-        res.set('etag', `"${project.coverDigest}"`);
-        return res.end(data);
-      } catch {
-        return sendApiError(res, 404, 'NOT_FOUND', 'cover file missing');
+        if (digest) data = await fs.promises.readFile(coverFile);
+      } catch (err: any) {
+        if (err?.code !== 'ENOENT') throw err;
       }
+      if (!data) {
+        digest = await repairProjectCover(project);
+        if (!digest) return sendApiError(res, 404, 'NOT_FOUND', 'project has no cover source');
+        data = await fs.promises.readFile(coverFile);
+      }
+      res.set('content-type', 'image/png');
+      res.set('cache-control', 'private, max-age=86400');
+      res.set('etag', `"${digest}"`);
+      return res.end(data);
     } catch (err: any) {
       sendApiError(res, 500, 'INTERNAL_ERROR', err?.message || String(err));
     }

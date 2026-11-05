@@ -18,6 +18,30 @@ describe('HDW community cover routing', () => {
   it.each([
     ['development', '/hik-plugin/hidesign-web/hdw'],
     ['production', '/hik-plugin/hidesign-web-offical/hdw'],
+  ])('routes publisher avatars through the active %s gateway, including cached entries without covers', async (mode, prefix) => {
+    vi.stubEnv('NODE_ENV', mode);
+    vi.stubEnv('OD_HDW_PATH_PREFIX', prefix);
+    const { normalizeHdwCommunityCoverUrls } = await import('../../src/http/hdw-community-cover.js');
+    const plugins = [
+      { publisher: { avatarUrl: `http://pixso.hikvision.com.cn/hdw/api/community/avatar/${digest}` } },
+      { publisher: { avatarUrl: `https://pixso.hikvision.com.cn${prefix}/api/community/avatar/${digest}` } },
+      { publisher: { avatarUrl: `/hdw/api/community/avatar/${digest}` } },
+      { publisher: { avatarUrl: 'https://images.example/avatar.jpg' } },
+      { publisher: { avatarUrl: `https://images.example/hdw/api/community/avatar/${digest}` } },
+      { publisher: { avatarUrl: '' } },
+      { publisher: { displayName: 'No avatar' } },
+    ];
+    normalizeHdwCommunityCoverUrls(plugins);
+    expect(plugins.slice(0, 3).map((entry) => entry.publisher.avatarUrl)).toEqual(Array(3).fill(`/api/hdw/api/community/avatar/${digest}`));
+    expect(plugins[3]!.publisher.avatarUrl).toBe('https://images.example/avatar.jpg');
+    expect(plugins[4]!.publisher.avatarUrl).toBe(`https://images.example/hdw/api/community/avatar/${digest}`);
+    expect(plugins[5]!.publisher.avatarUrl).toBe('');
+    expect(plugins[6]!.publisher).toEqual({ displayName: 'No avatar' });
+  });
+
+  it.each([
+    ['development', '/hik-plugin/hidesign-web/hdw'],
+    ['production', '/hik-plugin/hidesign-web-offical/hdw'],
     ['production', '/another-gateway/hdw'],
   ])('uses the active %s gateway %s when the server omits the prefix', async (mode, prefix) => {
     vi.stubEnv('NODE_ENV', mode);

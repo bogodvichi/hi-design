@@ -15,6 +15,8 @@ export interface ProjectCoverOverride {
   kind: ProjectCoverKind;
   name: string;
   mtime?: number;
+  /** Text files use the daemon's persisted content thumbnail. */
+  generated?: boolean;
 }
 
 export function projectFallbackVisual(
@@ -88,6 +90,10 @@ export function selectProjectFileCover(files: ProjectFile[]): ProjectCoverOverri
     .filter((file) => file.kind === 'video')
     .sort((a, b) => b.mtime - a.mtime)[0];
   if (video) return coverFromProjectFile(video, 'video');
+
+  const text = files.filter((file) => file.kind === 'text')
+    .sort((a, b) => b.mtime - a.mtime)[0];
+  if (text) return { kind: 'image', name: text.path ?? text.name, mtime: text.mtime, generated: true };
 
   return null;
 }

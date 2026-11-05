@@ -644,10 +644,10 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
                             src={publisherAvatarUrl}
                             alt=""
                             onError={(event) => {
-                              event.currentTarget.hidden = true;
+                              event.currentTarget.style.display = 'none';
                             }}
                             onLoad={(event) => {
-                              event.currentTarget.hidden = false;
+                              event.currentTarget.style.display = '';
                             }}
                           />
                         ) : null}
