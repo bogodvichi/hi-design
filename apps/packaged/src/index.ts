@@ -23,7 +23,7 @@ import {
 } from "@open-design/desktop/main";
 import { readProcessStamp } from "@open-design/platform";
 import { join } from "node:path";
-import { app, dialog } from "electron";
+import { app, dialog, session } from "electron";
 
 import { readPackagedConfig } from "./config.js";
 import {
@@ -271,6 +271,7 @@ async function main(): Promise<void> {
     // pinned ON from request 0. See `apps/packaged/src/headless-runtime.ts`
     // for the windowless counterpart that passes `false`.
     requireDesktopAuth: true,
+    resolveProxy: (url) => session.defaultSession.resolveProxy(url),
     webSidecarEntry: activeConfig.webSidecarEntry,
     webStandaloneRoot: activeConfig.webStandaloneRoot,
     webOutputMode: activeConfig.webOutputMode,

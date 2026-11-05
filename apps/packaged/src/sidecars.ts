@@ -44,6 +44,7 @@ import type { PackagedWebOutputMode } from "./config.js";
 import {
   codexStandaloneBinDir,
   ensureCodexCliForInstalledCodex,
+  formatCodexCliBootstrapLog,
   resolveCodexCliUpdaterEnv,
   scheduleCodexCliCheckAfterStartup,
   type CodexCliBootstrapResult,
@@ -1112,6 +1113,7 @@ export async function startPackagedSidecars(
      * silently regress the gate by omitting it.
      */
     requireDesktopAuth: boolean;
+    resolveProxy?: (url: string) => Promise<string>;
     webSidecarEntry: string | null;
     webStandaloneRoot: string | null;
     webOutputMode: PackagedWebOutputMode;
@@ -1286,7 +1288,7 @@ export async function startPackagedSidecars(
           process.platform,
           startupProxyEnv,
           process.env,
-        ));
+        ), { resolveProxy: options.resolveProxy });
         installerEnv.PATH = resolvePackagedPathEnv();
         const result = await ensureCodexCliForInstalledCodex({ env: installerEnv });
         try {
@@ -1300,7 +1302,7 @@ export async function startPackagedSidecars(
           // An older or closing daemon must not turn an install into an error.
           prewarmLog("[open-design packaged] Codex CLI hot switch unavailable: " + String(error));
         }
-        prewarmLog(`[open-design packaged] Codex CLI background check status=${result.status}`);
+        prewarmLog(formatCodexCliBootstrapLog(result, installerEnv));
       });
     }
 

@@ -5,9 +5,7 @@ import { homedir } from "node:os";
 import path from "node:path";
 import { mergeProxyAwareEnv } from "@open-design/platform";
 
-// GitHub Releases is selected below to avoid the official release CDN's
-// hardcoded 300-second asset download limit. Give slower enterprise networks
-// enough time to download, verify, and extract the official package.
+// Give enterprise networks time to download, verify, and extract the official package.
 // Installation remains background-only and never delays desktop startup.
 const CODEX_INSTALL_TIMEOUT_MS = 45 * 60 * 1000;
 const CODEX_VERSION_CHECK_TIMEOUT_MS = 8_000;
@@ -21,6 +19,11 @@ const CODEX_PROXY_ENV_KEYS = new Set([
   "all_proxy", "http_proxy", "https_proxy", "no_proxy", "node_use_env_proxy",
 ]);
 
+function hasHttpsProxy(env: NodeJS.ProcessEnv): boolean {
+  return [env.HTTPS_PROXY, env.https_proxy, env.ALL_PROXY, env.all_proxy]
+    .some((value) => Boolean(value?.trim()));
+}
+
 /**
  * The packaged startup's synchronous (2s) login-shell probe can miss
  * company proxy exports when zsh initialization takes longer. The CLI
@@ -32,17 +35,15 @@ export async function resolveCodexCliUpdaterEnv(
   options: {
     platform?: NodeJS.Platform;
     readLoginShell?: (shell: string, env: NodeJS.ProcessEnv) => Promise<string>;
+    resolveProxy?: (url: string) => Promise<string>;
   } = {},
 ): Promise<NodeJS.ProcessEnv> {
   const platform = options.platform ?? process.platform;
-  if (platform === "win32" || [
-    baseEnv.HTTPS_PROXY, baseEnv.https_proxy, baseEnv.ALL_PROXY, baseEnv.all_proxy,
-  ].some((value) => Boolean(value?.trim()))) {
-    return baseEnv;
-  }
+  if (hasHttpsProxy(baseEnv)) return baseEnv;
 
+  let resolvedEnv = baseEnv;
   const shell = baseEnv.SHELL?.trim() || (platform === "darwin" ? "/bin/zsh" : "/bin/sh");
-  try {
+  if (platform !== "win32") try {
     const stdout = await (options.readLoginShell ?? ((command, env) =>
       new Promise<string>((resolve, reject) => {
         execFile(command, ["-ilc", "command env"], {
@@ -62,10 +63,34 @@ export async function resolveCodexCliUpdaterEnv(
         shellProxyEnv[key] = line.slice(separator + 1);
       }
     }
-    return mergeProxyAwareEnv(platform, baseEnv, shellProxyEnv);
+    resolvedEnv = mergeProxyAwareEnv(platform, baseEnv, shellProxyEnv);
   } catch {
-    // Do not change the CLI installer environment on timeout or shell errors.
-    return baseEnv;
+    // An empty or broken shell must not prevent system PAC discovery.
+  }
+  if (hasHttpsProxy(resolvedEnv) || !options.resolveProxy) return resolvedEnv;
+
+  // Chromium evaluates the OS PAC/WPAD configuration for the official Codex
+  // distribution host. curl and installer subprocesses cannot evaluate PAC.
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const result = await Promise.race([
+      options.resolveProxy(CODEX_LATEST_RELEASE_URL),
+      new Promise<string>((resolve) => { timer = setTimeout(() => resolve("DIRECT"), CODEX_VERSION_CHECK_TIMEOUT_MS); }),
+    ]);
+    const [kind, address] = result.split(";", 1)[0].trim().split(/\s+/);
+    const schemes: Record<string, string> = { PROXY: "http", HTTPS: "https", SOCKS: "socks4a", SOCKS4: "socks4a", SOCKS5: "socks5h" };
+    const scheme = schemes[kind];
+    if (!scheme || !address) return resolvedEnv;
+    const proxy = new URL(`${scheme}://${address}`);
+    if (!proxy.hostname || proxy.username || proxy.password || (proxy.pathname && proxy.pathname !== "/") || proxy.search || proxy.hash) return resolvedEnv;
+    const endpoint = `${scheme}://${proxy.host}`;
+    return mergeProxyAwareEnv(platform, resolvedEnv, scheme.startsWith("socks")
+      ? { ALL_PROXY: endpoint }
+      : { HTTPS_PROXY: endpoint });
+  } catch {
+    return resolvedEnv;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -95,6 +120,23 @@ export type CodexCliBootstrapResult =
   | { status: "version-check-failed"; path: string; detail: string }
   | { status: "update-failed"; path: string; detail: string }
   | { status: "install-failed"; detail: string };
+
+/** Keep actionable installer failures in logs without retaining proxy credentials. */
+export function formatCodexCliBootstrapLog(result: CodexCliBootstrapResult, env: NodeJS.ProcessEnv): string {
+  const prefix = `[open-design packaged] Codex CLI background check status=${result.status}`;
+  if (!("detail" in result)) return prefix;
+  let detail = result.detail;
+  for (const [key, value] of Object.entries(env)) {
+    if (/^(?:https?|all)_proxy$/i.test(key) && value) detail = detail.replaceAll(value, "[proxy]");
+  }
+  detail = detail.replace(/(?:https?|socks[\w]*):\/\/[^\s"'<>]+/gi, (raw) => {
+    try {
+      const url = new URL(raw);
+      return `${url.protocol}//${url.host}${url.pathname}`;
+    } catch { return "[url]"; }
+  }).replace(/[\r\n\t]+/g, " ").slice(0, 1500);
+  return `${prefix} detail=${detail}`;
+}
 
 type CodexCliBootstrapOptions = {
   env?: NodeJS.ProcessEnv;
@@ -221,6 +263,7 @@ async function captureCommand(command: string, args: string[], env: NodeJS.Proce
 }
 
 async function defaultLatestVersion(env: NodeJS.ProcessEnv, platform: NodeJS.Platform): Promise<string> {
+  const failures: string[] = [];
   for (const url of [CODEX_LATEST_RELEASE_URL, CODEX_GITHUB_RELEASE_URL]) {
     try {
       const output = platform === "win32"
@@ -230,11 +273,12 @@ async function defaultLatestVersion(env: NodeJS.ProcessEnv, platform: NodeJS.Pla
       const metadata = JSON.parse(output) as { tag_name?: unknown };
       if (typeof metadata.tag_name !== "string") throw new Error("release metadata missing tag_name");
       return parseVersion(metadata.tag_name);
-    } catch {
+    } catch (error) {
+      failures.push(`${new URL(url).hostname}: ${error instanceof Error ? error.message : String(error)}`);
       // Mirror the official installer: fall back to GitHub if the release feed is unavailable.
     }
   }
-  throw new Error("could not check latest Codex release (network or release metadata unavailable)");
+  throw new Error(`could not check latest Codex release; ${failures.join("; ")}`);
 }
 
 function installerCommand(platform: NodeJS.Platform): { command: string; args: string[] } {
@@ -335,9 +379,6 @@ export async function ensureCodexCliForInstalledCodex(
     await (options.runInstaller ?? defaultRunInstaller)(command, args, {
       ...env,
       CODEX_NON_INTERACTIVE: "1",
-      // The official install scripts support this switch; keep their own
-      // release metadata and integrity verification instead of forking them.
-      CODEX_INSTALLER_USE_RELEASES_OPENAI_COM: "0",
     });
     // The official installer writes to ~/.local/bin (or LOCALAPPDATA on Windows).
     // Do not rediscover the stale PATH/CODEX_BIN binary after updating it.

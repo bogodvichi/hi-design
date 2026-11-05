@@ -4286,7 +4286,8 @@ describe('ProjectView daemon cleanup', () => {
     });
   });
 
-  it('persists reload-recovered non-html artifacts when same-turn suffix matches have different contents', async () => {
+  it.each(['daemon', 'api'] as const)('persists %s reload-recovered non-html artifacts when same-turn suffix matches have different contents', async (mode) => {
+    reattachDaemonRun.mockImplementation(async () => new Promise<void>(() => {}));
     const runCreatedAt = Date.now();
     const staleCss = projectFile('theme-2.css', 'code', runCreatedAt + 1);
     const finalCss = 'body { color: red; }';
@@ -4338,7 +4339,7 @@ describe('ProjectView daemon cleanup', () => {
       <ProjectView
         project={{ id: 'project-css-recover', name: 'Project', skillId: null, designSystemId: null } as never}
         routeFileName={null}
-        config={{ mode: 'daemon', agentId: 'agent-1', notifications: undefined, agentModels: {} } as never}
+        config={{ mode, apiProtocol: 'openai', apiKey: '', baseUrl: '', model: 'api-model', agentId: 'agent-1', notifications: undefined, agentModels: {} } as never}
         agents={[{ id: 'agent-1', name: 'OpenCode', models: [] } as never]}
         skills={[]}
         designTemplates={[]}

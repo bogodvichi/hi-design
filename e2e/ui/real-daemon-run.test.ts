@@ -693,6 +693,75 @@ test('[P1] artifact persistence survives page reload during an active real daemo
   await expect(artifactPreviewFrame(page).getByRole('heading', { name: SLOW_RELOAD_HEADING })).toBeVisible({ timeout: 15_000 });
 });
 
+test('[P1] BYOK task continues after leaving and returning to the project', async ({ page }) => {
+  const byokConfig = {
+    mode: 'api',
+    apiProtocol: 'openai',
+    apiKey: 'e2e-unused-key',
+    baseUrl: 'https://example.com/v1',
+    model: 'fake-model',
+    agentId: 'byok-opencode',
+    onboardingCompleted: true,
+    agentModels: {},
+    agentCliEnv: { opencode: fakeRuntimes.opencode.env },
+    skillId: null,
+    designSystemId: null,
+  };
+  const configured = await page.request.put('/api/app-config', { data: byokConfig });
+  expect(configured.ok()).toBeTruthy();
+  await page.addInitScript(({ key, config }) => {
+    window.localStorage.setItem(key, JSON.stringify(config));
+  }, { key: STORAGE_KEY, config: byokConfig });
+  const projectId = `byok-return-${Date.now()}`;
+  const { conversationId } = await createProjectViaApi(page, projectId, 'BYOK return smoke');
+  const projectRoute = `/projects/${projectId}/conversations/${conversationId}`;
+  const agentsLoaded = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+    return url.pathname === '/api/agents' && url.searchParams.get('stream') === '1';
+  });
+  await page.goto(projectRoute, { waitUntil: 'domcontentloaded' });
+  await expectWorkspaceReady(page);
+  await dismissPrivacyDialog(page);
+  const agentStream = await (await agentsLoaded).text();
+  const byokAgentEvent = agentStream.split('\n').filter((line) => line.startsWith('data:'))
+    .map((line) => JSON.parse(line.slice(5)))
+    .find((event) => event.id === 'byok-opencode');
+  expect(byokAgentEvent?.available, 'fake BYOK runtime must be detected before sending').toBe(true);
+
+  const runResponse = await sendPrompt(page, 'Create a slow reload deterministic smoke artifact');
+  const { runId } = await runResponse.json() as { runId: string };
+  await expect.poll(async () => {
+    const response = await page.request.get(`/api/runs/${runId}`);
+    return (await response.json()).status;
+  }).toBe('running');
+  const canceledRuns: string[] = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && /\/api\/runs\/[^/]+\/cancel$/.test(new URL(request.url()).pathname)) {
+      canceledRuns.push(request.url());
+    }
+  });
+  await leaveProjectForEntry(page);
+  const statusWhileAway = await page.request.get(`/api/runs/${runId}`);
+  expect((await statusWhileAway.json()).status).toBe('running');
+
+  const resumedEvents = page.waitForRequest((request) =>
+    new URL(request.url()).pathname === `/api/runs/${runId}/events`,
+  );
+  await page.evaluate((target) => {
+    window.history.pushState(null, '', target);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }, projectRoute);
+  await resumedEvents;
+  await expectWorkspaceReady(page);
+  await expect(artifactPreviewFrame(page).getByRole('heading', { name: SLOW_RELOAD_HEADING })).toBeVisible({ timeout: T.long });
+  await expect.poll(async () => {
+    const messages = await listConversationMessages(page, projectId, conversationId);
+    const assistants = messages.filter((message) => message.role === 'assistant');
+    return { count: assistants.length, runId: assistants[0]?.runId, status: assistants[0]?.runStatus };
+  }).toEqual({ count: 1, runId, status: 'succeeded' });
+  expect(canceledRuns).toEqual([]);
+});
+
 test('[P1] real daemon run survives reload before the create response reaches the browser', async ({ page }) => {
   await createProject(page, 'Delayed daemon create-response reload smoke');
   await expectWorkspaceReady(page);

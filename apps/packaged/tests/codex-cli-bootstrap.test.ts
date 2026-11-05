@@ -5,11 +5,56 @@ import { describe, expect, it, vi } from "vitest";
 import {
   codexStandaloneBinDir,
   ensureCodexCliForInstalledCodex,
+  formatCodexCliBootstrapLog,
   resolveCodexCliUpdaterEnv,
   scheduleCodexCliCheckAfterStartup,
 } from "../src/codex-cli-bootstrap.js";
 
 describe("resolveCodexCliUpdaterEnv", () => {
+  it.each(["darwin", "win32"] as const)("uses the system PAC result when shell exports are empty on %s", async (platform) => {
+    const resolveProxy = vi.fn(async () => "PROXY proxy.example:8080; DIRECT");
+    const env = await resolveCodexCliUpdaterEnv({ PATH: "/usr/bin" }, {
+      platform, readLoginShell: async () => "https_proxy=\nhttp_proxy=\n",
+      resolveProxy,
+    });
+    expect(resolveProxy).toHaveBeenCalledWith("https://releases.openai.com/codex/channels/latest");
+    expect(env.HTTPS_PROXY).toBe("http://proxy.example:8080");
+    expect(env.NO_PROXY).toContain("127.0.0.1");
+  });
+
+  it("still resolves PAC after login shell discovery fails", async () => {
+    const env = await resolveCodexCliUpdaterEnv({}, {
+      platform: "darwin",
+      readLoginShell: async () => { throw new Error("shell timeout"); },
+      resolveProxy: async () => "SOCKS5 proxy.example:1080",
+    });
+    expect(env.ALL_PROXY).toBe("socks5h://proxy.example:1080");
+  });
+
+  it("preserves an explicit proxy instead of overriding it with PAC", async () => {
+    const resolveProxy = vi.fn();
+    const env = { HTTPS_PROXY: "http://explicit.example:8080" };
+    expect(await resolveCodexCliUpdaterEnv(env, { resolveProxy })).toBe(env);
+    expect(resolveProxy).not.toHaveBeenCalled();
+  });
+
+  it("honors a DIRECT result before a fallback proxy", async () => {
+    const env = { PATH: "/usr/bin" };
+    expect(await resolveCodexCliUpdaterEnv(env, {
+      platform: "win32", resolveProxy: async () => "DIRECT; PROXY proxy.example:8080",
+    })).toBe(env);
+  });
+
+  it("bounds a system proxy lookup that never completes", async () => {
+    vi.useFakeTimers();
+    try {
+      const env = { PATH: "/usr/bin" };
+      const pending = resolveCodexCliUpdaterEnv(env, { platform: "win32", resolveProxy: () => new Promise(() => {}) });
+      await vi.advanceTimersByTimeAsync(8_000);
+      expect(await pending).toBe(env);
+    } finally { vi.useRealTimers(); }
+  });
+
   it("waits asynchronously for a slow login shell and forwards only normalized proxy keys", async () => {
     vi.useFakeTimers();
     try {
@@ -199,7 +244,6 @@ describe("ensureCodexCliForInstalledCodex", () => {
       ["-c", "curl -fsSL https://chatgpt.com/codex/install.sh | sh"],
       expect.objectContaining({
         CODEX_NON_INTERACTIVE: "1",
-        CODEX_INSTALLER_USE_RELEASES_OPENAI_COM: "0",
         HTTPS_PROXY: "http://proxy.corp:8080",
         NO_PROXY: "localhost,127.0.0.1,[::1]",
       }),
@@ -233,7 +277,6 @@ describe("ensureCodexCliForInstalledCodex", () => {
       expect.arrayContaining(["irm https://chatgpt.com/codex/install.ps1 | iex"]),
       expect.objectContaining({
         CODEX_NON_INTERACTIVE: "1",
-        CODEX_INSTALLER_USE_RELEASES_OPENAI_COM: "0",
       }),
     );
   });
@@ -254,7 +297,7 @@ describe("ensureCodexCliForInstalledCodex", () => {
     const oldBin = "/opt/old/codex";
     const newBin = "/Users/tester/.local/bin/codex";
     const installed = new Set([oldBin]);
-    const runInstaller = vi.fn(async () => { installed.add(newBin); });
+    const runInstaller = vi.fn(async (_command: string, _args: string[], _env: NodeJS.ProcessEnv) => { installed.add(newBin); });
     const getInstalledVersion = vi.fn(async (binary: string) =>
       binary === newBin ? "codex-cli 0.161.0" : "codex-cli 0.145.0");
     await expect(ensureCodexCliForInstalledCodex({
@@ -267,6 +310,7 @@ describe("ensureCodexCliForInstalledCodex", () => {
       runInstaller,
     })).resolves.toEqual({ status: "updated", path: newBin, fromVersion: "0.145.0", toVersion: "0.161.0" });
     expect(runInstaller).toHaveBeenCalledOnce();
+    expect(runInstaller.mock.calls[0]![2]).not.toHaveProperty("CODEX_INSTALLER_USE_RELEASES_OPENAI_COM");
     expect(getInstalledVersion).toHaveBeenCalledWith(newBin, expect.anything());
   });
 
@@ -327,5 +371,18 @@ describe("ensureCodexCliForInstalledCodex", () => {
       runInstaller: async () => { installed.add(newBin); },
     });
     expect(result).toEqual({ status: "update-failed", path: "/opt/old/codex", detail: "CLI is still 0.145.0, latest is 0.161.0" });
+  });
+});
+
+describe("Codex CLI failure logging", () => {
+  it("records stage and HTTP errors without proxy credentials or URL tokens", () => {
+    const proxy = "http://proxy-user:proxy-password@proxy.example:8080";
+    const log = formatCodexCliBootstrapLog({
+      status: "version-check-failed", path: "/opt/codex",
+      detail: `releases.openai.com: HTTP 403\nproxy=${proxy} https://download.example/cli?token=private-token`,
+    }, { HTTPS_PROXY: proxy });
+    expect(log).toContain("status=version-check-failed");
+    expect(log).toContain("releases.openai.com: HTTP 403");
+    expect(log).not.toMatch(/proxy-user|proxy-password|private-token|\n/);
   });
 });

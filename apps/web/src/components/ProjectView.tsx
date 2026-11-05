@@ -5666,7 +5666,9 @@ const coalescedCoverRefresh = useCoalescedCallback(
   }, [activeConversationId, daemonLive]);
 
   useEffect(() => {
-    if (config.mode !== 'daemon' || !daemonLive || !activeConversationId || streaming) return;
+    // Local agents and BYOK models both run through /api/runs. Reattach from
+    // the persisted run identity regardless of the currently selected mode.
+    if (!daemonLive || !activeConversationId || streaming) return;
     let cancelled = false;
     const reattachConversationId = activeConversationId;
 
@@ -6925,7 +6927,6 @@ const coalescedCoverRefresh = useCoalescedCallback(
     };
   }, [
     daemonLive,
-    config.mode,
     activeConversationId,
     currentProject.metadata,
     streaming,
@@ -6950,7 +6951,7 @@ const coalescedCoverRefresh = useCoalescedCallback(
   ]);
 
   useEffect(() => {
-    if (config.mode !== 'daemon' || !daemonLive || !activeConversationId) return;
+    if (!daemonLive || !activeConversationId) return;
     if (!currentConversationHasRecoverableArtifact) return;
     let cancelled = false;
     let recovering = false;
@@ -7107,7 +7108,6 @@ const coalescedCoverRefresh = useCoalescedCallback(
     };
   }, [
     daemonLive,
-    config.mode,
     activeConversationId,
     project.id,
     currentConversationHasRecoverableArtifact,

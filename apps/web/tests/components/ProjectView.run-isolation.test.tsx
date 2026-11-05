@@ -14,6 +14,7 @@ import type { SettingsSection } from '../../src/components/SettingsDialog';
 import type { ProjectWorkspaceScopeState } from '../../src/collab/useProjectWorkspaceScope';
 import type { WorkspaceCollabContext } from '@open-design/contracts';
 import type { AmrAuthRetryContinuation } from '../../src/runtime/amr-auth-retry-continuation';
+import type { DaemonReattachOptions, DaemonStreamOptions } from '../../src/providers/daemon';
 import type {
   AgentInfo,
   AppConfig,
@@ -2994,6 +2995,60 @@ describe('ProjectView conversation run isolation', () => {
       ]),
     }));
   });
+
+  it.each(['daemon', 'api'] as const)(
+    'reattaches the same %s run after leaving and returning to its conversation',
+    async (mode) => {
+      const storedMessages = new Map<string, ChatMessage[]>();
+      listMessages.mockImplementation(async (_projectId: string, conversationId: string) =>
+        storedMessages.get(conversationId) ?? [],
+      );
+      saveMessage.mockImplementation(async (_projectId: string, conversationId: string, message: ChatMessage) => {
+        const previous = storedMessages.get(conversationId) ?? [];
+        storedMessages.set(conversationId, [
+          ...previous.filter((item) => item.id !== message.id),
+          message,
+        ]);
+      });
+      streamViaDaemon.mockImplementation(async (options: DaemonStreamOptions) => {
+        options.onRunCreated?.('run-a');
+        options.onRunStatus?.('running');
+        return new Promise<void>(() => {});
+      });
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+
+      renderProjectView({
+        ...config,
+        mode,
+        apiProtocol: 'openai',
+        apiKey: 'byok-test-key',
+        baseUrl: 'https://example.com/v1',
+        model: 'api-model',
+      });
+      await waitFor(() => expect(screen.getByTestId('send-message')).toHaveProperty('disabled', false));
+      fireEvent.click(screen.getByTestId('send-message'));
+      await waitFor(() => expect(streamViaDaemon).toHaveBeenCalledTimes(1));
+      await waitFor(() => expect(screen.getByTestId('streaming-state').textContent).toBe('streaming'));
+      const original = streamViaDaemon.mock.calls[0]![0] as DaemonStreamOptions;
+
+      fireEvent.click(screen.getByTestId('conversation-select-conv-b'));
+      await waitFor(() => expect(screen.getByTestId('active-conversation').textContent).toBe('conv-b'));
+      expect(original.signal.aborted).toBe(true);
+      expect(original.cancelSignal?.aborted).toBe(false);
+      fireEvent.click(screen.getByTestId('conversation-select-conv-a'));
+
+      await waitFor(() => expect(reattachDaemonRun).toHaveBeenCalledTimes(1));
+      const reattached = reattachDaemonRun.mock.calls[0]![0] as DaemonReattachOptions;
+      expect(reattached.runId).toBe('run-a');
+      await waitFor(() => expect(screen.getByTestId('streaming-state').textContent).toBe('streaming'));
+      act(() => {
+        reattached.handlers.onDelta('Continued original task');
+      });
+      await waitFor(() => expect(screen.getByTestId('assistant-summary').textContent).toContain('Continued original task'));
+      expect(streamViaDaemon).toHaveBeenCalledTimes(1);
+      expect(original.cancelSignal?.aborted).toBe(false);
+    },
+  );
 
   it('notifies when a BYOK OpenCode chat completes without a daemon run status transition', async () => {
     listConversations.mockResolvedValue(
