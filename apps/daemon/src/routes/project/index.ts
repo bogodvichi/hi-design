@@ -3852,12 +3852,10 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       if (targetVisibility === 'personal') return summary.currentUserAccess.canMoveToPersonal;
       const selfCreated = summary.createdByWorkspaceMemberId != null
         && summary.createdByWorkspaceMemberId === ctx.workspaceMemberId;
-      return isPersonalProjectWorkspace(ctx)
-        // A cloud publication in the verified Personal home can have team visibility.
-        // Only its creator can transfer it; a real team home never enters this branch.
-        && targetVisibility === 'team'
+      return targetVisibility === 'team'
         && summary.currentUserAccess.canRename
-        && selfCreated && ctx.canShareProjects && ctx.memberStatus === 'active';
+        && selfCreated && ctx.canShareProjects && ctx.memberStatus === 'active'
+        && ctx.lifecycleState === 'active';
     }
     if (targetVisibility === 'team') return summary.currentUserAccess.canMoveToTeam;
     return summary.currentUserAccess.canMoveToPersonal;
@@ -4109,12 +4107,6 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
      const targetWorkspaceId = typeof req.body?.targetWorkspaceId === 'string'
        ? req.body.targetWorkspaceId.trim()
        : null;
-      // Cross-workspace moves are between Personal and a team. The verified
-      // destination below must match the requested visibility.
-      if (targetWorkspaceId && targetWorkspaceId !== ctx.workspaceId
-        && visibility === 'team' && !isPersonalProjectWorkspace(ctx)) {
-        return sendApiError(res, 403, 'WORKSPACE_ACCESS_DENIED', 'cross-team project moves are forbidden');
-      }
      const effectiveWorkspaceId = targetWorkspaceId || ctx.workspaceId;
      // Optional folder target within the (effective) team workspace. When
      // present the project is assigned to this folder after the visibility
@@ -4437,10 +4429,6 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
       const batchTargetWorkspaceId = typeof req.body?.targetWorkspaceId === 'string'
         ? req.body.targetWorkspaceId.trim()
         : undefined;
-      if (batchTargetWorkspaceId && batchTargetWorkspaceId !== ctx.workspaceId
-        && visibility === 'team' && !isPersonalProjectWorkspace(ctx)) {
-        return sendApiError(res, 403, 'WORKSPACE_ACCESS_DENIED', 'cross-team project moves are forbidden');
-      }
       const batchTargetFolderId = typeof req.body?.targetFolderId === 'string'
         ? req.body.targetFolderId.trim() || null
         : req.body?.targetFolderId === null ? null : undefined;

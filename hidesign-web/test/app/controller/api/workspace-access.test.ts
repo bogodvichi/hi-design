@@ -416,21 +416,27 @@ test('team folder-project sharing permits members but not guests or foreign proj
   assert.equal(rejected.ctx.status, 404);
 });
 
-test('cross-team project transfers are refused for every role, including the creator', async () => {
-  const sourceWorkspace = 'transfer-source';
-  for (const role of ['owner', 'admin', 'member', 'guest'] as const) {
+test('cross-team project transfers require source ownership and write membership in both teams', async () => {
+  for (const [sourceRole, targetRole, owner, allowed] of [
+    ['owner', 'member', 'alice', true], ['admin', 'admin', 'alice', true],
+    ['member', 'owner', 'alice', true], ['guest', 'member', 'alice', false],
+    ['owner', 'guest', 'alice', false], ['member', null, 'alice', false],
+    ['owner', 'member', 'bob', false], ['admin', 'member', 'bob', false],
+  ] as const) {
     const f = fixture({
-      workspace_members: [{ workspace_id: sourceWorkspace, username: 'alice', workspace_member_id: 'alice', role }],
-      resources: [{ id: 'resource', workspace_id: sourceWorkspace, owner_member_id: 'alice', kind: 'project' }],
-      team_projects: [{ project_id: 'project', workspace_id: sourceWorkspace, resource_id: 'resource' }],
+      workspace_members: [
+        { workspace_id: 'transfer-source', username: 'alice', workspace_member_id: 'alice', role: sourceRole },
+        ...(targetRole ? [{ workspace_id: 'other-team', username: 'alice', workspace_member_id: 'target-alice', role: targetRole }] : []),
+      ],
+      resources: [{ id: 'resource', workspace_id: 'transfer-source', owner_member_id: owner, kind: 'project' }],
+      team_projects: [{ project_id: 'project', workspace_id: 'transfer-source', resource_id: 'resource' }],
     });
     const result = await f.call('teamProject', 'transfer', {
-      method: 'POST',
-      params: { workspaceId: sourceWorkspace, projectId: 'project' },
+      method: 'POST', params: { workspaceId: 'transfer-source', projectId: 'project' },
       request: { body: { targetWorkspaceId: 'other-team' } },
     });
-    assert.equal(result.invoked, false, role);
-    assert.equal(result.ctx.status, 403, role);
+    assert.equal(result.invoked, allowed, `${sourceRole}/${targetRole}/${owner}`);
+    if (!allowed) assert.equal(result.ctx.status, 403);
   }
 });
 

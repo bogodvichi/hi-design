@@ -9,9 +9,12 @@ const cli = fileURLToPath(new URL('../src/cli.ts', import.meta.url));
 const daemonRoot = fileURLToPath(new URL('..', import.meta.url));
 
 describe('workspace project transfer CLI', () => {
-  it.each(['move', 'batch-move'].flatMap((command) => ['team', 'personal'].map((visibility) => ({ command, visibility }))))(
-    'sends source identity and the exact destination for $command to $visibility', async ({ command, visibility }) => {
-    const source = visibility === 'team' ? 'personal' : 'team';
+  it.each(['move', 'batch-move'].flatMap((command) => [
+    { source: 'personal', visibility: 'team' },
+    { source: 'team', visibility: 'personal' },
+    { source: 'team', visibility: 'team' },
+  ].map((input) => ({ command, ...input }))))(
+    'sends source identity and the exact destination for $command from $source to $visibility', async ({ command, source, visibility }) => {
     const requests: Array<{ url: string; headers: http.IncomingHttpHeaders; body: unknown }> = [];
     const server = http.createServer(async (req, res) => {
       let body = '';

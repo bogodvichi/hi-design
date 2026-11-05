@@ -255,8 +255,7 @@ function createWorkspaceAccess(app, dependencies = {}) {
         body.ownerMemberId = actor.workspace_member_id;
       } else if (action === 'transfer') {
         const targetWorkspaceId = body.targetWorkspaceId;
-        if (!targetWorkspaceId || targetWorkspaceId === ws
-          || (ws !== personalWorkspace && targetWorkspaceId !== personalWorkspace)) {
+        if (!targetWorkspaceId || targetWorkspaceId === ws) {
           throw denied(403, 'CROSS_TEAM_MOVE_FORBIDDEN');
         }
         await member(username, ws, true);

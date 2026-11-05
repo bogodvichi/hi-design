@@ -972,13 +972,13 @@ const disabledKeys = useMemo(() => {
    const project = moveToTeamTarget;
    if (!project || singleMovePendingRef.current) return;
    const projectWorkspaceId = project.workspaceId?.trim() || currentWorkspaceId || workspaceContext?.workspaceId;
-   const personalTransfer = !isTeamProjectHome(project) && resolveCreator(project).ownedBySelf && !selection.isDefaultTeam;
+   const teamTransfer = resolveCreator(project).ownedBySelf && !selection.isDefaultTeam;
    const transferToPersonal = selection.isDefaultTeam && resolveCreator(project).ownedBySelf;
    if (personalMoveRecoveryRef.current.has(project.id) && !selection.isDefaultTeam) {
      setMoveToast({ message: t('recentProjects.moveFolderPending'), tone: 'error' });
      return;
    }
-   if (!projectWorkspaceId || (selection.workspaceId !== projectWorkspaceId && !personalTransfer && !transferToPersonal)
+   if (!projectWorkspaceId || (selection.workspaceId !== projectWorkspaceId && !teamTransfer && !transferToPersonal)
      || (isTeamProjectHome(project) && selection.isDefaultTeam && !transferToPersonal)) {
      setMoveToast({ message: '不允许跨团队移动项目，请选择当前团队内的文件夹。', tone: 'error' });
      return;
@@ -1001,11 +1001,12 @@ const disabledKeys = useMemo(() => {
    const selectedWorkspaces = selectedProjects.map(({ project }) =>
      project.workspaceId?.trim() || currentWorkspaceId || workspaceContext?.workspaceId);
    if (extensionSelectedCount > 0) selectedWorkspaces.push(currentWorkspaceId || workspaceContext?.workspaceId);
-   const personalTransfer = personalCollection && !selection.isDefaultTeam
-     && selectedProjects.every(({ project, creator }) => !isTeamProjectHome(project) && creator.ownedBySelf);
+   const teamTransfer = !selection.isDefaultTeam
+     && selectedProjects.every(({ creator }) => creator.ownedBySelf)
+     && (extensionSelectedCount === 0 || personalCollection);
    const transferToPersonal = selection.isDefaultTeam && selectedProjects.every(({ creator }) => creator.ownedBySelf)
      && (extensionSelectedCount === 0 || (personalCollection && selectionExtension?.canMoveToPersonal === true));
-   if (!selectedWorkspaces.length || selectedWorkspaces.some((source) => !source || (source !== selection.workspaceId && !personalTransfer && !transferToPersonal))
+   if (!selectedWorkspaces.length || selectedWorkspaces.some((source) => !source || (source !== selection.workspaceId && !teamTransfer && !transferToPersonal))
      || (!personalCollection && selection.isDefaultTeam && !transferToPersonal)) {
      setMoveToast({ message: '不允许跨团队移动项目，请选择当前团队内的文件夹。', tone: 'error' });
      return;
@@ -1585,16 +1586,11 @@ function requestDelete(project: Project) {
      }
      notifyTeamProjectsChanged();
      window.dispatchEvent(new CustomEvent('personal:folders-updated'));
-     window.dispatchEvent(
-       new CustomEvent('hdw:folders-updated', {
-         detail: { teamId: workspaceContext?.workspaceId },
-       }),
-     );
-     window.dispatchEvent(
-       new CustomEvent('hdw:subfolders-updated', {
-         detail: { teamId: workspaceContext?.workspaceId },
-       }),
-     );
+     for (const teamId of new Set([project.workspaceId ?? workspaceContext?.workspaceId, options?.targetWorkspaceId])) {
+       if (!teamId) continue;
+       window.dispatchEvent(new CustomEvent('hdw:folders-updated', { detail: { teamId } }));
+       window.dispatchEvent(new CustomEvent('hdw:subfolders-updated', { detail: { teamId } }));
+     }
      setMenuOpenId(null);
      trackWorkspaceProjectActionResult(analytics.track, {
        page_name: analyticsPage,
@@ -1938,16 +1934,11 @@ function requestDelete(project: Project) {
    if (succeeded.length > 0 || extensionSucceededCount > 0 || committedTransfers > 0) notifyTeamProjectsChanged();
    if (succeeded.length > 0 || extensionSucceededCount > 0 || committedTransfers > 0) {
      window.dispatchEvent(new CustomEvent('personal:folders-updated'));
-     window.dispatchEvent(
-       new CustomEvent('hdw:folders-updated', {
-         detail: { teamId: workspaceContext?.workspaceId },
-       }),
-     );
-     window.dispatchEvent(
-       new CustomEvent('hdw:subfolders-updated', {
-         detail: { teamId: workspaceContext?.workspaceId },
-       }),
-     );
+     for (const teamId of new Set([workspaceContext?.workspaceId, options?.targetWorkspaceId])) {
+       if (!teamId) continue;
+       window.dispatchEvent(new CustomEvent('hdw:folders-updated', { detail: { teamId } }));
+       window.dispatchEvent(new CustomEvent('hdw:subfolders-updated', { detail: { teamId } }));
+     }
    }
    const requestedCount = ids.length + extensionCount;
    const succeededCount = succeeded.length + extensionSucceededCount;
@@ -3012,7 +3003,7 @@ function requestDelete(project: Project) {
        currentWorkspaceId={currentWorkspaceId ?? workspaceContext?.workspaceId ?? null}
        currentFolderId={currentFolderId ?? null}
        disabledKeys={disabledKeys}
-       restrictToWorkspaceId={isTeamProjectHome(moveToTeamTarget) ? moveToTeamTarget.workspaceId ?? currentWorkspaceId ?? workspaceContext?.workspaceId : undefined}
+       restrictToWorkspaceId={resolveCreator(moveToTeamTarget).ownedBySelf ? undefined : moveToTeamTarget.workspaceId ?? currentWorkspaceId ?? workspaceContext?.workspaceId}
       canMoveToPersonal={resolveCreator(moveToTeamTarget).ownedBySelf}
      />
   ) : null}
@@ -3024,7 +3015,8 @@ function requestDelete(project: Project) {
        mode="unified"
        currentWorkspaceId={currentWorkspaceId ?? workspaceContext?.workspaceId ?? null}
        currentFolderId={currentFolderId ?? null}
-       restrictToWorkspaceId={personalCollection ? undefined : currentWorkspaceId ?? workspaceContext?.workspaceId ?? undefined}
+       restrictToWorkspaceId={personalCollection || (extensionSelectedCount === 0 && selectedProjects.every(({ creator }) => creator.ownedBySelf))
+         ? undefined : currentWorkspaceId ?? workspaceContext?.workspaceId ?? undefined}
        disabledSubtreeKeys={extensionSelectedCount > 0 ? selectionExtension?.disabledMoveKeys : undefined}
        disabledKeys={disabledKeys}
       canMoveToPersonal={selectedProjects.every(({ creator }) => creator.ownedBySelf)

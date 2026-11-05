@@ -287,10 +287,23 @@ describe('useProjectFolderDrop', () => {
     expect(screen.queryByText('移动失败，无权限')).not.toBeInTheDocument();
   });
 
-  it.each(['cross-team', 'manager-transfer', 'missing-source'] as const)('rejects an unauthorized drop (%s)', async (scenario) => {
+  it.each([null, 'target-folder'])('transfers a creator project to another team at folder=%s', async (folderId) => {
+    mocks.moveWorkspaceProject.mockResolvedValue({});
+    render(<CrossWorkspaceHarness destinationWorkspaceId="another-team" destinationVisibility="team" destinationFolderId={folderId} />);
+    const dataTransfer = createDataTransfer();
+    fireEvent.dragStart(screen.getByTestId('cross-workspace-source'), { dataTransfer });
+    fireEvent.drop(screen.getByTestId('personal-root'), { dataTransfer });
+    await waitFor(() => expect(mocks.moveWorkspaceProject).toHaveBeenCalledWith({
+      projectId: 'project-1', visibility: 'team', workspaceContext,
+      targetWorkspaceId: 'another-team', targetFolderId: folderId,
+    }));
+    expect(mocks.moveTeamProjectFolderAssignment).not.toHaveBeenCalled();
+  });
+
+  it.each(['manager-transfer', 'missing-source'] as const)('rejects an unauthorized drop (%s)', async (scenario) => {
     render(<CrossWorkspaceHarness
-      destinationWorkspaceId={scenario === 'cross-team' ? 'another-team' : 'personal-workspace'}
-      destinationVisibility={scenario === 'cross-team' ? 'team' : 'personal'}
+      destinationWorkspaceId="another-team"
+      destinationVisibility="team"
       currentWorkspaceContext={scenario === 'missing-source' ? { workspaceId: 'unrelated', workspaceType: 'personal' } as WorkspaceCollabContext : workspaceContext}
       managerOnlyFolderMove={scenario === 'manager-transfer'}
     />);

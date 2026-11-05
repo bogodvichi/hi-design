@@ -87,15 +87,13 @@ export function useProjectFolderDrop(input: {
             : input.resolveWorkspaceContext?.(payload.sourceWorkspaceId) ?? null
           : null;
         const crossWorkspace = payload?.sourceWorkspaceId !== targetWorkspaceId;
-        const personalSource = sourceWorkspaceContext?.workspaceType === 'personal'
-          || sourceWorkspaceContext?.isDefaultTeam === true;
         if (
           !payload
           || !payload.canMove
           || destination?.canMove === false
           || !targetWorkspaceId
           || !sourceWorkspaceContext
-          || (crossWorkspace && (payload.managerOnlyFolderMove || (!personalSource && targetVisibility !== 'personal')))
+          || (crossWorkspace && payload.managerOnlyFolderMove)
           || (!destination && payload.sourceWorkspaceId !== input.workspaceId)
         ) {
           fail(payload?.projectId);
