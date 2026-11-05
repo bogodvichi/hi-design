@@ -173,27 +173,24 @@ describe("DesignFilesPanel sections", () => {
   it("shows prioritized project starter actions in the empty state", () => {
     const onNewSketch = vi.fn();
     const onOpenBrowser = vi.fn();
-    const onCreateDesignSystem = vi.fn();
     const onPaste = vi.fn();
     const onUpload = vi.fn();
 
     renderPanel([], {
       onNewSketch,
       onOpenBrowser,
-      onCreateDesignSystem,
       onPaste,
       onUpload,
     });
 
     fireEvent.click(screen.getByTestId("design-files-empty-new-sketch"));
     fireEvent.click(screen.getByTestId("design-files-empty-open-browser"));
-    fireEvent.click(screen.getByTestId("design-files-empty-create-design-system"));
+    expect(screen.queryByTestId("design-files-empty-create-design-system")).toBeNull();
     fireEvent.click(screen.getByTestId("design-files-empty-new-document"));
     fireEvent.click(screen.getByTestId("design-files-upload-trigger"));
 
     expect(onNewSketch).toHaveBeenCalledTimes(1);
     expect(onOpenBrowser).toHaveBeenCalledTimes(1);
-    expect(onCreateDesignSystem).toHaveBeenCalledTimes(1);
     expect(onPaste).toHaveBeenCalledTimes(1);
     expect(onUpload).toHaveBeenCalledTimes(1);
   });
@@ -201,7 +198,6 @@ describe("DesignFilesPanel sections", () => {
   it("keeps empty-state actions visible but disables mutations for read-only shared viewers", () => {
     const onNewSketch = vi.fn();
     const onOpenBrowser = vi.fn();
-    const onCreateDesignSystem = vi.fn();
     const onPaste = vi.fn();
     const onUpload = vi.fn();
 
@@ -209,7 +205,6 @@ describe("DesignFilesPanel sections", () => {
       viewerOnly: true,
       onNewSketch,
       onOpenBrowser,
-      onCreateDesignSystem,
       onPaste,
       onUpload,
     });
@@ -218,7 +213,6 @@ describe("DesignFilesPanel sections", () => {
       screen.getByTestId("design-files-empty-new-sketch"),
       screen.getByTestId("design-files-empty-new-document"),
       screen.getByTestId("design-files-upload-trigger"),
-      screen.getByTestId("design-files-empty-create-design-system"),
     ];
     for (const button of mutationButtons) {
       expect(button).toBeDisabled();
@@ -230,7 +224,6 @@ describe("DesignFilesPanel sections", () => {
     }
 
     expect(onNewSketch).not.toHaveBeenCalled();
-    expect(onCreateDesignSystem).not.toHaveBeenCalled();
     expect(onPaste).not.toHaveBeenCalled();
     expect(onUpload).not.toHaveBeenCalled();
 

@@ -88,7 +88,6 @@ interface Props {
   onPaste: () => void;
   onNewSketch: () => void;
   onOpenBrowser?: () => void;
-  onCreateDesignSystem?: () => void;
   onCreateDesignSystemFromProject?: () => void;
   createDesignSystemFromProjectBusy?: boolean;
   onDuplicateProject?: () => void;
@@ -467,7 +466,6 @@ export function DesignFilesPanel({
   onPaste,
   onNewSketch,
   onOpenBrowser,
-  onCreateDesignSystem,
   onCreateDesignSystemFromProject,
   createDesignSystemFromProjectBusy = false,
   onDuplicateProject,
@@ -1618,21 +1616,6 @@ export function DesignFilesPanel({
                       >
                         <Icon name="globe" size={13} />
                         <span>{t('workspace.newBrowser')}</span>
-                      </button>
-                    ) : null}
-                    {onCreateDesignSystem ? (
-                      <button
-                        type="button"
-                        className="df-empty-cta df-empty-cta-tertiary"
-                        data-testid="design-files-empty-create-design-system"
-                        disabled={mutationBlocked}
-                        onClick={onCreateDesignSystem}
-                        title={mutationBlocked
-                          ? t('fileViewer.readonlySharedNoExport')
-                          : t('dsManager.createTitle')}
-                      >
-                        <Icon name="blocks" size={14} />
-                        <span>{t('dsManager.createTitle')}</span>
                       </button>
                     ) : null}
                   </div>

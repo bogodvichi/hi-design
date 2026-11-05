@@ -297,7 +297,7 @@ function installerCommand(platform: NodeJS.Platform): { command: string; args: s
   }
   return {
     command: "/bin/sh",
-    args: ["-c", "curl -fsSL https://chatgpt.com/codex/install.sh | sh"],
+    args: ["-s"],
   };
 }
 
@@ -306,10 +306,31 @@ async function defaultRunInstaller(
   args: string[],
   env: NodeJS.ProcessEnv,
 ): Promise<void> {
+  let script: string | undefined;
+  if (command === "/bin/sh") {
+    const officialScript = await captureCommand("curl", [
+      "-fsSL", "--connect-timeout", "10", "--max-time", "30", "https://chatgpt.com/codex/install.sh",
+    ], env, 30_000);
+    // Keep the official source selection and integrity checks. Its fixed
+    // 300s CDN transfer limit is too short on enterprise connections; only
+    // asset downloads get the larger budget inside our overall 45m limit.
+    const assetTimeout = Math.floor(CODEX_INSTALL_TIMEOUT_MS / 1000) - 300;
+    script = `curl() {
+  for od_codex_arg do
+    case "$od_codex_arg" in
+      https://releases.openai.com/codex/releases/*/*)
+        command curl "$@" --max-time ${assetTimeout}
+        return ;;
+    esac
+  done
+  command curl "$@"
+}
+${officialScript}`;
+  }
   await new Promise<void>((resolve, reject) => {
     const child = spawn(command, args, {
       env,
-      stdio: ["ignore", "ignore", "pipe"],
+      stdio: [script ? "pipe" : "ignore", "ignore", "pipe"],
       windowsHide: true,
     });
     let stderr = "";
@@ -329,6 +350,13 @@ async function defaultRunInstaller(
       if (code === 0) resolve();
       else reject(new Error(stderr.trim() || `Codex CLI installer exited with code ${code ?? "unknown"}`));
     });
+    if (script) {
+      child.stdin?.on("error", (error) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+      child.stdin?.end(script);
+    }
   });
 }
 

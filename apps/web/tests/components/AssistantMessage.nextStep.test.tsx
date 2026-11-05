@@ -10,9 +10,6 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AssistantMessage } from '../../src/components/AssistantMessage';
-import {
-  PROJECT_GENERATE_ARTIFACT_PROMPT,
-} from '../../src/components/NextStepActions';
 import { en } from '../../src/i18n/locales/en';
 import type { ChatMessage, ProjectFile } from '../../src/types';
 
@@ -74,6 +71,7 @@ describe('AssistantMessage next-step affordance', () => {
         streaming={false}
         projectId="proj-1"
         isLast
+        nextStepVariant="design-system"
         {...h}
       />,
     );
@@ -106,6 +104,7 @@ describe('AssistantMessage next-step affordance', () => {
         streaming={false}
         projectId="proj-1"
         isLast
+        nextStepVariant="design-system"
         onFeedback={vi.fn()}
         onShareToOpenDesign={onShareToOpenDesign}
         {...handlers()}
@@ -142,7 +141,7 @@ describe('AssistantMessage next-step affordance', () => {
     expect(screen.queryByTestId('next-step-actions')).toBeNull();
   });
 
-  it('renders project recovery actions when the turn produced no previewable artifact', () => {
+  it('keeps produced files without project recovery shortcuts when no previewable artifact exists', () => {
     const h = handlers();
     render(
       <AssistantMessage
@@ -157,10 +156,7 @@ describe('AssistantMessage next-step affordance', () => {
     // produced-files block, not the collapsible tool-op summary.
     expect(document.querySelector('.produced-files')?.textContent).toContain('notes.md');
     expect(screen.queryByTestId('file-ops-summary')).toBeNull();
-    expect(screen.getByTestId('next-step-actions')).toBeTruthy();
-    expect(screen.getByText(en['nextStep.projectGenerateArtifactTitle'])).toBeTruthy();
-    fireEvent.click(screen.getByTestId('next-step-project-action-project-generate-artifact'));
-    expect(h.onNextStepPromptAction).toHaveBeenCalledWith(PROJECT_GENERATE_ARTIFACT_PROMPT);
+    expect(screen.queryByTestId('next-step-actions')).toBeNull();
   });
 
   it('does not reuse an earlier artifact for a pure-answer turn', () => {

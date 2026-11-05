@@ -351,6 +351,7 @@ describe('AssistantMessage feedback gate', () => {
         streaming={false}
         projectId="proj-1"
         isLast
+        nextStepVariant="design-system"
         onFeedback={vi.fn()}
         onShareToOpenDesign={onShare}
       />,

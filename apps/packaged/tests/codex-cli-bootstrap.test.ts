@@ -241,7 +241,7 @@ describe("ensureCodexCliForInstalledCodex", () => {
     expect(result).toEqual({ status: "installed", path: installedPath });
     expect(runInstaller).toHaveBeenCalledWith(
       "/bin/sh",
-      ["-c", "curl -fsSL https://chatgpt.com/codex/install.sh | sh"],
+      ["-s"],
       expect.objectContaining({
         CODEX_NON_INTERACTIVE: "1",
         HTTPS_PROXY: "http://proxy.corp:8080",

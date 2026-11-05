@@ -715,25 +715,32 @@ test('[P1] BYOK task continues after leaving and returning to the project', asyn
   const projectId = `byok-return-${Date.now()}`;
   const { conversationId } = await createProjectViaApi(page, projectId, 'BYOK return smoke');
   const projectRoute = `/projects/${projectId}/conversations/${conversationId}`;
-  const agentsLoaded = page.waitForResponse((response) => {
-    const url = new URL(response.url());
-    return url.pathname === '/api/agents' && url.searchParams.get('stream') === '1';
+  // Seed through the public run API; the browser witness owns navigation and
+  // subscription recovery, while component tests cover submitting in each mode.
+  const runResponse = await page.request.post('/api/runs', {
+    data: {
+      agentId: 'byok-opencode',
+      message: 'Create a slow reload deterministic smoke artifact',
+      projectId,
+      conversationId,
+      assistantMessageId: `assistant-${projectId}`,
+      clientRequestId: projectId,
+      sessionMode: 'design',
+      model: byokConfig.model,
+      byokProvider: {
+        protocol: byokConfig.apiProtocol,
+        apiKey: byokConfig.apiKey,
+        baseUrl: byokConfig.baseUrl,
+        model: byokConfig.model,
+      },
+    },
   });
+  expect(runResponse.ok()).toBeTruthy();
+  const { runId } = await runResponse.json() as { runId: string };
   await page.goto(projectRoute, { waitUntil: 'domcontentloaded' });
   await expectWorkspaceReady(page);
   await dismissPrivacyDialog(page);
-  const agentStream = await (await agentsLoaded).text();
-  const byokAgentEvent = agentStream.split('\n').filter((line) => line.startsWith('data:'))
-    .map((line) => JSON.parse(line.slice(5)))
-    .find((event) => event.id === 'byok-opencode');
-  expect(byokAgentEvent?.available, 'fake BYOK runtime must be detected before sending').toBe(true);
-
-  const runResponse = await sendPrompt(page, 'Create a slow reload deterministic smoke artifact');
-  const { runId } = await runResponse.json() as { runId: string };
-  await expect.poll(async () => {
-    const response = await page.request.get(`/api/runs/${runId}`);
-    return (await response.json()).status;
-  }).toBe('running');
+  await expect(page.locator('.composer-send.stop')).toBeVisible();
   const canceledRuns: string[] = [];
   page.on('request', (request) => {
     if (request.method() === 'POST' && /\/api\/runs\/[^/]+\/cancel$/.test(new URL(request.url()).pathname)) {
@@ -753,6 +760,7 @@ test('[P1] BYOK task continues after leaving and returning to the project', asyn
   }, projectRoute);
   await resumedEvents;
   await expectWorkspaceReady(page);
+  await expect(page.locator('.composer-send.stop')).toBeVisible();
   await expect(artifactPreviewFrame(page).getByRole('heading', { name: SLOW_RELOAD_HEADING })).toBeVisible({ timeout: T.long });
   await expect.poll(async () => {
     const messages = await listConversationMessages(page, projectId, conversationId);

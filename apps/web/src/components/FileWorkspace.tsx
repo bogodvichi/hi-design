@@ -52,8 +52,7 @@ import {
 } from '../providers/registry';
 import type { Dict } from '../i18n/types';
 import { STAGE_ATTACHMENT_EVENT, type StageAttachmentEventDetail } from './ChatComposer';
-import { setPendingDesignSystemCreateEntry } from '../analytics/ds-create-entry';
-import { navigate, registerNavigationGuard } from '../router';
+import { registerNavigationGuard } from '../router';
 import { downloadDesignSystemArchive, downloadProjectArchive } from '../runtime/exports';
 import { finalizeBrandProject } from '../runtime/brands';
 import { deriveFileOps, type FileOpEntry } from '../runtime/file-ops';
@@ -4504,16 +4503,6 @@ export function FileWorkspace({
                 element: 'new_browser',
               });
               openBrowserTab();
-            }}
-            onCreateDesignSystem={() => {
-              if (mutationBlocked) return;
-              trackFileManagerClick(analytics.track, {
-                page_name: 'file_manager',
-                area: 'file_manager',
-                element: 'create_design_system',
-              });
-              setPendingDesignSystemCreateEntry('project_canvas');
-              navigate({ kind: 'design-system-create' });
             }}
             onCreateDesignSystemFromProject={onCreateDesignSystemFromProject}
             createDesignSystemFromProjectBusy={createDesignSystemFromProjectBusy}

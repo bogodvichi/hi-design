@@ -518,7 +518,8 @@ export function NextStepActions({
     variant === 'default' ||
     variant === 'project-incomplete'
   ) && !!onCreateDesignSystem;
-  const hasMore = showCreateDesignSystem || !!onToolboxAction || hasShareGroup;
+  const hasMore = variant !== 'default' && variant !== 'project-incomplete' &&
+    (showCreateDesignSystem || !!onToolboxAction || hasShareGroup);
   const showToolbox = !!onToolboxAction;
   const showProjectIncompleteRows = variant === 'project-incomplete' && !!onPromptAction;
   const showDesignSystemRows = variant === 'design-system' && !!onPromptAction;
@@ -542,6 +543,10 @@ export function NextStepActions({
           ? !!onContinueAiExtraction
         : !!onAiOptimize || !!onCreateDesign
     );
+
+  if (variant === 'project-incomplete' || !(showBrandRows || showDesignSystemRows || showToolbox || hasMore)) {
+    return null;
+  }
 
   // Hover handlers shared by every flyout surface: stay open while hovered.
   const keepOpen = { onMouseEnter: cancelClose, onMouseLeave: scheduleClose };

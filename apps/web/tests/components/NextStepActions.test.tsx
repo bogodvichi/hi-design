@@ -3,11 +3,7 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import {
-  NextStepActions,
-  PROJECT_CONTINUE_PROMPT,
-  PROJECT_GENERATE_ARTIFACT_PROMPT,
-} from '../../src/components/NextStepActions';
+import { NextStepActions } from '../../src/components/NextStepActions';
 import { I18nProvider } from '../../src/i18n';
 import { en } from '../../src/i18n/locales/en';
 import type { Locale } from '../../src/i18n/types';
@@ -79,11 +75,11 @@ function renderActions(
 }
 
 describe('NextStepActions', () => {
-  it('renders the two featured rows and More', () => {
+  it('renders the two featured rows without More for ordinary projects', () => {
     renderActions();
     expect(screen.getByText(AUTO_MATCH_TITLE)).toBeTruthy();
     expect(screen.getByText(VISUAL_POLISH_TITLE)).toBeTruthy();
-    expect(screen.getByTestId('next-step-toolbox-more')).toBeTruthy();
+    expect(screen.queryByTestId('next-step-toolbox-more')).toBeNull();
   });
 
   it('seeds the composer with the action id (no auto-send) when a featured row is clicked', () => {
@@ -166,49 +162,14 @@ describe('NextStepActions', () => {
     expect(onContinueAiExtraction).toHaveBeenCalledTimes(1);
   });
 
-  it('offers ordinary project recovery prompts for incomplete turns without artifacts', () => {
-    const onPromptAction = vi.fn();
+  it.each(['en', 'zh-CN'] as const)('hides the incomplete-project shortcut card in %s', (locale) => {
     renderActions({
       variant: 'project-incomplete',
       fileName: null,
-      onPromptAction,
-    });
+      onPromptAction: vi.fn(),
+    }, locale);
 
-    expect(screen.getByText(en['nextStep.projectContinueTitle'])).toBeTruthy();
-    expect(screen.getByText(en['nextStep.projectGenerateArtifactTitle'])).toBeTruthy();
-    fireEvent.click(screen.getByTestId('next-step-project-action-project-continue'));
-    expect(onPromptAction).toHaveBeenCalledWith(PROJECT_CONTINUE_PROMPT);
-    fireEvent.click(screen.getByTestId('next-step-project-action-project-generate-artifact'));
-    expect(onPromptAction).toHaveBeenCalledWith(PROJECT_GENERATE_ARTIFACT_PROMPT);
-    expect(PROJECT_GENERATE_ARTIFACT_PROMPT).toContain('semantic filename');
-    expect(PROJECT_GENERATE_ARTIFACT_PROMPT).not.toContain('usually index.html');
-  });
-
-  it('localizes incomplete-project recovery prompts in Chinese', () => {
-    const onPromptAction = vi.fn();
-    renderActions({
-      variant: 'project-incomplete',
-      fileName: null,
-      onPromptAction,
-    }, 'zh-CN');
-
-    fireEvent.click(screen.getByTestId('next-step-project-action-project-continue'));
-    expect(onPromptAction).toHaveBeenCalledWith(
-      expect.stringContaining('从已停止或未完成的回合继续处理'),
-    );
-    fireEvent.click(screen.getByTestId('next-step-project-action-project-generate-artifact'));
-    expect(onPromptAction).toHaveBeenCalledWith(
-      expect.stringContaining('现在生成缺失的项目产物'),
-    );
-    expect(onPromptAction).toHaveBeenCalledWith(
-      expect.stringContaining('语义化文件名'),
-    );
-    expect(onPromptAction).not.toHaveBeenCalledWith(
-      expect.stringContaining('Generate the missing project artifact now'),
-    );
-    expect(onPromptAction).not.toHaveBeenCalledWith(
-      expect.stringContaining('通常保存为 index.html'),
-    );
+    expect(screen.queryByTestId('next-step-actions')).toBeNull();
   });
 
   it('localizes design-system project prompts in Chinese', () => {
@@ -266,7 +227,7 @@ describe('NextStepActions', () => {
   });
 
   it('opens the More menu with Design toolbox + Share on hover', () => {
-    renderActions();
+    renderActions({ variant: 'design-system' });
     fireEvent.mouseEnter(screen.getByTestId('next-step-toolbox-more'));
     const menu = screen.getByTestId('next-step-more-menu');
     expect(menu).toBeTruthy();
@@ -275,7 +236,7 @@ describe('NextStepActions', () => {
   });
 
   it('cascades into searchable non-featured toolbox actions and global resources', () => {
-    renderActions();
+    renderActions({ variant: 'design-system' });
     fireEvent.mouseEnter(screen.getByTestId('next-step-toolbox-more'));
     fireEvent.mouseEnter(screen.getByTestId('next-step-more-toolbox'));
     const list = screen.getByTestId('next-step-toolbox-actions');
@@ -300,7 +261,7 @@ describe('NextStepActions', () => {
   });
 
   it('filters actions and global resources from the toolbox search box', () => {
-    renderActions();
+    renderActions({ variant: 'design-system' });
     fireEvent.mouseEnter(screen.getByTestId('next-step-toolbox-more'));
     fireEvent.mouseEnter(screen.getByTestId('next-step-more-toolbox'));
     const list = screen.getByTestId('next-step-toolbox-actions');
@@ -313,7 +274,7 @@ describe('NextStepActions', () => {
   });
 
   it('keeps an action visible when searching by its preferred skill id (parity with the composer matcher)', () => {
-    renderActions();
+    renderActions({ variant: 'design-system' });
     fireEvent.mouseEnter(screen.getByTestId('next-step-toolbox-more'));
     fireEvent.mouseEnter(screen.getByTestId('next-step-more-toolbox'));
     const list = screen.getByTestId('next-step-toolbox-actions');
@@ -334,7 +295,7 @@ describe('NextStepActions', () => {
       displayName: { 'zh-CN': '创意总监' },
       descriptionI18n: { 'zh-CN': 'AI 创意总监，负责整体审美方向' },
     } as SkillSummary;
-    renderActions({ skills: [localizedSkill] }, 'zh-CN');
+    renderActions({ variant: 'design-system', skills: [localizedSkill] }, 'zh-CN');
     fireEvent.mouseEnter(screen.getByTestId('next-step-toolbox-more'));
     fireEvent.mouseEnter(screen.getByTestId('next-step-more-toolbox'));
     const list = screen.getByTestId('next-step-toolbox-actions');
@@ -352,7 +313,7 @@ describe('NextStepActions', () => {
       ...skill('emilkowalski-motion', 'emilkowalski-motion', 'animation-motion'),
       displayName: { 'zh-CN': '动效大师' },
     } as SkillSummary;
-    renderActions({ skills: [motionSkill] }, 'zh-CN');
+    renderActions({ variant: 'design-system', skills: [motionSkill] }, 'zh-CN');
     fireEvent.mouseEnter(screen.getByTestId('next-step-toolbox-more'));
     fireEvent.mouseEnter(screen.getByTestId('next-step-more-toolbox'));
     const list = screen.getByTestId('next-step-toolbox-actions');
@@ -367,7 +328,7 @@ describe('NextStepActions', () => {
   });
 
   it('seeds the composer with a non-featured action id when picked from the submenu', () => {
-    const h = renderActions();
+    const h = renderActions({ variant: 'design-system' });
     fireEvent.mouseEnter(screen.getByTestId('next-step-toolbox-more'));
     fireEvent.mouseEnter(screen.getByTestId('next-step-more-toolbox'));
     fireEvent.click(screen.getByTestId('next-step-toolbox-sub-action-motion'));
@@ -375,7 +336,7 @@ describe('NextStepActions', () => {
   });
 
   it('seeds the composer with a global resource skill when picked from the submenu', () => {
-    const h = renderActions();
+    const h = renderActions({ variant: 'design-system' });
     fireEvent.mouseEnter(screen.getByTestId('next-step-toolbox-more'));
     fireEvent.mouseEnter(screen.getByTestId('next-step-more-toolbox'));
     fireEvent.click(screen.getByTestId('next-step-toolbox-resource-emilkowalski-motion'));
@@ -383,7 +344,7 @@ describe('NextStepActions', () => {
   });
 
   it('cascades into Share / Download / Contribute and routes each action', () => {
-    const h = renderActions();
+    const h = renderActions({ variant: 'design-system' });
     fireEvent.mouseEnter(screen.getByTestId('next-step-toolbox-more'));
     fireEvent.mouseEnter(screen.getByTestId('next-step-more-share'));
     expect(screen.getByTestId('next-step-share-menu')).toBeTruthy();
