@@ -19,7 +19,10 @@ import { RecentProjectsStrip } from './RecentProjectsStrip';
 import { FolderCardMenu } from './FolderCardMenu';
 import { CloudSkillList } from './CloudSkillList';
 import { CloudMcpList } from './CloudMcpList';
-import { useWorkspaceContext } from '../collab/useWorkspaceContext';
+import {
+  readWorkspaceDirectoryForCurrentGeneration,
+  useWorkspaceContext,
+} from '../collab/useWorkspaceContext';
 import { useT } from '../i18n';
 import type { Dict } from '../i18n/types';
 import type { Project } from '../types';
@@ -272,9 +275,7 @@ export function SharedWithMeView({
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch('/api/workspace/directory', { cache: 'no-store' });
-        if (!res.ok) return;
-        const body = await res.json() as { items?: WorkspaceDirectoryItem[] };
+        const body = await readWorkspaceDirectoryForCurrentGeneration();
         if (cancelled) return;
         const shared = body.items?.find((item) => item.isDefaultTeam === true);
         setWorkspaceId(shared?.workspaceId ?? null);

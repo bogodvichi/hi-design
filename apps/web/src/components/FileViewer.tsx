@@ -1617,11 +1617,15 @@ export function manualEditHistoryStyleSnapshot(
     }, {});
 }
 
-function usePreviewCanvasSize<T extends HTMLElement>() {
+function usePreviewCanvasSize<T extends HTMLElement>(active = true) {
   const ref = useRef<T | null>(null);
   const [size, setSize] = useState<PreviewCanvasSize | undefined>(undefined);
 
   useEffect(() => {
+    if (!active) {
+      setSize(undefined);
+      return;
+    }
     const el = ref.current;
     if (!el) return;
     const measure = () => {
@@ -1646,7 +1650,7 @@ function usePreviewCanvasSize<T extends HTMLElement>() {
       el.removeEventListener('scroll', measure);
       window.removeEventListener('resize', measure);
     };
-  }, []);
+  }, [active]);
 
   return [ref, size] as const;
 }
@@ -8865,6 +8869,8 @@ const [reviewAddModalOpen, setReviewAddModalOpen] = useState(false);
   const [manualEditViewportWidth, setManualEditViewportWidth] = useState<number | null>(null);
   const [commentPortalHost, setCommentPortalHost] = useState<HTMLElement | null>(null);
   const [previewBodyRef, previewBodySize] = usePreviewCanvasSize<HTMLDivElement>();
+  const [presentStageRef, presentStageSize] =
+    usePreviewCanvasSize<HTMLDivElement>(inTabPresent);
   const [commentComposerHost, setCommentComposerHost] = useState<HTMLDivElement | null>(null);
   const [commentPreviewCanvasNode, setCommentPreviewCanvasNode] = useState<HTMLDivElement | null>(null);
   const [deckThumbnailCanvasSize, setDeckThumbnailCanvasSize] =
@@ -8918,6 +8924,7 @@ const [reviewAddModalOpen, setReviewAddModalOpen] = useState(false);
   // apart from "canvas shrank" without re-deriving it from React state.
   const lastAutoFitCanvasWidthRef = useRef<number | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const presentIframeRef = useRef<HTMLIFrameElement | null>(null);
   const urlPreviewIframeRef = useRef<HTMLIFrameElement | null>(null);
   const srcDocPreviewIframeRef = useRef<HTMLIFrameElement | null>(null);
   const viewerRootRef = useRef<HTMLDivElement | null>(null);
@@ -9012,6 +9019,12 @@ const [reviewAddModalOpen, setReviewAddModalOpen] = useState(false);
       source === srcDocPreviewIframeRef.current?.contentWindow
     );
   }, [workspaceActive]);
+  const isCommentPreviewIframeSource = useCallback((source: MessageEventSource | null) => {
+    if (!workspaceActive || !source) return false;
+    return inTabPresent
+      ? source === presentIframeRef.current?.contentWindow
+      : isOurPreviewIframeSource(source);
+  }, [inTabPresent, isOurPreviewIframeSource, workspaceActive]);
   const isRetainedPreviewIframeSource = useCallback((source: MessageEventSource | null) => {
     if (!source) return false;
     return (
@@ -10031,6 +10044,7 @@ const [reviewAddModalOpen, setReviewAddModalOpen] = useState(false);
   const presenterWindowRef = useRef<Window | null>(null);
   const presentOverlayRef = useRef<HTMLDivElement | null>(null);
   const presentFullscreenRequestedRef = useRef(false);
+  const presentationCommentActivatedRef = useRef(false);
   const [presentFullscreenPending, setPresentFullscreenPending] = useState(false);
   // Brief "Press Esc to exit" hint shown in the main window whenever a
   // presentation (fullscreen stage + presenter popup) starts.
@@ -10453,6 +10467,14 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     offsetX: 0,
     offsetY: 0,
   };
+  const commentOverlayScale = inTabPresent ? 1 : overlayPreviewScale;
+  const commentOverlayOffset = inTabPresent
+    ? { x: 0, y: 0 }
+    : {
+        x: overlayPreviewTransform.offsetX,
+        y: overlayPreviewTransform.offsetY,
+      };
+  const commentOverlayBounds = inTabPresent ? presentStageSize : previewBodySize;
   const showDeckNavigation = effectiveDeck && (slideState === null || slideState.count > 0);
   const activeDeckSlideIndex =
     slideState?.active ??
@@ -11588,6 +11610,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       initialSlideIndex: htmlPreviewSlideState.get(previewStateKey)?.active ?? 0,
       hideDeckChrome: effectiveDeck,
       deckClickNavigation: effectiveDeck,
+      selectionBridge: true,
       previewFocusGuard: true,
     }) : ''),
     [
@@ -12611,14 +12634,18 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
 
   useEffect(() => {
     if (!workspaceActive) return;
-    const win = iframeRef.current?.contentWindow;
-    if (!win) return;
-    win.postMessage({
-      type: 'od:comment-mode',
-      enabled: boardMode,
-      mode: boardTool,
-    }, '*');
-  }, [boardMode, boardTool, srcDoc, useUrlLoadPreview, workspaceActive]);
+    const frames = [iframeRef.current, presentIframeRef.current].filter(
+      (frame, index, all): frame is HTMLIFrameElement =>
+        Boolean(frame) && all.indexOf(frame) === index,
+    );
+    for (const frame of frames) {
+      frame.contentWindow?.postMessage({
+        type: 'od:comment-mode',
+        enabled: boardMode,
+        mode: boardTool,
+      }, '*');
+    }
+  }, [boardMode, boardTool, inTabPresent, srcDoc, useUrlLoadPreview, workspaceActive]);
 
   useEffect(() => {
     if (!workspaceActive) return;
@@ -12695,7 +12722,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       return;
     }
     function onMessage(ev: MessageEvent) {
-      if (!isOurPreviewIframeSource(ev.source)) return;
+      if (!isCommentPreviewIframeSource(ev.source)) return;
       const data = ev.data as
         | {
             type?: string;
@@ -12734,7 +12761,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     }
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [inspectMode, boardMode, file.name, isOurPreviewIframeSource, workspaceActive]);
+  }, [inspectMode, boardMode, file.name, isCommentPreviewIframeSource, workspaceActive]);
 
   useEffect(() => {
     setActiveCommentTarget(null);
@@ -12845,7 +12872,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       };
     };
     function onMessage(ev: MessageEvent) {
-      if (!isOurPreviewIframeSource(ev.source)) return;
+      if (!isCommentPreviewIframeSource(ev.source)) return;
       const data = ev.data as (Partial<PreviewCommentSnapshot> & {
         type?: string;
         targets?: Array<Partial<PreviewCommentSnapshot>>;
@@ -12995,16 +13022,25 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     }
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
-  }, [activeCommentTarget, boardMode, boardTool, cancelHoverCardDismiss, commentPortalHost, file.name, isOurPreviewIframeSource, previewComments, scheduleHoverCardDismiss, workspaceActive]);
+  }, [activeCommentTarget, boardMode, boardTool, cancelHoverCardDismiss, commentPortalHost, file.name, isCommentPreviewIframeSource, previewComments, scheduleHoverCardDismiss, workspaceActive]);
 
   useEffect(() => {
-    if (!workspaceActive || !boardMode || !activeCommentTarget || activeCommentTarget.selectionKind === 'pod') return;
-    iframeRef.current?.contentWindow?.postMessage({
+    if (!workspaceActive || !boardMode) return;
+    const frame = inTabPresent ? presentIframeRef.current : iframeRef.current;
+    const target = activeCommentTarget?.selectionKind === 'pod' ? null : activeCommentTarget;
+    frame?.contentWindow?.postMessage({
       type: 'od:comment-active-target',
-      elementId: activeCommentTarget.elementId,
-      selector: activeCommentTarget.selector,
+      elementId: target?.elementId ?? null,
+      selector: target?.selector ?? '',
     }, '*');
-  }, [activeCommentTarget?.elementId, activeCommentTarget?.selector, activeCommentTarget?.selectionKind, boardMode, workspaceActive]);
+  }, [
+    activeCommentTarget?.elementId,
+    activeCommentTarget?.selector,
+    activeCommentTarget?.selectionKind,
+    boardMode,
+    inTabPresent,
+    workspaceActive,
+  ]);
 
   useEffect(() => {
     if (!manualEditMode) {
@@ -14234,7 +14270,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
   // this only drives subsequent moves.
   useEffect(() => {
     if (!workspaceActive || !inTabPresent || !effectiveDeck) return;
-    const frame = presentOverlayRef.current?.querySelector('iframe');
+    const frame = presentIframeRef.current;
     frame?.contentWindow?.postMessage(
       { type: 'od:slide', action: 'go', index: activeDeckSlideIndex },
       '*',
@@ -14252,7 +14288,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
   useEffect(() => {
     if (!workspaceActive || !inTabPresent || !effectiveDeck) return;
     function onOverlaySlideState(ev: MessageEvent) {
-      const frame = presentOverlayRef.current?.querySelector('iframe');
+      const frame = presentIframeRef.current;
       if (!frame || ev.source !== frame.contentWindow) return;
       const data = ev.data as { type?: string; active?: number; count?: number } | null;
       if (!data || data.type !== 'od:slide-state') return;
@@ -14367,12 +14403,17 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       }
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') closeInTabPresentation();
+      if (e.key !== 'Escape') return;
+      const target = e.target as HTMLElement | null;
+      if (target?.isContentEditable) return;
+      const tag = target?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      closeInTabPresentation();
     };
     const onMessage = (ev: MessageEvent) => {
       const data = ev.data as { type?: string } | null;
       if (!data || data.type !== 'od:present-escape') return;
-      const frame = presentOverlayRef.current?.querySelector('iframe');
+      const frame = presentIframeRef.current;
       if (frame?.contentWindow && ev.source !== frame.contentWindow) return;
       closeInTabPresentation();
     };
@@ -14422,6 +14463,13 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
   }, [inTabPresent, presentFullscreenPending, workspaceActive]);
 
   function closeInTabPresentation() {
+    if (presentationCommentActivatedRef.current) {
+      setBoardMode(false);
+      setCommentCreateMode(false);
+      setCommentPanelOpen(false);
+      clearBoardComposer();
+      presentationCommentActivatedRef.current = false;
+    }
     setInTabPresent(false);
     setPresentFullscreenPending(false);
     presentFullscreenRequestedRef.current = false;
@@ -14436,6 +14484,21 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     if (typeof document !== 'undefined' && document.fullscreenElement && typeof document.exitFullscreen === 'function') {
       document.exitFullscreen().catch(() => undefined);
     }
+  }
+
+  function replayPresentCommentBridge() {
+    const win = presentIframeRef.current?.contentWindow;
+    if (!win) return;
+    win.postMessage({
+      type: 'od:comment-mode',
+      enabled: boardMode,
+      mode: boardTool,
+    }, '*');
+    win.postMessage({
+      type: 'od:comment-active-target',
+      elementId: activeCommentTarget?.elementId ?? null,
+      selector: activeCommentTarget?.selector ?? '',
+    }, '*');
   }
 
   async function openInNewTab() {
@@ -14814,6 +14877,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
   function presentInThisTab() {
     setPresentMenuOpen(false);
     presentFullscreenRequestedRef.current = false;
+    presentationCommentActivatedRef.current = false;
     setMode('preview');
     if (effectiveDeck) openPresenterWindow();
     setInTabPresent(true);
@@ -14823,6 +14887,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
   function presentFullscreen() {
     setPresentMenuOpen(false);
     if (effectiveDeck) openPresenterWindow();
+    presentationCommentActivatedRef.current = false;
     setMode('preview');
     presentFullscreenRequestedRef.current = true;
     setPresentFullscreenPending(true);
@@ -15073,6 +15138,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       return;
     }
     const activateCommentCreate = () => {
+      if (inTabPresent) presentationCommentActivatedRef.current = true;
       setCommentPanelOpen(true);
       setCommentSidePanelCollapsed(false);
       setCommentCreateMode(true);
@@ -16108,9 +16174,9 @@ async function openReviewListModal() {
   }, [allSideComments, pendingPreviewCommentActivation]);
   const activeCommentTargetVisible = commentTargetIntersectsPreview(
     activeCommentTarget,
-    overlayPreviewScale,
-    { x: overlayPreviewTransform.offsetX, y: overlayPreviewTransform.offsetY },
-    previewBodySize,
+    commentOverlayScale,
+    commentOverlayOffset,
+    commentOverlayBounds,
   );
   // Canvas anchors render from the same current-file/open set, constrained by
   // the side panel's visible filters. Clear any active target when a sidebar
@@ -16533,6 +16599,7 @@ async function openReviewListModal() {
    || null;
  const currentCommentAuthorAvatarUrl = commentAuthorSelf?.avatarUrl ?? null;
   const commentComposerPortalMetrics = (() => {
+    if (inTabPresent) return null;
     if (!commentComposerHost || !commentPreviewCanvasNode) return null;
     const hostRect = commentComposerHost.getBoundingClientRect();
     const canvasRect = commentPreviewCanvasNode.getBoundingClientRect();
@@ -16648,14 +16715,14 @@ async function openReviewListModal() {
       sendDisabledReason={viewerOnly ? viewerOnlyDisabledTitle : undefined}
       allowSendToChat={!viewerOnly}
       t={t}
-      scale={overlayPreviewScale}
+      scale={commentOverlayScale}
       offset={
         commentComposerPortalMetrics?.offset ?? {
-          x: overlayPreviewTransform.offsetX,
-          y: overlayPreviewTransform.offsetY,
+          x: commentOverlayOffset.x,
+          y: commentOverlayOffset.y,
         }
       }
-      bounds={commentComposerPortalMetrics?.bounds ?? previewBodySize}
+      bounds={commentComposerPortalMetrics?.bounds ?? commentOverlayBounds}
       docked={false}
       commenting
     />
@@ -16823,6 +16890,40 @@ async function openReviewListModal() {
       canDeleteComment={canDeleteSideComment}
       canReplyComment={undefined}
       onReplyComment={onReplyPreviewComment}
+    />
+  ) : null;
+  const commentPreviewOverlays = boardMode ? (
+    <CommentPreviewOverlays
+      comments={commentCreateMode ? visibleCanvasSideComments : []}
+      markerNumbers={canvasPinNumbersById}
+      provisionalPinNumber={nextProvisionalPinNumber}
+      driftLadder={collab.enabled}
+      currentVersion={collab.publishedVersion ?? undefined}
+      {...(collab.onLostAnchors ? { onLostAnchors: collab.onLostAnchors } : {})}
+      liveTargets={liveCommentTargets}
+      hoveredTarget={hoveredCommentTarget}
+      hoveredPodMemberId={hoveredPodMemberId}
+      activeTarget={activeCommentTarget}
+      activeExistingCommentId={activeComposerComment?.id ?? null}
+      boardTool={boardTool}
+      showActivePin={commentCreateMode}
+      scale={commentOverlayScale}
+      offsetX={commentOverlayOffset.x}
+      offsetY={commentOverlayOffset.y}
+      strokePoints={strokePoints}
+      activeSlideIndex={effectiveDeck ? slideState?.active ?? null : null}
+      onOpenComment={(comment, snapshot) => {
+        setCommentPanelOpen(true);
+        setCommentSidePanelCollapsed(false);
+        setCommentCreateMode(true);
+        setBoardMode(true);
+        setActiveCommentTarget(snapshot);
+        setHoveredCommentTarget(snapshot);
+        setActivePreviewCommentId(comment.id);
+        setCommentDraft(comment.note);
+        setQueuedBoardNotes([]);
+        setActiveCommentExistingAttachments(comment.attachments ?? []);
+      }}
     />
   ) : null;
   const speakerNotesFeedback = speakerNotesStatus === 'saved'
@@ -18307,40 +18408,7 @@ async function openReviewListModal() {
                   ) : null}
                 </div>
               </div>
-              {boardMode ? (
-                <CommentPreviewOverlays
-                  comments={commentCreateMode ? visibleCanvasSideComments : []}
-                  markerNumbers={canvasPinNumbersById}
-                  provisionalPinNumber={nextProvisionalPinNumber}
-                  driftLadder={collab.enabled}
-                  currentVersion={collab.publishedVersion ?? undefined}
-                  {...(collab.onLostAnchors ? { onLostAnchors: collab.onLostAnchors } : {})}
-                  liveTargets={liveCommentTargets}
-                  hoveredTarget={hoveredCommentTarget}
-                  hoveredPodMemberId={hoveredPodMemberId}
-                  activeTarget={activeCommentTarget}
-                  activeExistingCommentId={activeComposerComment?.id ?? null}
-                  boardTool={boardTool}
-                  showActivePin={commentCreateMode}
-                  scale={overlayPreviewScale}
-                  offsetX={overlayPreviewTransform.offsetX}
-                  offsetY={overlayPreviewTransform.offsetY}
-                  strokePoints={strokePoints}
-                  activeSlideIndex={effectiveDeck ? slideState?.active ?? null : null}
-                  onOpenComment={(comment, snapshot) => {
-                    setCommentPanelOpen(true);
-                    setCommentSidePanelCollapsed(false);
-                    setCommentCreateMode(true);
-                    setBoardMode(true);
-                    setActiveCommentTarget(snapshot);
-                    setHoveredCommentTarget(snapshot);
-                    setActivePreviewCommentId(comment.id);
-                    setCommentDraft(comment.note);
-                    setQueuedBoardNotes([]);
-                    setActiveCommentExistingAttachments(comment.attachments ?? []);
-                  }}
-                />
-              ) : null}
+              {!inTabPresent ? commentPreviewOverlays : null}
               {/* Portaled to <body> so the screenshot/export toast escapes the
                   preview pane's transform + overflow:hidden. */}
               {workspaceActive && exportToast && !versionModalOpen
@@ -18423,8 +18491,8 @@ async function openReviewListModal() {
                   </button>
                 </div>
               ) : null}
-              {commentComposer}
-              {boardMode && !commentCreateMode && hoveredCommentTarget && (!activeCommentTarget || commentPortalHost) ? (
+              {!inTabPresent ? commentComposer : null}
+              {!inTabPresent && boardMode && !commentCreateMode && hoveredCommentTarget && (!activeCommentTarget || commentPortalHost) ? (
                 <AnnotationHoverPopover
                   target={hoveredCommentTarget}
                   scale={overlayPreviewScale}
@@ -18499,7 +18567,7 @@ async function openReviewListModal() {
             </div>
            {boardImagePreviewModal}
            {replyImagePreviewModal}
-           {!manualEditMode ? commentSidePanel : null}
+           {!manualEditMode && !inTabPresent ? commentSidePanel : null}
             {inspectMode && activeInspectTarget ? (
               <InspectPanel
                 target={activeInspectTarget}
@@ -18558,21 +18626,6 @@ async function openReviewListModal() {
           role="dialog"
           aria-label={t('fileViewer.present')}
         >
-          {effectiveDeck || !useUrlLoadPreview ? (
-            <iframe
-              title="present"
-              sandbox="allow-scripts allow-downloads"
-              data-od-render-mode="srcdoc"
-              srcDoc={effectiveDeck ? presentationSrcDoc : srcDoc}
-            />
-          ) : (
-            <iframe
-              title="present"
-              sandbox="allow-scripts allow-downloads"
-              data-od-render-mode="url-load"
-              src={activePreviewSrcUrl}
-            />
-          )}
           {/* The overlay covers the whole window, so this is the only exit the
               user can still reach. Esc is not a substitute: the moment they
               click a slide to advance, focus moves into the sandboxed preview
@@ -18589,6 +18642,56 @@ async function openReviewListModal() {
           >
             <Icon name="close" size={14} />
           </button>
+          <button
+            type="button"
+            className={`present-comment-toggle${boardMode ? ' active' : ''}`}
+            data-testid="present-comment-toggle"
+            aria-label={t('fileViewer.comment')}
+            title={t('fileViewer.comment')}
+            aria-pressed={boardMode}
+            onClick={(event) => activateCommentCreateTool(event.currentTarget)}
+          >
+            <RemixIcon name="chat-new-line" size={14} />
+          </button>
+          <div ref={presentStageRef} className="present-stage">
+            {effectiveDeck || !useUrlLoadPreview || boardMode ? (
+              <iframe
+                ref={presentIframeRef}
+                title="present"
+                sandbox="allow-scripts allow-downloads"
+                data-od-render-mode="srcdoc"
+                srcDoc={effectiveDeck ? presentationSrcDoc : srcDoc}
+                onLoad={replayPresentCommentBridge}
+              />
+            ) : (
+              <iframe
+                ref={presentIframeRef}
+                title="present"
+                sandbox="allow-scripts allow-downloads"
+                data-od-render-mode="url-load"
+                src={activePreviewSrcUrl}
+                onLoad={replayPresentCommentBridge}
+              />
+            )}
+            {inTabPresent ? commentPreviewOverlays : null}
+            {inTabPresent ? commentComposerNode : null}
+            {inTabPresent && boardMode && !commentCreateMode && hoveredCommentTarget && (!activeCommentTarget || commentPortalHost) ? (
+              <AnnotationHoverPopover
+                target={hoveredCommentTarget}
+                scale={commentOverlayScale}
+                bounds={commentOverlayBounds}
+                offset={commentOverlayOffset}
+                onMouseEnter={() => {
+                  hoverCardPinnedRef.current = true;
+                  cancelHoverCardDismiss();
+                }}
+                onMouseLeave={() => {
+                  hoverCardPinnedRef.current = false;
+                  scheduleHoverCardDismiss();
+                }}
+              />
+            ) : null}
+          </div>
           {/* Lives INSIDE the overlay (not a body-portaled toast) so it stays
               visible when the overlay is the fullscreen element — a sibling
               toast would be clipped out of the fullscreen render. */}
@@ -18597,6 +18700,7 @@ async function openReviewListModal() {
               {t('fileViewer.presentEscHint')}
             </div>
           ) : null}
+          {inTabPresent && !manualEditMode ? commentSidePanel : null}
         </div>,
         document.body,
       ) : null}

@@ -35,7 +35,6 @@ import {
   type Ref,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { coalescedGet, evictCoalescedGet } from '../lib/coalesced-get';
 import {
   workspaceSeatCapacityState,
   type GetCurrentUserAvatarResponse,
@@ -43,7 +42,6 @@ import {
   type WorkspaceBillingSummary,
   type WorkspaceCollabContext,
   type WorkspaceDirectoryItem,
-  type WorkspaceDirectoryResponse,
 } from '@open-design/contracts';
 import {
   fetchVelaLoginStatus,
@@ -73,6 +71,8 @@ import {
   notifyTeamProjectsChanged,
   notifyWorkspaceBillingRefresh,
   notifyWorkspaceContextRefresh,
+  invalidateWorkspaceDirectory,
+  readWorkspaceDirectoryForCurrentGeneration,
   useWorkspaceBillingResponse,
   useWorkspaceContext,
   workspaceBillingBalanceUsd,
@@ -1429,18 +1429,10 @@ export function EntryNavRail({
       setWorkspaceDirectoryLoading(true);
     }
     try {
-      // The coalescing key carries the caller's identity for the same reason the
-      // module cache does: `coalescedGet` shares a settled result for a second,
-      // and this read's answer depends on WHO asked.
-      const cacheKey = `workspace-directory:${workspaceIdentityCacheKey(read.context)}`;
-      if (options.force) evictCoalescedGet(cacheKey);
-      const readDirectory = async () => {
-        const response = await fetch('/api/workspace/directory', { cache: 'no-store' });
-        if (!response.ok) throw new Error(`directory ${response.status}`);
-        const body = (await response.json()) as WorkspaceDirectoryResponse;
-        return body.items ?? [];
-      };
-      const items = await coalescedGet(cacheKey, readDirectory);
+      const directory = await readWorkspaceDirectoryForCurrentGeneration({
+        fresh: options.force,
+      });
+      const items = directory.items ?? [];
       // The account may have changed while this was in flight. Writing here
       // would repopulate BOTH the module cache and the visible list with the
       // previous account's names, after the identity-change effect below had
@@ -1574,6 +1566,7 @@ export function EntryNavRail({
   useWorkspaceInvalidation(
     {
       'workspace-directory-changed': () => {
+        invalidateWorkspaceDirectory();
         void loadWorkspaceDirectory({ force: true });
       },
     },

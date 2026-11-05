@@ -106,6 +106,7 @@ import {
 } from '../utils/inlineMentions';
 import { workspaceContextLinkedDir, workspaceContextLinkedDirs } from './workspace-context';
 import { workspaceProjectHeaders } from '../collab/workspace-identity';
+import { readWorkspaceDirectoryForCurrentGeneration } from '../collab/useWorkspaceContext';
 import { useProjectCollabContext } from '../collab/collab-context';
 import {
   LexicalComposerInput,
@@ -1063,9 +1064,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch('/api/workspace/directory', { cache: 'no-store' });
-        if (!res.ok) return;
-        const body = await res.json() as { items?: WorkspaceDirectoryItem[] };
+        const body = await readWorkspaceDirectoryForCurrentGeneration();
         if (cancelled) return;
         const personal = body.items?.find((item) => item.isDefaultTeam === true);
         if (personal) {

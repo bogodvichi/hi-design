@@ -15,7 +15,7 @@ import {
   buildWorkspacePermissions,
   buildWorkspaceSeatSummary,
 } from '@open-design/contracts';
-import { coalescedGet, forceCoalescedGet } from '../lib/coalesced-get';
+import { coalescedGet, evictCoalescedGet, forceCoalescedGet } from '../lib/coalesced-get';
 import { BackoffController, type BackoffOptions } from '../lib/backoff';
 import { AUTH_STATUS_REFRESH_EVENT } from '../auth/auth';
 import {
@@ -218,6 +218,7 @@ export type { WorkspaceScopedRead } from './workspace-identity';
  */
 let workspaceContextRequestToken = 'initial';
 let localIdentityChangeSeq = 0;
+let workspaceDirectoryInvalidationPending = false;
 
 function advanceWorkspaceContextRequestToken(sharedToken?: string | null): void {
   const next = sharedToken?.trim() || `local:${++localIdentityChangeSeq}`;
@@ -274,9 +275,25 @@ export function readWorkspaceDirectoryForCurrentGeneration(
   options: { fresh?: boolean } = {},
 ): Promise<WorkspaceDirectoryResponse> {
   const key = `workspace-directory-selection:${workspaceContextRequestToken}`;
+  if (options.fresh && workspaceDirectoryInvalidationPending) {
+    // A pushed directory change is not just another consumer joining the same
+    // revalidation burst: the in-flight answer may predate the change. Consume
+    // the invalidation once, then let forceCoalescedGet collapse any remaining
+    // listeners for the same event.
+    workspaceDirectoryInvalidationPending = false;
+    evictCoalescedGet(key);
+  }
   return options.fresh
     ? forceCoalescedGet(key, fetchWorkspaceDirectory)
     : coalescedGet(key, fetchWorkspaceDirectory);
+}
+
+/**
+ * Mark the directory answer unsafe after a server-side change. The next fresh
+ * read must replace, rather than join, a read that started before the event.
+ */
+export function invalidateWorkspaceDirectory(): void {
+  workspaceDirectoryInvalidationPending = true;
 }
 
 function billingStateFromLifecycle(
@@ -586,6 +603,7 @@ export function resetWorkspaceContextCache(): void {
   workspaceContextRevision = 0;
   workspaceContextRequestToken = 'initial';
   localIdentityChangeSeq = 0;
+  workspaceDirectoryInvalidationPending = false;
   seededWorkspaceContext = null;
   workspaceContextIdentityChangePending = false;
   workspaceAccountGeneration = 0;

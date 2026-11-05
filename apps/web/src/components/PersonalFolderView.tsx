@@ -18,7 +18,10 @@ import { ShareFolderDialog } from './ShareFolderDialog';
 import { RecentProjectsStrip } from './RecentProjectsStrip';
 import { usePersonalFolderMove } from './usePersonalFolderMove';
 import { useProjectFolderDrop } from './useProjectFolderDrop';
-import { workspaceContextFromDirectoryItem } from '../collab/useWorkspaceContext';
+import {
+  readWorkspaceDirectoryForCurrentGeneration,
+  workspaceContextFromDirectoryItem,
+} from '../collab/useWorkspaceContext';
 import type { DesignSystemSummary, Project } from '../types';
 import type { ProjectMutationSource, ProjectTitleHint } from './EntryShell';
 import { projectCollectionTitleHint } from './project-collection-context';
@@ -84,9 +87,7 @@ const [showCreateFolder, setShowCreateFolder] = useState(false);
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch('/api/workspace/directory', { cache: 'no-store' });
-        if (!res.ok) return;
-        const body = await res.json() as { items?: WorkspaceDirectoryItem[] };
+        const body = await readWorkspaceDirectoryForCurrentGeneration();
         if (cancelled) return;
        const personal = body.items?.find((item) => item.isDefaultTeam === true);
        setWorkspaceId(personal?.workspaceId ?? null);

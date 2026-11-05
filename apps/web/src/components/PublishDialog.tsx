@@ -38,7 +38,11 @@ import {
   type ProjectCoverOverride,
 } from './project-cover';
 
-import { useWorkspaceContext, workspaceContextFromDirectoryItem } from '../collab/useWorkspaceContext';
+import {
+  readWorkspaceDirectoryForCurrentGeneration,
+  useWorkspaceContext,
+  workspaceContextFromDirectoryItem,
+} from '../collab/useWorkspaceContext';
 import { workspaceProjectHeaders } from '../collab/workspace-identity';
 import { notifyToast } from './toast-context';
 import { getOpenDesignHost } from '@open-design/host';
@@ -687,9 +691,7 @@ function ProjectsTab({
     let cancelled = false;
     void (async () => {
       try {
-        const directoryRes = await fetch('/api/workspace/directory', { cache: 'no-store' });
-        if (!directoryRes.ok) throw new Error('workspace directory load failed');
-        const directory = await directoryRes.json() as { items?: WorkspaceDirectoryItem[] };
+        const directory = await readWorkspaceDirectoryForCurrentGeneration();
         if (cancelled) return;
         const items = (directory.items ?? []).filter((item) => (
           !item.isSharedSpace
@@ -1257,11 +1259,7 @@ function McpTab({
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/workspace/directory', { cache: 'no-store' })
-      .then(async (response) => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.json() as Promise<{ items?: WorkspaceDirectoryItem[] }>;
-      })
+    readWorkspaceDirectoryForCurrentGeneration()
       .then((body) => {
         if (cancelled) return;
         const items = (body.items ?? []).filter((item) => item.memberStatus === 'active' && item.lifecycleState !== 'deleted'
@@ -1527,9 +1525,7 @@ function SkillTab({
     let cancelled = false;
     void (async () => {
       try {
-        const response = await fetch('/api/workspace/directory', { cache: 'no-store' });
-        if (!response.ok) throw new Error('workspace directory load failed');
-        const body = await response.json() as { items?: WorkspaceDirectoryItem[] };
+        const body = await readWorkspaceDirectoryForCurrentGeneration();
         if (cancelled) return;
         const items = (body.items ?? []).filter((item) => (
           !item.isSharedSpace

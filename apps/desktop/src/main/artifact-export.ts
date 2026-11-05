@@ -2,7 +2,7 @@ import { mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { BrowserWindow } from "electron";
+import { BrowserWindow, nativeImage } from "electron";
 import type {
   DesktopExportArtifactInput,
   DesktopExportArtifactResult,
@@ -105,7 +105,7 @@ async function renderImage(
       await waitForPrintableContent(window);
     }
   }
-  const image = await window.webContents.capturePage();
+  const image = await captureFreshImage(window, input.imageFormat === "jpeg");
   // Only PNG and JPEG reach this point: the export contract and the sidecar
   // proto validator both reject any other image format (notably WebP) up front,
   // because Electron's nativeImage encoder supports only these two. Never
@@ -116,6 +116,42 @@ async function renderImage(
   }
   const buf = image.toPNG();
   return { bytes: buf.length, mime: "image/png", ok: true, path: await writeTemp("png", buf) };
+}
+
+async function captureFreshImage(
+  window: BrowserWindow,
+  jpeg: boolean,
+): Promise<Electron.NativeImage> {
+  const dbg = window.webContents.debugger;
+  let attachedHere = false;
+  try {
+    if (!dbg.isAttached()) {
+      dbg.attach("1.3");
+      attachedHere = true;
+    }
+    await dbg.sendCommand("Page.enable");
+    const [width, height] = window.getContentSize();
+    const screenshot = (await dbg.sendCommand("Page.captureScreenshot", {
+      clip: { height, scale: 1, width, x: 0, y: 0 },
+      format: jpeg ? "jpeg" : "png",
+      fromSurface: true,
+      ...(jpeg ? { quality: 92 } : {}),
+    })) as { data?: string };
+    if (!screenshot.data) throw new Error("Chromium returned no image capture");
+    return nativeImage.createFromBuffer(Buffer.from(screenshot.data, "base64"));
+  } catch {
+    // capturePage is the compatibility fallback for environments where the
+    // debugger is unavailable or already owned by another consumer.
+    return await window.webContents.capturePage();
+  } finally {
+    if (attachedHere) {
+      try {
+        dbg.detach();
+      } catch {
+        // The render window is throwaway; cleanup failures do not affect export.
+      }
+    }
+  }
 }
 
 function buildDocument(input: DesktopExportArtifactInput): string {

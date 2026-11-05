@@ -29,6 +29,7 @@ import { Toast } from './Toast';
 import { communityOriginProjectId, communityOriginProjectName, projectFallbackVisual } from './project-cover';
 import type { MarketplacePluginEntry, ProjectPublishCommunityResponse } from '@open-design/contracts';
 import type { WorkspaceDirectoryItem } from '@open-design/contracts';
+import { readWorkspaceDirectoryForCurrentGeneration } from '../collab/useWorkspaceContext';
 import { workspaceProjectHeaders } from '../collab/workspace-identity';
 import { Icon, type IconName } from './Icon';
 import { CenteredLoader } from './Loading';
@@ -1073,12 +1074,7 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch('/api/workspace/directory', { cache: 'no-store' });
-        if (!res.ok) return;
-        const body = await res.json() as {
-          items?: WorkspaceDirectoryItem[];
-          activeWorkspaceId?: string | null;
-        };
+        const body = await readWorkspaceDirectoryForCurrentGeneration();
         if (cancelled) return;
         const workspace = body.items?.find((item) => item.workspaceId === body.activeWorkspaceId)
           ?? body.items?.find((item) => item.isDefaultTeam === true);

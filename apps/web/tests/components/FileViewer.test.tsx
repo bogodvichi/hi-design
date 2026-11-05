@@ -10099,7 +10099,7 @@ describe('FileViewer tweaks toolbar', () => {
       }));
     });
 
-    clickAgentTool('comment-panel-toggle');
+    clickAgentTool('board-mode-toggle');
 
     await waitFor(() => {
       expect(screen.getByTestId('artifact-preview-frame')).toBe(urlFrame);

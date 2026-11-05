@@ -5,6 +5,7 @@ import { useI18n } from '../i18n';
 import { getProjectDetail, listProjects } from '../state/projects';
 import type { WorkspaceCollabContext, WorkspaceDirectoryItem } from '@open-design/contracts';
 import {
+  readWorkspaceDirectoryForCurrentGeneration,
   workspaceContextFromDirectoryItem,
   workspaceDirectoryItemFromContext,
 } from '../collab/useWorkspaceContext';
@@ -98,9 +99,7 @@ export function ProjectReferenceModal({
     setWorkspaceDirectoryAvailable(false);
     void (async () => {
       try {
-        const response = await fetch('/api/workspace/directory', { cache: 'no-store' });
-        if (!response.ok) throw new Error('workspace directory load failed');
-        const body = await response.json() as { items?: WorkspaceDirectoryItem[] };
+        const body = await readWorkspaceDirectoryForCurrentGeneration();
         if (cancelled) return;
         const items = (body.items ?? []).filter((item) => (
           !item.isSharedSpace

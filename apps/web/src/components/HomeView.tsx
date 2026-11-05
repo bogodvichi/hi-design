@@ -116,6 +116,7 @@ import { setPendingDesignSystemCreateEntry } from '../analytics/ds-create-entry'
 import { workspaceContextLinkedDirs } from './workspace-context';
 import {
   currentWorkspaceAccountGeneration,
+  readWorkspaceDirectoryForCurrentGeneration,
   useTeamProjects,
   useWorkspaceContext,
   workspaceContextFromDirectoryItem,
@@ -1238,9 +1239,7 @@ export function HomeView({
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch('/api/workspace/directory', { cache: 'no-store' });
-        if (!res.ok) return;
-        const body = await res.json() as { items?: WorkspaceDirectoryItem[] };
+        const body = await readWorkspaceDirectoryForCurrentGeneration();
         if (cancelled) return;
         const personal = body.items?.find((item) => item.isDefaultTeam === true);
         if (personal) {

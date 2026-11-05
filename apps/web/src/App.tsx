@@ -139,6 +139,7 @@ import {
   currentWorkspaceAccountGeneration,
   notifyTeamProjectsChanged,
   notifyWorkspaceContextRefresh,
+  readWorkspaceDirectoryForCurrentGeneration,
   resolveBoundProjectWorkspaceContext,
   resolveCurrentWorkspaceContextReadWitness,
   useWorkspaceBilling,
@@ -2221,9 +2222,7 @@ function AppInner() {
     if (!isTeamRoute && folderContextWorkspaceId) return;
     void (async () => {
       try {
-        const res = await fetch('/api/workspace/directory', { cache: 'no-store' });
-        if (!res.ok) return;
-        const body = await res.json() as { items?: WorkspaceDirectoryItem[] };
+        const body = await readWorkspaceDirectoryForCurrentGeneration();
         if (cancelled) return;
         const target = isTeamRoute
           ? body.items?.find((item) => item.workspaceId === routeTeamId)

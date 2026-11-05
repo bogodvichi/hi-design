@@ -23,7 +23,10 @@ import { AddSkillDialog } from './AddSkillDialog';
 import { AddMcpDialog } from './AddMcpDialog';
 import { CloudSkillList } from './CloudSkillList';
 import { CloudMcpList } from './CloudMcpList';
-import { workspaceContextFromDirectoryItem } from '../collab/useWorkspaceContext';
+import {
+  readWorkspaceDirectoryForCurrentGeneration,
+  workspaceContextFromDirectoryItem,
+} from '../collab/useWorkspaceContext';
 import { moveWorkspaceProject } from '../state/projects';
 import type { DesignSystemSummary, Project } from '../types';
 import type { ProjectMutationSource, ProjectTitleHint } from './EntryShell';
@@ -129,9 +132,7 @@ export function TeamSpaceView({ teamId, tab, onInvite, designSystems = [], onOpe
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch('/api/workspace/directory', { cache: 'no-store' });
-        if (!res.ok) { if (!cancelled) setLoading(false); return; }
-        const body = await res.json() as { items?: WorkspaceDirectoryItem[] };
+        const body = await readWorkspaceDirectoryForCurrentGeneration();
         if (cancelled) return;
        const match = body.items?.find((item) => item.workspaceId === teamId);
        setTeamName(match?.workspaceName ?? null);
@@ -1711,9 +1712,7 @@ export function FolderView({ teamId, folderId, designSystems = [], onOpenProject
     let cancelled = false;
     void (async () => {
       try {
-        const res = await fetch('/api/workspace/directory', { cache: 'no-store' });
-        if (!res.ok) return;
-        const body = await res.json() as { items?: WorkspaceDirectoryItem[] };
+        const body = await readWorkspaceDirectoryForCurrentGeneration();
         if (cancelled) return;
         const match = body.items?.find((item) => item.workspaceId === teamId);
         setTeamName(match?.workspaceName ?? null);
