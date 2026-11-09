@@ -848,6 +848,35 @@ describe('collab sync routes', () => {
     }));
   });
 
+  it('returns shared ownership for a recipient without home workspace membership', async () => {
+    const shareAccess = {
+      workspaceId: 'home-team',
+      resourceTeamId: 'home-team',
+      viewerMemberId: 'share-recipient',
+      ownerMemberId: 'original-owner',
+    };
+    const api = await startSyncServer({ current: async () => null }, {
+      resolveShareAccess: async () => shareAccess,
+      readMaterializedVersion: () => 3,
+    });
+    const result = await api.json('/api/projects/shared-recipient/collab/status');
+    expect(result.status).toBe(200);
+    expect(result.body).toMatchObject({
+      syncState: 'synced',
+      ownerMemberId: 'original-owner',
+      materializedVersion: 3,
+    });
+    const publish = await api.json('/api/projects/shared-recipient/collab/publish', { method: 'POST' });
+    expect(publish.status).toBe(403);
+  });
+
+  it('denies shared status after the recipient grant is revoked', async () => {
+    const api = await startSyncServer({ current: async () => null }, {
+      resolveShareAccess: async () => null,
+    });
+    expect((await api.json('/api/projects/revoked-share/collab/status')).status).toBe(403);
+  });
+
   it('publishes on request and advances the published version monotonically', async () => {
     const context = teamContext('workspace-publish', 'member-publish');
     const api = await startSyncServer({ current: async () => context });

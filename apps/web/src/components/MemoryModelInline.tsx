@@ -41,6 +41,7 @@ import type {
   MemoryListResponse,
 } from '@open-design/contracts';
 import type { AgentModelOption, ApiProtocol, ExecMode } from '../types';
+import { KNOWN_PROVIDERS } from '../state/config';
 import {
   SUGGESTED_MODELS_BY_PROTOCOL,
 } from '../state/apiProtocols';
@@ -236,6 +237,12 @@ export function MemoryModelInline({
     mode === 'api' ? apiMemoryProvider : chatProtocolFromAgent(cliAgentId);
   const sameAsChatCliLabel =
     mode === 'daemon' ? cliAgentLabel(cliAgentId) : null;
+  const sameAsChatProviderLabel = mode === 'api'
+    ? KNOWN_PROVIDERS.find((provider) =>
+        provider.protocol === apiProtocol
+        && provider.baseUrl.replace(/\/+$/, '') === chatBaseUrl.trim().replace(/\/+$/, ''),
+      )?.label ?? effectiveChatProtocol
+    : effectiveChatProtocol;
 
   // The {id,label} option list fed to the searchable dropdown. In API mode we
   // prefer the live catalogue passed from the chat picker (e.g. AIHubMix's full
@@ -431,7 +438,7 @@ export function MemoryModelInline({
       })
     : effectiveChatProtocol
       ? t('settings.memoryModelInlineSameAsChatWithProvider', {
-          provider: effectiveChatProtocol,
+          provider: sameAsChatProviderLabel ?? effectiveChatProtocol,
         })
       : chatModel
         ? t('settings.memoryModelInlineSameAsChatWithModel', {

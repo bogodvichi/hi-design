@@ -1,4 +1,4 @@
-import { LANZ_DEFAULT_MODEL, LANZ_OPENAI_BASE_URL, type LanzAccountCredentials } from '@open-design/contracts';
+import { LANZ_OPENAI_BASE_URL, type LanzAccountCredentials } from '@open-design/contracts';
 import type { ApiProtocolConfig, AppConfig } from '../types';
 
 export function isLanzBaseUrl(value: string | null | undefined): boolean {
@@ -43,7 +43,7 @@ export function applyLanzAccountConfig(
     ...entry,
     apiKey: account.apiKey,
     baseUrl: entry?.baseUrl || LANZ_OPENAI_BASE_URL,
-    model: entry?.model || LANZ_DEFAULT_MODEL,
+    model: entry?.model || '',
     apiProviderBaseUrl: LANZ_OPENAI_BASE_URL,
   });
   const saved = config.apiProtocolConfigs?.openai;

@@ -12,10 +12,13 @@ import { isLoopbackApiHost } from '@open-design/contracts/api/connectionTest';
 import { redactSecrets, validateUserProviderBaseUrl } from '../connectionTest.js';
 import { googleProviderModelsUrl, normalizeGoogleModelId } from './google-models.js';
 import { aihubmixHeaders, aihubmixCatalogUrl, parseAIHubMixCatalog } from './aihubmix.js';
+import { fetchLanzModels, LanzAccountError } from './lanz-account.js';
+import type { SsoSession } from '../http/hik_logins/hicoo.js';
 
 type ProviderModelsInput = ProviderModelsRequest & {
   signal?: AbortSignal;
   requestInit?: Pick<RequestInit, 'dispatcher'>;
+  lanzSession?: SsoSession | null;
 };
 
 const PROVIDER_MODELS_TIMEOUT_MS = 12_000;
@@ -355,6 +358,23 @@ export async function listProviderModels(
   const timer = setTimeout(() => controller.abort(), PROVIDER_MODELS_TIMEOUT_MS);
 
   try {
+    if (isLanzOpenAiGateway(input)) {
+      if (!input.lanzSession) {
+        return {
+          ok: false,
+          kind: 'auth_failed',
+          latencyMs: Date.now() - start,
+          detail: 'Sign in to load your Lanz models.',
+        };
+      }
+      const models = await fetchLanzModels(input.lanzSession, undefined, controller.signal);
+      return {
+        ok: models.length > 0,
+        kind: models.length > 0 ? 'success' : 'no_models',
+        latencyMs: Date.now() - start,
+        models,
+      };
+    }
     const response = await fetch(url, {
       method: 'GET',
       headers: providerModelsHeaders(input.protocol, input.apiKey),
@@ -373,18 +393,6 @@ export async function listProviderModels(
     }
 
     if (!response.ok) {
-      // Lanz supports inference but does not expose an OpenAI /models route.
-      // Seed its documented default only for that exact missing catalogue;
-      // authentication, permission, and other endpoint errors stay visible.
-      if (response.status === 404 && isLanzOpenAiGateway(input)) {
-        return {
-          ok: true,
-          kind: 'success',
-          latencyMs,
-          models: [{ id: 'EB-DeepSeek-Flash', label: 'EB-DeepSeek-Flash' }],
-          detail: 'Lanz has no model catalogue endpoint; showing its configured default. Use the connection test to validate access.',
-        };
-      }
       const detail = parseError
         ? rawText.trim().slice(0, 240) || parseError
         : extractProviderErrorDetail(data, rawText);
@@ -429,6 +437,14 @@ export async function listProviderModels(
     };
   } catch (err) {
     const latencyMs = Date.now() - start;
+    if (err instanceof LanzAccountError) {
+      return {
+        ok: false,
+        kind: err.kind === 'unavailable' ? 'upstream_unavailable' : 'auth_failed',
+        latencyMs,
+        detail: 'Could not load the current Lanz account model catalogue.',
+      };
+    }
     const kind = networkErrorToKind(err);
     const message = err instanceof Error ? err.message : String(err);
     const host = validated.parsed.hostname;

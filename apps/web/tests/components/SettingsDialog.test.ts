@@ -427,7 +427,7 @@ describe('SettingsDialog API protocol switching', () => {
       apiProtocol: 'openai',
       apiKey: '',
       baseUrl: 'http://lanz.hikvision.com/v3/openai/model',
-      model: 'EB-DeepSeek-Flash',
+      model: '',
       apiProviderBaseUrl: 'http://lanz.hikvision.com/v3/openai/model',
     });
   });
@@ -442,7 +442,7 @@ describe('SettingsDialog API protocol switching', () => {
 
     expect(openai).toMatchObject({
       baseUrl: 'http://lanz.hikvision.com/v3/openai/model',
-      model: 'EB-DeepSeek-Flash',
+      model: '',
       apiProviderBaseUrl: 'http://lanz.hikvision.com/v3/openai/model',
     });
     expect(atlas).toMatchObject({

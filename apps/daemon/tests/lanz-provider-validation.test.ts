@@ -7,6 +7,7 @@ import {
   validateUserProviderBaseUrl,
 } from '../src/connectionTest.js';
 import { listProviderModels } from '../src/integrations/provider-models.js';
+import * as lanzAccount from '../src/integrations/lanz-account.js';
 
 describe('built-in Lanz provider network policy', () => {
   beforeEach(() => {
@@ -53,13 +54,14 @@ describe('built-in Lanz provider network policy', () => {
   });
 
   it('lets model discovery reach Lanz without a local allowlist', async () => {
-    const fetchMock = vi.fn(async () => Response.json({ data: [{ id: 'EB-DeepSeek-Flash' }] }));
-    vi.stubGlobal('fetch', fetchMock);
+    const models = [{ id: 'Lanz-Auto', label: 'Lanz-Auto' }];
+    const fetchModels = vi.spyOn(lanzAccount, 'fetchLanzModels').mockResolvedValue(models);
 
     expect(await listProviderModels({
       protocol: 'openai', baseUrl: LANZ_OPENAI_BASE_URL, apiKey: 'test-key',
-    })).toMatchObject({ ok: true, models: [{ id: 'EB-DeepSeek-Flash' }] });
-    expect(fetchMock).toHaveBeenCalledOnce();
+      lanzSession: { username: 'alice', loginAt: 1, cookies: [] },
+    })).toMatchObject({ ok: true, models });
+    expect(fetchModels).toHaveBeenCalledOnce();
   });
 
   it('lets connection testing reach Lanz without a local allowlist', async () => {

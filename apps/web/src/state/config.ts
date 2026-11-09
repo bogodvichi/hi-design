@@ -76,7 +76,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   mode: 'daemon',
   apiKey: '',
   baseUrl: 'http://lanz.hikvision.com/v3/openai/model',
-  model: 'EB-DeepSeek-Flash',
+  model: '',
   // New configs should be explicit. loadConfig() still detects parsed legacy
   // saved configs that did not have this field and migrates those from their
   // saved baseUrl/model before applying the current migration version.
@@ -142,7 +142,7 @@ export const KNOWN_PROVIDERS: KnownProvider[] = [
     label: 'lanz-openai',
     protocol: 'openai',
     baseUrl: 'http://lanz.hikvision.com/v3/openai/model',
-    preferredModels: ['EB-DeepSeek-Flash'],
+    preferredModels: [],
     apiKeyConsoleLink: { host: 'lanz.hikvision.com', url: 'https://lanz.hikvision.com/' },
   },
   {

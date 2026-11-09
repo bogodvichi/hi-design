@@ -199,6 +199,7 @@ import {
  SUGGESTED_MODELS_BY_PROTOCOL,
 } from '../state/apiProtocols';
 import { defaultKnownProviderModel, KNOWN_PROVIDERS } from '../state/config';
+import { isLanzBaseUrl } from '../state/lanz-account';
 import { testAgent, testApiProvider } from '../providers/connection-test';
 import { fetchProviderModels } from '../providers/provider-models';
 import { invalidateProjectFilesCache } from '../providers/registry';
@@ -2269,6 +2270,7 @@ function OnboardingView({
    step,
  });
  const apiProtocol = config.apiProtocol ?? 'anthropic';
+ const isLanzProvider = apiProtocol === 'openai' && isLanzBaseUrl(config.baseUrl);
  const providerTestInputKey = [
    apiProtocol,
    config.baseUrl.trim(),
@@ -2596,13 +2598,13 @@ function OnboardingView({
    })) ?? [];
  const fetchedProviderModels =
    activeProviderModelsCache[providerModelsInputKey] ?? [];
- const byokModelOptions = mergeOnboardingProviderModelOptions(
+ const byokModelOptions = (isLanzProvider ? fetchedProviderModels : mergeOnboardingProviderModelOptions(
    fetchedProviderModels,
    selectedProvider?.preferredModels.length
      ? selectedProvider.preferredModels
      : SUGGESTED_MODELS_BY_PROTOCOL[apiProtocol],
    config.model,
- ).map((model) => ({
+ )).map((model) => ({
    value: model.id,
    label: onboardingProviderModelLabel(model),
  }));
@@ -2650,11 +2652,13 @@ function OnboardingView({
    ) {
      return;
    }
-   const preference = resolveByokModelPreference({
-     currentModel: '',
-     accountModels: models,
-     providerPreferredModels: selectedProvider?.preferredModels ?? [],
-   });
+   const preference = isLanzProvider
+     ? { model: models[0]?.id ?? '' }
+     : resolveByokModelPreference({
+       currentModel: '',
+       accountModels: models,
+       providerPreferredModels: selectedProvider?.preferredModels ?? [],
+     });
    if (!preference.model) return;
    onApiModelChange(preference.model);
    updateApiConfig({ model: preference.model });
@@ -3976,6 +3980,7 @@ function OnboardingByokSetupPanel({
  const running = testState.status === 'running';
  const fetchingModels = modelsState.status === 'running';
  const useDeploymentInput = apiProtocol === 'azure';
+ const isLanzProvider = apiProtocol === 'openai' && isLanzBaseUrl(baseUrl);
  return (
    <div className="onboarding-view__setup-panel">
      <div className="onboarding-view__setup-head">
@@ -4057,10 +4062,10 @@ function OnboardingByokSetupPanel({
            onChange={(event) => onBaseUrlChange(event.target.value)}
          />
        </label>
-       {modelOptions.length > 0 && !useDeploymentInput ? (
+       {(isLanzProvider || modelOptions.length > 0) && !useDeploymentInput ? (
          <OnboardingDropdown
            label={t('settings.model')}
-           placeholder={defaultKnownProviderModel(selectedProvider) || 'claude-sonnet-4-5'}
+           placeholder={isLanzProvider ? '' : defaultKnownProviderModel(selectedProvider) || 'claude-sonnet-4-5'}
            value={model}
            options={modelOptions}
            onChange={onModelChange}

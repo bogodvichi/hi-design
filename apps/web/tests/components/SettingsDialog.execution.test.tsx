@@ -596,6 +596,35 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     expect(screen.getAllByText(en['settings.modeInUse'])).toHaveLength(1);
   });
 
+  it.each(['', 'removed-model'])('loads only Lanz account models, defaults to the first and restores a saved selection (%s)', async (initialModel) => {
+    const models = [
+      { id: 'EB-G61', label: 'EB-G61' },
+      { id: 'EB-DeepSeek-Flash', label: 'EB-DeepSeek-Flash' },
+    ];
+    fetchProviderModelsMock.mockResolvedValue({ ok: true, kind: 'success', latencyMs: 1, models });
+    const initial = {
+      apiProtocol: 'openai' as const, apiKey: 'account-key', model: initialModel,
+      baseUrl: 'http://lanz.hikvision.com/v3/openai/model',
+      apiProviderBaseUrl: 'http://lanz.hikvision.com/v3/openai/model',
+    };
+    const view = renderSettingsDialog(initial);
+    fireEvent.click(screen.getByRole('combobox', { name: /^Model$/ }));
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /^Model$/ })).toHaveTextContent('EB-G61'));
+    const popover = screen.getByTestId('settings-byok-model-popover');
+    expect(optionNames(popover)).toEqual(['EB-G61', 'EB-DeepSeek-Flash']);
+    expect(screen.queryByLabelText('Custom model')).toBeNull();
+    fireEvent.click(within(popover).getByRole('option', { name: /^EB-DeepSeek-Flash$/ }));
+    await waitForPersist(view.onPersist, expect.objectContaining({ model: 'EB-DeepSeek-Flash' }));
+    const saved = view.onPersist.mock.calls.at(-1)![0] as AppConfig;
+    view.unmount();
+    renderSettingsDialog(saved);
+    fireEvent.click(screen.getByRole('combobox', { name: /^Model$/ }));
+    await waitFor(() => expect(screen.getByRole('combobox', { name: /^Model$/ })).toHaveTextContent('EB-DeepSeek-Flash'));
+    expect(within(screen.getByTestId('settings-byok-model-popover')).getByRole('option', {
+      name: /^EB-DeepSeek-Flash$/,
+    })).toHaveAttribute('aria-selected', 'true');
+  });
+
   it('fills Lanz after login even when its empty provider draft was already opened', () => {
     const initial: AppConfig = {
       ...baseConfig, apiProtocol: 'openai', apiKey: '',

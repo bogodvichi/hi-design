@@ -286,7 +286,7 @@ test('[P0] @critical BYOK quick fill provider updates fields and saved settings 
   await expect(reopenedDialog.getByLabel('API key')).toHaveValue('sk-openai-test');
 });
 
-test('[P1] Lanz keeps the newly saved API key after closing and reopening settings', async ({ page }, testInfo) => {
+test('[P1] Lanz loads account models and keeps the selected model and API key after reopening', async ({ page }, testInfo) => {
   await page.route('**/api/auth/valid', (route) =>
     route.fulfill({ json: { ok: true, username: 'lanz-ui-test', userInfo: {} } }),
   );
@@ -294,16 +294,17 @@ test('[P1] Lanz keeps the newly saved API key after closing and reopening settin
   const apiConfig = {
     apiKey: '',
     baseUrl,
-    model: 'EB-DeepSeek-Flash',
+    model: '',
     apiProviderBaseUrl: baseUrl,
   };
   await routeAgents(page, [{
     id: 'codex', name: 'Codex CLI', bin: 'codex', available: true,
     models: [{ id: 'default', label: 'Default' }],
   }]);
+  await page.route('**/api/auth/lanz', (route) => route.fulfill({ status: 503, json: { ok: false } }));
   await page.route('**/api/provider/models', (route) => route.fulfill({ json: {
     ok: true, kind: 'success', latencyMs: 1,
-    models: [{ id: apiConfig.model, label: apiConfig.model }],
+    models: [{ id: 'Lanz-Auto', label: 'Lanz-Auto' }, { id: 'EB-G61', label: 'EB-G61' }],
   } }));
   let connectionTests = 0;
   await page.route('**/api/test/connection', (route) => {
@@ -345,9 +346,21 @@ test('[P1] Lanz keeps the newly saved API key after closing and reopening settin
   await dialog.getByLabel('API key').fill('sk-lanz-ui-test');
   expect((await saved).ok()).toBe(true);
   await expect.poll(() => readSavedConfig(page)).toMatchObject({ apiKey: 'sk-lanz-ui-test' });
+  await expectModelComboboxText(dialog, 'Lanz-Auto');
+  await modelCombobox(dialog).click();
+  const modelPopover = page.getByTestId('settings-byok-model-popover');
+  await expect(modelPopover.getByRole('option')).toHaveText(['Lanz-Auto', 'EB-G61']);
+  await expect(dialog.getByLabel('Custom model', { exact: true })).toHaveCount(0);
+  const modelSaved = page.waitForResponse((response) =>
+    response.request().method() === 'PUT'
+    && new URL(response.url()).pathname === '/api/app-config',
+  );
+  await modelPopover.getByRole('option', { name: 'EB-G61', exact: true }).click();
+  expect((await modelSaved).ok()).toBe(true);
+  await expect.poll(() => readSavedConfig(page)).toMatchObject({ model: 'EB-G61' });
   await closeEntrySettings(page, dialog);
   await expect(page.getByTestId('inline-model-switcher-chip')).toHaveAttribute(
-    'data-tooltip', 'lanz · EB-DeepSeek-Flash',
+    'data-tooltip', 'lanz · EB-G61',
   );
   await page.goto('/settings');
   await settingsSurface(page).getByTestId('settings-nav-execution').click();
@@ -355,7 +368,11 @@ test('[P1] Lanz keeps the newly saved API key after closing and reopening settin
   const reopened = settingsSurface(page);
   await expect(reopened.getByLabel('API key')).toHaveValue('sk-lanz-ui-test');
   await expect(reopened.getByLabel('Base URL')).toHaveValue(baseUrl);
-  await expectModelComboboxText(reopened, 'EB-DeepSeek-Flash');
+  await expectModelComboboxText(reopened, 'EB-G61');
+  await modelCombobox(reopened).click();
+  await expect(page.getByTestId('settings-byok-model-popover').getByRole('option', { name: 'EB-G61', exact: true })).toHaveAttribute('aria-selected', 'true');
+  await page.screenshot({ path: testInfo.outputPath('lanz-model-selected.png') });
+  await page.keyboard.press('Escape');
   expect(connectionTests).toBe(0);
   const tested = page.waitForResponse((response) =>
     response.request().method() === 'POST'

@@ -14,7 +14,7 @@ describe('automatic Lanz account configuration', () => {
     const result = applyLanzAccountConfig({ ...DEFAULT_CONFIG, model: '' }, account);
     expect(result).toMatchObject({
       mode: 'daemon', apiKey: account.apiKey, baseUrl: LANZ_OPENAI_BASE_URL,
-      model: LANZ_DEFAULT_MODEL, lanzAccountUsername: 'alice',
+      model: '', lanzAccountUsername: 'alice',
     });
     expect(result.byokProviderConfigDrafts?.[draftKey]?.apiConfig.apiKey).toBe(account.apiKey);
   });
@@ -35,7 +35,7 @@ describe('automatic Lanz account configuration', () => {
     const result = applyLanzAccountConfig(other, account);
     expect(result).toMatchObject({ apiKey: 'other-key', baseUrl: other.baseUrl, model: 'custom-model' });
     expect(result.byokProviderConfigDrafts?.[draftKey]?.apiConfig).toMatchObject({
-      apiKey: account.apiKey, baseUrl: LANZ_OPENAI_BASE_URL, model: LANZ_DEFAULT_MODEL,
+      apiKey: account.apiKey, baseUrl: LANZ_OPENAI_BASE_URL, model: '',
     });
   });
 

@@ -298,6 +298,47 @@ describe('project move to personal on an unbound (never-locally-shared) project'
     } as unknown as Parameters<typeof registerProjectRoutes>[1];
   }
 
+  it('resolves a shared recipient scope without borrowing the creator identity', async () => {
+    const projectId = 'shared-recipient-scope';
+    const now = Date.now();
+    insertProject(db, {
+      id: projectId, name: 'Shared project', skillId: null, designSystemId: null,
+      pendingPrompt: null, metadata: {}, customInstructions: null, createdAt: now, updatedAt: now,
+    });
+    ensureWorkspaceProject(db, {
+      workspaceId: 'external-home-team', projectId, visibility: 'team',
+      createdByWorkspaceMemberId: 'original-owner',
+      updatedByWorkspaceMemberId: 'original-owner', createdAt: now, updatedAt: now,
+    });
+    const resolveShareAccess = vi.fn(async () => ({
+      workspaceId: 'external-home-team', resourceTeamId: 'external-home-team',
+      viewerMemberId: 'share-recipient', ownerMemberId: 'original-owner',
+    }));
+    const app = express();
+    const deps = buildDeps({ collabSync: { resolveShareAccess } });
+    deps.paths.RUNTIME_DATA_DIR = tempDir;
+    registerProjectRoutes(app, deps);
+    const { server, url } = await listen(app);
+    try {
+      const response = await fetch(`${url}/api/projects/${projectId}/workspace-scope`, {
+        headers: ownerTeamHeaders(),
+      });
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({ scope: {
+        workspaceId: 'external-home-team',
+        context: {
+          workspaceMemberId: 'share-recipient', role: 'guest',
+          permissions: { canWriteSyncedFiles: false, canShareProjects: false },
+        },
+      } });
+      expect(resolveShareAccess).toHaveBeenCalledTimes(1);
+      expect(getWorkspaceProjectByProjectId(db, projectId)?.createdByWorkspaceMemberId)
+        .toBe('original-owner');
+    } finally {
+      await close(server);
+    }
+  });
+
   describe.each(['single', 'batch'] as const)('personal folder organization (%s)', (mode) => {
     it.each(['personal', 'default-team'] as const)('preserves cloud bindings while organizing a %s home locally', async (home) => {
       const projectIds = ['published-original', 'cloud-personal', 'local-copy'];

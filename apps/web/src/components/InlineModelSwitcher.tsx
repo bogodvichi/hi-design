@@ -59,6 +59,7 @@ import {
   type ProjectWorkspaceScopeState,
 } from '../collab/useProjectWorkspaceScope';
 import { KNOWN_PROVIDERS } from '../state/config';
+import { isLanzBaseUrl } from '../state/lanz-account';
 import { fetchProviderModels } from '../providers/provider-models';
 import { SUGGESTED_MODELS_BY_PROTOCOL } from '../state/apiProtocols';
 import {
@@ -1072,6 +1073,7 @@ export function InlineModelSwitcher({
   const amrStatusIconName = amrLoginPending ? 'spinner' : null;
 
   const apiProtocol = config.apiProtocol ?? 'anthropic';
+  const isLanzProvider = apiProtocol === 'openai' && isLanzBaseUrl(config.baseUrl);
   const providerForProtocol = useMemo(
     () =>
       KNOWN_PROVIDERS.find(
@@ -1149,14 +1151,14 @@ export function InlineModelSwitcher({
 
   const suggestedApiModelIds = useMemo(
     () =>
-      Array.from(
+      isLanzProvider ? [] : Array.from(
         new Set(
           providerForProtocol?.preferredModels.length
             ? providerForProtocol.preferredModels
             : SUGGESTED_MODELS_BY_PROTOCOL[apiProtocol],
         ),
       ),
-    [apiProtocol, providerForProtocol],
+    [apiProtocol, providerForProtocol, isLanzProvider],
   );
   const apiModelOptions = useMemo(
     () => mergeProviderModelOptions(fetchedApiModelOptions, suggestedApiModelIds),
@@ -1170,6 +1172,12 @@ export function InlineModelSwitcher({
     () => apiModelOptions.map((model) => ({ ...model, label: model.label })),
     [apiModelOptions],
   );
+
+  useEffect(() => {
+    if (!open || config.mode !== 'api' || !isLanzProvider || !fetchedApiModelOptions.length) return;
+    if (fetchedApiModelOptions.some((model) => model.id === config.model)) return;
+    onApiModelChange?.(fetchedApiModelOptions[0]!.id);
+  }, [open, config.mode, config.model, isLanzProvider, fetchedApiModelOptions, onApiModelChange]);
 
   // Chip text — keep it tight so the pill doesn't wrap on small viewports.
   // CLI: "Claude · Sonnet 4.5"; BYOK: "Anthropic · sonnet-4.5".
@@ -1490,7 +1498,7 @@ export function InlineModelSwitcher({
                       onApiModelChange?.(nextValue);
                     }}
                     additionalOptions={
-                      config.model && !apiModelIds.includes(config.model)
+                      !isLanzProvider && config.model && !apiModelIds.includes(config.model)
                         ? [
                             {
                               value: config.model,

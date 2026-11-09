@@ -993,7 +993,7 @@ describe('loadConfig', () => {
       apiProtocol: 'openai',
       baseUrl: 'http://lanz.hikvision.com/v3/openai/model',
       apiProviderBaseUrl: 'http://lanz.hikvision.com/v3/openai/model',
-      model: 'EB-DeepSeek-Flash',
+      model: '',
     });
 
     const savedProvider = {

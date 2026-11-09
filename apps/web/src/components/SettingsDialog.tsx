@@ -3277,6 +3277,7 @@ export function SettingsDialog({
     ),
     [apiProtocol, cfg.baseUrl, cfg.apiKey, cfg.apiVersion],
   );
+  const isLanzProvider = apiProtocol === 'openai' && isLanzBaseUrl(cfg.baseUrl);
   const providerModelDiscoveryUnavailable =
     apiProtocol !== 'azure' &&
     apiProtocol !== 'ollama' &&
@@ -3303,11 +3304,12 @@ export function SettingsDialog({
     [fetchedApiModelOptions],
   );
   const pendingProviderModelReconciliation = (() => {
-    if (cfg.mode !== 'api' || apiModelCustomEditing) return null;
-    if (apiModelUserSelectedRef.current) return null;
+    if (cfg.mode !== 'api' || (!isLanzProvider && apiModelCustomEditing)) return null;
+    if (!isLanzProvider && apiModelUserSelectedRef.current) return null;
     if (fetchedApiModelOptions.length === 0) return null;
     const currentModel = cfg.model.trim();
     if (currentModel && fetchedApiModelIds.has(currentModel)) return null;
+    if (isLanzProvider) return fetchedApiModelOptions[0]!.id;
     if (currentModel && !providerManagedModelIds.has(currentModel)) return null;
     const preference = resolveByokModelPreference({
       currentModel: '',
@@ -3378,7 +3380,7 @@ export function SettingsDialog({
     if (cfg.mode !== 'api' || visualStabilityMode) return;
     if (!providerModelDiscoverySupported || apiProtocol === 'aihubmix') return;
     if (byokFirstPartyBaseUrl?.hostTypo) return;
-    if (blockingByokDraftIssues(byokDraftValidation).length > 0) return;
+    if (blockingByokDraftIssues(isLanzProvider ? byokModelFetchDraftValidation : byokDraftValidation).length > 0) return;
     if (providerModelsCommittedKey === providerModelsKey) return;
     const timer = window.setTimeout(() => {
       setProviderModelsCommittedKey(providerModelsKey);
@@ -3387,7 +3389,9 @@ export function SettingsDialog({
   }, [
     apiProtocol,
     byokFirstPartyBaseUrl?.hostTypo,
+    byokModelFetchDraftValidation,
     byokDraftValidation,
+    isLanzProvider,
     cfg.mode,
     providerModelDiscoverySupported,
     providerModelsCommittedKey,
@@ -3464,6 +3468,7 @@ export function SettingsDialog({
       : null;
   const suggestedApiModelIds = useMemo(
     () => {
+      if (isLanzProvider) return [];
       if (providerModelDiscoveryUnavailable) {
         return selectedProvider?.preferredModels.length
           ? Array.from(new Set(selectedProvider.preferredModels))
@@ -3475,7 +3480,7 @@ export function SettingsDialog({
           : SUGGESTED_MODELS_BY_PROTOCOL[apiProtocol],
       ));
     },
-    [apiProtocol, selectedProvider, providerModelDiscoveryUnavailable],
+    [apiProtocol, selectedProvider, providerModelDiscoveryUnavailable, isLanzProvider],
   );
   const apiModelOptions = useMemo(
     () => mergeProviderModelOptions(
@@ -5293,6 +5298,8 @@ export function SettingsDialog({
               </label>
               <ByokModelField
                 customActive={apiModelCustomActive}
+                allowCustomModel={!isLanzProvider}
+                onOpen={isLanzProvider ? () => void handleFetchProviderModels({ silent: true }) : undefined}
                 customInputRef={customModelInputRef}
                 labels={{
                   customModel: t('settings.modelCustom'),
@@ -5316,13 +5323,13 @@ export function SettingsDialog({
                   ...m,
                   label: apiModelOptionLabel(
                     m,
-                    !hidesAccountModelSourceLabel(apiProtocol) &&
+                    !isLanzProvider && !hidesAccountModelSourceLabel(apiProtocol) &&
                     loadedAccountModelCount > 0
                       ? fetchedApiModelIds.has(m.id)
                         ? t('settings.modelSourceAccount')
                         : t('settings.modelSourceSuggested')
                       : undefined,
-                    m.id === defaultKnownProviderModel(selectedProvider)
+                    !isLanzProvider && m.id === defaultKnownProviderModel(selectedProvider)
                       ? t('common.default')
                       : undefined,
                   ),

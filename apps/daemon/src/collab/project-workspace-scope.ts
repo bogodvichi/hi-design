@@ -29,6 +29,8 @@ export function resolveLocalProjectWorkspaceScope(input: {
   requestWorkspaceType?: WorkspaceType | null;
   knownWorkspaceType?: WorkspaceType | null;
   configuredEnv?: Record<string, string>;
+  /** A freshly verified resource grant, not membership in the home workspace. */
+  shareAccess?: { workspaceId: string; viewerMemberId: string } | null;
 }): ProjectWorkspaceScope {
   const projectId = input.projectId.trim();
   const workspaceId = typeof input.binding?.workspaceId === 'string'
@@ -48,13 +50,20 @@ export function resolveLocalProjectWorkspaceScope(input: {
   )
     ? 'team'
     : 'personal';
-  const workspaceType = input.requestWorkspaceType
+  const shareAccess = input.shareAccess;
+  if (shareAccess && (
+    shareAccess.workspaceId !== workspaceId || !shareAccess.viewerMemberId.trim()
+  )) {
+    return { kind: 'unavailable', projectId, workspaceId, visibility, context: null };
+  }
+  const workspaceType = shareAccess ? 'team' : input.requestWorkspaceType
     ?? input.knownWorkspaceType
     ?? (visibility === 'team' ? 'team' : 'personal');
   const persistedMemberId = typeof input.binding?.createdByWorkspaceMemberId === 'string'
     ? input.binding.createdByWorkspaceMemberId.trim()
     : '';
-  const workspaceMemberId = input.requestWorkspaceMemberId?.trim()
+  const workspaceMemberId = shareAccess?.viewerMemberId.trim()
+    || input.requestWorkspaceMemberId?.trim()
     || persistedMemberId
     || 'local-user';
   const context = workspaceContextFromDirectoryItem({
@@ -62,12 +71,26 @@ export function resolveLocalProjectWorkspaceScope(input: {
     workspaceName: workspaceId,
     workspaceType,
     workspaceMemberId,
-    role: 'member',
+    role: shareAccess ? 'guest' : 'member',
     memberStatus: 'active',
     lifecycleState: input.binding?.resourceState === 'frozen'
       ? 'locked'
       : 'active',
   }, input.configuredEnv);
+  if (shareAccess) {
+    // A project share permits reading/commenting on this resource only. It
+    // never grants membership, writing, or management of its home workspace.
+    context.permissions = {
+      canManageMembers: false,
+      canManageBilling: false,
+      canInviteMembers: false,
+      canManageAutoRecharge: false,
+      canShareProjects: false,
+      canWriteSyncedFiles: false,
+      canViewWorkspaceSettings: false,
+      canManageSharedResources: false,
+    };
+  }
   if (workspaceType === 'team') {
     return {
       kind: 'team',

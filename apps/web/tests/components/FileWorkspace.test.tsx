@@ -3566,6 +3566,26 @@ describe('projectSplitClassName', () => {
     expect(projectChatCollapseControlVisible(true, false, 'allowed')).toBe(false);
   });
 
+  it('disables the toolbar until initial writer authority is confirmed', () => {
+    let state = stableProjectReadOnlyPresentation(null, 'shared-project', 'pending');
+    expect(state.readOnly).toBe(true);
+    state = stableProjectReadOnlyPresentation(state, 'shared-project', 'pending');
+    expect(state.readOnly).toBe(true);
+    state = stableProjectReadOnlyPresentation(state, 'shared-project', 'allowed');
+    expect(state.readOnly).toBe(false);
+    state = stableProjectReadOnlyPresentation(state, 'another-project', 'pending');
+    expect(state.readOnly).toBe(true);
+  });
+
+  it('keeps a resolved writable local project usable without a collab status poll', () => {
+    const loading = stableProjectReadOnlyPresentation(null, 'local-project', 'pending');
+    expect(loading.readOnly).toBe(true);
+    expect(stableProjectReadOnlyPresentation(loading, 'local-project', 'pending', true).readOnly)
+      .toBe(false);
+    expect(stableProjectReadOnlyPresentation(null, 'local-project', 'denied', true).readOnly)
+      .toBe(true);
+  });
+
   it('keeps project read-only presentation stable while writer authority is pending', () => {
     let state = stableProjectReadOnlyPresentation(null, 'project-1', 'allowed');
     expect(state.readOnly).toBe(false);

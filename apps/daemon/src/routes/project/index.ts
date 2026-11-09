@@ -5900,13 +5900,14 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
       return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'not found');
     }
     const binding = getWorkspaceProjectByProjectId(db, project.id);
-    if (!await authorizeProjectReadWithShare(req, res, project.id)) return;
+    const shareAccess = await collabSync.resolveShareAccess?.(project.id, req).catch(() => null) ?? null;
+    if (!shareAccess && !await authorizeProjectReadWithShare(req, res, project.id)) return;
     const claimed = workspaceProjectContextFromRequest(req);
     const assertedType = headerValue(req, 'x-od-workspace-type');
     const requestWorkspaceType = assertedType === 'team' || assertedType === 'personal'
       ? assertedType
       : null;
-    if (binding?.workspaceId && requestWorkspaceType) {
+    if (!shareAccess && binding?.workspaceId && requestWorkspaceType) {
       workspaceTypes?.learn({
         workspaceId: binding.workspaceId,
         workspaceType: requestWorkspaceType,
@@ -5917,12 +5918,13 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
     // The same user has different member IDs across workspaces, so resolve
     // the current user's member ID in the project's workspace from the
     // directory. This ensures the scope carries the correct identity for
-    // subsequent permission checks (e.g. write access). Falls back to the
-    // persisted creator member ID when the directory is unavailable.
+    // subsequent permission checks (e.g. write access). A verified share uses
+    // the recipient identity instead of a home-workspace membership.
     let scopeMemberId: string | null =
       claimed && claimed !== 'missing' ? claimed.workspaceMemberId : null;
     if (
-      binding?.workspaceId
+      !shareAccess
+      && binding?.workspaceId
       && claimed
       && claimed !== 'missing'
       && binding.workspaceId !== claimed.workspaceId
@@ -5937,6 +5939,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
     const scope = resolveLocalProjectWorkspaceScope({
       projectId: project.id,
       binding,
+      shareAccess,
       requestWorkspaceMemberId: scopeMemberId,
       requestWorkspaceType,
       knownWorkspaceType: workspaceTypes?.typeOf(binding?.workspaceId) ?? null,

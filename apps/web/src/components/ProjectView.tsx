@@ -889,12 +889,14 @@ export function stableProjectReadOnlyPresentation(
   previous: { projectId: string; readOnly: boolean } | null,
   projectId: string,
   writerAuthority: ProjectCollab['writerAuthority'],
+  localProjectWritable = false,
 ): { projectId: string; readOnly: boolean } {
+  const readOnly = writerAuthority === 'denied'
+    || (writerAuthority === 'pending' && !localProjectWritable);
   if (!previous || previous.projectId !== projectId) {
-    return { projectId, readOnly: writerAuthority === 'denied' };
+    return { projectId, readOnly };
   }
-  if (writerAuthority === 'pending') return previous;
-  const readOnly = writerAuthority === 'denied';
+  if (writerAuthority === 'pending' && !localProjectWritable) return previous;
   return previous.readOnly === readOnly ? previous : { projectId, readOnly };
 }
 
@@ -2298,6 +2300,12 @@ export function ProjectView({
     projectReadOnlyPresentationRef.current,
     project.id,
     projectCollab.writerAuthority,
+    // Local/personal projects have no collab status poll to settle authority.
+    // Only the resolved project scope may exempt them from the initial gate.
+    !projectWorkspaceScopeState.loading
+      && !projectMutationReadOnly
+      && (projectWorkspaceScopeState.scope?.kind === 'unbound'
+        || projectWorkspaceScopeState.scope?.kind === 'personal'),
   );
   const projectViewerOnlyPresentation = projectReadOnlyPresentationRef.current.readOnly;
   const { resolve: resolvePresenceMember } = useTeamMembers(

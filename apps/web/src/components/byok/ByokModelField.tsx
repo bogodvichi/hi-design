@@ -23,6 +23,8 @@ interface ByokModelFieldProps {
   models: AgentModelOption[];
   providerModelsFailureMessage: string | null;
   forceTextInput?: boolean;
+  allowCustomModel?: boolean;
+  onOpen?: () => void;
   showAzureModelFetchHint: boolean;
   showFetchModelsUnsupportedHint: boolean;
   showSuggestedModelsHint: boolean;
@@ -42,6 +44,8 @@ export function ByokModelField({
   models,
   providerModelsFailureMessage,
   forceTextInput = false,
+  allowCustomModel = true,
+  onOpen,
   showAzureModelFetchHint,
   showFetchModelsUnsupportedHint,
   showSuggestedModelsHint,
@@ -51,7 +55,7 @@ export function ByokModelField({
   onFocus,
   onModelSelect,
 }: ByokModelFieldProps) {
-  const selectValue = customActive
+  const selectValue = allowCustomModel && customActive
     ? CUSTOM_MODEL_SENTINEL
     : model;
 
@@ -94,6 +98,7 @@ export function ByokModelField({
             models={models}
             value={selectValue}
             onFocus={onFocus}
+            onClick={onOpen}
             onChange={(nextValue) => {
               if (nextValue === CUSTOM_MODEL_SENTINEL) {
                 onCustomModelSelect();
@@ -101,12 +106,12 @@ export function ByokModelField({
                 onModelSelect(nextValue);
               }
             }}
-            additionalOptions={[
+            additionalOptions={allowCustomModel ? [
               {
                 value: CUSTOM_MODEL_SENTINEL,
                 label: labels.customModel,
               },
-            ]}
+            ] : []}
           />
         </label>
       )}
@@ -118,7 +123,7 @@ export function ByokModelField({
       {showSuggestedModelsHint ? (
         <p className="hint">{labels.suggestedModelsHint}</p>
       ) : null}
-      {!forceTextInput && customActive ? (
+      {allowCustomModel && !forceTextInput && customActive ? (
         <label className={'field' + (model.trim() ? '' : ' settings-byok-required-empty')}>
           <span className="field-label">
             {labels.customModelLabel}

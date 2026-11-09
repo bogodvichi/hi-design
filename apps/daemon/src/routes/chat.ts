@@ -1,5 +1,6 @@
 import type { Express } from 'express';
 import type { RouteDeps } from '../server-context.js';
+import { readSsoConfigFile } from '../http/hik_logins/hicoo.js';
 import { seedProviderIfMissing } from '../media/config.js';
 import {
   buildLegacyMaxTokensParam,
@@ -246,6 +247,7 @@ export function registerChatRoutes(app: Express, ctx: RegisterChatRoutesDeps) {
       try {
         const result = await listProviderModels({
           protocol,
+          lanzSession: readSsoConfigFile(ctx.paths.RUNTIME_DATA_DIR),
           baseUrl: body.baseUrl,
           apiKey: body.apiKey,
           apiVersion:

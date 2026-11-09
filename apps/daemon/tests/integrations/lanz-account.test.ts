@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  fetchLanzAccount, LanzAccountService,
+  fetchLanzAccount, fetchLanzModels, LanzAccountService,
   type LanzHttpResponse, type LanzRequest,
 } from '../../src/integrations/lanz-account.js';
 import type { SsoSession } from '../../src/http/hik_logins/hicoo.js';
@@ -106,5 +106,42 @@ describe('LanzAccountService', () => {
       fetchAccount: async () => { throw new Error('upstream secret test-account-key'); },
     });
     await expect(service.load('alice')).resolves.toEqual({ ok: false, kind: 'unavailable' });
+  });
+});
+
+
+describe('Lanz account model catalogue', () => {
+  it('reads all account model names in platform order without returning row credentials', async () => {
+    const api = portalRequest();
+    const request = vi.fn<LanzRequest>(async (url, ...args) => {
+      if (url.endsWith('/v1/openai/models')) return response([
+        { modelName: ' EB-G61 ', apiKey: 'row-secret' },
+        { modelName: 'EB-DeepSeek-Flash' },
+        { modelName: 'EB-G61' },
+        { modelName: '' },
+        { id: 'not-an-api-model' },
+      ]);
+      return api(url, ...args);
+    });
+    await expect(fetchLanzModels(session(), request)).resolves.toEqual([
+      { id: 'EB-G61', label: 'EB-G61' },
+      { id: 'EB-DeepSeek-Flash', label: 'EB-DeepSeek-Flash' },
+    ]);
+    expect(request).toHaveBeenCalledWith('https://lanz.hikvision.com/v1/openai/models',
+      expect.any(Array), expect.any(AbortSignal), true);
+    expect(request.mock.calls.some(([url]) => url.includes('/token/'))).toBe(false);
+  });
+
+  it('requires the matching signed-in account before reading model names', async () => {
+    const request = portalRequest('bob');
+    await expect(fetchLanzModels(session(), request)).rejects.toMatchObject({ kind: 'account_mismatch' });
+    expect(request.mock.calls.some(([url]) => url.endsWith('/v1/openai/models'))).toBe(false);
+  });
+
+  it('does not invent a model when the account catalogue is empty', async () => {
+    const api = portalRequest();
+    const request: LanzRequest = async (url, ...args) => url.endsWith('/v1/openai/models')
+      ? response([]) : api(url, ...args);
+    await expect(fetchLanzModels(session(), request)).resolves.toEqual([]);
   });
 });

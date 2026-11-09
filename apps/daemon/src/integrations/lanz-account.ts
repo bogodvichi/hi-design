@@ -7,6 +7,7 @@ import {
   type LanzAccountCredentials,
   type LanzAccountFailureKind,
   type LanzAccountResponse,
+  type ProviderModelOption,
 } from '@open-design/contracts';
 import {
   cookieHeader,
@@ -113,14 +114,14 @@ function accountStamp(session: SsoSession | null): string {
   ])).digest('hex');
 }
 
-/** Reuse the device-bound OA session. Only read the current account's stable Key. */
-export async function fetchLanzAccount(
+/** Every portal read must verify that SSO resolved to the current OA account. */
+async function signedInLanzReader(
   session: SsoSession,
-  request: LanzRequest = requestLanz,
-): Promise<LanzAccountCredentials> {
+  request: LanzRequest,
+  signal: AbortSignal,
+): Promise<(endpoint: string) => Promise<unknown>> {
   const username = session.username?.trim().toLowerCase();
   if (!username || !session.cookies?.length) throw new LanzAccountError('not_signed_in');
-  const signal = AbortSignal.timeout(20_000);
   let jar = [...session.cookies];
   let url = LANZ_ORIGIN + '/';
   let signedIn = false;
@@ -158,13 +159,38 @@ export async function fetchLanzAccount(
   if (typeof profile?.pinyin !== 'string' || profile.pinyin.trim().toLowerCase() !== username) {
     throw new LanzAccountError('account_mismatch');
   }
+  return readApi;
+}
+
+/** Read the API catalogue shown by Lanz's portal, preserving platform order. */
+export async function fetchLanzModels(
+  session: SsoSession,
+  request: LanzRequest = requestLanz,
+  signal: AbortSignal = AbortSignal.timeout(20_000),
+): Promise<ProviderModelOption[]> {
+  const readApi = await signedInLanzReader(session, request, signal);
+  const rows = await readApi('/v1/openai/models');
+  if (!Array.isArray(rows)) throw new LanzAccountError('unavailable');
+  const names = new Set<string>();
+  for (const row of rows) {
+    if (typeof row?.modelName === 'string' && row.modelName.trim()) names.add(row.modelName.trim());
+  }
+  return [...names].map((id) => ({ id, label: id }));
+}
+
+/** Reuse the device-bound OA session. Only read the current account's stable Key. */
+export async function fetchLanzAccount(
+  session: SsoSession,
+  request: LanzRequest = requestLanz,
+): Promise<LanzAccountCredentials> {
+  const readApi = await signedInLanzReader(session, request, AbortSignal.timeout(20_000));
   // This is the portal's "copy API Key" endpoint. The account Key is stable
   // across models; model-specific rows are deliberately not used.
   const apiKey = await readApi('/v1/openai/token/create');
   if (typeof apiKey !== 'string' || !apiKey.trim()) throw new LanzAccountError('key_unavailable');
   return {
     ok: true,
-    username,
+    username: session.username!.trim().toLowerCase(),
     apiKey: apiKey.trim(),
     baseUrl: LANZ_OPENAI_BASE_URL,
     defaultModel: LANZ_DEFAULT_MODEL,

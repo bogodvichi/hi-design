@@ -2382,6 +2382,37 @@ const readManifest = deps.readManifest ?? readProjectManifest;
       principal,
       workspaceId: resolvedWorkspaceId,
     } = await statusIdentityForRequest(projectId, req);
+    if (!verification.ok || !context || !resolvedWorkspaceId) {
+      // Resource recipients need no membership in the owner's workspace.
+      // Revalidate their grant for this read; mutation routes keep requiring
+      // ordinary workspace writer authority.
+      const shareScope = await resolveShareAccess?.(projectId, req).catch(() => null);
+      if (shareScope?.viewerMemberId && shareScope.ownerMemberId && shareScope.resourceTeamId) {
+        const ownerPrincipal: ResourceHubPrincipal = {
+          teamId: shareScope.resourceTeamId,
+          memberId: shareScope.ownerMemberId,
+          role: 'member',
+          lifecycleState: 'active',
+          workspaceType: 'team',
+        };
+        let head = publishedVersion(projectId, ownerPrincipal);
+        try {
+          head = await publishedHead(projectId, ownerPrincipal);
+        } catch {
+          // Preserve the locally known version while the hub is unavailable.
+        }
+        return res.json({
+          publishedVersion: head,
+          materializedVersion: deps.readMaterializedVersion?.(projectId, shareScope) ?? null,
+          contentTransferState: deps.readContentTransferState?.(projectId, shareScope) ?? null,
+          awaitingFirstMaterialization: Boolean(
+            projectStore?.get && isUnmaterializedSharedPlaceholder(projectStore.get(projectId)),
+          ),
+          syncState: 'synced',
+          ownerMemberId: shareScope.ownerMemberId,
+        });
+      }
+    }
     if (!verification.ok) {
       return sendWorkspaceVerificationFailure(res, verification);
     }

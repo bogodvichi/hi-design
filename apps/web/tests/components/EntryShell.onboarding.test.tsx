@@ -1612,7 +1612,9 @@ describe('EntryShell onboarding HiDesign AMR runtime', () => {
     await clickSignedInCloudContinue();
   });
 
-  it('uses provider preferences instead of the first upstream model during BYOK onboarding', async () => {
+  it.each(['anthropic', 'openai'] as const)('selects the %s onboarding model using the provider catalogue policy', async (protocol) => {
+    const baseUrl = protocol === 'openai'
+      ? 'http://lanz.hikvision.com/v3/openai/model' : 'https://api.anthropic.com';
     globalThis.fetch = vi.fn(async (input, init) => {
       const url = String(input);
       if (url.endsWith('/api/integrations/vela/status')) {
@@ -1638,11 +1640,11 @@ describe('EntryShell onboarding HiDesign AMR runtime', () => {
     }) as typeof fetch;
     const props = renderOnboarding({
       config: baseConfig({
-        apiProtocol: 'anthropic',
+        apiProtocol: protocol,
         apiKey: 'test-api-key',
-        baseUrl: 'https://api.anthropic.com',
+        baseUrl,
         model: '',
-        apiProviderBaseUrl: 'https://api.anthropic.com',
+        apiProviderBaseUrl: baseUrl,
       }),
     });
 
@@ -1650,9 +1652,9 @@ describe('EntryShell onboarding HiDesign AMR runtime', () => {
     fireEvent.click(screen.getByRole('button', { name: /Fetch models/i }));
 
     await waitFor(() => {
-      expect(props.onApiModelChange).toHaveBeenCalledWith('claude-sonnet-4-5');
+      expect(props.onApiModelChange).toHaveBeenCalledWith(protocol === 'openai' ? 'upstream-first' : 'claude-sonnet-4-5');
     });
-    expect(props.onApiModelChange).not.toHaveBeenCalledWith('upstream-first');
+    if (protocol === 'anthropic') expect(props.onApiModelChange).not.toHaveBeenCalledWith('upstream-first');
   });
 
   it('tests BYOK on Continue, stays on rate limit, and retries on the next click', async () => {

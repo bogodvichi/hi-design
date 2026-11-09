@@ -3,6 +3,40 @@ import { describe, expect, it } from 'vitest';
 import { resolveLocalProjectWorkspaceScope } from '../../src/collab/project-workspace-scope.js';
 
 describe('resolveLocalProjectWorkspaceScope', () => {
+  it('uses the verified share recipient instead of the creator or local-user fallback', () => {
+    expect(resolveLocalProjectWorkspaceScope({
+      projectId: 'shared-project',
+      binding: {
+        workspaceId: 'home-team',
+        visibility: 'team',
+        createdByWorkspaceMemberId: 'creator-member',
+      },
+      requestWorkspaceMemberId: 'wrong-workspace-member',
+      shareAccess: { workspaceId: 'home-team', viewerMemberId: 'share-recipient' },
+    })).toMatchObject({
+      kind: 'team',
+      workspaceId: 'home-team',
+      context: {
+        workspaceMemberId: 'share-recipient',
+        role: 'guest',
+        permissions: {
+          canShareProjects: false,
+          canWriteSyncedFiles: false,
+          canManageMembers: false,
+          canManageBilling: false,
+        },
+      },
+    });
+  });
+
+  it('does not use a share for a different home workspace as recipient authority', () => {
+    expect(resolveLocalProjectWorkspaceScope({
+      projectId: 'shared-project',
+      binding: { workspaceId: 'home-team', visibility: 'team' },
+      shareAccess: { workspaceId: 'other-team', viewerMemberId: 'share-recipient' },
+    })).toMatchObject({ kind: 'unavailable', context: null });
+  });
+
   it('resolves a Team project entirely from its persisted local binding', () => {
     expect(resolveLocalProjectWorkspaceScope({
       projectId: 'project-team',
