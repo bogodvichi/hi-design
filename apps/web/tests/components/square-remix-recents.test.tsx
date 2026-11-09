@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { I18nProvider } from '../../src/i18n';
 import { SquareView } from '../../src/components/SquareView';
+import { ToastProvider } from '../../src/components/ToastProvider';
 import {
   readRecentlyOpenedProjects,
 } from '../../src/lib/recently-opened-projects';
@@ -483,7 +484,7 @@ describe('SquareView remix recents', () => {
     }, { timeout: 4000 });
   });
 
-  it('creates a separate community card for every project publish', async () => {
+  it('creates a separate community card and shows one success toast for every project publish', async () => {
     const publications: Array<{
       name: string;
       title: string;
@@ -574,7 +575,7 @@ describe('SquareView remix recents', () => {
 
     render(
       <I18nProvider initial="en">
-        <SquareView />
+        <ToastProvider><SquareView /></ToastProvider>
       </I18nProvider>,
     );
 
@@ -588,6 +589,12 @@ describe('SquareView remix recents', () => {
     await waitFor(() => {
       expect(document.querySelector('[data-plugin-name="webgl2-community-entry-1"]')).toBeTruthy();
     }, { timeout: 2500 });
+    await waitFor(() => {
+      const toasts = document.querySelectorAll('[data-toast-viewport] .od-toast');
+      expect(toasts).toHaveLength(1);
+      expect(toasts[0]).toHaveTextContent('Published');
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }));
 
     fireEvent.click(screen.getByRole('button', { name: 'New Publish' }));
     fireEvent.click(await screen.findByRole('option', { name: /自包含WebGL2主视觉/ }));
@@ -606,6 +613,10 @@ describe('SquareView remix recents', () => {
     expect(publishBodies[1]?.publishAttemptId).toEqual(expect.any(String));
     expect(publishBodies[1]?.publishAttemptId).not.toBe(publishBodies[0]?.publishAttemptId);
     expect(publishBodies[0]?.publishedAt).toEqual(expect.any(String));
-    expect(screen.getByText('自包含WebGL2主视觉 was published as a new community project')).toBeTruthy();
+    await waitFor(() => {
+      const toasts = document.querySelectorAll('[data-toast-viewport] .od-toast');
+      expect(toasts).toHaveLength(1);
+      expect(toasts[0]).toHaveTextContent('Published');
+    });
   });
 });

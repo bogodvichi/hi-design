@@ -25,7 +25,6 @@ import { CloudSkillList } from './CloudSkillList';
 import { CloudMcpList } from './CloudMcpList';
 import { CloudToolList } from './CloudToolList';
 import { CommunityResourceStats } from './CommunityResourceStats';
-import { Toast } from './Toast';
 import { communityOriginProjectId, communityOriginProjectName, projectFallbackVisual } from './project-cover';
 import type { MarketplacePluginEntry, ProjectPublishCommunityResponse } from '@open-design/contracts';
 import type { WorkspaceDirectoryItem } from '@open-design/contracts';
@@ -73,7 +72,6 @@ type MarketplacePluginEntryWithDeletion = MarketplacePluginEntry & {
 interface PendingPublishedProject {
   name: string;
   version: string;
-  title: string;
 }
 
 type SquareTab = 'projects' | 'skill' | 'mcp' | 'tool';
@@ -1046,7 +1044,6 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
   projectItems?: readonly PublishedProjectItem[];
 }) {
   const t = useT();
-  const { locale } = useI18n();
   const myUsername = getStoredUsername();
   const routeTab = tab === 'skill' || tab === 'mcp' || tab === 'tool' ? tab : 'projects';
   const [activeTab, setActiveTab] = useState<SquareTab>(routeTab);
@@ -1058,7 +1055,6 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
   }, [routeTab]);
   const [refreshKey, setRefreshKey] = useState(0);
   const [pendingPublishedProject, setPendingPublishedProject] = useState<PendingPublishedProject | null>(null);
-  const [publishSuccessMessage, setPublishSuccessMessage] = useState<string | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
   const [publicationFilter, setPublicationFilter] = useState<PublicationFilter>('all');
   const [communitySearchQuery, setCommunitySearchQuery] = useState('');
@@ -1108,13 +1104,10 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
 
   const activeDef = TABS.find((tab) => tab.id === activeTab)!;
   const handlePendingPublishedProjectVisible = useCallback((project: PendingPublishedProject) => {
-    setPublishSuccessMessage(locale.startsWith('zh')
-      ? `${project.title} 已发布为新的社区项目`
-      : `${project.title} was published as a new community project`);
     setPendingPublishedProject((current) => (
       current?.name === project.name && current.version === project.version ? null : current
     ));
-  }, [locale]);
+  }, []);
 
   return (
     <section className={styles.view} aria-labelledby="square-title" data-testid="square-view">
@@ -1263,7 +1256,6 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
                   setPendingPublishedProject({
                     name: published.name,
                     version: published.version,
-                    title: selection.name,
                   });
                 }
                 setRefreshKey((key) => key + 1);
@@ -1376,14 +1368,6 @@ export function SquareView({ mode = 'community', tab, projectItems }: {
           />
       )}
       </div>
-
-      {publishSuccessMessage ? (
-        <Toast
-          message={publishSuccessMessage}
-          tone="success"
-          onDismiss={() => setPublishSuccessMessage(null)}
-        />
-      ) : null}
 
     </section>
   );
