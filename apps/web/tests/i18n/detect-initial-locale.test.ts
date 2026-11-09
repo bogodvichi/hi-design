@@ -61,11 +61,24 @@ describe('detectInitialLocale priority chain', () => {
   });
 
   it('prefers a manually-tagged localStorage pick over host and navigator', () => {
-    setStoredLocale('ja', 'manual');
+    setStoredLocale('en', 'manual');
     installHostWithOsLocale('zh-CN');
     setNavigatorLanguages(['fr-FR']);
 
-    expect(detectInitialLocale()).toBe('ja');
+    expect(detectInitialLocale()).toBe('en');
+  });
+
+
+  it('falls back from a removed manually selected language without user intervention', () => {
+    setStoredLocale('fr', 'manual');
+    installHostWithOsLocale('zh-CN');
+    expect(detectInitialLocale()).toBe('zh-CN');
+  });
+
+  it('preserves a previous Traditional Chinese preference as Simplified Chinese', () => {
+    setStoredLocale('zh-TW', 'manual');
+    installHostWithOsLocale('en-US');
+    expect(detectInitialLocale()).toBe('zh-CN');
   });
 
   it('ignores an untagged localStorage value when a fresh host locale is available', () => {
@@ -79,7 +92,7 @@ describe('detectInitialLocale priority chain', () => {
     setStoredLocale('xx-YY', 'manual');
     setNavigatorLanguages(['de-DE']);
 
-    expect(detectInitialLocale()).toBe('de');
+    expect(detectInitialLocale()).toBe('en');
   });
 
   it('uses the desktop host OS locale when no localStorage pick exists', () => {
@@ -89,28 +102,28 @@ describe('detectInitialLocale priority chain', () => {
     expect(detectInitialLocale()).toBe('zh-CN');
   });
 
-  it('routes packaged OS locale strings through resolveSystemLocale (zh-Hant → zh-TW)', () => {
+  it('routes packaged OS locale strings through resolveSystemLocale (zh-Hant → zh-CN)', () => {
     installHostWithOsLocale('zh-Hant-TW');
     setNavigatorLanguages(['en-US']);
 
-    expect(detectInitialLocale()).toBe('zh-TW');
+    expect(detectInitialLocale()).toBe('zh-CN');
   });
 
   it('falls back to navigator when host osLocale is missing or not a string', () => {
     installHostWithOsLocale(undefined);
     setNavigatorLanguages(['ko-KR']);
-    expect(detectInitialLocale()).toBe('ko');
+    expect(detectInitialLocale()).toBe('en');
 
     installHostWithOsLocale(42);
     setNavigatorLanguages(['fr-FR']);
-    expect(detectInitialLocale()).toBe('fr');
+    expect(detectInitialLocale()).toBe('en');
   });
 
   it('falls back to navigator when host osLocale is not in the supported set', () => {
     installHostWithOsLocale('nl-NL');
     setNavigatorLanguages(['pt-PT']);
 
-    expect(detectInitialLocale()).toBe('pt-BR');
+    expect(detectInitialLocale()).toBe('en');
   });
 
   it('falls back to en when nothing else is available', () => {

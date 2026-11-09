@@ -39,9 +39,6 @@ const RETIRED_SECURE_BYOK_KEYS = [
   'byokCredentialTail',
 ] as const;
 
-// Hatched out of the box, but tucked away — the user has to go through
-// either the entry-view "adopt a pet" callout or Settings → Pets to
-// summon them. Keeps the workspace quiet for first-run users.
 // Completion feedback is useful precisely when a task finishes out of focus,
 // so new installs opt in by default. Explicit saved opt-outs still win through
 // normalizeNotifications' field merge below.
@@ -52,6 +49,7 @@ export const DEFAULT_NOTIFICATIONS: NotificationsConfig = {
   desktopEnabled: true,
 };
 
+// Legacy metadata only. The retired companion can never be re-enabled.
 export const DEFAULT_PET: PetConfig = {
   adopted: false,
   enabled: false,
@@ -563,6 +561,7 @@ function normalizePet(input: Partial<PetConfig> | undefined): PetConfig {
   return {
     ...DEFAULT_PET,
     ...input,
+    enabled: false,
     custom: { ...DEFAULT_PET.custom, ...(input.custom ?? {}) },
   };
 }
@@ -788,7 +787,7 @@ export function loadConfig(): AppConfig {
       merged.baseUrl = resolveFixedOriginBaseUrl(merged.apiProtocol, merged.baseUrl);
     }
 
-    if (migratedConfig || downgradedUnsupportedChatProtocol) {
+    if (migratedConfig || downgradedUnsupportedChatProtocol || parsed.pet?.enabled === true) {
       // Best-effort re-persist of the migrated / downgraded config. A localStorage
       // write failure here (quota exceeded, private-mode storage disabled) must not
       // fall through to the outer catch and discard the valid config we just
@@ -1029,6 +1028,7 @@ function sanitizeAgentCliEnv(agentCliEnv: AppConfig['agentCliEnv']): AppConfig['
 export function saveConfig(config: AppConfig): void {
   const sanitized: AppConfig = {
     ...config,
+    pet: normalizePet(config.pet),
     agentCliEnv: sanitizeAgentCliEnv(config.agentCliEnv),
   };
   for (const key of DAEMON_OWNED_KEYS) {
@@ -1074,7 +1074,7 @@ export function mergeDaemonConfig(
   localConfig: AppConfig,
   daemonConfig: AppConfigPrefs | null,
 ): AppConfig {
-  const next = { ...localConfig };
+  const next = { ...localConfig, pet: normalizePet(localConfig.pet) };
   if (!daemonConfig) return next;
 
   next.onboardingCompleted = ratchetOnboardingCompleted(

@@ -23,8 +23,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: false
   example_prompt: "Generate today's Open Orbit Linear briefing. Linear is my only connected connector — pull yesterday's issue movement, cycle progress, status changes, and assignments and render them in Linear's native Inbox layout."
 ---
 

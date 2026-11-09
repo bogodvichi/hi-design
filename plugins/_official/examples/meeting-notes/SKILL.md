@@ -18,9 +18,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   example_prompt: "Write up notes from a 60-minute Growth squad weekly — agenda, decisions, action items with owners, next meeting."
 ---
 
@@ -30,7 +27,7 @@ Produce a single-screen meeting notes page.
 
 ## Workflow
 
-1. Read DESIGN.md.
+1. Read the supplied template styles and any user-provided brand reference.
 2. Layout:
    - Header: meeting title, date, time, location/Zoom, attendees row.
    - Agenda checklist (4–6 items).

@@ -668,10 +668,10 @@ describe('app-config disabled lists', () => {
     expect(cfg.disabledSkills).toEqual(['skill-a', 'skill-b']);
   });
 
-  it('persists disabledDesignSystems as string array', async () => {
+  it('drops retired disabledDesignSystems preferences', async () => {
     await writeAppConfig(dataDir, { disabledDesignSystems: ['ds-x'] });
     const cfg = await readAppConfig(dataDir);
-    expect(cfg.disabledDesignSystems).toEqual(['ds-x']);
+    expect(cfg.disabledDesignSystems).toBeUndefined();
   });
 
   it('drops disabledSkills when not a string array', async () => {

@@ -1,4 +1,7 @@
-# Codex pets
+# Codex pets (archived)
+
+The in-app pet companion is retired. Its desktop window, settings, polling, download APIs, and bundled pets have been removed. Existing user-owned pet files are preserved. The pet-asset generation template remains independent. The material below describes the historical implementation.
+
 
 The pet companion in the web app can adopt pets packaged by the upstream
 Codex `hatch-pet` skill. This doc explains where those pets live, how

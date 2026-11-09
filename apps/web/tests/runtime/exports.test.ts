@@ -1265,6 +1265,63 @@ describe('sandboxed preview Blob exports', () => {
     expect(wrapper).toContain('od:slide');
   });
 
+  it('adds comment controls without changing the Blob URL opening transport', async () => {
+    openSandboxedPreviewInNewTab(
+      '<main data-comment-target>Review artifact</main>',
+      'Review preview',
+      { selectionBridge: true },
+      {
+        token: 'comment-token',
+        channelName: 'hi-design:new-tab-comments:comment-token',
+        filePath: 'pages/review.html',
+        labels: {
+          comments: 'Comments',
+          comment: 'Comment',
+          placeholder: 'Write a comment',
+          empty: 'No comments',
+          showResolved: 'Show resolved',
+          unresolved: '{n} unresolved',
+          searchPlaceholder: 'Search comments',
+          sortAndFilter: 'Sort and filter',
+          sortNewest: 'Newest first',
+          sortOldest: 'Oldest first',
+          filterOpen: 'Current page only',
+          filterResolved: 'Show resolved',
+          filterMentioned: 'Related to me',
+          nComments: '{n} comments',
+          resolved: 'Resolved',
+          markResolved: 'Resolve',
+          reopen: 'Reopen',
+          deleteComment: 'Delete',
+          deleteReply: 'Delete reply',
+          reply: 'Reply',
+          nReplies: '{n} replies',
+          saved: 'Saved',
+          sending: 'Sending',
+          failed: 'Failed',
+          close: 'Close',
+          cancel: 'Cancel',
+          justNow: 'Just now',
+          minutesAgo: '{n} minutes ago',
+          hoursAgo: '{n} hours ago',
+          daysAgo: '{n} days ago',
+        },
+      },
+    );
+
+    expect(openCalls).toEqual([['blob:test', '_blank']]);
+    expect(openedFeatures).toBe('noopener,noreferrer');
+    expect(capturedBlob).toBeDefined();
+    const wrapper = await capturedBlob!.text();
+    expect(wrapper).toContain('data-od-new-tab-comments');
+    expect(wrapper).toContain('"token":"comment-token"');
+    expect(wrapper).toContain('"channelName":"hi-design:new-tab-comments:comment-token"');
+    expect(wrapper).toContain('"filePath":"pages/review.html"');
+    expect(wrapper).toContain('sandbox="allow-scripts"');
+    expect(wrapper).not.toContain('allow-same-origin');
+    expect(wrapper).toContain('od:comment-target');
+  });
+
   it('can build a print wrapper without granting same-origin access', () => {
     const wrapper = buildSandboxedPreviewDocument('<!doctype html><title>x</title>', 'Print', {
       allowModals: true,

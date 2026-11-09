@@ -97,9 +97,6 @@
           "path": "./SKILL.md"
         }
       ],
-      "designSystem": {
-        "primary": true
-      },
       "assets": [
         "./references/save-html-brief.md"
       ]

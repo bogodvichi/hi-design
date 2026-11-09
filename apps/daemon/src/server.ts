@@ -1,25 +1,21 @@
 // @ts-nocheck
+import { createTeamResourcePollBackoff } from './collab/team-resource-poll-backoff.js';
+import { readSharedTeamResourceListing } from './collab/team-resource-shared-reader.js';
+import { shouldUseHdwHttpResourceTransport } from './collab/hdw-http-team-projects.js';
 import { configureHdwSession, hdwSessionIdentity } from './http/hdw-session.js';
 import { readSsoConfigFile } from './http/hik_logins/hicoo.js';
 import { activeClaudeCompactions } from './runtimes/claude-compact.js';
-import type {
-  DesktopExportArtifactInput,
-  DesktopExportArtifactResult,
-  DesktopExportPdfInput,
-  DesktopExportPdfResult,
-  DesktopRenderSlidesInput,
-  DesktopRenderSlidesResult,
+import {
+  SIDECAR_ENV,
 } from '@open-design/sidecar-proto';
 import express from 'express';
 import multer from 'multer';
-import JSZip from 'jszip';
 import { execFile, spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
-import net from 'node:net';
 import {
   composeOdNextStrategyBundleHeadV2,
   composeOdNextStrategyCorePromptV2,
@@ -34,18 +30,12 @@ import {
   isCommunitySkillSort,
   sortCommunitySkills,
   normalizeSkillCategory,
-} from '@open-design/contracts';
-import { isTodoWriteToolName, stopReasonIsTruncation, todoItemsFromTodoWriteInput } from '@open-design/contracts';
-import type {
-  CollabCloudMemberDirectoryEntry,
-  TeamProject,
-  WorkspaceCollabContext,
-  WorkspaceDirectoryItem,
-} from '@open-design/contracts';
-import {
   detectOdNextDevicePlatformFromText,
+  isTodoWriteToolName,
   resolveOdNextDevicePlatform,
   selectOdNextDeviceFrameContextV2,
+  stopReasonIsTruncation,
+  todoItemsFromTodoWriteInput,
 } from '@open-design/contracts';
 import {
   loadOdNextTaskResourcesForSnapshot,
@@ -69,15 +59,8 @@ import {
 } from './prompts/stable-sections.js';
 import { emittedRenderableQuestionForm } from './question-form-detect.js';
 import { resolveProjectRoot } from './project-root.js';
-import { setRuntimeDataDir } from './ids.js';
-import {
-  getDefaultTeamId,
-  getSharedSpaceMemberId,
-  getTeamMemberId,
-} from './ids.js';
-import { fetchHdwTeams, hdwPut } from './http/hdw.js';
-import { fetchAiResearchMcpToken, fetchHiMindMcpToken } from './http/hdw.js';
-import { fetchSharedSpaceInfo } from './http/hdw.js';
+import { setRuntimeDataDir, getDefaultTeamId, getSharedSpaceMemberId, getTeamMemberId, stripPrefixAndValidateId } from './ids.js';
+import { fetchHdwTeams, hdwPut, fetchAiResearchMcpToken, fetchHiMindMcpToken, fetchSharedSpaceInfo } from './http/hdw.js';
 import { getSsoUser } from './sso-user.js';
 import { OPEN_DESIGN_PLUGIN_ID } from './mcp-observability.js';
 import {
@@ -88,55 +71,35 @@ import {
   resolveDataDir,
   resolveProcessResourcesPath,
 } from './daemon-paths.js';
-export {
-  resolveDaemonCliPath,
-  resolveDaemonPluginPreviewsDir,
-  resolveDaemonResourceRoot,
-  resolveDataDir,
-} from './daemon-paths.js';
 import {
-  isStaticSpaFallbackRequest,
   registerStaticSpaFallback,
   resolveStaticSpaFallbackPath,
 } from './static-spa.js';
-export {
-  isStaticSpaFallbackRequest,
-  resolveStaticSpaFallbackPath,
-} from './static-spa.js';
 import {
   createCompatApiError,
-  createCompatApiErrorResponse,
   sendApiError,
 } from './http/api-errors.js';
 import { withTeamProjectOwnerDisplayNames } from './collab/team-project-owner-names.js';
-export {
-  createCompatApiError,
-  createCompatApiErrorResponse,
-} from './http/api-errors.js';
 import {
   applyBakedPreviews,
-  resolvePluginPreviewsDir,
   PLUGIN_PREVIEWS_ROUTE,
 } from './plugins/plugin-preview-bakes.js';
 import { userFacingAgentLabel } from './user-facing-agent-label.js';
 import {
   buildBrowserUseRunState,
-  collectBrowserUseDiscoveryFacts,
   isBrowserUseRequested,
   renderBrowserUseUnavailablePrompt,
+  openBrowser,
 } from './browser/index.js';
 import {
   UPLOAD_DIR,
   composeChatAgentTextPayload,
-  composeLiveInstructionPrompt,
   formatDesignFilesWorkspaceHint,
   formatProjectAttachmentHint,
   normalizeCommentAttachments,
   renderCommentAttachmentHint,
   resolveChatExtraAllowedDirs,
   describeStablePromptCache,
-  designSystemIdFromPluginSnapshot,
-  resolveEffectiveDesignSystemSelection,
   resolveResearchCommandContract,
   resolveSafeProjectAttachments,
   resolveSafePromptImagePaths,
@@ -170,7 +133,6 @@ import {
 import { buildRunMcpPlan } from './runtimes/run-mcp-plan.js';
 import { decideCodexTransport, resolveCodexTransport } from './runtimes/codex-transport.js';
 import {
-  daemonAgentPayloadToPersistedAgentEvent,
   persistRunEventToAssistantMessage,
   flushRunMessageEvents,
   finalizeRunMessageEvents,
@@ -181,67 +143,14 @@ import {
   createRunSideEffectLedger,
   foldEventIntoRunSideEffectLedger,
   resolveRunProjectKindForAnalytics,
-  retryFinalResultForRunStatus,
   runArtifactCountForRun,
   runDesignSystemCreatedForRun,
   runFilesWrittenForRun,
   runPreviewModuleCountForRun,
   runRetryEventsForAnalytics,
   runSideEffectsForRun,
-  scanRunEventsForFinishedProps,
-  scanRunEventsForRetrySideEffects,
 } from './runtimes/run-lifecycle-analytics.js';
-export {
-  composeChatAgentTextPayload,
-  composeLiveInstructionPrompt,
-  formatDesignFilesWorkspaceHint,
-  formatProjectAttachmentHint,
-  normalizeCommentAttachments,
-  renderCommentAttachmentHint,
-  resolveChatExtraAllowedDirs,
-  describeStablePromptCache,
-  designSystemIdFromPluginSnapshot,
-  resolveEffectiveDesignSystemSelection,
-  resolveResearchCommandContract,
-  resolveSafeProjectAttachments,
-  resolveSafePromptImagePaths,
-  excludeAcpImagePathsAlreadyDeliveredAsResources,
-  selectPromptImagePaths,
-} from './runtimes/chat-prompt-inputs.js';
-export {
-  applyClaudeStreamJsonRunBookkeeping,
-  assertValidRuntimeDefFirstOutputTimeoutMs,
-  assertValidRuntimeDefInactivityTimeoutMs,
-  bufferedAntigravityGeminiFirstTokenAt,
-  classifyChatRunCloseStatus,
-  looksLikeGeminiJsonEventStream,
-  resolveAcpStageTimeoutMs,
-  resolveActiveInactivityTimeoutMs,
-  resolveChatRunArtifactQuietPeriodMs,
-  resolveChatRunFirstOutputTimeoutMs,
-  resolveChatRunInactivityTimeoutMs,
-  runtimeEmissionCountsAsAgentProgress,
-} from './runtimes/chat-run-lifecycle.js';
-export {
-  renderRunContextPrompt,
-  renderSelectedMcpRunContextPrompt,
-} from './runtimes/chat-run-context.js';
-export {
-  daemonAgentPayloadToPersistedAgentEvent,
-  persistRunEventToAssistantMessage,
-  pinAssistantMessageOnRunCreate,
-} from './runtimes/chat-run-messages.js';
-export {
-  resolveRunProjectKindForAnalytics as __forTestResolveRunProjectKindForAnalytics,
-  retryFinalResultForRunStatus as __forTestRetryFinalResultForRunStatus,
-  runRetryEventsForAnalytics as __forTestRunRetryEventsForAnalytics,
-  scanRunEventsForFinishedProps as __forTestScanRunEventsForFinishedProps,
-  scanRunEventsForRetrySideEffects as __forTestScanRunEventsForRetrySideEffects,
-} from './runtimes/run-lifecycle-analytics.js';
-
-export { resolveProjectRoot };
 import { createCommandInvocation } from '@open-design/platform';
-import { SIDECAR_ENV } from '@open-design/sidecar-proto';
 import {
   buildLiveArtifactsMcpServersForAgent,
   checkPromptArgvBudget,
@@ -253,7 +162,6 @@ import {
   isKnownReasoningEffort,
   isKnownServiceTier,
   openDesignAmrRunAttempt,
-  openDesignAmrTraceEnv,
   applyAgentLaunchEnv,
   resolveAgentLaunch,
   sanitizeCustomModel,
@@ -284,8 +192,9 @@ import {
 import {
   readVelaLoginStatus,
   resolveAmrProfile,
+  readVelaControlApiContext,
 } from './integrations/vela.js';
-import { projectResourceIdFor, type VelaTeamProjectRecord } from './integrations/vela-team-projects.js';
+import { projectResourceIdFor } from './integrations/vela-team-projects.js';
 import {
   getTeamProjectMaterialization,
   latestTeamProjectMaterializationVersion,
@@ -304,38 +213,24 @@ import {
   fetchVelaRemoteModelsWithRetry,
 } from './runtimes/defs/amr.js';
 import { migrateLegacyDataDirSync } from './migration/index.js';
-import { autoImportInstalledProjects } from './migration/auto-import-installed.js';
-import { enqueuePendingCoverTasks, drainPendingCoverTasks } from './migration/auto-import-installed.js';
+import { autoImportInstalledProjects, drainPendingCoverTasks, enqueuePendingCoverTasks } from './migration/auto-import-installed.js';
 import {
   consumedImportNonces,
   getDesktopAuthSecret,
   isDesktopAuthGateActive,
-  isDesktopAuthRegistered,
   pruneExpiredImportNonces,
-  resetDesktopAuthForTests,
-  setDesktopAuthSecret,
-  signDesktopImportToken,
   verifyDesktopImportToken,
 } from './desktop-auth.js';
 import { normalizeDaemonBindHost } from './daemon-startup.js';
-export {
-  isDesktopAuthGateActive,
-  isDesktopAuthRegistered,
-  resetDesktopAuthForTests,
-  setDesktopAuthSecret,
-  signDesktopImportToken,
-  verifyDesktopImportToken,
-} from './desktop-auth.js';
 import { readCurrentAppVersionInfo } from './app-version.js';
 import {
   findSkillById,
   listSkills,
   resolveSkillId,
-  splitDerivedSkillId,
 } from './skills.js';
 import { resolveSkillCatalogScope } from './skill-catalog-scope.js';
 import { listCloudResourceRecords } from './collab/cloud-resource-catalog.js';
-import { isCommunityPublicationCopy, canInstallCloudResource, unpublishCommunityResource, updateCommunityPublication, SourceSkillSnapshotUnavailableError } from './collab/community-resource-copy.js';
+import { canInstallCloudResource, unpublishCommunityResource, updateCommunityPublication, SourceSkillSnapshotUnavailableError } from './collab/community-resource-copy.js';
 import {
   prepareSkillFromZip,
   prepareSkillFromFiles,
@@ -352,7 +247,7 @@ import {
 } from './skills/workspace-team-binding.js';
 import { uninstallCloudSkillFromWorkspace } from './skills/cloud-uninstall.js';
 import { validateLinkedDirs } from './linked-dirs.js';
-import { installFromTarget, uninstallById, sanitizeRepoName } from './library-install.js';
+import { uninstallById } from './library-install.js';
 import {
   buildWindowsFolderDialogCommand,
   parseFolderDialogStdout,
@@ -364,7 +259,7 @@ import {
   createPluginAssetCache,
   isCacheableExternalUrl,
 } from './plugins/plugin-asset-cache.js';
-import { defaultMediaExecutionPolicy, parseMediaExecutionPolicyInput } from './media/policy.js';
+import { defaultMediaExecutionPolicy } from './media/policy.js';
 import {
   applySandboxRuntimeEnv,
   ensureSandboxRuntimeDirs,
@@ -372,55 +267,12 @@ import {
   resolveSandboxRuntimeConfig,
 } from './sandbox-mode.js';
 import {
-  backfillDesignSystemWorkspaceResources,
-  buildUserDesignSystemArchive,
-  createUserDesignSystem,
-  deleteUserDesignSystem,
-  digestDesignSystemContext,
-  isTeamSyncedUserDesignSystem,
-  LEGACY_DESIGN_SYSTEM_ARTIFACTS,
-  linkUserDesignSystemProject,
-  listDesignSystems,
-  listUserDesignSystemFiles,
-  listUserDesignSystemRevisions,
-  readDesignSystem,
-  readDesignSystemPackageInfo,
-  readDesignSystemStaticFile,
-  readUserDesignSystemFile,
-  readUserDesignSystemFileBytes,
-  resolveDesignSystemAssets,
-  stripPrefixAndValidateId,
-  syncUserDesignSystemAssetsFromFiles,
-  updateUserDesignSystem,
-  updateUserDesignSystemRevisionStatus,
-  type UserDesignSystemInput,
-} from './design-systems/index.js';
-import {
-  createWorkspaceOwnedDesignSystem as persistWorkspaceOwnedDesignSystem,
-  deleteWorkspaceOwnedDesignSystem as removeWorkspaceOwnedDesignSystem,
-} from './design-systems/workspace-owned-create.js';
-import { createDesignSystemGenerationJobStore } from './design-systems/generation-jobs.js';
-import { createDesignSystemServerServices } from './design-systems/server-services.js';
-import {
-  designSystemIdFromWorkspaceTeamBinding,
-  designSystemLogicalResourceId,
-  workspaceTeamDesignSystemBindingResourceId,
-} from './design-systems/workspace-team-binding.js';
-import { ownedDesignSystemSourceIsReady } from './design-systems/team-owner-materialization.js';
-import {
-  createDesignSystemBackingProjectPreparer,
-  createLinkedProjectTeamResourceShareService,
-} from './design-systems/team-project-share.js';
-import { prepareDesignTokenContractRebuild } from './design-systems/token-contract-rebuild.js';
-import { registerBrandRoutes } from './brand-routes.js';
-import {
   authorizeCreatedProjectWorkspace,
   bindCreatedProjectToWorkspace,
   createCreatedProjectWorkspaceResolver,
   sendCreatedProjectWorkspaceError,
 } from './collab/created-project-workspace.js';
 import {
-  applyDiffReviewDecisionToCwd,
   applyPlugin,
   buildConnectorProbe,
   defaultBundledRoot,
@@ -432,17 +284,16 @@ import {
   getSnapshot,
   installFromLocalFolder,
   installPlugin,
-  isDiffReviewSurfaceId,
   listSkillPluginCandidates,
   listInstalledPlugins,
-  listIterationsForRun,
   MissingInputError,
   pluginPromptBlock,
   pruneExpiredSnapshots,
   readPluginLockfile,
   readVerifiedProjectExampleBinding,
   registerBuiltInAtomWorkers,
-  registerBundledPlugins,
+  configureLazyBundledPlugins,
+  pluginVisibleFromWorkspace,
   registryRootsForDataDir,
   resolveLocalPluginBySource,
   restoreProjectSnapshotLink,
@@ -470,13 +321,10 @@ import {
 import {
   composeMemoryBody,
   extractFromMessage,
-  listActiveRuleEntries,
   readMemoryConfig,
 } from './memory.js';
 import { runAutoExtractionCleanup } from './memory-cleanup.js';
-import { attachAcpSession } from './agent-protocol/index.js';
-import { attachPiRpcSession } from './agent-protocol/index.js';
-import { attachDshProfileSession } from './agent-protocol/index.js';
+import { attachAcpSession, attachDshProfileSession, attachPiRpcSession } from './agent-protocol/index.js';
 import { stageAmrImagePaths } from './media/amr-image-staging.js';
 import { ingestRoutineConnectorEvolution } from './automation-routine-evolution.js';
 import { createClaudeStreamHandler } from './runtimes/claude-stream.js';
@@ -536,8 +384,6 @@ import { createAgentStderrVisibilityFilter } from './amr-stderr-filter.js';
 import { createQoderStreamHandler } from './runtimes/qoder-stream.js';
 import { subscribe as subscribeFileEvents } from './project-watchers.js';
 import { importFigmaFromBytes } from './figma/figma-import.js';
-import { renderDesignSystemPreview } from './design-systems/preview.js';
-import { renderDesignSystemShowcase } from './design-systems/showcase.js';
 import { createChatRunService } from './runtimes/runs.js';
 import { createInternalRunCreationService } from './services/internal-run-service.js';
 import {
@@ -587,7 +433,6 @@ import {
   decideSafeRunRetry,
 } from './run-retry-policy.js';
 import {
-  amrUserIdForRunAnalytics,
   scanRunEventsForUsageAnalytics,
 } from './run-analytics-observability.js';
 import {
@@ -633,14 +478,7 @@ import {
   validateBaseUrlResolved,
 } from './connectionTest.js';
 import { listProviderModels } from './integrations/provider-models.js';
-import { importClaudeDesignZip } from './design/index.js';
-import {
-  defaultBaseUrlForFinalizeProtocol,
-  finalizeDesignPackage,
-  FinalizePackageLockedError,
-  FinalizeUpstreamError,
-  isFinalizeProviderProtocol,
-} from './design/index.js';
+import { importClaudeDesignZip, defaultBaseUrlForFinalizeProtocol, EmptyTranscriptError, finalizeDesignPackage, FinalizePackageLockedError, FinalizeUpstreamError, isFinalizeProviderProtocol, synthesizeHandoffPrompt } from './design/index.js';
 import { buildDocumentPreview } from './document-preview.js';
 import { lintArtifact, renderFindingsForAgent } from './lint-artifact.js';
 import { loadCraftSections, resolveCraftRequirements } from './craft.js';
@@ -650,7 +488,6 @@ import { generateMedia } from './media/index.js';
 import { resolveHyperFramesCliPath } from './media/hyperframes-runtime.js';
 import { listElevenLabsVoiceOptions } from './integrations/elevenlabs-voices.js';
 import { searchResearch, ResearchError } from './research/index.js';
-import { openBrowser } from './browser/index.js';
 import {
   AUDIO_DURATIONS_SEC,
   AUDIO_MODELS_BY_KIND,
@@ -668,13 +505,11 @@ import {
 } from './media/tasks.js';
 import { TASK_TTL_AFTER_DONE_MS, createMediaTaskStore } from './media/task-store.js';
 import {
-  MCP_TEMPLATES,
   buildAcpMcpServers,
   buildClaudeMcpJson,
   buildOpenCodeMcpConfigContent,
   isManagedProjectCwd,
   readMcpConfig,
-  writeMcpConfig,
 } from './mcp-config.js';
 import {
   readProjectManagedMcpBridgeServerIds,
@@ -691,14 +526,10 @@ import {
   resolveExternalMcpServersForRun,
 } from './run-tool-bundle.js';
 import {
-  beginAuth,
-  exchangeCodeForToken,
   PendingAuthCache,
   refreshAccessToken,
 } from './mcp-oauth.js';
 import {
-  clearToken,
-  getToken,
   isTokenExpired,
   readAllTokens,
   setToken,
@@ -714,10 +545,7 @@ import { OrbitService, formatLocalProjectTimestamp, renderOrbitTemplateSystemPro
 import { buildOrbitNoLiveArtifactSummary } from './orbit-agent-summary.js';
 import {
   RoutineService,
-  validateSchedule as validateRoutineSchedule,
-  validateTarget as validateRoutineTarget,
 } from './routines.js';
-import { buildMcpInstallPayload } from './mcp-install-info.js';
 import { createDiagnosticsExportHandler } from './diagnostics-export.js';
 import { DIAGNOSTICS_EXPORT_PATH } from '@open-design/diagnostics';
 import {
@@ -752,7 +580,6 @@ import {
   reconcileHtmlArtifactManifest,
 } from './projects.js';
 import { validateArtifactManifestInput } from './artifacts/manifest.js';
-import { ArtifactPublicationBlockedError } from './artifacts/publication-guard.js';
 import {
   appendMessageStatusEvent,
   confirmPreviewCommentPinSeq,
@@ -784,7 +611,6 @@ import {
   getWorkspaceResourceByResourceId,
   insertConversation,
   insertProject,
-  insertRoutine,
   insertRoutineRun,
   insertScheduledRoutineRun,
   insertTemplate,
@@ -806,14 +632,11 @@ import {
   listWorkspaceProjects,
   listWorkspaceResources,
   listRoutines,
-  listRoutineRuns,
   listTabs,
   listTemplates,
   getLatestRoutineRun,
-  getRoutine,
   mergeSyncedPreviewComment,
   normalizeConversationSessionMode,
-  deleteRoutine as dbDeleteRoutine,
   openDatabase,
   reorderPreviewComment,
   repairTeamProjectCommentAnchorConversations,
@@ -827,7 +650,6 @@ import {
   setWorkspaceProjectMetadataRefreshPending,
   updateWorkspaceResource,
   rebindWorkspaceProject,
-  updateRoutine,
   updateRoutineRun,
   clearAgentSession,
   upsertAgentSession,
@@ -876,7 +698,6 @@ import { registerHikUedroRoutes } from './routes/hik/_routes/uedro.js';
 import { registerHikHikkeRoutes } from './routes/hik/_routes/hikke.js';
 import { registerHdwRoutes } from './routes/hik/_routes/hdw.js';
 import { registerGenuiRoutes } from './routes/genui.js';
-import { registerDesignSystemRoutes } from './routes/design-systems.js';
 import { registerHostToolsRoutes } from './routes/host-tools.js';
 import { registerPluginAssetRoutes } from './routes/plugins/assets.js';
 import { registerPluginMarketplaceRoutes } from './routes/plugins/marketplaces.js';
@@ -884,7 +705,6 @@ import { registerPluginEventRoutes, registerPluginRoutes, registerProjectPluginR
 import { registerMcpRoutes } from './mcp-routes.js';
 import { registerXaiRoutes } from './routes/xai.js';
 import { registerLiveArtifactRoutes } from './routes/live-artifact.js';
-import { registerDesignSystemToolRoutes } from './routes/design-system-tool.js';
 import { registerAiResearchMcpRoutes, registerHiMindMcpRoutes } from './routes/himind-mcp.js';
 import { registerDeployRoutes, registerDeploymentCheckRoutes } from './routes/deploy.js';
 import { registerMediaRoutes } from './routes/media.js';
@@ -894,7 +714,6 @@ import { registerVela2HideSignRoutes } from './routes/vela-hidesign.js';
 import { registerCollabContextHideSignRoutes } from './routes/collab-context-hidesign.js';
 import { registerFinalizeRoutes, registerImportRoutes, registerProjectExportRoutes } from './import-export-routes.js';
 import { registerHandoffRoutes } from './routes/handoff.js';
-import { EmptyTranscriptError, synthesizeHandoffPrompt } from './design/index.js';
 import { TranscriptExportLockedError } from './transcript-export.js';
 import { registerChatRoutes } from './routes/chat.js';
 import { registerRunRoutes } from './routes/runs.js';
@@ -929,9 +748,7 @@ import {
   createActiveWorkspaceSelectionStore,
 } from './collab/active-workspace-selection.js';
 import {
-  headerValue,
   resolveOptionalLocalWorkspaceRequestAuthority,
-  workspaceResourceContext,
   workspaceResourceContextFromRequest,
 } from './collab/workspace-resource-mutation.js';
 import {
@@ -941,9 +758,7 @@ import { withLastKnownWorkspaceContext } from './collab/workspace-context.js';
 import {
   createWorkspaceTypeRegistry,
   impossibleTeamShareRows,
-  projectCollabScope,
 } from './collab/team-share-scope.js';
-import { resolveWorkspaceScope } from './collab/workspace-scope.js';
 import {
   AmrWorkspaceScopeRequiredError,
   openDesignAmrTraceEnvForRun,
@@ -1021,7 +836,6 @@ import {
   createRememberedTeamResourceScopes,
   type RememberedTeamResourceScopeLease,
 } from './collab/remembered-team-resource-scopes.js';
-import { readVelaControlApiContext } from './integrations/vela.js';
 import {
   fetchBillingCheckoutUrl,
   fetchVelaBillingCatalog,
@@ -1044,7 +858,6 @@ import {
   createTeamResourceShareService,
   teamResourceRequestScopeFromContext,
   teamResourceRequestScopeForWorkspaceId,
-  unshareIfCurrentlyShared,
   type TeamResourceRequestScope,
   type TeamResourceShareRecord,
   type TeamResourceSharedReadOptions,
@@ -1111,9 +924,7 @@ import {
   assembleExample,
   registerAtomRoutes,
   registerStaticResourceRoutes,
-  rewriteSkillAssetUrls,
 } from './routes/static-resource.js';
-export { rewriteSkillAssetUrls } from './routes/static-resource.js';
 import { registerRoutineRoutes, routineDbRowToContract } from './routes/routine.js';
 import {
   bindProjectToPersistedAutomationWorkspace,
@@ -1176,7 +987,6 @@ import {
   apiTokenAuthorizationMatches,
   apiTokenFromEnv,
   isApiAuthDisabled,
-  isApiTokenMiddlewareEnabled,
 } from './api-token-auth.js';
 import { createOpenDesignPublicMetadataService } from './services/open-design-public-metadata.js';
 import { createWhatsNewService } from './services/whats-new.js';
@@ -1190,7 +1000,6 @@ import {
   USER_PLUGIN_SOURCE_KINDS,
   copyPluginFolderForProjectContext,
   detectSkillPluginCandidateOnRunSuccess,
-  ensureGhReady,
   githubRepoNameFromPluginName,
   hasGeneratedPluginArtifacts,
   isPluginAuthoringRun,
@@ -1205,8 +1014,79 @@ import {
   isLoopbackPeerAddress,
   requireLocalDaemonRequest,
 } from './http/local-daemon-request.js';
-import { renderOAuthResultPage } from './http/oauth-result-page.js';
 import { bearerTokenFromRequest, createToolRequestAuth } from './http/tool-request-auth.js';
+import { createSkillServerServices } from './skills/server-services.js';
+import type { DesktopExportArtifactInput, DesktopExportArtifactResult, DesktopExportPdfInput, DesktopExportPdfResult, DesktopRenderSlidesInput, DesktopRenderSlidesResult } from '@open-design/sidecar-proto';
+import type { CollabCloudMemberDirectoryEntry, TeamProject, WorkspaceCollabContext, WorkspaceDirectoryItem } from '@open-design/contracts';
+import type { VelaTeamProjectRecord } from './integrations/vela-team-projects.js';
+import type { UserDesignSystemInput } from './design-systems/index.js';
+export {
+resolveDaemonCliPath,
+resolveDaemonPluginPreviewsDir,
+resolveDaemonResourceRoot,
+resolveDataDir
+} from './daemon-paths.js';
+export {
+createCompatApiError,
+createCompatApiErrorResponse
+} from './http/api-errors.js';
+export {
+composeChatAgentTextPayload,
+composeLiveInstructionPrompt,describeStablePromptCache,
+designSystemIdFromPluginSnapshot,excludeAcpImagePathsAlreadyDeliveredAsResources,formatDesignFilesWorkspaceHint,
+formatProjectAttachmentHint,
+normalizeCommentAttachments,
+renderCommentAttachmentHint,
+resolveChatExtraAllowedDirs,resolveEffectiveDesignSystemSelection,
+resolveResearchCommandContract,
+resolveSafeProjectAttachments,
+resolveSafePromptImagePaths,selectPromptImagePaths
+} from './runtimes/chat-prompt-inputs.js';
+export {
+renderRunContextPrompt,
+renderSelectedMcpRunContextPrompt
+} from './runtimes/chat-run-context.js';
+export {
+applyClaudeStreamJsonRunBookkeeping,
+assertValidRuntimeDefFirstOutputTimeoutMs,
+assertValidRuntimeDefInactivityTimeoutMs,
+bufferedAntigravityGeminiFirstTokenAt,
+classifyChatRunCloseStatus,
+looksLikeGeminiJsonEventStream,
+resolveAcpStageTimeoutMs,
+resolveActiveInactivityTimeoutMs,
+resolveChatRunArtifactQuietPeriodMs,
+resolveChatRunFirstOutputTimeoutMs,
+resolveChatRunInactivityTimeoutMs,
+runtimeEmissionCountsAsAgentProgress
+} from './runtimes/chat-run-lifecycle.js';
+export {
+daemonAgentPayloadToPersistedAgentEvent,
+persistRunEventToAssistantMessage,
+pinAssistantMessageOnRunCreate
+} from './runtimes/chat-run-messages.js';
+export {
+resolveRunProjectKindForAnalytics as __forTestResolveRunProjectKindForAnalytics,
+retryFinalResultForRunStatus as __forTestRetryFinalResultForRunStatus,
+runRetryEventsForAnalytics as __forTestRunRetryEventsForAnalytics,
+scanRunEventsForFinishedProps as __forTestScanRunEventsForFinishedProps,
+scanRunEventsForRetrySideEffects as __forTestScanRunEventsForRetrySideEffects
+} from './runtimes/run-lifecycle-analytics.js';
+export {
+isStaticSpaFallbackRequest,
+resolveStaticSpaFallbackPath
+} from './static-spa.js';
+
+export { resolveProjectRoot };
+export {
+isDesktopAuthGateActive,
+isDesktopAuthRegistered,
+resetDesktopAuthForTests,
+setDesktopAuthSecret,
+signDesktopImportToken,
+verifyDesktopImportToken
+} from './desktop-auth.js';
+export { rewriteSkillAssetUrls } from './routes/static-resource.js';
 
 /** @typedef {import('@open-design/contracts').ApiErrorCode} ApiErrorCode */
 /** @typedef {import('@open-design/contracts').ApiError} ApiError */
@@ -1292,22 +1172,13 @@ const CRAFT_DIR = resolveDaemonResourceDir(
   'craft',
   path.join(PROJECT_ROOT, 'craft'),
 );
-// User-installed skills and design systems live under the runtime data dir
+// User-installed skills live under the runtime data dir
 // so they respect OD_DATA_DIR overrides (test isolation, packaged runs).
 // Defined after RUNTIME_DATA_DIR is resolved below.
 const FRAMES_DIR = resolveDaemonResourceDir(
   DAEMON_RESOURCE_ROOT,
   'frames',
   path.join(PROJECT_ROOT, 'assets', 'frames'),
-);
-// Curated pets baked into the repo via `scripts/bake-community-pets.ts`.
-// `listCodexPets` scans this in addition to `~/.codex/pets/` so the
-// "Recently hatched" grid is non-empty out-of-the-box and users do not
-// need to hit the "Download community pets" button to try a few pets.
-const BUNDLED_PETS_DIR = resolveDaemonResourceDir(
-  DAEMON_RESOURCE_ROOT,
-  'community-pets',
-  path.join(PROJECT_ROOT, 'assets', 'community-pets'),
 );
 const PROMPT_TEMPLATES_DIR = resolveDaemonResourceDir(
   DAEMON_RESOURCE_ROOT,
@@ -1413,14 +1284,12 @@ const ALL_SKILL_LIKE_ROOTS = [
 // daemon data directory contract.
 const LIBRARY_DIR = path.join(RUNTIME_DATA_DIR, 'library');
 fs.mkdirSync(PROJECTS_DIR, { recursive: true });
-for (const dir of [USER_SKILLS_DIR, USER_DESIGN_SYSTEMS_DIR, BRANDS_DIR, USER_DESIGN_TEMPLATES_DIR, PLUGIN_REGISTRY_ROOTS.userPluginsRoot, LIBRARY_DIR]) {
+for (const dir of [USER_SKILLS_DIR, USER_DESIGN_TEMPLATES_DIR, PLUGIN_REGISTRY_ROOTS.userPluginsRoot, LIBRARY_DIR]) {
   fs.mkdirSync(dir, { recursive: true });
 }
 fs.mkdirSync(CRITIQUE_ARTIFACTS_DIR, { recursive: true });
 const orbitService = new OrbitService(RUNTIME_DATA_DIR);
-const designSystemGenerationJobs = createDesignSystemGenerationJobStore({
-  root: USER_DESIGN_SYSTEMS_DIR,
-});
+
 let routineService = null;
 
 // In-memory OAuth state cache. Lives for the daemon process's lifetime.
@@ -2973,7 +2842,6 @@ export async function startServer({
   // the web read out of the in-app browser tab after the user cleared an anti-bot
   // wall — well past 4mb for image/markup-heavy sites. Give it a dedicated limit
   // (registered before the global parser so it claims the body first).
-  app.use('/api/brands/:id/extract-from-html', express.json({ limit: '32mb' }));
   // Initial imports and full-source edits can include bundled scripts and images.
   // Keep the larger body allowance on the exact file upload/save endpoint.
   app.use(/^\/api\/projects\/[^/]+\/files\/?$/u, express.json({ limit: '32mb' }));
@@ -3056,80 +2924,12 @@ export async function startServer({
     });
   }
 
-  const designSystemServices = createDesignSystemServerServices({
-    // `db` (below) is not initialized yet at this point in `startServer` —
-    // pass a getter so `listAllSkills`'s workspace filter reads it lazily,
-    // once the first request that needs it actually arrives.
+  const { listAllSkills, listAllDesignTemplates, listAllSkillLikeEntries, validateProjectSkillId } = createSkillServerServices({
     getDb: () => db,
     roots: { SKILL_ROOTS, DESIGN_TEMPLATE_ROOTS, ALL_SKILL_LIKE_ROOTS },
-    paths: { PROJECTS_DIR, DESIGN_SYSTEMS_DIR, USER_DESIGN_SYSTEMS_DIR },
     skills: { listSkills, findSkillById },
-    designSystems: {
-      listDesignSystems,
-      readDesignSystem,
-      readDesignSystemPackageInfo,
-      readDesignSystemStaticFile,
-      listUserDesignSystemFiles,
-      readUserDesignSystemFile,
-      readUserDesignSystemFileBytes,
-      linkUserDesignSystemProject,
-      syncUserDesignSystemAssetsFromFiles,
-      LEGACY_DESIGN_SYSTEM_ARTIFACTS,
-    },
-    projects: {
-      getProject,
-      insertProject,
-      updateProject,
-      readProjectFile,
-      writeProjectFile,
-      listFiles,
-      resolveProjectDir,
-      isSafeId,
-    },
-    bindProjectToWorkspace: (projectId, createdAt, designSystem) => {
-      const workspaceId = designSystem.workspaceId?.trim();
-      if (!workspaceId) return;
-      const binding = getWorkspaceResource(
-        db,
-        'design_system',
-        workspaceId,
-        designSystem.teamSynced === true
-          ? workspaceTeamDesignSystemBindingResourceId(workspaceId, designSystem.id)
-          : designSystem.id,
-      );
-      const memberId = binding?.createdByWorkspaceMemberId?.trim();
-      if (!memberId) return;
-      ensureWorkspaceProject(db, {
-        projectId,
-        workspaceId,
-        visibility: designSystem.teamSynced === true ? 'team' : 'personal',
-        resourceState: 'active',
-        createdByWorkspaceMemberId: memberId,
-        updatedByWorkspaceMemberId: memberId,
-        syncState: 'local_only',
-        resourceHubResourceId: null,
-        cloudTombstonedAt: null,
-        createdAt,
-        updatedAt: createdAt,
-      });
-    },
   });
-  const {
-    ensureUserDesignSystemWorkspaceProject,
-    isProjectUsableDesignSystem,
-    listAllDesignSystems,
-    listAllDesignTemplates,
-    listAllSkillLikeEntries,
-    listAllSkills,
-    readAvailableDesignSystem,
-    readAvailableDesignSystemPackageInfo,
-    readAvailableDesignSystemStaticFile,
-    readDesignSystemWorkspaceTextFile,
-    resolveUserDesignSystemShareDirectory,
-    syncUserDesignSystemAssetsFromWorkspace,
-    validateProjectDesignSystemId,
-    validateProjectSkillId,
-  } = designSystemServices;
+  const validateProjectDesignSystemId = async () => ({ ok: true, id: null });
 
   // Chrome may strip the port from the Origin header on same-origin GET
   // requests. Only use this as a fallback for safe, idempotent GET requests;
@@ -3154,7 +2954,7 @@ export async function startServer({
   // Routes that serve content to sandboxed iframes (Origin: null) for
   // read-only purposes.  All other /api routes reject Origin: null.
   const _NULL_ORIGIN_SAFE_GET_RE =
-    /^\/projects\/[^/]+\/(?:raw|preview)\/|^\/codex-pets\/[^/]+\/spritesheet$|^\/asset-cache$/;
+    /^\/projects\/[^/]+\/(?:raw|preview)\/|^\/asset-cache$/;
   const _POWERED_PREVIEW_SAFE_RE = /^\/projects\/[^/]+\/powered\/.+$/u;
 
   // Reject cross-origin requests to API endpoints.
@@ -3341,23 +3141,19 @@ export async function startServer({
   }
 
   let bundledMarketplaceEntries = [];
-  // Plan §3.I3 / spec §23.3.5 — register every plugin under
-  // <resourceRoot>/plugins/_official/** in packaged runs, or
-  // <projectRoot>/plugins/_official/** in workspace runs, as bundled plugins. The walker
-  // is idempotent (upserts on every boot) so a daemon upgrade rotates
-  // the bundled set in lockstep with the code. ENOENT is silent —
-  // running the daemon outside the dev tree just skips this step.
-  try {
-    const result = await registerBundledPlugins({
-      db,
-      bundledRoot: BUNDLED_PLUGINS_DIR,
-      marketplaceProvenance: {
-        sourceMarketplaceId: OFFICIAL_MARKETPLACE_ID,
-        marketplaceTrust:    'official',
-        entryNamePrefix:     'open-design',
-      },
-    });
-    bundledMarketplaceEntries = result.registered.map((plugin) => ({
+  configureLazyBundledPlugins({
+    db,
+    bundledRoot: BUNDLED_PLUGINS_DIR,
+    marketplaceProvenance: {
+      sourceMarketplaceId: OFFICIAL_MARKETPLACE_ID,
+      marketplaceTrust: 'official',
+      entryNamePrefix: 'open-design',
+    },
+  });
+  let bundledMarketplaceReady: Promise<void> | undefined;
+  const seedBundledMarketplaces = async () => {
+    const bundled = listInstalledPlugins(db).filter((plugin) => plugin.sourceKind === 'bundled');
+    bundledMarketplaceEntries = bundled.map((plugin) => ({
       name:        `open-design/${plugin.id}`,
       title:       plugin.title,
       title_i18n:  plugin.manifest.title_i18n,
@@ -3373,75 +3169,71 @@ export async function startServer({
         ? plugin.manifest.od.capabilities
         : undefined,
     }));
-    if (result.registered.length > 0) {
-      console.log(`[plugins] registered ${result.registered.length} bundled plugin(s)`);
-    }
-    if (result.warnings.length > 0) {
-      for (const w of result.warnings) console.warn(`[plugins] bundled warn: ${w}`);
-    }
-  } catch (err) {
-    console.warn(`[plugins] bundled registration failed: ${(err)?.message ?? err}`);
-  }
-
-  try {
-    const seedDirs = await fs.promises.readdir(PLUGIN_REGISTRY_DIR, { withFileTypes: true }).catch((err) => {
-      if (err?.code === 'ENOENT') return [];
-      throw err;
-    });
-    const { ensureMarketplaceManifest } = await import('./plugins/marketplaces.js');
-    for (const dirent of seedDirs) {
-      if (!dirent.isDirectory()) continue;
-      const id = dirent.name;
-      const manifestText = await marketplaceSeedManifestText(id, bundledMarketplaceEntries);
-      if (!manifestText) continue;
-      const configured = defaultMarketplaceSeedConfig(id);
-      const result = ensureMarketplaceManifest(db, {
-        id,
-        url: configured.url,
-        trust: configured.trust,
-        manifestText,
+    try {
+      const seedDirs = await fs.promises.readdir(PLUGIN_REGISTRY_DIR, { withFileTypes: true }).catch((err) => {
+        if (err?.code === 'ENOENT') return [];
+        throw err;
       });
-      if (result.ok) {
-        console.log(`[plugins] seeded ${id} registry source (${result.row.manifest.plugins.length} plugin(s))`);
-      } else {
-        console.warn(`[plugins] ${id} registry seed failed: ${result.message}`);
+      const { ensureMarketplaceManifest } = await import('./plugins/marketplaces.js');
+      for (const dirent of seedDirs) {
+        if (!dirent.isDirectory()) continue;
+        const id = dirent.name;
+        const manifestText = await marketplaceSeedManifestText(id, bundledMarketplaceEntries);
+        if (!manifestText) continue;
+        const configured = defaultMarketplaceSeedConfig(id);
+        const result = ensureMarketplaceManifest(db, {
+          id,
+          url: configured.url,
+          trust: configured.trust,
+          manifestText,
+        });
+        if (result.ok) {
+          console.log(`[plugins] seeded ${id} registry source (${result.row.manifest.plugins.length} plugin(s))`);
+        } else {
+          console.warn(`[plugins] ${id} registry seed failed: ${result.message}`);
+        }
       }
+    } catch (err) {
+      console.warn(`[plugins] registry seed failed: ${(err)?.message ?? err}`);
     }
- } catch (err) {
-   console.warn(`[plugins] registry seed failed: ${(err)?.message ?? err}`);
- }
+  };
+  app.use('/api/marketplaces', (_req, _res, next) => {
+    bundledMarketplaceReady ??= seedBundledMarketplaces();
+    void bundledMarketplaceReady.then(() => next(), next);
+  });
 
-  // HDW community marketplace auto-seed. Fetches the manifest from the
-  // HDW backend and upserts it as a trusted marketplace row. SSO cookies
-  // are attached when available but not required. Silent no-op when HDW
-  // is unreachable (e.g. dev without VPN) — the SquareView "项目" tab
-  // just stays empty.
-  try {
-    const {
-      HDW_MARKETPLACE_ID,
-      HDW_MARKETPLACE_URL,
-      fetchHdwMarketplaceManifestText,
-    } = await import('./http/hdw.js');
-    const { ensureMarketplaceManifest } = await import('./plugins/marketplaces.js');
-    const manifestText = await fetchHdwMarketplaceManifestText(HDW_MARKETPLACE_URL, RUNTIME_DATA_DIR);
-    if (manifestText) {
-      const result = ensureMarketplaceManifest(db, {
-        id: HDW_MARKETPLACE_ID,
-        url: HDW_MARKETPLACE_URL,
-        trust: 'trusted',
-        manifestText,
-      });
-      if (result.ok) {
-        console.log(`[plugins] seeded HDW community marketplace (${result.row.manifest.plugins.length} plugin(s))`);
+  // Refresh the optional community catalog after listening, so an unavailable
+  // HDW backend cannot delay local APIs or the login screen.
+  let communityCatalogReady = Promise.resolve();
+  const seedHdwCommunityMarketplace = async () => {
+    try {
+      const {
+        HDW_MARKETPLACE_ID,
+        HDW_MARKETPLACE_URL,
+        fetchHdwMarketplaceManifestText,
+      } = await import('./http/hdw.js');
+      const { ensureMarketplaceManifest } = await import('./plugins/marketplaces.js');
+      const manifestText = await fetchHdwMarketplaceManifestText(HDW_MARKETPLACE_URL, RUNTIME_DATA_DIR);
+      if (daemonShuttingDown) return;
+      if (manifestText) {
+        const result = ensureMarketplaceManifest(db, {
+          id: HDW_MARKETPLACE_ID,
+          url: HDW_MARKETPLACE_URL,
+          trust: 'trusted',
+          manifestText,
+        });
+        if (result.ok) {
+          console.log(`[plugins] seeded HDW community marketplace (${result.row.manifest.plugins.length} plugin(s))`);
+        } else {
+          console.warn(`[plugins] HDW community marketplace seed failed: ${result.message}`);
+        }
       } else {
-        console.warn(`[plugins] HDW community marketplace seed failed: ${result.message}`);
+        console.log('[plugins] HDW community marketplace not available (fetch failed or HDW unreachable)');
       }
-    } else {
-      console.log('[plugins] HDW community marketplace not available (fetch failed or HDW unreachable)');
+    } catch (err) {
+      console.warn(`[plugins] HDW community marketplace seed failed: ${(err as Error)?.message ?? err}`);
     }
-  } catch (err) {
-    console.warn(`[plugins] HDW community marketplace seed failed: ${(err as Error)?.message ?? err}`);
-  }
+  };
 
   // Plan §3.A5 / spec §16 Phase 5 / PB2: periodic snapshot GC. Disabled
   // when OD_SNAPSHOT_GC_INTERVAL_MS is 0; otherwise one-time bootstrap
@@ -3581,6 +3373,10 @@ export async function startServer({
   const workspaceExactAuthorityCache = createWorkspaceExactAuthorityCache({
     identity: () => workspaceAccountIdentity(),
   });
+  const teamResourcePollBackoff = createTeamResourcePollBackoff();
+  const publishMembershipKeys = new Map<string, { memberId: string; authority: string }>();
+  let publishDirectoryIdentity = '';
+  let invalidatePublishAuthority = () => {};
   const workspaceDirectoryAuthority = createWorkspaceDirectoryAuthorityBroker({
     fetchDirectory: async () => {
       // In dev/hidesign mode (no vela), build the directory from HDW teams
@@ -3644,12 +3440,30 @@ export async function startServer({
       mode: workspaceAuthorityCacheMode,
       ...input,
     }),
-    onInvalidation: (input) => recordWorkspaceAuthorityInvalidation({
-      mode: workspaceAuthorityCacheMode,
-      ...input,
-    }),
-    onAcceptedResult: (result, identity) =>
-      workspaceExactAuthorityCache.observe(identity, result.items),
+    onInvalidation: (input) => {
+      recordWorkspaceAuthorityInvalidation({ mode: workspaceAuthorityCacheMode, ...input });
+      teamResourcePollBackoff.reset();
+      invalidatePublishAuthority();
+    },
+    onAcceptedResult: (result, identity) => {
+      workspaceExactAuthorityCache.observe(identity, result.items);
+      const nextKeys = new Map(result.items.map((item) => [item.workspaceId, {
+        memberId: item.workspaceMemberId,
+        authority: JSON.stringify([
+          item.workspaceMemberId, item.workspaceType, item.role, item.memberStatus, item.lifecycleState,
+        ]),
+      }]));
+      const changed = identity !== publishDirectoryIdentity
+        || nextKeys.size !== publishMembershipKeys.size
+        || [...nextKeys].some(([id, key]) => publishMembershipKeys.get(id)?.authority !== key.authority);
+      publishDirectoryIdentity = identity;
+      publishMembershipKeys.clear();
+      for (const [id, key] of nextKeys) publishMembershipKeys.set(id, key);
+      if (changed) {
+        teamResourcePollBackoff.reset();
+        invalidatePublishAuthority();
+      }
+    },
   });
   const fetchWorkspaceDirectory = workspaceDirectoryAuthority.read;
   const fetchFreshMutationWorkspaceDirectory =
@@ -3789,90 +3603,6 @@ export async function startServer({
       lifecycleState: 'active',
       workspaceType: 'team',
     });
-  /**
-   * Resolve design-system ownership/filtering from this exact request.
-   *
-   * Catalog and create are data-plane operations. Daemon-global active/current
-   * state can change between two tabs, so it is not authority for deciding
-   * which Workspace a request reads or writes.
-   */
-  async function resolveDesignSystemWorkspaceContext(
-    req: any,
-  ): Promise<import('./collab/workspace-resource-mutation.js').WorkspaceResourceContext | null> {
-    const claimed = workspaceResourceContextFromRequest(req);
-    // A completely headerless local/signed-out request is the explicit legacy
-    // lane: built-ins plus unclaimed local resources, and new resources remain
-    // unbound. A half-specified identity is never that lane and is rejected by
-    // the verifier below.
-    if (claimed === null) return null;
-    const verified = await verifyExplicitWorkspaceRequestContext({ req });
-    if (!verified.ok) {
-      throw Object.assign(new Error(verified.message), {
-        status: verified.status,
-        code: verified.code,
-        ...(verified.retryable ? { retryable: true } : {}),
-      });
-    }
-    return verified.context;
-  }
-
-  async function resolveDesignSystemWorkspaceScope(req: any): Promise<string | null> {
-    const context = await resolveDesignSystemWorkspaceContext(req);
-    return context?.workspaceId.trim() || null;
-  }
-
-  /**
-   * Create a user design system CLAIMED by the workspace it was authored in.
-   *
-   * User design systems share one flat directory, so the claim written here is
-   * the only thing that lets `GET /api/design-systems` keep one workspace's
-   * library out of another's (#145). Stamping at creation is deliberate: it is
-   * the one moment the authoring workspace is unambiguous, whereas deciding
-   * ownership later (at read time, from whatever workspace happens to be
-   * active) would re-home a system every time the user switched.
-   *
-   * Envelope double-write (spec 9.2): `metadata.json` stays the only thing
-   * `listDesignSystems`'s filter reads, but a claimed system also gets a row
-   * in the generic `workspace_resources` table — the same table plugin/skill
-   * already bind into — so design systems stop being the one resource type
-   * with zero rows there. Both writes happen from this single call site, so
-   * they can never drift apart.
-   */
-  const reservedDesignSystemResourceIds = (): Set<string> => {
-    const rows = db.prepare(
-      `SELECT resource_id AS resourceId
-         FROM workspace_resources
-        WHERE resource_type = 'design_system'`,
-    ).all() as Array<{ resourceId?: string }>;
-    return new Set(rows.flatMap((row) => {
-      const resourceId = row.resourceId?.trim();
-      return resourceId ? [designSystemLogicalResourceId(resourceId)] : [];
-    }));
-  };
-  const createWorkspaceOwnedDesignSystemForContext = (
-    root: string,
-    input: UserDesignSystemInput,
-    context: import('./collab/workspace-resource-mutation.js').WorkspaceResourceContext | null,
-  ) => persistWorkspaceOwnedDesignSystem(root, input, context, {
-    listReservedResourceIds: reservedDesignSystemResourceIds,
-    ensureWorkspaceResource: (resourceType, workspaceId, resourceId, envelope) => {
-      // The filesystem allocation awaited above, so another request could
-      // have claimed this logical id in the meantime. Fail before reusing its
-      // envelope; the wrapper removes only the directory it just allocated.
-      if (reservedDesignSystemResourceIds().has(resourceId)) {
-        throw new Error('DESIGN_SYSTEM_ID_CONFLICT');
-      }
-      return ensureWorkspaceResource(db, resourceType, workspaceId, resourceId, envelope);
-    },
-  });
-  const createWorkspaceOwnedDesignSystem = async (
-    root: string,
-    input: UserDesignSystemInput,
-    req: any,
-  ) => {
-    const context = await resolveDesignSystemWorkspaceContext(req);
-    return createWorkspaceOwnedDesignSystemForContext(root, input, context);
-  };
   // Persistent half of the sync design: a cheap digest GET decides whether the
   // catalog / member payload this daemon already has on disk is still current,
   // so a cold start (or a workspace not touched in a while) can skip the real
@@ -3940,6 +3670,8 @@ export async function startServer({
   let workspaceHubAccountIdentity = workspaceAccountIdentity();
   const resetWorkspaceIdentityCaches = (): void => {
     workspaceDirectoryAuthority.resetIdentity();
+    teamResourcePollBackoff.reset();
+    invalidatePublishAuthority();
     workspaceExactAuthorityCache.resetIdentity();
     workspaceExactContextCache.resetIdentity();
   };
@@ -4195,15 +3927,6 @@ export async function startServer({
   };
   void reconcileImpossibleTeamShares().catch((error) => {
     console.warn('[od] team-share scope reconciliation failed:', error);
-  });
-  // Spec 9.2 one-time backfill: claim every pre-existing user design system
-  // whose metadata.json already names a workspace into the generic
-  // `workspace_resources` table too. Idempotent (see
-  // `backfillDesignSystemWorkspaceResources`'s own doc comment), so running
-  // it unconditionally on every startup is deliberate, same as
-  // `reconcileImpossibleTeamShares` just above.
-  void backfillDesignSystemWorkspaceResources(db, USER_DESIGN_SYSTEMS_DIR).catch((error) => {
-    console.warn('[od] design-system workspace-resource backfill failed:', error);
   });
   const collabCloudClient = velaCliCollabClient ?? createCollabCloudClientFromEnv();
   const resolveBoundProjectWorkspaceContext = async (
@@ -4860,6 +4583,10 @@ export async function startServer({
   // pulled copy is never watched, so an inbound pull can't loop into a publish and
   // a member can't publish edits to someone else's project.
   const collabPublishWatcher = createCollabPublishWatcher({
+    identityKey: (projectId) => {
+      const workspaceId = findTeamWorkspaceIdForProject(db, projectId)?.trim() ?? '';
+      return JSON.stringify([workspaceAccountIdentity(), workspaceId, publishMembershipKeys.get(workspaceId)?.memberId ?? null]);
+    },
     notifyChanged: (projectId, principal) =>
       collab.scheduler.notifyChanged(projectId, 'file-change', principal),
     listProjectIds: () => listProjects(db).map((project: { id: string }) => project.id),
@@ -4867,11 +4594,8 @@ export async function startServer({
       if (projectIsUnmaterializedSharedPlaceholder(projectId)) return false;
       const workspaceId = findTeamWorkspaceIdForProject(db, projectId)?.trim();
       if (!workspaceId) return false;
-      const directory = await fetchWorkspaceDirectory().catch(() => ({
-        ok: false as const,
-        items: [],
-      }));
-      if (!directory.ok) return false;
+      const directory = await fetchWorkspaceDirectory();
+      if (!directory.ok) throw new Error('workspace membership authority is temporarily unavailable');
       const scope = teamResourceRequestScopeForWorkspaceId(
         directory.items,
         workspaceId,
@@ -4894,6 +4618,7 @@ export async function startServer({
     },
     onError: (error) => console.warn('[od] collab publish watcher error:', error),
   });
+  invalidatePublishAuthority = () => collabPublishWatcher.invalidate();
   collabPublishWatcher.start();
   const sharedProjectPullProfiling =
     sharedProjectPullProfileEnabled(process.env);
@@ -6669,13 +6394,7 @@ export async function startServer({
     resource: TeamResourceShareRecord,
     scope: TeamResourceRequestScope,
   ): Promise<boolean> => {
-    const { runVelaResourceCommand } = await import(
-      './collab/vela-cli-resource-adapter.js'
-    );
-    const stdout = await runVelaResourceCommand(
-      ['shared', '--json'],
-      scope.principal.teamId,
-    );
+    const stdout = await readSharedTeamResourceListing(scope.principal.teamId, hdwCloudClient);
     const idPrefix = kind === 'design_system' ? 'ds' : kind;
     const sanitizeResourceSegment = (value: string) =>
       value.replace(/[^a-zA-Z0-9_-]/g, '-');
@@ -6694,6 +6413,28 @@ export async function startServer({
       if (candidate.kind !== kind || candidate.deletedAt != null) return false;
       return candidate.id === expectedHubId;
     });
+  };
+  const pullSharedTeamResource = async (
+    workspaceId: string,
+    kind: 'plugin' | 'skill',
+    resourceId: string,
+    dir: string,
+    scope: TeamResourceRequestScope,
+  ): Promise<void> => {
+    if (!shouldUseHdwHttpResourceTransport()) {
+      await teamResourcePullBatcher.pull({ workspaceId, kind, resourceId, dir, ref: 'published' });
+      return;
+    }
+    if (!hdwCloudClient) throw new Error('HDW resource transport is unavailable');
+    const adapter = createHdwHttpResourceAdapter({
+      client: hdwCloudClient,
+      kind,
+      resolveProjectDir: () => dir,
+      resourceIdFor: () => resourceId,
+      hasTeamIdentity: () => true,
+    });
+    const pulled = await adapter.pull?.({ projectId: resourceId, principal: scope.principal });
+    if (!pulled) throw new Error('shared resource is unavailable');
   };
   async function syncSharedTeamPlugin(
     resource: TeamResourceShareRecord,
@@ -6786,13 +6527,7 @@ export async function startServer({
           hubResourceId,
         },
         pullInto: (stagedFolder) =>
-          teamResourcePullBatcher.pull({
-            workspaceId,
-            kind: 'plugin',
-            resourceId: hubResourceId,
-            dir: stagedFolder,
-            ref: 'published',
-          }),
+          pullSharedTeamResource(workspaceId, 'plugin', hubResourceId, stagedFolder, scope),
         verifyWorkspaceScope: () => teamResourceScopeStillAuthorized(scope),
         verifyStillShared: () => teamResourceStillShared('plugin', resource, scope),
       });
@@ -6834,139 +6569,6 @@ export async function startServer({
     } catch (error) {
       console.warn(
         `[team-resources] failed to pull shared plugin ${resource.id}:`,
-        error instanceof Error ? error.message : error,
-      );
-    }
-  }
-  async function syncSharedTeamDesignSystem(
-    resource: TeamResourceShareRecord,
-    scope: TeamResourceRequestScope,
-  ): Promise<void> {
-    const dirId = stripPrefixAndValidateId(resource.id, 'user:');
-    if (!dirId) return;
-    const targetDir = teamResourceMaterializationDir(
-      USER_DESIGN_SYSTEMS_DIR,
-      scope.principal.teamId,
-      resource.id,
-      dirId,
-    );
-    const workspaceId = scope.principal.teamId;
-    const ownerLocalSourceReady = ownedDesignSystemSourceIsReady({
-      ownerMemberId: resource.ownerMemberId,
-      currentMemberId: scope.principal.memberId,
-      workspaceId,
-      localSourceExists: fs.existsSync(path.join(USER_DESIGN_SYSTEMS_DIR, dirId)),
-      binding: getWorkspaceResourceByResourceId(db, 'design_system', resource.id),
-    });
-    const hubResourceId =
-      resource.hubResourceId ??
-      `ds-${workspaceId.replace(/[^a-zA-Z0-9_-]/g, '-')}-${resource.id.replace(/[^a-zA-Z0-9_-]/g, '-')}`;
-    const bindingResourceId = workspaceTeamDesignSystemBindingResourceId(
-      workspaceId,
-      resource.id,
-    );
-    async function markTeamSynced(): Promise<void> {
-      const metadataPath = path.join(targetDir, 'metadata.json');
-      let metadata: Record<string, unknown> = {};
-      try {
-        const raw = await fs.promises.readFile(metadataPath, 'utf8');
-        const parsed = JSON.parse(raw) as unknown;
-        if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
-          metadata = parsed as Record<string, unknown>;
-        }
-      } catch {
-        metadata = {};
-      }
-      await fs.promises.writeFile(
-        metadataPath,
-        // Claim the pulled copy for the workspace whose hub served it (#145).
-        // A team-shared system is workspace-owned by construction, so leaving
-        // it unclaimed would keep leaking one team's library into the next
-        // workspace the user switches to.
-        `${JSON.stringify(
-          { ...metadata, teamSynced: true, ...(workspaceId ? { workspaceId } : {}) },
-          null,
-          2,
-        )}\n`,
-        'utf8',
-      );
-      // Envelope double-write (spec 9.2): stamp the same claim into
-      // `workspace_resources` as `visibility: 'team'`, mirroring what
-      // syncSharedTeamSkill's own markTeamSynced already does for skill.
-      if (workspaceId) {
-        ensureWorkspaceResource(db, 'design_system', workspaceId, bindingResourceId, {
-          visibility: 'team',
-          resourceState: 'active',
-          createdByWorkspaceMemberId: resource.ownerMemberId ?? scope.principal.memberId,
-          updatedByWorkspaceMemberId: scope.principal.memberId,
-          resourceHubResourceId: hubResourceId,
-        });
-        updateWorkspaceResource(db, 'design_system', workspaceId, bindingResourceId, {
-          visibility: 'team',
-          resourceState: 'active',
-          updatedByWorkspaceMemberId: scope.principal.memberId,
-          resourceHubResourceId: hubResourceId,
-        });
-      }
-    }
-    // The hub naming this member as owner is not proof that this device still
-    // has the author's local source. A fresh data root (or a second device)
-    // must pull the published Team copy just like any teammate. Skip only when
-    // the exact Workspace's original Personal binding and directory are both
-    // present; the predicate rejects foreign, Team-mirror, and retired rows.
-    if (ownerLocalSourceReady) return;
-    if (
-      fs.existsSync(targetDir) &&
-      workspaceId &&
-      resource.versionId &&
-      teamResourceVersions.get(
-        workspaceId,
-        'design_system',
-        resource.id,
-      ) === resource.versionId
-    ) {
-      await markTeamSynced();
-      return;
-    }
-    if (fs.existsSync(targetDir) && !resource.versionId) {
-      await markTeamSynced();
-      return;
-    }
-    try {
-      const materialized = await materializeWorkspaceScopedTeamResource({
-        kindRoot: USER_DESIGN_SYSTEMS_DIR,
-        storageName: dirId,
-        identity: {
-          kind: 'design_system',
-          workspaceId,
-          resourceId: resource.id,
-          hubResourceId,
-        },
-        pullInto: (stagedFolder) =>
-          teamResourcePullBatcher.pull({
-            workspaceId,
-            kind: 'design_system',
-            resourceId: hubResourceId,
-            dir: stagedFolder,
-            ref: 'published',
-          }),
-        verifyWorkspaceScope: () => teamResourceScopeStillAuthorized(scope),
-        verifyStillShared: () =>
-          teamResourceStillShared('design_system', resource, scope),
-      });
-      if (materialized.status !== 'committed') return;
-      await markTeamSynced();
-      if (workspaceId && resource.versionId) {
-        await teamResourceVersions.set(
-          workspaceId,
-          'design_system',
-          resource.id,
-          resource.versionId,
-        );
-      }
-    } catch (error) {
-      console.warn(
-        `[team-resources] failed to pull shared design system ${resource.id}:`,
         error instanceof Error ? error.message : error,
       );
     }
@@ -7115,13 +6717,7 @@ export async function startServer({
               }
             }
           : (stagedFolder) =>
-              teamResourcePullBatcher.pull({
-                workspaceId,
-                kind: 'skill',
-                resourceId: hubResourceId,
-                dir: stagedFolder,
-                ref: 'published',
-              }),
+              pullSharedTeamResource(workspaceId, 'skill', hubResourceId, stagedFolder, scope),
         verifyWorkspaceScope: () => teamResourceScopeStillAuthorized(scope),
         verifyStillShared: stillShared,
       });
@@ -7191,10 +6787,9 @@ export async function startServer({
       if (!command) {
         command = createSwrCache(
           async () => {
-            const { runVelaResourceCommand } = await import('./collab/vela-cli-resource-adapter.js');
-            return runVelaResourceCommand(['shared', '--json'], key);
+            return readSharedTeamResourceListing(key, hdwCloudClient);
           },
-          () => key,
+          () => JSON.stringify([workspaceAccountIdentity(), key]),
           3000,
         );
         sharedTeamResourcesCommands.set(key, command);
@@ -7241,119 +6836,14 @@ export async function startServer({
     if (args.length === 2 && args[0] === 'shared' && args[1] === '--json') {
       if (!workspaceId?.trim()) throw new Error('explicit workspace scope is required');
       if (readOptions?.authoritative) {
-        const { runVelaResourceCommand } = await import('./collab/vela-cli-resource-adapter.js');
-        return runVelaResourceCommand(args, workspaceId);
+        return readSharedTeamResourceListing(workspaceId, hdwCloudClient);
       }
       return sharedTeamResourcesCommand(workspaceId);
     }
     const { runVelaResourceCommand } = await import('./collab/vela-cli-resource-adapter.js');
     return runVelaResourceCommand(args, workspaceId);
   };
-  const designSystemsTeamResourceShare = createTeamResourceShareService({
-    kind: 'design_system',
-    idPrefix: 'ds',
-    resolveDir: (id) => resolveUserDesignSystemShareDirectory(db, id),
-    describeResource: async (id) => {
-      const system = (await listAllDesignSystems()).find((candidate) => candidate.id === id);
-      return {
-        localId: id,
-        ...(system?.title ? { title: system.title } : {}),
-        ...(system?.summary ? { description: system.summary } : {}),
-     };
-  },
-  run: runTeamResourceCommand,
-  hdwClient: hdwCloudClient,
-});
-const designSystemBackingProjects = new Map<string, string>();
- const designSystemBackingProjectKey = (
-    workspaceId: string,
-    resourceId: string,
-  ) => JSON.stringify([workspaceId, resourceId]);
-  const designSystemsTeamShare = createLinkedProjectTeamResourceShareService({
-    resource: designSystemsTeamResourceShare,
-    prepare: createDesignSystemBackingProjectPreparer({
-      resolveProjectId: async (resourceId, scope) =>
-        (await listAllDesignSystems({
-          workspaceId: scope.principal.teamId,
-          workspaceMemberId: scope.principal.memberId,
-        }))
-          .find((candidate) => candidate.id === resourceId)
-          ?.projectId ?? null,
-      ensureProjectId: async (resourceId, scope) =>
-        (await ensureUserDesignSystemWorkspaceProject(db, resourceId, {
-          workspaceId: scope.principal.teamId,
-          workspaceMemberId: scope.principal.memberId,
-        }))?.project.id ?? null,
-      projectExists: (projectId) => Boolean(getProject(db, projectId)),
-      getProjectBinding: (projectId) =>
-        getWorkspaceProjectByProjectId(db, projectId),
-      publishProject: (projectId, scope) =>
-        collab.requestTeamShare(projectId, scope.principal),
-      unpublishProject: (projectId, scope) =>
-        collab.requestTeamUnshare(projectId, scope.principal),
-      persistVisibility: ({ projectId, scope, visibility }) =>
-        persistWorkspaceProjectVisibility({
-          projectId,
-          principal: scope.principal,
-          visibility,
-          ownerMemberId: scope.principal.memberId,
-          updatedByMemberId: scope.principal.memberId,
-        }),
-      onPrepared: ({ resourceId, projectId, scope }) => {
-        designSystemBackingProjects.set(
-          designSystemBackingProjectKey(scope.principal.teamId, resourceId),
-          projectId,
-        );
-      },
-    }),
-  });
-  const designSystemsTeamList = cachedTeamResourceList(
-    designSystemsTeamShare,
-    syncSharedTeamDesignSystem,
-  );
-  const notifyDesignSystemLinkedMutation = (
-    resourceId: string,
-    scope: TeamResourceRequestScope,
-    visibility: 'personal' | 'team',
-  ) => {
-    const workspaceId = scope.principal.teamId;
-    const key = designSystemBackingProjectKey(workspaceId, resourceId);
-    const projectId = designSystemBackingProjects.get(key);
-    // The linked service already persisted the backing project before it
-    // resolved. `emitTeamProjectsChanged` invalidates the exact Workspace's
-    // project catalogs before emitting; the resource route invalidates its
-    // own listing before it calls this helper.
-    emitTeamProjectsChanged(workspaceId, {
-      ...(projectId ? { projectId } : {}),
-      kind: 'catalog',
-    });
-    emitWorkspaceEvent(workspaceId, {
-      type: 'team-resources-changed',
-      resourceKind: 'design_system',
-      resourceId,
-      at: Date.now(),
-    });
-    if (visibility === 'personal') designSystemBackingProjects.delete(key);
-  };
-  registerTeamResourceShareRoutes(app, {
-    basePath: 'design-systems',
-    resolveScope: resolveTeamResourceScope,
-    authorizeShare: (resourceId, scope) => {
-      const binding = getWorkspaceResourceByResourceId(
-        db,
-        'design_system',
-        resourceId,
-      );
-      return binding?.workspaceId === scope.principal.teamId
-        && binding.visibility === 'personal'
-        && binding.resourceState !== 'deleted'
-        && binding.createdByWorkspaceMemberId === scope.principal.memberId;
-    },
-    syncSharedResource: syncSharedTeamDesignSystem,
-    share: designSystemsTeamShare,
-    listTeam: designSystemsTeamList,
-    onMutationCommitted: notifyDesignSystemLinkedMutation,
-  });
+
   const pluginsTeamShare = createTeamResourceShareService({
     kind: 'plugin',
     idPrefix: 'plugin',
@@ -8186,7 +7676,6 @@ const designSystemBackingProjects = new Map<string, string>();
    }
  });
 const teamResourceListByKind = {
-   design_system: designSystemsTeamList,
    plugin: pluginsTeamList,
    skill: skillsTeamList,
  };
@@ -8203,7 +7692,7 @@ const teamResourceListByKind = {
   // as caller-authored — the exact bug `SkillSummary.teamSynced` exists to
   // prevent).
   //
-  const RECONCILED_TEAM_RESOURCE_KINDS = ['design_system', 'plugin', 'skill'] as const;
+  const RECONCILED_TEAM_RESOURCE_KINDS = ['plugin', 'skill'] as const;
   type ReconciledTeamResourceKind = (typeof RECONCILED_TEAM_RESOURCE_KINDS)[number];
   const adoptLegacyWorkspaceTeamPluginBindings = async (
     scope: TeamResourceRequestScope,
@@ -8233,45 +7722,6 @@ const teamResourceListByKind = {
           'plugin',
           workspaceId,
           workspaceTeamPluginBindingResourceId(workspaceId, marker.resourceId),
-          {
-            visibility: 'team',
-            resourceState: 'active',
-            createdByWorkspaceMemberId: scope.principal.memberId,
-            updatedByWorkspaceMemberId: scope.principal.memberId,
-            resourceHubResourceId: marker.hubResourceId,
-          },
-        );
-      }),
-    );
-  };
-  const adoptLegacyWorkspaceTeamDesignSystemBindings = async (
-    scope: TeamResourceRequestScope,
-  ): Promise<void> => {
-    const workspaceId = scope.principal.teamId;
-    const workspaceRoot = teamResourceWorkspaceRoot(
-      USER_DESIGN_SYSTEMS_DIR,
-      workspaceId,
-    );
-    let entries: fs.Dirent[] = [];
-    try {
-      entries = await fs.promises.readdir(workspaceRoot, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    await Promise.all(
-      entries.filter((entry) => entry.isDirectory()).map(async (entry) => {
-        const marker = await readTeamResourceMaterialization(
-          USER_DESIGN_SYSTEMS_DIR,
-          workspaceId,
-          `user:${entry.name}`,
-          entry.name,
-        );
-        if (!marker || marker.kind !== 'design_system') return;
-        ensureWorkspaceResource(
-          db,
-          'design_system',
-          workspaceId,
-          workspaceTeamDesignSystemBindingResourceId(workspaceId, marker.resourceId),
           {
             visibility: 'team',
             resourceState: 'active',
@@ -8335,9 +7785,6 @@ const teamResourceListByKind = {
     if (resourceType === 'plugin') {
       await adoptLegacyWorkspaceTeamPluginBindings(scope);
     }
-    if (resourceType === 'design_system') {
-      await adoptLegacyWorkspaceTeamDesignSystemBindings(scope);
-    }
     if (resourceType === 'skill') {
       await adoptLegacyWorkspaceTeamSkillBindings(scope);
     }
@@ -8354,9 +7801,6 @@ const teamResourceListByKind = {
           .flatMap((row: any) => {
             const logicalResourceId = resourceType === 'plugin'
               ? pluginIdFromWorkspaceTeamPluginBinding(workspaceId, row.resourceId)
-              : resourceType === 'design_system'
-                ? designSystemIdFromWorkspaceTeamBinding(workspaceId, row.resourceId)
-                  ?? (row.resourceId.startsWith('user:') ? row.resourceId : null)
                 : skillIdFromWorkspaceTeamBinding(workspaceId, row.resourceId)
                   ?? (row.resourceId.startsWith('team-mirror:') ? null : row.resourceId);
             if (!logicalResourceId) return [];
@@ -8374,8 +7818,6 @@ const teamResourceListByKind = {
       applyRetire: (workspaceId, resourceId) => {
         const bindingResourceId = resourceType === 'plugin'
           ? workspaceTeamPluginBindingResourceId(workspaceId, resourceId)
-          : resourceType === 'design_system'
-            ? workspaceTeamDesignSystemBindingResourceId(workspaceId, resourceId)
             : workspaceTeamSkillBindingResourceId(workspaceId, resourceId);
         updateWorkspaceResource(db, resourceType, workspaceId, bindingResourceId, {
           resourceState: 'deleted',
@@ -8384,8 +7826,6 @@ const teamResourceListByKind = {
       applyRebind: (resourceId, patch) => {
         const bindingResourceId = resourceType === 'plugin'
           ? workspaceTeamPluginBindingResourceId(patch.workspaceId, resourceId)
-          : resourceType === 'design_system'
-            ? workspaceTeamDesignSystemBindingResourceId(patch.workspaceId, resourceId)
             : workspaceTeamSkillBindingResourceId(patch.workspaceId, resourceId);
         updateWorkspaceResource(db, resourceType, patch.workspaceId, bindingResourceId, {
           visibility: patch.visibility,
@@ -8411,25 +7851,9 @@ const teamResourceListByKind = {
     scope: TeamResourceRequestScope,
   ): boolean => {
     const workspaceId = scope.principal.teamId;
-    if (resourceType === 'design_system') {
-      const dirId = stripPrefixAndValidateId(resource.id, 'user:');
-      if (
-        dirId
-        && ownedDesignSystemSourceIsReady({
-          ownerMemberId: resource.ownerMemberId,
-          currentMemberId: scope.principal.memberId,
-          workspaceId,
-          localSourceExists: fs.existsSync(path.join(USER_DESIGN_SYSTEMS_DIR, dirId)),
-          binding: getWorkspaceResourceByResourceId(db, 'design_system', resource.id),
-        })
-      ) return true;
-    } else if (resource.ownerMemberId === scope.principal.memberId) {
-      return true;
-    }
+    if (resource.ownerMemberId === scope.principal.memberId) return true;
     const bindingResourceId = resourceType === 'plugin'
       ? workspaceTeamPluginBindingResourceId(workspaceId, resource.id)
-      : resourceType === 'design_system'
-        ? workspaceTeamDesignSystemBindingResourceId(workspaceId, resource.id)
         : workspaceTeamSkillBindingResourceId(workspaceId, resource.id);
     const binding = getWorkspaceResourceByResourceId(
       db,
@@ -8477,15 +7901,15 @@ const teamResourceListByKind = {
     reason: WorkspaceTeamResourceRefreshReason = 'poll',
     resourceId?: string,
     rememberedLease?: RememberedTeamResourceScopeLease,
-  ): Promise<void> => {
+  ): Promise<boolean> => {
     const requestedWorkspaceId = workspaceId?.trim();
-    if (!requestedWorkspaceId) return;
+    if (!requestedWorkspaceId || resourceKind === 'design_system') return true;
     // Background events carry only a Workspace id, not an HTTP request. Resolve
     // that exact membership from the directory at execution time rather than
     // relying on whichever resource request happened to run first in this
     // process (or on the daemon's mutable active context).
     const scope = await resolveTeamResourceScopeForWorkspaceId(requestedWorkspaceId);
-    if (!scope) return;
+    if (!scope) return true;
     // The authority read above may finish after an offscreen compatibility
     // lease expired or was LRU-evicted. Do not let that late completion keep
     // prewarming the scope. Subscribed and persisted workspace polls do not
@@ -8493,11 +7917,11 @@ const teamResourceListByKind = {
     if (
       rememberedLease &&
       !rememberedTeamResourceScopes.isLeaseCurrent(rememberedLease)
-    ) return;
+    ) return true;
     const kinds = resourceKind
       ? RECONCILED_TEAM_RESOURCE_KINDS.filter((kind) => kind === resourceKind)
       : RECONCILED_TEAM_RESOURCE_KINDS;
-    if (kinds.length === 0) return;
+    if (kinds.length === 0) return true;
     // A Team listing has two SWR layers: the per-kind parsed/materialized
     // response and the raw shared command underneath it. Drop both before the
     // authoritative reconciliation pass so the next UI read cannot keep
@@ -8509,19 +7933,24 @@ const teamResourceListByKind = {
       invalidateSharedCommand: (exactWorkspaceId) =>
         sharedTeamResourcesCommand.invalidate(exactWorkspaceId),
     });
-    await teamResourceEventCoordinator.refresh({
-      workspaceId: requestedWorkspaceId,
-      scope,
-      ...(resourceKind ? { resourceKind } : {}),
-      ...(resourceId ? { resourceId } : {}),
-      reason,
-      ...(rememberedLease
-        ? {
-            isRefreshCurrent: () =>
-              rememberedTeamResourceScopes.isLeaseCurrent(rememberedLease),
-          }
-        : {}),
-    });
+    let succeeded = true;
+    for (const kind of kinds) {
+      const result = await teamResourceEventCoordinator.refresh({
+        workspaceId: requestedWorkspaceId,
+        scope,
+        resourceKind: kind,
+        ...(resourceId ? { resourceId } : {}),
+        reason,
+        ...(rememberedLease
+          ? {
+              isRefreshCurrent: () =>
+                rememberedTeamResourceScopes.isLeaseCurrent(rememberedLease),
+            }
+          : {}),
+      });
+      if (result.failedKinds.length > 0) succeeded = false;
+    }
+    return succeeded;
   };
   const persistentTeamResourceBackgroundWorkspaceIds = (): string[] => {
     const ids = new Set<string>();
@@ -8563,20 +7992,18 @@ const teamResourceListByKind = {
     );
     const persistentWorkspaceIds = persistentTeamResourceBackgroundWorkspaceIds();
     const persistentWorkspaceIdSet = new Set(persistentWorkspaceIds);
-    for (const workspaceId of teamResourceBackgroundWorkspaceIds(
-      rememberedLeases,
-      persistentWorkspaceIds,
-    )) {
+    const workspaceIds = teamResourceBackgroundWorkspaceIds(rememberedLeases, persistentWorkspaceIds);
+    const pollKey = (workspaceId: string) => JSON.stringify([
+      workspaceAccountIdentity(), workspaceId, publishMembershipKeys.get(workspaceId) ?? null,
+    ]);
+    teamResourcePollBackoff.retain(new Set(workspaceIds.map(pollKey)));
+    for (const workspaceId of workspaceIds) {
       const rememberedLease = persistentWorkspaceIdSet.has(workspaceId)
         ? undefined
         : rememberedLeasesByWorkspace.get(workspaceId);
-      void reconcileTeamResourcesFromRemote(
-        undefined,
-        workspaceId,
-        'poll',
-        undefined,
-        rememberedLease,
-      ).catch((error) =>
+      void teamResourcePollBackoff.run(pollKey(workspaceId), () => reconcileTeamResourcesFromRemote(
+        undefined, workspaceId, 'poll', undefined, rememberedLease,
+      )).catch((error) =>
         console.warn(
           `[od] workspace ${workspaceId} resources poll error:`,
           error,
@@ -8854,7 +8281,6 @@ const teamResourceListByKind = {
     USER_SKILLS_DIR,
     SKILL_ROOTS,
     PROMPT_TEMPLATES_DIR,
-    BUNDLED_PETS_DIR,
     OD_BIN,
   };
 
@@ -9426,7 +8852,6 @@ const projectRouteResult = registerProjectRoutes(app, {
     fetchWorkspaceDirectory,
     configuredEnv: configuredAmrEnv,
     fetchProjectCreationWorkspaceDirectory,
-    createWorkspaceOwnedDesignSystem: createWorkspaceOwnedDesignSystemForContext,
     pluginScope: {
       loadRegistry: loadPluginRegistryView,
       getPlugin: (id, options) => getWorkspacePluginForRequest(
@@ -9678,33 +9103,6 @@ const projectRouteResult = registerProjectRoutes(app, {
     enforceWorkspaceProjectMutation: enforceAuthoritativeProjectMutation,
   });
 
-  // Whether the caller may mutate (edit / publish-toggle / delete) a design
-  // system. A system pulled from a teammate's team share (`teamSynced` in its
-  // metadata.json — see `isTeamSyncedUserDesignSystem`) is only mutable by
-  // whoever `canManageSharedResource` says may manage the share — the same
-  // principal check `unshare` already enforces. Anything not teamSynced is
-  // the caller's own, so it stays unrestricted.
-  //
-  // Hoisted out of `registerDesignSystemRoutes`'s deps (recvqb6mfyqXLD) so
-  // `registerStaticResourceRoutes`'s design-system LIST route can decorate
-  // every teamSynced entry with the same verdict — any detail surface a
-  // design system's summary reaches (not just the single-item GET) can then
-  // gate its own edit/publish/delete affordances on the authority the
-  // backend actually enforces, instead of re-deriving (or forgetting to
-  // derive) an equivalent check per surface.
-  const canMutateUserDesignSystem = async (
-    root: string,
-    id: string,
-    req: any,
-  ): Promise<boolean> => {
-    const synced = await isTeamSyncedUserDesignSystem(root, id);
-    if (!synced) return true;
-    const resolution = await resolveTeamResourceScope(req);
-    if (!resolution.ok) return false;
-    const resources = await designSystemsTeamShare.sharedResources(resolution.scope);
-    return resources.find((resource) => resource.id === id)?.canUnshare === true;
-  };
-
   // Resource catalog
   registerStaticResourceRoutes(app, {
     db,
@@ -9717,157 +9115,9 @@ const projectRouteResult = registerProjectRoutes(app, {
       listAllSkills,
       listAllDesignTemplates,
       listAllSkillLikeEntries,
-      listAllDesignSystems,
-      resolveWorkspaceScope: resolveDesignSystemWorkspaceScope,
-      canMutateUserDesignSystem,
       mimeFor,
     },
-    tokenContractRebuild: {
-      maybeStartForImportedDesignSystem: async (designSystemId) => {
-        const preparation = await prepareDesignTokenContractRebuild(
-          USER_DESIGN_SYSTEMS_DIR,
-          designSystemId,
-        );
-        if (!preparation.revision) return { decision: preparation.decision };
-        const job = designSystemGenerationJobs.rebuildTokenContract({
-          designSystemId,
-          decision: preparation.decision,
-          ...preparation.revision,
-        });
-        return { decision: preparation.decision, job };
-      },
-    },
-  });
-  const designSystemRouteServices = registerDesignSystemRoutes(app, {
-    db,
-    paths: pathDeps,
-    projectStore: projectStoreDeps,
-    projectFiles: projectFileDeps,
-    verifyWorkspaceRequestAuthority,
-    workspaceResources: { getWorkspaceResource, getWorkspaceResourceByResourceId },
-    designSystems: {
-      buildUserDesignSystemArchive,
-      // Hoisted above (before `registerStaticResourceRoutes`) so the
-      // design-system LIST route can reuse the exact same verdict.
-      canMutateUserDesignSystem,
-      createUserDesignSystem: createWorkspaceOwnedDesignSystem,
-      deleteUserDesignSystem,
-      // spec 04 §11: unshare `id` from the team hub before DELETE proceeds
-      // locally, but ONLY when it is on the LIVE team share list — never
-      // `isTeamSyncedUserDesignSystem` alone. That flag is
-      // true only for a teammate's PULLED copy; the sharer deleting their own
-      // original always reads `teamSynced: false`, so a check gated on it
-      // would keep letting the sharer's own delete sail past unnoticed, which
-      // is exactly how the hub index used to survive this route untouched
-      // and `syncSharedTeamDesignSystem` kept re-stamping `markTeamSynced()`
-      // onto every teammate forever.
-      unshareTeamDesignSystemIfShared: async (id, req) => {
-        const requestContext = workspaceResourceContextFromRequest(req);
-        const hasWorkspaceContextHeaders = Object.keys(req.headers ?? {}).some(
-          (name) => name.startsWith('x-od-workspace-') || name === 'x-od-app-user-id',
-        );
-        if (requestContext === null && !hasWorkspaceContextHeaders) return false;
-        const verified = await verifyExplicitWorkspaceRequestContext({
-          req,
-          requireTeam: false,
-        });
-        if (!verified.ok) {
-          throw Object.assign(new Error(verified.message), {
-            status: verified.status,
-            code: verified.code,
-            ...(verified.retryable ? { retryable: true } : {}),
-          });
-        }
-        // Personal resources have no Team hub partition to retract. Their
-        // authoritative Personal scope is still verified above, then local
-        // deletion proceeds without issuing a Team command.
-        if (verified.context.workspaceType !== 'team') return false;
-        const scope = teamResourceRequestScopeFromContext(verified.context);
-        if (!scope) {
-          throw Object.assign(new Error('the requested workspace is not available to this member'), {
-            status: 403,
-            code: 'WORKSPACE_ACCESS_DENIED',
-          });
-        }
-        const rememberedScope = rememberTeamResourceScope(scope);
-        const unshared = await unshareIfCurrentlyShared(
-          designSystemsTeamShare,
-          id,
-          rememberedScope,
-        );
-        if (unshared) {
-          designSystemsTeamList.invalidate(rememberedScope);
-          notifyDesignSystemLinkedMutation(id, rememberedScope, 'personal');
-        }
-        return unshared;
-      },
-      ensureUserDesignSystemWorkspaceProject,
-      listAllDesignSystems,
-      listUserDesignSystemFiles,
-      listUserDesignSystemRevisions,
-      prepareDesignTokenContractRebuild,
-      readAvailableDesignSystem,
-      readAvailableDesignSystemPackageInfo,
-      readAvailableDesignSystemStaticFile,
-      readDesignSystemWorkspaceTextFile,
-      readUserDesignSystemFile,
-      renderDesignSystemPreview,
-      renderDesignSystemShowcase,
-      syncUserDesignSystemAssetsFromWorkspace,
-      updateUserDesignSystem,
-      updateUserDesignSystemRevisionStatus,
-    },
-    generationJobs: designSystemGenerationJobs,
-  });
-  registerBrandRoutes(app, {
-    resolveCreatedProjectHome,
-    brandsRoot: BRANDS_DIR,
-    userDesignSystemsRoot: USER_DESIGN_SYSTEMS_DIR,
-    resolveDesignSystemWorkspaceId: resolveDesignSystemWorkspaceScope,
-    authorizeDesignSystemRead: designSystemRouteServices.authorizeDesignSystemRead,
-    deleteDesignSystemForRequest: designSystemRouteServices.deleteDesignSystemForRequest,
-    isDesignSystemWorkspaceBound: (designSystemId) =>
-      Boolean(getWorkspaceResourceByResourceId(db, 'design_system', designSystemId))
-      || listTeamWorkspaceResourceWorkspaceIds(db).some((workspaceId) =>
-        Boolean(getWorkspaceResource(
-          db,
-          'design_system',
-          workspaceId,
-          workspaceTeamDesignSystemBindingResourceId(workspaceId, designSystemId),
-        )),
-      ),
-    authorizeProjectRequest,
-    createWorkspaceOwnedDesignSystem: createWorkspaceOwnedDesignSystemForContext,
-    deleteWorkspaceOwnedDesignSystem: (root, designSystemId) =>
-      removeWorkspaceOwnedDesignSystem(root, designSystemId, {
-        deleteUserDesignSystem,
-        deleteWorkspaceResourceByResourceId: (resourceType, resourceId) =>
-          deleteWorkspaceResourceByResourceId(db, resourceType, resourceId),
-      }),
-    projectsRoot: PROJECTS_DIR,
-    skillsRoot: SKILLS_DIR,
-    dataDir: RUNTIME_DATA_DIR,
-    db,
-    runs: design.runs,
-    randomId,
-    resolveTranscriptAgent: async () => {
-      const config = await readAppConfig(RUNTIME_DATA_DIR);
-      let agentId = typeof config.agentId === 'string' && config.agentId
-        ? config.agentId
-        : null;
-      let detectedAgentName: string | null = null;
-      if (!agentId) {
-        const agents = await detectAgents(config.agentCliEnv ?? {}).catch(() => []);
-        const available = agents.find((agent) => agent.available);
-        agentId = available?.id ?? null;
-        detectedAgentName = available?.name ?? null;
-      }
-      if (!agentId) return null;
-      return {
-        agentId,
-        agentName: getAgentDef(agentId)?.name ?? detectedAgentName ?? agentId,
-      };
-    },
+
   });
   registerProjectArtifactRoutes(app, {
     http: httpDeps,
@@ -9885,12 +9135,6 @@ const projectRouteResult = registerProjectRoutes(app, {
     projectStore: projectStoreDeps,
     authorizeProjectRequest,
     authorizeProjectToolRequest,
-  });
-  registerDesignSystemToolRoutes(app, {
-    auth: authDeps,
-    http: httpDeps,
-    paths: pathDeps,
-    projects: { getProject: (id: string) => getProject(db, id) },
   });
   registerHiMindMcpRoutes(app, {
     auth: authDeps,
@@ -10362,17 +9606,7 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
     workspaceId?: string | null;
     workspaceMemberId?: string | null;
   } = {}) {
-    const [skills, designSystems] = await Promise.all([
-      listAllSkills(options),
-      listAllDesignSystems(
-        options.workspaceId !== undefined
-          ? {
-              workspaceId: options.workspaceId,
-              workspaceMemberId: options.workspaceMemberId ?? null,
-            }
-          : {},
-      ),
-    ]);
+    const skills = await listAllSkills(options);
     // Spec §23.3.3: surface the bundled scenario plugins so apply()
     // can fall back to the matching scenario's pipeline when the
     // consumer plugin omits od.pipeline. Each scenario carries a
@@ -10380,7 +9614,7 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
     const scenarios = collectBundledScenarios();
     return {
       skills: skills.map((s) => ({ id: s.id, title: s.name, description: s.description })),
-      designSystems: designSystems.map((d) => ({ id: d.id, title: d.title })),
+      designSystems: [],
       craft: [],
       atoms: FIRST_PARTY_ATOMS.map((a) => ({ id: a.id, label: a.label })),
       scenarios,
@@ -10533,9 +9767,10 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
       const team = await readWorkspaceTeamPlugin(exactWorkspaceId, id);
       if (team) return team;
     }
-    return listInstalledPlugins(dbHandle, workspaceId, workspaceMemberId).find(
-      (plugin) => plugin.id === id,
-    ) ?? null;
+    const plugin = getInstalledPlugin(dbHandle, id);
+    return plugin && pluginVisibleFromWorkspace(dbHandle, plugin, workspaceId, workspaceMemberId)
+      ? plugin
+      : null;
   };
   const getLocalPluginBySource = async (
     dbHandle,
@@ -10594,8 +9829,9 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
     resources: { FIRST_PARTY_ATOMS },
   });
   registerPluginMarketplaceRoutes(app, {
+    awaitCommunityCatalog: () => communityCatalogReady,
     db,
-    bundledMarketplaceEntries,
+    get bundledMarketplaceEntries() { return bundledMarketplaceEntries; },
     createMarketplaceFetcher,
     marketplaceRegistryIdFromUrl,
     dataDir: RUNTIME_DATA_DIR,
@@ -10720,57 +9956,6 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
     // transitioning; the daemon persists the local catalogue partition so
     // the first run reads the same local record without waiting for identity
     // discovery or treating this as remote membership authority.
-    const designSystemCatalogScope = localCatalogScope(
-      metadata?.localCatalogScopes?.designSystem,
-    );
-    const designSystemWorkspaceId =
-      designSystemCatalogScope?.workspaceId ?? projectWorkspaceId;
-    const designSystemMemberId =
-      designSystemCatalogScope?.workspaceMemberId ?? projectCreatorMemberId;
-    const projectDesignSystemBinding = (summary) => {
-      if (!designSystemWorkspaceId || summary?.source === 'built-in') return null;
-      const logicalResourceId =
-        typeof summary?.id === 'string' ? summary.id.trim() : '';
-      if (!logicalResourceId) return null;
-      if (summary?.teamSynced === true) {
-        const canonicalTeamBinding = getWorkspaceResource(
-          db,
-          'design_system',
-          designSystemWorkspaceId,
-          workspaceTeamDesignSystemBindingResourceId(
-            designSystemWorkspaceId,
-            logicalResourceId,
-          ),
-        );
-        if (canonicalTeamBinding) return canonicalTeamBinding;
-      }
-      // Keep legacy rows readable while old local data converges to the
-      // Workspace-qualified Team envelope id.
-      return getWorkspaceResource(
-        db,
-        'design_system',
-        designSystemWorkspaceId,
-        logicalResourceId,
-      ) ?? null;
-    };
-    const designSystemVisibleToRun = (summary) => {
-      if (summary?.source === 'built-in') return true;
-      // A truly unbound local project is the legacy CLI/BYOK lane. Bound
-      // projects must resolve resources from their persisted project scope;
-      // shell/current Workspace state never participates.
-      if (!designSystemWorkspaceId) return true;
-      const binding = projectDesignSystemBinding(summary);
-      if (
-        !binding
-        || binding.resourceState === 'deleted'
-      ) {
-        return false;
-      }
-      if (binding.visibility === 'team') return true;
-      return binding.visibility === 'personal'
-        && Boolean(designSystemMemberId)
-        && binding.createdByWorkspaceMemberId?.trim() === designSystemMemberId;
-   };
    let appConfigForPrompt = null;
     const promptCoreVariant = resolvePromptCoreVariant(process.env.OD_PROMPT_CORE);
     if (promptCoreVariant !== 'native') {
@@ -10778,22 +9963,6 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
         appConfigForPrompt = await readAppConfig(RUNTIME_DATA_DIR);
       } catch (err) {
         console.warn('[app-config] readAppConfig failed', err);
-      }
-    }
-   let pluginDesignSystemId = null;
-   if (
-      promptCoreVariant !== 'native' &&
-     typeof appliedPluginSnapshotId === 'string' &&
-     appliedPluginSnapshotId.length > 0
-   ) {
-      try {
-        pluginDesignSystemId = designSystemIdFromPluginSnapshot(
-          getSnapshot(db, appliedPluginSnapshotId),
-        );
-      } catch (err) {
-        console.warn(
-          `[plugins] designSystem selection failed: ${err?.message ?? err}`,
-        );
       }
     }
     const effectiveSkillId = frozenSkillPackage
@@ -10807,19 +9976,8 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
     // blocks are skipped for these runs. Step 6 of the skill (replace with
     // the user's own content) is where brand application belongs.
    const isWebCloneRun = metadata?.intent === 'web-clone';
-    const designSystemSelection = isWebCloneRun || promptCoreVariant === 'native'
-     ? { id: null, source: 'none' }
-     : resolveEffectiveDesignSystemSelection({
-          requestDesignSystemId: designSystemId,
-          pluginDesignSystemId,
-          projectDesignSystemId: project?.designSystemId,
-          appDefaultDesignSystemId: appConfigForPrompt?.designSystemId,
-          disabledDesignSystemIds: appConfigForPrompt?.disabledDesignSystems,
-          // A project row with designSystemId=null can mean the user picked
-          // "No design system"; do not reapply the global default behind their back.
-          allowAppDefault: project === null,
-        });
-    const effectiveDesignSystemId = designSystemSelection.id;
+    const designSystemSelection = { id: null, source: 'none' };
+    const effectiveDesignSystemId = null;
     const projectResourceScope =
       typeof projectId === 'string' && projectId
         ? getWorkspaceProjectByProjectId(db, projectId)
@@ -11096,19 +10254,6 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
 
     let designSystemBody;
     let designSystemTitle;
-    // Compiled (tokens.css + components manifest / components.html)
-    // form of the active brand.
-    // Default-on as of PR-D — every chat that picks a brand with
-    // `tokens.css` + `components.html` siblings (today: `default` and
-    // `kami`; every other brand falls through silently because the
-    // files are absent) gets the structured token contract appended to
-    // the system prompt automatically.
-    //
-    // `OD_DESIGN_TOKEN_CHANNEL=0` is the kill switch: it forces the
-    // daemon back to the pre-PR-C DESIGN.md-only path for every brand,
-    // including the structured ones. Any other value (unset, `1`,
-    // `true`, etc.) keeps the new default. Drift on prose-only brands
-    // is pinned by `scripts/check-design-system-flag-parity.ts`.
     let designSystemUsageMd;
     let designSystemTokensCss;
     let designSystemComponentsManifest;
@@ -11119,83 +10264,6 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
     let designSystemCraftExemptions = [];
     let activeDesignSystemId = null;
     let designSystemDigest = null;
-    if (effectiveDesignSystemId) {
-      const designSystemListOptions = designSystemWorkspaceId
-        ? {
-            workspaceId: designSystemWorkspaceId,
-            workspaceMemberId: designSystemMemberId || null,
-          }
-        : {};
-      let systems = await listAllDesignSystems(designSystemListOptions);
-      let summary = systems.find(
-        (system) =>
-          system.id === effectiveDesignSystemId
-          && designSystemVisibleToRun(system),
-      );
-      if (summary?.source === 'user' && summary.teamSynced !== true) {
-        await ensureUserDesignSystemWorkspaceProject(db, effectiveDesignSystemId);
-        systems = await listAllDesignSystems(designSystemListOptions);
-        summary = systems.find(
-          (system) =>
-            system.id === effectiveDesignSystemId
-            && designSystemVisibleToRun(system),
-        );
-      }
-      const editingOwnDraftDesignSystem =
-        project?.metadata?.importedFrom === 'design-system'
-        && project.designSystemId === effectiveDesignSystemId;
-      designSystemTitle = summary?.title;
-      if (summary && (isProjectUsableDesignSystem(summary) || editingOwnDraftDesignSystem)) {
-        // A pulled Team mirror is a canonical, read-only package. Its
-        // metadata may carry the author's local editing-project id, which is
-        // neither authority to mutate a same-slug Personal backing project nor
-        // a safe path to read an unrelated local project's DESIGN.md.
-        const workspaceBody = summary.teamSynced === true
-          ? null
-          : await readDesignSystemWorkspaceTextFile(db, summary, 'DESIGN.md');
-        const registryBody = await readAvailableDesignSystem(
-          effectiveDesignSystemId,
-          designSystemListOptions,
-        );
-        designSystemBody = (workspaceBody ?? registryBody) ?? undefined;
-        // Single seam: env gate + built-in→user-installed fallback chain
-        // live together inside `resolveDesignSystemAssets` so the whole
-        // server-side asset-resolution path can be tested end-to-end
-        // from real disk fixtures (see `tests/design-system-assets.test.ts`).
-        const resourceBinding = projectDesignSystemBinding(summary);
-        const scopedUserDesignSystemsRoot =
-          designSystemWorkspaceId && resourceBinding?.visibility === 'team'
-            ? teamResourceWorkspaceRoot(USER_DESIGN_SYSTEMS_DIR, designSystemWorkspaceId)
-            : USER_DESIGN_SYSTEMS_DIR;
-        const assets = await resolveDesignSystemAssets(
-          effectiveDesignSystemId,
-          DESIGN_SYSTEMS_DIR,
-          scopedUserDesignSystemsRoot,
-        );
-        designSystemUsageMd = assets.usageMd;
-        designSystemTokensCss = assets.tokensCss;
-        designSystemComponentsManifest = assets.componentsManifest;
-        designSystemFixtureHtml = assets.fixtureHtml;
-        designSystemPullIndex = assets.pullIndex;
-        designSystemImportMode = assets.importMode;
-        designSystemCraftApplies = Array.isArray(assets.craftApplies) ? assets.craftApplies : [];
-        designSystemCraftExemptions = Array.isArray(assets.craftExemptions) ? assets.craftExemptions : [];
-        if (typeof designSystemBody === 'string' && designSystemBody.length > 0) {
-          activeDesignSystemId = effectiveDesignSystemId;
-          designSystemDigest = digestDesignSystemContext({
-            id: effectiveDesignSystemId,
-            title: designSystemTitle,
-            body: designSystemBody,
-            usageMd: designSystemUsageMd,
-            tokensCss: designSystemTokensCss,
-            componentsManifest: designSystemComponentsManifest,
-            fixtureHtml: designSystemFixtureHtml,
-            pullIndex: designSystemPullIndex,
-            importMode: designSystemImportMode,
-          });
-        }
-      }
-    }
 
     const requestedCraft = resolveCraftRequirements({
       isWebCloneRun,
@@ -12699,7 +11767,6 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
       ...resolveChatExtraAllowedDirs({
         agentId,
         skillsDir: SKILLS_DIR,
-        designSystemsDir: DESIGN_SYSTEMS_DIR,
         linkedDirs,
       }),
       ...(odNextTaskInputSnapshot
@@ -17422,9 +16489,7 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
     const assistantMessageId = `orbit-assistant-${randomUUID()}`;
     const projectName = `Orbit · ${formatLocalProjectTimestamp(startedAt)}`;
 
-    const orbitDesignSystemId = template?.designSystemRequired === false
-      ? null
-      : appConfig.designSystemId ?? null;
+    const orbitDesignSystemId = null;
 
     insertProject(db, {
       id: projectId,
@@ -18077,7 +17142,6 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
       listAllSkills,
       listAllDesignTemplates,
       listAllSkillLikeEntries,
-      listAllDesignSystems,
       mimeFor,
     },
     routines: { routineService },
@@ -18147,6 +17211,7 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
       orbitService.stop();
       routineService?.stop();
       clearInterval(teamResourcesPollTimer);
+      collabPublishWatcher.dispose();
       workspaceHubSubscriptions?.dispose();
       hubEventRefreshes.dispose();
       workspaceDirectoryRefreshes.dispose();
@@ -18224,6 +17289,7 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
           shutdown: shutdownDaemonRuns,
           routeInventory: getRouteRegistrationInventory(app),
         } : url);
+        communityCatalogReady = seedHdwCommunityMarketplace();
       });
     } catch (error) {
       cleanupDaemonBackgroundWork();

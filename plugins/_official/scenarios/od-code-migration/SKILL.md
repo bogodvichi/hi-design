@@ -45,3 +45,7 @@ A plugin built on this scenario typically declares `od.inputs`:
   - `targetStack` (form): collected by `rewrite-plan`.
   - `testCommand` / `buildCommand` (string, optional): overrides
     the inferred package.json scripts in the `build-test` atom.
+
+## Style fidelity
+
+Preserve the source palette, typography, spacing, and components. The token-map stage uses a user-supplied target reference only when explicitly provided; otherwise it retains the extracted source tokens. No installed design system is required.

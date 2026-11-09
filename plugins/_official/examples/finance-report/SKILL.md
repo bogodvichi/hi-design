@@ -21,9 +21,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   craft:
     requires: [rtl-and-bidi]
   example_prompt: "Build me a Q3 financial report for an early-stage SaaS — MRR, burn, gross margin, top accounts."
@@ -35,7 +32,7 @@ Produce a single-screen financial report in one self-contained HTML file.
 
 ## Workflow
 
-1. **Read the active DESIGN.md.** Tables, KPI cards, and chart strokes use
+1. **Read the supplied template/reference styles.** Tables, KPI cards, and chart strokes use
    palette tokens — never invent new ones.
 2. **Classify** the period (monthly / quarterly / yearly) and entity
    (startup, division, project) from the brief. If unspecified, assume a

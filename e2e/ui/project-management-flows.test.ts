@@ -3721,29 +3721,23 @@ test('[P1] projects page shows live artifact cards, supports search, and opens t
   await expect(page.getByTestId('project-title')).toContainText('Orbit Daily Digest');
 });
 
-test('[P2] General settings updates the custom companion draft', async ({ page }) => {
-  await seedAdoptedPet(page);
-  await page.route('**/api/codex-pets', async (route) => {
-    await route.fulfill({ json: { pets: [], rootDir: '' } });
+test('[P2] Retired pets stay disabled after loading an older configuration', async ({ page }) => {
+  await seedLegacyPetConfig(page);
+  const petRequests: string[] = [];
+  page.on('request', (request) => {
+    if (request.url().includes('/api/codex-pets')) petRequests.push(request.url());
   });
 
   await page.goto('/');
   const dialog = await openSettingsDialog(page);
   await dialog.getByRole('button', { name: /^General$/i }).click();
-  await expect(dialog.getByRole('heading', { level: 3, name: 'Pets' })).toBeVisible();
-
-  await dialog.getByRole('tab', { name: 'Custom' }).click();
-  const customPanel = dialog.locator('.pet-custom');
-  await expect(customPanel).toBeVisible();
-
-  await customPanel.getByLabel('Name').fill('QA Turtle');
-  await customPanel.getByLabel('Glyph').fill('🐢');
-  await customPanel.getByLabel('Greeting').fill('Shell yeah, tests are green.');
-  await expect(customPanel.getByText('QA Turtle')).toBeVisible();
-  await expect(customPanel.getByText('Shell yeah, tests are green.')).toBeVisible();
-
-  await dialog.getByRole('button', { name: 'Back to home', exact: true }).click();
-  await expect(dialog).toHaveCount(0);
+  await expect(dialog.getByRole('group', { name: 'Completion sound', exact: true })).toBeVisible();
+  await expect(dialog.getByRole('heading', { name: 'Pets', exact: true })).toHaveCount(0);
+  await expect(page.locator('.pet-overlay, .pet-custom')).toHaveCount(0);
+  const legacyPet = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).pet, STORAGE_KEY);
+  expect(legacyPet.enabled).toBe(false);
+  expect(legacyPet.custom.name).toBe('Original Buddy');
+  expect(petRequests).toEqual([]);
 });
 
 async function createProject(
@@ -4343,7 +4337,7 @@ function homeDesignCard(page: Page, name: string): Locator {
   });
 }
 
-async function seedAdoptedPet(page: Page) {
+async function seedLegacyPetConfig(page: Page) {
   await page.addInitScript((key) => {
     window.localStorage.setItem(
       key,

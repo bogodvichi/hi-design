@@ -24,8 +24,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: false
   example_prompt: "Generate today's Open Orbit Gmail briefing. Gmail is my only connected connector — pull yesterday's mail and render it as the opened Orbit Daily Digest email inside Gmail's reading view."
 ---
 

@@ -1,14 +1,12 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { resolveSystemLocale } from '../../src/i18n';
-import { feedbackEn, feedbackJa, feedbackZhCN } from '../../src/i18n/feedback-copy';
+import { feedbackEn, feedbackZhCN } from '../../src/i18n/feedback-copy';
 import { en } from '../../src/i18n/locales/en';
-import { id } from '../../src/i18n/locales/id';
 import { zhCN } from '../../src/i18n/locales/zh-CN';
-import { zhTW } from '../../src/i18n/locales/zh-TW';
 import { LOCALES, LOCALE_LABEL, type Dict, type Locale } from '../../src/i18n/types';
 
-const EXPECTED_LOCALES = ['en', 'id', 'de', 'zh-CN', 'zh-TW', 'pt-BR', 'es-ES', 'ru', 'fa', 'ar', 'ja', 'ko', 'pl', 'hu', 'fr', 'uk', 'tr', 'th', 'it'];
+const EXPECTED_LOCALES = ['en', 'zh-CN',];
 
 function placeholders(value: string): string[] {
   const names: string[] = [];
@@ -35,7 +33,7 @@ function explicitLocaleKeys(locale: Locale): string[] {
   const source = readFileSync(new URL(`../../src/i18n/locales/${locale}.ts`, import.meta.url), 'utf8');
   const keys = Array.from(source.matchAll(/^\s*['"]([^'"]+)['"]:/gm), (match) => match[1] ?? '').filter(Boolean);
   // Count localized shared copy only when the locale actually spreads it.
-  for (const [name, dictionary] of Object.entries({ feedbackZhCN, feedbackJa })) {
+  for (const [name, dictionary] of Object.entries({ feedbackZhCN })) {
     if (new RegExp(`^\\s*\\.\\.\\.${name},`, 'm').test(source)) {
       keys.push(...Object.keys(dictionary));
     }
@@ -46,42 +44,21 @@ function explicitLocaleKeys(locale: Locale): string[] {
 describe('i18n locales', () => {
   it('resolves the initial locale from browser language preferences', () => {
     expect(resolveSystemLocale(['zh-Hans-CN', 'en-US'])).toBe('zh-CN');
-    expect(resolveSystemLocale(['zh-Hant-HK', 'en-US'])).toBe('zh-TW');
-    expect(resolveSystemLocale(['pt-PT', 'en-US'])).toBe('pt-BR');
-    expect(resolveSystemLocale(['es-MX', 'en-US'])).toBe('es-ES');
+    expect(resolveSystemLocale(['zh-Hant-HK', 'en-US'])).toBe('zh-CN');
+    expect(resolveSystemLocale(['pt-PT', 'en-US'])).toBe('en');
+    expect(resolveSystemLocale(['es-MX', 'en-US'])).toBe('en');
     expect(resolveSystemLocale(['nl-NL', 'en-US'])).toBe('en');
     expect(resolveSystemLocale(['nl-NL'])).toBeNull();
   });
 
   it('registers every supported locale in the language menu', () => {
     expect(LOCALES).toEqual(EXPECTED_LOCALES);
-    expect((LOCALE_LABEL as Record<string, string>).id).toBe('Bahasa Indonesia');
-    expect((LOCALE_LABEL as Record<string, string>).de).toBe('Deutsch');
-    expect((LOCALE_LABEL as Record<string, string>).it).toBe('Italiano');
-    expect((LOCALE_LABEL as Record<string, string>).ja).toBe('日本語');
   });
 
   it('localizes the Home prototype creation type in every supported locale', async () => {
     const expected: Record<Locale, string> = {
-      ar: 'نموذج أولي',
-      de: 'Prototyp',
       en: 'Prototype',
-      'es-ES': 'Prototipo',
-      fa: 'نمونه اولیه',
-      fr: 'Prototype',
-      hu: 'Prototípus',
-      id: 'Prototipe',
-      it: 'Prototipo',
-      ja: 'プロトタイプ',
-      ko: '프로토타입',
-      pl: 'Prototyp',
-      'pt-BR': 'Protótipo',
-      ru: 'Прототип',
-      th: 'ต้นแบบ',
-      tr: 'Prototip',
-      uk: 'Прототип',
       'zh-CN': '原型',
-      'zh-TW': '原型',
     };
 
     for (const locale of LOCALES) {
@@ -107,7 +84,6 @@ describe('i18n locales', () => {
 
   it.each([
     ['zh-CN', feedbackZhCN],
-    ['ja', feedbackJa],
   ] as const)('localizes shared feedback in %s without English fallback', async (locale, feedback) => {
     const dict = await loadDict(locale);
     expect(Object.keys(feedback).sort()).toEqual(Object.keys(feedbackEn).sort());
@@ -123,25 +99,8 @@ describe('i18n locales', () => {
 
   it('labels workspace USD spending power as allowance instead of points or account balance', async () => {
     const expected: Record<Locale, string> = {
-      ar: 'الحصة',
-      de: 'Kontingent',
       en: 'Allowance',
-      'es-ES': 'Cuota',
-      fa: 'سهمیه',
-      fr: 'Quota',
-      hu: 'Keret',
-      id: 'Kuota',
-      it: 'Quota',
-      ja: '利用枠',
-      ko: '사용 한도',
-      pl: 'Limit',
-      'pt-BR': 'Cota',
-      ru: 'Лимит',
-      th: 'โควตา',
-      tr: 'Kota',
-      uk: 'Ліміт',
       'zh-CN': '额度',
-      'zh-TW': '額度',
     };
 
     for (const locale of LOCALES) {
@@ -169,7 +128,6 @@ describe('i18n locales', () => {
 
     for (const [locale, dict, quota] of [
       ['zh-CN', zhCN, '额度'],
-      ['zh-TW', zhTW, '額度'],
     ] as const) {
       for (const key of keys) {
         expect(dict[key], `${locale}.${key}`).toContain(quota);
@@ -180,25 +138,8 @@ describe('i18n locales', () => {
 
   it('keeps the recharge recovery action concise enough to sit beside retry', async () => {
     const expected: Record<Locale, string> = {
-      ar: 'شحن',
-      de: 'Aufladen',
       en: 'Top up',
-      'es-ES': 'Recargar',
-      fa: 'شارژ',
-      fr: 'Recharger',
-      hu: 'Feltöltés',
-      id: 'Isi ulang',
-      it: 'Ricarica',
-      ja: 'チャージ',
-      ko: '충전',
-      pl: 'Doładuj',
-      'pt-BR': 'Recarregar',
-      ru: 'Пополнить',
-      th: 'เติมเงิน',
-      tr: 'Bakiye yükle',
-      uk: 'Поповнити',
       'zh-CN': '充值',
-      'zh-TW': '儲值',
     };
 
     for (const locale of LOCALES) {
@@ -206,63 +147,6 @@ describe('i18n locales', () => {
       expect(dict['chat.amrError.rechargeCta'], `${locale}.chat.amrError.rechargeCta`).toBe(
         expected[locale],
       );
-    }
-  });
-
-  it('keeps Indonesian connector settings copy translated instead of falling back to English', () => {
-    const translatedKeys: Array<keyof Dict> = [
-      'settings.connectorsNavHint',
-      'settings.connectorsHint',
-      'settings.connectorsComposioApiKey',
-      'settings.connectorsSavedTitle',
-      'settings.connectorsSaved',
-      'settings.connectorsGetApiKey',
-      'settings.connectorsApiKeyPlaceholder',
-      'settings.connectorsClear',
-      'settings.connectorsSaveKey',
-      'settings.connectorsKeyError',
-      'settings.connectorsHelpEmpty',
-      'settings.connectorsLoadingSavedKey',
-      'settings.autosaveSaving',
-      'settings.autosaveSaved',
-      'settings.autosaveError',
-      'settings.orbit.eyebrow',
-      'settings.orbit.navHint',
-      'settings.orbit.lede',
-      'settings.orbit.statusOnTitle',
-      'settings.orbit.statusOffTitle',
-      'settings.orbit.runTitle',
-      'settings.orbit.running',
-      'settings.orbit.runOpen',
-      'settings.orbit.dailySummaryTitle',
-      'settings.orbit.dailySummarySub',
-      'settings.orbit.runTimeTitle',
-      'settings.orbit.runTimeSub',
-      'settings.orbit.nextRun',
-      'settings.orbit.nextRunScheduledAfterSave',
-      'settings.orbit.schedule',
-      'settings.orbit.pausedManualOnly',
-      'settings.orbit.templateTitle',
-      'settings.orbit.templateMissing',
-      'settings.orbit.templateMissingOption',
-      'settings.orbit.templateMissingInstall',
-      'settings.orbit.templateMissingPickAnother',
-      'settings.orbit.templateResetTitle',
-      'settings.orbit.templateReset',
-      'settings.orbit.templateHelp',
-      'settings.orbit.templatesLoading',
-      'settings.orbit.templatesOptgroup',
-      'settings.orbit.lastRun',
-      'settings.orbit.countChecked',
-      'settings.orbit.countSucceeded',
-      'settings.orbit.countSkipped',
-      'settings.orbit.countFailed',
-      'settings.orbit.runError',
-      'settings.orbit.artifactKickerLive',
-    ];
-
-    for (const key of translatedKeys) {
-      expect(id[key], key).not.toBe(en[key]);
     }
   });
 
@@ -293,7 +177,6 @@ describe('i18n locales', () => {
 
     for (const key of translatedKeys) {
       expect(zhCN[key], `zh-CN.${key}`).not.toBe(en[key]);
-      expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
     }
   });
 
@@ -303,9 +186,6 @@ describe('i18n locales', () => {
     );
     expect(zhCN['settings.byokDraftNotice']).toBe(
       '填写必填项后即可保存此提供商；当前配置将继续保持生效。',
-    );
-    expect(zhTW['settings.byokDraftNotice']).toBe(
-      '填寫必填欄位後即可儲存此供應商；目前的設定將繼續維持生效。',
     );
   });
 
@@ -330,23 +210,7 @@ describe('i18n locales', () => {
 
     for (const key of translatedKeys) {
       expect(zhCN[key], `zh-CN.${key}`).not.toBe(en[key]);
-      expect(zhTW[key], `zh-TW.${key}`).not.toBe(en[key]);
     }
-  });
-
-  it('declares CI-sensitive Indonesian fallback keys explicitly', () => {
-    const explicitKeys = new Set(explicitLocaleKeys('id'));
-    const requiredExplicitKeys = Object.keys(en).filter((key) => {
-      return key.startsWith('connectors.category.') || key.startsWith('liveArtifact.viewer.');
-    });
-
-    expect(requiredExplicitKeys.filter((key) => !explicitKeys.has(key))).toEqual([]);
-  });
-
-  it('avoids brittle per-key English lookups in the Indonesian locale source', () => {
-    const source = readFileSync(new URL('../../src/i18n/locales/id.ts', import.meta.url), 'utf8');
-
-    expect(source).not.toMatch(/en\['(?:connectors\.category\.|liveArtifact\.viewer\.)/);
   });
 
   // Tier-1 locale parity lock (issue #1894):
@@ -374,30 +238,6 @@ describe('i18n locales', () => {
     expect(
       source,
       'zh-CN.ts must use Chinese translations instead of en or feedbackEn fallbacks.',
-    ).not.toMatch(/\.\.\.en\b|\bfeedbackEn\b/);
-  });
-
-  // Apply the same coverage and English-fallback guards to Japanese.
-  it('keeps ja explicitly translated for every English key (tier-1 parity lock)', () => {
-    const englishKeys = Object.keys(en).sort();
-    const explicit = explicitLocaleKeys('ja').sort();
-
-    expect(
-      explicit,
-      'ja must translate every English key inline or in its shared Japanese dictionary. ' +
-        'Add the missing translations rather than falling back to English.',
-    ).toEqual(englishKeys);
-  });
-
-  it('keeps the ja locale source free of English dictionary fallbacks', () => {
-    const source = readFileSync(
-      new URL('../../src/i18n/locales/ja.ts', import.meta.url),
-      'utf8',
-    );
-
-    expect(
-      source,
-      'ja.ts must use Japanese translations instead of en or feedbackEn fallbacks.',
     ).not.toMatch(/\.\.\.en\b|\bfeedbackEn\b/);
   });
 

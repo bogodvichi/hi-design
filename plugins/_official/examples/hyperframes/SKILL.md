@@ -21,8 +21,6 @@ od:
   scenario: video
   preview:
     type: html
-  design_system:
-    requires: false
   example_prompt: |
     A 5-second product reveal: a minimal high-end product on a clean cream
     surface, soft side light, slow camera push-in, restrained motion, no

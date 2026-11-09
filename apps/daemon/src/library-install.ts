@@ -8,7 +8,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { isBlocked } from './linked-dirs.js';
 import { listSkills, findSkillById } from './skills.js';
-import { listDesignSystems } from './design-systems/index.js';
 
 /** @typedef {{ source: 'github', url: string } | { source: 'local', path: string }} InstallTarget */
 
@@ -60,7 +59,8 @@ export async function containsSymlink(dir) {
  * @returns {Promise<{ok: true, dir: string} | {ok: false, error: string}>}
  */
 export async function installFromTarget(target, userDir, kind) {
-  const manifest = kind === 'skill' ? 'SKILL.md' : 'DESIGN.md';
+  if (kind !== 'skill') return { ok: false as const, error: 'Unsupported resource kind' };
+  const manifest = 'SKILL.md';
 
   if (target.source === 'github') {
     return installFromGithub(target.url, userDir, manifest);
@@ -188,7 +188,8 @@ async function installFromLocal(localPath, userDir, manifest) {
  * @returns {Promise<{ok: true} | {ok: false, error: string, status?: number}>}
  */
 export async function uninstallById(id, userDir, builtInDir, kind) {
-  const listFn = kind === 'skill' ? listSkills : listDesignSystems;
+  if (kind !== 'skill') return { ok: false, error: 'Unsupported resource kind', status: 400 };
+  const listFn = listSkills;
 
   // Check if it's a built-in item
   const builtIn = await listFn(builtInDir);

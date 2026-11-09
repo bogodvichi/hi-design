@@ -34,8 +34,6 @@ od:
   preview:
     type: html
     entry: example.html
-  design_system:
-    requires: false
   example_prompt_i18n:
     zh-CN: "用「花叔幻灯片」模板把我的内容做成一套出版物级 HTML 幻灯片：1920×1080 固定画布、报刊式 masthead/kicker/衬线大字版式、单一赤陶橙 accent、亮暗节奏交替、键盘 ←/→/空格翻页 + #/N hash 跳页。从 example.html 出发只换内容，不要重写设计。"
   category: "career"
@@ -94,7 +92,7 @@ by 花叔 (alchaincyf), MIT licensed.
 terracotta `#C04A1A`) · `--hairline` rules · `--serif` Noto Serif SC display ·
 `--serif-en` Lora italic English subtitles · `--sans` body · `--mono` labels.
 Re-theme by changing token **values** only (from the user's brand or an
-active DESIGN.md); never introduce a second accent color.
+the supplied template/reference styles); never introduce a second accent color.
 
 ### Layout enumeration (use 4–5 per deck, never one layout everywhere)
 

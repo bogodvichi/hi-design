@@ -19,20 +19,17 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   craft:
     requires: [laws-of-ux]
 ---
 
 # Pricing Page Skill
 
-Produce a single-screen pricing page that respects the active DESIGN.md.
+Produce a single-screen pricing page that respects the supplied template/reference styles.
 
 ## Workflow
 
-1. **Read the active DESIGN.md** (injected above). Use only its colors, type
+1. **Read the supplied template/reference styles** (provided with the template). Use only its colors, type
    tokens, and component patterns.
 2. **Classify** the product from the brief and pick a tier shape:
    - 3-tier (most common): Free / Pro / Team or Starter / Growth / Enterprise.
@@ -56,7 +53,7 @@ Produce a single-screen pricing page that respects the active DESIGN.md.
    - CSS Grid for the plan-card row; CSS Grid for the comparison table.
    - `data-od-id` on each tier card and each table row.
 5. **Money rendering**: use the display font for the big number, body for the
-   currency and "/mo" — sizes per DESIGN.md scale.
+   currency and "/mo" — sizes per the template typography scale.
 6. **Self-check**:
    - Prices are plausible for the product (not "$X / month").
    - Accent is on the recommended tier and one CTA only.

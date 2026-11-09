@@ -63,6 +63,7 @@ import {
 } from '../collab/request-workspace-context.js';
 import { requestWithWorkspaceNavigationScope } from '../collab/workspace-resource-mutation.js';
 import { sendApiError } from '../http/api-errors.js';
+import { normalizeHdwCommunityImageUrl } from '../http/hdw-community-cover.js';
 
 export type WorkspaceEventSink = (payload: WorkspaceInvalidationSsePayload) => void;
 export type WorkspaceEventSinksByWorkspace =
@@ -746,7 +747,12 @@ export function registerCollabContextRoutes(app: Express, deps: RegisterCollabCo
       });
     }
     try {
-      const members = await listMembers(verified.context);
+      // Normalize after the cache read so persisted legacy URLs are repaired too.
+      const members = (await listMembers(verified.context)).map((member) =>
+        typeof member.avatarUrl === 'string'
+          ? { ...member, avatarUrl: normalizeHdwCommunityImageUrl(member.avatarUrl, 'avatar') }
+          : member,
+      );
       const body: CollabCloudMembersResponse = { members };
       return res.json(body);
     } catch {

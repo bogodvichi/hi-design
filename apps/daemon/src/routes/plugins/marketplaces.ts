@@ -37,6 +37,7 @@ interface MarketplaceMutationResult {
 type MarketplaceFetcher = (url: string) => Promise<{ ok: boolean; status: number; text: () => Promise<string> }>;
 
 export interface RegisterPluginMarketplaceRoutesDeps {
+  awaitCommunityCatalog?: () => Promise<void>;
   db: SqliteDbLike;
   bundledMarketplaceEntries: unknown;
   createMarketplaceFetcher: (seedId: string | null, bundled: unknown) => MarketplaceFetcher;
@@ -179,9 +180,15 @@ async function resolveCommunityPreviewFile(root: string, files: string[]): Promi
 }
 
 export function registerPluginMarketplaceRoutes(app: Express, deps: RegisterPluginMarketplaceRoutesDeps): void {
- const { db, bundledMarketplaceEntries, createMarketplaceFetcher, marketplaceRegistryIdFromUrl } = deps;
+ const { db, createMarketplaceFetcher, marketplaceRegistryIdFromUrl } = deps;
  const dataDir = deps.dataDir;
  const projectsDir = path.join(dataDir, 'projects');
+
+  // Only community requests wait for the initial download; login stays usable.
+  app.use('/api/marketplaces/hdw-community', async (_req, _res, next) => {
+    await deps.awaitCommunityCatalog?.();
+    next();
+  });
 
   // Augment marketplace plugin entries with prompt from locally installed
   // plugins SKILL.md files. The HDW backend may not return prompt in the
@@ -231,7 +238,7 @@ export function registerPluginMarketplaceRoutes(app: Express, deps: RegisterPlug
       const result = await addMarketplace(db, {
         url,
         trust,
-        fetcher: createMarketplaceFetcher(marketplaceRegistryIdFromUrl(url), bundledMarketplaceEntries),
+        fetcher: createMarketplaceFetcher(marketplaceRegistryIdFromUrl(url), deps.bundledMarketplaceEntries),
       }) as MarketplaceMutationResult;
       if (!result.ok) return res.status(result.status).json({ error: { code: 'marketplace-add-failed', message: result.message, data: { errors: result.errors ?? [] } } });
       res.status(201).json(result.row);
@@ -260,7 +267,7 @@ export function registerPluginMarketplaceRoutes(app: Express, deps: RegisterPlug
       const { getMarketplace, refreshMarketplace } = await import('../../plugins/marketplaces.js');
       const row = getMarketplace(db, req.params.id) as MarketplaceRow | null;
       const seedId = row ? marketplaceRegistryIdFromUrl(row.url) ?? req.params.id : req.params.id;
-      const result = await refreshMarketplace(db, req.params.id, createMarketplaceFetcher(seedId, bundledMarketplaceEntries)) as MarketplaceMutationResult;
+      const result = await refreshMarketplace(db, req.params.id, createMarketplaceFetcher(seedId, deps.bundledMarketplaceEntries)) as MarketplaceMutationResult;
       if (!result.ok) return res.status(result.status).json({ error: { code: 'marketplace-refresh-failed', message: result.message, data: { errors: result.errors ?? [] } } });
       try {
         const { recordPluginEvent } = await import('../../plugins/events.js');

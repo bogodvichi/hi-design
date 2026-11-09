@@ -9,8 +9,6 @@ od:
   preview:
     type: html
     entry: example.html
-  design_system:
-    requires: false
 ---
 
 # Velar. — Luxury Real Estate Landing Page

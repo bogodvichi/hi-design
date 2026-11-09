@@ -60,12 +60,10 @@ function renderEntryView(overrides: Partial<ComponentProps<typeof EntryView>> = 
     <EntryView
       skills={[]}
       designTemplates={[]}
-      designSystems={[]}
       projects={[]}
       templates={[]}
       onDeleteTemplate={vi.fn()}
       promptTemplates={[]}
-      defaultDesignSystemId={null}
       agents={[]}
       config={{
         mode: 'daemon',
@@ -98,7 +96,6 @@ function renderEntryView(overrides: Partial<ComponentProps<typeof EntryView>> = 
       onOpenLiveArtifact={vi.fn()}
       onDeleteProject={vi.fn()}
       onRenameProject={vi.fn()}
-      onChangeDefaultDesignSystem={vi.fn()}
       onPersistComposioKey={vi.fn()}
       onOpenSettings={vi.fn()}
       onCompleteOnboarding={vi.fn()}

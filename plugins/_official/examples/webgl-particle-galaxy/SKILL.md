@@ -27,9 +27,6 @@ od:
     type: html
     entry: index.html
     reload: debounce-100
-  design_system:
-    requires: false
-    sections: [color, typography]
   craft:
     requires: [animation-discipline]
 ---
@@ -68,7 +65,7 @@ Choose a field the vertex shader can express cheaply from `gl_VertexID` + `uTime
 - Compile shaders with error logging (`getShaderInfoLog` / `getProgramInfoLog`) so a typo fails loudly.
 
 ### Step 3 — Overlay + brand
-- Map the accent colors to the active DESIGN.md when one is present; otherwise a restrained dark palette with one vivid accent (the reference uses lime `#63fe13` for the arms and a white-blue core).
+- Map the accent colors to the supplied template/reference styles when one is present; otherwise a restrained dark palette with one vivid accent (the reference uses lime `#63fe13` for the arms and a white-blue core).
 - Headline ≤ 15ch plus one supporting line. Never bury the particles behind the text.
 
 ### Step 4 — Self-review (P0)

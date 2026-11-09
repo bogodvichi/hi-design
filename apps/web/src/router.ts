@@ -154,20 +154,8 @@ export function parseRoute(pathname: string): Route {
     }
     return { kind: 'home', view: 'projects' };
   }
-  if (parts[0] === 'design-systems') {
-    if (parts[1] === 'create') {
-      return { kind: 'design-system-create' };
-    }
-    if (parts[1]) {
-      return { kind: 'design-system-detail', designSystemId: decodeURIComponent(parts[1]) };
-    }
-    return { kind: 'home', view: 'design-systems' };
-  }
-  if (parts[0] === 'brands') {
-    // Brands merged into Design systems: a brand is a `user:<id>` design system
-    // and extraction now starts from the design-system create wizard. Legacy
-    // `/brands` and `/brands/:id` deep-links redirect onto the unified tab.
-    return { kind: 'home', view: 'design-systems' };
+  if (parts[0] === 'design-systems' || parts[0] === 'brands') {
+    return { kind: 'home', view: 'home' };
   }
   if (parts[0] === 'automations' || parts[0] === 'tasks') {
     return { kind: 'home', view: 'tasks' };

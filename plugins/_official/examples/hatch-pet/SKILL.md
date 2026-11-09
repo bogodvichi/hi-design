@@ -17,8 +17,6 @@ od:
   preview:
     type: image
     entry: final/spritesheet.png
-  design_system:
-    requires: false
   outputs:
     primary: final/spritesheet.png
     secondary:

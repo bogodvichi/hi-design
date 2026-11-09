@@ -26,9 +26,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: false
-    sections: [color, typography, layout, components]
   example_prompt: "Wireframe a lo-fi mobile flow v0.1 — three phone frames in a row (Onboarding → Home feed → Item detail), grey-box screens, dashed step arrows between them, and two annotation callouts."
 ---
 

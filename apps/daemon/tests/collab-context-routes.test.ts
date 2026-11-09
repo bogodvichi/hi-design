@@ -25,6 +25,7 @@ let server: http.Server | null = null;
 const roots: string[] = [];
 
 afterEach(async () => {
+  vi.unstubAllEnvs();
   if (server) {
     const toClose = server;
     server = null;
@@ -1645,6 +1646,45 @@ describe('POST /api/workspace/invite/continue', () => {
 });
 
 describe('GET /api/workspace/members', () => {
+  it.each([
+    ['development', '/hik-plugin/hidesign-web/hdw'],
+    ['production', '/hik-plugin/hidesign-web-offical/hdw'],
+  ])('routes cached member avatars through the active %s gateway', async (mode, prefix) => {
+    vi.stubEnv('NODE_ENV', mode);
+    vi.stubEnv('OD_HDW_PATH_PREFIX', prefix);
+    const digest = 'a'.repeat(64);
+    const proxyUrl = `/api/hdw/api/community/avatar/${digest}`;
+    const avatarUrls = [
+      `http://pixso.hikvision.com.cn/hdw/api/community/avatar/${digest}`,
+      `https://pixso.hikvision.com.cn${prefix}/api/community/avatar/${digest}`,
+      `/hdw/api/community/avatar/${digest}`,
+      proxyUrl,
+      'https://moa.hikvision.com/imavatar/person?uid=example',
+      `https://images.example/hdw/api/community/avatar/${digest}`,
+      null,
+      undefined,
+    ];
+    const cachedMembers = avatarUrls.map((avatarUrl, index) => ({
+      memberId: `member-${index}`,
+      displayName: `Member ${index}`,
+      role: 'member' as const,
+      ...(avatarUrl !== undefined ? { avatarUrl } : {}),
+    }));
+    const api = await startContextServer({
+      fetchWorkspaceDirectory: async () => ({ ok: true, items: [TEAM_DIRECTORY_ITEM] }),
+      listMembers: async () => cachedMembers,
+    });
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const response = await api.req('/api/workspace/members', { headers: TEAM_HEADERS });
+      expect(response.status).toBe(200);
+      expect(response.body.members).toEqual(cachedMembers.map((member, index) =>
+        index < 3 ? { ...member, avatarUrl: proxyUrl } : member,
+      ));
+    }
+    expect(cachedMembers.map((member) => member.avatarUrl)).toEqual(avatarUrls);
+  });
+
   it('passes the directory-verified Workspace context to the member service', async () => {
     const contexts: unknown[] = [];
     const api = await startContextServer({

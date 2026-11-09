@@ -1,3 +1,5 @@
+> Archived: standalone design systems are retired. This document describes the historical format; see [the retained schema boundary](../design-systems/README.md) for current behavior.
+
 # Design system authoring guide
 
 **Parent:** [`spec.md`](spec.md) · **Siblings:** [`architecture.md`](architecture.md) · [`skills-protocol.md`](skills-protocol.md) · [`agent-adapters.md`](agent-adapters.md)

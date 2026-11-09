@@ -26,9 +26,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   craft:
     requires: [typography, typography-hierarchy, typography-hierarchy-editorial, rtl-and-bidi]
   example_prompt: "Design 'The Creator's Style & Format Guide' — cover page and one inside spread, lifestyle creator brand."
@@ -42,7 +39,7 @@ serif display headings, careful column rhythm.
 
 ## Workflow
 
-1. **Read the active DESIGN.md** (injected above). Pick a serif display
+1. **Read the supplied template/reference styles** (provided with the template). Pick a serif display
    token for the title (italic ligatures encouraged), a body serif for
    long-form, and a mono token for stats / labels.
 2. **Pick the topic + author** from the brief. Generate a real title (e.g.

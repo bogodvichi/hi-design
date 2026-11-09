@@ -221,9 +221,6 @@
           "path": "./SKILL.md"
         }
       ],
-      "designSystem": {
-        "primary": true
-      },
       "assets": [
         "./example.html",
         "./assets/template.html",

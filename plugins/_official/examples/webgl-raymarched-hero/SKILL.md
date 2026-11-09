@@ -26,9 +26,6 @@ od:
     type: html
     entry: index.html
     reload: debounce-100
-  design_system:
-    requires: false
-    sections: [color, typography]
   craft:
     requires: [animation-discipline]
 ---
@@ -67,7 +64,7 @@ Keep the marcher cheap so it holds 60fps:
 - Compile shaders with error logging so a typo fails loudly, not silently black.
 
 ### Step 3 — Overlay + brand
-- Map the accent colors to the active DESIGN.md when one is present; otherwise a restrained dark palette with one vivid accent (the reference tints the surface toward lime `#63fe13` and rims it in teal).
+- Map the accent colors to the supplied template/reference styles when one is present; otherwise a restrained dark palette with one vivid accent (the reference tints the surface toward lime `#63fe13` and rims it in teal).
 - Headline ≤ 13ch plus one supporting line. Keep the 3D form as the hero.
 
 ### Step 4 — Self-review (P0)

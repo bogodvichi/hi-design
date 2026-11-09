@@ -33,8 +33,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: false
   example_prompt_i18n:
     zh-CN: "用「叙事波形」模板把我的变革故事做成 Duarte 式 HTML 幻灯片：1920×1080 固定画布、每页一条横贯全屏的 SVG 贝塞尔波形线、品牌橙 #FF6B2C 只标转折点、灰化对照波形、stroke-dashoffset 逐段 reveal、Inter + Geist Mono 双字体。从 example.html 出发只换内容，不要重写设计。"
   category: "data-finance"

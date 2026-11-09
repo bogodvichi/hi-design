@@ -96,9 +96,6 @@
           "path": "./SKILL.md"
         }
       ],
-      "designSystem": {
-        "primary": true
-      },
       "assets": [
         "./references/sector-wacc.md"
       ]

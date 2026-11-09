@@ -23,8 +23,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: false
   example_prompt: "Generate today's Open Orbit GitHub briefing. GitHub is my only connected connector — pull yesterday's PRs, review requests, issues, CI runs, and merges and render them as a GitHub Notifications + PR-diff page."
 ---
 

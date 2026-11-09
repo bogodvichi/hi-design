@@ -82,10 +82,6 @@ import type {
   ProjectMetadata,
   ProjectTemplate,
   RenameProjectFileResponse,
-  CodexPetSummary,
-  CodexPetsResponse,
-  SyncCommunityPetsRequest,
-  SyncCommunityPetsResponse,
   SkillDetail,
   SkillSummary,
   InstallInput,
@@ -313,9 +309,7 @@ export interface PetAtlasLayout {
   rowsDef: PetAtlasRowDef[];
 }
 
-// User-tunable companion that floats over the workspace. The full catalog
-// lives in `components/pet/pets.ts`; this shape is what gets persisted to
-// localStorage so we can roundtrip a customized pet across reloads.
+// Historical custom pet metadata, retained when normalizing old configurations.
 export interface PetCustom {
   // Display name shown in the overlay tooltip and settings card.
   name: string;
@@ -369,6 +363,7 @@ export interface OrbitConfig {
   } | null;
 }
 
+/** @deprecated Retained only for reading historical local settings. */
 export interface PetConfig {
   // True once the user has explicitly picked a pet (built-in or custom).
   // Until then, the entry view shows an "adopt" callout to drive discovery.
@@ -642,10 +637,6 @@ export type {
   ProviderModelsKind,
   ProviderModelsRequest,
   ProviderModelsResponse,
-  CodexPetSummary,
-  CodexPetsResponse,
-  SyncCommunityPetsRequest,
-  SyncCommunityPetsResponse,
   SkillDetail,
   SkillSummary,
   InstallInput,

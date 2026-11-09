@@ -21,9 +21,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   craft:
     requires: [state-coverage, animation-discipline]
 ---
@@ -50,11 +47,11 @@ mobile-app/
 
 1. **Read `assets/template.html`** end-to-end through the `<style>` block. The Dynamic Island, status bar SVG icons, home indicator, side rails, and tab bar are all already drawn in HTML/SVG — do not re-implement them inline on each screen.
 2. **Read `references/layouts.md`** so you know which 6 archetypes exist.
-3. **Read the active DESIGN.md** — map its tokens to the six `:root` variables in the seed.
+3. **Read the supplied template/reference styles** — map its tokens to the six `:root` variables in the seed.
 
 ### Step 1 — Copy the seed
 
-Copy `assets/template.html` to the project root as `index.html`. Replace the six `:root` variables with the active design system's tokens. Replace the page `<title>` and the caption above the device.
+Copy `assets/template.html` to the project root as `index.html`. Replace the six `:root` variables with the supplied template/reference styles's tokens. Replace the page `<title>` and the caption above the device.
 
 ### Step 2 — Pick exactly one archetype
 

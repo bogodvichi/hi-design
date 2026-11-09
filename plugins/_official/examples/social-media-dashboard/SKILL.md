@@ -25,9 +25,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   example_prompt: "Create a social media analytics dashboard using my Design System. Show X, LinkedIn, YouTube, Instagram with follower counts, engagement rate, likes, reposts, trending topics, and top comments."
 ---
 
@@ -37,7 +34,7 @@ Produce a single-screen, creator-facing social media analytics dashboard.
 
 ## Workflow
 
-1. **Read the active DESIGN.md** (injected above). Colors, typography,
+1. **Read the supplied template/reference styles** (provided with the template). Colors, typography,
    spacing, radii, and component styling all come from it. Do not invent
    new tokens; do not hard-code brand colors of the platforms — let the
    DESIGN.md carry the visual identity, and reference platforms only by

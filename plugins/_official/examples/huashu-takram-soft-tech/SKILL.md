@@ -33,8 +33,6 @@ od:
   preview:
     type: html
     entry: example.html
-  design_system:
-    requires: false
   example_prompt_i18n:
     zh-CN: "用「东方柔光科技」模板把我的内容做成柔和自然色系的 HTML 幻灯片：1920×1080 固定画布、米色和纸底 #F5F0EB、鼠尾草绿 #6B8F71 + 唯一金 #D4A574 + 暖灰系、Noto Serif SC 衬线大标题 + Inter 标签混排、圆角半透明数据卡片、SVG 雷达图三色叠加当艺术品并配 Fig. NN 图版注记。从 example.html 出发只换内容，不要重写设计。"
   category: "b2b-sales"

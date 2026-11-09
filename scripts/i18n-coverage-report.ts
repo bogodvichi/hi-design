@@ -10,20 +10,8 @@
 // release managers can see how each locale is tracking against the
 // English source-of-truth as features land.
 //
-// Reasons for keeping this separate from `i18n-check.ts`:
-//
-// 1. `i18n-check.ts` is wired into `pnpm i18n:check` and exits with a
-//    non-zero status. Adding "every locale must match en exactly" to
-//    that script would break every PR until 13 of 14 locales catch up
-//    on hundreds of missing keys. Issue #1894 covers the policy
-//    question of *whether* to enforce parity for the full locale set
-//    or only a tier-1 subset; until that lands, this script stays
-//    informational only.
-//
-// 2. The test suite in `apps/web/tests/i18n/locales.test.ts` enforces
-//    strict parity for `id` (Indonesian) as a regression guard. This
-//    script reuses the same `LOCALES` list and dictionary shape so
-//    extending enforcement later is a one-line change.
+// The client supports English and Simplified Chinese. The locale tests enforce
+// Chinese key and placeholder parity; this report summarizes remaining copy drift.
 
 import { readFile } from "node:fs/promises";
 import path from "node:path";

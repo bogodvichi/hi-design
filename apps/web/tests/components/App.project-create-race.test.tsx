@@ -411,7 +411,6 @@ vi.mock('../../src/components/ProjectView', () => ({
   ProjectView: ({
     onBack,
     onCreateProjectFromDesignSystem,
-    onCreateDesignSystemFromProject,
     onDuplicateProject,
     onProjectsRefresh,
     onProjectChange,
@@ -432,10 +431,6 @@ vi.mock('../../src/components/ProjectView', () => ({
   }: {
     onBack: () => void;
     onCreateProjectFromDesignSystem?: (designSystemId: string, title: string) => Promise<void> | void;
-    onCreateDesignSystemFromProject?: (
-      sourceProjectId: string,
-      input: { name?: string; pendingPrompt?: string },
-    ) => Promise<void> | void;
     onDuplicateProject?: (
       sourceProjectId: string,
       input?: { name?: string },
@@ -483,15 +478,6 @@ vi.mock('../../src/components/ProjectView', () => ({
       </span>
       <button type="button" onClick={onBack}>
         Back to projects
-      </button>
-      <button
-        type="button"
-        onClick={() => void onCreateDesignSystemFromProject?.(project.id, {
-          name: 'Derived design system',
-          pendingPrompt: 'Extract the retained design system prompt',
-        })}
-      >
-        Extract design system project
       </button>
       <button
         type="button"
@@ -627,14 +613,6 @@ vi.mock('../../src/components/WorkspaceTabsBar', () => ({
   removeWorkspaceProjectTabs: (projectId: string) => {
     workspaceTabsHarness.projectIds.delete(projectId);
   },
-}));
-
-vi.mock('../../src/components/pet/PetOverlay', () => ({
-  PetOverlay: () => null,
-}));
-
-vi.mock('../../src/components/pet/pets', () => ({
-  migrateCustomPetAtlas: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock('../../src/components/SettingsDialog', () => ({
@@ -957,7 +935,7 @@ describe('App project creation routing', () => {
     workspaceInvalidationHarness.onActive.length = 0;
   });
 
-  it('routes mutations and limits global focus catch-up to Skills and Design Systems', async () => {
+  it('refreshes Skills and Plugins while ignoring retired design-system events', async () => {
     const context = workspaceContext('ws-resources', 'wm-resources');
     stubWorkspaceContext(context.workspaceId, context.workspaceMemberId);
     mockedListProjects.mockResolvedValue([]);
@@ -967,7 +945,7 @@ describe('App project creation routing', () => {
     render(<App />);
     await waitFor(() => {
       expect(mockedFetchSkills).toHaveBeenCalled();
-      expect(mockedFetchDesignSystems).toHaveBeenCalled();
+      expect(mockedFetchDesignSystems).not.toHaveBeenCalled();
     });
     mockedFetchSkills.mockClear();
     mockedFetchDesignTemplates.mockClear();
@@ -993,14 +971,8 @@ describe('App project creation routing', () => {
       resourceKind: 'design_system',
       resourceId: 'system-1',
     }));
-    await waitFor(() => expect(mockedFetchDesignSystems).toHaveBeenCalledTimes(1));
-    expect(mockedFetchDesignSystems).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        workspaceId: context.workspaceId,
-        workspaceMemberId: context.workspaceMemberId,
-      }),
-      { forceTeamMaterialization: true },
-    );
+    expect(mockedFetchDesignSystems).not.toHaveBeenCalled();
+
     expect(mockedFetchSkills).toHaveBeenCalledTimes(1);
 
     act(() => currentHandlers()['team-resources-changed']?.({
@@ -1029,7 +1001,7 @@ describe('App project creation routing', () => {
     act(() => onActive?.());
     await waitFor(() => {
       expect(mockedFetchSkills).toHaveBeenCalledTimes(1);
-      expect(mockedFetchDesignSystems).toHaveBeenCalledTimes(1);
+      expect(mockedFetchDesignSystems).not.toHaveBeenCalled();
     });
     expect(mockedInvalidatePluginCatalogCache).not.toHaveBeenCalled();
     expect(pluginChanged).not.toHaveBeenCalled();
@@ -1056,9 +1028,7 @@ describe('App project creation routing', () => {
     render(<App />);
     await waitFor(() => {
       expect(scopedSkillReads().length).toBeGreaterThan(0);
-      expect(mockedFetchDesignSystems.mock.calls.filter(
-        ([issued]) => issued?.workspaceId === context.workspaceId,
-      ).length).toBeGreaterThan(0);
+      expect(mockedFetchDesignSystems).not.toHaveBeenCalled();
     });
 
     const skillsAtBoot = scopedSkillReads().length;
@@ -1070,7 +1040,7 @@ describe('App project creation routing', () => {
     await waitFor(() => expect(scopedSkillReads()).toHaveLength(skillsAtBoot + 1));
     expect(mockedFetchDesignSystems.mock.calls.filter(
       ([issued]) => issued?.workspaceId === context.workspaceId,
-    )).toHaveLength(systemsAtBoot + 1);
+    )).toHaveLength(0);
 
     skillsFirst.resolve([]);
     systemsFirst.resolve([]);
@@ -1081,7 +1051,7 @@ describe('App project creation routing', () => {
     await waitFor(() => expect(scopedSkillReads()).toHaveLength(skillsAtBoot + 2));
     expect(mockedFetchDesignSystems.mock.calls.filter(
       ([issued]) => issued?.workspaceId === context.workspaceId,
-    )).toHaveLength(systemsAtBoot + 2);
+    )).toHaveLength(0);
   });
 
   it('auto-picks the first available agent in registry order after streamed probes settle', async () => {
@@ -1637,28 +1607,6 @@ describe('App project creation routing', () => {
     expect(mockedCreateProject).not.toHaveBeenCalled();
   });
 
-  it('stores the extraction prompt when converting an existing project into a design system', async () => {
-    mockedListProjects.mockResolvedValue([existingProject]);
-
-    render(<App />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Open Existing project' }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Extract design system project' }));
-
-    await waitFor(() => {
-      expect(mockedCreateDesignSystemProjectFromProject).toHaveBeenCalledWith(
-        'project-existing',
-        expect.objectContaining({
-          pendingPrompt: 'Extract the retained design system prompt',
-        }),
-        null,
-      );
-    });
-    expect(window.sessionStorage.getItem('od:auto-send-first:project-design-system')).toBe('1');
-    expect(window.sessionStorage.getItem('od:auto-send-prompt:project-design-system')).toBe(
-      'Extract the retained design system prompt',
-    );
-  });
-
   it('duplicates from the source project persisted Workspace instead of the ambient shell Workspace', async () => {
     const sourceProject = { ...existingProject, workspaceId: 'ws-source' };
     window.history.replaceState(null, '', `/projects/${sourceProject.id}`);
@@ -1690,47 +1638,6 @@ describe('App project creation routing', () => {
       expect(mockedDuplicateProject).toHaveBeenCalledWith(
         sourceProject.id,
         { name: 'Scoped duplicate' },
-        expect.objectContaining({
-          workspaceId: 'ws-source',
-          workspaceMemberId: 'member-source',
-        }),
-      );
-    });
-  });
-
-  it('creates a design-system copy in the source project persisted Workspace', async () => {
-    const sourceProject = { ...existingProject, workspaceId: 'ws-source' };
-    window.history.replaceState(null, '', `/projects/${sourceProject.id}`);
-    mockedListProjects.mockResolvedValue([sourceProject]);
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (input: RequestInfo | URL) => {
-        const pathname = new URL(String(input), 'http://d.local').pathname;
-        return {
-          ok: true,
-          json: async () =>
-            pathname.endsWith('/workspace/directory')
-              ? workspaceDirectoryFixture([
-                  workspaceContext('ws-source', 'member-source'),
-                  workspaceContext('ws-ambient', 'member-ambient'),
-                ])
-              : pathname.endsWith('/workspace/context')
-                ? workspaceContextPayload('ws-ambient', 'member-ambient')
-                : {},
-        } as Response;
-      }),
-    );
-
-    render(<App />);
-    await screen.findByTestId('project-view');
-    fireEvent.click(screen.getByRole('button', { name: 'Extract design system project' }));
-
-    await waitFor(() => {
-      expect(mockedCreateDesignSystemProjectFromProject).toHaveBeenCalledWith(
-        sourceProject.id,
-        expect.objectContaining({
-          pendingPrompt: 'Extract the retained design system prompt',
-        }),
         expect.objectContaining({
           workspaceId: 'ws-source',
           workspaceMemberId: 'member-source',
@@ -3993,49 +3900,4 @@ describe('App project creation routing', () => {
     });
   });
 
-  it('opens the seeded brand extraction conversation after creating a design system', async () => {
-    const brandProject: Project = {
-      id: 'brand-acme',
-      name: 'acme.com Design System',
-      skillId: null,
-      designSystemId: null,
-      createdAt: 1778244000000,
-      updatedAt: 1778244000000,
-      metadata: { kind: 'brand', importedFrom: 'brand-extraction', brandId: 'acme' },
-    };
-    window.history.replaceState(null, '', '/design-systems/create');
-    mockedListProjects.mockResolvedValue([]);
-    mockedGetProject.mockResolvedValue(brandProject);
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async (input: unknown, _init?: unknown) => {
-        if (typeof input === 'string' && input === '/api/brands') {
-          return {
-            ok: true,
-            status: 200,
-            json: async () => ({
-              id: 'acme',
-              projectId: brandProject.id,
-              conversationId: 'conv-brand-acme',
-              sourceUrl: 'https://acme.com/',
-              status: 'extracting',
-            }),
-          } as unknown as Response;
-        }
-        return { ok: true, status: 200, json: async () => ({}) } as unknown as Response;
-      }),
-    );
-
-    render(<App />);
-
-    fireEvent.change(await screen.findByPlaceholderText('https://github.com/org/repo'), {
-      target: { value: 'https://acme.com' },
-    });
-    fireEvent.click(screen.getByRole('button', { name: /continue to generation/i }));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('project-route-conversation').textContent).toBe('conv-brand-acme');
-    });
-    expect(window.location.pathname).toBe(`/projects/${brandProject.id}/conversations/conv-brand-acme`);
-  });
 });

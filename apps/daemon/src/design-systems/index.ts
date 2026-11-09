@@ -1,3 +1,4 @@
+import { stripPrefixAndValidateId } from '../ids.js';
 // Design-system registry. Scans <projectRoot>/design-systems/* for design
 // system projects. Project folders may opt into manifest.json; legacy folders
 // with only DESIGN.md remain valid. Without a manifest, title comes from the
@@ -2930,14 +2931,7 @@ window.Composer = Composer;
 `;
 }
 
-export function stripPrefixAndValidateId(id: string, prefix = ''): string | null {
-  if (typeof id !== 'string') return null;
-  if (prefix && !id.startsWith(prefix)) return null;
-  const dirId = prefix ? id.slice(prefix.length) : id;
-  if (!/^[a-zA-Z0-9._-]+$/.test(dirId)) return null;
-  if (dirId === '.' || dirId === '..') return null;
-  return dirId;
-}
+export { stripPrefixAndValidateId } from '../ids.js';
 
 async function readUserMetadata(root: string, id: string): Promise<UserDesignSystemMetadata> {
   try {

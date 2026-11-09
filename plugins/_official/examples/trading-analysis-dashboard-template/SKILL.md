@@ -22,9 +22,6 @@ od:
     type: html
     entry: index.html
     reload: debounce-100
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   outputs:
     primary: index.html
     secondary:
@@ -53,7 +50,7 @@ trading-analysis-dashboard-template/
 
 ## Workflow
 
-1. Read active `DESIGN.md`, then map typography/color/layout into CSS variables.
+1. Read the supplied template/reference styles, then map typography/color/layout into CSS variables.
 2. Copy `assets/template.html` to `index.html`.
 3. Personalize headings, instrument names, and numeric labels to the user brief.
 4. Preserve interaction fidelity:

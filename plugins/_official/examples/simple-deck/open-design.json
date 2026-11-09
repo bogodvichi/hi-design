@@ -134,11 +134,11 @@
         "default": "include speaker notes"
       },
       {
-        "name": "designSystem",
+        "name": "styleReference",
         "label": "Design system",
         "type": "string",
-        "placeholder": "Swiss, Linear, editorial, or active project design system",
-        "default": "the active project design system"
+        "placeholder": "Swiss, Linear, editorial, or user-provided brand reference",
+        "default": "the supplied template styles"
       }
     ],
     "context": {
@@ -147,9 +147,6 @@
           "path": "./SKILL.md"
         }
       ],
-      "designSystem": {
-        "primary": true
-      },
       "assets": [
         "./example.html",
         "./assets/template.html",

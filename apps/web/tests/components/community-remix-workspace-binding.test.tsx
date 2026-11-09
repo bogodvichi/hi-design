@@ -65,6 +65,7 @@ const TEMPLATE_PROMPT = 'Remix this seed round deck for my studio.';
 const REMIXED_PROJECT_ID = 'remixed-project';
 
 let currentRoute: Route = { kind: 'home', view: 'community' };
+let remixOperation: Promise<void> | undefined;
 
 vi.mock('../../src/router', async () => {
   const actual = await vi.importActual<typeof import('../../src/router')>('../../src/router');
@@ -82,11 +83,11 @@ vi.mock('../../src/components/CommunityView', () => ({
   CommunityView: ({
     onRemixTemplate,
   }: {
-    onRemixTemplate?: (remix: { templateId: string; prompt: string }) => void;
+    onRemixTemplate?: (remix: { templateId: string; prompt: string }) => Promise<void>;
   }) => (
     <button
       type="button"
-      onClick={() => onRemixTemplate?.({ templateId: TEMPLATE_ID, prompt: TEMPLATE_PROMPT })}
+      onClick={() => { remixOperation = onRemixTemplate?.({ templateId: TEMPLATE_ID, prompt: TEMPLATE_PROMPT }); }}
     >
       Remix template
     </button>
@@ -99,14 +100,6 @@ vi.mock('../../src/components/EntryView', () => ({
 
 vi.mock('../../src/components/ProjectView', () => ({
   ProjectView: () => <div data-testid="project-view" />,
-}));
-
-vi.mock('../../src/components/pet/PetOverlay', () => ({
-  PetOverlay: () => null,
-}));
-
-vi.mock('../../src/components/pet/pets', () => ({
-  migrateCustomPetAtlas: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock('../../src/components/SettingsDialog', () => ({
@@ -354,11 +347,9 @@ function renderEntryShellCommunity(
       <EntryShell
         skills={[]}
         designTemplates={[]}
-        designSystems={[]}
         projects={[]}
         templates={[]}
         promptTemplates={[]}
-        defaultDesignSystemId={null}
         connectors={[]}
         connectorsLoading={false}
         config={baseConfig()}
@@ -378,7 +369,6 @@ function renderEntryShellCommunity(
         onOpenLiveArtifact={vi.fn()}
         onDeleteProject={vi.fn()}
         onRenameProject={vi.fn()}
-        onChangeDefaultDesignSystem={vi.fn()}
         onPersistComposioKey={vi.fn()}
         onOpenSettings={vi.fn()}
         onCompleteOnboarding={vi.fn()}
@@ -389,6 +379,7 @@ function renderEntryShellCommunity(
 
 describe('Community Remix workspace binding', () => {
   beforeEach(() => {
+    remixOperation = undefined;
     globalThis.ResizeObserver = ResizeObserverMock as typeof ResizeObserver;
     resetWorkspaceContextCache();
     resetWorkspaceBillingCache();
@@ -429,6 +420,7 @@ describe('Community Remix workspace binding', () => {
     expect(daemon.contextWorkspaceMemberId).toBe(TEAM_MEMBER_ID);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Remix template' }));
+    expect(remixOperation).toBeInstanceOf(Promise);
 
     await waitFor(() => expect(daemon.duplicateInit).toBeDefined());
     expect(headerOf(daemon.duplicateInit, 'x-od-workspace-id')).toBe(TEAM_WORKSPACE_ID);
@@ -481,6 +473,7 @@ describe('Community Remix workspace binding', () => {
     expect(daemon.contextWorkspaceMemberId).toBe(TEAM_MEMBER_ID);
 
     fireEvent.click(await screen.findByRole('button', { name: 'Remix template' }));
+    expect(remixOperation).toBeInstanceOf(Promise);
 
     await waitFor(() => expect(daemon.duplicateInit).toBeDefined());
     expect(headerOf(daemon.duplicateInit, 'x-od-workspace-id')).toBe(TEAM_WORKSPACE_ID);

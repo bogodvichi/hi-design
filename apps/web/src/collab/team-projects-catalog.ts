@@ -249,11 +249,13 @@ export async function fetchTeamProjectCatalogEntry(options: {
     context: options.context,
     force: options.force,
     requestGeneration: options.requestGeneration,
-    cacheDiscriminator: [
+    // Ordinary row lookups read the same list and can share its transport.
+    // Targeted invalidations still own independent snapshots and race fences.
+    cacheDiscriminator: options.force || options.cacheDiscriminator ? [
       'project',
       options.projectId,
       options.cacheDiscriminator ?? 'read',
-    ].join(':'),
+    ].join(':') : undefined,
   });
   return projects.find((project) => project.projectId === options.projectId) ?? null;
 }

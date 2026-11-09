@@ -32,7 +32,6 @@ import type {
   FinalizeProviderProtocol,
 } from '@open-design/contracts/api/finalize';
 import { getProject } from '../db.js';
-import { readDesignSystem } from '../design-systems/index.js';
 import {
   listFiles,
   readProjectFile,
@@ -316,16 +315,8 @@ export async function finalizeDesignPackage(
     const transcriptJsonl = fs.readFileSync(transcriptResult.path, 'utf8');
     const truncatedJsonl = truncateTranscriptForPrompt(transcriptJsonl);
 
-    // Phase 4: design system. Project may not have one selected; readDesignSystem
-    // returns null on missing DESIGN.md so the prompt's design-system section
-    // gracefully falls back to "(no design system selected for this project)".
-    const designSystemId =
-      typeof (project as { designSystemId?: unknown }).designSystemId === 'string'
-        ? ((project as { designSystemId: string }).designSystemId)
-        : null;
-    const designSystemBody = designSystemId
-      ? await readDesignSystem(designSystemsRoot, designSystemId)
-      : null;
+    const designSystemId = null;
+    const designSystemBody = null;
 
     // Phase 5: current artifact (active tab → newest .artifact.json → null).
     // Thread metadata so imported-folder projects discover the real artifacts

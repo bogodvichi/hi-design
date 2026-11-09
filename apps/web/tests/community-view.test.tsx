@@ -5,7 +5,7 @@
 // live source — GET /api/plugins — so the page can never drift back to a
 // hand-written demo array that shows 24 templates while the daemon serves ~300.
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { StrictMode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CommunityView } from '../src/components/CommunityView';
@@ -135,6 +135,7 @@ afterEach(() => {
   // is still settling when the tree unmounts reaches jsdom's unimplemented
   // transport and noises up the run.
   cleanup();
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
@@ -349,6 +350,49 @@ describe('CommunityView previews', () => {
 });
 
 describe('CommunityView remix', () => {
+  it('clears loading when Remix completes while the template page is kept mounted behind a project', async () => {
+    let finish!: () => void;
+    const onRemix = vi.fn(() => new Promise<void>((resolve) => { finish = resolve; }));
+    const view = render(<div><CommunityView onRemixTemplate={onRemix} /></div>);
+    await screen.findByRole('button', { name: 'Remix' });
+    fireEvent.click(screen.getByRole('button', { name: 'Remix' }));
+    expect((screen.getByRole('button', { name: 'Loading…' }) as HTMLButtonElement).disabled).toBe(true);
+    view.rerender(<div hidden><CommunityView onRemixTemplate={onRemix} /></div>);
+    await act(async () => { finish(); });
+    view.rerender(<div><CommunityView onRemixTemplate={onRemix} /></div>);
+    expect((screen.getByRole('button', { name: 'Remix' }) as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Remix' }));
+    expect(onRemix).toHaveBeenCalledTimes(2);
+    await act(async () => { finish(); });
+  });
+
+  it('keeps duplicate protection for requests taking longer than eight seconds', async () => {
+    let finish!: () => void;
+    const onRemix = vi.fn(() => new Promise<void>((resolve) => { finish = resolve; }));
+    await renderCommunity({ onRemixTemplate: onRemix });
+    vi.useFakeTimers();
+    const button = screen.getByRole('button', { name: 'Remix' });
+    fireEvent.click(button);
+    act(() => { vi.advanceTimersByTime(9000); });
+    expect((button as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(button);
+    expect(onRemix).toHaveBeenCalledTimes(1);
+    await act(async () => { finish(); });
+  });
+
+  it('shows a failed Remix and immediately allows retry', async () => {
+    const onRemix = vi.fn()
+      .mockRejectedValueOnce(new Error('Copy failed'))
+      .mockResolvedValueOnce(undefined);
+    await renderCommunity({ onRemixTemplate: onRemix });
+    fireEvent.click(screen.getByRole('button', { name: 'Remix' }));
+    expect((await screen.findByRole('alert')).textContent).toContain('Could not remix this template.');
+    expect((screen.getByRole('button', { name: 'Remix' }) as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(screen.getByRole('button', { name: 'Remix' }));
+    await waitFor(() => expect(onRemix).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('shows Remix + Use for duplicable decks, but only Use for prompt-driven media', async () => {
     await renderCommunity();
 

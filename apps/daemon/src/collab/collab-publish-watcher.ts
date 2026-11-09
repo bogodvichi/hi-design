@@ -26,6 +26,8 @@ export interface CollabPublishWatcherDeps {
   ) => void;
   /** Local project ids to consider watching. */
   listProjectIds: () => string[];
+  /** Stable account/workspace/member identity; permission revisions invalidate separately. */
+  identityKey?: (projectId: string) => string;
   /**
    * Whether THIS daemon should publish edits to `projectId`: it is team-shared
    * AND this daemon's member is its owner (the single writer). Async because it
@@ -44,6 +46,8 @@ export interface CollabPublishWatcherDeps {
 export interface CollabPublishWatcher {
   /** Reconcile once immediately (exposed for tests / eager first pass). */
   reconcile: () => Promise<void>;
+  /** Membership/permission events invalidate pending decisions and retry cooldowns. */
+  invalidate: () => Promise<void>;
   start: () => void;
   dispose: () => void;
 }
@@ -52,85 +56,144 @@ const DEFAULT_RECONCILE_MS = 10_000;
 
 export function createCollabPublishWatcher(deps: CollabPublishWatcherDeps): CollabPublishWatcher {
   const reconcileMs = deps.reconcileMs ?? DEFAULT_RECONCILE_MS;
-  const subs = new Map<
-    string,
-    {
-      subscription: PublishWatchSubscription;
-      principal?: ResourceHubPrincipal;
-    }
-  >();
+  const subs = new Map<string, {
+    subscription: PublishWatchSubscription;
+    principal: ResourceHubPrincipal | undefined;
+    identity: string;
+    verifiedGeneration: number;
+    dirty: boolean;
+  }>();
   let timer: ReturnType<typeof setInterval> | null = null;
-  let reconciling = false;
+  let running: Promise<void> | null = null;
+  let generation = 0;
+  let disposed = false;
+  let reconcileAgain = false;
+  const identityFor = (projectId: string) => deps.identityKey?.(projectId) ?? '';
+  const retries = new Map<string, { identity: string; attempts: number; retryAt: number }>();
 
-  async function reconcile(): Promise<void> {
-    if (reconciling) return;
-    reconciling = true;
-    try {
+  const notify = (projectId: string, principal: ResourceHubPrincipal | undefined) => {
+    if (principal) deps.notifyChanged(projectId, principal);
+    else deps.notifyChanged(projectId);
+  };
+  const unwatch = (projectId: string) => {
+    const watched = subs.get(projectId);
+    subs.delete(projectId);
+    if (watched) void Promise.resolve(watched.subscription.unsubscribe()).catch(() => {});
+  };
+
+  async function reconcilePass(): Promise<void> {
+    do {
+      reconcileAgain = false;
       const ids = new Set(deps.listProjectIds());
-      // Drop watchers for projects that no longer exist locally.
-      for (const [projectId, watched] of subs) {
-        if (!ids.has(projectId)) {
-          void Promise.resolve(watched.subscription.unsubscribe()).catch(() => {});
-          subs.delete(projectId);
-        }
+      for (const projectId of retries.keys()) {
+        if (!ids.has(projectId)) retries.delete(projectId);
       }
-      // Add watchers for owned + team-shared projects not yet watched.
+      for (const [projectId, watched] of subs) {
+        if (!ids.has(projectId) || watched.identity !== identityFor(projectId)) unwatch(projectId);
+      }
       for (const projectId of ids) {
-        if (subs.has(projectId)) continue;
+        if (disposed) return;
+        const identity = identityFor(projectId);
+        const decisionGeneration = generation;
+        let watched = subs.get(projectId);
+        if (watched && watched.identity !== identity) {
+          unwatch(projectId);
+          watched = undefined;
+        }
+        if (watched?.verifiedGeneration === decisionGeneration) continue;
+        const previousRetry = retries.get(projectId);
+        const retry = previousRetry?.identity === identity ? previousRetry : undefined;
+        if (retry && Date.now() < retry.retryAt) continue;
         let publishScope: boolean | ResourceHubPrincipal = false;
         try {
           publishScope = await deps.shouldPublish(projectId);
         } catch (error) {
+          if (disposed || generation !== decisionGeneration || identityFor(projectId) !== identity) continue;
+          const attempts = Math.min((retry?.attempts ?? 0) + 1, 6);
+          retries.set(projectId, {
+            identity,
+            attempts,
+            retryAt: Date.now() + Math.min(60_000, reconcileMs * 2 ** (attempts - 1)),
+          });
           deps.onError?.(error);
           continue;
         }
-        if (!publishScope) continue;
-        const principal =
-          typeof publishScope === 'object' ? publishScope : undefined;
-        const sub = deps.subscribeFiles(projectId, () => {
-          // Every edit → a debounced publish; the scheduler collapses bursts so a
-          // half-written intermediate state never reaches members.
-          if (principal) deps.notifyChanged(projectId, principal);
-          else deps.notifyChanged(projectId);
+        if (disposed || generation !== decisionGeneration || identityFor(projectId) !== identity) continue;
+        retries.delete(projectId);
+        if (!publishScope) {
+          unwatch(projectId);
+          continue;
+        }
+        const principal = typeof publishScope === 'object' ? publishScope : undefined;
+        if (watched) {
+          watched.principal = principal;
+          watched.verifiedGeneration = decisionGeneration;
+          if (watched.dirty) {
+            watched.dirty = false;
+            notify(projectId, principal);
+          }
+          continue;
+        }
+        const subscription: PublishWatchSubscription = deps.subscribeFiles(projectId, () => {
+          const current = subs.get(projectId);
+          if (disposed || current?.subscription !== subscription || identityFor(projectId) !== identity) return;
+          // Retain edits while permission is unknown, but never publish them
+          // until a current authority check succeeds.
+          current.dirty = true;
+          if (current.verifiedGeneration !== generation) return;
+          current.dirty = false;
+          notify(projectId, current.principal);
         });
         subs.set(projectId, {
-          subscription: sub,
-          ...(principal ? { principal } : {}),
+          subscription, identity, principal, verifiedGeneration: decisionGeneration, dirty: false,
         });
-        // Publish the CURRENT content once on first watch. The file watcher uses
-        // `ignoreInitial`, so files already on disk when watching begins (e.g.
-        // documents uploaded to a project before it was shared, or before the
-        // owner-check resolved) never fire a change event and would otherwise
-        // stay stranded at the initial share version — members would see the
-        // shared project but pull an empty/stale copy. Gated on `shouldPublish`
-        // (team-shared AND owned by me) above, so this only republishes a
-        // single-writer's own project and is loop-safe. Fires once per project
-        // per watch session (reconcile only subscribes not-yet-watched ids).
-        if (principal) deps.notifyChanged(projectId, principal);
-        else deps.notifyChanged(projectId);
+        // ignoreInitial file watchers do not announce files already on disk.
+        // Publish once for a genuinely new owned subscription, not a permission
+        // revalidation of the same subscription.
+        notify(projectId, principal);
       }
-    } finally {
-      reconciling = false;
+    } while (reconcileAgain && !disposed);
+  }
+
+  function reconcile(): Promise<void> {
+    if (disposed) return Promise.resolve();
+    // Install the shared promise before starting work: directory callbacks may
+    // invalidate synchronously while a scope decision is being resolved.
+    if (!running) {
+      running = Promise.resolve().then(reconcilePass).finally(() => {
+        running = null;
+        // A dirty event can arrive after the last pass but before this promise
+        // settles. Its callers must also wait for the replacement authority.
+        if (reconcileAgain && !disposed) return reconcile();
+      });
+      void running.catch(error => deps.onError?.(error));
     }
+    return running;
   }
 
   return {
     reconcile,
+    invalidate() {
+      generation += 1;
+      retries.clear();
+      reconcileAgain = true;
+      return reconcile();
+    },
     start() {
       if (timer) return;
-      void reconcile().catch((error) => deps.onError?.(error));
-      timer = setInterval(() => void reconcile().catch((error) => deps.onError?.(error)), reconcileMs);
+      void reconcile();
+      timer = setInterval(() => void reconcile(), reconcileMs);
       timer.unref?.();
     },
     dispose() {
+      disposed = true;
+      generation += 1;
+      retries.clear();
       if (timer) {
         clearInterval(timer);
         timer = null;
       }
-      for (const watched of subs.values()) {
-        void Promise.resolve(watched.subscription.unsubscribe()).catch(() => {});
-      }
-      subs.clear();
+      for (const projectId of subs.keys()) unwatch(projectId);
     },
   };
 }

@@ -655,22 +655,6 @@ The user selected a curated example prompt from the gallery and sent it without 
   return text;
 }
 
-const ACTIVE_DESIGN_SYSTEM_VISUAL_DIRECTION_OVERRIDE = `
-
----
-
-## Active design system visual direction
-
-Active design system exception: the active design system is the visual direction for this project. Use its DESIGN.md palette, typography, spacing, component rules, and theme tokens as the source of truth for color and mood.
-
-- Do not ask the user to pick a separate theme color, visual direction, palette, typography mood, or direction card.
-- Do not emit a direction question-form, a \`direction-cards\` picker, or any visual-direction card while an active design system is present.
-- If an earlier discovery answer asks to "Pick a direction for me", treat that as already satisfied by the active design system and continue with the plan.
-- When a downstream framework mentions "active direction" or "theme tokens", bind those fields from the active design system instead of the built-in direction library.
-`;
-
-const DEFAULT_DESIGN_SYSTEM_USAGE = `Read DESIGN.md for visual principles, paste tokens.css verbatim into the first <style> when it is provided, and match component shapes from the reference component manifest or fixture when available. Treat any pull-layer index as optional context for deeper inspection; do not assume those files have already been loaded.`;
-
 function renderDesignSystemImportModeGuidance(
   importMode: ComposeInput['designSystemImportMode'],
 ): string | undefined {
@@ -976,7 +960,6 @@ export function composeSystemPrompt({
   if (isSlimCharterHead && streamFormat === 'claude-stream-json') {
     parts.push(CLAUDE_PLAN_TOOL_NOTE, '\n\n---\n\n');
   }
-  const activeDesignSystemBody = designSystemBody?.trim();
   const activeSkillModes = new Set(
     Array.isArray(skillModes)
       ? skillModes.filter(Boolean)
@@ -1041,7 +1024,7 @@ export function composeSystemPrompt({
     // weight the model is told to ignore. Gate it on the composer-visible
     // active-DS signal (stable for the whole session, so the stable-prompt
     // fingerprint stays cacheable).
-    if (!activeDesignSystemBody) {
+    {
       // Slim carries only the id+label index and the agent pulls the chosen
       // direction's full spec via `od tools directions --id <id>` — but ONLY
       // on filesystem runs. text_artifact runs (BYOK/plain adapters) have no
@@ -1167,27 +1150,6 @@ export function composeSystemPrompt({
     );
   }
 
-  if (activeDesignSystemBody && activeDesignSystemBody.length > 0) {
-    const usageBlock =
-      designSystemUsageMd && designSystemUsageMd.trim().length > 0
-        ? designSystemUsageMd.trim()
-        : DEFAULT_DESIGN_SYSTEM_USAGE;
-    parts.push(
-      `\n\n## How to use this design system${designSystemTitle ? ` — ${designSystemTitle}` : ''}\n\n${usageBlock}`,
-    );
-
-    parts.push(
-      `\n\n## Active design system${designSystemTitle ? ` — ${designSystemTitle}` : ''}\n\nTreat the following DESIGN.md as authoritative for color, typography, spacing, and component rules. Do not invent tokens outside this palette. When you copy the active skill's seed template, bind these tokens into its \`:root\` block before generating any layout.\n\n${activeDesignSystemBody}`,
-    );
-
-    const importModeGuidance = renderDesignSystemImportModeGuidance(designSystemImportMode);
-    if (importModeGuidance) {
-      parts.push(
-        `\n\n## Design system import mode${designSystemTitle ? ` — ${designSystemTitle}` : ''}\n\n${importModeGuidance}`,
-      );
-    }
-  }
-
   // Structured (compiled) form of the active brand. The DESIGN.md above
   // sets voice and intent; the tokens.css block below is the SAME
   // contract in machine-readable form — names + values the agent pastes
@@ -1198,27 +1160,6 @@ export function composeSystemPrompt({
   // back to the verbatim components.html fixture. Both blocks are
   // individually gated: missing files skip silently, preserving the
   // legacy DESIGN.md-only behaviour for prose-only brands.
-  if (designSystemTokensCss && designSystemTokensCss.trim().length > 0) {
-    parts.push(
-      `\n\n## Active design system tokens${designSystemTitle ? ` — ${designSystemTitle}` : ''}\n\nThe block below is this brand's tokens.css contract — every \`:root\` custom property and any scoped override (e.g. \`:root[lang=...]\`) the brand defines. **Paste the unscoped \`:root { ... }\` block verbatim into the artifact's first \`<style>\`** so every \`var(--*)\` reference resolves at runtime.\n\nDo not invent new tokens. Do not redefine these values. Do not write raw hex outside this :root block. The DESIGN.md above is prose; this is the binding contract.\n\n\`\`\`css\n${designSystemTokensCss.trim()}\n\`\`\``,
-    );
-  }
-
-  if (designSystemComponentsManifest && designSystemComponentsManifest.trim().length > 0) {
-    parts.push(
-      `\n\n## Reference component manifest${designSystemTitle ? ` — ${designSystemTitle}` : ''}\n\nA compact structured summary derived from this brand's components.html fixture. Use it as the component inventory for generated artifacts: match the listed selectors, component groups, class names, token references, focus behavior, and spacing cadence. Prefer these manifest entries over inventing new component shapes.\n\n\`\`\`text\n${designSystemComponentsManifest.trim()}\n\`\`\``,
-    );
-  } else if (designSystemFixtureHtml && designSystemFixtureHtml.trim().length > 0) {
-    parts.push(
-      `\n\n## Reference fixture${designSystemTitle ? ` — ${designSystemTitle}` : ''}\n\nA self-contained worked artifact in this design system. Match its component shapes (button structure, card structure, type-scale rhythm, focus ring, spacing cadence) when generating new artifacts. Copying fragments is encouraged as long as you keep the \`var(--*)\` references intact — they are already wired to the tokens above.\n\n\`\`\`html\n${designSystemFixtureHtml.trim()}\n\`\`\``,
-    );
-  }
-
-  if (designSystemPullIndex && designSystemPullIndex.trim().length > 0) {
-    parts.push(
-      `\n\n## Pull-layer files available on demand${designSystemTitle ? ` — ${designSystemTitle}` : ''}\n\nThis design-system package declares richer files for inspection, source evidence, or human preview. Keep the push prompt light: use the index below to decide what to read later. When the runtime tool environment is available, read a listed path with \`\"$OD_NODE_BIN\" \"$OD_BIN\" tools design-systems read --path <path>\`; the daemon will reject paths outside this manifest allowlist.\n\n\`\`\`text\n${designSystemPullIndex.trim()}\n\`\`\``,
-    );
-  }
 
   if (craftBody && craftBody.trim().length > 0) {
     const sectionLabel =
@@ -1350,9 +1291,6 @@ export function composeSystemPrompt({
   // layered stack states in softer or contradictory forms earlier. The slim
   // core states each rule exactly once with binding precedence, so re-pinning
   // them would reintroduce the duplication the rewrite removes.
-  if (!isSlimCore && activeDesignSystemBody && activeDesignSystemBody.length > 0) {
-    parts.push(ACTIVE_DESIGN_SYSTEM_VISUAL_DIRECTION_OVERRIDE);
-  }
 
   // Slim: turn-variable blocks land here, after every stable section. The
   // connected-external-MCP directive is deliberately NOT part of this document

@@ -94,11 +94,9 @@ function renderOnboarding(
   const props: React.ComponentProps<typeof EntryShell> = {
     skills: [],
     designTemplates: [],
-    designSystems: [],
     projects: [],
     templates: [],
     promptTemplates: [],
-    defaultDesignSystemId: null,
     connectors: [],
     connectorsLoading: false,
     config: baseConfig(),
@@ -118,7 +116,6 @@ function renderOnboarding(
     onOpenLiveArtifact: vi.fn(),
     onDeleteProject: vi.fn(),
     onRenameProject: vi.fn(),
-    onChangeDefaultDesignSystem: vi.fn(),
     onPersistComposioKey: vi.fn(),
     onOpenSettings: vi.fn(),
     onCompleteOnboarding: vi.fn(),
@@ -156,11 +153,9 @@ function renderHome(
   const props: React.ComponentProps<typeof EntryShell> = {
     skills: [],
     designTemplates: [],
-    designSystems: [],
     projects: [],
     templates: [],
     promptTemplates: [],
-    defaultDesignSystemId: null,
     connectors: [],
     connectorsLoading: false,
     config: baseConfig({
@@ -183,7 +178,6 @@ function renderHome(
     onOpenLiveArtifact: vi.fn(),
     onDeleteProject: vi.fn(),
     onRenameProject: vi.fn(),
-    onChangeDefaultDesignSystem: vi.fn(),
     onPersistComposioKey: vi.fn(),
     onOpenSettings: vi.fn(),
     onCompleteOnboarding: vi.fn(),
@@ -361,22 +355,6 @@ describe('EntryShell navigation shortcuts', () => {
   });
 });
 
-describe('EntryShell design systems view', () => {
-  it('leaves workspace-scoped design-system activation to the mounted tab', async () => {
-    const onDesignSystemsRefresh = vi.fn();
-    renderHome({ onDesignSystemsRefresh }, '/design-systems');
-
-    expect(await screen.findByTestId('entry-view-design-systems')).toHaveAttribute(
-      'data-active',
-      'true',
-    );
-    // DesignSystemsTab owns its Team SSE activation and fallback snapshot.
-    // Calling the App-level catalog refresh here as well creates a duplicate,
-    // differently-scoped request every time the route becomes active.
-    expect(onDesignSystemsRefresh).not.toHaveBeenCalled();
-  });
-});
-
 describe('EntryShell route scroll isolation', () => {
   afterEach(() => {
     window.localStorage.removeItem('od.entry.railOpen');
@@ -402,12 +380,12 @@ describe('EntryShell route scroll isolation', () => {
 
     const scrollContainer = entryScrollContainer();
     scrollContainer.scrollTop = 280;
-    fireEvent.click(screen.getByTestId('entry-nav-design-systems'));
+    fireEvent.click(screen.getByTestId('entry-nav-community'));
 
     await waitFor(() => {
       expect(
-        screen.getByTestId('entry-view-design-systems').getAttribute('data-active'),
-      ).toBe('true');
+        screen.getByTestId('entry-view-home').getAttribute('data-active'),
+      ).toBe('false');
     });
     expect(scrollContainer.scrollTop).toBe(0);
   });

@@ -40,7 +40,7 @@ function renderMessageCenter(locale: 'en' | 'zh-CN' = 'en') {
 function LocaleSwitcher() {
   const { setLocale } = useI18n();
   return (
-    <button type="button" onClick={() => setLocale('fr')}>
+    <button type="button" onClick={() => setLocale('zh-CN')}>
       Switch locale
     </button>
   );

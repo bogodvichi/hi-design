@@ -7,7 +7,7 @@ import type {
   TeamResourceShareService,
 } from './team-resource-share.js';
 
-export const TEAM_RESOURCE_LIST_KINDS = ['design_system', 'plugin', 'skill'] as const;
+export const TEAM_RESOURCE_LIST_KINDS = ['plugin', 'skill'] as const;
 
 export type TeamResourceListKind = (typeof TEAM_RESOURCE_LIST_KINDS)[number];
 

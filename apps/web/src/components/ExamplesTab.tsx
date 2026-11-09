@@ -118,8 +118,8 @@ function matchesSurface(skill: SkillSummary, filter: SurfaceFilter): boolean {
   return filter === 'all' || surfaceOf(skill) === filter;
 }
 
-function quotePrompt(locale: string, text: string): string {
-  return locale === 'de' ? `„${text}“` : `“${text}”`;
+function quotePrompt(text: string): string {
+  return `“${text}”`;
 }
 
 export function ExamplesTab({ skills: rawSkills, onUsePrompt }: Props) {
@@ -658,7 +658,7 @@ function ExampleCard({
           ) : null}
         </div>
         <div className="example-prompt">
-          {displayPrompt ? quotePrompt(locale, displayPrompt) : displayDescription}
+          {displayPrompt ? quotePrompt(displayPrompt) : displayDescription}
         </div>
         <div className="example-card-actions">
           <button

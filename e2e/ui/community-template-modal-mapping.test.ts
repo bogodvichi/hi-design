@@ -189,3 +189,28 @@ test('[P1] community category tabs filter the current template catalog', async (
   await expect(cards).toHaveCount(1);
   await expect(cards.locator('.community-template-card__foot')).toContainText('Prototype');
 });
+
+test('[P1] Remix finishes before returning to the preserved template page', async ({ page, toolsDev }, testInfo) => {
+  const response = await page.request.get(`${toolsDev.daemonUrl}/api/plugins/example-dashboard`);
+  expect(response.ok()).toBe(true);
+  const plugin = await response.json();
+  await page.route('**/api/plugins', (route) => route.fulfill({ json: { plugins: [plugin] } }));
+  await gotoCommunity(page);
+  // Freeze the old timeout so a slow browser cannot accidentally make the
+  // regression pass by spending eight seconds opening the project.
+  await page.clock.install();
+  await page.clock.pauseAt(new Date(Date.now() + 60_000));
+  let copies = 0;
+  page.on('request', (request) => {
+    if (request.url().endsWith('/api/plugins/example-dashboard/duplicate-project')) copies += 1;
+  });
+  await page.getByRole('button', { name: 'Remix', exact: true }).click();
+  await expect(page).toHaveURL(/\/projects\//);
+  await page.getByRole('button', { name: 'Back to projects', exact: true }).click();
+  await expect(page).toHaveURL(/\/community$/);
+  await expect(page.getByTestId('entry-nav-community')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Remix', exact: true })).toBeEnabled();
+  await expect(page.getByRole('button', { name: 'Loading…', exact: true })).toHaveCount(0);
+  expect(copies).toBe(1);
+  await testInfo.attach('remix-return-ready', { body: await page.screenshot(), contentType: 'image/png' });
+});

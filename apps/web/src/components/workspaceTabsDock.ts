@@ -15,6 +15,7 @@
 import { useCallback, useRef } from 'react';
 
 const WORKSPACE_TABS_DOCK_EVENT = 'open-design:workspace-tabs:dock-changed';
+export const WORKSPACE_ACCOUNT_CLUSTER_EVENT = 'open-design:workspace-tabs:account-cluster-changed';
 
 let currentDock: HTMLElement | null = null;
 

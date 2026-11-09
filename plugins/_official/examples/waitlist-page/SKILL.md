@@ -18,9 +18,6 @@ od:
   preview:
     type: html
     entry: example.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   inputs:
     - name: product_name
       type: string

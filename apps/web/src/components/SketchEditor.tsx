@@ -700,24 +700,7 @@ function convertLegacySketchItemsToExcalidrawElements(items: SketchItem[]): unkn
 function excalidrawLangCode(locale: Locale): string {
   const map: Record<Locale, string> = {
     'en': 'en',
-    'id': 'id-ID',
-    'de': 'de-DE',
     'zh-CN': 'zh-CN',
-    'zh-TW': 'zh-TW',
-    'pt-BR': 'pt-BR',
-    'es-ES': 'es-ES',
-    'ru': 'ru-RU',
-    'fa': 'fa-IR',
-    'ar': 'ar-SA',
-    'ja': 'ja-JP',
-    'ko': 'ko-KR',
-    'pl': 'pl-PL',
-    'hu': 'hu-HU',
-    'fr': 'fr-FR',
-    'uk': 'uk-UA',
-    'tr': 'tr-TR',
-    'th': 'th-TH',
-    'it': 'it-IT',
   };
   return map[locale] ?? 'en';
 }
@@ -915,51 +898,9 @@ const ZH_CN_SKETCH_TEXT_OVERRIDES: Record<string, string> = {
   Insert: '插入',
 };
 
-const ZH_TW_SKETCH_TEXT_OVERRIDES: Record<string, string> = {
-  ...ZH_CN_SKETCH_TEXT_OVERRIDES,
-  Close: '關閉',
-  Generate: '生成',
-  'Wrap selection in frame': '將選取範圍包裹為畫框',
-  'Copy to clipboard as PNG': '複製為 PNG 到剪貼簿',
-  'Copy to clipboard as SVG': '複製為 SVG 到剪貼簿',
-  'Copy link to object': '複製物件連結',
-  'Link to object': '連結到物件',
-  'Add link': '新增連結',
-  'Edit link': '編輯連結',
-  'Edit embeddable link': '編輯嵌入連結',
-  'Copy link': '複製連結',
-  'Copy styles': '複製樣式',
-  'Paste styles': '貼上樣式',
-  'Bring forward': '上移一層',
-  'Send backward': '下移一層',
-  'Send to back': '置於底層',
-  'Bring to front': '置於頂層',
-  Duplicate: '複製',
-  Lock: '鎖定',
-  Unlock: '解鎖',
-  'Lock all': '全部鎖定',
-  'Unlock all': '全部解鎖',
-  'Flip horizontal': '水平翻轉',
-  'Flip vertical': '垂直翻轉',
-  'Select all elements in frame': '選取畫框內所有元素',
-  'Remove all elements from frame': '從畫框中移除所有元素',
-  'Frame tool': '畫框工具',
-  'Web Embed': '嵌入網頁',
-  'Mermaid to Excalidraw': 'Mermaid 轉 Excalidraw',
-  'Mermaid To Excalidraw': 'Mermaid 轉 Excalidraw',
-  'Mermaid syntax': 'Mermaid 語法',
-  Preview: '預覽',
-  'Text to diagram': '文字轉圖表',
-  'Currently we use Mermaid as a middle step, so you\'ll get best results if you describe a diagram, workflow, flow chart, and similar.': '目前會先透過 Mermaid 中間步驟生成；描述圖表、工作流程、流程圖等內容時效果最好。',
-  'View as Mermaid': '以 Mermaid 檢視',
-  'Write Mermaid diagram defintion here...': '在這裡輸入 Mermaid 圖表定義...',
-  'Write Mermaid diagram definition here...': '在這裡輸入 Mermaid 圖表定義...',
-  Insert: '插入',
-};
-
 function sketchTextOverrides(locale: Locale): Record<string, string> | null {
   if (locale === 'zh-CN') return ZH_CN_SKETCH_TEXT_OVERRIDES;
-  if (locale === 'zh-TW') return ZH_TW_SKETCH_TEXT_OVERRIDES;
+
   return null;
 }
 

@@ -171,14 +171,6 @@ vi.mock('../../src/components/ProjectView', async () => {
   };
 });
 
-vi.mock('../../src/components/pet/PetOverlay', () => ({
-  PetOverlay: () => null,
-}));
-
-vi.mock('../../src/components/pet/pets', () => ({
-  migrateCustomPetAtlas: vi.fn().mockResolvedValue(null),
-}));
-
 vi.mock('../../src/components/SettingsDialog', () => ({
   SettingsDialog: () => null,
   switchApiProtocolConfig: (config: AppConfig) => config,

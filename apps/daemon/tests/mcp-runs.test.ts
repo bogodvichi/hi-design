@@ -602,7 +602,7 @@ describe('public MCP discovery + generation tools', () => {
     const postBody = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
     expect(postBody.name).toBe('Demo Deck');
     expect(postBody.id).toMatch(/^demo-deck-[0-9a-f]{4}$/);
-    expect(postBody.designSystemId).toBe('stripe');
+    expect(postBody.designSystemId).toBeUndefined();
     expect(JSON.parse(firstText(result))).toMatchObject({ project: { name: 'Demo Deck' }, conversationId: 'c1' });
   });
 

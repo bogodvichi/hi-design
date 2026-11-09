@@ -19,9 +19,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   example_prompt: "Write a runbook for our auth service — alerts, dashboards, common procedures, on-call rotation."
 ---
 
@@ -31,7 +28,7 @@ Produce a single-page engineering runbook.
 
 ## Workflow
 
-1. Read DESIGN.md.
+1. Read the supplied template styles and any user-provided brand reference.
 2. Identify the service from the brief.
 3. Layout:
    - Header: service name, owner team, severity tier, version.

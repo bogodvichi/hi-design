@@ -14,7 +14,7 @@ import {
 } from "../vela-cli.js";
 import type { WinPaths, ResourceTreeCacheMetadata } from "./types.js";
 
-const RESOURCE_TREE_CACHE_SCHEMA_VERSION = 8;
+const RESOURCE_TREE_CACHE_SCHEMA_VERSION = 9;
 
 async function createResourceTreeCacheKey(config: ToolPackConfig, workspaceBuildKey: string): Promise<string> {
   const velaCliBin = await resolveOptionalVelaCliBinary({
@@ -25,10 +25,8 @@ async function createResourceTreeCacheKey(config: ToolPackConfig, workspaceBuild
       ? null
       : await resolveOptionalVelaCliOpenCodeCompanionTree(velaCliBin);
   return hashJson({
-    assetsCommunityPets: await hashPath(join(config.workspaceRoot, "assets", "community-pets")),
     assetsFrames: await hashPath(join(config.workspaceRoot, "assets", "frames")),
     craft: await hashPath(join(config.workspaceRoot, "craft")),
-    designSystems: await hashPath(join(config.workspaceRoot, "design-systems")),
     designTemplates: await hashPath(join(config.workspaceRoot, "design-templates")),
     forDesigner: await hashPath(join(config.workspaceRoot, "for-designer")),
     node: "win.resource-tree",

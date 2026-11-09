@@ -19,6 +19,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { installMockOpenDesignHost } from '@open-design/host/testing';
 
+import * as workspaceContextReads from '../../src/collab/useWorkspaceContext';
 import { EntryShell } from '../../src/components/EntryShell';
 import { I18nProvider } from '../../src/i18n';
 import type { AgentInfo, AppConfig, Project } from '../../src/types';
@@ -154,11 +155,9 @@ function renderAt(path: string, overrides: Partial<React.ComponentProps<typeof E
   const props: React.ComponentProps<typeof EntryShell> = {
     skills: [],
     designTemplates: [],
-    designSystems: [],
     projects: [],
     templates: [],
     promptTemplates: [],
-    defaultDesignSystemId: null,
     connectors: [],
     connectorsLoading: false,
     config: baseConfig(),
@@ -178,7 +177,6 @@ function renderAt(path: string, overrides: Partial<React.ComponentProps<typeof E
     onOpenLiveArtifact: vi.fn(),
     onDeleteProject: vi.fn(),
     onRenameProject: vi.fn(),
-    onChangeDefaultDesignSystem: vi.fn(),
     onPersistComposioKey: vi.fn(),
     onOpenSettings: vi.fn(),
     onCompleteOnboarding: vi.fn(),
@@ -209,6 +207,38 @@ afterEach(() => {
   resetWorkspaceContextCache();
   resetTeamProjectsCache();
   vi.unstubAllGlobals();
+});
+
+it('resolves one bound identity per workspace cohort while filling recent owners', async () => {
+  const storageKey = 'od:recently-opened-projects';
+  const previous = localStorage.getItem(storageKey);
+  const resolve = vi.spyOn(workspaceContextReads, 'resolveBoundProjectWorkspaceContext')
+    .mockResolvedValue(teamContext({ workspaceId: 'ws-other' }));
+  const rows = Array.from({ length: 6 }, (_, index) => ({
+    id: `recent-${index}`, name: `Recent ${index}`, workspaceId: 'ws-other',
+    skillId: null, designSystemId: null, createdAt: 1, updatedAt: 1, openedAt: Date.now(),
+  }));
+  localStorage.setItem(storageKey, JSON.stringify(rows));
+  const baseFetch = globalThis.fetch;
+  globalThis.fetch = vi.fn(async (input, init) => {
+    if (String(input).endsWith('/workspace/projects/team')) return jsonResponse({ projects: rows.map(row => ({
+      projectId: row.id, name: row.name, ownerDisplayName: 'Author', ownerMemberId: 'owner',
+    })) });
+    return baseFetch(input, init);
+  });
+  try {
+    renderAt('/', { projects: [] });
+    await waitFor(() => expect(JSON.parse(localStorage.getItem(storageKey)!)).toEqual(
+      rows.map(row => expect.objectContaining({ id: row.id, ownerDisplayName: 'Author' })),
+    ));
+    // The provisional and verified shell may each start a pass; six rows do
+    // not independently resolve six copies of the same directory identity.
+    expect(resolve.mock.calls.length).toBeLessThanOrEqual(2);
+  } finally {
+    cleanup(); resolve.mockRestore();
+    if (previous === null) localStorage.removeItem(storageKey);
+    else localStorage.setItem(storageKey, previous);
+  }
 });
 
 it('publishes the exact Home recent feed to the tray, including cross-workspace history', async () => {

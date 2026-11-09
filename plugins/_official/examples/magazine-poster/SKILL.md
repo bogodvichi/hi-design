@@ -24,9 +24,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   example_prompt: "Design an editorial magazine-style poster — ‘You don't need a designer to ship your first draft anymore.’ Newsprint paper, six numbered sections."
 ---
 
@@ -37,7 +34,7 @@ Sunday paper. Long-form, deliberate, type-driven.
 
 ## Workflow
 
-1. **Read the active DESIGN.md** (injected above). Pick the heaviest serif
+1. **Read the supplied template/reference styles** (provided with the template). Pick the heaviest serif
    token in the DS for the headline, the body serif for the columns, and
    a typewriter / mono token for the section eyebrows and annotations.
 2. **Pick the topic** from the brief. Write a real, opinionated headline —

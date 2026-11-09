@@ -20,9 +20,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   craft:
     requires: [state-coverage, animation-discipline, accessibility-baseline, form-validation, laws-of-ux]
   example_prompt: "Design a 3-screen mobile onboarding flow for a meditation app — welcome, value props, sign-in."
@@ -34,7 +31,7 @@ Produce a three-screen mobile onboarding flow on a single HTML page.
 
 ## Workflow
 
-1. Read DESIGN.md.
+1. Read the supplied template styles and any user-provided brand reference.
 2. Identify the app + audience.
 3. Layout: three phone frames side by side. Each phone:
    - Status bar (time, battery, signal).

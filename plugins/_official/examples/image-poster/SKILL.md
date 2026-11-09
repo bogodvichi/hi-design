@@ -21,8 +21,6 @@ od:
   preview:
     type: html
     entry: example.html
-  design_system:
-    requires: false
   example_prompt: |
     Editorial poster for an indie film festival — one bold abstract
     silhouette over a warm, slightly grainy paper background; hand-set

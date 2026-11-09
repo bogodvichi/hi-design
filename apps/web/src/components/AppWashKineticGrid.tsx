@@ -51,9 +51,11 @@ export function AppWashKineticGrid({ clipBottomTo }: AppWashKineticGridProps) {
       !!node.closest('input, textarea, [contenteditable]:not([contenteditable="false"])');
     const onFocusIn = (event: FocusEvent) => {
       hoverSuppressed = isEditable(event.target);
+      wake();
     };
     const onFocusOut = () => {
       hoverSuppressed = false;
+      wake();
     };
 
     let width = 1;
@@ -108,6 +110,7 @@ export function AppWashKineticGrid({ clipBottomTo }: AppWashKineticGridProps) {
     const ro = new ResizeObserver(() => {
       build();
       if (reducedMotion) drawStatic();
+      else wake();
     });
     ro.observe(host);
     if (clipEl) ro.observe(clipEl);
@@ -125,12 +128,14 @@ export function AppWashKineticGrid({ clipBottomTo }: AppWashKineticGridProps) {
       const rect = canvas.getBoundingClientRect();
       mouse.x = event.clientX - rect.left;
       mouse.y = event.clientY - rect.top;
-      mouse.active = true;
+      mouse.active = mouse.x >= 0 && mouse.x <= width && mouse.y >= 0 && mouse.y <= height;
+      wake();
     };
     const onLeave = () => {
       mouse.active = false;
       mouse.x = -9999;
       mouse.y = -9999;
+      wake();
     };
     window.addEventListener('mousemove', onMove, { passive: true });
     window.addEventListener('mouseout', onLeave);
@@ -140,13 +145,23 @@ export function AppWashKineticGrid({ clipBottomTo }: AppWashKineticGridProps) {
     hoverSuppressed = isEditable(document.activeElement);
 
     let raf = 0;
-    const frame = () => {
+    function wake() {
+      if (!raf && !document.hidden) raf = requestAnimationFrame(frame);
+    }
+    const onVisibility = () => {
       if (document.hidden) {
-        raf = requestAnimationFrame(frame);
-        return;
-      }
+        cancelAnimationFrame(raf);
+        raf = 0;
+        mouse.active = false;
+      } else wake();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    const frame = () => {
+      raf = 0;
+      if (document.hidden) return;
       ctx.clearRect(0, 0, width, height);
       const interactive = mouse.active && !hoverSuppressed;
+      let moving = false;
       for (const d of dots) {
         let ax = (d.hx - d.x) * 0.08;
         let ay = (d.hy - d.y) * 0.08;
@@ -164,6 +179,7 @@ export function AppWashKineticGrid({ clipBottomTo }: AppWashKineticGridProps) {
         d.vy = (d.vy + ay) * 0.82;
         d.x += d.vx;
         d.y += d.vy;
+        if (Math.abs(d.vx) + Math.abs(d.vy) + Math.abs(ax) + Math.abs(ay) > 0.01) moving = true;
 
         const prox = interactive
           ? Math.max(0, 1 - Math.sqrt((mouse.x - d.x) ** 2 + (mouse.y - d.y) ** 2) / RADIUS)
@@ -176,9 +192,9 @@ export function AppWashKineticGrid({ clipBottomTo }: AppWashKineticGridProps) {
         ctx.fill();
       }
       ctx.globalAlpha = 1;
-      raf = requestAnimationFrame(frame);
+      if (moving) wake();
     };
-    raf = requestAnimationFrame(frame);
+    wake();
 
     return () => {
       cancelAnimationFrame(raf);
@@ -188,6 +204,7 @@ export function AppWashKineticGrid({ clipBottomTo }: AppWashKineticGridProps) {
       window.removeEventListener('blur', onLeave);
       document.removeEventListener('focusin', onFocusIn);
       document.removeEventListener('focusout', onFocusOut);
+      document.removeEventListener('visibilitychange', onVisibility);
     };
   }, [clipBottomTo]);
 

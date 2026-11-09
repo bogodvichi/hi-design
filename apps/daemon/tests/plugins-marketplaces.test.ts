@@ -314,9 +314,8 @@ describe('marketplaces', () => {
 
     expect(officialManifest.trust).toBe('official');
     expect(officialManifest.plugins?.length).toBeGreaterThan(100);
-    expect(officialManifest.metadata?.bundledPreinstallCount).toBe(
-      officialManifest.plugins?.length,
-    );
+    // Catalog membership no longer means every entry is pre-registered.
+    expect(officialManifest.metadata?.bundledPreinstallCount).toBeUndefined();
     expect(officialManifest.plugins?.some((plugin) => plugin.name === 'open-design/build-test')).toBe(true);
     expect(officialManifest.plugins?.every((plugin) =>
       /^github:nexu-io\/open-design(?:@[^/]+)?\/plugins\/_official\//.test(plugin.source ?? ''),

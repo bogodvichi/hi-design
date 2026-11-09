@@ -5,6 +5,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { resetCoalescedGet } from '../src/lib/coalesced-get';
 import {
+  invalidateWorkspaceDirectory,
+  readWorkspaceDirectoryForCurrentGeneration,
   resetWorkspaceContextCache,
   useWorkspaceContext,
 } from '../src/collab/useWorkspaceContext';
@@ -155,6 +157,26 @@ describe('useWorkspaceContext invalidation freshness', () => {
       expect(contextReads).toBe(2);
       expect(hook.result.current.context?.workspaceId).toBe(PERSONAL_CONTEXT.workspaceId);
     });
+  });
+
+  it('replaces a forced read after an explicit directory invalidation', async () => {
+    let directoryReads = 0;
+    vi.spyOn(performance, 'now').mockImplementation(() => 0);
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
+      if (String(input) === '/api/workspace/directory') {
+        directoryReads += 1;
+        return jsonResponse(workspaceDirectoryFixture([TEAM_CONTEXT]));
+      }
+      throw new Error(`unexpected fetch ${String(input)}`);
+    }));
+
+    await readWorkspaceDirectoryForCurrentGeneration({ fresh: true });
+    expect(directoryReads).toBe(1);
+
+    invalidateWorkspaceDirectory();
+    await readWorkspaceDirectoryForCurrentGeneration({ fresh: true });
+
+    expect(directoryReads).toBe(2);
   });
 
   it('uses a fresh snapshot when the workspace stream first connects', async () => {

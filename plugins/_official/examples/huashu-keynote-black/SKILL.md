@@ -33,8 +33,6 @@ od:
   preview:
     type: html
     entry: example.html
-  design_system:
-    requires: false
   example_prompt_i18n:
     zh-CN: "用「黑场大数字」模板把我的发布会故事做成黑场 HTML 主题演讲：1920×1080 固定画布、纯黑底纯白几何粗体、一屏一词或一个超大 tabular-nums 数字、整套只用一个小米橙 #FF6900 强调色、强调色对灰色的参数对比条和价格揭晓页。从 example.html 出发只换内容，不要重写设计。"
   category: "corporate-strategy"

@@ -26,9 +26,6 @@ od:
     type: html
     entry: index.html
     reload: debounce-100
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components, anti-patterns]
   craft:
     requires: [typography, color, anti-ai-slop, motion-discipline, state-coverage]
   inputs:
@@ -98,13 +95,12 @@ output ships, not only renders.
 
 1. `Read assets/template.html` — start from this skeleton verbatim. Do
    not rebuild the shell from scratch. Override only what the user's
-   brief or the active DESIGN.md require.
+   brief or the supplied template/reference styles require.
 2. `Read references/layouts.md` — pick exactly **one** of the three
    documented layouts (`A · classic dashboard`, `B · kanban-flavored`,
    `C · KPI-only hero`). State your choice in your reply.
 3. `Read references/components.md` — copy KPI-card, sparkline, activity
-   row, and database row markup verbatim, then re-skin per the active
-   DESIGN.md. Do not invent new component shapes.
+   row, and database row markup verbatim, then re-skin per the supplied template/reference styles. Do not invent new component shapes.
 4. `Read references/connectors.md` — only when `inputs.connector !== mock`.
    Emit a sibling `connectors.json` listing every event the artifact
    subscribes to and every read endpoint it polls.
@@ -114,7 +110,7 @@ output ships, not only renders.
 
 ## Build order
 
-1. **Lock visual direction** from the active `DESIGN.md`. Display face
+1. **Lock visual direction** from the supplied template/reference styles. Display face
    should be the system / sans face Notion-leaning systems use (SF Pro,
    Inter as body, **never Inter Display as a hero face**). Body 14/22.
 2. **Topbar**: breadcrumb (`workspace_name / Workspace / page_title`) on

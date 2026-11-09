@@ -677,10 +677,7 @@ export const TOOL_DEFS = [
           type: 'string',
           description: 'Optional project id slug ([A-Za-z0-9._-], <=128 chars). Derived from name when omitted.',
         },
-        designSystem: {
-          type: 'string',
-          description: 'Optional design system id to attach (see the od://design-systems/... resources).',
-        },
+
         skill: { type: 'string', description: 'Optional skill id to seed the project with.' },
         pluginWorkflowId: PLUGIN_WORKFLOW_ID_ARG,
       },
@@ -982,16 +979,14 @@ export async function _listMcpResources(
       // sees in the app. See #6770.
       const workspaceContext = await resolveMcpWorkspaceContext(baseUrl);
       const headers = workspaceContext?.headers;
-      const [skillsData, dsData] = await Promise.all([
+      const [skillsData] = await Promise.all([
         getJson<SkillsPayload>(`${baseUrl}/api/skills`, headers).catch((): SkillsPayload => ({ skills: [] })),
-        getJson<DesignSystemsPayload>(`${baseUrl}/api/design-systems`, headers).catch((): DesignSystemsPayload => ({ designSystems: [] })),
       ]);
-      return ok({ skillsData, dsData });
+      return ok({ skillsData });
     },
   );
   const catalogPayload = parseMcpResult(catalog);
   const skillsData = (catalogPayload?.skillsData ?? {}) as SkillsPayload;
-  const dsData = (catalogPayload?.dsData ?? {}) as DesignSystemsPayload;
   const resources = [
     ...localMcpResourceDefinitions(),
     {
@@ -1006,14 +1001,6 @@ export async function _listMcpResources(
       uri: `od://skills/${encodeURIComponent(s.id)}/SKILL.md`,
       name: `Skill: ${s.name || s.id}`,
       description: oneLine(s.description) ?? '',
-      mimeType: 'text/markdown',
-    });
-  }
-  for (const d of dsData?.designSystems || []) {
-    resources.push({
-      uri: `od://design-systems/${encodeURIComponent(d.id)}/DESIGN.md`,
-      name: `Design system: ${d.title || d.name || d.id}`,
-      description: oneLine(d.summary) ?? '',
       mimeType: 'text/markdown',
     });
   }
@@ -1055,12 +1042,12 @@ export async function _readMcpResource(
       ],
     };
   }
-  const m = String(uri || '').match(/^od:\/\/(skills|design-systems)\/([^/]+)\/(.+)$/);
+  const m = String(uri || '').match(/^od:\/\/(skills)\/([^/]+)\/(.+)$/);
   if (!m) {
     throw new Error(`unsupported resource URI: ${uri}`);
   }
-  const [, kind, id] = m as [string, 'skills' | 'design-systems', string, string];
-  const route = kind === 'skills' ? 'skills' : 'design-systems';
+  const [, kind, id] = m as [string, 'skills', string, string];
+  const route = 'skills';
   // Reading a `od://design-systems/<id>/DESIGN.md` resource resolves the
   // bound Personal design system. The daemon treats a headerless read as a
   // NO-SCOPE caller, so the design-system route returns 404 for a Personal
@@ -1080,8 +1067,6 @@ export async function _readMcpResource(
   const text =
     data?.skill?.body ??
     data?.skill?.content ??
-    data?.designSystem?.body ??
-    data?.designSystem?.content ??
     data?.body ??
     data?.content ??
     '';
@@ -1905,7 +1890,7 @@ export async function runMcpStdio(options: RunMcpOptions): Promise<void> {
         'resolved. Verify with the user if the match was unexpected.',
         '',
         'Reference material is exposed as MCP resources, not tools - read',
-        'od://design-systems/<id>/DESIGN.md when you need the brand spec',
+        'user-provided brand references when available',
         'for a design (palette, typography, voice). Skills are similarly',
         'available at od://skills/<id>/SKILL.md but are mostly relevant',
         'when the user asks about how a particular artifact was generated.',
@@ -2417,9 +2402,6 @@ async function createProject(
       ? args.id
       : slugifyProjectId(args.name);
   const body: JsonObject = { id, name: args.name, skipDiscoveryBrief: true };
-  if (typeof args.designSystem === 'string' && args.designSystem.length > 0) {
-    body.designSystemId = args.designSystem;
-  }
   if (typeof args.skill === 'string' && args.skill.length > 0) {
     body.skillId = args.skill;
   }

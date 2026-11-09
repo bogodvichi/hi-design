@@ -203,6 +203,13 @@ export type DesktopStatusSnapshot = {
   updatedAt?: string;
   url?: string | null;
   windowVisible?: boolean;
+  /** Read-only renderer census for tools-dev/tools-pack diagnostics. */
+  webContents?: Array<{
+    id: number;
+    type: string;
+    osProcessId: number;
+    frames: Array<{ processId: number; routingId: number; origin: string }>;
+  }>;
 };
 
 export type DesktopEvalInput = {

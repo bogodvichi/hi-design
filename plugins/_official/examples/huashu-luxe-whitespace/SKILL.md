@@ -33,8 +33,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: false
   example_prompt_i18n:
     zh-CN: "用「奢华留白」模板把我的内容做成轻奢 HTML 幻灯片：1920×1080 米白画布、70% 以上留白、Inter 200–600 超细字重层级、120px 超细数字 + 金色小数点、唯一暖金 #D4A574 用在发丝线与对比条上、渐变发丝线分隔。从 example.html 出发只换内容，不要重写设计。"
   category: "consulting"

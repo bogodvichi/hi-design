@@ -512,7 +512,8 @@
     opacity: 0.92;
 }
 
-.composer-lottie-badge svg {
+.composer-lottie-badge svg,
+.composer-lottie-badge canvas {
   width: 100%;
   height: 100%;
 }

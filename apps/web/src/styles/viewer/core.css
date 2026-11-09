@@ -1726,6 +1726,36 @@
   white-space: pre-wrap;
   padding: 12px 8px 12px 32px;
 }
+.comment-popover-content-action {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0 8px 10px 32px;
+  margin-top: -7px;
+}
+.comment-popover-send-to-chat {
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: transparent;
+  color: color-mix(in srgb, var(--blue) 72%, var(--bg-panel));
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.4;
+  cursor: pointer;
+}
+.comment-popover-send-to-chat:hover:not(:disabled) {
+  color: var(--blue);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.comment-popover-send-to-chat:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--blue) 40%, transparent);
+  outline-offset: 2px;
+}
+.comment-popover-send-to-chat:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 .comment-popover-replies {
   display: grid;
   gap: 0px;
@@ -1846,6 +1876,11 @@
 }
 .comment-popover-reply-bar {
   flex: 0 0 auto;
+  /* Keep the reply input and its floating actions reachable while the
+     composer body scrolls. */
+  position: sticky;
+  bottom: -1px;
+  z-index: 1;
   /* padding: 8px 12px 10px; */
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);

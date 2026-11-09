@@ -131,3 +131,7 @@ If the user asks for an extraction report, create `EXTRACTION-REPORT.md` with th
 - The implementation must be understandable enough for a designer or engineer to edit.
 - The workflow must avoid copying unrelated application code.
 - The response must distinguish captured facts from inferred reconstruction choices.
+
+## Style fidelity
+
+Preserve the source palette, typography, spacing, and components. The token-map stage uses a user-supplied target reference only when explicitly provided; otherwise it retains the extracted source tokens. No installed design system is required.

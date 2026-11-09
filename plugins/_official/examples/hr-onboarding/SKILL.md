@@ -18,9 +18,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   craft:
     requires: [accessibility-baseline]
   example_prompt: "Build a 30-day onboarding plan for a new product designer joining a 40-person startup."
@@ -32,7 +29,7 @@ Produce a single-screen onboarding plan in HTML.
 
 ## Workflow
 
-1. Read the active DESIGN.md.
+1. Read the supplied template/reference styles.
 2. Identify the role + tenure expectations from the brief. Default to a
    30/60/90-day shape if unspecified.
 3. Layout:

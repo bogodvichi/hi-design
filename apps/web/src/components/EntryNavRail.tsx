@@ -35,6 +35,7 @@ import {
   type Ref,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { WORKSPACE_ACCOUNT_CLUSTER_EVENT } from './workspaceTabsDock';
 import {
   workspaceSeatCapacityState,
   type GetCurrentUserAvatarResponse,
@@ -610,6 +611,7 @@ export function EntryTopRightCluster({
     };
 
     syncTabsSafeArea();
+    window.dispatchEvent(new Event(WORKSPACE_ACCOUNT_CLUSTER_EVENT));
     const resizeObserver =
       typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(syncTabsSafeArea);
     resizeObserver?.observe(cluster);
@@ -623,6 +625,7 @@ export function EntryTopRightCluster({
         root.style.removeProperty('--workspace-tabs-right-safe-area');
       }
       tabsSafeAreaOwnerRef.current = null;
+      window.dispatchEvent(new Event(WORKSPACE_ACCOUNT_CLUSTER_EVENT));
     };
   }, [clusterVisible]);
 
@@ -1844,15 +1847,6 @@ export function EntryNavRail({
               </NavButton>
             ) : null}
             <NavButton
-              active={view === 'design-systems'}
-              ariaLabel={t('entry.navDesignSystems')}
-              label={t('entry.navDesignSystems')}
-              onClick={() => selectView('design-systems')}
-              testId="entry-nav-design-systems"
-            >
-              <Icon name="palette" size={16} />
-            </NavButton>
-            <NavButton
               active={view === 'plugins'}
               ariaLabel={t('entry.navPlugins')}
               label={t('entry.navPlugins')}
@@ -1894,15 +1888,6 @@ export function EntryNavRail({
           </div>
         ) : true?null:(
           <>
-            <NavButton
-              active={view === 'design-systems'}
-              ariaLabel={t('entry.navDesignSystems')}
-              label={t('entry.navDesignSystems')}
-              onClick={() => selectView('design-systems')}
-              testId="entry-nav-design-systems"
-            >
-              <Icon name="palette" size={16} />
-            </NavButton>
             <NavButton
               active={view === 'plugins'}
               ariaLabel={t('entry.navPlugins')}

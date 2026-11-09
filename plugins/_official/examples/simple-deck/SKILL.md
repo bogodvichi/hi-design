@@ -32,9 +32,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   category: "corporate-strategy"
   scenario: "strategy"
   example_prompt: "Create \"Write an Operating Review like a Disciplined COO\" as a decision-grade Corporate strategy deck in this template's own visual system. Subject: HiDesign's operating review: growth, burn, and the concrete path to sustainability without losing the open ethos. Audience: leadership team. First ask only for missing essentials: audience, decision target, source-of-truth materials, deadline, and must-keep numbers. Then produce the slide plan, written slides, visual direction, speaker-ready structure, and a critic pass against this rubric: would a board member know what to approve and why before page five."
@@ -62,11 +59,11 @@ simple-deck/
 
 1. **Read `assets/template.html`** end-to-end through the `<style>` block AND the `<script>` block. The script solves five iframe-specific bugs (real scroller detection, dual capture-phase listeners, auto-focus, no `scrollIntoView`, position persistence) — do not rewrite it.
 2. **Read `references/layouts.md`** so you know the 8 layouts. Pay special attention to the "Theme rhythm" section — it's the rule that prevents the deck from feeling sleepy.
-3. **Read the active DESIGN.md** — map its tokens to the six `:root` variables in the seed.
+3. **Read the supplied template/reference styles** — map its tokens to the six `:root` variables in the seed.
 
 ### Step 1 — Copy the seed
 
-Copy `assets/template.html` to the project root as `index.html`. Replace the six `:root` variables with the active design system's tokens. Replace the page `<title>`.
+Copy `assets/template.html` to the project root as `index.html`. Replace the six `:root` variables with the supplied template/reference styles's tokens. Replace the page `<title>`.
 
 ### Step 2 — Decide slide count + theme rhythm BEFORE writing any slide
 

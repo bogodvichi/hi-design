@@ -436,8 +436,8 @@ const hostBridge = {
     },
   },
   pet: {
-    setVisible: (visible: boolean): void =>
-      ipcRenderer.send('desktop-pet:set-visible', Boolean(visible)),
+    // Retained for older renderers; the companion window is retired.
+    setVisible: (_visible: boolean): void => {},
   },
   updater,
 } satisfies OpenDesignHostBridge;

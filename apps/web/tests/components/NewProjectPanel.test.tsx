@@ -6,8 +6,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { isOpenDesignHostAvailable, pickHostWorkingDir } from '@open-design/host';
 import {
-  buildDesignSystemCreateSelection,
-  defaultDesignSystemSelection,
   NewProjectPanel,
 } from '../../src/components/NewProjectPanel';
 import { openFolderDialog } from '../../src/providers/registry';
@@ -120,18 +118,11 @@ beforeEach(() => {
 });
 
 describe('NewProjectPanel design system defaults', () => {
-  it('starts without a design system even when a configured default exists', () => {
-    expect(defaultDesignSystemSelection('clay', designSystems)).toEqual([]);
-    expect(defaultDesignSystemSelection('missing', designSystems)).toEqual([]);
-    expect(defaultDesignSystemSelection(null, designSystems)).toEqual([]);
-  });
 
   it('does not render a design-system selection control', () => {
     const markup = renderToStaticMarkup(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={[]}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}
@@ -146,8 +137,6 @@ describe('NewProjectPanel design system defaults', () => {
     render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={[]}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}
@@ -161,24 +150,11 @@ describe('NewProjectPanel design system defaults', () => {
     expect(screen.queryByRole('option', { name: /Editorial Noir/i })).toBeNull();
   });
 
-  it('keeps media project creation from inheriting a hidden design system pick', () => {
-    expect(buildDesignSystemCreateSelection(true, ['clay', 'bmw'])).toEqual({
-      primary: 'clay',
-      inspirations: ['bmw'],
-    });
-    expect(buildDesignSystemCreateSelection(false, ['clay', 'bmw'])).toEqual({
-      primary: null,
-      inspirations: [],
-    });
-  });
-
   it('preserves prototype fidelity across tab switches and saves it into the create payload', () => {
     const onCreate = vi.fn();
     render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={[]}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}
@@ -215,8 +191,6 @@ describe('NewProjectPanel design system defaults', () => {
     render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={[]}
         promptTemplates={[]}
         onCreate={onCreate}
@@ -245,8 +219,6 @@ describe('NewProjectPanel design system defaults', () => {
     render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={[]}
         promptTemplates={[]}
         onCreate={vi.fn()}
@@ -265,8 +237,6 @@ describe('NewProjectPanel design system defaults', () => {
     render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={[]}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}
@@ -297,8 +267,6 @@ describe('NewProjectPanel design system defaults', () => {
     render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId={null}
         templates={[]}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}
@@ -327,8 +295,6 @@ describe('NewProjectPanel design system defaults', () => {
     render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={[]}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}
@@ -363,8 +329,6 @@ describe('NewProjectPanel design system defaults', () => {
     render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={[]}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}
@@ -398,8 +362,6 @@ describe('NewProjectPanel design system defaults', () => {
     const first = render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={[]}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}
@@ -418,8 +380,6 @@ describe('NewProjectPanel design system defaults', () => {
     render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={templates}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}
@@ -452,8 +412,6 @@ describe('NewProjectPanel design system defaults', () => {
     render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={[]}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}
@@ -487,8 +445,6 @@ describe('NewProjectPanel design system defaults', () => {
     render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={[]}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}
@@ -526,8 +482,6 @@ describe('NewProjectPanel design system defaults', () => {
     render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={[]}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}
@@ -568,8 +522,6 @@ describe('NewProjectPanel design system defaults', () => {
     render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={[]}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}
@@ -655,8 +607,6 @@ describe('NewProjectPanel design system defaults', () => {
     render(
       <NewProjectPanel
         skills={videoSkills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={[]}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}
@@ -695,8 +645,6 @@ describe('NewProjectPanel working directory picker', () => {
     render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={templates}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}
@@ -733,8 +681,6 @@ describe('NewProjectPanel working directory picker', () => {
     render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={templates}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}
@@ -770,8 +716,6 @@ describe('NewProjectPanel working directory picker', () => {
     render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={templates}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}
@@ -792,8 +736,6 @@ describe('NewProjectPanel working directory picker', () => {
     render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={templates}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}
@@ -820,8 +762,6 @@ describe('NewProjectPanel folder import feedback', () => {
     const { container } = render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={templates}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}
@@ -854,8 +794,6 @@ describe('NewProjectPanel folder import feedback', () => {
     render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={templates}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}
@@ -884,8 +822,6 @@ describe('NewProjectPanel template deletion', () => {
     render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={templates}
         onDeleteTemplate={onDelete}
         promptTemplates={[]}
@@ -909,8 +845,6 @@ describe('NewProjectPanel template deletion', () => {
     render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={templates}
         onDeleteTemplate={onDelete}
         promptTemplates={[]}
@@ -932,8 +866,6 @@ describe('NewProjectPanel template deletion', () => {
     render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={templates}
         onDeleteTemplate={onDelete}
         promptTemplates={[]}
@@ -959,8 +891,6 @@ describe('NewProjectPanel template deletion', () => {
     render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={templates}
         onDeleteTemplate={onDelete}
         promptTemplates={[]}
@@ -1036,8 +966,6 @@ describe('NewProjectPanel start-from rail', () => {
       <NewProjectPanel
         skills={[...skills, deckSkill]}
         designTemplates={[deckTemplate, prototypeTemplate]}
-        designSystems={designSystems}
-        defaultDesignSystemId={null}
         templates={[]}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}

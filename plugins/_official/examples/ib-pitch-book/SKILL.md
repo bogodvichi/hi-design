@@ -35,9 +35,6 @@ od:
   preview:
     type: html
     entry: example.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   speaker_notes: true
   category: "fundraising-pitch"
   scenario: "finance"

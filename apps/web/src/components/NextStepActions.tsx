@@ -280,14 +280,14 @@ export function NextStepActions({
   const analytics = useAnalytics();
   const exposedRef = useRef(false);
   useEffect(() => {
-    if (exposedRef.current) return;
+    if (exposedRef.current || variant === 'default') return;
     exposedRef.current = true;
     trackNextStepActionClick(analytics.track, {
       page_name: 'chat_panel',
       area: 'next_step',
       element: 'next_step_exposed',
     });
-  }, [analytics.track]);
+  }, [analytics.track, variant]);
 
   // Three-level cascading hover menu, all portaled to <body> with fixed
   // positioning so the narrow chat column never clips or occludes them:
@@ -544,7 +544,7 @@ export function NextStepActions({
         : !!onAiOptimize || !!onCreateDesign
     );
 
-  if (variant === 'project-incomplete' || !(showBrandRows || showDesignSystemRows || showToolbox || hasMore)) {
+  if (variant === 'default' || variant === 'project-incomplete' || !(showBrandRows || showDesignSystemRows || showToolbox || hasMore)) {
     return null;
   }
 

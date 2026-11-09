@@ -511,26 +511,6 @@ export function composeOdNextStrategyStableRequestContextV2(
   instructionText('personal-memory', context.memoryBody);
   instructionText('user-custom-instructions', context.userInstructions);
   instructionText('project-custom-instructions', context.projectInstructions);
-  const designSystemIdentity = {
-    ...(context.designSystemTitle?.trim()
-      ? { title: context.designSystemTitle.trim() }
-      : {}),
-    ...(context.designSystemImportMode
-      ? { importMode: context.designSystemImportMode }
-      : {}),
-  };
-  if (Object.keys(designSystemIdentity).length > 0) {
-    factualStructured('active-design-system-identity', designSystemIdentity);
-  }
-  instructionText('active-design-system-design', context.designSystemBody);
-  instructionText('active-design-system-usage', context.designSystemUsageMd);
-  factualText('active-design-system-tokens', context.designSystemTokensCss);
-  factualText(
-    'active-design-system-components',
-    context.designSystemComponentsManifest,
-  );
-  factualText('active-design-system-fixture', context.designSystemFixtureHtml);
-  factualText('active-design-system-pull-index', context.designSystemPullIndex);
   instructionStructured('active-craft-sections', context.craftSections);
   instructionText('active-craft-guidance', context.craftBody);
 

@@ -100,7 +100,7 @@ export async function markAccountMessageRead(messageId: string): Promise<void> {
 }
 
 function apiLocale(locale: string): string {
-  const mapping: Record<string, string> = { en: 'en-US', 'es-ES': 'es', 'pt-BR': 'pt' };
+  const mapping: Record<string, string> = { en: 'en-US' };
   return mapping[locale] ?? locale;
 }
 

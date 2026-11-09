@@ -105,9 +105,6 @@
           "path": "./SKILL.md"
         }
       ],
-      "designSystem": {
-        "primary": true
-      },
       "craft": [
         "typography",
         "typography-hierarchy",

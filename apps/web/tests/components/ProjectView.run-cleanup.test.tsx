@@ -1040,101 +1040,7 @@ describe('ProjectView daemon cleanup', () => {
     }
   });
 
-  it('reloads an empty brand-extraction transcript without auto-sending the fallback prompt', async () => {
-    const programmaticMessages: ChatMessage[] = [
-      {
-        id: 'brand-user-1',
-        role: 'user',
-        content: 'Extract a design system from https://refly.ai/.',
-        createdAt: 1,
-      },
-      {
-        id: 'brand-assistant-1',
-        role: 'assistant',
-        content: 'Programmatic design-system extraction started from https://refly.ai/.',
-        createdAt: 1,
-        startedAt: 1,
-        runStatus: 'running',
-      },
-    ];
-    listConversations.mockResolvedValue([{ id: 'conv-brand', title: 'Conversation' }]);
-    listMessages
-      .mockResolvedValueOnce([])
-      .mockResolvedValue(programmaticMessages);
-    fetchPreviewComments.mockResolvedValue([]);
-    loadTabs.mockResolvedValue({ tabs: ['brand.html'], activeTabId: 'brand.html' });
-    fetchProjectFiles.mockResolvedValue([]);
-    fetchLiveArtifacts.mockResolvedValue([]);
-    fetchSkill.mockResolvedValue(null);
-    fetchDesignSystem.mockResolvedValue(null);
-    getTemplate.mockResolvedValue(null);
-    listActiveChatRuns.mockResolvedValue([]);
-    streamViaDaemon.mockResolvedValue(undefined);
 
-    window.sessionStorage.setItem('od:auto-send-first:brand-project', '1');
-
-    render(
-      <ProjectView
-        project={{
-          id: 'brand-project',
-          name: 'refly.ai Design System',
-          skillId: null,
-          designSystemId: null,
-          pendingPrompt: 'Extract refly.ai into a design system.',
-          metadata: {
-            kind: 'brand',
-            importedFrom: 'brand-extraction',
-            brandId: 'refly-ai',
-            brandSourceUrl: 'https://refly.ai/',
-          },
-          createdAt: 1,
-          updatedAt: 1,
-        } as never}
-        routeFileName={null}
-        config={{ mode: 'daemon', agentId: 'agent-1', notifications: undefined, agentModels: {} } as never}
-        agents={[{ id: 'agent-1', name: 'OpenCode', models: [] } as never]}
-        skills={[]}
-        designTemplates={[]}
-        designSystems={[]}
-        daemonLive
-        onModeChange={() => {}}
-        onAgentChange={() => {}}
-        onAgentModelChange={() => {}}
-        onRefreshAgents={() => {}}
-        onOpenSettings={() => {}}
-        onBack={() => {}}
-        onClearPendingPrompt={() => {}}
-        onTouchProject={() => {}}
-        onProjectChange={() => {}}
-        onProjectsRefresh={() => {}}
-      />,
-    );
-
-    await waitFor(() => expect(listMessages).toHaveBeenCalledTimes(2));
-    await waitFor(() => {
-      expect(chatPaneSpy.mock.calls.at(-1)?.[0]?.messages).toEqual(programmaticMessages);
-    });
-    expect(chatPaneSpy.mock.calls.at(-1)?.[0]?.streaming).toBe(true);
-    expect(chatPaneSpy.mock.calls.at(-1)?.[0]?.sendDisabled).toBe(false);
-    const latestChatPaneProps = chatPaneSpy.mock.calls.at(-1)?.[0] as {
-      onStop?: () => void;
-    };
-    latestChatPaneProps.onStop?.();
-    await waitFor(() => expect(cancelBrandExtraction).toHaveBeenCalledWith('refly-ai'));
-    await waitFor(() => {
-      expect(saveMessage).toHaveBeenCalledWith(
-        'brand-project',
-        'conv-brand',
-        expect.objectContaining({
-          id: 'brand-assistant-1',
-          runStatus: 'canceled',
-        }),
-        expect.objectContaining({ telemetryFinalized: true }),
-      );
-    });
-    expect(streamViaDaemon).not.toHaveBeenCalled();
-    expect(window.sessionStorage.getItem('od:auto-send-first:brand-project')).toBeNull();
-  });
 
   it('opens browser assist without adding a global download-guide toast', async () => {
     listConversations.mockResolvedValue([{ id: 'conv-brand', title: 'Conversation' }]);
@@ -1213,95 +1119,7 @@ describe('ProjectView daemon cleanup', () => {
     expect(document.querySelector('.project-actions-toast-anchor .od-toast')).toBeNull();
   });
 
-  it('anchors continue-extraction snapshot errors in the chat pane', async () => {
-    // Continue extraction snapshot failures should stay between the transcript
-    // and the composer, without resurrecting the long download-guide details
-    // that now live beside the Browser download action.
-    listConversations.mockResolvedValue([{ id: 'conv-brand', title: 'Conversation' }]);
-    listMessages.mockResolvedValue([]);
-    fetchPreviewComments.mockResolvedValue([]);
-    loadTabs.mockResolvedValue({ tabs: [], activeTabId: null });
-    fetchProjectFiles.mockResolvedValue([]);
-    fetchLiveArtifacts.mockResolvedValue([]);
-    fetchSkill.mockResolvedValue(null);
-    fetchDesignSystem.mockResolvedValue(null);
-    getTemplate.mockResolvedValue(null);
-    listActiveChatRuns.mockResolvedValue([]);
-    streamViaDaemon.mockResolvedValue(undefined);
-    // No saved page archive on disk…
-    fetchProjectFileText.mockResolvedValue(null);
-    // …and the daemon cannot finish programmatically either.
-    continueBrandExtraction.mockResolvedValue({ ok: false, error: 'still walled' });
 
-    // A mounted desktop Browser tab whose live DOM and page-snapshot download
-    // both fail, so the flow lands on a contained snapshot error toast.
-    registerBrandBrowser('brand-project', BRAND_BROWSER_TAB_ID, {
-      executeJavaScript: () => null,
-      downloadPageSnapshot: async () => ({ ok: false, message: 'snapshot save failed' }),
-      getURL: () => 'https://refly.ai/',
-      isDesktopWebview: true,
-    });
-
-    chatPaneSpy.mockClear();
-    fileWorkspaceSpy.mockClear();
-
-    try {
-      render(
-        <ProjectView
-          project={{
-            id: 'brand-project',
-            name: 'Refly Design System',
-            skillId: null,
-            designSystemId: null,
-            metadata: {
-              kind: 'brand',
-              importedFrom: 'brand-extraction',
-              brandId: 'refly-ai',
-              brandSourceUrl: 'https://refly.ai/',
-            },
-            createdAt: 1,
-            updatedAt: 1,
-          } as never}
-          routeFileName={null}
-          config={{ mode: 'daemon', agentId: 'agent-1', notifications: undefined, agentModels: {} } as never}
-          agents={[{ id: 'agent-1', name: 'OpenCode', models: [] } as never]}
-          skills={[]}
-          designTemplates={[]}
-          designSystems={[]}
-          daemonLive
-          onModeChange={() => {}}
-          onAgentChange={() => {}}
-          onAgentModelChange={() => {}}
-          onRefreshAgents={() => {}}
-          onOpenSettings={() => {}}
-          onBack={() => {}}
-          onClearPendingPrompt={() => {}}
-          onTouchProject={() => {}}
-          onProjectChange={() => {}}
-          onProjectsRefresh={() => {}}
-        />,
-      );
-
-      const chatProps = await waitForReadyChatPaneProps();
-      expect(chatProps.onContinueBrandExtraction).toBeTypeOf('function');
-
-      await act(async () => {
-        chatProps.onContinueBrandExtraction?.();
-      });
-
-      const toast = await waitFor(() => {
-        const node = document.querySelector('.od-toast');
-        expect(node?.textContent).toContain('snapshot save failed');
-        return node as HTMLElement;
-      });
-      expect(toast.textContent).not.toContain('chat.brandBrowserAssistDownloadGuideDetails');
-      expect(toast.closest('.project-actions-toast-anchor')).toBeTruthy();
-      expect(toast.closest('.split-chat-slot')).toBeTruthy();
-      expect(toast.closest('.chat-log-wrap')?.className).toContain('has-chat-log-tray');
-    } finally {
-      registerBrandBrowser('brand-project', BRAND_BROWSER_TAB_ID, null);
-    }
-  });
 
   it('waits for pendingPrompt hydration before consuming an auto-send flag', async () => {
     listConversations.mockResolvedValue([{ id: 'conv-1', title: 'Conversation' }]);
@@ -1644,102 +1462,9 @@ describe('ProjectView daemon cleanup', () => {
     expect(streamViaDaemon).toHaveBeenCalledTimes(1);
   });
 
-  it('audits design-system workspace output after first auto-send and seeds a bounded repair prompt', async () => {
-    listConversations.mockResolvedValue([{ id: 'conv-1', title: 'Conversation' }]);
-    listMessages.mockResolvedValue([]);
-    fetchPreviewComments.mockResolvedValue([]);
-    loadTabs.mockResolvedValue({ tabs: [], activeTabId: null });
-    fetchProjectFiles.mockResolvedValue([]);
-    fetchLiveArtifacts.mockResolvedValue([]);
-    fetchSkill.mockResolvedValue(null);
-    fetchDesignSystem.mockResolvedValue(null);
-    getTemplate.mockResolvedValue(null);
-    listActiveChatRuns.mockResolvedValue([]);
-    fetchProjectDesignSystemPackageAudit.mockResolvedValue({
-      ok: false,
-      projectPath: '/tmp/ds',
-      filesInspected: 12,
-      errors: [{
-        severity: 'error',
-        code: 'ui_kit_index_missing_runtime_bootstrap',
-        message: 'ui_kits/app/index.html must mount the kit.',
-        path: 'ui_kits/app/index.html',
-      }],
-      warnings: [],
-    });
-    let streamCallCount = 0;
-    streamViaDaemon.mockImplementation(async (options: {
-      handlers: { onDone: () => void };
-      onRunCreated?: (runId: string) => void;
-    }) => {
-      streamCallCount += 1;
-      options.onRunCreated?.(`run-ds-${streamCallCount}`);
-      if (streamCallCount === 1) {
-        options.handlers.onDone();
-      }
-    });
 
-    chatPaneSpy.mockClear();
-    window.sessionStorage.setItem('od:auto-send-first:project-ds', '1');
 
-    render(
-      <ProjectView
-        project={{
-          id: 'project-ds',
-          name: 'Cherry Studio Design System',
-          skillId: null,
-          designSystemId: 'user:cherry-studio',
-          pendingPrompt: 'Create this project as a design system.',
-          metadata: {
-            importedFrom: 'design-system',
-            entryFile: 'DESIGN.md',
-            sourceFileName: 'user:cherry-studio',
-          },
-        } as never}
-        routeFileName={null}
-        config={{ mode: 'daemon', agentId: 'agent-1', notifications: undefined, agentModels: {} } as never}
-        agents={[{ id: 'agent-1', name: 'OpenCode', models: [] } as never]}
-        skills={[]}
-        designTemplates={[]}
-        designSystems={[]}
-        daemonLive
-        onModeChange={() => {}}
-        onAgentChange={() => {}}
-        onAgentModelChange={() => {}}
-        onRefreshAgents={() => {}}
-        onOpenSettings={() => {}}
-        onBack={() => {}}
-        onClearPendingPrompt={() => {}}
-        onTouchProject={() => {}}
-        onProjectChange={() => {}}
-        onProjectsRefresh={() => {}}
-      />,
-    );
-
-    await waitFor(() =>
-      expect(fetchProjectDesignSystemPackageAudit).toHaveBeenCalledWith('project-ds', null),
-    );
-    await waitFor(() => expect(streamViaDaemon).toHaveBeenCalled());
-    expect(window.sessionStorage.getItem('od:design-system-audit-auto-repair:project-ds')).toBe('1');
-    await waitFor(() => {
-      const repairSeed = chatPaneSpy.mock.calls.find(
-        (call) => typeof call[0]?.initialDraft === 'string'
-          && call[0].initialDraft.includes('Fix the design-system package audit findings below.')
-          && call[0].initialDraft.includes('ui_kit_index_missing_runtime_bootstrap'),
-      );
-      expect(repairSeed).toBeTruthy();
-    });
-    expect(saveMessage.mock.calls.some((call) =>
-      call[2]?.role === 'assistant'
-      && call[2]?.events?.some((event: { kind?: string; label?: string; detail?: string }) =>
-        event.kind === 'status'
-        && event.label === 'audit'
-        && event.detail?.includes('Package audit found 1 error'),
-      ),
-    )).toBe(true);
-  });
-
-  it('does not seed audit repair prompt for manual design-system runs without auto-repair budget', async () => {
+  it('treats a legacy design-system project as an ordinary project without auditing or repair', async () => {
     listConversations.mockResolvedValue([{ id: 'conv-1', title: 'Conversation' }]);
     listMessages.mockResolvedValue([]);
     fetchPreviewComments.mockResolvedValue([]);
@@ -1808,19 +1533,8 @@ describe('ProjectView daemon cleanup', () => {
     const chatProps = await waitForReadyChatPaneProps();
     await chatProps.onSend!('Update the design system', [], []);
 
-    await waitFor(() =>
-      expect(fetchProjectDesignSystemPackageAudit).toHaveBeenCalledWith('project-ds-manual', null),
-    );
-    await waitFor(() => {
-      expect(saveMessage.mock.calls.some((call) =>
-        call[2]?.role === 'assistant'
-        && call[2]?.events?.some((event: { kind?: string; label?: string; detail?: string }) =>
-          event.kind === 'status'
-          && event.label === 'audit'
-          && event.detail?.includes('Package audit found 1 error'),
-        ),
-      )).toBe(true);
-    });
+    await waitFor(() => expect(streamViaDaemon).toHaveBeenCalled());
+    expect(fetchProjectDesignSystemPackageAudit).not.toHaveBeenCalled();
     expect(window.sessionStorage.getItem('od:design-system-audit-auto-repair:project-ds-manual')).toBeNull();
     expect(chatPaneSpy.mock.calls.some(
       (call) => typeof call[0]?.initialDraft === 'string'
@@ -1828,75 +1542,7 @@ describe('ProjectView daemon cleanup', () => {
     )).toBe(false);
   });
 
-  it('clears design-system auto-repair budget when the first audit passes', async () => {
-    listConversations.mockResolvedValue([{ id: 'conv-1', title: 'Conversation' }]);
-    listMessages.mockResolvedValue([]);
-    fetchPreviewComments.mockResolvedValue([]);
-    loadTabs.mockResolvedValue({ tabs: [], activeTabId: null });
-    fetchProjectFiles.mockResolvedValue([]);
-    fetchLiveArtifacts.mockResolvedValue([]);
-    fetchSkill.mockResolvedValue(null);
-    fetchDesignSystem.mockResolvedValue(null);
-    getTemplate.mockResolvedValue(null);
-    listActiveChatRuns.mockResolvedValue([]);
-    fetchProjectDesignSystemPackageAudit.mockResolvedValue({
-      ok: true,
-      projectPath: '/tmp/ds',
-      filesInspected: 24,
-      errors: [],
-      warnings: [],
-    });
-    streamViaDaemon.mockImplementation(async (options: {
-      handlers: { onDone: () => void };
-      onRunCreated?: (runId: string) => void;
-    }) => {
-      options.onRunCreated?.('run-ds-pass');
-      options.handlers.onDone();
-    });
 
-    chatPaneSpy.mockClear();
-    window.sessionStorage.setItem('od:auto-send-first:project-ds-pass', '1');
-
-    render(
-      <ProjectView
-        project={{
-          id: 'project-ds-pass',
-          name: 'Passing Design System',
-          skillId: null,
-          designSystemId: 'user:passing-ds',
-          pendingPrompt: 'Create this project as a design system.',
-          metadata: {
-            importedFrom: 'design-system',
-            entryFile: 'DESIGN.md',
-            sourceFileName: 'user:passing-ds',
-          },
-        } as never}
-        routeFileName={null}
-        config={{ mode: 'daemon', agentId: 'agent-1', notifications: undefined, agentModels: {} } as never}
-        agents={[{ id: 'agent-1', name: 'OpenCode', models: [] } as never]}
-        skills={[]}
-        designTemplates={[]}
-        designSystems={[]}
-        daemonLive
-        onModeChange={() => {}}
-        onAgentChange={() => {}}
-        onAgentModelChange={() => {}}
-        onRefreshAgents={() => {}}
-        onOpenSettings={() => {}}
-        onBack={() => {}}
-        onClearPendingPrompt={() => {}}
-        onTouchProject={() => {}}
-        onProjectChange={() => {}}
-        onProjectsRefresh={() => {}}
-      />,
-    );
-
-    await waitFor(() =>
-      expect(fetchProjectDesignSystemPackageAudit).toHaveBeenCalledWith('project-ds-pass', null),
-    );
-    expect(streamViaDaemon).toHaveBeenCalledTimes(1);
-    expect(window.sessionStorage.getItem('od:design-system-audit-auto-repair:project-ds-pass')).toBeNull();
-  });
 
   // Sister check: without the auto-send flag, the composer should still
   // seed from pendingPrompt so the user can edit before manually sending.

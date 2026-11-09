@@ -63,6 +63,26 @@ const handlers = () => ({
 });
 
 describe('AssistantMessage next-step affordance', () => {
+  it.each([
+    { producedFiles: [producedFile('landing.html')], projectFiles: [] },
+    { producedFiles: [producedFile('notes.md', 'text')], projectFiles: [producedFile('landing.html')] },
+  ])('keeps ordinary project deliverables without fixed suggestions: %j', ({ producedFiles, projectFiles }) => {
+    render(
+      <AssistantMessage
+        message={baseMessage({ producedFiles })}
+        streaming={false}
+        projectId="proj-1"
+        isLast
+        projectFiles={projectFiles}
+        {...handlers()}
+      />,
+    );
+
+    expect(document.querySelector('.produced-files')?.textContent).toContain(producedFiles[0]!.name);
+    expect(screen.getByRole('button', { name: en['assistant.copyMarkdown'] })).toBeTruthy();
+    expect(screen.queryByTestId('next-step-actions')).toBeNull();
+  });
+
   it('routes Share through the More → Share cascade with the file name', () => {
     const h = handlers();
     render(
@@ -310,6 +330,7 @@ describe('AssistantMessage next-step affordance during the question phase', () =
         streaming={false}
         projectId="proj-1"
         isLast
+        nextStepVariant="design-system"
         {...handlers()}
       />,
     );
@@ -326,6 +347,7 @@ describe('AssistantMessage next-step affordance during the question phase', () =
         streaming={false}
         projectId="proj-1"
         isLast
+        nextStepVariant="design-system"
         {...handlers()}
       />,
     );
@@ -345,6 +367,7 @@ describe('AssistantMessage next-step affordance during the question phase', () =
         streaming={false}
         projectId="proj-1"
         isLast
+        nextStepVariant="design-system"
         {...handlers()}
       />,
     );
@@ -358,6 +381,7 @@ describe('AssistantMessage next-step affordance during the question phase', () =
         streaming={false}
         projectId="proj-1"
         isLast
+        nextStepVariant="design-system"
         nextUserContent={'[form answers — discovery]\n- Studio name: Cobalt Studio'}
         {...handlers()}
       />,
@@ -379,6 +403,7 @@ describe('AssistantMessage next-step affordance during the question phase', () =
         streaming={false}
         projectId="proj-1"
         isLast
+        nextStepVariant="design-system"
         suppressDirectionForms
         {...handlers()}
       />,

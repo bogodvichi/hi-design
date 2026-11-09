@@ -2,6 +2,8 @@ import { userFacingError } from '../utils/userFacingError';
 import { notifyToast } from './toast-context';
 import {
   memo,
+  lazy,
+  Suspense,
   useCallback,
   useDeferredValue,
   useEffect,
@@ -162,8 +164,6 @@ import { LiveArtifactBadges } from './LiveArtifactBadges';
 import { MissingBrandFontsBanner } from './MissingBrandFontsBanner';
 import { LibraryPicker } from './LibraryPicker';
 import { QuickSwitcher } from './QuickSwitcher';
-import { SketchEditor } from './SketchEditor';
-import { SketchEnginePrewarm } from './SketchEnginePrewarm';
 import {
   emptySketchScene,
   isSketchJsonFileName,
@@ -175,6 +175,8 @@ import {
 import { AnimatePresence } from 'motion/react';
 import type { ChatMessage } from '../types';
 import type { CommentSendResult } from './comment-send-result';
+
+const SketchEditor = lazy(() => import('./SketchEditor').then(module => ({ default: module.SketchEditor })));
 
 type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
 
@@ -530,7 +532,6 @@ function pageText(en: string, zhCN?: string, zhTW?: string): LocalizedText {
   return {
     en,
     'zh-CN': zhCN ?? en,
-    'zh-TW': zhTW ?? zhCN ?? en,
   };
 }
 
@@ -3991,7 +3992,6 @@ export function FileWorkspace({
         />
       )
     ) : null}
-      <SketchEnginePrewarm />
       <div className="ws-tabs-shell">
         {focusMode && onBack ? (
           <div className="workspace-back-control">
@@ -4030,9 +4030,7 @@ export function FileWorkspace({
                   <span>
                     {locale === 'zh-CN'
                       ? '展开对话栏'
-                      : locale === 'zh-TW'
-                        ? '展開對話欄'
-                        : t('workspace.showChat')}
+                      : t('workspace.showChat')}
                   </span>
                 </button>
               </div>
@@ -4527,6 +4525,7 @@ export function FileWorkspace({
           null
         ) : isActiveSketch && activeFile ? (
           activeSketch?.loaded ? (
+            <Suspense fallback={<div className="viewer-empty">{t('workspace.loadingSketch')}</div>}>
             <SketchEditor
               fileName={activeFile.name}
               scene={activeSketch.scene}
@@ -4563,6 +4562,7 @@ export function FileWorkspace({
               dirty={activeSketch.dirty || !activeSketch.persisted}
               savedAt={activeSketch.savedAt}
             />
+            </Suspense>
           ) : (
             <div className="viewer-empty">{t('workspace.loadingSketch')}</div>
           )

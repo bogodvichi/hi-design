@@ -1,16 +1,14 @@
 'use client';
 
-import { userFacingError } from '../utils/userFacingError';
-
 import { parseCompactCommand } from '@open-design/contracts';
-
+import { userFacingError } from '../utils/userFacingError';
+import type { AppliedPluginSnapshot, ChatAnalyticsEntryFrom, ChatSessionMode, ConnectorDetail, ContextItem, InstalledPluginRecord, LibraryAsset, LibraryElementMeta, PluginSourceKind, ResearchOptions, RunContextSelection, WorkspaceCollabContext, WorkspaceContextItem } from '@open-design/contracts';
 import {
   Fragment,
   forwardRef,
   useCallback,
   useEffect,
   useImperativeHandle,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -42,30 +40,15 @@ import type {
 } from '@open-design/contracts/analytics';
 import { deriveUploadCohort } from '../analytics/upload-tracking';
 import { notifyCompletionFeedbackGesture } from '../utils/notifications';
-import { deleteProjectFile, projectRawUrl, uploadProjectFiles, openFolderDialog, fetchRecentLinkedDirs, pushRecentLinkedDir, dirExists, applyLibraryAsset, fetchLibraryAssetElementHtml } from "../providers/registry";
-import { fetchSkill } from "../providers/registry";
+import { deleteProjectFile, projectRawUrl, uploadProjectFiles, openFolderDialog, fetchRecentLinkedDirs, pushRecentLinkedDir, dirExists, applyLibraryAsset, fetchLibraryAssetElementHtml, fetchSkill } from "../providers/registry";
 import {
   duplicatePluginAsProject,
   patchProject,
+  listPlugins,
 } from "../state/projects";
 import { navigate } from '../router';
 import { fetchMcpServers, saveMcpServers } from "../state/mcp";
-import type { McpServerConfig, McpTemplate } from "../state/mcp";
-import { listPlugins } from "../state/projects";
 import type { AppConfig, ChatAttachment, ChatCommentAttachment, Project, ProjectFile, ProjectMetadata, SkillSummary } from "../types";
-import type {
-  ContextItem,
-  AppliedPluginSnapshot,
-  ChatAnalyticsEntryFrom,
-  ChatSessionMode,
-  ConnectorDetail,
-  InstalledPluginRecord,
-  PluginSourceKind,
-  ResearchOptions,
-  RunContextSelection,
-  WorkspaceCollabContext,
-  WorkspaceContextItem,
-} from '@open-design/contracts';
 import { buildVisualAnnotationAttachment, commentTargetDisplayName } from '../comments';
 import { Icon, type IconName } from "./Icon";
 import { ComposerPlusMenu, PLUS_SUBMENU_RESOURCE_KIND, type PlusMenuSubmenu } from './ComposerPlusMenu';
@@ -78,7 +61,6 @@ import {
 } from './ProjectReferenceModal';
 import { assetTitle, elementMetaOf } from './LibraryAssetMeta';
 import { WorkingDirPicker } from './WorkingDirPicker';
-import type { LibraryAsset, LibraryElementMeta } from '@open-design/contracts';
 import {
   DESIGN_TOOLBOX_ACTIONS,
   designToolboxActionBadge,
@@ -98,7 +80,6 @@ import { SkillDetailsModal } from './SkillDetailsModal';
 import { AddSkillDialog } from './AddSkillDialog';
 import { AddMcpDialog } from './AddMcpDialog';
 import { PluginsSection, type PluginsSectionHandle } from "./PluginsSection";
-import { BUILT_IN_PETS, CUSTOM_PET_ID } from "./pet/pets";
 import {
   inlineMentionToken,
   mentionTokenPresent,
@@ -113,7 +94,6 @@ import {
   type LexicalComposerInputHandle,
   type CaretRect,
 } from './composer/LexicalComposerInput';
-import type { WorkspaceDirectoryItem } from '@open-design/contracts';
 import { CaretFloatingLayer } from './composer/CaretFloatingLayer';
 import {
   ComposerSurface,
@@ -132,6 +112,12 @@ import {
 } from './composer/ComposerContextChips';
 import { createComposerResourceOrder } from './composer/resource-order';
 import { ANNOTATION_EVENT, type AnnotationEventDetail } from "./PreviewDrawOverlay";
+import { listenForConnectorsChanged } from './connectors-events';
+import { fetchConnectorCatalogSnapshot } from './connectors-state';
+import { PlaceholderCarousel } from './home-hero/PlaceholderCarousel';
+import type { PlaceholderScenario } from './home-hero/placeholderScenarios';
+import type { McpServerConfig, McpTemplate } from "../state/mcp";
+import type { WorkspaceDirectoryItem } from '@open-design/contracts';
 
 /**
  * Window event for staging attachments that are ALREADY uploaded to the
@@ -144,11 +130,6 @@ export const STAGE_ATTACHMENT_EVENT = 'HiDesign:stage-attachment';
 export interface StageAttachmentEventDetail {
   attachments: ChatAttachment[];
 }
-import { DesignSystemSwitchPicker } from "./DesignSystemSwitchPicker";
-import { listenForConnectorsChanged } from './connectors-events';
-import { fetchConnectorCatalogSnapshot } from './connectors-state';
-import { PlaceholderCarousel } from './home-hero/PlaceholderCarousel';
-import type { PlaceholderScenario } from './home-hero/placeholderScenarios';
 
 type TranslateFn = (key: keyof Dict, vars?: Record<string, string | number>) => string;
 
@@ -307,12 +288,6 @@ interface Props {
    *  the host that renders the pills can carry `aria-expanded` on them. The
    *  popovers live here but their triggers do not. */
   onStandalonePanelChange?: (panel: ComposerStandalonePanel) => void;
-  // Optional pet wiring. The composer no longer renders a visible pet
-  // entry, but existing manual `/pet` commands still route here.
-  petConfig?: AppConfig['pet'];
-  onAdoptPet?: (petId: string) => void;
-  onTogglePet?: () => void;
-  onOpenPetSettings?: () => void;
   researchAvailable?: boolean;
   projectMetadata?: ProjectMetadata;
   // Fired after the daemon accepts a metadata PATCH, with the authoritative
@@ -357,17 +332,14 @@ interface Props {
   // Design-system picker slot rendered at the top of the composer (above
   // the textarea). The former standalone chrome header row was removed;
   // ProjectView owns the project record so it renders the picker as a slot.
-  designSystemPicker?: ReactNode;
   // Project's current `designSystemId`. The mid-chat design-system picker
   // uses this to surface a "current" indicator and to no-op a redundant
   // switch. Optional so test/screenshot harnesses can omit it.
-  currentDesignSystemId?: string | null;
   // Fires after a successful `PATCH /api/projects/:id` from the mid-chat
   // design-system picker. Receives the full patched `Project` straight
   // from the PATCH response so the parent replaces its mirror wholesale —
   // rebuilding from a stale `project` prop would drop server-owned fields
   // the daemon refreshes on every PATCH (e.g. `updatedAt`).
-  onActiveDesignSystemChange?: (project: Project) => void;
   // Optional transient banner sink. The composer emits one short message
   // here when a mid-chat design-system switch lands (or fails) so the user
   // has explicit confirmation without re-opening the picker.
@@ -557,10 +529,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       onBrowsePlugins,
       onStandalonePanelChange,
       onOpenConnectors,
-      petConfig,
-      onAdoptPet,
-      onTogglePet,
-      onOpenPetSettings,
       researchAvailable = false,
       projectMetadata,
       onProjectMetadataChange,
@@ -581,7 +549,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
       pinnedPluginId = null,
       footerAccessory,
       leadingAccessory,
-      designSystemPicker,
       onShowToast,
     },
     ref
@@ -886,7 +853,6 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     // next `sendComposedTurn` (then cleared). An explicit meta.entryFrom always
     // wins over this pending value.
     const pendingEntryFromRef = useRef<ChatAnalyticsEntryFrom | null>(null);
-    const petEnabled = Boolean(onAdoptPet && onTogglePet);
     const [recentDirs, setRecentDirs] = useState<string[]>([]);
     useEffect(() => {
       let cancelled = false;
@@ -1437,31 +1403,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
       setSlash(null);
     }
 
-    // Expand a `/hatch <concept>` draft into the canonical hatch-pet
-    // skill prompt before sending. Returns null when the draft is not a
-    // hatch command so the caller can fall through to the regular
-    // submit path.
-    function expandHatchCommand(input: string): string | null {
-      const m = /^\/hatch(?:\s+([\s\S]*))?$/i.exec(input.trim());
-      if (!m) return null;
-      const concept = m[1]?.trim() ?? '';
-      const intro = concept
-        ? `Hatch a Codex-compatible animated pet for me. Concept: ${concept}.`
-        : 'Hatch a Codex-compatible animated pet for me.';
-      return [
-        intro,
-        '',
-        'Use the @hatch-pet skill end-to-end:',
-        '1. Generate the base look with $imagegen.',
-        '2. Generate every row strip (idle, running-right, waving, jumping, failed, waiting, running, review).',
-        '3. Mirror running-left from running-right only when the design is symmetric.',
-        '4. Run the deterministic scripts (extract / compose / validate / contact-sheet / videos).',
-        '5. Package the result into ${CODEX_HOME:-$HOME/.codex}/pets/<pet-name>/ with pet.json + spritesheet.webp.',
-        '',
-        'When the spritesheet is saved, tell me the absolute path and the pet folder name. I will adopt it from Settings → Pets → Recently hatched.',
-      ].join('\n');
-    }
-
     // `/mcp` (no arg) opens settings on the External MCP tab — pure UX hook,
     // never sent to the agent. `/mcp <id>` is intentionally NOT intercepted
     // here: the slash palette already replaces it with a natural-language
@@ -1504,44 +1445,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
           'Then summarize the findings with citations by source index and mention the Markdown report path.',
         ].join('\n'),
       };
-    }
-
-    // Parse a `/pet [arg]` slash command out of the draft. Recognized
-    // forms: `/pet` (toggle wake/tuck), `/pet wake`, `/pet tuck`,
-    // `/pet adopt` (open settings), or `/pet <id>` to adopt a built-in
-    // by id. The slash is stripped from the draft on a successful match
-    // so the user does not accidentally send the command to the agent.
-    function tryHandlePetSlash(): boolean {
-      if (!petEnabled) return false;
-      const trimmed = draft.trim();
-      const match = /^\/pet(?:\s+(\S+))?$/i.exec(trimmed);
-      if (!match) return false;
-      const arg = match[1]?.toLowerCase();
-      if (!arg || arg === 'toggle') {
-        onTogglePet?.();
-      } else if (arg === 'wake' || arg === 'show') {
-        if (petConfig?.adopted) {
-          if (!petConfig.enabled) onTogglePet?.();
-        } else {
-          onOpenPetSettings?.();
-        }
-      } else if (arg === 'tuck' || arg === 'hide') {
-        if (petConfig?.enabled) onTogglePet?.();
-      } else if (arg === 'adopt' || arg === 'settings' || arg === 'change') {
-        onOpenPetSettings?.();
-      } else if (arg === CUSTOM_PET_ID) {
-        onAdoptPet?.(CUSTOM_PET_ID);
-      } else {
-        const pet = BUILT_IN_PETS.find((p) => p.id === arg);
-        if (pet) {
-          onAdoptPet?.(pet.id);
-        } else {
-          return false;
-        }
-      }
-      setDraft('');
-      editorRef.current?.clear();
-      return true;
     }
 
     useImperativeHandle(
@@ -3169,24 +3072,10 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
         beginComposedSend(() => onSend(prompt, staged, currentCommentAttachments()));
         return;
       }
-      // Intercept `/pet …` and `/mcp` before sending so the slash command
-      // never hits the agent — these are local UX hooks, not model prompts.
-      if (tryHandlePetSlash()) return;
+      // `/mcp` opens local settings instead of sending a model prompt.
       if (tryHandleMcpSlash()) return;
-      // `/hatch <concept>` expands into the canonical hatch-pet skill
-      // prompt and *is* sent to the agent — the agent runs the skill,
-      // packages a Codex pet under `~/.codex/pets/`, and the user
-      // adopts it from "Recently hatched" in pet settings afterwards.
       const contextMeta = currentRunContextMeta();
-      const hatched = expandHatchCommand(prompt);
       const nextCommentAttachments = currentCommentAttachments();
-      if (hatched) {
-        if (streaming) return;
-        setStreamingAnnotationSendPending(false);
-        notifyCompletionFeedbackGesture();
-        beginComposedSend(() => onSend(hatched, staged, nextCommentAttachments, contextMeta));
-        return;
-      }
       const search = researchAvailable ? expandSearchCommand(prompt) : null;
       if (search) {
         if (streaming) return;
@@ -3291,8 +3180,8 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
       || staged.length > 0
       || liveCommentAttachments.length > 0
       || Boolean(currentRunContextMeta());
-    const showStopButton = streaming && !hasComposerPayload;
-    const showSendButton = !streaming || hasComposerPayload;
+    const showStopButton = streaming;
+    const showSendButton = !streaming;
     const resourceContextItems = composerChipsOutsidePrompt([
       ...stagedSkills.filter((skill) => contextOnlySkillIdsRef.current.has(skill.id)).map((skill) => ({
         key: `skill-${skill.id}`,
@@ -3359,17 +3248,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
         if (record) setDetailsRecord(record);
       },
       t,
-    };
-
-    const openDesignSystemPicker = () => {
-      const trigger = composerRootRef.current?.querySelector<HTMLButtonElement>(
-        '[data-testid="project-ds-picker-trigger"]',
-      );
-      if (!trigger || trigger.disabled) return;
-      window.requestAnimationFrame(() => {
-        if (trigger.getAttribute('aria-expanded') !== 'true') trigger.click();
-        trigger.focus({ preventScroll: true });
-      });
     };
 
     return (
@@ -3820,14 +3698,9 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
                 });
                 setFigmaHelpOpen(true);
               }}
-              onOpenDesignSystems={projectId && designSystemPicker ? () => {
-                trackComposerBar({ element: 'design_system_open' });
-                openDesignSystemPicker();
-              } : undefined}
             />
             {/* #5517: the design-system picker sits inline in the composer's
                 icon row (palette icon) instead of the staged-context bar. */}
-            {designSystemPicker}
             {leadingAccessory}
             <span className="composer-spacer" />
             {footerAccessory}
@@ -4206,7 +4079,6 @@ function projectFileMentionDescription(file: ProjectFile, fallback: string): str
 
 function StagedRunContexts({
   testId = 'staged-contexts',
-  designSystemPicker,
   resourceItems,
   workspaceItems,
   currentWorkspaceContextId,
@@ -4223,7 +4095,6 @@ function StagedRunContexts({
   t,
 }: {
   testId?: string;
-  designSystemPicker?: ReactNode;
   resourceItems: ComposerContextChipItem[];
   workspaceItems: WorkspaceContextItem[];
   currentWorkspaceContextId: string | null;
@@ -4299,11 +4170,6 @@ function StagedRunContexts({
       className="staged-row staged-context-row"
       data-testid={testId}
     >
-      {designSystemPicker ? (
-        <div className="staged-context-picker staged-context-picker--design-system">
-          {designSystemPicker}
-        </div>
-      ) : null}
       <ComposerOutsideContextList
         resources={resourceItems}
         attachments={attachmentItems}
@@ -5807,34 +5673,15 @@ function mcpTemplateMatchesQuery(tpl: McpTemplate, query: string): boolean {
 function ToolsImportPanel({
   t,
   onLinkFolder,
-  currentDesignSystemId,
-  onSwitchDesignSystem,
 }: {
   t: TranslateFn;
   onLinkFolder: () => Promise<void> | void;
-  currentDesignSystemId?: string | null;
   // When omitted (no active project) the design-system import row stays
   // disabled with the existing "Coming soon" affordance so users aren't
   // routed into a picker that has nothing to PATCH. Returns true on a
   // successful PATCH so the picker can close itself; false leaves the
   // picker open so the user can retry.
-  onSwitchDesignSystem?: (
-    designSystemId: string | null,
-    title: string | null,
-  ) => Promise<boolean>;
 }) {
-  const [view, setView] = useState<'root' | 'designSystems'>('root');
-
-  if (view === 'designSystems' && onSwitchDesignSystem) {
-    return (
-      <DesignSystemSwitchPicker
-        t={t}
-        currentDesignSystemId={currentDesignSystemId}
-        onSelect={onSwitchDesignSystem}
-        onBack={() => setView('root')}
-      />
-    );
-  }
 
   return (
     <div className="composer-tools-list">
@@ -5846,14 +5693,6 @@ function ToolsImportPanel({
         t={t}
         enabled
         onClick={() => void onLinkFolder()}
-      />
-      <ImportItem
-        icon="sparkles"
-        label={t('chat.importSkills')}
-        t={t}
-        enabled={!!onSwitchDesignSystem}
-        onClick={() => setView('designSystems')}
-        testId="composer-import-design-systems"
       />
       <ImportItem icon="file" label={t('chat.importProject')} t={t} />
     </div>

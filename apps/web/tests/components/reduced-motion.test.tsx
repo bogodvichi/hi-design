@@ -6,17 +6,17 @@ vi.mock('../../src/auth/LoginGate', () => import('../helpers/auth-gate'));
 //
 // The CSS `@media (prefers-reduced-motion: reduce)` block only disables CSS
 // keyframes/transitions; the dialogs, toasts and popovers that animate through
-// motion/react need their own gate. `App` wraps the tree in
+// motion/react need their own gate. `AppEntry` wraps the tree in
 // `<MotionConfig reducedMotion="user">`, which makes motion honor the OS
 // `prefers-reduced-motion` preference (transform/spring variants drop, opacity
 // is kept). Real animation behavior can't be observed here because the test
 // suite aliases `motion/react` to a stub, so this asserts the wiring contract:
-// the App root mounts a MotionConfig configured with `reducedMotion="user"`.
+// the entry root mounts a MotionConfig configured with `reducedMotion="user"`.
 
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { App } from '../../src/App';
+import { AppEntry } from '../../src/AppEntry';
 import type { AppConfig } from '../../src/types';
 import {
   daemonIsLive,
@@ -49,14 +49,6 @@ vi.mock('../../src/components/EntryView', () => ({
 
 vi.mock('../../src/components/ProjectView', () => ({
   ProjectView: () => <div>Project view</div>,
-}));
-
-vi.mock('../../src/components/pet/PetOverlay', () => ({
-  PetOverlay: () => null,
-}));
-
-vi.mock('../../src/components/pet/pets', () => ({
-  migrateCustomPetAtlas: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock('../../src/components/SettingsDialog', () => ({
@@ -154,7 +146,7 @@ afterEach(() => {
 
 describe('reduced-motion gate for the motion/react layer', () => {
   it('wraps the app in MotionConfig reducedMotion="user"', async () => {
-    render(<App />);
+    render(<AppEntry />);
 
     const config = await waitFor(() => screen.getByTestId('motion-config'));
     expect(config.getAttribute('data-reduced-motion')).toBe('user');

@@ -2,7 +2,7 @@
 name: saas-landing
 description: |
   Single-page SaaS landing with hero, features, social proof, pricing, and CTA.
-  Respects the active DESIGN.md color/typography/layout tokens.
+  Respects the supplied template/reference styles color/typography/layout tokens.
   Trigger keywords: "saas landing", "marketing page", "product landing".
 triggers:
   - "saas landing"
@@ -16,9 +16,6 @@ od:
     type: html
     entry: index.html
     reload: debounce-100
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   craft:
     requires: [typography, color, anti-ai-slop, laws-of-ux]
   inputs:
@@ -74,7 +71,7 @@ Required sections, in order:
 
 ## 3. Apply design system
 
-- All colors must come from DESIGN.md tokens. Do not invent hex values.
+- All colors must come from the supplied template/reference styles. Do not invent hex values.
 - Typography: use the declared display font for headlines, body font for everything else.
 - Layout: respect the grid, max-width, and section spacing rules.
 - Components: use declared button/card/input patterns. Do not add shadows if DESIGN.md's Depth & Elevation says minimal.

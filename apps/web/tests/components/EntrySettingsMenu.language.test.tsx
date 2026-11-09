@@ -79,7 +79,8 @@ describe('EntrySettingsMenu language picker a11y', () => {
     ) as HTMLElement;
     expect(panel.getAttribute('role')).toBe('menu');
     const radios = panel.querySelectorAll('[role="menuitemradio"]');
-    expect(radios.length).toBeGreaterThan(1);
+    expect(radios).toHaveLength(2);
+    expect(Array.from(radios, radio => radio.textContent?.trim())).toEqual(['English', '简体中文']);
     expect(
       Array.from(radios).filter((r) => r.getAttribute('aria-checked') === 'true'),
     ).toHaveLength(1);
@@ -95,5 +96,14 @@ describe('EntrySettingsMenu language picker a11y', () => {
     fireEvent.click(langTrigger);
     expect(langTrigger.getAttribute('aria-expanded')).toBe('true');
     expect(list.hasAttribute('inert')).toBe(false);
+
+    fireEvent.click(radios[1]!);
+    expect(localStorage.getItem('open-design:locale')).toBe('zh-CN');
+    expect(localStorage.getItem('open-design:locale-source')).toBe('manual');
+    fireEvent.click(screen.getByTestId('entry-settings-menu-trigger'));
+    expect(container.querySelector('[role="menuitemradio"][aria-checked="true"]')?.textContent?.trim()).toBe('简体中文');
+    fireEvent.click(container.querySelector('.entry-settings-menu__select-trigger')!);
+    fireEvent.click(container.querySelectorAll('[role="menuitemradio"]')[0]!);
+    expect(localStorage.getItem('open-design:locale')).toBe('en');
   });
 });

@@ -28,9 +28,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   example_prompt: "Create a sprite-based animation introducing trivia about Nintendo's history. Combine pixel mascots, animated text, and a Hanafuda accent. Use color and type that feel like the Nintendo brand."
 ---
 # Sprite Animation Skill
@@ -41,7 +38,7 @@ display, looping CSS animations, kinetic Japanese / English display type.
 
 ## Workflow
 
-1. **Read the active DESIGN.md** (injected above). Pick the loudest serif
+1. **Read the supplied template/reference styles** (provided with the template). Pick the loudest serif
    token for the year, a sturdy sans for headlines, and a mono token for
    timeline / index labels.
 2. **Pick the topic** from the brief (e.g. "Nintendo · 1889 — Hanafuda").

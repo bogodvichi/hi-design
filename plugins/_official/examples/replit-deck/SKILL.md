@@ -32,8 +32,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: false
   inputs:
     - name: theme
       type: enum

@@ -288,6 +288,7 @@ describe("copyBundledResourceTrees", () => {
       await writeFile(communityRegistryPath, "{\"plugins\":[]}\n", "utf8");
 
       await copyBundledResourceTrees({ workspaceRoot, resourceRoot });
+      await expect(access(join(resourceRoot, "design-systems"))).rejects.toThrow();
 
       await expect(
         readFile(join(resourceRoot, "skills", "web-clone", "SKILL.md"), "utf8"),
@@ -339,12 +340,7 @@ describe("copyBundledResourceTrees", () => {
         .rejects.toThrow();
       await expect(access(join(resourceRoot, "for-designer", "scripts", "__pycache__", "collector.pyc")))
         .rejects.toThrow();
-      await expect(
-        readFile(
-          join(resourceRoot, "community-pets", "sample", "pet.json"),
-          "utf8",
-        ),
-      ).resolves.toBe("{\"name\":\"sample\"}\n");
+      await expect(access(join(resourceRoot, "community-pets"))).rejects.toThrow();
       await expect(
         readFile(
           join(resourceRoot, "plugins", "_official", "sample", "open-design.json"),

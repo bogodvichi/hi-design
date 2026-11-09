@@ -19,9 +19,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   craft:
     requires: [state-coverage, laws-of-ux]
   example_prompt: "Make me a kanban board for a 5-person growth squad mid-sprint — backlog, doing, review, done."
@@ -33,7 +30,7 @@ Produce a single-screen kanban board.
 
 ## Workflow
 
-1. Read the active DESIGN.md.
+1. Read the supplied template/reference styles.
 2. Identify squad name, sprint number, columns, and member roster from the brief.
 3. Layout:
    - Top bar: project crumb, sprint chip, filter row (members, labels, status), search.

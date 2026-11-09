@@ -6,7 +6,7 @@ import type {
 } from '@open-design/contracts';
 
 // Pure context resolver. Given a parsed PluginManifest and a registry view
-// (skills/design-systems/craft already discovered by the daemon), turn
+// (skills/craft already discovered by the daemon), turn
 // `od.context.*` refs into the typed ContextItem chips the UI / CLI render.
 //
 // This module never reads the filesystem; the daemon passes the registry
@@ -14,12 +14,11 @@ import type {
 
 export interface RegistryView {
   skills: ReadonlyArray<{ id: string; title?: string; description?: string }>;
+  /** @deprecated Retained for legacy callers; never resolved. */
   designSystems: ReadonlyArray<{ id: string; title?: string }>;
   craft: ReadonlyArray<{ id: string; title?: string }>;
   atoms: ReadonlyArray<{ id: string; label?: string }>;
-  // Project-level design-system override for SKILL.md authors that wrote
-  // `od.design_system.requires: true` without a concrete ref. Daemon
-  // supplies the active project's design system here.
+  /** @deprecated Legacy project bindings are ignored. */
   activeProjectDesignSystem?: { id: string; title?: string } | undefined;
   // Spec §23.3.3: bundled scenario plugins. When a non-scenario plugin
   // omits `od.pipeline`, apply consults this list and uses the
@@ -78,25 +77,6 @@ export function resolveContext(manifest: PluginManifest, opts: ResolveOptions): 
       }
       items.push({ kind: 'skill', id: skill.id, label: skill.title ?? skill.id });
       digestRefs.push({ kind: 'skill', ref: skill.id });
-    }
-
-    // Design system
-    if (ctx.designSystem) {
-      const dsRef = ctx.designSystem;
-      const explicitRef = typeof dsRef.ref === 'string' ? dsRef.ref.trim() : '';
-      if (explicitRef) {
-        const ds = registry.designSystems.find((d) => d.id === explicitRef);
-        if (ds) {
-          items.push({ kind: 'design-system', id: ds.id, label: ds.title ?? ds.id, primary: true });
-          digestRefs.push({ kind: 'design-system', ref: ds.id });
-        } else if (opts.warnOnMissing) {
-          warnings.push(`Unknown design-system ref: '${explicitRef}'`);
-        }
-      } else if (registry.activeProjectDesignSystem) {
-        const ds = registry.activeProjectDesignSystem;
-        items.push({ kind: 'design-system', id: ds.id, label: ds.title ?? ds.id, primary: true });
-        digestRefs.push({ kind: 'design-system', ref: ds.id });
-      }
     }
 
     // Craft

@@ -34,8 +34,6 @@ od:
   preview:
     type: html
     entry: example.html
-  design_system:
-    requires: false
   speaker_notes: false
   animations: false
   category: "data-finance"

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // @ts-nocheck
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { basename } from 'node:path';
 import { createHash } from 'node:crypto';
 import { runDaemonCliStartup, startDaemonRuntime } from './daemon-startup.js';
@@ -9,10 +9,6 @@ import { runArtifactsCli } from './artifacts-cli.js';
 import { runResource } from './resource-cli.js';
 import { runProjectHandoff } from './handoff-cli.js';
 import { runConnectorsToolCli } from './tools-connectors-cli.js';
-import { runDesignSystemsToolCli } from './tools-design-systems-cli.js';
-import { DESIGN_SYSTEMS_USAGE, isDesignSystemsHelpArg } from './cli-help/index.js';
-import { BRAND_USAGE, isBrandHelpArg } from './cli-help/index.js';
-import { parseDesignSystemRenameArgs } from './design-systems/rename-args.js';
 import { runLiveArtifactsToolCli } from './tools-live-artifacts-cli.js';
 import { splitResearchSubcommand } from './research/cli-args.js';
 import { resolveDaemonUrl } from './daemon-url.js';
@@ -20,7 +16,6 @@ import { requestJsonIpc } from '@open-design/sidecar';
 import { SIDECAR_ENV, SIDECAR_MESSAGES } from '@open-design/sidecar-proto';
 import { EXPORT_FORMATS, EXPORT_IMAGE_FORMATS, isSkillCategory, isCommunitySkillSort, projectFileTextPatchSchema } from '@open-design/contracts';
 import { HDW_BASE } from './http/hdw.js';
-import type { ArtifactLintFinding, LintArtifactCliResultEnvelope, LintArtifactResponse, LintFailOn } from '@open-design/contracts';
 import { buildExportCliRequestBody, buildExportCliResultEnvelope, resolveExportCliDeckMode } from './export-cli-request.js';
 import { exportRoutePath } from './export-cli-routing.js';
 import {
@@ -31,6 +26,7 @@ import {
   removeJsonInstall,
 } from './mcp-agent-install.js';
 import { resolveMcpWorkspaceContext } from './mcp-workspace-context.js';
+import type { ArtifactLintFinding, LintArtifactCliResultEnvelope, LintArtifactResponse, LintFailOn } from '@open-design/contracts';
 
 const argv = process.argv.slice(2);
 
@@ -238,7 +234,7 @@ const CONFIG_BOOLEAN_FLAGS = new Set(['help', 'h', 'json']);
 const AMR_STRING_FLAGS = new Set(['daemon-url']);
 const AMR_BOOLEAN_FLAGS = new Set(['help', 'h', 'json', 'refresh']);
 const COLLAB_STRING_FLAGS = new Set([
-  'daemon-url', 'project', 'member', 'name', 'role', 'client-id', 'sequence', 'design-system',
+  'daemon-url', 'project', 'member', 'name', 'role', 'client-id', 'sequence',
   'workspace', 'workspace-member',
 ]);
 const COLLAB_BOOLEAN_FLAGS = new Set(['help', 'h', 'json']);
@@ -251,7 +247,7 @@ const MESSAGE_CENTER_STRING_FLAGS = new Set([
 ]);
 const MESSAGE_CENTER_BOOLEAN_FLAGS = new Set(['help', 'h', 'json']);
 const PROJECT_STRING_FLAGS = new Set([
-  'daemon-url', 'name', 'skill', 'design-system', 'plugin', 'metadata-json',
+  'daemon-url', 'name', 'skill', 'plugin', 'metadata-json',
   'pending-prompt', 'project', 'conversation', 'message', 'prompt',
   'prompt-file', 'task-execution', 'path', 'dir', 'as', 'url',
   'client-request-id',
@@ -344,20 +340,13 @@ const FIGMA_PROJECT_RESOURCE_STRING_FLAGS = new Set([
 const FIGMA_BOOLEAN_FLAGS = new Set([
   'help', 'h', 'json', 'build',
 ]);
-// `od brand …` mirrors the Brands library + New Brand modal. Same surface,
 // same /api/brands store. The CLI form is the embeddability contract: an
 // external agent (hermes-agent, openclaw, scripted job) can extract, list,
 // inspect, and remove brands headlessly without rendering the web UI.
 // Hoisted next to the other dispatch-touched flag sets because runBrand is
 // reachable through the top-of-file SUBCOMMAND_MAP dispatch, which runs during
 // module evaluation — a const declared further down would still be in TDZ.
-const BRAND_STRING_FLAGS = new Set([
-  'daemon-url', 'prompt-file', 'project', 'locale',
-  'html-file', 'css-file', 'base-url',
-]);
-const BRAND_BOOLEAN_FLAGS = new Set([
-  'help', 'h', 'json',
-]);
+
 const AGENT_STRING_FLAGS = new Set(['daemon-url']);
 const AGENT_BOOLEAN_FLAGS = new Set(['help', 'h', 'json']);
 const STRATEGY_STRING_FLAGS = new Set(['daemon-url', 'expected-revision']);
@@ -409,8 +398,7 @@ const SUBCOMMAND_MAP = {
   ui: runUi,
   marketplace: runMarketplace,
   share: runShare,
-  brand: runBrand,
-  brands: runBrand,
+
   project: runProject,
   strategy: runStrategy,
   workspace: runWorkspace,
@@ -427,7 +415,7 @@ const SUBCOMMAND_MAP = {
   atoms: runAtoms,
   skill: runSkills,
   skills: runSkills,
-  'design-systems': runDesignSystems,
+
   resource: runResource,
   craft: runCraft,
   diagnostics: runDiagnostics,
@@ -1018,16 +1006,7 @@ if (argv[0] === 'tools' && argv[1] === 'live-artifacts') {
   // carries only an id+label index and the agent fetches the chosen
   // direction's full spec (palette, font stacks, posture) here.
   runDirectionsToolCli(argv.slice(2));
-} else if (argv[0] === 'tools' && argv[1] === 'design-systems') {
-  runDesignSystemsToolCli(argv.slice(2))
-    .then(({ exitCode }) => {
-      process.exitCode = exitCode;
-    })
-    .catch((error) => {
-      const message = error instanceof Error ? error.message : String(error);
-      process.stderr.write(`${JSON.stringify({ ok: false, error: { message } })}\n`);
-      process.exitCode = 1;
-    });
+
 } else {
   await runDaemonCliStartup(argv, { printHelp: printRootHelp });
 }
@@ -1113,9 +1092,6 @@ function printRootHelp() {
 
   od tools connectors <list|execute|github-design-context> [options]
       Discover and execute configured connectors.
-
-  od tools design-systems read --path <manifest-declared-path>
-      Read active design-system pull-layer files through daemon wrapper commands.
 
   od mcp live-artifacts
       Start the MCP server exposing live-artifact and connector tools.
@@ -1361,10 +1337,8 @@ function printCollabHelp() {
   od collab publish <projectId> --workspace <id> --workspace-member <id> [--json]
   od collab share <projectId> --workspace <id> --workspace-member <id> [--json]
   od collab pull <projectId> --workspace <id> --workspace-member <id> [--json]
-  od collab share-resource <design-systems|plugins|skills> <id> --workspace <id> --workspace-member <id> [--json]
-  od collab team-resources <design-systems|plugins|skills> --workspace <id> --workspace-member <id> [--json]
-  od collab share-design-system <designSystemId> --workspace <id> --workspace-member <id> [--json]
-  od collab team-design-systems --workspace <id> --workspace-member <id> [--json]
+  od collab share-resource <plugins|skills> <id> --workspace <id> --workspace-member <id> [--json]
+  od collab team-resources <plugins|skills> --workspace <id> --workspace-member <id> [--json]
 
 Team-edition collaboration: presence overlay + sync trigger. The
 client is authoritative about whether it is in a shared context, so it drives
@@ -1372,14 +1346,12 @@ the trigger; the daemon coalesces author edits and flushes at a run boundary,
 advancing the published head version members poll to learn when to pull.
 \`share\` is the team-share intent: it requests the project be published so
 members can pull it, and reports the sync state (local_only / pending_upload /
-synced / sync_failed). \`share-resource <kind> <id>\` promotes a personal design
-system, plugin, or skill into the team scope through the resource hub, and
-\`team-resources <kind>\` lists the ones already shared (the \`*-design-system\`
-forms are kept as aliases).
+synced / sync_failed). \`share-resource <kind> <id>\` promotes a personal plugin
+or skill into the team scope through the resource hub, and
+\`team-resources <kind>\` lists the ones already shared.
 
 Options:
   --project <id>          Project id (alternative to the positional argument).
-  --design-system <id>    Design system id for share-design-system.
   --workspace <id>        Explicit workspace id for request authorization.
   --workspace-member <id> Explicit workspace member id for request authorization.
   --member <id>           Member id for the presence heartbeat / leave.
@@ -1396,7 +1368,6 @@ Examples:
   od collab publish p1 --workspace team-1 --workspace-member m-42
   od collab share-resource plugins my-plugin --workspace team-1 --workspace-member m-42 --json
   od collab team-resources skills --workspace team-1 --workspace-member m-42 --json
-  od collab share-design-system user:palette-x --workspace team-1 --workspace-member m-42 --json
   od collab status p1 --workspace team-1 --workspace-member m-42 --json`);
 }
 
@@ -1418,12 +1389,10 @@ async function runCollab(args) {
   // — it takes a resource id, not a project id — so it runs before the project-id
   // requirement below. `share-resource <kind> <id>` / `team-resources <kind>` are
   // the generic forms; the design-system aliases are kept for compatibility.
-  const RESOURCE_BASE_PATHS = new Set(['design-systems', 'plugins', 'skills']);
+  const RESOURCE_BASE_PATHS = new Set(['plugins', 'skills']);
   if (
     sub === 'share-resource' ||
-    sub === 'team-resources' ||
-    sub === 'share-design-system' ||
-    sub === 'team-design-systems'
+    sub === 'team-resources'
   ) {
     const base = await cliDaemonBaseUrl(flags);
     const workspaceHeaders = workspaceHeadersFromExplicitFlags(flags, true);
@@ -1454,17 +1423,10 @@ async function runCollab(args) {
     let basePath;
     let isList;
     let resourceId;
-    if (sub === 'team-design-systems') {
-      basePath = 'design-systems';
-      isList = true;
-    } else if (sub === 'share-design-system') {
-      basePath = 'design-systems';
-      isList = false;
-      resourceId = flags['design-system'] || positionals[0];
-    } else {
+    {
       basePath = positionals[0];
       if (!RESOURCE_BASE_PATHS.has(basePath)) {
-        console.error('kind must be one of: design-systems | plugins | skills');
+        console.error('kind must be one of: plugins | skills');
         process.exit(2);
       }
       isList = sub === 'team-resources';
@@ -1989,7 +1951,6 @@ async function runMediaGenerate(rawArgs) {
   // Long-form media prompts (detailed image/video descriptions, program-
   // generated prompts) arrive via --prompt-file <path|-> (stdin) per the CLI
   // contract; readPromptFromFlags prefers an inline --prompt and otherwise reads
-  // the file/stdin, matching od run / od brand / od automation.
   const prompt = await readPromptFromFlags(flags);
 
   const body = {
@@ -3058,23 +3019,15 @@ Exit codes:
   if (!flags['no-daemon']) {
     const base = (await libraryDaemonUrl(flags)).replace(/\/$/, '');
     try {
-      const designSystemWorkspaceHeaders =
-        workspaceHeadersFromExplicitFlags(flags);
-      const [skillsResp, dsResp, atomsResp] = await Promise.all([
+      const [skillsResp, atomsResp] = await Promise.all([
         fetch(`${base}/api/skills`).catch(() => null),
-        fetch(`${base}/api/design-systems`, {
-          ...(designSystemWorkspaceHeaders
-            ? { headers: designSystemWorkspaceHeaders }
-            : {}),
-        }).catch(() => null),
         fetch(`${base}/api/atoms`).catch(() => null),
       ]);
       const skills = (skillsResp?.ok ? (await skillsResp.json())?.skills : []) ?? [];
-      const designSystems = (dsResp?.ok ? (await dsResp.json())?.designSystems : []) ?? [];
       const atoms = (atomsResp?.ok ? (await atomsResp.json())?.atoms : []) ?? [];
       registry = {
         skills:        skills.map((s) => ({ id: s.id, title: s.name ?? s.title, description: s.description })),
-        designSystems: designSystems.map((d) => ({ id: d.id, title: d.title })),
+        designSystems: [],
         craft:         [],
         atoms:         atoms.map((a) => ({ id: a.id, label: a.label })),
       };
@@ -7072,7 +7025,6 @@ async function runFigma(args) {
 }
 
 // ---------------------------------------------------------------------------
-// Subcommand: od brand …
 //
 // Headless surface for the Brands library. This is the dual-track contract:
 // every capability the Brands UI exposes (extract from a URL, list, inspect,
@@ -7084,15 +7036,6 @@ async function runFigma(args) {
 // ---------------------------------------------------------------------------
 
 // Derive a short domain for list output from a brand's source URL.
-function brandDomainForCli(sourceUrl) {
-  if (typeof sourceUrl !== 'string' || sourceUrl.trim().length === 0) return '-';
-  try {
-    const u = new URL(/^[a-z]+:\/\//i.test(sourceUrl) ? sourceUrl : `https://${sourceUrl}`);
-    return u.hostname.replace(/^www\./, '') || '-';
-  } catch {
-    return sourceUrl;
-  }
-}
 
 function formatBrandRow(summary) {
   const meta = summary?.meta ?? {};
@@ -7103,209 +7046,6 @@ function formatBrandRow(summary) {
     brandDomainForCli(meta.sourceUrl),
     meta.status ?? '-',
   ].join('\t');
-}
-
-async function runBrand(args) {
-  if (args.length === 0 || isBrandHelpArg(args[0])
-      || args.includes('--help') || args.includes('-h')) {
-    console.log(BRAND_USAGE);
-    process.exit(args.length === 0 ? 2 : 0);
-  }
-  const sub = args[0];
-  const rest = args.slice(1);
-  switch (sub) {
-    case 'list':     return runBrandList(rest);
-    case 'create':   return runBrandCreate(rest);
-    case 'extract':  return runBrandCreate(rest);
-    case 'continue': return runBrandContinue(rest);
-    case 'preview':  return runBrandPreview(rest);
-    case 'finalize': return runBrandFinalize(rest);
-    case 'extract-from-html': return runBrandExtractFromHtml(rest);
-    case 'get':      return runBrandGet(rest);
-    case 'show':     return runBrandGet(rest);
-    case 'delete':   return runBrandDelete(rest);
-    case 'remove':   return runBrandDelete(rest);
-    default:
-      console.error(`unknown subcommand: od brand ${sub}`);
-      console.log(BRAND_USAGE);
-      process.exit(2);
-  }
-}
-
-async function runBrandList(rest) {
-  let flags;
-  try {
-    flags = parseFlags(rest, { string: BRAND_STRING_FLAGS, boolean: BRAND_BOOLEAN_FLAGS });
-  } catch (err) {
-    console.error(err.message);
-    process.exit(2);
-  }
-  const base = await cliDaemonBaseUrl(flags);
-  let resp;
-  try {
-    resp = await fetch(`${base}/api/brands`);
-  } catch (err) {
-    surfaceFetchError(err, base);
-    process.exit(3);
-  }
-  if (!resp.ok) return structuredHttpFailure(resp);
-  const data = await resp.json();
-  if (flags.json) {
-    process.stdout.write(JSON.stringify(data, null, 2) + '\n');
-    return;
-  }
-  const brands = Array.isArray(data?.brands) ? data.brands : [];
-  if (brands.length === 0) {
-    console.log('No brands yet. Extract one with: od brand create <url>');
-    return;
-  }
-  console.log('# id\tname\tdomain\tstatus');
-  for (const summary of brands) console.log(formatBrandRow(summary));
-}
-
-async function runBrandCreate(rest) {
-  let flags;
-  try {
-    flags = parseFlags(rest, { string: BRAND_STRING_FLAGS, boolean: BRAND_BOOLEAN_FLAGS });
-  } catch (err) {
-    console.error(err.message);
-    process.exit(2);
-  }
-  const positional = positionalArgs(rest, BRAND_STRING_FLAGS);
-  // The URL may arrive as a positional, or — for parity with other long-input
-  // subcommands — via --prompt-file <path|-> (a file or stdin). The positional
-  // wins when both are present.
-  let url = positional[0];
-  if (!url) {
-    const fromFile = await readPromptFromFlags(flags);
-    if (typeof fromFile === 'string') url = fromFile.trim();
-  }
-  if (!url) {
-    console.error('Usage: od brand create <url> [--json]\n' +
-      '       od brand create --prompt-file <path|-> [--json]');
-    process.exit(2);
-  }
-
-  const base = await cliDaemonBaseUrl(flags);
-  let resp;
-  try {
-    resp = await fetch(`${base}/api/brands`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', accept: 'application/json' },
-      body: JSON.stringify({
-        url,
-        ...(typeof flags.locale === 'string' && flags.locale.trim()
-          ? { locale: flags.locale.trim() }
-          : {}),
-      }),
-    });
-  } catch (err) {
-    surfaceFetchError(err, base);
-    process.exit(3);
-  }
-  if (!resp.ok) {
-    return structuredHttpFailure(resp);
-  }
-
-  // Extraction is agent-driven: this kickoff reserves the brand + a backing
-  // project with the target site open in a browser tab and a seeded prompt.
-  // The agent then runs the chain (measure → synthesize → `od brand finalize`).
-  const data = await resp.json();
-  if (flags.json) {
-    process.stdout.write(JSON.stringify({ ok: true, ...data }, null, 2) + '\n');
-    return;
-  }
-  process.stderr.write(
-    '[brand] extraction project created — open it to run the agent, ' +
-    `then it self-finalizes with: od brand finalize ${data?.id ?? ''}\n`,
-  );
-  // Clean stdout result: "<id>\t<projectId>" so jq / cut / xargs can chain.
-  console.log(`${data?.id ?? ''}\t${data?.projectId ?? ''}`);
-}
-
-async function runBrandFinalize(rest) {
-  let flags;
-  try {
-    flags = parseFlags(rest, { string: BRAND_STRING_FLAGS, boolean: BRAND_BOOLEAN_FLAGS });
-  } catch (err) {
-    console.error(err.message);
-    process.exit(2);
-  }
-  const id = positionalArgs(rest, BRAND_STRING_FLAGS)[0];
-  if (!id) {
-    console.error('Usage: od brand finalize <id> [--project <projectId>] [--json]');
-    process.exit(2);
-  }
-  const base = await cliDaemonBaseUrl(flags);
-  const body = {};
-  if (typeof flags.project === 'string' && flags.project.trim()) body.projectId = flags.project.trim();
-  if (typeof flags.locale === 'string' && flags.locale.trim()) body.locale = flags.locale.trim();
-  let resp;
-  try {
-    resp = await fetch(`${base}/api/brands/${encodeURIComponent(id)}/finalize`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', accept: 'application/json' },
-      body: JSON.stringify(body),
-    });
-  } catch (err) {
-    surfaceFetchError(err, base);
-    process.exit(3);
-  }
-  if (resp.status === 404) {
-    console.error(`brand not found: ${id}`);
-    process.exit(4);
-  }
-  if (!resp.ok) return structuredHttpFailure(resp);
-  const data = await resp.json();
-  if (flags.json) {
-    process.stdout.write(JSON.stringify({ ok: true, ...data }, null, 2) + '\n');
-    return;
-  }
-  const name = data?.brand?.name ?? data?.id ?? id;
-  console.log(`${data?.id ?? id}\t${name}`);
-  if (data?.designSystemId) process.stderr.write(`[brand] registered design system ${data.designSystemId}\n`);
-}
-
-async function runBrandContinue(rest) {
-  let flags;
-  try {
-    flags = parseFlags(rest, { string: BRAND_STRING_FLAGS, boolean: BRAND_BOOLEAN_FLAGS });
-  } catch (err) {
-    console.error(err.message);
-    process.exit(2);
-  }
-  const id = positionalArgs(rest, BRAND_STRING_FLAGS)[0];
-  if (!id) {
-    console.error('Usage: od brand continue <id> [--json]');
-    process.exit(2);
-  }
-  const base = await cliDaemonBaseUrl(flags);
-  let resp;
-  try {
-    resp = await fetch(`${base}/api/brands/${encodeURIComponent(id)}/continue-extraction`, {
-      method: 'POST',
-      headers: { accept: 'application/json' },
-    });
-  } catch (err) {
-    surfaceFetchError(err, base);
-    process.exit(3);
-  }
-  if (resp.status === 404) {
-    console.error(`brand not found: ${id}`);
-    process.exit(4);
-  }
-  if (!resp.ok) return structuredHttpFailure(resp);
-  const data = await resp.json();
-  if (flags.json) {
-    process.stdout.write(JSON.stringify({ ok: true, ...data }, null, 2) + '\n');
-    return;
-  }
-  console.log([
-    data?.id ?? id,
-    data?.status ?? '-',
-    data?.projectId ?? '',
-    data?.conversationId ?? '',
-  ].join('\t'));
 }
 
 // Read a flag value as file content (or stdin when the value is "-"). Returns
@@ -7326,200 +7066,10 @@ async function readFileFlagOrStdin(value) {
   return await readFile(value, 'utf8');
 }
 
-// od brand extract-from-html <id> --html-file <path|-> [--css-file <path>]
 //   [--base-url <url>] [--json]
 // Re-runs extraction against pre-captured rendered HTML (e.g. a page an external
 // agent already loaded past an anti-bot wall), mirroring the UI's browser-assist
 // confirm path so the capability is reachable from the CLI too.
-async function runBrandExtractFromHtml(rest) {
-  let flags;
-  try {
-    flags = parseFlags(rest, { string: BRAND_STRING_FLAGS, boolean: BRAND_BOOLEAN_FLAGS });
-  } catch (err) {
-    console.error(err.message);
-    process.exit(2);
-  }
-  const id = positionalArgs(rest, BRAND_STRING_FLAGS)[0];
-  if (!id) {
-    console.error('Usage: od brand extract-from-html <id> --html-file <path|-> '
-      + '[--css-file <path>] [--base-url <url>] [--json]');
-    process.exit(2);
-  }
-  let html;
-  try {
-    html = await readFileFlagOrStdin(flags['html-file']);
-  } catch (err) {
-    console.error(`could not read --html-file: ${err.message}`);
-    process.exit(2);
-  }
-  if (!html || !html.trim()) {
-    console.error('--html-file <path|-> is required (the rendered page HTML)');
-    process.exit(2);
-  }
-  let css = '';
-  if (typeof flags['css-file'] === 'string' && flags['css-file'].length > 0) {
-    try {
-      css = (await readFileFlagOrStdin(flags['css-file'])) ?? '';
-    } catch (err) {
-      console.error(`could not read --css-file: ${err.message}`);
-      process.exit(2);
-    }
-  }
-  const body = { html };
-  if (css.trim()) body.css = css;
-  if (typeof flags['base-url'] === 'string' && flags['base-url'].trim()) {
-    body.baseUrl = flags['base-url'].trim();
-  }
-
-  const base = await cliDaemonBaseUrl(flags);
-  let resp;
-  try {
-    resp = await fetch(`${base}/api/brands/${encodeURIComponent(id)}/extract-from-html`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', accept: 'application/json' },
-      body: JSON.stringify(body),
-    });
-  } catch (err) {
-    surfaceFetchError(err, base);
-    process.exit(3);
-  }
-  if (resp.status === 404) {
-    console.error(`brand not found: ${id}`);
-    process.exit(4);
-  }
-  if (!resp.ok) return structuredHttpFailure(resp);
-  const data = await resp.json();
-  if (flags.json) {
-    process.stdout.write(JSON.stringify({ ok: true, ...data }, null, 2) + '\n');
-    return;
-  }
-  const name = data?.brand?.name ?? data?.id ?? id;
-  console.log(`${data?.id ?? id}\t${name}`);
-  if (data?.designSystemId) {
-    process.stderr.write(`[brand] registered design system ${data.designSystemId}\n`);
-  }
-}
-
-async function runBrandPreview(rest) {
-  let flags;
-  try {
-    flags = parseFlags(rest, { string: BRAND_STRING_FLAGS, boolean: BRAND_BOOLEAN_FLAGS });
-  } catch (err) {
-    console.error(err.message);
-    process.exit(2);
-  }
-  const id = positionalArgs(rest, BRAND_STRING_FLAGS)[0];
-  if (!id) {
-    console.error('Usage: od brand preview <id> [--project <projectId>] [--json]');
-    process.exit(2);
-  }
-  const base = await cliDaemonBaseUrl(flags);
-  const body = {};
-  if (typeof flags.project === 'string' && flags.project.trim()) body.projectId = flags.project.trim();
-  if (typeof flags.locale === 'string' && flags.locale.trim()) body.locale = flags.locale.trim();
-  let resp;
-  try {
-    resp = await fetch(`${base}/api/brands/${encodeURIComponent(id)}/preview`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', accept: 'application/json' },
-      body: JSON.stringify(body),
-    });
-  } catch (err) {
-    surfaceFetchError(err, base);
-    process.exit(3);
-  }
-  if (resp.status === 404) {
-    console.error(`brand not found: ${id}`);
-    process.exit(4);
-  }
-  if (!resp.ok) return structuredHttpFailure(resp);
-  const data = await resp.json();
-  if (flags.json) {
-    process.stdout.write(JSON.stringify({ ok: true, ...data }, null, 2) + '\n');
-    return;
-  }
-  // Clean stdout result: "<id>\t<file>" so the agent can confirm the path.
-  console.log(`${data?.id ?? id}\t${data?.file ?? 'brand.html'}`);
-}
-
-async function runBrandGet(rest) {
-  let flags;
-  try {
-    flags = parseFlags(rest, { string: BRAND_STRING_FLAGS, boolean: BRAND_BOOLEAN_FLAGS });
-  } catch (err) {
-    console.error(err.message);
-    process.exit(2);
-  }
-  const id = positionalArgs(rest, BRAND_STRING_FLAGS)[0];
-  if (!id) {
-    console.error('Usage: od brand get <id> [--json]');
-    process.exit(2);
-  }
-  const base = await cliDaemonBaseUrl(flags);
-  let resp;
-  try {
-    resp = await fetch(`${base}/api/brands/${encodeURIComponent(id)}`);
-  } catch (err) {
-    surfaceFetchError(err, base);
-    process.exit(3);
-  }
-  if (resp.status === 404) {
-    console.error(`brand not found: ${id}`);
-    process.exit(4);
-  }
-  if (!resp.ok) return structuredHttpFailure(resp);
-  const data = await resp.json();
-  if (flags.json) {
-    process.stdout.write(JSON.stringify(data, null, 2) + '\n');
-    return;
-  }
-  const meta = data?.meta ?? {};
-  const brand = data?.brand ?? null;
-  console.log(`id\t${meta.id ?? id}`);
-  console.log(`name\t${brand?.name ?? '-'}`);
-  console.log(`domain\t${brandDomainForCli(meta.sourceUrl)}`);
-  console.log(`status\t${meta.status ?? '-'}`);
-  if (meta.designSystemId) console.log(`designSystem\t${meta.designSystemId}`);
-  if (meta.projectId) console.log(`project\t${meta.projectId}`);
-  if (Array.isArray(meta.systemFiles) && meta.systemFiles.length > 0) {
-    console.log(`files\t${meta.systemFiles.join(' ')}`);
-  }
-  if (brand?.tagline) console.log(`tagline\t${brand.tagline}`);
-  if (Array.isArray(brand?.colors) && brand.colors.length > 0) {
-    console.log(`colors\t${brand.colors.map((c) => c.hex).join(' ')}`);
-  }
-  if (meta.error) console.log(`error\t${meta.error}`);
-}
-
-async function runBrandDelete(rest) {
-  let flags;
-  try {
-    flags = parseFlags(rest, { string: BRAND_STRING_FLAGS, boolean: BRAND_BOOLEAN_FLAGS });
-  } catch (err) {
-    console.error(err.message);
-    process.exit(2);
-  }
-  const id = positionalArgs(rest, BRAND_STRING_FLAGS)[0];
-  if (!id) {
-    console.error('Usage: od brand delete <id> [--json]');
-    process.exit(2);
-  }
-  const base = await cliDaemonBaseUrl(flags);
-  let resp;
-  try {
-    resp = await fetch(`${base}/api/brands/${encodeURIComponent(id)}`, { method: 'DELETE' });
-  } catch (err) {
-    surfaceFetchError(err, base);
-    process.exit(3);
-  }
-  if (!resp.ok) return structuredHttpFailure(resp);
-  const data = await resp.json().catch(() => ({ ok: true }));
-  if (flags.json) {
-    process.stdout.write(JSON.stringify(data, null, 2) + '\n');
-    return;
-  }
-  console.log(`[brand] deleted ${id}`);
-}
 
 function normalizeChatSessionModeFlag(value) {
   if (value == null) return undefined;
@@ -7765,22 +7315,18 @@ Common options:
 async function runProject(args) {
   if (args.length === 0 || args[0] === 'help' || args.includes('--help') || args.includes('-h')) {
     console.log(`Usage:
- od project create [--name "<title>"] [--skill <id>] [--design-system <id>]
+ od project create [--name "<title>"] [--skill <id>]
                    [--plugin <id>] [--inputs <json>] [--metadata-json <path|->]
                    [--mode design|chat|plan]
                    [--no-skip-discovery]
                    Create a project. Skips the discovery question-form by
                    default (same as MCP-created projects); pass
                    --no-skip-discovery to opt into the discovery flow.
-  od project create-design-system <id> [--name "<title>"]
                     [--prompt "<text>" | --prompt-file <path|->] [--json]
-                    Duplicate a project as a design-system workspace and seed
-                    the design-system generation prompt.
   od project duplicate <id> [--name "<title>"] [--json]
                     Duplicate a project and copy its Design Files.
   od project import <baseDir> [--name "<title>"]
-  od project import-folder <path> [--name "<title>"] [--skill <id>]
-                    [--design-system <id>] [--json]
+  od project import-folder <path> [--name "<title>"] [--skill <id>] [--json]
   od project list                         List projects.
   od project info <id>                    Print one project.
   od project set-skill <id> <skill-id> [--skill-workspace <id> --skill-member <id>]
@@ -7986,7 +7532,7 @@ Common options:
         id,
         name,
         skillId:        flags.skill ?? null,
-        designSystemId: flags['design-system'] ?? null,
+        designSystemId: null,
       };
       const conversationMode = normalizeChatSessionModeFlag(flags.mode);
       if (conversationMode) body.conversationMode = conversationMode;
@@ -8031,29 +7577,6 @@ Common options:
       console.log(`[project] created ${data.project?.id ?? id} (conversation ${data.conversationId})`);
       return;
     }
-    case 'create-design-system': {
-      const sourceProjectId = positionalArgs(rest, PROJECT_RESOURCE_STRING_FLAGS)[0];
-      if (!sourceProjectId) {
-        console.error('Usage: od project create-design-system <id> [--name "<title>"] [--prompt-file <path|->] [--json]');
-        process.exit(2);
-      }
-      const prompt = await readPromptFromFlags(flags);
-      const body = {};
-      if (typeof flags.name === 'string' && flags.name.length > 0) body.name = flags.name;
-      if (typeof prompt === 'string' && prompt.trim().length > 0) body.pendingPrompt = prompt;
-      const data = await postJsonToDaemon(
-        base,
-        `/api/projects/${encodeURIComponent(sourceProjectId)}/design-system-copy`,
-        body,
-        workspaceHeaders,
-      );
-      if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
-      console.log(
-        `[project] created design system project ${data.project?.id ?? '-'} from ${sourceProjectId} `
-        + `(design system ${data.designSystemId ?? '-'}, conversation ${data.conversationId ?? '-'})`,
-      );
-      return;
-    }
     case 'duplicate': {
       const sourceProjectId = positionalArgs(rest, PROJECT_RESOURCE_STRING_FLAGS)[0];
       if (!sourceProjectId) {
@@ -8085,9 +7608,7 @@ Common options:
       const body = { baseDir: importBaseDir };
       if (typeof flags.name === 'string' && flags.name.length > 0) body.name = flags.name;
       if (typeof flags.skill === 'string' && flags.skill.length > 0) body.skillId = flags.skill;
-      if (typeof flags['design-system'] === 'string' && flags['design-system'].length > 0) {
-        body.designSystemId = flags['design-system'];
-      }
+
       const headers = { 'content-type': 'application/json', ...workspaceHeaders };
       const importToken = await mintCliImportToken(importBaseDir);
       if (importToken != null) {
@@ -8108,7 +7629,7 @@ Common options:
       const parts = collectCliPositionals(rest, PROJECT_RESOURCE_STRING_FLAGS);
       const folderArg = flags.path ?? flags.dir ?? parts[0];
       if (!folderArg) {
-        console.error('Usage: od project import-folder <path> [--skill <id>] [--design-system <id>]');
+        console.error('Usage: od project import-folder <path> [--skill <id>]');
         process.exit(2);
       }
       const folderPath = await resolveFolderPathForCli(folderArg);
@@ -8118,7 +7639,7 @@ Common options:
           ? flags.name
           : await basenameForCli(folderPath),
         skillId:        flags.skill ?? null,
-        designSystemId: flags['design-system'] ?? null,
+        designSystemId: null,
       };
       const data = await postImportFolderToDaemon(
         base,
@@ -8659,7 +8180,7 @@ Common options:
         promptFromArgs || defaultMessage,
       );
       const skillId = flags.skill ?? 'redesign-existing-projects';
-      const designSystemId = flags['design-system'] ?? 'default';
+      const designSystemId = null;
       let projectId = flags.project;
       let conversationId = flags.conversation;
       let imported = null;
@@ -8725,7 +8246,6 @@ Common options:
           body.skillIds = selectedSkillIds;
         }
       }
-      if (flags['design-system']) body.designSystemId = flags['design-system'];
       if (flags.agent) body.agentId = flags.agent;
       if (flags.model) body.model = flags.model;
       if (flags['service-tier']) body.serviceTier = flags['service-tier'];
@@ -9999,7 +9519,6 @@ async function runDaemonStop(flags) {
 }
 
 // ---------------------------------------------------------------------------
-// Subcommand: od atoms / od skills / od design-systems / od craft / od status
 //
 // Plan §3.H2 / §3.H3 / spec §12.2 — design-library + status introspection
 // CLI parity. Every UI feature reachable via /api/* gets a CLI mirror
@@ -10103,7 +9622,7 @@ Commands:
   apply <id>                Copy an asset into a project's design files. Requires --project.
   edit-as-page <id>         Turn a captured html asset into a new editable OD project (prints projectId).
   figma <id>                Export an html asset's OD Figma capture IR (clipper-captured pages).
-  sync                      Pull design systems + agent-generated project artifacts into the Library.
+  sync                      Pull agent-generated project artifacts into the Library.
   pair                      Mint a browser-extension pairing code.
 
 Options:
@@ -10316,7 +9835,7 @@ async function runLibrary(args) {
         const data = await resp.json();
         if (flags.json) return writeJson(data);
         console.log(
-          `Synced ${data.total} new (${data.designSystems} design systems, ${data.projectAssets} project assets; ${data.deduped} already indexed).`,
+          `Synced ${data.total} new (${data.projectAssets} project assets; ${data.deduped} already indexed).`,
         );
         return;
       }
@@ -10351,10 +9870,8 @@ async function runLibraryList(name, args) {
   const rest = args.slice(1);
   const flags = parseFlags(rest, { string: LIBRARY_STRING_FLAGS, boolean: LIBRARY_BOOLEAN_FLAGS });
   const base = (await libraryDaemonUrl(flags)).replace(/\/$/, '');
-  const apiPath = name === 'design-systems' ? '/api/design-systems' : `/api/${name}`;
-  const designSystemWorkspaceHeaders = name === 'design-systems'
-    ? workspaceHeadersFromExplicitFlags(flags) ?? {}
-    : undefined;
+  const apiPath = `/api/${name}`;
+  const designSystemWorkspaceHeaders = undefined;
   switch (sub) {
     case 'list': {
       const resp = await fetch(`${base}${apiPath}`, {
@@ -10368,7 +9885,7 @@ async function runLibraryList(name, args) {
         data.skills = data.skills.filter((skill) => !skill.parentSkillId);
       }
       if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
-      const rows = data?.[name === 'design-systems' ? 'designSystems' : name] ?? [];
+      const rows = data?.[name] ?? [];
       for (const row of rows) {
         const label = row.title ?? row.name ?? row.id ?? row.label;
         console.log(`${row.id}\t${label}`);
@@ -10577,228 +10094,25 @@ async function runSkillUninstall(rest) {
 }
 async function runCraft(args)         { return runLibraryList('craft', args); }
 
-async function runDesignSystems(args) {
-  if (args[0] === 'rename') return runDesignSystemRename(args.slice(1));
-  if (args[0] === 'download') return runDesignSystemDownload(args.slice(1));
-  if (args[0] === 'import-local') return runDesignSystemImportLocal(args.slice(1));
-  if (args[0] === 'import-github') return runDesignSystemImportGithub(args.slice(1));
-  if (args[0] === 'import-shadcn') return runDesignSystemImportShadcn(args.slice(1));
-  if (args[0] === 'rebuild-token-contract') return runDesignSystemTokenContractRebuild(args.slice(1));
-  if (!args[0] || isDesignSystemsHelpArg(args[0])) {
-    console.log(DESIGN_SYSTEMS_USAGE);
-    process.exit(isDesignSystemsHelpArg(args[0]) ? 0 : 2);
-  }
-  return runLibraryList('design-systems', args);
-}
-
-// od design-systems download <id> [--out <path>] [--json] [--daemon-url <url>]
 //
 // Streams GET /api/design-systems/:id/archive — the same self-contained brand
 // .zip (every system file plus a generated SKILLS.md usage guide) the web
 // "Download brand" button produces — and writes it to disk. Only user design
 // systems are downloadable; presets return 404.
-async function runDesignSystemDownload(args) {
-  if (args.length === 0 || args[0] === 'help' || args.includes('--help') || args.includes('-h')) {
-    console.log(`Usage:
-  od design-systems download <id> [--out <path>] [--json] [--daemon-url <url>]
 
-Downloads an editable design system as a shareable .zip (all files plus a
-generated SKILLS.md usage guide).
-
-  <id>                   Design system id (e.g. user:my-brand).
-  --out <path>           Write the .zip here (defaults to the brand's name).`);
-    process.exit(args.length === 0 ? 2 : 0);
-  }
-  const stringFlags = new Set([...LIBRARY_STRING_FLAGS, 'out']);
-  const flags = parseFlags(args, { string: stringFlags, boolean: LIBRARY_BOOLEAN_FLAGS });
-  const workspaceHeaders = workspaceHeadersFromExplicitFlags(flags) ?? {};
-  const id = positionalArgs(args, stringFlags)[0];
-  if (!id) {
-    console.error('Usage: od design-systems download <id> [--out <path>]');
-    process.exit(2);
-  }
-  const base = (await libraryDaemonUrl(flags)).replace(/\/$/, '');
-  let resp;
-  try {
-    resp = await fetch(`${base}/api/design-systems/${encodeURIComponent(id)}/archive`, {
-      headers: workspaceHeaders,
-    });
-  } catch (err) {
-    surfaceFetchError(err, base);
-    process.exit(3);
-  }
-  if (resp.status === 404) {
-    console.error(`downloadable design system not found: ${id}`);
-    process.exit(4);
-  }
-  if (!resp.ok) return structuredHttpFailure(resp);
-  const buffer = Buffer.from(await resp.arrayBuffer());
-  let out = typeof flags.out === 'string' ? flags.out : null;
-  if (!out) {
-    const cd = resp.headers.get('content-disposition') || '';
-    const star = /filename\*=UTF-8''([^;]+)/i.exec(cd);
-    const plain = /filename="([^"]+)"/i.exec(cd);
-    if (star && star[1]) {
-      try { out = decodeURIComponent(star[1]); } catch { out = plain && plain[1] ? plain[1] : null; }
-    } else if (plain && plain[1]) {
-      out = plain[1];
-    }
-    if (!out) out = 'design-system.zip';
-  }
-  const { writeFile } = await import('node:fs/promises');
-  await writeFile(out, buffer);
-  if (flags.json) {
-    return process.stdout.write(
-      JSON.stringify({ ok: true, id, out, bytes: buffer.length }, null, 2) + '\n',
-    );
-  }
-  console.log(`Downloaded ${id} -> ${out} (${buffer.length} bytes)`);
-}
-
-// od design-systems import-local <path> [--name <name>]
 //   [--import-mode <mode>] [--craft <slug,slug>] [--json] [--daemon-url <url>]
 //
 // Imports a local app/design-system project through the same daemon endpoint as
 // the Settings UI. The CLI resolves relative paths before sending the request
 // because the daemon intentionally accepts only absolute host paths.
-async function runDesignSystemImportLocal(args) {
-  if (args.length === 0 || args[0] === 'help' || args.includes('--help') || args.includes('-h')) {
-    console.log(`Usage:
-  od design-systems import-local <path> [--name <name>] [--import-mode <mode>] [--craft <slugs>] [--json] [--daemon-url <url>]
-  od design-systems import-local --path <path> [--name <name>] [--json]
 
-Imports a local project directory as an editable HiDesign design system.
-
-  <path>                 Local project directory to scan.
-  --path <path>          Path alternative for scripts that prefer named flags.
-  --name <name>          Display name override for the imported system.
-  --import-mode <mode>   normalized | hybrid | verbatim (default hybrid).
-  --craft <slugs>        Comma-separated craft sections to apply (e.g. color,type).`);
-    process.exit(args.length === 0 ? 2 : 0);
-  }
-  const stringFlags = new Set([...LIBRARY_STRING_FLAGS, 'path', 'name', 'import-mode', 'craft']);
-  const flags = parseFlags(args, { string: stringFlags, boolean: LIBRARY_BOOLEAN_FLAGS });
-  const localPath = typeof flags.path === 'string' ? flags.path : positionalArgs(args, stringFlags)[0];
-  if (!localPath) {
-    console.error('Usage: od design-systems import-local <path>');
-    process.exit(2);
-  }
-  const pathModule = await import('node:path');
-  const body = designSystemImportRequestBody(flags, {
-    baseDir: pathModule.resolve(localPath),
-  });
-  return postDesignSystemImport(flags, '/api/design-systems/import/local', body);
-}
-
-// od design-systems import-github <url> [--branch <branch>] [--name <name>]
 //   [--import-mode <mode>] [--craft <slug,slug>] [--json] [--daemon-url <url>]
-async function runDesignSystemImportGithub(args) {
-  if (args.length === 0 || args[0] === 'help' || args.includes('--help') || args.includes('-h')) {
-    console.log(`Usage:
-  od design-systems import-github <url> [--branch <branch>] [--name <name>] [--import-mode <mode>] [--craft <slugs>] [--json] [--daemon-url <url>]
-  od design-systems import-github --url <url> [--branch <branch>] [--json]
 
-Imports a public GitHub repository as an editable HiDesign design system.
-
-  <url>                  Repository root URL, e.g. https://github.com/acme/design-kit.
-  --url <url>            URL alternative for scripts that prefer named flags.
-  --branch <branch>      Branch, tag, or ref to clone.
-  --name <name>          Display name override for the imported system.
-  --import-mode <mode>   normalized | hybrid | verbatim (default hybrid).
-  --craft <slugs>        Comma-separated craft sections to apply (e.g. color,type).`);
-    process.exit(args.length === 0 ? 2 : 0);
-  }
-  const stringFlags = new Set([...LIBRARY_STRING_FLAGS, 'url', 'branch', 'name', 'import-mode', 'craft']);
-  const flags = parseFlags(args, { string: stringFlags, boolean: LIBRARY_BOOLEAN_FLAGS });
-  const url = typeof flags.url === 'string' ? flags.url : positionalArgs(args, stringFlags)[0];
-  if (!url) {
-    console.error('Usage: od design-systems import-github <url>');
-    process.exit(2);
-  }
-  const body = designSystemImportRequestBody(flags, {
-    url,
-    ...(typeof flags.branch === 'string' ? { branch: flags.branch } : {}),
-  });
-  return postDesignSystemImport(flags, '/api/design-systems/import/github', body);
-}
-
-function designSystemImportRequestBody(flags, baseBody) {
-  const craftApplies =
-    typeof flags.craft === 'string'
-      ? flags.craft.split(',').map((slug) => slug.trim().toLowerCase()).filter(Boolean)
-      : undefined;
-  return {
-    ...baseBody,
-    ...(typeof flags.name === 'string' ? { name: flags.name } : {}),
-    ...(typeof flags['import-mode'] === 'string' ? { importMode: flags['import-mode'] } : {}),
-    ...(craftApplies && craftApplies.length > 0 ? { craftApplies } : {}),
-  };
-}
-
-async function postDesignSystemImport(flags, endpoint, body) {
-  const base = (await libraryDaemonUrl(flags)).replace(/\/$/, '');
-  const workspaceHeaders = workspaceHeadersFromExplicitFlags(flags) ?? {};
-  const resp = await fetch(`${base}${endpoint}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...workspaceHeaders },
-    body: JSON.stringify(body),
-  });
-  if (!resp.ok) return structuredHttpFailure(resp);
-  const data = await resp.json();
-  if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
-  const imported = data.designSystem ?? data;
-  console.log(`Imported ${imported.id ?? '(unknown id)'}${imported.title ? ` -> ${imported.title}` : ''}`);
-  if (data.tokenContractRebuild?.job) {
-    console.log(`Token contract rebuild queued: ${data.tokenContractRebuild.job.id}`);
-  } else if (data.tokenContractRebuild?.decision?.reason) {
-    console.log(`Token contract rebuild: ${data.tokenContractRebuild.decision.reason}`);
-  }
-}
-
-// od design-systems rebuild-token-contract <id> [--force] [--json]
 //
 // Starts the same review-gated token contract rebuild job exposed in the web
 // design-system detail view. Without --force the daemon only queues a job when
 // source/token-contract.report.json recommends it.
-async function runDesignSystemTokenContractRebuild(args) {
-  if (args.length === 0 || args[0] === 'help' || args.includes('--help') || args.includes('-h')) {
-    console.log(`Usage:
-  od design-systems rebuild-token-contract <id> [--force] [--json] [--daemon-url <url>]
 
-Starts a review-gated TOKEN_SCHEMA token contract rebuild for an editable imported design system.
-
-  <id>       Editable design-system id, e.g. user:acme-product.
-  --force    Queue the review even when the quality report is already usable.`);
-    process.exit(args.length === 0 ? 2 : 0);
-  }
-  const flags = parseFlags(args, {
-    string: LIBRARY_STRING_FLAGS,
-    boolean: new Set([...LIBRARY_BOOLEAN_FLAGS, 'force']),
-  });
-  const id = positionalArgs(args, LIBRARY_STRING_FLAGS)[0];
-  if (!id) {
-    console.error('Usage: od design-systems rebuild-token-contract <id>');
-    process.exit(2);
-  }
-  const base = (await libraryDaemonUrl(flags)).replace(/\/$/, '');
-  const workspaceHeaders = workspaceHeadersFromExplicitFlags(flags) ?? {};
-  const resp = await fetch(`${base}/api/design-systems/${encodeURIComponent(id)}/token-contract/rebuild-jobs`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', ...workspaceHeaders },
-    body: JSON.stringify({ force: flags.force === true }),
-  });
-  if (!resp.ok) return structuredHttpFailure(resp);
-  const data = await resp.json();
-  if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
-  if (data.job) {
-    console.log(`Token contract rebuild queued for ${id}: ${data.job.id}`);
-    return;
-  }
-  const decision = data.decision;
-  console.log(`Token contract rebuild not queued for ${id}: ${decision?.reason ?? 'no rebuild needed'}`);
-}
-
-// od design-systems import-shadcn <reference> [--name <name>]
 //   [--import-mode <mode>] [--craft <slug,slug>] [--json] [--daemon-url <url>]
 //
 // Imports a shadcn registry item as an editable user design system via
@@ -10806,67 +10120,11 @@ Starts a review-gated TOKEN_SCHEMA token contract rebuild for an editable import
 // Design systems "shadcn" import source. <reference> is the shadcn CLI
 // shorthand "<owner>/<repo>/<item>" (e.g. shadcn/ui/theme-zinc) or a direct
 // https URL to a registry-item JSON document.
-async function runDesignSystemImportShadcn(args) {
-  if (args.length === 0 || args[0] === 'help' || args.includes('--help') || args.includes('-h')) {
-    console.log(`Usage:
-  od design-systems import-shadcn <reference> [--name <name>] [--import-mode <mode>] [--craft <slugs>] [--json] [--daemon-url <url>]
 
-Imports a shadcn registry item as an HiDesign design system.
-
-  <reference>            "<owner>/<repo>/<item>" (e.g. shadcn/ui/theme-zinc)
-                         or an https URL to a registry-item JSON document.
-  --name <name>          Display name override for the imported system.
-  --import-mode <mode>   normalized | hybrid | verbatim (default hybrid).
-  --craft <slugs>        Comma-separated craft sections to apply (e.g. color,type).`);
-    process.exit(args.length === 0 ? 2 : 0);
-  }
-  const stringFlags = new Set([...LIBRARY_STRING_FLAGS, 'name', 'import-mode', 'craft']);
-  const flags = parseFlags(args, { string: stringFlags, boolean: LIBRARY_BOOLEAN_FLAGS });
-  const reference = positionalArgs(args, stringFlags)[0];
-  if (!reference) {
-    console.error('Usage: od design-systems import-shadcn <reference>');
-    process.exit(2);
-  }
-  const body = designSystemImportRequestBody(flags, { reference });
-  return postDesignSystemImport(flags, '/api/design-systems/import/shadcn', body);
-}
-
-// od design-systems rename <id> --title <new-title> [--json]
 // Renames an editable (user-created) design system via PATCH
 // /api/design-systems/:id. Built-in systems are read-only and the daemon
 // returns 404, surfaced here as a structured failure. Arg parsing lives in
 // rename-args.ts so it can be unit-tested.
-async function runDesignSystemRename(args) {
-  if (args.length === 0 || args[0] === 'help' || args.includes('--help') || args.includes('-h')) {
-    console.log(`Usage:
-  od design-systems rename <id> --title <new-title> [--json] [--daemon-url <url>]
-  od design-systems rename <id> "<new title>" [--json]
-
-Renames an editable (user-created) design system. Built-in systems are read-only.`);
-    process.exit(args.length === 0 ? 2 : 0);
-  }
-  const parsed = parseDesignSystemRenameArgs(args);
-  if (!parsed) {
-    console.error('Usage: od design-systems rename <id> --title <new-title>');
-    process.exit(2);
-  }
-  const flags = parseFlags(args, {
-    string: new Set([...LIBRARY_STRING_FLAGS, 'title']),
-    boolean: LIBRARY_BOOLEAN_FLAGS,
-  });
-  const base = (await libraryDaemonUrl(flags)).replace(/\/$/, '');
-  const workspaceHeaders = workspaceHeadersFromExplicitFlags(flags) ?? {};
-  const resp = await fetch(`${base}/api/design-systems/${encodeURIComponent(parsed.id)}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...workspaceHeaders },
-    body: JSON.stringify({ title: parsed.title }),
-  });
-  if (!resp.ok) return structuredHttpFailure(resp);
-  const data = await resp.json();
-  if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
-  const renamed = data.designSystem ?? data;
-  console.log(`Renamed ${parsed.id} -> ${renamed.title ?? parsed.title}`);
-}
 
 async function runStatus(args) {
   // Alias of `od daemon status`.
@@ -11058,22 +10316,13 @@ or the daemon cannot be reached.`);
   // Library inventory
   try {
     const designSystemWorkspaceHeaders = null;
-    const [skillsResp, dsResp, atomsResp] = await Promise.all([
+    const [skillsResp, atomsResp] = await Promise.all([
       fetch(`${base}/api/skills`),
-      fetch(`${base}/api/design-systems`, {
-        ...(designSystemWorkspaceHeaders
-          ? { headers: designSystemWorkspaceHeaders }
-          : {}),
-      }),
       fetch(`${base}/api/atoms`),
     ]);
     if (skillsResp.ok) {
       const data = await skillsResp.json();
       report.skills = data?.skills ?? [];
-    }
-    if (dsResp.ok) {
-      const data = await dsResp.json();
-      report.designSystems = data?.designSystems ?? [];
     }
     if (atomsResp.ok) {
       const data = await atomsResp.json();
@@ -11118,7 +10367,7 @@ or the daemon cannot be reached.`);
     process.stdout.write(JSON.stringify(report, null, 2) + '\n');
   } else {
     console.log(`[doctor] daemon ${report.daemon?.bindHost ?? '?'}:${report.daemon?.port ?? '?'} pid=${report.daemon?.pid ?? '?'}`);
-    console.log(`[doctor] plugins: ${report.plugins.length} (skills ${report.skills.length}, design-systems ${report.designSystems.length}, atoms ${report.atoms.length})`);
+    console.log(`[doctor] plugins: ${report.plugins.length} (skills ${report.skills.length}, atoms ${report.atoms.length})`);
     if (report.issues.length === 0) {
       console.log('[doctor] no issues');
     } else {

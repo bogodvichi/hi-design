@@ -562,7 +562,6 @@ describe('background Team resource reconciliation invalidates the cached /team l
       resourceKind: 'plugin',
       scope: SCOPE,
       providers: {
-        design_system: untouched,
         plugin: listTeam,
         skill: untouched,
       },
@@ -585,7 +584,6 @@ describe('background Team resource reconciliation invalidates the cached /team l
     invalidateTeamResourceListingCaches({
       scope: SCOPE,
       providers: {
-        design_system: provider('design_system'),
         plugin: provider('plugin'),
         skill: provider('skill'),
       },
@@ -594,7 +592,6 @@ describe('background Team resource reconciliation invalidates the cached /team l
     });
 
     expect(invalidations).toEqual([
-      'design_system:ws-1',
       'plugin:ws-1',
       'skill:ws-1',
       'shared:ws-1',

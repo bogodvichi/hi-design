@@ -454,6 +454,8 @@ export function BoardComposerPopover({
   canDeleteReplyComment,
   onEditReplyComment,
   onDeleteReplyComment,
+  onSendComment,
+  canSendReplyComment,
  replies = [],
  authorDisplayName,
  authorAvatarUrl,
@@ -528,6 +530,10 @@ export function BoardComposerPopover({
   onEditReplyComment?: (reply: PreviewComment, newText: string) => void | Promise<PreviewComment | null>;
   /** Persist deletion of an existing reply. */
   onDeleteReplyComment?: (replyId: string) => void | Promise<boolean | void>;
+  /** Send one saved comment or reply to chat without editing or deleting it. */
+  onSendComment?: (comment: PreviewComment) => void | Promise<void>;
+  /** Team-collab gate for sending an individual reply to chat. */
+  canSendReplyComment?: (reply: PreviewComment) => boolean;
   /** Persisted replies for the currently open comment thread. */
  replies?: PreviewComment[];
  authorDisplayName?: string;
@@ -691,6 +697,8 @@ export function BoardComposerPopover({
   const isExistingComment = Boolean(existing);
   const existingResolved = existing?.status === 'resolved';
   const composeVisible = commenting || (isExistingComment && editingExistingComment);
+  const canSaveComment = canEditComment && (!isExistingComment || editingExistingComment);
+  const isEditingComposer = !isExistingComment || editingExistingComment;
  const authorLabel = authorDisplayName?.trim() || existing?.authorDisplayName?.trim() || '?';
  const currentAuthorLabel = currentAuthorDisplayName?.trim() || authorLabel;
  // An attached image alone is enough to send (the element context rides along
@@ -704,6 +712,7 @@ export function BoardComposerPopover({
   const hasSaveContent = Boolean(trimmedDraft) || hasAnyImage;
   const existingChanged = existing ? trimmedDraft !== existingNote || hasFreshImage : true;
   const saveDisabled = !hasSaveContent || !existingChanged || sending;
+  const sendActionDisabled = sending || sendDisabled;
   const trimmedReply = replyDraft.trim();
   // Queue-on-send swaps the primary label to the annotation-queue wording.
   const primaryLabel = sending
@@ -1020,12 +1029,28 @@ export function BoardComposerPopover({
               </div>
             ) : null}
             {existing && !editingExistingComment ? (
-              <div
-                className="comment-popover-existing-note"
-                data-testid="comment-popover-existing-note"
-              >
-                {existingNote}
-              </div>
+              <>
+                <div
+                  className="comment-popover-existing-note"
+                  data-testid="comment-popover-existing-note"
+                >
+                  {existingNote}
+                </div>
+                {onSendComment && canSendToAgent && allowSendToChat ? (
+                  <div className="comment-popover-content-action">
+                    <button
+                      type="button"
+                      className="comment-popover-send-to-chat"
+                      data-testid="comment-popover-send-current"
+                      disabled={sendActionDisabled}
+                      title={sendDisabled ? sendDisabledReason : undefined}
+                      onClick={() => void onSendComment(existing)}
+                    >
+                      {t('chat.comments.sendToChat')}
+                    </button>
+                  </div>
+                ) : null}
+              </>
             ) : (
               <Textarea
                 data-testid="comment-popover-input"
@@ -1057,7 +1082,7 @@ export function BoardComposerPopover({
                     // an action whose button is hidden.
                     if (isPodSelection) {
                       if (canSendToAgent && !sendBlocked) void onSendBatch();
-                    } else if (canEditComment && !saveDisabled) {
+                    } else if (canSaveComment && !saveDisabled) {
                       void onSaveComment();
                     }
                   }
@@ -1098,6 +1123,12 @@ export function BoardComposerPopover({
                   const editDraft = replyEditDraft;
                   const canEditReply = Boolean(reply.reply && onEditReplyComment && (!canEditReplyComment || canEditReplyComment(reply.reply)));
                   const canDeleteReply = Boolean(reply.reply && onDeleteReplyComment && (!canDeleteReplyComment || canDeleteReplyComment(reply.reply)));
+                  const canSendReply = Boolean(
+                    reply.reply
+                    && onSendComment
+                    && allowSendToChat
+                    && (!canSendReplyComment || canSendReplyComment(reply.reply)),
+                  );
                   return (
                   <div
                     key={replyKey}
@@ -1215,7 +1246,23 @@ export function BoardComposerPopover({
                         </div>
                       </div>
                     ) : (
-                      <div className="comment-popover-reply-note">{reply.note}</div>
+                      <>
+                        <div className="comment-popover-reply-note">{reply.note}</div>
+                        {canSendReply ? (
+                          <div className="comment-popover-content-action">
+                            <button
+                              type="button"
+                              className="comment-popover-send-to-chat"
+                              data-testid="comment-popover-send-reply"
+                              disabled={sendActionDisabled}
+                              title={sendDisabled ? sendDisabledReason : undefined}
+                              onClick={() => void onSendComment?.(reply.reply!)}
+                            >
+                              {t('chat.comments.sendToChat')}
+                            </button>
+                          </div>
+                        ) : null}
+                      </>
                     )}
                   </div>
                   );
@@ -1268,7 +1315,7 @@ export function BoardComposerPopover({
                 {/* Pod: add-note is secondary, send-to-chat is the primary CTA.
                     Add-note composes new note text (an edit), so it is gated by
                     canEditComment; send-to-chat by canSendToAgent. */}
-                {canEditComment ? (
+                {isEditingComposer && canEditComment ? (
                   <Button
                     data-editing-action="true"
                     variant="ghost"
@@ -1279,7 +1326,7 @@ export function BoardComposerPopover({
                     {t('chat.comments.addNote')}
                   </Button>
                 ) : null}
-                {canSendToAgent && allowSendToChat ? (
+                {isEditingComposer && canSendToAgent && allowSendToChat ? (
                   <Button
                     data-editing-action="true"
                     variant="primary"
@@ -1295,9 +1342,9 @@ export function BoardComposerPopover({
             ) : (
               <>
                 {/* Element: comment (save) is the primary CTA (also Enter);
-                    send-to-chat is secondary. Save (edit) is gated by
-                    canEditComment; send-to-chat by canSendToAgent. */}
-                {canSendToAgent && allowSendToChat ? (
+                    send-to-chat is secondary. Save is only actionable while
+                    creating a comment or editing an existing one. */}
+                {isEditingComposer && canSendToAgent && allowSendToChat ? (
                   <Button
                     data-editing-action="true"
                     variant="ghost"
@@ -1309,7 +1356,7 @@ export function BoardComposerPopover({
                     {primaryLabel}
                   </Button>
                 ) : null}
-                {canEditComment ? (
+                {canSaveComment ? (
                   <Button
                     data-editing-action="true"
                     variant="primary"

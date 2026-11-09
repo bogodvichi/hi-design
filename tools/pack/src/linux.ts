@@ -673,6 +673,7 @@ async function writeLinuxBuilderConfig(config: ToolPackConfig, paths: LinuxPaths
           ],
         }),
     files: ["**/*", "!**/node_modules/.bin", "!**/node_modules/electron{,/**/*}"],
+    electronLanguages: ["en-US", "zh-CN"],
     icon: linuxResources.icon,
     linux: {
       target,

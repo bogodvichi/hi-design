@@ -12,6 +12,7 @@ import { createPortal } from 'react-dom';
 import {
   getWorkspaceTabsDock,
   subscribeWorkspaceTabsDock,
+  WORKSPACE_ACCOUNT_CLUSTER_EVENT,
 } from './workspaceTabsDock';
 import { useT } from '../i18n';
 import {
@@ -1664,20 +1665,16 @@ export function WorkspaceTabsBar({
     if (!stripElement) return;
     let frame = 0;
     let clusterResizeObserver: ResizeObserver | null = null;
-    let bodyMutationObserver: MutationObserver | null = null;
-
-    const visibleClusterElements = () =>
-      Array.from(document.querySelectorAll<HTMLElement>('.entry-top-right-cluster')).filter(
-        (element) => {
-          const rect = element.getBoundingClientRect();
-          return rect.width > 0 && rect.height > 0;
-        },
-      );
+    const observedClusters = new Set<HTMLElement>();
 
     const measure = () => {
       frame = 0;
       const stripRect = stripElement.getBoundingClientRect();
-      const clusters = visibleClusterElements();
+      const allClusters = Array.from(document.querySelectorAll<HTMLElement>('.entry-top-right-cluster'));
+      const clusters = allClusters.filter((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      });
       const measured = workspaceTabMeasuredAvailableWidth(
         stripRect.left,
         stripElement.clientWidth,
@@ -1688,12 +1685,21 @@ export function WorkspaceTabsBar({
       );
 
       if (clusterResizeObserver) {
-        clusterResizeObserver.disconnect();
-        clusters.forEach((element) => clusterResizeObserver?.observe(element));
+        for (const element of observedClusters) {
+          if (!allClusters.includes(element)) {
+            clusterResizeObserver.unobserve(element);
+            observedClusters.delete(element);
+          }
+        }
+        for (const element of allClusters) {
+          if (observedClusters.has(element)) continue;
+          observedClusters.add(element);
+          clusterResizeObserver.observe(element);
+        }
       }
     };
     const requestMeasure = () => {
-      if (frame) window.cancelAnimationFrame(frame);
+      if (frame) return;
       frame = window.requestAnimationFrame(measure);
     };
     requestMeasure();
@@ -1704,21 +1710,14 @@ export function WorkspaceTabsBar({
     }
     if (typeof ResizeObserver !== 'undefined') {
       clusterResizeObserver = new ResizeObserver(requestMeasure);
-      visibleClusterElements().forEach((element) => clusterResizeObserver?.observe(element));
     }
-    if (typeof MutationObserver !== 'undefined') {
-      bodyMutationObserver = new MutationObserver(requestMeasure);
-      bodyMutationObserver.observe(document.body, {
-        childList: true,
-        subtree: true,
-      });
-    }
+    window.addEventListener(WORKSPACE_ACCOUNT_CLUSTER_EVENT, requestMeasure);
     window.addEventListener('resize', requestMeasure);
     return () => {
       if (frame) window.cancelAnimationFrame(frame);
       resizeObserver?.disconnect();
       clusterResizeObserver?.disconnect();
-      bodyMutationObserver?.disconnect();
+      window.removeEventListener(WORKSPACE_ACCOUNT_CLUSTER_EVENT, requestMeasure);
       window.removeEventListener('resize', requestMeasure);
     };
   }, [stripElement, tabsDockEl, state.tabs.length]);

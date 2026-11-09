@@ -202,8 +202,6 @@ export function applyPlugin(input: ApplyInput): ApplyComputed {
   };
   const skillRef = pickFirstSkillId(manifest);
   if (skillRef) projectMetadata.skillId = skillRef;
-  const dsId = pickDesignSystemId(manifest, input.activeProjectDesignSystem);
-  if (dsId) projectMetadata.designSystemId = dsId;
   const craftRequires = getManifestContextCraft(manifest);
   if (craftRequires.length > 0) projectMetadata.craftRequires = craftRequires;
 
@@ -361,16 +359,6 @@ export function pickFirstLocalSkillPath(manifest: PluginManifest): string | unde
     if (!isPluginLocalPath(rawPath)) continue;
     return rawPath;
   }
-  return undefined;
-}
-
-function pickDesignSystemId(
-  manifest: PluginManifest,
-  active?: { id: string; title?: string },
-): string | undefined {
-  const ds = manifest.od?.context?.designSystem;
-  if (ds && typeof ds.ref === 'string' && ds.ref.trim()) return ds.ref.trim();
-  if (ds && active?.id) return active.id;
   return undefined;
 }
 

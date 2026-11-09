@@ -95,9 +95,6 @@
           "path": "./SKILL.md"
         }
       ],
-      "designSystem": {
-        "primary": true
-      },
       "assets": [
         "./references/audit-table-template.md",
         "./references/font-discipline.md",

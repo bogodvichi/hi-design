@@ -21,9 +21,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   outputs:
     primary: index.html
     secondary:
@@ -91,7 +88,7 @@ If the user asks for refreshability, source auditability, or scheduled updates, 
    - Chart data can be synthetic only when GitHub does not expose the exact history; document the transformation in provenance.
 
 4. **Apply the visual system**
-   - Use the active `DESIGN.md` tokens when present.
+   - Use the supplied template/reference styles tokens when present.
    - If no design system is provided, use the Soft Paper defaults reflected in `references/template.html`: `#F2F2F0` canvas, white cards, `#ECECEA` borders, `#0A0A0A` ink, Geist/Inter typography, 256px sidebar, 48px topbar, and 16px card radius.
    - Keep color small and semantic: green for healthy metrics, amber for warning, blue for feature/PR labels, red only for defects or risk.
 

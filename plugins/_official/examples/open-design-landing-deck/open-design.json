@@ -88,9 +88,6 @@
           "path": "./SKILL.md"
         }
       ],
-      "designSystem": {
-        "primary": true
-      },
       "craft": [
         "typographic-rhythm",
         "pixel-discipline"

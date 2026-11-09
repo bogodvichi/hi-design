@@ -25,9 +25,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   example_prompt: "Design a 3-card cinematic social carousel — ‘onwards.’, ‘to the next one.’, ‘looking ahead.’. 1080×1080 squares, drop-into-Instagram ready."
 ---
 
@@ -39,7 +36,7 @@ own.
 
 ## Workflow
 
-1. **Read the active DESIGN.md** (injected above). Pick the loudest serif
+1. **Read the supplied template/reference styles** (provided with the template). Pick the loudest serif
    token for the headline lockups and a mono token for stamps / counters.
 2. **Pick the theme + 3 captions** from the brief. The captions must read
    as one sentence when stacked: ("onwards." → "to the next one." →

@@ -630,6 +630,8 @@ function migrate(db: SqliteDb): void {
   migrateCollabSyncSnapshots(db);
   migrateCommentRelayOutbox(db);
   migratePublicFilePublications(db);
+  // Keep historical projects and the legacy column, but retire every binding.
+  db.prepare('UPDATE projects SET design_system_id = NULL WHERE design_system_id IS NOT NULL').run();
 }
 
 /**
@@ -2502,7 +2504,7 @@ export function insertProject(db: SqliteDb, p: DbRow) {
     p.id,
     p.name,
     p.skillId ?? null,
-    p.designSystemId ?? null,
+    null,
     p.pendingPrompt ?? null,
     p.metadata ? JSON.stringify(p.metadata) : null,
     p.customInstructions ?? null,
@@ -2534,7 +2536,7 @@ export function updateProject(db: SqliteDb, id: string, patch: DbRow) {
   ).run(
     merged.name,
     merged.skillId ?? null,
-    merged.designSystemId ?? null,
+    null,
     merged.pendingPrompt ?? null,
     merged.metadata ? JSON.stringify(merged.metadata) : null,
     merged.customInstructions ?? null,

@@ -15,26 +15,8 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { HomeView } from '../../src/components/HomeView';
 import { I18nProvider } from '../../src/i18n';
 import type { Dict } from '../../src/i18n/types';
-import { ar } from '../../src/i18n/locales/ar';
-import { de } from '../../src/i18n/locales/de';
 import { en } from '../../src/i18n/locales/en';
-import { esES } from '../../src/i18n/locales/es-ES';
-import { fa } from '../../src/i18n/locales/fa';
-import { fr } from '../../src/i18n/locales/fr';
-import { hu } from '../../src/i18n/locales/hu';
-import { id } from '../../src/i18n/locales/id';
-// Aliased: the bare `it` export would shadow vitest's own `it`.
-import { it as itIT } from '../../src/i18n/locales/it';
-import { ja } from '../../src/i18n/locales/ja';
-import { ko } from '../../src/i18n/locales/ko';
-import { pl } from '../../src/i18n/locales/pl';
-import { ptBR } from '../../src/i18n/locales/pt-BR';
-import { ru } from '../../src/i18n/locales/ru';
-import { th } from '../../src/i18n/locales/th';
-import { tr } from '../../src/i18n/locales/tr';
-import { uk } from '../../src/i18n/locales/uk';
 import { zhCN } from '../../src/i18n/locales/zh-CN';
-import { zhTW } from '../../src/i18n/locales/zh-TW';
 import { writeHomeGuideStage } from '../../src/components/home-hero/firstRunGuide';
 import { setHomeHeroPrompt } from '../helpers/home-hero-lexical';
 
@@ -62,11 +44,7 @@ const SEED = 'Website URL to clone: ';
 // Named individually rather than read off the app's internal dict registry, so
 // a locale dropped from that registry still fails here instead of silently
 // falling out of the contract.
-const NON_ENGLISH_LOCALES: ReadonlyArray<readonly [string, Dict]> = [
-  ['ar', ar], ['de', de], ['es-ES', esES], ['fa', fa], ['fr', fr],
-  ['hu', hu], ['id', id], ['it', itIT], ['ja', ja], ['ko', ko],
-  ['pl', pl], ['pt-BR', ptBR], ['ru', ru], ['th', th], ['tr', tr],
-  ['uk', uk], ['zh-CN', zhCN], ['zh-TW', zhTW],
+const NON_ENGLISH_LOCALES: ReadonlyArray<readonly [string, Dict]> = [ ['zh-CN', zhCN],
 ];
 
 function scenarioPlugin(id: string, title: string) {
@@ -198,31 +176,6 @@ describe('Website-clone composer scaffold is host-authored, not a draft', () => 
     // pass must not be mistaken for the scaffold having been handed back.
     await pickTypePill('web-clone');
     await waitFor(() => expect(composerText()).toContain(SEED));
-
-    await pickTypePill('deck');
-
-    await waitFor(() => expect(composerText().trim()).toBe(''));
-  });
-
-  // The scaffold is the one piece of host-authored text this product types into
-  // the user's composer, so it has to arrive in their language — and the
-  // release above has to recognize it there too, not just in English.
-  it('seeds and releases the localized scaffold outside English', async () => {
-    writeHomeGuideStage('done');
-    stubPlugins();
-    render(
-      <I18nProvider initial="ja">
-        <HomeView
-          projects={[]}
-          onSubmit={() => undefined}
-          onOpenProject={() => undefined}
-          onViewAllProjects={() => undefined}
-        />
-      </I18nProvider>,
-    );
-
-    await pickTypePill('web-clone');
-    await waitFor(() => expect(composerText()).toContain(ja['homeHero.chip.webClonePromptSeed']));
 
     await pickTypePill('deck');
 

@@ -102,9 +102,6 @@
           "path": "./SKILL.md"
         }
       ],
-      "designSystem": {
-        "primary": true
-      },
       "craft": [
         "state-coverage",
         "animation-discipline",

@@ -10,7 +10,6 @@
 import { useCallback } from 'react';
 import type { PluginPreviewSpec } from '../preview';
 import { useInView } from '../useInView';
-import { DesignSystemSurface } from './DesignSystemSurface';
 import { HtmlSurface } from './HtmlSurface';
 import { MediaSurface } from './MediaSurface';
 import { TextSurface } from './TextSurface';
@@ -89,8 +88,6 @@ export function PreviewSurface({ pluginId, pluginTitle, preview, eager = false }
           inView={inView}
           eager={eager}
         />
-      ) : preview.kind === 'design' ? (
-        <DesignSystemSurface preview={preview} inView={inView} />
       ) : (
         <TextSurface pluginTitle={pluginTitle} />
       )}

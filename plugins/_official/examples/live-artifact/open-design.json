@@ -95,9 +95,6 @@
           "path": "./SKILL.md"
         }
       ],
-      "designSystem": {
-        "primary": true
-      },
       "assets": [
         "./references/artifact-schema.md",
         "./references/connector-policy.md",

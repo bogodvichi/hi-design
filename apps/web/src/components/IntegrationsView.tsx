@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { AppConfig } from '../types';
 import { useAnalytics } from '../analytics/provider';
@@ -8,12 +8,14 @@ import {
   trackPageView,
   trackSettingsConnectorAuthResult,
 } from '../analytics/events';
-import { ConnectorSection } from './SettingsDialog';
+import { CenteredLoader } from './Loading';
 import { Icon } from './Icon';
 import { McpClientSection } from './McpClientSection';
 import { SkillsSection } from './SkillsSection';
 import { UseEverywhereGuidePanel } from './UseEverywhereModal';
 import { useT } from '../i18n';
+
+const ConnectorSection = lazy(() => import('./SettingsDialog').then(module => ({ default: module.ConnectorSection })));
 
 export type IntegrationTab = 'mcp' | 'connectors' | 'skills' | 'use-everywhere';
 
@@ -165,6 +167,7 @@ export function IntegrationsView({
         {activeTab === 'mcp' ? <McpClientSection /> : null}
 
         {activeTab === 'connectors' ? (
+          <Suspense fallback={<CenteredLoader label={t('common.loading')} />}>
           <ConnectorSection
             cfg={localConfig}
             setCfg={updateLocalDraft}
@@ -188,6 +191,7 @@ export function IntegrationsView({
               })
             }
           />
+          </Suspense>
         ) : null}
 
         {activeTab === 'skills' ? (

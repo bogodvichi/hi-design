@@ -14,13 +14,10 @@
 // the action bar or with Delete / Backspace.
 
 import { memo, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
-import type { ChatAttachment, DesignSystemSummary, LibraryAsset } from '@open-design/contracts';
+import type { LibraryAsset } from '@open-design/contracts';
 import {
-  applyLibraryAsset,
   deleteLibraryAsset,
   editLibraryAssetAsPage,
-  fetchDesignSystem,
-  fetchDesignSystems,
   fetchLibraryAsset,
   fetchLibraryAssets,
   fetchLibraryAssetAsFile,
@@ -30,8 +27,7 @@ import {
 } from '../providers/registry';
 import { useInView } from './plugins-home/useInView';
 import { navigate } from '../router';
-import { setPendingDesignSystemCreateEntry } from '../analytics/ds-create-entry';
-import { setComposerSeed, setDesignSystemAssetSeed, setHomeComposerAssetSeed } from '../state/libraryHandoff';
+import { setHomeComposerAssetSeed } from '../state/libraryHandoff';
 import { Button, Dialog, DialogDescription, DialogFooter, DialogTitle } from '@open-design/components';
 import { Icon } from './Icon';
 import {
@@ -54,7 +50,7 @@ import styles from './LibrarySection.module.css';
 import { useT } from '../i18n';
 import { useWorkspaceContext } from '../collab/useWorkspaceContext';
 import { workspaceIdentityCacheKey } from '../collab/workspace-identity';
-import { resolveProjectWorkspaceContext } from '../collab/useProjectWorkspaceScope';
+import type { ChatAttachment, DesignSystemSummary } from '@open-design/contracts';
 
 type Translate = ReturnType<typeof useT>;
 
@@ -456,38 +452,6 @@ const LibraryCard = memo(function LibraryCard({
         {/* Jump back to an asset's origin. A synced design-system / project
             asset links to where it lives; a clipper html capture (no origin)
             still offers "Edit as page"; otherwise the external source. */}
-        {designSystemId ? (
-          <button
-            type="button"
-            className={styles.linkBtn}
-            onClick={() => navigate({ kind: 'design-system-detail', designSystemId })}
-          >
-            {t('library.openDesignSystem')}
-          </button>
-        ) : projectId ? (
-          <button
-            type="button"
-            className={styles.linkBtn}
-            onClick={() => onOpenProject(projectId, asset.relPath)}
-          >
-            {t('library.openProject')}
-          </button>
-        ) : asset.kind === 'html' ? (
-          <button
-            type="button"
-            className={styles.linkBtn}
-            onClick={() => onEditAsPage(asset.id)}
-            disabled={editing}
-          >
-            {editing ? t('library.opening') : t('library.editAsPage')}
-          </button>
-        ) : asset.sourceUrl ? (
-          <a className={styles.linkBtn} href={asset.sourceUrl} target="_blank" rel="noreferrer">
-            {t('library.viewSource')}
-          </a>
-        ) : (
-          <span />
-        )}
         <button type="button" className={styles.deleteBtn} onClick={() => onDelete(asset.id)}>
           {t('library.remove')}
         </button>
@@ -522,11 +486,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'timeline'>('grid');
   // "Use in design system" menu state (multi-select → design system).
-  const [dsMenuOpen, setDsMenuOpen] = useState(false);
-  const [dsList, setDsList] = useState<DesignSystemSummary[]>([]);
-  const [dsBusy, setDsBusy] = useState(false);
-  const dsLoadedRef = useRef(false);
-  const dsMenuWrapRef = useRef<HTMLDivElement>(null);
+  const [handoffBusy, setHandoffBusy] = useState(false);
   const [fileDragActive, setFileDragActive] = useState(false);
   const fileDragDepth = useRef(0);
   const loadedOnce = useRef(false);
@@ -739,62 +699,15 @@ export function LibrarySection({ active, onOpenProject }: Props) {
 
   // --- multi-select → design system ---------------------------------------
 
-  useEffect(() => {
-    dsLoadedRef.current = false;
-    setDsList([]);
-  }, [workspaceIdentity]);
-
   // Lazily load the user's own (editable) design systems the first time the
   // "Use in design system" menu opens — these are the ones that can be refined.
-  useEffect(() => {
-    if (!dsMenuOpen || dsLoadedRef.current) return;
-    dsLoadedRef.current = true;
-    let cancelled = false;
-    void fetchDesignSystems(workspaceContext).then((list) =>
-      !cancelled && setDsList(list.filter((d) => d.source === 'user')));
-    return () => {
-      cancelled = true;
-    };
-  }, [dsMenuOpen, workspaceIdentity]);
 
   // Dismiss the menu on outside click / Escape. Deliberately NOT a full-screen
   // backdrop element: a stray bare overlay can paint opaque (e.g. UA button
   // styling) and blank the whole page behind it.
-  useEffect(() => {
-    if (!dsMenuOpen) return;
-    const onPointerDown = (e: MouseEvent) => {
-      if (!dsMenuWrapRef.current?.contains(e.target as Node)) setDsMenuOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setDsMenuOpen(false);
-    };
-    document.addEventListener('mousedown', onPointerDown);
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.removeEventListener('mousedown', onPointerDown);
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [dsMenuOpen]);
 
   // Path A: open the create-design-system flow pre-seeded with the selected
   // assets as source material (fetched into File objects via a hand-off store).
-  const createDesignSystemFromSelection = useCallback(async () => {
-    const chosen = assets.filter((a) => selectedIds.has(a.id));
-    if (!chosen.length) return;
-    setDsBusy(true);
-    try {
-      const files = (await Promise.all(chosen.map((a) => fetchLibraryAssetAsFile(a)))).filter(
-        (f): f is File => f !== null,
-      );
-      setDesignSystemAssetSeed({ files });
-      setDsMenuOpen(false);
-      setSelectedIds(new Set());
-      setPendingDesignSystemCreateEntry('library');
-      navigate({ kind: 'design-system-create' });
-    } finally {
-      setDsBusy(false);
-    }
-  }, [assets, selectedIds]);
 
   // "Chat to design": fetch the selected assets into File objects, hand them to
   // the Home chat composer, and navigate there. The user lands in the creation
@@ -804,7 +717,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
   const chatToDesignFromSelection = useCallback(async () => {
     const chosen = assets.filter((a) => selectedIds.has(a.id));
     if (!chosen.length) return;
-    setDsBusy(true);
+    setHandoffBusy(true);
     try {
       const files = (await Promise.all(chosen.map((a) => fetchLibraryAssetAsFile(a)))).filter(
         (f): f is File => f !== null,
@@ -814,75 +727,13 @@ export function LibrarySection({ active, onOpenProject }: Props) {
       setSelectedIds(new Set());
       navigate({ kind: 'home', view: 'home' });
     } finally {
-      setDsBusy(false);
+      setHandoffBusy(false);
     }
   }, [assets, selectedIds]);
 
   // Path B: copy the selected assets into an existing design system's project,
   // stage a composer seed (query + the copied assets as attachments), and open
   // that project so the user can review and Send to refine the system.
-  const optimizeExistingDesignSystem = useCallback(
-    async (ds: DesignSystemSummary) => {
-      const chosen = assets.filter((a) => selectedIds.has(a.id));
-      if (!chosen.length) return;
-      setDsBusy(true);
-      try {
-        const mutationWorkspaceContext = workspaceContext;
-        let projectId = ds.projectId;
-        if (!projectId) {
-          const detail = await fetchDesignSystem(ds.id, mutationWorkspaceContext);
-          projectId = detail?.projectId;
-        }
-        if (!projectId) {
-          setDsMenuOpen(false);
-          return;
-        }
-        const projectWorkspaceContext = await resolveProjectWorkspaceContext(
-          projectId,
-          mutationWorkspaceContext,
-          mutationWorkspaceContext?.workspaceId ?? null,
-        );
-        const attachments: ChatAttachment[] = [];
-        for (const a of chosen) {
-          const res = await applyLibraryAsset(
-            a.id,
-            projectId,
-            undefined,
-            { includeElement: true },
-            projectWorkspaceContext,
-          );
-          if (res?.relPath) {
-            attachments.push({
-              path: res.relPath,
-              name: res.relPath.split('/').pop() || res.relPath,
-              kind: a.kind === 'image' ? 'image' : 'file',
-            });
-          }
-          // An element-pick capture also brings its markup; stage it so the
-          // design-system refinement can read the element's HTML, not just the
-          // screenshot.
-          if (res?.elementRelPath) {
-            attachments.push({
-              path: res.elementRelPath,
-              name: res.elementRelPath.split('/').pop() || res.elementRelPath,
-              kind: 'file',
-            });
-          }
-        }
-        const n = chosen.length;
-        const text =
-          `Use ${n} reference${n > 1 ? 's' : ''} I just added from my Library to refine this design ` +
-          `system — pull the palette, typography, and component patterns that fit and update the design tokens.`;
-        setComposerSeed({ projectId, text, attachments });
-        setDsMenuOpen(false);
-        setSelectedIds(new Set());
-        onOpenProject(projectId);
-      } finally {
-        setDsBusy(false);
-      }
-    },
-    [assets, onOpenProject, selectedIds, workspaceIdentity],
-  );
 
   const toggleOne = useCallback((id: string, index: number) => {
     setSelectedIds((prev) => {
@@ -1049,7 +900,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     const onKey = (e: KeyboardEvent) => {
       // The upload modal, delete-confirm dialog, and the design-system menu own
       // shortcuts while open.
-      if (uploadOpen || confirmDeleteOpen || dsMenuOpen) return;
+      if (uploadOpen || confirmDeleteOpen) return;
       const el = document.activeElement as HTMLElement | null;
       const typing =
         !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
@@ -1068,7 +919,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [active, assets, selectedIds, previewId, uploadOpen, confirmDeleteOpen, dsMenuOpen, selectAll, requestDeleteSelected]);
+  }, [active, assets, selectedIds, previewId, uploadOpen, confirmDeleteOpen, selectAll, requestDeleteSelected]);
 
   // `@font-face` rules for every font asset on screen, so both the grid
   // thumbnails and the preview specimen render in the real typeface.
@@ -1241,7 +1092,7 @@ export function LibrarySection({ active, onOpenProject }: Props) {
             type="button"
             className={styles.chatBtn}
             onClick={() => void chatToDesignFromSelection()}
-            disabled={dsBusy}
+            disabled={handoffBusy}
             title={t('library.chatToDesignTitle', { count: selectedCount })}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -1249,54 +1100,6 @@ export function LibrarySection({ active, onOpenProject }: Props) {
             </svg>
             {t('library.chatToDesign')}
           </button>
-          <div className={styles.dsMenuWrap} ref={dsMenuWrapRef}>
-            <button
-              type="button"
-              className={styles.dsMenuBtn}
-              onClick={() => setDsMenuOpen((o) => !o)}
-              aria-haspopup="menu"
-              aria-expanded={dsMenuOpen}
-              disabled={dsBusy}
-            >
-              {dsBusy ? t('library.working') : t('library.useInDesignSystem')}
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-            </button>
-            {dsMenuOpen ? (
-              <div className={styles.dsMenu} role="menu">
-                <button
-                  type="button"
-                  className={styles.dsMenuItem}
-                  role="menuitem"
-                  onClick={() => void createDesignSystemFromSelection()}
-                >
-                  <span className={styles.dsMenuItemTitle}>{t('library.createDesignSystem')}</span>
-                  <span className={styles.dsMenuItemSub}>
-                    {t('library.createDesignSystemSub', { count: selectedCount })}
-                  </span>
-                </button>
-                <div className={styles.dsMenuDivider} />
-                <div className={styles.dsMenuHeader}>{t('library.refineExisting')}</div>
-                {dsList.length === 0 ? (
-                  <div className={styles.dsMenuEmpty}>{t('library.noEditableDesignSystems')}</div>
-                ) : (
-                  dsList.map((ds) => (
-                    <button
-                      key={ds.id}
-                      type="button"
-                      className={styles.dsMenuItem}
-                      role="menuitem"
-                      onClick={() => void optimizeExistingDesignSystem(ds)}
-                    >
-                      <span className={styles.dsMenuItemTitle}>{ds.title}</span>
-                      <span className={styles.dsMenuItemSub}>{t('library.addAssetsAndRefine')}</span>
-                    </button>
-                  ))
-                )}
-              </div>
-            ) : null}
-          </div>
           <button type="button" className={styles.selectionDelete} onClick={requestDeleteSelected}>
             {t('library.deleteCount', { count: selectedCount })}
           </button>

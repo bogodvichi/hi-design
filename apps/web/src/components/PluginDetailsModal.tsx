@@ -26,7 +26,6 @@ import { createPortal } from 'react-dom';
 import { inferPluginPreview } from './plugins-home/preview';
 import { PluginScenarioDetail } from './plugin-details/PluginScenarioDetail';
 import { PluginExampleDetail } from './plugin-details/PluginExampleDetail';
-import { PluginDesignSystemDetail } from './plugin-details/PluginDesignSystemDetail';
 import { PluginMediaDetail } from './plugin-details/PluginMediaDetail';
 import type { PluginUseAction } from './plugins-home/useActions';
 import type { PreviewSharePopoverItem } from './PreviewModal';
@@ -81,20 +80,6 @@ export function PluginDetailsModal({
         exampleStem={
           preview.source === 'example' ? preview.exampleStem ?? null : null
         }
-        onClose={onClose}
-        onUse={onUse}
-        onDuplicate={onDuplicate}
-        isApplying={isApplying}
-        hideUseAction={hideUseAction}
-        compact={compact}
-        workspaceContext={workspaceContext}
-        onSharePopoverItemClick={onSharePopoverItemClick}
-      />
-    );
-  } else if (preview.kind === 'design') {
-    detail = (
-      <PluginDesignSystemDetail
-        record={record}
         onClose={onClose}
         onUse={onUse}
         onDuplicate={onDuplicate}

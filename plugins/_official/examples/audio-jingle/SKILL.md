@@ -22,8 +22,6 @@ od:
   preview:
     type: html
     entry: example.html
-  design_system:
-    requires: false
   example_prompt: |
     A 30-second upbeat indie-pop jingle for a coffee shop launch — warm
     electric piano lead, brushed drums, gentle bass, a single sun-soaked

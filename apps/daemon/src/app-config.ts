@@ -533,11 +533,12 @@ function applyConfigValue(
   key: keyof AppConfigPrefs,
   value: unknown,
 ): void {
+  if (key === 'designSystemId' || key === 'disabledDesignSystems') return;
   if (key === 'onboardingCompleted') {
     if (typeof value === 'boolean') target[key] = value;
     return;
   }
-  if (key === 'agentId' || key === 'skillId' || key === 'designSystemId') {
+  if (key === 'agentId' || key === 'skillId') {
     if (typeof value === 'string' || value === null) target[key] = value;
     return;
   }
@@ -565,7 +566,7 @@ function applyConfigValue(
       delete target[key];
     }
   }
-  if (key === 'disabledSkills' || key === 'disabledDesignSystems') {
+  if (key === 'disabledSkills') {
     if (Array.isArray(value) && value.every((v) => typeof v === 'string')) {
       target[key] = value;
     } else {

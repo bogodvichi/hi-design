@@ -18,9 +18,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   example_prompt: "Write me a PRD for adding two-factor auth to our SaaS app — problem, scope, milestones, open questions."
 ---
 
@@ -30,7 +27,7 @@ Produce a one-page product spec / PRD.
 
 ## Workflow
 
-1. Read the active DESIGN.md.
+1. Read the supplied template/reference styles.
 2. Identify the feature + audience from the brief.
 3. Layout:
    - Header strip: title, status pill (Draft / Review / Approved), date, owner.

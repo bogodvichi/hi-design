@@ -177,6 +177,10 @@ import {
   type ExportProgress,
   type ImageExportFormat,
 } from '../runtime/exports';
+import {
+  createNewTabCommentSession,
+  type NewTabCommentSession,
+} from '../runtime/new-tab-comments';
 import { fetchAppVersionInfo } from '../providers/registry';
 import { copyToClipboard } from '../lib/copy-to-clipboard';
 import { partialHtmlToIframeWeb } from '../utils/formatDsl';
@@ -8007,6 +8011,26 @@ function HtmlViewer({
   const appliedFilesRefreshKeyRef = useRef(filesRefreshKey);
   const workspaceActiveRef = useRef(workspaceActive);
   workspaceActiveRef.current = workspaceActive;
+  const newTabCommentSessionRef = useRef<NewTabCommentSession | null>(null);
+  useEffect(() => {
+    const session = newTabCommentSessionRef.current;
+    if (session) session.updateSnapshot(previewComments);
+  }, [previewComments]);
+  useEffect(() => () => {
+    const session = newTabCommentSessionRef.current;
+    if (!session) return;
+    session.close();
+    if (newTabCommentSessionRef.current === session) {
+      newTabCommentSessionRef.current = null;
+    }
+  }, [projectId, file.name]);
+  useEffect(() => {
+    if (workspaceActive) return;
+    const session = newTabCommentSessionRef.current;
+    if (!session) return;
+    session.close();
+    newTabCommentSessionRef.current = null;
+  }, [workspaceActive]);
   const filesRefreshPending = filesRefreshKey !== 0
     && appliedFilesRefreshKeyRef.current !== filesRefreshKey;
   const analytics = useAnalytics();
@@ -14507,12 +14531,70 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       setExportToast({ message: t('fileViewer.exportFailed'), tone: 'error' });
       return;
     }
+    newTabCommentSessionRef.current?.close();
+    const commentSession = createNewTabCommentSession({
+      filePath: file.name,
+      comments: previewComments,
+      resolveAuthor: (memberId) => {
+        const author = resolveActiveCommentAuthor(memberId);
+        if (!author) return null;
+        return {
+          displayName: author.displayName,
+          avatarUrl: author.avatarUrl,
+        };
+      },
+      onSave: onSavePreviewComment
+        ? (target, note) => onSavePreviewComment(target, note, false)
+        : undefined,
+      onReply: onReplyPreviewComment,
+      onRemove: onRemovePreviewComment,
+      onChangeStatus: onChangeCommentStatus,
+    });
+    newTabCommentSessionRef.current = commentSession;
     openSandboxedPreviewInNewTab(content, exportTitle, {
       deck: effectiveDeck,
       baseHref: latestSrcDocPreviewBaseHref,
       initialSlideIndex: htmlPreviewSlideState.get(previewStateKey)?.active ?? 0,
       hideDeckChrome: effectiveDeck,
       deckClickNavigation: effectiveDeck,
+      selectionBridge: true,
+    }, {
+      token: commentSession.token,
+      channelName: commentSession.channelName,
+      filePath: file.name,
+      currentMemberId: commentAuthorSelf?.memberId ?? null,
+      labels: {
+        comments: t('chat.tabComments'),
+        comment: t('chat.comments.comment'),
+        placeholder: t('chat.comments.placeholder'),
+        empty: t('chat.comments.emptySaved'),
+        showResolved: t('chat.comments.filterResolved'),
+        unresolved: t('chat.comments.unresolved', { n: '{n}' }),
+        searchPlaceholder: t('chat.comments.searchPlaceholder'),
+        sortAndFilter: t('chat.comments.sortAndFilter'),
+        sortNewest: t('chat.comments.sortNewest'),
+        sortOldest: t('chat.comments.sortOldest'),
+        filterOpen: t('chat.comments.filterOpen'),
+        filterResolved: t('chat.comments.filterResolved'),
+        filterMentioned: t('chat.comments.filterMentioned'),
+        nComments: t('chat.comments.nComments', { n: '{n}' }),
+        resolved: t('chat.comments.resolved'),
+        markResolved: t('chat.comments.markResolved'),
+        reopen: t('chat.comments.reopen'),
+        deleteComment: t('chat.comments.deleteComment'),
+        deleteReply: t('chat.comments.deleteReply'),
+        reply: t('chat.comments.reply'),
+        nReplies: t('chat.comments.nReplies', { n: '{n}' }),
+        saved: t('chat.comments.savedToast'),
+        sending: t('chat.comments.sending'),
+        failed: t('project.previewCommentSaveFailed'),
+        close: t('common.close'),
+        cancel: t('common.cancel'),
+        justNow: t('common.justNow'),
+        minutesAgo: t('common.minutesAgo', { n: '{n}' }),
+        hoursAgo: t('common.hoursAgo', { n: '{n}' }),
+        daysAgo: t('common.daysAgo', { n: '{n}' }),
+      },
     });
   }
 
@@ -15156,6 +15238,22 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       return;
     }
     activateCommentCreate();
+  }
+
+  function togglePresentCommentMode(returnFocusTarget?: HTMLElement | null) {
+    if (returnFocusTarget) commentPanelReturnFocusRef.current = returnFocusTarget;
+    if (boardMode && commentCreateMode) {
+      fireArtifactToolbarClick('comment');
+      void capturePreviewScrollPosition();
+      presentationCommentActivatedRef.current = false;
+      setBoardMode(false);
+      setCommentCreateMode(false);
+      setCommentPanelOpen(false);
+      clearBoardComposer();
+      closeArtifactToolMenus();
+      return;
+    }
+    activateCommentCreateTool(returnFocusTarget);
   }
 
   function dismissFloatingCommentPanel() {
@@ -16183,11 +16281,11 @@ async function openReviewListModal() {
   // update removes its anchor from that set.
   useEffect(() => {
     if (!boardMode || !activePreviewCommentId) return;
-    const stillVisible = visibleCanvasSideComments.some(
+    const stillVisible = allSideComments.some(
       (comment) => comment.id === activePreviewCommentId,
     );
     if (!stillVisible) clearBoardComposer();
-  }, [activePreviewCommentId, boardMode, visibleCanvasSideComments]);
+  }, [activePreviewCommentId, allSideComments, boardMode]);
   useEffect(() => {
     if (!effectiveDeck || slideState == null || !boardMode) return;
     if (!activePreviewCommentId) return;
@@ -16557,6 +16655,22 @@ async function openReviewListModal() {
   };
   const canSendCommentToAgent = (comment: PreviewComment | null | undefined): boolean =>
     commentAuthoredByMe(comment) || iAmProjectOwner;
+  const sendSingleCommentToChat = async (comment: PreviewComment) => {
+    if (!onSendBoardCommentAttachments || !canSendCommentToAgent(comment)) return;
+    fireCommentPopoverClick('send_to_chat');
+    setSendingBoardBatch(true);
+    try {
+      await onSendBoardCommentAttachments(commentsToAttachments([comment]));
+      setSelectedSideCommentIds((current) => {
+        if (!current.has(comment.id)) return current;
+        const next = new Set(current);
+        next.delete(comment.id);
+        return next;
+      });
+    } finally {
+      setSendingBoardBatch(false);
+    }
+  };
   const canEditActiveComment = commentAuthoredByMe(activeComposerComment);
   const canDeleteActiveComment = canEditActiveComment || iAmProjectOwner;
   const canSendActiveComment = canEditActiveComment || iAmProjectOwner;
@@ -16631,6 +16745,8 @@ async function openReviewListModal() {
       onReplyComment={onReplyPreviewComment}
       canEditReplyComment={canEditSideReply}
       canDeleteReplyComment={canDeleteSideReply}
+      onSendComment={sendSingleCommentToChat}
+      canSendReplyComment={canSendCommentToAgent}
       onEditReplyComment={
         onSavePreviewComment
           ? async (reply, newText) => {
@@ -16838,21 +16954,7 @@ async function openReviewListModal() {
         }
         activatePreviewComment(comment);
       }}
-      onSendComment={async (comment) => {
-        if (!onSendBoardCommentAttachments || !canSendCommentToAgent(comment)) return;
-        fireCommentPopoverClick('send_to_chat');
-        setSendingBoardBatch(true);
-        try {
-          await onSendBoardCommentAttachments(commentsToAttachments([comment]));
-          setSelectedSideCommentIds((current) => {
-            const next = new Set(current);
-            next.delete(comment.id);
-            return next;
-          });
-        } finally {
-          setSendingBoardBatch(false);
-        }
-      }}
+      onSendComment={sendSingleCommentToChat}
       onSendSelected={async () => {
         if (!onSendBoardCommentAttachments) return;
         const selected = allProjectComments.filter(
@@ -18626,34 +18728,31 @@ async function openReviewListModal() {
           role="dialog"
           aria-label={t('fileViewer.present')}
         >
-          {/* The overlay covers the whole window, so this is the only exit the
-              user can still reach. Esc is not a substitute: the moment they
-              click a slide to advance, focus moves into the sandboxed preview
-              frame and keyboard events stop reaching the host — leaving the OS
-              window button as the only thing left that looks like "close",
-              which quits the app (OPEND-2156). This control lives in the host
-              document, so it keeps working wherever focus went. */}
-          <button
-            type="button"
-            className="present-exit-btn"
-            onClick={() => closeInTabPresentation()}
-            title={t('fileViewer.exitPresentation')}
-            aria-label={t('fileViewer.exitPresentation')}
-          >
-            <Icon name="close" size={14} />
-          </button>
-          <button
-            type="button"
-            className={`present-comment-toggle${boardMode ? ' active' : ''}`}
-            data-testid="present-comment-toggle"
-            aria-label={t('fileViewer.comment')}
-            title={t('fileViewer.comment')}
-            aria-pressed={boardMode}
-            onClick={(event) => activateCommentCreateTool(event.currentTarget)}
-          >
-            <RemixIcon name="chat-new-line" size={14} />
-          </button>
           <div ref={presentStageRef} className="present-stage">
+            {/* This toolbar lives inside the stage so it stays anchored to the
+                top-right corner of the page while the comment dock opens. */}
+            <div className="present-toolbar">
+              <button
+                type="button"
+                className="present-exit-btn"
+                onClick={() => closeInTabPresentation()}
+                title={t('fileViewer.exitPresentation')}
+                aria-label={t('fileViewer.exitPresentation')}
+              >
+                <Icon name="close" size={14} />
+              </button>
+              <button
+                type="button"
+                className={`present-comment-toggle${boardMode && commentCreateMode ? ' active' : ''}`}
+                data-testid="present-comment-toggle"
+                aria-label={t('fileViewer.comment')}
+                title={t('fileViewer.comment')}
+                aria-pressed={boardMode && commentCreateMode}
+                onClick={(event) => togglePresentCommentMode(event.currentTarget)}
+              >
+                <Icon name="comment" size={14} />
+              </button>
+            </div>
             {effectiveDeck || !useUrlLoadPreview || boardMode ? (
               <iframe
                 ref={presentIframeRef}

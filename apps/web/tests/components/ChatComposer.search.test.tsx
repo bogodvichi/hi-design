@@ -229,7 +229,7 @@ describe('ChatComposer /search command', () => {
     );
   });
 
-  it('queues a typed follow-up when send is clicked during streaming', async () => {
+  it('queues a typed follow-up on Enter while only Stop is shown during streaming', async () => {
     const onSend = vi.fn();
 
     render(
@@ -244,7 +244,8 @@ describe('ChatComposer /search command', () => {
     );
 
     await typeAndSettle('follow-up while busy');
-    fireEvent.click(screen.getByTestId('chat-send'));
+    expect(screen.queryByTestId('chat-send')).toBeNull();
+    pressEnter();
 
     expect(onSend).toHaveBeenCalledWith('follow-up while busy', [], [], undefined);
   });

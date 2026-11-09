@@ -1,10 +1,9 @@
 import { execFile } from "node:child_process";
-import { appendFile, cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { appendFile, mkdir, writeFile } from "node:fs/promises";
 import { dirname, join, win32 } from "node:path";
 import { promisify } from "node:util";
 
 import type { ToolPackConfig } from "../config/index.js";
-import { pathExists } from "./fs.js";
 import { resolveWinUninstallLocalDataRoot } from "./paths.js";
 import type { WinPaths } from "./types.js";
 
@@ -137,66 +136,6 @@ FunctionEnd
   );
 }
 
-
-async function listChildDirectories(root: string): Promise<string[]> {
-  try {
-    const entries = await readdir(root, { withFileTypes: true });
-    return entries.filter((entry) => entry.isDirectory()).map((entry) => join(root, entry.name));
-  } catch {
-    return [];
-  }
-}
-
-async function findNsisLanguageDirectories(root: string, depth = 4): Promise<string[]> {
-  const languageDir = join(root, "Contrib", "Language files");
-  if (await pathExists(join(languageDir, "Farsi.nlf"))) return [languageDir];
-  if (depth <= 0) return [];
-  const children = await listChildDirectories(root);
-  const nested = await Promise.all(children.map((child) => findNsisLanguageDirectories(child, depth - 1)));
-  return nested.flat();
-}
-
-export async function ensureNsisPersianLanguageAlias(config: ToolPackConfig): Promise<boolean> {
-  const cacheRoots = [
-    process.env.ELECTRON_BUILDER_CACHE,
-    process.env.LOCALAPPDATA == null ? undefined : join(process.env.LOCALAPPDATA, "electron-builder", "Cache"),
-    process.env.APPDATA == null ? undefined : join(process.env.APPDATA, "electron-builder", "Cache"),
-    join(config.workspaceRoot, "node_modules", ".cache", "electron-builder"),
-    process.env["ProgramFiles(x86)"] == null ? undefined : join(process.env["ProgramFiles(x86)"], "NSIS"),
-    process.env.ProgramFiles == null ? undefined : join(process.env.ProgramFiles, "NSIS"),
-    "C:\\Program Files (x86)\\NSIS",
-    "C:\\Program Files\\NSIS",
-  ].filter((entry): entry is string => entry != null && entry.length > 0);
-  let updated = false;
-  for (const cacheRoot of cacheRoots) {
-    for (const languageDir of await findNsisLanguageDirectories(cacheRoot)) {
-      let updatedLanguageDir = false;
-      const farsiNlf = join(languageDir, "Farsi.nlf");
-      const farsiNsh = join(languageDir, "Farsi.nsh");
-      const persianNlf = join(languageDir, "Persian.nlf");
-      const persianNsh = join(languageDir, "Persian.nsh");
-      if ((await pathExists(farsiNlf)) && !(await pathExists(persianNlf))) {
-        await cp(farsiNlf, persianNlf);
-        updatedLanguageDir = true;
-        updated = true;
-      }
-      if (await pathExists(farsiNsh)) {
-        const farsiMessages = await readFile(farsiNsh, "utf8");
-        const persianMessages = farsiMessages.replace('LANGFILE "Farsi"', 'LANGFILE "Persian"');
-        const existingPersianMessages = await readFile(persianNsh, "utf8").catch(() => null);
-        if (existingPersianMessages !== persianMessages) {
-          await writeFile(persianNsh, persianMessages, "utf8");
-          updatedLanguageDir = true;
-          updated = true;
-        }
-      }
-      if (updatedLanguageDir) {
-        process.stderr.write(`[tools-pack] added NSIS Persian language alias in ${languageDir}\n`);
-      }
-    }
-  }
-  return updated;
-}
 
 export async function appendNsisLog(paths: WinPaths, message: string, meta: Record<string, unknown> = {}): Promise<void> {
   await mkdir(dirname(paths.nsisLogPath), { recursive: true });

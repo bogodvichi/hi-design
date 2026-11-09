@@ -98,9 +98,6 @@
           "path": "./SKILL.md"
         }
       ],
-      "designSystem": {
-        "primary": true
-      },
       "assets": []
     },
     "pipeline": {

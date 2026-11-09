@@ -113,7 +113,7 @@ export const STATUS_LABEL_KEYS = {
 interface Props {
 	projects: Project[];
 	skills: SkillSummary[];
-	designSystems: DesignSystemSummary[];
+	designSystems?: DesignSystemSummary[];
 	onOpen: (id: string) => void;
 	onOpenLiveArtifact: (projectId: string, artifactId: string) => void;
 	onDelete: (id: string) => Promise<boolean | void> | boolean | void;
@@ -127,7 +127,7 @@ interface Props {
 export function DesignsTab({
 	projects,
 	skills,
-	designSystems,
+	designSystems = [],
 	onOpen,
 	onOpenLiveArtifact,
 	onDelete,

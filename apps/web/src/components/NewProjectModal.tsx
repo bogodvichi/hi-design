@@ -33,8 +33,6 @@ interface Props {
   open: boolean;
   skills: SkillSummary[];
   designTemplates?: SkillSummary[];
-  designSystems: DesignSystemSummary[];
-  defaultDesignSystemId: string | null;
   templates: ProjectTemplate[];
   onDeleteTemplate?: (id: string) => Promise<boolean>;
   promptTemplates: PromptTemplateSummary[];
@@ -71,8 +69,6 @@ export function NewProjectModal({ open, ...rest }: Props) {
 function NewProjectModalBody({
   skills,
   designTemplates,
-  designSystems,
-  defaultDesignSystemId,
   templates,
   onDeleteTemplate,
   promptTemplates,
@@ -172,8 +168,6 @@ function NewProjectModalBody({
           <NewProjectPanel
             skills={skills}
             {...(designTemplates ? { designTemplates } : {})}
-            designSystems={designSystems}
-            defaultDesignSystemId={defaultDesignSystemId}
             templates={templates}
             {...(onDeleteTemplate ? { onDeleteTemplate } : {})}
             promptTemplates={promptTemplates}

@@ -42,8 +42,8 @@ import { expandHomePath } from './runtimes/paths.js';
 /**
  * Resolve the path to the Codex CLI config file, respecting CODEX_HOME.
  *
- * Mirrors the resolution used by codex-pets.ts and the codex agentCliEnv
- * allowlist so all daemon code agrees on the config location.
+ * Matches the Codex agentCliEnv allowlist so daemon config edits and
+ * spawned agents agree on the config location.
  *
  * `~/` and `~\` prefixes in CODEX_HOME are expanded to the OS home directory,
  * matching the behaviour of `expandConfiguredEnv` in `runtimes/paths.ts` that

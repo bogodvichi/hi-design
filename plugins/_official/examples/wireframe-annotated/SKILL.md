@@ -26,9 +26,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: false
-    sections: [color, typography, layout, components]
   example_prompt: "Draw an annotated redline wireframe for a desktop landing page — greybox nav, hero, logo strip, 3-up feature grid and footer, numbered pins ①–⑤ and a right-hand spec panel with one engineering note per pin."
 ---
 

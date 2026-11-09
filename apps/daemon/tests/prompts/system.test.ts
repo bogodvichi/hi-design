@@ -135,30 +135,6 @@ describe('composeSystemPrompt', () => {
     expect(prompt).not.toContain('快速简报 — 30 秒');
   });
 
-  it('treats an active design system as the visual direction', () => {
-    const prompt = composeSystemPrompt({
-      designSystemTitle: 'ComfyUI',
-      designSystemBody: '# ComfyUI\n\n--accent: #ffd500',
-      metadata: { kind: 'prototype' } as any,
-      activeStageBlocks: [
-        '\n\n## Active stage: plan\n\n### direction-picker\n\nAsk for 3-5 directions.',
-      ],
-    });
-
-    expect(prompt).toContain('## Active design system — ComfyUI');
-    expect(prompt).toContain('Active design system exception');
-    expect(prompt).toContain(
-      'the active design system is the visual direction for this project',
-    );
-    expect(prompt).toContain('Do not ask the user to pick a separate theme color');
-    expect(prompt).toContain('Do not emit a direction question-form');
-    expect(prompt).not.toContain('<question-form id="direction"');
-    expect(prompt).not.toContain('Pick a visual direction');
-    expect(prompt.indexOf('## Active design system visual direction')).toBeGreaterThan(
-      prompt.indexOf('### direction-picker'),
-    );
-  });
-
   it('uses stable brand option values for discovery-form branching', () => {
     const prompt = composeSystemPrompt({});
     expect(prompt).toContain('{ "label": "Pick a direction for me", "value": "pick_direction" }');
@@ -172,9 +148,9 @@ describe('composeSystemPrompt', () => {
     expect(prompt).toContain('### Branch A — user provided a brand/reference source, or `brand` value is `"brand_spec"` / `"reference_match"`');
     expect(prompt).toContain('ask them to paste/upload the brand spec or reference and stop');
     expect(prompt).toContain('Do not guess a brand domain or invent tokens');
-    expect(prompt).toContain('An active design system does not suppress Branch A when the user provides a brand/reference source');
+    expect(prompt).toContain('An user-supplied brand reference does not suppress Branch A when the user provides a brand/reference source');
     expect(prompt).toContain('### Branch B — no user-provided brand/reference source and no Branch A brand value');
-    expect(prompt).toContain('active-design-system cases where the user did not provide a new brand/reference source');
+    expect(prompt).toContain('user-supplied-reference cases where the user did not provide a new brand/reference source');
     expect(prompt).toContain('Provided brand/reference source → run brand-spec extraction');
     expect(prompt).toContain('`brand_spec` / `reference_match` without a provided source → ask for the source and stop; do not guess brand tokens.');
   });
@@ -612,168 +588,11 @@ describe('composeSystemPrompt', () => {
   // those files (PR-D flipped the env gate to default-on, with
   // `OD_DESIGN_TOKEN_CHANNEL=0` as the kill switch). These tests pin
   // the injection shape so the prompt structure cannot drift silently.
-  describe('design-system token + fixture injection (#PR-C)', () => {
-    const sampleTokensCss = ':root {\n  --bg: #ffffff;\n  --fg: #111111;\n  --accent: #0050d8;\n}';
-    const sampleFixtureHtml = '<!doctype html>\n<html lang="en">\n  <body><button class="btn btn-primary">Subscribe</button></body>\n</html>';
-    const sampleComponentsManifest =
-      'components.manifest schema v1 for default\nAvailable component groups:\n- Buttons and calls to action: selectors .btn, .btn-primary; tokens --accent';
+});
 
-    it('appends BOTH a tokens block and a fixture block when both inputs are present', () => {
-      const prompt = composeSystemPrompt({
-        designSystemTitle: 'default',
-        designSystemBody: '# Neutral Modern\n\n> Category: Utility\n\nProse description.',
-        designSystemTokensCss: sampleTokensCss,
-        designSystemFixtureHtml: sampleFixtureHtml,
-      });
-
-      expect(prompt).toContain('## Active design system tokens — default');
-      expect(prompt).toContain('Paste the unscoped `:root { ... }` block verbatim');
-      expect(prompt).toContain('--accent: #0050d8;');
-
-      expect(prompt).toContain('## Reference fixture — default');
-      expect(prompt).toContain('Match its component shapes');
-      expect(prompt).toContain('class="btn btn-primary"');
-    });
-
-    it('places USAGE.md before DESIGN.md so it acts as the package router', () => {
-      const prompt = composeSystemPrompt({
-        designSystemTitle: 'default',
-        designSystemBody: 'PROSE_BODY_MARKER',
-        designSystemUsageMd: 'Read Order: inspect the manifest cache before source evidence.',
-      });
-
-      const usageAt = prompt.indexOf('## How to use this design system — default');
-      const proseAt = prompt.indexOf('## Active design system — default');
-      expect(usageAt).toBeGreaterThan(0);
-      expect(proseAt).toBeGreaterThan(usageAt);
-      expect(prompt).toContain('Read Order: inspect the manifest cache before source evidence.');
-    });
-
-    it('injects a small default usage router for legacy brands with no USAGE.md', () => {
-      const prompt = composeSystemPrompt({
-        designSystemTitle: 'legacy',
-        designSystemBody: '# Legacy\n\nProse description.',
-      });
-
-      expect(prompt).toContain('## How to use this design system — legacy');
-      expect(prompt).toContain('Read DESIGN.md for visual principles');
-      expect(prompt).toContain('do not assume those files have already been loaded');
-    });
-
-    it('prefers the component manifest over the full fixture when both are present', () => {
-      const prompt = composeSystemPrompt({
-        designSystemTitle: 'default',
-        designSystemBody: '# Neutral Modern\n\n> Category: Utility\n\nProse description.',
-        designSystemTokensCss: sampleTokensCss,
-        designSystemComponentsManifest: sampleComponentsManifest,
-        designSystemFixtureHtml: sampleFixtureHtml,
-      });
-
-      expect(prompt).toContain('## Reference component manifest — default');
-      expect(prompt).toContain('components.manifest schema v1 for default');
-      expect(prompt).toContain('Buttons and calls to action');
-      expect(prompt).not.toContain('## Reference fixture — default');
-      expect(prompt).not.toContain('class="btn btn-primary"');
-    });
-
-    it('keeps the prompt byte-equivalent to the legacy path when both inputs are omitted', () => {
-      const baseline = composeSystemPrompt({
-        designSystemTitle: 'default',
-        designSystemBody: '# Neutral Modern\n\nProse only.',
-      });
-      const withFlagOffEquivalent = composeSystemPrompt({
-        designSystemTitle: 'default',
-        designSystemBody: '# Neutral Modern\n\nProse only.',
-        designSystemTokensCss: undefined,
-        designSystemComponentsManifest: undefined,
-        designSystemFixtureHtml: undefined,
-      });
-
-      expect(withFlagOffEquivalent).toBe(baseline);
-      expect(withFlagOffEquivalent).not.toContain('## Active design system tokens');
-      expect(withFlagOffEquivalent).not.toContain('## Reference component manifest');
-      expect(withFlagOffEquivalent).not.toContain('## Reference fixture');
-    });
-
-    it('gates the tokens and fixture blocks independently — either may be absent', () => {
-      const tokensOnly = composeSystemPrompt({
-        designSystemTitle: 'default',
-        designSystemBody: '# x\n\nbody',
-        designSystemTokensCss: sampleTokensCss,
-      });
-      expect(tokensOnly).toContain('## Active design system tokens — default');
-      expect(tokensOnly).not.toContain('## Reference fixture');
-
-      const fixtureOnly = composeSystemPrompt({
-        designSystemTitle: 'default',
-        designSystemBody: '# x\n\nbody',
-        designSystemFixtureHtml: sampleFixtureHtml,
-      });
-      expect(fixtureOnly).not.toContain('## Active design system tokens');
-      expect(fixtureOnly).toContain('## Reference fixture — default');
-
-      const manifestOnly = composeSystemPrompt({
-        designSystemTitle: 'default',
-        designSystemBody: '# x\n\nbody',
-        designSystemComponentsManifest: sampleComponentsManifest,
-      });
-      expect(manifestOnly).not.toContain('## Active design system tokens');
-      expect(manifestOnly).toContain('## Reference component manifest — default');
-    });
-
-    it('adds the pull-layer index without loading pull-layer file contents', () => {
-      const prompt = composeSystemPrompt({
-        designSystemTitle: 'default',
-        designSystemBody: '# x\n\nbody',
-        designSystemPullIndex:
-          'Additional design-system files declared by manifest.json:\n- preview/colors.html: Colors; colors\n- source/evidence.md: import evidence notes',
-      });
-
-      expect(prompt).toContain('## Pull-layer files available on demand — default');
-      expect(prompt).toContain('preview/colors.html: Colors; colors');
-      expect(prompt).toContain('source/evidence.md: import evidence notes');
-      expect(prompt).toContain('Keep the push prompt light');
-    });
-
-    it('adds importMode guidance when the manifest declares consumption semantics', () => {
-      const prompt = composeSystemPrompt({
-        designSystemTitle: 'source-heavy',
-        designSystemBody: '# x\n\nbody',
-        designSystemImportMode: 'verbatim',
-      });
-
-      expect(prompt).toContain('## Design system import mode — source-heavy');
-      expect(prompt).toContain('Preserve source semantics and source naming');
-      expect(prompt).toContain('pull-layer source evidence or snippets');
-    });
-
-    it('places the tokens + component manifest blocks AFTER the DESIGN.md prose block (prose sets voice, structured form binds names)', () => {
-      const prompt = composeSystemPrompt({
-        designSystemTitle: 'default',
-        designSystemBody: 'PROSE_BODY_MARKER',
-        designSystemTokensCss: sampleTokensCss,
-        designSystemComponentsManifest: sampleComponentsManifest,
-        designSystemFixtureHtml: sampleFixtureHtml,
-      });
-      const proseAt = prompt.indexOf('PROSE_BODY_MARKER');
-      const tokensAt = prompt.indexOf('## Active design system tokens');
-      const fixtureAt = prompt.indexOf('## Reference component manifest');
-      expect(proseAt).toBeGreaterThan(0);
-      expect(tokensAt).toBeGreaterThan(proseAt);
-      expect(fixtureAt).toBeGreaterThan(tokensAt);
-    });
-
-    it('treats whitespace-only inputs as absent (defensive, matches DESIGN.md block behavior)', () => {
-      const prompt = composeSystemPrompt({
-        designSystemTitle: 'default',
-        designSystemBody: '# x\n\nbody',
-        designSystemTokensCss: '   \n  \t  ',
-        designSystemComponentsManifest: '\n\t',
-        designSystemFixtureHtml: '\n\n',
-      });
-      expect(prompt).not.toContain('## Active design system tokens');
-      expect(prompt).not.toContain('## Reference component manifest');
-      expect(prompt).not.toContain('## Reference fixture');
-    });
-  });
+it('ignores retired design-system prompt inputs', () => {
+  const prompt = composeSystemPrompt({ designSystemBody: 'RETIRED_BRAND_MARKER', designSystemTokensCss: '--retired: red', designSystemPullIndex: 'RETIRED_PULL_MARKER' });
+  expect(prompt).not.toContain('RETIRED_BRAND_MARKER');
+  expect(prompt).not.toContain('--retired: red');
+  expect(prompt).not.toContain('RETIRED_PULL_MARKER');
 });

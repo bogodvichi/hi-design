@@ -16,15 +16,6 @@ const ENTERPRISE_BASE =
 // import landing source directly (app-boundary rule).
 const ENTERPRISE_LOCALE_SEGMENT: Record<string, string> = {
   'zh-CN': 'zh',
-  ja: 'ja',
-  ko: 'ko',
-  de: 'de',
-  fr: 'fr',
-  ru: 'ru',
-  'es-ES': 'es',
-  'pt-BR': 'pt-br',
-  it: 'it',
-  tr: 'tr',
 };
 
 export function enterpriseUrl(locale: string): string {

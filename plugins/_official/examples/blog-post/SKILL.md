@@ -22,9 +22,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   craft:
     requires: [typography, typography-hierarchy, typography-hierarchy-editorial, rtl-and-bidi]
 ---
@@ -35,7 +32,7 @@ Produce a single long-form article page — editorial layout, no chrome.
 
 ## Workflow
 
-1. **Read the active DESIGN.md** (injected above). Lean into the typography
+1. **Read the supplied template/reference styles** (provided with the template). Lean into the typography
    tokens — long-form is 70% type, 20% image, 10% chrome.
 2. **Pick the topic** from the brief and write a real article — at least 600
    words across 4–6 H2 sections. No lorem ipsum.

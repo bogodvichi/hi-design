@@ -41,24 +41,5 @@ export const ELECTRON_BUILDER_FILE_PATTERNS = [
   "!**/node_modules/better-sqlite3/deps",
   "!**/node_modules/better-sqlite3/deps/**",
 ] as const;
-// Keep Electron native UI resources aligned with the Web UI locale set.
-// Electron uses underscore-separated locale ids; its base "es" resource
-// covers the app's es-ES dictionary.
-export const MAC_ELECTRON_LANGUAGES = [
-  "en",
-  "de",
-  "zh_CN",
-  "zh_TW",
-  "pt_BR",
-  "es",
-  "ru",
-  "fa",
-  "ar",
-  "ja",
-  "ko",
-  "pl",
-  "hu",
-  "fr",
-  "uk",
-  "tr",
-] as const;
+// Keep Electron native UI resources aligned with the two Web UI languages.
+export const MAC_ELECTRON_LANGUAGES = ["en", "zh_CN"] as const;

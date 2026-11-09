@@ -1,26 +1,9 @@
-// Phase 4 / spec §23.3.5 — bundled plugin boot walker.
-//
-// On daemon startup, scan `<repo-root>/plugins/_official/**` for
-// folders that look like installable plugin manifests (a SKILL.md
-// + open-design.json pair) and register every match into the
-// `installed_plugins` table under `source_kind='bundled'` /
-// `trust='bundled'`. Bundled plugins are the preinstalled cache of the
-// official registry source: they can carry marketplace provenance while
-// their bytes stay inside the runtime image for offline first-run use.
-// They never enter the user's home install root; their fs_path stays
-// inside the repo so a daemon upgrade rotates them in lockstep with the
-// daemon code.
-//
-// `od plugin uninstall` of a bundled plugin is rejected by the
-// installer (a future patch); for now, removing the row leaves the
-// next boot to re-register, so it's safe.
-//
-// The walker is idempotent: re-running it updates the manifest_json
-// + version column for any folder that changed since last boot,
-// matching the spec §23 promise that "bundled plugins replace only on
-// daemon upgrade".
+// Bundled plugins stay inside the runtime image for offline use. The daemon
+// configures a lazy catalog at startup and registers individual references.
+// The eager walker remains available to explicit callers and fixtures.
 
 import path from 'node:path';
+import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import { promises as fsp } from 'node:fs';
 import type Database from 'better-sqlite3';
@@ -28,6 +11,9 @@ import {
   deleteInstalledPlugin,
   getInstalledPlugin,
   resolvePluginFolder,
+  resolvePluginFolderSync,
+  rowToInstalledPlugin,
+  setBundledPluginCatalog,
   upsertInstalledPlugin,
   type RegistryRoots,
 } from './registry.js';
@@ -60,6 +46,119 @@ export interface RegisterBundledPluginsResult {
 }
 
 const SAFE_BASENAME = /^[a-z0-9][a-z0-9._-]*$/;
+
+// Configuration does no filesystem work. The first catalog/reference read
+// discovers manifest locations; listing reads metadata without installing it.
+// Only a direct reference registers and hashes that plugin's full contents.
+export function configureLazyBundledPlugins(input: RegisterBundledPluginsInput): void {
+  let folders: Map<string, string> | undefined;
+  let resourceRootAvailable = true;
+  const records = new Map<string, InstalledPluginRecord>();
+  const activated = new Set<string>();
+  const stored = (id: string) => {
+    const row = input.db.prepare('SELECT * FROM installed_plugins WHERE id = ?').get(id);
+    return row ? rowToInstalledPlugin(row as Record<string, unknown>) : null;
+  };
+  const discover = () => {
+    if (folders) return folders;
+    const found = new Map<string, string>();
+    const present = new Set<string>();
+    const visit = (folder: string, folderId: string) => {
+      if (!SAFE_BASENAME.test(folderId)) return;
+      const manifestPath = path.join(folder, 'open-design.json');
+      if (!fs.existsSync(manifestPath)) return;
+      present.add(folderId);
+      try {
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+        const id = typeof manifest.name === 'string' ? manifest.name.toLowerCase() : folderId;
+        if (!SAFE_BASENAME.test(id)) return;
+        present.add(id);
+        found.set(id, folder);
+      } catch (error) {
+        console.warn(`[plugins] bundled manifest ${folderId}: ${String(error)}`);
+      }
+    };
+    if (!fs.existsSync(input.bundledRoot)) {
+      resourceRootAvailable = false;
+      // A missing resource image is not an upgrade removing every plugin.
+      for (const row of input.db.prepare("SELECT * FROM installed_plugins WHERE source_kind = 'bundled'").all()) {
+        const record = rowToInstalledPlugin(row as Record<string, unknown>);
+        records.set(record.id, record);
+        found.set(record.id, record.fsPath);
+      }
+    } else {
+      for (const tier of fs.readdirSync(input.bundledRoot, { withFileTypes: true })) {
+        if (!tier.isDirectory()) continue;
+        const dir = path.join(input.bundledRoot, tier.name);
+        if (fs.existsSync(path.join(dir, 'open-design.json'))) visit(dir, tier.name);
+        else for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          if (entry.isDirectory()) visit(path.join(dir, entry.name), entry.name);
+        }
+      }
+      pruneRemovedBundledPlugins(input.db, present);
+    }
+    folders = found;
+    return found;
+  };
+  const read = (id: string): InstalledPluginRecord | null => {
+    const folder = discover().get(id);
+    if (!folder) return null;
+    const cached = records.get(id);
+    if (cached) {
+      if (inspectBundledStrategyProvenanceV2(cached).kind !== 'none') return null;
+      return activated.has(id) ? stored(id) ?? cached : cached;
+    }
+    const probe = resolvePluginFolderSync({
+      folder, folderId: path.basename(folder), sourceKind: 'bundled', source: folder, trust: 'bundled',
+    });
+    if (!probe.ok) {
+      console.warn(`[plugins] bundled plugin ${id}: ${probe.errors.join('; ')}`);
+      const previous = stored(id);
+      return previous?.sourceKind === 'bundled' ? previous : null;
+    }
+    if (inspectBundledStrategyProvenanceV2(probe.record).kind !== 'none') {
+      if (stored(id)?.sourceKind === 'bundled') deleteInstalledPlugin(input.db, id);
+      return null;
+    }
+    const previous = stored(id);
+    const record = withMarketplaceProvenance(probe.record, input.marketplaceProvenance);
+    if (previous?.sourceKind === 'bundled') {
+      record.installedAt = previous.installedAt;
+      record.updatedAt = previous.updatedAt;
+    }
+    records.set(id, record);
+    return record;
+  };
+  setBundledPluginCatalog(input.db, {
+    list: () => Array.from(discover().keys()).flatMap((id) => {
+      const record = read(id);
+      return record ? [record] : [];
+    }),
+    get: (id) => {
+      const record = read(id);
+      if (!record || activated.has(id) || !resourceRootAvailable) return record;
+      const hash = createHash('sha256');
+      const files: string[] = [];
+      const visit = (dir: string) => {
+        for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+          const file = path.join(dir, entry.name);
+          if (entry.isDirectory()) visit(file);
+          else if (entry.isFile()) files.push(path.relative(record.fsPath, file).split(path.sep).join('/'));
+        }
+      };
+      visit(record.fsPath);
+      for (const file of files.sort()) {
+        hash.update(file).update('\0').update(fs.readFileSync(path.join(record.fsPath, ...file.split('/')))).update('\0');
+      }
+      const digest = hash.digest('hex');
+      if (getBundledContentDigest(input.db, id) !== digest) record.updatedAt = Date.now();
+      upsertInstalledPlugin(input.db, record);
+      setBundledContentDigest(input.db, id, digest);
+      activated.add(id);
+      return record;
+    },
+  });
+}
 
 export async function registerBundledPlugins(
   input: RegisterBundledPluginsInput,

@@ -27,8 +27,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: false
   example_prompt: "Run a 5-dimension critique on the magazine-web-ppt deck I just generated — score philosophy / hierarchy / detail / function / innovation, give me Keep / Fix / Quick-wins."
 ---
 
@@ -225,7 +223,7 @@ Build a single file:
 - 5 dimension cards in a 1-column or 2-column grid
 - Three action lists at the bottom with checkbox affordance
 
-Use the active DESIGN.md tokens if one exists; otherwise default to a
+Use the supplied template/reference styles tokens if one exists; otherwise default to a
 neutral light theme (off-white background, near-black text, one accent
 for radar fill).
 

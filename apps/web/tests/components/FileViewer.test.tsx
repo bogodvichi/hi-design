@@ -12724,16 +12724,20 @@ describe('FileViewer tweaks toolbar', () => {
     fireEvent.click(screen.getByRole('button', {
       name: 'Open comment for pin-send-result',
     }));
-    fireEvent.click(screen.getByTestId('comment-add-send'));
+    fireEvent.click(screen.getByTestId('comment-popover-send-current'));
 
     await waitFor(() => expect(onSendBoardCommentAttachments).toHaveBeenCalledTimes(1));
     expect(onRemovePreviewComment).not.toHaveBeenCalled();
+    expect(screen.getByTestId('comment-popover-existing-note')).toBeTruthy();
+    expect(screen.queryByTestId('comment-add-send')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('comment-popover-edit'));
     expect(screen.getByTestId('comment-popover-input')).toBeTruthy();
 
     await waitFor(() => {
       expect((screen.getByTestId('comment-add-send') as HTMLButtonElement).disabled).toBe(false);
     });
-    fireEvent.click(screen.getByTestId('comment-add-send'));
+    fireEvent.click(screen.getByTestId('comment-popover-send-current'));
     await waitFor(() => expect(onSendBoardCommentAttachments).toHaveBeenCalledTimes(2));
     await waitFor(() => expect(onRemovePreviewComment).toHaveBeenCalledWith(comment.id));
     await waitFor(() => expect(screen.queryByTestId('comment-popover')).toBeNull());
@@ -12776,10 +12780,11 @@ describe('FileViewer tweaks toolbar', () => {
     fireEvent.click(screen.getByRole('button', {
       name: 'Open comment for pin-send-without-removal',
     }));
-    fireEvent.click(screen.getByTestId('comment-add-send'));
+    fireEvent.click(screen.getByTestId('comment-popover-send-current'));
 
     await waitFor(() => expect(onSendBoardCommentAttachments).toHaveBeenCalledTimes(1));
-    expect(screen.getByTestId('comment-popover-input')).toBeTruthy();
+    expect(screen.getByTestId('comment-popover-existing-note')).toBeTruthy();
+    expect(screen.queryByTestId('comment-add-send')).toBeNull();
     expect(screen.getByTestId('comment-saved-marker-pin-send-without-removal')).toBeTruthy();
   });
 

@@ -1,12 +1,11 @@
+import type {
+ProjectDesignTokenSuggestion,
+ProjectDesignTokenSuggestionProp,
+ProjectDesignTokenSuggestionQuery,
+ProjectDesignTokenSuggestionsResponse,
+} from '@open-design/contracts';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import type {
-  ProjectDesignTokenSuggestion,
-  ProjectDesignTokenSuggestionProp,
-  ProjectDesignTokenSuggestionQuery,
-  ProjectDesignTokenSuggestionsResponse,
-} from '@open-design/contracts';
-import { readDesignSystem } from './design-systems/index.js';
 
 type ProjectFileLike = {
   name: string;
@@ -69,17 +68,6 @@ export async function buildProjectDesignTokenSuggestions(
   const props = normalizeProps(options.query.props);
   const values = normalizeQueryValues(options.query.values ?? {});
   const candidates = await collectProjectTokenCandidates(options);
-  const designSystemId = typeof options.project?.designSystemId === 'string'
-    ? options.project.designSystemId
-    : null;
-  if (designSystemId) {
-    const body = await readDesignSystem(options.designSystemsRoot, designSystemId)
-      ?? await readDesignSystem(options.userDesignSystemsRoot, designSystemId)
-      ?? await readDesignSystem(options.userDesignSystemsRoot, designSystemId, { idPrefix: 'user:' });
-    if (body) {
-      candidates.push(...extractTokenCandidates(body, `design-system:${designSystemId}/DESIGN.md`));
-    }
-  }
 
   const suggestions = rankTokenCandidates(candidates, props, values);
   return {

@@ -13,24 +13,7 @@ export const GO_PLAN_PRICING_URL = 'https://open-design.ai/pricing/';
 
 const LANDING_LOCALE_BY_APP_LOCALE: Record<Locale, string> = {
   en: 'en',
-  id: 'en',
-  de: 'de',
   'zh-CN': 'zh',
-  'zh-TW': 'zh',
-  'pt-BR': 'pt-br',
-  'es-ES': 'es',
-  ru: 'ru',
-  fa: 'en',
-  ar: 'en',
-  ja: 'ja',
-  ko: 'ko',
-  pl: 'en',
-  hu: 'en',
-  fr: 'fr',
-  uk: 'en',
-  tr: 'tr',
-  th: 'en',
-  it: 'it',
 };
 
 export function goPlanPricingUrl(locale: Locale): string {

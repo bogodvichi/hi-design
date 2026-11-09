@@ -18,9 +18,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   craft:
     requires: [typography, typography-hierarchy, typography-hierarchy-editorial, rtl-and-bidi]
 ---
@@ -31,7 +28,7 @@ Produce a single, three-column documentation page in one HTML file.
 
 ## Workflow
 
-1. **Read the active DESIGN.md** (injected above). Use the body type token for
+1. **Read the supplied template/reference styles** (provided with the template). Use the body type token for
    prose; the mono token for code; respect line-height and max-width rules.
 2. **Pick a topic** from the brief — the page should look like real docs, not
    a generic wireframe. Concrete API names, command examples, plausible

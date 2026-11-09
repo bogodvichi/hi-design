@@ -14,7 +14,6 @@ import { PRODUCT_NAME } from "./constants.js";
 import { pathExists } from "./fs.js";
 import { resolveWinInstallIdentity } from "./identity.js";
 import { readPackagedVersion } from "./manifest.js";
-import { ensureNsisPersianLanguageAlias } from "./nsis.js";
 import { sanitizeNamespace } from "./paths.js";
 import { signAndVerifyWinFile } from "./sign.js";
 import type { WinBuiltAppManifest, WinPackTiming, WinPaths } from "./types.js";
@@ -24,10 +23,6 @@ const execFileAsync = promisify(execFile);
 const NSIS_LANGUAGES = [
   { macro: "LANG_ENGLISH", name: "English" },
   { macro: "LANG_SIMPCHINESE", name: "SimpChinese" },
-  { macro: "LANG_TRADCHINESE", name: "TradChinese" },
-  { macro: "LANG_PORTUGUESEBR", name: "PortugueseBR" },
-  { macro: "LANG_RUSSIAN", name: "Russian" },
-  { macro: "LANG_PERSIAN", name: "Persian" },
 ] as const;
 
 const WIN_NSIS_OVERLAY_RELATIVE_PATHS = [
@@ -1249,7 +1244,6 @@ export async function buildCustomWinNsisInstaller(
   const makensisCommand = await runSegment("nsis:resolve-makensis", async () => resolveMakensisCommand(config));
   const packagedVersion = await runSegment("nsis:read-version", async () => readPackagedVersion(config));
   await runSegment("nsis:ensure-persian-language", async () => {
-    await ensureNsisPersianLanguageAlias(config);
   });
 
   await runSegment("nsis:prepare", async () => {

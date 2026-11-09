@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { CollabProvider, type CollabContextValue } from '../../src/collab/collab-context';
 import { FileViewer } from '../../src/components/FileViewer';
+import { REMIX_ICON_PATHS } from '../../src/components/remix-icon-paths';
 import { resetSharedCancellableGet } from '../../src/lib/shared-cancellable-get';
 import type { PreviewComment, ProjectFile } from '../../src/types';
 import { workspaceContextFixture } from '../helpers/workspace-context';
@@ -155,14 +156,19 @@ describe('FileViewer presentation comments', () => {
     expect(buttons[0]).toHaveClass('present-exit-btn');
     expect(buttons[1]).toHaveClass('present-comment-toggle');
     expect(presentationFrame()).toHaveAttribute('data-od-render-mode', 'url-load');
+    const commentToggle = screen.getByTestId('present-comment-toggle');
+    expect(commentToggle.querySelector('svg.od-icon path')).toHaveAttribute(
+      'd',
+      REMIX_ICON_PATHS['chat-1-line'],
+    );
 
-    fireEvent.click(screen.getByTestId('present-comment-toggle'));
+    fireEvent.click(commentToggle);
 
     await waitFor(() => {
       expect(presentationFrame()).toHaveAttribute('data-od-render-mode', 'srcdoc');
       expect(document.querySelector('.present-overlay [data-testid="comment-side-dock"]')).not.toBeNull();
     });
-    expect(screen.getByTestId('present-comment-toggle')).toHaveAttribute('aria-pressed', 'true');
+    expect(commentToggle).toHaveAttribute('aria-pressed', 'true');
 
     const postMessage = vi.spyOn(presentationFrame().contentWindow!, 'postMessage');
     fireEvent.load(presentationFrame());
@@ -170,6 +176,15 @@ describe('FileViewer presentation comments', () => {
       { type: 'od:comment-mode', enabled: true, mode: 'inspect' },
       '*',
     );
+
+    fireEvent.click(commentToggle);
+
+    await waitFor(() => {
+      expect(document.querySelector('.present-overlay')).not.toBeNull();
+      expect(screen.queryByTestId('comment-side-dock')).toBeNull();
+      expect(presentationFrame()).toHaveAttribute('data-od-render-mode', 'url-load');
+    });
+    expect(commentToggle).toHaveAttribute('aria-pressed', 'false');
   });
 
   it('renders presentation targets and ignores competing messages from the background preview', async () => {

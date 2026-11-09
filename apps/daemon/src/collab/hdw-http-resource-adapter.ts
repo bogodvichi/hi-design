@@ -237,8 +237,15 @@ export function createHdwHttpResourceAdapter(
         if (!result) return null;
 
         // Download all blobs and write files.
+        const entries = result.manifest.entries.map(entry => {
+          const path = entry.path.replaceAll('\\', '/');
+          if (/^(?:\/|[a-zA-Z]:)/u.test(path) || path.split('/').some(segment => !segment || segment === '.' || segment === '..')) {
+            throw new Error('resource manifest contains an unsafe path');
+          }
+          return { ...entry, path };
+        });
         const blobCache = new Map<string, Buffer>();
-        for (const entry of result.manifest.entries) {
+        for (const entry of entries) {
           let data = blobCache.get(entry.digest);
           if (!data) {
             data = await options.client.downloadBlob(workspaceId, entry.digest);

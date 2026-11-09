@@ -719,12 +719,6 @@ interface Props {
   // Bumped by the parent to push a draft into the composer (used by the
   // "Import repo" CTA). The nonce lets the same text fire more than once.
   composerDraftSignal?: { text: string; nonce: number };
-  // Optional pet wiring forwarded straight through to ChatComposer's
-  // /pet button. When omitted the composer hides the button entirely.
-  petConfig?: AppConfig['pet'];
-  onAdoptPet?: (petId: string) => void;
-  onTogglePet?: () => void;
-  onOpenPetSettings?: () => void;
   projectMetadata?: ProjectMetadata;
   // Authoritative post-patch project from the daemon — see ChatComposer's
   // prop of the same name for the recency invariant.
@@ -1040,10 +1034,6 @@ export function ChatPane({
   onCreateDesignSystemFromProject,
   createDesignSystemFromProjectBusy,
   composerDraftSignal,
-  petConfig,
-  onAdoptPet,
-  onTogglePet,
-  onOpenPetSettings,
   projectMetadata,
   onProjectMetadataChange,
   activeWorkspaceContext,
@@ -2453,7 +2443,6 @@ export function ChatPane({
     <>
     <ChatComposer
       ref={composerRef}
-      designSystemPicker={designSystemPicker}
       projectId={projectId}
       projectFiles={projectFiles}
       onProjectFilesChange={onProjectFilesChange}
@@ -2519,10 +2508,6 @@ export function ChatPane({
       onOpenMcpSettings={onOpenMcpSettings}
       onBrowsePlugins={onBrowsePlugins}
       onOpenConnectors={onOpenConnectors}
-      petConfig={petConfig}
-      onAdoptPet={onAdoptPet}
-      onTogglePet={onTogglePet}
-      onOpenPetSettings={onOpenPetSettings}
       researchAvailable={researchAvailable}
       projectMetadata={projectMetadata}
       onProjectMetadataChange={onProjectMetadataChange}
@@ -2543,8 +2528,6 @@ export function ChatPane({
       pinnedPluginId={activePluginSnapshot?.pluginId ?? null}
       footerAccessory={composerFooterAccessory}
       leadingAccessory={composerLeadingAccessory}
-      currentDesignSystemId={currentDesignSystemId}
-      onActiveDesignSystemChange={onActiveDesignSystemChange}
       onShowToast={onShowToast}
     />
     </>

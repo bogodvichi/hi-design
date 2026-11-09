@@ -33,8 +33,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: false
   example_prompt_i18n:
     zh-CN: "用「黄金圆环图解」模板把我的方法论做成单图母图 HTML 幻灯片：暖白纸底、唯一金色强调 #E8860C、一个嵌套同心圆母图以填充/高亮/灰化/描边四种模式贯穿全场，大写 Jost 标签嵌入圆环、Manrope 标题。从 example.html 出发只换内容，不要重写设计。"
   category: "consulting"

@@ -41,7 +41,7 @@ afterEach(() => {
 });
 
 describe('MCP workspace-scoped resource handlers (#6770)', () => {
-  it('list_resources forwards workspace headers on /api/skills and /api/design-systems', async () => {
+  it('list_resources forwards workspace headers on Skills without requesting retired systems', async () => {
     const calls: Array<{ url: string; init?: RequestInit | undefined }> = [];
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
       calls.push({ url, init });
@@ -78,19 +78,17 @@ describe('MCP workspace-scoped resource handlers (#6770)', () => {
     const skillCall = calls.find((c) => c.url.endsWith('/api/skills'));
     const dsCall = calls.find((c) => c.url.endsWith('/api/design-systems'));
     expect(skillCall).toBeTruthy();
-    expect(dsCall).toBeTruthy();
+    expect(dsCall).toBeUndefined();
     // both carry the workspace headers — this is the regression from #6770:
     // before the fix they were headerless and the daemon returned the NO-SCOPE
     // catalog, hiding claimed Personal design systems from the MCP client.
     expect((skillCall?.init?.headers as Record<string, string>)['x-od-workspace-id']).toBe('ws-personal');
     expect((skillCall?.init?.headers as Record<string, string>)['x-od-workspace-member-id']).toBe('mem-1');
-    expect((dsCall?.init?.headers as Record<string, string>)['x-od-workspace-id']).toBe('ws-personal');
-    expect((dsCall?.init?.headers as Record<string, string>)['x-od-workspace-member-id']).toBe('mem-1');
 
     // the personal design system actually shows up
     const uris = result.resources.map((r) => r.uri);
     expect(uris).toContain('od://skills/deck/SKILL.md');
-    expect(uris).toContain('od://design-systems/brand-1/DESIGN.md');
+    expect(uris).not.toContain('od://design-systems/brand-1/DESIGN.md');
   });
 
   it('list_resources falls back to headerless behavior when no workspace context resolves', async () => {
@@ -122,39 +120,6 @@ describe('MCP workspace-scoped resource handlers (#6770)', () => {
     expect(result.resources.some((r) => r.uri === 'od://focus/active')).toBe(true);
   });
 
-  it('read_resource forwards workspace headers when reading a Personal design system', async () => {
-    const calls: Array<{ url: string; init?: RequestInit | undefined }> = [];
-    const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-      calls.push({ url, init });
-      if (url.endsWith('/api/workspace/directory')) return directoryResponse();
-      if (url.match(/\/api\/design-systems\/[^/]+$/u)) {
-        return new Response(
-          JSON.stringify({
-            designSystem: {
-              id: 'brand-1',
-              body: 'palette: indigo/violet\nfonts: Inter\nvoice: crisp',
-            },
-          }),
-          { status: 200 },
-        );
-      }
-      return new Response(JSON.stringify({}), { status: 200 });
-    });
-    vi.stubGlobal('fetch', fetchMock);
-
-    const result = await _readMcpResource(target(), 'od://design-systems/brand-1/DESIGN.md');
-
-    const read = calls.find((c) => c.url.endsWith('/api/design-systems/brand-1'));
-    expect(read).toBeTruthy();
-    // Without this header, the daemon returns `404 design system not found`
-    // for a Personal design system the workspace actually owns (#6770).
-    expect((read?.init?.headers as Record<string, string>)['x-od-workspace-id']).toBe('ws-personal');
-    expect((read?.init?.headers as Record<string, string>)['x-od-workspace-member-id']).toBe('mem-1');
-
-    expect(result.contents[0]?.mimeType).toBe('text/markdown');
-    expect(result.contents[0]?.text).toContain('palette: indigo/violet');
-  });
-
   it('read_resource still serves the brief app resource without touching the daemon', async () => {
     const fetchMock = vi.fn(async () => new Response('should-not-be-called', { status: 500 }));
     vi.stubGlobal('fetch', fetchMock);
@@ -172,4 +137,11 @@ describe('MCP workspace-scoped resource handlers (#6770)', () => {
       _readMcpResource(target(), 'od://unknown/foo/bar'),
     ).rejects.toThrow(/unsupported resource URI/u);
   });
+});
+
+it('rejects retired design-system resources without issuing a request', async () => {
+  const fetchMock = vi.fn();
+  vi.stubGlobal('fetch', fetchMock);
+  await expect(_readMcpResource(target(), 'od://design-systems/brand-1/DESIGN.md')).rejects.toThrow('unsupported resource URI');
+  expect(fetchMock).not.toHaveBeenCalled();
 });

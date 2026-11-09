@@ -408,6 +408,7 @@ export type OpenDesignHostBridge = {
   pdf: {
     print(html: string, nonce?: string, options?: OpenDesignHostPdfPrintOptions): Promise<OpenDesignHostActionResult>;
   };
+  /** @deprecated Companion retired; retained as a no-op for older renderers. */
   pet: {
     setVisible(visible: boolean): void;
   };

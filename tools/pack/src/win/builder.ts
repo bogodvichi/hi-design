@@ -40,6 +40,7 @@ import {
   ELECTRON_BUILDER_NODE_GYP_REBUILD,
   ELECTRON_BUILDER_NPM_REBUILD,
   NSIS_INSTALLER_LANGUAGE_BY_WEB_LOCALE,
+  WIN_ELECTRON_LANGUAGES,
   DISPLAY_NAME,
   PRODUCT_NAME,
   WEB_STANDALONE_HOOK_CONFIG_ENV,
@@ -51,7 +52,7 @@ import {
   writeBuiltAppManifest,
   writePackagedConfig,
 } from "./manifest.js";
-import { ensureNsisPersianLanguageAlias, writeNsisInclude } from "./nsis.js";
+import { writeNsisInclude } from "./nsis.js";
 import { sanitizeNamespace } from "./paths.js";
 import { resolveWinInstallIdentity } from "./identity.js";
 import {
@@ -216,6 +217,7 @@ async function runElectronBuilderRaw(
       desktopIconResource(config),
     ],
     files: [...ELECTRON_BUILDER_FILE_PATTERNS],
+    electronLanguages: [...WIN_ELECTRON_LANGUAGES],
     forceCodeSigning: false,
     icon: paths.winIconPath,
     nodeGypRebuild: ELECTRON_BUILDER_NODE_GYP_REBUILD,
@@ -288,23 +290,7 @@ async function runElectronBuilderRaw(
     });
   };
 
-  await runSegment("electron-builder-raw:ensure-nsis-persian-alias", async () => {
-    await ensureNsisPersianLanguageAlias(config);
-  });
-  try {
-    await build("electron-builder-raw:process");
-  } catch (error) {
-    const output = `${(error as { stdout?: unknown }).stdout ?? ""}\n${(error as { stderr?: unknown }).stderr ?? ""}`;
-    const retried = output.includes("Persian.nlf") && await runSegment(
-      "electron-builder-raw:retry-ensure-nsis-persian-alias",
-      async () => ensureNsisPersianLanguageAlias(config),
-    );
-    if (retried) {
-      await build("electron-builder-raw:process-retry");
-      return segments;
-    }
-    throw error;
-  }
+  await build("electron-builder-raw:process");
   return segments;
 }
 

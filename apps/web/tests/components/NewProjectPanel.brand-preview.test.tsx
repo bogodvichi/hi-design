@@ -141,8 +141,6 @@ describe('NewProjectPanel brand preview flyout', () => {
     return render(
       <NewProjectPanel
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId={defaultDesignSystemId}
         templates={[]}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}

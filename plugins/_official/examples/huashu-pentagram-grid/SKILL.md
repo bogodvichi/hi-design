@@ -34,8 +34,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: false
   example_prompt_i18n:
     zh-CN: "用「信息建筑·红」模板把我的数据故事做成瑞士网格 HTML 幻灯片：1920×1080 固定画布、上下 64px 黑色信息条、Helvetica Neue 强层级、唯一红色 #E63946、巨型 900 字重数字锚点、红/黑/灰三色对比条形图。从 example.html 出发只换内容，不要重写设计。"
   category: "marketing-gtm"

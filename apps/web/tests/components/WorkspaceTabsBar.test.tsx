@@ -16,7 +16,7 @@ import {
 } from '../../src/components/WorkspaceTabsBar';
 import { navigate, type Route } from '../../src/router';
 import type { Project } from '../../src/types';
-import { setWorkspaceTabsDock } from '../../src/components/workspaceTabsDock';
+import { setWorkspaceTabsDock, WORKSPACE_ACCOUNT_CLUSTER_EVENT } from '../../src/components/workspaceTabsDock';
 
 afterEach(() => {
   setWorkspaceTabsDock(null);
@@ -284,6 +284,60 @@ describe('WorkspaceTabsBar navigation semantics', () => {
       expect(screen.getAllByTestId('workspace-home-rail-toggle')).toHaveLength(1);
       expect(labels.filter((label) => label.includes('Project Alpha'))).toHaveLength(1);
     });
+  });
+
+  it('does not subscribe the tab bar to document body mutations', async () => {
+    const observe = vi.spyOn(MutationObserver.prototype, 'observe');
+    try {
+      render(<WorkspaceTabsBar route={homeRoute} projects={[]} />);
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 40)); });
+      expect(observe.mock.calls.filter(([target]) => target === document.body)).toEqual([]);
+    } finally {
+      cleanup();
+      observe.mockRestore();
+    }
+  });
+
+  it('does not re-observe an unchanged account cluster on every measurement', async () => {
+    const cluster = document.createElement('div');
+    cluster.className = 'entry-top-right-cluster';
+    mockTabRect(cluster, 900, 200);
+    document.body.appendChild(cluster);
+    const observers: Array<{ callback: ResizeObserverCallback; observe: ReturnType<typeof vi.fn>; unobserve: ReturnType<typeof vi.fn> }> = [];
+    vi.stubGlobal('ResizeObserver', class {
+      callback: ResizeObserverCallback;
+      observe = vi.fn();
+      unobserve = vi.fn();
+      disconnect = vi.fn();
+      constructor(callback: ResizeObserverCallback) {
+        this.callback = callback;
+        observers.push(this);
+      }
+    });
+    try {
+      render(<WorkspaceTabsBar route={homeRoute} projects={[]} />);
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 40)); });
+      const accountObserver = observers.find((observer) =>
+        observer.observe.mock.calls.some(([element]) => element === cluster),
+      )!;
+      const before = accountObserver.observe.mock.calls.length;
+      act(() => accountObserver.callback([], accountObserver as unknown as ResizeObserver));
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 40)); });
+      expect(accountObserver.observe.mock.calls.length).toBe(before);
+      const replacement = document.createElement('div');
+      replacement.className = 'entry-top-right-cluster';
+      mockTabRect(replacement, 800, 300);
+      cluster.replaceWith(replacement);
+      act(() => window.dispatchEvent(new Event(WORKSPACE_ACCOUNT_CLUSTER_EVENT)));
+      await act(async () => { await new Promise((resolve) => setTimeout(resolve, 40)); });
+      expect(accountObserver.unobserve).toHaveBeenCalledWith(cluster);
+      expect(accountObserver.observe).toHaveBeenCalledWith(replacement);
+      replacement.remove();
+    } finally {
+      cleanup();
+      cluster.remove();
+      vi.unstubAllGlobals();
+    }
   });
 
   it('restores the remembered Community entry state after visiting HiMind', async () => {

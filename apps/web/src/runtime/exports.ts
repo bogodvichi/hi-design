@@ -26,6 +26,8 @@ import {
   workspaceResourceUrl,
 } from '../collab/workspace-identity';
 import { sourceHasLegacyDeckScreenSlides } from './deck-slide-structure';
+import type { NewTabCommentWrapperOptions } from './new-tab-comments';
+import { buildNewTabCommentsPreviewDocumentV2 } from './new-tab-comments-wrapper';
 
 // Re-exported so app components can gate desktop-only export paths without
 // importing the host package directly.
@@ -1384,8 +1386,12 @@ export function openSandboxedPreviewInNewTab(
   html: string,
   title: string,
   srcdocOptions?: SrcdocOptions,
+  commentOptions?: NewTabCommentWrapperOptions,
 ): void {
-  const doc = buildSandboxedPreviewDocument(buildBlobSafeSrcdoc(html, srcdocOptions), title);
+  const srcdoc = buildBlobSafeSrcdoc(html, srcdocOptions);
+  const doc = commentOptions
+    ? buildNewTabCommentsPreviewDocumentV2(srcdoc, title, commentOptions)
+    : buildSandboxedPreviewDocument(srcdoc, title);
   const blob = new Blob([doc], { type: 'text/html;charset=utf-8' });
   const url = URL.createObjectURL(blob);
   window.open(url, '_blank', 'noopener,noreferrer');

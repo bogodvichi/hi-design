@@ -391,7 +391,7 @@ export function migrateProjectFromSourceDb(
       const placeholders = sharedCols.map(() => '?').join(', ');
       db.prepare(`INSERT INTO projects (${colList}) VALUES (${placeholders})`).run(
         ...sharedCols.map((c) =>
-          c === 'metadata_json' ? JSON.stringify(metadata) : projectRow[c],
+          c === 'metadata_json' ? JSON.stringify(metadata) : c === 'design_system_id' ? null : projectRow[c],
         ),
       );
 

@@ -14,14 +14,38 @@ vi.mock('../../src/components/UpdaterPopup', () => ({ UpdaterPopup: () => null }
 
 beforeEach(() => {
   vi.useFakeTimers();
+  document.documentElement.removeAttribute('data-od-app-mounted');
   vi.mocked(checkAuthStatus).mockReset().mockResolvedValue({ ok: true, username: 'synthetic-user' });
 });
-afterEach(() => { cleanup(); vi.useRealTimers(); });
+afterEach(() => {
+  cleanup();
+  document.documentElement.removeAttribute('data-od-app-mounted');
+  vi.useRealTimers();
+});
 
 async function mount() {
   render(<LoginGate><div>Authenticated workbench</div></LoginGate>);
   await act(async () => {});
 }
+
+it('signals desktop readiness as soon as the first-launch login form mounts', async () => {
+  vi.mocked(checkAuthStatus).mockResolvedValueOnce({ ok: false });
+  await mount();
+  expect(screen.getByRole('button', { name: '登录' })).toBeTruthy();
+  expect(screen.queryByText('Authenticated workbench')).toBeNull();
+  expect(document.documentElement.getAttribute('data-od-app-mounted')).toBe('1');
+});
+
+it('does not signal desktop readiness while the initial session check is pending', async () => {
+  let finishCheck!: (result: Awaited<ReturnType<typeof checkAuthStatus>>) => void;
+  vi.mocked(checkAuthStatus).mockImplementationOnce(() => new Promise(resolve => { finishCheck = resolve; }));
+  await mount();
+  expect(screen.queryByRole('button', { name: '登录' })).toBeNull();
+  expect(document.documentElement.hasAttribute('data-od-app-mounted')).toBe(false);
+  await act(async () => { finishCheck({ ok: false }); });
+  expect(screen.getByRole('button', { name: '登录' })).toBeTruthy();
+  expect(document.documentElement.getAttribute('data-od-app-mounted')).toBe('1');
+});
 
 it('returns to the OA login form immediately when a workspace rejection confirms OA expiry', async () => {
   await mount();
@@ -46,6 +70,7 @@ it('retries a startup outage without falsely displaying the login form', async (
   vi.mocked(checkAuthStatus).mockResolvedValueOnce({ ok: false, error: 'unavailable' });
   await mount();
   expect(screen.queryByRole('button', { name: '登录' })).toBeNull();
+  expect(document.documentElement.hasAttribute('data-od-app-mounted')).toBe(false);
   await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
   expect(screen.getByText('Authenticated workbench')).toBeTruthy();
 });

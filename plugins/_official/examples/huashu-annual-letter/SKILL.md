@@ -33,8 +33,6 @@ od:
   preview:
     type: html
     entry: example.html
-  design_system:
-    requires: false
   example_prompt_i18n:
     zh-CN: "用「年度信笺」模板把我的年度复盘写成一封 Stripe 年信风格的 HTML 幻灯片：奶白 #FBFAF8 纸面、单一 Stripe 紫 #635BFF 点睛、65ch 行宽衬线散文、内联数据卡、超大 tabular 数字锚点页，键盘 ←/→/空格翻页 + #/N hash 跳页。从 example.html 出发只换内容，不要重写设计。"
   category: "corporate-strategy"

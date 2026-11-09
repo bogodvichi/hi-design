@@ -59,41 +59,29 @@ import {
  clearOnboardingSessionId,
  getOrCreateOnboardingSessionId,
 } from '../analytics/onboarding-session';
-import type {
- TrackingOnboardingArea,
- TrackingOnboardingStepIndex,
- TrackingOnboardingStepName,
- TrackingOnboardingClickElement,
- TrackingOnboardingClickAction,
- TrackingOnboardingRuntimeType,
- TrackingOnboardingCompletionResult,
- TrackingOnboardingCompletionType,
- TrackingCliProviderId,
+import {
+  agentIdToTracking,
 } from '@open-design/contracts/analytics';
-import { agentIdToTracking } from '@open-design/contracts/analytics';
 import { useI18n, useT } from '../i18n';
 import { navigate, useRoute, type Route } from '../router';
 import type {
- AgentInfo,
- ApiProtocol,
- ApiProtocolConfig,
- AppConfig,
- ConnectionTestResponse,
- DesignSystemSummary,
- ExecMode,
- Project,
- ProjectKind,
- ProjectMetadata,
- ProjectTemplate,
- PromptTemplateSummary,
- ProviderModelOption,
- ProviderModelsResponse,
- SkillSummary,
+  AgentInfo,
+  ApiProtocol,
+  ApiProtocolConfig,
+  AppConfig,
+  ConnectionTestResponse,
+  ExecMode,
+  Project,
+  ProjectKind,
+  ProjectMetadata,
+  ProjectTemplate,
+  PromptTemplateSummary,
+  ProviderModelOption,
+  ProviderModelsResponse,
+  SkillSummary,
 } from '../types';
 import { CenteredLoader } from './Loading';
 import { DesignsTab } from './DesignsTab';
-import { DesignSystemsTab } from './DesignSystemsTab';
-import { BrandsTab } from './BrandsTab';
 import { EntryNavRail, type EntryView as EntryViewKind } from './EntryNavRail';
 import {
  buildProjectSearchCatalog,
@@ -110,11 +98,9 @@ import {
 } from './entry-rail-account-state';
 import { LibrarySection } from './LibrarySection';
 import { UpdaterPopup } from './UpdaterPopup';
-import { WhatsNewPopup } from './WhatsNewPopup';
 import { DeepSeekHarnessSetupDialog } from './DeepSeekHarnessSetupDialog';
-import { AmrBalanceDialog } from './AmrBalanceDialog';
 import { installDeepSeekHarnessCompanion } from '../providers/agent-companion';
-import { AmrLowBalanceDialog, type AmrLowBalanceDecision } from './AmrLowBalanceDialog';
+import { type AmrLowBalanceDecision } from './AmrLowBalanceDialog';
 import {
  amrBalanceGateScopeForWorkspaceContext,
  checkAmrBalanceGate,
@@ -146,12 +132,10 @@ import { AgentIcon } from './AgentIcon';
 import { CommunityView } from './CommunityView';
 import { SquareView } from './SquareView';
 import { TeamSlotPlaceholder } from './TeamSlotPlaceholder';
-import { TeamSpaceView } from './TeamSpaceView';
-import { FolderView } from './TeamSpaceView';
+import { TeamSpaceView, FolderView } from './TeamSpaceView';
 import { PersonalAllView } from './PersonalAllView';
 import { PersonalFolderView } from './PersonalFolderView';
-import { SharedWithMeView } from './SharedWithMeView';
-import { SharedFolderView } from './SharedWithMeView';
+import { SharedWithMeView, SharedFolderView } from './SharedWithMeView';
 import {
 notifyTeamProjectsChanged,
 notifyWorkspaceBillingRefresh,
@@ -166,7 +150,7 @@ workspaceBillingBalanceUsd,
 workspaceBillingSummaryForContext,
 useSharedSpaceTeamId,
 } from '../collab/useWorkspaceContext';
-import { fetchTeamProjectCatalogEntry } from '../collab/team-projects-catalog';
+import { fetchTeamProjectsCatalog } from '../collab/team-projects-catalog';
 import { useWorkspaceInvalidation } from '../collab/workspace-events';
 import { resolvePlanLabelTier } from '../collab/team-plan';
 import { resolveDeepSeekV4FlashCampaignAudience } from '../campaigns/deepseek-v4-flash';
@@ -215,7 +199,6 @@ import {
  SUGGESTED_MODELS_BY_PROTOCOL,
 } from '../state/apiProtocols';
 import { defaultKnownProviderModel, KNOWN_PROVIDERS } from '../state/config';
-import type { KnownProvider } from '../state/config';
 import { testAgent, testApiProvider } from '../providers/connection-test';
 import { fetchProviderModels } from '../providers/provider-models';
 import { invalidateProjectFilesCache } from '../providers/registry';
@@ -258,6 +241,9 @@ import { resolveByokModelPreference } from './byok/validation';
 import onboardingSourceStyles from './OnboardingModelSource.module.css';
 import { useAuth } from '../auth/LoginGate';
 import { getSharedSpaceMemberId } from '../utils/deterministicId';
+import type { TrackingOnboardingArea, TrackingOnboardingStepIndex, TrackingOnboardingStepName, TrackingOnboardingClickElement, TrackingOnboardingClickAction, TrackingOnboardingRuntimeType, TrackingOnboardingCompletionResult, TrackingOnboardingCompletionType, TrackingCliProviderId } from '@open-design/contracts/analytics';
+import type { DesignSystemSummary } from '../types';
+import type { KnownProvider } from '../state/config';
 
 // Persist the entry nav-rail open/collapsed state so it survives both a
 // home -> project -> home navigation (EntryShell unmounts on the project
@@ -266,7 +252,7 @@ import { getSharedSpaceMemberId } from '../utils/deterministicId';
 // events, and the seed reader live in `entryRailBridge` so the pinned Home
 // tab's sidebar toggle (WorkspaceTabsBar, a sibling React tree) can share
 // them without importing this module's graph.
-export { ENTRY_RAIL_STATE_EVENT, ENTRY_RAIL_TOGGLE_EVENT };
+export { ENTRY_RAIL_STATE_EVENT,ENTRY_RAIL_TOGGLE_EVENT };
 
 function writeStoredRailOpen(open: boolean): void {
  if (typeof window === 'undefined') return;
@@ -363,18 +349,15 @@ interface Props {
  active?: boolean;
  skills: SkillSummary[];
  designTemplates: SkillSummary[];
- designSystems: DesignSystemSummary[];
  projects: Project[];
  templates: ProjectTemplate[];
  onDeleteTemplate?: (id: string) => Promise<boolean>;
  promptTemplates: PromptTemplateSummary[];
- defaultDesignSystemId: string | null;
  connectors: ConnectorDetail[];
  connectorsLoading: boolean;
  integrationInitialTab?: IntegrationTab;
  composioConfigLoading?: boolean;
  skillsLoading?: boolean;
- designSystemsLoading?: boolean;
  projectsLoading?: boolean;
  // Execution / model-switching context. Threaded down from `App` so the
  // top-bar `InlineModelSwitcher` can render the active mode/agent/model
@@ -452,13 +435,9 @@ onCopySharedProject?: (id: string, homeWorkspaceId: string) => Promise<string | 
    workspaceId: string,
    workspaceMemberId: string,
  ) => Promise<boolean> | boolean;
- onChangeDefaultDesignSystem: (id: string) => void;
- onCreateDesignSystem?: () => void;
  // First-run onboarding intentionally stops after model-source setup.
  // Guided design-system creation stays reachable from the standalone
  // `design-system-create` route and the Design Systems tab.
- onOpenDesignSystem?: (id: string) => void;
- onDesignSystemsRefresh?: () => Promise<void> | void;
  onPersistComposioKey: (composio: AppConfig['composio']) => Promise<void> | void;
  onOpenSettings: (section?: EntrySettingsSection) => void;
  onCompleteOnboarding: () => void;
@@ -526,18 +505,15 @@ export function EntryShell({
  active = true,
  skills,
  designTemplates,
- designSystems,
  projects,
  templates,
  onDeleteTemplate,
  promptTemplates,
- defaultDesignSystemId,
  connectors,
  connectorsLoading,
  integrationInitialTab = 'mcp',
  composioConfigLoading = false,
  skillsLoading = false,
- designSystemsLoading = false,
  projectsLoading = false,
  config,
  providerModelsCache: sharedProviderModelsCache,
@@ -571,10 +547,6 @@ onProjectsRefresh,
 onTeamProjectContentReady,
 onCopyProject,
 onCopySharedProject,
- onChangeDefaultDesignSystem,
- onCreateDesignSystem,
- onOpenDesignSystem,
- onDesignSystemsRefresh,
  onPersistComposioKey,
  onOpenSettings,
  onCompleteOnboarding,
@@ -821,29 +793,30 @@ const amrAuthRequired =
    );
    if (missingOwners.length === 0) return;
 
-   void Promise.all(missingOwners.map(async (entry) => {
-     const workspaceId = entry.workspaceId?.trim();
-     if (!workspaceId) return false;
+   const byWorkspace = new Map<string, typeof missingOwners>();
+   for (const entry of missingOwners) {
+     const workspaceId = entry.workspaceId!.trim();
+     const entries = byWorkspace.get(workspaceId) ?? [];
+     entries.push(entry);
+     byWorkspace.set(workspaceId, entries);
+   }
+   void Promise.all([...byWorkspace].map(async ([workspaceId, entries]) => {
      try {
        const context = workspaceContext?.workspaceId === workspaceId
          ? workspaceContext
          : await resolveBoundProjectWorkspaceContext(workspaceId);
        if (!context || cancelled) return false;
-       const catalogProject = await fetchTeamProjectCatalogEntry({
-         context,
-         projectId: entry.id,
-       });
-       if (
-         cancelled
-         || currentWorkspaceAccountGeneration() !== accountGeneration
-         || !catalogProject
-       ) {
-         return false;
+       const catalog = await fetchTeamProjectsCatalog({ context });
+       if (cancelled || currentWorkspaceAccountGeneration() !== accountGeneration) return false;
+       let changed = false;
+       for (const entry of entries) {
+         const project = catalog.find((row) => row.projectId === entry.id);
+         if (project) changed = updateRecentlyOpenedProjectOwner(entry.id, {
+           ownerDisplayName: project.ownerDisplayName,
+           createdByWorkspaceMemberId: project.ownerMemberId,
+         }) || changed;
        }
-       return updateRecentlyOpenedProjectOwner(entry.id, {
-         ownerDisplayName: catalogProject.ownerDisplayName,
-         createdByWorkspaceMemberId: catalogProject.ownerMemberId,
-       });
+       return changed;
      } catch {
        return false;
      }
@@ -1867,9 +1840,6 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
                isActive={homeViewIsActive}
                projects={homeProjectsList}
                projectsLoading={projectsLoading}
-               designSystems={designSystems}
-               designSystemsLoading={designSystemsLoading}
-               defaultDesignSystemId={defaultDesignSystemId}
                onSubmit={handlePluginLoopSubmit}
                onOpenProject={onOpenProject}
                onViewAllProjects={() => changeView('projects')}
@@ -1904,7 +1874,7 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
              />
            </div>
            <div data-testid="entry-view-projects" data-active={view === 'projects' ? 'true' : 'false'} {...inactiveViewProps(view === 'projects')}>
-             {projectsLoading || skillsLoading || designSystemsLoading ? (
+             {projectsLoading || skillsLoading ? (
                <CenteredLoader label={t('common.loading')} />
              ) : (
                <div className="entry-section">
@@ -1912,9 +1882,9 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
                    <h1 className="entry-section__title">{t('entry.navProjects')}</h1>
                  </header>
                  <DesignsTab
+                   designSystems={[]}
                    projects={projects}
                    skills={[...skills, ...designTemplates]}
-                   designSystems={designSystems}
                    onOpen={onOpenProject}
                    onOpenLiveArtifact={onOpenLiveArtifact}
                    onDelete={onDeleteProject}
@@ -1945,36 +1915,6 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
                onUseSkill={useSkillFromLibrary}
              />
            </div>
-           <div data-testid="entry-view-design-systems" data-active={view === 'design-systems' ? 'true' : 'false'} {...inactiveViewProps(view === 'design-systems')}>
-             {designSystemsLoading ? (
-               <div className="entry-section">
-                 <DesignSystemsTab
-                   isActive={view === 'design-systems'}
-                   loading
-                   systems={[]}
-                   templates={templates}
-                   selectedId={defaultDesignSystemId}
-                   onSelect={onChangeDefaultDesignSystem}
-                   onCreate={onCreateDesignSystem}
-                   onOpenSystem={onOpenDesignSystem}
-                   onSystemsRefresh={onDesignSystemsRefresh}
-                 />
-               </div>
-             ) : (
-               <div className="entry-section">
-                 <DesignSystemsTab
-                   isActive={view === 'design-systems'}
-                   systems={designSystems}
-                   templates={templates}
-                   selectedId={defaultDesignSystemId}
-                   onSelect={onChangeDefaultDesignSystem}
-                   onCreate={onCreateDesignSystem}
-                   onOpenSystem={onOpenDesignSystem}
-                   onSystemsRefresh={onDesignSystemsRefresh}
-                 />
-               </div>
-             )}
-           </div>
            {LIBRARY_UI_VISIBLE ? (
              <div data-testid="entry-view-library" data-active={view === 'library' ? 'true' : 'false'} {...inactiveViewProps(view === 'library')}>
                <LibrarySection
@@ -1985,13 +1925,6 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
                />
              </div>
            ) : null}
-           <div data-testid="entry-view-brands" data-active={view === 'brands' ? 'true' : 'false'} {...inactiveViewProps(view === 'brands')}>
-             <BrandsTab
-               onApplyDesignSystem={onChangeDefaultDesignSystem}
-               onOpenProject={onOpenProject}
-               onDesignSystemsRefresh={onDesignSystemsRefresh}
-             />
-           </div>
            {view === 'integrations' ? (
              <IntegrationsView
                config={config}
@@ -2015,7 +1948,7 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
                  // prompt for review, then open it on the copied entry file.
                  // Templates without a duplicable artifact fall back to the
                  // old prompt-only project.
-                 void (async () => {
+                 return (async () => {
                    const name =
                      summarizeProjectNameFromPrompt(prompt) || t('common.untitled');
                    try {
@@ -2100,7 +2033,6 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
                      />
                    )}
                    projects={draftProjectsList}
-                   designSystems={designSystems}
                    limit={1000}
                    heading={t('entry.navDrafts')}
                    space="drafts"
@@ -2130,7 +2062,6 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
                      />
                    )}
                    projects={allProjectsList}
-                   designSystems={designSystems}
                    limit={1000}
                    heading={t('entry.navAllProjects')}
                    space="team"
@@ -2160,15 +2091,14 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
             <TeamSlotPlaceholder icon="settings" title={t('entry.navWorkspaceSettings')} />
           ) : null}
         {view === 'team-space' ? (
-          <TeamSpaceView teamId={entryRoute.teamId} tab={entryRoute.view === 'team-space' ? entryRoute.tab : undefined} onInvite={() => setInviteOpen(true)} designSystems={designSystems} onOpenProject={onOpenProject} onDeleteProject={onDeleteProject} onRenameProject={onRenameProject} onDuplicateProject={onDuplicateProject} onCopyProject={onCopyProject} />
+          <TeamSpaceView teamId={entryRoute.teamId} tab={entryRoute.view === 'team-space' ? entryRoute.tab : undefined} onInvite={() => setInviteOpen(true)}  onOpenProject={onOpenProject} onDeleteProject={onDeleteProject} onRenameProject={onRenameProject} onDuplicateProject={onDuplicateProject} onCopyProject={onCopyProject} />
        ) : null}
         {view === 'team-folder' ? (
-           <FolderView teamId={entryRoute.teamId} folderId={entryRoute.folderId} designSystems={designSystems} onOpenProject={onOpenProject} onDeleteProject={onDeleteProject} onRenameProject={onRenameProject} onDuplicateProject={onDuplicateProject} onCopyProject={onCopyProject} />
+           <FolderView teamId={entryRoute.teamId} folderId={entryRoute.folderId}  onOpenProject={onOpenProject} onDeleteProject={onDeleteProject} onRenameProject={onRenameProject} onDuplicateProject={onDuplicateProject} onCopyProject={onCopyProject} />
         ) : null}
         {view === 'personal-all' ? (
         <PersonalAllView
           tab={entryRoute.view === 'personal-all' ? entryRoute.tab : undefined}
-          designSystems={designSystems}
           onOpenProject={onOpenProject}
           onDeleteProject={onDeleteProject}
          onDuplicateProject={onDuplicateProject}
@@ -2179,7 +2109,6 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
        {view === 'personal-folder' ? (
          <PersonalFolderView
            folderId={entryRoute.folderId}
-           designSystems={designSystems}
            onOpenProject={onOpenProject}
            onDeleteProject={onDeleteProject}
            onRenameProject={onRenameProject}
@@ -2208,8 +2137,6 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
        initialTab={newProjectInitialTab}
        skills={[...skills, ...designTemplates]}
        designTemplates={designTemplates}
-       designSystems={designSystems}
-       defaultDesignSystemId={defaultDesignSystemId}
        templates={templates}
        {...(onDeleteTemplate ? { onDeleteTemplate } : {})}
        promptTemplates={promptTemplates}

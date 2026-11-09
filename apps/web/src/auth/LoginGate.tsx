@@ -93,12 +93,9 @@ function useLoginVariants() {
  *  - `true`: a session exists → app unlocked.
  *  - `false`: no session → app locked behind the login screen.
  *
- * While locked or confirming, the app stays mounted underneath (wrapped in
- * `inert` + `aria-hidden`) so the desktop splash reveal
- * (`data-od-app-mounted`), the theme application and the white-screen
- * detector all keep working. The login screen is an inline fixed overlay on
- * top (kept in-tree — not a portal — so the server-rendered HTML matches
- * hydration) until the built-in account signs in.
+ * Workspace children mount only after authentication. The login screen reports
+ * its own readiness (`data-od-app-mounted`) so the desktop splash can reveal it
+ * without waiting for the authenticated workspace to mount.
  */
 export function LoginGate({ children }: LoginGateProps) {
   // Unknown everywhere (server + first client render) so the prerendered HTML
@@ -193,6 +190,11 @@ export function LoginGate({ children }: LoginGateProps) {
 }
 
 function LoginScreen({ onAuthed, fingerprint }: { onAuthed: (cb:any) => void; fingerprint: string | null }) {
+  // The login form is a ready surface even though AppInner has not mounted.
+  useEffect(() => {
+    document.documentElement.setAttribute('data-od-app-mounted', '1');
+  }, []);
+
   // Pre-fill the built-in account so the default credentials are one click
   // away; the user can clear and type their own values if changed later.
   // Version matches apps/packaged/package.json in packaged builds (the daemon

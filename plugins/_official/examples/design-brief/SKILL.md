@@ -19,10 +19,6 @@ od:
     type: html
     entry: brief-preview.html
     reload: debounce-100
-  design_system:
-    requires: false
-    generates: true
-    sections: [visual-theme, color-palette, typography, component-stylings, layout, depth-elevation, dos-and-donts, responsive, agent-prompt-guide]
   inputs:
     - name: brief
       type: string

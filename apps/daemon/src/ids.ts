@@ -172,3 +172,12 @@ export function getCollaboratorMemberId(username?: string): string {
   }
   return generateDeterministicId(`collaborator_${username}`);
 }
+
+export function stripPrefixAndValidateId(id: string, prefix = ''): string | null {
+  if (typeof id !== 'string') return null;
+  if (prefix && !id.startsWith(prefix)) return null;
+  const dirId = prefix ? id.slice(prefix.length) : id;
+  if (!/^[a-zA-Z0-9._-]+$/.test(dirId)) return null;
+  if (dirId === '.' || dirId === '..') return null;
+  return dirId;
+}

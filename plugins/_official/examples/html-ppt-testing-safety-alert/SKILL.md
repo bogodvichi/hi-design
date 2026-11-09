@@ -34,8 +34,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: false
   speaker_notes: true
   animations: true
   category: "government-policy"

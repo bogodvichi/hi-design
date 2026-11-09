@@ -22,6 +22,27 @@ import type { AppConfig } from '../../src/types';
 const store = new Map<string, string>();
 const originalFetch = globalThis.fetch;
 
+describe('retired pet configuration', () => {
+  it('disables old pet settings while retaining custom metadata and notifications', () => {
+    const legacy: AppConfig = {
+      ...DEFAULT_CONFIG,
+      pet: { ...DEFAULT_CONFIG.pet!, adopted: true, enabled: true,
+        custom: { ...DEFAULT_CONFIG.pet!.custom, name: 'Saved companion', imageUrl: 'data:image/png;base64,saved' } },
+      notifications: { ...DEFAULT_CONFIG.notifications!, soundEnabled: true, desktopEnabled: true },
+    };
+    store.set('open-design:config', JSON.stringify(legacy));
+    const loaded = loadConfig();
+    expect(loaded.pet?.enabled).toBe(false);
+    expect(loaded.pet?.custom.name).toBe('Saved companion');
+    expect(loaded.pet?.custom.imageUrl).toBe('data:image/png;base64,saved');
+    expect(loaded.notifications?.soundEnabled).toBe(true);
+    expect(loaded.notifications?.desktopEnabled).toBe(true);
+    expect(mergeDaemonConfig(legacy, {}).pet?.enabled).toBe(false);
+    saveConfig(legacy);
+    expect(JSON.parse(store.get('open-design:config')!).pet.enabled).toBe(false);
+  });
+});
+
 describe('KNOWN_PROVIDERS', () => {
   it('includes separate SiliconFlow CN and Global presets', () => {
     expect(

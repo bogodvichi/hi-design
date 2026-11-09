@@ -23,9 +23,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   example_prompt: "Design a launch email for a sporty running shoe brand — masthead, hero, big headline lockup, specs grid, CTA."
 ---
 
@@ -36,7 +33,7 @@ email body. Treat it like a marketing artifact: one big idea, one CTA.
 
 ## Workflow
 
-1. **Read the active DESIGN.md** (injected above). Email leans on the display
+1. **Read the supplied template/reference styles** (provided with the template). Email leans on the display
    font more than any other surface — pick the loudest type token in the DS
    for the headline lockup.
 2. **Pick the brand + product** from the brief. Generate a real wordmark, a

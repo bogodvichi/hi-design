@@ -98,7 +98,6 @@ export type ResolveResult = ResolveOutcome | ResolveFailure;
 // FS read, no SQLite write — the installer module is the only writer.
 export async function resolvePluginFolder(opts: ResolveOptions): Promise<ResolveResult> {
   const warnings: string[] = [];
-  const errors: string[] = [];
   const folder = opts.folder;
 
   let stats: fs.Stats;
@@ -111,13 +110,39 @@ export async function resolvePluginFolder(opts: ResolveOptions): Promise<Resolve
     return { ok: false, errors: [`Plugin path is not a directory: ${folder}`], warnings };
   }
 
-  const sidecarPath = path.join(folder, 'open-design.json');
-  const skillPath = path.join(folder, 'SKILL.md');
-  const claudePath = path.join(folder, '.claude-plugin', 'plugin.json');
+  return resolvePluginSources(opts, {
+    sidecar: await readOptionalPluginSource(path.join(folder, 'open-design.json')),
+    skill: await readOptionalPluginSource(path.join(folder, 'SKILL.md')),
+    claude: await readOptionalPluginSource(path.join(folder, '.claude-plugin', 'plugin.json')),
+  });
+}
 
+async function readOptionalPluginSource(file: string): Promise<string | undefined> {
+  return fs.existsSync(file) ? fsp.readFile(file, 'utf8') : undefined;
+}
+
+// Bundled registry reads are synchronous like SQLite reads. Only small manifest
+// sources are read here; asset hashing belongs to first activation.
+export function resolvePluginFolderSync(opts: ResolveOptions): ResolveResult {
+  const read = (file: string) => fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : undefined;
+  return resolvePluginSources(opts, {
+    sidecar: read(path.join(opts.folder, 'open-design.json')),
+    skill: read(path.join(opts.folder, 'SKILL.md')),
+    claude: read(path.join(opts.folder, '.claude-plugin', 'plugin.json')),
+  });
+}
+
+function resolvePluginSources(opts: ResolveOptions, sources: {
+  sidecar?: string | undefined;
+  skill?: string | undefined;
+  claude?: string | undefined;
+}): ResolveResult {
+  const folder = opts.folder;
+  const warnings: string[] = [];
+  const errors: string[] = [];
   let sidecar: PluginManifest | undefined;
-  if (fs.existsSync(sidecarPath)) {
-    const rawSidecar = await fsp.readFile(sidecarPath, 'utf8');
+  if (sources.sidecar !== undefined) {
+    const rawSidecar = sources.sidecar;
     const parsed: ManifestParseResult = parseManifest(rawSidecar);
     if (!parsed.ok) {
       errors.push(...parsed.errors.map((e) => `open-design.json: ${e}`));
@@ -128,14 +153,14 @@ export async function resolvePluginFolder(opts: ResolveOptions): Promise<Resolve
   }
 
   const adapters: PluginManifest[] = [];
-  if (fs.existsSync(skillPath)) {
-    const raw = await fsp.readFile(skillPath, 'utf8');
+  if (sources.skill !== undefined) {
+    const raw = sources.skill;
     const adapted = adaptAgentSkill(raw, { folderId: opts.folderId });
     adapters.push(adapted.manifest);
     warnings.push(...adapted.warnings);
   }
-  if (fs.existsSync(claudePath)) {
-    const raw = await fsp.readFile(claudePath, 'utf8');
+  if (sources.claude !== undefined) {
+    const raw = sources.claude;
     const adapted = adaptClaudePlugin(raw, { folderId: opts.folderId });
     adapters.push(adapted.manifest);
     warnings.push(...adapted.warnings);
@@ -248,7 +273,7 @@ export function rowToInstalledPlugin(row: DbRow): InstalledPluginRecord {
  * catalog: it may see unbound local user plugins and bundled plugins, but not
  * anything claimed by a Workspace.
  */
-function pluginVisibleFromWorkspace(
+export function pluginVisibleFromWorkspace(
   db: SqliteDb,
   plugin: InstalledPluginRecord,
   scope: string | null | undefined,
@@ -413,16 +438,35 @@ export function listInstalledPlugins(
   workspaceMemberId?: string | null,
 ): InstalledPluginRecord[] {
   const rows = db.prepare(`SELECT * FROM installed_plugins ORDER BY title ASC`).all() as DbRow[];
-  const records = rows.map(rowToInstalledPlugin);
+  const stored = rows.map(rowToInstalledPlugin);
+  const bundled = bundledCatalogs.get(db);
+  const records = bundled ? [
+    ...stored.filter((record) => record.sourceKind !== 'bundled'),
+    ...bundled.list().filter((record) => !stored.some((local) => local.sourceKind !== 'bundled' && local.id === record.id)),
+  ] : stored;
+  records.sort((a, b) => a.title.localeCompare(b.title));
   return records.filter((record) =>
     !isInternalBundledStrategyV2(record)
     && pluginVisibleFromWorkspace(db, record, workspaceId, workspaceMemberId),
   );
 }
 
+interface BundledPluginCatalog {
+  list(): InstalledPluginRecord[];
+  get(id: string): InstalledPluginRecord | null;
+}
+
+const bundledCatalogs = new WeakMap<SqliteDb, BundledPluginCatalog>();
+
+export function setBundledPluginCatalog(db: SqliteDb, catalog: BundledPluginCatalog): void {
+  bundledCatalogs.set(db, catalog);
+}
+
 export function getInstalledPlugin(db: SqliteDb, id: string): InstalledPluginRecord | null {
   const row = db.prepare(`SELECT * FROM installed_plugins WHERE id = ?`).get(id) as DbRow | undefined;
-  return row ? rowToInstalledPlugin(row) : null;
+  const stored = row ? rowToInstalledPlugin(row) : null;
+  const bundled = bundledCatalogs.get(db);
+  return bundled && (!stored || stored.sourceKind === 'bundled') ? bundled.get(id) : stored;
 }
 
 export function upsertInstalledPlugin(db: SqliteDb, record: InstalledPluginRecord): void {

@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { readSharedTeamResourceListing } from './team-resource-shared-reader.js';
 import { publishCommunityResourceCopy } from './community-resource-copy.js';
 // Team resource sharing. A member with publish rights promotes a personal
 // resource — a design system, plugin, or skill — into the team scope: the
@@ -172,8 +173,8 @@ export function createTeamResourceShareService(
   const env = options.env ?? process.env;
   // HDW HTTP is the default resource transport. When active and a client is
   // available, publish/unpublish through the HDW adapter so sharing works
-  // without the vela CLI. The sharedResources listing still flows through
-  // options.run (the SWR-cached vela command) with its in-memory fallback.
+  // without the vela CLI. Listings use the same authority; server wiring may
+  // provide a shared, identity-scoped read cache through options.run.
   if (shouldUseHdwHttpResourceTransport(env)) {
     const client = options.hdwClient ?? createHdwCloudClientFromEnv(env);
     if (client) {
@@ -249,11 +250,9 @@ export function createTeamResourceShareService(
           const { principal } = scope;
           const shared = sharedFor(JSON.stringify([principal.teamId, principal.memberId]));
           try {
-            const out = await (options.run ?? defaultRun)(
-              ['shared', '--json'],
-              principal.teamId,
-              readOptions,
-            );
+            const out = options.run
+              ? await options.run(['shared', '--json'], principal.teamId, readOptions)
+              : await readSharedTeamResourceListing(principal.teamId, client, env);
             const scopedResources = parseSharedResourceRecords(out, options.kind, scopedIdPrefixFor(principal));
             const legacyResources = principal.workspaceType === 'personal'
               ? []

@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { flushSync } from 'react-dom';
-import { AnimatePresence, motion, MotionConfig } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { Button } from '@open-design/components';
-import { LoginGate, useAuth } from './auth/LoginGate';
+import { useAuth } from './auth/LoginGate';
 import { applyLanzAccountConfig, scopeLanzAccountConfig } from './state/lanz-account';
 import { reportAgentDetectDiagnostics } from './analytics/agent-detect';
 import { useAnalytics } from './analytics/provider';
@@ -11,7 +11,6 @@ import {
   trackProjectCreateResult,
 } from './analytics/events';
 import { deriveUploadCohort } from './analytics/upload-tracking';
-import { setPendingDesignSystemCreateEntry } from './analytics/ds-create-entry';
 import { detectClientType } from './analytics/identity';
 import {
   stashOnboardingEntryForProject,
@@ -35,7 +34,6 @@ import type {
   ProjectScenarioTaskProfile,
   WorkspaceProjectSummary,
   WorkspaceActiveResponse,
-  WorkspaceDirectoryItem,
 } from '@open-design/contracts';
 import { EntryView } from './components/EntryView';
 import type { ProjectMutationSource, ProjectTitleHint } from './components/EntryShell';
@@ -51,13 +49,9 @@ import { Toast } from './components/Toast';
 import { notifyToast } from './components/toast-context';
 import { userFacingError } from './utils/userFacingError';
 import { CenteredLoader } from './components/Loading';
-import { PetOverlay, type PetTaskCenter } from './components/pet/PetOverlay';
-import { buildPetTaskCenter } from './components/pet/taskCenter';
-import { migrateCustomPetAtlas } from './components/pet/pets';
-import {
-  ProjectView,
-  type ProjectRenameFenceToken,
-  type ProjectNameAuthorityResolution,
+import type {
+  ProjectRenameFenceToken,
+  ProjectNameAuthorityResolution,
 } from './components/ProjectView';
 import { ProjectCreationPendingView } from './components/ProjectCreationPendingView';
 import { AmrArtifactUpgradeGate } from './components/AmrArtifactUpgradeGate';
@@ -80,26 +74,16 @@ import {
 import { WorkspaceTopRightAccountCluster } from './components/EntryNavRail';
 import { ProjectWorkspaceRecoveryTip } from './components/ProjectWorkspaceRecoveryTip';
 import {
-  DesignSystemCreationFlow,
-  DesignSystemDetailView,
-} from './components/DesignSystemFlow';
-import {
   IframeKeepAliveProvider,
   useIframeKeepAlivePool,
 } from './components/IframeKeepAlivePool';
-import {
-  SettingsDialog,
-  switchApiProtocolConfig,
-  updateCurrentApiProtocolConfig,
-  type SettingsSection,
-  type SettingsHighlight,
-} from './components/SettingsDialog';
+import type { SettingsSection, SettingsHighlight } from './components/SettingsDialog';
+import { switchApiProtocolConfig, updateCurrentApiProtocolConfig } from './state/apiProtocolConfig';
 import { PrivacyConsentModal } from './components/PrivacyConsentModal';
 import {
   daemonIsLive,
   fetchAppVersionInfo,
   fetchAgentsStream,
-  fetchDesignSystems,
   fetchDesignTemplates,
   invalidateProjectFilesCache,
   fetchPromptTemplates,
@@ -110,10 +94,8 @@ import {
 } from './providers/registry';
 import { openFirstPartyExternalLinkFromClick } from './first-party-external-link';
 import {
-  RUNS_CHANGED_EVENT,
   fetchAmrModels,
   fetchVelaLoginStatus,
-  listProjectRuns,
   type VelaLoginStatus,
 } from './providers/daemon';
 import {
@@ -159,12 +141,11 @@ import {
   createPluginUseHandoff,
   stashHomePromptHandoff,
 } from './components/home-hero/plugin-authoring';
-import { goBack, navigate, useRoute, type Route } from './router';
+import { navigate, useRoute, type Route } from './router';
 import {
   fetchDaemonConfig,
   DEFAULT_CONFIG,
   DEFAULT_NOTIFICATIONS,
-  DEFAULT_PET,
   fetchMediaProvidersFromDaemon,
   hasAnyConfiguredProvider,
   fetchComposioConfigFromDaemon,
@@ -200,7 +181,6 @@ import { installFontRecovery } from './runtime/font-recovery';
 import {
   bootstrapFirstOpenTeamProjectRoute,
   bootstrapProjectRoute,
-  createDesignSystemProjectFromProject,
   createProject,
   createPluginShareProject,
   deleteProject as deleteProjectApi,
@@ -229,13 +209,8 @@ import {
   touchRecentlyOpenedProject,
   updateRecentlyOpenedProjectOwner,
   RECENTLY_OPENED_PROJECTS_CHANGED_EVENT,
+  updateRecentlyOpenedProjectCover,
 } from './lib/recently-opened-projects';
-import { updateRecentlyOpenedProjectCover } from './lib/recently-opened-projects';
-import type {
-  PluginShareAction,
-  PluginShareProjectOutcome,
-  WorkspaceProjectListView,
-} from './state/projects';
 import {
   markProjectDisplaySnapshotsDirty,
   patchProjectDisplaySnapshots,
@@ -247,22 +222,9 @@ import {
 import { getOpenDesignHost, type OpenDesignHostProjectImportSuccess } from '@open-design/host';
 import { useI18n } from './i18n';
 import { liveArtifactTabId } from './types';
-import type {
-  AgentInfo,
-  AgentModelChoice,
-  ApiProtocol,
-  AppConfig,
-  AppVersionInfo,
-  ChatAttachment,
-  DesignSystemGenerationJob,
-  DesignSystemSummary,
-  Project,
-  ProjectMetadata,
-  ProjectTemplate,
-  ProviderModelOption,
-  PromptTemplateSummary,
-  SkillSummary,
-} from './types';
+import type { WorkspaceDirectoryItem } from '@open-design/contracts';
+import type { PluginShareAction, PluginShareProjectOutcome, WorkspaceProjectListView } from './state/projects';
+import type { AgentInfo, AgentModelChoice, ApiProtocol, AppConfig, AppVersionInfo, ChatAttachment, DesignSystemGenerationJob, DesignSystemSummary, Project, ProjectMetadata, ProjectTemplate, ProviderModelOption, PromptTemplateSummary, SkillSummary } from './types';
 
 type AppCreateProjectInput = Omit<CreateInput, 'metadata'> & {
   metadata?: CreateInput['metadata'];
@@ -296,6 +258,9 @@ interface PendingProjectCreation {
   projectId: string;
   prompt: string;
 }
+
+const SettingsDialog = lazy(() => import('./components/SettingsDialog').then(module => ({ default: module.SettingsDialog })));
+const ProjectView = lazy(() => import('./components/ProjectView').then((module) => ({ default: module.ProjectView })));
 
 const APP_CONFIG_CHANGED_EVENT = 'open-design:app-config-changed';
 const AMR_AGENT_ID = 'amr';
@@ -954,21 +919,12 @@ export async function hydrateReadyTeamProject(
 }
 
 export function App() {
-  // `reducedMotion="user"` makes every motion/react component honor the OS
-  // `prefers-reduced-motion` setting: transform/layout animations are zeroed
-  // out while opacity-only changes are kept. The CSS `@media (prefers-reduced-
-  // motion: reduce)` block covers the CSS-keyframe surfaces, but the dialogs,
-  // toasts and popovers that moved to motion/react need this gate too — without
-  // it they keep springing/sliding for users who asked us not to animate.
+  // AppEntry loads the workbench only after LoginGate confirms authentication.
   return (
-    <MotionConfig reducedMotion="user">
-      <IframeKeepAliveProvider>
-        <LoginGate>
-          <WorkspaceMemberDirectoryPreloader />
-          <AppInner />
-        </LoginGate>
-      </IframeKeepAliveProvider>
-    </MotionConfig>
+    <IframeKeepAliveProvider>
+      <WorkspaceMemberDirectoryPreloader />
+      <AppInner />
+    </IframeKeepAliveProvider>
   );
 }
 
@@ -1160,27 +1116,13 @@ function AppInner() {
   // audio templates) — sourced from /api/design-templates and shown in the
   // EntryView Templates tab. See specs/current/skills-and-design-templates.md.
   const [designTemplates, setDesignTemplates] = useState<SkillSummary[]>([]);
-  const [workspaceDesignSystems, setWorkspaceDesignSystems] = useState<{
-    identity: string;
-    items: DesignSystemSummary[];
-  }>(() => ({
-    identity: currentWorkspaceCatalogIdentity,
-    items: [],
-  }));
   // Like skills and projects, a design-system catalog belongs to one exact
   // Workspace membership. Effects refresh after React commits, so merely
   // guarding late responses is not enough: without this render-time identity
   // check, switching A -> B paints A's systems under B until B's request
   // finishes. Fail closed during that gap; opening the picker still reuses the
   // already-loaded list instantly when the identity has not changed.
-  const designSystems = workspaceDesignSystems.identity === currentWorkspaceCatalogIdentity
-    ? workspaceDesignSystems.items
-    : [];
   const skillsRequestGenerationRef = useRef<Map<string, number>>(new Map());
-  const designSystemsRequestGenerationRef = useRef<Map<string, number>>(new Map());
-  const [pendingDesignSystemRevisionJobs, setPendingDesignSystemRevisionJobs] = useState<
-    Record<string, DesignSystemGenerationJob>
-  >({});
   const [projects, setProjects] = useState<Project[]>([]);
   const [pendingProjectCreation, setPendingProjectCreation] =
     useState<PendingProjectCreation | null>(null);
@@ -1202,7 +1144,6 @@ function AppInner() {
         previous
         && (
           previous.skillId !== project.skillId
-          || previous.designSystemId !== project.designSystemId
           || previous.customInstructions !== project.customInstructions
         )
       ) {
@@ -1297,7 +1238,6 @@ function AppInner() {
   const refreshProjectCatalogRef = useRef<() => void>(() => {});
   const teamResourceRefreshRefs = useRef<{
     skill: (resourceId?: string) => void;
-    designSystem: (resourceId?: string) => void;
     plugin: (
       context: WorkspaceCollabContext | null,
       accountGeneration: number,
@@ -1305,7 +1245,6 @@ function AppInner() {
     catchUp: () => void;
   }>({
     skill: () => {},
-    designSystem: () => {},
     plugin: () => {},
     catchUp: () => {},
   });
@@ -1333,10 +1272,7 @@ function AppInner() {
         teamResourceRefreshRefs.current.skill(payload.resourceId);
         return;
       }
-      if (payload.resourceKind === 'design_system') {
-        teamResourceRefreshRefs.current.designSystem(payload.resourceId);
-        return;
-      }
+      if (payload.resourceKind === 'design_system') return;
       teamResourceRefreshRefs.current.plugin(
         invalidationWorkspaceContext,
         invalidationAccountGeneration,
@@ -1345,11 +1281,6 @@ function AppInner() {
   }, {
     workspaceContext,
     onActive: handleTeamResourceStreamActive,
-  });
-  const [petTaskCenter, setPetTaskCenter] = useState<PetTaskCenter>({
-    running: [],
-    queued: [],
-    recent: [],
   });
   const [projectRunActivity, setProjectRunActivity] = useState<{
     projectId: string | null;
@@ -1422,7 +1353,6 @@ function AppInner() {
     const { functional, templates } = skillRegistriesReadyRef.current;
     if (functional && templates) setSkillsLoading(false);
   }, []);
-  const [dsLoading, setDsLoading] = useState(true);
   const [projectsLoading, setProjectsLoading] = useState(true);
   const [promptTemplatesLoading, setPromptTemplatesLoading] = useState(true);
   // Goes true once the daemon-persisted config (agentId/designSystemId/etc.)
@@ -2277,7 +2207,6 @@ function AppInner() {
         // instead of the entry view sitting on indefinite spinners.
         setAgentsLoading(false);
         setSkillsLoading(false);
-        setDsLoading(false);
         setProjectsLoading(false);
         setPromptTemplatesLoading(false);
         setDaemonConfigLoaded(true);
@@ -2345,42 +2274,6 @@ function AppInner() {
         setDesignTemplates(list);
         markSkillRegistryReady('templates');
       });
-
-      const designSystemsContext = workspaceContextRef.current;
-      // A cached Team identity already has an SSE lifecycle owner below. Do
-      // not race an eager bootstrap snapshot against its first onActive; the
-      // 250ms fallback covers shells where the stream never opens.
-      if (designSystemsContext?.workspaceType !== 'team') {
-        const designSystemsWorkspaceIdentity = workspaceIdentityCacheKey(designSystemsContext);
-        const designSystemsAccountGeneration = currentWorkspaceAccountGeneration();
-        const designSystemsCatalogIdentity = JSON.stringify([
-          'workspace-account',
-          designSystemsAccountGeneration,
-          designSystemsWorkspaceIdentity,
-        ]);
-        const designSystemsRequestGeneration =
-          (designSystemsRequestGenerationRef.current.get(designSystemsCatalogIdentity) ?? 0) + 1;
-        designSystemsRequestGenerationRef.current.set(
-          designSystemsCatalogIdentity,
-          designSystemsRequestGeneration,
-        );
-        void fetchDesignSystems(designSystemsContext).then((list) => {
-          if (
-            cancelled ||
-            workspaceContextStateRef.current.identityChangePending ||
-            designSystemsRequestGenerationRef.current.get(designSystemsCatalogIdentity)
-              !== designSystemsRequestGeneration ||
-            currentWorkspaceAccountGeneration() !== designSystemsAccountGeneration ||
-            workspaceIdentityCacheKey(workspaceContextRef.current)
-              !== designSystemsWorkspaceIdentity
-          ) return;
-          setWorkspaceDesignSystems({
-            identity: designSystemsCatalogIdentity,
-            items: list,
-          });
-          setDsLoading(false);
-        });
-      }
 
       const request = beginProjectListRequest(workspaceProjectViewRef.current);
       void listCurrentWorkspaceProjects({
@@ -2576,34 +2469,6 @@ function AppInner() {
     config.onboardingCompleted,
  ]);
 
- // One-shot self-healing migration for pets adopted before the
-  // overlay learned atlas-row switching. If the stored pet is a
-  // custom / codex pet whose imageUrl is a single-row strip
-  // (no atlas), we silently re-download the full spritesheet so
-  // hover, drag, and idle-ambient variety all light up on next render.
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      const upgraded = await migrateCustomPetAtlas(config);
-      if (!upgraded || cancelled) return;
-      setConfig((prev) => {
-        if (!prev.pet) return prev;
-        const next: AppConfig = {
-          ...prev,
-          pet: { ...prev.pet, custom: upgraded },
-        };
-        saveConfig(next);
-        return next;
-      });
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // Snapshot the config at mount; migration is one-shot per session
-    // and should not re-run every time config changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const refreshProjects = useCallback(async () => {
     const request = beginProjectListRequest(workspaceProjectView);
     const list = await listCurrentWorkspaceProjects({ workspaceView: workspaceProjectView });
@@ -2693,55 +2558,9 @@ function AppInner() {
     reconcileFetchedProjects,
   ]);
 
-  const refreshDesignSystems = useCallback(async (options?: {
-    forceTeamMaterialization?: boolean;
-    materializedTeamIds?: readonly string[];
-  }) => {
-    // Carry the captured Workspace/member identity on the request. The daemon
-    // verifies that exact membership instead of consulting mutable ambient
-    // Workspace state, and the same identity key prevents an A response from
-    // committing after the UI has moved to B.
-    if (workspaceContextStateRef.current.identityChangePending) return;
-    const issuedContext = workspaceContextRef.current;
-    const issuedIdentity = workspaceIdentityCacheKey(issuedContext);
-    const issuedAccountGeneration = currentWorkspaceAccountGeneration();
-    const issuedCatalogIdentity = JSON.stringify([
-      'workspace-account',
-      issuedAccountGeneration,
-      issuedIdentity,
-    ]);
-    const requestGeneration =
-      (designSystemsRequestGenerationRef.current.get(issuedCatalogIdentity) ?? 0) + 1;
-    designSystemsRequestGenerationRef.current.set(issuedCatalogIdentity, requestGeneration);
-    const list = await fetchDesignSystems(issuedContext, options);
-    if (
-      workspaceContextStateRef.current.identityChangePending
-      || designSystemsRequestGenerationRef.current.get(issuedCatalogIdentity)
-        !== requestGeneration
-      || currentWorkspaceAccountGeneration() !== issuedAccountGeneration
-      || workspaceIdentityCacheKey(workspaceContextRef.current) !== issuedIdentity
-    ) return;
-    setWorkspaceDesignSystems({ identity: issuedCatalogIdentity, items: list });
-    // Bootstrap and this workspace-scoped refresh can overlap on launch.
-    // Either response is a complete catalog for the active daemon identity,
-    // so do not leave a successful refresh hidden behind bootstrap's loader
-    // when that duplicate request is cancelled or stalls.
-    setDsLoading(false);
-  }, []);
-
   // The design-system catalog is verified against the exact Workspace/member
   // identity. Re-read whenever either half changes; a role replacement can
   // reuse the Workspace id while changing the authoritative membership.
-  useEffect(() => {
-    if (workspaceContextState.identityChangePending) return;
-    if (workspaceContext?.workspaceType === 'team') return;
-    void refreshDesignSystems();
-  }, [
-    currentWorkspaceCatalogIdentity,
-    refreshDesignSystems,
-    workspaceContext?.workspaceType,
-    workspaceContextState.identityChangePending,
-  ]);
 
   const refreshSkills = useCallback(async (scoped = true) => {
     // The workspace-keyed effect and composer scope tabs both need the
@@ -3001,20 +2820,6 @@ function AppInner() {
     [],
   );
 
-  const handleChangeDefaultDesignSystem = useCallback(
-    (designSystemId: string | null) => {
-      const next = {
-        ...latestPersistedConfigRef.current,
-        designSystemId,
-      };
-      latestPersistedConfigRef.current = next;
-      saveConfig(next);
-      void syncConfigToDaemon(next);
-      setConfig(next);
-    },
-    [],
-  );
-
   const refreshAgents = useCallback(
     async (options?: { throwOnError?: boolean; agentCliEnv?: AppConfig['agentCliEnv'] }) => {
       if (options && Object.prototype.hasOwnProperty.call(options, 'agentCliEnv')) {
@@ -3116,10 +2921,6 @@ function AppInner() {
     async (
       input: AppCreateProjectInput,
     ): Promise<boolean> => {
-      // Honor an explicit `null` design system — the create panel defaults
-      // to "None" for every kind now, and the user expects that to land
-      // as a no-design-system project rather than silently inheriting the
-      // workspace default.
       const derivedPendingPrompt =
       input.pendingPrompt ??
       (input.metadata?.promptTemplate?.prompt?.trim() || undefined);
@@ -3548,47 +3349,6 @@ function AppInner() {
     }
     return resolved;
   }, [projects]);
-
-  const handleCreateDesignSystemFromProject = useCallback(
-    async (
-      sourceProjectId: string,
-      input: { name?: string; pendingPrompt?: string },
-    ) => {
-      const sourceWorkspaceContext =
-        await resolveSourceProjectWorkspaceContext(sourceProjectId);
-      const result = await createDesignSystemProjectFromProject(
-        sourceProjectId,
-        input,
-        sourceWorkspaceContext,
-      );
-      try {
-        window.sessionStorage.setItem(`od:auto-send-first:${result.project.id}`, '1');
-        const pendingPrompt = input.pendingPrompt ?? result.project.pendingPrompt;
-        if (pendingPrompt !== undefined) {
-          window.sessionStorage.setItem(
-            `od:auto-send-prompt:${result.project.id}`,
-            pendingPrompt,
-          );
-        }
-      } catch {
-        // If sessionStorage is unavailable, the project still opens with the
-        // pending prompt ready for the user to send manually.
-      }
-      rememberLocalProject(result.project.id);
-      setProjects((curr) => [
-        result.project,
-        ...curr.filter((p) => p.id !== result.project.id),
-      ]);
-      void refreshDesignSystems();
-      navigate({
-        kind: 'project',
-        projectId: result.project.id,
-        conversationId: result.conversationId,
-        fileName: null,
-      });
-    },
-    [refreshDesignSystems, rememberLocalProject, resolveSourceProjectWorkspaceContext],
-  );
 
   const handleDuplicateProject = useCallback(
     async (
@@ -4401,32 +4161,6 @@ if (fetchedProject) {
     t,
   ]);
 
-  useEffect(() => {
-    if (!config.pet?.enabled || !daemonLive) {
-      setPetTaskCenter({ running: [], queued: [], recent: [] });
-      return;
-    }
-
-    let cancelled = false;
-    const refresh = async () => {
-      const runs = await listProjectRuns();
-      if (cancelled) return;
-      setPetTaskCenter(buildPetTaskCenter(projects, runs));
-    };
-    const handleRunsChanged = () => {
-      void refresh();
-    };
-
-    void refresh();
-    window.addEventListener(RUNS_CHANGED_EVENT, handleRunsChanged);
-    const id = window.setInterval(refresh, 2000);
-    return () => {
-      cancelled = true;
-      window.removeEventListener(RUNS_CHANGED_EVENT, handleRunsChanged);
-      window.clearInterval(id);
-    };
-  }, [config.pet?.enabled, daemonLive, projects]);
-
   const handleOpenLiveArtifact = useCallback((projectId: string, artifactId: string) => {
     navigate({ kind: 'project', projectId, fileName: liveArtifactTabId(artifactId) });
   }, []);
@@ -4794,24 +4528,6 @@ if (fetchedProject) {
     [iframeKeepAlivePool, refreshSkills],
   );
 
-  const handleDesignSystemsChanged = useCallback(
-    (affectedDesignSystemId?: string) => {
-      void refreshDesignSystems({ forceTeamMaterialization: true });
-      iframeKeepAlivePool.evictMatching(
-        (entry) => {
-          const proj = projectsRef.current.find((p) => p.id === entry.projectId);
-          if (!proj) return false;
-          if (affectedDesignSystemId) {
-            return proj.designSystemId === affectedDesignSystemId;
-          }
-          return proj.designSystemId != null;
-        },
-        { includeActive: true },
-      );
-    },
-    [iframeKeepAlivePool, refreshDesignSystems],
-  );
-
   const handlePluginsChanged = useCallback((
     context: WorkspaceCollabContext | null,
     accountGeneration: number,
@@ -4821,13 +4537,11 @@ if (fetchedProject) {
   }, []);
 
  teamResourceRefreshRefs.current.skill = handleSkillsChanged;
- teamResourceRefreshRefs.current.designSystem = handleDesignSystemsChanged;
  teamResourceRefreshRefs.current.plugin = handlePluginsChanged;
  teamResourceRefreshRefs.current.catchUp = () => {
    // Focus/reconnect is snapshot catch-up, not a mutation. Keep project
    // previews intact and never fan out the plugin mutation CustomEvent.
    void refreshSkills();
-   void refreshDesignSystems({ forceTeamMaterialization: true });
  };
   // The AddSkillDialog dispatches `personal:skill-refresh` after a successful
   // install. App owns the global skills catalog, so listen here to refresh it
@@ -4840,23 +4554,6 @@ if (fetchedProject) {
     window.addEventListener('personal:skill-refresh', handleSkillRefresh);
     return () => window.removeEventListener('personal:skill-refresh', handleSkillRefresh);
   }, [refreshSkills]);
- const handleDesignSystemImportRebuildJob = useCallback(
-    (designSystemId: string, job: DesignSystemGenerationJob) => {
-      setPendingDesignSystemRevisionJobs((current) => ({
-        ...current,
-        [designSystemId]: job,
-      }));
-    },
-    [],
-  );
-  const handleDesignSystemRevisionJobConsumed = useCallback((designSystemId: string, jobId: string) => {
-    setPendingDesignSystemRevisionJobs((current) => {
-      if (current[designSystemId]?.id !== jobId) return current;
-      const next = { ...current };
-      delete next[designSystemId];
-      return next;
-    });
-  }, []);
 
   // The project list belongs to the shell's ambient Workspace and is cleared
   // immediately when the navigation rail switches A -> B. An already-open
@@ -5289,22 +4986,6 @@ if (fetchedProject) {
     openSettings('execution', { highlight: 'amr' });
   }, [openSettings]);
 
-  const openPetSettings = useCallback(() => {
-    const currentRoute = routeRef.current;
-    settingsReturnTargetRef.current =
-      currentRoute.kind === 'project' && identityScopeKey !== null
-        ? {
-            route: { ...currentRoute },
-            accountGeneration: currentWorkspaceAccountGeneration(),
-            identityScopeKey,
-          }
-        : null;
-    setSettingsWelcome(false);
-    setSettingsInitialSection('pet');
-    setSettingsHighlight(null);
-    navigate({ kind: 'home', view: 'settings' });
-  }, [identityScopeKey]);
-
   const openMcpSettings = useCallback(() => {
     setIntegrationInitialTab('mcp');
     navigate({ kind: 'home', view: 'integrations' });
@@ -5347,52 +5028,6 @@ if (fetchedProject) {
     return () => window.removeEventListener('keydown', onKeyDown, { capture: true });
   }, [openSettings]);
 
-  // Explicit enabled toggle — true = wake, false = tuck. Persists to
-  // localStorage so the overlay state survives across reloads. We keep
-  // `adopted` untouched so the entry-view CTA does not regress to
-  // "adopt me" once the user has already chosen.
-  const handleSetPetEnabled = useCallback((enabled: boolean) => {
-    setConfig((curr) => {
-      const prev = curr.pet ?? DEFAULT_PET;
-      const next: AppConfig = { ...curr, pet: { ...prev, enabled } };
-      saveConfig(next);
-      return next;
-    });
-  }, []);
-
-  const handleTuckPet = useCallback(
-    () => handleSetPetEnabled(false),
-    [handleSetPetEnabled],
-  );
-
-  // Toggle wake/tuck — used by the pet rail and the composer button.
-  const handleTogglePet = useCallback(() => {
-    setConfig((curr) => {
-      const prev = curr.pet ?? DEFAULT_PET;
-      const next: AppConfig = {
-        ...curr,
-        pet: { ...prev, enabled: !prev.enabled },
-      };
-      saveConfig(next);
-      return next;
-    });
-  }, []);
-
-  // Inline adopt — the right-hand pet rail and the composer's pet menu
-  // both call this to switch pets without bouncing the user into
-  // Settings. It always wakes the overlay so the change is visible.
-  const handleAdoptPet = useCallback((petId: string) => {
-    setConfig((curr) => {
-      const prev = curr.pet ?? DEFAULT_PET;
-      const next: AppConfig = {
-        ...curr,
-        pet: { ...prev, adopted: true, enabled: true, petId },
-      };
-      saveConfig(next);
-      return next;
-    });
-  }, []);
-
   // When the user lands on the entry view (route.kind === 'home'), pull
   // a fresh template list. The template store is global — if they just
   // saved a template inside a project, returning home should reflect it
@@ -5423,13 +5058,6 @@ if (fetchedProject) {
         (s) => !(config.disabledSkills ?? []).includes(s.id),
       ),
     [designTemplates, config.disabledSkills],
-  );
-  const enabledDS = useMemo(
-    () =>
-      designSystems.filter(
-        (d) => !(config.disabledDesignSystems ?? []).includes(d.id),
-      ),
-    [designSystems, config.disabledDesignSystems],
   );
 
   const handleCloseSettings = () => {
@@ -5478,6 +5106,7 @@ if (fetchedProject) {
   }, []);
 
   const renderSettingsSurface = (presentation: 'modal' | 'page') => (
+    <Suspense fallback={<CenteredLoader label={t('common.loading')} />}>
     <SettingsDialog
       presentation={presentation}
       initial={config}
@@ -5507,11 +5136,10 @@ if (fetchedProject) {
       onReloadMediaProviders={reloadMediaProvidersFromDaemon}
       onProjectsRefresh={refreshProjects}
       onSkillsChanged={handleSkillsChanged}
-      onDesignSystemsChanged={handleDesignSystemsChanged}
-      onDesignSystemImportRebuildJob={handleDesignSystemImportRebuildJob}
       providerModelsCache={providerModelsCache}
       onProviderModelsCacheChange={setProviderModelsCache}
     />
+    </Suspense>
   );
 
   // Phase 2B / spec §11.6 — marketplace deep UI dispatch. The
@@ -5550,12 +5178,10 @@ if (fetchedProject) {
       active={entrySurfaceActive}
       skills={enabledFunctionalSkills}
       designTemplates={enabledDesignTemplates}
-      designSystems={enabledDS}
       projects={projects}
       templates={templates}
       onDeleteTemplate={handleDeleteTemplate}
       promptTemplates={promptTemplates}
-      defaultDesignSystemId={config.designSystemId}
       agents={agents}
       agentsLoading={agentsLoading}
       amrLoggedIn={amrLoginStatus?.loggedIn ?? null}
@@ -5584,9 +5210,6 @@ if (fetchedProject) {
       skillsLoading={
         workspaceSkills.identity !== currentWorkspaceCatalogIdentity || skillsLoading
       }
-      designSystemsLoading={
-        workspaceDesignSystems.identity !== currentWorkspaceCatalogIdentity || dsLoading
-      }
       projectsLoading={projectsLoading}
       promptTemplatesLoading={promptTemplatesLoading}
       onCreateProject={handleCreateProject}
@@ -5603,13 +5226,6 @@ if (fetchedProject) {
       onCopyProject={handleCopyProject}
       onCopySharedProject={handleCopySharedProject}
       onTeamProjectContentReady={handleTeamProjectContentReady}
-      onChangeDefaultDesignSystem={handleChangeDefaultDesignSystem}
-      onCreateDesignSystem={() => {
-        setPendingDesignSystemCreateEntry('design_systems_page');
-        navigate({ kind: 'design-system-create' });
-      }}
-      onOpenDesignSystem={(id: string) => navigate({ kind: 'design-system-detail', designSystemId: id })}
-      onDesignSystemsRefresh={refreshDesignSystems}
       onPersistComposioKey={handleConfigPersistComposioKey}
       onOpenSettings={openSettings}
       onCompleteOnboarding={handleCompleteOnboarding}
@@ -5695,7 +5311,7 @@ if (fetchedProject) {
           // copied entry file (keep in sync with the EntryShell-embedded
           // community tab). Templates without a duplicable artifact fall
           // back to the old prompt-only project.
-          void (async () => {
+          return (async () => {
             const name = summarizeProjectNameFromPrompt(prompt) || t('common.untitled');
             try {
               // One resolved authority for BOTH requests: the create binds the
@@ -5758,49 +5374,6 @@ if (fetchedProject) {
           }));
           navigate({ kind: 'home', view: 'home' });
         }}
-      />
-    );
-  } else if (route.kind === 'design-system-create') {
-    appMain = (
-      <DesignSystemCreationFlow
-        onBack={() => navigate({ kind: 'home', view: 'design-systems' })}
-        designSystems={enabledDS}
-        onCreated={(projectId, project, conversationId) => {
-          if (project) {
-            setProjects((curr) => [
-              project,
-              ...curr.filter((p) => p.id !== project.id),
-            ]);
-          }
-          navigate({ kind: 'project', projectId, conversationId: conversationId ?? null, fileName: null });
-        }}
-        onProjectPrepared={(project) => {
-          setProjects((curr) => [
-            project,
-            ...curr.filter((p) => p.id !== project.id),
-          ]);
-        }}
-        onSystemsRefresh={refreshDesignSystems}
-        config={config}
-        onOpenConnectorsTab={() => openSettings('composio')}
-      />
-    );
-  } else if (route.kind === 'design-system-detail') {
-    appMain = (
-      <DesignSystemDetailView
-        id={route.designSystemId}
-        selectedId={config.designSystemId}
-        config={config}
-        agents={agents}
-        onBack={() => navigate({ kind: 'home', view: 'design-systems' })}
-        onOpenProject={(projectId) => void handleOpenProject(projectId)}
-        onSetDefault={handleChangeDefaultDesignSystem}
-        onSystemsRefresh={refreshDesignSystems}
-        onProjectsRefresh={refreshProjects}
-        initialRevisionJob={pendingDesignSystemRevisionJobs[route.designSystemId] ?? null}
-        onInitialRevisionJobConsumed={(jobId) =>
-          handleDesignSystemRevisionJobConsumed(route.designSystemId, jobId)
-        }
       />
     );
   } else if (route.kind === 'home' && route.view === 'settings') {
@@ -5902,7 +5475,9 @@ if (fetchedProject) {
     } else if (activeProject) {
       appMain = (
         <div className="app">
+        <Suspense fallback={<CenteredLoader label={t('entry.loadingWorkspace')} />}>
         <ProjectView
+            designSystems={[]}
          key={projectViewMountKey(
            activeProject.id,
             activeProject.workspaceId,
@@ -5953,7 +5528,6 @@ if (fetchedProject) {
          skills={enabledFunctionalSkills}
           onSkillsRefresh={refreshSkills}
          designTemplates={designTemplates}
-          designSystems={designSystems}
           daemonLive={daemonLive}
           onModeChange={handleModeChange}
           onAgentChange={handleAgentChange}
@@ -5967,9 +5541,6 @@ if (fetchedProject) {
           onOpenMcpSettings={openMcpSettings}
           onBrowsePlugins={openPluginRegistry}
           onOpenConnectors={openConnectorIntegrations}
-          onAdoptPetInline={handleAdoptPet}
-          onTogglePet={handleTogglePet}
-          onOpenPetSettings={openPetSettings}
           onBack={handleBack}
           onClearPendingPrompt={handleClearPendingPrompt}
           onTouchProject={handleTouchProject}
@@ -5978,12 +5549,10 @@ if (fetchedProject) {
           onProjectRenameSettled={handleProjectRenameSettled}
           onProjectsRefresh={refreshProjects}
           onDeleteProject={handleDeleteProject}
-          onChangeDefaultDesignSystem={handleChangeDefaultDesignSystem}
-         onDesignSystemsRefresh={refreshDesignSystems}
-         onCreateDesignSystemFromProject={handleCreateDesignSystemFromProject}
           onDuplicateProject={handleDuplicateProject}
           onRunActivityChange={handleProjectRunActivityChange}
         />
+        </Suspense>
         </div>
       );
     }
@@ -6086,14 +5655,6 @@ if (fetchedProject) {
           <BackToTopButton key={JSON.stringify(route)} />
           <FeedbackFab />
         </>
-      )}
-      {clientType === 'desktop' ? null : (
-        <PetOverlay
-          pet={config.pet?.enabled ? config.pet : undefined}
-          taskCenter={petTaskCenter}
-          onOpenProject={handleOpenProject}
-          dockLine
-        />
       )}
       <TooltipLayer />
       <UpdateDialog />

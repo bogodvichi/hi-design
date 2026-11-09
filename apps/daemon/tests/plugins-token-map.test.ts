@@ -192,3 +192,10 @@ describe('parseDesignSystemTokens', () => {
     expect(out.map((t) => t.name)).toEqual(expect.arrayContaining(['ds-bg', 'ds-fg']));
   });
 });
+
+it('preserves source tokens when no target reference is supplied', async () => {
+  const report = await runTokenMap({ cwd, source: { kind: 'code', report: codeTokens({ colors: [{ name: '--source-accent', kind: 'color', value: '#123456', usage: ['Button background'], sources: ['app.css:1'] }] }) } });
+  expect(report.colors).toEqual([expect.objectContaining({ target: '--source-accent', targetValue: '#123456' })]);
+  expect(report.unmatched).toEqual([]);
+  expect(report.meta.designSystemId).toBeUndefined();
+});

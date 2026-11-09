@@ -25,9 +25,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: false
-    sections: [color, typography, layout, components]
   example_prompt: "Greybox a lo-fi blueprint wireframe for a desktop SaaS dashboard — app bar, sidebar nav, a 4-up KPI row, a schematic chart panel, and a list/table with image-placeholder thumbnails, all in neutral grey with monospace redline annotations."
 ---
 

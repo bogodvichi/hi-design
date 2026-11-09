@@ -53,14 +53,6 @@ export function adaptAgentSkill(
   const compatPath = opts.compatPath ?? './SKILL.md';
   const tags = stringArray(frontmatter['tags']);
 
-  const designSystemFm = isObject(od['design_system']) ? od['design_system'] : null;
-  const designSystem = designSystemFm
-    ? {
-        ref: stringOr(designSystemFm['ref'], '') || undefined,
-        primary: typeof designSystemFm['primary'] === 'boolean' ? (designSystemFm['primary'] as boolean) : undefined,
-      }
-    : undefined;
-
   const craftFm = isObject(od['craft']) ? od['craft'] : null;
   const craftRequires = craftFm && Array.isArray(craftFm['requires'])
     ? (craftFm['requires'] as FrontmatterValue[]).filter((v): v is string => typeof v === 'string')
@@ -104,7 +96,6 @@ export function adaptAgentSkill(
       preview,
       useCase: { query: examplePromptFromFrontmatter(frontmatter, body) },
       context: {
-        designSystem: designSystem ?? undefined,
         craft: craftRequires,
       },
       inputs,

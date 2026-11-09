@@ -24,9 +24,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   example_prompt: "Design ‘mutuals’ — a dating site for X posters. Daily digest dashboard with stats, mutual-matches bar chart, and a community ticker."
 ---
 
@@ -38,7 +35,7 @@ accent, lots of negative space, *no* swipe deck or hookup tropes.
 
 ## Workflow
 
-1. **Read the active DESIGN.md** (injected above). Lean into a serif display
+1. **Read the supplied template/reference styles** (provided with the template). Lean into a serif display
    token for the metric numerals — these screens live or die on numerals.
 2. **Pick a brand voice** — wry, observational, slightly literary. Generate
    real, specific copy. Examples: "the people who'd text back within a day",

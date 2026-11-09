@@ -2694,10 +2694,10 @@ function requestDelete(project: Project) {
                               src={creator.avatarUrl}
                               alt=""
                               onError={(event) => {
-                                event.currentTarget.hidden = true;
+                                event.currentTarget.style.display = 'none';
                               }}
                               onLoad={(event) => {
-                                event.currentTarget.hidden = false;
+                                event.currentTarget.style.display = '';
                               }}
                             />
                           ) : null}

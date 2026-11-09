@@ -33,9 +33,6 @@ od:
     type: html
     entry: index.html
     reload: debounce-100
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   outputs:
     primary: index.html
     secondary:
@@ -64,7 +61,7 @@ social-media-matrix-tracker-template/
 
 ## Workflow
 
-1. Read active `DESIGN.md` first, map tokens to CSS variables, then adapt `assets/template.html`.
+1. Read the supplied template/reference styles first, map tokens to CSS variables, then adapt `assets/template.html`.
 2. Keep the structural information architecture intact: hero + platform matrix + KPI strip + multi-chart deep sections.
 3. Preserve interaction fidelity:
    - dark/light theme toggle

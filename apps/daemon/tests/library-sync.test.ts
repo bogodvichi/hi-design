@@ -128,16 +128,16 @@ function paths() {
 }
 
 describe('reconcileLibrary', () => {
-  it('mirrors design systems + agent deliverables, classifies sources, excludes scaffolding', async () => {
+  it('mirrors agent deliverables without rescanning retired systems', async () => {
     await seedProject();
     await seedDesignSystem();
 
     const result = await reconcileLibrary(db, paths());
 
-    expect(result.designSystems).toBe(1);
+    expect(result.designSystems).toBe(0);
     // index.html + render.png + logo.png; styles.css excluded.
     expect(result.projectAssets).toBe(3);
-    expect(result.total).toBe(4);
+    expect(result.total).toBe(3);
 
     const assets = listLibraryAssets(db, {});
     const byRel = new Map(assets.map((a) => [a.relPath, a]));
@@ -150,11 +150,7 @@ describe('reconcileLibrary', () => {
     expect(sourceKindFor('render.png')).toBe('generated'); // agent media
     expect(sourceKindFor('logo.png')).toBe('manual-upload'); // user drop-in
 
-    // The design system is one `design-system` card linking back to itself.
-    const ds = assets.find((a) => a.kind === 'design-system');
-    expect(ds).toBeTruthy();
-    expect(ds?.sources?.[0]?.sourceKind).toBe('design-system');
-    expect(ds?.sources?.[0]?.designSystemId).toBe(`user:${DS_DIR}`);
+    expect(assets.some((asset) => asset.kind === 'design-system')).toBe(false);
 
     // Project assets are referenced (bytes stay in the project) and back-link it.
     const html = byRel.get('index.html')!;
@@ -171,42 +167,13 @@ describe('reconcileLibrary', () => {
     await seedDesignSystem();
 
     const first = await reconcileLibrary(db, paths());
-    expect(first.total).toBe(4);
+    expect(first.total).toBe(3);
     const countAfterFirst = listLibraryAssets(db, {}).length;
 
     const second = await reconcileLibrary(db, paths());
     expect(second.total).toBe(0);
-    expect(second.deduped).toBeGreaterThanOrEqual(4);
+    expect(second.deduped).toBeGreaterThanOrEqual(3);
     expect(listLibraryAssets(db, {}).length).toBe(countAfterFirst);
-  });
-
-  it('skips manifest preview paths that escape the design-system root', async () => {
-    const root = path.join(designSystemsDir, DS_DIR);
-    await mkdir(root, { recursive: true });
-    await writeFile(path.join(designSystemsDir, 'outside.html'), '<!doctype html><h1>Secret</h1>');
-    await writeFile(
-      path.join(root, 'DESIGN.md'),
-      '---\nname: Acme\ncategory: Brand\n---\n\n# Acme\n',
-    );
-    await writeFile(
-      path.join(root, 'manifest.json'),
-      JSON.stringify({
-        schemaVersion: 'od-design-system-project/v1',
-        id: DS_DIR,
-        name: 'Acme',
-        preview: { pages: [{ path: '../outside.html', role: 'overview' }] },
-      }),
-    );
-    await writeFile(path.join(root, 'components.html'), '<!doctype html><button>Safe</button>');
-
-    const result = await reconcileLibrary(db, paths());
-
-    expect(result.designSystems).toBe(1);
-    const ds = listLibraryAssets(db, {}).find((asset) => asset.kind === 'design-system');
-    expect(ds?.relPath).toBe('components.html');
-    expect(await realpath(path.resolve(ds?.filePath ?? ''))).toBe(
-      await realpath(path.join(root, 'components.html')),
-    );
   });
 
   it('does not register a design-system preview that is a symlink', async () => {

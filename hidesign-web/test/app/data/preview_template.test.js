@@ -93,6 +93,35 @@ describe('test/app/data/preview_template.test.js', () => {
     assert.strictEqual(context.commentAvatarUrl({}), '');
   });
 
+  it('counts top-level comments without including replies', () => {
+    const templatePath = path.join(__dirname, '../../../app/data/preview_template.html');
+    const template = fs.readFileSync(templatePath, 'utf8');
+    const start = template.indexOf('// comment-count:start');
+    const end = template.indexOf('// comment-count:end');
+
+    assert(start >= 0, 'comment count block should exist');
+    assert(end > start, 'comment count block should have a stable end marker');
+
+    const context = {};
+    vm.runInNewContext(template.slice(start, end), context);
+    const comments = [
+      { id: 'root-open', status: 'open' },
+      { id: 'root-resolved', status: 'resolved' },
+      { id: 'reply', parentId: 'root-open', status: 'open' },
+      { id: 'nested-reply', parentId: 'reply', status: 'open' },
+      null,
+    ];
+
+    assert.strictEqual(context.countTopLevelComments(comments), 2);
+    assert.strictEqual(context.countTopLevelComments([]), 0);
+    assert.strictEqual(context.countTopLevelComments(null), 0);
+    assert(context.isTopLevelComment(comments[0]));
+    assert(!context.isTopLevelComment(comments[2]));
+    assert(template.includes('updateCommentFabBadge(countTopLevelComments(comments));'));
+    assert(template.includes('comments.filter(isTopLevelComment)'));
+    assert(template.includes("return c.status === 'open' && isTopLevelComment(c);"));
+  });
+
   it('positions page anchors from the current target DOM plus the saved hover offset', () => {
     const templatePath = path.join(__dirname, '../../../app/data/preview_template.html');
     const template = fs.readFileSync(templatePath, 'utf8');
@@ -155,6 +184,21 @@ describe('test/app/data/preview_template.test.js', () => {
     assert(template.includes("iframe.contentWindow.addEventListener('resize', scheduleCommentPinSync);"));
     assert(template.includes('new ResizeObserver(scheduleCommentPinSync)'));
     assert(template.includes('syncCommentPinPositions(doc, currentFilePath ? getCommentsForPage(currentFilePath) : []);'));
+  });
+
+  it('isolates page comment pins and popup styles in a closed shadow root', () => {
+    const templatePath = path.join(__dirname, '../../../app/data/preview_template.html');
+    const template = fs.readFileSync(templatePath, 'utf8');
+
+    assert(template.includes('var commentPinRoots = new WeakMap();'));
+    assert(template.includes("container.attachShadow({ mode: 'closed' })"));
+    assert(template.includes('commentPinRoots.set(container, pinRoot);'));
+    assert(template.includes('pinRoot.appendChild(style);'));
+    assert(template.includes('pinRoot.appendChild(pin);'));
+    assert(template.includes('var pins = getCommentPins(doc);'));
+    assert(template.includes("root.querySelector('.__comment_pin__[data-comment-id=\"' + commentId + '\"]')"));
+    assert(!template.includes('doc.head.appendChild(style)'));
+    assert(!template.includes("doc.querySelectorAll('.__comment_pin__')"));
   });
 
   it('keeps comment popups inside the visible iframe area after scrolling', () => {

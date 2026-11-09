@@ -375,6 +375,7 @@ export class PixelScanField {
     this.texture.dispose();
     this.texture = this.makeTexture(this.rect.width, this.rect.height);
     this.uniforms.src!.value = this.texture;
+    this.requestFrame();
   };
 
   private enterTimeVal(): number {
@@ -400,10 +401,12 @@ export class PixelScanField {
     this.targetY = this.liveY = this.lastPy = l.y;
 
     this.entranceStart = performance.now();
+    this.requestFrame();
   };
   private onLeave = () => {
     this.hoverTarget = 0;
     this.liveOn = false;
+    this.requestFrame();
   };
   private onMove = (ev: PointerEvent) => {
     const l = this.toLocal(ev);
@@ -414,6 +417,7 @@ export class PixelScanField {
   private onDown = (ev: PointerEvent) => {
     if (ev.pointerType === 'touch') {
       this.entranceStart = performance.now();
+      this.requestFrame();
     }
   };
 
@@ -431,6 +435,7 @@ export class PixelScanField {
   };
 
   private tick = () => {
+    this.raf = 0;
     const now = performance.now();
     this.uniforms.time!.value = (now - this.startTime) / 1000;
     this.uniforms.enterTime!.value = this.enterTimeVal();
@@ -474,16 +479,21 @@ export class PixelScanField {
     (this.uniforms.mouse!.value as InstanceType<Three['Vector2']>).set(this.liveX, this.liveY);
 
     this.renderer.render(this.scene, this.camera);
-    this.raf = requestAnimationFrame(this.tick);
+    if (this.liveOn || this.hoverVal > 0.001 || now - this.entranceStart < ENTRANCE_SECONDS * 1000) {
+      this.requestFrame();
+    }
   };
 
+  private requestFrame() {
+    if (this.running && !this.raf) this.raf = requestAnimationFrame(this.tick);
+  }
+
   start() {
-    if (this.running) return;
     this.running = true;
 
     const now = performance.now();
     this.lastFrame = now;
-    this.raf = requestAnimationFrame(this.tick);
+    this.requestFrame();
   }
 
   stop() {

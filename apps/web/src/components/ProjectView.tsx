@@ -38,7 +38,6 @@ import {
   deletePreviewComment,
   fetchConnectorStatuses,
   fetchPreviewComments,
-  fetchProjectDesignSystemPackageAudit,
   fetchLiveArtifacts,
   fetchProjectFiles,
   fetchProjectFileText,
@@ -156,7 +155,6 @@ import {
   cancelBrandExtraction,
   continueBrandExtraction,
   extractBrandFromHtml,
-  finalizeBrandProject,
 } from '../runtime/brands';
 import { isOpenDesignHostAvailable } from '@open-design/host';
 import {
@@ -178,10 +176,6 @@ import {
 } from '../runtime/brand-enrichment';
 import { useSingleFlightCallback } from '../runtime/useSingleFlightCallback';
 import { useBrandReadyPrompt } from '../runtime/useBrandReadyPrompt';
-import {
-  buildDesignSystemPackageAuditRepairPrompt,
-  summarizeDesignSystemPackageAudit,
-} from '../runtime/design-system-package-audit';
 import { isLiveArtifactTabId, liveArtifactTabId } from '../types';
 import {
   DESIGN_SYSTEM_WORKSPACE_DISPLAY_TITLE,
@@ -293,7 +287,6 @@ import {
 import { persistCommentAnchors } from '../collab/comment-anchor-client';
 import type { AnchorWriteBack } from '../comments';
 import { PluginDetailsModal } from './PluginDetailsModal';
-import { DesignSystemPreviewModal } from './DesignSystemPreviewModal';
 import { ChatPane } from './ChatPane';
 import type { ChatSendMeta, ChatSendOutcome } from './ChatComposer';
 import {
@@ -686,7 +679,7 @@ interface Props {
   // from the Templates surface keep composing the template body in API
   // mode even when the user later disables the template in Settings.
   designTemplates: SkillSummary[];
-  designSystems: DesignSystemSummary[];
+  designSystems?: DesignSystemSummary[];
   daemonLive: boolean;
   onModeChange: (mode: AppConfig['mode']) => void;
   onAgentChange: (id: string) => void;
@@ -707,11 +700,6 @@ interface Props {
   onOpenMcpSettings?: () => void;
   onBrowsePlugins?: () => void;
   onOpenConnectors?: () => void;
-  // Pet wiring forwarded to the chat composer so users can adopt /
-  // wake / tuck a pet without leaving the project view.
-  onAdoptPetInline?: (petId: string) => void;
-  onTogglePet?: () => void;
-  onOpenPetSettings?: () => void;
   onBack: () => void;
   onClearPendingPrompt: () => void;
   onTouchProject: () => void;
@@ -2081,7 +2069,7 @@ export function ProjectView({
  skills,
   onSkillsRefresh,
  designTemplates,
- designSystems,
+ designSystems = [],
  daemonLive,
  onModeChange,
  onAgentChange,
@@ -2095,9 +2083,6 @@ export function ProjectView({
   onOpenMcpSettings,
   onBrowsePlugins,
   onOpenConnectors,
-  onAdoptPetInline,
-  onTogglePet,
-  onOpenPetSettings,
   onBack,
   onClearPendingPrompt,
   onTouchProject,
@@ -2420,16 +2405,10 @@ export function ProjectView({
   let projectTitleTooltip = currentProject.name;
   if (projectMutationReadOnly) projectTitleTooltip = t('workspace.readonlyNotice');
   if (projectCollab.materializationPending) projectTitleTooltip = t('designFiles.syncing');
-  const resolvedProjectDesignSystemId = resolveProjectDesignSystemId(currentProject);
-  // A project can outlive a Design System being disabled in Settings. Keep the
-  // persisted project value intact for recovery, but do not inject a disabled
-  // system into a new runtime turn.
-  const projectDesignSystemId = resolvedProjectDesignSystemId;
-  const runtimeDesignSystemId =
-    projectDesignSystemId && (config.disabledDesignSystems ?? []).includes(projectDesignSystemId)
-      ? null
-      : projectDesignSystemId;
-  const projectIsDesignSystemProject = isDesignSystemProject(currentProject);
+  // Legacy bindings and metadata do not reactivate retired workflows.
+  const projectDesignSystemId = null;
+  const runtimeDesignSystemId = null;
+  const projectIsDesignSystemProject = false;
   // Website-clone turns reproduce a whole multi-page site; auto-open should
   // land on the site entry (index.html), not the last-written subpage. See
   // `SelectAutoOpenOptions.preferSiteEntry`.
@@ -2439,8 +2418,7 @@ export function ProjectView({
   const designSystemBrandId = projectIsDesignSystemProject
     ? currentProject.metadata?.brandId?.trim() || null
     : null;
-  const projectIsProgrammaticBrandExtraction =
-    isProgrammaticBrandExtractionProject(currentProject.metadata);
+  const projectIsProgrammaticBrandExtraction = false;
   // P0 page_view page_name=chat_panel — fire once per project mount.
   // ProjectView outlives conversation switches (ChatPane is keyed by
   // activeConversationId so it remounts when the user switches chats,
@@ -2793,7 +2771,7 @@ export function ProjectView({
     dismiss: dismissBrandReady,
     browserAssist: brandBrowserAssist,
     dismissBrowserAssist: dismissBrandBrowserAssist,
-  } = useBrandReadyPrompt(currentProject.metadata);
+  } = useBrandReadyPrompt(undefined);
   const currentBrandExtractionId = projectIsProgrammaticBrandExtraction
     ? currentProject.metadata?.brandId?.trim() || null
     : null;
@@ -5194,115 +5172,6 @@ const coalescedCoverRefresh = useCoalescedCallback(
     [updateMessageById],
   );
 
-  const auditDesignSystemWorkspaceAfterRun = useCallback(
-    async (assistantMessageId: string) => {
-      const isDesignSystemWorkspace =
-        isDesignSystemWorkspaceMetadata(currentProject.metadata) || projectIsDesignSystemProject;
-      if (!isDesignSystemWorkspace) return;
-      try {
-        if (designSystemBrandId) {
-          const outcome = await finalizeBrandProject(
-            designSystemBrandId,
-            project.id,
-            projectRunWorkspaceContext,
-          );
-          if (outcome.ok) {
-            await Promise.all([
-              projectDetail.refresh(),
-              Promise.resolve(onDesignSystemsRefresh?.()),
-              refreshWorkspaceItems(),
-            ]);
-            onProjectsRefresh();
-            setDesignMdRefreshKey((n) => n + 1);
-            updateMessageById(
-              assistantMessageId,
-              (prev) => ({
-                ...prev,
-                events: [
-                  ...(prev.events ?? []),
-                  {
-                    kind: 'status',
-                    label: 'design_system',
-                    detail: 'Rebuilt derived kit, assets, and registered design system from brand.json.',
-                  },
-                ],
-              }),
-              true,
-              { telemetryFinalized: true },
-            );
-          } else {
-            updateMessageById(
-              assistantMessageId,
-              (prev) => ({
-                ...prev,
-                events: [
-                  ...(prev.events ?? []),
-                  {
-                    kind: 'status',
-                    label: 'design_system',
-                    detail: `Design system sync could not run: ${outcome.error}`,
-                  },
-                ],
-              }),
-              true,
-              { telemetryFinalized: true },
-            );
-          }
-        }
-        const audit = await fetchProjectDesignSystemPackageAudit(
-          project.id,
-          projectRunWorkspaceContext,
-        );
-        if (!audit) return;
-        const auditSummary = summarizeDesignSystemPackageAudit(audit);
-        updateMessageById(
-          assistantMessageId,
-          (prev) => ({
-            ...prev,
-            events: [...(prev.events ?? []), { kind: 'status', label: 'audit', detail: auditSummary }],
-          }),
-          true,
-          { telemetryFinalized: true },
-        );
-        const repairPrompt = buildDesignSystemPackageAuditRepairPrompt(audit);
-        if (repairPrompt) {
-          if (consumeDesignSystemAuditAutoRepair(project.id)) {
-            const seed = { id: `audit-${Date.now()}`, value: repairPrompt };
-            setChatSeed(seed);
-            setAutoAuditRepairSeed(seed);
-          }
-        } else {
-          clearDesignSystemAuditAutoRepair(project.id);
-        }
-      } catch (err) {
-        const detail = err instanceof Error ? err.message : String(err);
-        updateMessageById(
-          assistantMessageId,
-          (prev) => ({
-            ...prev,
-            events: [
-              ...(prev.events ?? []),
-              { kind: 'status', label: 'audit', detail: `Package audit could not run: ${detail}` },
-            ],
-          }),
-          true,
-          { telemetryFinalized: true },
-        );
-      }
-    },
-    [
-      currentProject.metadata,
-      designSystemBrandId,
-      onDesignSystemsRefresh,
-      onProjectsRefresh,
-      project.id,
-      projectDetail.refresh,
-      projectIsDesignSystemProject,
-      refreshWorkspaceItems,
-      updateMessageById,
-    ],
-  );
-
   const refreshPreviewComments = useCallback(async (conversationId?: string) => {
     const requestedConversationId = conversationId ?? activeConversationId;
     if (!requestedConversationId) return;
@@ -6110,7 +5979,7 @@ const coalescedCoverRefresh = useCoalescedCallback(
             if (deliveryOutcome === 'no_result' || deliveryOutcome === 'delivery_failed') {
               setError(artifactPersistenceError ?? DESIGN_RESULT_MISSING_DETAIL);
             }
-            await auditDesignSystemWorkspaceAfterRun(message.id);
+
             // Clear stale retry count for successfully recovered run.
             transientFailedRetriesRef.current.delete(runId);
             genericDisconnectRetriesRef.current.delete(runId);
@@ -6561,7 +6430,7 @@ const coalescedCoverRefresh = useCoalescedCallback(
                 if (deliveryOutcome === 'no_result' || deliveryOutcome === 'delivery_failed') {
                   setError(artifactPersistenceError ?? DESIGN_RESULT_MISSING_DETAIL);
                 }
-                await auditDesignSystemWorkspaceAfterRun(message.id);
+
               })();
               onProjectsRefresh();
             },
@@ -6691,7 +6560,7 @@ const coalescedCoverRefresh = useCoalescedCallback(
                       true,
                       { telemetryFinalized: true },
                     );
-                    await auditDesignSystemWorkspaceAfterRun(message.id);
+
                     onProjectsRefresh();
                   })();
                 }
@@ -6934,7 +6803,7 @@ const coalescedCoverRefresh = useCoalescedCallback(
     project.id,
     updateMessageById,
     persistMessageById,
-    auditDesignSystemWorkspaceAfterRun,
+
     markStreamingConversation,
     clearStreamingMarker,
     clearActiveRunRefs,
@@ -7088,7 +6957,7 @@ const coalescedCoverRefresh = useCoalescedCallback(
             true,
             { telemetryFinalized: true },
           );
-          await auditDesignSystemWorkspaceAfterRun(message.id);
+
           scheduleConversationMessageRefresh(activeConversationId);
           onProjectsRefresh();
         }
@@ -7116,7 +6985,7 @@ const coalescedCoverRefresh = useCoalescedCallback(
     persistArtifact,
     requestOpenFile,
     updateMessageById,
-    auditDesignSystemWorkspaceAfterRun,
+
     scheduleConversationMessageRefresh,
     onProjectsRefresh,
   ]);
@@ -8350,7 +8219,7 @@ const coalescedCoverRefresh = useCoalescedCallback(
                   void patchAttachedStatuses(runCommentAttachments, 'failed');
                 }
               }
-              await auditDesignSystemWorkspaceAfterRun(assistantId);
+
             } finally {
               clearTraceTouchedFilePaths();
               if (finalizingRunId) finalizingLocalRunIdsRef.current.delete(finalizingRunId);
@@ -9046,7 +8915,7 @@ const coalescedCoverRefresh = useCoalescedCallback(
       requestOpenFile,
       persistMessage,
       persistMessageById,
-      auditDesignSystemWorkspaceAfterRun,
+
       patchAttachedStatuses,
       updateMessageById,
       markStreamingConversation,
@@ -11279,44 +11148,6 @@ const coalescedCoverRefresh = useCoalescedCallback(
   ]);
   const handleBrandEnrichment = useSingleFlightCallback(startBrandEnrichment);
 
-  const handleCreateDesignSystemFromProject = useCallback(() => {
-    if (
-      projectDesignSystemCreateStarting ||
-      projectIsDesignSystemProject ||
-      !onCreateDesignSystemFromProject
-    ) {
-      return;
-    }
-    const name = designSystemNameForSourceProject(currentProject);
-    const pendingPrompt = buildCreateDesignSystemFromProjectPrompt({
-      project: currentProject,
-      projectFiles,
-      activeDesignSystem: activeDesignSystemSummary,
-    });
-    setProjectDesignSystemCreateStarting(true);
-    void Promise.resolve(onCreateDesignSystemFromProject(currentProject.id, {
-      name,
-      pendingPrompt,
-    }))
-      .catch((err) => {
-        setProjectActionsToast({
-          message: err instanceof Error ? err.message : String(err),
-          details: null,
-          tone: 'error',
-        });
-      })
-      .finally(() => {
-        setProjectDesignSystemCreateStarting(false);
-      });
-  }, [
-    activeDesignSystemSummary,
-    currentProject,
-    onCreateDesignSystemFromProject,
-    projectDesignSystemCreateStarting,
-    projectFiles,
-    projectIsDesignSystemProject,
-  ]);
-
   const handleDuplicateProject = useCallback(() => {
     if (projectDuplicateStarting || !onDuplicateProject) return;
     setProjectDuplicateStarting(true);
@@ -11420,8 +11251,6 @@ const coalescedCoverRefresh = useCoalescedCallback(
     useState<AppliedPluginSnapshot | null>(null);
   const [contextPluginDetails, setContextPluginDetails] =
     useState<InstalledPluginRecord | null>(null);
-  const [contextDesignSystemDetails, setContextDesignSystemDetails] =
-    useState<DesignSystemSummary | null>(null);
   useEffect(() => {
     const snapshotId = project.appliedPluginSnapshotId;
     if (!snapshotId) {
@@ -11465,9 +11294,6 @@ const coalescedCoverRefresh = useCoalescedCallback(
       });
     }
   }, [locale, t, workspaceContextState]);
-  const handleOpenContextDesignSystemDetails = useCallback((system: DesignSystemSummary) => {
-    setContextDesignSystemDetails(system);
-  }, []);
   // Lift finalize errors into the shared project-actions toast so the
   // user sees both the daemon's category message and any upstream
   // detail (per #450 verification commitment).
@@ -11802,7 +11628,6 @@ const coalescedCoverRefresh = useCoalescedCallback(
               onSendQueuedNow={sendQueuedChatSendNow}
               onRequestOpenFile={requestOpenFile}
               onRequestPluginDetails={handleOpenContextPluginDetails}
-              onRequestDesignSystemDetails={handleOpenContextDesignSystemDetails}
               onRequestPluginFolderAgentAction={handlePluginFolderAgentAction}
               activePluginActionPaths={activePluginActionPaths}
               hiddenPluginActionPaths={hiddenAssistantPluginActionPaths}
@@ -11916,10 +11741,6 @@ const coalescedCoverRefresh = useCoalescedCallback(
               continueBrandAgentExtractionBusy={brandAgentExtractionStarting}
               onContinueBrandExtraction={handleContinueBrandExtraction}
               continueBrandExtractionBusy={brandProgrammaticContinueStarting}
-              onCreateDesignSystemFromProject={
-                projectIsDesignSystemProject ? undefined : handleCreateDesignSystemFromProject
-              }
-              createDesignSystemFromProjectBusy={projectDesignSystemCreateStarting}
               onBrandBrowserAssistConfirm={handleBrandBrowserAssistConfirm}
               chatLogTray={
                 projectActionsToastInChatPane ? (
@@ -11929,10 +11750,6 @@ const coalescedCoverRefresh = useCoalescedCallback(
                 ) : null
               }
               composerDraftSignal={composerDraftSignal}
-              petConfig={config.pet}
-              onAdoptPet={onAdoptPetInline}
-              onTogglePet={onTogglePet}
-              onOpenPetSettings={onOpenPetSettings}
               researchAvailable={config.mode === 'daemon'}
               byokApiProtocol={config.apiProtocol}
               byokImageModel={byokImageModelOverride}
@@ -12086,12 +11903,6 @@ const coalescedCoverRefresh = useCoalescedCallback(
           designSystemEditable={designSystemEditable}
           designSystemExtractionInProgress={designSystemExtractionInProgress}
           defaultDesignSystemId={config.designSystemId}
-          onSetDefaultDesignSystem={onChangeDefaultDesignSystem}
-          onDesignSystemsRefresh={onDesignSystemsRefresh}
-          onCreateDesignSystemFromProject={
-            projectIsDesignSystemProject ? undefined : handleCreateDesignSystemFromProject
-          }
-          createDesignSystemFromProjectBusy={projectDesignSystemCreateStarting}
           onDuplicateProject={onDuplicateProject ? handleDuplicateProject : undefined}
           duplicateProjectBusy={projectDuplicateStarting}
           onDeleteDesignSystemProject={onDeleteProject}
@@ -12145,14 +11956,6 @@ const coalescedCoverRefresh = useCoalescedCallback(
           onDuplicate={(record) => void handleDuplicateContextPlugin(record)}
           isApplying={false}
           hideUseAction
-        />
-      ) : null}
-      {contextDesignSystemDetails ? (
-        <DesignSystemPreviewModal
-          system={contextDesignSystemDetails}
-          workspaceContext={projectRunWorkspaceContext}
-          initialViewId="kit"
-          onClose={() => setContextDesignSystemDetails(null)}
         />
       ) : null}
       {/* One-time first-generation hint (spec §8.3) is scoped to the new-user

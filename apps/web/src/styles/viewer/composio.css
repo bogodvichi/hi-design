@@ -304,6 +304,9 @@
   pointer-events: none;
   cursor: not-allowed;
 }
+.present-overlay button {
+  padding: 0;
+}
 
 .present-overlay {
   --comment-side-dock-width: min(320px, 34vw);
@@ -335,6 +338,15 @@
   border: none;
   background: white;
 }
+.present-overlay .present-toolbar {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 12px);
+  right: calc(env(safe-area-inset-right, 0px) + 12px);
+  z-index: 1002;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 /* The presentation overlay is portaled to <body>, so the `.viewer`-scoped
    `.present-exit-btn` rules in shell.css never reach it. This is the user's
    only way out once focus moves into the sandboxed deck frame and Esc stops
@@ -361,6 +373,13 @@
     opacity 200ms cubic-bezier(0.23, 1, 0.32, 1),
     background-color 200ms cubic-bezier(0.23, 1, 0.32, 1),
     color 200ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.present-overlay .present-toolbar > .present-exit-btn,
+.present-overlay .present-toolbar > .present-comment-toggle {
+  position: relative;
+  top: auto;
+  right: auto;
+  flex: 0 0 auto;
 }
 .present-overlay:hover .present-exit-btn,
 .present-overlay .present-exit-btn:hover,
@@ -423,6 +442,10 @@
   box-shadow: -12px 0 32px rgba(0, 0, 0, 0.22);
 }
 @media (max-width: 720px) {
+  .present-overlay .present-toolbar {
+    top: calc(env(safe-area-inset-top, 0px) + 8px);
+    right: calc(env(safe-area-inset-right, 0px) + 8px);
+  }
   .present-overlay .comment-side-dock {
     position: absolute;
     top: calc(env(safe-area-inset-top, 0px) + 8px);

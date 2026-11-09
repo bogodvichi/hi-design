@@ -19,9 +19,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
 ---
 
 # Web Prototype Skill
@@ -46,7 +43,7 @@ web-prototype/
 
 1. **Read `assets/template.html` end-to-end** — at minimum through the `<style>` block. The class inventory at the top of `references/layouts.md` lists every class that must be defined there; if one is missing, add it to `<style>` rather than re-defining it inline on every section.
 2. **Read `references/layouts.md`** so you know which section skeletons exist. Don't write a section type that isn't covered — pick the closest layout and adapt.
-3. **Read the active DESIGN.md** (already injected into your system prompt). Map its colors to the six `:root` variables in the seed; don't introduce new tokens.
+3. **Read the supplied template/reference styles** (provided with the template). Map its colors to the six `:root` variables in the seed; don't introduce new tokens.
 
 ### Step 1 — Prepare the artifact from the seed
 
@@ -54,7 +51,7 @@ Choose one kebab-case artifact slug before composing the page. Use `assets/templ
 
 Do not write a project-root HTML draft with file-write before emitting the final `<artifact>`. The live-artifact output is the canonical HTML file for this generation turn; an extra `index.html`, `cast.html`, or brief-derived draft can be stranded beside it as an orphan.
 
-Replace the six `:root` variables with the active design system's tokens. Replace the page `<title>` and the topnav brand.
+Replace the six `:root` variables with the supplied template/reference styles's tokens. Replace the page `<title>` and the topnav brand.
 
 ### Step 2 — Plan the section list
 

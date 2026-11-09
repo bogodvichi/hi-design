@@ -1,4 +1,6 @@
 import { Icon, type IconName } from './Icon';
+import { Toast } from './Toast';
+import { userFacingError } from '../utils/userFacingError';
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { InstalledPluginRecord, ProjectKind } from '@open-design/contracts';
 import { useI18n } from '../i18n';
@@ -61,10 +63,9 @@ const TEMPLATE_TYPE_ICON: Record<TemplateType, IconName> = {
 };
 
 interface CommunityViewProps {
-  /** Hand the user into Home with a starting prompt derived from the chosen
-   *  template. The `templateId` is threaded through so the destination knows
-   *  which card was remixed. */
-  onRemixTemplate?: (remix: { templateId: string; prompt: string }) => void;
+  /** Create and open the remixed project. Resolve when that operation finishes
+   *  so the retained gallery can clear its pending state. */
+  onRemixTemplate?: (remix: { templateId: string; prompt: string }) => Promise<void>;
   /** Send this template's prompt to the home composer input, without
    *  remixing straight into a project. */
   onUsePrompt?: (target: CommunityTemplateUseTarget) => void;
@@ -103,38 +104,11 @@ export function CommunityView({ onRemixTemplate, onUsePrompt, onUsePlugin }: Com
   const [detailsRecord, setDetailsRecord] = useState<InstalledPluginRecord | null>(null);
   const [selectedType, setSelectedType] = useState<TemplateType | null>(null);
   const [activeSubtype, setActiveSubtype] = useState('All');
-  // Remix hands off to a fire-and-forget parent callback
-  // (`onRemixTemplate` returns void) that kicks off a real POST /api/projects
-  // — nothing here observes
-  // when it settles. Without a guard, N rapid clicks before the resulting
-  // navigation actually leaves this view fired N separate creates,
-  // duplicating the project N times ("Community 的模板 remix 点击多次会复制
-  // 多次").
-  //
-  // `remixingId` (state) drives the visible disabled/loading affordance, but
-  // state writes are NOT synchronous — `handleTemplateAction` closes over
-  // whatever `remixingId` was at the last render, and a burst of clicks that
-  // lands before React re-renders (real rapid clicking, or several native
-  // click events dispatched inside one tick) all read the same stale
-  // (pre-update) value and all pass the `if (remixingId) return` check. A
-  // second confirmed-live PR (0b8e31a3e) shipped exactly that state-only
-  // guard and rapid-click verification still produced 5 POST /api/projects
-  // from 5 clicks. `remixingIdRef` is the actual gate: a plain mutable ref
-  // is written synchronously the instant the first click is accepted, so
-  // every click in the same burst — including ones whose handler closure
-  // predates the next render — sees the lock immediately. Cleared on the
-  // success path (navigation away unmounts this view) or by the timeout
-  // fallback below, so a card can never get stuck disabled forever.
+  // Keep the lock synchronous so same-tick clicks cannot create duplicates.
+  // Completion clears it even when this page stays mounted behind a project.
   const remixingIdRef = useRef<string | null>(null);
   const [remixingId, setRemixingId] = useState<string | null>(null);
-  useEffect(() => {
-    if (!remixingId) return;
-    const timer = window.setTimeout(() => {
-      remixingIdRef.current = null;
-      setRemixingId(null);
-    }, 8000);
-    return () => window.clearTimeout(timer);
-  }, [remixingId]);
+  const [remixError, setRemixError] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
     // `listPlugins` resolves to [] on a failed/aborted fetch, so a daemon that
@@ -179,11 +153,11 @@ export function CommunityView({ onRemixTemplate, onUsePrompt, onUsePlugin }: Com
     const sourceKind = plugins.find((row) => row.id === templateId)?.sourceKind;
     return sourceKind === 'bundled' || sourceKind === 'marketplace' ? 'official' as const : 'personal' as const;
   };
-  const handleTemplateAction = (template: TemplateDemo) => {
+  const handleTemplateAction = async (template: TemplateDemo) => {
     // Synchronous check-and-set on the ref: this is what actually decides
     // whether a request goes out. See the remixingIdRef comment above for
     // why the state flag alone cannot gate this.
-    if (remixingIdRef.current) return;
+    if (!onRemixTemplate || remixingIdRef.current) return;
     trackCommunityTemplateClick(analytics.track, {
       page_name: 'community',
       area: 'community_templates',
@@ -195,7 +169,15 @@ export function CommunityView({ onRemixTemplate, onUsePrompt, onUsePlugin }: Com
     });
     remixingIdRef.current = template.id;
     setRemixingId(template.id);
-    onRemixTemplate?.({ templateId: template.id, prompt: template.prompt });
+    setRemixError(null);
+    try {
+      await onRemixTemplate({ templateId: template.id, prompt: template.prompt });
+    } catch (error) {
+      setRemixError(userFacingError(error, t, 'pluginCard.duplicateFailed'));
+    } finally {
+      remixingIdRef.current = null;
+      setRemixingId(null);
+    }
   };
   const handleCardUse = (template: TemplateDemo) => {
     const target = templateUseTarget(template);
@@ -396,6 +378,9 @@ export function CommunityView({ onRemixTemplate, onUsePrompt, onUsePlugin }: Com
           ))}
         </div>
       )}
+      {remixError ? (
+        <Toast message={remixError} tone="error" onDismiss={() => setRemixError(null)} />
+      ) : null}
       {detailsRecord ? (
         <PluginDetailsModal
           record={detailsRecord}

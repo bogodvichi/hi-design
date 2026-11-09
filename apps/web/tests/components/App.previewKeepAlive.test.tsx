@@ -120,10 +120,8 @@ vi.mock('../../src/components/ProjectView', () => ({
 vi.mock('../../src/components/SettingsDialog', () => ({
   SettingsDialog: ({
     onSkillsChanged,
-    onDesignSystemsChanged,
   }: {
     onSkillsChanged?: (id?: string) => void;
-    onDesignSystemsChanged?: (id?: string) => void;
   }) => (
     <div>
       <button
@@ -138,22 +136,8 @@ vi.mock('../../src/components/SettingsDialog', () => ({
       >
         Trigger unrelated skill change
       </button>
-      <button
-        type="button"
-        onClick={() => onDesignSystemsChanged?.('old-design-system')}
-      >
-        Trigger design system change
-      </button>
     </div>
   ),
-}));
-
-vi.mock('../../src/components/pet/PetOverlay', () => ({
-  PetOverlay: () => null,
-}));
-
-vi.mock('../../src/components/pet/pets', () => ({
-  migrateCustomPetAtlas: vi.fn().mockResolvedValue(null),
 }));
 
 vi.mock('../../src/components/WorkspaceTabsBar', () => ({
@@ -308,7 +292,6 @@ describe('App preview keep-alive invalidation', () => {
 
   it.each([
     'Change skill',
-    'Change design system',
     'Change custom instructions',
   ])('evicts the active preview when the open project prompt context changes: %s', async (buttonName) => {
     render(<App />);
@@ -401,27 +384,4 @@ describe('App preview keep-alive invalidation', () => {
     ).toBe(false);
   });
 
-  it('evicts pool entries for projects that use a changed design system', async () => {
-    const view = render(<App />);
-
-    fireEvent.click(await screen.findByRole('button', { name: 'Open settings' }));
-    useRouteMock.mockReturnValue(SETTINGS_ROUTE);
-    view.rerender(<App />);
-    fireEvent.click(
-      await screen.findByRole('button', { name: 'Trigger design system change' }),
-    );
-
-    await waitFor(() => {
-      expect(evictMatchingMock).toHaveBeenCalled();
-    });
-    const [predicate, options] = evictMatchingMock.mock.calls.at(-1) ?? [];
-    expect(options).toEqual({ includeActive: true });
-    expect(
-      (predicate as (entry: { projectId: string; key: string; fileName: string }) => boolean)({
-        key: 'project-1 file.html',
-        projectId: 'project-1',
-        fileName: 'file.html',
-      }),
-    ).toBe(true);
-  });
 });

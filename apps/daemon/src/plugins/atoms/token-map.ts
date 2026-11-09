@@ -106,7 +106,7 @@ export interface TokenMapOptions {
   source?: { kind: 'figma' | 'code'; report: DesignExtractReport };
   // The active design system's tokens. Caller supplies this; the atom
   // never reads filesystem directly so it stays unit-testable.
-  designSystem: DesignSystemTokenBag;
+  designSystem?: DesignSystemTokenBag;
   // Strict mode aborts when ANY source token can't be mapped.
   // Default 'soft' — populates unmatched[] and continues.
   strict?: boolean;
@@ -137,7 +137,16 @@ export async function runTokenMap(opts: TokenMapOptions): Promise<TokenMapReport
     }
   }
 
-  const targets = indexDesignSystem(opts.designSystem.tokens);
+  // With no explicit reference, preserve extracted names and values.
+  const targetTokens = opts.designSystem?.tokens ??
+    (['colors', 'typography', 'spacing', 'radius', 'shadow'] as const).flatMap((bucket) =>
+      source[bucket].map((entry, index) => ({
+        name: entry.name || '--source-' + bucket + '-' + (index + 1),
+        kind: kindOf(bucket),
+        value: entry.value,
+      })),
+    );
+  const targets = indexDesignSystem(targetTokens);
   const unmatched: TokenMapUnmatched[] = [];
   const claimed: Map<string, TokenMapMatch> = new Map();
   const buckets = {
@@ -152,9 +161,11 @@ export async function runTokenMap(opts: TokenMapOptions): Promise<TokenMapReport
   let matchedTokenCount = 0;
 
   for (const kind of ['colors', 'typography', 'spacing', 'radius', 'shadow'] as const) {
-    for (const entry of source[kind]) {
+    for (const [index, entry] of source[kind].entries()) {
       sourceTokenCount++;
-      const result = matchOne(kind, entry, targets);
+      const result = opts.designSystem
+        ? matchOne(kind, entry, targets)
+        : wrapMatch({ name: entry.name || '--source-' + kind + '-' + (index + 1), kind: kindOf(kind), value: entry.value }, entry.value, entry.name, 'exact', kindOf(kind), entry.sources);
       if (!result.match) {
         unmatched.push(result.unmatched);
         continue;
@@ -194,11 +205,11 @@ export async function runTokenMap(opts: TokenMapOptions): Promise<TokenMapReport
     sourceKind,
     generatedAt:       new Date().toISOString(),
     atomDigest:        digestObject({ buckets, unmatched }),
-    targetTokenCount:  opts.designSystem.tokens.length,
+    targetTokenCount:  targetTokens.length,
     sourceTokenCount,
     matchedTokenCount,
   };
-  if (opts.designSystem.id) meta.designSystemId = opts.designSystem.id;
+  if (opts.designSystem?.id) meta.designSystemId = opts.designSystem.id;
 
   const report: TokenMapReport = { ...buckets, unmatched, meta };
 

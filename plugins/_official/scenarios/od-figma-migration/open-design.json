@@ -118,8 +118,8 @@
     ],
     "useCase": {
       "query": {
-        "en": "Migrate the Figma file at {{figmaUrl}} into a {{targetStack}} component. Extract the design tokens, generate the markup, and self-critique against the design system until the score converges.",
-        "zh-CN": "使用这个插件完成以下任务：Migrate the Figma file at {{figmaUrl}} into a {{targetStack}} component. Extract the design tokens, generate the markup, and self-critique against the design system until the score converges."
+        "en": "Migrate the Figma file at {{figmaUrl}} into a {{targetStack}} component. Extract the design tokens, generate the markup, and self-critique against the Figma source and any user-supplied reference until the score converges.",
+        "zh-CN": "使用这个插件完成以下任务：Migrate the Figma file at {{figmaUrl}} into a {{targetStack}} component. Extract the design tokens, generate the markup, and self-critique against the Figma source and any user-supplied reference until the score converges."
       },
       "exampleOutputs": [
         {

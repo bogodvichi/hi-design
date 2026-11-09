@@ -25,9 +25,6 @@ od:
     type: html
     entry: index.html
     reload: debounce-100
-  design_system:
-    requires: false
-    sections: [color, typography]
   craft:
     requires: [animation-discipline]
 ---
@@ -66,7 +63,7 @@ Synthwave lives on its gradient:
 - Compile shaders with error logging so a typo fails loudly, not silently black.
 
 ### Step 3 — Overlay + brand
-- Map the accent colors to the active DESIGN.md when one is present; otherwise the outrun palette above, with the kicker in lime `#63fe13`.
+- Map the accent colors to the supplied template/reference styles when one is present; otherwise the outrun palette above, with the kicker in lime `#63fe13`.
 - Headline ≤ 12ch plus one supporting line. Keep the horizon and sun as the hero.
 
 ### Step 4 — Self-review (P0)

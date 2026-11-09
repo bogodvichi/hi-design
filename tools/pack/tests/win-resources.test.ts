@@ -1,4 +1,4 @@
-import { chmod, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { access, chmod, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
@@ -23,6 +23,17 @@ async function writeFakeOpenCodeCompanion(
 }
 
 async function createWorkspaceFixture(workspaceRoot: string): Promise<void> {
+  // Required distributable inputs of copyBundledResourceTrees.
+  const forDesigner = {
+    '.': ['README.txt', 'version.json', 'install.bat', 'install.command', 'install.ps1'],
+    config: ['server.json', 'groups.json', 'group-map.json', 'pricing.json', 'member-groups.json'],
+    scripts: ['collect_cowork.py', 'parse.py', 'static_org_map.py', 'update_collector.py'],
+  };
+  for (const [folder, names] of Object.entries(forDesigner)) {
+    const target = join(workspaceRoot, 'for-designer', folder);
+    await mkdir(target, { recursive: true });
+    for (const name of names) await writeFile(join(target, name), 'fixture');
+  }
   await mkdir(join(workspaceRoot, "skills", "sample"), { recursive: true });
   await mkdir(join(workspaceRoot, "design-templates", "orbit-general"), {
     recursive: true,
@@ -88,6 +99,26 @@ async function createDshRuntimeFixture(workspaceRoot: string): Promise<void> {
 }
 
 describe("prepareResourceTree", () => {
+  it("ignores retired pet assets in both the resource tree and cache key", async () => {
+    const root = await mkdtemp(join(tmpdir(), "hi-design-team-retired-pets-"));
+    const workspaceRoot = join(root, "workspace");
+    const resourceRoot = join(root, "resources");
+    const cache = new ToolPackCache(join(root, "cache"));
+    try {
+      await createWorkspaceFixture(workspaceRoot);
+      const config = { workspaceRoot } as ToolPackConfig;
+      const paths = { resourceRoot } as WinPaths;
+      const first = await prepareResourceTree(config, paths, cache, { materialize: true });
+      await writeFile(join(workspaceRoot, "assets", "community-pets", "sample", "pet.json"), '{}');
+      const second = await prepareResourceTree(config, paths, cache, { materialize: true });
+      expect(second.key).toBe(first.key);
+      expect(cache.report().entries.map((entry) => entry.status)).toEqual(["miss", "hit"]);
+      await expect(access(join(resourceRoot, "community-pets"))).rejects.toThrow();
+    } finally {
+      await rm(root, { force: true, recursive: true });
+    }
+  }, RESOURCE_TREE_CACHE_TEST_TIMEOUT_MS);
+
   it("bundles the DeepSeek Harness runtime into the Windows resource tree", async () => {
     const root = await mkdtemp(join(tmpdir(), "hi-design-team-win-dsh-runtime-"));
     const workspaceRoot = join(root, "workspace");

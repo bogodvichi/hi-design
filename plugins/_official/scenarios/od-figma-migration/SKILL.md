@@ -45,3 +45,7 @@ plugin layer:
 The daemon auto-derives the `figma-oauth` surface when
 `od.connectors.required[].id='figma'` is declared and the connector
 isn't yet authorised (spec §10.3.1 implicit oauth-prompt rule).
+
+## Style fidelity
+
+Preserve the source palette, typography, spacing, and components. The token-map stage uses a user-supplied target reference only when explicitly provided; otherwise it retains the extracted source tokens. No installed design system is required.

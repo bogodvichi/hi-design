@@ -43,7 +43,8 @@ const baseConfig: AppConfig = {
 };
 
 describe('IntegrationsView config reconciliation', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
+    await import('../../src/components/SettingsDialog');
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes('/api/connectors')) {
@@ -75,7 +76,7 @@ describe('IntegrationsView config reconciliation', () => {
       </I18nProvider>
     );
     const view = render(renderView(baseConfig));
-    const input = screen.getByPlaceholderText('Paste Composio API key') as HTMLInputElement;
+    const input = await screen.findByPlaceholderText('Paste Composio API key') as HTMLInputElement;
 
     fireEvent.change(input, { target: { value: 'cmp_pending_secret' } });
     expect(input.value).toBe('cmp_pending_secret');

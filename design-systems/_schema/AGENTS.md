@@ -1,14 +1,10 @@
 # `_schema/` — design-system contracts
 
-This directory codifies the structural contracts for design systems.
-`tokens.schema.ts` re-exports the token contract that every tokenized brand under
-`design-systems/<brand>/` must satisfy. The canonical runtime copy lives in
-`packages/contracts/src/design-systems/token-schema.ts` so daemon importers and
-repo guards consume one schema. `manifest.schema.ts` is the
-project contract for Design System Project packages. Every bundled catalog
-entry now ships `manifest.json`, `DESIGN.md`, and `tokens.css`; the daemon keeps
-`DESIGN.md`-only discovery solely as a compatibility path for older or
-user-installed folders.
+This directory retains generic token contracts and historical manifest validation.
+The standalone catalog, API, CLI, and selection UI are retired. Do not add brand
+catalog entries here. The canonical token contract remains in
+`packages/contracts/src/design-systems/token-schema.ts`; generic CSS tokens and
+source/reference extraction may continue to use it.
 
 ```
 _schema/

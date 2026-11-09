@@ -26,9 +26,6 @@ od:
     type: html
     entry: index.html
     reload: debounce-100
-  design_system:
-    requires: false
-    sections: [color, typography]
   craft:
     requires: [animation-discipline]
 ---
@@ -66,7 +63,7 @@ Read `example.html` end to end. Note the shape: a domain-warped `fbm` **height f
 - Compile shaders with error logging so a typo fails loudly, not silently black.
 
 ### Step 3 — Overlay + brand
-- Map the accent colors to the active DESIGN.md when one is present; otherwise a restrained metallic palette. The reference tints the hottest specular toward lime `#63fe13` as the brand accent.
+- Map the accent colors to the supplied template/reference styles when one is present; otherwise a restrained metallic palette. The reference tints the hottest specular toward lime `#63fe13` as the brand accent.
 - Headline ≤ 13ch plus one supporting line. Keep the metal as the hero.
 
 ### Step 4 — Self-review (P0)

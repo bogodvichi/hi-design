@@ -166,6 +166,7 @@ describe('BoardComposerPopover captured-component removal', () => {
       />,
     );
 
+    fireEvent.click(screen.getByTestId('comment-popover-edit'));
     expect(screen.getByTestId('comment-popover-save').hasAttribute('disabled')).toBe(true);
 
     rerender(

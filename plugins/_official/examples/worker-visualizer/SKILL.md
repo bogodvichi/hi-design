@@ -29,9 +29,6 @@ od:
     type: html
     entry: index.html
     reload: debounce-100
-  design_system:
-    requires: false
-    sections: [color, typography]
   craft:
     requires: [animation-discipline, state-coverage]
 ---
@@ -71,7 +68,7 @@ Pick ONE compute-bound job worth offloading:
 - Consider `OffscreenCanvas` + `canvas.transferControlToOffscreen()` to render inside the worker for the heaviest scenes.
 
 ### Step 3 — Overlay + brand
-- HUD with the title and 2–3 live stat tiles (particle count, transport mode, fps). Map accent color to the active DESIGN.md when present; otherwise a dark ground with one vivid accent.
+- HUD with the title and 2–3 live stat tiles (particle count, transport mode, fps). Map accent color to the supplied template/reference styles when present; otherwise a dark ground with one vivid accent.
 
 ### Step 4 — Self-review (P0)
 - [ ] Worker constructs with no SecurityError; sim runs.

@@ -21,8 +21,6 @@ od:
   preview:
     type: html
     entry: example.html
-  design_system:
-    requires: false
   example_prompt: |
     5-second product reveal — ceramic coffee mug rotating on a soft
     paper backdrop, warm side-light from camera-left, micro dust motes

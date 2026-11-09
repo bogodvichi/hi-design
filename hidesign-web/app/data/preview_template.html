@@ -189,6 +189,7 @@
       var currentIframe = null;
       var activeItem = null;
       var pinPopupState = null;
+      var commentPinRoots = new WeakMap();
       var pinSyncFrame = null;
       var iframeResizeObserver = null;
       var loadingTimer = null;
@@ -237,6 +238,17 @@
      function commentDisplayName(comment) {
        return comment && (comment.authorDisplayName || comment.displayName) || '匿名用户';
      }
+
+      // comment-count:start
+      function isTopLevelComment(comment) {
+        return Boolean(comment && !comment.parentId);
+      }
+
+      function countTopLevelComments(comments) {
+        if (!Array.isArray(comments)) return 0;
+        return comments.filter(isTopLevelComment).length;
+      }
+      // comment-count:end
 
      // avatar-resolution:start
      function commentAvatarUrl(comment) {
@@ -356,13 +368,24 @@
         popup.style.top = popupPosition.top + 'px';
       }
 
+      function getCommentPinRoot(doc) {
+        if (!doc || typeof doc.getElementById !== 'function') return null;
+        var host = doc.getElementById('__comment_pins__');
+        return host ? commentPinRoots.get(host) || null : null;
+      }
+
+      function getCommentPins(doc) {
+        var root = getCommentPinRoot(doc);
+        return root ? root.querySelectorAll('.__comment_pin__') : [];
+      }
+
       function syncCommentPinPositions(doc, comments) {
-        if (!doc || !comments || typeof doc.querySelectorAll !== 'function') return;
+        if (!doc || !comments) return;
         var commentsById = Object.create(null);
         comments.forEach(function(comment) {
           if (comment && comment.id) commentsById[String(comment.id)] = comment;
         });
-        var pins = doc.querySelectorAll('.__comment_pin__');
+        var pins = getCommentPins(doc);
         for (var i = 0; i < pins.length; i++) {
           var pin = pins[i];
           var comment = commentsById[String(pin.getAttribute('data-comment-id') || '')];
@@ -520,11 +543,11 @@
       function renderPageComments(iframe) {
         var comments = currentFilePath ? getCommentsForPage(currentFilePath) : [];
         comments.forEach(function(c) {
-          c._hasPin = !c.parentId && Boolean(c.position && typeof c.position === 'object');
+          c._hasPin = isTopLevelComment(c) && Boolean(c.position && typeof c.position === 'object');
         });
         renderCommentPins(iframe, comments);
         renderCommentList(comments);
-        updateCommentFabBadge(comments.length);
+        updateCommentFabBadge(countTopLevelComments(comments));
       }
 
       function renderCommentPins(iframe, comments) {
@@ -539,10 +562,22 @@
           if (oldStyle) oldStyle.remove();
           var pinComments = comments.filter(function(c) { return c._hasPin; });
           if (pinComments.length === 0) return;
+          var container = doc.createElement('div');
+          container.id = '__comment_pins__';
+          container.style.cssText =
+            'all:initial!important;position:absolute!important;top:0!important;left:0!important;' +
+            'display:block!important;width:0!important;height:0!important;overflow:visible!important;' +
+            'pointer-events:none!important;z-index:2147483646!important;';
+          var pinRoot = container.attachShadow({ mode: 'closed' });
+          commentPinRoots.set(container, pinRoot);
+          pinRoot.addEventListener('click', function(event) {
+            event.stopPropagation();
+          });
           var style = doc.createElement('style');
           style.id = '__comment_pin_css__';
           style.textContent =
-            '#__comment_pins__{position:absolute;top:0;left:0;width:0;height:0;pointer-events:none;z-index:2147483646;}' +
+            ':host{all:initial;}' +
+            '*,*::before,*::after{box-sizing:border-box;}' +
             '.__comment_pin__{position:absolute;width:32px;height:32px;border-radius:50%;' +
             'background:#2563eb;color:#fff;border:2px solid #fff;font-size:12px;font-family:-apple-system,BlinkMacSystemFont,\'Segoe UI\',sans-serif;font-weight:600;' +
             'display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;pointer-events:auto;' +
@@ -577,9 +612,7 @@
             '.__comment_pin_popup_text__{margin:0;white-space:pre-wrap;word-break:break-word;font-size:13px;line-height:1.55;color:#4b4b52;}' +
             '.__comment_pin_popup_status__{align-self:flex-start;padding:2px 8px;border-radius:10px;background:#d1fae5;color:#059669;font-size:11px;}' +
             '.__comment_pin_popup_replies_title__{margin:14px 0 0;padding-top:12px;border-top:1px solid #eee;font-size:12px;font-weight:600;color:#71717a;}';
-          if (doc.head) doc.head.appendChild(style);
-          var container = doc.createElement('div');
-          container.id = '__comment_pins__';
+          pinRoot.appendChild(style);
           pinComments.forEach(function(comment) {
             var point = commentPinPoint(comment, doc);
             if (!point) return;
@@ -604,13 +637,15 @@
               event.stopPropagation();
               openCommentPinPopup(doc, comment, pin);
             });
-            container.appendChild(pin);
+            pinRoot.appendChild(pin);
           });
           doc.body.appendChild(container);
           if (!doc.__hiDesignCommentPopupDismissBound) {
             doc.__hiDesignCommentPopupDismissBound = true;
             doc.addEventListener('click', function(event) {
-              if (!pinPopupState || pinPopupState.doc !== doc || pinPopupState.popup.contains(event.target)) return;
+              if (!pinPopupState || pinPopupState.doc !== doc) return;
+              var path = typeof event.composedPath === 'function' ? event.composedPath() : [];
+              if (path.indexOf(pinPopupState.popup) >= 0 || pinPopupState.popup.contains(event.target)) return;
               closeCommentPinPopup();
             });
           }
@@ -724,7 +759,7 @@
         try {
           var doc = currentIframe.contentDocument;
           if (!doc) return false;
-          var pins = doc.querySelectorAll('.__comment_pin__');
+          var pins = getCommentPins(doc);
           var pin = null;
           for (var i = 0; i < pins.length; i++) {
             if (pins[i].getAttribute('data-comment-id') === commentId) {
@@ -758,7 +793,7 @@
         if (!commentList) return;
         // Replies stay grouped under their top-level comment and are opened in
         // the page anchor popup instead of expanding inside the sidebar.
-        var topLevel = comments.filter(function(c) { return !c.parentId; });
+        var topLevel = comments.filter(isTopLevelComment);
         if (topLevel.length === 0) {
           commentList.innerHTML = '<div class="comment-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><p>当前页面暂无评论</p></div>';
           return;
@@ -829,7 +864,9 @@
         var items = sidebarList.querySelectorAll('.sidebar-item');
         items.forEach(function(item) {
           var fp = item.getAttribute('data-filepath');
-          var count = fp ? getCommentsForPage(fp).filter(function(c) { return c.status === 'open'; }).length : 0;
+          var count = fp ? getCommentsForPage(fp).filter(function(c) {
+            return c.status === 'open' && isTopLevelComment(c);
+          }).length : 0;
           var badge = item.querySelector('.comment-count-badge');
           if (count > 0) {
             if (!badge) { badge = document.createElement('span'); badge.className = 'comment-count-badge'; item.appendChild(badge); }
@@ -853,7 +890,8 @@
         try {
           var doc = currentIframe.contentDocument;
           if (!doc) return;
-          var pin = doc.querySelector('.__comment_pin__[data-comment-id="' + commentId + '"]');
+          var root = getCommentPinRoot(doc);
+          var pin = root ? root.querySelector('.__comment_pin__[data-comment-id="' + commentId + '"]') : null;
           if (pin) {
             pin.classList.add('__comment_pin_highlight__');
             setTimeout(function() { pin.classList.remove('__comment_pin_highlight__'); }, 2000);

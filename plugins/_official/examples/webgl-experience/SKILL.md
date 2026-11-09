@@ -28,9 +28,6 @@ od:
     type: html
     entry: index.html
     reload: debounce-100
-  design_system:
-    requires: false
-    sections: [color, typography]
   craft:
     requires: [animation-discipline]
 ---
@@ -69,7 +66,7 @@ Pick ONE technique that fits the brief:
 - Compile shaders with error logging (`getShaderInfoLog`) so a typo fails loudly, not silently black.
 
 ### Step 3 — Overlay + brand
-- Map the two `:root`-level accent colors to the active DESIGN.md when one is present; otherwise use a restrained dark palette with a single vivid accent (the reference uses lime `#63fe13`).
+- Map the two `:root`-level accent colors to the supplied template/reference styles when one is present; otherwise use a restrained dark palette with a single vivid accent (the reference uses lime `#63fe13`).
 - Headline ≤ 14ch, one supporting line. Never cover the whole canvas — the visual is the hero.
 
 ### Step 4 — Self-review (P0)

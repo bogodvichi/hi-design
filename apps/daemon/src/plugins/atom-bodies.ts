@@ -40,7 +40,7 @@ export async function loadAtomBodies(
   const out: AtomBodyEntry[] = [];
   for (const id of atomIds) {
     const slug = id.toLowerCase();
-    const plugin = preferBundledPlugin(db, slug);
+    const plugin = getInstalledPlugin(db, slug);
     if (!plugin) continue;
     let raw: string;
     try {
@@ -67,18 +67,9 @@ export async function loadBundledAtomBodiesStrict(
   const out: AtomBodyEntry[] = [];
   for (const requestedId of atomIds) {
     const id = requestedId.toLowerCase();
-    const bundled = db
-      .prepare(
-        `SELECT id FROM installed_plugins WHERE id = ? AND source_kind = 'bundled' LIMIT 1`,
-      )
-      .get(id) as { id?: string } | undefined;
-    if (!bundled?.id) continue;
-    const plugin = getInstalledPlugin(db, bundled.id);
-    if (
-      !plugin
-      || plugin.sourceKind !== 'bundled'
-      || plugin.id !== id
-    ) {
+    const plugin = getInstalledPlugin(db, id);
+    if (!plugin || plugin.sourceKind !== 'bundled') continue;
+    if (plugin.id !== id) {
       throw new Error(`Bundled atom identity is invalid: ${id}`);
     }
     let raw: string;
@@ -95,17 +86,6 @@ export async function loadBundledAtomBodiesStrict(
     out.push({ atomId: id, pluginId: plugin.id, body });
   }
   return out;
-}
-
-function preferBundledPlugin(db: SqliteDb, id: string) {
-  // Look first for a bundled record with the requested id.
-  const bundled = db
-    .prepare(`SELECT id FROM installed_plugins WHERE id = ? AND source_kind = 'bundled' LIMIT 1`)
-    .get(id) as { id?: string } | undefined;
-  if (bundled?.id) {
-    return getInstalledPlugin(db, bundled.id);
-  }
-  return getInstalledPlugin(db, id);
 }
 
 // Strip the leading YAML/TOML-style frontmatter block. Any plugin

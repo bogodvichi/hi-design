@@ -37,8 +37,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: false
   craft:
     requires:
       - typographic-rhythm

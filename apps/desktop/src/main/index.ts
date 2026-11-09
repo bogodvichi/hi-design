@@ -1,8 +1,9 @@
+import { inspectDesktopWebContents } from './web-contents-diagnostics.js';
 import { randomBytes, randomUUID } from "node:crypto";
 import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { BrowserWindow, Menu, app, dialog, globalShortcut, shell, type MenuItemConstructorOptions } from "electron";
+import { BrowserWindow, Menu, app, dialog, globalShortcut, shell, webContents, type MenuItemConstructorOptions } from "electron";
 
 import {
   APP_KEYS,
@@ -871,7 +872,7 @@ export async function runDesktopMain(
         ...update,
       };
     }
-    return { ...activeDesktop.status(), ...update };
+    return { ...activeDesktop.status(), ...update, webContents: inspectDesktopWebContents(webContents.getAllWebContents()) };
   }
 
   async function shutdown(): Promise<void> {

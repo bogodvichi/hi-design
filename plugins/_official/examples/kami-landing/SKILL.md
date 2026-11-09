@@ -31,8 +31,6 @@ od:
     type: html
     entry: index.html
     reload: debounce-100
-  design_system:
-    requires: false
   craft:
     requires:
       - typographic-rhythm

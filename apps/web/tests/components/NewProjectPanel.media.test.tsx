@@ -23,8 +23,6 @@ describe('NewProjectPanel media provider badges', () => {
     render(
       <NewProjectPanel
         skills={[]}
-        designSystems={[]}
-        defaultDesignSystemId={null}
         templates={[]}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}
@@ -55,8 +53,6 @@ describe('NewProjectPanel media provider badges', () => {
     render(
       <NewProjectPanel
         skills={[]}
-        designSystems={[]}
-        defaultDesignSystemId={null}
         templates={[]}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}
@@ -78,8 +74,6 @@ describe('NewProjectPanel media provider badges', () => {
     render(
       <NewProjectPanel
         skills={[]}
-        designSystems={[]}
-        defaultDesignSystemId={null}
         templates={[]}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}
@@ -113,8 +107,6 @@ describe('NewProjectPanel media provider badges', () => {
     render(
       <NewProjectPanel
         skills={[]}
-        designSystems={[]}
-        defaultDesignSystemId={null}
         templates={[]}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}
@@ -144,8 +136,6 @@ describe('NewProjectPanel media provider badges', () => {
     render(
       <NewProjectPanel
         skills={[]}
-        designSystems={[]}
-        defaultDesignSystemId={null}
         templates={[]}
         onDeleteTemplate={vi.fn()}
         promptTemplates={[]}

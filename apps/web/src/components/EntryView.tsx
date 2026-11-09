@@ -72,12 +72,10 @@ interface Props {
   // Design templates only. Sourced from /api/design-templates. See
   // specs/current/skills-and-design-templates.md.
   designTemplates: SkillSummary[];
-  designSystems: DesignSystemSummary[];
   projects: Project[];
   templates: ProjectTemplate[];
   onDeleteTemplate: (id: string) => Promise<boolean>;
   promptTemplates: PromptTemplateSummary[];
-  defaultDesignSystemId: string | null;
   agents: AgentInfo[];
   // Forwarded to EntryShell → OnboardingView so the AMR cloud card can show a
   // detecting/skeleton state while the cold-start agent stream is in flight.
@@ -115,7 +113,6 @@ interface Props {
   // the New project modal renders an empty state until they arrive (fast
   // fetch), which keeps the prop surface narrower.
   skillsLoading?: boolean;
-  designSystemsLoading?: boolean;
   projectsLoading?: boolean;
   promptTemplatesLoading?: boolean;
   onCreateProject: (input: EntryCreateProjectInput) => Promise<boolean> | boolean | void;
@@ -156,10 +153,6 @@ interface Props {
     workspaceId: string,
     workspaceMemberId: string,
   ) => Promise<boolean> | boolean;
-  onChangeDefaultDesignSystem: (id: string) => void;
-  onCreateDesignSystem?: () => void;
-  onOpenDesignSystem?: (id: string) => void;
-  onDesignSystemsRefresh?: () => Promise<void> | void;
   onPersistComposioKey: (composio: AppConfig['composio']) => Promise<void> | void;
   onOpenSettings: (section?: 'execution' | 'media' | 'composio' | 'orbit' | 'integrations' | 'mcpClient' | 'language' | 'appearance' | 'notifications' | 'pet' | 'projectLocations' | 'library' | 'about' | 'memory' | 'designSystems') => void;
   onCompleteOnboarding: () => void;
@@ -265,12 +258,10 @@ export function EntryView({
   active = true,
   skills,
   designTemplates,
-  designSystems,
   projects,
   templates,
   onDeleteTemplate,
   promptTemplates,
-  defaultDesignSystemId,
   agents,
   agentsLoading,
   amrLoggedIn,
@@ -293,7 +284,6 @@ export function EntryView({
   onSkillsChanged,
   onRefreshAgents,
   skillsLoading = false,
-  designSystemsLoading = false,
   projectsLoading = false,
   promptTemplatesLoading: _promptTemplatesLoading = false,
   onCreateProject,
@@ -310,10 +300,6 @@ export function EntryView({
  onCopyProject,
  onCopySharedProject,
   onTeamProjectContentReady,
-  onChangeDefaultDesignSystem,
-  onCreateDesignSystem,
-  onOpenDesignSystem,
-  onDesignSystemsRefresh,
   onPersistComposioKey,
   onOpenSettings,
   onCompleteOnboarding,
@@ -391,18 +377,15 @@ export function EntryView({
       active={active}
       skills={skills}
       designTemplates={designTemplates}
-      designSystems={designSystems}
       projects={projects}
       templates={templates}
       onDeleteTemplate={onDeleteTemplate}
       promptTemplates={promptTemplates}
-      defaultDesignSystemId={defaultDesignSystemId}
       connectors={connectors}
       connectorsLoading={connectorsLoading}
       {...(integrationInitialTab ? { integrationInitialTab } : {})}
       composioConfigLoading={composioConfigLoading}
       skillsLoading={skillsLoading}
-      designSystemsLoading={designSystemsLoading}
       projectsLoading={projectsLoading}
       config={config}
       providerModelsCache={providerModelsCache}
@@ -437,10 +420,6 @@ export function EntryView({
      onCopySharedProject={onCopySharedProject}
       onProjectsRefresh={onProjectsRefresh}
       onTeamProjectContentReady={onTeamProjectContentReady}
-      onChangeDefaultDesignSystem={onChangeDefaultDesignSystem}
-      onCreateDesignSystem={onCreateDesignSystem}
-      onOpenDesignSystem={onOpenDesignSystem}
-      onDesignSystemsRefresh={onDesignSystemsRefresh}
       onPersistComposioKey={onPersistComposioKey}
       onOpenSettings={onOpenSettings}
       onCompleteOnboarding={onCompleteOnboarding}

@@ -26,9 +26,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   craft:
     requires: [state-coverage, animation-discipline]
   example_prompt: "Design a gamified life-management app — multi-screen mobile prototype: cover poster, today's quests with XP, and a quest detail. ‘Daily quests for becoming a better human.’"
@@ -41,7 +38,7 @@ Three phone frames side-by-side, each one its own moment in the journey.
 
 ## Workflow
 
-1. **Read the active DESIGN.md** (injected above). For gamified apps, lean
+1. **Read the supplied template/reference styles** (provided with the template). For gamified apps, lean
    on bold display type for headlines and a brighter, broader palette than
    most products — quests look like quests because the colors do.
 2. **Pick the brand + value prop** from the brief. Generate real quest

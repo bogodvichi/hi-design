@@ -1,20 +1,12 @@
 import type http from 'node:http';
-import express from 'express';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-
 import {
   isStaticSpaFallbackRequest,
   resolveDataDir,
   startServer,
   type StartServerResult,
 } from '../src/server.js';
-import { isLocalSameOrigin } from '../src/origin-validation.js';
-import { registerDesignSystemRoutes } from '../src/routes/design-systems.js';
-import { registerStaticResourceRoutes } from '../src/routes/static-resource.js';
 
 let server: http.Server;
 let baseUrl: string;
@@ -116,6 +108,20 @@ describe('project file request limits', () => {
 });
 
 describe('server route inventory', () => {
+  it('does not register retired pet endpoints', () => {
+    expect(routeInventory.some((route) => route.path.includes('/codex-pets'))).toBe(false);
+  });
+
+  it.each([
+    ['GET', '/api/codex-pets'],
+    ['POST', '/api/codex-pets/sync'],
+    ['GET', '/api/codex-pets/example/spritesheet'],
+  ])('returns 404 for retired %s %s', async (method, route) => {
+    const response = await fetch(`${baseUrl}${route}`, { method });
+    expect(response.status).toBe(404);
+    await response.arrayBuffer();
+  });
+
   it('records bootstrap and migrated domain routes in registration order', () => {
     const routeKeys = routeInventory.map((route) => `${route.method} ${route.path}`);
     const fallbackIndex = routeKeys.indexOf('GET /*splat');
@@ -262,27 +268,6 @@ describe('server route inventory', () => {
       'POST /api/projects/:id/finalize/:provider',
       'POST /api/projects/:id/upload',
     ];
-    const designSystemRouteKeys = [
-      'GET /api/design-systems',
-      'DELETE /api/design-systems/:id',
-      'POST /api/design-systems',
-      'POST /api/design-systems/generation-jobs',
-      'GET /api/design-systems/generation-jobs/:jobId',
-      'POST /api/design-systems/:id/revision-jobs',
-      'POST /api/design-systems/:id/token-contract/rebuild-jobs',
-      'GET /api/design-systems/:id/revisions',
-      'PATCH /api/design-systems/:id/revisions/:revisionId',
-      'GET /api/design-systems/:id',
-      'GET /api/design-systems/:id/preview',
-      'GET /api/design-systems/:id/showcase',
-      'POST /api/design-systems/:id/workspace',
-      'GET /api/design-systems/:id/files',
-      'GET /api/design-systems/:id/file',
-      'PATCH /api/design-systems/:id',
-      'DELETE /api/design-systems/:id',
-      'GET /api/craft',
-      'GET /api/craft/:id',
-    ];
     const staticCatalogRouteKeys = [
       'GET /api/skills/:id/example',
       'GET /api/skills/:id/assets/*splat',
@@ -325,7 +310,6 @@ describe('server route inventory', () => {
       'GET /api/version',
       'GET /api/daemon/status',
       'GET /api/skills',
-      'GET /api/codex-pets',
       'GET /api/prompt-templates',
       'GET /*splat',
     ]));
@@ -345,7 +329,7 @@ describe('server route inventory', () => {
     expect(routeKeys.filter((key) => projectFileStringRouteKeys.includes(key))).toEqual(projectFileStringRouteKeys);
     expect(routeKeys.filter((key) => projectArchiveRouteKeys.includes(key))).toEqual(projectArchiveRouteKeys);
     expect(routeKeys.filter((key) => projectTemplateAndArtifactRouteKeys.includes(key))).toEqual(projectTemplateAndArtifactRouteKeys);
-    expect(routeKeys.filter((key) => designSystemRouteKeys.includes(key))).toEqual(designSystemRouteKeys);
+    expect(routeKeys.filter((key) => /\/api\/(?:design-systems|brands)(?:\/|$)/.test(key))).toEqual([]);
     expect(routeKeys.filter((key) => staticCatalogRouteKeys.includes(key))).toEqual(staticCatalogRouteKeys);
     expect(routeKeys.filter((key) => mediaConfigRouteKeys.includes(key))).toEqual(mediaConfigRouteKeys);
     expect(routeKeys.filter((key) => browserSessionRouteKeys.includes(key))).toEqual(browserSessionRouteKeys);
@@ -363,8 +347,8 @@ describe('server route inventory', () => {
     expect(routeKeys.filter((key) => key === 'USE /frames')).toHaveLength(1);
     expect(routeKeys.filter((key) => key === 'GET /api/plugins')).toHaveLength(1);
     expect(routeKeys.filter((key) => key === 'GET /api/atoms')).toHaveLength(1);
-    expect(routeKeys.filter((key) => key === 'GET /api/design-systems/:id')).toHaveLength(1);
-    expect(routeKeys.filter((key) => key === 'GET /api/design-systems/:id/preview')).toHaveLength(1);
+    expect(routeKeys.filter((key) => key === 'GET /api/design-systems/:id')).toHaveLength(0);
+    expect(routeKeys.filter((key) => key === 'GET /api/design-systems/:id/preview')).toHaveLength(0);
     expect(routeKeys.filter((key) => key === 'POST /api/projects/:id/upload')).toHaveLength(1);
     expect(routeKeys.filter((key) => key === 'POST /api/runs')).toHaveLength(1);
     expect(routeKeys.filter((key) => key === 'POST /api/chat')).toHaveLength(1);
@@ -440,214 +424,6 @@ describe('bootstrap route regressions', () => {
     expect(await replayMissingSnapshot.json()).toEqual({ error: 'run not found' });
   });
 
-  it('keeps extracted design-system and template example responses stable', async () => {
-    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'od-route-smoke-'));
-    const designSystemId = 'route-smoke-system';
-    const templateId = 'route-smoke-template';
-    const designSystemBody = '# Route Smoke System\n\nA seeded design system.';
-    const templateDir = path.join(tempRoot, 'design-templates', templateId);
-    const assetPath = path.join(templateDir, 'assets', 'demo.css');
-
-    fs.mkdirSync(path.dirname(assetPath), { recursive: true });
-    fs.writeFileSync(
-      path.join(templateDir, 'SKILL.md'),
-      [
-        '---',
-        `name: ${templateId}`,
-        'description: Route smoke template.',
-        '---',
-        '',
-        'Render the route smoke template.',
-      ].join('\n'),
-    );
-    fs.writeFileSync(
-      path.join(templateDir, 'example.html'),
-      '<!doctype html><link rel="stylesheet" href="./assets/demo.css"><main>Template Example</main>',
-    );
-    fs.writeFileSync(assetPath, 'main { color: rgb(1 2 3); }');
-
-    const app = express();
-    app.use(express.json({ limit: '4mb' }));
-    let smokeServer: http.Server | undefined;
-    const paths = {
-      ARTIFACTS_DIR: path.join(tempRoot, 'artifacts'),
-      BRANDS_DIR: path.join(tempRoot, 'brands'),
-      BUNDLED_PETS_DIR: path.join(tempRoot, 'pets'),
-      CRAFT_DIR: path.join(tempRoot, 'craft'),
-      DESIGN_SYSTEMS_DIR: path.join(tempRoot, 'design-systems'),
-      DESIGN_TEMPLATES_DIR: path.join(tempRoot, 'design-templates'),
-      LIBRARY_DIR: path.join(tempRoot, 'library'),
-      OD_BIN: path.join(tempRoot, 'od'),
-      PROJECT_ROOT: tempRoot,
-      PROJECTS_DIR: path.join(tempRoot, 'projects'),
-      PROMPT_TEMPLATES_DIR: path.join(tempRoot, 'prompt-templates'),
-      RUNTIME_DATA_DIR: path.join(tempRoot, 'data'),
-      RUNTIME_DATA_DIR_CANONICAL: path.join(tempRoot, 'data'),
-      SKILLS_DIR: path.join(tempRoot, 'skills'),
-      USER_DESIGN_SYSTEMS_DIR: path.join(tempRoot, 'user-design-systems'),
-      USER_DESIGN_TEMPLATES_DIR: path.join(tempRoot, 'user-design-templates'),
-      USER_SKILLS_DIR: path.join(tempRoot, 'user-skills'),
-    };
-    const httpDeps = {
-      createSseResponse: () => undefined,
-      isLocalSameOrigin,
-      requireLocalDaemonRequest: (_req: unknown, _res: unknown, next: () => void) => next(),
-      resolvedPortRef: {
-        get current() {
-          const address = smokeServer?.address();
-          return typeof address === 'object' && address ? address.port : 0;
-        },
-      },
-      sendApiError: (res: express.Response, status: number, code: string, message: string) =>
-        res.status(status).json({ error: message, code }),
-      sendLiveArtifactRouteError: () => undefined,
-      sendMulterError: () => undefined,
-    };
-    const designSystemSummary = {
-      id: designSystemId,
-      title: 'Route Smoke System',
-      category: 'test',
-      summary: 'A seeded design system.',
-      swatches: ['#123456'],
-      surface: 'web' as const,
-      body: designSystemBody,
-      source: 'built-in' as const,
-      status: 'published' as const,
-      isEditable: false,
-    };
-    const templateEntry = {
-      id: templateId,
-      name: templateId,
-      description: 'Route smoke template.',
-      triggers: [],
-      mode: 'template' as const,
-      surface: 'web' as const,
-      source: 'built-in' as const,
-      craftRequires: [],
-      platform: null,
-      scenario: '',
-      category: null,
-      previewType: 'default',
-      designSystemRequired: false,
-      defaultFor: [],
-      upstream: null,
-      featured: null,
-      fidelity: null,
-      speakerNotes: null,
-      animations: null,
-      examplePrompt: '',
-      aggregatesExamples: false,
-      critiquePolicy: null,
-      body: 'Render the route smoke template.',
-      dir: templateDir,
-    };
-
-    registerDesignSystemRoutes(app, {
-      db: {} as never,
-      paths,
-      projectFiles: {} as never,
-      projectStore: {} as never,
-      verifyWorkspaceRequestAuthority: async () => {
-        throw new Error('unbound fixture must not verify Workspace authority');
-      },
-      workspaceResources: {
-        getWorkspaceResource: () => undefined,
-        getWorkspaceResourceByResourceId: () => undefined,
-      },
-      designSystems: {
-        buildUserDesignSystemArchive: async () => null,
-        canMutateUserDesignSystem: async () => true,
-        createUserDesignSystem: async () => designSystemSummary as never,
-        deleteUserDesignSystem: async () => false,
-        ensureUserDesignSystemWorkspaceProject: async () => null,
-        listAllDesignSystems: async () => [designSystemSummary],
-        listUserDesignSystemFiles: async () => null,
-        listUserDesignSystemRevisions: async () => null,
-        prepareDesignTokenContractRebuild: async () => ({ decision: { available: false } }) as never,
-        readAvailableDesignSystem: async (id: string) => id === designSystemId ? designSystemBody : null,
-        readAvailableDesignSystemPackageInfo: async () => null,
-        readAvailableDesignSystemStaticFile: async () => null,
-        readDesignSystemWorkspaceTextFile: async () => null,
-        readUserDesignSystemFile: async () => null,
-        renderDesignSystemPreview: (id: string, body: string) =>
-          `<!doctype html><title>${id} preview</title><main>${body}</main>`,
-        renderDesignSystemShowcase: (id: string, body: string) =>
-          `<!doctype html><title>${id} showcase</title><main>${body}</main>`,
-        syncUserDesignSystemAssetsFromWorkspace: async () => ({ ok: false, reason: 'not-found' }),
-        unshareTeamDesignSystemIfShared: async () => false,
-        updateUserDesignSystem: async () => null,
-        updateUserDesignSystemRevisionStatus: async () => null,
-      },
-      generationJobs: {
-        get: () => null,
-        rebuildTokenContract: () => ({}) as never,
-        revise: () => ({}) as never,
-        start: () => ({}) as never,
-      },
-    });
-    registerStaticResourceRoutes(app, {
-      // Not exercised: this smoke test only hits GET example/asset routes,
-      // none of which touch the skill workspace-mutation gate that reads it.
-      db: {} as any,
-      http: httpDeps,
-      paths,
-      resources: {
-        listAllDesignSystems: async () => [designSystemSummary],
-        listAllSkills: async () => [],
-        listAllDesignTemplates: async () => [templateEntry],
-        listAllSkillLikeEntries: async () => [templateEntry],
-        mimeFor: (target: string) => target.endsWith('.css') ? 'text/css' : 'application/octet-stream',
-      },
-    });
-
-    try {
-      const smokeBaseUrl = await new Promise<string>((resolve) => {
-        smokeServer = app.listen(0, '127.0.0.1', () => {
-          const address = smokeServer?.address() as { port: number };
-          resolve(`http://127.0.0.1:${address.port}`);
-        });
-      });
-      const [detail, preview, showcase, example] = await Promise.all([
-        fetch(`${smokeBaseUrl}/api/design-systems/${designSystemId}`),
-        fetch(`${smokeBaseUrl}/api/design-systems/${designSystemId}/preview`),
-        fetch(`${smokeBaseUrl}/api/design-systems/${designSystemId}/showcase`),
-        fetch(`${smokeBaseUrl}/api/skills/${templateId}/example`),
-      ]);
-
-      expect(detail.status).toBe(200);
-      expect(detail.headers.get('content-type')).toContain('application/json');
-      await expect(detail.json()).resolves.toMatchObject({
-        designSystem: {
-          id: designSystemId,
-          body: designSystemBody,
-        },
-      });
-
-      expect(preview.status).toBe(200);
-      expect(preview.headers.get('content-type')).toContain('text/html');
-      await expect(preview.text()).resolves.toContain(`${designSystemId} preview`);
-
-      expect(showcase.status).toBe(200);
-      expect(showcase.headers.get('content-type')).toContain('text/html');
-      await expect(showcase.text()).resolves.toContain(`${designSystemId} showcase`);
-
-      expect(example.status).toBe(200);
-      expect(example.headers.get('content-type')).toContain('text/html');
-      const exampleHtml = await example.text();
-      expect(exampleHtml).toContain(`/api/skills/${templateId}/assets/demo.css`);
-
-      const asset = await fetch(`${smokeBaseUrl}/api/skills/${templateId}/assets/demo.css`, {
-        headers: { Origin: 'null' },
-      });
-      expect(asset.status).toBe(200);
-      expect(asset.headers.get('content-type')).toContain('text/css');
-      expect(asset.headers.get('access-control-allow-origin')).toBe('*');
-      await expect(asset.text()).resolves.toBe('main { color: rgb(1 2 3); }');
-    } finally {
-      await new Promise<void>((resolve) => smokeServer?.close(() => resolve()));
-      fs.rmSync(tempRoot, { recursive: true, force: true });
-    }
-  });
 });
 
 describe('static SPA fallback classification', () => {
@@ -679,4 +455,10 @@ describe('daemon data dir resolver', () => {
     );
     expect(resolveDataDir('relative-data', '/tmp/open-design-test')).toBe('/tmp/open-design-test/relative-data');
   });
+});
+
+it('does not register retired design-system or brand endpoints', () => {
+  expect(routeInventory.filter(({ path }) =>
+    path.includes('design-system') || /\/api\/brands(?:\/|$)/.test(path),
+  )).toEqual([]);
 });

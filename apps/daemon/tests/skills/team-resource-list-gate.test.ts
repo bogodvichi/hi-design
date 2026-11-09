@@ -2,13 +2,11 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-
 import { materializeWorkspaceScopedTeamResource } from '../../src/collab/team-resource-materialization.js';
 import { closeDatabase, ensureWorkspaceResource, openDatabase, updateWorkspaceResource } from '../../src/db.js';
-import * as designSystems from '../../src/design-systems/index.js';
-import { createDesignSystemServerServices } from '../../src/design-systems/server-services.js';
 import * as skills from '../../src/skills.js';
 import { workspaceTeamSkillBindingResourceId } from '../../src/skills/workspace-team-binding.js';
+import { createSkillServerServices } from '../../src/skills/server-services.js';
 
 const roots: string[] = [];
 
@@ -42,24 +40,19 @@ async function createFixture(options: {
     mkdir(builtInDesignSystems, { recursive: true }),
   ]);
   const db = openDatabase(root, { dataDir: root });
-  const services = createDesignSystemServerServices({
+  const services = createSkillServerServices({
     getDb: () => db,
     roots: {
       SKILL_ROOTS: [userSkills, builtInSkills],
       DESIGN_TEMPLATE_ROOTS: [],
       ALL_SKILL_LIKE_ROOTS: [],
     },
-    paths: {
-      PROJECTS_DIR: path.join(root, 'projects'),
-      DESIGN_SYSTEMS_DIR: builtInDesignSystems,
-      USER_DESIGN_SYSTEMS_DIR: userDesignSystems,
-    },
+
     skills: {
       listSkills: (options.listSkills ?? skills.listSkills) as never,
       findSkillById: skills.findSkillById as never,
     },
-    designSystems: designSystems as never,
-    projects: {} as never,
+
   });
   return { db, services, userSkills };
 }

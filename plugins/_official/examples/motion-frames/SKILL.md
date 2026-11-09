@@ -26,9 +26,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   example_prompt: "Design an animated hero — a rotating type ring around a wireframe globe, with the headline ‘Reach every country.’ Loop at 12s, ready for HyperFrames export."
 ---
 
@@ -40,7 +37,7 @@ Lottie, etc.) can capture into a video.
 
 ## Workflow
 
-1. **Read the active DESIGN.md** (injected above). Motion lives or dies on
+1. **Read the supplied template/reference styles** (provided with the template). Motion lives or dies on
    typography contrast — pick the most expressive serif / display token in
    the DS for the headline; the body / mono token labels everything else.
 2. **Compose** the canvas as a 16:9 hero with these layers, back to front:

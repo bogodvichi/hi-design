@@ -276,11 +276,9 @@ async function mountHomeShell(initial: WorkspaceCollabContext): Promise<Harness>
       <EntryShell
         skills={[]}
         designTemplates={[]}
-        designSystems={[]}
         projects={[]}
         templates={[]}
         promptTemplates={[]}
-        defaultDesignSystemId={null}
         connectors={[]}
         connectorsLoading={false}
         config={config()}
@@ -300,7 +298,6 @@ async function mountHomeShell(initial: WorkspaceCollabContext): Promise<Harness>
         onOpenLiveArtifact={vi.fn()}
         onDeleteProject={vi.fn()}
         onRenameProject={vi.fn()}
-        onChangeDefaultDesignSystem={vi.fn()}
         onPersistComposioKey={vi.fn()}
         onOpenSettings={vi.fn()}
         onCompleteOnboarding={vi.fn()}

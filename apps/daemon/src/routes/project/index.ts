@@ -4,7 +4,7 @@ import { rm } from 'node:fs/promises';
 import path from 'node:path';
 import { load } from 'cheerio';
 import type { Express, Request, Response } from 'express';
-import type { LintArtifactRequest, LintArtifactResponse } from '@open-design/contracts';
+import { applyProjectFileTextEdits, automaticStrategyTaskProfileForProjectMetadata, projectFileTextPatchSchema, type ChatSessionMode, type LocalCatalogScope, type PluginManifest, type PreviewComment, type ProjectDesignTokenSuggestionProp, type ProjectDesignTokenSuggestionQuery, type ProjectFile, type ProjectFileTextPreviewResponse, type ProjectFileVersion, type ProjectFileVersionPromptSource, type ProjectFileVersionSource, type ProjectFileVersionWarning, type ProjectMetadata, type ProjectSyncState, type RestoreProjectAutomaticScenarioRequest, type RestoreProjectAutomaticScenarioResponse, type WorkspaceCollabContext } from '@open-design/contracts';
 import {
   PREVIEW_OBSERVABILITY_BRIDGE_MARKER,
   buildPreviewBaseHrefBridge,
@@ -17,28 +17,6 @@ import {
   PREVIEW_URL_GUARD_MAX_HTML_BYTES,
   previewHtmlHasLoadTimeLocationNavigation,
 } from '@open-design/contracts/runtime/preview-guards';
-import {
-  automaticStrategyTaskProfileForProjectMetadata,
-  applyProjectFileTextEdits,
-  projectFileTextPatchSchema,
-  type ChatSessionMode,
-  type LocalCatalogScope,
-  type PluginManifest,
-  type PreviewComment,
-  type ProjectDesignTokenSuggestionProp,
-  type ProjectDesignTokenSuggestionQuery,
-  type ProjectFile,
-  type ProjectFileTextPreviewResponse,
-  type ProjectFileVersion,
-  type ProjectFileVersionPromptSource,
-  type ProjectFileVersionSource,
-  type ProjectFileVersionWarning,
-  type ProjectMetadata,
-  type RestoreProjectAutomaticScenarioRequest,
-  type RestoreProjectAutomaticScenarioResponse,
-  type ProjectSyncState,
-  type WorkspaceCollabContext,
-} from '@open-design/contracts';
 import { readMeta as readBrandMeta } from '../../brands/store.js';
 import { createProjectArtifactFile } from '../../artifacts/create.js';
 import { renderProjectCover, selectProjectCoverEntry } from '../../artifacts/project-cover.js';
@@ -53,16 +31,6 @@ import {
   renameProjectFileVersionStore,
   withProjectFileVersionLock,
 } from '../../project-file-versions.js';
-import {
-  createUserDesignSystem,
-  deleteUserDesignSystem,
-  linkUserDesignSystemProject,
-  listDesignSystems,
-  propagateWorkspaceProjectRename,
-  resolveWorkspaceProjectDesignSystemRoot,
-  type DesignSystemSummary,
-  type UserDesignSystemInput,
-} from '../../design-systems/index.js';
 import { buildProjectDesignTokenSuggestions } from '../../project-design-token-suggestions.js';
 import {
   FIRST_PARTY_ATOMS,
@@ -108,7 +76,6 @@ import {
   scanProjectLocation,
   writeProjectManifest,
 } from '../../project-locations.js';
-import { auditDesignSystemPackage } from '../../tools-connectors-cli.js';
 import { parseOrchestratorWorkspace } from '../../workspace-contract.js';
 import { registerProjectConversationRoutes } from './conversations.js';
 import { workspaceProjectGroupCountProperties } from './analytics.js';
@@ -159,6 +126,8 @@ import {
 } from '../../collab/vela-workspace-context.js';
 import { getSsoUser } from '../../sso-user.js';
 import { cancelRunsOwnedBy } from './cancel-owned-runs.js';
+import type { LintArtifactRequest, LintArtifactResponse } from '@open-design/contracts';
+import type { DesignSystemSummary, UserDesignSystemInput } from '../../design-systems/index.js';
 
 export function rewriteOutsideExecutableHtmlRanges(
   html: string,
@@ -315,11 +284,6 @@ export interface RegisterProjectRoutesDeps extends RouteDeps<'db' | 'design' | '
    * design-system creation service; the optional shape preserves isolated
    * route harnesses and headerless/local compatibility.
    */
-  createWorkspaceOwnedDesignSystem?: (
-    root: string,
-    input: UserDesignSystemInput,
-    context: WorkspaceResourceContext | null,
-  ) => Promise<DesignSystemSummary>;
   /**
    * Collab-cloud comment seams, threaded to the nested preview-comment routes.
    * `resolveAuthorMemberId` stamps the server-authoritative author AND identifies
@@ -1922,17 +1886,6 @@ function isDesignSystemLikeProject(project: any): boolean {
   );
 }
 
-function normalizeDesignSystemCopyName(value: unknown, sourceProject: any): string {
-  const explicit = typeof value === 'string' ? value.trim() : '';
-  if (explicit) return explicit.slice(0, 160);
-  const sourceName = typeof sourceProject?.name === 'string' && sourceProject.name.trim()
-    ? sourceProject.name.trim()
-    : 'Untitled';
-  return /\bdesign system\b/i.test(sourceName)
-    ? sourceName.slice(0, 160)
-    : `${sourceName} Design System`.slice(0, 160);
-}
-
 function normalizeProjectDuplicateName(value: unknown, sourceProject: any): string {
   const explicit = typeof value === 'string' ? value.trim() : '';
   if (explicit) return explicit.slice(0, 160);
@@ -1962,122 +1915,6 @@ function cloneProjectMetadataForDuplicate(sourceProject: any): Record<string, un
     sourceProjectId: sourceProject.id,
     sourceProjectName: sourceProject.name,
   };
-}
-
-function buildDesignSystemCopySourceContext(input: {
-  sourceProject: any;
-  targetProjectId: string;
-  designSystemId: string;
-  copiedFiles: string[];
-  skippedFiles: Array<{ name: string; reason: string }>;
-}): string {
-  const metadata =
-    input.sourceProject?.metadata && typeof input.sourceProject.metadata === 'object'
-      ? JSON.stringify(input.sourceProject.metadata, null, 2)
-      : '{}';
-  const copied = input.copiedFiles.length > 0
-    ? input.copiedFiles.map((name) => `- ${name}`).join('\n')
-    : '- (none)';
-  const skipped = input.skippedFiles.length > 0
-    ? input.skippedFiles.map((entry) => `- ${entry.name}: ${entry.reason}`).join('\n')
-    : '- (none)';
-  return [
-    '# Source Project Context',
-    '',
-    'This design-system workspace was created from an existing HiDesign project. Treat the copied project files as the primary source evidence for the generated design system.',
-    '',
-    '## Source project',
-    '',
-    `- Source project id: ${input.sourceProject.id}`,
-    `- Source project name: ${input.sourceProject.name}`,
-    `- New design-system project id: ${input.targetProjectId}`,
-    `- New design-system id: ${input.designSystemId}`,
-    `- Source skill id: ${input.sourceProject.skillId ?? '(none)'}`,
-    `- Source design system id: ${input.sourceProject.designSystemId ?? '(none)'}`,
-    '',
-    '## Source metadata',
-    '',
-    '```json',
-    metadata,
-    '```',
-    '',
-    '## Copied files',
-    '',
-    copied,
-    '',
-    '## Skipped files',
-    '',
-    skipped,
-    '',
-    '## Generation contract',
-    '',
-    '- Read this file before editing design-system outputs.',
-    '- Read the copied files directly from the project workspace; they are source evidence, not generated design-system output.',
-    '- Preserve high-signal assets, source examples, UI surfaces, copy, tokens, typography, and interaction patterns from the copied project.',
-    '- Generate a reusable HiDesign design-system package in this same project: DESIGN.md, README.md, SKILL.md, colors_and_type.css, context/provenance, focused preview cards, preserved assets/build/fonts when available, and ui_kits/app/.',
-    '- Before final response, run `"$OD_NODE_BIN" "$OD_BIN" tools connectors design-system-package-audit --path . --fail-on-warnings` and fix every actionable issue.',
-    '',
-  ].join('\n');
-}
-
-function buildDesignSystemCopyPendingPrompt(input: {
-  sourceProject: any;
-  targetProjectId: string;
-  designSystemId: string;
-  copiedFiles: string[];
-}): string {
-  const metadata =
-    input.sourceProject?.metadata && typeof input.sourceProject.metadata === 'object'
-      ? JSON.stringify(input.sourceProject.metadata, null, 2)
-      : '{}';
-  const visibleFiles = input.copiedFiles
-    .slice(0, 140)
-    .map((name) => `  - ${name}`);
-  return [
-    'Create this project as a complete HiDesign design system workspace.',
-    '',
-    'Autonomy requirement:',
-    '- Do not ask setup or clarification questions during design-system generation.',
-    '- Do not emit `<question-form>`, "Quick brief — 30 seconds", direction cards, choice cards, or any UI that waits for user input.',
-    '- The source project already contains the evidence. Choose sensible defaults where details are missing and begin generating the design-system artifacts immediately.',
-    '',
-    'Source project handoff:',
-    `- Source project id: ${input.sourceProject.id}`,
-    `- Source project name: ${input.sourceProject.name}`,
-    `- New design-system project id: ${input.targetProjectId}`,
-    `- New design-system id: ${input.designSystemId}`,
-    '- Read `context/source-context.md` first. It lists the copied project files and original project metadata.',
-    '- Treat every copied file, uploaded asset, reference image, browser snapshot, sketch, generated artifact, and context note in this workspace as design-system evidence.',
-    '- Use the copied project outputs to infer real visual language, components, layout, interaction patterns, copy tone, tokens, typography, spacing, assets, and anti-patterns.',
-    '- Do not create another project or another design-system id. Update this new design-system project in place.',
-    '',
-    'Source project metadata:',
-    '```json',
-    metadata,
-    '```',
-    '',
-    'Copied files to inspect:',
-    ...(visibleFiles.length > 0 ? visibleFiles : ['  - (none copied; rely on context/source-context.md and project metadata)']),
-    input.copiedFiles.length > visibleFiles.length
-      ? `  - ...and ${input.copiedFiles.length - visibleFiles.length} more files listed in context/source-context.md`
-      : '',
-    '',
-    'Expected output:',
-    '- A clear `DESIGN.md` with product context, visual foundations, color, type, spacing, layout, components, motion, voice, and anti-patterns.',
-    '- A reusable package: `README.md`, `SKILL.md`, `colors_and_type.css`, provenance notes, `assets/`, `build/` when runtime icons exist, optional `fonts/`, focused `preview/` cards, preserved source examples, and `ui_kits/app/`.',
-    '- Preserve real source assets when evidence provides them: logos, app icons, tray icons, avatars, wordmarks, imagery, and font files belong in `assets/`, `build/`, or `fonts/`, not only in prose.',
-    '- Preserve high-signal source/component examples outside `context/` when copied files include substantial implementation or artifact code. Do not replace them with tiny stubs.',
-    '- Split review previews into focused cards for colors, typography, spacing, radius/shadows, components, brand assets, and applied UI surfaces. Preview cards must visibly load preserved files when available.',
-    '- Build `ui_kits/app/` as an applied interface kit that reflects the source project, with an index page and component files when the evidence supports them. Do not leave it as a generic static mock.',
-    '- Keep `README.md`, `SKILL.md`, `DESIGN.md`, preview manifest text, and `ui_kits/app/README.md` synchronized with the final file structure.',
-    '',
-    'Completion gate:',
-    '- Finish only after the project contains reviewable design-system artifacts and the right-side Design System tab can inspect them.',
-    '- Before your final response, run `"$OD_NODE_BIN" "$OD_BIN" tools connectors design-system-package-audit --path . --fail-on-warnings`.',
-    '- Fix every audit error and design-quality warning. If an issue cannot be fixed because source evidence is missing, explain that blocker instead of claiming the design system is ready.',
-    '',
-    'When finished, summarize the generated files and name the first previews reviewers should inspect.',
-  ].filter(Boolean).join('\n');
 }
 
 export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDeps) {
@@ -3373,11 +3210,11 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
             }
           : undefined,
       ),
-      listDesignSystems(DESIGN_SYSTEMS_DIR),
+      Promise.resolve([]),
     ]);
     return {
       skills: skills.map((s) => ({ id: s.id, title: s.name, description: s.description })),
-      designSystems: designSystems.map((d) => ({ id: d.id, title: d.title })),
+      designSystems: [],
       craft: [],
       atoms: FIRST_PARTY_ATOMS.map((a) => ({ id: a.id, label: a.label })),
       scenarios: collectBundledScenarios(),
@@ -3580,7 +3417,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
               id: manifest.id,
               name: manifest.name,
               skillId: manifest.skillId ?? null,
-              designSystemId: manifest.designSystemId ?? null,
+              designSystemId: null,
               pendingPrompt: null,
               metadata: {
                 kind: 'prototype',
@@ -4849,19 +4686,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
       // snapshot while a Workspace switch is loading. Use the partition that
       // produced that exact selection for local lookup only. It does not bind
       // this local project to that Workspace or prove current membership.
-      const designSystemValidation = await validateProjectDesignSystemId(
-        designSystemId,
-        designSystemCatalogScope ?? creationWorkspaceScope,
-      );
-      if (!designSystemValidation.ok) {
-        return sendApiError(
-          res,
-          400,
-          designSystemValidation.code,
-          designSystemValidation.message,
-        );
-      }
-      const normalizedDesignSystemId = designSystemValidation.id;
+      const normalizedDesignSystemId = null;
       const skillValidation = await validateProjectSkillId(
         skillId,
         skillCatalogScope ?? creationWorkspaceScope,
@@ -5203,10 +5028,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
               projectId: id,
               conversationId: cid,
               registry,
-              activeProjectDesignSystem:
-                typeof normalizedDesignSystemId === 'string' && normalizedDesignSystemId.length > 0
-                  ? { id: normalizedDesignSystemId }
-                  : undefined,
+              activeProjectDesignSystem: undefined,
              connectorProbe: buildConnectorProbe(connectorService),
              ...(pluginForSnapshot ? { plugin: pluginForSnapshot } : {}),
            });
@@ -5974,182 +5796,6 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
     }
   });
 
-  app.post('/api/projects/:id/design-system-copy', async (req, res) => {
-    const sourceProject = getProject(db, req.params.id);
-    try {
-      const locations = await configuredProjectLocations();
-      if (!sourceProject || !projectVisibleForLocations(sourceProject, locations)) {
-        return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'not found');
-      }
-      const createHome = await resolveCreatedProjectHome(req);
-      // recvqbhor3pai2 — same reasoning as the sibling /duplicate route just
-      // above: a never-bound source project must not be permanently
-      // un-copyable once a real, authenticated request finally names it.
-      reconcileUnboundProjectBeforeMutation(req, sourceProject.id, createHome);
-      if (!await enforceWorkspaceProjectMutation(
-        req,
-        res,
-        sendApiError,
-        getWorkspaceProject,
-        getWorkspaceProjectByProjectId,
-        db,
-        sourceProject.id,
-        'duplicate',
-      )) return;
-      if (isDesignSystemLikeProject(sourceProject)) {
-        return sendApiError(
-          res,
-          400,
-          'PROJECT_ALREADY_DESIGN_SYSTEM',
-          'project is already a design-system workspace',
-        );
-      }
-
-      const targetProjectId = randomId();
-      const targetName = normalizeDesignSystemCopyName(req.body?.name, sourceProject);
-      const requestedPendingPrompt = normalizePendingPrompt(req.body?.pendingPrompt);
-      const sourceNotes = `Created from HiDesign project "${sourceProject.name}" (${sourceProject.id}).`;
-      let createdDesignSystemId: string | null = null;
-      let insertedProject = false;
-      try {
-        const createDesignSystem = ctx.createWorkspaceOwnedDesignSystem
-          ?? ((root: string, input: UserDesignSystemInput, context: WorkspaceResourceContext | null) =>
-            createUserDesignSystem(root, {
-              ...input,
-              ...(context ? { workspaceId: context.workspaceId } : {}),
-            }));
-        const designSystem = await createDesignSystem(USER_DESIGN_SYSTEMS_DIR, {
-          title: targetName,
-          summary: sourceNotes,
-          category: 'Project Design System',
-          surface: 'web',
-          status: 'draft',
-          artifactMode: 'agent-managed',
-          sourceNotes,
-          provenance: {
-            notes: sourceNotes,
-            sourceNotes,
-          },
-        }, createHome);
-        createdDesignSystemId = designSystem.id;
-
-        const metadata = {
-          kind: 'other',
-          importedFrom: 'design-system',
-          entryFile: 'DESIGN.md',
-          sourceFileName: designSystem.id,
-          nameSource: 'generated',
-          sourceProjectId: sourceProject.id,
-          sourceProjectName: sourceProject.name,
-        };
-        await ensureProject(PROJECTS_DIR, targetProjectId, metadata);
-
-        const sourceFiles = await listFiles(PROJECTS_DIR, sourceProject.id, {
-          metadata: sourceProject.metadata,
-        });
-        const copiedFiles: string[] = [];
-        for (const file of sourceFiles) {
-          if (!file?.name || typeof file.name !== 'string') continue;
-          const sourceFile = await readProjectFile(
-            PROJECTS_DIR,
-            sourceProject.id,
-            file.name,
-            sourceProject.metadata,
-          );
-          await writeProjectFile(
-            PROJECTS_DIR,
-            targetProjectId,
-            sourceFile.name,
-            sourceFile.buffer,
-            {
-              overwrite: true,
-              ...(sourceFile.artifactManifest ? { artifactManifest: sourceFile.artifactManifest } : {}),
-            },
-            metadata,
-          );
-          copiedFiles.push(sourceFile.name);
-        }
-
-        const pendingPrompt = requestedPendingPrompt ?? buildDesignSystemCopyPendingPrompt({
-          sourceProject,
-          targetProjectId,
-          designSystemId: designSystem.id,
-          copiedFiles,
-        });
-        const now = Date.now();
-        const project = insertProject(db, {
-          id: targetProjectId,
-          name: targetName,
-          skillId: null,
-          designSystemId: designSystem.id,
-          pendingPrompt,
-          metadata,
-          customInstructions: null,
-          createdAt: now,
-          updatedAt: now,
-        });
-        insertedProject = true;
-        bindDuplicateIntoRequestWorkspace(createHome, targetProjectId, now);
-        const conversationId = randomId();
-        insertConversation(db, {
-          id: conversationId,
-          projectId: targetProjectId,
-          title: null,
-          sessionMode: 'design',
-          createdAt: now,
-          updatedAt: now,
-        });
-
-        await writeProjectFile(
-          PROJECTS_DIR,
-          targetProjectId,
-          'context/source-context.md',
-          Buffer.from(
-            buildDesignSystemCopySourceContext({
-              sourceProject,
-              targetProjectId,
-              designSystemId: designSystem.id,
-              copiedFiles,
-              skippedFiles: [],
-            }),
-            'utf8',
-          ),
-          { overwrite: true },
-          metadata,
-        );
-        await linkUserDesignSystemProject(USER_DESIGN_SYSTEMS_DIR, designSystem.id, targetProjectId);
-        /** @type {import('@open-design/contracts').CreateDesignSystemProjectFromProjectResponse} */
-        const body = {
-          project: createHome
-            ? { ...project, workspaceId: createHome.workspaceId }
-            : project,
-          conversationId,
-          designSystemId: designSystem.id,
-          copiedFiles,
-        };
-        res.json(body);
-      } catch (err) {
-        if (insertedProject) dbDeleteProject(db, targetProjectId);
-        await removeProjectDir(PROJECTS_DIR, targetProjectId).catch(() => {});
-        if (createdDesignSystemId) {
-          await deleteUserDesignSystem(USER_DESIGN_SYSTEMS_DIR, createdDesignSystemId).catch(() => false);
-        }
-        throw err;
-      }
-    } catch (err: any) {
-      if (err instanceof CreatedProjectWorkspaceResolutionError) {
-        return sendApiError(
-          res,
-          err.status,
-          err.code,
-          err.message,
-          err.retryable ? { retryable: true } : {},
-        );
-      }
-      sendApiError(res, 400, 'BAD_REQUEST', String(err));
-    }
-  });
-
   app.get('/api/projects/:id', async (req, res) => {
     const project = getProject(db, req.params.id);
     const locations = await configuredProjectLocations();
@@ -6666,35 +6312,6 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
             skill: selectedSkillCatalogScope,
           },
         };
-      }
-      if (typeof patch.name === 'string' && patch.name.trim().length > 0) {
-        // Design-system workspace projects mirror their design system's
-        // title: the workspace ensure re-stamps the project name from the
-        // registry on every open, so a rename applied only to the project
-        // row silently reverts. Write the rename through to the design
-        // system so both records agree.
-        const existing = getProject(db, req.params.id);
-        if (existing) {
-          // Decide from the post-patch shape (updateProject merges the
-          // patch shallowly over the row), so a PATCH that also rebinds
-          // or detaches the design system only ever renames the system
-          // the project remains bound to after this request.
-          const projectBinding = getWorkspaceProjectByProjectId(db, req.params.id);
-          const propagation = await propagateWorkspaceProjectRename(
-            resolveWorkspaceProjectDesignSystemRoot(
-              USER_DESIGN_SYSTEMS_DIR,
-              projectBinding,
-            ),
-            { ...existing, ...patch },
-            patch.name,
-          );
-          if (propagation === 'failed') {
-            return sendApiError(
-              res, 409, 'CONFLICT',
-              'rename could not be written through to the bound design system; project left unchanged',
-            );
-          }
-        }
       }
       // Accumulate the newly selected skillId into metadata.usedSkillIds
       // so the project remembers every skill ever used across conversations.
@@ -8384,23 +8001,6 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
       res.json(body);
     } catch (err: any) {
       sendApiError(res, 400, 'BAD_REQUEST', String(err?.message || err));
-    }
-  });
-
-  app.get('/api/projects/:id/design-system-package-audit', async (req, res) => {
-    try {
-      const project = getProject(db, req.params.id);
-      if (!project) {
-        sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'project not found');
-        return;
-      }
-      if (!await authorizeProjectReadWithShare(req, res, project.id)) return;
-      const projectRoot = resolveProjectDir(PROJECTS_DIR, project.id, project.metadata);
-      const audit = await auditDesignSystemPackage(projectRoot);
-      res.setHeader('Cache-Control', 'no-store');
-      res.json({ audit });
-    } catch (err: any) {
-      sendApiError(res, 400, 'BAD_REQUEST', String(err));
     }
   });
 

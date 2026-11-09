@@ -87,13 +87,17 @@ describe("main-window events during teardown", () => {
       discoverUrl: async () => null,
       splashWindow: splash as unknown as BrowserWindow,
     });
-    window = windows[2]; // Supplied splash, pet, main window.
+    window = windows[1]; // Supplied splash and main window.
   });
 
   afterEach(async () => {
     await runtime?.close();
     vi.useRealTimers();
     vi.restoreAllMocks();
+  });
+
+  test('creates only the supplied splash and the main window', () => {
+    expect(windows).toHaveLength(2);
   });
 
   test.each(events)("ignores late %s after the window is destroyed", (event) => {

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { fetchTeamProjectsCatalog } from '../src/collab/team-projects-catalog';
+import { fetchTeamProjectCatalogEntry, fetchTeamProjectsCatalog } from '../src/collab/team-projects-catalog';
 import { resetCoalescedGet } from '../src/lib/coalesced-get';
 import { workspaceContextFixture } from './helpers/workspace-context';
 
@@ -68,5 +68,26 @@ describe('team project catalog request scope', () => {
 
     await fetchTeamProjectsCatalog({ context: CONTEXT_A });
     expect(vi.mocked(globalThis.fetch)).toHaveBeenCalledTimes(3);
+  });
+
+  it('shares the catalog transport when looking up different projects in one scope', async () => {
+    await Promise.all([
+      fetchTeamProjectsCatalog({ context: CONTEXT_A }),
+      ...Array.from({ length: 8 }, (_, index) => fetchTeamProjectCatalogEntry({
+        context: CONTEXT_A,
+        projectId: `recent-${index}`,
+      })),
+    ]);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('keeps targeted invalidation generations separate from ordinary lookups', async () => {
+    await Promise.all([
+      fetchTeamProjectCatalogEntry({ context: CONTEXT_A, projectId: 'one' }),
+      fetchTeamProjectCatalogEntry({ context: CONTEXT_A, projectId: 'one', force: true, cacheDiscriminator: 'event-1' }),
+      fetchTeamProjectCatalogEntry({ context: CONTEXT_A, projectId: 'one', force: true, cacheDiscriminator: 'event-2' }),
+      fetchTeamProjectCatalogEntry({ context: CONTEXT_B, projectId: 'one' }),
+    ]);
+    expect(globalThis.fetch).toHaveBeenCalledTimes(4);
   });
 });

@@ -1,7 +1,8 @@
+import { applyApiProtocolConfig, currentApiProtocolConfig, defaultApiProtocolConfig, switchApiProtocolConfig, updateCurrentApiProtocolConfig } from '../state/apiProtocolConfig';
+export { switchApiProtocolConfig, updateCurrentApiProtocolConfig } from '../state/apiProtocolConfig';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../auth/LoginGate';
 import { applyLanzAccountConfig, isLanzBaseUrl } from '../state/lanz-account';
-import type { CSSProperties, Dispatch, SetStateAction } from 'react';
 import { Button, VisuallyHidden } from '@open-design/components';
 import styles from './SettingsDialog.module.css';
 import type {
@@ -38,11 +39,9 @@ import {
   trackSettingsExecutionModeTabClick,
   trackSettingsMediaProvidersClick,
   trackSettingsNotificationsClick,
-  trackSettingsPrivacyClick,
   trackSettingsView,
 } from '../analytics/events';
 import { LOCALE_LABEL, LOCALES, useI18n } from '../i18n';
-import type { Locale } from '../i18n';
 import type { Dict } from '../i18n/types';
 import { AgentIcon } from './AgentIcon';
 import { AgentDiagnosticRow } from './AgentDiagnosticRow';
@@ -84,13 +83,10 @@ import {
   isStoredMediaProviderEntryEmpty,
   isStoredMediaProviderEntryPresent,
   KNOWN_PROVIDERS,
-  hasAnyConfiguredProvider,
   mergeDaemonMediaProviders,
-  syncComposioConfigToDaemon,
   syncConfigToDaemon,
   syncMediaProvidersToDaemon,
 } from '../state/config';
-import type { KnownProvider } from '../state/config';
 import { navigate as navigateRoute, useRoute } from '../router';
 import {
   API_PROTOCOL_TABS,
@@ -105,10 +101,6 @@ import {
   providerModelsCacheKey,
   type ProviderModelsCache,
 } from './providerModelsCache';
-export {
-  mergeProviderModelOptions,
-  providerModelsCacheKey,
-} from './providerModelsCache';
 import {
   MAX_MAX_TOKENS,
   MIN_MAX_TOKENS,
@@ -122,8 +114,6 @@ import type {
   AppConfig,
   AppVersionInfo,
   ConnectionTestResponse,
-  DesignSystemGenerationJob,
-  OrbitRunSummary,
   OrbitStatusResponse,
   ExecMode,
   ProviderModelOption,
@@ -146,7 +136,6 @@ import { useByokImageModelOptions, useByokVideoModelOptions, useByokSpeechModelO
 import { isVisualStabilityMode } from '../utils/visualStability';
 import { byokProviderRequiresApiKey } from '../utils/byokProvider';
 import { XaiOAuthControl } from './XaiOAuthControl';
-import type { MediaProvider } from '../media/models';
 import { Toast } from './Toast';
 import {
   checkForUpdaterUpdate,
@@ -163,9 +152,7 @@ import {
   type UpdaterModel,
   type UpdaterRestartSafety,
 } from '../lib/updater';
-import { PetSettings } from './pet/PetSettings';
 import { McpClientSection } from './McpClientSection';
-import { DesignSystemsSection } from './DesignSystemsSection';
 import { PrivacySection } from './PrivacySection';
 import { ProjectLocationsSection } from './ProjectLocationsSection';
 import { RoutinesSection } from './RoutinesSection';
@@ -220,6 +207,15 @@ import {
   requestNotificationPermission,
   showCompletionNotification,
 } from '../utils/notifications';
+import type { CSSProperties, Dispatch, SetStateAction } from 'react';
+import type { Locale } from '../i18n';
+import type { KnownProvider } from '../state/config';
+import type { DesignSystemGenerationJob, OrbitRunSummary } from '../types';
+import type { MediaProvider } from '../media/models';
+export {
+mergeProviderModelOptions,
+providerModelsCacheKey
+} from './providerModelsCache';
 
 export type SettingsSection =
   | 'general'
@@ -234,10 +230,10 @@ export type SettingsSection =
   | 'mcpClient'
   | 'language'
   | 'appearance'
+  | 'designSystems'
   | 'critiqueTheater'
   | 'notifications'
   | 'pet'
-  | 'designSystems'
   | 'projectLocations'
   | 'memory'
   | 'privacy'
@@ -249,26 +245,13 @@ export type SettingsSection =
   | 'library'
   | 'about';
 
-// Maps a requested section token onto the section that actually owns a nav
-// item. Only tokens whose content is *folded into* another section belong
-// here: language / appearance / notifications / pet / projectLocations /
-// critiqueTheater all render inside General, so a deep link to any of them
-// must land on General and highlight the General nav item. `pet` joined that
-// list when #5517's General page absorbed the pet picker — the composer's
-// "pet settings" entry point (App.openPetSettings) has no other destination,
-// so leaving it unmapped would deep-link into a section that renders nothing.
-//
-// Sections that keep their own render block but no longer have a nav item
-// (workspace, mcpClient, composio, designSystems) must NOT be listed: they
-// stay individually addressable through `initialSection`, and folding them
-// here would silently swallow a deep link into the wrong section.
-// `privacy` and `about` must not be listed either — they own nav items, and
-// mapping them to General used to send deep links to the wrong section with
-// the wrong nav item highlighted.
+// General owns the shared preferences and receives legacy links to retired
+// pet and design-system settings. Other sections remain individually addressable.
 function normalizeSettingsSection(section: SettingsSection): SettingsSection {
   switch (section) {
     case 'language':
     case 'appearance':
+    case 'designSystems':
     case 'notifications':
     case 'pet':
     case 'projectLocations':
@@ -506,8 +489,6 @@ interface Props {
   /** Same channel for skill registry mutations. */
   onSkillsChanged?: (affectedSkillId?: string) => void;
   /** Same channel for design-system registry mutations. */
-  onDesignSystemsChanged?: (affectedDesignSystemId?: string) => void;
-  onDesignSystemImportRebuildJob?: (designSystemId: string, job: DesignSystemGenerationJob) => void;
   onProviderModelsCacheChange?: Dispatch<SetStateAction<ProviderModelsCache>>;
 }
 
@@ -546,30 +527,8 @@ function codexPathStrings(locale: Locale) {
         `已配置的 Codex 路径启动失败：${configuredPath}。本次测试改用 PATH 中的 Codex CLI：${detectedPath}。建议更新 CODEX_BIN 或清空自定义路径。`,
     };
   }
-  if (locale === 'zh-TW') {
-    return {
-      repairHint: '目前儲存的 Codex 路徑不適合繼續使用。',
-      useDetected: '使用偵測到的 Codex',
-      clearCustom: '清除自訂路徑',
-      configuredSuccess: (path: string) => `本次測試使用的是已設定的 Codex 路徑：${path}。`,
-      invalidFallback: (configuredPath: string, detectedPath: string) =>
-        `已設定的 Codex 路徑無效或不可執行：${configuredPath}。本次測試改用 PATH 中的 Codex CLI：${detectedPath}。建議更新 CODEX_BIN 或清除自訂路徑。`,
-      failedFallback: (configuredPath: string, detectedPath: string) =>
-        `已設定的 Codex 路徑啟動失敗：${configuredPath}。本次測試改用 PATH 中的 Codex CLI：${detectedPath}。建議更新 CODEX_BIN 或清除自訂路徑。`,
-    };
-  }
-  if (locale === 'ja') {
-    return {
-      repairHint: '保存されている Codex のパスは、このテストで使用すべきバイナリではありません。',
-      useDetected: '検出された Codex を使用',
-      clearCustom: 'カスタムパスをクリア',
-      configuredSuccess: (path: string) => `このテストでは設定済みの Codex パスを使用しました：${path}。`,
-      invalidFallback: (configuredPath: string, detectedPath: string) =>
-        `設定された Codex パスが無効か実行できません：${configuredPath}。このテストでは PATH 上の Codex CLI（${detectedPath}）を使用しました。CODEX_BIN を更新するか、カスタムパスをクリアしてください。`,
-      failedFallback: (configuredPath: string, detectedPath: string) =>
-        `設定された Codex パスの起動に失敗しました：${configuredPath}。このテストは PATH 上の Codex CLI（${detectedPath}）で成功しました。CODEX_BIN を更新するか、カスタムパスをクリアしてください。`,
-    };
-  }
+
+
   return {
     repairHint: 'The saved Codex path is not the binary this test should keep using.',
     useDetected: 'Use detected Codex',
@@ -941,88 +900,6 @@ const AGENT_CLI_ENV_FIELDS = [
   },
 ] as const;
 
-function defaultApiProtocolConfig(protocol: ApiProtocol): ApiProtocolConfig {
-  const provider = KNOWN_PROVIDERS.find((p) => p.protocol === protocol);
-  return {
-    apiKey: '',
-    baseUrl: provider?.baseUrl ?? '',
-    model: defaultKnownProviderModel(provider),
-    apiVersion: '',
-    apiProviderBaseUrl: provider ? provider.baseUrl : null,
-  };
-}
-
-function providerFamilyLabel(provider: KnownProvider): string {
-  return provider.label.replace(/\s+—\s+(Anthropic|OpenAI)$/u, '');
-}
-
-function siblingProviderForProtocol(
-  providerBaseUrl: string | null | undefined,
-  protocol: ApiProtocol,
-): KnownProvider | null {
-  if (!providerBaseUrl) return null;
-  const currentProvider = KNOWN_PROVIDERS.find(
-    (p) => p.baseUrl === providerBaseUrl,
-  );
-  if (!currentProvider) return null;
-
-  const currentFamily = providerFamilyLabel(currentProvider);
-  return (
-    KNOWN_PROVIDERS.find(
-      (p) => p.protocol === protocol && providerFamilyLabel(p) === currentFamily,
-    ) ?? null
-  );
-}
-
-function nextApiProtocolConfig(
-  config: AppConfig,
-  protocol: ApiProtocol,
-): ApiProtocolConfig {
-  const savedConfig = config.apiProtocolConfigs?.[protocol];
-  if (savedConfig) return savedConfig;
-
-  const currentConfig = currentApiProtocolConfig(config);
-  const siblingProvider = siblingProviderForProtocol(
-    currentConfig.apiProviderBaseUrl,
-    protocol,
-  );
-  if (siblingProvider) {
-    return {
-      ...defaultApiProtocolConfig(protocol),
-      baseUrl: siblingProvider.baseUrl,
-      model: defaultKnownProviderModel(siblingProvider),
-      apiProviderBaseUrl: siblingProvider.baseUrl,
-    };
-  }
-
-  if (currentConfig.apiProviderBaseUrl === null) {
-    return {
-      ...currentConfig,
-      apiKey: '',
-      apiVersion: protocol === 'azure' ? currentConfig.apiVersion : '',
-      apiProviderBaseUrl: null,
-    };
-  }
-
-  return {
-    ...defaultApiProtocolConfig(protocol),
-  };
-}
-
-function currentApiProtocolConfig(config: AppConfig): ApiProtocolConfig {
-  return {
-    apiKey: config.apiKey,
-    baseUrl: config.baseUrl,
-    model: config.model,
-    apiVersion: config.apiVersion ?? '',
-    apiProviderBaseUrl: config.apiProviderBaseUrl ?? null,
-    byokImageModel: config.byokImageModel ?? '',
-    byokVideoModel: config.byokVideoModel ?? '',
-    byokSpeechModel: config.byokSpeechModel ?? '',
-    byokSpeechVoice: config.byokSpeechVoice ?? '',
-  };
-}
-
 function persistByokProviderConfigDraft(
   config: AppConfig,
   draftKey: string,
@@ -1138,39 +1015,6 @@ function restorePendingByokProviderDraft(config: AppConfig): AppConfig {
   );
 }
 
-function applyApiProtocolConfig(
-  config: AppConfig,
-  protocol: ApiProtocol,
-  apiConfig: ApiProtocolConfig,
-): AppConfig {
-  return {
-    ...config,
-    apiProtocol: protocol,
-    apiKey: apiConfig.apiKey,
-    baseUrl: resolveFixedOriginBaseUrl(protocol, apiConfig.baseUrl),
-    model: apiConfig.model,
-    apiProviderBaseUrl: apiConfig.apiProviderBaseUrl ?? null,
-    apiVersion: protocol === 'azure' ? (apiConfig.apiVersion ?? '') : '',
-    // byokImageModel applies to the protocols that inject the daemon-side
-    // generate_image tool (SenseAudio, AIHubMix) — flipping to another BYOK
-    // tab shouldn't carry an image-model choice into, say, the OpenAI form.
-    // Mirrors the apiVersion guarding above.
-    byokImageModel:
-      protocol === 'senseaudio' || protocol === 'aihubmix'
-        ? (apiConfig.byokImageModel ?? '')
-        : '',
-    // byokVideoModel only applies to AIHubMix today (the only BYOK chat with a
-    // video-model picker; SenseAudio's video tool uses a fixed model).
-    byokVideoModel:
-      protocol === 'aihubmix' ? (apiConfig.byokVideoModel ?? '') : '',
-    // Speech model + voice also AIHubMix-only today.
-    byokSpeechModel:
-      protocol === 'aihubmix' ? (apiConfig.byokSpeechModel ?? '') : '',
-    byokSpeechVoice:
-      protocol === 'aihubmix' ? (apiConfig.byokSpeechVoice ?? '') : '',
-  };
-}
-
 export function isValidApiBaseUrl(value: string): boolean {
   const trimmed = value.trim();
   if (!/^https?:\/\//i.test(trimmed)) return false;
@@ -1194,36 +1038,6 @@ const AGENT_CLI_AUTH_ENV_KEYS = new Set([
   'OPENAI_API_KEY',
 ]);
 const AGENT_CLI_BASE_URL_ENV_KEYS = new Set(['ANTHROPIC_BASE_URL', 'OPENAI_BASE_URL']);
-
-export function updateCurrentApiProtocolConfig(
-  config: AppConfig,
-  patch: Partial<ApiProtocolConfig>,
-): AppConfig {
-  const protocol = config.apiProtocol ?? 'anthropic';
-  const clearedApiKey =
-    patch.apiKey !== undefined &&
-    !patch.apiKey.trim() &&
-    Boolean(currentApiProtocolConfig(config).apiKey.trim());
-  const defaultModel = defaultApiProtocolConfig(protocol).model;
-  const nextApiConfig: ApiProtocolConfig = {
-    ...currentApiProtocolConfig(config),
-    ...patch,
-    ...(clearedApiKey && defaultModel && patch.model === undefined
-      ? { model: defaultModel }
-      : {}),
-  };
-  return applyApiProtocolConfig(
-    {
-      ...config,
-      apiProtocolConfigs: {
-        ...(config.apiProtocolConfigs ?? {}),
-        [protocol]: nextApiConfig,
-      },
-    },
-    protocol,
-    nextApiConfig,
-  );
-}
 
 export function updateAgentCliEnvValue(
   config: AppConfig,
@@ -1464,33 +1278,6 @@ export function sanitizeSettingsSavePayload(
   };
 }
 
-export function switchApiProtocolConfig(
-  config: AppConfig,
-  protocol: ApiProtocol,
-): AppConfig {
-  const currentProtocol = config.apiProtocol ?? 'anthropic';
-  const apiProtocolConfigs = {
-    ...(config.apiProtocolConfigs ?? {}),
-    [currentProtocol]: currentApiProtocolConfig(config),
-  };
-  const nextApiConfig = nextApiProtocolConfig(
-    {
-      ...config,
-      apiProtocolConfigs,
-    },
-    protocol,
-  );
-  return applyApiProtocolConfig(
-    {
-      ...config,
-      mode: 'api',
-      apiProtocolConfigs,
-    },
-    protocol,
-    nextApiConfig,
-  );
-}
-
 export function SettingsDialog({
   presentation = 'modal',
   initial,
@@ -1514,8 +1301,6 @@ export function SettingsDialog({
   mediaProvidersNotice,
   onReloadMediaProviders,
   onProjectsRefresh,
-  onDesignSystemsChanged,
-  onDesignSystemImportRebuildJob,
   providerModelsCache: sharedProviderModelsCache,
   onProviderModelsCacheChange,
   onDraftChange,
@@ -3777,10 +3562,7 @@ export function SettingsDialog({
     notifications: { title: t('settings.notifications'), subtitle: t('settings.notificationsHint') },
     privacy: { title: t('settings.privacy'), subtitle: t('settings.privacyHint') },
     pet: { title: t('pet.title'), subtitle: t('pet.subtitle') },
-    designSystems: {
-      title: t('settings.designSystems'),
-      subtitle: t('settings.designSystemsHint'),
-    },
+    designSystems: { title: t('settings.general'), subtitle: t('settings.generalHint') },
     projectLocations: {
       title: t('settings.projectLocations'),
       subtitle: t('settings.projectLocationsHint'),
@@ -5817,13 +5599,6 @@ export function SettingsDialog({
 
               <div className="settings-general-block">
                 <div className="settings-general-block-head">
-                  <h3>{t('pet.navTitle')}</h3>
-                </div>
-                <PetSettings cfg={cfg} setCfg={setCfg} />
-              </div>
-
-              <div className="settings-general-block">
-                <div className="settings-general-block-head">
                   <h3>{t('settings.projectLocations')}</h3>
                 </div>
                 <ProjectLocationsSection cfg={cfg} setCfg={setCfg} onProjectsRefresh={onProjectsRefresh} />
@@ -5836,15 +5611,6 @@ export function SettingsDialog({
                 />
               </div>
             </section>
-          ) : null}
-
-          {activeSection === 'designSystems' ? (
-            <DesignSystemsSection
-              cfg={cfg}
-              setCfg={setCfg}
-              onDesignSystemsChanged={onDesignSystemsChanged}
-              onDesignSystemImportRebuildJob={onDesignSystemImportRebuildJob}
-            />
           ) : null}
 
           {activeSection === 'instructions' ? (

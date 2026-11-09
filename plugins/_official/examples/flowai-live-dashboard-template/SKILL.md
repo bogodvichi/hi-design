@@ -24,9 +24,6 @@ od:
     type: html
     entry: index.html
     reload: debounce-100
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   craft:
     requires: [state-coverage, accessibility-baseline]
   example_prompt: "Create a FlowAI-style team management dashboard with Team Members, Team Details and Activity Log tabs, KPI cards, a member table with status badges, a role-distribution bar chart, an online-presence sparkline, top contributors, light/dark mode, and CSV export."
@@ -54,7 +51,7 @@ flowai-live-dashboard-template/
 
 ## Workflow
 
-1. **Read the active DESIGN.md** (injected above). Map color, typography,
+1. **Read the supplied template/reference styles** (provided with the template). Map color, typography,
    spacing, and component styling tokens to the CSS variables used by
    `assets/template.html`. Do not invent new tokens.
 2. Start from `assets/template.html`; never generate the shell from blank.

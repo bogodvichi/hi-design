@@ -101,8 +101,6 @@ describe('NewProjectModal layout', () => {
       <NewProjectModal
         open
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId={null}
         templates={[]}
         promptTemplates={[]}
         onCreate={() => {}}
@@ -131,8 +129,6 @@ describe('NewProjectModal layout', () => {
       <NewProjectModal
         open
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId={null}
         templates={[]}
         promptTemplates={[]}
         onCreate={onCreate}
@@ -173,8 +169,6 @@ describe('NewProjectModal layout', () => {
       <NewProjectModal
         open
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId={null}
         templates={[]}
         promptTemplates={[]}
         onCreate={() => {}}
@@ -209,8 +203,6 @@ describe('NewProjectModal layout', () => {
         <NewProjectModal
           open
           skills={skills}
-          designSystems={designSystems}
-          defaultDesignSystemId={null}
           templates={[]}
           promptTemplates={[]}
           onCreate={() => {}}
@@ -245,8 +237,6 @@ describe('NewProjectModal template deletion plumbing', () => {
       <NewProjectModal
         open
         skills={skills}
-        designSystems={designSystems}
-        defaultDesignSystemId="clay"
         templates={templates}
         promptTemplates={[]}
         onDeleteTemplate={onDelete}

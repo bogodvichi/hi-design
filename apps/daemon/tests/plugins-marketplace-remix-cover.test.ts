@@ -55,7 +55,7 @@ async function makeInstalledPlugin(root: string): Promise<InstalledPluginRecord>
 }
 
 describe('HDW marketplace project remix', () => {
-  it.each(['', '?username=alice'])('repairs cached cover URLs when the catalog is offline%s', async (query) => {
+  it.each(['', '?username=alice'])('repairs cached cover and avatar URLs when the catalog is offline%s', async (query) => {
     const root = await makeTempRoot('od-marketplace-cached-cover-');
     const dataDir = path.join(root, 'data');
     const db = openDatabase(root, { dataDir });
@@ -68,7 +68,7 @@ describe('HDW marketplace project remix', () => {
         specVersion: '1.0.0', name: 'hdw-community', version: '1.0.0',
         plugins: [{
           name: 'cached-project', version: '1.0.0', source: 'github:test/project',
-          publisher: { id: 'alice' },
+          publisher: { id: 'alice', avatarUrl: `http://pixso.hikvision.com.cn/hdw/api/community/avatar/${digest}` },
           coverUrl: `http://pixso.hikvision.com.cn/hdw/api/community/cover/${digest}`,
         }],
       }),
@@ -89,9 +89,11 @@ describe('HDW marketplace project remix', () => {
     try {
       const response = await fetch(`${server.url}/api/marketplaces/hdw-community/plugins${query}`);
       expect(response.status).toBe(200);
-      const body = await response.json() as { plugins: Array<{ coverUrl?: string }> };
+      const body = await response.json() as { plugins: Array<{ coverUrl?: string; publisher?: { avatarUrl?: string } }> };
       expect(body.plugins[0]?.coverUrl)
         .toBe(`/api/hdw/api/community/cover/${digest}`);
+      expect(body.plugins[0]?.publisher?.avatarUrl)
+        .toBe(`/api/hdw/api/community/avatar/${digest}`);
     } finally {
       await close(server.server);
     }

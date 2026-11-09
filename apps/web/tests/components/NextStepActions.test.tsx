@@ -75,17 +75,12 @@ function renderActions(
 }
 
 describe('NextStepActions', () => {
-  it('renders the two featured rows without More for ordinary projects', () => {
-    renderActions();
-    expect(screen.getByText(AUTO_MATCH_TITLE)).toBeTruthy();
-    expect(screen.getByText(VISUAL_POLISH_TITLE)).toBeTruthy();
+  it.each(['en', 'zh-CN'] as const)('hides fixed next-step suggestions for ordinary projects in %s', (locale) => {
+    renderActions({}, locale);
+    expect(screen.queryByTestId('next-step-actions')).toBeNull();
+    expect(screen.queryByTestId('next-step-toolbox-action-auto-match')).toBeNull();
+    expect(screen.queryByTestId('next-step-toolbox-action-visual-polish')).toBeNull();
     expect(screen.queryByTestId('next-step-toolbox-more')).toBeNull();
-  });
-
-  it('seeds the composer with the action id (no auto-send) when a featured row is clicked', () => {
-    const h = renderActions();
-    fireEvent.click(screen.getByTestId('next-step-toolbox-action-visual-polish'));
-    expect(h.onToolboxAction).toHaveBeenCalledWith('visual-polish');
   });
 
   it('uses design-system-specific primary rows for design-system projects', () => {
@@ -218,12 +213,6 @@ describe('NextStepActions', () => {
     const tooltip = screen.getByRole('tooltip');
     expect(within(tooltip).getByText(en['nextStep.brandAiOptimizeTitle'])).toBeTruthy();
     expect(within(tooltip).getByText(en['nextStep.brandAiOptimizeBody'])).toBeTruthy();
-  });
-
-  it('reveals the matched @skill in the featured-row hover detail', () => {
-    renderActions();
-    fireEvent.mouseEnter(screen.getByTestId('next-step-toolbox-action-auto-match'));
-    expect(screen.getByText('@creative-director')).toBeTruthy();
   });
 
   it('opens the More menu with Design toolbox + Share on hover', () => {

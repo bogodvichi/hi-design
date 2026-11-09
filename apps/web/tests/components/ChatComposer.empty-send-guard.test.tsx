@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import type { ComponentProps } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ChatComposer } from '../../src/components/ChatComposer';
@@ -10,6 +11,77 @@ import { flushMounts, pressEnter, typeAndSettle } from '../helpers/lexical-compo
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+});
+
+describe('ChatComposer external-run controls', () => {
+  const cases: Array<{ name: string; props: Partial<ComponentProps<typeof ChatComposer>> }> = [
+    { name: 'an empty composer', props: {} },
+    { name: 'an unsent draft', props: { initialDraft: 'Keep this follow-up' } },
+    {
+      name: 'a staged comment',
+      props: {
+        commentAttachments: [{
+          id: 'comment-1',
+          order: 1,
+          filePath: 'article.html',
+          elementId: 'article',
+          selector: 'article.wrap',
+          label: 'article.wrap',
+          comment: 'Adjust the heading',
+          currentText: 'Article heading',
+          pagePosition: { x: 0, y: 0, width: 100, height: 40 },
+          htmlHint: '<article class="wrap">Article heading</article>',
+        }],
+      },
+    },
+    {
+      name: 'workspace context without typed text',
+      props: {
+        activeWorkspaceContext: {
+          id: 'file:article.html',
+          kind: 'file',
+          label: 'article.html',
+          title: 'article.html',
+          path: 'article.html',
+        },
+      },
+    },
+  ];
+
+  it.each(cases)('keeps Stop available when an external run starts with $name', async ({ props }) => {
+    const onStop = vi.fn();
+    const onSend = vi.fn();
+    const composer = (streaming: boolean) => (
+      <ChatComposer
+        projectId="project-1"
+        projectFiles={[]}
+        onEnsureProject={async () => 'project-1'}
+        onSend={onSend}
+        onStop={onStop}
+        {...props}
+        streaming={streaming}
+        sendDisabled
+      />
+    );
+    const { container, rerender } = render(composer(false));
+    await flushMounts();
+    expect(container.querySelector('.composer-send.stop')).toBeNull();
+
+    // Comment sends start in ProjectView, so the composer receives a running
+    // prop without submitting or clearing its own draft/context first.
+    rerender(composer(true));
+    const stop = container.querySelector<HTMLButtonElement>('.composer-send.stop');
+    expect(stop).not.toBeNull();
+    expect(screen.queryByTestId('chat-send')).toBeNull();
+    expect(stop!.disabled).toBe(false);
+    fireEvent.click(stop!);
+    expect(onStop).toHaveBeenCalledTimes(1);
+    expect(onSend).not.toHaveBeenCalled();
+
+    rerender(composer(false));
+    expect(container.querySelector('.composer-send.stop')).toBeNull();
+    expect(screen.getByTestId('chat-send')).toBeTruthy();
+  });
 });
 
 describe('ChatComposer empty-send guard (recvqaj7eKpxH6)', () => {

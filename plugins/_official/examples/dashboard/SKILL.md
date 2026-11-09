@@ -19,9 +19,6 @@ od:
   preview:
     type: html
     entry: index.html
-  design_system:
-    requires: true
-    sections: [color, typography, layout, components]
   craft:
     requires: [state-coverage, accessibility-baseline, laws-of-ux]
 ---
@@ -32,7 +29,7 @@ Produce a single-screen admin / analytics dashboard.
 
 ## Workflow
 
-1. **Read the active DESIGN.md** (injected above). Colors, typography, spacing,
+1. **Read the supplied template/reference styles** (provided with the template). Colors, typography, spacing,
    component styling all come from it. Do not invent new tokens.
 2. **Classify** what the dashboard monitors (sales, traffic, usage, incidents,
    ops, etc.) from the brief. Generate specific, plausible metric names and
@@ -56,7 +53,7 @@ Produce a single-screen admin / analytics dashboard.
    `<polyline>` with a subtle area fill. A bar chart is N `<rect>`s with
    DS-accent fill. Label axes lightly (muted text, smaller scale).
 6. **Self-check**:
-   - Every color comes from DESIGN.md tokens.
+   - Every color comes from the supplied template/reference styles.
    - Accent used at most twice (sidebar active + one chart highlight).
    - Sidebar + top bar are sticky; main scrolls independently.
    - Density matches the DS mood — airy DSes get more padding, dense DSes

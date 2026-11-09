@@ -100,9 +100,6 @@
           "path": "./SKILL.md"
         }
       ],
-      "designSystem": {
-        "primary": true
-      },
       "craft": [
         "accessibility-baseline"
       ],

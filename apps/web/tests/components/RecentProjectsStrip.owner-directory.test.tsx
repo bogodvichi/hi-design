@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
+import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
   CollabCloudMemberDirectoryEntry,
@@ -121,7 +122,7 @@ describe('RecentProjectsStrip owner directory fallback', () => {
     expect(owner?.getAttribute('title')).toBe('Ally Zhang');
   });
 
-  it('uses the durable directory avatar for another project owner', () => {
+  it('uses the durable directory avatar and shows the owner initial when the image fails', () => {
     workspaceState.context = teamContext();
     workspaceState.resolve.mockImplementation((memberId) =>
       memberId === 'wm-owner'
@@ -146,6 +147,22 @@ describe('RecentProjectsStrip owner directory fallback', () => {
       container.querySelector<HTMLImageElement>('.recent-projects__card-owner-avatar img')
         ?.getAttribute('src'),
     ).toBe('https://example.test/wengwenxiu.jpg');
+    const style = document.createElement('style');
+    style.textContent = readFileSync('src/styles/home/recent-projects.css', 'utf8');
+    document.head.appendChild(style);
+    try {
+      const image = container.querySelector<HTMLImageElement>('.recent-projects__card-owner-avatar img')!;
+      expect(getComputedStyle(image).display).toBe('block');
+      fireEvent.error(image);
+      // Chromium lets the authored display rule override the hidden attribute.
+      expect(image.style.display).toBe('none');
+      expect(getComputedStyle(image).display).toBe('none');
+      expect(image.parentElement?.textContent).toBe('翁');
+      fireEvent.load(image);
+      expect(getComputedStyle(image).display).toBe('block');
+    } finally {
+      style.remove();
+    }
   });
 
   it('matches the persisted avatar by display name when workspace member ids differ', () => {

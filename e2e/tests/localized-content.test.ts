@@ -41,7 +41,7 @@ const {
   localizePromptTemplateSummary,
   localizeSkillDescription,
 } = localizedContentModule;
-const COVERAGE_LOCALES = ['de', 'fr', 'ru'] as const;
+const COVERAGE_LOCALES = ['zh-CN'] as const;
 const RESOURCE_ID_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 
 function sorted(values: Iterable<string>): string[] {
@@ -373,7 +373,7 @@ describe('localized display content coverage', () => {
       const localized = localizePromptTemplateSummary(locale, {
         id: 'missing-template-translation',
         category: 'Untranslated Category',
-        tags: ['untranslated-tag', '3d'],
+        tags: ['untranslated-tag', 'zhaoyun'],
         title: ' English title from source ',
         summary: ' English summary from source ',
       });
@@ -385,9 +385,7 @@ describe('localized display content coverage', () => {
       expect(localized.summary).toBe(' English summary from source ');
       expect(localized.category).toBe('Untranslated Category');
       expect(localized.tags[0]).toBe('untranslated-tag');
-      expect(normalizeText(localized.tags[1] ?? ''), `${locale} should still localize known tags`).not.toEqual(
-        '3d',
-      );
+      expect(localized.tags[1], `${locale} should still localize known tags`).toBe('赵云');
     });
   }
 });

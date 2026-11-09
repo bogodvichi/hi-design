@@ -95,10 +95,7 @@
         {
           "path": "./SKILL.md"
         }
-      ],
-      "designSystem": {
-        "primary": true
-      }
+      ]
     },
     "pipeline": {
       "stages": [
