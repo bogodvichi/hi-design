@@ -86,7 +86,7 @@ jobs:
   build_mac:
     name: Build beta mac arm64
     needs: verify
-    runs-on: macos-14
+    runs-on: macos-15
     env:
       GH_TOKEN: ${{ github.token }}
     steps:

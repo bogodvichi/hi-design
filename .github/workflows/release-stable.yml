@@ -70,7 +70,7 @@ jobs:
     name: Build release mac arm64
     needs: verify
     # if: github.repository == 'nexu-io/open-design'
-    runs-on: macos-14
+    runs-on: macos-15
     env:
       GH_TOKEN: ${{ github.token }}
     steps:

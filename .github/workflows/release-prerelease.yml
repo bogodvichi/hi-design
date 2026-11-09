@@ -324,7 +324,7 @@ jobs:
   build_mac:
     name: Build prerelease mac arm64
     needs: [metadata, functional_e2e, e2e_vitest, daemon_unit_tests, verify]
-    runs-on: macos-14
+    runs-on: macos-15
     outputs:
       smoke_result: ${{ steps.mac_smoke.outcome }}
     env:
