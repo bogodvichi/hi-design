@@ -105,6 +105,7 @@ describe('Personal Skill/MCP newly added resources', () => {
     const file = new File(['---\nname: skill-demo\n---\nbody'], 'SKILL.md', { type: 'text/markdown' });
     Object.defineProperty(file, 'text', { value: async () => '---\nname: skill-demo\n---\nbody' });
     fireEvent.change(input, { target: { files: [file] } });
+    await waitFor(() => expect(screen.getByRole('button', { name: '确认' })).not.toBeDisabled());
     fireEvent.click(screen.getByRole('button', { name: '确认' }));
     await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
     expect(uploadSkillToCloudMock).toHaveBeenCalledTimes(1);

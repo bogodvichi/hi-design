@@ -3,9 +3,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from './Icon';
 import { notifyToast } from './toast-context';
-import { useT } from '../i18n';
+import { SkillUploadSummary } from './SkillUploadSummary';
+import { skillUploadErrorMessage } from '../utils/skill-upload-error';
+import uploadStyles from './AddSkillDialog.module.css';
+import { useI18n, useT } from '../i18n';
 import { useWorkspaceContext } from '../collab/useWorkspaceContext';
-import { workspaceContextHasTeamIdentity, type WorkspaceCollabContext } from '@open-design/contracts';
+import { findSingleSkillEntry, SKILL_UPLOAD_MAX_BYTES, SKILL_UPLOAD_MAX_MB, workspaceContextHasTeamIdentity, type WorkspaceCollabContext } from '@open-design/contracts';
 import type { SkillSummary } from '@open-design/contracts';
 import { workspaceProjectHeaders } from '../collab/workspace-identity';
 import {
@@ -35,12 +38,13 @@ type SkillSource = 'upload' | 'url';
 
 type CollectedFile = { file: File; path: string };
 type UploadSource =
-  | { kind: 'folder'; files: CollectedFile[] }
+  | { kind: 'folder'; files: CollectedFile[]; folderName?: string }
   | { kind: 'zip'; file: File }
   | { kind: 'file'; file: File };
 
 export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext: overrideContext }: Props & { workspaceContext?: WorkspaceCollabContext | null }) {
   const t = useT();
+  const { locale } = useI18n();
   const { context: hookContext, loading: hookLoading } = useWorkspaceContext();
   const workspaceContext = overrideContext ?? hookContext;
   const workspaceContextLoading = overrideContext ? false : hookLoading;
@@ -48,6 +52,10 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
   const [activeTab, setActiveTab] = useState<SkillSource>('upload');
   const [url, setUrl] = useState('');
   const [uploadSource, setUploadSource] = useState<UploadSource | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [validatedSkillName, setValidatedSkillName] = useState<string | null>(null);
+  const [validatingUpload, setValidatingUpload] = useState(false);
+  const validationSeq = useRef(0);
   const [busy, setBusy] = useState<BusyState>(null);
   const isBusy = busy !== null;
   const [dragOver, setDragOver] = useState(false);
@@ -55,16 +63,17 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canConfirm =
     activeTab === 'upload'
-      ? uploadSource !== null
+      ? uploadSource !== null && !validatingUpload && !!validatedSkillName
       : url.trim().length > 0;
 
   useEffect(() => {
     if (open) {
       setUrl('');
-      setUploadSource(null);
+      resetUpload();
       setBusy(null);
       setActiveTab('upload');
     }
+    return () => { validationSeq.current++; };
   }, [open]);
 
   function closeDialog() {
@@ -154,22 +163,19 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
   }
 
   async function handleUpload() {
-    if (!uploadSource || busy || workspaceContextLoading) return;
+    if (!uploadSource || !validatedSkillName || validatingUpload || busy || workspaceContextLoading) return;
     setBusy('upload');
+    setUploadError(null);
     try {
-      const skillName = await deriveSkillName(uploadSource);
-      if (!skillName) {
-        notifyToast({ message: t('pluginsView.skillMissingFile'), tone: 'error' });
-        return;
-      }
+      const skillName = validatedSkillName;
       if (await checkCloudSkillDuplicate(skillName)) {
         notifyToast({ message: t('personalScope.skillDuplicateName' as any), tone: 'error' });
         return;
       }
-      const uploadInput = buildCloudUploadInput(uploadSource);
+      const uploadInput = await buildCloudUploadInput(uploadSource);
       const result = await uploadSkillToCloud(uploadInput, workspaceContext);
       if ('error' in result) {
-        notifyToast({ message: userFacingError(result.error, t, 'feedback.saveFailed', t('feedback.objectSkill')), tone: 'error' });
+        showUploadError(result.error);
         return;
       }
       // A Personal Skill must be usable immediately after being added.
@@ -200,48 +206,79 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
       onClose();
       setUploadSource(null);
     } catch (err) {
-      notifyToast({ message: userFacingError(err, t, 'feedback.importFailed', t('feedback.objectSkill')), tone: 'error' });
+      showUploadError(err);
     } finally {
       setBusy(null);
     }
   }
 
-  async function deriveSkillName(source: UploadSource): Promise<string | null> {
+  function showUploadError(error: unknown) {
+    const message = skillUploadErrorMessage(error, locale)
+      ?? userFacingError(error, t, 'feedback.importFailed', t('feedback.objectSkill'));
+    setUploadError(message);
+  }
+
+  function resetUpload() {
+    validationSeq.current++;
+    setUploadSource(null);
+    setUploadError(null);
+    setValidatedSkillName(null);
+    setValidatingUpload(false);
+    if (folderInputRef.current) folderInputRef.current.value = '';
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  async function stageUploadSource(source: UploadSource) {
+    const seq = ++validationSeq.current;
+    setUploadSource(source);
+    setUploadError(null);
+    setValidatedSkillName(null);
+    setValidatingUpload(true);
     try {
-      let text: string | null = null;
+      const size = source.kind === 'folder'
+        ? source.files.reduce((total, entry) => total + entry.file.size, 0) : source.file.size;
+      if (size > SKILL_UPLOAD_MAX_BYTES) throw new Error('SKILL_UPLOAD_TOO_LARGE');
+      let text: string | null;
       if (source.kind === 'zip') {
         text = await findSkillMdInZip(source.file);
       } else if (source.kind === 'file') {
+        if (!/\.md$/i.test(source.file.name)) throw new Error('SKILL_FILE_TYPE_UNSUPPORTED');
         text = await source.file.text();
       } else {
-        const skillFile = source.files.find((f) => /(^|\/)SKILL\.md$/i.test(f.path));
-        if (skillFile) text = await skillFile.file.text();
+        const selection = await findSingleSkillEntry(source.files.map(file => file.path), index => source.files[index]!.file.text());
+        if (!selection.ok) throw new Error(selection.error);
+        text = await source.files[selection.index]!.file.text();
       }
-      if (!text) return null;
-      return parseSkillNameFromMarkdown(text);
-    } catch {
-      return null;
+      if (text === null) throw new Error('SKILL_MD_NOT_FOUND');
+      if (!text.trim()) throw new Error('SKILL_CONTENT_EMPTY');
+      const name = parseSkillNameFromMarkdown(text);
+      if (!name) throw new Error('SKILL_NAME_MISSING');
+      if (seq === validationSeq.current) setValidatedSkillName(name);
+    } catch (error) {
+      if (seq === validationSeq.current) showUploadError(error);
+    } finally {
+      if (seq === validationSeq.current) setValidatingUpload(false);
     }
   }
 
-  function buildCloudUploadInput(source: UploadSource) {
-    if (source.kind === 'zip') {
-      return { zip: source.file };
-    }
-    if (source.kind === 'file') {
-      return [{ file: source.file, path: 'SKILL.md' }];
-    }
-    return source.files.map((f) => ({ file: f.file, path: f.path }));
+  async function buildCloudUploadInput(source: UploadSource) {
+    if (source.kind === 'zip') return { zip: source.file };
+    if (source.kind === 'file') return [{ file: source.file, path: 'SKILL.md' }];
+    const selection = await findSingleSkillEntry(source.files.map(file => file.path), index => source.files[index]!.file.text());
+    if (!selection.ok) throw new Error(selection.error);
+    const skillPath = source.files[selection.index]!.path.replace(/\\/g, '/');
+    const prefix = skillPath.slice(0, skillPath.lastIndexOf('/') + 1);
+    return source.files
+      .map(entry => ({ file: entry.file, path: entry.path.replace(/\\/g, '/') }))
+      .filter(entry => entry.path.startsWith(prefix))
+      .map(entry => ({ file: entry.file, path: entry.path === skillPath ? 'SKILL.md' : entry.path.slice(prefix.length) }));
   }
 
   function selectUploadFile(file: File) {
     if (/\.zip$/i.test(file.name)) {
-      setUploadSource({ kind: 'zip', file });
-    } else if (/\.md$/i.test(file.name)) {
-      setUploadSource({ kind: 'file', file });
+      void stageUploadSource({ kind: 'zip', file });
     } else {
-      setUploadSource(null);
-      notifyToast({ message: '单文件导入仅支持 Markdown（.md）或 ZIP 文件，请重新选择。', tone: 'error' });
+      void stageUploadSource({ kind: 'file', file });
     }
   }
 
@@ -253,26 +290,29 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
     }
     try {
       const result = await host.project.pickSkillSource();
-      if (!result.ok) return;
+      if (!result.ok) {
+        if (!result.canceled) showUploadError(new Error(result.reason));
+        return;
+      }
       if (result.kind === 'folder') {
         const files = result.files.map((f) => ({
           file: new File([f.data], f.path.split('/').pop() || f.path),
           path: f.path,
         }));
-        setUploadSource({ kind: 'folder', files });
+        await stageUploadSource({ kind: 'folder', files, folderName: result.folderName });
       } else if (result.kind === 'zip') {
         const file = new File([result.data], result.fileName, { type: 'application/zip' });
-        setUploadSource({ kind: 'zip', file });
+        await stageUploadSource({ kind: 'zip', file });
       } else if (result.files.length === 1) {
         const selected = result.files[0]!;
         const fileName = selected.path.split('/').pop() || selected.path;
         selectUploadFile(new File([selected.data], fileName, { type: 'text/markdown' }));
       } else {
-        setUploadSource(null);
-        notifyToast({ message: 'Skill 单文件导入只支持选择一个 Markdown 文件。', tone: 'error' });
+        resetUpload();
+        showUploadError(new Error('MULTIPLE_SKILLS'));
       }
-    } catch {
-      // Fall back silently
+    } catch (error) {
+      showUploadError(error);
     }
   }
 
@@ -294,52 +334,39 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
     setDragOver(false);
     if (busy) return;
 
-    const items = e.dataTransfer.items;
-    if (items && items.length > 0) {
-      const entries = await readDragEntries(items);
-      if (entries && entries.length > 0) {
-        const skillFile = entries.find((f) => /(^|\/)SKILL\.md$/i.test(f.path));
-        if (entries.length === 1 && !skillFile && /\.(zip)$/i.test(entries[0]!.file.name)) {
-          setUploadSource({ kind: 'zip', file: entries[0]!.file });
+    try {
+      const items = e.dataTransfer.items;
+      if (items && items.length > 0) {
+        const entries = await readDragEntries(items);
+        if (entries && entries.length > 0) {
+          if (entries.length === 1 && /\.(zip)$/i.test(entries[0]!.file.name)) {
+            await stageUploadSource({ kind: 'zip', file: entries[0]!.file });
+            return;
+          }
+          if (entries.length === 1 && !entries[0]!.path.includes('/')) {
+            selectUploadFile(entries[0]!.file);
+            return;
+          }
+          const root = entries[0]?.path.split('/')[0];
+          const folderName = root && entries.every(entry => entry.path.startsWith(`${root}/`)) ? root : undefined;
+          await stageUploadSource({ kind: 'folder', files: entries, folderName });
           return;
         }
-        if (entries.length === 1 && (skillFile || !entries[0]!.path.includes('/'))) {
-          selectUploadFile(entries[0]!.file);
-          return;
-        }
-        setUploadSource({ kind: 'folder', files: entries });
-        return;
       }
-    }
 
-    const files = Array.from(e.dataTransfer.files ?? []);
-    if (files.length === 1) {
-      selectUploadFile(files[0]!);
-    } else if (files.length > 0) {
-      setUploadSource({
-        kind: 'folder',
-        files: files.map((f) => ({ file: f, path: f.name })),
-      });
+      const files = Array.from(e.dataTransfer.files ?? []);
+      if (files.length === 1) {
+        selectUploadFile(files[0]!);
+      } else if (files.length > 0) {
+        await stageUploadSource({
+          kind: 'folder',
+          files: files.map((f) => ({ file: f, path: f.name })),
+        });
+      }
+    } catch (error) {
+      showUploadError(error);
     }
-  }, [busy]);
-
-  function renderUploadLabel(): string {
-    if (!uploadSource) {
-      return canPickFilesAndFolders
-        ? t('personalScope.skillDropZoneHint')
-        : t('personalScope.skillDropZoneHintFolder');
-    }
-    if (uploadSource.kind === 'zip') {
-      return uploadSource.file.name;
-    }
-    if (uploadSource.kind === 'file') {
-      return uploadSource.file.name;
-    }
-    if (uploadSource.files.length === 1 && /(^|\/)SKILL\.md$/i.test(uploadSource.files[0]!.path)) {
-      return uploadSource.files[0]!.file.name;
-    }
-    return t('pluginsView.filesSelected', { count: uploadSource.files.length });
-  }
+  }, [busy, locale]);
 
   const dialog = open ? createPortal(
     <div className={styles.backdrop} role="presentation" onClick={closeDialog}>
@@ -405,12 +432,12 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
                 onChange={(event) => {
                   const files = Array.from(event.currentTarget.files ?? []);
                   if (files.length === 0) return;
-                  const skillFile = files.find((f) => /(^|\/)SKILL\.md$/i.test(f.webkitRelativePath || f.name));
-                  if (files.length === 1 && (skillFile || !files[0]!.webkitRelativePath)) {
+                  if (files.length === 1 && !files[0]!.webkitRelativePath) {
                     selectUploadFile(files[0]!);
                   } else {
-                    setUploadSource({
+                    void stageUploadSource({
                       kind: 'folder',
+                      folderName: files[0]?.webkitRelativePath?.split('/')[0],
                       files: files.map((f) => ({
                         file: f,
                         path: f.webkitRelativePath || f.name,
@@ -430,27 +457,32 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
                   if (f) selectUploadFile(f);
                 }}
               />
-              <button
-                type="button"
-                className={dragOver ? `${styles.uploadZone} ${styles.uploadZoneDragOver}` : styles.uploadZone}
-                disabled={busy !== null}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                onClick={() => {
-                  if (canPickFilesAndFolders) void handleMacClick();
-                  else folderInputRef.current?.click();
-                }}
-              >
-                <span className={styles.uploadZoneIcon} aria-hidden>
-                  <Icon name="upload" size={23} />
-                </span>
-                <strong className={styles.uploadZoneStrong}>
-                  {renderUploadLabel()}
-                </strong>
-                <span>{t('personalScope.skillDropZoneSubhint')}</span>
-              </button>
-              {!canPickFilesAndFolders && (
+              {uploadSource ? (
+                <SkillUploadSummary source={uploadSource} locale={locale} disabled={isBusy} onRemove={resetUpload} />
+              ) : (
+                <button
+                  type="button"
+                  className={dragOver ? `${styles.uploadZone} ${styles.uploadZoneDragOver}` : styles.uploadZone}
+                  disabled={busy !== null}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => {
+                    if (canPickFilesAndFolders) void handleMacClick();
+                    else folderInputRef.current?.click();
+                  }}
+                >
+                  <span className={styles.uploadZoneIcon} aria-hidden>
+                    <Icon name="upload" size={23} />
+                  </span>
+                  <strong className={styles.uploadZoneStrong}>
+                    {canPickFilesAndFolders ? t('personalScope.skillDropZoneHint') : t('personalScope.skillDropZoneHintFolder')}
+                  </strong>
+                  <span>{locale.startsWith('zh') ? `支持文件夹/.zip包/.md文件，总大小不超过${SKILL_UPLOAD_MAX_MB}MB` : `Supports folders, .zip archives and .md files; total size up to ${SKILL_UPLOAD_MAX_MB} MB`}</span>
+                </button>
+              )}
+              {uploadError && <p className={uploadStyles.error} role="alert">{uploadError}</p>}
+              {!canPickFilesAndFolders && !uploadSource && (
                 <button
                   type="button"
                   className={styles.selectZipBtn}
@@ -500,7 +532,7 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
           >
             {busy !== null
               ? t('pluginsView.importing')
-              : t('personalScope.skillConfirmAdd')}
+              : validatingUpload ? (locale.startsWith('zh') ? '校验中...' : 'Validating...') : t('personalScope.skillConfirmAdd')}
           </button>
         </footer>
       </section>
@@ -571,7 +603,7 @@ function traverseEntry(
   relPath: string,
   result: CollectedFile[],
 ): Promise<void> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     if (entry.isFile) {
       const fileEntry = entry as FileSystemFileEntry;
       fileEntry.file(
@@ -580,7 +612,7 @@ function traverseEntry(
           result.push({ file, path });
           resolve();
         },
-        () => resolve(),
+        reject,
       );
     } else if (entry.isDirectory) {
       const dirEntry = entry as FileSystemDirectoryEntry;
@@ -590,8 +622,8 @@ function traverseEntry(
       readAllEntries(reader, (childEntries) => {
         Promise.all(childEntries.map((child) => traverseEntry(child, basePath, result)))
           .then(() => resolve())
-          .catch(() => resolve());
-      }, () => resolve());
+          .catch(reject);
+      }, reject);
     } else {
       resolve();
     }
@@ -601,7 +633,7 @@ function traverseEntry(
 function readAllEntries(
   reader: FileSystemDirectoryReader,
   onSuccess: (entries: FileSystemEntry[]) => void,
-  onError: () => void,
+  onError: (error: DOMException) => void,
 ): void {
   const entries: FileSystemEntry[] = [];
   const readBatch = () => {

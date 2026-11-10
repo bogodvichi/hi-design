@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { I18nProvider } from '../../src/i18n';
 import { PublishDialog } from '../../src/components/PublishDialog';
+import { buildZip } from '../../src/runtime/zip';
 
 const {
   uploadSkillToCloudMock,
@@ -38,6 +39,10 @@ vi.mock('../../src/state/projects', () => ({
 }));
 
 vi.mock('../../src/collab/useWorkspaceContext', () => ({
+  readWorkspaceDirectoryForCurrentGeneration: async () => {
+    const response = await fetch('/api/workspace/directory');
+    return response.json();
+  },
   workspaceContextFromDirectoryItem: (item: any) => ({
     workspaceId: item.workspaceId,
     workspaceType: item.workspaceType,
@@ -80,7 +85,178 @@ function jsonResponse(body: unknown): Response {
   });
 }
 
+async function skillZipFile(entries: { path: string; content: string }[]): Promise<File> {
+  const blob = buildZip(entries);
+  const bytes = await new Promise<ArrayBuffer>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as ArrayBuffer);
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(blob);
+  });
+  const file = new File([bytes], 'skill.zip', { type: 'application/zip' });
+  Object.defineProperty(file, 'slice', { value: (start = 0, end = file.size) => ({ arrayBuffer: async () => bytes.slice(start, end) }) });
+  return file;
+}
+
 describe('PublishDialog Skill category', () => {
+  it.each(['SKILL.md', '2SKILL.md', 'design-review.md'])('publishes a deeply nested native folder with entry %s', async entryName => {
+    const onPublish = vi.fn();
+    getOpenDesignHostMock.mockReturnValue({ project: { pickSkillSource: vi.fn().mockResolvedValue({
+      ok: true, kind: 'folder', folderName: 'wrapper', files: [
+        { path: `one/two/three/${entryName}`, data: new TextEncoder().encode('---\nname: nested-native\n---\n# Skill').buffer },
+        { path: 'one/two/three/references/four/example.md', data: new TextEncoder().encode('Example').buffer },
+        { path: 'README.md', data: new TextEncoder().encode('Wrapper only').buffer },
+      ],
+    }) } });
+    render(<I18nProvider initial="zh-CN"><PublishDialog initialCategory="skill" onClose={() => {}} onPublish={onPublish} /></I18nProvider>);
+    fireEvent.click(screen.getByRole('tab', { name: '导入本地 Skill' }));
+    fireEvent.click(screen.getByRole('button', { name: /选择文件夹 \/ ZIP/ }));
+    await screen.findByText('wrapper');
+    const summary = screen.getByRole('group', { name: '已选择的 Skill' });
+    expect(summary).toHaveTextContent('wrapper');
+    expect(summary).toHaveTextContent('3 个文件');
+    expect(summary).toHaveTextContent(/\d+ B/);
+    expect(summary).toContainElement(screen.getByRole('button', { name: '删除已导入 Skill' }));
+    fireEvent.click(screen.getByRole('radio', { name: '开发工具' }));
+    const publish = screen.getByRole('button', { name: '确认发布' });
+    await waitFor(() => expect(publish).not.toBeDisabled());
+    fireEvent.click(publish);
+    await waitFor(() => expect(onPublish).toHaveBeenCalledTimes(1));
+    expect(onPublish.mock.calls[0]![0].upload.map((entry: { path: string }) => entry.path))
+      .toEqual(['SKILL.md', 'references/four/example.md']);
+  });
+
+  it.each([
+    { entries: [{ path: 'one/two/three/SKILL.md', content: '---\nname: nested-zip\n---' }], error: null },
+    { entries: [{ path: 'one/two/three/2SKILL.md', content: '---\nname: nested-zip\n---' }], error: null },
+    { entries: [{ path: 'SKILL.md', content: 'First' }, { path: 'one/two/SKILL.md', content: 'Second' }], error: '无法上传多个skill，请单独上传' },
+    { entries: [{ path: 'one/two/example.txt', content: 'Example' }], error: '未找到skill.md文件' },
+  ])('validates a ZIP selected through the file input (error=$error)', async ({ entries, error }) => {
+    const onPublish = vi.fn();
+    const file = await skillZipFile(entries);
+    render(<I18nProvider initial="zh-CN"><PublishDialog initialCategory="skill" onClose={() => {}} onPublish={onPublish} /></I18nProvider>);
+    fireEvent.click(screen.getByRole('tab', { name: '导入本地 Skill' }));
+    fireEvent.change(document.querySelector<HTMLInputElement>('input[type="file"][multiple]')!, { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('radio', { name: '开发工具' }));
+    const publish = screen.getByRole('button', { name: '确认发布' });
+    if (error) {
+      expect(await screen.findByRole('alert')).toHaveTextContent(error);
+      expect(publish).toBeDisabled();
+      expect(onPublish).not.toHaveBeenCalled();
+    } else {
+      await waitFor(() => expect(publish).not.toBeDisabled());
+      fireEvent.click(publish);
+      await waitFor(() => expect(onPublish).toHaveBeenCalledWith(expect.objectContaining({ name: 'nested-zip', upload: { zip: file } })));
+    }
+  });
+
+  it('rejects a folder containing multiple nested Skills', async () => {
+    getOpenDesignHostMock.mockReturnValue({ project: { pickSkillSource: vi.fn().mockResolvedValue({
+      ok: true, kind: 'folder', folderName: 'multiple', files: ['one/SKILL.md', 'two/three/skill.md'].map(path => ({ path, data: new TextEncoder().encode('---\nname: skill\n---').buffer })),
+    }) } });
+    render(<I18nProvider initial="zh-CN"><PublishDialog initialCategory="skill" onClose={() => {}} onPublish={() => {}} /></I18nProvider>);
+    fireEvent.click(screen.getByRole('tab', { name: '导入本地 Skill' }));
+    fireEvent.click(screen.getByRole('button', { name: /选择文件夹 \/ ZIP/ }));
+    expect(await screen.findByRole('alert')).toHaveTextContent('无法上传多个skill，请单独上传');
+    expect(screen.getByRole('button', { name: '确认发布' })).toBeDisabled();
+  });
+
+  it('shows a readable error for a corrupt ZIP', async () => {
+    const file = new File(['bad'], 'broken.zip');
+    Object.defineProperty(file, 'slice', { value: () => ({ arrayBuffer: async () => new Uint8Array([1, 2, 3]).buffer }) });
+    render(<I18nProvider initial="zh-CN"><PublishDialog initialCategory="skill" onClose={() => {}} onPublish={() => {}} /></I18nProvider>);
+    fireEvent.click(screen.getByRole('tab', { name: '导入本地 Skill' }));
+    fireEvent.change(document.querySelector<HTMLInputElement>('input[type="file"][multiple]')!, { target: { files: [file] } });
+    expect(await screen.findByRole('alert')).toHaveTextContent('ZIP 包无法读取，请确认文件未损坏后重新选择。');
+    expect(screen.getByRole('button', { name: '确认发布' })).toBeDisabled();
+  });
+
+  it('reports a nested directory read failure instead of silently skipping it', async () => {
+    render(<I18nProvider initial="zh-CN"><PublishDialog initialCategory="skill" onClose={() => {}} onPublish={() => {}} /></I18nProvider>);
+    fireEvent.click(screen.getByRole('tab', { name: '导入本地 Skill' }));
+    const entry = { isFile: false, isDirectory: true, name: 'folder', createReader: () => ({
+      readEntries: (_success: unknown, failure: (error: DOMException) => void) => failure(new DOMException('Denied', 'NotReadableError')),
+    }) };
+    fireEvent.drop(screen.getByRole('button', { name: /选择文件夹 \/ ZIP/ }), { dataTransfer: { files: [], items: [{ webkitGetAsEntry: () => entry }] } });
+    expect(await screen.findByRole('alert')).toHaveTextContent('文件读取失败，请检查访问权限后重新选择。');
+    expect(screen.getByRole('button', { name: '确认发布' })).toBeDisabled();
+  });
+
+  it.each([
+    { code: 'SKILL_MD_NOT_FOUND', status: 400, copy: '未找到skill.md文件' },
+    { code: 'MULTIPLE_SKILLS', status: 400, copy: '无法上传多个skill，请单独上传' },
+    { code: 'PAYLOAD_TOO_LARGE', status: 413, copy: '文件太大（超过500MB）' },
+    { code: 'AUTHENTICATION_REQUIRED', status: 401, copy: '登录已失效，请重新登录后上传。' },
+    { code: 'FORBIDDEN', status: 403, copy: '没有发布权限，请切换账号或工作空间后重试。' },
+    { code: 'RESOURCE_NAME_REGISTRY_NOT_READY', status: 503, copy: '发布服务尚未就绪，请联系管理员后重试。' },
+    { code: 'ENOENT', status: 500, copy: '文件读取失败，请重新选择后上传。' },
+  ])('shows actionable publishing errors for $code', async ({ code, status, copy }) => {
+    const dispatch = vi.spyOn(window, 'dispatchEvent');
+    const onPublish = vi.fn().mockRejectedValue(Object.assign(new Error('Upload failed'), { code, status }));
+    render(<I18nProvider initial="zh-CN"><PublishDialog initialCategory="skill" onClose={() => {}} onPublish={onPublish} /></I18nProvider>);
+    fireEvent.click(screen.getByRole('tab', { name: '导入本地 Skill' }));
+    const file = new File(['---\nname: retry-skill\n---'], 'SKILL.md');
+    Object.defineProperty(file, 'text', { value: async () => '---\nname: retry-skill\n---' });
+    fireEvent.change(document.querySelector<HTMLInputElement>('input[type="file"][multiple]')!, { target: { files: [file] } });
+    fireEvent.click(screen.getByRole('radio', { name: '开发工具' }));
+    const publish = screen.getByRole('button', { name: '确认发布' });
+    await waitFor(() => expect(publish).not.toBeDisabled());
+    fireEvent.click(publish);
+    await waitFor(() => expect(dispatch.mock.calls.some(([event]) => event.type === 'od:operation-toast' && (event as CustomEvent).detail.message === copy)).toBe(true));
+    expect(screen.getByRole('button', { name: '删除已导入 Skill' })).not.toBeDisabled();
+  });
+
+  it('shows the 500 MB limit and blocks an oversized source before publishing', async () => {
+    const onPublish = vi.fn();
+    render(<I18nProvider initial="zh-CN"><PublishDialog initialCategory="skill" onClose={() => {}} onPublish={onPublish} /></I18nProvider>);
+    fireEvent.click(screen.getByRole('tab', { name: '导入本地 Skill' }));
+    expect(screen.getByText('支持文件夹/.zip包/.md文件，总大小不超过500MB')).toBeTruthy();
+    const file = new File(['---\nname: oversized\n---'], 'SKILL.md');
+    Object.defineProperty(file, 'size', { value: 501 * 1024 * 1024 });
+    fireEvent.change(document.querySelector<HTMLInputElement>('input[type="file"][multiple]')!, { target: { files: [file] } });
+    expect(await screen.findByRole('alert')).toHaveTextContent('文件太大（超过500MB）');
+    fireEvent.click(screen.getByRole('radio', { name: '开发工具' }));
+    expect(screen.getByRole('button', { name: '确认发布' })).toBeDisabled();
+    expect(onPublish).not.toHaveBeenCalled();
+  });
+
+  it.each(['success', 'failure'])('locks imported files while publishing and recovers after %s', async (outcome) => {
+    let resolve!: () => void;
+    let reject!: (error: Error) => void;
+    const pending = new Promise<void>((yes, no) => { resolve = yes; reject = no; });
+    const onClose = vi.fn();
+    const onPublish = vi.fn(() => pending);
+    const text = '---\nname: test-skill\n---\n# Skill';
+    getOpenDesignHostMock.mockReturnValue({ project: { pickSkillSource: vi.fn().mockResolvedValue({
+      ok: true, kind: 'files', files: [{ path: 'SKILL.md', data: new TextEncoder().encode(text).buffer }],
+    }) } });
+    render(<I18nProvider initial="zh-CN"><PublishDialog initialCategory="skill" onClose={onClose} onPublish={onPublish} /></I18nProvider>);
+    fireEvent.click(screen.getByRole('tab', { name: '导入本地 Skill' }));
+    fireEvent.click(screen.getByRole('button', { name: /选择文件夹 \/ ZIP/ }));
+    await screen.findByText('SKILL.md');
+    fireEvent.click(screen.getByRole('radio', { name: '开发工具' }));
+    const publish = screen.getByRole('button', { name: '确认发布' });
+    await waitFor(() => expect(publish).not.toBeDisabled());
+    const remove = screen.getByRole('button', { name: '删除已导入 Skill' });
+    expect(remove).not.toBeDisabled();
+    fireEvent.click(publish);
+    await screen.findByRole('button', { name: '发布中…' });
+    expect(remove).toBeDisabled();
+    expect(screen.getByRole('tab', { name: '项目' })).toBeDisabled();
+    remove.click();
+    expect(screen.getByText('SKILL.md')).toBeTruthy();
+    expect(onPublish).toHaveBeenCalledTimes(1);
+    await act(async () => { if (outcome === 'success') resolve(); else reject(new Error('Skill publish failed')); });
+    if (outcome === 'success') {
+      expect(onClose).toHaveBeenCalledTimes(1);
+    } else {
+      expect(onClose).not.toHaveBeenCalled();
+      expect(remove).not.toBeDisabled();
+      fireEvent.click(remove);
+      expect(screen.queryByText('SKILL.md')).toBeNull();
+    }
+  });
+
   it('selects an uninstalled owned team MCP and preserves its cloud identity for publication', async () => {
     const onPublish = vi.fn();
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL) => {
@@ -330,7 +506,7 @@ describe('PublishDialog Skill category', () => {
     expect(onPublish).not.toHaveBeenCalled();
   });
 
-  it('still requires SKILL.md inside an imported folder', async () => {
+  it('accepts an arbitrary Markdown filename inside an imported folder', async () => {
     const file = new File(['---\nname: review\n---'], 'review.md');
     Object.defineProperty(file, 'webkitRelativePath', { value: 'review/review.md' });
     render(
@@ -341,8 +517,9 @@ describe('PublishDialog Skill category', () => {
     fireEvent.click(screen.getByRole('tab', { name: '导入本地 Skill' }));
     const input = document.querySelector<HTMLInputElement>('input[type="file"][multiple]');
     fireEvent.change(input!, { target: { files: [file] } });
-    expect(await screen.findByRole('alert')).toHaveTextContent('未找到 SKILL.md，请选择包含 SKILL.md 的文件夹或 ZIP 包。');
-    expect(screen.getByRole('button', { name: '确认发布' })).toBeDisabled();
+    fireEvent.click(screen.getByRole('radio', { name: '开发工具' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: '确认发布' })).not.toBeDisabled());
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('publishes a project selected directly from Personal All', async () => {
@@ -765,7 +942,7 @@ describe('PublishDialog Skill category', () => {
     fireEvent.click(screen.getByRole('tab', { name: '导入本地 Skill' }));
     fireEvent.click(screen.getByRole('button', { name: /选择文件夹 \/ ZIP \/ Markdown 文件/ }));
 
-    expect(await screen.findByText('Skill 单文件导入只支持选择一个 Markdown 文件。')).toBeTruthy();
+    expect(await screen.findByText('无法上传多个skill，请单独上传')).toBeTruthy();
     expect(screen.getByRole('button', { name: '确认发布' })).toBeDisabled();
   });
 

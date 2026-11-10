@@ -1,3 +1,5 @@
+import { SkillUploadSummary } from './SkillUploadSummary';
+import { skillUploadErrorMessage } from '../utils/skill-upload-error';
 // Publish dialog for the Square (Hi广场) community surface. Project, Skill,
 // and MCP publishing start from resources already owned by the user, with a
 // secondary local-import/manual-entry path when the resource is not installed.
@@ -48,6 +50,9 @@ import { notifyToast } from './toast-context';
 import { getOpenDesignHost } from '@open-design/host';
 import {
   SKILL_CATEGORIES,
+  findSingleSkillEntry,
+  SKILL_UPLOAD_MAX_BYTES,
+  SKILL_UPLOAD_MAX_MB,
   normalizeSkillCategory,
   type SkillCategory,
 } from '@open-design/contracts';
@@ -235,19 +240,17 @@ function toPublishDialogMessage(
 ): string {
   const raw = error instanceof Error ? error.message : String(error ?? '');
   const text = raw.trim();
-  const lower = text.toLowerCase();
+  const detail = error && typeof error === 'object' ? error as { code?: string; status?: number } : {};
+  const lower = `${detail.code ?? ''} ${text}`.toLowerCase();
 
-  if (/resource_name_conflict|platform resource with the same name/.test(lower)) {
-    return localeText(locale, '平台中已有相同 Skill，请重新命名。', 'A Skill with the same name already exists on the platform. Rename it.');
-  }
+  const uploadMessage = skillUploadErrorMessage(error, locale);
+  if (uploadMessage) return uploadMessage;
+
   if (/resource_already_published|already published/.test(lower)) {
     return localeText(locale, '该资源已发布，请先取消原有发布。', 'This resource is already published. Unpublish it first.');
   }
   if (/expected a .zip file|select a project folder or .zip file/.test(lower)) {
     return localeText(locale, '文件格式不支持，请选择项目文件夹或 ZIP 压缩包。', 'Unsupported file type. Choose a project folder or ZIP archive.');
-  }
-  if (/invalid zip|end-of-central-directory|zip.*read|unable to read.*zip/.test(lower)) {
-    return localeText(locale, 'ZIP 包无法读取，请确认文件未损坏后重新选择。', 'The ZIP archive could not be read. Check that it is not corrupted and choose it again.');
   }
   if (/zip does not contain project files|project files required/.test(lower)) {
     return localeText(locale, '未找到可发布的项目文件，请重新选择包含项目内容的文件夹或 ZIP 包。', 'No project files were found. Choose a folder or ZIP that contains project content.');
@@ -257,9 +260,6 @@ function toPublishDialogMessage(
   }
   if (/100 mb|exceeds 100|expands beyond 100/.test(lower)) {
     return localeText(locale, '文件总大小超过 100 MB，请精简后重新选择。', 'The total file size exceeds 100 MB. Reduce the content and choose it again.');
-  }
-  if (/unsafe file path|path escapes/.test(lower)) {
-    return localeText(locale, '文件路径不符合安全要求，请重新整理或打包后再试。', 'The file paths are not safe. Reorganize or repackage the files and try again.');
   }
   if (/workspace directory load failed|workspace projects load failed/.test(lower)) {
     return localeText(locale, '项目列表加载失败，请稍后重试。', 'The project list could not be loaded. Please try again.');
@@ -281,9 +281,6 @@ function toPublishDialogMessage(
   }
   if (/failed to import project zip|failed to import project files/.test(lower)) {
     return localeText(locale, '项目导入失败，请检查文件内容后重试。', 'Project import failed. Check the files and try again.');
-  }
-  if (/failed to fetch|networkerror|network request failed/.test(lower)) {
-    return localeText(locale, '网络连接失败，请检查网络后重试。', 'Network request failed. Check your connection and try again.');
   }
   if (!text) return localeText(locale, fallbackZh, fallbackEn);
   if (/^[a-z0-9 _./:()-]+$/i.test(text) && !/[一-鿿]/.test(text)) {
@@ -1619,6 +1616,15 @@ function SkillTab({
   async function validateSkillUploadSource(
     source: UploadSource,
   ): Promise<{ name: string | null; error: string | null }> {
+    const totalBytes = 'files' in source
+      ? source.files.reduce((total, entry) => total + entry.file.size, 0)
+      : source.file.size;
+    if (totalBytes > SKILL_UPLOAD_MAX_BYTES) {
+      return {
+        name: null,
+        error: toPublishDialogMessage(new Error('SKILL_UPLOAD_TOO_LARGE'), locale),
+      };
+    }
     let text: string | null = null;
 
     if (source.kind === 'zip') {
@@ -1630,10 +1636,10 @@ function SkillTab({
       }
       try {
         text = await findSkillMdInZip(source.file);
-      } catch {
+      } catch (error) {
         return {
           name: null,
-          error: localeText(locale, 'ZIP 包无法读取，请确认文件未损坏后重新选择。', 'The ZIP archive could not be read. Check that it is not corrupted and choose it again.'),
+          error: toPublishDialogMessage(error, locale, 'ZIP 包无法读取，请确认文件未损坏后重新选择。', 'The ZIP archive could not be read. Check that it is not corrupted and choose it again.'),
         };
       }
     } else if (source.kind === 'file') {
@@ -1655,7 +1661,7 @@ function SkillTab({
       if (source.files.length !== 1) {
         return {
           name: null,
-          error: localeText(locale, 'Skill 单文件导入只支持选择一个 Markdown 文件。', 'Skill single-file import only supports one Markdown file.'),
+          error: toPublishDialogMessage(new Error('MULTIPLE_SKILLS'), locale),
         };
       }
       const selectedFile = source.files[0]!;
@@ -1675,13 +1681,14 @@ function SkillTab({
         };
       }
     } else {
-      const skillFile = source.files.find((f) => /(^|\/)SKILL\.md$/i.test(f.path));
-      if (!skillFile) {
+      const selection = await findSingleSkillEntry(source.files.map(file => file.path), index => source.files[index]!.file.text());
+      if (!selection.ok) {
         return {
           name: null,
-          error: localeText(locale, '未找到 SKILL.md，请选择包含 SKILL.md 的文件夹或 ZIP 包。', 'SKILL.md was not found. Choose a folder or ZIP that contains SKILL.md.'),
+          error: toPublishDialogMessage(new Error(selection.error), locale),
         };
       }
+      const skillFile = source.files[selection.index]!;
       try {
         text = await skillFile.file.text();
       } catch {
@@ -1695,7 +1702,7 @@ function SkillTab({
     if (text == null) {
       return {
         name: null,
-        error: localeText(locale, '未找到 SKILL.md，请选择包含 SKILL.md 的文件夹或 ZIP 包。', 'SKILL.md was not found. Choose a folder or ZIP that contains SKILL.md.'),
+        error: toPublishDialogMessage(new Error('SKILL_MD_NOT_FOUND'), locale),
       };
     }
     if (!text.trim()) {
@@ -1737,7 +1744,7 @@ function SkillTab({
     setValidatingUpload(false);
   }
 
-  function buildCloudUploadInput(source: UploadSource) {
+  async function buildCloudUploadInput(source: UploadSource) {
     if (source.kind === 'zip') {
       return { zip: source.file };
     }
@@ -1747,7 +1754,14 @@ function SkillTab({
     if (source.kind === 'files') {
       return [{ file: source.files[0]!.file, path: 'SKILL.md' }];
     }
-    return source.files.map((f) => ({ file: f.file, path: f.path }));
+    const selection = await findSingleSkillEntry(source.files.map(file => file.path), index => source.files[index]!.file.text());
+    if (!selection.ok) throw new Error(selection.error);
+    const skillPath = source.files[selection.index]!.path.replace(/\\/g, '/');
+    const prefix = skillPath.slice(0, skillPath.lastIndexOf('/') + 1);
+    return source.files
+      .map(entry => ({ file: entry.file, path: entry.path.replace(/\\/g, '/') }))
+      .filter(entry => entry.path.startsWith(prefix))
+      .map(entry => ({ file: entry.file, path: entry.path === skillPath ? 'SKILL.md' : entry.path.slice(prefix.length) }));
   }
 
   async function handleMacClick() {
@@ -1758,7 +1772,10 @@ function SkillTab({
     }
     try {
       const result = await host.project.pickSkillSource();
-      if (!result.ok) return;
+      if (!result.ok) {
+        if (!result.canceled) setUploadError(toPublishDialogMessage(new Error(result.reason), locale, '文件读取失败，请检查访问权限后重新选择。', 'The files could not be read. Check access permissions and choose them again.'));
+        return;
+      }
       if (result.kind === 'folder') {
         const files = result.files.map((f) => ({
           file: new File([f.data], f.path.split('/').pop() || f.path),
@@ -1799,64 +1816,45 @@ function SkillTab({
     setDragOver(false);
     if (busy) return;
 
-    const items = e.dataTransfer.items;
-    if (items && items.length > 0) {
-      const entries = await readDragEntries(items);
-      if (entries && entries.length > 0) {
-        const skillFile = entries.find((f) => /(^|\/)SKILL\.md$/i.test(f.path));
-        if (entries.length === 1 && !skillFile && /\.(zip)$/i.test(entries[0]!.file.name)) {
-          await stageSkillUploadSource({ kind: 'zip', file: entries[0]!.file });
+    try {
+      const items = e.dataTransfer.items;
+      if (items && items.length > 0) {
+        const entries = await readDragEntries(items);
+        if (entries && entries.length > 0) {
+          if (entries.length === 1 && /\.(zip)$/i.test(entries[0]!.file.name)) {
+            await stageSkillUploadSource({ kind: 'zip', file: entries[0]!.file });
+            return;
+          }
+          if (entries.length === 1 && !entries[0]!.path.includes('/')) {
+            await stageSkillUploadSource({ kind: 'file', file: entries[0]!.file });
+            return;
+          }
+          const folderName = entries[0]?.path.split('/').filter(Boolean)[0];
+          await stageSkillUploadSource({
+            kind: 'folder',
+            files: entries,
+            ...(folderName ? { folderName } : {}),
+          });
           return;
         }
-        if (entries.length === 1 && (skillFile || !entries[0]!.path.includes('/'))) {
-          await stageSkillUploadSource({ kind: 'file', file: entries[0]!.file });
-          return;
-        }
-        const folderName = entries[0]?.path.split('/').filter(Boolean)[0];
+      }
+
+      const files = Array.from(e.dataTransfer.files ?? []);
+      if (files.length === 1 && /\.(zip)$/i.test(files[0]!.name)) {
+        await stageSkillUploadSource({ kind: 'zip', file: files[0]! });
+      } else if (files.length === 1) {
+        await stageSkillUploadSource({ kind: 'file', file: files[0]! });
+      } else if (files.length > 0) {
         await stageSkillUploadSource({
           kind: 'folder',
-          files: entries,
-          ...(folderName ? { folderName } : {}),
+          files: files.map((f) => ({ file: f, path: f.name })),
         });
-        return;
       }
+    } catch (error) {
+      setUploadError(toPublishDialogMessage(error, locale, '文件读取失败，请检查访问权限后重新选择。', 'The files could not be read. Check access permissions and choose them again.'));
+      setValidatedSkillName(null);
     }
-
-    const files = Array.from(e.dataTransfer.files ?? []);
-    if (files.length === 1 && /\.(zip)$/i.test(files[0]!.name)) {
-      await stageSkillUploadSource({ kind: 'zip', file: files[0]! });
-    } else if (files.length === 1) {
-      await stageSkillUploadSource({ kind: 'file', file: files[0]! });
-    } else if (files.length > 0) {
-      await stageSkillUploadSource({
-        kind: 'folder',
-        files: files.map((f) => ({ file: f, path: f.name })),
-      });
-    }
-  }, [busy]);
-
-  function renderUploadLabel(): string {
-    if (!uploadSource) {
-      return locale.startsWith('zh') ? '选择文件夹 / ZIP 包' : 'Choose folder / ZIP';
-    }
-    if (uploadSource.kind === 'zip') {
-      return uploadSource.file.name;
-    }
-    if (uploadSource.kind === 'file') {
-      return uploadSource.file.name;
-    }
-    if (uploadSource.kind === 'files') {
-      if (uploadSource.files.length === 1) {
-        return uploadSource.files[0]?.file.name ?? 'SKILL.md';
-      }
-      return localeText(locale, '已选择 ' + uploadSource.files.length + ' 个文件', uploadSource.files.length + ' files selected');
-    }
-    if (uploadSource.files.length === 1 && /(^|\/)SKILL\.md$/i.test(uploadSource.files[0]!.path)) {
-      return uploadSource.files[0]!.file.name;
-    }
-    if (uploadSource.folderName) return uploadSource.folderName;
-    return t('pluginsView.filesSelected', { count: uploadSource.files.length });
-  }
+  }, [busy, locale]);
 
   async function handleConfirm() {
     if (busy || workspaceContextLoading) return;
@@ -1891,7 +1889,7 @@ function SkillTab({
         return;
       }
       if (!uploadSource || !validatedSkillName || uploadError || validatingUpload) return;
-      const uploadInput = buildCloudUploadInput(uploadSource);
+      const uploadInput = await buildCloudUploadInput(uploadSource);
       if (!category) return;
       onPublish({
         name: validatedSkillName,
@@ -2005,9 +2003,12 @@ function SkillTab({
             onChange={(event) => {
               const files = Array.from(event.currentTarget.files ?? []);
               if (files.length === 0) return;
-              const skillFile = files.find((file) => /(^|\/)SKILL\.md$/i.test(file.webkitRelativePath || file.name));
-              if (files.length === 1 && (skillFile || !files[0]!.webkitRelativePath)) {
+              if (files.length === 1 && !files[0]!.webkitRelativePath && /\.zip$/i.test(files[0]!.name)) {
+                void stageSkillUploadSource({ kind: 'zip', file: files[0]! });
+              } else if (files.length === 1 && !files[0]!.webkitRelativePath) {
                 void stageSkillUploadSource({ kind: 'file', file: files[0]! });
+              } else if (files.every(file => !file.webkitRelativePath)) {
+                void stageSkillUploadSource({ kind: 'files', files: files.map(file => ({ file, path: file.name })) });
               } else {
                 const folderName = files[0]?.webkitRelativePath?.split('/').filter(Boolean)[0];
                 void stageSkillUploadSource({
@@ -2019,25 +2020,19 @@ function SkillTab({
             }}
           />
           {uploadSource ? (
-            <div className={styles.externalPath}>
-              <Icon name={uploadSource.kind === 'folder' ? 'folder' : 'file'} size={15} />
-              <span style={{ flex: '1 1 auto', minWidth: 0 }}>{renderUploadLabel()}</span>
-              <button
-                type="button"
-                className={styles.externalPathClear}
-                onClick={() => {
-                  skillValidationSeqRef.current += 1;
-                  setUploadSource(null);
-                  setUploadError(null);
-                  setValidatedSkillName(null);
-                  setValidatingUpload(false);
-
-                }}
-                aria-label={locale.startsWith('zh') ? '删除已导入 Skill' : 'Remove imported Skill'}
-              >
-                <Icon name="trash" size={15} />
-              </button>
-            </div>
+            <SkillUploadSummary
+              source={uploadSource}
+              locale={locale}
+              disabled={busy}
+              onRemove={() => {
+                skillValidationSeqRef.current += 1;
+                setUploadSource(null);
+                setUploadError(null);
+                setValidatedSkillName(null);
+                setValidatingUpload(false);
+                if (folderInputRef.current) folderInputRef.current.value = '';
+              }}
+            />
           ) : (
             <button
               type="button"
@@ -2047,10 +2042,11 @@ function SkillTab({
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               onClick={() => void handleMacClick()}
+              aria-label={locale.startsWith('zh') ? '选择文件夹 / ZIP / Markdown 文件' : 'Choose folder / ZIP / Markdown file'}
             >
               <span className={styles.dropzoneIcon} aria-hidden><Icon name="upload" size={28} /></span>
               <span className={styles.dropzoneText}>
-                {locale.startsWith('zh') ? '选择文件夹 / ZIP / Markdown 文件' : 'Choose folder / ZIP / Markdown file'}
+                {locale.startsWith('zh') ? `支持文件夹/.zip包/.md文件，总大小不超过${SKILL_UPLOAD_MAX_MB}MB` : `Supports folders, .zip archives and .md files; total size up to ${SKILL_UPLOAD_MAX_MB} MB`}
               </span>
             </button>
           )}
@@ -2090,7 +2086,7 @@ function traverseEntry(
   relPath: string,
   result: CollectedFile[],
 ): Promise<void> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     if (entry.isFile) {
       const fileEntry = entry as FileSystemFileEntry;
       fileEntry.file(
@@ -2099,7 +2095,7 @@ function traverseEntry(
           result.push({ file, path });
           resolve();
         },
-        () => resolve(),
+        reject,
       );
     } else if (entry.isDirectory) {
       const dirEntry = entry as FileSystemDirectoryEntry;
@@ -2109,8 +2105,8 @@ function traverseEntry(
       readAllEntries(reader, (childEntries) => {
         Promise.all(childEntries.map((child) => traverseEntry(child, basePath, result)))
           .then(() => resolve())
-          .catch(() => resolve());
-      }, () => resolve());
+          .catch(reject);
+      }, reject);
     } else {
       resolve();
     }
@@ -2120,7 +2116,7 @@ function traverseEntry(
 function readAllEntries(
   reader: FileSystemDirectoryReader,
   onSuccess: (entries: FileSystemEntry[]) => void,
-  onError: () => void,
+  onError: (error: DOMException) => void,
 ): void {
   const entries: FileSystemEntry[] = [];
   const readBatch = () => {
@@ -2216,6 +2212,7 @@ export function PublishDialog({ onClose, onPublish, initialCategory }: Props) {
         </header>
 
         <div className={styles.body}>
+          <fieldset className={styles.formFields} disabled={publishing}>
           <div className={styles.categoryTabs} role="tablist" aria-label={t('publishDialog.categoryLabel')}>
             {CATEGORY_TABS.map((tab) => (
               <button
@@ -2264,6 +2261,7 @@ export function PublishDialog({ onClose, onPublish, initialCategory }: Props) {
              <span className={styles.placeholderText}>{t('publishDialog.comingSoon')}</span>
            </div>
          )}
+          </fieldset>
         </div>
 
         <footer className={styles.footer}>

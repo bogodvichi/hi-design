@@ -1,3 +1,5 @@
+import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { Page, Route } from '@playwright/test';
 
@@ -151,6 +153,94 @@ test.describe.configure({ timeout: T.xlong });
 test.beforeEach(async ({ page }) => {
   await applyStandardMocks(page);
 });
+
+for (const workspaceFixture of [PERSONAL, TEAM_OWNER]) {
+  test(`[P1] ${workspaceFixture.workspaceType} Skill upload shares Community validation and locks selection`, async ({page}, testInfo) => {
+    test.setTimeout(T.xlong);
+    await wireWorkspaceMocks(page, workspaceFixture, [PERSONAL, TEAM_OWNER]);
+    await pinWindowWorkspace(page, workspaceFixture);
+    await page.route('**/api/workspace/directory', route => route.fulfill({json: {
+      items: [PERSONAL, TEAM_OWNER].map(item => ({...directoryItem(item), isDefaultTeam: item.workspaceType === 'personal'})),
+      activeWorkspaceId: null,
+    }}));
+    await page.addInitScript(() => {
+      localStorage.setItem('open-design:locale', 'zh-CN');
+      localStorage.setItem('open-design:locale-source', 'manual');
+    });
+    await page.route('**/api/skills**', route => route.fulfill({json: {skills: []}}));
+    await page.route('**/api/workspace/skills/cloud?**', route => route.fulfill({json: {skills: []}}));
+    await page.route('**/api/workspace/skills/cloud/check?**', route => route.fulfill({json: {exists: false}}));
+    await page.route('**/api/hdw/api/team/**/member/*', route => route.fulfill({json: {code: 0, data: {workspace_member_id: workspaceFixture.workspaceMemberId, role: 'owner'}}}));
+    let finish!: () => void;
+    const pending = new Promise<void>(resolve => { finish = resolve; });
+    let uploads = 0;
+    let installs = 0;
+    await page.route('**/api/workspace/skills/cloud/upload', async route => {
+      uploads++;
+      const headers = await route.request().allHeaders();
+      expect(headers['x-od-workspace-id']).toBe(workspaceFixture.workspaceId);
+      expect(headers['x-od-workspace-member-id']).toBe(workspaceFixture.workspaceMemberId);
+      const body = route.request().postDataBuffer()!;
+      expect(body.includes(Buffer.from('SKILL.md'))).toBe(true);
+      expect(body.includes(Buffer.from('one/two/three/'))).toBe(false);
+      if (uploads === 1) {
+        await pending;
+        await route.fulfill({status: 503, json: {error: 'RESOURCE_NAME_REGISTRY_NOT_READY'}});
+      } else {
+        await route.fulfill({json: {ok: true, title: 'nested-import', resourceId: 'nested-skill-source'}});
+      }
+    });
+    await page.route('**/api/workspace/skills/cloud/nested-skill-source/install?**', async route => {
+      installs++;
+      expect(new URL(route.request().url()).searchParams.get('home_workspace_id')).toBe(workspaceFixture.workspaceId);
+      expect((await route.request().allHeaders())['x-od-workspace-member-id']).toBe(workspaceFixture.workspaceMemberId);
+      await route.fulfill({json: {installed: true}});
+    });
+    try {
+      await page.goto(workspaceFixture.workspaceType === 'personal' ? '/personal-all/skill' : `/team/${workspaceFixture.workspaceId}/skill`);
+      await page.getByRole('button', {name: '添加 Skill', exact: true}).click();
+      const dialog = page.getByRole('dialog', {name: '添加 Skill', exact: true});
+      await expect(dialog.getByText('支持文件夹/.zip包/.md文件，总大小不超过500MB')).toBeVisible();
+      await page.screenshot({path: testInfo.outputPath(`${workspaceFixture.workspaceType}-skill-entry.png`)});
+      const folder = join(testInfo.outputDir, 'nested-folder');
+      await mkdir(join(folder, 'one/two/three/references'), {recursive: true});
+      await writeFile(join(folder, 'one/two/three/2SKILL.md'), '---\nname: nested-import\n---\n# Skill');
+      await writeFile(join(folder, 'one/two/three/references/guide.md'), 'Reference');
+      await dialog.locator('input[type=file][multiple]').setInputFiles(folder);
+      const confirm = dialog.getByRole('button', {name: '确认', exact: true});
+      await expect(confirm).toBeEnabled();
+      const summary = dialog.getByRole('group', {name: '已选择的 Skill'});
+      await expect(summary).toContainText('nested-folder');
+      await expect(summary).toContainText('2 个文件');
+      await expect(summary).toContainText(/\d+ B/);
+      const remove = summary.getByRole('button', {name: '删除已导入 Skill'});
+      await expect(remove).toBeEnabled();
+      await expect(dialog.getByRole('button', {name: /拖拽或点击上传/})).toHaveCount(0);
+      await page.screenshot({path: testInfo.outputPath(`${workspaceFixture.workspaceType}-skill-selected.png`)});
+      await remove.click();
+      await expect(summary).toHaveCount(0);
+      await expect(confirm).toBeDisabled();
+      await expect(dialog.getByRole('button', {name: /拖拽或点击上传/})).toBeVisible();
+      await dialog.locator('input[type=file][multiple]').setInputFiles(folder);
+      await expect(confirm).toBeEnabled();
+      await confirm.click();
+      await expect(remove).toBeDisabled();
+      await expect(dialog.getByRole('tab', {name: '外部链接'})).toBeDisabled();
+      await expect.poll(() => uploads).toBe(1);
+      await page.screenshot({path: testInfo.outputPath(`${workspaceFixture.workspaceType}-skill-uploading.png`)});
+      finish();
+      await expect(dialog.getByRole('alert')).toContainText('发布服务尚未就绪');
+      await expect(remove).toBeEnabled();
+      await expect(confirm).toBeEnabled();
+      await confirm.click();
+      await expect(dialog).toBeHidden();
+      expect(uploads).toBe(2);
+      expect(installs).toBe(1);
+    } finally {
+      finish();
+    }
+  });
+}
 
 test('[P0] workspace switcher changes identity, returns Home, and exposes team navigation', async ({
   page,
