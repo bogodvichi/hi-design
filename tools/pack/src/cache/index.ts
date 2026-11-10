@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
-import { cp, lstat, mkdir, readFile, readdir, readlink, rename, rm, writeFile } from "node:fs/promises";
+import { cp, lstat, mkdir, readFile, readdir, readlink, rename as fsRename, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join, relative } from "node:path";
 
 import { withDirectoryLock } from "./lock.js";
@@ -82,6 +82,38 @@ function safePathToken(value: string): string {
 
 function hashText(value: string): string {
   return createHash("sha256").update(value).digest("hex");
+}
+
+const TRANSIENT_RENAME_ERROR_CODES = new Set(["EACCES", "EBUSY", "EPERM"]);
+const RENAME_RETRY_DELAYS_MS = [100, 250];
+
+export async function renameWithRetry(
+  sourcePath: string,
+  targetPath: string,
+  options: {
+    rename?: (from: string, to: string) => Promise<void>;
+    sleep?: (delayMs: number) => Promise<void>;
+  } = {},
+): Promise<void> {
+  const rename = options.rename ?? fsRename;
+  const sleep = options.sleep ?? defaultSleep;
+
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      await rename(sourcePath, targetPath);
+      return;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (!TRANSIENT_RENAME_ERROR_CODES.has(code ?? "") || attempt >= RENAME_RETRY_DELAYS_MS.length) {
+        throw error;
+      }
+      await sleep(RENAME_RETRY_DELAYS_MS[attempt]);
+    }
+  }
+}
+
+function defaultSleep(delayMs: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, delayMs));
 }
 
 async function pathExists(path: string): Promise<boolean> {
@@ -312,7 +344,7 @@ export class ToolPackCache {
           };
           await writeManifest(join(stagingPath, "manifest.json"), builtManifest);
           await rm(entryPath, { force: true, recursive: true });
-          await rename(stagingPath, entryPath);
+          await renameWithRetry(stagingPath, entryPath);
           for (const aliasKey of aliases) {
             const aliasPath = aliasPathForKey(aliasKey);
             await mkdir(dirname(aliasPath), { recursive: true });
