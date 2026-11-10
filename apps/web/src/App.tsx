@@ -4103,6 +4103,38 @@ try {
    await ensureShareBootstrapWitness(openedProject);
     return navigateToOpenedProject(openedProject);
   }
+  // A recent-project card can point at a Team project that this daemon has not
+  // materialized yet. Team collection cards perform this exact bootstrap before
+  // calling onOpenProject; keep the Home/recent path equivalent so a first open
+  // does not fall through to the missing-project state.
+  if (
+    !shareBasedPull
+    && pullContext?.workspaceType === 'team'
+    && pullContext.memberStatus === 'active'
+    && pullContext.lifecycleState === 'active'
+  ) {
+    const firstOpen = await bootstrapFirstOpenTeamProjectRoute(id, {
+      accountGeneration: openingAccountGeneration,
+      exactContext: pullContext,
+    });
+    if (!openingScopeIsCurrent()) return false;
+    if (firstOpen.kind === 'found') {
+      const openedProject = catalogName
+        ? { ...firstOpen.project, name: catalogName }
+        : firstOpen.project;
+      projectOpenWorkspaceWitnessRef.current = {
+        projectId: id,
+        projectWorkspaceId: pullContext.workspaceId,
+        context: pullContext,
+        accountGeneration: openingAccountGeneration,
+      };
+      setProjects((curr) => openingScopeIsCurrent()
+        ? [openedProject, ...curr.filter((candidate) => candidate.id !== id)]
+        : curr);
+      rememberHintAuthority();
+      return navigateToOpenedProject(openedProject);
+    }
+  }
 const { pulled } = await (shareBasedPull
  ? pullSharedProjectViaShare(id, pullContext)
  : pullTeamSharedProjectIfAvailable(id, pullContext));
