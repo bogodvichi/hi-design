@@ -1,3 +1,7 @@
+/* Both stylesheets declare the same order so chunk injection order cannot flip it. */
+@layer od-dialog-base, od-dialog-overrides;
+
+@layer od-dialog-base {
 .backdrop {
   position: fixed;
   inset: 0;
@@ -102,4 +106,6 @@
     opacity: 1;
     transform: scale(1);
   }
+}
+
 }

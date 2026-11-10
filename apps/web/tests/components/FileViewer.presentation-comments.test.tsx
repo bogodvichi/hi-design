@@ -86,12 +86,14 @@ function presentationFrame(): HTMLIFrameElement {
   return frame;
 }
 
-async function enterPresentation() {
+async function enterPresentation(mode: 'tab' | 'fullscreen' = 'tab') {
   const trigger = document.querySelector('.present-trigger');
   if (!(trigger instanceof HTMLButtonElement)) throw new Error('present trigger not rendered');
   fireEvent.click(trigger);
-  const inTab = await screen.findByRole('menuitem', { name: /In this tab|在当前标签页/i });
-  fireEvent.click(inTab);
+  const menuItem = await screen.findByRole('menuitem', {
+    name: mode === 'tab' ? /In this tab|在当前标签页/i : /Fullscreen|全屏/i,
+  });
+  fireEvent.click(menuItem);
   await waitFor(() => expect(document.querySelector('.present-overlay')).not.toBeNull());
 }
 
@@ -125,6 +127,33 @@ function savedComment(): PreviewComment {
     status: 'open',
     createdAt: 10,
     updatedAt: 10,
+  };
+}
+
+function replyComment(input: { id: string; note: string; createdAt: number; authorDisplayName: string; authorAvatarUrl: string }): PreviewComment {
+  return {
+    ...savedComment(),
+    id: input.id,
+    parentId: 'comment-saved',
+    rootCommentId: 'comment-saved',
+    note: input.note,
+    createdAt: input.createdAt,
+    updatedAt: input.createdAt,
+    authorDisplayName: input.authorDisplayName,
+    authorAvatarUrl: input.authorAvatarUrl,
+  };
+}
+
+function otherPageComment(): PreviewComment {
+  return {
+    ...savedComment(),
+    id: 'comment-other-page',
+    filePath: 'other.html',
+    elementId: 'other-hero',
+    selector: '[data-od-id="other-hero"]',
+    label: 'Other hero',
+    text: 'Other hero',
+    note: 'Hidden other page comment',
   };
 }
 
@@ -187,7 +216,12 @@ describe('FileViewer presentation comments', () => {
     expect(commentToggle).toHaveAttribute('aria-pressed', 'false');
   });
 
-  it('renders presentation targets and ignores competing messages from the background preview', async () => {
+  it.each([
+    ['in-tab', 'tab'],
+    ['fullscreen', 'fullscreen'],
+  ] as const)(
+    'renders %s presentation targets, locks current-page filtering, and ignores competing messages from the background preview',
+    async (_modeName, mode) => {
     const projectId = 'project-presentation-comments-target';
     installFetchMock(projectId);
 
@@ -197,13 +231,37 @@ describe('FileViewer presentation comments', () => {
           projectId={projectId}
           projectKind="prototype"
           file={pageFile()}
-          previewComments={[savedComment()]}
+          previewComments={[
+            savedComment(),
+            replyComment({
+              id: 'reply-earlier',
+              note: 'Earlier reply',
+              createdAt: 20,
+              authorDisplayName: 'Earlier author',
+              authorAvatarUrl: 'https://example.test/earlier.png',
+            }),
+            replyComment({
+              id: 'reply-latest',
+              note: 'Latest reply',
+              createdAt: 30,
+              authorDisplayName: 'Latest author',
+              authorAvatarUrl: 'https://example.test/latest.png',
+            }),
+            replyComment({
+              id: 'reply-middle',
+              note: 'Middle reply',
+              createdAt: 25,
+              authorDisplayName: 'Middle author',
+              authorAvatarUrl: 'https://example.test/middle.png',
+            }),
+            otherPageComment(),
+          ]}
         />
       </Wrap>,
     );
 
     await waitFor(() => expect(document.querySelector('.present-trigger')).not.toBeNull());
-    await enterPresentation();
+    await enterPresentation(mode);
     fireEvent.click(screen.getByTestId('present-comment-toggle'));
 
     await waitFor(() => {
@@ -227,6 +285,29 @@ describe('FileViewer presentation comments', () => {
     const dock = screen.getByTestId('comment-side-dock');
     expect(overlay().contains(composer)).toBe(true);
     expect(overlay().contains(dock)).toBe(true);
+    const inlineReply = dock.querySelector('.comment-card-user-inline');
+    expect(inlineReply).not.toBeNull();
+    const inlineReplyAvatar = inlineReply?.querySelector('.avatar');
+    expect(inlineReplyAvatar).not.toBeNull();
+    expect(inlineReplyAvatar?.querySelector('img')).toHaveAttribute('src', 'https://example.test/latest.png');
+    expect(inlineReplyAvatar?.textContent).toContain('L');
+    expect(within(dock).queryByText('Hidden other page comment')).toBeNull();
+    expect(dock.querySelectorAll('[data-testid="comment-side-item"]')).toHaveLength(1);
+    expect(dock.querySelector('.comment-side-unresolved-count')).toHaveTextContent('1 unresolved');
+
+    const sortAndFilterButton = dock.querySelector<HTMLButtonElement>(
+      '.comment-tool-control button[aria-haspopup="menu"]',
+    );
+    expect(sortAndFilterButton).not.toBeNull();
+    fireEvent.click(sortAndFilterButton!);
+    const currentPageFilter = screen.getByRole('menuitemcheckbox', {
+      name: /Only show current page|仅显示当前页面/i,
+    });
+    expect(currentPageFilter).toBeDisabled();
+    expect(currentPageFilter).toHaveAttribute('aria-checked', 'true');
+    expect(currentPageFilter).toHaveClass('selected');
+    fireEvent.click(currentPageFilter);
+    expect(currentPageFilter).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByTestId('comment-saved-marker-saved-hero')).toBeTruthy();
     expect(
       overlay().querySelectorAll('[data-testid="comment-side-dock"]'),

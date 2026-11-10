@@ -1,13 +1,18 @@
-/* Keep the original dialog chrome as the base for every move-tree mode. */
-.dialog {
-  width: 480px;
-  max-height: calc(100vh - 80px);
-  padding: 20px 0 0;
-  gap: 0;
-}
+/* Both stylesheets declare the same order so chunk injection order cannot flip it. */
+@layer od-dialog-base, od-dialog-overrides;
 
-.dialogWide {
-  width: min(720px, calc(100vw - 48px));
+@layer od-dialog-overrides {
+  /* Keep the original dialog chrome as the base for every move-tree mode. */
+  .dialog {
+    width: 480px;
+    max-height: calc(100vh - 80px);
+    padding: 20px 0 0;
+    gap: 0;
+  }
+
+  .dialogWide {
+    width: min(720px, calc(100vw - 48px));
+  }
 }
 
 .locations {

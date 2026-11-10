@@ -309,7 +309,12 @@
 
 /* ===========================================================
    Modal / Settings
+   The legacy `.modal` chrome participates in the same dialog base
+   layer as packages/components/src/dialog.module.css, so component
+   overrides can win without depending on stylesheet injection order.
    =========================================================== */
+@layer od-dialog-base, od-dialog-overrides;
+
 .modal-backdrop {
   position: fixed; inset: 0;
   background: rgba(28, 27, 26, 0.42);
@@ -325,17 +330,19 @@
 .modal-backdrop--app-modal {
   z-index: 10000;
 }
-.modal {
-  background: var(--bg-elevated);
-  -webkit-app-region: no-drag;
-  border-radius: var(--radius-lg);
-  width: 520px;
-  max-width: calc(100vw - 32px);
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  box-shadow: var(--shadow-lg);
-  animation: pop-in 220ms cubic-bezier(0.21, 1.02, 0.73, 1);
+@layer od-dialog-base {
+  .modal {
+    background: var(--bg-elevated);
+    -webkit-app-region: no-drag;
+    border-radius: var(--radius-lg);
+    width: 520px;
+    max-width: calc(100vw - 32px);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: var(--shadow-lg);
+    animation: pop-in 220ms cubic-bezier(0.21, 1.02, 0.73, 1);
+  }
 }
 .modal h2 { margin: 0; font-size: 18px; letter-spacing: -0.01em; font-weight: 600; }
 .modal label {

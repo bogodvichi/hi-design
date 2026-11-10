@@ -339,7 +339,7 @@ export function buildNewTabCommentsPreviewDocumentV2(
     var commentMode = false;
     var searchQuery = "";
     var sortMode = "newest";
-    var filterCurrentPage = false;
+    var filterCurrentPage = true;
     var filterShowResolved = false;
     var filterRelatedToMe = false;
     var sortMenuOpen = false;
@@ -531,7 +531,11 @@ export function buildNewTabCommentsPreviewDocumentV2(
       });
     }
     function unresolvedCount() {
-      return comments.filter(function(comment) { return !comment.parentId && isUnresolved(comment); }).length;
+      return comments.filter(function(comment) {
+        return !comment.parentId
+          && isUnresolved(comment)
+          && (!filterCurrentPage || comment.filePath === CONFIG.filePath);
+      }).length;
     }
     function findComment(id) {
       if (!id) return null;
@@ -1086,15 +1090,19 @@ export function buildNewTabCommentsPreviewDocumentV2(
         pinsEl.appendChild(pin);
       });
     }
-    function addSortMenuItem(label, role, selected, onClick) {
+    function addSortMenuItem(label, role, selected, onClick, disabled) {
       var button = el("button");
       button.type = "button";
       button.setAttribute("role", role);
       button.setAttribute("aria-checked", selected ? "true" : "false");
       if (selected) button.setAttribute("aria-current", "true");
+      if (disabled) {
+        button.disabled = true;
+        button.setAttribute("aria-disabled", "true");
+      }
       button.innerHTML = iconSvg("check");
       button.appendChild(document.createTextNode(label));
-      button.addEventListener("click", onClick);
+      if (!disabled) button.addEventListener("click", onClick);
       sortMenu.appendChild(button);
     }
     function renderSortMenu() {
@@ -1119,7 +1127,7 @@ export function buildNewTabCommentsPreviewDocumentV2(
         filterCurrentPage = !filterCurrentPage;
         sortMenuOpen = false;
         render();
-      });
+      }, true);
       addSortMenuItem(CONFIG.labels.filterResolved, "menuitemcheckbox", filterShowResolved, function() {
         filterShowResolved = !filterShowResolved;
         sortMenuOpen = false;

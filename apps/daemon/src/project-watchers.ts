@@ -18,7 +18,15 @@ import { projectDir, resolveProjectDir } from './projects.js';
 // against the path *relative to the watch root* so that ancestor directories
 // (e.g. the daemon's own `.od/` runtime dir, which contains every project) do
 // not accidentally match and silence every event in the tree.
-const WATCHER_ONLY_IGNORE_NAMES = new Set(['.ds_store']);
+// Daemon-owned stores live inside the project directory but are not user
+// files. Emitting their writes as `file-changed` makes UI consumers treat
+// their paths (for example `.file-versions/<digest>/<version>.html`) as
+// regular project entries, which can then fail reserved-path validation.
+const WATCHER_ONLY_IGNORE_NAMES = new Set([
+  '.ds_store',
+  '.file-versions',
+  '.live-artifacts',
+]);
 export type ProjectWatchKind = 'add' | 'change' | 'unlink';
 export interface ProjectWatchEvent { type: 'file-changed'; path: string; kind: ProjectWatchKind }
 export type ProjectWatchCallback = (evt: ProjectWatchEvent) => void;

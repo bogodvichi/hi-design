@@ -1014,7 +1014,11 @@ export function buildNewTabCommentsPreviewDocument(
       return comments.filter(function(comment) { return !comment.parentId; });
     }
     function unresolvedCount() {
-      return comments.filter(function(comment) { return !comment.parentId && isUnresolved(comment); }).length;
+      return comments.filter(function(comment) {
+        return !comment.parentId
+          && isUnresolved(comment)
+          && comment.filePath === CONFIG.filePath;
+      }).length;
     }
     function sendFrame(type, payload) {
       if (!frame.contentWindow) return;
@@ -1274,7 +1278,12 @@ export function buildNewTabCommentsPreviewDocument(
         replyButton.type = "button";
         replyButton.setAttribute("aria-label", replyText);
         replyButton.title = replyText;
-        replyButton.appendChild(createAuthorAvatar(comment));
+        var latestReply = isReply
+          ? comment
+          : repliesFor(comment).sort(function(a, b) {
+              return (a.createdAt || 0) - (b.createdAt || 0);
+            }).slice(-1)[0];
+        if (latestReply) replyButton.appendChild(createAuthorAvatar(latestReply));
         replyButton.insertAdjacentHTML("beforeend", iconSvg("message"));
         replyButton.appendChild(el("span", "", replyText));
         replyButton.addEventListener("click", function(event) {
@@ -1289,7 +1298,10 @@ export function buildNewTabCommentsPreviewDocument(
         footerRow.appendChild(replyButton);
       } else if (!isReply) {
         var replyCountEl = el("span", "comment-card-user-inline");
-        replyCountEl.appendChild(createAuthorAvatar(comment));
+        var latestReply = repliesFor(comment).sort(function(a, b) {
+          return (a.createdAt || 0) - (b.createdAt || 0);
+        }).slice(-1)[0];
+        if (latestReply) replyCountEl.appendChild(createAuthorAvatar(latestReply));
         replyCountEl.insertAdjacentHTML("beforeend", iconSvg("message"));
         replyCountEl.appendChild(el("span", "", replyCountText(replyCount)));
         footerRow.appendChild(replyCountEl);

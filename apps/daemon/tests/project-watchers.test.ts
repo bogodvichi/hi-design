@@ -329,6 +329,34 @@ describe('project-watchers (real chokidar)', () => {
     }
   }, REAL_WATCHER_TEST_TIMEOUT_MS);
 
+  it('ignores daemon-owned version and live-artifact stores', async () => {
+    const { root, projectId } = await makeProjectsRoot();
+    const events: ProjectWatchEvent[] = [];
+    const sub = subscribe(root, projectId, recordEvent(events), FAST_WATCH_OPTIONS);
+    await sub.ready;
+
+    try {
+      await mkdir(path.join(root, projectId, '.file-versions', 'digest'), { recursive: true });
+      await writeFile(path.join(root, projectId, '.file-versions', 'digest', '0001-version.html'), '<html></html>');
+      await mkdir(path.join(root, projectId, '.live-artifacts', 'artifact'), { recursive: true });
+      await writeFile(path.join(root, projectId, '.live-artifacts', 'artifact', 'data.json'), '{}');
+
+      await writeFile(path.join(root, projectId, 'real.txt'), 'real');
+      await waitFor(() => events.some((e) => e.path === 'real.txt'), {
+        timeout: REAL_WATCHER_WAIT_TIMEOUT_MS,
+        debug: () => debugEvents(events),
+      });
+
+      const ignored = events.filter((e) =>
+        e.path.startsWith('.file-versions/') || e.path.startsWith('.live-artifacts/'),
+      );
+      expect(ignored).toEqual([]);
+    } finally {
+      await sub.unsubscribe();
+      await rm(root, { recursive: true, force: true });
+    }
+  }, REAL_WATCHER_TEST_TIMEOUT_MS);
+
   it('attaches an error listener and survives an emitted error event', async () => {
     // Regression for codex P1: chokidar's FSWatcher is an EventEmitter.
     // Without an 'error' listener, transient FS faults (ENOSPC, EPERM,

@@ -6,6 +6,7 @@ import type {
 } from '@open-design/contracts';
 import {
   NEW_TAB_COMMENT_CHANNEL_PREFIX,
+  buildNewTabCommentsPreviewDocument,
   createNewTabCommentSession,
   isNewTabCommentStatus,
   normalizeNewTabCommentTarget,
@@ -543,6 +544,7 @@ describe('new-tab comments wrapper', () => {
     expect(wrapper).toContain('comment-card-author');
     expect(wrapper).toContain('comment-card-time');
     expect(wrapper).toContain('comment-card-replies');
+    expect(wrapper).toContain('repliesRow.appendChild(createAvatar(reply, "comment-card-reply-avatar"));');
     expect(wrapper).toContain('function renderList()');
     expect(wrapper).not.toContain('reply-form');
     expect(wrapper).not.toContain('comment-popover-status');
@@ -588,6 +590,15 @@ describe('new-tab comments wrapper', () => {
     expect(wrapper).toContain('function renderSortMenu()');
     expect(wrapper).toContain('"menuitemradio"');
     expect(wrapper).toContain('"menuitemcheckbox"');
+    expect(wrapper).toContain('var filterCurrentPage = true;');
+    const unresolvedCounter = wrapper.slice(
+      wrapper.indexOf('function unresolvedCount()'),
+      wrapper.indexOf('function findComment(id)'),
+    );
+    expect(unresolvedCounter).toContain('(!filterCurrentPage || comment.filePath === CONFIG.filePath)');
+    expect(wrapper).toContain('button.disabled = true;');
+    expect(wrapper).toContain('button.setAttribute("aria-disabled", "true");');
+    expect(wrapper).toContain('addSortMenuItem(CONFIG.labels.filterOpen, "menuitemcheckbox", filterCurrentPage, function() {');
     expect(wrapper).toContain('searchInput.addEventListener("input"');
     expect(wrapper).toContain('sortMenuToggle.addEventListener("click"');
 
@@ -634,5 +645,26 @@ describe('new-tab comments wrapper', () => {
     expect(pinRenderer).not.toContain('comment.authorAvatarColor');
     expect(pinRenderer).not.toContain('pinSeq');
     expect(pinRenderer).not.toContain('markerNumber');
+  });
+
+  it('shows the latest reply author in reply rows in the single-frame wrapper', () => {
+    const wrapper = buildNewTabCommentsPreviewDocument('<main id="artifact">Artifact</main>', 'Review', {
+      token: 'token-1',
+      channelName: `${NEW_TAB_COMMENT_CHANNEL_PREFIX}token-1`,
+      filePath: FILE_PATH,
+      labels: LABELS,
+    });
+
+    expect(wrapper).toContain('replyButton.insertAdjacentHTML("beforeend", iconSvg("message"));');
+    expect(wrapper).toContain('replyCountEl.insertAdjacentHTML("beforeend", iconSvg("message"));');
+    expect(wrapper).toContain('if (latestReply) replyButton.appendChild(createAuthorAvatar(latestReply));');
+    expect(wrapper).toContain('if (latestReply) replyCountEl.appendChild(createAuthorAvatar(latestReply));');
+    expect(wrapper).not.toContain('replyButton.appendChild(createAuthorAvatar(comment));');
+    expect(wrapper).not.toContain('replyCountEl.appendChild(createAuthorAvatar(comment));');
+    const unresolvedCounter = wrapper.slice(
+      wrapper.indexOf('function unresolvedCount()'),
+      wrapper.indexOf('function sendFrame(type, payload)'),
+    );
+    expect(unresolvedCounter).toContain('comment.filePath === CONFIG.filePath');
   });
 });

@@ -4511,8 +4511,9 @@ export function CommentSidePanel({
   canDeleteComment,
   canReplyComment,
  onReplyComment,
- replyComments,
+  replyComments,
   currentFilePath,
+  lockCurrentPageOnly = false,
   onVisibleCommentIdsChange,
 }: {
   comments: PreviewComment[];
@@ -4523,6 +4524,9 @@ export function CommentSidePanel({
   /** The file currently shown in the viewer. Used by the "current page only"
    *  filter and the file-name badge on each comment card. */
   currentFilePath?: string;
+  /** Presentation canvases only ever represent one file, so the current-page
+   *  filter is always active and cannot be turned off. */
+  lockCurrentPageOnly?: boolean;
   /** Reports the top-level comments currently visible after search/filtering. */
   onVisibleCommentIdsChange?: (commentIds: ReadonlySet<string>) => void;
   selectedIds: Set<string>;
@@ -4566,13 +4570,20 @@ export function CommentSidePanel({
   const [searchQuery, setSearchQuery] = useState('');
   const [sortMode, setSortMode] = useState<'newest' | 'oldest'>('newest');
   const [filterCurrentPage, setFilterCurrentPage] = useState(false);
+  const effectiveFilterCurrentPage = lockCurrentPageOnly || filterCurrentPage;
   const [filterShowResolved, setFilterShowResolved] = useState(false);
   const [filterRelatedToMe, setFilterRelatedToMe] = useState(false);
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [notifMenuOpen, setNotifMenuOpen] = useState(false);
   const [replyEditorId, setReplyEditorId] = useState<string | null>(null);
   const [replyDraftById, setReplyDraftById] = useState<Record<string, string>>({});
-  const [localRepliesById, setLocalRepliesById] = useState<Record<string, Array<{ note: string; createdAt: number }>>>({});
+  const [localRepliesById, setLocalRepliesById] = useState<Record<string, Array<{
+    note: string;
+    createdAt: number;
+    authorMemberId?: string;
+    authorDisplayName?: string;
+    authorAvatarUrl?: string | null;
+  }>>>({});
   const replySource = replyComments ?? comments;
   const replyCommentsById = useMemo(() => {
     const byParent = new Map<string, PreviewComment[]>();
@@ -4610,7 +4621,7 @@ export function CommentSidePanel({
       list = list.filter((c) => c.status !== 'resolved');
     }
     // "Current page only": restrict to the file currently shown in the viewer.
-    if (filterCurrentPage && currentFilePath) {
+    if (effectiveFilterCurrentPage && currentFilePath) {
       list = list.filter((c) => c.filePath === currentFilePath);
     }
     // "Related to me": author is the current user, or the current user has
@@ -4638,7 +4649,7 @@ export function CommentSidePanel({
     comments,
     searchQuery,
     filterShowResolved,
-    filterCurrentPage,
+    effectiveFilterCurrentPage,
     filterRelatedToMe,
     currentFilePath,
     replySource,
@@ -4656,8 +4667,11 @@ export function CommentSidePanel({
   }, [filteredCommentIds, onVisibleCommentIdsChange]);
 
   const unresolvedCount = useMemo(
-    () => comments.filter((c) => c.status !== 'resolved').length,
-    [comments],
+    () => comments.filter((c) =>
+      c.status !== 'resolved'
+      && (!effectiveFilterCurrentPage || !currentFilePath || c.filePath === currentFilePath)
+    ).length,
+    [comments, effectiveFilterCurrentPage, currentFilePath],
   );
   const visibleSelectedIds = new Set(comments.filter((comment) => selectedIds.has(comment.id)).map((comment) => comment.id));
   const selectedCount = visibleSelectedIds.size;
@@ -4869,20 +4883,23 @@ export function CommentSidePanel({
                 {t('chat.comments.sortOldest')}
               </button>
              <i className="comment-tool-menu-sep" />
-             <button
-               type="button"
-                className={filterCurrentPage ? 'selected' : ''}
-               role="menuitemcheckbox"
-                aria-checked={filterCurrentPage}
-                aria-current={filterCurrentPage}
-               onClick={() => {
+              <button
+                type="button"
+                className={effectiveFilterCurrentPage ? 'selected' : ''}
+                role="menuitemcheckbox"
+                aria-checked={effectiveFilterCurrentPage}
+                aria-current={effectiveFilterCurrentPage}
+                aria-disabled={lockCurrentPageOnly || undefined}
+                disabled={lockCurrentPageOnly}
+                onClick={() => {
+                  if (lockCurrentPageOnly) return;
                   setFilterCurrentPage((v) => !v);
-                 setSortMenuOpen(false);
-               }}
-             >
-               <Icon name="check" size={14} />
-               {t('chat.comments.filterOpen')}
-             </button>
+                  setSortMenuOpen(false);
+                }}
+              >
+                <Icon name="check" size={14} />
+                {t('chat.comments.filterOpen')}
+              </button>
              <button
                type="button"
                 className={filterShowResolved ? 'selected' : ''}
@@ -4972,6 +4989,31 @@ export function CommentSidePanel({
           const replyDraft = replyDraftById[comment.id] ?? '';
           const localReplies = localRepliesById[comment.id] ?? [];
           const persistedReplies = replyCommentsById.get(comment.id) ?? [];
+          const latestReply = [
+            ...persistedReplies.map((reply) => ({
+              createdAt: commentCreatedAt(reply),
+              authorMemberId: reply.authorMemberId,
+              authorDisplayName: reply.authorDisplayName,
+              authorAvatarUrl: reply.authorAvatarUrl,
+            })),
+            ...localReplies,
+          ].reduce<{
+            createdAt: number;
+            authorMemberId?: string;
+            authorDisplayName?: string;
+            authorAvatarUrl?: string | null;
+          } | null>((latest, reply) => (
+            !latest || reply.createdAt >= latest.createdAt ? reply : latest
+          ), null);
+          const latestReplyAuthor = latestReply
+            ? resolveCommentAuthor(latestReply.authorMemberId)
+            : null;
+          const latestReplyAuthorDisplayName = latestReply?.authorDisplayName?.trim()
+            || latestReplyAuthor?.displayName?.trim()
+            || '?';
+          const latestReplyAuthorAvatarUrl = latestReply?.authorAvatarUrl?.trim()
+            || latestReplyAuthor?.avatarUrl?.trim()
+            || undefined;
           const dropClass = dragState?.overId === comment.id &&
             dragState.draggingId !== comment.id &&
             dragState.edge
@@ -5128,7 +5170,13 @@ export function CommentSidePanel({
                             ...current,
                             [comment.id]: [
                               ...(current[comment.id] ?? []),
-                              { note: text, createdAt: Date.now() },
+                              {
+                                note: text,
+                                createdAt: Date.now(),
+                                authorMemberId: currentUser?.memberId,
+                                authorDisplayName: currentUser?.displayName,
+                                authorAvatarUrl: currentUser?.avatarUrl,
+                              },
                             ],
                           }));
                         }
@@ -5168,7 +5216,13 @@ export function CommentSidePanel({
                             ...current,
                             [comment.id]: [
                               ...(current[comment.id] ?? []),
-                              { note: text, createdAt: Date.now() },
+                              {
+                                note: text,
+                                createdAt: Date.now(),
+                                authorMemberId: currentUser?.memberId,
+                                authorDisplayName: currentUser?.displayName,
+                                authorAvatarUrl: currentUser?.avatarUrl,
+                              },
                             ],
                           }));
                         }
@@ -5237,40 +5291,55 @@ export function CommentSidePanel({
                      // );
                    }}
                  >
-                  <span
-                    className="avatar mini"
-                    style={{ background: avatarColorForDisplayName(authorDisplayName) }}
-                    aria-hidden="true"
-                  >
-                    {commentAuthorInitials(authorDisplayName)}
-                    {(comment.authorAvatarUrl || author?.avatarUrl) ? (
-                      <img
-                        className="comment-user-avatar-image"
-                        src={comment.authorAvatarUrl || author?.avatarUrl || undefined}
-                        alt=""
-                        onError={(event) => {
-                          event.currentTarget.hidden = true;
-                        }}
-                        onLoad={(event) => {
-                          event.currentTarget.hidden = false;
-                        }}
-                      />
-                    ) : null}
-                  </span>
+                  {latestReply ? (
+                    <span
+                      className="avatar mini"
+                      style={{ background: avatarColorForDisplayName(latestReplyAuthorDisplayName) }}
+                      aria-hidden="true"
+                    >
+                      {commentAuthorInitials(latestReplyAuthorDisplayName)}
+                      {latestReplyAuthorAvatarUrl ? (
+                        <img
+                          className="comment-user-avatar-image"
+                          src={latestReplyAuthorAvatarUrl}
+                          alt=""
+                          onError={(event) => {
+                            event.currentTarget.hidden = true;
+                          }}
+                          onLoad={(event) => {
+                            event.currentTarget.hidden = false;
+                          }}
+                        />
+                      ) : null}
+                    </span>
+                  ) : null}
                   <Icon name="message-square" size={12} />
                   <span>{t('chat.comments.nReplies', { n: persistedReplies.length + localReplies.length })}</span>
                  </button>
                ) : (
                  <span className="comment-card-user-inline">
-                 {/* {author ? (
-                   <span
-                     className="avatar mini"
-                      style={{ background: avatarColorForDisplayName(authorDisplayName) }}
-                     aria-hidden="true"
-                   >
-                     {commentAuthorInitials(author.displayName)}
-                   </span>
-                 ) : null} */}
+                  {latestReply ? (
+                    <span
+                      className="avatar mini"
+                      style={{ background: avatarColorForDisplayName(latestReplyAuthorDisplayName) }}
+                      aria-hidden="true"
+                    >
+                      {commentAuthorInitials(latestReplyAuthorDisplayName)}
+                      {latestReplyAuthorAvatarUrl ? (
+                        <img
+                          className="comment-user-avatar-image"
+                          src={latestReplyAuthorAvatarUrl}
+                          alt=""
+                          onError={(event) => {
+                            event.currentTarget.hidden = true;
+                          }}
+                          onLoad={(event) => {
+                            event.currentTarget.hidden = false;
+                          }}
+                        />
+                      ) : null}
+                    </span>
+                  ) : null}
                   <Icon name="message-square" size={12} />
                   <span>{t('chat.comments.nReplies', { n: persistedReplies.length + localReplies.length })}</span>
                   </span>
@@ -5420,8 +5489,9 @@ function CommentSideDock({
   canDeleteComment,
   canReplyComment,
   onReplyComment,
- replyComments,
+  replyComments,
   currentFilePath,
+  lockCurrentPageOnly = false,
   onVisibleCommentIdsChange,
   composer,
 }: {
@@ -5429,6 +5499,7 @@ function CommentSideDock({
   replyComments?: PreviewComment[];
   projectId?: string;
   currentFilePath?: string;
+  lockCurrentPageOnly?: boolean;
   onVisibleCommentIdsChange?: (commentIds: ReadonlySet<string>) => void;
   selectedIds: Set<string>;
   activeCommentId: string | null;
@@ -5474,6 +5545,7 @@ function CommentSideDock({
        replyComments={replyComments}
        projectId={projectId}
         currentFilePath={currentFilePath}
+        lockCurrentPageOnly={lockCurrentPageOnly}
         onVisibleCommentIdsChange={onVisibleCommentIdsChange}
        selectedIds={selectedIds}
         activeCommentId={activeCommentId}
@@ -16916,6 +16988,7 @@ async function openReviewListModal() {
      replyComments={allProjectComments}
     projectId={projectId}
      currentFilePath={file.name}
+     lockCurrentPageOnly={inTabPresent}
      onVisibleCommentIdsChange={handleCommentPanelVisibleIdsChange}
      selectedIds={selectedSideCommentIds}
       activeCommentId={activeSideCommentId}
