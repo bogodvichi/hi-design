@@ -4,6 +4,7 @@
 // that in the URL is the simplest way to make it deep-linkable.
 
 import { useSyncExternalStore } from 'react';
+import { COMMUNITY_UI_VISIBLE } from './features/communityUi';
 import { LIBRARY_UI_VISIBLE } from './features/libraryUi';
 
 // Entry-shell sub-views. The home/project landing renders one of three
@@ -197,6 +198,7 @@ if (parts[0] === 'collab-demo') {
     return { kind: 'collab-demo', projectId: parts[1] ? decodeURIComponent(parts[1]) : null };
   }
   if (parts[0] === 'community') {
+    if (!COMMUNITY_UI_VISIBLE) return { kind: 'home', view: 'home' };
     // Community is now a rail destination inside the entry shell so the nav rail
     // stays visible alongside the gallery.
     return { kind: 'home', view: 'community' };
@@ -287,7 +289,7 @@ export function buildPath(route: Route): string {
       return route.brandId ? `/brands/${encodeURIComponent(route.brandId)}` : '/brands';
     }
     if (route.view === 'integrations') return '/integrations';
-    if (route.view === 'community') return '/community';
+    if (route.view === 'community') return COMMUNITY_UI_VISIBLE ? '/community' : '/';
   if (route.view === 'square') {
     return route.tab ? `/square/${route.tab}` : '/square';
   }
@@ -335,7 +337,7 @@ if (route.view === 'home') return '/home';
   if (route.kind === 'collab-demo') {
     return route.projectId ? `/collab-demo/${encodeURIComponent(route.projectId)}` : '/collab-demo';
   }
- if (route.kind === 'community') return '/community';
+ if (route.kind === 'community') return COMMUNITY_UI_VISIBLE ? '/community' : '/';
  if (route.kind === 'external') {
    const url = normalizeExternalToolUrl(route.url);
    return route.resourceKey

@@ -15,6 +15,7 @@ import {
   WORKSPACE_ACCOUNT_CLUSTER_EVENT,
 } from './workspaceTabsDock';
 import { useT } from '../i18n';
+import { COMMUNITY_UI_VISIBLE } from '../features/communityUi';
 import {
   buildPath,
   navigate,
@@ -343,16 +344,27 @@ function reviveEntryRoute(value: unknown, view: EntryHomeView): EntryRoute {
   };
 }
 
+function normalizedEntryView(view: EntryHomeView): EntryHomeView {
+  return COMMUNITY_UI_VISIBLE || view !== 'community' ? view : 'home';
+}
+
+function normalizedEntryRoute(route: EntryRoute): EntryRoute {
+  return COMMUNITY_UI_VISIBLE || route.view !== 'community'
+    ? route
+    : { kind: 'home', view: 'home' };
+}
+
 function createEntryTab(
   view: EntryHomeView,
   timestamp = Date.now(),
   entryRoute: EntryRoute = { kind: 'home', view },
 ): WorkspaceChromeTab {
+  const visibleView = normalizedEntryView(view);
   return {
-    id: `entry:${view}:${nowId()}`,
+    id: `entry:${visibleView}:${nowId()}`,
     kind: 'entry',
-    view,
-    entryRoute,
+    view: visibleView,
+    entryRoute: normalizedEntryRoute(entryRoute),
     createdAt: timestamp,
     lastActiveAt: timestamp,
   };
@@ -496,6 +508,16 @@ function uniqueIdForTab(tab: WorkspaceChromeTab): string {
 
 function normalizeTabsState(state: WorkspaceTabsState): WorkspaceTabsState {
   let sourceTabs = state.tabs.length > 0 ? state.tabs : [createEntryTab('home')];
+  if (!COMMUNITY_UI_VISIBLE) {
+    sourceTabs = sourceTabs.map((tab) => {
+      if (tab.kind !== 'entry' || tab.view !== 'community') return tab;
+      return {
+        ...tab,
+        view: 'home',
+        entryRoute: { kind: 'home', view: 'home' },
+      };
+    });
+  }
 
   // Deduplicate entry tabs (singleton constraint): all sidebar sections
   // (home / projects / tasks / design-systems / plugins / integrations) share

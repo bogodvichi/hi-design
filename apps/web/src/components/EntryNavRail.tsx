@@ -87,6 +87,7 @@ import { amrPlansUrlForProfile } from '../runtime/amr-guidance';
 import { useWorkspaceInvalidation } from '../collab/workspace-events';
 import { resolveDeepSeekV4FlashCampaignAudience } from '../campaigns/deepseek-v4-flash';
 import { useDeepSeekV4FlashCampaignVisibility } from '../campaigns/use-deepseek-v4-flash-campaign';
+import { COMMUNITY_UI_VISIBLE } from '../features/communityUi';
 import { navigate, type EntryHomeView } from '../router';
 import { TeamTreeSection } from './TeamTreeSection';
 import { PersonalFuncSection } from './PersonalFuncSection';
@@ -1808,15 +1809,17 @@ export function EntryNavRail({
         >
           <Icon name="sparkles" size={16} />
         </NavButton>
-        <NavButton
-          active={view === 'community'}
-          ariaLabel="模板"
-          label="模板"
-          onClick={() => selectView('community')}
-          testId="entry-nav-community"
-        >
-          <Icon name="globe" size={16} />
-        </NavButton>
+        {COMMUNITY_UI_VISIBLE ? (
+          <NavButton
+            active={view === 'community'}
+            ariaLabel="模板"
+            label="模板"
+            onClick={() => selectView('community')}
+            testId="entry-nav-community"
+          >
+            <Icon name="globe" size={16} />
+          </NavButton>
+        ) : null}
 
         {false&&context ? (
           <div className="entry-nav-rail__team-section">

@@ -38,6 +38,7 @@ function makeConfig(root: string, overrides: Partial<ToolPackConfig> = {}): Tool
     namespace: "local-test",
     platform: "mac",
     portable: false,
+    releaseChannel: null,
     removeData: false,
     removeLogs: false,
     removeProductUserData: false,

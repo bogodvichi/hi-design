@@ -31,6 +31,7 @@ function createConfig(root: string, webOutputMode: ToolPackConfig["webOutputMode
     namespace: "test",
     platform: "win",
     portable: false,
+    releaseChannel: null,
     removeData: false,
     removeLogs: false,
     removeProductUserData: false,

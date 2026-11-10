@@ -133,6 +133,21 @@ describe("resolveToolPackConfig namespace defaults", () => {
   });
 });
 
+describe("resolveToolPackConfig release channel", () => {
+  it("treats the default namespace as stable", () => {
+    expect(resolveToolPackConfig("mac").releaseChannel).toBe("stable");
+  });
+
+  it("derives the release channel from the final namespace", () => {
+    expect(resolveToolPackConfig("win", { namespace: "release-stable-win" }).releaseChannel).toBe("stable");
+    expect(resolveToolPackConfig("win", { namespace: "release-beta-win" }).releaseChannel).toBe("beta");
+  });
+
+  it("does not infer a release channel from an arbitrary namespace", () => {
+    expect(resolveToolPackConfig("mac", { namespace: "custom-beta" }).releaseChannel).toBeNull();
+  });
+});
+
 describe("resolveToolPackConfig telemetry relay", () => {
   it("reads and normalizes OPEN_DESIGN_TELEMETRY_RELAY_URL for packaged config", () => {
     process.env.OPEN_DESIGN_TELEMETRY_RELAY_URL = "https://telemetry.open-design.ai/api/langfuse//";

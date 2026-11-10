@@ -16,6 +16,7 @@ function makeConfig(root: string, namespace: string): ToolPackConfig {
     namespace,
     platform: "mac",
     portable: true,
+    releaseChannel: null,
     removeData: false,
     removeLogs: false,
     removeProductUserData: false,

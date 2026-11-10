@@ -17,6 +17,7 @@ function createConfig(root: string, removeCache: boolean): ToolPackConfig {
     namespace: "cache-test",
     platform: "win",
     portable: false,
+    releaseChannel: null,
     removeCache,
     removeData: false,
     removeLogs: false,

@@ -220,6 +220,7 @@ import { isMacPlatform } from '../utils/platform';
 import { smoothScrollToTop } from '../utils/smoothScrollToTop';
 import { summarizeProjectNameFromPrompt } from '../utils/projectName';
 import { deepSeekHarnessNeedsSetup } from '../utils/visibleAgents';
+import { COMMUNITY_UI_VISIBLE } from '../features/communityUi';
 import { LIBRARY_UI_VISIBLE } from '../features/libraryUi';
 import {
   enrichRecentlyOpenedProjectCovers,
@@ -1939,7 +1940,7 @@ const entryMainScrollRef = useRef<HTMLElement | null>(null);
            ) : null}
           {view === 'square' ? <SquareView tab={entryRoute.view === 'square' ? entryRoute.tab : undefined} /> : null}
           {view === 'my-publishes' ? <SquareView mode="my-publishes" tab={entryRoute.view === 'my-publishes' ? entryRoute.tab : undefined} /> : null}
-           {view === 'community' ? (
+           {COMMUNITY_UI_VISIBLE && view === 'community' ? (
              <CommunityView
                onRemixTemplate={({ templateId, prompt }) => {
                  // Remix carries the template's PROJECT along, not just its

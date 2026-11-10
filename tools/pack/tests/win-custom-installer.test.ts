@@ -23,6 +23,7 @@ function createConfig(root: string, portable: boolean): ToolPackConfig {
     namespace: "test-namespace",
     platform: "win",
     portable,
+    releaseChannel: null,
     removeData: false,
     removeLogs: false,
     removeProductUserData: false,

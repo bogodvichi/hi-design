@@ -27,6 +27,7 @@ async function buildWorkspaceArtifacts(config: ToolPackConfig): Promise<void> {
   await runPnpm(config, ["--filter", "@open-design/daemon", "build"]);
   try {
     await runPnpm(config, ["--filter", "@open-design/web", "build"], {
+      NEXT_PUBLIC_OD_RELEASE_CHANNEL: config.releaseChannel ?? "",
       OD_WEB_OUTPUT_MODE: config.webOutputMode,
     });
     await runPnpm(config, ["--filter", "@open-design/web", "build:sidecar"]);

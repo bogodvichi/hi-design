@@ -15,6 +15,7 @@ import {
   releaseChannelFromNamespace,
   releaseChannelFromVersion,
   releaseNamespace,
+  type ReleaseChannel,
 } from "@open-design/release";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -124,6 +125,7 @@ export type ToolPackConfig = {
   macCompression: ToolPackMacCompression;
   macNotarize?: boolean;
   namespace: string;
+  releaseChannel: ReleaseChannel | null;
   platform: ToolPackPlatform;
   portable: boolean;
   removeCache?: boolean;
@@ -449,6 +451,7 @@ export function resolveToolPackConfig(
     env: process.env,
     namespace: options.namespace ?? defaultNamespaceForAppVersion(platform, appVersion),
   });
+  const releaseChannel = releaseChannelFromNamespace(namespace, SIDECAR_DEFAULTS.namespace);
   const defaultToolPackRoot = join(WORKSPACE_ROOT, ".tmp", "tools-pack");
   const toolPackRoot = resolve(options.dir ?? defaultToolPackRoot);
   const cacheRoot = resolve(options.cacheDir ?? join(defaultToolPackRoot, "cache"));
@@ -466,6 +469,7 @@ export function resolveToolPackConfig(
     macCompression: resolveToolPackMacCompression(options.macCompression),
     macNotarize: options.notarize === true,
     namespace,
+    releaseChannel,
     platform,
     portable: options.portable === true,
     roots: {

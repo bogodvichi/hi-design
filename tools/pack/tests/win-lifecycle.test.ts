@@ -76,6 +76,7 @@ function createConfig(root: string): ToolPackConfig {
     namespace: "test",
     platform: "win",
     portable: false,
+    releaseChannel: null,
     removeData: false,
     removeLogs: false,
     removeProductUserData: false,

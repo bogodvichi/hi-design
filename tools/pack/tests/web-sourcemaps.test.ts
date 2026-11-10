@@ -64,6 +64,7 @@ function fakeConfig(workspaceRoot: string): ToolPackConfig {
     namespace: "test",
     platform: "mac",
     portable: false,
+    releaseChannel: null,
     removeData: false,
     removeLogs: false,
     removeProductUserData: false,

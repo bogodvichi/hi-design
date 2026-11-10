@@ -136,6 +136,7 @@ import {
 import { resolvePlanTier } from './collab/team-plan';
 import { deriveTabIdentityScope, UNSET_ACCOUNT_BUCKET } from './collab/tab-scope';
 import { CommunityView } from './components/CommunityView';
+import { COMMUNITY_UI_VISIBLE } from './features/communityUi';
 import { seedHomeComposerPrompt } from './components/HomeView';
 import {
   createPluginUseHandoff,
@@ -274,7 +275,8 @@ const AGENT_FOCUS_REFRESH_THROTTLE_MS = 10_000;
  * in the app: they have never completed onboarding (on either the local or the
  * daemon copy — `mergeDaemonConfig` ratchets the two before this runs), and
  * they did not arrive through an explicit deep link that onboarding must not
- * hijack (the collab demo and the community gallery are shareable URLs).
+ * hijack (the collab demo and, on channels where it is visible, the community
+ * gallery are shareable URLs).
  *
  * Deliberately a pure predicate over a resolved config: the redirect belongs to
  * the one-shot boot pass, and expressing it as a function of "who the user is"
@@ -288,7 +290,7 @@ export function shouldRouteToFirstRunOnboarding(
   if (
     pathname.startsWith('/projects/')
     || pathname.startsWith('/collab-demo')
-    || pathname.startsWith('/community')
+    || (COMMUNITY_UI_VISIBLE && pathname.startsWith('/community'))
   ) {
     return false;
   }
@@ -5333,7 +5335,7 @@ if (fetchedProject) {
       sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
     />
   );
-} else if (route.kind === 'community') {
+} else if (COMMUNITY_UI_VISIBLE && route.kind === 'community') {
     appMain = (
       <CommunityView
         onRemixTemplate={({ templateId, prompt }) => {

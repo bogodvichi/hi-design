@@ -28,6 +28,7 @@ function makeMacConfig(root: string, namespace: string, appVersion: string): Too
     namespace,
     platform: "mac",
     portable: false,
+    releaseChannel: null,
     removeData: false,
     removeLogs: false,
     removeProductUserData: false,

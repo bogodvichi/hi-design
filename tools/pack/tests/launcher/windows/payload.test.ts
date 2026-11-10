@@ -30,6 +30,7 @@ function makeWinConfig(root: string, namespace: string, appVersion: string): Too
     namespace,
     platform: "win",
     portable: false,
+    releaseChannel: null,
     removeData: false,
     removeLogs: false,
     removeProductUserData: false,

@@ -108,6 +108,7 @@ function createConfig(root: string, cacheRoot: string): ToolPackConfig {
     namespace: "test",
     platform: "win",
     portable: false,
+    releaseChannel: null,
     removeData: false,
     removeLogs: false,
     removeProductUserData: false,
@@ -315,6 +316,32 @@ describe("ensureWorkspaceBuildArtifacts", () => {
       ]);
       expect(cache.report().entries.map((entry) => entry.status)).toEqual(["miss", "miss"]);
       expect(await readFile(join(root, "apps/packaged/dist/index.mjs"), "utf8")).toBe("mac-build\n");
+    } finally {
+      await rm(root, { force: true, recursive: true });
+    }
+  });
+
+  it("does not reuse a workspace build across release channels", async () => {
+    const root = await mkdtemp(join(tmpdir(), "open-design-workspace-build-release-channel-"));
+    const cache = new ToolPackCache(join(root, ".cache"));
+    const config = createConfig(root, cache.root);
+    const stableConfig: ToolPackConfig = { ...config, releaseChannel: "stable" };
+    let builds = 0;
+
+    try {
+      await writeWorkspace(root);
+      await ensureWorkspaceBuildArtifacts(config, cache, async () => {
+        builds += 1;
+        await writeOutputs(root, `build-${builds}`);
+      });
+      await ensureWorkspaceBuildArtifacts(stableConfig, cache, async () => {
+        builds += 1;
+        await writeOutputs(root, `build-${builds}`);
+      });
+
+      expect(builds).toBe(2);
+      expect(cache.report().entries.map((entry) => entry.status)).toEqual(["miss", "miss"]);
+      expect(await readFile(join(root, "apps/packaged/dist/index.mjs"), "utf8")).toBe("build-2\n");
     } finally {
       await rm(root, { force: true, recursive: true });
     }

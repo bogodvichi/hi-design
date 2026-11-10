@@ -23,6 +23,7 @@ function makeConfig(overrides: Partial<ToolPackConfig> = {}): ToolPackConfig {
     namespace: "test-namespace",
     platform: "win",
     portable: false,
+    releaseChannel: null,
     removeData: false,
     removeLogs: false,
     removeProductUserData: false,

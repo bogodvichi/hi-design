@@ -63,6 +63,7 @@ function makeConfig(): ToolPackConfig {
     namespace: "default",
     platform: "linux",
     portable: false,
+    releaseChannel: null,
     removeData: false,
     removeLogs: false,
     removeProductUserData: false,

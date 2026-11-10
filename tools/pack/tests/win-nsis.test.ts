@@ -18,6 +18,7 @@ function makeConfig(namespaceRoot: string): ToolPackConfig {
     namespace: "test-namespace",
     platform: "win",
     portable: false,
+    releaseChannel: null,
     removeData: false,
     removeLogs: false,
     removeProductUserData: false,

@@ -102,6 +102,7 @@ describe('shouldRouteToFirstRunOnboarding', () => {
     const unfinished = { ...baseConfig, onboardingCompleted: false };
 
     expect(shouldRouteToFirstRunOnboarding(unfinished, '/projects/project-a')).toBe(false);
+    expect(shouldRouteToFirstRunOnboarding(unfinished, '/community')).toBe(false);
     expect(shouldRouteToFirstRunOnboarding(unfinished, '/')).toBe(true);
   });
 });
