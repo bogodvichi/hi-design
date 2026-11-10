@@ -7,6 +7,37 @@ export interface OpenDesignDiscordPresenceResponse {
   stale: boolean;
 }
 
+/** Total uploaded bytes and expanded ZIP bytes allowed for one Skill. */
+export const SKILL_UPLOAD_MAX_MB = 500;
+export const SKILL_UPLOAD_MAX_BYTES = SKILL_UPLOAD_MAX_MB * 1024 * 1024;
+
+/** Locate a Skill by its manifest name or Markdown frontmatter at any directory depth. */
+export async function findSingleSkillEntry(
+  paths: readonly string[],
+  readMarkdown: (index: number) => Promise<string>,
+): Promise<
+  | { ok: true; index: number }
+  | { ok: false; error: 'SKILL_MD_NOT_FOUND' | 'MULTIPLE_SKILLS' }
+> {
+  let index = -1;
+  let markdownIndex = -1;
+  let markdownCount = 0;
+  for (let i = 0; i < paths.length; i++) {
+    const name = paths[i]!.replace(/\\/g, '/');
+    if (name.split('/').includes('__MACOSX') || !/\.md$/i.test(name)) continue;
+    markdownIndex = i;
+    markdownCount++;
+    if (!/(^|\/)SKILL\.md$/i.test(name)) {
+      const frontmatter = (await readMarkdown(i)).replace(/^\uFEFF/, '').match(/^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/)?.[1];
+      if (!frontmatter || !/^name:[ \t]*\S/m.test(frontmatter)) continue;
+    }
+    if (index !== -1) return { ok: false, error: 'MULTIPLE_SKILLS' };
+    index = i;
+  }
+  if (index === -1 && markdownCount === 1) index = markdownIndex;
+  return index === -1 ? { ok: false, error: 'SKILL_MD_NOT_FOUND' } : { ok: true, index };
+}
+
 /** Canonical Skill categories shared by publish, MAAS import and community browse. */
 export const SKILL_CATEGORIES = [
   'development_tools',
