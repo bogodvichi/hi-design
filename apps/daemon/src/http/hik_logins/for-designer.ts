@@ -175,8 +175,19 @@ function spawnDetached(file: string, args: string[], cwd: string): void {
 }
 
 function launchInstaller(root: string, platform: NodeJS.Platform): void {
-  if (platform === 'win32' && fs.existsSync(path.join(root, 'install.bat'))) {
-    spawnDetached('cmd', ['/d', '/c', path.join(root, 'install.bat')], root);
+  if (platform === 'win32' && fs.existsSync(path.join(root, 'install.ps1'))) {
+    // install.bat opens a console host before launching PowerShell. Start the
+    // silent installer directly so background startup cannot flash a window.
+    spawnDetached('powershell.exe', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-WindowStyle',
+      'Hidden',
+      '-File',
+      path.join(root, 'install.ps1'),
+    ], root);
   }
   if (platform === 'darwin' && fs.existsSync(path.join(root, 'install.command'))) {
     const installer = path.join(root, 'install.command');
@@ -319,7 +330,11 @@ export function ensureForDesignerInstalled(
   }
 
   if (options.launchProcesses !== false) {
-    launchInstaller(targetDir, platform);
+    // An unchanged installation already has its scheduled task; re-running the
+    // installer on every startup turns the launcher into a visible shell host.
+    if (status === 'installed' || status === 'upgraded') {
+      launchInstaller(targetDir, platform);
+    }
     launchUpdateCheck(targetDir, platform);
   }
 

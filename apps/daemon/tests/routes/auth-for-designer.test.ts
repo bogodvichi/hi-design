@@ -6,7 +6,7 @@ import express from 'express';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ensureForDesignerInstalled } from '../../src/http/hik_logins/for-designer.js';
-import { hicooLogin, writeSsoConfigFile } from '../../src/http/hik_logins/hicoo.js';
+import { hicooLogin, hicooValidate, writeSsoConfigFile } from '../../src/http/hik_logins/hicoo.js';
 import { registerAuthRoutes } from '../../src/routes/auth.js';
 
 vi.mock('../../src/http/hik_logins/for-designer.js', async (importOriginal) => ({
@@ -20,6 +20,7 @@ vi.mock('../../src/http/hik_logins/for-designer.js', async (importOriginal) => (
 vi.mock('../../src/http/hik_logins/hicoo.js', async (importOriginal) => ({
   ...await importOriginal<typeof import('../../src/http/hik_logins/hicoo.js')>(),
   hicooLogin: vi.fn(),
+  hicooValidate: vi.fn(),
 }));
 
 describe('ForDesigner startup integration through authenticated routes', () => {
@@ -35,6 +36,12 @@ describe('ForDesigner startup integration through authenticated routes', () => {
       username: 'user01',
       cookies: [{ name: 'oa', value: 'opaque', domain: 'example.test' }],
       userInfo: { displayName: '翁文秀', departmentDetail: '旧组织/设计体系管理组' },
+    });
+    vi.mocked(hicooValidate).mockReset().mockResolvedValue({
+      ok: true,
+      isValid: true,
+      username: 'user01',
+      userInfo: { displayName: '翁文秀' },
     });
     dataDir = await mkdtemp(path.join(tmpdir(), 'fordesigner-auth-startup-'));
     const app = express();

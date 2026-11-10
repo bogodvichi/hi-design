@@ -154,11 +154,15 @@ if (Test-Path $coworkScript) {
                         } catch {
                             $fixCmd = '$t = Get-ScheduledTask -TaskName ''' + $taskName + '''; $t.Settings.DisallowStartIfOnBatteries = $false; $t.Settings.StopIfGoingOnBatteries = $false; Set-ScheduledTask -InputObject $t | Out-Null'
                             $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($fixCmd))
-                            $proc = Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile", "-EncodedCommand", $encoded -Verb RunAs -Wait -WindowStyle Hidden -PassThru -ErrorAction SilentlyContinue
-                            if ($proc -and $proc.ExitCode -eq 0) {
-                                Write-Host "已关闭电池限制（提升权限）"
+                            if ($interactive) {
+                                $proc = Start-Process -FilePath "powershell.exe" -ArgumentList "-NoProfile", "-EncodedCommand", $encoded -Verb RunAs -Wait -WindowStyle Hidden -PassThru -ErrorAction SilentlyContinue
+                                if ($proc -and $proc.ExitCode -eq 0) {
+                                    Write-Host "已关闭电池限制（提升权限）"
+                                } else {
+                                    Write-Host "提示:电池模式下采集可能不执行,建议接电源后重新运行 install.bat"
+                                }
                             } else {
-                                Write-Host "提示:电池模式下采集可能不执行,建议接电源后重新运行 install.bat"
+                                Write-Host "后台模式跳过电池限制提权修复"
                             }
                         }
                     }
