@@ -1186,7 +1186,7 @@ function ProjectsPanel({
          controlsPortalTarget={controlsPortalTarget}
          bulkbarPortalTarget={bulkbarEl}
          operator={operator}
-        canManageProjectCollection={canManage}
+        canManageProjectCollection={canShare}
         currentWorkspaceId={teamId}
         currentFolderId={null}
         selectionExtension={{
@@ -2402,7 +2402,7 @@ function FoldersPanel({
          operator={operator}
          controlsPortalTarget={controlsEl}
          bulkbarPortalTarget={bulkbarEl}
-         canManageProjectCollection={canManage}
+         canManageProjectCollection={canShare}
          currentWorkspaceId={teamId}
          currentFolderId={folderId}
          selectionExtension={{

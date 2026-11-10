@@ -416,12 +416,13 @@ test('team folder-project sharing permits members but not guests or foreign proj
   assert.equal(rejected.ctx.status, 404);
 });
 
-test('cross-team project transfers require source ownership and write membership in both teams', async () => {
+test('cross-team project transfers admit source managers and creators with writable target membership', async () => {
   for (const [sourceRole, targetRole, owner, allowed] of [
     ['owner', 'member', 'alice', true], ['admin', 'admin', 'alice', true],
     ['member', 'owner', 'alice', true], ['guest', 'member', 'alice', false],
     ['owner', 'guest', 'alice', false], ['member', null, 'alice', false],
-    ['owner', 'member', 'bob', false], ['admin', 'member', 'bob', false],
+    ['owner', 'member', 'bob', true], ['admin', 'member', 'bob', true],
+    ['member', 'member', 'bob', false],
   ] as const) {
     const f = fixture({
       workspace_members: [

@@ -19551,6 +19551,7 @@ async function openReviewListModal() {
         canPublishToCommunity={collab.isOwner && !viewerOnly && !isTeamGuest}
         canShareFile={canShareProjectFile}
         canGenerateLink={canGenerateProjectLink}
+        publishBeforeGenerate={!viewerOnly}
         onClose={() => setUnifiedShareOpen(false)}
       />
     ) : null}

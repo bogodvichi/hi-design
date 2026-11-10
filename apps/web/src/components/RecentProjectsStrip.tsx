@@ -972,7 +972,7 @@ const disabledKeys = useMemo(() => {
    const project = moveToTeamTarget;
    if (!project || singleMovePendingRef.current) return;
    const projectWorkspaceId = project.workspaceId?.trim() || currentWorkspaceId || workspaceContext?.workspaceId;
-   const teamTransfer = resolveCreator(project).ownedBySelf && !selection.isDefaultTeam;
+   const teamTransfer = (resolveCreator(project).ownedBySelf || (isTeamProjectCollection && resolveCreator(project).canAdmin)) && !selection.isDefaultTeam;
    const transferToPersonal = selection.isDefaultTeam && resolveCreator(project).ownedBySelf;
    if (personalMoveRecoveryRef.current.has(project.id) && !selection.isDefaultTeam) {
      setMoveToast({ message: t('recentProjects.moveFolderPending'), tone: 'error' });
@@ -1002,7 +1002,7 @@ const disabledKeys = useMemo(() => {
      project.workspaceId?.trim() || currentWorkspaceId || workspaceContext?.workspaceId);
    if (extensionSelectedCount > 0) selectedWorkspaces.push(currentWorkspaceId || workspaceContext?.workspaceId);
    const teamTransfer = !selection.isDefaultTeam
-     && selectedProjects.every(({ creator }) => creator.ownedBySelf)
+     && selectedProjects.every(({ creator }) => creator.ownedBySelf || (isTeamProjectCollection && creator.canAdmin))
      && (extensionSelectedCount === 0 || personalCollection);
    const transferToPersonal = selection.isDefaultTeam && selectedProjects.every(({ creator }) => creator.ownedBySelf)
      && (extensionSelectedCount === 0 || (personalCollection && selectionExtension?.canMoveToPersonal === true));
@@ -1561,11 +1561,10 @@ function requestDelete(project: Project) {
      // A team manager can reorganize another creator's project without
      // materializing its content or taking its ownership. The HDW metadata
      // endpoint verifies the exact team and member role independently.
-     if (isTeamProjectCollection && resolveCreator(project).canAdmin) {
+     if (isTeamProjectCollection && resolveCreator(project).canAdmin
+       && (project.workspaceId ?? workspaceContext?.workspaceId) === options?.targetWorkspaceId) {
        const sourceWorkspaceId = project.workspaceId ?? workspaceContext?.workspaceId;
-       if (!sourceWorkspaceId || sourceWorkspaceId !== options?.targetWorkspaceId) {
-         throw new Error('cross-team project moves are forbidden');
-       }
+       if (!sourceWorkspaceId) throw new Error('Source workspace is required');
        await moveTeamProjectFolderAssignment({
          projectId: project.id,
          workspaceId: sourceWorkspaceId,
@@ -1867,7 +1866,8 @@ function requestDelete(project: Project) {
    const failureDetails: string[] = [];
    let committedTransfers = 0;
    const teamManagerProjectIds = new Set(selectedProjects
-     .filter(({ creator }) => isTeamProjectCollection && creator.canAdmin)
+     .filter(({ project, creator }) => isTeamProjectCollection && creator.canAdmin
+       && (project.workspaceId ?? workspaceContext?.workspaceId) === options?.targetWorkspaceId)
      .map(({ project }) => project.id));
    const moved = await Promise.all(
      ids.map(async (id) => {
@@ -2907,6 +2907,7 @@ function requestDelete(project: Project) {
              : isTeamProjectCollection
                ? !isGuest
                : true}
+          publishBeforeGenerate={resolveCreator(sharedSpaceTarget).ownedBySelf}
           canGenerateLink={!isGuest && !isSharedWithMeCollection && !sharedWithMeHomeWorkspaceId?.(sharedSpaceTarget.id)}
           onClose={() => setSharedSpaceTarget(null)}
           onShared={() => {
@@ -3003,7 +3004,7 @@ function requestDelete(project: Project) {
        currentWorkspaceId={currentWorkspaceId ?? workspaceContext?.workspaceId ?? null}
        currentFolderId={currentFolderId ?? null}
        disabledKeys={disabledKeys}
-       restrictToWorkspaceId={resolveCreator(moveToTeamTarget).ownedBySelf ? undefined : moveToTeamTarget.workspaceId ?? currentWorkspaceId ?? workspaceContext?.workspaceId}
+       restrictToWorkspaceId={resolveCreator(moveToTeamTarget).ownedBySelf || (isTeamProjectCollection && resolveCreator(moveToTeamTarget).canAdmin) ? undefined : moveToTeamTarget.workspaceId ?? currentWorkspaceId ?? workspaceContext?.workspaceId}
       canMoveToPersonal={resolveCreator(moveToTeamTarget).ownedBySelf}
      />
   ) : null}
@@ -3015,7 +3016,7 @@ function requestDelete(project: Project) {
        mode="unified"
        currentWorkspaceId={currentWorkspaceId ?? workspaceContext?.workspaceId ?? null}
        currentFolderId={currentFolderId ?? null}
-       restrictToWorkspaceId={personalCollection || (extensionSelectedCount === 0 && selectedProjects.every(({ creator }) => creator.ownedBySelf))
+       restrictToWorkspaceId={personalCollection || (extensionSelectedCount === 0 && selectedProjects.every(({ creator }) => creator.ownedBySelf || (isTeamProjectCollection && creator.canAdmin)))
          ? undefined : currentWorkspaceId ?? workspaceContext?.workspaceId ?? undefined}
        disabledSubtreeKeys={extensionSelectedCount > 0 ? selectionExtension?.disabledMoveKeys : undefined}
        disabledKeys={disabledKeys}

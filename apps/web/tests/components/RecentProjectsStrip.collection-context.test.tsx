@@ -263,6 +263,41 @@ describe.each(['team', 'drafts'] as const)('%s collection project moves', (space
     expect(JSON.parse(String(requests[0]!.body))).toMatchObject({ visibility: 'team', targetWorkspaceId: 'target', targetFolderId: 'destination' });
   });
 
+  it.each([false, true])('transfers non-creator manager projects across teams from the picker (bulk=%s)', async (bulk) => {
+    const requests: RequestInit[] = [];
+    const events = vi.spyOn(window, 'dispatchEvent');
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).endsWith('/move')) {
+        expect(String(input)).toBe('/api/workspaces/source/projects/project/move');
+        requests.push(init!);
+        return Response.json({ project: { projectId: 'project', workspaceId: 'target' } });
+      }
+      return Response.json({ items: [], members: [], files: [] });
+    }));
+    render(<RecentProjectsStrip
+      projects={[{ id: 'project', name: 'Project', workspaceId: 'source', createdByWorkspaceMemberId: 'another-creator', createdAt: 1, updatedAt: 1, skillId: null, designSystemId: null }]}
+      space="team" heading="Folder" homeWorkspaceId="source" currentWorkspaceId="source" currentFolderId="folder"
+      workspaceContextOverride={source} operator={{ memberId: 'source-member', role: 'admin' }} onOpen={vi.fn()}
+    />);
+    if (bulk) {
+      fireEvent.click(screen.getByRole('button', { name: 'recentProjects.multiSelect' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Project' }));
+      fireEvent.click(screen.getByRole('button', { name: 'recentProjects.moveTo' }));
+    } else {
+      fireEvent.click(screen.getByRole('button', { name: 'designs.menuMore' }));
+      fireEvent.click(screen.getByRole('menuitem', { name: 'recentProjects.moveTo' }));
+    }
+    expect(screen.getByTestId('move-picker')).not.toHaveAttribute('data-restricted');
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'choose target team' })); });
+    await waitFor(() => expect(requests).toHaveLength(1));
+    const refreshedTeams = events.mock.calls.map(([event]) => event)
+      .filter((event) => event.type === 'hdw:folders-updated').map((event) => (event as CustomEvent).detail.teamId);
+    expect(refreshedTeams).toEqual(expect.arrayContaining(['source', 'target']));
+    events.mockRestore();
+    expect(new Headers(requests[0]!.headers).get('x-od-workspace-member-id')).toBe('source-member');
+    expect(JSON.parse(String(requests[0]!.body))).toMatchObject({ visibility: 'team', targetWorkspaceId: 'target', targetFolderId: 'destination' });
+  });
+
   it.each([false, true])('uses the exact source identity for same-team moves (bulk=%s)', async (bulk) => {
     const requests: RequestInit[] = [];
     vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -317,9 +352,7 @@ describe.each(['team', 'drafts'] as const)('%s collection project moves', (space
       fireEvent.click(screen.getByRole('button', { name: 'designs.menuMore' }));
       fireEvent.click(screen.getByRole('menuitem', { name: 'recentProjects.moveTo' }));
     }
-    expect(screen.getByTestId('move-picker')).toHaveAttribute('data-restricted', 'source');
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'choose target team' })); });
-    expect(urls.some((url) => url.endsWith('/move'))).toBe(false);
+    expect(screen.getByTestId('move-picker')).not.toHaveAttribute('data-restricted');
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'choose local folder' })); });
     await waitFor(() => expect(requests).toHaveLength(1));
     expect(JSON.parse(String(requests[0]!.body))).toMatchObject({

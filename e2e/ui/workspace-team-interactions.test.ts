@@ -942,6 +942,48 @@ test('[P0] ordinary team member sees team projects but no invite or workspace-ad
   await expect(menu.getByRole('menuitem', { name: 'Invite colleague' })).toHaveCount(0);
 });
 
+test('[P1] team member can select projects and generate a teammate share link', async ({ page }) => {
+  await wireWorkspaceMocks(page, TEAM_MEMBER, [TEAM_MEMBER]);
+  const project = teamProject('ui-member-share', 'Member sharing acceptance', 'another-creator');
+  let uploads = 0;
+  await page.addInitScript(() => {
+    localStorage.setItem('open-design:auth-session', JSON.stringify({ version: 1, username: 'e2e-user', loginAt: Date.now() }));
+  });
+  await page.route('**/api/hdw/api/team/**/member/*', route => route.fulfill({ json: {
+    code: 0, data: { workspace_member_id: TEAM_MEMBER.workspaceMemberId, role: 'member' },
+  } }));
+  await page.route('**/api/hdw/api/folder/list?**', route => route.fulfill({ json: { code: 0, data: { folders: [] } } }));
+  await page.route('**/api/workspace/projects/team**', route => route.fulfill({ json: { projects: [project] } }));
+  await page.route('**/api/hdw/runtime-config', route => route.fulfill({ json: { sharePublicBase: 'https://share.example.test' } }));
+  await page.route('**/api/hdw/api/share-link?**', route => route.fulfill({ json: { code: 0, data: null } }));
+  await page.route('**/api/projects/ui-member-share/collab/sync-intent', route => {
+    uploads++;
+    return route.fulfill({ status: 403, json: { error: 'WORKSPACE_PROJECT_SHARE_DENIED' } });
+  });
+  await page.route('**/api/hdw/api/share-link/generate', async route => {
+    expect(route.request().postDataJSON()).toMatchObject({ project_id: project.projectId, workspace_id: TEAM_MEMBER.workspaceId });
+    expect((await route.request().allHeaders())['x-od-workspace-member-id']).toBe(TEAM_MEMBER.workspaceMemberId);
+    await route.fulfill({ json: { code: 0, data: { token: 'member-link' } } });
+  });
+  await page.goto(`/team/${TEAM_MEMBER.workspaceId}`, { waitUntil: 'domcontentloaded' });
+  const card = visibleProjectCard(page, project.projectId);
+  await expect(card).toBeVisible();
+  const select = page.getByRole('button', { name: 'Multi-select' });
+  await select.click();
+  await card.getByRole('button', { name: project.name, exact: true }).click();
+  await expect(card.getByRole('button', { name: project.name, exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await select.click();
+  await openProjectMenu(card);
+  await page.getByRole('menuitem', { name: 'Share', exact: true }).click();
+  await page.getByRole('tab', { name: 'Share Link' }).click();
+  const generated = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/hdw/api/share-link/generate');
+  await page.getByRole('button', { name: 'Generate Link' }).click();
+  expect((await generated).ok()).toBe(true);
+  await expect(page.locator('input[value="https://share.example.test/hdw/share/member-link"]')).toBeVisible();
+  expect(uploads).toBe(0);
+  await page.screenshot({ path: test.info().outputPath('member-project-share.png') });
+});
+
 test('[P0] locked workspace removes invite and sharing capabilities while preserving the recovery settings exit', async ({
   page,
 }) => {

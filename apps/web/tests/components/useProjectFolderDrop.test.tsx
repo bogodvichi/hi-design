@@ -300,12 +300,25 @@ describe('useProjectFolderDrop', () => {
     expect(mocks.moveTeamProjectFolderAssignment).not.toHaveBeenCalled();
   });
 
-  it.each(['manager-transfer', 'missing-source'] as const)('rejects an unauthorized drop (%s)', async (scenario) => {
+  it('transfers a manager project across teams through the verified move endpoint', async () => {
+    mocks.moveWorkspaceProject.mockResolvedValue({});
+    render(<CrossWorkspaceHarness destinationWorkspaceId="another-team" destinationVisibility="team" managerOnlyFolderMove />);
+    const dataTransfer = createDataTransfer();
+    fireEvent.dragStart(screen.getByTestId('cross-workspace-source'), { dataTransfer });
+    fireEvent.drop(screen.getByTestId('personal-root'), { dataTransfer });
+    await waitFor(() => expect(mocks.moveWorkspaceProject).toHaveBeenCalledWith({
+      projectId: 'project-1', visibility: 'team', workspaceContext,
+      targetWorkspaceId: 'another-team', targetFolderId: null,
+    }));
+    expect(mocks.moveTeamProjectFolderAssignment).not.toHaveBeenCalled();
+  });
+
+  it.each(['manager-to-personal', 'missing-source'] as const)('rejects an unauthorized drop (%s)', async (scenario) => {
     render(<CrossWorkspaceHarness
       destinationWorkspaceId="another-team"
-      destinationVisibility="team"
+      destinationVisibility={scenario === 'manager-to-personal' ? 'personal' : 'team'}
       currentWorkspaceContext={scenario === 'missing-source' ? { workspaceId: 'unrelated', workspaceType: 'personal' } as WorkspaceCollabContext : workspaceContext}
-      managerOnlyFolderMove={scenario === 'manager-transfer'}
+      managerOnlyFolderMove={scenario === 'manager-to-personal'}
     />);
     const dataTransfer = createDataTransfer();
     fireEvent.dragStart(screen.getByTestId('cross-workspace-source'), { dataTransfer });

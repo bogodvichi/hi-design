@@ -2575,17 +2575,21 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
     if (!remote && catalogUnavailable) return 'unavailable';
     if (!remote) return 'unchanged';
 
-    if (operation === 'organize') {
-      // A confirmed destination owner may organize an already transferred
-      // project even when the catalog's content-edit flag is false.
-      if (!workspaceProjectSelfMemberIds(ctx).has(remote.ownerMemberId)
+    const catalogCreator = workspaceProjectSelfMemberIds(ctx).has(remote.ownerMemberId)
+      ? ctx.workspaceMemberId : remote.ownerMemberId;
+    if (operation === 'organize' || operation === 'copy') {
+      // Catalog read authority permits copying; team managers may organize
+      // another creator's project while preserving its source ownership.
+      const managesTeam = !isPersonalProjectWorkspace(ctx) && (ctx.role === 'owner' || ctx.role === 'admin');
+      const canCopyTeam = operation === 'copy' && !isPersonalProjectWorkspace(ctx);
+      if (!(catalogCreator === ctx.workspaceMemberId || (operation === 'organize' && managesTeam) || canCopyTeam)
         || remote.access.frozen || isWorkspaceLocked(ctx)
         || ctx.role === 'guest' || ctx.memberStatus !== 'active') return 'denied';
       rebindWorkspaceProject(db, projectId, {
         workspaceId: ctx.workspaceId,
         visibility: 'team',
         resourceState: 'active',
-        createdByWorkspaceMemberId: ctx.workspaceMemberId,
+        createdByWorkspaceMemberId: catalogCreator,
         updatedByWorkspaceMemberId: ctx.workspaceMemberId,
         resourceHubResourceId: remote.resourceId,
         syncState: velaProjectSyncStateToProject(remote.syncState),
@@ -2599,7 +2603,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
     if (
       reconciled?.workspaceId === ctx.workspaceId
       && reconciledVisibility === 'team'
-      && reconciled.createdByWorkspaceMemberId === ctx.workspaceMemberId
+      && reconciled.createdByWorkspaceMemberId === catalogCreator
       && reconciled.resourceHubResourceId === remote.resourceId
     ) {
       return 'reconciled';
@@ -2796,7 +2800,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
         && item.access.canView,
     );
     if (!remote) return 'missing';
-    if (remote.access.frozen || !remote.access.canEdit) {
+    if (remote.access.frozen || ctx.memberStatus !== 'active' || ctx.role === 'guest' || isWorkspaceLocked(ctx)) {
       return 'denied';
     }
     if (!collabSync.materializeTeamProject) return 'unavailable';
@@ -2808,12 +2812,8 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
     try {
       await collabSync.materializeTeamProject(
         projectId,
-        {
-          teamId: ctx.workspaceId,
-          memberId: effectiveRemoteOwnerId,
-          role: 'member',
-          lifecycleState: 'active',
-        },
+        workspaceProjectPrincipal(ctx),
+        effectiveRemoteOwnerId,
       );
     } catch {
       return 'unavailable';
@@ -3679,20 +3679,18 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
   ): boolean {
     if (workspaceMoveRetryAllowed(summary, ctx, targetVisibility)) return true;
     const isCrossWorkspace = !!targetWorkspaceId && targetWorkspaceId !== ctx.workspaceId;
-    // Cross-workspace moves carry stricter ownership rules than same-workspace
-    // moves: the same user has different member IDs across workspaces, so a
-    // cross-workspace transfer is a re-homing of the project, not just a
-    // visibility flip. Workspace owner/admin authority is scoped to the
-    // current team and must not grant custody over a project in another
-    // workspace. Only the project creator may re-home it.
+    // Team managers may transfer team projects; Personal destinations still
+    // require the creator. Destination membership is checked before transfer.
     if (isCrossWorkspace) {
       if (targetVisibility === 'personal') return summary.currentUserAccess.canMoveToPersonal;
       const selfCreated = summary.createdByWorkspaceMemberId != null
         && summary.createdByWorkspaceMemberId === ctx.workspaceMemberId;
+      const managesTeamProject = summary.visibility === 'team' && !isPersonalProjectWorkspace(ctx)
+        && (ctx.role === 'owner' || ctx.role === 'admin');
       return targetVisibility === 'team'
-        && summary.currentUserAccess.canRename
-        && selfCreated && ctx.canShareProjects && ctx.memberStatus === 'active'
-        && ctx.lifecycleState === 'active';
+        && ((summary.currentUserAccess.canRename && selfCreated) || managesTeamProject)
+        && summary.resourceState === 'active' && ctx.canShareProjects
+        && ctx.memberStatus === 'active' && ctx.lifecycleState === 'active';
     }
     if (targetVisibility === 'team') return summary.currentUserAccess.canMoveToTeam;
     return summary.currentUserAccess.canMoveToPersonal;
@@ -3958,11 +3956,13 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
        : null;
       let project = getProject(db, req.params.projectId);
       if (ctx.workspaceType === 'team') {
-        // Folder organization uses its own authority; transfers still require
-        // the exact creator and content-edit authority during preparation.
+        // Team managers prepare transfers with organization authority;
+        // Personal destinations continue to require the exact creator.
         const folderMove = (visibility === 'team' || isPersonalProjectWorkspace(ctx))
           && (!targetWorkspaceId || targetWorkspaceId === ctx.workspaceId) && hasExplicitTargetFolder;
-        const preparation = await prepareTeamCatalogProject(req.params.projectId, ctx, folderMove ? 'organize' : 'owner');
+        const managerTransfer = visibility === 'team' && targetWorkspaceId && targetWorkspaceId !== ctx.workspaceId
+          && !isPersonalProjectWorkspace(ctx) && (ctx.role === 'owner' || ctx.role === 'admin');
+        const preparation = await prepareTeamCatalogProject(req.params.projectId, ctx, folderMove || managerTransfer ? 'organize' : 'owner');
         if (preparation === 'denied') {
           return sendApiError(res, 403, 'PROJECT_DELETE_FORBIDDEN', 'project move forbidden');
         }
@@ -4282,9 +4282,12 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
        if (refusal) return sendTeamShareScopeRefused(res, ctx, refusal);
      }
       const locations = await configuredProjectLocations();
-      if (ctx.workspaceType === 'team' && batchTargetFolderId !== undefined
-        && (!batchTargetWorkspaceId || batchTargetWorkspaceId === ctx.workspaceId)
-        && (visibility === 'team' || isPersonalProjectWorkspace(ctx))) {
+      if (ctx.workspaceType === 'team' && (
+        (batchTargetFolderId !== undefined && (!batchTargetWorkspaceId || batchTargetWorkspaceId === ctx.workspaceId)
+          && (visibility === 'team' || isPersonalProjectWorkspace(ctx)))
+        || (visibility === 'team' && batchTargetWorkspaceId && batchTargetWorkspaceId !== ctx.workspaceId
+          && !isPersonalProjectWorkspace(ctx) && (ctx.role === 'owner' || ctx.role === 'admin'))
+      )) {
         for (const id of projectIds) {
           const preparation = await prepareTeamCatalogProject(id, ctx, 'organize');
           if (preparation === 'denied') return sendApiError(res, 403, 'PROJECT_BATCH_CONTAINS_FORBIDDEN_ITEMS', 'batch contains forbidden projects');

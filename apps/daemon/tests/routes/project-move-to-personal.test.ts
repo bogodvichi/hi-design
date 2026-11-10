@@ -834,7 +834,7 @@ describe('project move to personal on an unbound (never-locally-shared) project'
         // pull; the other scenarios require a fresh catalog witness.
         const hasCompleteLocalContent = state === 'stale-home'
           && (scenario === 'pull-failure' || scenario === 'pull-incomplete');
-        const managerFolderMove = action === 'move' && scenario === 'other-owner' && state !== 'stale-home';
+        const managerFolderMove = action === 'move' && scenario === 'other-owner';
         if (scenario !== 'ready' && !hasCompleteLocalContent && !managerFolderMove) {
           expect(response.status, JSON.stringify(body)).toBe(
             scenario === 'other-owner' || scenario === 'frozen' ? 403 : 503,
@@ -1258,7 +1258,7 @@ describe('project move to personal on an unbound (never-locally-shared) project'
     }
   });
 
-  it('does not repair a stale home for a workspace owner who is not the project creator', async () => {
+  it('lets a workspace owner organize a teammate catalog project with a stale local home', async () => {
     const projectId = `stale-personal-home-foreign-${Date.now()}`;
     const resourceId = `project-${projectId}`;
     insertProject(db, {
@@ -1320,17 +1320,17 @@ describe('project move to personal on an unbound (never-locally-shared) project'
           headers: ownerTeamHeaders(),
           body: JSON.stringify({
             visibility: 'team',
-            targetFolderId: 'forbidden-folder',
+            targetFolderId: 'target-folder',
           }),
         },
       );
 
-      expect(response.status).toBe(403);
+      expect(response.status, await response.clone().text()).toBe(200);
       expect(getWorkspaceProjectByProjectId(db, projectId)).toMatchObject({
-        workspaceId: PERSONAL_WORKSPACE_ID,
-        createdByWorkspaceMemberId: PERSONAL_MEMBER_ID,
+        workspaceId: TEAM_WORKSPACE_ID,
+        createdByWorkspaceMemberId: 'another-project-creator',
       });
-      expect(moveProjectFolder).not.toHaveBeenCalled();
+      expect(moveProjectFolder).toHaveBeenCalledTimes(1);
     } finally {
       await close(routeServer.server);
     }
@@ -2144,6 +2144,43 @@ describe('project move to personal on an unbound (never-locally-shared) project'
     } finally {
       await close(routeServer.server);
     }
+  });
+
+  describe.each(['single', 'batch'] as const)('cross-team manager transfer (%s)', (mode) => {
+    it.each([['owner', 'local'], ['admin', 'local'], ['member', 'local'], ['owner', 'catalog'], ['admin', 'catalog'], ['owner', 'stale'], ['admin', 'stale']] as const)('checks source role %s with %s content without granting edits', async (role, state) => {
+      const projectId = `manager-transfer-${mode}-${role}`;
+      const createLocalProject = () => insertProject(db, { id: projectId, name: 'Teammate project', skillId: null, designSystemId: null,
+        pendingPrompt: null, metadata: null, customInstructions: null, createdAt: 1, updatedAt: 1 });
+      if (state !== 'catalog') createLocalProject();
+      if (state !== 'catalog') ensureWorkspaceProject(db, { projectId, workspaceId: state === 'stale' ? PERSONAL_WORKSPACE_ID : TEAM_WORKSPACE_ID, visibility: 'team',
+        resourceState: 'active', createdByWorkspaceMemberId: 'another-creator', updatedByWorkspaceMemberId: 'another-creator',
+        resourceHubResourceId: 'source-resource', syncState: 'synced' });
+      const requestTeamTransfer = vi.fn(async () => ({ targetOwnerMemberId: 'target-member' }));
+      const authority = verifiedTeamAuthority({ memberId: OWNER_MEMBER_ID, role });
+      const target = { ...(await authority()).context, workspaceId: 'target-team', workspaceMemberId: 'target-member', teamId: 'target-team' };
+      const deps = buildDeps({
+        verifyWorkspaceRequestAuthority: authority,
+        teamProjectCatalog: { list: async () => [{ workspaceId: TEAM_WORKSPACE_ID, projectId, resourceId: 'source-resource',
+          ownerMemberId: 'another-creator', access: { canView: true, canEdit: false, frozen: false }, syncState: 'synced' }] },
+        collabSync: { requestTeamTransfer, invalidateTeamProjectCatalog: vi.fn(), materializeTeamProject: async () => {
+          createLocalProject();
+          ensureWorkspaceProject(db, { projectId, workspaceId: TEAM_WORKSPACE_ID, visibility: 'team', resourceState: 'active',
+            createdByWorkspaceMemberId: 'another-creator', resourceHubResourceId: 'source-resource', syncState: 'synced' });
+        } },
+      });
+      deps.fetchWorkspaceDirectory = async () => ({ ok: true, items: [target] }) as any;
+      const app = express(); app.use(express.json()); registerProjectRoutes(app, deps);
+      const routeServer = await listen(app);
+      try {
+        const response = await fetch(`${routeServer.url}/api/workspaces/${TEAM_WORKSPACE_ID}/projects/${mode === 'batch' ? 'batch-move' : `${projectId}/move`}`, {
+          method: 'POST', headers: ownerTeamHeaders(), body: JSON.stringify({ visibility: 'team', targetWorkspaceId: 'target-team',
+            ...(mode === 'batch' ? { projectIds: [projectId] } : {}) }),
+        });
+        expect(response.status, await response.clone().text()).toBe(role === 'member' ? 403 : 200);
+        expect(requestTeamTransfer).toHaveBeenCalledTimes(role === 'member' ? 0 : 1);
+        expect(getWorkspaceProjectByProjectId(db, projectId)?.workspaceId).toBe(role === 'member' ? TEAM_WORKSPACE_ID : 'target-team');
+      } finally { await close(routeServer.server); }
+    });
   });
 
   it('allows the creator to transfer a bound team project while denying non-creator managers', async () => {

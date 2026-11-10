@@ -45,6 +45,8 @@ interface UnifiedShareDialogProps {
   canPublishToCommunity?: boolean;
   canShareFile?: boolean;
   canGenerateLink?: boolean;
+  /** Creators upload local changes; teammates share the published content. */
+  publishBeforeGenerate?: boolean;
   onShared?: () => void;
   onClose: () => void;
 }
@@ -98,6 +100,7 @@ export function UnifiedShareDialog({
   canPublishToCommunity = true,
   canShareFile = true,
   canGenerateLink = true,
+  publishBeforeGenerate = true,
   onShared,
   onClose,
 }: UnifiedShareDialogProps) {
@@ -281,13 +284,13 @@ export function UnifiedShareDialog({
  async function handleGenerateLink() {
    if (!canGenerateLink) return;
 
-   setLinkGenerating(!workspaceContext);
-   setSharingToTeam(Boolean(workspaceContext));
+   setLinkGenerating(!workspaceContext || !publishBeforeGenerate);
+   setSharingToTeam(Boolean(workspaceContext && publishBeforeGenerate));
    try {
       const publicBase = sharePublicBase || await fetchHdwSharePublicBase();
       setSharePublicBase(publicBase);
 
-      if (workspaceContext) {
+      if (workspaceContext && publishBeforeGenerate) {
         const syncResp = await fetch(
           `/api/projects/${encodeURIComponent(projectId)}/collab/sync-intent`,
           {
@@ -323,15 +326,15 @@ export function UnifiedShareDialog({
        }),
      });
      const data = await resp.json();
-     if (!resp.ok) {
-       throw Object.assign(new Error(data?.message || data?.msg || `HTTP ${resp.status}`), { code: data?.error?.code ?? data?.error });
+     if (!resp.ok || (typeof data?.code === 'number' && data.code !== 0)) {
+       throw await responseError(resp, data);
      }
      const url = extractShareUrl(data, publicBase);
      if (url) {
        setShareLink(url);
        notifyToast({ message: t('feedback.linkCreated'), tone: 'success' });
      } else {
-       notifyToast({ message: t('share.noLink'), tone: 'error' });
+       notifyToast({ message: t('feedback.linkFailed'), tone: 'error' });
      }
    } catch (err) {
      notifyToast({ message: userFacingError(err, t, 'feedback.linkFailed', t('feedback.objectProject')), tone: 'error' });

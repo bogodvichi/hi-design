@@ -3,6 +3,7 @@ import type { ComponentProps } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import * as toastContext from '../../src/components/toast-context';
 import { UnifiedShareDialog } from '../../src/components/UnifiedShareDialog';
 import { I18nProvider } from '../../src/i18n';
 import { workspaceContextFixture } from '../helpers/workspace-context';
@@ -132,6 +133,34 @@ describe('UnifiedShareDialog capabilities', () => {
     expect(await screen.findByDisplayValue(
       `${RUNTIME_PUBLIC_BASE}/hdw/share/team-token`,
     )).toBeTruthy();
+  });
+
+  it('generates a member link from the published team project without uploading read-only content', async () => {
+    const fetchMock = stubHdwFetch({ syncIntentStatus: 403 });
+    renderDialog({
+      workspaceContext: workspaceContextFixture({ workspaceId: 'workspace-1', workspaceMemberId: 'viewer', role: 'member' }),
+      canPublishToCommunity: false, canShareFile: false, publishBeforeGenerate: false,
+    });
+    fireEvent.click(await getEnabledGenerateButton());
+    expect(await screen.findByDisplayValue(`${RUNTIME_PUBLIC_BASE}/hdw/share/generated-token`)).toBeTruthy();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith('/sync-intent'))).toBe(false);
+  });
+
+  it('reports a generation error instead of claiming there is no share link', async () => {
+    const notify = vi.spyOn(toastContext, 'notifyToast').mockImplementation(() => {});
+    stubHdwFetch({ generatedData: null });
+    const fetchMock = vi.mocked(fetch);
+    fetchMock.mockImplementation(async (input, init) => {
+      if (String(input) === '/api/hdw/runtime-config') return Response.json({ sharePublicBase: RUNTIME_PUBLIC_BASE });
+      if (init?.method === 'POST') return Response.json({ code: -1, error: 'No HTML files found in the project manifest' });
+      return Response.json({ code: 0, data: null });
+    });
+    renderDialog({ canPublishToCommunity: false, canShareFile: false });
+    fireEvent.click(await getEnabledGenerateButton());
+    await waitFor(() => expect(screen.getByRole('button', { name: '生成链接' })).not.toBeDisabled());
+    expect(screen.queryByText('暂无分享链接')).toBeNull();
+    await waitFor(() => expect(notify).toHaveBeenCalled());
+    expect(notify).toHaveBeenCalledWith(expect.objectContaining({ tone: 'error', message: expect.not.stringContaining('暂无分享链接') }));
   });
 
   it('uses the runtime workspace and member identity for every owner request', async () => {

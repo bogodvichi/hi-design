@@ -93,7 +93,7 @@ export function useProjectFolderDrop(input: {
           || destination?.canMove === false
           || !targetWorkspaceId
           || !sourceWorkspaceContext
-          || (crossWorkspace && payload.managerOnlyFolderMove)
+          || (crossWorkspace && payload.managerOnlyFolderMove && targetVisibility !== 'team')
           || (!destination && payload.sourceWorkspaceId !== input.workspaceId)
         ) {
           fail(payload?.projectId);
@@ -106,7 +106,7 @@ export function useProjectFolderDrop(input: {
 
         setMoving(true);
         setNotice(null);
-        const move = payload.managerOnlyFolderMove && targetVisibility === 'team'
+        const move = payload.managerOnlyFolderMove && !crossWorkspace && targetVisibility === 'team'
           ? moveTeamProjectFolderAssignment({
               projectId: payload.projectId,
               workspaceId: targetWorkspaceId,

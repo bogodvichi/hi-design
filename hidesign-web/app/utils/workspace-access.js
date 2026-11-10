@@ -258,10 +258,15 @@ function createWorkspaceAccess(app, dependencies = {}) {
         if (!targetWorkspaceId || targetWorkspaceId === ws) {
           throw denied(403, 'CROSS_TEAM_MOVE_FORBIDDEN');
         }
-        await member(username, ws, true);
+        const actor = await member(username, ws, true);
         await member(username, targetWorkspaceId, true);
         const source = await k('team_projects').where({ workspace_id: ws, project_id: p.projectId }).first();
-        if (source) await resource(username, ws, source.resource_id, true);
+        if (source) {
+          const managesTeamTransfer = ws !== personalWorkspace && targetWorkspaceId !== personalWorkspace
+            && ['owner', 'admin'].includes(actor.role);
+          const row = await resource(username, ws, source.resource_id, !managesTeamTransfer);
+          if (row.deleted_at) throw denied(410, 'RESOURCE_TRANSFERRED');
+        }
         // Unpublished sources reach the controller's source_not_published
         // response; completed transfers reach its idempotent retry lookup.
       } else if (action === 'remove') {

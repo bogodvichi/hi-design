@@ -266,8 +266,14 @@ export function createHdwHttpResourceAdapter(
 
     async unpublish({ projectId, principal }) {
       await gated(principal, async () => {
-        const resourceId = await resolveResourceId(projectId, principal);
-        await options.client.removeResource(principal!.teamId, resourceId);
+        // Remove project discovery, public grants and resource in one transaction.
+        // A split resource/catalog delete can invalidate the second request.
+        if (kind === PROJECT_KIND) {
+          await options.client.removeTeamProject(principal!.teamId, projectId, true);
+        } else {
+          const resourceId = await resolveResourceId(projectId, principal);
+          await options.client.removeResource(principal!.teamId, resourceId);
+        }
       }, undefined);
     },
 

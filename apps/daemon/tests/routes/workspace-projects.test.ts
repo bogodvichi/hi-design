@@ -1084,7 +1084,7 @@ describe('workspace project routes', () => {
         lastSyncedVersionId: 'version-1',
         createdAt: new Date(1).toISOString(),
         updatedAt: new Date(2).toISOString(),
-        access: { canView: true, canComment: true, canEdit: true, frozen: false },
+        access: { canView: true, canComment: true, canEdit: false, frozen: false },
       }]),
       upsert: vi.fn(),
     };
@@ -1134,10 +1134,10 @@ describe('workspace project routes', () => {
       expect(response.status, JSON.stringify(responseBody)).toBe(200);
       expect(materializeTeamProject).toHaveBeenCalledWith(sourceProjectId, {
         teamId: workspaceId,
-        memberId: sourceOwnerMemberId,
+        memberId: viewerMemberId,
         role: 'member',
         lifecycleState: 'active',
-      });
+      }, sourceOwnerMemberId);
       expect(writeProjectFile).toHaveBeenCalledWith(
         'projects',
         'id',
