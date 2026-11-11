@@ -211,7 +211,7 @@ module.exports = appInfo => {
 
   // 数据库配置
   config.db = {
-    host: '10.17.68.13',
+    host: '10.15.68.102',
     port: '5432',
     user: 'yapovichi',
     password: 'e6a22c32a1fb66309c8b9497952b4639',

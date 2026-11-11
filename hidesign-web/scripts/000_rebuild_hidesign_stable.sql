@@ -1,5 +1,5 @@
 -- hidesign-stable 建表脚本 (20 张表, 索引均带 _stable 标识)
--- 源: hidesign @ 10.17.68.13:5432 / 合并 001-012 SQL + JS 建表脚本最终状态
+-- 源: hidesign @ 10.15.68.102:5432 / 合并 001-012 SQL + JS 建表脚本最终状态
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
