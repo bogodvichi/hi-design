@@ -12,6 +12,8 @@ import { openExternalUrl } from '../providers/registry';
 import { HTML_REVIEW_TYPE, buildHtmlReviewUrl, buildManuscriptPreviewUrl } from './reviewMeta';
 import { resolveUedroLaunchUrl } from './uedroLaunch';
 import type { WorkspaceCollabContext } from '@open-design/contracts';
+import { workspaceProjectHeaders } from '../collab/workspace-identity';
+import { projectWorkspaceContext } from '../collab/useProjectWorkspaceScope';
 import { PersonPicker, type Person } from './PersonPicker';
 import { DEFAULT_HTML_REVIEW_H5_SIZE, HTML_REVIEW_H5_SIZES, appendHtmlReviewUploadFields, type HtmlReviewCarrierType } from './uedroHtmlUpload';
 
@@ -647,6 +649,107 @@ export function ReviewAddModal({
     }
   }
 
+  /**
+   * 评审绑定接口的请求头。
+   *
+   * PUT /api/projects/:id/uedro-review 走工作区写权限校验，daemon 要求请求
+   * 显式带上 `x-od-workspace-*` 身份，否则直接 400 WORKSPACE_CONTEXT_REQUIRED
+   * ——评审单建好了却绑不上，就是缺这组头。
+   *
+   * 身份优先取项目自己的 workspace-scope：同一个用户在个人空间与团队空间的
+   * member id 不同，直接套用手上的 UI 上下文可能给错 workspace 的 member id。
+   */
+  async function resolveReviewBindingHeaders(): Promise<Record<string, string>> {
+    const fromContext = workspaceContext
+      ? (workspaceProjectHeaders(workspaceContext) as Record<string, string>)
+      : {};
+    if (!projectId) return fromContext;
+    try {
+      const resp = await fetch(
+        `/api/projects/${encodeURIComponent(projectId)}/workspace-scope`,
+        { headers: fromContext },
+      );
+      const json = await resp.json().catch(() => null);
+      const scoped = projectWorkspaceContext(json?.scope);
+      return scoped
+        ? (workspaceProjectHeaders(scoped) as Record<string, string>)
+        : fromContext;
+    } catch {
+      // scope 查不到时退回 UI 上下文；再不行就让 daemon 明确报错。
+      return fromContext;
+    }
+  }
+
+  /**
+   * 把评审 id 写进项目的绑定（本地 SQLite + 团队空间 HDW 云端）。
+   * 返回 ok 表示本地与（团队空间的）云端都写成功；个人空间 remoteSaved 为 null，不算失败。
+   */
+  async function saveReviewBinding(reviewId: string): Promise<{
+    ok: boolean;
+    localSaved: boolean;
+    remoteSaved: boolean | null;
+    message: string;
+  }> {
+    if (!projectId) {
+      return { ok: true, localSaved: false, remoteSaved: null, message: '' };
+    }
+    try {
+      const headers = await resolveReviewBindingHeaders();
+      const resp = await fetch(
+        `/api/projects/${encodeURIComponent(projectId)}/uedro-review`,
+        {
+          method: 'PUT',
+          headers: { ...headers, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uedroReviewId: reviewId }),
+        },
+      );
+      const json = await resp.json().catch(() => null);
+      const localSaved = json?.localSaved === true;
+      const remoteSaved = typeof json?.remoteSaved === 'boolean' ? json.remoteSaved : null;
+      // 本地和云端都要写上：remoteSaved === false 表示团队空间的 HDW 同步
+      // 失败，同样不算成功；null 表示个人空间无远端能力，属正常。
+      const ok = resp.ok && localSaved && remoteSaved !== false;
+      if (ok) return { ok, localSaved, remoteSaved, message: '' };
+      if (!resp.ok) {
+        return {
+          ok,
+          localSaved,
+          remoteSaved,
+          message: userFacingError(json?.error ?? json?.msg, t, 'feedback.saveFailed'),
+        };
+      }
+      return {
+        ok,
+        localSaved,
+        remoteSaved,
+        message: localSaved
+          ? '评审单已绑定到本地，但云端同步失败，请重试'
+          : '评审单与项目的绑定保存失败，请重试',
+      };
+    } catch {
+      return {
+        ok: false,
+        localSaved: false,
+        remoteSaved: null,
+        message: '评审单与项目的绑定保存失败，请重试',
+      };
+    }
+  }
+
+  /** 创建成功后：提示、打开羽点评审页、关闭弹窗。 */
+  async function finishCreatedReview(manuscriptId: string, reviewSubtype: string) {
+    notifyToast({ message: t('feedback.created'), tone: 'success' });
+    // 创建成功后用系统浏览器打开正式羽点评审页，随后关闭本 modal。
+    const previewUrl = reviewSubtype === HTML_REVIEW_TYPE
+      ? buildHtmlReviewUrl(manuscriptId)
+      : buildManuscriptPreviewUrl(reviewSubtype, manuscriptId);
+    if (previewUrl && aliveRef.current) {
+      const launchUrl = await resolveUedroLaunchUrl(previewUrl);
+      if (launchUrl) await openExternalUrl(launchUrl);
+    }
+    if (aliveRef.current) onClose();
+  }
+
   /** 提交评审。 */
   async function handleSubmit() {
     setError(null);
@@ -956,53 +1059,16 @@ export function ReviewAddModal({
       }
       // 只有本地与云端都写成功后才关闭 Modal、清空上传状态；不能提前关闭。
       if (projectId && createdReviewId) {
-        let putSaved = false;
-        let putLocalSaved = false;
-        let putRespOk = false;
-        try {
-          const putResp = await fetch(
-            `/api/projects/${encodeURIComponent(projectId)}/uedro-review`,
-            {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ uedroReviewId: createdReviewId }),
-            },
-          );
-          const putJson = await putResp.json().catch(() => null);
-          if (!aliveRef.current) return;
-          putRespOk = putResp.ok;
-          putLocalSaved = putJson?.localSaved === true;
-          // 本地和云端都要写上：remoteSaved === false 表示团队空间的 HDW
-          // 同步失败，同样不算成功；null 表示个人空间无远端能力，属正常。
-          putSaved =
-            putRespOk
-            && putLocalSaved
-            && putJson?.remoteSaved !== false;
-        } catch {
-          putSaved = false;
-        }
-        if (!putSaved) {
-          notifyToast({
-            message: putRespOk && putLocalSaved
-              ? '评审已创建，评审单已绑定到本地，但云端同步失败，请重试'
-              : '评审已创建，但评审单与项目的绑定保存失败，请重试',
-            tone: 'error',
-          });
+        const saved = await saveReviewBinding(createdReviewId);
+        if (!aliveRef.current) return;
+        if (!saved.ok) {
+          notifyToast({ message: `评审已创建，${saved.message}`, tone: 'error' });
           return;
         }
-        // PUT 成功后再清空上传状态。
+        // 绑定成功后再清空上传状态。
         setUploadInfo(null);
       }
-      notifyToast({ message: t('feedback.created'), tone: 'success' });
-      // 创建成功后用系统浏览器打开正式羽点评审页，随后关闭本 modal。
-      const previewUrl = subtype === HTML_REVIEW_TYPE
-        ? buildHtmlReviewUrl(manuscriptId)
-        : buildManuscriptPreviewUrl(subtype, manuscriptId);
-      if (previewUrl && aliveRef.current) {
-        const launchUrl = await resolveUedroLaunchUrl(previewUrl);
-        if (launchUrl) await openExternalUrl(launchUrl);
-      }
-      if (aliveRef.current) onClose();
+      await finishCreatedReview(manuscriptId, subtype);
     } catch (err: any) {
       if (!aliveRef.current) return;
       notifyToast({ message: userFacingError(err, t, 'feedback.saveFailed'), tone: 'error' });
@@ -1575,11 +1641,15 @@ export function ReviewAddModal({
             </button>
          </div>
       </div>
-        {(submitting || exporting) && (
+        {(submitting || exporting || probing) && (
           <div className={styles.loadingOverlay}>
             <span className={styles.loadingSpinner} />
             <span className={styles.loadingText}>
-              {exporting ? '生成评审稿中…' : '提交中…'}
+              {exporting
+                ? '生成评审稿中…'
+                : submitting
+                  ? '提交中…'
+                  : '正在校验评审单…'}
             </span>
           </div>
         )}

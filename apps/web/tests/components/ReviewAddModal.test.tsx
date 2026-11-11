@@ -141,6 +141,91 @@ describe('HTML review creation', () => {
     expect(exportProjectAsAxureZip).not.toHaveBeenCalled();
   });
 
+  it('绑定评审单时带上项目 workspace 身份，避免 400 WORKSPACE_CONTEXT_REQUIRED', async () => {
+    vi.mocked(exportProjectAsHtmlReviewZip).mockResolvedValue({
+      ok: true,
+      blob: new Blob(['ZIP'], { type: 'application/zip' }),
+      zipName: '可视化页面',
+    });
+    const requests: Array<{ url: string; init?: RequestInit }> = [];
+    const putHeaders: Record<string, string>[] = [];
+    // 项目所属空间里的 member id 与 UI 当前上下文的 member id 不同：
+    // 绑定必须用 workspace-scope 解析出的那个，否则写权限校验会拒。
+    const projectContext = {
+      workspaceId: 'ws-team',
+      workspaceType: 'team',
+      workspaceMemberId: 'member-in-project-workspace',
+      role: 'owner',
+      lifecycleState: 'active',
+      memberStatus: 'active',
+      permissions: { canShareProjects: true, canWriteSyncedFiles: true },
+    };
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      const path = String(url);
+      const method = String(init?.method ?? 'GET').toUpperCase();
+      requests.push({ url: path, init });
+      if (path.endsWith('/api/projects/project-7/workspace-scope')) {
+        return { ok: true, json: async () => ({ scope: { kind: 'team', context: projectContext } }) };
+      }
+      if (path.endsWith('/api/projects/project-7/uedro-review')) {
+        if (method === 'PUT') {
+          putHeaders.push(init?.headers as Record<string, string>);
+          return {
+            ok: true,
+            json: async () => ({
+              projectId: 'project-7',
+              uedroReviewId: 'review-project-1',
+              localSaved: true,
+              remoteSaved: true,
+            }),
+          };
+        }
+        return { ok: true, json: async () => ({ projectId: 'project-7', uedroReviewId: null }) };
+      }
+      if (path.endsWith('/uploadManuscript')) {
+        return { ok: true, json: async () => ({ ok: true, data: { manuscriptId: 'html-project-1', reviewType: '12' } }) };
+      }
+      if (path.endsWith('/reviewAddition')) {
+        return { ok: true, json: async () => ({ ok: true, data: 'review-project-1' }) };
+      }
+      throw new Error('Unexpected request: ' + path);
+    }));
+
+    render(
+      <ReviewAddModal
+        open
+        onClose={() => {}}
+        projectId="project-7"
+        entryFile="screens/main.html"
+        workspaceContext={{
+          workspaceId: 'ws-personal',
+          workspaceType: 'personal',
+          workspaceMemberId: 'member-ui',
+          role: 'owner',
+          lifecycleState: 'active',
+          memberStatus: 'active',
+          permissions: { canShareProjects: true, canWriteSyncedFiles: true },
+        } as never}
+      />,
+    );
+    fireEvent.change(screen.getByPlaceholderText('请输入评审名称'), { target: { value: '带工作区身份的评审' } });
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: '12' } });
+    fireEvent.click(screen.getByRole('button', { name: '请输入名称（评审组长）' }));
+    fireEvent.click(screen.getByRole('button', { name: '请输入名称（作者）' }));
+    fireEvent.click(screen.getByRole('button', { name: '请输入名称（核心评委）' }));
+    fireEvent.click(screen.getByRole('button', { name: '确定' }));
+
+    await waitFor(() => expect(putHeaders).toHaveLength(1));
+    expect(putHeaders[0]).toMatchObject({
+      'x-od-workspace-id': 'ws-team',
+      'x-od-workspace-type': 'team',
+      'x-od-workspace-member-id': 'member-in-project-workspace',
+      'Content-Type': 'application/json',
+    });
+    // 解析身份用的是 workspace-scope（项目自己的空间），不是 UI 上下文。
+    expect(requests.some((r) => r.url.endsWith('/api/projects/project-7/workspace-scope'))).toBe(true);
+  });
+
   it('新建评审后云端同步失败（remoteSaved=false）时不关闭、不提示成功', async () => {
     vi.mocked(exportProjectAsHtmlReviewZip).mockResolvedValue({
       ok: true,
@@ -197,6 +282,7 @@ describe('HTML review creation', () => {
     expect(onClose).not.toHaveBeenCalled();
     expect(resolveUedroLaunchUrl).not.toHaveBeenCalled();
   });
+
   it('supports H5 carrier and dimensions when uploading an HTML ZIP', async () => {
     let uploadBody: FormData | null = null;
     vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
@@ -611,4 +697,35 @@ describe('新建/更新评审模式', () => {
     expect(requests.some((r) => r.url.endsWith('/reviewAddition'))).toBe(false);
     await waitFor(() => expect(onClose).toHaveBeenCalled());
   });
+
+  it('校验评审单是否存在时显示 loading', async () => {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => { release = () => resolve(); });
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      const path = String(url);
+      if (path.endsWith('/uedro-review')) {
+        // 悬住绑定查询，让"校验中"状态可观测。
+        await gate;
+        return { ok: true, json: async () => ({ projectId: 'project-1', uedroReviewId: null }) };
+      }
+      if (path.endsWith('/api/hik/uedro/userList')) {
+        return { ok: true, json: async () => ({ ok: true, data: { list: [] } }) };
+      }
+      throw new Error('Unexpected request: ' + path);
+    }));
+
+    render(<ReviewAddModal open onClose={() => {}} projectId="project-1" />);
+    // 探测完成前：整表单 loading 遮罩，两个更新模式都不可选。
+    expect(screen.getByText('正在校验评审单…')).toBeTruthy();
+    expect(
+      screen.getByText('正在校验评审单…').closest('[class*="loadingOverlay"]'),
+    ).toBeTruthy();
+    expect((screen.getByLabelText('更新评审稿') as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByLabelText('更新评审信息') as HTMLInputElement).disabled).toBe(true);
+
+    release();
+    await waitFor(() => expect(screen.queryByText('正在校验评审单…')).toBeNull());
+    expect(screen.getByText('当前项目还没有评审单，只能新建评审')).toBeTruthy();
+  });
 });
+
