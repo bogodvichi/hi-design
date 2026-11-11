@@ -2,6 +2,9 @@ import { DEFAULT_MODEL_OPTION, clampCodexReasoning } from './shared.js';
 import type { RuntimeContext, RuntimeModelOption } from '../types.js';
 import type { RuntimeAgentDef } from '../types.js';
 
+export const CODEX_PROJECT_CONTEXT_VERSION = 'codex-project-root-v1';
+export const CODEX_PROJECT_ROOT_ARGS = ['-c', 'project_root_markers=[]'] as const;
+
 function parseCodexStringList(raw: unknown): string[] | undefined {
   if (!Array.isArray(raw)) return undefined;
   const values = raw
@@ -156,6 +159,7 @@ const CODEX_SHELL_ENVIRONMENT_INCLUDE_KEYS = [
   'OD_PROJECT_ID',
   'OD_PROJECT_DIR',
   'OD_TASK_INPUT_DIR',
+  'GIT_CEILING_DIRECTORIES',
 ] as const;
 
 export function codexOpenDesignShellEnvironmentArgs(): string[] {
@@ -339,6 +343,8 @@ export const codexAgentDef = {
         : ['exec', '--json', '--skip-git-repo-check', ...sandboxArgs];
       // Keep this inside exec/resume: a root-level -c is validated by newer
       // Codex CLIs but does not reliably reach their embedded runtime.
+      args.push('-c', 'analytics.enabled=false');
+      args.push(...CODEX_PROJECT_ROOT_ARGS);
       if (runtimeContext.codexModelCatalogPath) {
         args.push('-c', `model_catalog_json=${JSON.stringify(runtimeContext.codexModelCatalogPath)}`);
       }

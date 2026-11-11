@@ -509,6 +509,7 @@ export type NativeSessionContinuationMode =
 export type NativeSessionRecoveryReason =
   | 'model_changed'
   | 'cwd_changed'
+  | 'context_changed'
   | 'conversation_advanced'
   | 'missing_cursor'
   | 'resume_failed'

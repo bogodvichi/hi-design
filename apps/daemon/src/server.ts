@@ -352,6 +352,7 @@ import {
   shutdownCodexAppServers,
 } from './runtimes/codex-app-server.js';
 import {
+  CODEX_PROJECT_CONTEXT_VERSION,
   codexNeedsDangerFullAccessSandbox,
   codexOpenDesignShellEnvironmentArgs,
 } from './runtimes/defs/codex.js';
@@ -11058,6 +11059,9 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
       let chatMeta = null;
       try {
         const chatProject = getProject(db, projectId);
+        if (def.id === 'codex' && !chatProject) {
+          return failRun('NOT_FOUND', 'Project not found.');
+        }
         chatMeta = chatProject?.metadata ?? null;
         // ensureProject/resolveProjectDir now resolve external baseDir folders
         // internally (and assertSandboxProjectRootAvailable rejects imported
@@ -11068,6 +11072,12 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
       } catch (err) {
         if (err instanceof SandboxImportedProjectError) {
           return failRun('BAD_REQUEST', err.message);
+        }
+        if (def.id === 'codex') {
+          return failRun(
+            'AGENT_EXECUTION_FAILED',
+            `Could not prepare the user project directory: ${err instanceof Error ? err.message : String(err)}`,
+          );
         }
         cwd = null;
       }
@@ -11091,6 +11101,10 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
       }
     }
     if (run.cancelRequested || design.runs.isTerminal(run.status)) return;
+
+    if (def.id === 'codex' && !cwd) {
+      return failRun('BAD_REQUEST', 'Codex runs require a user project directory.');
+    }
 
     // Sanitise supplied image paths: must live under UPLOAD_DIR and stay
     // below the prompt-image safety cap.
@@ -11596,6 +11610,7 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
     // no-project runs (packaged daemons / service launches do not start
     // their working directory from the workspace root).
     const effectiveCwd = cwd ?? PROJECT_ROOT;
+    const agentContextVersion = def.id === 'codex' ? CODEX_PROJECT_CONTEXT_VERSION : null;
     // Start the project-artifact baseline immediately, but do not block the
     // prompt/session/MCP/runtime preparation that follows. We join this promise
     // immediately before the agent can execute, preserving the exact "before"
@@ -11907,6 +11922,7 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
             agentId: def.id,
             currentModel: safeModel ?? null,
             currentCwd: effectiveCwd,
+            currentContextVersion: agentContextVersion,
             currentAssistantMessageId: run.assistantMessageId ?? null,
           })
         : { storedSessionId: null as string | null, resumeSessionId: null as string | null, newSessionId: undefined as string | undefined, isResuming: false, storedStablePromptHash: null as string | null, storedStableSections: null as StableSectionHashes | null, invalidationReason: null };
@@ -12677,6 +12693,7 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
           conversationId: run.conversationId,
           agentId: def.id,
           sessionId: liveSessionId,
+          contextVersion: agentContextVersion,
           stablePromptHash: currentStableHash,
           stablePromptSections: currentStableSectionsJson,
           model: safeModel ?? null,
@@ -12787,6 +12804,7 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
           conversationId: run.conversationId,
           agentId: def.id,
           sessionId: liveSessionId,
+          contextVersion: agentContextVersion,
           stablePromptHash: currentStableHash,
           stablePromptSections: currentStableSectionsJson,
           model: safeModel ?? null,
@@ -13498,6 +13516,7 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
             conversationId: run.conversationId,
             agentId: def.id,
             sessionId: createTurnSessionId,
+            contextVersion: agentContextVersion,
             stablePromptHash: currentStableHash,
             stablePromptSections: currentStableSectionsJson,
             model: safeModel ?? null,
@@ -13525,6 +13544,7 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
             conversationId: run.conversationId,
             agentId: def.id,
             sessionId: agentResumeCtx.resumeSessionId,
+            contextVersion: agentContextVersion,
             stablePromptHash: currentStableHash,
             stablePromptSections: currentStableSectionsJson,
             model: safeModel ?? null,
@@ -14061,6 +14081,9 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
           ? { OD_TASK_INPUT_DIR: odNextTaskInputSnapshot.projectionDir }
           : {}),
       }, agentLaunch);
+      if (def.id === 'codex') {
+        env.GIT_CEILING_DIRECTORIES = path.dirname(effectiveCwd);
+      }
       spawnedAgentEnv = env;
       lifecycle.mark('launch_preflight_end');
       lifecycle.mark('process_spawn_start');

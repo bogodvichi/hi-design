@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import { PassThrough, Writable } from 'node:stream';
+import { CODEX_PROJECT_ROOT_ARGS } from './defs/codex.js';
 
 type JsonRecord = Record<string, unknown>;
 type AppServerMessage = JsonRecord & {
@@ -248,7 +249,12 @@ export class CodexAppServerManager extends EventEmitter {
     this.initialized = new Promise<void>((resolve, reject) => {
       let proc: ChildProcessWithoutNullStreams;
       try {
-        proc = this.spawnImpl(this.command, [...this.startupConfigArgs, 'app-server', '--stdio'], {
+        proc = this.spawnImpl(this.command, [
+          ...this.startupConfigArgs,
+          ...CODEX_PROJECT_ROOT_ARGS,
+          '-c', 'analytics.enabled=false',
+          'app-server', '--stdio',
+        ], {
           env: this.sanitizedEnv,
           stdio: ['pipe', 'pipe', 'pipe'],
           shell: false,

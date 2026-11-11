@@ -169,6 +169,7 @@ export function resolveAgentResumeContext(
     agentId: string;
     currentModel?: string | null;
     currentCwd?: string | null;
+    currentContextVersion?: string | null;
     /** The current run's in-flight assistant placeholder id, excluded from the
      *  "latest completed assistant" cursor lookup. */
     currentAssistantMessageId?: string | null;
@@ -176,6 +177,15 @@ export function resolveAgentResumeContext(
 ): AgentResumeContext {
   const record = getAgentSessionRecord(db, input.conversationId, input.agentId);
   const storedSessionId = record?.sessionId ?? null;
+  const storedContext = storedSessionId && input.currentContextVersion
+    ? db.prepare(
+        'SELECT context_version FROM agent_sessions WHERE conversation_id = ? AND agent_id = ?',
+      ).get(input.conversationId, input.agentId) as { context_version: string | null } | undefined
+    : null;
+  const contextInvalidation: ResumeInvalidationReason | null =
+    input.currentContextVersion && storedContext?.context_version !== input.currentContextVersion
+      ? 'context_changed'
+      : null;
   const invalidationReason =
     storedSessionId != null
       ? evaluateResumeInvalidation({
@@ -194,7 +204,7 @@ export function resolveAgentResumeContext(
             input.currentAssistantMessageId ?? '',
             record?.lastMessageId ?? null,
           ),
-        })
+        }) ?? contextInvalidation
       : null;
   const resumable = storedSessionId != null && invalidationReason == null;
   return {

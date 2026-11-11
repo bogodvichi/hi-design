@@ -200,6 +200,7 @@ function migrate(db: SqliteDb): void {
       -- is behind and we reseed the full transcript.
       model           TEXT,
       cwd             TEXT,
+      context_version TEXT,
       last_message_id TEXT,
       updated_at      INTEGER NOT NULL,
       PRIMARY KEY (conversation_id, agent_id),
@@ -597,6 +598,10 @@ function migrate(db: SqliteDb): void {
     db.exec(`ALTER TABLE routines ADD COLUMN context_json TEXT`);
   }
   const agentSessionCols = db.prepare(`PRAGMA table_info(agent_sessions)`).all() as DbRow[];
+  // Legacy native contexts are reseeded once when the project-root policy changes.
+  if (agentSessionCols.length > 0 && !agentSessionCols.some((c: DbRow) => c.name === 'context_version')) {
+    db.exec(`ALTER TABLE agent_sessions ADD COLUMN context_version TEXT`);
+  }
   if (agentSessionCols.length > 0 && !agentSessionCols.some((c: DbRow) => c.name === 'stable_prompt_hash')) {
     db.exec(`ALTER TABLE agent_sessions ADD COLUMN stable_prompt_hash TEXT`);
   }
@@ -3168,20 +3173,22 @@ export function upsertAgentSession(
     stablePromptSections?: string | null;
     model?: string | null;
     cwd?: string | null;
+    contextVersion?: string | null;
     lastMessageId?: string | null;
   },
 ): void {
   db.prepare(
     `INSERT INTO agent_sessions
        (conversation_id, agent_id, session_id, stable_prompt_hash, stable_prompt_sections,
-        model, cwd, last_message_id, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        model, cwd, context_version, last_message_id, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(conversation_id, agent_id)
        DO UPDATE SET session_id = excluded.session_id,
                      stable_prompt_hash = excluded.stable_prompt_hash,
                      stable_prompt_sections = excluded.stable_prompt_sections,
                      model = excluded.model,
                      cwd = excluded.cwd,
+                     context_version = excluded.context_version,
                      last_message_id = excluded.last_message_id,
                      updated_at = excluded.updated_at`,
   ).run(
@@ -3192,6 +3199,7 @@ export function upsertAgentSession(
     input.stablePromptSections ?? null,
     input.model ?? null,
     input.cwd ?? null,
+    input.contextVersion ?? null,
     input.lastMessageId ?? null,
     Date.now(),
   );

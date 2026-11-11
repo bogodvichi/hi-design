@@ -46,6 +46,7 @@ export type AgentSessionHandleVisibility =
 export const AGENT_SESSION_INVALIDATION_REASONS = [
   'model_changed',
   'cwd_changed',
+  'context_changed',
   'conversation_advanced',
   'missing_cursor',
 ] as const;

@@ -346,7 +346,8 @@ async function hasMacManagedConfigPreference(
         `${String(result.stdout || '')}\n${String(result.stderr || '')}`.trim(),
       );
     } catch (error) {
-      const probed = error as NodeJS.ErrnoException & {
+      const probed = error as Error & {
+        code?: number | string;
         stdout?: unknown;
         stderr?: unknown;
       };
@@ -357,7 +358,10 @@ async function hasMacManagedConfigPreference(
       ].join('\n');
       // `defaults` uses exit 1 for a definitely absent domain/key. Any other
       // failure is an uncertain enterprise boundary and must fail open.
-      return !/domain\/default pair .* does not exist/i.test(text);
+      return probed.code !== 1 || !(
+        /domain\/default pair .* does not exist/i.test(text)
+        || /could not find key 'config_toml_base64' in domain 'com\.openai\.codex'/i.test(text)
+      );
     }
   })();
   return macManagedConfigProbe;
