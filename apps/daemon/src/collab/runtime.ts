@@ -148,6 +148,12 @@ export interface CreateCollabRuntimeOptions {
   resolvePullDir?: (projectId: string) => string | Promise<string>;
   /** Resource-index metadata for team project discovery/cards. */
   describeProject?: (projectId: string) => Record<string, unknown> | null | Promise<Record<string, unknown> | null>;
+  /**
+   * The project's uedro (羽点) review binding from the LOCAL `workspace_projects`
+   * row. Team catalog upserts carry it so a personal → team / cross-workspace
+   * move never drops the binding on HDW. Returns null when unbound.
+   */
+  getProjectUedroReviewId?: (projectId: string) => string | null;
   /** Workspace-context provider. Defaults to a dev provider until wired to an identity source. */
   workspaceContext?: WorkspaceContextProvider;
   /** Team-resource state provider. Defaults to a dev provider until wired to the hub. */
@@ -401,6 +407,10 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
     const displayName = typeof descriptor?.name === 'string'
       ? descriptor.name.trim()
       : '';
+    // Team-project upserts double as the publish step of a personal → team
+    // move, so the review binding must travel with them. Only a non-empty
+    // value is sent: `null` here would clear a binding another member set.
+    const uedroReviewId = options.getProjectUedroReviewId?.(projectId) ?? null;
     const principals = principal ? [principal] : principalsForProject(projectId);
     const fallbackPrincipal = await getProjectPrincipal(projectId);
     const targets = principals.length > 0
@@ -419,6 +429,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
           ...(descriptor ? { metadata: descriptor } : {}),
           ...(coverDigest !== undefined ? { coverDigest } : {}),
           ...(folderId !== undefined ? { folderId } : {}),
+          ...(uedroReviewId ? { uedroReviewId } : {}),
         },
         target,
       );

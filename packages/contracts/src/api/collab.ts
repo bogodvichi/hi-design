@@ -209,6 +209,8 @@ export interface TeamProject {
    *  Stored on the team_projects.cover_digest column; used to render project
    *  cards without pulling the full project tree. */
   coverDigest?: string | null;
+  /** Uedro review bound to the remote team project, if one has started. */
+  uedroReviewId?: string | null;
 }
 
 /**

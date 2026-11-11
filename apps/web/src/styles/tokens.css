@@ -41,6 +41,8 @@
   --text-soft: #848484;
   --text-faint: #bdbdbd;
 
+  --info: #2e6fe8;
+
   --accent: #353535;
   --accent-contrast: #fafafa;
   --accent-strong: #202020;
@@ -161,6 +163,8 @@
   --text-soft: #848484;
   --text-faint: #5c5c5c;
 
+  --info: #8ab4ff;
+
   --accent: #ededed;
   --accent-contrast: #202020;
   --accent-strong: #fafafa;
@@ -221,6 +225,8 @@
     --text-muted: #bdbdbd;
     --text-soft: #848484;
     --text-faint: #5c5c5c;
+
+    --info: #8ab4ff;
 
     --accent: #ededed;
     --accent-contrast: #202020;

@@ -594,6 +594,10 @@ export interface HdwTeamProjectRecord {
  ownerDisplayName?: string | null;
   /** SHA-256 digest of the project's entry screenshot blob. */
   coverDigest?: string | null;
+  /** Uedro review id bound to this team project, if one has started. The
+   *  HDW backend may return this as `uedro_review_id` (snake_case). */
+  uedroReviewId?: string | null;
+  uedro_review_id?: string | null;
 }
 
 export interface HdwUpsertTeamProjectInput {
@@ -605,6 +609,7 @@ export interface HdwUpsertTeamProjectInput {
   ownerMemberId?: string;
   folderId?: string | null;
   coverDigest?: string | null;
+  uedroReviewId?: string | null;
 }
 
 export interface HdwTransferResult {

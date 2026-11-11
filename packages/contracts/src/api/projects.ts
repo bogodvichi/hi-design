@@ -412,6 +412,8 @@ createdByWorkspaceMemberId?: string | null;
    *  the card cover renders a single cached <img> instead of probing and
    *  loading the entry HTML file in an iframe. */
   coverDigest?: string | null;
+  /** Uedro review bound to this project, if the project has started one. */
+  uedroReviewId?: string | null;
 }
 
 export interface ProjectTemplate {
@@ -693,6 +695,28 @@ export interface WorkspaceProjectSummary {
   /** SHA-256 digest of the project's entry screenshot blob. Mirrors the
    *  nested project's coverDigest so a client can read it without unwrapping. */
   coverDigest?: string | null;
+  /** Uedro review bound to this project, if the project has started one. */
+  uedroReviewId?: string | null;
+}
+
+/** GET /api/projects/:id/uedro-review. */
+export interface GetUedroReviewResponse {
+  projectId: string;
+  uedroReviewId: string | null;
+}
+
+/** PUT /api/projects/:id/uedro-review request. */
+export interface SetUedroReviewRequest {
+  uedroReviewId: string | null;
+}
+
+/** PUT /api/projects/:id/uedro-review response. */
+export interface SetUedroReviewResponse {
+  projectId: string;
+  uedroReviewId: string | null;
+  localSaved: boolean;
+  /** Null means no HDW cloud client is configured for this run. */
+  remoteSaved: boolean | null;
 }
 
 /** ApiError.details when ownership transferred but the folder write failed. */

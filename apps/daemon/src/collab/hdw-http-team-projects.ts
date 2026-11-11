@@ -26,6 +26,10 @@ function toTeamProject(record: HdwTeamProjectRecord): TeamProject | null {
   // The HDW backend may return it as either camelCase or snake_case.
   const folderId = record.folderId ?? record.folder_id ?? null;
   project.folderId = folderId;
+  const uedroReviewId = record.uedroReviewId ?? record.uedro_review_id ?? null;
+  if (uedroReviewId) {
+    project.uedroReviewId = uedroReviewId;
+  }
   if (record.ownerDisplayName?.trim()) {
     project.ownerDisplayName = record.ownerDisplayName.trim();
   }
@@ -95,6 +99,8 @@ function toVelaTeamProjectRecord(
     syncState: toVelaSyncState(record.syncState),
     lastSyncedVersionId: record.lastSyncedVersionId,
     coverDigest: record.coverDigest ?? null,
+    uedroReviewId:
+      record.uedroReviewId ?? record.uedro_review_id ?? null,
     createdAt: record.createdAt,
     originProjectUpdatedAt,
     updatedAt: record.updatedAt,
@@ -146,6 +152,9 @@ export function createHdwHttpTeamProjectCatalog(
       ...(principal?.memberId ? { ownerMemberId: principal.memberId } : {}),
       ...(input.folderId !== undefined ? { folderId: input.folderId } : {}),
       ...(input.coverDigest !== undefined ? { coverDigest: input.coverDigest } : {}),
+      ...(input.uedroReviewId !== undefined
+        ? { uedroReviewId: input.uedroReviewId }
+        : {}),
     });
     },
 
@@ -189,6 +198,9 @@ export function createHdwHttpTeamProjectCatalogClient(
       ...(principal.memberId ? { ownerMemberId: principal.memberId } : {}),
       ...(input.folderId !== undefined ? { folderId: input.folderId } : {}),
       ...(input.coverDigest !== undefined ? { coverDigest: input.coverDigest } : {}),
+      ...(input.uedroReviewId !== undefined
+        ? { uedroReviewId: input.uedroReviewId }
+        : {}),
     });
       if (!record) return null;
       return toVelaTeamProjectRecord(record);

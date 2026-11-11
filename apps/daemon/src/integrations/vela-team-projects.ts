@@ -20,6 +20,8 @@ export interface VelaTeamProjectRecord {
   /** SHA-256 digest of the project's entry screenshot. Persisted on
    *  team_projects.cover_digest; null when no cover has been captured. */
   coverDigest: string | null;
+  /** Uedro review id bound to this team project, if one has started. */
+  uedroReviewId: string | null;
  /** Owner-origin project timestamp from the catalog row's metadata. This is
    * distinct from `updatedAt`, which is the catalog row revision time and may
    * be restamped by a delayed retry. */
@@ -41,6 +43,7 @@ export interface UpsertVelaTeamProjectInput {
  lastSyncedVersionId?: string | null;
  folderId?: string | null;
   coverDigest?: string | null;
+  uedroReviewId?: string | null;
 }
 
 export interface VelaTeamProjectCatalogClient {

@@ -281,6 +281,7 @@ CREATE TABLE public.team_projects (
     sync_state text NOT NULL DEFAULT 'pending_upload'::text,
     last_synced_version_id text,
     metadata jsonb,
+    uedro_review_id text,
     created_at timestamp with time zone NOT NULL DEFAULT now(),
     updated_at timestamp with time zone NOT NULL DEFAULT now(),
     cover_digest text,

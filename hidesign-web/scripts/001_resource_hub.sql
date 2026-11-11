@@ -108,10 +108,13 @@ CREATE TABLE IF NOT EXISTS team_projects (
                             CHECK (sync_state IN ('pending_upload', 'syncing', 'synced', 'failed')),
     last_synced_version_id  TEXT REFERENCES resource_versions(id),
     metadata                JSONB,
+    uedro_review_id         TEXT,
     created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE(workspace_id, project_id)
 );
+-- Older installs predate this column; add it idempotently.
+ALTER TABLE team_projects ADD COLUMN IF NOT EXISTS uedro_review_id TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_team_projects_workspace
     ON team_projects(workspace_id, updated_at DESC);

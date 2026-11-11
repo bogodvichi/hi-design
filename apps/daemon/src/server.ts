@@ -3842,6 +3842,12 @@ export async function startServer({
     },
     resolvePullDir: (projectId) => resolveProjectDir(PROJECTS_DIR, projectId),
    describeProject: describeCollabProject,
+   // The uedro (羽点) review binding lives on the local `workspace_projects`
+   // row. Team catalog upserts carry it, so publishing a personal project into
+   // an HDW workspace (shared space / another team) keeps `uedro_review_id` in
+   // the remote team_projects row instead of dropping it on the way out.
+   getProjectUedroReviewId: (projectId: string) =>
+     getWorkspaceProjectByProjectId(db, projectId)?.uedroReviewId ?? null,
    ...((hdwTeamProjectCatalog ?? velaCliTeamProjectCatalog)
      ? { teamProjectCatalog: (hdwTeamProjectCatalog ?? velaCliTeamProjectCatalog)! }
      : {}),

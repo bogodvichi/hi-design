@@ -139,8 +139,21 @@
   color: #d14343;
 }
 .itemHint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--info, #3b82f6);
+}
+.itemHint::before {
+  content: '';
+  flex: none;
+  width: 14px;
+  height: 14px;
+  /* 内联 info 图标：圆圈 + i。 */
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='none' stroke='black' stroke-width='1.5'/%3E%3Crect x='7.25' y='6.5' width='1.5' height='5' rx='0.75'/%3E%3Ccircle cx='8' cy='4.4' r='0.9'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='none' stroke='black' stroke-width='1.5'/%3E%3Crect x='7.25' y='6.5' width='1.5' height='5' rx='0.75'/%3E%3Ccircle cx='8' cy='4.4' r='0.9'/%3E%3C/svg%3E") center / contain no-repeat;
+  background: currentColor;
 }
 .itemControl {
   flex: 1 1 auto;
@@ -244,6 +257,38 @@
 .select {
   cursor: pointer;
   appearance: none;
+}
+
+/* 禁用 / 只读：用淡色底 + 弱化文字，让"不可编辑"一眼可见。 */
+.input:disabled,
+.textarea:disabled,
+.select:disabled,
+.input[readonly],
+.textarea[readonly] {
+  background: var(--bg-subtle);
+  border-color: var(--border);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  /* 覆盖浏览器默认的灰化，避免文字被冲淡到看不清。 */
+  opacity: 1;
+  -webkit-text-fill-color: var(--text-muted);
+}
+/* 只读但仍可聚焦/选中的场景不需要禁止光标。 */
+.input[readonly]:not(:disabled),
+.textarea[readonly]:not(:disabled) {
+  cursor: default;
+}
+.input:disabled::placeholder,
+.textarea:disabled::placeholder {
+  color: var(--text-muted);
+}
+/* 整行单选被禁用时，文字同步弱化。 */
+.radio:has(> input:disabled) {
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+.radio input:disabled {
+  cursor: not-allowed;
 }
 
 /* ── autocomplete 下拉：项目 / 人员 ── */

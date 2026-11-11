@@ -162,6 +162,12 @@ class TeamProjectController extends Controller {
       if (body.metadata) mergeObj.metadata = JSON.stringify(body.metadata);
       if (body.folderId !== undefined) mergeObj.folder_id = body.folderId;
       if (body.coverDigest !== undefined) mergeObj.cover_digest = body.coverDigest;
+      // uedro_review_id: undefined means "not provided" — never clear an
+      // existing value; an explicit null clears it.
+      const uedroReviewId = body.uedroReviewId !== undefined
+        ? body.uedroReviewId
+        : body.uedro_review_id;
+      if (uedroReviewId !== undefined) mergeObj.uedro_review_id = uedroReviewId;
 
       const row = await k('team_projects')
         .insert({
@@ -176,6 +182,7 @@ class TeamProjectController extends Controller {
           last_synced_version_id: body.lastSyncedVersionId || null,
           metadata: body.metadata ? JSON.stringify(body.metadata) : null,
           folder_id: body.folderId !== undefined ? body.folderId : null,
+          uedro_review_id: uedroReviewId !== undefined ? uedroReviewId : null,
         })
         .onConflict(['workspace_id', 'project_id'])
         .merge(mergeObj)
@@ -291,6 +298,7 @@ class TeamProjectController extends Controller {
         .select(
           'tp.id', 'tp.resource_id', 'tp.owner_member_id', 'tp.display_name',
           'tp.sync_state', 'tp.last_synced_version_id', 'tp.metadata', 'tp.cover_digest',
+          'tp.uedro_review_id',
           'r.kind', 'r.metadata as resource_metadata'
         )
         .first();
@@ -390,6 +398,7 @@ class TeamProjectController extends Controller {
           sync_state: 'synced',
           last_synced_version_id: targetVersionId,
           metadata: source.metadata,
+          uedro_review_id: source.uedro_review_id,
         });
 
         // 7. Soft-delete source resource.
@@ -473,6 +482,7 @@ class TeamProjectController extends Controller {
       syncState: row.sync_state,
       lastSyncedVersionId: row.last_synced_version_id || null,
       folderId: row.folder_id || null,
+      uedroReviewId: row.uedro_review_id || null,
       createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at),
       updatedAt: row.updated_at instanceof Date ? row.updated_at.toISOString() : String(row.updated_at),
       access,

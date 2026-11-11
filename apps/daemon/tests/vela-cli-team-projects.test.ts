@@ -270,6 +270,7 @@ describe('Vela CLI team-project catalog adapter', () => {
             frozen: false,
           },
           coverDigest: null,
+          uedroReviewId: null,
         }));
       },
       upsert: async (input) => {

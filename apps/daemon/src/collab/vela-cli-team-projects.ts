@@ -41,6 +41,7 @@ export interface VelaTeamProjectCatalog {
     metadata?: Record<string, unknown> | null;
     folderId?: string | null;
     coverDigest?: string | null;
+    uedroReviewId?: string | null;
   }, principal?: ResourceHubPrincipal | null): Promise<void>;
   remove(projectId: string, principal?: ResourceHubPrincipal | null): Promise<void>;
 }
@@ -68,6 +69,8 @@ type TeamProjectWire = {
   createdAt?: unknown;
   updatedAt?: unknown;
   coverDigest?: unknown;
+  uedroReviewId?: unknown;
+  uedro_review_id?: unknown;
 };
 
 type TeamProjectsListWire = {
@@ -453,6 +456,12 @@ function toVelaTeamProjectRecord(input: unknown): VelaTeamProjectRecord | null {
       frozen: access.frozen ?? false,
     },
     coverDigest: typeof record.coverDigest === 'string' ? record.coverDigest : null,
+    uedroReviewId:
+      typeof record.uedroReviewId === 'string'
+        ? record.uedroReviewId
+        : typeof record.uedro_review_id === 'string'
+          ? record.uedro_review_id
+          : null,
   };
 }
 
@@ -625,6 +634,7 @@ function toFallbackVelaTeamProjectRecord(
       frozen: false,
     },
     coverDigest: null,
+    uedroReviewId: null,
   };
 }
 

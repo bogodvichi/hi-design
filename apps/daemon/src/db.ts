@@ -94,7 +94,9 @@ function migrate(db: SqliteDb): void {
       resource_hub_resource_id TEXT,
       cloud_tombstoned_at INTEGER,
       sync_state TEXT,
+      folder_id TEXT,
       metadata_refresh_pending INTEGER NOT NULL DEFAULT 0,
+      uedro_review_id TEXT,
       version INTEGER NOT NULL DEFAULT 1,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
@@ -425,6 +427,9 @@ function migrate(db: SqliteDb): void {
   if (!workspaceProjectCols.some((c: DbRow) => c.name === 'cloud_tombstoned_at')) {
     db.exec(`ALTER TABLE workspace_projects ADD COLUMN cloud_tombstoned_at INTEGER`);
   }
+  if (!workspaceProjectCols.some((c: DbRow) => c.name === 'uedro_review_id')) {
+    db.exec(`ALTER TABLE workspace_projects ADD COLUMN uedro_review_id TEXT`);
+  }
   migrateWorkspaceProjectsSingleHome(db);
   const migratedWorkspaceProjectCols = db
     .prepare(`PRAGMA table_info(workspace_projects)`)
@@ -705,6 +710,32 @@ function migrateWorkspaceProjectsSingleHome(db: SqliteDb): void {
   const projectPk = cols.find((c: DbRow) => c.name === 'project_id')?.pk ?? 0;
   const workspacePk = cols.find((c: DbRow) => c.name === 'workspace_id')?.pk ?? 0;
   if (projectPk === 1 && workspacePk === 0) return;
+  const hasMetadataRefreshPending = cols.some(
+    (c: DbRow) => c.name === 'metadata_refresh_pending',
+  );
+  const hasUedroReviewId = cols.some((c: DbRow) => c.name === 'uedro_review_id');
+  const hasFolderId = cols.some((c: DbRow) => c.name === 'folder_id');
+  const metadataRefreshPendingSelect = hasMetadataRefreshPending
+    ? 'COALESCE(metadata_refresh_pending, 0)'
+    : '0';
+  const copiedColumnNames = [
+    'sync_state',
+    'metadata_refresh_pending',
+    'version',
+    'created_at',
+    'updated_at',
+    ...(hasUedroReviewId ? ['uedro_review_id'] : []),
+    ...(hasFolderId ? ['folder_id'] : []),
+  ];
+  const copiedSelectExpressions = [
+    'sync_state',
+    metadataRefreshPendingSelect,
+    'version',
+    'created_at',
+    'updated_at',
+    ...(hasUedroReviewId ? ['uedro_review_id'] : []),
+    ...(hasFolderId ? ['folder_id'] : []),
+  ];
 
   db.exec(`
     DROP INDEX IF EXISTS idx_workspace_projects_workspace_visibility;
@@ -719,7 +750,9 @@ function migrateWorkspaceProjectsSingleHome(db: SqliteDb): void {
       resource_hub_resource_id TEXT,
       cloud_tombstoned_at INTEGER,
       sync_state TEXT,
+      folder_id TEXT,
       metadata_refresh_pending INTEGER NOT NULL DEFAULT 0,
+      uedro_review_id TEXT,
       version INTEGER NOT NULL DEFAULT 1,
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
@@ -729,11 +762,11 @@ function migrateWorkspaceProjectsSingleHome(db: SqliteDb): void {
       (project_id, workspace_id, visibility, resource_state,
        created_by_workspace_member_id, updated_by_workspace_member_id,
        resource_hub_resource_id, cloud_tombstoned_at,
-       sync_state, version, created_at, updated_at)
+       ${copiedColumnNames.join(', ')})
     SELECT project_id, workspace_id, visibility, resource_state,
            created_by_workspace_member_id, updated_by_workspace_member_id,
            resource_hub_resource_id, cloud_tombstoned_at,
-           sync_state, version, created_at, updated_at
+           ${copiedSelectExpressions.join(', ')}
       FROM workspace_projects_legacy_multi_workspace;
     DROP TABLE workspace_projects_legacy_multi_workspace;
     CREATE INDEX IF NOT EXISTS idx_workspace_projects_workspace_visibility
@@ -1158,6 +1191,7 @@ export function getWorkspaceProject(db: SqliteDb, workspaceId: string, projectId
              sync_state AS syncState,
              version,
              folder_id AS folderId,
+             uedro_review_id AS uedroReviewId,
              created_at AS createdAt,
              updated_at AS updatedAt
         FROM workspace_projects
@@ -1191,6 +1225,7 @@ export function listWorkspaceProjects(db: SqliteDb, workspaceId: string) {
               wp.sync_state AS syncState,
              wp.version AS workspaceVersion,
              wp.folder_id AS folderId,
+             wp.uedro_review_id AS uedroReviewId,
              wp.created_at AS workspaceCreatedAt,
              wp.updated_at AS workspaceUpdatedAt
         FROM workspace_projects wp
@@ -1271,6 +1306,7 @@ export function getWorkspaceProjectByProjectId(db: SqliteDb, projectId: string) 
               sync_state AS syncState,
               version,
               folder_id AS folderId,
+              uedro_review_id AS uedroReviewId,
               created_at AS createdAt,
               updated_at AS updatedAt
          FROM workspace_projects
@@ -1347,8 +1383,8 @@ export function ensureWorkspaceProject(db: SqliteDb, input: DbRow) {
       (project_id, workspace_id, visibility, resource_state,
        created_by_workspace_member_id, updated_by_workspace_member_id,
        resource_hub_resource_id, cloud_tombstoned_at,
-       sync_state, version, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       sync_state, uedro_review_id, version, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
  ).run(
    input.projectId,
    input.workspaceId,
@@ -1359,6 +1395,7 @@ export function ensureWorkspaceProject(db: SqliteDb, input: DbRow) {
    input.resourceHubResourceId ?? null,
    input.cloudTombstonedAt ?? null,
    input.syncState ?? 'local_only',
+   input.uedroReviewId ?? null,
    input.version ?? 1,
    input.createdAt ?? now,
    insertedUpdatedAt,
@@ -1419,6 +1456,7 @@ export function updateWorkspaceProject(db: SqliteDb, workspaceId: string, projec
             resource_hub_resource_id = ?,
             cloud_tombstoned_at = ?,
             sync_state = ?,
+            uedro_review_id = ?,
             version = ?,
             updated_at = ?
       WHERE workspace_id = ? AND project_id = ?`,
@@ -1431,6 +1469,7 @@ export function updateWorkspaceProject(db: SqliteDb, workspaceId: string, projec
     next.resourceHubResourceId ?? null,
     next.cloudTombstonedAt ?? null,
     next.syncState ?? null,
+    next.uedroReviewId ?? null,
     next.version ?? 1,
     next.updatedAt,
     workspaceId,
@@ -1499,6 +1538,7 @@ export function rebindWorkspaceProject(db: SqliteDb, projectId: string, patch: D
             resource_hub_resource_id = ?,
             cloud_tombstoned_at = ?,
             sync_state = ?,
+            uedro_review_id = ?,
             version = ?,
             updated_at = ?
       WHERE project_id = ?`,
@@ -1511,6 +1551,7 @@ export function rebindWorkspaceProject(db: SqliteDb, projectId: string, patch: D
     next.resourceHubResourceId ?? null,
     next.cloudTombstonedAt ?? null,
     next.syncState ?? null,
+    next.uedroReviewId ?? null,
     next.version ?? 1,
     next.updatedAt,
     projectId,

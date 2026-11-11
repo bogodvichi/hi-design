@@ -358,6 +358,8 @@ export interface RegisterProjectRoutesDeps extends RouteDeps<'db' | 'design' | '
      ownerMemberId?: string;
      syncState?: string;
      lastSyncedVersionId?: string;
+     uedroReviewId?: string | null;
+     uedro_review_id?: string | null;
      createdAt?: string;
      updatedAt?: string;
      access?: {
@@ -2152,6 +2154,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       workspaceId: row.workspaceId ?? null,
       createdByWorkspaceMemberId: row.createdByWorkspaceMemberId ?? null,
       coverDigest: row.coverDigest ?? null,
+      uedroReviewId: row.uedroReviewId ?? null,
     };
     const resourceState = isWorkspaceLocked(ctx) && row.workspaceVisibility === 'team'
       ? 'frozen'
@@ -2181,6 +2184,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
      metadata,
      project,
      coverDigest: row.coverDigest ?? null,
+     uedroReviewId: row.uedroReviewId ?? null,
    };
  }
   function workspaceProjectPrincipal(ctx: WorkspaceProjectContext): ResourceHubPrincipal {
@@ -2327,6 +2331,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
   metadata,
     project,
     ...(remote.coverDigest ? { coverDigest: remote.coverDigest } : {}),
+    uedroReviewId: remote.uedroReviewId ?? null,
   };
 }
   /**
@@ -2557,6 +2562,8 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
             syncState,
             lastSyncedVersionId: record.lastSyncedVersionId ?? '',
             coverDigest: null,
+            uedroReviewId:
+              record.uedroReviewId ?? record.uedro_review_id ?? null,
             createdAt: record.createdAt ?? now,
             originProjectUpdatedAt: null,
             updatedAt: record.updatedAt ?? now,
@@ -2912,6 +2919,7 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       canMoveToPersonal: localAccess.canMoveToPersonal ?? remoteAccess.canMoveToPersonal ?? false,
     },
     syncState: velaProjectSyncStateToProject(remote.syncState),
+    ...(remote.uedroReviewId ? { uedroReviewId: remote.uedroReviewId } : {}),
     project: {
       ...summary.project,
       ...(name ? { name } : {}),
@@ -5887,6 +5895,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
          typeof binding?.workspaceId === 'string' && binding.workspaceId.trim()
            ? binding.workspaceId.trim()
            : null,
+       uedroReviewId: binding?.uedroReviewId ?? null,
        ...(remoteOwnerDisplayName ? { ownerDisplayName: remoteOwnerDisplayName } : {}),
        ...(remoteOwnerMemberId ? { createdByWorkspaceMemberId: remoteOwnerMemberId } : {}),
      },
@@ -5954,6 +5963,121 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
     }
     /** @type {import('@open-design/contracts').ProjectWorkspaceScopeResponse} */
     const body = { scope };
+    res.json(body);
+  });
+
+  // ---- Uedro review binding (local SQLite + HDW team catalog) ----
+
+  app.get('/api/projects/:id/uedro-review', async (req, res) => {
+    const project = getProject(db, req.params.id);
+    const locations = await configuredProjectLocations();
+    if (!project || !projectVisibleForLocations(project, locations)) {
+      return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'not found');
+    }
+    if (!await authorizeProjectReadWithShare(req, res, project.id)) return;
+    const binding = getWorkspaceProjectByProjectId(db, project.id);
+    let uedroReviewId = binding?.uedroReviewId ?? null;
+    // A team project may carry the binding on the HDW catalog row (written by
+    // another device or teammate). Prefer the local value; when the remote
+    // has one the local row does not, read it and write it back so the next
+    // read is daemon-local.
+    const bindingWorkspaceId =
+      typeof binding?.workspaceId === 'string' ? binding.workspaceId.trim() : '';
+    if (
+      binding?.visibility === 'team'
+      && bindingWorkspaceId
+      && hdwCloudClient?.getTeamProject
+    ) {
+      try {
+        const remote = await hdwCloudClient.getTeamProject(bindingWorkspaceId, project.id);
+        const remoteValue =
+          remote?.uedroReviewId ?? remote?.uedro_review_id ?? null;
+        if (remoteValue && remoteValue !== uedroReviewId) {
+          updateWorkspaceProject(db, binding.workspaceId, project.id, {
+            uedroReviewId: remoteValue,
+          });
+          uedroReviewId = remoteValue;
+        }
+      } catch {
+        // Transient HDW outage must not fail the read; the local value stands.
+      }
+    }
+    /** @type {import('@open-design/contracts').GetUedroReviewResponse} */
+    const body = { projectId: project.id, uedroReviewId };
+    res.json(body);
+  });
+
+  app.put('/api/projects/:id/uedro-review', async (req, res) => {
+    const project = getProject(db, req.params.id);
+    const locations = await configuredProjectLocations();
+    if (!project || !projectVisibleForLocations(project, locations)) {
+      return sendApiError(res, 404, 'PROJECT_NOT_FOUND', 'not found');
+    }
+    if (!await enforceWorkspaceProjectMutation(
+      req,
+      res,
+      sendApiError,
+      getWorkspaceProject,
+      getWorkspaceProjectByProjectId,
+      db,
+      project.id,
+      'rename',
+    )) return;
+    const value = (req.body || {}).uedroReviewId;
+    if (value !== null && typeof value !== 'string') {
+      return sendApiError(
+        res,
+        400,
+        'BAD_REQUEST',
+        'uedroReviewId must be a string or null',
+      );
+    }
+    const binding = getWorkspaceProjectByProjectId(db, project.id);
+    let localSaved = false;
+    if (binding) {
+      updateWorkspaceProject(db, binding.workspaceId, project.id, {
+        uedroReviewId: value,
+      });
+      localSaved = true;
+    }
+    // A team project mirrors the binding to the HDW catalog so teammates and
+    // other devices see it. No HDW client (personal workspace, dev stub) means
+    // there is no remote capability at all — report that explicitly as null.
+    const bindingWorkspaceId =
+      typeof binding?.workspaceId === 'string' ? binding.workspaceId.trim() : '';
+    let remoteSaved: boolean | null = null;
+    if (
+      binding?.visibility === 'team'
+      && bindingWorkspaceId
+      && hdwCloudClient?.upsertTeamProject
+    ) {
+      try {
+        const existing = hdwCloudClient.getTeamProject
+          ? await hdwCloudClient.getTeamProject(bindingWorkspaceId, project.id)
+          : null;
+        await hdwCloudClient.upsertTeamProject(bindingWorkspaceId, project.id, {
+          resourceId:
+            existing?.resourceId
+            ?? projectResourceIdFor(project.id, {
+              memberId: binding.createdByWorkspaceMemberId ?? '',
+              teamId: bindingWorkspaceId,
+              role: 'owner',
+              lifecycleState: 'active',
+            }),
+          uedroReviewId: value,
+        });
+        remoteSaved = true;
+      } catch {
+        remoteSaved = false;
+      }
+    }
+    /** @type {import('@open-design/contracts').SetUedroReviewResponse} */
+    const body = {
+      projectId: project.id,
+      uedroReviewId: value,
+      localSaved,
+      remoteSaved,
+    };
     res.json(body);
   });
 
