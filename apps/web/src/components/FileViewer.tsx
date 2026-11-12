@@ -184,7 +184,7 @@ import {
 import { fetchAppVersionInfo } from '../providers/registry';
 import { copyToClipboard } from '../lib/copy-to-clipboard';
 import { partialHtmlToIframeWeb } from '../utils/formatDsl';
-import { captureAndUploadCover } from '../lib/capture-cover';
+import { captureCoverForEditedHtml } from '../lib/capture-cover';
 import { updateRecentlyOpenedProjectCover } from '../lib/recently-opened-projects';
 import { buildReactComponentSrcdoc } from '../runtime/react-component';
 import { shouldConsumeSlideNav } from '../runtime/slide-nav';
@@ -14225,9 +14225,10 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
   // desktopArtifactExporter is unavailable (pure web dev mode).
  function captureCoverAfterSave(html: string) {
    if (!projectId || !/\.html?$/i.test(file.name)) return;
-   void captureAndUploadCover(
+   void captureCoverForEditedHtml(
      projectId,
      html,
+     file.name,
      workspaceContext ? { headers: workspaceProjectHeaders(workspaceContext) as Record<string, string> } : null,
    ).then((digest) => {
      if (digest) updateRecentlyOpenedProjectCover(projectId, digest);
@@ -20556,7 +20557,7 @@ function MarkdownViewer({
           if (!saved) throw new Error('write failed');
           lastSavedTextRef.current = nextValue;
          if (/\.html?$/i.test(file.name)) {
-           void captureAndUploadCover(projectId, nextValue, workspaceContext ? { headers: workspaceProjectHeaders(workspaceContext) as Record<string, string> } : null).then((digest) => {
+           void captureCoverForEditedHtml(projectId, nextValue, file.name, workspaceContext ? { headers: workspaceProjectHeaders(workspaceContext) as Record<string, string> } : null).then((digest) => {
              if (digest) updateRecentlyOpenedProjectCover(projectId, digest);
            }).catch(() => {});
          }

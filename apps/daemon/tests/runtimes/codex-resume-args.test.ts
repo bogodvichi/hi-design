@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   codexAgentDef,
+  codexNeedsDangerFullAccessSandbox,
   codexOpenDesignShellEnvironmentArgs,
 } from '../../src/runtimes/defs/codex.js';
 
@@ -95,9 +96,14 @@ describe('codex buildArgs session resume', () => {
     });
     expect(args).not.toContain('--sandbox');
     expect(args.some((a) => a.startsWith('sandbox_mode='))).toBe(true);
-    // The `-c key=value` override carries the value (workspace-write default).
+    // The `-c key=value` override carries the same effective policy as create.
+    const expectedSandbox = codexNeedsDangerFullAccessSandbox()
+      ? 'danger-full-access'
+      : 'workspace-write';
     expect(args).toContain('-c');
-    expect(args.some((a) => a.includes('sandbox_mode="workspace-write"'))).toBe(true);
+    expect(args).toContain(`sandbox_mode="${expectedSandbox}"`);
+    expect(args.includes('sandbox_workspace_write.network_access=true'))
+      .toBe(expectedSandbox === 'workspace-write');
   });
 
   it('keeps model + reasoning overrides ahead of the trailing thread id on resume', () => {

@@ -28,6 +28,7 @@ import {
   workspaceContextFromDirectoryItem,
 } from '../collab/useWorkspaceContext';
 import { moveWorkspaceProject } from '../state/projects';
+import { projectCardCoverUrl, useProjectCoverRefresh } from '../lib/project-cover-refresh';
 import type { DesignSystemSummary, Project } from '../types';
 import type { ProjectMutationSource, ProjectTitleHint } from './EntryShell';
 import { projectCollectionTitleHint } from './project-collection-context';
@@ -386,7 +387,7 @@ interface TeamFolderItem {
   projectCount: number;
   ownerMemberId: string | null;
   subfolderCount: number;
-  subfolderPreview: Array<{ name: string; kind: 'folder' | 'project'; coverDigest?: string | null }>;
+  subfolderPreview: Array<{ name: string; kind: 'folder' | 'project'; projectId?: string | null; coverDigest?: string | null }>;
   createdAt: string;
 }
 
@@ -690,6 +691,9 @@ function ProjectsPanel({
   controlsPortalTarget?: HTMLElement | null;
 }) {
   const t = useT();
+  // Folder preview thumbnails pick up the edited project's regenerated cover
+  // without reloading the team folder/project lists.
+  useProjectCoverRefresh();
   const [folders, setFolders] = useState<TeamFolderItem[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
@@ -766,7 +770,7 @@ function ProjectsPanel({
            ? f.subfolder_preview.map((p: any) =>
                typeof p === 'string'
                  ? { name: p, kind: 'folder' as const }
-                 : { name: p.name || '', kind: (p.kind === 'project' ? 'project' : 'folder') as 'folder' | 'project', coverDigest: p.coverDigest || null })
+                 : { name: p.name || '', kind: (p.kind === 'project' ? 'project' : 'folder') as 'folder' | 'project', projectId: p.projectId || null, coverDigest: p.coverDigest || null })
            : [],
          createdAt: f.created_at || '',
        })));
@@ -1088,12 +1092,13 @@ function ProjectsPanel({
                   return <div key={i} className={styles.gridCellEmpty} />;
                 }
                 if (item.kind === 'project') {
-                  if (item.coverDigest) {
+                  const coverSrc = projectCardCoverUrl(item.projectId, item.coverDigest, false);
+                  if (coverSrc) {
                     return (
                       <div
                         key={i}
                         className={`${styles.gridCell} ${styles.gridCellCover}`}
-                        style={{ backgroundImage: `url(/api/hdw/api/community/cover/${encodeURIComponent(item.coverDigest)})` }}
+                        style={{ backgroundImage: `url(${coverSrc})` }}
                         title={item.name}
                       />
                     );
@@ -1899,6 +1904,9 @@ function FoldersPanel({
   ) => Promise<void> | void;
 }) {
   const t = useT();
+  // Folder preview thumbnails pick up the edited project's regenerated cover
+  // without reloading the team folder/project lists.
+  useProjectCoverRefresh();
   const [folders, setFolders] = useState<TeamFolderItem[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
@@ -1977,7 +1985,7 @@ function FoldersPanel({
             ? f.subfolder_preview.map((p: any) =>
                 typeof p === 'string'
                   ? { name: p, kind: 'folder' as const }
-                  : { name: p.name || '', kind: (p.kind === 'project' ? 'project' : 'folder') as 'folder' | 'project', coverDigest: p.coverDigest || null })
+                  : { name: p.name || '', kind: (p.kind === 'project' ? 'project' : 'folder') as 'folder' | 'project', projectId: p.projectId || null, coverDigest: p.coverDigest || null })
             : [],
           createdAt: f.created_at || '',
         })));
@@ -2304,12 +2312,13 @@ function FoldersPanel({
                  return <div key={i} className={styles.gridCellEmpty} />;
                }
                if (item.kind === 'project') {
-                 if (item.coverDigest) {
+                 const coverSrc = projectCardCoverUrl(item.projectId, item.coverDigest, false);
+                 if (coverSrc) {
                    return (
                      <div
                        key={i}
                        className={`${styles.gridCell} ${styles.gridCellCover}`}
-                       style={{ backgroundImage: `url(/api/hdw/api/community/cover/${encodeURIComponent(item.coverDigest)})` }}
+                       style={{ backgroundImage: `url(${coverSrc})` }}
                        title={item.name}
                      />
                    );

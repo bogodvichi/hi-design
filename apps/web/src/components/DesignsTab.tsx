@@ -18,6 +18,10 @@ import {
 	projectCoverSnapshotKey,
 	setProjectCoverSnapshot,
 } from "../lib/project-cover-cache";
+import {
+	projectCardCoverUrl,
+	useProjectCoverRefresh,
+} from "../lib/project-cover-refresh";
 import { deleteLiveArtifact, fetchLiveArtifacts, fetchProjectFiles, liveArtifactPreviewUrl } from "../providers/registry";
 import type {
 	DesignSystemSummary,
@@ -158,6 +162,9 @@ export function DesignsTab({
 	const [liveArtifactsByProject, setLiveArtifactsByProject] = useState<
 		Record<string, LiveArtifactSummary[]>
 	>({});
+	// Only the edited project's cover changes: the digest store is read per
+	// card, so no project list is re-requested.
+	useProjectCoverRefresh();
 	const [coverByProject, setCoverByProject] = useState<
 		Record<string, ProjectCoverOverride | null>
 	>({});
@@ -1346,14 +1353,14 @@ function projectCover(
  // Use the pre-captured entry screenshot from team_projects.cover_digest
  // when available — a single <img> load is far cheaper than resolving the
  // entry file, probing with HEAD, and rendering an iframe document.
-	if (project.coverDigest) {
-		// Personal projects (workspaceVisibility === 'personal') load the
-		// cover from the local daemon route; team and shared-with-me projects
-		// (workspaceVisibility === 'team' or undefined) load from HDW.
-		const isPersonal = project.workspaceVisibility === 'personal';
-		const coverSrc = isPersonal
-			? `/api/projects/${encodeURIComponent(project.id)}/cover?digest=${encodeURIComponent(project.coverDigest)}`
-			: `/api/hdw/api/community/cover/${project.coverDigest}`;
+	// A freshly generated digest overrides the stale list row for this one
+	// project; the other cards keep their original cover URLs.
+	const coverSrc = projectCardCoverUrl(
+		project.id,
+		project.coverDigest,
+		project.workspaceVisibility === "personal",
+	);
+	if (coverSrc) {
 		return {
 			kind: "image" as const,
 			src: coverSrc,

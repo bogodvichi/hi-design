@@ -235,8 +235,14 @@ export async function uploadProjectCover(
 }
 
 /**
- * Convenience: capture a cover from HTML and upload it.  Returns true when
- * the cover was successfully generated and uploaded.
+ * Capture a cover from HTML and upload it.  Returns the new cover digest.
+ *
+ * `fileName` is the cover source the daemon should render. It is required
+ * whenever the caller knows which HTML file was just written: in the desktop
+ * runtime `html` is intentionally ignored (the daemon's native renderer
+ * reads the saved file from disk), and without `?file=` the daemon picks
+ * `metadata.entryFile` or the first HTML alphabetically — which may be a
+ * different page than the one the user edited.
  */
 export async function captureAndUploadCover(
   projectId: string,
@@ -272,4 +278,22 @@ export async function captureAndUploadCover(
   const blob = await captureProjectCover(html);
   if (!blob) return null;
   return uploadProjectCover(projectId, blob, workspaceContext);
+}
+
+/**
+ * Update the project cover after an HTML file was edited and saved.
+ *
+ * The just-saved file is the new cover source: desktop asks the daemon to
+ * render that exact file (`?file=`), while pure-web renders the exact saved
+ * source through the browser-side fallback. Keeping the file name mandatory
+ * here prevents an edit to a secondary page from leaving the project card
+ * showing a screenshot of the original entry page.
+ */
+export function captureCoverForEditedHtml(
+  projectId: string,
+  html: string,
+  fileName: string,
+  workspaceContext?: { headers?: Record<string, string> } | null,
+): Promise<string | null> {
+  return captureAndUploadCover(projectId, html, workspaceContext, fileName);
 }

@@ -74,6 +74,10 @@ import {
   projectCoverSnapshotKey,
   setProjectCoverSnapshot,
 } from '../lib/project-cover-cache';
+import {
+  projectCardCoverUrl,
+  useProjectCoverRefresh,
+} from '../lib/project-cover-refresh';
 import { useInView } from './plugins-home/useInView';
 import { resolveFloatingMenuHorizontalAlign } from '../utils/floating-menu-placement';
 import { ellipsisTitleHoverProps } from '../utils/ellipsis-title';
@@ -695,6 +699,10 @@ selectionExtension,
       return b.updatedAt - a.updatedAt;
     });
   }, [projects, sort]);
+  // Re-render the cards when one project's cover digest changes. The digest
+  // itself is read per card from the request-free override store, so only the
+  // edited project's <img> src changes; no list is re-read.
+  useProjectCoverRefresh();
   const [coverByProject, setCoverByProject] = useState<
     Record<string, ProjectCoverOverride | null>
   >({});
@@ -3528,14 +3536,15 @@ export function projectCover(
  // Use the pre-captured entry screenshot from team_projects.cover_digest
  // when available — a single <img> load is far cheaper than resolving the
  // entry file, probing with HEAD, and rendering an iframe document.
-  if (project.coverDigest) {
-    // Personal projects (workspaceVisibility === 'personal') load the
-    // cover from the local daemon route; team and shared-with-me projects
-    // (workspaceVisibility === 'team' or undefined) load from HDW.
-    const isPersonal = project.workspaceVisibility === 'personal';
-    const coverSrc = isPersonal
-      ? `/api/projects/${encodeURIComponent(project.id)}/cover?digest=${encodeURIComponent(project.coverDigest)}`
-      : `/api/hdw/api/community/cover/${project.coverDigest}`;
+  // The edited project's freshly generated digest wins over the stale list
+  // row. Reading it here (instead of re-fetching the list) swaps just this
+  // card's image; every other project keeps its original URL.
+  const coverSrc = projectCardCoverUrl(
+    project.id,
+    project.coverDigest,
+    project.workspaceVisibility === 'personal',
+  );
+  if (coverSrc) {
     return {
       kind: 'image' as const,
       src: coverSrc,

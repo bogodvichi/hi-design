@@ -31,6 +31,7 @@ import type { DesignSystemSummary, Project } from '../types';
 import type { ProjectMutationSource, ProjectTitleHint } from './EntryShell';
 import { projectCollectionTitleHint } from './project-collection-context';
 import { useT } from '../i18n';
+import { localProjectCoverUrl, useProjectCoverRefresh } from '../lib/project-cover-refresh';
 import styles from './TeamSpaceView.module.css';
  
 const FOLDER_CONTEXT_KEY = 'od:home-folder-context';
@@ -80,6 +81,9 @@ function PersonalProjectsPanel({
  ) => Promise<void> | void;
 }) {
   const t = useT();
+  // Folder preview thumbnails read the targeted cover override; no folder or
+  // project list is re-fetched when one project's cover changes.
+  useProjectCoverRefresh();
   const [folders, setFolders] = useState<PersonalFolderItem[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [projectsLoading, setProjectsLoading] = useState(false);
@@ -452,7 +456,7 @@ function handleFolderClick(folder: PersonalFolderItem) {
                       <div
                         key={i}
                         className={`${styles.gridCell} ${styles.gridCellCover}`}
-                        style={{ backgroundImage: `url(/api/projects/${encodeURIComponent(item.projectId)}/cover)` }}
+                        style={{ backgroundImage: `url(${localProjectCoverUrl(item.projectId)})` }}
                         title={item.name}
                       />
                     );

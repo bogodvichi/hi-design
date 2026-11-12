@@ -12,6 +12,10 @@
 // the authority for project existence and metadata; this store only
 // seeds the Home strip until the next server-side refresh replaces it.
 import type { Project } from '../types';
+import {
+  hasProjectCoverOverride,
+  publishProjectCoverDigest,
+} from './project-cover-refresh';
 
 const STORAGE_KEY = 'od:recently-opened-projects';
 const LIMIT = 10;
@@ -275,17 +279,38 @@ export function clearProjectLocationTarget(projectId: string): void {
   }
 }
 
-/** Patch the coverDigest of an already-stored recently-opened project. */
+/**
+ * Patch the coverDigest of an already-stored recently-opened project.
+ *
+ * This is also the single publish point for edited covers: the save path
+ * already holds the freshly generated digest, so handing it to the card
+ * surfaces here needs no list refresh and no network round-trip.
+ */
 export function updateRecentlyOpenedProjectCover(
   projectId: string,
   coverDigest: string,
 ): void {
+  publishProjectCoverDigest(projectId, coverDigest);
   const entries = read();
   const idx = entries.findIndex((e) => e.id === projectId);
   if (idx < 0) return;
   if (entries[idx]!.coverDigest === coverDigest) return;
   entries[idx]!.coverDigest = coverDigest;
   write(entries);
+}
+
+/**
+ * Hydrate the card override from an already-persisted digest when leaving a
+ * project conversation view. Purely local: no request of any kind.
+ *
+ * A save-time publish always wins. Home's periodic digest sync can briefly
+ * write a pre-upload value back to localStorage, and replaying that here would
+ * otherwise roll the card back to the old cover.
+ */
+export function republishRecentlyOpenedProjectCover(projectId: string): void {
+  if (hasProjectCoverOverride(projectId)) return;
+  const entry = read().find((candidate) => candidate.id === projectId);
+  if (entry?.coverDigest) publishProjectCoverDigest(projectId, entry.coverDigest);
 }
 
 /** Fill authoritative creator metadata on an existing recent entry. */

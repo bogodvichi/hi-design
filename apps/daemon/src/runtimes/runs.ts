@@ -1579,6 +1579,10 @@ export function createChatRunService({
 
   const cancel = async (run, origin = 'unknown') => {
     if (TERMINAL_RUN_STATUSES.has(run.status)) return statusBody(run);
+    const traceFile = process.env.OD_CODEX_RESUME_TRACE_FILE;
+    if (traceFile) {
+      fs.appendFileSync(traceFile, `${new Date().toISOString()} cancel run=${run.id} origin=${origin} status=${run.status}\n${new Error().stack}\n`);
+    }
     run.cancelRequested = true;
     run.cancelOrigin = origin;
     run.updatedAt = Date.now();

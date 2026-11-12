@@ -516,9 +516,32 @@ function createProjectCoverHelpers(deps: ProjectCoverDeps) {
   function triggerCoverForProjectEntry(
     projectId: string,
     projectMeta: { name?: string; metadata?: Record<string, unknown> | null } | null,
+    editedFileName?: string | null,
   ) {
     void (async () => {
       try {
+        // A saved HTML file is the project's new cover source. Selecting the
+        // entry file here would keep rendering an older HTML in projects with
+        // several pages (metadata.entryFile still points at the first one),
+        // so prefer the file that was actually just written.
+        if (editedFileName && /\.html?$/i.test(editedFileName)
+          && typeof desktopArtifactExporter === 'function' && daemonUrlRef) {
+          try {
+            const edited = await readProjectFile(
+              projectsDir,
+              projectId,
+              editedFileName,
+              projectMeta?.metadata ?? null,
+            );
+            const digest = await generateProjectCover(
+              projectId,
+              editedFileName,
+              edited.buffer,
+              projectMeta,
+            );
+            if (digest) return;
+          } catch { /* fall back to the entry file below */ }
+        }
         const entryFile = selectProjectCoverEntry(
           await listFiles(projectsDir, projectId, { metadata: projectMeta?.metadata }),
           typeof projectMeta?.metadata?.entryFile === 'string' ? projectMeta.metadata.entryFile : null,
@@ -9064,7 +9087,7 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
               ...(versionCapture?.versionWarning ? { versionWarning: versionCapture.versionWarning } : {}),
             };
             if (uploadProject) {
-              triggerCoverForProjectEntry(req.params.id, uploadProject);
+              triggerCoverForProjectEntry(req.params.id, uploadProject, meta.name);
             }
             return res.json(body);
           } finally {
@@ -9204,7 +9227,7 @@ export function registerProjectFileRoutes(app: Express, ctx: RegisterProjectFile
           ...(versionCapture?.versionWarning ? { versionWarning: versionCapture.versionWarning } : {}),
         };
         if (uploadProject) {
-          triggerCoverForProjectEntry(req.params.id, uploadProject);
+          triggerCoverForProjectEntry(req.params.id, uploadProject, meta.name);
         }
         res.json(body);
       } catch (err: any) {
@@ -9447,7 +9470,10 @@ export function registerProjectUploadRoutes(app: Express, ctx: RegisterProjectUp
         }
         /** @type {import('@open-design/contracts').UploadProjectFilesResponse} */
         const body = { files: out };
-        if (project && out.length) triggerCoverForProjectEntry(project.id, project);
+        if (project && out.length) {
+          const editedHtml = [...out].reverse().find((file) => /\.html?$/i.test(file.name))?.name;
+          triggerCoverForProjectEntry(project.id, project, editedHtml);
+        }
         res.json(body);
       } catch (err: any) {
         sendApiError(res, 500, 'INTERNAL_ERROR', 'upload failed');

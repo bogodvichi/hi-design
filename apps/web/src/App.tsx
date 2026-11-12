@@ -210,6 +210,7 @@ import {
   touchRecentlyOpenedProject,
   updateRecentlyOpenedProjectOwner,
   RECENTLY_OPENED_PROJECTS_CHANGED_EVENT,
+  republishRecentlyOpenedProjectCover,
   updateRecentlyOpenedProjectCover,
 } from './lib/recently-opened-projects';
 import {
@@ -302,6 +303,29 @@ function workspaceProjectListViewForRoute(route: Route): WorkspaceProjectListVie
   if (route.kind === 'home' && route.view === 'drafts') return 'drafts';
   if (route.kind === 'project') return 'all';
   return 'recent';
+}
+
+export type ProjectReturnRefreshPlan = Readonly<{
+  projectId: string;
+}>;
+
+/**
+ * Detect the route transition that leaves an open project and name the ONE
+ * project whose card cover may have changed. No list scope is involved: the
+ * new cover digest is already known locally after an HTML save, so returning
+ * only needs to re-announce that digest to the still-mounted cards.
+ *
+ * Keyed to the ROUTE TRANSITION rather than a Back handler: the chat header's
+ * top-left arrow goes through `onBack -> handleBack`, the workspace entry tab
+ * (`workspace-tab__main`) calls `openTab -> navigate` directly, and browser
+ * Back does neither. All three produce the same project -> non-project change.
+ */
+export function projectReturnRefreshPlan(
+  previousRoute: Route | null,
+  nextRoute: Route,
+): ProjectReturnRefreshPlan | null {
+  if (previousRoute?.kind !== 'project' || nextRoute.kind === 'project') return null;
+  return { projectId: previousRoute.projectId };
 }
 
 export function shouldSyncMediaProvidersOnSave(
@@ -4387,6 +4411,26 @@ if (fetchedProject) {
       return null;
     }
   }, [refreshProjects, t]);
+
+  // Leaving a conversation view only re-announces the cover digest that the
+  // HTML save already produced locally. No list re-read, no cache eviction and
+  // no request of any kind: every card surface subscribes to the digest store
+  // and swaps exactly one <img> src. Keyed to the ROUTE TRANSITION so the chat
+  // header arrow, the workspace entry tab and browser Back are all covered
+  // without touching any of those controls' behavior.
+  const refreshProjectCoverForReturn = useCallback((plan: ProjectReturnRefreshPlan) => {
+    republishRecentlyOpenedProjectCover(plan.projectId);
+  }, []);
+
+  // Kept separate from `previousRouteForProjectReturnRef` above: that effect
+  // records where Back should go and updates its ref before this one runs.
+  const previousRouteForProjectRefreshRef = useRef<Route | null>(null);
+  useEffect(() => {
+    const previous = previousRouteForProjectRefreshRef.current;
+    previousRouteForProjectRefreshRef.current = route;
+    const plan = projectReturnRefreshPlan(previous, route);
+    if (plan) refreshProjectCoverForReturn(plan);
+  }, [route, refreshProjectCoverForReturn]);
 
   // Project Back returns to the exact surface that opened the project (team
   // folder, personal list, community/tool view, etc.), not to whichever

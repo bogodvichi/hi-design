@@ -40,7 +40,7 @@ describe('file project cover generation', () => {
       db: {},
       http: { sendApiError: (res: express.Response, status: number, code: string, message: string) => res.status(status).json({ code, message }) },
       paths: { PROJECTS_DIR: projectsDir, RUNTIME_DATA_DIR: root, DESIGN_SYSTEMS_DIR: '', USER_DESIGN_SYSTEMS_DIR: '' },
-      uploads: { upload: {} }, node: { fs },
+      uploads: { upload: { single: () => (_req: unknown, _res: unknown, next: () => void) => next() } }, node: { fs },
       projectStore: { getProject: () => project, getWorkspaceProject: () => null, getWorkspaceProjectByProjectId: () => null, updateProject },
       projectFiles, documents: {}, artifacts: {},
       authorizeProjectRequest: async (_req: unknown, res: express.Response) => {
@@ -71,6 +71,132 @@ describe('file project cover generation', () => {
         expect(await readFile(path.join(dir, '.cover.png'))).toEqual(png);
       }
       if (kind !== 'empty') expect(await readFile(path.join(dir, source))).toEqual(content);
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('uses the HTML file that was just edited as the cover, not the stored entry file', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'od-edited-cover-'));
+    const projectsDir = path.join(root, 'projects');
+    const id = 'edited-cover-project';
+    const dir = path.join(projectsDir, id);
+    await mkdir(dir, { recursive: true });
+    await writeFile(path.join(dir, 'index.html'), '<h1>OLD ENTRY CONTENT</h1>');
+    await writeFile(path.join(dir, 'edited.html'), '<h1>ORIGINAL EDITED FILE</h1>');
+    const png = Buffer.from('edited-cover-png');
+    const project = {
+      id,
+      name: 'Edited cover',
+      metadata: { entryFile: 'index.html' },
+      coverDigest: null as string | null,
+    };
+    let renderedHtml = '';
+    const exporter = vi.fn(async (input: DesktopExportArtifactInput) => {
+      renderedHtml = input.html;
+      const output = path.join(root, 'rendered.png');
+      await writeFile(output, png);
+      return { ok: true, path: output };
+    });
+    const updateProject = vi.fn((_db: unknown, _id: string, patch: Record<string, unknown>) => Object.assign(project, patch));
+    const app = express();
+    app.use(express.json());
+    registerProjectFileRoutes(app, {
+      db: {},
+      http: { sendApiError: (res: express.Response, status: number, code: string, message: string) => res.status(status).json({ code, message }) },
+      paths: { PROJECTS_DIR: projectsDir, RUNTIME_DATA_DIR: root, DESIGN_SYSTEMS_DIR: '', USER_DESIGN_SYSTEMS_DIR: '' },
+      uploads: { upload: { single: () => (_req: unknown, _res: unknown, next: () => void) => next() } }, node: { fs },
+      projectStore: {
+        getProject: () => project,
+        getWorkspaceProject: () => null, getWorkspaceProjectByProjectId: () => null, updateProject,
+      },
+      projectFiles, documents: {}, artifacts: {},
+      authorizeProjectRequest: async () => true,
+      desktopArtifactExporter: exporter,
+      daemonUrlRef: { current: 'http://127.0.0.1:1234' },
+    } as unknown as Parameters<typeof registerProjectFileRoutes>[1]);
+    const server = app.listen(0, '127.0.0.1');
+    await new Promise<void>((resolve) => server.once('listening', resolve));
+    try {
+      const address = server.address();
+      if (!address || typeof address === 'string') throw new Error('test server did not start');
+      const base = `http://127.0.0.1:${address.port}/api/projects/${id}`;
+      const response = await fetch(`${base}/files`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'edited.html', content: '<h1>EDITED CONTENT</h1>', overwrite: true }),
+      });
+      expect(response.status, await response.clone().text()).toBe(200);
+      await vi.waitFor(() => expect(exporter).toHaveBeenCalledOnce());
+      expect(renderedHtml).toContain('EDITED CONTENT');
+      expect(renderedHtml).not.toContain('OLD ENTRY CONTENT');
+      await vi.waitFor(() => expect(project.coverDigest).toMatch(/^[a-f0-9]{64}$/));
+      expect(await readFile(path.join(dir, '.cover.png'))).toEqual(png);
+
+      // The explicit endpoint the web client calls after an edit must use the
+      // same file instead of falling back to metadata.entryFile.
+      renderedHtml = '';
+      const explicit = await fetch(`${base}/cover/generate?file=edited.html`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+      });
+      expect(explicit.status).toBe(200);
+      expect(renderedHtml).toContain('EDITED CONTENT');
+      expect(renderedHtml).not.toContain('OLD ENTRY CONTENT');
+    } finally {
+      server.closeAllConnections();
+      await new Promise<void>((resolve) => server.close(() => resolve()));
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('keeps the HTML entry as the cover source when a non-HTML file is written', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'od-asset-cover-'));
+    const projectsDir = path.join(root, 'projects');
+    const id = 'asset-cover-project';
+    const dir = path.join(projectsDir, id);
+    await mkdir(dir, { recursive: true });
+    await writeFile(path.join(dir, 'index.html'), '<h1>ENTRY CONTENT</h1>');
+    const png = Buffer.from('entry-cover-png');
+    let renderedHtml = '';
+    const exporter = vi.fn(async (input: DesktopExportArtifactInput) => {
+      renderedHtml = input.html;
+      const output = path.join(root, 'rendered.png');
+      await writeFile(output, png);
+      return { ok: true, path: output };
+    });
+    const project = { id, name: 'Asset cover', metadata: { entryFile: 'index.html' }, coverDigest: null as string | null };
+    const app = express();
+    app.use(express.json());
+    registerProjectFileRoutes(app, {
+      db: {},
+      http: { sendApiError: (res: express.Response, status: number, code: string, message: string) => res.status(status).json({ code, message }) },
+      paths: { PROJECTS_DIR: projectsDir, RUNTIME_DATA_DIR: root, DESIGN_SYSTEMS_DIR: '', USER_DESIGN_SYSTEMS_DIR: '' },
+      uploads: { upload: { single: () => (_req: unknown, _res: unknown, next: () => void) => next() } }, node: { fs },
+      projectStore: {
+        getProject: () => project,
+        getWorkspaceProject: () => null, getWorkspaceProjectByProjectId: () => null,
+        updateProject: (_db: unknown, _id: string, patch: Record<string, unknown>) => Object.assign(project, patch),
+      },
+      projectFiles, documents: {}, artifacts: {},
+      authorizeProjectRequest: async () => true,
+      desktopArtifactExporter: exporter,
+      daemonUrlRef: { current: 'http://127.0.0.1:1234' },
+    } as unknown as Parameters<typeof registerProjectFileRoutes>[1]);
+    const server = app.listen(0, '127.0.0.1');
+    await new Promise<void>((resolve) => server.once('listening', resolve));
+    try {
+      const address = server.address();
+      if (!address || typeof address === 'string') throw new Error('test server did not start');
+      const response = await fetch(`http://127.0.0.1:${address.port}/api/projects/${id}/files`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'logo.png', content: 'not-an-html', overwrite: true }),
+      });
+      expect(response.status, await response.clone().text()).toBe(200);
+      await vi.waitFor(() => expect(exporter).toHaveBeenCalledOnce());
+      expect(renderedHtml).toContain('ENTRY CONTENT');
     } finally {
       server.closeAllConnections();
       await new Promise<void>((resolve) => server.close(() => resolve()));

@@ -10781,6 +10781,13 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
     };
 
   const startChatRun = async (chatBody, run) => {
+    const traceCodexResumeStart = (phase: string) => {
+      const traceFile = process.env.OD_CODEX_RESUME_TRACE_FILE;
+      if (traceFile && run.agentId === 'codex') {
+        fs.appendFileSync(traceFile, `${new Date().toISOString()} ${phase} run=${run.id} conversation=${run.conversationId}\n`);
+      }
+    };
+    traceCodexResumeStart('entry');
     if (activeClaudeCompactions.has(run.conversationId)) {
       return design.runs.fail(run, 'CONFLICT', 'Context compaction is running. Wait for it to finish.');
     }
@@ -11828,6 +11835,7 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
     // resolve to an available fallback below.
     let configuredAgentEnv = {};
     let appConfigForRun = null;
+    traceCodexResumeStart('before_read_app_config');
     try {
       const appConfig = await readAppConfig(RUNTIME_DATA_DIR);
       appConfigForRun = appConfig;
@@ -11835,6 +11843,7 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
     } catch {
       configuredAgentEnv = {};
     }
+    traceCodexResumeStart('after_read_app_config');
     const requestedLiveModelScope = def.id === 'amr'
       ? resolveAmrProfile({
           ...process.env,
@@ -11884,6 +11893,7 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
     };
     const agentLaunch = resolveAgentLaunch(def, configuredAgentEnv);
     const resolvedBin = agentLaunch.selectedPath;
+    traceCodexResumeStart(`after_resolve_agent_launch:${resolvedBin ?? 'null'}`);
     if (def.id === 'amr' && resolvedBin && agentLaunch.launchPath) {
       // Concretize omitted/default AMR model requests to the live catalog
       // default before the resume guard. The AMR preflight below applies the
@@ -11954,6 +11964,9 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
           invalidationReason: null,
         }
       : resolvedAgentResumeCtx;
+    traceCodexResumeStart(
+      `after_resume_context:${agentResumeCtx.isResuming ? 'resume' : 'fresh'}:${agentResumeCtx.invalidationReason ?? 'none'}`,
+    );
     if (
       strategyTaskAtStart
       && strategyTaskAtStart.inputStage !== 'request'
@@ -13177,6 +13190,7 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
         ? path.join(os.tmpdir(), `od-agy-${run.id}.log`)
         : undefined;
     const promptFile = await preparePromptFileForAgent(def, composed, run.id);
+    traceCodexResumeStart('after_prepare_prompt_file');
     let codexModelCatalogPath: string | undefined;
     const cleanupPromptFile = () => {
       if (promptFile) promptFile.cleanup().catch(() => {});
@@ -13187,6 +13201,7 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
     // and externally rewritten configs receive the same compatibility repair.
     // Write failures are logged and Codex retains its original diagnostics.
     if (def.id === 'codex') {
+      traceCodexResumeStart('before_normalize_codex_config');
       const { normalizeCodexConfigFile } = await import('./codex-config-normalize.js');
       // Route through spawnEnvForAgent so resolveCodexConfigPath sees the same
       // fully-expanded CODEX_HOME the Codex child process will see. In
@@ -13204,6 +13219,10 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
         { resolvedBin: agentLaunch.selectedPath },
       );
       await normalizeCodexConfigFile(codexConfigEnv);
+      traceCodexResumeStart('after_normalize_codex_config');
+      traceCodexResumeStart(
+        `after_normalize_state:cancel=${run.cancelRequested} status=${run.status} launch=${agentLaunch.launchPath ?? 'null'}`,
+      );
 
       // When HiDesign leaves model selection at `default`, Codex resolves
       // the concrete model from config.toml. A known-old CLI can accept the
@@ -13219,12 +13238,14 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
           cleanupOdNextRunInputProjection();
           return;
         }
+        traceCodexResumeStart('before_codex_model_preflight');
         const preflight = await preflightCodexDefaultModel({
           launchPath: agentLaunch.launchPath,
           env: applyAgentLaunchEnv(codexConfigEnv, agentLaunch),
           requestedModel: safeModel,
           projectRoot: effectiveCwd,
         });
+        traceCodexResumeStart(`after_codex_model_preflight:${preflight.status}`);
         if (run.cancelRequested || design.runs.isTerminal(run.status)) {
           lifecycle.mark('launch_preflight_end');
           cleanupPromptFile();
@@ -13340,13 +13361,18 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
     const useCodexAppServer = codexTransportDecision?.actual === 'app-server';
     if (def.id === 'codex' && !useCodexAppServer) {
       const catalogEnv = spawnEnvForAgent('codex', process.env, configuredAgentEnv);
+      traceCodexResumeStart('before_codex_catalog_config');
       const config = await resolveCodexDefaultCatalogConfig(catalogEnv, effectiveCwd);
+      traceCodexResumeStart(`after_codex_catalog_config:${config ? 'config' : 'null'}`);
       if (config) {
+        traceCodexResumeStart('before_codex_runtime_versions');
         const versions = await ensureDetectedRuntimeVersions('codex', configuredAgentEnv);
+        traceCodexResumeStart('after_codex_runtime_versions');
         const catalog = await codexModelCatalog.prepare(
           catalogEnv, versions?.agentCliVersion,
           safeModel && safeModel !== 'default' ? safeModel : config.model,
         );
+        traceCodexResumeStart('after_codex_catalog_prepare');
         if (catalog) codexModelCatalogPath = catalog;
       }
       if (run.cancelRequested || design.runs.isTerminal(run.status)) {
@@ -13406,7 +13432,9 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
         // not through the legacy `codex exec` argv surface.
         args = [];
       } else {
+        traceCodexResumeStart('before_runtime_capabilities');
         await ensureDetectedRuntimeCapabilities(def.id, configuredAgentEnv);
+        traceCodexResumeStart('after_runtime_capabilities');
         args = def.buildArgs(
           composed,
           promptImagePaths,
@@ -13434,6 +13462,7 @@ if (projectRouteResult?.coverHelpers?.triggerCoverForProjectEntry) {
               : {}),
           },
         );
+        traceCodexResumeStart(`after_build_args:${args.slice(0, 4).join(' ')}`);
       }
     } catch (err) {
       cleanupPromptFile();

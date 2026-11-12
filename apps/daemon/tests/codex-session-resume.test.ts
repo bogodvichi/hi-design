@@ -326,9 +326,9 @@ describe('codex native session resume', () => {
 // assistant text reply and exits 0. Used only to inject an intervening
 // completed turn from a different agent.
 async function writeMinimalClaude(dir: string, name: string): Promise<string> {
-  const bin = path.join(dir, name);
-  await writeFile(
-    bin,
+  return writeFakeExecutable(
+    dir,
+    name,
     `#!/usr/bin/env node
 const argv = process.argv.slice(2);
 if (argv.includes('--version')) { console.log('claude-code 1.0.0-intervene'); process.exit(0); }
@@ -337,10 +337,7 @@ console.log(JSON.stringify({ type: 'system', subtype: 'init', model: 'claude-int
 console.log(JSON.stringify({ type: 'assistant', message: { id: 'm1', content: [{ type: 'text', text: 'CLAUDE_INTERVENING_REPLY' }], stop_reason: 'end_turn' } }));
 setTimeout(() => process.exit(0), 10);
 `,
-    'utf8',
   );
-  await chmod(bin, 0o755);
-  return bin;
 }
 
 // Fake codex CLI: mints a FIXED thread id on a create turn and echoes it on a
@@ -350,10 +347,10 @@ async function writeCapturingCodex(
   dir: string,
   name: string,
 ): Promise<{ bin: string; logPath: string }> {
-  const bin = path.join(dir, name);
   const logPath = path.join(dir, `${name}-log.jsonl`);
-  await writeFile(
-    bin,
+  const bin = await writeFakeExecutable(
+    dir,
+    name,
     fakeCodexSource({
       logPath,
       body: `
@@ -365,9 +362,7 @@ async function writeCapturingCodex(
   console.log(JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 10, cached_input_tokens: 4, output_tokens: 3 } }));
   setTimeout(() => process.exit(0), 10);`,
     }),
-    'utf8',
   );
-  await chmod(bin, 0o755);
   return { bin, logPath };
 }
 
@@ -377,10 +372,10 @@ async function writeMissingRolloutCodex(
   dir: string,
   name: string,
 ): Promise<{ bin: string; logPath: string }> {
-  const bin = path.join(dir, name);
   const logPath = path.join(dir, `${name}-log.jsonl`);
-  await writeFile(
-    bin,
+  const bin = await writeFakeExecutable(
+    dir,
+    name,
     fakeCodexSource({
       logPath,
       body: `
@@ -395,9 +390,7 @@ async function writeMissingRolloutCodex(
   console.log(JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 8, cached_input_tokens: 0, output_tokens: 2 } }));
   setTimeout(() => process.exit(0), 10);`,
     }),
-    'utf8',
   );
-  await chmod(bin, 0o755);
   return { bin, logPath };
 }
 
@@ -407,10 +400,10 @@ async function writeNoHandleCodex(
   dir: string,
   name: string,
 ): Promise<{ bin: string; logPath: string }> {
-  const bin = path.join(dir, name);
   const logPath = path.join(dir, `${name}-log.jsonl`);
-  await writeFile(
-    bin,
+  const bin = await writeFakeExecutable(
+    dir,
+    name,
     fakeCodexSource({
       logPath,
       body: `
@@ -420,10 +413,34 @@ async function writeNoHandleCodex(
   console.log(JSON.stringify({ type: 'turn.completed', usage: { input_tokens: 8, cached_input_tokens: 0, output_tokens: 2 } }));
   setTimeout(() => process.exit(0), 10);`,
     }),
+  );
+  return { bin, logPath };
+}
+
+async function writeFakeExecutable(
+  dir: string,
+  name: string,
+  source: string,
+): Promise<string> {
+  if (process.platform !== 'win32') {
+    const bin = path.join(dir, name);
+    await writeFile(bin, source, 'utf8');
+    await chmod(bin, 0o755);
+    return bin;
+  }
+
+  // Explicit CODEX_BIN / CLAUDE_BIN overrides must point at a Windows-executable
+  // shim. A shebang-only file is ignored by the resolver and falls back to the
+  // real CLI on this platform.
+  const script = path.join(dir, `${name}.cjs`);
+  const bin = path.join(dir, `${name}.cmd`);
+  await writeFile(script, source, 'utf8');
+  await writeFile(
+    bin,
+    `@echo off\r\n"${process.execPath}" "${script}" %*\r\nexit /b %ERRORLEVEL%\r\n`,
     'utf8',
   );
-  await chmod(bin, 0o755);
-  return { bin, logPath };
+  return bin;
 }
 
 function fakeCodexSource(opts: { logPath: string; body: string }): string {

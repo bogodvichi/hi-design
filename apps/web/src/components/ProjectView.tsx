@@ -264,7 +264,7 @@ import {
   workspaceIdentityCacheKey,
   workspaceProjectHeaders,
 } from '../collab/workspace-identity';
-import { captureAndUploadCover } from '../lib/capture-cover';
+import { captureAndUploadCover, captureCoverForEditedHtml } from '../lib/capture-cover';
 import { updateRecentlyOpenedProjectCover } from '../lib/recently-opened-projects';
 import {
   readWorkspaceDirectoryForCurrentGeneration,
@@ -4199,9 +4199,10 @@ export function ProjectView({
         // the localStorage recently-opened store so the Home strip stays in
         // sync without waiting for a server re-fetch.
         if (ext === '.html') {
-          void captureAndUploadCover(
+          void captureCoverForEditedHtml(
             project.id,
             artifactToPersist.html,
+            file.name,
             projectRunWorkspaceContext
               ? { headers: workspaceProjectHeaders(projectRunWorkspaceContext) as Record<string, string> }
               : null,

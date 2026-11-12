@@ -10,6 +10,7 @@ import {
   reconcileProjectMutationResult,
   projectViewAuthorizationLifetimeKey,
   projectViewMountKey,
+  projectReturnRefreshPlan,
   projectRouteSurfaceState,
   resolveDeepLinkedTeamSharedProject,
   resolveSettingsCloseConfig,
@@ -627,5 +628,42 @@ describe('resolveDeepLinkedTeamSharedProject', () => {
     expect(resolution).toEqual({ kind: 'still-materializing' });
     expect(getProject).toHaveBeenCalledTimes(1);
     expect(pullTeamSharedProjectIfAvailable).not.toHaveBeenCalled();
+  });
+});
+
+// Regression: leaving a project conversation view must update ONLY the cover
+// of the card belonging to that project. The destination grid stays mounted
+// (keep-alive) and local navigation deliberately does not re-list projects,
+// but a full list re-fetch is both too broad and does not reach the
+// independently-loaded 个人所有 / 分享给我 / 团队 surfaces. The refresh is
+// keyed to the ROUTE TRANSITION, not to a Back handler: the chat header arrow
+// goes via onBack while the workspace entry tab (`workspace-tab__main`) calls
+// openTab -> navigate directly, and browser Back does neither.
+describe('projectReturnRefreshPlan', () => {
+  const openProject = {
+    kind: 'project',
+    projectId: 'project-1',
+    fileName: null,
+  } as const;
+
+  it('targets just the project that was left, whatever surface it lands on', () => {
+    for (const view of [
+      'home',
+      'all-projects',
+      'drafts',
+      'personal-all',
+      'shared-with-me',
+      'team-space',
+      'square',
+    ] as const) {
+      expect(projectReturnRefreshPlan(openProject, { kind: 'home', view }))
+        .toEqual({ projectId: 'project-1' });
+    }
+  });
+
+  it('ignores first mount, entering a project and project-internal navigation', () => {
+    expect(projectReturnRefreshPlan(null, { kind: 'home', view: 'home' })).toBeNull();
+    expect(projectReturnRefreshPlan({ kind: 'home', view: 'home' }, openProject)).toBeNull();
+    expect(projectReturnRefreshPlan(openProject, openProject)).toBeNull();
   });
 });

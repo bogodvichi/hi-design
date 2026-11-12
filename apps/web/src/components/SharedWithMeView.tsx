@@ -27,6 +27,7 @@ import { useT } from '../i18n';
 import type { Dict } from '../i18n/types';
 import type { Project } from '../types';
 import { markRecentlyOpenedProjectSharedWithMe } from '../lib/recently-opened-projects';
+import { projectCardCoverUrl, useProjectCoverRefresh } from '../lib/project-cover-refresh';
 import {
   fetchSharedWithMeCatalog,
   unshareFolderFromSharedSpace,
@@ -153,6 +154,9 @@ function FolderCard({
   onClick: () => void;
   onRemove?: () => void;
 }) {
+  // Folder preview thumbnails pick up a regenerated cover for just the edited
+  // project, without reloading the shared catalog.
+  useProjectCoverRefresh();
   const t = useT();
   return (
     <article
@@ -177,12 +181,13 @@ function FolderCard({
             return <div key={i} className={styles.gridCellEmpty} />;
           }
           if (item.kind === 'project') {
-            if (item.coverDigest) {
+            const coverSrc = projectCardCoverUrl(item.projectId, item.coverDigest, false);
+            if (coverSrc) {
               return (
                 <div
                   key={i}
                   className={`${styles.gridCell} ${styles.gridCellCover}`}
-                  style={{ backgroundImage: `url(/api/hdw/api/community/cover/${encodeURIComponent(item.coverDigest)})` }}
+                  style={{ backgroundImage: `url(${coverSrc})` }}
                   title={item.name}
                 />
               );
