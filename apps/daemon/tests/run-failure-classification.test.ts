@@ -1967,6 +1967,35 @@ describe('classifyRunFailure — BYOK OpenCode reclassification out of stream_er
     expect(isResumableFailure(result)).toBe(false);
   });
 
+  it.each([undefined, false, true])('does not retry Lanz invalid_request_error with SDK retry hint %s', (retryable) => {
+    const message = 'Bad Request: ' + JSON.stringify({
+      error: {
+        type: 'invalid_request_error',
+        code: '400002',
+        message: "Function tools with reasoning_effort are not supported for gpt-6.1-sol in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to 'none'.",
+        param: 'reasoning_effort',
+      },
+    });
+    const result = classifyForAgent(
+      'byok-opencode',
+      'AGENT_EXECUTION_FAILED',
+      message,
+      [
+        errorEvent('AGENT_EXECUTION_FAILED', message, retryable),
+        runtimeCloseEvent('stream_error'),
+      ],
+    );
+
+    expect(result).toMatchObject({
+      failure_category: 'upstream_unavailable',
+      failure_detail: 'upstream_client_error',
+      failure_stage: 'first_token_wait',
+      retryable: false,
+      user_action: 'none',
+    });
+    expect(isResumableFailure(result)).toBe(false);
+  });
+
   it('prefers provider client-error evidence over mixed stream-disconnect text', () => {
     const message = 'stream disconnected before completion: statusCode:404';
     const result = classifyForAgent(

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createMockOpenDesignHost } from '@open-design/host/testing';
 import { showCompletionNotification } from '../../src/utils/notifications';
 
 type NotificationOptionsWithRenotify = NotificationOptions & { renotify?: boolean };
@@ -79,6 +80,41 @@ describe('showCompletionNotification', () => {
       }),
     );
     expect(MockNotification.instances).toHaveLength(0);
+  });
+
+  it('uses direct notifications in the desktop host even when the worker reports success', async () => {
+    const showNotification = vi.fn().mockResolvedValue(undefined);
+    const registration = { showNotification };
+    const register = vi.fn().mockResolvedValue(registration);
+    vi.stubGlobal('__od__', createMockOpenDesignHost({ client: { platform: 'darwin' } }));
+    vi.stubGlobal('Notification', MockNotification as unknown as typeof Notification);
+    vi.stubGlobal('navigator', {
+      serviceWorker: { register, ready: Promise.resolve(registration) },
+    });
+    const onClick = vi.fn();
+
+    const result = await showCompletionNotification({
+      status: 'succeeded',
+      title: 'Task completed',
+      body: 'Done',
+      onClick,
+    });
+
+    expect(result).toBe('shown');
+    expect(register).not.toHaveBeenCalled();
+    expect(showNotification).not.toHaveBeenCalled();
+    expect(MockNotification.instances).toHaveLength(1);
+    expect(MockNotification.instances[0]!.options).not.toHaveProperty('tag');
+    MockNotification.instances[0]!.onclick?.();
+    expect(onClick).toHaveBeenCalledOnce();
+
+    await showCompletionNotification({
+      status: 'succeeded',
+      title: 'Task completed',
+      body: 'Another task',
+    });
+    expect(MockNotification.instances).toHaveLength(2);
+    expect(MockNotification.instances[1]!.options).not.toHaveProperty('tag');
   });
 
   it('does not create a notification when permission is not granted', async () => {

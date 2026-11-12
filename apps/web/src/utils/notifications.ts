@@ -1,3 +1,4 @@
+import { isOpenDesignHostAvailable } from '@open-design/host';
 import type { Dict } from '../i18n/types';
 import type { NotificationsConfig } from '../types';
 
@@ -243,11 +244,10 @@ export type CompletionNotificationResult =
 function notificationOptionsFor(
   opts: CompletionNotificationOpts,
 ): NotificationOptionsWithBrowserExtensions {
-  const tag = `od-task-${opts.status}`;
   return {
     body: opts.body,
-    tag,
-    renotify: true,
+    // Each desktop completion must remain independent of the previous banner.
+    ...(isOpenDesignHostAvailable() ? {} : { tag: `od-task-${opts.status}`, renotify: true }),
     data: {
       status: opts.status,
       url: typeof window === 'undefined' ? '/' : window.location.href,
@@ -308,5 +308,8 @@ export async function showCompletionNotification(
 ): Promise<CompletionNotificationResult> {
   if (typeof Notification === 'undefined') return 'unsupported';
   if (Notification.permission !== 'granted') return 'permission-denied';
+  // Electron's persistent (service-worker) notification display is a no-op,
+  // even when showNotification resolves. Desktop must use the direct API.
+  if (isOpenDesignHostAvailable()) return showViaConstructor(opts);
   return (await showViaServiceWorker(opts)) ?? showViaConstructor(opts);
 }
