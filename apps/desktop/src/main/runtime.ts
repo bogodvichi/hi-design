@@ -1625,13 +1625,19 @@ export function createSplashWindow(): SplashWindowHandle {
 }
 
 function resolveDesktopIconPath(): string {
-  // Packaged builds ship app-icon.png as an extraResource under
-  // process.resourcesPath (see tools/pack win/mac/linux builders).
-  // Dev resolves it from the monorepo source tree relative to this file.
+  // Windows loads the ICO path so native controls can select its optical
+  // small-size frames. Other platforms use PNG; older payloads retain PNG
+  // as a compatibility fallback until they ship the ICO resource.
   const resourcesPath = (process as NodeJS.Process & { resourcesPath?: string }).resourcesPath;
   if (resourcesPath != null) {
-    const packaged = join(resourcesPath, "app-icon.png");
-    if (existsSync(packaged)) return packaged;
+    const filenames = process.platform === "win32" ? ["app-icon.ico", "app-icon.png"] : ["app-icon.png"];
+    for (const filename of filenames) {
+      const packaged = join(resourcesPath, filename);
+      if (existsSync(packaged)) return packaged;
+    }
+  }
+  if (process.platform === "win32") {
+    return resolve(dirname(fileURLToPath(import.meta.url)), "../../../../tools/pack/resources/win/icon.ico");
   }
   return resolve(dirname(fileURLToPath(import.meta.url)), "../../../web/public/app-icon.png");
 }

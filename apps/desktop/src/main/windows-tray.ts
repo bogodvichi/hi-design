@@ -43,7 +43,9 @@ export function installWindowsTray(window: BrowserWindow, options: {
   try {
     const icon = nativeImage.createFromPath(options.iconPath);
     if (icon.isEmpty()) throw new Error("desktop tray icon is empty");
-    tray = new Tray(icon);
+    // Preserve the ICO file path so Windows can load the native DPI-sized
+    // frame instead of resampling a decoded large bitmap.
+    tray = new Tray(options.iconPath);
     tray.setToolTip(options.title);
     rebuildMenu();
     tray.on("click", () => activate(options.show));

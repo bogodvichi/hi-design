@@ -123,6 +123,41 @@ test('[P0] @critical entry chrome exposes the primary home creation surface and 
   await expect(settingsDialog.getByRole('button', { name: /show pet picker/i })).toHaveCount(0);
 });
 
+test('[P1] Home glyph stays visible on navigation hover and swaps only for sidebar expansion', async ({ page }, testInfo) => {
+  await page.route('**/api/workspace/directory', (route) => route.fulfill({
+    json: { items: [], activeWorkspaceId: null },
+  }));
+  await page.route('**/api/workspace/context', (route) => route.fulfill({ json: { context: null } }));
+  await page.route('**/api/projects', (route) => route.fulfill({ json: { projects: [] } }));
+  await gotoEntryHome(page);
+
+  const homeToggle = page.getByTestId('workspace-home-rail-toggle');
+  await homeToggle.hover();
+  await expect(homeToggle.locator('.workspace-chrome-logo')).toBeHidden();
+  await expect(homeToggle.locator('.workspace-chrome-logo-swap')).toBeVisible();
+  await homeToggle.click();
+  await expect(page.locator('.entry')).toHaveClass(/entry--rail-open/);
+  await homeToggle.hover();
+  await expect(homeToggle.locator('.workspace-chrome-logo')).toBeVisible();
+  await expect(homeToggle.locator('.workspace-chrome-logo-swap')).toBeHidden();
+
+  for (const view of ['settings', 'projects']) {
+    await page.goto(`/${view}`, { waitUntil: 'domcontentloaded' });
+    await expect(view === 'settings' ? settingsSurface(page) : page.getByTestId('entry-view-projects')).toBeVisible();
+    const homeNavigation = page.getByTestId('workspace-home-nav');
+    await homeNavigation.hover();
+    // Navigation controls reuse the button style but have no replacement glyph.
+    await expect(homeNavigation.locator('.workspace-chrome-logo-swap')).toHaveCount(0);
+    await testInfo.attach(`${view}-home-hover`, {
+      body: await page.screenshot(),
+      contentType: 'image/png',
+    });
+    await expect(homeNavigation.locator('.workspace-chrome-logo')).toBeVisible();
+    await homeNavigation.click();
+    await expect(page.getByTestId('home-hero')).toBeVisible();
+  }
+});
+
 test('[P1] account controls reserve space after late loading and across tool tabs', async ({ page }, testInfo) => {
   await routeTabWorkspaceApi(page, { activeWorkspaceId: TAB_PERSONAL_WORKSPACE.workspaceId }, []);
   await page.route('**/api/workspaces/*/projects?*', (route) => route.fulfill({

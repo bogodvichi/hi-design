@@ -40,7 +40,7 @@ describe("Windows close to system tray", () => {
 
   function install(osLocale = "zh-CN") {
     return installWindowsTray(window as unknown as BrowserWindow, {
-      iconPath: "/app/app-icon.png",
+      iconPath: "/app/app-icon.ico",
       title: "Hi Design Team",
       osLocale,
       show: () => ensureWindowVisible(window as unknown as BrowserWindow),
@@ -84,6 +84,7 @@ describe("Windows close to system tray", () => {
     expect(quit).not.toHaveBeenCalled();
     expect(tray.destroy).not.toHaveBeenCalled();
     expect(tray.setToolTip).toHaveBeenCalledWith("Hi Design Team");
+    expect(mocks.createTray).toHaveBeenCalledWith("/app/app-icon.ico");
     expect(menu.map((item) => item.label ?? item.type)).toEqual([
       "显示主窗口", "separator", "最近项目", "暂无最近项目", "separator", "退出程序",
     ]);

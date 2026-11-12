@@ -3106,7 +3106,7 @@ function AppInner() {
         );
         return false;
       }
-      const project = result.appliedPluginSnapshotId
+      let project = result.appliedPluginSnapshotId
         ? {
             ...result.project,
             appliedPluginSnapshotId: result.appliedPluginSnapshotId,
@@ -3121,13 +3121,22 @@ function AppInner() {
       // target team/folder now that the local project exists.
       if (input.targetWorkspaceId) {
         try {
-          await moveWorkspaceProject({
+          const moved = await moveWorkspaceProject({
             projectId: result.project.id,
             visibility: 'team',
             workspaceContext: createWorkspaceContext,
             targetWorkspaceId: input.targetWorkspaceId,
             targetFolderId: input.targetFolderId ?? null,
           });
+          // The move summary owns the final binding. Carry it into the first
+          // ProjectView mount instead of reopening the pre-move create result.
+          project = {
+            ...project,
+            ...moved.project,
+            workspaceId: moved.workspaceId,
+            workspaceVisibility: moved.visibility,
+            createdByWorkspaceMemberId: moved.createdByWorkspaceMemberId,
+          };
           notifyTeamProjectsChanged();
         } catch (err) {
           console.warn('[App] failed to move project to team/folder', err);
@@ -3143,6 +3152,14 @@ function AppInner() {
         });
       }
       try {
+        // Setup writes follow the committed destination, just like run creation.
+        // The source membership authorizes the move, not uploads after the move.
+        if (project.workspaceId && project.workspaceId !== createWorkspaceContext?.workspaceId) {
+          createWorkspaceContext = await resolveBoundProjectWorkspaceContext(project.workspaceId);
+          if (!createWorkspaceContext) {
+            throw new Error('project Workspace authority is unavailable');
+          }
+        }
         const pendingFiles = Array.isArray(input.pendingFiles)
           ? input.pendingFiles.filter((file): file is File => file instanceof File)
           : [];

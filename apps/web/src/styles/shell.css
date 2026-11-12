@@ -18,6 +18,7 @@
 
 .workspace-shell {
   --workspace-tabs-chrome-height: 44px;
+  --workspace-home-tab-width: 40px;
   width: 100vw;
   max-width: 100vw;
   height: 100vh;
@@ -365,10 +366,10 @@ html.od-radial-open .workspace-shell {
    visible even after the project tabs overflow into horizontal scroll. The
    opaque background keeps scrolled tabs from showing through it. */
 .workspace-tab.is-pinned {
-  width: 52px;
-  flex: 0 0 52px;
-  min-width: 52px;
-  max-width: 52px;
+  width: var(--workspace-home-tab-width);
+  flex: 0 0 var(--workspace-home-tab-width);
+  min-width: var(--workspace-home-tab-width);
+  max-width: var(--workspace-home-tab-width);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -530,14 +531,16 @@ html.od-radial-open .workspace-shell {
 }
 /* Collapsed rail: hovering the corner swaps the logo for the expand-sidebar
    glyph, so the button telegraphs its one action. The rail-open (.is-inert)
-   button never swaps — it is a mark, not a control. */
+   button never swaps — it is a mark, not a control. Navigation buttons reuse
+   the control style without a replacement glyph, so only hide Home when the
+   replacement is present. */
 .workspace-chrome-logo-swap {
   display: none;
   width: 17px;
   height: 17px;
   flex: 0 0 auto;
 }
-.workspace-tab__rail-toggle:not(.is-inert):hover .workspace-chrome-logo {
+.workspace-tab__rail-toggle:not(.is-inert):has(> .workspace-chrome-logo-swap):hover .workspace-chrome-logo {
   display: none;
 }
 .workspace-tab__rail-toggle:not(.is-inert):hover .workspace-chrome-logo-swap {

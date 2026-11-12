@@ -1694,6 +1694,14 @@
   min-width: 34px;
   max-width: 100%;
 }
+/* The conversation reuses the home selector, but its width follows the model
+   label at every viewport size. Let long labels shrink within the toolbar. */
+.composer-row .home-hero__execution-switcher .inline-switcher,
+.composer-row .home-hero__execution-switcher .inline-switcher__chip {
+  width: auto;
+  min-width: 0;
+  max-width: 100%;
+}
 .composer-row .composer-ds-icon-trigger .composer-ds-icon-trigger-label {
   min-width: 0;
 }

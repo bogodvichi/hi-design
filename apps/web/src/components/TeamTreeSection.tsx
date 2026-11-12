@@ -748,11 +748,13 @@ export function TeamTreeSection({
       <div className={styles.footer}>
         <button
           type="button"
-          className={styles.createTeamBtn}
+          className={`entry-nav-rail__btn ${styles.createTeamBtn}`}
           onClick={() => onCreateTeam?.()}
         >
-          <Icon name="plus" size={14} />
-          <span>{t('workspaceSwitcher.createTeam')}</span>
+          <span className="entry-nav-rail__btn-icon" aria-hidden>
+            <Icon name="plus" size={18} />
+          </span>
+          <span className="entry-nav-rail__btn-label">{t('workspaceSwitcher.createTeam')}</span>
         </button>
       </div>
     </div>

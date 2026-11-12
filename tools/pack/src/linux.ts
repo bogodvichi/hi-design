@@ -663,7 +663,7 @@ async function writeLinuxBuilderConfig(config: ToolPackConfig, paths: LinuxPaths
       domToPptxBundleResource(config),
       // Tray/window icon for the packaged desktop runtime (read from
       // process.resourcesPath at runtime; dev resolves from the source tree).
-      desktopIconResource(config),
+      desktopIconResource(config, "linux"),
     ],
     ...(config.to === "dir"
       ? {}

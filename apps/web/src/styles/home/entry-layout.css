@@ -967,7 +967,7 @@
   align-items: center;
   gap: 6px;
   margin: 0;
-  padding: 4px 10px 0;
+  padding: 0 10px;
 }
 .entry-nav-rail__search-row .entry-nav-rail__search {
   flex: 1;

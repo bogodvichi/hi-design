@@ -135,7 +135,8 @@
   /* Borderless card: the transparent 1px keeps the box size stable for the
      selection / design-system rings that do draw a border. */
   border: 1px solid transparent;
-  border-radius: var(--radius);
+  /* Match the cover radius so clipping keeps its top and bottom corners equal. */
+  border-radius: var(--radius-medium);
   /* Surfaceless at rest. Collection cards share the community lift and
      shadow below; selection rings remain independent of that feedback. */
   background: transparent;

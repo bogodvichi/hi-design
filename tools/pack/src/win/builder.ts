@@ -214,7 +214,7 @@ async function runElectronBuilderRaw(
       domToPptxBundleResource(config),
       // Tray/window icon for the packaged desktop runtime (read from
       // process.resourcesPath at runtime; dev resolves from the source tree).
-      desktopIconResource(config),
+      desktopIconResource(config, "win32"),
     ],
     files: [...ELECTRON_BUILDER_FILE_PATTERNS],
     electronLanguages: [...WIN_ELECTRON_LANGUAGES],

@@ -133,7 +133,7 @@ export async function runElectronBuilder(
       domToPptxBundleResource(config),
       // Tray/window icon for the packaged desktop runtime (read from
       // process.resourcesPath at runtime; dev resolves from the source tree).
-      desktopIconResource(config),
+      desktopIconResource(config, "darwin"),
     ],
     files: [...ELECTRON_BUILDER_FILE_PATTERNS],
     mac: {

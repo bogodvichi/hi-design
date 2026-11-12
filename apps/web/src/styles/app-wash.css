@@ -98,6 +98,10 @@ html:has(.workspace-shell--desktop[data-host-platform='darwin']) {
 html:has(.workspace-shell--desktop[data-host-platform='darwin']) body {
   background: var(--app-wash);
 }
+/* Conversation pages use a plain canvas; Home keeps the shared pastel wash. */
+html:has(.workspace-shell__body > .app) {
+  --app-wash: var(--bg);
+}
 /* Focus response: while the window is unfocused (App.tsx toggles
    .is-window-blurred on <html> in desktop mode) the scrim thins out so the
    wallpaper reads clearly through the glass; regaining focus fades it back

@@ -1176,7 +1176,7 @@
      button) and undocked (the strip's pinned entry tab). Without it the icon
      jumped 10px left on every entry→project→entry trip. */
   margin-left: 10px;
-  width: 78px;
+  width: var(--workspace-home-tab-width);
   height: 32px;
   padding: 0;
   border: 0;
@@ -1281,12 +1281,11 @@
    tabs from showing through it. Declared before .is-active so an active Home
    tab still picks up the active highlight. */
 .workspace-shell .workspace-tab.is-pinned {
-  /* Single-icon pill (~half a project tab): the Home button on a project page,
-     or the sidebar toggle on the Home page. */
-  flex: 0 0 78px;
-  width: 78px;
-  min-width: 78px;
-  max-width: 78px;
+  /* Fixed single-icon button shared with the docked Home control. */
+  flex: 0 0 var(--workspace-home-tab-width);
+  width: var(--workspace-home-tab-width);
+  min-width: var(--workspace-home-tab-width);
+  max-width: var(--workspace-home-tab-width);
   grid-template-columns: minmax(0, 1fr);
   position: sticky;
   left: 0;
@@ -1482,12 +1481,15 @@
   border-radius: var(--radius-sm);
 }
 
+.app,
+.chat-composer-fixed-layer,
+.chat-composer-slot {
+  --project-composer-radius: 20px;
+  --project-composer-inset: 8px;
+  --project-chat-surface: var(--bg-panel);
+}
 .app {
-  /* Transparent like the home page's containers — the project view rides
-     the same shared ground (app-wash / wallpaper vibrancy) instead of
-     re-painting a solid panel over it. Restores --bg-app under reduced
-     transparency via the veil token (app-wash.css). */
-  background: var(--veil-shell, var(--bg-panel));
+  background: var(--bg);
 }
 .app > .app-chrome-header {
   height: 44px;
@@ -1527,16 +1529,7 @@
 }
 
 .app .split {
-  /* Keep the global App Wash unchanged. Project mode adds only one broad,
-     low-contrast blue ambient glow around the chat/workspace boundary so the
-     nearly-white center gains depth without reading as a divider or color block. */
-  background-color: var(--veil-page, transparent);
-  background-image: radial-gradient(
-    46% 88% at 34% 42%,
-    rgba(168, 196, 236, 0.18) 0%,
-    rgba(168, 196, 236, 0.09) 34%,
-    transparent 72%
-  );
+  background: transparent;
 }
 .app .split-chat-slot {
   /* Inset the pane so it reads as a floating card (same treatment as the home
@@ -1553,33 +1546,20 @@
   /* overflow:hidden still rounds the content (the composer is a separate
      fixed/portaled layer, so it isn't clipped and auto-follows the inset via
      composerPortalRect). */
-  border: none;
+  border: var(--stroke-thin) solid color-mix(in srgb, var(--border) 66%, transparent);
+  /* The neutral tray surface now belongs to the entire chat sidebar. */
   border-radius: var(--radius-lg);
   box-shadow: none;
-  /* Prior light milk-glass treatment. The project-specific App Wash underneath
-     now carries the visual separation instead of an explicit pane treatment. */
-  background: color-mix(in srgb, var(--bg) 68%, transparent);
-  -webkit-backdrop-filter: var(--material-regular-backdrop);
-  backdrop-filter: var(--material-regular-backdrop);
+  background: var(--project-chat-surface);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
   overflow: hidden;
 }
-[data-theme='dark'] .app .split-chat-slot > .pane {
-  background: var(--material-regular);
+.app .chat-project-header {
+  background: var(--project-chat-surface);
 }
-@media (prefers-color-scheme: dark) {
-  html:not([data-theme]) .app .split-chat-slot > .pane {
-    background: var(--material-regular);
-  }
-}
-@media (prefers-reduced-transparency: reduce) {
-  .app .split-chat-slot > .pane {
-    background: var(--bg-elevated);
-  }
-}
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .app .split-chat-slot > .pane {
-    background: var(--bg-elevated);
-  }
+.app .chat-project-header::after {
+  background: linear-gradient(to bottom, var(--project-chat-surface), transparent);
 }
 .app .split-resize-handle {
   --split-resize-gradient-surface: #fff;
@@ -1651,8 +1631,7 @@
 .app .chat-log {
   gap: 14px;
   padding: 18px 18px 20px;
-  /* Let the pane's clear glass show — the card material stays uniform with
-     the tab strip instead of re-painting an opaque transcript slab. */
+  /* The sidebar owns one continuous surface behind the transcript. */
   background: transparent;
 }
 /* Cancel the 14px flex gap so the idle spacer adds no trailing space. */
@@ -1711,8 +1690,8 @@
   padding: 8px 12px;
   border: 0;
   border-radius: var(--radius-lg) var(--radius-none) var(--radius-lg) var(--radius-lg);
-  background: #ededed;
-  color: var(--text);
+  background: #000;
+  color: #fff;
   line-height: 1.45;
   font-size: 13px;
   box-shadow: none;
@@ -2279,14 +2258,14 @@
   padding: 9px 10px 11px;
   background: transparent;
 }
-.chat-composer-fixed-layer .composer {
+/* ChatPane shares its surface across editable/read-only conversations and
+   both inline and portaled composers. Permission styling stays on the input. */
+:is(.chat-composer-fixed-layer, .chat-composer-slot) .composer {
   gap: 5px;
-  padding: 8px;
-  /* Bottommost gray card removed — the white shell sits directly on the chat
-     card. (Dark keeps --bg-panel below, which matches the dark shell, so no
-     separate card shows there either.) */
+  padding: var(--project-composer-inset);
+  /* The sidebar supplies the gray surface; the composer remains transparent. */
   background: transparent;
-  border-radius: var(--radius-lg);
+  border-radius: var(--project-composer-radius);
 }
 .app .composer-shell {
   padding: 7px;
@@ -2295,41 +2274,31 @@
   background: color-mix(in srgb, var(--bg-panel) 96%, var(--bg-subtle));
   box-shadow: var(--shadow-sm);
 }
-.chat-composer-fixed-layer .composer-shell {
-  padding: var(--spacing-4) var(--spacing-4) var(--spacing-8);
+:is(.chat-composer-fixed-layer, .chat-composer-slot) .composer-shell,
+:is(.chat-composer-fixed-layer, .chat-composer-slot) .composer.composer-readonly .composer-shell {
+  /* The outer composer inset supplies the directory row's bottom spacing. */
+  padding: var(--spacing-4) var(--spacing-4) 0;
   gap: 8px;
   border: none;
-  border-radius: 20px;
-  /* Neutral gray tray when the project composer is not the active editing
-     surface. The white editor inside still owns focus, so the two layers read
-     clearly instead of the whole composer washing out into the page. */
-  background: #f5f5f5;
+  border-radius: var(--project-composer-radius);
+  background: transparent;
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   box-shadow: none;
 }
 
-[data-theme="dark"] .app .chat-log,
-[data-theme="dark"] .chat-composer-fixed-layer .composer,
-[data-theme="dark"] .chat-composer-fixed-layer .composer-shell {
-  background: var(--bg-panel);
+:is(.chat-composer-fixed-layer, .chat-composer-slot) .composer-working-dir-row {
+  --home-hero__folder-chip-padding-inline-start: 8px;
+  padding: 0;
 }
-
-@media (prefers-color-scheme: dark) {
-  html:not([data-theme]) .app .chat-log,
-  html:not([data-theme]) .chat-composer-fixed-layer .composer,
-  html:not([data-theme]) .chat-composer-fixed-layer .composer-shell {
-    background: var(--bg-panel);
-  }
-}
-.chat-composer-fixed-layer .composer-shell > * {
+:is(.chat-composer-fixed-layer, .chat-composer-slot) .composer-shell > * {
   margin-left: 0;
   margin-right: 0;
 }
 /* The active project tab is carried in run context but intentionally hidden in
    the fixed composer. Hide its otherwise-empty row too: a zero-content flex
    item still consumed the shell's 8px gap and pushed the white frame down. */
-.chat-composer-fixed-layer .composer-outside-contexts--current-only {
+:is(.chat-composer-fixed-layer, .chat-composer-slot) .composer-outside-contexts--current-only {
   display: none;
 }
 .app .composer-shell:focus-within {
@@ -2338,34 +2307,44 @@
     0 1px 2px color-mix(in srgb, var(--text) 6%, transparent),
     0 0 0 1px color-mix(in srgb, var(--accent) 6%, transparent);
 }
-.chat-composer-fixed-layer .composer-shell:focus-within {
+:is(.chat-composer-fixed-layer, .chat-composer-slot) .composer-shell:focus-within {
+  background: transparent;
   box-shadow: none;
 }
 .app .composer.drag-active .composer-shell {
   border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 9%, transparent);
 }
-.chat-composer-fixed-layer .composer.drag-active .composer-shell {
+:is(.chat-composer-fixed-layer, .chat-composer-slot) .composer.drag-active .composer-shell {
   border-color: color-mix(in srgb, var(--accent) 42%, var(--border));
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 9%, transparent);
 }
-.chat-composer-fixed-layer .composer-input-wrap {
+:is(.chat-composer-fixed-layer, .chat-composer-slot) .composer-input-wrap {
   background: #fff;
-  /* The white editor owns the focus stroke; the gray shell stays a neutral
-     tray for attachments and non-Skill/MCP context. */
-  border-color: transparent;
   border-radius: 16px;
   max-width: none;
   padding: var(--spacing-8);
   gap: var(--spacing-8);
   overflow: visible;
 }
-.chat-composer-fixed-layer .composer-input-wrap:focus-within {
+:is(.chat-composer-fixed-layer, .chat-composer-slot) .composer-input-wrap,
+:is(.chat-composer-fixed-layer, .chat-composer-slot) .composer-input-wrap:focus-within {
+  /* Soft elevation separates the white editor without a visible outline. */
+  border-color: transparent;
+  box-shadow: 0 2px 12px -2px color-mix(in srgb, var(--text) 10%, transparent);
+}
+:is(.chat-composer-fixed-layer, .chat-composer-slot) .composer-input-wrap:hover {
+  border-color: var(--border);
+}
+:is(.chat-composer-fixed-layer, .chat-composer-slot) .composer-input-wrap:focus-within {
   border-color: var(--border-strong);
 }
-.chat-composer-fixed-layer .composer-input-editor,
-.chat-composer-fixed-layer .composer-input-editor [contenteditable='true'],
-.chat-composer-fixed-layer .composer-input-editor .composer-editable {
+:is(.chat-composer-fixed-layer, .chat-composer-slot) .composer.composer-readonly .composer-input-wrap:is(:hover, :focus-within) {
+  border-color: transparent;
+}
+:is(.chat-composer-fixed-layer, .chat-composer-slot) .composer-input-editor,
+:is(.chat-composer-fixed-layer, .chat-composer-slot) .composer-input-editor [contenteditable='true'],
+:is(.chat-composer-fixed-layer, .chat-composer-slot) .composer-input-editor .composer-editable {
   border-radius: inherit;
 }
 .chat-composer-fixed-layer .composer-surface--project .home-hero__lexical .composer-input-editor,
@@ -2425,8 +2404,7 @@
 .app .composer-import,
 .app .composer-research,
 .app .composer-send {
-  /* radius-sm to match the unified 28px composer-row control system; this is
-     the later/winning stylesheet, so it owns the + and Send radius. */
+  /* Compact toolbar controls; the add and send buttons override this below. */
   border-radius: var(--radius-sm);
 }
 .chat-composer-fixed-layer .composer-row .icon-btn,
@@ -2437,14 +2415,21 @@
 }
 .app .composer-row .icon-btn,
 .chat-composer-fixed-layer .composer-row .icon-btn {
-  /* Clear the 32px min-width/min-height that leaks from chat.css's base
-     `.composer-row .icon-btn`; without these, width/height: 28px is floored
-     back up to 32px and the + drifts taller than the rest of the toolbar. */
+  /* Compact actions override the 32px minimum from chat.css. */
   width: 28px;
   height: 28px;
   min-width: 28px;
   min-height: 28px;
   box-sizing: border-box;
+}
+.app .composer-row .plus-menu__trigger,
+.chat-composer-fixed-layer .composer-row .plus-menu__trigger {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  flex-shrink: 0;
+  border-radius: var(--radius-pill);
 }
 .app .composer-send {
   width: 36px;
@@ -2491,8 +2476,8 @@
 }
 .app .composer-row .home-hero__execution-switcher,
 .chat-composer-fixed-layer .composer-row .home-hero__execution-switcher {
-  min-width: 104px;
-  flex: 0 0 104px;
+  min-width: 0;
+  flex: 0 1 auto;
 }
 /* Keep the project composer send action visually aligned with the Home
    composer: deep neutral surface, brand-green foreground, and the same

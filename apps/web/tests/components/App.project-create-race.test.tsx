@@ -181,6 +181,23 @@ vi.mock('../../src/components/EntryView', () => ({
       >
         Create project
       </button>
+      {[false, true].map((autoSendFirstMessage) => (
+        <button
+          key={String(autoSendFirstMessage)}
+          type="button"
+          onClick={() => void onCreateProject({
+            name: 'Team project',
+            skillId: null,
+            designSystemId: null,
+            targetWorkspaceId: 'ws-target',
+            targetFolderId: 'team-folder',
+            pendingFiles: [new File(['brief'], 'brief.txt', { type: 'text/plain' })],
+            ...(autoSendFirstMessage ? { autoSendFirstMessage, pendingPrompt: 'Build a team page' } : {}),
+          })}
+        >
+          {autoSendFirstMessage ? 'Create prompted team project' : 'Create team project'}
+        </button>
+      ))}
       <button
         type="button"
         onClick={() => {
@@ -933,6 +950,57 @@ describe('App project creation routing', () => {
     resetCoalescedGet();
     workspaceInvalidationHarness.handlers.length = 0;
     workspaceInvalidationHarness.onActive.length = 0;
+  });
+
+  it.each([false, true])('opens a newly moved team project with the destination workspace identity (auto-send=%s)', async (autoSend) => {
+    const source = { ...workspaceContext('ws-source', 'wm-source'), workspaceType: 'personal' as const };
+    const target = workspaceContext('ws-target', 'wm-target');
+    let created = { ...freshProject, workspaceId: source.workspaceId };
+    mockedCreateProject.mockImplementation(async (input) => {
+      created = { ...created, id: input.id ?? created.id };
+      return { project: created, conversationId: 'conv-new' };
+    });
+    const moveRequests: RequestInit[] = [];
+    vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const pathname = new URL(String(input), 'http://d.local').pathname;
+      if (pathname.endsWith('/move')) {
+        moveRequests.push(init!);
+        return new Response(JSON.stringify({ project: {
+          id: created.id,
+          workspaceId: target.workspaceId,
+          visibility: 'team',
+          createdByWorkspaceMemberId: target.workspaceMemberId,
+          // The summary wrapper is authoritative even when the nested row is stale.
+          project: created,
+        } }));
+      }
+      return new Response(JSON.stringify(
+        pathname.endsWith('/workspace/directory')
+          ? { ...workspaceDirectoryFixture([source, target]), activeWorkspaceId: source.workspaceId }
+          : pathname.endsWith('/workspace/context') ? { context: source } : {},
+      ));
+    }));
+
+    render(<App />);
+    await waitFor(() => expect(mockedListProjects).toHaveBeenCalledWith(
+      expect.objectContaining({ workspaceContext: expect.objectContaining({ workspaceId: source.workspaceId }) }),
+    ));
+    fireEvent.click(await screen.findByRole('button', {
+      name: autoSend ? 'Create prompted team project' : 'Create team project',
+    }));
+
+    await screen.findByTestId('project-view');
+    expect(moveRequests).toHaveLength(1);
+    expect(new Headers(moveRequests[0]!.headers).get('x-od-workspace-id')).toBe(source.workspaceId);
+    expect(screen.getByTestId('project-workspace-id').textContent).toBe(target.workspaceId);
+    expect(screen.getByTestId('project-route-workspace-context').textContent).toBe('ws-target:wm-target');
+    expect(mockedUploadProjectFiles).toHaveBeenCalledWith(
+      created.id, expect.any(Array), undefined,
+      expect.objectContaining({ workspaceId: target.workspaceId, workspaceMemberId: target.workspaceMemberId }),
+    );
+    if (autoSend) {
+      expect(window.sessionStorage.getItem(`od:auto-send-first:${created.id}`)).toBe('1');
+    }
   });
 
   it('refreshes Skills and Plugins while ignoring retired design-system events', async () => {
