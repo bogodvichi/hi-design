@@ -17,6 +17,7 @@ import {
 import { navigate, type Route } from '../../src/router';
 import type { Project } from '../../src/types';
 import { setWorkspaceTabsDock, WORKSPACE_ACCOUNT_CLUSTER_EVENT } from '../../src/components/workspaceTabsDock';
+import { dispatchWorkspaceProjectCompleted } from '../../src/components/workspaceTabEvents';
 
 afterEach(() => {
   setWorkspaceTabsDock(null);
@@ -239,6 +240,58 @@ describe('WorkspaceTabsBar navigation semantics', () => {
   afterEach(() => {
     cleanup();
     document.querySelector('[data-testid="blank-workspace-area"]')?.remove();
+  });
+
+  it('marks only the completed project and clears its dot when its tab is selected', async () => {
+    const { container } = render(
+      <WorkspaceTabsBar route={projectRoute} projects={[project, projectBeta]} />,
+    );
+    act(() => openWorkspaceTab({ ...projectRoute, projectId: projectBeta.id }));
+    act(() => dispatchWorkspaceProjectCompleted({ projectId: project.id, status: 'succeeded' }));
+
+    const alphaTab = container.querySelector(`[data-workspace-tab-id^="project:${project.id}:"]`)!;
+    const betaTab = container.querySelector(`[data-workspace-tab-id^="project:${projectBeta.id}:"]`)!;
+    expect(alphaTab.querySelector('[data-testid="workspace-project-completion"]')).not.toBeNull();
+    expect(betaTab.querySelector('[data-testid="workspace-project-completion"]')).toBeNull();
+
+    fireEvent.click(alphaTab.querySelector('.workspace-tab__main')!);
+    expect(screen.queryByTestId('workspace-project-completion')).toBeNull();
+    act(() => dispatchWorkspaceProjectCompleted({ projectId: project.id, status: 'failed' }));
+    expect(alphaTab.querySelector('[aria-label="notify.failureTitle"]')).not.toBeNull();
+
+    fireEvent.click(alphaTab.querySelector('.workspace-tab__close')!);
+    act(() => openWorkspaceTab(projectRoute));
+    expect(screen.queryByTestId('workspace-project-completion')).toBeNull();
+  });
+
+  it('keeps the active project completion visible in the dock until the project is selected', () => {
+    const dock = document.createElement('div');
+    document.body.appendChild(dock);
+    setWorkspaceTabsDock(dock);
+    const { unmount } = render(<WorkspaceTabsBar route={projectRoute} projects={[project]} />);
+    act(() => dispatchWorkspaceProjectCompleted({ projectId: project.id, status: 'succeeded' }));
+
+    const trigger = screen.getByTestId('workspace-tabs-dropdown-trigger');
+    expect(trigger.querySelector('[data-testid="workspace-project-completion"]')).not.toBeNull();
+    fireEvent.click(trigger);
+    const option = screen.getByRole('option');
+    expect(option.querySelector('[data-testid="workspace-project-completion"]')).not.toBeNull();
+    fireEvent.click(option);
+    expect(screen.queryByTestId('workspace-project-completion')).toBeNull();
+    unmount();
+    dock.remove();
+  });
+
+  it('does not carry completion dots into another identity scope', () => {
+    const { rerender } = render(
+      <WorkspaceTabsBar route={projectRoute} projects={[project]} identityScopeKey="account-a:personal" />,
+    );
+    act(() => dispatchWorkspaceProjectCompleted({ projectId: project.id, status: 'succeeded' }));
+    expect(screen.queryByTestId('workspace-project-completion')).not.toBeNull();
+    rerender(
+      <WorkspaceTabsBar route={homeRoute} projects={[]} identityScopeKey="account-b:personal" />,
+    );
+    expect(screen.queryByTestId('workspace-project-completion')).toBeNull();
   });
 
   it('keeps Home tab as a singleton and avoids duplication', async () => {

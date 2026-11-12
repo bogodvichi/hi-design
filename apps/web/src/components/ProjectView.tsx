@@ -119,6 +119,7 @@ import {
   usesAnthropicProxy,
 } from '../utils/apiProtocol';
 import { playSound, showCompletionNotification } from '../utils/notifications';
+import { dispatchWorkspaceProjectCompleted } from './workspaceTabEvents';
 import { randomUUID } from '../utils/uuid';
 import { DEFAULT_NOTIFICATIONS, KNOWN_PROVIDERS } from '../state/config';
 import type { TodoItem } from '../runtime/todos';
@@ -3636,6 +3637,8 @@ export function ProjectView({
         : last.runStatus;
     if (status !== 'succeeded' && status !== 'failed') return;
 
+    dispatchWorkspaceProjectCompleted({ projectId: project.id, status });
+
     const cfg = config.notifications ?? DEFAULT_NOTIFICATIONS;
     if (cfg.soundEnabled) {
       playSound(status === 'succeeded' ? cfg.successSoundId : cfg.failureSoundId);
@@ -3665,7 +3668,7 @@ export function ProjectView({
         });
       }
     }
-  }, [config.notifications, t]);
+  }, [config.notifications, project.id, t]);
 
   // Fire completion feedback from assistant run-status transitions rather than
   // from the local SSE listener state. A run can finish while its conversation

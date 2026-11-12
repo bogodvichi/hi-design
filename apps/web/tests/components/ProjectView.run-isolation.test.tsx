@@ -15,6 +15,7 @@ import type { ProjectWorkspaceScopeState } from '../../src/collab/useProjectWork
 import type { WorkspaceCollabContext } from '@open-design/contracts';
 import type { AmrAuthRetryContinuation } from '../../src/runtime/amr-auth-retry-continuation';
 import type { DaemonReattachOptions, DaemonStreamOptions } from '../../src/providers/daemon';
+import { WORKSPACE_PROJECT_COMPLETED_EVENT } from '../../src/components/workspaceTabEvents';
 import type {
   AgentInfo,
   AppConfig,
@@ -1078,8 +1079,9 @@ describe('ProjectView conversation run isolation', () => {
     },
   );
 
-  it('preserves the configured system notification for a background completion', async () => {
-    vi.spyOn(document, 'hasFocus').mockReturnValue(false);
+  it.each([false, true])('marks the completed project with window focused=%s', async (focused) => {
+    const dispatch = vi.spyOn(window, 'dispatchEvent');
+    vi.spyOn(document, 'hasFocus').mockReturnValue(focused);
     vi.spyOn(document, 'hidden', 'get').mockReturnValue(false);
 
     renderProjectView({
@@ -1098,13 +1100,21 @@ describe('ProjectView conversation run isolation', () => {
     resolveConversationBMessages?.([]);
     await waitFor(() => expect(screen.getByTestId('streaming-state').textContent).toBe('idle'));
 
-    conversationAMessages = [succeededAssistant];
+    conversationAMessages = [{ ...succeededAssistant, resultDeliveryState: 'delivered' }];
     fireEvent.click(screen.getByTestId('conversation-select-conv-a'));
 
     await waitFor(() => expect(playSound).toHaveBeenCalledWith('success-sound'));
-    expect(showCompletionNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'succeeded', body: 'done' }),
-    );
+    expect(dispatch).toHaveBeenCalledWith(expect.objectContaining({
+      type: WORKSPACE_PROJECT_COMPLETED_EVENT,
+      detail: { projectId: project.id, status: 'succeeded' },
+    }));
+    if (focused) {
+      expect(showCompletionNotification).not.toHaveBeenCalled();
+    } else {
+      expect(showCompletionNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'succeeded', body: 'done' }),
+      );
+    }
   });
 
   // An HiDesign Cloud run is billed to the CALLER's own wallet. The gate must

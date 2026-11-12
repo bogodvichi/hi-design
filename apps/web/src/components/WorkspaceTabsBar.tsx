@@ -42,7 +42,10 @@ import {
   dispatchCloseWorkspaceExternalTab,
   dispatchOpenWorkspaceTab,
   OPEN_WORKSPACE_TAB_EVENT,
+  WORKSPACE_PROJECT_COMPLETED_EVENT,
+  type WorkspaceProjectCompletionDetail,
 } from './workspaceTabEvents';
+import styles from './WorkspaceTabsBar.module.css';
 
 type EntryRoute = Extract<Route, { kind: 'home' }>;
 
@@ -1034,6 +1037,46 @@ export function WorkspaceTabsBar({
   const previousRouteRef = useRef<Route>(route);
   const stateRef = useRef(state);
   stateRef.current = state;
+  const [projectCompletions, setProjectCompletions] = useState(
+    () => new Map<string, WorkspaceProjectCompletionDetail['status']>(),
+  );
+  const clearProjectCompletion = useCallback((projectId: string) => {
+    setProjectCompletions((current) => {
+      if (!current.has(projectId)) return current;
+      const next = new Map(current);
+      next.delete(projectId);
+      return next;
+    });
+  }, []);
+  useEffect(() => {
+    function onProjectCompleted(event: Event) {
+      const { projectId, status } = (event as CustomEvent<WorkspaceProjectCompletionDetail>).detail;
+      if (!stateRef.current.tabs.some((tab) => tab.kind === 'project' && tab.projectId === projectId)) return;
+      setProjectCompletions((current) => new Map(current).set(projectId, status));
+    }
+    window.addEventListener(WORKSPACE_PROJECT_COMPLETED_EVENT, onProjectCompleted);
+    return () => window.removeEventListener(WORKSPACE_PROJECT_COMPLETED_EVENT, onProjectCompleted);
+  }, []);
+  useEffect(() => {
+    setProjectCompletions(new Map());
+  }, [identityScopeKey]);
+  const selectedProjectId = route.kind === 'project' ? route.projectId : null;
+  useEffect(() => {
+    if (selectedProjectId) clearProjectCompletion(selectedProjectId);
+  }, [clearProjectCompletion, selectedProjectId]);
+
+  function completionDot(tab: WorkspaceChromeTab) {
+    const status = tab.kind === 'project' ? projectCompletions.get(tab.projectId) : undefined;
+    if (!status) return null;
+    return (
+      <span
+        className={styles.completionDot}
+        role="img"
+        aria-label={t(status === 'succeeded' ? 'notify.successTitle' : 'notify.failureTitle')}
+        data-testid="workspace-project-completion"
+      />
+    );
+  }
   // Tracks the raw identityScopeKey (including null) from the previous
   // render, so the scope effect can distinguish "scope just resolved"
   // (null -> non-null) from an explicit workspace switch (non-null ->
@@ -1626,6 +1669,7 @@ export function WorkspaceTabsBar({
       const detail = (event as CustomEvent<{ projectId?: string }>).detail;
       const projectId = detail?.projectId;
       if (!projectId) return;
+      clearProjectCompletion(projectId);
       setState((current) => {
         const normalized = normalizeTabsState(current);
         const nextTabs = normalized.tabs.filter(
@@ -1681,7 +1725,7 @@ export function WorkspaceTabsBar({
         onRemoveWorkspaceProjectTabs,
       );
     };
-  }, []);
+  }, [clearProjectCompletion]);
 
   useLayoutEffect(() => {
     if (!stripElement) return;
@@ -1846,6 +1890,7 @@ export function WorkspaceTabsBar({
   }, [state]);
 
   function activateTab(tab: WorkspaceChromeTab) {
+    if (tab.kind === 'project') clearProjectCompletion(tab.projectId);
     setState((current) => ({
       tabs: normalizeTabsState(current).tabs.map((item) =>
         item.id === tab.id ? { ...item, lastActiveAt: Date.now() } : item,
@@ -2029,6 +2074,7 @@ export function WorkspaceTabsBar({
     // (home / projects / design-systems / …) it currently shows.
     const closingTab = normalized.tabs[closingIndex]!;
     if (closingTab.kind === 'entry') return;
+    if (closingTab.kind === 'project') clearProjectCompletion(closingTab.projectId);
     if (closingTab.kind === 'external') {
       dispatchCloseWorkspaceExternalTab(routeForTab(closingTab));
     }
@@ -2207,6 +2253,7 @@ export function WorkspaceTabsBar({
             <Icon name={isEntryActive ? 'home' : activeDisplay.icon} size={14} />
           </span>
           <span className="workspace-tabs-dropdown__label">{activeDisplay.title}</span>
+          {completionDot(activeTab)}
           <Icon name="chevron-down" size={14} />
         </button>
         {dockMenuOpen ? (
@@ -2238,6 +2285,7 @@ export function WorkspaceTabsBar({
                     >
                       <Icon name={display.icon} size={14} />
                       <span className="workspace-tabs-dropdown__row-label">{display.title}</span>
+                      {completionDot(tab)}
                       {active ? <Icon name="check" size={14} /> : null}
                     </button>
                   </div>
@@ -2291,6 +2339,7 @@ export function WorkspaceTabsBar({
                       <Icon name={display.icon} size={14} />
                     </span>
                     <span className="workspace-tabs-overflow__row-label">{display.title}</span>
+                    {completionDot(tab)}
                   </button>
                 );
               })}
@@ -2463,6 +2512,7 @@ export function WorkspaceTabsBar({
                       )}
                     </span>
                     <span className="workspace-tab__label">{display.title}</span>
+                    {completionDot(tab)}
                   </button>
                   {isPinned ? null : (
                     <button
