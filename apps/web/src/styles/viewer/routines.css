@@ -2756,21 +2756,6 @@
   -webkit-backdrop-filter: var(--material-thin-backdrop);
   backdrop-filter: var(--material-thin-backdrop);
 }
-.app .workspace-back-control {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  align-self: stretch;
-  flex: 0 0 auto;
-}
-.app .workspace-back-control .ws-focus-expand {
-  width: 28px;
-  height: 28px;
-  border: 0;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  box-shadow: none;
-}
 .app .workspace-back-divider {
   width: 1px;
   height: 16px;

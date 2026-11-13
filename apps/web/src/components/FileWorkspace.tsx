@@ -282,9 +282,6 @@ interface Props {
   hiddenPluginActionPaths?: Set<string>;
   focusMode?: boolean;
   onFocusModeChange?: (next: boolean) => void;
-  /** Return to the page that opened the project. Used by the focus-mode
-   * control when a read-only viewer cannot reopen the chat panel. */
-  onBack?: () => void;
   /** In personal-project focus mode, keep the return action available
    * and expose chat expansion from its hover menu. */
   personalProject?: boolean;
@@ -1350,7 +1347,6 @@ export function FileWorkspace({
   hiddenPluginActionPaths,
   focusMode = false,
   onFocusModeChange,
-  onBack,
   personalProject = false,
   designSystemProject = null,
   designSystemBrandId = null,
@@ -3993,27 +3989,7 @@ export function FileWorkspace({
       )
     ) : null}
       <div className="ws-tabs-shell">
-        {focusMode && viewerOnly && onBack ? (
-          <div className="workspace-back-control">
-            <button
-              type="button"
-              className="icon-only ws-focus-expand od-tooltip"
-              data-testid="workspace-focus-toggle"
-              style={{
-                border: 0,
-                background: 'transparent',
-                boxShadow: 'none',
-              }}
-              title={t('project.backToProjects')}
-              data-tooltip={t('project.backToProjects')}
-              data-tooltip-placement="bottom"
-              aria-label={t('project.backToProjects')}
-              onClick={onBack}
-            >
-              <Icon name="arrow-left" size={16} />
-            </button>
-          </div>
-        ) : focusMode && !viewerOnly && onFocusModeChange ? (
+        {focusMode && !viewerOnly && onFocusModeChange ? (
           <button
             type="button"
             className="icon-only ws-focus-expand od-tooltip"
@@ -4028,7 +4004,7 @@ export function FileWorkspace({
             <Icon name="panel-left" size={16} />
           </button>
         ) : null}
-        {focusMode && onBack ? (
+        {focusMode && !viewerOnly && onFocusModeChange ? (
           <span
             aria-hidden="true"
             data-testid="workspace-back-divider"

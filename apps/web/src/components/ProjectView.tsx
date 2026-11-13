@@ -11909,7 +11909,6 @@ const coalescedCoverRefresh = useCoalescedCallback(
           activePluginActionPaths={activePluginActionPaths}
           focusMode={workspaceFocused}
           onFocusModeChange={setWorkspaceFocused}
-          onBack={onBack}
           personalProject={personalProject}
           designSystemProject={designSystemProject}
           designSystemBrandId={designSystemBrandId}
