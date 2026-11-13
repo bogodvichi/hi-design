@@ -1,6 +1,8 @@
 import { useId } from 'react';
 import { createPortal } from 'react-dom';
 import {
+  DialogHeader,
+  DialogBody,
   Button,
   Dialog,
   DialogDescription,
@@ -31,22 +33,26 @@ export function DeepSeekHarnessSetupDialog({ busy, error, onCancel, onConfirm }:
       ariaLabelledBy={titleId}
       data-testid="deepseek-harness-setup-dialog"
     >
-      <div className={styles.heading}>
-        <span className={styles.icon} aria-hidden="true">
-          <AgentIcon id="deepseek-harness" size={24} />
-        </span>
-        <div>
-          <DialogTitle id={titleId}>{t('settings.dshSetupTitle')}</DialogTitle>
-          <DialogDescription>{t('settings.dshSetupDescription')}</DialogDescription>
+      <DialogHeader>
+        <div className={styles.heading}>
+          <span className={styles.icon} aria-hidden="true">
+            <AgentIcon id="deepseek-harness" size={24} />
+          </span>
+          <div>
+            <DialogTitle id={titleId}>{t('settings.dshSetupTitle')}</DialogTitle>
+            <DialogDescription>{t('settings.dshSetupDescription')}</DialogDescription>
+          </div>
         </div>
-      </div>
-      <div className={styles.note}>{t('settings.dshSetupNote')}</div>
-      {error ? (
-        <p className={styles.error} role="alert">
-          {error}
-        </p>
-      ) : null}
-      <DialogFooter className={styles.actions}>
+      </DialogHeader>
+      <DialogBody>
+        <div className={styles.note}>{t('settings.dshSetupNote')}</div>
+        {error ? (
+          <p className={styles.error} role="alert">
+            {error}
+          </p>
+        ) : null}
+      </DialogBody>
+      <DialogFooter data-dialog-part="actions" className={styles.actions}>
         <Button type="button" variant="default" onClick={onCancel} disabled={busy}>
           {t('common.cancel')}
         </Button>

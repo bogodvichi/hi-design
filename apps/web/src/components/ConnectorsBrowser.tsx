@@ -1364,7 +1364,7 @@ function ConnectorDetailDrawer({
   const statusTone = isAuthorizationPending ? 'pending' : connector.status;
 
   return (
-    <div
+    <div data-dialog-backdrop=""
       className="connector-drawer-backdrop"
       role="presentation"
       onMouseDown={(e) => {
@@ -1372,6 +1372,7 @@ function ConnectorDetailDrawer({
       }}
     >
       <aside
+        data-dialog-surface="standard"
         className="connector-drawer"
         role="dialog"
         aria-modal="true"
@@ -1379,19 +1380,25 @@ function ConnectorDetailDrawer({
         data-testid="connector-drawer"
         onClick={(e) => e.stopPropagation()}
       >
-        <header className="connector-drawer-head">
+        <header data-dialog-part="header" className="connector-drawer-head">
           <ConnectorLogo connector={connector} theme={logoTheme} size="lg" />
           <div className="connector-drawer-titles">
             <div className="connector-drawer-eyebrow">
               <span>{categoryLabel}</span>
-              <span className="connector-meta-dot" aria-hidden>·</span>
+              <span className="connector-meta-dot" aria-hidden>
+                ·
+              </span>
               <span>{connector.provider}</span>
             </div>
-            <h2 id="connector-drawer-title">{connector.name}</h2>
+            <h2 data-dialog-part="title" id="connector-drawer-title">
+              {connector.name}
+            </h2>
             <div className="connector-drawer-status">
               <span className={`connector-status-pill status-${statusTone}`}>
                 <span className="connector-status-dot" aria-hidden />
-                {isAuthorizationPending ? t('connectors.authorizationPending') : statusLabel(connector.status, t)}
+                {isAuthorizationPending
+                  ? t('connectors.authorizationPending')
+                  : statusLabel(connector.status, t)}
               </span>
               {showToolsBadge ? (
                 <span className="connector-drawer-tool-count-chip" title={toolsBadgeLabel}>
@@ -1401,6 +1408,7 @@ function ConnectorDetailDrawer({
             </div>
           </div>
           <button
+            data-dialog-part="close"
             ref={closeBtnRef}
             type="button"
             className="ghost connector-drawer-close"
@@ -1412,7 +1420,7 @@ function ConnectorDetailDrawer({
           </button>
         </header>
 
-        <div className="connector-drawer-body">
+        <div data-dialog-part="body" className="connector-drawer-body">
           {connector.description ? (
             <section className="connector-drawer-section">
               <h3 className="connector-drawer-section-title">{t('connectors.aboutLabel')}</h3>
@@ -1495,9 +1503,13 @@ function ConnectorDetailDrawer({
               {t('connectors.toolsSection')} <span className="connector-drawer-count">{toolCount}</span>
             </h3>
             {isLoadingTools ? (
-              <p className="connector-drawer-empty"><Icon name="spinner" size={14} /> {t('connectors.toolsLoading')}</p>
+              <p className="connector-drawer-empty">
+                <Icon name="spinner" size={14} /> {t('connectors.toolsLoading')}
+              </p>
             ) : toolDetailsUnavailable ? (
-              <p className="connector-drawer-empty">{t('connectors.toolDetailsUnavailable', { n: toolCount })}</p>
+              <p className="connector-drawer-empty">
+                {t('connectors.toolDetailsUnavailable', { n: toolCount })}
+              </p>
             ) : actualToolCount === 0 ? (
               <p className="connector-drawer-empty">{t('connectors.noToolsAvailable')}</p>
             ) : (
@@ -1538,7 +1550,7 @@ function ConnectorDetailDrawer({
         </div>
 
         {!isConnected ? (
-          <footer className="connector-drawer-foot">
+          <footer data-dialog-part="footer" className="connector-drawer-foot">
             <button
               type="button"
               className={`primary connector-action is-connect${isConnecting || isAuthorizationPending ? ' is-loading' : ''}`}
@@ -1547,7 +1559,11 @@ function ConnectorDetailDrawer({
               onClick={() => onConnect(connector.id)}
             >
               {isConnecting || isAuthorizationPending ? <Icon name="spinner" size={14} /> : null}
-              <span>{isAuthorizationPending ? t('connectors.authorizationPending') : t('connectors.connect')}</span>
+              <span>
+                {isAuthorizationPending
+                  ? t('connectors.authorizationPending')
+                  : t('connectors.connect')}
+              </span>
             </button>
             {isAuthorizationPending ? (
               <button

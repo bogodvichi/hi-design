@@ -1,6 +1,13 @@
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
-import { Dialog, DialogDescription, DialogFooter, DialogTitle } from "@open-design/components";
+import {
+  DialogHeader,
+  DialogBody,
+  Dialog,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from '@open-design/components';
 import type { WorkspaceCollabContext } from "@open-design/contracts";
 import { projectKindFromMetadataToTracking } from "@open-design/contracts/analytics";
 import { useAnalytics } from "../analytics/provider";
@@ -1169,84 +1176,91 @@ export function DesignsTab({
 			)}
 			{renameTarget ? (
 				<Dialog
-					as="form"
-					className="modal-rename"
-					onClose={cancelRename}
-					closeOnEscape
-					ariaLabelledBy={renameTitleId}
-					onSubmit={(e) => {
-						e.preventDefault();
-						commitRename();
-					}}
-				>
-					<DialogTitle id={renameTitleId}>{t("designs.renameTitle")}</DialogTitle>
-					<label>
-						{t("designs.renamePrompt", { name: renameTarget.original })}
-						<input
-							type="text"
-							value={renameInput}
-							autoFocus
-							onChange={(e) => setRenameInput(e.target.value)}
-						/>
-					</label>
-					<DialogFooter className="row">
-						<button type="button" onClick={cancelRename}>
-							{t("designs.renameCancel")}
-						</button>
-						<button
-							type="submit"
-							className="primary"
-							disabled={
-								!renameInput.trim() ||
-								renameInput.trim() === renameTarget.original
-							}
-						>
-							{t("designs.renameSave")}
-						</button>
-					</DialogFooter>
-				</Dialog>
+      as="form"
+      className="modal-rename"
+      onClose={cancelRename}
+      closeOnEscape
+      ariaLabelledBy={renameTitleId}
+      onSubmit={(e) => {
+        e.preventDefault();
+        commitRename();
+      }}
+    >
+      <DialogHeader>
+        <DialogTitle id={renameTitleId}>{t('designs.renameTitle')}</DialogTitle>
+      </DialogHeader>
+      <DialogBody>
+        <label data-dialog-field="">
+          {t('designs.renamePrompt', { name: renameTarget.original })}
+          <input
+            type="text"
+            value={renameInput}
+            autoFocus
+            onChange={(e) => setRenameInput(e.target.value)}
+          />
+        </label>
+      </DialogBody>
+      <DialogFooter className="row">
+        <button type="button" onClick={cancelRename}>
+          {t('designs.renameCancel')}
+        </button>
+        <button
+          type="submit"
+          className="primary"
+          disabled={!renameInput.trim() || renameInput.trim() === renameTarget.original}
+        >
+          {t('designs.renameSave')}
+        </button>
+      </DialogFooter>
+    </Dialog>
 			) : null}
 			{confirmTarget ? (
 				<Dialog
-					className="modal-confirm"
-					role="alertdialog"
-					onClose={() => {
-						if (confirmPending) return;
-						setConfirmTarget(null);
-						setConfirmError(null);
-					}}
-					closeOnBackdrop={!confirmPending}
-					ariaLabelledBy={confirmTitleId}
-				>
-					<DialogTitle id={confirmTitleId}>{confirmTarget.title}</DialogTitle>
-					<DialogDescription className="modal-confirm-message">{confirmTarget.message}</DialogDescription>
-					{confirmError ? (
-						<p className="modal-confirm-error" role="alert">
-							{confirmError}
-						</p>
-					) : null}
-					<DialogFooter className="row">
-						<button
-							type="button"
-							disabled={confirmPending}
-							onClick={() => {
-								setConfirmTarget(null);
-								setConfirmError(null);
-							}}
-						>
-							{t("designs.renameCancel")}
-						</button>
-						<button
-							type="button"
-							className="primary danger"
-							autoFocus
-							disabled={confirmPending}
-							onClick={() => void commitConfirmTarget()}
-						>
-							{confirmTarget.confirmLabel}
-						</button>
-					</DialogFooter>
-				</Dialog>
+      className="modal-confirm"
+      role="alertdialog"
+      onClose={() => {
+        if (confirmPending) return;
+        setConfirmTarget(null);
+        setConfirmError(null);
+      }}
+      closeOnBackdrop={!confirmPending}
+      ariaLabelledBy={confirmTitleId}
+    >
+      <DialogHeader>
+        <DialogTitle id={confirmTitleId}>{confirmTarget.title}</DialogTitle>
+      </DialogHeader>
+      <DialogBody>
+        <DialogDescription className="modal-confirm-message">
+          {confirmTarget.message}
+        </DialogDescription>
+        {confirmError ? (
+          <p className="modal-confirm-error" role="alert">
+            {confirmError}
+          </p>
+        ) : null}
+      </DialogBody>
+      <DialogFooter className="row">
+        <button
+          type="button"
+          disabled={confirmPending}
+          onClick={() => {
+            setConfirmTarget(null);
+            setConfirmError(null);
+          }}
+        >
+          {t('designs.renameCancel')}
+        </button>
+        <button
+          type="button"
+          className="primary danger"
+          autoFocus
+          disabled={confirmPending}
+          onClick={() => void commitConfirmTarget()}
+        >
+          {confirmTarget.confirmLabel}
+        </button>
+      </DialogFooter>
+    </Dialog>
 			) : null}
 			<AnimatePresence>
 				{designsToast ? (

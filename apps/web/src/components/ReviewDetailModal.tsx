@@ -175,6 +175,7 @@ export function ReviewDetailDrawer({
         aria-hidden={!open}
       />
       <div
+        data-dialog-surface="workspace"
         className={`${styles.panel} ${open ? styles.panelOpen : ''}`}
         role="dialog"
         aria-modal="true"
@@ -182,7 +183,7 @@ export function ReviewDetailDrawer({
         aria-hidden={!open}
       >
         <DetailHead review={detail ?? review} onClose={onClose} />
-        <div className={styles.body}>
+        <div data-dialog-part="body" className={styles.body}>
           {loading ? (
             <div className={styles.stateWrap}>
               <div className={styles.spinner} />
@@ -194,11 +195,7 @@ export function ReviewDetailDrawer({
             </div>
           ) : (
             <>
-              <VersionSection
-                versions={versions}
-                current={version}
-                onSwitch={switchVersion}
-              />
+              <VersionSection versions={versions} current={version} onSwitch={switchVersion} />
               <QuantitySection quantity={quantity} />
               <ReviewerSection reviewers={reviewers} />
             </>
@@ -223,7 +220,7 @@ function DetailHead({ review, onClose }: { review: any; onClose: () => void }) {
   const remainLabel = remainDays === null ? null : `剩余 ${Math.max(0, remainDays)} 天`;
 
   return (
-    <div className={styles.head}>
+    <div data-dialog-part="header" className={styles.head}>
       <div className={styles.headMain}>
         <div className={styles.headTop}>
           {typeMeta ? (
@@ -231,7 +228,7 @@ function DetailHead({ review, onClose }: { review: any; onClose: () => void }) {
               {typeMeta.char}
             </span>
           ) : null}
-          <h2 className={styles.title}>{reviewName}</h2>
+          <h2 data-dialog-part="title" className={styles.title}>{reviewName}</h2>
           {remainLabel ? (
             <span className={`${styles.remainBadge} ${urgent ? styles.urgent : ''}`}>{remainLabel}</span>
           ) : null}
@@ -251,7 +248,7 @@ function DetailHead({ review, onClose }: { review: any; onClose: () => void }) {
           </span>
         </div>
       </div>
-      <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="关闭">
+      <button data-dialog-part="close" type="button" className={styles.closeBtn} onClick={onClose} aria-label="关闭">
         ×
       </button>
     </div>

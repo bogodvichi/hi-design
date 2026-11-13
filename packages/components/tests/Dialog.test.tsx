@@ -2,6 +2,7 @@
 
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createRef } from 'react';
 
 import {
   Dialog,
@@ -10,6 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogToolbar,
 } from '../src/dialog';
 
 afterEach(() => {
@@ -17,6 +19,24 @@ afterEach(() => {
 });
 
 describe('Dialog', () => {
+  it('exposes the scroll body while retaining controls outside it', () => {
+    const bodyRef = createRef<HTMLDivElement>();
+    render(
+      <Dialog layout="scrollable" ariaLabel="Edit resource" includeChromeClassName={false}>
+        <DialogHeader><DialogTitle>Edit resource</DialogTitle></DialogHeader>
+        <DialogToolbar><button type="button">Change type</button></DialogToolbar>
+        <DialogBody ref={bodyRef}><input aria-label="Name" defaultValue="Draft" /></DialogBody>
+        <DialogFooter><button type="button">Save</button></DialogFooter>
+      </Dialog>,
+    );
+    expect(bodyRef.current?.contains(screen.getByRole('textbox', { name: 'Name' }))).toBe(true);
+    expect(bodyRef.current?.contains(screen.getByRole('button', { name: 'Change type' }))).toBe(false);
+    expect(bodyRef.current?.contains(screen.getByRole('button', { name: 'Save' }))).toBe(false);
+    bodyRef.current!.scrollTop = 200;
+    bodyRef.current!.scrollTop = 0;
+    expect((screen.getByRole('textbox', { name: 'Name' }) as HTMLInputElement).value).toBe('Draft');
+  });
+
   it('wires labelled dialogs consistently', () => {
     render(
       <Dialog ariaLabelledBy="dialog-title">
@@ -63,8 +83,26 @@ describe('Dialog', () => {
     const panel = container.querySelector('.plugin-details-modal');
 
     expect(panel).toBeTruthy();
-    expect(panel?.className).toBe('plugin-details-modal');
+    expect(panel?.classList.contains('plugin-details-modal')).toBe(true);
+    expect(panel?.getAttribute('data-dialog-surface')).toBe('standard');
     expect(panel?.classList.contains('modal')).toBe(false);
+  });
+
+  it('keeps footer actions associated with a form across the scroll body', () => {
+    const onSubmit = vi.fn(event => event.preventDefault());
+    render(
+      <Dialog as="form" onSubmit={onSubmit} ariaLabel="Create team">
+        <DialogHeader><DialogTitle>Create team</DialogTitle></DialogHeader>
+        <DialogBody><label>Name<input name="name" required defaultValue="Design" /></label></DialogBody>
+        <DialogFooter><button type="submit">Create</button></DialogFooter>
+      </Dialog>,
+    );
+    const save = screen.getByRole('button', { name: 'Create' }) as HTMLButtonElement;
+    const input = screen.getByRole('textbox', { name: 'Name' }) as HTMLInputElement;
+    expect(save.form).toBe(input.form);
+    fireEvent.click(save);
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(input.value).toBe('Design');
   });
 
   it('keeps caller variant sizing overrides ahead of shared dialog defaults', () => {

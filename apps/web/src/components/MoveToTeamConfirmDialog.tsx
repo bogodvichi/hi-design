@@ -1,6 +1,13 @@
 import { useId, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Dialog, DialogDescription, DialogFooter, DialogTitle } from '@open-design/components';
+import {
+  DialogHeader,
+  DialogBody,
+  Dialog,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from '@open-design/components';
 import { useT } from '../i18n';
 
 /** Same skip key the recent-projects grid persists its 不再提示 choice under. */
@@ -40,26 +47,28 @@ export function MoveToTeamConfirmDialog({
       closeOnEscape
       ariaLabelledBy={titleId}
     >
-      <DialogTitle id={titleId}>
-        {action === 'to-team'
-          ? t('recentProjects.moveToTeam')
-          : t('recentProjects.moveOutOfTeam')}
-      </DialogTitle>
-      <DialogDescription>
-        {action === 'to-team' ? (
-          <>
-            {t('recentProjects.moveToTeamDescPre')}
-            <strong>{t('recentProjects.moveToTeamDescStrong')}</strong>
-            {t('recentProjects.moveToTeamDescPost')}
-          </>
-        ) : (
-          <>
-            {t('recentProjects.moveToPersonalDescPre')}
-            <strong>{t('recentProjects.moveToPersonalDescStrong')}</strong>
-            {t('recentProjects.moveToPersonalDescPost')}
-          </>
-        )}
-      </DialogDescription>
+      <DialogHeader>
+        <DialogTitle id={titleId}>
+          {action === 'to-team' ? t('recentProjects.moveToTeam') : t('recentProjects.moveOutOfTeam')}
+        </DialogTitle>
+      </DialogHeader>
+      <DialogBody>
+        <DialogDescription>
+          {action === 'to-team' ? (
+            <>
+              {t('recentProjects.moveToTeamDescPre')}
+              <strong>{t('recentProjects.moveToTeamDescStrong')}</strong>
+              {t('recentProjects.moveToTeamDescPost')}
+            </>
+          ) : (
+            <>
+              {t('recentProjects.moveToPersonalDescPre')}
+              <strong>{t('recentProjects.moveToPersonalDescStrong')}</strong>
+              {t('recentProjects.moveToPersonalDescPost')}
+            </>
+          )}
+        </DialogDescription>
+      </DialogBody>
       <DialogFooter className="row">
         <label className="recent-projects__move-remind">
           <input

@@ -259,26 +259,36 @@ export function ReviewListModal({
   if (!open || typeof document === 'undefined') return null;
 
   return createPortal(
-    <div
+    <div data-dialog-backdrop=""
       className={styles.backdrop}
       role="presentation"
       onClick={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className={styles.shell} role="dialog" aria-modal="true">
-       <div className={styles.head}>
+      <div data-dialog-surface="standard" className={styles.shell} role="dialog" aria-modal="true">
+        <div data-dialog-part="header" className={styles.head}>
           <div className={styles.headMain}>
             <div className={styles.kicker}>REVIEW</div>
-            <h2 className={styles.title}>历史评审</h2>
-            <p className={styles.subtitle}>来自羽点（uedro）的评审列表</p>
+            <h2 data-dialog-part="title" className={styles.title}>
+              历史评审
+            </h2>
+            <p data-dialog-part="description" className={styles.subtitle}>
+              来自羽点（uedro）的评审列表
+            </p>
           </div>
-          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="关闭">
+          <button
+            data-dialog-part="close"
+            type="button"
+            className={styles.closeBtn}
+            onClick={onClose}
+            aria-label="关闭"
+          >
             ✕
           </button>
         </div>
         {/* 筛选栏：左侧 processType 单选切换，右侧 reviewType 下拉 + 搜索框。 */}
-        <div className={styles.toolbar}>
+        <div data-dialog-part="toolbar" className={styles.toolbar}>
           <div className={styles.tabs} role="tablist" aria-label="评审范围">
             {PROCESS_TYPES.map((pt) => (
               <button
@@ -307,17 +317,17 @@ export function ReviewListModal({
               ))}
             </select>
             <input
-             type="search"
-             className={styles.search}
-             placeholder="请输入评审名称/创建人/项目名称"
-             value={reviewName}
+              type="search"
+              className={styles.search}
+              placeholder="请输入评审名称/创建人/项目名称"
+              value={reviewName}
               onChange={(e) => setReviewName(e.target.value)}
               aria-label="按评审名称搜索"
             />
           </div>
         </div>
 
-        <div className={styles.body} ref={scrollRef}>
+        <div data-dialog-part="body" className={styles.body} ref={scrollRef}>
           {loading ? (
             <div className={styles.stateWrap}>
               <div className={styles.spinner} />
@@ -333,24 +343,24 @@ export function ReviewListModal({
             </div>
           ) : (
             <div className={styles.grid}>
-             {items.map((r: any, i: number) => (
-               <ReviewCard
-                 key={r?.reviewNum ?? r?.id ?? i}
-                 r={r}
-                 onOpenDetail={(review) => {
-                   setDetailReview(review);
-                   setDetailOpen(true);
-                 }}
-                 onOpenUpdate={(review) => {
-                   setUpdateReview(review);
-                   setUpdateOpen(true);
-                 }}
-                 onOpenEdit={(review) => {
-                   setEditReview(review);
-                   setEditOpen(true);
-                 }}
-              />
-             ))}
+              {items.map((r: any, i: number) => (
+                <ReviewCard
+                  key={r?.reviewNum ?? r?.id ?? i}
+                  r={r}
+                  onOpenDetail={(review) => {
+                    setDetailReview(review);
+                    setDetailOpen(true);
+                  }}
+                  onOpenUpdate={(review) => {
+                    setUpdateReview(review);
+                    setUpdateOpen(true);
+                  }}
+                  onOpenEdit={(review) => {
+                    setEditReview(review);
+                    setEditOpen(true);
+                  }}
+                />
+              ))}
             </div>
           )}
 
@@ -360,11 +370,7 @@ export function ReviewListModal({
           {!loading && items.length > 0 ? (
             <div className={styles.listFoot} ref={sentinelRef}>
               {moreError ? (
-                <button
-                  type="button"
-                  className={styles.retryBtn}
-                  onClick={() => void loadMore()}
-                >
+                <button type="button" className={styles.retryBtn} onClick={() => void loadMore()}>
                   {moreError} · 点击重试
                 </button>
               ) : loadingMore ? (
@@ -381,7 +387,7 @@ export function ReviewListModal({
           ) : null}
         </div>
 
-        <div className={styles.foot}>
+        <div data-dialog-part="footer" className={styles.foot}>
           <span className={styles.footHint}>
             {loading || items.length === 0
               ? ''
@@ -393,29 +399,33 @@ export function ReviewListModal({
             关闭
           </button>
         </div>
-       <ReviewDetailDrawer
-         review={detailReview}
-         open={detailOpen}
-         onClose={() => setDetailOpen(false)}
-       />
-       <ReviewManuscriptUpdateModal
-         open={updateOpen}
-         onClose={() => setUpdateOpen(false)}
-         reviewId={pick(updateReview?.reviewId, updateReview?.id)}
-         category={String(updateReview?.reviewType ?? '')}
-        reviewName={pick(updateReview?.reviewName, updateReview?.name)}
-        projectId={projectId}
-        manuscriptId={updateReview?.manuscriptDtos?.[0]?.manuscriptId ?? ''}
-         initialCarrierType={String(updateReview?.carrierType ?? updateReview?.manuscriptDtos?.[0]?.carrierType ?? 'web')}
-         initialH5Size={String(updateReview?.h5Size ?? updateReview?.manuscriptDtos?.[0]?.h5Size ?? '390x844')}
-      />
-      <ReviewEditModal
-        open={editOpen}
-        onClose={() => setEditOpen(false)}
-        reviewId={pick(editReview?.reviewId, editReview?.id)}
-        reviewName={pick(editReview?.reviewName, editReview?.name)}
-      />
-     </div>
+        <ReviewDetailDrawer
+          review={detailReview}
+          open={detailOpen}
+          onClose={() => setDetailOpen(false)}
+        />
+        <ReviewManuscriptUpdateModal
+          open={updateOpen}
+          onClose={() => setUpdateOpen(false)}
+          reviewId={pick(updateReview?.reviewId, updateReview?.id)}
+          category={String(updateReview?.reviewType ?? '')}
+          reviewName={pick(updateReview?.reviewName, updateReview?.name)}
+          projectId={projectId}
+          manuscriptId={updateReview?.manuscriptDtos?.[0]?.manuscriptId ?? ''}
+          initialCarrierType={String(
+            updateReview?.carrierType ?? updateReview?.manuscriptDtos?.[0]?.carrierType ?? 'web',
+          )}
+          initialH5Size={String(
+            updateReview?.h5Size ?? updateReview?.manuscriptDtos?.[0]?.h5Size ?? '390x844',
+          )}
+        />
+        <ReviewEditModal
+          open={editOpen}
+          onClose={() => setEditOpen(false)}
+          reviewId={pick(editReview?.reviewId, editReview?.id)}
+          reviewName={pick(editReview?.reviewName, editReview?.name)}
+        />
+      </div>
     </div>,
     document.body,
   );

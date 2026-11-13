@@ -2369,7 +2369,7 @@ export function DesignBrowserPanel({
     browserPreviewIndex !== null ? browserImagePreviews[browserPreviewIndex] ?? null : null;
   const browserPreviewImageModal = activeBrowserPreviewImage
     ? createPortal(
-        <div
+        <div data-dialog-backdrop=""
           className="staged-preview-modal"
           role="dialog"
           aria-modal="true"
@@ -2378,10 +2378,13 @@ export function DesignBrowserPanel({
             if (event.target === event.currentTarget) setBrowserPreviewIndex(null);
           }}
         >
-          <div className="staged-preview-card">
-            <div className="staged-preview-head">
-              <span title={activeBrowserPreviewImage.file.name}>{activeBrowserPreviewImage.file.name}</span>
+          <div data-dialog-surface="workspace" className="staged-preview-card">
+            <div data-dialog-part="header" className="staged-preview-head">
+              <span data-dialog-part="title" title={activeBrowserPreviewImage.file.name}>
+                {activeBrowserPreviewImage.file.name}
+              </span>
               <button
+                data-dialog-part="close"
                 type="button"
                 className="icon-only od-tooltip"
                 onClick={() => setBrowserPreviewIndex(null)}

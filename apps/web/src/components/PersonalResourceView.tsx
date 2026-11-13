@@ -170,19 +170,21 @@ export function PersonalResourceView({ kind }: { kind: ResourceKind }) {
   }
 
   const dialog = dialogOpen ? createPortal(
-    <div className={styles.backdrop} role="presentation" onClick={closeDialog}>
+    <div data-dialog-backdrop="" className={styles.backdrop} role="presentation" onClick={closeDialog}>
       <section
+        data-dialog-surface="standard"
         className={styles.dialog}
         role="dialog"
         aria-modal="true"
         aria-labelledby="personal-skill-dialog-title"
         onClick={(event) => event.stopPropagation()}
       >
-        <header className={styles.dialogHeader}>
-          <h2 id="personal-skill-dialog-title" className={styles.dialogTitle}>
+        <header data-dialog-part="header" className={styles.dialogHeader}>
+          <h2 data-dialog-part="title" id="personal-skill-dialog-title" className={styles.dialogTitle}>
             {t(config.addKey)}
           </h2>
           <button
+            data-dialog-part="close"
             type="button"
             className={styles.closeBtn}
             aria-label={t('pluginsView.createClose')}
@@ -192,15 +194,14 @@ export function PersonalResourceView({ kind }: { kind: ResourceKind }) {
             <Icon name="close" size={15} aria-hidden />
           </button>
         </header>
-        <div className={styles.dialogBody}>
+        <div data-dialog-part="body" className={styles.dialogBody}>
           {/* Import from link */}
           <article className={styles.section}>
             <h3 className={styles.sectionTitle}>{t('pluginsView.importFromUrl')}</h3>
-            <p className={styles.sectionBody}>
-              {t('pluginsView.importUrlBody', { kind: 'Skill' })}
-            </p>
+            <p className={styles.sectionBody}>{t('pluginsView.importUrlBody', { kind: 'Skill' })}</p>
             <div className={styles.urlRow}>
               <input
+                data-dialog-control=""
                 className={styles.urlInput}
                 aria-label={t('pluginsView.importFromUrl')}
                 value={url}
@@ -237,9 +238,7 @@ export function PersonalResourceView({ kind }: { kind: ResourceKind }) {
               disabled={busy !== null}
               style={{ display: 'none' }}
               {...{ webkitdirectory: '', directory: '' }}
-              onChange={(event) =>
-                setFolderFiles(Array.from(event.currentTarget.files ?? []))
-              }
+              onChange={(event) => setFolderFiles(Array.from(event.currentTarget.files ?? []))}
             />
             <div className={styles.folderRow}>
               <button

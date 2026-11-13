@@ -8,7 +8,13 @@
 // textarea can live centered in the hero.
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Dialog, DialogFooter, DialogTitle } from '@open-design/components';
+import {
+  DialogHeader,
+  DialogBody,
+  Dialog,
+  DialogFooter,
+  DialogTitle,
+} from '@open-design/components';
 import type {
   ApplyResult,
   ChatSessionMode,
@@ -3831,72 +3837,73 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
           ariaLabelledBy="home-hero-confirm-title"
           closeOnBackdrop={false}
         >
+          <DialogHeader>
             <DialogTitle id="home-hero-confirm-title">{t('homeHero.confirmReplaceTitle')}</DialogTitle>
-            <p>
-              {t('homeHero.confirmReplaceBody', { title: pendingReplacement.title })}
-            </p>
-            <DialogFooter className="home-hero-confirm__actions">
-              <button
-                type="button"
-                className="home-hero-confirm__secondary"
-                onClick={() => {
-                  trackPluginReplacementModalClick(analytics.track, {
-                    page_name: 'home',
-                    area: 'plugin_replacement_modal',
-                    element: 'cancel',
-                  });
-                  setPendingReplacement(null);
-                }}
-              >
-                {t('common.cancel')}
-              </button>
-              <button
-                type="button"
-                className="home-hero-confirm__primary"
-                onClick={() => {
-                  trackPluginReplacementModalClick(analytics.track, {
-                    page_name: 'home',
-                    area: 'plugin_replacement_modal',
-                    element: 'replace',
-                  });
-                  const pluginBefore = pendingReplacement.pluginBefore;
-                  const pluginAfter = pendingReplacement.pluginAfter;
-                  const action = pendingReplacement.confirm;
-                  setPendingReplacement(null);
-                  // `action()` now returns a promise that resolves when
-                  // the underlying plugin apply finishes (or rejects on
-                  // failure). Emitting the result event off the promise
-                  // settle is the only way to capture real success /
-                  // failure — the synchronous path used to mark every
-                  // attempt as a success and never observed the catch
-                  // branch.
-                  void (async () => {
-                    try {
-                      await action();
-                      trackPluginReplacementResult(analytics.track, {
-                        page_name: 'home',
-                        area: 'plugin_replacement',
-                        plugin_before: pluginBefore ?? '',
-                        plugin_after: pluginAfter,
-                        result: 'success',
-                      });
-                    } catch (err) {
-                      trackPluginReplacementResult(analytics.track, {
-                        page_name: 'home',
-                        area: 'plugin_replacement',
-                        plugin_before: pluginBefore ?? '',
-                        plugin_after: pluginAfter,
-                        result: 'failed',
-                        error_code:
-                          err instanceof Error ? err.message : String(err),
-                      });
-                    }
-                  })();
-                }}
-              >
-                {t('homeHero.confirmReplace')}
-              </button>
-            </DialogFooter>
+          </DialogHeader>
+          <DialogBody>
+            <p>{t('homeHero.confirmReplaceBody', { title: pendingReplacement.title })}</p>
+          </DialogBody>
+          <DialogFooter className="home-hero-confirm__actions">
+            <button
+              type="button"
+              className="home-hero-confirm__secondary"
+              onClick={() => {
+                trackPluginReplacementModalClick(analytics.track, {
+                  page_name: 'home',
+                  area: 'plugin_replacement_modal',
+                  element: 'cancel',
+                });
+                setPendingReplacement(null);
+              }}
+            >
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              className="home-hero-confirm__primary"
+              onClick={() => {
+                trackPluginReplacementModalClick(analytics.track, {
+                  page_name: 'home',
+                  area: 'plugin_replacement_modal',
+                  element: 'replace',
+                });
+                const pluginBefore = pendingReplacement.pluginBefore;
+                const pluginAfter = pendingReplacement.pluginAfter;
+                const action = pendingReplacement.confirm;
+                setPendingReplacement(null);
+                // `action()` now returns a promise that resolves when
+                // the underlying plugin apply finishes (or rejects on
+                // failure). Emitting the result event off the promise
+                // settle is the only way to capture real success /
+                // failure — the synchronous path used to mark every
+                // attempt as a success and never observed the catch
+                // branch.
+                void (async () => {
+                  try {
+                    await action();
+                    trackPluginReplacementResult(analytics.track, {
+                      page_name: 'home',
+                      area: 'plugin_replacement',
+                      plugin_before: pluginBefore ?? '',
+                      plugin_after: pluginAfter,
+                      result: 'success',
+                    });
+                  } catch (err) {
+                    trackPluginReplacementResult(analytics.track, {
+                      page_name: 'home',
+                      area: 'plugin_replacement',
+                      plugin_before: pluginBefore ?? '',
+                      plugin_after: pluginAfter,
+                      result: 'failed',
+                      error_code: err instanceof Error ? err.message : String(err),
+                    });
+                  }
+                })();
+              }}
+            >
+              {t('homeHero.confirmReplace')}
+            </button>
+          </DialogFooter>
         </Dialog>
       ) : null}
     </div>

@@ -28,7 +28,15 @@ import {
 import { useInView } from './plugins-home/useInView';
 import { navigate } from '../router';
 import { setHomeComposerAssetSeed } from '../state/libraryHandoff';
-import { Button, Dialog, DialogDescription, DialogFooter, DialogTitle } from '@open-design/components';
+import {
+  DialogHeader,
+  DialogBody,
+  Button,
+  Dialog,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from '@open-design/components';
 import { Icon } from './Icon';
 import {
   KindIcon,
@@ -1183,16 +1191,20 @@ export function LibrarySection({ active, onOpenProject }: Props) {
           closeOnEscape
           ariaLabelledBy={confirmDeleteTitleId}
         >
-          <DialogTitle id={confirmDeleteTitleId}>
-            {selectedCount === 1
-              ? t('library.confirmDeleteTitleOne', { count: selectedCount })
-              : t('library.confirmDeleteTitleMany', { count: selectedCount })}
-          </DialogTitle>
-          <DialogDescription className="modal-confirm-message">
-            {selectedCount === 1
-              ? t('library.confirmDeleteBodyOne')
-              : t('library.confirmDeleteBodyMany')}
-          </DialogDescription>
+          <DialogHeader>
+            <DialogTitle id={confirmDeleteTitleId}>
+              {selectedCount === 1
+                ? t('library.confirmDeleteTitleOne', { count: selectedCount })
+                : t('library.confirmDeleteTitleMany', { count: selectedCount })}
+            </DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <DialogDescription className="modal-confirm-message">
+              {selectedCount === 1
+                ? t('library.confirmDeleteBodyOne')
+                : t('library.confirmDeleteBodyMany')}
+            </DialogDescription>
+          </DialogBody>
           <DialogFooter className="row">
             <button type="button" onClick={() => setConfirmDeleteOpen(false)}>
               {t('library.cancel')}

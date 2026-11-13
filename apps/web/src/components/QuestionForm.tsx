@@ -1151,11 +1151,7 @@ function VisualStylePicker({
                 </Button>
               </DialogHeader>
               <DialogBody className="qf-visual-dialog-body">
-                <div
-                  className="qf-visual-dialog-tabs"
-                  role="tablist"
-                  aria-label={`${title} categories`}
-                >
+                <div className="qf-visual-dialog-tabs" role="tablist" aria-label={`${title} categories`}>
                   {VISUAL_STYLE_GALLERY_CATEGORIES.map((category) => {
                     const active = galleryCategory === category.value;
                     return (
@@ -1204,7 +1200,7 @@ function VisualStylePicker({
                   ))}
                 </div>
                 {allowCustom ? (
-                  <label className="qf-visual-custom">
+                  <label data-dialog-field="" className="qf-visual-custom">
                     <span className="qf-visual-custom-label">{customLabel}</span>
                     <input
                       type="text"

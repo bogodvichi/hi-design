@@ -16,6 +16,27 @@
   box-sizing: border-box;
   transition: border-color 140ms cubic-bezier(0.23, 1, 0.32, 1);
 }
+.compact .acInput,
+.compact .acInputTag {
+  height: 40px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+.compact .acInput {
+  padding: 8px 32px 8px 12px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+.compact .selectedBox {
+  min-height: 64px;
+  box-sizing: border-box;
+  gap: 4px;
+  align-content: flex-start;
+}
+.singleRow .selectedBox {
+  min-height: 36px;
+  box-sizing: border-box;
+}
 .acInput:focus {
   border-color: var(--border-strong, var(--border));
 }
@@ -126,11 +147,14 @@
   align-items: center;
   gap: 4px;
   max-width: 100%;
-  padding: 3px 6px 3px 10px;
+  min-height: 24px;
+  padding: 2px 4px 2px 6px;
+  box-sizing: border-box;
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--bg-subtle);
   font-size: 12px;
+  line-height: 18px;
   color: var(--text);
   animation: ppTagIn 160ms cubic-bezier(0.23, 1, 0.32, 1);
 }
@@ -145,6 +169,9 @@
   }
 }
 .tagName {
+  display: block;
+  min-width: 0;
+  line-height: 18px;
   font-weight: 500;
   max-width: 140px;
   overflow: hidden;
@@ -158,6 +185,8 @@
   justify-content: center;
   width: 16px;
   height: 16px;
+  padding: 0;
+  box-sizing: border-box;
   border: none;
   border-radius: 4px;
   background: transparent;

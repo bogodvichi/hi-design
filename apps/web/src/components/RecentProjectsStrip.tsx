@@ -19,7 +19,14 @@ import {
   useState,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { Dialog, DialogDescription, DialogFooter, DialogTitle } from '@open-design/components';
+import {
+  DialogHeader,
+  DialogBody,
+  Dialog,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from '@open-design/components';
 
 import { useT } from '../i18n';
 import { avatarColorForDisplayName } from '../utils/avatarColor';
@@ -2941,16 +2948,20 @@ function requestDelete(project: Project) {
             commitRename();
           }}
         >
-          <DialogTitle id={renameTitleId}>{t('designs.renameTitle')}</DialogTitle>
-          <label>
-            {t('designs.renamePrompt', { name: renameTarget.original })}
-            <input
-              type="text"
-              value={renameInput}
-              autoFocus
-              onChange={(event) => setRenameInput(event.target.value)}
-            />
-          </label>
+          <DialogHeader>
+            <DialogTitle id={renameTitleId}>{t('designs.renameTitle')}</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <label data-dialog-field="">
+              {t('designs.renamePrompt', { name: renameTarget.original })}
+              <input
+                type="text"
+                value={renameInput}
+                autoFocus
+                onChange={(event) => setRenameInput(event.target.value)}
+              />
+            </label>
+          </DialogBody>
           <DialogFooter className="row">
             <button type="button" onClick={cancelRename}>
               {t('designs.renameCancel')}
@@ -2972,22 +2983,24 @@ function requestDelete(project: Project) {
           onClose={() => {
             if (deletePending) return;
             setConfirmTarget(null);
-
           }}
           closeOnBackdrop={!deletePending}
           ariaLabelledBy={confirmTitleId}
         >
-          <DialogTitle id={confirmTitleId}>{t('designs.deleteTitle')}</DialogTitle>
-          <DialogDescription>
-            {t('designs.deleteConfirm', { name: confirmTarget.name })}
-          </DialogDescription>
+          <DialogHeader>
+            <DialogTitle id={confirmTitleId}>{t('designs.deleteTitle')}</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <DialogDescription>
+              {t('designs.deleteConfirm', { name: confirmTarget.name })}
+            </DialogDescription>
+          </DialogBody>
           <DialogFooter className="row">
             <button
               type="button"
               disabled={deletePending}
               onClick={() => {
                 setConfirmTarget(null);
-
               }}
             >
               {t('designs.renameCancel')}
@@ -3043,19 +3056,20 @@ function requestDelete(project: Project) {
           closeOnEscape
           ariaLabelledBy={bulkDeleteTitleId}
         >
-          <DialogTitle id={bulkDeleteTitleId}>{t('designs.deleteTitle')}</DialogTitle>
-          <DialogDescription>
-            {selectionExtension?.deleteConfirmDescription ?? t('designs.deleteSelectedConfirm', { n: selectedCount })}
-          </DialogDescription>
+          <DialogHeader>
+            <DialogTitle id={bulkDeleteTitleId}>{t('designs.deleteTitle')}</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <DialogDescription>
+              {selectionExtension?.deleteConfirmDescription ??
+                t('designs.deleteSelectedConfirm', { n: selectedCount })}
+            </DialogDescription>
+          </DialogBody>
           <DialogFooter className="row">
             <button type="button" onClick={() => setBulkDeleteOpen(false)}>
               {t('designs.renameCancel')}
             </button>
-            <button
-              type="button"
-              className="primary danger"
-              onClick={() => void commitBulkDelete()}
-            >
+            <button type="button" className="primary danger" onClick={() => void commitBulkDelete()}>
               {t('designs.deleteSelected')}
             </button>
           </DialogFooter>

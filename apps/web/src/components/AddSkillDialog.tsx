@@ -50,6 +50,10 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
   const workspaceContextLoading = overrideContext ? false : hookLoading;
 
   const [activeTab, setActiveTab] = useState<SkillSource>('upload');
+  const bodyRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (bodyRef.current) bodyRef.current.scrollTop = 0;
+  }, [activeTab, open]);
   const [url, setUrl] = useState('');
   const [uploadSource, setUploadSource] = useState<UploadSource | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -369,24 +373,26 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
   }, [busy, locale]);
 
   const dialog = open ? createPortal(
-    <div className={styles.backdrop} role="presentation" onClick={closeDialog}>
+    <div data-dialog-backdrop="" className={styles.backdrop} role="presentation" onClick={closeDialog}>
       <section
+        data-dialog-surface="standard"
         className={styles.dialog}
         role="dialog"
         aria-modal="true"
         aria-label={t('personalScope.addSkill')}
         onClick={(event) => event.stopPropagation()}
       >
-        <header className={styles.dialogHeader}>
+        <header data-dialog-part="header" className={styles.dialogHeader}>
           <div className={styles.headerText}>
-            <h2 className={styles.dialogTitle}>
+            <h2 data-dialog-part="title" className={styles.dialogTitle}>
               {t('personalScope.addSkill')}
             </h2>
-            <p className={styles.dialogSubtitle}>
+            <p data-dialog-part="description" className={styles.dialogSubtitle}>
               {t('personalScope.addSkillSubtitle')}
             </p>
           </div>
           <button
+            data-dialog-part="close"
             type="button"
             className={styles.closeBtn}
             aria-label={t('pluginsView.createClose')}
@@ -396,30 +402,31 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
             <Icon name="close" size={17} aria-hidden />
           </button>
         </header>
-        <div className={styles.dialogBody}>
-          <div className={styles.tabBar} role="tablist">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'upload'}
-              className={activeTab === 'upload' ? `${styles.tabBtn} ${styles.tabBtnActive}` : styles.tabBtn}
-              onClick={() => setActiveTab('upload')}
-              disabled={isBusy}
-            >
-              {t('personalScope.skillTabUpload')}
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'url'}
-              className={activeTab === 'url' ? `${styles.tabBtn} ${styles.tabBtnActive}` : styles.tabBtn}
-              onClick={() => setActiveTab('url')}
-              disabled={isBusy}
-            >
-              {t('personalScope.skillTabUrl')}
-            </button>
-          </div>
-
+        <div data-dialog-part="toolbar" data-dialog-tabs="" className={styles.tabBar} role="tablist">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'upload'}
+            className={
+              activeTab === 'upload' ? `${styles.tabBtn} ${styles.tabBtnActive}` : styles.tabBtn
+            }
+            onClick={() => setActiveTab('upload')}
+            disabled={isBusy}
+          >
+            {t('personalScope.skillTabUpload')}
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'url'}
+            className={activeTab === 'url' ? `${styles.tabBtn} ${styles.tabBtnActive}` : styles.tabBtn}
+            onClick={() => setActiveTab('url')}
+            disabled={isBusy}
+          >
+            {t('personalScope.skillTabUrl')}
+          </button>
+        </div>
+        <div data-dialog-part="body" className={styles.dialogBody} ref={bodyRef}>
           {activeTab === 'upload' ? (
             <div className={styles.section}>
               <input
@@ -458,11 +465,18 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
                 }}
               />
               {uploadSource ? (
-                <SkillUploadSummary source={uploadSource} locale={locale} disabled={isBusy} onRemove={resetUpload} />
+                <SkillUploadSummary
+                  source={uploadSource}
+                  locale={locale}
+                  disabled={isBusy}
+                  onRemove={resetUpload}
+                />
               ) : (
                 <button
                   type="button"
-                  className={dragOver ? `${styles.uploadZone} ${styles.uploadZoneDragOver}` : styles.uploadZone}
+                  className={
+                    dragOver ? `${styles.uploadZone} ${styles.uploadZoneDragOver}` : styles.uploadZone
+                  }
                   disabled={busy !== null}
                   onDragOver={handleDragOver}
                   onDragLeave={handleDragLeave}
@@ -476,12 +490,22 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
                     <Icon name="upload" size={23} />
                   </span>
                   <strong className={styles.uploadZoneStrong}>
-                    {canPickFilesAndFolders ? t('personalScope.skillDropZoneHint') : t('personalScope.skillDropZoneHintFolder')}
+                    {canPickFilesAndFolders
+                      ? t('personalScope.skillDropZoneHint')
+                      : t('personalScope.skillDropZoneHintFolder')}
                   </strong>
-                  <span>{locale.startsWith('zh') ? `支持文件夹/.zip包/.md文件，总大小不超过${SKILL_UPLOAD_MAX_MB}MB` : `Supports folders, .zip archives and .md files; total size up to ${SKILL_UPLOAD_MAX_MB} MB`}</span>
+                  <span>
+                    {locale.startsWith('zh')
+                      ? `支持文件夹/.zip包/.md文件，总大小不超过${SKILL_UPLOAD_MAX_MB}MB`
+                      : `Supports folders, .zip archives and .md files; total size up to ${SKILL_UPLOAD_MAX_MB} MB`}
+                  </span>
                 </button>
               )}
-              {uploadError && <p className={uploadStyles.error} role="alert">{uploadError}</p>}
+              {uploadError && (
+                <p className={uploadStyles.error} role="alert">
+                  {uploadError}
+                </p>
+              )}
               {!canPickFilesAndFolders && !uploadSource && (
                 <button
                   type="button"
@@ -498,6 +522,7 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
             <div className={styles.section}>
               <div className={styles.urlRow}>
                 <input
+                  data-dialog-control=""
                   className={styles.urlInput}
                   aria-label={t('pluginsView.importFromUrl')}
                   value={url}
@@ -512,13 +537,8 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
             </div>
           )}
         </div>
-        <footer className={styles.dialogFooter}>
-          <button
-            type="button"
-            className={styles.cancelBtn}
-            onClick={closeDialog}
-            disabled={isBusy}
-          >
+        <footer data-dialog-part="footer" className={styles.dialogFooter}>
+          <button type="button" className={styles.cancelBtn} onClick={closeDialog} disabled={isBusy}>
             {t('common.cancel')}
           </button>
           <button
@@ -532,7 +552,11 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
           >
             {busy !== null
               ? t('pluginsView.importing')
-              : validatingUpload ? (locale.startsWith('zh') ? '校验中...' : 'Validating...') : t('personalScope.skillConfirmAdd')}
+              : validatingUpload
+                ? locale.startsWith('zh')
+                  ? '校验中...'
+                  : 'Validating...'
+                : t('personalScope.skillConfirmAdd')}
           </button>
         </footer>
       </section>

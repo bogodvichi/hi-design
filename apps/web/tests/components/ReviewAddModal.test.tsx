@@ -4,12 +4,13 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/components/PersonPicker', () => ({
-  PersonPicker: ({ placeholder, onChange }: {
+  PersonPicker: ({ ariaLabel, onChange }: {
+    ariaLabel: string;
     placeholder: string;
     onChange: (people: Array<{ name: string }>) => void;
   }) => (
-    <button type="button" onClick={() => onChange([{ name: placeholder }])}>
-      {placeholder}
+    <button type="button" onClick={() => onChange([{ name: ariaLabel }])}>
+      {ariaLabel}
     </button>
   ),
 }));
@@ -32,6 +33,11 @@ import { resolveUedroLaunchUrl } from '../../src/components/uedroLaunch';
 import { exportProjectAsAxureZip } from '../../src/runtime/axure-export';
 import { exportProjectAsHtmlReviewZip } from '../../src/runtime/uedro-html-review-export';
 
+function chooseSubtype(label: string) {
+  fireEvent.click(screen.getByRole('combobox', { name: /^评审子类型:/ }));
+  fireEvent.click(screen.getByRole('option', { name: label }));
+}
+
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
@@ -41,10 +47,13 @@ afterEach(() => {
 describe('HTML review creation', () => {
   it('offers html评审 for both department and project review modes', () => {
     render(<ReviewAddModal open onClose={() => {}} />);
-    expect(screen.getByRole('option', { name: 'html评审' }).getAttribute('value')).toBe('12');
+    chooseSubtype('html评审');
+    expect(screen.getByRole('combobox', { name: '评审子类型: html评审' })).toBeTruthy();
 
     fireEvent.click(screen.getByLabelText('项目评审'));
-    expect(screen.getByRole('option', { name: 'html评审' }).getAttribute('value')).toBe('12');
+    chooseSubtype('交互评审');
+    chooseSubtype('html评审');
+    expect(screen.getByRole('combobox', { name: '评审子类型: html评审' })).toBeTruthy();
   });
 
 
@@ -84,12 +93,12 @@ describe('HTML review creation', () => {
 
     render(<ReviewAddModal open onClose={() => {}} projectId="project-7" entryFile="screens/main.html" />);
     fireEvent.change(screen.getByPlaceholderText('请输入评审名称'), { target: { value: '来自当前项目的 HTML 评审' } });
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: '12' } });
+    chooseSubtype('html评审');
     const sourceButton = screen.getByRole('button', { name: '来自当前项目' }) as HTMLButtonElement;
     expect(sourceButton.disabled).toBe(false);
-    fireEvent.click(screen.getByRole('button', { name: '请输入名称（评审组长）' }));
-    fireEvent.click(screen.getByRole('button', { name: '请输入名称（作者）' }));
-    fireEvent.click(screen.getByRole('button', { name: '请输入名称（核心评委）' }));
+    fireEvent.click(screen.getByRole('button', { name: '评审组长' }));
+    fireEvent.click(screen.getByRole('button', { name: '作者' }));
+    fireEvent.click(screen.getByRole('button', { name: '核心评委' }));
     fireEvent.click(screen.getByRole('button', { name: '确定' }));
 
     await waitFor(() => {
@@ -209,10 +218,10 @@ describe('HTML review creation', () => {
       />,
     );
     fireEvent.change(screen.getByPlaceholderText('请输入评审名称'), { target: { value: '带工作区身份的评审' } });
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: '12' } });
-    fireEvent.click(screen.getByRole('button', { name: '请输入名称（评审组长）' }));
-    fireEvent.click(screen.getByRole('button', { name: '请输入名称（作者）' }));
-    fireEvent.click(screen.getByRole('button', { name: '请输入名称（核心评委）' }));
+    chooseSubtype('html评审');
+    fireEvent.click(screen.getByRole('button', { name: '评审组长' }));
+    fireEvent.click(screen.getByRole('button', { name: '作者' }));
+    fireEvent.click(screen.getByRole('button', { name: '核心评委' }));
     fireEvent.click(screen.getByRole('button', { name: '确定' }));
 
     await waitFor(() => expect(putHeaders).toHaveLength(1));
@@ -263,10 +272,10 @@ describe('HTML review creation', () => {
 
     render(<ReviewAddModal open onClose={onClose} projectId="project-7" entryFile="screens/main.html" />);
     fireEvent.change(screen.getByPlaceholderText('请输入评审名称'), { target: { value: '云端同步失败的评审' } });
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: '12' } });
-    fireEvent.click(screen.getByRole('button', { name: '请输入名称（评审组长）' }));
-    fireEvent.click(screen.getByRole('button', { name: '请输入名称（作者）' }));
-    fireEvent.click(screen.getByRole('button', { name: '请输入名称（核心评委）' }));
+    chooseSubtype('html评审');
+    fireEvent.click(screen.getByRole('button', { name: '评审组长' }));
+    fireEvent.click(screen.getByRole('button', { name: '作者' }));
+    fireEvent.click(screen.getByRole('button', { name: '核心评委' }));
     fireEvent.click(screen.getByRole('button', { name: '确定' }));
 
     // PUT 已经发出（本地 + 远端尝试都发生在这一个请求里）。
@@ -293,7 +302,7 @@ describe('HTML review creation', () => {
       }) };
     }));
     render(<ReviewAddModal open onClose={() => {}} />);
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: '12' } });
+    chooseSubtype('html评审');
     fireEvent.click(screen.getByRole('radio', { name: 'H5' }));
     fireEvent.change(screen.getByRole('combobox', { name: 'H5尺寸' }), { target: { value: '412x915' } });
     fireEvent.click(screen.getByRole('button', { name: '上传' }));
@@ -328,14 +337,14 @@ describe('HTML review creation', () => {
     fireEvent.change(screen.getByPlaceholderText('请输入评审名称'), {
       target: { value: 'HTML 评审测试' },
     });
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: '12' } });
+    chooseSubtype('html评审');
 
     // HTML review supports both project-generated ZIPs and manual ZIP upload.
     expect((screen.getByRole('button', { name: '来自当前项目' }) as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(screen.getByRole('button', { name: '上传' }));
-    fireEvent.click(screen.getByRole('button', { name: '请输入名称（评审组长）' }));
-    fireEvent.click(screen.getByRole('button', { name: '请输入名称（作者）' }));
-    fireEvent.click(screen.getByRole('button', { name: '请输入名称（核心评委）' }));
+    fireEvent.click(screen.getByRole('button', { name: '评审组长' }));
+    fireEvent.click(screen.getByRole('button', { name: '作者' }));
+    fireEvent.click(screen.getByRole('button', { name: '核心评委' }));
 
     const file = new File(['ZIP-contents'], 'page.zip', { type: 'application/zip' });
     fireEvent.change(document.querySelector('input[type="file"]')!, {
@@ -379,9 +388,9 @@ describe('HTML review creation', () => {
       target: { files: [new File(['ZIP'], 'page.zip', { type: 'application/zip' })] },
     });
     await waitFor(() => expect(screen.getByText('page.zip')).toBeTruthy());
-    fireEvent.click(screen.getByRole('button', { name: '请输入名称（评审组长）' }));
-    fireEvent.click(screen.getByRole('button', { name: '请输入名称（作者）' }));
-    fireEvent.click(screen.getByRole('button', { name: '请输入名称（核心评委）' }));
+    fireEvent.click(screen.getByRole('button', { name: '评审组长' }));
+    fireEvent.click(screen.getByRole('button', { name: '作者' }));
+    fireEvent.click(screen.getByRole('button', { name: '核心评委' }));
     fireEvent.click(screen.getByRole('button', { name: '确定' }));
 
     await waitFor(() => expect(requests.some((r) => r.url.endsWith('/reviewAddition'))).toBe(true));
@@ -547,15 +556,15 @@ describe('新建/更新评审模式', () => {
     expect((screen.getByLabelText('部门评审') as HTMLInputElement).checked).toBe(false);
     expect((screen.getByDisplayValue('（PJ001）示例项目') as HTMLInputElement).disabled).toBe(true);
     expect((screen.getByDisplayValue('评审名称A') as HTMLInputElement).disabled).toBe(true);
-    expect((screen.getByDisplayValue('交互评审') as HTMLSelectElement).disabled).toBe(true);
+    expect((screen.getByRole('combobox', { name: '评审子类型: 交互评审' }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByDisplayValue('2026-12-01 23:59') as HTMLInputElement).disabled).toBe(true);
     expect((screen.getByDisplayValue('组长') as HTMLInputElement).disabled).toBe(true);
     expect((screen.getByDisplayValue('作者') as HTMLInputElement).disabled).toBe(true);
 
     // 可改字段：核心评委 / 团队评委 / 抄送人员 / 评审备注。
-    expect(screen.getByRole('button', { name: '请输入名称（核心评委）' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: '请输入名称（团队评委）' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: '请输入名称（抄送人员）' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '核心评委' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '团队评委' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '抄送人员' })).toBeTruthy();
     expect((screen.getByPlaceholderText('请输入备注') as HTMLTextAreaElement).disabled).toBe(false);
 
     // 更新评审信息不动稿件：稿件上传区域隐藏。
@@ -666,9 +675,9 @@ describe('新建/更新评审模式', () => {
     await waitFor(() => expect(modeRadio('更新评审稿').checked).toBe(true));
 
     // 只换稿件：人员 / 抄送区域隐藏，稿件区域显示。
-    expect(screen.queryByRole('button', { name: '请输入名称（核心评委）' })).toBeNull();
-    expect(screen.queryByRole('button', { name: '请输入名称（团队评委）' })).toBeNull();
-    expect(screen.queryByRole('button', { name: '请输入名称（抄送人员）' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '核心评委' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '团队评委' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '抄送人员' })).toBeNull();
     expect(screen.getByRole('button', { name: '来自当前项目' })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: '上传' }));

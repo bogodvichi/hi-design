@@ -3882,8 +3882,35 @@ export function SettingsDialog({
     : t('common.fullscreen');
   const pageMode = presentation === 'page';
 
+  const settingsChrome = (
+    <div className="settings-chrome" aria-hidden={false}>
+      {pageMode ? null : (
+        <button
+          type="button"
+          className="settings-chrome-btn settings-fullscreen-toggle"
+          onClick={() => setSettingsFullscreen((current) => !current)}
+          aria-label={settingsFullscreenLabel}
+          aria-pressed={settingsFullscreen}
+          title={settingsFullscreenLabel}
+        >
+          <Icon name={settingsFullscreen ? 'minimize' : 'maximize'} size={15} strokeWidth={2} />
+        </button>
+      )}
+      <button
+        data-dialog-part="close"
+        type="button"
+        className="settings-chrome-btn settings-close"
+        onClick={onClose}
+        aria-label={t('common.close')}
+        title={t('common.close')}
+      >
+        <Icon name="close" size={16} strokeWidth={2} />
+      </button>
+    </div>
+  );
+
   const surface = (
-      <div
+      <div data-dialog-surface={pageMode ? undefined : settingsFullscreen ? 'fullscreen' : 'workspace'}
         className={
           'modal modal-settings' +
           (pageMode ? ' settings-page-surface' : '') +
@@ -3923,55 +3950,35 @@ export function SettingsDialog({
             ) : null}
           </div>
         </div>
-        {/* Top-right chrome strip — anchored to the modal corner so the
-            close and fullscreen controls stay at a stable optical location
-            regardless of the header copy. */}
-        <div className="settings-chrome" aria-hidden={false}>
-          {pageMode ? null : (
-            <button
-              type="button"
-              className="settings-chrome-btn settings-fullscreen-toggle"
-              onClick={() => setSettingsFullscreen((current) => !current)}
-              aria-label={settingsFullscreenLabel}
-              aria-pressed={settingsFullscreen}
-              title={settingsFullscreenLabel}
-            >
-              <Icon
-                name={settingsFullscreen ? 'minimize' : 'maximize'}
-                size={15}
-                strokeWidth={2}
-              />
-            </button>
-          )}
-          <button
-            type="button"
-            className="settings-chrome-btn settings-close"
-            onClick={onClose}
-            aria-label={t('common.close')}
-            title={t('common.close')}
-          >
-            <Icon name="close" size={16} strokeWidth={2} />
-          </button>
-        </div>
-        <header className="modal-head" id="settings-dialog-title">
-          {welcome ? (
-            <>
-              <span className="kicker">{t('settings.welcomeKicker')}</span>
-              <h2>{t('settings.welcomeTitle')}</h2>
-              <p className="subtitle">{t('settings.welcomeSubtitle')}</p>
-            </>
-          ) : (
-            <>
-              <span className="kicker">{t('settings.kicker')}</span>
-              <div className="modal-head-line">
-                <h2>{activeHeader.title}</h2>
-                <p className="subtitle">{activeHeader.subtitle}</p>
-              </div>
-            </>
-          )}
+        {/* Page presentation retains floating controls; modal presentation
+            places them in the fixed header beside the title. */}
+        {pageMode ? settingsChrome : null}
+        <header data-dialog-part="header" className="modal-head" id="settings-dialog-title">
+          <div>
+            {welcome ? (
+              <>
+                <span className="kicker">{t('settings.welcomeKicker')}</span>
+                <h2 data-dialog-part="title">{t('settings.welcomeTitle')}</h2>
+                <p data-dialog-part="description" className="subtitle">
+                  {t('settings.welcomeSubtitle')}
+                </p>
+              </>
+            ) : (
+              <>
+                <span className="kicker">{t('settings.kicker')}</span>
+                <div className="modal-head-line">
+                  <h2 data-dialog-part="title">{activeHeader.title}</h2>
+                  <p data-dialog-part="description" className="subtitle">
+                    {activeHeader.subtitle}
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+          {pageMode ? null : settingsChrome}
         </header>
 
-        <div className="modal-body">
+        <div data-dialog-part="body" className="modal-body">
           <button
             type="button"
             className="settings-sidebar-toggle"

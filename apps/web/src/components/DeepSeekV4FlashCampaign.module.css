@@ -6,6 +6,12 @@
   -webkit-backdrop-filter: blur(6px) saturate(0.96);
 }
 
+.dialogBody {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
 .goWelcomeBackdrop {
   z-index: 1700;
   display: grid;

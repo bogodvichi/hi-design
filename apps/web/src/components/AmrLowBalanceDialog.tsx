@@ -81,31 +81,38 @@ export function AmrLowBalanceDialog({
       className={styles.panel}
       data-testid="amr-low-balance-dialog"
     >
-      <button
-        type="button"
-        className={styles.closeButton}
-        onClick={() => decide('dismiss')}
-        aria-label={t('common.close')}
-      >
-        <Icon name="close" size={14} />
-      </button>
-      <div className={styles.iconBadge} aria-hidden>
-        <Icon name="info" size={22} />
+      <div data-dialog-part="header">
+        <h2 data-dialog-part="title" className={styles.title}>
+          {t('chat.amrLowBalance.title')}
+        </h2>
+        <button
+          data-dialog-part="close"
+          type="button"
+          className={styles.closeButton}
+          onClick={() => decide('dismiss')}
+          aria-label={t('common.close')}
+        >
+          <Icon name="close" size={14} />
+        </button>
       </div>
-      <h2 className={styles.title}>{t('chat.amrLowBalance.title')}</h2>
-      <p className={styles.message}>
-        {t('chat.amrLowBalance.message', { balance: formattedBalance })}
-      </p>
-      {/* Canonical suppression-dialog footer (macOS alerts, VS Code, JetBrains):
-          the "don't ask again" checkbox sits bottom-left as a quiet meta
-          option, the actions sit bottom-right in one row with the primary
-          outermost. */}
-      <div className={styles.footer}>
+      <div data-dialog-part="body" className={styles.dialogBody}>
+        <div className={styles.iconBadge} aria-hidden>
+          <Icon name="info" size={22} />
+        </div>
+        <p className={styles.message}>
+          {t('chat.amrLowBalance.message', { balance: formattedBalance })}
+        </p>
+        {/* Canonical suppression-dialog footer (macOS alerts, VS Code, JetBrains):
+              the "don't ask again" checkbox sits bottom-left as a quiet meta
+              option, the actions sit bottom-right in one row with the primary
+              outermost. */}
+      </div>
+      <div data-dialog-part="footer" className={styles.footer}>
         <label className={styles.optOut}>
           <input ref={optOutRef} type="checkbox" data-testid="amr-low-balance-dialog-optout" />
           {t('chat.amrLowBalance.dontRemind')}
         </label>
-        <div className={styles.footerActions}>
+        <div data-dialog-part="actions" className={styles.footerActions}>
           <Button
             className={styles.action}
             onClick={() => decide('proceed')}

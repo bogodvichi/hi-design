@@ -85,7 +85,7 @@
 /* Unified two-column location picker. */
 .splitTree {
   display: grid;
-  grid-template-columns: 240px 480px;
+  grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr);
   flex: 1;
   min-height: 360px;
   max-height: min(520px, calc(100vh - 240px));

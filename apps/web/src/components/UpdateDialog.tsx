@@ -385,13 +385,14 @@ export function UpdateDialog() {
   const primaryDisabled = actionBusy || checking || downloading || installing;
 
   return (
-    <div
+    <div data-dialog-backdrop=""
       className={styles.backdrop}
       onMouseDown={(event) => {
         if (event.currentTarget === event.target) close();
       }}
     >
       <section
+        data-dialog-surface="standard"
         aria-describedby="update-dialog-status"
         aria-labelledby="update-dialog-title"
         aria-modal="true"
@@ -399,53 +400,64 @@ export function UpdateDialog() {
         data-testid="update-dialog"
         role="dialog"
       >
-        <button
-          aria-label={t('common.close')}
-          className={styles.close}
-          disabled={actionBusy}
-          onClick={close}
-          ref={closeRef}
-          type="button"
-        >
-          <Icon name="close" size={15} />
-        </button>
-        <div className={`${styles.icon} ${showSafety ? styles.iconWarning : styles.iconBrand}`} aria-hidden>
-          {showSafety ? (
-            <Icon name="alert-triangle" size={22} />
-          ) : (
-            <span className={`${styles.brandGlyph} od-brand-glyph`} />
-          )}
+        <div data-dialog-part="header">
+          <h2 data-dialog-part="title" className={styles.title} id="update-dialog-title">
+            {title}
+          </h2>
+          <button
+            data-dialog-part="close"
+            aria-label={t('common.close')}
+            className={styles.close}
+            disabled={actionBusy}
+            onClick={close}
+            ref={closeRef}
+            type="button"
+          >
+            <Icon name="close" size={15} />
+          </button>
         </div>
-        <h2 className={styles.title} id="update-dialog-title">{title}</h2>
-        <p className={styles.status} id="update-dialog-status" aria-live="polite">{statusMessage}</p>
-        {!showSafety && downloading && progress != null ? (
-          <div className={styles.progress} aria-hidden>
-            <span style={{ width: `${progress}%` }} />
-          </div>
-        ) : null}
-        {!showSafety && (available || ready) ? (
-          <div className={styles.metaRow}>
-            {reinstallUrl != null ? (
-              <button
-                className={styles.releaseLink}
-                data-testid="update-dialog-reinstall-learn-more"
-                onClick={() => void openExternalUrl(reinstallUrl)}
-                type="button"
-              >
-                {t('updater.reinstallLearnMore')} <Icon name="external-link" size={13} />
-              </button>
+        <div data-dialog-part="body">
+          <div
+            className={`${styles.icon} ${showSafety ? styles.iconWarning : styles.iconBrand}`}
+            aria-hidden
+          >
+            {showSafety ? (
+              <Icon name="alert-triangle" size={22} />
             ) : (
-              <button
-                className={styles.releaseLink}
-                onClick={openReleaseNotes}
-                type="button"
-              >
-                {t('updater.viewVersionFeatures')} <Icon name="external-link" size={13} />
-              </button>
+              <span className={`${styles.brandGlyph} od-brand-glyph`} />
             )}
           </div>
-        ) : null}
-        <div className={`${styles.actions} ${model.upToDate ? styles.actionsCentered : ''}`}>
+          <p className={styles.status} id="update-dialog-status" aria-live="polite">
+            {statusMessage}
+          </p>
+          {!showSafety && downloading && progress != null ? (
+            <div className={styles.progress} aria-hidden>
+              <span style={{ width: `${progress}%` }} />
+            </div>
+          ) : null}
+          {!showSafety && (available || ready) ? (
+            <div className={styles.metaRow}>
+              {reinstallUrl != null ? (
+                <button
+                  className={styles.releaseLink}
+                  data-testid="update-dialog-reinstall-learn-more"
+                  onClick={() => void openExternalUrl(reinstallUrl)}
+                  type="button"
+                >
+                  {t('updater.reinstallLearnMore')} <Icon name="external-link" size={13} />
+                </button>
+              ) : (
+                <button className={styles.releaseLink} onClick={openReleaseNotes} type="button">
+                  {t('updater.viewVersionFeatures')} <Icon name="external-link" size={13} />
+                </button>
+              )}
+            </div>
+          ) : null}
+        </div>
+        <div
+          data-dialog-part="footer"
+          className={`${styles.actions} ${model.upToDate ? styles.actionsCentered : ''}`}
+        >
           {!model.upToDate ? (
             <button className={styles.secondaryButton} onClick={close} ref={laterRef} type="button">
               {t('updater.later')}
@@ -469,7 +481,7 @@ export function UpdateDialog() {
             >
               {t('updater.restartAnyway')}
             </button>
-          ) : (!checking && !downloading && !installing) ? (
+          ) : !checking && !downloading && !installing ? (
             <button
               className={styles.primaryButton}
               disabled={primaryDisabled}

@@ -4212,7 +4212,7 @@ function StagedRunContexts({
       />
     </div>
     {preview && previewUrl ? createPortal(
-      <div
+      <div data-dialog-backdrop=""
         className="staged-preview-modal"
         role="dialog"
         aria-modal="true"
@@ -4221,10 +4221,13 @@ function StagedRunContexts({
           if (e.target === e.currentTarget) setPreview(null);
         }}
       >
-        <div className="staged-preview-card">
-          <div className="staged-preview-head">
-            <span title={preview.path}>{preview.name}</span>
+        <div data-dialog-surface="workspace" className="staged-preview-card">
+          <div data-dialog-part="header" className="staged-preview-head">
+            <span data-dialog-part="title" title={preview.path}>
+              {preview.name}
+            </span>
             <button
+              data-dialog-part="close"
               type="button"
               className="icon-only od-tooltip"
               onClick={() => setPreview(null)}

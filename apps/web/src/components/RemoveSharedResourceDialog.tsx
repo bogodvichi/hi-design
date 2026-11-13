@@ -1,7 +1,15 @@
 import { notifyToast } from './toast-context';
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Button, Dialog, DialogDescription, DialogFooter, DialogTitle } from '@open-design/components';
+import {
+  DialogHeader,
+  DialogBody,
+  Button,
+  Dialog,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from '@open-design/components';
 import type { SharedResourceKind } from '@open-design/contracts';
 import { removeResourceFromSharedWithMe } from '../collab/shared-space-catalog';
 import { useT } from '../i18n';
@@ -28,15 +36,31 @@ export function RemoveSharedResourceDialog({ shareId, kind, resourceName, onClos
     } catch { notifyToast({ message: t('sharedSpace.removeFromSharedWithMeFailed'), tone: 'error' }); }
     finally { setBusy(false); }
   }
-  return createPortal(<Dialog role="alertdialog" ariaLabel={t('sharedSpace.removeFromSharedWithMeTitle')}
-    onClose={() => { if (!busy) onClose(); }} closeOnEscape={!busy} closeOnBackdrop={!busy}>
-    <DialogTitle>{t('sharedSpace.removeFromSharedWithMeTitle')}</DialogTitle>
-    <DialogDescription>{t('feedback.shareResourceBody')}{' '}
-      {t('feedback.shareQuestionBefore')}{' '}<strong>{resourceName}</strong>{' '}{t('feedback.shareQuestionAfter')}
-    </DialogDescription>
-    <DialogFooter>
-      <Button disabled={busy} onClick={onClose}>{t('common.cancel')}</Button>
-      <Button disabled={busy} onClick={() => void remove()}>{t('sharedSpace.removeFromSharedWithMeConfirm')}</Button>
-    </DialogFooter>
-  </Dialog>, document.body);
+  return createPortal(<Dialog
+                        role="alertdialog"
+                        ariaLabel={t('sharedSpace.removeFromSharedWithMeTitle')}
+                        onClose={() => {
+                          if (!busy) onClose();
+                        }}
+                        closeOnEscape={!busy}
+                        closeOnBackdrop={!busy}
+                      >
+                        <DialogHeader>
+                          <DialogTitle>{t('sharedSpace.removeFromSharedWithMeTitle')}</DialogTitle>
+                        </DialogHeader>
+                        <DialogBody>
+                          <DialogDescription>
+                            {t('feedback.shareResourceBody')} {t('feedback.shareQuestionBefore')}{' '}
+                            <strong>{resourceName}</strong> {t('feedback.shareQuestionAfter')}
+                          </DialogDescription>
+                        </DialogBody>
+                        <DialogFooter>
+                          <Button disabled={busy} onClick={onClose}>
+                            {t('common.cancel')}
+                          </Button>
+                          <Button disabled={busy} onClick={() => void remove()}>
+                            {t('sharedSpace.removeFromSharedWithMeConfirm')}
+                          </Button>
+                        </DialogFooter>
+                      </Dialog>, document.body);
 }

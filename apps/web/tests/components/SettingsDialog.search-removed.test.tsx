@@ -5,7 +5,7 @@
 // need a filter, and the box kept reading as broken. The back-to-home
 // affordance above the nav stays, and every section stays visible.
 
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SettingsDialog } from '../../src/components/SettingsDialog';
@@ -14,7 +14,7 @@ import type { AgentInfo } from '../../src/types';
 
 const AGENTS: AgentInfo[] = [{ id: 'codex', name: 'Codex', bin: 'codex', available: true }];
 
-function renderSettingsPage() {
+function renderSettingsPage(onClose = vi.fn()) {
   return render(
     <SettingsDialog
       presentation="page"
@@ -25,7 +25,7 @@ function renderSettingsPage() {
       initialSection="general"
       onPersist={vi.fn()}
       onPersistComposioKey={vi.fn()}
-      onClose={vi.fn()}
+      onClose={onClose}
       onRefreshAgents={vi.fn()}
     />,
   );
@@ -53,5 +53,14 @@ describe('SettingsDialog settings-nav (search box removed)', () => {
     for (const item of navItems) {
       expect(item.hasAttribute('hidden')).toBe(false);
     }
+  });
+
+  it('keeps page close controls outside the hidden modal heading', () => {
+    const onClose = vi.fn();
+    const { container } = renderSettingsPage(onClose);
+    const close = container.querySelector('.settings-close') as HTMLButtonElement;
+    expect(container.querySelector('.modal-head')?.contains(close)).toBe(false);
+    fireEvent.click(close);
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

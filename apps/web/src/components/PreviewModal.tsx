@@ -557,21 +557,26 @@ export function PreviewModal({
   const canOpenTemplateShareMenu = canExportFiles || Boolean(previewShareUrl);
 
   return (
-    <div
+    <div data-dialog-backdrop=""
       className={`ds-modal-backdrop${compact ? ' ds-modal-backdrop--compact' : ''}`}
       role="dialog"
       aria-modal="true"
       aria-label={`${title} preview`}
     >
       <div
+        data-dialog-surface={fullscreen ? 'fullscreen' : 'workspace'}
         className={`ds-modal${compact ? ' ds-modal--compact' : ''}${fullscreen ? ' ds-modal-fullscreen' : ''}`}
       >
-        <header className="ds-modal-header">
+        <header data-dialog-part="header" className="ds-modal-header">
           <div className="ds-modal-header-top">
             <div className="ds-modal-title-block">
-              <div className="ds-modal-title">{title}</div>
+              <div data-dialog-part="title" className="ds-modal-title">
+                {title}
+              </div>
               {subtitle ? (
-                <div className="ds-modal-subtitle">{subtitle}</div>
+                <div data-dialog-part="description" className="ds-modal-subtitle">
+                  {subtitle}
+                </div>
               ) : null}
             </div>
             {showTabs ? (
@@ -592,22 +597,17 @@ export function PreviewModal({
             <div className="ds-modal-actions">
               {primaryAction ? (
                 primaryAction.menu && primaryAction.menu.length > 0 ? (
-                  <div
-                    className="ds-modal-primary-action-group"
-                    ref={primaryMenuRef}
-                  >
+                  <div className="ds-modal-primary-action-group" ref={primaryMenuRef}>
                     <button
                       type="button"
                       className="ds-modal-primary-action ds-modal-primary-action--split"
                       onClick={primaryAction.onClick}
                       disabled={primaryAction.disabled || primaryAction.busy}
                       aria-busy={primaryAction.busy ? 'true' : undefined}
-                      {...(primaryAction.testId
-                        ? { 'data-testid': primaryAction.testId }
-                        : {})}
+                      {...(primaryAction.testId ? { 'data-testid': primaryAction.testId } : {})}
                     >
                       {primaryAction.busy
-                        ? primaryAction.busyLabel ?? primaryAction.label
+                        ? (primaryAction.busyLabel ?? primaryAction.label)
                         : primaryAction.label}
                     </button>
                     <button
@@ -625,10 +625,7 @@ export function PreviewModal({
                       <Icon name="chevron-down" size={14} />
                     </button>
                     {primaryMenuOpen ? (
-                      <div
-                        className="share-menu-popover ds-modal-primary-action-popover"
-                        role="menu"
-                      >
+                      <div className="share-menu-popover ds-modal-primary-action-popover" role="menu">
                         {primaryAction.menu.map((item, index) => (
                           <button
                             key={item.testId ?? `${item.label}-${index}`}
@@ -641,9 +638,7 @@ export function PreviewModal({
                               setPrimaryMenuOpen(false);
                               item.onClick();
                             }}
-                            {...(item.testId
-                              ? { 'data-testid': item.testId }
-                              : {})}
+                            {...(item.testId ? { 'data-testid': item.testId } : {})}
                           >
                             <span className="ds-modal-primary-action-option__body">
                               <span className="ds-modal-primary-action-option__label">
@@ -667,12 +662,10 @@ export function PreviewModal({
                     onClick={primaryAction.onClick}
                     disabled={primaryAction.disabled || primaryAction.busy}
                     aria-busy={primaryAction.busy ? 'true' : undefined}
-                    {...(primaryAction.testId
-                      ? { 'data-testid': primaryAction.testId }
-                      : {})}
+                    {...(primaryAction.testId ? { 'data-testid': primaryAction.testId } : {})}
                   >
                     {primaryAction.busy
-                      ? primaryAction.busyLabel ?? primaryAction.label
+                      ? (primaryAction.busyLabel ?? primaryAction.label)
                       : primaryAction.label}
                   </button>
                 )
@@ -700,9 +693,7 @@ export function PreviewModal({
                           {t('preview.shareTemplateBadge')}
                         </span>
                         <strong>{previewShareTitle}</strong>
-                        {previewShareUrlDisplay ? (
-                          <span>{previewShareUrlDisplay}</span>
-                        ) : null}
+                        {previewShareUrlDisplay ? <span>{previewShareUrlDisplay}</span> : null}
                       </div>
                       {previewShareUrl ? (
                         <>
@@ -731,22 +722,22 @@ export function PreviewModal({
                                       event.preventDefault();
                                       const shareWindow = window.open('about:blank', '_blank');
                                       const feedbackKey = `social-${item.platform}`;
-                                      void copyPreviewShare(previewShareCopy, feedbackKey).then((ok) => {
-                                        if (!ok || !item.href) {
-                                          shareWindow?.close();
-                                          return;
-                                        }
-                                        setTemplateShareOpen(false);
-                                        openShareDestination(item.href, shareWindow);
-                                      });
+                                      void copyPreviewShare(previewShareCopy, feedbackKey).then(
+                                        (ok) => {
+                                          if (!ok || !item.href) {
+                                            shareWindow?.close();
+                                            return;
+                                          }
+                                          setTemplateShareOpen(false);
+                                          openShareDestination(item.href, shareWindow);
+                                        },
+                                      );
                                       return;
                                     }
                                     setTemplateShareOpen(false);
                                   }}
                                 >
-                                  <span className="template-share-platform__mark">
-                                    {item.mark}
-                                  </span>
+                                  <span className="template-share-platform__mark">{item.mark}</span>
                                   <span>
                                     {copyShareFeedback?.key === `social-${item.platform}`
                                       ? copyShareFeedback.ok
@@ -836,8 +827,13 @@ export function PreviewModal({
                               onSharePopoverItemClick?.('pdf');
                               setTemplateShareOpen(false);
                               if (activeHtml) {
-                                void Promise.resolve(exportAsPdf(activeHtml, exportTitle, { deck: activeDeck })).catch((err) => {
-                                  notifyToast({ message: userFacingError(err, t, 'feedback.pdfExportFailed'), tone: 'error' });
+                                void Promise.resolve(
+                                  exportAsPdf(activeHtml, exportTitle, { deck: activeDeck }),
+                                ).catch((err) => {
+                                  notifyToast({
+                                    message: userFacingError(err, t, 'feedback.pdfExportFailed'),
+                                    tone: 'error',
+                                  });
                                 });
                               }
                             }}
@@ -894,7 +890,10 @@ export function PreviewModal({
                                   exportAsImage(snap.dataUrl, exportTitle);
                                 } else {
                                   console.warn('[PreviewModal] snapshot capture returned null');
-                                  notifyToast({ message: t('common.exportImageFailed'), tone: 'error' });
+                                  notifyToast({
+                                    message: t('common.exportImageFailed'),
+                                    tone: 'error',
+                                  });
                                 }
                               } catch (err) {
                                 console.warn('[PreviewModal] failed to convert snapshot:', err);
@@ -931,6 +930,7 @@ export function PreviewModal({
               {headerExtras}
             </div>
             <button
+              data-dialog-part="close"
               type="button"
               className="ds-modal-close"
               onClick={onClose}
@@ -942,15 +942,17 @@ export function PreviewModal({
           </div>
         </header>
         <div
+          data-dialog-part="body"
           className={`ds-modal-stage ${sidebar && sidebarOpen ? 'has-sidebar' : ''}`}
           ref={stageRef}
         >
-          <div className="ds-modal-stage-iframe" ref={stageFrameRef}>
+          <div data-dialog-part="body" className="ds-modal-stage-iframe" ref={stageFrameRef}>
             {/* Also render for custom-stage views (media players: image /
-                video / audio) — the header no longer carries fullscreen, so
-                this hover icon is their only fullscreen affordance. */}
+                        video / audio) — the header no longer carries fullscreen, so
+                        this hover icon is their only fullscreen affordance. */}
             {!activeUnavailable && !activeError ? (
               <button
+                data-dialog-part="body"
                 type="button"
                 className="ds-modal-stage-fullscreen"
                 onClick={() => {
@@ -985,7 +987,9 @@ export function PreviewModal({
               // The modal still owns chrome (header, sidebar handles,
               // fullscreen, close) so every plugin variant shares the
               // same layout language.
-              <div className="ds-modal-stage-custom">{activeCustom}</div>
+              <div data-dialog-part="body" className="ds-modal-stage-custom">
+                {activeCustom}
+              </div>
             ) : activeUnavailable ? (
               // Skills declared as `image` / `markdown` / etc. ship no
               // HTML preview, so the daemon's `/example` endpoint would
@@ -999,7 +1003,10 @@ export function PreviewModal({
               // design-template (deck) cards. Defaults to 'skill' so
               // pre-noun callers keep their existing copy. Issue #3216.
               (() => {
-                const nounKey = ((): 'preview.nounSkill' | 'preview.nounPlugin' | 'preview.nounTemplate' => {
+                const nounKey = (():
+                  | 'preview.nounSkill'
+                  | 'preview.nounPlugin'
+                  | 'preview.nounTemplate' => {
                   switch (activeUnavailable.noun) {
                     case 'plugin':
                       return 'preview.nounPlugin';
@@ -1035,18 +1042,10 @@ export function PreviewModal({
               // clearing the error state and re-running the fetch.
               // Issue #860.
               <div className="ds-modal-empty ds-modal-error">
-                <div className="ds-modal-error-title">
-                  {t('preview.errorTitle')}
-                </div>
-                <div className="ds-modal-error-body">
-                  {t('preview.errorBody')}
-                </div>
+                <div className="ds-modal-error-title">{t('preview.errorTitle')}</div>
+                <div className="ds-modal-error-body">{t('preview.errorBody')}</div>
                 {onView && activeView ? (
-                  <button
-                    type="button"
-                    className="ghost"
-                    onClick={() => onView(activeView.id)}
-                  >
+                  <button type="button" className="ghost" onClick={() => onView(activeView.id)}>
                     {t('preview.retry')}
                   </button>
                 ) : null}
@@ -1054,12 +1053,11 @@ export function PreviewModal({
             ) : activeHtml === null || activeHtml === undefined ? (
               <div className="ds-modal-empty">
                 {t('preview.loading', {
-                  label:
-                    activeView?.label.toLowerCase() ?? t('common.preview').toLowerCase(),
+                  label: activeView?.label.toLowerCase() ?? t('common.preview').toLowerCase(),
                 })}
               </div>
             ) : (
-              <div className="ds-modal-stage-iframe-scaler" style={scalerStyle}>
+              <div data-dialog-part="body" className="ds-modal-stage-iframe-scaler" style={scalerStyle}>
                 <iframe
                   key={activeView?.id ?? 'view'}
                   ref={previewIframeRef}
@@ -1071,6 +1069,7 @@ export function PreviewModal({
             )}
             {sidebar && !sidebarOpen ? (
               <button
+                data-dialog-part="body"
                 type="button"
                 className="ds-modal-stage-handle is-expand"
                 onClick={() => {
@@ -1087,6 +1086,7 @@ export function PreviewModal({
           {sidebar && sidebarOpen ? (
             <aside className="ds-modal-sidebar" aria-label={sidebar.label}>
               <button
+                data-dialog-part="body"
                 type="button"
                 className="ds-modal-stage-handle is-collapse"
                 onClick={() => {

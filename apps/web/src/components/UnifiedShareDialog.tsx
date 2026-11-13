@@ -1,9 +1,10 @@
 import { notifyToast } from './toast-context';
 import { responseError, userFacingError } from '../utils/userFacingError';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import {
+  DialogToolbar,
   Button,
   Dialog,
   DialogBody,
@@ -110,6 +111,10 @@ export function UnifiedShareDialog({
   const [activeTab, setActiveTab] = useState<ShareTab>(
     canPublishToCommunity ? 'community' : canShareFile ? 'file' : 'link',
   );
+  const bodyRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (bodyRef.current) bodyRef.current.scrollTop = 0;
+  }, [activeTab]);
 
   // Community publish state
   const [communityTitle, setCommunityTitle] = useState(projectName);
@@ -407,87 +412,90 @@ const footerActionDisabled =
      className={styles.dialog}
      backdropClassName={styles.backdrop}
    >
-      <DialogHeader className={styles.header}>
-        <DialogTitle className={styles.title}>
-          {t('share.dialogTitle', { name: projectName })}
-        </DialogTitle>
-        <button
-          type="button"
-          className={styles.closeBtn}
-          aria-label={t('share.close')}
-          onClick={onClose}
-        >
-          <RemixIcon name="close-line" size={18} />
-        </button>
-      </DialogHeader>
+     <DialogHeader className={styles.header}>
+       <DialogTitle className={styles.title}>
+         {t('share.dialogTitle', { name: projectName })}
+       </DialogTitle>
+       <button
+         data-dialog-part="close"
+         type="button"
+         className={styles.closeBtn}
+         aria-label={t('share.close')}
+         onClick={onClose}
+       >
+         <RemixIcon name="close-line" size={18} />
+       </button>
+     </DialogHeader>
 
-      <DialogBody className={styles.body}>
-        <div className={styles.tabs} role="tablist" aria-label={t('share.tabLabel')}>
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              role="tab"
-              aria-selected={activeTab === tab.id}
-              className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              <RemixIcon name={tab.icon} size={15} />
-              <span>{tab.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {activeTab === 'community' && (
-          <div className={styles.communityPanel}>
-            {publishResult ? (
-              <div className={styles.publishSuccess}>
-                <div className={styles.successIcon}>
-                  <RemixIcon name="check-line" size={32} />
-                </div>
-                <p className={styles.successHeading}>{t('share.published')}</p>
-                <p className={styles.successHint}>
-                  {t('share.publishSuccessHint', { name: communityTitle.trim() })}
-                </p>
-                <a
-                  href="/square"
-                  className={styles.openInCommunity}
-                >
-                  {t('share.openInCommunity')}
-                  <RemixIcon name="external-link-line" size={14} />
-                </a>
-              </div>
-            ) : (
-              <>
-                <p className={styles.communityHint}>{t('share.communityHint')}</p>
-                <label className={styles.field}>
-                  <span className={styles.fieldLabel}>{t('share.communityTitle')}</span>
-                  <Input
-                    value={communityTitle}
-                    onChange={(e) => setCommunityTitle(e.target.value)}
-                    placeholder={projectName}
-                    className={styles.fieldInput}
-                  />
-                </label>
-                <label className={styles.field}>
-                  <span className={styles.fieldLabel}>{t('share.communityDesc')}</span>
-                  <Textarea
-                    value={communityDesc}
-                    onChange={(e) => setCommunityDesc(e.target.value)}
-                    placeholder={t('share.communityDescPlaceholder')}
-                    rows={3}
-                    className={styles.fieldTextarea}
-                  />
-                </label>
-              </>
-            )}
-          </div>
-        )}
+     <DialogToolbar className={styles.tabs} role="tablist" aria-label={t('share.tabLabel')}>
+       {tabs.map((tab) => (
+         <button
+           key={tab.id}
+           role="tab"
+           aria-selected={activeTab === tab.id}
+           className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`}
+           onClick={() => setActiveTab(tab.id)}
+         >
+           <RemixIcon name={tab.icon} size={15} />
+           <span>{tab.label}</span>
+         </button>
+       ))}
+     </DialogToolbar>
+     <DialogBody className={styles.body} ref={bodyRef}>
+       {activeTab === 'community' && (
+         <div className={styles.communityPanel}>
+           {publishResult ? (
+             <div className={styles.publishSuccess}>
+               <div className={styles.successIcon}>
+                 <RemixIcon name="check-line" size={32} />
+               </div>
+               <p className={styles.successHeading}>{t('share.published')}</p>
+               <p className={styles.successHint}>
+                 {t('share.publishSuccessHint', { name: communityTitle.trim() })}
+               </p>
+               <a href="/square" className={styles.openInCommunity}>
+                 {t('share.openInCommunity')}
+                 <RemixIcon name="external-link-line" size={14} />
+               </a>
+             </div>
+           ) : (
+             <>
+               <p className={styles.communityHint}>{t('share.communityHint')}</p>
+               <label data-dialog-field="" className={styles.field}>
+                 <span data-dialog-part="label" className={styles.fieldLabel}>
+                   {t('share.communityTitle')}
+                 </span>
+                 <Input
+                   value={communityTitle}
+                   onChange={(e) => setCommunityTitle(e.target.value)}
+                   placeholder={projectName}
+                   className={styles.fieldInput}
+                 />
+               </label>
+               <label data-dialog-field="" className={styles.field}>
+                 <span data-dialog-part="label" className={styles.fieldLabel}>
+                   {t('share.communityDesc')}
+                 </span>
+                 <Textarea
+                   value={communityDesc}
+                   onChange={(e) => setCommunityDesc(e.target.value)}
+                   placeholder={t('share.communityDescPlaceholder')}
+                   rows={3}
+                   className={styles.fieldTextarea}
+                 />
+               </label>
+             </>
+           )}
+         </div>
+       )}
 
        {activeTab === 'file' && (
          <div className={styles.sharePanel}>
            <p className={styles.shareHint}>{t('sharedSpace.shareDialogDesc')}</p>
-           <label className={styles.field}>
-             <span className={styles.fieldLabel}>{t('sharedSpace.shareDialogRecipientLabel')}</span>
+           <label data-dialog-field="" className={styles.field}>
+             <span data-dialog-part="label" className={styles.fieldLabel}>
+               {t('sharedSpace.shareDialogRecipientLabel')}
+             </span>
              <PersonPicker
                selected={shareRecipients}
                onChange={setShareRecipients}
@@ -500,61 +508,59 @@ const footerActionDisabled =
          </div>
        )}
 
-        {activeTab === 'link' && (
-          <div className={styles.linkPanel}>
-            <div className={styles.linkSymbol}>
-              <RemixIcon name="link" size={24} />
-            </div>
-            <p className={styles.linkHeading}>{t('share.linkLabel')}</p>
-            <p className={styles.linkHint}>{t('share.linkHint')}</p>
+       {activeTab === 'link' && (
+         <div className={styles.linkPanel}>
+           <div className={styles.linkSymbol}>
+             <RemixIcon name="link" size={24} />
+           </div>
+           <p className={styles.linkHeading}>{t('share.linkLabel')}</p>
+           <p className={styles.linkHint}>{t('share.linkHint')}</p>
            {linkLoading && <p className={styles.linkHint}>{t('share.querying')}</p>}
            {sharingToTeam && <p className={styles.linkHint}>{t('share.sharingToTeam')}</p>}
            {linkGenerating && <p className={styles.linkHint}>{t('share.generating')}</p>}
            {shareLink && !linkLoading && !linkGenerating && !sharingToTeam && (
-              <>
-                <div className={styles.copyRow}>
-                  <Input
-                    readOnly
-                    value={shareLink}
-                    className={styles.linkInput}
-                  />
-                  <Button onClick={handleCopyLink} className={styles.copyBtn}>
-                    {copied ? t('share.copied') : t('share.copyLink')}
-                  </Button>
-                </div>
-                <a
-                  href={shareLink}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={styles.openPreview}
-                >
-                  {t('share.openPreview')}
-                  <RemixIcon name="external-link-line" size={14} />
-                </a>
-              </>
-            )}
-           {!shareLink && !linkLoading && !linkGenerating && !sharingToTeam && (
-             <p className={styles.linkHint}>{canGenerateLink ? t('share.generateLinkHint') : '暂无分享链接，请联系团队成员生成'}</p>
+             <>
+               <div className={styles.copyRow}>
+                 <Input readOnly value={shareLink} className={styles.linkInput} />
+                 <Button onClick={handleCopyLink} className={styles.copyBtn}>
+                   {copied ? t('share.copied') : t('share.copyLink')}
+                 </Button>
+               </div>
+               <a
+                 href={shareLink}
+                 target="_blank"
+                 rel="noopener noreferrer"
+                 className={styles.openPreview}
+               >
+                 {t('share.openPreview')}
+                 <RemixIcon name="external-link-line" size={14} />
+               </a>
+             </>
            )}
-          </div>
-        )}
-      </DialogBody>
+           {!shareLink && !linkLoading && !linkGenerating && !sharingToTeam && (
+             <p className={styles.linkHint}>
+               {canGenerateLink ? t('share.generateLinkHint') : '暂无分享链接，请联系团队成员生成'}
+             </p>
+           )}
+         </div>
+       )}
+     </DialogBody>
 
-      <DialogFooter className={styles.footer}>
-        <Button onClick={onClose} className={styles.footerSecondary}>
-          {t('share.close')}
-        </Button>
-        {(activeTab !== 'link' || canGenerateLink) ? (
-          <Button
-            onClick={handleFooterAction}
-            disabled={footerActionDisabled}
-            className={styles.footerAction}
-          >
-            {footerActionLabel}
-          </Button>
-        ) : null}
-      </DialogFooter>
-    </Dialog>,
+     <DialogFooter className={styles.footer}>
+       <Button onClick={onClose} className={styles.footerSecondary}>
+         {t('share.close')}
+       </Button>
+       {activeTab !== 'link' || canGenerateLink ? (
+         <Button
+           onClick={handleFooterAction}
+           disabled={footerActionDisabled}
+           className={styles.footerAction}
+         >
+           {footerActionLabel}
+         </Button>
+       ) : null}
+     </DialogFooter>
+   </Dialog>,
     document.body,
   );
 }

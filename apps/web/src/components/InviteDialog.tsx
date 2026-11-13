@@ -254,69 +254,98 @@ export function InviteDialog({
   const validCount = rows.filter((r) => r.person && r.status === 'ok').length;
 
   return (
-    <div className="entry-invite" role="dialog" aria-modal="true" aria-label={t('workspaceInvite.dialogAria')}>
+    <div data-dialog-backdrop="" className="entry-invite" role="dialog" aria-modal="true" aria-label={t('workspaceInvite.dialogAria')}>
       <div className="entry-invite__backdrop" onClick={closeDialog} />
-      <div className="entry-invite__panel entry-invite__panel--split">
-        <button
-          type="button"
-          className="entry-invite__close"
-          onClick={closeDialog}
-          aria-label={t('common.close')}
-        >
-          <Icon name="close" size={16} />
-        </button>
-
-        <div className="entry-invite__form">
-          <h2 className="entry-invite__title">{t('workspaceInvite.title')}</h2>
-          <p className="entry-invite__teamsize">
-            受邀成员将获得「{teamName || workspaceContext?.teamName || workspaceContext?.workspaceName || ''}」下项目与 Skills 的访问权限。
-          </p>
-
-          <label className="entry-invite__label">{t('workspaceInvite.personLabel')}</label>
-          {toast ? (
-            <div className="entry-invite__toast" role="alert">
-              {toast}
-            </div>
-          ) : null}
-          <div className="entry-invite__rows">
-            {rows.map((row) => (
-              <div key={row.id} className="entry-invite__row">
-                <div className="entry-invite__row-picker">
-                  <PersonPicker
-                    selected={row.person ? [row.person] : []}
-                    onChange={(people) => handlePersonChange(row.id, people)}
-                  />
-                </div>
-                <select
-                  className="entry-invite__row-role"
-                  value={canAssignRoles ? row.role : DEFAULT_ROLE}
-                  onChange={(e) => updateRow(row.id, { role: e.target.value })}
-                  disabled={!canAssignRoles}
-                >
-                  {ROLE_OPTIONS.map((role) => (
-                    <option key={role} value={role}>{roleLabel(role, t)}</option>
-                  ))}
-                </select>
-                {rows.length > 1 ? (
-                  <button
-                    type="button"
-                    className="entry-invite__row-remove"
-                    onClick={() => removeRow(row.id)}
-                    aria-label={t('workspaceInvite.removeRow')}
-                  >
-                    <Icon name="close" size={14} />
-                  </button>
-                ) : null}
-              </div>
-            ))}
-          </div>
-          <button type="button" className="entry-invite__add-row" onClick={addRow}>
-            <Icon name="plus" size={14} />
-            <span>{t('workspaceInvite.addMember')}</span>
+      <div data-dialog-surface="standard" className="entry-invite__panel entry-invite__panel--split">
+        <div data-dialog-part="header">
+          <h2 data-dialog-part="title" className="entry-invite__title">
+            {t('workspaceInvite.title')}
+          </h2>
+          <button
+            data-dialog-part="close"
+            type="button"
+            className="entry-invite__close"
+            onClick={closeDialog}
+            aria-label={t('common.close')}
+          >
+            <Icon name="close" size={16} />
           </button>
-
-          <PermissionSummary />
-
+        </div>
+        <div data-dialog-part="body" className="entry-invite__content">
+          <div className="entry-invite__form">
+            <p className="entry-invite__teamsize">
+              受邀成员将获得「
+              {teamName || workspaceContext?.teamName || workspaceContext?.workspaceName || ''}
+              」下项目与 Skills 的访问权限。
+            </p>
+            <label className="entry-invite__label">{t('workspaceInvite.personLabel')}</label>
+            {toast ? (
+              <div className="entry-invite__toast" role="alert">
+                {toast}
+              </div>
+            ) : null}
+            <div className="entry-invite__rows">
+              {rows.map((row) => (
+                <div key={row.id} className="entry-invite__row">
+                  <div className="entry-invite__row-picker">
+                    <PersonPicker
+                      selected={row.person ? [row.person] : []}
+                      onChange={(people) => handlePersonChange(row.id, people)}
+                    />
+                  </div>
+                  <select
+                    className="entry-invite__row-role"
+                    value={canAssignRoles ? row.role : DEFAULT_ROLE}
+                    onChange={(e) => updateRow(row.id, { role: e.target.value })}
+                    disabled={!canAssignRoles}
+                  >
+                    {ROLE_OPTIONS.map((role) => (
+                      <option key={role} value={role}>
+                        {roleLabel(role, t)}
+                      </option>
+                    ))}
+                  </select>
+                  {rows.length > 1 ? (
+                    <button
+                      type="button"
+                      className="entry-invite__row-remove"
+                      onClick={() => removeRow(row.id)}
+                      aria-label={t('workspaceInvite.removeRow')}
+                    >
+                      <Icon name="close" size={14} />
+                    </button>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+            <button type="button" className="entry-invite__add-row" onClick={addRow}>
+              <Icon name="plus" size={14} />
+              <span>{t('workspaceInvite.addMember')}</span>
+            </button>
+            <PermissionSummary />
+          </div>
+          <div className="entry-invite__art" aria-hidden>
+            <span className="entry-invite__art-glow" />
+            <div className="entry-invite__art-cluster">
+              <span className="entry-invite__art-avatar">
+                <img src="/team-avatars/a2.png" alt="" />
+              </span>
+              <span className="entry-invite__art-avatar">
+                <img src="/team-avatars/a1.png" alt="" />
+              </span>
+              <span className="entry-invite__art-avatar">
+                <img src="/team-avatars/a4.png" alt="" />
+              </span>
+              <span className="entry-invite__art-avatar">
+                <img src="/team-avatars/a6.png" alt="" />
+              </span>
+              <span className="entry-invite__art-avatar entry-invite__art-avatar--invite">
+                <Icon name="plus" size={26} />
+              </span>
+            </div>
+          </div>
+        </div>
+        <div data-dialog-part="footer">
           <button
             type="button"
             className="entry-invite__submit"
@@ -329,27 +358,6 @@ export function InviteDialog({
                 ? t('workspaceInvite.sending')
                 : t('workspaceInvite.confirm')}
           </button>
-        </div>
-
-        <div className="entry-invite__art" aria-hidden>
-          <span className="entry-invite__art-glow" />
-          <div className="entry-invite__art-cluster">
-            <span className="entry-invite__art-avatar">
-              <img src="/team-avatars/a2.png" alt="" />
-            </span>
-            <span className="entry-invite__art-avatar">
-              <img src="/team-avatars/a1.png" alt="" />
-            </span>
-            <span className="entry-invite__art-avatar">
-              <img src="/team-avatars/a4.png" alt="" />
-            </span>
-            <span className="entry-invite__art-avatar">
-              <img src="/team-avatars/a6.png" alt="" />
-            </span>
-            <span className="entry-invite__art-avatar entry-invite__art-avatar--invite">
-              <Icon name="plus" size={26} />
-            </span>
-          </div>
         </div>
       </div>
     </div>

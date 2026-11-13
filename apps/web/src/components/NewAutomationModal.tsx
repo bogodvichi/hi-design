@@ -606,7 +606,7 @@ export function NewAutomationModal({
   ];
 
   return (
-    <div
+    <div data-dialog-backdrop=""
       className="automation-modal-backdrop"
       role="dialog"
       aria-modal="true"
@@ -618,21 +618,22 @@ export function NewAutomationModal({
       onMouseDown={() => setPopover(null)}
     >
       <form
+        data-dialog-surface="standard"
         className="automation-modal"
         onSubmit={submit}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <header className="automation-modal__head">
-            <input
-              ref={titleRef}
-              type="text"
-              className="automation-modal__title-input"
-              placeholder={t('routines.fieldNamePlaceholder')}
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
-              aria-label={t('routines.fieldName')}
-              data-testid="automation-modal-title"
-            />
+        <header data-dialog-part="header" className="automation-modal__head">
+          <input
+            ref={titleRef}
+            type="text"
+            className="automation-modal__title-input"
+            placeholder={t('routines.fieldNamePlaceholder')}
+            value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            aria-label={t('routines.fieldName')}
+            data-testid="automation-modal-title"
+          />
           <div className="automation-modal__head-actions">
             <div className="automation-pill__wrap">
               <button
@@ -641,7 +642,11 @@ export function NewAutomationModal({
                 onClick={() => setPopover((p) => (p === 'template' ? null : 'template'))}
               >
                 <Icon name="sparkles" size={14} />
-                <span>{selectedTemplate?.title ?? selectedTemplate?.defaultName ?? t('automations.useTemplate')}</span>
+                <span>
+                  {selectedTemplate?.title ??
+                    selectedTemplate?.defaultName ??
+                    t('automations.useTemplate')}
+                </span>
                 <Icon name="chevron-down" size={14} />
               </button>
               {popover === 'template' ? (
@@ -653,6 +658,7 @@ export function NewAutomationModal({
               ) : null}
             </div>
             <button
+              data-dialog-part="close"
               type="button"
               className="automation-modal__close"
               onClick={onClose}
@@ -663,14 +669,16 @@ export function NewAutomationModal({
           </div>
         </header>
 
-        <div className="automation-modal__body">
+        <div data-dialog-part="body" className="automation-modal__body">
           <div className={`automation-modal__prompt-wrap${mention ? ' is-mentioning' : ''}`}>
             <textarea
               ref={promptRef}
               className="automation-modal__prompt"
               placeholder={t('automations.promptPlaceholder')}
               value={form.prompt}
-              onChange={(e) => updatePrompt(e.target.value, e.target.selectionStart ?? e.target.value.length)}
+              onChange={(e) =>
+                updatePrompt(e.target.value, e.target.selectionStart ?? e.target.value.length)
+              }
               onClick={refreshMentionFromPrompt}
               onFocus={() => setPopover(null)}
               onKeyDown={handlePromptKeyDown}
@@ -691,7 +699,11 @@ export function NewAutomationModal({
               data-testid="automation-mention-popover"
               onMouseDown={(e) => e.preventDefault()}
             >
-              <div className="automation-mention-tabs" role="tablist" aria-label={t('chat.mentionTabsAria')}>
+              <div
+                className="automation-mention-tabs"
+                role="tablist"
+                aria-label={t('chat.mentionTabsAria')}
+              >
                 {[
                   ['all', t('chat.mentionTabAll')],
                   ['skills', t('chat.mentionTabSkills')],
@@ -739,14 +751,14 @@ export function NewAutomationModal({
                 {showPlugins && filteredPlugins.length > 0 ? (
                   <MentionSection label={t('chat.mentionSectionPlugins')}>
                     {filteredPlugins.map((plugin) => (
-                    <MentionItem
-                      key={`plugin-${plugin.id}`}
-                      icon="sparkles"
-                      label={localizePluginTitle(locale, plugin)}
-                      meta={localizePluginDescription(locale, plugin) || plugin.id}
-                      selected={selectedPluginIds.includes(plugin.id)}
-                      onPick={() => pickPlugin(plugin)}
-                    />
+                      <MentionItem
+                        key={`plugin-${plugin.id}`}
+                        icon="sparkles"
+                        label={localizePluginTitle(locale, plugin)}
+                        meta={localizePluginDescription(locale, plugin) || plugin.id}
+                        selected={selectedPluginIds.includes(plugin.id)}
+                        onPick={() => pickPlugin(plugin)}
+                      />
                     ))}
                   </MentionSection>
                 ) : null}
@@ -807,7 +819,7 @@ export function NewAutomationModal({
           ) : null}
         </div>
 
-        <footer className="automation-modal__foot">
+        <footer data-dialog-part="footer" className="automation-modal__foot">
           <div className="automation-modal__pills">
             <PillButton
               icon="folder"
@@ -828,7 +840,9 @@ export function NewAutomationModal({
                   />
                   {projects.length > 0 ? (
                     <>
-                      <div className="automation-popover__section-label">{t('routines.fieldsetProject')}</div>
+                      <div className="automation-popover__section-label">
+                        {t('routines.fieldsetProject')}
+                      </div>
                       {projects.map((p) => (
                         <PopoverItem
                           key={p.id}
@@ -852,9 +866,7 @@ export function NewAutomationModal({
               active={popover === 'schedule'}
               label={scheduleLabelNode}
               aria-label={scheduleLabel}
-              onClick={() =>
-                setPopover((p) => (p === 'schedule' ? null : 'schedule'))
-              }
+              onClick={() => setPopover((p) => (p === 'schedule' ? null : 'schedule'))}
             >
               {popover === 'schedule' ? (
                 <SchedulePopover
@@ -868,18 +880,10 @@ export function NewAutomationModal({
           </div>
 
           <div className="automation-modal__actions">
-            <button
-              type="button"
-              className="automation-modal__cancel"
-              onClick={onClose}
-            >
+            <button type="button" className="automation-modal__cancel" onClick={onClose}>
               {t('common.cancel')}
             </button>
-            <button
-              type="submit"
-              className="automation-modal__submit"
-              disabled={submitting}
-            >
+            <button type="submit" className="automation-modal__submit" disabled={submitting}>
               {editingId
                 ? submitting
                   ? t('common.loading')

@@ -182,85 +182,86 @@ export function AmrArtifactUpgradeDialog({
       backdropClassName={styles.backdrop}
       data-testid="amr-artifact-upgrade-dialog"
     >
-      <Button
-        variant="ghost"
-        size="icon"
-        className={styles.closeButton}
-        aria-label={t('common.close')}
-        onClick={onClose}
-        data-testid="amr-artifact-upgrade-close"
-      >
-        <Icon name="close" size={17} strokeWidth={1.8} />
-      </Button>
-      <div className={styles.visual} aria-hidden="true">
-        <img
-          className={styles.visualImage}
-          src="/upgrade/creative-capacity-warm.jpg"
-          alt=""
-          width={575}
-          height={900}
-          decoding="async"
-          draggable={false}
-          data-testid="amr-artifact-upgrade-art"
-        />
-      </div>
-      <div className={styles.content}>
-        <div className={styles.offerBanner} data-testid="amr-artifact-upgrade-offer">
-          <strong className={styles.offerTitle}>
-            {t('chat.amrArtifactUpgrade.promoBanner')}
-          </strong>
-          <time
-            className={styles.offerTimer}
-            role="timer"
-            aria-live="off"
-            aria-label={offerAriaLabel}
-          >
-            <span className={styles.offerTimerLabel}>
-              {t('chat.amrArtifactUpgrade.countdownLabel')}
-            </span>
-            <span className={styles.offerTimerValue} dir="ltr">
-              <span data-testid="amr-artifact-upgrade-offer-days">{offerDays}</span>{' '}
-              <span data-testid="amr-artifact-upgrade-offer-time">{offerTime}</span>
-            </span>
-          </time>
-        </div>
-        <h2 id={titleId} className={styles.title}>
+      <div data-dialog-part="header">
+        <h2 data-dialog-part="title" id={titleId} className={styles.title}>
           {t('chat.amrArtifactUpgrade.title')}
         </h2>
-        <p id={descriptionId} className={styles.message}>
-          {t('chat.amrArtifactUpgrade.message')}
-        </p>
-        <ul className={styles.benefits}>
-          {BENEFITS.map(({ key, icon }) => (
-            <li key={key} className={styles.benefit}>
-              <span className={styles.benefitIcon} aria-hidden="true">
-                <Icon name={icon} size={15} strokeWidth={1.8} />
-              </span>
-              <span>{t(key)}</span>
-            </li>
-          ))}
-        </ul>
-        <div className={styles.actions}>
-          <Button
-            variant="primary"
-            className={styles.cta}
-            onClick={openPlans}
-            data-testid="amr-artifact-upgrade-plans"
-          >
-            <span>{t('chat.amrArtifactUpgrade.plansCta')}</span>
-            <VisuallyHidden>
-              {` (${t('common.openInNewTab')})`}
-            </VisuallyHidden>
-          </Button>
-          <Button
-            variant="ghost"
-            className={styles.later}
-            onClick={onContinue}
-            data-testid="amr-artifact-upgrade-later"
-          >
-            {t('chat.amrArtifactUpgrade.laterCta')}
-          </Button>
+        <Button
+          data-dialog-part="close"
+          variant="ghost"
+          size="icon"
+          className={styles.closeButton}
+          aria-label={t('common.close')}
+          onClick={onClose}
+          data-testid="amr-artifact-upgrade-close"
+        >
+          <Icon name="close" size={17} strokeWidth={1.8} />
+        </Button>
+      </div>
+      <div data-dialog-part="body" className={styles.dialogBody}>
+        <div className={styles.visual} aria-hidden="true">
+          <img
+            className={styles.visualImage}
+            src="/upgrade/creative-capacity-warm.jpg"
+            alt=""
+            width={575}
+            height={900}
+            decoding="async"
+            draggable={false}
+            data-testid="amr-artifact-upgrade-art"
+          />
         </div>
+        <div className={styles.content}>
+          <div className={styles.offerBanner} data-testid="amr-artifact-upgrade-offer">
+            <strong className={styles.offerTitle}>{t('chat.amrArtifactUpgrade.promoBanner')}</strong>
+            <time
+              className={styles.offerTimer}
+              role="timer"
+              aria-live="off"
+              aria-label={offerAriaLabel}
+            >
+              <span className={styles.offerTimerLabel}>
+                {t('chat.amrArtifactUpgrade.countdownLabel')}
+              </span>
+              <span className={styles.offerTimerValue} dir="ltr">
+                <span data-testid="amr-artifact-upgrade-offer-days">{offerDays}</span>{' '}
+                <span data-testid="amr-artifact-upgrade-offer-time">{offerTime}</span>
+              </span>
+            </time>
+          </div>
+          <p id={descriptionId} className={styles.message}>
+            {t('chat.amrArtifactUpgrade.message')}
+          </p>
+          <ul className={styles.benefits}>
+            {BENEFITS.map(({ key, icon }) => (
+              <li key={key} className={styles.benefit}>
+                <span className={styles.benefitIcon} aria-hidden="true">
+                  <Icon name={icon} size={15} strokeWidth={1.8} />
+                </span>
+                <span>{t(key)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      <div data-dialog-part="footer" className={styles.actions}>
+        <Button
+          variant="ghost"
+          className={styles.later}
+          onClick={onContinue}
+          data-testid="amr-artifact-upgrade-later"
+        >
+          {t('chat.amrArtifactUpgrade.laterCta')}
+        </Button>
+        <Button
+          variant="primary"
+          className={styles.cta}
+          onClick={openPlans}
+          data-testid="amr-artifact-upgrade-plans"
+        >
+          <span>{t('chat.amrArtifactUpgrade.plansCta')}</span>
+          <VisuallyHidden>{` (${t('common.openInNewTab')})`}</VisuallyHidden>
+        </Button>
       </div>
     </Dialog>
   );

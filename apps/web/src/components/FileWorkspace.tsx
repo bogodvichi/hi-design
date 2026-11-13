@@ -8178,7 +8178,7 @@ function PageCreatorDialog({
     : '';
 
   const dialog = (
-    <div
+    <div data-dialog-backdrop=""
       className="page-creator-backdrop"
       role="presentation"
       onMouseDown={(event) => {
@@ -8186,17 +8186,19 @@ function PageCreatorDialog({
       }}
     >
       <section
+        data-dialog-surface="standard"
         className="page-creator-modal"
         role="dialog"
         aria-modal="true"
         aria-label={t('workspace.pageCreatorTitle')}
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <header className="page-creator-head">
+        <header data-dialog-part="header" className="page-creator-head">
           <div>
-            <h2>{t('workspace.pageCreatorTitle')}</h2>
+            <h2 data-dialog-part="title">{t('workspace.pageCreatorTitle')}</h2>
           </div>
           <button
+            data-dialog-part="close"
             type="button"
             className="page-creator-close od-tooltip"
             onClick={onClose}
@@ -8208,7 +8210,7 @@ function PageCreatorDialog({
             <Icon name="close" size={15} />
           </button>
         </header>
-        <div className="page-creator-body">
+        <div data-dialog-part="body" className="page-creator-body">
           <aside className="page-creator-sidebar" aria-label={t('workspace.pageCreatorCategoryAll')}>
             <label className="page-creator-search">
               <Icon name="search" size={14} />
@@ -8275,10 +8277,7 @@ function PageCreatorDialog({
                 ))}
               </div>
             ) : null}
-            <div
-              className={`page-creator-grid${searchPending ? ' is-pending' : ''}`}
-              role="list"
-            >
+            <div className={`page-creator-grid${searchPending ? ' is-pending' : ''}`} role="list">
               {filteredPresets.length === 0 ? (
                 <p className="page-creator-empty">{t('workspace.pageCreatorEmpty')}</p>
               ) : (
@@ -8291,7 +8290,9 @@ function PageCreatorDialog({
                     'page-creator-card',
                     `page-creator-card--${preset.source}`,
                     previewPreset.id === preset.id ? 'active' : '',
-                  ].filter(Boolean).join(' ');
+                  ]
+                    .filter(Boolean)
+                    .join(' ');
                   if (isBlank) {
                     return (
                       <article
@@ -8332,9 +8333,7 @@ function PageCreatorDialog({
                           sourceLabel={sourceLabel}
                         />
                         <span className="page-creator-card-copy">
-                          <span className="page-creator-source">
-                            {presetTagLabel(preset)}
-                          </span>
+                          <span className="page-creator-source">{presetTagLabel(preset)}</span>
                           <strong>{title}</strong>
                           <span>{description}</span>
                         </span>
@@ -8367,7 +8366,7 @@ function PageCreatorDialog({
         </div>
       </section>
       {modalPreviewPreset ? (
-        <div
+        <div data-dialog-backdrop=""
           className="page-template-preview-backdrop"
           role="presentation"
           onMouseDown={(event) => {
@@ -8375,26 +8374,30 @@ function PageCreatorDialog({
           }}
         >
           <section
+            data-dialog-surface="standard"
             className="page-template-preview-modal"
             role="dialog"
             aria-modal="true"
             aria-label={`${t('workspace.pageCreatorPreview')} ${pagePresetTitle(modalPreviewPreset, t, locale)}`}
             onMouseDown={(event) => event.stopPropagation()}
           >
-            <header className="page-template-preview-head">
+            <header data-dialog-part="header" className="page-template-preview-head">
               <div className="page-template-preview-heading">
-                <p className="page-creator-kicker">{t('workspace.pageCreatorPreview')}</p>
+                <p data-dialog-part="description" className="page-creator-kicker">
+                  {t('workspace.pageCreatorPreview')}
+                </p>
                 <div className="page-template-preview-title-row">
-                  <h3>{pagePresetTitle(modalPreviewPreset, t, locale)}</h3>
+                  <h3 data-dialog-part="title">{pagePresetTitle(modalPreviewPreset, t, locale)}</h3>
                   <span className="page-creator-source">{presetTagLabel(modalPreviewPreset)}</span>
                 </div>
                 {pagePresetDescription(modalPreviewPreset, t, locale) ? (
-                  <p className="page-template-preview-desc">
+                  <p data-dialog-part="description" className="page-template-preview-desc">
                     {pagePresetDescription(modalPreviewPreset, t, locale)}
                   </p>
                 ) : null}
               </div>
               <button
+                data-dialog-part="close"
                 type="button"
                 className="page-creator-close od-tooltip"
                 onClick={() => setModalPreviewId(null)}
@@ -8406,12 +8409,13 @@ function PageCreatorDialog({
               </button>
             </header>
             <iframe
+              data-dialog-part="body"
               className="page-template-preview-frame"
               title={pagePresetTitle(modalPreviewPreset, t, locale)}
               {...(modalPreviewUrl ? { src: modalPreviewUrl } : { srcDoc: modalPreviewSrcDoc })}
               sandbox="allow-scripts"
             />
-            <footer className="page-template-preview-foot">
+            <footer data-dialog-part="footer" className="page-template-preview-foot">
               <Button
                 type="button"
                 variant="primary"

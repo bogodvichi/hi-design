@@ -117,7 +117,7 @@ export function ProjectSearchModal({
   };
 
   return createPortal(
-    <div
+    <div data-dialog-backdrop=""
       className="project-search-backdrop"
       role="presentation"
       onMouseDown={(event) => {
@@ -125,13 +125,14 @@ export function ProjectSearchModal({
       }}
     >
       <div
+        data-dialog-surface="standard"
         className="project-search-modal"
         role="dialog"
         aria-modal="true"
         aria-label={t('common.search')}
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <div className="project-search-input-row">
+        <div data-dialog-part="header" className="project-search-input-row">
           <Icon name="search" size={16} />
           <input
             ref={inputRef}
@@ -144,14 +145,13 @@ export function ProjectSearchModal({
             data-testid="project-search-input"
           />
         </div>
-        <div className="project-search-results" role="listbox" ref={resultsRef}>
+        <div data-dialog-part="body" className="project-search-results" role="listbox" ref={resultsRef}>
           {filtered.length === 0 ? (
             <div className="project-search-empty">{t('quickSwitcher.noMatches')}</div>
           ) : (
             filtered.map((project, index) => {
               const cover = projectCover(project, null, workspaceContext);
-              const showImage =
-                (cover.kind === 'image' || cover.kind === 'logo') && Boolean(cover.src);
+              const showImage = (cover.kind === 'image' || cover.kind === 'logo') && Boolean(cover.src);
               const active = index === activeIndex;
               return (
                 <button
@@ -165,11 +165,7 @@ export function ProjectSearchModal({
                   onClick={() => openProject(project.id)}
                   data-testid={`project-search-item-${project.id}`}
                 >
-                  <span
-                    className="project-search-item-thumb"
-                    style={cover.style}
-                    aria-hidden
-                  >
+                  <span className="project-search-item-thumb" style={cover.style} aria-hidden>
                     {showImage ? (
                       <img src={cover.src} alt="" loading="lazy" />
                     ) : (

@@ -296,13 +296,13 @@ export function FeedbackDialog({
       includeChromeClassName={false}
       ariaLabel="反馈"
     >
-      <div className={styles.banner}>
-        <div className={styles.bannerOverlay} />
-        <div className={styles.bannerContent}>
-          <div className={styles.bannerTitle}>反馈意见</div>
-          <div className={styles.bannerSubtitle}>告诉我们你遇到了什么问题，或希望看到什么改进</div>
+      <div data-dialog-part="header">
+        <div>
+          <h2 data-dialog-part="title">反馈意见</h2>
+          <p data-dialog-part="description">告诉我们你遇到了什么问题，或希望看到什么改进</p>
         </div>
         <button
+          data-dialog-part="close"
           type="button"
           className={styles.closeBtn}
           onClick={onClose}
@@ -312,153 +312,158 @@ export function FeedbackDialog({
         </button>
       </div>
 
-      <div className={styles.body}>
-        <div className={styles.formContent}>
-          {sessionError ? (
-            <div className={styles.fieldError}>{sessionError}</div>
-          ) : null}
+      <div data-dialog-part="body" className={styles.formContent}>
+        {sessionError ? <div className={styles.fieldError}>{sessionError}</div> : null}
 
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="feedback-class">反馈类型</label>
-            <FeedbackTypeSelect
-              id="feedback-class"
-              value={selectedClassId}
-              options={typeOptions}
-              loading={typeLoading}
-              disabled={!session}
-              onChange={setSelectedClassId}
-            />
-            <div className={styles.fieldErrorSlot}>
-              {classesError ? <span className={styles.fieldError}>{classesError}</span> : null}
-            </div>
+        <div data-dialog-field="" className={styles.field}>
+          <label className={styles.label} htmlFor="feedback-class">
+            反馈类型
+          </label>
+          <FeedbackTypeSelect
+            id="feedback-class"
+            value={selectedClassId}
+            options={typeOptions}
+            loading={typeLoading}
+            disabled={!session}
+            onChange={setSelectedClassId}
+          />
+          <div className={styles.fieldErrorSlot}>
+            {classesError ? <span className={styles.fieldError}>{classesError}</span> : null}
           </div>
-
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="feedback-title">
-              反馈标题<span className={styles.required} aria-hidden>*</span>
-            </label>
-            <input
-              id="feedback-title"
-              type="text"
-              className={styles.input}
-              value={title}
-              onChange={(e) => {
-                setTitle(e.target.value);
-                if (titleError) setTitleError(null);
-              }}
-              placeholder="请输入反馈标题"
-              maxLength={120}
-            />
-            <div className={styles.fieldErrorSlot}>
-              {titleError ? <span className={styles.fieldError}>{titleError}</span> : null}
-            </div>
-          </div>
-
-          <div className={styles.field}>
-            <label className={styles.label} htmlFor="feedback-content">
-              反馈内容<span className={styles.required} aria-hidden>*</span>
-            </label>
-            <div className={styles.editorWrap} data-empty={editorEmpty ? 'true' : 'false'}>
-              <TinyMCEEditor
-                onInit={(editor) => {
-                  editorRef.current = editor;
-                  editor.setContent(FEEDBACK_GUIDE_HTML);
-                  initialEditorContentRef.current = editor.getContent().trim();
-                }}
-                onEditorChange={handleEditorChange}
-                init={{
-                  language: 'zh_CN',
-                  language_url: '/tinymce/zh_CN.js',
-                  skin_url: '/tinymce/skins/ui/oxide',
-                  content_css: '/tinymce/skins/content/default/content.min.css',
-                  content_style: 'body { font-size: 14px; }',
-                  body_id: 'tinymce_body_id',
-                  min_height: 240,
-                  max_height: 240,
-                  resize: false,
-                  menubar: false,
-                  branding: false,
-                  statusbar: false,
-                  elementpath: false,
-                  toolbar_mode: 'sliding',
-                  // 不让 TinyMCE 把 images_upload_handler 返回的相对路径
-                  // `/api/hik/hikke/download?…` 转成 `http://127.0.0.1:PORT/…`
-                  // 绝对路径，提交时 daemon 的 rewriteImageUrls 直接匹配相对路径。
-                  convert_urls: false,
-                  browser_spellcheck: true,
-                  paste_data_images: true,
-                  // TinyMCE 5 有 textcolor 插件，forecolor/backcolor 需要它。
-                  plugins: 'advlist anchor autolink charmap codesample directionality emoticons fullscreen help hr image importcss insertdatetime link lists media pagebreak paste preview quickbars searchreplace table textcolor textpattern wordcount',
-                  toolbar: 'undo redo | fontselect fontsizeselect | bold italic underline strikethrough forecolor backcolor | alignleft aligncenter alignright outdent indent bullist numlist link media image table emoticons fullscreen',
-                  fontsize_formats: '14px 16px 18px 20px 24px 26px 28px 30px 32px 36px',
-                  font_formats: '微软雅黑=Microsoft YaHei,Helvetica Neue,PingFang SC,sans-serif;苹果苹方=PingFang SC,Microsoft YaHei,sans-serif;宋体=simsun,serif;Terminal=terminal,monaco;Times New Roman=times new roman,times',
-                  default_link_target: '_blank',
-                  quickbars_selection_toolbar: 'bold italic | link h2 h3 blockquote',
-                  // 禁用空行插入浮层（按 Enter 时弹出的"插入图片/表格"快捷条），
-                  // 只保留选中文本时的 quickbar。
-                  quickbars_insert_toolbar: false,
-                  file_picker_types: 'file image media',
-                  pagebreak_split_block: true,
-                  // 图片对话框里显示"上传"tab，让用户直接选本地文件上传。
-                  image_uploadtab: true,
-                  // TinyMCE 5 的 images_upload_handler 用回调风格（success/failure）
-                  // 比 promise 风格更可靠——promise 风格 reject Error 对象时会静默失败。
-                  images_upload_handler: (blobInfo: any, success: (url: string) => void, failure: (err: string) => void) => {
-                    const formData = new FormData();
-                    formData.append('file', blobInfo.blob(), blobInfo.filename() || 'image.png');
-                    fetch('/api/hik/hikke/upload', {
-                      method: 'POST',
-                      body: formData,
-                      credentials: 'same-origin',
-                    })
-                      .then((res) => res.json())
-                      .then((json) => {
-                        if (!json?.ok) {
-                          failure(json?.msg || '上传失败');
-                          return;
-                        }
-                        // daemon 上游返回的 url 是海客相对路径
-                        // `/hikkeapi/download?bizNo=…&flag=…`，浏览器从 daemon 源请求不到。
-                        // 改写成 daemon 下载代理 URL `/api/hik/hikke/download?…`，浏览器
-                        // 通过 daemon 透传海客下载接口（带 daemon 鉴权 cookie）。提交时
-                        // daemon 的 rewriteImageUrls 会把代理 URL 还原成海客原始绝对 URL。
-                        const url = String(json.data.url).replace(/^\/hikkeapi\//, '/api/hik/hikke/');
-                        success(url);
-                      })
-                      .catch((err: unknown) => {
-                        failure(err instanceof Error ? err.message : String(err));
-                      });
-                  },
-                }}
-              />
-            </div>
-            <div className={styles.fieldErrorSlot}>
-              {contentError ? <span className={styles.fieldError}>{contentError}</span> : null}
-            </div>
-          </div>
-
-          {/* {creatorName ? (
-            <div className={styles.creator}>创建人：{creatorName}</div>
-          ) : null} */}
-
-          {submitError ? (
-            <div className={styles.fieldError}>{submitError}</div>
-          ) : null}
         </div>
 
-        <DialogFooter className={styles.footer}>
-          <Button variant="ghost" onClick={onClose} disabled={submitState === 'submitting'}>
-            取消
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handleSubmit}
-            disabled={submitDisabled}
-          >
-            {submitState === 'submitting' ? '提交中…' : '提交'}
-          </Button>
-        </DialogFooter>
+        <div data-dialog-field="" className={styles.field}>
+          <label className={styles.label} htmlFor="feedback-title">
+            反馈标题
+            <span className={styles.required} aria-hidden>
+              *
+            </span>
+          </label>
+          <input
+            data-dialog-control=""
+            id="feedback-title"
+            type="text"
+            className={styles.input}
+            value={title}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              if (titleError) setTitleError(null);
+            }}
+            placeholder="请输入反馈标题"
+            maxLength={120}
+          />
+          <div className={styles.fieldErrorSlot}>
+            {titleError ? <span className={styles.fieldError}>{titleError}</span> : null}
+          </div>
+        </div>
+
+        <div data-dialog-field="" className={styles.field}>
+          <label className={styles.label} htmlFor="feedback-content">
+            反馈内容
+            <span className={styles.required} aria-hidden>
+              *
+            </span>
+          </label>
+          <div className={styles.editorWrap} data-empty={editorEmpty ? 'true' : 'false'}>
+            <TinyMCEEditor
+              onInit={(editor) => {
+                editorRef.current = editor;
+                editor.setContent(FEEDBACK_GUIDE_HTML);
+                initialEditorContentRef.current = editor.getContent().trim();
+              }}
+              onEditorChange={handleEditorChange}
+              init={{
+                language: 'zh_CN',
+                language_url: '/tinymce/zh_CN.js',
+                skin_url: '/tinymce/skins/ui/oxide',
+                content_css: '/tinymce/skins/content/default/content.min.css',
+                content_style: 'body { font-size: 14px; }',
+                body_id: 'tinymce_body_id',
+                min_height: 240,
+                max_height: 240,
+                resize: false,
+                menubar: false,
+                branding: false,
+                statusbar: false,
+                elementpath: false,
+                toolbar_mode: 'sliding',
+                // 不让 TinyMCE 把 images_upload_handler 返回的相对路径
+                // `/api/hik/hikke/download?…` 转成 `http://127.0.0.1:PORT/…`
+                // 绝对路径，提交时 daemon 的 rewriteImageUrls 直接匹配相对路径。
+                convert_urls: false,
+                browser_spellcheck: true,
+                paste_data_images: true,
+                // TinyMCE 5 有 textcolor 插件，forecolor/backcolor 需要它。
+                plugins:
+                  'advlist anchor autolink charmap codesample directionality emoticons fullscreen help hr image importcss insertdatetime link lists media pagebreak paste preview quickbars searchreplace table textcolor textpattern wordcount',
+                toolbar:
+                  'undo redo | fontselect fontsizeselect | bold italic underline strikethrough forecolor backcolor | alignleft aligncenter alignright outdent indent bullist numlist link media image table emoticons fullscreen',
+                fontsize_formats: '14px 16px 18px 20px 24px 26px 28px 30px 32px 36px',
+                font_formats:
+                  '微软雅黑=Microsoft YaHei,Helvetica Neue,PingFang SC,sans-serif;苹果苹方=PingFang SC,Microsoft YaHei,sans-serif;宋体=simsun,serif;Terminal=terminal,monaco;Times New Roman=times new roman,times',
+                default_link_target: '_blank',
+                quickbars_selection_toolbar: 'bold italic | link h2 h3 blockquote',
+                // 禁用空行插入浮层（按 Enter 时弹出的"插入图片/表格"快捷条），
+                // 只保留选中文本时的 quickbar。
+                quickbars_insert_toolbar: false,
+                file_picker_types: 'file image media',
+                pagebreak_split_block: true,
+                // 图片对话框里显示"上传"tab，让用户直接选本地文件上传。
+                image_uploadtab: true,
+                // TinyMCE 5 的 images_upload_handler 用回调风格（success/failure）
+                // 比 promise 风格更可靠——promise 风格 reject Error 对象时会静默失败。
+                images_upload_handler: (
+                  blobInfo: any,
+                  success: (url: string) => void,
+                  failure: (err: string) => void,
+                ) => {
+                  const formData = new FormData();
+                  formData.append('file', blobInfo.blob(), blobInfo.filename() || 'image.png');
+                  fetch('/api/hik/hikke/upload', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'same-origin',
+                  })
+                    .then((res) => res.json())
+                    .then((json) => {
+                      if (!json?.ok) {
+                        failure(json?.msg || '上传失败');
+                        return;
+                      }
+                      // daemon 上游返回的 url 是海客相对路径
+                      // `/hikkeapi/download?bizNo=…&flag=…`，浏览器从 daemon 源请求不到。
+                      // 改写成 daemon 下载代理 URL `/api/hik/hikke/download?…`，浏览器
+                      // 通过 daemon 透传海客下载接口（带 daemon 鉴权 cookie）。提交时
+                      // daemon 的 rewriteImageUrls 会把代理 URL 还原成海客原始绝对 URL。
+                      const url = String(json.data.url).replace(/^\/hikkeapi\//, '/api/hik/hikke/');
+                      success(url);
+                    })
+                    .catch((err: unknown) => {
+                      failure(err instanceof Error ? err.message : String(err));
+                    });
+                },
+              }}
+            />
+          </div>
+          <div className={styles.fieldErrorSlot}>
+            {contentError ? <span className={styles.fieldError}>{contentError}</span> : null}
+          </div>
+        </div>
+
+        {/* {creatorName ? (
+                <div className={styles.creator}>创建人：{creatorName}</div>
+              ) : null} */}
+
+        {submitError ? <div className={styles.fieldError}>{submitError}</div> : null}
       </div>
+      <DialogFooter className={styles.footer}>
+        <Button variant="ghost" onClick={onClose} disabled={submitState === 'submitting'}>
+          取消
+        </Button>
+        <Button variant="primary" onClick={handleSubmit} disabled={submitDisabled}>
+          {submitState === 'submitting' ? '提交中…' : '提交'}
+        </Button>
+      </DialogFooter>
     </Dialog>,
     portalTarget,
   );

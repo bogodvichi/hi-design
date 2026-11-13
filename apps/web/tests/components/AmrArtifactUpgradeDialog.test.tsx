@@ -136,20 +136,20 @@ describe('AmrArtifactUpgradeDialog', () => {
 
     const dialog = screen.getByRole('dialog');
     const close = screen.getByRole('button', { name: 'Close' });
-    const later = screen.getByTestId('amr-artifact-upgrade-later');
+    const lastAction = screen.getByTestId('amr-artifact-upgrade-plans');
     expect(dialog).toHaveAttribute('tabindex', '-1');
     expect(document.activeElement).toBe(dialog);
     expect(opener.hasAttribute('inert')).toBe(true);
     expect(document.body.style.overflow).toBe('hidden');
 
     fireEvent.keyDown(document, { key: 'Tab', shiftKey: true });
-    expect(document.activeElement).toBe(later);
+    expect(document.activeElement).toBe(lastAction);
 
     dialog.focus();
     fireEvent.keyDown(document, { key: 'Tab' });
     expect(document.activeElement).toBe(close);
 
-    later.focus();
+    lastAction.focus();
     fireEvent.keyDown(document, { key: 'Tab' });
     expect(document.activeElement).toBe(close);
 

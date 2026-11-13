@@ -158,7 +158,7 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
   const errCount = items.filter((it) => it.status === 'error').length;
 
   const modal = (
-    <motion.div
+    <motion.div data-dialog-backdrop=""
       className={styles.backdrop}
       onClick={onClose}
       variants={modalOverlay}
@@ -168,6 +168,7 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
       role="presentation"
     >
       <motion.div
+        data-dialog-surface="standard"
         className={styles.modal}
         onClick={(e) => e.stopPropagation()}
         variants={modalContent}
@@ -178,84 +179,93 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
         aria-modal="true"
         aria-label={t('feedback.uploadLibrary')}
       >
-        <header className={styles.head}>
-          <span className={styles.headTitle}>{t('feedback.uploadLibrary')}</span>
-          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label={t('feedback.closeUpload')}>
+        <header data-dialog-part="header" className={styles.head}>
+          <span data-dialog-part="title" className={styles.headTitle}>
+            {t('feedback.uploadLibrary')}
+          </span>
+          <button
+            data-dialog-part="close"
+            type="button"
+            className={styles.closeBtn}
+            onClick={onClose}
+            aria-label={t('feedback.closeUpload')}
+          >
             <Icon name="close" size={18} />
           </button>
         </header>
 
-        <div
-          className={styles.dropzone}
-          data-drag={dragOver ? 'true' : 'false'}
-          onDragEnter={(e) => {
-            e.preventDefault();
-            setDragOver(true);
-          }}
-          onDragOver={(e) => e.preventDefault()}
-          onDragLeave={(e) => {
-            e.preventDefault();
-            setDragOver(false);
-          }}
-          onDrop={onDrop}
-          onClick={() => inputRef.current?.click()}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ' ') {
+        <div data-dialog-part="body" className={styles.uploadBody}>
+          <div
+            className={styles.dropzone}
+            data-drag={dragOver ? 'true' : 'false'}
+            onDragEnter={(e) => {
               e.preventDefault();
-              inputRef.current?.click();
-            }
-          }}
-        >
-          <Icon name="upload" size={26} className={styles.dropIcon} />
-          <p className={styles.dropTitle}>
-            {t('feedback.dropOrPaste')} <span className={styles.dropLink}>{t('feedback.chooseFiles')}</span>
-          </p>
-          <p className={styles.dropHint}>
-            {t('feedback.uploadFormats', { max: maxMb })}
-          </p>
-          <input
-            ref={inputRef}
-            type="file"
-            multiple
-            accept={libraryUploadAcceptAttr()}
-            className={styles.fileInput}
-            onChange={onPick}
-          />
+              setDragOver(true);
+            }}
+            onDragOver={(e) => e.preventDefault()}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              setDragOver(false);
+            }}
+            onDrop={onDrop}
+            onClick={() => inputRef.current?.click()}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                inputRef.current?.click();
+              }
+            }}
+          >
+            <Icon name="upload" size={26} className={styles.dropIcon} />
+            <p className={styles.dropTitle}>
+              {t('feedback.dropOrPaste')}{' '}
+              <span className={styles.dropLink}>{t('feedback.chooseFiles')}</span>
+            </p>
+            <p className={styles.dropHint}>{t('feedback.uploadFormats', { max: maxMb })}</p>
+            <input
+              ref={inputRef}
+              type="file"
+              multiple
+              accept={libraryUploadAcceptAttr()}
+              className={styles.fileInput}
+              onChange={onPick}
+            />
+          </div>
+
+          {items.length > 0 ? (
+            <ul className={styles.list}>
+              {items.map((it) => (
+                <li key={it.id} className={styles.item} data-status={it.status}>
+                  <span className={styles.itemIcon} aria-hidden>
+                    {it.status === 'uploading' ? (
+                      <Icon name="spinner" size={15} className={styles.spin} />
+                    ) : it.status === 'error' ? (
+                      <Icon name="alert-triangle" size={15} />
+                    ) : (
+                      <Icon name="check" size={15} />
+                    )}
+                  </span>
+                  <span className={styles.itemName} title={it.name}>
+                    {it.name}
+                  </span>
+                  <span className={styles.itemStatus}>
+                    {it.status === 'uploading'
+                      ? t('feedback.uploading')
+                      : it.status === 'deduped'
+                        ? t('feedback.alreadyInLibrary')
+                        : it.status === 'done'
+                          ? t('feedback.saved')
+                          : (it.message ?? t('feedback.uploadFailed'))}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
 
-        {items.length > 0 ? (
-          <ul className={styles.list}>
-            {items.map((it) => (
-              <li key={it.id} className={styles.item} data-status={it.status}>
-                <span className={styles.itemIcon} aria-hidden>
-                  {it.status === 'uploading' ? (
-                    <Icon name="spinner" size={15} className={styles.spin} />
-                  ) : it.status === 'error' ? (
-                    <Icon name="alert-triangle" size={15} />
-                  ) : (
-                    <Icon name="check" size={15} />
-                  )}
-                </span>
-                <span className={styles.itemName} title={it.name}>
-                  {it.name}
-                </span>
-                <span className={styles.itemStatus}>
-                  {it.status === 'uploading'
-                    ? t('feedback.uploading')
-                    : it.status === 'deduped'
-                      ? t('feedback.alreadyInLibrary')
-                      : it.status === 'done'
-                        ? t('feedback.saved')
-                        : (it.message ?? t('feedback.uploadFailed'))}
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-
-        <footer className={styles.foot}>
+        <footer data-dialog-part="footer" className={styles.foot}>
           <span className={styles.summary}>
             {items.length === 0
               ? t('feedback.noData')

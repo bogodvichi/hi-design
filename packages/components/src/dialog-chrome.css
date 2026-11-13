@@ -1,0 +1,284 @@
+/* Shared modal chrome. Explicit slots also let animated/native shells retain
+ * their lifecycle, portals and content layout while using the same geometry.
+ * The repeated surface attribute deliberately outranks owner chrome classes
+ * without !important; business content and state styles remain locally owned. */
+[data-dialog-backdrop][data-dialog-backdrop] {
+  box-sizing: border-box;
+  padding: 24px;
+}
+
+[data-dialog-surface][data-dialog-surface] {
+  --dialog-inset: 22px;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 0;
+  border-radius: 12px;
+  -webkit-app-region: no-drag;
+}
+
+[data-dialog-surface][data-dialog-surface='standard'] {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  text-align: start;
+  max-height: calc(100dvh - 48px);
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+[data-dialog-surface][data-dialog-surface='workspace'] {
+  max-height: calc(100dvh - 48px);
+  overflow: hidden;
+}
+
+[data-dialog-surface][data-dialog-surface] > [data-dialog-part='header'] {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: row;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0;
+  padding: 18px var(--dialog-inset);
+  border-bottom: 1px solid var(--color-border, var(--border));
+}
+
+/* A heading with a direct description is a vertical text group. */
+[data-dialog-surface][data-dialog-surface] > [data-dialog-part='header']:has(> [data-dialog-part='description']) {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
+[data-dialog-surface][data-dialog-surface] [data-dialog-part='title'] {
+  min-width: 0;
+  margin: 0;
+  color: var(--color-text, var(--text-strong, var(--text)));
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+[data-dialog-surface][data-dialog-surface] [data-dialog-part='description'] {
+  margin: 0;
+  color: var(--color-text-secondary, var(--text-muted));
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+[data-dialog-surface][data-dialog-surface] [data-dialog-part='header'] [data-dialog-part='description'] {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+[data-dialog-surface][data-dialog-surface] [data-dialog-part='header']
+  :is(div, section):has(> [data-dialog-part='title']):has(> [data-dialog-part='description']) {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+[data-dialog-surface][data-dialog-surface] [data-dialog-part='close'] {
+  position: static;
+  display: inline-flex;
+  flex: 0 0 32px;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-secondary, var(--text-muted));
+  font-size: 16px;
+  box-shadow: none;
+  backdrop-filter: none;
+}
+
+[data-dialog-surface][data-dialog-surface] [data-dialog-part='close'] > svg {
+  width: 16px;
+  height: 16px;
+}
+
+[data-dialog-surface][data-dialog-surface] > [data-dialog-part='body']:is(iframe) {
+  flex: 1 1 auto;
+  min-height: 0;
+  width: 100%;
+  padding: 0;
+  border: 0;
+}
+
+[data-dialog-surface][data-dialog-surface] [data-dialog-part='close']:hover:not(:disabled) {
+  background: var(--color-hover, var(--bg-subtle));
+  color: var(--color-text, var(--text-strong, var(--text)));
+}
+
+[data-dialog-surface][data-dialog-surface] > [data-dialog-part='toolbar'] {
+  flex: 0 0 auto;
+  margin: 20px var(--dialog-inset) 4px;
+}
+
+[data-dialog-surface][data-dialog-surface] [data-dialog-tabs] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 4px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--color-bg-subtle, var(--bg-subtle));
+}
+
+[data-dialog-surface][data-dialog-surface] [data-dialog-tabs] > [role='tab'] {
+  display: inline-flex;
+  flex: 1 1 0;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-secondary, var(--text-muted));
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: none;
+}
+
+[data-dialog-surface][data-dialog-surface] [data-dialog-tabs] > [role='tab']:hover:not(:disabled) {
+  color: var(--color-text, var(--text-strong, var(--text)));
+}
+
+[data-dialog-surface][data-dialog-surface] [data-dialog-tabs] > [role='tab'][aria-selected='true'] {
+  background: var(--color-surface, var(--bg-elevated));
+  color: var(--color-text, var(--text-strong, var(--text)));
+  box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
+}
+
+[data-dialog-surface][data-dialog-surface] [data-dialog-tabs] > [role='tab']::after {
+  content: none;
+}
+
+[data-dialog-surface][data-dialog-surface='standard'] > [data-dialog-part='body'],
+[data-dialog-surface][data-dialog-surface='standard'] > [data-dialog-part='form'] > [data-dialog-part='body'] {
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 20px var(--dialog-inset);
+  gap: 18px;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+}
+
+[data-dialog-surface][data-dialog-surface='standard'] > [data-dialog-part='form'] {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+[data-dialog-surface][data-dialog-surface] > [data-dialog-part='footer'],
+[data-dialog-surface][data-dialog-surface] > [data-dialog-part='form'] > [data-dialog-part='footer'] {
+  box-sizing: border-box;
+  display: flex;
+  flex: 0 0 auto;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0;
+  padding: 14px var(--dialog-inset);
+  border-top: 1px solid var(--color-border, var(--border));
+}
+
+[data-dialog-surface][data-dialog-surface] [data-dialog-part='footer'] > button,
+[data-dialog-surface][data-dialog-surface] [data-dialog-part='footer'] > [data-dialog-part='actions'] > button {
+  flex: 0 0 auto;
+  height: 36px;
+  min-height: 36px;
+  padding-inline: 18px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+/* Footers can carry a status, owner hint or suppression checkbox on the left. */
+[data-dialog-surface][data-dialog-surface] [data-dialog-part='footer'] > :first-child:not(button):not([data-dialog-part='actions']) {
+  margin-inline-end: auto;
+}
+
+[data-dialog-surface][data-dialog-surface] [data-dialog-part='actions'] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-inline-start: auto;
+}
+
+[data-dialog-surface][data-dialog-surface] [data-dialog-field] {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+  text-align: start;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text, var(--text));
+}
+
+[data-dialog-surface][data-dialog-surface] [data-dialog-field] > :is(label, legend, span:first-child),
+[data-dialog-surface][data-dialog-surface] [data-dialog-part='label'] {
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  text-align: start;
+  color: var(--color-text, var(--text));
+}
+
+[data-dialog-surface][data-dialog-surface] [data-dialog-field] > :is(input:not([type='checkbox']):not([type='radio']):not([type='file']), textarea, select),
+[data-dialog-surface][data-dialog-surface] [data-dialog-control] {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: var(--color-text, var(--text));
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+[data-dialog-surface][data-dialog-surface] [data-dialog-control]:not(textarea),
+[data-dialog-surface][data-dialog-surface] [data-dialog-field] > :is(input:not([type='checkbox']):not([type='radio']):not([type='file']), select) {
+  min-height: 40px;
+}
+
+@media (max-width: 560px) {
+  [data-dialog-surface][data-dialog-surface] { --dialog-inset: 18px; }
+}

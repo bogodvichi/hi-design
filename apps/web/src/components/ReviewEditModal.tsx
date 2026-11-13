@@ -241,207 +241,235 @@ export function ReviewEditModal({
   if (!open || typeof document === 'undefined') return null;
 
   return createPortal(
-    <div
+    <div data-dialog-backdrop=""
       className={styles.backdrop}
       role="presentation"
       onClick={(e) => {
         if (e.target === e.currentTarget && !submitting && !confirmOpen) onClose();
       }}
     >
-    <div className={styles.shell} role="dialog" aria-modal="true"
-        style={{ height: 'auto', maxHeight: 'calc(100vh - 32px)' }}>
-        <div className={styles.head}>
-          <div className={styles.headMain}>
-            <div className={styles.kicker}>REVIEW · UEDRO</div>
-            <h2 className={styles.title}>编辑评审</h2>
-            {reviewName ? <p className={styles.subtitle}>{reviewName}</p> : null}
+    <div
+      data-dialog-surface="standard"
+      className={styles.shell}
+      role="dialog"
+      aria-modal="true"
+      style={{ height: 'auto', maxHeight: 'calc(100vh - 48px)' }}
+    >
+      <div data-dialog-part="header" className={styles.head}>
+        <div className={styles.headMain}>
+          <div className={styles.kicker}>REVIEW · UEDRO</div>
+          <h2 data-dialog-part="title" className={styles.title}>
+            编辑评审
+          </h2>
+          {reviewName ? (
+            <p data-dialog-part="description" className={styles.subtitle}>
+              {reviewName}
+            </p>
+          ) : null}
+        </div>
+        <button
+          data-dialog-part="close"
+          type="button"
+          className={styles.closeBtn}
+          onClick={() => {
+            if (!submitting) {
+              setConfirmOpen(false);
+              onClose();
+            }
+          }}
+          aria-label="关闭"
+          disabled={submitting}
+        >
+          ✕
+        </button>
+      </div>
+
+      <div data-dialog-part="body" className={styles.body}>
+        {loading ? (
+          <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+            加载中…
           </div>
+        ) : (
+          <div className={styles.group}>
+            {/* 评审名称（禁用） */}
+            <div data-dialog-field="" className={styles.item}>
+              <label data-dialog-part="label" className={styles.itemLabel}>
+                评审名称 <span className={styles.req}>*</span>
+              </label>
+              <div className={styles.itemControl}>
+                <input
+                  data-dialog-control=""
+                  type="text"
+                  className={styles.input}
+                  value={reviewNameVal}
+                  disabled
+                  readOnly
+                />
+              </div>
+            </div>
+
+            {/* 预审结束时间（禁用） */}
+            <div data-dialog-field="" className={styles.item}>
+              <label data-dialog-part="label" className={styles.itemLabel}>
+                预审结束时间 <span className={styles.req}>*</span>
+              </label>
+              <div className={styles.itemControl}>
+                <input
+                  data-dialog-control=""
+                  type="datetime-local"
+                  className={styles.input}
+                  value={endtime}
+                  disabled
+                  readOnly
+                />
+              </div>
+            </div>
+
+            {/* 评审组长（禁用，仅展示当前组长，无标签区） */}
+            <div data-dialog-field="" className={styles.item}>
+              <label data-dialog-part="label" className={styles.itemLabel}>
+                评审组长 <span className={styles.req}>*</span>
+              </label>
+              <div className={styles.itemControl}>
+                <input
+                  data-dialog-control=""
+                  type="text"
+                  className={styles.input}
+                  value={mainjudge.map((p) => p.name).join('、')}
+                  disabled
+                  readOnly
+                />
+              </div>
+            </div>
+
+            {/* 核心评委（可编辑） */}
+            <div data-dialog-field="" className={styles.item}>
+              <label data-dialog-part="label" className={styles.itemLabel}>
+                核心评委 <span className={styles.req}>*</span>
+              </label>
+              <div className={styles.itemControl}>
+                <PersonPicker
+                  selected={coreReviewers}
+                  onChange={(p) => {
+                    setCoreReviewers(p);
+                    clearFieldError('coreReviewers');
+                  }}
+                  placeholder="请输入名称（核心评委）"
+                  multiple
+                />
+                <span className={styles.itemError}>{fieldErrors.coreReviewers || ''}</span>
+              </div>
+            </div>
+
+            {/* 团队评委（可编辑） */}
+            <div data-dialog-field="" className={styles.item}>
+              <label data-dialog-part="label" className={styles.itemLabel}>
+                团队评委
+              </label>
+              <div className={styles.itemControl}>
+                <PersonPicker
+                  selected={judgelist}
+                  onChange={setJudgelist}
+                  placeholder="请输入名称（团队评委）"
+                  multiple
+                />
+              </div>
+            </div>
+
+            {/* 评审备注（可编辑） */}
+            <div data-dialog-field="" className={styles.item}>
+              <label data-dialog-part="label" className={styles.itemLabel}>
+                评审备注
+              </label>
+              <div className={styles.itemControl}>
+                <textarea
+                  data-dialog-control=""
+                  className={styles.textarea}
+                  placeholder="请输入评审备注"
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* 抄送人员（可编辑） */}
+            <div data-dialog-field="" className={styles.item}>
+              <label data-dialog-part="label" className={styles.itemLabel}>
+                抄送人员
+              </label>
+              <div className={styles.itemControl}>
+                <PersonPicker
+                  selected={addPersonList}
+                  onChange={setAddPersonList}
+                  placeholder="请输入名称（抄送人员）"
+                  multiple
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div data-dialog-part="footer" className={styles.foot}>
+        <span className={`${styles.footMsg} ${error ? styles.footMsgErr : ''}`}>{error || ''}</span>
+        <div data-dialog-part="actions" className={styles.footActions}>
           <button
             type="button"
-            className={styles.closeBtn}
+            className={styles.btn}
             onClick={() => {
               if (!submitting) {
                 setConfirmOpen(false);
                 onClose();
               }
             }}
-            aria-label="关闭"
             disabled={submitting}
           >
-            ✕
+            取消
+          </button>
+          <button
+            type="button"
+            className={`${styles.btn} ${styles.btnPrimary}`}
+            onClick={handleSubmitClick}
+            disabled={submitting || loading}
+          >
+            {submitting ? '提交中…' : '确定'}
           </button>
         </div>
-
-        <div className={styles.body}>
-          {loading ? (
-            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-              加载中…
-            </div>
-          ) : (
-            <div className={styles.group}>
-              {/* 评审名称（禁用） */}
-              <div className={styles.item}>
-                <label className={styles.itemLabel}>
-                  评审名称 <span className={styles.req}>*</span>
-                </label>
-                <div className={styles.itemControl}>
-                  <input
-                    type="text"
-                    className={styles.input}
-                    value={reviewNameVal}
-                    disabled
-                    readOnly
-                  />
-                </div>
-              </div>
-
-              {/* 预审结束时间（禁用） */}
-              <div className={styles.item}>
-                <label className={styles.itemLabel}>
-                  预审结束时间 <span className={styles.req}>*</span>
-                </label>
-                <div className={styles.itemControl}>
-                  <input
-                    type="datetime-local"
-                    className={styles.input}
-                    value={endtime}
-                    disabled
-                    readOnly
-                  />
-                </div>
-              </div>
-
-              {/* 评审组长（禁用，仅展示当前组长，无标签区） */}
-              <div className={styles.item}>
-                <label className={styles.itemLabel}>
-                  评审组长 <span className={styles.req}>*</span>
-                </label>
-                <div className={styles.itemControl}>
-                  <input
-                    type="text"
-                    className={styles.input}
-                    value={mainjudge.map((p) => p.name).join('、')}
-                    disabled
-                    readOnly
-                  />
-                </div>
-              </div>
-
-              {/* 核心评委（可编辑） */}
-              <div className={styles.item}>
-                <label className={styles.itemLabel}>
-                  核心评委 <span className={styles.req}>*</span>
-                </label>
-                <div className={styles.itemControl}>
-                  <PersonPicker
-                    selected={coreReviewers}
-                    onChange={(p) => {
-                      setCoreReviewers(p);
-                      clearFieldError('coreReviewers');
-                    }}
-                 placeholder="请输入名称（核心评委）"
-                 multiple
-               />
-               <span className={styles.itemError}>{fieldErrors.coreReviewers || ''}</span>
-                </div>
-              </div>
-
-              {/* 团队评委（可编辑） */}
-              <div className={styles.item}>
-                <label className={styles.itemLabel}>团队评委</label>
-                <div className={styles.itemControl}>
-                  <PersonPicker
-                    selected={judgelist}
-                    onChange={setJudgelist}
-                 placeholder="请输入名称（团队评委）"
-                 multiple
-               />
-             </div>
-           </div>
-
-           {/* 评审备注（可编辑） */}
-              <div className={styles.item}>
-                <label className={styles.itemLabel}>评审备注</label>
-                <div className={styles.itemControl}>
-                  <textarea
-                    className={styles.textarea}
-                    placeholder="请输入评审备注"
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* 抄送人员（可编辑） */}
-              <div className={styles.item}>
-                <label className={styles.itemLabel}>抄送人员</label>
-                <div className={styles.itemControl}>
-                  <PersonPicker
-                    selected={addPersonList}
-                    onChange={setAddPersonList}
-                 placeholder="请输入名称（抄送人员）"
-                 multiple
-               />
-             </div>
-           </div>
-            </div>
-          )}
-        </div>
-
-        <div className={styles.foot}>
-          <span className={`${styles.footMsg} ${error ? styles.footMsgErr : ''}`}>
-            {error || ''}
-          </span>
-          <div className={styles.footActions}>
-            <button
-              type="button"
-              className={styles.btn}
-              onClick={() => {
-                if (!submitting) {
-                  setConfirmOpen(false);
-                  onClose();
-                }
-              }}
-              disabled={submitting}
-            >
-              取消
-            </button>
-            <button
-              type="button"
-              className={`${styles.btn} ${styles.btnPrimary}`}
-              onClick={handleSubmitClick}
-              disabled={submitting || loading}
-            >
-              {submitting ? '提交中…' : '确定'}
-            </button>
-          </div>
-        </div>
       </div>
+    </div>
 
       {/* 二次确认对话框 */}
       {confirmOpen
         ? createPortal(
-            <div
+            <div data-dialog-backdrop=""
               className={styles.backdrop}
               role="presentation"
               onClick={(e) => {
                 if (e.target === e.currentTarget) setConfirmOpen(false);
               }}
             >
-              <div className={styles.shell} role="alertdialog" aria-modal="true" style={{ maxWidth: '420px', height: 'auto' }}>
-                <div className={styles.head}>
+              <div
+                data-dialog-surface="standard"
+                className={styles.shell}
+                role="alertdialog"
+                aria-modal="true"
+                style={{ maxWidth: '420px', height: 'auto' }}
+              >
+                <div data-dialog-part="header" className={styles.head}>
                   <div className={styles.headMain}>
-                    <h2 className={styles.title}>确认修改</h2>
+                    <h2 data-dialog-part="title" className={styles.title}>
+                      确认修改
+                    </h2>
                   </div>
                 </div>
-                <div className={styles.body}>
+                <div data-dialog-part="body" className={styles.body}>
                   <p style={{ fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
                     有相同单号的评审信息会同时修改,是否修改?
                   </p>
                 </div>
-                <div className={styles.foot}>
+                <div data-dialog-part="footer" className={styles.foot}>
                   <span className={styles.footMsg} />
-                  <div className={styles.footActions}>
+                  <div data-dialog-part="actions" className={styles.footActions}>
                     <button
                       type="button"
                       className={styles.btn}

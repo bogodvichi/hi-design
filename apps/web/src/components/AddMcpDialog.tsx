@@ -173,47 +173,44 @@ export function AddMcpDialog({ open, onClose, scope, onAdded, workspaceContext: 
   }
 
   const dialog = open ? createPortal(
-    <div className={styles.backdrop} role="presentation" onClick={closeDialog}>
+    <div data-dialog-backdrop="" className={styles.backdrop} role="presentation" onClick={closeDialog}>
       <section
+        data-dialog-surface="standard"
         className={styles.dialog}
         role="dialog"
         aria-modal="true"
         aria-label={t('personalScope.addMcp')}
         onClick={(event) => event.stopPropagation()}
       >
-        <header className={styles.dialogHeader}>
+        <header data-dialog-part="header" className={styles.dialogHeader}>
           <div className={styles.headerText}>
-            <h2 className={styles.dialogTitle}>
+            <h2 data-dialog-part="title" className={styles.dialogTitle}>
               {t('personalScope.addMcp')}
             </h2>
-            <p className={styles.dialogSubtitle}>
+            <p data-dialog-part="description" className={styles.dialogSubtitle}>
               {t('personalScope.addMcpSubtitle')}
             </p>
           </div>
           <button
+            data-dialog-part="close"
             type="button"
-           className={styles.closeBtn}
-           aria-label={t('pluginsView.createClose')}
-           onClick={closeDialog}
+            className={styles.closeBtn}
+            aria-label={t('pluginsView.createClose')}
+            onClick={closeDialog}
             disabled={busy}
           >
             <Icon name="close" size={17} aria-hidden />
           </button>
         </header>
-       <div className={styles.dialogBody}>
+        <div data-dialog-part="body" className={styles.dialogBody}>
           <McpConfigForm
             confirmRef={confirmRef}
             onCanConfirmChange={setCanConfirm}
             onSubmit={(selection) => void handleSubmit(selection)}
           />
         </div>
-        <footer className={styles.dialogFooter}>
-          <button
-            type="button"
-            className={styles.cancelBtn}
-            onClick={closeDialog}
-            disabled={busy}
-          >
+        <footer data-dialog-part="footer" className={styles.dialogFooter}>
+          <button type="button" className={styles.cancelBtn} onClick={closeDialog} disabled={busy}>
             {t('common.cancel')}
           </button>
           <button

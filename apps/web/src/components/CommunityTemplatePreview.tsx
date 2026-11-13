@@ -209,22 +209,26 @@ export function TemplatePreviewModal({
   const overlay = (
     <div className="community-template-preview" role="presentation" onMouseDown={onClose}>
       <section
+        data-dialog-surface="standard"
         className="community-template-preview__panel"
         role="dialog"
         aria-modal="true"
         aria-labelledby="community-template-preview-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <header className="community-template-preview__head">
+        <header data-dialog-part="header" className="community-template-preview__head">
           <div>
-            <h2 id="community-template-preview-title">{template.title}</h2>
-            <p>{template.meta}</p>
+            <h2 data-dialog-part="title" id="community-template-preview-title">
+              {template.title}
+            </h2>
+            <p data-dialog-part="description">{template.meta}</p>
           </div>
           <button type="button" aria-label={t('community.closePreview')} onClick={onClose}>
             <Icon name="close" size={17} />
           </button>
         </header>
         <iframe
+          data-dialog-part="body"
           title={`${template.title} preview`}
           className="community-template-preview__frame"
           // Html-preview plugins load their real daemon-served page; media
@@ -234,7 +238,7 @@ export function TemplatePreviewModal({
             ? { src: template.previewSrc }
             : { srcDoc: templatePreviewHtml(template) })}
         />
-        <footer className="community-template-preview__foot">
+        <footer data-dialog-part="footer" className="community-template-preview__foot">
           <span>{template.meta}</span>
           <button type="button" disabled={busy} onClick={onUse}>
             {busy ? t('common.loading') : templateActionLabel(template)}

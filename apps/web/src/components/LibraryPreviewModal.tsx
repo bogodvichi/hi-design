@@ -315,7 +315,7 @@ export function LibraryPreviewModal({
   }, [handleKey]);
 
   const modal = (
-    <motion.div
+    <motion.div data-dialog-backdrop=""
       className={styles.backdrop}
       onClick={onClose}
       variants={modalOverlay}
@@ -325,6 +325,7 @@ export function LibraryPreviewModal({
       role="presentation"
     >
       <motion.div
+        data-dialog-surface="workspace"
         className={styles.modal}
         onClick={(e) => e.stopPropagation()}
         variants={modalContent}
@@ -335,26 +336,59 @@ export function LibraryPreviewModal({
         aria-modal="true"
         aria-label={title}
       >
-        <header className={styles.head}>
-          <span className={styles.kindBadge} style={{ ['--kind-tint' as string]: kindTint(badgeKind(asset)) }}>
+        <header data-dialog-part="header" className={styles.head}>
+          <span
+            className={styles.kindBadge}
+            style={{ ['--kind-tint' as string]: kindTint(badgeKind(asset)) }}
+          >
             <KindIcon kind={badgeKind(asset)} size={13} />
             {kindLabel(badgeKind(asset))}
           </span>
-          <span className={styles.headTitle} title={title}>
+          <span data-dialog-part="title" className={styles.headTitle} title={title}>
             {title}
           </span>
           {src ? <span className={styles.headSource}>{SOURCE_LABELS[src]}</span> : null}
-          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label={t('feedback.closePreview')}>
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
+          <button
+            data-dialog-part="close"
+            type="button"
+            className={styles.closeBtn}
+            onClick={onClose}
+            aria-label={t('feedback.closePreview')}
+          >
+            <svg
+              width="22"
+              height="22"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.2"
+              strokeLinecap="round"
+              aria-hidden
+            >
               <path d="M18 6 6 18M6 6l12 12" />
             </svg>
           </button>
         </header>
 
-        <div className={styles.stage}>
+        <div data-dialog-part="body" className={styles.stage}>
           {hasPrev ? (
-            <button type="button" className={`${styles.nav} ${styles.navPrev}`} onClick={onPrev} aria-label={t('feedback.previousAsset')}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <button
+              type="button"
+              className={`${styles.nav} ${styles.navPrev}`}
+              onClick={onPrev}
+              aria-label={t('feedback.previousAsset')}
+            >
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
                 <path d="m15 18-6-6 6-6" />
               </svg>
             </button>
@@ -363,8 +397,23 @@ export function LibraryPreviewModal({
             <Stage asset={asset} />
           </div>
           {hasNext ? (
-            <button type="button" className={`${styles.nav} ${styles.navNext}`} onClick={onNext} aria-label={t('feedback.nextAsset')}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <button
+              type="button"
+              className={`${styles.nav} ${styles.navNext}`}
+              onClick={onNext}
+              aria-label={t('feedback.nextAsset')}
+            >
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden
+              >
                 <path d="m9 18 6-6-6-6" />
               </svg>
             </button>
@@ -373,7 +422,7 @@ export function LibraryPreviewModal({
 
         <ElementPanel asset={asset} />
 
-        <footer className={styles.foot}>
+        <footer data-dialog-part="footer" className={styles.foot}>
           <div className={styles.facts}>
             {dims ? <span>{dims}</span> : null}
             {size ? <span>{size}</span> : null}
@@ -385,7 +434,7 @@ export function LibraryPreviewModal({
               </span>
             ))}
           </div>
-          <div className={styles.actions}>
+          <div data-dialog-part="actions" className={styles.actions}>
             {asset.kind === 'html' && onEditAsPage ? (
               <Button onClick={() => void editAsPage()} disabled={editing}>
                 {editing ? 'Opening…' : 'Edit as page'}

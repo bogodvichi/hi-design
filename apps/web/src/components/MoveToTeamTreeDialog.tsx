@@ -1,7 +1,14 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { WorkspaceDirectoryItem } from '@open-design/contracts';
-import { Button, Dialog, DialogFooter, DialogTitle } from '@open-design/components';
+import {
+  DialogHeader,
+  DialogBody,
+  Button,
+  Dialog,
+  DialogFooter,
+  DialogTitle,
+} from '@open-design/components';
 import { readWorkspaceDirectoryForCurrentGeneration } from '../collab/useWorkspaceContext';
 import { Icon } from './Icon';
 import { Skeleton } from './Loading';
@@ -804,69 +811,143 @@ export function MoveToTeamTreeDialog({
   };
 
   const dialog = (
-    <Dialog className={`${styles.dialog}${showUnifiedLayout ? ` ${styles.dialogWide}` : ''}`} onClose={() => { if (!busy) onCancel(); }} closeOnEscape={!busy} ariaLabelledBy={titleId}>
-      <DialogTitle id={titleId}>{titleLabel ?? (copyMode ? t('recentProjects.copyToPersonal') : showUnifiedLayout ? t('recentProjects.moveTo') : (includePersonal || mode !== 'team') ? t('recentProjects.moveTo') : t('recentProjects.moveToTeam'))}</DialogTitle>
-      {!copyMode && selected && selected.workspaceId !== currentWorkspaceId ? (
-        <p className={styles.transferNotice}>{selected.isDefaultTeam ? <>
-          {t('recentProjects.moveToPersonalDescPre')}<strong>{t('recentProjects.moveToPersonalDescStrong')}</strong>{t('recentProjects.moveToPersonalDescPost')}
-        </> : t('recentProjects.transferNotice')}</p>
-      ) : null}
-      <fieldset disabled={busy} className={styles.locations} aria-busy={busy}>
-      {loading ? (
-        <div className={styles.skeletonList}>
-          <div className={styles.skeletonRow}><Skeleton width={16} height={16} radius={4} /><Skeleton width="60%" height={13} radius={6} /></div>
-          <div className={styles.skeletonRow}><Skeleton width={16} height={16} radius={4} /><Skeleton width="45%" height={13} radius={6} /></div>
-        </div>
-      ) : loadFailed ? (
-        <div className={styles.emptyState} role="alert">
-          <p>{t('feedback.serviceUnavailable')}</p>
-          <Button onClick={() => setLoadAttempt((attempt) => attempt + 1)}>{t('preview.retry')}</Button>
-        </div>
-      ) : visibleItems.length === 0 ? (
-        <div className={styles.emptyState}>{t('recentProjects.treeNoWorkspaces')}</div>
-      ) : showUnifiedLayout ? (
-        <div className={styles.splitTree}>
-          <div className={styles.leftPane}>
-            <UnifiedLocationPane workspaces={visibleItems} selectedKey={selectedKey} activeBranch={activeBranch} currentWorkspaceId={currentWorkspaceId} onSelectRoot={selectRoot} onSelectFolder={selectFolder} onBranchChange={(workspace, folder, expandedFolderIds) => setActiveBranch({ workspace, folder, expandedFolderIds })} disabledKeys={disabledKeys} disabledSubtreeKeys={disabledSubtreeKeys} />
-          </div>
-          <div className={styles.rightPane}>
-            {!activeBranch?.folder ? (
-              <div className={styles.paneEmpty}>
-                {selected?.folderId === null && activeBranch?.workspace.workspaceId === selected.workspaceId
-                  ? rootSelectedLabel ?? t('recentProjects.moveTreeRootSelected')
-                  : treeDescription ?? t('recentProjects.moveTreeDesc')}
-              </div>
+    <Dialog
+      className={`${styles.dialog}${showUnifiedLayout ? ` ${styles.dialogWide}` : ''}`}
+      onClose={() => {
+        if (!busy) onCancel();
+      }}
+      closeOnEscape={!busy}
+      ariaLabelledBy={titleId}
+    >
+      <DialogHeader>
+        <DialogTitle id={titleId}>
+          {titleLabel ??
+            (copyMode
+              ? t('recentProjects.copyToPersonal')
+              : showUnifiedLayout
+                ? t('recentProjects.moveTo')
+                : includePersonal || mode !== 'team'
+                  ? t('recentProjects.moveTo')
+                  : t('recentProjects.moveToTeam'))}
+        </DialogTitle>
+      </DialogHeader>
+      <DialogBody>
+        {!copyMode && selected && selected.workspaceId !== currentWorkspaceId ? (
+          <p className={styles.transferNotice}>
+            {selected.isDefaultTeam ? (
+              <>
+                {t('recentProjects.moveToPersonalDescPre')}
+                <strong>{t('recentProjects.moveToPersonalDescStrong')}</strong>
+                {t('recentProjects.moveToPersonalDescPost')}
+              </>
             ) : (
-              <div className={styles.deepTree}>
-                <FolderTreeItem
-                  key={`${activeBranch.workspace.workspaceId}:${activeBranch.folder.id}`}
-                  folder={activeBranch.folder}
-                  depth={0}
-                  workspace={activeBranch.workspace}
+              t('recentProjects.transferNotice')
+            )}
+          </p>
+        ) : null}
+        <fieldset disabled={busy} className={styles.locations} aria-busy={busy}>
+          {loading ? (
+            <div className={styles.skeletonList}>
+              <div className={styles.skeletonRow}>
+                <Skeleton width={16} height={16} radius={4} />
+                <Skeleton width="60%" height={13} radius={6} />
+              </div>
+              <div className={styles.skeletonRow}>
+                <Skeleton width={16} height={16} radius={4} />
+                <Skeleton width="45%" height={13} radius={6} />
+              </div>
+            </div>
+          ) : loadFailed ? (
+            <div className={styles.emptyState} role="alert">
+              <p>{t('feedback.serviceUnavailable')}</p>
+              <Button onClick={() => setLoadAttempt((attempt) => attempt + 1)}>
+                {t('preview.retry')}
+              </Button>
+            </div>
+          ) : visibleItems.length === 0 ? (
+            <div className={styles.emptyState}>{t('recentProjects.treeNoWorkspaces')}</div>
+          ) : showUnifiedLayout ? (
+            <div className={styles.splitTree}>
+              <div className={styles.leftPane}>
+                <UnifiedLocationPane
+                  workspaces={visibleItems}
                   selectedKey={selectedKey}
-                  onSelect={(node) => selectFolder(activeBranch.workspace, node)}
+                  activeBranch={activeBranch}
+                  currentWorkspaceId={currentWorkspaceId}
+                  onSelectRoot={selectRoot}
+                  onSelectFolder={selectFolder}
+                  onBranchChange={(workspace, folder, expandedFolderIds) =>
+                    setActiveBranch({ workspace, folder, expandedFolderIds })
+                  }
                   disabledKeys={disabledKeys}
                   disabledSubtreeKeys={disabledSubtreeKeys}
-                  initialExpanded
-                  expandedFolderIds={activeExpandedFolderIds}
                 />
               </div>
-            )}
-          </div>
-        </div>
-      ) : (
-        <div className={styles.treeContainer}>
-          <div className={styles.tree}>
-            {visibleItems.map((workspace) => <LegacyWorkspaceTree key={workspace.workspaceId} workspace={workspace} selectedKey={selectedKey} onSelectRoot={selectRoot} onSelectFolder={selectFolder} disabledKeys={disabledKeys} disabledSubtreeKeys={disabledSubtreeKeys} />)}
-          </div>
-        </div>
-      )}
-      </fieldset>
+              <div className={styles.rightPane}>
+                {!activeBranch?.folder ? (
+                  <div className={styles.paneEmpty}>
+                    {selected?.folderId === null &&
+                    activeBranch?.workspace.workspaceId === selected.workspaceId
+                      ? (rootSelectedLabel ?? t('recentProjects.moveTreeRootSelected'))
+                      : (treeDescription ?? t('recentProjects.moveTreeDesc'))}
+                  </div>
+                ) : (
+                  <div className={styles.deepTree}>
+                    <FolderTreeItem
+                      key={`${activeBranch.workspace.workspaceId}:${activeBranch.folder.id}`}
+                      folder={activeBranch.folder}
+                      depth={0}
+                      workspace={activeBranch.workspace}
+                      selectedKey={selectedKey}
+                      onSelect={(node) => selectFolder(activeBranch.workspace, node)}
+                      disabledKeys={disabledKeys}
+                      disabledSubtreeKeys={disabledSubtreeKeys}
+                      initialExpanded
+                      expandedFolderIds={activeExpandedFolderIds}
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className={styles.treeContainer}>
+              <div className={styles.tree}>
+                {visibleItems.map((workspace) => (
+                  <LegacyWorkspaceTree
+                    key={workspace.workspaceId}
+                    workspace={workspace}
+                    selectedKey={selectedKey}
+                    onSelectRoot={selectRoot}
+                    onSelectFolder={selectFolder}
+                    disabledKeys={disabledKeys}
+                    disabledSubtreeKeys={disabledSubtreeKeys}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </fieldset>
+      </DialogBody>
       <DialogFooter className={styles.footer}>
-        {selected ? <span className={styles.destination}>{[selected.workspaceName, selected.folderName].filter(Boolean).join(' / ')}</span> : null}
-        <button type="button" onClick={onCancel} disabled={busy}>{t('common.cancel')}</button>
-        <button type="button" className={`primary ${styles.confirmBtn}`} onClick={handleConfirm} disabled={selectedDisabled || loading || busy}>
-          {busy ? t('common.loading') : copyMode ? t('recentProjects.confirmCopyToPersonal') : t('recentProjects.confirmMove')}
+        {selected ? (
+          <span className={styles.destination}>
+            {[selected.workspaceName, selected.folderName].filter(Boolean).join(' / ')}
+          </span>
+        ) : null}
+        <button type="button" onClick={onCancel} disabled={busy}>
+          {t('common.cancel')}
+        </button>
+        <button
+          type="button"
+          className={`primary ${styles.confirmBtn}`}
+          onClick={handleConfirm}
+          disabled={selectedDisabled || loading || busy}
+        >
+          {busy
+            ? t('common.loading')
+            : copyMode
+              ? t('recentProjects.confirmCopyToPersonal')
+              : t('recentProjects.confirmMove')}
         </button>
       </DialogFooter>
     </Dialog>

@@ -2,7 +2,13 @@ import { userFacingError } from '../utils/userFacingError';
 import { notifyToast } from './toast-context';
 import { ModuleBreadcrumb } from './ModuleBreadcrumb';
 import { useId, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
-import { Dialog, DialogFooter, DialogTitle } from '@open-design/components';
+import {
+  DialogHeader,
+  DialogBody,
+  Dialog,
+  DialogFooter,
+  DialogTitle,
+} from '@open-design/components';
 import type { TeamProject, WorkspaceCollabContext, WorkspaceDirectoryItem } from '@open-design/contracts';
 import { navigate } from '../router';
 import { createPortal } from 'react-dom';
@@ -1287,16 +1293,20 @@ function ProjectsPanel({
             void commitFolderRename();
           }}
         >
-          <DialogTitle id={renameFolderTitleId}>{t('designs.renameTitle')}</DialogTitle>
-          <label>
-            {t('designs.renamePrompt', { name: renameFolderTarget.folderName })}
-            <input
-              type="text"
-              value={renameFolderInput}
-              autoFocus
-              onChange={(e) => setRenameFolderInput(e.target.value)}
-            />
-          </label>
+          <DialogHeader>
+            <DialogTitle id={renameFolderTitleId}>{t('designs.renameTitle')}</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <label data-dialog-field="">
+              {t('designs.renamePrompt', { name: renameFolderTarget.folderName })}
+              <input
+                type="text"
+                value={renameFolderInput}
+                autoFocus
+                onChange={(e) => setRenameFolderInput(e.target.value)}
+              />
+            </label>
+          </DialogBody>
           <DialogFooter className="row">
             <button type="button" onClick={cancelFolderRename}>
               {t('designs.renameCancel')}
@@ -1304,7 +1314,11 @@ function ProjectsPanel({
             <button
               type="submit"
               className="primary"
-              disabled={!renameFolderInput.trim() || renameFolderInput.trim() === renameFolderTarget.folderName || renamingFolder}
+              disabled={
+                !renameFolderInput.trim() ||
+                renameFolderInput.trim() === renameFolderTarget.folderName ||
+                renamingFolder
+              }
             >
               {t('designs.renameSave')}
             </button>
@@ -2506,16 +2520,20 @@ function FoldersPanel({
             void commitFolderRename();
           }}
         >
-          <DialogTitle id={renameFolderTitleId}>{t('designs.renameTitle')}</DialogTitle>
-          <label>
-            {t('designs.renamePrompt', { name: renameFolderTarget.folderName })}
-            <input
-              type="text"
-              value={renameFolderInput}
-              autoFocus
-              onChange={(e) => setRenameFolderInput(e.target.value)}
-            />
-          </label>
+          <DialogHeader>
+            <DialogTitle id={renameFolderTitleId}>{t('designs.renameTitle')}</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <label data-dialog-field="">
+              {t('designs.renamePrompt', { name: renameFolderTarget.folderName })}
+              <input
+                type="text"
+                value={renameFolderInput}
+                autoFocus
+                onChange={(e) => setRenameFolderInput(e.target.value)}
+              />
+            </label>
+          </DialogBody>
           <DialogFooter className="row">
             <button type="button" onClick={cancelFolderRename}>
               {t('designs.renameCancel')}
@@ -2523,7 +2541,11 @@ function FoldersPanel({
             <button
               type="submit"
               className="primary"
-              disabled={!renameFolderInput.trim() || renameFolderInput.trim() === renameFolderTarget.folderName || renamingFolder}
+              disabled={
+                !renameFolderInput.trim() ||
+                renameFolderInput.trim() === renameFolderTarget.folderName ||
+                renamingFolder
+              }
             >
               {t('designs.renameSave')}
             </button>

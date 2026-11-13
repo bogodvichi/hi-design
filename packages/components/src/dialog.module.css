@@ -20,12 +20,12 @@
   background: var(--bg-elevated);
   -webkit-app-region: no-drag;
   border-radius: var(--radius-lg);
-  padding: var(--spacing-22, 22px);
+  padding: 0;
   width: 520px;
-  max-width: calc(100vw - var(--spacing-32, 32px));
+  max-width: calc(100vw - 48px);
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-12, 12px);
+  gap: 0;
   box-shadow: var(--shadow-lg);
   animation: dialog-panel-pop-in var(--duration-gentle, 250ms) var(--curve-decelerate-mid, ease-out);
 }
@@ -33,6 +33,34 @@
 .dialogSectioned {
   padding: 0;
   gap: 0;
+}
+
+.dialogScrollable {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-height: calc(100dvh - 48px);
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+
+.dialogScrollable > .header,
+.dialogScrollable > .toolbar,
+.dialogScrollable > .footer {
+  flex: 0 0 auto;
+}
+
+.dialogScrollable > .body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.toolbar {
+  margin: 20px 22px 4px;
 }
 
 .header {
@@ -44,7 +72,7 @@
 .body {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-12, 12px);
+  gap: 18px;
 }
 
 .footer {
@@ -57,23 +85,9 @@
   border-radius: var(--radius-sm, 6px);
 }
 
-.dialogSectioned .header {
-  padding: var(--spacing-22, 22px) var(--spacing-22, 22px) 0;
-}
-
-.dialogSectioned .body {
-  padding: var(--spacing-16, 16px) var(--spacing-22, 22px) 0;
-}
-
-.dialogSectioned .footer {
-  padding: var(--spacing-16, 16px) var(--spacing-22, 22px);
-  border-top: var(--stroke-thin, 1px) solid var(--border);
-  margin-top: var(--spacing-16, 16px);
-}
-
 .title {
   margin: 0;
-  font-size: var(--font-size-20, 20px);
+  font-size: 16px;
   font-weight: 600;
   letter-spacing: 0;
   color: var(--text);

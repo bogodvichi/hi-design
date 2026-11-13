@@ -18,23 +18,35 @@ export function FigmaHelpModal({ onClose }: { onClose: () => void }) {
   if (typeof document === 'undefined') return null;
 
   return createPortal(
-    <div
+    <div data-dialog-backdrop=""
       className={styles.backdrop}
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="figma-help-title">
-        <header className={styles.head}>
-          <h2 id="figma-help-title" className={styles.title}>
+      <div
+        data-dialog-surface="standard"
+        className={styles.modal}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="figma-help-title"
+      >
+        <header data-dialog-part="header" className={styles.head}>
+          <h2 data-dialog-part="title" id="figma-help-title" className={styles.title}>
             {t('chat.figmaHelp.title')}
           </h2>
-          <button type="button" className={styles.close} onClick={onClose} aria-label={t('common.close')}>
+          <button
+            data-dialog-part="close"
+            type="button"
+            className={styles.close}
+            onClick={onClose}
+            aria-label={t('common.close')}
+          >
             <Icon name="close" size={17} />
           </button>
         </header>
-        <div className={styles.body}>
+        <div data-dialog-part="body" className={styles.body}>
           <p>{t('chat.figmaHelp.intro')}</p>
           <ol className={styles.steps}>
             <li>{t('chat.figmaHelp.step1')}</li>

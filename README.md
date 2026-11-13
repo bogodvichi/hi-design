@@ -635,6 +635,8 @@ The [`good-first-issue`](https://github.com/nexu-io/open-design/issues?q=is%3Ais
 
 OpenDesign keeps moving because contributors — designers, engineers, prompt authors — keep showing up. Many of the most-used skills, design systems, and plugins were written by people outside the core team.
 
+Product UI conventions and reusable component recipes are maintained in [UI standards](standards/README.md).
+
 ### 🎯 Where to start (max leverage, min change)
 
 | Want to ship… | How | Where |

@@ -2085,7 +2085,7 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
         </div>
       ) : null}
       {previewHomeFile && previewHomeFileUrl ? createPortal(
-        <div
+        <div data-dialog-backdrop=""
           className="staged-preview-modal"
           role="dialog"
           aria-modal="true"
@@ -2094,10 +2094,13 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
             if (event.target === event.currentTarget) setPreviewHomeFileKey(null);
           }}
         >
-          <div className="staged-preview-card">
-            <div className="staged-preview-head">
-              <span title={previewHomeFile.name}>{previewHomeFile.name}</span>
+          <div data-dialog-surface="workspace" className="staged-preview-card">
+            <div data-dialog-part="header" className="staged-preview-head">
+              <span data-dialog-part="title" title={previewHomeFile.name}>
+                {previewHomeFile.name}
+              </span>
               <button
+                data-dialog-part="close"
                 type="button"
                 className="icon-only od-tooltip"
                 onClick={() => setPreviewHomeFileKey(null)}

@@ -11,6 +11,8 @@ import { ModuleBreadcrumb } from './ModuleBreadcrumb';
 import { useCallback, useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import {
+  DialogHeader,
+  DialogBody,
   Dialog,
   DialogDescription,
   DialogFooter,
@@ -760,20 +762,24 @@ function ProjectsPanel({ refreshKey, onRefresh, username, isMyPublishes, publica
           closeOnEscape
           ariaLabelledBy={confirmTitleId}
         >
-          <DialogTitle id={confirmTitleId}>
-            {confirmAction.type === 'publish'
-              ? t('squareScope.publishConfirmTitle')
-              : confirmAction.type === 'unpublish'
-                ? t('squareScope.unpublishConfirmTitle')
-                : t('squareScope.deleteConfirmTitle')}
-          </DialogTitle>
-          <DialogDescription>
-            {confirmAction.type === 'publish'
-              ? t('squareScope.publishConfirmDesc', { title: confirmAction.title })
-              : confirmAction.type === 'unpublish'
-                ? t('squareScope.unpublishConfirmDesc', { title: confirmAction.title })
-                : t('squareScope.deleteConfirmDesc', { title: confirmAction.title })}
-          </DialogDescription>
+          <DialogHeader>
+            <DialogTitle id={confirmTitleId}>
+              {confirmAction.type === 'publish'
+                ? t('squareScope.publishConfirmTitle')
+                : confirmAction.type === 'unpublish'
+                  ? t('squareScope.unpublishConfirmTitle')
+                  : t('squareScope.deleteConfirmTitle')}
+            </DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <DialogDescription>
+              {confirmAction.type === 'publish'
+                ? t('squareScope.publishConfirmDesc', { title: confirmAction.title })
+                : confirmAction.type === 'unpublish'
+                  ? t('squareScope.unpublishConfirmDesc', { title: confirmAction.title })
+                  : t('squareScope.deleteConfirmDesc', { title: confirmAction.title })}
+            </DialogDescription>
+          </DialogBody>
           <DialogFooter className="row">
             <button
               type="button"

@@ -120,7 +120,7 @@ export function FigmaImportModal({
   const importing = status === 'importing';
 
   const modal = (
-    <motion.div
+    <motion.div data-dialog-backdrop=""
       className={styles.backdrop}
       onClick={() => (importing ? undefined : onClose())}
       // Swallow drag/drop on the backdrop so a near-miss never makes the
@@ -134,6 +134,7 @@ export function FigmaImportModal({
       role="presentation"
     >
       <motion.div
+        data-dialog-surface="standard"
         className={styles.modal}
         onClick={(e) => e.stopPropagation()}
         // The whole dialog is a drop target (not just the inner dashed zone),
@@ -156,21 +157,30 @@ export function FigmaImportModal({
         aria-modal="true"
         aria-label="Import from Figma"
       >
-        <header className={styles.head}>
-          <span className={styles.headTitle}>
+        <header data-dialog-part="header" className={styles.head}>
+          <span data-dialog-part="title" className={styles.headTitle}>
             <Icon name="import" size={16} /> Import from Figma
           </span>
-          <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="Close" disabled={importing}>
+          <button
+            data-dialog-part="close"
+            type="button"
+            className={styles.closeBtn}
+            onClick={onClose}
+            aria-label="Close"
+            disabled={importing}
+          >
             <Icon name="close" size={18} />
           </button>
         </header>
 
         {status === 'done' && result ? (
-          <FigmaImportSummary result={result} />
+          <div data-dialog-part="body">
+            <FigmaImportSummary result={result} />
+          </div>
         ) : (
           <>
             {onFigmaUrl ? (
-              <div className={styles.tabs} role="tablist">
+              <div data-dialog-part="toolbar" data-dialog-tabs="" className={styles.tabs} role="tablist">
                 <button
                   type="button"
                   role="tab"
@@ -194,77 +204,109 @@ export function FigmaImportModal({
               </div>
             ) : null}
 
-            {mode === 'file' ? (
-              <div
-                className={styles.dropzone}
-                data-drag={dragOver ? 'true' : 'false'}
-                onDragEnter={(e) => { e.preventDefault(); setDragOver(true); }}
-                onDragOver={(e) => e.preventDefault()}
-                onDragLeave={(e) => { e.preventDefault(); setDragOver(false); }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setDragOver(false);
-                  pickFile(Array.from(e.dataTransfer.files ?? []));
-                }}
-                onClick={() => inputRef.current?.click()}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); inputRef.current?.click(); }
-                }}
-              >
-                <Icon name={file ? 'check' : 'upload'} size={26} className={styles.dropIcon} />
-                <p className={styles.dropTitle}>
-                  {file ? file.name : (<>Drop a <code>.fig</code> here, or <span className={styles.dropLink}>browse</span></>)}
-                </p>
-                <p className={styles.dropHint}>
-                  Decoded on your machine — tokens, components &amp; assets. No Figma account.
-                </p>
-                <input
-                  ref={inputRef}
-                  type="file"
-                  accept=".fig"
-                  className={styles.fileInput}
-                  onChange={(e) => {
-                    pickFile(Array.from(e.target.files ?? []));
-                    e.target.value = '';
+            <div data-dialog-part="body" className={styles.importBody}>
+              {mode === 'file' ? (
+                <div
+                  className={styles.dropzone}
+                  data-drag={dragOver ? 'true' : 'false'}
+                  onDragEnter={(e) => {
+                    e.preventDefault();
+                    setDragOver(true);
                   }}
-                />
-              </div>
-            ) : (
-              <div className={styles.urlPane}>
-                <input
-                  type="url"
-                  className={styles.urlInput}
-                  placeholder="https://figma.com/design/…"
-                  value={url}
-                  onChange={(e) => { setUrl(e.target.value); setError(null); }}
-                />
-                <p className={styles.dropHint}>
-                  Runs through the Figma connector (OAuth) and the migration flow.
-                </p>
-              </div>
-            )}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDragLeave={(e) => {
+                    e.preventDefault();
+                    setDragOver(false);
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setDragOver(false);
+                    pickFile(Array.from(e.dataTransfer.files ?? []));
+                  }}
+                  onClick={() => inputRef.current?.click()}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      inputRef.current?.click();
+                    }
+                  }}
+                >
+                  <Icon name={file ? 'check' : 'upload'} size={26} className={styles.dropIcon} />
+                  <p className={styles.dropTitle}>
+                    {file ? (
+                      file.name
+                    ) : (
+                      <>
+                        Drop a <code>.fig</code> here, or{' '}
+                        <span className={styles.dropLink}>browse</span>
+                      </>
+                    )}
+                  </p>
+                  <p className={styles.dropHint}>
+                    Decoded on your machine — tokens, components &amp; assets. No Figma account.
+                  </p>
+                  <input
+                    ref={inputRef}
+                    type="file"
+                    accept=".fig"
+                    className={styles.fileInput}
+                    onChange={(e) => {
+                      pickFile(Array.from(e.target.files ?? []));
+                      e.target.value = '';
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className={styles.urlPane}>
+                  <input
+                    data-dialog-control=""
+                    type="url"
+                    className={styles.urlInput}
+                    placeholder="https://figma.com/design/…"
+                    value={url}
+                    onChange={(e) => {
+                      setUrl(e.target.value);
+                      setError(null);
+                    }}
+                  />
+                  <p className={styles.dropHint}>
+                    Runs through the Figma connector (OAuth) and the migration flow.
+                  </p>
+                </div>
+              )}
 
-            <textarea
-              className={styles.notes}
-              placeholder="Optional: notes for the build (e.g. 'make it a marketing landing page')"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-            />
+              <textarea
+                className={styles.notes}
+                placeholder="Optional: notes for the build (e.g. 'make it a marketing landing page')"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={2}
+              />
 
-            {error ? <p className={styles.error}>{error}</p> : null}
+              {error ? <p className={styles.error}>{error}</p> : null}
+            </div>
 
-            <footer className={styles.foot}>
-              <Button variant="ghost" onClick={onClose} disabled={importing}>Cancel</Button>
+            <footer data-dialog-part="footer" className={styles.foot}>
+              <Button variant="ghost" onClick={onClose} disabled={importing}>
+                Cancel
+              </Button>
               {mode === 'file' ? (
                 <Button onClick={() => void runImport()} disabled={!file || importing}>
-                  {importing ? (<><Icon name="spinner" size={14} className={styles.spin} /> Decoding…</>) : 'Import & build'}
+                  {importing ? (
+                    <>
+                      <Icon name="spinner" size={14} className={styles.spin} /> Decoding…
+                    </>
+                  ) : (
+                    'Import & build'
+                  )}
                 </Button>
               ) : (
-                <Button onClick={submitUrl} disabled={!url.trim()}>Import & build</Button>
+                <Button onClick={submitUrl} disabled={!url.trim()}>
+                  Import & build
+                </Button>
               )}
             </footer>
           </>

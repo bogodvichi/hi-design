@@ -4,6 +4,8 @@ import { PageEmptyState } from './PageEmptyState';
 import { useCallback, useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
+  DialogHeader,
+  DialogBody,
   Dialog,
   DialogDescription,
   DialogFooter,
@@ -319,24 +321,29 @@ export function CloudToolList({
       closeOnEscape
       ariaLabelledBy={titleId}
     >
-      <DialogTitle id={titleId}>
-        {confirmAction.type === 'unpublish'
-          ? t('squareScope.unpublishConfirmTitle' as any)
-          : mode === 'square'
-            ? t('squareScope.deleteConfirmTitle' as any)
-            : t('personalScope.cloudToolDeleteConfirmTitle' as any)}
-      </DialogTitle>
-      <DialogDescription>
-        {confirmAction.type === 'unpublish'
-          ? t('squareScope.unpublishConfirmDesc' as any, {
-              title: confirmAction.item.name || confirmAction.item.label || confirmAction.item.url,
-            })
-          : mode === 'square'
-            ? t('squareScope.deleteConfirmDesc' as any, {
+      <DialogHeader>
+        <DialogTitle id={titleId}>
+          {confirmAction.type === 'unpublish'
+            ? t('squareScope.unpublishConfirmTitle' as any)
+            : mode === 'square'
+              ? t('squareScope.deleteConfirmTitle' as any)
+              : t('personalScope.cloudToolDeleteConfirmTitle' as any)}
+        </DialogTitle>
+      </DialogHeader>
+      <DialogBody>
+        <DialogDescription>
+          {confirmAction.type === 'unpublish'
+            ? t('squareScope.unpublishConfirmDesc' as any, {
                 title: confirmAction.item.name || confirmAction.item.label || confirmAction.item.url,
               })
-            : t('personalScope.cloudToolDeleteConfirmDesc' as any)}
-      </DialogDescription>
+            : mode === 'square'
+              ? t('squareScope.deleteConfirmDesc' as any, {
+                  title:
+                    confirmAction.item.name || confirmAction.item.label || confirmAction.item.url,
+                })
+              : t('personalScope.cloudToolDeleteConfirmDesc' as any)}
+        </DialogDescription>
+      </DialogBody>
       <DialogFooter className="row">
         <button
           type="button"

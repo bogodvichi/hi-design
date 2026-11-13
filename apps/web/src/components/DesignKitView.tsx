@@ -1758,16 +1758,20 @@ function DesignKitViewInner({
               ) : null}
 
               {assetPreview ? (
-                <div
+                <div data-dialog-backdrop=""
                   className={styles.assetModal}
                   role="dialog"
                   aria-modal="true"
                   aria-label={assetPreview.label}
                   onClick={() => setAssetPreview(null)}
                 >
-                  <div className={styles.assetModalPanel} onClick={(event) => event.stopPropagation()}>
-                    <div className={styles.assetModalHeader}>
-                      <h3>{assetPreview.label}</h3>
+                  <div
+                    data-dialog-surface="standard"
+                    className={styles.assetModalPanel}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <div data-dialog-part="header" className={styles.assetModalHeader}>
+                      <h3 data-dialog-part="title">{assetPreview.label}</h3>
                       <div className={styles.assetModalHeaderActions}>
                         <button
                           type="button"
@@ -1778,6 +1782,7 @@ function DesignKitViewInner({
                           <span>{t('preview.openInNewTab')}</span>
                         </button>
                         <button
+                          data-dialog-part="close"
                           type="button"
                           className={styles.assetModalClose}
                           onClick={() => setAssetPreview(null)}
@@ -1788,6 +1793,7 @@ function DesignKitViewInner({
                       </div>
                     </div>
                     <iframe
+                      data-dialog-part="body"
                       className={styles.assetModalFrame}
                       src={assetPreview.url}
                       title={assetPreview.label}
@@ -1798,17 +1804,22 @@ function DesignKitViewInner({
               ) : null}
 
               {coverPreviewOpen && kit.showcaseHtml ? (
-                <div
+                <div data-dialog-backdrop=""
                   className={styles.assetModal}
                   role="dialog"
                   aria-modal="true"
                   aria-label={`${kit.name} preview`}
                   onClick={() => setCoverPreviewOpen(false)}
                 >
-                  <div className={styles.assetModalPanel} onClick={(event) => event.stopPropagation()}>
-                    <div className={styles.assetModalHeader}>
-                      <h3>{kit.name}</h3>
+                  <div
+                    data-dialog-surface="standard"
+                    className={styles.assetModalPanel}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <div data-dialog-part="header" className={styles.assetModalHeader}>
+                      <h3 data-dialog-part="title">{kit.name}</h3>
                       <button
+                        data-dialog-part="close"
                         type="button"
                         className={styles.assetModalClose}
                         onClick={() => setCoverPreviewOpen(false)}
@@ -1818,6 +1829,7 @@ function DesignKitViewInner({
                       </button>
                     </div>
                     <iframe
+                      data-dialog-part="body"
                       className={styles.assetModalFrame}
                       data-testid="design-kit-cover-preview-frame"
                       title={`${kit.name} preview`}
@@ -1829,17 +1841,24 @@ function DesignKitViewInner({
               ) : null}
 
               {designMdOpen && designMd ? (
-                <div
+                <div data-dialog-backdrop=""
                   className={styles.assetModal}
                   role="dialog"
                   aria-modal="true"
                   aria-label={designMdDialogLabel}
                   onClick={() => setDesignMdOpen(false)}
                 >
-                  <div className={`${styles.assetModalPanel} ${styles.designMdModalPanel}`} onClick={(event) => event.stopPropagation()}>
-                    <div className={styles.assetModalHeader}>
-                      <h3>{designMdTarget.kind === 'module' ? designMdTarget.module.label : 'DESIGN.md'}</h3>
+                  <div
+                    data-dialog-surface="standard"
+                    className={`${styles.assetModalPanel} ${styles.designMdModalPanel}`}
+                    onClick={(event) => event.stopPropagation()}
+                  >
+                    <div data-dialog-part="header" className={styles.assetModalHeader}>
+                      <h3 data-dialog-part="title">
+                        {designMdTarget.kind === 'module' ? designMdTarget.module.label : 'DESIGN.md'}
+                      </h3>
                       <button
+                        data-dialog-part="close"
                         type="button"
                         className={styles.assetModalClose}
                         onClick={() => setDesignMdOpen(false)}
@@ -1849,6 +1868,7 @@ function DesignKitViewInner({
                       </button>
                     </div>
                     <Textarea
+                      data-dialog-part="body"
                       className={styles.designMdTextarea}
                       value={designMdDraft}
                       onChange={(event) => setDesignMdDraft(event.target.value)}
@@ -1856,14 +1876,22 @@ function DesignKitViewInner({
                       spellCheck={false}
                       aria-label={designMdDialogLabel}
                     />
-                    <div className={styles.designMdModalBar}>
+                    <div data-dialog-part="footer" className={styles.designMdModalBar}>
                       <span>
                         {designMdTarget.kind === 'module'
                           ? t('ds.editingModuleHint', { module: designMdTarget.module.label })
                           : t('ds.editingDesignMdHint')}
                       </span>
-                      <Button variant="primary" disabled={Boolean(designMd.saving)} onClick={() => void saveDesignMdDraft()}>
-                        {designMd.saving ? t('ds.saving') : designMdTarget.kind === 'module' ? t('ds.saveModule') : t('ds.saveDesignMd')}
+                      <Button
+                        variant="primary"
+                        disabled={Boolean(designMd.saving)}
+                        onClick={() => void saveDesignMdDraft()}
+                      >
+                        {designMd.saving
+                          ? t('ds.saving')
+                          : designMdTarget.kind === 'module'
+                            ? t('ds.saveModule')
+                            : t('ds.saveDesignMd')}
                       </Button>
                     </div>
                   </div>
@@ -1871,7 +1899,7 @@ function DesignKitViewInner({
               ) : null}
 
               {colorEditor ? (
-                <div
+                <div data-dialog-backdrop=""
                   className={styles.assetModal}
                   role="dialog"
                   aria-modal="true"
@@ -1884,12 +1912,14 @@ function DesignKitViewInner({
                   }}
                 >
                   <div
+                    data-dialog-surface="standard"
                     className={`${styles.assetModalPanel} ${styles.colorModalPanel}`}
                     onClick={(event) => event.stopPropagation()}
                   >
-                    <div className={styles.assetModalHeader}>
-                      <h3>{t('ds.editColor', { name: colorEditor.label })}</h3>
+                    <div data-dialog-part="header" className={styles.assetModalHeader}>
+                      <h3 data-dialog-part="title">{t('ds.editColor', { name: colorEditor.label })}</h3>
                       <button
+                        data-dialog-part="close"
                         type="button"
                         className={styles.assetModalClose}
                         onClick={() => {
@@ -1902,8 +1932,11 @@ function DesignKitViewInner({
                         <CloseGlyph />
                       </button>
                     </div>
-                    <div className={styles.colorModalBody}>
-                      <div className={styles.colorModalPreview} style={{ background: normalizeColorInput(colorDraft) }}>
+                    <div data-dialog-part="body" className={styles.colorModalBody}>
+                      <div
+                        className={styles.colorModalPreview}
+                        style={{ background: normalizeColorInput(colorDraft) }}
+                      >
                         <span
                           style={{
                             color: isLightHex(normalizeColorInput(colorDraft))
@@ -1914,7 +1947,7 @@ function DesignKitViewInner({
                           {normalizeColorInput(colorDraft).toUpperCase()}
                         </span>
                       </div>
-                      <label className={styles.colorModalField}>
+                      <label data-dialog-field="" className={styles.colorModalField}>
                         <span>{t('ds.colorLabel')}</span>
                         <input
                           type="color"
@@ -1925,7 +1958,7 @@ function DesignKitViewInner({
                           }}
                         />
                       </label>
-                      <label className={styles.colorModalField}>
+                      <label data-dialog-field="" className={styles.colorModalField}>
                         <span>{t('ds.hexLabel')}</span>
                         <input
                           type="text"
@@ -1942,7 +1975,7 @@ function DesignKitViewInner({
                       </label>
                       {colorError ? <p className={styles.colorModalError}>{colorError}</p> : null}
                     </div>
-                    <div className={styles.designMdModalBar}>
+                    <div data-dialog-part="footer" className={styles.designMdModalBar}>
                       <button
                         type="button"
                         className={styles.moduleAction}

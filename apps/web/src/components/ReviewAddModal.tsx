@@ -4,6 +4,7 @@ import { userFacingError } from '../utils/userFacingError';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import styles from './ReviewAddModal.module.css';
+import { CustomSelect } from './CustomSelect';
 import { exportProjectAsAxureZip } from '../runtime/axure-export';
 import { exportProjectAsHtmlReviewZip } from '../runtime/uedro-html-review-export';
 import { getProject } from '../state/projects';
@@ -1106,554 +1107,594 @@ export function ReviewAddModal({
   if (!open || typeof document === 'undefined') return null;
 
   return createPortal(
-    <div
+    <div data-dialog-backdrop=""
       className={styles.backdrop}
       role="presentation"
       onClick={(e) => {
         if (e.target === e.currentTarget && !submitting) onClose();
       }}
     >
-     <div className={styles.shell} role="dialog" aria-modal="true">
-       <div className={styles.head}>
+     <div data-dialog-surface="standard" className={`${styles.shell} ${styles.createShell}`} role="dialog" aria-modal="true" aria-labelledby="review-add-title">
+       <div data-dialog-part="header" className={styles.head}>
          <div className={styles.headMain}>
-           <div className={styles.kicker}>REVIEW · UEDRO</div>
-           <h2 className={styles.title}>发起评审</h2>
+           <h2 id="review-add-title" data-dialog-part="title" className={styles.title}>
+             发起评审
+           </h2>
          </div>
-         <button type="button" className={styles.closeBtn} onClick={onClose} aria-label="关闭">
+         <button
+           data-dialog-part="close"
+           type="button"
+           className={styles.closeBtn}
+           onClick={onClose}
+           aria-label="关闭"
+         >
            ✕
          </button>
        </div>
 
-       <div className={styles.body}>
-         {/* ── 第零组：新建评审 / 更新评审 ── */}
-         <div className={styles.group}>
-           <div className={styles.item}>
-             <label className={styles.itemLabel}>
-               评审模式 <span className={styles.req}>*</span>
-             </label>
-             <div className={styles.itemControl}>
-               <div className={styles.radioRow}>
-                 <label className={styles.radio}>
-                   <input
-                     type="radio"
-                     name="review-mode"
-                     checked={mode === 'create'}
-                     onChange={() => switchMode('create')}
-                   />
-                   新建评审
-                 </label>
-                 <label className={styles.radio}>
-                   <input
-                     type="radio"
-                     name="review-mode"
-                     checked={mode === 'update-manuscript'}
-                     onChange={() => switchMode('update-manuscript')}
-                     disabled={probing || !hasExistingReview || !currentManuscriptId}
-                   />
-                   更新评审稿
-                 </label>
-                 <label className={styles.radio}>
-                   <input
-                     type="radio"
-                     name="review-mode"
-                     checked={mode === 'update-info'}
-                     onChange={() => switchMode('update-info')}
-                     disabled={probing || !hasExistingReview || !hasReviewInfo}
-                   />
-                   更新评审信息
-                 </label>
+       <div data-dialog-part="body" className={styles.body}>
+         <div className={styles.formColumns}>
+           <section className={styles.formColumn} aria-label="评审信息">
+             <div data-dialog-field="" className={styles.item}>
+               <label data-dialog-part="label" className={`${styles.itemLabel} ${styles.modeLabel}`}>
+                 评审模式 <span className={styles.req}>*</span>
+                 {!reviewClosed && !hasExistingReview ? (
+                   <span className={styles.itemHint}>当前项目还没有评审单，只能新建评审</span>
+                 ) : null}
+               </label>
+               <div className={styles.itemControl}>
+                 <div className={styles.radioRow} role="radiogroup" aria-label="评审模式">
+                   <label className={styles.radio}>
+                     <input
+                       type="radio"
+                       name="review-mode"
+                       checked={mode === 'create'}
+                       onChange={() => switchMode('create')}
+                     />
+                     <span>新建评审</span>
+                   </label>
+                   <label className={styles.radio}>
+                     <input
+                       type="radio"
+                       name="review-mode"
+                       checked={mode === 'update-manuscript'}
+                       onChange={() => switchMode('update-manuscript')}
+                       disabled={probing || !hasExistingReview || !currentManuscriptId}
+                     />
+                     <span>更新评审稿</span>
+                   </label>
+                   <label className={styles.radio}>
+                     <input
+                       type="radio"
+                       name="review-mode"
+                       checked={mode === 'update-info'}
+                       onChange={() => switchMode('update-info')}
+                       disabled={probing || !hasExistingReview || !hasReviewInfo}
+                     />
+                     <span>更新评审信息</span>
+                   </label>
+                 </div>
+                 {reviewClosed ? (
+                   <span className={styles.itemHint}>该评审单已关闭或已完成，只能新建评审</span>
+                 ) : hasExistingReview && !hasReviewInfo ? (
+                   <span className={styles.itemHint}>读取不到该评审的评委信息，暂时只能更新评审稿</span>
+                 ) : isInfoUpdate ? (
+                   <span className={styles.itemHint}>
+                     更新评审信息仅可修改核心评委、团队评委、评审备注、抄送人员
+                   </span>
+                 ) : isManuscriptUpdate ? (
+                   <span className={styles.itemHint}>
+                     更新评审稿只替换评审稿件，评审信息与人员保持不变
+                   </span>
+                 ) : null}
                </div>
-              {reviewClosed ? (
-                <span className={styles.itemHint}>
-                  该评审单已关闭或已完成，只能新建评审
-                </span>
-              ) : !hasExistingReview ? (
-                <span className={styles.itemHint}>当前项目还没有评审单，只能新建评审</span>
-              ) : !hasReviewInfo ? (
-                 <span className={styles.itemHint}>
-                   读取不到该评审的评委信息，暂时只能更新评审稿
-                 </span>
-               ) : isInfoUpdate ? (
-                 <span className={styles.itemHint}>
-                   更新评审信息仅可修改核心评委、团队评委、评审备注、抄送人员
-                 </span>
-               ) : isManuscriptUpdate ? (
-                 <span className={styles.itemHint}>
-                   更新评审稿只替换评审稿件，评审信息与人员保持不变
-                 </span>
-               ) : null}
              </div>
-           </div>
-         </div>
-
-         {/* ── 第一组：评审类型 / 项目 / 评审名称 / 预计结束日期 / 评审备注 ── */}
-          <div className={styles.group}>
-            {isUpdate ? (
-              <>
-                {/* 更新模式：评审类型（项目/部门）与项目名称只读，提交时原样保留。 */}
-                <div className={styles.item}>
-                  <label className={styles.itemLabel}>
-                    评审类型 <span className={styles.req}>*</span>
-                  </label>
-                  <div className={styles.itemControl}>
-                    <div className={styles.radioRow}>
-                      <label className={styles.radio}>
-                        <input
-                          type="radio"
-                          name="review-model-readonly"
-                          checked={effectiveReviewModel === 1}
-                          disabled
-                          readOnly
-                        />
-                        项目评审
-                      </label>
-                      <label className={styles.radio}>
-                        <input
-                          type="radio"
-                          name="review-model-readonly"
-                          checked={effectiveReviewModel === 2}
-                          disabled
-                          readOnly
-                        />
-                        部门评审
-                      </label>
-                    </div>
-                  </div>
-                </div>
-                {effectiveReviewModel === 1 ? (
-                  <div className={styles.item}>
-                    <label className={styles.itemLabel}>
-                      项目名称 <span className={styles.req}>*</span>
-                    </label>
-                    <div className={styles.itemControl}>
-                      <input
-                        className={styles.input}
-                        value={existingProjectLabel}
-                        placeholder="（未获取到项目信息）"
-                        disabled
-                        readOnly
-                      />
-                    </div>
-                  </div>
-                ) : null}
-                <div className={styles.item}>
-                  <label className={styles.itemLabel}>
-                    评审名称 <span className={styles.req}>*</span>
-                  </label>
-                  <div className={styles.itemControl}>
-                    <div className={styles.inlineRow}>
-                      <input
-                        className={styles.input}
-                        value={deptReviewName}
-                        disabled
-                        readOnly
-                      />
-                      {/* 只读展示已有评审的子类型（交互/视觉/…），与新建布局一致。 */}
-                      <select
-                        className={`${styles.select} ${styles.subtypeInline}`}
-                        value={effectiveSubtype}
-                        disabled
-                        aria-label="评审子类型"
-                      >
-                        <option value={effectiveSubtype}>{subtypeLabelOf(effectiveSubtype)}</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </>
-            ) : (
-            <>
-            <div className={styles.item}>
-              <label className={styles.itemLabel}>
-                评审类型 <span className={styles.req}>*</span>
-              </label>
-              <div className={styles.itemControl}>
-                <div className={styles.radioRow}>
-                <label className={styles.radio}>
-                  <input
-                    type="radio"
-                    checked={reviewModel === 1}
-                    onChange={() => switchModel(1)}
-                  />
-                  项目评审
-                </label>
-                <label className={styles.radio}>
-                  <input
-                    type="radio"
-                    checked={reviewModel === 2}
-                    onChange={() => switchModel(2)}
-                  />
-                  部门评审
-                </label>
-                </div>
-              </div>
-            </div>
-
-            {reviewModel === 1 ? (
-              <>
-               <div className={styles.item}>
-                  <label className={styles.itemLabel}>
-                    项目名称 <span className={styles.req}>*</span>
-                  </label>
-                  <div className={styles.itemControl}>
-                    <ProjectPicker
-                      value={project}
-                      onChange={(p) => {
-                        setProject(p);
-                        clearFieldError('project');
-                        setSelectedTemplate(null);
-                        setReviewTemplates([]);
-                        if (p?.projNum) void loadReviewTemplates(p.projNum);
-                      }}
-                    />
-                    <span className={styles.itemError}>{fieldErrors.project || ''}</span>
-                  </div>
-                </div>
-                <div className={styles.item}>
-                  <label className={styles.itemLabel}>
-                    评审名称 <span className={styles.req}>*</span>
-                  </label>
-                  <div className={styles.itemControl}>
-                    <div className={styles.inlineRow}>
-                      <select
-                        className={styles.select}
-                        value={selectedTemplate ? JSON.stringify(selectedTemplate) : ''}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setSelectedTemplate(v ? JSON.parse(v) : null);
-                          clearFieldError('reviewName');
-                        }}
-                        disabled={!reviewTemplates.length}
-                      >
-                        {!reviewTemplates.length ? (
-                          <option value="">{project ? '无可用评审名称' : '请先选择项目'}</option>
-                        ) : (
-                          <>
-                            <option value="">请选择评审名称</option>
-                            {reviewTemplates.map((t, i) => (
-                              <option key={i} value={JSON.stringify(t)}>
-                                {t.reviewname_cn ?? t.reviewname ?? `模板 ${i + 1}`}
-                              </option>
-                            ))}
-                          </>
-                        )}
-                      </select>
-                      <select
-                        className={`${styles.select} ${styles.subtypeInline}`}
-                        value={subtype}
-                        onChange={(e) => {
-                          switchSubtype(e.target.value);
-                          clearFieldError('upload');
-                        }}
-                      >
-                        {REVIEW_SUBTYPES.map((s) => (
-                          <option key={s.value} value={s.value}>
-                            {s.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <span className={styles.itemError}>{fieldErrors.reviewName || ''}</span>
-                  </div>
-                </div>
-             </>
-           ) : (
-             <div className={styles.item}>
-                <label className={styles.itemLabel}>
-                  评审名称 <span className={styles.req}>*</span>
-                </label>
-                <div className={styles.itemControl}>
-                  <div className={styles.inlineRow}>
-                    <input
-                      className={styles.input}
-                      placeholder="请输入评审名称"
-                      value={deptReviewName}
-                      onChange={(e) => {
-                        setDeptReviewName(e.target.value);
-                        clearFieldError('reviewName');
-                      }}
-                      maxLength={32}
-                    />
-                    <select
-                      className={`${styles.select} ${styles.subtypeInline}`}
-                      value={subtype}
-                      onChange={(e) => {
-                        switchSubtype(e.target.value);
-                        clearFieldError('upload');
-                      }}
-                    >
-                      {REVIEW_SUBTYPES.map((s) => (
-                        <option key={s.value} value={s.value}>
-                          {s.label}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <span className={styles.itemError}>{fieldErrors.reviewName || ''}</span>
-                </div>
-              </div>
-           )}
-            </>
-            )}
-
-           <div className={styles.item}>
-             <label className={styles.itemLabel}>
-               预计结束日期 <span className={styles.req}>*</span>
-             </label>
-             <div className={styles.itemControl}>
-                {isUpdate ? (
-                  <input
-                    className={styles.input}
-                    value={endtime ? endtime.replace('T', ' ') : ''}
-                    disabled
-                    readOnly
-                  />
-                ) : (
-                  <DateTimePicker
-                    value={endtime}
-                    onChange={(v) => {
-                      setEndtime(v);
-                      clearFieldError('endtime');
-                    }}
-                    placeholder="请选择预计结束时间"
-                  />
-                )}
-                <span className={styles.itemError}>{fieldErrors.endtime || ''}</span>
-              </div>
-            </div>
-
-           <div className={styles.item}>
-             <label className={styles.itemLabel}>评审备注</label>
-              <div className={styles.itemControl}>
-                <textarea
-                  className={styles.textarea}
-                  placeholder="请输入备注"
-                  value={content}
-                  onChange={(e) => setContent(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-
-        {/* ── 第二组：评审子类型 / 评审稿 / 人员 ── */}
-        <div className={styles.groupDivider} />
-        <div className={styles.group}>
-           <div className={styles.item}>
-              <label className={styles.itemLabel}>
-                评审组长 <span className={styles.req}>*</span>
-              </label>
-              <div className={styles.itemControl}>
-                {isUpdate ? (
-                  <input
-                    className={styles.input}
-                    value={mainjudge.map((p) => p.name).join('、')}
-                    disabled
-                    readOnly
-                  />
-                ) : (
-                  <PersonPicker
-                    selected={mainjudge}
-                    onChange={(p) => {
-                      setMainjudge(p);
-                      clearFieldError('mainjudge');
-                    }}
-                    placeholder="请输入名称（评审组长）"
-                    multiple={false}
-                  />
-                )}
-                <span className={styles.itemError}>{fieldErrors.mainjudge || ''}</span>
-              </div>
-            </div>
-            <div className={styles.item}>
-              <label className={styles.itemLabel}>
-                作者 <span className={styles.req}>*</span>
-              </label>
-              <div className={styles.itemControl}>
-                {isUpdate ? (
-                  <input
-                    className={styles.input}
-                    value={author.map((p) => p.name).join('、')}
-                    disabled
-                    readOnly
-                  />
-                ) : (
-                  <PersonPicker
-                    selected={author}
-                    onChange={(p) => {
-                      setAuthor(p);
-                      clearFieldError('author');
-                    }}
-                 placeholder="请输入名称（作者）"
-                 multiple
-               />
-                )}
-               <span className={styles.itemError}>{fieldErrors.author || ''}</span>
-              </div>
-            </div>
-            {/* 更新评审稿只改稿件，人员/抄送区域整体隐藏。 */}
-            {!isManuscriptUpdate ? (
-              <>
-            <div className={styles.item}>
-              <label className={styles.itemLabel}>
-                核心评委 <span className={styles.req}>*</span>
-              </label>
-              <div className={styles.itemControl}>
-                <PersonPicker
-                  selected={coreReviewers}
-                  onChange={(p) => {
-                    setCoreReviewers(p);
-                    clearFieldError('coreReviewers');
-                  }}
-                 placeholder="请输入名称（核心评委）"
-                 multiple
-               />
-               <span className={styles.itemError}>{fieldErrors.coreReviewers || ''}</span>
-              </div>
-            </div>
-            <div className={styles.item}>
-              <label className={styles.itemLabel}>团队评委</label>
-              <div className={styles.itemControl}>
-                <PersonPicker
-                  selected={judgelist}
-                  onChange={setJudgelist}
-                 placeholder="请输入名称（团队评委）"
-                 multiple
-               />
-             </div>
-           </div>
-              </>
-            ) : null}
-           {/* 更新评审信息提交 reviewEdit、不动稿件：隐藏整个稿件上传区域。
-               更新评审稿时该区域仍显示，走 reUploadManuscript + reUploadConfirm。 */}
-           {mode !== 'update-info' ? (
-           <div className={styles.item}>
-             <label className={styles.itemLabel}>
-               评审稿 <span className={styles.req}>*</span>
-             </label>
-              <div className={styles.itemControl}>
-                <div className={styles.uploadArea}>
-                  {/* 评审稿来源切换：来自当前项目 / 上传 */}
-                  <div className={styles.sourceToggle}>
-                    <button
-                      type="button"
-                      className={`${styles.sourceBtn} ${manuscriptSource === 'project' ? styles.sourceBtnActive : ''}`}
-                      onClick={() => {
-                        setManuscriptSource('project');
-                        clearFieldError('upload');
-                      }}
-                    >
-                      来自当前项目
-                    </button>
-                    <button
-                      type="button"
-                      className={`${styles.sourceBtn} ${manuscriptSource === 'upload' ? styles.sourceBtnActive : ''}`}
-                      onClick={() => {
-                        setManuscriptSource('upload');
-                        clearFieldError('upload');
-                      }}
-                    >
-                      上传
-                    </button>
-                  </div>
-                  {manuscriptSource === 'project' ? (
-                    <div className={styles.uploadFileRow}>
-                      <span className={styles.uploadFileName}>{projectZipName}</span>
-                      {exporting ? <span className={styles.acSpinner} /> : null}
-                    </div>
-                    ) : (
-                   <UploadArea
-                     subtype={effectiveSubtype}
-                     uploading={uploading}
-                     uploadInfo={isManuscriptUpdate ? reUploadInfo : uploadInfo}
-                     onPick={isManuscriptUpdate ? handleReUpload : handleUpload}
-                     onRemove={() =>
-                       isManuscriptUpdate ? setReUploadInfo(null) : setUploadInfo(null)
-                     }
-                   />
-                  )}
-                </div>
-                <span className={styles.itemError}>{fieldErrors.upload || ''}</span>
-              </div>
-           </div>
-           ) : null}
-             {mode === 'create' && subtype === HTML_REVIEW_TYPE ? (
-               <div className={styles.item}>
-                 <label className={styles.itemLabel}>评审稿类型</label>
-                 <div className={styles.itemControl}>
-                   <div className={styles.radioRow}>
-                     <label className={styles.radio}>
-                       <input type="radio" name="html-review-carrier" checked={carrierType === 'web'}
-                         onChange={() => { setCarrierType('web'); setUploadInfo(null); clearFieldError('upload'); }}
+             {isUpdate ? (
+               <>
+                 {/* 更新模式：评审类型（项目/部门）与项目名称只读，提交时原样保留。 */}
+                 <div data-dialog-field="" className={styles.item}>
+                   <label data-dialog-part="label" className={styles.itemLabel}>
+                     评审类型 <span className={styles.req}>*</span>
+                   </label>
+                   <div className={styles.itemControl}>
+                     <div className={styles.radioRow} role="radiogroup" aria-label="评审类型">
+                       <label className={styles.radio}>
+                         <input
+                           type="radio"
+                           name="review-model-readonly"
+                           checked={effectiveReviewModel === 1}
+                           disabled
+                           readOnly
+                         />
+                         <span>项目评审</span>
+                       </label>
+                       <label className={styles.radio}>
+                         <input
+                           type="radio"
+                           name="review-model-readonly"
+                           checked={effectiveReviewModel === 2}
+                           disabled
+                           readOnly
+                         />
+                         <span>部门评审</span>
+                       </label>
+                     </div>
+                   </div>
+                 </div>
+                 {effectiveReviewModel === 1 ? (
+                   <div data-dialog-field="" className={styles.item}>
+                     <label data-dialog-part="label" className={styles.itemLabel}>
+                       项目名称 <span className={styles.req}>*</span>
+                     </label>
+                     <div className={styles.itemControl}>
+                       <input
+                         data-dialog-control=""
+                         className={styles.input}
+                         value={existingProjectLabel}
+                         placeholder="（未获取到项目信息）"
+                         disabled
+                         readOnly
                        />
-                       Web
+                     </div>
+                   </div>
+                 ) : null}
+                 <div data-dialog-field="" className={styles.item}>
+                   <label data-dialog-part="label" className={styles.itemLabel}>
+                     评审名称 <span className={styles.req}>*</span>
+                   </label>
+                   <div className={styles.itemControl}>
+                     <div className={styles.inlineRow}>
+                       <input
+                         data-dialog-control=""
+                         className={styles.input}
+                         value={deptReviewName}
+                         disabled
+                         readOnly
+                       />
+                       {/* 只读展示已有评审的子类型（交互/视觉/…），与新建布局一致。 */}
+                       <CustomSelect
+                         className={styles.subtypeInline}
+                         triggerClassName={styles.subtypeTrigger}
+                         value={effectiveSubtype}
+                         options={[{ value: effectiveSubtype, label: subtypeLabelOf(effectiveSubtype) }]}
+                         onChange={() => {}}
+                         disabled
+                         ariaLabel="评审子类型"
+                       />
+                     </div>
+                   </div>
+                 </div>
+               </>
+             ) : (
+               <>
+                 <div data-dialog-field="" className={styles.item}>
+                   <label data-dialog-part="label" className={styles.itemLabel}>
+                     评审类型 <span className={styles.req}>*</span>
+                   </label>
+                   <div className={styles.itemControl}>
+                     <div className={styles.radioRow} role="radiogroup" aria-label="评审类型">
+                       <label className={styles.radio}>
+                         <input
+                           type="radio"
+                           name="review-model"
+                           checked={reviewModel === 1}
+                           onChange={() => switchModel(1)}
+                         />
+                         <span>项目评审</span>
+                       </label>
+                       <label className={styles.radio}>
+                         <input
+                           type="radio"
+                           name="review-model"
+                           checked={reviewModel === 2}
+                           onChange={() => switchModel(2)}
+                         />
+                         <span>部门评审</span>
+                       </label>
+                     </div>
+                   </div>
+                 </div>
+
+                 {reviewModel === 1 ? (
+                   <>
+                     <div data-dialog-field="" className={styles.item}>
+                       <label data-dialog-part="label" className={styles.itemLabel}>
+                         项目名称 <span className={styles.req}>*</span>
+                       </label>
+                       <div className={styles.itemControl}>
+                         <ProjectPicker
+                           value={project}
+                           onChange={(p) => {
+                             setProject(p);
+                             clearFieldError('project');
+                             setSelectedTemplate(null);
+                             setReviewTemplates([]);
+                             if (p?.projNum) void loadReviewTemplates(p.projNum);
+                           }}
+                         />
+                         <span className={styles.itemError}>{fieldErrors.project || ''}</span>
+                       </div>
+                     </div>
+                     <div data-dialog-field="" className={styles.item}>
+                       <label data-dialog-part="label" className={styles.itemLabel}>
+                         评审名称 <span className={styles.req}>*</span>
+                       </label>
+                       <div className={styles.itemControl}>
+                         <div className={styles.inlineRow}>
+                           <select
+                             className={`${styles.select} ${!selectedTemplate ? styles.emptySelect : ''}`}
+                             value={selectedTemplate ? JSON.stringify(selectedTemplate) : ''}
+                             onChange={(e) => {
+                               const v = e.target.value;
+                               setSelectedTemplate(v ? JSON.parse(v) : null);
+                               clearFieldError('reviewName');
+                             }}
+                             disabled={!reviewTemplates.length}
+                           >
+                             {!reviewTemplates.length ? (
+                               <option value="">{project ? '无可用评审名称' : '请先选择项目'}</option>
+                             ) : (
+                               <>
+                                 <option value="">请选择评审名称</option>
+                                 {reviewTemplates.map((t, i) => (
+                                   <option key={i} value={JSON.stringify(t)}>
+                                     {t.reviewname_cn ?? t.reviewname ?? `模板 ${i + 1}`}
+                                   </option>
+                                 ))}
+                               </>
+                             )}
+                           </select>
+                           <CustomSelect
+                             className={styles.subtypeInline}
+                             triggerClassName={styles.subtypeTrigger}
+                             value={subtype}
+                             options={REVIEW_SUBTYPES}
+                             ariaLabel="评审子类型"
+                             onChange={(value) => {
+                               switchSubtype(value);
+                               clearFieldError('upload');
+                             }}
+                           />
+                         </div>
+                         <span className={styles.itemError}>{fieldErrors.reviewName || ''}</span>
+                       </div>
+                     </div>
+                   </>
+                 ) : (
+                   <div data-dialog-field="" className={styles.item}>
+                     <label data-dialog-part="label" className={styles.itemLabel}>
+                       评审名称 <span className={styles.req}>*</span>
+                     </label>
+                     <div className={styles.itemControl}>
+                       <div className={styles.inlineRow}>
+                         <input
+                           data-dialog-control=""
+                           className={styles.input}
+                           placeholder="请输入评审名称"
+                           value={deptReviewName}
+                           onChange={(e) => {
+                             setDeptReviewName(e.target.value);
+                             clearFieldError('reviewName');
+                           }}
+                           maxLength={32}
+                         />
+                         <CustomSelect
+                           className={styles.subtypeInline}
+                           triggerClassName={styles.subtypeTrigger}
+                           value={subtype}
+                           options={REVIEW_SUBTYPES}
+                           ariaLabel="评审子类型"
+                           onChange={(value) => {
+                             switchSubtype(value);
+                             clearFieldError('upload');
+                           }}
+                         />
+                       </div>
+                       <span className={styles.itemError}>{fieldErrors.reviewName || ''}</span>
+                     </div>
+                   </div>
+                 )}
+               </>
+             )}
+
+             <div data-dialog-field="" className={styles.item}>
+               <label data-dialog-part="label" className={styles.itemLabel}>
+                 预计结束日期 <span className={styles.req}>*</span>
+               </label>
+               <div className={styles.itemControl}>
+                 {isUpdate ? (
+                   <input
+                     data-dialog-control=""
+                     className={styles.input}
+                     value={endtime ? endtime.replace('T', ' ') : ''}
+                     disabled
+                     readOnly
+                   />
+                 ) : (
+                   <DateTimePicker
+                     value={endtime}
+                     onChange={(v) => {
+                       setEndtime(v);
+                       clearFieldError('endtime');
+                     }}
+                     placeholder="请选择预计结束时间"
+                   />
+                 )}
+                 <span className={styles.itemError}>{fieldErrors.endtime || ''}</span>
+               </div>
+             </div>
+
+             {/* 更新评审信息提交 reviewEdit、不动稿件：隐藏整个稿件上传区域。
+                       更新评审稿时该区域仍显示，走 reUploadManuscript + reUploadConfirm。 */}
+             {mode !== 'update-info' ? (
+               <div data-dialog-field="" className={styles.item}>
+                 <label data-dialog-part="label" className={styles.itemLabel}>
+                   评审稿 <span className={styles.req}>*</span>
+                 </label>
+                 <div className={styles.itemControl}>
+                   <div className={styles.uploadArea}>
+                     {/* 评审稿来源切换：来自当前项目 / 上传 */}
+                     <div className={styles.sourceToggle} role="group" aria-label="评审稿选择">
+                       <button
+                         type="button"
+                         aria-pressed={manuscriptSource === 'project'}
+                         className={`${styles.sourceBtn} ${manuscriptSource === 'project' ? styles.sourceBtnActive : ''}`}
+                         onClick={() => {
+                           setManuscriptSource('project');
+                           clearFieldError('upload');
+                         }}
+                       >
+                         来自当前项目
+                       </button>
+                       <button
+                         type="button"
+                         aria-pressed={manuscriptSource === 'upload'}
+                         className={`${styles.sourceBtn} ${manuscriptSource === 'upload' ? styles.sourceBtnActive : ''}`}
+                         onClick={() => {
+                           setManuscriptSource('upload');
+                           clearFieldError('upload');
+                         }}
+                       >
+                         上传
+                       </button>
+                     </div>
+                     {manuscriptSource === 'project' ? (
+                       <div className={styles.uploadFileRow}>
+                         <span className={styles.uploadFileName}>{projectZipName}</span>
+                         {exporting ? <span className={styles.acSpinner} /> : null}
+                       </div>
+                     ) : (
+                       <UploadArea
+                         subtype={effectiveSubtype}
+                         uploading={uploading}
+                         uploadInfo={isManuscriptUpdate ? reUploadInfo : uploadInfo}
+                         onPick={isManuscriptUpdate ? handleReUpload : handleUpload}
+                         onRemove={() =>
+                           isManuscriptUpdate ? setReUploadInfo(null) : setUploadInfo(null)
+                         }
+                       />
+                     )}
+                   </div>
+                   <span className={styles.itemError}>{fieldErrors.upload || ''}</span>
+                 </div>
+               </div>
+             ) : null}
+             {mode === 'create' && subtype === HTML_REVIEW_TYPE ? (
+               <div data-dialog-field="" className={styles.item}>
+                 <label data-dialog-part="label" className={styles.itemLabel}>
+                   评审稿类型
+                 </label>
+                 <div className={styles.itemControl}>
+                   <div className={styles.radioRow} role="radiogroup" aria-label="评审稿类型">
+                     <label className={styles.radio}>
+                       <input
+                         type="radio"
+                         name="html-review-carrier"
+                         checked={carrierType === 'web'}
+                         onChange={() => {
+                           setCarrierType('web');
+                           setUploadInfo(null);
+                           clearFieldError('upload');
+                         }}
+                       />
+                       <span>Web</span>
                      </label>
                      <label className={styles.radio}>
-                       <input type="radio" name="html-review-carrier" checked={carrierType === 'h5'}
-                         onChange={() => { setCarrierType('h5'); setUploadInfo(null); clearFieldError('upload'); }}
+                       <input
+                         type="radio"
+                         name="html-review-carrier"
+                         checked={carrierType === 'h5'}
+                         onChange={() => {
+                           setCarrierType('h5');
+                           setUploadInfo(null);
+                           clearFieldError('upload');
+                         }}
                        />
-                       H5
+                       <span>H5</span>
                      </label>
                    </div>
                    {carrierType === 'h5' ? (
-                     <select aria-label="H5尺寸" className={styles.select} value={h5Size}
-                       onChange={(e) => { setH5Size(e.target.value); setUploadInfo(null); clearFieldError('upload'); }}
+                     <select
+                       aria-label="H5尺寸"
+                       className={styles.select}
+                       value={h5Size}
+                       onChange={(e) => {
+                         setH5Size(e.target.value);
+                         setUploadInfo(null);
+                         clearFieldError('upload');
+                       }}
                      >
                        {HTML_REVIEW_H5_SIZES.map((size) => (
-                         <option key={size.value} value={size.value}>{size.label}</option>
+                         <option key={size.value} value={size.value}>
+                           {size.label}
+                         </option>
                        ))}
                      </select>
                    ) : null}
                  </div>
                </div>
              ) : null}
-            {/* 抄送人员：新建 / 更新评审信息可改；更新评审稿不动人员。 */}
-            {!isManuscriptUpdate ? (
-              <div className={styles.item}>
-                <label className={styles.itemLabel}>抄送人员</label>
-                <div className={styles.itemControl}>
-                  <PersonPicker
-                    selected={addPersonList}
-                    onChange={setAddPersonList}
-                    placeholder="请输入名称（抄送人员）"
-                    multiple
-                  />
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </div>
-
-        <div className={styles.foot}>
-          <span className={`${styles.footMsg} ${error ? styles.footMsgErr : ''}`}>
-            {error || ''}
-          </span>
-          <div className={styles.footActions}>
-            <button type="button" className={styles.btn} onClick={onClose} disabled={submitting}>
-              取消
-            </button>
-            <button
-              type="button"
-              className={`${styles.btn} ${styles.btnPrimary}`}
-              onClick={() => void handleSubmit()}
-              disabled={submitting || uploading}
-            >
-              {exporting ? '生成评审稿中…' : submitting ? '提交中…' : '确定'}
-            </button>
+             <div data-dialog-field="" className={`${styles.item} ${styles.remarks}`}>
+               <label data-dialog-part="label" className={styles.itemLabel}>
+                 备注
+               </label>
+               <div className={styles.itemControl}>
+                 <textarea
+                   data-dialog-control=""
+                   className={styles.textarea}
+                   placeholder="请输入备注"
+                   value={content}
+                   onChange={(e) => setContent(e.target.value)}
+                 />
+               </div>
+             </div>
+           </section>
+           <section className={styles.formColumn} aria-label="评审人员">
+             <div data-dialog-field="" className={styles.item}>
+               <label data-dialog-part="label" className={styles.itemLabel}>
+                 作者 <span className={styles.req}>*</span>
+               </label>
+               <div className={styles.itemControl}>
+                 {isUpdate ? (
+                   <input
+                     data-dialog-control=""
+                     className={styles.input}
+                     value={author.map((p) => p.name).join('、')}
+                     disabled
+                     readOnly
+                   />
+                 ) : (
+                   <PersonPicker
+                     compact
+                     selectionRows={1}
+                     selected={author}
+                     onChange={(p) => {
+                       setAuthor(p);
+                       clearFieldError('author');
+                     }}
+                     ariaLabel="作者"
+                     placeholder="输入关键字检索"
+                     multiple
+                   />
+                 )}
+                 <span className={styles.itemError}>{fieldErrors.author || ''}</span>
+               </div>
+             </div>
+             <div data-dialog-field="" className={styles.item}>
+               <label data-dialog-part="label" className={styles.itemLabel}>
+                 评审组长 <span className={styles.req}>*</span>
+               </label>
+               <div className={styles.itemControl}>
+                 {isUpdate ? (
+                   <input
+                     data-dialog-control=""
+                     className={styles.input}
+                     value={mainjudge.map((p) => p.name).join('、')}
+                     disabled
+                     readOnly
+                   />
+                 ) : (
+                   <PersonPicker
+                     compact
+                     selected={mainjudge}
+                     onChange={(p) => {
+                       setMainjudge(p);
+                       clearFieldError('mainjudge');
+                     }}
+                     ariaLabel="评审组长"
+                     placeholder="输入关键字检索"
+                     multiple={false}
+                   />
+                 )}
+                 <span className={styles.itemError}>{fieldErrors.mainjudge || ''}</span>
+               </div>
+             </div>
+             {/* 更新评审稿只改稿件，人员/抄送区域整体隐藏。 */}
+             {!isManuscriptUpdate ? (
+               <>
+                 <div data-dialog-field="" className={styles.item}>
+                   <label data-dialog-part="label" className={styles.itemLabel}>
+                     核心评委 <span className={styles.req}>*</span>
+                   </label>
+                   <div className={styles.itemControl}>
+                     <PersonPicker
+                       compact
+                       selected={coreReviewers}
+                       onChange={(p) => {
+                         setCoreReviewers(p);
+                         clearFieldError('coreReviewers');
+                       }}
+                       ariaLabel="核心评委"
+                       placeholder="输入关键字检索"
+                       multiple
+                     />
+                     <span className={styles.itemError}>{fieldErrors.coreReviewers || ''}</span>
+                   </div>
+                 </div>
+                 <div data-dialog-field="" className={styles.item}>
+                   <label data-dialog-part="label" className={styles.itemLabel}>
+                     团队评委
+                   </label>
+                   <div className={styles.itemControl}>
+                     <PersonPicker
+                       compact
+                       selected={judgelist}
+                       onChange={setJudgelist}
+                       ariaLabel="团队评委"
+                       placeholder="输入关键字检索"
+                       multiple
+                     />
+                   </div>
+                 </div>
+               </>
+             ) : null}
+             {/* 抄送人员：新建 / 更新评审信息可改；更新评审稿不动人员。 */}
+             {!isManuscriptUpdate ? (
+               <div data-dialog-field="" className={styles.item}>
+                 <label data-dialog-part="label" className={styles.itemLabel}>
+                   抄送人员
+                 </label>
+                 <div className={styles.itemControl}>
+                   <PersonPicker
+                     compact
+                     selected={addPersonList}
+                     onChange={setAddPersonList}
+                     ariaLabel="抄送人员"
+                     placeholder="输入关键字检索"
+                     multiple
+                   />
+                 </div>
+               </div>
+             ) : null}
+           </section>
          </div>
-      </div>
-        {(submitting || exporting || probing) && (
-          <div className={styles.loadingOverlay}>
-            <span className={styles.loadingSpinner} />
-            <span className={styles.loadingText}>
-              {exporting
-                ? '生成评审稿中…'
-                : submitting
-                  ? '提交中…'
-                  : '正在校验评审单…'}
-            </span>
-          </div>
-        )}
-      </div>
+       </div>
+
+       <div data-dialog-part="footer" className={styles.foot}>
+         <span className={`${styles.footMsg} ${error ? styles.footMsgErr : ''}`}>{error || ''}</span>
+         <div data-dialog-part="actions" className={styles.footActions}>
+           <button type="button" className={styles.btn} onClick={onClose} disabled={submitting}>
+             取消
+           </button>
+           <button
+             type="button"
+             className={`${styles.btn} ${styles.btnPrimary}`}
+             onClick={() => void handleSubmit()}
+             disabled={submitting || uploading}
+           >
+             {exporting ? '生成评审稿中…' : submitting ? '提交中…' : '确定'}
+           </button>
+         </div>
+       </div>
+       {(submitting || exporting || probing) && (
+         <div className={styles.loadingOverlay}>
+           <span className={styles.loadingSpinner} />
+           <span className={styles.loadingText}>
+             {exporting ? '生成评审稿中…' : submitting ? '提交中…' : '正在校验评审单…'}
+           </span>
+         </div>
+       )}
+     </div>
    </div>,
   document.body,
  );

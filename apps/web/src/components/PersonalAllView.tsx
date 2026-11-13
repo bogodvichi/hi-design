@@ -13,7 +13,13 @@ import { CloudSkillList } from './CloudSkillList';
 import { CloudMcpList } from './CloudMcpList';
 import { createPortal } from 'react-dom';
 import type { WorkspaceCollabContext, WorkspaceDirectoryItem } from '@open-design/contracts';
-import { Dialog, DialogFooter, DialogTitle } from '@open-design/components';
+import {
+  DialogHeader,
+  DialogBody,
+  Dialog,
+  DialogFooter,
+  DialogTitle,
+} from '@open-design/components';
 import { Icon } from './Icon';
 import { CenteredLoader } from './Loading';
 import { FolderCardMenu } from './FolderCardMenu';
@@ -33,7 +39,7 @@ import { projectCollectionTitleHint } from './project-collection-context';
 import { useT } from '../i18n';
 import { localProjectCoverUrl, useProjectCoverRefresh } from '../lib/project-cover-refresh';
 import styles from './TeamSpaceView.module.css';
- 
+
 const FOLDER_CONTEXT_KEY = 'od:home-folder-context';
 
 interface PersonalFolderItem {
@@ -635,16 +641,20 @@ function handleFolderClick(folder: PersonalFolderItem) {
             void commitFolderRename();
           }}
         >
-          <DialogTitle id={renameFolderTitleId}>{t('designs.renameTitle')}</DialogTitle>
-          <label>
-            {t('designs.renamePrompt', { name: renameFolderTarget.folderName })}
-            <input
-              type="text"
-              value={renameFolderInput}
-              autoFocus
-              onChange={(e) => setRenameFolderInput(e.target.value)}
-            />
-          </label>
+          <DialogHeader>
+            <DialogTitle id={renameFolderTitleId}>{t('designs.renameTitle')}</DialogTitle>
+          </DialogHeader>
+          <DialogBody>
+            <label data-dialog-field="">
+              {t('designs.renamePrompt', { name: renameFolderTarget.folderName })}
+              <input
+                type="text"
+                value={renameFolderInput}
+                autoFocus
+                onChange={(e) => setRenameFolderInput(e.target.value)}
+              />
+            </label>
+          </DialogBody>
           <DialogFooter className="row">
             <button type="button" onClick={cancelFolderRename}>
               {t('designs.renameCancel')}
@@ -652,7 +662,11 @@ function handleFolderClick(folder: PersonalFolderItem) {
             <button
               type="submit"
               className="primary"
-              disabled={!renameFolderInput.trim() || renameFolderInput.trim() === renameFolderTarget.folderName || renamingFolder}
+              disabled={
+                !renameFolderInput.trim() ||
+                renameFolderInput.trim() === renameFolderTarget.folderName ||
+                renamingFolder
+              }
             >
               {t('designs.renameSave')}
             </button>

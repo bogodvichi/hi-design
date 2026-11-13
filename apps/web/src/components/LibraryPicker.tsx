@@ -137,7 +137,7 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
   if (typeof document === 'undefined') return null;
 
   return createPortal(
-    <motion.div
+    <motion.div data-dialog-backdrop=""
       className="modal-backdrop"
       onClick={() => {
         if (!busy) onClose();
@@ -148,6 +148,7 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
       exit="exit"
     >
       <motion.div
+        data-dialog-surface="standard"
         className={styles.panel}
         onClick={(e) => e.stopPropagation()}
         variants={modalContent}
@@ -158,12 +159,13 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
         aria-modal="true"
         data-testid="library-picker"
       >
-        <header className={styles.header}>
+        <header data-dialog-part="header" className={styles.header}>
           <div className={styles.heading}>
             <Icon name="layers-filled" size={16} />
-            <h2>{title ?? t('libraryPicker.title')}</h2>
+            <h2 data-dialog-part="title">{title ?? t('libraryPicker.title')}</h2>
           </div>
           <button
+            data-dialog-part="close"
             type="button"
             className={styles.close}
             onClick={onClose}
@@ -174,7 +176,7 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
           </button>
         </header>
 
-        <div className={styles.toolbar}>
+        <div data-dialog-part="toolbar" className={styles.toolbar}>
           <Input
             type="search"
             value={search}
@@ -207,7 +209,7 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
           </div>
         </div>
 
-        <div className={styles.body}>
+        <div data-dialog-part="body" className={styles.body}>
           {loading ? (
             <div className={styles.placeholder}>{t('libraryPicker.loading')}</div>
           ) : visible.length === 0 ? (
@@ -226,7 +228,7 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
           )}
         </div>
 
-        <footer className={styles.footer}>
+        <footer data-dialog-part="footer" className={styles.footer}>
           <Button onClick={onClose} disabled={busy}>
             {t('common.cancel')}
           </Button>
@@ -236,7 +238,7 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
             disabled={count === 0 || busy}
             data-testid="library-picker-confirm"
           >
-            {busy ? t('libraryPicker.loading') : confirmLabel ?? t('libraryPicker.add')}
+            {busy ? t('libraryPicker.loading') : (confirmLabel ?? t('libraryPicker.add'))}
             {count > 0 && !busy ? ` (${count})` : ''}
           </Button>
         </footer>

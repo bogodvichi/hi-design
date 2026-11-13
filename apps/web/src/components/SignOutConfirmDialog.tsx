@@ -1,6 +1,8 @@
 import { useId } from 'react';
 import { createPortal } from 'react-dom';
 import {
+  DialogHeader,
+  DialogBody,
   Dialog,
   DialogDescription,
   DialogFooter,
@@ -35,8 +37,12 @@ export function SignOutConfirmDialog({ busy = false, onCancel, onConfirm }: Prop
       ariaLabelledBy={titleId}
       data-testid="sign-out-confirm-dialog"
     >
-      <DialogTitle id={titleId}>{t('signOut.confirmTitle')}</DialogTitle>
-      <DialogDescription>{t('signOut.confirmMessage')}</DialogDescription>
+      <DialogHeader>
+        <DialogTitle id={titleId}>{t('signOut.confirmTitle')}</DialogTitle>
+      </DialogHeader>
+      <DialogBody>
+        <DialogDescription>{t('signOut.confirmMessage')}</DialogDescription>
+      </DialogBody>
       <DialogFooter className="row">
         <button
           type="button"

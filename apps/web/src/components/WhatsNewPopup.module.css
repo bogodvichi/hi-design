@@ -7,6 +7,12 @@
   gap: 0;
 }
 
+.dialogBody {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
 /* Frosted sheet over the page — a translucent glass shape that carries the
    blur (per the Liquid Glass material tokens), not a raw blur of the view. */
 .backdrop.backdrop {

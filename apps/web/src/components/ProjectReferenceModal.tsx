@@ -279,15 +279,22 @@ export function ProjectReferenceModal({
   if (typeof document === 'undefined') return null;
 
   return createPortal(
-    <div className={styles.backdrop} role="presentation" onMouseDown={(event) => {
+    <div data-dialog-backdrop="" className={styles.backdrop} role="presentation" onMouseDown={(event) => {
       if (event.target === event.currentTarget && !pending) onClose();
     }}>
-      <div className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="project-reference-title">
-        <header className={styles.head}>
-          <h2 id="project-reference-title" className={styles.title}>
+      <div
+        data-dialog-surface="standard"
+        className={styles.modal}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="project-reference-title"
+      >
+        <header data-dialog-part="header" className={styles.head}>
+          <h2 data-dialog-part="title" id="project-reference-title" className={styles.title}>
             {t('chat.referenceProject.title')}
           </h2>
           <button
+            data-dialog-part="close"
             type="button"
             className={styles.close}
             onClick={onClose}
@@ -297,7 +304,7 @@ export function ProjectReferenceModal({
             <Icon name="close" size={17} />
           </button>
         </header>
-        <div className={styles.body}>
+        <div data-dialog-part="body" className={styles.body}>
           <div className={styles.browser}>
             <aside
               className={styles.workspaceTree}
@@ -306,10 +313,7 @@ export function ProjectReferenceModal({
               {workspaces === null ? (
                 <div className={styles.treeState}>{t('common.loading')}</div>
               ) : workspaces.length === 0 ? (
-                <button
-                  type="button"
-                  className={`${styles.treeRow} ${styles.treeRowActive}`}
-                >
+                <button type="button" className={`${styles.treeRow} ${styles.treeRowActive}`}>
                   <span className={styles.treeDisclosure} aria-hidden />
                   <span className={styles.treeLabel}>
                     {locale.startsWith('zh') ? '个人所有' : 'Personal'}
@@ -318,58 +322,70 @@ export function ProjectReferenceModal({
                     {locale.startsWith('zh') ? '个人' : 'Personal'}
                   </small>
                 </button>
-              ) : workspaces.map((workspace) => {
-                const folders = projectFolders[workspace.workspaceId] ?? [];
-                const rootFolders = workspace.isDefaultTeam
-                  ? []
-                  : folders.filter((folder) => folder.parentId == null);
-                const expanded = expandedWorkspaceIds.has(workspace.workspaceId);
-                const rootSelected = activeWorkspaceId === workspace.workspaceId && activeFolderId == null;
-                return (
-                  <div key={workspace.workspaceId}>
-                    <button
-                      type="button"
-                      className={`${styles.treeRow}${rootSelected ? ` ${styles.treeRowActive}` : ''}`}
-                      aria-expanded={rootFolders.length > 0 ? expanded : undefined}
-                      onClick={() => {
-                        if (rootFolders.length > 0) toggleWorkspace(workspace.workspaceId);
-                        selectLocation(workspace.workspaceId, null);
-                      }}
-                    >
-                      <span className={styles.treeDisclosure} aria-hidden>
-                        {rootFolders.length > 0 ? (
-                          <Icon name={expanded ? 'chevron-down' : 'chevron-right'} size={13} />
-                        ) : null}
-                      </span>
-                      <span className={styles.treeLabel}>
-                        {workspace.isDefaultTeam
-                          ? (locale.startsWith('zh') ? '个人所有' : 'Personal')
-                          : workspace.workspaceName}
-                      </span>
-                      <small className={styles.treeTag}>
-                        {workspace.isDefaultTeam
-                          ? (locale.startsWith('zh') ? '个人' : 'Personal')
-                          : (locale.startsWith('zh') ? '团队' : 'Team')}
-                      </small>
-                    </button>
-                    {expanded ? rootFolders.map((folder) => {
-                      const selected = activeWorkspaceId === workspace.workspaceId
-                        && activeFolderId === folder.id;
-                      return (
-                        <button
-                          key={folder.id}
-                          type="button"
-                          className={`${styles.treeRow} ${styles.treeRowChild}${selected ? ` ${styles.treeRowActive}` : ''}`}
-                          onClick={() => selectLocation(workspace.workspaceId, folder.id)}
-                        >
-                          <span className={styles.treeDisclosure} aria-hidden />
-                          <span className={styles.treeLabel}>{folder.name}</span>
-                        </button>
-                      );
-                    }) : null}
-                  </div>
-                );
-              })}
+              ) : (
+                workspaces.map((workspace) => {
+                  const folders = projectFolders[workspace.workspaceId] ?? [];
+                  const rootFolders = workspace.isDefaultTeam
+                    ? []
+                    : folders.filter((folder) => folder.parentId == null);
+                  const expanded = expandedWorkspaceIds.has(workspace.workspaceId);
+                  const rootSelected =
+                    activeWorkspaceId === workspace.workspaceId && activeFolderId == null;
+                  return (
+                    <div key={workspace.workspaceId}>
+                      <button
+                        type="button"
+                        className={`${styles.treeRow}${rootSelected ? ` ${styles.treeRowActive}` : ''}`}
+                        aria-expanded={rootFolders.length > 0 ? expanded : undefined}
+                        onClick={() => {
+                          if (rootFolders.length > 0) toggleWorkspace(workspace.workspaceId);
+                          selectLocation(workspace.workspaceId, null);
+                        }}
+                      >
+                        <span className={styles.treeDisclosure} aria-hidden>
+                          {rootFolders.length > 0 ? (
+                            <Icon name={expanded ? 'chevron-down' : 'chevron-right'} size={13} />
+                          ) : null}
+                        </span>
+                        <span className={styles.treeLabel}>
+                          {workspace.isDefaultTeam
+                            ? locale.startsWith('zh')
+                              ? '个人所有'
+                              : 'Personal'
+                            : workspace.workspaceName}
+                        </span>
+                        <small className={styles.treeTag}>
+                          {workspace.isDefaultTeam
+                            ? locale.startsWith('zh')
+                              ? '个人'
+                              : 'Personal'
+                            : locale.startsWith('zh')
+                              ? '团队'
+                              : 'Team'}
+                        </small>
+                      </button>
+                      {expanded
+                        ? rootFolders.map((folder) => {
+                            const selected =
+                              activeWorkspaceId === workspace.workspaceId &&
+                              activeFolderId === folder.id;
+                            return (
+                              <button
+                                key={folder.id}
+                                type="button"
+                                className={`${styles.treeRow} ${styles.treeRowChild}${selected ? ` ${styles.treeRowActive}` : ''}`}
+                                onClick={() => selectLocation(workspace.workspaceId, folder.id)}
+                              >
+                                <span className={styles.treeDisclosure} aria-hidden />
+                                <span className={styles.treeLabel}>{folder.name}</span>
+                              </button>
+                            );
+                          })
+                        : null}
+                    </div>
+                  );
+                })
+              )}
             </aside>
             <div className={styles.browserMain}>
               <label className={styles.search}>
@@ -416,7 +432,9 @@ export function ProjectReferenceModal({
                         <ProjectReferenceThumbnail project={project} />
                         <span className={styles.itemText}>
                           <span className={styles.itemTitle}>{project.name}</span>
-                          <span className={styles.itemMeta}>{relativeTimeLong(project.updatedAt, t)}</span>
+                          <span className={styles.itemMeta}>
+                            {relativeTimeLong(project.updatedAt, t)}
+                          </span>
                         </span>
                         <span
                           className={`${styles.check}${selected ? ` ${styles.checkSelected}` : ''}`}
@@ -438,7 +456,7 @@ export function ProjectReferenceModal({
             </div>
           ) : null}
         </div>
-        <footer className={styles.footer}>
+        <footer data-dialog-part="footer" className={styles.footer}>
           <button type="button" className={styles.button} onClick={onClose} disabled={pending}>
             {t('common.cancel')}
           </button>

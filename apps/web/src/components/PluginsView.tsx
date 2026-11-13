@@ -2480,21 +2480,22 @@ export function ExtensionsMarketplace({
         ) : null}
       </AnimatePresence>
       {createOpen ? (
-        <div
+        <div data-dialog-backdrop=""
           className="plugin-marketplace__modal-backdrop"
           role="presentation"
           onClick={closeCreateDialog}
         >
           <section
+            data-dialog-surface="standard"
             className="plugin-marketplace__create-panel"
             role="dialog"
             aria-modal="true"
             aria-labelledby="plugin-create-title"
             onClick={(event) => event.stopPropagation()}
           >
-            <header className="plugin-marketplace__create-head">
+            <header data-dialog-part="header" className="plugin-marketplace__create-head">
               <div>
-                <h2 id="plugin-create-title">
+                <h2 data-dialog-part="title" id="plugin-create-title">
                   {t('pluginsView.createTitle', { kind: pluginKindLabel(createKind, t) })}
                 </h2>
               </div>
@@ -2502,7 +2503,11 @@ export function ExtensionsMarketplace({
                 <Icon name="close" size={15} />
               </button>
             </header>
-            <div className="plugin-marketplace__create-tabs" aria-label={t('pluginsView.createTypeAria')}>
+            <div
+              data-dialog-part="toolbar"
+              className="plugin-marketplace__create-tabs"
+              aria-label={t('pluginsView.createTypeAria')}
+            >
               <button
                 type="button"
                 className={createKind === 'plugin' ? 'is-active' : ''}
@@ -2518,11 +2523,11 @@ export function ExtensionsMarketplace({
                 {t('pluginsView.createKindSkill')}
               </button>
             </div>
-            <div className="plugin-marketplace__create-options">
+            <div data-dialog-part="body" className="plugin-marketplace__create-options">
               {/* Authoring by describing what you want is the flow the home
-                  composer is built around, and it had no reachable entry: the
-                  button that called `onCreatePlugin` lives in a component
-                  nothing mounts, so this dialog was import/upload only. */}
+                                  composer is built around, and it had no reachable entry: the
+                                  button that called `onCreatePlugin` lives in a component
+                                  nothing mounts, so this dialog was import/upload only. */}
               {onCreatePlugin && createKind === 'plugin' ? (
                 <article>
                   <div>
@@ -2552,11 +2557,11 @@ export function ExtensionsMarketplace({
                   <h3>{t('pluginsView.importFromUrl')}</h3>
                   <p>{t('pluginsView.importUrlBody', { kind: pluginKindLabel(createKind, t) })}</p>
                   {/* Input and button sit side by side in one row, matching
-                      the demo's `url-import-row` shape — not a labelled
-                      block with the button stacked below it (issue #110's
-                      original placement still applies: this row lives
-                      inside the content column, not as a direct <article>
-                      child). */}
+                                      the demo's `url-import-row` shape — not a labelled
+                                      block with the button stacked below it (issue #110's
+                                      original placement still applies: this row lives
+                                      inside the content column, not as a direct <article>
+                                      child). */}
                   <div className="plugin-marketplace__url-import-row">
                     <input
                       aria-label={t('pluginsView.importUrlLabel')}
@@ -2573,13 +2578,13 @@ export function ExtensionsMarketplace({
                       type="button"
                       data-testid="plugin-create-import-url"
                       disabled={
-                        workspaceContextLoading
-                        || createBusy !== null
-                        || createUrl.trim().length === 0
+                        workspaceContextLoading || createBusy !== null || createUrl.trim().length === 0
                       }
                       onClick={() => void handleCreateImportUrl()}
                     >
-                      {createBusy === 'import' ? t('pluginsView.importing') : t('pluginsView.importAndUpload')}
+                      {createBusy === 'import'
+                        ? t('pluginsView.importing')
+                        : t('pluginsView.importAndUpload')}
                     </button>
                   </div>
                 </div>
@@ -2600,14 +2605,12 @@ export function ExtensionsMarketplace({
                     disabled={createBusy !== null}
                     style={{ display: 'none' }}
                     {...{ webkitdirectory: '', directory: '' }}
-                    onChange={(event) =>
-                      setCreateFolderFiles(Array.from(event.currentTarget.files ?? []))
-                    }
+                    onChange={(event) => setCreateFolderFiles(Array.from(event.currentTarget.files ?? []))}
                   />
                   {/* Folder picker + upload on one row inside the card, the
-                      demo's `folder-action-row` shape. The upload button as a
-                      direct <article> child fell into the card grid's second
-                      row and rendered dangling outside the card (issue #110). */}
+                                      demo's `folder-action-row` shape. The upload button as a
+                                      direct <article> child fell into the card grid's second
+                                      row and rendered dangling outside the card (issue #110). */}
                   <div className="plugin-marketplace__folder-action-row">
                     <button
                       type="button"
@@ -2624,9 +2627,7 @@ export function ExtensionsMarketplace({
                       type="button"
                       data-testid="plugin-create-upload-folder"
                       disabled={
-                        workspaceContextLoading
-                        || createBusy !== null
-                        || createFolderFiles.length === 0
+                        workspaceContextLoading || createBusy !== null || createFolderFiles.length === 0
                       }
                       onClick={() => void handleCreateUploadFolder()}
                     >
@@ -2801,111 +2802,112 @@ function PluginShareConfirmModal({
       onClose={pending ? undefined : onClose}
       data-testid="plugin-share-confirm-modal"
     >
-        <header className="plugin-details-modal__head">
-          <div className="plugin-details-modal__head-titles">
-            <div className="plugin-details-modal__head-row">
-              <h2 className="plugin-details-modal__title">{actionTitle}</h2>
-              <TrustBadge trust="official" label={t('pluginsView.shareActionBadge')} />
-            </div>
-            <div className="plugin-details-modal__meta">
-              <span>{details.eyebrow}</span>
-              <span>· for {sourceRecord.title}</span>
-              {actionRecord ? <span>· v{actionRecord.version}</span> : null}
-            </div>
+      <header data-dialog-part="header" className="plugin-details-modal__head">
+        <div className="plugin-details-modal__head-titles">
+          <div className="plugin-details-modal__head-row">
+            <h2 data-dialog-part="title" className="plugin-details-modal__title">
+              {actionTitle}
+            </h2>
+            <TrustBadge trust="official" label={t('pluginsView.shareActionBadge')} />
           </div>
-          <button
-            type="button"
-            className="plugin-details-modal__close"
-            onClick={onClose}
-            disabled={pending}
-            aria-label={t('pluginsView.shareCloseAria')}
-            title={t('common.close')}
-          >
-            <Icon name="close" size={18} />
-          </button>
-        </header>
-
-        <div className="plugin-details-modal__body">
-          <section className="plugin-details-modal__section">
-            <div className="plugin-details-modal__section-head">
-              <h3 className="plugin-details-modal__section-title">
-                {t('pluginsView.shareWhatStarts')}
-              </h3>
-            </div>
-            <p className="plugin-details-modal__description">
-              {actionDescription}
-            </p>
-            <ol className="plugin-share-confirm__steps">
-              {details.steps.map((step) => (
-                <li key={step}>{step}</li>
-              ))}
-            </ol>
-          </section>
-
-          <section className="plugin-details-modal__section">
-            <div className="plugin-details-modal__section-head">
-              <h3 className="plugin-details-modal__section-title">
-                {t('pluginsView.shareSourcePlugin')}
-              </h3>
-            </div>
-            <dl className="plugin-share-confirm__facts">
-              <div>
-                <dt>{t('pluginsView.shareFactPlugin')}</dt>
-                <dd>{sourceRecord.title}</dd>
-              </div>
-              <div>
-                <dt>{t('pluginsView.shareFactId')}</dt>
-                <dd>
-                  <code>{sourceRecord.id}</code>
-                </dd>
-              </div>
-              <div>
-                <dt>{t('pluginsView.shareFactCopiedTo')}</dt>
-                <dd>
-                  <code>{stagedPath}</code>
-                </dd>
-              </div>
-              <div>
-                <dt>{t('pluginsView.shareFactTrust')}</dt>
-                <dd>
-                  <TrustBadge trust={sourceRecord.trust} />
-                </dd>
-              </div>
-            </dl>
-          </section>
-
-          {actionQuery ? (
-            <section className="plugin-details-modal__section">
-              <div className="plugin-details-modal__section-head">
-                <h3 className="plugin-details-modal__section-title">
-                  {t('pluginsView.shareActionPrompt')}
-                </h3>
-              </div>
-              <pre className="plugin-details-modal__query">{actionQuery}</pre>
-            </section>
-          ) : null}
+          <div className="plugin-details-modal__meta">
+            <span>{details.eyebrow}</span>
+            <span>· for {sourceRecord.title}</span>
+            {actionRecord ? <span>· v{actionRecord.version}</span> : null}
+          </div>
         </div>
+        <button
+          data-dialog-part="close"
+          type="button"
+          className="plugin-details-modal__close"
+          onClick={onClose}
+          disabled={pending}
+          aria-label={t('pluginsView.shareCloseAria')}
+          title={t('common.close')}
+        >
+          <Icon name="close" size={18} />
+        </button>
+      </header>
 
-        <footer className="plugin-details-modal__foot">
-          <button
-            type="button"
-            className="plugin-details-modal__secondary"
-            onClick={onClose}
-            disabled={pending}
-          >
-            {t('common.cancel')}
-          </button>
-          <button
-            type="button"
-            className="plugin-details-modal__primary"
-            onClick={onConfirm}
-            disabled={pending}
-            aria-busy={pending ? 'true' : undefined}
-            data-testid="plugin-share-confirm-start"
-          >
-            {pending ? t('pluginsView.shareStarting') : details.confirmLabel}
-          </button>
-        </footer>
+      <div data-dialog-part="body" className="plugin-details-modal__body">
+        <section className="plugin-details-modal__section">
+          <div className="plugin-details-modal__section-head">
+            <h3 className="plugin-details-modal__section-title">
+              {t('pluginsView.shareWhatStarts')}
+            </h3>
+          </div>
+          <p className="plugin-details-modal__description">{actionDescription}</p>
+          <ol className="plugin-share-confirm__steps">
+            {details.steps.map((step) => (
+              <li key={step}>{step}</li>
+            ))}
+          </ol>
+        </section>
+
+        <section className="plugin-details-modal__section">
+          <div className="plugin-details-modal__section-head">
+            <h3 className="plugin-details-modal__section-title">
+              {t('pluginsView.shareSourcePlugin')}
+            </h3>
+          </div>
+          <dl className="plugin-share-confirm__facts">
+            <div>
+              <dt>{t('pluginsView.shareFactPlugin')}</dt>
+              <dd>{sourceRecord.title}</dd>
+            </div>
+            <div>
+              <dt>{t('pluginsView.shareFactId')}</dt>
+              <dd>
+                <code>{sourceRecord.id}</code>
+              </dd>
+            </div>
+            <div>
+              <dt>{t('pluginsView.shareFactCopiedTo')}</dt>
+              <dd>
+                <code>{stagedPath}</code>
+              </dd>
+            </div>
+            <div>
+              <dt>{t('pluginsView.shareFactTrust')}</dt>
+              <dd>
+                <TrustBadge trust={sourceRecord.trust} />
+              </dd>
+            </div>
+          </dl>
+        </section>
+
+        {actionQuery ? (
+          <section className="plugin-details-modal__section">
+            <div className="plugin-details-modal__section-head">
+              <h3 className="plugin-details-modal__section-title">
+                {t('pluginsView.shareActionPrompt')}
+              </h3>
+            </div>
+            <pre className="plugin-details-modal__query">{actionQuery}</pre>
+          </section>
+        ) : null}
+      </div>
+
+      <footer data-dialog-part="footer" className="plugin-details-modal__foot">
+        <button
+          type="button"
+          className="plugin-details-modal__secondary"
+          onClick={onClose}
+          disabled={pending}
+        >
+          {t('common.cancel')}
+        </button>
+        <button
+          type="button"
+          className="plugin-details-modal__primary"
+          onClick={onConfirm}
+          disabled={pending}
+          aria-busy={pending ? 'true' : undefined}
+          data-testid="plugin-share-confirm-start"
+        >
+          {pending ? t('pluginsView.shareStarting') : details.confirmLabel}
+        </button>
+      </footer>
     </Dialog>
   );
 }
@@ -3239,7 +3241,7 @@ function AvailablePluginDetailsModal({
   }
 
   const modal = (
-    <div
+    <div data-dialog-backdrop=""
       className="plugin-details-modal-backdrop"
       role="dialog"
       aria-modal="true"
@@ -3249,11 +3251,12 @@ function AvailablePluginDetailsModal({
       }}
       data-testid="plugins-available-details-modal"
     >
-      <div className="plugin-details-modal">
-        <header className="plugin-details-modal__head">
+      <div data-dialog-surface="standard" className="plugin-details-modal">
+        <header data-dialog-part="header" className="plugin-details-modal__head">
           <div className="plugin-details-modal__head-titles">
             <div className="plugin-details-modal__head-row">
               <h2
+                data-dialog-part="title"
                 id="plugins-available-details-title"
                 className="plugin-details-modal__title"
               >
@@ -3268,6 +3271,7 @@ function AvailablePluginDetailsModal({
             </div>
           </div>
           <button
+            data-dialog-part="close"
             type="button"
             className="plugin-details-modal__close"
             onClick={onClose}
@@ -3279,7 +3283,7 @@ function AvailablePluginDetailsModal({
           </button>
         </header>
 
-        <div className="plugin-details-modal__body">
+        <div data-dialog-part="body" className="plugin-details-modal__body">
           <section className="plugin-details-modal__section">
             <div className="plugin-details-modal__section-head">
               <h3 className="plugin-details-modal__section-title">
@@ -3306,9 +3310,7 @@ function AvailablePluginDetailsModal({
           {installedRecord ? (
             <section className="plugin-details-modal__section">
               <div className="plugin-details-modal__section-head">
-                <h3 className="plugin-details-modal__section-title">
-                  Installed
-                </h3>
+                <h3 className="plugin-details-modal__section-title">Installed</h3>
               </div>
               <p className="plugin-details-modal__section-hint">
                 This official catalog entry is bundled with HiDesign and is ready to use.
@@ -3322,7 +3324,7 @@ function AvailablePluginDetailsModal({
                 </h3>
               </div>
               <div className="plugins-view__version-install">
-                <label className="plugins-view__version-select">
+                <label data-dialog-field="" className="plugins-view__version-select">
                   <span>{t('plugins.availableDetails.version')}</span>
                   <select
                     aria-label={t('plugins.availableDetails.pluginVersion')}
@@ -3333,26 +3335,18 @@ function AvailablePluginDetailsModal({
                     }}
                   >
                     {versions.map((version) => (
-                      <option
-                        key={version.version}
-                        value={version.version}
-                        disabled={version.yanked}
-                      >
+                      <option key={version.version} value={version.version} disabled={version.yanked}>
                         {version.version}
                         {version.deprecated
                           ? t('plugins.availableDetails.versionDeprecatedSuffix')
                           : ''}
-                        {version.yanked
-                          ? t('plugins.availableDetails.versionYankedSuffix')
-                          : ''}
+                        {version.yanked ? t('plugins.availableDetails.versionYankedSuffix') : ''}
                       </option>
                     ))}
                   </select>
                 </label>
                 <div className="plugins-view__install-command">
-                  <code data-testid="plugins-available-install-command">
-                    {installCommand}
-                  </code>
+                  <code data-testid="plugins-available-install-command">{installCommand}</code>
                   <button
                     type="button"
                     className="plugin-details-modal__chip-btn"
@@ -3368,9 +3362,10 @@ function AvailablePluginDetailsModal({
               {selectedVersionInfo?.deprecated ? (
                 <p className="plugin-details-modal__section-hint">
                   {t('plugins.availableDetails.deprecatedPrefix', {
-                    message: selectedVersionInfo.deprecated === true
-                      ? t('plugins.availableDetails.deprecatedFallback')
-                      : selectedVersionInfo.deprecated,
+                    message:
+                      selectedVersionInfo.deprecated === true
+                        ? t('plugins.availableDetails.deprecatedFallback')
+                        : selectedVersionInfo.deprecated,
                   })}
                 </p>
               ) : null}
@@ -3378,8 +3373,8 @@ function AvailablePluginDetailsModal({
                 <p className="plugin-details-modal__section-hint">
                   {selectedVersionInfo.yankReason
                     ? t('plugins.availableDetails.yankedWithReason', {
-                      reason: selectedVersionInfo.yankReason,
-                    })
+                        reason: selectedVersionInfo.yankReason,
+                      })
                     : t('plugins.availableDetails.yanked')}
                 </p>
               ) : null}
@@ -3515,7 +3510,7 @@ function AvailablePluginDetailsModal({
           ) : null}
         </div>
 
-        <footer className="plugin-details-modal__foot">
+        <footer data-dialog-part="footer" className="plugin-details-modal__foot">
           <button
             type="button"
             className="plugin-details-modal__secondary"
@@ -3759,20 +3754,26 @@ function PluginImportModal({
     (kind === 'folder' && folderFiles.length > 0);
 
   return (
-    <div className="plugins-import-modal__backdrop" role="presentation" onMouseDown={onClose}>
+    <div data-dialog-backdrop="" className="plugins-import-modal__backdrop" role="presentation" onMouseDown={onClose}>
       <section
+        data-dialog-surface="standard"
         className="plugins-import-modal"
         role="dialog"
         aria-modal="true"
         aria-labelledby="plugins-import-title"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <header className="plugins-import-modal__head">
+        <header data-dialog-part="header" className="plugins-import-modal__head">
           <div>
-            <p className="plugins-view__kicker">User plugins</p>
-            <h2 id="plugins-import-title">Import a plugin</h2>
+            <p data-dialog-part="description" className="plugins-view__kicker">
+              User plugins
+            </p>
+            <h2 data-dialog-part="title" id="plugins-import-title">
+              Import a plugin
+            </h2>
           </div>
           <button
+            data-dialog-part="close"
             type="button"
             className="plugins-import-modal__close"
             onClick={onClose}
@@ -3782,7 +3783,11 @@ function PluginImportModal({
           </button>
         </header>
 
-        <nav className="plugins-import-modal__tabs" aria-label="Import source">
+        <nav
+          data-dialog-part="toolbar"
+          className="plugins-import-modal__tabs"
+          aria-label="Import source"
+        >
           <ImportChoice
             active={kind === 'github'}
             icon="github"
@@ -3806,7 +3811,7 @@ function PluginImportModal({
           />
         </nav>
 
-        <div className="plugins-import-modal__body">
+        <div data-dialog-part="body" className="plugins-import-modal__body">
           {kind === 'github' ? (
             <div className="plugins-view__install-card">
               <label htmlFor="plugin-source">GitHub, archive, or marketplace source</label>
@@ -3828,8 +3833,8 @@ function PluginImportModal({
                 </button>
               </div>
               <div className="plugins-view__source-help">
-                Supports <code>github:owner/repo[@ref][/subpath]</code>, HTTPS{' '}
-                <code>.tar.gz</code>/<code>.tgz</code> archives, or marketplace plugin names.
+                Supports <code>github:owner/repo[@ref][/subpath]</code>, HTTPS <code>.tar.gz</code>/
+                <code>.tgz</code> archives, or marketplace plugin names.
               </div>
             </div>
           ) : null}
@@ -3863,13 +3868,11 @@ function PluginImportModal({
               canSubmit={canSubmit}
             />
           ) : null}
-
         </div>
 
-        <footer className="plugins-import-modal__foot">
+        <footer data-dialog-part="footer" className="plugins-import-modal__foot">
           <p>
-            Imported plugins are user plugins and are stored separately from
-            bundled official plugins.
+            Imported plugins are user plugins and are stored separately from bundled official plugins.
           </p>
           <button
             type="button"

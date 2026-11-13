@@ -1,0 +1,18 @@
+/* OverlayScrollbars owns these markers. Hidden tab-strip and editor
+   scrollbars retain their existing component policy. */
+[data-overlay-scrollbars] {
+  scrollbar-width: none !important;
+  scrollbar-gutter: auto !important;
+}
+
+[data-overlay-scrollbars]::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+*::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}

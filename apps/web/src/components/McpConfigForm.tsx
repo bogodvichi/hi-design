@@ -1,5 +1,6 @@
 import { useEffect, useState, type MutableRefObject } from 'react';
 import { Icon } from './Icon';
+import { DefaultLogoPicker } from './DefaultLogoPicker';
 import { useI18n, useT } from '../i18n';
 import type { Dict } from '../i18n/types';
 import {
@@ -167,25 +168,11 @@ export function McpConfigForm({
       </fieldset>
 
       {showLogoPicker ? (
-        <fieldset className={styles.logoPicker}>
-          <legend className={styles.typePickerLegend}>
-            {locale.startsWith('zh') ? '默认 Logo' : 'Default logo'}
-          </legend>
-          <div className={styles.logoPickerGrid}>
-            {MCP_LOGO_KEYS.map((key) => (
-              <button
-                key={key}
-                type="button"
-                aria-label={locale.startsWith('zh') ? MCP_LOGO_LABELS[key].zh : MCP_LOGO_LABELS[key].en}
-                aria-pressed={logoKey === key}
-                className={logoKey === key ? `${styles.logoBtn} ${styles.logoBtnActive}` : styles.logoBtn}
-                onClick={() => setLogoKey(key)}
-              >
-                <McpLogo logoKey={key} size={36} />
-              </button>
-            ))}
-          </div>
-        </fieldset>
+        <DefaultLogoPicker
+          value={logoKey} onChange={setLogoKey} locale={locale}
+          options={MCP_LOGO_KEYS} labels={MCP_LOGO_LABELS}
+          renderLogo={(key) => <McpLogo logoKey={key} size={34} />}
+        />
       ) : null}
 
       <label className={styles.field}>

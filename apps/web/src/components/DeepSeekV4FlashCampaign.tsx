@@ -277,50 +277,52 @@ export function DeepSeekV4FlashCampaign({
       backdropClassName={styles.backdrop}
       data-testid="deepseek-v4-flash-campaign-dialog"
     >
-      <Button
-        variant="ghost"
-        size="icon"
-        className={styles.close}
-        aria-label={t('campaign.deepseekV4Flash.closeAria')}
-        onClick={closeModal}
-      >
-        <Icon name="close" size={17} strokeWidth={1.8} />
-      </Button>
-
-      <p className={styles.eyebrow}>{presentation.eyebrow}</p>
-      <h2 id={titleId} className={styles.title}>{t('campaign.deepseekV4Flash.headline')}</h2>
-      <p id={descriptionId} className={styles.lead}>{t('campaign.deepseekV4Flash.description')}</p>
-
-      <div className={styles.modelCard}>
-        <CampaignProviderMark
-          providerId={campaign.modelId}
-          label="DeepSeek"
-          fallback="DS"
-        />
-        <span className={styles.modelCopy}>
-          <strong>{t('campaign.deepseekV4Flash.benefit')}</strong>
-          <small>{presentation.status}</small>
-        </span>
-        <span className={paid ? styles.available : styles.locked}>
-          {paid
-            ? t('campaign.deepseekV4Flash.unlocked')
-            : t('campaign.deepseekV4Flash.locked')}
-        </span>
+      <div data-dialog-part="header">
+        <h2 data-dialog-part="title" id={titleId} className={styles.title}>
+          {t('campaign.deepseekV4Flash.headline')}
+        </h2>
+        <Button
+          data-dialog-part="close"
+          variant="ghost"
+          size="icon"
+          className={styles.close}
+          aria-label={t('campaign.deepseekV4Flash.closeAria')}
+          onClick={closeModal}
+        >
+          <Icon name="close" size={17} strokeWidth={1.8} />
+        </Button>
       </div>
-
-      <div className={styles.countdown} aria-label={t('campaign.deepseekV4Flash.countdownLabel')}>
-        <span className={styles.countdownLabel}>{t('campaign.deepseekV4Flash.countdownLabel')}</span>
-        <strong data-testid="deepseek-v4-flash-campaign-countdown">
-          {formatDeepSeekV4FlashCampaignCountdown(countdownNow, t)}
-        </strong>
-        <small>
-          {t('campaign.deepseekV4Flash.windowLabel')}
-          {' · '}
-          {t('campaign.deepseekV4Flash.weekFreeSuffix')}
-        </small>
+      <div data-dialog-part="body" className={styles.dialogBody}>
+        <p className={styles.eyebrow}>{presentation.eyebrow}</p>
+        <p id={descriptionId} className={styles.lead}>
+          {t('campaign.deepseekV4Flash.description')}
+        </p>
+        <div className={styles.modelCard}>
+          <CampaignProviderMark providerId={campaign.modelId} label="DeepSeek" fallback="DS" />
+          <span className={styles.modelCopy}>
+            <strong>{t('campaign.deepseekV4Flash.benefit')}</strong>
+            <small>{presentation.status}</small>
+          </span>
+          <span className={paid ? styles.available : styles.locked}>
+            {paid ? t('campaign.deepseekV4Flash.unlocked') : t('campaign.deepseekV4Flash.locked')}
+          </span>
+        </div>
+        <div className={styles.countdown} aria-label={t('campaign.deepseekV4Flash.countdownLabel')}>
+          <span className={styles.countdownLabel}>
+            {t('campaign.deepseekV4Flash.countdownLabel')}
+          </span>
+          <strong data-testid="deepseek-v4-flash-campaign-countdown">
+            {formatDeepSeekV4FlashCampaignCountdown(countdownNow, t)}
+          </strong>
+          <small>
+            {t('campaign.deepseekV4Flash.windowLabel')}
+            {' · '}
+            {t('campaign.deepseekV4Flash.weekFreeSuffix')}
+          </small>
+        </div>
+        <p className={styles.boundary}>{t('campaign.deepseekV4Flash.boundary')}</p>
       </div>
-      <p className={styles.boundary}>{t('campaign.deepseekV4Flash.boundary')}</p>
-      <div className={styles.actions}>
+      <div data-dialog-part="footer" className={styles.actions}>
         {paid ? (
           <Button variant="ghost" className={styles.laterAction} onClick={postponeModal}>
             {t('campaign.deepseekV4Flash.later')}

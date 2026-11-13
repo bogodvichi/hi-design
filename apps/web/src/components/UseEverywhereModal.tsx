@@ -87,7 +87,7 @@ export function UseEverywhereModal({
   }, []);
 
   return (
-    <motion.div
+    <motion.div data-dialog-backdrop=""
       className="use-everywhere-modal-backdrop"
       role="dialog"
       aria-modal="true"
@@ -102,23 +102,25 @@ export function UseEverywhereModal({
       exit="exit"
     >
       <motion.div
+        data-dialog-surface="standard"
         className="use-everywhere-modal"
         variants={modalContent}
         initial="hidden"
         animate="visible"
         exit="exit"
       >
-        <header className="use-everywhere-modal__head">
+        <header data-dialog-part="header" className="use-everywhere-modal__head">
           <div className="use-everywhere-modal__head-titles">
             <span className="use-everywhere-modal__kicker">{t('integrations.kicker')}</span>
-            <h2 className="use-everywhere-modal__title">
+            <h2 data-dialog-part="title" className="use-everywhere-modal__title">
               {t('useEverywhere.modalTitle')}
             </h2>
-            <p className="use-everywhere-modal__subtitle">
+            <p data-dialog-part="description" className="use-everywhere-modal__subtitle">
               {t('useEverywhere.modalSubtitle')}
             </p>
           </div>
           <button
+            data-dialog-part="close"
             ref={closeRef}
             type="button"
             className="use-everywhere-modal__close"
@@ -275,7 +277,7 @@ export function UseEverywhereGuidePanel({
         })}
       </nav>
 
-      <div className="use-everywhere-modal__body">
+      <div data-dialog-part="body" className="use-everywhere-modal__body">
         <SectionView
           section={activeSection}
           daemonUrl={daemonUrl}
@@ -285,14 +287,14 @@ export function UseEverywhereGuidePanel({
         />
       </div>
 
-      <footer className="use-everywhere-modal__foot">
+      <footer data-dialog-part="footer" className="use-everywhere-modal__foot">
         <div className="use-everywhere-modal__foot-info">
           <strong>{t('useEverywhere.footStrong')}</strong>{' '}
           <span>
             {t('useEverywhere.footBody')}
           </span>
         </div>
-        <div className="use-everywhere-modal__foot-actions">
+        <div data-dialog-part="actions" className="use-everywhere-modal__foot-actions">
           {onOpenSettings ? (
             <button
               type="button"

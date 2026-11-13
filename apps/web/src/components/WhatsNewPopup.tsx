@@ -168,13 +168,15 @@ export function WhatsNewPopup({ active }: { active: boolean }) {
       data-testid="whats-new-popup"
       onClose={dismiss}
     >
-      {card.imageUrl != null ? (
-        <img alt="" className={styles.cover} data-testid="whats-new-cover" src={card.imageUrl} />
-      ) : null}
-      <div className={styles.content}>
-        <h2 className={styles.title} id="whats-new-popup-title">
+      <div data-dialog-part="header">
+        <h2 data-dialog-part="title" className={styles.title} id="whats-new-popup-title">
           {t('whatsNew.updatedTitle', { version: appVersion })}
         </h2>
+      </div>
+      <div data-dialog-part="body" className={styles.dialogBody}>
+        {card.imageUrl != null ? (
+          <img alt="" className={styles.cover} data-testid="whats-new-cover" src={card.imageUrl} />
+        ) : null}
         <p className={styles.headline}>{card.headline}</p>
         <ul className={styles.notes}>
           {card.notes.map((note) => (
@@ -185,7 +187,7 @@ export function WhatsNewPopup({ active }: { active: boolean }) {
           ))}
         </ul>
       </div>
-      <div className={styles.footer}>
+      <div data-dialog-part="footer" className={styles.footer}>
         <Button className={styles.close} data-testid="whats-new-dismiss" onClick={dismiss}>
           {t('common.close')}
         </Button>

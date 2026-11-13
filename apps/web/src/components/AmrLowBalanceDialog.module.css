@@ -12,6 +12,13 @@
   gap: 0;
 }
 
+.dialogBody {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+}
+
 .closeButton {
   position: absolute;
   top: 10px;

@@ -35,16 +35,24 @@ export function PersonPicker({
   selected,
   onChange,
   placeholder,
+  ariaLabel,
   multiple = false,
   onDuplicate,
   excludeEmails = [],
+  compact = false,
+  selectionRows = 2,
 }: {
   selected: Person[];
   onChange: (p: Person[]) => void;
   placeholder?: string;
+  ariaLabel?: string;
   multiple?: boolean;
   onDuplicate?: () => void;
   excludeEmails?: string[];
+  /** Standard-height controls with a compact, persistent multi-selection area. */
+  compact?: boolean;
+  /** Initial selected-area height; extra tags still wrap and grow the area. */
+  selectionRows?: 1 | 2;
 }) {
   const t = useT();
   const [query, setQuery] = useState('');
@@ -172,7 +180,7 @@ export function PersonPicker({
   const emptyHint = multiple ? '选中的人员将显示在这里' : '选中的人员将显示在这里';
 
   return (
-    <div className={styles.acWrap} ref={wrapRef}>
+    <div className={`${styles.acWrap} ${compact ? styles.compact : ''} ${selectionRows === 1 ? styles.singleRow : ''}`} ref={wrapRef}>
       {!multiple && selected.length > 0 ? (
         <div className={styles.acInputTag}>
           <span className={styles.tagName}>{selected[0]!.name}</span>
@@ -191,6 +199,7 @@ export function PersonPicker({
             ref={inputRef}
             className={styles.acInput}
             placeholder={placeholderText}
+            aria-label={ariaLabel}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onFocus={() => results.length && setOpen(true)}

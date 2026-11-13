@@ -21,7 +21,15 @@
  * so the artwork reaches the dialog's rounded corners; .panel's overflow:
  * hidden clips it to match instead of duplicating the radius here. */
 .banner {
-  margin: -36px -24px 24px;
+  margin: 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.dialogBody {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
 }
 
 /* No object-fit crop — width:100% + height:auto keeps the source's native

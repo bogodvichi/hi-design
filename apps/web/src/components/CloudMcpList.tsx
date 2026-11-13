@@ -4,6 +4,8 @@ import { PageEmptyState } from './PageEmptyState';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
+  DialogHeader,
+  DialogBody,
   Dialog,
   DialogDescription,
   DialogFooter,
@@ -504,26 +506,30 @@ export function CloudMcpList({
       closeOnEscape
       ariaLabelledBy={titleId}
     >
-      <DialogTitle id={titleId}>
-        {confirmAction.type === 'unpublish'
-          ? t('squareScope.unpublishConfirmTitle' as any)
-          : mode === 'square'
-            ? t('squareScope.deleteConfirmTitle' as any)
-            : t('personalScope.cloudMcpDeleteConfirmTitle' as any)}
-      </DialogTitle>
-      <DialogDescription>
-        {confirmAction.type === 'unpublish'
-           ? (locale.startsWith('zh')
-             ? `取消发布后，「${confirmAction.item.label}」将从社区和我的发布中移除。${confirmAction.item.publicationSourceType === 'reference' || confirmAction.item.communitySourceResourceId ? '个人或团队中的源资源保留。' : confirmAction.item.publicationSourceType === 'local_import' ? '本地导入的社区资源将被移除。' : '历史资源的源记录将安全保留。'}如需重新发布请从源路径重新选择。`
-             : `Unpublishing removes "${confirmAction.item.label}" from Community and My Publications. Existing local connections remain. To publish again, choose the source again.`)
-          : mode === 'square'
-            ? t('squareScope.deleteConfirmDesc' as any, { title: confirmAction.item.label })
-            : mode === 'team'
-              ? (locale.startsWith('zh')
-                ? `确定删除团队 MCP「${confirmAction.item.label}」吗？团队成员已有的连接及项目引用可能受到影响。`
-                : `Delete team MCP "${confirmAction.item.label}"? Existing connections and project references may stop working.`)
-              : t('personalScope.cloudMcpDeleteConfirmDesc' as any)}
-      </DialogDescription>
+      <DialogHeader>
+        <DialogTitle id={titleId}>
+          {confirmAction.type === 'unpublish'
+            ? t('squareScope.unpublishConfirmTitle' as any)
+            : mode === 'square'
+              ? t('squareScope.deleteConfirmTitle' as any)
+              : t('personalScope.cloudMcpDeleteConfirmTitle' as any)}
+        </DialogTitle>
+      </DialogHeader>
+      <DialogBody>
+        <DialogDescription>
+          {confirmAction.type === 'unpublish'
+            ? locale.startsWith('zh')
+              ? `取消发布后，「${confirmAction.item.label}」将从社区和我的发布中移除。${confirmAction.item.publicationSourceType === 'reference' || confirmAction.item.communitySourceResourceId ? '个人或团队中的源资源保留。' : confirmAction.item.publicationSourceType === 'local_import' ? '本地导入的社区资源将被移除。' : '历史资源的源记录将安全保留。'}如需重新发布请从源路径重新选择。`
+              : `Unpublishing removes "${confirmAction.item.label}" from Community and My Publications. Existing local connections remain. To publish again, choose the source again.`
+            : mode === 'square'
+              ? t('squareScope.deleteConfirmDesc' as any, { title: confirmAction.item.label })
+              : mode === 'team'
+                ? locale.startsWith('zh')
+                  ? `确定删除团队 MCP「${confirmAction.item.label}」吗？团队成员已有的连接及项目引用可能受到影响。`
+                  : `Delete team MCP "${confirmAction.item.label}"? Existing connections and project references may stop working.`
+                : t('personalScope.cloudMcpDeleteConfirmDesc' as any)}
+        </DialogDescription>
+      </DialogBody>
       <DialogFooter className="row">
         <button
           type="button"

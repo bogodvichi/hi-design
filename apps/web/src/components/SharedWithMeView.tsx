@@ -9,7 +9,14 @@ import { ModuleBreadcrumb } from './ModuleBreadcrumb';
 // route — subfolder navigation within the shared space, with folder
 // cards and project lists identical to the team folder view.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Dialog, DialogDescription, DialogFooter, DialogTitle } from '@open-design/components';
+import {
+  DialogHeader,
+  DialogBody,
+  Dialog,
+  DialogDescription,
+  DialogFooter,
+  DialogTitle,
+} from '@open-design/components';
 import { navigate } from '../router';
 import type { SharedWithMeProject, WorkspaceDirectoryItem } from '@open-design/contracts';
 import type { ProjectTitleHint } from './EntryShell';
@@ -109,14 +116,18 @@ function RemoveSharedProjectDialog({
       closeOnBackdrop={!busy}
       ariaLabel={t('sharedSpace.removeFromSharedWithMeTitle')}
     >
-      <DialogTitle>{t('sharedSpace.removeFromSharedWithMeTitle')}</DialogTitle>
-      <DialogDescription>
-        {t('folderName' in target ? 'feedback.shareFolderImpact' : 'feedback.shareProjectImpact')}{' '}
-        {t('feedback.shareQuestionBefore')}{' '}
-        <strong>{'folderName' in target ? target.folderName : target.displayName}</strong>
-        {' '}{t('feedback.shareQuestionAfter')}
-      </DialogDescription>
-      {error ? <p role="alert">{error}</p> : null}
+      <DialogHeader>
+        <DialogTitle>{t('sharedSpace.removeFromSharedWithMeTitle')}</DialogTitle>
+      </DialogHeader>
+      <DialogBody>
+        <DialogDescription>
+          {t('folderName' in target ? 'feedback.shareFolderImpact' : 'feedback.shareProjectImpact')}{' '}
+          {t('feedback.shareQuestionBefore')}{' '}
+          <strong>{'folderName' in target ? target.folderName : target.displayName}</strong>{' '}
+          {t('feedback.shareQuestionAfter')}
+        </DialogDescription>
+        {error ? <p role="alert">{error}</p> : null}
+      </DialogBody>
       <DialogFooter className="row">
         <button type="button" onClick={onClose} disabled={busy}>
           {t('sharedSpace.shareDialogCancel')}

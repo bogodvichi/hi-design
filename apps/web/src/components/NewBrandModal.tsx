@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@open-design/components';
 import { useT } from '../i18n';
@@ -18,6 +18,7 @@ interface Props {
 
 export function NewBrandModal({ open, onClose, onCreated }: Props) {
   const t = useT();
+  const formId = useId();
   const { context: workspaceContext } = useWorkspaceContext();
   const { state, run, reset } = useBrandExtract();
   const [url, setUrl] = useState('');
@@ -83,7 +84,7 @@ export function NewBrandModal({ open, onClose, onCreated }: Props) {
   if (!open) return null;
 
   return createPortal(
-    <div
+    <div data-dialog-backdrop=""
       className={styles.backdrop}
       role="presentation"
       onMouseDown={(e) => {
@@ -91,63 +92,79 @@ export function NewBrandModal({ open, onClose, onCreated }: Props) {
       }}
     >
       <div
+        data-dialog-surface="standard"
         className={styles.modal}
         role="dialog"
         aria-modal="true"
         aria-label={t('newBrand.title')}
         data-testid="new-brand-modal"
       >
-        <header className={styles.head}>
-          <h2 className={styles.title}>{t('newBrand.title')}</h2>
-          <p className={styles.subtitle}>{t('newBrand.subtitle')}</p>
-        </header>
-
-        <form className={styles.form} onSubmit={handleSubmit}>
-          <label className={styles.field}>
-            <span className={styles.label}>{t('newBrand.urlLabel')}</span>
-            <input
-              ref={inputRef}
-              type="text"
-              inputMode="url"
-              autoComplete="url"
-              className={styles.input}
-              placeholder={t('newBrand.urlPlaceholder')}
-              value={url}
-              disabled={starting}
-              onChange={(e) => setUrl(e.target.value)}
-              data-testid="new-brand-url"
-            />
-          </label>
-
-          {failed ? (
-            <p className={styles.errorLine} role="alert">
-              {state.error ?? t('brand.failed')}
+        <header data-dialog-part="header">
+          <div>
+            <h2 data-dialog-part="title" className={styles.title}>
+              {t('newBrand.title')}
+            </h2>
+            <p data-dialog-part="description" className={styles.subtitle}>
+              {t('newBrand.subtitle')}
             </p>
-          ) : null}
-
-          <div className={styles.actions}>
-            <Button variant="ghost" onClick={handleClose} disabled={starting}>
-              {t('newBrand.cancel')}
-            </Button>
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={starting || url.trim().length === 0}
-              data-testid="new-brand-extract"
-            >
-              {starting ? t('brand.extracting') : t('newBrand.extract')}
-            </Button>
           </div>
-        </form>
-
-        <div className={styles.pickerWrap}>
-          <BrandReferencePicker
-            variant="compact"
-            fillHeight
-            busy={starting}
-            error={failed ? state.error ?? t('brand.failed') : null}
-            onPick={handlePick}
-          />
+          <button
+            data-dialog-part="close"
+            type="button"
+            onClick={handleClose}
+            disabled={starting}
+            aria-label={t('common.close')}
+          >
+            ×
+          </button>
+        </header>
+        <div data-dialog-part="body" className={styles.dialogBody}>
+          <form id={formId} className={styles.form} onSubmit={handleSubmit}>
+            <label data-dialog-field="" className={styles.field}>
+              <span className={styles.label}>{t('newBrand.urlLabel')}</span>
+              <input
+                data-dialog-control=""
+                ref={inputRef}
+                type="text"
+                inputMode="url"
+                autoComplete="url"
+                className={styles.input}
+                placeholder={t('newBrand.urlPlaceholder')}
+                value={url}
+                disabled={starting}
+                onChange={(e) => setUrl(e.target.value)}
+                data-testid="new-brand-url"
+              />
+            </label>
+            {failed ? (
+              <p className={styles.errorLine} role="alert">
+                {state.error ?? t('brand.failed')}
+              </p>
+            ) : null}
+          </form>
+          <div className={styles.pickerWrap}>
+            <BrandReferencePicker
+              variant="compact"
+              fillHeight
+              busy={starting}
+              error={failed ? (state.error ?? t('brand.failed')) : null}
+              onPick={handlePick}
+            />
+          </div>
+        </div>
+        <div data-dialog-part="footer" className={styles.actions}>
+          <Button variant="ghost" onClick={handleClose} disabled={starting}>
+            {t('newBrand.cancel')}
+          </Button>
+          <Button
+            type="submit"
+            form={formId}
+            variant="primary"
+            disabled={starting || url.trim().length === 0}
+            data-testid="new-brand-extract"
+          >
+            {starting ? t('brand.extracting') : t('newBrand.extract')}
+          </Button>
         </div>
       </div>
     </div>,

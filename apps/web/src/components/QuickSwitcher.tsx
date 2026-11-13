@@ -140,7 +140,7 @@ export function QuickSwitcher({
   const emptyLabel = hasQuery ? t('quickSwitcher.noMatches') : t('quickSwitcher.empty');
 
   return (
-    <motion.div
+    <motion.div data-dialog-backdrop=""
       className="qs-overlay"
       onMouseDown={onClose}
       role="dialog"
@@ -151,6 +151,7 @@ export function QuickSwitcher({
       exit="exit"
     >
       <motion.div
+        data-dialog-surface="standard"
         className="qs-palette"
         onMouseDown={(e) => e.stopPropagation()}
         variants={scaleIn}
@@ -158,17 +159,19 @@ export function QuickSwitcher({
         animate="visible"
         exit="exit"
       >
-        <input
-          ref={setInputRef}
-          className="qs-input"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={onKeyDown}
-          placeholder={t('quickSwitcher.placeholder')}
-          spellCheck={false}
-          aria-label={t('quickSwitcher.placeholder')}
-        />
-        <div className="qs-list" ref={listRef} role="listbox">
+        <div data-dialog-part="header">
+          <input
+            ref={setInputRef}
+            className="qs-input"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={onKeyDown}
+            placeholder={t('quickSwitcher.placeholder')}
+            spellCheck={false}
+            aria-label={t('quickSwitcher.placeholder')}
+          />
+        </div>
+        <div data-dialog-part="body" className="qs-list" ref={listRef} role="listbox">
           {matches.length === 0 ? (
             <div className="qs-empty">{emptyLabel}</div>
           ) : (
@@ -191,10 +194,17 @@ export function QuickSwitcher({
             ))
           )}
         </div>
-        <div className="qs-footer">
-          <span><kbd>↑</kbd><kbd>↓</kbd> {t('quickSwitcher.navigate')}</span>
-          <span><kbd>↵</kbd> {t('quickSwitcher.open')}</span>
-          <span><kbd>esc</kbd> {t('quickSwitcher.close')}</span>
+        <div data-dialog-part="footer" className="qs-footer">
+          <span>
+            <kbd>↑</kbd>
+            <kbd>↓</kbd> {t('quickSwitcher.navigate')}
+          </span>
+          <span>
+            <kbd>↵</kbd> {t('quickSwitcher.open')}
+          </span>
+          <span>
+            <kbd>esc</kbd> {t('quickSwitcher.close')}
+          </span>
         </div>
       </motion.div>
     </motion.div>

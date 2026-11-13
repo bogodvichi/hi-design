@@ -7,6 +7,14 @@ import { skillUploadErrorMessage } from '../utils/skill-upload-error';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import { createPortal } from 'react-dom';
+import {
+  Dialog,
+  DialogBody,
+  DialogFooter,
+  DialogHeader,
+  DialogToolbar,
+  FieldGroup,
+} from '@open-design/components';
 import { Icon, type IconName } from './Icon';
 import { useI18n, useT } from '../i18n';
 import type { Dict, Locale } from '../i18n/types';
@@ -19,6 +27,7 @@ import {
 } from '../state/projects';
 import { fetchProjectFiles } from '../providers/registry';
 import { McpConfigForm, type McpConfigSelection } from './McpConfigForm';
+import { DefaultLogoPicker as LogoPicker } from './DefaultLogoPicker';
 import {
   MCP_LOGO_KEYS,
   MCP_LOGO_LABELS,
@@ -431,25 +440,11 @@ function DefaultLogoPicker({
   locale: string;
 }) {
   return (
-    <fieldset className={styles.defaultLogoPicker}>
-      <legend className={styles.defaultLogoPickerLegend}>
-        {locale.startsWith('zh') ? '默认 Logo' : 'Default logo'}
-      </legend>
-      <div className={styles.defaultLogoGrid}>
-        {MCP_LOGO_KEYS.map((key) => (
-          <button
-            key={key}
-            type="button"
-            aria-label={locale.startsWith('zh') ? MCP_LOGO_LABELS[key].zh : MCP_LOGO_LABELS[key].en}
-            aria-pressed={value === key}
-            className={value === key ? `${styles.defaultLogoBtn} ${styles.defaultLogoBtnActive}` : styles.defaultLogoBtn}
-            onClick={() => onChange(key)}
-          >
-            <McpLogo logoKey={key} size={34} />
-          </button>
-        ))}
-      </div>
-    </fieldset>
+    <LogoPicker
+      value={value} onChange={onChange} locale={locale}
+      options={MCP_LOGO_KEYS} labels={MCP_LOGO_LABELS}
+      renderLogo={(key) => <McpLogo logoKey={key} size={34} />}
+    />
   );
 }
 
@@ -463,25 +458,11 @@ function SkillLogoPicker({
   locale: string;
 }) {
   return (
-    <fieldset className={styles.defaultLogoPicker}>
-      <legend className={styles.defaultLogoPickerLegend}>
-        {locale.startsWith('zh') ? '默认 Logo' : 'Default logo'}
-      </legend>
-      <div className={styles.defaultLogoGrid}>
-        {SKILL_LOGO_KEYS.map((key) => (
-          <button
-            key={key}
-            type="button"
-            aria-label={locale.startsWith('zh') ? SKILL_LOGO_LABELS[key].zh : SKILL_LOGO_LABELS[key].en}
-            aria-pressed={value === key}
-            className={value === key ? `${styles.defaultLogoBtn} ${styles.defaultLogoBtnActive}` : styles.defaultLogoBtn}
-            onClick={() => onChange(key)}
-          >
-            <SkillLogo logoKey={key} size={34} />
-          </button>
-        ))}
-      </div>
-    </fieldset>
+    <LogoPicker
+      value={value} onChange={onChange} locale={locale}
+      options={SKILL_LOGO_KEYS} labels={SKILL_LOGO_LABELS}
+      renderLogo={(key) => <SkillLogo logoKey={key} size={34} />}
+    />
   );
 }
 
@@ -497,8 +478,7 @@ function SkillCategoryPicker({
   disabled?: boolean;
 }) {
   return (
-    <fieldset className={styles.choicePicker}>
-      <legend className={styles.choicePickerLegend}>{skillCategorySelectLabel(locale)}</legend>
+    <FieldGroup label={skillCategorySelectLabel(locale)}>
       <div className={styles.skillCategoryOptions} role="radiogroup" aria-label={skillCategorySelectLabel(locale)}>
         {SKILL_CATEGORIES.map((item) => (
           <button
@@ -514,7 +494,7 @@ function SkillCategoryPicker({
           </button>
         ))}
       </div>
-    </fieldset>
+    </FieldGroup>
   );
 }
 
@@ -2143,6 +2123,7 @@ export function PublishDialog({ onClose, onPublish, initialCategory }: Props) {
   const [publishing, setPublishing] = useState(false);
 
   const dialogId = useId();
+  const bodyRef = useRef<HTMLDivElement>(null);
   const confirmRef = useRef<{ canConfirm: boolean; onConfirm: () => void }>({
     canConfirm: false,
     onConfirm: () => {},
@@ -2150,17 +2131,10 @@ export function PublishDialog({ onClose, onPublish, initialCategory }: Props) {
 
   // Reset canConfirm when switching tabs — the new tab's form will
   // re-establish it via the onCanConfirmChange callback.
-  useEffect(() => { setCanConfirm(false); }, [activeCategory]);
-
   useEffect(() => {
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key !== 'Escape') return;
-      event.preventDefault();
-      if (!publishing) onClose();
-    }
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, publishing]);
+    setCanConfirm(false);
+    if (bodyRef.current) bodyRef.current.scrollTop = 0;
+  }, [activeCategory]);
 
   const activeTab = CATEGORY_TABS.find((tab) => tab.id === activeCategory)!;
 
@@ -2186,103 +2160,129 @@ export function PublishDialog({ onClose, onPublish, initialCategory }: Props) {
   }
 
   const dialog = (
-    <div className={styles.backdrop} onClick={() => { if (!publishing) onClose(); }} role="presentation">
-      <section
-        className={styles.dialog}
-        role="dialog"
-        aria-modal="true"
-        aria-label={t('publishDialog.title')}
-        id={dialogId}
-        data-testid="publish-dialog"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <header className={styles.header}>
-          <div className={styles.headerText}>
-            <h2>{t('publishDialog.title')}</h2>
-          </div>
-          <button
-            type="button"
-            className={styles.closeBtn}
-            aria-label={t('common.cancel')}
-            onClick={onClose}
-            disabled={publishing}
-          >
-            <Icon name="close" size={18} />
-          </button>
-        </header>
-
-        <div className={styles.body}>
-          <fieldset className={styles.formFields} disabled={publishing}>
-          <div className={styles.categoryTabs} role="tablist" aria-label={t('publishDialog.categoryLabel')}>
-            {CATEGORY_TABS.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                aria-selected={activeCategory === tab.id}
-                className={activeCategory === tab.id ? `${styles.categoryTab} ${styles.categoryTabActive}` : styles.categoryTab}
-                onClick={() => setActiveCategory(tab.id)}
-              >
-                <Icon name={tab.icon} size={17} />
-                {t(tab.labelKey)}
-              </button>
-            ))}
-          </div>
-
-         {activeCategory === 'projects' ? (
-           <ProjectsTab
-             confirmRef={confirmRef}
-             onCanConfirmChange={setCanConfirm}
-             onPublish={(selection) => { void handlePublishSelection(selection); }}
-           />
-         ) : activeCategory === 'tool' ? (
-           <ToolTab
-             confirmRef={confirmRef}
-             onCanConfirmChange={setCanConfirm}
-             onPublish={(selection) => { void handlePublishSelection(selection); }}
-           />
-         ) : activeCategory === 'mcp' ? (
-           <McpTab
-             confirmRef={confirmRef}
-             onCanConfirmChange={setCanConfirm}
-             onPublish={(selection) => { void handlePublishSelection(selection); }}
-           />
-         ) : activeCategory === 'skill' ? (
-           <SkillTab
-             confirmRef={confirmRef}
-             onCanConfirmChange={setCanConfirm}
-             onPublish={(selection) => { void handlePublishSelection(selection); }}
-           />
-         ) : (
-           <div className={styles.placeholder}>
-             <span className={styles.placeholderIcon} aria-hidden>
-               <Icon name={activeTab.icon} size={32} />
-             </span>
-             <span className={styles.placeholderText}>{t('publishDialog.comingSoon')}</span>
-           </div>
-         )}
-          </fieldset>
+    <Dialog
+      layout="scrollable"
+      includeChromeClassName={false}
+      backdropClassName={styles.backdrop}
+      className={styles.dialog}
+      ariaLabel={t('publishDialog.title')}
+      id={dialogId}
+      data-testid="publish-dialog"
+      onClose={onClose}
+      closeOnBackdrop={!publishing}
+      closeOnEscape={!publishing}
+    >
+      <DialogHeader className={styles.header}>
+        <div className={styles.headerText}>
+          <h2 data-dialog-part="title">{t('publishDialog.title')}</h2>
         </div>
+        <button
+          data-dialog-part="close"
+          type="button"
+          className={styles.closeBtn}
+          aria-label={t('common.cancel')}
+          onClick={onClose}
+          disabled={publishing}
+        >
+          <Icon name="close" size={18} />
+        </button>
+      </DialogHeader>
 
-        <footer className={styles.footer}>
-          <button type="button" className={styles.cancelBtn} onClick={onClose} disabled={publishing}>
-            {t('common.cancel')}
-          </button>
+      <DialogToolbar
+        className={styles.categoryTabs}
+        role="tablist"
+        aria-label={t('publishDialog.categoryLabel')}
+      >
+        {CATEGORY_TABS.map((tab) => (
           <button
+            key={tab.id}
             type="button"
-            className={styles.confirmBtn}
-            disabled={
-              (activeCategory !== 'projects' && activeCategory !== 'tool' && activeCategory !== 'mcp' && activeCategory !== 'skill')
-              || !canConfirm
-              || publishing
+            role="tab"
+            aria-selected={activeCategory === tab.id}
+            disabled={publishing}
+            className={
+              activeCategory === tab.id
+                ? `${styles.categoryTab} ${styles.categoryTabActive}`
+                : styles.categoryTab
             }
-            onClick={handleConfirm}
+            onClick={() => setActiveCategory(tab.id)}
           >
-            {publishing ? (locale.startsWith('zh') ? '发布中…' : 'Publishing…') : t('publishDialog.confirm')}
+            <Icon name={tab.icon} size={17} />
+            {t(tab.labelKey)}
           </button>
-        </footer>
-      </section>
-    </div>
+        ))}
+      </DialogToolbar>
+
+      <DialogBody className={styles.body} ref={bodyRef}>
+        <fieldset className={styles.formFields} disabled={publishing}>
+          {activeCategory === 'projects' ? (
+            <ProjectsTab
+              confirmRef={confirmRef}
+              onCanConfirmChange={setCanConfirm}
+              onPublish={(selection) => {
+                void handlePublishSelection(selection);
+              }}
+            />
+          ) : activeCategory === 'tool' ? (
+            <ToolTab
+              confirmRef={confirmRef}
+              onCanConfirmChange={setCanConfirm}
+              onPublish={(selection) => {
+                void handlePublishSelection(selection);
+              }}
+            />
+          ) : activeCategory === 'mcp' ? (
+            <McpTab
+              confirmRef={confirmRef}
+              onCanConfirmChange={setCanConfirm}
+              onPublish={(selection) => {
+                void handlePublishSelection(selection);
+              }}
+            />
+          ) : activeCategory === 'skill' ? (
+            <SkillTab
+              confirmRef={confirmRef}
+              onCanConfirmChange={setCanConfirm}
+              onPublish={(selection) => {
+                void handlePublishSelection(selection);
+              }}
+            />
+          ) : (
+            <div className={styles.placeholder}>
+              <span className={styles.placeholderIcon} aria-hidden>
+                <Icon name={activeTab.icon} size={32} />
+              </span>
+              <span className={styles.placeholderText}>{t('publishDialog.comingSoon')}</span>
+            </div>
+          )}
+        </fieldset>
+      </DialogBody>
+
+      <DialogFooter className={styles.footer}>
+        <button type="button" className={styles.cancelBtn} onClick={onClose} disabled={publishing}>
+          {t('common.cancel')}
+        </button>
+        <button
+          type="button"
+          className={styles.confirmBtn}
+          disabled={
+            (activeCategory !== 'projects' &&
+              activeCategory !== 'tool' &&
+              activeCategory !== 'mcp' &&
+              activeCategory !== 'skill') ||
+            !canConfirm ||
+            publishing
+          }
+          onClick={handleConfirm}
+        >
+          {publishing
+            ? locale.startsWith('zh')
+              ? '发布中…'
+              : 'Publishing…'
+            : t('publishDialog.confirm')}
+        </button>
+      </DialogFooter>
+    </Dialog>
   );
 
   if (typeof document === 'undefined') return dialog;

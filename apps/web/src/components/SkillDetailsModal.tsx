@@ -84,10 +84,12 @@ export function SkillDetailsModal({ skillId, summary, onClose, onUse }: Props) {
       data-testid="skill-details-modal"
       data-skill-id={skillId}
     >
-      <header className="plugin-details-modal__head">
+      <header data-dialog-part="header" className="plugin-details-modal__head">
         <div className="plugin-details-modal__head-titles">
           <div className="plugin-details-modal__head-row">
-            <h2 className="plugin-details-modal__title">{title}</h2>
+            <h2 data-dialog-part="title" className="plugin-details-modal__title">
+              {title}
+            </h2>
           </div>
           <div className="plugin-details-modal__meta">
             <span>{skillId}</span>
@@ -98,6 +100,7 @@ export function SkillDetailsModal({ skillId, summary, onClose, onUse }: Props) {
         </div>
         <div className="plugin-details-modal__head-actions">
           <button
+            data-dialog-part="close"
             ref={closeRef}
             type="button"
             className="plugin-details-modal__close"
@@ -110,7 +113,7 @@ export function SkillDetailsModal({ skillId, summary, onClose, onUse }: Props) {
         </div>
       </header>
 
-      <div className="plugin-details-modal__body">
+      <div data-dialog-part="body" className="plugin-details-modal__body">
         {loadError ? (
           <section className="plugin-details-modal__section" role="alert">
             <div className="plugin-details-modal__section-head">
@@ -132,9 +135,7 @@ export function SkillDetailsModal({ skillId, summary, onClose, onUse }: Props) {
         ) : null}
         {loading && !skill ? (
           <section className="plugin-details-modal__section">
-            <p className="plugin-details-modal__section-hint">
-              {t('settings.libraryLoading')}
-            </p>
+            <p className="plugin-details-modal__section-hint">{t('settings.libraryLoading')}</p>
           </section>
         ) : null}
         {!loadError && description ? (
@@ -162,9 +163,7 @@ export function SkillDetailsModal({ skillId, summary, onClose, onUse }: Props) {
         {!loadError && examplePrompt ? (
           <section className="plugin-details-modal__section">
             <div className="plugin-details-modal__section-head">
-              <h3 className="plugin-details-modal__section-title">
-                Example prompt
-              </h3>
+              <h3 className="plugin-details-modal__section-title">Example prompt</h3>
             </div>
             <pre className="plugin-details-modal__query">{examplePrompt}</pre>
           </section>
@@ -174,19 +173,13 @@ export function SkillDetailsModal({ skillId, summary, onClose, onUse }: Props) {
             <div className="plugin-details-modal__section-head">
               <h3 className="plugin-details-modal__section-title">SKILL.md</h3>
             </div>
-            <pre className="plugin-details-modal__query skill-details-modal__body">
-              {detail.body}
-            </pre>
+            <pre className="plugin-details-modal__query skill-details-modal__body">{detail.body}</pre>
           </section>
         ) : null}
       </div>
 
-      <footer className="plugin-details-modal__foot">
-        <button
-          type="button"
-          className="plugin-details-modal__secondary"
-          onClick={onClose}
-        >
+      <footer data-dialog-part="footer" className="plugin-details-modal__foot">
+        <button type="button" className="plugin-details-modal__secondary" onClick={onClose}>
           {t('common.close')}
         </button>
         {onUse ? (

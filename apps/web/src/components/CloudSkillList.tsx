@@ -4,6 +4,8 @@ import { PageEmptyState } from './PageEmptyState';
 import { memo, useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
+  DialogHeader,
+  DialogBody,
   Button,
   Dialog,
   DialogDescription,
@@ -862,26 +864,30 @@ useEffect(() => {
       closeOnEscape
       ariaLabelledBy={titleId}
     >
-      <DialogTitle id={titleId}>
-        {confirmAction.type === 'unpublish'
-          ? t('squareScope.unpublishConfirmTitle' as any)
-          : mode === 'square'
-            ? t('squareScope.deleteConfirmTitle' as any)
-            : t('personalScope.cloudSkillDeleteConfirmTitle' as any)}
-      </DialogTitle>
-      <DialogDescription>
-        {confirmAction.type === 'unpublish'
-           ? (locale.startsWith('zh')
-             ? `取消发布后，「${confirmAction.item.title}」将从社区和我的发布中移除。${confirmAction.item.publicationSourceType === 'reference' ? '个人或团队中的源资源保留。' : confirmAction.item.publicationSourceType === 'local_import' ? '本地导入的社区资源将被移除。' : '历史资源的源记录将安全保留。'}如需重新发布请从源路径重新选择。`
-             : `Unpublishing removes "${confirmAction.item.title}" from Community and My Publications. The original source, if any, is preserved. To publish again, choose the source again.`)
-          : mode === 'square'
-            ? t('squareScope.deleteConfirmDesc' as any, { title: confirmAction.item.title })
-            : mode === 'team'
-              ? (locale.startsWith('zh')
-                ? `确定删除团队 Skill「${confirmAction.item.title}」吗？团队成员已有的连接及项目引用可能受到影响。`
-                : `Delete team Skill "${confirmAction.item.title}"? Existing connections and project references may stop working.`)
-              : t('personalScope.cloudSkillDeleteConfirmDesc' as any)}
-      </DialogDescription>
+      <DialogHeader>
+        <DialogTitle id={titleId}>
+          {confirmAction.type === 'unpublish'
+            ? t('squareScope.unpublishConfirmTitle' as any)
+            : mode === 'square'
+              ? t('squareScope.deleteConfirmTitle' as any)
+              : t('personalScope.cloudSkillDeleteConfirmTitle' as any)}
+        </DialogTitle>
+      </DialogHeader>
+      <DialogBody>
+        <DialogDescription>
+          {confirmAction.type === 'unpublish'
+            ? locale.startsWith('zh')
+              ? `取消发布后，「${confirmAction.item.title}」将从社区和我的发布中移除。${confirmAction.item.publicationSourceType === 'reference' ? '个人或团队中的源资源保留。' : confirmAction.item.publicationSourceType === 'local_import' ? '本地导入的社区资源将被移除。' : '历史资源的源记录将安全保留。'}如需重新发布请从源路径重新选择。`
+              : `Unpublishing removes "${confirmAction.item.title}" from Community and My Publications. The original source, if any, is preserved. To publish again, choose the source again.`
+            : mode === 'square'
+              ? t('squareScope.deleteConfirmDesc' as any, { title: confirmAction.item.title })
+              : mode === 'team'
+                ? locale.startsWith('zh')
+                  ? `确定删除团队 Skill「${confirmAction.item.title}」吗？团队成员已有的连接及项目引用可能受到影响。`
+                  : `Delete team Skill "${confirmAction.item.title}"? Existing connections and project references may stop working.`
+                : t('personalScope.cloudSkillDeleteConfirmDesc' as any)}
+        </DialogDescription>
+      </DialogBody>
       <DialogFooter className="row">
         <button
           type="button"

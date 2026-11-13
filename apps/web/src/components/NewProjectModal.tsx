@@ -129,7 +129,7 @@ function NewProjectModalBody({
   }
 
   return (
-    <motion.div
+    <motion.div data-dialog-backdrop=""
       className="new-project-modal-backdrop"
       role="dialog"
       aria-modal="true"
@@ -144,15 +144,19 @@ function NewProjectModalBody({
       exit="exit"
     >
       <motion.div
+        data-dialog-surface="standard"
         className="new-project-modal"
         variants={modalContent}
         initial="hidden"
         animate="visible"
         exit="exit"
       >
-        <header className="new-project-modal__head">
-          <h2 className="new-project-modal__title">{title}</h2>
+        <header data-dialog-part="header" className="new-project-modal__head">
+          <h2 data-dialog-part="title" className="new-project-modal__title">
+            {title}
+          </h2>
           <button
+            data-dialog-part="close"
             ref={closeRef}
             type="button"
             className="new-project-modal__close"
@@ -164,7 +168,7 @@ function NewProjectModalBody({
             <Icon name="close" size={14} />
           </button>
         </header>
-        <div className="new-project-modal__body">
+        <div data-dialog-part="body" className="new-project-modal__body">
           <NewProjectPanel
             skills={skills}
             {...(designTemplates ? { designTemplates } : {})}

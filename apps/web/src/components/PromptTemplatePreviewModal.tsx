@@ -80,7 +80,7 @@ export function PromptTemplatePreviewModal({ summary, onClose }: Props) {
 
   return (
     <>
-    <div
+    <div data-dialog-backdrop=""
       className="prompt-template-modal-backdrop"
       role="dialog"
       aria-modal="true"
@@ -88,13 +88,14 @@ export function PromptTemplatePreviewModal({ summary, onClose }: Props) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="prompt-template-modal">
-        <header className="prompt-template-modal-head">
+      <div data-dialog-surface="standard" className="prompt-template-modal">
+        <header data-dialog-part="header" className="prompt-template-modal-head">
           <div className="prompt-template-modal-titles">
-            <h2>{summary.title}</h2>
-            <p>{summary.summary}</p>
+            <h2 data-dialog-part="title">{summary.title}</h2>
+            <p data-dialog-part="description">{summary.summary}</p>
           </div>
           <button
+            data-dialog-part="close"
             type="button"
             className="ghost prompt-template-modal-close"
             onClick={onClose}
@@ -115,11 +116,9 @@ export function PromptTemplatePreviewModal({ summary, onClose }: Props) {
               {t('promptTemplates.modelHint', { model: summary.model })}
             </span>
           ) : null}
-          {summary.aspect ? (
-            <span className="prompt-template-model">{summary.aspect}</span>
-          ) : null}
+          {summary.aspect ? <span className="prompt-template-model">{summary.aspect}</span> : null}
         </div>
-        <div className="prompt-template-modal-body">
+        <div data-dialog-part="body" className="prompt-template-modal-body">
           {hasAsset ? (
             <div className="prompt-template-modal-asset">
               {summary.previewVideoUrl ? (
@@ -142,11 +141,7 @@ export function PromptTemplatePreviewModal({ summary, onClose }: Props) {
                   onClick={() => setLightboxOpen(true)}
                   aria-label={fullscreenLabel}
                 >
-                  <img
-                    src={summary.previewImageUrl}
-                    alt={summary.title}
-                    loading="lazy"
-                  />
+                  <img src={summary.previewImageUrl} alt={summary.title} loading="lazy" />
                 </button>
               ) : null}
               <button
@@ -166,40 +161,23 @@ export function PromptTemplatePreviewModal({ summary, onClose }: Props) {
               <span className="prompt-template-modal-prompt-label">
                 {t('promptTemplates.promptLabel')}
               </span>
-              <button
-                type="button"
-                className="ghost"
-                onClick={handleCopy}
-                disabled={!detail}
-              >
+              <button type="button" className="ghost" onClick={handleCopy} disabled={!detail}>
                 <Icon name="copy" size={14} />
-                {copied
-                  ? t('promptTemplates.copyDone')
-                  : t('promptTemplates.copyPrompt')}
+                {copied ? t('promptTemplates.copyDone') : t('promptTemplates.copyPrompt')}
               </button>
             </div>
             <pre className="prompt-template-modal-prompt-body">
-              {detail
-                ? detail.prompt
-                : error
-                  ? error
-                  : t('common.loading')}
+              {detail ? detail.prompt : error ? error : t('common.loading')}
             </pre>
           </div>
         </div>
-        <footer className="prompt-template-modal-foot">
+        <footer data-dialog-part="footer" className="prompt-template-modal-foot">
           <span>
             {t('promptTemplates.sourcePrefix')} {sourceLabel} ·{' '}
-            <span className="prompt-template-license">
-              {summary.source.license}
-            </span>
+            <span className="prompt-template-license">{summary.source.license}</span>
           </span>
           {summary.source.url ? (
-            <a
-              href={summary.source.url}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
+            <a href={summary.source.url} target="_blank" rel="noopener noreferrer">
               {t('promptTemplates.openSource')}
             </a>
           ) : null}

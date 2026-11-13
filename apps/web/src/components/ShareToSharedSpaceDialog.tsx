@@ -1,7 +1,14 @@
 import { notifyToast } from './toast-context';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Dialog, DialogFooter, DialogTitle } from '@open-design/components';
+import {
+  FieldGroup,
+  DialogHeader,
+  DialogBody,
+  Dialog,
+  DialogFooter,
+  DialogTitle,
+} from '@open-design/components';
 import { PersonPicker, type Person } from './PersonPicker';
 import { useT } from '../i18n';
 import { getStoredUserInfo } from '../auth/auth';
@@ -29,6 +36,7 @@ export function ShareToSharedSpaceDialog({
   onShared?: () => void;
 }) {
   const t = useT();
+  const titleId = useId();
   const [selected, setSelected] = useState<Person[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,6 +97,7 @@ export function ShareToSharedSpaceDialog({
   return createPortal(
     <Dialog
       as="form"
+      ariaLabelledBy={titleId}
       onClose={onClose}
       closeOnEscape
       onSubmit={(e) => {
@@ -96,35 +105,35 @@ export function ShareToSharedSpaceDialog({
         void handleSubmit();
       }}
     >
-      <DialogTitle>{t('sharedSpace.shareDialogTitle')}</DialogTitle>
-      <p className={styles.desc}>
-        {t('sharedSpace.shareDialogDesc')}
-      </p>
-      <div className={styles.project}>
-        <strong>{projectName}</strong>
-      </div>
-      <label className={styles.label}>
-        {t('sharedSpace.shareDialogRecipientLabel')}
-      </label>
-     <PersonPicker
-       selected={selected}
-       onChange={setSelected}
-       multiple
-       placeholder={t('sharedSpace.shareDialogRecipientPlaceholder')}
-       excludeEmails={excludeEmails}
-     />
-      {error ? (
-        <p className={styles.error} role="alert">{error}</p>
-      ) : null}
+      <DialogHeader>
+        <DialogTitle id={titleId}>{t('sharedSpace.shareDialogTitle')}</DialogTitle>
+      </DialogHeader>
+      <DialogBody>
+        <p className={styles.desc}>{t('sharedSpace.shareDialogDesc')}</p>
+        <div className={styles.project}>
+          <strong>{projectName}</strong>
+        </div>
+
+        <FieldGroup label={t('sharedSpace.shareDialogRecipientLabel')}>
+          <PersonPicker
+            selected={selected}
+            onChange={setSelected}
+            multiple
+            placeholder={t('sharedSpace.shareDialogRecipientPlaceholder')}
+            excludeEmails={excludeEmails}
+          />
+        </FieldGroup>
+        {error ? (
+          <p className={styles.error} role="alert">
+            {error}
+          </p>
+        ) : null}
+      </DialogBody>
       <DialogFooter className="row">
         <button type="button" onClick={onClose} disabled={submitting}>
           {t('sharedSpace.shareDialogCancel')}
         </button>
-        <button
-          type="submit"
-          className="primary"
-          disabled={selected.length === 0 || submitting}
-        >
+        <button type="submit" className="primary" disabled={selected.length === 0 || submitting}>
           {t('sharedSpace.shareDialogSubmit')}
         </button>
       </DialogFooter>

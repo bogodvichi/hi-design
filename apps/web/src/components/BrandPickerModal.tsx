@@ -58,7 +58,7 @@ export function BrandPickerModal({
   if (!open) return null;
 
   return createPortal(
-    <div
+    <div data-dialog-backdrop=""
       className={styles.backdrop}
       role="presentation"
       onMouseDown={(e) => {
@@ -66,18 +66,28 @@ export function BrandPickerModal({
       }}
     >
       <div
+        data-dialog-surface="standard"
         className={styles.modal}
         role="dialog"
         aria-modal="true"
         aria-label={title ?? 'Start from a brand'}
         data-testid="brand-picker-modal"
       >
-        <header className={styles.head}>
+        <header data-dialog-part="header" className={styles.head}>
           <div className={styles.headText}>
-            {title ? <h2 className={styles.title}>{title}</h2> : null}
-            {subtitle ? <p className={styles.subtitle}>{subtitle}</p> : null}
+            {title ? (
+              <h2 data-dialog-part="title" className={styles.title}>
+                {title}
+              </h2>
+            ) : null}
+            {subtitle ? (
+              <p data-dialog-part="description" className={styles.subtitle}>
+                {subtitle}
+              </p>
+            ) : null}
           </div>
           <button
+            data-dialog-part="close"
             type="button"
             className={styles.close}
             onClick={onClose}
@@ -87,7 +97,7 @@ export function BrandPickerModal({
             <Icon name="close" size={16} />
           </button>
         </header>
-        <div className={styles.pickerWrap} ref={scrollRef}>
+        <div data-dialog-part="body" className={styles.pickerWrap} ref={scrollRef}>
           <BrandReferencePicker
             variant="compact"
             onPick={handlePick}

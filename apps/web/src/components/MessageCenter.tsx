@@ -219,36 +219,90 @@ export function MessageCenter({
     {hideTrigger ? null : <button ref={triggerRef} type="button" className={`settings-icon-btn od-tooltip ${styles.trigger}`} onClick={() => setOpen(!open)} title={t('messageCenter.openAria')} data-tooltip={t('messageCenter.openAria')} data-tooltip-placement="bottom" aria-label={openLabel} aria-haspopup="dialog" aria-expanded={open} data-testid="message-center-trigger">
       <Icon name="bell" size={17} />{unreadCount > 0 ? <span className={styles.badge} aria-hidden>{unreadBadgeLabel(unreadCount)}</span> : null}
     </button>}
-    {open ? createPortal(<div className={styles.backdrop} data-testid="message-center-backdrop"><aside ref={panelRef} className={styles.panel} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} data-testid="message-center-dialog">
-      <header className={styles.header}><div className={styles.headerCopy}><h2 id={titleId}>{t('messageCenter.title')}</h2><p>{t('messageCenter.subtitle')}</p></div><Button size="icon" className={styles.close} onClick={closePanel} aria-label={t('messageCenter.close')}><Icon name="close" size={18} strokeWidth={2}/></Button></header>
-      <div className={styles.list} aria-live="polite">
-        {syncState === 'error' && messages.length > 0 ? (
-          <div className={styles.syncStatus} role="status">
-            <span>{t('settings.updateStatusFailed')}</span>
-            <button type="button" onClick={retrySync}>
-              {t('settings.updateRetry')}
-            </button>
-          </div>
-        ) : null}
-        {syncState === 'loading' && messages.length === 0 ? (
-          <div className={styles.empty} role="status">
-            <Icon name="spinner" size={20} className="icon-spin" />
-            <strong>{t('settings.updateStatusChecking')}</strong>
-          </div>
-        ) : syncState === 'error' && messages.length === 0 ? (
-          <div className={styles.empty}>
-            <Icon name="bell" size={20}/>
-            <div className={styles.emptyError} role="status">
-              <span>{t('settings.updateStatusFailed')}</span>
-              <button type="button" onClick={retrySync}>
-                {t('settings.updateRetry')}
-              </button>
-            </div>
-          </div>
-        ) : messages.length === 0 ? <div className={styles.empty}><Icon name="bell" size={20}/><strong>{t('messageCenter.emptyAllTitle')}</strong><p>{t('messageCenter.emptyBody')}</p></div> : messages.map((message) => <MessageItem key={message.id} locale={locale} message={message} onRead={markRead} onError={() => setSyncState('error')}/>)}
-      </div>
-      <footer className={styles.footer}><p>{t('messageCenter.desktopSettingsHint')}</p>{onOpenNotificationSettings ? <Button variant="ghost" onClick={() => { closePanel(); onOpenNotificationSettings(); }}>{t('messageCenter.desktopSettings')}</Button> : null}</footer>
-    </aside></div>, document.body) : null}
+    {open ? createPortal(<div data-dialog-backdrop="" className={styles.backdrop} data-testid="message-center-backdrop"><aside
+                                                                                                                          data-dialog-surface="workspace"
+                                                                                                                          ref={panelRef}
+                                                                                                                          className={styles.panel}
+                                                                                                                          role="dialog"
+                                                                                                                          aria-modal="true"
+                                                                                                                          aria-labelledby={titleId}
+                                                                                                                          tabIndex={-1}
+                                                                                                                          data-testid="message-center-dialog"
+                                                                                                                        >
+                                                                                                                          <header data-dialog-part="header" className={styles.header}>
+                                                                                                                            <div className={styles.headerCopy}>
+                                                                                                                              <h2 data-dialog-part="title" id={titleId}>
+                                                                                                                                {t('messageCenter.title')}
+                                                                                                                              </h2>
+                                                                                                                              <p data-dialog-part="description">{t('messageCenter.subtitle')}</p>
+                                                                                                                            </div>
+                                                                                                                            <Button
+                                                                                                                              data-dialog-part="close"
+                                                                                                                              size="icon"
+                                                                                                                              className={styles.close}
+                                                                                                                              onClick={closePanel}
+                                                                                                                              aria-label={t('messageCenter.close')}
+                                                                                                                            >
+                                                                                                                              <Icon name="close" size={18} strokeWidth={2} />
+                                                                                                                            </Button>
+                                                                                                                          </header>
+                                                                                                                          <div data-dialog-part="body" className={styles.list} aria-live="polite">
+                                                                                                                            {syncState === 'error' && messages.length > 0 ? (
+                                                                                                                              <div className={styles.syncStatus} role="status">
+                                                                                                                                <span>{t('settings.updateStatusFailed')}</span>
+                                                                                                                                <button type="button" onClick={retrySync}>
+                                                                                                                                  {t('settings.updateRetry')}
+                                                                                                                                </button>
+                                                                                                                              </div>
+                                                                                                                            ) : null}
+                                                                                                                            {syncState === 'loading' && messages.length === 0 ? (
+                                                                                                                              <div className={styles.empty} role="status">
+                                                                                                                                <Icon name="spinner" size={20} className="icon-spin" />
+                                                                                                                                <strong>{t('settings.updateStatusChecking')}</strong>
+                                                                                                                              </div>
+                                                                                                                            ) : syncState === 'error' && messages.length === 0 ? (
+                                                                                                                              <div className={styles.empty}>
+                                                                                                                                <Icon name="bell" size={20} />
+                                                                                                                                <div className={styles.emptyError} role="status">
+                                                                                                                                  <span>{t('settings.updateStatusFailed')}</span>
+                                                                                                                                  <button type="button" onClick={retrySync}>
+                                                                                                                                    {t('settings.updateRetry')}
+                                                                                                                                  </button>
+                                                                                                                                </div>
+                                                                                                                              </div>
+                                                                                                                            ) : messages.length === 0 ? (
+                                                                                                                              <div className={styles.empty}>
+                                                                                                                                <Icon name="bell" size={20} />
+                                                                                                                                <strong>{t('messageCenter.emptyAllTitle')}</strong>
+                                                                                                                                <p>{t('messageCenter.emptyBody')}</p>
+                                                                                                                              </div>
+                                                                                                                            ) : (
+                                                                                                                              messages.map((message) => (
+                                                                                                                                <MessageItem
+                                                                                                                                  key={message.id}
+                                                                                                                                  locale={locale}
+                                                                                                                                  message={message}
+                                                                                                                                  onRead={markRead}
+                                                                                                                                  onError={() => setSyncState('error')}
+                                                                                                                                />
+                                                                                                                              ))
+                                                                                                                            )}
+                                                                                                                          </div>
+                                                                                                                          <footer data-dialog-part="footer" className={styles.footer}>
+                                                                                                                            <p>{t('messageCenter.desktopSettingsHint')}</p>
+                                                                                                                            {onOpenNotificationSettings ? (
+                                                                                                                              <Button
+                                                                                                                                variant="ghost"
+                                                                                                                                onClick={() => {
+                                                                                                                                  closePanel();
+                                                                                                                                  onOpenNotificationSettings();
+                                                                                                                                }}
+                                                                                                                              >
+                                                                                                                                {t('messageCenter.desktopSettings')}
+                                                                                                                              </Button>
+                                                                                                                            ) : null}
+                                                                                                                          </footer>
+                                                                                                                        </aside></div>, document.body) : null}
   </div>;
 }
 

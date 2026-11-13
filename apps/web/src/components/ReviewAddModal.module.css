@@ -1,9 +1,8 @@
 ﻿/* ReviewAddModal — 发起评审 Modal 自包含样式。
  *
- * 复用 ReviewListModal 的画框结构与全局 token / 关键帧。表单分两组上下排列：
- * 第一组（评审类型 / 项目 / 评审名称 / 预计结束日期 / 评审备注），
- * 第二组（评审子类型 / 评审稿 / 评审组长 / 作者 / 核心评委 / 团队评委 / 抄送）。
- * 每组内项从左到右自动换行，每项占容器一半宽。z-index 高于 ReviewListModal（1700）以叠加。 */
+ * 复用 ReviewListModal 的画框结构与全局 token / 关键帧。
+ * 发起评审左侧为评审信息、稿件和备注，右侧为作者、评委和抄送；窄屏按列顺序堆叠。
+ * ReviewEditModal 复用基础样式，保留其既有分组。 */
 
 .backdrop {
   position: fixed;
@@ -35,6 +34,190 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-lg);
   animation: pop-in 220ms cubic-bezier(0.21, 1.02, 0.73, 1);
+}
+
+/* Creation form: content-sized panel and aligned, compact two-column fields.
+ * ReviewEditModal shares this module and keeps its existing layout. */
+.createShell {
+  width: min(960px, 100%);
+  height: auto;
+}
+.formColumns {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 48px;
+  align-items: stretch;
+}
+.formColumns::before {
+  content: '';
+  position: absolute;
+  inset-block: 0;
+  left: 50%;
+  width: 1px;
+  transform: translateX(-50%);
+  background: var(--border);
+}
+.formColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+.createShell .item {
+  width: auto;
+}
+.createShell .itemControl {
+  gap: 6px;
+}
+.createShell .itemError:empty {
+  display: none;
+}
+.createShell.createShell :is(input, textarea)::placeholder {
+  color: var(--text-faint);
+  -webkit-text-fill-color: var(--text-faint);
+  opacity: 1;
+}
+.createShell .dtpTriggerPlaceholder,
+.createShell.createShell .emptySelect {
+  color: var(--text-faint);
+  -webkit-text-fill-color: var(--text-faint);
+}
+.createShell .emptySelect option:not([value='']) {
+  color: var(--text);
+}
+.createShell .modeLabel {
+  flex-wrap: wrap;
+}
+.modeLabel .itemHint {
+  margin-inline-start: 4px; /* Label flex gap adds the remaining 4px. */
+  font-weight: 400;
+}
+.createShell .input,
+.createShell .select,
+.createShell .acInput,
+.createShell .dtpTrigger,
+.createShell .subtypeTrigger {
+  height: 40px;
+  border-radius: 6px;
+  background: var(--bg-app);
+  font-size: 14px;
+}
+.createShell .subtypeTrigger {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+.createShell .subtypeTrigger:disabled {
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  opacity: 1;
+}
+.createShell .input:disabled,
+.createShell .select:disabled {
+  background: var(--bg-subtle);
+}
+.createShell .textarea {
+  min-height: 64px;
+}
+.createShell .remarks .textarea {
+  height: 64px;
+  min-height: 64px;
+}
+.createShell .acDropdown,
+.createShell .dtpPanel {
+  top: calc(100% + 4px);
+}
+
+/* Native radio semantics retain arrow-key navigation within each segment group. */
+.createShell .radioRow,
+.createShell .sourceToggle {
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: nowrap;
+  width: 100%;
+  height: 40px;
+  gap: 4px;
+  padding: 4px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--color-bg-subtle, var(--bg-subtle));
+}
+.createShell .radio,
+.createShell .sourceBtn {
+  position: relative;
+  display: inline-flex;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-secondary, var(--text-muted));
+  font-size: 13px;
+  font-weight: 500;
+}
+.createShell .radio > input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+}
+.createShell .radio > span,
+.createShell .sourceBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding-inline: 8px;
+  border-radius: 6px;
+  box-sizing: border-box;
+}
+.createShell .radio:has(input:checked) > span,
+.createShell .sourceBtnActive {
+  background: var(--color-surface, var(--bg-elevated));
+  color: var(--color-text, var(--text));
+  box-shadow: 0 1px 3px rgb(0 0 0 / 8%);
+}
+.createShell .radio:has(input:focus-visible) > span,
+.createShell .sourceBtn:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+}
+.createShell .radio:hover:has(input:not(:disabled)),
+.createShell .sourceBtn:hover:not(:disabled) {
+  color: var(--color-text, var(--text));
+}
+.createShell .radio:has(input:disabled),
+.createShell .sourceBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+@media (max-width: 720px) {
+  .formColumns {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+  .formColumns::before {
+    display: none;
+  }
+  .formColumn + .formColumn {
+    padding: 20px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+  .createShell .subtypeInline {
+    flex-basis: 110px !important;
+    width: 110px;
+  }
 }
 
 .head {
@@ -509,7 +692,7 @@
   justify-content: center;
   gap: 6px;
   padding: 12px;
-  border: 1px dashed var(--border);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-panel);
   color: var(--text-muted);

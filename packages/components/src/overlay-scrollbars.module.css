@@ -1,0 +1,36 @@
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+  pointer-events: none;
+}
+
+.track {
+  position: fixed;
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+}
+
+.thumb {
+  position: absolute;
+  border-radius: 999px;
+  background: rgb(0 0 0 / 40%);
+  pointer-events: none;
+  transition: width 140ms cubic-bezier(0.23, 1, 0.32, 1),
+    height 140ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.vertical { width: var(--scrollbar-size); }
+.vertical .thumb { right: 0; width: calc(var(--scrollbar-size) / 2); }
+.horizontal { height: var(--scrollbar-size); }
+.horizontal .thumb { bottom: 0; height: calc(var(--scrollbar-size) / 2); }
+.vertical[data-expanded] .thumb { width: var(--scrollbar-size); }
+.horizontal[data-expanded] .thumb { height: var(--scrollbar-size); }
+
+.track[data-expanded] .thumb { background: rgb(0 0 0 / 80%); }
+.track[data-dragging] .thumb { background: #000; }
+
+@media (forced-colors: active) {
+  .track .thumb { background: CanvasText !important; }
+}

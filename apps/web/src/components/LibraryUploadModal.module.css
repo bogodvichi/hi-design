@@ -60,15 +60,21 @@
 }
 
 /* --- dropzone ----------------------------------------------------------- */
+.uploadBody {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
 .dropzone {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  margin: 16px;
+  margin: 0;
   padding: 32px 20px;
-  border: 2px dashed var(--border);
+  border: 1px solid var(--border);
   border-radius: 14px;
   background: var(--bg-subtle);
   text-align: center;
@@ -111,9 +117,7 @@
 .list {
   list-style: none;
   margin: 0;
-  padding: 0 16px;
-  overflow-y: auto;
-  flex: 1 1 auto;
+  padding: 0;
   min-height: 0;
 }
 .item {

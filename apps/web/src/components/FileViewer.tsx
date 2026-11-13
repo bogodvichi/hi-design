@@ -4304,19 +4304,26 @@ function FileVersionManagerModal({
         ) : null}
       </aside>
       {versionImageExportVersion ? (
-        <div className="modal-backdrop viewer-modal-backdrop image-export-backdrop file-version-export-backdrop" role="presentation">
+        <div data-dialog-backdrop="" className="modal-backdrop viewer-modal-backdrop image-export-backdrop file-version-export-backdrop" role="presentation">
           <div
+            data-dialog-surface="standard"
             className="modal deploy-modal image-export-modal"
             role="dialog"
             aria-modal="true"
             aria-labelledby={versionImageExportTitleId}
           >
-            <div className="modal-head">
-              <div className="kicker">IMAGE</div>
-              <h2 id={versionImageExportTitleId}>{t('fileViewer.exportImage')}</h2>
-              <p className="subtitle">{t('fileViewer.exportImageModalSubtitle')}</p>
+            <div data-dialog-part="header" className="modal-head">
+              <div>
+                <div className="kicker">IMAGE</div>
+                <h2 data-dialog-part="title" id={versionImageExportTitleId}>
+                  {t('fileViewer.exportImage')}
+                </h2>
+                <p data-dialog-part="description" className="subtitle">
+                  {t('fileViewer.exportImageModalSubtitle')}
+                </p>
+              </div>
             </div>
-            <div className="deploy-form image-export-form">
+            <div data-dialog-part="body" className="deploy-form image-export-form">
               <fieldset className="image-export-format-field">
                 <legend>{t('fileViewer.exportImageFormatLabel')}</legend>
                 <div className="image-export-format-options">
@@ -4342,7 +4349,7 @@ function FileVersionManagerModal({
                 </div>
               </fieldset>
             </div>
-            <div className="modal-foot">
+            <div data-dialog-part="footer" className="modal-foot">
               <button
                 type="button"
                 className="ghost-link button-like"
@@ -16923,7 +16930,7 @@ async function openReviewListModal() {
     boardPreviewIndex !== null ? boardImagePreviews[boardPreviewIndex] ?? null : null;
   const boardImagePreviewModal = workspaceActive && boardPreviewImage
     ? createPortal(
-        <div
+        <div data-dialog-backdrop=""
           className="staged-preview-modal"
           role="dialog"
           aria-modal="true"
@@ -16932,10 +16939,13 @@ async function openReviewListModal() {
             if (e.target === e.currentTarget) setBoardPreviewIndex(null);
           }}
         >
-          <div className="staged-preview-card">
-            <div className="staged-preview-head">
-              <span title={boardPreviewImage.file.name}>{boardPreviewImage.file.name}</span>
+          <div data-dialog-surface="workspace" className="staged-preview-card">
+            <div data-dialog-part="header" className="staged-preview-head">
+              <span data-dialog-part="title" title={boardPreviewImage.file.name}>
+                {boardPreviewImage.file.name}
+              </span>
               <button
+                data-dialog-part="close"
                 type="button"
                 className="icon-only od-tooltip"
                 onClick={() => setBoardPreviewIndex(null)}
@@ -16954,7 +16964,7 @@ async function openReviewListModal() {
    : null;
  const replyImagePreviewModal = workspaceActive && replyPreviewImage
    ? createPortal(
-       <div
+       <div data-dialog-backdrop=""
          className="staged-preview-modal"
          role="dialog"
          aria-modal="true"
@@ -16963,10 +16973,13 @@ async function openReviewListModal() {
            if (e.target === e.currentTarget) setReplyPreviewImage(null);
          }}
        >
-         <div className="staged-preview-card">
-           <div className="staged-preview-head">
-             <span title={replyPreviewImage.name}>{replyPreviewImage.name}</span>
+         <div data-dialog-surface="workspace" className="staged-preview-card">
+           <div data-dialog-part="header" className="staged-preview-head">
+             <span data-dialog-part="title" title={replyPreviewImage.name}>
+               {replyPreviewImage.name}
+             </span>
              <button
+               data-dialog-part="close"
                type="button"
                className="icon-only od-tooltip"
                onClick={() => setReplyPreviewImage(null)}
@@ -18900,23 +18913,30 @@ async function openReviewListModal() {
         />
       ) : null}
       {workspaceActive && pptxExportModalOpen && typeof document !== 'undefined' ? createPortal(
-        <div className="modal-backdrop viewer-modal-backdrop image-export-backdrop" role="presentation">
+        <div data-dialog-backdrop="" className="modal-backdrop viewer-modal-backdrop image-export-backdrop" role="presentation">
           <div
+            data-dialog-surface="standard"
             className="modal deploy-modal image-export-modal"
             role="dialog"
             aria-modal="true"
             aria-labelledby={pptxExportTitleId}
           >
-            <div className="modal-head">
-              <div className="kicker">PPTX</div>
-              <h2 id={pptxExportTitleId}>{t('fileViewer.exportPptx')}</h2>
-              <p className="subtitle">{t('fileViewer.exportPptxModalSubtitle')}</p>
+            <div data-dialog-part="header" className="modal-head">
+              <div>
+                <div className="kicker">PPTX</div>
+                <h2 data-dialog-part="title" id={pptxExportTitleId}>
+                  {t('fileViewer.exportPptx')}
+                </h2>
+                <p data-dialog-part="description" className="subtitle">
+                  {t('fileViewer.exportPptxModalSubtitle')}
+                </p>
+              </div>
             </div>
-            <div className="deploy-form image-export-form">
+            <div data-dialog-part="body" className="deploy-form image-export-form">
               <fieldset className="image-export-format-field">
                 <legend>{t('fileViewer.exportImageFormatLabel')}</legend>
                 <div className="pptx-export-mode-options">
-                  {([
+                  {[
                     {
                       value: 'editable' as const,
                       title: t('fileViewer.exportPptxEditable'),
@@ -18929,7 +18949,7 @@ async function openReviewListModal() {
                       hint: t('fileViewer.exportPptxScreenshotHint'),
                       recommended: false,
                     },
-                  ]).map((opt) => (
+                  ].map((opt) => (
                     <label
                       key={opt.value}
                       className={`pptx-export-mode-option${pptxExportMode === opt.value ? ' active' : ''}`}
@@ -18944,7 +18964,9 @@ async function openReviewListModal() {
                       <span className="pptx-export-mode-head">
                         <span className="pptx-export-mode-title">{opt.title}</span>
                         {opt.recommended ? (
-                          <span className="pptx-export-mode-badge">{t('fileViewer.exportPptxRecommended')}</span>
+                          <span className="pptx-export-mode-badge">
+                            {t('fileViewer.exportPptxRecommended')}
+                          </span>
                         ) : null}
                       </span>
                       <span className="pptx-export-mode-desc">{opt.hint}</span>
@@ -18953,7 +18975,7 @@ async function openReviewListModal() {
                 </div>
               </fieldset>
             </div>
-            <div className="modal-foot">
+            <div data-dialog-part="footer" className="modal-foot">
               <button
                 type="button"
                 className="ghost-link button-like"
@@ -19003,22 +19025,29 @@ async function openReviewListModal() {
         document.body,
       ) : null}
       {workspaceActive && imageExportModalOpen && typeof document !== 'undefined' ? createPortal(
-        <div
+        <div data-dialog-backdrop=""
           className="modal-backdrop viewer-modal-backdrop image-export-backdrop"
           role="presentation"
         >
           <div
+            data-dialog-surface="standard"
             className="modal deploy-modal image-export-modal"
             role="dialog"
             aria-modal="true"
             aria-labelledby={imageExportTitleId}
           >
-            <div className="modal-head">
-              <div className="kicker">IMAGE</div>
-              <h2 id={imageExportTitleId}>{t('fileViewer.exportImage')}</h2>
-              <p className="subtitle">{t('fileViewer.exportImageModalSubtitle')}</p>
+            <div data-dialog-part="header" className="modal-head">
+              <div>
+                <div className="kicker">IMAGE</div>
+                <h2 data-dialog-part="title" id={imageExportTitleId}>
+                  {t('fileViewer.exportImage')}
+                </h2>
+                <p data-dialog-part="description" className="subtitle">
+                  {t('fileViewer.exportImageModalSubtitle')}
+                </p>
+              </div>
             </div>
-            <div className="deploy-form image-export-form">
+            <div data-dialog-part="body" className="deploy-form image-export-form">
               <fieldset className="image-export-format-field">
                 <legend>{t('fileViewer.exportImageFormatLabel')}</legend>
                 <div className="image-export-format-options">
@@ -19044,10 +19073,12 @@ async function openReviewListModal() {
                 </div>
               </fieldset>
               {imageExportError ? (
-                <p className="deploy-error" role="alert">{imageExportError}</p>
+                <p className="deploy-error" role="alert">
+                  {imageExportError}
+                </p>
               ) : null}
             </div>
-            <div className="modal-foot">
+            <div data-dialog-part="footer" className="modal-foot">
               <button
                 type="button"
                 className="ghost-link button-like"
@@ -19076,15 +19107,24 @@ async function openReviewListModal() {
         document.body,
       ) : null}
       {workspaceActive && templateModalOpen && typeof document !== 'undefined' ? createPortal(
-        <div className="modal-backdrop viewer-modal-backdrop" role="presentation">
-          <div className="modal deploy-modal" role="dialog" aria-modal="true">
-            <div className="modal-head">
-              <div className="kicker">TEMPLATE</div>
-              <h2>{t('fileViewer.saveAsTemplate')}</h2>
-              <p className="subtitle">{t('fileViewer.templateDescPrompt')}</p>
+        <div data-dialog-backdrop="" className="modal-backdrop viewer-modal-backdrop" role="presentation">
+          <div
+            data-dialog-surface="standard"
+            className="modal deploy-modal"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div data-dialog-part="header" className="modal-head">
+              <div>
+                <div className="kicker">TEMPLATE</div>
+                <h2 data-dialog-part="title">{t('fileViewer.saveAsTemplate')}</h2>
+                <p data-dialog-part="description" className="subtitle">
+                  {t('fileViewer.templateDescPrompt')}
+                </p>
+              </div>
             </div>
-            <div className="deploy-form">
-              <label className="field" htmlFor={templateNameId}>
+            <div data-dialog-part="body" className="deploy-form">
+              <label data-dialog-field="" className="field" htmlFor={templateNameId}>
                 <span className="field-label">{t('fileViewer.templateNamePrompt')}</span>
                 <input
                   id={templateNameId}
@@ -19095,7 +19135,7 @@ async function openReviewListModal() {
                   onChange={(e) => setTemplateName(e.target.value)}
                 />
               </label>
-              <label className="field" htmlFor={templateDescriptionId}>
+              <label data-dialog-field="" className="field" htmlFor={templateDescriptionId}>
                 <span className="field-label">{t('fileViewer.templateDescPrompt')}</span>
                 <textarea
                   id={templateDescriptionId}
@@ -19107,7 +19147,7 @@ async function openReviewListModal() {
               </label>
               {templateSaveError ? <p className="deploy-error">{templateSaveError}</p> : null}
             </div>
-            <div className="modal-foot">
+            <div data-dialog-part="footer" className="modal-foot">
               <button
                 type="button"
                 className="ghost-link button-like"
@@ -19138,76 +19178,81 @@ async function openReviewListModal() {
         document.body,
       ) : null}
       {workspaceActive && deployModalOpen && typeof document !== 'undefined' ? createPortal(
-        <div
+        <div data-dialog-backdrop=""
           className="modal-backdrop viewer-modal-backdrop deploy-flow-backdrop"
           role="presentation"
           onClick={(event) => {
             if (event.target === event.currentTarget) closeDeployModal();
           }}
         >
-          <div className="modal deploy-modal deploy-flow-modal" role="dialog" aria-modal="true">
-            <div className="deploy-flow-modal__scroll">
-              <div className="modal-head">
+          <div
+            data-dialog-surface="standard"
+            className="modal deploy-modal deploy-flow-modal"
+            role="dialog"
+            aria-modal="true"
+          >
+            <div data-dialog-part="header" className="modal-head">
+              <div>
                 <div className="kicker">{deployModalKicker}</div>
-                <h2>{deployModalTitle}</h2>
-                <p className="subtitle">{deployModalSubtitle}</p>
+                <h2 data-dialog-part="title">{deployModalTitle}</h2>
+                <p data-dialog-part="description" className="subtitle">
+                  {deployModalSubtitle}
+                </p>
               </div>
-              <div className="deploy-form">
-                <div className={`deploy-social-share${activeProjectSocialShare ? '' : ' is-locked'}${socialShareBlockedState ? ` is-${socialShareBlockedState}` : ''}`}>
-                  <div className="deploy-social-share__head">
-                    <div className="deploy-social-share__label">
-                      {t('socialShare.projectSection')}
-                    </div>
-                    {socialShareDisplayUrl ? (
-                      <a
-                        className="deploy-social-share__url"
-                        href={socialShareDisplayUrl}
-                        target="_blank"
-                        rel="noreferrer noopener"
-                      >
-                        {socialShareDisplayUrl}
-                      </a>
-                    ) : null}
-                  </div>
-                  {!activeProjectSocialShare || socialShareBlockedState ? (
-                    <p className="hint">{socialShareUnavailableMessage}</p>
+            </div>
+            <div data-dialog-part="body" className="deploy-form">
+              <div
+                className={`deploy-social-share${activeProjectSocialShare ? '' : ' is-locked'}${socialShareBlockedState ? ` is-${socialShareBlockedState}` : ''}`}
+              >
+                <div className="deploy-social-share__head">
+                  <div className="deploy-social-share__label">{t('socialShare.projectSection')}</div>
+                  {socialShareDisplayUrl ? (
+                    <a
+                      className="deploy-social-share__url"
+                      href={socialShareDisplayUrl}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                    >
+                      {socialShareDisplayUrl}
+                    </a>
                   ) : null}
-                  {activeProjectSocialShare ? (
-                    <SocialShareGrid
-                      share={activeProjectSocialShare}
-                      onAfterShare={closeDeployModal}
-                    />
-                  ) : null}
-                  {socialShareBlockedDeployment?.url ? (
-                    <div className="deploy-social-share__actions">
+                </div>
+                {!activeProjectSocialShare || socialShareBlockedState ? (
+                  <p className="hint">{socialShareUnavailableMessage}</p>
+                ) : null}
+                {activeProjectSocialShare ? (
+                  <SocialShareGrid share={activeProjectSocialShare} onAfterShare={closeDeployModal} />
+                ) : null}
+                {socialShareBlockedDeployment?.url ? (
+                  <div className="deploy-social-share__actions">
+                    <button
+                      type="button"
+                      className="viewer-action"
+                      onClick={() => {
+                        void copyDeployLink(socialShareBlockedDeployment.url);
+                      }}
+                    >
+                      <Icon name="copy" size={14} />
+                      <span>{copyDeployLabel(socialShareBlockedDeployment.url)}</span>
+                    </button>
+                    {activeDeployment?.id === socialShareBlockedDeployment.id ? (
                       <button
                         type="button"
                         className="viewer-action"
+                        disabled={deployPhase === 'preparing-link'}
                         onClick={() => {
-                          void copyDeployLink(socialShareBlockedDeployment.url);
+                          void retryDeploymentLink();
                         }}
                       >
-                        <Icon name="copy" size={14} />
-                        <span>{copyDeployLabel(socialShareBlockedDeployment.url)}</span>
+                        {deployPhase === 'preparing-link'
+                          ? t('fileViewer.preparingPublicLink')
+                          : t('fileViewer.retryLink')}
                       </button>
-                      {activeDeployment?.id === socialShareBlockedDeployment.id ? (
-                        <button
-                          type="button"
-                          className="viewer-action"
-                          disabled={deployPhase === 'preparing-link'}
-                          onClick={() => {
-                            void retryDeploymentLink();
-                          }}
-                        >
-                          {deployPhase === 'preparing-link'
-                            ? t('fileViewer.preparingPublicLink')
-                            : t('fileViewer.retryLink')}
-                        </button>
-                      ) : null}
-                    </div>
-                  ) : null}
-                </div>
-              <label className="deploy-provider-field">
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+              <label data-dialog-field="" className="deploy-provider-field">
                 <span className="deploy-field-title">{t('fileViewer.deployProviderLabel')}</span>
                 <select
                   value={deployProviderId}
@@ -19223,7 +19268,7 @@ async function openReviewListModal() {
                 </select>
               </label>
               {deployProviderId === CLOUDFLARE_PAGES_PROVIDER_ID ? (
-                <label className="deploy-target-field">
+                <label data-dialog-field="" className="deploy-target-field">
                   <span className="deploy-field-title">{t('fileViewer.deployTargetLabel')}</span>
                   <select
                     value={deployTarget}
@@ -19237,12 +19282,10 @@ async function openReviewListModal() {
                 </label>
               ) : null}
               <div className="field-label-row deploy-token-label-row">
-                <label htmlFor="deploy-token" className="deploy-field-title required">{t(deployProvider.tokenLabelKey)}</label>
-                <a
-                  href={deployProvider.tokenLink}
-                  target="_blank"
-                  rel="noreferrer noopener"
-                >
+                <label htmlFor="deploy-token" className="deploy-field-title required">
+                  {t(deployProvider.tokenLabelKey)}
+                </label>
+                <a href={deployProvider.tokenLink} target="_blank" rel="noreferrer noopener">
                   {t(deployProvider.tokenLinkKey)}
                 </a>
               </div>
@@ -19269,7 +19312,9 @@ async function openReviewListModal() {
               {deployConfig?.configured || deployProviderId === CLOUDFLARE_PAGES_PROVIDER_ID ? (
                 <div className="deploy-token-hints">
                   {deployConfig?.configured ? (
-                    <p className="hint">{t(deployProvider.tokenReuseHintKey, { provider: deployProviderLabel })}</p>
+                    <p className="hint">
+                      {t(deployProvider.tokenReuseHintKey, { provider: deployProviderLabel })}
+                    </p>
                   ) : null}
                   {deployProviderId === CLOUDFLARE_PAGES_PROVIDER_ID ? (
                     <p className="hint">{t('fileViewer.cloudflareApiTokenScopeHint')}</p>
@@ -19279,8 +19324,10 @@ async function openReviewListModal() {
               {deployProviderId === CLOUDFLARE_PAGES_PROVIDER_ID ? (
                 <>
                   <div className="deploy-field-grid single-field">
-                    <label>
-                      <span className="deploy-field-title required">{t('fileViewer.cloudflareAccountId')}</span>
+                    <label data-dialog-field="">
+                      <span className="deploy-field-title required">
+                        {t('fileViewer.cloudflareAccountId')}
+                      </span>
                       <input
                         value={cloudflareAccountId}
                         onChange={(e) => setCloudflareAccountId(e.target.value)}
@@ -19289,8 +19336,10 @@ async function openReviewListModal() {
                     </label>
                   </div>
                   <div className="deploy-field-grid cloudflare-domain-grid">
-                    <label>
-                      <span className="deploy-field-title">{t('fileViewer.cloudflareDomainPrefixLabel')}</span>
+                    <label data-dialog-field="">
+                      <span className="deploy-field-title">
+                        {t('fileViewer.cloudflareDomainPrefixLabel')}
+                      </span>
                       <input
                         value={cloudflareDomainPrefix}
                         placeholder={t('fileViewer.cloudflareDomainPrefixPlaceholder')}
@@ -19311,13 +19360,17 @@ async function openReviewListModal() {
                           }}
                         >
                           <RemixIcon name="refresh-line" size={13} />
-                          {cloudflareZonesLoading ? t('fileViewer.cloudflareZonesLoading') : t('fileViewer.cloudflareZonesRefresh')}
+                          {cloudflareZonesLoading
+                            ? t('fileViewer.cloudflareZonesLoading')
+                            : t('fileViewer.cloudflareZonesRefresh')}
                         </button>
                       </span>
                       <select
                         id="cloudflare-zone-select"
                         value={cloudflareZoneId}
-                        disabled={cloudflareZonesLoading || (!deployConfig?.configured && !cloudflareZones.length)}
+                        disabled={
+                          cloudflareZonesLoading || (!deployConfig?.configured && !cloudflareZones.length)
+                        }
                         onChange={(e) => setCloudflareZoneId(e.target.value)}
                       >
                         {cloudflareZones.length === 0 ? (
@@ -19338,7 +19391,8 @@ async function openReviewListModal() {
                   ) : deployConfig?.configured && cloudflareZones.length === 0 ? (
                     <p className="hint">{t('fileViewer.cloudflareZonesEmpty')}</p>
                   ) : null}
-                  {cloudflareDomainPrefix.trim() && !isValidCloudflareDomainPrefixInput(cloudflareDomainPrefix) ? (
+                  {cloudflareDomainPrefix.trim() &&
+                  !isValidCloudflareDomainPrefixInput(cloudflareDomainPrefix) ? (
                     <p className="deploy-error">{t('fileViewer.cloudflareDomainPrefixInvalid')}</p>
                   ) : cloudflareHostnamePreview ? (
                     <p className="hint">
@@ -19348,7 +19402,7 @@ async function openReviewListModal() {
                 </>
               ) : (
                 <div className="deploy-field-grid">
-                  <label>
+                  <label data-dialog-field="">
                     <span className="deploy-field-title">{t('fileViewer.vercelTeamId')}</span>
                     <input
                       value={teamId}
@@ -19356,7 +19410,7 @@ async function openReviewListModal() {
                       onChange={(e) => setTeamId(e.target.value)}
                     />
                   </label>
-                  <label>
+                  <label data-dialog-field="">
                     <span className="deploy-field-title">{t('fileViewer.vercelTeamSlug')}</span>
                     <input
                       value={teamSlug}
@@ -19367,10 +19421,10 @@ async function openReviewListModal() {
                 </div>
               )}
               {deployError ? <p className="deploy-error">{deployError}</p> : null}
-              {!deployError
-                && deployPhase === 'idle'
-                && deployResultCards.length > 0
-                && deployResultState(activeDeployment?.status) === 'ready' ? (
+              {!deployError &&
+              deployPhase === 'idle' &&
+              deployResultCards.length > 0 &&
+              deployResultState(activeDeployment?.status) === 'ready' ? (
                 <p className="hint" role="status">
                   {t('fileViewer.deployLinkReady')} · {t('fileViewer.deployResultLabel')}
                 </p>
@@ -19397,7 +19451,9 @@ async function openReviewListModal() {
                             <div className="deploy-result-link-main">
                               <div className="deploy-result-link-head">
                                 <span className="deploy-result-link-label">{card.label}</span>
-                                <span className={`deploy-result-link-state ${state}`}>{statusLabelFor(state)}</span>
+                                <span className={`deploy-result-link-state ${state}`}>
+                                  {statusLabelFor(state)}
+                                </span>
                               </div>
                               {card.message ? (
                                 <p className="deploy-result-link-message">{card.message}</p>
@@ -19454,14 +19510,9 @@ async function openReviewListModal() {
                   </div>
                 </div>
               ) : null}
-              </div>
             </div>
-            <div className="modal-foot">
-              <button
-                type="button"
-                className="ghost-link button-like"
-                onClick={closeDeployModal}
-              >
+            <div data-dialog-part="footer" className="modal-foot">
+              <button type="button" className="ghost-link button-like" onClick={closeDeployModal}>
                 {t('common.cancel')}
               </button>
               <button

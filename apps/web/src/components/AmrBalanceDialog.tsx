@@ -173,54 +173,62 @@ export function AmrBalanceDialog({
       className={styles.panel}
       data-testid="amr-balance-dialog"
     >
-      <button
-        type="button"
-        className={styles.closeButton}
-        onClick={onClose}
-        aria-label={t('common.close')}
-      >
-        <Icon name="close" size={14} />
-      </button>
-      <div className={styles.banner}>
-        <img
-          className={styles.bannerImage}
-          src="/upgrade/cloud-signin-aurora.jpg"
-          alt=""
-          width={1680}
-          height={720}
-          decoding="async"
-          draggable={false}
-        />
+      <div data-dialog-part="header">
+        <h2 data-dialog-part="title" className={styles.title}>
+          {signedOut ? t('chat.amrBalanceGate.signedOutTitle') : t('chat.amrBalanceGate.title')}
+        </h2>
+        <button
+          data-dialog-part="close"
+          type="button"
+          className={styles.closeButton}
+          onClick={onClose}
+          aria-label={t('common.close')}
+        >
+          <Icon name="close" size={14} />
+        </button>
       </div>
-      <h2 className={styles.title}>
-        {signedOut ? t('chat.amrBalanceGate.signedOutTitle') : t('chat.amrBalanceGate.title')}
-      </h2>
-      <p className={styles.message}>
-        {signedOut
-          ? t('chat.amrBalanceGate.signedOutMessage')
-          : // The insufficient variant always carries a definitive balance
-            // (that's what made the gate fire); the fallback is belt and
-            // suspenders for a malformed snapshot.
-            t('chat.amrBalanceGate.message', { balance: formattedBalance ?? '$0.00' })}
-      </p>
-      <div className={styles.benefitsCard}>
-        <span className={styles.benefitsTitle}>
-          {t('chat.amrBalanceGate.benefitsTitle')}
-        </span>
-        <ul className={styles.benefits}>
-          {benefits.map((benefit) => (
-            <li key={benefit} className={styles.benefit}>
-              <span className={styles.benefitIcon} aria-hidden>
-                <Icon name="check" size={14} />
-              </span>
-              {benefit}
-            </li>
-          ))}
-        </ul>
+      <div data-dialog-part="body" className={styles.dialogBody}>
+        <div className={styles.banner}>
+          <img
+            className={styles.bannerImage}
+            src="/upgrade/cloud-signin-aurora.jpg"
+            alt=""
+            width={1680}
+            height={720}
+            decoding="async"
+            draggable={false}
+          />
+        </div>
+        <p className={styles.message}>
+          {signedOut
+            ? t('chat.amrBalanceGate.signedOutMessage')
+            : // The insufficient variant always carries a definitive balance
+              // (that's what made the gate fire); the fallback is belt and
+              // suspenders for a malformed snapshot.
+              t('chat.amrBalanceGate.message', { balance: formattedBalance ?? '$0.00' })}
+        </p>
+        <div className={styles.benefitsCard}>
+          <span className={styles.benefitsTitle}>{t('chat.amrBalanceGate.benefitsTitle')}</span>
+          <ul className={styles.benefits}>
+            {benefits.map((benefit) => (
+              <li key={benefit} className={styles.benefit}>
+                <span className={styles.benefitIcon} aria-hidden>
+                  <Icon name="check" size={14} />
+                </span>
+                {benefit}
+              </li>
+            ))}
+          </ul>
+        </div>
+        {/* Dismissal first in DOM so it lands on the left of the row and focus
+              order matches the reading order; the CTA follows on the right. */}
+        {watchingWallet ? (
+          <p className={styles.watchingHint} data-testid="amr-balance-dialog-watching">
+            {t('chat.amrBalanceGate.watchingWallet')}
+          </p>
+        ) : null}
       </div>
-      {/* Dismissal first in DOM so it lands on the left of the row and focus
-          order matches the reading order; the CTA follows on the right. */}
-      <div className={styles.actions}>
+      <div data-dialog-part="footer" className={styles.actions}>
         <Button variant="ghost" className={styles.later} onClick={onClose}>
           {t('chat.amrBalanceGate.laterCta')}
         </Button>
@@ -250,11 +258,6 @@ export function AmrBalanceDialog({
           </Button>
         ) : null}
       </div>
-      {watchingWallet ? (
-        <p className={styles.watchingHint} data-testid="amr-balance-dialog-watching">
-          {t('chat.amrBalanceGate.watchingWallet')}
-        </p>
-      ) : null}
     </Dialog>
   );
   if (typeof document === 'undefined') return dialog;

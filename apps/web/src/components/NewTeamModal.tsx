@@ -133,7 +133,7 @@ function NewTeamModalBody({
   }
 
   return (
-    <motion.div
+    <motion.div data-dialog-backdrop=""
       className={styles.backdrop}
       variants={modalOverlay}
       initial="hidden"
@@ -144,6 +144,7 @@ function NewTeamModalBody({
       }}
     >
       <motion.div
+        data-dialog-surface="standard"
         className={styles.modal}
         variants={modalContent}
         initial="hidden"
@@ -153,14 +154,14 @@ function NewTeamModalBody({
         aria-modal="true"
         aria-labelledby="new-team-title"
       >
-        <header className={styles.head}>
+        <header data-dialog-part="header" className={styles.head}>
           <div className={styles.headLeft}>
-            <Icon name="users" size={18} />
-            <h2 id="new-team-title" className={styles.title}>
+            <h2 data-dialog-part="title" id="new-team-title" className={styles.title}>
               {t('newTeam.title')}
             </h2>
           </div>
           <button
+            data-dialog-part="close"
             type="button"
             className={styles.close}
             onClick={onClose}
@@ -171,53 +172,49 @@ function NewTeamModalBody({
           </button>
         </header>
 
-        <form className={styles.body} onSubmit={handleSubmit}>
-          <label className={styles.field}>
-            <span className={styles.label}>
-              {t('newTeam.nameLabel')}
-              <span className={styles.required}>*</span>
-            </span>
-            <input
-              ref={nameRef}
-              type="text"
-              className={styles.input}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder={t('newTeam.namePlaceholder')}
-              maxLength={64}
-              autoComplete="off"
-              disabled={submitting}
-            />
-          </label>
-
-          <label className={styles.field}>
-            <span className={styles.label}>{t('newTeam.descriptionLabel')}</span>
-            <textarea
-              className={styles.textarea}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder={t('newTeam.descriptionPlaceholder')}
-              maxLength={280}
-              rows={3}
-              disabled={submitting}
-            />
-          </label>
-
-          <div className={styles.field}>
-            <span className={styles.label}>{t('newTeam.inviteLabel')}</span>
-            <PersonPicker
-              selected={members}
-              onChange={setMembers}
-              multiple
-            />
-            <p className={styles.hint}>{t('newTeam.inviteHint')}</p>
+        <form data-dialog-part="form" onSubmit={handleSubmit}>
+          <div data-dialog-part="body" className={styles.body}>
+            <label data-dialog-field="" className={styles.field}>
+              <span className={styles.label}>
+                {t('newTeam.nameLabel')}
+                <span className={styles.required}>*</span>
+              </span>
+              <input
+                data-dialog-control=""
+                ref={nameRef}
+                type="text"
+                className={styles.input}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t('newTeam.namePlaceholder')}
+                maxLength={64}
+                autoComplete="off"
+                disabled={submitting}
+              />
+            </label>
+            <label data-dialog-field="" className={styles.field}>
+              <span className={styles.label}>{t('newTeam.descriptionLabel')}</span>
+              <textarea
+                data-dialog-control=""
+                className={styles.textarea}
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder={t('newTeam.descriptionPlaceholder')}
+                maxLength={280}
+                rows={3}
+                disabled={submitting}
+              />
+            </label>
+            <div data-dialog-field="" className={styles.field}>
+              <span className={styles.label}>{t('newTeam.inviteLabel')}</span>
+              <PersonPicker selected={members} onChange={setMembers} multiple />
+              <p className={styles.hint}>{t('newTeam.inviteHint')}</p>
+            </div>
+            {error ? <p className={styles.error}>{error}</p> : null}
           </div>
-
-          {error ? <p className={styles.error}>{error}</p> : null}
-
-          <div className={styles.foot}>
+          <div data-dialog-part="footer" className={styles.foot}>
             <span className={styles.ownerHint}>{t('newTeam.ownerHint')}</span>
-            <div className={styles.actions}>
+            <div data-dialog-part="actions" className={styles.actions}>
               <button type="button" className={styles.cancel} onClick={onClose} disabled={submitting}>
                 {t('newTeam.cancel')}
               </button>

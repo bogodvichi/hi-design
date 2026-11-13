@@ -99,133 +99,128 @@ export function PluginScenarioDetail({
       data-plugin-id={record.id}
       data-detail-variant="scenario"
     >
-        <header className="plugin-details-modal__head">
-          <div className="plugin-details-modal__head-titles">
-            <div className="plugin-details-modal__head-row">
-              <h2 className="plugin-details-modal__title">{localizedTitle}</h2>
-              <TrustBadge trust={record.trust} />
-            </div>
-            <div className="plugin-details-modal__meta">
-              <span>v{record.version}</span>
-              {od.taskKind ? <span>· {od.taskKind}</span> : null}
-              {od.kind ? <span>· {od.kind}</span> : null}
-              <span>· {record.sourceKind}</span>
-              {tags.length > 0 ? (
-                <span className="plugin-details-modal__meta-tags">
-                  {tags.slice(0, 4).map((tag) => (
-                    <span key={tag} className="plugin-details-modal__tag">
-                      {tag}
-                    </span>
-                  ))}
-                </span>
-              ) : null}
-            </div>
+      <header data-dialog-part="header" className="plugin-details-modal__head">
+        <div className="plugin-details-modal__head-titles">
+          <div className="plugin-details-modal__head-row">
+            <h2 data-dialog-part="title" className="plugin-details-modal__title">
+              {localizedTitle}
+            </h2>
+            <TrustBadge trust={record.trust} />
           </div>
-          <div className="plugin-details-modal__head-actions">
-            <PluginShareMenu record={record} variant="default" />
-            <button
-              ref={closeRef}
-              type="button"
-              className="plugin-details-modal__close"
-              onClick={onClose}
-              aria-label={localizePluginChrome(locale, 'closeDetails')}
-              title={localizePluginChrome(locale, 'closeEsc')}
-            >
-              <Icon name="close" size={18} />
-            </button>
+          <div className="plugin-details-modal__meta">
+            <span>v{record.version}</span>
+            {od.taskKind ? <span>· {od.taskKind}</span> : null}
+            {od.kind ? <span>· {od.kind}</span> : null}
+            <span>· {record.sourceKind}</span>
+            {tags.length > 0 ? (
+              <span className="plugin-details-modal__meta-tags">
+                {tags.slice(0, 4).map((tag) => (
+                  <span key={tag} className="plugin-details-modal__tag">
+                    {tag}
+                  </span>
+                ))}
+              </span>
+            ) : null}
           </div>
-        </header>
-
-        <div className="plugin-details-modal__body">
-          {examples.length > 0 ? (
-            <PluginPreviewHero
-              pluginId={record.id}
-              pluginTitle={localizedTitle}
-              examples={examples}
-              workspaceContext={workspaceContext}
-            />
-          ) : null}
-
-          <PluginMetaSections record={record} />
         </div>
-
-        <footer className="plugin-details-modal__foot">
+        <div className="plugin-details-modal__head-actions">
+          <PluginShareMenu record={record} variant="default" />
           <button
+            data-dialog-part="close"
+            ref={closeRef}
             type="button"
-            className="plugin-details-modal__secondary"
+            className="plugin-details-modal__close"
             onClick={onClose}
+            aria-label={localizePluginChrome(locale, 'closeDetails')}
+            title={localizePluginChrome(locale, 'closeEsc')}
           >
-            {t('common.close')}
+            <Icon name="close" size={18} />
           </button>
-          {hideUseAction ? null : useMenu ? (
-            <div className="plugin-details-modal__use-split" ref={useMenuRef}>
-              <button
-                type="button"
-                className="plugin-details-modal__primary plugin-details-modal__use-main"
-                onClick={() => onUse(record, pluginUsePrimaryAction(record, t).action)}
-                disabled={isApplying}
-                aria-busy={isApplying ? 'true' : undefined}
-                data-testid={`plugin-details-use-${record.id}`}
-              >
-                {isApplying
-                  ? localizePluginChrome(locale, 'applying')
-                  : pluginUsePrimaryAction(record, t).label}
-              </button>
-              <button
-                type="button"
-                className="plugin-details-modal__primary plugin-details-modal__use-caret"
-                onClick={() => setUseMenuOpen((v) => !v)}
-                disabled={isApplying}
-                aria-haspopup="menu"
-                aria-expanded={useMenuOpen}
-                aria-label={localizePluginChrome(locale, 'moreWaysTo', {
-                  label: pluginUsePrimaryAction(record, t).label,
-                })}
-                data-testid={`plugin-details-use-${record.id}-menu`}
-              >
-                <Icon name="chevron-down" size={14} />
-              </button>
-              {useMenuOpen ? (
-                <div className="plugin-details-modal__use-menu" role="menu">
-                  {useMenu.map((item, index) => (
-                    <button
-                      key={item.testId ?? `${item.label}-${index}`}
-                      type="button"
-                      role="menuitem"
-                      className="plugin-details-modal__use-menu-item"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => {
-                        setUseMenuOpen(false);
-                        item.onClick();
-                      }}
-                      {...(item.testId ? { 'data-testid': item.testId } : {})}
-                    >
-                      <span className="plugin-details-modal__use-menu-label">
-                        {item.label}
-                      </span>
-                      {item.description ? (
-                        <span className="plugin-details-modal__use-menu-desc">
-                          {item.description}
-                        </span>
-                      ) : null}
-                    </button>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          ) : (
+        </div>
+      </header>
+
+      <div data-dialog-part="body" className="plugin-details-modal__body">
+        {examples.length > 0 ? (
+          <PluginPreviewHero
+            pluginId={record.id}
+            pluginTitle={localizedTitle}
+            examples={examples}
+            workspaceContext={workspaceContext}
+          />
+        ) : null}
+
+        <PluginMetaSections record={record} />
+      </div>
+
+      <footer data-dialog-part="footer" className="plugin-details-modal__foot">
+        <button type="button" className="plugin-details-modal__secondary" onClick={onClose}>
+          {t('common.close')}
+        </button>
+        {hideUseAction ? null : useMenu ? (
+          <div className="plugin-details-modal__use-split" ref={useMenuRef}>
             <button
               type="button"
-              className="plugin-details-modal__primary"
-              onClick={() => onUse(record, 'use')}
+              className="plugin-details-modal__primary plugin-details-modal__use-main"
+              onClick={() => onUse(record, pluginUsePrimaryAction(record, t).action)}
               disabled={isApplying}
               aria-busy={isApplying ? 'true' : undefined}
               data-testid={`plugin-details-use-${record.id}`}
             >
-              {isApplying ? localizePluginChrome(locale, 'applying') : t('preview.usePlugin')}
+              {isApplying
+                ? localizePluginChrome(locale, 'applying')
+                : pluginUsePrimaryAction(record, t).label}
             </button>
-          )}
-        </footer>
+            <button
+              type="button"
+              className="plugin-details-modal__primary plugin-details-modal__use-caret"
+              onClick={() => setUseMenuOpen((v) => !v)}
+              disabled={isApplying}
+              aria-haspopup="menu"
+              aria-expanded={useMenuOpen}
+              aria-label={localizePluginChrome(locale, 'moreWaysTo', {
+                label: pluginUsePrimaryAction(record, t).label,
+              })}
+              data-testid={`plugin-details-use-${record.id}-menu`}
+            >
+              <Icon name="chevron-down" size={14} />
+            </button>
+            {useMenuOpen ? (
+              <div className="plugin-details-modal__use-menu" role="menu">
+                {useMenu.map((item, index) => (
+                  <button
+                    key={item.testId ?? `${item.label}-${index}`}
+                    type="button"
+                    role="menuitem"
+                    className="plugin-details-modal__use-menu-item"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setUseMenuOpen(false);
+                      item.onClick();
+                    }}
+                    {...(item.testId ? { 'data-testid': item.testId } : {})}
+                  >
+                    <span className="plugin-details-modal__use-menu-label">{item.label}</span>
+                    {item.description ? (
+                      <span className="plugin-details-modal__use-menu-desc">{item.description}</span>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="plugin-details-modal__primary"
+            onClick={() => onUse(record, 'use')}
+            disabled={isApplying}
+            aria-busy={isApplying ? 'true' : undefined}
+            data-testid={`plugin-details-use-${record.id}`}
+          >
+            {isApplying ? localizePluginChrome(locale, 'applying') : t('preview.usePlugin')}
+          </button>
+        )}
+      </footer>
     </Dialog>
   );
 }

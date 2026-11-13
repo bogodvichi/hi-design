@@ -333,21 +333,28 @@ export function ReviewManuscriptUpdateModal({
   if (!open || typeof document === 'undefined') return null;
 
   return createPortal(
-    <div
+    <div data-dialog-backdrop=""
       className={styles.backdrop}
       role="presentation"
       onClick={(e) => {
         if (e.target === e.currentTarget && !submitting && !exporting) onClose();
       }}
     >
-      <div className={styles.shell} role="dialog" aria-modal="true">
-        <div className={styles.head}>
+      <div data-dialog-surface="standard" className={styles.shell} role="dialog" aria-modal="true">
+        <div data-dialog-part="header" className={styles.head}>
           <div className={styles.headMain}>
             <div className={styles.kicker}>REVIEW · UEDRO</div>
-            <h2 className={styles.title}>更新评审稿</h2>
-            {reviewName ? <p className={styles.subtitle}>{reviewName}</p> : null}
+            <h2 data-dialog-part="title" className={styles.title}>
+              更新评审稿
+            </h2>
+            {reviewName ? (
+              <p data-dialog-part="description" className={styles.subtitle}>
+                {reviewName}
+              </p>
+            ) : null}
           </div>
           <button
+            data-dialog-part="close"
             type="button"
             className={styles.closeBtn}
             onClick={onClose}
@@ -358,10 +365,10 @@ export function ReviewManuscriptUpdateModal({
           </button>
         </div>
 
-        <div className={styles.body}>
+        <div data-dialog-part="body" className={styles.body}>
           {/* 评审稿：来源切换 + 上传区，拖拽 / 点击选文件。 */}
-          <div className={styles.item}>
-            <label className={styles.itemLabel}>
+          <div data-dialog-field="" className={styles.item}>
+            <label data-dialog-part="label" className={styles.itemLabel}>
               评审稿 <span className={styles.req}>*</span>
             </label>
             <div className={styles.itemControl}>
@@ -413,29 +420,54 @@ export function ReviewManuscriptUpdateModal({
           </div>
 
           {String(category) === HTML_REVIEW_TYPE ? (
-            <div className={styles.item}>
-              <label className={styles.itemLabel}>评审稿类型</label>
+            <div data-dialog-field="" className={styles.item}>
+              <label data-dialog-part="label" className={styles.itemLabel}>
+                评审稿类型
+              </label>
               <div className={styles.itemControl}>
                 <div className={styles.carrierRow}>
                   <label className={styles.carrierOption}>
-                    <input type="radio" name="html-review-update-carrier" checked={carrierType === 'web'}
-                      onChange={() => { setCarrierType('web'); setReUploadInfo(null); clearFieldError('upload'); }}
+                    <input
+                      type="radio"
+                      name="html-review-update-carrier"
+                      checked={carrierType === 'web'}
+                      onChange={() => {
+                        setCarrierType('web');
+                        setReUploadInfo(null);
+                        clearFieldError('upload');
+                      }}
                     />
                     Web
                   </label>
                   <label className={styles.carrierOption}>
-                    <input type="radio" name="html-review-update-carrier" checked={carrierType === 'h5'}
-                      onChange={() => { setCarrierType('h5'); setReUploadInfo(null); clearFieldError('upload'); }}
+                    <input
+                      type="radio"
+                      name="html-review-update-carrier"
+                      checked={carrierType === 'h5'}
+                      onChange={() => {
+                        setCarrierType('h5');
+                        setReUploadInfo(null);
+                        clearFieldError('upload');
+                      }}
                     />
                     H5
                   </label>
                 </div>
                 {carrierType === 'h5' ? (
-                  <select aria-label="H5尺寸" className={styles.carrierSelect} value={h5Size}
-                    onChange={(e) => { setH5Size(e.target.value); setReUploadInfo(null); clearFieldError('upload'); }}
+                  <select
+                    aria-label="H5尺寸"
+                    className={styles.carrierSelect}
+                    value={h5Size}
+                    onChange={(e) => {
+                      setH5Size(e.target.value);
+                      setReUploadInfo(null);
+                      clearFieldError('upload');
+                    }}
                   >
                     {HTML_REVIEW_H5_SIZES.map((size) => (
-                      <option key={size.value} value={size.value}>{size.label}</option>
+                      <option key={size.value} value={size.value}>
+                        {size.label}
+                      </option>
                     ))}
                   </select>
                 ) : null}
@@ -444,10 +476,13 @@ export function ReviewManuscriptUpdateModal({
           ) : null}
 
           {/* 备注：多行文本，可空。 */}
-          <div className={styles.item}>
-            <label className={styles.itemLabel}>备注</label>
+          <div data-dialog-field="" className={styles.item}>
+            <label data-dialog-part="label" className={styles.itemLabel}>
+              备注
+            </label>
             <div className={styles.itemControl}>
               <textarea
+                data-dialog-control=""
                 className={styles.textarea}
                 placeholder="请输入备注"
                 value={description}
@@ -457,9 +492,14 @@ export function ReviewManuscriptUpdateModal({
           </div>
         </div>
 
-        <div className={styles.foot}>
-          <div className={styles.footActions}>
-            <button type="button" className={styles.btn} onClick={onClose} disabled={submitting || exporting}>
+        <div data-dialog-part="footer" className={styles.foot}>
+          <div data-dialog-part="actions" className={styles.footActions}>
+            <button
+              type="button"
+              className={styles.btn}
+              onClick={onClose}
+              disabled={submitting || exporting}
+            >
               取消
             </button>
             <button

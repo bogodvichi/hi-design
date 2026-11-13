@@ -1,0 +1,49 @@
+/* App-owned integrations of the shared data-dialog-* chrome contract. */
+.entry-invite__content {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.8fr);
+}
+
+.entry-invite__content .entry-invite__form {
+  padding: 0;
+}
+
+.entry-invite__content .entry-invite__art {
+  min-height: 260px;
+  border: 0;
+  border-radius: 8px;
+}
+
+.entry-invite__content .entry-invite__teamsize {
+  margin: 0;
+}
+
+[data-dialog-surface] .settings-chrome {
+  position: static;
+  flex: 0 0 auto;
+}
+
+[data-dialog-surface] > [data-dialog-part='header'].modal-head > :first-child {
+  min-width: 0;
+}
+
+[data-dialog-surface] > [data-dialog-part='header'].ds-modal-header {
+  display: block;
+}
+
+[data-dialog-surface] > .use-everywhere-modal__tabs {
+  padding: 0;
+}
+
+[data-dialog-surface='fullscreen'] {
+  border-radius: 0;
+}
+
+/* These bodies are split workspaces; their descendants own scrolling. */
+[data-dialog-surface='workspace'] > [data-dialog-part='body'] {
+  min-height: 0;
+}
+
+@media (max-width: 720px) {
+  .entry-invite__content { grid-template-columns: minmax(0, 1fr); }
+}
