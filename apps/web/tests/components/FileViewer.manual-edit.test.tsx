@@ -79,7 +79,7 @@ describe('FileViewer manual edit regressions', () => {
         source: frame.contentWindow,
       }));
     });
-    // Hover only surfaces the affordance; it must not open any panel.
+    // Hover only surfaces the affordance; it must not select the target.
     await waitFor(() => {
       expect(screen.getByTestId('manual-edit-hover-open')).toBeTruthy();
     });
@@ -173,9 +173,8 @@ describe('FileViewer manual edit regressions', () => {
     await enterManualEditMode();
     const workspace = document.querySelector<HTMLElement>('.manual-edit-workspace')!;
     const shell = workspace.querySelector<HTMLElement>('.manual-edit-canvas > div > div')!;
-    expect(workspace.querySelector('.manual-edit-right')).toBeNull();
+    expect(workspace.querySelector('.manual-edit-right')).not.toBeNull();
     expect(shell.style.width).toBe('1200px');
-    expect(shell.style.transform).toBe('scale(1)');
 
     await selectManualEditTarget();
     const panel = workspace.querySelector<HTMLElement>('.manual-edit-right')!;
@@ -317,8 +316,8 @@ describe('FileViewer manual edit regressions', () => {
     expect(cancelManualEditPendingStyleSnapshot(otherTargetPending, 'cta', ['fontSize'])).toBe(otherTargetPending);
   });
 
-  it('opens edit mode with a clean canvas and no docked panel', async () => {
-    const source = '<!doctype html><html><body><main data-od-id="hero">Hero</main></body></html>';
+  it('opens the inspector immediately and selects the first visible target once targets arrive', async () => {
+    const source = '<!doctype html><html><body><h1 data-od-id="hero">Hero</h1><p data-od-id="other">Other</p></body></html>';
     vi.stubGlobal('fetch', vi.fn(async () =>
       new Response(source, { status: 200, headers: { 'Content-Type': 'text/html' } }),
     ));
@@ -330,15 +329,45 @@ describe('FileViewer manual edit regressions', () => {
     );
 
     await enterManualEditMode();
-    // No panel auto-pops; the canvas stays clean.
-    expect(document.querySelector('.manual-edit-right')).toBeNull();
+    const panel = document.querySelector('.manual-edit-right');
+    expect(panel).not.toBeNull();
+    const frame = await previewFrame();
+    const post = vi.spyOn(frame.contentWindow!, 'postMessage');
+    const first = heroTarget();
+    const other = { ...first, id: 'other', text: 'Other', fields: { text: 'Other' } };
+    const broadcastTargets = (targets: ManualEditTarget[]) => {
+      act(() => {
+        window.dispatchEvent(new MessageEvent('message', {
+          data: { type: 'od-edit-targets', targets },
+          source: frame.contentWindow,
+        }));
+      });
+    };
+
+    broadcastTargets([]);
+    broadcastTargets([{ ...first, id: 'hidden', isHidden: true }]);
+    expect(screen.queryByLabelText('Text')).toBeNull();
+    broadcastTargets([{ ...first, id: 'hidden', isHidden: true }, first, other]);
+    await waitFor(() => expect((screen.getByLabelText('Text') as HTMLTextAreaElement).value).toBe('Hero'));
+    expect(post).toHaveBeenCalledWith({ type: 'od-edit-selected-target', id: 'hero' }, '*');
+    expect(document.querySelector('.manual-edit-right')).toBe(panel);
     expect(screen.queryByText('PAGE')).toBeNull();
 
-    // Hovering surfaces only the click affordance, still no panel.
-    await hoverManualEditTarget();
-    expect(document.querySelector('.manual-edit-right')).toBeNull();
-    expect(screen.queryByText('PAGE')).toBeNull();
-    expect(screen.getByTestId('manual-edit-hover-open')).toBeTruthy();
+    await selectManualEditTarget(other);
+    broadcastTargets([first, other]);
+    expect((screen.getByLabelText('Text') as HTMLTextAreaElement).value).toBe('Other');
+    await clickManualEditBackground();
+    broadcastTargets([first, other]);
+    expect(screen.queryByLabelText('Text')).toBeNull();
+    expect(screen.getByText('PAGE')).toBeTruthy();
+    expect(document.querySelector('.manual-edit-right')).toBe(panel);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Close edit panel' }));
+    await waitFor(() => expect(document.querySelector('.manual-edit-right')).toBeNull());
+    await enterManualEditMode();
+    broadcastTargets([first, other]);
+    await waitFor(() => expect((screen.getByLabelText('Text') as HTMLTextAreaElement).value).toBe('Hero'));
+    expect(vi.mocked(fetch).mock.calls.some(([, init]) => init?.method === 'POST')).toBe(false);
   });
 
   it('opens the compact page-styles card when the empty canvas is clicked', async () => {
@@ -360,7 +389,7 @@ describe('FileViewer manual edit regressions', () => {
     expect(document.querySelector('.manual-edit-floating')).toBeNull();
   });
 
-  it('pins the inspector to a target only after clicking the hover affordance', async () => {
+  it('updates the open inspector after clicking the hover affordance', async () => {
     const source = '<!doctype html><html><body><main data-od-id="hero">Hero</main></body></html>';
     vi.stubGlobal('fetch', vi.fn(async () =>
       new Response(source, { status: 200, headers: { 'Content-Type': 'text/html' } }),
@@ -374,13 +403,14 @@ describe('FileViewer manual edit regressions', () => {
 
     await enterManualEditMode();
     await hoverManualEditTarget();
-    // No panel until the affordance is clicked.
-    expect(document.querySelector('.manual-edit-right')).toBeNull();
+    const panel = document.querySelector('.manual-edit-right');
+    expect(panel).not.toBeNull();
 
     fireEvent.click(screen.getByTestId('manual-edit-hover-open'));
 
     // Selected target inspector exposes the localized font-size control.
     await findStyleInput(FONT_SIZE_ROW);
+    expect(document.querySelector('.manual-edit-right')).toBe(panel);
     expect(screen.queryByText('PAGE')).toBeNull();
     // A pinned inspector makes the hover shortcut redundant, including over
     // neighboring elements while the selection stays in place.

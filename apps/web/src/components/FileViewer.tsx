@@ -9550,7 +9550,7 @@ const [reviewAddModalOpen, setReviewAddModalOpen] = useState(false);
   const [manualEditTargets, setManualEditTargets] = useState<ManualEditTarget[]>([]);
   const [selectedManualEditTarget, setSelectedManualEditTarget] = useState<ManualEditTarget | null>(null);
   const [manualEditHoverTarget, setManualEditHoverTarget] = useState<ManualEditTarget | null>(null);
-  const [manualEditPageStylesOpen, setManualEditPageStylesOpen] = useState(false);
+  const manualEditInitialSelectionPendingRef = useRef(false);
   const selectedManualEditTargetIdRef = useRef<string | null>(null);
   // Tracks the iframe's in-flight inline text edit. `finishManualEditTextSession`
   // posts the explicit finish and resolves only after the iframe acks AND the
@@ -12882,6 +12882,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     setManualEditViewportWidth(null);
     setManualEditTargets([]);
     setSelectedManualEditTarget(null);
+    manualEditInitialSelectionPendingRef.current = false;
     selectedManualEditTargetIdRef.current = null;
     setManualEditDraft(emptyManualEditDraft());
     setManualEditHistory([]);
@@ -13150,7 +13151,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       setManualEditTargets([]);
       setSelectedManualEditTarget(null);
       setManualEditHoverTarget(null);
-      setManualEditPageStylesOpen(false);
+      manualEditInitialSelectionPendingRef.current = false;
       selectedManualEditTargetIdRef.current = null;
       manualEditTextSessionIdRef.current = null;
       manualEditTextSessionStartSequenceRef.current = null;
@@ -13176,6 +13177,13 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       ) return;
       if (data.type === 'od-edit-targets' && Array.isArray(data.targets)) {
         setManualEditTargets(data.targets);
+        // Select once on entry; later broadcasts must preserve element/page
+        // selections made by the user, including while the preview is loading.
+        const firstTarget = data.targets.find((target) => !target.isHidden);
+        if (manualEditInitialSelectionPendingRef.current && firstTarget) {
+          void selectManualEditTarget(firstTarget);
+          return;
+        }
         // Target broadcasts can be briefly empty while the iframe/save path is
         // settling; keep the user's inspector selection unless a fresh copy is
         // available to update its metadata.
@@ -13210,7 +13218,6 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
         setManualEditHoverTarget(null);
         if (typeof source === 'string' && isManualEditFullHtmlDocument(source)) {
           void clearManualEditTargetSelection();
-          setManualEditPageStylesOpen(true);
         }
         return;
       }
@@ -13539,7 +13546,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
   }
 
   async function selectManualEditTarget(target: ManualEditTarget) {
-    setManualEditPageStylesOpen(false);
+    manualEditInitialSelectionPendingRef.current = false;
     const base = sourceRef.current ?? '';
     const nextDraft = manualEditDraftForTarget(target, base);
     const pendingContent = manualEditAutosave.contentFor(target.id);
@@ -13572,6 +13579,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
   }
 
   async function clearManualEditTargetSelection() {
+    manualEditInitialSelectionPendingRef.current = false;
     // If an inline edit is still live (e.g. clearing the selection from the
     // panel mid-edit), commit it first so it is not lost. Keep the selection
     // and the error if that commit fails.
@@ -15367,6 +15375,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
         setMode('preview');
         setManualEditViewportWidth(previewBodyRef.current?.clientWidth ?? null);
         setManualEditSrcDocActive(true);
+        manualEditInitialSelectionPendingRef.current = true;
         setManualEditMode(true);
         closeArtifactToolMenus();
       };
@@ -16607,12 +16616,8 @@ async function openReviewListModal() {
     showDeckThumbnailRail ? 'comment-preview-layer-with-deck-rail' : '',
     showDeckThumbnailRail && deckThumbnailsCollapsed ? 'comment-preview-layer-deck-rail-collapsed' : '',
   ].filter(Boolean).join(' ');
-  // The dock opens on an explicit element or page selection and stays mounted
-  // while the user moves between elements.
-  const manualEditPageCardActive =
-    manualEditMode && !selectedManualEditTarget && manualEditPageStylesOpen;
-  const manualEditPanelActive =
-    manualEditMode && (!!selectedManualEditTarget || manualEditPageCardActive);
+  // Open the dock on entry and keep it mounted while targets load or change.
+  const manualEditPanelActive = manualEditMode;
   // Mirror the comment dock: 8px outer inset, 12px separation, a 320px
   // (max 42%) inspector, and a 1px border on both sides of the canvas.
   // Account for all of this when fitting the frozen-width HTML preview,

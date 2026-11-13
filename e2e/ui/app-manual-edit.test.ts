@@ -40,6 +40,10 @@ test('[P0] manual edit inspector previews and persists page and selected element
 
   await page.getByTestId('manual-edit-mode-toggle').click();
   await expect(frame.locator('html[data-od-edit-mode]')).toHaveCount(1);
+  await expect(page.locator('.manual-edit-right')).toBeVisible();
+  await expect(frame.locator('main[data-od-edit-selected="true"]')).toHaveCount(1);
+  await expect(page.locator('.manual-edit-modal')).toContainText('Parameters');
+  await page.screenshot({ path: testInfo.outputPath('manual-edit-default-selection.png') });
   await expect.poll(() => previewCss(page, '[data-od-id="responsive-pair"]', 'flexDirection')).toBe('row');
 
   await frame.locator('body').evaluate(() => {
