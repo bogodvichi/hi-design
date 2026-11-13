@@ -38,6 +38,14 @@ describe('ComposerContextChips', () => {
     render(
       <div data-testid="contexts">
         <ComposerOutsideContextList
+          viewingFile={{
+            key: 'current',
+            name: 'current.html',
+            kind: 'file',
+            onRemove: remove,
+            removeLabel: 'Exclude current file',
+            testId: 'viewing-file',
+          }}
           attachments={[
             {
               key: 'later',
@@ -87,7 +95,11 @@ describe('ComposerContextChips', () => {
       'Plugin',
       'Connector',
       'Reference project',
+      'current.html',
     ]);
+    const viewingFile = screen.getByTestId('viewing-file');
+    expect(viewingFile.className).toBe(screen.getByText('first.pdf').closest('.staged-chip')?.className);
+    expect(viewingFile.querySelector('.staged-order')).toBeNull();
   });
 
   it('uses the selected label without adding a project-kind prefix', () => {

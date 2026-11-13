@@ -4092,7 +4092,6 @@ body.od-quick-switcher-open .chat-composer-fixed-layer .staged-preview-trigger:h
 body.od-quick-switcher-open .chat-composer-fixed-layer .staged-context-open,
 body.od-quick-switcher-open .chat-composer-fixed-layer .staged-comment button,
 body.od-quick-switcher-open .chat-composer-fixed-layer .staged-comment button:hover,
-body.od-quick-switcher-open .chat-composer-fixed-layer .composer-active-file,
 body.od-quick-switcher-open .chat-composer-fixed-layer .composer-shell .context-chip-strip__chip {
   background: transparent;
   border-color: transparent;

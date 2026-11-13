@@ -2,12 +2,34 @@ import { describe, expect, it } from 'vitest';
 
 import {
   mergeRunContextSelections,
+  normalizeRunContextSelection,
   normalizeWorkspaceContextItems,
   renderRunContextPrompt,
   renderSelectedMcpRunContextPrompt,
 } from '../../src/runtimes/chat-run-context.js';
 
 describe('chat run context helpers', () => {
+  it('preserves the latest viewing path when normalizing and merging run context', () => {
+    expect(normalizeRunContextSelection({ currentFile: ' brief.md ' }).currentFile).toBe('brief.md');
+    expect(normalizeRunContextSelection({ currentFile: 42 }).currentFile).toBeUndefined();
+    expect(mergeRunContextSelections(
+      { currentFile: 'old.md', mcpServerIds: ['docs'] },
+      { currentFile: 'brief.md' },
+    )).toEqual({ currentFile: 'brief.md', mcpServerIds: ['docs'] });
+  });
+
+  it.each([renderRunContextPrompt, renderSelectedMcpRunContextPrompt])(
+    'keeps viewing context separate from explicit references in each prompt mode',
+    (renderPrompt) => {
+      const prompt = renderPrompt({ currentFile: 'brief.md' }, {});
+      expect(prompt).toContain('### Currently viewed file');
+      expect(prompt).toContain('"brief.md"');
+      expect(prompt).toContain('not an explicit attachment or an instruction to edit');
+      expect(prompt).toContain('Read it only when relevant');
+      expect(prompt).not.toContain('1.');
+    },
+  );
+
   it('normalizes workspace context items and dedupes by kind/id', () => {
     expect(normalizeWorkspaceContextItems([
       { kind: 'browser', id: ' tab-1 ', label: ' Docs ', url: ' https://example.com/docs ' },

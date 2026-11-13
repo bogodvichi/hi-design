@@ -104,6 +104,7 @@ import {
 } from './composer/ComposerSurface';
 import {
   type ComposerContextChipItem,
+  type ComposerAttachmentChipItem,
   composerChipsOutsidePrompt,
   ComposerOutsideContextList,
   composerWorkspaceContextIcon,
@@ -556,10 +557,16 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
     const { locale, t } = useI18n();
     const analytics = useAnalytics();
     const { workspaceContext } = useProjectCollabContext();
-    const activeFileContext =
-      projectMetadata?.importedFrom === 'folder' && activeProjectFileName
-        ? activeProjectFileName
+    const viewedFilePath = activeWorkspaceContext?.kind === 'file'
+      ? activeWorkspaceContext.path ?? null
+      : projectMetadata?.importedFrom === 'folder' && !activeWorkspaceContext
+        ? activeProjectFileName ?? null
         : null;
+    const [currentFileDismissed, setCurrentFileDismissed] = useState(false);
+    useEffect(() => {
+      setCurrentFileDismissed(false);
+    }, [projectId, viewedFilePath]);
+    const activeFileContext = currentFileDismissed ? null : viewedFilePath;
     const activeFileDisplayName = activeFileContext ? lastPathSegment(activeFileContext) : null;
     const restoredTransientDraft = useRef(loadComposerTransientDraft(draftStorageKey)).current;
     const resourceOrder = useRef(createComposerResourceOrder(restoredTransientDraft?.resourceOrder)).current;
@@ -882,7 +889,8 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
         seen.add(key);
         out.push(item);
       };
-      push(visibleWorkspaceContext);
+      // Inferred file focus travels separately from explicit workspace selections.
+      if (visibleWorkspaceContext?.kind !== 'file') push(visibleWorkspaceContext);
       for (const item of stagedWorkspaceContexts) push(item);
       return out;
     }, [stagedWorkspaceContexts, visibleWorkspaceContext]);
@@ -1570,6 +1578,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
 
     function reset() {
       pendingEntryFromRef.current = null;
+      setCurrentFileDismissed(false);
       const linkedWorkspaceContexts = stagedWorkspaceContexts.filter((item) => (
         Boolean(item.absolutePath?.trim()) && Boolean(workspaceLinkedDirAdds[item.id])
       ));
@@ -1699,29 +1708,24 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
     ): boolean {
       setStreamingAnnotationSendPending(false);
       if (!prompt && attachments.length === 0 && nextCommentAttachments.length === 0 && !meta) return false;
-      const nextAttachments =
-        activeFileContext && !attachments.some((attachment) => attachment.path === activeFileContext)
-          ? [
-              {
-                path: activeFileContext,
-                name: activeFileDisplayName ?? activeFileContext,
-                kind: 'file' as const,
-              },
-              ...attachments,
-            ]
-          : attachments;
+      const currentFile = activeFileContext
+        && !attachments.some((attachment) => attachment.path === activeFileContext)
+        && !meta?.context?.workspaceItems?.some((item) => item.kind === 'file' && item.path === activeFileContext)
+          ? activeFileContext
+          : null;
       // Apply pending Next-step metadata if the caller didn't set its own
       // fields, then clear it so it only colors the immediate next send.
       const pendingEntryFrom = pendingEntryFromRef.current;
       pendingEntryFromRef.current = null;
       const effectiveMetaShape: ChatSendMeta = {
         ...(meta ?? {}),
+        ...(currentFile ? { context: { ...meta?.context, currentFile } } : {}),
         ...(pendingEntryFrom && !meta?.entryFrom ? { entryFrom: pendingEntryFrom } : {}),
       };
       const effectiveMeta =
         Object.keys(effectiveMetaShape).length > 0 ? effectiveMetaShape : undefined;
       return beginComposedSend(
-        () => onSend(prompt, nextAttachments, nextCommentAttachments, effectiveMeta),
+        () => onSend(prompt, attachments, nextCommentAttachments, effectiveMeta),
         pendingEntryFrom,
       );
     }
@@ -2576,6 +2580,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
       window.addEventListener(ANNOTATION_EVENT, onAnnotation);
       return () => window.removeEventListener(ANNOTATION_EVENT, onAnnotation);
     }, [
+      activeFileContext,
       commentAttachments,
       draft,
       onSend,
@@ -2624,6 +2629,7 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
       const meta = pendingEntryFrom ? { ...baseMeta, entryFrom: pendingEntryFrom } : baseMeta;
       sendComposedTurn(prompt, staged, currentCommentAttachments(), meta);
     }, [
+      activeFileContext,
       commentAttachments,
       draft,
       onSend,
@@ -3081,11 +3087,11 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
         if (streaming) return;
         setStreamingAnnotationSendPending(false);
         notifyCompletionFeedbackGesture();
-        beginComposedSend(
-          () => onSend(search.prompt, staged, nextCommentAttachments, {
+        sendComposedTurn(
+          search.prompt, staged, nextCommentAttachments, {
             ...contextMeta,
             research: { enabled: true, query: search.query },
-          }),
+          },
         );
         return;
       }
@@ -3220,12 +3226,27 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
           title: activeAppliedPlugin.pluginTitle ?? activeAppliedPlugin.pluginId,
         }
       : null;
-    const hasOutsideStagedContexts = resourceContextItems.length > 0
+    const viewingFile: ComposerAttachmentChipItem | undefined = activeFileContext
+      && !staged.some((attachment) => attachment.path === activeFileContext)
+      && !selectedWorkspaceContexts.some((item) => item.kind === 'file' && item.path === activeFileContext)
+      ? {
+          key: `viewing-${activeFileContext}`,
+          name: activeFileDisplayName ?? activeFileContext,
+          kind: 'file',
+          title: `${t('chat.activeFileViewingLabel')}: ${activeFileContext}`,
+          onRemove: () => setCurrentFileDismissed(true),
+          removeLabel: t('chat.activeFileDismiss'),
+          testId: 'composer-active-file',
+        }
+      : undefined;
+    const hasOutsideStagedContexts = Boolean(viewingFile)
+      || resourceContextItems.length > 0
       || outsideWorkspaceContexts.length > 0
       || outsideConnectors.length > 0
       || staged.length > 0
       || Boolean(outsidePluginChip);
     const hasOnlyCurrentWorkspaceOutside = resourceContextItems.length === 0
+      && !viewingFile
       && outsideWorkspaceContexts.length === 1
       && outsideWorkspaceContexts[0]?.id === visibleWorkspaceContext?.id
       && outsideConnectors.length === 0
@@ -3431,19 +3452,10 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
                 workspaceItems={outsideWorkspaceContexts}
                 connectors={outsideConnectors}
                 attachments={staged}
+                viewingFile={viewingFile}
                 pluginChip={outsidePluginChip}
               />
             </ComposerSurfaceOutside>
-          ) : null}
-          {activeFileContext ? (
-            <div
-              className="composer-active-file"
-              data-testid="composer-active-file"
-              title={activeFileContext}
-            >
-              <span className="composer-active-file__label">{t('chat.activeFileEditingLabel')}</span>
-              <span className="composer-active-file__name">{activeFileContext}</span>
-            </div>
           ) : null}
           {currentCommentAttachments().length > 0 ? (
             <StagedCommentAttachments
@@ -4084,6 +4096,7 @@ function StagedRunContexts({
   currentWorkspaceContextId,
   connectors,
   attachments,
+  viewingFile,
   pluginChip,
   projectId,
   resourceOrder,
@@ -4100,6 +4113,7 @@ function StagedRunContexts({
   currentWorkspaceContextId: string | null;
   connectors: ConnectorDetail[];
   attachments: ChatAttachment[];
+  viewingFile?: ComposerAttachmentChipItem;
   pluginChip?: { id: string; title: string } | null;
   projectId: string | null;
   resourceOrder: ReturnType<typeof createComposerResourceOrder>;
@@ -4173,6 +4187,7 @@ function StagedRunContexts({
       <ComposerOutsideContextList
         resources={resourceItems}
         attachments={attachmentItems}
+        viewingFile={viewingFile}
         plugins={pluginChip ? [{
           key: `plugin-${pluginChip.id}`,
           order: resourceOrder.get(`plugin-${pluginChip.id}`),

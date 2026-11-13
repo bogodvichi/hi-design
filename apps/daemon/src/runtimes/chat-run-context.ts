@@ -23,6 +23,7 @@ export interface WorkspaceContextItem {
 }
 
 export interface RunContextSelection {
+  currentFile?: string;
   skillIds?: string[];
   pluginIds?: string[];
   /** MCP servers the user explicitly selected for this turn. */
@@ -104,7 +105,9 @@ export function normalizeRunContextSelection(value: unknown): RunContextSelectio
     }
     return out;
   };
+  const currentFile = cleanString(value.currentFile);
   return {
+    ...(currentFile ? { currentFile } : {}),
     skillIds: stringList(value.skillIds),
     pluginIds: stringList(value.pluginIds),
     mcpServerIds: stringList(value.mcpServerIds),
@@ -115,7 +118,7 @@ export function normalizeRunContextSelection(value: unknown): RunContextSelectio
 }
 
 export function mergeRunContextSelections(...contexts: unknown[]): RunContextSelection {
-  const merged: Required<RunContextSelection> = {
+  const merged: Required<Omit<RunContextSelection, 'currentFile'>> = {
     skillIds: [],
     pluginIds: [],
     mcpServerIds: [],
@@ -131,8 +134,10 @@ export function mergeRunContextSelections(...contexts: unknown[]): RunContextSel
     'connectorIds',
   ] as const;
   const workspaceSeen = new Set<string>();
+  let currentFile: string | undefined;
   for (const context of contexts) {
     const normalized = normalizeRunContextSelection(context);
+    if (normalized.currentFile) currentFile = normalized.currentFile;
     for (const key of listKeys) {
       const seen = new Set(merged[key]);
       for (const id of normalized[key] ?? []) {
@@ -149,9 +154,10 @@ export function mergeRunContextSelections(...contexts: unknown[]): RunContextSel
       merged.workspaceItems.push(item);
     }
   }
-  return Object.fromEntries(
-    Object.entries(merged).filter(([, ids]) => ids.length > 0),
-  ) as RunContextSelection;
+  return {
+    ...Object.fromEntries(Object.entries(merged).filter(([, ids]) => ids.length > 0)),
+    ...(currentFile ? { currentFile } : {}),
+  } as RunContextSelection;
 }
 
 export function projectMetadataContextSelection(metadata: unknown): RunContextSelection {
@@ -253,12 +259,21 @@ function renderWorkspaceContextToolHints(items: WorkspaceContextItem[]) {
   return hints.join('\n');
 }
 
+function currentFileContextLines(currentFile: string | undefined): string[] {
+  if (!currentFile) return [];
+  return [
+    '### Currently viewed file',
+    `Project-relative path: ${JSON.stringify(currentFile)}`,
+    'This is the file open in the UI, not an explicit attachment or an instruction to edit. Use it to resolve references such as "this file" when relevant. Read it only when relevant to the user request; do not read it for unrelated conversation. It is not part of the numbered attachment list.',
+  ];
+}
+
 export function renderRunContextPrompt(selection: unknown, metadata: unknown) {
   const projectContext = projectMetadataContextSelection(metadata);
   const turnContext = normalizeRunContextSelection(selection);
   const context = mergeRunContextSelections(projectContext, turnContext);
   const metadataRecord = isRecord(metadata) ? metadata : {};
-  const lines: string[] = [];
+  const lines: string[] = currentFileContextLines(turnContext.currentFile);
   if (Array.isArray(context.workspaceItems) && context.workspaceItems.length > 0) {
     lines.push('### Active workspace context');
     lines.push(
@@ -331,12 +346,13 @@ function requiredMcpContextLines(
  * prompt, but a context-only MCP pick has no inline `@server` token for the
  * agent to see. Preserve just that explicit tool-use intent so choosing an MCP
  * from the composer "+" menu behaves the same as mentioning it inline.
+ * Also preserve the lightweight viewing location without making it an attachment.
  */
 export function renderSelectedMcpRunContextPrompt(selection: unknown, metadata: unknown) {
   const turnContext = normalizeRunContextSelection(selection);
   const selectedMcpIds = turnContext.mcpServerIds ?? [];
   const requiredMcpIds = turnContext.requiredMcpServerIds ?? [];
-  if (selectedMcpIds.length === 0 && requiredMcpIds.length === 0) return '';
+  if (selectedMcpIds.length === 0 && requiredMcpIds.length === 0 && !turnContext.currentFile) return '';
 
   const metadataRecord = isRecord(metadata) ? metadata : {};
   const requiredMcpSet = new Set(requiredMcpIds);
@@ -344,6 +360,7 @@ export function renderSelectedMcpRunContextPrompt(selection: unknown, metadata: 
 
   return [
     '## Selected run context',
+    ...currentFileContextLines(turnContext.currentFile),
     ...(preferredOnlyIds.length > 0
       ? selectedMcpContextLines(preferredOnlyIds, metadataRecord)
       : []),

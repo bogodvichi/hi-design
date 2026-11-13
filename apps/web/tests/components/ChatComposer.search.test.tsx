@@ -830,7 +830,7 @@ describe('ChatComposer /search command', () => {
     expect(composerText()).toContain('keep this draft');
   });
 
-  it('shows the active imported-folder file and sends it as edit context', async () => {
+  it('sends the active imported-folder file as lightweight context without an attachment', async () => {
     const onSend = vi.fn();
 
     render(
@@ -857,21 +857,135 @@ describe('ChatComposer /search command', () => {
     );
 
     const activeFileStrip = screen.getByTestId('composer-active-file');
-    expect(activeFileStrip.textContent).toContain('Editing');
-    expect(activeFileStrip.textContent).toContain('site/index.html');
+    expect(activeFileStrip.className).toContain('staged-chip');
+    expect(activeFileStrip.className).toContain('staged-file');
+    expect(activeFileStrip.textContent).toContain('index.html');
+    expect(activeFileStrip.querySelector('.staged-name')?.getAttribute('title')).toBe('Viewing: site/index.html');
+    expect(activeFileStrip.querySelector('.staged-icon')).not.toBeNull();
+    expect(activeFileStrip.querySelector('.staged-remove')).not.toBeNull();
+    expect(activeFileStrip.querySelector('.staged-order')).toBeNull();
+    expect(activeFileStrip.parentElement?.getAttribute('data-testid')).toBe('staged-outside-contexts');
     expect(screen.getByTestId('chat-composer').className).toContain('composer-active-file-mode');
 
-    expect(screen.getAllByText('Ask HiDesign to change index.html...').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Ask HiDesign about index.html...').length).toBeGreaterThan(0);
     await typeAndSettle('Make the hero clearer');
     fireEvent.click(screen.getByTestId('chat-send'));
 
     await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
     expect(onSend).toHaveBeenCalledWith(
       'Make the hero clearer',
-      [{ path: 'site/index.html', name: 'index.html', kind: 'file' }],
       [],
-      undefined,
+      [],
+      { context: { currentFile: 'site/index.html' } },
     );
+  });
+
+  it('omits a dismissed current file for one send and restores it for the next turn', async () => {
+    const onSend = vi.fn();
+    render(
+      <ChatComposer
+        projectId="project-1"
+        projectFiles={[]}
+        activeProjectFileName="site/index.html"
+        projectMetadata={{ kind: 'prototype', importedFrom: 'folder' }}
+        streaming={false}
+        onEnsureProject={async () => 'project-1'}
+        onSend={onSend}
+        onStop={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText('Exclude current file from this message'));
+    expect(screen.queryByTestId('composer-active-file')).toBeNull();
+    await typeAndSettle('What day is it?');
+    fireEvent.click(screen.getByTestId('chat-send'));
+    await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
+    expect(onSend.mock.calls[0]?.slice(1)).toEqual([[], [], undefined]);
+    await waitFor(() => expect(screen.getByTestId('composer-active-file')).toBeTruthy());
+
+    await typeAndSettle('Change the title');
+    fireEvent.click(screen.getByTestId('chat-send'));
+    await waitFor(() => expect(onSend).toHaveBeenCalledTimes(2));
+    expect(onSend.mock.calls[1]?.slice(1)).toEqual([
+      [], [], { context: { currentFile: 'site/index.html' } },
+    ]);
+  });
+
+  it('keeps a manually referenced current file only in the explicit attachment list', async () => {
+    const onSend = vi.fn();
+    render(
+      <ChatComposer
+        projectId="project-1"
+        projectFiles={[{
+          name: 'index.html', path: 'site/index.html', kind: 'html',
+          mime: 'text/html', size: 128, mtime: 1,
+        }]}
+        activeProjectFileName="site/index.html"
+        projectMetadata={{ kind: 'prototype', importedFrom: 'folder' }}
+        streaming={false}
+        onEnsureProject={async () => 'project-1'}
+        onSend={onSend}
+        onStop={vi.fn()}
+      />,
+    );
+
+    await typeAndSettle('@index');
+    fireEvent.click(await screen.findByText('site/index.html', { selector: '.mention-popover *' }));
+    await waitFor(() => expect(screen.getByLabelText('Remove index.html')).toBeTruthy());
+    fireEvent.click(screen.getByTestId('chat-send'));
+    await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
+    expect(onSend.mock.calls[0]?.[1]).toEqual([
+      { path: 'site/index.html', name: 'index.html', kind: 'file', order: 0 },
+    ]);
+    expect(onSend.mock.calls[0]?.[3]?.context?.currentFile).toBeUndefined();
+  });
+
+  it('treats an inferred workspace file as viewing context', async () => {
+    const onSend = vi.fn();
+    render(
+      <ChatComposer
+        projectId="project-1"
+        projectFiles={[]}
+        activeWorkspaceContext={{ id: 'file:brief.md', kind: 'file', label: 'brief.md', path: 'brief.md' }}
+        streaming={false}
+        onEnsureProject={async () => 'project-1'}
+        onSend={onSend}
+        onStop={vi.fn()}
+      />,
+    );
+
+    await typeAndSettle('Summarize this');
+    fireEvent.click(screen.getByTestId('chat-send'));
+    await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
+    expect(onSend.mock.calls[0]?.slice(1)).toEqual([
+      [], [], { context: { currentFile: 'brief.md' } },
+    ]);
+  });
+
+  it('restores viewing context after switching files without enabling an empty send', async () => {
+    const onSend = vi.fn();
+    const composer = (path: string) => (
+      <ChatComposer
+        projectId="project-1"
+        projectFiles={[]}
+        activeWorkspaceContext={{ id: `file:${path}`, kind: 'file', label: path, path }}
+        streaming={false}
+        onEnsureProject={async () => 'project-1'}
+        onSend={onSend}
+        onStop={vi.fn()}
+      />
+    );
+    const view = render(composer('first.md'));
+    expect((screen.getByTestId('chat-send') as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByLabelText('Exclude current file from this message'));
+    view.rerender(composer('second.md'));
+    expect(screen.getByTestId('composer-active-file').textContent).toContain('second.md');
+    await typeAndSettle('Summarize this');
+    fireEvent.click(screen.getByTestId('chat-send'));
+    await waitFor(() => expect(onSend).toHaveBeenCalledTimes(1));
+    expect(onSend.mock.calls[0]?.slice(1)).toEqual([
+      [], [], { context: { currentFile: 'second.md' } },
+    ]);
   });
 });
 

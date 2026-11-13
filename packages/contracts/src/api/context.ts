@@ -1,4 +1,6 @@
 export interface RunContextSelection {
+  /** Project-relative viewing location only; not an explicit attachment or edit request. */
+  currentFile?: string;
   skillIds?: string[];
   pluginIds?: string[];
   mcpServerIds?: string[];

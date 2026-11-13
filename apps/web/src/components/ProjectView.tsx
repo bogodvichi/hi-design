@@ -1387,6 +1387,7 @@ function isStoredRunContextSelection(value: unknown): value is RunContextSelecti
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
   const record = value as Record<string, unknown>;
   return (
+    (record.currentFile === undefined || typeof record.currentFile === 'string') &&
     (record.skillIds === undefined || isStoredStringArray(record.skillIds)) &&
     (record.pluginIds === undefined || isStoredStringArray(record.pluginIds)) &&
     (record.mcpServerIds === undefined || isStoredStringArray(record.mcpServerIds)) &&

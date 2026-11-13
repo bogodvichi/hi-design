@@ -8002,6 +8002,7 @@ async function runRun(args) {
   od run start --project <projectId> [--conversation <id>] [--message "<text>"]
                [--prompt-file <path|->] [--task-execution <id>]
                [--client-request-id <id>]
+               [--current-file <project-relative-path>]
                [--skill <id>[,<id>]] [--plugin <id>] [--inputs <json>] [--grant-caps a,b]
                [--agent claude|codex|opencode] [--model <id>] [--service-tier <id>]
                [--workspace <id> --workspace-member <id>] [--follow] [--json]
@@ -8025,7 +8026,7 @@ Common options:
   const sub = args[0];
   const rest = args.slice(1);
   const flags = parseFlags(rest, {
-    string: PROJECT_RESOURCE_STRING_FLAGS,
+    string: new Set([...PROJECT_RESOURCE_STRING_FLAGS, 'current-file']),
     boolean: PROJECT_BOOLEAN_FLAGS,
   });
   const base = (await projectDaemonUrl(flags)).replace(/\/$/, '');
@@ -8261,6 +8262,7 @@ Common options:
       if (flags['snapshot-id']) body.appliedPluginSnapshotId = flags['snapshot-id'];
       if (flags['task-execution']) body.taskExecutionId = flags['task-execution'];
       if (flags['client-request-id']) body.clientRequestId = flags['client-request-id'];
+      if (flags['current-file']) body.context = { currentFile: String(flags['current-file']) };
       const resp = await fetch(`${base}/api/runs`, {
         method:  'POST',
         headers: { 'content-type': 'application/json', ...workspaceHeaders },

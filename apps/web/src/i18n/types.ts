@@ -3408,7 +3408,8 @@ export interface Dict extends Record<keyof typeof feedbackEn, string> {
   'chat.copyErrorDiagnostic': string;
   'chat.copyDone': string;
   'chat.composerPlaceholder': string;
-  'chat.activeFileEditingLabel': string;
+  'chat.activeFileViewingLabel': string;
+  'chat.activeFileDismiss': string;
   'chat.activeFilePlaceholder': string;
   'chat.designArtifactsShowMore': string;
   'chat.mode.chat.label': string;

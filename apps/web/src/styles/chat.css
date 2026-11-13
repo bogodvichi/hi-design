@@ -1292,35 +1292,6 @@
   border-color: var(--accent);
   background: var(--accent-tint);
 }
-.composer-active-file {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  min-width: 0;
-  width: fit-content;
-  max-width: calc(100% - 24px);
-  margin: 0 12px;
-  padding: 5px 8px;
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius);
-  background: color-mix(in srgb, var(--accent) 7%, var(--bg-panel));
-  color: var(--text);
-  font-size: 12px;
-  line-height: 1.25;
-}
-.composer-active-file__label {
-  flex: 0 0 auto;
-  color: var(--text-muted);
-  font-weight: 600;
-}
-.composer-active-file__name {
-  min-width: 0;
-  max-width: min(100%, 260px);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 600;
-}
 /* -------- Lexical contenteditable input ---------------------------- */
 .composer-input-wrap {
   position: relative;

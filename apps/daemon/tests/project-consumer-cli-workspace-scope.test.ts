@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import http from 'node:http';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -303,6 +303,26 @@ function workspaceFlags(memberId: string): string[] {
 }
 
 describe('project consumer CLI explicit Workspace fixture matrix', () => {
+  it('run start sends current-file context separately with prompt-file and JSON output', async () => {
+    requests = [];
+    const promptPath = path.join(outputDir, 'current-file-prompt.txt');
+    await writeFile(promptPath, 'Summarize this file');
+    const result = await runCli([
+      'run', 'start', '--project', 'unbound-project',
+      '--current-file', 'docs/brief.md', '--prompt-file', promptPath,
+      '--json', '--daemon-url', baseUrl,
+    ]);
+
+    expect(result.code, result.stderr).toBe(0);
+    expect(JSON.parse(result.stdout)).toEqual({ runId: 'run-1' });
+    const request = requests.find((item) => item.url === '/api/runs');
+    expect(JSON.parse(request!.body)).toMatchObject({
+      message: 'Summarize this file',
+      context: { currentFile: 'docs/brief.md' },
+    });
+    expect(JSON.parse(request!.body).attachments).toBeUndefined();
+  });
+
   it('export addresses a bound project without Workspace flags', async () => {
     requests = [];
     const result = await runCli([

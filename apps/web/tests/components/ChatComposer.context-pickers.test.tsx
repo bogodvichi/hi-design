@@ -484,7 +484,7 @@ describe('ChatComposer context pickers', () => {
     });
   });
 
-  it('auto-stages the active workspace context and re-stages after a tab change', async () => {
+  it('shows file focus as viewing context and stages other workspace tabs after a tab change', async () => {
     const onSend = vi.fn();
     const fileContext = {
       id: 'file:index.html',
@@ -503,11 +503,9 @@ describe('ChatComposer context pickers', () => {
     const view = renderComposer({ activeWorkspaceContext: fileContext, onSend });
     await flushMounts();
 
-    expect(screen.getByTestId('staged-contexts').textContent).toContain('index.html');
-    expect(screen.getByTestId('staged-outside-contexts').parentElement).toHaveClass(
-      'composer-outside-contexts--current-only',
-    );
-    fireEvent.click(screen.getByLabelText('Remove index.html'));
+    expect(screen.getByTestId('composer-active-file').textContent).toContain('index.html');
+    expect(screen.getByTestId('composer-active-file').querySelector('.staged-order')).toBeNull();
+    fireEvent.click(screen.getByLabelText('Exclude current file from this message'));
     await waitFor(() => expect(screen.queryByText('index.html')).toBeNull());
 
     view.rerender(composerElement({ activeWorkspaceContext: browserContext, onSend }));

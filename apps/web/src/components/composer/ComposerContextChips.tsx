@@ -119,7 +119,7 @@ function ComposerAttachmentChip({
   displayOrder,
 }: {
   item: ComposerAttachmentChipItem;
-  displayOrder: number;
+  displayOrder?: number;
 }) {
   const canPreview = Boolean(item.previewUrl && item.onPreview);
   return (
@@ -131,9 +131,11 @@ function ComposerAttachmentChip({
       )}
       data-testid={item.testId}
     >
-      <span className="staged-order" aria-label={`Attachment ${displayOrder}`}>
-        {displayOrder}
-      </span>
+      {displayOrder !== undefined ? (
+        <span className="staged-order" aria-label={`Attachment ${displayOrder}`}>
+          {displayOrder}
+        </span>
+      ) : null}
       {canPreview ? (
         <button
           type="button"
@@ -183,6 +185,7 @@ function orderedAttachments(items: ComposerAttachmentChipItem[]): ComposerAttach
  */
 export function ComposerOutsideContextList({
   attachments = [],
+  viewingFile,
   plugins = [],
   resources = [],
   connectors = [],
@@ -190,6 +193,8 @@ export function ComposerOutsideContextList({
   additional = [],
 }: {
   attachments?: ComposerAttachmentChipItem[];
+  /** Viewing context shares file-chip styling without taking an attachment number. */
+  viewingFile?: ComposerAttachmentChipItem;
   plugins?: ComposerContextChipItem[];
   resources?: ComposerContextChipItem[];
   connectors?: ComposerContextChipItem[];
@@ -208,7 +213,12 @@ export function ComposerOutsideContextList({
       content: <ComposerContextChip item={item} />,
     })),
   ].sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity));
-  return <>{items.map((item) => <Fragment key={item.key}>{item.content}</Fragment>)}</>;
+  return (
+    <>
+      {items.map((item) => <Fragment key={item.key}>{item.content}</Fragment>)}
+      {viewingFile ? <ComposerAttachmentChip item={viewingFile} /> : null}
+    </>
+  );
 }
 
 /** A selected resource is shown once: in the editor when mentioned, otherwise above it. */
