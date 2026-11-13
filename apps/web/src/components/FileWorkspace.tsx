@@ -3993,7 +3993,7 @@ export function FileWorkspace({
       )
     ) : null}
       <div className="ws-tabs-shell">
-        {focusMode && onBack ? (
+        {focusMode && viewerOnly && onBack ? (
           <div className="workspace-back-control">
             <button
               type="button"
@@ -4012,29 +4012,6 @@ export function FileWorkspace({
             >
               <Icon name="arrow-left" size={16} />
             </button>
-           {!viewerOnly && onFocusModeChange ? (
-              <div
-                className="workspace-back-popover"
-                role="menu"
-                aria-label={locale === 'zh-CN' ? '对话面板' : 'Conversation panel'}
-                data-testid="workspace-back-popover"
-              >
-                <button
-                  type="button"
-                  className="workspace-back-popover__action"
-                  role="menuitem"
-                  data-testid="workspace-chat-visibility-toggle"
-                  onClick={() => onFocusModeChange(false)}
-                >
-                  <Icon name="panel-left" size={16} />
-                  <span>
-                    {locale === 'zh-CN'
-                      ? '展开对话栏'
-                      : t('workspace.showChat')}
-                  </span>
-                </button>
-              </div>
-            ) : null}
           </div>
         ) : focusMode && !viewerOnly && onFocusModeChange ? (
           <button
@@ -4048,7 +4025,7 @@ export function FileWorkspace({
             aria-label={t('workspace.showChat')}
             onClick={() => onFocusModeChange(false)}
           >
-            <Icon name="chevron-right" size={15} />
+            <Icon name="panel-left" size={16} />
           </button>
         ) : null}
         {focusMode && onBack ? (

@@ -3361,7 +3361,7 @@ export const zhCN: Dict = {
   "misc.designSystem": "设计体系",
   "workspace.designFiles": "设计文件",
   "workspace.focusMode": "专注工作区",
-  "workspace.showChat": "显示聊天",
+  "workspace.showChat": "展开对话栏",
   "workspace.closeTab": "关闭标签页",
   "workspace.fileSyncDownloading": "正在从团队下载…",
   "workspace.fileSyncUploading": "正在同步到团队…",

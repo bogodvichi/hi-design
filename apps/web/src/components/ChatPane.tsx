@@ -771,8 +771,7 @@ interface Props {
   /** True when the collapse control renders OUTSIDE this pane (lifted into
    *  the tabs dock row) — suppresses the header's collapse/back slot. */
   collapseControlLifted?: boolean;
-  /** Personal-project header follows the split-panel navigation shown in the
-   * reference: return action plus a hover menu for collapsing the chat. */
+  /** Keep the personal-project collapse control and divider in this header. */
   personalProjectNavigation?: boolean;
   backLabel?: string;
   projectHeader?: ReactNode;
@@ -2544,55 +2543,25 @@ export function ChatPane({
   return (
     <div className="pane">
       <div className="chat-project-header">
-        {personalProjectNavigation && onBack ? (
+        {(personalProjectNavigation || !collapseControlLifted) && onCollapse ? (
           <>
-            <div className="personal-project-back-control">
-              <button
-                type="button"
-                className="chat-project-back"
-                onClick={onBack}
-                title={backLabel}
-                aria-label={backLabel}
-                data-testid="personal-project-back"
-              >
-                <Icon name="arrow-left" size={16} />
-              </button>
-              {onCollapse ? (
-                <div
-                  className="personal-project-back-popover"
-                  role="menu"
-                  aria-label={locale === 'zh-CN' ? '对话面板' : 'Conversation panel'}
-                  data-testid="personal-project-back-popover"
-                >
-                  <button
-                    type="button"
-                    className="personal-project-back-popover__action"
-                    role="menuitem"
-                    data-testid="personal-project-chat-collapse"
-                    onClick={onCollapse}
-                  >
-                    <Icon name="panel-left" size={16} />
-                    <span>{t('chat.collapsePane')}</span>
-                  </button>
-                </div>
-              ) : null}
-            </div>
-            <span className="personal-project-header-divider" aria-hidden="true" />
+            <button
+              type="button"
+              className="chat-project-back od-tooltip"
+              onClick={onCollapse}
+              title={t('chat.collapsePane')}
+              aria-label={t('chat.collapsePane')}
+              data-tooltip={t('chat.collapsePane')}
+              data-tooltip-placement="bottom"
+              data-testid="chat-collapse-toggle"
+            >
+              <Icon name="panel-left" size={16} />
+            </button>
+            {personalProjectNavigation ? (
+              <span className="personal-project-header-divider" aria-hidden="true" />
+            ) : null}
           </>
-        ) : collapseControlLifted ? null : onCollapse ? (
-          <button
-            type="button"
-            className="chat-project-back od-tooltip"
-            onClick={onCollapse}
-            title={t('chat.collapsePane')}
-            aria-label={t('chat.collapsePane')}
-            data-tooltip={t('chat.collapsePane')}
-            data-tooltip-placement="bottom"
-            data-testid="chat-collapse-toggle"
-          >
-            <Icon name="panel-left" size={16} />
-          </button>
-        ) : onBack ? (
+        ) : collapseControlLifted ? null : onBack ? (
           <button
             type="button"
             className="chat-project-back"

@@ -54,68 +54,12 @@
   background: var(--bg-subtle);
   color: var(--text);
 }
-.personal-project-back-control {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  flex: 0 0 auto;
-}
 .personal-project-header-divider {
   width: 1px;
   height: 16px;
   margin: 0 4px;
   flex: 0 0 auto;
   background: var(--border);
-}
-.personal-project-back-popover {
-  position: absolute;
-  z-index: 8;
-  top: calc(100% + 4px);
-  left: -4px;
-  display: none;
-  min-width: 148px;
-  padding: 4px;
-  border: 1px solid var(--material-separator);
-  border-radius: 8px;
-  background: var(--bg-elevated);
-  box-shadow: var(--shadow-md);
-}
-.personal-project-back-popover::before {
-  content: '';
-  position: absolute;
-  right: 0;
-  bottom: 100%;
-  left: 0;
-  height: 4px;
-}
-.personal-project-back-control:hover .personal-project-back-popover,
-.personal-project-back-control:focus-within .personal-project-back-popover {
-  display: block;
-}
-.personal-project-back-popover__action {
-  appearance: none;
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-  width: 100%;
-  height: 30px;
-  /* 1px popover border + 5px inset = the back button's 6px icon inset. */
-  padding-block: 0;
-  padding-inline: 5px 8px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-size: 13px;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.personal-project-back-popover__action:hover,
-.personal-project-back-popover__action:focus-visible {
-  background: var(--bg-subtle);
-  outline: none;
 }
 .chat-project-title-line.has-project-location {
   display: inline-flex;

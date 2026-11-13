@@ -3170,7 +3170,7 @@ export const en: Dict = {
   'misc.designSystem': 'Design system',
   'workspace.designFiles': 'Design Files',
   'workspace.focusMode': 'Focus workspace',
-  'workspace.showChat': 'Show chat',
+  'workspace.showChat': 'Expand conversation panel',
   'workspace.closeTab': 'Close tab',
   'workspace.fileSyncDownloading': 'Downloading from the team…',
   'workspace.fileSyncUploading': 'Syncing to the team…',

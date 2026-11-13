@@ -1372,7 +1372,7 @@ describe('FileWorkspace upload input', () => {
       />,
     );
 
-    expect(markup).toContain('Show chat');
+    expect(markup).toContain('Expand conversation panel');
   });
 
   it('uses the focus control as back for a read-only viewer', () => {
@@ -1408,7 +1408,7 @@ describe('FileWorkspace upload input', () => {
     expect(onFocusModeChange).not.toHaveBeenCalled();
   });
 
-  it('shows personal-project return and chat expansion only in focus mode', () => {
+  it('expands the personal-project chat directly without returning to projects', () => {
     const onBack = vi.fn();
     const onFocusModeChange = vi.fn();
 
@@ -1447,9 +1447,15 @@ describe('FileWorkspace upload input', () => {
       />,
     );
 
-    fireEvent.click(screen.getByTestId('workspace-focus-toggle'));
-    expect(onBack).toHaveBeenCalledTimes(1);
-    fireEvent.click(screen.getByTestId('workspace-chat-visibility-toggle'));
+    const control = screen.getByTestId('workspace-focus-toggle');
+    expect(control.getAttribute('aria-label')).toBe('Expand conversation panel');
+    expect(control.getAttribute('title')).toBe('Expand conversation panel');
+    expect(control.getAttribute('data-tooltip')).toBe('Expand conversation panel');
+    expect(screen.queryByRole('button', { name: 'Back to projects' })).toBeNull();
+    expect(screen.queryByTestId('workspace-back-popover')).toBeNull();
+    fireEvent.click(control);
+    expect(onBack).not.toHaveBeenCalled();
+    expect(onFocusModeChange).toHaveBeenCalledTimes(1);
     expect(onFocusModeChange).toHaveBeenCalledWith(false);
   });
 

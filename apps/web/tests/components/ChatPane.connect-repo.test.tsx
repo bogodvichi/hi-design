@@ -63,7 +63,7 @@ function renderPane(extra: Partial<React.ComponentProps<typeof ChatPane>>) {
 }
 
 describe('ChatPane personal-project navigation', () => {
-  it('keeps return in the header and puts collapse in its hover menu', () => {
+  it('collapses the chat directly without returning to the project list', () => {
     const onBack = vi.fn();
     const onCollapse = vi.fn();
     renderPane({
@@ -74,13 +74,16 @@ describe('ChatPane personal-project navigation', () => {
       projectHeader: <span>文件路径/ 订单跟踪仪表盘原型</span>,
     });
 
-    fireEvent.click(screen.getByTestId('personal-project-back'));
-    expect(onBack).toHaveBeenCalledTimes(1);
+    const collapseButton = screen.getByRole('button', { name: 'chat.collapsePane' });
+    expect(collapseButton.getAttribute('title')).toBe('chat.collapsePane');
+    expect(collapseButton.getAttribute('data-tooltip')).toBe('chat.collapsePane');
+    expect(screen.queryByRole('button', { name: 'Back to projects' })).toBeNull();
+    expect(screen.queryByTestId('personal-project-back-popover')).toBeNull();
     expect(screen.getByText('文件路径/ 订单跟踪仪表盘原型')).toBeTruthy();
 
-    fireEvent.click(screen.getByTestId('personal-project-chat-collapse'));
+    fireEvent.click(collapseButton);
     expect(onCollapse).toHaveBeenCalledTimes(1);
-    expect(screen.queryByTestId('chat-collapse-toggle')).toBeNull();
+    expect(onBack).not.toHaveBeenCalled();
   });
 });
 
