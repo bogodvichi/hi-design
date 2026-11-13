@@ -1,0 +1,100 @@
+/* Keep chat presentation scoped while overriding the legacy app cascade. */
+.message.message :global(.assistant-footer) {
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  max-width: 100%;
+}
+
+.message.message :global(.assistant-feedback-wrap) {
+  max-width: 100%;
+}
+
+.footerControls {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 0;
+  padding-left: 0;
+  border-left: 0;
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.metadata {
+  min-width: 0;
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+}
+
+.completionTime {
+  white-space: nowrap;
+}
+
+.model {
+  overflow-wrap: anywhere;
+}
+
+.message.message :global(.task-activity .action-card-toggle) {
+  box-sizing: border-box;
+  justify-content: flex-start;
+  text-align: left;
+  width: 100%;
+  min-height: 32px;
+  padding: 4px 0 10px;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  color: var(--text-faint);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.message.message :global(.task-activity .action-card-toggle .summary) {
+  flex: 0 1 auto;
+  color: inherit;
+  font-weight: 400;
+}
+
+.message.message :global(.task-activity .task-activity-elapsed) {
+  color: var(--text-faint);
+}
+
+.message.message :global(.task-activity .action-card-toggle.task-state-completed) {
+  color: var(--text-faint);
+}
+
+/* A 24px icon inset by 4px is centered on the timeline at 16px. */
+.message.message :global(.task-activity .action-card-body) {
+  gap: 4px;
+}
+
+.message.message :global(.task-activity .action-card-body > .op-card:not(.live-code-box)) {
+  padding: 0;
+}
+
+.message.message :global(.task-activity .action-card-body > .op-card:not(.live-code-box) .op-card-head),
+.message.message :global(.task-activity .action-card-body > .thinking-block .thinking-toggle) {
+  box-sizing: border-box;
+  height: auto;
+  min-height: 32px;
+  padding: 4px 8px 4px 4px;
+}
+
+.framedRegion,
+.message.message :global(.file-ops),
+.message.message :global(.op-waiting) {
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.producedFiles {
+  padding: 10px 12px;
+}
+
+.statusPill {
+  max-width: 100%;
+  padding: 10px 12px;
+}

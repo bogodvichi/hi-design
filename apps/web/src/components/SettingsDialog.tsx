@@ -4007,8 +4007,8 @@ export function SettingsDialog({
                   className="settings-page-back"
                   onClick={onClose}
                 >
-                  <Icon name="arrow-left" size={15} />
-                  <span>{t('settings.pageBackToHome')}</span>
+                  <Icon name="arrow-left" size={18} />
+                  <span>{t('settings.pageBack')}</span>
                 </button>
               </div>
             ) : null}

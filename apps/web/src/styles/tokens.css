@@ -73,6 +73,8 @@
   --shadow-xs: 0 1px 0 rgba(28, 27, 26, 0.04);
   --shadow-sm: 0 1px 2px rgba(28, 27, 26, 0.05), 0 1px 3px rgba(28, 27, 26, 0.04);
   --shadow-md: 0 6px 24px rgba(28, 27, 26, 0.07), 0 2px 6px rgba(28, 27, 26, 0.04);
+  /* Light elevation for the outlined home, conversation and settings surfaces. */
+  --shadow-surface: 0 2px 12px rgba(28, 27, 26, 0.04), 0 1px 4px rgba(28, 27, 26, 0.025);
   --shadow-lg: 0 24px 60px rgba(28, 27, 26, 0.16), 0 8px 16px rgba(28, 27, 26, 0.07);
 
   /* Corner-radius scale — the only radii UI should reach for (Shape
@@ -194,6 +196,7 @@
   --shadow-xs: 0 1px 0 rgba(0, 0, 0, 0.2);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
   --shadow-md: 0 6px 24px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.25);
+  --shadow-surface: 0 2px 12px rgba(0, 0, 0, 0.24), 0 1px 4px rgba(0, 0, 0, 0.15);
   --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.6), 0 8px 16px rgba(0, 0, 0, 0.3);
 
   --code-header-bg: #1e1e20;
@@ -257,6 +260,7 @@
     --shadow-xs: 0 1px 0 rgba(0, 0, 0, 0.2);
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px rgba(0, 0, 0, 0.2);
     --shadow-md: 0 6px 24px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.25);
+    --shadow-surface: 0 2px 12px rgba(0, 0, 0, 0.24), 0 1px 4px rgba(0, 0, 0, 0.15);
     --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.6), 0 8px 16px rgba(0, 0, 0, 0.3);
 
     --code-header-bg: #1e1e20;

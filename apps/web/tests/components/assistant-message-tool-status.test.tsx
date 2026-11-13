@@ -329,7 +329,7 @@ describe('AssistantMessage tool status', () => {
     expect(container.querySelector('.op-status-done')).toBeNull();
   });
 
-  it('shows Canceled instead of Done when a canceled run has no activity card', () => {
+  it('omits the status row when a canceled run has no reasoning or execution record', () => {
     const { container } = render(
       <AssistantMessage
         projectKind="prototype"
@@ -344,7 +344,9 @@ describe('AssistantMessage tool status', () => {
       />,
     );
 
-    expect(container.querySelector('.assistant-label')?.textContent).toBe('Canceled');
+    expect(container.querySelector('.assistant-flow')?.firstElementChild?.className).toBe('prose-block');
+    expect(screen.queryByText('Canceled')).toBeNull();
+    expect(container.querySelector('.assistant-footer')?.textContent).not.toContain('Canceled');
   });
 
   it.each(['no_result', 'delivery_failed'] as const)(
@@ -663,7 +665,7 @@ describe('AssistantMessage tool status', () => {
     expect(container.querySelector('.status-pill')).toBeNull();
   });
 
-  it('still renders lifecycle and model status rows that carry a displayable detail', () => {
+  it('keeps workflow details in the flow and moves the model into the footer', () => {
     const { container } = render(
       <AssistantMessage
         projectKind="prototype"
@@ -683,8 +685,8 @@ describe('AssistantMessage tool status', () => {
     expect(container.textContent).toContain('Publishing plugin');
     expect(container.textContent).toContain('CLI command finished');
     const modelStatus = container.querySelector('[data-status="model"]');
-    expect(modelStatus).not.toBeNull();
-    expect(modelStatus?.querySelector('.status-detail')?.textContent).toContain('claude-opus-4-7-high');
+    expect(modelStatus).toBeNull();
+    expect(container.querySelector('.assistant-footer')?.textContent).toContain('claude-opus-4-7-high');
   });
 
   it('renders URLs in JSON-like status details without trailing structural characters', () => {

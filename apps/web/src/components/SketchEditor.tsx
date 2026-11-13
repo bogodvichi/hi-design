@@ -1,9 +1,11 @@
 import { notifyToast } from './toast-context';
+import toolbarStyles from './SketchEditorToolbar.module.css';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { MutableRefObject } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Excalidraw,
+  Footer,
   MainMenu,
   convertToExcalidrawElements,
   exportToBlob,
@@ -355,7 +357,7 @@ export function SketchEditor({
     apiRef.current = api;
   }, []);
 
-  const renderTopRightUI = useCallback<NonNullable<ExcalidrawProps['renderTopRightUI']>>(() => {
+  const renderSaveStatus = () => {
     const state = saving ? 'saving' : dirty ? 'dirty' : 'saved';
     const label = saving
       ? t('sketch.saving')
@@ -374,7 +376,7 @@ export function SketchEditor({
         </span>
       </div>
     );
-  }, [dirty, saving, t]);
+  };
 
   const excalidrawUIOptions = useMemo<ExcalidrawProps['UIOptions']>(() => ({
     canvasActions: {
@@ -444,7 +446,7 @@ export function SketchEditor({
   ]);
 
   return (
-    <div className="sketch-editor">
+    <div className={`sketch-editor ${toolbarStyles.editor}`}>
       <div ref={canvasWrapRef} className="sketch-canvas-wrap sketch-excalidraw-wrap" data-testid="sketch-excalidraw-editor">
         <Excalidraw
           key={editorInstanceKey}
@@ -458,10 +460,21 @@ export function SketchEditor({
           autoFocus
           name={fileName}
           UIOptions={excalidrawUIOptions}
-          renderTopRightUI={renderTopRightUI}
+          renderTopRightUI={(isMobile) => isMobile ? (
+            <div className={toolbarStyles.mobileFooter}>
+              {renderSaveStatus()}
+              <button type="button" className={toolbarStyles.helpButton}
+                data-testid="sketch-mobile-help" aria-label={t('sketch.help')}
+                title={t('sketch.help')}
+                onClick={() => apiRef.current?.updateScene({ appState: { openDialog: { name: 'help' } } })}>
+                <Icon name="help-circle" size={14} />
+              </button>
+            </div>
+          ) : null}
           validateEmbeddable={validateSketchEmbeddableUrl}
         >
           {renderMainMenu()}
+          <Footer>{renderSaveStatus()}</Footer>
         </Excalidraw>
       </div>
       {typeof document !== 'undefined'
@@ -973,13 +986,16 @@ function enhanceSketchExcalidrawPortals(locale: Locale): SketchDialogClosePlacem
   let closePlacement: SketchDialogClosePlacement | null = null;
   for (const portal of Array.from(document.querySelectorAll<HTMLElement>('.excalidraw-modal-container'))) {
     portal.classList.add('od-sketch-modal');
+    portal.classList.add(toolbarStyles.neutral!);
+    for (const surface of portal.querySelectorAll<HTMLElement>('.excalidraw')) {
+      surface.classList.add(toolbarStyles.neutral!);
+    }
     portal.classList.toggle('od-sketch-help-modal', Boolean(portal.querySelector('.HelpDialog__header')));
     applySketchDomI18nOverrides(portal, locale);
     for (const content of Array.from(portal.querySelectorAll<HTMLElement>('.Modal__content'))) {
       hideSketchMermaidShortcutHints(content);
       if (closePlacement) continue;
-      const modal = portal.querySelector<HTMLElement>('.Modal') ?? content;
-      const rect = modal.getBoundingClientRect();
+      const rect = content.getBoundingClientRect();
       if (rect.width > 0 && rect.height > 0) {
         closePlacement = {
           top: Math.max(8, Math.round(rect.top + 14)),

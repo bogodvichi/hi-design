@@ -213,6 +213,7 @@ vi.mock('@excalidraw/excalidraw', async () => {
       );
     },
     MainMenu,
+    Footer: ({ children }: { children: React.ReactNode }) => React.createElement('footer', null, children),
     convertToExcalidrawElements: vi.fn((elements: unknown[]) => elements),
     exportToBlob: vi.fn(async () => new Blob(['mock image'], { type: 'image/png' })),
   };
@@ -4577,10 +4578,9 @@ describe('FileWorkspace add-module menu', () => {
     );
 
     const restoredTab = screen.getByRole('tab', { name: /Browser/ });
-    const closeButton = restoredTab.querySelector<HTMLButtonElement>('.ws-tab-close');
-    expect(closeButton).not.toBeNull();
+    const closeButton = within(restoredTab).getByRole('button', { name: 'Close tab' });
     act(() => {
-      fireEvent.click(closeButton!);
+      fireEvent.click(closeButton);
     });
 
     expect(screen.queryByRole('tab', { name: /Browser/ })).toBeNull();

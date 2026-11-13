@@ -131,6 +131,83 @@ test.beforeEach(async ({ page }) => {
   await routeMappingFixtures(page);
 });
 
+test('[P2] community preview aligns actions right and uses slim scrollbars inside its sandbox', async ({ page }, testInfo) => {
+  test.setTimeout(T.xlong);
+  await page.route(`**/api/plugins/${PROTOTYPE_PLUGIN.id}/preview`, route => route.fulfill({
+    contentType: 'text/html',
+    body: `<!doctype html><html><head><style>
+      body{margin:0;min-height:2400px;background:#fff}
+      *::-webkit-scrollbar{width:18px}
+      #rounded,#clipped{width:320px;height:200px;margin:24px}
+      #rounded{overflow:auto;border-radius:24px}
+      #clipped{overflow:hidden;border-radius:32px}
+      #inner{height:100%;overflow:auto}
+      .long{height:800px;background:#eee}
+    </style></head><body><h1>Scrollable prototype</h1>
+      <section id="rounded"><div class="long">Rounded scrollport</div></section>
+      <section id="clipped"><div id="inner"><div class="long">Rounded ancestor</div></div></section>
+    </body></html>`,
+  }));
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await gotoCommunity(page);
+  await page.getByRole('button', { name: 'Prototype', exact: true }).click();
+  await page.locator('article.community-template-card').first().click();
+  const dialog = page.locator('.ds-modal');
+  await expect(dialog.locator('iframe')).toBeVisible();
+  const header = dialog.locator('.ds-modal-header');
+  const row = dialog.locator('.ds-modal-header-top');
+  expect.soft(await row.evaluate(element => Math.abs(element.getBoundingClientRect().right - element.parentElement!.getBoundingClientRect().right + parseFloat(getComputedStyle(element.parentElement!).paddingRight))))
+    .toBeLessThan(1);
+  const frame = dialog.frameLocator('iframe');
+  const tracks = frame.locator('[data-axis=vertical]:visible');
+  await expect.soft(tracks).toHaveCount(3);
+  const track = tracks.first();
+  if (await track.count()) {
+    const thumb = track.locator(':scope > div');
+    const box = (await track.boundingBox())!;
+    expect(await track.evaluate(e => e.getBoundingClientRect().width)).toBe(8);
+    expect(await track.evaluate(e => window.innerWidth - e.getBoundingClientRect().right)).toBe(2);
+    await page.mouse.move(0, 0);
+    await expect.poll(() => thumb.evaluate(e => e.getBoundingClientRect().width)).toBe(4);
+    await expect(thumb).toHaveCSS('background-color', 'rgba(0, 0, 0, 0.4)');
+    // The host's sidebar handle intentionally overlays the midpoint edge.
+    await track.hover({ position: { x: 1, y: box.height / 4 } });
+    await expect.poll(() => thumb.evaluate(e => e.getBoundingClientRect().width)).toBe(8);
+    await expect(thumb).toHaveCSS('background-color', 'rgba(0, 0, 0, 0.8)');
+    await page.mouse.down();
+    try {
+      await expect(track).toHaveAttribute('data-dragging', '');
+      await expect(thumb).toHaveCSS('background-color', 'rgb(0, 0, 0)');
+      await page.mouse.move(box.x + 1, box.y + box.height / 4 + 24);
+    } finally { await page.mouse.up(); }
+    const before = await track.boundingBox();
+    expect(await frame.locator('html').evaluate(e => e.scrollTop)).toBeGreaterThan(0);
+    expect((await track.boundingBox())!.y).toBe(before!.y);
+  }
+  await frame.locator('html').evaluate(e => { e.scrollTop = 0; });
+  await expect(tracks).toHaveCount(3);
+  for (const id of ['rounded', 'inner']) {
+    await frame.locator(`#${id}`).evaluate(e => { e.scrollTop = e.scrollHeight; });
+  }
+  await expect.poll(() => frame.locator('html').evaluate(() => {
+    const tracks = [...document.querySelectorAll<HTMLElement>('[data-axis=vertical]')];
+    return ['rounded', 'inner'].every(id => {
+      const element = document.getElementById(id)!;
+      const radius = id === 'rounded' ? 24 : 32;
+      const inset = radius * (1 - Math.sqrt(1 - (1 - 2 / radius) ** 2));
+      const rect = element.getBoundingClientRect();
+      const track = tracks.find(t => Math.abs(t.getBoundingClientRect().right - rect.right + 2) < 1
+        && Math.abs(t.getBoundingClientRect().top - rect.top - inset) < 1);
+      if (!track) return false;
+      const thumb = track.firstElementChild!.getBoundingClientRect();
+      return thumb.top >= rect.top + inset - 1 && thumb.bottom <= rect.bottom - inset + 1;
+    });
+  })).toBe(true);
+  await page.mouse.move(0, 0);
+  await expect(header).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('community-preview-scrollbars.png') });
+});
+
 test('[P1] community template card opens the full details modal (Use split + Share), not the lightweight preview', async ({ page }) => {
   await gotoCommunity(page);
 

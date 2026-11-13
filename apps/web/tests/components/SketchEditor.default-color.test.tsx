@@ -34,6 +34,7 @@ vi.mock('@excalidraw/excalidraw', async () => {
       );
     },
     MainMenu,
+    Footer: ({ children }: { children: React.ReactNode }) => React.createElement('footer', null, children),
     convertToExcalidrawElements: vi.fn((elements: unknown[]) => elements),
     exportToBlob: vi.fn(async () => new Blob(['mock image'], { type: 'image/png' })),
   };

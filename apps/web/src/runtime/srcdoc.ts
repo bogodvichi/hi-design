@@ -22,6 +22,7 @@ import {
   DECK_STRUCTURED_SLIDE_SELECTOR,
   injectDeckStageFallback,
 } from '@open-design/contracts/runtime/deck-stage-fallback';
+import { buildOverlayScrollbarsScript } from '@open-design/components';
 import {
   buildPreviewBaseHrefBridge,
   buildPreviewObservabilityBridge,
@@ -50,6 +51,8 @@ import {
 import { isApprovedFontStylesheetHref } from './deck-thumbnail-parser';
 
 export type SrcdocOptions = {
+  /** Product preview scrollbars, executed inside the existing opaque sandbox. */
+  previewScrollbars?: boolean;
   deck?: boolean;
   baseHref?: string;
   initialSlideIndex?: number;
@@ -400,7 +403,10 @@ export function buildSrcdoc(
   // sanitized title as the default filename — one that Microsoft Teams will
   // accept. Only the title text changes; visible page content is untouched.
   const withSafeTitle = sanitizeTitleInDoc(wrapped);
-  const withOdIds = annotateMissingOdIds(withSafeTitle);
+  const withScrollbars = options.previewScrollbars
+    ? injectAfterHeadOpen(withSafeTitle, `<script data-od-preview-scrollbars>${buildOverlayScrollbarsScript()}</script>`)
+    : withSafeTitle;
+  const withOdIds = annotateMissingOdIds(withScrollbars);
   const withSourcePaths = options.editBridge ? annotateManualEditSourcePaths(withOdIds) : withOdIds;
   const withBase = options.baseHref ? injectBaseHref(withSourcePaths, options.baseHref) : withSourcePaths;
   const withPreviewBaseBridge = options.baseHref

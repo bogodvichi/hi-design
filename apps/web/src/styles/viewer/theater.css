@@ -306,24 +306,7 @@
   display: inline-flex;
   align-items: center;
   gap: 2px;
-  margin-left: 2px;
-  padding-left: 8px;
-  border-left: 1px solid var(--border);
   color: var(--text-muted);
-}
-.assistant-footer-controls {
-  display: inline-flex;
-  align-items: center;
-  gap: 2px;
-  margin-left: 2px;
-  padding-left: 8px;
-  border-left: 1px solid var(--border);
-  color: var(--text-muted);
-}
-.assistant-footer-controls .assistant-feedback {
-  margin-left: 0;
-  padding-left: 0;
-  border-left: 0;
 }
 .assistant-copy-button {
   position: relative;

@@ -2,8 +2,12 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { PreviewModal } from '../../src/components/PreviewModal';
+import { buildSrcdoc } from '../../src/runtime/srcdoc';
 
 describe('PreviewModal', () => {
+  it('keeps product scrollbars out of ordinary export srcdoc documents', () => {
+    expect(buildSrcdoc('<p>Export content</p>')).not.toContain('data-od-preview-scrollbars');
+  });
   it('renders generated previews without same-origin sandbox access', () => {
     const markup = renderToStaticMarkup(
       <PreviewModal
@@ -23,6 +27,7 @@ describe('PreviewModal', () => {
     expect(markup).toContain('sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"');
     expect(markup).not.toContain('allow-same-origin');
     expect(markup).toContain('srcDoc=');
+    expect(markup).toContain('data-od-preview-scrollbars');
   });
 
   it('keeps deck srcdoc handling for deck preview views', () => {

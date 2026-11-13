@@ -1,0 +1,31 @@
+/* Match workspace chrome tabs; outrank the legacy .app .ws-tab padding. */
+.closable.closable.closable {
+  padding-inline-end: 4px;
+}
+
+.close {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: 2px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-circular);
+  background: transparent;
+  color: var(--text-faint);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.close svg {
+  display: block;
+  flex: none;
+}
+
+.close:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}

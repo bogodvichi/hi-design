@@ -1497,10 +1497,7 @@
   flex-wrap: wrap;
   gap: 6px;
   max-width: 100%;
-  padding: 2px 0;
   background: none;
-  border: none;
-  border-radius: 0;
   font-size: 12px;
   color: var(--text-muted);
 }
@@ -1518,7 +1515,6 @@
 .status-pill.is-warning {
   background: color-mix(in srgb, var(--amber, #b26200) 12%, transparent);
   color: var(--amber, #b26200);
-  border-color: color-mix(in srgb, var(--amber, #b26200) 32%, transparent);
 }
 .status-pill.is-warning .status-detail {
   color: color-mix(in srgb, var(--amber, #b26200) 85%, var(--text));
@@ -1529,7 +1525,6 @@
 .status-pill.is-error {
   background: none;
   color: var(--text-muted);
-  border-color: transparent;
 }
 .status-pill.is-error .status-label {
   display: inline-flex;

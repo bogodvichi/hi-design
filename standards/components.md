@@ -130,6 +130,14 @@ dispose();
 
 React 与手动安装方式择一使用，同一文档保持一个实例。行为和状态数值的完整约定见[全局滚动条规范](scrollbars.md)。
 
+## 视图切换
+
+`ViewModeSwitch` 从 `@open-design/components` 导入，接收 `label`、`value`、`onChange` 和 `options`。
+每项为 `{ value, label, icon, disabled?, title? }`，图标由业务传入 ReactNode。
+默认在宽度不大于 720px 的容器中隐藏文字标签；设置 `collapseLabels={false}` 可始终保留文字。
+控件使用受控选择、单一 Tab 停靠点和跳过禁用项的左右方向键/Home/End 导航。
+布局、尺寸及接入入口见[设计文件查看工具栏](viewer-toolbars.md)。
+
 ## 验证
 
 ```sh

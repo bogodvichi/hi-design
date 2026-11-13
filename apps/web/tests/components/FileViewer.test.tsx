@@ -1364,6 +1364,36 @@ describe('FileViewer JSON artifacts', () => {
   });
 });
 
+describe('FileViewer toolbar layout', () => {
+  it.each([false, true])('keeps HTML view selection first and reload first among actions (viewerOnly=%s)', (viewerOnly) => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 404 })));
+    const file = baseFile({ name: 'index.html', path: 'index.html', kind: 'html', mime: 'text/html' });
+    const { container } = render(<FileViewer projectId="project-1" projectKind="prototype" file={file}
+      liveHtml="<html><body>Preview</body></html>" viewerOnly={viewerOnly} />);
+    const toolbar = container.querySelector('.viewer-toolbar')!;
+    expect(toolbar.querySelector('button')).toBe(screen.getByRole('tab', { name: 'Preview' }));
+    expect(toolbar.querySelector('.viewer-toolbar-actions button')).toHaveAccessibleName(/reload/i);
+    const code = screen.getByRole('tab', { name: 'Code' });
+    expect(code).toHaveProperty('disabled', viewerOnly);
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Preview' }), { key: 'ArrowRight' });
+    expect(screen.getByRole('tab', { name: viewerOnly ? 'Preview' : 'Code' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('keeps read-only Markdown modes disabled while allowing preview navigation', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('# Notes')));
+    const file = baseFile({ name: 'notes.md', path: 'notes.md', kind: 'text', mime: 'text/markdown' });
+    render(<FileViewer projectId="project-1" projectKind="prototype" file={file} viewerOnly />);
+    await screen.findByRole('heading', { name: 'Notes' });
+    expect(screen.getByRole('tab', { name: 'Code' })).toBeDisabled();
+    expect(screen.getByRole('tab', { name: 'Split' })).toBeDisabled();
+    const preview = screen.getByRole('tab', { name: 'Preview' });
+    fireEvent.keyDown(preview, { key: 'Home' });
+    expect(preview).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByRole('textbox', { name: /markdown editor/i })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Download' })).toBeDisabled();
+  });
+});
+
 describe('FileViewer SVG artifacts', () => {
   it('routes SVG artifacts to the SVG viewer instead of the generic image viewer', () => {
     const file = baseFile({
@@ -1484,12 +1514,12 @@ describe('FileViewer SVG artifacts', () => {
       />,
     );
 
-    expect(previewMarkup).toContain('class="viewer-tab active" aria-pressed="true">Preview</button>');
-    expect(previewMarkup).toContain('aria-pressed="false">Code</button>');
+    expect(previewMarkup).toContain('aria-label="Preview" aria-selected="true"');
+    expect(previewMarkup).toContain('aria-label="Code" aria-selected="false"');
     expect(previewMarkup).toContain('<img');
 
-    expect(sourceMarkup).toContain('aria-pressed="false">Preview</button>');
-    expect(sourceMarkup).toContain('class="viewer-tab active" aria-pressed="true">Code</button>');
+    expect(sourceMarkup).toContain('aria-label="Preview" aria-selected="false"');
+    expect(sourceMarkup).toContain('aria-label="Code" aria-selected="true"');
     expect(sourceMarkup).toContain('class="viewer-source"');
     expect(sourceMarkup).not.toContain('<img');
   });
@@ -5040,13 +5070,13 @@ describe('FileViewer SVG artifacts', () => {
 
     // The toolbar still offers a way to read the raw code: clicking the Code
     // tab swaps the pointer for the file's source. Issue #2744 follow-up.
-    fireEvent.click(screen.getByRole('button', { name: /^code$/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /^code$/i }));
     expect(container.textContent).toContain('window.I');
     expect(screen.queryByRole('button', { name: /backups\.html/ })).toBeNull();
 
     // Back on Preview, clicking the entry opens the HTML page and closes the
     // dead-end module tab (icons.jsx) in one move.
-    fireEvent.click(screen.getByRole('button', { name: /^preview$/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /^preview$/i }));
     fireEvent.click(await screen.findByRole('button', { name: /backups\.html/ }));
     expect(onOpenFileReplacing).toHaveBeenCalledWith('backups.html', 'icons.jsx');
   });
@@ -14330,7 +14360,7 @@ describe('LiveArtifactViewer', () => {
     const openLink = await screen.findByRole('link', { name: /^open$/i });
     expect(openLink.getAttribute('tabindex')).not.toBe('-1');
 
-    fireEvent.click(screen.getByRole('button', { name: /code/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /^code$/i }));
 
     await waitFor(() => {
       expect(container.querySelector('.ghost-link')?.getAttribute('tabindex')).toBe('-1');
@@ -14359,13 +14389,13 @@ describe('LiveArtifactViewer', () => {
 
     await screen.findByRole('link', { name: /^open$/i });
 
-    fireEvent.click(screen.getByRole('button', { name: /code/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /^code$/i }));
 
     await waitFor(() => {
       expect(container.querySelector('.ghost-link')?.getAttribute('tabindex')).toBe('-1');
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Preview' }));
 
     await waitFor(() => {
       expect(screen.getByRole('link', { name: /^open$/i }).getAttribute('tabindex')).not.toBe('-1');
@@ -14398,14 +14428,14 @@ describe('LiveArtifactViewer', () => {
     expect(previewFrame).toBeTruthy();
     expect(container.querySelector('.live-artifact-preview-layer')?.getAttribute('data-active')).toBe('true');
 
-    fireEvent.click(screen.getByRole('button', { name: /code/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /^code$/i }));
 
     await waitFor(() => {
       expect(container.querySelector('.live-artifact-preview-layer')?.getAttribute('data-active')).toBe('false');
     });
     expect(container.querySelector('[data-testid="live-artifact-preview-frame"]')).toBe(previewFrame);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Preview' }));
 
     await waitFor(() => {
       expect(container.querySelector('.live-artifact-preview-layer')?.getAttribute('data-active')).toBe('true');

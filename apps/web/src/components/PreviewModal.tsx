@@ -14,6 +14,7 @@ import {
 } from '../runtime/exports';
 import { buildSrcdoc } from '../runtime/srcdoc';
 import { Icon } from './Icon';
+import styles from './PreviewModal.module.css';
 
 export interface PreviewView {
   id: string;
@@ -461,7 +462,7 @@ export function PreviewModal({
   const activeDeck = activeView?.deck ?? false;
   const isCustomView = activeCustom !== null && activeCustom !== undefined;
   const srcDoc = useMemo(
-    () => (activeHtml ? buildSrcdoc(activeHtml, { deck: activeDeck }) : ''),
+    () => (activeHtml ? buildSrcdoc(activeHtml, { deck: activeDeck, previewScrollbars: true }) : ''),
     [activeHtml, activeDeck],
   );
   const exportTitle = exportTitleFor(activeView?.id ?? '');
@@ -568,7 +569,7 @@ export function PreviewModal({
         className={`ds-modal${compact ? ' ds-modal--compact' : ''}${fullscreen ? ' ds-modal-fullscreen' : ''}`}
       >
         <header data-dialog-part="header" className="ds-modal-header">
-          <div className="ds-modal-header-top">
+          <div className={`ds-modal-header-top ${styles.headerRow}`}>
             <div className="ds-modal-title-block">
               <div data-dialog-part="title" className="ds-modal-title">
                 {title}

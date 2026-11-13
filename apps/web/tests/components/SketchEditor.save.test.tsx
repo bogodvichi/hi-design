@@ -12,6 +12,7 @@ const mockData = vi.hoisted<{
   updateScene: ReturnType<typeof vi.fn>;
   setOpenDialog: ReturnType<typeof vi.fn>;
   lastProps: Record<string, any> | null;
+  isMobile: boolean;
 }>(() => ({
   excalidrawScene: {
     elements: [{ id: 'api-element', type: 'rectangle', isDeleted: false }],
@@ -22,6 +23,7 @@ const mockData = vi.hoisted<{
   updateScene: vi.fn(),
   setOpenDialog: vi.fn(),
   lastProps: null,
+  isMobile: false,
 }));
 
 vi.mock('@excalidraw/excalidraw', async () => {
@@ -100,11 +102,12 @@ vi.mock('@excalidraw/excalidraw', async () => {
             React.createElement('p', { className: 'Toast__message' }, mockData.excalidrawToast),
           )
           : null,
-        props.renderTopRightUI?.(false, {}),
+        props.renderTopRightUI?.(mockData.isMobile, {}),
         props.children,
       );
     },
     MainMenu,
+    Footer: ({ children }: { children: React.ReactNode }) => mockData.isMobile ? null : React.createElement('footer', null, children),
     convertToExcalidrawElements: vi.fn((elements: unknown[]) => elements),
     exportToBlob: vi.fn(async () => new Blob(['mock image'], { type: 'image/png' })),
   };
@@ -131,6 +134,7 @@ afterEach(() => {
   cleanup();
   document.querySelectorAll('.excalidraw-modal-container').forEach((node) => node.remove());
   mockData.lastProps = null;
+  mockData.isMobile = false;
   mockData.excalidrawScene = {
     elements: [{ id: 'api-element', type: 'rectangle', isDeleted: false }],
     appState: { viewBackgroundColor: '#ffffff' },
@@ -225,6 +229,8 @@ describe('SketchEditor save', () => {
         </div>
       </div>
     `;
+    vi.spyOn(portal.querySelector('.Modal__content')!, 'getBoundingClientRect')
+      .mockReturnValue(new DOMRect(120, 80, 640, 480));
     document.body.appendChild(portal);
 
     const close = await waitFor(() => {
@@ -240,6 +246,8 @@ describe('SketchEditor save', () => {
     expect(portal.querySelector('button[aria-label="生成"]')).toBeTruthy();
     expect(portal.querySelector('textarea')?.getAttribute('placeholder')).toBe('在这里输入 Mermaid 图表定义...');
     expect(close.getAttribute('aria-label')).toBe('关闭');
+    expect(close.style.top).toBe('94px');
+    expect(close.style.right).toBe(`${window.innerWidth - 760 + 14}px`);
     expect(portal.classList.contains('od-sketch-help-modal')).toBe(true);
 
     fireEvent.click(close);
@@ -507,14 +515,25 @@ describe('SketchEditor save', () => {
     expect(saveButton().textContent).toBe('sketch.saving');
   });
 
-  it('shows the Excalidraw top-right saved state from autosave props', () => {
+  it('shows the autosave state in the Excalidraw footer', () => {
     renderEditor({ scene: sceneWithElement(), dirty: false, savedAt: 1710000000000 });
     expect(screen.getByTestId('sketch-save-state').textContent).toContain('sketch.saved');
+    expect(screen.getByTestId('sketch-save-state').closest('footer')).not.toBeNull();
+    expect(mockData.lastProps?.renderTopRightUI(false, {})).toBeNull();
   });
 
-  it('shows dirty state in the Excalidraw top-right save status', () => {
+  it('shows dirty state in the Excalidraw footer save status', () => {
     renderEditor({ scene: sceneWithElement(), dirty: true });
     expect(screen.getByTestId('sketch-save-state').textContent).toContain('sketch.tooltipDirty');
+  });
+
+  it('keeps autosave status and Help available in the native mobile layout', () => {
+    mockData.isMobile = true;
+    renderEditor({ dirty: true });
+    expect(screen.getAllByTestId('sketch-save-state')).toHaveLength(1);
+    expect(screen.getByTestId('sketch-save-state').textContent).toContain('sketch.tooltipDirty');
+    fireEvent.click(screen.getByRole('button', { name: 'sketch.help' }));
+    expect(mockData.updateScene).toHaveBeenCalledWith({ appState: { openDialog: { name: 'help' } } });
   });
 
   it('disables the button while saving', () => {

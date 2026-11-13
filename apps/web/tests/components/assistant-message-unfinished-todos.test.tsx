@@ -76,7 +76,7 @@ describe('AssistantMessage unfinished todo state', () => {
     expect(screen.queryByText('Modern minimal')).toBeNull();
   });
 
-  it('shows a soft no-output state instead of Done for empty API responses', () => {
+  it('keeps no-output guidance without adding a status row to replies without reasoning', () => {
     render(
       <AssistantMessage
         projectKind="prototype"
@@ -94,13 +94,13 @@ describe('AssistantMessage unfinished todo state', () => {
       />,
     );
 
-    expect(screen.getByText('No output')).toBeTruthy();
+    expect(screen.queryByText('No output')).toBeNull();
     expect(screen.getByText(/provider ended the request/i)).toBeTruthy();
     expect(screen.queryByText('Done')).toBeNull();
     expect(screen.queryByText('empty_response')).toBeNull();
   });
 
-  it('lets the pinned Todo summary own completion status', () => {
+  it('lets the pinned Todo summary own completion status when there is no reasoning', () => {
     render(
       <AssistantMessage
         projectKind="prototype"
@@ -119,12 +119,12 @@ describe('AssistantMessage unfinished todo state', () => {
       />,
     );
 
-    expect(screen.queryByText('Done')).toBeNull();
+    expect(screen.queryByRole('status')).toBeNull();
     expect(screen.queryByText('Stopped with unfinished work')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Continue remaining tasks' })).toBeNull();
   });
 
-  it('hides answer-footer duration, token, and cost statistics', () => {
+  it('omits token consumption and provider cost statistics from the footer', () => {
     render(
       <AssistantMessage
         message={{
@@ -143,10 +143,11 @@ describe('AssistantMessage unfinished todo state', () => {
 
     expect(screen.queryByText(/32s/)).toBeNull();
     expect(screen.queryByText(/1439 out/)).toBeNull();
+    expect(screen.queryByText('0.0014M tokens')).toBeNull();
     expect(screen.queryByText(/\$0\.0123/)).toBeNull();
   });
 
-  it('leaves unfinished Todo status to the canonical pinned card', () => {
+  it('leaves unfinished Todo status to the pinned card when there is no reasoning', () => {
     render(
       <AssistantMessage
         projectKind="prototype"
@@ -175,7 +176,7 @@ describe('AssistantMessage unfinished todo state', () => {
       />,
     );
 
-    expect(screen.queryByText('Stopped with unfinished work')).toBeNull();
+    expect(screen.queryByRole('status')).toBeNull();
     expect(screen.queryByText('2 task(s) remain')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Continue remaining tasks' })).toBeNull();
   });
@@ -199,7 +200,7 @@ describe('AssistantMessage unfinished todo state', () => {
       />,
     );
 
-    expect(screen.queryByText('Stopped with unfinished work')).toBeNull();
+    expect(screen.queryByRole('status')).toBeNull();
     expect(screen.queryByText('1 task(s) remain')).toBeNull();
     expect(screen.queryByRole('button', { name: 'Continue remaining tasks' })).toBeNull();
   });

@@ -476,7 +476,7 @@ export interface Dict extends Record<keyof typeof feedbackEn, string> {
   'settings.workspaceTeamSpaceHint': string;
   // Full-page Settings (`/settings`): sidebar nav head above the section list
   // (back-to-home link, decorative search field, personal group label).
-  'settings.pageBackToHome': string;
+  'settings.pageBack': string;
   'settings.pageNavGroupPersonal': string;
   'settings.amrModelUpgradeHint': string;
   'settings.amrLoginErrorCompact': string;
@@ -4186,6 +4186,7 @@ export interface Dict extends Record<keyof typeof feedbackEn, string> {
   'sketch.saving': string;
   'sketch.saved': string;
   'sketch.tooltipMainMenu': string;
+  'sketch.help': string;
   'sketch.tooltipLock': string;
   'sketch.tooltipHand': string;
   'sketch.tooltipSelection': string;
@@ -4246,6 +4247,7 @@ export interface Dict extends Record<keyof typeof feedbackEn, string> {
   'fileViewer.saveDisabled': string;
   'fileViewer.save': string;
   'fileViewer.preview': string;
+  'fileViewer.viewMode': string;
   'fileViewer.source': string;
   'fileViewer.tweaks': string;
   'fileViewer.tweaksUnavailable': string;

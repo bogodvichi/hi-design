@@ -1154,20 +1154,9 @@
      edge, dropping the 10px gap on the content-facing side. Left keeps 10px so
      the selected highlight doesn't touch the window edge. */
   padding: 12px 0 18px 10px;
-  /* Same treatment as the top tab strip: fully transparent, riding the
-     shell's translucent ground so the wash/wallpaper shows identically —
-     no extra white layer, no blur. */
+  /* Share the page ground, including when the shell falls back to a solid
+     surface under reduced transparency. No separate sidebar fill. */
   background: transparent;
-}
-@media (prefers-reduced-transparency: reduce) {
-  .settings-page-shell .settings-sidebar {
-    background: color-mix(in srgb, var(--bg-subtle) 45%, var(--bg-panel));
-  }
-}
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .settings-page-shell .settings-sidebar {
-    background: color-mix(in srgb, var(--bg-subtle) 45%, var(--bg-panel));
-  }
 }
 .settings-page-nav-head {
   display: flex;
@@ -1176,22 +1165,25 @@
   padding: 0 0 12px;
 }
 .settings-page-back {
-  display: inline-flex;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
   align-items: center;
-  gap: 8px;
-  width: max-content;
-  min-height: 28px;
-  padding: 0 8px;
-  border: 0;
+  gap: 10px;
+  width: 100%;
+  border: 1px solid transparent;
   border-radius: 8px;
   background: transparent;
   color: var(--text-muted);
   font-size: 13px;
+  text-align: left;
   cursor: pointer;
 }
-.settings-page-back:hover {
-  color: var(--text);
-  background: color-mix(in srgb, var(--text) 5%, transparent);
+.settings-page-back svg {
+  justify-self: center;
+}
+.settings-page-back span {
+  font-weight: 500;
+  line-height: 1.3;
 }
 .settings-page-nav-group {
   padding: 8px 8px 2px 38px;
@@ -1299,24 +1291,32 @@
   background: color-mix(in srgb, var(--text) 5%, transparent);
   border-color: transparent;
 }
+.settings-page-shell .settings-page-back,
 .settings-page-shell .settings-nav-item {
+  height: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
   border-radius: var(--radius-large, 8px);
   /* Selected board breathes a uniform 10px on all four sides. */
   padding: 10px;
 }
-/* Match the home nav rail (.entry-nav-rail__btn) exactly: unselected label +
-   icon use a muted 52% tone, hover adds a 5% wash, and the selected item is a
-   light-grey card (--bg-subtle) carrying the near-black --selected label/icon. */
+/* Keep inactive navigation legible while reserving the strongest tone for
+   the selected item. Back navigation shares the same interaction feedback. */
+.settings-page-shell .settings-page-back,
 .settings-page-shell .settings-nav-item {
-  color: color-mix(in srgb, var(--text) 52%, transparent);
+  color: color-mix(in srgb, var(--text) 72%, transparent);
 }
 .settings-page-shell .settings-nav-item svg,
 .settings-page-shell .settings-nav-item .od-icon {
-  color: color-mix(in srgb, var(--text) 52%, transparent);
+  color: inherit;
   opacity: 1;
 }
-.settings-page-shell .settings-nav-item:not(.active):hover {
+.settings-page-shell .settings-page-back:is(:hover, :active):not(:disabled),
+.settings-page-shell .settings-nav-item:not(.active):is(:hover, :active):not(:disabled) {
   background: color-mix(in srgb, var(--text) 5%, transparent);
+  color: var(--text);
+  border-color: transparent;
+  box-shadow: none;
 }
 .settings-page-shell .settings-nav-item.active,
 .settings-page-shell .settings-nav-item.active:hover {
@@ -1415,11 +1415,11 @@
   overflow-y: auto;
   overflow-x: hidden;
   overscroll-behavior: contain;
-  /* The whole content block rides one white card (spec: white surface +
-     #dbdbdb hairline + large radius) floating on the shell ground. */
+  /* Use the same light outline as the home and conversation sidebars. */
   background: var(--bg);
-  border: 1px solid var(--border);
+  border: 1px solid color-mix(in srgb, var(--border) 66%, transparent);
   border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-surface);
 }
 /* Stretching the window widens only the card — the content column stays a
    fixed, centered 992px (= the old 1040px card minus its 48px side padding,

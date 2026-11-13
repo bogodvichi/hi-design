@@ -1,0 +1,53 @@
+/* File-viewer chrome only: popup menus and the view switch own their sizing. */
+.toolbar.toolbar.toolbar :where(button, a):not(:where(
+  [data-view-mode-switch] *, [role='menu'] *, [role='listbox'] *, [role='dialog'] *,
+  :global(.share-menu-popover) *, :global(.present-menu) *, :global(.zoom-menu-popover) *
+)) {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  height: 32px;
+  min-height: 32px;
+  min-width: 32px;
+  padding: 0 8px;
+  gap: 6px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1;
+  text-decoration: none;
+
+  & > svg { width: 14px; height: 14px; flex-shrink: 0; }
+
+  &:is(:global(.active), [aria-pressed='true']) {
+    background: var(--accent-tint);
+    color: var(--text-strong);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--text-soft);
+    outline-offset: 2px;
+  }
+
+  &:hover:not(:disabled):not([aria-disabled='true']) {
+    background: var(--bg-subtle);
+    border-color: transparent;
+    color: var(--text);
+  }
+}
+
+.toolbar.toolbar.toolbar :where(:global(.icon-only), :global(.viewer-action-icon)) {
+  width: 32px;
+  padding-inline: 0;
+}
+
+.toolbar :global(.viewer-toolbar-left) { min-width: 0; flex-shrink: 0; }
+.toolbar :global(.viewer-toolbar-actions) { min-width: 0; margin-left: auto; gap: 4px; }
+
+@container (max-width: 600px) {
+  .toolbar :global(.viewer-toolbar-actions > .viewer-meta) { display: none; }
+}

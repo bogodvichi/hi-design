@@ -90,19 +90,33 @@ function projectCollabValue(workspaceContext = PROJECT_A_CONTEXT) {
   };
 }
 
-describe('assistant provider logo', () => {
-  it('shows the Lanz logo beside the saved provider and model label', () => {
+describe('assistant reply metadata', () => {
+  it('places completion time and the saved provider/model after the actions without token statistics', () => {
     const { container } = render(
       <AssistantMessage
-        message={baseMessage({ agentId: 'openai-api', agentName: 'lanz · EB-DeepSeek-Flash' })}
+        message={baseMessage({
+          agentId: 'openai-api', agentName: 'lanz · EB-DeepSeek-Flash',
+          endedAt: 1_700_000_005_000,
+          events: [
+            { kind: 'text', text: 'Done.' },
+            { kind: 'usage', inputTokens: 1_000_000, outputTokens: 250_000 },
+          ],
+        })}
         streaming={false}
         projectId="proj-1"
       />,
     );
-    const icon = container.querySelector('.role-agent-icon');
-    expect(icon?.getAttribute('src')).toBe('/agent-icons/lanz.png');
-    expect(icon?.getAttribute('width')).toBe('20');
-    expect(container.querySelector('.role-name')?.textContent).toBe('lanz · EB-DeepSeek-Flash');
+    expect(container.querySelector('.role')).toBeNull();
+    const footer = container.querySelector('.assistant-footer')!;
+    expect(footer.firstElementChild?.classList.contains('assistant-footer-controls')).toBe(true);
+    expect(footer.children).toHaveLength(3);
+    expect(footer.children[1]?.tagName).toBe('TIME');
+    expect(footer.children[1]?.getAttribute('datetime')).toBe('2023-11-14T22:13:25.000Z');
+    expect(footer.children[2]?.textContent).toBe('lanz · EB-DeepSeek-Flash');
+    expect(footer.textContent).not.toContain('tokens');
+    expect(footer.textContent).not.toContain('Done');
+    expect(container.querySelector('.assistant-flow')?.firstElementChild?.className).toBe('prose-block');
+    expect(container.querySelector('[role="status"]')).toBeNull();
   });
 });
 
@@ -489,8 +503,8 @@ describe('AssistantMessage status badge updates (Bug A)', () => {
       />,
     );
 
-    // Latest detail should be rendered in the badge.
-    expect(screen.getByText('claude-opus-4-7-max')).toBeTruthy();
+    // The footer retains the latest model after its status badge is removed.
+    expect(screen.getByText('Assistant · claude-opus-4-7-max').closest('.assistant-footer')).toBeTruthy();
 
     // The initial default must not be present — if it is, the stale-detail
     // bug is back.
@@ -513,7 +527,7 @@ describe('AssistantMessage status badge updates (Bug A)', () => {
       />,
     );
 
-    const matches = screen.queryAllByText('claude-opus-4-7-max');
+    const matches = screen.queryAllByText('Assistant · claude-opus-4-7-max');
     expect(matches.length).toBe(1);
   });
 

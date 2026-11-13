@@ -31,6 +31,26 @@ export function shortTime(ts: number): string {
   });
 }
 
+/** Local completion time, with weeks beginning on Monday. */
+export function completionTime(ts: number, locale: string, now = Date.now()): string {
+  const date = new Date(ts);
+  const today = new Date(now);
+  const time = date.toLocaleTimeString(locale, {
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  });
+  if (dayKey(ts) === dayKey(now)) return time;
+
+  const weekStart = new Date(today);
+  weekStart.setHours(0, 0, 0, 0);
+  weekStart.setDate(today.getDate() - (today.getDay() + 6) % 7);
+  const weekEnd = new Date(weekStart);
+  weekEnd.setDate(weekEnd.getDate() + 7);
+  const prefix = date >= weekStart && date < weekEnd
+    ? date.toLocaleDateString(locale, { weekday: 'short' })
+    : `${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
+  return `${prefix} ${time}`;
+}
+
 export function exactDateTime(ts: number): string {
   return new Date(ts).toLocaleString(undefined, {
     dateStyle: 'medium',

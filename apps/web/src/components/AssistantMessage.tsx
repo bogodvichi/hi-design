@@ -78,7 +78,8 @@ import { UserActionCard } from "./UserActionCard";
 import { NextStepActions, type NextStepActionsVariant } from "./NextStepActions";
 import type { DesignToolboxActionId } from "../runtime/design-toolbox";
 import { copyToClipboard } from "../lib/copy-to-clipboard";
-import { useT } from "../i18n";
+import { useI18n, useT } from "../i18n";
+import { completionTime } from "../utils/chatTime";
 import { deriveFileOps, type FileOpEntry } from "../runtime/file-ops";
 import { dedupeToolUsesById } from "../runtime/tool-events";
 import {
@@ -87,9 +88,9 @@ import {
   type TodoItem,
 } from "../runtime/todos";
 import type { Dict } from "../i18n/types";
-import { agentDisplayName, agentIconId, exactAgentDisplayName } from "../utils/agentLabels";
+import { agentDisplayName, exactAgentDisplayName } from "../utils/agentLabels";
 import { isApiProtocolAgentId } from "../utils/apiProtocol";
-import { AgentIcon } from "./AgentIcon";
+import styles from "./AssistantMessage.module.css";
 import { filterImplicitProducedFiles } from "../produced-files";
 import type {
   AgentEvent,
@@ -376,8 +377,7 @@ interface Props {
   // `od-share-to-community` trigger prompt.
   onShareToOpenDesign?: () => void;
   shareToOpenDesignBusy?: boolean;
-  // Consecutive messages from the same assistant share one identity header.
-  // ChatPane sets this false after the first item in a contiguous run.
+  // ChatPane marks consecutive replies from the same assistant as continuations.
   showRole?: boolean;
   // True only for the most recent assistant message.
   isLast?: boolean;
@@ -545,7 +545,7 @@ function AssistantMessageImpl({
   toolboxSkillNames,
   nextStepVariant = 'default',
 }: Props) {
-  const t = useT();
+  const { t, locale } = useI18n();
   // A blocked strategy task is a sticky terminal verdict: the daemon rejects
   // every further continuation with 409 STRATEGY_TASK_STATE_MISMATCH, so the
   // turn's question forms must stop accepting submissions and explain why.
@@ -722,11 +722,10 @@ function AssistantMessageImpl({
     },
     [pluginBusyKey, onRequestPluginFolderAgentAction],
   );
-  const usage = events.find((e) => e.kind === "usage") as
+  const usage = events.filter((e) => e.kind === "usage").at(-1) as
     | Extract<AgentEvent, { kind: "usage" }>
     | undefined;
-  const roleName = assistantRoleName(message, t);
-  const roleIconId = agentIconId(message.agentId, message.agentName);
+  const roleLabel = assistantRoleLabel(message, t);
   const hasEmptyResponse = events.some(
     (e) => e.kind === "status" && e.label === "empty_response"
   );
@@ -754,9 +753,6 @@ function AssistantMessageImpl({
   const unfinishedTodos = streaming
     ? []
     : continuableUnfinishedTodos({ events, strategyTaskDelivered: message.strategyTaskDelivered });
-  const hasTodoSnapshot = events.some(
-    (event) => event.kind === "tool_use" && isTodoWriteToolName(event.name),
-  );
   const runSucceeded =
     !streaming &&
     !hasResultDeliveryFailure &&
@@ -849,18 +845,27 @@ function AssistantMessageImpl({
     ((!!isLast && hasNextStepPrimary &&
       ((runSucceeded && hasTurnDeliverable) || isBrandExtractionRecovery)) ||
       showOpenDesignSubmission);
-  // Pre-output vs working: before any real content (text / thinking / tools /
-  // files) the footer shimmers "Preparing…"; the moment content lands it
-  // flips to "Working". The elapsed clock stays anchored to the persisted run
-  // start so switching project tabs or remounting the message cannot restart it.
-  const hasContent =
-    contentBlocks.some((b) => b.kind !== "status") ||
-    taskActivity !== null ||
-    turnFileOps.length > 0;
-  const preparing = streaming && !hasContent;
-  const preparingStatus = preparing && events.some((e) => e.kind === "status" && e.label === "thinking")
-    ? "thinking"
-    : "preparing";
+  const resultLabel = streaming
+    ? t("assistant.workingLabel")
+    : message.runStatus === "canceled"
+      ? t("assistant.canceledLabel")
+      : message.runStatus === "failed" || hasResultDeliveryFailure || (!message.runStatus && events.some((e) => e.kind === "status" && e.label === "error"))
+        ? t("critiqueTheater.failedHeading")
+        : hasEmptyResponse
+          ? t("assistant.emptyResponseLabel")
+          : unfinishedTodos.length > 0
+            ? t("assistant.unfinishedLabel")
+            : t("assistant.doneLabel");
+  const footerMetadata = (
+    <>
+      {!streaming && message.endedAt ? (
+        <time className={`${styles.metadata} ${styles.completionTime}`} dateTime={new Date(message.endedAt).toISOString()} title={new Date(message.endedAt).toLocaleString(locale)}>
+          {completionTime(message.endedAt, locale)}
+        </time>
+      ) : null}
+      <span className={`${styles.metadata} ${styles.model}`}>{roleLabel}</span>
+    </>
+  );
 
   // Index of the trailing text block — the streaming caret rides the end of
   // the last prose block so it tracks the final character as tokens arrive.
@@ -875,16 +880,10 @@ function AssistantMessageImpl({
   return (
     <div
       id={`assistant-message-${message.id}`}
-      className={`msg assistant${showRole ? '' : ' assistant-continuation'}`}
+      className={`msg assistant ${styles.message}${showRole ? '' : ' assistant-continuation'}`}
       data-assistant-message-id={message.id}
       tabIndex={-1}
     >
-      {showRole ? (
-        <div className="role">
-          <AgentIcon id={roleIconId} size={20} className="role-agent-icon" />
-          <span className="role-name">{roleName}</span>
-        </div>
-      ) : null}
       <div className="assistant-flow">
         {taskActivity ? (
           <TaskActivityCard
@@ -904,6 +903,7 @@ function AssistantMessageImpl({
             startedAt={message.startedAt}
             endedAt={message.endedAt}
             durationMs={usage?.durationMs}
+            statusLabel={resultLabel}
             projectFileNames={projectFileNames}
             onRequestOpenFile={onRequestOpenFile}
             onThinkingLinkClick={thinkingLinkClick}
@@ -984,9 +984,8 @@ function AssistantMessageImpl({
             // this no longer the last assistant message — keep their pill so
             // the error detail still survives reload / history review.
             if (b.label === "error" && message.id === errorCardOwnerId) return null;
-            // The pre-output "initializing" status is surfaced by the footer's
-            // shimmering "Preparing…" label instead of its own pill.
-            if (b.label === "initializing") return null;
+            // Preparation lives in the top status; model metadata lives in the footer.
+            if (b.label === "initializing" || b.label === "model") return null;
             return <StatusPill key={i} label={b.label} detail={b.detail} />;
           }
           return null;
@@ -1086,38 +1085,24 @@ function AssistantMessageImpl({
                 footerProps={{
                   streaming,
                   hasUnfinishedTodos: unfinishedTodos.length > 0,
-                  hasEmptyResponse,
-                  canceled: message.runStatus === "canceled",
-                  preparing,
-                  preparingStatus,
                   copyMarkdown,
                   onFork: canFork ? onForkFromMessage : undefined,
                   forking,
                   forceVisible: true,
                   isLast: !!isLast,
-                  hideRunStatus:
-                    taskActivity !== null ||
-                    hasTodoSnapshot ||
-                    message.id === errorCardOwnerId,
+                  metadata: footerMetadata,
                 }}
               />
             ) : (
               <AssistantFooter
                 streaming={streaming}
                 hasUnfinishedTodos={unfinishedTodos.length > 0}
-                hasEmptyResponse={hasEmptyResponse}
-                canceled={message.runStatus === "canceled"}
-                preparing={preparing}
-                preparingStatus={preparingStatus}
                 copyMarkdown={copyMarkdown}
                 onFork={canFork ? onForkFromMessage : undefined}
                 forking={forking}
                 isLast={!!isLast}
-                hideRunStatus={
-                  taskActivity !== null ||
-                  hasTodoSnapshot ||
-                  message.id === errorCardOwnerId
-                }
+                forceVisible
+                metadata={footerMetadata}
               />
             )}
           </div>
@@ -1510,8 +1495,7 @@ function isFeedbackEligible({
   return !!message.endedAt;
 }
 
-// API headers show the provider and the model captured for this reply.
-// Local CLI headers keep their existing brand-only presentation.
+// Provider-only labels remain available to callers grouping consecutive replies.
 export function assistantRoleName(
   message: ChatMessage,
   t: TranslateFn
@@ -1550,10 +1534,10 @@ export function assistantRoleLabel(
 }
 
 function assistantModelDetail(message: ChatMessage): string | null {
-  const initializing = message.events?.find(
-    (e) => e.kind === "status" && e.label === "initializing" && e.detail
-  ) as Extract<AgentEvent, { kind: "status" }> | undefined;
-  const detail = initializing?.detail?.trim();
+  const modelStatus = message.events?.filter(
+    (e) => e.kind === "status" && (e.label === "initializing" || e.label === "model") && e.detail
+  ).at(-1) as Extract<AgentEvent, { kind: "status" }> | undefined;
+  const detail = modelStatus?.detail?.trim();
   if (!detail || detail === "default") return null;
   return detail;
 }
@@ -1576,12 +1560,6 @@ function appendRoleModel(label: string, model: string | null): string {
 interface AssistantFooterProps {
   streaming: boolean;
   hasUnfinishedTodos: boolean;
-  hasEmptyResponse: boolean;
-  canceled?: boolean;
-  // Pre-output phase: streaming but nothing rendered yet. The label shimmers
-  // "Preparing…"; once content lands it flips to "Working".
-  preparing?: boolean;
-  preparingStatus?: "preparing" | "thinking";
   copyMarkdown?: string;
   onFork?: () => void;
   forking?: boolean;
@@ -1590,33 +1568,24 @@ interface AssistantFooterProps {
   // Identifies the latest reply for UI/analytics hooks. Completed controls are
   // hover/focus-gated on pointer devices and remain visible without hover.
   isLast?: boolean;
-  // When the turn has an execution disclosure, its run state lives at the top
-  // of the answer. The footer keeps only actions so run state is not repeated.
-  hideRunStatus?: boolean;
+  metadata?: ReactNode;
 }
 
 function AssistantFooter({
   streaming,
   hasUnfinishedTodos,
-  hasEmptyResponse,
-  canceled = false,
-  preparing = false,
-  preparingStatus = "preparing",
   copyMarkdown,
   onFork,
   forking = false,
   feedbackControls,
   forceVisible = false,
   isLast = false,
-  hideRunStatus = false,
+  metadata,
 }: AssistantFooterProps) {
-  const t = useT();
   if (
     !forceVisible &&
     !streaming &&
     !hasUnfinishedTodos &&
-    !hasEmptyResponse &&
-    !canceled &&
     !copyMarkdown &&
     !onFork
   )
@@ -1628,28 +1597,8 @@ function AssistantFooter({
       data-streaming={streaming ? "true" : "false"}
       data-last={isLast ? "true" : "false"}
     >
-      {!hideRunStatus ? (
-        <>
-          <span className="dot" data-active={streaming ? "true" : "false"} />
-          <span className={`assistant-label${streaming && preparing ? " shimmer-text shimmer-prepare" : ""}`}>
-            {streaming
-              ? preparing
-                ? preparingStatus === "thinking"
-                  ? t("assistant.statusThinking")
-                  : t("assistant.statusPreparing")
-                : t("assistant.workingLabel")
-              : hasEmptyResponse
-              ? t("assistant.emptyResponseLabel")
-              : canceled
-              ? t("assistant.canceledLabel")
-              : hasUnfinishedTodos
-              ? t("assistant.unfinishedLabel")
-              : t("assistant.doneLabel")}
-          </span>
-        </>
-      ) : null}
       {copyMarkdown || onFork || feedbackControls ? (
-        <span className="assistant-footer-controls">
+        <span className={`assistant-footer-controls ${styles.footerControls}`}>
           {copyMarkdown ? <AssistantMarkdownCopyButton markdown={copyMarkdown} /> : null}
           {onFork ? (
             <AssistantForkButton
@@ -1660,6 +1609,7 @@ function AssistantFooter({
           {feedbackControls}
         </span>
       ) : null}
+      {metadata}
     </div>
   );
 }
@@ -2205,7 +2155,7 @@ function ProducedFiles({
   const t = useT();
   const { workspaceContext } = useProjectCollabContext();
   return (
-    <div className="produced-files">
+    <div className={`produced-files ${styles.framedRegion} ${styles.producedFiles}`}>
       <div className="produced-files-label">{t("assistant.producedFiles")}</div>
       <div className="produced-files-list">
         {files.map((f) => (
@@ -3357,7 +3307,7 @@ function StatusPill({
   const displayLabel = label === "context_compaction" ? "compacting context" : label;
   return (
     <div
-      className={`status-pill${variant ? ` is-${variant}` : ""}`}
+      className={`status-pill ${styles.framedRegion} ${styles.statusPill}${variant ? ` is-${variant}` : ""}`}
       data-status={label}
     >
       <span className="status-label">{displayLabel}</span>
@@ -3705,6 +3655,7 @@ function TaskActivityCard({
   startedAt,
   endedAt,
   durationMs,
+  statusLabel,
   projectFileNames,
   onRequestOpenFile,
   onThinkingLinkClick,
@@ -3720,6 +3671,7 @@ function TaskActivityCard({
   startedAt: number | undefined;
   endedAt: number | undefined;
   durationMs: number | undefined;
+  statusLabel: string;
   projectFileNames?: Set<string>;
   onRequestOpenFile?: (name: string) => void;
   onThinkingLinkClick?: MarkdownLinkClickHandler;
@@ -3748,13 +3700,11 @@ function TaskActivityCard({
         settledItems.some(
           (item) => item.result?.isError || (!item.result && !runSucceeded),
         )));
-  const stateLabel = running
-    ? t("assistant.workingLabel")
-    : runCanceled
+  const stateLabel = !running && runCanceled
       ? t("assistant.canceledLabel")
       : hasError
         ? t("critiqueTheater.failedHeading")
-        : t("assistant.doneLabel");
+        : statusLabel;
   const runState = running
     ? "running"
     : runCanceled

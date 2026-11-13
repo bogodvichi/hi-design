@@ -15,6 +15,7 @@ import {
   type ReactNode,
 } from 'react';
 import { Button } from '@open-design/components';
+import fileTabStyles from './FileTab.module.css';
 import { createPortal } from 'react-dom';
 import type { DesignSystemEditClickProps, TrackingArtifactKind, TrackingProjectKind } from '@open-design/contracts/analytics';
 import { useAnalytics } from '../analytics/provider';
@@ -8482,6 +8483,7 @@ const Tab = memo(function Tab({
     <div
       className={[
         'ws-tab',
+        closable && onClose ? fileTabStyles.closable : '',
         'od-tooltip',
         meta ? 'has-meta' : '',
         kind === 'live-artifact' ? 'live-artifact-tab' : '',
@@ -8535,7 +8537,7 @@ const Tab = memo(function Tab({
       {closable && onClose ? (
         <button
           type="button"
-          className="ws-tab-close od-tooltip"
+          className={`${fileTabStyles.close} od-tooltip`}
           onClick={(e) => {
             e.stopPropagation();
             onClose();
@@ -8545,7 +8547,7 @@ const Tab = memo(function Tab({
           data-tooltip-placement="bottom"
           aria-label={t('workspace.closeTab')}
         >
-          <Icon name="close" size={11} />
+          <Icon name="close" size={14} />
         </button>
       ) : null}
     </div>

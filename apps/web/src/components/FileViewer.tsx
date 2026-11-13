@@ -3,7 +3,8 @@ import { memo, useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, 
 import { createPortal, flushSync } from 'react-dom';
 import { useManualEditAutosave } from '../edit-mode/use-manual-edit-autosave';
 import manualEditStyles from './ManualEditPanel.module.css';
-import { Button, Input, Select } from '@open-design/components';
+import { Button, Input, Select, ViewModeSwitch } from '@open-design/components';
+import toolbarStyles from './FileViewerToolbar.module.css';
 import {
   getLatestHostPreviewNavigationFailure,
   subscribeHostPreviewNavigationFailure,
@@ -2420,8 +2421,14 @@ export function LiveArtifactViewer({
           <Icon name="close" size={14} />
         </button>
       ) : null}
-      <div className="viewer-toolbar">
+      <div className={`viewer-toolbar ${toolbarStyles.toolbar}`}>
         <div className="viewer-toolbar-left">
+          <ViewModeSwitch label={t('fileViewer.viewMode')} value={mode} onChange={setMode}
+            options={tabs.map(tab => ({ value: tab.id, label: tab.label,
+              icon: <RemixIcon name={tab.id === 'preview' ? 'eye-line' : tab.id === 'code' ? 'code-s-slash-line' : tab.id === 'data' ? 'layout-grid-line' : 'history-line'} size={14} />,
+            }))} />
+        </div>
+        <div className="viewer-toolbar-actions">
             <button
               type="button"
               className="icon-only od-tooltip"
@@ -2433,20 +2440,6 @@ export function LiveArtifactViewer({
             >
             <Icon name="reload" size={14} />
           </button>
-        </div>
-        <div className="viewer-toolbar-actions">
-          <div className="viewer-tabs">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                className={`viewer-tab ${mode === tab.id ? 'active' : ''}`}
-                onClick={() => setMode(tab.id)}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
           <div
             className="viewer-preview-controls"
             data-active={mode === 'preview' ? 'true' : 'false'}
@@ -2695,6 +2688,12 @@ function LiveArtifactCodePanel({
   return (
     <div className="live-artifact-code-panel">
       <div className="live-artifact-code-header">
+        <ViewModeSwitch label={t('liveArtifact.viewer.code.variantAria')} value={variant}
+          onChange={setVariant} className="live-artifact-code-tabs"
+          options={[
+            { value: 'template', label: t('liveArtifact.viewer.code.variantTemplate'), icon: <RemixIcon name="file-code-line" size={14} /> },
+            { value: 'rendered-source', label: t('liveArtifact.viewer.code.variantRendered'), icon: <RemixIcon name="code-s-slash-line" size={14} /> },
+          ]} />
         <div className="live-artifact-code-copy">
           <strong>
             {variant === 'template'
@@ -2706,25 +2705,6 @@ function LiveArtifactCodePanel({
               ? t('liveArtifact.viewer.code.templateHelp')
               : t('liveArtifact.viewer.code.renderedHelp')}
           </span>
-        </div>
-        <div
-          className="viewer-tabs live-artifact-code-tabs"
-          aria-label={t('liveArtifact.viewer.code.variantAria')}
-        >
-          <button
-            type="button"
-            className={`viewer-tab ${variant === 'template' ? 'active' : ''}`}
-            onClick={() => setVariant('template')}
-          >
-            {t('liveArtifact.viewer.code.variantTemplate')}
-          </button>
-          <button
-            type="button"
-            className={`viewer-tab ${variant === 'rendered-source' ? 'active' : ''}`}
-            onClick={() => setVariant('rendered-source')}
-          >
-            {t('liveArtifact.viewer.code.variantRendered')}
-          </button>
         </div>
       </div>
       {loading ? (
@@ -7464,8 +7444,15 @@ function ReactComponentViewer({
          />
        )
      ) : null}
-      <div className="viewer-toolbar">
+      <div className={`viewer-toolbar ${toolbarStyles.toolbar}`}>
         <div className="viewer-toolbar-left">
+          <ViewModeSwitch label={t('fileViewer.viewMode')} value={mode} onChange={setMode}
+            options={[
+              { value: 'preview', label: t('fileViewer.preview'), icon: <RemixIcon name="eye-line" size={14} /> },
+              { value: 'source', label: t('fileViewer.source'), icon: <RemixIcon name="code-s-slash-line" size={14} /> },
+            ]} />
+        </div>
+        <div className="viewer-toolbar-actions">
           <button
             type="button"
             className="icon-only od-tooltip"
@@ -7480,24 +7467,6 @@ function ReactComponentViewer({
           <span className="viewer-meta">
             {t('fileViewer.reactMeta', { size: humanSize(file.size) })}
           </span>
-        </div>
-        <div className="viewer-toolbar-actions">
-          <div className="viewer-tabs">
-            <button
-              type="button"
-              className={`viewer-tab ${mode === 'preview' ? 'active' : ''}`}
-              onClick={() => setMode('preview')}
-            >
-              {t('fileViewer.preview')}
-            </button>
-            <button
-              type="button"
-              className={`viewer-tab ${mode === 'source' ? 'active' : ''}`}
-              onClick={() => setMode('source')}
-            >
-              {t('fileViewer.source')}
-            </button>
-          </div>
           {source !== null ? (
             <>
               <span className="viewer-divider" aria-hidden />
@@ -7831,7 +7800,7 @@ function BinaryViewer({
   const t = useT();
   return (
     <div className="viewer binary-viewer">
-      <div className="viewer-toolbar">
+      <div className={`viewer-toolbar ${toolbarStyles.toolbar}`}>
         <div className="viewer-toolbar-left">
           <span className="viewer-meta">
             {t('fileViewer.binaryMeta', { size: humanSize(file.size) })}
@@ -7877,7 +7846,7 @@ function DocumentPreviewViewer({
 
   return (
     <div className="viewer document-viewer">
-      <div className="viewer-toolbar">
+      <div className={`viewer-toolbar ${toolbarStyles.toolbar}`}>
         <div className="viewer-toolbar-left">
           <span className="viewer-meta">
             {documentMetaLabel(file, t)} · {humanSize(file.size)}
@@ -17182,8 +17151,17 @@ async function openReviewListModal() {
 
   return (
     <div ref={viewerRootRef} className={`viewer html-viewer${inTabPresent ? ' is-tab-present' : ''}${viewerOnly ? ' html-viewer--viewer-only' : ''}`}>
-      <div className="viewer-toolbar" style={workspaceActive ? undefined : { visibility: 'hidden' }}>
+      <div className={`viewer-toolbar ${toolbarStyles.toolbar}`} style={workspaceActive ? undefined : { visibility: 'hidden' }}>
         <div className="viewer-toolbar-left">
+          <ViewModeSwitch label={t('fileViewer.viewMode')} value={mode}
+            onChange={(id) => { fireArtifactToolbarClick(id); selectMode(id); }}
+            options={[
+              { value: 'preview', label: t('fileViewer.preview'), icon: <RemixIcon name="eye-line" size={14} /> },
+              { value: 'source', label: t('fileViewer.source'), icon: <RemixIcon name="code-s-slash-line" size={14} />,
+                disabled: viewerOnly, title: viewerOnly ? viewerOnlyDisabledTitle : undefined },
+            ]} />
+        </div>
+        <div className="viewer-toolbar-actions">
           {showDeckThumbnailRail ? (
             <button
               type="button"
@@ -17216,33 +17194,6 @@ async function openReviewListModal() {
           >
             <Icon name="reload" size={14} />
           </button>
-          {/* Two-segment pill tablist: both destinations stay visible and the
-              active one is legible at a glance. A single toggle that flips its
-              own label reads as "what am I looking at now?" and forces the user
-              to click to find out. */}
-          <div className="viewer-tabs viewer-mode-tabs" role="tablist" aria-label="View mode">
-            {([
-              ['preview', t('fileViewer.preview'), 'eye-line'],
-              ['source', t('fileViewer.source'), 'code-s-slash-line'],
-            ] as const).map(([id, label, icon]) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                className={`viewer-tab ${mode === id ? 'active' : ''}`}
-                aria-selected={mode === id}
-                disabled={viewerOnly && id === 'source'}
-                title={viewerOnly && id === 'source' ? viewerOnlyDisabledTitle : undefined}
-                onClick={() => {
-                  fireArtifactToolbarClick(id);
-                  selectMode(id);
-                }}
-              >
-                <RemixIcon name={icon} size={14} className="viewer-tab-icon" />
-                <span className="viewer-tab-label">{label}</span>
-              </button>
-            ))}
-          </div>
           {showPreviewToolbarControls ? (
             <span className="viewer-preview-toolbar-inline">
               <PreviewViewportControls
@@ -17292,8 +17243,7 @@ async function openReviewListModal() {
               </button>
             </span>
           ) : null}
-        </div>
-        <div className="viewer-toolbar-actions">
+
           {showPreviewToolbarControls ? (
             <div className="viewer-toolbar-inline-actions">
               {mode === 'preview' ? (
@@ -19898,7 +19848,7 @@ function ImageViewer({
 
   return (
     <div className="viewer image-viewer">
-      <div className="viewer-toolbar">
+      <div className={`viewer-toolbar ${toolbarStyles.toolbar}`}>
         <div className="viewer-toolbar-left">
           <span className="viewer-meta">
             {file.kind === 'sketch'
@@ -20014,7 +19964,7 @@ function SketchViewer({
   const { workspaceContext } = useProjectCollabContext();
   return (
     <div className="viewer image-viewer sketch-viewer">
-      <div className="viewer-toolbar">
+      <div className={`viewer-toolbar ${toolbarStyles.toolbar}`}>
         <div className="viewer-toolbar-left">
           <span className="viewer-meta">
             {t('fileViewer.sketchMeta', { size: humanSize(file.size) })}
@@ -20049,7 +19999,7 @@ function VideoViewer({
   );
   return (
     <div className="viewer video-viewer">
-      <div className="viewer-toolbar">
+      <div className={`viewer-toolbar ${toolbarStyles.toolbar}`}>
         <div className="viewer-toolbar-left">
           <span className="viewer-meta">
             {t('fileViewer.videoMeta', { size: humanSize(file.size) })}
@@ -20079,7 +20029,7 @@ function AudioViewer({
   );
   return (
     <div className="viewer audio-viewer">
-      <div className="viewer-toolbar">
+      <div className={`viewer-toolbar ${toolbarStyles.toolbar}`}>
         <div className="viewer-toolbar-left">
           <span className="viewer-meta">
             {t('fileViewer.audioMeta', { size: humanSize(file.size) })}
@@ -20160,32 +20110,16 @@ export function SvgViewer({
 
   return (
     <div className="viewer svg-viewer">
-      <div className="viewer-toolbar">
+      <div className={`viewer-toolbar ${toolbarStyles.toolbar}`}>
         <div className="viewer-toolbar-left">
-          <span className="viewer-meta">
-            {t('fileViewer.imageMeta', { size: humanSize(file.size) })}
-          </span>
+          <ViewModeSwitch label={t('fileViewer.viewMode')} value={mode} onChange={setMode}
+            options={[
+              { value: 'preview', label: t('fileViewer.preview'), icon: <RemixIcon name="eye-line" size={14} /> },
+              { value: 'source', label: t('fileViewer.source'), icon: <RemixIcon name="code-s-slash-line" size={14} /> },
+            ]} />
         </div>
         <div className="viewer-toolbar-actions">
-          <div className="viewer-tabs">
-            <button
-              type="button"
-              className={`viewer-tab ${mode === 'preview' ? 'active' : ''}`}
-              aria-pressed={mode === 'preview'}
-              onClick={() => setMode('preview')}
-            >
-              {t('fileViewer.preview')}
-            </button>
-            <button
-              type="button"
-              className={`viewer-tab ${mode === 'source' ? 'active' : ''}`}
-              aria-pressed={mode === 'source'}
-              onClick={() => setMode('source')}
-            >
-              {t('fileViewer.source')}
-            </button>
-          </div>
-          <span className="viewer-divider" aria-hidden />
+          <span className="viewer-meta">{t('fileViewer.imageMeta', { size: humanSize(file.size) })}</span>
           <button
             type="button"
             className="viewer-action"
@@ -20290,7 +20224,7 @@ function TextViewer({
 
   return (
     <div className="viewer text-viewer">
-      <div className="viewer-toolbar">
+      <div className={`viewer-toolbar ${toolbarStyles.toolbar}`}>
         <div className="viewer-toolbar-left" />
         <div className="viewer-toolbar-actions">
           <button
@@ -21006,32 +20940,22 @@ function MarkdownViewer({
 
   return (
     <div className="viewer text-viewer">
-      <div className="viewer-toolbar">
+      <div className={`viewer-toolbar ${toolbarStyles.toolbar}`}>
         <div className="viewer-toolbar-left">
-          {isStreaming ? <span className="viewer-meta">{t('fileViewer.markdownStreamingMeta')}</span> : null}
-          {isError ? <span className="viewer-meta">{t('fileViewer.markdownErrorMeta')}</span> : null}
-          <div className="viewer-tabs markdown-mode-tabs" role="tablist" aria-label={t('fileViewer.markdownViewMode')}>
-            {(['edit', 'split', 'preview'] as const).map((item) => (
-              <button
-                key={item}
-                type="button"
-                role="tab"
-                aria-selected={mode === item}
-                className={`viewer-tab ${mode === item ? 'active' : ''}`}
-                disabled={viewerOnly && item !== 'preview'}
-                title={viewerOnly && item !== 'preview' ? viewerOnlyDisabledTitle : undefined}
-                onClick={() => setMode(item)}
-              >
-                {item === 'edit'
-                  ? t('fileViewer.source')
-                  : item === 'split'
-                    ? t('fileViewer.split')
-                    : t('fileViewer.preview')}
-              </button>
-            ))}
-          </div>
+          <ViewModeSwitch label={t('fileViewer.markdownViewMode')} value={mode} onChange={setMode}
+            options={([
+              ['edit', t('fileViewer.source'), 'code-s-slash-line'],
+              ['split', t('fileViewer.split'), 'layout-line'],
+              ['preview', t('fileViewer.preview'), 'eye-line'],
+            ] as const).map(([value, label, icon]) => ({ value, label,
+              icon: <RemixIcon name={icon} size={14} />,
+              disabled: viewerOnly && value !== 'preview',
+              title: viewerOnly && value !== 'preview' ? viewerOnlyDisabledTitle : undefined,
+            }))} />
         </div>
         <div className="viewer-toolbar-actions">
+          {isStreaming ? <span className="viewer-meta">{t('fileViewer.markdownStreamingMeta')}</span> : null}
+          {isError ? <span className="viewer-meta">{t('fileViewer.markdownErrorMeta')}</span> : null}
           {viewerOnly ? (
             <span className="viewer-meta markdown-autosave markdown-autosave-idle">
               {viewerOnlyDisabledTitle}

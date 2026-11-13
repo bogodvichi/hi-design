@@ -1,0 +1,222 @@
+/* Excalidraw declares its palette again on dark surfaces and detached dialogs. */
+.editor.editor :global(.excalidraw),
+.neutral.neutral.neutral {
+  --color-primary: var(--text-strong);
+  --color-primary-darker: var(--text);
+  --color-primary-darkest: var(--text-strong);
+  --color-primary-hover: var(--text);
+  --color-primary-light: var(--bg-subtle);
+  --color-primary-light-darker: var(--bg-muted);
+  --color-selection: var(--text-soft);
+  --color-brand-hover: var(--text-muted);
+  --color-brand-active: var(--text-strong);
+  --color-surface-high: var(--bg-subtle);
+  --color-surface-mid: var(--bg-panel);
+  --color-surface-low: var(--bg-subtle);
+  --color-surface-lowest: var(--bg);
+  --color-on-surface: var(--text);
+  --island-bg-color: var(--bg);
+  --default-bg-color: var(--bg);
+  --text-primary-color: var(--text);
+  --popup-secondary-bg-color: var(--bg-panel);
+  --popup-text-color: var(--text);
+  --color-surface-primary-container: var(--bg-muted);
+  --color-on-primary-container: var(--text-strong);
+  --color-border-outline: var(--text-soft);
+  --color-border-outline-variant: var(--border);
+  --default-border-color: var(--border-soft);
+  --dialog-border-color: var(--border);
+  --button-hover-bg: var(--bg-subtle);
+  --button-active-bg: var(--bg-muted);
+  --button-active-border: var(--border-strong);
+  --button-gray-1: var(--bg-subtle);
+  --button-gray-2: var(--bg-muted);
+  --button-gray-3: var(--border-strong);
+  --input-border-color: var(--border);
+  --input-hover-bg-color: var(--bg-subtle);
+  --color-slider-track: var(--bg-muted);
+  --color-slider-thumb: var(--text-muted);
+  --focus-highlight-color: var(--border-strong);
+  --select-highlight-color: var(--bg-muted);
+  --link-color: var(--text);
+}
+
+/* Share one grid cell and one surface without moving React-owned DOM nodes. */
+.editor :global(.App-menu_top) {
+  grid-template-columns: minmax(0, 1fr) max-content minmax(0, 1fr);
+  column-gap: 0;
+  row-gap: 16px;
+}
+.editor :global(.App-menu_top__left) { display: contents; }
+.editor :global(.App-menu_top__left > div:first-child) {
+  grid-area: 1 / 2;
+  justify-self: start;
+  align-self: start;
+  width: 32px;
+  margin: 4px;
+  z-index: 2;
+}
+.editor :global(.App-menu_top__left > div:first-child)::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: -9px;
+  width: 1px;
+  height: 24px;
+  background: var(--border);
+}
+.editor :global(.App-menu_top__left > .selected-shape-actions) {
+  grid-area: 2 / 1;
+  justify-self: start;
+}
+.editor :global(.App-menu_top > .shapes-section) {
+  grid-area: 1 / 2;
+  padding-inline-start: 48px;
+  border-radius: var(--radius-md);
+  background: var(--island-bg-color);
+  box-shadow: var(--shadow-island);
+}
+.editor :global(.App-menu_top .App-toolbar) {
+  background: transparent;
+  box-shadow: none;
+}
+.editor :global(.App-menu_top > .layer-ui__wrapper__top-right) { grid-area: 1 / 3; }
+
+/* Visually hidden native inputs must not enlarge the scrollable panel. */
+:is(.editor, .neutral) :global(.panelColumn .buttonList label) {
+  position: relative;
+}
+:is(.editor.editor, .neutral.neutral) :global(.panelColumn .buttonList input[type='radio']),
+:is(.editor.editor, .neutral.neutral) :global(.panelColumn .buttonList input[type='button']) {
+  inset: 0 auto auto 0;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+:is(.editor, .neutral) :global(.panelColumn),
+:is(.editor, .neutral) :global(.panelColumn fieldset) {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Constant alpha ramp above a checkerboard, independent of the current value.
+   The vendor range sets an inline background shorthand, so override it here. */
+:is(.editor, .neutral) :global(input.range-input[data-testid='opacity']) {
+  box-sizing: border-box;
+  width: 100%;
+  height: 12px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background:
+    linear-gradient(to right, transparent, var(--text-muted)) 0 0 / 100% 100%,
+    repeating-conic-gradient(var(--bg-muted) 0 25%, var(--bg) 0 50%) 0 0 / 8px 8px !important;
+}
+:is(.editor, .neutral) :global(input.range-input[data-testid='opacity'])::-webkit-slider-thumb {
+  box-sizing: border-box;
+  width: 8px;
+  height: 18px;
+  border: 1px solid var(--bg);
+  border-radius: var(--radius-sm);
+  background: var(--text-muted);
+  box-shadow: 0 0 0 1px var(--text-soft);
+}
+:is(.editor, .neutral) :global(input.range-input[data-testid='opacity'])::-moz-range-thumb {
+  box-sizing: border-box;
+  width: 8px;
+  height: 18px;
+  border: 1px solid var(--bg);
+  border-radius: var(--radius-sm);
+  background: var(--text-muted);
+  box-shadow: 0 0 0 1px var(--text-soft);
+}
+
+/* The public Footer slot sits between canvas actions and the Help button. */
+.editor :global(.layer-ui__wrapper__footer) { align-items: center; }
+.editor :global(.layer-ui__wrapper__footer > .footer-center) {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
+  margin-inline: auto 16px;
+}
+
+.mobileFooter {
+  position: absolute;
+  right: 16px;
+  bottom: 72px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  pointer-events: auto;
+}
+.helpButton.helpButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+}
+.helpButton.helpButton:hover { background: var(--bg-muted); }
+
+/* Native mobile chrome uses a separate bottom toolbar. Anchor its menu
+   trigger into the top tool surface while retaining the native menu panel. */
+@supports (anchor-name: --sketch-tools) {
+  .editor :global(.App-toolbar--mobile) {
+    anchor-name: --sketch-tools;
+    padding-inline-start: 48px;
+  }
+  .editor :global(.excalidraw--mobile .main-menu-trigger) {
+    position: fixed;
+    position-anchor: --sketch-tools;
+    top: calc(anchor(top) + 4px);
+    left: calc(anchor(left) + 4px);
+    z-index: 3;
+  }
+  .editor :global(.excalidraw--mobile .main-menu-trigger)::after {
+    content: '';
+    position: absolute;
+    right: -9px;
+    top: 4px;
+    width: 1px;
+    height: 24px;
+    background: var(--border);
+  }
+}
+
+/* Native canvas tools follow the file-viewer action geometry. */
+.editor :global(.App-toolbar .ToolIcon__icon),
+.editor :global(.App-toolbar .ToolIcon_type_button),
+.editor :global(.App-toolbar__extra-tools-trigger),
+.editor :global(.main-menu-trigger),
+.editor :global(.layer-ui__wrapper__top-right .ToolIcon__icon) {
+  box-sizing: border-box;
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
+  padding: 0;
+  border-radius: var(--radius-md);
+}
+
+.editor :global(.App-toolbar .ToolIcon__icon:hover),
+.editor :global(.App-toolbar .ToolIcon_type_button:hover:not(:disabled)),
+.editor :global(.App-toolbar__extra-tools-trigger:hover:not(:disabled)),
+.editor :global(.main-menu-trigger:hover:not(:disabled)),
+.editor :global(.layer-ui__wrapper__top-right .ToolIcon__icon:hover) {
+  background: var(--bg-subtle);
+}
+
+.editor :global(.App-toolbar .ToolIcon__icon svg),
+.editor :global(.App-toolbar__extra-tools-trigger svg),
+.editor :global(.main-menu-trigger svg),
+.editor :global(.layer-ui__wrapper__top-right .ToolIcon__icon svg) {
+  width: 14px;
+  height: 14px;
+}

@@ -1535,12 +1535,13 @@
   /* Inset the pane so it reads as a floating card (same treatment as the home
      sidebar's .entry-nav-rail__panel). Top inset is 0 so the card sits 8px
      higher — the tab strip's own 10px bottom breathing is the only gap to it,
-     giving a 10px tab-to-content spacing (was 18px). Bottom/left stay 8px; the
-     slot's overflow:hidden (shell.css) clips the card's shadow cleanly at the
-     slot edge. Right side is 0 so the gap to the workspace card is just the
+     giving a 10px tab-to-content spacing (was 18px). Bottom/left stay 8px;
+     right side is 0 so the gap to the workspace card is just the
      8px resize-handle column (not 8+8+8=24px). */
   padding: 0 0 8px 8px;
   background: var(--veil-page, transparent);
+  overflow: clip;
+  overflow-clip-margin: 12px;
 }
 .app .split-chat-slot > .pane {
   /* overflow:hidden still rounds the content (the composer is a separate
@@ -1549,7 +1550,7 @@
   border: var(--stroke-thin) solid color-mix(in srgb, var(--border) 66%, transparent);
   /* The neutral tray surface now belongs to the entire chat sidebar. */
   border-radius: var(--radius-lg);
-  box-shadow: none;
+  box-shadow: var(--shadow-surface);
   background: var(--project-chat-surface);
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
@@ -1715,7 +1716,6 @@
 .app .msg.assistant .prose-block .md-p + .md-p {
   margin-top: 14px;
 }
-.app .status-pill,
 .app .op-waiting,
 .app .assistant-footer {
   border: none;
@@ -1725,7 +1725,6 @@
 }
 .app .status-pill {
   gap: 8px;
-  padding: 6px 14px;
   font-size: 12px;
   font-weight: 500;
 }
@@ -1977,9 +1976,6 @@
   overflow-y: auto;
 }
 .app .produced-files {
-  border: none;
-  border-radius: 0;
-  padding: 0;
   background: none;
   box-shadow: none;
 }

@@ -6,6 +6,7 @@
 | --- | --- | --- |
 | [对话框规范](dialogs.md) | 固定区域、内容滚动、字段、卡片、图形选项状态 | `Dialog`、`DialogToolbar`、`FieldGroup`、`VisualChoiceGroup` |
 | [全局滚动条规范](scrollbars.md) | 覆盖式布局、热区、尺寸、颜色、安全边距、生命周期 | `OverlayScrollbars` |
+| [设计文件查看工具栏](viewer-toolbars.md) | 左侧视图切换、32px 操作按钮、图标、只读和窄屏规则 | `ViewModeSwitch`、文件与草图工具栏 |
 | [开发控件与接入](components.md) | 公共 API、示例、代码归属、验证方式 | `@open-design/components` |
 
 ## 维护方式
