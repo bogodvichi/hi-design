@@ -13716,17 +13716,14 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       const baseSource = sourceRef.current;
       const result = applyManualEditPatch(baseSource, patch);
       if (!result.ok) {
-        setManualEditError(userFacingError(result.error ?? 'Could not apply edit.', t, 'feedback.saveEditFailed', t('feedback.objectFile')));
+        setManualEditError(userFacingError(result, t, 'feedback.saveEditFailed', t('feedback.objectFile')));
         return false;
       }
       if (result.source === baseSource) {
         if (patch.kind === 'set-text') manualEditTextFailedSessionIdsRef.current.delete(patch.id);
         return true;
       }
-      if (patch.kind === 'set-full-source' && !(await confirmManualEditHistorySource(
-        baseSource,
-        'The file changed outside manual edit mode. Refreshing before applying manual edits.',
-      ))) return false;
+      if (patch.kind === 'set-full-source' && !(await confirmManualEditHistorySource(baseSource))) return false;
       const parentVersionId = await resolveManualEditParentVersionId(baseSource);
       // A committed content patch can notify the file watcher as soon as the
       // write lands. Capture the opaque iframe's exact scroll position before
@@ -13748,7 +13745,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       if (!saved.ok) {
         if (saved.code === 'FILE_EDIT_CONFLICT') {
           setManualEditError(userFacingError(saved, t, 'feedback.saveEditFailed', t('feedback.objectFile')));
-          await confirmManualEditHistorySource(baseSource, 'The file changed outside manual edit mode. Refreshing before applying manual edits.');
+          await confirmManualEditHistorySource(baseSource);
           return false;
         }
         setManualEditError(userFacingError(saved, t, 'feedback.saveEditFailed', t('feedback.objectFile')));
@@ -13818,7 +13815,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     }
   }
 
-  async function confirmManualEditHistorySource(expectedSource: string, message: string): Promise<boolean> {
+  async function confirmManualEditHistorySource(expectedSource: string): Promise<boolean> {
     const persisted = await fetchProjectFileText(projectId, file.name, {
       cache: 'no-store',
       cacheBustKey: Date.now(),
@@ -13835,7 +13832,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     setManualEditUndone([]);
     manualEditPendingStyleRef.current = null;
     setManualEditDraft((current) => ({ ...current, fullSource: persisted }));
-    setManualEditError(userFacingError(message, t, 'feedback.saveEditFailed', t('feedback.objectFile')));
+    setManualEditError(t('feedback.manualEditConflictRefreshed'));
     return false;
   }
 
@@ -13858,10 +13855,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     manualEditSavingRef.current = true;
     setManualEditSaving(true);
     try {
-      if (latest.patch.kind === 'set-full-source' && !(await confirmManualEditHistorySource(
-        latest.afterSource,
-        'The file changed outside manual edit mode. History was cleared to avoid overwriting newer content.',
-      ))) return;
+      if (latest.patch.kind === 'set-full-source' && !(await confirmManualEditHistorySource(latest.afterSource))) return;
       const parentVersionId = await resolveManualEditParentVersionId(latest.afterSource);
       if (manualEditIdentityRef.current !== currentSourceIdentity) return;
       const saved = await writeProjectTextFileDetailed(projectId, file.name, latest.beforeSource, {
@@ -13875,7 +13869,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       if (!saved.ok) {
         if (saved.code === 'FILE_EDIT_CONFLICT') {
           setManualEditError(userFacingError(saved, t, 'feedback.saveUndoFailed', t('feedback.objectFile')));
-          await confirmManualEditHistorySource(latest.afterSource, 'The file changed outside manual edit mode. History was cleared to avoid overwriting newer content.');
+          await confirmManualEditHistorySource(latest.afterSource);
           return;
         }
         setManualEditError(userFacingError(saved, t, 'feedback.saveUndoFailed', t('feedback.objectFile')));
@@ -13926,10 +13920,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     manualEditSavingRef.current = true;
     setManualEditSaving(true);
     try {
-      if (latest.patch.kind === 'set-full-source' && !(await confirmManualEditHistorySource(
-        latest.beforeSource,
-        'The file changed outside manual edit mode. History was cleared to avoid overwriting newer content.',
-      ))) return;
+      if (latest.patch.kind === 'set-full-source' && !(await confirmManualEditHistorySource(latest.beforeSource))) return;
       const parentVersionId = await resolveManualEditParentVersionId(latest.beforeSource);
       if (manualEditIdentityRef.current !== currentSourceIdentity) return;
       const saved = await writeProjectTextFileDetailed(projectId, file.name, latest.afterSource, {
@@ -13943,7 +13934,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       if (!saved.ok) {
         if (saved.code === 'FILE_EDIT_CONFLICT') {
           setManualEditError(userFacingError(saved, t, 'feedback.saveRedoFailed', t('feedback.objectFile')));
-          await confirmManualEditHistorySource(latest.beforeSource, 'The file changed outside manual edit mode. History was cleared to avoid overwriting newer content.');
+          await confirmManualEditHistorySource(latest.beforeSource);
           return;
         }
         setManualEditError(userFacingError(saved, t, 'feedback.saveRedoFailed', t('feedback.objectFile')));
@@ -15070,7 +15061,14 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
     void openInNewTab();
   }
 
-  function reloadHtmlPreview() {
+  async function reloadHtmlPreview() {
+    // Settle the old iframe's edit session before replacing its document;
+    // the replacement bridge cannot acknowledge a session it never opened.
+    if (manualEditMode) {
+      if (!(await settlePendingManualEditCommit())) return;
+      if (!(await flushManualEditStyleSave())) return;
+      if (currentSourceIdentityRef.current !== currentSourceIdentity) return;
+    }
     fireArtifactToolbarClick('reload');
     if (sourceAuthorizationScopeKey) {
       invalidateHtmlSourceSnapshotFile(
@@ -15097,9 +15095,9 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
       // restore path would have nothing to fall back to (double-click race,
       // PR #4652 review).  The snapshot is keyed with the current file
       // identity so the restore guard can reject stale cross-file snapshots.
-      if (source !== null) {
+      if (sourceRef.current !== null) {
         prevSourceBeforeReloadRef.current = {
-          source,
+          source: sourceRef.current,
           projectId,
           fileName: file.name,
         };

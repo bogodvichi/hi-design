@@ -14,6 +14,7 @@ import type { ProjectFile } from '../../src/types';
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
 });
@@ -548,13 +549,13 @@ describe('FileViewer manual edit regressions', () => {
 
     fireEvent.change(baseSizeInput, { target: { value: '18' } });
     await waitFor(() => {
-      expect(screen.getByText(/Could not save the edited file/)).toBeTruthy();
+      expect(screen.getByText('Could not save your changes. Try again.')).toBeTruthy();
     });
 
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
     await waitFor(() => {
       expect(saveAttempts).toBe(2);
-      expect(screen.queryByText(/Could not save the edited file/)).toBeNull();
+      expect(screen.queryByText('Could not save your changes. Try again.')).toBeNull();
       expect(screen.getByText('All changes saved')).toBeTruthy();
     });
   });
@@ -583,7 +584,7 @@ describe('FileViewer manual edit regressions', () => {
       });
       expect(document.querySelector('.manual-edit-workspace')).toBeNull();
     } else {
-      await waitFor(() => expect(screen.getByText(/Save rejected/)).toBeTruthy());
+      await waitFor(() => expect(screen.getByText('Could not save your changes. Try again.')).toBeTruthy());
       expect(document.querySelector('.manual-edit-right')).not.toBeNull();
       expect(screen.getByTestId('manual-edit-mode-toggle').getAttribute('aria-pressed')).toBe('true');
     }
@@ -878,6 +879,84 @@ describe('FileViewer manual edit regressions', () => {
     expect(payload.content).not.toContain('<main data-od-id="hero">Hero</main>');
   });
 
+  it('finishes the inline session before reloading so the refreshed preview can exit edit mode', async () => {
+    const source = '<!doctype html><html><body><main data-od-id="hero">Hero</main></body></html>';
+    const fetchMock = vi.fn(async () => new Response(source));
+    vi.stubGlobal('fetch', fetchMock);
+    render(<FileViewer projectId="project-1" projectKind="prototype" file={htmlPreviewFile()} />);
+    await enterManualEditMode();
+    await selectManualEditTarget();
+    const frame = await previewFrame();
+    const post = vi.spyOn(frame.contentWindow!, 'postMessage');
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: { type: 'od-edit-text-session', id: 'hero', active: true },
+        source: frame.contentWindow,
+      }));
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /reload preview/i }));
+    expect(post).toHaveBeenCalledWith({ type: 'od-edit-text-finish', commit: true }, '*');
+    expect(frame.srcdoc).toContain('data-od-reload-key="0"');
+    act(() => {
+      window.dispatchEvent(new MessageEvent('message', {
+        data: { type: 'od-edit-text-session', id: 'hero', active: false, committed: true, changed: false },
+        source: frame.contentWindow,
+      }));
+    });
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\/files\/preview\.html\?cacheBust=[^&]*-1-/),
+      expect.anything(),
+    ));
+
+    post.mockClear();
+    fireEvent.click(screen.getByRole('button', { name: 'Close edit panel' }));
+    await waitFor(() => expect(screen.getByTestId('manual-edit-mode-toggle').getAttribute('aria-pressed')).toBe('false'));
+    expect(post).not.toHaveBeenCalledWith({ type: 'od-edit-text-finish', commit: true }, '*');
+  });
+
+  it.each([200, 403])('settles pending inspector edits before reloading (HTTP %i)', async (status) => {
+    const source = '<!doctype html><html><body><main data-od-id="hero">Hero</main></body></html>';
+    let resolveSave!: (response: Response) => void;
+    const pendingSave = new Promise<Response>((resolve) => { resolveSave = resolve; });
+    const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
+      if (String(input).endsWith('/files') && init?.method === 'POST') return pendingSave;
+      return new Response(source);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<FileViewer projectId="project-1" projectKind="prototype" file={htmlPreviewFile()} />);
+    await enterManualEditMode();
+    await selectManualEditTarget();
+    const fontSizeInput = await findStyleInput(FONT_SIZE_ROW);
+    vi.useFakeTimers();
+    try {
+      fireEvent.change(fontSizeInput, { target: { value: '18' } });
+      fireEvent.click(screen.getByRole('button', { name: /reload preview/i }));
+      await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+      expect(fetchMock).toHaveBeenCalledWith(
+        expect.stringContaining('/files'), expect.objectContaining({ method: 'POST' }),
+      );
+      const reloaded = () => fetchMock.mock.calls.some(([input]) => /cacheBust=[^&]*-1-/.test(String(input)));
+      expect(reloaded()).toBe(false);
+      await act(async () => {
+        resolveSave(status === 200
+          ? Response.json({ file: htmlPreviewFile() })
+          : Response.json({ error: { code: 'FORBIDDEN', message: 'Save rejected.' } }, { status }));
+        await pendingSave;
+        await vi.advanceTimersByTimeAsync(0);
+      });
+      vi.useRealTimers();
+      if (status === 200) await waitFor(() => expect(reloaded()).toBe(true));
+      else expect(reloaded()).toBe(false);
+      if (status === 403) {
+        expect(screen.getByText('Could not save your changes. Try again.')).toBeTruthy();
+        expect(screen.getByTestId('manual-edit-mode-toggle').getAttribute('aria-pressed')).toBe('true');
+      }
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('keeps the preview mounted and does not save when deleting the only rendered root', async () => {
     const source = '<!doctype html><html><body><main data-od-id="app-root">App</main><script>window.bootApp && window.bootApp();</script></body></html>';
     const fetchMock = vi.fn(async (input: string | URL | Request, init?: RequestInit) => {
@@ -910,7 +989,7 @@ describe('FileViewer manual edit regressions', () => {
     fireEvent.click(screen.getByLabelText('Delete element'));
 
     await waitFor(() => {
-      expect(screen.getByText('Cannot remove the last rendered element in the document.')).toBeTruthy();
+      expect(screen.getByText('Keep at least one visible element in the page.')).toBeTruthy();
     });
     expect((screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement).srcdoc).toContain('data-od-id="app-root"');
     expect(fetchMock).not.toHaveBeenCalledWith(

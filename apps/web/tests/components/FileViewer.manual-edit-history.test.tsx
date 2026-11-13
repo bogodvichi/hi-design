@@ -130,7 +130,7 @@ describe('FileViewer manual edit history regressions', () => {
     expect(writes[0]).toHaveProperty('patch.baseDigest');
     expect(writes[0]).not.toHaveProperty('content');
     await waitFor(() => expect(panelState.props?.draft.fullSource).toBe(externalSource));
-    expect(panelState.props?.error).toContain('changed outside manual edit');
+    expect(panelState.props?.error).toBe('The file changed outside manual edit mode. The preview was refreshed and edit history was cleared. Review the latest content before continuing.');
     expect(panelState.props?.canUndo).toBe(false);
     expect((screen.getByTestId('artifact-preview-frame') as HTMLIFrameElement).srcdoc).toContain('Changed elsewhere');
   });

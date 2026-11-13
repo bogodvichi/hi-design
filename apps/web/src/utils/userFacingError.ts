@@ -37,6 +37,7 @@ const CODE_KEYS: Record<string, FeedbackKey> = {
   PROJECT_NOT_FOUND: 'feedback.contentDeleted',
   FOLDER_NOT_FOUND: 'feedback.contentDeleted',
   FILE_EDIT_CONFLICT: 'feedback.editConflict',
+  MANUAL_EDIT_LAST_RENDERED_ELEMENT: 'feedback.lastRenderedElement',
   UPSTREAM_UNAVAILABLE: 'feedback.serviceUnavailable',
 };
 

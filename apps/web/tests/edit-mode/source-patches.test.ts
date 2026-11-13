@@ -280,6 +280,7 @@ describe('manual edit source patches', () => {
 
     expect(result.ok).toBe(false);
     expect(result.error).toBe('Cannot remove the last rendered element in the document.');
+    expect(result.code).toBe('MANUAL_EDIT_LAST_RENDERED_ELEMENT');
     expect(result.source).toContain('data-od-id="app-root"');
   });
 

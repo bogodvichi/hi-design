@@ -106,6 +106,7 @@ export interface ManualEditPatchResult {
   ok: boolean;
   source: string;
   error?: string;
+  code?: 'MANUAL_EDIT_LAST_RENDERED_ELEMENT';
 }
 
 export function applyManualEditPatch(source: string, patch: ManualEditPatch): ManualEditPatchResult {
@@ -190,7 +191,7 @@ export function applyManualEditPatch(source: string, patch: ManualEditPatch): Ma
       return { ok: false, source, error: 'Cannot remove the root element.' };
     }
     if (el.parentElement === doc.body && isLastRenderableBodyChild(doc, el)) {
-      return { ok: false, source, error: 'Cannot remove the last rendered element in the document.' };
+      return { ok: false, source, code: 'MANUAL_EDIT_LAST_RENDERED_ELEMENT', error: 'Cannot remove the last rendered element in the document.' };
     }
     el.remove();
   }

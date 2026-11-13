@@ -63,4 +63,12 @@ describe('user-facing feedback', () => {
     expect(userFacingError({ code: 'INVALID_SESSION' }, translate(en), 'feedback.saveFailed'))
       .toBe('Your session has expired. Sign in to HiDesign again.');
   });
+
+  it.each([
+    [zhCN, '页面至少需要保留一个可见元素，不能删除最后一个元素。'],
+    [en, 'Keep at least one visible element in the page.'],
+  ] as const)('explains the last-element deletion guard in the active locale', (dict, expected) => {
+    expect(userFacingError({ code: 'MANUAL_EDIT_LAST_RENDERED_ELEMENT' }, translate(dict), 'feedback.saveEditFailed'))
+      .toBe(expected);
+  });
 });
