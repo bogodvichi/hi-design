@@ -100,6 +100,73 @@ describe('MAAS Skillhub client', () => {
     await expect(client.listSkills('design')).resolves.toEqual(expected);
     await expect(client.listSkills('design')).resolves.toEqual(expected);
     expect(requestText.mock.calls.filter(([, url]) => String(url).endsWith('/space/spaceList'))).toHaveLength(1);
+    expect(requestText.mock.calls.some(([, url]) => new URL(url).hostname === 'sso.hikvision.com')).toBe(false);
+  });
+
+  it.each([302302, '302302'])('exchanges the SSO ticket once when MAAS returns login code %s', async (code) => {
+    const workspaceId = 'default-workspace';
+    const renewedCookies: Cookie[] = [
+      ...ssoCookies,
+      { name: 'linkserver_session', value: 'renewed', domain: 'maas.hikvision.com.cn' },
+    ];
+    let currentUserCalls = 0;
+    const requestText = vi.fn(async (method: string, url: string, cookies: Cookie[]) => {
+      const parsedUrl = new URL(url);
+      if (parsedUrl.hostname === 'sso.hikvision.com') {
+        expect(method).toBe('GET');
+        expect(cookies).toEqual(ssoCookies);
+        expect(parsedUrl.pathname).toBe('/login');
+        const service = new URL(parsedUrl.searchParams.get('service')!);
+        expect(service.origin + service.pathname).toBe('https://maas.hikvision.com.cn/api/maas-auth/cas/index');
+        expect(service.searchParams.get('target')).toBe('https://maas.hikvision.com.cn/maas/');
+        return rawResult('<html />', renewedCookies);
+      }
+      if (url.endsWith('/maas/')) return rawResult('<html />', ssoCookies);
+      if (url.endsWith('/user/currentUser')) {
+        currentUserCalls += 1;
+        if (currentUserCalls === 1) return rawResult({ code, msg: 'invalid_token!' }, ssoCookies);
+        expect(cookies).toEqual(renewedCookies);
+        return rawResult({ code: '0', data: encryptCurrentUser({ userEmpid: 'HZ12345678' }) }, renewedCookies);
+      }
+      expect(cookies).toEqual(renewedCookies);
+      if (url.endsWith('/space/spaceList')) {
+        return rawResult({ code: '0', data: [{ id: workspaceId }] }, renewedCookies);
+      }
+      expect(url).toContain('/component/skill/availableList');
+      return rawResult({ code: '0', data: { data: [{ id: '2086', skillName: 'Design Review' }], total: 1 } }, renewedCookies);
+    });
+    const client = createMaasSkillhubClient('/data', {
+      readSso: () => ({ username: 'designer', cookies: ssoCookies }),
+      requestText: requestText as any,
+    });
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      await expect(client.listSkills()).resolves.toEqual({
+        workspaceId,
+        skills: [{ id: '2086', skillName: 'Design Review' }],
+      });
+    }
+    expect(currentUserCalls).toBe(2);
+    expect(requestText.mock.calls.filter(([, url]) => new URL(url).hostname === 'sso.hikvision.com')).toHaveLength(1);
+  });
+
+  it.each([
+    { code: 302302, expectedTicketExchanges: 1 },
+    { code: '0x03020007', expectedTicketExchanges: 0 },
+  ])('bounds recovery and preserves authentication errors for code $code', async ({ code, expectedTicketExchanges }) => {
+    const requestText = vi.fn(async (_method: string, url: string) => {
+      if (url.endsWith('/user/currentUser')) return rawResult({ code, msg: 'authentication denied' });
+      return rawResult('<html />');
+    });
+    const client = createMaasSkillhubClient('/data', {
+      readSso: () => ({ username: 'designer', cookies: ssoCookies }),
+      requestText: requestText as any,
+    });
+
+    await expect(client.listSkills()).rejects.toThrow('authentication denied');
+    expect(requestText.mock.calls.filter(([, url]) => new URL(url).hostname === 'sso.hikvision.com')).toHaveLength(expectedTicketExchanges);
+    expect(requestText.mock.calls.filter(([, url]) => url.endsWith('/user/currentUser'))).toHaveLength(1 + expectedTicketExchanges);
+    expect(requestText.mock.calls.some(([, url]) => url.endsWith('/space/spaceList'))).toBe(false);
   });
 
   it('refreshes the MAAS workspace after a cached workspace loses permission', async () => {

@@ -138,6 +138,14 @@ function isWorkspacePermissionError(error: unknown): boolean {
   return error instanceof Error && /(?:无空间权限|空间.*权限)/u.test(error.message);
 }
 
+function requiresMaasLogin(result: RawResult): boolean {
+  try {
+    return Number(JSON.parse(result.body)?.code) === 302302;
+  } catch {
+    return false;
+  }
+}
+
 function parseApiResponse<T>(result: RawResult, action: string): T {
   let payload: any;
   try {
@@ -359,14 +367,25 @@ export function createMaasSkillhubClient(
     if (!sso?.cookies?.length) {
       throw new Error('Please sign in to HiDesign before accessing MAAS Skillhub');
     }
-    const appSession = await requestText('GET', MAAS_APP_URL, sso.cookies);
-    const userResult = await requestText('GET', MAAS_USER_URL, appSession.cookies, {
+    const requestCurrentUser = (cookies: Cookie[]) => requestText('GET', MAAS_USER_URL, cookies, {
       extraHeaders: {
         Accept: 'application/json, text/plain, */*',
         Referer: MAAS_APP_URL,
         'X-Requested-With': 'XMLHttpRequest',
       },
     });
+    let appSession = await requestText('GET', MAAS_APP_URL, sso.cookies);
+    let userResult = await requestCurrentUser(appSession.cookies);
+    if (requiresMaasLogin(userResult)) {
+      // The MAAS SPA normally starts this CAS exchange in JavaScript.
+      const service = `${MAAS_ORIGIN}/api/maas-auth/cas/index?target=${encodeURIComponent(MAAS_APP_URL)}`;
+      appSession = await requestText(
+        'GET',
+        `https://sso.hikvision.com/login?service=${encodeURIComponent(service)}`,
+        appSession.cookies,
+      );
+      userResult = await requestCurrentUser(appSession.cookies);
+    }
     const encryptedUser = parseApiResponse<unknown>(userResult, 'authentication');
     const user = decryptMaasCurrentUser(encryptedUser);
     const empid = typeof user.userEmpid === 'string' ? user.userEmpid.trim() : '';
@@ -374,7 +393,7 @@ export function createMaasSkillhubClient(
       throw new Error('MAAS Skillhub employee identity is unavailable');
     }
     const value = {
-      cookies: appSession.cookies,
+      cookies: userResult.cookies,
       empid,
       currentWorkspaceId: workspaceIdFromUnknown(user.curSpace),
     };
