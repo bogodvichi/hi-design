@@ -697,6 +697,7 @@ import { registerAuthRoutes } from './routes/auth.js';
 import { registerLanzAccountRoutes } from './routes/auth-lanz.js';
 import { registerHikUedroRoutes } from './routes/hik/_routes/uedro.js';
 import { registerHikHikkeRoutes } from './routes/hik/_routes/hikke.js';
+import { registerHikIrdmsRoutes } from './routes/hik/_routes/irdms.js';
 import { registerHdwRoutes } from './routes/hik/_routes/hdw.js';
 import { registerGenuiRoutes } from './routes/genui.js';
 import { registerHostToolsRoutes } from './routes/host-tools.js';
@@ -8374,6 +8375,11 @@ const teamResourceListByKind = {
    dataDir: RUNTIME_DATA_DIR,
    sendApiError,
  });
+
+  registerHikIrdmsRoutes(app, {
+    dataDir: RUNTIME_DATA_DIR,
+    sendApiError,
+  });
 
   registerHdwRoutes(app, {
     sendApiError,

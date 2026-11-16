@@ -1,10 +1,17 @@
 import type { BrowserWindow, BrowserWindowConstructorOptions, IpcMain } from "electron";
+import type { DesktopRuntimeMode } from "./runtime-mode.js";
+
+export const WINDOW_CONTROLS_ARGUMENT = "--od-window-controls=production";
 
 export function windowsWindowChrome(
   platform: string,
+  mode: DesktopRuntimeMode,
 ): Pick<BrowserWindowConstructorOptions, "titleBarStyle" | "titleBarOverlay"> {
-  // Preload supplies compact controls, including on startup/recovery pages.
-  return platform === "win32" ? { titleBarStyle: "hidden", titleBarOverlay: false } : {};
+  // Production supplies compact controls, including on startup/recovery pages.
+  // Development keeps the native caption so Alt can reveal the app menu and
+  // View -> Toggle Developer Tools remains reachable.
+  if (mode !== "production" || platform !== "win32") return {};
+  return { titleBarStyle: "hidden", titleBarOverlay: false };
 }
 
 export function installWindowsWindowControls(

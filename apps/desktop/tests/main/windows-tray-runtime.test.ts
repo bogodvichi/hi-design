@@ -63,14 +63,18 @@ vi.mock("electron", () => ({
 }));
 
 let runtime: DesktopRuntime;
+let previousNodeEnv: string | undefined;
 beforeEach(() => {
   vi.useFakeTimers();
   vi.spyOn(process, "platform", "get").mockReturnValue("win32");
+  previousNodeEnv = process.env.NODE_ENV;
+  process.env.NODE_ENV = "production";
   vi.spyOn(console, "info").mockImplementation(() => undefined);
   windows.length = 0;
 });
 afterEach(async () => {
   await runtime?.close();
+  process.env.NODE_ENV = previousNodeEnv;
   vi.useRealTimers();
   vi.restoreAllMocks();
   tray.removeAllListeners();

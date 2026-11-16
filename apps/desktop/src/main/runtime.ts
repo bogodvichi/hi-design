@@ -36,10 +36,15 @@ import { openFirstPartyMailto } from "./mailto-open.js";
 import { openValidatedDirectory } from "./open-path.js";
 import { exportArtifact as exportArtifactFromHtml } from "./artifact-export.js";
 import { createElectronPdfTarget, exportPdfFromHtml, savePrintReadyDocumentAsPdf } from "./pdf-export.js";
+import { resolveDesktopRuntimeMode } from "./runtime-mode.js";
 import { SPLASH_VIDEO_DATA_URL } from "./splash-video.js";
 import { RendererCrashLoopBreaker } from "./renderer-crash-loop.js";
 import { installWindowsTray } from "./windows-tray.js";
-import { installWindowsWindowControls, windowsWindowChrome } from "./windows-window-chrome.js";
+import {
+  WINDOW_CONTROLS_ARGUMENT,
+  installWindowsWindowControls,
+  windowsWindowChrome,
+} from "./windows-window-chrome.js";
 import type { PrintReadyPdfOptions } from "./pdf-export.js";
 import type { DesktopUpdater } from "./updater.js";
 import { parseDesktopUpdateMenuLabels } from "./update-menu.js";
@@ -2405,6 +2410,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // looper's index keeps climbing while a recovered device simply stops
   // emitting recovery-attempt events.
   let rendererRecoveryAttempts = 0;
+  const runtimeMode = resolveDesktopRuntimeMode(app, process.env.NODE_ENV);
 
   const consoleEntries: DesktopConsoleEntry[] = [];
   const windowTitle = options.windowTitle ?? "HiDesignTeam";
@@ -2423,11 +2429,17 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     title: windowTitle,
     autoHideMenuBar: true,
     ...MAC_WINDOW_CHROME,
-    ...windowsWindowChrome(process.platform),
+    ...windowsWindowChrome(process.platform, runtimeMode),
     webPreferences: {
-      additionalArguments: osLocaleAdditionalArguments(options.osLocale),
+      additionalArguments: [
+        ...osLocaleAdditionalArguments(options.osLocale) ?? [],
+        ...(process.platform === "win32" && runtimeMode === "production"
+          ? [WINDOW_CONTROLS_ARGUMENT]
+          : []),
+      ],
       backgroundThrottling: false,
       contextIsolation: true,
+      devTools: runtimeMode === "development",
       nodeIntegration: false,
       preload: preloadPath,
       sandbox: true,
@@ -2435,7 +2447,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     },
     width: 1280,
   });
-  const disposeWindowsWindowControls = process.platform === "win32"
+  const disposeWindowsWindowControls = process.platform === "win32" && runtimeMode === "production"
     ? installWindowsWindowControls(window, ipcMain)
     : () => {};
   installWindowChromeCssHook(window);

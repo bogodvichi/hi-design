@@ -55,6 +55,13 @@ export interface SsoSession {
    /** Cookies acquired during Hikke login (testToken session et al.). Used by hikke demand routes. */
    cookies?: Cookie[];
   };
+  /** IRDMS app-session cookies derived from the shared SSO ticket. */
+  irdms?: {
+    cookies?: Cookie[];
+    /** `getCurrentUserInfo` response captured when the IRDMS session was established. */
+    useInfo?: unknown;
+    loginAt?: number;
+  };
 }
 
 export interface SsoLoginResult {

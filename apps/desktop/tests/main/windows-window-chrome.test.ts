@@ -28,12 +28,13 @@ function fixture() {
 }
 
 describe("Windows integrated tab and title bar", () => {
-  test("hides native captions only on Windows and retains the resizable window frame", () => {
-    const options = windowsWindowChrome("win32");
+  test("hides native captions only in production on Windows and retains the resizable window frame", () => {
+    const options = windowsWindowChrome("win32", "production");
     expect(options).toEqual({ titleBarStyle: "hidden", titleBarOverlay: false });
     expect(options).not.toHaveProperty("frame");
-    expect(windowsWindowChrome("darwin")).toEqual({});
-    expect(windowsWindowChrome("linux")).toEqual({});
+    expect(windowsWindowChrome("win32", "development")).toEqual({});
+    expect(windowsWindowChrome("darwin", "production")).toEqual({});
+    expect(windowsWindowChrome("linux", "production")).toEqual({});
   });
 
   test("minimizes, toggles maximize/restore, and sends close through the existing window lifecycle", () => {

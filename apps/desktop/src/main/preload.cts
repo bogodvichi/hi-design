@@ -37,6 +37,7 @@ const PREVIEW_NAVIGATION_FAILURE_IPC_CHANNEL = 'od:preview-navigation-failed';
 // transitively requires non-electron node modules that the sandboxed
 // preload can't load).
 const OS_LOCALE_ARG_PREFIX = '--od-os-locale=';
+const WINDOW_CONTROLS_ARGUMENT = '--od-window-controls=production';
 
 function readOsLocaleFromArgv(): string | undefined {
   for (const arg of process.argv) {
@@ -60,7 +61,8 @@ type PrintPdfOptions = {
 /** Desktop-owned caption UI, including loading/error pages before React mounts.
  * Shadow DOM keeps page button resets and modal styles from changing it. */
 function installWindowsCaptionControls(): void {
-  if (process.platform !== 'win32' || !process.isMainFrame) return;
+  if (process.platform !== 'win32' || !process.isMainFrame
+    || !process.argv.includes(WINDOW_CONTROLS_ARGUMENT)) return;
   const mount = () => {
     const host = document.createElement('div');
     host.id = 'od-window-controls';
