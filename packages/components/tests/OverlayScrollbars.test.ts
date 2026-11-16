@@ -186,6 +186,32 @@ describe('overlay scrollbars', () => {
     expect(track.hidden).toBe(true);
   });
 
+  it.each(['vertical', 'horizontal'] as const)('hides a %s track when a floating panel covers only an end', async (axis) => {
+    const element = scroller({ horizontal: true });
+    const panel = document.createElement('div');
+    vi.mocked(document.elementFromPoint).mockReturnValue(element);
+    dispose = installOverlayScrollbars(document.body);
+    await flush();
+    const track = document.querySelector<HTMLElement>(`[data-axis=${axis}]`)!;
+    expect(track.hidden).toBe(false);
+    document.body.append(panel);
+    for (const end of ['start', 'end']) {
+      vi.mocked(document.elementFromPoint).mockImplementation((x, y) => {
+        const coordinate = axis === 'vertical' ? y : x;
+        const start = axis === 'vertical' ? 20 : 10;
+        const length = axis === 'vertical' ? 200 : 300;
+        return (end === 'start' ? coordinate < start + 40 : coordinate > start + length - 40) ? panel : element;
+      });
+      panel.style.opacity = end === 'start' ? '0.9' : '1';
+      await flush();
+      expect(track.hidden).toBe(true);
+    }
+    panel.remove();
+    vi.mocked(document.elementFromPoint).mockReturnValue(element);
+    await flush();
+    expect(track.hidden).toBe(false);
+  });
+
   it('expands only over the full-width scrollbar track, not over its scroll container', async () => {
     const element = scroller();
     vi.spyOn(element, 'matches').mockReturnValue(true);

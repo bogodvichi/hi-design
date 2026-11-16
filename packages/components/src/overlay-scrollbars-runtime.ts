@@ -292,17 +292,22 @@ export function installOverlayScrollbars(root: HTMLElement, documentViewport = f
         const y = vertical ? start : cross;
         const trackWidth = vertical ? thickness : trackLength;
         const trackHeight = vertical ? trackLength : thickness;
-        const hitX = x + trackWidth / 2;
-        const hitY = y + trackHeight / 2;
-        const hit = stackedHitTesting
-          ? document.elementsFromPoint(hitX, hitY).find(element => !layer.contains(element))
-          : document.elementFromPoint(hitX, hitY);
+        // A floating panel may cover an end while leaving the midpoint exposed.
+        // Hide the whole track so neither its thumb nor its hit area crosses it.
+        const exposed = [0.5, trackLength / 2, trackLength - 0.5].every(offset => {
+          const hitX = vertical ? x + trackWidth / 2 : x + offset;
+          const hitY = vertical ? y + offset : y + trackHeight / 2;
+          const hit = stackedHitTesting
+            ? document.elementsFromPoint(hitX, hitY).find(element => !layer.contains(element))
+            : document.elementFromPoint(hitX, hitY);
+          return Boolean(hit && element.contains(hit));
+        });
         const overflow = vertical ? elementStyle.overflowY : elementStyle.overflowX;
         const visible = (SCROLLABLE.test(overflow) || (isViewport && overflow === 'visible'))
           && content > viewport + 1 && viewport > 0
           && trackLength > 0
           && clipRight > clipLeft && clipBottom > clipTop
-          && Boolean(hit && element.contains(hit));
+          && exposed;
         track.hidden = !visible;
         if (!visible) continue;
         Object.assign(track.style, {
