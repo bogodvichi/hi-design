@@ -28,9 +28,28 @@
 }
 
 .transferNotice {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 0;
   color: var(--text-secondary);
   font-size: 12px;
   line-height: 1.6;
+}
+
+.transferNoticeIcon {
+  flex-shrink: 0;
+  width: 14px;
+  height: 1.6em;
+}
+
+.dialog[data-dialog-surface] > [data-dialog-part='body']:has(> .transferNotice) {
+  padding-top: 10px;
+  gap: 10px;
+}
+
+.transferNotice + .locations > .treeContainer {
+  margin-top: 0;
 }
 
 .destination {
@@ -86,10 +105,11 @@
 .splitTree {
   display: grid;
   grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr);
+  grid-template-rows: minmax(0, 1fr);
   flex: 1;
   min-height: 360px;
   max-height: min(520px, calc(100vh - 240px));
-  margin-top: 14px;
+  margin-top: 0;
   overflow: hidden;
   border-top: 1px solid var(--border-soft);
   border-bottom: 1px solid var(--border-soft);
@@ -518,6 +538,7 @@
   display: grid;
   height: 100%;
   place-items: center;
+  text-align: center;
   color: var(--text-faint);
   font-size: 13px;
 }
@@ -585,6 +606,7 @@
 @media (max-width: 720px) {
   .splitTree {
     grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
     overflow-y: auto;
   }
 
