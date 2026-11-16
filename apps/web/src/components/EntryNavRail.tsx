@@ -617,10 +617,12 @@ export function EntryTopRightCluster({
       typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(syncTabsSafeArea);
     resizeObserver?.observe(cluster);
     window.addEventListener('resize', syncTabsSafeArea);
+    window.addEventListener('od:window-controls-geometry-changed', syncTabsSafeArea);
 
     return () => {
       resizeObserver?.disconnect();
       window.removeEventListener('resize', syncTabsSafeArea);
+      window.removeEventListener('od:window-controls-geometry-changed', syncTabsSafeArea);
       if (workspaceTabsSafeAreaOwner === owner) {
         workspaceTabsSafeAreaOwner = null;
         root.style.removeProperty('--workspace-tabs-right-safe-area');

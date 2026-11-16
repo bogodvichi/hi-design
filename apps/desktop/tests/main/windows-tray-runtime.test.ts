@@ -18,7 +18,7 @@ class MockWindow extends EventEmitter {
     setWindowOpenHandler: vi.fn(), insertCSS: vi.fn(async () => ""),
     executeJavaScript: vi.fn(async () => true), send: vi.fn(), focus: vi.fn(),
   });
-  constructor(options: BrowserWindowConstructorOptions) {
+  constructor(readonly options: BrowserWindowConstructorOptions) {
     super();
     this.visible = options.show ?? true;
     windows.push(this);
@@ -87,6 +87,7 @@ test("startup reveals the main window; close hides it; tray restores input and o
     windowTitle: "Hi Design Team",
   });
   const main = windows[0]; // Main window; no auxiliary companion.
+  expect(main.options).toMatchObject({ titleBarStyle: "hidden", titleBarOverlay: false });
   await vi.advanceTimersByTimeAsync(2000);
   expect(runtime.status().windowVisible).toBe(true);
   expect(main.hide).not.toHaveBeenCalled();

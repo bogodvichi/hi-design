@@ -78,6 +78,9 @@ describe("main-window events during teardown", () => {
 
   beforeEach(async () => {
     vi.useFakeTimers();
+    // This fixture models generic teardown, not the native Windows tray or
+    // caption controls (covered by windows-tray-runtime.test.ts).
+    vi.spyOn(process, "platform", "get").mockReturnValue("linux");
     vi.spyOn(console, "info").mockImplementation(() => undefined);
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     windows.length = 0;

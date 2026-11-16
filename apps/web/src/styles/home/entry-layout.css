@@ -1198,7 +1198,7 @@
   position: fixed;
   z-index: 150;
   top: 9px;
-  right: 22px;
+  right: calc(22px + var(--window-controls-right-inset, 0px));
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1267,7 +1267,7 @@
   /* Tighter right inset only — the vertical centering against the 44px
      chrome row is the same at every width. */
   .entry-top-right-cluster {
-    right: 12px;
+    right: calc(12px + var(--window-controls-right-inset, 0px));
   }
   .entry-deepseek-campaign-badge {
     max-width: calc(100vw - 88px);

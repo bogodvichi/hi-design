@@ -39,8 +39,9 @@ describe('workspace tabs chrome styles', () => {
     expect(ruleValue(chrome, 'padding')).toBe('0 10px 0 8px');
     expect(ruleValue(traffic, 'margin-right')).toBe('var(--app-chrome-traffic-margin)');
     expect(ruleValue(projectChrome, 'padding')).toBe(
-      '0 var(--workspace-tabs-right-safe-area, 16px) 0 0',
+      '0 max(16px, calc(var(--workspace-tabs-right-safe-area, 16px) - var(--window-controls-right-inset, 0px))) 0 0',
     );
+    expect(ruleValue(projectChrome, 'margin-right')).toBe('var(--window-controls-right-inset, 0px)');
     expect(ruleValue(projectStrip, 'align-items')).toBe('center');
   });
 

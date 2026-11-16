@@ -57,6 +57,99 @@ type PrintPdfOptions = {
   deck?: boolean;
 };
 
+/** Desktop-owned caption UI, including loading/error pages before React mounts.
+ * Shadow DOM keeps page button resets and modal styles from changing it. */
+function installWindowsCaptionControls(): void {
+  if (process.platform !== 'win32' || !process.isMainFrame) return;
+  const mount = () => {
+    const host = document.createElement('div');
+    host.id = 'od-window-controls';
+    // Keep the native hit-test exclusion on the light-DOM host as well as
+    // inside the isolated caption styles.
+    host.style.setProperty('-webkit-app-region', 'no-drag');
+    const shadow = host.attachShadow({ mode: 'open' });
+    const zh = /^zh\b/i.test(readOsLocaleFromArgv() ?? navigator.language);
+    const labels = zh
+      ? { minimize: '最小化', maximize: '最大化', restore: '还原', close: '关闭' }
+      : { minimize: 'Minimize', maximize: 'Maximize', restore: 'Restore', close: 'Close' };
+    const icons = {
+      minimize: '<path d="M4 10h12"/>',
+      maximize: '<rect x="4.5" y="4.5" width="11" height="11" rx="1"/>',
+      restore: '<path d="M7 7V4.5h8.5V13H13"/><rect x="4.5" y="7" width="8.5" height="8.5" rx="1"/>',
+      close: '<path d="m5 5 10 10M15 5 5 15"/>',
+    };
+    const style = document.createElement('style');
+    style.textContent = `
+      :host { position:fixed; top:12px; right:10px; display:flex; gap:4px; z-index:2147483647; }
+      :host([hidden]) { display:none; }
+      :host, :host *, button { -webkit-app-region:no-drag; }
+      button { display:flex; align-items:center; justify-content:center; flex:0 0 28px;
+        width:28px; height:28px; padding:0; margin:0; border:0; border-radius:6px;
+        background:transparent; color:var(--color-text-secondary,var(--text-muted,#5c5c5c));
+        box-shadow:none; cursor:pointer; }
+      button:hover { background:var(--color-hover,var(--bg-subtle,#ededed));
+        color:var(--color-text,var(--text-strong,#202020)); }
+      button:active { background:var(--bg-subtle,#ededed); }
+      button:focus-visible { outline:2px solid var(--accent,#87ea5c); outline-offset:1px; }
+      svg { width:16px; height:16px; pointer-events:none; }
+    `;
+    const fallbackDrag = document.createElement('style');
+    fallbackDrag.textContent = 'html:not(:has(.workspace-tabs-chrome))::after { content:""; position:fixed; top:0; left:0; right:102px; height:52px; -webkit-app-region:drag; }';
+    document.head.appendChild(fallbackDrag);
+    shadow.appendChild(style);
+    const svg = (icon: string) => `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true">${icon}</svg>`;
+    const makeButton = (action: string, label: string, icon: string) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.windowAction = action;
+      button.title = label;
+      button.setAttribute('aria-label', label);
+      button.innerHTML = svg(icon);
+      button.addEventListener('click', () => {
+        void ipcRenderer.invoke('od:window:action', action).catch((error: unknown) => {
+          console.error('[window-controls] action failed', error);
+        });
+      });
+      shadow.appendChild(button);
+      return button;
+    };
+    makeButton('minimize', labels.minimize, icons.minimize);
+    const maximize = makeButton('toggle-maximize', labels.maximize, icons.maximize);
+    makeButton('close', labels.close, icons.close);
+    document.body.appendChild(host);
+    const syncGeometry = () => {
+      const inset = host.hidden ? 0 : Math.max(0, window.innerWidth - host.getBoundingClientRect().left);
+      document.documentElement.style.setProperty('--window-controls-right-inset', `${inset}px`);
+      window.dispatchEvent(new Event('od:window-controls-geometry-changed'));
+    };
+    const update = (_event: unknown, state: { maximized: boolean; fullscreen: boolean }) => {
+      host.hidden = state.fullscreen;
+      const label = state.maximized ? labels.restore : labels.maximize;
+      maximize.title = label;
+      maximize.setAttribute('aria-label', label);
+      maximize.innerHTML = svg(state.maximized ? icons.restore : icons.maximize);
+      syncGeometry();
+    };
+    ipcRenderer.on('od:window:state-changed', update);
+    void ipcRenderer.invoke('od:window:state').then((state: { maximized: boolean; fullscreen: boolean }) => update(null, state)).catch((error: unknown) => {
+      console.error('[window-controls] state unavailable', error);
+    });
+    const observer = new ResizeObserver(syncGeometry);
+    observer.observe(host);
+    window.addEventListener('resize', syncGeometry);
+    syncGeometry();
+    window.addEventListener('unload', () => {
+      observer.disconnect();
+      ipcRenderer.removeListener('od:window:state-changed', update);
+      window.removeEventListener('resize', syncGeometry);
+    }, { once: true });
+  };
+  if (document.readyState === 'loading') window.addEventListener('DOMContentLoaded', mount, { once: true });
+  else mount();
+}
+
+installWindowsCaptionControls();
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value != null && !Array.isArray(value);
 }

@@ -1213,7 +1213,10 @@
      part in this header's flex layout. EntryTopRightCluster measures its live
      footprint into this inherited custom property so crowded tabs shrink and
      ellipsize before reaching those fixed controls. */
-  padding: 0 var(--workspace-tabs-right-safe-area, 16px) 0 0;
+  /* Electron's native drag hit-test must end before the caption buttons.
+     Padding alone still leaves a draggable rectangle behind their overlay. */
+  margin-right: var(--window-controls-right-inset, 0px);
+  padding: 0 max(16px, calc(var(--workspace-tabs-right-safe-area, 16px) - var(--window-controls-right-inset, 0px))) 0 0;
   background: var(--workspace-tab-bar-bg);
   border-bottom: 0;
   box-shadow: none;

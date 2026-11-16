@@ -39,6 +39,7 @@ import { createElectronPdfTarget, exportPdfFromHtml, savePrintReadyDocumentAsPdf
 import { SPLASH_VIDEO_DATA_URL } from "./splash-video.js";
 import { RendererCrashLoopBreaker } from "./renderer-crash-loop.js";
 import { installWindowsTray } from "./windows-tray.js";
+import { installWindowsWindowControls, windowsWindowChrome } from "./windows-window-chrome.js";
 import type { PrintReadyPdfOptions } from "./pdf-export.js";
 import type { DesktopUpdater } from "./updater.js";
 import { parseDesktopUpdateMenuLabels } from "./update-menu.js";
@@ -2422,6 +2423,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     title: windowTitle,
     autoHideMenuBar: true,
     ...MAC_WINDOW_CHROME,
+    ...windowsWindowChrome(process.platform),
     webPreferences: {
       additionalArguments: osLocaleAdditionalArguments(options.osLocale),
       backgroundThrottling: false,
@@ -2433,6 +2435,9 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     },
     width: 1280,
   });
+  const disposeWindowsWindowControls = process.platform === "win32"
+    ? installWindowsWindowControls(window, ipcMain)
+    : () => {};
   installWindowChromeCssHook(window);
   showWindowButtons(window);
   attachDownloadSaveAsDialog(window);
@@ -3227,6 +3232,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
         timer = null;
       }
       unsubscribeUpdater();
+      disposeWindowsWindowControls();
       ipcMain.removeAllListeners("od:appearance:set-theme");
       for (const channel of UPDATER_IPC_CHANNELS) {
         ipcMain.removeHandler(channel);
