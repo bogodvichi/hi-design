@@ -33,7 +33,7 @@ export function installOverlayScrollbars(root: HTMLElement, documentViewport = f
 .od-scrollbar-thumb {
   position: absolute;
   border-radius: 999px;
-  background: rgb(0 0 0 / 40%);
+  background: rgb(0 0 0 / 20%);
   pointer-events: none;
   transition: width 140ms cubic-bezier(0.23, 1, 0.32, 1),
     height 140ms cubic-bezier(0.23, 1, 0.32, 1);
@@ -46,8 +46,8 @@ export function installOverlayScrollbars(root: HTMLElement, documentViewport = f
 .od-scrollbar-vertical[data-expanded] .od-scrollbar-thumb { width: var(--scrollbar-size); }
 .od-scrollbar-horizontal[data-expanded] .od-scrollbar-thumb { height: var(--scrollbar-size); }
 
-.od-scrollbar-track[data-expanded] .od-scrollbar-thumb { background: rgb(0 0 0 / 80%); }
-.od-scrollbar-track[data-dragging] .od-scrollbar-thumb { background: #000; }
+.od-scrollbar-track[data-expanded] .od-scrollbar-thumb { background: rgb(0 0 0 / 40%); }
+.od-scrollbar-track[data-dragging] .od-scrollbar-thumb { background: rgb(0 0 0 / 60%); }
 
 @media (forced-colors: active) {
   .od-scrollbar-track .od-scrollbar-thumb { background: CanvasText !important; }
@@ -294,9 +294,14 @@ export function installOverlayScrollbars(root: HTMLElement, documentViewport = f
         const trackHeight = vertical ? trackLength : thickness;
         // A floating panel may cover an end while leaving the midpoint exposed.
         // Hide the whole track so neither its thumb nor its hit area crosses it.
-        const exposed = [0.5, trackLength / 2, trackLength - 0.5].every(offset => {
-          const hitX = vertical ? x + trackWidth / 2 : x + offset;
-          const hitY = vertical ? y + offset : y + trackHeight / 2;
+        // Stay a full CSS pixel inside both ends: Chromium may round a half
+        // pixel into an adjacent footer/header even away from viewport edges.
+        const sampleInset = Math.min(1, trackLength / 2);
+        const exposed = [sampleInset, trackLength / 2, trackLength - sampleInset].every(offset => {
+          // Chromium rounds hit-test coordinates: the last half pixel can
+          // round outside the viewport and falsely hide an unobstructed track.
+          const hitX = Math.max(0, Math.min(window.innerWidth - 1, vertical ? x + trackWidth / 2 : x + offset));
+          const hitY = Math.max(0, Math.min(window.innerHeight - 1, vertical ? y + offset : y + trackHeight / 2));
           const hit = stackedHitTesting
             ? document.elementsFromPoint(hitX, hitY).find(element => !layer.contains(element))
             : document.elementFromPoint(hitX, hitY);

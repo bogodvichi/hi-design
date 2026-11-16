@@ -186,6 +186,29 @@ describe('overlay scrollbars', () => {
     expect(track.hidden).toBe(true);
   });
 
+  it.each(['vertical', 'horizontal'] as const)('keeps a %s track at the viewport edge visible when hit testing rounds coordinates', async (axis) => {
+    const element = scroller({ horizontal: true });
+    element.getBoundingClientRect = () => new DOMRect(window.innerWidth - 300, window.innerHeight - 200, 300, 200);
+    vi.mocked(document.elementFromPoint).mockImplementation((x, y) => (
+      Math.round(x) >= window.innerWidth || Math.round(y) >= window.innerHeight ? null : element
+    ));
+    dispose = installOverlayScrollbars(document.body);
+    await flush();
+    const track = document.querySelector<HTMLElement>(`[data-axis=${axis}]`)!;
+    expect(track.hidden).toBe(false);
+  });
+
+  it.each(['vertical', 'horizontal'] as const)('keeps a %s track visible beside an adjacent panel after coordinate rounding', async (axis) => {
+    const element = scroller({ horizontal: true });
+    const adjacentPanel = document.createElement('div');
+    vi.mocked(document.elementFromPoint).mockImplementation((x, y) => (
+      Math.round(x) >= 310 || Math.round(y) >= 220 ? adjacentPanel : element
+    ));
+    dispose = installOverlayScrollbars(document.body);
+    await flush();
+    expect(document.querySelector<HTMLElement>(`[data-axis=${axis}]`)!.hidden).toBe(false);
+  });
+
   it.each(['vertical', 'horizontal'] as const)('hides a %s track when a floating panel covers only an end', async (axis) => {
     const element = scroller({ horizontal: true });
     const panel = document.createElement('div');

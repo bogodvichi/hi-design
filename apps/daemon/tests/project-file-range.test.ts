@@ -398,6 +398,21 @@ describe('GET /api/projects/:id/raw/* range request route', () => {
     expect(html).not.toContain('data-od-preview-observability');
   });
 
+  it('installs preview scrollbars only in requested HTML responses, preserving raw file bytes', async () => {
+    const plain = await fetch(rawUrl('body.html'));
+    const original = await plain.text();
+    expect(original).not.toContain('data-od-preview-scrollbars');
+    for (const url of [rawUrl('body.html'), poweredUrl('body.html')]) {
+      const response = await fetch(`${url}?odPreviewBridge=scrollbars`);
+      expect(response.status).toBe(200);
+      const html = await response.text();
+      expect(html.match(/<script data-od-preview-scrollbars>/g)).toHaveLength(1);
+      expect(html).toContain('od-scrollbar-layer');
+      expect(html).toContain('DOMContentLoaded');
+    }
+    expect(await (await fetch(rawUrl('body.html'))).text()).toBe(original);
+  });
+
   it('injects the URL preview scroll bridge only when requested', async () => {
     const plain = await fetch(rawUrl('page.html'));
     expect(await plain.text()).toBe('<html/>');

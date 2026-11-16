@@ -531,7 +531,7 @@ async function latestMtimeMs(filePath: string): Promise<number> {
 }
 
 async function ensureDaemonCliBuild(config: ToolDevConfig, logHandle: FileHandle): Promise<void> {
-  await ensureContractsBuild(config, logHandle);
+  await ensureDaemonDependencyBuilds(config, logHandle);
 
   const daemonRoot = path.join(config.workspaceRoot, "apps/daemon");
   const distCliPath = path.join(daemonRoot, "dist/cli.js");
@@ -556,31 +556,36 @@ async function ensureDaemonCliBuild(config: ToolDevConfig, logHandle: FileHandle
   });
 }
 
-async function ensureContractsBuild(config: ToolDevConfig, logHandle: FileHandle): Promise<void> {
-  const contractsRoot = path.join(config.workspaceRoot, "packages/contracts");
-  const distDeclarationPath = path.join(contractsRoot, "dist/index.d.ts");
-  const distMtime = await latestMtimeMs(distDeclarationPath);
-  const sourceMtime = Math.max(
-    await latestMtimeMs(path.join(contractsRoot, "src")),
-    await latestMtimeMs(path.join(contractsRoot, "package.json")),
-    await latestMtimeMs(path.join(contractsRoot, "tsconfig.json")),
-    await latestMtimeMs(path.join(contractsRoot, "esbuild.config.mjs")),
-  );
-  if (distMtime > 0 && distMtime >= sourceMtime) return;
+async function ensureDaemonDependencyBuilds(config: ToolDevConfig, logHandle: FileHandle): Promise<void> {
+  // The daemon uses the React-free scrollbar entry when enhancing URL previews.
+  // Build it on a clean checkout as well as refreshing it after UI runtime edits.
+  for (const [name, output, buildConfig] of [
+    ["contracts", "dist/index.d.ts", "esbuild.config.mjs"],
+    ["components", "dist/overlay-scrollbars-runtime.mjs", "esbuild.config.ts"],
+  ] as const) {
+    const packageRoot = path.join(config.workspaceRoot, "packages", name);
+    const outputPath = `packages/${name}/${output}`;
+    const distMtime = await latestMtimeMs(path.join(packageRoot, output));
+    const sourceMtime = Math.max(
+      await latestMtimeMs(path.join(packageRoot, "src")),
+      await latestMtimeMs(path.join(packageRoot, "package.json")),
+      await latestMtimeMs(path.join(packageRoot, "tsconfig.json")),
+      await latestMtimeMs(path.join(packageRoot, buildConfig)),
+    );
+    if (distMtime > 0 && distMtime >= sourceMtime) continue;
 
-  const reason = distMtime > 0
-    ? "source is newer than packages/contracts/dist/index.d.ts"
-    : "packages/contracts/dist/index.d.ts is missing";
-  await logHandle.write(`\n[tools-dev] building @open-design/contracts because ${reason} at ${new Date().toISOString()}\n`);
-  const invocation = createPackageManagerInvocation(["--filter", "@open-design/contracts", "build"], process.env);
-  await runLoggedCommand({
-    args: invocation.args,
-    command: invocation.command,
-    cwd: config.workspaceRoot,
-    env: process.env,
-    logFd: logHandle.fd,
-    windowsVerbatimArguments: invocation.windowsVerbatimArguments,
-  });
+    const reason = distMtime > 0 ? `source is newer than ${outputPath}` : `${outputPath} is missing`;
+    await logHandle.write(`\n[tools-dev] building @open-design/${name} because ${reason} at ${new Date().toISOString()}\n`);
+    const invocation = createPackageManagerInvocation(["--filter", `@open-design/${name}`, "build"], process.env);
+    await runLoggedCommand({
+      args: invocation.args,
+      command: invocation.command,
+      cwd: config.workspaceRoot,
+      env: process.env,
+      logFd: logHandle.fd,
+      windowsVerbatimArguments: invocation.windowsVerbatimArguments,
+    });
+  }
 }
 
 async function ensureWebDevNodeModules(config: ToolDevConfig): Promise<void> {

@@ -131,6 +131,36 @@ test.beforeEach(async ({ page }) => {
   await routeMappingFixtures(page);
 });
 
+test('[P2] global scrollbars remain usable against the bottom and right viewport edges', async ({ page }) => {
+  test.setTimeout(T.xlong);
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await gotoCommunity(page);
+  await page.evaluate(() => {
+    const scrollport = document.createElement('section');
+    scrollport.id = 'viewport-edge-scrollport';
+    scrollport.style.cssText = 'position:fixed;right:0;bottom:0;width:320px;height:200px;overflow:auto;background:white;z-index:9999';
+    const content = document.createElement('div');
+    content.style.cssText = 'width:640px;height:800px';
+    scrollport.append(content);
+    document.body.append(scrollport);
+  });
+  const scrollport = page.locator('#viewport-edge-scrollport');
+  const vertical = page.locator('.od-scrollbar-track[data-axis=vertical]:visible');
+  const horizontal = page.locator('.od-scrollbar-track[data-axis=horizontal]:visible');
+  await expect(vertical).toHaveCount(1);
+  await expect(horizontal).toHaveCount(1);
+  expect((await vertical.boundingBox())!.x + (await vertical.boundingBox())!.width).toBe(1278);
+  expect((await horizontal.boundingBox())!.y + (await horizontal.boundingBox())!.height).toBe(798);
+  await vertical.hover();
+  await page.mouse.wheel(0, 120);
+  await expect.poll(() => scrollport.evaluate(e => e.scrollTop)).toBeGreaterThan(0);
+  await horizontal.hover();
+  await page.mouse.wheel(120, 0);
+  await expect.poll(() => scrollport.evaluate(e => e.scrollLeft)).toBeGreaterThan(0);
+  await expect(vertical).toBeVisible();
+  await expect(horizontal).toBeVisible();
+});
+
 test('[P2] community preview aligns actions right and uses slim scrollbars inside its sandbox', async ({ page }, testInfo) => {
   test.setTimeout(T.xlong);
   await page.route(`**/api/plugins/${PROTOTYPE_PLUGIN.id}/preview`, route => route.fulfill({
@@ -169,15 +199,15 @@ test('[P2] community preview aligns actions right and uses slim scrollbars insid
     expect(await track.evaluate(e => window.innerWidth - e.getBoundingClientRect().right)).toBe(2);
     await page.mouse.move(0, 0);
     await expect.poll(() => thumb.evaluate(e => e.getBoundingClientRect().width)).toBe(4);
-    await expect(thumb).toHaveCSS('background-color', 'rgba(0, 0, 0, 0.4)');
+    await expect(thumb).toHaveCSS('background-color', 'rgba(0, 0, 0, 0.2)');
     // The host's sidebar handle intentionally overlays the midpoint edge.
     await track.hover({ position: { x: 1, y: box.height / 4 } });
     await expect.poll(() => thumb.evaluate(e => e.getBoundingClientRect().width)).toBe(8);
-    await expect(thumb).toHaveCSS('background-color', 'rgba(0, 0, 0, 0.8)');
+    await expect(thumb).toHaveCSS('background-color', 'rgba(0, 0, 0, 0.4)');
     await page.mouse.down();
     try {
       await expect(track).toHaveAttribute('data-dragging', '');
-      await expect(thumb).toHaveCSS('background-color', 'rgb(0, 0, 0)');
+      await expect(thumb).toHaveCSS('background-color', 'rgba(0, 0, 0, 0.6)');
       await page.mouse.move(box.x + 1, box.y + box.height / 4 + 24);
     } finally { await page.mouse.up(); }
     const before = await track.boundingBox();

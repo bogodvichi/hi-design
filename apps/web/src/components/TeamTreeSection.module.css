@@ -4,15 +4,27 @@
   justify-content: flex-start;
   flex: 1;
   min-height: 0;
+  overflow: hidden;
+  /* Extend the scrollport through the rail gutter; row actions retain the
+     content inset while the scrollbar sits beside the panel border. */
+  margin-right: calc(-1 * var(--entry-rail-content-inset, 10px));
 }
 
 .tree {
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
   margin: 15px 0 5px;
   padding-top: 10px;
+  padding-right: var(--entry-rail-content-inset, 10px);
   border-top: 1px solid var(--border-soft);
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.tree > * {
+  flex-shrink: 0;
 }
 
 /* Shimmer placeholder rows shown while the workspace directory loads. */
@@ -375,7 +387,10 @@
 }
 
 .footer {
-  padding: 8px 0;
+  flex-shrink: 0;
+  margin-top: auto;
+  margin-right: var(--entry-rail-content-inset, 10px);
+  padding: 8px 0 5px;
   border-top: 1px solid var(--border-soft);
 }
 

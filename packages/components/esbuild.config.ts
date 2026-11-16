@@ -6,7 +6,8 @@ rmSync('./dist', { force: true, recursive: true });
 
 await build({
   bundle: true,
-  entryPoints: ['./src/index.ts'],
+  // Keep the preview bootstrap importable by the daemon without React or CSS.
+  entryPoints: ['./src/index.ts', './src/overlay-scrollbars-runtime.ts'],
   format: 'esm',
   outbase: './src',
   outdir: './dist',

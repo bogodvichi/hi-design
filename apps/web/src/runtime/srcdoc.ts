@@ -2324,6 +2324,7 @@ function meaningfulDomFallbackTarget(el) {
     return items;
   }
   function closestTarget(event){
+    if (event.target && event.target.closest && event.target.closest('.od-scrollbar-layer')) return null;
     var candidates = eventCandidateElements(event);
     var allowDomFallback = mode === 'picker' && canUseDomFallback();
     var annotatedFallback = null;
@@ -2636,6 +2637,7 @@ function meaningfulDomFallbackTarget(el) {
   }, true);
   document.addEventListener('click', function(ev){
     if (!pickerActive()) return;
+    if (ev.target && ev.target.closest && ev.target.closest('.od-scrollbar-layer')) return;
     var result = closestTarget(ev);
     if (result) {
       ev.preventDefault();
@@ -2693,6 +2695,7 @@ function meaningfulDomFallbackTarget(el) {
   // Pod drawing — only active in comment mode with the 'pod' tool.
   document.addEventListener('pointerdown', function(ev){
     if (!commentEnabled || mode !== 'pod' || ev.button !== 0) return;
+    if (ev.target && ev.target.closest && ev.target.closest('.od-scrollbar-layer')) return;
     drawing = true;
     stroke = [relativePoint(ev)];
     ev.preventDefault();

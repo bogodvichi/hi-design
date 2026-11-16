@@ -12,6 +12,9 @@ export const MANUAL_EDIT_HOST_NODE_SELECTOR = [
   '[data-od-edit-bridge-style]',
   '[data-od-deck-fix]',
   '[data-od-edit-guides-layer]',
+  '[data-od-preview-scrollbars]',
+  '[data-od-overlay-scrollbars]',
+  '.od-scrollbar-layer',
 ].join(',');
 
 export type ManualEditKind = 'text' | 'link' | 'image' | 'container';
@@ -1087,6 +1090,7 @@ export function buildManualEditBridge(enabled: boolean): string {
   }, true);
   document.addEventListener('click', function(ev){
     if (!enabled) return;
+    if (ev.target && ev.target.closest && ev.target.closest(hostNodeSelector)) return;
     if (justDragged) { justDragged = false; ev.preventDefault(); ev.stopPropagation(); return; }
     if (ev.target && ev.target.closest && ev.target.closest('[data-od-editing="true"]')) return;
     ev.preventDefault();

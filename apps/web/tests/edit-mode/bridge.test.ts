@@ -12,6 +12,25 @@ import {
 } from '../../src/edit-mode/bridge';
 
 describe('manual edit bridge target normalization', () => {
+  it('keeps preview scrollbar chrome out of edit targets and lets it handle clicks', () => {
+    const dom = new JSDOM(
+      `<main><p>Design content</p></main><div class="od-scrollbar-layer"><div class="od-scrollbar-track"><div class="od-scrollbar-thumb"></div></div></div>${buildManualEditBridge(true)}`,
+      { runScripts: 'dangerously', url: 'http://localhost' },
+    );
+    const postMessage = vi.spyOn(dom.window.parent, 'postMessage');
+    try {
+      const track = dom.window.document.querySelector('.od-scrollbar-track')!;
+      expect(isMeaningfulManualEditElement(track, { width: 8, height: 200 })).toBe(false);
+      const click = new dom.window.MouseEvent('click', { bubbles: true, cancelable: true });
+      track.dispatchEvent(click);
+      expect(click.defaultPrevented).toBe(false);
+      expect(postMessage.mock.calls.some(([message]) => ['od-edit-select', 'od-edit-background'].includes(message.type))).toBe(false);
+      expect(track.hasAttribute('data-od-runtime-id')).toBe(false);
+    } finally {
+      dom.window.close();
+    }
+  });
+
   it('selects each runtime-rendered line of text inside a recommendation card', () => {
     const dom = new JSDOM(
       `<div id="root" data-od-source-path="path-0"></div>${buildManualEditBridge(true)}`,

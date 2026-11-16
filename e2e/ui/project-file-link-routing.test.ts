@@ -37,8 +37,66 @@ test('[P1] assistant project file links open workspace tabs instead of new brows
   })).toBeVisible();
 });
 
+test('[P1] conversation HTML previews use overlay scrollbars in URL and inline edit modes', async ({ page }) => {
+  test.setTimeout(T.xlong);
+  const html = '<!doctype html><html><head><style>body{margin:0}main{min-height:2200px;padding:24px;box-sizing:border-box}section{height:150px;overflow:auto;border-radius:24px}article{height:700px}</style></head><body><main><h1>Project file link target</h1><section><article>Nested scrolling</article></section></main></body></html>';
+  const { projectId, conversationId } = await seedProjectWithAssistantFileLink(page, html);
+  await page.goto(`/projects/${projectId}/conversations/${conversationId}`, { waitUntil: 'domcontentloaded' });
+  await waitForWorkspaceReady(page);
+  const fileTab = page.getByRole('tab', { name: /index\.html/i });
+  await fileTab.click();
+  const urlPreview = page.locator('iframe[data-od-render-mode="url-load"]:visible');
+  await expect(urlPreview).toBeVisible();
+  expect(await urlPreview.getAttribute('sandbox')).not.toContain('allow-same-origin');
+  await page.evaluate(() => {
+    const state = window as Window & { scrollbarEditEvents?: string[] };
+    state.scrollbarEditEvents = [];
+    window.addEventListener('message', (event) => {
+      if (['od-edit-select', 'od-edit-background', 'od-edit-drag-commit', 'od:comment-target', 'od:pod-select'].includes(event.data?.type)) {
+        state.scrollbarEditEvents!.push(event.data.type);
+      }
+    });
+  });
+
+  for (const mode of ['url-load', 'srcdoc']) {
+    if (mode === 'srcdoc') {
+      await page.getByTestId('manual-edit-mode-toggle').click();
+      await expect(page.getByTestId('manual-edit-mode-toggle')).toHaveAttribute('aria-pressed', 'true');
+    }
+    const preview = page.locator(`iframe[data-od-render-mode="${mode}"]:visible`);
+    await expect(preview).toBeVisible();
+    const frame = preview.contentFrame();
+    await expect(frame.locator('html')).toHaveAttribute('data-overlay-scrollbars', '');
+    await expect(frame.locator('section')).toHaveAttribute('data-overlay-scrollbars', '');
+    const track = frame.locator('.od-scrollbar-vertical:not([hidden])').first();
+    const thumb = track.locator('.od-scrollbar-thumb');
+    await expect(track).toBeVisible();
+    await page.mouse.move(1, 1);
+    await expect(thumb).toHaveCSS('width', '4px');
+    await expect(thumb).toHaveCSS('background-color', 'rgba(0, 0, 0, 0.2)');
+    expect(await track.evaluate((element) => innerWidth - element.getBoundingClientRect().right)).toBe(2);
+    expect(await frame.locator('html').evaluate((element) => element.clientWidth === innerWidth)).toBe(true);
+    await page.evaluate(() => { (window as Window & { scrollbarEditEvents?: string[] }).scrollbarEditEvents = []; });
+    await track.hover({ position: { x: 4, y: 10 } });
+    await expect(thumb).toHaveCSS('width', '8px');
+    await expect(thumb).toHaveCSS('background-color', 'rgba(0, 0, 0, 0.4)');
+    const bounds = await thumb.boundingBox();
+    expect(bounds).not.toBeNull();
+    await page.mouse.move(bounds!.x + bounds!.width / 2, bounds!.y + 10);
+    await page.mouse.down();
+    await expect(thumb).toHaveCSS('background-color', 'rgba(0, 0, 0, 0.6)');
+    await page.mouse.move(bounds!.x + bounds!.width / 2, bounds!.y + 100);
+    await expect.poll(() => frame.locator('html').evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+    await page.mouse.up();
+    await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+    expect(await page.evaluate(() => (window as Window & { scrollbarEditEvents?: string[] }).scrollbarEditEvents)).toEqual([]);
+  }
+  expect(await (await page.request.get(`/api/projects/${projectId}/raw/index.html`)).text()).toBe(html);
+});
+
 async function seedProjectWithAssistantFileLink(
   page: Page,
+  html = '<!doctype html><html><body><main><h1>Project file link target</h1></main></body></html>',
 ): Promise<{ projectId: string; conversationId: string }> {
   const projectId = `file-link-routing-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const projectResponse = await page.request.post('/api/projects', {
@@ -56,7 +114,7 @@ async function seedProjectWithAssistantFileLink(
   const fileResponse = await page.request.post(`/api/projects/${projectId}/files`, {
     data: {
       name: 'index.html',
-      content: '<!doctype html><html><body><main><h1>Project file link target</h1></main></body></html>',
+      content: html,
       artifactManifest: {
         version: 1,
         kind: 'html',

@@ -16,7 +16,11 @@
       "development": "./src/index.ts",
       "default": "./dist/index.mjs"
     },
-    "./styles.css": "./src/styles.css"
+    "./styles.css": "./src/styles.css",
+    "./overlay-scrollbars-runtime": {
+      "types": "./dist/overlay-scrollbars-runtime.d.ts",
+      "default": "./dist/overlay-scrollbars-runtime.mjs"
+    }
   },
   "scripts": {
     "build": "tsx ./esbuild.config.ts && tsc -p tsconfig.json --emitDeclarationOnly",

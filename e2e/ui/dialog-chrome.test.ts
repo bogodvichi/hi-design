@@ -14,6 +14,23 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/workspace/skills/cloud?**', route => route.fulfill({ json: { skills: [] } }));
 });
 
+test('[P2] long settings pages expose the global scrollbar in a short window', async ({ page }) => {
+  test.setTimeout(T.xlong);
+  await page.setViewportSize({ width: 1000, height: 360 });
+  await page.goto('/settings');
+  await page.getByTestId('settings-nav-execution').click();
+  const content = page.locator('.settings-content');
+  await expect(content).toHaveAttribute('data-overlay-scrollbars', '');
+  await expect.poll(() => content.evaluate(e => e.scrollHeight > e.clientHeight)).toBe(true);
+  await expect.poll(() => content.evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    return [...document.querySelectorAll<HTMLElement>('.od-scrollbar-track[data-axis=vertical]')]
+      .some(track => !track.hidden && Math.abs(track.getBoundingClientRect().right - rect.right + element.clientLeft + 2) < 1);
+  })).toBe(true);
+  await content.evaluate(e => { e.scrollTop = e.scrollHeight; });
+  await expect.poll(() => content.evaluate(e => e.scrollTop)).toBeGreaterThan(0);
+});
+
 test('[P2] resource import keeps its heading, source tabs and actions visible in a short window', async ({ page }, testInfo) => {
   test.setTimeout(T.xlong);
   const context = { ...AMR_PERSONAL_WORKSPACE_CONTEXT, workspaceType: 'team', isDefaultTeam: true };

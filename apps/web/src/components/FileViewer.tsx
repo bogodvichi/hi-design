@@ -403,7 +403,7 @@ const POWERED_PREVIEW_SANDBOX =
   'allow-scripts allow-same-origin allow-downloads allow-popups allow-forms allow-modals allow-pointer-lock';
 const POWERED_PREVIEW_ALLOW =
   'accelerometer; autoplay; camera; cross-origin-isolated; fullscreen; gamepad; gyroscope; microphone; xr-spatial-tracking';
-const BASE_PREVIEW_BRIDGE_QUERY = 'odPreviewBridge=scroll&odPreviewBridge=selection&odPreviewBridge=snapshot&odPreviewBridge=observability';
+const BASE_PREVIEW_BRIDGE_QUERY = 'odPreviewBridge=scroll&odPreviewBridge=selection&odPreviewBridge=snapshot&odPreviewBridge=observability&odPreviewBridge=scrollbars';
 // Generic runtime UI state carried across the URL-load -> srcDoc transport
 // switch. This preserves the current page of multi-page prototypes while
 // leaving artifact scripts and business state inside their sandboxed frames.
@@ -3353,6 +3353,7 @@ function fileVersionPreviewSrcDoc(
   return buildSrcdoc(source, {
     ...fileVersionPreviewOptions(projectId, fileName, source, workspaceContext),
     previewFocusGuard: true,
+    previewScrollbars: true,
   });
 }
 
@@ -11477,6 +11478,7 @@ const [chromeActionsHost, setChromeActionsHost] = useState<HTMLElement | null>(
         generation,
         srcDoc: previewSource ? buildSrcdoc(previewSource, {
           deck: effectiveDeck,
+          previewScrollbars: true,
           baseHref: srcDocBaseHref,
           initialSlideIndex: htmlPreviewSlideState.get(previewStateKey)?.active ?? 0,
           hideDeckChrome: effectiveDeck,

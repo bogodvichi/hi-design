@@ -40,15 +40,15 @@ test('[P2] publish categories stay fixed while fields scroll and logo choices us
   const trackBox = (await scrollTrack.boundingBox())!;
   expect(bodyBox.x + bodyBox.width - trackBox.x - trackBox.width).toBe(2);
   await page.mouse.move(10, 10);
-  await expect.poll(() => thumb.evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgba(0, 0, 0, 0.4)');
+  await expect.poll(() => thumb.evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgba(0, 0, 0, 0.2)');
   await expect.poll(() => thumb.evaluate(element => element.getBoundingClientRect().width)).toBe(trackBox.width / 2);
   const restingRight = (await thumb.boundingBox())!.x + (await thumb.boundingBox())!.width;
   await body.hover();
-  expect(await thumb.evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgba(0, 0, 0, 0.4)');
+  expect(await thumb.evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgba(0, 0, 0, 0.2)');
   expect((await thumb.boundingBox())!.width).toBe(trackBox.width / 2);
   // The invisible half of the full-width track is also part of the hit area.
   await page.mouse.move(trackBox.x + 1, trackBox.y + trackBox.height / 2);
-  await expect.poll(() => thumb.evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgba(0, 0, 0, 0.8)');
+  await expect.poll(() => thumb.evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgba(0, 0, 0, 0.4)');
   await expect.poll(() => thumb.evaluate(element => element.getBoundingClientRect().width)).toBe(trackBox.width);
   const expanded = (await thumb.boundingBox())!;
   expect(expanded.x + expanded.width).toBe(restingRight);
@@ -56,7 +56,7 @@ test('[P2] publish categories stay fixed while fields scroll and logo choices us
   await page.mouse.down();
   try {
     await expect(scrollTrack).toHaveAttribute('data-dragging', '');
-    expect(await thumb.evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgb(0, 0, 0)');
+    expect(await thumb.evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgba(0, 0, 0, 0.6)');
     await page.mouse.move(expanded.x + expanded.width / 2, expanded.y + expanded.height / 2 - 10);
   } finally {
     await page.mouse.up();

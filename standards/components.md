@@ -130,6 +130,8 @@ dispose();
 
 React 与手动安装方式择一使用，同一文档保持一个实例。行为和状态数值的完整约定见[全局滚动条规范](scrollbars.md)。
 
+沙箱预览使用 `buildOverlayScrollbarsScript()` 生成自包含脚本，在预览响应或 srcdoc 内执行。非 React 的服务端通过 `@open-design/components/overlay-scrollbars-runtime` 导入，避免加载 React 和组件 CSS；仅增强预览响应，不改写设计源文件。
+
 ## 视图切换
 
 `ViewModeSwitch` 从 `@open-design/components` 导入，接收 `label`、`value`、`onChange` 和 `options`。

@@ -3,6 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import path from 'node:path';
 import { load } from 'cheerio';
+import { buildOverlayScrollbarsScript } from '@open-design/components/overlay-scrollbars-runtime';
 import type { Express, Request, Response } from 'express';
 import { applyProjectFileTextEdits, automaticStrategyTaskProfileForProjectMetadata, projectFileTextPatchSchema, type ChatSessionMode, type LocalCatalogScope, type PluginManifest, type PreviewComment, type ProjectDesignTokenSuggestionProp, type ProjectDesignTokenSuggestionQuery, type ProjectFile, type ProjectFileTextPreviewResponse, type ProjectFileVersion, type ProjectFileVersionPromptSource, type ProjectFileVersionSource, type ProjectFileVersionWarning, type ProjectMetadata, type ProjectSyncState, type RestoreProjectAutomaticScenarioRequest, type RestoreProjectAutomaticScenarioResponse, type WorkspaceCollabContext } from '@open-design/contracts';
 import {
@@ -1164,6 +1165,7 @@ const URL_PREVIEW_SELECTION_BRIDGE = `<script data-od-url-selection-bridge>
     return items;
   }
   function closestTarget(event){
+    if (event.target && event.target.closest && event.target.closest('.od-scrollbar-layer')) return null;
     var candidates = eventCandidateElements(event);
     var allowDomFallback = commentEnabled && mode === 'picker';
     var annotatedFallback = null;
@@ -1352,6 +1354,7 @@ const URL_PREVIEW_SELECTION_BRIDGE = `<script data-od-url-selection-bridge>
   }, true);
   document.addEventListener('click', function(ev){
     if (!commentEnabled || mode !== 'picker') return;
+    if (ev.target && ev.target.closest && ev.target.closest('.od-scrollbar-layer')) return;
     var result = closestTarget(ev);
     if (result) {
       ev.preventDefault();
@@ -1392,6 +1395,7 @@ const URL_PREVIEW_SELECTION_BRIDGE = `<script data-od-url-selection-bridge>
   }, true);
   document.addEventListener('pointerdown', function(ev){
     if (!commentEnabled || mode !== 'pod' || ev.button !== 0) return;
+    if (ev.target && ev.target.closest && ev.target.closest('.od-scrollbar-layer')) return;
     drawing = true;
     stroke = [relativePoint(ev)];
     ev.preventDefault();
@@ -1620,6 +1624,10 @@ function wantsUrlPreviewScrollBridge(value: unknown): boolean {
   return previewBridgeTokens(value).some((token) => token === 'scroll' || token === '1' || token === 'true');
 }
 
+function wantsUrlPreviewScrollbars(value: unknown): boolean {
+  return previewBridgeTokens(value).includes('scrollbars');
+}
+
 function wantsUrlPreviewSelectionBridge(value: unknown): boolean {
   return previewBridgeTokens(value).some((token) => token === 'selection' || token === 'comment' || token === 'comments' || token === 'annotation');
 }
@@ -1707,6 +1715,7 @@ function applyUrlPreviewBridgesToHtml(
   if (
     !(
       wantsUrlPreviewScrollBridge(requestedBridge) ||
+      wantsUrlPreviewScrollbars(requestedBridge) ||
       wantsUrlPreviewSelectionBridge(requestedBridge) ||
       wantsUrlPreviewSnapshotBridge(requestedBridge) ||
       wantsUrlPreviewObservabilityBridge(requestedBridge) ||
@@ -1724,6 +1733,13 @@ function applyUrlPreviewBridgesToHtml(
   // filename. URL-load iframes cannot rely on the host rewriting the document
   // title after load, and powered previews are intentionally cross-origin.
   html = daemonSanitizeTitleInDoc(html);
+  if (wantsUrlPreviewScrollbars(requestedBridge)) {
+    html = injectAfterHeadOpen(
+      html,
+      'data-od-preview-scrollbars',
+      `<script data-od-preview-scrollbars>${buildOverlayScrollbarsScript()}</script>`,
+    );
+  }
   // Guards must run before authored scripts. injectAfterHeadOpen prepends at
   // the start of <head>; apply in reverse runtime order so the final document
   // executes sandbox -> redirect -> observability -> focus.

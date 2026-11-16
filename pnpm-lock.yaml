@@ -86,6 +86,9 @@ importers:
       '@open-design/agui-adapter':
         specifier: workspace:*
         version: link:../../packages/agui-adapter
+      '@open-design/components':
+        specifier: workspace:*
+        version: link:../../packages/components
       '@open-design/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts

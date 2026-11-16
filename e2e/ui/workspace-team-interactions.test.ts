@@ -154,6 +154,78 @@ test.beforeEach(async ({ page }) => {
   await applyStandardMocks(page);
 });
 
+test('[P1] team navigation fits the window and long team pages scroll as a whole', async ({ page }) => {
+  const teams = [TEAM_OWNER, ...Array.from({ length: 29 }, (_, i) => ({
+    ...TEAM_OWNER, workspaceId: `scroll-team-${i}`, workspaceName: `Scroll Team ${i}`,
+    workspaceMemberId: `scroll-member-${i}`,
+  }))];
+  await wireWorkspaceMocks(page, TEAM_OWNER, [PERSONAL, ...teams]);
+  await pinWindowWorkspace(page, TEAM_OWNER);
+  await page.route('**/api/hdw/api/folder/list?**', route => route.fulfill({ json: { code: 0, data: { folders: [] } } }));
+  await page.route('**/api/hdw/api/team/**/member/*', route => route.fulfill({ json: { code: 0, data: {
+    workspace_member_id: TEAM_OWNER.workspaceMemberId, role: 'owner',
+  } } }));
+  await page.route('**/api/hdw/api/team/**/members', route => route.fulfill({ json: { code: 0, data: {
+    members: Array.from({ length: 80 }, (_, i) => ({ workspace_member_id: `long-member-${i}`,
+      displayname: `Long Member ${i}`, email: `member${i}@example.com`, role: 'member', created_at: '2026-11-01',
+    })),
+  } } }));
+  await page.setViewportSize({ width: 1100, height: 650 });
+  await page.goto('/');
+  await ensureRailOpen(page);
+  await page.getByRole('button', { name: TEAM_OWNER.workspaceName, exact: true }).click();
+  const main = page.locator('.entry-main--scroll');
+  await main.getByRole('tab', { name: 'Members', exact: true }).click();
+  const tree = page.getByTestId('team-tree-section').locator('> div').filter({ has: page.getByText('Scroll Team 28', { exact: true }) });
+  await expect(page.getByText('Long Member 79', { exact: true })).toHaveCount(1);
+  await expect.poll(() => tree.evaluate(e => e.scrollHeight > e.clientHeight)).toBe(true);
+  await expect.poll(() => main.evaluate(e => e.scrollHeight > e.clientHeight)).toBe(true);
+  const hasTrack = async (target: typeof main) => target.evaluate(element => {
+    const rect = element.getBoundingClientRect();
+    return [...document.querySelectorAll<HTMLElement>('.od-scrollbar-track[data-axis=vertical]')]
+      .some(track => !track.hidden && Math.abs(track.getBoundingClientRect().right - rect.right + 2) < 1);
+  });
+  await expect.poll(() => hasTrack(tree)).toBe(true);
+  await expect.poll(() => hasTrack(main)).toBe(true);
+  await main.evaluate(e => { e.scrollTop = 500; });
+  await expect.poll(() => page.locator('#team-space-title').evaluate(e => e.getBoundingClientRect().bottom)).toBeLessThan(0);
+  await main.evaluate(e => { e.scrollTop = e.scrollHeight; });
+  await expect(page.getByText('Long Member 79', { exact: true })).toBeInViewport();
+  const height = await tree.evaluate(e => e.clientHeight);
+  await page.setViewportSize({ width: 1100, height: 480 });
+  await expect.poll(() => tree.evaluate(e => e.clientHeight)).toBeLessThan(height);
+  await tree.evaluate(e => { e.scrollTop = e.scrollHeight; });
+  await expect(tree.getByRole('button', { name: 'Scroll Team 28', exact: true })).toBeInViewport();
+  await expect.poll(() => tree.evaluate(element => {
+    const panel = element.closest('.entry-nav-rail__panel')!;
+    return Math.abs(panel.getBoundingClientRect().right - element.getBoundingClientRect().right - panel.clientLeft);
+  })).toBeLessThan(1);
+  const row = tree.getByText('Scroll Team 28', { exact: true }).locator('../..');
+  await row.hover();
+  await row.getByRole('button', { name: 'add folder', exact: true }).click({ trial: true });
+  await expect.poll(() => row.getByRole('button', { name: 'delete', exact: true }).evaluate(button => {
+    const tree = button.closest('[data-testid=team-tree-section]')!.firstElementChild!;
+    const rect = tree.getBoundingClientRect();
+    const track = [...document.querySelectorAll<HTMLElement>('.od-scrollbar-track[data-axis=vertical]')]
+      .find(track => !track.hidden && Math.abs(track.getBoundingClientRect().right - rect.right + 2) < 1);
+    return track ? button.getBoundingClientRect().right <= track.getBoundingClientRect().left : false;
+  })).toBe(true);
+  expect(await page.locator('.entry-nav-rail__panel').evaluate(e => e.getBoundingClientRect().bottom)).toBeLessThanOrEqual(480);
+  await expect.poll(() => page.getByRole('button', { name: 'New team', exact: true }).evaluate(button => {
+    const panel = button.closest('.entry-nav-rail__panel')!.getBoundingClientRect();
+    const rect = button.getBoundingClientRect();
+    return Math.max(Math.abs((panel.bottom - rect.bottom) - (rect.left - panel.left)),
+      Math.abs((panel.bottom - rect.bottom) - (panel.right - rect.right)));
+  })).toBeLessThan(1);
+  // These pages share the same grid and must not inherit the long rail's
+  // intrinsic height, even when their own content is short.
+  for (const name of ['All mine', 'Shared with me', 'Community', '模板']) {
+    await page.getByRole('navigation', { name: 'Primary' }).getByRole('button', { name, exact: true }).click();
+    await expect.poll(() => main.evaluate(e => e.getBoundingClientRect().bottom)).toBeLessThanOrEqual(480);
+    await expect.poll(() => tree.evaluate(e => e.scrollHeight > e.clientHeight)).toBe(true);
+  }
+});
+
 for (const workspaceFixture of [PERSONAL, TEAM_OWNER]) {
   test(`[P1] ${workspaceFixture.workspaceType} Skill upload shares Community validation and locks selection`, async ({page}, testInfo) => {
     test.setTimeout(T.xlong);
