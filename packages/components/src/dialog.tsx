@@ -17,6 +17,7 @@ export type DialogLayout = 'default' | 'sectioned' | 'scrollable';
 
 export interface DialogProps {
   children: ReactNode;
+  /** Backdrop interactions never invoke onClose; provide explicit close controls. */
   onClose?: () => void;
   className?: string;
   backdropClassName?: string;
@@ -26,7 +27,6 @@ export interface DialogProps {
   ariaLabel?: string;
   ariaLabelledBy?: string;
   ariaDescribedBy?: string;
-  closeOnBackdrop?: boolean;
   closeOnEscape?: boolean;
   layout?: DialogLayout;
   /** Preview workspaces retain their internal content geometry. */
@@ -53,7 +53,6 @@ export function Dialog({
   ariaLabel,
   ariaLabelledBy,
   ariaDescribedBy,
-  closeOnBackdrop = true,
   closeOnEscape = false,
   layout = 'scrollable',
   appearance = 'standard',
@@ -100,7 +99,6 @@ export function Dialog({
         includeChromeClassName ? 'modal-backdrop' : undefined,
         backdropClassName,
       )}
-      onClick={closeOnBackdrop ? onClose : undefined}
       role="presentation"
       data-dialog-backdrop=""
     >

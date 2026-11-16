@@ -5673,7 +5673,7 @@ describe('FileViewer SVG artifacts', () => {
     expect(screen.queryByLabelText('Pages project name')).toBeNull();
   });
 
-  it('closes the deploy/share modal from the backdrop or Escape', async () => {
+  it('ignores the share backdrop and still closes on Escape', async () => {
     const file = baseFile({
       name: 'index.html',
       path: 'index.html',
@@ -5712,23 +5712,17 @@ describe('FileViewer SVG artifacts', () => {
       />,
     );
 
-    const openDeployModal = async () => {
-      await openUnifiedShareTab();
-      fireEvent.click(await screen.findByRole('menuitem', { name: /Deploy to Vercel/i }));
-      return screen.findByRole('dialog');
-    };
-
-    const dialog = await openDeployModal();
+    await openUnifiedShareTab();
+    const dialog = await screen.findByRole('dialog');
     expect(dialog).toBeTruthy();
     fireEvent.click(dialog);
     expect(screen.getByRole('dialog')).toBeTruthy();
-    const backdrop = document.querySelector<HTMLElement>('.deploy-flow-backdrop');
+    const backdrop = dialog.closest<HTMLElement>('[data-dialog-backdrop]');
     expect(backdrop).toBeTruthy();
     fireEvent.click(backdrop!);
-    expect(screen.queryByRole('dialog')).toBeNull();
+    expect(screen.getByRole('dialog')).toBeTruthy();
 
-    expect(await openDeployModal()).toBeTruthy();
-    fireEvent.keyDown(window, { key: 'Escape' });
+    fireEvent.keyDown(document, { key: 'Escape' });
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 

@@ -1368,7 +1368,7 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
     expect(errorStatus?.parentElement).toHaveClass('settings-autosave-layer');
   });
 
-  it('closes BYOK via the close button or backdrop', () => {
+  it('closes BYOK via the close button while ignoring the backdrop', () => {
     const first = renderSettingsDialog();
 
     fireEvent.change(screen.getByLabelText('API key'), {
@@ -1384,6 +1384,8 @@ describe('SettingsDialog execution settings BYOK interactions', () => {
       target: { value: 'sk-unsaved-2' },
     });
     fireEvent.click(document.querySelector('.modal-backdrop') as HTMLElement);
+    expect(second.onClose).not.toHaveBeenCalled();
+    fireEvent.click(second.container.querySelector('.settings-close') as HTMLElement);
     expect(second.onClose).toHaveBeenCalledTimes(1);
   });
 
@@ -3495,7 +3497,7 @@ describe('SettingsDialog media providers interactions', () => {
     }
   });
 
-  it('closes media settings via the close button or backdrop', () => {
+  it('closes media settings via the close button while ignoring the backdrop', () => {
     const first = renderSettingsDialog(
       { mode: 'daemon', agentId: 'codex' },
       { initialSection: 'media' },
@@ -3520,6 +3522,8 @@ describe('SettingsDialog media providers interactions', () => {
       target: { value: 'sk-unsaved-media-2' },
     });
     fireEvent.click(document.querySelector('.modal-backdrop') as HTMLElement);
+    expect(second.onClose).not.toHaveBeenCalled();
+    fireEvent.click(second.container.querySelector('.settings-close') as HTMLElement);
     expect(second.onClose).toHaveBeenCalledTimes(1);
   });
 });
@@ -3612,7 +3616,7 @@ describe('SettingsDialog connectors interactions', () => {
     expect(screen.getByText(/keys are stored locally and never shared/i)).toBeTruthy();
   });
 
-  it('closes Composio settings via the close button or backdrop', () => {
+  it('closes Composio settings via the close button while ignoring the backdrop', () => {
     const first = renderSettingsDialog(
       {
         mode: 'daemon',
@@ -3650,6 +3654,8 @@ describe('SettingsDialog connectors interactions', () => {
       target: { value: 'cmp_unsaved_secret_2' },
     });
     fireEvent.click(document.querySelector('.modal-backdrop') as HTMLElement);
+    expect(second.onClose).not.toHaveBeenCalled();
+    fireEvent.click(second.container.querySelector('.settings-close') as HTMLElement);
     expect(second.onClose).toHaveBeenCalledTimes(1);
   });
 });
@@ -3980,7 +3986,7 @@ describe('SettingsDialog notifications interactions', () => {
     expect(screen.queryByRole('button', { name: 'Send test' })).toBeNull();
   });
 
-  it('closes notification settings via the close button or backdrop', () => {
+  it('closes notification settings via the close button while ignoring the backdrop', () => {
     const first = renderSettingsDialog(
       { mode: 'daemon', agentId: 'codex' },
       { initialSection: 'notifications' },
@@ -3998,6 +4004,8 @@ describe('SettingsDialog notifications interactions', () => {
     );
     fireEvent.click(screen.getAllByRole('button', { name: 'active' })[0] as HTMLButtonElement);
     fireEvent.click(document.querySelector('.modal-backdrop') as HTMLElement);
+    expect(second.onClose).not.toHaveBeenCalled();
+    fireEvent.click(second.container.querySelector('.settings-close') as HTMLElement);
     expect(second.onClose).toHaveBeenCalledTimes(1);
   });
 });
@@ -4496,6 +4504,8 @@ describe('SettingsDialog about interactions', () => {
     );
 
     fireEvent.click(document.querySelector('.modal-backdrop') as HTMLElement);
+    expect(second.onClose).not.toHaveBeenCalled();
+    fireEvent.click(second.container.querySelector('.settings-close') as HTMLElement);
     expect(second.onClose).toHaveBeenCalledTimes(1);
   });
 

@@ -8158,9 +8158,6 @@ function PageCreatorDialog({
     <div data-dialog-backdrop=""
       className="page-creator-backdrop"
       role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget && !creating) onClose();
-      }}
     >
       <section
         data-dialog-surface="standard"
@@ -8346,9 +8343,6 @@ function PageCreatorDialog({
         <div data-dialog-backdrop=""
           className="page-template-preview-backdrop"
           role="presentation"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setModalPreviewId(null);
-          }}
         >
           <section
             data-dialog-surface="standard"

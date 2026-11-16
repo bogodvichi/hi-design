@@ -2374,9 +2374,6 @@ export function DesignBrowserPanel({
           role="dialog"
           aria-modal="true"
           aria-label={activeBrowserPreviewImage.file.name}
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setBrowserPreviewIndex(null);
-          }}
         >
           <div data-dialog-surface="workspace" className="staged-preview-card">
             <div data-dialog-part="header" className="staged-preview-head">

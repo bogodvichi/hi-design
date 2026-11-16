@@ -47,15 +47,26 @@ describe('Dialog', () => {
     expect(screen.getByRole('dialog', { name: 'Rename design' })).toBeTruthy();
   });
 
-  it('closes on backdrop click when enabled', () => {
+  it('preserves the draft on backdrop interaction and closes only through an explicit action', () => {
     const onClose = vi.fn();
     const { container } = render(
       <Dialog onClose={onClose}>
-        <h2>Backdrop close</h2>
+        <input aria-label="Draft" defaultValue="" />
+        <button type="button" onClick={onClose}>Cancel</button>
       </Dialog>,
     );
 
-    fireEvent.click(container.querySelector('.modal-backdrop') as HTMLElement);
+    const input = screen.getByRole('textbox', { name: 'Draft' }) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: 'Unsaved work' } });
+    const backdrop = container.querySelector('[data-dialog-backdrop]') as HTMLElement;
+    fireEvent.pointerDown(backdrop);
+    fireEvent.mouseDown(backdrop);
+    fireEvent.mouseUp(backdrop);
+    fireEvent.click(backdrop);
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(input.value).toBe('Unsaved work');
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
 
     expect(onClose).toHaveBeenCalledTimes(1);
   });

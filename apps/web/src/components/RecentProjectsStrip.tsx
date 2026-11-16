@@ -2984,7 +2984,6 @@ function requestDelete(project: Project) {
             if (deletePending) return;
             setConfirmTarget(null);
           }}
-          closeOnBackdrop={!deletePending}
           ariaLabelledBy={confirmTitleId}
         >
           <DialogHeader>

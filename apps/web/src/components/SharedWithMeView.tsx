@@ -113,7 +113,6 @@ function RemoveSharedProjectDialog({
     <Dialog
       onClose={onClose}
       closeOnEscape={!busy}
-      closeOnBackdrop={!busy}
       ariaLabel={t('sharedSpace.removeFromSharedWithMeTitle')}
     >
       <DialogHeader>

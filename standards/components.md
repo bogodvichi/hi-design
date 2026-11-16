@@ -68,7 +68,7 @@ export function ExampleDialog({ onClose }: { onClose: () => void }) {
 </section>
 ```
 
-`data-dialog-surface` 支持普通面板 `standard`、复杂工作区 `workspace` 和原生全屏容器 `fullscreen`。分区值为 `header`、`toolbar`、`body`、`footer`、`form`；细部值为 `title`、`description`、`close`、`label`、`actions`。`data-dialog-field` 仅标记普通纵向字段，不能用于复选框行、资源列表项或工具按钮。`data-dialog-control` 可标记字段内部较深的文本控件。`data-dialog-backdrop` 统一遮罩容器的 `24px` 安全内边距，保留业务层叠顺序和关闭行为。
+`data-dialog-surface` 支持普通面板 `standard`、复杂工作区 `workspace` 和原生全屏容器 `fullscreen`。分区值为 `header`、`toolbar`、`body`、`footer`、`form`；细部值为 `title`、`description`、`close`、`label`、`actions`。`data-dialog-field` 仅标记普通纵向字段，不能用于复选框行、资源列表项或工具按钮。`data-dialog-control` 可标记字段内部较深的文本控件。`data-dialog-backdrop` 统一遮罩容器的 `24px` 安全内边距，保留业务层叠顺序；遮罩不绑定关闭事件，独立门户和动画弹窗也必须遵循。
 
 `DialogToolbar role="tablist"` 自动采用分段类型切换样式；原生同类类型栏标记 `data-dialog-tabs`，直接选项使用 `role="tab"` / `aria-selected`。资源卡片中的筛选、编辑器工具和侧边栏导航保留各自控件样式。
 

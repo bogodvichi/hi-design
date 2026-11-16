@@ -2090,9 +2090,6 @@ export const HomeHero = forwardRef<HomeHeroHandle, Props>(function HomeHero(
           role="dialog"
           aria-modal="true"
           aria-label={previewHomeFile.name}
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setPreviewHomeFileKey(null);
-          }}
         >
           <div data-dialog-surface="workspace" className="staged-preview-card">
             <div data-dialog-part="header" className="staged-preview-head">

@@ -2483,7 +2483,6 @@ export function ExtensionsMarketplace({
         <div data-dialog-backdrop=""
           className="plugin-marketplace__modal-backdrop"
           role="presentation"
-          onClick={closeCreateDialog}
         >
           <section
             data-dialog-surface="standard"
@@ -3246,9 +3245,6 @@ function AvailablePluginDetailsModal({
       role="dialog"
       aria-modal="true"
       aria-labelledby="plugins-available-details-title"
-      onClick={(event) => {
-        if (!pending && event.target === event.currentTarget) onClose();
-      }}
       data-testid="plugins-available-details-modal"
     >
       <div data-dialog-surface="standard" className="plugin-details-modal">
@@ -3754,7 +3750,7 @@ function PluginImportModal({
     (kind === 'folder' && folderFiles.length > 0);
 
   return (
-    <div data-dialog-backdrop="" className="plugins-import-modal__backdrop" role="presentation" onMouseDown={onClose}>
+    <div data-dialog-backdrop="" className="plugins-import-modal__backdrop" role="presentation">
       <section
         data-dialog-surface="standard"
         className="plugins-import-modal"

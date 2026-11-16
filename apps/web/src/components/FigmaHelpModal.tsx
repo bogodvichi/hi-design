@@ -21,9 +21,6 @@ export function FigmaHelpModal({ onClose }: { onClose: () => void }) {
     <div data-dialog-backdrop=""
       className={styles.backdrop}
       role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
     >
       <div
         data-dialog-surface="standard"

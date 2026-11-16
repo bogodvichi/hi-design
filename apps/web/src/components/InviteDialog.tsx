@@ -255,7 +255,7 @@ export function InviteDialog({
 
   return (
     <div data-dialog-backdrop="" className="entry-invite" role="dialog" aria-modal="true" aria-label={t('workspaceInvite.dialogAria')}>
-      <div className="entry-invite__backdrop" onClick={closeDialog} />
+      <div className="entry-invite__backdrop" />
       <div data-dialog-surface="standard" className="entry-invite__panel entry-invite__panel--split">
         <div data-dialog-part="header">
           <h2 data-dialog-part="title" className="entry-invite__title">

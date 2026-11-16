@@ -112,7 +112,7 @@ export function InsufficientCreditsDialog({
 
   return (
     <div data-dialog-backdrop="" className="entry-invite" role="dialog" aria-modal="true" aria-label={t('entry.upgradeDialogAria')}>
-      <div className="entry-invite__backdrop" onClick={onClose} />
+      <div className="entry-invite__backdrop" />
       <div data-dialog-surface="standard" className="credit-upgrade">
         <div data-dialog-part="header">
           <h2 data-dialog-part="title" className="credit-upgrade__title">

@@ -1110,9 +1110,6 @@ export function ReviewAddModal({
     <div data-dialog-backdrop=""
       className={styles.backdrop}
       role="presentation"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !submitting) onClose();
-      }}
     >
      <div data-dialog-surface="standard" className={`${styles.shell} ${styles.createShell}`} role="dialog" aria-modal="true" aria-labelledby="review-add-title">
        <div data-dialog-part="header" className={styles.head}>

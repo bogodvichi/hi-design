@@ -1693,10 +1693,6 @@ function DesignKitViewInner({
                   role="dialog"
                   aria-modal="true"
                   aria-label={activeLightboxItem.caption}
-                  onClick={() => {
-                    setLightboxIndex(null);
-                    setLogoLightbox(null);
-                  }}
                 >
                   <button
                     type="button"
@@ -1763,7 +1759,6 @@ function DesignKitViewInner({
                   role="dialog"
                   aria-modal="true"
                   aria-label={assetPreview.label}
-                  onClick={() => setAssetPreview(null)}
                 >
                   <div
                     data-dialog-surface="standard"
@@ -1809,7 +1804,6 @@ function DesignKitViewInner({
                   role="dialog"
                   aria-modal="true"
                   aria-label={`${kit.name} preview`}
-                  onClick={() => setCoverPreviewOpen(false)}
                 >
                   <div
                     data-dialog-surface="standard"
@@ -1846,7 +1840,6 @@ function DesignKitViewInner({
                   role="dialog"
                   aria-modal="true"
                   aria-label={designMdDialogLabel}
-                  onClick={() => setDesignMdOpen(false)}
                 >
                   <div
                     data-dialog-surface="standard"
@@ -1905,11 +1898,6 @@ function DesignKitViewInner({
                   aria-modal="true"
                   aria-label={t('ds.editColor', { name: colorEditor.label })}
                   data-testid="design-kit-color-editor"
-                  onClick={() => {
-                    if (colorSaving) return;
-                    setColorEditor(null);
-                    setColorError(null);
-                  }}
                 >
                   <div
                     data-dialog-surface="standard"

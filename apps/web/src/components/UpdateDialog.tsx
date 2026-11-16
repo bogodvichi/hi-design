@@ -387,9 +387,6 @@ export function UpdateDialog() {
   return (
     <div data-dialog-backdrop=""
       className={styles.backdrop}
-      onMouseDown={(event) => {
-        if (event.currentTarget === event.target) close();
-      }}
     >
       <section
         data-dialog-surface="standard"

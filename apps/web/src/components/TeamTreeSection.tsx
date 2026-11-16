@@ -634,7 +634,7 @@ function TeamNode({
       ) : null}
       {confirmDelete ? (
         createPortal(
-          <div className={styles.confirmOverlay} onClick={() => setConfirmDelete(false)}>
+          <div className={styles.confirmOverlay}>
             <div className={styles.confirmDialog} onClick={(e) => e.stopPropagation()}>
               <button type="button" className={styles.confirmClose} onClick={() => setConfirmDelete(false)} aria-label={t('common.close')}>
                 <Icon name="close" size={14} />
@@ -656,7 +656,7 @@ function TeamNode({
       ) : null}
       {confirmDeleteFolder ? (
         createPortal(
-          <div className={styles.confirmOverlay} onClick={() => setConfirmDeleteFolder(null)}>
+          <div className={styles.confirmOverlay}>
             <div className={styles.confirmDialog} onClick={(e) => e.stopPropagation()}>
               <button type="button" className={styles.confirmClose} onClick={() => setConfirmDeleteFolder(null)} aria-label={t('common.close')}>
                 <Icon name="close" size={14} />

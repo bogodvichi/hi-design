@@ -279,9 +279,7 @@ export function ProjectReferenceModal({
   if (typeof document === 'undefined') return null;
 
   return createPortal(
-    <div data-dialog-backdrop="" className={styles.backdrop} role="presentation" onMouseDown={(event) => {
-      if (event.target === event.currentTarget && !pending) onClose();
-    }}>
+    <div data-dialog-backdrop="" className={styles.backdrop} role="presentation">
       <div
         data-dialog-surface="standard"
         className={styles.modal}

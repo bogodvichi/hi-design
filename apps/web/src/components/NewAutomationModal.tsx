@@ -612,9 +612,6 @@ export function NewAutomationModal({
       aria-modal="true"
       aria-label={editingId ? t('automations.edit') : t('automations.newAutomation')}
       data-testid="automation-modal"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
       onMouseDown={() => setPopover(null)}
     >
       <form

@@ -3128,7 +3128,7 @@ export function SettingsDialog({
   }, [onPersist]);
 
   // Global Escape closes the dialog. With no footer button anymore the
-  // close affordances are: top-right X · backdrop click · Escape.
+  // close affordances are: top-right X · Escape.
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key !== 'Escape') return;
@@ -5821,7 +5821,7 @@ export function SettingsDialog({
   }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop">
       {surface}
       {dshSetup ? (
         <DeepSeekHarnessSetupDialog

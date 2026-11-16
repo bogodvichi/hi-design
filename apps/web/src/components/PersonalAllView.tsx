@@ -575,7 +575,7 @@ function handleFolderClick(folder: PersonalFolderItem) {
       </div>
       {showCreateGroup ? (
         createPortal(
-          <div className={styles.confirmOverlay} onClick={() => onShowCreateGroupChange(false)}>
+          <div className={styles.confirmOverlay}>
             <div className={styles.confirmDialog} onClick={(e) => e.stopPropagation()}>
               <button type="button" className={styles.confirmClose} onClick={() => onShowCreateGroupChange(false)} aria-label={t('common.close')}>
                 <Icon name="close" size={14} />
@@ -609,7 +609,7 @@ function handleFolderClick(folder: PersonalFolderItem) {
       ) : null}
       {removeTarget ? (
         createPortal(
-          <div className={styles.confirmOverlay} onClick={() => setRemoveTarget(null)}>
+          <div className={styles.confirmOverlay}>
             <div className={styles.confirmDialog} onClick={(e) => e.stopPropagation()}>
               <button type="button" className={styles.confirmClose} onClick={() => setRemoveTarget(null)} aria-label={t('common.close')}>
                 <Icon name="close" size={14} />

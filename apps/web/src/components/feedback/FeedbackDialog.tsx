@@ -289,7 +289,6 @@ export function FeedbackDialog({
   return createPortal(
     <Dialog
       onClose={onClose}
-      closeOnBackdrop
       closeOnEscape
       backdropClassName={styles.backdrop}
       className={styles.dialog}

@@ -45,6 +45,20 @@ afterEach(() => {
 });
 
 describe('HTML review creation', () => {
+  it('retains a review draft after interacting with the backdrop', () => {
+    const onClose = vi.fn();
+    render(<ReviewAddModal open onClose={onClose} />);
+    const name = screen.getByPlaceholderText('请输入评审名称') as HTMLInputElement;
+    fireEvent.change(name, { target: { value: '未提交的评审' } });
+    const backdrop = screen.getByRole('dialog', { name: '发起评审' }).parentElement!;
+    fireEvent.mouseDown(backdrop);
+    fireEvent.click(backdrop);
+    expect(onClose).not.toHaveBeenCalled();
+    expect(name.value).toBe('未提交的评审');
+    fireEvent.click(screen.getByRole('button', { name: '关闭' }));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it('offers html评审 for both department and project review modes', () => {
     render(<ReviewAddModal open onClose={() => {}} />);
     chooseSubtype('html评审');

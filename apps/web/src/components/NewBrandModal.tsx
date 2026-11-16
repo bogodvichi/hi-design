@@ -87,9 +87,6 @@ export function NewBrandModal({ open, onClose, onCreated }: Props) {
     <div data-dialog-backdrop=""
       className={styles.backdrop}
       role="presentation"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) handleClose();
-      }}
     >
       <div
         data-dialog-surface="standard"

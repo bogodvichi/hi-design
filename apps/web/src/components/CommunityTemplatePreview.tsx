@@ -207,7 +207,7 @@ export function TemplatePreviewModal({
   // canvas — traps the scrim's z-index locally, and shell chrome like the
   // entry rail (z-index 30) and the workspace tabs paints on top of it.
   const overlay = (
-    <div className="community-template-preview" role="presentation" onMouseDown={onClose}>
+    <div className="community-template-preview" role="presentation">
       <section
         data-dialog-surface="standard"
         className="community-template-preview__panel"

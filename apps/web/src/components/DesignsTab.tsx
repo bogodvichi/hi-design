@@ -1223,7 +1223,6 @@ export function DesignsTab({
         setConfirmTarget(null);
         setConfirmError(null);
       }}
-      closeOnBackdrop={!confirmPending}
       ariaLabelledBy={confirmTitleId}
     >
       <DialogHeader>

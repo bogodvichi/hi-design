@@ -139,9 +139,6 @@ function NewTeamModalBody({
       initial="hidden"
       animate="visible"
       exit="exit"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !submitting) onClose();
-      }}
     >
       <motion.div
         data-dialog-surface="standard"

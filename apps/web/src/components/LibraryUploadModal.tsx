@@ -160,7 +160,6 @@ export function LibraryUploadModal({ seedFiles, onClose, onUploaded }: Props) {
   const modal = (
     <motion.div data-dialog-backdrop=""
       className={styles.backdrop}
-      onClick={onClose}
       variants={modalOverlay}
       initial="hidden"
       animate="visible"

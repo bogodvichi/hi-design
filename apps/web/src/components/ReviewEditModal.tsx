@@ -244,9 +244,6 @@ export function ReviewEditModal({
     <div data-dialog-backdrop=""
       className={styles.backdrop}
       role="presentation"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !submitting && !confirmOpen) onClose();
-      }}
     >
     <div
       data-dialog-surface="standard"
@@ -444,9 +441,6 @@ export function ReviewEditModal({
             <div data-dialog-backdrop=""
               className={styles.backdrop}
               role="presentation"
-              onClick={(e) => {
-                if (e.target === e.currentTarget) setConfirmOpen(false);
-              }}
             >
               <div
                 data-dialog-surface="standard"

@@ -1367,9 +1367,6 @@ function ConnectorDetailDrawer({
     <div data-dialog-backdrop=""
       className="connector-drawer-backdrop"
       role="presentation"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
     >
       <aside
         data-dialog-surface="standard"

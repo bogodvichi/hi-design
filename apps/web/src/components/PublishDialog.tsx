@@ -2169,7 +2169,6 @@ export function PublishDialog({ onClose, onPublish, initialCategory }: Props) {
       id={dialogId}
       data-testid="publish-dialog"
       onClose={onClose}
-      closeOnBackdrop={!publishing}
       closeOnEscape={!publishing}
     >
       <DialogHeader className={styles.header}>

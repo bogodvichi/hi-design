@@ -93,9 +93,6 @@ export function UseEverywhereModal({
       aria-modal="true"
       aria-label={t('useEverywhere.modalAria')}
       data-testid="use-everywhere-modal"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
       variants={modalOverlay}
       initial="hidden"
       animate="visible"

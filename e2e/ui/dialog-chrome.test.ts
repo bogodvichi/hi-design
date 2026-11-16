@@ -51,6 +51,10 @@ test('[P2] resource import keeps its heading, source tabs and actions visible in
   await tabs.getByRole('tab', { name: '外部链接', exact: true }).click();
   expect(await body.evaluate(element => element.scrollTop)).toBe(0);
   await expect(body.getByRole('textbox')).toBeEditable();
+  await body.getByRole('textbox').fill('https://example.com/unfinished-skill');
+  await dialog.locator('..').click({ position: { x: 2, y: 2 } });
+  await expect(dialog).toBeVisible();
+  await expect(body.getByRole('textbox')).toHaveValue('https://example.com/unfinished-skill');
   await dialog.locator('[data-dialog-part=close]').click();
   await expect(dialog).toBeHidden();
 });
@@ -101,6 +105,10 @@ test('[P2] feedback keeps its actions outside the form scrollport on a narrow sc
   expect(beforeHeader.y).toBeGreaterThanOrEqual(24);
   expect(beforeFooter.y + beforeFooter.height).toBeLessThanOrEqual(456);
   await expect(footer.getByRole('button', { name: '取消', exact: true })).toBeVisible();
+  await dialog.getByPlaceholder('请输入反馈标题').fill('未提交的反馈');
+  await dialog.locator('..').click({ position: { x: 2, y: 2 } });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByPlaceholder('请输入反馈标题')).toHaveValue('未提交的反馈');
   await page.screenshot({ path: testInfo.outputPath('feedback-narrow-screen.png') });
   await footer.getByRole('button', { name: '取消', exact: true }).click();
   await expect(dialog).toBeHidden();

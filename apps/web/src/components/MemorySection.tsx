@@ -1812,11 +1812,6 @@ export function MemorySection({
       <div data-dialog-backdrop=""
         className="memory-action-modal-backdrop"
         role="presentation"
-        onMouseDown={(event) => {
-          if (event.target === event.currentTarget) {
-            setAddModalOpen(false);
-          }
-        }}
       >
         <div
           data-dialog-surface="standard"
@@ -2497,11 +2492,6 @@ export function MemorySection({
       <div data-dialog-backdrop=""
         className="memory-action-modal-backdrop"
         role="presentation"
-        onMouseDown={(event) => {
-          if (event.target === event.currentTarget) {
-            setAdvancedModalOpen(false);
-          }
-        }}
       >
         <div
           data-dialog-surface="standard"

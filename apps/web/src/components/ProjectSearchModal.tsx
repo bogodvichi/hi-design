@@ -120,9 +120,6 @@ export function ProjectSearchModal({
     <div data-dialog-backdrop=""
       className="project-search-backdrop"
       role="presentation"
-      onMouseDown={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
     >
       <div
         data-dialog-surface="standard"

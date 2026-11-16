@@ -25,7 +25,6 @@ export function PasteTextDialog({ onSave, onClose }: Props) {
   const dialog = (
     <motion.div
       className="modal-backdrop paste-text-dialog-backdrop"
-      onClick={onClose}
       variants={modalOverlay}
       initial="hidden"
       animate="visible"

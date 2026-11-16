@@ -122,7 +122,6 @@ export function FigmaImportModal({
   const modal = (
     <motion.div data-dialog-backdrop=""
       className={styles.backdrop}
-      onClick={() => (importing ? undefined : onClose())}
       // Swallow drag/drop on the backdrop so a near-miss never makes the
       // browser navigate to (open) the dropped .fig and lose the dialog.
       onDragOver={(e) => e.preventDefault()}

@@ -4217,9 +4217,6 @@ function StagedRunContexts({
         role="dialog"
         aria-modal="true"
         aria-label={preview.name}
-        onMouseDown={(e) => {
-          if (e.target === e.currentTarget) setPreview(null);
-        }}
       >
         <div data-dialog-surface="workspace" className="staged-preview-card">
           <div data-dialog-part="header" className="staged-preview-head">

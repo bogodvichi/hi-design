@@ -182,17 +182,11 @@ export function MessageCenter({
   useEffect(() => {
     if (!open) return;
     panelRef.current?.focus();
-    const onPointerDown = (event: MouseEvent) => {
-      const target = event.target as Node;
-      if (!panelRef.current?.contains(target) && !triggerRef.current?.contains(target)) closePanel();
-    };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') closePanel();
     };
-    document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
     return () => {
-      document.removeEventListener('mousedown', onPointerDown);
       document.removeEventListener('keydown', onKeyDown);
     };
   }, [open]);

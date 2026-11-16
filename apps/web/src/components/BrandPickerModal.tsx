@@ -61,9 +61,6 @@ export function BrandPickerModal({
     <div data-dialog-backdrop=""
       className={styles.backdrop}
       role="presentation"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
     >
       <div
         data-dialog-surface="standard"

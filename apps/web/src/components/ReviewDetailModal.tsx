@@ -171,7 +171,6 @@ export function ReviewDetailDrawer({
     <>
       <div
         className={`${styles.overlay} ${open ? styles.overlayOpen : ''}`}
-        onClick={onClose}
         aria-hidden={!open}
       />
       <div

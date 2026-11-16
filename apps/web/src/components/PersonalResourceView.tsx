@@ -170,7 +170,7 @@ export function PersonalResourceView({ kind }: { kind: ResourceKind }) {
   }
 
   const dialog = dialogOpen ? createPortal(
-    <div data-dialog-backdrop="" className={styles.backdrop} role="presentation" onClick={closeDialog}>
+    <div data-dialog-backdrop="" className={styles.backdrop} role="presentation">
       <section
         data-dialog-surface="standard"
         className={styles.dialog}

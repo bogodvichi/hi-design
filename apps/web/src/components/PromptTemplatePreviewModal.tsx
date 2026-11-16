@@ -84,9 +84,6 @@ export function PromptTemplatePreviewModal({ summary, onClose }: Props) {
       className="prompt-template-modal-backdrop"
       role="dialog"
       aria-modal="true"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
     >
       <div data-dialog-surface="standard" className="prompt-template-modal">
         <header data-dialog-part="header" className="prompt-template-modal-head">
@@ -186,17 +183,13 @@ export function PromptTemplatePreviewModal({ summary, onClose }: Props) {
     </div>
     {lightboxOpen && hasAsset ? (
       // Immersive lightbox — full viewport, dark backdrop, centered
-      // media. Rendered as a sibling of the modal backdrop so its
-      // backdrop click is independent (clicking the lightbox backdrop
-      // closes only the lightbox, not the modal beneath).
+      // media. Rendered as a sibling of the modal backdrop; its explicit
+      // close control dismisses only the lightbox, keeping the modal beneath.
       <div
         className="prompt-template-lightbox-backdrop"
         role="dialog"
         aria-modal="true"
         aria-label={fullscreenLabel}
-        onClick={(e) => {
-          if (e.target === e.currentTarget) setLightboxOpen(false);
-        }}
       >
         {summary.previewVideoUrl ? (
           <video

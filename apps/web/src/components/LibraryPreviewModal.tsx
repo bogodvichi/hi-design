@@ -317,7 +317,6 @@ export function LibraryPreviewModal({
   const modal = (
     <motion.div data-dialog-backdrop=""
       className={styles.backdrop}
-      onClick={onClose}
       variants={modalOverlay}
       initial="hidden"
       animate="visible"

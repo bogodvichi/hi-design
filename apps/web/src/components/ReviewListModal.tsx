@@ -262,9 +262,6 @@ export function ReviewListModal({
     <div data-dialog-backdrop=""
       className={styles.backdrop}
       role="presentation"
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
     >
       <div data-dialog-surface="standard" className={styles.shell} role="dialog" aria-modal="true">
         <div data-dialog-part="header" className={styles.head}>

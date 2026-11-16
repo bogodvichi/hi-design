@@ -16907,9 +16907,6 @@ async function openReviewListModal() {
           role="dialog"
           aria-modal="true"
           aria-label={boardPreviewImage.file.name}
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) setBoardPreviewIndex(null);
-          }}
         >
           <div data-dialog-surface="workspace" className="staged-preview-card">
             <div data-dialog-part="header" className="staged-preview-head">
@@ -16941,9 +16938,6 @@ async function openReviewListModal() {
          role="dialog"
          aria-modal="true"
          aria-label={replyPreviewImage.name}
-         onMouseDown={(e) => {
-           if (e.target === e.currentTarget) setReplyPreviewImage(null);
-         }}
        >
          <div data-dialog-surface="workspace" className="staged-preview-card">
            <div data-dialog-part="header" className="staged-preview-head">
@@ -19134,9 +19128,6 @@ async function openReviewListModal() {
         <div data-dialog-backdrop=""
           className="modal-backdrop viewer-modal-backdrop deploy-flow-backdrop"
           role="presentation"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) closeDeployModal();
-          }}
         >
           <div
             data-dialog-surface="standard"

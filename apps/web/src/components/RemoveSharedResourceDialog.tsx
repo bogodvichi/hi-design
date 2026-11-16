@@ -43,7 +43,6 @@ export function RemoveSharedResourceDialog({ shareId, kind, resourceName, onClos
                           if (!busy) onClose();
                         }}
                         closeOnEscape={!busy}
-                        closeOnBackdrop={!busy}
                       >
                         <DialogHeader>
                           <DialogTitle>{t('sharedSpace.removeFromSharedWithMeTitle')}</DialogTitle>

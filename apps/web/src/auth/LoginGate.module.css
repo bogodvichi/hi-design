@@ -221,6 +221,18 @@ background-position: right bottom;
   display: inline-flex;
 }
 
+/* Align the version pill with the desktop's 28px caption buttons.
+   The live inset includes the buttons and their outer window margin. */
+:global(html:has(#od-window-controls:not([hidden]))) .topRightUpdater {
+  top: 12px;
+  right: calc(var(--window-controls-right-inset, 0px) + 16px);
+}
+
+.topRightUpdater,
+.topRightUpdater * {
+  -webkit-app-region: no-drag;
+}
+
 .bottomLeftVersion {
   position: fixed;
   bottom: 24px;

@@ -139,9 +139,6 @@ export function LibraryPicker({ onClose, onConfirm, title, confirmLabel }: Props
   return createPortal(
     <motion.div data-dialog-backdrop=""
       className="modal-backdrop"
-      onClick={() => {
-        if (!busy) onClose();
-      }}
       variants={modalOverlay}
       initial="hidden"
       animate="visible"

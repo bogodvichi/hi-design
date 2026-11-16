@@ -6,7 +6,7 @@ import { userFacingError } from '../utils/userFacingError';
 // audio / other) and their connector / template / design-system
 // pickers carry over without duplication. The modal closes itself
 // when the panel calls onCreate and it completes (success path) or when the user
-// clicks the backdrop / Esc.
+// uses the close button / Esc.
 
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -135,9 +135,6 @@ function NewProjectModalBody({
       aria-modal="true"
       aria-label={title}
       data-testid="new-project-modal"
-      onClick={(e) => {
-        if (e.target === e.currentTarget && !creating) onClose();
-      }}
       variants={modalOverlay}
       initial="hidden"
       animate="visible"

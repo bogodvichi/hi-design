@@ -407,7 +407,6 @@ const footerActionDisabled =
    <Dialog
      onClose={onClose}
      closeOnEscape
-     closeOnBackdrop
      ariaLabel={t('share.dialogTitle', { name: projectName })}
      className={styles.dialog}
      backdropClassName={styles.backdrop}

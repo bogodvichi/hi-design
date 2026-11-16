@@ -3835,7 +3835,6 @@ const handleMcpTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent'
           className="home-hero-confirm"
           includeChromeClassName={false}
           ariaLabelledBy="home-hero-confirm-title"
-          closeOnBackdrop={false}
         >
           <DialogHeader>
             <DialogTitle id="home-hero-confirm-title">{t('homeHero.confirmReplaceTitle')}</DialogTitle>

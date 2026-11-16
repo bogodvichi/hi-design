@@ -142,7 +142,6 @@ export function QuickSwitcher({
   return (
     <motion.div data-dialog-backdrop=""
       className="qs-overlay"
-      onMouseDown={onClose}
       role="dialog"
       aria-modal="true"
       variants={modalOverlay}

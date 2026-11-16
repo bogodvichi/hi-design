@@ -173,7 +173,7 @@ export function AddMcpDialog({ open, onClose, scope, onAdded, workspaceContext: 
   }
 
   const dialog = open ? createPortal(
-    <div data-dialog-backdrop="" className={styles.backdrop} role="presentation" onClick={closeDialog}>
+    <div data-dialog-backdrop="" className={styles.backdrop} role="presentation">
       <section
         data-dialog-surface="standard"
         className={styles.dialog}

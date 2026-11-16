@@ -722,7 +722,7 @@ const renameFolderTitleId = useId();
      </div>
      {showCreateFolder ? (
         createPortal(
-          <div className={styles.confirmOverlay} onClick={() => onShowCreateFolderChange(false)}>
+          <div className={styles.confirmOverlay}>
             <div className={styles.confirmDialog} onClick={(e) => e.stopPropagation()}>
               <button type="button" className={styles.confirmClose} onClick={() => onShowCreateFolderChange(false)} aria-label={t('common.close')}>
                 <Icon name="close" size={14} />
@@ -756,7 +756,7 @@ const renameFolderTitleId = useId();
       ) : null}
       {removeTarget ? (
         createPortal(
-          <div className={styles.confirmOverlay} onClick={() => setRemoveTarget(null)}>
+          <div className={styles.confirmOverlay}>
             <div className={styles.confirmDialog} onClick={(e) => e.stopPropagation()}>
               <button type="button" className={styles.confirmClose} onClick={() => setRemoveTarget(null)} aria-label={t('common.close')}>
                 <Icon name="close" size={14} />

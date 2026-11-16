@@ -64,6 +64,17 @@ afterEach(() => {
 });
 
 describe('MessageCenter', () => {
+  it('ignores backdrop interaction and retains the explicit close action', async () => {
+    renderMessageCenter();
+    const dialog = await openCenter();
+    const backdrop = screen.getByTestId('message-center-backdrop');
+    fireEvent.mouseDown(backdrop);
+    fireEvent.click(backdrop);
+    expect(screen.getByTestId('message-center-dialog')).toBe(dialog);
+    fireEvent.click(within(dialog).getByRole('button', { name: /close/i }));
+    expect(screen.queryByTestId('message-center-dialog')).toBeNull();
+  });
+
   it('formats published dates using the selected locale', async () => {
     const publishedAt = new Date(defaultMessages[0]!.publishedAt);
     const zhDate = new Intl.DateTimeFormat('zh-CN', { dateStyle: 'medium' }).format(publishedAt);

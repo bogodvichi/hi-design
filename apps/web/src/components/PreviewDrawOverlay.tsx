@@ -1718,9 +1718,6 @@ export function PreviewDrawOverlay({
               role="dialog"
               aria-modal="true"
               aria-label={activePreview.file.name}
-              onMouseDown={(e) => {
-                if (e.target === e.currentTarget) setPreviewIndex(null);
-              }}
             >
               <div data-dialog-surface="workspace" className="staged-preview-card">
                 <div data-dialog-part="header" className="staged-preview-head">
