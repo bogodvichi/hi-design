@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TeamSpaceView } from '../../src/components/TeamSpaceView';
 import { I18nProvider } from '../../src/i18n';
@@ -31,6 +31,12 @@ beforeEach(() => {
       }] });
     }
     if (url === '/api/hdw/api/team/team-1/member/member-1') return Response.json({ code: 0, data: { workspace_member_id: 'member-1', role: 'member' } });
+    if (url === '/api/workspace/members') {
+      return Response.json({ members: [{
+        memberId: 'member-1', displayName: 'Design teammate', role: 'member',
+        avatarUrl: 'https://cdn.example.test/avatar.png',
+      }] });
+    }
     if (url === '/api/hdw/api/team/team-1/members') {
       return Response.json({ code: 0, data: { members: [{
         workspace_member_id: 'member-1', displayname: 'Design teammate',
@@ -81,5 +87,16 @@ describe('team space tab navigation', () => {
 
     expect(await screen.findByText('Design teammate')).toBeTruthy();
     expect(screen.getByRole('tab', { name: 'Members' }).getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('uses the team directory avatar for roster members', async () => {
+    window.history.replaceState(null, '', '/team/team-1/members');
+    const { container } = render(<I18nProvider initial="en"><RoutedTeamSpace /></I18nProvider>);
+
+    await screen.findByText('Design teammate');
+    await waitFor(() => {
+      const avatar = container.querySelector<HTMLImageElement>('img');
+      expect(avatar?.getAttribute('src')).toBe('https://cdn.example.test/avatar.png');
+    });
   });
 });

@@ -18,6 +18,7 @@ import { Icon, type IconName } from './Icon';
 import { CenteredLoader } from './Loading';
 import { useT } from '../i18n';
 import type { Dict } from '../i18n/types';
+import { currentUserDirectoryEntry, useTeamMembers } from '../collab/useTeamMembers';
 import { avatarColorForDisplayName } from '../utils/avatarColor';
 import { FolderCardMenu } from './FolderCardMenu';
 import { ShareFolderDialog } from './ShareFolderDialog';
@@ -70,6 +71,7 @@ interface TeamMember {
   email: string;
   role: MemberRole;
   joinedAt: string;
+  avatarUrl?: string | null;
 }
 
 interface OperatorInfo {
@@ -330,7 +332,7 @@ export function TeamSpaceView({ teamId, tab, onInvite, designSystems = [], onOpe
           <MembersTable
             teamId={teamId}
             operator={operator}
-            currentUserAvatarUrl={teamWorkspaceContext?.avatarUrl ?? null}
+            workspaceContext={teamWorkspaceContext}
           />
         ) : null}
         {activeTab === 'skill' ? (
@@ -1360,13 +1362,17 @@ function ProjectsPanel({
 function MembersTable({
   teamId,
   operator,
-  currentUserAvatarUrl,
+  workspaceContext,
 }: {
   teamId?: string;
   operator: OperatorInfo | null;
-  currentUserAvatarUrl: string | null;
+  workspaceContext: WorkspaceCollabContext | null;
 }) {
   const t = useT();
+  const { resolve: resolveMember } = useTeamMembers(
+    currentUserDirectoryEntry(workspaceContext),
+    workspaceContext,
+  );
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -1393,6 +1399,7 @@ function MembersTable({
           email: m.email || '',
           role: m.role as MemberRole,
           joinedAt: m.created_at || '',
+          avatarUrl: typeof m.avatar_url === 'string' && m.avatar_url.trim() ? m.avatar_url : null,
         })));
       } catch {
         if (!cancelled) setMembers([]);
@@ -1423,6 +1430,7 @@ function MembersTable({
             email: m.email || '',
             role: m.role as MemberRole,
             joinedAt: m.created_at || '',
+            avatarUrl: typeof m.avatar_url === 'string' && m.avatar_url.trim() ? m.avatar_url : null,
           })));
         } catch {
           // keep existing list on refresh error
@@ -1550,7 +1558,9 @@ function MembersTable({
               <tr><td colSpan={4}>{t('teamSpace.noMembers')}</td></tr>
             ) : members.map((m) => {
               const initial = m.displayName.charAt(0).toUpperCase();
-              const isCurrentUser = m.workspaceMemberId === operatorMemberId;
+              const avatarUrl = m.avatarUrl
+                ?? resolveMember(m.workspaceMemberId)?.avatarUrl
+                ?? null;
               const roleClass = styles[`role_${m.role}`] ?? '';
               const changeable = canChangeRole(m);
               const removable = canRemoveMember(m);
@@ -1564,9 +1574,9 @@ function MembersTable({
                         aria-hidden
                       >
                         {initial}
-                        {isCurrentUser && currentUserAvatarUrl ? (
+                        {avatarUrl ? (
                           <img
-                            src={currentUserAvatarUrl}
+                            src={avatarUrl}
                             alt=""
                             onError={(event) => {
                               event.currentTarget.hidden = true;
