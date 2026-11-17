@@ -51,6 +51,8 @@ export interface TeamTreeSelection {
   isDefaultTeam?: boolean;
 }
 
+type MoveWorkspace = WorkspaceDirectoryItem & { authorAccessDenied?: boolean };
+
 type MoveTreeMode = 'team' | 'personal-folders' | 'tabbed' | 'unified';
 
 interface MoveToTeamTreeDialogProps {
@@ -62,6 +64,8 @@ interface MoveToTeamTreeDialogProps {
   currentWorkspaceId?: string | null;
   currentFolderId?: string | null;
   restrictToWorkspaceId?: string | null;
+  /** Other authors whose access must survive a cross-team move. */
+  projectAuthors?: readonly { workspaceId: string; memberId: string | null; projectId: string }[];
   disabledKeys?: Set<string>;
   mode?: MoveTreeMode;
   canMoveToPersonal?: boolean;
@@ -71,6 +75,47 @@ interface MoveToTeamTreeDialogProps {
   rootSelectedLabel?: string;
   /** Moving folder roots: these locations and every descendant are forbidden. */
   disabledSubtreeKeys?: ReadonlySet<string>;
+}
+
+async function resolveAuthorWorkspaces(
+  items: readonly WorkspaceDirectoryItem[],
+  authors: NonNullable<MoveToTeamTreeDialogProps['projectAuthors']>,
+): Promise<readonly MoveWorkspace[]> {
+  if (!authors.length || items.every(item => authors.every(author => author.workspaceId === item.workspaceId))) return items;
+  type Member = { workspace_member_id: string; username: string; role: string };
+  const rosters = new Map<string, Promise<Member[]>>();
+  const members = (workspaceId: string): Promise<Member[]> => {
+    let result = rosters.get(workspaceId);
+    if (!result) {
+      result = fetch(`/api/hdw/api/team/${encodeURIComponent(workspaceId)}/members`, { cache: 'no-store' })
+        .then(async response => {
+          if (!response.ok) throw new Error('Team members unavailable');
+          const body = await response.json();
+          if (body.code !== 0 || !Array.isArray(body.data?.members)) throw new Error('Team members unavailable');
+          return body.data.members as Member[];
+        });
+      rosters.set(workspaceId, result);
+    }
+    return result;
+  };
+  const resolved = await Promise.all(authors.map(async author => {
+    let username = (await members(author.workspaceId)).find(member => member.workspace_member_id === author.memberId)?.username;
+    if (!username) {
+      const response = await fetch(`/api/hdw/api/workspaces/${encodeURIComponent(author.workspaceId)}/team-projects/${encodeURIComponent(author.projectId)}`, { cache: 'no-store' });
+      if (!response.ok) throw new Error('Project author unavailable');
+      const body = await response.json();
+      username = body.metadata?.projectAuthor?.username;
+    }
+    return { ...author, username };
+  }));
+  const allowed = await Promise.all(items.map(async item => {
+    const others = resolved.filter(author => author.workspaceId !== item.workspaceId);
+    if (!others.length) return true;
+    const roster = await members(item.workspaceId);
+    return others.every(author => author.username && roster.some(member => member.username === author.username
+      && ['owner', 'admin', 'member'].includes(member.role)));
+  }));
+  return items.map((item, index) => ({ ...item, authorAccessDenied: !allowed[index] }));
 }
 
 async function fetchFolders(workspaceId: string, folderPid?: string | null, isDefaultTeam?: boolean, ancestorIds: readonly string[] = []): Promise<FolderNode[]> {
@@ -334,7 +379,7 @@ function FolderTreeItem({ folder, depth, workspace, selectedKey, onSelect, disab
 }
 
 function UnifiedLocationPane({ workspaces, selectedKey, activeBranch, currentWorkspaceId, onSelectRoot, onSelectFolder, onBranchChange, disabledKeys, disabledSubtreeKeys }: {
-  workspaces: readonly WorkspaceDirectoryItem[];
+  workspaces: readonly MoveWorkspace[];
   selectedKey: string | null;
   activeBranch: ActiveBranch | null;
   currentWorkspaceId?: string | null;
@@ -367,7 +412,7 @@ function UnifiedLocationPane({ workspaces, selectedKey, activeBranch, currentWor
     }
   }, []);
 
-  useEffect(() => { for (const workspace of workspaces) void loadRootFolders(workspace); }, [loadRootFolders, workspaces]);
+  useEffect(() => { for (const workspace of workspaces) if (!workspace.authorAccessDenied) void loadRootFolders(workspace); }, [loadRootFolders, workspaces]);
   useEffect(() => {
     setExpandedKeys(new Set(workspaces.map((workspace) => workspace.workspaceId)));
   }, [currentWorkspaceId, workspaces]);
@@ -398,7 +443,7 @@ function UnifiedLocationPane({ workspaces, selectedKey, activeBranch, currentWor
     let cancelled = false;
     const timer = window.setTimeout(() => {
       setSearching(true);
-      void Promise.all(workspaces.map(async (workspace) => {
+      void Promise.all(workspaces.filter(workspace => !workspace.authorAccessDenied).map(async (workspace) => {
         const folders = await fetchFolderIndex(workspace);
         const foldersById = new Map(folders.map((folder) => [folder.id, folder]));
         const folderPath = (folder: FolderNode | null): FolderNode[] => {
@@ -554,14 +599,14 @@ function UnifiedLocationPane({ workspaces, selectedKey, activeBranch, currentWor
         const rootKey = `${workspace.workspaceId}:root`;
         const expanded = expandedKeys.has(workspace.workspaceId);
         const rootFolders = foldersByWorkspace[workspace.workspaceId];
-        const rootDisabled = isFolderMoveTargetDisabled(workspace.workspaceId, null, disabledKeys, disabledSubtreeKeys);
+        const rootDisabled = workspace.authorAccessDenied || isFolderMoveTargetDisabled(workspace.workspaceId, null, disabledKeys, disabledSubtreeKeys);
         const rootSelected = selectedKey === rootKey;
         const label = workspace.isDefaultTeam ? t('personalFunc.all') : workspace.workspaceName;
         return (
           <div key={workspace.workspaceId} className={styles.teamItem}>
             <div
               className={`${styles.row} ${styles.rootRow}${rootSelected && creatingRootId !== workspace.workspaceId ? ` ${styles.selected}` : ''}${rootDisabled ? ` ${styles.disabled}` : ''}`}
-              data-can-create={canCreateFolders(workspace)}
+              data-can-create={!workspace.authorAccessDenied && canCreateFolders(workspace)}
               onClick={rootDisabled ? undefined : () => onSelectRoot(workspace)}
               aria-disabled={rootDisabled || undefined}
               role="button"
@@ -590,7 +635,7 @@ function UnifiedLocationPane({ workspaces, selectedKey, activeBranch, currentWor
                   {workspace.isDefaultTeam ? t('recentProjects.personalBadge') : t('recentProjects.teamBadge')}
                 </span>
               </span>
-              {canCreateFolders(workspace) ? (
+              {!workspace.authorAccessDenied && canCreateFolders(workspace) ? (
                 <button
                   type="button"
                   className={styles.addFolderBtn}
@@ -604,7 +649,9 @@ function UnifiedLocationPane({ workspaces, selectedKey, activeBranch, currentWor
             {creatingRootId === workspace.workspaceId ? (
               <InlineFolderCreator depth={0} icon={null} onCreate={(name) => handleCreateRoot(workspace, name)} onCancel={() => setCreatingRootId(null)} />
             ) : null}
-            {expanded && loadingKeys.has(workspace.workspaceId) ? (
+            {expanded && workspace.authorAccessDenied ? (
+              <div className={styles.rootEmpty}>{t('recentProjects.moveAuthorNotInTeam')}</div>
+            ) : expanded && loadingKeys.has(workspace.workspaceId) ? (
               <div className={styles.skeletonRow} style={{ paddingLeft: '42px' }}><Skeleton width={14} height={14} radius={4} /><Skeleton width="48%" height={13} radius={6} /></div>
             ) : expanded && rootFolders?.length ? rootFolders.map((folder) => {
               const key = `${workspace.workspaceId}:${folder.id}`;
@@ -642,7 +689,7 @@ function UnifiedLocationPane({ workspaces, selectedKey, activeBranch, currentWor
 }
 
 function LegacyWorkspaceTree({ workspace, selectedKey, onSelectRoot, onSelectFolder, disabledKeys, disabledSubtreeKeys }: {
-  workspace: WorkspaceDirectoryItem;
+  workspace: MoveWorkspace;
   selectedKey: string | null;
   onSelectRoot: (workspace: WorkspaceDirectoryItem) => void;
   onSelectFolder: (workspace: WorkspaceDirectoryItem, folder: FolderNode) => void;
@@ -653,8 +700,8 @@ function LegacyWorkspaceTree({ workspace, selectedKey, onSelectRoot, onSelectFol
   const [expanded, setExpanded] = useState(true);
   const [folders, setFolders] = useState<FolderNode[] | null>(null);
   const rootKey = `${workspace.workspaceId}:root`;
-  const rootDisabled = isFolderMoveTargetDisabled(workspace.workspaceId, null, disabledKeys, disabledSubtreeKeys);
-  useEffect(() => { void fetchFolders(workspace.workspaceId, null, workspace.isDefaultTeam).then(setFolders); }, [workspace.isDefaultTeam, workspace.workspaceId]);
+  const rootDisabled = workspace.authorAccessDenied || isFolderMoveTargetDisabled(workspace.workspaceId, null, disabledKeys, disabledSubtreeKeys);
+  useEffect(() => { if (!workspace.authorAccessDenied) void fetchFolders(workspace.workspaceId, null, workspace.isDefaultTeam).then(setFolders); }, [workspace.authorAccessDenied, workspace.isDefaultTeam, workspace.workspaceId]);
   return (
     <div className={styles.teamItem}>
       <div className={`${styles.row}${selectedKey === rootKey ? ` ${styles.selected}` : ''}${rootDisabled ? ` ${styles.disabled}` : ''}`} onClick={rootDisabled ? undefined : () => onSelectRoot(workspace)} aria-disabled={rootDisabled || undefined} role="button" tabIndex={rootDisabled ? -1 : 0}>
@@ -664,7 +711,9 @@ function LegacyWorkspaceTree({ workspace, selectedKey, onSelectRoot, onSelectFol
         <Icon name="folder" size={16} className={styles.teamIcon} />
         <span className={styles.rowLabel}>{workspace.isDefaultTeam ? t('personalFunc.all') : workspace.workspaceName}</span>
       </div>
-      {expanded && folders === null ? (
+      {expanded && workspace.authorAccessDenied ? (
+        <div className={styles.emptyHint}>{t('recentProjects.moveAuthorNotInTeam')}</div>
+      ) : expanded && folders === null ? (
         <div className={styles.skeletonRow}><Skeleton width={14} height={14} radius={4} /><Skeleton width="50%" height={13} radius={6} /></div>
       ) : expanded ? folders?.map((folder) => (
         <FolderTreeItem key={folder.id} folder={folder} depth={1} workspace={workspace} selectedKey={selectedKey} onSelect={(node) => onSelectFolder(workspace, node)} disabledKeys={disabledKeys} disabledSubtreeKeys={disabledSubtreeKeys} />
@@ -682,6 +731,7 @@ export function MoveToTeamTreeDialog({
   currentWorkspaceId,
   currentFolderId,
   restrictToWorkspaceId,
+  projectAuthors,
   mode = 'team',
   disabledKeys,
   canMoveToPersonal = true,
@@ -693,13 +743,14 @@ export function MoveToTeamTreeDialog({
 }: MoveToTeamTreeDialogProps) {
   const t = useT();
   const titleId = useId();
-  const [items, setItems] = useState<readonly WorkspaceDirectoryItem[] | null>(propItems ?? null);
-  const [loading, setLoading] = useState(!propItems);
+  const [items, setItems] = useState<readonly MoveWorkspace[] | null>(propItems ?? null);
+  const [loading, setLoading] = useState(!propItems || Boolean(projectAuthors?.length));
   const [loadFailed, setLoadFailed] = useState(false);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [selected, setSelected] = useState<(TeamTreeSelection & { ancestorIds: readonly string[] }) | null>(null);
   const [activeBranch, setActiveBranch] = useState<ActiveBranch | null>(null);
   const initializedLocationRef = useRef(false);
+  const authorsKey = JSON.stringify(projectAuthors ?? []);
   const visibleItems = useMemo(
     () => (items ?? []).filter((item) => canMoveIntoWorkspace(item)
       && (!copyMode || item.isDefaultTeam === true)
@@ -709,19 +760,24 @@ export function MoveToTeamTreeDialog({
   );
 
   useEffect(() => {
-    if (propItems) return;
     let cancelled = false;
     const load = async () => {
       setLoading(true);
       setLoadFailed(false);
       try {
-        const directory = await readWorkspaceDirectoryForCurrentGeneration();
+        const directory = propItems ? { items: propItems } : await readWorkspaceDirectoryForCurrentGeneration();
         if (cancelled) return;
-        let next = (directory.items ?? []).filter((item) => !item.isSharedSpace && canMoveIntoWorkspace(item));
-        if (mode === 'personal-folders') next = next.filter((item) => item.isDefaultTeam === true);
-        else if (mode === 'team') next = next.filter((item) => item.workspaceType === 'team' && !item.isDefaultTeam);
-        else next = next.filter((item) => item.workspaceType === 'team' || item.isDefaultTeam === true);
-        setItems(next);
+        let next = [...(directory.items ?? [])];
+        if (!propItems) {
+          next = next.filter((item) => !item.isSharedSpace && canMoveIntoWorkspace(item));
+          if (mode === 'personal-folders') next = next.filter((item) => item.isDefaultTeam === true);
+          else if (mode === 'team') next = next.filter((item) => item.workspaceType === 'team' && !item.isDefaultTeam);
+          else next = next.filter((item) => item.workspaceType === 'team' || item.isDefaultTeam === true);
+        }
+        next = next.filter(item => (canMoveToPersonal || !item.isDefaultTeam)
+          && (!restrictToWorkspaceId || item.workspaceId === restrictToWorkspaceId || (canMoveToPersonal && item.isDefaultTeam)));
+        const resolved = await resolveAuthorWorkspaces(next, copyMode ? [] : JSON.parse(authorsKey));
+        if (!cancelled) setItems(resolved);
       } catch {
         if (!cancelled) { setItems([]); setLoadFailed(true); }
       } finally {
@@ -730,7 +786,7 @@ export function MoveToTeamTreeDialog({
     };
     void load();
     return () => { cancelled = true; };
-  }, [canMoveToPersonal, includePersonal, currentWorkspaceId, mode, propItems, restrictToWorkspaceId, loadAttempt]);
+  }, [canMoveToPersonal, includePersonal, currentWorkspaceId, mode, propItems, restrictToWorkspaceId, loadAttempt, authorsKey, copyMode]);
 
   useEffect(() => {
     if (initializedLocationRef.current || mode !== 'unified' || !currentWorkspaceId || !visibleItems.length) return;
@@ -798,7 +854,7 @@ export function MoveToTeamTreeDialog({
   const selectedWorkspace = selected
     ? visibleItems.find((workspace) => workspace.workspaceId === selected.workspaceId)
     : null;
-  const selectedDisabled = !selected || !selectedWorkspace || isFolderMoveTargetDisabled(
+  const selectedDisabled = !selected || !selectedWorkspace || selectedWorkspace.authorAccessDenied || isFolderMoveTargetDisabled(
     selectedWorkspace.workspaceId,
     selected.folderId ? { id: selected.folderId, ancestorIds: selected.ancestorIds } : null,
     disabledKeys,

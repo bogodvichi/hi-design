@@ -8924,13 +8924,14 @@ const projectRouteResult = registerProjectRoutes(app, {
        invalidatePresenceReadCache(projectId);
        return result;
      },
-     requestTeamTransfer: async (projectId, sourceWorkspaceId, targetWorkspaceId, principal, coverDigest) => {
+     requestTeamTransfer: async (projectId, sourceWorkspaceId, targetWorkspaceId, principal, coverDigest, targetFolderId) => {
        const result = await collab.requestTeamTransfer(
          projectId,
          sourceWorkspaceId,
          targetWorkspaceId,
          principal ?? undefined,
          coverDigest,
+         targetFolderId,
        );
        invalidatePresenceReadCache(projectId);
        return result;

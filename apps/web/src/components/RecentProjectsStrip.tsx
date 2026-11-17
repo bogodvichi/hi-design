@@ -3024,6 +3024,11 @@ function requestDelete(project: Project) {
        currentWorkspaceId={currentWorkspaceId ?? workspaceContext?.workspaceId ?? null}
        currentFolderId={currentFolderId ?? null}
        disabledKeys={disabledKeys}
+       projectAuthors={resolveCreator(moveToTeamTarget).ownedBySelf ? undefined : [{
+         workspaceId: moveToTeamTarget.workspaceId ?? currentWorkspaceId ?? workspaceContext?.workspaceId ?? '',
+         memberId: moveToTeamTarget.createdByWorkspaceMemberId ?? projectOwnerMemberIds?.get(moveToTeamTarget.id) ?? null,
+         projectId: moveToTeamTarget.id,
+       }]}
        restrictToWorkspaceId={resolveCreator(moveToTeamTarget).ownedBySelf || (isTeamProjectCollection && resolveCreator(moveToTeamTarget).canAdmin) ? undefined : moveToTeamTarget.workspaceId ?? currentWorkspaceId ?? workspaceContext?.workspaceId}
       canMoveToPersonal={resolveCreator(moveToTeamTarget).ownedBySelf}
      />
@@ -3036,6 +3041,11 @@ function requestDelete(project: Project) {
        mode="unified"
        currentWorkspaceId={currentWorkspaceId ?? workspaceContext?.workspaceId ?? null}
        currentFolderId={currentFolderId ?? null}
+       projectAuthors={selectedProjects.filter(({ creator }) => !creator.ownedBySelf).map(({ project }) => ({
+         workspaceId: project.workspaceId ?? currentWorkspaceId ?? workspaceContext?.workspaceId ?? '',
+         memberId: project.createdByWorkspaceMemberId ?? projectOwnerMemberIds?.get(project.id) ?? null,
+         projectId: project.id,
+       }))}
        restrictToWorkspaceId={personalCollection || (extensionSelectedCount === 0 && selectedProjects.every(({ creator }) => creator.ownedBySelf || (isTeamProjectCollection && creator.canAdmin)))
          ? undefined : currentWorkspaceId ?? workspaceContext?.workspaceId ?? undefined}
        disabledSubtreeKeys={extensionSelectedCount > 0 ? selectionExtension?.disabledMoveKeys : undefined}

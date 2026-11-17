@@ -35,6 +35,7 @@ export interface PublishedResourceVersion {
   /** For cross-workspace transfers: the owner's member ID in the TARGET
    * workspace, resolved by the hdw server. */
   targetOwnerMemberId?: string;
+  folderId?: string | null;
 }
 
 export interface ResourcePublishAdapter {
@@ -80,6 +81,7 @@ export interface ResourcePublishAdapter {
     sourceWorkspaceId: string;
     targetWorkspaceId: string;
     coverDigest?: string | null;
+    targetFolderId?: string | null;
   }): Promise<PublishedResourceVersion | null>;
 }
 

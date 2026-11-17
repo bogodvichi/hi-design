@@ -24,8 +24,8 @@ vi.mock('../../src/i18n', async (importOriginal) => ({
   ...await importOriginal<typeof import('../../src/i18n')>(), useT: () => (key: string) => key,
 }));
 vi.mock('../../src/components/MoveToTeamTreeDialog', () => ({
-  MoveToTeamTreeDialog: ({ onConfirm, restrictToWorkspaceId, canMoveToPersonal, busy, copyMode }: ComponentProps<typeof MoveToTeamTreeDialog>) => <>
-    <div data-testid="move-picker" data-restricted={restrictToWorkspaceId} data-personal={String(canMoveToPersonal)} data-busy={String(busy)} data-copy={String(copyMode)} />
+  MoveToTeamTreeDialog: ({ onConfirm, restrictToWorkspaceId, canMoveToPersonal, busy, copyMode, projectAuthors }: ComponentProps<typeof MoveToTeamTreeDialog>) => <>
+    <div data-testid="move-picker" data-restricted={restrictToWorkspaceId} data-personal={String(canMoveToPersonal)} data-busy={String(busy)} data-copy={String(copyMode)} data-authors={JSON.stringify(projectAuthors)} />
     <button onClick={() => onConfirm({
       workspaceId: 'target', workspaceName: 'Target team', folderId: 'destination', folderName: 'Destination', isDefaultTeam: false,
     })}>choose target team</button>
@@ -288,6 +288,9 @@ describe.each(['team', 'drafts'] as const)('%s collection project moves', (space
       fireEvent.click(screen.getByRole('menuitem', { name: 'recentProjects.moveTo' }));
     }
     expect(screen.getByTestId('move-picker')).not.toHaveAttribute('data-restricted');
+    expect(JSON.parse(screen.getByTestId('move-picker').getAttribute('data-authors')!)).toEqual([
+      { workspaceId: 'source', memberId: 'another-creator', projectId: 'project' },
+    ]);
     await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'choose target team' })); });
     await waitFor(() => expect(requests).toHaveLength(1));
     const refreshedTeams = events.mock.calls.map(([event]) => event)

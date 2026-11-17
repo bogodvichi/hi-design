@@ -1509,6 +1509,7 @@ export const zhCN: Dict = {
   "recentProjects.copyToPersonalFailed": "复制失败",
   "recentProjects.copyInProgress": "复制中…",
  "recentProjects.treeNoWorkspaces": "暂无工作空间",
+  "recentProjects.moveAuthorNotInTeam": "作者不在这个团队中",
   "recentProjects.teamSpaceTab": "团队空间",
   "recentProjects.personalSpaceTab": "个人空间",
   "recentProjects.moveOutOfTeam": "移出团队空间",

@@ -66,6 +66,7 @@ describe('team project catalog carries the uedro review binding', () => {
     const targetPrincipal: ResourceHubPrincipal = {
       ...SOURCE_PRINCIPAL,
       teamId: 'team-shared',
+      memberId: 'member-target',
     };
     runtime = createCollabRuntime({
       adapter: {

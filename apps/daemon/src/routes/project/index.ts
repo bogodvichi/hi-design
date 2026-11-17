@@ -2808,7 +2808,8 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
       || !binding
       || binding.workspaceId !== ctx.workspaceId
       || binding.visibility !== 'team'
-      || binding.createdByWorkspaceMemberId !== effectiveRemoteOwnerId
+      || (binding.createdByWorkspaceMemberId !== effectiveRemoteOwnerId
+        && !(managesTeamFolders && binding.createdByWorkspaceMemberId === null))
       || binding.resourceHubResourceId !== remote.resourceId
     ) {
       return 'unavailable';
@@ -3754,8 +3755,10 @@ export function registerProjectRoutes(app: Express, ctx: RegisterProjectRoutesDe
         && ctx.memberStatus === 'active'
       );
   }
-async function requestTeamVisibility(projectIds: string[], ctx: WorkspaceProjectContext, visibility: 'personal' | 'team', targetWorkspaceId?: string | null, targetMemberId?: string | null, coverDigest?: string | null) {
-  let transferMeta: { targetOwnerMemberId?: string } | void = undefined;
+type WorkspaceProjectTransferMeta = { targetOwnerMemberId?: string; resourceId?: string; folderId?: string | null };
+async function requestTeamVisibility(projectIds: string[], ctx: WorkspaceProjectContext, visibility: 'personal' | 'team', targetWorkspaceId?: string | null, targetMemberId?: string | null, coverDigest?: string | null, targetFolderId?: string | null) {
+  let transferMeta: WorkspaceProjectTransferMeta | undefined;
+  const folderArgs: [] | [string | null] = targetFolderId === undefined ? [] : [targetFolderId];
   for (const projectId of projectIds) {
     // Fall back to the local projects.cover_digest when the caller did not
     // supply one explicitly. This keeps the team_projects.cover_digest on
@@ -3794,7 +3797,7 @@ async function requestTeamVisibility(projectIds: string[], ctx: WorkspaceProject
         };
          let result;
          try {
-           result = await collabSync.requestTeamTransfer(projectId, ctx.workspaceId, targetWorkspaceId, principal, effectiveCoverDigest);
+           result = await collabSync.requestTeamTransfer(projectId, ctx.workspaceId, targetWorkspaceId, principal, effectiveCoverDigest, ...folderArgs);
          } catch (error) {
            if (visibility !== 'team' || !isPersonalProjectWorkspace(ctx)
              || !(error instanceof HdwCloudError) || error.code !== 'source_not_published') throw error;
@@ -3802,11 +3805,9 @@ async function requestTeamVisibility(projectIds: string[], ctx: WorkspaceProject
            // under the verified source identity, then use the atomic transfer.
            // Timeouts/permission failures must never enter this branch.
            await collabSync.requestTeamShare(projectId, workspaceProjectPrincipal(ctx), effectiveCoverDigest);
-           result = await collabSync.requestTeamTransfer(projectId, ctx.workspaceId, targetWorkspaceId, principal, effectiveCoverDigest);
+           result = await collabSync.requestTeamTransfer(projectId, ctx.workspaceId, targetWorkspaceId, principal, effectiveCoverDigest, ...folderArgs);
          }
-         if (result?.targetOwnerMemberId) {
-           transferMeta = { targetOwnerMemberId: result.targetOwnerMemberId };
-         }
+         if (result) transferMeta = result;
          continue;
        }
        const principal = targetWorkspaceId
@@ -3839,24 +3840,22 @@ async function requestTeamVisibility(projectIds: string[], ctx: WorkspaceProject
    visibility: 'personal' | 'team',
    targetWorkspaceId?: string | null,
    targetMemberId?: string | null,
+   transferMeta?: WorkspaceProjectTransferMeta,
  ) {
    const effectiveWorkspaceId = targetWorkspaceId || ctx.workspaceId;
   const effectiveMemberId = targetMemberId ?? ctx.workspaceMemberId;
+  const targetOwnerMemberId = transferMeta?.targetOwnerMemberId ?? effectiveMemberId;
   const isCrossWorkspace = targetWorkspaceId && targetWorkspaceId !== ctx.workspaceId;
   const effectivePrincipal = targetWorkspaceId
-    ? { ...workspaceProjectPrincipal(ctx), teamId: targetWorkspaceId, memberId: effectiveMemberId }
+    ? { ...workspaceProjectPrincipal(ctx), teamId: targetWorkspaceId, memberId: targetOwnerMemberId }
     : workspaceProjectPrincipal(ctx);
 let createdByWorkspaceMemberId = isCrossWorkspace || visibility === 'personal'
-  ? effectiveMemberId
+  ? targetOwnerMemberId
   : ownerForTeamShare(summary, ctx, visibility);
 let updatedByWorkspaceMemberId = effectiveMemberId;
- // Cross-workspace and personal-to-team moves require both owner fields
- // to be the exact same non-null value. The target workspace's member ID
- // (effectiveMemberId) is the authoritative owner identity for BOTH
- // fields. If createdBy is still null (e.g. summary had no owner and the
- // effectiveMemberId fell back to the source member), force it to
- // updatedBy so the row is never left with a null creator.
- if (isCrossWorkspace || summary?.visibility === 'personal' && visibility === 'team') {
+ // The cloud resolves the original author in the destination workspace;
+ // the operator remains updatedBy and must not replace that author.
+ if (!isCrossWorkspace && summary?.visibility === 'personal' && visibility === 'team') {
    createdByWorkspaceMemberId = updatedByWorkspaceMemberId;
  }
  if (!createdByWorkspaceMemberId) {
@@ -3870,7 +3869,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
    workspaceId: effectiveWorkspaceId,
    createdByWorkspaceMemberId,
    updatedByWorkspaceMemberId,
-    resourceHubResourceId: visibility === 'team' || isCrossWorkspace ? projectResourceIdFor(id, effectivePrincipal) : null,
+    resourceHubResourceId: visibility === 'team' || isCrossWorkspace ? transferMeta?.resourceId ?? projectResourceIdFor(id, effectivePrincipal) : null,
     cloudTombstonedAt: visibility === 'team' || isCrossWorkspace ? null : Date.now(),
     syncState: visibility === 'team' ? 'pending_upload' : isCrossWorkspace ? 'synced' : 'local_only',
   };
@@ -4134,6 +4133,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
      const isFolderOnlyMove =
        (!resolvedTargetWorkspaceId || resolvedTargetWorkspaceId === ctx.workspaceId)
        && (summary.visibility === visibility || (visibility === 'personal' && isPersonalProjectWorkspace(ctx)));
+     let transferMeta: WorkspaceProjectTransferMeta | undefined;
      if (resolvedTargetWorkspaceId && resolvedTargetWorkspaceId !== ctx.workspaceId) {
        try {
          // Resolve the target member ID from the workspace directory
@@ -4155,14 +4155,12 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
             : resolvedTargetContext.workspaceType !== 'team' || resolvedTargetContext.isDefaultTeam)) {
           return sendApiError(res, 403, 'WORKSPACE_ACCESS_DENIED', 'target must match the requested project visibility');
         }
-        const transferMeta = await requestTeamVisibility([project.id], ctx, visibility, resolvedTargetWorkspaceId, targetMemberId, coverDigest);
-        if (!targetMemberId && transferMeta?.targetOwnerMemberId) {
-          targetMemberId = transferMeta.targetOwnerMemberId;
-        }
+        transferMeta = await requestTeamVisibility([project.id], ctx, visibility, resolvedTargetWorkspaceId, targetMemberId, coverDigest,
+          visibility === 'team' && hasExplicitTargetFolder ? targetFolderId : undefined);
        } catch (error) {
          throw new TeamProjectSyncError(error);
        }
-       const movePatch = workspaceProjectMovePatch(project.id, summary, ctx, visibility, resolvedTargetWorkspaceId, targetMemberId);
+       const movePatch = workspaceProjectMovePatch(project.id, summary, ctx, visibility, resolvedTargetWorkspaceId, targetMemberId, transferMeta);
        rebindWorkspaceProject(db, project.id, movePatch);
      } else {
        const movePatch = workspaceProjectMovePatch(project.id, summary, ctx, visibility, resolvedTargetWorkspaceId);
@@ -4196,7 +4194,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
         const operatorMemberId = resolvedTargetWorkspaceId && resolvedTargetWorkspaceId !== ctx.workspaceId
           ? (targetMemberId ?? ctx.workspaceMemberId)
           : ctx.workspaceMemberId;
-        await collabSync.moveProjectFolder?.(
+        if (transferMeta?.folderId !== targetFolderId) await collabSync.moveProjectFolder?.(
           responseWorkspaceId,
           project.id,
           targetFolderId,
@@ -4401,6 +4399,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
      const batchIsFolderOnly = !batchIsCrossWorkspace
        && (summaries.every((item: any) => item?.visibility === visibility) || (visibility === 'personal' && isPersonalProjectWorkspace(ctx)));
      const previousRows = projectIds.map((id: string) => rows.find((item: any) => item.id === id));
+     const transferMetas = new Map<string, WorkspaceProjectTransferMeta>();
      const moveMany = db.transaction((ids: string[]) => {
        for (const id of ids) {
          if (batchIsFolderOnly) continue;
@@ -4408,6 +4407,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
          const movePatch = workspaceProjectMovePatch(
            id, summary, ctx, visibility,
            batchResolvedTargetWorkspaceId, batchTargetMemberId,
+           transferMetas.get(id),
          );
          if (batchIsCrossWorkspace) {
            rebindWorkspaceProject(db, id, movePatch);
@@ -4424,7 +4424,9 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
        }
        for (const id of projectIds) {
          try {
-           await requestTeamVisibility([id], ctx, visibility, batchResolvedTargetWorkspaceId, batchTargetMemberId, batchCoverDigest);
+           const transferMeta = await requestTeamVisibility([id], ctx, visibility, batchResolvedTargetWorkspaceId, batchTargetMemberId, batchCoverDigest,
+             visibility === 'team' ? batchTargetFolderId : undefined);
+           if (transferMeta) transferMetas.set(id, transferMeta);
            // Keep every confirmed transfer bound to its real destination,
            // even when a later item in this batch fails.
            moveMany([id]);
@@ -4465,6 +4467,7 @@ let updatedByWorkspaceMemberId = effectiveMemberId;
        let folderSyncError: unknown;
        for (const id of projectIds) {
          try {
+           if (transferMetas.get(id)?.folderId === batchTargetFolderId) continue;
            const batchOperatorMemberId = batchIsCrossWorkspace
              ? (batchTargetMemberId ?? ctx.workspaceMemberId)
              : ctx.workspaceMemberId;

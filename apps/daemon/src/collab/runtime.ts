@@ -116,7 +116,8 @@ export interface CollabRuntime {
     targetWorkspaceId: string,
     principal?: ResourceHubPrincipal | null,
     coverDigest?: string | null,
-  ): Promise<{ version: number | null; versionId?: string; targetOwnerMemberId?: string }>;
+    targetFolderId?: string | null,
+  ): Promise<{ version: number | null; versionId?: string; targetOwnerMemberId?: string; resourceId?: string; folderId?: string | null }>;
   /** Restore a persisted team share into runtime bookkeeping without publishing. */
   rememberTeamShare(
     projectId: string,
@@ -932,7 +933,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
       syncStates.set(projectId, 'local_only');
       sharePrincipals.delete(projectId);
     },
-    async requestTeamTransfer(projectId, sourceWorkspaceId, targetWorkspaceId, principal, coverDigest) {
+    async requestTeamTransfer(projectId, sourceWorkspaceId, targetWorkspaceId, principal, coverDigest, targetFolderId) {
       const effectivePrincipal = principal ?? await getProjectPrincipal(projectId);
       if (!effectivePrincipal || !baseAdapter.transferToWorkspace) {
         throw new Error('Atomic workspace transfer is unavailable');
@@ -944,6 +945,7 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
       const result = await baseAdapter.transferToWorkspace({
         projectId, reason: 'transfer', sourceWorkspaceId, targetWorkspaceId,
         principal: effectivePrincipal, ...(coverDigest ? { coverDigest } : {}),
+        ...(targetFolderId !== undefined ? { targetFolderId } : {}),
       });
       if (!result) throw new Error('Atomic workspace transfer is unavailable');
       transferredScopes.add(transferScopeKey(projectId, sourceWorkspaceId));
@@ -963,7 +965,8 @@ export function createCollabRuntime(options: CreateCollabRuntimeOptions = {}): C
       published.set(scopedProjectKey(projectId, targetPrincipal), result.version);
       // The transfer already committed. A metadata refresh failure must not
       // conceal success and leave the local project bound to the old space.
-      try {
+      // A manager moving another author's project must not publish its mirror.
+      if (targetPrincipal.memberId === effectivePrincipal.memberId) try {
         await markTeamProject(projectId, 'synced', targetPrincipal, result.versionId,
           coverDigest ?? undefined, undefined, result.resourceId);
       } catch (error) {

@@ -448,6 +448,7 @@ export function createHdwCloudClient(options: HdwCloudClientOptions = {}) {
       targetWorkspaceId: string,
       targetOwnerMemberId?: string,
       coverDigest?: string | null,
+      targetFolderId?: string | null,
     ): Promise<HdwTransferResult> {
       const { payload } = await request<HdwTransferResult>(
         'POST',
@@ -456,6 +457,7 @@ export function createHdwCloudClient(options: HdwCloudClientOptions = {}) {
           targetWorkspaceId,
           ...(targetOwnerMemberId ? { targetOwnerMemberId } : {}),
           ...(coverDigest ? { coverDigest } : {}),
+          ...(targetFolderId !== undefined ? { targetFolderId } : {}),
         },
         { 'x-hdw-workspace-id': sourceWorkspaceId },
       );
@@ -621,6 +623,7 @@ export interface HdwTransferResult {
    * resolves this by looking up the source member's username and deriving
    * the target workspace_member_id deterministically. */
   targetOwnerMemberId?: string;
+  folderId?: string | null;
 }
 
 /** Response shape for HDW api endpoints (folder controllers). These

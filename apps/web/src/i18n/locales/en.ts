@@ -1495,6 +1495,7 @@ export const en: Dict = {
   'recentProjects.copyToPersonalFailed': 'Copy failed',
   'recentProjects.copyInProgress': 'Copying…',
  'recentProjects.treeNoWorkspaces': 'No workspaces available',
+ 'recentProjects.moveAuthorNotInTeam': 'The author is not in this team',
   'recentProjects.teamSpaceTab': 'Team space',
   'recentProjects.personalSpaceTab': 'Personal space',
   'recentProjects.moveOutOfTeam': 'Move out of team space',

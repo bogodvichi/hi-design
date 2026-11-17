@@ -1,6 +1,7 @@
 'use strict';
 
 const { createKnex } = require('../../utils/knex.js');
+const { getSharedSpaceTeamId } = require('../../utils/ids.js');
 const crypto = require('node:crypto');
 
 const Controller = require('egg').Controller;
@@ -17,7 +18,7 @@ const Controller = require('egg').Controller;
 //
 // Response format: raw JSON to match the daemon's HdwCloudClient.
 // The transfer resolves the TARGET workspace's member ID for the source
-// owner from the authenticated account's actual target workspace_members row.
+// author from that author's account, independently of the moving operator.
 // This ensures the target resource and team_project rows bind
 // to the correct member identity in the target workspace, not the source
 // workspace's member ID.
@@ -118,6 +119,7 @@ class TeamProjectController extends Controller {
       const k = this.getKnex();
 
       const existing = await k('team_projects').where({ workspace_id: workspaceId, project_id: projectId }).first();
+      const projectAuthor = existing && this._toRecord(existing).metadata?.projectAuthor;
       if (existing) {
         if (body.ownerMemberId && body.ownerMemberId !== existing.owner_member_id) {
           ctx.status = 409;
@@ -128,6 +130,11 @@ class TeamProjectController extends Controller {
         // resource reference and owner already stored by the transaction.
         body.resourceId = existing.resource_id;
         body.ownerMemberId = existing.owner_member_id;
+      }
+      if (body.metadata) {
+        body.metadata = { ...body.metadata };
+        delete body.metadata.projectAuthor;
+        if (projectAuthor) body.metadata.projectAuthor = projectAuthor;
       }
       const resource = await k('resources').where({ id: body.resourceId }).first();
       if (resource && (resource.deleted_at || resource.workspace_id !== workspaceId || resource.owner_member_id !== body.ownerMemberId)) {
@@ -270,6 +277,13 @@ class TeamProjectController extends Controller {
     }
 
     const targetWorkspaceId = body.targetWorkspaceId;
+    const hasTargetFolder = body.targetFolderId !== undefined;
+    if (hasTargetFolder && body.targetFolderId !== null && typeof body.targetFolderId !== 'string') {
+      ctx.status = 400;
+      ctx.body = { error: 'invalid_request', message: 'targetFolderId must be a string or null' };
+      return;
+    }
+    const targetFolderId = typeof body.targetFolderId === 'string' ? body.targetFolderId.trim() || null : null;
     if (targetWorkspaceId === sourceWorkspaceId) {
       ctx.status = 400;
       ctx.body = { error: 'invalid_request', message: 'Source and target workspace must differ' };
@@ -283,13 +297,17 @@ class TeamProjectController extends Controller {
       const targetMember = await k('workspace_members').where({
         workspace_id: targetWorkspaceId, username: ctx.state.user.username,
       }).first();
+      // Older clients send the mover's target membership as this owner hint.
+      // Verify the hint without using it to assign project authorship.
       if (!targetMember || !['owner', 'admin', 'member'].includes(targetMember.role)
         || (body.targetOwnerMemberId && body.targetOwnerMemberId !== targetMember.workspace_member_id)) {
         ctx.status = 403;
         ctx.body = { error: 'target_workspace_access_denied' };
         return;
       }
-      const targetOwnerMemberId = targetMember.workspace_member_id;
+      const sourceActor = await k('workspace_members').where({
+        workspace_id: sourceWorkspaceId, username: ctx.state.user.username,
+      }).first();
 
       // Find the source team project + its resource + current published version.
       const source = await k('team_projects as tp')
@@ -310,9 +328,11 @@ class TeamProjectController extends Controller {
         if (previous) {
           const target = await k('team_projects').where({ workspace_id: targetWorkspaceId, project_id: projectId, resource_id: previous.target_resource_id }).first();
           const current = target && await k('resource_versions').where({ id: target.last_synced_version_id }).first();
-          if (current && target.owner_member_id === targetOwnerMemberId) {
+          if (current && (target.owner_member_id === targetMember.workspace_member_id
+            || (sourceActor && previous.transferred_by === sourceActor.workspace_member_id))) {
             ctx.body = { resourceId: target.resource_id, workspaceId: targetWorkspaceId,
-              version: current.version, versionId: current.id, targetOwnerMemberId: target.owner_member_id };
+              version: current.version, versionId: current.id, targetOwnerMemberId: target.owner_member_id,
+              ...(hasTargetFolder ? { folderId: target.folder_id ?? null } : {}) };
             return;
           }
         }
@@ -320,6 +340,38 @@ class TeamProjectController extends Controller {
         ctx.body = { error: 'source_not_published', message: 'Source team project has not been published' };
         return;
       }
+
+      if (targetFolderId) {
+        const folder = await k('folders').where({ workspace_id: targetWorkspaceId, folder_id: targetFolderId }).first();
+        if (!folder) {
+          ctx.status = 404;
+          ctx.body = { error: 'target_folder_not_found' };
+          return;
+        }
+        if (targetWorkspaceId === getSharedSpaceTeamId() && folder.owner_member_id !== targetMember.workspace_member_id) {
+          ctx.status = 403;
+          ctx.body = { error: 'target_folder_access_denied' };
+          return;
+        }
+      }
+      const sourceOwner = await k('workspace_members').where({
+        workspace_id: sourceWorkspaceId, workspace_member_id: source.owner_member_id,
+      }).first();
+      const sourceMetadata = typeof source.metadata === 'string' ? JSON.parse(source.metadata) : source.metadata;
+      const projectAuthor = sourceMetadata?.projectAuthor ?? (sourceOwner?.username ? {
+        username: sourceOwner.username,
+        displayName: sourceOwner.displayname || sourceOwner.username,
+      } : null);
+      const targetAuthor = projectAuthor?.username && await k('workspace_members').where({
+        workspace_id: targetWorkspaceId, username: projectAuthor.username,
+      }).first();
+      if (!targetAuthor || !['owner', 'admin', 'member'].includes(targetAuthor.role)) {
+        ctx.status = 403;
+        ctx.body = { error: 'project_author_target_access_denied', message: 'The original author must have write access to the target team' };
+        return;
+      }
+      const targetOwnerMemberId = targetAuthor.workspace_member_id;
+      const targetMetadata = projectAuthor ? { ...sourceMetadata, projectAuthor } : source.metadata;
 
       // Get the published version + manifest digest.
       const version = await k('resource_refs as rr')
@@ -394,10 +446,11 @@ class TeamProjectController extends Controller {
           resource_id: targetResourceId,
           owner_member_id: targetOwnerMemberId,
           display_name: source.display_name,
+          folder_id: targetFolderId,
           cover_digest: source.cover_digest,
           sync_state: 'synced',
           last_synced_version_id: targetVersionId,
-          metadata: source.metadata,
+          metadata: targetMetadata,
           uedro_review_id: source.uedro_review_id,
         });
 
@@ -424,7 +477,7 @@ class TeamProjectController extends Controller {
           source_resource_id: source.resource_id,
           target_resource_id: targetResourceId,
           version_id: targetVersionId,
-          transferred_by: source.owner_member_id,
+          transferred_by: sourceActor.workspace_member_id,
         });
 
         return targetVersionId;
@@ -436,6 +489,7 @@ class TeamProjectController extends Controller {
         version: version.version,
         versionId: committedVersionId,
         targetOwnerMemberId,
+        ...(hasTargetFolder ? { folderId: targetFolderId } : {}),
       };
       });
     } catch (err) {
@@ -477,7 +531,7 @@ class TeamProjectController extends Controller {
       resourceId: row.resource_id,
       ownerMemberId: row.owner_member_id,
       displayName: row.display_name || null,
-      ownerDisplayName: row.owner_displayname || null,
+      ownerDisplayName: row.owner_displayname || metadata?.projectAuthor?.displayName || null,
       coverDigest: row.cover_digest || null,
       syncState: row.sync_state,
       lastSyncedVersionId: row.last_synced_version_id || null,

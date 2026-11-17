@@ -18,6 +18,7 @@ import { startBrandExtraction } from '../../src/brands/index.js';
 import * as projectFiles from '../../src/projects.js';
 import * as hdw from '../../src/http/hdw.js';
 import { HdwCloudError } from '../../src/integrations/hdw-cloud.js';
+import { materializePulledTeamMirror } from '../../src/collab/team-mirror-materializer.js';
 import {
   closeDatabase,
   createWorkspaceFolder,
@@ -597,7 +598,7 @@ describe('project move to personal on an unbound (never-locally-shared) project'
           expect(getWorkspaceProjectByProjectId(db, projectId)?.workspaceId).toBe(PERSONAL_WORKSPACE_ID);
         } else {
           expect(requestTeamTransfer).toHaveBeenCalledWith(projectId, PERSONAL_WORKSPACE_ID, TEAM_WORKSPACE_ID,
-            expect.objectContaining({ teamId: TEAM_WORKSPACE_ID, memberId: OWNER_MEMBER_ID }), null);
+            expect.objectContaining({ teamId: TEAM_WORKSPACE_ID, memberId: OWNER_MEMBER_ID }), null, 'existing-target-folder');
           expect(moveProjectFolder).toHaveBeenCalledWith(TEAM_WORKSPACE_ID, projectId, 'existing-target-folder', OWNER_MEMBER_ID);
           expect(listWorkspaceProjects(db, TEAM_WORKSPACE_ID)).toEqual([
             expect.objectContaining({ id: projectId, folderId: 'existing-target-folder', createdByWorkspaceMemberId: OWNER_MEMBER_ID }),
@@ -2147,25 +2148,33 @@ describe('project move to personal on an unbound (never-locally-shared) project'
   });
 
   describe.each(['single', 'batch'] as const)('cross-team manager transfer (%s)', (mode) => {
-    it.each([['owner', 'local'], ['admin', 'local'], ['member', 'local'], ['owner', 'catalog'], ['admin', 'catalog'], ['owner', 'stale'], ['admin', 'stale']] as const)('checks source role %s with %s content without granting edits', async (role, state) => {
+    it.each([['owner', 'local'], ['admin', 'local'], ['member', 'local'], ['owner', 'catalog'], ['admin', 'catalog'], ['owner', 'placeholder'], ['admin', 'placeholder'], ['owner', 'stale'], ['admin', 'stale']] as const)('checks source role %s with %s content without granting edits', async (role, state) => {
       const projectId = `manager-transfer-${mode}-${role}`;
       const createLocalProject = () => insertProject(db, { id: projectId, name: 'Teammate project', skillId: null, designSystemId: null,
-        pendingPrompt: null, metadata: null, customInstructions: null, createdAt: 1, updatedAt: 1 });
+        pendingPrompt: null, metadata: state === 'placeholder' ? { sharedProjectPlaceholderAt: 1 } : null, customInstructions: null, createdAt: 1, updatedAt: 1 });
       if (state !== 'catalog') createLocalProject();
       if (state !== 'catalog') ensureWorkspaceProject(db, { projectId, workspaceId: state === 'stale' ? PERSONAL_WORKSPACE_ID : TEAM_WORKSPACE_ID, visibility: 'team',
-        resourceState: 'active', createdByWorkspaceMemberId: 'another-creator', updatedByWorkspaceMemberId: 'another-creator',
+        resourceState: 'active', createdByWorkspaceMemberId: state === 'placeholder' ? null : 'another-creator', updatedByWorkspaceMemberId: 'another-creator',
         resourceHubResourceId: 'source-resource', syncState: 'synced' });
-      const requestTeamTransfer = vi.fn(async () => ({ targetOwnerMemberId: 'target-member' }));
+      const requestTeamTransfer = vi.fn(async () => ({ targetOwnerMemberId: 'target-author', resourceId: 'transferred-resource',
+        ...(state === 'catalog' ? { folderId: null } : {}),
+      }));
+      const moveProjectFolder = vi.fn();
       const authority = verifiedTeamAuthority({ memberId: OWNER_MEMBER_ID, role });
-      const target = { ...(await authority()).context, workspaceId: 'target-team', workspaceMemberId: 'target-member', teamId: 'target-team' };
+      const target = { ...(await authority()).context, role: 'member', workspaceId: 'target-team', workspaceMemberId: 'target-member', teamId: 'target-team' };
       const deps = buildDeps({
         verifyWorkspaceRequestAuthority: authority,
         teamProjectCatalog: { list: async () => [{ workspaceId: TEAM_WORKSPACE_ID, projectId, resourceId: 'source-resource',
           ownerMemberId: 'another-creator', access: { canView: true, canEdit: false, frozen: false }, syncState: 'synced' }] },
-        collabSync: { requestTeamTransfer, invalidateTeamProjectCatalog: vi.fn(), materializeTeamProject: async () => {
-          createLocalProject();
-          ensureWorkspaceProject(db, { projectId, workspaceId: TEAM_WORKSPACE_ID, visibility: 'team', resourceState: 'active',
-            createdByWorkspaceMemberId: 'another-creator', resourceHubResourceId: 'source-resource', syncState: 'synced' });
+        collabSync: { requestTeamTransfer, moveProjectFolder, invalidateTeamProjectCatalog: vi.fn(), materializeTeamProject: async () => {
+          materializePulledTeamMirror(db, {
+            id: projectId, name: 'Teammate project', skillId: null, designSystemId: null,
+            createdAt: 1, updatedAt: 1, resourceHubResourceId: 'source-resource',
+          }, {
+            workspaceId: TEAM_WORKSPACE_ID, resourceTeamId: TEAM_WORKSPACE_ID,
+            viewerMemberId: OWNER_MEMBER_ID, ownerMemberId: 'another-creator',
+          });
+          expect(getWorkspaceProjectByProjectId(db, projectId)?.createdByWorkspaceMemberId).toBeNull();
         } },
       });
       deps.fetchWorkspaceDirectory = async () => ({ ok: true, items: [target] }) as any;
@@ -2173,12 +2182,24 @@ describe('project move to personal on an unbound (never-locally-shared) project'
       const routeServer = await listen(app);
       try {
         const response = await fetch(`${routeServer.url}/api/workspaces/${TEAM_WORKSPACE_ID}/projects/${mode === 'batch' ? 'batch-move' : `${projectId}/move`}`, {
-          method: 'POST', headers: ownerTeamHeaders(), body: JSON.stringify({ visibility: 'team', targetWorkspaceId: 'target-team',
+          method: 'POST', headers: ownerTeamHeaders(), body: JSON.stringify({ visibility: 'team', targetWorkspaceId: 'target-team', targetFolderId: null,
             ...(mode === 'batch' ? { projectIds: [projectId] } : {}) }),
         });
         expect(response.status, await response.clone().text()).toBe(role === 'member' ? 403 : 200);
         expect(requestTeamTransfer).toHaveBeenCalledTimes(role === 'member' ? 0 : 1);
         expect(getWorkspaceProjectByProjectId(db, projectId)?.workspaceId).toBe(role === 'member' ? TEAM_WORKSPACE_ID : 'target-team');
+        if (role !== 'member') {
+          expect(getWorkspaceProjectByProjectId(db, projectId)).toMatchObject({
+            createdByWorkspaceMemberId: 'target-author', updatedByWorkspaceMemberId: 'target-member',
+            resourceHubResourceId: 'transferred-resource',
+          });
+          expect(requestTeamTransfer).toHaveBeenCalledWith(projectId, TEAM_WORKSPACE_ID, 'target-team',
+            expect.objectContaining({ memberId: 'target-member' }), null, null);
+          if (state === 'catalog') expect(moveProjectFolder).not.toHaveBeenCalled();
+          else expect(moveProjectFolder).toHaveBeenCalledWith('target-team', projectId, null, 'target-member');
+          const moved = await response.json() as { project: { currentUserAccess: { canRename: boolean } }; projects: Array<{ currentUserAccess: { canRename: boolean } }> };
+          expect((mode === 'batch' ? moved.projects[0]! : moved.project).currentUserAccess.canRename).toBe(false);
+        }
       } finally { await close(routeServer.server); }
     });
   });

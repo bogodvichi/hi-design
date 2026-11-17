@@ -3015,7 +3015,7 @@ describe('workspace project move authority boundaries', () => {
         workspaceId: targetWorkspaceId, visibility: 'team', createdByWorkspaceMemberId: 'target-member',
       });
       expect(requestTeamTransfer).toHaveBeenCalledWith(projectId, workspaceId, targetWorkspaceId,
-        expect.objectContaining({ memberId: 'target-member', teamId: targetWorkspaceId }), null);
+        expect.objectContaining({ memberId: 'target-member', teamId: targetWorkspaceId }), null, targetFolderId);
       expect(rebind).toHaveBeenCalledWith(deps.db, projectId, expect.objectContaining({
         workspaceId: targetWorkspaceId, visibility: 'team',
         createdByWorkspaceMemberId: 'target-member', updatedByWorkspaceMemberId: 'target-member',

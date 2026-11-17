@@ -277,7 +277,7 @@ export function createHdwHttpResourceAdapter(
       }, undefined);
     },
 
-   async transferToWorkspace({ projectId, principal, sourceWorkspaceId, targetWorkspaceId, coverDigest }) {
+   async transferToWorkspace({ projectId, principal, sourceWorkspaceId, targetWorkspaceId, coverDigest, targetFolderId }) {
      return gated(principal, async () => {
        const result = await options.client.transferProject(
          sourceWorkspaceId,
@@ -285,12 +285,14 @@ export function createHdwHttpResourceAdapter(
          targetWorkspaceId,
           principal?.memberId,
           coverDigest,
+          targetFolderId,
        );
        return {
          resourceId: result.resourceId,
          version: result.version,
          ...(result.versionId ? { versionId: result.versionId } : {}),
          ...(result.targetOwnerMemberId ? { targetOwnerMemberId: result.targetOwnerMemberId } : {}),
+         ...(result.folderId !== undefined ? { folderId: result.folderId } : {}),
        };
      }, null);
    },

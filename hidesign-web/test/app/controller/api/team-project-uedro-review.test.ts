@@ -12,6 +12,7 @@ runInNewContext(readFileSync(new URL('../../../../app/controller/api/team_projec
     if (id === 'egg') return { Controller: class {} };
     if (id === 'node:crypto') return require(id);
     if (id === '../../utils/knex.js') return { createKnex() { throw new Error('Real database forbidden'); } };
+    if (id === '../../utils/ids.js') return require('../../../../app/utils/ids.js');
     throw new Error(id);
   },
 });
@@ -136,6 +137,26 @@ test('upsert writes uedro_review_id into both the insert row and the merge', asy
   assert.equal(mergeOp!.data.uedro_review_id, 'r-9');
 });
 
+test('upsert preserves server-recorded authorship and ignores client-supplied author changes', async () => {
+  for (const existing of [false, true]) {
+    const projectAuthor = { username: 'bob', displayName: 'Bob' };
+    const { knex, ops } = makeKnex({ existingTeamProject: existing ? {
+      workspace_id: 'personal', project_id: 'p1', owner_member_id: 'm-owner', resource_id: 'res-1',
+      metadata: { projectAuthor },
+    } : null });
+    const controller = makeController(knex);
+    controller.ctx.request.body = { resourceId: 'res-1', ownerMemberId: 'm-owner', metadata: {
+      name: 'Updated title', projectAuthor: { username: 'alice', displayName: 'Alice' },
+    } };
+    await controller.upsert();
+    assert.equal(controller.ctx.status, 200);
+    const target = ops.find(op => op.op === 'insert' && op.table === 'team_projects')!;
+    const metadata = JSON.parse(target.data.metadata);
+    assert.equal(metadata.name, 'Updated title');
+    assert.deepEqual(metadata.projectAuthor, existing ? projectAuthor : undefined);
+  }
+});
+
 test('upsert accepts snake_case uedro_review_id and never clears an undefined value', async () => {
   const { knex, ops } = makeKnex({
     existingTeamProject: {
@@ -205,7 +226,7 @@ test('_toRecord exposes uedroReviewId from the row', () => {
 
 test('transfer reads uedro_review_id from the source and copies it to the target row', async () => {
   const { knex, ops, selects } = makeKnex({
-    workspaceMember: { role: 'member', workspace_member_id: 'target-alice' },
+    workspaceMember: { role: 'member', workspace_member_id: 'target-alice', username: 'alice' },
     source: {
       id: 'src-row',
       resource_id: 'res-1',

@@ -236,7 +236,8 @@ export interface ServerContext {
     targetWorkspaceId: string,
     principal?: ResourceHubPrincipal | null,
     coverDigest?: string | null,
-  ): Promise<{ version: number | null; versionId?: string; targetOwnerMemberId?: string }>;
+    targetFolderId?: string | null,
+  ): Promise<{ version: number | null; versionId?: string; targetOwnerMemberId?: string; resourceId?: string; folderId?: string | null }>;
    /**
     * Pull and atomically register a catalog-only Team project before an
      * exact-owner mutation needs local state. This preserves a Personal copy

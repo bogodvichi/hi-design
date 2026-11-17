@@ -112,6 +112,46 @@ async function openDialog(overrides: Partial<ComponentProps<typeof MoveToTeamTre
 }
 
 describe('folder move destination exclusions', () => {
+  it.each([['unified', false], ['unified', true], ['team', false]] as const)('shows blocked teams with an author explanation (mode=%s, author left source=%s)', async (mode, leftSource) => {
+    const { workspaces, fetchMock } = fixture();
+    const onConfirm = vi.fn();
+    const allowed = { ...workspaces[1]!, workspaceId: 'allowed', workspaceName: 'Allowed Team' };
+    const excluded = { ...workspaces[1]!, workspaceId: 'excluded', workspaceName: 'Excluded Team' };
+    const guest = { ...workspaces[1]!, workspaceId: 'author-guest', workspaceName: 'Author Guest Team' };
+    const originalFetch = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (input) => {
+      const url = new URL(String(input), 'http://localhost');
+      const match = url.pathname.match(/^\/api\/hdw\/api\/team\/([^/]+)\/members$/);
+      if (url.pathname.includes('/team-projects/')) return new Response(JSON.stringify({ metadata: { projectAuthor: { username: url.pathname.endsWith('/p1') ? 'bob' : 'carol' } } }));
+      if (!match) return originalFetch(input);
+      const workspaceId = match[1];
+      const members = workspaceId === 'team' && leftSource ? [] : workspaceId === 'excluded' ? [{ workspace_member_id: 'target-bob', username: 'bob', role: 'member' }]
+        : ['bob', 'carol'].map(username => ({ workspace_member_id: `${workspaceId}-${username}`, username,
+          role: workspaceId === 'author-guest' && username === 'carol' ? 'guest' : 'member' }));
+      return new Response(JSON.stringify({ code: 0, data: { members } }));
+    });
+    await act(async () => {
+      render(<MoveToTeamTreeDialog onConfirm={onConfirm} onCancel={vi.fn()} mode={mode}
+        workspaceItems={[workspaces[1]!, allowed, excluded, guest]} currentWorkspaceId="team" canMoveToPersonal={false}
+        projectAuthors={[
+          { workspaceId: 'team', memberId: 'team-bob', projectId: 'p1' },
+          { workspaceId: 'team', memberId: 'team-carol', projectId: 'p2' },
+        ]} />);
+    });
+    expect(row('Team')).toBeInTheDocument();
+    expect(row('Allowed Team')).toBeInTheDocument();
+    expect(row('Excluded Team')).toHaveAttribute('aria-disabled', 'true');
+    expect(row('Author Guest Team')).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.getAllByText('recentProjects.moveAuthorNotInTeam')).toHaveLength(2);
+    await click(row('Allowed Team'));
+    await click(row('Excluded Team'));
+    fireEvent.keyDown(row('Excluded Team'), { key: 'Enter' });
+    expect(row('Allowed Team')).not.toHaveAttribute('aria-disabled');
+    await click(confirm());
+    expect(onConfirm).toHaveBeenCalledWith(expect.objectContaining({ workspaceId: 'allowed' }));
+    expect(fetchMock.mock.calls.some(([input]) => String(input).includes('workspace_id=excluded'))).toBe(false);
+  });
+
   it('offers Personal alongside the current team and warns before transferring out', async () => {
     const { workspaces } = fixture();
     await openDialog({ currentWorkspaceId: 'team', restrictToWorkspaceId: 'team', canMoveToPersonal: true,

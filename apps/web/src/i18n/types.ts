@@ -1871,6 +1871,7 @@ export interface Dict extends Record<keyof typeof feedbackEn, string> {
   'recentProjects.copyToPersonalFailed': string;
   'recentProjects.copyInProgress': string;
  'recentProjects.treeNoWorkspaces': string;
+ 'recentProjects.moveAuthorNotInTeam': string;
  'recentProjects.teamSpaceTab': string;
  'recentProjects.personalSpaceTab': string;
  'recentProjects.confirmMoveToPersonal': string;
