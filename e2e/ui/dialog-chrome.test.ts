@@ -1,8 +1,11 @@
 import { expect, test } from '@/playwright/suite';
+import { dragNativeScrollbar } from '@/playwright/scrollbars';
 import { applyStandardMocks } from '@/playwright/mock-factory';
 import { AMR_PERSONAL_WORKSPACE_CONTEXT, mockAmrPersonalWorkspace } from '@/playwright/amr';
 import { ensureRailOpen } from '@/playwright/rail';
 import { T } from '@/timeouts';
+
+test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } });
 
 test.beforeEach(async ({ page }) => {
   await applyStandardMocks(page);
@@ -20,15 +23,26 @@ test('[P2] long settings pages expose the global scrollbar in a short window', a
   await page.goto('/settings');
   await page.getByTestId('settings-nav-execution').click();
   const content = page.locator('.settings-content');
-  await expect(content).toHaveAttribute('data-overlay-scrollbars', '');
+  await expect(page.locator('body')).toHaveAttribute('data-od-native-scrollbars', '');
   await expect.poll(() => content.evaluate(e => e.scrollHeight > e.clientHeight)).toBe(true);
-  await expect.poll(() => content.evaluate(element => {
-    const rect = element.getBoundingClientRect();
-    return [...document.querySelectorAll<HTMLElement>('.od-scrollbar-track[data-axis=vertical]')]
-      .some(track => !track.hidden && Math.abs(track.getBoundingClientRect().right - rect.right + element.clientLeft + 2) < 1);
-  })).toBe(true);
+  await dragNativeScrollbar(page, content);
+  await expect.poll(() => content.evaluate(e => e.scrollTop)).toBeGreaterThan(0);
   await content.evaluate(e => { e.scrollTop = e.scrollHeight; });
   await expect.poll(() => content.evaluate(e => e.scrollTop)).toBeGreaterThan(0);
+  await page.getByRole('button', { name: /^通用/ }).click();
+  const general = page.locator('.settings-general-section');
+  await expect(general).toBeVisible();
+  // The general section must grow inside the card, so the card's right edge
+  // owns the scrollbar instead of the narrower centered settings column.
+  expect(await general.evaluate(e => {
+    e.scrollTop = e.scrollHeight;
+    return { scrollTop: e.scrollTop, overflowY: getComputedStyle(e).overflowY };
+  })).toEqual({ scrollTop: 0, overflowY: 'visible' });
+  await expect.poll(() => content.evaluate(e => e.scrollHeight > e.clientHeight)).toBe(true);
+  await content.evaluate(e => { e.scrollTop = 0; });
+  await dragNativeScrollbar(page, content);
+  await expect.poll(() => content.evaluate(e => e.scrollTop)).toBeGreaterThan(0);
+  expect(await general.evaluate(e => e.scrollTop)).toBe(0);
 });
 
 test('[P2] resource import keeps its heading, source tabs and actions visible in a short window', async ({ page }, testInfo) => {
@@ -74,6 +88,31 @@ test('[P2] resource import keeps its heading, source tabs and actions visible in
   await expect(body.getByRole('textbox')).toHaveValue('https://example.com/unfinished-skill');
   await dialog.locator('[data-dialog-part=close]').click();
   await expect(dialog).toBeHidden();
+  await page.setViewportSize({ width: 1000, height: 760 });
+  await page.getByRole('tab', { name: 'MCP', exact: true }).click();
+  await page.getByRole('button', { name: '添加 MCP', exact: true }).click();
+  const mcpDialog = page.getByRole('dialog', { name: '添加 MCP', exact: true });
+  const types = mcpDialog.getByRole('group', { name: 'MCP类型', exact: true });
+  await expect(types).toBeVisible();
+  expect(await types.evaluate(element => ({
+    border: getComputedStyle(element).borderWidth,
+    padding: getComputedStyle(element).padding,
+    formGap: getComputedStyle(element.parentElement!).gap,
+    formPadding: getComputedStyle(element.parentElement!).padding,
+    labelSize: getComputedStyle(element.querySelector('legend')!).fontSize,
+    labelWeight: getComputedStyle(element.querySelector('legend')!).fontWeight,
+    aligned: element.getBoundingClientRect().left === element.querySelector('button')!.getBoundingClientRect().left,
+  }))).toEqual({ border: '0px', padding: '0px', formGap: '18px', formPadding: '0px', labelSize: '13px', labelWeight: '500', aligned: true });
+  const mcpName = mcpDialog.getByRole('textbox', { name: 'MCP 名称', exact: true });
+  expect(await mcpName.evaluate(element => ({
+    height: element.getBoundingClientRect().height,
+    radius: getComputedStyle(element).borderRadius,
+    labelGap: getComputedStyle(element.parentElement!).gap,
+  }))).toEqual({ height: 40, radius: '6px', labelGap: '6px' });
+  await types.getByRole('button', { name: 'fetch', exact: true }).click();
+  await expect(mcpName).toHaveValue('fetch');
+  await expect(mcpDialog.getByRole('button', { name: '确认', exact: true })).toBeEnabled();
+  await page.screenshot({ path: testInfo.outputPath('add-mcp-unified-fields.png') });
 });
 
 test('[P2] shared confirmation uses the same chrome and cancel leaves the account signed in', async ({ page }, testInfo) => {

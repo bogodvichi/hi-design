@@ -18,6 +18,8 @@ it.each(['personal', 'team'])('offers only owned Mcp sources in %s', (workspaceI
   render(<I18nProvider initial="zh-CN"><AddMcpDialog open onClose={vi.fn()} workspaceContext={context} /></I18nProvider>);
   expect(screen.queryByRole('tab', { name: '社区' })).toBeNull();
   expect(screen.queryByText(/从社区/)).toBeNull();
+  expect(screen.getByRole('group', { name: 'MCP类型' })).toBeTruthy();
+  expect(screen.queryByText('选择 MCP 类型')).toBeNull();
   expect(screen.getByRole('textbox', { name: 'MCP 名称' })).toBeTruthy();
   expect(screen.getByRole('textbox', { name: '完整 JSON 配置' })).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'fetch' }));

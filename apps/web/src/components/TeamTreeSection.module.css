@@ -14,7 +14,8 @@
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
-  margin: 15px 0 5px;
+  /* Together with the rail group's 2px gap, match its 10px side inset. */
+  margin: 8px 0 5px;
   padding-top: 10px;
   padding-right: var(--entry-rail-content-inset, 10px);
   border-top: 1px solid var(--border-soft);
@@ -388,10 +389,16 @@
 
 .footer {
   flex-shrink: 0;
-  margin-top: auto;
+  /* Follow short lists; the shrinking scrollport pushes this to the bottom
+     only once the team list fills the available space. */
+  margin-top: 0;
   margin-right: var(--entry-rail-content-inset, 10px);
   padding: 8px 0 5px;
   border-top: 1px solid var(--border-soft);
+}
+
+.container:not(:has(> .tree)) .footer {
+  margin-top: 8px;
 }
 
 .syncError {

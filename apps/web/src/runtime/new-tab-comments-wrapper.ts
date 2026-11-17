@@ -1,3 +1,4 @@
+import { buildNativeScrollbarsScript } from '@open-design/components';
 import type { NewTabCommentWrapperOptions } from './new-tab-comments';
 
 function escapeHtmlAttribute(value: string): string {
@@ -106,9 +107,7 @@ export function buildNewTabCommentsPreviewDocumentV2(
     .panel-summary { display:flex; flex:0 0 auto; align-items:center; justify-content:space-between; min-height:30px; padding:6px 12px; border-bottom:1px solid var(--border-soft); color:var(--text-muted); font-size:11px; }
     .panel-status { flex:0 0 auto; margin:8px 12px 0; padding:6px 8px; border-radius:var(--radius-sm); background:var(--bg-subtle); font-size:12px; }
     .panel-status:empty { display:none; }
-    .list { flex:1 1 auto; min-height:0; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:8px; scrollbar-width:thin; scrollbar-color:color-mix(in srgb,var(--text-muted) 34%,transparent) transparent; }
-    .list::-webkit-scrollbar { width:6px; }
-    .list::-webkit-scrollbar-thumb { border-radius:999px; background:color-mix(in srgb,var(--text-muted) 34%,transparent); }
+    .list { flex:1 1 auto; min-height:0; overflow-y:auto; padding:12px; display:flex; flex-direction:column; gap:8px; }
     .empty { padding:28px 8px; text-align:center; color:var(--text-muted); font-size:13px; }
     .comment-card { position:relative; padding:10px 12px 10px 8px; border:1px solid transparent; border-radius:var(--radius); background:transparent; color:var(--text); cursor:pointer; }
     .comment-card:hover { border-color:var(--border-soft); background:rgb(255 255 255 / 58%); }
@@ -177,9 +176,7 @@ export function buildNewTabCommentsPreviewDocumentV2(
     }
     .comment-popover[hidden] { display:none; }
     .comment-popover-composer { max-height:calc(100% - var(--comment-popover-top,120px)) !important; }
-    .comment-popover-composer-wrap { display:flex; flex:1 1 auto; min-height:0; flex-direction:column; overflow-y:auto; scrollbar-width:thin; scrollbar-color:color-mix(in srgb,var(--text-muted) 34%,transparent) transparent; }
-    .comment-popover-composer-wrap::-webkit-scrollbar { width:6px; }
-    .comment-popover-composer-wrap::-webkit-scrollbar-thumb { border-radius:999px; background:color-mix(in srgb,var(--text-muted) 34%,transparent); }
+    .comment-popover-composer-wrap { display:flex; flex:1 1 auto; min-height:0; flex-direction:column; overflow-y:auto; }
     .comment-popover-body { flex:1 1 auto; min-height:0; overflow:auto; }
     .comment-popover-composer-wrap > .comment-popover-body { flex:0 0 auto; min-height:auto; overflow:visible; }
     .comment-popover-composer > .comment-popover-titlebar { flex:0 0 auto; }
@@ -248,6 +245,7 @@ export function buildNewTabCommentsPreviewDocumentV2(
       .panel { position:absolute; top:0; right:0; bottom:0; width:min(320px,calc(100vw - 24px)); height:auto; flex-basis:auto; }
     }
   </style>
+  <script data-od-preview-scrollbars>${buildNativeScrollbarsScript()}</script>
 </head>
 <body>
   <main class="app" id="app" data-comments-open="false">

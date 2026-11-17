@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect } from 'react';
-import { installOverlayScrollbars } from './overlay-scrollbars-runtime';
-export { installOverlayScrollbars, buildOverlayScrollbarsScript } from './overlay-scrollbars-runtime';
+import { installNativeScrollbars } from './overlay-scrollbars-runtime';
+export { installNativeScrollbars, buildNativeScrollbarsScript, installOverlayScrollbars, buildOverlayScrollbarsScript } from './overlay-scrollbars-runtime';
 
-export function OverlayScrollbars() {
-  useEffect(() => {
-    if (typeof ResizeObserver !== 'undefined' && typeof document.elementFromPoint === 'function') {
-      return installOverlayScrollbars(document.body);
-    }
-  }, []);
+/** Apply native defaults once; the browser owns geometry and interaction. */
+export function NativeScrollbars() {
+  useEffect(() => installNativeScrollbars(document.body), [installNativeScrollbars]);
   return null;
 }
+
+/** @deprecated Use NativeScrollbars. */
+export const OverlayScrollbars = NativeScrollbars;

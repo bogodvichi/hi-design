@@ -399,6 +399,7 @@ vi.mock('../../src/components/Loading', () => ({
 
 vi.mock('../../src/components/ChatPane', () => ({
   ChatPane: ({
+    composerVisible,
     activeConversationId,
     conversations,
     streaming,
@@ -415,6 +416,7 @@ vi.mock('../../src/components/ChatPane', () => ({
     error,
     onRetry,
   }: {
+    composerVisible?: boolean;
     activeConversationId: string | null;
     conversations: Conversation[];
     streaming: boolean;
@@ -454,7 +456,7 @@ vi.mock('../../src/components/ChatPane', () => ({
           ),
       );
     return (
-      <section>
+      <section data-composer-visible={composerVisible !== false}>
         <output data-testid="active-conversation">{activeConversationId}</output>
         <output data-testid="streaming-state">{streaming ? 'streaming' : 'idle'}</output>
         <output data-testid="chat-error">{error}</output>
@@ -2113,6 +2115,7 @@ describe('ProjectView conversation run isolation', () => {
     await waitFor(() => expect(screen.getByTestId('send-message')).toHaveProperty('disabled', false));
 
     fireEvent.click(screen.getByTestId('workspace-focus-mode'));
+    expect(screen.getByTestId('active-conversation').closest('section')?.getAttribute('data-composer-visible')).toBe('false');
     // Focus mode hides the collapsed chat visually only: the native `hidden`
     // attribute would drop the first grid item and shift FileWorkspace into
     // the handle track, so the slot keeps its box and is marked `aria-hidden`
@@ -2131,6 +2134,13 @@ describe('ProjectView conversation run isolation', () => {
     expect(restoredChatSlot?.hasAttribute('aria-hidden')).toBe(false);
     expect(restoredChatSlot?.classList.contains('split-chat-slot-hidden')).toBe(false);
     expect(restoredChatSlot?.hasAttribute('hidden')).toBe(false);
+    const split = restoredChatSlot?.parentElement;
+    if (!split) throw new Error('Expected the restored split layout');
+    expect(screen.getByTestId('active-conversation').closest('section')?.getAttribute('data-composer-visible')).toBe('false');
+    const transition = new Event('transitionend', { bubbles: true });
+    Object.defineProperty(transition, 'propertyName', { value: '--project-chat-panel-width' });
+    fireEvent(split, transition);
+    expect(screen.getByTestId('active-conversation').closest('section')?.getAttribute('data-composer-visible')).toBe('true');
     expect(streamViaDaemon).toHaveBeenCalledWith(expect.objectContaining({
       conversationId: 'conv-b',
       projectId: 'project-1',

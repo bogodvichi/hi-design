@@ -2,6 +2,7 @@
 
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import type { WorkspaceCollabContext } from '@open-design/contracts';
+import { installMockOpenDesignHost } from '@open-design/host/testing';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { EntryNavRail, resetWorkspaceDirectoryCache } from '../../src/components/EntryNavRail';
@@ -74,6 +75,79 @@ async function advancePastHoverClose() {
 }
 
 describe('EntryNavRail account menu interaction state', () => {
+  it('places native Force Reload directly below developer tools and closes the menu on activation', async () => {
+    const forceReload = vi.fn(async () => ({ ok: true as const }));
+    const restore = installMockOpenDesignHost({ host: {
+      developerTools: { open: async () => ({ ok: true }) },
+      browser: { forceReload },
+    } });
+    try {
+      renderRail();
+      const trigger = screen.getByTestId('entry-nav-account');
+      fireEvent.click(trigger);
+      const tools = screen.getByRole('menuitem', { name: '开发者工具' });
+      const reload = screen.getByRole('menuitem', { name: '强制刷新' });
+      expect(tools.nextElementSibling).toBe(reload);
+      expect(reload.className).toBe(tools.className);
+      await act(async () => fireEvent.click(reload));
+      expect(forceReload).toHaveBeenCalledOnce();
+      expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    } finally { restore(); }
+  });
+
+  it('keeps Force Reload available when developer tools are disabled and reports failures', async () => {
+    const restore = installMockOpenDesignHost({ host: {
+      browser: { forceReload: async () => ({ ok: false, reason: 'Reload unavailable' }) },
+    } });
+    try {
+      renderRail();
+      fireEvent.click(screen.getByTestId('entry-nav-account'));
+      expect(screen.queryByRole('menuitem', { name: '开发者工具' })).toBeNull();
+      await act(async () => fireEvent.click(screen.getByRole('menuitem', { name: '强制刷新' })));
+      expect(screen.getByText('无法强制刷新')).toBeInTheDocument();
+      expect(screen.queryByRole('menu')).toBeNull();
+    } finally { restore(); }
+  });
+
+  it('places enabled native developer tools directly below Settings and closes the menu on activation', async () => {
+    const open = vi.fn(async () => ({ ok: true as const }));
+    const restore = installMockOpenDesignHost({ host: { developerTools: { open } } });
+    try {
+      renderRail();
+      const trigger = screen.getByTestId('entry-nav-account');
+      fireEvent.click(trigger);
+      const settings = screen.getByRole('menuitem', { name: '设置' });
+      const tools = screen.getByRole('menuitem', { name: '开发者工具' });
+      expect(settings.nextElementSibling).toBe(tools);
+      expect(tools.className).toBe(settings.className);
+      await act(async () => fireEvent.click(tools));
+      expect(open).toHaveBeenCalledOnce();
+      expect(trigger).toHaveAttribute('aria-expanded', 'false');
+    } finally { restore(); }
+  });
+
+  it('omits developer tools in browser and older desktop hosts', () => {
+    const restore = installMockOpenDesignHost();
+    try {
+      renderRail();
+      fireEvent.click(screen.getByTestId('entry-nav-account'));
+      expect(screen.queryByRole('menuitem', { name: '开发者工具' })).toBeNull();
+      expect(screen.queryByRole('menuitem', { name: '强制刷新' })).toBeNull();
+    } finally { restore(); }
+  });
+
+  it('reports native developer tools failures after the menu closes', async () => {
+    const restore = installMockOpenDesignHost({ host: {
+      developerTools: { open: async () => ({ ok: false, reason: 'Tools unavailable' }) },
+    } });
+    try {
+      renderRail();
+      fireEvent.click(screen.getByTestId('entry-nav-account'));
+      await act(async () => fireEvent.click(screen.getByRole('menuitem', { name: '开发者工具' })));
+      expect(screen.getByText('无法打开开发者工具')).toBeInTheDocument();
+      expect(screen.queryByRole('menu')).toBeNull();
+    } finally { restore(); }
+  });
   it('pins a hover-open menu when the avatar is clicked', async () => {
     renderRail();
     const trigger = screen.getByTestId('entry-nav-account');

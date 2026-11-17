@@ -1197,6 +1197,7 @@
 .app .split-chat-slot {
   /* Column: the docked strip sits above the chat card. */
   flex-direction: column;
+  --project-chat-content-inset: 8px;
 }
 .app .split-chat-slot > .pane {
   flex: 1 1 auto;

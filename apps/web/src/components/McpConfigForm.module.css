@@ -1,43 +1,25 @@
 .formGrid {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  padding: 20px 0;
-  flex: 1 1 auto;
-  min-height: 0;
+  gap: 18px;
+  padding: 0;
+  flex: 0 0 auto;
+  min-width: 0;
 }
 
-/* --- Type picker --- */
-.typePicker {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 14px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.typePickerLegend {
-  padding: 0 5px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text-strong);
-  text-transform: none;
-  letter-spacing: 0;
-}
-
+/* MCP types follow the same regular-field layout as Skill categories. */
 .typePickerButtons {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: 8px;
 }
 
 .typeBtn {
   appearance: none;
   display: inline-flex;
   align-items: center;
-  min-height: 30px;
-  padding: 0 12px;
+  min-height: 34px;
+  padding: 0 14px;
   border: 1px solid var(--border);
   border-radius: var(--radius-pill, 999px);
   background: transparent;
@@ -73,19 +55,22 @@
 }
 
 .fieldLabel {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--color-text, var(--text-strong));
 }
 
 .fieldInput {
   appearance: none;
   width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  min-height: 40px;
+  box-sizing: border-box;
+  border: 1px solid var(--color-border, var(--border));
+  border-radius: 6px;
   padding: 8px 12px;
-  background: var(--bg-elevated);
-  color: var(--text);
+  background: var(--color-surface, var(--bg-elevated));
+  color: var(--color-text, var(--text));
   font: inherit;
   font-size: 14px;
   transition: border-color 140ms ease-out;
@@ -94,6 +79,7 @@
 .fieldInput:focus {
   outline: none;
   border-color: var(--text-strong);
+  box-shadow: 0 0 0 1px var(--text-strong);
 }
 
 .fieldInput::placeholder {
@@ -109,21 +95,20 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 0 0 auto;
 }
 
 .jsonTextarea {
   appearance: none;
   width: 100%;
   min-height: 120px;
-  flex: 1 1 auto;
+  box-sizing: border-box;
   resize: none;
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  border: 1px solid var(--color-border, var(--border));
+  border-radius: 6px;
   padding: 10px 12px;
-  background: var(--bg-elevated);
-  color: var(--text);
+  background: var(--color-surface, var(--bg-elevated));
+  color: var(--color-text, var(--text));
   font-family: var(--font-mono, 'SF Mono', 'Cascadia Code', 'Consolas', monospace);
   font-size: 13px;
   line-height: 1.5;
@@ -134,6 +119,7 @@
 .jsonTextarea:focus {
   outline: none;
   border-color: var(--text-strong);
+  box-shadow: 0 0 0 1px var(--text-strong);
 }
 
 .jsonTextarea::placeholder {

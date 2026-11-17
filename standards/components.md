@@ -9,7 +9,7 @@
 | `DialogBody` | 内容滚动区，支持 `ref` 读取或重置滚动位置 | [dialog.tsx](../packages/components/src/dialog.tsx) |
 | `FieldGroup` | 常规左对齐标签、原生字段分组与禁用语义 | [field-group.tsx](../packages/components/src/field-group.tsx) |
 | `VisualChoiceGroup` | 带统一外框状态的受控图形选项组 | [visual-choice-group.tsx](../packages/components/src/visual-choice-group.tsx) |
-| `OverlayScrollbars` / `installOverlayScrollbars` | 覆盖式滚动条的挂载与清理 | [overlay-scrollbars.tsx](../packages/components/src/overlay-scrollbars.tsx) |
+| `NativeScrollbars` / `installNativeScrollbars` | 原生滚动条样式的挂载与清理 | [overlay-scrollbars.tsx](../packages/components/src/overlay-scrollbars.tsx) |
 
 ## 可滚动对话框
 
@@ -106,31 +106,34 @@ export function ShapeField() {
 
 外框、间距与状态遵循[对话框规范](dialogs.md#图形选项)，共享控件不承担 Logo key、语言判断或资产渲染。现有 `DefaultLogoPicker` 是业务适配器示例。
 
-## 覆盖式滚动条
+## 原生滚动条
 
 ```tsx
-import { OverlayScrollbars } from '@open-design/components';
+import { NativeScrollbars } from '@open-design/components';
 
 export function Application() {
-  return <><OverlayScrollbars /><main>{/* 业务界面 */}</main></>;
+  return <><NativeScrollbars /><main>{/* 业务界面 */}</main></>;
 }
 ```
 
-组件在 effect 中安装到 `document.body`，SSR 阶段不访问 DOM；缺少必要浏览器能力时继续使用原生滚动条。包入口会带入所需滚动条 CSS。
+组件在 effect 中为 document.body 安装低优先级 CSS，SSR 阶段不访问 DOM。
+不扫描后代、不安装观察器、不读取布局、不创建轨道浮层，也不改变原始容器的滚动状态。
 
 需要手动控制生命周期时：
 
 ```ts
-import { installOverlayScrollbars } from '@open-design/components';
+import { installNativeScrollbars } from '@open-design/components';
 
-const dispose = installOverlayScrollbars(document.body);
+const dispose = installNativeScrollbars(document.body);
 // 在该界面退出或根节点卸载时：
 dispose();
 ```
 
-React 与手动安装方式择一使用，同一文档保持一个实例。行为和状态数值的完整约定见[全局滚动条规范](scrollbars.md)。
+React 与手动安装方式择一使用，同一文档保持一个实例。尺寸、布局取舍和降级约定见[全局滚动条规范](scrollbars.md)。
 
-沙箱预览使用 `buildOverlayScrollbarsScript()` 生成自包含脚本，在预览响应或 srcdoc 内执行。非 React 的服务端通过 `@open-design/components/overlay-scrollbars-runtime` 导入，避免加载 React 和组件 CSS；仅增强预览响应，不改写设计源文件。
+沙箱预览使用 `buildNativeScrollbarsScript()` 生成自包含样式安装脚本；非 React 服务端继续从 `@open-design/components/overlay-scrollbars-runtime` 导入。该兼容入口不依赖 React，也不改写设计源文件。预览自身的隐藏策略和自定义样式优先。
+
+旧的 `OverlayScrollbars`、`installOverlayScrollbars`、`buildOverlayScrollbarsScript` 暂保留为兼容别名，实际安装同一原生方案。
 
 ## 视图切换
 

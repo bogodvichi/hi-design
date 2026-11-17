@@ -1751,18 +1751,23 @@ export function buildQuestionFormKey(
 }
 
 type ProjectSplitStyle = CSSProperties & {
-  '--project-chat-panel-width': string;
-  '--project-chat-handle-width': string;
-  '--project-workspace-panel-track': string;
+  '--project-chat-content-width': string;
+  '--project-chat-panel-width'?: string;
+  '--project-chat-handle-width'?: string;
+  '--project-workspace-panel-track'?: string;
 };
 
 export function projectSplitStyle(
   workspaceFocused: boolean,
   chatPanelWidth: number,
   workspacePanelTrack: string,
-): ProjectSplitStyle | undefined {
-  if (workspaceFocused) return undefined;
+): ProjectSplitStyle {
+  // Keep the transcript at its expanded width while only the grid track
+  // animates. Rewrapping long tool output into a near-zero track blocks layout.
+  const contentWidth = { '--project-chat-content-width': `${chatPanelWidth}px` };
+  if (workspaceFocused) return contentWidth;
   return {
+    ...contentWidth,
     '--project-chat-panel-width': `${chatPanelWidth}px`,
     '--project-chat-handle-width': `${SPLIT_RESIZE_HANDLE_WIDTH}px`,
     '--project-workspace-panel-track': workspacePanelTrack,
@@ -1783,10 +1788,11 @@ function applySplitChatPanelWidth(
   workspaceFocused: boolean,
 ): void {
   if (!split) return;
+  split.style.setProperty('--project-chat-content-width', `${width}px`);
   if (workspaceFocused) {
     // Workspace-focused mode collapses the chat column through the
     // `.split-focus` CSS class alone (see `projectSplitStyle`, which
-    // deliberately returns no inline style while focused). A resize firing
+    // deliberately omits inline grid widths while focused). A resize firing
     // while focused still reaches this function via the ResizeObserver
     // effect below; without this guard it would write stale inline width
     // overrides back onto the element, which — as inline styles — outrank
@@ -2704,6 +2710,8 @@ export function ProjectView({
   // chat pane stays mounted/visible until the `.split` width transition
   // actually finishes — see the sync effect near the ResizeObserver below.
   const [chatSlotHidden, setChatSlotHidden] = useState(workspaceFocused);
+  const [chatTransitionSettled, setChatTransitionSettled] = useState(true);
+  const previousChatFocusRef = useRef(workspaceFocused);
   // Dock host element for the chat-column tab area. Previously this registered
   // a workspace tab dock that portaled the tab strip out of the chrome row;
   // now the tab strip stays in the chrome row at all times, so this is just
@@ -10635,21 +10643,25 @@ const coalescedCoverRefresh = useCoalescedCallback(
   // below only hides the collapsed chat visually, preserving all three grid
   // item positions. Expanding removes it immediately so the content is
   // visible while the chat column grows back in.
-  useEffect(() => {
-    if (!workspaceFocused) {
-      setChatSlotHidden(false);
-      return undefined;
-    }
+  useLayoutEffect(() => {
+    if (previousChatFocusRef.current === workspaceFocused) return undefined;
+    previousChatFocusRef.current = workspaceFocused;
+    // The composer is portaled to body and cannot inherit the slot's clip.
+    // Hide it throughout both directions, then reveal it at the settled size.
+    setChatTransitionSettled(false);
+    if (!workspaceFocused) setChatSlotHidden(false);
     const split = splitRef.current;
     if (!split) {
-      setChatSlotHidden(true);
+      setChatSlotHidden(workspaceFocused);
+      setChatTransitionSettled(true);
       return undefined;
     }
     let settled = false;
     const finish = () => {
       if (settled) return;
       settled = true;
-      setChatSlotHidden(true);
+      setChatSlotHidden(workspaceFocused);
+      setChatTransitionSettled(true);
     };
     const handleTransitionEnd = (event: TransitionEvent) => {
       if (event.target !== split) return;
@@ -10662,11 +10674,11 @@ const coalescedCoverRefresh = useCoalescedCallback(
       finish();
     };
     split.addEventListener('transitionend', handleTransitionEnd);
-    // Collapse is 140ms (shell.css `.split.split-focus`); the margin above
-    // that covers `prefers-reduced-motion` (duration collapses to ~0 globally,
+    // Collapse is 140ms and expand is 200ms. The fallback margin covers
+    // `prefers-reduced-motion` (duration collapses to ~0 globally,
     // which some engines never fire a `transitionend` for) and any
     // already-collapsed-width edge case where the property never changes.
-    const fallback = window.setTimeout(finish, 220);
+    const fallback = window.setTimeout(finish, workspaceFocused ? 220 : 280);
     return () => {
       split.removeEventListener('transitionend', handleTransitionEnd);
       window.clearTimeout(fallback);
@@ -11589,6 +11601,7 @@ const coalescedCoverRefresh = useCoalescedCallback(
           ) : null}
           {activeConversationId || conversationLoadError || emptyConversationReadOnlySettled ? (
             <ChatPane
+              composerVisible={!workspaceFocused && chatTransitionSettled}
               // The conversation id is part of the key so switching conversations
               // resets internal scroll/draft state inside ChatPane and ChatComposer.
               key={`${project.id}:${activeConversationId ?? 'conversation-unavailable'}:${chatSeed?.id ?? 'ready'}`}

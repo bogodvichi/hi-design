@@ -2407,12 +2407,12 @@ a.avatar-item:visited {
    expand/collapse jump this file fixes. */
 @property --project-chat-panel-width {
   syntax: '<length>';
-  inherits: true;
+  inherits: false;
   initial-value: 460px;
 }
 @property --project-chat-handle-width {
   syntax: '<length>';
-  inherits: true;
+  inherits: false;
   initial-value: 8px;
 }
 .split {
@@ -2490,7 +2490,10 @@ a.avatar-item:visited {
 }
 .split-chat-slot > .pane {
   flex: 1 1 auto;
-  min-width: 0;
+  min-width: max(0px, calc(var(--project-chat-content-width, 460px) - var(--project-chat-content-inset, 0px)));
+  /* The slot clips the transcript during focus transitions. Only explicit
+     panel resizing changes its content width, preserving wrapping and scroll. */
+  width: max(0px, calc(var(--project-chat-content-width, 460px) - var(--project-chat-content-inset, 0px)));
 }
 .split-edit-divider {
   grid-column: 2;

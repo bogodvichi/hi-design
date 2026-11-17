@@ -1124,6 +1124,10 @@ export interface Dict extends Record<keyof typeof feedbackEn, string> {
   'entry.discordOnlineLabel': string;
   'entry.mailAria': string;
   'entry.accountSettings': string;
+  'entry.developerTools': string;
+  'entry.forceReload': string;
+  'entry.forceReloadFailed': string;
+  'entry.developerToolsFailed': string;
   'chat.collapsePane': string;
   'collabPresence.ariaOne': string;
   'collabPresence.aria': string;

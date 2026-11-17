@@ -35,6 +35,7 @@ import {
   type Ref,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { forceReloadHostWindow, getOpenDesignHost, openHostDeveloperTools } from '@open-design/host';
 import { WORKSPACE_ACCOUNT_CLUSTER_EVENT } from './workspaceTabsDock';
 import {
   workspaceSeatCapacityState,
@@ -587,6 +588,10 @@ export function EntryTopRightCluster({
   onSignedOut,
 }: EntryTopRightClusterProps) {
   const { t } = useI18n();
+  const canOpenDeveloperTools = typeof getOpenDesignHost()?.developerTools?.open === 'function';
+  const [developerToolsError, setDeveloperToolsError] = useState<string | null>(null);
+  const canForceReload = typeof getOpenDesignHost()?.browser?.forceReload === 'function';
+  const [forceReloadError, setForceReloadError] = useState<string | null>(null);
   const analytics = useAnalytics();
   const workspaceDimensions = workspaceAnalyticsDimensions(context);
   const clusterRef = useRef<HTMLDivElement | null>(null);
@@ -1063,6 +1068,38 @@ export function EntryTopRightCluster({
                     >
                       <Icon name="settings" size={15} /> {t('entry.accountSettings')}
                     </button>
+                    {canOpenDeveloperTools ? (
+                      <button
+                        type="button"
+                        className="entry-nav-rail__menu-item"
+                        role="menuitem"
+                        onClick={() => {
+                          closeAccountMenu();
+                          setDeveloperToolsError(null);
+                          void openHostDeveloperTools().then((result) => {
+                            if (!result.ok) setDeveloperToolsError(result.reason);
+                          });
+                        }}
+                      >
+                        <Icon name="terminal" size={15} /> {t('entry.developerTools')}
+                      </button>
+                    ) : null}
+                    {canForceReload ? (
+                      <button
+                        type="button"
+                        className="entry-nav-rail__menu-item"
+                        role="menuitem"
+                        onClick={() => {
+                          closeAccountMenu();
+                          setForceReloadError(null);
+                          void forceReloadHostWindow().then((result) => {
+                            if (!result.ok) setForceReloadError(result.reason);
+                          });
+                        }}
+                      >
+                        <Icon name="refresh" size={15} /> {t('entry.forceReload')}
+                      </button>
+                    ) : null}
                     {/* The Discord/X/mail social row used to sit here (#5517).
                         It now lives in the nav rail's footer — see
                         `RailSocialRow` — so the account menu stays a pure list
@@ -1103,6 +1140,24 @@ export function EntryTopRightCluster({
         </div>,
         document.body,
       )}
+      {developerToolsError !== null ? (
+        <Toast
+          message={t('entry.developerToolsFailed')}
+          details={developerToolsError}
+          tone="error"
+          role="alert"
+          onDismiss={() => setDeveloperToolsError(null)}
+        />
+      ) : null}
+      {forceReloadError !== null ? (
+        <Toast
+          message={t('entry.forceReloadFailed')}
+          details={forceReloadError}
+          tone="error"
+          role="alert"
+          onDismiss={() => setForceReloadError(null)}
+        />
+      ) : null}
       {/* Panel + unread polling live here (outside the hover menu, which
           unmounts when closed); the bell button above just opens it.
           Signed-out shells have no account module — `EntryNavRail` mounts its

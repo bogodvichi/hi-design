@@ -253,13 +253,6 @@
   padding: 2px 0 6px;
   max-height: 44px;
 }
-.inline-plugins-rail--strip::-webkit-scrollbar {
-  height: 6px;
-}
-.inline-plugins-rail--strip::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 3px;
-}
 .inline-plugins-rail--strip .inline-plugins-rail__card {
   flex: 0 0 auto;
   display: inline-flex;

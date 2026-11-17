@@ -1023,10 +1023,13 @@
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  flex-shrink: 0;
   /* 24px section rhythm — matches the 24px horizontal inset and the blocks'
      24px bottom padding, so the spacing around each divider is a symmetric 24. */
   gap: var(--spacing-24);
-  overflow-x: hidden;
+  /* Keep vertical scrolling on the outer settings card at its right edge.
+     Unlike hidden, clip does not turn overflow-y: visible into auto. */
+  overflow-x: clip;
 }
 .settings-general-block {
   display: flex;

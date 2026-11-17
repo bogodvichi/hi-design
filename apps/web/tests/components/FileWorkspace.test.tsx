@@ -3680,11 +3680,14 @@ describe('projectSplitClassName', () => {
     // (see shell.css), so the style object only needs to carry the three
     // custom properties — no more concatenated `gridTemplateColumns` string.
     expect(projectSplitStyle(false, 512, 'minmax(420px, 1fr)')).toEqual({
+      '--project-chat-content-width': '512px',
       '--project-chat-panel-width': '512px',
       '--project-chat-handle-width': '8px',
       '--project-workspace-panel-track': 'minmax(420px, 1fr)',
     });
-    expect(projectSplitStyle(true, 512, 'minmax(420px, 1fr)')).toBeUndefined();
+    expect(projectSplitStyle(true, 512, 'minmax(420px, 1fr)')).toEqual({
+      '--project-chat-content-width': '512px',
+    });
   });
 });
 

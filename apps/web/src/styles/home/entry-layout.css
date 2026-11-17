@@ -295,27 +295,8 @@
   padding: 0 var(--entry-rail-content-inset);
   overflow: hidden;
   overflow-y: auto;
-  /* Keep scrolling available without a permanently visible rail. Firefox's
-     thin scrollbar and Chromium's explicit 8px track match the macOS overlay
-     scrollbar weight; the thumb is revealed by panel hover below. */
+  /* Native scrollbar appearance comes from the shared global policy. */
   scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-}
-.entry-nav-rail__group::-webkit-scrollbar {
-  width: 8px;
-}
-.entry-nav-rail__group::-webkit-scrollbar-track {
-  background: transparent;
-}
-.entry-nav-rail__group::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: transparent;
-}
-.entry-nav-rail__panel:hover .entry-nav-rail__group {
-  scrollbar-color: color-mix(in srgb, var(--text-muted) 44%, transparent) transparent;
-}
-.entry-nav-rail__panel:hover .entry-nav-rail__group::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--text-muted) 44%, transparent);
 }
 .entry-nav-rail__footer {
   position: relative;
@@ -1165,31 +1146,8 @@
      different content heights (e.g. Community categories) can't toggle the
      scrollbar and shift the centered content sideways — that read as a jitter. */
   scrollbar-gutter: stable;
-  /* Match the navigation panel: keep scrolling available while the thumb is
-     hidden at rest, then reveal the same thin, muted thumb on area hover. */
+  /* Shared native scrollbar colors remain visible at rest. */
   scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-}
-
-.entry-main--scroll::-webkit-scrollbar {
-  width: 8px;
-}
-
-.entry-main--scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.entry-main--scroll::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: transparent;
-}
-
-.entry-main--scroll:hover {
-  scrollbar-color: color-mix(in srgb, var(--text-muted) 44%, transparent) transparent;
-}
-
-.entry-main--scroll:hover::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--text-muted) 44%, transparent);
 }
 
 /* Floating top-right cluster (portaled to document.body): campaign badge on
@@ -4662,7 +4620,6 @@
   box-shadow: 0 12px 28px color-mix(in srgb, var(--shadow-color, #000) 10%, transparent);
   scrollbar-gutter: stable;
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--text-muted) 34%, transparent) transparent;
 }
 
 .onboarding-view__select-menu[data-searchable='true'] {
@@ -4706,7 +4663,6 @@
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--text-muted) 34%, transparent) transparent;
 }
 
 .onboarding-view__select-empty {
@@ -4716,21 +4672,6 @@
   padding: 7px 10px;
   color: var(--text-muted);
   font-size: 13px;
-}
-
-.onboarding-view__select-options::-webkit-scrollbar {
-  width: 8px;
-}
-
-.onboarding-view__select-options::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.onboarding-view__select-options::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--text-muted) 28%, transparent);
-  border: 2px solid transparent;
-  border-radius: var(--radius-pill);
-  background-clip: padding-box;
 }
 
 .onboarding-view__select-field[data-placement='top'] .onboarding-view__select-menu {
@@ -6318,15 +6259,14 @@
   flex: 0 0 auto;
   background: var(--bg-elevated);
 }
-/* Left-aligned identity header (small avatar beside the name/email stack),
-   closed off by a dashed rule — mirrors the reference account menu. */
+/* Account identity owns a solid separator spanning the menu's 6px padding. */
 .entry-nav-rail__account-head {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 6px 6px 10px;
-  border-bottom: 1px dashed var(--material-separator);
-  margin-bottom: 6px;
+  padding: 6px 12px 10px;
+  border-bottom: 1px solid var(--material-separator);
+  margin: 0 -6px 6px;
 }
 .entry-nav-rail__account-head-avatar {
   width: 34px;

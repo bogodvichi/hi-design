@@ -1,10 +1,13 @@
 import { expect, test } from '@/playwright/suite';
+import { dragNativeScrollbar } from '@/playwright/scrollbars';
 import type { Page } from '@playwright/test';
 import { applyStandardMocks } from '@/playwright/mock-factory';
 import { expectAllProjectFilesActive, openAllProjectFiles } from '@/playwright/workspace';
 import { T } from '@/timeouts';
 
 const ACTIVE_ARTIFACT_PREVIEW_SELECTOR = '[data-testid="artifact-preview-frame"]:visible, [data-testid="artifact-preview-frame-url-load"]:visible, [data-testid="artifact-preview-frame-srcdoc"]:visible, [data-testid="live-artifact-preview-frame"]:visible';
+
+test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } });
 
 test.describe.configure({ timeout: 30_000 });
 
@@ -37,7 +40,7 @@ test('[P1] assistant project file links open workspace tabs instead of new brows
   })).toBeVisible();
 });
 
-test('[P1] conversation HTML previews use overlay scrollbars in URL and inline edit modes', async ({ page }) => {
+test('[P1] conversation HTML previews use native scrollbars in URL and inline edit modes', async ({ page }) => {
   test.setTimeout(T.xlong);
   const html = '<!doctype html><html><head><style>body{margin:0}main{min-height:2200px;padding:24px;box-sizing:border-box}section{height:150px;overflow:auto;border-radius:24px}article{height:700px}</style></head><body><main><h1>Project file link target</h1><section><article>Nested scrolling</article></section></main></body></html>';
   const { projectId, conversationId } = await seedProjectWithAssistantFileLink(page, html);
@@ -66,28 +69,16 @@ test('[P1] conversation HTML previews use overlay scrollbars in URL and inline e
     const preview = page.locator(`iframe[data-od-render-mode="${mode}"]:visible`);
     await expect(preview).toBeVisible();
     const frame = preview.contentFrame();
-    await expect(frame.locator('html')).toHaveAttribute('data-overlay-scrollbars', '');
-    await expect(frame.locator('section')).toHaveAttribute('data-overlay-scrollbars', '');
-    const track = frame.locator('.od-scrollbar-vertical:not([hidden])').first();
-    const thumb = track.locator('.od-scrollbar-thumb');
-    await expect(track).toBeVisible();
-    await page.mouse.move(1, 1);
-    await expect(thumb).toHaveCSS('width', '4px');
-    await expect(thumb).toHaveCSS('background-color', 'rgba(0, 0, 0, 0.2)');
-    expect(await track.evaluate((element) => innerWidth - element.getBoundingClientRect().right)).toBe(2);
-    expect(await frame.locator('html').evaluate((element) => element.clientWidth === innerWidth)).toBe(true);
+    const root = frame.locator('html');
+    await expect(root).toHaveAttribute('data-od-native-scrollbars', '');
+    await expect(frame.locator('.od-scrollbar-layer')).toHaveCount(0);
     await page.evaluate(() => { (window as Window & { scrollbarEditEvents?: string[] }).scrollbarEditEvents = []; });
-    await track.hover({ position: { x: 4, y: 10 } });
-    await expect(thumb).toHaveCSS('width', '8px');
-    await expect(thumb).toHaveCSS('background-color', 'rgba(0, 0, 0, 0.4)');
-    const bounds = await thumb.boundingBox();
-    expect(bounds).not.toBeNull();
-    await page.mouse.move(bounds!.x + bounds!.width / 2, bounds!.y + 10);
-    await page.mouse.down();
-    await expect(thumb).toHaveCSS('background-color', 'rgba(0, 0, 0, 0.6)');
-    await page.mouse.move(bounds!.x + bounds!.width / 2, bounds!.y + 100);
-    await expect.poll(() => frame.locator('html').evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
-    await page.mouse.up();
+    await dragNativeScrollbar(page, root);
+    await expect.poll(() => root.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+    await root.evaluate(element => { element.scrollTop = 0; });
+    const nested = frame.locator('section');
+    await dragNativeScrollbar(page, nested);
+    await expect.poll(() => nested.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
     await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
     expect(await page.evaluate(() => (window as Window & { scrollbarEditEvents?: string[] }).scrollbarEditEvents)).toEqual([]);
   }

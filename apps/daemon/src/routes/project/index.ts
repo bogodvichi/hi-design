@@ -3,7 +3,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { rm } from 'node:fs/promises';
 import path from 'node:path';
 import { load } from 'cheerio';
-import { buildOverlayScrollbarsScript } from '@open-design/components/overlay-scrollbars-runtime';
+import { buildNativeScrollbarsScript } from '@open-design/components/overlay-scrollbars-runtime';
 import type { Express, Request, Response } from 'express';
 import { applyProjectFileTextEdits, automaticStrategyTaskProfileForProjectMetadata, projectFileTextPatchSchema, type ChatSessionMode, type LocalCatalogScope, type PluginManifest, type PreviewComment, type ProjectDesignTokenSuggestionProp, type ProjectDesignTokenSuggestionQuery, type ProjectFile, type ProjectFileTextPreviewResponse, type ProjectFileVersion, type ProjectFileVersionPromptSource, type ProjectFileVersionSource, type ProjectFileVersionWarning, type ProjectMetadata, type ProjectSyncState, type RestoreProjectAutomaticScenarioRequest, type RestoreProjectAutomaticScenarioResponse, type WorkspaceCollabContext } from '@open-design/contracts';
 import {
@@ -1737,7 +1737,7 @@ function applyUrlPreviewBridgesToHtml(
     html = injectAfterHeadOpen(
       html,
       'data-od-preview-scrollbars',
-      `<script data-od-preview-scrollbars>${buildOverlayScrollbarsScript()}</script>`,
+      `<script data-od-preview-scrollbars>${buildNativeScrollbarsScript()}</script>`,
     );
   }
   // Guards must run before authored scripts. injectAfterHeadOpen prepends at

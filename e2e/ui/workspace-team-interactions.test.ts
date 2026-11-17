@@ -1,4 +1,5 @@
 import { mkdir, writeFile } from 'node:fs/promises';
+import { dragNativeScrollbar } from '@/playwright/scrollbars';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 import type { Page, Route } from '@playwright/test';
@@ -148,6 +149,8 @@ const SWITCHED_TEAM_DRAFT = {
   name: 'Atlas launch board',
 };
 
+test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } });
+
 test.describe.configure({ timeout: T.xlong });
 
 test.beforeEach(async ({ page }) => {
@@ -180,13 +183,11 @@ test('[P1] team navigation fits the window and long team pages scroll as a whole
   await expect(page.getByText('Long Member 79', { exact: true })).toHaveCount(1);
   await expect.poll(() => tree.evaluate(e => e.scrollHeight > e.clientHeight)).toBe(true);
   await expect.poll(() => main.evaluate(e => e.scrollHeight > e.clientHeight)).toBe(true);
-  const hasTrack = async (target: typeof main) => target.evaluate(element => {
-    const rect = element.getBoundingClientRect();
-    return [...document.querySelectorAll<HTMLElement>('.od-scrollbar-track[data-axis=vertical]')]
-      .some(track => !track.hidden && Math.abs(track.getBoundingClientRect().right - rect.right + 2) < 1);
-  });
-  await expect.poll(() => hasTrack(tree)).toBe(true);
-  await expect.poll(() => hasTrack(main)).toBe(true);
+  await dragNativeScrollbar(page, tree);
+  await expect.poll(() => tree.evaluate(e => e.scrollTop)).toBeGreaterThan(0);
+  await main.hover();
+  await page.mouse.wheel(0, 120);
+  await expect.poll(() => main.evaluate(e => e.scrollTop)).toBeGreaterThan(0);
   await main.evaluate(e => { e.scrollTop = 500; });
   await expect.poll(() => page.locator('#team-space-title').evaluate(e => e.getBoundingClientRect().bottom)).toBeLessThan(0);
   await main.evaluate(e => { e.scrollTop = e.scrollHeight; });
@@ -206,9 +207,7 @@ test('[P1] team navigation fits the window and long team pages scroll as a whole
   await expect.poll(() => row.getByRole('button', { name: 'delete', exact: true }).evaluate(button => {
     const tree = button.closest('[data-testid=team-tree-section]')!.firstElementChild!;
     const rect = tree.getBoundingClientRect();
-    const track = [...document.querySelectorAll<HTMLElement>('.od-scrollbar-track[data-axis=vertical]')]
-      .find(track => !track.hidden && Math.abs(track.getBoundingClientRect().right - rect.right + 2) < 1);
-    return track ? button.getBoundingClientRect().right <= track.getBoundingClientRect().left : false;
+    return button.getBoundingClientRect().right <= rect.left + tree.clientLeft + tree.clientWidth;
   })).toBe(true);
   expect(await page.locator('.entry-nav-rail__panel').evaluate(e => e.getBoundingClientRect().bottom)).toBeLessThanOrEqual(480);
   await expect.poll(() => page.getByRole('button', { name: 'New team', exact: true }).evaluate(button => {

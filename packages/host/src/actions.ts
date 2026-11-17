@@ -45,6 +45,32 @@ function unavailable(reason: string): OpenDesignHostFailure {
   return failure(reason);
 }
 
+/** Open native developer tools when the host advertises the capability. */
+export async function openHostDeveloperTools(scope: OpenDesignHostGlobalScope = globalThis): Promise<OpenDesignHostActionResult> {
+  const host = getOpenDesignHost(scope);
+  if (typeof host?.developerTools?.open !== "function") {
+    return unavailable("host build does not support developer tools");
+  }
+  try {
+    return await host.developerTools.open();
+  } catch (error) {
+    return unavailable(error instanceof Error ? error.message : String(error));
+  }
+}
+
+/** Perform the native Force Reload action on the main host page. */
+export async function forceReloadHostWindow(scope: OpenDesignHostGlobalScope = globalThis): Promise<OpenDesignHostActionResult> {
+  const host = getOpenDesignHost(scope);
+  if (typeof host?.browser?.forceReload !== "function") {
+    return unavailable("host build does not support force reload");
+  }
+  try {
+    return await host.browser.forceReload();
+  } catch (error) {
+    return unavailable(error instanceof Error ? error.message : String(error));
+  }
+}
+
 /** Open an external URL through the host shell. */
 export async function openHostExternalUrl(url: string, scope: OpenDesignHostGlobalScope = globalThis): Promise<OpenDesignHostActionResult> {
   const host = getOpenDesignHost(scope);

@@ -1,4 +1,5 @@
 // Entry → template-detail-modal mapping (飞书 recvqxDuYM6Uxk).
+import { dragNativeScrollbar } from '@/playwright/scrollbars';
 //
 // Two template detail surfaces exist and each belongs to one entry point:
 //   • the Community gallery card opens the FULL plugin details modal
@@ -126,6 +127,8 @@ async function gotoCommunity(page: Page) {
   await expect(page.locator('article.community-template-card').first()).toBeVisible();
 }
 
+test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } });
+
 test.beforeEach(async ({ page }) => {
   await applyStandardMocks(page);
   await routeMappingFixtures(page);
@@ -145,20 +148,44 @@ test('[P2] global scrollbars remain usable against the bottom and right viewport
     document.body.append(scrollport);
   });
   const scrollport = page.locator('#viewport-edge-scrollport');
-  const vertical = page.locator('.od-scrollbar-track[data-axis=vertical]:visible');
-  const horizontal = page.locator('.od-scrollbar-track[data-axis=horizontal]:visible');
-  await expect(vertical).toHaveCount(1);
-  await expect(horizontal).toHaveCount(1);
-  expect((await vertical.boundingBox())!.x + (await vertical.boundingBox())!.width).toBe(1278);
-  expect((await horizontal.boundingBox())!.y + (await horizontal.boundingBox())!.height).toBe(798);
-  await vertical.hover();
-  await page.mouse.wheel(0, 120);
+  const community = page.locator('.entry-main--scroll');
+  await expect(community).toHaveCSS('scrollbar-width', 'thin');
+  const color = await community.evaluate(e => getComputedStyle(e).scrollbarColor);
+  expect(color).toContain('0.18');
+  await expect(scrollport).toHaveCSS('scrollbar-width', 'thin');
+  await expect(scrollport).toHaveCSS('scrollbar-color', color);
+  await scrollport.evaluate(e => { e.style.colorScheme = 'dark'; });
+  expect(await scrollport.evaluate(e => getComputedStyle(e).scrollbarColor)).toContain('255, 255, 255');
+  await scrollport.evaluate(e => { e.style.colorScheme = ''; });
+  const width = await scrollport.evaluate(e => e.clientWidth);
+  await scrollport.hover();
+  expect(await scrollport.evaluate(e => e.clientWidth)).toBe(width);
+  await expect(community).toHaveCSS('scrollbar-color', color);
+  await dragNativeScrollbar(page, scrollport);
   await expect.poll(() => scrollport.evaluate(e => e.scrollTop)).toBeGreaterThan(0);
-  await horizontal.hover();
-  await page.mouse.wheel(120, 0);
+  await dragNativeScrollbar(page, scrollport, 'horizontal');
   await expect.poll(() => scrollport.evaluate(e => e.scrollLeft)).toBeGreaterThan(0);
-  await expect(vertical).toBeVisible();
-  await expect(horizontal).toBeVisible();
+  // CSS scaling, newly enabled axes and the browser top layer need no JS geometry sync.
+  await scrollport.evaluate(e => {
+    e.scrollTop = 0; e.scrollLeft = 0;
+    e.style.overflowX = 'hidden';
+    e.style.transform = 'scale(.5)'; e.style.transformOrigin = 'bottom right';
+  });
+  await dragNativeScrollbar(page, scrollport);
+  await expect.poll(() => scrollport.evaluate(e => e.scrollTop)).toBeGreaterThan(0);
+  await scrollport.evaluate(e => { e.style.overflowX = 'auto'; });
+  await dragNativeScrollbar(page, scrollport, 'horizontal');
+  await expect.poll(() => scrollport.evaluate(e => e.scrollLeft)).toBeGreaterThan(0);
+  await page.evaluate(() => {
+    const dialog = document.createElement('dialog');
+    dialog.id = 'native-scroll-dialog';
+    dialog.innerHTML = '<section style="width:300px;height:200px;overflow:auto"><div style="height:800px">Dialog content</div></section>';
+    document.body.append(dialog); dialog.showModal();
+  });
+  const modalScrollport = page.locator('#native-scroll-dialog section');
+  await dragNativeScrollbar(page, modalScrollport);
+  await expect.poll(() => modalScrollport.evaluate(e => e.scrollTop)).toBeGreaterThan(0);
+  await expect(page.locator('.od-scrollbar-layer')).toHaveCount(0);
 });
 
 test('[P2] community preview aligns actions right and uses slim scrollbars inside its sandbox', async ({ page }, testInfo) => {
@@ -171,7 +198,7 @@ test('[P2] community preview aligns actions right and uses slim scrollbars insid
       #rounded,#clipped{width:320px;height:200px;margin:24px}
       #rounded{overflow:auto;border-radius:24px}
       #clipped{overflow:hidden;border-radius:32px}
-      #inner{height:100%;overflow:auto}
+      #inner{height:100%;overflow:auto;scrollbar-color:rgb(80,80,80) transparent}
       .long{height:800px;background:#eee}
     </style></head><body><h1>Scrollable prototype</h1>
       <section id="rounded"><div class="long">Rounded scrollport</div></section>
@@ -189,50 +216,18 @@ test('[P2] community preview aligns actions right and uses slim scrollbars insid
   expect.soft(await row.evaluate(element => Math.abs(element.getBoundingClientRect().right - element.parentElement!.getBoundingClientRect().right + parseFloat(getComputedStyle(element.parentElement!).paddingRight))))
     .toBeLessThan(1);
   const frame = dialog.frameLocator('iframe');
-  const tracks = frame.locator('[data-axis=vertical]:visible');
-  await expect.soft(tracks).toHaveCount(3);
-  const track = tracks.first();
-  if (await track.count()) {
-    const thumb = track.locator(':scope > div');
-    const box = (await track.boundingBox())!;
-    expect(await track.evaluate(e => e.getBoundingClientRect().width)).toBe(8);
-    expect(await track.evaluate(e => window.innerWidth - e.getBoundingClientRect().right)).toBe(2);
-    await page.mouse.move(0, 0);
-    await expect.poll(() => thumb.evaluate(e => e.getBoundingClientRect().width)).toBe(4);
-    await expect(thumb).toHaveCSS('background-color', 'rgba(0, 0, 0, 0.2)');
-    // The host's sidebar handle intentionally overlays the midpoint edge.
-    await track.hover({ position: { x: 1, y: box.height / 4 } });
-    await expect.poll(() => thumb.evaluate(e => e.getBoundingClientRect().width)).toBe(8);
-    await expect(thumb).toHaveCSS('background-color', 'rgba(0, 0, 0, 0.4)');
-    await page.mouse.down();
-    try {
-      await expect(track).toHaveAttribute('data-dragging', '');
-      await expect(thumb).toHaveCSS('background-color', 'rgba(0, 0, 0, 0.6)');
-      await page.mouse.move(box.x + 1, box.y + box.height / 4 + 24);
-    } finally { await page.mouse.up(); }
-    const before = await track.boundingBox();
-    expect(await frame.locator('html').evaluate(e => e.scrollTop)).toBeGreaterThan(0);
-    expect((await track.boundingBox())!.y).toBe(before!.y);
-  }
+  await expect(frame.locator('html')).toHaveAttribute('data-od-native-scrollbars', '');
+  // Standard native defaults replace legacy pixel styling; explicit standard colors still win.
+  await expect(frame.locator('#rounded')).toHaveCSS('scrollbar-width', 'thin');
+  expect(await frame.locator('#inner').evaluate(e => getComputedStyle(e).scrollbarColor)).toContain('rgb(80, 80, 80)');
+  await dragNativeScrollbar(page, frame.locator('html'));
+  await expect.poll(() => frame.locator('html').evaluate(e => e.scrollTop)).toBeGreaterThan(0);
   await frame.locator('html').evaluate(e => { e.scrollTop = 0; });
-  await expect(tracks).toHaveCount(3);
   for (const id of ['rounded', 'inner']) {
-    await frame.locator(`#${id}`).evaluate(e => { e.scrollTop = e.scrollHeight; });
+    await dragNativeScrollbar(page, frame.locator('#' + id));
+    await expect.poll(() => frame.locator('#' + id).evaluate(e => e.scrollTop)).toBeGreaterThan(0);
   }
-  await expect.poll(() => frame.locator('html').evaluate(() => {
-    const tracks = [...document.querySelectorAll<HTMLElement>('[data-axis=vertical]')];
-    return ['rounded', 'inner'].every(id => {
-      const element = document.getElementById(id)!;
-      const radius = id === 'rounded' ? 24 : 32;
-      const inset = radius * (1 - Math.sqrt(1 - (1 - 2 / radius) ** 2));
-      const rect = element.getBoundingClientRect();
-      const track = tracks.find(t => Math.abs(t.getBoundingClientRect().right - rect.right + 2) < 1
-        && Math.abs(t.getBoundingClientRect().top - rect.top - inset) < 1);
-      if (!track) return false;
-      const thumb = track.firstElementChild!.getBoundingClientRect();
-      return thumb.top >= rect.top + inset - 1 && thumb.bottom <= rect.bottom - inset + 1;
-    });
-  })).toBe(true);
+  await expect(frame.locator('.od-scrollbar-layer')).toHaveCount(0);
   await page.mouse.move(0, 0);
   await expect(header).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('community-preview-scrollbars.png') });

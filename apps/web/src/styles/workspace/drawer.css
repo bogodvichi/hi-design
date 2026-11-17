@@ -1440,7 +1440,6 @@
   height: 100%;
   /* thinner scrollbar to avoid overlap */
   scrollbar-width: thin;
-  scrollbar-color: var(--border-strong) transparent;
 }
 
 /* Right-aligned project + file actions cluster in the Design Files tab row.

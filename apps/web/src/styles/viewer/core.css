@@ -1544,14 +1544,6 @@
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--text-muted) 34%, transparent) transparent;
-}
-.comment-popover-composer-wrap::-webkit-scrollbar {
-  width: 6px;
-}
-.comment-popover-composer-wrap::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--text-muted) 34%, transparent);
 }
 .comment-popover-body {
   flex: 1 1 auto;

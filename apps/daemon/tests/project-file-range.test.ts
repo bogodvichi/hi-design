@@ -407,7 +407,9 @@ describe('GET /api/projects/:id/raw/* range request route', () => {
       expect(response.status).toBe(200);
       const html = await response.text();
       expect(html.match(/<script data-od-preview-scrollbars>/g)).toHaveLength(1);
-      expect(html).toContain('od-scrollbar-layer');
+      expect(html).toContain('data-od-native-scrollbars-style');
+      expect(html).not.toContain('od-scrollbar-layer');
+      expect(html).not.toContain('ResizeObserver');
       expect(html).toContain('DOMContentLoaded');
     }
     expect(await (await fetch(rawUrl('body.html'))).text()).toBe(original);

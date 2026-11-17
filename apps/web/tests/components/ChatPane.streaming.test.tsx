@@ -273,6 +273,36 @@ afterEach(() => {
 });
 
 describe('ChatPane streaming state', () => {
+  it('hides the portaled composer with the pane without remounting its draft', () => {
+    const rect = vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains('chat-composer-slot') || this.classList.contains('chat-composer-fixed-layer')
+        ? new DOMRect(8, 500, 480, 200)
+        : new DOMRect();
+    });
+    try {
+      const props = {
+        messages: [], streaming: false, error: null, projectId: 'project-1', projectFiles: [],
+        onEnsureProject: async () => 'project-1', onSend: vi.fn(), onStop: vi.fn(),
+        conversations, activeConversationId: 'conv-1', onSelectConversation: vi.fn(),
+        onDeleteConversation: vi.fn(), projectMetadata,
+      };
+      const view = render(<ChatPane {...props} composerVisible />);
+      const layer = document.querySelector<HTMLElement>('.chat-composer-fixed-layer')!;
+      expect(layer).not.toBeNull();
+      const composer = layer.firstElementChild;
+      expect(layer.hidden).toBe(false);
+      view.rerender(<ChatPane {...props} composerVisible={false} />);
+      expect(layer.hidden).toBe(true);
+      expect(layer.firstElementChild).toBe(composer);
+      expect(view.container.querySelector<HTMLElement>('.chat-composer-slot')?.style.minHeight).toBe('200px');
+      view.rerender(<ChatPane {...props} composerVisible />);
+      expect(layer.hidden).toBe(false);
+      expect(layer.firstElementChild).toBe(composer);
+    } finally {
+      rect.mockRestore();
+    }
+  });
+
   it('keeps queued-send strip styles compact above the composer', () => {
     const css = readExpandedIndexCss();
 

@@ -371,6 +371,15 @@ const shell = {
 };
 
 const browser = {
+  ...(process.isMainFrame ? {
+    forceReload: async (): Promise<OpenDesignHostActionResult> => {
+      try {
+        return await ipcRenderer.invoke('od:browser:force-reload');
+      } catch (error) {
+        return actionFailure(reasonFromError(error));
+      }
+    },
+  } : {}),
   clearData: async (options?: OpenDesignHostBrowserClearDataOptions): Promise<OpenDesignHostActionResult> => {
     try {
       return await ipcRenderer.invoke('browser:clear-data', options ?? null);
@@ -490,6 +499,19 @@ ipcRenderer.on(APP_CONFIG_CHANGED_IPC_CHANNEL, () => {
 });
 
 const hostBridge = {
+  // Sandbox preloads cannot import main-process modules; keep this argument
+  // aligned with DEVELOPER_TOOLS_ARGUMENT in developer-tools.ts.
+  ...(process.isMainFrame && process.argv.includes('--od-developer-tools=enabled') ? {
+    developerTools: {
+      open: async (): Promise<OpenDesignHostActionResult> => {
+        try {
+          return await ipcRenderer.invoke('od:developer-tools:open');
+        } catch (error) {
+          return actionFailure(reasonFromError(error));
+        }
+      },
+    },
+  } : {}),
   ...(process.platform === 'win32' ? {
     tray: {
       setRecentProjects: (projects: OpenDesignHostRecentProject[]): void =>

@@ -11,16 +11,10 @@ const entryNavRailSource = readFileSync(
 );
 
 describe('entry navigation scrollbar', () => {
-  it('keeps an 8px scrollbar hidden until the panel is hovered', () => {
-    expect(entryLayoutCss).toMatch(
-      /\.entry-nav-rail__group::-webkit-scrollbar\s*\{\s*width:\s*8px;/u,
-    );
-    expect(entryLayoutCss).toMatch(
-      /\.entry-nav-rail__group::-webkit-scrollbar-thumb\s*\{[^}]*background:\s*transparent;/u,
-    );
-    expect(entryLayoutCss).toMatch(
-      /\.entry-nav-rail__panel:hover\s+\.entry-nav-rail__group::-webkit-scrollbar-thumb\s*\{[^}]*background:/u,
-    );
+  it('uses the shared native scrollbar instead of page-specific hover and pixel styling', () => {
+    expect(entryLayoutCss).not.toContain('::-webkit-scrollbar-thumb');
+    expect(entryLayoutCss).not.toContain('scrollbar-color:');
+    expect(entryLayoutCss).toMatch(/\.entry-main--scroll\s*\{[^}]*scrollbar-gutter:\s*stable;/u);
   });
 
   it('keeps the search row above and outside the scrolling directory', () => {
@@ -31,7 +25,7 @@ describe('entry navigation scrollbar', () => {
       /\.entry-nav-rail__group\s*\{[^}]*overflow-y:\s*auto;/u,
     );
     expect(entryLayoutCss).toMatch(
-      /\.entry-nav-rail__search-row\s*\{[^}]*flex:\s*0 0 auto;[^}]*padding:\s*4px 10px 0;/u,
+      /\.entry-nav-rail__search-row\s*\{[^}]*flex:\s*0 0 auto;[^}]*padding:\s*0 10px;/u,
     );
   });
 });

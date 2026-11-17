@@ -18,6 +18,8 @@ import {
   isOpenDesignHostBridge,
   normalizeOpenDesignHostProjectImportResult,
   openHostExternalUrl,
+  openHostDeveloperTools,
+  forceReloadHostWindow,
   pickAndImportHostProject,
   printHostPdf,
   openHostProjectPath,
@@ -42,6 +44,32 @@ function filesUnder(dir: string): string[] {
 }
 
 describe("open-design host contract", () => {
+  it("force reloads capable hosts and normalizes missing, failed, or rejected actions", async () => {
+    expect(await forceReloadHostWindow({})).toMatchObject({ ok: false });
+    const legacyHost = createMockOpenDesignHost();
+    expect(isOpenDesignHostBridge(legacyHost)).toBe(true);
+    expect(await forceReloadHostWindow({ __od__: legacyHost })).toMatchObject({ ok: false });
+    const forceReload = vi.fn(async () => ({ ok: true as const }));
+    const host = createMockOpenDesignHost({ browser: { forceReload } });
+    expect(await forceReloadHostWindow({ __od__: host })).toEqual({ ok: true });
+    expect(forceReload).toHaveBeenCalledOnce();
+    forceReload.mockRejectedValueOnce(new Error("Reload unavailable"));
+    expect(await forceReloadHostWindow({ __od__: host })).toEqual({ ok: false, reason: "Reload unavailable" });
+    const failed = createMockOpenDesignHost({ browser: { forceReload: async () => ({ ok: false, reason: "Window closed" }) } });
+    expect(await forceReloadHostWindow({ __od__: failed })).toEqual({ ok: false, reason: "Window closed" });
+  });
+  it("opens optional developer tools and normalizes unavailable or rejected hosts", async () => {
+    expect(await openHostDeveloperTools({})).toMatchObject({ ok: false });
+    const legacyHost = createMockOpenDesignHost();
+    expect(isOpenDesignHostBridge(legacyHost)).toBe(true);
+    expect(await openHostDeveloperTools({ __od__: legacyHost })).toMatchObject({ ok: false });
+    const open = vi.fn(async () => ({ ok: true as const }));
+    const host = createMockOpenDesignHost({ developerTools: { open } });
+    expect(await openHostDeveloperTools({ __od__: host })).toEqual({ ok: true });
+    expect(open).toHaveBeenCalledOnce();
+    open.mockRejectedValueOnce(new Error("Tools unavailable"));
+    expect(await openHostDeveloperTools({ __od__: host })).toEqual({ ok: false, reason: "Tools unavailable" });
+  });
   it("stays independent from daemon/web contracts", () => {
     const pkg = JSON.parse(readFileSync(join(hostRoot, "package.json"), "utf8")) as {
       dependencies?: Record<string, string>;

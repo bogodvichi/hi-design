@@ -1,4 +1,5 @@
 import { useEffect, useState, type MutableRefObject } from 'react';
+import { FieldGroup } from '@open-design/components';
 import { Icon } from './Icon';
 import { DefaultLogoPicker } from './DefaultLogoPicker';
 import { useI18n, useT } from '../i18n';
@@ -148,10 +149,7 @@ export function McpConfigForm({
 
   return (
     <div className={styles.formGrid}>
-      <fieldset className={styles.typePicker}>
-        <legend className={styles.typePickerLegend}>
-          {t('publishDialog.mcpTypeLegend')}
-        </legend>
+      <FieldGroup label={t('publishDialog.mcpTypeLegend')}>
         <div className={styles.typePickerButtons}>
           {PRESETS.map((preset) => (
             <button
@@ -165,7 +163,7 @@ export function McpConfigForm({
             </button>
           ))}
         </div>
-      </fieldset>
+      </FieldGroup>
 
       {showLogoPicker ? (
         <DefaultLogoPicker
@@ -175,8 +173,8 @@ export function McpConfigForm({
         />
       ) : null}
 
-      <label className={styles.field}>
-          <span className={styles.fieldLabel}>{locale.startsWith('zh') ? 'MCP 名称' : 'MCP name'}</span>
+      <label data-dialog-field="" className={styles.field}>
+        <span className={styles.fieldLabel}>{locale.startsWith('zh') ? 'MCP 名称' : 'MCP name'}</span>
         <input
           className={styles.fieldInput}
           required
@@ -187,7 +185,7 @@ export function McpConfigForm({
         />
       </label>
 
-      <label className={styles.field}>
+      <label data-dialog-field="" className={styles.field}>
         <span className={styles.fieldLabel}>{locale.startsWith('zh') ? '简介' : 'Description'}</span>
         <input
           className={styles.fieldInput}
@@ -197,9 +195,9 @@ export function McpConfigForm({
         />
       </label>
 
-      <div className={styles.jsonSection}>
-        <label className={styles.field} htmlFor="mcp-json-config">
-          <span className={styles.fieldLabel}>{t('publishDialog.mcpJsonConfig')}</span>
+      <div data-dialog-field="" className={styles.jsonSection}>
+        <label className={styles.fieldLabel} htmlFor="mcp-json-config">
+          {t('publishDialog.mcpJsonConfig')}
         </label>
         <textarea
           id="mcp-json-config"

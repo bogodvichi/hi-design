@@ -1,10 +1,13 @@
 import { mkdir, writeFile } from 'node:fs/promises';
+import { dragNativeScrollbar } from '@/playwright/scrollbars';
 import { join } from 'node:path';
 import { expect, test } from '@/playwright/suite';
 import { applyStandardMocks } from '@/playwright/mock-factory';
 import { mockAmrPersonalWorkspace } from '@/playwright/amr';
 import { T } from '@/timeouts';
 import { ensureRailOpen } from '@/playwright/rail';
+
+test.use({ launchOptions: { ignoreDefaultArgs: ['--hide-scrollbars'] } });
 
 test('[P2] publish categories stay fixed while fields scroll and logo choices use spaced selection frames', async ({ page }, testInfo) => {
   await applyStandardMocks(page);
@@ -22,7 +25,7 @@ test('[P2] publish categories stay fixed while fields scroll and logo choices us
   const dialog = page.getByTestId('publish-dialog');
   const tabs = dialog.getByRole('tablist', { name: '发布分类' });
   await tabs.getByRole('tab', { name: 'Skill', exact: true }).click();
-  const body = dialog.locator('[data-overlay-scrollbars]').filter({ has: page.getByRole('radiogroup') });
+  const body = dialog.locator('[data-dialog-part=body]').filter({ has: page.getByRole('radiogroup') });
   await expect(body).toHaveCount(1);
   const top = (await tabs.boundingBox())!.y;
   await page.screenshot({ path: testInfo.outputPath('publish-entry.png') });
@@ -31,37 +34,11 @@ test('[P2] publish categories stay fixed while fields scroll and logo choices us
   expect((await tabs.boundingBox())!.y).toBe(top);
   const tabsBox = (await tabs.boundingBox())!;
   expect((await body.boundingBox())!.y - tabsBox.y - tabsBox.height).toBe(4);
-  expect(await body.evaluate(element => (element as HTMLElement).offsetWidth - element.clientWidth)).toBe(0);
-
-  const scrollTrack = page.locator('[data-axis=vertical]:visible');
-  await expect(scrollTrack).toHaveCount(1);
-  const thumb = scrollTrack.locator(':scope > div');
-  const bodyBox = (await body.boundingBox())!;
-  const trackBox = (await scrollTrack.boundingBox())!;
-  expect(bodyBox.x + bodyBox.width - trackBox.x - trackBox.width).toBe(2);
-  await page.mouse.move(10, 10);
-  await expect.poll(() => thumb.evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgba(0, 0, 0, 0.2)');
-  await expect.poll(() => thumb.evaluate(element => element.getBoundingClientRect().width)).toBe(trackBox.width / 2);
-  const restingRight = (await thumb.boundingBox())!.x + (await thumb.boundingBox())!.width;
-  await body.hover();
-  expect(await thumb.evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgba(0, 0, 0, 0.2)');
-  expect((await thumb.boundingBox())!.width).toBe(trackBox.width / 2);
-  // The invisible half of the full-width track is also part of the hit area.
-  await page.mouse.move(trackBox.x + 1, trackBox.y + trackBox.height / 2);
-  await expect.poll(() => thumb.evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgba(0, 0, 0, 0.4)');
-  await expect.poll(() => thumb.evaluate(element => element.getBoundingClientRect().width)).toBe(trackBox.width);
-  const expanded = (await thumb.boundingBox())!;
-  expect(expanded.x + expanded.width).toBe(restingRight);
-  await page.mouse.move(expanded.x + expanded.width / 2, expanded.y + expanded.height / 2);
-  await page.mouse.down();
-  try {
-    await expect(scrollTrack).toHaveAttribute('data-dragging', '');
-    expect(await thumb.evaluate(element => getComputedStyle(element).backgroundColor)).toBe('rgba(0, 0, 0, 0.6)');
-    await page.mouse.move(expanded.x + expanded.width / 2, expanded.y + expanded.height / 2 - 10);
-  } finally {
-    await page.mouse.up();
-  }
-  await expect(scrollTrack).not.toHaveAttribute('data-dragging');
+  expect(await body.evaluate(element => (element as HTMLElement).offsetWidth - element.clientWidth)).toBeGreaterThan(0);
+  await body.evaluate(element => { element.scrollTop = 0; });
+  await dragNativeScrollbar(page, body);
+  await expect.poll(() => body.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+  await expect(page.locator('.od-scrollbar-layer')).toHaveCount(0);
   await body.evaluate(element => { element.scrollTop = element.scrollHeight; });
 
   const logos = dialog.getByRole('group', { name: '默认 Logo' });
@@ -95,6 +72,23 @@ test('[P2] publish categories stay fixed while fields scroll and logo choices us
   // The manual MCP path shares the same field and image treatment.
   await tabs.getByRole('tab', { name: 'MCP', exact: true }).click();
   await dialog.getByRole('tab', { name: '手动输入', exact: true }).click();
+  const mcpTypes = dialog.getByRole('group', { name: 'MCP类型', exact: true });
+  await expect(mcpTypes).toBeVisible();
+  expect(await mcpTypes.evaluate(element => ({
+    border: getComputedStyle(element).borderWidth,
+    padding: getComputedStyle(element).padding,
+    formGap: getComputedStyle(element.parentElement!).gap,
+    formPadding: getComputedStyle(element.parentElement!).padding,
+    labelSize: getComputedStyle(element.querySelector('legend')!).fontSize,
+    labelWeight: getComputedStyle(element.querySelector('legend')!).fontWeight,
+    aligned: element.getBoundingClientRect().left === element.querySelector('button')!.getBoundingClientRect().left,
+  }))).toEqual({ border: '0px', padding: '0px', formGap: '18px', formPadding: '0px', labelSize: '13px', labelWeight: '500', aligned: true });
+  const mcpName = dialog.getByRole('textbox', { name: 'MCP 名称', exact: true });
+  expect(await mcpName.evaluate(element => ({
+    height: element.getBoundingClientRect().height,
+    radius: getComputedStyle(element).borderRadius,
+    labelGap: getComputedStyle(element.parentElement!).gap,
+  }))).toEqual({ height: 40, radius: '6px', labelGap: '6px' });
   const mcpLogos = dialog.getByRole('group', { name: '默认 Logo' });
   await mcpLogos.getByRole('button', { name: '节点', exact: true }).click();
   expect(await mcpLogos.getByRole('button', { name: '节点', exact: true }).evaluate(element => getComputedStyle(element, '::after').borderWidth)).toBe('2px');

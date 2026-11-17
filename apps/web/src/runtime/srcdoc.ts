@@ -22,7 +22,7 @@ import {
   DECK_STRUCTURED_SLIDE_SELECTOR,
   injectDeckStageFallback,
 } from '@open-design/contracts/runtime/deck-stage-fallback';
-import { buildOverlayScrollbarsScript } from '@open-design/components';
+import { buildNativeScrollbarsScript } from '@open-design/components';
 import {
   buildPreviewBaseHrefBridge,
   buildPreviewObservabilityBridge,
@@ -404,7 +404,7 @@ export function buildSrcdoc(
   // accept. Only the title text changes; visible page content is untouched.
   const withSafeTitle = sanitizeTitleInDoc(wrapped);
   const withScrollbars = options.previewScrollbars
-    ? injectAfterHeadOpen(withSafeTitle, `<script data-od-preview-scrollbars>${buildOverlayScrollbarsScript()}</script>`)
+    ? injectAfterHeadOpen(withSafeTitle, `<script data-od-preview-scrollbars>${buildNativeScrollbarsScript()}</script>`)
     : withSafeTitle;
   const withOdIds = annotateMissingOdIds(withScrollbars);
   const withSourcePaths = options.editBridge ? annotateManualEditSourcePaths(withOdIds) : withOdIds;

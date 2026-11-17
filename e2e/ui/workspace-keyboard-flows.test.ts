@@ -187,6 +187,15 @@ test('[P1] keyboard chat panel resize persists after reload', async ({ page }) =
   await expectWorkspaceReady(page);
   const restoredWidth = await readChatPanelWidth(handle);
   expect(restoredWidth).toBe(resizedWidth);
+
+  // Collapsing clips the slot without rewrapping the transcript into its
+  // zero-width grid track. Preserve the user's resized content width.
+  const pane = page.locator('.split-chat-slot > .pane');
+  const contentWidth = await pane.evaluate(element => element.getBoundingClientRect().width);
+  await page.getByTestId('chat-collapse-toggle').click();
+  await expect(page.locator('.split-chat-slot')).toHaveAttribute('aria-hidden', 'true');
+  expect(await pane.evaluate(element => element.getBoundingClientRect().width)).toBeCloseTo(contentWidth, 0);
+  await expect(page.locator('.chat-composer-fixed-layer')).toBeHidden();
 });
 
 test('[P0] @critical project chat Enter sends while Shift+Enter inserts a newline', async ({ page }) => {

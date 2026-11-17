@@ -51,4 +51,11 @@ describe('recvqadaNlQZNM — project focus mode chat pane jitters while collapsi
       /\bgrid-column:\s*3\s*;/,
     );
   });
+
+  it('clips a stable-width transcript instead of rewrapping it into the collapsed grid track', () => {
+    const pane = cssDeclarations(shellCss, '.split-chat-slot > .pane').join('\n');
+    expect(pane).toMatch(/width:\s*max\(0px,\s*calc\(var\(--project-chat-content-width,\s*460px\)\s*-\s*var\(--project-chat-content-inset,\s*0px\)\)\)/);
+    expect(pane).toMatch(/min-width:\s*max\(0px,\s*calc\(var\(--project-chat-content-width/);
+    expect(cssDeclarations(routinesCss, '.app .split-chat-slot').join('\n')).toMatch(/--project-chat-content-inset:\s*8px\s*;/);
+  });
 });

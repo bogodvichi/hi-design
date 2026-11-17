@@ -523,6 +523,9 @@ function chatArtifactKindLabel(kind: ProjectFile['kind'], t: TranslateFn): strin
 
 interface Props {
   messages: ChatMessage[];
+  /** The body-level composer must follow its pane's focus transition without
+   * unmounting the editor or discarding an unsent draft. */
+  composerVisible?: boolean;
   streaming: boolean;
   loading?: boolean;
   error: string | null;
@@ -941,6 +944,7 @@ function hasVisibleBrandAssistantEvent(event: NonNullable<ChatMessage['events']>
 
 export function ChatPane({
   messages,
+  composerVisible = true,
   streaming,
   loading = false,
   sendDisabled = false,
@@ -2410,7 +2414,7 @@ export function ChatPane({
   }, [tab]);
 
   useLayoutEffect(() => {
-    if (tab !== 'chat' || !composerPortalTarget || !composerPortalRect) return;
+    if (tab !== 'chat' || !composerVisible || !composerPortalTarget || !composerPortalRect) return;
     const layer = composerLayerRef.current;
     if (!layer || typeof window === 'undefined') return;
 
@@ -2436,7 +2440,7 @@ export function ChatPane({
       if (frame !== null) window.cancelAnimationFrame(frame);
       resizeObserver?.disconnect();
     };
-  }, [composerPortalRect, composerPortalTarget, tab]);
+  }, [composerPortalRect, composerPortalTarget, composerVisible, tab]);
 
   const composerNode = (
     <>
@@ -3177,6 +3181,7 @@ export function ChatPane({
                 <div
                   className="chat-composer-fixed-layer"
                   ref={composerLayerRef}
+                  hidden={!composerVisible}
                   style={{
                     left: composerPortalRect.left,
                     bottom: composerPortalRect.bottom,

@@ -90,6 +90,8 @@ export {
 
 // --- actions: renderer-facing host action wrappers ---
 export {
+  openHostDeveloperTools,
+  forceReloadHostWindow,
   openHostExternalUrl,
   openHostProjectPath,
   clearHostBrowserData,

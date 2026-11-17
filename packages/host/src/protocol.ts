@@ -388,6 +388,10 @@ export type OpenDesignHostUpdaterOpenDialogListener = (request: OpenDesignHostUp
 export type OpenDesignHostRecentProject = { id: string; name: string };
 
 export type OpenDesignHostBridge = {
+  /** Available only when the desktop host explicitly enables native DevTools. */
+  developerTools?: {
+    open(): Promise<OpenDesignHostActionResult>;
+  };
   /** Native Windows tray shortcuts; absent in web and older desktop hosts. */
   tray?: {
     setRecentProjects(projects: OpenDesignHostRecentProject[]): void;
@@ -400,6 +404,8 @@ export type OpenDesignHostBridge = {
   };
   browser: {
     clearData(options?: OpenDesignHostBrowserClearDataOptions): Promise<OpenDesignHostActionResult>;
+    /** Reload the main host page ignoring cache; absent in older hosts. */
+    forceReload?(): Promise<OpenDesignHostActionResult>;
   };
   capture: {
     page(options?: OpenDesignHostCaptureOptions): Promise<OpenDesignHostCaptureResult>;

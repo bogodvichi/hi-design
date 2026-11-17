@@ -853,23 +853,11 @@
   overflow: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.16) transparent;
+  --od-native-scrollbar-thumb: rgb(255 255 255 / 18%);
   padding: 12px 12px 16px;
   display: grid;
   align-content: start;
   gap: 10px;
-}
-.deck-thumbnail-list::-webkit-scrollbar {
-  width: 8px;
-}
-.deck-thumbnail-list::-webkit-scrollbar-thumb {
-  border: 2px solid transparent;
-  border-radius: 999px;
-  background-clip: padding-box;
-  background-color: rgba(255, 255, 255, 0.14);
-}
-.deck-thumbnail-list::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(255, 255, 255, 0.24);
 }
 .deck-thumbnail-button {
   position: relative;
