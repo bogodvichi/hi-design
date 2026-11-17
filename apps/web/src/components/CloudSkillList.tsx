@@ -288,14 +288,8 @@ export function CloudSkillList({
       }
 
       const merged = new Map<string, CloudSkill>();
-      const mergedKeysByResourceId = new Map<string, string>();
-      const mergedKeysByLocalId = new Map<string, string>();
       for (const skill of (cloudResponse?.skills ?? []) as CloudSkill[]) {
-        const key = skill.localId;
-        const normalizedSkill = { ...skill, category: normalizeSkillCategory(skill.category) };
-        merged.set(key, normalizedSkill);
-        mergedKeysByResourceId.set(normalizedSkill.resourceId, key);
-        mergedKeysByLocalId.set(normalizedSkill.localId, key);
+        merged.set(skill.localId, { ...skill, category: normalizeSkillCategory(skill.category) });
       }
       for (const resource of (teamResponse?.resources ?? []) as Array<{
         id: string;
@@ -309,12 +303,8 @@ export function CloudSkillList({
         // A team record can expose a different local id from its cloud record.
         // Match the two views through the hub resource identity before falling
         // back to the local id, otherwise the same skill renders twice.
-        const hubResourceId = resource.hubResourceId ?? resource.id;
-        const existingKey = mergedKeysByResourceId.get(hubResourceId)
-          ?? mergedKeysByResourceId.get(resource.id)
-          ?? mergedKeysByLocalId.get(resource.id);
-        const existing = existingKey ? merged.get(existingKey) : undefined;
-        const mergedSkill = {
+        const existing = merged.get(resource.id);
+        merged.set(resource.id, {
           resourceId: existing?.resourceId ?? resource.hubResourceId ?? `team:${resource.id}`,
           localId: resource.id,
           title: existing?.title ?? resource.title ?? resource.id,
@@ -328,14 +318,7 @@ export function CloudSkillList({
           installed: true,
           teamShared: true,
           category: normalizeSkillCategory(existing?.category),
-        };
-        if (existingKey) {
-          merged.set(existingKey, mergedSkill);
-        } else {
-          merged.set(resource.id, mergedSkill);
-          mergedKeysByResourceId.set(mergedSkill.resourceId, resource.id);
-          mergedKeysByLocalId.set(mergedSkill.localId, resource.id);
-        }
+        });
       }
       const list = [...merged.values()];
       if (!isCurrent()) return;
