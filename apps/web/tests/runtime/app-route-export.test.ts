@@ -16,6 +16,10 @@ afterEach(() => {
 });
 
 describe('SPA shell export route', () => {
+  it('transpiles the host bridge so development consumes current workspace exports', async () => {
+    const nextConfig = await loadNextConfig();
+    expect(nextConfig.transpilePackages).toContain('@open-design/host');
+  });
   it('stays compatible with static export builds', async () => {
     const nextConfig = await loadNextConfig();
     expect(nextConfig.output).toBe('export');

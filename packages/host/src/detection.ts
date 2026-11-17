@@ -5,7 +5,7 @@ import {
   type OpenDesignHostBridge,
   type OpenDesignHostClientType,
   type OpenDesignHostGlobalScope,
-} from "./protocol.js";
+} from "./protocol.ts";
 
 /**
  * @module detection

@@ -16,7 +16,7 @@ export {
   OPEN_DESIGN_HOST_CLIENT_TYPES,
   OPEN_DESIGN_HOST_UPDATER_ACTIONS,
   OPEN_DESIGN_HOST_UPDATER_STATES,
-} from "./protocol.js";
+} from "./protocol.ts";
 export type {
   OpenDesignHostClientType,
   OpenDesignHostClient,
@@ -71,7 +71,7 @@ export type {
   OpenDesignHostBridge,
   OpenDesignHostRecentProject,
   OpenDesignHostGlobalScope,
-} from "./protocol.js";
+} from "./protocol.ts";
 
 // --- detection: locate + validate the injected bridge ---
 export {
@@ -79,14 +79,14 @@ export {
   getOpenDesignHost,
   isOpenDesignHostAvailable,
   detectOpenDesignHostClientType,
-} from "./detection.js";
+} from "./detection.ts";
 
 // --- normalize: adapter result -> renderer contract ---
 export {
   normalizeOpenDesignHostProjectImportResult,
   normalizeOpenDesignHostProjectReplaceWorkingDirResult,
   normalizeOpenDesignHostPickWorkingDirResult,
-} from "./normalize.js";
+} from "./normalize.ts";
 
 // --- actions: renderer-facing host action wrappers ---
 export {
@@ -112,4 +112,4 @@ export {
   subscribeHostUpdaterOpenDialog,
   subscribeHostPreviewNavigationFailure,
   setHostUpdaterMenuLabels,
-} from "./actions.js";
+} from "./actions.ts";

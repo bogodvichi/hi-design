@@ -3,7 +3,7 @@ import type {
   OpenDesignHostProjectImportResult,
   OpenDesignHostProjectReplaceWorkingDirResult,
   OpenDesignHostPickWorkingDirResult,
-} from "./protocol.js";
+} from "./protocol.ts";
 
 /**
  * @module normalize

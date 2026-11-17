@@ -41,7 +41,6 @@ import {
 import { readProcessStamp } from "@open-design/platform";
 
 import { createDesktopRuntime, type DesktopRuntime } from "./runtime.js";
-import { resolveDesktopRuntimeMode } from "./runtime-mode.js";
 import { dispatchInviteDeeplink, registerInviteDeeplink } from "./invite-deeplink.js";
 import { focusDesktopForDeeplink } from "./deeplink-focus.js";
 import { setUpDesktopCrashReporter, writeDesktopGpuInfo } from "./crash-diagnostics.js";
@@ -419,7 +418,6 @@ function installDesktopMenu(
     updater: DesktopUpdater;
   },
 ): DesktopMenuController {
-  const debugToolsEnabled = resolveDesktopRuntimeMode(app, process.env.NODE_ENV) === "development";
   let developMenuVisible = false;
   let lastKnownAmrProfile: AmrEnvironmentProfile = "prod";
   let updateMenuLabels = DEFAULT_DESKTOP_UPDATE_MENU_LABELS;
@@ -548,7 +546,7 @@ function installDesktopMenu(
         submenu: [
           { role: "reload" },
           { role: "forceReload" },
-          ...(debugToolsEnabled ? [{ role: "toggleDevTools" as const }] : []),
+          { role: "toggleDevTools" },
           { type: "separator" },
           {
             accelerator: developMenuAccelerator,

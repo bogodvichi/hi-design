@@ -1,9 +1,9 @@
 import { EventEmitter } from "node:events";
 import type { BrowserWindow, IpcMainInvokeEvent } from "electron";
 import { describe, expect, it, vi } from "vitest";
-import { desktopDeveloperToolsEnabled, installDeveloperTools } from "../../src/main/developer-tools.js";
+import { installDeveloperTools } from "../../src/main/developer-tools.js";
 
-function fixture(enabled = true) {
+function fixture() {
   const contents = { mainFrame: {}, openDevTools: vi.fn() };
   const window = Object.assign(new EventEmitter(), {
     webContents: contents,
@@ -14,18 +14,16 @@ function fixture(enabled = true) {
     handle: vi.fn((channel: string, listener: (event: IpcMainInvokeEvent) => unknown) => handlers.set(channel, listener)),
     removeHandler: vi.fn((channel: string) => handlers.delete(channel)),
   };
-  const dispose = installDeveloperTools(window as unknown as BrowserWindow, ipc, enabled);
+  const dispose = installDeveloperTools(window as unknown as BrowserWindow, ipc);
   const event = { sender: contents, senderFrame: contents.mainFrame } as unknown as IpcMainInvokeEvent;
   return { window, contents, handlers, ipc, dispose, event };
 }
 
 describe("native developer tools", () => {
-  it("requires an explicit opt-in outside development, independently of window chrome", () => {
-    expect(desktopDeveloperToolsEnabled("development", undefined)).toBe(true);
-    expect(desktopDeveloperToolsEnabled("production", undefined)).toBe(false);
-    expect(desktopDeveloperToolsEnabled("production", "true")).toBe(false);
-    expect(desktopDeveloperToolsEnabled("production", "1")).toBe(true);
-    expect(fixture(false).ipc.handle).not.toHaveBeenCalled();
+  it("registers developer tools without a development-mode or environment opt-in", () => {
+    const f = fixture();
+    expect(f.handlers.get("od:developer-tools:open")).toBeTypeOf("function");
+    f.dispose();
   });
 
   it("opens detached tools for the main frame and rejects foreign senders, subframes and destroyed windows", () => {

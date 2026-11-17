@@ -499,9 +499,7 @@ ipcRenderer.on(APP_CONFIG_CHANGED_IPC_CHANNEL, () => {
 });
 
 const hostBridge = {
-  // Sandbox preloads cannot import main-process modules; keep this argument
-  // aligned with DEVELOPER_TOOLS_ARGUMENT in developer-tools.ts.
-  ...(process.isMainFrame && process.argv.includes('--od-developer-tools=enabled') ? {
+  ...(process.isMainFrame ? {
     developerTools: {
       open: async (): Promise<OpenDesignHostActionResult> => {
         try {

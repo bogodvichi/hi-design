@@ -388,7 +388,7 @@ export type OpenDesignHostUpdaterOpenDialogListener = (request: OpenDesignHostUp
 export type OpenDesignHostRecentProject = { id: string; name: string };
 
 export type OpenDesignHostBridge = {
-  /** Available only when the desktop host explicitly enables native DevTools. */
+  /** Native desktop troubleshooting; absent in web and older desktop hosts. */
   developerTools?: {
     open(): Promise<OpenDesignHostActionResult>;
   };

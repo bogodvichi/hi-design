@@ -1,4 +1,4 @@
-import { OPEN_DESIGN_HOST_UPDATER_ACTIONS } from "./protocol.js";
+import { OPEN_DESIGN_HOST_UPDATER_ACTIONS } from "./protocol.ts";
 import type {
   OpenDesignHostActionResult,
   OpenDesignHostBrowserClearDataOptions,
@@ -19,8 +19,8 @@ import type {
   OpenDesignHostUpdaterResult,
   OpenDesignHostUpdaterStatusAction,
   OpenDesignHostUpdaterStatusListener,
-} from "./protocol.js";
-import { getOpenDesignHost } from "./detection.js";
+} from "./protocol.ts";
+import { getOpenDesignHost } from "./detection.ts";
 
 /**
  * @module actions

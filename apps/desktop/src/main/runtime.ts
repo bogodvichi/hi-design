@@ -37,7 +37,7 @@ import { openValidatedDirectory } from "./open-path.js";
 import { exportArtifact as exportArtifactFromHtml } from "./artifact-export.js";
 import { createElectronPdfTarget, exportPdfFromHtml, savePrintReadyDocumentAsPdf } from "./pdf-export.js";
 import { resolveDesktopRuntimeMode } from "./runtime-mode.js";
-import { DEVELOPER_TOOLS_ARGUMENT, desktopDeveloperToolsEnabled, installDeveloperTools } from "./developer-tools.js";
+import { installDeveloperTools } from "./developer-tools.js";
 import { installForceReload } from "./force-reload.js";
 import { SPLASH_VIDEO_DATA_URL } from "./splash-video.js";
 import { RendererCrashLoopBreaker } from "./renderer-crash-loop.js";
@@ -2413,7 +2413,6 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
   // emitting recovery-attempt events.
   let rendererRecoveryAttempts = 0;
   const runtimeMode = resolveDesktopRuntimeMode(app, process.env.NODE_ENV);
-  const developerToolsEnabled = desktopDeveloperToolsEnabled(runtimeMode, process.env.OD_DESKTOP_DEVTOOLS);
 
   const consoleEntries: DesktopConsoleEntry[] = [];
   const windowTitle = options.windowTitle ?? "HiDesignTeam";
@@ -2435,7 +2434,6 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     ...windowsWindowChrome(process.platform, runtimeMode),
     webPreferences: {
       additionalArguments: [
-        ...(developerToolsEnabled ? [DEVELOPER_TOOLS_ARGUMENT] : []),
         ...osLocaleAdditionalArguments(options.osLocale) ?? [],
         ...(process.platform === "win32" && runtimeMode === "production"
           ? [WINDOW_CONTROLS_ARGUMENT]
@@ -2443,7 +2441,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
       ],
       backgroundThrottling: false,
       contextIsolation: true,
-      devTools: developerToolsEnabled,
+      devTools: true,
       nodeIntegration: false,
       preload: preloadPath,
       sandbox: true,
@@ -2451,7 +2449,7 @@ export async function createDesktopRuntime(options: DesktopRuntimeOptions): Prom
     },
     width: 1280,
   });
-  const disposeDeveloperTools = installDeveloperTools(window, ipcMain, developerToolsEnabled);
+  const disposeDeveloperTools = installDeveloperTools(window, ipcMain);
   const disposeForceReload = installForceReload(window, ipcMain);
   const disposeWindowsWindowControls = process.platform === "win32" && runtimeMode === "production"
     ? installWindowsWindowControls(window, ipcMain)

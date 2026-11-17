@@ -12,12 +12,14 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
+      "development": "./src/index.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs",
       "default": "./dist/index.mjs"
     },
     "./testing": {
       "types": "./dist/testing.d.ts",
+      "development": "./src/testing.ts",
       "import": "./dist/testing.mjs",
       "require": "./dist/testing.cjs",
       "default": "./dist/testing.mjs"
