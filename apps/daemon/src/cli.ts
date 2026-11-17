@@ -9925,6 +9925,7 @@ async function runSkills(args) {
   if (!args[0] || args[0] === 'help' || args.includes('--help') || args.includes('-h')) {
     console.log(`Usage:
   od skill install <https://github.com/owner/repo|github:owner/repo|https://…tar.gz|https://…tgz> [--json]
+  od skill team <list|install|uninstall> [resource-id] --workspace <id> --workspace-member <id> [--json]
   od skill hub list [--source hdw|all|maas-skillhub] [--mine] [--query <text>] [--sort popular|updated] --workspace <id> --workspace-member <id> [--json]
   od skill hub install <id> --workspace <id> --workspace-member <id> [--json]
   od skill hub uninstall <id> --workspace <id> --workspace-member <id> [--json]
@@ -9937,6 +9938,7 @@ async function runSkills(args) {
 \`od skills …\` remains an alias for compatibility.`);
     process.exit(args[0] ? 0 : 2);
   }
+  if (args[0] === 'team') return runTeamSkills(args.slice(1));
   if (args[0] === 'hub') return runSkillHub(args.slice(1));
   if (args[0] === 'publish') return runSkillPublish(args.slice(1));
   if (args[0] === 'delete') return runCloudResourceDelete('skills', args.slice(1));
@@ -9964,6 +9966,32 @@ async function runSkillPublish(rest) {
   const data = await resp.json();
   if (flags.json) return process.stdout.write(JSON.stringify(data, null, 2) + '\n');
   console.log(`Published ${id}`);
+}
+
+async function runTeamSkills(rest) {
+  const flags = parseFlags(rest, { string: LIBRARY_STRING_FLAGS, boolean: LIBRARY_BOOLEAN_FLAGS });
+  const [action, resourceId] = positionalArgs(rest, LIBRARY_STRING_FLAGS);
+  if (!['list', 'install', 'uninstall'].includes(action) || (action !== 'list' && !resourceId)) {
+    console.error('Usage: od skill team <list|install|uninstall> [resource-id] --workspace <id> --workspace-member <id> [--json]');
+    process.exit(action === 'help' || flags.help ? 0 : 2);
+  }
+  const base = (await libraryDaemonUrl(flags)).replace(/\/$/, '');
+  const headers = workspaceHeadersFromExplicitFlags(flags, true);
+  const endpoint = action === 'list' ? '/api/workspace/skills/team'
+    : `/api/workspace/skills/cloud/${encodeURIComponent(resourceId)}/${action}`;
+  const response = await fetch(base + endpoint, {
+    method: action === 'list' ? 'GET' : action === 'install' ? 'POST' : 'DELETE', headers,
+  });
+  if (!response.ok) return structuredHttpFailure(response);
+  const body = await response.json();
+  if (flags.json) return process.stdout.write(JSON.stringify(body, null, 2) + '\n');
+  if (action === 'list') {
+    for (const skill of body.resources ?? []) {
+      console.log(`${skill.resourceId}\t${skill.title}\t${skill.installation.status}`);
+    }
+  } else {
+    console.log(`[${action}] ${body.localId ?? resourceId}`);
+  }
 }
 
 async function runSkillHub(rest) {

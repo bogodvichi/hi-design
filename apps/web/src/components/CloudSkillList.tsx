@@ -21,6 +21,7 @@ import { RemoveSharedResourceDialog } from './RemoveSharedResourceDialog';
 import { CommunityResourceStats } from './CommunityResourceStats';
 import styles from './CloudSkillList.module.css';
 import {
+  type TeamSkillCatalogResponse,
   SKILL_CATEGORIES,
   sortCommunitySkills,
   type CommunitySkillSort,
@@ -192,7 +193,7 @@ export function CloudSkillList({
    setLocalSkillIds(new Set());
    setLocalCloudIds(new Set());
    setLocalSkillsReady(false);
-   if (!workspaceId) { setLocalSkillIds(new Set()); return; }
+   if (!workspaceId || mode === 'team') return;
    try {
      const res = await fetch('/api/skills', {
        cache: 'no-store',
@@ -211,7 +212,7 @@ export function CloudSkillList({
     } catch {
       // Installation controls stay unavailable until a scoped read succeeds.
     }
-  }, [workspaceId, workspaceMemberId, workspaceType]);
+  }, [workspaceId, workspaceMemberId, workspaceType, mode]);
 
   const loadSkills = useCallback(async (revalidate = false) => {
     const requestId = ++loadRequestId.current;
@@ -272,55 +273,13 @@ export function CloudSkillList({
     try {
     if (mode === 'team') {
       const headers = workspaceHeaders(workspaceId, workspaceMemberId, workspaceType);
-      const [cloudResult, teamResult] = await Promise.allSettled([
-        fetch('/api/workspace/skills/cloud?', { cache: 'no-store', headers }),
-        fetch('/api/workspace/skills/team', { cache: 'no-store', headers }),
-      ]);
-      const cloudResponse = cloudResult.status === 'fulfilled' && cloudResult.value.ok
-        ? await cloudResult.value.json()
-        : null;
-      const teamResponse = teamResult.status === 'fulfilled' && teamResult.value.ok
-        ? await teamResult.value.json()
-        : null;
-      if (!cloudResponse && !teamResponse) {
-        if (cloudResult.status === 'fulfilled') throw await responseError(cloudResult.value);
-        throw cloudResult.reason;
-      }
-
-      const merged = new Map<string, CloudSkill>();
-      for (const skill of (cloudResponse?.skills ?? []) as CloudSkill[]) {
-        merged.set(skill.localId, { ...skill, category: normalizeSkillCategory(skill.category) });
-      }
-      for (const resource of (teamResponse?.resources ?? []) as Array<{
-        id: string;
-        hubResourceId?: string;
-        title?: string;
-        description?: string;
-        ownerMemberId?: string;
-        version?: number;
-        versionId?: string;
-      }>) {
-        // A team record can expose a different local id from its cloud record.
-        // Match the two views through the hub resource identity before falling
-        // back to the local id, otherwise the same skill renders twice.
-        const existing = merged.get(resource.id);
-        merged.set(resource.id, {
-          resourceId: existing?.resourceId ?? resource.hubResourceId ?? `team:${resource.id}`,
-          localId: resource.id,
-          title: existing?.title ?? resource.title ?? resource.id,
-          description: existing?.description ?? resource.description ?? null,
-          ownerMemberId: existing?.ownerMemberId ?? resource.ownerMemberId ?? '',
-          version: existing?.version ?? resource.version ?? null,
-          versionId: existing?.versionId ?? resource.versionId ?? null,
-          createdAt: existing?.createdAt ?? '',
-          updatedAt: existing?.updatedAt ?? '',
-          ...existing,
-          installed: true,
-          teamShared: true,
-          category: normalizeSkillCategory(existing?.category),
-        });
-      }
-      const list = [...merged.values()];
+      const response = await fetch('/api/workspace/skills/team', { cache: 'no-store', headers });
+      if (!response.ok) throw await responseError(response);
+      const body = await response.json() as TeamSkillCatalogResponse;
+      const list: CloudSkill[] = body.resources.map((resource) => ({
+        ...resource,
+        installed: resource.installation.status === 'installed',
+      }));
       if (!isCurrent()) return;
       setError(null);
       setSkills(list);
@@ -928,9 +887,10 @@ useEffect(() => {
         key={JSON.stringify([identityKey, effectiveSearchQuery, activeCategory])}
         skills={visibleSkills} renderSkill={(skill) => {
          const cloudId = skill.provider === 'maas-skillhub' ? `maas-skillhub:${skill.resourceId}` : skill.resourceId;
-         const isInstalled = localCloudIds.has(cloudId) || (!useCommunityCatalog && skill.installed === true)
-           || skill.teamShared === true
-          || (skill.provider !== 'maas-skillhub' && localSkillIds.has(skill.localId.toLowerCase()));
+         const isInstalled = mode === 'team' ? skill.installed === true : (
+           localCloudIds.has(cloudId) || (!useCommunityCatalog && skill.installed === true)
+           || (skill.provider !== 'maas-skillhub' && localSkillIds.has(skill.localId.toLowerCase()))
+         );
           const canManageCloudRecord = skill.provider !== 'maas-skillhub' && !skill.resourceId.startsWith('team:');
           const isResourceOwner = skill.canManage ?? skill.ownerMemberId === workspaceMemberId;
           const isTeamManager = mode === 'team' && (memberRole === 'owner' || memberRole === 'admin');
@@ -968,7 +928,7 @@ useEffect(() => {
              canConnect={(!useCommunityCatalog || localSkillsReady) && (mode !== 'team' || (memberRole != null && memberRole !== 'guest'))}
             actions={picker ? {} : {
               ...(canShare ? { share: () => setShareItem(skill) } : {}),
-              ...(isInstalled && !skill.teamShared ? { uninstall: () => void handleUninstall(skill) } : {}),
+              ...(isInstalled ? { uninstall: () => void handleUninstall(skill) } : {}),
               ...(canDelete && mode === 'square' ? { unpublish: () => setConfirmAction({ type: 'unpublish', item: skill }) } : {}),
               ...(canDelete && mode === 'square' && skill.publicationSourceType === 'reference' ? { updatePublication: () => void handleUpdatePublication(skill) } : {}),
               ...(canDelete && mode !== 'square' ? { delete: () => setConfirmAction({ type: 'delete', item: skill }) } : {}),

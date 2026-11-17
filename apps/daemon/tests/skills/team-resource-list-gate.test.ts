@@ -93,6 +93,15 @@ function bindTeamSkill(
 }
 
 describe('listAllSkills Team materialization gate', () => {
+  it('uses the verified installation ID when the manifest keeps a display name', async () => {
+    const fixture = await createFixture();
+    const directory = await materializeTeamSkill(fixture.userSkills, 'team', 'review', 'review-body');
+    bindTeamSkill(fixture.db, 'team', 'review');
+    if (directory.status !== 'committed') throw new Error('fixture did not materialize');
+    await writeSkill(directory.targetDir, 'Review Skill', 'review-body');
+    const installed = await fixture.services.listAllSkills({ workspaceId: 'team' });
+    expect(installed).toMatchObject([{ id: 'review', name: 'Review Skill', teamSynced: true }]);
+  });
   it('resolves an uploaded private Skill for a legacy project with no recorded creator', async () => {
     const fixture = await createFixture();
     const directory = path.join(fixture.userSkills, 'design-review');

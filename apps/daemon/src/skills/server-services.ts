@@ -67,15 +67,18 @@ export function createSkillServerServices({ getDb, roots, skills }: {
     // Re-check the exact binding after filesystem parsing. Reconciliation can
     // tombstone a Team Skill while SKILL.md and its attachments are being
     // read; that newer negative verdict must win over the stale directory.
-    const team = discoveredTeam.filter((entry) => {
+    const team = discoveredTeam.flatMap((entry) => {
       const logicalId = typeof entry.dir === 'string'
         ? markerByDirectory.get(entry.dir)
         : undefined;
-      return Boolean(
-        logicalId
-        && (entry.id === logicalId || entry.id.startsWith(`${logicalId}:`))
-        && workspaceTeamSkillBindingAllowsRead(db, workspaceId, logicalId),
-      );
+      if (!logicalId || !workspaceTeamSkillBindingAllowsRead(db, workspaceId, logicalId)) return [];
+      // Uploads normalize the local ID; SKILL.md may retain a display name
+      // with capitals or spaces. The verified marker owns the installed ID.
+      const parentId = typeof entry.parentSkillId === 'string' ? entry.parentSkillId : null;
+      return [{ ...entry,
+        id: parentId ? logicalId + entry.id.slice(parentId.length) : logicalId,
+        ...(parentId ? { parentSkillId: logicalId } : {}),
+      }];
     });
     const teamIds = new Set(team.map((entry) => entry.id));
     return [
@@ -96,6 +99,9 @@ export function createSkillServerServices({ getDb, roots, skills }: {
             : {}),
           ...(binding?.workspaceId
             ? { workspaceId: binding.workspaceId }
+            : {}),
+          ...(binding?.resourceHubResourceId
+            ? { cloudResourceId: binding.resourceHubResourceId }
             : {}),
         };
       }),

@@ -120,6 +120,19 @@ describe('od skill install CLI', () => {
       body: JSON.stringify({ category: 'data_analysis', logoKey: 'research' }) });
   });
 
+  it.each(['list', 'install', 'uninstall'])('uses the shared team Skill API for %s', async (action) => {
+    const result = await runCli(['skill', 'team', action, ...(action === 'list' ? [] : ['skill-cloud-review']),
+      '--workspace', 'team-a', '--workspace-member', 'member-a', '--daemon-url', baseUrl, '--json']);
+    expect(result.code).toBe(0);
+    expect(requests).toHaveLength(1);
+    expect(requests[0]).toMatchObject({
+      method: action === 'list' ? 'GET' : action === 'install' ? 'POST' : 'DELETE',
+      url: action === 'list' ? '/api/workspace/skills/team' : `/api/workspace/skills/cloud/skill-cloud-review/${action}`,
+      headers: { 'x-od-workspace-id': 'team-a', 'x-od-workspace-member-id': 'member-a' },
+    });
+    expect(() => JSON.parse(result.stdout)).not.toThrow();
+  });
+
   it('rejects an invalid publication category before sending a request', async () => {
     const result = await runCli(['skill', 'publish', 'skill-team-a-analysis', '--category', 'invalid',
       '--workspace', 'team-a', '--workspace-member', 'member-a', '--daemon-url', baseUrl]);

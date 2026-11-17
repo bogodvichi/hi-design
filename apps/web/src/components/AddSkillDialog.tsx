@@ -182,6 +182,13 @@ export function AddSkillDialog({ open, onClose, scope, onAdded, workspaceContext
         showUploadError(result.error);
         return;
       }
+      if (workspaceContext?.workspaceType === 'team') {
+        window.dispatchEvent(new CustomEvent('personal:skill-refresh'));
+        notifyToast({ message: t('personalScope.importAndShareSuccess', { name: result.title }), tone: 'success' });
+        onClose();
+        setUploadSource(null);
+        return;
+      }
       // A Personal Skill must be usable immediately after being added.
       // Upload creates the owned cloud source; install materializes that source
       // locally under the authenticated Personal Workspace.

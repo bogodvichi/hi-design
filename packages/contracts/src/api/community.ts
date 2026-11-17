@@ -68,6 +68,37 @@ export interface CloudResourceWorkspaceContext {
   canManage: boolean;
 }
 
+/** Team directory metadata and this daemon's installation are independent. */
+export interface TeamSkillCatalogItem extends CloudResourceWorkspaceContext {
+  /** Compatibility ID for existing team-list consumers. */
+  id: string;
+  resourceId: string;
+  hubResourceId: string;
+  localId: string;
+  title: string;
+  description: string | null;
+  ownerMemberId: string;
+  canUnshare: boolean;
+  version: number | null;
+  versionId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  publisherName: string | null;
+  category: SkillCategory;
+  logoKey: string | null;
+  provider: 'hdw' | 'vela';
+  installation: {
+    status: 'installed' | 'not_installed';
+    versionId: string | null;
+  };
+}
+
+/** GET /api/workspace/skills/team. Reading never installs or updates Skills. */
+export interface TeamSkillCatalogResponse {
+  ids: string[];
+  resources: TeamSkillCatalogItem[];
+}
+
 export type SharedResourceKind = 'skill' | 'mcp';
 
 /** A recipient-specific reference; shareId identifies access, resourceId identifies the original. */

@@ -556,7 +556,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
   ) {
     const { locale, t } = useI18n();
     const analytics = useAnalytics();
-    const { workspaceContext } = useProjectCollabContext();
+    const { workspaceContext, workspaceContextLoading } = useProjectCollabContext();
     const viewedFilePath = activeWorkspaceContext?.kind === 'file'
       ? activeWorkspaceContext.path ?? null
       : projectMetadata?.importedFrom === 'folder' && !activeWorkspaceContext
@@ -1106,7 +1106,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
   const recentRestoreRef = useRef<string | null>(null);
  useEffect(() => {
    const meta = projectMetadata;
-   if (!meta) return;
+   if (!meta || workspaceContextLoading) return;
   const usedSkillIds = meta.usedSkillIds ?? [];
   const usedMcpIds = meta.usedMcpIds ?? [];
   const contextMcpServers = meta.contextMcpServers ?? [];
@@ -1128,7 +1128,8 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
   // MAAS skillhub global catalog (cross-workspace, no context needed),
   // then HDW cloud resources within the current workspace (requires
   // workspace context — the HDW resources table is workspace-scoped).
- if (usedSkillIds.length > 0) {
+ // Team history is a reference, not permission to install missing Skills.
+ if (usedSkillIds.length > 0 && workspaceContext?.workspaceType !== 'team') {
    const localSkillIds = new Set(skills.map((s) => s.id));
    const missingSkillIds = usedSkillIds.filter((id) => !localSkillIds.has(id));
    if (missingSkillIds.length > 0) {
@@ -1227,7 +1228,7 @@ export const ChatComposer = forwardRef<ChatComposerHandle, Props>(
         setMcpTemplates(data.templates);
       });
     }
-  }, [projectMetadata, projectId, skills, mcpServers, stagedMcpServers, workspaceContext, onSkillsRefresh]);
+  }, [projectMetadata, projectId, skills, mcpServers, stagedMcpServers, workspaceContext, workspaceContextLoading, onSkillsRefresh]);
 
     const handleSkillTabChange = useCallback((_tab: 'all' | 'mine' | 'team' | 'recent') => {
       void onSkillsRefresh?.(true);

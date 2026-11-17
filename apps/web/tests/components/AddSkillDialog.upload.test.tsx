@@ -92,13 +92,17 @@ describe.each(workspaces)('Skill upload in $workspaceId', (workspace) => {
       );
       expect(await uploadSkillToCloud.mock.calls[0]![0][0].file.text()).toBe(content);
       expect(file.name).toBe(entryPoint.startsWith('drop') ? '2skill.MD' : '2skill.md');
-      expect(fetch).toHaveBeenCalledWith(
-        `/api/workspace/skills/cloud/skill-source/install?home_workspace_id=${workspace.workspaceId}`,
-        expect.objectContaining({ headers: expect.objectContaining({
-          'x-od-workspace-id': workspace.workspaceId,
-          'x-od-workspace-member-id': workspace.workspaceMemberId,
-        }) }),
-      );
+      const installs = vi.mocked(fetch).mock.calls.filter(([input]) => String(input).includes('/install?'));
+      expect(installs).toHaveLength(workspace.workspaceType === 'team' ? 0 : 1);
+      if (workspace.workspaceType === 'personal') {
+        expect(installs[0]).toEqual([
+          `/api/workspace/skills/cloud/skill-source/install?home_workspace_id=${workspace.workspaceId}`,
+          expect.objectContaining({ headers: expect.objectContaining({
+            'x-od-workspace-id': workspace.workspaceId,
+            'x-od-workspace-member-id': workspace.workspaceMemberId,
+          }) }),
+        ]);
+      }
     },
   );
 });

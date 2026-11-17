@@ -245,6 +245,7 @@ import {
   workspaceTeamSkillBindingActivationFence,
   workspaceTeamSkillBindingResourceId,
 } from './skills/workspace-team-binding.js';
+import { listTeamSkillCatalog } from './skills/team-catalog.js';
 import { uninstallCloudSkillFromWorkspace } from './skills/cloud-uninstall.js';
 import { validateLinkedDirs } from './linked-dirs.js';
 import { uninstallById } from './library-install.js';
@@ -6634,7 +6635,8 @@ export async function startServer({
     // so teamResourceStillShared always returns false for them. Bypass the
     // stillShared gate entirely and call markTeamSynced directly, mirroring
     // syncSharedTeamDesignSystem's pattern.
-    const stillShared = cloudInstall
+    const hdwInstall = cloudInstall && shouldUseHdwHttpResourceTransport(process.env);
+    const stillShared = hdwInstall
       ? async (): Promise<boolean> => true
       : () => teamResourceStillShared('skill', resource, scope);
     // Claim the pulled copy for the workspace whose hub served it — a
@@ -6710,7 +6712,7 @@ export async function startServer({
           resourceId: resource.id,
           hubResourceId,
         },
-        pullInto: cloudInstall
+        pullInto: hdwInstall
           ? async (stagedFolder) => {
               const result = await hdwCloudClient?.pullResource(homeWorkspaceId || workspaceId, hubResourceId, 'published');
               if (!result) throw new Error('cloud skill not found on hub');
@@ -6734,7 +6736,7 @@ export async function startServer({
         return;
       }
       if (cloudInstall) {
-        markTeamSynced();
+        if (!markTeamSynced()) throw new Error('Skill installation binding did not commit');
       } else {
         const activated = await resolveAndActivateWorkspaceTeamSkill({
           resolve: async () => {
@@ -6913,9 +6915,17 @@ export async function startServer({
     run: runTeamResourceCommand,
     hdwClient: hdwCloudClient,
   });
-  const skillsTeamList = cachedTeamResourceList(
-    skillsTeamShare,
-    syncSharedTeamSkill,
+  // Team discovery never installs or updates Skills; local state is read fresh.
+  const skillsTeamList = Object.assign(
+    (scope: TeamResourceRequestScope) => listTeamSkillCatalog({
+      scope, useHdw: shouldUseHdwHttpResourceTransport(process.env), client: hdwCloudClient,
+      share: skillsTeamShare, readDirectory: fetchWorkspaceDirectoryForAccountSurface,
+      listInstalled: () => listAllSkills({ workspaceId: scope.principal.teamId,
+        workspaceMemberId: scope.principal.memberId }),
+      versions: teamResourceVersions,
+    }),
+    { invalidate: (scope: TeamResourceRequestScope) =>
+      sharedTeamResourcesCommand.invalidate(scope.principal.teamId) },
   );
   registerTeamResourceShareRoutes(app, {
     basePath: 'skills',
@@ -6930,7 +6940,6 @@ export async function startServer({
         && binding.createdByWorkspaceMemberId === scope.principal.memberId
       );
     },
-    syncSharedResource: syncSharedTeamSkill,
     share: skillsTeamShare,
     listTeam: skillsTeamList,
   });
@@ -7304,6 +7313,17 @@ export async function startServer({
        return res.status(/already installed/iu.test(message) ? 409 : 502).json({ error: message });
      }
    }
+   if (!shouldUseHdwHttpResourceTransport(process.env)) {
+     try {
+       const resources = await skillsTeamShare.sharedResources(scope, { authoritative: true });
+       const resource = resources.find((item) => (item.hubResourceId ?? item.id) === resourceId);
+       if (!resource) return res.status(404).json({ error: 'CLOUD_SKILL_NOT_FOUND' });
+       await syncSharedTeamSkill(resource, scope, true);
+       return res.json({ installed: true, localId: resource.id });
+     } catch (err: any) {
+       return res.status(500).json({ error: err instanceof Error ? err.message : 'team skill install failed' });
+     }
+   }
    if (!hdwCloudClient) {
      return res.status(503).json({ error: 'HDW_CLOUD_NOT_CONFIGURED' });
    }
@@ -7366,86 +7386,14 @@ export async function startServer({
        return res.status(502).json({ error: err instanceof Error ? err.message : 'MAAS Skillhub uninstall failed' });
      }
    }
-    // Uninstall is a local-only operation: remove the materialized skill
-    // directory and its workspace binding. The cloud resource (if any) is
-    // only consulted to resolve the localId when we don't already know it;
-    // a skill installed from a team-workspace share may have no cloud
-    // counterpart at all, so falling back to a local marker scan is the
-    // correct behaviour rather than returning CLOUD_SKILL_NOT_FOUND.
+    // Resolve installations by the exact cloud identity, even while offline.
+    // Never fall back to deleting an unrelated personal source with the same slug.
     try {
-      // The web client prefixes locally-installed skill ids with "local:"
-      // when building the cloud-list resourceId (see CloudSkillList.tsx).
-      // Strip it so the rest of the lookup uses the bare skill id.
-      const bareResourceId = resourceId.startsWith('local:')
-        ? resourceId.slice('local:'.length)
-        : resourceId;
-      const homeWsId = typeof req.query.home_workspace_id === 'string' ? req.query.home_workspace_id : '';
-      const lookupWsId = homeWsId || workspaceId;
-      let localId: string | null = null;
-      if (hdwCloudClient) {
-        try {
-          const cloudResource = await hdwCloudClient.getResource(lookupWsId, bareResourceId);
-          if (cloudResource) {
-            localId = (cloudResource.metadata as any)?.localId ?? cloudResource.id;
-          }
-        } catch {
-          // Cloud lookup failed (network, auth, etc.) — fall through to
-          // the local marker scan below so a transient cloud outage does
-          // not block uninstalling a locally-installed skill.
-        }
-      }
-      // Cloud miss or no cloud client: scan the team-workspace directory
-      // for a materialization marker whose hubResourceId or resourceId
-      // matches the requested resourceId.
-      if (!localId) {
-        const wsRoot = teamResourceWorkspaceRoot(USER_SKILLS_DIR, workspaceId);
-        let entries: import('node:fs').Dirent[] = [];
-        try {
-          entries = await fs.promises.readdir(wsRoot, { withFileTypes: true });
-        } catch {
-          // No team-workspace directory for this workspace — nothing to scan.
-        }
-        for (const entry of entries) {
-          if (!entry.isDirectory()) continue;
-          for (const candidate of [entry.name, `user:${entry.name}`]) {
-            const marker = await readTeamResourceMaterialization(
-              USER_SKILLS_DIR,
-              workspaceId,
-              candidate,
-              entry.name,
-            );
-            if (
-              marker?.kind === 'skill'
-              && (marker.hubResourceId === bareResourceId || marker.resourceId === bareResourceId)
-            ) {
-              localId = marker.resourceId;
-              break;
-            }
-          }
-          if (localId) break;
-        }
-      }
-      if (!localId) {
-        // Last resort: the skill may live directly under USER_SKILLS_DIR
-        // (not inside .team-workspaces). Try uninstallById which scans
-        // the user skills root and removes the directory if found.
-        const result = await uninstallById(bareResourceId, USER_SKILLS_DIR, SKILLS_DIR, 'skill');
-        if (result.ok) {
-          deleteWorkspaceResourceByResourceId(db, 'skill', bareResourceId);
-          return res.json({ ok: true, localId: bareResourceId });
-        }
-        return res.status(404).json({ error: 'CLOUD_SKILL_NOT_FOUND' });
-      }
-      const dirId = stripPrefixAndValidateId(localId, localId.startsWith('user:') ? 'user:' : '');
-      if (!dirId) {
-        return res.status(400).json({ error: 'invalid local id' });
-      }
-      const targetDir = teamResourceMaterializationDir(USER_SKILLS_DIR, workspaceId, localId, dirId);
-      await fs.promises.rm(targetDir, { recursive: true, force: true });
-      const bindingResourceId = workspaceTeamSkillBindingResourceId(workspaceId, localId);
-      deleteWorkspaceResourceByResourceId(db, 'skill', bindingResourceId);
-      await teamResourceVersions.delete(workspaceId, 'skill', localId);
-      res.json({ ok: true, localId });
+      const result = await uninstallCloudSkillFromWorkspace({
+        db, userSkillsDir: USER_SKILLS_DIR, workspaceId, resourceId,
+        deleteVersion: (workspace, kind, id) => teamResourceVersions.delete(workspace, kind, id),
+      });
+      res.json({ ok: true, localId: result.localId });
     } catch (err: any) {
       res.status(500).json({ error: err instanceof Error ? err.message : 'cloud skill uninstall failed' });
     }
@@ -7741,50 +7689,6 @@ const teamResourceListByKind = {
       }),
     );
   };
-  const adoptLegacyWorkspaceTeamSkillBindings = async (
-    scope: TeamResourceRequestScope,
-  ): Promise<void> => {
-    const workspaceId = scope.principal.teamId;
-    const workspaceRoot = teamResourceWorkspaceRoot(USER_SKILLS_DIR, workspaceId);
-    let entries: fs.Dirent[] = [];
-    try {
-      entries = await fs.promises.readdir(workspaceRoot, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    await Promise.all(
-      entries.filter((entry) => entry.isDirectory()).map(async (entry) => {
-        let marker = await readTeamResourceMaterialization(
-          USER_SKILLS_DIR,
-          workspaceId,
-          entry.name,
-          entry.name,
-        );
-        if (!marker) {
-          marker = await readTeamResourceMaterialization(
-            USER_SKILLS_DIR,
-            workspaceId,
-            `user:${entry.name}`,
-            entry.name,
-          );
-        }
-        if (!marker || marker.kind !== 'skill') return;
-        ensureWorkspaceResource(
-          db,
-          'skill',
-          workspaceId,
-          workspaceTeamSkillBindingResourceId(workspaceId, marker.resourceId),
-          {
-            visibility: 'team',
-            resourceState: 'active',
-            createdByWorkspaceMemberId: scope.principal.memberId,
-            updatedByWorkspaceMemberId: scope.principal.memberId,
-            resourceHubResourceId: marker.hubResourceId,
-          },
-        );
-      }),
-    );
-  };
   const reconcileTeamResourceKind = async (
     resourceType: ReconciledTeamResourceKind,
     scope: TeamResourceRequestScope,
@@ -7792,9 +7696,6 @@ const teamResourceListByKind = {
   ) => {
     if (resourceType === 'plugin') {
       await adoptLegacyWorkspaceTeamPluginBindings(scope);
-    }
-    if (resourceType === 'skill') {
-      await adoptLegacyWorkspaceTeamSkillBindings(scope);
     }
     let reconciliationError: unknown;
     const result = await reconcileWorkspaceResourcesWithRemote({
@@ -7878,7 +7779,15 @@ const teamResourceListByKind = {
   };
   const teamResourceEventCoordinator = createWorkspaceTeamResourceEventCoordinator({
     materializeAndList: async ({ resourceKind, scope }) => {
-      const listing = await teamResourceListByKind[resourceKind].authoritative(scope);
+      if (resourceKind === 'skill') {
+        const listing = await skillsTeamList(scope);
+        return listing.resources.map((resource) => ({
+          resourceId: resource.localId, hubResourceId: resource.resourceId,
+          ...(resource.versionId ? { versionId: resource.versionId } : {}),
+          ...(resource.ownerMemberId ? { ownerMemberId: resource.ownerMemberId } : {}),
+        }));
+      }
+      const listing = await pluginsTeamList.authoritative(scope);
       const incomplete = listing.resources.find(
         (resource) => !teamResourceMaterializationIsReady(resourceKind, resource, scope),
       );

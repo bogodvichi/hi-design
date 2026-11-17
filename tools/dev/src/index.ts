@@ -71,6 +71,7 @@ import { ensureDaemonGateForDesktop } from "./desktop-auth-gate.js";
 import { loadWorkspaceLocalEnv } from "./local-env.js";
 import { resolveSharedPortsFromRunningState } from "./shared-ports.js";
 import { resolveDevAgentEnv } from "./agent-env.js";
+import { ensureRuntimeDependencyBuilds } from "./runtime-builds.js";
 
 type CliOptions = ToolDevOptions & {
   envFile?: string | string[];
@@ -472,6 +473,7 @@ async function spawnWebRuntime(config: ToolDevConfig, options: CliOptions): Prom
   const logHandle = await openAppLog(config, APP_KEYS.WEB);
 
   try {
+    await ensureRuntimeDependencies(config, APP_KEYS.WEB, logHandle);
     await ensureWebDevNodeModules(config);
     await writeWebDevTsconfig(config);
     await logHandle.write(`\n[tools-dev] launching web at ${new Date().toISOString()}\n`);
@@ -531,7 +533,7 @@ async function latestMtimeMs(filePath: string): Promise<number> {
 }
 
 async function ensureDaemonCliBuild(config: ToolDevConfig, logHandle: FileHandle): Promise<void> {
-  await ensureDaemonDependencyBuilds(config, logHandle);
+  await ensureRuntimeDependencies(config, APP_KEYS.DAEMON, logHandle);
 
   const daemonRoot = path.join(config.workspaceRoot, "apps/daemon");
   const distCliPath = path.join(daemonRoot, "dist/cli.js");
@@ -556,35 +558,30 @@ async function ensureDaemonCliBuild(config: ToolDevConfig, logHandle: FileHandle
   });
 }
 
-async function ensureDaemonDependencyBuilds(config: ToolDevConfig, logHandle: FileHandle): Promise<void> {
-  // The daemon uses the React-free scrollbar entry when enhancing URL previews.
-  // Build it on a clean checkout as well as refreshing it after UI runtime edits.
-  for (const [name, output, buildConfig] of [
-    ["contracts", "dist/index.d.ts", "esbuild.config.mjs"],
-    ["components", "dist/overlay-scrollbars-runtime.mjs", "esbuild.config.ts"],
-  ] as const) {
-    const packageRoot = path.join(config.workspaceRoot, "packages", name);
-    const outputPath = `packages/${name}/${output}`;
-    const distMtime = await latestMtimeMs(path.join(packageRoot, output));
-    const sourceMtime = Math.max(
-      await latestMtimeMs(path.join(packageRoot, "src")),
-      await latestMtimeMs(path.join(packageRoot, "package.json")),
-      await latestMtimeMs(path.join(packageRoot, "tsconfig.json")),
-      await latestMtimeMs(path.join(packageRoot, buildConfig)),
-    );
-    if (distMtime > 0 && distMtime >= sourceMtime) continue;
-
-    const reason = distMtime > 0 ? `source is newer than ${outputPath}` : `${outputPath} is missing`;
-    await logHandle.write(`\n[tools-dev] building @open-design/${name} because ${reason} at ${new Date().toISOString()}\n`);
-    const invocation = createPackageManagerInvocation(["--filter", `@open-design/${name}`, "build"], process.env);
-    await runLoggedCommand({
-      args: invocation.args,
-      command: invocation.command,
-      cwd: config.workspaceRoot,
-      env: process.env,
-      logFd: logHandle.fd,
-      windowsVerbatimArguments: invocation.windowsVerbatimArguments,
+async function ensureRuntimeDependencies(
+  config: ToolDevConfig,
+  app: ToolDevAppName,
+  logHandle: FileHandle,
+): Promise<void> {
+  try {
+    await ensureRuntimeDependencyBuilds({
+      workspaceRoot: config.workspaceRoot,
+      app,
+      build: async (packageName, reason) => {
+        await logHandle.write(`\n[tools-dev] building ${packageName} because ${reason} at ${new Date().toISOString()}\n`);
+        const invocation = createPackageManagerInvocation(["--filter", packageName, "build"], process.env);
+        await runLoggedCommand({
+          args: invocation.args,
+          command: invocation.command,
+          cwd: config.workspaceRoot,
+          env: process.env,
+          logFd: logHandle.fd,
+          windowsVerbatimArguments: invocation.windowsVerbatimArguments,
+        });
+      },
     });
+  } catch (error) {
+    throw new Error(`${formatError(error)}\nBuild log: ${config.apps[app].latestLogPath}`, { cause: error });
   }
 }
 
@@ -625,6 +622,7 @@ async function spawnDesktopRuntime(config: ToolDevConfig, options: CliOptions): 
   const logHandle = await openAppLog(config, APP_KEYS.DESKTOP);
 
   try {
+    await ensureRuntimeDependencies(config, APP_KEYS.DESKTOP, logHandle);
     await buildDesktop(config, logHandle);
     await logHandle.write(`[tools-dev] launching desktop at ${new Date().toISOString()}\n`);
     const spawnEnv: NodeJS.ProcessEnv = {
