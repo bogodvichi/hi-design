@@ -3,13 +3,15 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+const pickerNames = vi.hoisted(() => ({ map: {} as Record<string, string> }));
+
 vi.mock('../../src/components/PersonPicker', () => ({
   PersonPicker: ({ ariaLabel, onChange }: {
     ariaLabel: string;
     placeholder: string;
     onChange: (people: Array<{ name: string }>) => void;
   }) => (
-    <button type="button" onClick={() => onChange([{ name: ariaLabel }])}>
+    <button type="button" onClick={() => onChange([{ name: pickerNames.map[ariaLabel] ?? ariaLabel }])}>
       {ariaLabel}
     </button>
   ),
@@ -42,9 +44,33 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
   vi.clearAllMocks();
+  pickerNames.map = {};
 });
 
 describe('HTML review creation', () => {
+  it('作者与评审组长相同时在组长字段下提示且不提交', async () => {
+    pickerNames.map['评审组长'] = '张三';
+    pickerNames.map['作者'] = '张三';
+    pickerNames.map['核心评委'] = '李四';
+    const fetchMock = vi.fn(async () => {
+      throw new Error('Unexpected request');
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(<ReviewAddModal open onClose={() => {}} />);
+    fireEvent.change(screen.getByPlaceholderText('请输入评审名称'), { target: { value: '作者即组长的评审' } });
+    fireEvent.click(screen.getByRole('button', { name: '评审组长' }));
+    fireEvent.click(screen.getByRole('button', { name: '作者' }));
+    fireEvent.click(screen.getByRole('button', { name: '核心评委' }));
+    fireEvent.click(screen.getByRole('button', { name: '确定' }));
+    expect(screen.getByText('评审组长不能与作者相同')).toBeTruthy();
+    expect(fetchMock).not.toHaveBeenCalled();
+
+    // 修改作者解除重复后，组长字段下的提示同步清除。
+    pickerNames.map['作者'] = '王五';
+    fireEvent.click(screen.getByRole('button', { name: '作者' }));
+    expect(screen.queryByText('评审组长不能与作者相同')).toBeNull();
+  });
+
   it('retains a review draft after interacting with the backdrop', () => {
     const onClose = vi.fn();
     render(<ReviewAddModal open onClose={onClose} />);

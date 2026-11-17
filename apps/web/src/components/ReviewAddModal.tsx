@@ -38,6 +38,7 @@ import { DEFAULT_HTML_REVIEW_H5_SIZE, HTML_REVIEW_H5_SIZES, appendHtmlReviewUplo
  *   reviewModel / projectId / projManager / projName（部门模式缺后三者）。
  *
  * 原站前置校验：核心评委不得与评审组长同名；评审稿 reviewType 必须与子类型一致。
+ * 本表单额外校验：作者不得与评审组长相同。
  * 上游响应 {code:'0'} 视为成功。
  *
  * 评审模式（radio，默认"新建评审"）：
@@ -71,6 +72,16 @@ const REVIEW_SUBTYPES: { value: string; label: string }[] = [
 /** 评审子类型的展示名（更新模式只读展示已有类型）。 */
 function subtypeLabelOf(value: string): string {
   return REVIEW_SUBTYPES.find((s) => s.value === value)?.label ?? value;
+}
+
+/** 作者与评审组长重复时的提示文案（显示在评审组长字段下）。 */
+const AUTHOR_LEADER_DUP_MSG = '评审组长不能与作者相同';
+
+/** 作者与评审组长是否重复（按 id 或姓名匹配）。 */
+function findAuthorLeaderDup(author: Person[], mainjudge: Person[]): Person | undefined {
+  const mainIds = new Set(mainjudge.map((p) => p.id).filter(Boolean));
+  const mainNames = new Set(mainjudge.map((p) => p.name));
+  return author.find((p) => mainNames.has(p.name) || mainIds.has(p.id));
 }
 
 /** 评审子类型对应的稿件提示（对齐原站 uploadDrag 的 drag_text）。 */
@@ -218,6 +229,21 @@ export function ReviewAddModal({
       if (!prev[key]) return prev;
       const next = { ...prev };
       delete next[key];
+      return next;
+    });
+  }
+
+  /**
+   * 作者或组长变更后同步组长字段的重复提示：重复仍存在则提示，
+   * 已解除则清除（不影响组长的必填错误）。
+   */
+  function syncAuthorLeaderErrors(nextAuthor: Person[], nextMain: Person[]) {
+    setFieldErrors((prev) => {
+      const next = { ...prev };
+      if (next.mainjudge === AUTHOR_LEADER_DUP_MSG) delete next.mainjudge;
+      if (findAuthorLeaderDup(nextAuthor, nextMain)) {
+        next.mainjudge = AUTHOR_LEADER_DUP_MSG;
+      }
       return next;
     });
   }
@@ -934,6 +960,12 @@ export function ReviewAddModal({
       setFieldErrors({ coreReviewers: '评审组长与评委重复' });
       return;
     }
+    // 作者不能与评审组长相同（提示显示在组长字段下）。
+    const dupAuthor = findAuthorLeaderDup(author, mainjudge);
+    if (dupAuthor) {
+      setFieldErrors({ mainjudge: AUTHOR_LEADER_DUP_MSG });
+      return;
+    }
     // "上传"模式：校验已有 uploadInfo 的类型一致性。
     if (manuscriptSource === 'upload' && uploadInfo?.reviewType && String(uploadInfo.reviewType) !== subtype) {
       setFieldErrors({ upload: '评审类型与上传评审稿格式不一致' });
@@ -1568,6 +1600,7 @@ export function ReviewAddModal({
                      onChange={(p) => {
                        setAuthor(p);
                        clearFieldError('author');
+                       syncAuthorLeaderErrors(p, mainjudge);
                      }}
                      ariaLabel="作者"
                      placeholder="输入关键字检索"
@@ -1597,6 +1630,7 @@ export function ReviewAddModal({
                      onChange={(p) => {
                        setMainjudge(p);
                        clearFieldError('mainjudge');
+                       syncAuthorLeaderErrors(author, p);
                      }}
                      ariaLabel="评审组长"
                      placeholder="输入关键字检索"
