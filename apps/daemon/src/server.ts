@@ -6587,6 +6587,7 @@ export async function startServer({
     scope: TeamResourceRequestScope,
     cloudInstall = false,
     homeWorkspaceId?: string,
+    communityInstall = false,
   ): Promise<void> {
     const dirId = stripPrefixAndValidateId(
       resource.id,
@@ -6665,12 +6666,14 @@ export async function startServer({
         createdByWorkspaceMemberId: resource.ownerMemberId ?? scope.principal.memberId,
         updatedByWorkspaceMemberId: scope.principal.memberId,
         resourceHubResourceId: hubResourceId,
+        installationSource: communityInstall ? 'community' : null,
       });
       updateWorkspaceResource(db, 'skill', workspaceId, bindingResourceId, {
         visibility: 'team',
         resourceState: 'active',
         updatedByWorkspaceMemberId: scope.principal.memberId,
         resourceHubResourceId: hubResourceId,
+        installationSource: communityInstall ? 'community' : null,
       });
       return true;
     }
@@ -7047,7 +7050,7 @@ export async function startServer({
             versionId: hdwMatch.versionId ?? undefined,
             version: hdwMatch.version ?? undefined,
           };
-          await syncSharedTeamSkill(record, scope, true);
+          await syncSharedTeamSkill(record, scope, true, workspaceId, hdwMatch.scope === 'public');
           return res.json({ installed: true, localId });
         }
       }
@@ -7349,7 +7352,7 @@ export async function startServer({
       versionId: cloudResource.versionId ?? undefined,
       version: cloudResource.version ?? undefined,
     };
-   await syncSharedTeamSkill(record, scope, true, lookupWsId);
+   await syncSharedTeamSkill(record, scope, true, lookupWsId, cloudResource.scope === 'public');
    res.json({ installed: true, localId });
   } catch (err: any) {
     res.status(500).json({ error: err instanceof Error ? err.message : 'cloud skill install failed' });
@@ -7721,6 +7724,7 @@ const teamResourceListByKind = {
                 resourceState: row.resourceState ?? null,
                 createdByWorkspaceMemberId: row.createdByWorkspaceMemberId ?? null,
                 resourceHubResourceId: row.resourceHubResourceId ?? null,
+                installationSource: row.installationSource ?? null,
               },
             ];
           }),

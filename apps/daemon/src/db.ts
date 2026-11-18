@@ -148,6 +148,7 @@ function migrate(db: SqliteDb): void {
       created_by_workspace_member_id TEXT,
       updated_by_workspace_member_id TEXT,
       resource_hub_resource_id TEXT,
+      installation_source TEXT,
       cloud_tombstoned_at INTEGER,
       sync_state TEXT,
       version INTEGER,
@@ -419,6 +420,10 @@ function migrate(db: SqliteDb): void {
  // single cached <img> instead of loading the entry HTML in an iframe.
  if (!cols.some((c: DbRow) => c.name === 'cover_digest')) {
    db.exec(`ALTER TABLE projects ADD COLUMN cover_digest TEXT`);
+ }
+ const workspaceResourceCols = db.prepare(`PRAGMA table_info(workspace_resources)`).all() as DbRow[];
+ if (!workspaceResourceCols.some((c: DbRow) => c.name === 'installation_source')) {
+   db.exec(`ALTER TABLE workspace_resources ADD COLUMN installation_source TEXT`);
  }
  const workspaceProjectCols = db.prepare(`PRAGMA table_info(workspace_projects)`).all() as DbRow[];
   if (!workspaceProjectCols.some((c: DbRow) => c.name === 'resource_hub_resource_id')) {
@@ -2088,6 +2093,7 @@ const WORKSPACE_RESOURCE_SELECT_COLUMNS = `
               created_by_workspace_member_id AS createdByWorkspaceMemberId,
               updated_by_workspace_member_id AS updatedByWorkspaceMemberId,
               resource_hub_resource_id AS resourceHubResourceId,
+              installation_source AS installationSource,
               cloud_tombstoned_at AS cloudTombstonedAt,
               sync_state AS syncState,
               version,
@@ -2192,8 +2198,8 @@ export function ensureWorkspaceResource(
        (resource_type, resource_id, workspace_id, visibility, resource_state,
         created_by_workspace_member_id, updated_by_workspace_member_id,
         resource_hub_resource_id, cloud_tombstoned_at,
-        sync_state, version, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        sync_state, version, created_at, updated_at, installation_source)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     resourceType,
     resourceId,
@@ -2208,6 +2214,7 @@ export function ensureWorkspaceResource(
     input.version ?? 1,
     input.createdAt ?? now,
     input.updatedAt ?? now,
+    input.installationSource ?? null,
   );
   return getWorkspaceResource(db, resourceType, workspaceId, resourceId);
 }
@@ -2240,6 +2247,7 @@ export function updateWorkspaceResource(
             created_by_workspace_member_id = ?,
             updated_by_workspace_member_id = ?,
             resource_hub_resource_id = ?,
+            installation_source = ?,
             cloud_tombstoned_at = ?,
             sync_state = ?,
             version = ?,
@@ -2252,6 +2260,7 @@ export function updateWorkspaceResource(
     next.createdByWorkspaceMemberId ?? null,
     next.updatedByWorkspaceMemberId ?? null,
     next.resourceHubResourceId ?? null,
+    next.installationSource ?? null,
     next.cloudTombstonedAt ?? null,
     next.syncState ?? null,
     next.version ?? 1,

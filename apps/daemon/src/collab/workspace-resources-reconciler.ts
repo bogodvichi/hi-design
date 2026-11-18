@@ -71,6 +71,8 @@ export interface LocalTeamResourceBinding {
   resourceState: string | null;
   createdByWorkspaceMemberId: string | null;
   resourceHubResourceId: string | null;
+  /** Community installs have an independent lifetime from team sharing. */
+  installationSource?: 'community' | null;
 }
 
 /** What the remote hub says is currently shared — the subset
@@ -172,7 +174,7 @@ export function planWorkspaceResourceReconciliation(input: {
   // ownership drift on the local binding row.
   const localByResourceId = new Map<string, LocalTeamResourceBinding>();
   for (const local of localActiveTeamRows) {
-    if (local.workspaceId === workspaceId) {
+    if (local.workspaceId === workspaceId && local.installationSource !== 'community') {
       localByResourceId.set(local.resourceId, local);
     }
   }
@@ -205,6 +207,7 @@ export function planWorkspaceResourceReconciliation(input: {
   const remoteIds = new Set(remoteResources.map((r) => r.resourceId));
   for (const local of localActiveTeamRows) {
     if (local.workspaceId !== workspaceId) continue;
+    if (local.installationSource === 'community') continue;
     if (remoteIds.has(local.resourceId)) continue;
     actions.push({ kind: 'retire', resourceId: local.resourceId, workspaceId: local.workspaceId });
   }

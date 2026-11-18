@@ -63,6 +63,47 @@ async function install() {
   return fetch(`${runtime.url}/api/workspace/skills/cloud/${skillId}/install`, { method: 'POST', headers });
 }
 
+it.each(['test-personal', 'test-team'])('keeps a community Skill added in %s after team reconciliation', async (workspaceId) => {
+  headers['x-od-workspace-id'] = workspaceId;
+  remote.getResource.mockResolvedValue({ id: skillId, kind: 'skill', ownerMemberId: 'publisher',
+    scope: 'public', metadata: { localId: 'hui-design-demo', publicationSourceType: 'local_import' },
+    version: 1, versionId: 'same-version' });
+  remote.downloadBlob.mockResolvedValue(Buffer.from('---\nname: hui-design-demo\n---\nCommunity contents'));
+  const response = await fetch(`${runtime.url}/api/workspace/skills/cloud/${skillId}/install?source=hdw&home_workspace_id=publisher-workspace`, {
+    method: 'POST', headers,
+  });
+  expect(response.status).toBe(200);
+  const installed = async () => {
+    const response = await fetch(`${runtime.url}/api/skills`, { headers });
+    expect(response.status).toBe(200);
+    const body = await response.json() as { skills: Array<{ id: string; cloudResourceId?: string }> };
+    return body.skills.find((skill) => skill.id === 'hui-design-demo');
+  };
+  expect(await installed()).toMatchObject({ cloudResourceId: skillId });
+  const refresh = await remote.refreshTeam!({ workspaceId, resourceKind: 'skill', reason: 'poll',
+    scope: { principal: { teamId: workspaceId, memberId: 'owner', role: 'owner', lifecycleState: 'active', workspaceType: 'team' }, canShare: true } });
+  expect(refresh.failedKinds).toEqual([]);
+  expect(await installed()).toMatchObject({ cloudResourceId: skillId });
+  remote.listResources.mockResolvedValue([{ id: 'same-named-team-skill', kind: 'skill',
+    ownerMemberId: 'teammate', metadata: { localId: 'hui-design-demo' }, version: 1, versionId: 'team-version' }]);
+  expect((await remote.refreshTeam!({ workspaceId, resourceKind: 'skill', reason: 'poll',
+    scope: { principal: { teamId: workspaceId, memberId: 'owner', role: 'owner', lifecycleState: 'active', workspaceType: 'team' }, canShare: true } })).failedKinds).toEqual([]);
+  expect(await installed()).toMatchObject({ cloudResourceId: skillId });
+  expect((await fetch(`${runtime.url}/api/workspace/skills/cloud/${skillId}/uninstall`, { method: 'DELETE', headers })).status).toBe(200);
+  expect(await installed()).toBeUndefined();
+});
+
+it('still retires an installed team Skill after it leaves the team catalog', async () => {
+  headers['x-od-workspace-id'] = 'test-team';
+  expect((await install()).status).toBe(200);
+  const refresh = await remote.refreshTeam!({ workspaceId: 'test-team', resourceKind: 'skill', reason: 'poll',
+    scope: { principal: { teamId: 'test-team', memberId: 'owner', role: 'owner', lifecycleState: 'active', workspaceType: 'team' }, canShare: true } });
+  expect(refresh.failedKinds).toEqual([]);
+  const response = await fetch(`${runtime.url}/api/skills`, { headers });
+  const body = await response.json() as { skills: Array<{ id: string }> };
+  expect(body.skills.some((skill) => skill.id === skillId)).toBe(false);
+});
+
 it.each(['test-personal', 'test-team'])('downloads the remote Skill in %s even when the owner has a local source', async (workspaceId) => {
   headers['x-od-workspace-id'] = workspaceId;
   const localDir = path.join(root, skillId);

@@ -85,6 +85,7 @@ export function workspaceTeamSkillBindingActivationFence(
     binding.updatedAt,
     binding.updatedByWorkspaceMemberId ?? null,
     binding.resourceHubResourceId ?? null,
+    binding.installationSource ?? null,
   ]);
 }
 

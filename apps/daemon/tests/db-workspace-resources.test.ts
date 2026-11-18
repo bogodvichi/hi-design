@@ -39,6 +39,25 @@ describe('workspace_resources persistence', () => {
     expect(listWorkspaceResources(db, 'plugin', 'ws-1')).toEqual([]);
   });
 
+  it('migrates legacy bindings and persists community installation provenance across updates and reopen', () => {
+    const db = seed();
+    ensureWorkspaceResource(db, 'skill', 'ws-1', 'legacy-skill', { visibility: 'team', resourceState: 'active' });
+    db.exec('ALTER TABLE workspace_resources DROP COLUMN installation_source');
+    closeDatabase();
+    const migrated = seed();
+    expect(getWorkspaceResource(migrated, 'skill', 'ws-1', 'legacy-skill'))
+      .toMatchObject({ resourceState: 'active', installationSource: null });
+    ensureWorkspaceResource(migrated, 'skill', 'ws-1', 'community-skill', { installationSource: 'community' });
+    updateWorkspaceResource(migrated, 'skill', 'ws-1', 'legacy-skill', { installationSource: 'community' });
+    updateWorkspaceResource(migrated, 'skill', 'ws-1', 'community-skill', { resourceState: 'active' });
+    closeDatabase();
+    const reopened = seed();
+    expect(listWorkspaceResources(reopened, 'skill', 'ws-1')).toEqual(expect.arrayContaining([
+      expect.objectContaining({ resourceId: 'community-skill', resourceState: 'active', installationSource: 'community' }),
+      expect.objectContaining({ resourceId: 'legacy-skill', installationSource: 'community' }),
+    ]));
+  });
+
   it('binds a resource and round-trips every envelope field', () => {
     const db = seed();
     const now = Date.now();
